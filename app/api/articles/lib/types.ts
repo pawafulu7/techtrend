@@ -39,6 +39,7 @@ export interface PaginationParams {
 export interface FilterParams {
   sources?: string;
   sourceId?: string;
+  excludeSources?: string;
   tag?: string;
   tags?: string;
   tagMode?: string;
@@ -91,6 +92,7 @@ export interface ArticleCacheParams {
   sortOrder: 'asc' | 'desc';
   sources: string;
   sourceId?: string;
+  excludeSources?: string;
   tag?: string;
   tags?: string;
   tagMode?: string;
@@ -169,6 +171,7 @@ export function toArticleQueryParams(
   return {
     sources: cacheParams.sources,
     sourceId: cacheParams.sourceId,
+    excludeSources: cacheParams.excludeSources,
     tag: cacheParams.tag,
     tags: cacheParams.tags,
     tagMode: cacheParams.tagMode,

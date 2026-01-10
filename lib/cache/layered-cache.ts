@@ -13,6 +13,7 @@ export interface ArticleQueryParams {
   sortOrder?: 'asc' | 'desc';
   sources?: string;
   sourceId?: string;
+  excludeSources?: string;
   tag?: string;
   tags?: string;
   tagMode?: string;
@@ -37,9 +38,9 @@ export interface ArticleQueryParams {
  * L3: 検索キャッシュ（検索結果）
  */
 export class LayeredCache {
-  private l1Cache: RedisCache;  // パブリックキャッシュ
-  private l2Cache: RedisCache;  // ユーザーキャッシュ
-  private l3Cache: RedisCache;  // 検索キャッシュ
+  private l1Cache: RedisCache; // パブリックキャッシュ
+  private l2Cache: RedisCache; // ユーザーキャッシュ
+  private l3Cache: RedisCache; // 検索キャッシュ
 
   constructor() {
     // TTL設定を環境変数で制御可能にして段階的調整を可能にする
@@ -49,21 +50,21 @@ export class LayeredCache {
     const l1Ttl = parseInt(process.env.CACHE_L1_TTL || '3600', 10);
     this.l1Cache = new RedisCache({
       ttl: l1Ttl, // デフォルト1時間（RSS更新サイクルに合わせる）
-      namespace: '@techtrend/cache:l1:public'
+      namespace: '@techtrend/cache:l1:public',
     });
 
     // L2: ユーザーキャッシュ（デフォルト: 20分）- 実際のセッション利用パターンに合わせる
     const l2Ttl = parseInt(process.env.CACHE_L2_TTL || '1200', 10);
     this.l2Cache = new RedisCache({
       ttl: l2Ttl, // デフォルト20分（ユーザーセッション実態に合わせる）
-      namespace: '@techtrend/cache:l2:user'
+      namespace: '@techtrend/cache:l2:user',
     });
 
     // L3: 検索キャッシュ（デフォルト: 10分）- 検索の即時性を重視
     const l3Ttl = parseInt(process.env.CACHE_L3_TTL || '600', 10);
     this.l3Cache = new RedisCache({
       ttl: l3Ttl, // デフォルト10分（検索結果の鮮度を優先）
-      namespace: '@techtrend/cache:l3:search'
+      namespace: '@techtrend/cache:l3:search',
     });
   }
 
@@ -94,7 +95,10 @@ export class LayeredCache {
 
     // L2: ユーザー固有のクエリ
     if (this.isUserQuery(params)) {
-      logger.debug({ cacheKey, layer: 'L2', userId: params.userId }, 'Checking L2 cache');
+      logger.debug(
+        { cacheKey, layer: 'L2', userId: params.userId },
+        'Checking L2 cache'
+      );
 
       if (fetcher) {
         return await this.l2Cache.getOrSet(cacheKey.key, fetcher);
@@ -104,7 +108,10 @@ export class LayeredCache {
 
     // L3: 検索クエリ
     if (this.isSearchQuery(params)) {
-      logger.debug({ cacheKey, layer: 'L3', search: params.search }, 'Checking L3 cache');
+      logger.debug(
+        { cacheKey, layer: 'L3', search: params.search },
+        'Checking L3 cache'
+      );
 
       if (fetcher) {
         return await this.l3Cache.getOrSet(cacheKey.key, fetcher);
@@ -123,7 +130,10 @@ export class LayeredCache {
   async setArticles<T>(params: ArticleQueryParams, data: T): Promise<void> {
     // includeUserDataがtrueの場合はキャッシュに保存しない
     if (params.includeUserData) {
-      logger.debug({ params }, 'Skipping cache set due to includeUserData=true');
+      logger.debug(
+        { params },
+        'Skipping cache set due to includeUserData=true'
+      );
       return;
     }
 
@@ -143,9 +153,7 @@ export class LayeredCache {
    * 検索、ユーザー固有フィルター、タグフィルターがない場合
    */
   private isBasicQuery(params: ArticleQueryParams): boolean {
-    return !params.search &&
-           !params.readFilter &&
-           !params.userId;
+    return !params.search && !params.readFilter && !params.userId;
     // タグの条件を削除 - タグはフィルター条件の一種として基本クエリに含める
   }
 
@@ -153,9 +161,11 @@ export class LayeredCache {
    * ユーザー固有のクエリかどうかを判定
    */
   private isUserQuery(params: ArticleQueryParams): boolean {
-    return !params.search &&
-           params.userId !== undefined &&
-           (params.readFilter === 'read' || params.readFilter === 'unread');
+    return (
+      !params.search &&
+      params.userId !== undefined &&
+      (params.readFilter === 'read' || params.readFilter === 'unread')
+    );
   }
 
   /**
@@ -168,7 +178,10 @@ export class LayeredCache {
   /**
    * キャッシュキーを生成
    */
-  private getCacheKey(params: ArticleQueryParams): { key: string; layer: 'L1' | 'L2' | 'L3' | 'none' } {
+  private getCacheKey(params: ArticleQueryParams): {
+    key: string;
+    layer: 'L1' | 'L2' | 'L3' | 'none';
+  } {
     // 基本クエリのキー（簡素化されたパラメータ）
     if (this.isBasicQuery(params)) {
       const key = this.generateBasicKey(params);
@@ -201,14 +214,14 @@ export class LayeredCache {
       sortBy: params.sortBy || 'publishedAt',
       sortOrder: params.sortOrder || 'desc',
       category: params.category || 'all',
-      sources: params.sources || 'all',  // sourcesパラメータを追加
-      sourceId: params.sourceId || 'none',  // sourceIdパラメータを追加（後方互換性）
-      tag: params.tag || 'none',  // 単一タグパラメータを追加
-      tags: params.tags || 'none',  // 複数タグパラメータを追加
-      tagMode: params.tagMode || 'OR',  // タグモードを追加
-      dateRange: params.dateRange || 'all',  // dateRangeも追加
-      includeEmptyContent: params.includeEmptyContent || false,  // includeEmptyContentも追加
-      excludeUnprocessed: params.excludeUnprocessed || false  // excludeUnprocessedも追加
+      sources: params.sources || 'all', // sourcesパラメータを追加
+      sourceId: params.sourceId || 'none', // sourceIdパラメータを追加（後方互換性）
+      tag: params.tag || 'none', // 単一タグパラメータを追加
+      tags: params.tags || 'none', // 複数タグパラメータを追加
+      tagMode: params.tagMode || 'OR', // タグモードを追加
+      dateRange: params.dateRange || 'all', // dateRangeも追加
+      includeEmptyContent: params.includeEmptyContent || false, // includeEmptyContentも追加
+      excludeUnprocessed: params.excludeUnprocessed || false, // excludeUnprocessedも追加
     };
 
     // パラメータをソートして一貫性を保つ
@@ -246,7 +259,7 @@ export class LayeredCache {
       search: normalizedSearch || 'none',
       dateRange: params.dateRange || 'all',
       includeEmptyContent: params.includeEmptyContent || false,
-      excludeUnprocessed: params.excludeUnprocessed || false
+      excludeUnprocessed: params.excludeUnprocessed || false,
     };
 
     const sortedParams = Object.entries(countParams)
@@ -284,14 +297,14 @@ export class LayeredCache {
       limit: params.limit || 20,
       sortBy: params.sortBy || 'publishedAt',
       sortOrder: params.sortOrder || 'desc',
-      sources: params.sources || 'all',  // sourcesパラメータを追加
-      sourceId: params.sourceId || 'none',  // sourceIdパラメータを追加（後方互換性）
-      category: params.category || 'all',  // categoryも追加
-      dateRange: params.dateRange || 'all',  // dateRangeも追加
-      tag: params.tag || 'none',  // tagも追加
-      tags: params.tags || 'none',  // tagsも追加
-      tagMode: params.tagMode || 'OR',  // tagModeも追加
-      excludeUnprocessed: params.excludeUnprocessed || false  // excludeUnprocessedも追加
+      sources: params.sources || 'all', // sourcesパラメータを追加
+      sourceId: params.sourceId || 'none', // sourceIdパラメータを追加（後方互換性）
+      category: params.category || 'all', // categoryも追加
+      dateRange: params.dateRange || 'all', // dateRangeも追加
+      tag: params.tag || 'none', // tagも追加
+      tags: params.tags || 'none', // tagsも追加
+      tagMode: params.tagMode || 'OR', // tagModeも追加
+      excludeUnprocessed: params.excludeUnprocessed || false, // excludeUnprocessedも追加
     };
 
     const sortedParams = Object.entries(userParams)
@@ -308,8 +321,10 @@ export class LayeredCache {
   private generateSearchKey(params: ArticleQueryParams): string {
     // 検索キーワードを正規化（スペース区切りでソート）
     const normalizedSearch = params.search
-      ? params.search.trim().split(/[\s　]+/)
-          .filter(k => k.length > 0)
+      ? params.search
+          .trim()
+          .split(/[\s　]+/)
+          .filter((k) => k.length > 0)
           .sort()
           .join(',')
       : '';
@@ -321,13 +336,13 @@ export class LayeredCache {
       sortBy: params.sortBy || 'publishedAt',
       sortOrder: params.sortOrder || 'desc',
       category: params.category || 'all',
-      sources: params.sources || 'all',  // sourcesパラメータを追加
-      sourceId: params.sourceId || 'none',  // sourceIdパラメータを追加（後方互換性）
-      dateRange: params.dateRange || 'all',  // dateRangeも追加
-      tag: params.tag || 'none',  // tagも追加
-      tags: params.tags || 'none',  // tagsも追加
-      tagMode: params.tagMode || 'OR',  // tagModeも追加
-      excludeUnprocessed: params.excludeUnprocessed || false  // excludeUnprocessedも追加
+      sources: params.sources || 'all', // sourcesパラメータを追加
+      sourceId: params.sourceId || 'none', // sourceIdパラメータを追加（後方互換性）
+      dateRange: params.dateRange || 'all', // dateRangeも追加
+      tag: params.tag || 'none', // tagも追加
+      tags: params.tags || 'none', // tagsも追加
+      tagMode: params.tagMode || 'OR', // tagModeも追加
+      excludeUnprocessed: params.excludeUnprocessed || false, // excludeUnprocessedも追加
     };
 
     const sortedParams = Object.entries(searchParams)
@@ -350,17 +365,17 @@ export class LayeredCache {
       l1: {
         namespace: '@techtrend/cache:l1:public',
         ttl: '1 hour',
-        ...l1Stats
+        ...l1Stats,
       },
       l2: {
         namespace: '@techtrend/cache:l2:user',
         ttl: '15 minutes',
-        ...l2Stats
+        ...l2Stats,
       },
       l3: {
         namespace: '@techtrend/cache:l3:search',
         ttl: '10 minutes',
-        ...l3Stats
+        ...l3Stats,
       },
       overall: {
         totalHits: l1Stats.hits + l2Stats.hits + l3Stats.hits,
@@ -368,8 +383,8 @@ export class LayeredCache {
         overallHitRate: this.calculateHitRate(
           l1Stats.hits + l2Stats.hits + l3Stats.hits,
           l1Stats.misses + l2Stats.misses + l3Stats.misses
-        )
-      }
+        ),
+      },
     };
   }
 

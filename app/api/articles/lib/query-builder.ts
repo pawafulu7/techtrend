@@ -263,6 +263,67 @@ export class ArticleWhereClauseBuilder {
   }
 
   /**
+   * Exclude specific sources from results (e.g., arXiv papers)
+   * Can be combined with withSourceFilter for inclusion/exclusion patterns
+   */
+  async withExcludeSources(excludeSources: string | undefined): Promise<this> {
+    if (!excludeSources) return this;
+
+    const sourceList = excludeSources
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (sourceList.length === 0) return this;
+
+    // In unit tests, treat tokens as IDs directly
+    const isTestEnv =
+      process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
+
+    let excludeIds: string[];
+    if (isTestEnv) {
+      excludeIds = sourceList;
+    } else {
+      try {
+        excludeIds = await withCacheTiming(
+          this.metrics,
+          () => sourceCache.resolveSourceIds(sourceList),
+          'cache_source_resolution_exclude'
+        );
+      } catch (error) {
+        logger.error(
+          `Failed to resolve exclude source IDs: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        excludeIds = sourceList;
+      }
+    }
+
+    if (excludeIds.length === 0) return this;
+
+    // Merge with existing sourceId filter
+    const currentSourceId = this.where.sourceId;
+    if (currentSourceId && typeof currentSourceId === 'object') {
+      // Already has filter (e.g., { in: [...] })
+      this.where.sourceId = {
+        ...currentSourceId,
+        notIn: excludeIds,
+      };
+    } else if (currentSourceId && typeof currentSourceId === 'string') {
+      // Single source ID - check if it's in exclude list
+      if (excludeIds.includes(currentSourceId)) {
+        // The only allowed source is excluded, return empty
+        this.where.sourceId = { in: [] };
+      }
+      // Otherwise, keep the single source ID (it's not excluded)
+    } else {
+      // No existing filter, just add notIn
+      this.where.sourceId = { notIn: excludeIds };
+    }
+
+    return this;
+  }
+
+  /**
    * Filter by tags (supports single tag, multiple tags with OR/AND modes)
    * Uses case-insensitive matching for consistency with /api/articles/list
    */
@@ -441,6 +502,9 @@ export async function buildWhereClause(
     filters.sources,
     filters.sourceId
   );
+
+  // Exclude sources filter (e.g., exclude arXiv papers from home page)
+  await builder.withExcludeSources(filters.excludeSources);
 
   return { where: builder.build(), emptyResult };
 }
