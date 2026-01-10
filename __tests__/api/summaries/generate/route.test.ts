@@ -33,7 +33,8 @@ jest.mock('@/lib/database', () => ({
       update: jest.fn(),
     },
     tag: {
-      upsert: jest.fn(),
+      createMany: jest.fn(),
+      findMany: jest.fn(),
     },
   },
 }));
@@ -83,7 +84,12 @@ describe('/api/summaries/generate', () => {
     };
 
     (getAppDependencies as jest.Mock).mockReturnValue({ service: mockService });
-    (prisma.tag.upsert as jest.Mock).mockResolvedValue({ id: 'tag-1' });
+    // N+1最適化: createMany + findMany パターン
+    (prisma.tag.createMany as jest.Mock).mockResolvedValue({ count: 2 });
+    (prisma.tag.findMany as jest.Mock).mockResolvedValue([
+      { id: 'tag-1', name: 'test' },
+      { id: 'tag-2', name: 'typescript' },
+    ]);
     (prisma.article.update as jest.Mock).mockResolvedValue({});
 
     const request = new NextRequest('http://localhost/api/summaries/generate', { method: 'POST' });
@@ -129,24 +135,26 @@ describe('/api/summaries/generate', () => {
 
     (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
     (getAppDependencies as jest.Mock).mockReturnValue({ service: mockService });
-    (prisma.tag.upsert as jest.Mock).mockResolvedValue({ id: 'tag-new' });
+    // N+1最適化: createMany + findMany パターン
+    (prisma.tag.createMany as jest.Mock).mockResolvedValue({ count: 1 });
+    (prisma.tag.findMany as jest.Mock).mockResolvedValue([{ id: 'tag-new', name: 'new' }]);
     (prisma.article.update as jest.Mock).mockResolvedValue({});
 
     const request = new NextRequest('http://localhost/api/summaries/generate', { method: 'POST' });
     await POST(request);
 
-    // 'new'は1回のみupsert（重複除外確認）
-    expect(prisma.tag.upsert).toHaveBeenCalledTimes(1);
-    expect(prisma.tag.upsert).toHaveBeenCalledWith({
-      where: { name: 'new' },
-      update: {},
-      create: { name: 'new' }
+    // 'new'のみがcreateMany対象（重複除外確認）
+    expect(prisma.tag.createMany).toHaveBeenCalledTimes(1);
+    expect(prisma.tag.createMany).toHaveBeenCalledWith({
+      data: [{ name: 'new' }],
+      skipDuplicates: true
     });
 
-    // 'existing'はupsertされない
-    expect(prisma.tag.upsert).not.toHaveBeenCalledWith(
-      expect.objectContaining({ where: { name: 'existing' } })
-    );
+    // findManyで'new'のみ取得
+    expect(prisma.tag.findMany).toHaveBeenCalledWith({
+      where: { name: { in: ['new'] } },
+      select: { id: true }
+    });
   });
 
   it('should handle service errors gracefully', async () => {
