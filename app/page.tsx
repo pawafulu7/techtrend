@@ -96,7 +96,7 @@ export default async function Home({ searchParams }: PageProps) {
   const viewMode =
     parseViewModeFromCookie(cookieStore.get('article-view-mode')?.value) ||
     filterPreferences.viewMode ||
-    'grid';
+    'card';
 
   // Get source filter from cookie if no URL params
   let initialSourceIds: string[] | undefined = undefined;

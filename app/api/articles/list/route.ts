@@ -385,9 +385,15 @@ export async function GET(request: NextRequest) {
           const currentSourceId = where.sourceId;
           if (currentSourceId && typeof currentSourceId === 'object') {
             // Already has filter (e.g., { in: [...] })
+            // Merge with existing notIn array if present
+            const existingNotIn =
+              'notIn' in currentSourceId && Array.isArray(currentSourceId.notIn)
+                ? currentSourceId.notIn
+                : [];
+            const mergedNotIn = [...new Set([...existingNotIn, ...excludeIds])];
             where.sourceId = {
               ...currentSourceId,
-              notIn: excludeIds,
+              notIn: mergedNotIn,
             };
           } else if (currentSourceId && typeof currentSourceId === 'string') {
             // Single source ID - check if it's in exclude list

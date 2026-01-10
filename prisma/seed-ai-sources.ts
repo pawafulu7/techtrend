@@ -2,6 +2,10 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// arXiv AI source uses a fixed ID for consistent filtering across the app
+// This ID is defined in lib/constants/source-categories.ts as ARXIV_SOURCE_ID
+const ARXIV_SOURCE_ID = 'cmfxa7efs0001teo0kjt70c5k';
+
 async function main() {
   console.log('Adding AI/LLM sources to database...');
 
@@ -20,6 +24,8 @@ async function main() {
       enabled: true,
     },
     {
+      // Use explicit ID for arXiv AI to ensure consistent filtering
+      id: ARXIV_SOURCE_ID,
       name: 'arXiv AI',
       type: 'RSS' as const,
       url: 'https://rss.arxiv.org/rss/cs.AI',

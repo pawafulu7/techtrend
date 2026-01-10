@@ -34,7 +34,7 @@ export default async function PapersPage({ searchParams }: PageProps) {
   const viewMode =
     parseViewModeFromCookie(cookieStore.get('article-view-mode')?.value) ||
     filterPreferences.viewMode ||
-    'grid';
+    'card';
 
   // Get initial sort order from cookie if no URL params
   const initialSortBy = !params.sortBy ? filterPreferences.sortBy : undefined;
