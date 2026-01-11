@@ -12,9 +12,10 @@ module.exports = {
       startServerReadyPattern: 'Ready',
       startServerReadyTimeout: 30000,
       // URLs to test
+      // Note: Only use routes that exist in the app. Verify with `npm run build` output.
       url: [
-        'http://localhost:3000/',           // Top page
-        'http://localhost:3000/articles',   // Articles list (if exists)
+        'http://localhost:3000/',           // Top page (contains article list)
+        'http://localhost:3000/auth/login', // Login page (static, no DB dependency)
       ],
       // Number of runs per URL for consistent results
       numberOfRuns: 3,
