@@ -233,6 +233,55 @@ ${unchangedList}
 }
 
 // =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * バランスブラケットでJSONを抽出
+ * 最初の { から対応する } までを抽出
+ */
+function extractBalancedJson(text: string): string | null {
+  const startIndex = text.indexOf('{');
+  if (startIndex === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = startIndex; i < text.length; i++) {
+    const char = text[i];
+
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escapeNext = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === '{') {
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0) {
+          return text.slice(startIndex, i + 1);
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+// =============================================================================
 // Extraction Config
 // =============================================================================
 
@@ -249,19 +298,24 @@ export function createXPostExtractionConfig() {
       const codeBlockMatch = response.match(
         /```(?:json)?\s*(\{[\s\S]*?\})\s*```/
       );
-      // コードブロックがなければ貪欲マッチングで完全なJSONオブジェクトを取得
-      const jsonMatch = codeBlockMatch
-        ? [codeBlockMatch[1]]
-        : response.match(/\{[\s\S]*\}/);
 
-      if (!jsonMatch) {
+      let jsonString: string | null = null;
+
+      if (codeBlockMatch) {
+        jsonString = codeBlockMatch[1];
+      } else {
+        // バランスブラケット抽出: 最初の { から対応する } まで
+        jsonString = extractBalancedJson(response);
+      }
+
+      if (!jsonString) {
         throw new Error('No JSON found in response');
       }
 
       // JSON解析（エラーハンドリング付き）
       let parsed: unknown;
       try {
-        parsed = JSON.parse(jsonMatch[0]);
+        parsed = JSON.parse(jsonString);
       } catch (e) {
         throw new Error(
           `Invalid JSON in response: ${e instanceof Error ? e.message : String(e)}`

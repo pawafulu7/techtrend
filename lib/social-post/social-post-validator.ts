@@ -118,27 +118,40 @@ export type SocialPostBulkInput = z.infer<typeof SocialPostBulkSchema>;
 /**
  * フィルタースキーマ
  */
-export const SocialPostFiltersSchema = z.object({
-  status: z
-    .enum([
-      'DRAFT',
-      'REVIEWED',
-      'SCHEDULED',
-      'POSTING',
-      'POSTED',
-      'FAILED',
-      'ARCHIVED',
-      'all',
-    ])
-    .optional(),
-  source: z
-    .enum(['ARTICLE', 'DAILY_TREND', 'DIFF_SUMMARY', 'MANUAL', 'all'])
-    .optional(),
-  dateFrom: z.string().datetime().optional(),
-  dateTo: z.string().datetime().optional(),
-  page: z.coerce.number().int().positive().optional().default(1),
-  limit: z.coerce.number().int().positive().max(100).optional().default(20),
-});
+export const SocialPostFiltersSchema = z
+  .object({
+    status: z
+      .enum([
+        'DRAFT',
+        'REVIEWED',
+        'SCHEDULED',
+        'POSTING',
+        'POSTED',
+        'FAILED',
+        'ARCHIVED',
+        'all',
+      ])
+      .optional(),
+    source: z
+      .enum(['ARTICLE', 'DAILY_TREND', 'DIFF_SUMMARY', 'MANUAL', 'all'])
+      .optional(),
+    dateFrom: z.string().datetime().optional(),
+    dateTo: z.string().datetime().optional(),
+    page: z.coerce.number().int().positive().optional().default(1),
+    limit: z.coerce.number().int().positive().max(100).optional().default(20),
+  })
+  .refine(
+    (data) => {
+      if (data.dateFrom && data.dateTo) {
+        return new Date(data.dateFrom) <= new Date(data.dateTo);
+      }
+      return true;
+    },
+    {
+      message: 'dateFrom must be before or equal to dateTo',
+      path: ['dateFrom'],
+    }
+  );
 
 export type SocialPostFiltersInput = z.infer<typeof SocialPostFiltersSchema>;
 
@@ -274,9 +287,13 @@ export function isValidForXPost(
     );
   }
 
-  // コンテンツ検証
+  // コンテンツ検証（文字数チェックはすでに行ったのでスキップ）
   const contentValidation = validateGeneratedContent(content);
-  errors.push(...contentValidation.errors);
+  // 文字数関連のエラーを除外して追加（重複防止）
+  const nonLengthErrors = contentValidation.errors.filter(
+    (err) => !err.includes('characters')
+  );
+  errors.push(...nonLengthErrors);
 
   return {
     valid: errors.length === 0,

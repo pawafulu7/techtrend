@@ -91,6 +91,7 @@ export function SocialPostsDashboard() {
   // Local state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Build API URL
   const apiUrl = `/api/admin/social-posts?${new URLSearchParams({
@@ -114,6 +115,11 @@ export function SocialPostsDashboard() {
     (newFilters: Partial<FiltersState>) => {
       const updated = { ...filters, ...newFilters };
       setFilters(updated);
+
+      // Clear selection when filters change (except page-only changes)
+      if (newFilters.status !== undefined || newFilters.source !== undefined) {
+        setSelectedIds(new Set());
+      }
 
       // Update URL
       const params = new URLSearchParams();
@@ -154,7 +160,7 @@ export function SocialPostsDashboard() {
   // Bulk actions
   const handleBulkAction = useCallback(
     async (action: 'changeStatus' | 'delete', status?: SocialPostStatus) => {
-      if (selectedIds.size === 0) return;
+      if (selectedIds.size === 0 || isProcessing) return;
 
       const confirmed =
         action === 'delete'
@@ -163,6 +169,7 @@ export function SocialPostsDashboard() {
 
       if (!confirmed) return;
 
+      setIsProcessing(true);
       try {
         const res = await fetch('/api/admin/social-posts/bulk', {
           method: 'POST',
@@ -181,9 +188,11 @@ export function SocialPostsDashboard() {
       } catch (error) {
         console.error('Bulk action failed:', error);
         alert('操作に失敗しました');
+      } finally {
+        setIsProcessing(false);
       }
     },
-    [selectedIds, mutate]
+    [selectedIds, mutate, isProcessing]
   );
 
   // Delete single post
@@ -209,7 +218,9 @@ export function SocialPostsDashboard() {
 
   // Copy to clipboard
   const handleCopy = useCallback(async (post: SocialPost) => {
-    const text = `${post.content}\n\n${post.sourceUrls.join('\n')}\n\n${post.hashtags.join(' ')}`;
+    const urls = post.sourceUrls?.join('\n') ?? '';
+    const tags = post.hashtags?.join(' ') ?? '';
+    const text = `${post.content}${urls ? `\n\n${urls}` : ''}${tags ? `\n\n${tags}` : ''}`;
     try {
       await navigator.clipboard.writeText(text);
       alert('クリップボードにコピーしました');
@@ -255,6 +266,7 @@ export function SocialPostsDashboard() {
         selectedCount={selectedIds.size}
         onBulkAction={handleBulkAction}
         onGenerateClick={() => setIsGenerateDialogOpen(true)}
+        isProcessing={isProcessing}
       />
 
       {/* Table */}

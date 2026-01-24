@@ -8,6 +8,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { SocialPostStatus, SocialPostSource } from '@/lib/social-post';
 
 interface FiltersState {
@@ -25,6 +31,7 @@ interface SocialPostsToolbarProps {
     status?: SocialPostStatus
   ) => void;
   onGenerateClick: () => void;
+  isProcessing?: boolean;
 }
 
 const STATUS_OPTIONS: Array<{
@@ -57,6 +64,7 @@ export function SocialPostsToolbar({
   selectedCount,
   onBulkAction,
   onGenerateClick,
+  isProcessing = false,
 }: SocialPostsToolbarProps) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -112,24 +120,31 @@ export function SocialPostsToolbar({
             <span className="text-muted-foreground self-center text-sm">
               {selectedCount}件選択中
             </span>
-            <Select
-              onValueChange={(value) => {
-                if (value === 'delete') {
-                  onBulkAction('delete');
-                } else {
-                  onBulkAction('changeStatus', value as SocialPostStatus);
-                }
-              }}
-            >
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="一括操作" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="REVIEWED">レビュー済にする</SelectItem>
-                <SelectItem value="ARCHIVED">アーカイブ</SelectItem>
-                <SelectItem value="delete">削除</SelectItem>
-              </SelectContent>
-            </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={isProcessing}>
+                  {isProcessing ? '処理中...' : '一括操作'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  onClick={() => onBulkAction('changeStatus', 'REVIEWED')}
+                >
+                  レビュー済にする
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onBulkAction('changeStatus', 'ARCHIVED')}
+                >
+                  アーカイブ
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onBulkAction('delete')}
+                  className="text-destructive"
+                >
+                  削除
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
         )}
 

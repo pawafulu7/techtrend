@@ -159,18 +159,29 @@ export class SocialPostGenerator {
    * Diff SummaryからX投稿を生成
    */
   async generateFromDiffSummary(diff: DiffSummary): Promise<GeneratedContent> {
-    const changes =
-      (diff.changes as Array<{
-        topic: string;
-        trend: string;
-        change?: number;
-      }>) || [];
+    // Type-safe extraction of JSON fields with proper validation
+    const changes = Array.isArray(diff.changes)
+      ? (
+          diff.changes as Array<{
+            topic?: string;
+            trend?: string;
+            change?: number;
+          }>
+        ).filter(
+          (c): c is { topic: string; trend: string; change?: number } =>
+            typeof c?.topic === 'string' && typeof c?.trend === 'string'
+        )
+      : [];
     const risingTopics = changes
       .filter((c) => c.trend === 'rising')
       .slice(0, 3)
       .map((c) => ({ topic: c.topic, change: c.change || 0 }));
 
-    const unchanged = (diff.unchanged as string[]) || [];
+    const unchanged = Array.isArray(diff.unchanged)
+      ? (diff.unchanged as unknown[]).filter(
+          (item): item is string => typeof item === 'string'
+        )
+      : [];
 
     const prompt = buildDiffSummaryPrompt({
       category: diff.categorySlug,
