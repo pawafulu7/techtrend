@@ -55,15 +55,16 @@ export class SocialPostSelector {
     const postedArticleIds = await this.getPostedSourceIds('ARTICLE');
 
     // 候補記事を取得（スコアリング）
+    // createdAt（取り込み日）を基準に抽出
     const candidates = await this.prisma.article.findMany({
       where: {
         id: { notIn: postedArticleIds },
         qualityScore: { gte: opts.minQualityScore },
-        publishedAt: { gte: cutoffTime },
+        createdAt: { gte: cutoffTime },
         skipReason: null,
         summary: { not: null },
       },
-      orderBy: [{ qualityScore: 'desc' }, { publishedAt: 'desc' }],
+      orderBy: [{ qualityScore: 'desc' }, { createdAt: 'desc' }],
       take: count * 3, // 多めに取得してカテゴリ分散
     });
 
