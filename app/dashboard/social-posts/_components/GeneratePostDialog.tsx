@@ -18,6 +18,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+
+type GenerationType = 'article' | 'opinion';
 
 interface GeneratePostDialogProps {
   open: boolean;
@@ -25,21 +28,42 @@ interface GeneratePostDialogProps {
   onComplete: () => void;
 }
 
+const GENERATION_TYPES: Record<
+  GenerationType,
+  { label: string; description: string; endpoint: string }
+> = {
+  article: {
+    label: '記事ベース',
+    description: '人気度・注目度を考慮して、最適な記事から投稿を自動生成します',
+    endpoint: '/api/admin/social-posts/generate',
+  },
+  opinion: {
+    label: '感想・意見',
+    description:
+      '最近のトレンドを分析し、個人的な感想・気づきスタイルの投稿を生成します',
+    endpoint: '/api/admin/social-posts/generate-opinion',
+  },
+};
+
 export function GeneratePostDialog({
   open,
   onOpenChange,
   onComplete,
 }: GeneratePostDialogProps) {
+  const [generationType, setGenerationType] =
+    useState<GenerationType>('article');
   const [count, setCount] = useState('3');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const currentType = GENERATION_TYPES[generationType];
 
   const handleSubmit = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const res = await fetch('/api/admin/social-posts/generate', {
+      const res = await fetch(currentType.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ count: parseInt(count, 10) }),
@@ -53,7 +77,11 @@ export function GeneratePostDialog({
       const data = await res.json();
 
       if (data.count === 0) {
-        setError('生成可能な記事が見つかりませんでした');
+        const message =
+          generationType === 'article'
+            ? '生成可能な記事が見つかりませんでした'
+            : 'トレンドデータが不足しています';
+        setError(message);
         return;
       }
 
@@ -78,12 +106,31 @@ export function GeneratePostDialog({
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>投稿を自動生成</DialogTitle>
-          <DialogDescription>
-            人気度・注目度を考慮して、最適な記事から投稿を自動生成します
-          </DialogDescription>
+          <DialogDescription>{currentType.description}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label>生成タイプ</Label>
+            <RadioGroup
+              value={generationType}
+              onValueChange={(v) => setGenerationType(v as GenerationType)}
+              disabled={isLoading}
+              className="flex gap-4"
+            >
+              {(Object.keys(GENERATION_TYPES) as GenerationType[]).map(
+                (type) => (
+                  <div key={type} className="flex items-center space-x-2">
+                    <RadioGroupItem value={type} id={`type-${type}`} />
+                    <Label htmlFor={`type-${type}`} className="cursor-pointer">
+                      {GENERATION_TYPES[type].label}
+                    </Label>
+                  </div>
+                )
+              )}
+            </RadioGroup>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="count">生成件数</Label>
             <Select value={count} onValueChange={setCount} disabled={isLoading}>
@@ -99,7 +146,9 @@ export function GeneratePostDialog({
               </SelectContent>
             </Select>
             <p className="text-muted-foreground text-xs">
-              過去24時間の人気記事から自動選定されます
+              {generationType === 'article'
+                ? '過去24時間の人気記事から自動選定されます'
+                : '過去3日間のトレンドを分析して生成します'}
             </p>
           </div>
 

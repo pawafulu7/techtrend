@@ -517,6 +517,7 @@ enum SocialPostSource {
   ARTICLE // Generated from individual article
   DAILY_TREND // Generated from Daily Trend
   DIFF_SUMMARY // Generated from Diff Summary
+  OPINION // Generated from trend analysis (personal opinion style)
   MANUAL // Manually created
 }
 

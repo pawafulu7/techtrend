@@ -10,12 +10,13 @@ import { detectPromptInjection } from '@/lib/rag/security/prompt-injection-detec
 import { sanitizeHtml } from '@/lib/utils/html-sanitizer';
 import logger from '@/lib/logger';
 
-import type { GeneratedContent } from './types';
+import type { GeneratedContent, OpinionForPrompt } from './types';
 import { SocialPostSelector } from './social-post-selector';
 import {
   buildArticlePrompt,
   buildDailyTrendPrompt,
   buildDiffSummaryPrompt,
+  buildOpinionPrompt,
   createXPostExtractionConfig,
   X_POST_PROMPT_VERSION,
 } from './prompts/x-post-prompt';
@@ -204,6 +205,47 @@ export class SocialPostGenerator {
       modelVersion: result.modelVersion || 'unknown',
       promptVersion: X_POST_PROMPT_VERSION,
       contextSummary: `Diff Summary: ${diff.categorySlug} ${diff.currentPeriod}`,
+    };
+  }
+
+  /**
+   * トレンド分析からOpinion投稿を生成（感想・意見調）
+   */
+  async generateOpinion(): Promise<GeneratedContent> {
+    // 最近のトレンドデータを収集
+    const opinionData = await this.selector.getOpinionData();
+
+    const prompt = buildOpinionPrompt(opinionData);
+    const sanitizedPrompt = this.sanitizeForPrompt(prompt);
+
+    const pipeline = getLLMExtractionPipeline();
+    const config = createXPostExtractionConfig();
+
+    const result = await pipeline.extract(sanitizedPrompt, config, {
+      maxOutputTokens: 500,
+      temperature: 0.8, // 少し高めで多様性を出す
+    });
+
+    if (!result.success || !result.data) {
+      throw new Error(
+        `AI generation failed: ${result.error || 'Unknown error'}`
+      );
+    }
+
+    const validation = validateGeneratedContent(result.data.comment);
+    if (!validation.valid) {
+      logger.warn(
+        { errors: validation.errors },
+        'Generated opinion content validation warnings'
+      );
+    }
+
+    return {
+      comment: result.data.comment,
+      sourceUrls: [],
+      modelVersion: result.modelVersion || 'unknown',
+      promptVersion: X_POST_PROMPT_VERSION,
+      contextSummary: `Opinion: ${opinionData.period}`,
     };
   }
 

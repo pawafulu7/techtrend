@@ -47,7 +47,7 @@ export interface UpdateSocialPostInput {
  * AI生成パラメータ
  */
 export interface GenerateParams {
-  source: Exclude<SocialPostSource, 'MANUAL'>;
+  source: Exclude<SocialPostSource, 'MANUAL' | 'OPINION'>;
   sourceIds: string[];
 }
 
@@ -170,6 +170,25 @@ export interface DiffSummaryForPrompt {
   period: string;
   risingTopics: { topic: string; change: number }[];
   unchanged: string[];
+}
+
+/**
+ * プロンプト用Opinion情報（トレンド分析ベースの感想・意見）
+ */
+export interface OpinionForPrompt {
+  /** 最近の注目トピック（カテゴリ・タグ別） */
+  trendingTopics: Array<{
+    topic: string;
+    count: number;
+    category?: string;
+  }>;
+  /** 最近の人気記事タイトル */
+  recentArticles: Array<{
+    title: string;
+    category: string;
+  }>;
+  /** 分析期間 */
+  period: string;
 }
 
 // =============================================================================

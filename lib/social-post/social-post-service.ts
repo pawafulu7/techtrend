@@ -429,6 +429,52 @@ export class SocialPostService {
     return results;
   }
 
+  /**
+   * トレンド分析からOpinion投稿を生成（感想・意見調）
+   */
+  async generateOpinionPosts(count: number = 1): Promise<SocialPost[]> {
+    const results: SocialPost[] = [];
+
+    for (let i = 0; i < count; i++) {
+      try {
+        const generated = await this.generator.generateOpinion();
+
+        const post = await this.create(
+          {
+            content: generated.comment,
+            hashtags: [],
+            sourceUrls: [],
+            source: 'OPINION',
+            sourceIds: [],
+            modelVersion: generated.modelVersion,
+            promptVersion: generated.promptVersion,
+            contextSummary: generated.contextSummary,
+          },
+          'system',
+          undefined,
+          { skipAuditLog: true }
+        );
+
+        await this.createAuditLog(post.id, 'GENERATE', 'system', null, post, {
+          source: 'OPINION',
+          modelVersion: generated.modelVersion,
+        });
+
+        results.push(post);
+      } catch (error) {
+        logger.error({ error, index: i }, 'Failed to generate opinion post');
+        // 1件失敗しても続行
+      }
+    }
+
+    logger.info(
+      { requested: count, generated: results.length },
+      'Opinion post generation completed'
+    );
+
+    return results;
+  }
+
   // =============================================================================
   // Statistics
   // =============================================================================

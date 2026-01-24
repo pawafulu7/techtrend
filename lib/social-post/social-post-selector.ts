@@ -11,6 +11,7 @@ import {
   type DiffSummary,
   ArticleCategory,
 } from '@prisma/client';
+import type { OpinionForPrompt } from './types';
 
 // =============================================================================
 // Constants
@@ -279,6 +280,58 @@ export class SocialPostSelector {
     return this.prisma.diffSummary.findUnique({
       where: { id },
     });
+  }
+
+  /**
+   * Opinion投稿用のトレンドデータを取得
+   * 最近の記事とタグ分布から、感想・意見のネタを収集
+   */
+  async getOpinionData(): Promise<OpinionForPrompt> {
+    const now = new Date();
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+
+    // 最近3日間の記事からタグ出現回数を集計
+    const recentArticlesWithTags = await this.prisma.article.findMany({
+      where: {
+        createdAt: { gte: threeDaysAgo },
+        summary: { not: null },
+        skipReason: null,
+      },
+      include: {
+        tags: { select: { name: true } },
+      },
+      orderBy: { qualityScore: 'desc' },
+      take: 100,
+    });
+
+    // タグ出現回数を集計
+    const tagCounts = new Map<string, number>();
+    for (const article of recentArticlesWithTags) {
+      for (const tag of article.tags) {
+        tagCounts.set(tag.name, (tagCounts.get(tag.name) || 0) + 1);
+      }
+    }
+
+    // 出現回数でソートしてトップ10を抽出
+    const trendingTopics = Array.from(tagCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([topic, count]) => ({ topic, count }));
+
+    // 最近の人気記事（品質スコア上位）
+    const recentArticles = recentArticlesWithTags.slice(0, 10).map((a) => ({
+      title: a.translatedTitle || a.title,
+      category: a.category || 'tech',
+    }));
+
+    // 期間を文字列で
+    const period = `${threeDaysAgo.getMonth() + 1}/${threeDaysAgo.getDate()}〜${now.getMonth() + 1}/${now.getDate()}`;
+
+    return {
+      trendingTopics,
+      recentArticles,
+      period,
+    };
   }
 
   /**
