@@ -245,63 +245,117 @@ export function SocialPostsDashboard() {
   }, [mutate]);
 
   return (
-    <div className="container mx-auto space-y-6 py-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">X投稿管理</h1>
-          <p className="text-muted-foreground">
-            投稿コンテンツの生成・編集・管理
-          </p>
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 shadow-lg shadow-sky-500/25">
+              <XLogoIcon className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">
+                X投稿管理
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                投稿コンテンツの生成・編集・管理
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Status Counts */}
-      <StatusCounts />
-
-      {/* Toolbar */}
-      <SocialPostsToolbar
-        filters={filters}
-        onFilterChange={updateFilters}
-        selectedCount={selectedIds.size}
-        onBulkAction={handleBulkAction}
-        onGenerateClick={() => setIsGenerateDialogOpen(true)}
-        isProcessing={isProcessing}
-      />
-
-      {/* Table */}
-      {error ? (
-        <div className="text-destructive py-10 text-center">
-          データの取得に失敗しました
+        {/* Status Counts */}
+        <div className="mb-6">
+          <StatusCounts />
         </div>
-      ) : isLoading ? (
-        <div className="text-muted-foreground py-10 text-center">
-          読み込み中...
+
+        {/* Toolbar */}
+        <div className="mb-4">
+          <SocialPostsToolbar
+            filters={filters}
+            onFilterChange={updateFilters}
+            selectedCount={selectedIds.size}
+            onBulkAction={handleBulkAction}
+            onGenerateClick={() => setIsGenerateDialogOpen(true)}
+            isProcessing={isProcessing}
+          />
         </div>
-      ) : data ? (
-        <SocialPostsTable
-          posts={data.items}
-          selectedIds={selectedIds}
-          onSelectAll={handleSelectAll}
-          onSelectOne={handleSelectOne}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onCopy={handleCopy}
-          pagination={{
-            page: data.page,
-            totalPages: data.totalPages,
-            total: data.total,
-          }}
-          onPageChange={(page) => updateFilters({ page })}
+
+        {/* Table */}
+        {error ? (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-800 dark:bg-rose-950/30">
+            <p className="text-rose-700 dark:text-rose-400">
+              データの取得に失敗しました
+            </p>
+          </div>
+        ) : isLoading ? (
+          <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
+            <LoadingSpinner className="mx-auto h-8 w-8 text-sky-500" />
+            <p className="mt-3 text-slate-500 dark:text-slate-400">
+              読み込み中...
+            </p>
+          </div>
+        ) : data ? (
+          <SocialPostsTable
+            posts={data.items}
+            selectedIds={selectedIds}
+            onSelectAll={handleSelectAll}
+            onSelectOne={handleSelectOne}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onCopy={handleCopy}
+            pagination={{
+              page: data.page,
+              totalPages: data.totalPages,
+              total: data.total,
+            }}
+            onPageChange={(page) => updateFilters({ page })}
+          />
+        ) : null}
+
+        {/* Generate Dialog */}
+        <GeneratePostDialog
+          open={isGenerateDialogOpen}
+          onOpenChange={setIsGenerateDialogOpen}
+          onComplete={handleGenerateComplete}
         />
-      ) : null}
-
-      {/* Generate Dialog */}
-      <GeneratePostDialog
-        open={isGenerateDialogOpen}
-        onOpenChange={setIsGenerateDialogOpen}
-        onComplete={handleGenerateComplete}
-      />
+      </div>
     </div>
+  );
+}
+
+// =============================================================================
+// Icons
+// =============================================================================
+
+function XLogoIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function LoadingSpinner({ className }: { className?: string }) {
+  return (
+    <svg
+      className={`animate-spin ${className}`}
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
+    </svg>
   );
 }

@@ -67,7 +67,7 @@ export function SocialPostsToolbar({
   isProcessing = false,
 }: SocialPostsToolbarProps) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-900">
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
         <Select
@@ -79,7 +79,7 @@ export function SocialPostsToolbar({
             })
           }
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[160px] border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
             <SelectValue placeholder="ステータス" />
           </SelectTrigger>
           <SelectContent>
@@ -100,7 +100,7 @@ export function SocialPostsToolbar({
             })
           }
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[160px] border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
             <SelectValue placeholder="ソース" />
           </SelectTrigger>
           <SelectContent>
@@ -114,33 +114,51 @@ export function SocialPostsToolbar({
       </div>
 
       {/* Actions */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {selectedCount > 0 && (
           <>
-            <span className="text-muted-foreground self-center text-sm">
+            <span className="rounded-full bg-sky-100 px-3 py-1 text-sm font-medium text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
               {selectedCount}件選択中
             </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" disabled={isProcessing}>
-                  {isProcessing ? '処理中...' : '一括操作'}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isProcessing}
+                  className="border-slate-200 dark:border-slate-700"
+                >
+                  {isProcessing ? (
+                    <>
+                      <LoadingIcon className="mr-2 h-4 w-4 animate-spin" />
+                      処理中...
+                    </>
+                  ) : (
+                    <>
+                      <MoreIcon className="mr-2 h-4 w-4" />
+                      一括操作
+                    </>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={() => onBulkAction('changeStatus', 'REVIEWED')}
                 >
+                  <CheckCircleIcon className="mr-2 h-4 w-4 text-sky-600" />
                   レビュー済にする
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => onBulkAction('changeStatus', 'ARCHIVED')}
                 >
+                  <ArchiveIcon className="mr-2 h-4 w-4 text-slate-600" />
                   アーカイブ
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => onBulkAction('delete')}
-                  className="text-destructive"
+                  className="text-rose-600 focus:text-rose-600"
                 >
+                  <TrashIcon className="mr-2 h-4 w-4" />
                   削除
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -148,7 +166,10 @@ export function SocialPostsToolbar({
           </>
         )}
 
-        <Button onClick={onGenerateClick}>
+        <Button
+          onClick={onGenerateClick}
+          className="bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-500/20 transition-all hover:from-sky-600 hover:to-indigo-700 hover:shadow-lg hover:shadow-sky-500/30"
+        >
           <PlusIcon className="mr-2 h-4 w-4" />
           投稿を生成
         </Button>
@@ -157,19 +178,112 @@ export function SocialPostsToolbar({
   );
 }
 
+// =============================================================================
+// Icons
+// =============================================================================
+
 function PlusIcon({ className }: { className?: string }) {
   return (
     <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
       className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
     >
-      <path d="M12 5v14M5 12h14" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function MoreIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+      />
+    </svg>
+  );
+}
+
+function LoadingIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24">
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
+    </svg>
+  );
+}
+
+function CheckCircleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+}
+
+function ArchiveIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+      />
+    </svg>
+  );
+}
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+      />
     </svg>
   );
 }
