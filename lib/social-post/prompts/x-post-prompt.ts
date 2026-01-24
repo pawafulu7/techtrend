@@ -245,8 +245,8 @@ export function createXPostExtractionConfig() {
     schema: XPostOutputSchema,
     buildPrompt: (input: unknown) => String(input),
     parseResponse: (response: string): XPostOutputType => {
-      // JSONブロックを抽出
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      // JSONブロックを抽出（非貪欲マッチングで最初のJSONオブジェクトのみ）
+      const jsonMatch = response.match(/\{[\s\S]*?\}/);
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }

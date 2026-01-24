@@ -88,9 +88,9 @@ export function SocialPostsTable({
                     <div className="space-y-1">
                       <p className="line-clamp-2 text-sm">{post.content}</p>
                       <div className="flex flex-wrap gap-1">
-                        {post.hashtags.map((tag) => (
+                        {post.hashtags.map((tag, index) => (
                           <span
-                            key={tag}
+                            key={`${tag}-${index}`}
                             className="bg-secondary rounded px-1.5 py-0.5 text-xs"
                           >
                             {tag}

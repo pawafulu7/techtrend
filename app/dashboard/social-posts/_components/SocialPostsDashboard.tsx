@@ -44,11 +44,48 @@ export function SocialPostsDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // URL state
-  const [filters, setFilters] = useState<FiltersState>({
-    status: (searchParams.get('status') as SocialPostStatus | 'all') || 'all',
-    source: (searchParams.get('source') as SocialPostSource | 'all') || 'all',
-    page: Number(searchParams.get('page')) || 1,
+  // URL state with validation
+  const [filters, setFilters] = useState<FiltersState>(() => {
+    const statusParam = searchParams.get('status');
+    const sourceParam = searchParams.get('source');
+    const pageParam = searchParams.get('page');
+
+    // Validate status parameter
+    const validStatuses = [
+      'DRAFT',
+      'REVIEWED',
+      'SCHEDULED',
+      'POSTING',
+      'POSTED',
+      'FAILED',
+      'ARCHIVED',
+      'all',
+    ] as const;
+    const status = validStatuses.includes(
+      statusParam as (typeof validStatuses)[number]
+    )
+      ? (statusParam as SocialPostStatus | 'all')
+      : 'all';
+
+    // Validate source parameter
+    const validSources = [
+      'ARTICLE',
+      'DAILY_TREND',
+      'DIFF_SUMMARY',
+      'MANUAL',
+      'all',
+    ] as const;
+    const source = validSources.includes(
+      sourceParam as (typeof validSources)[number]
+    )
+      ? (sourceParam as SocialPostSource | 'all')
+      : 'all';
+
+    // Validate page parameter
+    const pageNum = parseInt(pageParam || '1', 10);
+    const page = Number.isFinite(pageNum) && pageNum > 0 ? pageNum : 1;
+
+    return { status, source, page };
   });
 
   // Local state

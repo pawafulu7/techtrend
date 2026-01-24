@@ -126,7 +126,9 @@ async function updateHandler(request: NextRequest, context: RouteContext) {
     };
 
     const post = await service.update(id, updateData, session.user.id, {
-      ipAddress: request.headers.get('x-forwarded-for') || undefined,
+      ipAddress:
+        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+        undefined,
       userAgent: request.headers.get('user-agent') || undefined,
     });
 
@@ -179,7 +181,9 @@ async function deleteHandler(request: NextRequest, context: RouteContext) {
     const service = getSocialPostService();
 
     await service.delete(id, session.user.id, {
-      ipAddress: request.headers.get('x-forwarded-for') || undefined,
+      ipAddress:
+        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+        undefined,
       userAgent: request.headers.get('user-agent') || undefined,
     });
 

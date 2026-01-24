@@ -4,11 +4,7 @@
  * X投稿コンテンツ自動生成機能の型定義
  */
 
-import type {
-  SocialPost,
-  SocialPostStatus,
-  SocialPostSource,
-} from '@prisma/client';
+import type { SocialPostStatus, SocialPostSource } from '@prisma/client';
 
 // Re-export Prisma types
 export type {

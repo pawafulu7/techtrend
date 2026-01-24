@@ -62,7 +62,9 @@ async function generateHandler(request: NextRequest) {
       { source, sourceIds },
       session.user.id,
       {
-        ipAddress: request.headers.get('x-forwarded-for') || undefined,
+        ipAddress:
+          request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+          undefined,
         userAgent: request.headers.get('user-agent') || undefined,
       }
     );

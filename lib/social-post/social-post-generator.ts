@@ -101,9 +101,19 @@ export class SocialPostGenerator {
    * Daily TrendからX投稿を生成
    */
   async generateFromDailyTrend(trend: TrendReport): Promise<GeneratedContent> {
-    const topArticles =
-      (trend.topArticles as Array<{ title: string; url: string }>) || [];
-    const categories = (trend.categories as Record<string, number>) || {};
+    // Type-safe extraction of JSON fields
+    const topArticles = Array.isArray(trend.topArticles)
+      ? (trend.topArticles as Array<{ title?: string; url?: string }>).filter(
+          (a): a is { title: string; url: string } =>
+            typeof a?.title === 'string' && typeof a?.url === 'string'
+        )
+      : [];
+    const categories =
+      trend.categories &&
+      typeof trend.categories === 'object' &&
+      !Array.isArray(trend.categories)
+        ? (trend.categories as Record<string, number>)
+        : {};
 
     const prompt = buildDailyTrendPrompt({
       period: trend.periodStart,

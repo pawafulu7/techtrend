@@ -45,7 +45,9 @@ export class SocialPostService {
    * 一覧取得（フィルター・ページネーション対応）
    */
   async list(filters: SocialPostFilters): Promise<PaginatedResult<SocialPost>> {
-    const { status, source, dateFrom, dateTo, page = 1, limit = 20 } = filters;
+    const { status, source, dateFrom, dateTo, page = 1 } = filters;
+    // Ensure limit is at least 1 to prevent zero division
+    const limit = Math.max(1, filters.limit ?? 20);
 
     const where: Prisma.SocialPostWhereInput = {
       ...(status && status !== 'all' && { status }),
@@ -416,14 +418,24 @@ export class SocialPostService {
       _count: { status: true },
     });
 
-    const result: Record<string, number> = { total: 0 };
+    // Initialize all statuses with 0
+    const result: Record<SocialPostStatus | 'total', number> = {
+      DRAFT: 0,
+      REVIEWED: 0,
+      SCHEDULED: 0,
+      POSTING: 0,
+      POSTED: 0,
+      FAILED: 0,
+      ARCHIVED: 0,
+      total: 0,
+    };
 
     for (const item of counts) {
-      result[item.status] = item._count.status;
+      result[item.status as SocialPostStatus] = item._count.status;
       result.total += item._count.status;
     }
 
-    return result as Record<SocialPostStatus | 'total', number>;
+    return result;
   }
 
   // =============================================================================
@@ -438,7 +450,6 @@ export class SocialPostService {
       .update(content.trim().toLowerCase())
       .digest('hex');
   }
-
 
   /**
    * Prismaのユニーク制約違反エラーかどうかを判定

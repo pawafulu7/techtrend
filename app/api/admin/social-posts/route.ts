@@ -118,7 +118,9 @@ async function createHandler(request: NextRequest) {
 
     const service = getSocialPostService();
     const post = await service.create(parseResult.data, session.user.id, {
-      ipAddress: request.headers.get('x-forwarded-for') || undefined,
+      ipAddress:
+        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+        undefined,
       userAgent: request.headers.get('user-agent') || undefined,
     });
 

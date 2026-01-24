@@ -71,7 +71,9 @@ async function bulkHandler(request: NextRequest) {
       { action, ids, status },
       session.user.id,
       {
-        ipAddress: request.headers.get('x-forwarded-for') || undefined,
+        ipAddress:
+          request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+          undefined,
         userAgent: request.headers.get('user-agent') || undefined,
       }
     );
