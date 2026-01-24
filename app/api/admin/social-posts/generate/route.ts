@@ -61,7 +61,7 @@ async function generateHandler(request: NextRequest) {
     const { source, sourceIds } = parseResult.data;
 
     const service = getSocialPostService();
-    const posts = await service.generate(
+    const result = await service.generate(
       { source, sourceIds },
       session.user.id,
       {
@@ -77,15 +77,30 @@ async function generateHandler(request: NextRequest) {
         userId: session.user.id,
         source,
         sourceIds,
-        generatedCount: posts.length,
+        succeededCount: result.succeeded.length,
+        failedCount: result.failed.length,
       },
       '[SocialPostsAPI] Posts generated'
     );
 
+    // 全件失敗の場合は500を返す
+    if (result.succeeded.length === 0 && result.failed.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          posts: [],
+          failed: result.failed,
+          count: 0,
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
-      success: true,
-      posts,
-      count: posts.length,
+      success: result.failed.length === 0,
+      posts: result.succeeded,
+      failed: result.failed.length > 0 ? result.failed : undefined,
+      count: result.succeeded.length,
     });
   } catch (error) {
     // ソースが見つからない場合

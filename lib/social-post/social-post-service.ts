@@ -18,12 +18,13 @@ import type {
   BulkActionParams,
   SocialPostFilters,
   PaginatedResult,
+  GenerateResult,
   AuditAction,
   AuditMetadata,
 } from './types';
 import { SocialPostGenerator } from './social-post-generator';
 import { SocialPostSelector } from './social-post-selector';
-import { DuplicateContentError } from './errors';
+import { DuplicateContentError, NotFoundError } from './errors';
 
 // =============================================================================
 // Service Class
@@ -198,7 +199,7 @@ export class SocialPostService {
     });
 
     if (!existing) {
-      throw new Error(`SocialPost not found: ${id}`);
+      throw new NotFoundError('SocialPost', id);
     }
 
     // 編集前コンテンツを保存（初回編集時のみ）
@@ -253,7 +254,7 @@ export class SocialPostService {
     });
 
     if (!existing) {
-      throw new Error(`SocialPost not found: ${id}`);
+      throw new NotFoundError('SocialPost', id);
     }
 
     // 監査ログを先に記録（Cascadeで削除されるため）
@@ -315,14 +316,16 @@ export class SocialPostService {
 
   /**
    * AI生成（手動）
+   * 部分成功をサポート: 一部失敗しても成功分は返却
    */
   async generate(
     params: GenerateParams,
     userId: string,
     metadata?: AuditMetadata
-  ): Promise<SocialPost[]> {
+  ): Promise<GenerateResult<SocialPost>> {
     const { source, sourceIds } = params;
-    const results: SocialPost[] = [];
+    const succeeded: SocialPost[] = [];
+    const failed: Array<{ sourceId: string; error: string }> = [];
 
     for (const sourceId of sourceIds) {
       try {
@@ -351,14 +354,27 @@ export class SocialPostService {
           ...metadata,
         });
 
-        results.push(post);
+        succeeded.push(post);
       } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
         logger.error({ source, sourceId, error }, 'Failed to generate post');
-        throw error;
+        failed.push({ sourceId, error: errorMessage });
+        // 部分成功のため続行
       }
     }
 
-    return results;
+    logger.info(
+      {
+        source,
+        total: sourceIds.length,
+        succeeded: succeeded.length,
+        failed: failed.length,
+      },
+      'Post generation completed'
+    );
+
+    return { succeeded, failed };
   }
 
   /**

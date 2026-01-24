@@ -13,6 +13,7 @@ import {
   getSocialPostService,
   SocialPostFiltersSchema,
   SocialPostCreateSchema,
+  DuplicateContentError,
 } from '@/lib/social-post';
 
 /**
@@ -131,15 +132,9 @@ async function createHandler(request: NextRequest) {
 
     return NextResponse.json(post, { status: 201 });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === 'Duplicate content detected'
-    ) {
+    if (error instanceof DuplicateContentError) {
       return NextResponse.json(
-        {
-          error:
-            'Duplicate content detected. A post with this content already exists.',
-        },
+        { error: 'A post with similar content already exists' },
         { status: 409 }
       );
     }

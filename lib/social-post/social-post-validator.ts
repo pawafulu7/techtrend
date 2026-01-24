@@ -19,67 +19,95 @@ const HASHTAG_REGEX = /^#?[\w\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]+$/;
 /**
  * SocialPost作成スキーマ
  */
-export const SocialPostCreateSchema = z.object({
-  content: z
-    .string()
-    .min(1, 'Content is required')
-    .max(280, 'Content exceeds X character limit')
-    .refine(
-      (val) => !/<script|javascript:|data:/i.test(val),
-      'Invalid content: potential injection detected'
-    ),
-  hashtags: z
-    .array(z.string().regex(HASHTAG_REGEX, 'Invalid hashtag format'))
-    .max(10),
-  sourceUrls: z
-    .array(
-      z
-        .string()
-        .url('Invalid URL format')
-        .refine(
-          (url) => /^https?:\/\//i.test(url),
-          'Only http/https URLs are allowed'
-        )
-    )
-    .max(5),
-  source: z.enum(['ARTICLE', 'DAILY_TREND', 'DIFF_SUMMARY', 'MANUAL']),
-  sourceIds: z.array(z.string()).optional(),
-  modelVersion: z.string().optional(),
-  promptVersion: z.string().optional(),
-  contextSummary: z.string().max(1000).optional(),
-});
+export const SocialPostCreateSchema = z
+  .object({
+    content: z
+      .string()
+      .min(1, 'Content is required')
+      .max(280, 'Content exceeds X character limit')
+      .refine(
+        (val) => !/<script|javascript:|data:/i.test(val),
+        'Invalid content: potential injection detected'
+      ),
+    hashtags: z
+      .array(z.string().regex(HASHTAG_REGEX, 'Invalid hashtag format'))
+      .max(10),
+    sourceUrls: z
+      .array(
+        z
+          .string()
+          .url('Invalid URL format')
+          .refine(
+            (url) => /^https?:\/\//i.test(url),
+            'Only http/https URLs are allowed'
+          )
+      )
+      .max(5),
+    source: z.enum(['ARTICLE', 'DAILY_TREND', 'DIFF_SUMMARY', 'MANUAL']),
+    sourceIds: z.array(z.string()).optional(),
+    modelVersion: z.string().optional(),
+    promptVersion: z.string().optional(),
+    contextSummary: z.string().max(1000).optional(),
+  })
+  .refine(
+    (data) => {
+      // 非MANUALソースの場合はsourceIdsが必須
+      if (data.source !== 'MANUAL') {
+        return data.sourceIds && data.sourceIds.length > 0;
+      }
+      return true;
+    },
+    {
+      message: 'sourceIds is required for non-MANUAL sources',
+      path: ['sourceIds'],
+    }
+  );
 
 export type SocialPostCreateInput = z.infer<typeof SocialPostCreateSchema>;
 
 /**
  * SocialPost更新スキーマ
  */
-export const SocialPostUpdateSchema = z.object({
-  content: z
-    .string()
-    .min(1)
-    .max(280)
-    .refine(
-      (val) => !/<script|javascript:|data:/i.test(val),
-      'Invalid content: potential injection detected'
-    )
-    .optional(),
-  hashtags: z.array(z.string().regex(HASHTAG_REGEX)).max(10).optional(),
-  sourceUrls: z
-    .array(
-      z
-        .string()
-        .url()
-        .refine(
-          (url) => /^https?:\/\//i.test(url),
-          'Only http/https URLs are allowed'
-        )
-    )
-    .max(5)
-    .optional(),
-  status: z.enum(['DRAFT', 'REVIEWED', 'SCHEDULED', 'ARCHIVED']).optional(),
-  scheduledAt: z.string().datetime().optional().nullable(),
-});
+export const SocialPostUpdateSchema = z
+  .object({
+    content: z
+      .string()
+      .min(1)
+      .max(280)
+      .refine(
+        (val) => !/<script|javascript:|data:/i.test(val),
+        'Invalid content: potential injection detected'
+      )
+      .optional(),
+    hashtags: z.array(z.string().regex(HASHTAG_REGEX)).max(10).optional(),
+    sourceUrls: z
+      .array(
+        z
+          .string()
+          .url()
+          .refine(
+            (url) => /^https?:\/\//i.test(url),
+            'Only http/https URLs are allowed'
+          )
+      )
+      .max(5)
+      .optional(),
+    status: z.enum(['DRAFT', 'REVIEWED', 'SCHEDULED', 'ARCHIVED']).optional(),
+    scheduledAt: z.string().datetime().optional().nullable(),
+  })
+  .refine(
+    (data) => {
+      // SCHEDULEDステータスの場合はscheduledAtが必須
+      if (data.status === 'SCHEDULED') {
+        return data.scheduledAt !== undefined && data.scheduledAt !== null;
+      }
+      return true;
+    },
+    {
+      message: 'scheduledAt is required when status is SCHEDULED',
+      path: ['scheduledAt'],
+    }
+  );
 
 export type SocialPostUpdateInput = z.infer<typeof SocialPostUpdateSchema>;
 

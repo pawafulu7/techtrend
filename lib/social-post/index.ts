@@ -19,6 +19,7 @@ export type {
   BulkActionParams,
   SocialPostFilters,
   PaginatedResult,
+  GenerateResult,
   GeneratedContent,
   ValidationResult,
   GenerationContext,

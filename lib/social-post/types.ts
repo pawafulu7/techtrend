@@ -111,6 +111,17 @@ export interface ValidationResult {
   errors: string[];
 }
 
+/**
+ * AI生成結果（部分成功対応）
+ */
+export interface GenerateResult<T> {
+  succeeded: T[];
+  failed: Array<{
+    sourceId: string;
+    error: string;
+  }>;
+}
+
 // =============================================================================
 // Generation Context Types
 // =============================================================================

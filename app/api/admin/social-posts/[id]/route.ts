@@ -13,6 +13,8 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import {
   getSocialPostService,
   SocialPostUpdateSchema,
+  NotFoundError,
+  DuplicateContentError,
 } from '@/lib/social-post';
 
 interface RouteContext {
@@ -139,10 +141,17 @@ async function updateHandler(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json(post);
   } catch (error) {
-    if (error instanceof Error && error.message.includes('not found')) {
+    if (error instanceof NotFoundError) {
       return NextResponse.json(
         { error: 'Social post not found' },
         { status: 404 }
+      );
+    }
+
+    if (error instanceof DuplicateContentError) {
+      return NextResponse.json(
+        { error: 'A post with similar content already exists' },
+        { status: 409 }
       );
     }
 
@@ -194,7 +203,7 @@ async function deleteHandler(request: NextRequest, context: RouteContext) {
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    if (error instanceof Error && error.message.includes('not found')) {
+    if (error instanceof NotFoundError) {
       return NextResponse.json(
         { error: 'Social post not found' },
         { status: 404 }
