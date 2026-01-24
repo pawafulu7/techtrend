@@ -431,8 +431,13 @@ export class SocialPostService {
 
   /**
    * トレンド分析からOpinion投稿を生成（感想・意見調）
+   * @param count 生成件数（1-5）
+   * @param userId 生成を実行したユーザーID（監査ログ用）
    */
-  async generateOpinionPosts(count: number = 1): Promise<SocialPost[]> {
+  async generateOpinionPosts(
+    count: number = 1,
+    userId: string = 'system'
+  ): Promise<SocialPost[]> {
     const results: SocialPost[] = [];
 
     for (let i = 0; i < count; i++) {
@@ -450,12 +455,12 @@ export class SocialPostService {
             promptVersion: generated.promptVersion,
             contextSummary: generated.contextSummary,
           },
-          'system',
+          userId,
           undefined,
           { skipAuditLog: true }
         );
 
-        await this.createAuditLog(post.id, 'GENERATE', 'system', null, post, {
+        await this.createAuditLog(post.id, 'GENERATE', userId, null, post, {
           source: 'OPINION',
           modelVersion: generated.modelVersion,
         });
@@ -468,7 +473,7 @@ export class SocialPostService {
     }
 
     logger.info(
-      { requested: count, generated: results.length },
+      { requested: count, generated: results.length, userId },
       'Opinion post generation completed'
     );
 

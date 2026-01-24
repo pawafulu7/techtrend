@@ -10,7 +10,7 @@ import { detectPromptInjection } from '@/lib/rag/security/prompt-injection-detec
 import { sanitizeHtml } from '@/lib/utils/html-sanitizer';
 import logger from '@/lib/logger';
 
-import type { GeneratedContent, OpinionForPrompt } from './types';
+import type { GeneratedContent } from './types';
 import { SocialPostSelector } from './social-post-selector';
 import {
   buildArticlePrompt,
@@ -21,7 +21,11 @@ import {
   X_POST_PROMPT_VERSION,
 } from './prompts/x-post-prompt';
 import { validateGeneratedContent } from './social-post-validator';
-import { NotFoundError, PromptInjectionError } from './errors';
+import {
+  NotFoundError,
+  PromptInjectionError,
+  InsufficientDataError,
+} from './errors';
 
 // =============================================================================
 // Generator Class
@@ -210,10 +214,21 @@ export class SocialPostGenerator {
 
   /**
    * トレンド分析からOpinion投稿を生成（感想・意見調）
+   * @throws InsufficientDataError トレンドデータが不足している場合
    */
   async generateOpinion(): Promise<GeneratedContent> {
     // 最近のトレンドデータを収集
     const opinionData = await this.selector.getOpinionData();
+
+    // トレンドデータが不足している場合はエラー（ハルシネーション防止）
+    if (
+      opinionData.trendingTopics.length === 0 &&
+      opinionData.recentArticles.length === 0
+    ) {
+      throw new InsufficientDataError(
+        'No trending topics or recent articles available for opinion generation'
+      );
+    }
 
     const prompt = buildOpinionPrompt(opinionData);
     const sanitizedPrompt = this.sanitizeForPrompt(prompt);

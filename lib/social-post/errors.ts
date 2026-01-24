@@ -44,3 +44,16 @@ export class DuplicateContentError extends Error {
     Object.setPrototypeOf(this, DuplicateContentError.prototype);
   }
 }
+
+/**
+ * データ不足エラー（Opinion生成時にトレンドデータが不足している場合）
+ */
+export class InsufficientDataError extends Error {
+  readonly code = 'INSUFFICIENT_DATA' as const;
+
+  constructor(message = 'Insufficient data for generation') {
+    super(message);
+    this.name = 'InsufficientDataError';
+    Object.setPrototypeOf(this, InsufficientDataError.prototype);
+  }
+}

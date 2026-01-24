@@ -95,4 +95,5 @@ export {
   NotFoundError,
   PromptInjectionError,
   DuplicateContentError,
+  InsufficientDataError,
 } from './errors';

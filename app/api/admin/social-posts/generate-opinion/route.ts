@@ -9,7 +9,13 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth/auth';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
-import { getSocialPostService } from '@/lib/social-post';
+import {
+  getSocialPostService,
+  NotFoundError,
+  PromptInjectionError,
+  DuplicateContentError,
+  InsufficientDataError,
+} from '@/lib/social-post';
 
 /**
  * Opinion生成リクエストスキーマ
@@ -44,14 +50,18 @@ async function generateOpinionHandler(request: NextRequest) {
   }
 
   try {
+    // JSONパース（空ボディは許容）
     let body = {};
     try {
       const text = await request.text();
-      if (text) {
+      if (text.trim()) {
         body = JSON.parse(text);
       }
     } catch {
-      // Empty body is OK, use defaults
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
     }
 
     // Zodでバリデーション
@@ -66,7 +76,7 @@ async function generateOpinionHandler(request: NextRequest) {
     const { count } = parseResult.data;
 
     const service = getSocialPostService();
-    const posts = await service.generateOpinionPosts(count);
+    const posts = await service.generateOpinionPosts(count, session.user.id);
 
     logger.info(
       {
@@ -83,6 +93,39 @@ async function generateOpinionHandler(request: NextRequest) {
       count: posts.length,
     });
   } catch (error) {
+    // ソースが見つからない場合
+    if (error instanceof NotFoundError) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
+
+    // プロンプトインジェクション検出
+    if (error instanceof PromptInjectionError) {
+      logger.warn(
+        { userId: session.user.id },
+        '[SocialPostsAPI] Prompt injection detected in opinion generation'
+      );
+      return NextResponse.json(
+        { error: 'Content validation failed' },
+        { status: 400 }
+      );
+    }
+
+    // 重複コンテンツ
+    if (error instanceof DuplicateContentError) {
+      return NextResponse.json(
+        { error: 'A post with similar content already exists' },
+        { status: 409 }
+      );
+    }
+
+    // トレンドデータ不足
+    if (error instanceof InsufficientDataError) {
+      return NextResponse.json(
+        { error: 'Insufficient trend data for opinion generation' },
+        { status: 422 }
+      );
+    }
+
     logger.error(
       { error },
       '[SocialPostsAPI] Failed to generate opinion posts'
