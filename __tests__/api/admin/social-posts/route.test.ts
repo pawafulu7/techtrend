@@ -213,7 +213,7 @@ describe('Social Posts API', () => {
       const data = await response.json();
 
       expect(response.status).toBe(409);
-      expect(data.error).toContain('Duplicate');
+      expect(data.error).toContain('similar content');
     });
   });
 

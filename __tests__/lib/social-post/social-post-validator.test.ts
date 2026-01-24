@@ -29,6 +29,7 @@ describe('SocialPostValidator', () => {
         hashtags: ['#Test'],
         sourceUrls: ['https://example.com'],
         source: 'ARTICLE',
+        sourceIds: ['article-1'],
       };
 
       const result = SocialPostCreateSchema.safeParse(invalidInput);
@@ -41,6 +42,7 @@ describe('SocialPostValidator', () => {
         hashtags: ['#Test'],
         sourceUrls: ['https://example.com'],
         source: 'ARTICLE',
+        sourceIds: ['article-1'],
       };
 
       const result = SocialPostCreateSchema.safeParse(invalidInput);
@@ -83,6 +85,7 @@ describe('SocialPostValidator', () => {
         hashtags: ['#Test'],
         sourceUrls: ['not-a-valid-url'],
         source: 'ARTICLE',
+        sourceIds: ['article-1'],
       };
 
       const result = SocialPostCreateSchema.safeParse(invalidInput);
@@ -101,6 +104,7 @@ describe('SocialPostValidator', () => {
           hashtags: ['#Test'],
           sourceUrls: [url],
           source: 'ARTICLE',
+          sourceIds: ['article-1'],
         };
 
         const result = SocialPostCreateSchema.safeParse(invalidInput);
@@ -172,6 +176,11 @@ describe('SocialPostValidator', () => {
         const result = SocialPostUpdateSchema.safeParse({ status });
         expect(result.success).toBe(false);
       });
+    });
+
+    it('should reject SCHEDULED without scheduledAt', () => {
+      const result = SocialPostUpdateSchema.safeParse({ status: 'SCHEDULED' });
+      expect(result.success).toBe(false);
     });
 
     it('should validate scheduledAt as ISO string', () => {
