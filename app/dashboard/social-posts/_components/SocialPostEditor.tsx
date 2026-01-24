@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import useSWR from 'swr';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -277,6 +278,19 @@ export function SocialPostEditor({ postId }: SocialPostEditorProps) {
                   <dt className="text-muted-foreground">ソース</dt>
                   <dd>{post.source}</dd>
                 </div>
+                {post.source === 'ARTICLE' && post.sourceIds.length > 0 && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">記事</dt>
+                    <dd>
+                      <Link
+                        href={`/articles/${post.sourceIds[0]}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        詳細を見る
+                      </Link>
+                    </dd>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">作成日時</dt>
                   <dd>{new Date(post.createdAt).toLocaleString('ja-JP')}</dd>
