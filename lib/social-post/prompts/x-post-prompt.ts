@@ -22,47 +22,10 @@ export const X_POST_PROMPT_VERSION = 'v1.1.0';
  */
 export const XPostOutputSchema = z.object({
   comment: z.string().min(1).max(280),
-  hashtag: z.string().regex(/^#[\w\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]+$/),
   reasoning: z.string().optional(),
 });
 
 export type XPostOutputType = z.infer<typeof XPostOutputSchema>;
-
-// =============================================================================
-// Category to Hashtag Mapping
-// =============================================================================
-
-const CATEGORY_HASHTAG_MAP: Record<string, string> = {
-  frontend: '#Frontend',
-  backend: '#Backend',
-  ai_ml: '#AI',
-  security: '#Security',
-  devops: '#DevOps',
-  database: '#Database',
-  mobile: '#Mobile',
-  web3: '#Web3',
-  design: '#Design',
-  testing: '#Testing',
-  performance: '#Performance',
-  architecture: '#Architecture',
-  cloud: '#Cloud',
-  api: '#API',
-  typescript: '#TypeScript',
-  javascript: '#JavaScript',
-  python: '#Python',
-  rust: '#Rust',
-  go: '#Go',
-};
-
-/**
- * カテゴリからハッシュタグを取得
- */
-export function getCategoryHashtag(
-  category: string | null | undefined
-): string {
-  if (!category) return '#Tech';
-  return CATEGORY_HASHTAG_MAP[category.toLowerCase()] || '#Tech';
-}
 
 // =============================================================================
 // Article Prompt
@@ -73,98 +36,50 @@ export function getCategoryHashtag(
  */
 export function buildArticlePrompt(params: {
   article: ArticleForPrompt;
-  relatedTrends?: string[];
-  recentArticles?: string[];
-  historicalArticles?: { title: string; summary: string; publishedAt: Date }[];
 }): string {
-  const { article, relatedTrends, recentArticles, historicalArticles } = params;
+  const { article } = params;
 
-  let prompt = `
-あなたは現場で働くソフトウェアエンジニアです。以下の技術記事を読んで、同僚に話すようなカジュアルな感想をX（Twitter）に投稿してください。
+  return `
+以下の技術記事について、X（Twitter）用の短いコメントを生成してください。
 
 ## 記事情報
 - タイトル: ${article.title}
 - 要約: ${article.summary}
-- カテゴリ: ${article.category}
-`;
 
-  if (relatedTrends && relatedTrends.length > 0) {
-    prompt += `
-## 最近のトレンド
-${relatedTrends.map((t) => `- ${t}`).join('\n')}
-`;
-  }
-
-  if (recentArticles && recentArticles.length > 0) {
-    prompt += `
-## 同カテゴリの最近の記事
-${recentArticles.map((a) => `- ${a}`).join('\n')}
-`;
-  }
-
-  if (historicalArticles && historicalArticles.length > 0) {
-    const formatDate = (d: Date) => {
-      const date = new Date(d);
-      return `${date.getFullYear()}/${date.getMonth() + 1}`;
-    };
-    prompt += `
-## 過去の関連記事（時間軸の参考に）
-${historicalArticles.map((a) => `- [${formatDate(a.publishedAt)}] ${a.title}: ${a.summary.slice(0, 100)}...`).join('\n')}
-`;
-  }
-
-  prompt += `
 ## 生成ルール
 
-### 文体（最重要）
-エンジニアが本音で呟くような文体で書く。評論家や解説者ではなく、実際に手を動かす人の視点で。
+### 文体
+記事を読んだ感想や疑問を、カジュアルに書く。
 
-良い例:
-- 「これ昨日ちょうどハマってたやつだ。設定周りがクセあるんだよな」
-- 「うちでも導入検討中。移行コストどのくらいかかるんだろ」
-- 「個人的にはYの方が好き。Xは学習コスト高め」
-- 「へー、こんな方法あったんだ。明日試してみよ」
-- 「これ知らなかった。v2からの変更点ちゃんと追えてない」
+良い例（疑問形・感想形）:
+- 「v3でついにYに対応か。設定周りどうなってるんだろ」
 - 「Rust製か。パフォーマンス気になる」
-- 「ついにXがYに対応したか。去年まではワークアラウンド必要だったのに」
-- 「v2から待ってた機能だ。これでようやく本番で使える」
-- 「半年前は実験的だったけど、もう安定版出たんだな」
+- 「へー、こんなアプローチもあるのか」
+- 「この変更、既存コードへの影響どうなんだろ」
 
-悪い例:
+悪い例（禁止）:
+- 「これ昨日ハマってたやつだ」（経験の捏造）
+- 「うちでも導入検討中」（状況の捏造）
 - 「〜は興味深いですね」（評論家調）
 - 「今後の展開に期待」（他人事）
-- 「素晴らしい取り組みです」（お世辞）
-- 「〜という点で重要です」（教科書調）
 
 ### 必須要件
 1. 80〜120文字程度（最大280文字）
 2. 記事の具体的な技術名・ツール名・数値を含める
-3. 一人称視点または疑問形で書く
-4. 過去の関連記事がある場合は、時間軸の変化（「以前は〜だったのに」「ついに〜できるように」）を入れると良い
+3. 疑問形・感想形で書く
+4. 経験・状況を捏造しない
 
 ### 禁止表現
 - 宣伝調: 「注目」「革新的」「画期的」「必見」「話題」
-- 評論調: 「興味深い」「素晴らしい」「期待」「〜ですね」「〜ですよね」
+- 評論調: 「興味深い」「素晴らしい」「期待」「〜ですね」
 - 要約調: 「〜という点で重要」「〜に貢献」「〜を実現」
-
-### ハッシュタグ
-カテゴリに応じて1つのみ:
-- frontend → #Frontend
-- backend → #Backend
-- ai_ml → #AI
-- security → #Security
-- devops → #DevOps
-- その他 → #Tech
 
 ## 出力形式
 {
   "comment": "生成したコメント",
-  "hashtag": "#カテゴリタグ",
   "reasoning": "理由（内部用）"
 }
-`;
-
-  return prompt.trim();
+`.trim();
 }
 
 // =============================================================================
@@ -209,7 +124,6 @@ ${categoryList}
 ## 出力形式
 {
   "comment": "生成したコメント",
-  "hashtag": "#TechTrend",
   "reasoning": "理由"
 }
 `.trim();
@@ -253,7 +167,6 @@ ${unchangedList}
 ## 出力形式
 {
   "comment": "生成したコメント",
-  "hashtag": "${getCategoryHashtag(params.category)}",
   "reasoning": "理由"
 }
 `.trim();

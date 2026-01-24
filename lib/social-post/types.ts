@@ -96,7 +96,6 @@ export interface PaginatedResult<T> {
  */
 export interface GeneratedContent {
   comment: string;
-  hashtag: string;
   sourceUrls: string[];
   modelVersion: string;
   promptVersion: string;

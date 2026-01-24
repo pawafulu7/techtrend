@@ -79,7 +79,6 @@ export { SocialPostSelector } from './social-post-selector';
 export {
   X_POST_PROMPT_VERSION,
   XPostOutputSchema,
-  getCategoryHashtag,
   buildArticlePrompt,
   buildDailyTrendPrompt,
   buildDiffSummaryPrompt,

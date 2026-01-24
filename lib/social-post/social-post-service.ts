@@ -334,7 +334,7 @@ export class SocialPostService {
         const post = await this.create(
           {
             content: generated.comment,
-            hashtags: [generated.hashtag],
+            hashtags: [],
             sourceUrls: generated.sourceUrls,
             source,
             sourceIds: [sourceId],
@@ -391,7 +391,7 @@ export class SocialPostService {
         const post = await this.create(
           {
             content: generated.comment,
-            hashtags: [generated.hashtag],
+            hashtags: [],
             sourceUrls: [article.url],
             source: 'ARTICLE',
             sourceIds: [article.id],

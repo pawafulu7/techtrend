@@ -10,14 +10,13 @@ import { detectPromptInjection } from '@/lib/rag/security/prompt-injection-detec
 import { sanitizeHtml } from '@/lib/utils/html-sanitizer';
 import logger from '@/lib/logger';
 
-import type { GeneratedContent, GenerationContext } from './types';
+import type { GeneratedContent } from './types';
 import { SocialPostSelector } from './social-post-selector';
 import {
   buildArticlePrompt,
   buildDailyTrendPrompt,
   buildDiffSummaryPrompt,
   createXPostExtractionConfig,
-  getCategoryHashtag,
   X_POST_PROMPT_VERSION,
 } from './prompts/x-post-prompt';
 import { validateGeneratedContent } from './social-post-validator';
@@ -33,32 +32,8 @@ export class SocialPostGenerator {
   /**
    * 記事からX投稿を生成
    */
-  async generateFromArticle(
-    article: Article,
-    context?: GenerationContext
-  ): Promise<GeneratedContent> {
-    // 関連情報の収集
-    const relatedTrends =
-      context?.relatedTrends ||
-      (await this.selector.getRelatedTrends(article.category));
-    const recentArticles =
-      context?.recentArticles ||
-      (await this.selector.getRecentArticleTitles(
-        article.category,
-        article.id
-      ));
-
-    // 過去記事の取得（時間軸の視点用）
-    let historicalArticles = context?.historicalArticles;
-    if (!historicalArticles) {
-      const tags = await this.selector.getArticleTags(article.id);
-      historicalArticles = await this.selector.getHistoricalArticlesByTags(
-        article.id,
-        tags
-      );
-    }
-
-    // プロンプト構築
+  async generateFromArticle(article: Article): Promise<GeneratedContent> {
+    // プロンプト構築（記事内容のみ）
     const prompt = buildArticlePrompt({
       article: {
         title: article.translatedTitle || article.title,
@@ -66,9 +41,6 @@ export class SocialPostGenerator {
         url: article.url,
         category: article.category || 'tech',
       },
-      relatedTrends,
-      recentArticles,
-      historicalArticles,
     });
 
     // 入力のサニタイズ
@@ -101,11 +73,13 @@ export class SocialPostGenerator {
 
     return {
       comment: result.data.comment,
-      hashtag: this.normalizeHashtag(result.data.hashtag, article.category),
       sourceUrls: [article.url],
       modelVersion: result.modelVersion || 'unknown',
       promptVersion: X_POST_PROMPT_VERSION,
-      contextSummary: this.summarizeContext(article, relatedTrends),
+      contextSummary: JSON.stringify({
+        articleTitle: article.title.slice(0, 100),
+        category: article.category,
+      }),
     };
   }
 
@@ -159,7 +133,6 @@ export class SocialPostGenerator {
 
     return {
       comment: result.data.comment,
-      hashtag: '#TechTrend',
       sourceUrls: topArticles.slice(0, 3).map((a) => a.url),
       modelVersion: result.modelVersion || 'unknown',
       promptVersion: X_POST_PROMPT_VERSION,
@@ -227,7 +200,6 @@ export class SocialPostGenerator {
 
     return {
       comment: result.data.comment,
-      hashtag: getCategoryHashtag(diff.categorySlug),
       sourceUrls: [], // Diff Summaryは特定記事URLなし
       modelVersion: result.modelVersion || 'unknown',
       promptVersion: X_POST_PROMPT_VERSION,
@@ -288,28 +260,5 @@ export class SocialPostGenerator {
 
     // HTMLタグを除去
     return sanitizeHtml(input);
-  }
-
-  /**
-   * ハッシュタグを正規化
-   */
-  private normalizeHashtag(hashtag: string, category?: string | null): string {
-    // AI生成のハッシュタグが有効ならそれを使用
-    if (hashtag && hashtag.startsWith('#') && hashtag.length > 1) {
-      return hashtag;
-    }
-    // カテゴリから取得
-    return getCategoryHashtag(category);
-  }
-
-  /**
-   * 文脈情報を安全な形式で要約
-   */
-  private summarizeContext(article: Article, relatedTrends: string[]): string {
-    return JSON.stringify({
-      articleTitle: article.title.slice(0, 100),
-      category: article.category,
-      trendsCount: relatedTrends.length,
-    });
   }
 }
