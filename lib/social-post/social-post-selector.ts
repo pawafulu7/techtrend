@@ -45,7 +45,15 @@ export class SocialPostSelector {
     count: number,
     options: SelectionOptions = {}
   ): Promise<Article[]> {
+    // 入力バリデーション: count <= 0 の場合は空配列を返す
+    if (count <= 0) {
+      return [];
+    }
+
     const opts = { ...DEFAULT_OPTIONS, ...options };
+    // maxPerCategory は最低1以上を保証
+    const maxPerCategory = Math.max(1, opts.maxPerCategory);
+
     const now = new Date();
     const cutoffTime = new Date(
       now.getTime() - opts.hoursBack * 60 * 60 * 1000
@@ -69,15 +77,18 @@ export class SocialPostSelector {
     });
 
     // カテゴリ分散（同一カテゴリは最大N件）
-    return this.diversifyByCategory(candidates, count, opts.maxPerCategory);
+    return this.diversifyByCategory(candidates, count, maxPerCategory);
   }
 
   /**
    * 今日のDaily Trendを選定
    */
   async selectDailyTrend(): Promise<TrendReport | null> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // UTC midnight を明示的に計算（サーバーローカルTZに依存しない）
+    const now = new Date();
+    const utcMidnight = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    );
 
     // 既に投稿済みのDaily Trend IDを取得
     const postedIds = await this.getPostedSourceIds('DAILY_TREND');
@@ -86,7 +97,7 @@ export class SocialPostSelector {
       where: {
         id: { notIn: postedIds },
         periodType: 'DAILY',
-        periodStart: { gte: today },
+        periodStart: { gte: utcMidnight },
         aiSummary: { not: null },
       },
       orderBy: { periodStart: 'desc' },
@@ -140,9 +151,12 @@ export class SocialPostSelector {
    * 複数記事を一括取得
    */
   async getArticlesByIds(ids: string[]): Promise<Article[]> {
-    return this.prisma.article.findMany({
+    const articles = await this.prisma.article.findMany({
       where: { id: { in: ids } },
     });
+    // 入力IDの順序を保証するためMapで再整列
+    const map = new Map(articles.map((a) => [a.id, a]));
+    return ids.map((id) => map.get(id)).filter(Boolean) as Article[];
   }
 
   /**
@@ -203,7 +217,7 @@ export class SocialPostSelector {
         id: { not: excludeId },
         summary: { not: null },
       },
-      orderBy: { publishedAt: 'desc' },
+      orderBy: { createdAt: 'desc' }, // 取り込み日基準に統一
       take: limit,
       select: { translatedTitle: true, title: true },
     });
@@ -229,7 +243,9 @@ export class SocialPostSelector {
       select: { sourceIds: true },
     });
 
-    return posts.flatMap((p) => p.sourceIds);
+    // 重複を排除してユニークなIDのみ返す
+    const ids = posts.flatMap((p) => p.sourceIds);
+    return [...new Set(ids)];
   }
 
   /**
