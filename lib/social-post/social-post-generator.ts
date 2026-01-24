@@ -48,6 +48,16 @@ export class SocialPostGenerator {
         article.id
       ));
 
+    // 過去記事の取得（時間軸の視点用）
+    let historicalArticles = context?.historicalArticles;
+    if (!historicalArticles) {
+      const tags = await this.selector.getArticleTags(article.id);
+      historicalArticles = await this.selector.getHistoricalArticlesByTags(
+        article.id,
+        tags
+      );
+    }
+
     // プロンプト構築
     const prompt = buildArticlePrompt({
       article: {
@@ -58,6 +68,7 @@ export class SocialPostGenerator {
       },
       relatedTrends,
       recentArticles,
+      historicalArticles,
     });
 
     // 入力のサニタイズ

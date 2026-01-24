@@ -129,6 +129,22 @@ export class SocialPostSelector {
     });
   }
 
+
+  /**
+   * 指定記事のタグを取得
+   */
+  async getArticleTags(articleId: string): Promise<{ name: string }[]> {
+    const article = await this.prisma.article.findUnique({
+      where: { id: articleId },
+      select: {
+        tags: {
+          select: { name: true },
+        },
+      },
+    });
+    return article?.tags || [];
+  }
+
   /**
    * 指定IDのTrendReportを取得
    */
@@ -223,6 +239,52 @@ export class SocialPostSelector {
     });
 
     return articles.map((a) => a.translatedTitle || a.title);
+  }
+
+
+  /**
+   * 同じタグを持つ過去の記事を取得（時間軸の視点用）
+   * 7日以上前の記事から、同じタグを持つものを検索
+   */
+  async getHistoricalArticlesByTags(
+    articleId: string,
+    tags: { name: string }[],
+    limit: number = 3
+  ): Promise<{ title: string; summary: string; publishedAt: Date }[]> {
+    if (tags.length === 0) return [];
+
+    const tagNames = tags.map((t) => t.name);
+
+    // 7日以上前の記事から検索（最近の記事との比較のため）
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const articles = await this.prisma.article.findMany({
+      where: {
+        id: { not: articleId },
+        summary: { not: null },
+        createdAt: { lt: sevenDaysAgo },
+        tags: {
+          some: {
+            name: { in: tagNames },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        title: true,
+        translatedTitle: true,
+        summary: true,
+        publishedAt: true,
+      },
+    });
+
+    return articles.map((a) => ({
+      title: a.translatedTitle || a.title,
+      summary: a.summary || '',
+      publishedAt: a.publishedAt,
+    }));
   }
 
   // =============================================================================

@@ -132,6 +132,15 @@ export interface GenerateResult<T> {
 export interface GenerationContext {
   relatedTrends?: string[];
   recentArticles?: string[];
+  /** 同じタグを持つ過去の記事（時間軸の視点用） */
+  historicalArticles?: HistoricalArticle[];
+}
+
+/** 過去記事の情報（時間軸比較用） */
+export interface HistoricalArticle {
+  title: string;
+  summary: string;
+  publishedAt: Date;
 }
 
 /**

@@ -453,6 +453,7 @@ describe('SocialPostValidator', () => {
     it('should reject content with forbidden patterns', () => {
       // These are the actual forbidden patterns in the implementation
       const forbiddenPatterns = [
+        // 宣伝調
         '注目',
         '革新的',
         '画期的',
@@ -462,10 +463,27 @@ describe('SocialPostValidator', () => {
         'やばい',
         '最高',
         '超おすすめ',
+        // 評論調
+        '興味深い',
+        '素晴らしい',
       ];
 
       forbiddenPatterns.forEach((pattern) => {
         const content = `これは${pattern}な記事です。詳細を見てみましょう。`;
+        const result = validateGeneratedContent(content);
+        expect(result.valid).toBe(false);
+        expect(result.errors.some((e) => e.includes('Forbidden'))).toBe(true);
+      });
+    });
+
+    it('should reject content with commentary-style endings', () => {
+      const commentaryEndings = [
+        'これは良い取り組みですね。',
+        '今後の展開に期待です。',
+        '素晴らしい機能ですよね',
+      ];
+
+      commentaryEndings.forEach((content) => {
         const result = validateGeneratedContent(content);
         expect(result.valid).toBe(false);
         expect(result.errors.some((e) => e.includes('Forbidden'))).toBe(true);

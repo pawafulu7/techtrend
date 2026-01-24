@@ -15,7 +15,7 @@ import type {
 // Constants
 // =============================================================================
 
-export const X_POST_PROMPT_VERSION = 'v1.0.0';
+export const X_POST_PROMPT_VERSION = 'v1.1.0';
 
 /**
  * AI出力スキーマ
@@ -75,11 +75,12 @@ export function buildArticlePrompt(params: {
   article: ArticleForPrompt;
   relatedTrends?: string[];
   recentArticles?: string[];
+  historicalArticles?: { title: string; summary: string; publishedAt: Date }[];
 }): string {
-  const { article, relatedTrends, recentArticles } = params;
+  const { article, relatedTrends, recentArticles, historicalArticles } = params;
 
   let prompt = `
-あなたは技術トレンドに詳しいエンジニアです。以下の技術記事について、X（Twitter）投稿用のコメントを生成してください。
+あなたは現場で働くソフトウェアエンジニアです。以下の技術記事を読んで、同僚に話すようなカジュアルな感想をX（Twitter）に投稿してください。
 
 ## 記事情報
 - タイトル: ${article.title}
@@ -101,26 +102,53 @@ ${recentArticles.map((a) => `- ${a}`).join('\n')}
 `;
   }
 
+  if (historicalArticles && historicalArticles.length > 0) {
+    const formatDate = (d: Date) => {
+      const date = new Date(d);
+      return `${date.getFullYear()}/${date.getMonth() + 1}`;
+    };
+    prompt += `
+## 過去の関連記事（時間軸の参考に）
+${historicalArticles.map((a) => `- [${formatDate(a.publishedAt)}] ${a.title}: ${a.summary.slice(0, 100)}...`).join('\n')}
+`;
+  }
+
   prompt += `
 ## 生成ルール
 
-### 必須要件
-1. 100文字程度の日本語コメント（最大280文字まで許容）
-2. 記事の具体的な事実・数値・固有名詞を1つ以上含める
-3. 単なる要約ではなく、技術者として価値ある視点を提供する
+### 文体（最重要）
+エンジニアが本音で呟くような文体で書く。評論家や解説者ではなく、実際に手を動かす人の視点で。
 
-### 価値ある視点の例
-- 技術的トレードオフ（「Xは速いがYとの両立が課題」）
-- 適用場面の具体化（「大規模システムの移行時に有効」）
-- 運用上の落とし穴（「本番導入前にZの検証が必要」）
-- 他技術との比較（「従来のAと比べてBの点で優位」）
+良い例:
+- 「これ昨日ちょうどハマってたやつだ。設定周りがクセあるんだよな」
+- 「うちでも導入検討中。移行コストどのくらいかかるんだろ」
+- 「個人的にはYの方が好き。Xは学習コスト高め」
+- 「へー、こんな方法あったんだ。明日試してみよ」
+- 「これ知らなかった。v2からの変更点ちゃんと追えてない」
+- 「Rust製か。パフォーマンス気になる」
+- 「ついにXがYに対応したか。去年まではワークアラウンド必要だったのに」
+- 「v2から待ってた機能だ。これでようやく本番で使える」
+- 「半年前は実験的だったけど、もう安定版出たんだな」
+
+悪い例:
+- 「〜は興味深いですね」（評論家調）
+- 「今後の展開に期待」（他人事）
+- 「素晴らしい取り組みです」（お世辞）
+- 「〜という点で重要です」（教科書調）
+
+### 必須要件
+1. 80〜120文字程度（最大280文字）
+2. 記事の具体的な技術名・ツール名・数値を含める
+3. 一人称視点または疑問形で書く
+4. 過去の関連記事がある場合は、時間軸の変化（「以前は〜だったのに」「ついに〜できるように」）を入れると良い
 
 ### 禁止表現
-以下の汎用的・宣伝的な表現は使用禁止:
-- 「注目」「革新的」「画期的」「必見」「話題」「すごい」「やばい」
+- 宣伝調: 「注目」「革新的」「画期的」「必見」「話題」
+- 評論調: 「興味深い」「素晴らしい」「期待」「〜ですね」「〜ですよね」
+- 要約調: 「〜という点で重要」「〜に貢献」「〜を実現」
 
 ### ハッシュタグ
-カテゴリに応じて1つのみ選択:
+カテゴリに応じて1つのみ:
 - frontend → #Frontend
 - backend → #Backend
 - ai_ml → #AI
@@ -129,11 +157,10 @@ ${recentArticles.map((a) => `- ${a}`).join('\n')}
 - その他 → #Tech
 
 ## 出力形式
-以下のJSON形式で出力してください:
 {
-  "comment": "生成したコメント（100文字程度）",
+  "comment": "生成したコメント",
   "hashtag": "#カテゴリタグ",
-  "reasoning": "このコメントを選んだ理由（内部確認用、投稿には使用しない）"
+  "reasoning": "理由（内部用）"
 }
 `;
 

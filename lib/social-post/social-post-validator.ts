@@ -202,6 +202,7 @@ export type SocialPostFiltersInput = z.infer<typeof SocialPostFiltersSchema>;
  * 禁止表現パターン
  */
 const FORBIDDEN_PATTERNS: RegExp[] = [
+  // 宣伝調
   /注目/,
   /革新的/,
   /画期的/,
@@ -211,6 +212,12 @@ const FORBIDDEN_PATTERNS: RegExp[] = [
   /やばい/,
   /最高/,
   /超おすすめ/,
+  // 評論調
+  /興味深い/,
+  /素晴らしい/,
+  /期待[しです]/,
+  /ですね[。！]?$/,
+  /ですよね/,
 ];
 
 /**
