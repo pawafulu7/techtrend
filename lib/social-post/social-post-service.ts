@@ -438,9 +438,11 @@ export class SocialPostService {
     count: number = 1,
     userId: string = 'system'
   ): Promise<SocialPost[]> {
+    // JSDoc通り1-5の範囲にバリデーション
+    const validatedCount = Math.min(Math.max(1, count), 5);
     const results: SocialPost[] = [];
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < validatedCount; i++) {
       try {
         const generated = await this.generator.generateOpinion();
 

@@ -200,7 +200,6 @@ export interface OpinionForPrompt {
  */
 export interface XPostOutput {
   comment: string;
-  hashtag: string;
   reasoning?: string;
 }
 

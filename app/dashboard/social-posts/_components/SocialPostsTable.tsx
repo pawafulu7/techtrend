@@ -334,6 +334,11 @@ function SourceLabel({ source }: { source: string }) {
       color:
         'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
     },
+    OPINION: {
+      label: '意見',
+      color:
+        'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',
+    },
   };
 
   const { label, color } = config[source] || {
