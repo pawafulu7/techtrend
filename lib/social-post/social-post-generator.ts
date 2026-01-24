@@ -21,6 +21,7 @@ import {
   X_POST_PROMPT_VERSION,
 } from './prompts/x-post-prompt';
 import { validateGeneratedContent } from './social-post-validator';
+import { NotFoundError, PromptInjectionError } from './errors';
 
 // =============================================================================
 // Generator Class
@@ -234,21 +235,21 @@ export class SocialPostGenerator {
       case 'ARTICLE': {
         const article = await this.selector.getArticleById(sourceId);
         if (!article) {
-          throw new Error(`Article not found: ${sourceId}`);
+          throw new NotFoundError('Article', sourceId);
         }
         return this.generateFromArticle(article);
       }
       case 'DAILY_TREND': {
         const trend = await this.selector.getTrendReportById(sourceId);
         if (!trend) {
-          throw new Error(`TrendReport not found: ${sourceId}`);
+          throw new NotFoundError('TrendReport', sourceId);
         }
         return this.generateFromDailyTrend(trend);
       }
       case 'DIFF_SUMMARY': {
         const diff = await this.selector.getDiffSummaryById(sourceId);
         if (!diff) {
-          throw new Error(`DiffSummary not found: ${sourceId}`);
+          throw new NotFoundError('DiffSummary', sourceId);
         }
         return this.generateFromDiffSummary(diff);
       }
@@ -271,7 +272,7 @@ export class SocialPostGenerator {
         { input: input.slice(0, 200) },
         'Potential prompt injection detected'
       );
-      throw new Error('Potential prompt injection detected');
+      throw new PromptInjectionError();
     }
 
     // HTMLタグを除去

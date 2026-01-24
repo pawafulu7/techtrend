@@ -23,6 +23,7 @@ import type {
 } from './types';
 import { SocialPostGenerator } from './social-post-generator';
 import { SocialPostSelector } from './social-post-selector';
+import { DuplicateContentError } from './errors';
 
 // =============================================================================
 // Service Class
@@ -141,7 +142,7 @@ export class SocialPostService {
     });
 
     if (existing) {
-      throw new Error('Duplicate content detected');
+      throw new DuplicateContentError();
     }
 
     try {
@@ -177,7 +178,7 @@ export class SocialPostService {
     } catch (error) {
       // Prismaユニーク制約違反を409相当のエラーに変換
       if (this.isPrismaUniqueConstraintError(error)) {
-        throw new Error('Duplicate content detected');
+        throw new DuplicateContentError();
       }
       throw error;
     }
@@ -233,7 +234,7 @@ export class SocialPostService {
     } catch (error) {
       // Prismaユニーク制約違反を409相当のエラーに変換
       if (this.isPrismaUniqueConstraintError(error)) {
-        throw new Error('Duplicate content detected');
+        throw new DuplicateContentError();
       }
       throw error;
     }

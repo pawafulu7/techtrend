@@ -84,3 +84,13 @@ export {
 } from './prompts/x-post-prompt';
 
 export type { XPostOutputType } from './prompts/x-post-prompt';
+
+// =============================================================================
+// Errors
+// =============================================================================
+
+export {
+  NotFoundError,
+  PromptInjectionError,
+  DuplicateContentError,
+} from './errors';

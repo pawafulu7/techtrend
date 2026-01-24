@@ -21,7 +21,7 @@ export const X_POST_PROMPT_VERSION = 'v1.0.0';
  * AI出力スキーマ
  */
 export const XPostOutputSchema = z.object({
-  comment: z.string().min(1).max(300),
+  comment: z.string().min(1).max(280),
   hashtag: z.string().regex(/^#[\w\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]+$/),
   reasoning: z.string().optional(),
 });

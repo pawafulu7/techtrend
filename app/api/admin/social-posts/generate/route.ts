@@ -11,6 +11,9 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import {
   getSocialPostService,
   SocialPostGenerateSchema,
+  NotFoundError,
+  PromptInjectionError,
+  DuplicateContentError,
 } from '@/lib/social-post';
 
 /**
@@ -86,14 +89,14 @@ async function generateHandler(request: NextRequest) {
     });
   } catch (error) {
     // ソースが見つからない場合
-    if (error instanceof Error && error.message.includes('not found')) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
+    if (error instanceof NotFoundError) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
     }
 
     // プロンプトインジェクション検出
-    if (error instanceof Error && error.message.includes('injection')) {
+    if (error instanceof PromptInjectionError) {
       logger.warn(
-        { userId: session.user.id, error: error.message },
+        { userId: session.user.id },
         '[SocialPostsAPI] Prompt injection detected'
       );
       return NextResponse.json(
@@ -103,7 +106,7 @@ async function generateHandler(request: NextRequest) {
     }
 
     // 重複コンテンツ
-    if (error instanceof Error && error.message.includes('Duplicate')) {
+    if (error instanceof DuplicateContentError) {
       return NextResponse.json(
         { error: 'A post with similar content already exists' },
         { status: 409 }
