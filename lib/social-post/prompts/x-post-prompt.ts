@@ -16,7 +16,23 @@ import type {
 // Constants
 // =============================================================================
 
-export const X_POST_PROMPT_VERSION = 'v1.3.0';
+export const X_POST_PROMPT_VERSION = 'v1.4.0';
+
+/**
+ * 短縮専用プロンプト（文体変換なし）
+ */
+export function buildShortenPrompt(text: string, maxLength: number): string {
+  return `
+以下のテキストを${maxLength}字以内に短縮せよ。
+- 文体は変えない
+- 意味を保つ
+- 省略可能な修飾語を削る
+
+テキスト: ${text}
+
+出力: 短縮後のテキストのみ（JSON不要）
+`.trim();
+}
 
 /**
  * 共通制約（シンプル版）

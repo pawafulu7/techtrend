@@ -13,10 +13,10 @@ import logger from '@/lib/logger';
 import type { GeneratedContent } from './types';
 import { SocialPostSelector } from './social-post-selector';
 import {
-  buildArticlePrompt,
   buildDailyTrendPrompt,
   buildDiffSummaryPrompt,
   buildOpinionPrompt,
+  buildShortenPrompt,
   createXPostExtractionConfig,
   X_POST_PROMPT_VERSION,
 } from './prompts/x-post-prompt';
@@ -34,52 +34,74 @@ import {
 export class SocialPostGenerator {
   constructor(private selector: SocialPostSelector) {}
 
+  /** 記事要約の最大文字数 */
+  private static readonly MAX_SUMMARY_LENGTH = 120;
+
   /**
    * 記事からX投稿を生成
+   * - 要約をそのまま使用（120字以下の場合）
+   * - 120字超の場合はAIで短縮のみ（文体変換なし）
    */
   async generateFromArticle(article: Article): Promise<GeneratedContent> {
-    // プロンプト構築（記事内容のみ）
-    const prompt = buildArticlePrompt({
-      article: {
-        title: article.translatedTitle || article.title,
-        summary: article.summary || '',
-        url: article.url,
-        category: article.category || 'tech',
-      },
-    });
+    const summary = article.summary || '';
+    let comment: string;
+    let modelVersion = 'none'; // AI未使用の場合
 
-    // 入力のサニタイズ
-    const sanitizedPrompt = this.sanitizeForPrompt(prompt);
-
-    // AI生成
-    const pipeline = getLLMExtractionPipeline();
-    const config = createXPostExtractionConfig();
-
-    const result = await pipeline.extract(sanitizedPrompt, config, {
-      maxOutputTokens: 500,
-      temperature: 0.7,
-    });
-
-    if (!result.success || !result.data) {
-      throw new Error(
-        `AI generation failed: ${result.error || 'Unknown error'}`
+    if (summary.length <= SocialPostGenerator.MAX_SUMMARY_LENGTH) {
+      // 120字以下: そのまま使用
+      comment = summary;
+      logger.info(
+        { articleId: article.id, length: summary.length },
+        'Using article summary directly (within limit)'
       );
+    } else {
+      // 120字超: AIで短縮のみ
+      const prompt = buildShortenPrompt(
+        summary,
+        SocialPostGenerator.MAX_SUMMARY_LENGTH
+      );
+      const sanitizedPrompt = this.sanitizeForPrompt(prompt);
+
+      const pipeline = getLLMExtractionPipeline();
+      const result = await pipeline.extractRaw(sanitizedPrompt, {
+        maxOutputTokens: 200,
+        temperature: 0.3, // 低めで安定した短縮
+      });
+
+      if (!result.success || !result.text) {
+        // 短縮失敗時は先頭120字で切る
+        comment = summary.slice(0, SocialPostGenerator.MAX_SUMMARY_LENGTH);
+        logger.warn(
+          { articleId: article.id, error: result.error },
+          'AI shortening failed, using truncated summary'
+        );
+      } else {
+        comment = result.text.trim();
+        modelVersion = result.modelVersion || 'unknown';
+        logger.info(
+          {
+            articleId: article.id,
+            original: summary.length,
+            shortened: comment.length,
+          },
+          'Summary shortened by AI'
+        );
+      }
     }
 
     // 出力検証
-    const validation = validateGeneratedContent(result.data.comment);
+    const validation = validateGeneratedContent(comment);
     if (!validation.valid) {
       logger.warn(
         { articleId: article.id, errors: validation.errors },
         'Generated content validation warnings'
       );
-      // 警告のみでエラーにはしない（管理者がレビューで修正可能）
     }
 
     return {
-      comment: result.data.comment,
+      comment,
       sourceUrls: [article.url],
-      modelVersion: result.modelVersion || 'unknown',
+      modelVersion,
       promptVersion: X_POST_PROMPT_VERSION,
       contextSummary: JSON.stringify({
         articleTitle: article.title.slice(0, 100),

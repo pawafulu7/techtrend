@@ -184,6 +184,42 @@ export class LLMExtractionPipeline {
   }
 
   /**
+   * Extract raw text without schema validation
+   * For simple use cases like text shortening
+   */
+  async extractRaw(
+    prompt: string,
+    options?: ExtractionOptions
+  ): Promise<{
+    success: boolean;
+    text: string | null;
+    error?: string;
+    modelVersion: string;
+  }> {
+    const opts = { ...DEFAULT_OPTIONS, ...options };
+
+    try {
+      const text = await this.callAPI(prompt, opts);
+      return {
+        success: true,
+        text: text.trim(),
+        modelVersion: this.modelVersion,
+      };
+    } catch (error) {
+      logger.error(
+        { error: (error as Error).message },
+        'LLM raw extraction failed'
+      );
+      return {
+        success: false,
+        text: null,
+        error: (error as Error).message,
+        modelVersion: this.modelVersion,
+      };
+    }
+  }
+
+  /**
    * Call Gemini API
    */
   private async callAPI(
