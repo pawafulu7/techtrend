@@ -39,6 +39,7 @@ export {
   SocialPostCreateSchema,
   SocialPostUpdateSchema,
   SocialPostGenerateSchema,
+  SocialPostAutoGenerateSchema,
   SocialPostBulkSchema,
   SocialPostFiltersSchema,
   validateGeneratedContent,
@@ -52,6 +53,7 @@ export type {
   SocialPostCreateInput,
   SocialPostUpdateInput,
   SocialPostGenerateInput,
+  SocialPostAutoGenerateInput,
   SocialPostBulkInput,
   SocialPostFiltersInput,
 } from './social-post-validator';

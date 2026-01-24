@@ -3,6 +3,7 @@ import {
   SocialPostCreateSchema,
   SocialPostUpdateSchema,
   SocialPostGenerateSchema,
+  SocialPostAutoGenerateSchema,
   SocialPostBulkSchema,
   SocialPostFiltersSchema,
   validateGeneratedContent,
@@ -250,6 +251,51 @@ describe('SocialPostValidator', () => {
 
       const result = SocialPostGenerateSchema.safeParse(invalidInput);
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe('SocialPostAutoGenerateSchema', () => {
+    it('should validate valid count', () => {
+      const validInput = { count: 3 };
+      const result = SocialPostAutoGenerateSchema.safeParse(validInput);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.count).toBe(3);
+      }
+    });
+
+    it('should use default count of 3 when not provided', () => {
+      const result = SocialPostAutoGenerateSchema.safeParse({});
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.count).toBe(3);
+      }
+    });
+
+    it('should coerce string count to number', () => {
+      const result = SocialPostAutoGenerateSchema.safeParse({ count: '5' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.count).toBe(5);
+      }
+    });
+
+    it('should reject count less than 1', () => {
+      const result = SocialPostAutoGenerateSchema.safeParse({ count: 0 });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject count greater than 5', () => {
+      const result = SocialPostAutoGenerateSchema.safeParse({ count: 6 });
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept boundary values (1 and 5)', () => {
+      const result1 = SocialPostAutoGenerateSchema.safeParse({ count: 1 });
+      expect(result1.success).toBe(true);
+
+      const result5 = SocialPostAutoGenerateSchema.safeParse({ count: 5 });
+      expect(result5.success).toBe(true);
     });
   });
 

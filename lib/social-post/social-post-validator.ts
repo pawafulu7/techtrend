@@ -125,6 +125,17 @@ export const SocialPostGenerateSchema = z.object({
 export type SocialPostGenerateInput = z.infer<typeof SocialPostGenerateSchema>;
 
 /**
+ * 自動生成リクエストスキーマ（人気記事から自動選定）
+ */
+export const SocialPostAutoGenerateSchema = z.object({
+  count: z.coerce.number().int().min(1).max(5).default(3),
+});
+
+export type SocialPostAutoGenerateInput = z.infer<
+  typeof SocialPostAutoGenerateSchema
+>;
+
+/**
  * 一括操作スキーマ
  */
 export const SocialPostBulkSchema = z

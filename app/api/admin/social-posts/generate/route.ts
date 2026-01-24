@@ -10,14 +10,17 @@ import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import {
   getSocialPostService,
-  SocialPostGenerateSchema,
+  SocialPostAutoGenerateSchema,
   NotFoundError,
   PromptInjectionError,
   DuplicateContentError,
 } from '@/lib/social-post';
 
 /**
- * POST - AI生成
+ * POST - AI生成（自動選定）
+ *
+ * リクエストボディ: { count: number } (1-5)
+ * 人気度・注目度を考慮して記事を自動選定し、投稿を生成
  *
  * レート制限: 5回/分 (admin:social-post-generate)
  */
@@ -49,8 +52,8 @@ async function generateHandler(request: NextRequest) {
       );
     }
 
-    // Zodでバリデーション
-    const parseResult = SocialPostGenerateSchema.safeParse(body);
+    // Zodでバリデーション（countのみ）
+    const parseResult = SocialPostAutoGenerateSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json(
         { error: 'Invalid request body', details: parseResult.error.flatten() },
@@ -58,49 +61,24 @@ async function generateHandler(request: NextRequest) {
       );
     }
 
-    const { source, sourceIds } = parseResult.data;
+    const { count } = parseResult.data;
 
     const service = getSocialPostService();
-    const result = await service.generate(
-      { source, sourceIds },
-      session.user.id,
-      {
-        ipAddress:
-          request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-          undefined,
-        userAgent: request.headers.get('user-agent') || undefined,
-      }
-    );
+    const posts = await service.generateScheduledPosts(count);
 
     logger.info(
       {
         userId: session.user.id,
-        source,
-        sourceIds,
-        succeededCount: result.succeeded.length,
-        failedCount: result.failed.length,
+        requested: count,
+        generated: posts.length,
       },
-      '[SocialPostsAPI] Posts generated'
+      '[SocialPostsAPI] Auto-generated posts from popular articles'
     );
 
-    // 全件失敗の場合は500を返す
-    if (result.succeeded.length === 0 && result.failed.length > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          posts: [],
-          failed: result.failed,
-          count: 0,
-        },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json({
-      success: result.failed.length === 0,
-      posts: result.succeeded,
-      failed: result.failed.length > 0 ? result.failed : undefined,
-      count: result.succeeded.length,
+      success: true,
+      posts,
+      count: posts.length,
     });
   } catch (error) {
     // ソースが見つからない場合

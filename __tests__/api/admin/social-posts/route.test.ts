@@ -30,6 +30,7 @@ const mockService = {
   delete: jest.fn(),
   bulkAction: jest.fn(),
   generate: jest.fn(),
+  generateScheduledPosts: jest.fn(),
   getStatusCounts: jest.fn(),
 };
 
@@ -68,10 +69,10 @@ jest.mock('@/lib/social-post', () => {
         data: { content: 'Updated content' },
       }),
     },
-    SocialPostGenerateSchema: {
+    SocialPostAutoGenerateSchema: {
       safeParse: jest.fn().mockReturnValue({
         success: true,
-        data: { source: 'ARTICLE', sourceIds: ['article-1'] },
+        data: { count: 3 },
       }),
     },
     SocialPostBulkSchema: {
@@ -316,18 +317,15 @@ describe('Social Posts API', () => {
   });
 
   describe('POST /api/admin/social-posts/generate', () => {
-    it('should generate posts for admin', async () => {
+    it('should auto-generate posts for admin', async () => {
       const { auth } = require('@/lib/auth/auth');
       (auth as jest.Mock).mockResolvedValue(adminSession);
-      mockService.generate.mockResolvedValue({ succeeded: [mockPost], failed: [] });
+      mockService.generateScheduledPosts.mockResolvedValue([mockPost]);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          source: 'ARTICLE',
-          sourceIds: ['article-1'],
-        }),
+        body: JSON.stringify({ count: 3 }),
       });
 
       const response = await GENERATE(request);
@@ -336,20 +334,18 @@ describe('Social Posts API', () => {
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.count).toBe(1);
+      expect(mockService.generateScheduledPosts).toHaveBeenCalledWith(3);
     });
 
-    it('should return 404 when source not found', async () => {
+    it('should return 404 when no articles available', async () => {
       const { auth } = require('@/lib/auth/auth');
       (auth as jest.Mock).mockResolvedValue(adminSession);
-      mockService.generate.mockRejectedValue(new NotFoundError('Article', 'non-existent'));
+      mockService.generateScheduledPosts.mockRejectedValue(new NotFoundError('Article', 'none'));
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          source: 'ARTICLE',
-          sourceIds: ['non-existent'],
-        }),
+        body: JSON.stringify({ count: 3 }),
       });
 
       const response = await GENERATE(request);
