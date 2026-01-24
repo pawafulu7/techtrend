@@ -171,10 +171,15 @@ export function SocialPostsDashboard() {
   );
 
   // Copy to clipboard
-  const handleCopy = useCallback((post: SocialPost) => {
+  const handleCopy = useCallback(async (post: SocialPost) => {
     const text = `${post.content}\n\n${post.sourceUrls.join('\n')}\n\n${post.hashtags.join(' ')}`;
-    navigator.clipboard.writeText(text);
-    alert('クリップボードにコピーしました');
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('クリップボードにコピーしました');
+    } catch (error) {
+      console.error('Copy failed:', error);
+      alert('コピーに失敗しました');
+    }
   }, []);
 
   // Navigation

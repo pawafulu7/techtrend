@@ -250,7 +250,26 @@ export function createXPostExtractionConfig() {
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }
-      return JSON.parse(jsonMatch[0]);
+
+      // JSON解析（エラーハンドリング付き）
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch (e) {
+        throw new Error(
+          `Invalid JSON in response: ${e instanceof Error ? e.message : String(e)}`
+        );
+      }
+
+      // スキーマ検証
+      const result = XPostOutputSchema.safeParse(parsed);
+      if (!result.success) {
+        throw new Error(
+          `Schema validation failed: ${result.error.errors.map((e) => e.message).join(', ')}`
+        );
+      }
+
+      return result.data;
     },
   };
 }

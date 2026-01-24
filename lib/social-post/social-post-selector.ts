@@ -4,11 +4,11 @@
  * 投稿候補の選定ロジック
  */
 
-import type {
-  PrismaClient,
-  Article,
-  TrendReport,
-  DiffSummary,
+import {
+  type PrismaClient,
+  type Article,
+  type TrendReport,
+  type DiffSummary,
   ArticleCategory,
 } from '@prisma/client';
 
@@ -164,13 +164,18 @@ export class SocialPostSelector {
 
     if (!recentTrend?.topArticles) return [];
 
-    // topArticlesから関連トピックを抽出
-    const topArticles = recentTrend.topArticles as Array<{
-      title: string;
-      category?: string;
-    }>;
+    // topArticlesから関連トピックを抽出（型安全なバリデーション）
+    const topArticles = recentTrend.topArticles;
+    if (!Array.isArray(topArticles)) return [];
+
     return topArticles
-      .filter((a) => a.category === category)
+      .filter((a): a is { title: string; category?: string } => {
+        if (typeof a !== 'object' || a === null || Array.isArray(a)) {
+          return false;
+        }
+        const obj = a as Record<string, unknown>;
+        return typeof obj.title === 'string' && obj.category === category;
+      })
       .slice(0, limit)
       .map((a) => a.title);
   }
@@ -184,6 +189,12 @@ export class SocialPostSelector {
     limit: number = 5
   ): Promise<string[]> {
     if (!category) return [];
+
+    // Validate category against ArticleCategory enum
+    const validCategories = Object.values(ArticleCategory);
+    if (!validCategories.includes(category as ArticleCategory)) {
+      return [];
+    }
 
     const articles = await this.prisma.article.findMany({
       where: {

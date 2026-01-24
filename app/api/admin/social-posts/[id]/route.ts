@@ -75,7 +75,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
  *
  * レート制限: 20回/分 (admin:social-post-write)
  */
-async function updateHandler(request: NextRequest, context?: RouteContext) {
+async function updateHandler(request: NextRequest, context: RouteContext) {
   const session = await auth();
 
   if (!session?.user) {
@@ -93,8 +93,16 @@ async function updateHandler(request: NextRequest, context?: RouteContext) {
   }
 
   try {
-    const { id } = await context!.params;
-    const body = await request.json();
+    const { id } = await context.params;
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
 
     // Zodでバリデーション
     const parseResult = SocialPostUpdateSchema.safeParse(body);
@@ -149,7 +157,7 @@ async function updateHandler(request: NextRequest, context?: RouteContext) {
  *
  * レート制限: 20回/分 (admin:social-post-write)
  */
-async function deleteHandler(request: NextRequest, context?: RouteContext) {
+async function deleteHandler(request: NextRequest, context: RouteContext) {
   const session = await auth();
 
   if (!session?.user) {
@@ -167,7 +175,7 @@ async function deleteHandler(request: NextRequest, context?: RouteContext) {
   }
 
   try {
-    const { id } = await context!.params;
+    const { id } = await context.params;
     const service = getSocialPostService();
 
     await service.delete(id, session.user.id, {

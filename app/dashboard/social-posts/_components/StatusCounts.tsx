@@ -29,7 +29,21 @@ export function StatusCounts() {
     Record<SocialPostStatus | 'total', number>
   >('/api/admin/social-posts/stats', fetcher, { refreshInterval: 60000 });
 
-  if (error || isLoading || !data) {
+  if (error) {
+    return (
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card className="col-span-full">
+          <CardContent className="p-4">
+            <p className="text-destructive text-sm">
+              データの取得に失敗しました
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isLoading || !data) {
     return (
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (

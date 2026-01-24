@@ -281,6 +281,11 @@ export class SocialPostService {
           await this.delete(id, userId, metadata);
         } else if (action === 'changeStatus' && status) {
           await this.update(id, { status }, userId, metadata);
+        } else {
+          // Unknown or invalid action
+          logger.warn({ id, action, status }, 'Unknown or invalid bulk action');
+          failed++;
+          continue;
         }
         success++;
       } catch (error) {
@@ -493,8 +498,14 @@ let serviceInstance: SocialPostService | null = null;
  * SocialPostServiceのシングルトンインスタンスを取得
  */
 export function getSocialPostService(prisma?: PrismaClient): SocialPostService {
+  // If a custom prisma instance is provided, create a new service instance
+  // This is useful for testing with mock prisma clients
+  if (prisma) {
+    return new SocialPostService(prisma);
+  }
+  // Otherwise, use the singleton pattern for the default prisma instance
   if (!serviceInstance) {
-    serviceInstance = new SocialPostService(prisma || defaultPrisma);
+    serviceInstance = new SocialPostService(defaultPrisma);
   }
   return serviceInstance;
 }

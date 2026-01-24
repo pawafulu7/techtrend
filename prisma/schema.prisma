@@ -563,17 +563,17 @@ model SocialPost {
 // Audit log for social posts
 model SocialPostAuditLog {
   id           String     @id @default(cuid())
-  socialPostId String
+  socialPostId String? // Nullable to preserve audit logs after post deletion
   action       String // CREATE, UPDATE, DELETE, GENERATE, PUBLISH, REVIEW
   userId       String? // Operator ID
   previousData Json? // Data before change
   newData      Json? // Data after change
-  ipAddress    String? // Client IP
-  userAgent    String? // Browser info
+  ipAddress    String? // Client IP (Note: Consider anonymization for GDPR/CCPA compliance)
+  userAgent    String? // Browser info (Note: Consider retention policy for PII)
   metadata     Json? // Additional info
   createdAt    DateTime   @default(now()) @db.Timestamptz(6)
 
-  socialPost SocialPost @relation(fields: [socialPostId], references: [id], onDelete: Cascade)
+  socialPost SocialPost? @relation(fields: [socialPostId], references: [id], onDelete: SetNull)
 
   @@index([socialPostId, createdAt(sort: Desc)], map: "idx_social_post_audit_log")
   @@index([userId], map: "idx_social_post_audit_user")

@@ -40,7 +40,9 @@ export function SocialPostsTable({
   pagination,
   onPageChange,
 }: SocialPostsTableProps) {
-  const allSelected = posts.length > 0 && selectedIds.size === posts.length;
+  // Check if all posts on the current page are selected
+  const allSelected =
+    posts.length > 0 && posts.every((post) => selectedIds.has(post.id));
 
   return (
     <div className="space-y-4">

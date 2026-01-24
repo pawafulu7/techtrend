@@ -51,15 +51,17 @@ export function SocialPostEditor({ postId }: SocialPostEditorProps) {
   const [status, setStatus] = useState<SocialPostStatus>('DRAFT');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize form when data loads
+  // Initialize form when data loads (only once to prevent overwriting user edits)
   useEffect(() => {
-    if (post) {
+    if (post && !isInitialized) {
       setContent(post.content);
       setHashtags(post.hashtags.join(' '));
       setStatus(post.status);
+      setIsInitialized(true);
     }
-  }, [post]);
+  }, [post, isInitialized]);
 
   // Calculate character count
   const effectiveLength = calculateEffectiveLength(
@@ -95,8 +97,14 @@ export function SocialPostEditor({ postId }: SocialPostEditorProps) {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || '保存に失敗しました');
+        let errorMessage = '保存に失敗しました';
+        try {
+          const data = await res.json();
+          errorMessage = data.error || errorMessage;
+        } catch {
+          // JSON parse failed, use default message
+        }
+        throw new Error(errorMessage);
       }
 
       mutate();
@@ -108,11 +116,15 @@ export function SocialPostEditor({ postId }: SocialPostEditorProps) {
     }
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (!post) return;
     const text = `${content}\n\n${post.sourceUrls.join('\n')}\n\n${hashtags}`;
-    navigator.clipboard.writeText(text);
-    alert('クリップボードにコピーしました');
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('クリップボードにコピーしました');
+    } catch {
+      alert('コピーに失敗しました');
+    }
   };
 
   if (error) {
