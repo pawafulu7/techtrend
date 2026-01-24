@@ -447,13 +447,14 @@ export class SocialPostSelector {
         translatedTitle: true,
         summary: true,
         publishedAt: true,
+        createdAt: true,
       },
     });
 
     return articles.map((a) => ({
       title: a.translatedTitle || a.title,
       summary: a.summary || '',
-      publishedAt: a.publishedAt,
+      publishedAt: a.publishedAt ?? a.createdAt,
     }));
   }
 

@@ -198,8 +198,10 @@ export function SocialPostsDashboard() {
   // Delete single post
   const handleDelete = useCallback(
     async (id: string) => {
+      if (isProcessing) return;
       if (!window.confirm('この投稿を削除しますか？')) return;
 
+      setIsProcessing(true);
       try {
         const res = await fetch(`/api/admin/social-posts/${id}`, {
           method: 'DELETE',
@@ -207,13 +209,15 @@ export function SocialPostsDashboard() {
 
         if (!res.ok) throw new Error('Delete failed');
 
-        mutate();
+        await mutate();
       } catch (error) {
         console.error('Delete failed:', error);
         alert('削除に失敗しました');
+      } finally {
+        setIsProcessing(false);
       }
     },
-    [mutate]
+    [mutate, isProcessing]
   );
 
   // Copy to clipboard
