@@ -16,21 +16,33 @@ import type {
 // Constants
 // =============================================================================
 
-export const X_POST_PROMPT_VERSION = 'v1.4.0';
+export const X_POST_PROMPT_VERSION = 'v1.5.0';
 
 /**
- * 短縮専用プロンプト（文体変換なし）
+ * X投稿用に要約を最適化するプロンプト
+ * - 数値/効果を先頭に移動
+ * - 主語は後回し
+ * - 文体は変えない
  */
-export function buildShortenPrompt(text: string, maxLength: number): string {
+export function buildOptimizeForXPrompt(
+  summary: string,
+  maxLength: number
+): string {
   return `
-以下のテキストを${maxLength}字以内に短縮せよ。
-- 文体は変えない
-- 意味を保つ
-- 省略可能な修飾語を削る
+以下の要約をX投稿用に冒頭を最適化せよ。
 
-テキスト: ${text}
+## ルール
+- 数値や効果・価値を先頭に移動（例: 「10.2倍高速化。NVIDIAが...」）
+- 主語（企業名・サービス名）は2文目以降に
+- 文体・内容は変えない
+- ${maxLength}字以内に収める
+- 煽り語・感想は追加しない
 
-出力: 短縮後のテキストのみ（JSON不要）
+## 元の要約
+${summary}
+
+## 出力
+最適化後のテキストのみ（JSON不要、説明不要）
 `.trim();
 }
 

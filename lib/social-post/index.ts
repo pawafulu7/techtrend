@@ -82,7 +82,7 @@ export {
   buildArticlePrompt,
   buildDailyTrendPrompt,
   buildDiffSummaryPrompt,
-  buildShortenPrompt,
+  buildOptimizeForXPrompt,
   createXPostExtractionConfig,
 } from './prompts/x-post-prompt';
 
