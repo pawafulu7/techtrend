@@ -301,19 +301,12 @@ export function createXPostExtractionConfig() {
     schema: XPostOutputSchema,
     buildPrompt: (input: unknown) => String(input),
     parseResponse: (response: string): XPostOutputType => {
-      // マークダウンコードブロック内のJSONを優先的に抽出
-      const codeBlockMatch = response.match(
-        /```(?:json)?\s*(\{[\s\S]*?\})\s*```/
-      );
+      // コードブロックを検出して内容を抽出
+      const codeBlockMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      const textToExtract = codeBlockMatch ? codeBlockMatch[1] : response;
 
-      let jsonString: string | null = null;
-
-      if (codeBlockMatch) {
-        jsonString = codeBlockMatch[1];
-      } else {
-        // バランスブラケット抽出: 最初の { から対応する } まで
-        jsonString = extractBalancedJson(response);
-      }
+      // バランスブラケット抽出（ネストJSONにも対応）
+      const jsonString = extractBalancedJson(textToExtract);
 
       if (!jsonString) {
         throw new Error('No JSON found in response');

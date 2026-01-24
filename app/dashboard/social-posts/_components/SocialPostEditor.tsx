@@ -174,7 +174,7 @@ export function SocialPostEditor({ postId }: SocialPostEditorProps) {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>投稿を編集</span>
-              <StatusBadge status={post.status} />
+              <StatusBadge status={status} />
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
