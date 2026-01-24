@@ -51,17 +51,19 @@ export function SocialPostEditor({ postId }: SocialPostEditorProps) {
   const [status, setStatus] = useState<SocialPostStatus>('DRAFT');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [initializedPostId, setInitializedPostId] = useState<string | null>(
+    null
+  );
 
-  // Initialize form when data loads (only once to prevent overwriting user edits)
+  // Initialize form when data loads or postId changes
   useEffect(() => {
-    if (post && !isInitialized) {
+    if (post && initializedPostId !== postId) {
       setContent(post.content);
       setHashtags(post.hashtags.join(' '));
       setStatus(post.status);
-      setIsInitialized(true);
+      setInitializedPostId(postId);
     }
-  }, [post, isInitialized]);
+  }, [post, postId, initializedPostId]);
 
   // Calculate character count
   const effectiveLength = calculateEffectiveLength(

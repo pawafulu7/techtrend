@@ -245,8 +245,15 @@ export function createXPostExtractionConfig() {
     schema: XPostOutputSchema,
     buildPrompt: (input: unknown) => String(input),
     parseResponse: (response: string): XPostOutputType => {
-      // JSONブロックを抽出（非貪欲マッチングで最初のJSONオブジェクトのみ）
-      const jsonMatch = response.match(/\{[\s\S]*?\}/);
+      // マークダウンコードブロック内のJSONを優先的に抽出
+      const codeBlockMatch = response.match(
+        /```(?:json)?\s*(\{[\s\S]*?\})\s*```/
+      );
+      // コードブロックがなければ貪欲マッチングで完全なJSONオブジェクトを取得
+      const jsonMatch = codeBlockMatch
+        ? [codeBlockMatch[1]]
+        : response.match(/\{[\s\S]*\}/);
+
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }

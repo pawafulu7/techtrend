@@ -122,11 +122,13 @@ export class SocialPostService {
 
   /**
    * 新規作成
+   * @param options.skipAuditLog - trueの場合、監査ログを作成しない（generate()から呼ばれる場合に使用）
    */
   async create(
     data: CreateSocialPostInput,
     userId: string,
-    metadata?: AuditMetadata
+    metadata?: AuditMetadata,
+    options?: { skipAuditLog?: boolean }
   ): Promise<SocialPost> {
     const contentHash = this.generateContentHash(data.content);
 
@@ -158,14 +160,16 @@ export class SocialPostService {
         },
       });
 
-      await this.createAuditLog(
-        post.id,
-        'CREATE',
-        userId,
-        null,
-        post,
-        metadata
-      );
+      if (!options?.skipAuditLog) {
+        await this.createAuditLog(
+          post.id,
+          'CREATE',
+          userId,
+          null,
+          post,
+          metadata
+        );
+      }
 
       logger.info({ postId: post.id, userId }, 'SocialPost created');
 
@@ -335,7 +339,8 @@ export class SocialPostService {
             contextSummary: generated.contextSummary,
           },
           userId,
-          metadata
+          metadata,
+          { skipAuditLog: true } // GENERATEアクションで記録するため
         );
 
         await this.createAuditLog(post.id, 'GENERATE', userId, null, post, {
@@ -377,7 +382,9 @@ export class SocialPostService {
             promptVersion: generated.promptVersion,
             contextSummary: generated.contextSummary,
           },
-          'system'
+          'system',
+          undefined,
+          { skipAuditLog: true } // GENERATEアクションで記録するため
         );
 
         await this.createAuditLog(post.id, 'GENERATE', 'system', null, post, {

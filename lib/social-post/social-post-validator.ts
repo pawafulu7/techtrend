@@ -99,11 +99,19 @@ export type SocialPostGenerateInput = z.infer<typeof SocialPostGenerateSchema>;
 /**
  * 一括操作スキーマ
  */
-export const SocialPostBulkSchema = z.object({
-  action: z.enum(['changeStatus', 'delete']),
-  ids: z.array(z.string()).min(1, 'At least one ID is required').max(50),
-  status: z.enum(['DRAFT', 'REVIEWED', 'ARCHIVED']).optional(),
-});
+export const SocialPostBulkSchema = z
+  .object({
+    action: z.enum(['changeStatus', 'delete']),
+    ids: z.array(z.string()).min(1, 'At least one ID is required').max(50),
+    status: z.enum(['DRAFT', 'REVIEWED', 'ARCHIVED']).optional(),
+  })
+  .refine(
+    (data) => data.action !== 'changeStatus' || data.status !== undefined,
+    {
+      message: 'Status is required when action is changeStatus',
+      path: ['status'],
+    }
+  );
 
 export type SocialPostBulkInput = z.infer<typeof SocialPostBulkSchema>;
 
@@ -155,10 +163,11 @@ const FORBIDDEN_PATTERNS: RegExp[] = [
 
 /**
  * 不審なURLパターン
+ * Note: t.coはX/Twitter公式の短縮URLのため除外
  */
 const SUSPICIOUS_URL_PATTERNS: RegExp[] = [
   /\.(exe|bat|cmd|sh|ps1|vbs|msi)$/i,
-  /bit\.ly|tinyurl|t\.co/i, // 短縮URLは手動確認が必要
+  /bit\.ly|tinyurl/i, // 短縮URLは手動確認が必要（t.coはX公式のため除外）
 ];
 
 /**
