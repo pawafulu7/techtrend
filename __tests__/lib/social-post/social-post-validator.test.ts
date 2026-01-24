@@ -68,6 +68,8 @@ describe('SocialPostValidator', () => {
           hashtags: ['#Test'],
           sourceUrls: ['https://example.com'],
           source,
+          // non-MANUALソースにはsourceIdsが必須
+          ...(source !== 'MANUAL' && { sourceIds: ['source-1'] }),
         };
 
         const result = SocialPostCreateSchema.safeParse(input);
@@ -119,6 +121,7 @@ describe('SocialPostValidator', () => {
           hashtags: ['#Test'],
           sourceUrls: [url],
           source: 'ARTICLE',
+          sourceIds: ['article-1'],
         };
 
         const result = SocialPostCreateSchema.safeParse(validInput);
@@ -151,7 +154,12 @@ describe('SocialPostValidator', () => {
       const validStatuses = ['DRAFT', 'REVIEWED', 'SCHEDULED', 'ARCHIVED'];
 
       validStatuses.forEach((status) => {
-        const result = SocialPostUpdateSchema.safeParse({ status });
+        // SCHEDULED requires scheduledAt
+        const input =
+          status === 'SCHEDULED'
+            ? { status, scheduledAt: '2024-12-25T10:00:00.000Z' }
+            : { status };
+        const result = SocialPostUpdateSchema.safeParse(input);
         expect(result.success).toBe(true);
       });
     });

@@ -33,44 +33,55 @@ const mockService = {
   getStatusCounts: jest.fn(),
 };
 
-jest.mock('@/lib/social-post', () => ({
-  getSocialPostService: () => mockService,
-  SocialPostFiltersSchema: {
-    safeParse: jest.fn().mockReturnValue({
-      success: true,
-      data: { page: 1, limit: 20 },
-    }),
-  },
-  SocialPostCreateSchema: {
-    safeParse: jest.fn().mockReturnValue({
-      success: true,
-      data: {
-        content: 'Test content',
-        hashtags: ['#Test'],
-        sourceUrls: ['https://example.com'],
-        source: 'MANUAL',
-      },
-    }),
-  },
-  SocialPostUpdateSchema: {
-    safeParse: jest.fn().mockReturnValue({
-      success: true,
-      data: { content: 'Updated content' },
-    }),
-  },
-  SocialPostGenerateSchema: {
-    safeParse: jest.fn().mockReturnValue({
-      success: true,
-      data: { source: 'ARTICLE', sourceIds: ['article-1'] },
-    }),
-  },
-  SocialPostBulkSchema: {
-    safeParse: jest.fn().mockReturnValue({
-      success: true,
-      data: { action: 'delete', ids: ['post-1'] },
-    }),
-  },
-}));
+// Import actual error classes for instanceof checks
+const {
+  NotFoundError,
+  DuplicateContentError,
+  PromptInjectionError,
+} = jest.requireActual('@/lib/social-post');
+
+jest.mock('@/lib/social-post', () => {
+  const actual = jest.requireActual('@/lib/social-post');
+  return {
+    ...actual,
+    getSocialPostService: () => mockService,
+    SocialPostFiltersSchema: {
+      safeParse: jest.fn().mockReturnValue({
+        success: true,
+        data: { page: 1, limit: 20 },
+      }),
+    },
+    SocialPostCreateSchema: {
+      safeParse: jest.fn().mockReturnValue({
+        success: true,
+        data: {
+          content: 'Test content',
+          hashtags: ['#Test'],
+          sourceUrls: ['https://example.com'],
+          source: 'MANUAL',
+        },
+      }),
+    },
+    SocialPostUpdateSchema: {
+      safeParse: jest.fn().mockReturnValue({
+        success: true,
+        data: { content: 'Updated content' },
+      }),
+    },
+    SocialPostGenerateSchema: {
+      safeParse: jest.fn().mockReturnValue({
+        success: true,
+        data: { source: 'ARTICLE', sourceIds: ['article-1'] },
+      }),
+    },
+    SocialPostBulkSchema: {
+      safeParse: jest.fn().mockReturnValue({
+        success: true,
+        data: { action: 'delete', ids: ['post-1'] },
+      }),
+    },
+  };
+});
 
 // Mock logger
 const mockLogger = {
@@ -185,7 +196,7 @@ describe('Social Posts API', () => {
     it('should return 409 for duplicate content', async () => {
       const { auth } = require('@/lib/auth/auth');
       (auth as jest.Mock).mockResolvedValue(adminSession);
-      mockService.create.mockRejectedValue(new Error('Duplicate content detected'));
+      mockService.create.mockRejectedValue(new DuplicateContentError());
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts', {
         method: 'POST',
@@ -256,7 +267,7 @@ describe('Social Posts API', () => {
     it('should return 404 when updating non-existent post', async () => {
       const { auth } = require('@/lib/auth/auth');
       (auth as jest.Mock).mockResolvedValue(adminSession);
-      mockService.update.mockRejectedValue(new Error('SocialPost not found: non-existent'));
+      mockService.update.mockRejectedValue(new NotFoundError('SocialPost', 'non-existent'));
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/non-existent', {
         method: 'PATCH',
@@ -290,7 +301,7 @@ describe('Social Posts API', () => {
     it('should return 404 when deleting non-existent post', async () => {
       const { auth } = require('@/lib/auth/auth');
       (auth as jest.Mock).mockResolvedValue(adminSession);
-      mockService.delete.mockRejectedValue(new Error('SocialPost not found: non-existent'));
+      mockService.delete.mockRejectedValue(new NotFoundError('SocialPost', 'non-existent'));
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/non-existent', {
         method: 'DELETE',
@@ -308,7 +319,7 @@ describe('Social Posts API', () => {
     it('should generate posts for admin', async () => {
       const { auth } = require('@/lib/auth/auth');
       (auth as jest.Mock).mockResolvedValue(adminSession);
-      mockService.generate.mockResolvedValue([mockPost]);
+      mockService.generate.mockResolvedValue({ succeeded: [mockPost], failed: [] });
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/generate', {
         method: 'POST',
@@ -330,7 +341,7 @@ describe('Social Posts API', () => {
     it('should return 404 when source not found', async () => {
       const { auth } = require('@/lib/auth/auth');
       (auth as jest.Mock).mockResolvedValue(adminSession);
-      mockService.generate.mockRejectedValue(new Error('Article not found'));
+      mockService.generate.mockRejectedValue(new NotFoundError('Article', 'non-existent'));
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/generate', {
         method: 'POST',
