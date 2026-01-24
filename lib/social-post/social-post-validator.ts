@@ -290,8 +290,10 @@ export function isValidForXPost(
   // コンテンツ検証（文字数チェックはすでに行ったのでスキップ）
   const contentValidation = validateGeneratedContent(content);
   // 文字数関連のエラーを除外して追加（重複防止）
+  // 明示的なパターンマッチで除外対象を特定
+  const lengthErrorPatterns = [/exceeds \d+ characters/, /too short.*minimum/];
   const nonLengthErrors = contentValidation.errors.filter(
-    (err) => !err.includes('characters')
+    (err) => !lengthErrorPatterns.some((pattern) => pattern.test(err))
   );
   errors.push(...nonLengthErrors);
 
