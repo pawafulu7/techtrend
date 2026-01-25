@@ -136,13 +136,14 @@ export class SocialPostSelector {
     const postedArticleIds = await this.getPostedSourceIds('ARTICLE');
 
     // 候補記事を取得（タグ情報も含める）
+    // detailedSummaryまたはsummaryがあればOK
     const candidates = await this.prisma.article.findMany({
       where: {
         id: { notIn: postedArticleIds },
         qualityScore: { gte: opts.minQualityScore },
         createdAt: { gte: cutoffTime },
         skipReason: null,
-        summary: { not: null },
+        OR: [{ detailedSummary: { not: null } }, { summary: { not: null } }],
       },
       include: {
         tags: { select: { name: true } },
