@@ -10,7 +10,10 @@ const RateLimitConfigSchemaInternal = z.object({
   points: z.number().int().positive(),
   duration: z.number().int().positive(),
   blockDuration: z.number().int().nonnegative().optional().default(0),
-  keyStrategy: z.enum(['user', 'session', 'ip', 'anonymous']).optional().default('ip'),
+  keyStrategy: z
+    .enum(['user', 'session', 'ip', 'anonymous'])
+    .optional()
+    .default('ip'),
   notes: z.string().optional(),
   telemetryEvent: z.string().optional(),
 });
@@ -189,8 +192,34 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     telemetryEvent: 'ratelimit.public.health',
   },
 
+  // Admin Operations (Social Post Management)
+  'admin:social-post-generate': {
+    points: 5,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'AI generation for social posts (5 per minute)',
+    telemetryEvent: 'ratelimit.admin.social-post-generate',
+  },
+  'admin:social-post-bulk': {
+    points: 10,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'Bulk operations for social posts (10 per minute)',
+    telemetryEvent: 'ratelimit.admin.social-post-bulk',
+  },
+  'admin:social-post-write': {
+    points: 20,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'Social post create/update/delete (20 per minute)',
+    telemetryEvent: 'ratelimit.admin.social-post-write',
+  },
+
   // Default Catch-All - No block
-  'default': {
+  default: {
     points: 100,
     duration: 60,
     blockDuration: 0,
@@ -225,7 +254,10 @@ export function getRateLimitConfig(key: string): RateLimitConfig {
         return RateLimitConfigSchema.parse(merged);
       }
     } catch (error) {
-      logger.error({ error: sanitizeError(error) }, 'Failed to parse/validate RATE_LIMIT_OVERRIDES');
+      logger.error(
+        { error: sanitizeError(error) },
+        'Failed to parse/validate RATE_LIMIT_OVERRIDES'
+      );
     }
   }
 

@@ -498,3 +498,85 @@ model CodeTip {
   @@index([quality(sort: Desc)], map: "idx_code_tip_quality")
   @@index([extractedAt(sort: Desc)], map: "idx_code_tip_extracted_at")
 }
+
+// =============================================================================
+// Social Post: X (Twitter) post content management (Admin only)
+// =============================================================================
+
+enum SocialPostStatus {
+  DRAFT // Generated draft
+  REVIEWED // Admin reviewed
+  SCHEDULED // Scheduled for posting
+  POSTING // Currently posting
+  POSTED // Posted successfully
+  FAILED // Posting failed
+  ARCHIVED // Archived (not to be posted)
+}
+
+enum SocialPostSource {
+  ARTICLE // Generated from individual article
+  DAILY_TREND // Generated from Daily Trend
+  DIFF_SUMMARY // Generated from Diff Summary
+  OPINION // Generated from trend analysis (personal opinion style)
+  MANUAL // Manually created
+}
+
+model SocialPost {
+  id              String           @id @default(cuid())
+  // Content
+  content         String           @db.Text // Post body (~100 chars)
+  originalContent String?          @db.Text // Pre-edit content (for audit)
+  hashtags        String[] // Multiple hashtags support
+  sourceUrls      String[] // Source URLs (multiple support)
+  // Source info
+  source          SocialPostSource
+  sourceIds       String[] // Reference IDs (multiple support)
+  // Duplicate prevention
+  contentHash     String? // Content hash for duplicate detection
+  // Status
+  status          SocialPostStatus @default(DRAFT)
+  // AI generation metadata
+  modelVersion    String?
+  promptVersion   String?
+  contextSummary  String?          @db.Text // Context summary at generation (safe format)
+  // Schedule & posting
+  scheduledAt     DateTime?        @db.Timestamptz(6)
+  postedAt        DateTime?        @db.Timestamptz(6)
+  externalPostId  String? // X post ID
+  postError       String?          @db.Text // Posting error details
+  // Audit info
+  createdBy       String? // Creator ID
+  reviewedBy      String? // Reviewer ID
+  reviewedAt      DateTime?        @db.Timestamptz(6)
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(6)
+  // Relations
+  auditLogs       SocialPostAuditLog[]
+
+  @@unique([contentHash], map: "uq_social_post_content_hash")
+  @@index([status, createdAt(sort: Desc)], map: "idx_social_post_status_created")
+  @@index([source], map: "idx_social_post_source")
+  @@index([scheduledAt], map: "idx_social_post_scheduled_at")
+  @@index([postedAt(sort: Desc)], map: "idx_social_post_posted_at")
+  @@index([createdBy], map: "idx_social_post_created_by")
+}
+
+// Audit log for social posts
+model SocialPostAuditLog {
+  id           String     @id @default(cuid())
+  socialPostId String? // Nullable to preserve audit logs after post deletion
+  action       String // CREATE, UPDATE, DELETE, GENERATE, PUBLISH, REVIEW
+  userId       String? // Operator ID
+  previousData Json? // Data before change
+  newData      Json? // Data after change
+  ipAddress    String? // Client IP (Note: Consider anonymization for GDPR/CCPA compliance)
+  userAgent    String? // Browser info (Note: Consider retention policy for PII)
+  metadata     Json? // Additional info
+  createdAt    DateTime   @default(now()) @db.Timestamptz(6)
+
+  socialPost SocialPost? @relation(fields: [socialPostId], references: [id], onDelete: SetNull)
+
+  @@index([socialPostId, createdAt(sort: Desc)], map: "idx_social_post_audit_log")
+  @@index([userId], map: "idx_social_post_audit_user")
+  @@index([action], map: "idx_social_post_audit_action")
+}

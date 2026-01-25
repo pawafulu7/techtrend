@@ -21,6 +21,7 @@ import {
   Loader2,
   BarChart3,
   Cog,
+  MessageSquare,
 } from 'lucide-react';
 
 export function UserMenu() {
@@ -58,23 +59,24 @@ export function UserMenu() {
     );
   }
 
-  const userInitial = session.user?.name?.charAt(0)?.toUpperCase() || 
-                      session.user?.email?.charAt(0)?.toUpperCase() || 
-                      'U';
+  const userInitial =
+    session.user?.name?.charAt(0)?.toUpperCase() ||
+    session.user?.email?.charAt(0)?.toUpperCase() ||
+    'U';
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           className="relative h-10 w-10 rounded-full"
           data-testid="user-menu-trigger"
           aria-label="ユーザーメニュー"
         >
           <Avatar className="h-10 w-10">
-            <AvatarImage 
-              src={session.user?.image || ''} 
-              alt={session.user?.name || 'User'} 
+            <AvatarImage
+              src={session.user?.image || ''}
+              alt={session.user?.name || 'User'}
             />
             <AvatarFallback>{userInitial}</AvatarFallback>
           </Avatar>
@@ -83,10 +85,10 @@ export function UserMenu() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">
+            <p className="text-sm leading-none font-medium">
               {session.user?.name || 'ユーザー'}
             </p>
-            <p className="text-xs leading-none text-muted-foreground">
+            <p className="text-muted-foreground text-xs leading-none">
               {session.user?.email}
             </p>
           </div>
@@ -113,7 +115,7 @@ export function UserMenu() {
         {session.user?.role === 'admin' && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-xs text-muted-foreground">
+            <DropdownMenuLabel className="text-muted-foreground text-xs">
               管理者メニュー
             </DropdownMenuLabel>
             <DropdownMenuItem asChild>
@@ -126,6 +128,12 @@ export function UserMenu() {
               <Link href="/dashboard/jobs" className="cursor-pointer">
                 <Cog className="mr-2 h-4 w-4" />
                 ジョブ管理
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/social-posts" className="cursor-pointer">
+                <MessageSquare className="mr-2 h-4 w-4" />
+                SNS投稿管理
               </Link>
             </DropdownMenuItem>
           </>
