@@ -1,9 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { isRunningInCI, getTimeout, waitForArticles } from '../../e2e/helpers/wait-utils';
 
-// CI環境の検出
-const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
-
 // CI環境ではVRTテストをスキップ（環境依存のため）
 test.describe('Visual Regression Tests', () => {
   test.beforeEach(async ({ page }) => {
@@ -207,7 +204,11 @@ test.describe('Visual Regression Tests', () => {
 });
 
 // CI環境ではVRTテストをスキップ（環境依存のため）
-test.describe.skip(isCI, 'レスポンシブデザインのVRT', () => {
+test.describe('レスポンシブデザインのVRT', () => {
+  test.beforeEach(() => {
+    test.skip(isRunningInCI(), 'VRT is environment-dependent, skipping in CI');
+  });
+
   const viewports = [
     { name: 'desktop', width: 1920, height: 1080 },
     { name: 'tablet', width: 768, height: 1024 },
