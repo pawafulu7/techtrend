@@ -5,8 +5,9 @@ import { isRunningInCI, getTimeout, waitForArticles } from '../../e2e/helpers/wa
 const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
 
 // CI環境ではVRTテストをスキップ（環境依存のため）
-test.describe.skip(isRunningInCI(), 'Visual Regression Tests', () => {
+test.describe('Visual Regression Tests', () => {
   test.beforeEach(async ({ page }) => {
+    test.skip(isRunningInCI(), 'VRT is environment-dependent, skipping in CI');
     // アニメーションを無効化
     await page.addStyleTag({
       content: `
