@@ -411,8 +411,7 @@ export function Filters({
       // 明示的に「何も選択しない」状態を示す
       params.set('sources', 'none');
     } else if (sourceIds.length === sources.length) {
-      // 全選択の場合、明示的に'sources=all'を設定
-      // Next.js App Routerの再レンダリングを確実にトリガーする
+      // 全選択の場合は明示的に'all'を設定
       params.set('sources', 'all');
     } else {
       // 一部のソースが選択されている

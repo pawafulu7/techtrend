@@ -172,26 +172,19 @@ export function HomeClientInfinite({
     // URLにsourcesパラメータがある場合は、それを使用
     if (hasSourcesParam) {
       const sourcesValue = searchParams.get('sources')!;
-      // 'all'の場合はパラメータを設定しない（全選択として扱う）
-      if (sourcesValue !== 'all') {
-        params.sources = sourcesValue;
-      }
+      // URLの値をそのままAPIに送る（all/none含む）
+      params.sources = sourcesValue;
     } else if (hasSourceIdParam) {
       params.sourceId = searchParams.get('sourceId')!;
-    }
-
-    if (!hasSourcesParam && !hasSourceIdParam) {
+    } else if (_initialSourceIds !== undefined) {
       // Cookie由来のinitialSourceIdsを使用
-      if (_initialSourceIds !== undefined) {
-        // 空配列の場合は明示的に 'none' を設定（全ソース解除状態）
-        if (_initialSourceIds.length === 0) {
-          params.sources = 'none';
-        } else {
-          params.sources = _initialSourceIds.join(',');
-        }
+      if (_initialSourceIds.length === 0) {
+        params.sources = 'none';
+      } else {
+        params.sources = _initialSourceIds.join(',');
       }
-      // それ以外の場合は全選択として扱う（params.sourcesを設定しない）
     }
+    // URLパラメータなし＆Cookie値なしの場合はsourcesを設定しない（全選択）
 
     // 記事詳細から戻ってきた場合のフラグを追加
     if (isReturningFromArticle) {

@@ -600,6 +600,7 @@ describe('/api/articles - Extended Tests', () => {
 
       // 空白のみのタグリストは条件に含まれない
       // デフォルトでコンテンツフィルタリングのみ適用される（excludeLowQualityはデフォルトfalse）
+      // source.enabled=true は常に適用される（無効化されたソースを除外）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
@@ -610,7 +611,8 @@ describe('/api/articles - Extended Tests', () => {
                   { content: { not: '' } }
                 ]
               }
-            ]
+            ],
+            source: { enabled: true }
           }
         })
       );

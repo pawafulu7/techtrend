@@ -215,6 +215,9 @@ export class ArticleWhereClauseBuilder {
     sources: string | undefined,
     sourceId: string | undefined
   ): Promise<{ builder: ArticleWhereClauseBuilder; emptyResult: boolean }> {
+    // Always filter to enabled sources only (disabled sources should never appear in public API)
+    this.where.source = { enabled: true };
+
     if (sources) {
       // Normalize sources for case-insensitive comparison
       const normalized = sources.trim().toLowerCase();
@@ -224,9 +227,9 @@ export class ArticleWhereClauseBuilder {
         return { builder: this, emptyResult: true };
       }
 
-      // 'all' means no source filtering - return all sources
+      // 'all' means no source filtering - return all enabled sources
       if (normalized === 'all') {
-        // Don't set any sourceId filter, which means all sources are included
+        // enabled filter already applied at method start
         return { builder: this, emptyResult: false };
       }
 
