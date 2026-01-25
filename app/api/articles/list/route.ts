@@ -194,10 +194,10 @@ export async function GET(request: NextRequest) {
     // Legacy cache entries may lack cursor metadata; treat them as stale so pageInfo is rebuilt
     const needsPageInfoHydration = Boolean(
       cachedResult &&
-        useCursor &&
-        (!cachedResult.pageInfo ||
-          typeof cachedResult.pageInfo.hasNextPage === 'undefined' ||
-          typeof cachedResult.pageInfo.hasPreviousPage === 'undefined')
+      useCursor &&
+      (!cachedResult.pageInfo ||
+        typeof cachedResult.pageInfo.hasNextPage === 'undefined' ||
+        typeof cachedResult.pageInfo.hasPreviousPage === 'undefined')
     );
 
     let result;
@@ -362,15 +362,25 @@ export async function GET(request: NextRequest) {
 
       // Apply source filter
       if (sources || sourceId) {
-        const sourceIds = sources
-          ? sources.split(',').filter((id) => id.trim())
-          : [sourceId!];
+        // Handle special values (case-insensitive)
+        const normalizedSourcesValue = sources?.trim().toLowerCase();
 
-        if (sourceIds.length > 0) {
-          where.sourceId = {
-            in: sourceIds,
-          };
+        if (normalizedSourcesValue === 'none') {
+          // No sources selected - return empty result
+          where.sourceId = { in: [] };
+        } else if (normalizedSourcesValue !== 'all') {
+          // Specific sources or sourceId - apply filter
+          const sourceIds = sources
+            ? sources.split(',').filter((id) => id.trim())
+            : [sourceId!];
+
+          if (sourceIds.length > 0) {
+            where.sourceId = {
+              in: sourceIds,
+            };
+          }
         }
+        // 'all' case: Don't set sourceId filter (include all sources)
       }
 
       // Apply exclude sources filter (e.g., exclude arXiv papers from home page)
