@@ -230,9 +230,11 @@ export class ArticleWhereClauseBuilder {
         return { builder: this, emptyResult: false };
       }
 
-      const sourceList = normalized
+      // Special values checked against normalized, but preserve original case for IDs
+      const sourceList = sources
+        .trim()
         .split(',')
-        .map((s) => s.trim())
+        .map((s) => s.trim().toLowerCase())
         .filter(Boolean);
 
       if (sourceList.length > 0) {
