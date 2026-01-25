@@ -14,17 +14,30 @@ async function clearRedisCache(): Promise<void> {
       ? 'redis://:redis_test_password@redis-test:6379'
       : 'redis://:redis_test_password@localhost:6380');
 
+  let redis: Redis | null = null;
   try {
-    const redis = new Redis(redisUrl, {
+    redis = new Redis(redisUrl, {
       maxRetriesPerRequest: 3,
       connectTimeout: 5000,
+      lazyConnect: true,
     });
+
+    // Suppress unhandled error events (connection failures are caught below)
+    redis.on('error', () => {
+      // Intentionally empty - errors are handled in the catch block
+    });
+
+    await redis.connect();
     await redis.flushdb();
-    console.log('✅ Redis cache cleared');
+    console.log('Redis cache cleared');
     await redis.quit();
   } catch (error) {
-    console.warn('⚠️ Failed to clear Redis cache (this is OK if Redis is not running):',
+    console.warn('Failed to clear Redis cache (this is OK if Redis is not running):',
       error instanceof Error ? error.message : error);
+    // Ensure cleanup even on error
+    if (redis) {
+      redis.disconnect();
+    }
   }
 }
 
