@@ -277,7 +277,7 @@
     "tsx": "^4.20.5",
     "tw-animate-css": "^1.3.8",
     "typescript": "^5.8.3",
-    "undici": "^7.16.0",
+    "undici": "^7.18.2",
     "web-streams-polyfill": "^4.2.0",
     "whatwg-fetch": "^3.6.20"
   },
@@ -286,6 +286,9 @@
     "glob": "11.1.0",
     "test-exclude": {
       "glob": "7.2.3"
-    }
+    },
+    "lodash": "4.17.23",
+    "lodash-es": "4.17.23",
+    "tar": "7.5.4"
   }
 }
