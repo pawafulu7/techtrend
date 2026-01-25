@@ -13,12 +13,13 @@ import logger from '@/lib/logger';
 import type { GeneratedContent } from './types';
 import { SocialPostSelector } from './social-post-selector';
 import {
+  buildArticlePostPrompt,
   buildDailyTrendPrompt,
   buildDiffSummaryPrompt,
   buildOpinionPrompt,
-  buildOptimizeForXPrompt,
   createXPostExtractionConfig,
   X_POST_PROMPT_VERSION,
+  XPostWithStyleSchema,
 } from './prompts/x-post-prompt';
 import { validateGeneratedContent } from './social-post-validator';
 import {
@@ -39,50 +40,83 @@ export class SocialPostGenerator {
 
   /**
    * 記事からX投稿を生成
-   * - 要約をX投稿用に最適化（数値/効果を先頭に）
+   * - detailedSummaryを優先使用（なければsummaryにフォールバック）
+   * - SREエンジニアペルソナで3スタイルから自動選択
    * - 120字以内に収める
    */
-  async generateFromArticle(article: Article): Promise<GeneratedContent> {
-    const summary = article.summary || '';
-    let comment: string;
-    let modelVersion = 'unknown';
-
-    // AIで要約をX投稿用に最適化（冒頭に価値/数値を移動）
-    const prompt = buildOptimizeForXPrompt(
-      summary,
-      SocialPostGenerator.MAX_POST_LENGTH
-    );
-    const sanitizedPrompt = this.sanitizeForPrompt(prompt);
-
-    const pipeline = getLLMExtractionPipeline();
-    const result = await pipeline.extractRaw(sanitizedPrompt, {
-      maxOutputTokens: 200,
-      temperature: 0.3, // 低めで安定した並べ替え
+  async generateFromArticle(
+    article: Article & { tags?: { name: string }[] }
+  ): Promise<GeneratedContent> {
+    // detailedSummaryを優先、なければsummaryを使用
+    const prompt = buildArticlePostPrompt({
+      title: article.title,
+      detailedSummary: article.detailedSummary || null,
+      summary: article.summary || null,
+      category: article.category || null,
+      tags: article.tags?.map((t) => t.name) || [],
     });
 
-    if (!result.success || !result.text) {
-      // 最適化失敗時は要約をそのまま使用（長ければ切る）
-      comment = summary.slice(0, SocialPostGenerator.MAX_POST_LENGTH);
-      modelVersion = 'none';
+    const sanitizedPrompt = this.sanitizeForPrompt(prompt);
+    const pipeline = getLLMExtractionPipeline();
+
+    // スタイル付きのスキーマを使用
+    const config = {
+      promptVersion: X_POST_PROMPT_VERSION,
+      schema: XPostWithStyleSchema,
+      buildPrompt: (input: unknown) => String(input),
+      parseResponse: (response: string) => {
+        // コードブロックを検出して内容を抽出
+        const codeBlockMatch = response.match(
+          /```(?:json)?\s*([\s\S]*?)\s*```/
+        );
+        const textToExtract = codeBlockMatch ? codeBlockMatch[1] : response;
+
+        // JSON部分を抽出
+        const jsonMatch = textToExtract.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('No JSON found in response');
+        }
+
+        const parsed = JSON.parse(jsonMatch[0]);
+        const result = XPostWithStyleSchema.safeParse(parsed);
+        if (!result.success) {
+          throw new Error(
+            `Schema validation failed: ${result.error.errors.map((e) => e.message).join(', ')}`
+          );
+        }
+        return result.data;
+      },
+    };
+
+    const result = await pipeline.extract(sanitizedPrompt, config, {
+      maxOutputTokens: 500,
+      temperature: 0.7, // 少し創造性を持たせる
+    });
+
+    if (!result.success || !result.data) {
+      // フォールバック: 要約をそのまま使用
+      const fallbackContent = (article.summary || '').slice(
+        0,
+        SocialPostGenerator.MAX_POST_LENGTH
+      );
       logger.warn(
         { articleId: article.id, error: result.error },
-        'AI optimization failed, using original summary'
+        'AI generation failed, using fallback'
       );
-    } else {
-      comment = result.text.trim();
-      modelVersion = result.modelVersion || 'unknown';
-      logger.info(
-        {
-          articleId: article.id,
-          original: summary.length,
-          optimized: comment.length,
-        },
-        'Summary optimized for X'
-      );
+      return {
+        comment: fallbackContent,
+        sourceUrls: [article.url],
+        modelVersion: 'none',
+        promptVersion: X_POST_PROMPT_VERSION,
+        contextSummary: JSON.stringify({
+          articleTitle: article.title.slice(0, 100),
+          category: article.category,
+          fallback: true,
+        }),
+      };
     }
 
-    // 出力検証
-    const validation = validateGeneratedContent(comment);
+    const validation = validateGeneratedContent(result.data.comment);
     if (!validation.valid) {
       logger.warn(
         { articleId: article.id, errors: validation.errors },
@@ -90,14 +124,24 @@ export class SocialPostGenerator {
       );
     }
 
+    logger.info(
+      {
+        articleId: article.id,
+        style: result.data.style,
+        length: result.data.comment.length,
+      },
+      'X post generated with new prompt'
+    );
+
     return {
-      comment,
+      comment: result.data.comment,
       sourceUrls: [article.url],
-      modelVersion,
+      modelVersion: result.modelVersion || 'unknown',
       promptVersion: X_POST_PROMPT_VERSION,
       contextSummary: JSON.stringify({
         articleTitle: article.title.slice(0, 100),
         category: article.category,
+        style: result.data.style,
       }),
     };
   }
