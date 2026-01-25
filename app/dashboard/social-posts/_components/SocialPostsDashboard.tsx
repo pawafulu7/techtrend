@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { SocialPostsToolbar } from './SocialPostsToolbar';
@@ -44,11 +44,11 @@ export function SocialPostsDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // URL state with validation
-  const [filters, setFilters] = useState<FiltersState>(() => {
-    const statusParam = searchParams.get('status');
-    const sourceParam = searchParams.get('source');
-    const pageParam = searchParams.get('page');
+  // Parse filters from URL search params with validation
+  const parseFilters = useCallback((params: URLSearchParams): FiltersState => {
+    const statusParam = params.get('status');
+    const sourceParam = params.get('source');
+    const pageParam = params.get('page');
 
     // Validate status parameter
     const validStatuses = [
@@ -73,6 +73,7 @@ export function SocialPostsDashboard() {
       'DAILY_TREND',
       'DIFF_SUMMARY',
       'MANUAL',
+      'OPINION',
       'all',
     ] as const;
     const source = validSources.includes(
@@ -86,7 +87,18 @@ export function SocialPostsDashboard() {
     const page = Number.isFinite(pageNum) && pageNum > 0 ? pageNum : 1;
 
     return { status, source, page };
-  });
+  }, []);
+
+  // URL state with validation
+  const [filters, setFilters] = useState<FiltersState>(() =>
+    parseFilters(new URLSearchParams(searchParams.toString()))
+  );
+
+  // Sync filters with URL changes (browser back/forward, external links)
+  useEffect(() => {
+    const parsed = parseFilters(new URLSearchParams(searchParams.toString()));
+    setFilters(parsed);
+  }, [searchParams, parseFilters]);
 
   // Local state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -116,8 +128,12 @@ export function SocialPostsDashboard() {
       const updated = { ...filters, ...newFilters };
       setFilters(updated);
 
-      // Clear selection when filters change (except page-only changes)
-      if (newFilters.status !== undefined || newFilters.source !== undefined) {
+      // Clear selection when filters change (including page changes)
+      if (
+        newFilters.status !== undefined ||
+        newFilters.source !== undefined ||
+        newFilters.page !== undefined
+      ) {
         setSelectedIds(new Set());
       }
 
