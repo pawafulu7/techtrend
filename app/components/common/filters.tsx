@@ -410,11 +410,13 @@ export function Filters({
     if (sourceIds.length === 0) {
       // 明示的に「何も選択しない」状態を示す
       params.set('sources', 'none');
-    } else if (sourceIds.length !== sources.length) {
-      // 一部のソースが選択されている場合のみ設定
+    } else if (sourceIds.length === sources.length) {
+      // 全選択の場合は明示的に'all'を設定
+      params.set('sources', 'all');
+    } else {
+      // 一部のソースが選択されている
       params.set('sources', sourceIds.join(','));
     }
-    // 全選択の場合はsourcesパラメータなし（デフォルト動作）
 
     // URLを構築（パラメータがない場合は "/" のみ）
     const newURL = params.toString() ? `/?${params.toString()}` : '/';
