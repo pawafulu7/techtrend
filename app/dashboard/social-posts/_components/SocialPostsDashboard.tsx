@@ -125,7 +125,15 @@ export function SocialPostsDashboard() {
   // Update URL when filters change
   const updateFilters = useCallback(
     (newFilters: Partial<FiltersState>) => {
-      const updated = { ...filters, ...newFilters };
+      // Reset page to 1 when status/source changes (unless page is explicitly set)
+      const updated = {
+        ...filters,
+        ...newFilters,
+        ...(newFilters.page === undefined &&
+        (newFilters.status !== undefined || newFilters.source !== undefined)
+          ? { page: 1 }
+          : {}),
+      };
       setFilters(updated);
 
       // Clear selection when filters change (including page changes)
@@ -177,6 +185,12 @@ export function SocialPostsDashboard() {
   const handleBulkAction = useCallback(
     async (action: 'changeStatus' | 'delete', status?: SocialPostStatus) => {
       if (selectedIds.size === 0 || isProcessing) return;
+
+      // Guard: changeStatus requires a valid status
+      if (action === 'changeStatus' && !status) {
+        alert('変更するステータスを選択してください');
+        return;
+      }
 
       const confirmed =
         action === 'delete'
