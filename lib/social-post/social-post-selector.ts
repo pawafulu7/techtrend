@@ -12,6 +12,7 @@ import {
   ArticleCategory,
 } from '@prisma/client';
 import type { OpinionForPrompt } from './types';
+import type { ArticleCandidatesSearchInput } from './social-post-validator';
 
 // =============================================================================
 // Constants
@@ -253,6 +254,85 @@ export class SocialPostSelector {
     return this.prisma.article.findUnique({
       where: { id },
     });
+  }
+
+
+  /**
+   * 候補記事を検索
+   * カテゴリ・キーワードでフィルタリングし、投稿候補を返す
+   */
+  async searchCandidateArticles(params: ArticleCandidatesSearchInput): Promise<
+    Array<{
+      id: string;
+      title: string;
+      translatedTitle: string | null;
+      summary: string | null;
+      category: string | null;
+      publishedAt: Date | null;
+      createdAt: Date;
+      qualityScore: number | null;
+      skipReason: string | null;
+      sourceId: string;
+      source: { name: string };
+      tags: { name: string }[];
+    }>
+  > {
+    const { category, keyword, limit = 10 } = params;
+
+    // 24時間以内の記事のみ対象
+    const now = new Date();
+    const cutoffTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // 既に投稿済みの記事IDを取得
+    const postedArticleIds = await this.getPostedSourceIds('ARTICLE');
+
+    // 検索条件を構築
+    const where: {
+      id?: { notIn: string[] };
+      qualityScore?: { gte: number };
+      createdAt?: { gte: Date };
+      skipReason?: null;
+      category?: ArticleCategory;
+      OR?: Array<{
+        title?: { contains: string; mode: 'insensitive' };
+        translatedTitle?: { contains: string; mode: 'insensitive' };
+        summary?: { contains: string; mode: 'insensitive' };
+        detailedSummary?: { contains: string; mode: 'insensitive' };
+      }>;
+    } = {
+      id: { notIn: postedArticleIds },
+      qualityScore: { gte: 50 },
+      createdAt: { gte: cutoffTime },
+      skipReason: null,
+    };
+
+    // カテゴリフィルター
+    if (category) {
+      where.category = category as ArticleCategory;
+    }
+
+    // キーワードフィルター（タイトル・翻訳タイトル・要約・詳細要約を検索）
+    if (keyword) {
+      where.OR = [
+        { title: { contains: keyword, mode: 'insensitive' } },
+        { translatedTitle: { contains: keyword, mode: 'insensitive' } },
+        { summary: { contains: keyword, mode: 'insensitive' } },
+        { detailedSummary: { contains: keyword, mode: 'insensitive' } },
+      ];
+    }
+
+    // 記事を取得
+    const articles = await this.prisma.article.findMany({
+      where,
+      include: {
+        source: { select: { name: true } },
+        tags: { select: { name: true } },
+      },
+      orderBy: [{ qualityScore: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+    });
+
+    return articles;
   }
 
   /**
