@@ -72,6 +72,114 @@ export const XPostOutputSchema = z.object({
 export type XPostOutputType = z.infer<typeof XPostOutputSchema>;
 
 // =============================================================================
+// Article Post Prompt (New - using detailedSummary)
+// =============================================================================
+
+/**
+ * 記事からX投稿を生成するためのプロンプト入力型
+ */
+export interface ArticlePostPromptInput {
+  title: string;
+  detailedSummary: string | null;
+  summary?: string | null; // フォールバック用
+  category: string | null;
+  tags: string[];
+}
+
+/**
+ * X投稿用の拡張出力スキーマ（スタイル選択を含む）
+ */
+export const XPostWithStyleSchema = z.object({
+  comment: z.string().min(1).max(280),
+  style: z.enum(['感想型', '示唆型', '文脈型']).optional(),
+  reasoning: z.string().optional(),
+});
+
+export type XPostWithStyleType = z.infer<typeof XPostWithStyleSchema>;
+
+/**
+ * X投稿生成用の禁止事項
+ */
+const PROHIBITION_RULES = `
+## 禁止事項（これらを使うとAIっぽくなる）
+
+### 表現の禁止
+- AIっぽい表現: 「検討する」「興味深い」「注目」「期待」「考慮したい」
+- 曖昧すぎる表現: 「気になる」「どうなんだろう」「かも」（文末のみ）
+- 驚き屋: 「ついに」「まさか」「衝撃」「革命」「すごい」
+- 煽り: 「必見」「要チェック」「見逃すな」「絶対」「やばい」
+- 説明調: 「〜を実現する」「〜が可能に」「〜を提供」
+- 誇張: 「画期的」「革新的」「すべてが変わる」「完全に」
+
+### 内容の禁止
+- 記事に書いていない機能・効果を断定しない（嘘になる）
+- 製品名を文末に唐突に置かない
+- 機能の羅列だけで終わらない
+`.trim();
+
+/**
+ * 記事からX投稿を生成するプロンプトを構築
+ *
+ * detailedSummaryを優先し、なければsummaryにフォールバック
+ */
+export function buildArticlePostPrompt(input: ArticlePostPromptInput): string {
+  const content = input.detailedSummary || input.summary || '';
+  if (!content.trim()) {
+    throw new Error(
+      'Either detailedSummary or summary must be provided for article post generation'
+    );
+  }
+  const categoryInfo = input.category ? `カテゴリ: ${input.category}` : '';
+  const tagsInfo =
+    input.tags.length > 0 ? `タグ: ${input.tags.join(', ')}` : '';
+
+  return `
+あなたは運用歴10年のSREエンジニア。日々の業務で技術記事をチェックし、チームのSlackに「これ良さそう」と共有するような自然なトーンで、X投稿を1つ書く。
+
+## ペルソナ
+- 評論家ではなく、現場の実務者として反応する
+- 記事の内容を正確に理解した上で反応する
+- 読者（同じエンジニア）に有益な視点を提供する
+
+## 言い切りの基準
+- 事実・記事に書いてあること → 言い切る
+- 自分の評価・感想 → 言い切ってOK（例: 「これは運用が楽になる」）
+- 将来予測・推測 → 少し柔らかく（例: 「標準になっていきそう」）
+- 記事にない情報 → 断定しない
+
+## スタイル（記事内容に最適なものを1つ選ぶ）
+
+1. 感想型: 自分の反応・評価を素直に表現
+   - 例: 「これは運用が楽になる」「地味だけど実用的」
+
+2. 示唆型: 実務への影響、誰向けかを提示
+   - 例: 「k8s運用してるチームには刺さる」「CI/CD見直し中なら参考になる」
+
+3. 文脈型: トレンドや業界の流れに位置づけ
+   - 例: 「Observability周り、ここ半年で急に充実してきた」
+
+${PROHIBITION_RULES}
+
+## 制約
+- 80-120字
+- 1-2文
+- 絵文字は使わない
+
+## 記事情報
+タイトル: ${input.title}
+${categoryInfo}
+${tagsInfo}
+
+## 記事内容
+${content}
+
+## 出力
+JSONのみ出力（説明文・前後のテキスト不要）:
+{"comment": "投稿文", "style": "選んだスタイル", "reasoning": "このスタイルを選んだ理由"}
+`.trim();
+}
+
+// =============================================================================
 // Article Prompt
 // =============================================================================
 
@@ -98,7 +206,8 @@ ${CONSTRAINTS}
 要約: ${article.summary}
 
 ## 出力
-JSON形式: {"comment": "投稿文", "reasoning": "理由"}
+JSONのみ出力（説明文・前後のテキスト不要）:
+{"comment": "投稿文", "reasoning": "理由"}
 `.trim();
 }
 
@@ -135,7 +244,8 @@ ${params.summary}
 ${articleList}
 
 ## 出力
-JSON形式: {"comment": "投稿文", "reasoning": "理由"}
+JSONのみ出力（説明文・前後のテキスト不要）:
+{"comment": "投稿文", "reasoning": "理由"}
 `.trim();
 }
 
@@ -167,7 +277,8 @@ ${CONSTRAINTS}
 ${risingList || '特になし'}
 
 ## 出力
-JSON形式: {"comment": "投稿文", "reasoning": "理由"}
+JSONのみ出力（説明文・前後のテキスト不要）:
+{"comment": "投稿文", "reasoning": "理由"}
 `.trim();
 }
 
@@ -209,7 +320,8 @@ ${topicsList || '特になし'}
 ${articlesList || '特になし'}
 
 ## 出力
-JSON形式: {"comment": "投稿文", "reasoning": "選んだトピックと理由"}
+JSONのみ出力（説明文・前後のテキスト不要）:
+{"comment": "投稿文", "reasoning": "選んだトピックと理由"}
 `.trim();
 }
 
@@ -221,7 +333,7 @@ JSON形式: {"comment": "投稿文", "reasoning": "選んだトピックと理�
  * バランスブラケットでJSONを抽出
  * 最初の { から対応する } までを抽出
  */
-function extractBalancedJson(text: string): string | null {
+export function extractBalancedJson(text: string): string | null {
   const startIndex = text.indexOf('{');
   if (startIndex === -1) return null;
 
