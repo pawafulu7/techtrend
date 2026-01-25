@@ -78,7 +78,16 @@ export class SocialPostGenerator {
           throw new Error('No JSON found in response');
         }
 
-        const parsed = JSON.parse(jsonString);
+        // JSON解析（エラーハンドリング付き）
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(jsonString);
+        } catch (e) {
+          throw new Error(
+            `Invalid JSON in response: ${e instanceof Error ? e.message : String(e)}`
+          );
+        }
+
         const result = XPostWithStyleSchema.safeParse(parsed);
         if (!result.success) {
           throw new Error(

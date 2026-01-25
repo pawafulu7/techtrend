@@ -169,7 +169,8 @@ ${tagsInfo}
 ${content}
 
 ## 出力
-JSON形式: {"comment": "投稿文", "style": "選んだスタイル", "reasoning": "このスタイルを選んだ理由"}
+JSONのみ出力（説明文・前後のテキスト不要）:
+{"comment": "投稿文", "style": "選んだスタイル", "reasoning": "このスタイルを選んだ理由"}
 `.trim();
 }
 
@@ -200,7 +201,8 @@ ${CONSTRAINTS}
 要約: ${article.summary}
 
 ## 出力
-JSON形式: {"comment": "投稿文", "reasoning": "理由"}
+JSONのみ出力（説明文・前後のテキスト不要）:
+{"comment": "投稿文", "reasoning": "理由"}
 `.trim();
 }
 
@@ -237,7 +239,8 @@ ${params.summary}
 ${articleList}
 
 ## 出力
-JSON形式: {"comment": "投稿文", "reasoning": "理由"}
+JSONのみ出力（説明文・前後のテキスト不要）:
+{"comment": "投稿文", "reasoning": "理由"}
 `.trim();
 }
 
@@ -269,7 +272,8 @@ ${CONSTRAINTS}
 ${risingList || '特になし'}
 
 ## 出力
-JSON形式: {"comment": "投稿文", "reasoning": "理由"}
+JSONのみ出力（説明文・前後のテキスト不要）:
+{"comment": "投稿文", "reasoning": "理由"}
 `.trim();
 }
 
@@ -311,7 +315,8 @@ ${topicsList || '特になし'}
 ${articlesList || '特になし'}
 
 ## 出力
-JSON形式: {"comment": "投稿文", "reasoning": "選んだトピックと理由"}
+JSONのみ出力（説明文・前後のテキスト不要）:
+{"comment": "投稿文", "reasoning": "選んだトピックと理由"}
 `.trim();
 }
 

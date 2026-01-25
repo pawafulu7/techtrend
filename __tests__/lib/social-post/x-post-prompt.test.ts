@@ -1,6 +1,7 @@
 import {
   buildArticlePostPrompt,
   ArticlePostPromptInput,
+  extractBalancedJson,
 } from '@/lib/social-post/prompts/x-post-prompt';
 
 describe('buildArticlePostPrompt', () => {
@@ -92,5 +93,79 @@ describe('buildArticlePostPrompt', () => {
     // Should not throw and should not contain "カテゴリ: null"
     expect(prompt).not.toContain('カテゴリ: null');
     expect(prompt).toContain('Test Article');
+  });
+});
+
+describe('extractBalancedJson', () => {
+  it('should extract simple JSON object', () => {
+    const input = '{"comment": "test", "style": "感想型"}';
+    const result = extractBalancedJson(input);
+    expect(result).toBe('{"comment": "test", "style": "感想型"}');
+  });
+
+  it('should extract JSON from text with prefix', () => {
+    const input = 'Here is the result: {"comment": "test"}';
+    const result = extractBalancedJson(input);
+    expect(result).toBe('{"comment": "test"}');
+  });
+
+  it('should extract JSON from text with suffix', () => {
+    const input = '{"comment": "test"} is the output';
+    const result = extractBalancedJson(input);
+    expect(result).toBe('{"comment": "test"}');
+  });
+
+  it('should handle nested JSON objects', () => {
+    const input = '{"comment": "test", "meta": {"key": "value"}}';
+    const result = extractBalancedJson(input);
+    expect(result).toBe('{"comment": "test", "meta": {"key": "value"}}');
+  });
+
+  it('should handle braces inside strings', () => {
+    const input = '{"comment": "function() { return {}; }"}';
+    const result = extractBalancedJson(input);
+    expect(result).toBe('{"comment": "function() { return {}; }"}');
+  });
+
+  it('should handle escaped quotes inside strings', () => {
+    const input = '{"comment": "He said \\"hello\\""}';
+    const result = extractBalancedJson(input);
+    expect(result).toBe('{"comment": "He said \\"hello\\""}');
+  });
+
+  it('should handle escaped backslashes', () => {
+    const input = '{"path": "C:\\\\Users\\\\test"}';
+    const result = extractBalancedJson(input);
+    expect(result).toBe('{"path": "C:\\\\Users\\\\test"}');
+  });
+
+  it('should return null when no JSON found', () => {
+    const input = 'No JSON here';
+    const result = extractBalancedJson(input);
+    expect(result).toBeNull();
+  });
+
+  it('should return null for empty input', () => {
+    const result = extractBalancedJson('');
+    expect(result).toBeNull();
+  });
+
+  it('should handle JSON with newlines', () => {
+    const input = `{
+      "comment": "test",
+      "style": "示唆型"
+    }`;
+    const result = extractBalancedJson(input);
+    expect(result).not.toBeNull();
+    expect(JSON.parse(result!)).toEqual({
+      comment: 'test',
+      style: '示唆型',
+    });
+  });
+
+  it('should extract first JSON when multiple objects exist', () => {
+    const input = '{"first": 1} {"second": 2}';
+    const result = extractBalancedJson(input);
+    expect(result).toBe('{"first": 1}');
   });
 });
