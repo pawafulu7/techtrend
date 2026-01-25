@@ -263,8 +263,10 @@ export function validateGeneratedContent(content: string): ValidationResult {
   }
 
   // 不正URL検出
-  const urls = content.match(/https?:\/\/[^\s]+/g) || [];
-  for (const url of urls) {
+  // 末尾句読点をトリミングしてからパターンマッチ（バイパス防止）
+  const rawUrls = content.match(/https?:\/\/[^\s]+/g) || [];
+  for (const rawUrl of rawUrls) {
+    const url = rawUrl.replace(/[)\]}'"!?.,、。]+$/, '');
     for (const suspiciousPattern of SUSPICIOUS_URL_PATTERNS) {
       if (suspiciousPattern.test(url)) {
         errors.push(`Suspicious URL detected: ${url}`);
