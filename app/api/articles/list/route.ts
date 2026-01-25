@@ -130,13 +130,21 @@ export async function GET(request: NextRequest) {
           .join(',')
       : 'none';
 
-    const normalizedSources = sources
-      ? sources
+    const normalizedSources = (() => {
+      if (sources) {
+        const trimmedLower = sources.trim().toLowerCase();
+        // Normalize special values for consistent cache keys
+        if (trimmedLower === 'all' || trimmedLower === 'none') {
+          return trimmedLower;
+        }
+        return sources
           .split(',')
           .filter((id) => id.trim())
           .sort()
-          .join(',')
-      : sourceId || 'all';
+          .join(',');
+      }
+      return sourceId || 'all';
+    })();
 
     // Get session when readFilter requires user context or includeUserData is true
     const shouldUseUserContext =
