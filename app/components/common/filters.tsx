@@ -98,14 +98,16 @@ export function Filters({
 
     // initialSourceIdsに有効なソースIDがある場合
     const validSourceIds = sources.map((s) => s.id);
-    const filtered = initialSourceIds.filter((id) => validSourceIds.includes(id));
+    const filtered = initialSourceIds.filter((id) =>
+      validSourceIds.includes(id)
+    );
     if (filtered.length > 0) {
       return filtered;
     }
 
     // フォールバック：全選択
     return sources.map((s) => s.id);
-  };;
+  };
 
   const [selectedSources, setSelectedSources] =
     useState<string[]>(getInitialSources);
@@ -235,7 +237,15 @@ export function Filters({
       // 全選択の場合は全てのソースIDを設定
       setSelectedSources(sources.map((s) => s.id));
     } else if (sourcesParam) {
-      setSelectedSources(sourcesParam.split(',').filter((id) => id));
+      // Filter out invalid IDs (excluded or deleted sources)
+      const validIds = new Set(sources.map((s) => s.id));
+      const parsedIds = sourcesParam
+        .split(',')
+        .filter((id) => id && validIds.has(id));
+      // If all IDs were invalid, fall back to all sources
+      setSelectedSources(
+        parsedIds.length > 0 ? parsedIds : sources.map((s) => s.id)
+      );
     } else if (sourceIdParam) {
       setSelectedSources([sourceIdParam]);
     }

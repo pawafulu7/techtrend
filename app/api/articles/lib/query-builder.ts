@@ -216,20 +216,23 @@ export class ArticleWhereClauseBuilder {
     sourceId: string | undefined
   ): Promise<{ builder: ArticleWhereClauseBuilder; emptyResult: boolean }> {
     if (sources) {
-      if (sources === 'none') {
+      // Normalize sources for case-insensitive comparison
+      const normalized = sources.trim().toLowerCase();
+
+      if (normalized === 'none') {
         this.where.sourceId = { in: [] };
         return { builder: this, emptyResult: true };
       }
 
       // 'all' means no source filtering - return all sources
-      if (sources === 'all') {
+      if (normalized === 'all') {
         // Don't set any sourceId filter, which means all sources are included
         return { builder: this, emptyResult: false };
       }
 
-      const sourceList = sources
+      const sourceList = normalized
         .split(',')
-        .map((s) => s.trim().toLowerCase())
+        .map((s) => s.trim())
         .filter(Boolean);
 
       if (sourceList.length > 0) {

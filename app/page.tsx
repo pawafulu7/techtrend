@@ -129,6 +129,14 @@ export default async function Home({ searchParams }: PageProps) {
     }
   }
 
+  // Filter out invalid source IDs (excluded or deleted sources)
+  if (initialSourceIds && initialSourceIds.length > 0) {
+    const validIds = new Set(filteredSources.map((s) => s.id));
+    const filtered = initialSourceIds.filter((id) => validIds.has(id));
+    // If all IDs were invalid, fall back to all sources (undefined)
+    initialSourceIds = filtered.length > 0 ? filtered : undefined;
+  }
+
   // Get initial sort order from cookie if no URL params
   const initialSortBy = !params.sortBy ? filterPreferences.sortBy : undefined;
 

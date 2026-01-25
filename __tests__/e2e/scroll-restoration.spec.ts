@@ -110,12 +110,14 @@ test.describe('スクロール位置復元機能', () => {
 
     // スクロール位置から適切な記事インデックスを計算
     // 1記事あたり約150pxと仮定して、スクロール位置に近い記事を選択
+    // 記事数が少ない場合は範囲内にクランプ
+    const maxIndex = Math.max(0, Math.min(articleCount - 1, 9));
     const estimatedArticleIndex = Math.min(
       Math.floor(scrollPositionBefore / 150),
-      articleCount - 1,
-      9 // 最大でも10番目の記事まで（存在を確保するため）
+      maxIndex
     );
-    const targetIndex = Math.max(estimatedArticleIndex, 2); // 最低でも3番目の記事
+    const targetIndex =
+      articleCount >= 3 ? Math.max(estimatedArticleIndex, 2) : maxIndex;
 
     console.log(`Targeting article at index: ${targetIndex}`);
     const targetArticle = allArticles.nth(targetIndex);
