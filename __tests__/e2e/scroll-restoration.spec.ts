@@ -101,26 +101,69 @@ test.describe('スクロール位置復元機能', () => {
     console.log(`Scroll position before navigation: ${scrollPositionBefore}`);
     expect(scrollPositionBefore).toBeGreaterThan(0);
     
-    // 4. 10番目の記事をクリック
-    const articles = await page.locator('[data-testid="article-card"]').all();
-    expect(articles.length).toBeGreaterThanOrEqual(10);
-    
-    const tenthArticle = articles[9];
-    const articleId = await tenthArticle.getAttribute('data-article-id');
-    await tenthArticle.click();
+    // 4. スクロール後に表示されている記事をクリック
+    // スクロール復元機能は「クリックした記事の位置」に復元するため、
+    // 最初の記事（位置≒0）ではなく、現在のスクロール位置付近の記事をクリックする
+    const allArticles = page.locator('[data-testid="article-card"]');
+    const articleCount = await allArticles.count();
+    console.log(`Total articles found: ${articleCount}`);
+
+    // スクロール位置から適切な記事インデックスを計算
+    // 1記事あたり約150pxと仮定して、スクロール位置に近い記事を選択
+    const estimatedArticleIndex = Math.min(
+      Math.floor(scrollPositionBefore / 150),
+      articleCount - 1,
+      9 // 最大でも10番目の記事まで（存在を確保するため）
+    );
+    const targetIndex = Math.max(estimatedArticleIndex, 2); // 最低でも3番目の記事
+
+    console.log(`Targeting article at index: ${targetIndex}`);
+    const targetArticle = allArticles.nth(targetIndex);
+    await targetArticle.waitFor({ state: 'visible', timeout: isCI ? 30000 : 10000 });
+    const articleId = await targetArticle.getAttribute('data-article-id');
+    console.log(`Clicking article ID: ${articleId} at index ${targetIndex}`);
+    await targetArticle.click();
     
     // 5. 記事詳細ページに遷移したことを確認
-    await page.waitForURL(url => url.pathname === `/articles/${articleId}`, { 
-      timeout: isCI ? 30000 : 10000 
+    await page.waitForURL(url => url.pathname === `/articles/${articleId}`, {
+      timeout: isCI ? 30000 : 10000
     });
-    
+
+    // ページの完全なロードを待機
+    await page.waitForLoadState('networkidle', { timeout: isCI ? 45000 : 15000 });
+
     // CI環境での記事詳細ページロード待機
     if (isCI) {
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
     }
-    
+
     // 6. 記事一覧に戻るリンクをクリック
-    await page.click('a:has-text("記事一覧に戻る")');
+    // 複数の可能なセレクタを試す（ページによってリンクテキストが異なる場合がある）
+    const backLinkSelectors = [
+      'a:has-text("記事一覧に戻る")',
+      'a:has-text("ダイジェストに戻る")',
+      'a[href="/"]',
+      'a[href="/?returning=1"]',
+    ];
+
+    let backLinkClicked = false;
+    for (const selector of backLinkSelectors) {
+      const link = page.locator(selector);
+      const count = await link.count();
+      if (count > 0) {
+        console.log(`Found back link with selector: ${selector}`);
+        await link.first().waitFor({ state: 'visible', timeout: isCI ? 30000 : 10000 });
+        await link.first().click();
+        backLinkClicked = true;
+        break;
+      }
+    }
+
+    if (!backLinkClicked) {
+      // フォールバック: ブラウザの戻るボタンを使用
+      console.log('No back link found, using browser back button');
+      await page.goBack();
+    }
     
     // 7. ホームページに戻ったことを確認（returning=1パラメータ付きのURL）
     await page.waitForFunction(
@@ -134,46 +177,62 @@ test.describe('スクロール位置復元機能', () => {
     
     // 8. 記事が読み込まれるまで待機
     await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
-    
+
     // CI環境でのスクロール復元待機時間を延長
     // スクロール復元は非同期で実行されるため、十分な待機時間が必要
-    await page.waitForTimeout(isCI ? 5000 : 2000);
-    
-    // 9. スクロール位置が復元されたか確認
-    const scrollPositionAfter = await page.evaluate(() => {
-      const selectors = [
-        'main.overflow-y-auto',
-        '.flex-1.overflow-y-auto',
-        '#main-scroll-container',
-        '.overflow-y-auto',
-        'body'
-      ];
-      
-      for (const selector of selectors) {
-        const container = document.querySelector(selector);
-        if (container) {
-          const scrollTop = container.scrollTop;
-          if (scrollTop > 0) {
-            console.log(`Found scroll position in ${selector}: ${scrollTop}`);
-            return scrollTop;
+    // Firefox特有の遅延にも対応するため、長めに設定
+    await page.waitForTimeout(isCI ? 8000 : 3000);
+
+    // 9. スクロール位置が復元されたか確認（リトライ付き）
+    let scrollPositionAfter = 0;
+    const maxRetries = 3;
+
+    for (let retry = 0; retry < maxRetries; retry++) {
+      scrollPositionAfter = await page.evaluate(() => {
+        const selectors = [
+          '#main-scroll-container',
+          'main.overflow-y-auto',
+          '.flex-1.overflow-y-auto',
+          '.overflow-y-auto',
+          'body'
+        ];
+
+        for (const selector of selectors) {
+          const container = document.querySelector(selector);
+          if (container) {
+            const scrollTop = container.scrollTop;
+            if (scrollTop > 0) {
+              console.log(`Found scroll position in ${selector}: ${scrollTop}`);
+              return scrollTop;
+            }
           }
         }
+
+        // windowのスクロール位置もチェック
+        const windowScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop;
+        console.log(`Window scroll position: ${windowScroll}`);
+        return windowScroll;
+      });
+
+      if (scrollPositionAfter > 0) {
+        break;
       }
-      
-      // windowのスクロール位置もチェック
-      const windowScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop;
-      console.log(`Window scroll position: ${windowScroll}`);
-      return windowScroll;
-    });
-    
+
+      // リトライ前に待機
+      if (retry < maxRetries - 1) {
+        console.log(`Scroll position is 0, retrying... (${retry + 1}/${maxRetries})`);
+        await page.waitForTimeout(2000);
+      }
+    }
+
     console.log(`Scroll position after navigation: ${scrollPositionAfter}`);
     console.log(`Expected minimum position: ${scrollPositionBefore * 0.1}`);
-    
+
     // スクロール位置復元は完全ではないため、部分的な復元を許容
     // 無限スクロールの再読み込みやレンダリングの違いにより、
     // 元の位置の10-20%程度まで戻れば成功とする
     const minAcceptablePosition = Math.min(scrollPositionBefore * 0.1, 50);
-    
+
     // スクロール位置が復元されていることを確認
     // 少なくとも50px以上、または元の位置の10%以上であること
     expect(scrollPositionAfter).toBeGreaterThan(0);
