@@ -95,19 +95,27 @@ export const SocialPostUpdateSchema = z
     status: z.enum(['DRAFT', 'REVIEWED', 'SCHEDULED', 'ARCHIVED']).optional(),
     scheduledAt: z.string().datetime().optional().nullable(),
   })
-  .refine(
-    (data) => {
+  .superRefine((data, ctx) => {
+    if (data.status === 'SCHEDULED') {
       // SCHEDULEDステータスの場合はscheduledAtが必須
-      if (data.status === 'SCHEDULED') {
-        return data.scheduledAt !== undefined && data.scheduledAt !== null;
+      if (data.scheduledAt === undefined || data.scheduledAt === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'scheduledAt is required when status is SCHEDULED',
+          path: ['scheduledAt'],
+        });
       }
-      return true;
-    },
-    {
-      message: 'scheduledAt is required when status is SCHEDULED',
-      path: ['scheduledAt'],
+    } else if (data.status !== undefined) {
+      // SCHEDULED以外のステータスではscheduledAtは不可
+      if (data.scheduledAt !== undefined && data.scheduledAt !== null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'scheduledAt must be null unless status is SCHEDULED',
+          path: ['scheduledAt'],
+        });
+      }
     }
-  );
+  });
 
 export type SocialPostUpdateInput = z.infer<typeof SocialPostUpdateSchema>;
 
@@ -235,12 +243,15 @@ const SUSPICIOUS_URL_PATTERNS: RegExp[] = [
 export function validateGeneratedContent(content: string): ValidationResult {
   const errors: string[] = [];
 
-  // 文字数チェック
-  if (content.length > 280) {
-    errors.push(`Content exceeds 280 characters (current: ${content.length})`);
+  // 文字数チェック（Xの実効長：URLは23文字としてカウント）
+  const effectiveLength = calculateEffectiveLength(content, []);
+  if (effectiveLength > 280) {
+    errors.push(
+      `Content exceeds 280 characters (effective: ${effectiveLength})`
+    );
   }
 
-  if (content.length < 10) {
+  if (effectiveLength < 10) {
     errors.push('Content is too short (minimum: 10 characters)');
   }
 
@@ -301,9 +312,15 @@ export function calculateEffectiveLength(
   sourceUrls: string[]
 ): number {
   // URLを仮の23文字文字列に置換してカウント
+  // 末尾の句読点を保持するため、置換時にトリミング
   let effective = content;
   const urlRegex = /https?:\/\/[^\s]+/g;
-  effective = effective.replace(urlRegex, 'x'.repeat(23));
+  effective = effective.replace(urlRegex, (match) => {
+    // 末尾の句読点・括弧類を除外
+    const trimmed = match.replace(/[)\]}'"!?.,、。]+$/, '');
+    const trailing = match.slice(trimmed.length);
+    return 'x'.repeat(23) + trailing;
+  });
 
   // sourceUrlsを追加（スペース + URL）
   const urlLength = sourceUrls.length > 0 ? sourceUrls.length * 24 : 0; // スペース + 23文字
