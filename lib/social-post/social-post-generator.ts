@@ -104,11 +104,12 @@ export class SocialPostGenerator {
     });
 
     if (!result.success || !result.data) {
-      // フォールバック: 要約をそのまま使用
-      const fallbackContent = (article.summary || '').slice(
-        0,
-        SocialPostGenerator.MAX_POST_LENGTH
-      );
+      // フォールバック: detailedSummaryを優先、なければsummaryを使用
+      const fallbackContent = (
+        article.detailedSummary ||
+        article.summary ||
+        ''
+      ).slice(0, SocialPostGenerator.MAX_POST_LENGTH);
 
       // 空のフォールバックコンテンツは許可しない（ハルシネーション防止）
       if (!fallbackContent.trim()) {

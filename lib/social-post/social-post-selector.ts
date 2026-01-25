@@ -152,9 +152,14 @@ export class SocialPostSelector {
       take: count * 10, // 多めに取得してスコアリング
     });
 
+    // 空文字のsummary/detailedSummaryを除外（buildArticlePostPromptの例外防止）
+    const nonEmptyCandidates = candidates.filter(
+      (a) => (a.detailedSummary ?? a.summary ?? '').trim().length > 0
+    );
+
     // スコアリング: 品質スコアを尊重し、優先度はタイブレーク程度に
     // 品質スコアは0-100なので、優先度は最大でも±10程度に抑える
-    const scored = candidates.map((article) => {
+    const scored = nonEmptyCandidates.map((article) => {
       let priorityScore = 0;
 
       // 海外ソースボーナス (+5)

@@ -91,7 +91,7 @@ export interface ArticlePostPromptInput {
  */
 export const XPostWithStyleSchema = z.object({
   comment: z.string().min(1).max(280),
-  style: z.string().optional(),
+  style: z.enum(['感想型', '示唆型', '文脈型']).optional(),
   reasoning: z.string().optional(),
 });
 
