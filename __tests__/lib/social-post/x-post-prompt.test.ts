@@ -65,6 +65,34 @@ describe('buildArticlePostPrompt', () => {
     expect(prompt).toContain('Fallback summary content');
   });
 
+  it('should throw error when both detailedSummary and summary are empty', () => {
+    const input: ArticlePostPromptInput = {
+      title: 'Test Article',
+      detailedSummary: null,
+      summary: null,
+      category: 'Tech',
+      tags: [],
+    };
+
+    expect(() => buildArticlePostPrompt(input)).toThrow(
+      'Either detailedSummary or summary must be provided'
+    );
+  });
+
+  it('should throw error when content is only whitespace', () => {
+    const input: ArticlePostPromptInput = {
+      title: 'Test Article',
+      detailedSummary: '   ',
+      summary: null,
+      category: 'Tech',
+      tags: [],
+    };
+
+    expect(() => buildArticlePostPrompt(input)).toThrow(
+      'Either detailedSummary or summary must be provided'
+    );
+  });
+
   it('should include category and tags when provided', () => {
     const input: ArticlePostPromptInput = {
       title: 'Test Article',

@@ -124,6 +124,11 @@ const PROHIBITION_RULES = `
  */
 export function buildArticlePostPrompt(input: ArticlePostPromptInput): string {
   const content = input.detailedSummary || input.summary || '';
+  if (!content.trim()) {
+    throw new Error(
+      'Either detailedSummary or summary must be provided for article post generation'
+    );
+  }
   const categoryInfo = input.category ? `カテゴリ: ${input.category}` : '';
   const tagsInfo =
     input.tags.length > 0 ? `タグ: ${input.tags.join(', ')}` : '';

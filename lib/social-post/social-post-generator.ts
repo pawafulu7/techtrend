@@ -109,6 +109,14 @@ export class SocialPostGenerator {
         0,
         SocialPostGenerator.MAX_POST_LENGTH
       );
+
+      // 空のフォールバックコンテンツは許可しない（ハルシネーション防止）
+      if (!fallbackContent.trim()) {
+        throw new Error(
+          `AI generation failed and no fallback content available: ${result.error || 'Unknown error'}`
+        );
+      }
+
       logger.warn(
         { articleId: article.id, error: result.error },
         'AI generation failed, using fallback'
