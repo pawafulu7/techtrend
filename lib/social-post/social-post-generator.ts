@@ -18,6 +18,7 @@ import {
   buildDiffSummaryPrompt,
   buildOpinionPrompt,
   createXPostExtractionConfig,
+  extractBalancedJson,
   X_POST_PROMPT_VERSION,
   XPostWithStyleSchema,
 } from './prompts/x-post-prompt';
@@ -71,13 +72,13 @@ export class SocialPostGenerator {
         );
         const textToExtract = codeBlockMatch ? codeBlockMatch[1] : response;
 
-        // JSON部分を抽出
-        const jsonMatch = textToExtract.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
+        // バランスブラケット抽出（ネストJSONにも対応）
+        const jsonString = extractBalancedJson(textToExtract);
+        if (!jsonString) {
           throw new Error('No JSON found in response');
         }
 
-        const parsed = JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonString);
         const result = XPostWithStyleSchema.safeParse(parsed);
         if (!result.success) {
           throw new Error(

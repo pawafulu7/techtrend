@@ -71,7 +71,6 @@ export const XPostOutputSchema = z.object({
 
 export type XPostOutputType = z.infer<typeof XPostOutputSchema>;
 
-
 // =============================================================================
 // Article Post Prompt (New - using detailedSummary)
 // =============================================================================
@@ -126,7 +125,8 @@ const PROHIBITION_RULES = `
 export function buildArticlePostPrompt(input: ArticlePostPromptInput): string {
   const content = input.detailedSummary || input.summary || '';
   const categoryInfo = input.category ? `カテゴリ: ${input.category}` : '';
-  const tagsInfo = input.tags.length > 0 ? `タグ: ${input.tags.join(', ')}` : '';
+  const tagsInfo =
+    input.tags.length > 0 ? `タグ: ${input.tags.join(', ')}` : '';
 
   return `
 あなたは運用歴10年のSREエンジニア。日々の業務で技術記事をチェックし、チームのSlackに「これ良さそう」と共有するような自然なトーンで、X投稿を1つ書く。
@@ -323,7 +323,7 @@ JSON形式: {"comment": "投稿文", "reasoning": "選んだトピックと理�
  * バランスブラケットでJSONを抽出
  * 最初の { から対応する } までを抽出
  */
-function extractBalancedJson(text: string): string | null {
+export function extractBalancedJson(text: string): string | null {
   const startIndex = text.indexOf('{');
   if (startIndex === -1) return null;
 
