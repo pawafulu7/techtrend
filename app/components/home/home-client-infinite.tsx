@@ -171,7 +171,11 @@ export function HomeClientInfinite({
 
     // URLにsourcesパラメータがある場合は、それを使用
     if (hasSourcesParam) {
-      params.sources = searchParams.get('sources')!;
+      const sourcesValue = searchParams.get('sources')!;
+      // 'all'の場合はパラメータを設定しない（全選択として扱う）
+      if (sourcesValue !== 'all') {
+        params.sources = sourcesValue;
+      }
     } else if (hasSourceIdParam) {
       params.sourceId = searchParams.get('sourceId')!;
     }

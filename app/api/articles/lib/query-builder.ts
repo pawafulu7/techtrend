@@ -221,6 +221,12 @@ export class ArticleWhereClauseBuilder {
         return { builder: this, emptyResult: true };
       }
 
+      // 'all' means no source filtering - return all sources
+      if (sources === 'all') {
+        // Don't set any sourceId filter, which means all sources are included
+        return { builder: this, emptyResult: false };
+      }
+
       const sourceList = sources
         .split(',')
         .map((s) => s.trim().toLowerCase())
