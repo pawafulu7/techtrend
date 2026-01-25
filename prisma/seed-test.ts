@@ -1,5 +1,47 @@
 import { PrismaClient, Source, Tag } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import Redis from 'ioredis';
+
+/**
+ * Clear Redis cache to ensure fresh test data
+ * This prevents stale article IDs from causing 404 errors
+ */
+async function clearRedisCache(): Promise<void> {
+  // Use REDIS_URL from environment (includes password)
+  // Fallback: CI uses redis-test:6379, local uses localhost:6380
+  const redisUrl = process.env.REDIS_URL ||
+    (process.env.CI === 'true'
+      ? 'redis://:redis_test_password@redis-test:6379'
+      : 'redis://:redis_test_password@localhost:6380');
+
+  let redis: Redis | undefined;
+  try {
+    redis = new Redis(redisUrl, {
+      maxRetriesPerRequest: 0,
+      connectTimeout: 5000,
+      lazyConnect: true,
+      retryStrategy: () => null, // Stop automatic retries
+      enableOfflineQueue: false, // Fail commands immediately when not connected
+    });
+
+    // Suppress unhandled error events (connection failures are caught below)
+    redis.on('error', () => {
+      // Intentionally empty - errors are handled in the catch block
+    });
+
+    await redis.connect();
+    await redis.flushdb();
+    console.log('Redis cache cleared');
+  } catch (error) {
+    console.warn('Failed to clear Redis cache (this is OK if Redis is not running):',
+      error instanceof Error ? error.message : error);
+  } finally {
+    // Ensure cleanup in all cases
+    if (redis) {
+      redis.disconnect();
+    }
+  }
+}
 
 // シード付き疑似乱数生成器
 class SeededRandom {
@@ -74,7 +116,10 @@ async function main() {
   }
   
   console.log('✅ Test database confirmed. Proceeding with seed...');
-  
+
+  // Clear Redis cache first to prevent stale data issues
+  await clearRedisCache();
+
   // Clear existing data (トランザクションで一括削除)
   await prisma.$transaction([
     prisma.article.deleteMany(),

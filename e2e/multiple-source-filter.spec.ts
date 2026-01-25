@@ -99,10 +99,10 @@ test.describe('Multiple Source Filter', () => {
       const checkboxCount = await checkboxes.count();
       
       if (checkboxCount > 0) {
-        // When all are selected, URL should not have sources parameter (shows all)
-        const url1 = page.url();
-        expect(url1).not.toContain('sources=');
-        
+        // When all are selected, URL should have sources=all
+        await page.waitForURL(/sources=all/, { timeout: 5000 });
+        expect(page.url()).toContain('sources=all');
+
         // Click deselect all button using data-testid
         const deselectButton = page.locator('[data-testid="deselect-all-button"]:visible');
         if (await deselectButton.count() > 0) {
@@ -112,10 +112,10 @@ test.describe('Multiple Source Filter', () => {
             waitForNetworkIdle: false,
             allowEmpty: true,
           });
-          
-          // Should still show all articles (no filter)
-          const url2 = page.url();
-          expect(url2).not.toContain('sources=');
+
+          // After deselect all, URL should have sources=none
+          await page.waitForURL(/sources=none/, { timeout: 5000 });
+          expect(page.url()).toContain('sources=none');
         }
       }
     }

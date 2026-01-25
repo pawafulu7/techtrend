@@ -30,6 +30,7 @@ interface PageProps {
   searchParams: Promise<{
     page?: string;
     sourceId?: string;
+    sources?: string;
     tag?: string;
     tags?: string;
     tagMode?: string;
@@ -98,10 +99,22 @@ export default async function Home({ searchParams }: PageProps) {
     filterPreferences.viewMode ||
     'card';
 
-  // Get source filter from cookie if no URL params
+  // Get source filter from URL params first, then fall back to cookie
   let initialSourceIds: string[] | undefined = undefined;
-  if (!params.sourceId) {
-    // Try filter preferences first, then fall back to old source-filter cookie
+  if (params.sources) {
+    // URL has explicit sources parameter - use it
+    if (params.sources === 'all') {
+      // All sources selected - leave undefined to use default (all)
+      initialSourceIds = undefined;
+    } else if (params.sources === 'none') {
+      // No sources selected
+      initialSourceIds = [];
+    } else {
+      // Specific source IDs
+      initialSourceIds = params.sources.split(',').filter((id) => id);
+    }
+  } else if (!params.sourceId) {
+    // No URL params - try filter preferences first, then fall back to old source-filter cookie
     if (filterPreferences.sources !== undefined) {
       // 空配列の場合は、全選択として扱う場合を考慮
       // ただし、明示的な全解除の場合は空配列を維持
@@ -114,6 +127,14 @@ export default async function Home({ searchParams }: PageProps) {
         initialSourceIds = oldCookie;
       }
     }
+  }
+
+  // Filter out invalid source IDs (excluded or deleted sources)
+  if (initialSourceIds && initialSourceIds.length > 0) {
+    const validIds = new Set(filteredSources.map((s) => s.id));
+    const filtered = initialSourceIds.filter((id) => validIds.has(id));
+    // If all IDs were invalid, fall back to all sources (undefined)
+    initialSourceIds = filtered.length > 0 ? filtered : undefined;
   }
 
   // Get initial sort order from cookie if no URL params

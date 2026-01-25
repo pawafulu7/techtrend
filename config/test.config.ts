@@ -24,7 +24,7 @@ export const testConfig = {
       return null;
     }
     return {
-      command: 'npm run build && npm run start',
+      command: 'rm -rf .next/cache .next/server && npm run build && npm run start',
       url: this.baseUrl,
       timeout: 300 * 1000,  // 5分に延長
       reuseExistingServer: true,

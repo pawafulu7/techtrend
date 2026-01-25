@@ -141,16 +141,9 @@ test.describe('Source Filter Cookie', () => {
       waitForNetworkIdle: false
     });
 
-    // Check final URL state
-    const url = page.url();
-    const hasSourceParam = url.includes('sources=');
-    if (hasSourceParam) {
-      // sources=noneまたはsources=allの場合を許容
-      expect(url).toMatch(/sources=(all|none)/);
-    } else {
-      // sourcesパラメータがない場合もOK
-      expect(url).not.toContain('sources=');
-    }
+    // Check final URL state - should have sources=all after select all
+    await page.waitForURL(/sources=all/, { timeout: getTimeout('short') });
+    expect(page.url()).toContain('sources=all');
   });
 
   test('should persist selection across page navigation', async ({ page }) => {

@@ -21,7 +21,30 @@ test.describe('ソースフィルタリング機能', () => {
     // 全て選択ボタンをクリックして、初期状態を統一
     const selectAllButton = page.locator('[data-testid="select-all-button"]:visible');
     await selectAllButton.click();
-    await page.waitForTimeout(500);
+    // Wait for URL to update to sources=all
+    await page.waitForURL(/sources=all/, { timeout: getTimeout('short') });
+
+    // Wait for source-count to show all selected (n/n format where selected equals total)
+    const sourceCount = page.getByTestId('source-count');
+    await expect(sourceCount).toBeVisible();
+    await page.waitForFunction(
+      () => {
+        const el = document.querySelector('[data-testid="source-count"]');
+        if (!el) return false;
+        const text = el.textContent || '';
+        const match = text.match(/(\d+)\s*\/\s*(\d+)/);
+        if (!match) return false;
+        return match[1] === match[2]; // selected === total
+      },
+      { timeout: getTimeout('medium') }
+    );
+
+    // Wait for page to fully update after URL change
+    await waitForArticles(page, {
+      timeout: getTimeout('medium'),
+      waitForNetworkIdle: false,
+      allowEmpty: false,
+    });
 
     // 海外ソースカテゴリを展開
     const foreignCategoryHeader = page.locator('[data-testid="category-foreign-header"]');
@@ -142,6 +165,9 @@ test.describe('ソースフィルタリング機能', () => {
       allowEmpty: false,
     });
 
+    // Verify URL has sources=all
+    await page.waitForURL(/sources=all/, { timeout: getTimeout('short') });
+
     // 記事カードが表示されるまで待つ（Firefoxの遅延対策）
     await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible();
 
@@ -153,6 +179,9 @@ test.describe('ソースフィルタリング機能', () => {
     const deselectAllButton = page.locator('[data-testid="deselect-all-button"]:visible');
     await expect(deselectAllButton).toBeVisible();
     await deselectAllButton.click();
+
+    // Wait for URL to update to sources=none
+    await page.waitForURL(/sources=none/, { timeout: getTimeout('short') });
 
     // すべてのチェックボックスが解除されたことを確認
     await page.waitForTimeout(500);
@@ -195,21 +224,38 @@ test.describe('ソースフィルタリング機能', () => {
     // 全て選択ボタンを再度クリック
     await selectAllButton.click();
 
-    // Wait for articles to update (UI state check instead of URL commit)
+    // Wait for URL to update to sources=all
+    await page.waitForURL(/sources=all/, { timeout: getTimeout('short') });
+
+    // Wait for source-count to show all selected (n/n format where selected equals total)
+    await page.waitForFunction(
+      () => {
+        const el = document.querySelector('[data-testid="source-count"]');
+        if (!el) return false;
+        const text = el.textContent || '';
+        const match = text.match(/(\d+)\s*\/\s*(\d+)/);
+        if (!match) return false;
+        return match[1] === match[2]; // selected === total
+      },
+      { timeout: getTimeout('medium') }
+    );
+
+    // Wait for articles to update
     await waitForArticles(page, {
       timeout: getTimeout('medium'),
       waitForNetworkIdle: false,
-      allowEmpty: true,
+      allowEmpty: false,
     });
 
-    // すべてのチェックボックスが選択されたことを確認
-    for (let i = 0; i < checkboxCount; i++) {
-      const checkbox = allCheckboxes.nth(i);
-      await expect(checkbox).toHaveAttribute('data-state', 'checked');
-    }
+    // source-countで全て選択されたことを確認（カテゴリ展開状態に依存しない）
+    const sourceCount = page.getByTestId('source-count');
+    await expect(sourceCount).toHaveText(/^\d+\/\d+$/);
+    const countText = await sourceCount.innerText();
+    const [selected, total] = countText.split('/').map(Number);
+    expect(selected).toBe(total);
 
-    // 記事の再表示をヘルパーで待機（空リストも許容）
-    await waitForArticles(page, { timeout: isCI ? 45000 : 15000, allowEmpty: true });
+    // 記事の再表示を確認
+    await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible();
   });
 
   test('複数ソースの選択状態を管理できる', async ({ page, browserName }) => {
