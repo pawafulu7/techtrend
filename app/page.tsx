@@ -178,7 +178,10 @@ export default async function Home({ searchParams }: PageProps) {
                     <div className="h-5 w-20 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                   }
                 >
-                  <ArticleCount initialSourceIds={initialSourceIds} />
+                  <ArticleCount
+                    initialSourceIds={initialSourceIds}
+                    excludeSources={ARXIV_SOURCE_ID}
+                  />
                 </Suspense>
                 <PersonalizationToggle />
               </div>

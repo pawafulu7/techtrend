@@ -6,9 +6,13 @@ import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-p
 
 interface ArticleCountProps {
   initialSourceIds?: string[];
+  excludeSources?: string; // 除外するソースID（カンマ区切り）
 }
 
-export function ArticleCount({ initialSourceIds }: ArticleCountProps) {
+export function ArticleCount({
+  initialSourceIds,
+  excludeSources,
+}: ArticleCountProps) {
   const searchParams = useSearchParams();
   const [count, setCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +40,11 @@ export function ArticleCount({ initialSourceIds }: ArticleCountProps) {
         // URLにsourcesパラメータがない場合、cookie由来のinitialSourceIdsを使用
         const hasSourcesParam = searchParams.has('sources');
         const hasSourceIdParam = searchParams.has('sourceId');
-        if (!hasSourcesParam && !hasSourceIdParam && initialSourceIds !== undefined) {
+        if (
+          !hasSourcesParam &&
+          !hasSourceIdParam &&
+          initialSourceIds !== undefined
+        ) {
           if (initialSourceIds.length === 0) {
             params.set('sources', 'none');
           } else {
@@ -50,6 +58,11 @@ export function ArticleCount({ initialSourceIds }: ArticleCountProps) {
           if (periodMonths && periodMonths > 0) {
             params.set('periodMonths', String(periodMonths));
           }
+        }
+
+        // 特定のソースを除外（例: arXiv論文をホームページから除外）
+        if (excludeSources) {
+          params.set('excludeSources', excludeSources);
         }
 
         const response = await fetch(`/api/articles?${params.toString()}`, {
@@ -86,16 +99,24 @@ export function ArticleCount({ initialSourceIds }: ArticleCountProps) {
 
     setLoading(true);
     fetchCount();
-  }, [searchParams, filterEnabled, selectedCategories, periodMonths, isLoadingPreferences, initialSourceIds]);
+  }, [
+    searchParams,
+    filterEnabled,
+    selectedCategories,
+    periodMonths,
+    isLoadingPreferences,
+    initialSourceIds,
+    excludeSources,
+  ]);
 
   if (loading || count === null || isLoadingPreferences) {
     return (
-      <div className="h-5 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+      <div className="h-5 w-20 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
     );
   }
 
   return (
-    <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+    <div className="text-sm whitespace-nowrap text-gray-600 dark:text-gray-400">
       {count.toLocaleString()}件の記事
     </div>
   );

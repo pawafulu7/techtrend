@@ -391,6 +391,9 @@ export async function GET(request: NextRequest) {
         // 'all' case: Don't set sourceId filter (include all sources)
       }
 
+      // Always filter to enabled sources only
+      where.source = { enabled: true };
+
       // Apply exclude sources filter (e.g., exclude arXiv papers from home page)
       if (excludeSources) {
         const excludeIds = excludeSources
