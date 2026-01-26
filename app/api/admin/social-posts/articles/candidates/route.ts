@@ -44,13 +44,11 @@ async function candidatesHandler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
-    // クエリパラメータを取得
+    // クエリパラメータを取得（z.coerce.number()で文字列→数値変換をZodに委任）
     const rawParams = {
       category: searchParams.get('category') || undefined,
       keyword: searchParams.get('keyword') || undefined,
-      limit: searchParams.get('limit')
-        ? parseInt(searchParams.get('limit')!, 10)
-        : undefined,
+      limit: searchParams.get('limit') || undefined,
     };
 
     // Zodでバリデーション

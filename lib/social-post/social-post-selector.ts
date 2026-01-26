@@ -310,7 +310,7 @@ export class SocialPostSelector {
 
     // カテゴリフィルター（有効なカテゴリのみ適用）
     if (category && ARTICLE_CATEGORIES.includes(category)) {
-      where.category = category;
+      where.category = category as ArticleCategory;
     }
 
     // キーワードフィルター（タイトル・翻訳タイトル・要約・詳細要約を検索）

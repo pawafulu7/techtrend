@@ -8,7 +8,9 @@ import {
   SocialPostFiltersSchema,
   validateGeneratedContent,
   ArticleCandidatesSearchSchema,
+  ARTICLE_CATEGORIES,
 } from '@/lib/social-post/social-post-validator';
+import { ArticleCategory } from '@prisma/client';
 
 describe('SocialPostValidator', () => {
   describe('SocialPostCreateSchema', () => {
@@ -615,6 +617,25 @@ describe('SocialPostValidator', () => {
     it('should reject limit less than 1', () => {
       const result = ArticleCandidatesSearchSchema.safeParse({ limit: 0 });
       expect(result.success).toBe(false);
+    });
+
+    it('should coerce string limit to number', () => {
+      const result = ArticleCandidatesSearchSchema.safeParse({ limit: '25' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.limit).toBe(25);
+      }
+    });
+  });
+
+  describe('ARTICLE_CATEGORIES', () => {
+    it('should be in sync with Prisma ArticleCategory enum', () => {
+      // Prisma enumの値を取得
+      const prismaCategories = Object.values(ArticleCategory);
+
+      // ARTICLE_CATEGORIESの値と比較
+      expect(new Set(ARTICLE_CATEGORIES)).toEqual(new Set(prismaCategories));
+      expect(ARTICLE_CATEGORIES.length).toBe(prismaCategories.length);
     });
   });
 });
