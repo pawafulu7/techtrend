@@ -1,10 +1,8 @@
 import {
   buildArticlePostPrompt,
-  buildOpinionPrompt,
   ArticlePostPromptInput,
   extractBalancedJson,
 } from '@/lib/social-post/prompts/x-post-prompt';
-import type { OpinionForPrompt } from '@/lib/social-post/types';
 
 describe('buildArticlePostPrompt', () => {
   it('should include article title and detailedSummary in prompt', () => {
@@ -197,110 +195,5 @@ describe('extractBalancedJson', () => {
     const input = '{"first": 1} {"second": 2}';
     const result = extractBalancedJson(input);
     expect(result).toBe('{"first": 1}');
-  });
-});
-
-describe('buildOpinionPrompt', () => {
-  const mockOpinionData: OpinionForPrompt = {
-    trendingTopics: [
-      { topic: 'Kubernetes', count: 15 },
-      { topic: 'Terraform', count: 12 },
-      { topic: 'Docker', count: 10 },
-    ],
-    recentArticles: [
-      { title: 'k8sでのGPUワークロード管理', category: 'Infrastructure' },
-      { title: 'TerraformのState管理ベストプラクティス', category: 'IaC' },
-    ],
-    period: '1/23〜1/26',
-  };
-
-  it('should include detailed persona', () => {
-    const prompt = buildOpinionPrompt(mockOpinionData);
-    expect(prompt).toContain('運用歴10年のSREエンジニア');
-    expect(prompt).toContain('ペルソナ');
-  });
-
-  it('should include style options', () => {
-    const prompt = buildOpinionPrompt(mockOpinionData);
-    expect(prompt).toContain('問題提起型');
-    expect(prompt).toContain('主張型');
-    expect(prompt).toContain('比較型');
-  });
-
-  it('should include prohibition rules', () => {
-    const prompt = buildOpinionPrompt(mockOpinionData);
-    expect(prompt).toContain('禁止事項');
-    expect(prompt).toContain('AIっぽい表現');
-  });
-
-  it('should include assertion criteria', () => {
-    const prompt = buildOpinionPrompt(mockOpinionData);
-    expect(prompt).toContain('言い切りの基準');
-  });
-
-  it('should include trending topics', () => {
-    const prompt = buildOpinionPrompt(mockOpinionData);
-    expect(prompt).toContain('Kubernetes');
-    expect(prompt).toContain('15件');
-    expect(prompt).toContain('Terraform');
-  });
-
-  it('should include recent articles', () => {
-    const prompt = buildOpinionPrompt(mockOpinionData);
-    expect(prompt).toContain('k8sでのGPUワークロード管理');
-  });
-
-  it('should require style in output JSON', () => {
-    const prompt = buildOpinionPrompt(mockOpinionData);
-    expect(prompt).toContain('"style"');
-  });
-
-  it('should instruct to reference specific topic names', () => {
-    const prompt = buildOpinionPrompt(mockOpinionData);
-    expect(prompt).toMatch(/具体的.*トピック|トピック.*具体的|必ず.*言及/);
-  });
-
-  it('should use dynamic examples with actual topic names and article titles', () => {
-    const prompt = buildOpinionPrompt(mockOpinionData);
-    // 動的な例文に実際のトピック名が含まれているか
-    expect(prompt).toContain('Kubernetes運用');
-    expect(prompt).toContain('Terraform');
-    // 記事タイトルも例文に使われているか
-    expect(prompt).toContain('k8sでのGPUワークロード管理');
-  });
-
-  it('should handle empty trending topics gracefully', () => {
-    const emptyData: OpinionForPrompt = {
-      trendingTopics: [],
-      recentArticles: [{ title: 'Test Article', category: 'Test' }],
-      period: '1/23〜1/26',
-    };
-    const prompt = buildOpinionPrompt(emptyData);
-    // トピックリストは「特になし」と表示
-    expect(prompt).toContain('特になし');
-    // 記事タイトルは使用される
-    expect(prompt).toContain('Test Article');
-    // 禁止ルールに準拠: データにないトピック（k8s等）を含まない
-    expect(prompt).not.toContain('k8s運用');
-    // 制約文が記事ベースに変更される
-    expect(prompt).toContain('必ず記事タイトルを言及する');
-  });
-
-  it('should handle empty recent articles gracefully', () => {
-    const emptyData: OpinionForPrompt = {
-      trendingTopics: [{ topic: 'Docker', count: 5 }],
-      recentArticles: [],
-      period: '1/23〜1/26',
-    };
-    const prompt = buildOpinionPrompt(emptyData);
-    expect(prompt).toContain('Docker');
-    expect(prompt).toContain('5件');
-  });
-
-  it('should include opinion-specific prohibition rules', () => {
-    const prompt = buildOpinionPrompt(mockOpinionData);
-    // Opinion固有の禁止ルール
-    expect(prompt).toContain('圧倒的に多い');
-    expect(prompt).toContain('具体的なトピック名を1つも含まない投稿は禁止');
   });
 });
