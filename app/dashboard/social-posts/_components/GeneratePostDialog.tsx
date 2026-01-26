@@ -88,7 +88,7 @@ export function GeneratePostDialog({
   const [error, setError] = useState<string | null>(null);
 
   // 記事検索用の状態
-  const [searchCategory, setSearchCategory] = useState<string>('');
+  const [searchCategory, setSearchCategory] = useState<string>('all');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [candidates, setCandidates] = useState<CandidateArticle[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -115,7 +115,9 @@ export function GeneratePostDialog({
 
     try {
       const params = new URLSearchParams();
-      if (searchCategory) params.set('category', searchCategory);
+      if (searchCategory && searchCategory !== 'all') {
+        params.set('category', searchCategory);
+      }
       if (searchKeyword) params.set('keyword', searchKeyword);
       params.set('limit', '10');
 
@@ -159,7 +161,7 @@ export function GeneratePostDialog({
   // ダイアログを閉じる時にリセット
   useEffect(() => {
     if (!open) {
-      setSearchCategory('');
+      setSearchCategory('all');
       setSearchKeyword('');
       setCandidates([]);
       setSelectedArticle(null);
@@ -296,7 +298,7 @@ export function GeneratePostDialog({
                       <SelectValue placeholder="すべて" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">すべて</SelectItem>
+                      <SelectItem value="all">すべて</SelectItem>
                       {ARTICLE_CATEGORIES.map((cat) => (
                         <SelectItem key={cat} value={cat}>
                           {CATEGORY_LABELS[cat]}
