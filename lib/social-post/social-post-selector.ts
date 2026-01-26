@@ -12,7 +12,10 @@ import {
   ArticleCategory,
 } from '@prisma/client';
 import type { OpinionForPrompt } from './types';
-import type { ArticleCandidatesSearchInput } from './social-post-validator';
+import {
+  type ArticleCandidatesSearchInput,
+  ARTICLE_CATEGORIES,
+} from './social-post-validator';
 
 // =============================================================================
 // Constants
@@ -256,7 +259,6 @@ export class SocialPostSelector {
     });
   }
 
-
   /**
    * 候補記事を検索
    * カテゴリ・キーワードでフィルタリングし、投稿候補を返す
@@ -306,9 +308,9 @@ export class SocialPostSelector {
       skipReason: null,
     };
 
-    // カテゴリフィルター
-    if (category) {
-      where.category = category as ArticleCategory;
+    // カテゴリフィルター（有効なカテゴリのみ適用）
+    if (category && ARTICLE_CATEGORIES.includes(category)) {
+      where.category = category;
     }
 
     // キーワードフィルター（タイトル・翻訳タイトル・要約・詳細要約を検索）

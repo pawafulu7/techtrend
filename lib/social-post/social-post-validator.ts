@@ -176,7 +176,7 @@ export const ArticleCandidatesSearchSchema = z.object({
     .max(100, 'キーワードは100文字以内で入力してください')
     .optional()
     .describe('タイトル・要約を部分一致検索'),
-  limit: z
+  limit: z.coerce
     .number()
     .int()
     .min(1)

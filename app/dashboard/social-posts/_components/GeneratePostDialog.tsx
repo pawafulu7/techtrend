@@ -141,14 +141,15 @@ export function GeneratePostDialog({
 
       const data = await res.json();
       setCandidates(data.articles);
+      setIsSearching(false);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        // キャンセルされた場合は無視
+        // キャンセルされた場合は状態を変更せず終了
+        // 新しいリクエストがisSearchingを管理するため
         return;
       }
       setError(err instanceof Error ? err.message : '検索に失敗しました');
       setCandidates([]);
-    } finally {
       setIsSearching(false);
     }
   }, [searchCategory, searchKeyword]);
