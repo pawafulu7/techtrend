@@ -311,7 +311,38 @@ export class SocialPostGenerator {
     const sanitizedPrompt = this.sanitizeForPrompt(prompt);
 
     const pipeline = getLLMExtractionPipeline();
-    const config = createXPostExtractionConfig();
+
+    // スタイル付きのスキーマを使用（buildArticlePostPromptと同様）
+    const config = {
+      promptVersion: X_POST_PROMPT_VERSION,
+      schema: XPostWithStyleSchema,
+      buildPrompt: (input: unknown) => String(input),
+      parseResponse: (response: string) => {
+        const codeBlockMatch = response.match(
+          /```(?:json)?\s*([\s\S]*?)\s*```/
+        );
+        const textToExtract = codeBlockMatch ? codeBlockMatch[1] : response;
+        const jsonString = extractBalancedJson(textToExtract);
+        if (!jsonString) {
+          throw new Error('No JSON found in response');
+        }
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(jsonString);
+        } catch (e) {
+          throw new Error(
+            `Invalid JSON in response: ${e instanceof Error ? e.message : String(e)}`
+          );
+        }
+        const result = XPostWithStyleSchema.safeParse(parsed);
+        if (!result.success) {
+          throw new Error(
+            `Schema validation failed: ${result.error.errors.map((e) => e.message).join(', ')}`
+          );
+        }
+        return result.data;
+      },
+    };
 
     const result = await pipeline.extract(sanitizedPrompt, config, {
       maxOutputTokens: 500,
@@ -332,12 +363,24 @@ export class SocialPostGenerator {
       );
     }
 
+    logger.info(
+      {
+        style: result.data.style,
+        length: result.data.comment.length,
+      },
+      'Opinion post generated with improved prompt'
+    );
+
     return {
       comment: result.data.comment,
       sourceUrls: [],
       modelVersion: result.modelVersion || 'unknown',
       promptVersion: X_POST_PROMPT_VERSION,
-      contextSummary: `Opinion: ${opinionData.period}`,
+      contextSummary: JSON.stringify({
+        type: 'opinion',
+        period: opinionData.period,
+        style: result.data.style,
+      }),
     };
   }
 
