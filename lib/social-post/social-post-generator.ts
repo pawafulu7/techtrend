@@ -21,6 +21,7 @@ import {
   extractBalancedJson,
   X_POST_PROMPT_VERSION,
   XPostWithStyleSchema,
+  XPostWithOpinionStyleSchema,
 } from './prompts/x-post-prompt';
 import { validateGeneratedContent } from './social-post-validator';
 import {
@@ -312,10 +313,10 @@ export class SocialPostGenerator {
 
     const pipeline = getLLMExtractionPipeline();
 
-    // スタイル付きのスキーマを使用（buildArticlePostPromptと同様）
+    // Opinion専用スキーマを使用（問題提起型/主張型/比較型）
     const config = {
       promptVersion: X_POST_PROMPT_VERSION,
-      schema: XPostWithStyleSchema,
+      schema: XPostWithOpinionStyleSchema,
       buildPrompt: (input: unknown) => String(input),
       parseResponse: (response: string) => {
         const codeBlockMatch = response.match(
@@ -334,7 +335,7 @@ export class SocialPostGenerator {
             `Invalid JSON in response: ${e instanceof Error ? e.message : String(e)}`
           );
         }
-        const result = XPostWithStyleSchema.safeParse(parsed);
+        const result = XPostWithOpinionStyleSchema.safeParse(parsed);
         if (!result.success) {
           throw new Error(
             `Schema validation failed: ${result.error.errors.map((e) => e.message).join(', ')}`

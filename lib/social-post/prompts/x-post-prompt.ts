@@ -91,11 +91,23 @@ export interface ArticlePostPromptInput {
  */
 export const XPostWithStyleSchema = z.object({
   comment: z.string().min(1).max(280),
+  style: z.enum(['感想型', '示唆型', '文脈型']).optional(),
+  reasoning: z.string().optional(),
+});;
+
+export type XPostWithStyleType = z.infer<typeof XPostWithStyleSchema>;
+
+
+/**
+ * Opinion投稿用の拡張出力スキーマ（Opinion専用スタイル選択を含む）
+ */
+export const XPostWithOpinionStyleSchema = z.object({
+  comment: z.string().min(1).max(280),
   style: z.enum(['問題提起型', '主張型', '比較型']).optional(),
   reasoning: z.string().optional(),
 });
 
-export type XPostWithStyleType = z.infer<typeof XPostWithStyleSchema>;
+export type XPostWithOpinionStyleType = z.infer<typeof XPostWithOpinionStyleSchema>;
 
 /**
  * X投稿生成用の禁止事項
