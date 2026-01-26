@@ -276,9 +276,14 @@ describe('buildOpinionPrompt', () => {
       period: '1/23〜1/26',
     };
     const prompt = buildOpinionPrompt(emptyData);
+    // トピックリストは「特になし」と表示
     expect(prompt).toContain('特になし');
-    // デフォルト値が使われる
-    expect(prompt).toContain('k8s');
+    // 記事タイトルは使用される
+    expect(prompt).toContain('Test Article');
+    // 禁止ルールに準拠: データにないトピック（k8s等）を含まない
+    expect(prompt).not.toContain('k8s運用');
+    // 制約文が記事ベースに変更される
+    expect(prompt).toContain('必ず記事タイトルを言及する');
   });
 
   it('should handle empty recent articles gracefully', () => {

@@ -91,7 +91,7 @@ export interface ArticlePostPromptInput {
  */
 export const XPostWithStyleSchema = z.object({
   comment: z.string().min(1).max(280),
-  style: z.enum(['感想型', '示唆型', '文脈型']).optional(),
+  style: z.enum(['問題提起型', '主張型', '比較型']).optional(),
   reasoning: z.string().optional(),
 });
 
@@ -324,11 +324,29 @@ export function buildOpinionPrompt(params: OpinionForPrompt): string {
     .map((a) => `- ${a.title}（${a.category}）`)
     .join('\n');
 
-  // 動的な例文生成（実際のトピック名・記事タイトルを使用）
-  const topic1 = params.trendingTopics[0]?.topic || 'k8s';
-  const topic2 = params.trendingTopics[1]?.topic || 'Terraform';
-  const article1 = params.recentArticles[0]?.title || '技術記事';
-  const article2 = params.recentArticles[1]?.title || '別の記事';
+  // トピックまたは記事が存在しない場合は意見生成を行わない
+  // （禁止ルール「データにないトピックを言及しない」に準拠）
+  const hasTopics = params.trendingTopics.length > 0;
+  const hasArticles = params.recentArticles.length > 0;
+
+  // 動的な例文生成（実際のデータがある場合のみ具体名を使用）
+  const topic1 = params.trendingTopics[0]?.topic;
+  const topic2 = params.trendingTopics[1]?.topic;
+  const article1 = params.recentArticles[0]?.title;
+  const article2 = params.recentArticles[1]?.title;
+
+  // 例文を動的に生成（データがある場合のみ具体的に）
+  const example1Topic = topic1 || '特定技術';
+  const example2Topic = topic2 || topic1 || '別の技術';
+  const example1Article = article1 || '記事タイトル';
+  const example2Article = article2 || article1 || '別の記事';
+
+  // 制約文を動的に生成
+  const mentionConstraint = hasTopics
+    ? '必ず具体的なトピック名または記事タイトルを言及する'
+    : hasArticles
+      ? '必ず記事タイトルを言及する'
+      : 'トレンドデータがないため、一般的な技術トレンドについて述べる';
 
   return `
 あなたは運用歴10年のSREエンジニア。同僚に「最近の記事見た？俺はこう思うんだけど」と率直に意見を言うトーンで、トレンドに関するX投稿を1つ書く。
@@ -348,16 +366,16 @@ export function buildOpinionPrompt(params: OpinionForPrompt): string {
 ## スタイル（1つ選ぶ）
 
 1. 問題提起型: 現場の課題をズバッと指摘
-   - 例: 「${topic1}運用、いまだにマニフェスト手書きで消耗してるチーム多すぎ。GitOps導入しない理由あるか？」
-   - 例: 「${topic2}の記事増えてるけど、State管理で詰むチーム続出してる印象。ここの知見、まだ足りてない」
+   - 例: 「${example1Topic}運用、いまだにマニフェスト手書きで消耗してるチーム多すぎ。GitOps導入しない理由あるか？」
+   - 例: 「${example2Topic}の記事増えてるけど、State管理で詰むチーム続出してる印象。ここの知見、まだ足りてない」
 
 2. 主張型: 自分の立場を明確に表明
-   - 例: 「『${article1}』読んだけど、正直これは過剰設計。中小規模なら素直にマネージド使った方がいい」
-   - 例: 「${topic1}と${topic2}、両方追ってる記事多いけど、個人的には${topic1}だけで十分だと思ってる」
+   - 例: 「『${example1Article}』読んだけど、正直これは過剰設計。中小規模なら素直にマネージド使った方がいい」
+   - 例: 「${example1Topic}と${example2Topic}、両方追ってる記事多いけど、個人的には${example1Topic}だけで十分だと思ってる」
 
 3. 比較型: 記事や技術を比較して意見
-   - 例: 「『${article1}』と『${article2}』、アプローチ真逆で面白い。俺は後者派」
-   - 例: 「${topic1}系の記事、入門レベルと実践レベルの差が激しい。中級者向けが足りてない」
+   - 例: 「『${example1Article}』と『${example2Article}』、アプローチ真逆で面白い。俺は後者派」
+   - 例: 「${example1Topic}系の記事、入門レベルと実践レベルの差が激しい。中級者向けが足りてない」
 
 ${OPINION_PROHIBITION_RULES}
 
@@ -365,7 +383,7 @@ ${OPINION_PROHIBITION_RULES}
 - 80-140字
 - 1-2文
 - 絵文字は使わない
-- 必ず具体的なトピック名または記事タイトルを言及する
+- ${mentionConstraint}
 - 「〜と思う」「〜かも」で逃げない。言い切る。
 
 ## トレンドトピック（${params.period}）
