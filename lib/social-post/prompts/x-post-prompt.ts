@@ -91,7 +91,7 @@ export interface ArticlePostPromptInput {
  */
 export const XPostWithStyleSchema = z.object({
   comment: z.string().min(1).max(280),
-  style: z.enum(['感想型', '示唆型', '文脈型']).optional(),
+  style: z.enum(['問題提起型', '主張型', '比較型']).optional(),
   reasoning: z.string().optional(),
 });
 
@@ -115,6 +115,27 @@ const PROHIBITION_RULES = `
 - 記事に書いていない機能・効果を断定しない（嘘になる）
 - 製品名を文末に唐突に置かない
 - 機能の羅列だけで終わらない
+`.trim();
+
+/**
+ * Opinion投稿生成用の禁止事項
+ * トレンド分析ベースの意見生成に特化した禁止ルール
+ */
+const OPINION_PROHIBITION_RULES = `
+## 禁止事項（これらを使うとAIっぽくなる）
+
+### 表現の禁止
+- AIっぽい表現: 「検討する」「興味深い」「注目」「期待」「考慮したい」
+- 曖昧すぎる表現: 「気になる」「どうなんだろう」「かも」（文末のみ）
+- 驚き屋: 「ついに」「まさか」「衝撃」「革命」「すごい」
+- 煽り: 「必見」「要チェック」「見逃すな」「絶対」「やばい」
+- 説明調: 「〜を実現する」「〜が可能に」「〜を提供」
+- 誇張: 「画期的」「革新的」「すべてが変わる」「完全に」
+
+### 内容の禁止
+- データにないトピックを言及しない（嘘になる）
+- 「圧倒的に多い」「急速に」など抽象的な量的表現を避ける
+- 具体的なトピック名を1つも含まない投稿は禁止
 `.trim();
 
 /**
@@ -303,25 +324,77 @@ export function buildOpinionPrompt(params: OpinionForPrompt): string {
     .map((a) => `- ${a.title}（${a.category}）`)
     .join('\n');
 
+  // トピックまたは記事が存在しない場合は意見生成を行わない
+  // （禁止ルール「データにないトピックを言及しない」に準拠）
+  const hasTopics = params.trendingTopics.length > 0;
+  const hasArticles = params.recentArticles.length > 0;
+
+  // 動的な例文生成（実際のデータがある場合のみ具体名を使用）
+  const topic1 = params.trendingTopics[0]?.topic;
+  const topic2 = params.trendingTopics[1]?.topic;
+  const article1 = params.recentArticles[0]?.title;
+  const article2 = params.recentArticles[1]?.title;
+
+  // 例文を動的に生成（データがある場合のみ具体的に）
+  const example1Topic = topic1 || '特定技術';
+  const example2Topic = topic2 || topic1 || '別の技術';
+  const example1Article = article1 || '記事タイトル';
+  const example2Article = article2 || article1 || '別の記事';
+
+  // 制約文を動的に生成
+  const mentionConstraint = hasTopics
+    ? '必ず具体的なトピック名または記事タイトルを言及する'
+    : hasArticles
+      ? '必ず記事タイトルを言及する'
+      : 'トレンドデータがないため、一般的な技術トレンドについて述べる';
+
   return `
-あなたは運用に強いエンジニア。トレンドデータを見てX投稿を1つ書く。
+あなたは運用歴10年のSREエンジニア。同僚に「最近の記事見た？俺はこう思うんだけど」と率直に意見を言うトーンで、トレンドに関するX投稿を1つ書く。
 
-${CONSTRAINTS}
+## ペルソナ
+- 評論家ではなく、現場で手を動かしてきた実務者
+- 記事タイトルを見て「これ、現場だとこうだよな」と率直に意見を言う
+- 曖昧な表現を避け、自分の立場を明確にする
+- 反論されてもいい覚悟で意見を言い切る
 
-## 良い例
-- 「LLM関連の記事が急に増えた。プロダクション投入が本格化してきた感じがする。」
-- 「Terraformとk8s、セットで語られることが多くなった。IaCの標準構成が固まりつつあるな。」
-- 「障害報告系の記事が目立つ週だった。他社事例、勉強になる。」
+## 言い切りの基準
+- 自分の意見・主張 → 言い切る（例: 「正直、まだ早いと思う」「これは導入一択」）
+- 現場の実感 → 言い切る（例: 「実際、みんな困ってる」「使ってみたけど微妙」）
+- 予測 → 言い切ってOK（例: 「来年には標準になる」「流行らないと思う」）
+- 明らかに嘘になること → 言わない
+
+## スタイル（1つ選ぶ）
+
+1. 問題提起型: 現場の課題をズバッと指摘
+   - 例: 「${example1Topic}運用、いまだにマニフェスト手書きで消耗してるチーム多すぎ。GitOps導入しない理由あるか？」
+   - 例: 「${example2Topic}の記事増えてるけど、State管理で詰むチーム続出してる印象。ここの知見、まだ足りてない」
+
+2. 主張型: 自分の立場を明確に表明
+   - 例: 「『${example1Article}』読んだけど、正直これは過剰設計。中小規模なら素直にマネージド使った方がいい」
+   - 例: 「${example1Topic}と${example2Topic}、両方追ってる記事多いけど、個人的には${example1Topic}だけで十分だと思ってる」
+
+3. 比較型: 記事や技術を比較して意見
+   - 例: 「『${example1Article}』と『${example2Article}』、アプローチ真逆で面白い。俺は後者派」
+   - 例: 「${example1Topic}系の記事、入門レベルと実践レベルの差が激しい。中級者向けが足りてない」
+
+${OPINION_PROHIBITION_RULES}
+
+## 制約
+- 80-140字
+- 1-2文
+- 絵文字は使わない
+- ${mentionConstraint}
+- 「〜と思う」「〜かも」で逃げない。言い切る。
 
 ## トレンドトピック（${params.period}）
 ${topicsList || '特になし'}
 
-## 人気記事
+## 人気記事タイトル（読み比べて意見を言う材料）
 ${articlesList || '特になし'}
 
 ## 出力
 JSONのみ出力（説明文・前後のテキスト不要）:
-{"comment": "投稿文", "reasoning": "選んだトピックと理由"}
+{"comment": "投稿文", "style": "選んだスタイル", "reasoning": "選んだトピック/記事と、なぜその意見か"}
 `.trim();
 }
 
