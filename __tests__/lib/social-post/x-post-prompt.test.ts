@@ -222,9 +222,9 @@ describe('buildOpinionPrompt', () => {
 
   it('should include style options', () => {
     const prompt = buildOpinionPrompt(mockOpinionData);
-    expect(prompt).toContain('観察型');
-    expect(prompt).toContain('示唆型');
-    expect(prompt).toContain('文脈型');
+    expect(prompt).toContain('問題提起型');
+    expect(prompt).toContain('主張型');
+    expect(prompt).toContain('比較型');
   });
 
   it('should include prohibition rules', () => {
@@ -260,11 +260,13 @@ describe('buildOpinionPrompt', () => {
     expect(prompt).toMatch(/具体的.*トピック|トピック.*具体的|必ず.*言及/);
   });
 
-  it('should use dynamic examples with actual topic names', () => {
+  it('should use dynamic examples with actual topic names and article titles', () => {
     const prompt = buildOpinionPrompt(mockOpinionData);
     // 動的な例文に実際のトピック名が含まれているか
-    expect(prompt).toContain('Kubernetes関連が15件');
-    expect(prompt).toContain('TerraformとKubernetes');
+    expect(prompt).toContain('Kubernetes運用');
+    expect(prompt).toContain('Terraform');
+    // 記事タイトルも例文に使われているか
+    expect(prompt).toContain('k8sでのGPUワークロード管理');
   });
 
   it('should handle empty trending topics gracefully', () => {
