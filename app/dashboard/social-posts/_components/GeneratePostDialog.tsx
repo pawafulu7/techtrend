@@ -23,7 +23,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Search, FileText } from 'lucide-react';
 import { ARTICLE_CATEGORIES, type ArticleCategory } from '@/lib/social-post';
 
-type GenerationType = 'article' | 'article_search' | 'opinion';
+type GenerationType = 'article' | 'article_search' | 'article_id' | 'opinion';
 
 interface CandidateArticle {
   id: string;
@@ -53,6 +53,11 @@ const GENERATION_TYPES: Record<
     label: '記事検索',
     description:
       'カテゴリやキーワードで記事を検索し、選択した記事から生成します',
+  },
+  article_id: {
+    label: '記事ID指定',
+    description:
+      '記事IDを直接入力して、その記事から投稿を生成します（品質・期間制限なし）',
   },
   opinion: {
     label: '感想・意見',
@@ -94,6 +99,9 @@ export function GeneratePostDialog({
   const [isSearching, setIsSearching] = useState(false);
   const [selectedArticle, setSelectedArticle] =
     useState<CandidateArticle | null>(null);
+
+  // 記事ID直接入力用の状態
+  const [articleIdInput, setArticleIdInput] = useState('');
 
   // AbortController用のref
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -165,6 +173,7 @@ export function GeneratePostDialog({
       setSearchKeyword('');
       setCandidates([]);
       setSelectedArticle(null);
+      setArticleIdInput('');
       setError(null);
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -191,6 +200,31 @@ export function GeneratePostDialog({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ articleId: selectedArticle.id }),
+          }
+        );
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || '生成に失敗しました');
+        }
+
+        alert('投稿を生成しました');
+        onComplete();
+      } else if (generationType === 'article_id') {
+        // 記事ID直接指定モード
+        const trimmedId = articleIdInput.trim();
+        if (!trimmedId) {
+          setError('記事IDを入力してください');
+          setIsLoading(false);
+          return;
+        }
+
+        const res = await fetch(
+          '/api/admin/social-posts/generate-from-article',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ articleId: trimmedId }),
           }
         );
 
@@ -389,6 +423,23 @@ export function GeneratePostDialog({
                 )}
               </div>
             </div>
+          ) : generationType === 'article_id' ? (
+            // 記事ID直接指定モード
+            <div className="space-y-2">
+              <Label htmlFor="article-id">記事ID</Label>
+              <Input
+                id="article-id"
+                value={articleIdInput}
+                onChange={(e) => setArticleIdInput(e.target.value)}
+                placeholder="例: cm1234567890abcdefgh"
+                disabled={isLoading}
+              />
+              <p className="text-muted-foreground text-xs">
+                記事詳細ページのURLから記事IDを取得できます
+                <br />
+                例: /articles/<strong>cm1234567890abcdefgh</strong>
+              </p>
+            </div>
           ) : (
             // 自動選定/感想モード
             <div className="space-y-2">
@@ -428,7 +479,8 @@ export function GeneratePostDialog({
             onClick={handleSubmit}
             disabled={
               isLoading ||
-              (generationType === 'article_search' && !selectedArticle)
+              (generationType === 'article_search' && !selectedArticle) ||
+              (generationType === 'article_id' && !articleIdInput.trim())
             }
           >
             {isLoading ? '生成中...' : '生成する'}
