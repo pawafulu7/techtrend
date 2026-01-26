@@ -42,6 +42,8 @@ export {
   SocialPostAutoGenerateSchema,
   SocialPostBulkSchema,
   SocialPostFiltersSchema,
+  ArticleCandidatesSearchSchema,
+  ARTICLE_CATEGORIES,
   validateGeneratedContent,
   normalizeHashtag,
   normalizeHashtags,
@@ -56,6 +58,8 @@ export type {
   SocialPostAutoGenerateInput,
   SocialPostBulkInput,
   SocialPostFiltersInput,
+  ArticleCandidatesSearchInput,
+  ArticleCategory,
 } from './social-post-validator';
 
 // =============================================================================

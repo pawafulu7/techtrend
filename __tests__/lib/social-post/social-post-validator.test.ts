@@ -7,7 +7,10 @@ import {
   SocialPostBulkSchema,
   SocialPostFiltersSchema,
   validateGeneratedContent,
+  ArticleCandidatesSearchSchema,
+  ARTICLE_CATEGORIES,
 } from '@/lib/social-post/social-post-validator';
+import { ArticleCategory } from '@prisma/client';
 
 describe('SocialPostValidator', () => {
   describe('SocialPostCreateSchema', () => {
@@ -526,6 +529,98 @@ describe('SocialPostValidator', () => {
       expect(result.errors.some((e) => e.includes('Suspicious URL'))).toBe(
         true
       );
+    });
+  });
+
+  describe('ArticleCandidatesSearchSchema', () => {
+    it('should accept valid search params with category only', () => {
+      const input = { category: 'ai_ml', limit: 10 };
+      const result = ArticleCandidatesSearchSchema.safeParse(input);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept valid search params with keyword only', () => {
+      const input = { keyword: 'Claude Code', limit: 10 };
+      const result = ArticleCandidatesSearchSchema.safeParse(input);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept valid search params with both category and keyword', () => {
+      const input = { category: 'ai_ml', keyword: 'Claude', limit: 5 };
+      const result = ArticleCandidatesSearchSchema.safeParse(input);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept empty params (all optional)', () => {
+      const input = {};
+      const result = ArticleCandidatesSearchSchema.safeParse(input);
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject invalid category', () => {
+      const input = { category: 'invalid_category' };
+      const result = ArticleCandidatesSearchSchema.safeParse(input);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject keyword that is too long', () => {
+      const input = { keyword: 'a'.repeat(101) };
+      const result = ArticleCandidatesSearchSchema.safeParse(input);
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject limit that exceeds maximum', () => {
+      const input = { limit: 51 };
+      const result = ArticleCandidatesSearchSchema.safeParse(input);
+      expect(result.success).toBe(false);
+    });
+
+    it('should use default limit when not provided', () => {
+      const input = { category: 'frontend' };
+      const result = ArticleCandidatesSearchSchema.safeParse(input);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.limit).toBe(10);
+      }
+    });
+
+    it('should accept all valid article categories', () => {
+      ARTICLE_CATEGORIES.forEach((category) => {
+        const result = ArticleCandidatesSearchSchema.safeParse({ category });
+        expect(result.success).toBe(true);
+      });
+    });
+
+    it('should accept boundary limit values (1 and 50)', () => {
+      const result1 = ArticleCandidatesSearchSchema.safeParse({ limit: 1 });
+      expect(result1.success).toBe(true);
+
+      const result50 = ArticleCandidatesSearchSchema.safeParse({ limit: 50 });
+      expect(result50.success).toBe(true);
+    });
+
+    it('should reject limit less than 1', () => {
+      const result = ArticleCandidatesSearchSchema.safeParse({ limit: 0 });
+      expect(result.success).toBe(false);
+    });
+
+    it('should coerce string limit to number', () => {
+      const result = ArticleCandidatesSearchSchema.safeParse({ limit: '25' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.limit).toBe(25);
+      }
+    });
+  });
+
+  describe('ARTICLE_CATEGORIES', () => {
+    it('should be in sync with Prisma ArticleCategory enum', () => {
+      // Prisma enumの値を取得
+      const prismaCategories = Object.values(ArticleCategory);
+
+      // ARTICLE_CATEGORIESの値と比較
+      expect(new Set(ARTICLE_CATEGORIES)).toEqual(new Set(prismaCategories));
+      expect(ARTICLE_CATEGORIES.length).toBe(prismaCategories.length);
     });
   });
 });

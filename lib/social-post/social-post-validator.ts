@@ -144,6 +144,52 @@ export type SocialPostAutoGenerateInput = z.infer<
 >;
 
 /**
+ * 記事カテゴリ一覧（Prisma enumと同期）
+ */
+export const ARTICLE_CATEGORIES = [
+  'frontend',
+  'backend',
+  'ai_ml',
+  'security',
+  'devops',
+  'database',
+  'mobile',
+  'web3',
+  'design',
+  'testing',
+  'performance',
+  'architecture',
+] as const;
+
+export type ArticleCategory = (typeof ARTICLE_CATEGORIES)[number];
+
+/**
+ * 候補記事検索パラメータのバリデーションスキーマ
+ */
+export const ArticleCandidatesSearchSchema = z.object({
+  category: z
+    .enum(ARTICLE_CATEGORIES)
+    .optional()
+    .describe('記事カテゴリでフィルタリング'),
+  keyword: z
+    .string()
+    .max(100, 'キーワードは100文字以内で入力してください')
+    .optional()
+    .describe('タイトル・要約を部分一致検索'),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .default(10)
+    .describe('取得件数（1-50）'),
+});
+
+export type ArticleCandidatesSearchInput = z.infer<
+  typeof ArticleCandidatesSearchSchema
+>;
+
+/**
  * 一括操作スキーマ
  */
 export const SocialPostBulkSchema = z

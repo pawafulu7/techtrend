@@ -12,6 +12,10 @@ import {
   ArticleCategory,
 } from '@prisma/client';
 import type { OpinionForPrompt } from './types';
+import {
+  type ArticleCandidatesSearchInput,
+  ARTICLE_CATEGORIES,
+} from './social-post-validator';
 
 // =============================================================================
 // Constants
@@ -253,6 +257,92 @@ export class SocialPostSelector {
     return this.prisma.article.findUnique({
       where: { id },
     });
+  }
+
+  /**
+   * 候補記事を検索
+   * カテゴリ・キーワードでフィルタリングし、投稿候補を返す
+   */
+  async searchCandidateArticles(params: ArticleCandidatesSearchInput): Promise<
+    Array<{
+      id: string;
+      title: string;
+      translatedTitle: string | null;
+      summary: string | null;
+      category: string | null;
+      publishedAt: Date | null;
+      createdAt: Date;
+      qualityScore: number | null;
+      skipReason: string | null;
+      sourceId: string;
+      source: { name: string };
+      tags: { name: string }[];
+    }>
+  > {
+    const { category, keyword, limit = 10 } = params;
+
+    // 24時間以内の記事のみ対象
+    const now = new Date();
+    const cutoffTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // 既に投稿済みの記事IDを取得
+    const postedArticleIds = await this.getPostedSourceIds('ARTICLE');
+
+    // 基本検索条件を構築
+    const baseConditions: {
+      id: { notIn: string[] };
+      qualityScore: { gte: number };
+      createdAt: { gte: Date };
+      skipReason: null;
+      OR: Array<
+        | { detailedSummary: { not: null }; summary?: undefined }
+        | { summary: { not: null }; detailedSummary?: undefined }
+      >;
+      category?: ArticleCategory;
+    } = {
+      id: { notIn: postedArticleIds },
+      qualityScore: { gte: 50 },
+      createdAt: { gte: cutoffTime },
+      skipReason: null,
+      // detailedSummaryまたはsummaryがある記事のみ（buildArticlePostPromptの例外防止）
+      OR: [{ detailedSummary: { not: null } }, { summary: { not: null } }],
+    };
+
+    // カテゴリフィルター（有効なカテゴリのみ適用）
+    if (category && ARTICLE_CATEGORIES.includes(category)) {
+      baseConditions.category = category as ArticleCategory;
+    }
+
+    // キーワードフィルター（タイトル・翻訳タイトル・要約・詳細要約を検索）
+    let where: object = baseConditions;
+    if (keyword) {
+      where = {
+        AND: [
+          baseConditions,
+          {
+            OR: [
+              { title: { contains: keyword, mode: 'insensitive' } },
+              { translatedTitle: { contains: keyword, mode: 'insensitive' } },
+              { summary: { contains: keyword, mode: 'insensitive' } },
+              { detailedSummary: { contains: keyword, mode: 'insensitive' } },
+            ],
+          },
+        ],
+      };
+    }
+
+    // 記事を取得
+    const articles = await this.prisma.article.findMany({
+      where,
+      include: {
+        source: { select: { name: true } },
+        tags: { select: { name: true } },
+      },
+      orderBy: [{ qualityScore: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+    });
+
+    return articles;
   }
 
   /**
