@@ -288,39 +288,47 @@ export class SocialPostSelector {
     // 既に投稿済みの記事IDを取得
     const postedArticleIds = await this.getPostedSourceIds('ARTICLE');
 
-    // 検索条件を構築
-    const where: {
-      id?: { notIn: string[] };
-      qualityScore?: { gte: number };
-      createdAt?: { gte: Date };
-      skipReason?: null;
+    // 基本検索条件を構築
+    const baseConditions: {
+      id: { notIn: string[] };
+      qualityScore: { gte: number };
+      createdAt: { gte: Date };
+      skipReason: null;
+      OR: Array<
+        | { detailedSummary: { not: null }; summary?: undefined }
+        | { summary: { not: null }; detailedSummary?: undefined }
+      >;
       category?: ArticleCategory;
-      OR?: Array<{
-        title?: { contains: string; mode: 'insensitive' };
-        translatedTitle?: { contains: string; mode: 'insensitive' };
-        summary?: { contains: string; mode: 'insensitive' };
-        detailedSummary?: { contains: string; mode: 'insensitive' };
-      }>;
     } = {
       id: { notIn: postedArticleIds },
       qualityScore: { gte: 50 },
       createdAt: { gte: cutoffTime },
       skipReason: null,
+      // detailedSummaryまたはsummaryがある記事のみ（buildArticlePostPromptの例外防止）
+      OR: [{ detailedSummary: { not: null } }, { summary: { not: null } }],
     };
 
     // カテゴリフィルター（有効なカテゴリのみ適用）
     if (category && ARTICLE_CATEGORIES.includes(category)) {
-      where.category = category as ArticleCategory;
+      baseConditions.category = category as ArticleCategory;
     }
 
     // キーワードフィルター（タイトル・翻訳タイトル・要約・詳細要約を検索）
+    let where: object = baseConditions;
     if (keyword) {
-      where.OR = [
-        { title: { contains: keyword, mode: 'insensitive' } },
-        { translatedTitle: { contains: keyword, mode: 'insensitive' } },
-        { summary: { contains: keyword, mode: 'insensitive' } },
-        { detailedSummary: { contains: keyword, mode: 'insensitive' } },
-      ];
+      where = {
+        AND: [
+          baseConditions,
+          {
+            OR: [
+              { title: { contains: keyword, mode: 'insensitive' } },
+              { translatedTitle: { contains: keyword, mode: 'insensitive' } },
+              { summary: { contains: keyword, mode: 'insensitive' } },
+              { detailedSummary: { contains: keyword, mode: 'insensitive' } },
+            ],
+          },
+        ],
+      };
     }
 
     // 記事を取得

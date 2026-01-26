@@ -585,22 +585,7 @@ describe('SocialPostValidator', () => {
     });
 
     it('should accept all valid article categories', () => {
-      const categories = [
-        'frontend',
-        'backend',
-        'ai_ml',
-        'security',
-        'devops',
-        'database',
-        'mobile',
-        'web3',
-        'design',
-        'testing',
-        'performance',
-        'architecture',
-      ];
-
-      categories.forEach((category) => {
+      ARTICLE_CATEGORIES.forEach((category) => {
         const result = ArticleCandidatesSearchSchema.safeParse({ category });
         expect(result.success).toBe(true);
       });
