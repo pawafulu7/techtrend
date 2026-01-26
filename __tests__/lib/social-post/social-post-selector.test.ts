@@ -104,12 +104,17 @@ describe('SocialPostSelector', () => {
       });
 
       expect(result).toHaveLength(1);
+      // キーワード検索時はAND配列構造になる
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: expect.arrayContaining([
+            AND: expect.arrayContaining([
               expect.objectContaining({
-                title: expect.objectContaining({ contains: 'Claude' }),
+                OR: expect.arrayContaining([
+                  expect.objectContaining({
+                    title: expect.objectContaining({ contains: 'Claude' }),
+                  }),
+                ]),
               }),
             ]),
           }),
@@ -130,13 +135,20 @@ describe('SocialPostSelector', () => {
       });
 
       expect(result).toHaveLength(1);
+      // キーワード検索時はAND配列構造になる（カテゴリはbaseConditions内）
       expect(prismaMock.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            category: 'ai_ml',
-            OR: expect.arrayContaining([
+            AND: expect.arrayContaining([
               expect.objectContaining({
-                title: expect.objectContaining({ contains: 'Claude' }),
+                category: 'ai_ml',
+              }),
+              expect.objectContaining({
+                OR: expect.arrayContaining([
+                  expect.objectContaining({
+                    title: expect.objectContaining({ contains: 'Claude' }),
+                  }),
+                ]),
               }),
             ]),
           }),
