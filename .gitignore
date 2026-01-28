@@ -189,3 +189,4 @@ backups/
 # Claude Code internal documentation
 .claude/docs/
 dump.rdb
+.aigne/
