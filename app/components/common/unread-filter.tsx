@@ -9,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
 type ReadFilterMode = 'all' | 'unread' | 'read';
@@ -17,22 +16,24 @@ type ReadFilterMode = 'all' | 'unread' | 'read';
 export function UnreadFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const currentMode = (searchParams.get('readFilter') as ReadFilterMode) || 'all';
+  const currentMode =
+    (searchParams.get('readFilter') as ReadFilterMode) || 'all';
 
-  const handleFilterChange = useCallback((mode: ReadFilterMode) => {
+  // Note: useCallback removed - React Compiler handles memoization automatically
+  const handleFilterChange = (mode: ReadFilterMode) => {
     const params = new URLSearchParams(searchParams.toString());
-    
+
     if (mode === 'all') {
       params.delete('readFilter');
     } else {
       params.set('readFilter', mode);
     }
-    
+
     // ページをリセット
     params.delete('page');
-    
+
     router.push(`/?${params.toString()}`);
-  }, [router, searchParams]);
+  };
 
   const getIcon = (mode: ReadFilterMode) => {
     switch (mode) {
@@ -59,44 +60,49 @@ export function UnreadFilter() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           size="sm"
           className={cn(
-            "gap-2 relative",
-            currentMode !== 'all' && "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800"
+            'relative gap-2',
+            currentMode !== 'all' &&
+              'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950'
           )}
         >
           {getIcon(currentMode)}
           <span className="hidden sm:inline">{getLabel(currentMode)}</span>
           <span className="sm:hidden">
-            {currentMode === 'unread' ? '未' : currentMode === 'read' ? '既' : '全'}
+            {currentMode === 'unread'
+              ? '未'
+              : currentMode === 'read'
+                ? '既'
+                : '全'}
           </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => handleFilterChange('all')}>
-          <div className="flex items-center justify-between w-full">
+          <div className="flex w-full items-center justify-between">
             <span>すべて表示</span>
-            {currentMode === 'all' && <Check className="h-4 w-4 ml-2" />}
+            {currentMode === 'all' && <Check className="ml-2 h-4 w-4" />}
           </div>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleFilterChange('unread')}>
-          <div className="flex items-center justify-between w-full">
+          <div className="flex w-full items-center justify-between">
             <span className="flex items-center gap-2">
               <Eye className="h-4 w-4" />
               未読のみ
             </span>
-            {currentMode === 'unread' && <Check className="h-4 w-4 ml-2" />}
+            {currentMode === 'unread' && <Check className="ml-2 h-4 w-4" />}
           </div>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleFilterChange('read')}>
-          <div className="flex items-center justify-between w-full">
+          <div className="flex w-full items-center justify-between">
             <span className="flex items-center gap-2">
               <EyeOff className="h-4 w-4" />
               既読のみ
             </span>
-            {currentMode === 'read' && <Check className="h-4 w-4 ml-2" />}
+            {currentMode === 'read' && <Check className="ml-2 h-4 w-4" />}
           </div>
         </DropdownMenuItem>
       </DropdownMenuContent>

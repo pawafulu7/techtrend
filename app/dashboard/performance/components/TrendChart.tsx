@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useId } from 'react';
+import React, { useMemo, useId, useCallback } from 'react';
 import {
   LineChart,
   Line,
@@ -13,10 +13,53 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { TrendChartProps, TimeSeriesData } from '../types/dashboard';
+
+// カスタムツールチップ用のProps型
+interface TrendChartTooltipProps {
+  active?: boolean;
+  payload?: Array<{ value: number }>;
+  label?: string;
+  format?: (value: number) => string;
+  color?: string;
+}
+
+// カスタムツールチップコンポーネント（トップレベルに移動）
+const TrendChartTooltip = React.memo(function TrendChartTooltip({
+  active,
+  payload,
+  label,
+  format,
+  color = '#3b82f6',
+}: TrendChartTooltipProps) {
+  if (active && payload && payload.length) {
+    const value = payload[0].value;
+    const formattedValue = format ? format(value) : value.toFixed(1);
+
+    return (
+      <div className="rounded-lg border bg-white p-3 shadow-lg">
+        <p className="text-xs text-gray-500">{label}</p>
+        <p className="text-sm font-bold" style={{ color }}>
+          {formattedValue}
+        </p>
+      </div>
+    );
+  }
+  return null;
+});
+
+// Y軸フォーマット関数を生成するヘルパー
+const createFormatYAxis = (format?: (value: number) => string) => {
+  return (value: number) => {
+    if (format) {
+      return format(value);
+    }
+    return value.toFixed(0);
+  };
+};
 
 /**
  * トレンドチャートコンポーネント
@@ -28,41 +71,29 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   dataKey = 'value',
   color = '#3b82f6',
   height = 300,
-  format
+  format,
 }) => {
   // データのフォーマット
   const formattedData = useMemo(() => {
-    return data.map(item => ({
+    return data.map((item) => ({
       ...item,
-      [dataKey]: typeof item.value === 'number' ? item.value : parseFloat(item.value as any)
+      [dataKey]:
+        typeof item.value === 'number'
+          ? item.value
+          : parseFloat(item.value as any),
     }));
   }, [data, dataKey]);
 
-  // ツールチップのカスタマイズ
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const value = payload[0].value;
-      const formattedValue = format ? format(value) : value.toFixed(1);
+  // Y軸のフォーマット関数をメモ化
+  const formatYAxis = useCallback(createFormatYAxis(format), [format]);
 
-      return (
-        <div className="bg-white p-3 border rounded-lg shadow-lg">
-          <p className="text-xs text-gray-500">{label}</p>
-          <p className="text-sm font-bold" style={{ color }}>
-            {formattedValue}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // Y軸のフォーマット
-  const formatYAxis = (value: number) => {
-    if (format) {
-      return format(value);
-    }
-    return value.toFixed(0);
-  };
+  // ツールチップにformat/colorを渡すためのレンダーコールバック
+  const renderTooltip = useCallback(
+    (props: any) => (
+      <TrendChartTooltip {...props} format={format} color={color} />
+    ),
+    [format, color]
+  );
 
   return (
     <Card>
@@ -71,7 +102,10 @@ export const TrendChart: React.FC<TrendChartProps> = ({
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={formattedData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+          <LineChart
+            data={formattedData}
+            margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+          >
             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
             <XAxis
               dataKey="time"
@@ -85,7 +119,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
               axisLine={false}
               tickFormatter={formatYAxis}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={renderTooltip} />
             <Line
               type="monotone"
               dataKey={dataKey}
@@ -122,7 +156,10 @@ export const MultiLineChart: React.FC<{
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+          <LineChart
+            data={data}
+            margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+          >
             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
             <XAxis
               dataKey="time"
@@ -130,14 +167,10 @@ export const MultiLineChart: React.FC<{
               tickLine={false}
               axisLine={false}
             />
-            <YAxis
-              tick={{ fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-            />
+            <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
             <Tooltip />
             <Legend />
-            {lines.map(line => (
+            {lines.map((line) => (
               <Line
                 key={line.dataKey}
                 type="monotone"
@@ -174,7 +207,10 @@ export const MetricsBarChart: React.FC<{
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={height}>
-          <BarChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+          <BarChart
+            data={data}
+            margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+          >
             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
             <XAxis
               dataKey="name"
@@ -182,11 +218,7 @@ export const MetricsBarChart: React.FC<{
               tickLine={false}
               axisLine={false}
             />
-            <YAxis
-              tick={{ fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-            />
+            <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
             <Tooltip />
             <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} />
           </BarChart>
@@ -207,7 +239,14 @@ export const MetricsAreaChart: React.FC<{
   color?: string;
   height?: number;
   gradient?: boolean;
-}> = ({ title, data, dataKey = 'value', color = '#3b82f6', height = 300, gradient = true }) => {
+}> = ({
+  title,
+  data,
+  dataKey = 'value',
+  color = '#3b82f6',
+  height = 300,
+  gradient = true,
+}) => {
   const id = useId();
   const gradientId = `gradient-${id}`;
 
@@ -218,7 +257,10 @@ export const MetricsAreaChart: React.FC<{
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={height}>
-          <AreaChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+          <AreaChart
+            data={data}
+            margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+          >
             {gradient && (
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -234,11 +276,7 @@ export const MetricsAreaChart: React.FC<{
               tickLine={false}
               axisLine={false}
             />
-            <YAxis
-              tick={{ fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-            />
+            <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
             <Tooltip />
             <Area
               type="monotone"

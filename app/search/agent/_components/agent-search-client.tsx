@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { z } from 'zod';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentSampleQueries } from './agent-sample-queries';
@@ -8,7 +8,10 @@ import { AgentLoadingState } from './agent-loading-state';
 import { AgentAnswerPanel } from './agent-answer-panel';
 import { AgentErrorDisplay } from './agent-error-display';
 import { AgentStepIndicator } from './agent-step-indicator';
-import { AgentRelatedQuestions, generateRelatedQuestions } from './agent-related-questions';
+import {
+  AgentRelatedQuestions,
+  generateRelatedQuestions,
+} from './agent-related-questions';
 import { AgentSearchInterpretation } from './agent-search-interpretation';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 import { CardV2 } from '@/components/ui-v2/card-v2';
@@ -20,7 +23,8 @@ const SemanticSearchOutputSchema = z.object({
   expansionMethod: z.enum(['none', 'dictionary', 'ai']),
 });
 
-const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
+const ENABLE_STREAMING_UI =
+  process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
 
 // Timeout threshold for "still processing" message (30 seconds)
 const STEP_TIMEOUT_MS = 30000;
@@ -33,7 +37,8 @@ const usePrefersReducedMotion = () => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     setPrefersReducedMotion(mediaQuery.matches);
 
-    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    const handler = (e: MediaQueryListEvent) =>
+      setPrefersReducedMotion(e.matches);
     mediaQuery.addEventListener('change', handler);
     return () => mediaQuery.removeEventListener('change', handler);
   }, []);
@@ -46,7 +51,8 @@ export function AgentSearchClient() {
   const prefersReducedMotion = usePrefersReducedMotion();
   const [showResult, setShowResult] = useState(false);
   const [isStepTimedOut, setIsStepTimedOut] = useState(false);
-  const { search, result, error, isLoading, partialText, currentStep, reset } = useAgentSearch();
+  const { search, result, error, isLoading, partialText, currentStep, reset } =
+    useAgentSearch();
   const prefillQueryRef = useRef<((query: string) => void) | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
@@ -60,7 +66,11 @@ export function AgentSearchClient() {
 
   // Step timeout effect - show "still processing" after 30 seconds
   useEffect(() => {
-    if (currentStep === 'idle' || currentStep === 'complete' || currentStep === 'error') {
+    if (
+      currentStep === 'idle' ||
+      currentStep === 'complete' ||
+      currentStep === 'error'
+    ) {
       setIsStepTimedOut(false);
       return;
     }
@@ -118,7 +128,12 @@ export function AgentSearchClient() {
   };
 
   const handleFeedback = (positive: boolean) => {
-    console.log('[Feedback]', positive ? 'positive' : 'negative', 'for query:', result?.query || lastQuery);
+    console.log(
+      '[Feedback]',
+      positive ? 'positive' : 'negative',
+      'for query:',
+      result?.query || lastQuery
+    );
   };
 
   const handlePrefillQuery = useCallback((query: string) => {
@@ -127,22 +142,28 @@ export function AgentSearchClient() {
     }
   }, []);
 
-  const handleSetPrefillCallback = useCallback((callback: (query: string) => void) => {
-    prefillQueryRef.current = callback;
-  }, []);
+  const handleSetPrefillCallback = useCallback(
+    (callback: (query: string) => void) => {
+      prefillQueryRef.current = callback;
+    },
+    []
+  );
 
-  const isStreamingWithPartialText = ENABLE_STREAMING_UI && Boolean(partialText);
-  const shouldShowStreamingResult = ENABLE_STREAMING_UI && Boolean(partialText && !result);
+  const isStreamingWithPartialText =
+    ENABLE_STREAMING_UI && Boolean(partialText);
+  const shouldShowStreamingResult =
+    ENABLE_STREAMING_UI && Boolean(partialText && !result);
 
   // Generate related questions based on AI response
-  const relatedQuestions = useMemo(() => {
-    if (!result?.response) return [];
-    return generateRelatedQuestions(result.response, result.articles);
-  }, [result?.response, result?.articles]);
+  // Note: useMemo removed - React Compiler handles memoization automatically
+  const relatedQuestions = result?.response
+    ? generateRelatedQuestions(result.response, result.articles)
+    : [];
 
   // Extract search interpretation from tool calls (semantic-search output)
   // Uses Zod schema validation for runtime type safety
-  const searchInterpretation = useMemo(() => {
+  // Note: useMemo removed - React Compiler handles memoization automatically
+  const searchInterpretation = (() => {
     if (!result?.toolCalls) return null;
 
     // Find semantic-search tool call
@@ -153,7 +174,9 @@ export function AgentSearchClient() {
     if (!semanticSearchCall?.output) return null;
 
     // Validate output with Zod schema for runtime type safety
-    const parsed = SemanticSearchOutputSchema.safeParse(semanticSearchCall.output);
+    const parsed = SemanticSearchOutputSchema.safeParse(
+      semanticSearchCall.output
+    );
     if (!parsed.success) return null;
 
     return {
@@ -161,23 +184,23 @@ export function AgentSearchClient() {
       expandedQuery: parsed.data.expandedQuery,
       expansionMethod: parsed.data.expansionMethod,
     };
-  }, [result?.toolCalls]);
+  })();
 
   return (
     <div className="w-full px-6 py-3">
       {/* 2-column layout: Main content (left) + Sidebar (right) */}
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col gap-6 lg:flex-row">
         {/* Left column: Search bar + Results */}
-        <div className="flex-1 min-w-0 space-y-6">
+        <div className="min-w-0 flex-1 space-y-6">
           {/* Search card */}
           <CardV2
             variant="default"
-            className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-4"
+            className="bg-[var(--tt-color-surface-muted)] p-4 shadow-[var(--tt-shadow-card-rest)]"
             data-testid="agent-search-card"
           >
             <div className="mb-3">
               <div className="border-l-4 border-[var(--tt-color-primary)] pl-3">
-                <h1 className="text-lg md:text-xl font-heading mb-0.5 text-[var(--tt-color-text)]">
+                <h1 className="font-heading mb-0.5 text-lg text-[var(--tt-color-text)] md:text-xl">
                   AI記事検索
                 </h1>
                 <p className="text-sm text-[color:var(--tt-color-text-muted)]">
@@ -197,7 +220,7 @@ export function AgentSearchClient() {
           {showResult && (
             <a
               href="#agent-result"
-              className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-20 focus:px-4 focus:py-2 focus:bg-[var(--tt-color-primary)] focus:text-white focus:rounded"
+              className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-20 focus:rounded focus:bg-[var(--tt-color-primary)] focus:px-4 focus:py-2 focus:text-white"
               onClick={(e) => {
                 e.preventDefault();
                 resultRef.current?.focus();
@@ -217,7 +240,7 @@ export function AgentSearchClient() {
             {isLoading && !isStreamingWithPartialText && (
               <CardV2
                 variant="default"
-                className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-6"
+                className="bg-[var(--tt-color-surface-muted)] p-6 shadow-[var(--tt-shadow-card-rest)]"
                 data-testid="agent-loading-wrapper"
               >
                 <AgentStepIndicator
@@ -231,7 +254,7 @@ export function AgentSearchClient() {
             {!isLoading && showResult && error && (
               <CardV2
                 variant="default"
-                className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-6"
+                className="bg-[var(--tt-color-surface-muted)] p-6 shadow-[var(--tt-shadow-card-rest)]"
               >
                 <AgentErrorDisplay error={error} onRetry={handleRetry} />
               </CardV2>
@@ -240,7 +263,9 @@ export function AgentSearchClient() {
               <div className="space-y-4">
                 {/* Search interpretation - shown before answer panel */}
                 {result && searchInterpretation && (
-                  <AgentSearchInterpretation interpretation={searchInterpretation} />
+                  <AgentSearchInterpretation
+                    interpretation={searchInterpretation}
+                  />
                 )}
                 <AgentAnswerPanel
                   result={result}
@@ -262,14 +287,14 @@ export function AgentSearchClient() {
 
         {/* Right column: Category sidebar (desktop only sticky) */}
         <aside
-          className="w-full lg:w-80 shrink-0"
+          className="w-full shrink-0 lg:w-80"
           role="complementary"
           aria-label="カテゴリ別サンプル検索"
         >
           <div className="lg:sticky lg:top-4">
             <CardV2
               variant="default"
-              className="bg-[var(--tt-color-surface-muted)] shadow-[var(--tt-shadow-card-rest)] p-4"
+              className="bg-[var(--tt-color-surface-muted)] p-4 shadow-[var(--tt-shadow-card-rest)]"
             >
               <AgentSampleQueries
                 layout="sidebar"
