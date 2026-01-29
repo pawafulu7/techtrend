@@ -44,6 +44,8 @@ function RelatedArticleItem({ article }: { article: RelatedArticle }) {
   // Use undefined fallback to avoid UI flicker (showing "just now" before real value)
   const hoursAgo = timeInfo?.hoursAgo;
   const isNew = timeInfo?.isNew;
+  // Check if date is valid to avoid "Invalid Date" display
+  const isValidDate = !Number.isNaN(new Date(article.publishedAt).getTime());
 
   return (
     <Link
@@ -71,13 +73,15 @@ function RelatedArticleItem({ article }: { article: RelatedArticle }) {
             {article.source}
           </Badge>
           <span>
-            {hoursAgo === undefined
-              ? formatDate(article.publishedAt)
-              : hoursAgo < 1
-                ? 'たった今'
-                : hoursAgo < 24
-                  ? `${hoursAgo}時間前`
-                  : formatDate(article.publishedAt)}
+            {!isValidDate
+              ? '日付不明'
+              : hoursAgo === undefined
+                ? formatDate(article.publishedAt)
+                : hoursAgo < 1
+                  ? 'たった今'
+                  : hoursAgo < 24
+                    ? `${hoursAgo}時間前`
+                    : formatDate(article.publishedAt)}
           </span>
           {isNew === true && (
             <Badge className="h-5 text-xs" variant="destructive">

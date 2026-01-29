@@ -61,8 +61,10 @@ export function SearchBar() {
       if (finalQuery) {
         params.set('search', finalQuery);
         params.set('page', '1'); // 検索時は1ページ目に戻る
+        params.delete('q'); // legacy param cleanup
       } else {
         params.delete('search');
+        params.delete('q'); // legacy param cleanup
       }
 
       // ホームページへ遷移（検索パラメータ付き）
