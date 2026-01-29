@@ -16,7 +16,10 @@ interface SearchSuggestion {
 export function SearchBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get('q') || '');
+  // Read from 'search' first (current), then fallback to 'q' (legacy) for URL consistency
+  const [query, setQuery] = useState(
+    searchParams.get('search') || searchParams.get('q') || ''
+  );
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);

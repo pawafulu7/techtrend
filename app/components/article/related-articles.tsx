@@ -28,10 +28,16 @@ function RelatedArticleItem({ article }: { article: RelatedArticle }) {
   } | null>(null);
 
   useEffect(() => {
+    const publishedTime = new Date(article.publishedAt).getTime();
+    // Validate date to avoid NaN
+    if (Number.isNaN(publishedTime)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: keep null for invalid date
+      setTimeInfo(null);
+      return;
+    }
     const hoursAgo = Math.floor(
-      (Date.now() - new Date(article.publishedAt).getTime()) / (1000 * 60 * 60)
+      (Date.now() - publishedTime) / (1000 * 60 * 60)
     );
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: SSR-safe client-side initialization
     setTimeInfo({ hoursAgo, isNew: hoursAgo < 24 });
   }, [article.publishedAt]);
 
