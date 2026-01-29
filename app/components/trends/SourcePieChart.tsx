@@ -1,7 +1,14 @@
 'use client';
 
 import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+} from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PieChartIcon } from 'lucide-react';
@@ -18,6 +25,23 @@ interface SourcePieChartProps {
   loading?: boolean;
 }
 
+// Rechartsのlabelプロパティ用の型定義（Rechartsの内部型に準拠）
+interface LabelRenderProps {
+  cx?: string | number;
+  cy?: string | number;
+  midAngle?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  percent?: number;
+}
+
+// CustomTooltip用のPayload型
+interface SourceTooltipPayload {
+  name: string;
+  value: number;
+  payload: SourceData;
+}
+
 const COLORS = [
   '#0088FE',
   '#00C49F',
@@ -30,6 +54,71 @@ const COLORS = [
   '#8DD1E1',
   '#D084D0',
 ];
+
+// カスタムツールチップコンポーネント（トップレベルに移動）
+const SourcePieChartTooltip = React.memo(function SourcePieChartTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: SourceTooltipPayload[];
+}) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background rounded-lg border p-2 shadow-sm">
+        <p className="font-semibold">{payload[0].name}</p>
+        <p className="text-muted-foreground text-sm">
+          記事数: {payload[0].value}件
+        </p>
+        <p className="text-muted-foreground text-sm">
+          割合: {payload[0].payload.percentage}%
+        </p>
+      </div>
+    );
+  }
+  return null;
+});
+
+// カスタムラベルレンダリング関数（トップレベルに移動）
+const renderCustomizedLabel = (props: LabelRenderProps): React.ReactNode => {
+  const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
+  // 必須プロパティが存在しない場合は早期リターン
+  if (
+    cx == null ||
+    cy == null ||
+    midAngle == null ||
+    innerRadius == null ||
+    outerRadius == null ||
+    percent == null
+  ) {
+    return null;
+  }
+
+  // cx, cyを数値に変換（文字列の場合があるため）
+  const numCx = typeof cx === 'string' ? parseFloat(cx) : cx;
+  const numCy = typeof cy === 'string' ? parseFloat(cy) : cy;
+
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = numCx + radius * Math.cos(-midAngle * RADIAN);
+  const y = numCy + radius * Math.sin(-midAngle * RADIAN);
+
+  if (percent < 0.05) return null; // 5%未満は表示しない
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="white"
+      textAnchor={x > numCx ? 'start' : 'end'}
+      dominantBaseline="central"
+      fontSize="12"
+      fontWeight="bold"
+    >
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+};
 
 export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
   if (loading) {
@@ -58,74 +147,13 @@ export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+          <div className="text-muted-foreground flex h-[300px] items-center justify-center">
             データがありません
           </div>
         </CardContent>
       </Card>
     );
   }
-
-  const CustomTooltip = ({ active, payload }: {active?: boolean; payload?: Array<{name: string; value: number; payload: SourceData}>}) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="rounded-lg border bg-background p-2 shadow-sm">
-          <p className="font-semibold">{payload[0].name}</p>
-          <p className="text-sm text-muted-foreground">
-            記事数: {payload[0].value}件
-          </p>
-          <p className="text-sm text-muted-foreground">
-            割合: {payload[0].payload.percentage}%
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // Rechartsのlabelプロパティ用の型定義（Rechartsの内部型に準拠）
-  interface LabelRenderProps {
-    cx?: string | number;
-    cy?: string | number;
-    midAngle?: number;
-    innerRadius?: number;
-    outerRadius?: number;
-    percent?: number;
-  }
-
-  const renderCustomizedLabel = (props: LabelRenderProps): React.ReactNode => {
-    const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
-    // 必須プロパティが存在しない場合は早期リターン
-    if (cx == null || cy == null || midAngle == null ||
-        innerRadius == null || outerRadius == null || percent == null) {
-      return null;
-    }
-
-    // cx, cyを数値に変換（文字列の場合があるため）
-    const numCx = typeof cx === 'string' ? parseFloat(cx) : cx;
-    const numCy = typeof cy === 'string' ? parseFloat(cy) : cy;
-
-    const RADIAN = Math.PI / 180;
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = numCx + radius * Math.cos(-midAngle * RADIAN);
-    const y = numCy + radius * Math.sin(-midAngle * RADIAN);
-
-    if (percent < 0.05) return null; // 5%未満は表示しない
-
-    return (
-      <text
-        x={x}
-        y={y}
-        fill="white"
-        textAnchor={x > numCx ? 'start' : 'end'}
-        dominantBaseline="central"
-        fontSize="12"
-        fontWeight="bold"
-      >
-        {`${(percent * 100).toFixed(0)}%`}
-      </text>
-    );
-  };
 
   return (
     <Card>
@@ -149,21 +177,28 @@ export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
               dataKey="value"
             >
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
               ))}
             </Pie>
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<SourcePieChartTooltip />} />
             <Legend
               verticalAlign="bottom"
               height={100}
               wrapperStyle={{
                 paddingTop: '10px',
                 maxHeight: '100px',
-                overflow: 'auto'
+                overflow: 'auto',
               }}
               formatter={(value, entry) => (
                 <span style={{ fontSize: 12 }}>
-                  {value} ({entry?.payload && 'percentage' in entry.payload ? entry.payload.percentage : 0}%)
+                  {value} (
+                  {entry?.payload && 'percentage' in entry.payload
+                    ? entry.payload.percentage
+                    : 0}
+                  %)
                 </span>
               )}
             />

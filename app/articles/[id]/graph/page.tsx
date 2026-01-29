@@ -1,6 +1,13 @@
 'use client';
 
-import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import {
+  Suspense,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+} from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
@@ -46,12 +53,16 @@ const formatPublishedDate = (isoDate: string): string => {
 };
 
 // Utility function for getting freshness indicator (border color and style)
-const getFreshnessBorder = (publishedAt: string): { color: string; width: number } | null => {
+const getFreshnessBorder = (
+  publishedAt: string
+): { color: string; width: number } | null => {
   try {
     const date = new Date(publishedAt);
     if (isNaN(date.getTime())) return null;
 
-    const diffDays = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor(
+      (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
     // Fresh (within 7 days): green border
     if (diffDays < 7) return { color: '#10B981', width: 2.5 };
@@ -85,10 +96,10 @@ const getFreshnessBorder = (publishedAt: string): { color: string; width: number
 
 // CodexMCP: Use react-force-graph-2d to avoid AFRAME dependency
 // Note: Using 'any' type due to complex FCwithRef type from library
-const ForceGraph2D = dynamic<any>(
-  () => import('react-force-graph-2d'),
-  { ssr: false, loading: () => <GraphSkeleton /> }
-);
+const ForceGraph2D = dynamic<any>(() => import('react-force-graph-2d'), {
+  ssr: false,
+  loading: () => <GraphSkeleton />,
+});
 
 export default function ArticleRelationshipGraphPage() {
   return (
@@ -111,7 +122,9 @@ function GraphContainer() {
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [linkMap, setLinkMap] = useState<Map<string, LinkMetadata>>(new Map());
   const graphRef = useRef<ForceGraphRef | null>(null);
-  const [graphInstance, setGraphInstance] = useState<ForceGraphRef | null>(null);
+  const [graphInstance, setGraphInstance] = useState<ForceGraphRef | null>(
+    null
+  );
   const [currentDepth, setCurrentDepth] = useState<1 | 2>(1);
 
   // CodexMCP: Callback ref to track when ForceGraph mounts
@@ -124,6 +137,7 @@ function GraphContainer() {
     // CodeRabbit: AbortController for cleanup
     const abortController = new AbortController();
     let isActive = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: fetch initialization
     setLoading(true);
     setError(null);
 
@@ -133,18 +147,19 @@ function GraphContainer() {
         signal: abortController.signal,
       }
     )
-      .then(res => {
+      .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch graph data');
         return res.json();
       })
-      .then(data => {
+      .then((data) => {
         if (!isActive) return;
         setGraphData(data);
 
         // CodexMCP: Create stable map for tooltip lookup (before force-graph mutates links)
         const map = new Map<string, LinkMetadata>();
         data.links.forEach((link: GraphLink) => {
-          const targetId = typeof link.target === 'string' ? link.target : link.target.id;
+          const targetId =
+            typeof link.target === 'string' ? link.target : link.target.id;
           map.set(targetId, {
             similarity: link.value,
             commonTags: link.commonTags,
@@ -153,8 +168,8 @@ function GraphContainer() {
         });
         setLinkMap(map);
       })
-      .catch(err => {
-        if (err.name === 'AbortError') return;  // CodeRabbit: Ignore abort errors
+      .catch((err) => {
+        if (err.name === 'AbortError') return; // CodeRabbit: Ignore abort errors
         if (!isActive) return;
         setError(err);
       })
@@ -164,7 +179,7 @@ function GraphContainer() {
 
     return () => {
       isActive = false;
-      abortController.abort();  // CodeRabbit: Cleanup on unmount
+      abortController.abort(); // CodeRabbit: Cleanup on unmount
     };
   }, [articleId, currentDepth]);
 
@@ -216,7 +231,9 @@ function GraphContainer() {
   if (!graphData) return null;
 
   // Find center article for display
-  const centerNode = graphData.nodes.find((n: any) => n.id === graphData.metadata?.centerArticleId);
+  const centerNode = graphData.nodes.find(
+    (n: any) => n.id === graphData.metadata?.centerArticleId
+  );
 
   return (
     <div className="relative h-screen w-full bg-slate-950">
@@ -228,23 +245,33 @@ function GraphContainer() {
           const isCenter = node.id === graphData.metadata?.centerArticleId;
           const linkData = linkMap.get(node.id);
           const commonTags = linkData?.commonTags || 0;
-          const similarity = linkData?.similarity ? Math.round(linkData.similarity * 100) : 0;
+          const similarity = linkData?.similarity
+            ? Math.round(linkData.similarity * 100)
+            : 0;
 
           return `
 ${node.label}
 
 配信: ${formatPublishedDate(node.publishedAt)}
-${isCenter ? '[この記事を中心に関連記事を表示]' : `
+${
+  isCenter
+    ? '[この記事を中心に関連記事を表示]'
+    : `
 関連度: ${similarity}%
 共通タグ数: ${commonTags}個
 カテゴリ: ${node.category}
-`}
+`
+}
 ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
 `.trim();
         }}
         nodeVal="val"
         nodeColor="color"
-        nodeCanvasObject={(node: GraphNode & { x: number; y: number }, ctx: CanvasRenderingContext2D, globalScale: number) => {
+        nodeCanvasObject={(
+          node: GraphNode & { x: number; y: number },
+          ctx: CanvasRenderingContext2D,
+          globalScale: number
+        ) => {
           // CodexMCP: Draw center node with special border
           const isCenter = node.id === graphData.metadata?.centerArticleId;
           const label = node.label;
@@ -292,14 +319,22 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
               const timestamp = Date.parse(publishedAtNormalized);
 
               if (!isNaN(timestamp)) {
-                const diffHours = Math.floor((Date.now() - timestamp) / (1000 * 60 * 60));
+                const diffHours = Math.floor(
+                  (Date.now() - timestamp) / (1000 * 60 * 60)
+                );
                 if (diffHours < 24) {
                   ctx.save();
                   const badgeRadius = 6 / globalScale;
                   const badgeOffset = radius * 0.7;
                   ctx.fillStyle = '#EF4444'; // Red
                   ctx.beginPath();
-                  ctx.arc(node.x + badgeOffset, node.y - badgeOffset, badgeRadius, 0, 2 * Math.PI);
+                  ctx.arc(
+                    node.x + badgeOffset,
+                    node.y - badgeOffset,
+                    badgeRadius,
+                    0,
+                    2 * Math.PI
+                  );
                   ctx.fill();
                   ctx.restore();
                 }
@@ -311,7 +346,10 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           const maxLength = isCenter ? 40 : 20;
-          const displayLabel = truncateLabel(removeCenterPrefix(label), maxLength);
+          const displayLabel = truncateLabel(
+            removeCenterPrefix(label),
+            maxLength
+          );
 
           // Draw black outline for readability
           ctx.strokeStyle = '#000000';
@@ -322,7 +360,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
           ctx.fillStyle = '#FFFFFF';
           ctx.fillText(displayLabel, node.x, node.y + radius + fontSize);
         }}
-        linkWidth={(link: GraphLink) => Math.max((link.value ** 2) * 18, 1.5)}
+        linkWidth={(link: GraphLink) => Math.max(link.value ** 2 * 18, 1.5)}
         linkDirectionalParticles={3}
         linkDirectionalParticleWidth={4}
         onNodeClick={(node: GraphNode) => router.push(node.url)}
@@ -340,8 +378,15 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
 
       {/* Back button */}
       <div className="absolute top-4 left-4">
-        <Button variant="ghost" asChild className="text-white hover:bg-slate-800">
-          <Link href={`/articles/${articleId}`} className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          asChild
+          className="text-white hover:bg-slate-800"
+        >
+          <Link
+            href={`/articles/${articleId}`}
+            className="flex items-center gap-2"
+          >
             <ArrowLeft className="h-4 w-4" />
             記事詳細に戻る
           </Link>
@@ -349,56 +394,58 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
       </div>
 
       {/* CodexMCP: Legend card (always visible) */}
-      <div className="absolute top-16 left-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-xs">
-        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+      <div className="absolute top-16 left-4 max-w-xs rounded-lg border border-slate-700 bg-slate-900/95 p-4 shadow-xl">
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
           <Network className="h-4 w-4" />
           グラフの見方
         </h3>
         <div className="space-y-2 text-xs text-slate-300">
           <div className="flex items-start gap-2">
-            <div className="w-4 h-4 rounded-full bg-amber-400 border-2 border-white shrink-0 mt-0.5" />
+            <div className="mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 border-white bg-amber-400" />
             <div>
-              <div className="font-medium text-white">中心ノード（大・黄色・白枠）</div>
+              <div className="font-medium text-white">
+                中心ノード（大・黄色・白枠）
+              </div>
               <div className="text-slate-400">現在の記事</div>
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <div className="w-3 h-3 rounded-full bg-indigo-500 shrink-0 mt-0.5" />
+            <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full bg-indigo-500" />
             <div>
               <div className="font-medium">関連記事（小・色付き）</div>
               <div className="text-slate-400">色 = カテゴリ、大きさ = 品質</div>
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <div className="w-2 h-2 rounded-full bg-indigo-300 shrink-0 mt-0.5" />
+            <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-indigo-300" />
             <div>
               <div className="font-medium">関連記事 第2層（小・暗め）</div>
               <div className="text-slate-400">第1層記事に関連</div>
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <div className="w-8 h-0.5 bg-slate-400 shrink-0 mt-2" />
+            <div className="mt-2 h-0.5 w-8 shrink-0 bg-slate-400" />
             <div>
               <div className="font-medium">線の太さ = 関連度</div>
               <div className="text-slate-400">太いほど関連性が高い</div>
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <div className="w-3 h-3 rounded-full bg-indigo-500 border-2 border-green-500 shrink-0 mt-0.5" />
+            <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full border-2 border-green-500 bg-indigo-500" />
             <div>
               <div className="font-medium">枠線の色 = 配信日時</div>
               <div className="text-slate-400">緑=1週間以内、黄=1ヶ月以内</div>
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500 shrink-0 mt-0.5" />
+            <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full bg-red-500" />
             <div>
               <div className="font-medium">NEWバッジ（赤丸）</div>
               <div className="text-slate-400">24時間以内に配信</div>
             </div>
           </div>
         </div>
-        <div className="mt-3 pt-3 border-t border-slate-700 text-xs text-slate-400">
+        <div className="mt-3 border-t border-slate-700 pt-3 text-xs text-slate-400">
           クリック: 記事を開く | ホバー: 詳細表示
         </div>
       </div>
@@ -406,27 +453,32 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
       {/* Depth toggle */}
       <button
         data-testid="depth-toggle-button"
-        onClick={() => setCurrentDepth(d => (d === 1 ? 2 : 1))}
-        className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-xl border border-indigo-500 text-sm font-medium transition-colors"
+        onClick={() => setCurrentDepth((d) => (d === 1 ? 2 : 1))}
+        className="absolute top-4 left-1/2 -translate-x-1/2 transform rounded-lg border border-indigo-500 bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-xl transition-colors hover:bg-indigo-700"
       >
-        {currentDepth === 1 ? '関連をさらに表示（depth=2）' : '関連を折りたたむ（depth=1）'}
+        {currentDepth === 1
+          ? '関連をさらに表示（depth=2）'
+          : '関連を折りたたむ（depth=1）'}
       </button>
 
       {/* Center article info */}
-      <div className="absolute top-4 right-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-sm">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-3 h-3 rounded-full bg-amber-400 border-2 border-white" />
+      <div className="absolute top-4 right-4 max-w-sm rounded-lg border border-slate-700 bg-slate-900/95 p-4 shadow-xl">
+        <div className="mb-2 flex items-center gap-2">
+          <div className="h-3 w-3 rounded-full border-2 border-white bg-amber-400" />
           <h3 className="text-sm font-bold text-white">中心記事</h3>
         </div>
         {centerNode && (
           <div className="space-y-1">
-            <p className="text-sm text-white font-medium">{removeCenterPrefix(centerNode.label)}</p>
+            <p className="text-sm font-medium text-white">
+              {removeCenterPrefix(centerNode.label)}
+            </p>
             <p className="text-xs text-slate-400">
-              カテゴリ: {centerNode.category} | 品質: {Math.round(centerNode.val)}
+              カテゴリ: {centerNode.category} | 品質:{' '}
+              {Math.round(centerNode.val)}
             </p>
           </div>
         )}
-        <div className="mt-2 pt-2 border-t border-slate-700">
+        <div className="mt-2 border-t border-slate-700 pt-2">
           <p
             className="text-xs text-slate-300"
             data-testid="related-count"
@@ -438,40 +490,47 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
       </div>
 
       {/* Hovered node tooltip */}
-      {hoveredNode && hoveredNode.id !== graphData.metadata?.centerArticleId && (
-        <div className="absolute bottom-4 left-4 bg-slate-900/95 p-4 rounded-lg shadow-xl border border-slate-700 max-w-md">
-          <h4 className="text-sm font-bold text-white mb-2">{hoveredNode.label}</h4>
-          {hoveredNode.summary && (
-            <p className="text-xs text-slate-300 mb-2">{hoveredNode.summary.substring(0, 120)}...</p>
-          )}
-          <div className="space-y-1 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">カテゴリ:</span>
-              <span className="text-white">{hoveredNode.category}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">品質スコア:</span>
-              <span className="text-white">{Math.round(hoveredNode.val)}</span>
-            </div>
-            {hoveredNode.primaryTag && (
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">主要タグ:</span>
-                <span className="text-white">{hoveredNode.primaryTag}</span>
-              </div>
+      {hoveredNode &&
+        hoveredNode.id !== graphData.metadata?.centerArticleId && (
+          <div className="absolute bottom-4 left-4 max-w-md rounded-lg border border-slate-700 bg-slate-900/95 p-4 shadow-xl">
+            <h4 className="mb-2 text-sm font-bold text-white">
+              {hoveredNode.label}
+            </h4>
+            {hoveredNode.summary && (
+              <p className="mb-2 text-xs text-slate-300">
+                {hoveredNode.summary.substring(0, 120)}...
+              </p>
             )}
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">カテゴリ:</span>
+                <span className="text-white">{hoveredNode.category}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">品質スコア:</span>
+                <span className="text-white">
+                  {Math.round(hoveredNode.val)}
+                </span>
+              </div>
+              {hoveredNode.primaryTag && (
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">主要タグ:</span>
+                  <span className="text-white">{hoveredNode.primaryTag}</span>
+                </div>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-slate-500">クリックで記事を開く</p>
           </div>
-          <p className="text-xs text-slate-500 mt-2">クリックで記事を開く</p>
-        </div>
-      )}
+        )}
     </div>
   );
 }
 
 function GraphSkeleton() {
   return (
-    <div className="flex items-center justify-center h-screen w-full bg-slate-950">
+    <div className="flex h-screen w-full items-center justify-center bg-slate-950">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+        <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-white"></div>
         <p className="text-white">Loading relationship graph...</p>
       </div>
     </div>
@@ -482,11 +541,14 @@ function GraphError({ error }: { error: Error }) {
   console.error('[GraphError]', error);
 
   return (
-    <div className="flex items-center justify-center h-screen w-full bg-slate-950">
+    <div className="flex h-screen w-full items-center justify-center bg-slate-950">
       <div className="text-center">
-        <p className="text-red-400 text-lg mb-2">Failed to load graph</p>
+        <p className="mb-2 text-lg text-red-400">Failed to load graph</p>
         {process.env.NODE_ENV === 'development' && (
-          <p className="text-slate-400 text-sm" data-testid="graph-error-message">
+          <p
+            className="text-sm text-slate-400"
+            data-testid="graph-error-message"
+          >
             {error.message}
           </p>
         )}

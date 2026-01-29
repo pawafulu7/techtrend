@@ -11,6 +11,7 @@ import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
+import { useIsNewArticle } from '@/app/components/common/relative-time';
 
 /**
  * CompactCard - Title-only card for increased article density
@@ -54,9 +55,15 @@ export function CompactCard({
       }
     };
 
-    window.addEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
+    window.addEventListener(
+      'article-read-status-changed',
+      handleReadStatusChange as EventListener
+    );
     return () => {
-      window.removeEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
+      window.removeEventListener(
+        'article-read-status-changed',
+        handleReadStatusChange as EventListener
+      );
     };
   }, [article.id]);
 
@@ -65,14 +72,16 @@ export function CompactCard({
     setIsRead(initialIsRead);
   }, [initialIsRead]);
 
-  const publishedDate = new Date(article.publishedAt);
-  const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
-  const isNew = hoursAgo < 24;
-  const sourceColor = article.source ? getSourceColor(article.source.name) : null;
+  // Note: Use hook to avoid Date.now() during render (React Compiler purity rule)
+  const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;
+  const sourceColor = article.source
+    ? getSourceColor(article.source.name)
+    : null;
 
   // Reading time calculation (~500 chars/min for Japanese content)
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
-  const readingTime = contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
+  const readingTime =
+    contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
 
   const navigateToArticle = () => {
     if (onArticleClick) {
@@ -118,12 +127,12 @@ export function CompactCard({
     const remainingCount = article.tags.length - 1;
 
     return (
-      <div className="flex items-center gap-1 min-w-0">
+      <div className="flex min-w-0 items-center gap-1">
         <BadgeV2
           variant="outline"
           tabIndex={0}
           role="button"
-          className="text-xs cursor-pointer truncate max-w-[120px]"
+          className="max-w-[120px] cursor-pointer truncate text-xs"
           onClick={(e) => {
             e.stopPropagation();
             handleTagNavigation(firstTag.name);
@@ -139,7 +148,7 @@ export function CompactCard({
           {firstTag.name}
         </BadgeV2>
         {remainingCount > 0 && (
-          <span className="text-xs text-muted-foreground shrink-0">
+          <span className="text-muted-foreground shrink-0 text-xs">
             +{remainingCount}
           </span>
         )}
@@ -159,8 +168,8 @@ export function CompactCard({
       onClick={handleCardClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'group relative flex flex-col gap-1 p-3 cursor-pointer min-h-[140px]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'group relative flex min-h-[140px] cursor-pointer flex-col gap-1 p-3',
+        'focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
         sourceColor?.borderLeft
       )}
     >
@@ -188,20 +197,26 @@ export function CompactCard({
           <BadgeV2
             variant="outline"
             className={cn(
-              "text-xs flex items-center gap-1",
+              'flex items-center gap-1 text-xs',
               sourceColor.tag,
               sourceColor.border
             )}
             data-testid="article-source"
           >
-            <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", sourceColor.dot)} aria-hidden="true" />
+            <span
+              className={cn(
+                'h-1.5 w-1.5 shrink-0 rounded-full',
+                sourceColor.dot
+              )}
+              aria-hidden="true"
+            />
             {article.companyName ?? article.source.name}
           </BadgeV2>
         )}
       </div>
 
       {/* Timestamps Row */}
-      <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+      <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-[10px]">
         <span className="flex items-center gap-0.5" title="Published date">
           <Calendar className="h-3 w-3" aria-hidden="true" />
           <span>{formatDateWithTime(article.publishedAt)}</span>
@@ -217,7 +232,7 @@ export function CompactCard({
         id={`compact-title-${article.id}`}
         title={article.translatedTitle || article.title}
         className={cn(
-          'font-heading text-base font-semibold leading-snug text-foreground line-clamp-2',
+          'font-heading text-foreground line-clamp-2 text-base leading-snug font-semibold',
           isRead && 'opacity-70'
         )}
       >
@@ -233,13 +248,15 @@ export function CompactCard({
           articleId={article.id}
           isFavorited={isFavorited}
           onToggleFavorite={onToggleFavorite}
-          className="h-9 px-3 min-w-[36px] min-h-[36px]"
+          className="h-9 min-h-[36px] min-w-[36px] px-3"
         />
         <div className="flex items-center gap-2">
           {readingTime && contentLength > 0 && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="text-muted-foreground flex items-center gap-1 text-xs">
               <Clock className="h-3 w-3" aria-hidden="true" />
-              <span>{readingTime}分 / {contentLength.toLocaleString('ja-JP')}字</span>
+              <span>
+                {readingTime}分 / {contentLength.toLocaleString('ja-JP')}字
+              </span>
             </span>
           )}
           <ButtonV2
@@ -249,11 +266,11 @@ export function CompactCard({
               e.stopPropagation();
               window.open(article.url, '_blank', 'noopener,noreferrer');
             }}
-            className="h-9 px-3 text-xs min-w-[36px] min-h-[36px]"
+            className="h-9 min-h-[36px] min-w-[36px] px-3 text-xs"
             title="元記事を開く"
             aria-label="元記事を新しいタブで開く"
           >
-            <ExternalLink className="h-4 w-4 mr-1" />
+            <ExternalLink className="mr-1 h-4 w-4" />
             元記事
           </ButtonV2>
         </div>

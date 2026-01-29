@@ -12,8 +12,9 @@ export function useMediaQuery(query: string): boolean {
 
   useEffect(() => {
     const media = window.matchMedia(query);
-    
+
     // 初期値を設定
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: SSR-safe initial value
     setMatches(media.matches);
 
     // リスナーを定義

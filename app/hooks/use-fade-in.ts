@@ -15,32 +15,38 @@ export function useFadeIn(options: UseFadeInOptions = {}) {
 
   useEffect(() => {
     if (!enabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: skip animation when disabled
       setIsVisible(true);
       return;
     }
 
+    // Capture ref value to avoid stale ref in cleanup
+    const element = elementRef.current;
+
+    // Handler declared at effect level for proper cleanup
+    const handleAnimationEnd = () => {
+      element?.classList.add('fade-in-complete');
+    };
+
     const timer = setTimeout(() => {
       setIsVisible(true);
-      
+
       // アニメーション完了を検知
-      if (elementRef.current) {
-        const handleAnimationEnd = () => {
-          elementRef.current?.classList.add('fade-in-complete');
-        };
-        
-        elementRef.current.addEventListener('animationend', handleAnimationEnd);
-        
-        return () => {
-          elementRef.current?.removeEventListener('animationend', handleAnimationEnd);
-        };
+      if (element) {
+        element.addEventListener('animationend', handleAnimationEnd);
       }
     }, delay);
 
-    return () => clearTimeout(timer);
+    // Cleanup: clear timeout and remove listener
+    return () => {
+      clearTimeout(timer);
+      element?.removeEventListener('animationend', handleAnimationEnd);
+    };
   }, [delay, enabled]);
 
-  const className = enabled && isVisible ? 'fade-in-content' : enabled ? 'opacity-0' : '';
-  
+  const className =
+    enabled && isVisible ? 'fade-in-content' : enabled ? 'opacity-0' : '';
+
   return {
     ref: elementRef,
     className,

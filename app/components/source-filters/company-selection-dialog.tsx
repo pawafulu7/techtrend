@@ -42,6 +42,7 @@ export function CompanySelectionDialog({
   // with the source of truth managed by Filters component.
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: sync temp state on dialog open
       setTempSelected(selectedSources);
       setSearchValue('');
     }
@@ -91,11 +92,8 @@ export function CompanySelectionDialog({
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => !next && handleClose('cancel')}
-    >
-      <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+    <Dialog open={open} onOpenChange={(next) => !next && handleClose('cancel')}>
+      <DialogContent className="flex max-h-[80vh] max-w-4xl flex-col">
         <DialogHeader>
           <DialogTitle>企業ブログを選択</DialogTitle>
           <DialogDescription>
@@ -104,7 +102,7 @@ export function CompanySelectionDialog({
         </DialogHeader>
 
         {/* Search */}
-        <Command className="border rounded-md" aria-label="企業検索">
+        <Command className="rounded-md border" aria-label="企業検索">
           <CommandInput
             value={searchValue}
             onValueChange={setSearchValue}
@@ -113,7 +111,7 @@ export function CompanySelectionDialog({
         </Command>
 
         {/* Selection count and bulk actions */}
-        <div className="flex items-center justify-between text-sm py-2">
+        <div className="flex items-center justify-between py-2 text-sm">
           <span aria-live="polite" aria-atomic="true">
             選択中: {tempSelected.length} / {sources.length}
           </span>
@@ -134,16 +132,16 @@ export function CompanySelectionDialog({
           className="flex-1 overflow-y-auto"
         >
           {sortedSources.length === 0 ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">
+            <div className="text-muted-foreground py-12 text-center text-sm">
               該当する企業が見つかりませんでした
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {sortedSources.map((source) => (
                 <label
                   key={source.id}
                   htmlFor={`checkbox-${source.id}`}
-                  className="flex items-center space-x-2 rounded border p-2 hover:bg-accent cursor-pointer transition-colors"
+                  className="hover:bg-accent flex cursor-pointer items-center space-x-2 rounded border p-2 transition-colors"
                   role="listitem"
                 >
                   <Checkbox
@@ -151,7 +149,7 @@ export function CompanySelectionDialog({
                     checked={tempSelected.includes(source.id)}
                     onCheckedChange={() => toggle(source.id)}
                   />
-                  <span className="text-sm flex-1">{source.name}</span>
+                  <span className="flex-1 text-sm">{source.name}</span>
                 </label>
               ))}
             </div>

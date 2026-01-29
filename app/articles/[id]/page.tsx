@@ -4,7 +4,15 @@ import { Badge } from '@/components/ui/badge';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ArrowLeft, Calendar, Clock, Download, ExternalLink, GraduationCap, MessageSquare } from 'lucide-react';
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  Download,
+  ExternalLink,
+  GraduationCap,
+  MessageSquare,
+} from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import { cn } from '@/lib/utils';
@@ -26,7 +34,7 @@ interface PageProps {
   }>;
   searchParams: Promise<{
     from?: string;
-}>;
+  }>;
 }
 
 /**
@@ -67,7 +75,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   };
 
   const returnUrl = getReturnUrl(from);
-  const returnLabel = from === 'digest' ? 'ダイジェストに戻る' : '記事一覧に戻る';
+  const returnLabel =
+    from === 'digest' ? 'ダイジェストに戻る' : '記事一覧に戻る';
 
   // 記事を取得（お気に入り状態はクライアントサイドで取得）
   const article = await getArticle(id);
@@ -78,26 +87,35 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
 
   const sourceColor = getSourceColor(article.source.name);
   const publishedDate = new Date(article.publishedAt);
-  const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
+  // Server Component: Date.now() is evaluated once per request, so it's safe here.
+  const hoursAgo = Math.floor(
+    // eslint-disable-next-line react-hooks/purity -- Server Component, evaluated once per request
+    (Date.now() - publishedDate.getTime()) / (1000 * 60 * 60)
+  );
   const isNew = hoursAgo < 24;
-  
+
   // スライドサービス判定（Speaker DeckとDocswell）
-  const isSlideService = article.source.name === 'Speaker Deck' || article.source.name === 'Docswell';
-  
+  const isSlideService =
+    article.source.name === 'Speaker Deck' ||
+    article.source.name === 'Docswell';
+
   // 短い記事（500文字以下）の判定
-  const isShortArticle = article.detailedSummary === '__SKIP_DETAILED_SUMMARY__' || 
-                         (article.content && article.content.length <= 500);
+  const isShortArticle =
+    article.detailedSummary === '__SKIP_DETAILED_SUMMARY__' ||
+    (article.content && article.content.length <= 500);
 
   const detailedSummaryText =
-    article.detailedSummary && article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__'
+    article.detailedSummary &&
+    article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__'
       ? stripHtmlTags(article.detailedSummary)
       : '';
   const qaSummarySource = detailedSummaryText || article.summary || '';
   const qaSummary = qaSummarySource ? qaSummarySource.slice(0, 280) : null;
-  const qaTopics = (article.tags?.map((tag) => tag.name).filter((name): name is string => Boolean(name)) ?? []).slice(
-    0,
-    4
-  );
+  const qaTopics = (
+    article.tags
+      ?.map((tag) => tag.name)
+      .filter((name): name is string => Boolean(name)) ?? []
+  ).slice(0, 4);
 
   return (
     <div className="w-full px-6 py-3">
@@ -113,13 +131,13 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
         </Button>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col gap-6 lg:flex-row">
         <div className="flex-1 space-y-6">
-          <Card className="bg-[var(--tt-color-surface-muted)] gap-4">
+          <Card className="gap-4 bg-[var(--tt-color-surface-muted)]">
             <CardHeader>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex flex-wrap items-center gap-2">
                     {isNew && (
                       <BadgeV2 variant="primary" className="text-xs">
                         NEW
@@ -127,11 +145,19 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                     )}
                     <BadgeV2
                       variant="outline"
-                      className={cn("text-xs font-medium", sourceColor.tag, sourceColor.border, sourceColor.hover)}
+                      className={cn(
+                        'text-xs font-medium',
+                        sourceColor.tag,
+                        sourceColor.border,
+                        sourceColor.hover
+                      )}
                     >
                       {article.source.name}
                     </BadgeV2>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground" data-testid="article-datetime-area">
+                    <div
+                      className="text-muted-foreground flex items-center gap-3 text-xs"
+                      data-testid="article-datetime-area"
+                    >
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" aria-hidden="true" />
                         <span className="sr-only">公開日:</span>
@@ -144,16 +170,19 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                       </span>
                     </div>
                     {article.difficulty && (
-                      <Badge 
-                        variant="outline" 
+                      <Badge
+                        variant="outline"
                         className={cn(
-                          "text-xs font-medium",
-                          article.difficulty === 'beginner' && "bg-green-50 text-green-700 border-green-200",
-                          article.difficulty === 'intermediate' && "bg-blue-50 text-blue-700 border-blue-200",
-                          article.difficulty === 'advanced' && "bg-purple-50 text-purple-700 border-purple-200"
+                          'text-xs font-medium',
+                          article.difficulty === 'beginner' &&
+                            'border-green-200 bg-green-50 text-green-700',
+                          article.difficulty === 'intermediate' &&
+                            'border-blue-200 bg-blue-50 text-blue-700',
+                          article.difficulty === 'advanced' &&
+                            'border-purple-200 bg-purple-50 text-purple-700'
                         )}
                       >
-                        <GraduationCap className="h-3 w-3 mr-1" />
+                        <GraduationCap className="mr-1 h-3 w-3" />
                         {article.difficulty === 'beginner' && '初級'}
                         {article.difficulty === 'intermediate' && '中級'}
                         {article.difficulty === 'advanced' && '上級'}
@@ -167,7 +196,9 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   />
                 </div>
 
-                <h1 className="text-2xl font-bold">{article.translatedTitle || article.title}</h1>
+                <h1 className="text-2xl font-bold">
+                  {article.translatedTitle || article.title}
+                </h1>
 
                 {article.tags && article.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
@@ -175,10 +206,12 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                       <Badge
                         key={tag.id}
                         variant="outline"
-                        className="cursor-pointer hover:bg-secondary border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500"
+                        className="hover:bg-secondary cursor-pointer border-slate-300 hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-500"
                         asChild
                       >
-                        <Link href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}>
+                        <Link
+                          href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}
+                        >
                           {tag.name}
                         </Link>
                       </Badge>
@@ -188,16 +221,25 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
               </div>
             </CardHeader>
 
-            <CardContent className="space-y-4 !-mt-4">
+            <CardContent className="!-mt-4 space-y-4">
               {/* Translation notice for translated articles */}
               {article.translatedTitle && (
                 <div
                   role="note"
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-50 border-l-4 border-blue-400 dark:bg-blue-950/30 dark:border-blue-600 rounded-sm"
+                  className="flex items-center gap-2 rounded-sm border-l-4 border-blue-400 bg-blue-50 px-4 py-2 dark:border-blue-600 dark:bg-blue-950/30"
                   data-testid="translation-notice"
                 >
-                  <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  <svg
+                    className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
                     このタイトルと要約は英語記事から自動翻訳されています
@@ -208,7 +250,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
               {/* スライドサービスまたは短い記事の場合はサムネイル表示、それ以外は詳細要約表示 */}
               {(isSlideService || isShortArticle) && article.thumbnail ? (
                 <>
-                  <div className="max-w-2xl mx-auto">
+                  <div className="mx-auto max-w-2xl">
                     {/* max-h-[480px] is a defensive constraint for oversized images.
                         If max-w-2xl changes, adjust max-h to maintain 16:9 ratio. */}
                     <div className="relative aspect-video max-h-[480px] overflow-hidden rounded-lg bg-[var(--tt-color-surface-muted)]">
@@ -222,50 +264,70 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                       />
                     </div>
                   </div>
-                  <div className="mt-4 p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">
-                      {isShortArticle && !isSlideService 
+                  <div className="bg-muted mt-4 rounded-lg p-4">
+                    <p className="text-muted-foreground text-sm">
+                      {isShortArticle && !isSlideService
                         ? 'この記事は内容が簡潔なため、要約のみを表示しています。'
                         : 'このプレゼンテーションの詳細は元記事でご確認ください。'}
                     </p>
                   </div>
                 </>
               ) : isShortArticle ? (
-                <div className="p-4 bg-muted rounded-lg space-y-2">
+                <div className="bg-muted space-y-2 rounded-lg p-4">
                   <p className="text-sm font-medium">要約</p>
-                  <p className="text-sm text-muted-foreground">{article.summary || '詳細は元記事でご確認ください。'}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {article.summary || '詳細は元記事でご確認ください。'}
+                  </p>
                   {article.content && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="text-xs text-muted-foreground">
+                    <div className="mt-4 border-t pt-4">
+                      <p className="text-muted-foreground text-xs">
                         ※ この記事は{article.content.length}文字の短い記事です
                       </p>
                     </div>
                   )}
                 </div>
-              ) : article.detailedSummary && article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__' ? (
+              ) : article.detailedSummary &&
+                article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__' ? (
                 <DetailedSummaryDisplay
                   detailedSummary={article.detailedSummary}
-                  articleType={article.articleType as "release" | "problem-solving" | "tutorial" | "tech-intro" | "implementation" | undefined}
+                  articleType={
+                    article.articleType as
+                      | 'release'
+                      | 'problem-solving'
+                      | 'tutorial'
+                      | 'tech-intro'
+                      | 'implementation'
+                      | undefined
+                  }
                   summaryVersion={article.summaryVersion}
                 />
               ) : article.summary ? (
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm font-medium mb-1">要約</p>
-                  <p className="text-sm text-muted-foreground">{article.summary}</p>
+                <div className="bg-muted rounded-lg p-4">
+                  <p className="mb-1 text-sm font-medium">要約</p>
+                  <p className="text-muted-foreground text-sm">
+                    {article.summary}
+                  </p>
                 </div>
               ) : null}
 
-              <div className="flex items-center justify-between pt-4 border-t">
+              <div className="flex items-center justify-between border-t pt-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">品質スコア:</span>
-                  <Badge variant="secondary">{Math.round(article.qualityScore)}</Badge>
+                  <span className="text-muted-foreground text-sm">
+                    品質スコア:
+                  </span>
+                  <Badge variant="secondary">
+                    {Math.round(article.qualityScore)}
+                  </Badge>
                 </div>
 
                 <div className="flex items-center gap-4">
                   {article.content && article.content.length > 0 && (
-                    <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <span className="text-muted-foreground flex items-center gap-1 text-sm">
                       <Clock className="h-4 w-4" />
-                      <span>{Math.max(1, Math.ceil(article.content.length / 500))}分 / {article.content.length.toLocaleString('ja-JP')}字</span>
+                      <span>
+                        {Math.max(1, Math.ceil(article.content.length / 500))}分
+                        / {article.content.length.toLocaleString('ja-JP')}字
+                      </span>
                     </span>
                   )}
                   <Button asChild>
@@ -291,7 +353,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
             articleTopics={qaTopics}
           >
             <Button variant="outline" size="lg" className="w-full sm:w-auto">
-              <MessageSquare className="h-5 w-5 mr-2" />
+              <MessageSquare className="mr-2 h-5 w-5" />
               記事について質問する
             </Button>
           </ArticleQADialog>
@@ -300,7 +362,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
           <CommentSection articleId={article.id} />
         </div>
 
-        <div className="w-full lg:w-80 shrink-0">
+        <div className="w-full shrink-0 lg:w-80">
           <RelatedArticles articleId={article.id} />
         </div>
       </div>

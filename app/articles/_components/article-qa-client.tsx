@@ -1,16 +1,28 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo, type RefObject } from 'react';
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  type RefObject,
+} from 'react';
 import { Bot, MessageSquare, Sparkles, User, X } from 'lucide-react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
 import { AgentLoadingState } from '@/app/search/agent/_components/agent-loading-state';
 import { ArticleQaAnswer } from './article-qa-answer';
 import { AgentErrorDisplay } from '@/app/search/agent/_components/agent-error-display';
-import { useArticleQA, type ArticleQAResult, type ArticleQAError } from '@/lib/hooks/useArticleQA';
+import {
+  useArticleQA,
+  type ArticleQAResult,
+  type ArticleQAError,
+} from '@/lib/hooks/useArticleQA';
 import { Button } from '@/components/ui/button';
 import { DialogTitle } from '@/components/ui/dialog';
 
-const ENABLE_STREAMING_UI = process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
+const ENABLE_STREAMING_UI =
+  process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
 
 export interface ArticleQAClientProps {
   articleId: string;
@@ -44,7 +56,9 @@ function selectSummaryFocus(summary?: string): string | null {
   if (sentences.length === 0) {
     return normalized.slice(0, 80);
   }
-  const preferred = sentences.find((sentence) => sentence.length >= 12 && sentence.length <= 80);
+  const preferred = sentences.find(
+    (sentence) => sentence.length >= 12 && sentence.length <= 80
+  );
   return (preferred ?? sentences[0]).slice(0, 80);
 }
 
@@ -62,17 +76,27 @@ function buildArticleSampleQueries(options: {
 
   if (locale === 'en') {
     sampleQueries.add(`Give me the key takeaways from "${safeTitle}".`);
-    sampleQueries.add(`What prerequisites should I know before reading "${safeTitle}"?`);
+    sampleQueries.add(
+      `What prerequisites should I know before reading "${safeTitle}"?`
+    );
     if (focus) {
-      sampleQueries.add(`The article mentions "${focus}". Can you explain that section in detail?`);
+      sampleQueries.add(
+        `The article mentions "${focus}". Can you explain that section in detail?`
+      );
     }
     if (primaryTopic) {
-      sampleQueries.add(`Why is ${primaryTopic} considered useful in this article?`);
+      sampleQueries.add(
+        `Why is ${primaryTopic} considered useful in this article?`
+      );
     }
     if (secondaryTopic) {
-      sampleQueries.add(`What are the implementation cautions for ${secondaryTopic}?`);
+      sampleQueries.add(
+        `What are the implementation cautions for ${secondaryTopic}?`
+      );
     }
-    sampleQueries.add(`Summarize the benefits and trade-offs discussed in "${safeTitle}".`);
+    sampleQueries.add(
+      `Summarize the benefits and trade-offs discussed in "${safeTitle}".`
+    );
     return Array.from(sampleQueries).slice(0, 5);
   }
 
@@ -105,11 +129,13 @@ export function ArticleQAClient({
   const [activeExchangeId, setActiveExchangeId] = useState<string | null>(null);
   const [sampleQueriesOpen, setSampleQueriesOpen] = useState(true);
   const [hasSentFirstMessage, setHasSentFirstMessage] = useState(false);
-  const { search, result, error, isLoading, partialText, reset } = useArticleQA({
-    articleId,
-    articleTitle,
-    locale,
-  });
+  const { search, result, error, isLoading, partialText, reset } = useArticleQA(
+    {
+      articleId,
+      articleTitle,
+      locale,
+    }
+  );
   const prefillQueryRef = useRef<((query: string) => void) | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const scrollToBottom = useCallback(
@@ -154,12 +180,14 @@ export function ArticleQAClient({
   useEffect(() => {
     if (!ENABLE_STREAMING_UI) return;
     if (!partialText) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: show result when streaming starts
     setShowResult(true);
   }, [partialText]);
 
   useEffect(() => {
     if (!isLoading && (result || error)) {
       if (ENABLE_STREAMING_UI) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: show result when loading completes
         setShowResult(true);
         return;
       }
@@ -182,23 +210,30 @@ export function ArticleQAClient({
 
   useEffect(() => {
     if (!result || !activeExchangeId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: update chat history with result
     setChatHistory((previous) =>
       previous.map((exchange) =>
-        exchange.id === activeExchangeId ? { ...exchange, answer: result, error: null } : exchange
+        exchange.id === activeExchangeId
+          ? { ...exchange, answer: result, error: null }
+          : exchange
       )
     );
   }, [result, activeExchangeId]);
 
   useEffect(() => {
     if (!error || !activeExchangeId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: update chat history with error
     setChatHistory((previous) =>
-      previous.map((exchange) => (exchange.id === activeExchangeId ? { ...exchange, error } : exchange))
+      previous.map((exchange) =>
+        exchange.id === activeExchangeId ? { ...exchange, error } : exchange
+      )
     );
   }, [error, activeExchangeId]);
 
   // Auto-collapse sample queries after first message is sent
   useEffect(() => {
     if (!hasSentFirstMessage && chatHistory.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: collapse queries after first message
       setSampleQueriesOpen(false);
       setHasSentFirstMessage(true);
     }
@@ -210,14 +245,22 @@ export function ArticleQAClient({
     }
   }, []);
 
-  const handleSetPrefillCallback = useCallback((callback: (query: string) => void) => {
-    prefillQueryRef.current = callback;
-  }, []);
+  const handleSetPrefillCallback = useCallback(
+    (callback: (query: string) => void) => {
+      prefillQueryRef.current = callback;
+    },
+    []
+  );
 
-  const isStreamingWithPartialText = ENABLE_STREAMING_UI && Boolean(partialText);
-  const shouldShowStreamingResult = ENABLE_STREAMING_UI && Boolean(partialText && !result);
+  const isStreamingWithPartialText =
+    ENABLE_STREAMING_UI && Boolean(partialText);
+  const shouldShowStreamingResult =
+    ENABLE_STREAMING_UI && Boolean(partialText && !result);
   const normalizedTopics = useMemo(
-    () => (articleTopics ?? []).filter((topic): topic is string => Boolean(topic && topic.trim())),
+    () =>
+      (articleTopics ?? []).filter((topic): topic is string =>
+        Boolean(topic && topic.trim())
+      ),
     [articleTopics]
   );
 
@@ -249,18 +292,23 @@ export function ArticleQAClient({
       }),
     [articleTitle, articleSummary, normalizedTopics, locale]
   );
-  const dialogTitleText = locale === 'ja' ? `${articleTitle}に質問する` : `Ask about ${articleTitle}`;
+  const dialogTitleText =
+    locale === 'ja' ? `${articleTitle}に質問する` : `Ask about ${articleTitle}`;
 
   const shortcutHint =
     locale === 'ja' ? (
       <>
-        ショートカット: <kbd className="px-1 py-0.5 bg-muted rounded">Cmd+Shift+K</kbd> または{' '}
-        <kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+Shift+K</kbd> で質問欄を開く
+        ショートカット:{' '}
+        <kbd className="bg-muted rounded px-1 py-0.5">Cmd+Shift+K</kbd> または{' '}
+        <kbd className="bg-muted rounded px-1 py-0.5">Ctrl+Shift+K</kbd>{' '}
+        で質問欄を開く
       </>
     ) : (
       <>
-        Shortcut: <kbd className="px-1 py-0.5 bg-muted rounded">Cmd+Shift+K</kbd> or{' '}
-        <kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+Shift+K</kbd> to focus the question box
+        Shortcut:{' '}
+        <kbd className="bg-muted rounded px-1 py-0.5">Cmd+Shift+K</kbd> or{' '}
+        <kbd className="bg-muted rounded px-1 py-0.5">Ctrl+Shift+K</kbd> to
+        focus the question box
       </>
     );
 
@@ -272,9 +320,13 @@ export function ArticleQAClient({
           <Button
             variant="outline"
             size="sm"
-            className="absolute right-4 top-4 rounded-full border-slate-100 text-slate-600 shadow-sm transition hover:shadow sm:right-6 sm:top-6"
+            className="absolute top-4 right-4 rounded-full border-slate-100 text-slate-600 shadow-sm transition hover:shadow sm:top-6 sm:right-6"
             onClick={onClose}
-            aria-label={locale === 'ja' ? '記事QAパネルを閉じる' : 'Close article Q&A panel'}
+            aria-label={
+              locale === 'ja'
+                ? '記事QAパネルを閉じる'
+                : 'Close article Q&A panel'
+            }
           >
             <X className="mr-2 h-4 w-4" />
             {locale === 'ja' ? '閉じる' : 'Close'}
@@ -284,10 +336,10 @@ export function ArticleQAClient({
         <div className="flex flex-1 flex-col">
           <div className="mb-6 flex flex-col gap-1">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-              <MessageSquare className="h-4 w-4 text-primary" />
+              <MessageSquare className="text-primary h-4 w-4" />
               {locale === 'ja' ? 'チャットタイムライン' : 'Conversation'}
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {locale === 'ja'
                 ? '質問内容とAIの回答がカード形式で表示されます。引用には記事ソースが含まれます。'
                 : 'Your prompts and grounded answers render below with contextual citations.'}
@@ -305,15 +357,21 @@ export function ArticleQAClient({
               ) : (
                 chatHistory.map((exchange) => {
                   const isActive = exchange.id === activeExchangeId;
-                  const exchangeResult = isActive ? result ?? exchange.answer : exchange.answer;
+                  const exchangeResult = isActive
+                    ? (result ?? exchange.answer)
+                    : exchange.answer;
                   const showAnswerPanel = Boolean(
                     exchangeResult ||
-                      (isActive &&
-                        (shouldShowStreamingResult ||
-                          (showResult && (result || (ENABLE_STREAMING_UI ? partialText : null)))))
+                    (isActive &&
+                      (shouldShowStreamingResult ||
+                        (showResult &&
+                          (result ||
+                            (ENABLE_STREAMING_UI ? partialText : null)))))
                   );
-                  const streamingPartial = isActive && ENABLE_STREAMING_UI ? partialText : null;
-                  const showLoading = isActive && isLoading && !isStreamingWithPartialText;
+                  const streamingPartial =
+                    isActive && ENABLE_STREAMING_UI ? partialText : null;
+                  const showLoading =
+                    isActive && isLoading && !isStreamingWithPartialText;
 
                   return (
                     <div key={exchange.id} className="space-y-3">
@@ -322,7 +380,10 @@ export function ArticleQAClient({
                         <div className="max-w-2xl rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-medium text-slate-900 shadow-sm">
                           {exchange.question}
                         </div>
-                        <User className="mt-3 h-5 w-5 flex-shrink-0 text-slate-500" aria-hidden="true" />
+                        <User
+                          className="mt-3 h-5 w-5 flex-shrink-0 text-slate-500"
+                          aria-hidden="true"
+                        />
                       </div>
 
                       {showLoading && (
@@ -344,11 +405,20 @@ export function ArticleQAClient({
 
                       {!exchange.error && showAnswerPanel && (
                         <div className="flex items-start gap-3">
-                          <Bot className="mt-5 h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
+                          <Bot
+                            className="text-primary mt-5 h-5 w-5 flex-shrink-0"
+                            aria-hidden="true"
+                          />
                           <div className="flex-1">
                             <ArticleQaAnswer
-                              answer={streamingPartial || exchangeResult?.response || null}
-                              isStreaming={isActive && shouldShowStreamingResult}
+                              answer={
+                                streamingPartial ||
+                                exchangeResult?.response ||
+                                null
+                              }
+                              isStreaming={
+                                isActive && shouldShowStreamingResult
+                              }
                             />
                           </div>
                         </div>
@@ -360,26 +430,30 @@ export function ArticleQAClient({
               <div ref={chatEndRef} />
             </div>
 
-            <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-b from-transparent via-white to-white pt-6">
+            <div className="sticky right-0 bottom-0 left-0 bg-gradient-to-b from-transparent via-white to-white pt-6">
               {/* Sample queries section - positioned above input for better task-completion UX */}
               <aside
                 role="complementary"
-                aria-label={locale === 'ja' ? 'サンプル質問' : 'Sample questions'}
+                aria-label={
+                  locale === 'ja' ? 'サンプル質問' : 'Sample questions'
+                }
                 className="mb-4"
               >
                 {/* Separator for visual separation from answer */}
-                <div className="border-t border-slate-200/40 mb-4" />
+                <div className="mb-4 border-t border-slate-200/40" />
 
                 {sampleQueriesOpen ? (
                   <div
                     id="sample-queries-panel"
                     role="region"
-                    aria-label={locale === 'ja' ? '関連する質問' : 'Related questions'}
-                    className="space-y-3 animate-in fade-in-0 slide-in-from-top-2 duration-300"
+                    aria-label={
+                      locale === 'ja' ? '関連する質問' : 'Related questions'
+                    }
+                    className="animate-in fade-in-0 slide-in-from-top-2 space-y-3 duration-300"
                   >
                     {/* Header with collapse button */}
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                      <span className="text-xs font-medium tracking-wide text-slate-500 uppercase">
                         {locale === 'ja' ? '関連する質問' : 'Related questions'}
                       </span>
                       <button
@@ -387,13 +461,13 @@ export function ArticleQAClient({
                         onClick={() => setSampleQueriesOpen(false)}
                         aria-expanded={sampleQueriesOpen}
                         aria-controls="sample-queries-panel"
-                        className="text-xs text-slate-400 hover:text-slate-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded"
+                        className="focus-visible:ring-primary/30 rounded text-xs text-slate-400 transition hover:text-slate-600 focus-visible:ring-2 focus-visible:outline-none"
                       >
                         {locale === 'ja' ? '閉じる' : 'Close'}
                       </button>
                     </div>
                     {/* Sample query buttons - horizontal scroll on mobile, wrap on desktop */}
-                    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 scrollbar-hide lg:flex-wrap lg:overflow-visible">
+                    <div className="scrollbar-hide -mx-1 flex gap-2 overflow-x-auto px-1 pb-2 lg:flex-wrap lg:overflow-visible">
                       {sampleQueries.map((query) => (
                         <button
                           key={query}
@@ -404,12 +478,14 @@ export function ArticleQAClient({
                               : `Insert sample: ${query.slice(0, 20)}...`
                           }
                           onClick={() => handlePrefillQuery(query)}
-                          className="group inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border border-slate-200/60 bg-slate-50/80 px-2.5 py-1 text-xs text-slate-600 transition hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 lg:flex-shrink"
+                          className="group hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/30 inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border border-slate-200/60 bg-slate-50/80 px-2.5 py-1 text-xs text-slate-600 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:flex-shrink"
                         >
-                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+                          <span className="bg-primary/10 text-primary inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold">
                             Q
                           </span>
-                          <span className="whitespace-nowrap text-left lg:whitespace-normal">{query}</span>
+                          <span className="text-left whitespace-nowrap lg:whitespace-normal">
+                            {query}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -421,17 +497,19 @@ export function ArticleQAClient({
                     onClick={() => setSampleQueriesOpen(true)}
                     aria-expanded={sampleQueriesOpen}
                     aria-controls="sample-queries-panel"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-white px-3 py-1.5 text-xs font-medium text-primary shadow-sm transition hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2"
+                    className="border-primary/30 text-primary hover:bg-primary/5 focus-visible:ring-primary/30 inline-flex items-center gap-1.5 rounded-full border bg-white px-3 py-1.5 text-xs font-medium shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                   >
                     <Sparkles className="h-3.5 w-3.5" />
-                    {locale === 'ja' ? 'サンプル質問を表示' : 'Show sample questions'}
+                    {locale === 'ja'
+                      ? 'サンプル質問を表示'
+                      : 'Show sample questions'}
                   </button>
                 )}
               </aside>
 
               <div className="rounded-[28px] border border-slate-100/80 bg-white/90 p-4 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)] backdrop-blur-sm sm:p-6">
-                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
-                  <MessageSquare className="h-4 w-4 text-primary" />
+                <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.3em] text-slate-500 uppercase">
+                  <MessageSquare className="text-primary h-4 w-4" />
                   {locale === 'ja' ? 'この記事に質問する' : 'Ask this article'}
                 </div>
                 <div className="mt-4">
@@ -446,7 +524,11 @@ export function ArticleQAClient({
                     submitLabel={locale === 'ja' ? '質問' : 'Ask'}
                     loadingLabel={locale === 'ja' ? '回答中' : 'Answering'}
                     historyEnabled={false}
-                    inputLabel={locale === 'ja' ? '記事QA質問入力' : 'Article QA question input'}
+                    inputLabel={
+                      locale === 'ja'
+                        ? '記事QA質問入力'
+                        : 'Article QA question input'
+                    }
                     shortcutHint={shortcutHint}
                   />
                 </div>

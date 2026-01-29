@@ -24,7 +24,37 @@ interface TagRankingChartProps {
   loading?: boolean;
 }
 
-export function TagRankingChart({ data, loading = false }: TagRankingChartProps) {
+// TagRankingChart用のTooltip Payload型
+interface TagTooltipPayload {
+  value: number;
+  payload: TagRankingData;
+}
+
+// カスタムツールチップコンポーネント（トップレベルに移動）
+const TagRankingChartTooltip = React.memo(function TagRankingChartTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: TagTooltipPayload[];
+}) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background rounded-lg border p-2 shadow-sm">
+        <p className="font-semibold">{payload[0].payload.name}</p>
+        <p className="text-muted-foreground text-sm">
+          記事数: {payload[0].value}件
+        </p>
+      </div>
+    );
+  }
+  return null;
+});
+
+export function TagRankingChart({
+  data,
+  loading = false,
+}: TagRankingChartProps) {
   if (loading) {
     return (
       <Card>
@@ -51,27 +81,13 @@ export function TagRankingChart({ data, loading = false }: TagRankingChartProps)
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+          <div className="text-muted-foreground flex h-[300px] items-center justify-center">
             データがありません
           </div>
         </CardContent>
       </Card>
     );
   }
-
-  const CustomTooltip = ({ active, payload }: {active?: boolean; payload?: Array<{value: number; payload: TagRankingData}>}) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="rounded-lg border bg-background p-2 shadow-sm">
-          <p className="font-semibold">{payload[0].payload.name}</p>
-          <p className="text-sm text-muted-foreground">
-            記事数: {payload[0].value}件
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <Card>
@@ -102,12 +118,8 @@ export function TagRankingChart({ data, loading = false }: TagRankingChartProps)
               tick={{ fontSize: 11 }}
             />
             <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar
-              dataKey="count"
-              fill="#8884d8"
-              radius={[8, 8, 0, 0]}
-            />
+            <Tooltip content={<TagRankingChartTooltip />} />
+            <Bar dataKey="count" fill="#8884d8" radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

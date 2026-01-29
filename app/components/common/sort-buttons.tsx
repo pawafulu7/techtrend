@@ -24,6 +24,7 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
   // URLパラメータが変更されたら状態を更新
   useEffect(() => {
     if (urlSortBy !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: sync from URL params
       setSortBy(urlSortBy);
     }
   }, [urlSortBy]);

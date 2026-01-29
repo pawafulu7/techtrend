@@ -16,12 +16,16 @@ interface SearchSuggestion {
 export function SearchBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get('q') || '');
+  // Read from 'search' first (current), then fallback to 'q' (legacy) for URL consistency
+  const [query, setQuery] = useState(
+    searchParams.get('search') || searchParams.get('q') || ''
+  );
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const debouncedQuery = useDebounce(query, 300);
   const { getSearchHistory, saveToHistory, clearHistory } = useSearchHistory();
@@ -30,43 +34,51 @@ export function SearchBar() {
   useEffect(() => {
     if (debouncedQuery) {
       const history = getSearchHistory()
-        .filter(h => h.toLowerCase().includes(debouncedQuery.toLowerCase()))
-        .map(text => ({ type: 'history' as const, text }));
-      
+        .filter((h) => h.toLowerCase().includes(debouncedQuery.toLowerCase()))
+        .map((text) => ({ type: 'history' as const, text }));
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: update suggestions from search history
       setSuggestions(history);
     } else {
       // クエリが空の場合は履歴を全て表示
       const history = getSearchHistory()
         .slice(0, 5)
-        .map(text => ({ type: 'history' as const, text }));
-      
+        .map((text) => ({ type: 'history' as const, text }));
       setSuggestions(history);
     }
   }, [debouncedQuery, getSearchHistory]);
 
   // 検索実行
-  const handleSearch = useCallback((searchQuery?: string) => {
-    const finalQuery = searchQuery || query;
-    if (!finalQuery.trim() && !searchQuery) return;
-    
-    setIsSearching(true);
-    saveToHistory(finalQuery);
-    
-    // 検索パラメータを構築
-    const params = new URLSearchParams(searchParams);
-    if (finalQuery) {
-      params.set('search', finalQuery);
-      params.set('page', '1'); // 検索時は1ページ目に戻る
-    } else {
-      params.delete('search');
-    }
-    
-    // ホームページへ遷移（検索パラメータ付き）
-    router.push(`/?${params.toString()}`);
-    setShowSuggestions(false);
-    
-    setTimeout(() => setIsSearching(false), 500);
-  }, [query, searchParams, router, saveToHistory]);
+  const handleSearch = useCallback(
+    (searchQuery?: string) => {
+      const finalQuery = searchQuery || query;
+      if (!finalQuery.trim() && !searchQuery) return;
+
+      setIsSearching(true);
+      saveToHistory(finalQuery);
+
+      // 検索パラメータを構築
+      const params = new URLSearchParams(searchParams);
+      if (finalQuery) {
+        params.set('search', finalQuery);
+        params.set('page', '1'); // 検索時は1ページ目に戻る
+        params.delete('q'); // legacy param cleanup
+      } else {
+        params.delete('search');
+        params.delete('q'); // legacy param cleanup
+      }
+
+      // ホームページへ遷移（検索パラメータ付き）
+      router.push(`/?${params.toString()}`);
+      setShowSuggestions(false);
+
+      // Clear any existing timer before setting a new one
+      if (searchingTimerRef.current) {
+        clearTimeout(searchingTimerRef.current);
+      }
+      searchingTimerRef.current = setTimeout(() => setIsSearching(false), 500);
+    },
+    [query, searchParams, router, saveToHistory]
+  );
 
   // キーボードイベント
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -83,20 +95,32 @@ export function SearchBar() {
   const handleClear = () => {
     setQuery('');
     inputRef.current?.focus();
-    
+
     // URLパラメータから検索クエリを削除
     const params = new URLSearchParams(searchParams);
     params.delete('search');
     params.delete('q'); // 念のため古いパラメータも削除
-    
+
     // ホームページへ遷移（検索パラメータなし）
     router.push(`/?${params.toString()}`);
   };
 
+  // Cleanup timer on unmount to prevent setState after unmount
+  useEffect(() => {
+    return () => {
+      if (searchingTimerRef.current) {
+        clearTimeout(searchingTimerRef.current);
+      }
+    };
+  }, []);
+
   // 外部クリックでサジェスチョンを閉じる
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
         setShowSuggestions(false);
       }
     };
@@ -122,8 +146,8 @@ export function SearchBar() {
   return (
     <div ref={searchRef} className="relative w-full max-w-xl">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        
+        <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+
         <Input
           ref={inputRef}
           type="search"
@@ -132,12 +156,12 @@ export function SearchBar() {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(true)}
-          className="pl-9 pr-20"
+          className="pr-20 pl-9"
           autoComplete="off"
           spellCheck={false}
         />
-        
-        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+
+        <div className="absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-1">
           {query && (
             <Button
               type="button"
@@ -150,7 +174,7 @@ export function SearchBar() {
               <X className="h-4 w-4" />
             </Button>
           )}
-          
+
           <Button
             type="button"
             size="sm"
@@ -166,37 +190,37 @@ export function SearchBar() {
           </Button>
         </div>
       </div>
-      
+
       {/* サジェスチョン */}
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg z-50">
+        <div className="bg-background absolute top-full right-0 left-0 z-50 mt-1 rounded-md border shadow-lg">
           <div className="py-1">
             {suggestions.map((suggestion, index) => (
               <button
                 key={index}
-                className="flex items-center gap-2 w-full px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground text-sm"
+                className="hover:bg-accent hover:text-accent-foreground flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
                 onClick={() => {
                   setQuery(suggestion.text);
                   handleSearch(suggestion.text);
                 }}
               >
                 {suggestion.type === 'history' ? (
-                  <Search className="h-3 w-3 text-muted-foreground" />
+                  <Search className="text-muted-foreground h-3 w-3" />
                 ) : (
                   <Search className="h-3 w-3" />
                 )}
                 <span className="flex-1">{suggestion.text}</span>
                 {suggestion.type === 'history' && (
-                  <span className="text-xs text-muted-foreground">履歴</span>
+                  <span className="text-muted-foreground text-xs">履歴</span>
                 )}
               </button>
             ))}
           </div>
-          
+
           {getSearchHistory().length > 0 && (
             <div className="border-t px-3 py-2">
               <button
-                className="text-xs text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground text-xs"
                 onClick={() => {
                   clearHistory();
                   setSuggestions([]);
