@@ -133,6 +133,8 @@ export function HomeClientInfinite({
     if (previousCategory !== null && previousCategory !== currentCategory) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: track category changes for loading state
       setIsCategoryChanging(true);
+      // Update previous category to detect next change (fixes one-time detection issue)
+      setPreviousCategory(currentCategory);
       // 短い遅延後にローディング状態を解除
       const timer = setTimeout(() => {
         setIsCategoryChanging(false);

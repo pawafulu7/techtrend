@@ -31,11 +31,17 @@ export function RelativeTime({
   useEffect(() => {
     const targetDate = typeof date === 'string' ? new Date(date) : date;
 
+    // Validate parsed date to avoid NaN
+    if (Number.isNaN(targetDate.getTime())) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: keep null for invalid date
+      setHoursAgo(null);
+      return;
+    }
+
     const calculateHours = () => {
       return Math.floor((Date.now() - targetDate.getTime()) / (1000 * 60 * 60));
     };
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: SSR-safe client-side initialization
     setHoursAgo(calculateHours());
 
     // 1分ごとに更新（リアルタイム性が必要な場合）
@@ -93,11 +99,17 @@ export function useIsNewArticle(
     const publishedDate =
       typeof publishedAt === 'string' ? new Date(publishedAt) : publishedAt;
 
+    // Validate parsed date to avoid NaN
+    if (Number.isNaN(publishedDate.getTime())) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: keep null for invalid date
+      setIsNew(null);
+      return;
+    }
+
     const hoursAgo = Math.floor(
       (Date.now() - publishedDate.getTime()) / (1000 * 60 * 60)
     );
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: SSR-safe client-side initialization
     setIsNew(hoursAgo < thresholdHours);
   }, [publishedAt, thresholdHours]);
 

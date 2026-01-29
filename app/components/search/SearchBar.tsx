@@ -22,6 +22,7 @@ export function SearchBar() {
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const debouncedQuery = useDebounce(query, 300);
   const { getSearchHistory, saveToHistory, clearHistory } = useSearchHistory();
@@ -65,7 +66,11 @@ export function SearchBar() {
       router.push(`/?${params.toString()}`);
       setShowSuggestions(false);
 
-      setTimeout(() => setIsSearching(false), 500);
+      // Clear any existing timer before setting a new one
+      if (searchingTimerRef.current) {
+        clearTimeout(searchingTimerRef.current);
+      }
+      searchingTimerRef.current = setTimeout(() => setIsSearching(false), 500);
     },
     [query, searchParams, router, saveToHistory]
   );
@@ -94,6 +99,15 @@ export function SearchBar() {
     // ホームページへ遷移（検索パラメータなし）
     router.push(`/?${params.toString()}`);
   };
+
+  // Cleanup timer on unmount to prevent setState after unmount
+  useEffect(() => {
+    return () => {
+      if (searchingTimerRef.current) {
+        clearTimeout(searchingTimerRef.current);
+      }
+    };
+  }, []);
 
   // 外部クリックでサジェスチョンを閉じる
   useEffect(() => {

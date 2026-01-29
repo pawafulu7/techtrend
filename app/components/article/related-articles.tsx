@@ -35,8 +35,9 @@ function RelatedArticleItem({ article }: { article: RelatedArticle }) {
     setTimeInfo({ hoursAgo, isNew: hoursAgo < 24 });
   }, [article.publishedAt]);
 
-  const hoursAgo = timeInfo?.hoursAgo ?? 0;
-  const isNew = timeInfo?.isNew ?? false;
+  // Use undefined fallback to avoid UI flicker (showing "just now" before real value)
+  const hoursAgo = timeInfo?.hoursAgo;
+  const isNew = timeInfo?.isNew;
 
   return (
     <Link
@@ -64,13 +65,15 @@ function RelatedArticleItem({ article }: { article: RelatedArticle }) {
             {article.source}
           </Badge>
           <span>
-            {hoursAgo < 1
-              ? 'たった今'
-              : hoursAgo < 24
-                ? `${hoursAgo}時間前`
-                : formatDate(article.publishedAt)}
+            {hoursAgo === undefined
+              ? formatDate(article.publishedAt)
+              : hoursAgo < 1
+                ? 'たった今'
+                : hoursAgo < 24
+                  ? `${hoursAgo}時間前`
+                  : formatDate(article.publishedAt)}
           </span>
-          {isNew && (
+          {isNew === true && (
             <Badge className="h-5 text-xs" variant="destructive">
               <TrendingUp className="mr-0.5 h-3 w-3" />
               New

@@ -74,13 +74,15 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   format,
 }) => {
   // データのフォーマット
+  // Note: TimeSeriesData only has 'time' and 'value' fields.
+  // dataKey is used for chart rendering, but data always uses 'value'.
   const formattedData = useMemo(() => {
     return data.map((item) => ({
       ...item,
       [dataKey]:
         typeof item.value === 'number'
           ? item.value
-          : parseFloat(item.value as any),
+          : parseFloat(String(item.value)),
     }));
   }, [data, dataKey]);
 
