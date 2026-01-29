@@ -71,12 +71,14 @@ export class LLMExtractionPipeline {
     options?: ExtractionOptions
   ): Promise<ExtractionResult<T>> {
     const opts = { ...DEFAULT_OPTIONS, ...options };
+    const shouldLogRaw = process.env.LOG_LLM_RAW_RESPONSE === 'true';
     const prompt = config.buildPrompt(input);
 
     let lastError: Error | null = null;
     let rawResponse: string | undefined;
 
     for (let attempt = 1; attempt <= opts.maxRetries; attempt++) {
+      rawResponse = undefined; // attemptごとにリセット
       try {
         rawResponse = await this.callAPI(prompt, opts);
 
@@ -101,6 +103,7 @@ export class LLMExtractionPipeline {
             attempt,
             maxRetries: opts.maxRetries,
             error: lastError.message,
+            rawResponse: shouldLogRaw ? rawResponse?.slice(0, 300) : undefined,
           },
           'LLM extraction attempt failed'
         );

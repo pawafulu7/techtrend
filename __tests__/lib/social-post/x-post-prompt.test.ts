@@ -18,7 +18,7 @@ describe('buildArticlePostPrompt', () => {
 
     expect(prompt).toContain('Grafana 11.0リリース');
     expect(prompt).toContain('アラート統合の改善');
-    expect(prompt).toContain('SREエンジニア');
+    expect(prompt).toContain('インフラ設計と信頼性に強いエンジニア');
   });
 
   it('should include style options', () => {
@@ -34,6 +34,8 @@ describe('buildArticlePostPrompt', () => {
     expect(prompt).toContain('感想型');
     expect(prompt).toContain('示唆型');
     expect(prompt).toContain('文脈型');
+    expect(prompt).toContain('要点抽出型');
+    expect(prompt).toContain('疑問提起型');
   });
 
   it('should include prohibition rules', () => {

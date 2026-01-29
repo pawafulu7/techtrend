@@ -5,7 +5,7 @@
  */
 
 import type { Article, TrendReport, DiffSummary } from '@prisma/client';
-import { getLLMExtractionPipeline } from '@/lib/ai/extraction/llm-extraction-pipeline';
+import { LLMExtractionPipeline } from '@/lib/ai/extraction/llm-extraction-pipeline';
 import { detectPromptInjection } from '@/lib/rag/security/prompt-injection-detector';
 import { sanitizeHtml } from '@/lib/utils/html-sanitizer';
 import logger from '@/lib/logger';
@@ -39,6 +39,17 @@ export class SocialPostGenerator {
   /** X投稿の最大文字数 */
   private static readonly MAX_POST_LENGTH = 120;
 
+  /** X投稿生成用モデル */
+  private static readonly X_POST_MODEL = 'gemini-2.5-flash';
+
+  /** X投稿生成用パイプラインを取得 */
+  private createPipeline(): LLMExtractionPipeline {
+    return new LLMExtractionPipeline(
+      undefined,
+      SocialPostGenerator.X_POST_MODEL
+    );
+  }
+
   /**
    * 記事からX投稿を生成
    * - detailedSummaryを優先使用（なければsummaryにフォールバック）
@@ -58,7 +69,7 @@ export class SocialPostGenerator {
     });
 
     const sanitizedPrompt = this.sanitizeForPrompt(prompt);
-    const pipeline = getLLMExtractionPipeline();
+    const pipeline = this.createPipeline();
 
     // スタイル付きのスキーマを使用
     const config = {
@@ -99,8 +110,8 @@ export class SocialPostGenerator {
     };
 
     const result = await pipeline.extract(sanitizedPrompt, config, {
-      maxOutputTokens: 500,
-      temperature: 0.7, // 少し創造性を持たせる
+      maxOutputTokens: 4000,
+      temperature: 0.5, // 安定した出力のため低めに設定
     });
 
     if (!result.success || !result.data) {
@@ -119,7 +130,15 @@ export class SocialPostGenerator {
       }
 
       logger.warn(
-        { articleId: article.id, error: result.error },
+        {
+          articleId: article.id,
+          error: result.error,
+          rawResponse:
+            process.env.LOG_LLM_RAW_RESPONSE === 'true'
+              ? result.rawResponse?.slice(0, 300)
+              : '[REDACTED]',
+          modelVersion: result.modelVersion,
+        },
         'AI generation failed, using fallback'
       );
       return {
@@ -191,12 +210,12 @@ export class SocialPostGenerator {
     });
 
     const sanitizedPrompt = this.sanitizeForPrompt(prompt);
-    const pipeline = getLLMExtractionPipeline();
+    const pipeline = this.createPipeline();
     const config = createXPostExtractionConfig();
 
     const result = await pipeline.extract(sanitizedPrompt, config, {
-      maxOutputTokens: 500,
-      temperature: 0.7,
+      maxOutputTokens: 4000,
+      temperature: 0.5,
     });
 
     if (!result.success || !result.data) {
@@ -258,12 +277,12 @@ export class SocialPostGenerator {
     });
 
     const sanitizedPrompt = this.sanitizeForPrompt(prompt);
-    const pipeline = getLLMExtractionPipeline();
+    const pipeline = this.createPipeline();
     const config = createXPostExtractionConfig();
 
     const result = await pipeline.extract(sanitizedPrompt, config, {
-      maxOutputTokens: 500,
-      temperature: 0.7,
+      maxOutputTokens: 4000,
+      temperature: 0.5,
     });
 
     if (!result.success || !result.data) {
@@ -309,13 +328,12 @@ export class SocialPostGenerator {
 
     const prompt = buildOpinionPrompt(opinionData);
     const sanitizedPrompt = this.sanitizeForPrompt(prompt);
-
-    const pipeline = getLLMExtractionPipeline();
+    const pipeline = this.createPipeline();
     const config = createXPostExtractionConfig();
 
     const result = await pipeline.extract(sanitizedPrompt, config, {
-      maxOutputTokens: 500,
-      temperature: 0.8, // 少し高めで多様性を出す
+      maxOutputTokens: 4000,
+      temperature: 0.5, // 安定した出力のため低めに設定
     });
 
     if (!result.success || !result.data) {
