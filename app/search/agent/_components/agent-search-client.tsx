@@ -35,6 +35,7 @@ const usePrefersReducedMotion = () => {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: SSR-safe media query initialization
     setPrefersReducedMotion(mediaQuery.matches);
 
     const handler = (e: MediaQueryListEvent) =>
@@ -71,6 +72,7 @@ export function AgentSearchClient() {
       currentStep === 'complete' ||
       currentStep === 'error'
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: reset timeout state on step change
       setIsStepTimedOut(false);
       return;
     }
@@ -85,12 +87,14 @@ export function AgentSearchClient() {
   useEffect(() => {
     if (!ENABLE_STREAMING_UI) return;
     if (!partialText) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: show result when streaming starts
     setShowResult(true);
   }, [partialText]);
 
   useEffect(() => {
     if (!isLoading && (result || error)) {
       if (ENABLE_STREAMING_UI) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: show result when loading completes
         setShowResult(true);
         return;
       }

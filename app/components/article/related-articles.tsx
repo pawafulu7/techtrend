@@ -1,14 +1,105 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LinkIcon, TrendingUp, ChevronDown, ChevronUp, Network } from 'lucide-react';
+import {
+  LinkIcon,
+  TrendingUp,
+  ChevronDown,
+  ChevronUp,
+  Network,
+} from 'lucide-react';
 import { formatDate } from '@/lib/utils/date';
-import { useRelatedArticles } from '@/hooks/use-related-articles';
+import {
+  useRelatedArticles,
+  type RelatedArticle,
+} from '@/hooks/use-related-articles';
+
+// Extracted component to use hooks for each article item
+// Avoids Date.now() during render (React Compiler purity rule)
+function RelatedArticleItem({ article }: { article: RelatedArticle }) {
+  const [timeInfo, setTimeInfo] = useState<{
+    hoursAgo: number;
+    isNew: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    const hoursAgo = Math.floor(
+      (Date.now() - new Date(article.publishedAt).getTime()) / (1000 * 60 * 60)
+    );
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: SSR-safe client-side initialization
+    setTimeInfo({ hoursAgo, isNew: hoursAgo < 24 });
+  }, [article.publishedAt]);
+
+  const hoursAgo = timeInfo?.hoursAgo ?? 0;
+  const isNew = timeInfo?.isNew ?? false;
+
+  return (
+    <Link
+      href={`/articles/${article.id}`}
+      className="group block cursor-pointer rounded-lg bg-gray-100 p-3 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+    >
+      <div className="space-y-1">
+        <div className="flex items-start justify-between gap-2">
+          <h4 className="group-hover:text-primary line-clamp-2 text-sm font-medium transition-colors">
+            {article.translatedTitle || article.title}
+          </h4>
+          <Badge variant="secondary" className="ml-2 shrink-0 text-xs">
+            {Math.round(article.similarity * 100)}%
+          </Badge>
+        </div>
+
+        {article.summary && (
+          <p className="text-muted-foreground line-clamp-2 text-xs">
+            {article.summary}
+          </p>
+        )}
+
+        <div className="text-muted-foreground flex items-center gap-2 text-xs">
+          <Badge variant="outline" className="text-xs">
+            {article.source}
+          </Badge>
+          <span>
+            {hoursAgo < 1
+              ? 'たった今'
+              : hoursAgo < 24
+                ? `${hoursAgo}時間前`
+                : formatDate(article.publishedAt)}
+          </span>
+          {isNew && (
+            <Badge className="h-5 text-xs" variant="destructive">
+              <TrendingUp className="mr-0.5 h-3 w-3" />
+              New
+            </Badge>
+          )}
+        </div>
+
+        {article.tags.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {article.tags.slice(0, 3).map((tag) => (
+              <Badge
+                key={tag.id}
+                variant="outline"
+                className="h-4 px-1.5 py-0 text-xs"
+              >
+                {tag.name}
+              </Badge>
+            ))}
+            {article.tags.length > 3 && (
+              <span className="text-muted-foreground text-xs">
+                +{article.tags.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </Link>
+  );
+}
 
 interface RelatedArticlesProps {
   articleId: string;
@@ -16,13 +107,17 @@ interface RelatedArticlesProps {
   initialExpanded?: boolean;
 }
 
-export function RelatedArticles({ 
-  articleId, 
+export function RelatedArticles({
+  articleId,
   maxItems = 10,
-  initialExpanded = false 
+  initialExpanded = false,
 }: RelatedArticlesProps) {
   const [expanded, setExpanded] = useState(initialExpanded);
-  const { data: articles = [], isLoading, error } = useRelatedArticles(articleId);
+  const {
+    data: articles = [],
+    isLoading,
+    error,
+  } = useRelatedArticles(articleId);
 
   // 表示件数の制御
   const displayLimit = expanded ? maxItems : 5;
@@ -34,7 +129,7 @@ export function RelatedArticles({
     return (
       <Card className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <LinkIcon className="h-5 w-5" />
             関連記事
           </CardTitle>
@@ -54,18 +149,20 @@ export function RelatedArticles({
   if (error) {
     return null;
   }
-  
+
   if (displayArticles.length === 0) {
     return (
       <Card className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <LinkIcon className="h-5 w-5" />
             関連記事
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">関連記事が見つかりませんでした。</p>
+          <p className="text-muted-foreground text-sm">
+            関連記事が見つかりませんでした。
+          </p>
         </CardContent>
       </Card>
     );
@@ -75,98 +172,30 @@ export function RelatedArticles({
     <Card className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <LinkIcon className="h-5 w-5" />
             関連記事
           </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-          >
-            <Link href={`/articles/${articleId}/graph`} className="flex items-center gap-1.5">
+          <Button variant="outline" size="sm" asChild>
+            <Link
+              href={`/articles/${articleId}/graph`}
+              className="flex items-center gap-1.5"
+            >
               <Network className="h-4 w-4" />
               グラフで見る
             </Link>
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-2 max-h-[600px] overflow-y-auto scrollbar-thin">
-        {displayArticles.map((article) => {
-          const hoursAgo = Math.floor(
-            (Date.now() - new Date(article.publishedAt).getTime()) / (1000 * 60 * 60)
-          );
-          const isNew = hoursAgo < 24;
+      <CardContent className="scrollbar-thin max-h-[600px] space-y-2 overflow-y-auto">
+        {displayArticles.map((article) => (
+          <RelatedArticleItem key={article.id} article={article} />
+        ))}
 
-          return (
-            <Link
-              key={article.id}
-              href={`/articles/${article.id}`}
-              className="group block cursor-pointer p-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            >
-              <div className="space-y-1">
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className="text-sm font-medium line-clamp-2 group-hover:text-primary transition-colors">
-                    {article.translatedTitle || article.title}
-                  </h4>
-                  <Badge
-                    variant="secondary"
-                    className="text-xs shrink-0 ml-2"
-                  >
-                    {Math.round(article.similarity * 100)}%
-                  </Badge>
-                </div>
-
-                {article.summary && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {article.summary}
-                  </p>
-                )}
-
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Badge variant="outline" className="text-xs">
-                    {article.source}
-                  </Badge>
-                  <span>
-                    {hoursAgo < 1 ? 'たった今' :
-                     hoursAgo < 24 ? `${hoursAgo}時間前` :
-                     formatDate(article.publishedAt)}
-                  </span>
-                  {isNew && (
-                    <Badge className="text-xs h-5" variant="destructive">
-                      <TrendingUp className="h-3 w-3 mr-0.5" />
-                      New
-                    </Badge>
-                  )}
-                </div>
-
-                {article.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {article.tags.slice(0, 3).map((tag) => (
-                      <Badge
-                        key={tag.id}
-                        variant="outline"
-                        className="text-xs px-1.5 py-0 h-4"
-                      >
-                        {tag.name}
-                      </Badge>
-                    ))}
-                    {article.tags.length > 3 && (
-                      <span className="text-xs text-muted-foreground">
-                        +{article.tags.length - 3}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </Link>
-          );
-        })}
-        
         {hasMore && (
-          <Button 
-            variant="ghost" 
-            className="w-full mt-2 flex items-center gap-2"
+          <Button
+            variant="ghost"
+            className="mt-2 flex w-full items-center gap-2"
             onClick={() => setExpanded(!expanded)}
           >
             {expanded ? (

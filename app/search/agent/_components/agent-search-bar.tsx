@@ -1,11 +1,21 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, type ReactNode, KeyboardEvent } from 'react';
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type ReactNode,
+  KeyboardEvent,
+} from 'react';
 import { Search, X, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useSearchHistory, type SearchHistoryItem } from '@/lib/hooks/useSearchHistory';
+import {
+  useSearchHistory,
+  type SearchHistoryItem,
+} from '@/lib/hooks/useSearchHistory';
 
 interface AgentSearchBarProps {
   onSearch: (query: string) => void;
@@ -49,7 +59,13 @@ export function AgentSearchBar({
   const [query, setQuery] = useState(initialQuery);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [historyItems, setHistoryItems] = useState<SearchHistoryItem[]>([]);
-  const { getSearchHistoryWithTimestamp, saveToHistory, removeFromHistory, clearHistory, getRelativeTime } = useSearchHistory();
+  const {
+    getSearchHistoryWithTimestamp,
+    saveToHistory,
+    removeFromHistory,
+    clearHistory,
+    getRelativeTime,
+  } = useSearchHistory();
   const inputRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const skipNextFocusRef = useRef(false);
@@ -62,11 +78,13 @@ export function AgentSearchBar({
   }, [historyEnabled, getSearchHistoryWithTimestamp]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: load history on mount
     refreshHistory();
   }, [refreshHistory]);
 
   useEffect(() => {
     if (showSuggestions && historyEnabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: refresh history when suggestions shown
       refreshHistory();
     }
   }, [showSuggestions, historyEnabled, refreshHistory]);
@@ -77,19 +95,26 @@ export function AgentSearchBar({
     onHistoryCleared?.();
   }, [clearHistory, onHistoryCleared]);
 
-  const handleRemoveHistoryItem = useCallback((timestamp: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const updatedHistory = removeFromHistory(timestamp);
-    setHistoryItems(updatedHistory.slice(0, 5));
-    // Notify parent when history becomes empty (same as clear all)
-    if (updatedHistory.length === 0) {
-      onHistoryCleared?.();
-    }
-  }, [removeFromHistory, onHistoryCleared]);
+  const handleRemoveHistoryItem = useCallback(
+    (timestamp: number, e: React.MouseEvent) => {
+      e.stopPropagation();
+      const updatedHistory = removeFromHistory(timestamp);
+      setHistoryItems(updatedHistory.slice(0, 5));
+      // Notify parent when history becomes empty (same as clear all)
+      if (updatedHistory.length === 0) {
+        onHistoryCleared?.();
+      }
+    },
+    [removeFromHistory, onHistoryCleared]
+  );
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'k') {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        e.key.toLowerCase() === 'k'
+      ) {
         e.preventDefault();
         inputRef.current?.focus();
         setShowSuggestions(true);
@@ -102,7 +127,10 @@ export function AgentSearchBar({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
         setShowSuggestions(false);
       }
     };
@@ -150,21 +178,23 @@ export function AgentSearchBar({
   }, [onPrefillQuery, applyQueryFromExternal]);
 
   return (
-    <div ref={searchRef} className="relative w-full max-w-4xl mx-auto">
+    <div ref={searchRef} className="relative mx-auto w-full max-w-4xl">
       {(badgeLabel || helperText) && (
-        <div className="flex items-center gap-2 mb-2">
+        <div className="mb-2 flex items-center gap-2">
           {badgeLabel && (
             <Badge variant="secondary" className="text-xs">
-              {badgeIcon ?? <Sparkles className="h-3 w-3 mr-1" />}
+              {badgeIcon ?? <Sparkles className="mr-1 h-3 w-3" />}
               {badgeLabel}
             </Badge>
           )}
-          {helperText && <span className="text-xs text-muted-foreground">{helperText}</span>}
+          {helperText && (
+            <span className="text-muted-foreground text-xs">{helperText}</span>
+          )}
         </div>
       )}
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <Search className="text-muted-foreground absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2" />
 
         <Input
           ref={inputRef}
@@ -182,7 +212,7 @@ export function AgentSearchBar({
               setShowSuggestions(true);
             }
           }}
-          className="pl-10 pr-24 py-6 text-base bg-card border-2 border-border shadow-sm focus:border-primary focus:shadow-md transition-all duration-200"
+          className="bg-card border-border focus:border-primary border-2 py-6 pr-24 pl-10 text-base shadow-sm transition-all duration-200 focus:shadow-md"
           autoComplete="off"
           spellCheck={false}
           disabled={disabled || isLoading}
@@ -193,7 +223,7 @@ export function AgentSearchBar({
           aria-expanded={showSuggestions && historyItems.length > 0}
         />
 
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+        <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1">
           {query && !isLoading && (
             <Button
               type="button"
@@ -216,7 +246,7 @@ export function AgentSearchBar({
           >
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                 {loadingLabel}
               </>
             ) : (
@@ -232,34 +262,36 @@ export function AgentSearchBar({
           data-testid="search-history-suggestions"
           data-state={showSuggestions ? 'open' : 'closed'}
           role="listbox"
-          className="absolute top-full left-0 right-0 mt-2 bg-card border-2 border-border rounded-md shadow-md z-50 max-h-[60vh] overflow-y-auto"
+          className="bg-card border-border absolute top-full right-0 left-0 z-50 mt-2 max-h-[60vh] overflow-y-auto rounded-md border-2 shadow-md"
         >
           <div className="py-1">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-              <span className="text-xs text-muted-foreground">{historyLabel}</span>
+            <div className="border-border flex items-center justify-between border-b px-3 py-2">
+              <span className="text-muted-foreground text-xs">
+                {historyLabel}
+              </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleClearHistory}
-                className="h-7 px-2 text-xs hover:text-destructive"
+                className="hover:text-destructive h-7 px-2 text-xs"
                 aria-label="検索履歴をクリア"
                 data-testid="clear-history-button"
               >
-                <Trash2 className="h-3 w-3 mr-1" />
+                <Trash2 className="mr-1 h-3 w-3" />
                 クリア
               </Button>
             </div>
             {historyItems.map((item) => (
               <div
                 key={`${item.query}-${item.timestamp}`}
-                className="group flex items-center gap-1 px-3 py-3 md:py-2 hover:bg-accent hover:text-accent-foreground"
+                className="group hover:bg-accent hover:text-accent-foreground flex items-center gap-1 px-3 py-3 md:py-2"
               >
                 <button
                   type="button"
                   role="option"
                   data-testid="search-history-suggestion"
                   aria-selected={false}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 flex-1 min-w-0 text-left text-sm"
+                  className="flex min-w-0 flex-1 flex-col gap-1 text-left text-sm sm:flex-row sm:items-center sm:justify-between"
                   onClick={() => {
                     // UX Design: History selection fills the input without triggering search,
                     // allowing users to edit conceptual queries before submission.
@@ -269,12 +301,12 @@ export function AgentSearchBar({
                     setShowSuggestions(false);
                   }}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Search className="text-muted-foreground h-3 w-3 flex-shrink-0" />
                     <span className="flex-1 truncate">{item.query}</span>
                   </div>
                   {showHistoryTimestamp && (
-                    <span className="text-xs text-muted-foreground pl-5 sm:pl-0">
+                    <span className="text-muted-foreground pl-5 text-xs sm:pl-0">
                       {getRelativeTime(item.timestamp)}
                     </span>
                   )}
@@ -284,7 +316,7 @@ export function AgentSearchBar({
                   variant="ghost"
                   size="sm"
                   onClick={(e) => handleRemoveHistoryItem(item.timestamp, e)}
-                  className="h-10 w-10 p-0 flex-shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10"
+                  className="hover:text-destructive hover:bg-destructive/10 h-10 w-10 flex-shrink-0 p-0 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
                   aria-label="この検索履歴を削除"
                   title="この検索履歴を削除"
                   data-testid="remove-history-item-button"
@@ -298,11 +330,13 @@ export function AgentSearchBar({
       )}
 
       {shortcutHint === null ? null : (
-        <div className="mt-2 text-xs text-muted-foreground text-center">
+        <div className="text-muted-foreground mt-2 text-center text-xs">
           {shortcutHint ?? (
             <>
-              キーボードショートカット: <kbd className="px-1 py-0.5 bg-muted rounded">Cmd+Shift+K</kbd> または{' '}
-              <kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+Shift+K</kbd>
+              キーボードショートカット:{' '}
+              <kbd className="bg-muted rounded px-1 py-0.5">Cmd+Shift+K</kbd>{' '}
+              または{' '}
+              <kbd className="bg-muted rounded px-1 py-0.5">Ctrl+Shift+K</kbd>
             </>
           )}
         </div>

@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ThumbsUp, ExternalLink, Calendar, Download, Clock } from 'lucide-react';
+import {
+  ThumbsUp,
+  ExternalLink,
+  Calendar,
+  Download,
+  Clock,
+} from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
@@ -13,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { ShareButton } from '@/app/components/article/share-button';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
+import { useIsNewArticle } from '@/app/components/common/relative-time';
 export function ArticleCard({
   article,
   onArticleClick,
@@ -35,9 +42,15 @@ export function ArticleCard({
       }
     };
 
-    window.addEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
+    window.addEventListener(
+      'article-read-status-changed',
+      handleReadStatusChange as EventListener
+    );
     return () => {
-      window.removeEventListener('article-read-status-changed', handleReadStatusChange as EventListener);
+      window.removeEventListener(
+        'article-read-status-changed',
+        handleReadStatusChange as EventListener
+      );
     };
   }, [article.id]);
 
@@ -53,8 +66,11 @@ export function ArticleCard({
     if (!isSpeakerDeck && !isDocswell && article.url) {
       try {
         const hostname = new URL(article.url).hostname;
-        isSpeakerDeck = hostname === 'speakerdeck.com' || hostname.endsWith('.speakerdeck.com');
-        isDocswell = hostname === 'www.docswell.com' || hostname === 'docswell.com';
+        isSpeakerDeck =
+          hostname === 'speakerdeck.com' ||
+          hostname.endsWith('.speakerdeck.com');
+        isDocswell =
+          hostname === 'www.docswell.com' || hostname === 'docswell.com';
       } catch {
         // Invalid URL, skip URL-based detection
       }
@@ -73,15 +89,17 @@ export function ArticleCard({
   const isTextOnly = !showThumbnail;
 
   const searchParams = useSearchParams();
-  const publishedDate = new Date(article.publishedAt);
-  const hoursAgo = Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60));
-  const isNew = hoursAgo < 24;
-  const sourceColor = article.source ? getSourceColor(article.source.name) : null;
+  // Note: Use hook to avoid Date.now() during render (React Compiler purity rule)
+  const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;
+  const sourceColor = article.source
+    ? getSourceColor(article.source.name)
+    : null;
 
   // Reading time calculation (~500 chars/min for Japanese content)
   // Use contentLength from API (pre-calculated) or fallback to content.length
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
-  const readingTime = contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
+  const readingTime =
+    contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
 
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) {
@@ -134,13 +152,15 @@ export function ArticleCard({
           <BadgeV2
             key={tag.id}
             variant="outline"
-            className="text-xs cursor-pointer"
+            className="cursor-pointer text-xs"
             onClick={(e) => {
               e.stopPropagation();
               if (onTagClick) {
                 onTagClick(tag.name);
               } else {
-                router.push(`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`);
+                router.push(
+                  `/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`
+                );
               }
             }}
           >
@@ -148,7 +168,9 @@ export function ArticleCard({
           </BadgeV2>
         ))}
         {remainingCount > 0 && (
-          <span className="text-xs text-muted-foreground">+{remainingCount}</span>
+          <span className="text-muted-foreground text-xs">
+            +{remainingCount}
+          </span>
         )}
       </div>
     );
@@ -162,8 +184,8 @@ export function ArticleCard({
       data-article-id={article.id}
       onClick={handleCardClick}
       className={cn(
-        'group relative flex h-full flex-col gap-3 p-4 cursor-pointer',
-        isTextOnly && 'border border-muted/40 shadow-sm',
+        'group relative flex h-full cursor-pointer flex-col gap-3 p-4',
+        isTextOnly && 'border-muted/40 border shadow-sm',
         sourceColor?.borderLeft
       )}
     >
@@ -194,19 +216,25 @@ export function ArticleCard({
                   <BadgeV2
                     variant="outline"
                     className={cn(
-                      "text-xs flex items-center gap-1.5",
+                      'flex items-center gap-1.5 text-xs',
                       sourceColor.tag,
                       sourceColor.border,
                       sourceColor.hover
                     )}
                     data-testid="article-source"
                   >
-                    <span className={cn("w-2 h-2 rounded-full shrink-0", sourceColor.dot)} aria-hidden="true" />
+                    <span
+                      className={cn(
+                        'h-2 w-2 shrink-0 rounded-full',
+                        sourceColor.dot
+                      )}
+                      aria-hidden="true"
+                    />
                     {article.companyName ?? article.source.name}
                   </BadgeV2>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
                   <span>{formatDateWithTime(article.publishedAt)}</span>
@@ -217,12 +245,17 @@ export function ArticleCard({
                 </span>
               </div>
             </div>
-            <ShareButton title={article.title} url={article.url} size="sm" variant="ghost" />
+            <ShareButton
+              title={article.title}
+              url={article.url}
+              size="sm"
+              variant="ghost"
+            />
           </div>
           {!showThumbnail && (
             <h3
               className={cn(
-                'font-heading text-lg sm:text-xl font-semibold leading-snug text-foreground line-clamp-2',
+                'font-heading text-foreground line-clamp-2 text-lg leading-snug font-semibold sm:text-xl',
                 isRead && 'opacity-70'
               )}
             >
@@ -248,7 +281,7 @@ export function ArticleCard({
             />
           </div>
         ) : article.summary ? (
-          <p className="text-sm leading-relaxed text-foreground">
+          <p className="text-foreground text-sm leading-relaxed">
             {article.summary}
           </p>
         ) : null}
@@ -259,15 +292,17 @@ export function ArticleCard({
       <div className="mt-auto flex items-center justify-between pt-1">
         <FavoriteButton
           articleId={article.id}
-          className="h-11 px-4 min-w-[44px] min-h-[44px]"
+          className="h-11 min-h-[44px] min-w-[44px] px-4"
           isFavorited={isFavorited}
           onToggleFavorite={onToggleFavorite}
         />
         <div className="flex items-center gap-3">
           {readingTime && contentLength > 0 && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="text-muted-foreground flex items-center gap-1 text-xs">
               <Clock className="h-3 w-3" />
-              <span>{readingTime}分 / {contentLength.toLocaleString('ja-JP')}字</span>
+              <span>
+                {readingTime}分 / {contentLength.toLocaleString('ja-JP')}字
+              </span>
             </span>
           )}
           <ButtonV2
@@ -277,12 +312,14 @@ export function ArticleCard({
               e.stopPropagation();
               window.open(article.url, '_blank', 'noopener,noreferrer');
             }}
-            className="h-11 px-4 text-xs min-w-[44px] min-h-[44px]"
+            className="h-11 min-h-[44px] min-w-[44px] px-4 text-xs"
           >
-            <ExternalLink className="h-4 w-4 mr-1" />
+            <ExternalLink className="mr-1 h-4 w-4" />
             元記事
           </ButtonV2>
-          {votes > 0 && <span className="text-xs text-muted-foreground">{votes}</span>}
+          {votes > 0 && (
+            <span className="text-muted-foreground text-xs">{votes}</span>
+          )}
           <ButtonV2
             variant={hasVoted ? 'primary' : 'outline'}
             size="sm"
@@ -291,7 +328,7 @@ export function ArticleCard({
             disabled={hasVoted}
             data-testid="vote-button"
             aria-pressed={hasVoted}
-            className="h-11 w-11 min-w-[44px] min-h-[44px]"
+            className="h-11 min-h-[44px] w-11 min-w-[44px]"
           >
             <ThumbsUp className="h-4 w-4" />
           </ButtonV2>

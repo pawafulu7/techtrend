@@ -31,6 +31,7 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
   useEffect(() => {
     const tagParam = searchParams.get('tags');
     if (tagParam) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: sync from URL params
       setSelectedTags(tagParam.split(','));
     } else {
       setSelectedTags([]);
@@ -48,39 +49,36 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
           variant="outline"
           size="sm"
           className={cn(
-            "h-8 px-3 text-sm relative",
-            selectedTags.length > 0 && "border-primary"
+            'relative h-8 px-3 text-sm',
+            selectedTags.length > 0 && 'border-primary'
           )}
           data-testid="tag-filter-button"
         >
-          <TagIcon className="h-4 w-4 mr-2 lucide-tag" />
+          <TagIcon className="lucide-tag mr-2 h-4 w-4" />
           <span className="hidden sm:inline">タグ</span>
-          
+
           {/* 選択中タグ数のバッジ */}
           {selectedTags.length > 0 && (
-            <Badge 
-              variant="default" 
-              className="ml-2 h-5 px-1.5 text-xs"
-            >
+            <Badge variant="default" className="ml-2 h-5 px-1.5 text-xs">
               {selectedTags.length}
             </Badge>
           )}
-          
-          <ChevronDown className="h-3 w-3 ml-2" />
+
+          <ChevronDown className="ml-2 h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
-      
-      <DropdownMenuContent 
-        align="end" 
+
+      <DropdownMenuContent
+        align="end"
         className="w-[320px] p-0"
         sideOffset={5}
         data-testid="tag-dropdown"
       >
         {/* 選択中タグのプレビュー */}
         {selectedTags.length > 0 && (
-          <div className="p-3 border-b">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">
+          <div className="border-b p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-muted-foreground text-xs font-medium">
                 選択中のタグ
               </span>
               <Button
@@ -94,45 +92,40 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
                   params.delete('tagMode');
                   params.delete('page');
                   window.location.href = `/?${params.toString()}`;
-                  
+
                   // Clear tags from filter preferences cookie
                   try {
                     await fetch('/api/filter-preferences', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ tags: undefined, tagMode: undefined }),
+                      body: JSON.stringify({
+                        tags: undefined,
+                        tagMode: undefined,
+                      }),
                     });
-                  } catch {
-                  }
+                  } catch {}
                 }}
-                className="h-6 text-xs px-2"
+                className="h-6 px-2 text-xs"
               >
-                <X className="h-3 w-3 mr-1" />
+                <X className="mr-1 h-3 w-3" />
                 クリア
               </Button>
             </div>
             <div className="flex flex-wrap gap-1">
               {previewTags.map((tag) => (
-                <Badge
-                  key={tag}
-                  variant="secondary"
-                  className="text-xs"
-                >
+                <Badge key={tag} variant="secondary" className="text-xs">
                   {tag}
                 </Badge>
               ))}
               {remainingCount > 0 && (
-                <Badge
-                  variant="outline"
-                  className="text-xs"
-                >
+                <Badge variant="outline" className="text-xs">
                   +{remainingCount}
                 </Badge>
               )}
             </div>
           </div>
         )}
-        
+
         {/* TagFilterコンポーネントをドロップダウン内に配置 */}
         <div className="p-3">
           <TagFilter tags={tags} />

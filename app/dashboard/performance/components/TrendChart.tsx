@@ -85,7 +85,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   }, [data, dataKey]);
 
   // Y軸のフォーマット関数をメモ化
-  const formatYAxis = useCallback(createFormatYAxis(format), [format]);
+  const formatYAxis = useMemo(() => createFormatYAxis(format), [format]);
 
   // ツールチップにformat/colorを渡すためのレンダーコールバック
   const renderTooltip = useCallback(

@@ -85,8 +85,12 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   );
 
   // Debounced filter change handler
+  // Note: Ref access inside debounce callback is intentional - the callback is only
+  // executed in the useEffect below, not during render. The useMemo here memoizes
+  // the debounced function creation, not the ref access itself.
   const handleFilterChange = useMemo(
     () =>
+      // eslint-disable-next-line react-hooks/refs -- Ref accessed in debounce callback, not during render
       debounce((newFilterKey: string) => {
         if (
           prevFilterKeyRef.current &&

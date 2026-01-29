@@ -3,7 +3,10 @@
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { FavoritesResponseSchema } from '@/lib/schemas/favorites';
-import type { FavoriteArticle, FavoritesApiResponse } from '@/lib/types/favorites';
+import type {
+  FavoriteArticle,
+  FavoritesApiResponse,
+} from '@/lib/types/favorites';
 
 interface UseFavoritesOptions {
   /** 1ページあたりの件数 */
@@ -104,10 +107,16 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
               pagination: {
                 ...page.pagination,
                 // Only decrement total on first page to avoid multiple decrements
-                total: index === 0 ? page.pagination.total - 1 : page.pagination.total,
-                totalPages: index === 0
-                  ? Math.ceil((page.pagination.total - 1) / page.pagination.limit)
-                  : page.pagination.totalPages,
+                total:
+                  index === 0
+                    ? page.pagination.total - 1
+                    : page.pagination.total,
+                totalPages:
+                  index === 0
+                    ? Math.ceil(
+                        (page.pagination.total - 1) / page.pagination.limit
+                      )
+                    : page.pagination.totalPages,
               },
             })),
           };
@@ -120,7 +129,10 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
   // お気に入り変更イベントをリッスン（クロス画面キャッシュ同期用）
   useEffect(() => {
     const handleFavoriteChanged = (event: Event) => {
-      const customEvent = event as CustomEvent<{ articleId: string; isFavorited: boolean }>;
+      const customEvent = event as CustomEvent<{
+        articleId: string;
+        isFavorited: boolean;
+      }>;
       const { articleId, isFavorited } = customEvent.detail;
 
       if (!isFavorited) {
@@ -136,7 +148,11 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     };
 
     window.addEventListener('article-favorite-changed', handleFavoriteChanged);
-    return () => window.removeEventListener('article-favorite-changed', handleFavoriteChanged);
+    return () =>
+      window.removeEventListener(
+        'article-favorite-changed',
+        handleFavoriteChanged
+      );
   }, [queryClient, updateCacheOnRemove]);
 
   // お気に入り削除時のキャッシュ更新（外部から呼び出し可能）
@@ -182,7 +198,10 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
       // Zodスキーマでバリデーション
       const parsed = FavoritesResponseSchema.safeParse(data);
       if (!parsed.success) {
-        console.error('Favorites API response validation failed:', parsed.error);
+        console.error(
+          'Favorites API response validation failed:',
+          parsed.error
+        );
         throw new Error('お気に入りのデータ形式が不正です');
       }
 
@@ -211,14 +230,18 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
   }, [infiniteQuery.data]);
 
   // 総件数
+  // Note: totalCountRef is used as a fallback cache for pagination total.
+  // This is intentional - refs accessed in useMemo with proper dependencies are safe.
   const totalCount = useMemo<number>(() => {
     return (
       infiniteQuery.data?.pages[0]?.pagination.total ??
+      // eslint-disable-next-line react-hooks/refs -- Fallback value from ref cache
       totalCountRef.current ??
       0
     );
   }, [infiniteQuery.data]);
 
+  // eslint-disable-next-line react-hooks/refs -- totalCount uses ref as fallback cache in useMemo, not during render
   return {
     ...infiniteQuery,
     allFavorites,
