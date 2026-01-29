@@ -101,6 +101,7 @@ export class LLMExtractionPipeline {
             attempt,
             maxRetries: opts.maxRetries,
             error: lastError.message,
+            rawResponse: rawResponse?.slice(0, 300), // デバッグ用
           },
           'LLM extraction attempt failed'
         );
