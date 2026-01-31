@@ -24,6 +24,7 @@ import { PepaboContentEnricher } from './pepabo';
 import { SansanContentEnricher } from './sansan';
 import { MoneyForwardContentEnricher } from './moneyforward';
 import { GitHubBlogEnricher } from './github-blog';
+import { ClaudeBlogEnricher } from './anthropic-blog';
 import { CloudflareBlogEnricher } from './cloudflare-blog';
 import { MozillaHacksEnricher } from './mozilla-hacks';
 import { HackerNewsEnricher } from './hacker-news';
@@ -33,7 +34,11 @@ import { SpeakerDeckEnricher } from './speakerdeck';
 import { GenericContentEnricher } from './generic';
 
 export { BaseContentEnricher } from './base';
-export type { IContentEnricher, EnrichedContent, EnrichmentResult } from './base';
+export type {
+  IContentEnricher,
+  EnrichedContent,
+  EnrichmentResult,
+} from './base';
 export { GenericContentEnricher } from './generic';
 export { GMOContentEnricher } from './gmo';
 export { FreeeContentEnricher } from './freee';
@@ -60,6 +65,7 @@ export { HackerNewsEnricher } from './hacker-news';
 export { MediumEngineeringEnricher } from './medium-engineering';
 export { AWSEnricher } from './aws';
 export { SpeakerDeckEnricher } from './speakerdeck';
+export { ClaudeBlogEnricher } from './anthropic-blog';
 
 /**
  * エンリッチャーファクトリークラス
@@ -74,8 +80,8 @@ export class ContentEnricherFactory {
     this.enrichers = [
       new GMOContentEnricher(),
       new FreeeContentEnricher(),
-      new ZennApiEnricher(),  // Zenn API優先（2025年11月追加）
-      new ZennContentEnricher(),  // Zenn HTMLフォールバック
+      new ZennApiEnricher(), // Zenn API優先（2025年11月追加）
+      new ZennContentEnricher(), // Zenn HTMLフォールバック
       new ThinkITContentEnricher(),
       new GoogleAIEnricher(),
       new GoogleDevEnricher(),
@@ -92,6 +98,7 @@ export class ContentEnricherFactory {
       new MoneyForwardContentEnricher(),
       // 新規追加（2025年8月27日）英語ソース
       new GitHubBlogEnricher(),
+      new ClaudeBlogEnricher(), // 新規追加（2026年1月）Claude Blog専用
       new CloudflareBlogEnricher(),
       new MozillaHacksEnricher(),
       new HackerNewsEnricher(),
@@ -100,8 +107,8 @@ export class ContentEnricherFactory {
       new AWSEnricher(),
       // 新規追加（2025年11月29日）Speaker Deck専用
       new SpeakerDeckEnricher(),
-      new HatenaContentEnricher(),  // 汎用HTMLパーサー
-      new GenericContentEnricher(),  // 最後のフォールバック（すべてのURLに対応）
+      new HatenaContentEnricher(), // 汎用HTMLパーサー
+      new GenericContentEnricher(), // 最後のフォールバック（すべてのURLに対応）
       // 将来的に他の企業のエンリッチャーを追加
       // new CookpadContentEnricher(),
       // new SmartHRContentEnricher(),
@@ -114,7 +121,7 @@ export class ContentEnricherFactory {
    * @returns 対応するエンリッチャー、またはnull
    */
   getEnricher(url: string): IContentEnricher | null {
-    return this.enrichers.find(e => e.canHandle(url)) || null;
+    return this.enrichers.find((e) => e.canHandle(url)) || null;
   }
 
   /**
@@ -144,7 +151,9 @@ export class ContentEnricherFactory {
    * @param url 処理対象のURL
    * @returns エンリッチメント結果、またはnull
    */
-  async trySequential(url: string): Promise<import('./base').EnrichmentResult | null> {
+  async trySequential(
+    url: string
+  ): Promise<import('./base').EnrichmentResult | null> {
     // すべてのエンリッチャーを順番に試す
     for (const enricher of this.enrichers) {
       try {
@@ -157,10 +166,13 @@ export class ContentEnricherFactory {
         }
       } catch (error) {
         // エラーは無視して次のエンリッチャーを試す
-        logger.error({ error }, `[ContentEnricherFactory] Error with ${enricher.constructor.name}`);
+        logger.error(
+          { error },
+          `[ContentEnricherFactory] Error with ${enricher.constructor.name}`
+        );
       }
     }
-    
+
     // すべてのエンリッチャーが失敗した場合
     return null;
   }
