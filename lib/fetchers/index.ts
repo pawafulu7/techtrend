@@ -30,7 +30,8 @@ import {
   HuggingFacePapersFetcher,
   ArxivAIFetcher,
   ZennAIFetcher,
-  QiitaAIFetcher
+  QiitaAIFetcher,
+  ClaudeBlogFetcher,
 } from './ai';
 import { NVIDIADeveloperBlogFetcher } from './nvidia-developer-blog';
 import { DeepMindBlogFetcher } from './deepmind-blog';
@@ -112,6 +113,8 @@ export function createFetcher(source: Source): BaseFetcher {
       return new ZennAIFetcher(source);
     case 'Qiita AI':
       return new QiitaAIFetcher(source);
+    case 'Claude Blog':
+      return new ClaudeBlogFetcher(source);
     case 'NVIDIA Developer Blog':
       return new NVIDIADeveloperBlogFetcher(source);
     case 'DeepMind Blog':
@@ -165,11 +168,11 @@ export function createFetcher(source: Source): BaseFetcher {
   }
 }
 
-export { 
-  BaseFetcher, 
-  HatenaExtendedFetcher, 
-  QiitaPopularFetcher, 
-  ZennExtendedFetcher, 
+export {
+  BaseFetcher,
+  HatenaExtendedFetcher,
+  QiitaPopularFetcher,
+  ZennExtendedFetcher,
   DevToFetcher,
   PublickeyFetcher,
   StackOverflowBlogFetcher,
@@ -198,6 +201,6 @@ export {
   NVIDIADeveloperBlogFetcher,
   DeepMindBlogFetcher,
   HatenaBlogDevFetcher,
-  DevelopersIOFetcher
+  DevelopersIOFetcher,
 };
 export type { FetchResult } from '@/types/fetchers';

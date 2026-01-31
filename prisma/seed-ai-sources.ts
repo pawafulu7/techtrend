@@ -7,8 +7,12 @@ const prisma = new PrismaClient();
 // We duplicate it here because seed scripts can't use TypeScript path aliases (@/)
 const ARXIV_SOURCE_ID = 'cmfxa7efs0001teo0kjt70c5k';
 
+// Claude Blog source uses a fixed ID for consistent filtering
+// IMPORTANT: This value MUST match lib/constants/source-categories.ts
+const CLAUDE_BLOG_SOURCE_ID = 'claude_blog_official';
+
 // Sources that require fixed IDs for app-wide filtering
-const FIXED_ID_SOURCES = new Set([ARXIV_SOURCE_ID]);
+const FIXED_ID_SOURCES = new Set([ARXIV_SOURCE_ID, CLAUDE_BLOG_SOURCE_ID]);
 
 async function main() {
   console.log('Adding AI/LLM sources to database...');
@@ -46,6 +50,14 @@ async function main() {
       name: 'Qiita AI',
       type: 'RSS' as const,
       url: 'https://qiita.com/tags/llm/feed',
+      enabled: true,
+    },
+    {
+      // Use explicit ID for Claude Blog to ensure consistent filtering
+      id: CLAUDE_BLOG_SOURCE_ID,
+      name: 'Claude Blog',
+      type: 'SCRAPER' as const,
+      url: 'https://website.claude.com/blog',
       enabled: true,
     },
   ];

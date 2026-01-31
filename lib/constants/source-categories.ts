@@ -14,6 +14,13 @@ export const ARXIV_SOURCE_ID = 'cmfxa7efs0001teo0kjt70c5k';
 export const ARXIV_SOURCE_NAME = 'arXiv AI';
 
 /**
+ * Claude Blog source ID
+ * Used for consistent filtering across the app
+ */
+export const CLAUDE_BLOG_SOURCE_ID = 'claude_blog_official';
+export const CLAUDE_BLOG_SOURCE_NAME = 'Claude Blog';
+
+/**
  * DevelopersIO source IDs (Classmethod Inc.)
  * Used for UI subgrouping in CompanyFilter
  */
@@ -129,6 +136,7 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'developersio_ai', // DevelopersIO AI (generative-ai)
       'developersio_claude', // DevelopersIO Claude
       'developersio_mcp', // DevelopersIO MCP
+      CLAUDE_BLOG_SOURCE_ID, // Claude Blog
     ],
   },
   llm: {
