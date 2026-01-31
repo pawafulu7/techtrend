@@ -4,16 +4,16 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 interface Params {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export async function GET(request: NextRequest, { params }: Params) {
   const startTime = Date.now();
 
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // ソース情報を先に取得して404を早期リターン
     const source = await prisma.source.findUnique({
@@ -21,18 +21,15 @@ export async function GET(request: NextRequest, { params }: Params) {
       include: {
         _count: {
           select: {
-            articles: true
-          }
-        }
-      }
+            articles: true,
+          },
+        },
+      },
     });
 
     // ソースが見つからない場合は早期リターン
     if (!source) {
-      return NextResponse.json(
-        { error: 'Source not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
     }
 
     // 残りのクエリを並列化（DB集約を使用してメモリ効率化）
@@ -41,21 +38,21 @@ export async function GET(request: NextRequest, { params }: Params) {
       recentArticlesCount,
       recentArticles,
       topArticles,
-      tagDistribution
+      tagDistribution,
     ] = await Promise.all([
       // 統計情報をDB側で集約
       prisma.article.aggregate({
         where: { sourceId: id },
         _count: { _all: true },
-        _avg: { qualityScore: true, bookmarks: true }
+        _avg: { qualityScore: true, bookmarks: true },
       }),
 
       // 30日以内の記事数をカウント
       prisma.article.count({
         where: {
           sourceId: id,
-          publishedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
-        }
+          publishedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        },
       }),
 
       // 最新記事（必要なフィールドのみ選択）
@@ -70,12 +67,12 @@ export async function GET(request: NextRequest, { params }: Params) {
           publishedAt: true,
           qualityScore: true,
           bookmarks: true,
-          tags: { select: { id: true, name: true } }
+          tags: { select: { id: true, name: true } },
         },
         orderBy: {
-          publishedAt: 'desc'
+          publishedAt: 'desc',
         },
-        take: 10
+        take: 10,
       }),
 
       // 人気記事（安定したソート）
@@ -90,13 +87,13 @@ export async function GET(request: NextRequest, { params }: Params) {
           publishedAt: true,
           qualityScore: true,
           bookmarks: true,
-          tags: { select: { id: true, name: true } }
+          tags: { select: { id: true, name: true } },
         },
         orderBy: [
           { bookmarks: 'desc' },
-          { publishedAt: 'desc' }  // タイブレーカーとして使用
+          { publishedAt: 'desc' }, // タイブレーカーとして使用
         ],
-        take: 5
+        take: 5,
       }),
 
       // タグ分布
@@ -109,7 +106,7 @@ export async function GET(request: NextRequest, { params }: Params) {
         GROUP BY t.name
         ORDER BY count DESC
         LIMIT 20
-      `
+      `,
     ]);
 
     // 統計計算（DB集約結果を使用）
@@ -119,15 +116,17 @@ export async function GET(request: NextRequest, { params }: Params) {
     const publishFrequency = recentArticlesCount / 30;
 
     // 最終投稿日（最新記事から取得）
-    const lastPublished = recentArticles.length > 0
-      ? recentArticles[0].publishedAt
-      : null;
+    const lastPublished =
+      recentArticles.length > 0 ? recentArticles[0].publishedAt : null;
 
     // タグ分布をオブジェクトに変換
-    const tagDistributionObj = tagDistribution.reduce((acc, tag) => {
-      acc[tag.name] = Number(tag.count);
-      return acc;
-    }, {} as Record<string, number>);
+    const tagDistributionObj = tagDistribution.reduce(
+      (acc, tag) => {
+        acc[tag.name] = Number(tag.count);
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     const responseTime = Date.now() - startTime;
     const response = NextResponse.json({
@@ -137,11 +136,11 @@ export async function GET(request: NextRequest, { params }: Params) {
         avgQualityScore: Math.round(avgQualityScore),
         avgBookmarks: Math.round(avgBookmarks),
         publishFrequency: Math.round(publishFrequency * 10) / 10,
-        lastPublished: lastPublished ? new Date(lastPublished) : null
+        lastPublished: lastPublished ? new Date(lastPublished) : null,
       },
       recentArticles,
       topArticles,
-      tagDistribution: tagDistributionObj
+      tagDistribution: tagDistributionObj,
     });
 
     // パフォーマンスメトリクスをヘッダーに追加
