@@ -57,7 +57,7 @@ async function main() {
       id: CLAUDE_BLOG_SOURCE_ID,
       name: 'Claude Blog',
       type: 'SCRAPER' as const,
-      url: 'https://website.claude.com/blog',
+      url: 'https://claude.com/blog',
       enabled: true,
     },
   ];

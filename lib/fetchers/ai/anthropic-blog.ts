@@ -37,7 +37,7 @@ export class ClaudeBlogFetcher extends BaseFetcher {
     try {
       logger.info('[Claude Blog] Fetching articles...');
 
-      const html = await this.fetchWithRetry('https://website.claude.com/blog');
+      const html = await this.fetchWithRetry('https://claude.com/blog');
       const candidates = this.parseArticles(html);
 
       if (candidates.length === 0) {
@@ -46,22 +46,20 @@ export class ClaudeBlogFetcher extends BaseFetcher {
         );
       }
 
-      // Filter articles within 30 days
+      // Filter articles within 30 days first, then limit to maxArticles
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const now = new Date();
 
-      for (const candidate of candidates.slice(
-        0,
-        claudeBlogConfig.maxArticles
-      )) {
-        if (
-          candidate.publishedAt < thirtyDaysAgo ||
-          candidate.publishedAt > now
-        ) {
-          continue;
-        }
+      const filteredCandidates = candidates
+        .filter(
+          (candidate) =>
+            candidate.publishedAt >= thirtyDaysAgo &&
+            candidate.publishedAt <= now
+        )
+        .slice(0, claudeBlogConfig.maxArticles);
 
+      for (const candidate of filteredCandidates) {
         const article: CreateArticleInput = {
           title: this.sanitizeText(candidate.title),
           url: candidate.url,
@@ -212,7 +210,7 @@ export class ClaudeBlogFetcher extends BaseFetcher {
       // Convert relative URL to absolute
       const url = href.startsWith('http')
         ? href
-        : `https://website.claude.com${href.startsWith('/') ? '' : '/'}${href}`;
+        : `https://claude.com${href.startsWith('/') ? '' : '/'}${href}`;
 
       const parsed = new URL(url);
 

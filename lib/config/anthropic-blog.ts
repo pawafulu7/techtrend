@@ -1,6 +1,6 @@
 /**
  * Claude Blog Fetcher Configuration
- * website.claude.com/blog のスクレイピング設定
+ * claude.com/blog のスクレイピング設定
  */
 export const claudeBlogConfig = {
   /** 最大取得記事数 */
@@ -20,13 +20,13 @@ export const claudeBlogConfig = {
 
   /** 許可されたサムネイルホスト */
   allowedThumbnailHosts: [
-    'website.claude.com',
+    'claude.com',
     'www.anthropic.com',
     'images.ctfassets.net', // Contentful CDN
   ] as const,
 
   /** 許可された記事URLホスト */
-  allowedArticleHosts: ['website.claude.com'] as const,
+  allowedArticleHosts: ['claude.com'] as const,
 
   /** 記事セレクタ (フォールバック順) */
   articleSelectors: ['.blog_cms_item', '.card_blog_wrap'] as const,

@@ -20,7 +20,7 @@ const mockSource: Source = {
   id: 'claude_blog_official',
   name: 'Claude Blog',
   type: 'SCRAPER',
-  url: 'https://website.claude.com/blog',
+  url: 'https://claude.com/blog',
   enabled: true,
   groupId: null,
   createdAt: new Date(),
@@ -92,9 +92,7 @@ describe('ClaudeBlogFetcher', () => {
         const article = result.articles[0];
 
         expect(article.title).toBe('Test Article One');
-        expect(article.url).toBe(
-          'https://website.claude.com/blog/test-article-one'
-        );
+        expect(article.url).toBe('https://claude.com/blog/test-article-one');
         expect(article.sourceId).toBe('claude_blog_official');
         expect(article.tagNames).toEqual(['Claude', 'Anthropic', 'AI', 'LLM']);
       });
@@ -105,7 +103,7 @@ describe('ClaudeBlogFetcher', () => {
         const result = await fetcher.fetch();
 
         expect(result.articles[0].thumbnail).toBe(
-          'https://website.claude.com/images/article1.jpg'
+          'https://claude.com/images/article1.jpg'
         );
         expect(result.articles[1].thumbnail).toBe(
           'https://images.ctfassets.net/article2.jpg'
@@ -334,14 +332,14 @@ describe('ClaudeBlogFetcher', () => {
     describe('validateArticleUrl', () => {
       it('should accept valid relative URLs', () => {
         expect(fetcher.validateArticleUrl('/blog/test-article')).toBe(
-          'https://website.claude.com/blog/test-article'
+          'https://claude.com/blog/test-article'
         );
       });
 
       it('should accept valid absolute URLs', () => {
-        expect(
-          fetcher.validateArticleUrl('https://website.claude.com/blog/test')
-        ).toBe('https://website.claude.com/blog/test');
+        expect(fetcher.validateArticleUrl('https://claude.com/blog/test')).toBe(
+          'https://claude.com/blog/test'
+        );
       });
 
       it('should reject javascript: URLs', () => {
@@ -379,15 +377,13 @@ describe('ClaudeBlogFetcher', () => {
 
       it('should reject http: URLs (non-HTTPS)', () => {
         expect(
-          fetcher.validateArticleUrl('http://website.claude.com/blog/test')
+          fetcher.validateArticleUrl('http://claude.com/blog/test')
         ).toBeUndefined();
       });
 
       it('should reject URLs with userinfo', () => {
         expect(
-          fetcher.validateArticleUrl(
-            'https://user:pass@website.claude.com/blog'
-          )
+          fetcher.validateArticleUrl('https://user:pass@claude.com/blog')
         ).toBeUndefined();
       });
 
@@ -396,7 +392,7 @@ describe('ClaudeBlogFetcher', () => {
           fetcher.validateArticleUrl('https://malicious-site.com/attack')
         ).toBeUndefined();
         expect(
-          fetcher.validateArticleUrl('https://evil-website.claude.com/attack')
+          fetcher.validateArticleUrl('https://evil-claude.com/attack')
         ).toBeUndefined();
       });
 
@@ -413,8 +409,8 @@ describe('ClaudeBlogFetcher', () => {
     describe('validateThumbnailUrl', () => {
       it('should accept valid thumbnail URLs from allowed hosts', () => {
         expect(
-          fetcher.validateThumbnailUrl('https://website.claude.com/image.jpg')
-        ).toBe('https://website.claude.com/image.jpg');
+          fetcher.validateThumbnailUrl('https://claude.com/image.jpg')
+        ).toBe('https://claude.com/image.jpg');
 
         expect(
           fetcher.validateThumbnailUrl('https://images.ctfassets.net/image.jpg')
@@ -422,9 +418,9 @@ describe('ClaudeBlogFetcher', () => {
       });
 
       it('should handle protocol-relative URLs', () => {
-        expect(
-          fetcher.validateThumbnailUrl('//website.claude.com/image.jpg')
-        ).toBe('https://website.claude.com/image.jpg');
+        expect(fetcher.validateThumbnailUrl('//claude.com/image.jpg')).toBe(
+          'https://claude.com/image.jpg'
+        );
       });
 
       it('should reject thumbnails from non-whitelisted hosts', () => {
@@ -451,9 +447,7 @@ describe('ClaudeBlogFetcher', () => {
 
       it('should reject thumbnails with userinfo', () => {
         expect(
-          fetcher.validateThumbnailUrl(
-            'https://user:pass@website.claude.com/img.jpg'
-          )
+          fetcher.validateThumbnailUrl('https://user:pass@claude.com/img.jpg')
         ).toBeUndefined();
       });
     });
