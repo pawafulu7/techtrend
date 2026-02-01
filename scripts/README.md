@@ -12,15 +12,9 @@ scripts/
 ├── rag/           # RAG-related scripts - permanent
 ├── utils/         # Shell utilities - permanent
 ├── db/            # Database scripts - permanent
-├── migration/
-│   ├── archive/   # Legacy migrations (V6-V8)
-│   └── (current)  # Active migration scripts
-├── test/
-│   ├── _archive/  # Archived test scripts (2024-11-28)
-│   └── (active)   # Active test utilities
-├── fix/
-│   └── _archive/  # Completed fix scripts
-├── _archive/      # Other archived scripts
+├── migration/     # Active migration scripts
+├── test/          # Test utilities
+├── fix/           # One-time fix scripts
 └── temp/          # Temporary scripts (.gitignore)
 ```
 
@@ -36,20 +30,6 @@ scripts/
 | ci/ | CI/CD pipelines | run-golden-set-regression.ts |
 | dev/ | Development utilities | run-embedding-worker.ts |
 | rag/ | RAG/embedding operations | backfill-embeddings.ts |
-
-### Archived Scripts
-
-Scripts that are no longer actively used but preserved for reference:
-
-- `test/_archive/` - 92 ad-hoc test scripts (archived 2024-11-28)
-- `migration/archive/` - V6/V7/V8 migration scripts (current: V9)
-- `fix/_archive/` - 15 completed one-time fixes
-- `_archive/` - Other superseded scripts
-
-**Archive Policy:**
-- Archived scripts are preserved for 2 weeks minimum
-- After verification period, may be permanently deleted
-- Git history preserves all changes
 
 ### Temporary Scripts (temp/)
 
@@ -104,3 +84,8 @@ Scripts that are no longer actively used but preserved for reference:
   - Archived 15 completed fix scripts
   - Deleted 3 one-time scripts
   - Removed 5 deprecated package.json commands
+
+- 2026-02-01: Archive deletion (Phase 1 tech debt)
+  - Deleted 134 archived files (verified no production references)
+  - Removed: scripts/_archive/, scripts/fix/_archive/, scripts/test/_archive/, scripts/migration/archive/
+  - Git history preserves all deleted content
