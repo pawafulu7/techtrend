@@ -60,8 +60,9 @@ export function normalizeUrl(url: string): string {
     // 5. HTTPSに統一
     parsed.protocol = 'https:';
 
-    // 6. ポート番号を除去（デフォルトポートの場合）
-    if (parsed.port === '443' || parsed.port === '80') {
+    // 6. ポート番号を除去（HTTPSのデフォルトポートのみ）
+    // 非標準ポート（例：http:80 → https:80）は保持（別リソースの可能性）
+    if (parsed.port === '443') {
       parsed.port = '';
     }
 

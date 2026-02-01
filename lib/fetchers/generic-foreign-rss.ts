@@ -8,7 +8,8 @@ import { Source } from '@prisma/client';
 import { BaseFetcher } from './base';
 import { FetchResult, CreateArticleInput } from '@/types/fetchers';
 import { logger } from '@/lib/logger';
-import { isArticleDuplicate } from '@/lib/utils/url-normalizer';
+import { normalizeUrl } from '@/lib/utils/url-normalizer';
+import { isDuplicate } from '@/lib/utils/duplicate-detection';
 
 // RSS項目の型定義
 interface RSSItem {
@@ -39,8 +40,10 @@ export class GenericForeignRssFetcher extends BaseFetcher {
   private parser: Parser;
   private config: ForeignSourceConfig;
   // 重複チェック用のキャッシュ（同一バッチ内）
-  private processedArticles: Map<string, { url: string; title: string }> =
-    new Map();
+  // 正規化済みURLのSet（O(1)での重複チェック用）
+  private processedUrls: Set<string> = new Set();
+  // タイトル比較用のリスト
+  private processedTitles: string[] = [];
 
   constructor(source: Source, config: ForeignSourceConfig) {
     super(source);
@@ -59,7 +62,8 @@ export class GenericForeignRssFetcher extends BaseFetcher {
     const errors: Error[] = [];
 
     // fetch()ごとにキャッシュをクリア（インスタンス再利用時の問題を防止）
-    this.processedArticles.clear();
+    this.processedUrls.clear();
+    this.processedTitles = [];
 
     try {
       logger.info({ source: this.source.name }, '海外ソースのフィード取得開始');
@@ -73,8 +77,11 @@ export class GenericForeignRssFetcher extends BaseFetcher {
         if (!item.link || !item.title) continue;
 
         try {
+          // URLを正規化
+          const normalizedUrl = normalizeUrl(item.link);
+
           // 重複チェック（同一バッチ内）
-          if (this.isDuplicateInBatch(item.link, item.title)) {
+          if (this.isDuplicateInBatch(normalizedUrl, item.title)) {
             logger.debug(
               { url: item.link },
               '同一バッチ内で重複検出、スキップ'
@@ -84,7 +91,7 @@ export class GenericForeignRssFetcher extends BaseFetcher {
 
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
-            url: item.link,
+            url: normalizedUrl, // 正規化済みURLを保存
             content: this.extractContent(item),
             publishedAt: this.extractPublishDate(item),
             sourceId: this.source.id,
@@ -94,10 +101,8 @@ export class GenericForeignRssFetcher extends BaseFetcher {
           };
 
           // 処理済みとして記録
-          this.processedArticles.set(item.link, {
-            url: item.link,
-            title: item.title,
-          });
+          this.processedUrls.add(normalizedUrl);
+          this.processedTitles.push(item.title);
 
           articles.push(article);
         } catch (error) {
@@ -130,13 +135,21 @@ export class GenericForeignRssFetcher extends BaseFetcher {
   /**
    * 同一バッチ内での重複チェック
    * クロスポスト記事の検出用
+   * 最適化: URLはSetで O(1) チェック、タイトルは既存isDuplicateを使用
    */
-  private isDuplicateInBatch(url: string, title: string): boolean {
-    for (const [, article] of this.processedArticles) {
-      if (isArticleDuplicate(article.url, article.title, url, title)) {
+  private isDuplicateInBatch(normalizedUrl: string, title: string): boolean {
+    // 1. URL重複チェック（O(1)）
+    if (this.processedUrls.has(normalizedUrl)) {
+      return true;
+    }
+
+    // 2. タイトル類似度チェック（既存のisDuplicate関数を使用）
+    for (const existingTitle of this.processedTitles) {
+      if (isDuplicate(existingTitle, title, 0.85)) {
         return true;
       }
     }
+
     return false;
   }
 
@@ -271,7 +284,8 @@ export class GenericForeignRssFetcher extends BaseFetcher {
    * 次のフェッチサイクル前に呼び出す
    */
   clearProcessedCache(): void {
-    this.processedArticles.clear();
+    this.processedUrls.clear();
+    this.processedTitles = [];
   }
 }
 
