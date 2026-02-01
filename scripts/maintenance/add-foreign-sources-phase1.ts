@@ -3,7 +3,6 @@
  *
  * 対象ソース:
  * - Meta Engineering
- * - Uber Engineering
  * - Netflix TechBlog
  * - Spotify Engineering
  * - Pinterest Engineering
@@ -21,13 +20,6 @@ const PHASE1_SOURCES = [
     id: 'meta_engineering',
     name: 'Meta Engineering',
     url: 'https://engineering.fb.com/feed/',
-    type: 'RSS',
-    enabled: true,
-  },
-  {
-    id: 'uber_engineering',
-    name: 'Uber Engineering',
-    url: 'https://www.uber.com/blog/engineering/rss/',
     type: 'RSS',
     enabled: true,
   },

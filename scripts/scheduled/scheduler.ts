@@ -232,7 +232,12 @@ const RSS_SOURCES = [
   'DevelopersIO Security',
   // 企業技術ブログ一覧（hatena.blog/dev/entries）
   '企業技術ブログ',
-];
+  // 海外テック企業エンジニアリングブログ（Phase 1）
+  'Meta Engineering',
+  'Netflix TechBlog',
+  'Spotify Engineering',
+  'Pinterest Engineering',
+];;;
 
 // スクレイピング系ソース（12時間ごとに更新）
 const SCRAPING_SOURCES = [

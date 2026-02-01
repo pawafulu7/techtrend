@@ -284,10 +284,6 @@ export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
     feedUrl: 'https://engineering.fb.com/feed/',
     tagPrefix: 'Meta',
   },
-  'Uber Engineering': {
-    feedUrl: 'https://www.uber.com/blog/engineering/rss/',
-    tagPrefix: 'Uber',
-  },
   'Netflix TechBlog': {
     feedUrl: 'https://netflixtechblog.medium.com/feed',
     tagPrefix: 'Netflix',

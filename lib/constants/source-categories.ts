@@ -72,7 +72,6 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'cmdq43k070000tekrnqlawd1y', // SRE
       // Phase 1: 大手テック企業エンジニアリングブログ
       'meta_engineering', // Meta Engineering
-      'uber_engineering', // Uber Engineering
       'netflix_techblog', // Netflix TechBlog
       'spotify_engineering', // Spotify Engineering
       'pinterest_engineering', // Pinterest Engineering

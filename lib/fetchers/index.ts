@@ -171,7 +171,6 @@ export function createFetcher(source: Source): BaseFetcher {
 
     // Foreign Tech Company Engineering Blogs (Phase 1)
     case 'Meta Engineering':
-    case 'Uber Engineering':
     case 'Netflix TechBlog':
     case 'Spotify Engineering':
     case 'Pinterest Engineering': {
