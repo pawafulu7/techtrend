@@ -1,0 +1,132 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`ContentEnricherFactory Characterization Tests enricher registration - factory state enricher count matches domain count: domain-enricher-count-relationship 1`] = `
+{
+  "domainCount": 5,
+  "enricherCount": 27,
+  "hasWildcard": true,
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests enricher registration - factory state factory state is consistent across instances: factory-consistency 1`] = `
+{
+  "domainsMatch": true,
+  "factory1Domains": [
+    "*",
+    "developers.freee.co.jp",
+    "developers.gmo.jp",
+    "thinkit.co.jp",
+    "zenn.dev",
+  ],
+  "factory2Domains": [
+    "*",
+    "developers.freee.co.jp",
+    "developers.gmo.jp",
+    "thinkit.co.jp",
+    "zenn.dev",
+  ],
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests getEnricher - enricher selection selects appropriate enricher for http://developers.gmo.jp/blog/test 1`] = `
+{
+  "enricherExists": true,
+  "enricherType": "GMOContentEnricher",
+  "url": "http://developers.gmo.jp/blog/test",
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests getEnricher - enricher selection selects appropriate enricher for https://developers.freee.co.jp/entry/test-article 1`] = `
+{
+  "enricherExists": true,
+  "enricherType": "FreeeContentEnricher",
+  "url": "https://developers.freee.co.jp/entry/test-article",
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests getEnricher - enricher selection selects appropriate enricher for https://developers.gmo.jp/blog/2024/01/test-article 1`] = `
+{
+  "enricherExists": true,
+  "enricherType": "GMOContentEnricher",
+  "url": "https://developers.gmo.jp/blog/2024/01/test-article",
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests getEnricher - enricher selection selects appropriate enricher for https://sub.zenn.dev/articles/test 1`] = `
+{
+  "enricherExists": true,
+  "enricherType": "ZennApiEnricher",
+  "url": "https://sub.zenn.dev/articles/test",
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests getEnricher - enricher selection selects appropriate enricher for https://techblog.example.com/entry/2024/01/test 1`] = `
+{
+  "enricherExists": true,
+  "enricherType": "GenericContentEnricher",
+  "url": "https://techblog.example.com/entry/2024/01/test",
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests getEnricher - enricher selection selects appropriate enricher for https://thinkit.co.jp/article/12345 1`] = `
+{
+  "enricherExists": true,
+  "enricherType": "ThinkITContentEnricher",
+  "url": "https://thinkit.co.jp/article/12345",
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests getEnricher - enricher selection selects appropriate enricher for https://unknown-domain.com/article/test 1`] = `
+{
+  "enricherExists": true,
+  "enricherType": "GenericContentEnricher",
+  "url": "https://unknown-domain.com/article/test",
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests getEnricher - enricher selection selects appropriate enricher for https://zenn.dev/user/articles/test-article 1`] = `
+{
+  "enricherExists": true,
+  "enricherType": "ZennApiEnricher",
+  "url": "https://zenn.dev/user/articles/test-article",
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests getSupportedDomains - domain registry domain count is stable: enricher-count 1`] = `
+{
+  "enricherCount": 27,
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests getSupportedDomains - domain registry returns all supported domains: supported-domains 1`] = `
+[
+  "developers.gmo.jp",
+  "developers.freee.co.jp",
+  "zenn.dev",
+  "thinkit.co.jp",
+  "*",
+]
+`;
+
+exports[`ContentEnricherFactory Characterization Tests trySequential - sequential enrichment handles fetch failure gracefully: fetch-failure-result 1`] = `
+{
+  "resultIsNull": true,
+  "scenario": "fetch-failure",
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests trySequential - sequential enrichment processes HTML response: valid-html-result 1`] = `
+{
+  "hasResult": false,
+  "result": null,
+  "resultKeys": [],
+  "scenario": "valid-html-response",
+}
+`;
+
+exports[`ContentEnricherFactory Characterization Tests trySequential - sequential enrichment returns null for invalid URL: invalid-url-result 1`] = `
+{
+  "input": "invalid-url",
+  "result": null,
+}
+`;
