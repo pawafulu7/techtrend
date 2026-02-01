@@ -294,6 +294,7 @@ export class GenericForeignRssFetcher extends BaseFetcher {
  * 大手テック企業のエンジニアリングブログ
  */
 export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
+  // Phase 1: 大手テック企業エンジニアリングブログ
   'Meta Engineering': {
     feedUrl: 'https://engineering.fb.com/feed/',
     tagPrefix: 'Meta',
@@ -309,6 +310,45 @@ export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
   'Pinterest Engineering': {
     feedUrl: 'https://medium.com/feed/pinterest-engineering',
     tagPrefix: 'Pinterest',
+  },
+  // Phase 2: 大手テック企業
+  'Stripe Engineering': {
+    feedUrl: 'https://stripe.com/blog/feed.rss',
+    tagPrefix: 'Stripe',
+  },
+  'Discord Engineering': {
+    feedUrl: 'https://discord.com/blog/rss.xml',
+    tagPrefix: 'Discord',
+  },
+  'Slack Engineering': {
+    feedUrl: 'https://slack.engineering/feed/',
+    tagPrefix: 'Slack',
+  },
+  // Phase 2: クラウドネイティブ・Web
+  'The New Stack': {
+    feedUrl: 'https://thenewstack.io/feed/',
+    tagPrefix: 'CloudNative',
+  },
+  'CNCF Blog': {
+    feedUrl: 'https://www.cncf.io/feed/',
+    tagPrefix: 'CNCF',
+  },
+  'Kubernetes Blog': {
+    feedUrl: 'https://kubernetes.io/feed.xml',
+    tagPrefix: 'Kubernetes',
+  },
+  'Chrome Developers': {
+    feedUrl: 'https://developer.chrome.com/blog/feed.xml',
+    tagPrefix: 'Chrome',
+  },
+  // Phase 2: 言語公式ブログ
+  'Go Blog': {
+    feedUrl: 'https://go.dev/blog/feed.atom',
+    tagPrefix: 'Go',
+  },
+  'Rust Blog': {
+    feedUrl: 'https://blog.rust-lang.org/feed.xml',
+    tagPrefix: 'Rust',
   },
 };
 

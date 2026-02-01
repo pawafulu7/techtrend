@@ -173,7 +173,17 @@ export function createFetcher(source: Source): BaseFetcher {
     case 'Meta Engineering':
     case 'Netflix TechBlog':
     case 'Spotify Engineering':
-    case 'Pinterest Engineering': {
+    case 'Pinterest Engineering':
+    // Foreign Tech Company Engineering Blogs (Phase 2)
+    case 'Stripe Engineering':
+    case 'Discord Engineering':
+    case 'Slack Engineering':
+    case 'The New Stack':
+    case 'CNCF Blog':
+    case 'Chrome Developers':
+    case 'Kubernetes Blog':
+    case 'Go Blog':
+    case 'Rust Blog': {
       const foreignConfig = getForeignSourceConfig(source.name);
       if (!foreignConfig) {
         throw new Error(`Invalid foreign source name: ${source.name}`);
