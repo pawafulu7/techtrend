@@ -58,6 +58,9 @@ export class GenericForeignRssFetcher extends BaseFetcher {
     const articles: CreateArticleInput[] = [];
     const errors: Error[] = [];
 
+    // fetch()ごとにキャッシュをクリア（インスタンス再利用時の問題を防止）
+    this.processedArticles.clear();
+
     try {
       logger.info({ source: this.source.name }, '海外ソースのフィード取得開始');
 
@@ -155,13 +158,20 @@ export class GenericForeignRssFetcher extends BaseFetcher {
 
   /**
    * RSS項目から公開日を抽出
+   * Invalid Dateの場合は現在日時にフォールバック
    */
   private extractPublishDate(item: RSSItem): Date {
     if (item.isoDate) {
-      return new Date(item.isoDate);
+      const date = new Date(item.isoDate);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
     }
     if (item.pubDate) {
-      return new Date(item.pubDate);
+      const date = new Date(item.pubDate);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
     }
     return new Date();
   }

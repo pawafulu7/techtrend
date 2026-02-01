@@ -61,12 +61,17 @@ async function main() {
   let skippedCount = 0;
 
   for (const source of PHASE1_SOURCES) {
-    const existing = await prisma.source.findUnique({
+    // IDとnameの両方でチェック（nameはユニーク制約があるため）
+    const existingById = await prisma.source.findUnique({
       where: { id: source.id },
     });
+    const existingByName = await prisma.source.findUnique({
+      where: { name: source.name },
+    });
 
-    if (existing) {
-      console.log(`[SKIP] ${source.name} - 既に登録済み`);
+    if (existingById || existingByName) {
+      const reason = existingById ? 'ID' : 'name';
+      console.log(`[SKIP] ${source.name} - 既に登録済み (${reason})`);
       skippedCount++;
       continue;
     }
