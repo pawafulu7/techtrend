@@ -149,7 +149,46 @@ exports[`GraphDataSerializer Characterization Tests node properties - size and c
 
 exports[`GraphDataSerializer Characterization Tests selectTopLayer2 - layer 2 article selection handles empty candidates: empty-layer2-candidates 1`] = `[]`;
 
-exports[`GraphDataSerializer Characterization Tests selectTopLayer2 - layer 2 article selection selects top layer2 articles with category diversity: top-layer2-selection 1`] = `[]`;
+exports[`GraphDataSerializer Characterization Tests selectTopLayer2 - layer 2 article selection selects top layer2 articles with category diversity: top-layer2-selection 1`] = `
+[
+  {
+    "articleId": "l2-1",
+    "parentId": "l1-1",
+    "publishedAt": 2024-01-15T10:00:00.000Z,
+    "qualityScore": 9,
+    "similarity": 0.8,
+    "sourceId": "source-1",
+    "summary": "This is a test article summary for characterization testing.",
+    "tags": [
+      {
+        "id": "tag-0",
+        "name": "React",
+      },
+    ],
+    "thumbnail": "https://example.com/thumb.jpg",
+    "title": "Test Article Title",
+    "translatedTitle": null,
+  },
+  {
+    "articleId": "l2-3",
+    "parentId": "l1-2",
+    "publishedAt": 2024-01-15T10:00:00.000Z,
+    "qualityScore": 7,
+    "similarity": 0.8,
+    "sourceId": "source-1",
+    "summary": "This is a test article summary for characterization testing.",
+    "tags": [
+      {
+        "id": "tag-0",
+        "name": "AWS",
+      },
+    ],
+    "thumbnail": "https://example.com/thumb.jpg",
+    "title": "Test Article Title",
+    "translatedTitle": null,
+  },
+]
+`;
 
 exports[`GraphDataSerializer Characterization Tests serializeEmbeddingBased - embedding-based relationship serialization handles empty search results: empty-search-results 1`] = `
 {
@@ -195,25 +234,47 @@ exports[`GraphDataSerializer Characterization Tests serializeEmbeddingBased - em
 
 exports[`GraphDataSerializer Characterization Tests serializeEmbeddingBased - embedding-based relationship serialization serializes embedding-based results: embedding-based-results 1`] = `
 {
-  "links": [],
+  "links": [
+    {
+      "commonTags": 1,
+      "source": "center-1",
+      "target": "embed-1",
+      "type": "embedding",
+      "value": 0.92,
+    },
+    {
+      "commonTags": 1,
+      "source": "center-1",
+      "target": "embed-2",
+      "type": "embedding",
+      "value": 0.88,
+    },
+    {
+      "commonTags": 1,
+      "source": "center-1",
+      "target": "embed-3",
+      "type": "embedding",
+      "value": 0.75,
+    },
+  ],
   "metadata": {
     "algorithm": "embedding",
     "centerArticleId": "center-1",
-    "linkCount": 0,
-    "nodeCount": 1,
+    "linkCount": 3,
+    "nodeCount": 4,
     "options": {
       "algorithm": "embedding",
       "depth": 1,
       "maxNodes": 3,
-      "minSimilarity": 0,
+      "minSimilarity": 0.75,
     },
     "resultStats": {
-      "avgSimilarity": 0,
+      "avgSimilarity": 0.85,
       "categoryCounts": {
-        "AI/ML": 1,
+        "AI/ML": 4,
       },
-      "maxSimilarity": 0,
-      "minSimilarity": 0,
+      "maxSimilarity": 0.92,
+      "minSimilarity": 0.75,
     },
     "timestamp": "FIXED_TIMESTAMP",
   },
@@ -230,6 +291,45 @@ exports[`GraphDataSerializer Characterization Tests serializeEmbeddingBased - em
       "thumbnail": "https://example.com/thumb.jpg",
       "url": "https://example.com/article-1",
       "val": 7,
+    },
+    {
+      "category": "AI/ML",
+      "color": "#ffc60e",
+      "id": "embed-1",
+      "label": "Test Article Title",
+      "primaryTag": "GPT",
+      "publishedAt": "2024-01-15T10:00:00.000Z",
+      "sourceName": undefined,
+      "summary": "This is a test article summary for characterization testing.",
+      "thumbnail": "https://example.com/thumb.jpg",
+      "url": "/articles/embed-1",
+      "val": 30,
+    },
+    {
+      "category": "AI/ML",
+      "color": "#ffc20e",
+      "id": "embed-2",
+      "label": "Test Article Title",
+      "primaryTag": "LLM",
+      "publishedAt": "2024-01-15T10:00:00.000Z",
+      "sourceName": undefined,
+      "summary": "This is a test article summary for characterization testing.",
+      "thumbnail": "https://example.com/thumb.jpg",
+      "url": "/articles/embed-2",
+      "val": 30,
+    },
+    {
+      "category": "AI/ML",
+      "color": "#ffb60d",
+      "id": "embed-3",
+      "label": "Test Article Title",
+      "primaryTag": "AI",
+      "publishedAt": "2024-01-15T10:00:00.000Z",
+      "sourceName": undefined,
+      "summary": "This is a test article summary for characterization testing.",
+      "thumbnail": "https://example.com/thumb.jpg",
+      "url": "/articles/embed-3",
+      "val": 30,
     },
   ],
 }
@@ -483,7 +583,32 @@ exports[`GraphDataSerializer Characterization Tests serializeTagBased - tag-base
 
 exports[`GraphDataSerializer Characterization Tests serializeWithDepth - depth-based relationship serialization serializes with depth=1: depth-1-serialization 1`] = `
 {
-  "links": [],
+  "links": [
+    {
+      "commonTags": 1,
+      "source": "depth-center",
+      "target": "layer1-1",
+      "type": {
+        "depth": 1,
+        "maxLayer1": 10,
+        "maxLayer2PerNode": 5,
+        "mode": "tag",
+      },
+      "value": 0.8,
+    },
+    {
+      "commonTags": 1,
+      "source": "depth-center",
+      "target": "layer1-2",
+      "type": {
+        "depth": 1,
+        "maxLayer1": 10,
+        "maxLayer2PerNode": 5,
+        "mode": "tag",
+      },
+      "value": 0.8,
+    },
+  ],
   "metadata": {
     "algorithm": {
       "depth": 1,
@@ -492,8 +617,8 @@ exports[`GraphDataSerializer Characterization Tests serializeWithDepth - depth-b
       "mode": "tag",
     },
     "centerArticleId": "depth-center",
-    "linkCount": 0,
-    "nodeCount": 1,
+    "linkCount": 2,
+    "nodeCount": 3,
     "options": {
       "algorithm": {
         "depth": 1,
@@ -503,15 +628,16 @@ exports[`GraphDataSerializer Characterization Tests serializeWithDepth - depth-b
       },
       "depth": 1,
       "maxNodes": 2,
-      "minSimilarity": 0,
+      "minSimilarity": 0.8,
     },
     "resultStats": {
-      "avgSimilarity": 0,
+      "avgSimilarity": 0.8,
       "categoryCounts": {
-        "Frontend": 1,
+        "Frontend": 2,
+        "Other": 1,
       },
-      "maxSimilarity": 0,
-      "minSimilarity": 0,
+      "maxSimilarity": 0.8,
+      "minSimilarity": 0.8,
     },
     "timestamp": "FIXED_TIMESTAMP",
   },
@@ -529,13 +655,67 @@ exports[`GraphDataSerializer Characterization Tests serializeWithDepth - depth-b
       "url": "https://example.com/article-1",
       "val": 9.799999999999999,
     },
+    {
+      "category": "Frontend",
+      "color": "#5d53ff",
+      "id": "layer1-1",
+      "label": "Test Article Title",
+      "primaryTag": "React",
+      "publishedAt": "2024-01-15T10:00:00.000Z",
+      "sourceName": undefined,
+      "summary": "This is a test article summary for characterization testing.",
+      "thumbnail": "https://example.com/thumb.jpg",
+      "url": "/articles/layer1-1",
+      "val": 30,
+    },
+    {
+      "category": "Other",
+      "color": "#7e8797",
+      "id": "layer1-2",
+      "label": "Test Article Title",
+      "primaryTag": "TypeScript",
+      "publishedAt": "2024-01-15T10:00:00.000Z",
+      "sourceName": undefined,
+      "summary": "This is a test article summary for characterization testing.",
+      "thumbnail": "https://example.com/thumb.jpg",
+      "url": "/articles/layer1-2",
+      "val": 30,
+    },
   ],
 }
 `;
 
 exports[`GraphDataSerializer Characterization Tests serializeWithDepth - depth-based relationship serialization serializes with depth=2: depth-2-serialization 1`] = `
 {
-  "links": [],
+  "links": [
+    {
+      "commonTags": 1,
+      "level": 1,
+      "source": "depth-center",
+      "target": "layer1-1",
+      "type": {
+        "depth": 2,
+        "maxLayer1": 10,
+        "maxLayer2PerNode": 5,
+        "mode": "tag",
+      },
+      "value": 0.8,
+    },
+    {
+      "commonTags": 1,
+      "level": 2,
+      "parentId": "layer1-1",
+      "source": "layer1-1",
+      "target": "layer2-1",
+      "type": {
+        "depth": 2,
+        "maxLayer1": 10,
+        "maxLayer2PerNode": 5,
+        "mode": "tag",
+      },
+      "value": 0.8,
+    },
+  ],
   "metadata": {
     "algorithm": {
       "depth": 2,
@@ -544,8 +724,8 @@ exports[`GraphDataSerializer Characterization Tests serializeWithDepth - depth-b
       "mode": "tag",
     },
     "centerArticleId": "depth-center",
-    "linkCount": 0,
-    "nodeCount": 1,
+    "linkCount": 2,
+    "nodeCount": 3,
     "options": {
       "algorithm": {
         "depth": 2,
@@ -555,17 +735,18 @@ exports[`GraphDataSerializer Characterization Tests serializeWithDepth - depth-b
       },
       "depth": 2,
       "layer2Limit": 1,
-      "layer2PerParent": undefined,
+      "layer2PerParent": 1,
       "maxNodes": 2,
-      "minSimilarity": 0,
+      "minSimilarity": 0.8,
     },
     "resultStats": {
-      "avgSimilarity": 0,
+      "avgSimilarity": 0.8,
       "categoryCounts": {
-        "Other": 1,
+        "Backend": 1,
+        "Other": 2,
       },
-      "maxSimilarity": 0,
-      "minSimilarity": 0,
+      "maxSimilarity": 0.8,
+      "minSimilarity": 0.8,
     },
     "timestamp": "FIXED_TIMESTAMP",
   },
@@ -583,6 +764,34 @@ exports[`GraphDataSerializer Characterization Tests serializeWithDepth - depth-b
       "thumbnail": "https://example.com/thumb.jpg",
       "url": "https://example.com/article-1",
       "val": 9.799999999999999,
+    },
+    {
+      "category": "Other",
+      "color": "#7e8797",
+      "depth": 1,
+      "id": "layer1-1",
+      "label": "Test Article Title",
+      "primaryTag": "AWS",
+      "publishedAt": "2024-01-15T10:00:00.000Z",
+      "sourceName": undefined,
+      "summary": "This is a test article summary for characterization testing.",
+      "thumbnail": "https://example.com/thumb.jpg",
+      "url": "/articles/layer1-1",
+      "val": 30,
+    },
+    {
+      "category": "Backend",
+      "color": "#13da98",
+      "depth": 2,
+      "id": "layer2-1",
+      "label": "Test Article Title",
+      "primaryTag": "Lambda",
+      "publishedAt": "2024-01-15T10:00:00.000Z",
+      "sourceName": undefined,
+      "summary": "This is a test article summary for characterization testing.",
+      "thumbnail": "https://example.com/thumb.jpg",
+      "url": "/articles/layer2-1",
+      "val": 30,
     },
   ],
 }
