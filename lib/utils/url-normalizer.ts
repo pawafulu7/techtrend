@@ -38,6 +38,8 @@ const TRACKING_PARAMS = [
 export function normalizeUrl(url: string): string {
   try {
     const parsed = new URL(url);
+    // 元のプロトコルを保存（デフォルトポート判定用）
+    const originalProtocol = parsed.protocol;
 
     // 1. トラッキングパラメータを除去
     TRACKING_PARAMS.forEach((param) => {
@@ -60,9 +62,13 @@ export function normalizeUrl(url: string): string {
     // 5. HTTPSに統一
     parsed.protocol = 'https:';
 
-    // 6. ポート番号を除去（HTTPSのデフォルトポートのみ）
-    // 非標準ポート（例：http:80 → https:80）は保持（別リソースの可能性）
-    if (parsed.port === '443') {
+    // 6. デフォルトポートは除去（非標準ポートは保持）
+    // - httpsの443は常に除去
+    // - 元がhttpで80の場合も除去（httpsに統一後は不要）
+    if (
+      parsed.port === '443' ||
+      (parsed.port === '80' && originalProtocol === 'http:')
+    ) {
       parsed.port = '';
     }
 
