@@ -38,6 +38,12 @@ import { DeepMindBlogFetcher } from './deepmind-blog';
 import { HatenaBlogDevFetcher } from './hatena-blog-dev';
 import { DevelopersIOFetcher, getTagFromSourceName } from './developersio';
 
+// Foreign Tech Company Blog Fetchers
+import {
+  GenericForeignRssFetcher,
+  getForeignSourceConfig,
+} from './generic-foreign-rss';
+
 // Japanese Corporate Tech Blog Fetchers
 import { DeNAFetcher } from './corporate-blogs/dena-fetcher';
 import { SmartHRFetcher } from './corporate-blogs/smarthr-fetcher';
@@ -163,6 +169,18 @@ export function createFetcher(source: Source): BaseFetcher {
       return new DevelopersIOFetcher(source, tag);
     }
 
+    // Foreign Tech Company Engineering Blogs (Phase 1)
+    case 'Meta Engineering':
+    case 'Netflix TechBlog':
+    case 'Spotify Engineering':
+    case 'Pinterest Engineering': {
+      const foreignConfig = getForeignSourceConfig(source.name);
+      if (!foreignConfig) {
+        throw new Error(`Invalid foreign source name: ${source.name}`);
+      }
+      return new GenericForeignRssFetcher(source, foreignConfig);
+    }
+
     default:
       throw new Error(`Unsupported source: ${source.name}`);
   }
@@ -202,5 +220,6 @@ export {
   DeepMindBlogFetcher,
   HatenaBlogDevFetcher,
   DevelopersIOFetcher,
+  GenericForeignRssFetcher,
 };
 export type { FetchResult } from '@/types/fetchers';
