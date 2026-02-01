@@ -166,8 +166,18 @@ export function isArticleDuplicate(
   }
 
   // 2. タイトル正規化後の類似度チェック
+  // null/undefined チェック
+  if (!existingTitle || !newTitle) {
+    return false;
+  }
+
   const normalizedExistingTitle = normalizeTitle(existingTitle);
   const normalizedNewTitle = normalizeTitle(newTitle);
+
+  // 空のタイトルは比較しない
+  if (!normalizedExistingTitle || !normalizedNewTitle) {
+    return false;
+  }
 
   // 完全一致
   if (normalizedExistingTitle === normalizedNewTitle) {

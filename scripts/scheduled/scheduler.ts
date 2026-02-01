@@ -237,7 +237,7 @@ const RSS_SOURCES = [
   'Netflix TechBlog',
   'Spotify Engineering',
   'Pinterest Engineering',
-];;;
+];
 
 // スクレイピング系ソース（12時間ごとに更新）
 const SCRAPING_SOURCES = [
