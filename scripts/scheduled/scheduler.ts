@@ -237,6 +237,16 @@ const RSS_SOURCES = [
   'Netflix TechBlog',
   'Spotify Engineering',
   'Pinterest Engineering',
+  // 海外テック企業エンジニアリングブログ（Phase 2）
+  'Stripe Engineering',
+  'Discord Engineering',
+  'Slack Engineering',
+  'The New Stack',
+  'CNCF Blog',
+  'Chrome Developers',
+  'Kubernetes Blog',
+  'Go Blog',
+  'Rust Blog',
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）

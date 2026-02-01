@@ -75,6 +75,18 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'netflix_techblog', // Netflix TechBlog
       'spotify_engineering', // Spotify Engineering
       'pinterest_engineering', // Pinterest Engineering
+      // Phase 2: 大手テック企業
+      'stripe_engineering', // Stripe Engineering
+      'discord_engineering', // Discord Engineering
+      'slack_engineering', // Slack Engineering
+      // Phase 2: クラウドネイティブ・Web
+      'the_new_stack', // The New Stack
+      'cncf_blog', // CNCF Blog
+      'kubernetes_blog', // Kubernetes Blog
+      'chrome_developers', // Chrome Developers
+      // Phase 2: 言語公式ブログ
+      'go_blog', // Go Blog
+      'rust_blog', // Rust Blog
     ],
   },
   domestic: {
