@@ -8,14 +8,12 @@
  * ```typescript
  * TagNormalizer.normalize('typescript'); // { name: 'TypeScript', category: 'language' }
  * TagNormalizer.normalizeTags(['js', 'TS']); // [{ name: 'JavaScript', ... }, { name: 'TypeScript', ... }]
- * TagNormalizer.inferCategory([{ name: 'React' }]); // 'frontend'
+ * TagNormalizer.inferCategory(TagNormalizer.normalizeTags(['React'])); // 'framework'
  * ```
  */
 
-import {
-  NormalizationRule,
-  TAG_NORMALIZATION_RULES,
-} from './tag-normalization-rules';
+import type { NormalizationRule } from './tag-normalization-rules';
+import { TAG_NORMALIZATION_RULES } from './tag-normalization-rules';
 
 export class TagNormalizer {
   private static rules: readonly NormalizationRule[] = TAG_NORMALIZATION_RULES;
