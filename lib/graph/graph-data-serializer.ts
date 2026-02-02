@@ -21,11 +21,27 @@ import {
  * Converts article relationship data to GraphData format.
  * Server-side transformation for security and performance.
  *
+ * Related modules:
+ * - ./graph-node-input.ts: Type definitions
+ * - ./graph-utils.ts: Constants and pure utility functions
+ *
  * CodexMCP recommendations:
  * - Normalize Article/RelatedArticle via toGraphNodeInput()
  * - Use lookup table for category detection (not regex everywhere)
  * - Resilient error handling (best-effort graphs)
  * - Log missing data, fallback to defaults
+ *
+ * @example
+ * ```typescript
+ * // Tag-based serialization
+ * const result = GraphDataSerializer.serializeTagBased(centerArticle, relatedArticles);
+ *
+ * // Embedding-based serialization
+ * const result = GraphDataSerializer.serializeEmbeddingBased(centerArticle, searchResults);
+ *
+ * // Depth-based serialization (with Layer 2)
+ * const result = GraphDataSerializer.serializeWithDepth(centerArticle, layer1, layer2, options);
+ * ```
  *
  * @see Plan: .claude/docs/plan/plan_20251111_233131_021_article-relationship-graph.md
  */
