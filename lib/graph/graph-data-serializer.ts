@@ -1,15 +1,12 @@
 import type { GraphNode, GraphLink, GraphData } from '@/lib/types/graph';
-import { CATEGORY_COLORS } from '@/lib/types/graph';
 import type { Article } from '@prisma/client';
 import { logger } from '@/lib/logger';
 import type { SearchResult } from '@/lib/rag/vector-search-service';
 import type { GraphNodeInput } from './graph-node-input';
 import {
   GRAPH_CONSTANTS,
-  CATEGORY_RULES,
   getCategory,
   getCategoryColor,
-  adjustColorForCenter,
   toISOString,
   clamp01,
   normalizeQualityScore,
