@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -170,23 +169,21 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                       </span>
                     </div>
                     {article.difficulty && (
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'text-xs font-medium',
-                          article.difficulty === 'beginner' &&
-                            'border-green-200 bg-green-50 text-green-700',
-                          article.difficulty === 'intermediate' &&
-                            'border-blue-200 bg-blue-50 text-blue-700',
-                          article.difficulty === 'advanced' &&
-                            'border-purple-200 bg-purple-50 text-purple-700'
-                        )}
+                      <BadgeV2
+                        variant={
+                          article.difficulty === 'beginner'
+                            ? 'positive'
+                            : article.difficulty === 'intermediate'
+                              ? 'info'
+                              : 'secondary'
+                        }
+                        className="text-xs font-medium"
                       >
                         <GraduationCap className="mr-1 h-3 w-3" />
                         {article.difficulty === 'beginner' && '初級'}
                         {article.difficulty === 'intermediate' && '中級'}
                         {article.difficulty === 'advanced' && '上級'}
-                      </Badge>
+                      </BadgeV2>
                     )}
                   </div>
                   <FavoriteButton
@@ -203,10 +200,10 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                 {article.tags && article.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {article.tags.map((tag) => (
-                      <Badge
+                      <BadgeV2
                         key={tag.id}
                         variant="outline"
-                        className="hover:bg-secondary cursor-pointer border-slate-300 hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-500"
+                        className="cursor-pointer"
                         asChild
                       >
                         <Link
@@ -214,7 +211,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                         >
                           {tag.name}
                         </Link>
-                      </Badge>
+                      </BadgeV2>
                     ))}
                   </div>
                 )}
@@ -315,9 +312,9 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   <span className="text-muted-foreground text-sm">
                     品質スコア:
                   </span>
-                  <Badge variant="secondary">
+                  <BadgeV2 variant="secondary">
                     {Math.round(article.qualityScore)}
-                  </Badge>
+                  </BadgeV2>
                 </div>
 
                 <div className="flex items-center gap-4">

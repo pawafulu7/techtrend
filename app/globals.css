@@ -162,6 +162,28 @@ html.no-transitions *::after {
   
   /* UI改善: 背景テクスチャ */
   --texture-opacity: 0.02;
+
+  /*
+   * TTトークン連携ガイドライン
+   * =============================
+   * このファイルのoklch変数はshadcn/uiのデフォルト変数です。
+   * TechTrend独自のデザイントークン（--tt-color-*）は
+   * generated-tokens.css で定義されています。
+   *
+   * 使い分け:
+   * - oklch変数 (--primary, --card等): Tailwindのalpha展開に対応
+   *   例: bg-primary/10, text-muted-foreground/50
+   * - TTトークン (--tt-color-*): 明示的な色指定、ブランドカラー
+   *   例: bg-[var(--tt-color-primary)], text-[var(--tt-color-positive)]
+   *
+   * セマンティック対応:
+   * - --card ≈ --tt-color-surface (カード背景)
+   * - --border ≈ --tt-color-border (ボーダー)
+   * - --muted ≈ --tt-color-surface-muted (薄い背景)
+   *
+   * 新規コンポーネントでは --tt-color-* の使用を推奨します。
+   * 詳細: .claude/docs/guides/token-mapping.md
+   */
 }
 
 .dark {
