@@ -25,13 +25,23 @@ const BadgeV2 = forwardRef<HTMLElement, BadgeV2Props>(
       asChild = false,
       className,
       children,
-      onClick,
-      tabIndex,
       ...props
     },
     ref
   ) => {
     const Comp = asChild ? Slot : 'span';
+
+    // disabled時のみアクセシビリティハンドラを追加
+    // asChild + Link 使用時の通常動作を妨げないよう、disabled=false時は透過
+    const disabledProps = disabled
+      ? {
+          tabIndex: -1,
+          onClick: (event: React.MouseEvent<HTMLElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+          },
+        }
+      : {};
 
     return (
       <Comp
@@ -70,17 +80,9 @@ const BadgeV2 = forwardRef<HTMLElement, BadgeV2Props>(
           disabled && ['cursor-not-allowed opacity-50', 'pointer-events-none'],
           className
         )}
-        tabIndex={disabled ? -1 : tabIndex}
-        onClick={(event: React.MouseEvent<HTMLElement>) => {
-          if (disabled) {
-            event.preventDefault();
-            event.stopPropagation();
-            return;
-          }
-          onClick?.(event);
-        }}
         aria-disabled={disabled}
         {...props}
+        {...disabledProps}
       >
         {children}
       </Comp>
