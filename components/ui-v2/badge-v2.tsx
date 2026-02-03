@@ -1,15 +1,50 @@
 import { cn } from '@/lib/utils';
+import { Slot } from '@radix-ui/react-slot';
 import { forwardRef } from 'react';
 
-export interface BadgeV2Props extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'primary' | 'secondary' | 'outline';
+export type BadgeV2Variant =
+  | 'default'
+  | 'primary'
+  | 'secondary'
+  | 'outline'
+  | 'positive'
+  | 'info'
+  | 'destructive';
+
+export interface BadgeV2Props extends React.HTMLAttributes<HTMLElement> {
+  variant?: BadgeV2Variant;
   disabled?: boolean;
+  asChild?: boolean;
 }
 
-const BadgeV2 = forwardRef<HTMLSpanElement, BadgeV2Props>(
-  ({ variant = 'default', disabled = false, className, children, ...props }, ref) => {
+const BadgeV2 = forwardRef<HTMLElement, BadgeV2Props>(
+  (
+    {
+      variant = 'default',
+      disabled = false,
+      asChild = false,
+      className,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const Comp = asChild ? Slot : 'span';
+
+    // disabled時のみアクセシビリティハンドラを追加
+    // asChild + Link 使用時の通常動作を妨げないよう、disabled=false時は透過
+    const disabledProps = disabled
+      ? {
+          tabIndex: -1,
+          onClick: (event: React.MouseEvent<HTMLElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+          },
+        }
+      : {};
+
     return (
-      <span
+      <Comp
         ref={ref}
         className={cn(
           'badge-pill',
@@ -28,19 +63,29 @@ const BadgeV2 = forwardRef<HTMLSpanElement, BadgeV2Props>(
           variant === 'outline' && [
             'border border-(--tt-color-border)',
             'bg-transparent text-(--tt-color-text)',
-            'hover:bg-(--tt-color-surface-hover)',
+            'hover:border-(--tt-color-border-hover) hover:bg-(--tt-color-surface-hover)',
           ],
-          disabled && [
-            'opacity-50 cursor-not-allowed',
-            'pointer-events-none',
+          variant === 'positive' && [
+            'bg-(--tt-color-positive-bg) text-(--tt-color-positive)',
+            'border border-(--tt-color-positive-border)',
           ],
+          variant === 'info' && [
+            'bg-(--tt-color-info-bg) text-(--tt-color-info)',
+            'border border-(--tt-color-info-border)',
+          ],
+          variant === 'destructive' && [
+            'bg-(--tt-color-negative-bg) text-(--tt-color-negative)',
+            'border border-(--tt-color-negative-border)',
+          ],
+          disabled && ['cursor-not-allowed opacity-50', 'pointer-events-none'],
           className
         )}
         aria-disabled={disabled}
         {...props}
+        {...disabledProps}
       >
         {children}
-      </span>
+      </Comp>
     );
   }
 );
