@@ -376,6 +376,12 @@ export default function TrendsPage() {
                   variant={selectedDays === days ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedDays(days)}
+                  aria-pressed={selectedDays === days}
+                  className={
+                    selectedDays === days
+                      ? 'border-0 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600'
+                      : ''
+                  }
                 >
                   {days}日間
                 </Button>
