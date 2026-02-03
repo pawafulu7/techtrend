@@ -1,7 +1,16 @@
-import { GraphNode, GraphLink, GraphData, CATEGORY_COLORS } from '@/lib/types/graph';
-import { Article } from '@prisma/client';
+import type { GraphNode, GraphLink, GraphData } from '@/lib/types/graph';
+import type { Article } from '@prisma/client';
 import { logger } from '@/lib/logger';
-import { SearchResult } from '@/lib/rag/vector-search-service';
+import type { SearchResult } from '@/lib/rag/vector-search-service';
+import type { GraphNodeInput } from './graph-node-input';
+import {
+  GRAPH_CONSTANTS,
+  getCategory,
+  getCategoryColor,
+  toISOString,
+  clamp01,
+  normalizeQualityScore,
+} from './graph-utils';
 
 /**
  * Graph Data Serializer
@@ -9,67 +18,32 @@ import { SearchResult } from '@/lib/rag/vector-search-service';
  * Converts article relationship data to GraphData format.
  * Server-side transformation for security and performance.
  *
+ * Related modules:
+ * - ./graph-node-input.ts: Type definitions
+ * - ./graph-utils.ts: Constants and pure utility functions
+ *
  * CodexMCP recommendations:
  * - Normalize Article/RelatedArticle via toGraphNodeInput()
  * - Use lookup table for category detection (not regex everywhere)
  * - Resilient error handling (best-effort graphs)
  * - Log missing data, fallback to defaults
  *
+ * @example
+ * ```typescript
+ * // Tag-based serialization
+ * const result = GraphDataSerializer.serializeTagBased(centerArticle, relatedArticles);
+ *
+ * // Embedding-based serialization
+ * const result = GraphDataSerializer.serializeEmbeddingBased(centerArticle, searchResults);
+ *
+ * // Depth-based serialization (with Layer 2)
+ * const result = GraphDataSerializer.serializeWithDepth(centerArticle, layer1, layer2, options);
+ * ```
+ *
  * @see Plan: .claude/docs/plan/plan_20251111_233131_021_article-relationship-graph.md
  */
 
-/**
- * Normalized input for GraphNode creation
- *
- * CodexMCP: Unified interface for Article and RelatedArticle
- */
-interface GraphNodeInput {
-  id: string;
-  title: string;
-  translatedTitle?: string | null;
-  tags?: Array<{ id?: string; name: string }>;  // Phase 2: id optional
-  url?: string;
-  qualityScore?: number;  // Phase 2: optional (default 0)
-  publishedAt: Date | string;
-  summary?: string;
-  thumbnail?: string;
-  sourceName?: string;
-  similarity?: number;
-  commonTags?: number;
-  category?: string;  // Phase 2: pre-computed category (avoid re-calculation)
-}
-
-/**
- * Category Detection Rules
- *
- * CodexMCP: Lookup table approach (not regex everywhere)
- */
-const CATEGORY_RULES: Array<{
-  keywords: string[];
-  category: string;
-  priority: number;
-}> = [
-  { keywords: ['React', 'Vue', 'Angular', 'Svelte', 'Frontend', 'UI', 'CSS'], category: 'Frontend', priority: 10 },
-  { keywords: ['AI', 'ML', 'LLM', 'Machine Learning', 'Deep Learning', 'Neural', 'GPT', 'Gemini'], category: 'AI/ML', priority: 10 },
-  { keywords: ['Node.js', 'Express', 'Backend', 'API', 'REST', 'GraphQL', 'Server'], category: 'Backend', priority: 9 },
-  { keywords: ['DevOps', 'Docker', 'Kubernetes', 'K8s', 'CI/CD', 'GitHub Actions'], category: 'DevOps', priority: 9 },
-  { keywords: ['PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Database', 'SQL'], category: 'Database', priority: 8 },
-  { keywords: ['Security', 'Auth', 'OAuth', 'JWT', 'XSS', 'CSRF', 'Encryption'], category: 'Security', priority: 8 },
-  { keywords: ['Test', 'Jest', 'Playwright', 'E2E', 'Unit Test', 'TDD'], category: 'Testing', priority: 7 },
-];
-
 export class GraphDataSerializer {
-  // Node sizing constants (Phase 2: hybrid quality × similarity)
-  private static readonly MIN_QUALITY_SCORE = 4;
-  private static readonly CENTER_NODE_SCALE = 1.4;
-  private static readonly RELATED_NODE_SCALE = 0.85;
-  private static readonly MIN_NODE_SIZE = 30;
-  private static readonly MAX_NODE_SIZE = 140;
-
-  // Color brightness adjustment constants (Phase 2)
-  private static readonly MIN_BRIGHTNESS_FACTOR = 0.7;  // Low similarity dimming
-  private static readonly BRIGHTNESS_RANGE = 0.6;       // Similarity impact range [0.7, 1.3]
-
   /**
    * Serialize tag-based relationships to GraphData
    *
@@ -85,27 +59,30 @@ export class GraphDataSerializer {
       // Normalize center article
       const centerNode = this.toGraphNode(
         this.toGraphNodeInput(centerArticle),
-        true  // isCenter
+        true // isCenter
       );
 
       // Normalize related articles
       const relatedNodes = relatedArticles
-        .map(article => {
+        .map((article) => {
           try {
             return this.toGraphNode(article, false);
           } catch (error) {
             // CodexMCP: Best-effort, skip invalid nodes
-            logger.warn({
-              articleId: article.id,
-              error: error instanceof Error ? error.message : String(error),
-            }, 'Skipping invalid node in graph serialization');
+            logger.warn(
+              {
+                articleId: article.id,
+                error: error instanceof Error ? error.message : String(error),
+              },
+              'Skipping invalid node in graph serialization'
+            );
             return null;
           }
         })
         .filter((node): node is GraphNode => node !== null);
 
       // Generate links (center → related)
-      const links: GraphLink[] = relatedNodes.map(node => ({
+      const links: GraphLink[] = relatedNodes.map((node) => ({
         source: centerNode.id,
         target: node.id,
         value: this.findArticleSimilarity(relatedArticles, node.id) || 0,
@@ -114,8 +91,11 @@ export class GraphDataSerializer {
       }));
 
       // Calculate result stats (CodexMCP: guard against empty arrays)
-      const similarities = links.map(l => l.value);
-      const categoryCounts = this.countCategories([centerNode, ...relatedNodes]);
+      const similarities = links.map((l) => l.value);
+      const categoryCounts = this.countCategories([
+        centerNode,
+        ...relatedNodes,
+      ]);
 
       const graphData: GraphData = {
         nodes: [centerNode, ...relatedNodes],
@@ -129,33 +109,43 @@ export class GraphDataSerializer {
           options: {
             algorithm: 'tag',
             maxNodes: relatedArticles.length,
-            minSimilarity: similarities.length > 0 ? Math.min(...similarities) : 0,
+            minSimilarity:
+              similarities.length > 0 ? Math.min(...similarities) : 0,
           },
           resultStats: {
-            maxSimilarity: similarities.length > 0 ? Math.max(...similarities) : 0,
-            minSimilarity: similarities.length > 0 ? Math.min(...similarities) : 0,
-            avgSimilarity: similarities.length > 0
-              ? similarities.reduce((sum, val) => sum + val, 0) / similarities.length
-              : 0,
+            maxSimilarity:
+              similarities.length > 0 ? Math.max(...similarities) : 0,
+            minSimilarity:
+              similarities.length > 0 ? Math.min(...similarities) : 0,
+            avgSimilarity:
+              similarities.length > 0
+                ? similarities.reduce((sum, val) => sum + val, 0) /
+                  similarities.length
+                : 0,
             categoryCounts,
           },
         },
       };
 
-      logger.info({
-        centerArticleId: centerNode.id,
-        nodeCount: graphData.nodes.length,
-        linkCount: graphData.links.length,
-        algorithm: 'tag',
-      }, 'Graph data serialized (tag-based)');
+      logger.info(
+        {
+          centerArticleId: centerNode.id,
+          nodeCount: graphData.nodes.length,
+          linkCount: graphData.links.length,
+          algorithm: 'tag',
+        },
+        'Graph data serialized (tag-based)'
+      );
 
       return graphData;
-
     } catch (error) {
-      logger.error({
-        centerArticleId: centerArticle.id,
-        error: error instanceof Error ? error.message : String(error),
-      }, 'Failed to serialize graph data');
+      logger.error(
+        {
+          centerArticleId: centerArticle.id,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'Failed to serialize graph data'
+      );
 
       throw error;
     }
@@ -187,10 +177,10 @@ export class GraphDataSerializer {
   ): GraphData {
     try {
       // Convert SearchResult to GraphNodeInput
-      const centerTags = centerArticle.tags.map(t => t.name);
-      
-      const relatedInputs: GraphNodeInput[] = embeddingResults.map(result => {
-        const resultTags = result.tags?.map(t => t.name) || [];
+      const centerTags = centerArticle.tags.map((t) => t.name);
+
+      const relatedInputs: GraphNodeInput[] = embeddingResults.map((result) => {
+        const resultTags = result.tags?.map((t) => t.name) || [];
 
         return {
           id: result.articleId,
@@ -205,27 +195,30 @@ export class GraphDataSerializer {
           sourceName: result.sourceName,
           similarity: result.similarity,
           commonTags: this.countCommonTags(centerTags, resultTags),
-          category: this.getCategory(result.tags || []),  // Pre-compute
+          category: getCategory(result.tags || []), // Pre-compute
         };
       });
 
       // Normalize center article
       const centerNode = this.toGraphNode(
         this.toGraphNodeInput(centerArticle),
-        true  // isCenter
+        true // isCenter
       );
 
       // Normalize related articles
       const relatedNodes = relatedInputs
-        .map(input => {
+        .map((input) => {
           try {
             return this.toGraphNode(input, false);
           } catch (error) {
             // CodexMCP: Best-effort, skip invalid nodes
-            logger.warn({
-              articleId: input.id,
-              error: error instanceof Error ? error.message : String(error),
-            }, 'Skipping invalid node in graph serialization');
+            logger.warn(
+              {
+                articleId: input.id,
+                error: error instanceof Error ? error.message : String(error),
+              },
+              'Skipping invalid node in graph serialization'
+            );
             return null;
           }
         })
@@ -233,8 +226,8 @@ export class GraphDataSerializer {
 
       // Generate links (center → related)
       const links: GraphLink[] = relatedInputs
-        .filter(input => relatedNodes.some(node => node.id === input.id))
-        .map(input => ({
+        .filter((input) => relatedNodes.some((node) => node.id === input.id))
+        .map((input) => ({
           source: centerNode.id,
           target: input.id,
           value: input.similarity || 0,
@@ -243,8 +236,11 @@ export class GraphDataSerializer {
         }));
 
       // Calculate result stats (CodexMCP: guard against empty arrays)
-      const similarities = links.map(l => l.value);
-      const categoryCounts = this.countCategories([centerNode, ...relatedNodes]);
+      const similarities = links.map((l) => l.value);
+      const categoryCounts = this.countCategories([
+        centerNode,
+        ...relatedNodes,
+      ]);
 
       const graphData: GraphData = {
         nodes: [centerNode, ...relatedNodes],
@@ -258,34 +254,44 @@ export class GraphDataSerializer {
           options: {
             algorithm: 'embedding',
             maxNodes: embeddingResults.length,
-            minSimilarity: similarities.length > 0 ? Math.min(...similarities) : 0,
+            minSimilarity:
+              similarities.length > 0 ? Math.min(...similarities) : 0,
             depth: 1,
           },
           resultStats: {
-            maxSimilarity: similarities.length > 0 ? Math.max(...similarities) : 0,
-            minSimilarity: similarities.length > 0 ? Math.min(...similarities) : 0,
-            avgSimilarity: similarities.length > 0
-              ? similarities.reduce((sum, val) => sum + val, 0) / similarities.length
-              : 0,
+            maxSimilarity:
+              similarities.length > 0 ? Math.max(...similarities) : 0,
+            minSimilarity:
+              similarities.length > 0 ? Math.min(...similarities) : 0,
+            avgSimilarity:
+              similarities.length > 0
+                ? similarities.reduce((sum, val) => sum + val, 0) /
+                  similarities.length
+                : 0,
             categoryCounts,
           },
         },
       };
 
-      logger.info({
-        centerArticleId: centerNode.id,
-        nodeCount: graphData.nodes.length,
-        linkCount: graphData.links.length,
-        algorithm: 'embedding',
-      }, 'Graph data serialized (embedding-based)');
+      logger.info(
+        {
+          centerArticleId: centerNode.id,
+          nodeCount: graphData.nodes.length,
+          linkCount: graphData.links.length,
+          algorithm: 'embedding',
+        },
+        'Graph data serialized (embedding-based)'
+      );
 
       return graphData;
-
     } catch (error) {
-      logger.error({
-        centerArticleId: centerArticle.id,
-        error: error instanceof Error ? error.message : String(error),
-      }, 'Failed to serialize graph data (embedding)');
+      logger.error(
+        {
+          centerArticleId: centerArticle.id,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'Failed to serialize graph data (embedding)'
+      );
 
       throw error;
     }
@@ -305,11 +311,13 @@ export class GraphDataSerializer {
       const depth = hasLayer2 ? 2 : 1;
       const includeDepthMetadata = depth > 1;
 
-      const centerTags = centerArticle.tags.map(tag => tag.name);
+      const centerTags = centerArticle.tags.map((tag) => tag.name);
 
-      const toGraphNodeInputFromSearchResult = (result: SearchResult): GraphNodeInput => {
+      const toGraphNodeInputFromSearchResult = (
+        result: SearchResult
+      ): GraphNodeInput => {
         const tags = result.tags || [];
-        const tagNames = tags.map(tag => tag.name);
+        const tagNames = tags.map((tag) => tag.name);
 
         return {
           id: result.articleId,
@@ -324,20 +332,23 @@ export class GraphDataSerializer {
           sourceName: result.sourceName,
           similarity: result.similarity,
           commonTags: this.countCommonTags(centerTags, tagNames),
-          category: this.getCategory(tags),
+          category: getCategory(tags),
         };
       };
 
       const layer1Inputs = layer1.map(toGraphNodeInputFromSearchResult);
 
       const parentTagNameMap = new Map<string, string[]>();
-      layer1.forEach(parent => {
-        parentTagNameMap.set(parent.articleId, parent.tags?.map(tag => tag.name) || []);
+      layer1.forEach((parent) => {
+        parentTagNameMap.set(
+          parent.articleId,
+          parent.tags?.map((tag) => tag.name) || []
+        );
       });
 
-      const layer2Inputs = layer2.map(candidate => {
+      const layer2Inputs = layer2.map((candidate) => {
         const tags = candidate.tags || [];
-        const tagNames = tags.map(tag => tag.name);
+        const tagNames = tags.map((tag) => tag.name);
 
         return {
           candidate,
@@ -354,7 +365,7 @@ export class GraphDataSerializer {
             sourceName: candidate.sourceName,
             similarity: candidate.similarity,
             commonTags: this.countCommonTags(centerTags, tagNames),
-            category: this.getCategory(tags),
+            category: getCategory(tags),
           },
           tagNames,
         };
@@ -370,7 +381,7 @@ export class GraphDataSerializer {
       }
 
       const layer1Nodes = layer1Inputs
-        .map(input => {
+        .map((input) => {
           try {
             const node = this.toGraphNode(input, false);
             if (includeDepthMetadata) {
@@ -378,10 +389,13 @@ export class GraphDataSerializer {
             }
             return node;
           } catch (error) {
-            logger.warn({
-              articleId: input.id,
-              error: error instanceof Error ? error.message : String(error),
-            }, 'Skipping invalid layer-1 node in depth serialization');
+            logger.warn(
+              {
+                articleId: input.id,
+                error: error instanceof Error ? error.message : String(error),
+              },
+              'Skipping invalid layer-1 node in depth serialization'
+            );
             return null;
           }
         })
@@ -397,23 +411,27 @@ export class GraphDataSerializer {
                 }
                 return node;
               } catch (error) {
-                logger.warn({
-                  articleId: input.id,
-                  error: error instanceof Error ? error.message : String(error),
-                }, 'Skipping invalid layer-2 node in depth serialization');
+                logger.warn(
+                  {
+                    articleId: input.id,
+                    error:
+                      error instanceof Error ? error.message : String(error),
+                  },
+                  'Skipping invalid layer-2 node in depth serialization'
+                );
                 return null;
               }
             })
             .filter((node): node is GraphNode => node !== null)
         : [];
 
-      const layer1NodeIds = new Set(layer1Nodes.map(node => node.id));
-      const layer2NodeIds = new Set(layer2Nodes.map(node => node.id));
-      const parentNodeIds = new Set(layer1Nodes.map(node => node.id));
+      const layer1NodeIds = new Set(layer1Nodes.map((node) => node.id));
+      const layer2NodeIds = new Set(layer2Nodes.map((node) => node.id));
+      const parentNodeIds = new Set(layer1Nodes.map((node) => node.id));
 
       const layer1Links: GraphLink[] = layer1Inputs
-        .filter(input => layer1NodeIds.has(input.id))
-        .map(input => {
+        .filter((input) => layer1NodeIds.has(input.id))
+        .map((input) => {
           const link: GraphLink = {
             source: centerNode.id,
             target: input.id,
@@ -431,8 +449,10 @@ export class GraphDataSerializer {
 
       const layer2Links: GraphLink[] = hasLayer2
         ? layer2Inputs
-            .filter(({ input, candidate }) =>
-              layer2NodeIds.has(input.id) && parentNodeIds.has(candidate.parentId)
+            .filter(
+              ({ input, candidate }) =>
+                layer2NodeIds.has(input.id) &&
+                parentNodeIds.has(candidate.parentId)
             )
             .map(({ input, candidate, tagNames }) => {
               const link: GraphLink = {
@@ -458,7 +478,7 @@ export class GraphDataSerializer {
       const links = [...layer1Links, ...layer2Links];
       const nodes = [centerNode, ...layer1Nodes, ...layer2Nodes];
 
-      const similarities = links.map(link => link.value);
+      const similarities = links.map((link) => link.value);
       const categoryCounts = this.countCategories(nodes);
 
       const { limit: derivedLayer2Limit, perParent: derivedLayer2PerParent } =
@@ -487,31 +507,40 @@ export class GraphDataSerializer {
           timestamp: new Date().toISOString(),
           options: metadataOptions,
           resultStats: {
-            maxSimilarity: similarities.length > 0 ? Math.max(...similarities) : 0,
-            minSimilarity: similarities.length > 0 ? Math.min(...similarities) : 0,
-            avgSimilarity: similarities.length > 0
-              ? similarities.reduce((sum, value) => sum + value, 0) / similarities.length
-              : 0,
+            maxSimilarity:
+              similarities.length > 0 ? Math.max(...similarities) : 0,
+            minSimilarity:
+              similarities.length > 0 ? Math.min(...similarities) : 0,
+            avgSimilarity:
+              similarities.length > 0
+                ? similarities.reduce((sum, value) => sum + value, 0) /
+                  similarities.length
+                : 0,
             categoryCounts,
           },
         },
       };
 
-      logger.info({
-        centerArticleId: centerNode.id,
-        layer1Count: layer1Nodes.length,
-        layer2Count: layer2Nodes.length,
-        depth,
-        algorithm,
-      }, 'Graph data serialized with depth support (Phase 3)');
+      logger.info(
+        {
+          centerArticleId: centerNode.id,
+          layer1Count: layer1Nodes.length,
+          layer2Count: layer2Nodes.length,
+          depth,
+          algorithm,
+        },
+        'Graph data serialized with depth support (Phase 3)'
+      );
 
       return graphData;
-
     } catch (error) {
-      logger.error({
-        centerArticleId: centerArticle.id,
-        error: error instanceof Error ? error.message : String(error),
-      }, 'Failed to serialize graph data with depth (Phase 3)');
+      logger.error(
+        {
+          centerArticleId: centerArticle.id,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'Failed to serialize graph data with depth (Phase 3)'
+      );
 
       throw error;
     }
@@ -533,13 +562,16 @@ export class GraphDataSerializer {
 
       const exclusionSet = new Set<string>([
         centerArticle.id,
-        ...layer1.map(article => article.articleId),
+        ...layer1.map((article) => article.articleId),
       ]);
 
       const dedupedMap = new Map<string, SearchResult & { parentId: string }>();
       for (const candidate of candidates) {
         if (!candidate?.articleId || !candidate.parentId) {
-          logger.warn({ candidateId: candidate?.articleId }, 'Invalid layer-2 candidate');
+          logger.warn(
+            { candidateId: candidate?.articleId },
+            'Invalid layer-2 candidate'
+          );
           continue;
         }
 
@@ -548,7 +580,10 @@ export class GraphDataSerializer {
         }
 
         const existing = dedupedMap.get(candidate.articleId);
-        if (!existing || (candidate.similarity ?? 0) > (existing.similarity ?? 0)) {
+        if (
+          !existing ||
+          (candidate.similarity ?? 0) > (existing.similarity ?? 0)
+        ) {
           dedupedMap.set(candidate.articleId, candidate);
         }
       }
@@ -558,7 +593,10 @@ export class GraphDataSerializer {
         return [];
       }
 
-      const parentGroups = new Map<string, Array<SearchResult & { parentId: string }>>();
+      const parentGroups = new Map<
+        string,
+        Array<SearchResult & { parentId: string }>
+      >();
       for (const candidate of uniqueCandidates) {
         const group = parentGroups.get(candidate.parentId) || [];
         group.push(candidate);
@@ -572,24 +610,32 @@ export class GraphDataSerializer {
       }
 
       if (parentCount < 4) {
-        logger.warn({ parentCount, limit }, 'Layer-2 parents below diversity threshold');
+        logger.warn(
+          { parentCount, limit },
+          'Layer-2 parents below diversity threshold'
+        );
       }
 
       const perParentCap = Math.max(1, Math.ceil(limit / parentCount));
 
       const parentSimilarityMap = new Map<string, number>(
-        layer1.map(article => [article.articleId, article.similarity])
+        layer1.map((article) => [article.articleId, article.similarity])
       );
 
       const qualitySamples = [
         centerArticle.qualityScore,
-        ...layer1.map(article => article.qualityScore),
-        ...uniqueCandidates.map(candidate => candidate.qualityScore),
-      ].filter((score): score is number => typeof score === 'number' && !Number.isNaN(score));
+        ...layer1.map((article) => article.qualityScore),
+        ...uniqueCandidates.map((candidate) => candidate.qualityScore),
+      ].filter(
+        (score): score is number =>
+          typeof score === 'number' && !Number.isNaN(score)
+      );
 
-      const avgQuality = qualitySamples.length > 0
-        ? qualitySamples.reduce((sum, value) => sum + value, 0) / qualitySamples.length
-        : this.MIN_QUALITY_SCORE;
+      const avgQuality =
+        qualitySamples.length > 0
+          ? qualitySamples.reduce((sum, value) => sum + value, 0) /
+            qualitySamples.length
+          : GRAPH_CONSTANTS.MIN_QUALITY_SCORE;
 
       type RankedCandidate = {
         candidate: SearchResult & { parentId: string };
@@ -601,33 +647,39 @@ export class GraphDataSerializer {
 
       const rankedCandidates: RankedCandidate[] = [];
 
-      parentGroups.forEach(group => {
-        const similarities = group.map(item => this.clamp01(item.similarity));
+      parentGroups.forEach((group) => {
+        const similarities = group.map((item) => clamp01(item.similarity));
         const maxSimilarity = Math.max(...similarities);
         const minSimilarity = Math.min(...similarities);
         const denom = maxSimilarity - minSimilarity;
 
         group.forEach((candidate, index) => {
-          const normalizedParentSimilarity = denom === 0
-            ? 1
-            : (similarities[index] - minSimilarity) / (denom || 1);
+          const normalizedParentSimilarity =
+            denom === 0
+              ? 1
+              : (similarities[index] - minSimilarity) / (denom || 1);
 
-          const centerSimilarity = this.resolveCenterSimilarity(candidate, parentSimilarityMap);
+          const centerSimilarity = this.resolveCenterSimilarity(
+            candidate,
+            parentSimilarityMap
+          );
           const resolvedQuality =
             typeof candidate.qualityScore === 'number'
               ? candidate.qualityScore
               : avgQuality;
-          const normalizedQuality = this.normalizeQualityScore(resolvedQuality);
-          const globalPriority = 0.7 * centerSimilarity + 0.3 * normalizedQuality;
+          const normalizedQuality = normalizeQualityScore(resolvedQuality);
+          const globalPriority =
+            0.7 * centerSimilarity + 0.3 * normalizedQuality;
 
           rankedCandidates.push({
             candidate,
             normalizedParentSimilarity,
             centerSimilarity,
             globalPriority,
-            publishedAtMs: candidate.publishedAt instanceof Date
-              ? candidate.publishedAt.getTime()
-              : new Date(candidate.publishedAt).getTime(),
+            publishedAtMs:
+              candidate.publishedAt instanceof Date
+                ? candidate.publishedAt.getTime()
+                : new Date(candidate.publishedAt).getTime(),
           });
         });
       });
@@ -659,19 +711,24 @@ export class GraphDataSerializer {
         selected.push(entry.candidate);
       }
 
-      logger.info({
-        requestedLimit: limit,
-        selectedCount: selected.length,
-        parentCount,
-        perParentCap,
-      }, 'Layer-2 selection completed with global priority');
+      logger.info(
+        {
+          requestedLimit: limit,
+          selectedCount: selected.length,
+          parentCount,
+          perParentCap,
+        },
+        'Layer-2 selection completed with global priority'
+      );
 
       return selected;
-
     } catch (error) {
-      logger.error({
-        error: error instanceof Error ? error.message : String(error),
-      }, 'Failed to select top layer-2 candidates');
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'Failed to select top layer-2 candidates'
+      );
       return [];
     }
   }
@@ -702,30 +759,44 @@ export class GraphDataSerializer {
    *
    * CodexMCP: Unified conversion logic for center and related articles
    */
-  private static toGraphNode(input: GraphNodeInput, isCenter: boolean): GraphNode {
+  private static toGraphNode(
+    input: GraphNodeInput,
+    isCenter: boolean
+  ): GraphNode {
     // CodexMCP: Throw early if required fields missing
     if (!input.id || !input.title) {
-      throw new Error(`Missing required fields: id=${input.id}, title=${input.title}`);
+      throw new Error(
+        `Missing required fields: id=${input.id}, title=${input.title}`
+      );
     }
 
     // Phase 2: Use pre-computed category or calculate
-    const category = input.category ?? this.getCategory(input.tags || []);
-    const baseColor = this.getCategoryColor(category);
+    const category = input.category ?? getCategory(input.tags || []);
+    const baseColor = getCategoryColor(category);
 
     // CodexMCP Phase 2: Adjust color brightness by similarity
-    const color = isCenter ? '#FBBF24' : this.adjustColorForSimilarity(baseColor, input.similarity);
+    const color = isCenter
+      ? '#FBBF24'
+      : this.adjustColorForSimilarity(baseColor, input.similarity);
 
     // CodexMCP Phase 2: Clamp qualityScore to minimum baseline
-    const qualityScore = Math.max(input.qualityScore ?? 0, this.MIN_QUALITY_SCORE);
+    const qualityScore = Math.max(
+      input.qualityScore ?? 0,
+      GRAPH_CONSTANTS.MIN_QUALITY_SCORE
+    );
 
     // CodexMCP Phase 2: Hybrid node size (quality * similarity)
     let val: number;
     if (isCenter) {
-      val = qualityScore * this.CENTER_NODE_SCALE;  // Center: enhanced visibility (larger than related nodes)
+      val = qualityScore * GRAPH_CONSTANTS.CENTER_NODE_SCALE; // Center: enhanced visibility (larger than related nodes)
     } else if (input.similarity) {
       // Related: hybrid (quality * similarity * factor)
-      const hybridSize = input.similarity * qualityScore * this.RELATED_NODE_SCALE;
-      val = Math.min(Math.max(hybridSize, this.MIN_NODE_SIZE), this.MAX_NODE_SIZE);  // Clamp to 30-140
+      const hybridSize =
+        input.similarity * qualityScore * GRAPH_CONSTANTS.RELATED_NODE_SCALE;
+      val = Math.min(
+        Math.max(hybridSize, GRAPH_CONSTANTS.MIN_NODE_SIZE),
+        GRAPH_CONSTANTS.MAX_NODE_SIZE
+      ); // Clamp to 30-140
     } else {
       // Fallback: quality-based
       val = qualityScore;
@@ -735,67 +806,17 @@ export class GraphDataSerializer {
 
     return {
       id: input.id,
-      label: isCenter ? `[中心] ${displayTitle}` : displayTitle,  // CodexMCP: Badge for center node
-      val,  // CodexMCP Phase 2: Hybrid size (quality * similarity)
-      color,  // CodexMCP: Similarity-adjusted color
+      label: isCenter ? `[中心] ${displayTitle}` : displayTitle, // CodexMCP: Badge for center node
+      val, // CodexMCP Phase 2: Hybrid size (quality * similarity)
+      color, // CodexMCP: Similarity-adjusted color
       category,
-      publishedAt: this.toISOString(input.publishedAt),
+      publishedAt: toISOString(input.publishedAt),
       url: input.url || `/articles/${input.id}`,
       summary: input.summary,
       thumbnail: input.thumbnail,
       sourceName: input.sourceName,
       primaryTag: input.tags?.[0]?.name,
     };
-  }
-
-  /**
-   * Detect category from tags
-   *
-   * CodexMCP: Lookup table approach (not regex everywhere)
-   */
-  private static getCategory(tags: Array<{ name: string }>): string {
-    const tagNames = tags.map(t => t.name);
-
-    // Find best matching category (highest priority match)
-    let bestMatch: { category: string; priority: number } | null = null;
-
-    for (const rule of CATEGORY_RULES) {
-      const matched = rule.keywords.some(keyword =>
-        tagNames.some(tag => tag.includes(keyword))
-      );
-
-      if (matched && (!bestMatch || rule.priority > bestMatch.priority)) {
-        bestMatch = { category: rule.category, priority: rule.priority };
-      }
-    }
-
-    return bestMatch?.category || 'Other';
-  }
-
-  /**
-   * Get category color
-   *
-   * CodexMCP: Lookup from CATEGORY_COLORS mapping
-   */
-  private static getCategoryColor(category: string): string {
-    return CATEGORY_COLORS[category] || CATEGORY_COLORS['Other'];
-  }
-
-  /**
-   * Adjust color for center node (brighter)
-   */
-  private static adjustColorForCenter(color: string): string {
-    // Make center node stand out (slightly brighter)
-    // Convert hex to RGB, increase brightness, convert back
-    // For simplicity, just return same color with opacity flag or distinct shade
-    return color;  // TODO: Implement brightness adjustment if needed
-  }
-
-  /**
-   * Convert Date or string to ISO 8601 string
-   */
-  private static toISOString(date: Date | string): string {
-    return date instanceof Date ? date.toISOString() : new Date(date).toISOString();
   }
 
   /**
@@ -808,7 +829,7 @@ export class GraphDataSerializer {
   private static countCommonTags(tags1: string[], tags2: string[]): number {
     const set1 = new Set(tags1);
     const set2 = new Set(tags2);
-    return [...set1].filter(t => set2.has(t)).length;
+    return [...set1].filter((t) => set2.has(t)).length;
   }
 
   /**
@@ -816,7 +837,10 @@ export class GraphDataSerializer {
    *
    * CodexMCP: Hybrid - category (hue) + similarity (lightness)
    */
-  private static adjustColorForSimilarity(baseColor: string, similarity?: number): string {
+  private static adjustColorForSimilarity(
+    baseColor: string,
+    similarity?: number
+  ): string {
     if (!similarity) return baseColor;
 
     // Validate hex format (CodeRabbit: prevent parseInt issues)
@@ -830,7 +854,9 @@ export class GraphDataSerializer {
     const b = parseInt(baseColor.slice(5, 7), 16);
 
     // Brightness factor: [0.7, 1.3] for similarity [0, 1]
-    const factor = this.MIN_BRIGHTNESS_FACTOR + similarity * this.BRIGHTNESS_RANGE;
+    const factor =
+      GRAPH_CONSTANTS.MIN_BRIGHTNESS_FACTOR +
+      similarity * GRAPH_CONSTANTS.BRIGHTNESS_RANGE;
 
     const rAdj = Math.min(Math.round(r * factor), 255);
     const gAdj = Math.min(Math.round(g * factor), 255);
@@ -846,7 +872,7 @@ export class GraphDataSerializer {
     relatedArticles: GraphNodeInput[],
     articleId: string
   ): number | undefined {
-    return relatedArticles.find(a => a.id === articleId)?.similarity;
+    return relatedArticles.find((a) => a.id === articleId)?.similarity;
   }
 
   /**
@@ -856,7 +882,7 @@ export class GraphDataSerializer {
     relatedArticles: GraphNodeInput[],
     articleId: string
   ): number | undefined {
-    return relatedArticles.find(a => a.id === articleId)?.commonTags;
+    return relatedArticles.find((a) => a.id === articleId)?.commonTags;
   }
 
   /**
@@ -873,56 +899,30 @@ export class GraphDataSerializer {
   }
 
   /**
-   * Normalize quality score (0-100) to 0-1 range
-   */
-  private static normalizeQualityScore(score: number | undefined): number {
-    if (typeof score !== 'number' || Number.isNaN(score)) {
-      return 0;
-    }
-
-    const clamped = Math.max(0, Math.min(100, score));
-    return this.clamp01(clamped / 100);
-  }
-
-  /**
-   * Clamp numeric value to [0, 1]
-   */
-  private static clamp01(value: number | undefined): number {
-    if (typeof value !== 'number' || Number.isNaN(value)) {
-      return 0;
-    }
-
-    if (!isFinite(value)) {
-      return 0;
-    }
-
-    return Math.min(1, Math.max(0, value));
-  }
-
-  /**
    * Estimate similarity between a layer-2 candidate and the center article
    */
   private static resolveCenterSimilarity(
     candidate: SearchResult & { parentId: string },
     parentSimilarityMap: Map<string, number>
   ): number {
-    const candidateWithCenter = candidate as SearchResult & { centerSimilarity?: number };
+    const candidateWithCenter = candidate as SearchResult & {
+      centerSimilarity?: number;
+    };
     if (typeof candidateWithCenter.centerSimilarity === 'number') {
-      return this.clamp01(candidateWithCenter.centerSimilarity);
+      return clamp01(candidateWithCenter.centerSimilarity);
     }
 
     const parentSimilarity = parentSimilarityMap.get(candidate.parentId);
-    const parentToCenter = parentSimilarity !== undefined
-      ? this.clamp01(parentSimilarity)
-      : undefined;
-    const candidateToParent = this.clamp01(candidate.similarity);
+    const parentToCenter =
+      parentSimilarity !== undefined ? clamp01(parentSimilarity) : undefined;
+    const candidateToParent = clamp01(candidate.similarity);
 
     if (parentToCenter === undefined) {
       return candidateToParent;
     }
 
     const estimated = Math.sqrt(parentToCenter * candidateToParent);
-    return this.clamp01(estimated);
+    return clamp01(estimated);
   }
 
   /**
@@ -935,13 +935,16 @@ export class GraphDataSerializer {
       return {};
     }
 
-    const parentCounts = layer2.reduce<Record<string, number>>((acc, candidate) => {
-      if (!candidate.parentId) {
+    const parentCounts = layer2.reduce<Record<string, number>>(
+      (acc, candidate) => {
+        if (!candidate.parentId) {
+          return acc;
+        }
+        acc[candidate.parentId] = (acc[candidate.parentId] || 0) + 1;
         return acc;
-      }
-      acc[candidate.parentId] = (acc[candidate.parentId] || 0) + 1;
-      return acc;
-    }, {});
+      },
+      {}
+    );
 
     const counts = Object.values(parentCounts);
 
@@ -951,3 +954,7 @@ export class GraphDataSerializer {
     };
   }
 }
+
+// Re-export for backwards compatibility
+export type { GraphNodeInput } from './graph-node-input';
+export { GRAPH_CONSTANTS, CATEGORY_RULES } from './graph-utils';
