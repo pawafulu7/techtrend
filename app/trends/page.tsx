@@ -335,7 +335,7 @@ export default function TrendsPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {trendAnalysis?.topTags?.map((tag, index) => (
+                {trendAnalysis?.topTags?.slice(0, 10).map((tag, index) => (
                   <Link
                     key={tag.name}
                     href={`/?tags=${encodeURIComponent(tag.name)}`}
