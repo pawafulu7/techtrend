@@ -228,7 +228,7 @@ export default function TrendsPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* 急上昇キーワード */}
-        <Card className="border-l-4 border-l-orange-500 md:col-span-1 dark:border-l-orange-400">
+        <Card className="border-l-4 border-l-orange-500 transition-colors hover:border-orange-500/50 hover:border-l-orange-500 md:col-span-1 dark:border-l-orange-400 dark:hover:border-orange-400/50 dark:hover:border-l-orange-400">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
@@ -277,7 +277,7 @@ export default function TrendsPage() {
         </Card>
 
         {/* 新着タグ */}
-        <Card className="border-l-4 border-l-green-500 md:col-span-1 dark:border-l-green-400">
+        <Card className="border-l-4 border-l-green-500 transition-colors hover:border-green-500/50 hover:border-l-green-500 md:col-span-1 dark:border-l-green-400 dark:hover:border-green-400/50 dark:hover:border-l-green-400">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5" />
@@ -317,7 +317,7 @@ export default function TrendsPage() {
         </Card>
 
         {/* トップタグ */}
-        <Card className="border-l-4 border-l-blue-500 md:col-span-1 lg:col-span-1 dark:border-l-blue-400">
+        <Card className="border-l-4 border-l-blue-500 transition-colors hover:border-blue-500/50 hover:border-l-blue-500 md:col-span-1 lg:col-span-1 dark:border-l-blue-400 dark:hover:border-blue-400/50 dark:hover:border-l-blue-400">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
