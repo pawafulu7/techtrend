@@ -4,10 +4,15 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Sparkles, Calendar, BarChart3 } from 'lucide-react';
+import { PageHeader } from '@/components/ui-v2/page-header';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 // Dynamic imports for recharts components to reduce initial bundle size
-import { TrendLineChart, SourcePieChart, TagRankingChart } from '@/app/components/trends';
+import {
+  TrendLineChart,
+  SourcePieChart,
+  TagRankingChart,
+} from '@/app/components/trends';
 
 interface TrendingKeyword {
   id: string;
@@ -38,12 +43,18 @@ interface TrendAnalysis {
 }
 
 export default function TrendsPage() {
-  const [trendingKeywords, setTrendingKeywords] = useState<TrendingKeyword[]>([]);
+  const [trendingKeywords, setTrendingKeywords] = useState<TrendingKeyword[]>(
+    []
+  );
   const [newTags, setNewTags] = useState<NewTag[]>([]);
-  const [trendAnalysis, setTrendAnalysis] = useState<TrendAnalysis | null>(null);
+  const [trendAnalysis, setTrendAnalysis] = useState<TrendAnalysis | null>(
+    null
+  );
   const [selectedDays, setSelectedDays] = useState(7);
-  const [sourceData, setSourceData] = useState<{name: string; value: number; percentage: number}[]>([]);
-  
+  const [sourceData, setSourceData] = useState<
+    { name: string; value: number; percentage: number }[]
+  >([]);
+
   // 個別のローディング状態
   const [loadingKeywords, setLoadingKeywords] = useState(true);
   const [loadingAnalysis, setLoadingAnalysis] = useState(true);
@@ -68,10 +79,10 @@ export default function TrendsPage() {
     try {
       setLoadingKeywords(true);
       const response = await fetch('/api/trends/keywords', {
-        cache: 'no-store'  // キャッシュを無効化（サーバー側でRedisキャッシュが効いている）
+        cache: 'no-store', // キャッシュを無効化（サーバー側でRedisキャッシュが効いている）
       });
       const data = await response.json();
-      
+
       // APIレスポンスの検証とデフォルト値設定
       if (data.error) {
         setTrendingKeywords([]);
@@ -95,7 +106,7 @@ export default function TrendsPage() {
     try {
       setLoadingAnalysis(true);
       const response = await fetch(`/api/trends/analysis?days=${days}`, {
-        cache: 'no-store'  // キャッシュを無効化してパラメータを確実に反映
+        cache: 'no-store', // キャッシュを無効化してパラメータを確実に反映
       });
       const data = await response.json();
       setTrendAnalysis(data);
@@ -113,32 +124,41 @@ export default function TrendsPage() {
       setLoadingSource(true);
       const response = await fetch('/api/stats', {
         cache: 'force-cache',
-        next: { revalidate: 300 } // 5分間キャッシュ
+        next: { revalidate: 300 }, // 5分間キャッシュ
       });
       const result = await response.json();
       if (result.success && result.data && result.data.sources) {
         const allSources = result.data.sources;
-        
+
         // 上位6つのソースを取得
         const topSources = allSources.slice(0, 6);
         const otherSources = allSources.slice(6);
-        
+
         // 「その他」の合計を計算
-        const othersCount = otherSources.reduce((sum: number, source: {count: number}) => sum + source.count, 0);
-        const othersPercentage = otherSources.reduce((sum: number, source: {percentage: number}) => sum + source.percentage, 0);
-        
-        const sourceStats = topSources.map((source: {name: string; count: number; percentage: number}) => ({
-          name: source.name,
-          value: source.count,
-          percentage: source.percentage
-        }));
-        
+        const othersCount = otherSources.reduce(
+          (sum: number, source: { count: number }) => sum + source.count,
+          0
+        );
+        const othersPercentage = otherSources.reduce(
+          (sum: number, source: { percentage: number }) =>
+            sum + source.percentage,
+          0
+        );
+
+        const sourceStats = topSources.map(
+          (source: { name: string; count: number; percentage: number }) => ({
+            name: source.name,
+            value: source.count,
+            percentage: source.percentage,
+          })
+        );
+
         // 「その他」があれば追加
         if (othersCount > 0) {
           sourceStats.push({
             name: 'その他',
             value: othersCount,
-            percentage: othersPercentage
+            percentage: othersPercentage,
           });
         }
 
@@ -168,23 +188,27 @@ export default function TrendsPage() {
   };
 
   // グラフデータをメモ化
-  const chartData = useMemo(() => ({
-    timeline: trendAnalysis?.timeline || [],
-    topTags: trendAnalysis?.topTags?.slice(0, 10).map(t => t.name) || [],
-    tagRanking: trendAnalysis?.topTags?.slice(0, 10).map(tag => ({
-      name: tag.name,
-      count: tag.totalCount
-    })) || []
-  }), [trendAnalysis]);
+  const chartData = useMemo(
+    () => ({
+      timeline: trendAnalysis?.timeline || [],
+      topTags: trendAnalysis?.topTags?.slice(0, 10).map((t) => t.name) || [],
+      tagRanking:
+        trendAnalysis?.topTags?.slice(0, 10).map((tag) => ({
+          name: tag.name,
+          count: tag.totalCount,
+        })) || [],
+    }),
+    [trendAnalysis]
+  );
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">トレンド分析</h1>
-        <p className="text-muted-foreground">
-          技術トレンドの変化を可視化し、急上昇キーワードを発見
-        </p>
-      </div>
+    <div className="container mx-auto max-w-7xl px-4 py-8">
+      <PageHeader
+        icon={TrendingUp}
+        title="トレンド分析"
+        description="技術トレンドの変化を可視化し、急上昇キーワードを発見"
+        className="mb-8"
+      />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* 急上昇キーワード */}
@@ -200,33 +224,37 @@ export default function TrendsPage() {
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="h-12 bg-gray-200 dark:bg-gray-800 rounded-lg"></div>
+                    <div className="h-12 rounded-lg bg-gray-200 dark:bg-gray-800"></div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="space-y-3">
                 {trendingKeywords.slice(0, 10).map((keyword) => (
-                <Link
-                  key={keyword.id}
-                  href={`/?tags=${encodeURIComponent(keyword.name)}`}
-                  className="block"
-                >
-                  <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{getGrowthIcon(keyword.growthRate)}</span>
-                      <span className="font-medium">{keyword.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className={`text-sm font-semibold ${getGrowthColor(keyword.growthRate)}`}>
-                        +{keyword.growthRate}%
+                  <Link
+                    key={keyword.id}
+                    href={`/?tags=${encodeURIComponent(keyword.name)}`}
+                    className="block"
+                  >
+                    <div className="flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">
+                          {getGrowthIcon(keyword.growthRate)}
+                        </span>
+                        <span className="font-medium">{keyword.name}</span>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {keyword.recentCount}件
+                      <div className="text-right">
+                        <div
+                          className={`text-sm font-semibold ${getGrowthColor(keyword.growthRate)}`}
+                        >
+                          +{keyword.growthRate}%
+                        </div>
+                        <div className="text-muted-foreground text-xs">
+                          {keyword.recentCount}件
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
                 ))}
               </div>
             )}
@@ -246,27 +274,27 @@ export default function TrendsPage() {
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="h-10 bg-gray-200 dark:bg-gray-800 rounded-lg"></div>
+                    <div className="h-10 rounded-lg bg-gray-200 dark:bg-gray-800"></div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="space-y-3">
                 {newTags.map((tag) => (
-                <Link
-                  key={tag.id}
-                  href={`/?tags=${encodeURIComponent(tag.name)}`}
-                  className="block"
-                >
-                  <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <Badge variant="secondary" className="font-medium">
-                      {tag.name}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {tag.count}件
-                    </span>
-                  </div>
-                </Link>
+                  <Link
+                    key={tag.id}
+                    href={`/?tags=${encodeURIComponent(tag.name)}`}
+                    className="block"
+                  >
+                    <div className="flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <Badge variant="secondary" className="font-medium">
+                        {tag.name}
+                      </Badge>
+                      <span className="text-muted-foreground text-sm">
+                        {tag.count}件
+                      </span>
+                    </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -286,30 +314,30 @@ export default function TrendsPage() {
               <div className="space-y-2">
                 {[...Array(10)].map((_, i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="h-8 bg-gray-200 dark:bg-gray-800 rounded-lg"></div>
+                    <div className="h-8 rounded-lg bg-gray-200 dark:bg-gray-800"></div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="space-y-2">
                 {trendAnalysis?.topTags?.map((tag, index) => (
-                <Link
-                  key={tag.name}
-                  href={`/?tags=${encodeURIComponent(tag.name)}`}
-                  className="block"
-                >
-                  <div className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-muted-foreground w-6">
-                        {index + 1}
+                  <Link
+                    key={tag.name}
+                    href={`/?tags=${encodeURIComponent(tag.name)}`}
+                    className="block"
+                  >
+                    <div className="flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground w-6 text-sm font-semibold">
+                          {index + 1}
+                        </span>
+                        <span className="font-medium">{tag.name}</span>
+                      </div>
+                      <span className="text-muted-foreground text-sm">
+                        {tag.totalCount}件
                       </span>
-                      <span className="font-medium">{tag.name}</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      {tag.totalCount}件
-                    </span>
-                  </div>
-                </Link>
+                  </Link>
                 ))}
               </div>
             )}
@@ -322,7 +350,7 @@ export default function TrendsPage() {
         {/* タグトレンドグラフ */}
         <div>
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-2xl font-semibold flex items-center gap-2">
+            <h2 className="flex items-center gap-2 text-2xl font-semibold">
               <Calendar className="h-6 w-6" />
               詳細分析
             </h2>
@@ -339,7 +367,7 @@ export default function TrendsPage() {
               ))}
             </div>
           </div>
-          
+
           <div className="grid gap-6 lg:grid-cols-2">
             {/* タグトレンドの時系列グラフ */}
             <div className="lg:col-span-2">
@@ -349,18 +377,15 @@ export default function TrendsPage() {
                 loading={loadingAnalysis}
               />
             </div>
-            
+
             {/* タグランキングバーグラフ */}
             <TagRankingChart
               data={chartData.tagRanking}
               loading={loadingAnalysis}
             />
-            
+
             {/* ソース別円グラフ */}
-            <SourcePieChart
-              data={sourceData}
-              loading={loadingSource}
-            />
+            <SourcePieChart data={sourceData} loading={loadingSource} />
           </div>
         </div>
       </div>
