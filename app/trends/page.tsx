@@ -223,7 +223,7 @@ export default function TrendsPage() {
         icon={TrendingUp}
         title="トレンド分析"
         description="技術トレンドの変化を可視化し、急上昇キーワードを発見"
-        className="mb-8"
+        className="from-primary/5 dark:from-primary/10 mb-8 bg-gradient-to-r via-transparent to-transparent"
       />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
