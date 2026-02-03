@@ -223,12 +223,12 @@ export default function TrendsPage() {
         icon={TrendingUp}
         title="トレンド分析"
         description="技術トレンドの変化を可視化し、急上昇キーワードを発見"
-        className="mb-8"
+        className="from-primary/5 dark:from-primary/10 mb-8 bg-gradient-to-r via-transparent to-transparent"
       />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* 急上昇キーワード */}
-        <Card className="md:col-span-1">
+        <Card className="border-l-4 border-l-orange-500 transition-colors hover:border-orange-500/50 hover:border-l-orange-500 md:col-span-1 dark:border-l-orange-400 dark:hover:border-orange-400/50 dark:hover:border-l-orange-400">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
@@ -277,7 +277,7 @@ export default function TrendsPage() {
         </Card>
 
         {/* 新着タグ */}
-        <Card className="md:col-span-1">
+        <Card className="border-l-4 border-l-green-500 transition-colors hover:border-green-500/50 hover:border-l-green-500 md:col-span-1 dark:border-l-green-400 dark:hover:border-green-400/50 dark:hover:border-l-green-400">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5" />
@@ -317,7 +317,7 @@ export default function TrendsPage() {
         </Card>
 
         {/* トップタグ */}
-        <Card className="md:col-span-1 lg:col-span-1">
+        <Card className="border-l-4 border-l-blue-500 transition-colors hover:border-blue-500/50 hover:border-l-blue-500 md:col-span-1 lg:col-span-1 dark:border-l-blue-400 dark:hover:border-blue-400/50 dark:hover:border-l-blue-400">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
@@ -376,6 +376,12 @@ export default function TrendsPage() {
                   variant={selectedDays === days ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setSelectedDays(days)}
+                  aria-pressed={selectedDays === days}
+                  className={
+                    selectedDays === days
+                      ? 'border-0 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600'
+                      : ''
+                  }
                 >
                   {days}日間
                 </Button>
