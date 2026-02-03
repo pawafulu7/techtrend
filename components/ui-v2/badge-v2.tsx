@@ -11,13 +11,13 @@ export type BadgeV2Variant =
   | 'info'
   | 'destructive';
 
-export interface BadgeV2Props extends React.HTMLAttributes<HTMLSpanElement> {
+export interface BadgeV2Props extends React.HTMLAttributes<HTMLElement> {
   variant?: BadgeV2Variant;
   disabled?: boolean;
   asChild?: boolean;
 }
 
-const BadgeV2 = forwardRef<HTMLSpanElement, BadgeV2Props>(
+const BadgeV2 = forwardRef<HTMLElement, BadgeV2Props>(
   (
     {
       variant = 'default',
@@ -25,6 +25,8 @@ const BadgeV2 = forwardRef<HTMLSpanElement, BadgeV2Props>(
       asChild = false,
       className,
       children,
+      onClick,
+      tabIndex,
       ...props
     },
     ref
@@ -68,6 +70,15 @@ const BadgeV2 = forwardRef<HTMLSpanElement, BadgeV2Props>(
           disabled && ['cursor-not-allowed opacity-50', 'pointer-events-none'],
           className
         )}
+        tabIndex={disabled ? -1 : tabIndex}
+        onClick={(event: React.MouseEvent<HTMLElement>) => {
+          if (disabled) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          onClick?.(event);
+        }}
         aria-disabled={disabled}
         {...props}
       >
