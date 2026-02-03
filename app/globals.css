@@ -182,7 +182,6 @@ html.no-transitions *::after {
    * - --muted ≈ --tt-color-surface-muted (薄い背景)
    *
    * 新規コンポーネントでは --tt-color-* の使用を推奨します。
-   * 詳細: .claude/docs/guides/token-mapping.md
    */
 }
 

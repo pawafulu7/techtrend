@@ -54,16 +54,16 @@ const BadgeV2 = forwardRef<HTMLSpanElement, BadgeV2Props>(
             'hover:border-(--tt-color-border-hover) hover:bg-(--tt-color-surface-hover)',
           ],
           variant === 'positive' && [
-            'bg-[var(--tt-color-positive-bg)] text-[var(--tt-color-positive)]',
-            'border border-[var(--tt-color-positive-border)]',
+            'bg-(--tt-color-positive-bg) text-(--tt-color-positive)',
+            'border border-(--tt-color-positive-border)',
           ],
           variant === 'info' && [
-            'bg-[var(--tt-color-info-bg)] text-[var(--tt-color-info)]',
-            'border border-[var(--tt-color-info-border)]',
+            'bg-(--tt-color-info-bg) text-(--tt-color-info)',
+            'border border-(--tt-color-info-border)',
           ],
           variant === 'destructive' && [
-            'bg-[var(--tt-color-negative-bg)] text-[var(--tt-color-negative)]',
-            'border border-[var(--tt-color-negative-border)]',
+            'bg-(--tt-color-negative-bg) text-(--tt-color-negative)',
+            'border border-(--tt-color-negative-border)',
           ],
           disabled && ['cursor-not-allowed opacity-50', 'pointer-events-none'],
           className
