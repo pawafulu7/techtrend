@@ -174,17 +174,33 @@ export default function TrendsPage() {
   };
 
   const getGrowthIcon = (rate: number) => {
-    if (rate >= 100) return '🚀';
-    if (rate >= 50) return '📈';
-    if (rate >= 20) return '📊';
-    return '📉';
+    const levels = [
+      { threshold: 100, icon: '🚀', label: '急上昇' },
+      { threshold: 50, icon: '📈', label: '上昇' },
+      { threshold: 20, icon: '📊', label: '微増' },
+      { threshold: -Infinity, icon: '📉', label: '減少' },
+    ];
+
+    const level =
+      levels.find((l) => rate >= l.threshold) || levels[levels.length - 1];
+
+    return (
+      <span
+        className="text-lg"
+        role="img"
+        aria-label={`${level.label}（${rate >= 0 ? '+' : ''}${rate}%）`}
+      >
+        {level.icon}
+        <span className="sr-only">{level.label}</span>
+      </span>
+    );
   };
 
   const getGrowthColor = (rate: number) => {
     if (rate >= 100) return 'text-red-600 dark:text-red-400';
     if (rate >= 50) return 'text-orange-600 dark:text-orange-400';
     if (rate >= 20) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-gray-600 dark:text-gray-400';
+    return 'text-muted-foreground';
   };
 
   // グラフデータをメモ化
@@ -224,7 +240,7 @@ export default function TrendsPage() {
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="h-12 rounded-lg bg-gray-200 dark:bg-gray-800"></div>
+                    <div className="h-12 rounded-lg bg-(--tt-color-surface-muted)"></div>
                   </div>
                 ))}
               </div>
@@ -236,18 +252,17 @@ export default function TrendsPage() {
                     href={`/?tags=${encodeURIComponent(keyword.name)}`}
                     className="block"
                   >
-                    <div className="flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <div className="flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-(--tt-color-surface-hover)">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">
-                          {getGrowthIcon(keyword.growthRate)}
-                        </span>
+                        {getGrowthIcon(keyword.growthRate)}
                         <span className="font-medium">{keyword.name}</span>
                       </div>
                       <div className="text-right">
                         <div
                           className={`text-sm font-semibold ${getGrowthColor(keyword.growthRate)}`}
                         >
-                          +{keyword.growthRate}%
+                          {keyword.growthRate >= 0 ? '+' : ''}
+                          {keyword.growthRate}%
                         </div>
                         <div className="text-muted-foreground text-xs">
                           {keyword.recentCount}件
@@ -274,7 +289,7 @@ export default function TrendsPage() {
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="h-10 rounded-lg bg-gray-200 dark:bg-gray-800"></div>
+                    <div className="h-10 rounded-lg bg-(--tt-color-surface-muted)"></div>
                   </div>
                 ))}
               </div>
@@ -286,7 +301,7 @@ export default function TrendsPage() {
                     href={`/?tags=${encodeURIComponent(tag.name)}`}
                     className="block"
                   >
-                    <div className="flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <div className="flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-(--tt-color-surface-hover)">
                       <Badge variant="secondary" className="font-medium">
                         {tag.name}
                       </Badge>
@@ -314,7 +329,7 @@ export default function TrendsPage() {
               <div className="space-y-2">
                 {[...Array(10)].map((_, i) => (
                   <div key={i} className="animate-pulse">
-                    <div className="h-8 rounded-lg bg-gray-200 dark:bg-gray-800"></div>
+                    <div className="h-8 rounded-lg bg-(--tt-color-surface-muted)"></div>
                   </div>
                 ))}
               </div>
@@ -326,7 +341,7 @@ export default function TrendsPage() {
                     href={`/?tags=${encodeURIComponent(tag.name)}`}
                     className="block"
                   >
-                    <div className="flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <div className="flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-(--tt-color-surface-hover)">
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground w-6 text-sm font-semibold">
                           {index + 1}

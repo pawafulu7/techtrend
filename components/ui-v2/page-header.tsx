@@ -36,7 +36,8 @@ const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
   ) => {
     return (
       <Component
-        ref={ref as React.Ref<HTMLElement>}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ref={ref as any}
         className={cn(
           'rounded-lg shadow-sm transition-colors',
           // 全体のborderをTTトークンで指定
