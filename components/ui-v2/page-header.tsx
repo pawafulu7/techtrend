@@ -41,8 +41,8 @@ const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
           'rounded-lg shadow-sm transition-colors',
           // 全体のborderをTTトークンで指定
           'border border-(--tt-color-border)',
-          // 左アクセント色を個別に上書き（shorthand順序問題を回避）
-          'border-l-4 border-l-(--tt-color-primary)',
+          // 左アクセント色（primary color）
+          'border-l-primary border-l-4',
           'bg-(--tt-color-surface)',
           variant === 'default' && 'min-h-[4.5rem] p-4 sm:p-6',
           variant === 'compact' && 'min-h-[3.5rem] p-3',
