@@ -1,5 +1,5 @@
 export const sourceColors = {
-  'はてなブックマーク': {
+  はてなブックマーク: {
     primary: '#00A4E4',
     secondary: '#E6F4FA',
     accent: '#0080C0',
@@ -8,7 +8,7 @@ export const sourceColors = {
     hover: 'hover:shadow-blue-200',
     tag: 'bg-blue-100 text-blue-800 hover:bg-blue-200',
   },
-  'Qiita': {
+  Qiita: {
     primary: '#55C500',
     secondary: '#F0F9E8',
     accent: '#40A000',
@@ -17,7 +17,7 @@ export const sourceColors = {
     hover: 'hover:shadow-green-200',
     tag: 'bg-green-100 text-green-800 hover:bg-green-200',
   },
-  'Zenn': {
+  Zenn: {
     primary: '#3EA8FF',
     secondary: '#EBF8FF',
     accent: '#0080D6',
@@ -35,7 +35,7 @@ export const sourceColors = {
     hover: 'hover:shadow-indigo-200',
     tag: 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200',
   },
-  'TechCrunch': {
+  TechCrunch: {
     primary: '#00D301',
     secondary: '#E8F5E8',
     accent: '#00A301',
@@ -44,7 +44,7 @@ export const sourceColors = {
     hover: 'hover:shadow-lime-200',
     tag: 'bg-lime-100 text-lime-800 hover:bg-lime-200',
   },
-  'Publickey': {
+  Publickey: {
     primary: '#FF6B35',
     secondary: '#FFF4F0',
     accent: '#E55100',
@@ -53,7 +53,7 @@ export const sourceColors = {
     hover: 'hover:shadow-orange-200',
     tag: 'bg-orange-100 text-orange-800 hover:bg-orange-200',
   },
-  'connpass': {
+  connpass: {
     primary: '#F85A40',
     secondary: '#FFF5F3',
     accent: '#E04226',
@@ -116,7 +116,7 @@ export function getSourceColor(sourceName: string) {
 
   // 直接colorMapから取得
   const colorMap: Record<string, typeof newColorTheme> = {
-    'はてなブックマーク': {
+    はてなブックマーク: {
       gradient: 'from-blue-400 to-blue-600',
       border: 'border-blue-200',
       hover: 'hover:border-blue-400',
@@ -125,7 +125,7 @@ export function getSourceColor(sourceName: string) {
       bar: 'bg-blue-500',
       borderLeft: 'border-l-4 border-l-blue-500',
     },
-    'Qiita': {
+    Qiita: {
       gradient: 'from-green-400 to-green-600',
       border: 'border-green-200',
       hover: 'hover:border-green-400',
@@ -143,7 +143,7 @@ export function getSourceColor(sourceName: string) {
       bar: 'bg-green-500',
       borderLeft: 'border-l-4 border-l-green-500',
     },
-    'Zenn': {
+    Zenn: {
       gradient: 'from-sky-400 to-sky-600',
       border: 'border-sky-200',
       hover: 'hover:border-sky-400',
@@ -161,7 +161,7 @@ export function getSourceColor(sourceName: string) {
       bar: 'bg-indigo-500',
       borderLeft: 'border-l-4 border-l-indigo-500',
     },
-    'Publickey': {
+    Publickey: {
       gradient: 'from-orange-400 to-orange-600',
       border: 'border-orange-200',
       hover: 'hover:border-orange-400',
@@ -206,7 +206,7 @@ export function getSourceColor(sourceName: string) {
       bar: 'bg-teal-500',
       borderLeft: 'border-l-4 border-l-teal-500',
     },
-    'AWS': {
+    AWS: {
       gradient: 'from-yellow-400 to-orange-500',
       border: 'border-yellow-200',
       hover: 'hover:border-yellow-400',
@@ -215,7 +215,7 @@ export function getSourceColor(sourceName: string) {
       bar: 'bg-yellow-500',
       borderLeft: 'border-l-4 border-l-yellow-500',
     },
-    'SRE': {
+    SRE: {
       gradient: 'from-red-400 to-pink-500',
       border: 'border-red-200',
       hover: 'hover:border-red-400',
@@ -233,7 +233,7 @@ export function getSourceColor(sourceName: string) {
       bar: 'bg-rose-500',
       borderLeft: 'border-l-4 border-l-rose-500',
     },
-    'TechCrunch': {
+    TechCrunch: {
       gradient: 'from-lime-400 to-lime-600',
       border: 'border-lime-200',
       hover: 'hover:border-lime-400',
@@ -242,7 +242,7 @@ export function getSourceColor(sourceName: string) {
       bar: 'bg-lime-500',
       borderLeft: 'border-l-4 border-l-lime-500',
     },
-    'connpass': {
+    connpass: {
       gradient: 'from-red-400 to-red-600',
       border: 'border-red-200',
       hover: 'hover:border-red-400',
@@ -260,7 +260,7 @@ export function getSourceColor(sourceName: string) {
       bar: 'bg-orange-500',
       borderLeft: 'border-l-4 border-l-orange-500',
     },
-    'Docswell': {
+    Docswell: {
       gradient: 'from-emerald-400 to-emerald-600',
       border: 'border-emerald-200',
       hover: 'hover:border-emerald-400',
@@ -271,5 +271,482 @@ export function getSourceColor(sourceName: string) {
     },
   };
 
-  return colorMap[sourceName] || newColorTheme;
+  // Foreign Tech (Big Tech)
+  const foreignTechColors: Record<string, typeof newColorTheme> = {
+    'Netflix TechBlog': {
+      gradient: 'from-red-500 to-red-700',
+      border: 'border-red-200',
+      hover: 'hover:border-red-400',
+      tag: 'bg-red-50 text-red-700',
+      dot: 'bg-red-500',
+      bar: 'bg-red-500',
+      borderLeft: 'border-l-4 border-l-red-500',
+    },
+    'Meta Engineering': {
+      gradient: 'from-blue-500 to-blue-700',
+      border: 'border-blue-200',
+      hover: 'hover:border-blue-400',
+      tag: 'bg-blue-50 text-blue-700',
+      dot: 'bg-blue-500',
+      bar: 'bg-blue-500',
+      borderLeft: 'border-l-4 border-l-blue-500',
+    },
+    'Spotify Engineering': {
+      gradient: 'from-green-500 to-green-700',
+      border: 'border-green-200',
+      hover: 'hover:border-green-400',
+      tag: 'bg-green-50 text-green-700',
+      dot: 'bg-green-500',
+      bar: 'bg-green-500',
+      borderLeft: 'border-l-4 border-l-green-500',
+    },
+    'Pinterest Engineering': {
+      gradient: 'from-rose-500 to-rose-700',
+      border: 'border-rose-200',
+      hover: 'hover:border-rose-400',
+      tag: 'bg-rose-50 text-rose-700',
+      dot: 'bg-rose-500',
+      bar: 'bg-rose-500',
+      borderLeft: 'border-l-4 border-l-rose-500',
+    },
+    'Discord Engineering': {
+      gradient: 'from-indigo-500 to-indigo-700',
+      border: 'border-indigo-200',
+      hover: 'hover:border-indigo-400',
+      tag: 'bg-indigo-50 text-indigo-700',
+      dot: 'bg-indigo-500',
+      bar: 'bg-indigo-500',
+      borderLeft: 'border-l-4 border-l-indigo-500',
+    },
+    'Slack Engineering': {
+      gradient: 'from-purple-500 to-purple-700',
+      border: 'border-purple-200',
+      hover: 'hover:border-purple-400',
+      tag: 'bg-purple-50 text-purple-700',
+      dot: 'bg-purple-500',
+      bar: 'bg-purple-500',
+      borderLeft: 'border-l-4 border-l-purple-500',
+    },
+    'Stripe Engineering': {
+      gradient: 'from-violet-500 to-violet-700',
+      border: 'border-violet-200',
+      hover: 'hover:border-violet-400',
+      tag: 'bg-violet-50 text-violet-700',
+      dot: 'bg-violet-500',
+      bar: 'bg-violet-500',
+      borderLeft: 'border-l-4 border-l-violet-500',
+    },
+    'GitHub Blog': {
+      gradient: 'from-slate-500 to-slate-700',
+      border: 'border-slate-200',
+      hover: 'hover:border-slate-400',
+      tag: 'bg-slate-50 text-slate-700',
+      dot: 'bg-slate-500',
+      bar: 'bg-slate-500',
+      borderLeft: 'border-l-4 border-l-slate-500',
+    },
+    'Medium Engineering': {
+      gradient: 'from-zinc-500 to-zinc-700',
+      border: 'border-zinc-200',
+      hover: 'hover:border-zinc-400',
+      tag: 'bg-zinc-50 text-zinc-700',
+      dot: 'bg-zinc-500',
+      bar: 'bg-zinc-500',
+      borderLeft: 'border-l-4 border-l-zinc-500',
+    },
+    'Mozilla Hacks': {
+      gradient: 'from-orange-500 to-orange-700',
+      border: 'border-orange-200',
+      hover: 'hover:border-orange-400',
+      tag: 'bg-orange-50 text-orange-700',
+      dot: 'bg-orange-500',
+      bar: 'bg-orange-500',
+      borderLeft: 'border-l-4 border-l-orange-500',
+    },
+  };
+
+  // AI/ML Sources
+  const aiMlColors: Record<string, typeof newColorTheme> = {
+    'Claude Blog': {
+      gradient: 'from-amber-500 to-amber-700',
+      border: 'border-amber-200',
+      hover: 'hover:border-amber-400',
+      tag: 'bg-amber-50 text-amber-700',
+      dot: 'bg-amber-500',
+      bar: 'bg-amber-500',
+      borderLeft: 'border-l-4 border-l-amber-500',
+    },
+    'OpenAI Blog': {
+      gradient: 'from-teal-500 to-teal-700',
+      border: 'border-teal-200',
+      hover: 'hover:border-teal-400',
+      tag: 'bg-teal-50 text-teal-700',
+      dot: 'bg-teal-500',
+      bar: 'bg-teal-500',
+      borderLeft: 'border-l-4 border-l-teal-500',
+    },
+    'Hugging Face Blog': {
+      gradient: 'from-yellow-500 to-yellow-700',
+      border: 'border-yellow-200',
+      hover: 'hover:border-yellow-400',
+      tag: 'bg-yellow-50 text-yellow-700',
+      dot: 'bg-yellow-500',
+      bar: 'bg-yellow-500',
+      borderLeft: 'border-l-4 border-l-yellow-500',
+    },
+    'Hugging Face Papers': {
+      gradient: 'from-yellow-400 to-yellow-600',
+      border: 'border-yellow-200',
+      hover: 'hover:border-yellow-400',
+      tag: 'bg-yellow-50 text-yellow-700',
+      dot: 'bg-yellow-400',
+      bar: 'bg-yellow-400',
+      borderLeft: 'border-l-4 border-l-yellow-400',
+    },
+    'Google AI Blog': {
+      gradient: 'from-blue-400 to-blue-600',
+      border: 'border-blue-200',
+      hover: 'hover:border-blue-400',
+      tag: 'bg-blue-50 text-blue-700',
+      dot: 'bg-blue-400',
+      bar: 'bg-blue-400',
+      borderLeft: 'border-l-4 border-l-blue-400',
+    },
+    'Google Developers Blog': {
+      gradient: 'from-red-400 to-red-600',
+      border: 'border-red-200',
+      hover: 'hover:border-red-400',
+      tag: 'bg-red-50 text-red-700',
+      dot: 'bg-red-400',
+      bar: 'bg-red-400',
+      borderLeft: 'border-l-4 border-l-red-400',
+    },
+    'DeepMind Blog': {
+      gradient: 'from-fuchsia-500 to-fuchsia-700',
+      border: 'border-fuchsia-200',
+      hover: 'hover:border-fuchsia-400',
+      tag: 'bg-fuchsia-50 text-fuchsia-700',
+      dot: 'bg-fuchsia-500',
+      bar: 'bg-fuchsia-500',
+      borderLeft: 'border-l-4 border-l-fuchsia-500',
+    },
+    'NVIDIA Developer Blog': {
+      gradient: 'from-lime-500 to-lime-700',
+      border: 'border-lime-200',
+      hover: 'hover:border-lime-400',
+      tag: 'bg-lime-50 text-lime-700',
+      dot: 'bg-lime-500',
+      bar: 'bg-lime-500',
+      borderLeft: 'border-l-4 border-l-lime-500',
+    },
+  };
+
+  // Infrastructure/Cloud
+  const infraColors: Record<string, typeof newColorTheme> = {
+    'Cloudflare Blog': {
+      gradient: 'from-orange-400 to-orange-600',
+      border: 'border-orange-200',
+      hover: 'hover:border-orange-400',
+      tag: 'bg-orange-50 text-orange-700',
+      dot: 'bg-orange-400',
+      bar: 'bg-orange-400',
+      borderLeft: 'border-l-4 border-l-orange-400',
+    },
+    'CNCF Blog': {
+      gradient: 'from-sky-500 to-sky-700',
+      border: 'border-sky-200',
+      hover: 'hover:border-sky-400',
+      tag: 'bg-sky-50 text-sky-700',
+      dot: 'bg-sky-500',
+      bar: 'bg-sky-500',
+      borderLeft: 'border-l-4 border-l-sky-500',
+    },
+    'Kubernetes Blog': {
+      gradient: 'from-blue-500 to-blue-700',
+      border: 'border-blue-200',
+      hover: 'hover:border-blue-400',
+      tag: 'bg-blue-50 text-blue-700',
+      dot: 'bg-blue-500',
+      bar: 'bg-blue-500',
+      borderLeft: 'border-l-4 border-l-blue-500',
+    },
+    'The New Stack': {
+      gradient: 'from-cyan-500 to-cyan-700',
+      border: 'border-cyan-200',
+      hover: 'hover:border-cyan-400',
+      tag: 'bg-cyan-50 text-cyan-700',
+      dot: 'bg-cyan-500',
+      bar: 'bg-cyan-500',
+      borderLeft: 'border-l-4 border-l-cyan-500',
+    },
+  };
+
+  // Frontend/Web
+  const frontendColors: Record<string, typeof newColorTheme> = {
+    'Chrome Developers': {
+      gradient: 'from-blue-400 to-green-500',
+      border: 'border-blue-200',
+      hover: 'hover:border-blue-400',
+      tag: 'bg-blue-50 text-blue-700',
+      dot: 'bg-blue-500',
+      bar: 'bg-blue-500',
+      borderLeft: 'border-l-4 border-l-blue-500',
+    },
+  };
+
+  // Language/Runtime
+  const languageColors: Record<string, typeof newColorTheme> = {
+    'Go Blog': {
+      gradient: 'from-cyan-400 to-cyan-600',
+      border: 'border-cyan-200',
+      hover: 'hover:border-cyan-400',
+      tag: 'bg-cyan-50 text-cyan-700',
+      dot: 'bg-cyan-400',
+      bar: 'bg-cyan-400',
+      borderLeft: 'border-l-4 border-l-cyan-400',
+    },
+    'Rust Blog': {
+      gradient: 'from-orange-500 to-orange-700',
+      border: 'border-orange-200',
+      hover: 'hover:border-orange-400',
+      tag: 'bg-orange-50 text-orange-700',
+      dot: 'bg-orange-500',
+      bar: 'bg-orange-500',
+      borderLeft: 'border-l-4 border-l-orange-500',
+    },
+  };
+
+  // Japanese Company Blogs
+  const japaneseCompanyColors: Record<string, typeof newColorTheme> = {
+    'freee Developers Hub': {
+      gradient: 'from-emerald-500 to-emerald-700',
+      border: 'border-emerald-200',
+      hover: 'hover:border-emerald-400',
+      tag: 'bg-emerald-50 text-emerald-700',
+      dot: 'bg-emerald-500',
+      bar: 'bg-emerald-500',
+      borderLeft: 'border-l-4 border-l-emerald-500',
+    },
+    'CyberAgent Developers Blog': {
+      gradient: 'from-lime-500 to-lime-700',
+      border: 'border-lime-200',
+      hover: 'hover:border-lime-400',
+      tag: 'bg-lime-50 text-lime-700',
+      dot: 'bg-lime-500',
+      bar: 'bg-lime-500',
+      borderLeft: 'border-l-4 border-l-lime-500',
+    },
+    'DeNA Engineering': {
+      gradient: 'from-red-500 to-red-700',
+      border: 'border-red-200',
+      hover: 'hover:border-red-400',
+      tag: 'bg-red-50 text-red-700',
+      dot: 'bg-red-500',
+      bar: 'bg-red-500',
+      borderLeft: 'border-l-4 border-l-red-500',
+    },
+    'SmartHR Tech Blog': {
+      gradient: 'from-blue-500 to-blue-700',
+      border: 'border-blue-200',
+      hover: 'hover:border-blue-400',
+      tag: 'bg-blue-50 text-blue-700',
+      dot: 'bg-blue-500',
+      bar: 'bg-blue-500',
+      borderLeft: 'border-l-4 border-l-blue-500',
+    },
+    'LY Corporation Tech Blog': {
+      gradient: 'from-green-500 to-green-700',
+      border: 'border-green-200',
+      hover: 'hover:border-green-400',
+      tag: 'bg-green-50 text-green-700',
+      dot: 'bg-green-500',
+      bar: 'bg-green-500',
+      borderLeft: 'border-l-4 border-l-green-500',
+    },
+    'GMO Developers': {
+      gradient: 'from-blue-400 to-blue-600',
+      border: 'border-blue-200',
+      hover: 'hover:border-blue-400',
+      tag: 'bg-blue-50 text-blue-700',
+      dot: 'bg-blue-400',
+      bar: 'bg-blue-400',
+      borderLeft: 'border-l-4 border-l-blue-400',
+    },
+    'Sansan Builders Box': {
+      gradient: 'from-sky-500 to-sky-700',
+      border: 'border-sky-200',
+      hover: 'hover:border-sky-400',
+      tag: 'bg-sky-50 text-sky-700',
+      dot: 'bg-sky-500',
+      bar: 'bg-sky-500',
+      borderLeft: 'border-l-4 border-l-sky-500',
+    },
+    'Mercari Engineering': {
+      gradient: 'from-red-400 to-red-600',
+      border: 'border-red-200',
+      hover: 'hover:border-red-400',
+      tag: 'bg-red-50 text-red-700',
+      dot: 'bg-red-400',
+      bar: 'bg-red-400',
+      borderLeft: 'border-l-4 border-l-red-400',
+    },
+    'ZOZO TECH BLOG': {
+      gradient: 'from-zinc-500 to-zinc-700',
+      border: 'border-zinc-200',
+      hover: 'hover:border-zinc-400',
+      tag: 'bg-zinc-50 text-zinc-700',
+      dot: 'bg-zinc-500',
+      bar: 'bg-zinc-500',
+      borderLeft: 'border-l-4 border-l-zinc-500',
+    },
+    'Money Forward Developers Blog': {
+      gradient: 'from-teal-500 to-teal-700',
+      border: 'border-teal-200',
+      hover: 'hover:border-teal-400',
+      tag: 'bg-teal-50 text-teal-700',
+      dot: 'bg-teal-500',
+      bar: 'bg-teal-500',
+      borderLeft: 'border-l-4 border-l-teal-500',
+    },
+    'Hatena Developer Blog': {
+      gradient: 'from-blue-500 to-blue-700',
+      border: 'border-blue-200',
+      hover: 'hover:border-blue-400',
+      tag: 'bg-blue-50 text-blue-700',
+      dot: 'bg-blue-500',
+      bar: 'bg-blue-500',
+      borderLeft: 'border-l-4 border-l-blue-500',
+    },
+    'Cookpad Tech Life': {
+      gradient: 'from-orange-500 to-orange-700',
+      border: 'border-orange-200',
+      hover: 'hover:border-orange-400',
+      tag: 'bg-orange-50 text-orange-700',
+      dot: 'bg-orange-500',
+      bar: 'bg-orange-500',
+      borderLeft: 'border-l-4 border-l-orange-500',
+    },
+    ペパボテックブログ: {
+      gradient: 'from-pink-500 to-pink-700',
+      border: 'border-pink-200',
+      hover: 'hover:border-pink-400',
+      tag: 'bg-pink-50 text-pink-700',
+      dot: 'bg-pink-500',
+      bar: 'bg-pink-500',
+      borderLeft: 'border-l-4 border-l-pink-500',
+    },
+    企業技術ブログ: {
+      gradient: 'from-slate-500 to-slate-700',
+      border: 'border-slate-200',
+      hover: 'hover:border-slate-400',
+      tag: 'bg-slate-50 text-slate-700',
+      dot: 'bg-slate-500',
+      bar: 'bg-slate-500',
+      borderLeft: 'border-l-4 border-l-slate-500',
+    },
+  };
+
+  // DevelopersIO
+  const developersIoColors: Record<string, typeof newColorTheme> = {
+    'DevelopersIO AWS': {
+      gradient: 'from-yellow-500 to-orange-500',
+      border: 'border-yellow-200',
+      hover: 'hover:border-yellow-400',
+      tag: 'bg-yellow-50 text-yellow-700',
+      dot: 'bg-yellow-500',
+      bar: 'bg-yellow-500',
+      borderLeft: 'border-l-4 border-l-yellow-500',
+    },
+    'DevelopersIO Security': {
+      gradient: 'from-red-500 to-red-700',
+      border: 'border-red-200',
+      hover: 'hover:border-red-400',
+      tag: 'bg-red-50 text-red-700',
+      dot: 'bg-red-500',
+      bar: 'bg-red-500',
+      borderLeft: 'border-l-4 border-l-red-500',
+    },
+    'DevelopersIO AI': {
+      gradient: 'from-violet-500 to-violet-700',
+      border: 'border-violet-200',
+      hover: 'hover:border-violet-400',
+      tag: 'bg-violet-50 text-violet-700',
+      dot: 'bg-violet-500',
+      bar: 'bg-violet-500',
+      borderLeft: 'border-l-4 border-l-violet-500',
+    },
+    'DevelopersIO Claude': {
+      gradient: 'from-amber-500 to-amber-700',
+      border: 'border-amber-200',
+      hover: 'hover:border-amber-400',
+      tag: 'bg-amber-50 text-amber-700',
+      dot: 'bg-amber-500',
+      bar: 'bg-amber-500',
+      borderLeft: 'border-l-4 border-l-amber-500',
+    },
+    'DevelopersIO MCP': {
+      gradient: 'from-purple-500 to-purple-700',
+      border: 'border-purple-200',
+      hover: 'hover:border-purple-400',
+      tag: 'bg-purple-50 text-purple-700',
+      dot: 'bg-purple-500',
+      bar: 'bg-purple-500',
+      borderLeft: 'border-l-4 border-l-purple-500',
+    },
+  };
+
+  // Other
+  const otherColors: Record<string, typeof newColorTheme> = {
+    'Zenn AI': {
+      gradient: 'from-sky-500 to-sky-700',
+      border: 'border-sky-200',
+      hover: 'hover:border-sky-400',
+      tag: 'bg-sky-50 text-sky-700',
+      dot: 'bg-sky-500',
+      bar: 'bg-sky-500',
+      borderLeft: 'border-l-4 border-l-sky-500',
+    },
+    'Qiita AI': {
+      gradient: 'from-green-500 to-green-700',
+      border: 'border-green-200',
+      hover: 'hover:border-green-400',
+      tag: 'bg-green-50 text-green-700',
+      dot: 'bg-green-500',
+      bar: 'bg-green-500',
+      borderLeft: 'border-l-4 border-l-green-500',
+    },
+    'arXiv AI': {
+      gradient: 'from-rose-500 to-rose-700',
+      border: 'border-rose-200',
+      hover: 'hover:border-rose-400',
+      tag: 'bg-rose-50 text-rose-700',
+      dot: 'bg-rose-500',
+      bar: 'bg-rose-500',
+      borderLeft: 'border-l-4 border-l-rose-500',
+    },
+    'Corporate Tech Blog': {
+      gradient: 'from-slate-500 to-slate-700',
+      border: 'border-slate-200',
+      hover: 'hover:border-slate-400',
+      tag: 'bg-slate-50 text-slate-700',
+      dot: 'bg-slate-500',
+      bar: 'bg-slate-500',
+      borderLeft: 'border-l-4 border-l-slate-500',
+    },
+  };
+
+  // Merge all category colors into colorMap
+  const extendedColorMap: Record<string, typeof newColorTheme> = {
+    ...colorMap,
+    ...foreignTechColors,
+    ...aiMlColors,
+    ...infraColors,
+    ...frontendColors,
+    ...languageColors,
+    ...japaneseCompanyColors,
+    ...developersIoColors,
+    ...otherColors,
+  };
+
+  return extendedColorMap[sourceName] || newColorTheme;
 }
