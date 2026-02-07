@@ -34,16 +34,20 @@ describe('Environment Configuration', () => {
     });
 
     it('validates required environment variables', () => {
-      process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+      process.env.NEXTAUTH_SECRET =
+        'test-secret-key-for-testing-purposes-only-32chars';
       process.env.NODE_ENV = 'test';
-      
+
       const result = getEnv();
       expect(result).toBeDefined();
-      expect(result.NEXTAUTH_SECRET).toBe('test-secret-key-for-testing-purposes-only-32chars');
+      expect(result.NEXTAUTH_SECRET).toBe(
+        'test-secret-key-for-testing-purposes-only-32chars'
+      );
     });
 
     it('provides defaults for optional variables', () => {
-      process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+      process.env.NEXTAUTH_SECRET =
+        'test-secret-key-for-testing-purposes-only-32chars';
       // REDIS_PORTを明示的に削除してデフォルト値をテスト
       delete process.env.REDIS_PORT;
       // REDIS_HOSTも削除してデフォルト(localhost)を確認
@@ -59,7 +63,8 @@ describe('Environment Configuration', () => {
     });
 
     it('validates URL format for DATABASE_URL', () => {
-      process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+      process.env.NEXTAUTH_SECRET =
+        'test-secret-key-for-testing-purposes-only-32chars';
       process.env.DATABASE_URL = 'not-a-valid-url';
       process.env.NODE_ENV = 'production';
 
@@ -68,7 +73,8 @@ describe('Environment Configuration', () => {
     });
 
     it('validates port numbers', () => {
-      process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+      process.env.NEXTAUTH_SECRET =
+        'test-secret-key-for-testing-purposes-only-32chars';
       process.env.PORT = 'not-a-number';
       process.env.NODE_ENV = 'production';
 
@@ -77,7 +83,8 @@ describe('Environment Configuration', () => {
     });
 
     it('validates enum values', () => {
-      process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+      process.env.NEXTAUTH_SECRET =
+        'test-secret-key-for-testing-purposes-only-32chars';
       process.env.NODE_ENV = 'invalid-env';
 
       // 無効なNODE_ENVでエラーを投げる
@@ -108,7 +115,8 @@ describe('Environment Configuration', () => {
       // モジュールキャッシュをクリア
       jest.resetModules();
       resetEnvCache();
-      process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+      process.env.NEXTAUTH_SECRET =
+        'test-secret-key-for-testing-purposes-only-32chars';
       process.env.REDIS_HOST = 'redis.example.com';
       process.env.ENABLE_CACHE = 'false';
     });
@@ -138,7 +146,8 @@ describe('Environment Configuration', () => {
     });
 
     it('correctly interprets feature flags', () => {
-      process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+      process.env.NEXTAUTH_SECRET =
+        'test-secret-key-for-testing-purposes-only-32chars';
       process.env.ENABLE_CACHE = 'true';
       process.env.ENABLE_AUTH = 'false';
       process.env.QUALITY_CHECK_ENABLED = 'true';
@@ -151,7 +160,8 @@ describe('Environment Configuration', () => {
     });
 
     it('uses defaults when flags are not set', () => {
-      process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+      process.env.NEXTAUTH_SECRET =
+        'test-secret-key-for-testing-purposes-only-32chars';
 
       expect(features.isCacheEnabled()).toBe(true); // default
       expect(features.isAuthEnabled()).toBe(true); // default
@@ -163,7 +173,8 @@ describe('Environment Configuration', () => {
   describe('config helpers', () => {
     beforeEach(() => {
       resetEnvCache();
-      process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+      process.env.NEXTAUTH_SECRET =
+        'test-secret-key-for-testing-purposes-only-32chars';
     });
 
     it('constructs Redis URL correctly', () => {
@@ -178,7 +189,7 @@ describe('Environment Configuration', () => {
 
     it('uses REDIS_URL when provided', () => {
       process.env.REDIS_URL = 'redis://custom.redis.com:6379';
-      
+
       expect(config.redis.url()).toBe('redis://custom.redis.com:6379');
     });
 
@@ -186,7 +197,7 @@ describe('Environment Configuration', () => {
       process.env.PORT = '4000';
       process.env.QUALITY_MIN_SCORE = '85';
       process.env.MAX_REGENERATION_ATTEMPTS = '5';
-      
+
       expect(config.app.port()).toBe(4000);
       expect(config.quality.minScore()).toBe(85);
       expect(config.quality.maxAttempts()).toBe(5);
@@ -196,13 +207,13 @@ describe('Environment Configuration', () => {
       process.env.NODE_ENV = 'test';
       process.env.DATABASE_URL = 'postgresql://prod-db';
       process.env.TEST_DATABASE_URL = 'postgresql://test-db';
-      
+
       expect(config.database.url()).toBe('postgresql://test-db');
     });
 
     it('uses test database configuration in test environment', () => {
       process.env.NODE_ENV = 'test';
-      // jest.setup.jsで設定されたDATABASE_URLまたはTEST_DATABASE_URLを使用
+      // jest.setup.node.jsで設定されたDATABASE_URLまたはTEST_DATABASE_URLを使用
       // 実際の環境変数の値を期待値として使用
       const actualUrl = config.database.url();
       // テスト環境では必ずtechtrend_testデータベースを使用していることを確認
@@ -222,7 +233,7 @@ describe('Environment Configuration', () => {
       expect(prodConfig.app.isProduction()).toBe(true);
       expect(prodConfig.app.isDevelopment()).toBe(false);
       expect(prodConfig.app.isTest()).toBe(false);
-      
+
       // development環境
       jest.resetModules();
       resetEnvCache();
@@ -241,7 +252,7 @@ describe('Environment Configuration', () => {
       delete process.env.NEXT_PUBLIC_APP_URL;
       const { config: defaultConfig } = require('@/lib/config/env');
       expect(defaultConfig.app.url()).toBe('http://localhost:3000');
-      
+
       // カスタムURL
       jest.resetModules();
       resetEnvCache();
@@ -269,21 +280,25 @@ describe('Environment Configuration - getEnv', () => {
   });
 
   it('validates required environment variables', () => {
-    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    process.env.NEXTAUTH_SECRET =
+      'test-secret-key-for-testing-purposes-only-32chars';
     process.env.NODE_ENV = 'test';
-    
+
     const result = getEnv();
     expect(result).toBeDefined();
-    expect(result.NEXTAUTH_SECRET).toBe('test-secret-key-for-testing-purposes-only-32chars');
+    expect(result.NEXTAUTH_SECRET).toBe(
+      'test-secret-key-for-testing-purposes-only-32chars'
+    );
   });
 
   it('provides defaults for optional variables', () => {
-    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    process.env.NEXTAUTH_SECRET =
+      'test-secret-key-for-testing-purposes-only-32chars';
     // Ensure Redis vars are unset to test defaults
     delete process.env.REDIS_HOST;
     delete process.env.REDIS_PORT;
     resetEnvCache();
-    
+
     const result = getEnv();
     expect(result.REDIS_HOST).toBe('localhost');
     // Default Redis port
@@ -292,28 +307,31 @@ describe('Environment Configuration - getEnv', () => {
   });
 
   it('validates URL format for DATABASE_URL', () => {
-    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    process.env.NEXTAUTH_SECRET =
+      'test-secret-key-for-testing-purposes-only-32chars';
     process.env.DATABASE_URL = 'not-a-valid-url';
     process.env.NODE_ENV = 'production';
     resetEnvCache();
-    
+
     expect(() => getEnv()).toThrow('Environment validation failed');
   });
 
   it('validates port numbers', () => {
-    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    process.env.NEXTAUTH_SECRET =
+      'test-secret-key-for-testing-purposes-only-32chars';
     process.env.PORT = 'not-a-number';
     process.env.NODE_ENV = 'production';
     resetEnvCache();
-    
+
     expect(() => getEnv()).toThrow('Environment validation failed');
   });
 
   it('validates enum values', () => {
-    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    process.env.NEXTAUTH_SECRET =
+      'test-secret-key-for-testing-purposes-only-32chars';
     process.env.NODE_ENV = 'invalid-env';
     resetEnvCache();
-    
+
     expect(() => getEnv()).toThrow();
   });
 
@@ -342,7 +360,8 @@ describe('Environment Configuration - features', () => {
     jest.resetModules();
     resetEnvCache();
     process.env = { ...originalEnv };
-    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    process.env.NEXTAUTH_SECRET =
+      'test-secret-key-for-testing-purposes-only-32chars';
   });
 
   afterEach(() => {
@@ -381,7 +400,8 @@ describe('Environment Configuration - env proxy', () => {
     // Deep clean of environment and module cache
     jest.resetModules();
     process.env = { ...originalEnv };
-    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    process.env.NEXTAUTH_SECRET =
+      'test-secret-key-for-testing-purposes-only-32chars';
   });
 
   afterEach(() => {
@@ -394,10 +414,10 @@ describe('Environment Configuration - env proxy', () => {
     jest.isolateModules(() => {
       process.env.REDIS_HOST = 'redis.example.com';
       process.env.ENABLE_CACHE = 'false';
-      
+
       // Import within isolated module context
       const { env } = require('@/lib/config/env');
-      
+
       expect(env.REDIS_HOST).toBe('redis.example.com');
       expect(env.ENABLE_CACHE).toBe('false');
     });
@@ -408,7 +428,7 @@ describe('Environment Configuration - env proxy', () => {
     jest.isolateModules(() => {
       // Import within isolated module context
       const { env } = require('@/lib/config/env');
-      
+
       // Access a non-existent property
       expect((env as any).NON_EXISTENT_VAR).toBeUndefined();
     });
@@ -424,7 +444,8 @@ describe('Environment Configuration - Config Helpers', () => {
     jest.resetModules();
     resetEnvCache();
     process.env = { ...originalEnv };
-    process.env.NEXTAUTH_SECRET = 'test-secret-key-for-testing-purposes-only-32chars';
+    process.env.NEXTAUTH_SECRET =
+      'test-secret-key-for-testing-purposes-only-32chars';
   });
 
   afterAll(() => {
@@ -438,13 +459,15 @@ describe('Environment Configuration - Config Helpers', () => {
       const { config, getEnv, resetEnvCache } = require('@/lib/config/env');
       resetEnvCache();
       const e = getEnv();
-      expect(config.redis.url()).toBe(e.REDIS_URL || `redis://${e.REDIS_HOST}:${e.REDIS_PORT}`);
+      expect(config.redis.url()).toBe(
+        e.REDIS_URL || `redis://${e.REDIS_HOST}:${e.REDIS_PORT}`
+      );
     });
   });
 
   it('uses REDIS_URL when provided', () => {
     process.env.REDIS_URL = 'redis://custom.redis.com:6379';
-    
+
     expect(config.redis.url()).toBe('redis://custom.redis.com:6379');
   });
 
@@ -452,7 +475,7 @@ describe('Environment Configuration - Config Helpers', () => {
     process.env.PORT = '4000';
     process.env.QUALITY_MIN_SCORE = '85';
     process.env.MAX_REGENERATION_ATTEMPTS = '5';
-    
+
     expect(config.app.port()).toBe(4000);
     expect(config.quality.minScore()).toBe(85);
     expect(config.quality.maxAttempts()).toBe(5);
@@ -462,14 +485,15 @@ describe('Environment Configuration - Config Helpers', () => {
     process.env.NODE_ENV = 'test';
     process.env.DATABASE_URL = 'postgresql://prod-db';
     process.env.TEST_DATABASE_URL = 'postgresql://test-db';
-    
+
     expect(config.database.url()).toBe('postgresql://test-db');
   });
 
   it('uses test database configuration in test environment', () => {
     process.env.NODE_ENV = 'test';
     // TEST_DATABASE_URL が定義されていればそれを優先し、なければ DATABASE_URL を使用
-    const expectedUrl = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+    const expectedUrl =
+      process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
     expect(config.database.url()).toBe(expectedUrl);
   });
 
@@ -484,7 +508,7 @@ describe('Environment Configuration - Config Helpers', () => {
   it('constructs app URL correctly', () => {
     process.env.PORT = '3000';
     expect(config.app.url()).toBe('http://localhost:3000');
-    
+
     process.env.NEXT_PUBLIC_APP_URL = 'https://example.com';
     resetEnvCache(); // Reset cache after changing environment
     expect(config.app.url()).toBe('https://example.com');

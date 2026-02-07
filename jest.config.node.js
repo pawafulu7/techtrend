@@ -54,6 +54,7 @@ const customJestConfig = {
     '<rootDir>/__tests__/integration/', // 統合テストは別コマンドで実行
     '\\.test\\.tsx$', // Reactコンポーネントテストは除外
   ],
+  coverageReporters: ['text', 'lcov', 'json', 'json-summary'],
   collectCoverageFrom: [
     'app/**/*.{ts,tsx}',
     'lib/**/*.{ts,tsx}',
