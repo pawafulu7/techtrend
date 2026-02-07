@@ -1,12 +1,10 @@
-version: "3.9"
-
 services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.101.0
     command: ["--config=/etc/otel-collector-config.yaml"]
     ports:
-      - "4317:4317"  # OTLP gRPC
-      - "4318:4318"  # OTLP HTTP
+      - "127.0.0.1:4317:4317"  # OTLP gRPC
+      - "127.0.0.1:4318:4318"  # OTLP HTTP
     volumes:
       - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     healthcheck:
