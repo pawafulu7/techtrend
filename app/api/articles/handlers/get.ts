@@ -288,7 +288,7 @@ async function executePersonalizedQuery(
   params: ParsedQueryParams,
   metrics: MetricsCollector
 ): Promise<ArticleQueryResult | null> {
-  const { pagination, display, personalization } = params;
+  const { pagination, display, personalization, filters } = params;
   const { page, limit, sortBy, sortOrder } = pagination;
   const { categoryIds, periodMonths } = personalization;
 
@@ -300,6 +300,9 @@ async function executePersonalizedQuery(
       offset: (page - 1) * limit,
       sortBy: sortBy as PersonalizedSortBy,
       sortOrder,
+      excludeSourceIds: filters.excludeSources
+        ? filters.excludeSources.split(',').map((s) => s.trim()).filter(Boolean)
+        : undefined,
     };
 
     const { articles: scoredArticles, meta: personalizationMeta } =

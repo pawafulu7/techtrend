@@ -234,7 +234,7 @@ export class CategoryFilterService {
 
       if (centroids.length === 0) {
         logger.warn({ categoryIds }, 'No centroids found for categories');
-        return this.getFallbackResults(periodMonths, limit, offset, startTime);
+        return this.getFallbackResults(periodMonths, limit, offset, startTime, options.excludeSourceIds);
       }
 
       // Branch: single category vs multiple categories
@@ -247,7 +247,7 @@ export class CategoryFilterService {
         const result = await this.filterArticlesSingleCategory(options, centroids[0]);
         if (result.candidates.length === 0) {
           logger.warn('No embedding candidates found');
-          return this.getFallbackResults(periodMonths, limit, offset, startTime);
+          return this.getFallbackResults(periodMonths, limit, offset, startTime, options.excludeSourceIds);
         }
         qualifiedArticles = result.articles;
         candidateCount = result.candidates.length;
@@ -255,7 +255,7 @@ export class CategoryFilterService {
         // Multiple categories: use OR-based search
         const result = await this.filterArticlesMultiCategory(options, centroids);
         if (result.mergedCount === 0) {
-          return this.getFallbackResults(periodMonths, limit, offset, startTime);
+          return this.getFallbackResults(periodMonths, limit, offset, startTime, options.excludeSourceIds);
         }
         qualifiedArticles = result.articles;
         candidateCount = result.mergedCount;
@@ -305,7 +305,7 @@ export class CategoryFilterService {
         { error: sanitizeError(error), categoryIds },
         'Failed to filter articles'
       );
-      return this.getFallbackResults(periodMonths, limit, offset, startTime);
+      return this.getFallbackResults(periodMonths, limit, offset, startTime, options.excludeSourceIds);
     }
   }
 
@@ -374,7 +374,8 @@ export class CategoryFilterService {
   private async getEmbeddingCandidates(
     centroid: string,
     periodMonths: number,
-    topK: number
+    topK: number,
+    excludeSourceIds?: string[]
   ): Promise<EmbeddingCandidate[]> {
     // Build period filter using calculated date parameter (safer than Prisma.raw)
     const cutoffDate =
@@ -384,6 +385,12 @@ export class CategoryFilterService {
     const periodFilter = cutoffDate
       ? Prisma.sql`AND a."publishedAt" >= ${cutoffDate}`
       : Prisma.empty;
+
+    // Build source exclusion filter
+    const sourceExcludeFilter =
+      excludeSourceIds && excludeSourceIds.length > 0
+        ? Prisma.sql`AND a."sourceId" != ALL(${excludeSourceIds}::text[])`
+        : Prisma.empty;
 
     // Use threshold-based filtering with topK limit
     // similarity = 1 - distance, so distance < (1 - threshold)
@@ -412,6 +419,7 @@ export class CategoryFilterService {
         AND a."summaryComputedAt" IS NOT NULL
         AND (ae.embedding <=> ${centroid}::vector) < ${maxDistance}
         ${periodFilter}
+        ${sourceExcludeFilter}
       ORDER BY ae.embedding <=> ${centroid}::vector
       LIMIT ${effectiveLimit}
     `;
@@ -559,7 +567,8 @@ export class CategoryFilterService {
     const candidates = await this.getEmbeddingCandidates(
       centroid.centroid_embedding!,
       periodMonths,
-      DEFAULT_TOP_K_CANDIDATES
+      DEFAULT_TOP_K_CANDIDATES,
+      options.excludeSourceIds
     );
 
     if (candidates.length === 0) {
@@ -604,7 +613,7 @@ export class CategoryFilterService {
 
     // Parallel search per category using Promise.allSettled for graceful partial failure handling
     const searchPromises = centroids.map((c) =>
-      this.getEmbeddingCandidates(c.centroid_embedding!, periodMonths, kPerCategory)
+      this.getEmbeddingCandidates(c.centroid_embedding!, periodMonths, kPerCategory, options.excludeSourceIds)
     );
     const settledResults = await Promise.allSettled(searchPromises);
 
@@ -682,7 +691,8 @@ export class CategoryFilterService {
     periodMonths: number,
     limit: number,
     offset: number,
-    startTime: number
+    startTime: number,
+    excludeSourceIds?: string[]
   ): Promise<{ articles: ScoredArticle[]; meta: PersonalizedFilterMeta }> {
     logger.info('Using fallback: recent articles by published date');
 
@@ -690,6 +700,9 @@ export class CategoryFilterService {
       summaryComputedAt: { not: null },
       ...(periodMonths > 0
         ? { publishedAt: { gte: new Date(Date.now() - periodMonths * 30 * 24 * 60 * 60 * 1000) } }
+        : {}),
+      ...(excludeSourceIds && excludeSourceIds.length > 0
+        ? { sourceId: { notIn: excludeSourceIds } }
         : {}),
     };
 
