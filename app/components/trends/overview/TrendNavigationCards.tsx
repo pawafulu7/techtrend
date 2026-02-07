@@ -24,7 +24,11 @@ export function TrendNavigationCards() {
       {navigationItems.map((item) => {
         const Icon = item.icon;
         return (
-          <Link key={item.href} href={item.href} className="group block">
+          <Link
+            key={item.href}
+            href={item.href}
+            className="group block focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-(--tt-color-primary) focus-visible:outline-none"
+          >
             <div className="bg-background flex items-center gap-4 rounded-lg border p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-(--tt-color-primary)/10">
                 <Icon className="h-5 w-5 text-(--tt-color-primary)" />

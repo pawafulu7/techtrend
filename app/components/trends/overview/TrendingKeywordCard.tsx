@@ -15,7 +15,7 @@ interface TrendingKeyword {
 
 function getGrowthLabel(rate: number) {
   if (rate >= 100)
-    return { label: '急上昇', className: 'text-(--tt-color-negative)' };
+    return { label: '急上昇', className: 'text-(--tt-color-secondary)' };
   if (rate >= 50)
     return { label: '上昇', className: 'text-(--tt-color-secondary)' };
   if (rate >= 20)
@@ -29,7 +29,7 @@ export function TrendingKeywordCard({ keyword }: { keyword: TrendingKeyword }) {
   return (
     <Link
       href={`/?tags=${encodeURIComponent(keyword.name)}`}
-      className="group block"
+      className="group block focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-(--tt-color-primary) focus-visible:outline-none"
     >
       <div
         className={cn(

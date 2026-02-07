@@ -175,12 +175,14 @@ export default function TrendsPage() {
   return (
     <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
       <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
+        <h1 className="sr-only">トレンド概要</h1>
+
         {/* Stats Bar */}
         <TrendStatsBar
           trendingCount={trendingKeywords.length}
           newTagCount={newTags.length}
           topTagCount={trendAnalysis?.topTags?.length ?? 0}
-          loading={loadingKeywords && loadingAnalysis}
+          loading={loadingKeywords || loadingAnalysis}
         />
 
         {/* Trending Keywords Section */}
@@ -307,13 +309,14 @@ export default function TrendsPage() {
                       />
                     ))}
                   </div>
-                ) : (
+                ) : trendAnalysis?.topTags &&
+                  trendAnalysis.topTags.length > 0 ? (
                   <div className="space-y-1">
-                    {trendAnalysis?.topTags?.slice(0, 10).map((tag, index) => (
+                    {trendAnalysis.topTags.slice(0, 10).map((tag, index) => (
                       <Link
                         key={tag.name}
                         href={`/?tags=${encodeURIComponent(tag.name)}`}
-                        className="group flex items-center gap-3 rounded px-2 py-1.5 transition-colors hover:bg-(--tt-color-surface-hover)"
+                        className="group flex items-center gap-3 rounded px-2 py-1.5 transition-colors hover:bg-(--tt-color-surface-hover) focus-visible:ring-2 focus-visible:ring-(--tt-color-primary) focus-visible:outline-none"
                       >
                         <span className="text-muted-foreground w-5 text-xs font-semibold">
                           {index + 1}
@@ -328,6 +331,10 @@ export default function TrendsPage() {
                       </Link>
                     ))}
                   </div>
+                ) : (
+                  <p className="text-muted-foreground flex h-20 items-center justify-center text-sm">
+                    データがありません
+                  </p>
                 )}
               </div>
 
