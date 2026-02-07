@@ -20,6 +20,7 @@ function getGrowthLabel(rate: number) {
     return { label: '上昇', className: 'text-(--tt-color-secondary)' };
   if (rate >= 20)
     return { label: '微増', className: 'text-(--tt-color-positive)' };
+  if (rate >= 0) return { label: '横ばい', className: 'text-muted-foreground' };
   return { label: '減少', className: 'text-muted-foreground' };
 }
 
