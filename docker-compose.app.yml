@@ -1,10 +1,15 @@
+x-common-logging: &common-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
       target: dev
-    container_name: techtrend-app
     volumes:
       # Source code mount for hot reload
       - ./:/app
@@ -49,6 +54,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    logging: *common-logging
     restart: unless-stopped
     stdin_open: true
     tty: true

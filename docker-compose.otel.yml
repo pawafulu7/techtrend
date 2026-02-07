@@ -1,3 +1,9 @@
+x-common-logging: &common-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.101.0
@@ -13,11 +19,7 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    logging: *common-logging
     networks:
       - techtrend_network
 

@@ -1,3 +1,9 @@
+x-common-logging: &common-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     build:
@@ -20,6 +26,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging: *common-logging
     restart: unless-stopped
 
   redis:
@@ -39,6 +46,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging: *common-logging
     restart: unless-stopped
 
 volumes:

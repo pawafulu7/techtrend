@@ -82,7 +82,7 @@ async function resetTestDatabase() {
     `;
 
     // PostgreSQLに直接接続してリセットを実行
-    execSync(`echo '${resetSQL}' | docker exec -i techtrend-postgres psql -v ON_ERROR_STOP=1 -U ${dbUser} -d ${dbName}`, {
+    execSync(`echo '${resetSQL}' | docker exec -i techtrend-postgres-test psql -v ON_ERROR_STOP=1 -U ${dbUser} -d ${dbName}`, {
       stdio: 'pipe', // NOTICEメッセージを抑制
       env: {
         ...process.env,
@@ -95,7 +95,7 @@ async function resetTestDatabase() {
     // 2. テーブルが確実に削除されたことを確認
     console.log('📋 テーブル削除を確認中...');
 
-    execSync(`echo '\\dt' | docker exec -i techtrend-postgres psql -v ON_ERROR_STOP=1 -U ${dbUser} -d ${dbName}`, {
+    execSync(`echo '\\dt' | docker exec -i techtrend-postgres-test psql -v ON_ERROR_STOP=1 -U ${dbUser} -d ${dbName}`, {
       stdio: 'inherit',
       env: {
         ...process.env,
