@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   PieChart,
   Pie,
@@ -9,8 +9,6 @@ import {
   Legend,
   Tooltip,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { PieChartIcon } from 'lucide-react';
 
 interface SourceData {
@@ -42,18 +40,44 @@ interface SourceTooltipPayload {
   payload: SourceData;
 }
 
-const COLORS = [
-  '#0088FE',
-  '#00C49F',
-  '#FFBB28',
-  '#FF8042',
-  '#8884D8',
-  '#82CA9D',
-  '#FFC658',
-  '#FF7C7C',
-  '#8DD1E1',
-  '#D084D0',
+const FALLBACK_COLORS = [
+  '#3B82F6',
+  '#22C55E',
+  '#F97316',
+  '#EF4444',
+  '#16A34A',
+  '#8b5cf6',
+  '#ec4899',
+  '#06b6d4',
+  '#d97706',
+  '#6366f1',
 ];
+
+function useChartColors(): string[] {
+  return useMemo(() => {
+    if (typeof document === 'undefined') return FALLBACK_COLORS;
+    const style = getComputedStyle(document.documentElement);
+    const vars = [
+      '--tt-color-info',
+      '--tt-color-positive',
+      '--tt-color-secondary',
+      '--tt-color-negative',
+      '--tt-color-primary',
+    ];
+    const resolved = vars.map((v) => style.getPropertyValue(v).trim());
+    if (resolved.every((c) => c)) {
+      return [
+        ...resolved,
+        '#8b5cf6',
+        '#ec4899',
+        '#06b6d4',
+        '#d97706',
+        '#6366f1',
+      ];
+    }
+    return FALLBACK_COLORS;
+  }, []);
+}
 
 // カスタムツールチップコンポーネント（トップレベルに移動）
 const SourcePieChartTooltip = React.memo(function SourcePieChartTooltip({
@@ -121,90 +145,80 @@ const renderCustomizedLabel = (props: LabelRenderProps): React.ReactNode => {
 };
 
 export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
+  const colors = useChartColors();
+
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PieChartIcon className="h-5 w-5" />
-            ソース別記事分布
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[300px] w-full" />
-        </CardContent>
-      </Card>
+      <div className="bg-background rounded-lg border p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
+          <h3 className="text-sm font-semibold">ソース別記事分布</h3>
+        </div>
+        <div className="h-[300px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
+      </div>
     );
   }
 
   if (!data || data.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PieChartIcon className="h-5 w-5" />
-            ソース別記事分布
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-muted-foreground flex h-[300px] items-center justify-center">
-            データがありません
-          </div>
-        </CardContent>
-      </Card>
+      <div className="bg-background rounded-lg border p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
+          <h3 className="text-sm font-semibold">ソース別記事分布</h3>
+        </div>
+        <div className="text-muted-foreground flex h-[300px] items-center justify-center">
+          データがありません
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <PieChartIcon className="h-5 w-5" />
-          ソース別記事分布
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="40%"
-              labelLine={false}
-              label={renderCustomizedLabel}
-              outerRadius={70}
-              fill="#8884d8"
-              dataKey="value"
-            >
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                />
-              ))}
-            </Pie>
-            <Tooltip content={<SourcePieChartTooltip />} />
-            <Legend
-              verticalAlign="bottom"
-              height={100}
-              wrapperStyle={{
-                paddingTop: '10px',
-                maxHeight: '100px',
-                overflow: 'auto',
-              }}
-              formatter={(value, entry) => (
-                <span style={{ fontSize: 12 }}>
-                  {value} (
-                  {entry?.payload && 'percentage' in entry.payload
-                    ? entry.payload.percentage
-                    : 0}
-                  %)
-                </span>
-              )}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
+    <div className="bg-background rounded-lg border p-4 shadow-sm">
+      <div className="mb-3 flex items-center gap-2">
+        <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
+        <h3 className="text-sm font-semibold">ソース別記事分布</h3>
+      </div>
+      <ResponsiveContainer width="100%" height={300}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="40%"
+            labelLine={false}
+            label={renderCustomizedLabel}
+            outerRadius={70}
+            fill="#8884d8"
+            dataKey="value"
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={colors[index % colors.length]}
+              />
+            ))}
+          </Pie>
+          <Tooltip content={<SourcePieChartTooltip />} />
+          <Legend
+            verticalAlign="bottom"
+            height={100}
+            wrapperStyle={{
+              paddingTop: '10px',
+              maxHeight: '100px',
+              overflow: 'auto',
+            }}
+            formatter={(value, entry) => (
+              <span style={{ fontSize: 12 }}>
+                {value} (
+                {entry?.payload && 'percentage' in entry.payload
+                  ? entry.payload.percentage
+                  : 0}
+                %)
+              </span>
+            )}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
