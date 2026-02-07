@@ -36,31 +36,50 @@ function resolveColors(): string[] {
 
 let cachedColors = FALLBACK_COLORS;
 let cachedKey = FALLBACK_COLORS.join(',');
+const listeners = new Set<() => void>();
+let observer: MutationObserver | null = null;
 
-function subscribe(callback: () => void): () => void {
-  const newColors = resolveColors();
-  const newKey = newColors.join(',');
-  if (newKey !== cachedKey) {
-    cachedKey = newKey;
-    cachedColors = newColors;
-  }
-
-  const observer = new MutationObserver(() => {
+function startObserver(): void {
+  if (observer) return;
+  observer = new MutationObserver(() => {
     const colors = resolveColors();
     const key = colors.join(',');
     if (key !== cachedKey) {
       cachedKey = key;
       cachedColors = colors;
-      callback();
+      listeners.forEach((cb) => cb());
     }
   });
-
   observer.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ['class', 'data-theme', 'style'],
   });
+}
 
-  return () => observer.disconnect();
+function stopObserver(): void {
+  if (listeners.size > 0) return;
+  observer?.disconnect();
+  observer = null;
+}
+
+function subscribe(callback: () => void): () => void {
+  // Resolve initial colors on first subscribe
+  if (listeners.size === 0) {
+    const newColors = resolveColors();
+    const newKey = newColors.join(',');
+    if (newKey !== cachedKey) {
+      cachedKey = newKey;
+      cachedColors = newColors;
+    }
+  }
+
+  listeners.add(callback);
+  startObserver();
+
+  return () => {
+    listeners.delete(callback);
+    stopObserver();
+  };
 }
 
 function getSnapshot(): string[] {

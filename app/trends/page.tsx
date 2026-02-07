@@ -174,6 +174,7 @@ export default function TrendsPage() {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Failed to fetch source stats:', error);
       }
+      setSourceData([]);
     } finally {
       setLoadingSource(false);
     }
@@ -213,7 +214,7 @@ export default function TrendsPage() {
 
           {loadingKeywords ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {[...Array(6)].map((_, i) => (
+              {[...Array(8)].map((_, i) => (
                 <TrendingKeywordCardSkeleton key={i} />
               ))}
             </div>
@@ -235,7 +236,7 @@ export default function TrendsPage() {
           <div className="mb-3 flex items-center gap-2">
             <Sparkles className="h-3.5 w-3.5 text-(--tt-color-positive)" />
             <h2 className="text-muted-foreground text-xs font-medium tracking-wide">
-              新着タグ ({newTags.length})
+              新着タグ{!loadingKeywords && ` (${newTags.length})`}
             </h2>
           </div>
 
