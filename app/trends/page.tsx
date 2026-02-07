@@ -64,11 +64,15 @@ export default function TrendsPage() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      fetchTrendAnalysis(selectedDays);
+      fetchTrendAnalysis(selectedDays, controller.signal);
     }, 300);
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, [selectedDays]);
 
   const fetchTrendingKeywords = async () => {
@@ -98,11 +102,12 @@ export default function TrendsPage() {
     }
   };
 
-  const fetchTrendAnalysis = async (days: number) => {
+  const fetchTrendAnalysis = async (days: number, signal?: AbortSignal) => {
     try {
       setLoadingAnalysis(true);
       const response = await fetch(`/api/trends/analysis?days=${days}`, {
         cache: 'no-store',
+        signal,
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
@@ -112,11 +117,15 @@ export default function TrendsPage() {
         setTrendAnalysis(data);
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       if (process.env.NODE_ENV !== 'production') {
         console.error('Failed to fetch trend analysis:', error);
       }
+      setTrendAnalysis(null);
     } finally {
-      setLoadingAnalysis(false);
+      if (!signal?.aborted) {
+        setLoadingAnalysis(false);
+      }
     }
   };
 

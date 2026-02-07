@@ -1,5 +1,3 @@
-'use client';
-
 import { TrendingUp, Sparkles, BarChart3 } from 'lucide-react';
 
 interface TrendStatsBarProps {
