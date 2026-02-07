@@ -1,7 +1,7 @@
 # E2E Test environment Dockerfile with Playwright
 # Complete isolation from local environment - no volume mounts
 
-FROM mcr.microsoft.com/playwright:v1.48.0-jammy
+FROM mcr.microsoft.com/playwright:v1.58.0-jammy
 
 # Install additional dependencies
 RUN apt-get update && apt-get install -y \

@@ -30,8 +30,8 @@ if (!process.env.DATABASE_URL) {
     // GitHub Actions などのCI環境（ポート5432）
     process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/techtrend_test';
   } else {
-    // ローカル環境（ポート5433）
-    process.env.DATABASE_URL = 'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
+    // ローカル環境（ポート5434）
+    process.env.DATABASE_URL = 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test';
   }
 }
 

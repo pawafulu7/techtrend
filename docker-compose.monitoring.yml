@@ -1,3 +1,9 @@
+x-common-logging: &common-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   loki:
     image: grafana/loki:3.0.0
@@ -8,6 +14,7 @@ services:
       - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
       - loki_data:/loki
     mem_limit: 1g
+    logging: *common-logging
     restart: unless-stopped
     networks:
       - techtrend_network
@@ -21,6 +28,7 @@ services:
       - ./tempo-config.yaml:/etc/tempo/config.yaml:ro
       - tempo_data:/var/tempo
     mem_limit: 1g
+    logging: *common-logging
     restart: unless-stopped
     networks:
       - techtrend_network
@@ -41,6 +49,7 @@ services:
       - loki
       - tempo
     mem_limit: 512m
+    logging: *common-logging
     restart: unless-stopped
     networks:
       - techtrend_network

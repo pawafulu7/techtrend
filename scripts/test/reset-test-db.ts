@@ -32,7 +32,7 @@ function parseDbUrl(url: string) {
       dbUser: 'postgres',
       dbPass: 'postgres_dev_password',
       dbHost: 'localhost',
-      dbPort: '5433'
+      dbPort: '5434'
     };
   }
 }
@@ -53,7 +53,7 @@ function maskUrl(url: string): string {
 
 const TEST_DB_URL = process.env.TEST_DATABASE_URL ||
                     process.env.TEST_DATABASE_URL_HOST ||
-                    'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test';
+                    'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test';
 
 const { dbName, dbUser, dbPass } = parseDbUrl(TEST_DB_URL);
 
@@ -92,7 +92,7 @@ async function resetTestDatabase() {
     `;
 
     // PostgreSQLに直接接続してクリーンアップを実行
-    execSync(`echo '${cleanupSQL}' | docker exec -i techtrend-postgres psql -v ON_ERROR_STOP=1 -U ${dbUser} -d ${dbName}`, {
+    execSync(`echo '${cleanupSQL}' | docker exec -i techtrend-postgres-test psql -v ON_ERROR_STOP=1 -U ${dbUser} -d ${dbName}`, {
       stdio: 'pipe', // NOTICEメッセージを抑制
       env: {
         ...process.env,
@@ -117,7 +117,7 @@ async function resetTestDatabase() {
       END \\$\\$;
     `;
 
-    execSync(`echo "${dropAllTablesSQL}" | docker exec -i techtrend-postgres psql -v ON_ERROR_STOP=1 -U ${dbUser} -d ${dbName}`, {
+    execSync(`echo "${dropAllTablesSQL}" | docker exec -i techtrend-postgres-test psql -v ON_ERROR_STOP=1 -U ${dbUser} -d ${dbName}`, {
       stdio: 'inherit',
       env: {
         ...process.env,

@@ -9,7 +9,7 @@ import { execSync } from 'child_process';
 import { PrismaClient } from '@prisma/client';
 
 // テストDB接続設定
-const TEST_DATABASE_URL = 'postgresql://postgres@localhost:5433/techtrend_test';
+const TEST_DATABASE_URL = 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test';
 
 // 環境変数を上書き
 process.env.DATABASE_URL = TEST_DATABASE_URL;
@@ -39,7 +39,7 @@ async function setupTestDatabase() {
 
   try {
     console.error('Setting up test database...');
-    console.error('Database URL:', TEST_DATABASE_URL);
+    console.error('Database URL:', TEST_DATABASE_URL.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@'));
     console.error('Environment:', process.env.NODE_ENV || 'development');
     
     // 接続テスト

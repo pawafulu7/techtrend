@@ -14,7 +14,7 @@ async function healthCheck() {
     const prisma = new PrismaClient({
       datasources: {
         db: {
-          url: 'postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test'
+          url: 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test'
         }
       }
     });

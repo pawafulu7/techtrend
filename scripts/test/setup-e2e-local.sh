@@ -5,7 +5,7 @@ echo "E2Eテスト環境セットアップ開始..."
 
 # 1. テスト用DBとRedisの起動
 echo "テスト用DBとRedisを起動中..."
-docker-compose -f docker-compose.test.yml up -d
+docker compose -f docker-compose.test.yml up -d
 
 # 2. DB接続待機
 echo "DBの起動を待機中..."
@@ -23,7 +23,7 @@ done
 
 # 3. スキーマ適用とシード投入
 echo "スキーマを適用中..."
-export DATABASE_URL="postgresql://postgres:postgres_dev_password@localhost:5433/techtrend_test"
+export DATABASE_URL="postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test"
 npx prisma db push
 
 echo "シードデータを投入中..."
