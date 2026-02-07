@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -23,7 +21,7 @@ services:
       - /app/tmp
       - /app/.cache
     ports:
-      - "3001:3000"
+      - "127.0.0.1:3001:3000"
     env_file:
       - .env
     environment:

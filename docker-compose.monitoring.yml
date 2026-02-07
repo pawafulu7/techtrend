@@ -1,11 +1,9 @@
-version: "3.9"
-
 services:
   loki:
     image: grafana/loki:3.0.0
     command: ["-config.file=/etc/loki/local-config.yaml"]
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     volumes:
       - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
       - loki_data:/loki
@@ -18,7 +16,7 @@ services:
     image: grafana/tempo:2.4.1
     command: ["-config.file=/etc/tempo/config.yaml"]
     ports:
-      - "3200:3200"
+      - "127.0.0.1:3200:3200"
     volumes:
       - ./tempo-config.yaml:/etc/tempo/config.yaml:ro
       - tempo_data:/var/tempo
@@ -30,10 +28,10 @@ services:
   grafana:
     image: grafana/grafana:11.2.0
     ports:
-      - "3001:3000"
+      - "127.0.0.1:3002:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro

@@ -173,7 +173,7 @@ npm run monitoring:down
 
 #### Grafana UIアクセス
 
-1. **URL**: http://localhost:3001
+1. **URL**: http://localhost:3002
 2. **ログイン**:
    - Username: `admin`
    - Password: `admin`（初回ログイン時に変更必須）

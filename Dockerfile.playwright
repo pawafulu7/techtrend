@@ -33,7 +33,7 @@ RUN npx playwright install chromium firefox webkit
 COPY --chown=pwuser:pwuser . .
 
 # Build Next.js application for E2E tests
-RUN npm run build || true
+RUN npm run build
 
 # Create necessary directories
 RUN mkdir -p test-results playwright-report tmp .cache
