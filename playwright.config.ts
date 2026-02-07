@@ -25,7 +25,7 @@ export default defineConfig({
   /* Retry on CI only - Phase 3: 削減 */
   retries: process.env.CI ? 1 : 1,  // CI: 1回（削減）、ローカル: 1回
   /* Opt out of parallel tests on CI. - Phase 1: 並列度最適化 */
-  workers: process.env.CI ? 5 : (Number(process.env.E2E_WORKERS) || 3),  // CI: 5並列、ローカル: 環境変数または3並列
+  workers: Number(process.env.E2E_WORKERS) || (process.env.CI ? 5 : 3),  // E2E_WORKERS優先、未設定時: CI=5, ローカル=3。npm scriptsでの--workers上書き禁止
   /* Global setup and teardown */
   globalSetup: './e2e/global-setup.ts',
   globalTeardown: './e2e/global-teardown.ts',
