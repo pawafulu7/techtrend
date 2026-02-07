@@ -87,6 +87,7 @@ export interface PersonalizedFilterOptions {
   offset?: number;
   sortBy?: PersonalizedSortBy;
   sortOrder?: 'asc' | 'desc';
+  excludeSourceIds?: string[];
 }
 
 /**

@@ -25,7 +25,9 @@ const mockPrisma = {
     count: jest.fn(),
   },
   $queryRaw: jest.fn(),
-  $transaction: jest.fn((fn: (tx: typeof mockPrisma) => Promise<any>) => fn(mockPrisma)),
+  $transaction: jest.fn((fn: (tx: typeof mockPrisma) => Promise<any>) =>
+    fn(mockPrisma)
+  ),
 };
 
 jest.mock('@/lib/prisma', () => ({
@@ -56,7 +58,7 @@ describe('CategoryFilterService', () => {
   // ===========================================================================
 
   describe('calculateRecencyDecay', () => {
-    it('should return 1.0 for today\'s article', () => {
+    it("should return 1.0 for today's article", () => {
       const today = new Date();
       const decay = calculateRecencyDecay(today);
       expect(decay).toBeCloseTo(1.0, 2);
@@ -93,7 +95,11 @@ describe('CategoryFilterService', () => {
       const hasTagMatch = true;
       const recencyDecay = 0.9;
 
-      const score = calculateFinalScore(embeddingSimilarity, hasTagMatch, recencyDecay);
+      const score = calculateFinalScore(
+        embeddingSimilarity,
+        hasTagMatch,
+        recencyDecay
+      );
 
       // Expected: 0.8 + 0.03 * 1 + 0.1 * 0.9 = 0.8 + 0.03 + 0.09 = 0.92
       expect(score).toBeCloseTo(0.92, 2);
@@ -104,7 +110,11 @@ describe('CategoryFilterService', () => {
       const hasTagMatch = false;
       const recencyDecay = 0.9;
 
-      const score = calculateFinalScore(embeddingSimilarity, hasTagMatch, recencyDecay);
+      const score = calculateFinalScore(
+        embeddingSimilarity,
+        hasTagMatch,
+        recencyDecay
+      );
 
       // Expected: 0.8 + 0.03 * 0 + 0.1 * 0.9 = 0.8 + 0 + 0.09 = 0.89
       expect(score).toBeCloseTo(0.89, 2);
@@ -120,7 +130,12 @@ describe('CategoryFilterService', () => {
         recencyBeta: 0.2,
       };
 
-      const score = calculateFinalScore(embeddingSimilarity, hasTagMatch, recencyDecay, customParams);
+      const score = calculateFinalScore(
+        embeddingSimilarity,
+        hasTagMatch,
+        recencyDecay,
+        customParams
+      );
 
       // Expected: 0.8 + 0.1 * 1 + 0.2 * 0.9 = 0.8 + 0.1 + 0.18 = 1.08
       expect(score).toBeCloseTo(1.08, 2);
@@ -142,7 +157,10 @@ describe('CategoryFilterService', () => {
       const result = computeWeightedCentroid(centroids);
 
       // Average: [0.5, 0.5, 0], normalized: [0.707, 0.707, 0]
-      const parsed = result.replace(/^\[|\]$/g, '').split(',').map(Number);
+      const parsed = result
+        .replace(/^\[|\]$/g, '')
+        .split(',')
+        .map(Number);
       expect(parsed[0]).toBeCloseTo(0.707, 2);
       expect(parsed[1]).toBeCloseTo(0.707, 2);
       expect(parsed[2]).toBeCloseTo(0, 2);
@@ -153,7 +171,10 @@ describe('CategoryFilterService', () => {
       const weights = [3, 1]; // 3:1 ratio, favor first
 
       const result = computeWeightedCentroid(centroids, weights);
-      const parsed = result.replace(/^\[|\]$/g, '').split(',').map(Number);
+      const parsed = result
+        .replace(/^\[|\]$/g, '')
+        .split(',')
+        .map(Number);
 
       // Weighted average: [0.75, 0.25, 0], normalized
       // Norm = sqrt(0.75^2 + 0.25^2) = sqrt(0.5625 + 0.0625) = sqrt(0.625) ~ 0.79
@@ -162,12 +183,16 @@ describe('CategoryFilterService', () => {
     });
 
     it('should throw error for empty centroids array', () => {
-      expect(() => computeWeightedCentroid([])).toThrow('No centroids provided');
+      expect(() => computeWeightedCentroid([])).toThrow(
+        'No centroids provided'
+      );
     });
 
     it('should throw error for mismatched dimensions', () => {
       const centroids = ['[1,0,0]', '[0,1]'];
-      expect(() => computeWeightedCentroid(centroids)).toThrow('Centroid dimensions do not match');
+      expect(() => computeWeightedCentroid(centroids)).toThrow(
+        'Centroid dimensions do not match'
+      );
     });
   });
 
@@ -529,6 +554,247 @@ describe('CategoryFilterService', () => {
       expect(result.meta.appliedCategories).toEqual([]);
       expect(result.articles).toHaveLength(1);
       expect(result.articles[0].articleId).toBe('fallback-1');
+    });
+
+    it('should pass excludeSourceIds to multi-category search', async () => {
+      const excludeSourceIds = ['arxiv-source-id'];
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockMultiCentroids)
+        .mockResolvedValueOnce(mockCandidatesFrontend)
+        .mockResolvedValueOnce(mockCandidatesBackend)
+        .mockResolvedValueOnce([]);
+
+      await service.filterArticles({
+        categoryIds: ['cat-1', 'cat-2'],
+        periodMonths: 12,
+        limit: 10,
+        excludeSourceIds,
+      });
+
+      // getEmbeddingCandidates is called via $queryRaw (2nd and 3rd calls)
+      // $queryRaw receives tagged template args: [stringsArray, ...values]
+      // Prisma.sql fragments are passed as objects with {strings, values} structure
+      const secondCallValues = mockPrisma.$queryRaw.mock.calls[1].slice(1);
+      const thirdCallValues = mockPrisma.$queryRaw.mock.calls[2].slice(1);
+
+      // The sourceExcludeFilter is a Prisma.sql fragment containing the excludeSourceIds
+      const findExcludeFragment = (values: unknown[]) =>
+        values.find(
+          (v): v is { strings: string[]; values: unknown[] } =>
+            typeof v === 'object' &&
+            v !== null &&
+            'strings' in v &&
+            'values' in v &&
+            (v as { strings: string[] }).strings.some((s: string) =>
+              s.includes('"sourceId"')
+            )
+        );
+
+      const secondFragment = findExcludeFragment(secondCallValues);
+      const thirdFragment = findExcludeFragment(thirdCallValues);
+
+      expect(secondFragment).toBeDefined();
+      expect(secondFragment!.values).toEqual(
+        expect.arrayContaining([excludeSourceIds])
+      );
+      expect(thirdFragment).toBeDefined();
+      expect(thirdFragment!.values).toEqual(
+        expect.arrayContaining([excludeSourceIds])
+      );
+    });
+
+    it('should pass excludeSourceIds to single-category SQL query', async () => {
+      const mockSingleCentroids = [
+        { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0]' },
+      ];
+      const excludeSourceIds = ['arxiv-source-id'];
+
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockSingleCentroids) // getCategoryCentroids
+        .mockResolvedValueOnce(mockCandidatesFrontend) // getEmbeddingCandidates
+        .mockResolvedValueOnce([]); // checkTagMatches
+
+      await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+        excludeSourceIds,
+      });
+
+      // getEmbeddingCandidates is the 2nd $queryRaw call
+      const secondCallValues = mockPrisma.$queryRaw.mock.calls[1].slice(1);
+
+      // Find the Prisma.sql fragment containing sourceId exclude filter
+      const excludeFragment = secondCallValues.find(
+        (v: unknown): v is { strings: string[]; values: unknown[] } =>
+          typeof v === 'object' &&
+          v !== null &&
+          'strings' in v &&
+          'values' in v &&
+          (v as { strings: string[] }).strings.some((s: string) =>
+            s.includes('"sourceId"')
+          )
+      );
+
+      expect(excludeFragment).toBeDefined();
+      expect(excludeFragment!.values).toEqual(
+        expect.arrayContaining([excludeSourceIds])
+      );
+    });
+
+    it('should apply excludeSourceIds to fallback results when no centroids found', async () => {
+      const excludeSourceIds = ['arxiv-source-id'];
+
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]); // No centroids
+      mockPrisma.article.count.mockResolvedValue(1);
+      mockPrisma.article.findMany.mockResolvedValue([
+        { id: 'fallback-1', publishedAt: new Date() },
+      ]);
+
+      await service.filterArticles({
+        categoryIds: ['non-existent'],
+        periodMonths: 12,
+        limit: 10,
+        excludeSourceIds,
+      });
+
+      // Verify fallback findMany where clause includes sourceId notIn
+      const findManyCall = mockPrisma.article.findMany.mock.calls[0][0];
+      expect(findManyCall.where).toEqual(
+        expect.objectContaining({
+          sourceId: { notIn: excludeSourceIds },
+        })
+      );
+    });
+
+    it('should not add sourceId filter when excludeSourceIds is not specified (backward compatibility)', async () => {
+      const mockSingleCentroids = [
+        { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0]' },
+      ];
+
+      // Test embedding path: no excludeSourceIds in SQL
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockSingleCentroids) // getCategoryCentroids
+        .mockResolvedValueOnce(mockCandidatesFrontend) // getEmbeddingCandidates
+        .mockResolvedValueOnce([]); // checkTagMatches
+
+      await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+        // excludeSourceIds is not specified
+      });
+
+      // getEmbeddingCandidates is the 2nd $queryRaw call
+      const secondCallValues = mockPrisma.$queryRaw.mock.calls[1].slice(1);
+
+      // When excludeSourceIds is undefined, Prisma.empty is used (no sourceId exclude fragment)
+      const excludeFragment = secondCallValues.find(
+        (v: unknown): v is { strings: string[]; values: unknown[] } =>
+          typeof v === 'object' &&
+          v !== null &&
+          'strings' in v &&
+          'values' in v &&
+          (v as { strings: string[] }).strings.some((s: string) =>
+            s.includes('!= ALL')
+          )
+      );
+      expect(excludeFragment).toBeUndefined();
+
+      // Test fallback path: no sourceId filter in where clause
+      jest.clearAllMocks();
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]); // No centroids
+      mockPrisma.article.count.mockResolvedValue(1);
+      mockPrisma.article.findMany.mockResolvedValue([
+        { id: 'fallback-1', publishedAt: new Date() },
+      ]);
+
+      await service.filterArticles({
+        categoryIds: ['non-existent'],
+        periodMonths: 12,
+        limit: 10,
+        // excludeSourceIds is not specified
+      });
+
+      const findManyCall = mockPrisma.article.findMany.mock.calls[0][0];
+      expect(findManyCall.where).not.toHaveProperty('sourceId');
+    });
+
+    it('should apply excludeSourceIds to fallback when database error occurs', async () => {
+      const excludeSourceIds = ['arxiv-source-id'];
+
+      mockPrisma.$queryRaw.mockRejectedValueOnce(new Error('Database error'));
+      mockPrisma.article.count.mockResolvedValue(1);
+      mockPrisma.article.findMany.mockResolvedValue([
+        { id: 'fallback-1', publishedAt: new Date() },
+      ]);
+
+      await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+        excludeSourceIds,
+      });
+
+      // Verify fallback findMany where clause includes sourceId notIn
+      const findManyCall = mockPrisma.article.findMany.mock.calls[0][0];
+      expect(findManyCall.where).toEqual(
+        expect.objectContaining({
+          sourceId: { notIn: excludeSourceIds },
+        })
+      );
+    });
+
+    it('should not add sourceId filter when excludeSourceIds is empty array', async () => {
+      const mockSingleCentroids = [
+        { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0]' },
+      ];
+
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockSingleCentroids) // getCategoryCentroids
+        .mockResolvedValueOnce(mockCandidatesFrontend) // getEmbeddingCandidates
+        .mockResolvedValueOnce([]); // checkTagMatches
+
+      await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+        excludeSourceIds: [], // empty array
+      });
+
+      // getEmbeddingCandidates is the 2nd $queryRaw call
+      const secondCallValues = mockPrisma.$queryRaw.mock.calls[1].slice(1);
+
+      // Empty array should not add exclude filter (Prisma.empty is used)
+      const excludeFragment = secondCallValues.find(
+        (v: unknown): v is { strings: string[]; values: unknown[] } =>
+          typeof v === 'object' &&
+          v !== null &&
+          'strings' in v &&
+          'values' in v &&
+          (v as { strings: string[] }).strings.some((s: string) =>
+            s.includes('!= ALL')
+          )
+      );
+      expect(excludeFragment).toBeUndefined();
+
+      // Test fallback path with empty array
+      jest.clearAllMocks();
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]); // No centroids
+      mockPrisma.article.count.mockResolvedValue(1);
+      mockPrisma.article.findMany.mockResolvedValue([
+        { id: 'fallback-1', publishedAt: new Date() },
+      ]);
+
+      await service.filterArticles({
+        categoryIds: ['non-existent'],
+        periodMonths: 12,
+        limit: 10,
+        excludeSourceIds: [], // empty array
+      });
+
+      const findManyCall = mockPrisma.article.findMany.mock.calls[0][0];
+      expect(findManyCall.where).not.toHaveProperty('sourceId');
     });
 
     it('should apply tag boost from any matching category (OR)', async () => {
