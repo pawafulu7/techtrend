@@ -110,7 +110,6 @@ npm run dev   # or: npm run build && npm start
 
 ```
 npm run test:e2e:fast   # chromium 単体・並列3
-# またはスモーク: npm run test:e2e:smoke
 ```
 
 補足:
