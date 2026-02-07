@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import type { ElementType } from 'react';
 import { TrendingUp, PieChart as PieChartIcon } from 'lucide-react';
 
 /**
@@ -12,7 +13,7 @@ const ChartSkeleton = ({
   icon: Icon,
 }: {
   title: string;
-  icon: React.ElementType;
+  icon: ElementType;
 }) => (
   <div className="bg-background rounded-lg border p-4 shadow-sm">
     <div className="mb-3 flex items-center gap-2">

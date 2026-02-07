@@ -77,6 +77,7 @@ export default function TrendsPage() {
       const response = await fetch('/api/trends/keywords', {
         cache: 'no-store',
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
 
       if (data.error) {
@@ -103,8 +104,13 @@ export default function TrendsPage() {
       const response = await fetch(`/api/trends/analysis?days=${days}`, {
         cache: 'no-store',
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      setTrendAnalysis(data);
+      if (data.error) {
+        setTrendAnalysis(null);
+      } else {
+        setTrendAnalysis(data);
+      }
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Failed to fetch trend analysis:', error);
@@ -119,8 +125,8 @@ export default function TrendsPage() {
       setLoadingSource(true);
       const response = await fetch('/api/stats', {
         cache: 'force-cache',
-        next: { revalidate: 300 },
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const result = await response.json();
       if (result.success && result.data && result.data.sources) {
         const allSources = result.data.sources;
@@ -269,7 +275,11 @@ export default function TrendsPage() {
             <h2 className="text-muted-foreground text-xs font-bold tracking-widest">
               分析
             </h2>
-            <div className="flex gap-1.5">
+            <div
+              className="flex gap-1.5"
+              role="group"
+              aria-label="分析期間の選択"
+            >
               {[7, 14, 30].map((days) => (
                 <Button
                   key={days}

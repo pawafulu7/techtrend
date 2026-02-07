@@ -18,11 +18,11 @@ export function TrendStatsBar({
   if (loading) {
     return (
       <div className="bg-background animate-pulse rounded-lg border px-4 py-3 shadow-sm">
-        <div className="flex items-center justify-center gap-6">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           <div className="h-4 w-20 rounded bg-(--tt-color-surface-muted)" />
-          <div className="bg-border h-4 w-px" />
+          <div className="bg-border hidden h-4 w-px sm:block" />
           <div className="h-4 w-20 rounded bg-(--tt-color-surface-muted)" />
-          <div className="bg-border h-4 w-px" />
+          <div className="bg-border hidden h-4 w-px sm:block" />
           <div className="h-4 w-20 rounded bg-(--tt-color-surface-muted)" />
         </div>
       </div>
@@ -30,19 +30,19 @@ export function TrendStatsBar({
   }
 
   return (
-    <div className="bg-background flex items-center justify-center gap-6 rounded-lg border px-4 py-3 shadow-sm">
+    <div className="bg-background flex flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-lg border px-4 py-3 shadow-sm">
       <div className="flex items-center gap-2">
         <TrendingUp className="h-4 w-4 text-(--tt-color-secondary)" />
         <span className="text-sm font-semibold">{trendingCount}</span>
         <span className="text-muted-foreground text-xs">急上昇</span>
       </div>
-      <div className="bg-border h-4 w-px" />
+      <div className="bg-border hidden h-4 w-px sm:block" />
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-(--tt-color-positive)" />
         <span className="text-sm font-semibold">{newTagCount}</span>
         <span className="text-muted-foreground text-xs">新着タグ</span>
       </div>
-      <div className="bg-border h-4 w-px" />
+      <div className="bg-border hidden h-4 w-px sm:block" />
       <div className="flex items-center gap-2">
         <BarChart3 className="h-4 w-4 text-(--tt-color-info)" />
         <span className="text-sm font-semibold">{topTagCount}</span>

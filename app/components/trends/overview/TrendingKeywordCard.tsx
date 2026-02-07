@@ -9,8 +9,6 @@ interface TrendingKeyword {
   name: string;
   growthRate: number;
   recentCount: number;
-  weeklyAverage: number;
-  isTrending: boolean;
 }
 
 function getGrowthLabel(rate: number) {
@@ -44,8 +42,10 @@ export function TrendingKeywordCard({ keyword }: { keyword: TrendingKeyword }) {
           {/* Header */}
           <div className="mb-1.5 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <TrendingUp className="h-3.5 w-3.5 shrink-0 text-(--tt-color-secondary)" />
-              <span className="text-xs font-bold text-(--tt-color-secondary)">
+              <TrendingUp
+                className={cn('h-3.5 w-3.5 shrink-0', growth.className)}
+              />
+              <span className={cn('text-xs font-bold', growth.className)}>
                 {growth.label}
               </span>
             </div>
