@@ -12,7 +12,7 @@ export const DATE_RANGE_OPTIONS = [
 ] as const;
 
 // 定数から型を派生させて重複をなくす
-export type DateRangeOption = typeof DATE_RANGE_OPTIONS[number]['value'];
+export type DateRangeOption = (typeof DATE_RANGE_OPTIONS)[number]['value'];
 
 /**
  * 日付範囲文字列から開始日を計算
@@ -69,8 +69,88 @@ export function getDateRangeFilter(range: string): Date | null {
 export function getDateRangeLabel(value: string): string {
   // 後方互換: 旧値 '3months' を新値に正規化
   const v = value === '3months' ? 'three_months' : value;
-  const option = DATE_RANGE_OPTIONS.find(opt => opt.value === v);
+  const option = DATE_RANGE_OPTIONS.find((opt) => opt.value === v);
   return option?.label || '全期間';
+}
+
+/**
+ * カスタム日付範囲（from-to）をパース・バリデーション
+ * 最大3ヶ月の範囲制限を適用
+ * @returns パース結果。無効な場合はnull
+ */
+export function parseDateFromTo(
+  dateFrom: string | undefined | null,
+  dateTo: string | undefined | null
+): { from: Date; to: Date } | null {
+  const now = new Date();
+
+  // Explicit component parsing to avoid runtime-dependent string interpretation
+  // Note: Vercel等のデプロイ環境ではTZ=Asia/Tokyoを設定すること
+  const parseLocalDate = (s: string): Date => {
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return new Date(NaN);
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  };
+
+  let from: Date;
+  let to: Date;
+
+  if (dateFrom && dateTo) {
+    from = parseLocalDate(dateFrom);
+    to = parseLocalDate(dateTo);
+  } else if (dateFrom) {
+    from = parseLocalDate(dateFrom);
+    to = now;
+  } else if (dateTo) {
+    to = parseLocalDate(dateTo);
+    // Use 92-day offset so that after time normalization (from=00:00, to=23:59:59.999),
+    // the total span (~92.99 days) stays within the 93-day ms limit
+    from = new Date(to.getTime() - 92 * 24 * 60 * 60 * 1000);
+  } else {
+    return null;
+  }
+
+  if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+    return null;
+  }
+
+  // 日付オーバーフロー検証（例: 2月31日 → 3月3日になるケースを拒否）
+  const validateDateString = (s: string, d: Date): boolean => {
+    const parts = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!parts) return false;
+    return (
+      d.getFullYear() === Number(parts[1]) &&
+      d.getMonth() + 1 === Number(parts[2]) &&
+      d.getDate() === Number(parts[3])
+    );
+  };
+  if (dateFrom && !validateDateString(dateFrom, from)) return null;
+  if (dateTo && !validateDateString(dateTo, to)) return null;
+
+  // Normalize time bounds before range validation
+  from.setHours(0, 0, 0, 0);
+  to.setHours(23, 59, 59, 999);
+
+  if (from > to) {
+    return null;
+  }
+
+  // 3ヶ月制限（約93日）
+  const threeMonthsMs = 93 * 24 * 60 * 60 * 1000;
+  if (to.getTime() - from.getTime() > threeMonthsMs) {
+    return null;
+  }
+
+  return { from, to };
+}
+
+/**
+ * ソート順に応じた日付フィルタフィールドを返す
+ */
+export function getDateFieldForSort(
+  sortBy: string | undefined
+): 'publishedAt' | 'createdAt' {
+  return sortBy === 'createdAt' ? 'createdAt' : 'publishedAt';
 }
 
 /**
@@ -97,7 +177,7 @@ export function getRelativeTime(date: Date): string {
   const diffMin = Math.floor(diffSec / 60);
   const diffHours = Math.floor(diffMin / 60);
   const diffDays = Math.floor(diffHours / 24);
-  
+
   if (diffDays === 0) {
     if (diffHours === 0) {
       if (diffMin === 0) {

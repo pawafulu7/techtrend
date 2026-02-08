@@ -84,6 +84,8 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
   const tagMode = (searchParams.get('tagMode') || 'OR').toUpperCase();
   const search = searchParams.get('search') ?? undefined;
   const dateRange = searchParams.get('dateRange') ?? undefined;
+  const dateFrom = searchParams.get('dateFrom') ?? undefined;
+  const dateTo = searchParams.get('dateTo') ?? undefined;
   const readFilter = searchParams.get('readFilter') ?? undefined;
   const category = searchParams.get('category') ?? undefined;
   // Low quality article filter - default false (new articles have qualityScore=0)
@@ -152,6 +154,8 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
     tagMode,
     search,
     dateRange,
+    dateFrom,
+    dateTo,
     readFilter,
     category,
     excludeLowQuality,
@@ -200,6 +204,8 @@ function buildCacheParams(
     tagMode: filters.tagMode,
     search: normalizedSearch === 'none' ? undefined : normalizedSearch,
     dateRange: filters.dateRange,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
     readFilter: userId ? filters.readFilter : undefined,
     userId: hasUserScopedQuery ? userId : undefined,
     category: filters.category,
@@ -235,7 +241,8 @@ async function executeStandardQuery(
     filters,
     display,
     userId,
-    metrics
+    metrics,
+    sortBy
   );
 
   if (emptyResult) {
@@ -301,7 +308,10 @@ async function executePersonalizedQuery(
       sortBy: sortBy as PersonalizedSortBy,
       sortOrder,
       excludeSourceIds: filters.excludeSources
-        ? filters.excludeSources.split(',').map((s) => s.trim()).filter(Boolean)
+        ? filters.excludeSources
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
         : undefined,
     };
 

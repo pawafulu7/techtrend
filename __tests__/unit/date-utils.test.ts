@@ -3,6 +3,8 @@ import {
   getDateRangeLabel,
   formatDate,
   getRelativeTime,
+  parseDateFromTo,
+  getDateFieldForSort,
   DATE_RANGE_OPTIONS,
 } from '@/app/lib/date-utils';
 
@@ -122,6 +124,117 @@ describe('Date Utils', () => {
     it('should return years for old dates', () => {
       const date = new Date('2023-08-19T12:00:00Z');
       expect(getRelativeTime(date)).toBe('2年前');
+    });
+  });
+
+  describe('parseDateFromTo', () => {
+    it('parses valid dateFrom and dateTo', () => {
+      const result = parseDateFromTo('2025-07-15', '2025-08-01');
+      expect(result).not.toBeNull();
+      expect(result!.from.getFullYear()).toBe(2025);
+      expect(result!.from.getMonth()).toBe(6); // July = 6
+      expect(result!.from.getDate()).toBe(15);
+      expect(result!.to.getFullYear()).toBe(2025);
+      expect(result!.to.getMonth()).toBe(7); // August = 7
+      expect(result!.to.getDate()).toBe(1);
+    });
+
+    it('returns null for invalid dates', () => {
+      expect(parseDateFromTo('invalid', '2025-08-01')).toBeNull();
+      expect(parseDateFromTo('2025-07-15', 'invalid')).toBeNull();
+    });
+
+    it('returns null if range exceeds 3 months', () => {
+      expect(parseDateFromTo('2025-01-01', '2025-08-01')).toBeNull();
+    });
+
+    it('returns null if from is after to', () => {
+      expect(parseDateFromTo('2025-08-15', '2025-07-01')).toBeNull();
+    });
+
+    it('sets from to start of day and to to end of day', () => {
+      const result = parseDateFromTo('2025-07-15', '2025-08-01');
+      expect(result!.from.getHours()).toBe(0);
+      expect(result!.from.getMinutes()).toBe(0);
+      expect(result!.from.getSeconds()).toBe(0);
+      expect(result!.to.getHours()).toBe(23);
+      expect(result!.to.getMinutes()).toBe(59);
+      expect(result!.to.getSeconds()).toBe(59);
+    });
+
+    it('handles dateFrom only (dateTo defaults to now)', () => {
+      const result = parseDateFromTo('2025-07-15', undefined);
+      expect(result).not.toBeNull();
+      expect(result!.from.getFullYear()).toBe(2025);
+      expect(result!.from.getMonth()).toBe(6);
+      expect(result!.from.getDate()).toBe(15);
+    });
+
+    it('handles dateTo only (dateFrom defaults to 92 days before dateTo)', () => {
+      const result = parseDateFromTo(undefined, '2025-08-01');
+      expect(result).not.toBeNull();
+      // dateFrom defaults to 92 days before dateTo (fits within 93-day ms limit after time normalization)
+      const expectedFrom = new Date(
+        new Date(2025, 7, 1).getTime() - 92 * 24 * 60 * 60 * 1000
+      );
+      expect(result!.from.getFullYear()).toBe(expectedFrom.getFullYear());
+      expect(result!.from.getMonth()).toBe(expectedFrom.getMonth());
+      expect(result!.from.getDate()).toBe(expectedFrom.getDate());
+      expect(result!.to.getFullYear()).toBe(2025);
+      expect(result!.to.getMonth()).toBe(7);
+      expect(result!.to.getDate()).toBe(1);
+    });
+
+    it('returns null when both are undefined', () => {
+      expect(parseDateFromTo(undefined, undefined)).toBeNull();
+    });
+
+    it('returns null when both are null', () => {
+      expect(parseDateFromTo(null, null)).toBeNull();
+    });
+
+    it('returns null for overflow dates like Feb 31', () => {
+      expect(parseDateFromTo('2025-02-31', '2025-03-15')).toBeNull();
+      expect(parseDateFromTo('2025-06-31', '2025-07-15')).toBeNull();
+    });
+
+    it('returns null for month overflow like month 13', () => {
+      expect(parseDateFromTo('2025-13-01', '2025-08-01')).toBeNull();
+    });
+
+    it('allows 92-calendar-day range (within 93-day ms limit after time normalization)', () => {
+      // 92 calendar days: from 00:00:00.000 to +92d 23:59:59.999 = ~93d, within limit
+      const result = parseDateFromTo('2025-05-19', '2025-08-19');
+      expect(result).not.toBeNull();
+    });
+
+    it('rejects 93-calendar-day range (exceeds 93-day ms limit after time normalization)', () => {
+      // 93 calendar days: from 00:00:00.000 to +93d 23:59:59.999 > 93d limit
+      const result = parseDateFromTo('2025-05-18', '2025-08-19');
+      expect(result).toBeNull();
+    });
+
+    it('allows same-day range', () => {
+      const result = parseDateFromTo('2025-08-01', '2025-08-01');
+      expect(result).not.toBeNull();
+      expect(result!.from.getDate()).toBe(1);
+      expect(result!.to.getDate()).toBe(1);
+    });
+  });
+
+  describe('getDateFieldForSort', () => {
+    it('returns createdAt for createdAt sort', () => {
+      expect(getDateFieldForSort('createdAt')).toBe('createdAt');
+    });
+
+    it('returns publishedAt for publishedAt sort', () => {
+      expect(getDateFieldForSort('publishedAt')).toBe('publishedAt');
+    });
+
+    it('returns publishedAt for non-date sort fields', () => {
+      expect(getDateFieldForSort('qualityScore')).toBe('publishedAt');
+      expect(getDateFieldForSort('bookmarks')).toBe('publishedAt');
+      expect(getDateFieldForSort(undefined)).toBe('publishedAt');
     });
   });
 

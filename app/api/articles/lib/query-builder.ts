@@ -6,7 +6,11 @@
  */
 
 import { Prisma, ArticleCategory } from '@prisma/client';
-import { getDateRangeFilter } from '@/app/lib/date-utils';
+import {
+  getDateRangeFilter,
+  parseDateFromTo,
+  getDateFieldForSort,
+} from '@/app/lib/date-utils';
 import { sourceCache } from '@/lib/cache/source-cache';
 import { MetricsCollector, withCacheTiming } from '@/lib/metrics/performance';
 import logger from '@/lib/logger';
@@ -466,16 +470,40 @@ export class ArticleWhereClauseBuilder {
   }
 
   /**
-   * Filter by date range
+   * Filter by date range (supports both preset and custom from-to)
+   * Accepts either a string (preset, backward-compatible) or an options object.
    */
-  withDateRangeFilter(dateRange: string | undefined): this {
-    if (dateRange && dateRange !== 'all') {
+  withDateRangeFilter(
+    optionsOrDateRange?:
+      | string
+      | {
+          dateRange?: string;
+          dateFrom?: string;
+          dateTo?: string;
+          sortBy?: string;
+        }
+  ): this {
+    const options =
+      typeof optionsOrDateRange === 'string'
+        ? { dateRange: optionsOrDateRange }
+        : (optionsOrDateRange ?? {});
+    const { dateRange, dateFrom, dateTo, sortBy } = options;
+    const dateField = getDateFieldForSort(sortBy);
+
+    if (dateFrom || dateTo) {
+      const customRange = parseDateFromTo(dateFrom, dateTo);
+      if (customRange) {
+        this.where[dateField] = {
+          gte: customRange.from,
+          lte: customRange.to,
+        };
+      }
+    } else if (dateRange && dateRange !== 'all') {
       const startDate = getDateRangeFilter(dateRange);
       if (startDate) {
         const now = new Date();
         const validStartDate = startDate > now ? now : startDate;
-
-        this.where.publishedAt = {
+        this.where[dateField] = {
           gte: validStartDate,
           lte: now,
         };
@@ -499,7 +527,8 @@ export async function buildWhereClause(
   filters: FilterParams,
   display: DisplayOptions,
   userId: string | undefined,
-  metrics: MetricsCollector
+  metrics: MetricsCollector,
+  sortBy?: string
 ): Promise<{ where: ArticleWhereInput; emptyResult: boolean }> {
   const builder = new ArticleWhereClauseBuilder(metrics);
 
@@ -515,7 +544,12 @@ export async function buildWhereClause(
     .withTagFilter(filters.tag, filters.tags, filters.tagMode)
     .withCategoryFilter(filters.category)
     .withSearchFilter(filters.search)
-    .withDateRangeFilter(filters.dateRange);
+    .withDateRangeFilter({
+      dateRange: filters.dateRange,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      sortBy,
+    });
 
   // Source filter is async
   const { emptyResult } = await builder.withSourceFilter(

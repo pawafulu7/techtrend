@@ -20,6 +20,8 @@ interface ArticleFilters {
   excludeSources?: string; // Exclude specific sources (e.g., arXiv papers)
   tags?: string;
   dateRange?: string;
+  dateFrom?: string;
+  dateTo?: string;
   readFilter?: string;
   lightweight?: boolean; // Add lightweight mode flag
   includeRelations?: boolean; // Add relations flag

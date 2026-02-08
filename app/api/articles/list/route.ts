@@ -9,7 +9,11 @@ import { auth } from '@/lib/auth/auth';
 import { createLoaders } from '@/lib/dataloader';
 import { normalizeArticleCategory } from '@/lib/utils/article-category-normalizer';
 import { getCursorManager } from '@/lib/pagination/cursor-manager';
-import { getDateRangeFilter } from '@/app/lib/date-utils';
+import {
+  getDateRangeFilter,
+  parseDateFromTo,
+  getDateFieldForSort,
+} from '@/app/lib/date-utils';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -107,6 +111,8 @@ export async function GET(request: NextRequest) {
     const tagMode = searchParams.get('tagMode') || 'OR';
     const search = searchParams.get('search');
     const dateRange = searchParams.get('dateRange');
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
     const readFilter = searchParams.get('readFilter');
     const category = searchParams.get('category');
     const excludeUnprocessed =
@@ -182,6 +188,8 @@ export async function GET(request: NextRequest) {
         tagMode: tagMode,
         search: normalizedSearch,
         dateRange: dateRange || 'all',
+        dateFrom: dateFrom || '',
+        dateTo: dateTo || '',
         readFilter: readFilter || 'all',
         userId: userCtxForKey,
         category: category || 'all',
@@ -523,12 +531,28 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Apply date range filter (static import)
-      if (dateRange && dateRange !== 'all') {
+      // Apply date range filter (sortBy-linked)
+      const dateField = getDateFieldForSort(finalSortBy);
+      if (dateFrom || dateTo) {
+        const customRange = parseDateFromTo(dateFrom, dateTo);
+        if (customRange) {
+          where[dateField] = {
+            gte: customRange.from,
+            lte: customRange.to,
+          };
+        } else {
+          logger.warn(
+            `articles-list.invalid-custom-date-range: Ignored invalid custom date range dateFrom=${dateFrom} dateTo=${dateTo}`
+          );
+        }
+      } else if (dateRange && dateRange !== 'all') {
         const startDate = getDateRangeFilter(dateRange);
         if (startDate) {
-          where.publishedAt = {
-            gte: startDate,
+          const now = new Date();
+          const validStartDate = startDate > now ? now : startDate;
+          where[dateField] = {
+            gte: validStartDate,
+            lte: now,
           };
         }
       }
@@ -545,6 +569,9 @@ export async function GET(request: NextRequest) {
           tagMode: tagMode,
           search: normalizedSearch,
           dateRange: dateRange || 'all',
+          dateFrom: dateFrom || '',
+          dateTo: dateTo || '',
+          sortBy: finalSortBy,
           readFilter: readFilter || 'all',
           category: category || 'all',
           // read/unread時はユーザー固有の総件数
@@ -733,6 +760,8 @@ export async function GET(request: NextRequest) {
             tags: tags || tag,
             search,
             dateRange,
+            dateFrom,
+            dateTo,
             readFilter,
             category,
           },
@@ -854,6 +883,8 @@ export async function GET(request: NextRequest) {
               tags: tags || tag,
               search,
               dateRange,
+              dateFrom,
+              dateTo,
               readFilter,
               category,
             },
@@ -872,6 +903,8 @@ export async function GET(request: NextRequest) {
               tags: tags || tag,
               search,
               dateRange,
+              dateFrom,
+              dateTo,
               readFilter,
               category,
             },

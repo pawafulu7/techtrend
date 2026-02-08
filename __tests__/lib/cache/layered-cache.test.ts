@@ -26,21 +26,25 @@ jest.mock('@/lib/cache/index', () => {
         set: jest.fn(async (key: string, value: unknown) => {
           storage.set(key, value);
         }),
-        getOrSet: jest.fn(async <T>(key: string, fetcher: () => Promise<T>): Promise<T> => {
-          const cached = storage.get(key);
-          if (cached) return cached as T;
-          const value = await fetcher();
-          storage.set(key, value);
-          return value;
-        }),
-        getOrSetWithLock: jest.fn(async <T>(key: string, fetcher: () => Promise<T>): Promise<T> => {
-          // Simulate lock behavior - same as getOrSet for testing
-          const cached = storage.get(key);
-          if (cached) return cached as T;
-          const value = await fetcher();
-          storage.set(key, value);
-          return value;
-        }),
+        getOrSet: jest.fn(
+          async <T>(key: string, fetcher: () => Promise<T>): Promise<T> => {
+            const cached = storage.get(key);
+            if (cached) return cached as T;
+            const value = await fetcher();
+            storage.set(key, value);
+            return value;
+          }
+        ),
+        getOrSetWithLock: jest.fn(
+          async <T>(key: string, fetcher: () => Promise<T>): Promise<T> => {
+            // Simulate lock behavior - same as getOrSet for testing
+            const cached = storage.get(key);
+            if (cached) return cached as T;
+            const value = await fetcher();
+            storage.set(key, value);
+            return value;
+          }
+        ),
         delete: jest.fn(async (key: string) => storage.delete(key)),
         clear: jest.fn(async () => storage.clear()),
         getStats: jest.fn(() => ({ hits: 0, misses: 0 })),
@@ -407,7 +411,7 @@ describe('LayeredCache', () => {
   });
 
   describe('件数キャッシュ（getArticleCount）', () => {
-    test('sortByを変更しても同じ件数キャッシュを使用', async () => {
+    test('sortByが異なると別の件数キャッシュを使用', async () => {
       const params1: ArticleQueryParams = {
         sources: 'dev.to',
         sortBy: 'publishedAt',
@@ -422,15 +426,17 @@ describe('LayeredCache', () => {
         limit: 20,
       };
 
-      const fetcher = jest.fn().mockResolvedValue({ total: 100 });
+      const fetcher1 = jest.fn().mockResolvedValue({ total: 100 });
+      const fetcher2 = jest.fn().mockResolvedValue({ total: 80 });
 
-      const result1 = await cache.getArticleCount(params1, fetcher);
-      const result2 = await cache.getArticleCount(params2, fetcher);
+      const result1 = await cache.getArticleCount(params1, fetcher1);
+      const result2 = await cache.getArticleCount(params2, fetcher2);
 
       expect(result1.total).toBe(100);
-      expect(result2.total).toBe(100);
-      // sortByが異なっても件数キャッシュは共有されるため、fetcherは1回のみ
-      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(result2.total).toBe(80);
+      // sortByが日付フィルタフィールドに影響するため別キャッシュ
+      expect(fetcher1).toHaveBeenCalledTimes(1);
+      expect(fetcher2).toHaveBeenCalledTimes(1);
     });
 
     test('pageとlimitを変更しても同じ件数キャッシュを使用', async () => {
@@ -494,7 +500,7 @@ describe('LayeredCache', () => {
 
       const params2: ArticleQueryParams = {
         search: 'TypeScript React', // 順序が異なるが正規化される
-        sortBy: 'qualityScore',
+        sortBy: 'publishedAt', // sortByはカウントキーに含まれるため揃える
         page: 2,
         limit: 50,
       };

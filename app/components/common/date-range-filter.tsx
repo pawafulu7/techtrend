@@ -1,97 +1,291 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import type { DateRange } from 'react-day-picker';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useMediaQuery } from '@/app/hooks/use-media-query';
 import { DATE_RANGE_OPTIONS, getDateRangeLabel } from '@/app/lib/date-utils';
 
 interface DateRangeFilterProps {
   className?: string;
 }
 
+const CUSTOM_VALUE = 'custom';
+
+/** Parse YYYY-MM-DD string to local Date (consistent with date-utils.ts parseLocalDate) */
+function parseLocalDateString(s: string): Date {
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return new Date(NaN);
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+/** Format Date to YYYY-MM-DD string in local timezone */
+function formatLocalDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Format date range for display */
+function formatDateRangeDisplay(from: Date, to: Date): string {
+  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+  return `${fmt(from)} - ${fmt(to)}`;
+}
+
+/** Calculate max selectable date (today) and min selectable date (93 days before today) */
+function getDateBounds() {
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  // Use 93-day fixed limit to match backend parseDateFromTo validation
+  const threeMonthsAgo = new Date(Date.now() - 93 * 24 * 60 * 60 * 1000);
+  threeMonthsAgo.setHours(0, 0, 0, 0);
+  return { today, threeMonthsAgo };
+}
+
 export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const currentRange = searchParams.get('dateRange') || 'all';
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
-  const handleDateRangeChange = async (value: string) => {
+  // Determine current mode from URL params
+  const urlDateRange = searchParams.get('dateRange') || undefined;
+  const urlDateFrom = searchParams.get('dateFrom') || undefined;
+  const urlDateTo = searchParams.get('dateTo') || undefined;
+  const isCustomMode = !!(urlDateFrom || urlDateTo);
+
+  const currentPreset = isCustomMode ? CUSTOM_VALUE : urlDateRange || 'all';
+
+  // Calendar state for custom range selection
+  const [calendarRange, setCalendarRange] = useState<DateRange | undefined>(
+    () => {
+      if (urlDateFrom || urlDateTo) {
+        return {
+          from: urlDateFrom ? parseLocalDateString(urlDateFrom) : undefined,
+          to: urlDateTo ? parseLocalDateString(urlDateTo) : undefined,
+        };
+      }
+      return undefined;
+    }
+  );
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
+  // Sync calendar state from URL when popover opens (handles back/forward nav)
+  function handlePopoverOpenChange(open: boolean) {
+    if (open) {
+      setCalendarRange(
+        urlDateFrom || urlDateTo
+          ? {
+              from: urlDateFrom ? parseLocalDateString(urlDateFrom) : undefined,
+              to: urlDateTo ? parseLocalDateString(urlDateTo) : undefined,
+            }
+          : undefined
+      );
+    }
+    setPopoverOpen(open);
+  }
+
+  const { today, threeMonthsAgo } = getDateBounds();
+
+  function updateUrl(updates: Record<string, string | undefined>) {
     const params = new URLSearchParams(searchParams.toString());
 
-    if (value === 'all') {
-      params.delete('dateRange');
-    } else {
-      params.set('dateRange', value);
-    }
-
-    // ページ番号をリセット
+    // Clear all date-related params first
+    params.delete('dateRange');
+    params.delete('dateFrom');
+    params.delete('dateTo');
     params.delete('page');
 
-    // URLを更新（パラメータがない場合は'/'のみ）
-    const queryString = params.toString();
-    const newUrl = queryString ? `/?${queryString}` : '/';
-    router.push(newUrl);
-
-    // E2Eテスト環境またはCI環境では、URLの更新を確実にするため少し待機
-    // production環境では待機しない
-    if (typeof window !== 'undefined' &&
-        (window.location.hostname === 'localhost' || process.env.NODE_ENV === 'test')) {
-      // CI環境の判定を正規化
-      const isCI = typeof process !== 'undefined' &&
-                   ['1', 'true', 'yes'].includes(String(process.env?.CI).toLowerCase());
-
-      // CI環境では長めに待機し、URL更新を確実にする
-      const waitTime = isCI ? 500 : 200;
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-
-      // CI環境では追加でURLの変更を確認
-      if (isCI && value === 'all') {
-        // 最大1秒待ってURLから'dateRange'が消えることを確認
-        const maxAttempts = 10;
-        for (let i = 0; i < maxAttempts; i++) {
-          if (!window.location.href.includes('dateRange')) {
-            break;
-          }
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
+    // Set new params
+    for (const [key, value] of Object.entries(updates)) {
+      if (value) {
+        params.set(key, value);
       }
     }
 
-    // Update filter preferences cookie
+    const queryString = params.toString();
+    const newUrl = queryString ? `/?${queryString}` : '/';
+    router.push(newUrl);
+  }
+
+  async function saveFilterPreference(prefs: {
+    dateRange?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
     try {
       await fetch('/api/filter-preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dateRange: value === 'all' ? undefined : value }),
+        body: JSON.stringify(prefs),
       });
     } catch {
+      // Silently ignore preference save failures
     }
-  };
+  }
+
+  function handlePresetChange(value: string) {
+    if (value === CUSTOM_VALUE) {
+      setPopoverOpen(true);
+      return;
+    }
+
+    // Reset calendar state when switching to preset
+    setCalendarRange(undefined);
+
+    if (value === 'all') {
+      updateUrl({});
+      saveFilterPreference({
+        dateRange: undefined,
+        dateFrom: undefined,
+        dateTo: undefined,
+      });
+    } else {
+      updateUrl({ dateRange: value });
+      saveFilterPreference({
+        dateRange: value,
+        dateFrom: undefined,
+        dateTo: undefined,
+      });
+    }
+  }
+
+  function handleCalendarApply() {
+    if (!calendarRange?.from) return;
+
+    const from = formatLocalDate(calendarRange.from);
+    const to = calendarRange.to ? formatLocalDate(calendarRange.to) : from;
+
+    updateUrl({ dateFrom: from, dateTo: to });
+    saveFilterPreference({ dateRange: undefined, dateFrom: from, dateTo: to });
+    setPopoverOpen(false);
+  }
+
+  // Display label
+  const parsedFrom = urlDateFrom
+    ? parseLocalDateString(urlDateFrom)
+    : undefined;
+  const parsedTo = urlDateTo ? parseLocalDateString(urlDateTo) : undefined;
+
+  const displayLabel =
+    isCustomMode && parsedFrom && parsedTo
+      ? formatDateRangeDisplay(parsedFrom, parsedTo)
+      : isCustomMode && parsedFrom
+        ? `${parsedFrom.getMonth() + 1}/${parsedFrom.getDate()} -`
+        : isCustomMode && parsedTo
+          ? `- ${parsedTo.getMonth() + 1}/${parsedTo.getDate()}`
+          : getDateRangeLabel(currentPreset);
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <Calendar className="w-4 h-4 text-gray-500" />
-      <Select
-        value={currentRange}
-        onValueChange={handleDateRangeChange}
-        data-testid="date-range-filter"
-      >
-        <SelectTrigger className="w-[140px]" data-testid="date-range-trigger">
-          <SelectValue placeholder="期間を選択">
-            {getDateRangeLabel(currentRange)}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent data-testid="date-range-content">
-          {DATE_RANGE_OPTIONS.map((option) => (
-            <SelectItem 
-              key={option.value} 
-              value={option.value}
-              data-testid={`date-range-option-${option.value}`}
+      <CalendarIcon className="h-4 w-4 shrink-0 text-gray-500" />
+      <div className="flex items-center gap-1">
+        <Select
+          value={currentPreset}
+          onValueChange={handlePresetChange}
+          data-testid="date-range-filter"
+        >
+          <SelectTrigger className="w-[140px]" data-testid="date-range-trigger">
+            <SelectValue placeholder="期間を選択">{displayLabel}</SelectValue>
+          </SelectTrigger>
+          <SelectContent data-testid="date-range-content">
+            {DATE_RANGE_OPTIONS.map((option) => (
+              <SelectItem
+                key={option.value}
+                value={option.value}
+                data-testid={`date-range-option-${option.value}`}
+              >
+                {option.label}
+              </SelectItem>
+            ))}
+            <SelectItem
+              value={CUSTOM_VALUE}
+              data-testid="date-range-option-custom"
             >
-              {option.label}
+              カスタム...
             </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          </SelectContent>
+        </Select>
+
+        <Popover open={popoverOpen} onOpenChange={handlePopoverOpenChange}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className={`h-9 w-9 shrink-0 ${isCustomMode ? 'border-primary text-primary' : ''}`}
+              data-testid="date-range-calendar-trigger"
+              aria-label="カレンダーで日付を選択"
+            >
+              <CalendarIcon className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-auto p-0"
+            align="start"
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
+          >
+            <div className="p-3">
+              <Calendar
+                mode="range"
+                selected={calendarRange}
+                onSelect={setCalendarRange}
+                numberOfMonths={isMobile ? 1 : 2}
+                disabled={[{ before: threeMonthsAgo }, { after: today }]}
+                defaultMonth={calendarRange?.from ?? new Date()}
+                data-testid="date-range-calendar"
+              />
+              <div className="flex justify-between border-t pt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCalendarRange(undefined)}
+                  disabled={!calendarRange}
+                  data-testid="date-range-calendar-clear"
+                >
+                  クリア
+                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setCalendarRange(undefined);
+                      setPopoverOpen(false);
+                    }}
+                    data-testid="date-range-calendar-cancel"
+                  >
+                    キャンセル
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleCalendarApply}
+                    disabled={!calendarRange?.from}
+                    data-testid="date-range-calendar-apply"
+                  >
+                    適用
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
     </div>
   );
 }

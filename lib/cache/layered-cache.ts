@@ -19,6 +19,8 @@ export interface ArticleQueryParams {
   tagMode?: string;
   search?: string;
   dateRange?: string;
+  dateFrom?: string;
+  dateTo?: string;
   readFilter?: string;
   userId?: string;
   category?: string;
@@ -221,6 +223,8 @@ export class LayeredCache {
       tags: params.tags || 'none', // 複数タグパラメータを追加
       tagMode: params.tagMode || 'OR', // タグモードを追加
       dateRange: params.dateRange || 'all', // dateRangeも追加
+      dateFrom: params.dateFrom || 'none', // カスタム日付範囲（開始）
+      dateTo: params.dateTo || 'none', // カスタム日付範囲（終了）
       includeEmptyContent: params.includeEmptyContent || false, // includeEmptyContentも追加
       excludeUnprocessed: params.excludeUnprocessed || false, // excludeUnprocessedも追加
     };
@@ -249,7 +253,8 @@ export class LayeredCache {
           .join(',')
       : '';
 
-    // 件数に影響するパラメータのみを使用（ソート順・ページネーションは除外）
+    // 件数に影響するパラメータのみを使用（ページネーションは除外）
+    // sortByは日付フィルタのフィールド選択に影響するため含める
     const countParams = {
       category: params.category || 'all',
       sources: params.sources || 'all',
@@ -260,6 +265,9 @@ export class LayeredCache {
       tagMode: params.tagMode || 'OR',
       search: normalizedSearch || 'none',
       dateRange: params.dateRange || 'all',
+      dateFrom: params.dateFrom || 'none',
+      dateTo: params.dateTo || 'none',
+      sortBy: params.sortBy || 'publishedAt',
       includeEmptyContent: params.includeEmptyContent || false,
       excludeUnprocessed: params.excludeUnprocessed || false,
     };
@@ -304,6 +312,8 @@ export class LayeredCache {
       excludeSources: params.excludeSources || 'none', // 除外ソース
       category: params.category || 'all', // categoryも追加
       dateRange: params.dateRange || 'all', // dateRangeも追加
+      dateFrom: params.dateFrom || 'none',
+      dateTo: params.dateTo || 'none',
       tag: params.tag || 'none', // tagも追加
       tags: params.tags || 'none', // tagsも追加
       tagMode: params.tagMode || 'OR', // tagModeも追加
@@ -343,6 +353,8 @@ export class LayeredCache {
       sourceId: params.sourceId || 'none', // sourceIdパラメータを追加（後方互換性）
       excludeSources: params.excludeSources || 'none', // 除外ソース
       dateRange: params.dateRange || 'all', // dateRangeも追加
+      dateFrom: params.dateFrom || 'none',
+      dateTo: params.dateTo || 'none',
       tag: params.tag || 'none', // tagも追加
       tags: params.tags || 'none', // tagsも追加
       tagMode: params.tagMode || 'OR', // tagModeも追加

@@ -164,6 +164,143 @@ test.describe('Date Range Filter', () => {
     }
   });
 
+  test('should display calendar trigger button', async ({ page }) => {
+    const calendarBtn = page.getByTestId('date-range-calendar-trigger');
+    await expect(calendarBtn).toBeVisible();
+    await expect(calendarBtn).toHaveAttribute('aria-label', 'カレンダーで日付を選択');
+  });
+
+  test('should open calendar popover via custom option', async ({ page }) => {
+    const combobox = page.getByTestId('date-range-trigger');
+    const listbox = page.locator('[role="listbox"]');
+
+    // Open dropdown and select "カスタム..."
+    await combobox.click();
+    await expect(listbox).toBeVisible({ timeout: 5000 });
+
+    // Verify "カスタム..." option exists
+    const customOption = listbox.getByRole('option', { name: 'カスタム...' });
+    await expect(customOption).toBeVisible();
+    await customOption.click();
+
+    // Calendar popover should open
+    const calendar = page.getByTestId('date-range-calendar');
+    await expect(calendar).toBeVisible({ timeout: 5000 });
+
+    // Apply and Cancel buttons should be visible
+    await expect(page.getByTestId('date-range-calendar-apply')).toBeVisible();
+    await expect(page.getByTestId('date-range-calendar-cancel')).toBeVisible();
+
+    // Apply button should be disabled (no dates selected yet)
+    await expect(page.getByTestId('date-range-calendar-apply')).toBeDisabled();
+  });
+
+  test('should close calendar popover via cancel', async ({ page }) => {
+    // Open calendar via button
+    const calendarBtn = page.getByTestId('date-range-calendar-trigger');
+    await calendarBtn.click();
+
+    const calendar = page.getByTestId('date-range-calendar');
+    await expect(calendar).toBeVisible({ timeout: 5000 });
+
+    // Click cancel
+    await page.getByTestId('date-range-calendar-cancel').click();
+
+    // Calendar should close
+    await expect(calendar).toBeHidden({ timeout: 5000 });
+
+    // URL should not have dateFrom/dateTo params
+    const url = new URL(page.url());
+    expect(url.searchParams.get('dateFrom')).toBeNull();
+    expect(url.searchParams.get('dateTo')).toBeNull();
+  });
+
+  test('should select custom date range and apply', async ({ page }) => {
+    // Open calendar
+    const calendarBtn = page.getByTestId('date-range-calendar-trigger');
+    await calendarBtn.click();
+
+    const calendar = page.getByTestId('date-range-calendar');
+    await expect(calendar).toBeVisible({ timeout: 5000 });
+
+    // Click on two day buttons within the calendar to select a range
+    // We need to find clickable day buttons that are not disabled
+    const dayButtons = calendar.locator('button[data-day]').filter({
+      has: page.locator(':not([disabled])'),
+    });
+
+    const availableDays = await dayButtons.count();
+    if (availableDays >= 2) {
+      // Click the first available day (range start)
+      await dayButtons.first().click();
+
+      // Apply button should now be enabled (single day = from only)
+      await expect(page.getByTestId('date-range-calendar-apply')).toBeEnabled({ timeout: 3000 });
+
+      // Click a second day (range end) - pick one a few days later
+      const secondDayIndex = Math.min(4, availableDays - 1);
+      await dayButtons.nth(secondDayIndex).click();
+
+      // Apply the selection
+      await page.getByTestId('date-range-calendar-apply').click();
+
+      // Calendar should close
+      await expect(calendar).toBeHidden({ timeout: 5000 });
+
+      // URL should have dateFrom and dateTo params
+      await expect
+        .poll(() => {
+          const url = new URL(page.url());
+          return url.searchParams.get('dateFrom');
+        }, { timeout: getTimeout('short') })
+        .toBeTruthy();
+
+      await expect
+        .poll(() => {
+          const url = new URL(page.url());
+          return url.searchParams.get('dateTo');
+        }, { timeout: getTimeout('short') })
+        .toBeTruthy();
+
+      // dateRange preset param should NOT be present
+      const finalUrl = new URL(page.url());
+      expect(finalUrl.searchParams.get('dateRange')).toBeNull();
+
+      // Calendar button should have active styling (border-primary)
+      await expect(calendarBtn).toHaveClass(/border-primary/);
+    }
+  });
+
+  test('should switch from custom range back to preset', async ({ page }) => {
+    // First set a custom range via URL
+    await page.goto('/?dateFrom=2026-01-01&dateTo=2026-01-31', {
+      waitUntil: 'domcontentloaded',
+    });
+    await waitForArticles(page, {
+      timeout: getTimeout('medium'),
+      waitForNetworkIdle: false,
+      allowEmpty: true,
+    });
+
+    // Verify custom mode is active
+    const calendarBtn = page.getByTestId('date-range-calendar-trigger');
+    await expect(calendarBtn).toHaveClass(/border-primary/, { timeout: 5000 });
+
+    // Switch to a preset
+    await selectDateRangeGlobal(page, '今週', 'week');
+
+    // dateFrom/dateTo should be removed from URL
+    await expect
+      .poll(() => {
+        const url = new URL(page.url());
+        return url.searchParams.get('dateFrom');
+      }, { timeout: getTimeout('short') })
+      .toBeNull();
+
+    // Calendar button should no longer have active styling
+    await expect(calendarBtn).not.toHaveClass(/border-primary/);
+  });
+
   test('should work with multiple date ranges', async ({ page }) => {
     const filterArea = page.locator('[data-testid="filter-area"]');
     const combobox = filterArea.locator('[role="combobox"]').first();
