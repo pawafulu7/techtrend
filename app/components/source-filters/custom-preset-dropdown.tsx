@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, Save, Trash2, Bookmark } from 'lucide-react';
+import { ChevronDown, Save, Trash2, Bookmark, AlertCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -32,6 +33,7 @@ export function CustomPresetDropdown({
     isCreating,
     isDeleting,
   } = useSourcePresets();
+  const { toast } = useToast();
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   if (!isAuthenticated) return null;
@@ -42,6 +44,12 @@ export function CustomPresetDropdown({
     const validIds = sourceIds.filter((id) => validSet.has(id));
     if (validIds.length > 0) {
       onApplyPreset(validIds);
+    } else {
+      toast({
+        title: 'プリセットを適用できません',
+        description: '保存されたソースが現在利用できません',
+        variant: 'destructive',
+      });
     }
   };
 

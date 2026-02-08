@@ -63,6 +63,19 @@ describe('SavePresetDialog', () => {
     });
   });
 
+  it('50文字を超える名前では保存ボタンが無効になる', async () => {
+    const user = userEvent.setup();
+    render(<SavePresetDialog {...defaultProps} />);
+
+    const input = screen.getByPlaceholderText('プリセット名');
+    // maxLength=50 のため、50文字ちょうどは入力可能
+    const longName = 'a'.repeat(50);
+    await user.type(input, longName);
+    const saveButton = screen.getByRole('button', { name: '保存' });
+    expect(saveButton).toBeEnabled();
+    expect(input).toHaveAttribute('maxLength', '50');
+  });
+
   it('キャンセルでダイアログを閉じる', async () => {
     const user = userEvent.setup();
     render(<SavePresetDialog {...defaultProps} />);
