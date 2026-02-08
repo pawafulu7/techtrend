@@ -45,6 +45,8 @@ export interface FilterParams {
   tagMode?: string;
   search?: string;
   dateRange?: string;
+  dateFrom?: string;
+  dateTo?: string;
   category?: string;
   readFilter?: string;
   excludeLowQuality?: boolean;
@@ -98,6 +100,8 @@ export interface ArticleCacheParams {
   tagMode?: string;
   search?: string;
   dateRange?: string;
+  dateFrom?: string;
+  dateTo?: string;
   readFilter?: string;
   userId?: string;
   category?: string;
@@ -177,6 +181,8 @@ export function toArticleQueryParams(
     tagMode: cacheParams.tagMode,
     search: cacheParams.search,
     dateRange: cacheParams.dateRange,
+    dateFrom: cacheParams.dateFrom,
+    dateTo: cacheParams.dateTo,
     readFilter: cacheParams.readFilter,
     userId: cacheParams.userId,
     category: cacheParams.category,
