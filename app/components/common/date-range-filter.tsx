@@ -224,26 +224,37 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
                 defaultMonth={calendarRange?.from ?? new Date()}
                 data-testid="date-range-calendar"
               />
-              <div className="flex justify-end gap-2 border-t pt-3">
+              <div className="flex justify-between border-t pt-3">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    setCalendarRange(undefined);
-                    setPopoverOpen(false);
-                  }}
-                  data-testid="date-range-calendar-cancel"
+                  onClick={() => setCalendarRange(undefined)}
+                  disabled={!calendarRange}
+                  data-testid="date-range-calendar-clear"
                 >
-                  キャンセル
+                  クリア
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={handleCalendarApply}
-                  disabled={!calendarRange?.from}
-                  data-testid="date-range-calendar-apply"
-                >
-                  適用
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setCalendarRange(undefined);
+                      setPopoverOpen(false);
+                    }}
+                    data-testid="date-range-calendar-cancel"
+                  >
+                    キャンセル
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleCalendarApply}
+                    disabled={!calendarRange?.from}
+                    data-testid="date-range-calendar-apply"
+                  >
+                    適用
+                  </Button>
+                </div>
               </div>
             </div>
           </PopoverContent>
