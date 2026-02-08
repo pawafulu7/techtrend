@@ -133,6 +133,7 @@ model User {
   favorites                   Favorite[]
   categoryPreferences         UserCategoryPreference[]
   comments                    Comment[]
+  sourcePresets                UserSourcePreset[]
 
   @@index([deletedAt], map: "idx_user_deleted_at")
 }
@@ -579,4 +580,25 @@ model SocialPostAuditLog {
   @@index([socialPostId, createdAt(sort: Desc)], map: "idx_social_post_audit_log")
   @@index([userId], map: "idx_social_post_audit_user")
   @@index([action], map: "idx_social_post_audit_action")
+}
+
+// =============================================================================
+// User Source Presets: Named source filter configurations
+// =============================================================================
+
+model UserSourcePreset {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String   @db.VarChar(50)
+  sourceIds String[]
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Note: The actual DB constraint uses lower(name) for case-insensitive uniqueness.
+  // See migration: 20260208130321_add_user_source_preset
+  @@unique([userId, name], map: "uq_user_source_preset_name")
+  @@index([userId], map: "idx_user_source_preset_user")
 }
