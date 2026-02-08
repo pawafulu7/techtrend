@@ -103,8 +103,9 @@ export function parseDateFromTo(
     to = now;
   } else if (dateTo) {
     to = parseLocalDate(dateTo);
-    from = new Date(to);
-    from.setMonth(from.getMonth() - 3);
+    // Use 92-day offset so that after time normalization (from=00:00, to=23:59:59.999),
+    // the total span (~92.99 days) stays within the 93-day ms limit
+    from = new Date(to.getTime() - 92 * 24 * 60 * 60 * 1000);
   } else {
     return null;
   }

@@ -27,6 +27,13 @@ interface DateRangeFilterProps {
 
 const CUSTOM_VALUE = 'custom';
 
+/** Parse YYYY-MM-DD string to local Date (consistent with date-utils.ts parseLocalDate) */
+function parseLocalDateString(s: string): Date {
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return new Date(NaN);
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
 /** Format Date to YYYY-MM-DD string in local timezone */
 function formatLocalDate(date: Date): string {
   const y = date.getFullYear();
@@ -69,8 +76,8 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     () => {
       if (urlDateFrom || urlDateTo) {
         return {
-          from: urlDateFrom ? new Date(`${urlDateFrom}T00:00:00`) : undefined,
-          to: urlDateTo ? new Date(`${urlDateTo}T00:00:00`) : undefined,
+          from: urlDateFrom ? parseLocalDateString(urlDateFrom) : undefined,
+          to: urlDateTo ? parseLocalDateString(urlDateTo) : undefined,
         };
       }
       return undefined;
@@ -84,10 +91,8 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
       setCalendarRange(
         urlDateFrom || urlDateTo
           ? {
-              from: urlDateFrom
-                ? new Date(`${urlDateFrom}T00:00:00`)
-                : undefined,
-              to: urlDateTo ? new Date(`${urlDateTo}T00:00:00`) : undefined,
+              from: urlDateFrom ? parseLocalDateString(urlDateFrom) : undefined,
+              to: urlDateTo ? parseLocalDateString(urlDateTo) : undefined,
             }
           : undefined
       );
@@ -173,9 +178,9 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
 
   // Display label
   const parsedFrom = urlDateFrom
-    ? new Date(`${urlDateFrom}T00:00:00`)
+    ? parseLocalDateString(urlDateFrom)
     : undefined;
-  const parsedTo = urlDateTo ? new Date(`${urlDateTo}T00:00:00`) : undefined;
+  const parsedTo = urlDateTo ? parseLocalDateString(urlDateTo) : undefined;
 
   const displayLabel =
     isCustomMode && parsedFrom && parsedTo

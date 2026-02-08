@@ -541,8 +541,8 @@ export async function GET(request: NextRequest) {
             lte: customRange.to,
           };
         } else {
-          console.warn(
-            `[articles/list] Invalid custom date range ignored: dateFrom=${dateFrom}, dateTo=${dateTo}`
+          logger.warn(
+            `articles-list.invalid-custom-date-range: Ignored invalid custom date range dateFrom=${dateFrom} dateTo=${dateTo}`
           );
         }
       } else if (dateRange && dateRange !== 'all') {

@@ -170,9 +170,16 @@ describe('Date Utils', () => {
       expect(result!.from.getDate()).toBe(15);
     });
 
-    it('handles dateTo only (dateFrom defaults to 3 months before dateTo)', () => {
+    it('handles dateTo only (dateFrom defaults to 92 days before dateTo)', () => {
       const result = parseDateFromTo(undefined, '2025-08-01');
       expect(result).not.toBeNull();
+      // dateFrom defaults to 92 days before dateTo (fits within 93-day ms limit after time normalization)
+      const expectedFrom = new Date(
+        new Date(2025, 7, 1).getTime() - 92 * 24 * 60 * 60 * 1000
+      );
+      expect(result!.from.getFullYear()).toBe(expectedFrom.getFullYear());
+      expect(result!.from.getMonth()).toBe(expectedFrom.getMonth());
+      expect(result!.from.getDate()).toBe(expectedFrom.getDate());
       expect(result!.to.getFullYear()).toBe(2025);
       expect(result!.to.getMonth()).toBe(7);
       expect(result!.to.getDate()).toBe(1);
