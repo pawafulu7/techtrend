@@ -78,6 +78,17 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   );
   const [popoverOpen, setPopoverOpen] = useState(false);
 
+  // Sync calendar state from URL when popover opens (handles back/forward nav)
+  function handlePopoverOpenChange(open: boolean) {
+    if (open && (urlDateFrom || urlDateTo)) {
+      setCalendarRange({
+        from: urlDateFrom ? new Date(`${urlDateFrom}T00:00:00`) : undefined,
+        to: urlDateTo ? new Date(`${urlDateTo}T00:00:00`) : undefined,
+      });
+    }
+    setPopoverOpen(open);
+  }
+
   const { today, threeMonthsAgo } = getDateBounds();
 
   function updateUrl(updates: Record<string, string | undefined>) {
@@ -155,14 +166,16 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   }
 
   // Display label
+  const parsedFrom = urlDateFrom
+    ? new Date(`${urlDateFrom}T00:00:00`)
+    : undefined;
+  const parsedTo = urlDateTo ? new Date(`${urlDateTo}T00:00:00`) : undefined;
+
   const displayLabel =
-    isCustomMode && urlDateFrom && urlDateTo
-      ? formatDateRangeDisplay(
-          new Date(`${urlDateFrom}T00:00:00`),
-          new Date(`${urlDateTo}T00:00:00`)
-        )
-      : isCustomMode && urlDateFrom
-        ? `${new Date(`${urlDateFrom}T00:00:00`).getMonth() + 1}/${new Date(`${urlDateFrom}T00:00:00`).getDate()} -`
+    isCustomMode && parsedFrom && parsedTo
+      ? formatDateRangeDisplay(parsedFrom, parsedTo)
+      : isCustomMode && parsedFrom
+        ? `${parsedFrom.getMonth() + 1}/${parsedFrom.getDate()} -`
         : getDateRangeLabel(currentPreset);
 
   return (
@@ -196,7 +209,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
           </SelectContent>
         </Select>
 
-        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <Popover open={popoverOpen} onOpenChange={handlePopoverOpenChange}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"

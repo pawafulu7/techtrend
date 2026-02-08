@@ -85,6 +85,7 @@ export function parseDateFromTo(
   const now = new Date();
 
   // 'YYYY-MM-DD' 形式はUTCとして解釈されるため、ローカルタイムで解釈
+  // Note: Vercel等のデプロイ環境ではTZ=Asia/Tokyoを設定すること
   const parseLocalDate = (s: string) => new Date(`${s}T00:00:00`);
 
   let from: Date;

@@ -544,8 +544,11 @@ export async function GET(request: NextRequest) {
       } else if (dateRange && dateRange !== 'all') {
         const startDate = getDateRangeFilter(dateRange);
         if (startDate) {
+          const now = new Date();
+          const validStartDate = startDate > now ? now : startDate;
           where[dateField] = {
-            gte: startDate,
+            gte: validStartDate,
+            lte: now,
           };
         }
       }
@@ -876,6 +879,8 @@ export async function GET(request: NextRequest) {
               tags: tags || tag,
               search,
               dateRange,
+              dateFrom,
+              dateTo,
               readFilter,
               category,
             },
@@ -894,6 +899,8 @@ export async function GET(request: NextRequest) {
               tags: tags || tag,
               search,
               dateRange,
+              dateFrom,
+              dateTo,
               readFilter,
               category,
             },

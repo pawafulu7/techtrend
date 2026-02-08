@@ -194,6 +194,23 @@ describe('Date Utils', () => {
     it('returns null for month overflow like month 13', () => {
       expect(parseDateFromTo('2025-13-01', '2025-08-01')).toBeNull();
     });
+
+    it('allows exactly 93-day range', () => {
+      const result = parseDateFromTo('2025-05-18', '2025-08-19');
+      expect(result).not.toBeNull();
+    });
+
+    it('rejects 94-day range', () => {
+      const result = parseDateFromTo('2025-05-17', '2025-08-19');
+      expect(result).toBeNull();
+    });
+
+    it('allows same-day range', () => {
+      const result = parseDateFromTo('2025-08-01', '2025-08-01');
+      expect(result).not.toBeNull();
+      expect(result!.from.getDate()).toBe(1);
+      expect(result!.to.getDate()).toBe(1);
+    });
   });
 
   describe('getDateFieldForSort', () => {
