@@ -195,13 +195,15 @@ describe('Date Utils', () => {
       expect(parseDateFromTo('2025-13-01', '2025-08-01')).toBeNull();
     });
 
-    it('allows exactly 93-day range', () => {
-      const result = parseDateFromTo('2025-05-18', '2025-08-19');
+    it('allows 92-calendar-day range (within 93-day ms limit after time normalization)', () => {
+      // 92 calendar days: from 00:00:00.000 to +92d 23:59:59.999 = ~93d, within limit
+      const result = parseDateFromTo('2025-05-19', '2025-08-19');
       expect(result).not.toBeNull();
     });
 
-    it('rejects 94-day range', () => {
-      const result = parseDateFromTo('2025-05-17', '2025-08-19');
+    it('rejects 93-calendar-day range (exceeds 93-day ms limit after time normalization)', () => {
+      // 93 calendar days: from 00:00:00.000 to +93d 23:59:59.999 > 93d limit
+      const result = parseDateFromTo('2025-05-18', '2025-08-19');
       expect(result).toBeNull();
     });
 

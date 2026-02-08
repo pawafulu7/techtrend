@@ -540,6 +540,10 @@ export async function GET(request: NextRequest) {
             gte: customRange.from,
             lte: customRange.to,
           };
+        } else {
+          console.warn(
+            `[articles/list] Invalid custom date range ignored: dateFrom=${dateFrom}, dateTo=${dateTo}`
+          );
         }
       } else if (dateRange && dateRange !== 'all') {
         const startDate = getDateRangeFilter(dateRange);

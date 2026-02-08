@@ -84,9 +84,13 @@ export function parseDateFromTo(
 ): { from: Date; to: Date } | null {
   const now = new Date();
 
-  // 'YYYY-MM-DD' 形式はUTCとして解釈されるため、ローカルタイムで解釈
+  // Explicit component parsing to avoid runtime-dependent string interpretation
   // Note: Vercel等のデプロイ環境ではTZ=Asia/Tokyoを設定すること
-  const parseLocalDate = (s: string) => new Date(`${s}T00:00:00`);
+  const parseLocalDate = (s: string): Date => {
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return new Date(NaN);
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  };
 
   let from: Date;
   let to: Date;
@@ -122,6 +126,10 @@ export function parseDateFromTo(
   if (dateFrom && !validateDateString(dateFrom, from)) return null;
   if (dateTo && !validateDateString(dateTo, to)) return null;
 
+  // Normalize time bounds before range validation
+  from.setHours(0, 0, 0, 0);
+  to.setHours(23, 59, 59, 999);
+
   if (from > to) {
     return null;
   }
@@ -131,9 +139,6 @@ export function parseDateFromTo(
   if (to.getTime() - from.getTime() > threeMonthsMs) {
     return null;
   }
-
-  from.setHours(0, 0, 0, 0);
-  to.setHours(23, 59, 59, 999);
 
   return { from, to };
 }

@@ -41,12 +41,12 @@ function formatDateRangeDisplay(from: Date, to: Date): string {
   return `${fmt(from)} - ${fmt(to)}`;
 }
 
-/** Calculate max selectable date (today) and min selectable date (3 months before today) */
+/** Calculate max selectable date (today) and min selectable date (93 days before today) */
 function getDateBounds() {
   const today = new Date();
   today.setHours(23, 59, 59, 999);
-  const threeMonthsAgo = new Date();
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  // Use 93-day fixed limit to match backend parseDateFromTo validation
+  const threeMonthsAgo = new Date(Date.now() - 93 * 24 * 60 * 60 * 1000);
   threeMonthsAgo.setHours(0, 0, 0, 0);
   return { today, threeMonthsAgo };
 }
@@ -80,11 +80,17 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
 
   // Sync calendar state from URL when popover opens (handles back/forward nav)
   function handlePopoverOpenChange(open: boolean) {
-    if (open && (urlDateFrom || urlDateTo)) {
-      setCalendarRange({
-        from: urlDateFrom ? new Date(`${urlDateFrom}T00:00:00`) : undefined,
-        to: urlDateTo ? new Date(`${urlDateTo}T00:00:00`) : undefined,
-      });
+    if (open) {
+      setCalendarRange(
+        urlDateFrom || urlDateTo
+          ? {
+              from: urlDateFrom
+                ? new Date(`${urlDateFrom}T00:00:00`)
+                : undefined,
+              to: urlDateTo ? new Date(`${urlDateTo}T00:00:00`) : undefined,
+            }
+          : undefined
+      );
     }
     setPopoverOpen(open);
   }
@@ -176,7 +182,9 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
       ? formatDateRangeDisplay(parsedFrom, parsedTo)
       : isCustomMode && parsedFrom
         ? `${parsedFrom.getMonth() + 1}/${parsedFrom.getDate()} -`
-        : getDateRangeLabel(currentPreset);
+        : isCustomMode && parsedTo
+          ? `- ${parsedTo.getMonth() + 1}/${parsedTo.getDate()}`
+          : getDateRangeLabel(currentPreset);
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
