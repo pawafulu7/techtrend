@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, Save, Trash2, Bookmark, AlertCircle } from 'lucide-react';
+import { ChevronDown, Save, Trash2, Bookmark } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
