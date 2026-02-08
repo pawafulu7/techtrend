@@ -147,6 +147,14 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'Comment creation limit (5 per minute)',
     telemetryEvent: 'ratelimit.write.comment',
   },
+  'write:source-preset': {
+    points: 10,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'Source preset CRUD (10 per minute)',
+    telemetryEvent: 'ratelimit.write.source-preset',
+  },
   'write:delete': {
     points: 3,
     duration: 3600,

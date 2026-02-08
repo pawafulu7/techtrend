@@ -19,6 +19,7 @@ const USER_FK_CONSTRAINTS = [
   'UserCategoryPreference_userId_fkey',
   'Account_userId_fkey',
   'Session_userId_fkey',
+  'UserSourcePreset_userId_fkey',
 ];
 
 /**
@@ -69,8 +70,7 @@ export function handlePrismaError(error: unknown): NextResponse | null {
         {
           error: 'Session invalid',
           code: 'USER_DELETED',
-          message:
-            'Your session is no longer valid. Please sign in again.',
+          message: 'Your session is no longer valid. Please sign in again.',
           requiresLogout: true,
         },
         { status: 401 }
