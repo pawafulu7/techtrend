@@ -119,7 +119,6 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
 
   function handlePresetChange(value: string) {
     if (value === CUSTOM_VALUE) {
-      // Open calendar popover without changing URL yet
       setPopoverOpen(true);
       return;
     }
@@ -209,7 +208,12 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
               <CalendarIcon className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent
+            className="w-auto p-0"
+            align="start"
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
+          >
             <div className="p-3">
               <Calendar
                 mode="range"
