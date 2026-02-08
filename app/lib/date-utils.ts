@@ -12,7 +12,7 @@ export const DATE_RANGE_OPTIONS = [
 ] as const;
 
 // 定数から型を派生させて重複をなくす
-export type DateRangeOption = typeof DATE_RANGE_OPTIONS[number]['value'];
+export type DateRangeOption = (typeof DATE_RANGE_OPTIONS)[number]['value'];
 
 /**
  * 日付範囲文字列から開始日を計算
@@ -69,8 +69,68 @@ export function getDateRangeFilter(range: string): Date | null {
 export function getDateRangeLabel(value: string): string {
   // 後方互換: 旧値 '3months' を新値に正規化
   const v = value === '3months' ? 'three_months' : value;
-  const option = DATE_RANGE_OPTIONS.find(opt => opt.value === v);
+  const option = DATE_RANGE_OPTIONS.find((opt) => opt.value === v);
   return option?.label || '全期間';
+}
+
+/**
+ * カスタム日付範囲（from-to）をパース・バリデーション
+ * 最大3ヶ月の範囲制限を適用
+ * @returns パース結果。無効な場合はnull
+ */
+export function parseDateFromTo(
+  dateFrom: string | undefined | null,
+  dateTo: string | undefined | null
+): { from: Date; to: Date } | null {
+  const now = new Date();
+
+  // 'YYYY-MM-DD' 形式はUTCとして解釈されるため、ローカルタイムで解釈
+  const parseLocalDate = (s: string) => new Date(`${s}T00:00:00`);
+
+  let from: Date;
+  let to: Date;
+
+  if (dateFrom && dateTo) {
+    from = parseLocalDate(dateFrom);
+    to = parseLocalDate(dateTo);
+  } else if (dateFrom) {
+    from = parseLocalDate(dateFrom);
+    to = now;
+  } else if (dateTo) {
+    to = parseLocalDate(dateTo);
+    from = new Date(to);
+    from.setMonth(from.getMonth() - 3);
+  } else {
+    return null;
+  }
+
+  if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+    return null;
+  }
+
+  if (from > to) {
+    return null;
+  }
+
+  // 3ヶ月制限（約93日）
+  const threeMonthsMs = 93 * 24 * 60 * 60 * 1000;
+  if (to.getTime() - from.getTime() > threeMonthsMs) {
+    return null;
+  }
+
+  from.setHours(0, 0, 0, 0);
+  to.setHours(23, 59, 59, 999);
+
+  return { from, to };
+}
+
+/**
+ * ソート順に応じた日付フィルタフィールドを返す
+ */
+export function getDateFieldForSort(
+  sortBy: string | undefined
+): 'publishedAt' | 'createdAt' {
+  return sortBy === 'createdAt' ? 'createdAt' : 'publishedAt';
 }
 
 /**
@@ -97,7 +157,7 @@ export function getRelativeTime(date: Date): string {
   const diffMin = Math.floor(diffSec / 60);
   const diffHours = Math.floor(diffMin / 60);
   const diffDays = Math.floor(diffHours / 24);
-  
+
   if (diffDays === 0) {
     if (diffHours === 0) {
       if (diffMin === 0) {
