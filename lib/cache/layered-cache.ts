@@ -253,7 +253,8 @@ export class LayeredCache {
           .join(',')
       : '';
 
-    // 件数に影響するパラメータのみを使用（ソート順・ページネーションは除外）
+    // 件数に影響するパラメータのみを使用（ページネーションは除外）
+    // sortByは日付フィルタのフィールド選択に影響するため含める
     const countParams = {
       category: params.category || 'all',
       sources: params.sources || 'all',
@@ -266,6 +267,7 @@ export class LayeredCache {
       dateRange: params.dateRange || 'all',
       dateFrom: params.dateFrom || 'none',
       dateTo: params.dateTo || 'none',
+      sortBy: params.sortBy || 'publishedAt',
       includeEmptyContent: params.includeEmptyContent || false,
       excludeUnprocessed: params.excludeUnprocessed || false,
     };

@@ -185,6 +185,15 @@ describe('Date Utils', () => {
     it('returns null when both are null', () => {
       expect(parseDateFromTo(null, null)).toBeNull();
     });
+
+    it('returns null for overflow dates like Feb 31', () => {
+      expect(parseDateFromTo('2025-02-31', '2025-03-15')).toBeNull();
+      expect(parseDateFromTo('2025-06-31', '2025-07-15')).toBeNull();
+    });
+
+    it('returns null for month overflow like month 13', () => {
+      expect(parseDateFromTo('2025-13-01', '2025-08-01')).toBeNull();
+    });
   });
 
   describe('getDateFieldForSort', () => {

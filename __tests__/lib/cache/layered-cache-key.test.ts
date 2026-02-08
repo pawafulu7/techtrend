@@ -4,8 +4,14 @@ describe('LayeredCache cache key generation', () => {
   const cache = Object.create(LayeredCache.prototype) as any;
 
   it('should include sortOrder in basic cache keys', () => {
-    const ascKey = cache.generateBasicKey({ sortBy: 'publishedAt', sortOrder: 'asc' });
-    const descKey = cache.generateBasicKey({ sortBy: 'publishedAt', sortOrder: 'desc' });
+    const ascKey = cache.generateBasicKey({
+      sortBy: 'publishedAt',
+      sortOrder: 'asc',
+    });
+    const descKey = cache.generateBasicKey({
+      sortBy: 'publishedAt',
+      sortOrder: 'desc',
+    });
     const defaultKey = cache.generateBasicKey({ sortBy: 'publishedAt' });
 
     expect(ascKey).not.toBe(descKey);
@@ -39,6 +45,17 @@ describe('LayeredCache cache key generation', () => {
     expect(defaultKey).toBe(descKey);
   });
 
+  it('should include sortBy in count cache keys', () => {
+    const publishedAtKey = cache.generateCountKey({ sortBy: 'publishedAt' });
+    const createdAtKey = cache.generateCountKey({ sortBy: 'createdAt' });
+    const defaultKey = cache.generateCountKey({});
+
+    expect(publishedAtKey).not.toBe(createdAtKey);
+    expect(publishedAtKey).toContain('sortBy:publishedAt');
+    expect(createdAtKey).toContain('sortBy:createdAt');
+    expect(defaultKey).toBe(publishedAtKey);
+  });
+
   it('should include sortOrder in search cache keys', () => {
     const ascKey = cache.generateSearchKey({
       search: 'foo bar',
@@ -61,4 +78,3 @@ describe('LayeredCache cache key generation', () => {
     expect(defaultKey).toBe(descKey);
   });
 });
-

@@ -108,6 +108,19 @@ export function parseDateFromTo(
     return null;
   }
 
+  // 日付オーバーフロー検証（例: 2月31日 → 3月3日になるケースを拒否）
+  const validateDateString = (s: string, d: Date): boolean => {
+    const parts = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!parts) return false;
+    return (
+      d.getFullYear() === Number(parts[1]) &&
+      d.getMonth() + 1 === Number(parts[2]) &&
+      d.getDate() === Number(parts[3])
+    );
+  };
+  if (dateFrom && !validateDateString(dateFrom, from)) return null;
+  if (dateTo && !validateDateString(dateTo, to)) return null;
+
   if (from > to) {
     return null;
   }
