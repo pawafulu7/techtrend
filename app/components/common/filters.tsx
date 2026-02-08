@@ -28,6 +28,7 @@ import {
 import { getSourceIdsForPreset } from '@/lib/constants/source-presets';
 import CategoryFilter from '@/components/filters/CategoryFilter';
 import { CompanyFilter } from '@/app/components/source-filters/company-filter';
+import { CustomPresetDropdown } from '@/app/components/source-filters/custom-preset-dropdown';
 import { useCompanyFilter } from '@/lib/hooks/use-company-filter';
 import type { CompanySource } from '@/lib/providers/company-source';
 import type { GroupedSources } from '@/lib/types/source-grouping';
@@ -523,6 +524,13 @@ export function Filters({
               <Home className="me-1 h-3 w-3" />
               国内全般
             </Button>
+
+            {/* Custom Preset Dropdown */}
+            <CustomPresetDropdown
+              selectedSources={selectedSources}
+              onApplyPreset={(sourceIds) => applySourceFilter(sourceIds)}
+              allSources={sources}
+            />
           </div>
 
           {/* Categories */}
