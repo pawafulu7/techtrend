@@ -52,6 +52,8 @@ export function SavePresetDialog({
             ? 'この名前は既に使われています'
             : err.message
         );
+      } else {
+        setError('予期しないエラーが発生しました');
       }
     }
   };

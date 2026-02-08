@@ -136,6 +136,7 @@ describe('/api/user/source-presets', () => {
     });
 
     it('上限超過（10件超）で400を返す', async () => {
+      prismaMock.source.findMany.mockResolvedValue([{ id: 'source-1' }]);
       prismaMock.userSourcePreset.count.mockResolvedValue(10);
 
       const POST = await getPostHandler();

@@ -94,18 +94,7 @@ async function postHandler(
     const { name, sourceIds } = parseResult.data;
     const userId = context.validatedUser.id;
 
-    // Check preset count limit
-    const existingCount = await prisma.userSourcePreset.count({
-      where: { userId },
-    });
-    if (existingCount >= MAX_PRESETS_PER_USER) {
-      return NextResponse.json(
-        { error: `Maximum ${MAX_PRESETS_PER_USER} presets allowed` },
-        { status: 400 }
-      );
-    }
-
-    // Validate sourceIds exist and are enabled
+    // Validate sourceIds exist and are enabled (outside transaction for read-only check)
     const validSources = await prisma.source.findMany({
       where: { id: { in: sourceIds }, enabled: true },
       select: { id: true },
@@ -118,33 +107,50 @@ async function postHandler(
       );
     }
 
-    // Check name uniqueness (case-insensitive, for UX feedback)
-    const existing = await prisma.userSourcePreset.findFirst({
-      where: {
-        userId,
-        name: { equals: name, mode: 'insensitive' },
-      },
-    });
-    if (existing) {
-      return NextResponse.json(
-        { error: 'Preset name already exists' },
-        { status: 409 }
-      );
-    }
-
-    // Create preset (DB unique index handles race conditions)
+    // Atomic count check + name uniqueness check + create within transaction
     try {
-      const preset = await prisma.userSourcePreset.create({
-        data: {
-          userId,
-          name,
-          sourceIds: validSourceIds,
-          sortOrder: existingCount,
-        },
+      const preset = await prisma.$transaction(async (tx) => {
+        const existingCount = await tx.userSourcePreset.count({
+          where: { userId },
+        });
+        if (existingCount >= MAX_PRESETS_PER_USER) {
+          throw new Error('LIMIT_EXCEEDED');
+        }
+
+        const duplicate = await tx.userSourcePreset.findFirst({
+          where: {
+            userId,
+            name: { equals: name, mode: 'insensitive' },
+          },
+        });
+        if (duplicate) {
+          throw new Error('NAME_DUPLICATE');
+        }
+
+        return tx.userSourcePreset.create({
+          data: {
+            userId,
+            name,
+            sourceIds: validSourceIds,
+            sortOrder: existingCount,
+          },
+        });
       });
 
       return NextResponse.json({ preset }, { status: 201 });
     } catch (error) {
+      if (error instanceof Error && error.message === 'LIMIT_EXCEEDED') {
+        return NextResponse.json(
+          { error: `Maximum ${MAX_PRESETS_PER_USER} presets allowed` },
+          { status: 400 }
+        );
+      }
+      if (error instanceof Error && error.message === 'NAME_DUPLICATE') {
+        return NextResponse.json(
+          { error: 'Preset name already exists' },
+          { status: 409 }
+        );
+      }
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
