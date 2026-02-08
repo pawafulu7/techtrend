@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
@@ -80,80 +80,71 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
 
   const { today, threeMonthsAgo } = getDateBounds();
 
-  const updateUrl = useCallback(
-    (updates: Record<string, string | undefined>) => {
-      const params = new URLSearchParams(searchParams.toString());
+  function updateUrl(updates: Record<string, string | undefined>) {
+    const params = new URLSearchParams(searchParams.toString());
 
-      // Clear all date-related params first
-      params.delete('dateRange');
-      params.delete('dateFrom');
-      params.delete('dateTo');
-      params.delete('page');
+    // Clear all date-related params first
+    params.delete('dateRange');
+    params.delete('dateFrom');
+    params.delete('dateTo');
+    params.delete('page');
 
-      // Set new params
-      for (const [key, value] of Object.entries(updates)) {
-        if (value) {
-          params.set(key, value);
-        }
+    // Set new params
+    for (const [key, value] of Object.entries(updates)) {
+      if (value) {
+        params.set(key, value);
       }
+    }
 
-      const queryString = params.toString();
-      const newUrl = queryString ? `/?${queryString}` : '/';
-      router.push(newUrl);
-    },
-    [router, searchParams]
-  );
+    const queryString = params.toString();
+    const newUrl = queryString ? `/?${queryString}` : '/';
+    router.push(newUrl);
+  }
 
-  const saveFilterPreference = useCallback(
-    async (prefs: {
-      dateRange?: string;
-      dateFrom?: string;
-      dateTo?: string;
-    }) => {
-      try {
-        await fetch('/api/filter-preferences', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(prefs),
-        });
-      } catch {
-        // Silently ignore preference save failures
-      }
-    },
-    []
-  );
+  async function saveFilterPreference(prefs: {
+    dateRange?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
+    try {
+      await fetch('/api/filter-preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(prefs),
+      });
+    } catch {
+      // Silently ignore preference save failures
+    }
+  }
 
-  const handlePresetChange = useCallback(
-    (value: string) => {
-      if (value === CUSTOM_VALUE) {
-        // Open calendar popover without changing URL yet
-        setPopoverOpen(true);
-        return;
-      }
+  function handlePresetChange(value: string) {
+    if (value === CUSTOM_VALUE) {
+      // Open calendar popover without changing URL yet
+      setPopoverOpen(true);
+      return;
+    }
 
-      // Reset calendar state when switching to preset
-      setCalendarRange(undefined);
+    // Reset calendar state when switching to preset
+    setCalendarRange(undefined);
 
-      if (value === 'all') {
-        updateUrl({});
-        saveFilterPreference({
-          dateRange: undefined,
-          dateFrom: undefined,
-          dateTo: undefined,
-        });
-      } else {
-        updateUrl({ dateRange: value });
-        saveFilterPreference({
-          dateRange: value,
-          dateFrom: undefined,
-          dateTo: undefined,
-        });
-      }
-    },
-    [updateUrl, saveFilterPreference]
-  );
+    if (value === 'all') {
+      updateUrl({});
+      saveFilterPreference({
+        dateRange: undefined,
+        dateFrom: undefined,
+        dateTo: undefined,
+      });
+    } else {
+      updateUrl({ dateRange: value });
+      saveFilterPreference({
+        dateRange: value,
+        dateFrom: undefined,
+        dateTo: undefined,
+      });
+    }
+  }
 
-  const handleCalendarApply = useCallback(() => {
+  function handleCalendarApply() {
     if (!calendarRange?.from) return;
 
     const from = formatLocalDate(calendarRange.from);
@@ -162,7 +153,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     updateUrl({ dateFrom: from, dateTo: to });
     saveFilterPreference({ dateRange: undefined, dateFrom: from, dateTo: to });
     setPopoverOpen(false);
-  }, [calendarRange, updateUrl, saveFilterPreference]);
+  }
 
   // Display label
   const displayLabel =
