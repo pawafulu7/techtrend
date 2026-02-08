@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
-import { useCallback } from 'react';
 
 interface UserSourcePreset {
   id: string;
@@ -115,28 +114,13 @@ export function useSourcePresets() {
     },
   });
 
-  const createPreset = useCallback(
-    (input: CreatePresetInput) => createMutation.mutateAsync(input),
-    [createMutation]
-  );
-
-  const updatePreset = useCallback(
-    (input: UpdatePresetInput) => updateMutation.mutateAsync(input),
-    [updateMutation]
-  );
-
-  const deletePreset = useCallback(
-    (id: string) => deleteMutation.mutateAsync(id),
-    [deleteMutation]
-  );
-
   return {
     presets: query.data?.presets ?? [],
     isLoading: query.isLoading,
     isAuthenticated: !!userId,
-    createPreset,
-    updatePreset,
-    deletePreset,
+    createPreset: createMutation.mutateAsync,
+    updatePreset: updateMutation.mutateAsync,
+    deletePreset: deleteMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isDeleting: deleteMutation.isPending,
   };
