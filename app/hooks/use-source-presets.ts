@@ -48,8 +48,8 @@ async function createPresetApi(
     body: JSON.stringify(input),
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'Failed to create preset');
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(errBody.error || 'Failed to create preset');
   }
   return res.json();
 }
@@ -64,8 +64,8 @@ async function updatePresetApi(
     body: JSON.stringify(data),
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'Failed to update preset');
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(errBody.error || 'Failed to update preset');
   }
   return res.json();
 }
@@ -75,8 +75,8 @@ async function deletePresetApi(id: string): Promise<void> {
     method: 'DELETE',
   });
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || 'Failed to delete preset');
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(errBody.error || 'Failed to delete preset');
   }
 }
 

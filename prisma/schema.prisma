@@ -597,6 +597,8 @@ model UserSourcePreset {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Note: The actual DB constraint uses lower(name) for case-insensitive uniqueness.
+  // See migration: 20260208130321_add_user_source_preset
   @@unique([userId, name], map: "uq_user_source_preset_name")
   @@index([userId], map: "idx_user_source_preset_user")
 }

@@ -9,6 +9,9 @@ jest.mock('@/lib/auth/auth');
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
   withRateLimit: (_policy: string, handler: Function) => handler,
 }));
+jest.mock('@/lib/middleware/csrf-protection', () => ({
+  withCSRFProtection: (handler: Function) => handler,
+}));
 
 import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth/auth';

@@ -54,7 +54,11 @@ export function CustomPresetDropdown({
 
   const handleDelete = async (e: React.MouseEvent, presetId: string) => {
     e.stopPropagation();
-    await deletePreset(presetId);
+    try {
+      await deletePreset(presetId);
+    } catch {
+      // TanStack Query側でエラー処理される
+    }
   };
 
   return (
