@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -68,6 +69,9 @@ export function SavePresetDialog({
       <DialogContent className="sm:max-w-[360px]">
         <DialogHeader>
           <DialogTitle>プリセットを保存</DialogTitle>
+          <DialogDescription>
+            現在のソース選択に名前をつけて保存します
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <Input

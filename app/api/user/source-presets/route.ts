@@ -40,6 +40,7 @@ const CreatePresetSchema = z.object({
   sourceIds: z
     .array(z.string().min(1))
     .min(1, 'At least one source is required')
+    .max(100, 'Too many sources (max 100)')
     .transform((ids) => [
       ...new Set(ids.map((id) => id.trim()).filter(Boolean)),
     ]),
@@ -77,7 +78,12 @@ async function postHandler(
   context: WithUserValidationContext
 ) {
   try {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
     const parseResult = CreatePresetSchema.safeParse(body);
 
     if (!parseResult.success) {

@@ -38,9 +38,8 @@ export function CustomPresetDropdown({
 
   const handleApplyPreset = (sourceIds: string[]) => {
     // Filter to only currently valid sources
-    const validIds = sourceIds.filter((id) =>
-      allSources.some((s) => s.id === id)
-    );
+    const validSet = new Set(allSources.map((s) => s.id));
+    const validIds = sourceIds.filter((id) => validSet.has(id));
     if (validIds.length > 0) {
       onApplyPreset(validIds);
     }

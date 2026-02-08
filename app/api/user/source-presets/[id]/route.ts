@@ -43,6 +43,7 @@ const UpdatePresetSchema = z.object({
   sourceIds: z
     .array(z.string().min(1))
     .min(1, 'At least one source is required')
+    .max(100, 'Too many sources (max 100)')
     .transform((ids) => [
       ...new Set(ids.map((id) => id.trim()).filter(Boolean)),
     ])
@@ -59,7 +60,12 @@ async function putHandler(request: NextRequest, context: RouteContext) {
     const { id: presetId } = await context.params;
     const userId = context.validatedUser.id;
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
     const parseResult = UpdatePresetSchema.safeParse(body);
 
     if (!parseResult.success) {
@@ -118,7 +124,7 @@ async function putHandler(request: NextRequest, context: RouteContext) {
 
     try {
       const preset = await prisma.userSourcePreset.update({
-        where: { id: presetId },
+        where: { id: presetId, userId },
         data: updateData,
       });
 
@@ -161,7 +167,7 @@ async function deleteHandler(_request: NextRequest, context: RouteContext) {
     }
 
     await prisma.userSourcePreset.delete({
-      where: { id: presetId },
+      where: { id: presetId, userId },
     });
 
     return NextResponse.json({ success: true });
