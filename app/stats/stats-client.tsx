@@ -40,8 +40,6 @@ export function StatsClient() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-
         const response = await fetch('/api/stats');
         if (!response.ok) {
           throw new Error('Failed to fetch stats');
@@ -50,6 +48,8 @@ export function StatsClient() {
 
         setStats(result.data);
 
+        // Wait for two animation frames so the browser paints the skeleton
+        // before swapping to the real content, avoiding a flash of unstyled layout.
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             setLoading(false);
@@ -97,15 +97,19 @@ export function StatsClient() {
     return <StatsPageSkeleton />;
   }
 
+  if (!stats) {
+    return null;
+  }
+
   return (
     <div className="space-y-8">
-      {stats && <StatsOverview stats={stats.overview} />}
+      <StatsOverview stats={stats.overview} />
 
-      {stats && <DailyChart data={stats.daily} />}
+      <DailyChart data={stats.daily} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SourceChart data={groupedSources} />
-        {stats && <TagCloud tags={stats.tags} />}
+        <TagCloud tags={stats.tags} />
       </div>
     </div>
   );

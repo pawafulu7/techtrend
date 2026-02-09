@@ -7,8 +7,11 @@ interface SourceChartProps {
   data: { id: string; name: string; count: number; percentage: number }[];
 }
 
+const MIN_BAR_PERCENTAGE = 0.5;
+
 export function SourceChart({ data }: SourceChartProps) {
   const total = data.reduce((sum, item) => sum + item.count, 0);
+  const visibleData = data.filter((s) => s.percentage >= MIN_BAR_PERCENTAGE);
 
   return (
     <div className="bg-background rounded-lg border p-4 shadow-sm">
@@ -24,38 +27,34 @@ export function SourceChart({ data }: SourceChartProps) {
 
       {/* 積み上げバー */}
       <div className="mb-3 flex h-3 overflow-hidden rounded-full">
-        {data.map((source) => {
+        {visibleData.map((source) => {
           const color = getSourceColor(source.name);
-          const percentage = total > 0 ? (source.count / total) * 100 : 0;
-          if (percentage < 0.5) return null;
           return (
             <div
               key={source.id}
               className={`${color.bar} transition-all duration-500`}
-              style={{ width: `${percentage}%` }}
-              title={`${source.name}: ${percentage.toFixed(1)}%`}
+              style={{ width: `${source.percentage}%` }}
+              title={`${source.name}: ${source.percentage.toFixed(1)}%`}
             />
           );
         })}
       </div>
 
-      {/* 凡例 */}
+      {/* 凡例（バーに表示されるソースのみ） */}
       <div
-        className="grid grid-flow-col grid-rows-[repeat(auto-fill,minmax(0,1fr))] gap-x-4 gap-y-1"
+        className="grid grid-flow-col gap-x-4 gap-y-1"
         style={{
-          gridTemplateRows: `repeat(${Math.ceil(data.length / 2)}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${Math.ceil(visibleData.length / 2)}, minmax(0, 1fr))`,
         }}
       >
-        {data.map((source) => {
+        {visibleData.map((source) => {
           const color = getSourceColor(source.name);
-          const percentage = total > 0 ? (source.count / total) * 100 : 0;
-
           return (
             <div key={source.id} className="flex items-center gap-1.5">
               <div className={`h-2 w-2 shrink-0 rounded-full ${color.dot}`} />
               <span className="truncate text-xs">{source.name}</span>
               <span className="text-muted-foreground ml-auto shrink-0 text-xs tabular-nums">
-                {percentage.toFixed(1)}%
+                {source.percentage.toFixed(1)}%
               </span>
             </div>
           );
