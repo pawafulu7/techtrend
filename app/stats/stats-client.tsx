@@ -65,18 +65,6 @@ export function StatsClient() {
     fetchStats();
   }, []);
 
-  if (error) {
-    return (
-      <div className="text-destructive py-8 text-center">
-        エラーが発生しました: {error}
-      </div>
-    );
-  }
-
-  if (loading) {
-    return <StatsPageSkeleton />;
-  }
-
   const groupedSources = useMemo(() => {
     if (!stats) return [];
     const topSources = stats.sources.filter((s) => s.percentage >= 1);
@@ -97,6 +85,18 @@ export function StatsClient() {
       },
     ];
   }, [stats]);
+
+  if (error) {
+    return (
+      <div className="text-destructive py-8 text-center">
+        エラーが発生しました: {error}
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <StatsPageSkeleton />;
+  }
 
   return (
     <div className="space-y-8">
