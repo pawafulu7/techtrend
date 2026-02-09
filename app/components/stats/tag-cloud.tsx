@@ -1,8 +1,7 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Tag } from 'lucide-react';
+import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import Link from 'next/link';
 
 interface TagCloudProps {
@@ -12,66 +11,48 @@ interface TagCloudProps {
 export function TagCloud({ tags }: TagCloudProps) {
   if (tags.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Tag className="h-5 w-5" />
-            人気タグ
-          </CardTitle>
-          <CardDescription>記事数の多いタグ</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            タグがありません
-          </p>
-        </CardContent>
-      </Card>
+      <div className="bg-background rounded-lg border p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <Tag className="h-4 w-4 text-(--tt-color-info)" />
+          <h3 className="text-sm font-semibold">人気タグ</h3>
+        </div>
+        <p className="text-muted-foreground py-8 text-center text-sm">
+          タグがありません
+        </p>
+      </div>
     );
   }
 
-  const maxCount = Math.max(...tags.map(t => t.count));
-  const minCount = Math.min(...tags.map(t => t.count));
+  const maxCount = Math.max(...tags.map((t) => t.count));
+  const minCount = Math.min(...tags.map((t) => t.count));
 
-  const getTagSize = (count: number) => {
-    if (maxCount === minCount) return 'text-base';
+  const getTagVariant = (
+    count: number
+  ): 'default' | 'primary' | 'secondary' => {
+    if (maxCount === minCount) return 'default';
     const ratio = (count - minCount) / (maxCount - minCount);
-    if (ratio > 0.8) return 'text-xl font-bold';
-    if (ratio > 0.6) return 'text-lg font-semibold';
-    if (ratio > 0.4) return 'text-base font-medium';
-    if (ratio > 0.2) return 'text-sm';
-    return 'text-xs';
+    if (ratio > 0.6) return 'primary';
+    if (ratio > 0.3) return 'secondary';
+    return 'default';
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Tag className="h-5 w-5" />
-          人気タグ
-        </CardTitle>
-        <CardDescription>記事数の多いタグ（TOP20）</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-3">
-          {tags.map((tag) => (
-            <Link
-              key={tag.id}
-              href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}
-              className="group"
-            >
-              <Badge
-                variant="secondary"
-                className={`${getTagSize(tag.count)} transition-all hover:bg-primary hover:text-primary-foreground cursor-pointer`}
-              >
-                {tag.name}
-                <span className="ml-1 text-xs opacity-70">
-                  ({tag.count})
-                </span>
-              </Badge>
+    <div className="bg-background rounded-lg border p-4 shadow-sm">
+      <div className="mb-3 flex items-center gap-2">
+        <Tag className="h-4 w-4 text-(--tt-color-info)" />
+        <h3 className="text-sm font-semibold">人気タグ</h3>
+        <span className="text-muted-foreground text-xs">TOP {tags.length}</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {tags.map((tag) => (
+          <BadgeV2 key={tag.id} variant={getTagVariant(tag.count)} asChild>
+            <Link href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}>
+              {tag.name}
+              <span className="ml-1 opacity-70">{tag.count}</span>
             </Link>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+          </BadgeV2>
+        ))}
+      </div>
+    </div>
   );
 }

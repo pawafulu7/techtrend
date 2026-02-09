@@ -1,25 +1,23 @@
 import { Suspense } from 'react';
 import { StatsClient } from './stats-client';
 import { BarChart3 } from 'lucide-react';
-import { StatsOverviewSkeleton } from '@/app/components/stats/stats-overview-skeleton';
+import { PageHeader } from '@/components/ui-v2/page-header';
+import { StatsPageSkeleton } from '@/app/components/stats/stats-page-skeleton';
 
 export default function StatsPage() {
-
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BarChart3 className="h-6 w-6" />
-          統計情報
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          記事の収集状況とトレンドを可視化
-        </p>
-      </div>
+    <div className="bg-background min-h-screen">
+      <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
+        <PageHeader
+          icon={BarChart3}
+          title="統計情報"
+          description="記事の収集状況とトレンドを可視化"
+        />
 
-      <Suspense fallback={<StatsOverviewSkeleton />}>
-        <StatsClient />
-      </Suspense>
+        <Suspense fallback={<StatsPageSkeleton />}>
+          <StatsClient />
+        </Suspense>
+      </div>
     </div>
   );
 }

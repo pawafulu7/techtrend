@@ -1,34 +1,17 @@
 import { BarChart3 } from 'lucide-react';
-import { StatsOverviewSkeleton } from '@/app/components/stats/stats-overview-skeleton';
-import { ChartSkeleton } from '@/app/components/stats/chart-skeleton';
-import { SourceChartSkeleton } from '@/app/components/stats/source-chart-skeleton';
-import { TagCloudSkeleton } from '@/app/components/stats/tag-cloud-skeleton';
+import { PageHeader } from '@/components/ui-v2/page-header';
+import { StatsPageSkeleton } from '@/app/components/stats/stats-page-skeleton';
 
 export default function Loading() {
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BarChart3 className="h-6 w-6" />
-          統計情報
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          記事の収集状況とトレンドを可視化
-        </p>
-      </div>
-
-      <div className="space-y-6">
-        {/* 概要スケルトン */}
-        <StatsOverviewSkeleton />
-
-        {/* チャートスケルトン */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ChartSkeleton />
-          <SourceChartSkeleton />
-        </div>
-
-        {/* タグクラウドスケルトン */}
-        <TagCloudSkeleton />
+    <div className="bg-background min-h-screen">
+      <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
+        <PageHeader
+          icon={BarChart3}
+          title="統計情報"
+          description="記事の収集状況とトレンドを可視化"
+        />
+        <StatsPageSkeleton />
       </div>
     </div>
   );
