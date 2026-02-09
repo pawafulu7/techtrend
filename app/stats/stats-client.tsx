@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { CalendarDays, BarChart3 } from 'lucide-react';
 import { StatsOverview } from '@/app/components/stats/overview';
 import { SourceChart } from '@/app/components/stats/source-chart';
 import { DailyChart } from '@/app/components/stats/daily-chart';
@@ -102,36 +101,12 @@ export function StatsClient() {
     <div className="space-y-8">
       {stats && <StatsOverview stats={stats.overview} />}
 
-      <section>
-        <div className="mb-4 flex items-center gap-2">
-          <div className="h-px flex-1 bg-gradient-to-r from-(--tt-color-info)/50 to-transparent" />
-          <h2 className="text-muted-foreground flex items-center gap-1.5 px-2 text-xs font-bold tracking-widest">
-            <CalendarDays className="h-3.5 w-3.5" />
-            チャート
-          </h2>
-          <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-info)/50 to-transparent" />
-        </div>
+      {stats && <DailyChart data={stats.daily} />}
 
-        <div className="space-y-6">
-          {stats && <DailyChart data={stats.daily} />}
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <SourceChart data={groupedSources} />
-
-            <section>
-              <div className="mb-4 flex items-center gap-2">
-                <div className="h-px flex-1 bg-gradient-to-r from-(--tt-color-primary)/30 to-transparent" />
-                <h2 className="text-muted-foreground flex items-center gap-1.5 px-2 text-xs font-bold tracking-widest">
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  タグ
-                </h2>
-                <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-primary)/30 to-transparent" />
-              </div>
-              {stats && <TagCloud tags={stats.tags} />}
-            </section>
-          </div>
-        </div>
-      </section>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SourceChart data={groupedSources} />
+        {stats && <TagCloud tags={stats.tags} />}
+      </div>
     </div>
   );
 }
