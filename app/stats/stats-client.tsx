@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { CalendarDays, BarChart3 } from 'lucide-react';
 import { StatsOverview } from '@/app/components/stats/overview';
 import { SourceChart } from '@/app/components/stats/source-chart';
@@ -77,6 +77,27 @@ export function StatsClient() {
     return <StatsPageSkeleton />;
   }
 
+  const groupedSources = useMemo(() => {
+    if (!stats) return [];
+    const topSources = stats.sources.filter((s) => s.percentage >= 1);
+    const otherSources = stats.sources.filter((s) => s.percentage < 1);
+    if (otherSources.length === 0) return topSources;
+    const othersCount = otherSources.reduce((sum, s) => sum + s.count, 0);
+    const othersPercentage = otherSources.reduce(
+      (sum, s) => sum + s.percentage,
+      0
+    );
+    return [
+      ...topSources,
+      {
+        id: '_others',
+        name: `その他 (${otherSources.length}件)`,
+        count: othersCount,
+        percentage: othersPercentage,
+      },
+    ];
+  }, [stats]);
+
   return (
     <div className="space-y-8">
       {stats && <StatsOverview stats={stats.overview} />}
@@ -95,7 +116,7 @@ export function StatsClient() {
           {stats && <DailyChart data={stats.daily} />}
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {stats && <SourceChart data={stats.sources} />}
+            <SourceChart data={groupedSources} />
 
             <section>
               <div className="mb-4 flex items-center gap-2">
