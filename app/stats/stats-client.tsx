@@ -70,10 +70,8 @@ export function StatsClient() {
     const otherSources = stats.sources.filter((s) => s.percentage < 1);
     if (otherSources.length === 0) return topSources;
     const othersCount = otherSources.reduce((sum, s) => sum + s.count, 0);
-    const othersPercentage = otherSources.reduce(
-      (sum, s) => sum + s.percentage,
-      0
-    );
+    const topPercentage = topSources.reduce((sum, s) => sum + s.percentage, 0);
+    const othersPercentage = Math.max(0, 100 - topPercentage);
     return [
       ...topSources,
       {
