@@ -11,7 +11,10 @@ const MIN_BAR_PERCENTAGE = 0.5;
 
 export function SourceChart({ data }: SourceChartProps) {
   const total = data.reduce((sum, item) => sum + item.count, 0);
-  const visibleData = data.filter((s) => s.percentage >= MIN_BAR_PERCENTAGE);
+  const visibleData = data.filter(
+    (s) => s.percentage >= MIN_BAR_PERCENTAGE || s.id === '_others'
+  );
+  const visibleTotal = visibleData.reduce((sum, s) => sum + s.percentage, 0);
 
   return (
     <div className="bg-background rounded-lg border p-4 shadow-sm">
@@ -25,15 +28,17 @@ export function SourceChart({ data }: SourceChartProps) {
         </span>
       </div>
 
-      {/* 積み上げバー */}
+      {/* 積み上げバー（幅を正規化して常に100%にする） */}
       <div className="mb-3 flex h-3 overflow-hidden rounded-full">
         {visibleData.map((source) => {
           const color = getSourceColor(source.name);
+          const normalizedWidth =
+            visibleTotal > 0 ? (source.percentage / visibleTotal) * 100 : 0;
           return (
             <div
               key={source.id}
               className={`${color.bar} transition-all duration-500`}
-              style={{ width: `${source.percentage}%` }}
+              style={{ width: `${normalizedWidth}%` }}
               title={`${source.name}: ${source.percentage.toFixed(1)}%`}
             />
           );
