@@ -1,15 +1,14 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CalendarDays } from 'lucide-react';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import { useState } from 'react';
 
 interface DailyChartProps {
-  data: { 
-    date: string; 
-    total: number; 
-    sources: Record<string, number> 
+  data: {
+    date: string;
+    total: number;
+    sources: Record<string, number>;
   }[];
 }
 
@@ -24,106 +23,107 @@ export function DailyChart({ data }: DailyChartProps) {
 
   if (data.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5" />
-            日別記事数推移
-          </CardTitle>
-          <CardDescription>過去30日間の記事取得数</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            データがありません
-          </p>
-        </CardContent>
-      </Card>
+      <div className="bg-background rounded-lg border p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-(--tt-color-info)" />
+          <h3 className="text-sm font-semibold">日別記事数推移</h3>
+        </div>
+        <p className="text-muted-foreground py-8 text-center text-sm">
+          データがありません
+        </p>
+      </div>
     );
   }
 
-  const maxCount = Math.max(...data.map(d => d.total));
+  const maxCount = Math.max(...data.map((d) => d.total));
   const chartHeight = 200;
-  
-  // すべてのソースを取得して色を割り当て
-  const allSources = [...new Set(data.flatMap(d => Object.keys(d.sources)))].sort();
+
+  const allSources = [
+    ...new Set(data.flatMap((d) => Object.keys(d.sources))),
+  ].sort();
   const sourceColors = Object.fromEntries(
-    allSources.map(source => [source, getSourceColor(source)])
+    allSources.map((source) => [source, getSourceColor(source)])
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CalendarDays className="h-5 w-5" />
-          日別記事数推移
-        </CardTitle>
-        <CardDescription>過去30日間の記事取得数</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="relative" style={{ height: chartHeight }}>
-          {/* ツールチップ */}
-          {hoveredBar && (
-            <div
-              className="absolute z-10 bg-popover text-popover-foreground border rounded-md shadow-lg p-3 text-sm pointer-events-none whitespace-nowrap"
-              style={{
-                left: `${hoveredBar.x}px`,
-                top: `${hoveredBar.y}px`,
-                transform: 'translate(-50%, -100%) translateY(-8px)',
-              }}
-            >
-              <div className="font-medium mb-1">{hoveredBar.date}</div>
-              <div className="font-medium text-primary mb-2">
-                合計: {hoveredBar.total}件
-              </div>
-              <div className="space-y-1">
-                {Object.entries(hoveredBar.sources)
-                  .sort(([, a], [, b]) => b - a)
-                  .map(([source, count]) => (
-                    <div key={source} className="text-muted-foreground">
-                      {source}: {count}件
-                    </div>
-                  ))}
-              </div>
+    <div className="bg-background rounded-lg border p-4 shadow-sm">
+      <div className="mb-3 flex items-center gap-2">
+        <CalendarDays className="h-4 w-4 text-(--tt-color-info)" />
+        <h3 className="text-sm font-semibold">日別記事数推移</h3>
+        <span className="text-muted-foreground text-xs">過去30日間</span>
+      </div>
+      <div className="relative" style={{ height: chartHeight }}>
+        {hoveredBar && (
+          <div
+            className="bg-popover text-popover-foreground pointer-events-none absolute z-10 rounded-md border p-3 text-sm whitespace-nowrap shadow-lg"
+            style={{
+              left: `${hoveredBar.x}px`,
+              top: `${hoveredBar.y}px`,
+              transform: 'translate(-50%, -100%) translateY(-8px)',
+            }}
+          >
+            <div className="mb-1 font-medium">{hoveredBar.date}</div>
+            <div className="text-primary mb-2 font-medium">
+              合計: {hoveredBar.total}件
             </div>
-          )}
-          
-          <div className="absolute inset-0 flex items-end justify-between gap-1">
-            {data.map((item, index) => {
-              const date = new Date(item.date);
-              
-              // 各ソースの高さを計算
-              let cumulativeHeight = 0;
-              const sourceHeights = allSources.map(source => {
+            <div className="space-y-1">
+              {Object.entries(hoveredBar.sources)
+                .sort(([, a], [, b]) => b - a)
+                .map(([source, count]) => (
+                  <div key={source} className="text-muted-foreground">
+                    {source}: {count}件
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        <div className="absolute inset-0 flex items-end justify-between gap-1">
+          {data.map((item, index) => {
+            const date = new Date(item.date);
+
+            let cumulativeHeight = 0;
+            const sourceHeights = allSources
+              .map((source) => {
                 const count = item.sources[source] || 0;
                 const height = maxCount > 0 ? (count / maxCount) * 100 : 0;
-                const result = { source, height, offset: cumulativeHeight, count };
+                const result = {
+                  source,
+                  height,
+                  offset: cumulativeHeight,
+                  count,
+                };
                 cumulativeHeight += height;
                 return result;
-              }).filter(s => s.height > 0);
-              
-              return (
+              })
+              .filter((s) => s.height > 0);
+
+            return (
+              <div
+                key={index}
+                className="flex flex-1 flex-col items-center gap-1"
+              >
                 <div
-                  key={index}
-                  className="flex-1 flex flex-col items-center gap-1"
+                  className="relative flex w-full items-end"
+                  style={{ height: chartHeight - 20 }}
                 >
-                  <div className="w-full flex items-end relative" style={{ height: chartHeight - 20 }}>
-                    {sourceHeights.map(({ source, height, offset, count: _count }) => (
+                  {sourceHeights.map(
+                    ({ source, height, offset, count: _count }) => (
                       <div
                         key={source}
-                        className={`absolute bottom-0 w-full transition-all duration-300 hover:opacity-80 cursor-pointer ${
+                        className={`absolute bottom-0 w-full cursor-pointer transition-all duration-300 hover:opacity-80 ${
                           index === 0 ? 'rounded-tl' : ''
-                        } ${
-                          index === data.length - 1 ? 'rounded-tr' : ''
-                        } ${
+                        } ${index === data.length - 1 ? 'rounded-tr' : ''} ${
                           sourceColors[source].bar
                         }`}
-                        style={{ 
+                        style={{
                           height: `${height}%`,
-                          bottom: `${offset}%`
+                          bottom: `${offset}%`,
                         }}
                         onMouseEnter={(e) => {
                           const rect = e.currentTarget.getBoundingClientRect();
-                          const parentRect = e.currentTarget.parentElement!.parentElement!.parentElement!.getBoundingClientRect();
+                          const parentRect =
+                            e.currentTarget.parentElement!.parentElement!.parentElement!.getBoundingClientRect();
                           setHoveredBar({
                             date: item.date,
                             total: item.total,
@@ -134,30 +134,40 @@ export function DailyChart({ data }: DailyChartProps) {
                         }}
                         onMouseLeave={() => setHoveredBar(null)}
                       />
-                    ))}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {date.getDate()}
-                  </div>
+                    )
+                  )}
                 </div>
-              );
-            })}
+                <div className="text-muted-foreground text-xs">
+                  {date.getDate()}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="text-muted-foreground mt-4 flex items-center justify-between text-xs">
+        <span>
+          {new Date(data[0].date).toLocaleDateString('ja-JP', {
+            month: 'short',
+            day: 'numeric',
+          })}
+        </span>
+        <span>最大: {maxCount}件/日</span>
+        <span>
+          {new Date(data[data.length - 1].date).toLocaleDateString('ja-JP', {
+            month: 'short',
+            day: 'numeric',
+          })}
+        </span>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {allSources.map((source) => (
+          <div key={source} className="flex items-center gap-1 text-xs">
+            <div className={`h-3 w-3 rounded ${sourceColors[source].dot}`} />
+            <span className="text-muted-foreground">{source}</span>
           </div>
-        </div>
-        <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{new Date(data[0].date).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}</span>
-          <span>最大: {maxCount}件/日</span>
-          <span>{new Date(data[data.length - 1].date).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}</span>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {allSources.map(source => (
-            <div key={source} className="flex items-center gap-1 text-xs">
-              <div className={`h-3 w-3 rounded ${sourceColors[source].dot}`} />
-              <span className="text-muted-foreground">{source}</span>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+        ))}
+      </div>
+    </div>
   );
 }

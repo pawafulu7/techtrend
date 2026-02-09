@@ -1,14 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { StatsOverview } from '@/app/components/stats/overview';
 import { SourceChart } from '@/app/components/stats/source-chart';
 import { DailyChart } from '@/app/components/stats/daily-chart';
 import { TagCloud } from '@/app/components/stats/tag-cloud';
-import { StatsOverviewSkeleton } from '@/app/components/stats/stats-overview-skeleton';
-import { ChartSkeleton } from '@/app/components/stats/chart-skeleton';
-import { SourceChartSkeleton } from '@/app/components/stats/source-chart-skeleton';
-import { TagCloudSkeleton } from '@/app/components/stats/tag-cloud-skeleton';
+import { StatsPageSkeleton } from '@/app/components/stats/stats-page-skeleton';
 
 interface StatsData {
   overview: {
@@ -43,19 +40,16 @@ export function StatsClient() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        // 少し遅延を入れてスムーズな遷移を実現
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
         const response = await fetch('/api/stats');
         if (!response.ok) {
           throw new Error('Failed to fetch stats');
         }
         const result = await response.json();
-        
-        // データをセット
+
         setStats(result.data);
-        
-        // スムーズなトランジションのために2フレーム待つ
+
+        // Wait for two animation frames so the browser paints the skeleton
+        // before swapping to the real content, avoiding a flash of unstyled layout.
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             setLoading(false);
@@ -70,46 +64,51 @@ export function StatsClient() {
     fetchStats();
   }, []);
 
+  const groupedSources = useMemo(() => {
+    if (!stats) return [];
+    const topSources = stats.sources.filter((s) => s.percentage >= 1.0);
+    const otherSources = stats.sources.filter((s) => s.percentage < 1.0);
+    if (otherSources.length === 0) return topSources;
+    const othersCount = otherSources.reduce((sum, s) => sum + s.count, 0);
+    const topPercentage = topSources.reduce((sum, s) => sum + s.percentage, 0);
+    const othersPercentage = Math.max(0, 100 - topPercentage);
+    return [
+      ...topSources,
+      {
+        id: '_others',
+        name: `その他 (${otherSources.length}件)`,
+        count: othersCount,
+        percentage: othersPercentage,
+      },
+    ];
+  }, [stats]);
+
   if (error) {
     return (
-      <div className="text-center text-red-500 py-8">
+      <div className="text-destructive py-8 text-center">
         エラーが発生しました: {error}
       </div>
     );
   }
 
+  if (loading) {
+    return <StatsPageSkeleton />;
+  }
+
+  if (!stats) {
+    return null;
+  }
+
   return (
-    <div className="space-y-6">
-        {/* 概要 */}
-        {loading ? (
-          <StatsOverviewSkeleton />
-        ) : (
-          stats && <StatsOverview stats={stats.overview} />
-        )}
+    <div className="space-y-8">
+      <StatsOverview stats={stats.overview} />
 
-      {/* チャート */}
+      <DailyChart data={stats.daily} />
+
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* 日別推移 */}
-        {loading ? (
-          <ChartSkeleton />
-        ) : (
-          stats && <DailyChart data={stats.daily} />
-        )}
-
-        {/* ソース別分布 */}
-        {loading ? (
-          <SourceChartSkeleton />
-        ) : (
-          stats && <SourceChart data={stats.sources} />
-        )}
+        <SourceChart data={groupedSources} />
+        <TagCloud tags={stats.tags} />
       </div>
-
-      {/* タグクラウド */}
-      {loading ? (
-        <TagCloudSkeleton />
-      ) : (
-        stats && <TagCloud tags={stats.tags} />
-      )}
     </div>
   );
 }
