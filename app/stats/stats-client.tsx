@@ -66,8 +66,8 @@ export function StatsClient() {
 
   const groupedSources = useMemo(() => {
     if (!stats) return [];
-    const topSources = stats.sources.filter((s) => s.percentage >= 1);
-    const otherSources = stats.sources.filter((s) => s.percentage < 1);
+    const topSources = stats.sources.filter((s) => s.percentage >= 1.0);
+    const otherSources = stats.sources.filter((s) => s.percentage < 1.0);
     if (otherSources.length === 0) return topSources;
     const othersCount = otherSources.reduce((sum, s) => sum + s.count, 0);
     const topPercentage = topSources.reduce((sum, s) => sum + s.percentage, 0);
