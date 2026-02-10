@@ -171,14 +171,9 @@ export function PopularArticles({
 
   return (
     <div className="space-y-4">
-      <PopularStatsBar
-        articleCount={articles.length}
-        topScore={articles[0]?.score ?? 0}
-        totalBookmarks={totalBookmarks}
-        loading={loading}
-      />
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
+      {/* Sub Navigation Bar */}
+      <div className="bg-background/95 supports-[backdrop-filter]:bg-background/60 rounded-lg border px-4 py-3 shadow-sm backdrop-blur">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Tabs value={period} onValueChange={handlePeriodChange}>
             <TabsList className="h-8">
               <TabsTrigger value="today" className="text-xs">
@@ -195,14 +190,22 @@ export function PopularArticles({
               </TabsTrigger>
             </TabsList>
           </Tabs>
+          {showPresetFilters && (
+            <PresetFilters
+              selectedPreset={selectedPreset}
+              onPresetChange={handlePresetChange}
+            />
+          )}
         </div>
       </div>
-      {showPresetFilters && (
-        <PresetFilters
-          selectedPreset={selectedPreset}
-          onPresetChange={handlePresetChange}
-        />
-      )}
+
+      {/* Stats Bar */}
+      <PopularStatsBar
+        articleCount={articles.length}
+        topScore={articles[0]?.score ?? 0}
+        totalBookmarks={totalBookmarks}
+        loading={loading}
+      />
       <Tabs value={metric} onValueChange={handleMetricChange}>
         <TabsList className="mb-4 grid w-full grid-cols-4">
           <TabsTrigger value="combined">
