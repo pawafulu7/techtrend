@@ -83,7 +83,7 @@ export function PopularSubNav() {
                 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200',
                 'focus-visible:ring-primary focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
                 active
-                  ? 'bg-background text-foreground shadow-sm'
+                  ? 'bg-background text-primary ring-primary/20 shadow-sm ring-1'
                   : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
               )}
             >
@@ -112,7 +112,7 @@ export function PopularSubNav() {
                 'focus-visible:ring-primary focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
                 active
                   ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
+                  : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground border'
               )}
             >
               {preset.label}
