@@ -34,7 +34,7 @@ export default function SourcesContent() {
   const [category, setCategory] = useState<SourceCategoryWithAll>('all');
   const [sortBy, setSortBy] = useState<SortBy>('articles');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
-  const { favorites } = useFavoriteSources();
+  const { isFavorite } = useFavoriteSources();
 
   const loadAllSources = useCallback(async () => {
     setLoading(true);
@@ -142,12 +142,13 @@ export default function SourcesContent() {
     totalSources: allSources.length,
     activeSources: allSources.filter((s) => s.stats.publishFrequency > 0)
       .length,
-    favoriteCount: favorites.length,
+    favoriteCount: allSources.filter((s) => isFavorite(s.id)).length,
     categoryCount: uniqueCategories.size,
   };
 
   return (
     <div className="space-y-6">
+      <h1 className="sr-only">ソース一覧</h1>
       {loading ? (
         <SourcesOverviewSkeleton />
       ) : (
