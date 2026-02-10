@@ -24,11 +24,7 @@ import { TrendIndicator } from './trend-indicator';
 import { TranslationBadge } from '@/components/ui/translation-badge';
 import { ScoreTooltip } from './score-tooltip';
 import { ShareButton } from './share-button';
-import {
-  PresetFilters,
-  type PeriodType,
-  type MetricType,
-} from './preset-filters';
+import { type PeriodType, type MetricType } from './preset-filters';
 import { PopularStatsBar } from './popular-stats-bar';
 
 interface RankedArticle extends ArticleWithRelations {
@@ -43,7 +39,6 @@ interface PopularArticlesProps {
   initialMetric?: MetricType;
   limit?: number;
   compact?: boolean;
-  showPresetFilters?: boolean;
 }
 
 export function PopularArticles({
@@ -51,7 +46,6 @@ export function PopularArticles({
   initialMetric = 'combined',
   limit = 10,
   compact = false,
-  showPresetFilters = true,
 }: PopularArticlesProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -59,13 +53,14 @@ export function PopularArticles({
 
   const [articles, setArticles] = useState<RankedArticle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [metric, setMetric] = useState<MetricType>(initialMetric);
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
 
-  // Period is driven by URL params in full mode, by props in compact mode
+  // In full mode, period and metric are driven by URL params
   const period = compact
     ? initialPeriod
     : ((searchParams.get('period') || initialPeriod) as PeriodType);
+  const metric = compact
+    ? initialMetric
+    : ((searchParams.get('metric') || initialMetric) as MetricType);
 
   const loadArticles = useCallback(async () => {
     setLoading(true);
@@ -93,27 +88,16 @@ export function PopularArticles({
     loadArticles();
   }, [loadArticles]);
 
-  const handlePresetChange = useCallback(
-    (preset: string | null, newPeriod: PeriodType, newMetric: MetricType) => {
-      setSelectedPreset(preset);
-      setMetric(newMetric);
-      // Update URL with new period
+  const handleMetricChange = useCallback(
+    (value: string) => {
+      if (compact) return;
       const params = new URLSearchParams(searchParams.toString());
-      params.set('period', newPeriod);
-      if (preset) {
-        params.set('preset', preset);
-      } else {
-        params.delete('preset');
-      }
+      params.set('metric', value);
+      params.delete('preset');
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    [searchParams, router, pathname]
+    [compact, searchParams, router, pathname]
   );
-
-  const handleMetricChange = useCallback((value: string) => {
-    setSelectedPreset(null);
-    setMetric(value as MetricType);
-  }, []);
 
   const getMetricIcon = (metricType: MetricType) => {
     switch (metricType) {
@@ -190,13 +174,6 @@ export function PopularArticles({
         totalBookmarks={totalBookmarks}
         loading={loading}
       />
-      {showPresetFilters && (
-        <PresetFilters
-          selectedPreset={selectedPreset}
-          onPresetChange={handlePresetChange}
-        />
-      )}
-
       {/* Section Separator */}
       <div className="flex items-center gap-2">
         <div className="h-px flex-1 bg-gradient-to-r from-(--tt-color-primary)/30 to-transparent" />
