@@ -1,14 +1,15 @@
 'use client';
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { Flame, Calendar, CalendarDays, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PeriodType } from './preset-filters';
 
 const periodItems = [
-  { value: 'today', label: '今日' },
-  { value: 'week', label: '週間' },
-  { value: 'month', label: '月間' },
-  { value: 'all', label: '全期間' },
+  { value: 'today', label: '今日', icon: Flame },
+  { value: 'week', label: '週間', icon: Calendar },
+  { value: 'month', label: '月間', icon: CalendarDays },
+  { value: 'all', label: '全期間', icon: Clock },
 ] as const;
 
 export function PopularSubNav() {
@@ -33,6 +34,7 @@ export function PopularSubNav() {
     >
       {periodItems.map((item) => {
         const active = currentPeriod === item.value;
+        const Icon = item.icon;
 
         return (
           <button
@@ -41,14 +43,15 @@ export function PopularSubNav() {
             aria-selected={active}
             onClick={() => handlePeriodChange(item.value as PeriodType)}
             className={cn(
-              'inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200',
+              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200',
               'focus-visible:ring-primary focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
               active
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
             )}
           >
-            {item.label}
+            <Icon className="h-4 w-4" />
+            <span>{item.label}</span>
           </button>
         );
       })}

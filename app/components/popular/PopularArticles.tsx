@@ -192,6 +192,16 @@ export function PopularArticles({
           onPresetChange={handlePresetChange}
         />
       )}
+
+      {/* Section Separator */}
+      <div className="flex items-center gap-2">
+        <div className="h-px flex-1 bg-gradient-to-r from-(--tt-color-primary)/30 to-transparent" />
+        <h2 className="text-muted-foreground px-2 text-xs font-bold tracking-widest">
+          ランキング
+        </h2>
+        <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-primary)/30 to-transparent" />
+      </div>
+
       <Tabs value={metric} onValueChange={handleMetricChange}>
         <TabsList className="mb-4 grid w-full grid-cols-4">
           <TabsTrigger value="combined">

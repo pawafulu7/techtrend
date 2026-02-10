@@ -7,10 +7,10 @@ export default function PopularLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-background min-h-screen">
+    <div className="min-h-screen">
       {/* Sub Navigation */}
       <div className="bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur">
-        <div className="container mx-auto max-w-6xl px-4 py-3">
+        <div className="container mx-auto max-w-7xl px-4 py-3">
           <Suspense>
             <PopularSubNav />
           </Suspense>
@@ -18,8 +18,10 @@ export default function PopularLayout({
       </div>
 
       {/* Page Content */}
-      <div className="container mx-auto max-w-6xl space-y-6 px-4 py-6">
-        {children}
+      <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
+        <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
+          {children}
+        </div>
       </div>
     </div>
   );
