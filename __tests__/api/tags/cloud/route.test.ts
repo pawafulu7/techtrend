@@ -284,6 +284,19 @@ describe('/api/tags/cloud', () => {
       );
     });
 
+    it('無効なperiodパラメータの場合400を返す', async () => {
+      const request = new NextRequest(new URL('http://localhost/api/tags/cloud?period=invalid'));
+      const response = await GET(request);
+
+      expect(response.status).toBe(400);
+      const data = await response.json();
+
+      expect(data).toEqual({
+        error: 'Invalid period. Use: 7d, 30d, 365d, or all'
+      });
+      expect(prismaMock.tag.findMany).not.toHaveBeenCalled();
+    });
+
     it('データベースエラーの場合500を返す', async () => {
       prismaMock.tag.findMany.mockRejectedValue(new Error('Database error'));
 

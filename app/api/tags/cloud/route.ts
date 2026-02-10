@@ -22,6 +22,13 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const searchParams = url.searchParams;
     const period = searchParams.get('period') || '30d';
+    const validPeriods = ['7d', '30d', '365d', 'all'];
+    if (!validPeriods.includes(period)) {
+      return NextResponse.json(
+        { error: 'Invalid period. Use: 7d, 30d, 365d, or all' },
+        { status: 400 }
+      );
+    }
     const limit = Math.max(
       1,
       Math.min(parseInt(searchParams.get('limit') || '50') || 50, 200)
@@ -159,6 +166,8 @@ export async function GET(request: NextRequest) {
           if (previousCount === 0 && currentCount > 0) {
             trend = 'rising';
             growthRate = 100;
+          } else if (previousCount === 0 && currentCount === 0) {
+            // 両期間ともデータなし → stable / growthRate=0 のまま
           } else if (previousCount > 0) {
             growthRate = Math.round(
               ((currentCount - previousCount) / previousCount) * 100
