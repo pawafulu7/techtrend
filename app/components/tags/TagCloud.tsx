@@ -22,11 +22,11 @@ interface TagCloudProps {
   onTagClick?: (tag: string) => void;
 }
 
-export function TagCloud({ 
-  className, 
+export function TagCloud({
+  className,
   limit = 50,
   period: initialPeriod = '30d',
-  onTagClick 
+  onTagClick,
 }: TagCloudProps) {
   const router = useRouter();
   const [tags, setTags] = useState<Tag[]>([]);
@@ -37,16 +37,16 @@ export function TagCloud({
   const loadTags = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(
         `/api/tags/cloud?period=${period}&limit=${limit}`
       );
-      
+
       if (!response.ok) {
         throw new Error('Failed to load tags');
       }
-      
+
       const data = await response.json();
       setTags(data.tags);
     } catch (err) {
@@ -63,38 +63,41 @@ export function TagCloud({
   // フォントサイズの計算
   const { minCount, maxCount, fontSizes } = useMemo(() => {
     if (tags.length === 0) return { minCount: 0, maxCount: 0, fontSizes: {} };
-    
-    const counts = tags.map(t => t.count);
+
+    const counts = tags.map((t) => t.count);
     const min = Math.min(...counts);
     const max = Math.max(...counts);
-    
-    const sizes = tags.reduce((acc, tag) => {
-      const minSize = 12;
-      const maxSize = 36;
-      
-      if (max === min) {
-        acc[tag.id] = (minSize + maxSize) / 2;
-      } else {
-        const ratio = (tag.count - min) / (max - min);
-        acc[tag.id] = minSize + ratio * (maxSize - minSize);
-      }
-      
-      return acc;
-    }, {} as Record<string, number>);
-    
+
+    const sizes = tags.reduce(
+      (acc, tag) => {
+        const minSize = 14;
+        const maxSize = 36;
+
+        if (max === min) {
+          acc[tag.id] = (minSize + maxSize) / 2;
+        } else {
+          const ratio = (tag.count - min) / (max - min);
+          acc[tag.id] = minSize + ratio * (maxSize - minSize);
+        }
+
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
     return { minCount: min, maxCount: max, fontSizes: sizes };
   }, [tags]);
 
   // タグの色を決定
   const getTagColor = (tag: Tag) => {
     const baseClasses = 'transition-all duration-300 hover:scale-110';
-    
+
     if (tag.trend === 'rising') {
       return cn(baseClasses, 'text-green-600 hover:text-green-700');
     } else if (tag.trend === 'falling') {
       return cn(baseClasses, 'text-red-600 hover:text-red-700');
     }
-    
+
     // 使用頻度に基づいて色の濃さを変える
     const intensity = (tag.count - minCount) / (maxCount - minCount);
     if (intensity > 0.7) {
@@ -110,16 +113,16 @@ export function TagCloud({
       onTagClick(tag.name);
     } else {
       // デフォルトでは検索ページへ遷移
-      router.push(`/search?tags=${encodeURIComponent(tag.name)}`);
+      router.push(`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`);
     }
   };
 
   const getTrendIcon = (trend: 'rising' | 'stable' | 'falling') => {
     switch (trend) {
       case 'rising':
-        return <TrendingUp className="inline h-3 w-3 ml-1 text-green-600" />;
+        return <TrendingUp className="ml-1 inline h-3 w-3 text-green-600" />;
       case 'falling':
-        return <TrendingDown className="inline h-3 w-3 ml-1 text-red-600" />;
+        return <TrendingDown className="ml-1 inline h-3 w-3 text-red-600" />;
       default:
         return null;
     }
@@ -171,13 +174,13 @@ export function TagCloud({
             {Array.from({ length: 20 }).map((_, i) => (
               <Skeleton
                 key={i}
-                className="inline-block h-6 mr-2 mb-2"
+                className="mr-2 mb-2 inline-block h-6"
                 style={{ width: `${Math.random() * 100 + 50}px` }}
               />
             ))}
           </div>
         ) : error ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-muted-foreground py-8 text-center">
             <p>{error}</p>
             <Button
               variant="outline"
@@ -189,19 +192,19 @@ export function TagCloud({
             </Button>
           </div>
         ) : tags.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-muted-foreground py-8 text-center">
             タグが見つかりませんでした
           </div>
         ) : (
-          <div className="flex flex-wrap gap-2 justify-center items-center min-h-[200px]">
+          <div className="flex min-h-[200px] flex-wrap items-center justify-center gap-2">
             {tags.map((tag) => (
               <button
                 key={tag.id}
                 onClick={() => handleTagClick(tag)}
                 className={cn(
-                  'inline-flex items-center px-3 py-1 rounded-full',
+                  'inline-flex items-center rounded-full px-3 py-1',
                   'hover:bg-accent transition-all duration-200',
-                  'focus:outline-none focus:ring-2 focus:ring-primary',
+                  'focus:ring-primary focus:ring-2 focus:outline-none',
                   getTagColor(tag)
                 )}
                 style={{ fontSize: `${fontSizes[tag.id]}px` }}
@@ -213,10 +216,10 @@ export function TagCloud({
             ))}
           </div>
         )}
-        
+
         {!loading && !error && tags.length > 0 && (
-          <div className="mt-4 pt-4 border-t">
-            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+          <div className="mt-4 border-t pt-4">
+            <div className="text-muted-foreground flex items-center justify-center gap-4 text-xs">
               <span className="flex items-center gap-1">
                 <TrendingUp className="h-3 w-3 text-green-600" />
                 急上昇

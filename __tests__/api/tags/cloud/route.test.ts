@@ -128,7 +128,8 @@ describe('/api/tags/cloud', () => {
         id: 'tag1',
         name: 'TypeScript',
         count: 25,
-        trend: 'rising'  // 20 → 25 で上昇
+        trend: 'rising',  // 20 → 25 で上昇
+        growthRate: 25     // (25-20)/20 * 100 = 25%
       });
       
       expect(mockCacheInstance.set).toHaveBeenCalledWith(
@@ -197,9 +198,10 @@ describe('/api/tags/cloud', () => {
       expect(data.period).toBe('all');
       expect(data.tags).toHaveLength(5);
       
-      // 全期間の場合はトレンドはすべてstable
+      // 全期間の場合はトレンドはすべてstable、growthRateは0
       data.tags.forEach((tag: any) => {
         expect(tag.trend).toBe('stable');
+        expect(tag.growthRate).toBe(0);
       });
       
       // 前期間のデータは取得されない
@@ -253,9 +255,12 @@ describe('/api/tags/cloud', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       
-      expect(data.tags[0].trend).toBe('rising');   // 3倍なので上昇
-      expect(data.tags[1].trend).toBe('stable');   // 1.1倍なので安定
-      expect(data.tags[2].trend).toBe('falling');  // 0.5倍なので下降
+      expect(data.tags[0].trend).toBe('rising');       // 3倍なので上昇
+      expect(data.tags[0].growthRate).toBe(200);      // (30-10)/10 * 100 = 200%
+      expect(data.tags[1].trend).toBe('stable');       // 1.1倍なので安定
+      expect(data.tags[1].growthRate).toBe(10);        // (11-10)/10 * 100 = 10%
+      expect(data.tags[2].trend).toBe('falling');      // 0.5倍なので下降
+      expect(data.tags[2].growthRate).toBe(-50);       // (5-10)/10 * 100 = -50%
     });
 
     it('カスタムリミットを適用する', async () => {
@@ -318,9 +323,10 @@ describe('/api/tags/cloud', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       
-      // 前期間のデータがないので、すべてstableとして扱われる
+      // 前期間のデータがなく今期間に記事があるので、risingとして扱われる
       data.tags.forEach((tag: any) => {
-        expect(tag.trend).toBe('stable');
+        expect(tag.trend).toBe('rising');
+        expect(tag.growthRate).toBe(100);
       });
     });
   });
