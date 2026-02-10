@@ -9,9 +9,9 @@ interface RankBadgeProps {
 }
 
 const rankStyles = {
-  1: 'text-[var(--tt-color-rank-gold)]',
-  2: 'text-[var(--tt-color-rank-silver)]',
-  3: 'text-[var(--tt-color-rank-bronze)]',
+  1: 'text-(--tt-color-rank-gold)',
+  2: 'text-(--tt-color-rank-silver)',
+  3: 'text-(--tt-color-rank-bronze)',
 } as const;
 
 export function RankBadge({ rank, className }: RankBadgeProps) {
@@ -25,7 +25,7 @@ export function RankBadge({ rank, className }: RankBadgeProps) {
       role="img"
       aria-label={`${rank}`}
       className={cn(
-        'flex items-center justify-center w-10 h-10 rounded-full bg-background border-2',
+        'bg-background flex h-10 w-10 items-center justify-center rounded-full border-2',
         className
       )}
     >

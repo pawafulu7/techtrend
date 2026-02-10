@@ -13,23 +13,23 @@ interface TrendIndicatorProps {
 const trendConfig = {
   up: {
     icon: ChevronUp,
-    color: 'text-[var(--tt-color-positive)]',
-    label: 'ranking up',
+    color: 'text-(--tt-color-positive)',
+    label: 'ランキング上昇',
   },
   down: {
     icon: ChevronDown,
-    color: 'text-[var(--tt-color-negative)]',
-    label: 'ranking down',
+    color: 'text-(--tt-color-negative)',
+    label: 'ランキング下降',
   },
   stable: {
     icon: Minus,
     color: 'text-muted-foreground',
-    label: 'ranking unchanged',
+    label: 'ランキング変動なし',
   },
   new: {
     icon: Sparkles,
-    color: 'text-[var(--tt-color-warning)]',
-    label: 'new entry',
+    color: 'text-(--tt-color-warning)',
+    label: '新規エントリー',
   },
 } as const;
 
@@ -47,7 +47,8 @@ export function TrendIndicator({ trend, className }: TrendIndicatorProps) {
         className={cn(
           'h-4 w-4',
           config.color,
-          trend === 'new' && 'motion-safe:animate-pulse motion-reduce:animate-none'
+          trend === 'new' &&
+            'motion-safe:animate-pulse motion-reduce:animate-none'
         )}
         aria-hidden="true"
       />

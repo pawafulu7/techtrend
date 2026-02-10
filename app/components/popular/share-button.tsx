@@ -36,12 +36,12 @@ export function ShareButton({ url, title, className }: ShareButtonProps) {
     try {
       await navigator.clipboard.writeText(url);
       toast({
-        description: 'Link copied to clipboard',
+        description: 'リンクをコピーしました',
       });
       return true;
     } catch {
       toast({
-        description: 'Failed to copy link',
+        description: 'リンクのコピーに失敗しました',
         variant: 'destructive',
       });
       return false;
@@ -82,10 +82,10 @@ export function ShareButton({ url, title, className }: ShareButtonProps) {
       size="sm"
       onClick={handleShare}
       disabled={isSharing}
-      aria-label="Share article"
+      aria-label="記事を共有"
       className={cn(
-        'h-11 w-11 p-0 flex items-center justify-center',
-        'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'flex h-11 w-11 items-center justify-center p-0',
+        'focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2',
         className
       )}
     >
