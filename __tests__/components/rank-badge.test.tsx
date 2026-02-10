@@ -4,9 +4,9 @@ import { RankBadge } from '@/app/components/popular/rank-badge';
 
 describe('RankBadge', () => {
   const topThreeCases = [
-    { rank: 1, colorClass: 'text-[var(--tt-color-rank-gold)]' },
-    { rank: 2, colorClass: 'text-[var(--tt-color-rank-silver)]' },
-    { rank: 3, colorClass: 'text-[var(--tt-color-rank-bronze)]' },
+    { rank: 1, colorClass: 'text-(--tt-color-rank-gold)' },
+    { rank: 2, colorClass: 'text-(--tt-color-rank-silver)' },
+    { rank: 3, colorClass: 'text-(--tt-color-rank-bronze)' },
   ] as const;
 
   it.each(topThreeCases)(
@@ -38,7 +38,9 @@ describe('RankBadge', () => {
   });
 
   it('applies custom className to the wrapper', () => {
-    const { getByRole } = render(<RankBadge rank={2} className="custom-badge" />);
+    const { getByRole } = render(
+      <RankBadge rank={2} className="custom-badge" />
+    );
     expect(getByRole('img', { name: '2' })).toHaveClass('custom-badge');
   });
 });

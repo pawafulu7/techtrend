@@ -16,29 +16,29 @@ describe('ShareButton', () => {
   it('renders share button with correct accessibility attributes', () => {
     render(<ShareButton {...defaultProps} />);
 
-    const button = screen.getByRole('button', { name: 'Share article' });
+    const button = screen.getByRole('button', { name: '記事を共有' });
     expect(button).toBeInTheDocument();
-    expect(button).toHaveAttribute('aria-label', 'Share article');
+    expect(button).toHaveAttribute('aria-label', '記事を共有');
   });
 
   it('has correct touch target size (44x44px)', () => {
     render(<ShareButton {...defaultProps} />);
 
-    const button = screen.getByRole('button', { name: 'Share article' });
+    const button = screen.getByRole('button', { name: '記事を共有' });
     expect(button).toHaveClass('h-11', 'w-11');
   });
 
   it('applies custom className', () => {
     render(<ShareButton {...defaultProps} className="custom-share" />);
 
-    const button = screen.getByRole('button', { name: 'Share article' });
+    const button = screen.getByRole('button', { name: '記事を共有' });
     expect(button).toHaveClass('custom-share');
   });
 
   it('renders Share2 icon with aria-hidden', () => {
     render(<ShareButton {...defaultProps} />);
 
-    const button = screen.getByRole('button', { name: 'Share article' });
+    const button = screen.getByRole('button', { name: '記事を共有' });
     const svg = button.querySelector('svg');
     expect(svg).toBeInTheDocument();
     expect(svg).toHaveAttribute('aria-hidden', 'true');
@@ -47,7 +47,7 @@ describe('ShareButton', () => {
   it('has focus-visible ring styles', () => {
     render(<ShareButton {...defaultProps} />);
 
-    const button = screen.getByRole('button', { name: 'Share article' });
+    const button = screen.getByRole('button', { name: '記事を共有' });
     expect(button).toHaveClass('focus-visible:ring-2');
   });
 });

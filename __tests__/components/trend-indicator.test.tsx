@@ -6,26 +6,26 @@ describe('TrendIndicator', () => {
   const trendCases = [
     {
       trend: 'up' as const,
-      label: 'ranking up',
-      colorClass: 'text-[var(--tt-color-positive)]',
+      label: 'ランキング上昇',
+      colorClass: 'text-(--tt-color-positive)',
       animated: false,
     },
     {
       trend: 'down' as const,
-      label: 'ranking down',
-      colorClass: 'text-[var(--tt-color-negative)]',
+      label: 'ランキング下降',
+      colorClass: 'text-(--tt-color-negative)',
       animated: false,
     },
     {
       trend: 'stable' as const,
-      label: 'ranking unchanged',
+      label: 'ランキング変動なし',
       colorClass: 'text-muted-foreground',
       animated: false,
     },
     {
       trend: 'new' as const,
-      label: 'new entry',
-      colorClass: 'text-[var(--tt-color-warning)]',
+      label: '新規エントリー',
+      colorClass: 'text-(--tt-color-warning)',
       animated: true,
     },
   ];
@@ -62,6 +62,8 @@ describe('TrendIndicator', () => {
     const { getByRole } = render(
       <TrendIndicator trend="up" className="custom-trend" />
     );
-    expect(getByRole('status', { name: 'ranking up' })).toHaveClass('custom-trend');
+    expect(getByRole('status', { name: 'ランキング上昇' })).toHaveClass(
+      'custom-trend'
+    );
   });
 });
