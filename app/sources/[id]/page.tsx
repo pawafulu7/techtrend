@@ -8,9 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArticleCard } from '@/app/components/article/card';
-import { 
-  ArrowLeft, ExternalLink, 
-  TrendingUp, Calendar, Tag, BarChart
+import {
+  ArrowLeft,
+  ExternalLink,
+  TrendingUp,
+  Calendar,
+  Tag,
+  BarChart,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -66,10 +70,10 @@ export default function SourceDetailPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Skeleton className="h-8 w-64 mb-4" />
+      <div>
+        <Skeleton className="mb-4 h-8 w-64" />
         <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6 lg:col-span-2">
             <Skeleton className="h-40" />
             <Skeleton className="h-96" />
           </div>
@@ -84,15 +88,13 @@ export default function SourceDetailPage() {
 
   if (!data) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <p className="text-lg text-muted-foreground">
+      <div>
+        <div className="py-12 text-center">
+          <p className="text-muted-foreground text-lg">
             ソースが見つかりませんでした
           </p>
           <Button asChild className="mt-4">
-            <Link href="/sources">
-              ソース一覧に戻る
-            </Link>
+            <Link href="/sources">ソース一覧に戻る</Link>
           </Button>
         </div>
       </div>
@@ -105,7 +107,7 @@ export default function SourceDetailPage() {
     .slice(0, 10);
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div>
       <div className="mb-6">
         <Button variant="ghost" asChild>
           <Link href="/sources" className="flex items-center gap-2">
@@ -116,13 +118,13 @@ export default function SourceDetailPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           {/* ヘッダー */}
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-2xl mb-2">{source.name}</CardTitle>
+                  <CardTitle className="mb-2 text-2xl">{source.name}</CardTitle>
                   <p className="text-muted-foreground">{source.type}</p>
                 </div>
                 <Button variant="outline" size="sm" asChild>
@@ -139,34 +141,39 @@ export default function SourceDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{stats.totalArticles}</div>
-                  <p className="text-sm text-muted-foreground">記事数</p>
+                  <div className="text-2xl font-bold">
+                    {stats.totalArticles}
+                  </div>
+                  <p className="text-muted-foreground text-sm">記事数</p>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{stats.avgQualityScore}</div>
-                  <p className="text-sm text-muted-foreground">平均品質</p>
+                  <div className="text-2xl font-bold">
+                    {stats.avgQualityScore}
+                  </div>
+                  <p className="text-muted-foreground text-sm">平均品質</p>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold">{stats.avgBookmarks}</div>
-                  <p className="text-sm text-muted-foreground">平均保存数</p>
+                  <p className="text-muted-foreground text-sm">平均保存数</p>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold">
                     {stats.publishFrequency.toFixed(1)}
                   </div>
-                  <p className="text-sm text-muted-foreground">記事/日</p>
+                  <p className="text-muted-foreground text-sm">記事/日</p>
                 </div>
               </div>
-              
+
               {stats.lastPublished && (
-                <div className="mt-4 pt-4 border-t">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="mt-4 border-t pt-4">
+                  <div className="text-muted-foreground flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4" />
-                    最終更新: {formatDistanceToNow(new Date(stats.lastPublished), {
+                    最終更新:{' '}
+                    {formatDistanceToNow(new Date(stats.lastPublished), {
                       addSuffix: true,
-                      locale: ja
+                      locale: ja,
                     })}
                   </div>
                 </div>
@@ -176,14 +183,14 @@ export default function SourceDetailPage() {
 
           {/* 最新記事 */}
           <div>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <h2 className="mb-4 flex items-center gap-2 text-xl font-bold">
               <Calendar className="h-5 w-5" />
               最新記事
             </h2>
             <div className="space-y-4">
               {recentArticles.length === 0 ? (
                 <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
+                  <CardContent className="text-muted-foreground py-8 text-center">
                     記事がありません
                   </CardContent>
                 </Card>
@@ -198,14 +205,14 @@ export default function SourceDetailPage() {
           {/* 人気記事 */}
           {topArticles.length > 0 && (
             <div>
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <h2 className="mb-4 flex items-center gap-2 text-xl font-bold">
                 <TrendingUp className="h-5 w-5" />
                 人気記事TOP5
               </h2>
               <div className="space-y-4">
                 {topArticles.map((article, index) => (
                   <div key={article.id} className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                    <div className="bg-primary/10 text-primary flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold">
                       {index + 1}
                     </div>
                     <div className="flex-1">
@@ -232,9 +239,12 @@ export default function SourceDetailPage() {
               <CardContent>
                 <div className="space-y-3">
                   {topTags.map(([tag, count]) => (
-                    <div key={tag} className="flex items-center justify-between">
+                    <div
+                      key={tag}
+                      className="flex items-center justify-between"
+                    >
                       <Badge variant="secondary">{tag}</Badge>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-muted-foreground text-sm">
                         {count}記事
                       </span>
                     </div>
@@ -253,10 +263,10 @@ export default function SourceDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 過去30日間の投稿数推移
               </p>
-              <div className="h-32 mt-4 bg-muted rounded flex items-center justify-center">
+              <div className="bg-muted mt-4 flex h-32 items-center justify-center rounded">
                 <span className="text-muted-foreground">グラフ表示予定</span>
               </div>
             </CardContent>
