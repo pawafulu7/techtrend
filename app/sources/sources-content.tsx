@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { SourceCard } from '@/app/components/sources/SourceCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -53,6 +53,7 @@ export default function SourcesContent() {
       setAllSources(Array.isArray(data.sources) ? data.sources : []);
     } catch (error) {
       logger.error({ error }, 'Failed to load sources');
+      setAllSources([]);
     } finally {
       setLoading(false);
     }
@@ -137,14 +138,16 @@ export default function SourcesContent() {
     return allSources.filter((s) => s.category === cat).length;
   };
 
-  const uniqueCategories = new Set(allSources.map((s) => s.category));
-  const overviewStats = {
-    totalSources: allSources.length,
-    activeSources: allSources.filter((s) => s.stats.publishFrequency > 0)
-      .length,
-    favoriteCount: allSources.filter((s) => isFavorite(s.id)).length,
-    categoryCount: uniqueCategories.size,
-  };
+  const overviewStats = useMemo(() => {
+    const uniqueCategories = new Set(allSources.map((s) => s.category));
+    return {
+      totalSources: allSources.length,
+      activeSources: allSources.filter((s) => s.stats.publishFrequency > 0)
+        .length,
+      favoriteCount: allSources.filter((s) => isFavorite(s.id)).length,
+      categoryCount: uniqueCategories.size,
+    };
+  }, [allSources, isFavorite]);
 
   return (
     <div className="space-y-6">
@@ -226,7 +229,11 @@ export default function SourcesContent() {
           {loading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-64" />
+                <Skeleton
+                  key={i}
+                  className="h-64"
+                  style={{ animationDelay: `${i * 75}ms` }}
+                />
               ))}
             </div>
           ) : sources.length === 0 ? (
