@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { DailyTrendHero, TopArticleList, CategoryDistribution } from '@/app/components/trends/daily';
+import {
+  DailyTrendHero,
+  TopArticleList,
+  CategoryDistribution,
+} from '@/app/components/trends/daily';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -59,7 +63,9 @@ export default function DailyTrendPage() {
   const [report, setReport] = useState<TrendReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [latestAvailableDate, setLatestAvailableDate] = useState<string | null>(null);
+  const [latestAvailableDate, setLatestAvailableDate] = useState<string | null>(
+    null
+  );
   const [navigation, setNavigation] = useState<{
     prevDate: string | null;
     nextDate: string | null;
@@ -128,13 +134,13 @@ export default function DailyTrendPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       {/* Error state */}
       {error && (
         <div className="container mx-auto px-4 py-8">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <AlertDescription className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
               <span>{error}</span>
               <div className="flex gap-2">
                 {latestAvailableDate && (
@@ -166,10 +172,10 @@ export default function DailyTrendPage() {
       {loading ? (
         <div className="container mx-auto px-4 py-12">
           <div className="animate-pulse space-y-8">
-            <div className="h-64 bg-muted rounded-xl" />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="h-96 bg-muted rounded-xl" />
-              <div className="h-96 bg-muted rounded-xl" />
+            <div className="bg-muted h-64 rounded-xl" />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="bg-muted h-96 rounded-xl" />
+              <div className="bg-muted h-96 rounded-xl" />
             </div>
           </div>
         </div>
@@ -190,7 +196,7 @@ export default function DailyTrendPage() {
 
           {/* Content sections */}
           <div className="container mx-auto px-4 py-8">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
               {/* Top articles - 7 columns */}
               <div className="lg:col-span-7">
                 <TopArticleList articles={report.topArticles} />

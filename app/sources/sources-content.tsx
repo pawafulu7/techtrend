@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, SortAsc } from 'lucide-react';
+import { Search, SortAsc, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SourcesOverview } from '@/app/components/sources/SourcesOverview';
 import { SourcesOverviewSkeleton } from '@/app/components/sources/SourcesOverviewSkeleton';
 import { useFavoriteSources } from '@/lib/favorites/hooks';
@@ -26,6 +26,8 @@ import logger from '@/lib/logger.client';
 
 type SortBy = 'articles' | 'quality' | 'frequency' | 'name';
 
+const ITEMS_PER_PAGE = 20;
+
 export default function SourcesContent() {
   const [allSources, setAllSources] = useState<SourceWithStats[]>([]);
   const [sources, setSources] = useState<SourceWithStats[]>([]);
@@ -34,6 +36,7 @@ export default function SourcesContent() {
   const [category, setCategory] = useState<SourceCategoryWithAll>('all');
   const [sortBy, setSortBy] = useState<SortBy>('articles');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
   const { isFavorite } = useFavoriteSources();
 
   const loadAllSources = useCallback(async () => {
@@ -59,12 +62,10 @@ export default function SourcesContent() {
     }
   }, []);
 
-  // 初回ロード時のみ全データを取得
   useEffect(() => {
     loadAllSources();
   }, [loadAllSources]);
 
-  // フィルタリングとソートを適用
   const applyFiltersAndSort = useCallback(() => {
     if (allSources.length === 0) {
       setSources([]);
@@ -73,19 +74,16 @@ export default function SourcesContent() {
 
     let filtered = [...allSources];
 
-    // カテゴリフィルタリング
     if (category !== 'all') {
       filtered = filtered.filter((s) => s.category === category);
     }
 
-    // 検索フィルタリング
     if (search) {
       filtered = filtered.filter((source) =>
         source.name.toLowerCase().includes(search.toLowerCase())
       );
     }
 
-    // ソート
     filtered.sort((a, b) => {
       let aValue, bValue;
       switch (sortBy) {
@@ -126,11 +124,11 @@ export default function SourcesContent() {
 
   useEffect(() => {
     applyFiltersAndSort();
+    setCurrentPage(1);
   }, [applyFiltersAndSort]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // 検索は自動的にuseEffectで処理される
   };
 
   const getCategoryCount = (cat: SourceCategoryWithAll) => {
@@ -149,6 +147,12 @@ export default function SourcesContent() {
     };
   }, [allSources, isFavorite]);
 
+  const totalPages = Math.max(1, Math.ceil(sources.length / ITEMS_PER_PAGE));
+  const paginatedSources = sources.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
     <div className="space-y-6">
       <h1 className="sr-only">ソース一覧</h1>
@@ -158,7 +162,7 @@ export default function SourcesContent() {
         <SourcesOverview stats={overviewStats} />
       )}
 
-      {/* 検索・ソート ツールバー */}
+      {/* Search & Sort toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <form onSubmit={handleSearch} className="relative min-w-0 flex-1">
           <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
@@ -196,12 +200,12 @@ export default function SourcesContent() {
         </Button>
       </div>
 
-      {/* カテゴリータブ */}
+      {/* Category tabs */}
       <Tabs
         value={category}
         onValueChange={(v) => setCategory(v as SourceCategoryWithAll)}
       >
-        <TabsList className="mb-6 w-full overflow-x-auto">
+        <TabsList className="mb-4 w-full overflow-x-auto">
           <TabsTrigger value="all">
             すべて ({getCategoryCount('all')})
           </TabsTrigger>
@@ -227,12 +231,12 @@ export default function SourcesContent() {
 
         <TabsContent value={category} className="mt-0">
           {loading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
+            <div className="space-y-2">
+              {Array.from({ length: 8 }).map((_, i) => (
                 <Skeleton
                   key={i}
-                  className="h-64"
-                  style={{ animationDelay: `${i * 75}ms` }}
+                  className="h-14 rounded-lg"
+                  style={{ animationDelay: `${i * 50}ms` }}
                 />
               ))}
             </div>
@@ -246,11 +250,56 @@ export default function SourcesContent() {
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {sources.map((source) => (
-                <SourceCard key={source.id} source={source} />
-              ))}
-            </div>
+            <>
+              {/* Source list */}
+              <div className="space-y-1.5">
+                {paginatedSources.map((source) => (
+                  <SourceCard key={source.id} source={source} />
+                ))}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <p className="text-muted-foreground text-sm">
+                    {sources.length}件中{' '}
+                    {(currentPage - 1) * ITEMS_PER_PAGE + 1}-
+                    {Math.min(currentPage * ITEMS_PER_PAGE, sources.length)}件
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    {Array.from({ length: totalPages }).map((_, i) => (
+                      <Button
+                        key={i + 1}
+                        variant={currentPage === i + 1 ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCurrentPage(i + 1)}
+                        className="w-8"
+                      >
+                        {i + 1}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>
