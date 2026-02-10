@@ -46,10 +46,8 @@ export default function ProfilePage() {
 
   if (status === 'loading' || profileLoading) {
     return (
-      <div className="container mx-auto max-w-4xl px-4 py-6">
-        <div className="flex h-32 items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </div>
+      <div className="flex h-32 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
   }
@@ -66,13 +64,11 @@ export default function ProfilePage() {
       return null;
     }
     return (
-      <div className="container mx-auto max-w-4xl px-4 py-6">
-        <Alert variant="destructive">
-          <AlertDescription>
-            プロフィール情報の取得に失敗しました：{profileError.message}
-          </AlertDescription>
-        </Alert>
-      </div>
+      <Alert variant="destructive">
+        <AlertDescription>
+          プロフィール情報の取得に失敗しました：{profileError.message}
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -91,7 +87,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-6">
+    <>
       <PageHeader
         icon={UserCog}
         title="プロフィール設定"
@@ -186,6 +182,6 @@ export default function ProfilePage() {
           </Card>
         </div>
       </div>
-    </div>
+    </>
   );
 }

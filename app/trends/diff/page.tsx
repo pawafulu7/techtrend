@@ -360,7 +360,7 @@ export default function DiffSummaryPage() {
   );
 
   return (
-    <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
+    <div>
       {/* Header */}
       <header className="bg-background/80 sticky top-0 z-10 border-b backdrop-blur-sm">
         <div className="container mx-auto max-w-6xl px-4">
