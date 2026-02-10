@@ -204,7 +204,7 @@ export function SourceCard({ source }: SourceCardProps) {
                 )}
               >
                 {source.stats.growthRate > 0 ? '+' : ''}
-                {source.stats.growthRate}% 成長
+                {Math.round(source.stats.growthRate)}% 成長
               </span>
             </div>
           )}

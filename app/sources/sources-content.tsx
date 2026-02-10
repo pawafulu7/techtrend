@@ -65,7 +65,10 @@ export default function SourcesContent() {
 
   // フィルタリングとソートを適用
   const applyFiltersAndSort = useCallback(() => {
-    if (allSources.length === 0) return;
+    if (allSources.length === 0) {
+      setSources([]);
+      return;
+    }
 
     let filtered = [...allSources];
 
