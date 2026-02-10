@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,11 +53,19 @@ export function PopularArticles({
   compact = false,
   showPresetFilters = true,
 }: PopularArticlesProps) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [articles, setArticles] = useState<RankedArticle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<PeriodType>(initialPeriod);
   const [metric, setMetric] = useState<MetricType>(initialMetric);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+
+  // Period is driven by URL params in full mode, by props in compact mode
+  const period = compact
+    ? initialPeriod
+    : ((searchParams.get('period') || initialPeriod) as PeriodType);
 
   const loadArticles = useCallback(async () => {
     setLoading(true);
@@ -87,19 +96,18 @@ export function PopularArticles({
   const handlePresetChange = useCallback(
     (preset: string | null, newPeriod: PeriodType, newMetric: MetricType) => {
       setSelectedPreset(preset);
-      setPeriod(newPeriod);
       setMetric(newMetric);
+      // Update URL with new period
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('period', newPeriod);
+      params.set('preset', preset || '');
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
     },
-    []
+    [searchParams, router, pathname]
   );
 
-  const handlePeriodChange = useCallback((value: string) => {
-    setSelectedPreset(null); // Clear preset when manually changing
-    setPeriod(value as PeriodType);
-  }, []);
-
   const handleMetricChange = useCallback((value: string) => {
-    setSelectedPreset(null); // Clear preset when manually changing
+    setSelectedPreset(null);
     setMetric(value as MetricType);
   }, []);
 
@@ -171,34 +179,6 @@ export function PopularArticles({
 
   return (
     <div className="space-y-4">
-      {/* Sub Navigation Bar */}
-      <div className="bg-background/95 supports-[backdrop-filter]:bg-background/60 rounded-lg border px-4 py-3 shadow-sm backdrop-blur">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Tabs value={period} onValueChange={handlePeriodChange}>
-            <TabsList className="h-8">
-              <TabsTrigger value="today" className="text-xs">
-                今日
-              </TabsTrigger>
-              <TabsTrigger value="week" className="text-xs">
-                週間
-              </TabsTrigger>
-              <TabsTrigger value="month" className="text-xs">
-                月間
-              </TabsTrigger>
-              <TabsTrigger value="all" className="text-xs">
-                全期間
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          {showPresetFilters && (
-            <PresetFilters
-              selectedPreset={selectedPreset}
-              onPresetChange={handlePresetChange}
-            />
-          )}
-        </div>
-      </div>
-
       {/* Stats Bar */}
       <PopularStatsBar
         articleCount={articles.length}
@@ -206,6 +186,12 @@ export function PopularArticles({
         totalBookmarks={totalBookmarks}
         loading={loading}
       />
+      {showPresetFilters && (
+        <PresetFilters
+          selectedPreset={selectedPreset}
+          onPresetChange={handlePresetChange}
+        />
+      )}
       <Tabs value={metric} onValueChange={handleMetricChange}>
         <TabsList className="mb-4 grid w-full grid-cols-4">
           <TabsTrigger value="combined">
