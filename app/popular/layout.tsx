@@ -7,7 +7,7 @@ export default function PopularLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen">
+    <div className="bg-background min-h-screen">
       {/* Sub Navigation */}
       <div className="bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur">
         <div className="container mx-auto max-w-6xl px-4 py-3">
