@@ -39,43 +39,49 @@ export function ScoreTooltip({
           <span className={cn('cursor-help', className)}>{children}</span>
         </TooltipTrigger>
         <TooltipContent
-          className="min-w-[180px] p-3 bg-popover text-popover-foreground border border-border rounded-lg shadow-md"
+          className="bg-popover text-popover-foreground border-border min-w-[180px] rounded-lg border p-3 shadow-md"
           sideOffset={8}
         >
           <table className="w-full text-xs" role="table">
-            <caption className="sr-only">Score breakdown</caption>
+            <caption className="sr-only">スコア内訳</caption>
             <thead>
               <tr>
-                <th scope="col" className="text-left font-medium text-muted-foreground pb-2">
-                  Metric
+                <th
+                  scope="col"
+                  className="text-muted-foreground pb-2 text-left font-medium"
+                >
+                  指標
                 </th>
-                <th scope="col" className="text-right font-medium text-muted-foreground pb-2">
-                  Value
+                <th
+                  scope="col"
+                  className="text-muted-foreground pb-2 text-right font-medium"
+                >
+                  値
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/50">
+            <tbody className="divide-border/50 divide-y">
               <tr>
-                <td className="py-1.5 text-foreground">Total Score</td>
-                <td className="py-1.5 text-right font-semibold tabular-nums text-foreground">
+                <td className="text-foreground py-1.5">総合スコア</td>
+                <td className="text-foreground py-1.5 text-right font-semibold tabular-nums">
                   {formatValue(score)}
                 </td>
               </tr>
               <tr>
-                <td className="py-1.5 text-foreground">Bookmarks</td>
-                <td className="py-1.5 text-right font-semibold tabular-nums text-foreground">
+                <td className="text-foreground py-1.5">ブックマーク</td>
+                <td className="text-foreground py-1.5 text-right font-semibold tabular-nums">
                   {formatValue(bookmarks)}
                 </td>
               </tr>
               <tr>
-                <td className="py-1.5 text-foreground">Votes</td>
-                <td className="py-1.5 text-right font-semibold tabular-nums text-foreground">
+                <td className="text-foreground py-1.5">投票</td>
+                <td className="text-foreground py-1.5 text-right font-semibold tabular-nums">
                   {formatValue(votes)}
                 </td>
               </tr>
               <tr>
-                <td className="py-1.5 text-foreground">Quality</td>
-                <td className="py-1.5 text-right font-semibold tabular-nums text-foreground">
+                <td className="text-foreground py-1.5">品質スコア</td>
+                <td className="text-foreground py-1.5 text-right font-semibold tabular-nums">
                   {formatValue(qualityScore)}
                 </td>
               </tr>
