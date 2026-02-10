@@ -93,7 +93,6 @@ export function PopularArticles({
       if (compact) return;
       const params = new URLSearchParams(searchParams.toString());
       params.set('metric', value);
-      params.delete('preset');
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
     },
     [compact, searchParams, router, pathname]
