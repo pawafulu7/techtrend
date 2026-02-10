@@ -214,7 +214,8 @@ describe('/api/tags/cloud', () => {
           id: tag.id,
           name: tag.name,
           count: tag._count.articles,
-          trend: 'stable'
+          trend: 'stable' as const,
+          growthRate: 0,
         })),
         period: '30d'
       };

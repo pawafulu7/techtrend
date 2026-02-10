@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, Hash, Calendar, Activity } from 'lucide-react';
+import logger from '@/lib/logger.client';
 
 interface TagStat {
   totalTags: number;
@@ -26,23 +27,27 @@ export function TagStats() {
 
   const loadStats = async () => {
     try {
-      // 総タグ数
-      const totalResponse = await fetch('/api/tags/stats');
-      const totalData = await totalResponse.json();
+      const [totalResponse, activeResponse, newResponse] = await Promise.all([
+        fetch('/api/tags/stats'),
+        fetch('/api/tags/cloud?period=30d&limit=1000'),
+        fetch('/api/tags/new?days=7'),
+      ]);
 
-      // アクティブタグ数（30日間）
-      const activeResponse = await fetch(
-        '/api/tags/cloud?period=30d&limit=1000'
-      );
-      const activeData = await activeResponse.json();
-      const activeTags = activeData.tags.length;
+      const totalData = totalResponse.ok
+        ? await totalResponse.json()
+        : { total: 0 };
+      const activeData = activeResponse.ok
+        ? await activeResponse.json()
+        : { tags: [] };
+      const newData = newResponse.ok ? await newResponse.json() : { count: 0 };
 
-      // 新規タグ（7日間）
-      const newResponse = await fetch('/api/tags/new?days=7');
-      const newData = await newResponse.json();
+      const activeTags = Array.isArray(activeData.tags)
+        ? activeData.tags.length
+        : 0;
 
       // 成長率の高いタグ（APIから返されるgrowthRateを使用）
-      const growthTags = activeData.tags
+      const tags = Array.isArray(activeData.tags) ? activeData.tags : [];
+      const growthTags = tags
         .filter(
           (tag: {
             name: string;
@@ -68,9 +73,7 @@ export function TagStats() {
         topGrowthTags: growthTags,
       });
     } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Failed to load tag stats:', error);
-      }
+      logger.error({ error }, 'Failed to load tag stats');
     } finally {
       setLoading(false);
     }

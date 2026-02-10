@@ -22,7 +22,10 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const searchParams = url.searchParams;
     const period = searchParams.get('period') || '30d';
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limit = Math.max(
+      1,
+      Math.min(parseInt(searchParams.get('limit') || '50') || 50, 200)
+    );
 
     // キャッシュキーを生成
     const cache = getTagCloudCache();
@@ -98,11 +101,11 @@ export async function GET(request: NextRequest) {
     // トレンド計算のために前期間のデータも取得
     let previousPeriodCounts: Record<string, number> = {};
     if (period !== 'all') {
-      const days = period === '7d' ? 7 : period === '30d' ? 30 : 365;
+      const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 365;
       const previousStart = new Date();
-      previousStart.setDate(previousStart.getDate() - days * 2);
+      previousStart.setDate(previousStart.getDate() - periodDays * 2);
       const previousEnd = new Date();
-      previousEnd.setDate(previousEnd.getDate() - days);
+      previousEnd.setDate(previousEnd.getDate() - periodDays);
 
       const previousTags = await prisma.tag.findMany({
         where: {

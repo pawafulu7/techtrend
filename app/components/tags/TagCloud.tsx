@@ -99,7 +99,10 @@ export function TagCloud({
     }
 
     // 使用頻度に基づいて色の濃さを変える
-    const intensity = (tag.count - minCount) / (maxCount - minCount);
+    const intensity =
+      maxCount === minCount
+        ? 0.5
+        : (tag.count - minCount) / (maxCount - minCount);
     if (intensity > 0.7) {
       return cn(baseClasses, 'text-primary hover:text-primary/80');
     } else if (intensity > 0.4) {
