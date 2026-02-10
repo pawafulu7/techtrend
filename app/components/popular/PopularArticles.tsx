@@ -28,6 +28,7 @@ import {
   type PeriodType,
   type MetricType,
 } from './preset-filters';
+import { PopularStatsBar } from './popular-stats-bar';
 
 interface RankedArticle extends ArticleWithRelations {
   rank: number;
@@ -166,8 +167,16 @@ export function PopularArticles({
     );
   }
 
+  const totalBookmarks = articles.reduce((sum, a) => sum + a.bookmarks, 0);
+
   return (
     <div className="space-y-4">
+      <PopularStatsBar
+        articleCount={articles.length}
+        topScore={articles[0]?.score ?? 0}
+        totalBookmarks={totalBookmarks}
+        loading={loading}
+      />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Tabs value={period} onValueChange={handlePeriodChange}>
