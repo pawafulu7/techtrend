@@ -100,7 +100,11 @@ export function PopularArticles({
       // Update URL with new period
       const params = new URLSearchParams(searchParams.toString());
       params.set('period', newPeriod);
-      params.set('preset', preset || '');
+      if (preset) {
+        params.set('preset', preset);
+      } else {
+        params.delete('preset');
+      }
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
     },
     [searchParams, router, pathname]
