@@ -10,7 +10,7 @@ export function SourcesOverviewSkeleton() {
         />
         <div className="bg-border hidden h-4 w-px sm:block" />
         <div
-          className="h-4 w-22 rounded bg-(--tt-color-surface-muted)"
+          className="h-4 w-20 rounded bg-(--tt-color-surface-muted)"
           style={{ animationDelay: '100ms' }}
         />
         <div className="bg-border hidden h-4 w-px sm:block" />

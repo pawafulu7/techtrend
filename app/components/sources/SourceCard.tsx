@@ -216,9 +216,7 @@ export function SourceCard({ source }: SourceCardProps) {
         href={`/sources/${source.id}`}
         className="absolute inset-0 z-0"
         aria-label={`${source.name}の詳細を見る`}
-      >
-        <span className="sr-only">{source.name}の詳細を見る</span>
-      </Link>
+      />
     </article>
   );
 }

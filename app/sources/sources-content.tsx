@@ -184,7 +184,7 @@ export default function SourcesContent() {
           aria-label={order === 'desc' ? '昇順に切り替え' : '降順に切り替え'}
         >
           <SortAsc
-            className={`h-4 w-4 transition-transform ${order === 'asc' ? 'rotate-180' : ''}`}
+            className={`h-4 w-4 transition-transform ${order === 'desc' ? 'rotate-180' : ''}`}
           />
         </Button>
       </div>
