@@ -17,12 +17,12 @@ export function SourcesSkeleton() {
       {/* タブ */}
       <Skeleton className="h-10 w-full max-w-3xl" />
 
-      {/* グリッド */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
+      {/* リスト */}
+      <div className="space-y-2">
+        {Array.from({ length: 8 }).map((_, i) => (
           <Skeleton
             key={i}
-            className="h-64 rounded-lg"
+            className="h-14 rounded-lg"
             style={{ animationDelay: `${i * 50}ms` }}
           />
         ))}
