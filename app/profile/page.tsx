@@ -39,7 +39,7 @@ export default function ProfilePage() {
 
   if (status === 'loading' || profileLoading) {
     return (
-      <>
+      <div>
         <div className="flex flex-wrap items-center gap-2 pb-3">
           <div className="bg-muted h-5 w-5 animate-pulse rounded" />
           <div className="bg-muted h-5 w-32 animate-pulse rounded" />
@@ -69,7 +69,7 @@ export default function ProfilePage() {
             </CardV2>
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -85,7 +85,7 @@ export default function ProfilePage() {
       return null;
     }
     return (
-      <>
+      <div>
         <header className="flex flex-wrap items-center gap-2 pb-3">
           <UserCog className="text-primary h-5 w-5" aria-hidden="true" />
           <h1 className="text-foreground text-lg font-semibold">
@@ -98,7 +98,7 @@ export default function ProfilePage() {
             プロフィール情報の取得に失敗しました: {profileError.message}
           </AlertDescription>
         </Alert>
-      </>
+      </div>
     );
   }
 
@@ -117,7 +117,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <>
+    <div>
       <header className="flex flex-wrap items-center gap-2 pb-3">
         <UserCog className="text-primary h-5 w-5" aria-hidden="true" />
         <h1 className="text-foreground text-lg font-semibold">
@@ -210,6 +210,6 @@ export default function ProfilePage() {
           </CardV2>
         </div>
       </div>
-    </>
+    </div>
   );
 }
