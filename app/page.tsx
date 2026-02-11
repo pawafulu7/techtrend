@@ -25,6 +25,7 @@ import { tagCache } from '@/lib/cache/tag-cache';
 import { getSourceCache } from '@/lib/cache/source-cache';
 import { groupSourcesStatic } from '@/lib/utils/source-grouping-static';
 import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
+import { prisma } from '@/lib/prisma';
 
 interface PageProps {
   searchParams: Promise<{
@@ -40,7 +41,25 @@ interface PageProps {
   }>;
 }
 
-// getArticles function removed - now handled by client component
+async function getHomeStats(excludeSourceId: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const baseWhere = {
+    summaryComputedAt: { not: null },
+    sourceId: { not: excludeSourceId },
+    source: { enabled: true },
+  };
+
+  const [totalCount, todayCount] = await Promise.all([
+    prisma.article.count({ where: baseWhere }),
+    prisma.article.count({
+      where: { ...baseWhere, publishedAt: { gte: today } },
+    }),
+  ]);
+
+  return { totalCount, todayCount };
+}
 
 async function getSources() {
   // Get all sources (Redis-backed cache)
@@ -71,13 +90,16 @@ async function getPopularTags() {
 export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
 
-  // Parallel execution of cookies, sources/groups, tags, and session
-  const [cookieStore, sourceData, tags, session] = await Promise.all([
-    cookies(),
-    getSources(),
-    getPopularTags(),
-    auth(),
-  ]);
+  // Parallel execution of cookies, sources/groups, tags, session, and stats
+  const [cookieStore, sourceData, tags, session, homeStats] = await Promise.all(
+    [
+      cookies(),
+      getSources(),
+      getPopularTags(),
+      auth(),
+      getHomeStats(ARXIV_SOURCE_ID),
+    ]
+  );
 
   const { sources, groupedSources } = sourceData;
 
