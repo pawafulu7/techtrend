@@ -135,13 +135,27 @@ export function FilterSidebarPanel({ children }: { children: ReactNode }) {
 export function FilterSidebarOverlay() {
   const { open, close } = useContext(FilterSidebarContext);
 
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, close]);
+
   if (!open) return null;
 
   return (
     <div
       className="absolute inset-0 z-20 hidden bg-black/20 lg:block"
       onClick={close}
-      aria-hidden="true"
+      role="button"
+      tabIndex={-1}
+      aria-label="フィルターを閉じる"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') close();
+      }}
     />
   );
 }

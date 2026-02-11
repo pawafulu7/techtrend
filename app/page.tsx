@@ -7,11 +7,7 @@ import { MobileFilters } from '@/app/components/common/mobile-filters';
 import { SearchBox } from '@/app/components/common/search-box';
 import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
-import { ArticleCount } from '@/app/components/common/article-count';
 import { SortButtons } from '@/app/components/common/sort-buttons';
-import { FilterResetButton } from '@/app/components/common/filter-reset-button';
-import { UnreadFilterWithData } from '@/app/components/common/unread-filter-with-data';
-import { MarkAllReadWrapper } from '@/app/components/common/mark-all-read-wrapper';
 import { auth } from '@/lib/auth/auth';
 import { features } from '@/config/features';
 import { HomeClient } from '@/app/components/home/home-client';
@@ -24,6 +20,7 @@ import {
   FilterSidebarPanel,
   FilterSidebarOverlay,
 } from '@/app/components/home/filter-sidebar';
+import { ToolbarMoreMenu } from '@/app/components/home/toolbar-more-menu';
 import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
 import { parseSourceFilterFromCookie } from '@/lib/source-filter-cookie';
 import { getFilterPreferencesFromCookies } from '@/lib/filter-preferences-cookie';
@@ -31,7 +28,6 @@ import { tagCache } from '@/lib/cache/tag-cache';
 import { getSourceCache } from '@/lib/cache/source-cache';
 import { groupSourcesStatic } from '@/lib/utils/source-grouping-static';
 import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
-// prisma import removed - stats bar deleted
 
 interface PageProps {
   searchParams: Promise<{
@@ -185,20 +181,7 @@ export default async function Home({ searchParams }: PageProps) {
             <ViewModeToggle currentMode={viewMode} />
             <SortButtons initialSortBy={initialSortBy} />
             <div className="bg-border hidden h-5 w-px lg:block" />
-            <UnreadFilterWithData />
-            <MarkAllReadWrapper />
-            <FilterResetButton />
-            <div className="ml-auto" />
-            <Suspense
-              fallback={
-                <div className="h-5 w-16 animate-pulse rounded bg-(--tt-color-surface-muted)" />
-              }
-            >
-              <ArticleCount
-                initialSourceIds={initialSourceIds}
-                excludeSources={ARXIV_SOURCE_ID}
-              />
-            </Suspense>
+            <ToolbarMoreMenu />
           </div>
 
           {/* Content area - フルワイド + オーバーレイフィルター */}

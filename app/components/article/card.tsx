@@ -282,7 +282,9 @@ export function ArticleCard({
           </div>
         ) : article.summary ? (
           <p className="text-foreground text-sm leading-relaxed">
-            {article.summary}
+            {article.summary.length > 200
+              ? `${article.summary.slice(0, 200)}…`
+              : article.summary}
           </p>
         ) : null}
       </div>
