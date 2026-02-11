@@ -674,7 +674,7 @@ test.describe('フィルター条件の永続化', () => {
 
     // 2. リセットボタンをクリック（ToolbarMoreMenu Popover内にある）
     await page.click('button[aria-label="その他のオプション"]');
-    await page.waitForTimeout(300); // Popover表示待ち
+    await expect(page.locator('[data-testid="filter-reset-button"]')).toBeVisible({ timeout: 5000 });
     await page.click('[data-testid="filter-reset-button"]');
     // ページがリロードされるのを待つ
     await waitForPageLoad(page, { waitForNetworkIdle: false });
