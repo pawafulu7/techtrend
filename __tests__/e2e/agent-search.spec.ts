@@ -80,9 +80,9 @@ test.describe('AI Agent Search E2E', () => {
     await ctaLink.click();
     await expect(page).toHaveURL('/search/agent');
 
-    // Verify page loaded correctly
-    const heading = page.getByRole('heading', { name: 'AI記事検索', level: 1 });
-    await expect(heading).toBeVisible({ timeout: 10000 });
+    // Verify page loaded correctly (PageHeader was removed, verify search input instead)
+    const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
+    await expect(input).toBeVisible({ timeout: 10000 });
   });
 
   test('1. Navigate to /search/agent and verify page loads', async ({ page }) => {
@@ -90,11 +90,8 @@ test.describe('AI Agent Search E2E', () => {
     await expect(page).toHaveURL('/search/agent');
 
     // Wait for page to render (Firefox needs explicit wait)
-    const heading = page.getByRole('heading', { name: 'AI記事検索', level: 1 });
-    await expect(heading).toBeVisible({ timeout: 10000 });
-
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
-    await expect(input).toBeVisible();
+    await expect(input).toBeVisible({ timeout: 10000 });
   });
 
   test('2. Enter query and verify loading state appears', async ({ page }) => {
@@ -317,8 +314,8 @@ test.describe('AI Agent Search E2E', () => {
     // Click copy button
     await page.click('button[aria-label="回答をコピー"]');
 
-    // Wait for icon to change from Copy to Check (with text-green-600 class)
-    await page.waitForSelector('button[aria-label="回答をコピー"] svg.lucide-check.text-green-600', { timeout: 3000 });
+    // Wait for "コピー完了" text to appear
+    await expect(page.getByText('コピー完了')).toBeVisible({ timeout: 3000 });
 
     // Verify clipboard content (using stubbed clipboard API)
     const copiedText = await page.evaluate(() => (window as any).__lastCopiedText__);
@@ -500,11 +497,15 @@ test.describe('AI Agent Search E2E', () => {
     // Wait for page to fully render
     await page.waitForTimeout(1000);
 
-    // Category tiles are now always visible (no collapsible)
-    // Click the infrastructure category tile which contains "AWS最新機能アップデート速報"
-    const categoryTile = page.getByTestId('category-tile-infrastructure');
-    await categoryTile.waitFor({ state: 'visible', timeout: 15000 });
-    await categoryTile.click();
+    // Sidebar uses accordion layout: click category to expand, then click query
+    const categoryToggle = page.getByTestId('category-toggle-infrastructure');
+    await categoryToggle.waitFor({ state: 'visible', timeout: 15000 });
+    await categoryToggle.click();
+
+    // Click the first query button in the expanded category
+    const queryButton = page.getByTestId('category-query-q1');
+    await queryButton.waitFor({ state: 'visible', timeout: 5000 });
+    await queryButton.click();
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await expect(input).toHaveValue('AWS最新機能アップデート速報');
@@ -542,76 +543,31 @@ test.describe('AI Agent Search E2E', () => {
     await expect(page).toHaveURL('/search');
   });
 
-  test('16. Streaming indicator suppresses empty state during generation', async ({ page }) => {
-    await page.addInitScript(() => {
-      if ((window as any).__agentStreamingMockInstalled) {
-        return;
-      }
-      (window as any).__agentStreamingMockInstalled = true;
-
-      const encoder = new TextEncoder();
-
-      const buildStream = () =>
-        new ReadableStream({
-          start(controller) {
-            const enqueue = (payload: Record<string, unknown>) => {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
-            };
-
-            enqueue({ type: 'text-delta', delta: 'Next.jsに関するストリーミング回答を生成中です。' });
-
-            setTimeout(() => {
-              enqueue({
-                type: 'finish',
-                usage: { totalTokens: 256, promptTokens: 128, completionTokens: 128 },
-                cached: false,
-                fallback: false,
-              });
-              controller.close();
-            }, 800);
-          },
-        });
-
-      let realFetch = window.fetch.bind(window);
-
-      const streamingFetch = (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = typeof input === 'string' || input instanceof URL ? String(input) : input?.url;
-        if (url && url.includes('/api/rag/agent-search')) {
-          return Promise.resolve(
-            new Response(buildStream(), {
-              status: 200,
-              headers: {
-                'Content-Type': 'text/event-stream',
-              },
-            })
-          );
-        }
-        return realFetch(input as RequestInfo, init);
-      };
-
-      Object.defineProperty(window, 'fetch', {
-        configurable: true,
-        get() {
-          return streamingFetch;
-        },
-        set(value) {
-          realFetch = value.bind(window);
-        },
+  test('16. Loading state suppresses empty state during generation', async ({ page }) => {
+    // Mock a delayed API response to keep loading state visible
+    await page.route('**/api/rag/agent-search', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(MOCK_SUCCESS_RESPONSE),
       });
     });
 
     await page.goto('/search/agent');
 
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
-    await input.fill('Next.js streaming guard');
-    // Use specific selector for search button to avoid matching category tiles
+    await input.fill('Next.js loading guard');
     await page.getByTestId('agent-search-card').getByRole('button', { name: '検索' }).click();
 
-    const streamingIndicator = page.getByTestId('streaming-indicator');
-    await expect(streamingIndicator).toBeVisible({ timeout: 5000 });
+    // Loading wrapper should be visible during processing
+    const loadingWrapper = page.getByTestId('agent-loading-wrapper');
+    await expect(loadingWrapper).toBeVisible({ timeout: 5000 });
 
+    // Empty state should not be shown while loading
     await expect(page.getByText('該当する記事が見つかりませんでした')).not.toBeVisible();
 
+    // Eventually result appears
     await expect(page.getByRole('heading', { name: 'AI回答' })).toBeVisible({ timeout: 15000 });
   });
 

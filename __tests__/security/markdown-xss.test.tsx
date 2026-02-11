@@ -14,7 +14,7 @@ describe('Markdown XSS Prevention', () => {
     };
 
     const { container } = render(
-      <AgentAnswerPanel result={result} partialText={null} isStreaming={false} />
+      <AgentAnswerPanel result={result}/>
     );
     expect(container.textContent).toContain('safe text');
     expect(container.textContent).not.toContain('javascript:');
@@ -31,7 +31,7 @@ describe('Markdown XSS Prevention', () => {
     };
 
     const { container } = render(
-      <AgentAnswerPanel result={result} partialText={null} isStreaming={false} />
+      <AgentAnswerPanel result={result}/>
     );
     expect(container.textContent).toContain('safe text');
     expect(container.textContent).not.toContain('data:');
@@ -48,7 +48,7 @@ describe('Markdown XSS Prevention', () => {
       fallback: false,
     };
 
-    render(<AgentAnswerPanel result={result} partialText={null} isStreaming={false} />);
+    render(<AgentAnswerPanel result={result}/>);
     expect(screen.queryByText('alert("XSS")')).not.toBeInTheDocument();
     expect(screen.getByText('Safe text')).toBeInTheDocument();
   });
@@ -63,7 +63,7 @@ describe('Markdown XSS Prevention', () => {
       fallback: false,
     };
 
-    render(<AgentAnswerPanel result={result} partialText={null} isStreaming={false} />);
+    render(<AgentAnswerPanel result={result}/>);
     const links = screen.getAllByRole('link');
     expect(links[0]).toHaveAttribute('href', 'http://example.com');
     expect(links[1]).toHaveAttribute('href', 'https://example.com');

@@ -1,6 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useDeferredValue, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useDeferredValue,
+  useCallback,
+  useRef,
+} from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -15,7 +22,8 @@ import {
   ThumbsDown,
   Link2,
   ExternalLink,
-  FileText
+  FileText,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CardV2 } from '@/components/ui-v2/card-v2';
@@ -23,7 +31,6 @@ import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
 import { formatDate, formatDateWithTime } from '@/lib/utils/date';
-import { Calendar } from 'lucide-react';
 
 // Article section extracted from AI response
 interface ArticleSection {
@@ -44,7 +51,12 @@ function extractArticleSections(text: string): ExtractedAnswer {
   const sections: ArticleSection[] = [];
 
   // Match numbered list items: 1. **Title** (match: X%) - Description
-  const listItemPattern = /^\d+\.\s+\*\*(.+?)\*\*\s*(?:\[#([a-zA-Z0-9_-]+)\])?\s*(?:\(.*?(?:\d+(?:\.\d+)?%?).*?\))?\s*[-\u2013\u2014]?\s*([\s\S]*?)(?=\n\d+\.\s+\*\*|\n\n(?!\s)|$)/gm;
+  // Pattern captures: 1=title, 2=articleId token, 3=description
+  // Format: "1. **Title** [#id] (match: 80%) - Description"
+  //   - [#id] and (match%) are optional
+  //   - Lookahead stops at next numbered item or double newline
+  const listItemPattern =
+    /^\d+\.\s+\*\*(.+?)\*\*\s*(?:\[#([a-zA-Z0-9_-]+)\])?\s*(?:\(.*?(?:\d+(?:\.\d+)?%?).*?\))?\s*[-\u2013\u2014]?\s*([\s\S]*?)(?=\n\d+\.\s+\*\*|\n\n(?!\s)|$)/gm;
 
   let match;
   let index = 0;
@@ -68,7 +80,7 @@ function extractArticleSections(text: string): ExtractedAnswer {
       articleId,
       title,
       summary,
-      index: index++
+      index: index++,
     });
 
     lastEnd = listItemPattern.lastIndex;
@@ -100,18 +112,61 @@ function extractArticleSections(text: string): ExtractedAnswer {
 
 interface AgentAnswerPanelProps {
   result: AgentSearchResult | null;
-  partialText: string | null;
-  isStreaming: boolean;
   onFeedback?: (positive: boolean) => void;
 }
 
 // トップレベル制御用の Context（0: ルート、1以上: ネスト）
 const ListDepthContext = React.createContext(0);
 
-export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback }: AgentAnswerPanelProps) {
+type MarkdownLi = React.ReactElement<
+  React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
+>;
+
+const isMarkdownLi = (node: React.ReactNode): node is MarkdownLi =>
+  React.isValidElement(node) &&
+  (node.type === 'li' || (node.props as any)?.node?.tagName === 'li');
+
+// OlComponent extracted outside render to stabilize component reference
+function OlComponent({
+  children,
+  hasEmbeddedIds,
+  node: _node,
+  ...props
+}: React.ComponentPropsWithoutRef<'ol'> & {
+  hasEmbeddedIds: boolean;
+  node?: unknown;
+}) {
+  const depth = React.useContext(ListDepthContext);
+  const hasIdInThisOl = React.Children.toArray(children).some(
+    (child) => isMarkdownLi(child) && (child.props as any)['data-article-id']
+  );
+  return (
+    <ListDepthContext.Provider value={depth + 1}>
+      <ol {...props}>
+        {React.Children.map(children, (child, index) => {
+          if (!isMarkdownLi(child)) return child;
+          const shouldAddIndex =
+            depth === 0 && !hasIdInThisOl && !hasEmbeddedIds;
+          return shouldAddIndex
+            ? React.cloneElement(child, {
+                'data-article-index': String(index),
+              })
+            : child;
+        })}
+      </ol>
+    </ListDepthContext.Provider>
+  );
+}
+
+export function AgentAnswerPanel({
+  result,
+  onFeedback,
+}: AgentAnswerPanelProps) {
   const [copied, setCopied] = useState(false);
   const [showEmptyState, setShowEmptyState] = useState(false);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState<'positive' | 'negative' | null>(null);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState<
+    'positive' | 'negative' | null
+  >(null);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   useEffect(() => {
@@ -121,42 +176,48 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
   }, [copied]);
 
   const displayText = useMemo(() => {
-    if (partialText && !result) return partialText;
     return result?.response || '';
-  }, [partialText, result]);
+  }, [result?.response]);
 
   // Empty state delay logic (150ms to prevent flicker)
   useEffect(() => {
-    if (!isStreaming && !displayText?.trim() && !result?.articles?.length) {
+    if (!displayText?.trim() && !result?.articles?.length) {
       const timer = setTimeout(() => setShowEmptyState(true), 150);
       return () => clearTimeout(timer);
     } else {
       setShowEmptyState(false);
     }
-  }, [isStreaming, displayText, result?.articles]);
+  }, [displayText, result?.articles]);
 
   const deferredDisplayText = useDeferredValue(displayText);
 
   const handleCopy = async () => {
     try {
       // レンダリング後のテキスト（トークン除去済み）を取得
-      const root = document.querySelector('[data-testid="agent-answer-markdown"]') as HTMLElement | null;
+      const root = document.querySelector(
+        '[data-testid="agent-answer-markdown"]'
+      ) as HTMLElement | null;
       let copyText = displayText;
       if (root) {
         const clone = root.cloneNode(true) as HTMLElement;
-        clone.querySelectorAll('[data-copy-exclude]').forEach((el) => el.remove());
+        clone.querySelectorAll('[data-copy-exclude]').forEach((el) => {
+          el.remove();
+        });
         copyText = (clone.textContent ?? displayText).trim();
       }
 
       // 出典（元記事へのリンク）を追加
       const safeArticles = result?.articles ?? [];
       if (safeArticles.length > 0) {
-        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-        const sourcesText = safeArticles.map((article) => {
-          const title = article.translatedTitle || article.title;
-          const url = `${baseUrl}/articles/${article.articleId}`;
-          return `- [${title}](${url})`;
-        }).join('\n');
+        const baseUrl =
+          typeof window !== 'undefined' ? window.location.origin : '';
+        const sourcesText = safeArticles
+          .map((article) => {
+            const title = article.translatedTitle || article.title;
+            const url = `${baseUrl}/articles/${article.articleId}`;
+            return `- [${title}](${url})`;
+          })
+          .join('\n');
         copyText += `\n\n出典:\n${sourcesText}`;
       }
 
@@ -202,14 +263,20 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
   }, []);
 
   // Debounced feedback handler
-  const handleFeedback = useCallback((positive: boolean) => {
-    if (isSubmittingFeedback || feedbackSubmitted) return;
-    setIsSubmittingFeedback(true);
-    setFeedbackSubmitted(positive ? 'positive' : 'negative');
-    onFeedback?.(positive);
-    // Reset submitting state after short delay (for visual feedback)
-    feedbackTimeoutRef.current = setTimeout(() => setIsSubmittingFeedback(false), 300);
-  }, [isSubmittingFeedback, feedbackSubmitted, onFeedback]);
+  const handleFeedback = useCallback(
+    (positive: boolean) => {
+      if (isSubmittingFeedback || feedbackSubmitted) return;
+      setIsSubmittingFeedback(true);
+      setFeedbackSubmitted(positive ? 'positive' : 'negative');
+      onFeedback?.(positive);
+      // Reset submitting state after short delay (for visual feedback)
+      feedbackTimeoutRef.current = setTimeout(
+        () => setIsSubmittingFeedback(false),
+        300
+      );
+    },
+    [isSubmittingFeedback, feedbackSubmitted, onFeedback]
+  );
 
   const articleMap = useMemo(() => {
     const safeArticles = articles ?? [];
@@ -220,13 +287,16 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
   const totalTokens = result?.usage?.totalTokens;
 
   // 応答に [#...] トークンが含まれるか（通常は true、フォールバック時は false）
-  const hasEmbeddedIds = useMemo(() => /\[#\S+?\]/.test(resultResponse), [resultResponse]);
+  const hasEmbeddedIds = useMemo(
+    () => /\[#\S+?\]/.test(resultResponse),
+    [resultResponse]
+  );
 
   // Extract article sections and summary from the response for card display
   const extractedAnswer = useMemo(() => {
-    if (isStreaming || !result?.response) return { sections: [], summary: '' };
+    if (!result?.response) return { sections: [], summary: '' };
     return extractArticleSections(result.response);
-  }, [isStreaming, result?.response]);
+  }, [result?.response]);
 
   // Enrich sections with article metadata
   const enrichedSections = useMemo(() => {
@@ -238,57 +308,41 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
     });
   }, [extractedAnswer.sections, articleMap, articles]);
 
-  // Use card display when we have sections and not streaming
-  const useCardDisplay = !isStreaming && enrichedSections.length > 0;
-
-  type MarkdownLi = React.ReactElement<
-    React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
-  >;
-
-  const isMarkdownLi = (node: React.ReactNode): node is MarkdownLi =>
-    React.isValidElement(node) && node.type === 'li';
-
-  // ol renderer component (for ListDepthContext hook usage)
-  const OlComponent = ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => {
-    const depth = React.useContext(ListDepthContext);
-    const hasIdInThisOl = React.Children.toArray(children).some(
-      (child) => isMarkdownLi(child) && (child.props as any)['data-article-id']
-    );
-    return (
-      <ListDepthContext.Provider value={depth + 1}>
-        <ol {...props}>
-          {React.Children.map(children, (child, index) => {
-            if (!isMarkdownLi(child)) return child;
-            const shouldAddIndex = depth === 0 && !hasIdInThisOl && !hasEmbeddedIds;
-            return shouldAddIndex
-              ? React.cloneElement(child, { 'data-article-index': String(index) })
-              : child;
-          })}
-        </ol>
-      </ListDepthContext.Provider>
-    );
-  };
+  // Use card display when we have extracted sections
+  const useCardDisplay = enrichedSections.length > 0;
 
   return (
-    <CardV2 variant="hover" className="p-6 border-l-4 border-[var(--tt-color-primary)]" role="article" aria-labelledby="answer-heading" data-testid="agent-result-card">
-      <div className="flex items-start justify-between mb-4">
+    <CardV2
+      variant="hover"
+      className="border-l-4 border-[var(--tt-color-primary)] p-6"
+      role="article"
+      aria-labelledby="answer-heading"
+      data-testid="agent-result-card"
+    >
+      <div className="mb-4 flex items-start justify-between">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <h2 id="answer-heading" className="text-xl md:text-2xl font-semibold">
+            <h2
+              id="answer-heading"
+              className="text-xl font-semibold md:text-2xl"
+            >
               AI回答
             </h2>
-          {result?.cached && (
-            <BadgeV2 variant="secondary" className="text-xs">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
-              キャッシュ
-            </BadgeV2>
-          )}
-          {result?.fallback && (
-            <BadgeV2 variant="outline" className="text-xs text-[var(--tt-color-warning)] border-[var(--tt-color-warning)]">
-              <AlertTriangle className="h-3 w-3 mr-1" />
-              フォールバック
-            </BadgeV2>
-          )}
+            {result?.cached && (
+              <BadgeV2 variant="secondary" className="text-xs">
+                <CheckCircle2 className="mr-1 h-3 w-3" />
+                キャッシュ
+              </BadgeV2>
+            )}
+            {result?.fallback && (
+              <BadgeV2
+                variant="outline"
+                className="border-[var(--tt-color-warning)] text-xs text-[var(--tt-color-warning)]"
+              >
+                <AlertTriangle className="mr-1 h-3 w-3" />
+                フォールバック
+              </BadgeV2>
+            )}
           </div>
           {articleCount > 0 && (
             <p className="text-sm text-[var(--tt-color-text-muted)]">
@@ -302,18 +356,23 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
             variant="ghost"
             size="sm"
             onClick={handleCopy}
-            className="h-8 px-3 gap-1.5"
+            className="h-8 gap-1.5 px-3"
             aria-label="回答をコピー"
           >
             {copied ? (
               <>
-                <Check className="h-4 w-4 text-green-600" aria-hidden="true" />
-                <span className="text-xs text-green-600">コピー完了</span>
+                <Check
+                  className="h-4 w-4 text-[var(--tt-color-primary)]"
+                  aria-hidden="true"
+                />
+                <span className="text-xs text-[var(--tt-color-primary)]">
+                  コピー完了
+                </span>
               </>
             ) : (
               <>
                 <Copy className="h-4 w-4" aria-hidden="true" />
-                <span className="text-xs hidden sm:inline">コピー</span>
+                <span className="hidden text-xs sm:inline">コピー</span>
               </>
             )}
           </ButtonV2>
@@ -321,31 +380,9 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
       </div>
 
       {result?.fallback && (
-        <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
+        <div className="mb-4 rounded-md border border-[var(--tt-color-warning)]/30 bg-[var(--tt-color-warning)]/10 p-3">
+          <p className="text-sm text-[var(--tt-color-text)]">
             AI検索が一時的に利用できないため、通常の検索結果を表示しています
-          </p>
-        </div>
-      )}
-
-      {isStreaming && (
-        <div
-          data-testid="streaming-indicator"
-          className="mb-4 p-4 bg-[var(--tt-color-primary)]/5 border border-[var(--tt-color-primary)]/20 rounded-lg"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--tt-color-primary)] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--tt-color-primary)]"></span>
-            </div>
-            <span className="text-base font-medium text-[var(--tt-color-text)]">
-              回答を出力中...
-            </span>
-          </div>
-          <p className="text-sm text-[var(--tt-color-text-muted)] pl-6">
-            完了するとカード形式で表示されます。スクロールせずにお待ちください。
           </p>
         </div>
       )}
@@ -353,23 +390,28 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
       {showEmptyState && (
         <CardV2
           variant="ghost"
-          className="py-6 md:py-8 text-center"
+          className="py-6 text-center md:py-8"
           role="status"
           aria-live="polite"
           data-testid="agent-empty-state"
         >
-          <h3 className="text-xl md:text-2xl font-semibold mb-2">
+          <h3 className="mb-2 text-xl font-semibold md:text-2xl">
             {result?.fallback
               ? '関連する記事が見つかりませんでした'
               : '該当する記事が見つかりませんでした'}
           </h3>
-          <p className="text-sm text-muted-foreground mb-4">以下を試してみてください:</p>
-          <ul className="text-sm text-muted-foreground mb-4 text-left max-w-md mx-auto space-y-1">
-            <li>- キーワードをより具体的にする（例: &quot;React&quot; → &quot;React 19のServer Components&quot;）</li>
+          <p className="text-muted-foreground mb-4 text-sm">
+            以下を試してみてください:
+          </p>
+          <ul className="text-muted-foreground mx-auto mb-4 max-w-md space-y-1 text-left text-sm">
+            <li>
+              - キーワードをより具体的にする（例: &quot;React&quot; →
+              &quot;React 19のServer Components&quot;）
+            </li>
             <li>- 技術名やバージョンを追加する</li>
             <li>- 検索期間を調整する</li>
           </ul>
-          <div className="flex gap-2 justify-center">
+          <div className="flex justify-center gap-2">
             {/* shadcn/ui ButtonをasChildで維持: ButtonV2がasChildプロップをサポートしていないため */}
             <Button asChild variant="outline">
               <Link href="/search">通常検索を試す</Link>
@@ -380,12 +422,18 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
 
       {!showEmptyState && useCardDisplay && (
         <div
-          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4 items-stretch"
+          className="mb-4 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3"
           data-testid="agent-answer-cards"
         >
           {enrichedSections.map((item, i) => {
-            const accentColor = i % 2 === 0 ? 'var(--tt-color-primary)' : 'var(--tt-color-secondary)';
-            const displayTitle = item.meta?.translatedTitle?.trim() || item.meta?.title || item.title;
+            const accentColor =
+              i % 2 === 0
+                ? 'var(--tt-color-primary)'
+                : 'var(--tt-color-secondary)';
+            const displayTitle =
+              item.meta?.translatedTitle?.trim() ||
+              item.meta?.title ||
+              item.title;
             const articleLink = item.meta?.articleId
               ? `/articles/${encodeURIComponent(item.meta.articleId)}`
               : null;
@@ -393,7 +441,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
             return (
               <article
                 key={item.articleId ?? i}
-                className="group relative flex flex-col space-y-2 rounded-lg bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-200/60 dark:border-slate-700/60 transition-all duration-200 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 min-h-[140px] motion-safe:opacity-0 motion-safe:animate-[fadeInUp_0.4s_ease_forwards]"
+                className="group relative flex min-h-[140px] flex-col space-y-2 rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-sm transition-all duration-200 hover:border-[var(--tt-color-primary)]/40 hover:shadow-md motion-safe:animate-[fadeInUp_0.4s_ease_forwards] motion-safe:opacity-0"
                 style={{
                   borderLeftWidth: '3px',
                   borderLeftColor: accentColor,
@@ -407,7 +455,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
                     asChild
                     size="sm"
                     variant="ghost"
-                    className="absolute top-2 right-2 h-10 w-10 p-0 hover:bg-primary/10 opacity-60 group-hover:opacity-100 transition-opacity"
+                    className="hover:bg-primary/10 absolute top-2 right-2 h-10 w-10 p-0 opacity-60 transition-opacity group-hover:opacity-100"
                   >
                     <Link
                       href={articleLink}
@@ -422,20 +470,23 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
                 )}
 
                 {/* タイトル行 - 詳細要約と同じ構造 */}
-                <h4 className="text-sm font-[var(--tt-font-heading)] font-semibold tracking-[var(--tt-tracking-tight)] flex items-center gap-2 pr-8">
+                <h4 className="flex items-center gap-2 pr-8 font-[family-name:var(--tt-font-heading)] text-sm font-semibold tracking-[var(--tt-tracking-tight)]">
                   <span
-                    className="text-lg flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-muted/60 group-hover:bg-muted transition-colors duration-200"
+                    className="bg-muted/60 group-hover:bg-muted flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-lg transition-colors duration-200"
                     aria-hidden="true"
                   >
-                    <FileText className="h-4 w-4" style={{ color: accentColor }} />
+                    <FileText
+                      className="h-4 w-4"
+                      style={{ color: accentColor }}
+                    />
                   </span>
-                  <span className="flex-1 line-clamp-2" title={displayTitle}>
+                  <span className="line-clamp-2 flex-1" title={displayTitle}>
                     {displayTitle}
                   </span>
                 </h4>
 
                 {/* メタ情報 */}
-                <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+                <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
                   {item.meta?.similarity !== undefined && (
                     <BadgeV2 variant="secondary" className="text-xs">
                       {Math.round(item.meta.similarity * 100)}%
@@ -454,7 +505,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
 
                 {/* 要約テキスト - flex-1で残りスペースを埋める */}
                 {item.summary && (
-                  <p className="flex-1 text-sm font-[var(--tt-font-body)] text-slate-700 dark:text-slate-200 leading-relaxed break-words line-clamp-4">
+                  <p className="line-clamp-4 flex-1 font-[family-name:var(--tt-font-body)] text-sm leading-relaxed break-words text-[var(--tt-color-text)]">
                     {item.summary}
                   </p>
                 )}
@@ -466,99 +517,120 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
 
       {!showEmptyState && !useCardDisplay && (
         <div
-          className="prose prose-sm dark:prose-invert w-full max-w-none md:max-w-4xl xl:max-w-5xl mb-4"
+          className="prose prose-sm dark:prose-invert mb-4 w-full max-w-none md:max-w-4xl xl:max-w-5xl"
           data-testid="agent-answer-markdown"
         >
-        <ListDepthContext.Provider value={0}>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
-            components={{
-              a: ({ node: _node, ...props }) => (
-                <a {...props} target="_blank" rel="noopener noreferrer" />
-              ),
-              ol: OlComponent,
-              li: ({ node: _node, children, ...props }) => {
-                const articleId = props['data-article-id'] as string | undefined;
-                const indexAttr = props['data-article-index'] as string | number | undefined;
+          <ListDepthContext.Provider value={0}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
+              components={{
+                a: ({ node: _node, ...props }) => (
+                  <a {...props} target="_blank" rel="noopener noreferrer" />
+                ),
+                ol: (props) => (
+                  <OlComponent {...props} hasEmbeddedIds={hasEmbeddedIds} />
+                ),
+                li: ({ node: _node, children, ...props }) => {
+                  const articleId = props['data-article-id'] as
+                    | string
+                    | undefined;
+                  const indexAttr = props['data-article-index'] as
+                    | string
+                    | number
+                    | undefined;
 
-                const articleFromId = articleId ? articleMap.get(articleId) : undefined;
-                const index =
-                  typeof indexAttr === 'number'
-                    ? indexAttr
-                    : indexAttr !== undefined
-                      ? Number(indexAttr)
-                      : undefined;
-                // indexフォールバックはIDトークン不在時のみ有効化（誤リンク防止）
-                const articleFromIndex =
-                  !articleId &&
-                  !hasEmbeddedIds &&
-                  typeof index === 'number' &&
-                  Number.isInteger(index)
-                    ? articles?.[index]
+                  const articleFromId = articleId
+                    ? articleMap.get(articleId)
                     : undefined;
-                const article = articleFromId ?? articleFromIndex ?? null;
+                  const index =
+                    typeof indexAttr === 'number'
+                      ? indexAttr
+                      : indexAttr !== undefined
+                        ? Number(indexAttr)
+                        : undefined;
+                  // indexフォールバックはIDトークン不在時のみ有効化（誤リンク防止）
+                  const articleFromIndex =
+                    !articleId &&
+                    !hasEmbeddedIds &&
+                    typeof index === 'number' &&
+                    Number.isInteger(index)
+                      ? articles?.[index]
+                      : undefined;
+                  const article = articleFromId ?? articleFromIndex ?? null;
 
-                return (
-                  <li {...props}>
-                    {children}
-                    {article && (
-                      // shadcn/ui ButtonをasChildで維持: ButtonV2がasChildプロップをサポートしていないため
-                      <Button
-                        asChild
-                        size="sm"
-                        data-copy-exclude
-                        className="ml-2 h-7 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors inline-flex items-center"
-                        title={
-                          article.translatedTitle?.trim() ? article.translatedTitle : article.title
-                        }
-                      >
-                        <Link
-                          data-testid="agent-article-link"
-                          href={`/articles/${encodeURIComponent(article.articleId)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                  return (
+                    <li {...props}>
+                      {children}
+                      {article && (
+                        // shadcn/ui ButtonをasChildで維持: ButtonV2がasChildプロップをサポートしていないため
+                        <Button
+                          asChild
+                          size="sm"
+                          data-copy-exclude
+                          className="bg-primary/15 text-primary hover:bg-primary/25 ml-2 inline-flex h-7 items-center rounded-full transition-colors"
+                          title={
+                            article.translatedTitle?.trim()
+                              ? article.translatedTitle
+                              : article.title
+                          }
                         >
-                          <Link2 className="mr-1 h-3 w-3" />
-                          {article.translatedTitle?.trim() ? article.translatedTitle : article.title}
-                        </Link>
-                      </Button>
-                    )}
-                  </li>
-                );
-              },
-            }}
-          >
-            {deferredDisplayText}
-          </ReactMarkdown>
-        </ListDepthContext.Provider>
+                          <Link
+                            data-testid="agent-article-link"
+                            href={`/articles/${encodeURIComponent(article.articleId)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Link2 className="mr-1 h-3 w-3" />
+                            {article.translatedTitle?.trim()
+                              ? article.translatedTitle
+                              : article.title}
+                          </Link>
+                        </Button>
+                      )}
+                    </li>
+                  );
+                },
+              }}
+            >
+              {deferredDisplayText}
+            </ReactMarkdown>
+          </ListDepthContext.Provider>
         </div>
       )}
 
-      <div className="flex items-center justify-between pt-4 border-t mt-4">
-        <div className="text-xs text-muted-foreground">
+      <div className="mt-4 flex items-center justify-between border-t pt-4">
+        <div className="text-muted-foreground text-xs">
           {typeof totalTokens === 'number' && (
             <span>トークン使用: {totalTokens.toLocaleString()}</span>
           )}
         </div>
 
         {onFeedback && (
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--tt-color-surface-muted)]">
+          <div className="flex items-center gap-2 rounded-lg bg-[var(--tt-color-surface-muted)] p-2">
             {feedbackSubmitted ? (
-              <div className="flex items-center gap-2 text-sm" data-testid="feedback-thanks">
-                <CheckCircle2 className="h-4 w-4 text-[var(--tt-color-primary)]" aria-hidden="true" />
+              <div
+                className="flex items-center gap-2 text-sm"
+                data-testid="feedback-thanks"
+              >
+                <CheckCircle2
+                  className="h-4 w-4 text-[var(--tt-color-primary)]"
+                  aria-hidden="true"
+                />
                 <span className="text-[var(--tt-color-text-muted)]">
                   フィードバックありがとうございます
                 </span>
               </div>
             ) : (
               <>
-                <span className="text-xs text-muted-foreground mr-2 hidden sm:inline">この回答は役立ちましたか？</span>
+                <span className="text-muted-foreground mr-2 hidden text-xs sm:inline">
+                  この回答は役立ちましたか？
+                </span>
                 <ButtonV2
                   variant="ghost"
                   size="sm"
                   onClick={() => handleFeedback(true)}
                   disabled={isSubmittingFeedback}
-                  className="h-11 w-11 md:h-9 md:w-9 hover:bg-green-100 dark:hover:bg-green-900/30 hover:text-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-11 w-11 hover:bg-[var(--tt-color-primary)]/10 hover:text-[var(--tt-color-primary)] disabled:cursor-not-allowed disabled:opacity-50 md:h-9 md:w-9"
                   aria-label="役立った"
                   data-testid="feedback-positive"
                 >
@@ -569,7 +641,7 @@ export function AgentAnswerPanel({ result, partialText, isStreaming, onFeedback 
                   size="sm"
                   onClick={() => handleFeedback(false)}
                   disabled={isSubmittingFeedback}
-                  className="h-11 w-11 md:h-9 md:w-9 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-11 w-11 hover:bg-[var(--tt-color-negative)]/10 hover:text-[var(--tt-color-negative)] disabled:cursor-not-allowed disabled:opacity-50 md:h-9 md:w-9"
                   aria-label="改善が必要"
                   data-testid="feedback-negative"
                 >

@@ -23,9 +23,6 @@ const SemanticSearchOutputSchema = z.object({
   expansionMethod: z.enum(['none', 'dictionary', 'ai']),
 });
 
-const ENABLE_STREAMING_UI =
-  process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
-
 // Timeout threshold for "still processing" message (30 seconds)
 const STEP_TIMEOUT_MS = 30000;
 
@@ -52,7 +49,7 @@ export function AgentSearchClient() {
   const prefersReducedMotion = usePrefersReducedMotion();
   const [showResult, setShowResult] = useState(false);
   const [isStepTimedOut, setIsStepTimedOut] = useState(false);
-  const { search, result, error, isLoading, partialText, currentStep, reset } =
+  const { search, result, error, isLoading, currentStep, reset } =
     useAgentSearch();
   const prefillQueryRef = useRef<((query: string) => void) | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -84,26 +81,11 @@ export function AgentSearchClient() {
     return () => clearTimeout(timeoutId);
   }, [currentStep]);
 
-  useEffect(() => {
-    if (!ENABLE_STREAMING_UI) return;
-    if (!partialText) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: show result when streaming starts
-    setShowResult(true);
-  }, [partialText]);
-
+  // Show result when loading completes
   useEffect(() => {
     if (!isLoading && (result || error)) {
-      if (ENABLE_STREAMING_UI) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: show result when loading completes
-        setShowResult(true);
-        return;
-      }
-
-      const timer = setTimeout(() => {
-        setShowResult(true);
-      }, 300);
-
-      return () => clearTimeout(timer);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: show result when loading completes
+      setShowResult(true);
     }
   }, [isLoading, result, error]);
 
@@ -153,11 +135,6 @@ export function AgentSearchClient() {
     []
   );
 
-  const isStreamingWithPartialText =
-    ENABLE_STREAMING_UI && Boolean(partialText);
-  const shouldShowStreamingResult =
-    ENABLE_STREAMING_UI && Boolean(partialText && !result);
-
   // Generate related questions based on AI response
   // Note: useMemo removed - React Compiler handles memoization automatically
   const relatedQuestions = result?.response
@@ -191,28 +168,17 @@ export function AgentSearchClient() {
   })();
 
   return (
-    <div className="w-full px-6 py-3">
+    <div className="w-full">
       {/* 2-column layout: Main content (left) + Sidebar (right) */}
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Left column: Search bar + Results */}
         <div className="min-w-0 flex-1 space-y-6">
-          {/* Search card */}
+          {/* Search bar */}
           <CardV2
             variant="default"
             className="bg-[var(--tt-color-surface-muted)] p-4 shadow-[var(--tt-shadow-card-rest)]"
             data-testid="agent-search-card"
           >
-            <div className="mb-3">
-              <div className="border-l-4 border-[var(--tt-color-primary)] pl-3">
-                <h1 className="font-heading mb-0.5 text-lg text-[var(--tt-color-text)] md:text-xl">
-                  AI記事検索
-                </h1>
-                <p className="text-sm text-[color:var(--tt-color-text-muted)]">
-                  自然言語で質問すると、AIが記事を横断検索して要約回答します
-                </p>
-              </div>
-            </div>
-
             <AgentSearchBar
               onSearch={handleSearch}
               isLoading={isLoading}
@@ -241,7 +207,7 @@ export function AgentSearchClient() {
             className="scroll-mt-4"
             tabIndex={-1}
           >
-            {isLoading && !isStreamingWithPartialText && (
+            {isLoading && (
               <CardV2
                 variant="default"
                 className="bg-[var(--tt-color-surface-muted)] p-6 shadow-[var(--tt-shadow-card-rest)]"
@@ -263,22 +229,17 @@ export function AgentSearchClient() {
                 <AgentErrorDisplay error={error} onRetry={handleRetry} />
               </CardV2>
             )}
-            {showResult && (result || isStreamingWithPartialText) && !error && (
+            {!isLoading && showResult && result && !error && (
               <div className="space-y-4">
                 {/* Search interpretation - shown before answer panel */}
-                {result && searchInterpretation && (
+                {searchInterpretation && (
                   <AgentSearchInterpretation
                     interpretation={searchInterpretation}
                   />
                 )}
-                <AgentAnswerPanel
-                  result={result}
-                  partialText={ENABLE_STREAMING_UI ? partialText : null}
-                  isStreaming={shouldShowStreamingResult}
-                  onFeedback={handleFeedback}
-                />
+                <AgentAnswerPanel result={result} onFeedback={handleFeedback} />
                 {/* Related questions - shown after AI response is complete */}
-                {result && relatedQuestions.length > 0 && (
+                {relatedQuestions.length > 0 && (
                   <AgentRelatedQuestions
                     questions={relatedQuestions}
                     onSelectQuestion={handlePrefillQuery}

@@ -4,16 +4,19 @@ import type { SearchStep } from '@/lib/hooks/useAgentSearch';
 
 describe('AgentStepIndicator', () => {
   const renderIndicator = (step: SearchStep, isTimedOut = false) => {
-    return render(<AgentStepIndicator currentStep={step} isTimedOut={isTimedOut} />);
+    return render(
+      <AgentStepIndicator currentStep={step} isTimedOut={isTimedOut} />
+    );
   };
 
   describe('Step states', () => {
     test('shows all steps as pending when idle', () => {
       renderIndicator('idle');
 
-      // Implementation has 2 steps: searching and analyzing
+      // Implementation has 3 steps: searching, analyzing, generating
       expect(screen.getByText('記事検索')).toBeInTheDocument();
       expect(screen.getByText('AI分析')).toBeInTheDocument();
+      expect(screen.getByText('回答生成')).toBeInTheDocument();
     });
 
     test('shows searching step as active', () => {
@@ -30,14 +33,20 @@ describe('AgentStepIndicator', () => {
       expect(stepIndicator).toBeInTheDocument();
     });
 
-    test('shows all displayed steps as complete when generating', () => {
+    test('shows generating step as active with searching and analyzing complete', () => {
       renderIndicator('generating');
 
       const stepIndicator = screen.getByTestId('agent-step-indicator');
       expect(stepIndicator).toBeInTheDocument();
-      // 'generating' comes after 'analyzing', so searching/analyzing steps should show as complete
-      // No active step indicator should be present (all complete)
-      expect(stepIndicator.querySelector('[aria-current="step"]')).not.toBeInTheDocument();
+      // 'generating' is now a displayed step, so it should be active
+      const activeStep = stepIndicator.querySelector('[aria-current="step"]');
+      expect(activeStep).toBeInTheDocument();
+      // Verify the generating step specifically is the active one
+      const generatingLabel = screen.getByText('回答生成');
+      const generatingStepContainer = generatingLabel.closest('.flex.flex-col');
+      expect(
+        generatingStepContainer?.querySelector('[aria-current="step"]')
+      ).toBeInTheDocument();
     });
 
     test('shows all steps as complete when complete', () => {
@@ -57,19 +66,25 @@ describe('AgentStepIndicator', () => {
     test('shows timeout message when isTimedOut=true and not complete', () => {
       renderIndicator('analyzing', true);
 
-      expect(screen.getByText('まだ処理中です...しばらくお待ちください')).toBeInTheDocument();
+      expect(
+        screen.getByText('まだ処理中です...しばらくお待ちください')
+      ).toBeInTheDocument();
     });
 
     test('does not show timeout message when complete', () => {
       renderIndicator('complete', true);
 
-      expect(screen.queryByText('まだ処理中です...しばらくお待ちください')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('まだ処理中です...しばらくお待ちください')
+      ).not.toBeInTheDocument();
     });
 
     test('does not show timeout message when error', () => {
       renderIndicator('error', true);
 
-      expect(screen.queryByText('まだ処理中です...しばらくお待ちください')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('まだ処理中です...しばらくお待ちください')
+      ).not.toBeInTheDocument();
     });
   });
 
