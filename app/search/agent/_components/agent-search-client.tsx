@@ -15,8 +15,6 @@ import {
 import { AgentSearchInterpretation } from './agent-search-interpretation';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 import { CardV2 } from '@/components/ui-v2/card-v2';
-import { PageHeader } from '@/components/ui-v2/page-header';
-import { Search } from 'lucide-react';
 
 // Schema for semantic-search tool output validation
 const SemanticSearchOutputSchema = z.object({
@@ -198,15 +196,6 @@ export function AgentSearchClient() {
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Left column: Search bar + Results */}
         <div className="min-w-0 flex-1 space-y-6">
-          {/* Page header */}
-          <PageHeader
-            icon={Search}
-            title="AI記事検索"
-            description="自然言語で質問すると、AIが記事を横断検索して要約回答します"
-            variant="compact"
-            className="mb-4"
-          />
-
           {/* Search bar */}
           <CardV2
             variant="default"
