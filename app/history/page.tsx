@@ -18,27 +18,27 @@ import type { HistoryViewItem } from '@/lib/types/history';
 function HistoryCardSkeleton() {
   return (
     <div
-      className="animate-pulse rounded-lg border bg-card p-4 space-y-3 h-[280px]"
+      className="bg-card h-[280px] animate-pulse space-y-3 rounded-lg border p-4"
       role="status"
       aria-label="読み込み中"
     >
       <div className="flex items-center gap-2">
-        <div className="h-5 w-20 bg-muted rounded" />
-        <div className="h-5 w-16 bg-muted rounded" />
+        <div className="bg-muted h-5 w-20 rounded" />
+        <div className="bg-muted h-5 w-16 rounded" />
       </div>
-      <div className="h-6 w-full bg-muted rounded" />
+      <div className="bg-muted h-6 w-full rounded" />
       <div className="space-y-2">
-        <div className="h-4 w-full bg-muted rounded" />
-        <div className="h-4 w-5/6 bg-muted rounded" />
-        <div className="h-4 w-4/6 bg-muted rounded" />
+        <div className="bg-muted h-4 w-full rounded" />
+        <div className="bg-muted h-4 w-5/6 rounded" />
+        <div className="bg-muted h-4 w-4/6 rounded" />
       </div>
       <div className="flex gap-1 pt-2">
-        <div className="h-5 w-12 bg-muted rounded" />
-        <div className="h-5 w-14 bg-muted rounded" />
+        <div className="bg-muted h-5 w-12 rounded" />
+        <div className="bg-muted h-5 w-14 rounded" />
       </div>
-      <div className="mt-auto flex justify-between items-center pt-2">
-        <div className="h-8 w-8 bg-muted rounded" />
-        <div className="h-8 w-20 bg-muted rounded" />
+      <div className="mt-auto flex items-center justify-between pt-2">
+        <div className="bg-muted h-8 w-8 rounded" />
+        <div className="bg-muted h-8 w-20 rounded" />
       </div>
     </div>
   );
@@ -48,7 +48,7 @@ function HistoryCardSkeleton() {
 function HistorySkeletonGrid() {
   return (
     <div
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
       role="status"
       aria-live="polite"
       aria-label="閲覧履歴を読み込み中"
@@ -96,9 +96,12 @@ export default function HistoryPage() {
         // 90日以内の履歴を最大100件取得
         params.set('limit', '100');
 
-        const response = await fetch(`/api/article-views?${params.toString()}`, {
-          signal,
-        });
+        const response = await fetch(
+          `/api/article-views?${params.toString()}`,
+          {
+            signal,
+          }
+        );
 
         if (!response.ok) {
           throw new Error('閲覧履歴の取得に失敗しました');
@@ -187,21 +190,14 @@ export default function HistoryPage() {
   // Loading state (hasFetchedを追加してクライアントナビゲーション時も確実にスケルトン表示)
   if (status === 'loading' || loading || !hasFetched) {
     return (
-      <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
-        {/* Header skeleton */}
-        <div className="mb-6">
-          <CardV2 className="p-4 sm:p-6 border-l-4 border-l-primary bg-card shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 bg-primary/20 rounded-xl animate-pulse" />
-                <div>
-                  <div className="h-7 w-32 bg-muted rounded animate-pulse mb-1" />
-                  <div className="h-4 w-48 bg-muted rounded animate-pulse" />
-                </div>
-              </div>
-              <div className="h-11 w-36 bg-muted rounded-lg animate-pulse" />
-            </div>
-          </CardV2>
+      <div className="px-4 py-3 lg:px-6">
+        {/* Header skeleton (toolbar style) */}
+        <div className="flex flex-wrap items-center gap-2 pb-3">
+          <div className="bg-muted h-5 w-5 animate-pulse rounded" />
+          <div className="bg-muted h-5 w-24 animate-pulse rounded" />
+          <div className="bg-muted h-5 w-16 animate-pulse rounded" />
+          <div className="flex-1" />
+          <div className="bg-muted h-9 w-28 animate-pulse rounded" />
         </div>
         <HistorySkeletonGrid />
       </div>
@@ -209,39 +205,33 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
-      {/* Header Card */}
-      <header className="mb-6">
-        <CardV2 className="p-4 sm:p-6 border-l-4 border-l-primary bg-card shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
-                <History className="h-6 w-6" aria-hidden="true" />
-              </div>
-              <div>
-                <h1 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
-                  閲覧履歴
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  最近の記事 ({views.length}件)
-                </p>
-              </div>
-            </div>
-            {views.length > 0 && (
-              <Button
-                variant="destructive"
-                size="default"
-                onClick={clearHistory}
-                disabled={clearing}
-                className="min-w-[140px] min-h-[44px] gap-2 shadow-sm font-medium"
-                aria-label="閲覧履歴をすべてクリア"
-              >
-                <Trash2 className="h-4 w-4" aria-hidden="true" />
-                {clearing ? 'クリア中...' : '履歴をクリア'}
-              </Button>
-            )}
-          </div>
-        </CardV2>
+    <div className="px-4 py-3 lg:px-6">
+      {/* Toolbar header */}
+      <header className="flex flex-wrap items-center gap-2 pb-3">
+        <History className="text-primary h-5 w-5" aria-hidden="true" />
+        <h1 className="text-foreground text-lg font-semibold">閲覧履歴</h1>
+        <span
+          className="text-muted-foreground text-sm"
+          role="status"
+          aria-live="polite"
+          aria-label={`閲覧履歴 ${views.length}件`}
+        >
+          ({views.length}件)
+        </span>
+        <div className="flex-1" />
+        {views.length > 0 && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={clearHistory}
+            disabled={clearing}
+            className="min-h-[44px] gap-2"
+            aria-label="閲覧履歴をすべてクリア"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            {clearing ? 'クリア中...' : '履歴をクリア'}
+          </Button>
+        )}
       </header>
 
       {/* Error state */}
@@ -257,22 +247,22 @@ export default function HistoryPage() {
         <CardV2
           ref={emptyStateRef}
           tabIndex={-1}
-          className="focus:outline-none focus:ring-2 focus:ring-primary max-w-md mx-auto"
+          className="focus:ring-primary mx-auto max-w-md focus:ring-2 focus:outline-none"
         >
-          <div className="flex flex-col items-center justify-center py-12 px-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+          <div className="flex flex-col items-center justify-center px-4 py-12">
+            <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
               <Eye
-                className="h-8 w-8 text-muted-foreground"
+                className="text-muted-foreground h-8 w-8"
                 aria-hidden="true"
               />
             </div>
-            <p className="text-lg font-medium mb-2 text-foreground">
+            <p className="text-foreground mb-2 text-lg font-medium">
               閲覧履歴がありません
             </p>
             <p className="text-muted-foreground mb-6 text-center text-sm">
               記事を読むと自動的に履歴に記録されます
             </p>
-            <Button asChild className="min-w-[44px] min-h-[44px]">
+            <Button asChild className="min-h-[44px] min-w-[44px]">
               <Link href="/">記事を探す</Link>
             </Button>
           </div>
@@ -287,19 +277,17 @@ export default function HistoryPage() {
             >
               <h2
                 id={getDateGroupHeadingId(group.key)}
-                className="flex items-center gap-3 mb-4"
+                className="mb-4 flex items-center gap-2"
               >
-                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card border shadow-sm">
-                  <span className="font-heading text-lg font-semibold text-foreground">
-                    {group.label}
-                  </span>
-                  <span className="text-sm font-normal text-muted-foreground">
-                    ({group.items.length}件)
-                  </span>
+                <span className="font-heading text-foreground text-lg font-semibold">
+                  {group.label}
+                </span>
+                <span className="text-muted-foreground text-sm">
+                  ({group.items.length}件)
                 </span>
               </h2>
               {/* Grid layout matching home page */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {group.items.map((item) => (
                   <HistoryArticleCard
                     key={item.article.viewId}
