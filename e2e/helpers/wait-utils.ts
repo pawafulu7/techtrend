@@ -169,9 +169,54 @@ export async function waitForTagDropdown(page: Page) {
 }
 
 /**
+ * フィルターサイドバーを開く（デスクトップでは折りたたみ式、モバイルではSheet）
+ * サイドバーがデフォルト閉じのため、フィルター操作前に呼び出す必要がある
+ */
+export async function openFilterSidebar(page: Page) {
+  const viewport = page.viewportSize();
+  const isDesktop = viewport && viewport.width >= 1024;
+
+  if (isDesktop) {
+    // デスクトップ: オーバーレイサイドバーを開く
+    const sidebar = page.getByTestId('filter-sidebar');
+    // translate-xで制御するため、画面内に表示されているかを確認
+    const isOnScreen = await sidebar.evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      return rect.left >= 0 && rect.width > 10;
+    }).catch(() => false);
+
+    if (!isOnScreen) {
+      const toggleButton = page.getByRole('button', {
+        name: /フィルターを開く/,
+      });
+      if (await toggleButton.isVisible().catch(() => false)) {
+        await toggleButton.click();
+        // transition完了を待つ
+        await page.waitForTimeout(350);
+      } else {
+        console.warn('[openFilterSidebar] Filter toggle button not found on desktop viewport');
+      }
+    }
+  } else {
+    // モバイル: MobileFilters Sheet を開く
+    const mobileButton = page.getByTestId('mobile-filter-trigger');
+    if (await mobileButton.isVisible().catch(() => false)) {
+      await mobileButton.click();
+      await page
+        .getByTestId('mobile-filter-sheet')
+        .waitFor({ state: 'visible', timeout: getTimeout('short') });
+    }
+  }
+}
+
+/**
  * ソースフィルターの表示を待機
+ * サイドバーが閉じている場合は自動的に開く
  */
 export async function waitForSourceFilter(page: Page) {
+  // まずサイドバーを開く
+  await openFilterSidebar(page);
+
   await page.waitForSelector('[data-testid="source-filter"]', {
     state: 'visible',
     timeout: getTimeout('medium'),

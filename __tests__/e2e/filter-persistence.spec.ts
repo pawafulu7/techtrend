@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { 
-  waitForArticles, 
+import {
+  waitForArticles,
   getTimeout,
   waitForUrlParam,
   safeClick,
   waitForPageLoad,
-  waitForFilterApplication
+  waitForFilterApplication,
+  openFilterSidebar
 } from '../../e2e/helpers/wait-utils';
 
 // CI環境の検出
@@ -91,6 +92,7 @@ test.describe('フィルター条件の永続化', () => {
 
   test.skip('ソースフィルターがページ遷移後も保持される', async ({ page }) => {
     // フィルターエリアが表示されるまで待機
+    await openFilterSidebar(page);
     await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
     await page.waitForTimeout(1000); // 要素の安定化を待つ
     
@@ -222,6 +224,7 @@ test.describe('フィルター条件の永続化', () => {
 
         // 4. トップページに戻る
         await page.goto('/');
+        await openFilterSidebar(page);
         await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
       }
     }
@@ -281,6 +284,9 @@ test.describe('フィルター条件の永続化', () => {
       return;
     }
     
+    // サイドバーを開く（日付範囲フィルターはサイドバー内にある）
+    await openFilterSidebar(page);
+
     // 日付範囲フィルターの存在を確認（より柔軟なセレクタを使用）
     const possibleSelectors = [
       '[data-testid="date-range-trigger"]',
@@ -360,7 +366,14 @@ test.describe('フィルター条件の永続化', () => {
       // test.skip() を削除してテストを継続
     }
 
-    // 2. 記事詳細ページへ遷移
+    // 2. サイドバーを閉じてから記事詳細ページへ遷移（サイドバーが記事カードを遮るため）
+    const closeSidebarBtn = page.locator('[data-testid="filter-sidebar"] button[aria-label="フィルターを閉じる"]');
+    if (await closeSidebarBtn.isVisible().catch(() => false)) {
+      await closeSidebarBtn.click();
+      // サイドバーが閉じるアニメーションを待機
+      await page.waitForTimeout(400);
+    }
+
     await waitForArticles(page);
     const firstArticle = page.locator('[data-testid="article-card"]').first();
     if (await firstArticle.count() > 0) {
@@ -615,6 +628,9 @@ test.describe('フィルター条件の永続化', () => {
       await waitForArticles(page, { allowEmpty: true });
     }
     
+    // サイドバーを開いてソースフィルターを操作
+    await openFilterSidebar(page);
+
     // ソースフィルターが存在する場合のみ設定
     const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
     if (await sourceCheckboxes.count() > 0) {
@@ -643,7 +659,7 @@ test.describe('フィルター条件の永続化', () => {
           }
         }
       }
-      
+
       // すべてのソースを解除してから最初のソースを選択
       const deselectButton = page.locator('[data-testid="deselect-all-button"]:visible');
       if (await deselectButton.count() > 0) {
@@ -652,7 +668,7 @@ test.describe('フィルター条件の永続化', () => {
         // すべて未選択になるまで待機
         const firstCheckbox = page.locator('[data-testid^="source-checkbox-"]').first().locator('button[role="checkbox"]');
         await expect(firstCheckbox).toHaveAttribute('data-state', 'unchecked');
-        
+
         const firstSource = page.locator('[data-testid^="source-checkbox-"]').first();
         if (await firstSource.count() > 0) {
           await firstSource.click();
@@ -663,7 +679,20 @@ test.describe('フィルター条件の永続化', () => {
       }
     }
 
-    // 2. リセットボタンをクリック
+    // 2. サイドバーを閉じてからリセットボタンをクリック（サイドバーがツールバーを遮るため）
+    const closeSidebarBtnReset = page.locator('[data-testid="filter-sidebar"] button[aria-label="フィルターを閉じる"]');
+    if (await closeSidebarBtnReset.isVisible().catch(() => false)) {
+      await closeSidebarBtnReset.click();
+      await page.waitForTimeout(400);
+    }
+
+    // ページが安定するまで待機（フィルター操作後の再レンダリング完了を待つ）
+    await waitForArticles(page, { allowEmpty: true });
+
+    const moreButton = page.locator('button[aria-label="その他のオプション"]');
+    await expect(moreButton).toBeVisible({ timeout: 10000 });
+    await moreButton.click();
+    await expect(page.locator('[data-testid="filter-reset-button"]')).toBeVisible({ timeout: 5000 });
     await page.click('[data-testid="filter-reset-button"]');
     // ページがリロードされるのを待つ
     await waitForPageLoad(page, { waitForNetworkIdle: false });
@@ -674,6 +703,9 @@ test.describe('フィルター条件の永続化', () => {
     
     // ソースフィルターが存在する場合、すべてのソースが選択されていることを確認
     if (await sourceCheckboxes.count() > 0) {
+      // サイドバーを再度開く（リセット後はデフォルト閉じ状態）
+      await openFilterSidebar(page);
+
       // カテゴリを展開してチェックボックスを確認
       const categoryHeaders = page.locator('[data-testid$="-header"]');
       const categoryCount = await categoryHeaders.count();

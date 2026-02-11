@@ -7,17 +7,19 @@ import { MobileFilters } from '@/app/components/common/mobile-filters';
 import { SearchBox } from '@/app/components/common/search-box';
 import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
-import { ArticleCount } from '@/app/components/common/article-count';
 import { SortButtons } from '@/app/components/common/sort-buttons';
-import { FilterResetButton } from '@/app/components/common/filter-reset-button';
-import { UnreadFilterWithData } from '@/app/components/common/unread-filter-with-data';
-import { MarkAllReadWrapper } from '@/app/components/common/mark-all-read-wrapper';
 import { auth } from '@/lib/auth/auth';
 import { features } from '@/config/features';
-import { HomeClient } from '@/app/components/home/home-client';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { PersonalizationToggle } from '@/app/components/personalization';
+import {
+  FilterSidebarProvider,
+  FilterSidebarToggle,
+  FilterSidebarPanel,
+  FilterSidebarOverlay,
+} from '@/app/components/home/filter-sidebar';
+import { ToolbarMoreMenu } from '@/app/components/home/toolbar-more-menu';
 import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
 import { parseSourceFilterFromCookie } from '@/lib/source-filter-cookie';
 import { getFilterPreferencesFromCookies } from '@/lib/filter-preferences-cookie';
@@ -39,8 +41,6 @@ interface PageProps {
     sortOrder?: string;
   }>;
 }
-
-// getArticles function removed - now handled by client component
 
 async function getSources() {
   // Get all sources (Redis-backed cache)
@@ -71,7 +71,7 @@ async function getPopularTags() {
 export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
 
-  // Parallel execution of cookies, sources/groups, tags, and session
+  // Parallel execution of cookies, sources/groups, tags, session
   const [cookieStore, sourceData, tags, session] = await Promise.all([
     cookies(),
     getSources(),
@@ -142,102 +142,75 @@ export default async function Home({ searchParams }: PageProps) {
 
   // 検索キーワードはURLパラメータのみで管理（Cookie復元は無効）
 
-  // Infinite Scroll機能のフラグ（環境変数や設定で切り替え可能）
-  const enableInfiniteScroll = true;
-
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      {/* メインエリア */}
-      <div className="flex-1 lg:flex lg:overflow-hidden">
-        {/* サイドバー - デスクトップのみ */}
-        <aside className="hidden lg:block lg:w-64 lg:flex-shrink-0 lg:overflow-y-auto lg:border-r lg:border-gray-200 lg:bg-gray-50 dark:lg:border-gray-700 dark:lg:bg-gray-900/50">
-          <div className="p-4">
-            <Filters
+    <FilterSidebarProvider>
+      <div className="flex h-full flex-col overflow-hidden">
+        {/* Gradient background layer */}
+        <div className="from-background to-muted/20 flex flex-1 flex-col overflow-hidden bg-gradient-to-b">
+          {/* Toolbar - 全幅・1行 */}
+          <div className="flex flex-shrink-0 flex-wrap items-center gap-2 px-4 pt-3 pb-2 lg:px-6">
+            <FilterSidebarToggle />
+            <MobileFilters
               sources={filteredSources}
               groupedSources={filteredGroupedSources}
               tags={tags}
               initialSourceIds={initialSourceIds}
             />
-          </div>
-        </aside>
-
-        {/* コンテンツエリア */}
-        <main className="flex-1 lg:flex lg:flex-col">
-          {/* ツールバー - 固定 */}
-          <div className="flex-shrink-0 border-b border-gray-200 bg-gray-50/50 px-4 py-2 lg:px-6 dark:border-gray-700 dark:bg-gray-900/50">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-shrink-0 items-center gap-2">
-                <MobileFilters
-                  sources={filteredSources}
-                  groupedSources={filteredGroupedSources}
-                  tags={tags}
-                  initialSourceIds={initialSourceIds}
-                />
-                <Suspense
-                  fallback={
-                    <div className="h-5 w-20 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-                  }
-                >
-                  <ArticleCount
-                    initialSourceIds={initialSourceIds}
-                    excludeSources={ARXIV_SOURCE_ID}
-                  />
-                </Suspense>
-                <PersonalizationToggle />
-              </div>
-
-              <div className="ml-4 flex items-center gap-2">
-                <div className="hidden lg:block">
-                  <SearchBox />
-                </div>
-                {features.aiSearch && session?.user && (
-                  <>
-                    <Link
-                      href="/search/agent"
-                      className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-blue-600 transition-colors hover:bg-blue-50 lg:flex dark:text-blue-400 dark:hover:bg-blue-950"
-                      title="AI検索"
-                    >
-                      <Sparkles className="h-4 w-4 flex-shrink-0" />
-                      <span>AI検索</span>
-                    </Link>
-                    <div className="bg-border h-5 w-px" />
-                  </>
-                )}
-                <div className="hidden lg:block">
-                  <TagFilterDropdown tags={tags} />
-                </div>
-                <div className="bg-border h-5 w-px" />
-                <ViewModeToggle currentMode={viewMode} />
-                <div className="bg-border h-5 w-px" />
-                <UnreadFilterWithData />
-                <MarkAllReadWrapper />
-                <div className="bg-border h-5 w-px" />
-                <SortButtons initialSortBy={initialSortBy} />
-                <div className="bg-border h-5 w-px" />
-                <FilterResetButton />
-              </div>
+            <div className="hidden lg:block">
+              <SearchBox />
             </div>
+            {features.aiSearch && session?.user && (
+              <Link
+                href="/search/agent"
+                className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-blue-600 transition-colors hover:bg-blue-50 lg:flex dark:text-blue-400 dark:hover:bg-blue-950"
+                title="AI検索"
+              >
+                <Sparkles className="h-4 w-4 flex-shrink-0" />
+                <span>AI検索</span>
+              </Link>
+            )}
+            <div className="hidden lg:block">
+              <TagFilterDropdown tags={tags} />
+            </div>
+            <PersonalizationToggle />
+            <div className="bg-border hidden h-5 w-px lg:block" />
+            <ViewModeToggle currentMode={viewMode} />
+            <SortButtons initialSortBy={initialSortBy} />
+            <div className="bg-border hidden h-5 w-px lg:block" />
+            <ToolbarMoreMenu />
           </div>
 
-          {/* クライアントコンポーネント（記事リストとページネーション） */}
-          <Suspense fallback={<ArticleSkeleton />}>
-            {enableInfiniteScroll ? (
-              <HomeClientInfinite
-                key={`${params.sourceId || 'all'}-${params.tag || ''}-${params.search || ''}`}
-                viewMode={viewMode}
-                sources={sources}
+          {/* Content area - フルワイド + オーバーレイフィルター */}
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            {/* Overlay filter panel */}
+            <FilterSidebarPanel>
+              <Filters
+                sources={filteredSources}
+                groupedSources={filteredGroupedSources}
                 tags={tags}
-                enableInfiniteScroll={enableInfiniteScroll}
-                initialSortBy={initialSortBy}
                 initialSourceIds={initialSourceIds}
-                excludeSources={ARXIV_SOURCE_ID}
               />
-            ) : (
-              <HomeClient viewMode={viewMode} sources={sources} tags={tags} />
-            )}
-          </Suspense>
-        </main>
+            </FilterSidebarPanel>
+            <FilterSidebarOverlay />
+
+            {/* Article list - 常にフルワイド */}
+            <main className="flex h-full flex-col">
+              <Suspense fallback={<ArticleSkeleton />}>
+                <HomeClientInfinite
+                  key={`${params.sourceId ?? 'all'}-${params.tag ?? ''}-${params.search ?? ''}`}
+                  viewMode={viewMode}
+                  sources={sources}
+                  tags={tags}
+                  enableInfiniteScroll
+                  initialSortBy={initialSortBy}
+                  initialSourceIds={initialSourceIds}
+                  excludeSources={ARXIV_SOURCE_ID}
+                />
+              </Suspense>
+            </main>
+          </div>
+        </div>
       </div>
-    </div>
+    </FilterSidebarProvider>
   );
 }

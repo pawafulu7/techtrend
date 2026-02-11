@@ -383,7 +383,7 @@ export function HomeClientInfinite({
           <ArticleSkeleton />
         ) : (
           <div className="flex min-h-[600px] items-center justify-center">
-            <div className="text-center text-gray-500">
+            <div className="text-muted-foreground text-center">
               記事が見つかりませんでした
             </div>
           </div>
@@ -392,7 +392,7 @@ export function HomeClientInfinite({
 
       {/* 記事件数表示 */}
       {totalCount > 0 && (
-        <div className="px-4 pb-2 text-sm text-gray-600 lg:px-6 dark:text-gray-400">
+        <div className="text-muted-foreground px-4 pb-2 text-right text-sm lg:px-6">
           {totalCount}件の記事 ({allArticles.length}件表示中)
         </div>
       )}

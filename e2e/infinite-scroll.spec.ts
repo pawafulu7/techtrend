@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openFilterSidebar } from './helpers/wait-utils';
 
 test.describe('無限スクロール機能', () => {
   // このテストスイートは大量のスクロールとAPIリクエストを含むため、タイムアウトを3倍に延長
@@ -146,6 +147,9 @@ test.describe('無限スクロール機能', () => {
   });
 
   test('フィルター適用時も無限スクロールが動作する', async ({ page }, testInfo) => {
+    // サイドバーを開く（デフォルト閉じのため）
+    await openFilterSidebar(page);
+
     // ソースフィルターが存在するか確認
     const devtoFilter = page.locator('[data-testid="filter-source-Dev.to"]');
     const filterExists = await devtoFilter.count() > 0;
@@ -384,6 +388,8 @@ test.describe('APIレスポンス構造とページネーション', () => {
     }
     
     if (sourceFilterElement) {
+      // サイドバーを開いてからフィルター操作
+      await openFilterSidebar(page);
       await sourceFilterElement.click();
       await page.waitForTimeout(500);
       

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForPageLoad, waitForArticles, getTimeout } from '../../../e2e/helpers/wait-utils';
+import { waitForPageLoad, waitForArticles, getTimeout, openFilterSidebar } from '../../../e2e/helpers/wait-utils';
 
 // CI環境の検出
 const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
@@ -11,6 +11,8 @@ test.describe('ソースフィルタリング機能', () => {
     await page.goto('/');
     await waitForPageLoad(page);
     await page.waitForSelector('[data-testid="article-card"]');
+    // サイドバーを開く（デフォルト閉じのため）
+    await openFilterSidebar(page);
   });
 
   test('ソースの選択と解除ができる', async ({ page }) => {

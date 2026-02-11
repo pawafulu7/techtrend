@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForArticles, getTimeout, waitForUrlParam } from './helpers/wait-utils';
+import { waitForArticles, getTimeout, waitForUrlParam, openFilterSidebar } from './helpers/wait-utils';
 
 // 環境別タイムアウト値
 const timeout = process.env.CI ? 30000 : 15000;
@@ -9,6 +9,8 @@ test.describe('Multiple Source Filter', () => {
     await page.goto('/');
     // Wait for the page to load（タイムアウトを延長）
     await page.waitForSelector('[data-testid="article-list"], article', { timeout });
+    // サイドバーを開く（デフォルト閉じのため）
+    await openFilterSidebar(page);
   });
 
   test('should display checkboxes for source selection', async ({ page }) => {
@@ -17,7 +19,7 @@ test.describe('Multiple Source Filter', () => {
     await expect(sourceFilter).toBeVisible({ timeout });
     
     // Check for checkboxes - use more flexible approach
-    const checkboxes = page.locator('input[type="checkbox"]');
+    const checkboxes = page.locator('button[role="checkbox"]');
     const checkboxCount = await checkboxes.count();
     
     // Check if select/deselect buttons exist using data-testid
@@ -46,13 +48,13 @@ test.describe('Multiple Source Filter', () => {
     if (await filtersSection.isVisible()) {
       // Desktop view
       // Get first two checkboxes
-      const checkboxes = filtersSection.locator('input[type="checkbox"]');
+      const checkboxes = filtersSection.locator('button[role="checkbox"]');
       const checkboxCount = await checkboxes.count();
       
       if (checkboxCount >= 2) {
         // Select first two sources
-        await checkboxes.nth(0).check();
-        await checkboxes.nth(1).check();
+        await checkboxes.nth(0).click();
+        await checkboxes.nth(1).click();
 
         // Wait for URL to update with sources parameter
         await waitForUrlParam(page, 'sources', undefined, {
@@ -95,7 +97,7 @@ test.describe('Multiple Source Filter', () => {
       });
       
       // Check if all checkboxes are selected
-      const checkboxes = filtersSection.locator('input[type="checkbox"]');
+      const checkboxes = filtersSection.locator('button[role="checkbox"]');
       const checkboxCount = await checkboxes.count();
       
       if (checkboxCount > 0) {
@@ -125,13 +127,13 @@ test.describe('Multiple Source Filter', () => {
     const filtersSection = page.locator('aside').first();
     
     if (await filtersSection.isVisible()) {
-      const checkboxes = filtersSection.locator('input[type="checkbox"]');
+      const checkboxes = filtersSection.locator('button[role="checkbox"]');
       const checkboxCount = await checkboxes.count();
       
       if (checkboxCount >= 2) {
         // Select first two sources
-        await checkboxes.nth(0).check();
-        await checkboxes.nth(1).check();
+        await checkboxes.nth(0).click();
+        await checkboxes.nth(1).click();
         
         // Wait for URL to update
         await page.waitForFunction(() => window.location.search.includes('sources='));
@@ -145,13 +147,15 @@ test.describe('Multiple Source Filter', () => {
           waitForNetworkIdle: false,
           allowEmpty: true,
         });
-        
+        // サイドバーを再度開く（リロードで閉じるため）
+        await openFilterSidebar(page);
+
         // Verify URL is preserved
         const urlAfter = page.url();
         expect(urlAfter).toBe(urlBefore);
-        
+
         // Verify checkboxes are still checked
-        const checkboxesAfterReload = page.locator('aside').first().locator('input[type="checkbox"]');
+        const checkboxesAfterReload = page.locator('aside').first().locator('button[role="checkbox"]');
         await expect(checkboxesAfterReload.nth(0)).toBeChecked();
         await expect(checkboxesAfterReload.nth(1)).toBeChecked();
       }
@@ -172,11 +176,11 @@ test.describe('Multiple Source Filter', () => {
       }
       
       // Select some sources and verify count updates
-      const checkboxes = filtersSection.locator('input[type="checkbox"]');
+      const checkboxes = filtersSection.locator('button[role="checkbox"]');
       const checkboxCount = await checkboxes.count();
       
       if (checkboxCount >= 1) {
-        await checkboxes.nth(0).check();
+        await checkboxes.nth(0).click();
 
         // Wait for articles to update
         await waitForArticles(page, {
@@ -200,12 +204,12 @@ test.describe('Multiple Source Filter', () => {
     const filtersSection = page.locator('aside').first();
     
     if (await filtersSection.isVisible()) {
-      const checkboxes = filtersSection.locator('input[type="checkbox"]');
+      const checkboxes = filtersSection.locator('button[role="checkbox"]');
       const checkboxCount = await checkboxes.count();
       
       if (checkboxCount >= 1) {
         // Select first source
-        await checkboxes.nth(0).check();
+        await checkboxes.nth(0).click();
         
         // Wait for URL to update
         await page.waitForFunction(() => window.location.search.includes('sources='));
@@ -238,9 +242,9 @@ test.describe('Multiple Source Filter', () => {
     // モバイル表示では networkidle が安定しないことがあるため、記事表示の完了を待つ
     await waitForArticles(page, { timeout: 30000, allowEmpty: true });
     
-    // Open mobile filters - more flexible
-    const mobileFilterButton = page.locator('button').filter({ hasText: /フィルター|filter/i }).first();
-    
+    // Open mobile filters - use data-testid for reliable targeting
+    const mobileFilterButton = page.getByTestId('mobile-filter-trigger');
+
     if (await mobileFilterButton.count() === 0) {
       console.log('Mobile filter button not found');
       return;
@@ -250,27 +254,27 @@ test.describe('Multiple Source Filter', () => {
     
     // Wait for sheet to open with timeout
     try {
-      await page.waitForSelector('[role="dialog"], .sheet-content, .modal', { timeout: 3000 });
+      await page.waitForSelector('[data-testid="mobile-filter-sheet"], [role="dialog"]', { timeout: 5000 });
     } catch {
       console.log('Mobile filter dialog did not open');
       return;
     }
     
-    // Check for checkboxes in mobile view
-    const checkboxes = page.locator('[role="dialog"] input[type="checkbox"], .sheet-content input[type="checkbox"], .modal input[type="checkbox"]');
+    // Check for checkboxes in mobile view (Shadcn UI uses button[role="checkbox"])
+    const checkboxes = page.locator('[role="dialog"] button[role="checkbox"], [data-testid="mobile-filter-sheet"] button[role="checkbox"]');
     const checkboxCount = await checkboxes.count();
-    
+
     if (checkboxCount === 0) {
       console.log('No checkboxes found in mobile view');
       return;
     }
-    
+
     expect(checkboxCount).toBeGreaterThan(0);
-    
+
     if (checkboxCount >= 2) {
-      // Select sources
-      await checkboxes.nth(0).check();
-      await checkboxes.nth(1).check();
+      // Select sources (button[role="checkbox"] uses click, not check)
+      await checkboxes.nth(0).click();
+      await checkboxes.nth(1).click();
       
       // Close sheet by clicking outside or close button
       const closeButton = page.locator('[role="dialog"] button[aria-label="Close"], [role="dialog"] button:has-text("閉じる")');

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForArticles, getTimeout, isRunningInCI } from './helpers/wait-utils';
+import { waitForArticles, getTimeout, isRunningInCI, openFilterSidebar } from './helpers/wait-utils';
 
 const isCI = isRunningInCI();
 
@@ -11,6 +11,8 @@ test.describe('Source Filter Cookie', () => {
     // Wait for initial page load with deterministic signals
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
+    // サイドバーを開く（デフォルト閉じのため）
+    await openFilterSidebar(page);
     await page.getByTestId('source-filter').first().waitFor({ state: 'visible', timeout: 10000 });
   });
 
@@ -45,11 +47,13 @@ test.describe('Source Filter Cookie', () => {
     // Navigate to home page with specific sources selected
     await page.goto('/?sources=devto,qiita');
 
-    // Wait for filters to load
+    // サイドバーを開いてフィルターを表示
+    await openFilterSidebar(page);
     await page.waitForSelector('[data-testid="source-filter"]');
 
     // Reload the page (without URL params)
     await page.goto('/');
+    await openFilterSidebar(page);
     await page.waitForSelector('[data-testid="source-filter"]');
 
     // Check that the selection is restored from cookie
@@ -72,10 +76,12 @@ test.describe('Source Filter Cookie', () => {
   test('should prioritize URL params over cookie', async ({ page }) => {
     // First set a cookie by visiting with certain sources
     await page.goto('/?sources=devto');
+    await openFilterSidebar(page);
     await page.waitForSelector('[data-testid="source-filter"]');
 
     // Now visit with different URL params
     await page.goto('/?sources=aws,qiita');
+    await openFilterSidebar(page);
     await page.waitForSelector('[data-testid="source-filter"]');
 
     // Check that URL params take priority
@@ -149,10 +155,12 @@ test.describe('Source Filter Cookie', () => {
   test('should persist selection across page navigation', async ({ page }) => {
     // Set initial selection
     await page.goto('/?sources=aws,devto', { waitUntil: 'domcontentloaded' });
+    await openFilterSidebar(page);
     await page.waitForSelector('[data-testid="source-filter"]');
 
     // Navigate away to trigger cookie flush (no reload needed)
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await openFilterSidebar(page);
     await page.waitForSelector('[data-testid="source-filter"]');
 
     // Check selection is maintained
@@ -173,24 +181,20 @@ test.describe('Source Filter Cookie', () => {
     await page.setViewportSize({ width: 375, height: 667 });
 
     await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await waitForArticles(page, { timeout: getTimeout('medium'), allowEmpty: true });
 
-    // Try to find mobile filter button
-    const mobileFilterButton = page.locator('button').filter({ hasText: /フィルター|filter/i }).first();
+    // Try to find mobile filter button (MobileFilters component, visible on lg:hidden)
+    const mobileFilterButton = page.getByTestId('mobile-filter-trigger');
 
     if (await mobileFilterButton.count() === 0) {
-      // If no mobile filter button, check if filters are already visible
-      const sourceFilter = page.locator('[data-testid="source-filter"]');
-      if (await sourceFilter.count() === 0) {
-        console.log('Mobile filter not implemented, skipping test');
-        return;
-      }
-    } else {
-      // Open mobile filters
-      await mobileFilterButton.click();
-      // Wait for filter panel to appear
-      await page.getByTestId('source-filter').last().waitFor({ state: 'visible', timeout: 5000 });
+      console.log('Mobile filter button not found, skipping test');
+      return;
     }
+
+    // Open mobile filters
+    await mobileFilterButton.click();
+    // Wait for filter sheet to appear
+    await page.getByTestId('mobile-filter-sheet').waitFor({ state: 'visible', timeout: getTimeout('short') });
 
     // Wait for source filter to be visible - use :visible to target only rendered sheet
     const sourceFilter = page.locator('[data-testid="source-filter"]:visible').last();
