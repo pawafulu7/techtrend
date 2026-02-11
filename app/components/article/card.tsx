@@ -261,6 +261,7 @@ export function ArticleCard({
                 'font-heading text-foreground line-clamp-2 text-lg leading-snug font-semibold sm:text-xl',
                 isRead && 'opacity-70'
               )}
+              title={article.translatedTitle || article.title}
             >
               {article.translatedTitle || article.title}
             </h3>

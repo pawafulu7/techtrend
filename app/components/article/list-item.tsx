@@ -116,7 +116,10 @@ export function ArticleListItem({
                 未読
               </Badge>
             )}
-            <h3 className="line-clamp-1 text-sm font-medium text-gray-900 group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400">
+            <h3
+              className="line-clamp-1 text-sm font-medium text-gray-900 group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400"
+              title={article.translatedTitle || article.title}
+            >
               {article.translatedTitle || article.title}
             </h3>
           </div>
