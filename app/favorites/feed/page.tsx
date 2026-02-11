@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui/button';
 import { ArticleCard } from '@/app/components/article/card';
@@ -69,6 +69,9 @@ export default function FavoritesFeedPage() {
       const response = await fetch(
         `/api/articles/favorites?${params.toString()}`
       );
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
       const data = await response.json();
 
       // ソート処理
@@ -129,10 +132,13 @@ export default function FavoritesFeedPage() {
   }
 
   const articleCount = articles.length;
-  const folderCount =
-    selectedFolder === 'all'
-      ? favorites.length
-      : getFavoritesByFolder(selectedFolder).length;
+  const folderCount = useMemo(
+    () =>
+      selectedFolder === 'all'
+        ? favorites.length
+        : getFavoritesByFolder(selectedFolder).length,
+    [selectedFolder, favorites.length, getFavoritesByFolder]
+  );
 
   return (
     <div className="px-4 py-3 lg:px-6">

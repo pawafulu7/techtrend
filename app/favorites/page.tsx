@@ -39,8 +39,10 @@ export default function FavoritesPage() {
 
   // URL params for state persistence
   const initialQuery = searchParams.get('q') || '';
-  const initialSort =
-    (searchParams.get('sort') as SortOption) || 'favoritedAt-desc';
+  const rawSort = searchParams.get('sort');
+  const initialSort: SortOption = SORT_OPTIONS.some((o) => o.value === rawSort)
+    ? (rawSort as SortOption)
+    : 'favoritedAt-desc';
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [sortOption, setSortOption] = useState<SortOption>(initialSort);
