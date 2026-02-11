@@ -109,6 +109,15 @@ export default function FavoritesFeedPage() {
     loadArticles();
   };
 
+  const articleCount = articles.length;
+  const folderCount = useMemo(
+    () =>
+      selectedFolder === 'all'
+        ? favorites.length
+        : getFavoritesByFolder(selectedFolder).length,
+    [selectedFolder, favorites.length, getFavoritesByFolder]
+  );
+
   if (favoritesLoading) {
     return (
       <div className="px-4 py-3 lg:px-6">
@@ -130,15 +139,6 @@ export default function FavoritesFeedPage() {
       </div>
     );
   }
-
-  const articleCount = articles.length;
-  const folderCount = useMemo(
-    () =>
-      selectedFolder === 'all'
-        ? favorites.length
-        : getFavoritesByFolder(selectedFolder).length,
-    [selectedFolder, favorites.length, getFavoritesByFolder]
-  );
 
   return (
     <div className="px-4 py-3 lg:px-6">
