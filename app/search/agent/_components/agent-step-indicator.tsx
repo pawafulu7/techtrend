@@ -1,6 +1,12 @@
 'use client';
 
-import { Search, Brain, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  Search,
+  Brain,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SearchStep } from '@/lib/hooks/useAgentSearch';
 
@@ -15,6 +21,7 @@ interface AgentStepIndicatorProps {
 const STEPS = [
   { id: 'searching', label: '記事検索', icon: Search },
   { id: 'analyzing', label: 'AI分析', icon: Brain },
+  { id: 'generating', label: '回答生成', icon: Sparkles },
 ] as const;
 
 type StepId = (typeof STEPS)[number]['id'];
@@ -26,6 +33,7 @@ function getStepStatus(
   const stepOrder: Record<StepId, number> = {
     searching: 0,
     analyzing: 1,
+    generating: 2,
   };
 
   if (currentStep === 'complete') {
@@ -42,11 +50,6 @@ function getStepStatus(
 
   if (currentStep === 'idle') {
     return 'pending';
-  }
-
-  // 'generating' comes after all displayed steps
-  if (currentStep === 'generating') {
-    return 'complete';
   }
 
   const currentIndex = stepOrder[currentStep as StepId] ?? -1;
