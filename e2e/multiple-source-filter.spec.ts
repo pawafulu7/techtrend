@@ -242,9 +242,9 @@ test.describe('Multiple Source Filter', () => {
     // モバイル表示では networkidle が安定しないことがあるため、記事表示の完了を待つ
     await waitForArticles(page, { timeout: 30000, allowEmpty: true });
     
-    // Open mobile filters - more flexible
-    const mobileFilterButton = page.locator('button').filter({ hasText: /フィルター|filter/i }).first();
-    
+    // Open mobile filters - use data-testid for reliable targeting
+    const mobileFilterButton = page.getByTestId('mobile-filter-trigger');
+
     if (await mobileFilterButton.count() === 0) {
       console.log('Mobile filter button not found');
       return;

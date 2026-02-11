@@ -38,6 +38,7 @@ export function MobileFilters({
           variant="outline"
           size="sm"
           className="h-6 px-2 text-xs sm:h-7 lg:hidden"
+          data-testid="mobile-filter-trigger"
         >
           <Filter className="mr-1 h-3 w-3" />
           フィルター

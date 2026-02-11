@@ -366,7 +366,14 @@ test.describe('フィルター条件の永続化', () => {
       // test.skip() を削除してテストを継続
     }
 
-    // 2. 記事詳細ページへ遷移
+    // 2. サイドバーを閉じてから記事詳細ページへ遷移（サイドバーが記事カードを遮るため）
+    const closeSidebarBtn = page.locator('[data-testid="filter-sidebar"] button[aria-label="フィルターを閉じる"]');
+    if (await closeSidebarBtn.isVisible().catch(() => false)) {
+      await closeSidebarBtn.click();
+      // サイドバーが閉じるアニメーションを待機
+      await page.waitForTimeout(400);
+    }
+
     await waitForArticles(page);
     const firstArticle = page.locator('[data-testid="article-card"]').first();
     if (await firstArticle.count() > 0) {
@@ -672,8 +679,19 @@ test.describe('フィルター条件の永続化', () => {
       }
     }
 
-    // 2. リセットボタンをクリック（ToolbarMoreMenu Popover内にある）
-    await page.click('button[aria-label="その他のオプション"]');
+    // 2. サイドバーを閉じてからリセットボタンをクリック（サイドバーがツールバーを遮るため）
+    const closeSidebarBtnReset = page.locator('[data-testid="filter-sidebar"] button[aria-label="フィルターを閉じる"]');
+    if (await closeSidebarBtnReset.isVisible().catch(() => false)) {
+      await closeSidebarBtnReset.click();
+      await page.waitForTimeout(400);
+    }
+
+    // ページが安定するまで待機（フィルター操作後の再レンダリング完了を待つ）
+    await waitForArticles(page, { allowEmpty: true });
+
+    const moreButton = page.locator('button[aria-label="その他のオプション"]');
+    await expect(moreButton).toBeVisible({ timeout: 10000 });
+    await moreButton.click();
     await expect(page.locator('[data-testid="filter-reset-button"]')).toBeVisible({ timeout: 5000 });
     await page.click('[data-testid="filter-reset-button"]');
     // ページがリロードされるのを待つ

@@ -199,7 +199,7 @@ export async function openFilterSidebar(page: Page) {
     }
   } else {
     // モバイル: MobileFilters Sheet を開く
-    const mobileButton = page.locator('button:has-text("フィルター")').first();
+    const mobileButton = page.getByTestId('mobile-filter-trigger');
     if (await mobileButton.isVisible().catch(() => false)) {
       await mobileButton.click();
       await page

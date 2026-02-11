@@ -212,41 +212,17 @@ test.describe('Custom Image Loader - Page Rendering', () => {
   });
 
   test('should not block page rendering for missing thumbnails', async ({ page }) => {
-    // Track mock hits for debugging
-    let mockHits = 0;
-
-    // Mock articles API for deterministic testing
-    await page.route('**/api/articles*', async (route) => {
-      mockHits++;
-      console.log(`[MOCK] Hit #${mockHits}: ${route.request().url()}`);
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_ARTICLES_RESPONSE),
-      });
-    });
-
-    // Track failed requests
-    page.on('requestfailed', (request) => {
-      console.log(`[FAILED] ${request.url()}`);
-    });
-
     await page.goto('/', {
       waitUntil: 'domcontentloaded',
       timeout: 30000,
     });
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
-    // Wait for article cards to render (this triggers the API call)
-    // Also check compact-card as viewMode may vary
+    // Wait for article cards to render (server-side rendered, no client API mock needed)
     const articles = page.locator(ARTICLE_SELECTOR);
     await expect(articles.first()).toBeVisible({ timeout: 15000 });
 
-    // Verify mock was called (async wait for useEffect to trigger fetch)
-    await expect.poll(() => mockHits, { timeout: 5000 }).toBeGreaterThan(0);
-    console.log(`[DEBUG] Total mock hits: ${mockHits}`);
-
-    // Final verification
+    // Verify articles are displayed
     const count = await articles.count();
     expect(count).toBeGreaterThan(0);
 

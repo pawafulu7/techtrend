@@ -184,7 +184,7 @@ test.describe('Source Filter Cookie', () => {
     await waitForArticles(page, { timeout: getTimeout('medium'), allowEmpty: true });
 
     // Try to find mobile filter button (MobileFilters component, visible on lg:hidden)
-    const mobileFilterButton = page.locator('button').filter({ hasText: /フィルター/ }).first();
+    const mobileFilterButton = page.getByTestId('mobile-filter-trigger');
 
     if (await mobileFilterButton.count() === 0) {
       console.log('Mobile filter button not found, skipping test');
