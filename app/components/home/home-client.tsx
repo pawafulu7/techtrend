@@ -25,15 +25,17 @@ export function HomeClient({ viewMode }: HomeClientProps) {
   });
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchArticles() {
       setLoading(true);
       setError(null);
 
       try {
-        // URLパラメータからクエリ文字列を構築
         const queryString = searchParams.toString();
         const response = await fetch(
-          `/api/articles${queryString ? `?${queryString}` : ''}`
+          `/api/articles${queryString ? `?${queryString}` : ''}`,
+          { signal: controller.signal }
         );
 
         if (!response.ok) {
@@ -41,7 +43,6 @@ export function HomeClient({ viewMode }: HomeClientProps) {
         }
 
         const result = await response.json();
-        // APIレスポンスがdata.itemsにラップされている
         const data = result.data || result;
         setArticles(data.items || data.articles || []);
         setPagination({
@@ -53,12 +54,16 @@ export function HomeClient({ viewMode }: HomeClientProps) {
 
         setLoading(false);
       } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return;
+        }
         setError(error instanceof Error ? error.message : 'An error occurred');
         setLoading(false);
       }
     }
 
     fetchArticles();
+    return () => controller.abort();
   }, [searchParams]);
 
   if (error) {

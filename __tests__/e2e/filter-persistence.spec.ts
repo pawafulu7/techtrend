@@ -685,6 +685,9 @@ test.describe('フィルター条件の永続化', () => {
     
     // ソースフィルターが存在する場合、すべてのソースが選択されていることを確認
     if (await sourceCheckboxes.count() > 0) {
+      // サイドバーを再度開く（リセット後はデフォルト閉じ状態）
+      await openFilterSidebar(page);
+
       // カテゴリを展開してチェックボックスを確認
       const categoryHeaders = page.locator('[data-testid$="-header"]');
       const categoryCount = await categoryHeaders.count();

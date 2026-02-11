@@ -19,7 +19,7 @@ test.describe('Multiple Source Filter', () => {
     await expect(sourceFilter).toBeVisible({ timeout });
     
     // Check for checkboxes - use more flexible approach
-    const checkboxes = page.locator('input[type="checkbox"]');
+    const checkboxes = page.locator('button[role="checkbox"]');
     const checkboxCount = await checkboxes.count();
     
     // Check if select/deselect buttons exist using data-testid
@@ -48,13 +48,13 @@ test.describe('Multiple Source Filter', () => {
     if (await filtersSection.isVisible()) {
       // Desktop view
       // Get first two checkboxes
-      const checkboxes = filtersSection.locator('input[type="checkbox"]');
+      const checkboxes = filtersSection.locator('button[role="checkbox"]');
       const checkboxCount = await checkboxes.count();
       
       if (checkboxCount >= 2) {
         // Select first two sources
-        await checkboxes.nth(0).check();
-        await checkboxes.nth(1).check();
+        await checkboxes.nth(0).click();
+        await checkboxes.nth(1).click();
 
         // Wait for URL to update with sources parameter
         await waitForUrlParam(page, 'sources', undefined, {
@@ -97,7 +97,7 @@ test.describe('Multiple Source Filter', () => {
       });
       
       // Check if all checkboxes are selected
-      const checkboxes = filtersSection.locator('input[type="checkbox"]');
+      const checkboxes = filtersSection.locator('button[role="checkbox"]');
       const checkboxCount = await checkboxes.count();
       
       if (checkboxCount > 0) {
@@ -127,13 +127,13 @@ test.describe('Multiple Source Filter', () => {
     const filtersSection = page.locator('aside').first();
     
     if (await filtersSection.isVisible()) {
-      const checkboxes = filtersSection.locator('input[type="checkbox"]');
+      const checkboxes = filtersSection.locator('button[role="checkbox"]');
       const checkboxCount = await checkboxes.count();
       
       if (checkboxCount >= 2) {
         // Select first two sources
-        await checkboxes.nth(0).check();
-        await checkboxes.nth(1).check();
+        await checkboxes.nth(0).click();
+        await checkboxes.nth(1).click();
         
         // Wait for URL to update
         await page.waitForFunction(() => window.location.search.includes('sources='));
@@ -155,7 +155,7 @@ test.describe('Multiple Source Filter', () => {
         expect(urlAfter).toBe(urlBefore);
 
         // Verify checkboxes are still checked
-        const checkboxesAfterReload = page.locator('aside').first().locator('input[type="checkbox"]');
+        const checkboxesAfterReload = page.locator('aside').first().locator('button[role="checkbox"]');
         await expect(checkboxesAfterReload.nth(0)).toBeChecked();
         await expect(checkboxesAfterReload.nth(1)).toBeChecked();
       }
@@ -176,11 +176,11 @@ test.describe('Multiple Source Filter', () => {
       }
       
       // Select some sources and verify count updates
-      const checkboxes = filtersSection.locator('input[type="checkbox"]');
+      const checkboxes = filtersSection.locator('button[role="checkbox"]');
       const checkboxCount = await checkboxes.count();
       
       if (checkboxCount >= 1) {
-        await checkboxes.nth(0).check();
+        await checkboxes.nth(0).click();
 
         // Wait for articles to update
         await waitForArticles(page, {
@@ -204,12 +204,12 @@ test.describe('Multiple Source Filter', () => {
     const filtersSection = page.locator('aside').first();
     
     if (await filtersSection.isVisible()) {
-      const checkboxes = filtersSection.locator('input[type="checkbox"]');
+      const checkboxes = filtersSection.locator('button[role="checkbox"]');
       const checkboxCount = await checkboxes.count();
       
       if (checkboxCount >= 1) {
         // Select first source
-        await checkboxes.nth(0).check();
+        await checkboxes.nth(0).click();
         
         // Wait for URL to update
         await page.waitForFunction(() => window.location.search.includes('sources='));

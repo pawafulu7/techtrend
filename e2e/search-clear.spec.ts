@@ -182,7 +182,7 @@ test.describe('検索クリア機能', () => {
     await expect(page).toHaveURL(/search=JavaScript/);
     
     // クリアボタンをクリック
-    const clearButton = page.locator('button:has(svg[class*="lucide-x"]), button:has([data-lucide="x"])');
+    const clearButton = page.getByTestId('search-clear');
     await expect(clearButton).toBeVisible();
     await clearButton.click();
     // 入力フィールドがクリアされるまで待機

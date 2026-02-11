@@ -10,7 +10,6 @@ import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { SortButtons } from '@/app/components/common/sort-buttons';
 import { auth } from '@/lib/auth/auth';
 import { features } from '@/config/features';
-import { HomeClient } from '@/app/components/home/home-client';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { PersonalizationToggle } from '@/app/components/personalization';
@@ -143,9 +142,6 @@ export default async function Home({ searchParams }: PageProps) {
 
   // 検索キーワードはURLパラメータのみで管理（Cookie復元は無効）
 
-  // Infinite Scroll機能のフラグ（環境変数や設定で切り替え可能）
-  const enableInfiniteScroll = true;
-
   return (
     <FilterSidebarProvider>
       <div className="flex h-full flex-col overflow-hidden">
@@ -200,20 +196,16 @@ export default async function Home({ searchParams }: PageProps) {
             {/* Article list - 常にフルワイド */}
             <main className="flex h-full flex-col">
               <Suspense fallback={<ArticleSkeleton />}>
-                {enableInfiniteScroll ? (
-                  <HomeClientInfinite
-                    key={`${params.sourceId || 'all'}-${params.tag || ''}-${params.search || ''}`}
-                    viewMode={viewMode}
-                    sources={sources}
-                    tags={tags}
-                    enableInfiniteScroll={enableInfiniteScroll}
-                    initialSortBy={initialSortBy}
-                    initialSourceIds={initialSourceIds}
-                    excludeSources={ARXIV_SOURCE_ID}
-                  />
-                ) : (
-                  <HomeClient viewMode={viewMode} />
-                )}
+                <HomeClientInfinite
+                  key={`${params.sourceId || 'all'}-${params.tag || ''}-${params.search || ''}`}
+                  viewMode={viewMode}
+                  sources={sources}
+                  tags={tags}
+                  enableInfiniteScroll
+                  initialSortBy={initialSortBy}
+                  initialSourceIds={initialSourceIds}
+                  excludeSources={ARXIV_SOURCE_ID}
+                />
               </Suspense>
             </main>
           </div>

@@ -71,6 +71,8 @@ const MOCK_ARTICLES_RESPONSE = {
   }
 };
 
+const ARTICLE_SELECTOR = '[data-testid="article-card"], [data-testid="compact-card"]';
+
 test.describe('Custom Image Loader - Page Rendering', () => {
   test('should render article detail page without image errors', async ({ page }) => {
     // Navigate to article detail page
@@ -81,10 +83,10 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // Wait for articles to load
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
+    await page.waitForSelector(ARTICLE_SELECTOR, { timeout: 10000 });
 
     // Click first article
-    const firstArticle = page.locator('[data-testid="article-card"]').first();
+    const firstArticle = page.locator(ARTICLE_SELECTOR).first();
     await firstArticle.click();
 
     // Wait for article detail page to load
@@ -108,10 +110,10 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // Wait for articles to load
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
+    await page.waitForSelector(ARTICLE_SELECTOR, { timeout: 10000 });
 
     // Verify article cards are displayed
-    const articles = page.locator('[data-testid="article-card"]');
+    const articles = page.locator(ARTICLE_SELECTOR);
     const count = await articles.count();
     expect(count).toBeGreaterThan(0);
 
@@ -146,7 +148,7 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // Wait for articles to load
-    await page.waitForSelector('[data-testid="article-card"]', { timeout: 10000 });
+    await page.waitForSelector(ARTICLE_SELECTOR, { timeout: 10000 });
 
     // Wait a bit for any delayed errors
     await page.waitForTimeout(2000);
@@ -189,7 +191,7 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // Wait for article cards to render
-    const articles = page.locator('[data-testid="article-card"]');
+    const articles = page.locator(ARTICLE_SELECTOR);
     await expect(articles.first()).toBeVisible({ timeout: 10000 });
 
     // Final verification
@@ -237,7 +239,7 @@ test.describe('Custom Image Loader - Page Rendering', () => {
 
     // Wait for article cards to render (this triggers the API call)
     // Also check compact-card as viewMode may vary
-    const articles = page.locator('[data-testid="article-card"], [data-testid="compact-card"]');
+    const articles = page.locator(ARTICLE_SELECTOR);
     await expect(articles.first()).toBeVisible({ timeout: 15000 });
 
     // Verify mock was called (async wait for useEffect to trigger fetch)

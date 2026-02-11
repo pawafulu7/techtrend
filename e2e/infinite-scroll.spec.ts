@@ -147,6 +147,9 @@ test.describe('無限スクロール機能', () => {
   });
 
   test('フィルター適用時も無限スクロールが動作する', async ({ page }, testInfo) => {
+    // サイドバーを開く（デフォルト閉じのため）
+    await openFilterSidebar(page);
+
     // ソースフィルターが存在するか確認
     const devtoFilter = page.locator('[data-testid="filter-source-Dev.to"]');
     const filterExists = await devtoFilter.count() > 0;

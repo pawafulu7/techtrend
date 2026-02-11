@@ -14,6 +14,9 @@ interface ArticleReadStatusChangedDetail {
   isRead: boolean;
 }
 
+const GRID_CLASS =
+  'grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4 2xl:grid-cols-5';
+
 export function ArticleList({
   articles: initialArticles,
   viewMode = 'card',
@@ -60,7 +63,7 @@ export function ArticleList({
       // 楽観的更新 - ローカル状態を即座に更新
       setArticles((prev) =>
         prev.map((a) =>
-          a.id === articleId ? { ...a, isFavorited: !a.isFavorited } : a
+          a.id === articleId ? { ...a, isFavorited: !currentlyFavorited } : a
         )
       );
 
@@ -166,13 +169,7 @@ export function ArticleList({
   // コンパクト形式の場合
   if (viewMode === 'compact') {
     return (
-      <div
-        className={cn(
-          'grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4 2xl:grid-cols-5',
-          className
-        )}
-        data-testid="article-list"
-      >
+      <div className={cn(GRID_CLASS, className)} data-testid="article-list">
         {articles.map((article) => (
           <CompactCard
             key={article.id}

@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  Suspense,
   type ReactNode,
 } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -87,7 +88,9 @@ export function FilterSidebarToggle() {
         )}
       />
       フィルター
-      <FilterActiveIndicator />
+      <Suspense>
+        <FilterActiveIndicator />
+      </Suspense>
     </Button>
   );
 }
@@ -111,7 +114,7 @@ function FilterActiveIndicator() {
   return (
     <span
       className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-blue-500"
-      aria-label="フィルター適用中"
+      aria-hidden="true"
     />
   );
 }
@@ -131,9 +134,9 @@ export function FilterSidebarPanel({ children }: { children: ReactNode }) {
       )}
       data-testid="filter-sidebar"
     >
-      <div className="bg-background/95 h-full w-72 border-r shadow-lg backdrop-blur-sm">
+      <div className="bg-background/95 flex h-full w-72 flex-col border-r shadow-lg backdrop-blur-sm">
         {/* Close button */}
-        <div className="flex items-center justify-between border-b px-4 py-2">
+        <div className="flex flex-shrink-0 items-center justify-between border-b px-4 py-2">
           <span className="text-muted-foreground text-xs font-medium">
             フィルター
           </span>
@@ -147,9 +150,7 @@ export function FilterSidebarPanel({ children }: { children: ReactNode }) {
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
-        <div className="h-[calc(100%-2.5rem)] space-y-4 overflow-y-auto p-4">
-          {children}
-        </div>
+        <div className="flex-1 space-y-4 overflow-y-auto p-4">{children}</div>
       </div>
     </aside>
   );
