@@ -197,7 +197,7 @@ export default async function Home({ searchParams }: PageProps) {
             <main className="flex h-full flex-col">
               <Suspense fallback={<ArticleSkeleton />}>
                 <HomeClientInfinite
-                  key={`${params.sourceId || 'all'}-${params.tag || ''}-${params.search || ''}`}
+                  key={`${params.sourceId ?? 'all'}-${params.tag ?? ''}-${params.search ?? ''}`}
                   viewMode={viewMode}
                   sources={sources}
                   tags={tags}

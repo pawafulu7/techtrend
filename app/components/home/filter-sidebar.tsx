@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   Suspense,
   type ReactNode,
 } from 'react';
@@ -31,6 +32,7 @@ const FilterSidebarContext = createContext<FilterSidebarContextValue>({
 export function FilterSidebarProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
+  // Hydrate from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -41,25 +43,26 @@ export function FilterSidebarProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Persist open state to localStorage (skip initial render to avoid overwriting saved value)
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY, String(open));
+    } catch {
+      /* ignore */
+    }
+  }, [open]);
+
   const toggle = useCallback(() => {
-    setOpen((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(STORAGE_KEY, String(next));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
+    setOpen((prev) => !prev);
   }, []);
 
   const close = useCallback(() => {
     setOpen(false);
-    try {
-      localStorage.setItem(STORAGE_KEY, 'false');
-    } catch {
-      /* ignore */
-    }
   }, []);
 
   return (
@@ -107,7 +110,10 @@ function FilterActiveIndicator() {
     searchParams.has('sourceId') ||
     searchParams.has('tags') ||
     searchParams.has('tag') ||
-    searchParams.has('readFilter');
+    searchParams.has('readFilter') ||
+    searchParams.has('dateFrom') ||
+    searchParams.has('dateTo') ||
+    searchParams.has('dateRange');
 
   if (!hasActiveFilters) return null;
 
@@ -133,6 +139,8 @@ export function FilterSidebarPanel({ children }: { children: ReactNode }) {
         open ? 'translate-x-0' : '-translate-x-full'
       )}
       data-testid="filter-sidebar"
+      aria-hidden={!open}
+      {...(!open && { inert: true as unknown as boolean })}
     >
       <div className="bg-background/95 flex h-full w-72 flex-col border-r shadow-lg backdrop-blur-sm">
         {/* Close button */}

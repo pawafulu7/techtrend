@@ -46,10 +46,10 @@ export function HomeClient({ viewMode }: HomeClientProps) {
         const data = result.data || result;
         setArticles(data.items || data.articles || []);
         setPagination({
-          total: data.total || 0,
-          page: data.page || 1,
-          totalPages: data.totalPages || 1,
-          limit: data.limit || 24,
+          total: data.total ?? 0,
+          page: data.page ?? 1,
+          totalPages: data.totalPages ?? 1,
+          limit: data.limit ?? 24,
         });
 
         setLoading(false);

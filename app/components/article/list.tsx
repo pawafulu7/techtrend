@@ -186,13 +186,7 @@ export function ArticleList({
 
   // カード形式の場合
   return (
-    <div
-      className={cn(
-        'grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4 2xl:grid-cols-5',
-        className
-      )}
-      data-testid="article-list"
-    >
+    <div className={cn(GRID_CLASS, className)} data-testid="article-list">
       {articles.map((article) => (
         <ArticleCard
           key={article.id}
