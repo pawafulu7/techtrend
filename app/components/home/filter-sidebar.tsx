@@ -30,6 +30,7 @@ export function FilterSidebarProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: hydrate from localStorage on mount
       if (saved === 'true') setOpen(true);
     } catch {
       /* SSR or localStorage unavailable */
