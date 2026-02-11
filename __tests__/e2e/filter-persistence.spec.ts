@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { 
-  waitForArticles, 
+import {
+  waitForArticles,
   getTimeout,
   waitForUrlParam,
   safeClick,
   waitForPageLoad,
-  waitForFilterApplication
+  waitForFilterApplication,
+  openFilterSidebar
 } from '../../e2e/helpers/wait-utils';
 
 // CI環境の検出
@@ -91,6 +92,7 @@ test.describe('フィルター条件の永続化', () => {
 
   test.skip('ソースフィルターがページ遷移後も保持される', async ({ page }) => {
     // フィルターエリアが表示されるまで待機
+    await openFilterSidebar(page);
     await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
     await page.waitForTimeout(1000); // 要素の安定化を待つ
     
@@ -222,7 +224,8 @@ test.describe('フィルター条件の永続化', () => {
 
         // 4. トップページに戻る
         await page.goto('/');
-        await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
+        await openFilterSidebar(page);
+    await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
       }
     }
 

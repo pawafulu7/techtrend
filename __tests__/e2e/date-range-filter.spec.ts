@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForUrlParam, getTimeout, waitForArticles } from '../../e2e/helpers/wait-utils';
+import { waitForUrlParam, getTimeout, waitForArticles, openFilterSidebar } from '../../e2e/helpers/wait-utils';
 
 // Desktop viewport for sidebar visibility
 test.use({
@@ -61,6 +61,9 @@ test.describe('Date Range Filter', () => {
       waitForNetworkIdle: false,
       allowEmpty: true,
     });
+
+    // サイドバーを開く（デフォルト閉じのため）
+    await openFilterSidebar(page);
 
     // Wait for the filter area to be present
     await page.waitForSelector('[data-testid="filter-area"]', {
@@ -135,6 +138,9 @@ test.describe('Date Range Filter', () => {
 
     // ページをリロード
     await page.reload({ waitUntil: 'domcontentloaded' });
+
+    // サイドバーを再度開く（リロードで閉じるため）
+    await openFilterSidebar(page);
 
     // フィルターエリアが再表示されるのを待機（networkidleの代わりに具体的な要素を待つ）
     await page.waitForSelector('[data-testid="filter-area"]', {
@@ -281,6 +287,9 @@ test.describe('Date Range Filter', () => {
       waitForNetworkIdle: false,
       allowEmpty: true,
     });
+
+    // サイドバーを開く（ページ遷移後）
+    await openFilterSidebar(page);
 
     // Verify custom mode is active
     const calendarBtn = page.getByTestId('date-range-calendar-trigger');

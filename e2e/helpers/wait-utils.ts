@@ -169,9 +169,53 @@ export async function waitForTagDropdown(page: Page) {
 }
 
 /**
+ * フィルターサイドバーを開く（デスクトップでは折りたたみ式、モバイルではSheet）
+ * サイドバーがデフォルト閉じのため、フィルター操作前に呼び出す必要がある
+ */
+export async function openFilterSidebar(page: Page) {
+  const viewport = page.viewportSize();
+  const isDesktop = viewport && viewport.width >= 1024;
+
+  if (isDesktop) {
+    // デスクトップ: 折りたたみサイドバーを開く
+    const sidebar = page.getByTestId('filter-sidebar');
+    const isVisible = await sidebar.isVisible().catch(() => false);
+    const hasWidth =
+      isVisible &&
+      (await sidebar.evaluate(
+        (el) => el.getBoundingClientRect().width > 10
+      ).catch(() => false));
+
+    if (!hasWidth) {
+      const toggleButton = page.getByRole('button', {
+        name: /フィルターを開く/,
+      });
+      if (await toggleButton.isVisible().catch(() => false)) {
+        await toggleButton.click();
+        // transition完了を待つ
+        await page.waitForTimeout(350);
+      }
+    }
+  } else {
+    // モバイル: MobileFilters Sheet を開く
+    const mobileButton = page.locator('button:has-text("フィルター")').first();
+    if (await mobileButton.isVisible().catch(() => false)) {
+      await mobileButton.click();
+      await page
+        .getByTestId('mobile-filter-sheet')
+        .waitFor({ state: 'visible', timeout: getTimeout('short') });
+    }
+  }
+}
+
+/**
  * ソースフィルターの表示を待機
+ * サイドバーが閉じている場合は自動的に開く
  */
 export async function waitForSourceFilter(page: Page) {
+  // まずサイドバーを開く
+  await openFilterSidebar(page);
+
   await page.waitForSelector('[data-testid="source-filter"]', {
     state: 'visible',
     timeout: getTimeout('medium'),

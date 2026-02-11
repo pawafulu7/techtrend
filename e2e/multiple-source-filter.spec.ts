@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForArticles, getTimeout, waitForUrlParam } from './helpers/wait-utils';
+import { waitForArticles, getTimeout, waitForUrlParam, openFilterSidebar } from './helpers/wait-utils';
 
 // 環境別タイムアウト値
 const timeout = process.env.CI ? 30000 : 15000;
@@ -9,6 +9,8 @@ test.describe('Multiple Source Filter', () => {
     await page.goto('/');
     // Wait for the page to load（タイムアウトを延長）
     await page.waitForSelector('[data-testid="article-list"], article', { timeout });
+    // サイドバーを開く（デフォルト閉じのため）
+    await openFilterSidebar(page);
   });
 
   test('should display checkboxes for source selection', async ({ page }) => {
@@ -145,11 +147,13 @@ test.describe('Multiple Source Filter', () => {
           waitForNetworkIdle: false,
           allowEmpty: true,
         });
-        
+        // サイドバーを再度開く（リロードで閉じるため）
+        await openFilterSidebar(page);
+
         // Verify URL is preserved
         const urlAfter = page.url();
         expect(urlAfter).toBe(urlBefore);
-        
+
         // Verify checkboxes are still checked
         const checkboxesAfterReload = page.locator('aside').first().locator('input[type="checkbox"]');
         await expect(checkboxesAfterReload.nth(0)).toBeChecked();
