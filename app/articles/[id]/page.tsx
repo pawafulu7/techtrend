@@ -285,19 +285,31 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                 </div>
               ) : article.detailedSummary &&
                 article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__' ? (
-                <DetailedSummaryDisplay
-                  detailedSummary={article.detailedSummary}
-                  articleType={
-                    article.articleType as
-                      | 'release'
-                      | 'problem-solving'
-                      | 'tutorial'
-                      | 'tech-intro'
-                      | 'implementation'
-                      | undefined
-                  }
-                  summaryVersion={article.summaryVersion}
-                />
+                <>
+                  {article.summary && (
+                    <div className="rounded-lg border-l-4 border-[var(--tt-color-primary)] bg-[var(--tt-color-primary)]/5 p-4">
+                      <p className="mb-1 text-sm font-semibold tracking-tight">
+                        概要
+                      </p>
+                      <p className="text-foreground/80 text-sm leading-relaxed">
+                        {article.summary}
+                      </p>
+                    </div>
+                  )}
+                  <DetailedSummaryDisplay
+                    detailedSummary={article.detailedSummary}
+                    articleType={
+                      article.articleType as
+                        | 'release'
+                        | 'problem-solving'
+                        | 'tutorial'
+                        | 'tech-intro'
+                        | 'implementation'
+                        | undefined
+                    }
+                    summaryVersion={article.summaryVersion}
+                  />
+                </>
               ) : article.summary ? (
                 <div className="bg-muted rounded-lg p-4">
                   <p className="mb-1 text-sm font-medium">要約</p>
