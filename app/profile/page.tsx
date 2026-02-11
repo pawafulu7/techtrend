@@ -18,6 +18,20 @@ const PROVIDER_LABELS: Record<string, string> = {
   credentials: 'メール/パスワード',
 };
 
+function getAuthMethodLabel(
+  providers: string[] | undefined,
+  hasPassword?: boolean
+): string {
+  if (!providers || providers.length === 0) {
+    return hasPassword ? PROVIDER_LABELS.credentials : 'なし';
+  }
+  const providerLabels = providers.map((p) => PROVIDER_LABELS[p] || p);
+  if (hasPassword && !providers.includes('credentials')) {
+    providerLabels.push(PROVIDER_LABELS.credentials);
+  }
+  return providerLabels.join(', ');
+}
+
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const {
@@ -42,6 +56,7 @@ export default function ProfilePage() {
       <div>
         <div className="flex flex-wrap items-center gap-2 pb-3">
           <div className="bg-muted h-5 w-5 animate-pulse rounded" />
+          <h1 className="sr-only">プロフィール設定</h1>
           <div className="bg-muted h-5 w-32 animate-pulse rounded" />
         </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -101,20 +116,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  const getAuthMethodLabel = (
-    providers: string[] | undefined,
-    hasPassword?: boolean
-  ) => {
-    if (!providers || providers.length === 0) {
-      return hasPassword ? PROVIDER_LABELS.credentials : 'なし';
-    }
-    const providerLabels = providers.map((p) => PROVIDER_LABELS[p] || p);
-    if (hasPassword && !providers.includes('credentials')) {
-      providerLabels.push(PROVIDER_LABELS.credentials);
-    }
-    return providerLabels.join(', ');
-  };
 
   return (
     <div>
