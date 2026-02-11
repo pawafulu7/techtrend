@@ -25,6 +25,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+const SORT_BY_OPTIONS = ['recent', 'popular', 'quality'] as const;
+type SortByOption = (typeof SORT_BY_OPTIONS)[number];
+
 export default function FavoritesFeedPage() {
   const {
     favorites,
@@ -38,9 +41,7 @@ export default function FavoritesFeedPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'recent' | 'popular' | 'quality'>(
-    'recent'
-  );
+  const [sortBy, setSortBy] = useState<SortByOption>('recent');
   const [refreshing, setRefreshing] = useState(false);
 
   const loadArticles = useCallback(async () => {
@@ -78,10 +79,16 @@ export default function FavoritesFeedPage() {
       const sortedArticles = [...data.articles];
       switch (sortBy) {
         case 'popular':
-          sortedArticles.sort((a, b) => b.bookmarkCount - a.bookmarkCount);
+          sortedArticles.sort(
+            (a, b) =>
+              b.bookmarkCount - a.bookmarkCount || a.id.localeCompare(b.id)
+          );
           break;
         case 'quality':
-          sortedArticles.sort((a, b) => b.qualityScore - a.qualityScore);
+          sortedArticles.sort(
+            (a, b) =>
+              b.qualityScore - a.qualityScore || a.id.localeCompare(b.id)
+          );
           break;
         // 'recent'はデフォルトでpublishedAtでソート済み
       }
@@ -115,7 +122,7 @@ export default function FavoritesFeedPage() {
       selectedFolder === 'all'
         ? favorites.length
         : getFavoritesByFolder(selectedFolder).length,
-    [selectedFolder, favorites.length, getFavoritesByFolder]
+    [selectedFolder, favorites, getFavoritesByFolder]
   );
 
   if (favoritesLoading) {
@@ -159,7 +166,13 @@ export default function FavoritesFeedPage() {
           {folderCount}ソースから{articleCount}件
         </span>
         <div className="flex-1" />
-        <Select value={selectedFolder} onValueChange={setSelectedFolder}>
+        <Select
+          value={selectedFolder}
+          onValueChange={(v) => {
+            setSelectedFolder(v);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="h-9 w-[180px]" aria-label="フォルダー">
             <Folder className="mr-2 h-4 w-4" aria-hidden="true" />
             <SelectValue />
@@ -187,13 +200,9 @@ export default function FavoritesFeedPage() {
         <Select
           value={sortBy}
           onValueChange={(v) => {
-            const valid: Array<'recent' | 'popular' | 'quality'> = [
-              'recent',
-              'popular',
-              'quality',
-            ];
-            if (valid.includes(v as 'recent' | 'popular' | 'quality')) {
-              setSortBy(v as 'recent' | 'popular' | 'quality');
+            if ((SORT_BY_OPTIONS as readonly string[]).includes(v)) {
+              setSortBy(v as SortByOption);
+              setPage(1);
             }
           }}
         >
