@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -50,28 +50,28 @@ function RelatedArticleItem({ article }: { article: RelatedArticle }) {
   return (
     <Link
       href={`/articles/${article.id}`}
-      className="group block cursor-pointer rounded-lg bg-gray-100 p-3 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+      className="group block cursor-pointer rounded-lg bg-[var(--tt-color-surface-muted)] p-3 transition-colors hover:bg-[var(--tt-color-surface-hover)]"
     >
       <div className="space-y-1">
         <div className="flex items-start justify-between gap-2">
           <h4 className="group-hover:text-primary line-clamp-2 text-sm font-medium transition-colors">
             {article.translatedTitle || article.title}
           </h4>
-          <Badge variant="secondary" className="ml-2 shrink-0 text-xs">
+          <BadgeV2 variant="secondary" className="ml-2 shrink-0 text-xs">
             {Math.round(article.similarity * 100)}%
-          </Badge>
+          </BadgeV2>
         </div>
 
         {article.summary && (
-          <p className="text-muted-foreground line-clamp-2 text-xs">
+          <p className="line-clamp-2 text-xs text-[var(--tt-color-text-muted)]">
             {article.summary}
           </p>
         )}
 
-        <div className="text-muted-foreground flex items-center gap-2 text-xs">
-          <Badge variant="outline" className="text-xs">
+        <div className="flex items-center gap-2 text-xs text-[var(--tt-color-text-muted)]">
+          <BadgeV2 variant="outline" className="text-xs">
             {article.source}
-          </Badge>
+          </BadgeV2>
           <span>
             {!isValidDate
               ? '日付不明'
@@ -84,26 +84,26 @@ function RelatedArticleItem({ article }: { article: RelatedArticle }) {
                     : formatDate(article.publishedAt)}
           </span>
           {isNew === true && (
-            <Badge className="h-5 text-xs" variant="destructive">
+            <BadgeV2 className="h-5 text-xs" variant="primary">
               <TrendingUp className="mr-0.5 h-3 w-3" />
               New
-            </Badge>
+            </BadgeV2>
           )}
         </div>
 
         {article.tags.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
             {article.tags.slice(0, 3).map((tag) => (
-              <Badge
+              <BadgeV2
                 key={tag.id}
                 variant="outline"
                 className="h-4 px-1.5 py-0 text-xs"
               >
                 {tag.name}
-              </Badge>
+              </BadgeV2>
             ))}
             {article.tags.length > 3 && (
-              <span className="text-muted-foreground text-xs">
+              <span className="text-xs text-[var(--tt-color-text-muted)]">
                 +{article.tags.length - 3}
               </span>
             )}
@@ -173,7 +173,7 @@ export function RelatedArticles({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-[var(--tt-color-text-muted)]">
             関連記事が見つかりませんでした。
           </p>
         </CardContent>
