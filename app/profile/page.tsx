@@ -6,16 +6,9 @@ import { useEffect } from 'react';
 import { ProfileForm } from '@/components/profile/ProfileForm';
 import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import { DeleteAccountDialog } from '@/components/profile/DeleteAccountDialog';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { CardV2 } from '@/components/ui-v2/card-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, User, UserCog, AlertTriangle } from 'lucide-react';
-import { PageHeader } from '@/components/ui-v2/page-header';
+import { AlertCircle, User, UserCog, AlertTriangle } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -46,9 +39,37 @@ export default function ProfilePage() {
 
   if (status === 'loading' || profileLoading) {
     return (
-      <div className="flex h-32 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
+      <>
+        <div className="flex flex-wrap items-center gap-2 pb-3">
+          <div className="bg-muted h-5 w-5 animate-pulse rounded" />
+          <div className="bg-muted h-5 w-32 animate-pulse rounded" />
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <CardV2 className="p-4 sm:p-6">
+              <div className="space-y-4">
+                <div className="bg-muted h-6 w-40 animate-pulse rounded" />
+                <div className="bg-muted h-4 w-64 animate-pulse rounded" />
+                <div className="space-y-3 pt-4">
+                  <div className="bg-muted h-10 w-full animate-pulse rounded" />
+                  <div className="bg-muted h-10 w-full animate-pulse rounded" />
+                  <div className="bg-muted h-10 w-full animate-pulse rounded" />
+                </div>
+              </div>
+            </CardV2>
+          </div>
+          <div>
+            <CardV2 className="p-3">
+              <div className="space-y-3">
+                <div className="bg-muted h-5 w-28 animate-pulse rounded" />
+                <div className="bg-muted h-4 w-full animate-pulse rounded" />
+                <div className="bg-muted h-4 w-full animate-pulse rounded" />
+                <div className="bg-muted h-4 w-full animate-pulse rounded" />
+              </div>
+            </CardV2>
+          </div>
+        </div>
+      </>
     );
   }
 
@@ -64,11 +85,20 @@ export default function ProfilePage() {
       return null;
     }
     return (
-      <Alert variant="destructive">
-        <AlertDescription>
-          プロフィール情報の取得に失敗しました：{profileError.message}
-        </AlertDescription>
-      </Alert>
+      <>
+        <header className="flex flex-wrap items-center gap-2 pb-3">
+          <UserCog className="text-primary h-5 w-5" aria-hidden="true" />
+          <h1 className="text-foreground text-lg font-semibold">
+            プロフィール設定
+          </h1>
+        </header>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
+          <AlertDescription>
+            プロフィール情報の取得に失敗しました: {profileError.message}
+          </AlertDescription>
+        </Alert>
+      </>
     );
   }
 
@@ -88,42 +118,40 @@ export default function ProfilePage() {
 
   return (
     <>
-      <PageHeader
-        icon={UserCog}
-        title="プロフィール設定"
-        description="基本情報とアカウント設定を管理します"
-        className="mb-6"
-      />
+      <header className="flex flex-wrap items-center gap-2 pb-3">
+        <UserCog className="text-primary h-5 w-5" aria-hidden="true" />
+        <h1 className="text-foreground text-lg font-semibold">
+          プロフィール設定
+        </h1>
+      </header>
 
       {/* 2-column layout: lg and above */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left column: Profile form (2/3 width) */}
         <div className="lg:col-span-2">
-          <Card className="border-0 bg-white/95 shadow-lg dark:bg-slate-900/95">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold">
+          <CardV2 className="p-4 sm:p-6">
+            <div className="pb-3">
+              <h2 className="text-foreground text-lg font-semibold">
                 プロフィール編集
-              </CardTitle>
-              <CardDescription className="text-sm">
+              </h2>
+              <p className="text-muted-foreground text-sm">
                 他のユーザーに表示される公開情報
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ProfileForm />
-            </CardContent>
-          </Card>
+              </p>
+            </div>
+            <ProfileForm />
+          </CardV2>
         </div>
 
         {/* Right column: Account info (1/3 width, sticky) */}
         <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          <Card className="border-0 bg-white/95 p-3 shadow-lg dark:bg-slate-900/95">
+          <CardV2 className="p-3">
             {/* Account Info Content */}
             <div className="grid gap-0 text-sm">
-              <div className="flex items-center gap-2 border-b border-slate-100 py-1.5 dark:border-slate-800">
-                <User className="h-4 w-4 text-slate-500" />
+              <div className="border-border flex items-center gap-2 border-b py-1.5">
+                <User className="text-muted-foreground h-4 w-4" />
                 <span className="font-medium">アカウント情報</span>
               </div>
-              <div className="border-b border-slate-100 py-1.5 dark:border-slate-800">
+              <div className="border-border border-b py-1.5">
                 <span className="text-muted-foreground mb-0.5 block text-xs">
                   メール
                 </span>
@@ -131,7 +159,7 @@ export default function ProfilePage() {
                   {userProfile?.email || session?.user?.email}
                 </span>
               </div>
-              <div className="flex justify-between border-b border-slate-100 py-1.5 dark:border-slate-800">
+              <div className="border-border flex justify-between border-b py-1.5">
                 <span className="text-muted-foreground">認証方法</span>
                 <span className="font-medium">
                   {getAuthMethodLabel(
@@ -140,7 +168,7 @@ export default function ProfilePage() {
                   )}
                 </span>
               </div>
-              <div className="flex justify-between border-b border-slate-100 py-1.5 dark:border-slate-800">
+              <div className="border-border flex justify-between border-b py-1.5">
                 <span className="text-muted-foreground">登録日</span>
                 <span className="font-medium">
                   {userProfile?.createdAt
@@ -152,14 +180,14 @@ export default function ProfilePage() {
               </div>
               {/* Password change form if applicable */}
               {userProfile?.hasPassword && (
-                <div className="border-b border-slate-100 py-1.5 dark:border-slate-800">
+                <div className="border-border border-b py-1.5">
                   <p className="mb-2 font-medium">パスワード変更</p>
                   <PasswordChangeForm />
                 </div>
               )}
               {/* Danger zone - collapsible */}
               <details className="group py-1.5">
-                <summary className="flex cursor-pointer list-none items-center gap-2 font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                <summary className="text-destructive hover:text-destructive/80 flex cursor-pointer list-none items-center gap-2 font-medium">
                   <AlertTriangle className="h-4 w-4" />
                   <span>危険な操作</span>
                   <span className="text-muted-foreground ml-auto text-xs group-open:hidden">
@@ -179,7 +207,7 @@ export default function ProfilePage() {
                 </div>
               </details>
             </div>
-          </Card>
+          </CardV2>
         </div>
       </div>
     </>
