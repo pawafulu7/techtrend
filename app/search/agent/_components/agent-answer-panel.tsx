@@ -23,6 +23,7 @@ import {
   Link2,
   ExternalLink,
   FileText,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CardV2 } from '@/components/ui-v2/card-v2';
@@ -30,7 +31,6 @@ import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
 import { formatDate, formatDateWithTime } from '@/lib/utils/date';
-import { Calendar } from 'lucide-react';
 
 // Article section extracted from AI response
 interface ArticleSection {
@@ -130,8 +130,12 @@ const isMarkdownLi = (node: React.ReactNode): node is MarkdownLi =>
 function OlComponent({
   children,
   hasEmbeddedIds,
+  node: _node,
   ...props
-}: React.ComponentPropsWithoutRef<'ol'> & { hasEmbeddedIds: boolean }) {
+}: React.ComponentPropsWithoutRef<'ol'> & {
+  hasEmbeddedIds: boolean;
+  node?: unknown;
+}) {
   const depth = React.useContext(ListDepthContext);
   const hasIdInThisOl = React.Children.toArray(children).some(
     (child) => isMarkdownLi(child) && (child.props as any)['data-article-id']
