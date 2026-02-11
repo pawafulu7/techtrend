@@ -14,7 +14,11 @@ jest.mock('next/navigation', () => ({
 
 // FavoriteButtonモック
 jest.mock('@/app/components/article/favorite-button', () => ({
-  FavoriteButton: ({ articleId, isFavorited, onToggleFavorite }: {
+  FavoriteButton: ({
+    articleId,
+    isFavorited,
+    onToggleFavorite,
+  }: {
     articleId: string;
     isFavorited?: boolean;
     onToggleFavorite?: () => void;
@@ -85,7 +89,9 @@ describe('CompactCard', () => {
     it('要約を表示しない（コンパクト表示の特徴）', () => {
       render(<CompactCard article={mockArticle} />);
 
-      expect(screen.queryByText(/This is a test article summary/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/This is a test article summary/)
+      ).not.toBeInTheDocument();
     });
 
     it('ソース名を表示する', () => {
@@ -140,7 +146,9 @@ describe('CompactCard', () => {
       render(<CompactCard article={mockArticle} />);
 
       // 「元記事」テキストを含むボタン（ArticleCardと同じ表現）
-      const externalLinkButton = screen.getByRole('button', { name: /元記事/i });
+      const externalLinkButton = screen.getByRole('button', {
+        name: /元記事/i,
+      });
       expect(externalLinkButton).toBeInTheDocument();
       expect(externalLinkButton).toHaveTextContent('元記事');
     });
@@ -157,13 +165,15 @@ describe('CompactCard', () => {
 
       render(<CompactCard article={newArticle} />);
 
-      expect(screen.getByText('NEW')).toBeInTheDocument();
+      expect(screen.getByLabelText('24時間以内の新着記事')).toBeInTheDocument();
     });
 
     it('24時間以上前の記事にはNEWバッジを表示しない', () => {
       render(<CompactCard article={mockArticle} />);
 
-      expect(screen.queryByText('NEW')).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText('24時間以内の新着記事')
+      ).not.toBeInTheDocument();
     });
 
     it('未読記事に未読バッジを表示する', () => {
@@ -214,7 +224,9 @@ describe('CompactCard', () => {
       const handleClick = jest.fn();
       const user = userEvent.setup();
 
-      render(<CompactCard article={mockArticle} onArticleClick={handleClick} />);
+      render(
+        <CompactCard article={mockArticle} onArticleClick={handleClick} />
+      );
 
       const card = screen.getByTestId('compact-card');
       await user.click(card);
@@ -282,7 +294,9 @@ describe('CompactCard', () => {
       const handleClick = jest.fn();
       const user = userEvent.setup();
 
-      render(<CompactCard article={mockArticle} onArticleClick={handleClick} />);
+      render(
+        <CompactCard article={mockArticle} onArticleClick={handleClick} />
+      );
 
       const favoriteButton = screen.getByTestId('favorite-button');
       await user.click(favoriteButton);
@@ -297,7 +311,9 @@ describe('CompactCard', () => {
 
       render(<CompactCard article={mockArticle} />);
 
-      const externalLinkButton = screen.getByRole('button', { name: /元記事/i });
+      const externalLinkButton = screen.getByRole('button', {
+        name: /元記事/i,
+      });
       await user.click(externalLinkButton);
 
       expect(mockOpen).toHaveBeenCalledWith(
@@ -312,9 +328,13 @@ describe('CompactCard', () => {
       const user = userEvent.setup();
       window.open = jest.fn();
 
-      render(<CompactCard article={mockArticle} onArticleClick={handleClick} />);
+      render(
+        <CompactCard article={mockArticle} onArticleClick={handleClick} />
+      );
 
-      const externalLinkButton = screen.getByRole('button', { name: /元記事/i });
+      const externalLinkButton = screen.getByRole('button', {
+        name: /元記事/i,
+      });
       await user.click(externalLinkButton);
 
       expect(handleClick).not.toHaveBeenCalled();
