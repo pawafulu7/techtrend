@@ -163,11 +163,12 @@ export function AgentAnswerPanel({
   onFeedback,
 }: AgentAnswerPanelProps) {
   const [copied, setCopied] = useState(false);
-  const [showEmptyState, setShowEmptyState] = useState(false);
+  const [emptyDelayPassed, setEmptyDelayPassed] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState<
     'positive' | 'negative' | null
   >(null);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [prevQuery, setPrevQuery] = useState(result?.query);
 
   useEffect(() => {
     if (!copied) return;
@@ -180,14 +181,16 @@ export function AgentAnswerPanel({
   }, [result?.response]);
 
   // Empty state delay logic (150ms to prevent flicker)
+  const hasContent = !!(displayText?.trim() || result?.articles?.length);
   useEffect(() => {
-    if (!displayText?.trim() && !result?.articles?.length) {
-      const timer = setTimeout(() => setShowEmptyState(true), 150);
-      return () => clearTimeout(timer);
-    } else {
-      setShowEmptyState(false);
-    }
-  }, [displayText, result?.articles]);
+    if (hasContent) return;
+    const timer = setTimeout(() => setEmptyDelayPassed(true), 150);
+    return () => {
+      clearTimeout(timer);
+      setEmptyDelayPassed(false);
+    };
+  }, [hasContent]);
+  const showEmptyState = !hasContent && emptyDelayPassed;
 
   const deferredDisplayText = useDeferredValue(displayText);
 
@@ -247,11 +250,12 @@ export function AgentAnswerPanel({
   const articleCount = articles?.length ?? 0;
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Reset feedback state when result changes
-  useEffect(() => {
+  // Reset feedback state when result changes (React recommended pattern)
+  if (prevQuery !== result?.query) {
+    setPrevQuery(result?.query);
     setFeedbackSubmitted(null);
     setIsSubmittingFeedback(false);
-  }, [result?.query]);
+  }
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -294,9 +298,9 @@ export function AgentAnswerPanel({
 
   // Extract article sections and summary from the response for card display
   const extractedAnswer = useMemo(() => {
-    if (!result?.response) return { sections: [], summary: '' };
-    return extractArticleSections(result.response);
-  }, [result?.response]);
+    if (!resultResponse) return { sections: [], summary: '' };
+    return extractArticleSections(resultResponse);
+  }, [resultResponse]);
 
   // Enrich sections with article metadata
   const enrichedSections = useMemo(() => {
