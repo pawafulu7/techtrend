@@ -18,7 +18,7 @@ export function ArticleList({
   articles: initialArticles,
   viewMode = 'card',
   onArticleClick,
-  className
+  className,
 }: ArticleListProps) {
   // 認証状態を取得（お気に入り切り替え用）
   const { data: session } = useSession();
@@ -38,52 +38,61 @@ export function ArticleList({
   }, [initialArticles]);
 
   // お気に入り切り替え処理
-  const handleToggleFavorite = useCallback(async (articleId: string) => {
-    if (!session?.user) {
-      return;
-    }
-
-    // 現在のお気に入り状態を確認（楽観的更新前にrefから取得）
-    const article = articlesRef.current.find(a => a.id === articleId);
-    const currentlyFavorited = article?.isFavorited ?? false;
-
-    // 楽観的更新 - ローカル状態を即座に更新
-    setArticles(prev => prev.map(a =>
-      a.id === articleId
-        ? { ...a, isFavorited: !a.isFavorited }
-        : a
-    ));
-
-    try {
-      // お気に入り状態に応じてPOSTまたはDELETEを送信
-      const response = await fetch(`/api/favorites/${articleId}`, {
-        method: currentlyFavorited ? 'DELETE' : 'POST',
-      });
-
-      if (response.ok) {
-        // API成功時にイベント発火（React Queryキャッシュ同期用）
-        window.dispatchEvent(new CustomEvent('article-favorite-changed', {
-          detail: { articleId, isFavorited: !currentlyFavorited, timestamp: Date.now() }
-        }));
-      } else {
-        // エラー時は元に戻す
-        setArticles(prev => prev.map(a =>
-          a.id === articleId
-            ? { ...a, isFavorited: currentlyFavorited }
-            : a
-        ));
+  const handleToggleFavorite = useCallback(
+    async (articleId: string) => {
+      if (!session?.user) {
+        return;
       }
-    } catch (error) {
-      console.error('Failed to toggle favorite:', error);
-      // エラー時は元に戻す
-      setArticles(prev => prev.map(a =>
-        a.id === articleId
-          ? { ...a, isFavorited: currentlyFavorited }
-          : a
-      ));
-    }
-  }, [session]);
-  
+
+      // 現在のお気に入り状態を確認（楽観的更新前にrefから取得）
+      const article = articlesRef.current.find((a) => a.id === articleId);
+      const currentlyFavorited = article?.isFavorited ?? false;
+
+      // 楽観的更新 - ローカル状態を即座に更新
+      setArticles((prev) =>
+        prev.map((a) =>
+          a.id === articleId ? { ...a, isFavorited: !a.isFavorited } : a
+        )
+      );
+
+      try {
+        // お気に入り状態に応じてPOSTまたはDELETEを送信
+        const response = await fetch(`/api/favorites/${articleId}`, {
+          method: currentlyFavorited ? 'DELETE' : 'POST',
+        });
+
+        if (response.ok) {
+          // API成功時にイベント発火（React Queryキャッシュ同期用）
+          window.dispatchEvent(
+            new CustomEvent('article-favorite-changed', {
+              detail: {
+                articleId,
+                isFavorited: !currentlyFavorited,
+                timestamp: Date.now(),
+              },
+            })
+          );
+        } else {
+          // エラー時は元に戻す
+          setArticles((prev) =>
+            prev.map((a) =>
+              a.id === articleId ? { ...a, isFavorited: currentlyFavorited } : a
+            )
+          );
+        }
+      } catch (error) {
+        console.error('Failed to toggle favorite:', error);
+        // エラー時は元に戻す
+        setArticles((prev) =>
+          prev.map((a) =>
+            a.id === articleId ? { ...a, isFavorited: currentlyFavorited } : a
+          )
+        );
+      }
+    },
+    [session]
+  );
+
   // 既読状態変更イベントをリッスンして記事データを更新
   useEffect(() => {
     const handleReadStatusChanged = (event: Event) => {
@@ -91,18 +100,22 @@ export function ArticleList({
       if (customEvent.detail?.articleIds) {
         // 既読状態が変更された記事のIDリストを取得
         const { articleIds, isRead } = customEvent.detail;
-        setArticles(prev => prev.map(a =>
-          articleIds.includes(a.id)
-            ? { ...a, isRead }
-            : a
-        ));
+        setArticles((prev) =>
+          prev.map((a) => (articleIds.includes(a.id) ? { ...a, isRead } : a))
+        );
       }
     };
 
-    window.addEventListener('articles-read-status-changed', handleReadStatusChanged);
+    window.addEventListener(
+      'articles-read-status-changed',
+      handleReadStatusChanged
+    );
 
     return () => {
-      window.removeEventListener('articles-read-status-changed', handleReadStatusChanged);
+      window.removeEventListener(
+        'articles-read-status-changed',
+        handleReadStatusChanged
+      );
     };
   }, []);
 
@@ -112,7 +125,7 @@ export function ArticleList({
       const customEvent = event as CustomEvent<{ isRead: boolean }>;
       if (customEvent.detail?.isRead) {
         // 全記事を既読に更新
-        setArticles(prev => prev.map(a => ({ ...a, isRead: true })));
+        setArticles((prev) => prev.map((a) => ({ ...a, isRead: true })));
       }
     };
 
@@ -125,7 +138,7 @@ export function ArticleList({
 
   if (articles.length === 0) {
     return (
-      <div className={cn("text-center py-12", className)}>
+      <div className={cn('py-12 text-center', className)}>
         <p className="text-muted-foreground">記事が見つかりませんでした</p>
       </div>
     );
@@ -134,7 +147,7 @@ export function ArticleList({
   // リスト形式の場合
   if (viewMode === 'list') {
     return (
-      <div className={cn("space-y-2", className)} data-testid="article-list">
+      <div className={cn('space-y-2', className)} data-testid="article-list">
         {articles.map((article, index) => (
           <ArticleListItem
             key={article.id}
@@ -154,7 +167,13 @@ export function ArticleList({
   // コンパクト形式の場合
   if (viewMode === 'compact') {
     return (
-      <div className={cn("grid gap-2 sm:gap-3 lg:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", className)} data-testid="article-list">
+      <div
+        className={cn(
+          'grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4 2xl:grid-cols-5',
+          className
+        )}
+        data-testid="article-list"
+      >
         {articles.map((article) => (
           <CompactCard
             key={article.id}
@@ -171,7 +190,13 @@ export function ArticleList({
 
   // カード形式の場合
   return (
-    <div className={cn("grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4", className)} data-testid="article-list">
+    <div
+      className={cn(
+        'grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4 2xl:grid-cols-5',
+        className
+      )}
+      data-testid="article-list"
+    >
       {articles.map((article) => (
         <ArticleCard
           key={article.id}

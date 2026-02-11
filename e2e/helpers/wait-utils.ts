@@ -177,16 +177,15 @@ export async function openFilterSidebar(page: Page) {
   const isDesktop = viewport && viewport.width >= 1024;
 
   if (isDesktop) {
-    // デスクトップ: 折りたたみサイドバーを開く
+    // デスクトップ: オーバーレイサイドバーを開く
     const sidebar = page.getByTestId('filter-sidebar');
-    const isVisible = await sidebar.isVisible().catch(() => false);
-    const hasWidth =
-      isVisible &&
-      (await sidebar.evaluate(
-        (el) => el.getBoundingClientRect().width > 10
-      ).catch(() => false));
+    // translate-xで制御するため、画面内に表示されているかを確認
+    const isOnScreen = await sidebar.evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      return rect.left >= 0 && rect.width > 10;
+    }).catch(() => false);
 
-    if (!hasWidth) {
+    if (!isOnScreen) {
       const toggleButton = page.getByRole('button', {
         name: /フィルターを開く/,
       });

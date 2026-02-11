@@ -8,7 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { PanelLeft } from 'lucide-react';
+import { PanelLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -17,11 +17,13 @@ const STORAGE_KEY = 'home-sidebar-open';
 interface FilterSidebarContextValue {
   open: boolean;
   toggle: () => void;
+  close: () => void;
 }
 
 const FilterSidebarContext = createContext<FilterSidebarContextValue>({
   open: false,
   toggle: () => {},
+  close: () => {},
 });
 
 export function FilterSidebarProvider({ children }: { children: ReactNode }) {
@@ -49,8 +51,17 @@ export function FilterSidebarProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const close = useCallback(() => {
+    setOpen(false);
+    try {
+      localStorage.setItem(STORAGE_KEY, 'false');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   return (
-    <FilterSidebarContext value={{ open, toggle }}>
+    <FilterSidebarContext value={{ open, toggle, close }}>
       {children}
     </FilterSidebarContext>
   );
@@ -79,20 +90,58 @@ export function FilterSidebarToggle() {
   );
 }
 
+/**
+ * オーバーレイ式フィルターパネル
+ * 記事リストの上に重ねて表示。コンテンツを押さない。
+ */
 export function FilterSidebarPanel({ children }: { children: ReactNode }) {
-  const { open } = useContext(FilterSidebarContext);
+  const { open, close } = useContext(FilterSidebarContext);
 
   return (
     <aside
       className={cn(
-        'hidden flex-shrink-0 overflow-hidden border-r transition-all duration-300 lg:block',
-        open ? 'lg:w-64' : 'lg:w-0 lg:border-r-0'
+        'absolute top-0 left-0 z-30 hidden h-full transition-transform duration-300 ease-out lg:block',
+        open ? 'translate-x-0' : '-translate-x-full'
       )}
       data-testid="filter-sidebar"
     >
-      <div className="h-full w-64 space-y-4 overflow-y-auto p-4">
-        {children}
+      <div className="bg-background/95 h-full w-72 border-r shadow-lg backdrop-blur-sm">
+        {/* Close button */}
+        <div className="flex items-center justify-between border-b px-4 py-2">
+          <span className="text-muted-foreground text-xs font-medium">
+            フィルター
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            onClick={close}
+            aria-label="フィルターを閉じる"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        <div className="h-[calc(100%-2.5rem)] space-y-4 overflow-y-auto p-4">
+          {children}
+        </div>
       </div>
     </aside>
+  );
+}
+
+/**
+ * オーバーレイ背景（クリックで閉じる）
+ */
+export function FilterSidebarOverlay() {
+  const { open, close } = useContext(FilterSidebarContext);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="absolute inset-0 z-20 hidden bg-black/20 lg:block"
+      onClick={close}
+      aria-hidden="true"
+    />
   );
 }
