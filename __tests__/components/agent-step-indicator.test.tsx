@@ -41,6 +41,12 @@ describe('AgentStepIndicator', () => {
       // 'generating' is now a displayed step, so it should be active
       const activeStep = stepIndicator.querySelector('[aria-current="step"]');
       expect(activeStep).toBeInTheDocument();
+      // Verify the generating step specifically is the active one
+      const generatingLabel = screen.getByText('回答生成');
+      const generatingStepContainer = generatingLabel.closest('.flex.flex-col');
+      expect(
+        generatingStepContainer?.querySelector('[aria-current="step"]')
+      ).toBeInTheDocument();
     });
 
     test('shows all steps as complete when complete', () => {

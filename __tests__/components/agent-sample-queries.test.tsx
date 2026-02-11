@@ -14,7 +14,7 @@ describe('AgentSampleQueries', () => {
   });
 
   describe('カテゴリタイルグリッド表示（デフォルト）', () => {
-    test('should render 5 category tiles', () => {
+    test('should render all category tiles', () => {
       render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
 
       // カテゴリタイルが存在
@@ -25,16 +25,12 @@ describe('AgentSampleQueries', () => {
       });
     });
 
-    test('should display category labels', () => {
+    test('should display all category labels', () => {
       render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
 
-      expect(
-        screen.getByText(CATEGORY_LABELS.infrastructure)
-      ).toBeInTheDocument();
-      expect(screen.getByText(CATEGORY_LABELS.ai)).toBeInTheDocument();
-      expect(screen.getByText(CATEGORY_LABELS.frontend)).toBeInTheDocument();
-      expect(screen.getByText(CATEGORY_LABELS.backend)).toBeInTheDocument();
-      expect(screen.getByText(CATEGORY_LABELS.security)).toBeInTheDocument();
+      CATEGORY_ORDER.forEach((category) => {
+        expect(screen.getByText(CATEGORY_LABELS[category])).toBeInTheDocument();
+      });
     });
 
     test('should display first query text for each category', () => {
@@ -175,7 +171,7 @@ describe('AgentSampleQueries', () => {
       ).toBeInTheDocument();
     });
 
-    test('should display category labels in sidebar layout', () => {
+    test('should display all category labels in sidebar layout', () => {
       render(
         <AgentSampleQueries
           onSelectQuery={mockOnSelectQuery}
@@ -183,13 +179,9 @@ describe('AgentSampleQueries', () => {
         />
       );
 
-      expect(
-        screen.getByText(CATEGORY_LABELS.infrastructure)
-      ).toBeInTheDocument();
-      expect(screen.getByText(CATEGORY_LABELS.ai)).toBeInTheDocument();
-      expect(screen.getByText(CATEGORY_LABELS.frontend)).toBeInTheDocument();
-      expect(screen.getByText(CATEGORY_LABELS.backend)).toBeInTheDocument();
-      expect(screen.getByText(CATEGORY_LABELS.security)).toBeInTheDocument();
+      CATEGORY_ORDER.forEach((category) => {
+        expect(screen.getByText(CATEGORY_LABELS[category])).toBeInTheDocument();
+      });
     });
 
     test('should expand category and show queries when toggle is clicked', () => {
@@ -214,9 +206,9 @@ describe('AgentSampleQueries', () => {
       const categoryQueries = SAMPLE_QUERIES.filter(
         (q) => q.category === firstCategory
       );
-      categoryQueries.forEach((query, idx) => {
+      categoryQueries.forEach((query) => {
         expect(
-          screen.getByTestId(`category-query-${firstCategory}-${idx}`)
+          screen.getByTestId(`category-query-${query.id}`)
         ).toBeInTheDocument();
       });
     });
@@ -256,14 +248,13 @@ describe('AgentSampleQueries', () => {
       fireEvent.click(toggle);
 
       // Click first query
-      const queryButton = screen.getByTestId(
-        `category-query-${firstCategory}-0`
-      );
-      fireEvent.click(queryButton);
-
       const expectedQuery = SAMPLE_QUERIES.find(
         (q) => q.category === firstCategory
       );
+      const queryButton = screen.getByTestId(
+        `category-query-${expectedQuery!.id}`
+      );
+      fireEvent.click(queryButton);
       expect(mockOnSelectQuery).toHaveBeenCalledWith(expectedQuery!.text);
     });
 

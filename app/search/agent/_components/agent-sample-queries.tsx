@@ -127,13 +127,13 @@ function SidebarAccordion({
                   className="mt-1 flex flex-col gap-1 pl-4"
                   role="list"
                 >
-                  {categoryQueries.map((query, idx) => (
-                    <li key={`${category}-${idx}`}>
+                  {categoryQueries.map((query) => (
+                    <li key={query.id}>
                       <button
                         type="button"
                         className="w-full rounded-md px-3 py-2 text-left text-xs text-[var(--tt-color-text-muted)] transition-colors hover:bg-[var(--tt-color-surface-1)] hover:text-[var(--tt-color-text)]"
                         onClick={() => onSelectQuery(query.text)}
-                        data-testid={`category-query-${category}-${idx}`}
+                        data-testid={`category-query-${query.id}`}
                       >
                         {query.text}
                       </button>

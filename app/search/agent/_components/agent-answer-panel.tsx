@@ -156,9 +156,9 @@ export function AgentAnswerPanel({
       let copyText = displayText;
       if (root) {
         const clone = root.cloneNode(true) as HTMLElement;
-        clone
-          .querySelectorAll('[data-copy-exclude]')
-          .forEach((el) => el.remove());
+        clone.querySelectorAll('[data-copy-exclude]').forEach((el) => {
+          el.remove();
+        });
         copyText = (clone.textContent ?? displayText).trim();
       }
 
@@ -264,7 +264,7 @@ export function AgentAnswerPanel({
     });
   }, [extractedAnswer.sections, articleMap, articles]);
 
-  // Use card display when we have sections and not streaming
+  // Use card display when we have extracted sections
   const useCardDisplay = enrichedSections.length > 0;
 
   type MarkdownLi = React.ReactElement<
