@@ -39,7 +39,8 @@ export default function FavoritesPage() {
 
   // URL params for state persistence
   const initialQuery = searchParams.get('q') || '';
-  const initialSort = (searchParams.get('sort') as SortOption) || 'favoritedAt-desc';
+  const initialSort =
+    (searchParams.get('sort') as SortOption) || 'favoritedAt-desc';
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [sortOption, setSortOption] = useState<SortOption>(initialSort);
@@ -58,7 +59,7 @@ export default function FavoritesPage() {
   // Filter and sort favorites
   const filteredFavorites = useMemo(() => {
     // Filter out removed items first (for immediate UI update)
-    let result = allFavorites.filter(a => !removedIds.has(a.id));
+    let result = allFavorites.filter((a) => !removedIds.has(a.id));
 
     // Search filter (title and summary)
     if (searchQuery.trim()) {
@@ -76,13 +77,19 @@ export default function FavoritesPage() {
       let comparison = 0;
       switch (sortOption) {
         case 'favoritedAt-desc':
-          comparison = new Date(b.favoritedAt).getTime() - new Date(a.favoritedAt).getTime();
+          comparison =
+            new Date(b.favoritedAt).getTime() -
+            new Date(a.favoritedAt).getTime();
           break;
         case 'favoritedAt-asc':
-          comparison = new Date(a.favoritedAt).getTime() - new Date(b.favoritedAt).getTime();
+          comparison =
+            new Date(a.favoritedAt).getTime() -
+            new Date(b.favoritedAt).getTime();
           break;
         case 'publishedAt-desc':
-          comparison = new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+          comparison =
+            new Date(b.publishedAt).getTime() -
+            new Date(a.publishedAt).getTime();
           break;
         default:
           break;
@@ -131,43 +138,46 @@ export default function FavoritesPage() {
   );
 
   // Handle favorite removal (immediate UI update + API call)
-  const handleRemoveFavorite = useCallback(
-    async (articleId: string) => {
-      // Immediate UI update via local state
-      setRemovedIds(prev => new Set([...prev, articleId]));
+  const handleRemoveFavorite = useCallback(async (articleId: string) => {
+    // Immediate UI update via local state
+    setRemovedIds((prev) => new Set([...prev, articleId]));
 
-      try {
-        const response = await fetch(`/api/favorites/${articleId}`, {
-          method: 'DELETE',
-        });
+    try {
+      const response = await fetch(`/api/favorites/${articleId}`, {
+        method: 'DELETE',
+      });
 
-        if (!response.ok) {
-          // Non-OK response (4xx, 5xx): restore the item
-          console.error('Failed to remove favorite:', response.status, response.statusText);
-          setRemovedIds(prev => {
-            const next = new Set(prev);
-            next.delete(articleId);
-            return next;
-          });
-          return;
-        }
-
-        // Dispatch event for cross-screen cache sync
-        window.dispatchEvent(new CustomEvent('article-favorite-changed', {
-          detail: { articleId, isFavorited: false, timestamp: Date.now() }
-        }));
-      } catch (error) {
-        console.error('Failed to remove favorite:', error);
-        // On network error, restore the item
-        setRemovedIds(prev => {
+      if (!response.ok) {
+        // Non-OK response (4xx, 5xx): restore the item
+        console.error(
+          'Failed to remove favorite:',
+          response.status,
+          response.statusText
+        );
+        setRemovedIds((prev) => {
           const next = new Set(prev);
           next.delete(articleId);
           return next;
         });
+        return;
       }
-    },
-    []
-  );
+
+      // Dispatch event for cross-screen cache sync
+      window.dispatchEvent(
+        new CustomEvent('article-favorite-changed', {
+          detail: { articleId, isFavorited: false, timestamp: Date.now() },
+        })
+      );
+    } catch (error) {
+      console.error('Failed to remove favorite:', error);
+      // On network error, restore the item
+      setRemovedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(articleId);
+        return next;
+      });
+    }
+  }, []);
 
   // Focus on empty state after all items removed
   useEffect(() => {
@@ -179,25 +189,15 @@ export default function FavoritesPage() {
   // Loading state
   if (status === 'loading' || (isLoading && allFavorites.length === 0)) {
     return (
-      <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
-        {/* Header skeleton */}
-        <div className="mb-6">
-          <CardV2 className="p-4 sm:p-6 border-l-4 border-l-primary bg-card shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 bg-primary/20 rounded-xl animate-pulse" />
-                <div>
-                  <div className="h-7 w-32 bg-muted rounded animate-pulse mb-1" />
-                  <div className="h-4 w-48 bg-muted rounded animate-pulse" />
-                </div>
-              </div>
-            </div>
-          </CardV2>
-        </div>
+      <div className="px-4 py-3 lg:px-6">
         {/* Toolbar skeleton */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-3">
-          <div className="h-11 flex-1 bg-muted rounded animate-pulse" />
-          <div className="h-11 w-48 bg-muted rounded animate-pulse" />
+        <div className="flex flex-wrap items-center gap-2 pb-3">
+          <div className="bg-muted h-5 w-5 animate-pulse rounded" />
+          <div className="bg-muted h-5 w-24 animate-pulse rounded" />
+          <div className="bg-muted h-4 w-12 animate-pulse rounded" />
+          <div className="flex-1" />
+          <div className="bg-muted h-9 w-48 animate-pulse rounded lg:w-64" />
+          <div className="bg-muted h-9 w-44 animate-pulse rounded" />
         </div>
         <FavoriteSkeletonGrid />
       </div>
@@ -205,60 +205,39 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 lg:px-6 py-4">
-      {/* Header Card */}
-      <header className="mb-6">
-        <CardV2 className="p-4 sm:p-6 border-l-4 border-l-primary bg-card shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
-                <Heart className="h-6 w-6" aria-hidden="true" />
-              </div>
-              <div>
-                <h1 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
-                  お気に入り
-                </h1>
-                <p
-                  className="text-sm text-muted-foreground"
-                  role="status"
-                  aria-live="polite"
-                >
-                  保存した記事 ({totalCount - removedIds.size}件)
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardV2>
-      </header>
-
-      {/* Search and Sort Toolbar */}
-      <div className="mb-6 p-3 bg-card border rounded-lg shadow-sm flex flex-col sm:flex-row gap-3">
-        {/* Search Input */}
-        <div className="relative flex-1">
+    <div className="px-4 py-3 lg:px-6">
+      {/* Toolbar: Title + Count + Search + Sort */}
+      <div className="flex flex-wrap items-center gap-2 pb-3">
+        <Heart className="text-primary h-5 w-5" aria-hidden="true" />
+        <h1 className="text-foreground text-lg font-semibold">お気に入り</h1>
+        <span
+          className="text-muted-foreground text-sm"
+          role="status"
+          aria-live="polite"
+        >
+          ({totalCount - removedIds.size}件)
+        </span>
+        <div className="flex-1" />
+        <div className="relative">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+            className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
             aria-hidden="true"
           />
           <Input
             type="search"
-            placeholder="タイトルや内容で検索..."
+            placeholder="検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-11 bg-background border-2 border-input focus:border-primary"
+            className="h-9 w-48 pl-10 lg:w-64"
             aria-label="お気に入り記事を検索"
           />
         </div>
-
-        {/* Sort Select */}
         <Select
           value={sortOption}
           onValueChange={(value) => setSortOption(value as SortOption)}
         >
-          <SelectTrigger
-            className="w-full sm:w-52 h-11 bg-background border-2 border-input"
-            aria-label="並び替え"
-          >
-            <ArrowUpDown className="h-4 w-4 mr-2" aria-hidden="true" />
+          <SelectTrigger className="h-9 w-44" aria-label="並び替え">
+            <ArrowUpDown className="mr-2 h-4 w-4" aria-hidden="true" />
             <SelectValue placeholder="並び替え" />
           </SelectTrigger>
           <SelectContent>
@@ -276,9 +255,7 @@ export default function FavoritesPage() {
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" aria-hidden="true" />
           <AlertDescription>
-            {error instanceof Error
-              ? error.message
-              : 'エラーが発生しました'}
+            {error instanceof Error ? error.message : 'エラーが発生しました'}
           </AlertDescription>
         </Alert>
       )}
@@ -288,41 +265,41 @@ export default function FavoritesPage() {
         <CardV2
           ref={emptyStateRef}
           tabIndex={-1}
-          className="focus:outline-none focus:ring-2 focus:ring-primary max-w-md mx-auto"
+          className="focus:ring-primary mx-auto max-w-md focus:ring-2 focus:outline-none"
         >
           <div
-            className="flex flex-col items-center justify-center py-12 px-4"
+            className="flex flex-col items-center justify-center px-4 py-12"
             role="status"
             aria-live="polite"
           >
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+            <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
               <Heart
-                className="h-8 w-8 text-muted-foreground"
+                className="text-muted-foreground h-8 w-8"
                 aria-hidden="true"
               />
             </div>
-            <p className="text-lg font-medium mb-2 text-foreground">
+            <p className="text-foreground mb-2 text-lg font-medium">
               お気に入り記事がありません
             </p>
             <p className="text-muted-foreground mb-6 text-center text-sm">
               気になる記事を見つけたら、ハートアイコンをクリックして保存しましょう
             </p>
-            <Button asChild className="min-w-[44px] min-h-[44px]">
+            <Button asChild className="min-h-[44px] min-w-[44px]">
               <Link href="/">記事を探す</Link>
             </Button>
           </div>
         </CardV2>
       ) : filteredFavorites.length === 0 ? (
         /* No search results */
-        <CardV2 className="max-w-md mx-auto">
-          <div className="flex flex-col items-center justify-center py-12 px-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+        <CardV2 className="mx-auto max-w-md">
+          <div className="flex flex-col items-center justify-center px-4 py-12">
+            <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
               <Search
-                className="h-8 w-8 text-muted-foreground"
+                className="text-muted-foreground h-8 w-8"
                 aria-hidden="true"
               />
             </div>
-            <p className="text-lg font-medium mb-2 text-foreground">
+            <p className="text-foreground mb-2 text-lg font-medium">
               検索結果がありません
             </p>
             <p className="text-muted-foreground mb-6 text-center text-sm">
@@ -331,7 +308,7 @@ export default function FavoritesPage() {
             <Button
               variant="outline"
               onClick={() => setSearchQuery('')}
-              className="min-w-[44px] min-h-[44px]"
+              className="min-h-[44px] min-w-[44px]"
             >
               検索をクリア
             </Button>
@@ -343,7 +320,7 @@ export default function FavoritesPage() {
           {/* Results count */}
           {searchQuery && (
             <p
-              className="text-sm text-muted-foreground"
+              className="text-muted-foreground text-sm"
               role="status"
               aria-live="polite"
             >
@@ -353,7 +330,7 @@ export default function FavoritesPage() {
 
           {/* Grid layout */}
           <section aria-label="お気に入り記事一覧">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {filteredFavorites.map((article) => (
                 <FavoriteArticleCard
                   key={article.id}
