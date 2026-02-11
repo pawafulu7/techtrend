@@ -155,56 +155,49 @@ export default async function Home({ searchParams }: PageProps) {
       <div className="flex h-full flex-col overflow-hidden">
         {/* Gradient background layer */}
         <div className="from-background to-muted/20 flex flex-1 flex-col overflow-hidden bg-gradient-to-b">
-          {/* Toolbar - 全幅・2段構成 */}
-          <div className="flex-shrink-0 space-y-2 px-4 pt-3 pb-2 lg:px-6">
-            {/* Row 1: フィルター・検索・パーソナライズ */}
-            <div className="flex flex-wrap items-center gap-2">
-              <FilterSidebarToggle />
-              <MobileFilters
-                sources={filteredSources}
-                groupedSources={filteredGroupedSources}
-                tags={tags}
-                initialSourceIds={initialSourceIds}
-              />
-              <div className="hidden lg:block">
-                <SearchBox />
-              </div>
-              {features.aiSearch && session?.user && (
-                <Link
-                  href="/search/agent"
-                  className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-blue-600 transition-colors hover:bg-blue-50 lg:flex dark:text-blue-400 dark:hover:bg-blue-950"
-                  title="AI検索"
-                >
-                  <Sparkles className="h-4 w-4 flex-shrink-0" />
-                  <span>AI検索</span>
-                </Link>
-              )}
-              <div className="hidden lg:block">
-                <TagFilterDropdown tags={tags} />
-              </div>
-              <PersonalizationToggle />
-              <Suspense
-                fallback={
-                  <div className="h-5 w-16 animate-pulse rounded bg-(--tt-color-surface-muted)" />
-                }
+          {/* Toolbar - 全幅・1行 */}
+          <div className="flex flex-shrink-0 flex-wrap items-center gap-2 px-4 pt-3 pb-2 lg:px-6">
+            <FilterSidebarToggle />
+            <MobileFilters
+              sources={filteredSources}
+              groupedSources={filteredGroupedSources}
+              tags={tags}
+              initialSourceIds={initialSourceIds}
+            />
+            <div className="hidden lg:block">
+              <SearchBox />
+            </div>
+            {features.aiSearch && session?.user && (
+              <Link
+                href="/search/agent"
+                className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-blue-600 transition-colors hover:bg-blue-50 lg:flex dark:text-blue-400 dark:hover:bg-blue-950"
+                title="AI検索"
               >
-                <ArticleCount
-                  initialSourceIds={initialSourceIds}
-                  excludeSources={ARXIV_SOURCE_ID}
-                />
-              </Suspense>
+                <Sparkles className="h-4 w-4 flex-shrink-0" />
+                <span>AI検索</span>
+              </Link>
+            )}
+            <div className="hidden lg:block">
+              <TagFilterDropdown tags={tags} />
             </div>
-
-            {/* Row 2: 表示・ソート・アクション */}
-            <div className="flex flex-wrap items-center gap-2">
-              <ViewModeToggle currentMode={viewMode} />
-              <div className="bg-border h-5 w-px" />
-              <SortButtons initialSortBy={initialSortBy} />
-              <div className="bg-border h-5 w-px" />
-              <UnreadFilterWithData />
-              <MarkAllReadWrapper />
-              <FilterResetButton />
-            </div>
+            <PersonalizationToggle />
+            <div className="bg-border hidden h-5 w-px lg:block" />
+            <ViewModeToggle currentMode={viewMode} />
+            <SortButtons initialSortBy={initialSortBy} />
+            <div className="bg-border hidden h-5 w-px lg:block" />
+            <UnreadFilterWithData />
+            <MarkAllReadWrapper />
+            <FilterResetButton />
+            <Suspense
+              fallback={
+                <div className="h-5 w-16 animate-pulse rounded bg-(--tt-color-surface-muted)" />
+              }
+            >
+              <ArticleCount
+                initialSourceIds={initialSourceIds}
+                excludeSources={ARXIV_SOURCE_ID}
+              />
+            </Suspense>
           </div>
 
           {/* Content area - フルワイド + オーバーレイフィルター */}
