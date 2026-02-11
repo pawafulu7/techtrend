@@ -212,11 +212,7 @@ export default async function Home({ searchParams }: PageProps) {
                     excludeSources={ARXIV_SOURCE_ID}
                   />
                 ) : (
-                  <HomeClient
-                    viewMode={viewMode}
-                    sources={sources}
-                    tags={tags}
-                  />
+                  <HomeClient viewMode={viewMode} />
                 )}
               </Suspense>
             </main>

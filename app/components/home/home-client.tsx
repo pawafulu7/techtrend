@@ -5,23 +5,14 @@ import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
 import { ServerPagination } from '@/app/components/common/server-pagination';
-import type { Source, Tag } from '@prisma/client';
 import type { ArticleWithRelations } from '@/types/models';
 import type { ViewMode } from '@/types/components';
 
 interface HomeClientProps {
   viewMode: ViewMode;
-  sources: Source[];
-  tags: Array<Tag & { count: number }>;
-  showInitialSkeleton?: boolean;
 }
 
-export function HomeClient({
-  viewMode,
-  sources: _sources,
-  tags: _tags,
-  showInitialSkeleton: _showInitialSkeleton = true,
-}: HomeClientProps) {
+export function HomeClient({ viewMode }: HomeClientProps) {
   const searchParams = useSearchParams();
   const [articles, setArticles] = useState<ArticleWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,9 +30,6 @@ export function HomeClient({
       setError(null);
 
       try {
-        // 少し遅延を入れてスムーズな遷移を実現
-        await new Promise((resolve) => setTimeout(resolve, 300));
-
         // URLパラメータからクエリ文字列を構築
         const queryString = searchParams.toString();
         const response = await fetch(
@@ -63,10 +51,7 @@ export function HomeClient({
           limit: data.limit || 24,
         });
 
-        // アニメーション開始を少し遅らせる
-        requestAnimationFrame(() => {
-          setLoading(false);
-        });
+        setLoading(false);
       } catch (error) {
         setError(error instanceof Error ? error.message : 'An error occurred');
         setLoading(false);
@@ -78,7 +63,7 @@ export function HomeClient({
 
   if (error) {
     return (
-      <div className="py-8 text-center text-red-500">
+      <div className="text-destructive py-8 text-center">
         エラーが発生しました: {error}
       </div>
     );
@@ -92,13 +77,13 @@ export function HomeClient({
           <ArticleSkeleton />
         ) : articles.length > 0 ? (
           <ArticleList articles={articles} viewMode={viewMode} />
-        ) : !loading ? (
+        ) : (
           <div className="flex min-h-[600px] items-center justify-center">
             <div className="text-muted-foreground text-center">
               記事が見つかりませんでした
             </div>
           </div>
-        ) : null}
+        )}
       </div>
 
       {/* ページネーション */}

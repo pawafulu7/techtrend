@@ -98,8 +98,9 @@ export function FilterSidebarToggle() {
 function FilterActiveIndicator() {
   const searchParams = useSearchParams();
 
+  const sourcesValue = searchParams.get('sources');
   const hasActiveFilters =
-    searchParams.has('sources') ||
+    (searchParams.has('sources') && sourcesValue !== 'all') ||
     searchParams.has('sourceId') ||
     searchParams.has('tags') ||
     searchParams.has('tag') ||
@@ -175,12 +176,7 @@ export function FilterSidebarOverlay() {
     <div
       className="absolute inset-0 z-20 hidden bg-black/20 lg:block"
       onClick={close}
-      role="button"
-      tabIndex={-1}
-      aria-label="フィルターを閉じる"
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') close();
-      }}
+      role="presentation"
     />
   );
 }

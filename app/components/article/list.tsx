@@ -46,7 +46,16 @@ export function ArticleList({
 
       // 現在のお気に入り状態を確認（楽観的更新前にrefから取得）
       const article = articlesRef.current.find((a) => a.id === articleId);
-      const currentlyFavorited = article?.isFavorited ?? false;
+      if (!article) return;
+      const currentlyFavorited = article.isFavorited ?? false;
+
+      const revertFavorite = () => {
+        setArticles((prev) =>
+          prev.map((a) =>
+            a.id === articleId ? { ...a, isFavorited: currentlyFavorited } : a
+          )
+        );
+      };
 
       // 楽観的更新 - ローカル状態を即座に更新
       setArticles((prev) =>
@@ -73,21 +82,11 @@ export function ArticleList({
             })
           );
         } else {
-          // エラー時は元に戻す
-          setArticles((prev) =>
-            prev.map((a) =>
-              a.id === articleId ? { ...a, isFavorited: currentlyFavorited } : a
-            )
-          );
+          revertFavorite();
         }
       } catch (error) {
         console.error('Failed to toggle favorite:', error);
-        // エラー時は元に戻す
-        setArticles((prev) =>
-          prev.map((a) =>
-            a.id === articleId ? { ...a, isFavorited: currentlyFavorited } : a
-          )
-        );
+        revertFavorite();
       }
     },
     [session]
@@ -192,7 +191,7 @@ export function ArticleList({
   return (
     <div
       className={cn(
-        'grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4 2xl:grid-cols-5',
+        'grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4 2xl:grid-cols-5',
         className
       )}
       data-testid="article-list"

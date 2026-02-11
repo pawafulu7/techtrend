@@ -17,6 +17,8 @@ import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
+
+const MAX_SUMMARY_LENGTH = 200;
 import { ShareButton } from '@/app/components/article/share-button';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
 import { useIsNewArticle } from '@/app/components/common/relative-time';
@@ -201,6 +203,7 @@ export function ArticleCard({
                     className="relative flex h-2.5 w-2.5 shrink-0"
                     aria-label="24時間以内の新着記事"
                     title="NEW"
+                    role="img"
                   >
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
                     <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
@@ -286,8 +289,8 @@ export function ArticleCard({
           </div>
         ) : article.summary ? (
           <p className="text-foreground text-sm leading-relaxed">
-            {article.summary.length > 200
-              ? `${article.summary.slice(0, 200)}…`
+            {article.summary.length > MAX_SUMMARY_LENGTH
+              ? `${article.summary.slice(0, MAX_SUMMARY_LENGTH)}…`
               : article.summary}
           </p>
         ) : null}

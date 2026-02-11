@@ -193,6 +193,8 @@ export async function openFilterSidebar(page: Page) {
         await toggleButton.click();
         // transition完了を待つ
         await page.waitForTimeout(350);
+      } else {
+        console.warn('[openFilterSidebar] Filter toggle button not found on desktop viewport');
       }
     }
   } else {
