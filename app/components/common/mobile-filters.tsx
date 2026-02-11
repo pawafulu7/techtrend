@@ -23,7 +23,12 @@ interface MobileFiltersProps {
   initialSourceIds?: string[];
 }
 
-export function MobileFilters({ sources, groupedSources, tags, initialSourceIds }: MobileFiltersProps) {
+export function MobileFilters({
+  sources,
+  groupedSources,
+  tags,
+  initialSourceIds,
+}: MobileFiltersProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -32,24 +37,31 @@ export function MobileFilters({ sources, groupedSources, tags, initialSourceIds 
         <Button
           variant="outline"
           size="sm"
-          className="lg:hidden h-6 sm:h-7 px-2 text-xs"
+          className="h-6 px-2 text-xs sm:h-7 lg:hidden"
         >
-          <Filter className="h-3 w-3 mr-1" />
+          <Filter className="mr-1 h-3 w-3" />
           フィルター
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[300px] sm:w-[400px]" data-testid="mobile-filter-sheet">
+      <SheetContent
+        side="left"
+        className="w-[300px] sm:w-[400px]"
+        data-testid="mobile-filter-sheet"
+      >
         <SheetHeader>
           <SheetTitle>フィルター</SheetTitle>
-          <SheetDescription>
-            ソースやタグで記事を絞り込む
-          </SheetDescription>
+          <SheetDescription>ソースやタグで記事を絞り込む</SheetDescription>
         </SheetHeader>
         <div className="mt-6 space-y-4">
-          <Filters sources={sources} groupedSources={groupedSources} tags={tags} initialSourceIds={initialSourceIds} />
+          <Filters
+            sources={sources}
+            groupedSources={groupedSources}
+            tags={tags}
+            initialSourceIds={initialSourceIds}
+          />
           {/* モバイル用TagFilter */}
           {tags.length > 0 && (
-            <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-white/20 shadow-sm rounded-lg p-3">
+            <div className="bg-background/80 rounded-lg border p-3 shadow-sm backdrop-blur-sm">
               <TagFilter tags={tags} />
             </div>
           )}

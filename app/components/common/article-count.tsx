@@ -111,12 +111,12 @@ export function ArticleCount({
 
   if (loading || count === null || isLoadingPreferences) {
     return (
-      <div className="h-5 w-20 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+      <div className="h-5 w-20 animate-pulse rounded bg-(--tt-color-surface-muted)" />
     );
   }
 
   return (
-    <div className="text-sm whitespace-nowrap text-gray-600 dark:text-gray-400">
+    <div className="text-muted-foreground text-sm whitespace-nowrap">
       {count.toLocaleString()}件の記事
     </div>
   );
