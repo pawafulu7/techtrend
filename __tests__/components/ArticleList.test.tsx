@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMockArticleWithRelations,
   createMockSource,
-  mockArticleWithRelations
+  mockArticleWithRelations,
 } from '@/test/utils/mock-factories';
 
 // Next.jsのモック
@@ -40,7 +40,16 @@ jest.mock('next/image', () => ({
   __esModule: true,
   default: (props: any) => {
     // Next.js Image特有のプロパティを除外
-    const { unoptimized, placeholder, blurDataURL, loader, quality, priority, loading, ...rest } = props;
+    const {
+      unoptimized,
+      placeholder,
+      blurDataURL,
+      loader,
+      quality,
+      priority,
+      loading,
+      ...rest
+    } = props;
     // eslint-disable-next-line jsx-a11y/alt-text
     return <img {...rest} />;
   },
@@ -52,18 +61,16 @@ jest.mock('@/app/components/common/optimized-image', () => ({
     // OptimizedImageコンポーネントをシンプルなimgタグとしてモック
     const { imageSrc, imageAlt, className, ...rest } = props;
     // eslint-disable-next-line jsx-a11y/alt-text
-    return <img src={imageSrc} alt={imageAlt} className={className} {...rest} />;
+    return (
+      <img src={imageSrc} alt={imageAlt} className={className} {...rest} />
+    );
   },
 }));
-
 
 // ArticleCardコンポーネントのモック
 jest.mock('@/app/components/article/card', () => ({
   ArticleCard: ({ article, onArticleClick, isRead }: any) => (
-    <article 
-      data-testid="article-card" 
-      onClick={() => onArticleClick?.()}
-    >
+    <article data-testid="article-card" onClick={() => onArticleClick?.()}>
       <h3>{article.title}</h3>
       <p>{article.summary}</p>
       {!isRead && <span>未読</span>}
@@ -74,10 +81,7 @@ jest.mock('@/app/components/article/card', () => ({
 // ArticleListItemコンポーネントのモック
 jest.mock('@/app/components/article/list-item', () => ({
   ArticleListItem: ({ article, onArticleClick, isRead }: any) => (
-    <div 
-      data-testid="article-list-item" 
-      onClick={() => onArticleClick?.()}
-    >
+    <div data-testid="article-list-item" onClick={() => onArticleClick?.()}>
       <h3>{article.title}</h3>
       <p>{article.summary}</p>
       {!isRead && <span>未読</span>}
@@ -161,27 +165,25 @@ describe('ArticleList', () => {
     mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
     mockedUseSession.mockReturnValue({
       data: { user: { id: 'user1', email: 'test@example.com' } },
-      status: 'authenticated'
+      status: 'authenticated',
     });
     mockedUseReadStatus.mockReturnValue(mockReadStatus);
   });
 
   const renderWithProviders = (ui: React.ReactElement) => {
     return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
     );
   };
 
   describe('Rendering', () => {
     it('renders articles in card view by default', () => {
       renderWithProviders(<ArticleList articles={mockArticles} />);
-      
+
       const container = screen.getByTestId('article-list');
       expect(container).toBeInTheDocument();
       expect(container).toHaveClass('grid');
-      
+
       const cards = screen.getAllByTestId('article-card');
       expect(cards).toHaveLength(3);
       expect(screen.getByText('First Article')).toBeInTheDocument();
@@ -190,21 +192,25 @@ describe('ArticleList', () => {
     });
 
     it('renders articles in list view when viewMode is list', () => {
-      renderWithProviders(<ArticleList articles={mockArticles} viewMode="list" />);
-      
+      renderWithProviders(
+        <ArticleList articles={mockArticles} viewMode="list" />
+      );
+
       const container = screen.getByTestId('article-list');
       expect(container).toBeInTheDocument();
       expect(container).toHaveClass('space-y-2');
       expect(container).not.toHaveClass('grid');
-      
+
       const listItems = screen.getAllByTestId('article-list-item');
       expect(listItems).toHaveLength(3);
     });
 
     it('renders empty state when no articles', () => {
       renderWithProviders(<ArticleList articles={[]} />);
-      
-      expect(screen.getByText('記事が見つかりませんでした')).toBeInTheDocument();
+
+      expect(
+        screen.getByText('記事が見つかりませんでした')
+      ).toBeInTheDocument();
       expect(screen.queryByTestId('article-list')).not.toBeInTheDocument();
     });
   });
@@ -213,11 +219,16 @@ describe('ArticleList', () => {
     it('handles article click events in card view', async () => {
       const user = userEvent.setup();
       const handleArticleClick = jest.fn();
-      renderWithProviders(<ArticleList articles={mockArticles} onArticleClick={handleArticleClick} />);
-      
+      renderWithProviders(
+        <ArticleList
+          articles={mockArticles}
+          onArticleClick={handleArticleClick}
+        />
+      );
+
       const firstCard = screen.getAllByTestId('article-card')[0];
       await user.click(firstCard);
-      
+
       expect(handleArticleClick).toHaveBeenCalled();
     });
 
@@ -231,17 +242,17 @@ describe('ArticleList', () => {
           onArticleClick={handleArticleClick}
         />
       );
-      
+
       const firstItem = screen.getAllByTestId('article-list-item')[0];
       await user.click(firstItem);
-      
+
       expect(handleArticleClick).toHaveBeenCalled();
     });
   });
 
   describe('Read Status', () => {
     it('shows correct read status for authenticated users', () => {
-      const articlesWithFlags = mockArticles.map(a => ({
+      const articlesWithFlags = mockArticles.map((a) => ({
         ...a,
         isRead: a.id === '1',
       }));
@@ -254,13 +265,13 @@ describe('ArticleList', () => {
     });
 
     it('treats all articles as read for unauthenticated users', () => {
-      mockedUseSession.mockReturnValue({ 
-        data: null, 
-        status: 'unauthenticated' 
+      mockedUseSession.mockReturnValue({
+        data: null,
+        status: 'unauthenticated',
       });
-      
+
       renderWithProviders(<ArticleList articles={mockArticles} />);
-      
+
       // 未認証時は全て既読扱い（未読マークが表示されない）
       const unreadMarks = screen.queryAllByText('未読');
       expect(unreadMarks).toHaveLength(0);
@@ -271,9 +282,9 @@ describe('ArticleList', () => {
         ...mockReadStatus,
         isLoading: true,
       });
-      
+
       renderWithProviders(<ArticleList articles={mockArticles} />);
-      
+
       // ローディング中は全て既読扱い
       const unreadMarks = screen.queryAllByText('未読');
       expect(unreadMarks).toHaveLength(0);
@@ -287,51 +298,56 @@ describe('ArticleList', () => {
   describe('Event Handling', () => {
     it('adds event listener on mount', () => {
       const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
-      
+
       renderWithProviders(<ArticleList articles={mockArticles} />);
-      
+
       expect(addEventListenerSpy).toHaveBeenCalledWith(
         'articles-read-status-changed',
         expect.any(Function)
       );
-      
+
       addEventListenerSpy.mockRestore();
     });
 
     it('removes event listener on unmount', () => {
       const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
-      
-      const { unmount } = renderWithProviders(<ArticleList articles={mockArticles} />);
+
+      const { unmount } = renderWithProviders(
+        <ArticleList articles={mockArticles} />
+      );
       unmount();
-      
+
       expect(removeEventListenerSpy).toHaveBeenCalledWith(
         'articles-read-status-changed',
         expect.any(Function)
       );
-      
+
       removeEventListenerSpy.mockRestore();
     });
   });
 
   describe('Grid Layout', () => {
     it('applies correct grid classes for card view', () => {
-      renderWithProviders(<ArticleList articles={mockArticles} viewMode="card" />);
-      
+      renderWithProviders(
+        <ArticleList articles={mockArticles} viewMode="card" />
+      );
+
       const container = screen.getByTestId('article-list');
       expect(container).toHaveClass('grid');
       expect(container).toHaveClass('grid-cols-1');
       expect(container).toHaveClass('sm:grid-cols-2');
-      expect(container).toHaveClass('md:grid-cols-2');
       expect(container).toHaveClass('lg:grid-cols-3');
       expect(container).toHaveClass('xl:grid-cols-4');
+      expect(container).toHaveClass('2xl:grid-cols-5');
     });
 
     it('applies correct spacing classes for list view', () => {
-      renderWithProviders(<ArticleList articles={mockArticles} viewMode="list" />);
-      
+      renderWithProviders(
+        <ArticleList articles={mockArticles} viewMode="list" />
+      );
+
       const container = screen.getByTestId('article-list');
       expect(container).toHaveClass('space-y-2');
     });
   });
-
 });
