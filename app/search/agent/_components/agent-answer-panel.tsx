@@ -51,6 +51,10 @@ function extractArticleSections(text: string): ExtractedAnswer {
   const sections: ArticleSection[] = [];
 
   // Match numbered list items: 1. **Title** (match: X%) - Description
+  // Pattern captures: 1=title, 2=articleId token, 3=description
+  // Format: "1. **Title** [#id] (match: 80%) - Description"
+  //   - [#id] and (match%) are optional
+  //   - Lookahead stops at next numbered item or double newline
   const listItemPattern =
     /^\d+\.\s+\*\*(.+?)\*\*\s*(?:\[#([a-zA-Z0-9_-]+)\])?\s*(?:\(.*?(?:\d+(?:\.\d+)?%?).*?\))?\s*[-\u2013\u2014]?\s*([\s\S]*?)(?=\n\d+\.\s+\*\*|\n\n(?!\s)|$)/gm;
 
@@ -113,6 +117,41 @@ interface AgentAnswerPanelProps {
 
 // トップレベル制御用の Context（0: ルート、1以上: ネスト）
 const ListDepthContext = React.createContext(0);
+
+type MarkdownLi = React.ReactElement<
+  React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
+>;
+
+const isMarkdownLi = (node: React.ReactNode): node is MarkdownLi =>
+  React.isValidElement(node) && node.type === 'li';
+
+// OlComponent extracted outside render to stabilize component reference
+function OlComponent({
+  children,
+  hasEmbeddedIds,
+  ...props
+}: React.ComponentPropsWithoutRef<'ol'> & { hasEmbeddedIds: boolean }) {
+  const depth = React.useContext(ListDepthContext);
+  const hasIdInThisOl = React.Children.toArray(children).some(
+    (child) => isMarkdownLi(child) && (child.props as any)['data-article-id']
+  );
+  return (
+    <ListDepthContext.Provider value={depth + 1}>
+      <ol {...props}>
+        {React.Children.map(children, (child, index) => {
+          if (!isMarkdownLi(child)) return child;
+          const shouldAddIndex =
+            depth === 0 && !hasIdInThisOl && !hasEmbeddedIds;
+          return shouldAddIndex
+            ? React.cloneElement(child, {
+                'data-article-index': String(index),
+              })
+            : child;
+        })}
+      </ol>
+    </ListDepthContext.Provider>
+  );
+}
 
 export function AgentAnswerPanel({
   result,
@@ -266,40 +305,6 @@ export function AgentAnswerPanel({
 
   // Use card display when we have extracted sections
   const useCardDisplay = enrichedSections.length > 0;
-
-  type MarkdownLi = React.ReactElement<
-    React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
-  >;
-
-  const isMarkdownLi = (node: React.ReactNode): node is MarkdownLi =>
-    React.isValidElement(node) && node.type === 'li';
-
-  // ol renderer component (for ListDepthContext hook usage)
-  const OlComponent = ({
-    children,
-    ...props
-  }: React.ComponentPropsWithoutRef<'ol'>) => {
-    const depth = React.useContext(ListDepthContext);
-    const hasIdInThisOl = React.Children.toArray(children).some(
-      (child) => isMarkdownLi(child) && (child.props as any)['data-article-id']
-    );
-    return (
-      <ListDepthContext.Provider value={depth + 1}>
-        <ol {...props}>
-          {React.Children.map(children, (child, index) => {
-            if (!isMarkdownLi(child)) return child;
-            const shouldAddIndex =
-              depth === 0 && !hasIdInThisOl && !hasEmbeddedIds;
-            return shouldAddIndex
-              ? React.cloneElement(child, {
-                  'data-article-index': String(index),
-                })
-              : child;
-          })}
-        </ol>
-      </ListDepthContext.Provider>
-    );
-  };
 
   return (
     <CardV2
@@ -460,7 +465,7 @@ export function AgentAnswerPanel({
                 )}
 
                 {/* タイトル行 - 詳細要約と同じ構造 */}
-                <h4 className="flex items-center gap-2 pr-8 text-sm font-[var(--tt-font-heading)] font-semibold tracking-[var(--tt-tracking-tight)]">
+                <h4 className="flex items-center gap-2 pr-8 font-[family-name:var(--tt-font-heading)] text-sm font-semibold tracking-[var(--tt-tracking-tight)]">
                   <span
                     className="bg-muted/60 group-hover:bg-muted flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-lg transition-colors duration-200"
                     aria-hidden="true"
@@ -495,7 +500,7 @@ export function AgentAnswerPanel({
 
                 {/* 要約テキスト - flex-1で残りスペースを埋める */}
                 {item.summary && (
-                  <p className="line-clamp-4 flex-1 text-sm leading-relaxed font-[var(--tt-font-body)] break-words text-[var(--tt-color-text)]">
+                  <p className="line-clamp-4 flex-1 font-[family-name:var(--tt-font-body)] text-sm leading-relaxed break-words text-[var(--tt-color-text)]">
                     {item.summary}
                   </p>
                 )}
@@ -517,7 +522,9 @@ export function AgentAnswerPanel({
                 a: ({ node: _node, ...props }) => (
                   <a {...props} target="_blank" rel="noopener noreferrer" />
                 ),
-                ol: OlComponent,
+                ol: (props) => (
+                  <OlComponent {...props} hasEmbeddedIds={hasEmbeddedIds} />
+                ),
                 li: ({ node: _node, children, ...props }) => {
                   const articleId = props['data-article-id'] as
                     | string

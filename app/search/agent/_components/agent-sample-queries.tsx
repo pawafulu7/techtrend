@@ -121,13 +121,14 @@ function SidebarAccordion({
                   aria-hidden="true"
                 />
               </button>
-              {isExpanded && (
-                <ul
-                  id={`category-queries-${category}`}
-                  className="mt-1 flex flex-col gap-1 pl-4"
-                  role="list"
-                >
-                  {categoryQueries.map((query) => (
+              <ul
+                id={`category-queries-${category}`}
+                className="mt-1 flex flex-col gap-1 pl-4"
+                role="list"
+                hidden={!isExpanded}
+              >
+                {isExpanded &&
+                  categoryQueries.map((query) => (
                     <li key={query.id}>
                       <button
                         type="button"
@@ -139,8 +140,7 @@ function SidebarAccordion({
                       </button>
                     </li>
                   ))}
-                </ul>
-              )}
+              </ul>
             </div>
           );
         })}
