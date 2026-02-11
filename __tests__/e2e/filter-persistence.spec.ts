@@ -225,7 +225,7 @@ test.describe('フィルター条件の永続化', () => {
         // 4. トップページに戻る
         await page.goto('/');
         await openFilterSidebar(page);
-    await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
+        await page.waitForSelector('[data-testid="source-filter"]', { timeout: getTimeout('medium') });
       }
     }
 
