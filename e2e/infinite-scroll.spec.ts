@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openFilterSidebar } from './helpers/wait-utils';
 
 test.describe('無限スクロール機能', () => {
   // このテストスイートは大量のスクロールとAPIリクエストを含むため、タイムアウトを3倍に延長
@@ -384,6 +385,8 @@ test.describe('APIレスポンス構造とページネーション', () => {
     }
     
     if (sourceFilterElement) {
+      // サイドバーを開いてからフィルター操作
+      await openFilterSidebar(page);
       await sourceFilterElement.click();
       await page.waitForTimeout(500);
       

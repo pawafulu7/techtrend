@@ -236,8 +236,9 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // Wait for article cards to render (this triggers the API call)
-    const articles = page.locator('[data-testid="article-card"]');
-    await expect(articles.first()).toBeVisible({ timeout: 10000 });
+    // Also check compact-card as viewMode may vary
+    const articles = page.locator('[data-testid="article-card"], [data-testid="compact-card"]');
+    await expect(articles.first()).toBeVisible({ timeout: 15000 });
 
     // Verify mock was called (async wait for useEffect to trigger fetch)
     await expect.poll(() => mockHits, { timeout: 5000 }).toBeGreaterThan(0);

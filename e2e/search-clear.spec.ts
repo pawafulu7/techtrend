@@ -50,8 +50,8 @@ test.describe('検索クリア機能', () => {
     // 検索ボックスに値が入っていることを確認
     await expect(searchBox).toHaveValue('TypeScript');
     
-    // クリアボタンを取得 - X iconがあるボタンを探す
-    const clearButton = page.locator('button:has(svg[class*="lucide-x"]), button:has([data-lucide="x"])');
+    // クリアボタンを取得
+    const clearButton = page.getByTestId('search-clear');
     
     // クリアボタンが表示されるまで待つ
     await expect(clearButton).toBeVisible();
@@ -96,7 +96,7 @@ test.describe('検索クリア機能', () => {
     await expect(page).toHaveURL(/search=React/, { timeout: 5000 });
     
     // クリアボタンが表示されるまで待機
-    const clearButton1 = page.locator('button:has(svg[class*="lucide-x"]), button:has([data-lucide="x"])');
+    const clearButton1 = page.getByTestId('search-clear');
     await expect(clearButton1).toBeVisible({ timeout: 10000 });
     await clearButton1.click();
     // 入力フィールドがクリアされるまで待機
@@ -139,7 +139,7 @@ test.describe('検索クリア機能', () => {
     }
     
     // クリアボタンが表示されるまで待機
-    const clearButton2 = page.locator('button:has(svg[class*="lucide-x"]), button:has([data-lucide="x"])');
+    const clearButton2 = page.getByTestId('search-clear');
     await expect(clearButton2).toBeVisible({ timeout: 10000 });
     await clearButton2.click();
     // 入力フィールドがクリアされるまで待機

@@ -181,24 +181,20 @@ test.describe('Source Filter Cookie', () => {
     await page.setViewportSize({ width: 375, height: 667 });
 
     await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await waitForArticles(page, { timeout: getTimeout('medium'), allowEmpty: true });
 
-    // Try to find mobile filter button
-    const mobileFilterButton = page.locator('button').filter({ hasText: /フィルター|filter/i }).first();
+    // Try to find mobile filter button (MobileFilters component, visible on lg:hidden)
+    const mobileFilterButton = page.locator('button').filter({ hasText: /フィルター/ }).first();
 
     if (await mobileFilterButton.count() === 0) {
-      // If no mobile filter button, check if filters are already visible
-      const sourceFilter = page.locator('[data-testid="source-filter"]');
-      if (await sourceFilter.count() === 0) {
-        console.log('Mobile filter not implemented, skipping test');
-        return;
-      }
-    } else {
-      // Open mobile filters
-      await mobileFilterButton.click();
-      // Wait for filter panel to appear
-      await page.getByTestId('source-filter').last().waitFor({ state: 'visible', timeout: 5000 });
+      console.log('Mobile filter button not found, skipping test');
+      return;
     }
+
+    // Open mobile filters
+    await mobileFilterButton.click();
+    // Wait for filter sheet to appear
+    await page.getByTestId('mobile-filter-sheet').waitFor({ state: 'visible', timeout: getTimeout('short') });
 
     // Wait for source filter to be visible - use :visible to target only rendered sheet
     const sourceFilter = page.locator('[data-testid="source-filter"]:visible').last();

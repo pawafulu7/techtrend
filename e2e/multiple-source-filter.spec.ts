@@ -254,27 +254,27 @@ test.describe('Multiple Source Filter', () => {
     
     // Wait for sheet to open with timeout
     try {
-      await page.waitForSelector('[role="dialog"], .sheet-content, .modal', { timeout: 3000 });
+      await page.waitForSelector('[data-testid="mobile-filter-sheet"], [role="dialog"]', { timeout: 5000 });
     } catch {
       console.log('Mobile filter dialog did not open');
       return;
     }
     
-    // Check for checkboxes in mobile view
-    const checkboxes = page.locator('[role="dialog"] input[type="checkbox"], .sheet-content input[type="checkbox"], .modal input[type="checkbox"]');
+    // Check for checkboxes in mobile view (Shadcn UI uses button[role="checkbox"])
+    const checkboxes = page.locator('[role="dialog"] button[role="checkbox"], [data-testid="mobile-filter-sheet"] button[role="checkbox"]');
     const checkboxCount = await checkboxes.count();
-    
+
     if (checkboxCount === 0) {
       console.log('No checkboxes found in mobile view');
       return;
     }
-    
+
     expect(checkboxCount).toBeGreaterThan(0);
-    
+
     if (checkboxCount >= 2) {
-      // Select sources
-      await checkboxes.nth(0).check();
-      await checkboxes.nth(1).check();
+      // Select sources (button[role="checkbox"] uses click, not check)
+      await checkboxes.nth(0).click();
+      await checkboxes.nth(1).click();
       
       // Close sheet by clicking outside or close button
       const closeButton = page.locator('[role="dialog"] button[aria-label="Close"], [role="dialog"] button:has-text("閉じる")');

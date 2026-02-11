@@ -284,6 +284,9 @@ test.describe('フィルター条件の永続化', () => {
       return;
     }
     
+    // サイドバーを開く（日付範囲フィルターはサイドバー内にある）
+    await openFilterSidebar(page);
+
     // 日付範囲フィルターの存在を確認（より柔軟なセレクタを使用）
     const possibleSelectors = [
       '[data-testid="date-range-trigger"]',
@@ -618,6 +621,9 @@ test.describe('フィルター条件の永続化', () => {
       await waitForArticles(page, { allowEmpty: true });
     }
     
+    // サイドバーを開いてソースフィルターを操作
+    await openFilterSidebar(page);
+
     // ソースフィルターが存在する場合のみ設定
     const sourceCheckboxes = page.locator('[data-testid^="source-checkbox-"]');
     if (await sourceCheckboxes.count() > 0) {
@@ -646,7 +652,7 @@ test.describe('フィルター条件の永続化', () => {
           }
         }
       }
-      
+
       // すべてのソースを解除してから最初のソースを選択
       const deselectButton = page.locator('[data-testid="deselect-all-button"]:visible');
       if (await deselectButton.count() > 0) {
@@ -655,7 +661,7 @@ test.describe('フィルター条件の永続化', () => {
         // すべて未選択になるまで待機
         const firstCheckbox = page.locator('[data-testid^="source-checkbox-"]').first().locator('button[role="checkbox"]');
         await expect(firstCheckbox).toHaveAttribute('data-state', 'unchecked');
-        
+
         const firstSource = page.locator('[data-testid^="source-checkbox-"]').first();
         if (await firstSource.count() > 0) {
           await firstSource.click();
@@ -666,7 +672,9 @@ test.describe('フィルター条件の永続化', () => {
       }
     }
 
-    // 2. リセットボタンをクリック
+    // 2. リセットボタンをクリック（ToolbarMoreMenu Popover内にある）
+    await page.click('button[aria-label="その他のオプション"]');
+    await page.waitForTimeout(300); // Popover表示待ち
     await page.click('[data-testid="filter-reset-button"]');
     // ページがリロードされるのを待つ
     await waitForPageLoad(page, { waitForNetworkIdle: false });

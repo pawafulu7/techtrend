@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForPageLoad, waitForArticles } from '../../e2e/helpers/wait-utils';
+import { waitForPageLoad, waitForArticles, openFilterSidebar } from '../../e2e/helpers/wait-utils';
 import { getSourceIdsForPreset } from '../../lib/constants/source-presets';
 
 test.describe('ソースフィルタープリセット機能', () => {
@@ -8,6 +8,8 @@ test.describe('ソースフィルタープリセット機能', () => {
     await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto('/');
     await waitForPageLoad(page);
+    // サイドバーを開く（プリセットボタンはサイドバー内にある）
+    await openFilterSidebar(page);
   });
 
   test('プリセットボタンが表示される', async ({ page }) => {
