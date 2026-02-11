@@ -108,8 +108,6 @@ function extractArticleSections(text: string): ExtractedAnswer {
 
 interface AgentAnswerPanelProps {
   result: AgentSearchResult | null;
-  partialText: string | null;
-  isStreaming: boolean;
   onFeedback?: (positive: boolean) => void;
 }
 
@@ -118,8 +116,6 @@ const ListDepthContext = React.createContext(0);
 
 export function AgentAnswerPanel({
   result,
-  partialText,
-  isStreaming,
   onFeedback,
 }: AgentAnswerPanelProps) {
   const [copied, setCopied] = useState(false);
@@ -136,19 +132,18 @@ export function AgentAnswerPanel({
   }, [copied]);
 
   const displayText = useMemo(() => {
-    if (partialText && !result) return partialText;
     return result?.response || '';
-  }, [partialText, result]);
+  }, [result]);
 
   // Empty state delay logic (150ms to prevent flicker)
   useEffect(() => {
-    if (!isStreaming && !displayText?.trim() && !result?.articles?.length) {
+    if (!displayText?.trim() && !result?.articles?.length) {
       const timer = setTimeout(() => setShowEmptyState(true), 150);
       return () => clearTimeout(timer);
     } else {
       setShowEmptyState(false);
     }
-  }, [isStreaming, displayText, result?.articles]);
+  }, [displayText, result?.articles]);
 
   const deferredDisplayText = useDeferredValue(displayText);
 
@@ -255,9 +250,9 @@ export function AgentAnswerPanel({
 
   // Extract article sections and summary from the response for card display
   const extractedAnswer = useMemo(() => {
-    if (isStreaming || !result?.response) return { sections: [], summary: '' };
+    if (!result?.response) return { sections: [], summary: '' };
     return extractArticleSections(result.response);
-  }, [isStreaming, result?.response]);
+  }, [result?.response]);
 
   // Enrich sections with article metadata
   const enrichedSections = useMemo(() => {
@@ -270,7 +265,7 @@ export function AgentAnswerPanel({
   }, [extractedAnswer.sections, articleMap, articles]);
 
   // Use card display when we have sections and not streaming
-  const useCardDisplay = !isStreaming && enrichedSections.length > 0;
+  const useCardDisplay = enrichedSections.length > 0;
 
   type MarkdownLi = React.ReactElement<
     React.ComponentPropsWithoutRef<'li'> & { 'data-article-index'?: string }
@@ -378,28 +373,6 @@ export function AgentAnswerPanel({
         <div className="mb-4 rounded-md border border-[var(--tt-color-warning)]/30 bg-[var(--tt-color-warning)]/10 p-3">
           <p className="text-sm text-[var(--tt-color-text)]">
             AI検索が一時的に利用できないため、通常の検索結果を表示しています
-          </p>
-        </div>
-      )}
-
-      {isStreaming && (
-        <div
-          data-testid="streaming-indicator"
-          className="mb-4 rounded-lg border border-[var(--tt-color-primary)]/20 bg-[var(--tt-color-primary)]/5 p-4"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="mb-2 flex items-center gap-3">
-            <div className="relative flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--tt-color-primary)] opacity-75"></span>
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-[var(--tt-color-primary)]"></span>
-            </div>
-            <span className="text-base font-medium text-[var(--tt-color-text)]">
-              回答を出力中...
-            </span>
-          </div>
-          <p className="pl-6 text-sm text-[var(--tt-color-text-muted)]">
-            完了するとカード形式で表示されます。スクロールせずにお待ちください。
           </p>
         </div>
       )}

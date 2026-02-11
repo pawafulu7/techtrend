@@ -13,10 +13,9 @@ describe('AgentStepIndicator', () => {
     test('shows all steps as pending when idle', () => {
       renderIndicator('idle');
 
-      // Implementation has 3 steps: searching, analyzing, generating
+      // Implementation has 2 steps: searching and analyzing
       expect(screen.getByText('記事検索')).toBeInTheDocument();
       expect(screen.getByText('AI分析')).toBeInTheDocument();
-      expect(screen.getByText('回答生成')).toBeInTheDocument();
     });
 
     test('shows searching step as active', () => {
@@ -33,14 +32,15 @@ describe('AgentStepIndicator', () => {
       expect(stepIndicator).toBeInTheDocument();
     });
 
-    test('shows generating step as active when generating', () => {
+    test('shows all displayed steps as complete when generating', () => {
       renderIndicator('generating');
 
       const stepIndicator = screen.getByTestId('agent-step-indicator');
       expect(stepIndicator).toBeInTheDocument();
-      // generating is now a displayed step, so it should be active
-      const activeStep = stepIndicator.querySelector('[aria-current="step"]');
-      expect(activeStep).toBeInTheDocument();
+      // 'generating' comes after displayed steps, so all should be complete
+      expect(
+        stepIndicator.querySelector('[aria-current="step"]')
+      ).not.toBeInTheDocument();
     });
 
     test('shows all steps as complete when complete', () => {
