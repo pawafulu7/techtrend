@@ -188,6 +188,7 @@ export default async function Home({ searchParams }: PageProps) {
             <UnreadFilterWithData />
             <MarkAllReadWrapper />
             <FilterResetButton />
+            <div className="ml-auto" />
             <Suspense
               fallback={
                 <div className="h-5 w-16 animate-pulse rounded bg-(--tt-color-surface-muted)" />

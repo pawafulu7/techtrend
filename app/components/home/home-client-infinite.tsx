@@ -392,7 +392,7 @@ export function HomeClientInfinite({
 
       {/* 記事件数表示 */}
       {totalCount > 0 && (
-        <div className="text-muted-foreground px-4 pb-2 text-sm lg:px-6">
+        <div className="text-muted-foreground px-4 pb-2 text-right text-sm lg:px-6">
           {totalCount}件の記事 ({allArticles.length}件表示中)
         </div>
       )}
