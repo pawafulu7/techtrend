@@ -186,7 +186,16 @@ export default function FavoritesFeedPage() {
         </Select>
         <Select
           value={sortBy}
-          onValueChange={(v: 'recent' | 'popular' | 'quality') => setSortBy(v)}
+          onValueChange={(v) => {
+            const valid: Array<'recent' | 'popular' | 'quality'> = [
+              'recent',
+              'popular',
+              'quality',
+            ];
+            if (valid.includes(v as 'recent' | 'popular' | 'quality')) {
+              setSortBy(v as 'recent' | 'popular' | 'quality');
+            }
+          }}
         >
           <SelectTrigger className="h-9 w-[140px]" aria-label="並び替え">
             <SelectValue />

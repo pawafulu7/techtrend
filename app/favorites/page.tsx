@@ -217,7 +217,7 @@ export default function FavoritesPage() {
           role="status"
           aria-live="polite"
         >
-          ({totalCount - removedIds.size}件)
+          ({Math.max(0, totalCount - removedIds.size)}件)
         </span>
         <div className="flex-1" />
         <div className="relative">
@@ -236,7 +236,11 @@ export default function FavoritesPage() {
         </div>
         <Select
           value={sortOption}
-          onValueChange={(value) => setSortOption(value as SortOption)}
+          onValueChange={(value) => {
+            if (SORT_OPTIONS.some((o) => o.value === value)) {
+              setSortOption(value as SortOption);
+            }
+          }}
         >
           <SelectTrigger className="h-9 w-44" aria-label="並び替え">
             <ArrowUpDown className="mr-2 h-4 w-4" aria-hidden="true" />
