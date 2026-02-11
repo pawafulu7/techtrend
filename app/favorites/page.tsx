@@ -207,7 +207,7 @@ export default function FavoritesPage() {
   return (
     <div className="px-4 py-3 lg:px-6">
       {/* Toolbar: Title + Count + Search + Sort */}
-      <div className="flex flex-wrap items-center gap-2 pb-3">
+      <header className="flex flex-wrap items-center gap-2 pb-3">
         <Heart className="text-primary h-5 w-5" aria-hidden="true" />
         <h1 className="text-foreground text-lg font-semibold">お気に入り</h1>
         <span
@@ -248,7 +248,7 @@ export default function FavoritesPage() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </header>
 
       {/* Error state */}
       {error && (

@@ -137,10 +137,10 @@ export default function FavoritesFeedPage() {
   return (
     <div className="px-4 py-3 lg:px-6">
       {/* Toolbar: Back + Title + Count + Folder + Sort + Refresh */}
-      <div className="flex flex-wrap items-center gap-2 pb-3">
+      <header className="flex flex-wrap items-center gap-2 pb-3">
         <Link
           href="/favorites"
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground inline-flex h-8 w-8 items-center justify-center rounded-md"
           aria-label="お気に入りに戻る"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -218,7 +218,7 @@ export default function FavoritesFeedPage() {
           />
           更新
         </Button>
-      </div>
+      </header>
 
       {/* 記事一覧 */}
       {loading ? (
