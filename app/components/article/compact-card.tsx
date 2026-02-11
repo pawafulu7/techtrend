@@ -170,19 +170,22 @@ export function CompactCard({
       className={cn(
         'group relative flex min-h-[140px] cursor-pointer flex-col gap-1 p-3',
         'focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
-        sourceColor?.borderLeft
+        isNew
+          ? 'border-t-2 border-t-green-500/60 dark:border-t-green-400/40'
+          : sourceColor?.borderLeft
       )}
     >
       {/* Badges Row */}
       <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
         {isNew && (
-          <BadgeV2
-            variant="primary"
-            className="text-xs shadow-[0_0_12px_rgba(22,163,74,0.4)] dark:shadow-[0_0_12px_rgba(34,197,94,0.4)]"
-            aria-label="24 hours or newer"
+          <span
+            className="relative flex h-2.5 w-2.5 shrink-0"
+            aria-label="24時間以内の新着記事"
+            title="NEW"
           >
-            NEW
-          </BadgeV2>
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+          </span>
         )}
         {!isRead && (
           <BadgeV2

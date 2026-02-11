@@ -27,10 +27,11 @@ export function ToolbarMoreMenu() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 w-7 p-0"
+                className="h-7 px-2"
                 aria-label="その他のオプション"
               >
                 <MoreHorizontal className="h-4 w-4" />
+                <span className="ml-1 hidden text-xs sm:inline">その他</span>
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>

@@ -8,6 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { PanelLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -74,7 +75,7 @@ export function FilterSidebarToggle() {
     <Button
       variant="outline"
       size="sm"
-      className="hidden h-7 px-2 text-xs lg:inline-flex"
+      className="relative hidden h-7 px-2 text-xs lg:inline-flex"
       onClick={toggle}
       aria-expanded={open}
       aria-label={open ? 'フィルターを閉じる' : 'フィルターを開く'}
@@ -86,7 +87,31 @@ export function FilterSidebarToggle() {
         )}
       />
       フィルター
+      <FilterActiveIndicator />
     </Button>
+  );
+}
+
+/**
+ * URLパラメータからフィルターが適用中かを検出してドットを表示
+ */
+function FilterActiveIndicator() {
+  const searchParams = useSearchParams();
+
+  const hasActiveFilters =
+    searchParams.has('sources') ||
+    searchParams.has('sourceId') ||
+    searchParams.has('tags') ||
+    searchParams.has('tag') ||
+    searchParams.has('readFilter');
+
+  if (!hasActiveFilters) return null;
+
+  return (
+    <span
+      className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-blue-500"
+      aria-label="フィルター適用中"
+    />
   );
 }
 
