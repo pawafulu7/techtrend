@@ -123,7 +123,8 @@ type MarkdownLi = React.ReactElement<
 >;
 
 const isMarkdownLi = (node: React.ReactNode): node is MarkdownLi =>
-  React.isValidElement(node) && node.type === 'li';
+  React.isValidElement(node) &&
+  (node.type === 'li' || (node.props as any)?.node?.tagName === 'li');
 
 // OlComponent extracted outside render to stabilize component reference
 function OlComponent({
@@ -172,7 +173,7 @@ export function AgentAnswerPanel({
 
   const displayText = useMemo(() => {
     return result?.response || '';
-  }, [result]);
+  }, [result?.response]);
 
   // Empty state delay logic (150ms to prevent flicker)
   useEffect(() => {
