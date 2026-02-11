@@ -14,8 +14,10 @@ export default async function AgentSearchPage() {
   }
 
   return (
-    <div className="w-full">
-      <AgentSearchClient />
+    <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
+      <div className="container mx-auto max-w-6xl px-4 py-6">
+        <AgentSearchClient />
+      </div>
     </div>
   );
 }

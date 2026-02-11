@@ -1,6 +1,10 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AgentSampleQueries } from '@/app/search/agent/_components/agent-sample-queries';
-import { SAMPLE_QUERIES, CATEGORY_LABELS, CATEGORY_ORDER } from '@/app/search/agent/_data/sample-queries';
+import {
+  SAMPLE_QUERIES,
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
+} from '@/app/search/agent/_data/sample-queries';
 
 describe('AgentSampleQueries', () => {
   const mockOnSelectQuery = jest.fn();
@@ -15,14 +19,18 @@ describe('AgentSampleQueries', () => {
 
       // カテゴリタイルが存在
       CATEGORY_ORDER.forEach((category) => {
-        expect(screen.getByTestId(`category-tile-${category}`)).toBeInTheDocument();
+        expect(
+          screen.getByTestId(`category-tile-${category}`)
+        ).toBeInTheDocument();
       });
     });
 
     test('should display category labels', () => {
       render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} />);
 
-      expect(screen.getByText(CATEGORY_LABELS.infrastructure)).toBeInTheDocument();
+      expect(
+        screen.getByText(CATEGORY_LABELS.infrastructure)
+      ).toBeInTheDocument();
       expect(screen.getByText(CATEGORY_LABELS.ai)).toBeInTheDocument();
       expect(screen.getByText(CATEGORY_LABELS.frontend)).toBeInTheDocument();
       expect(screen.getByText(CATEGORY_LABELS.backend)).toBeInTheDocument();
@@ -62,7 +70,9 @@ describe('AgentSampleQueries', () => {
       CATEGORY_ORDER.forEach((category) => {
         const tile = screen.getByTestId(`category-tile-${category}`);
         const categoryLabel = CATEGORY_LABELS[category];
-        expect(tile.getAttribute('aria-label')).toContain(`${categoryLabel}カテゴリで検索`);
+        expect(tile.getAttribute('aria-label')).toContain(
+          `${categoryLabel}カテゴリで検索`
+        );
       });
     });
 
@@ -95,10 +105,19 @@ describe('AgentSampleQueries', () => {
   });
 
   describe('従来のqueries props表示', () => {
-    const customQueries = ['カスタムクエリ1', 'カスタムクエリ2', 'カスタムクエリ3'];
+    const customQueries = [
+      'カスタムクエリ1',
+      'カスタムクエリ2',
+      'カスタムクエリ3',
+    ];
 
     test('should render custom queries when queries prop is provided', () => {
-      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} queries={customQueries} />);
+      render(
+        <AgentSampleQueries
+          onSelectQuery={mockOnSelectQuery}
+          queries={customQueries}
+        />
+      );
 
       customQueries.forEach((query) => {
         expect(screen.getByText(query)).toBeInTheDocument();
@@ -106,7 +125,12 @@ describe('AgentSampleQueries', () => {
     });
 
     test('should call onSelectQuery when custom query button is clicked', () => {
-      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} queries={customQueries} />);
+      render(
+        <AgentSampleQueries
+          onSelectQuery={mockOnSelectQuery}
+          queries={customQueries}
+        />
+      );
 
       const button = screen.getByRole('button', { name: customQueries[0] });
       fireEvent.click(button);
@@ -115,65 +139,159 @@ describe('AgentSampleQueries', () => {
     });
 
     test('should not render category tiles when queries prop is provided', () => {
-      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} queries={customQueries} />);
+      render(
+        <AgentSampleQueries
+          onSelectQuery={mockOnSelectQuery}
+          queries={customQueries}
+        />
+      );
 
       // カテゴリタイルは存在しない
       CATEGORY_ORDER.forEach((category) => {
-        expect(screen.queryByTestId(`category-tile-${category}`)).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId(`category-tile-${category}`)
+        ).not.toBeInTheDocument();
       });
     });
   });
 
-  describe('サイドバーレイアウト表示', () => {
+  describe('サイドバーレイアウト表示（アコーディオン）', () => {
     test('should render sidebar layout when layout="sidebar"', () => {
-      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} layout="sidebar" />);
+      render(
+        <AgentSampleQueries
+          onSelectQuery={mockOnSelectQuery}
+          layout="sidebar"
+        />
+      );
 
-      // カテゴリタイルが存在
       CATEGORY_ORDER.forEach((category) => {
-        expect(screen.getByTestId(`category-tile-${category}`)).toBeInTheDocument();
+        expect(
+          screen.getByTestId(`category-tile-${category}`)
+        ).toBeInTheDocument();
       });
 
-      // 見出しが表示される
-      expect(screen.getByRole('heading', { level: 2, name: 'カテゴリから探す' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'カテゴリから探す' })
+      ).toBeInTheDocument();
     });
 
     test('should display category labels in sidebar layout', () => {
-      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} layout="sidebar" />);
+      render(
+        <AgentSampleQueries
+          onSelectQuery={mockOnSelectQuery}
+          layout="sidebar"
+        />
+      );
 
-      expect(screen.getByText(CATEGORY_LABELS.infrastructure)).toBeInTheDocument();
+      expect(
+        screen.getByText(CATEGORY_LABELS.infrastructure)
+      ).toBeInTheDocument();
       expect(screen.getByText(CATEGORY_LABELS.ai)).toBeInTheDocument();
       expect(screen.getByText(CATEGORY_LABELS.frontend)).toBeInTheDocument();
       expect(screen.getByText(CATEGORY_LABELS.backend)).toBeInTheDocument();
       expect(screen.getByText(CATEGORY_LABELS.security)).toBeInTheDocument();
     });
 
-    test('should call onSelectQuery when sidebar tile is clicked', () => {
-      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} layout="sidebar" />);
+    test('should expand category and show queries when toggle is clicked', () => {
+      render(
+        <AgentSampleQueries
+          onSelectQuery={mockOnSelectQuery}
+          layout="sidebar"
+        />
+      );
 
-      const firstQuery = SAMPLE_QUERIES[0];
-      const tile = screen.getByTestId(`category-tile-${firstQuery.category}`);
+      const firstCategory = CATEGORY_ORDER[0];
+      const toggle = screen.getByTestId(`category-toggle-${firstCategory}`);
 
-      fireEvent.click(tile);
+      // Initially collapsed
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
-      expect(mockOnSelectQuery).toHaveBeenCalledWith(firstQuery.text);
-      expect(mockOnSelectQuery).toHaveBeenCalledTimes(1);
+      // Click to expand
+      fireEvent.click(toggle);
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+      // Category queries should now be visible
+      const categoryQueries = SAMPLE_QUERIES.filter(
+        (q) => q.category === firstCategory
+      );
+      categoryQueries.forEach((query, idx) => {
+        expect(
+          screen.getByTestId(`category-query-${firstCategory}-${idx}`)
+        ).toBeInTheDocument();
+      });
     });
 
-    test('should support keyboard interaction in sidebar layout', () => {
-      render(<AgentSampleQueries onSelectQuery={mockOnSelectQuery} layout="sidebar" />);
+    test('should collapse category when toggle is clicked again', () => {
+      render(
+        <AgentSampleQueries
+          onSelectQuery={mockOnSelectQuery}
+          layout="sidebar"
+        />
+      );
 
-      const firstQuery = SAMPLE_QUERIES[0];
-      const tile = screen.getByTestId(`category-tile-${firstQuery.category}`);
+      const firstCategory = CATEGORY_ORDER[0];
+      const toggle = screen.getByTestId(`category-toggle-${firstCategory}`);
 
-      // Enterキーで選択
-      fireEvent.keyDown(tile, { key: 'Enter' });
-      expect(mockOnSelectQuery).toHaveBeenCalledWith(firstQuery.text);
+      // Expand
+      fireEvent.click(toggle);
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
-      mockOnSelectQuery.mockClear();
+      // Collapse
+      fireEvent.click(toggle);
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    });
 
-      // Spaceキーで選択
-      fireEvent.keyDown(tile, { key: ' ' });
-      expect(mockOnSelectQuery).toHaveBeenCalledWith(firstQuery.text);
+    test('should call onSelectQuery when a query button is clicked', () => {
+      render(
+        <AgentSampleQueries
+          onSelectQuery={mockOnSelectQuery}
+          layout="sidebar"
+        />
+      );
+
+      const firstCategory = CATEGORY_ORDER[0];
+      const toggle = screen.getByTestId(`category-toggle-${firstCategory}`);
+
+      // Expand category
+      fireEvent.click(toggle);
+
+      // Click first query
+      const queryButton = screen.getByTestId(
+        `category-query-${firstCategory}-0`
+      );
+      fireEvent.click(queryButton);
+
+      const expectedQuery = SAMPLE_QUERIES.find(
+        (q) => q.category === firstCategory
+      );
+      expect(mockOnSelectQuery).toHaveBeenCalledWith(expectedQuery!.text);
+    });
+
+    test('should only expand one category at a time', () => {
+      render(
+        <AgentSampleQueries
+          onSelectQuery={mockOnSelectQuery}
+          layout="sidebar"
+        />
+      );
+
+      const firstCategory = CATEGORY_ORDER[0];
+      const secondCategory = CATEGORY_ORDER[1];
+      const firstToggle = screen.getByTestId(
+        `category-toggle-${firstCategory}`
+      );
+      const secondToggle = screen.getByTestId(
+        `category-toggle-${secondCategory}`
+      );
+
+      // Expand first
+      fireEvent.click(firstToggle);
+      expect(firstToggle).toHaveAttribute('aria-expanded', 'true');
+
+      // Expand second - first should collapse
+      fireEvent.click(secondToggle);
+      expect(firstToggle).toHaveAttribute('aria-expanded', 'false');
+      expect(secondToggle).toHaveAttribute('aria-expanded', 'true');
     });
   });
 });

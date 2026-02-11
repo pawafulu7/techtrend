@@ -15,6 +15,8 @@ import {
 import { AgentSearchInterpretation } from './agent-search-interpretation';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 import { CardV2 } from '@/components/ui-v2/card-v2';
+import { PageHeader } from '@/components/ui-v2/page-header';
+import { Search } from 'lucide-react';
 
 // Schema for semantic-search tool output validation
 const SemanticSearchOutputSchema = z.object({
@@ -191,28 +193,26 @@ export function AgentSearchClient() {
   })();
 
   return (
-    <div className="w-full px-6 py-3">
+    <div className="w-full">
       {/* 2-column layout: Main content (left) + Sidebar (right) */}
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Left column: Search bar + Results */}
         <div className="min-w-0 flex-1 space-y-6">
-          {/* Search card */}
+          {/* Page header */}
+          <PageHeader
+            icon={Search}
+            title="AI記事検索"
+            description="自然言語で質問すると、AIが記事を横断検索して要約回答します"
+            variant="compact"
+            className="mb-4"
+          />
+
+          {/* Search bar */}
           <CardV2
             variant="default"
             className="bg-[var(--tt-color-surface-muted)] p-4 shadow-[var(--tt-shadow-card-rest)]"
             data-testid="agent-search-card"
           >
-            <div className="mb-3">
-              <div className="border-l-4 border-[var(--tt-color-primary)] pl-3">
-                <h1 className="font-heading mb-0.5 text-lg text-[var(--tt-color-text)] md:text-xl">
-                  AI記事検索
-                </h1>
-                <p className="text-sm text-[color:var(--tt-color-text-muted)]">
-                  自然言語で質問すると、AIが記事を横断検索して要約回答します
-                </p>
-              </div>
-            </div>
-
             <AgentSearchBar
               onSearch={handleSearch}
               isLoading={isLoading}

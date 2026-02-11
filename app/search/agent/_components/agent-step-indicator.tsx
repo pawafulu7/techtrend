@@ -1,6 +1,12 @@
 'use client';
 
-import { Search, Brain, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  Search,
+  Brain,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SearchStep } from '@/lib/hooks/useAgentSearch';
 
@@ -15,6 +21,7 @@ interface AgentStepIndicatorProps {
 const STEPS = [
   { id: 'searching', label: '記事検索', icon: Search },
   { id: 'analyzing', label: 'AI分析', icon: Brain },
+  { id: 'generating', label: '回答生成', icon: Sparkles },
 ] as const;
 
 type StepId = (typeof STEPS)[number]['id'];
@@ -26,6 +33,7 @@ function getStepStatus(
   const stepOrder: Record<StepId, number> = {
     searching: 0,
     analyzing: 1,
+    generating: 2,
   };
 
   if (currentStep === 'complete') {
@@ -34,7 +42,6 @@ function getStepStatus(
 
   if (currentStep === 'error') {
     const currentIndex = stepOrder[stepId];
-    // Mark searching as complete if error occurred during analysis, rest as pending
     if (currentIndex < stepOrder.analyzing) {
       return 'complete';
     }
@@ -43,11 +50,6 @@ function getStepStatus(
 
   if (currentStep === 'idle') {
     return 'pending';
-  }
-
-  // 'generating' comes after 'analyzing', so all displayed steps are complete
-  if (currentStep === 'generating') {
-    return 'complete';
   }
 
   const currentIndex = stepOrder[currentStep as StepId] ?? -1;
@@ -77,7 +79,7 @@ export function AgentStepIndicator({
       aria-live="polite"
       data-testid="agent-step-indicator"
     >
-      <div className="flex justify-center items-center gap-4 max-w-md mx-auto">
+      <div className="mx-auto flex max-w-md items-center justify-center gap-2 sm:gap-4">
         {STEPS.map((step, index) => {
           const status = getStepStatus(step.id, currentStep);
           const Icon = step.icon;
@@ -88,11 +90,11 @@ export function AgentStepIndicator({
               <div className="flex flex-col items-center gap-2">
                 <div
                   className={cn(
-                    'w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300',
+                    'flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300',
                     status === 'complete' &&
                       'bg-[var(--tt-color-primary)] text-white',
                     status === 'active' &&
-                      'bg-[var(--tt-color-primary)]/20 text-[var(--tt-color-primary)] ring-4 ring-[var(--tt-color-primary)]/30 animate-pulse',
+                      'animate-pulse bg-[var(--tt-color-primary)]/20 text-[var(--tt-color-primary)] ring-4 ring-[var(--tt-color-primary)]/30',
                     status === 'pending' &&
                       'bg-[var(--tt-color-surface-muted)] text-[var(--tt-color-text-muted)]'
                   )}
@@ -118,8 +120,9 @@ export function AgentStepIndicator({
               {!isLast && (
                 <div
                   className={cn(
-                    'w-16 h-0.5 mx-2 transition-colors duration-300',
-                    getStepStatus(STEPS[index + 1].id, currentStep) !== 'pending'
+                    'mx-1 h-0.5 w-8 transition-colors duration-300 sm:mx-2 sm:w-16',
+                    getStepStatus(STEPS[index + 1].id, currentStep) !==
+                      'pending'
                       ? 'bg-[var(--tt-color-primary)]'
                       : 'bg-[var(--tt-color-border)]'
                   )}
@@ -133,7 +136,7 @@ export function AgentStepIndicator({
 
       {/* Status message */}
       {isTimedOut && !isComplete && !isError && (
-        <p className="text-sm text-[var(--tt-color-text-muted)] animate-pulse">
+        <p className="animate-pulse text-sm text-[var(--tt-color-text-muted)]">
           まだ処理中です...しばらくお待ちください
         </p>
       )}
@@ -146,7 +149,7 @@ export function AgentStepIndicator({
       )}
 
       {isComplete && (
-        <p className="text-sm text-[var(--tt-color-primary)] font-medium">
+        <p className="text-sm font-medium text-[var(--tt-color-primary)]">
           回答の生成が完了しました
         </p>
       )}
