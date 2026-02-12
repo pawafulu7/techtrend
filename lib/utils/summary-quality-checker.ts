@@ -7,7 +7,7 @@ import { ContentAnalysis as BaseContentAnalysis } from './content-analyzer';
 
 // ContentAnalysisを拡張して互換性を保つ
 export interface ContentAnalysis extends BaseContentAnalysis {
-  totalLength?: number;  // 追加フィールド（オプション）
+  totalLength?: number; // 追加フィールド（オプション）
 }
 
 export interface QualityCheckResult {
@@ -16,12 +16,18 @@ export interface QualityCheckResult {
   requiresRegeneration: boolean;
   score: number;
   speculativeExpressions?: SpeculativeExpressionResult;
-  itemCount?: number;  // 項目数
-  itemCountValid?: boolean;  // 項目数が基準を満たしているか
+  itemCount?: number; // 項目数
+  itemCountValid?: boolean; // 項目数が基準を満たしているか
 }
 
 export interface QualityIssue {
-  type: 'length' | 'format' | 'punctuation' | 'speculative' | 'duplicate' | 'itemCount';  // itemCountを追加
+  type:
+    | 'length'
+    | 'format'
+    | 'punctuation'
+    | 'speculative'
+    | 'duplicate'
+    | 'itemCount'; // itemCountを追加
   severity: 'critical' | 'major' | 'minor';
   message: string;
 }
@@ -49,18 +55,20 @@ const SPECULATIVE_PATTERNS = [
   '可能性があります',
   '予想されます',
   '予想される',
-  'おそらく',  // 追加
-  '恐らく',    // 追加（漢字版）
-  'たぶん',    // 追加
-  '多分'       // 追加（漢字版）
-];;
+  'おそらく', // 追加
+  '恐らく', // 追加（漢字版）
+  'たぶん', // 追加
+  '多分', // 追加（漢字版）
+];
 
 /**
  * 推測表現を検出
  * @param text 検証するテキスト
  * @returns 推測表現の検出結果
  */
-export function detectSpeculativeExpressions(text: string): SpeculativeExpressionResult {
+export function detectSpeculativeExpressions(
+  text: string
+): SpeculativeExpressionResult {
   if (!text) {
     return { count: 0, ratio: 0, expressions: [] };
   }
@@ -73,7 +81,7 @@ export function detectSpeculativeExpressions(text: string): SpeculativeExpressio
     const matches = text.match(regex);
     if (matches) {
       totalCount += matches.length;
-      matches.forEach(match => {
+      matches.forEach((match) => {
         if (!expressions.includes(match)) {
           expressions.push(match);
         }
@@ -88,7 +96,7 @@ export function detectSpeculativeExpressions(text: string): SpeculativeExpressio
   return {
     count: totalCount,
     ratio: Math.round(ratio * 100) / 100,
-    expressions
+    expressions,
   };
 }
 
@@ -101,20 +109,21 @@ export function detectSpeculativeExpressions(text: string): SpeculativeExpressio
 export function checkSummaryQuality(
   summary: string,
   detailedSummary: string,
-  contentAnalysis?: ContentAnalysis  // オプショナル引数として追加
+  contentAnalysis?: ContentAnalysis // オプショナル引数として追加
 ): QualityCheckResult {
   const issues: QualityIssue[] = [];
   let score = 100;
 
   // コンテンツ長に基づく項目数要件を追加
-  const contentLength = contentAnalysis?.totalLength || contentAnalysis?.contentLength || 0;
-  
+  const contentLength =
+    contentAnalysis?.totalLength || contentAnalysis?.contentLength || 0;
+
   // 動的な基準設定（contentAnalysisがある場合はそれを使用）
-  const minSummaryLength = contentAnalysis?.isThinContent 
-    ? (contentAnalysis.recommendedMinLength || 60)
+  const minSummaryLength = contentAnalysis?.isThinContent
+    ? contentAnalysis.recommendedMinLength || 60
     : 50;
   const maxSummaryLength = contentAnalysis?.isThinContent
-    ? (contentAnalysis.recommendedMaxLength || 100)
+    ? contentAnalysis.recommendedMaxLength || 100
     : 200;
   const idealMinSummaryLength = contentAnalysis?.isThinContent ? 60 : 100;
   const idealMaxSummaryLength = contentAnalysis?.isThinContent ? 100 : 180;
@@ -126,7 +135,7 @@ export function checkSummaryQuality(
     issues.push({
       type: 'length',
       severity: 'major',
-      message: `一覧要約が短すぎる: ${summaryLength}文字（最小${minSummaryLength}文字）`
+      message: `一覧要約が短すぎる: ${summaryLength}文字（最小${minSummaryLength}文字）`,
     });
     score -= 20;
   } else if (summaryLength < idealMinSummaryLength) {
@@ -134,7 +143,7 @@ export function checkSummaryQuality(
     issues.push({
       type: 'length',
       severity: 'minor',
-      message: `一覧要約が短め: ${summaryLength}文字（理想は${idealMinSummaryLength}-${idealMaxSummaryLength}文字）`
+      message: `一覧要約が短め: ${summaryLength}文字（理想は${idealMinSummaryLength}-${idealMaxSummaryLength}文字）`,
     });
     score -= 5;
   } else if (summaryLength > maxSummaryLength) {
@@ -142,7 +151,7 @@ export function checkSummaryQuality(
     issues.push({
       type: 'length',
       severity: contentAnalysis?.isThinContent ? 'major' : 'minor',
-      message: `一覧要約が長すぎる: ${summaryLength}文字（最大${maxSummaryLength}文字）`
+      message: `一覧要約が長すぎる: ${summaryLength}文字（最大${maxSummaryLength}文字）`,
     });
     score -= contentAnalysis?.isThinContent ? 15 : 10;
   }
@@ -157,7 +166,7 @@ export function checkSummaryQuality(
   let maxDetailedLength = 800;
 
   if (contentAnalysis?.isThinContent) {
-    // 薄いコンテンツの場合（1000文字未満）
+    // 薄いコンテンツの場合（<400文字、呼び出し元で判定）
     minDetailedLength = 50;
     idealMinDetailedLength = 80;
     maxDetailedLength = 200;
@@ -187,11 +196,14 @@ export function checkSummaryQuality(
   }
 
   // 薄いコンテンツで詳細要約が元記事の2倍を超える場合はcritical
-  if (contentAnalysis?.isThinContent === true && detailedLength > contentLength * 2) {
+  if (
+    contentAnalysis?.isThinContent === true &&
+    detailedLength > contentLength * 2
+  ) {
     issues.push({
       type: 'length',
       severity: 'critical',
-      message: `薄いコンテンツで詳細要約が長すぎる: ${detailedLength}文字（元記事${contentLength}文字の${Math.round(detailedLength / contentLength)}倍）`
+      message: `薄いコンテンツで詳細要約が長すぎる: ${detailedLength}文字（元記事${contentLength}文字の${Math.round(detailedLength / contentLength)}倍）`,
     });
     score = 0; // 自動Fail
   }
@@ -201,21 +213,21 @@ export function checkSummaryQuality(
     issues.push({
       type: 'length',
       severity: 'major',
-      message: `詳細要約が短すぎる: ${detailedLength}文字（最小${minDetailedLength}文字）`
+      message: `詳細要約が短すぎる: ${detailedLength}文字（最小${minDetailedLength}文字）`,
     });
     score -= 20;
   } else if (detailedLength < idealMinDetailedLength) {
     issues.push({
       type: 'length',
       severity: 'minor',
-      message: `詳細要約が短め: ${detailedLength}文字（理想は${idealMinDetailedLength}-${maxDetailedLength}文字）`
+      message: `詳細要約が短め: ${detailedLength}文字（理想は${idealMinDetailedLength}-${maxDetailedLength}文字）`,
     });
     score -= 5;
   } else if (detailedLength > maxDetailedLength) {
     issues.push({
       type: 'length',
       severity: 'minor',
-      message: `詳細要約が長すぎる: ${detailedLength}文字（最大${maxDetailedLength}文字）`
+      message: `詳細要約が長すぎる: ${detailedLength}文字（最大${maxDetailedLength}文字）`,
     });
     score -= 10;
   }
@@ -225,21 +237,21 @@ export function checkSummaryQuality(
     issues.push({
       type: 'punctuation',
       severity: 'minor',
-      message: '一覧要約が句点で終わっていない'
+      message: '一覧要約が句点で終わっていない',
     });
     score -= 5;
   }
 
   // ★★★ 重要な追加: 項目数チェック ★★★
   const itemCount = (detailedSummary.match(/・/g) || []).length;
-  
+
   // コンテンツ長に応じた最低項目数の決定
   let minItems = 3; // デフォルト
   let recommendedItems = '3-4'; // デフォルト推奨
-  
+
   if (contentLength >= 10000) {
-    minItems = 7;  // プロンプトと統一（最低7項目）
-    recommendedItems = '8-9';  // プロンプトと統一（推奨8-9項目）
+    minItems = 7; // プロンプトと統一（最低7項目）
+    recommendedItems = '8-9'; // プロンプトと統一（推奨8-9項目）
   } else if (contentLength >= 5000) {
     minItems = 5;
     recommendedItems = '5-7';
@@ -247,14 +259,14 @@ export function checkSummaryQuality(
     minItems = 4;
     recommendedItems = '4-5';
   }
-  
+
   // 項目数が不足している場合のチェック
   if (!contentAnalysis?.isThinContent && contentLength >= 3000) {
     if (itemCount < minItems) {
       issues.push({
         type: 'itemCount',
         severity: 'critical',
-        message: `項目数不足: ${itemCount}個（最低${minItems}個必要、推奨${recommendedItems}個）`
+        message: `項目数不足: ${itemCount}個（最低${minItems}個必要、推奨${recommendedItems}個）`,
       });
       score -= 30; // 大幅減点
     } else if (contentLength >= 10000 && itemCount < 8) {
@@ -262,7 +274,7 @@ export function checkSummaryQuality(
       issues.push({
         type: 'itemCount',
         severity: 'minor',
-        message: `項目数が推奨値未満: ${itemCount}個（推奨${recommendedItems}個）`
+        message: `項目数が推奨値未満: ${itemCount}個（推奨${recommendedItems}個）`,
       });
       score -= 10;
     }
@@ -275,7 +287,7 @@ export function checkSummaryQuality(
       issues.push({
         type: 'format',
         severity: 'major',
-        message: '詳細要約に箇条書き（・）が含まれていない'
+        message: '詳細要約に箇条書き（・）が含まれていない',
       });
       score -= 15;
     } else if (bulletPoints < 3 && contentLength < 3000) {
@@ -283,7 +295,7 @@ export function checkSummaryQuality(
       issues.push({
         type: 'format',
         severity: 'minor',
-        message: `詳細要約の項目数が少ない: ${bulletPoints}項目（理想は3-5項目）`
+        message: `詳細要約の項目数が少ない: ${bulletPoints}項目（理想は3-5項目）`,
       });
       score -= 5;
     }
@@ -296,41 +308,44 @@ export function checkSummaryQuality(
   const speculativeResult = {
     count: summarySpeculative.count + detailedSpeculative.count,
     ratio: Math.max(summarySpeculative.ratio, detailedSpeculative.ratio),
-    expressions: [...summarySpeculative.expressions, ...detailedSpeculative.expressions]
+    expressions: [
+      ...summarySpeculative.expressions,
+      ...detailedSpeculative.expressions,
+    ],
   };
-  
+
   if (contentAnalysis?.isThinContent && speculativeResult.count > 0) {
     // 薄いコンテンツでは推測表現は厳禁
     issues.push({
       type: 'speculative',
       severity: 'critical',
-      message: `推測表現は厳禁: ${speculativeResult.count}個（${speculativeResult.expressions.join('、')}）`
+      message: `推測表現は厳禁: ${speculativeResult.count}個（${speculativeResult.expressions.join('、')}）`,
     });
-    score -= 50;  // 大幅減点
+    score -= 50; // 大幅減点
   } else if (speculativeResult.count >= 3) {
     issues.push({
       type: 'speculative',
       severity: 'major',
-      message: `推測表現が多すぎる: ${speculativeResult.count}個（${speculativeResult.expressions.join('、')}）`
+      message: `推測表現が多すぎる: ${speculativeResult.count}個（${speculativeResult.expressions.join('、')}）`,
     });
     score -= 20;
   } else if (speculativeResult.count >= 2) {
     issues.push({
       type: 'speculative',
       severity: 'minor',
-      message: `推測表現が含まれている: ${speculativeResult.count}個`
+      message: `推測表現が含まれている: ${speculativeResult.count}個`,
     });
     score -= 10;
   }
 
   // 6. 空の項目チェック
   const lines = detailedSummary.split('\n');
-  const emptyBullets = lines.filter(line => line.trim() === '・').length;
+  const emptyBullets = lines.filter((line) => line.trim() === '・').length;
   if (emptyBullets > 0) {
     issues.push({
       type: 'format',
       severity: 'critical',
-      message: `空の箇条書き項目がある: ${emptyBullets}個`
+      message: `空の箇条書き項目がある: ${emptyBullets}個`,
     });
     score -= 30;
   }
@@ -342,16 +357,19 @@ export function checkSummaryQuality(
       issues.push({
         type: 'duplicate',
         severity: 'critical',
-        message: '一覧要約と詳細要約が完全に同一'
+        message: '一覧要約と詳細要約が完全に同一',
       });
       score = 0; // 重複の場合はスコア0
     }
     // 最初の100文字が同じかチェック
-    else if (summary.substring(0, 100) === detailedSummary.substring(0, 100) && summary.length >= 100) {
+    else if (
+      summary.substring(0, 100) === detailedSummary.substring(0, 100) &&
+      summary.length >= 100
+    ) {
       issues.push({
         type: 'duplicate',
         severity: 'major',
-        message: '一覧要約と詳細要約の最初の100文字が同一'
+        message: '一覧要約と詳細要約の最初の100文字が同一',
       });
       score -= 30;
     }
@@ -360,7 +378,7 @@ export function checkSummaryQuality(
       issues.push({
         type: 'format',
         severity: 'major',
-        message: '詳細要約に箇条書き形式がない'
+        message: '詳細要約に箇条書き形式がない',
       });
       score -= 20;
     }
@@ -370,9 +388,9 @@ export function checkSummaryQuality(
   score = Math.max(0, score);
 
   // 再生成が必要かどうかの判定（項目数不足も含む）
-  const requiresRegeneration = 
-    score < (parseInt(process.env.QUALITY_MIN_SCORE || '70')) ||
-    issues.some(issue => issue.severity === 'critical') ||
+  const requiresRegeneration =
+    score < parseInt(process.env.QUALITY_MIN_SCORE || '70') ||
+    issues.some((issue) => issue.severity === 'critical') ||
     (contentLength >= 5000 && itemCount < minItems); // 項目数不足も再生成トリガーに
 
   // isValidの判定: 薄いコンテンツの場合は最小文字数も厳格にチェック
@@ -391,7 +409,7 @@ export function checkSummaryQuality(
     score,
     speculativeExpressions: speculativeResult,
     itemCount, // 項目数も返す
-    itemCountValid: itemCount >= minItems // 項目数が有効かどうか
+    itemCountValid: itemCount >= minItems, // 項目数が有効かどうか
   };
 }
 
@@ -415,7 +433,7 @@ export function calculateQualityStats(results: QualityCheckResult[]): {
 } {
   // 統計情報を計算
   const totalCount = results.length;
-  
+
   if (totalCount === 0) {
     return {
       totalCount: 0,
@@ -427,26 +445,31 @@ export function calculateQualityStats(results: QualityCheckResult[]): {
       regenerationRate: 0,
       minorIssuesCount: 0,
       majorIssuesCount: 0,
-      criticalIssuesCount: 0
+      criticalIssuesCount: 0,
     };
   }
-  
-  const validCount = results.filter(r => r.isValid).length;
+
+  const validCount = results.filter((r) => r.isValid).length;
   const invalidCount = totalCount - validCount;
-  const requiresRegenerationCount = results.filter(r => r.requiresRegeneration).length;
-  const averageScore = results.reduce((sum, r) => sum + r.score, 0) / totalCount;
-  const regenerationRate = Math.round((requiresRegenerationCount / totalCount) * 100);
-  
+  const requiresRegenerationCount = results.filter(
+    (r) => r.requiresRegeneration
+  ).length;
+  const averageScore =
+    results.reduce((sum, r) => sum + r.score, 0) / totalCount;
+  const regenerationRate = Math.round(
+    (requiresRegenerationCount / totalCount) * 100
+  );
+
   // issueタイプごとの集計
   const issuesSummary: Record<string, number> = {};
   let minorIssuesCount = 0;
   let majorIssuesCount = 0;
   let criticalIssuesCount = 0;
-  
-  results.forEach(result => {
-    result.issues.forEach(issue => {
+
+  results.forEach((result) => {
+    result.issues.forEach((issue) => {
       issuesSummary[issue.type] = (issuesSummary[issue.type] || 0) + 1;
-      
+
       switch (issue.severity) {
         case 'minor':
           minorIssuesCount++;
@@ -460,7 +483,7 @@ export function calculateQualityStats(results: QualityCheckResult[]): {
       }
     });
   });
-  
+
   return {
     totalCount,
     validCount,
@@ -471,7 +494,7 @@ export function calculateQualityStats(results: QualityCheckResult[]): {
     regenerationRate,
     minorIssuesCount,
     majorIssuesCount,
-    criticalIssuesCount
+    criticalIssuesCount,
   };
 }
 
@@ -519,26 +542,30 @@ export function getMinQualityScore(): number {
  */
 export function generateQualityReport(result: QualityCheckResult): string {
   const lines: string[] = [];
-  
+
   lines.push('## 要約品質チェック結果');
   lines.push('');
   lines.push(`品質スコア: ${result.score}/100`);
   lines.push(`判定: ${result.isValid ? '✅ 合格' : '❌ 不合格'}`);
   lines.push(`再生成必要: ${result.requiresRegeneration ? 'はい' : 'いいえ'}`);
-  
+
   if (result.issues.length > 0) {
     lines.push('');
     lines.push('### 問題点:');
-    result.issues.forEach(issue => {
-      const icon = issue.severity === 'critical' ? '🔴' : 
-                   issue.severity === 'major' ? '🟡' : '🔵';
+    result.issues.forEach((issue) => {
+      const icon =
+        issue.severity === 'critical'
+          ? '🔴'
+          : issue.severity === 'major'
+            ? '🟡'
+            : '🔵';
       lines.push(`- ${icon} [${issue.severity}] ${issue.message}`);
     });
   } else {
     lines.push('');
     lines.push('問題点なし');
   }
-  
+
   return lines.join('\n');
 }
 
@@ -550,10 +577,10 @@ export function generateQualityReport(result: QualityCheckResult): string {
  */
 export function cleanupText(text: string): string {
   return text
-    .replace(/\s+/g, ' ')  // 連続する空白を1つに
-    .replace(/。{2,}/g, '。')  // 連続する句点を1つに
-    .replace(/、{2,}/g, '、')  // 連続する読点を1つに
-    .replace(/\n{3,}/g, '\n\n')  // 3つ以上の改行を2つに
+    .replace(/\s+/g, ' ') // 連続する空白を1つに
+    .replace(/。{2,}/g, '。') // 連続する句点を1つに
+    .replace(/、{2,}/g, '、') // 連続する読点を1つに
+    .replace(/\n{3,}/g, '\n\n') // 3つ以上の改行を2つに
     .trim();
 }
 
@@ -564,8 +591,8 @@ export function cleanupText(text: string): string {
 export function cleanupDetailedSummary(text: string): string {
   return text
     .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0 && line !== '・')  // 空の箇条書きを除去
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && line !== '・') // 空の箇条書きを除去
     .join('\n')
     .replace(/。{2,}/g, '。')
     .replace(/、{2,}/g, '、');
@@ -593,9 +620,13 @@ export function expandSummaryIfNeeded(
 
   // 句点を一時的に削除
   let expandedSummary = summary.replace(/。$/, '');
-  
+
   // タイトルを活用した自然な拡張（タイトルが含まれていない場合）
-  if (title && expandedSummary.length < 30 && !expandedSummary.includes(title.substring(0, 10))) {
+  if (
+    title &&
+    expandedSummary.length < 30 &&
+    !expandedSummary.includes(title.substring(0, 10))
+  ) {
     // expandedSummaryが空または非常に短い場合の処理を改善
     if (expandedSummary.length === 0 || expandedSummary.trim() === '') {
       expandedSummary = `${title}に関する内容`;
@@ -603,12 +634,12 @@ export function expandSummaryIfNeeded(
       expandedSummary = `${title}について、${expandedSummary}`;
     }
   }
-  
+
   // コンテンツから自然な補完を試みる（50文字を目指す）
   if (expandedSummary.length < 50 && content) {
     const cleanContent = content.replace(/[\n\r]+/g, ' ').trim();
     const shortage = 50 - expandedSummary.length;
-    
+
     // コンテンツから適切な長さの文章を抽出
     if (cleanContent.length > shortage) {
       const additionalText = cleanContent.substring(0, shortage + 20);
@@ -617,7 +648,8 @@ export function expandSummaryIfNeeded(
       if (lastPeriodIndex > 0) {
         // 既存の文章に句点がある場合のみ追加の句点を入れる
         if (expandedSummary.length > 0 && !expandedSummary.endsWith('。')) {
-          expandedSummary += '。' + additionalText.substring(0, lastPeriodIndex + 1);
+          expandedSummary +=
+            '。' + additionalText.substring(0, lastPeriodIndex + 1);
         } else {
           expandedSummary += additionalText.substring(0, lastPeriodIndex + 1);
         }
@@ -646,12 +678,12 @@ export function expandSummaryIfNeeded(
       }
     }
   }
-  
+
   // 最後に句点で終わるように調整
   if (!expandedSummary.endsWith('。')) {
     expandedSummary += '。';
   }
-  
+
   // 最終チェック：30文字未満は本当に短すぎるので、タイトルとコンテンツから最小限の要約を生成
   if (expandedSummary.length < 30) {
     if (title) {
@@ -661,7 +693,7 @@ export function expandSummaryIfNeeded(
     // タイトルもない場合は、元の要約をそのまま返す
     return expandedSummary;
   }
-  
+
   return expandedSummary;
 }
 
@@ -676,12 +708,13 @@ export function calculateQualityScore(
 ): number {
   const baseCheck = checkSummaryQuality(summary, detailedSummary);
   let score = baseCheck.score;
-  
+
   // 推測表現による追加ペナルティ
   if (baseCheck.speculativeExpressions) {
-    const speculativePenalty = baseCheck.speculativeExpressions.count * speculativeWeight;
+    const speculativePenalty =
+      baseCheck.speculativeExpressions.count * speculativeWeight;
     score = Math.max(0, score - speculativePenalty);
   }
-  
+
   return score;
 }

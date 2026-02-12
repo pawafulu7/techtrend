@@ -26,7 +26,9 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
     }
   ) {}
 
-  async generateSummary(params: SummaryServiceParams): Promise<SummaryServiceResult> {
+  async generateSummary(
+    params: SummaryServiceParams
+  ): Promise<SummaryServiceResult> {
     const startTime = Date.now();
     let attempt = 0;
     let lastError: Error | null = null;
@@ -45,7 +47,9 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
           requestId,
         });
 
-        const summary = this.postProcessor.cleanupSummary(providerOutput.headline);
+        const summary = this.postProcessor.cleanupSummary(
+          providerOutput.headline
+        );
         const detailedSummary = this.postProcessor.cleanupDetailedSummary(
           providerOutput.detailedSummary
         );
@@ -56,7 +60,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
         const contentAnalysis = {
           totalLength: contentLength,
           contentLength,
-          isThinContent: contentLength < 1000,
+          isThinContent: contentLength < 400,
         };
 
         const qualityResult = this.qualityChecker.checkQuality(
@@ -65,16 +69,22 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
           contentAnalysis
         );
 
-        const threshold = params.qualityThreshold ?? this.config.qualityThreshold;
+        const threshold =
+          params.qualityThreshold ?? this.config.qualityThreshold;
         if (qualityResult.score >= threshold) {
           let translatedTitle: string | undefined;
 
           if (this.config.translationEnabled) {
             const MAX_TRANSLATION_RETRIES = 3;
 
-            for (let translationAttempt = 0; translationAttempt < MAX_TRANSLATION_RETRIES; translationAttempt++) {
+            for (
+              let translationAttempt = 0;
+              translationAttempt < MAX_TRANSLATION_RETRIES;
+              translationAttempt++
+            ) {
               try {
-                const attemptSuffix = translationAttempt > 0 ? `-retry${translationAttempt}` : '';
+                const attemptSuffix =
+                  translationAttempt > 0 ? `-retry${translationAttempt}` : '';
                 const currentRequestId = `${requestId}${attemptSuffix}`;
 
                 // 2回目以降はフォールバック（summaryなし）
@@ -107,12 +117,20 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
 
                 if (translationAttempt >= MAX_TRANSLATION_RETRIES - 1) {
                   logger.error(
-                    { requestId, maxAttempts: MAX_TRANSLATION_RETRIES, error: sanitizeError(err) },
+                    {
+                      requestId,
+                      maxAttempts: MAX_TRANSLATION_RETRIES,
+                      error: sanitizeError(err),
+                    },
                     'Title translation failed after max attempts'
                   );
                 } else {
                   logger.warn(
-                    { requestId, attempt: translationAttempt + 1, error: sanitizeError(err) },
+                    {
+                      requestId,
+                      attempt: translationAttempt + 1,
+                      error: sanitizeError(err),
+                    },
                     'Title translation attempt failed, retrying'
                   );
                 }
@@ -133,19 +151,19 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
 
           // Schedule embedding job (fire-and-forget)
           if (params.articleId) {
-            this.embeddingScheduler
-              .enqueue(params.articleId)
-              .catch((err) =>
-                logger.error(
-                  {
-                    articleId: params.articleId,
-                    error: sanitizeError(err),
-                  },
-                  'Embedding job enqueue failed'
-                )
-              );
+            this.embeddingScheduler.enqueue(params.articleId).catch((err) =>
+              logger.error(
+                {
+                  articleId: params.articleId,
+                  error: sanitizeError(err),
+                },
+                'Embedding job enqueue failed'
+              )
+            );
           } else {
-            logger.debug('Summary generated without articleId, skipping embedding job');
+            logger.debug(
+              'Summary generated without articleId, skipping embedding job'
+            );
           }
 
           return result;

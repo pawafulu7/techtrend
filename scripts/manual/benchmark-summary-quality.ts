@@ -149,7 +149,7 @@ async function generateAndScore(
         {
           totalLength: article.content_len,
           contentLength: article.content_len,
-          isThinContent: article.content_len < 1000,
+          isThinContent: article.content_len < 400,
         }
       );
 
