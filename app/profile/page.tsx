@@ -149,7 +149,10 @@ export default function ProfilePage() {
             {/* Account Info Content */}
             <div className="grid gap-0 text-sm">
               <div className="border-border flex items-center gap-2 border-b py-1.5">
-                <User className="text-muted-foreground h-4 w-4" />
+                <User
+                  className="text-muted-foreground h-4 w-4"
+                  aria-hidden="true"
+                />
                 <span className="font-medium">アカウント情報</span>
               </div>
               <div className="border-border border-b py-1.5">
@@ -189,7 +192,7 @@ export default function ProfilePage() {
               {/* Danger zone - collapsible */}
               <details className="group py-1.5">
                 <summary className="text-destructive hover:text-destructive/80 flex cursor-pointer list-none items-center gap-2 font-medium">
-                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                   <span>危険な操作</span>
                   <span className="text-muted-foreground ml-auto text-xs group-open:hidden">
                     クリックで表示
