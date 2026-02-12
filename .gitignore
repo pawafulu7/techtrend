@@ -179,6 +179,9 @@ __tests__/e2e/**/*-actual/
 toolbox
 .mcp.json
 
+# benchmark result files
+benchmark-*.json
+
 # regeneration logs
 regenerate.log
 
