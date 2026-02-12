@@ -25,23 +25,23 @@ const SUMMARY_JSON_SCHEMA = {
   properties: {
     summary: {
       type: 'STRING',
-      description: '150-250 characters, one-line article summary',
+      description: '記事の一行要約。150-250文字で必ず日本語で記述すること',
     },
     detailedSummaryItems: {
       type: 'ARRAY',
-      description: 'Detailed summary items with specific titles and content',
+      description: '詳細要約の項目リスト。必ず日本語で記述すること',
       items: {
         type: 'OBJECT',
         properties: {
           title: {
             type: 'STRING',
             description:
-              'Specific title for this item (generic names like "overview" are prohibited)',
+              'この項目の具体的なタイトル（「概要」「背景」等の汎用名は禁止）。必ず日本語で記述',
           },
           content: {
             type: 'STRING',
             description:
-              'Detailed content with 2-3 sentences of concrete information (120-200 characters per item)',
+              '具体的な情報を含む詳細内容（120-200文字）。必ず日本語で記述',
           },
         },
         required: ['title', 'content'],
@@ -49,7 +49,7 @@ const SUMMARY_JSON_SCHEMA = {
     },
     category: {
       type: 'STRING',
-      description: 'Article category',
+      description: '記事のカテゴリ',
       enum: [
         'Programming Language',
         'Framework/Library',
@@ -65,7 +65,7 @@ const SUMMARY_JSON_SCHEMA = {
     },
     tags: {
       type: 'ARRAY',
-      description: '3-5 technical tags',
+      description: '3-5個の技術タグ（技術用語は英語の正式名称を使用）',
       items: { type: 'STRING' },
     },
   },
