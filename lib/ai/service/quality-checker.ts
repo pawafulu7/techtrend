@@ -38,7 +38,8 @@ export class SummaryQualityChecker implements QualityChecker {
     const issues: QualityIssue[] = [];
     let score = 100;
 
-    const contentLength = contentAnalysis?.totalLength || contentAnalysis?.contentLength || 0;
+    const contentLength =
+      contentAnalysis?.totalLength || contentAnalysis?.contentLength || 0;
     // contentLengthが提供されているかどうか（0は未提供を意味する）
     const hasContentLength = contentLength > 0;
     // 短文判定: contentLengthが提供されている場合のみ短文とみなす（未提供時は通常コンテンツ扱い）
@@ -115,24 +116,8 @@ export class SummaryQualityChecker implements QualityChecker {
       }
     }
 
-    // 薄いコンテンツ（非短文）で詳細要約が元記事の2倍を超える場合はcritical
-    // 短文は1.5倍ルールで判定するため除外
-    if (
-      hasContentLength &&
-      contentAnalysis?.isThinContent === true &&
-      !isShortContent &&
-      detailedLength > contentLength * 2
-    ) {
-      issues.push({
-        type: 'length',
-        severity: 'critical',
-        message: `薄いコンテンツで詳細要約が長すぎる: ${detailedLength}文字（元記事${contentLength}文字の${Math.round(detailedLength / contentLength)}倍）`,
-      });
-      score = 0; // 自動Fail
-    }
-
     // 短文（<400字）で詳細要約が元記事の1.5倍を超える場合はcritical
-    // isShortContentフラグを使用して条件を統一
+    // isThinContent閾値が400に統一されたため、isThinContent===true && !isShortContentは発生しない
     if (isShortContent && detailedLength > contentLength * 1.5) {
       const ratio = Math.round((detailedLength / contentLength) * 10) / 10;
       issues.push({
@@ -156,7 +141,10 @@ export class SummaryQualityChecker implements QualityChecker {
       score -= 20;
     }
 
-    if (detailedLength < minDetailedLength) {
+    // Short content (<400 chars) with empty detailedSummary is expected (prompt instructs empty array)
+    const skipDetailedLengthCheck = isShortContent && detailedLength === 0;
+
+    if (!skipDetailedLengthCheck && detailedLength < minDetailedLength) {
       // Strict bins (contentLength >= 5000) have "strict requirement" in prompt
       const isStrictBin = hasContentLength && contentLength >= 5000;
       const severity = isStrictBin ? 'critical' : 'major';
@@ -172,7 +160,10 @@ export class SummaryQualityChecker implements QualityChecker {
       } else {
         score -= 10;
       }
-    } else if (detailedLength < idealMinDetailedLength) {
+    } else if (
+      !skipDetailedLengthCheck &&
+      detailedLength < idealMinDetailedLength
+    ) {
       issues.push({
         type: 'length',
         severity: 'minor',
@@ -225,7 +216,12 @@ export class SummaryQualityChecker implements QualityChecker {
     }
 
     // 項目数上限チェック（contentLength提供時のみ、短文以外）
-    if (hasContentLength && !contentAnalysis?.isThinContent && !isShortContent && bulletCount > maxItems) {
+    if (
+      hasContentLength &&
+      !contentAnalysis?.isThinContent &&
+      !isShortContent &&
+      bulletCount > maxItems
+    ) {
       issues.push({
         type: 'itemCount',
         severity: 'major',
@@ -254,11 +250,15 @@ export class SummaryQualityChecker implements QualityChecker {
     }
 
     const summarySpeculative = this.detectSpeculativeExpressions(summary);
-    const detailedSpeculative = this.detectSpeculativeExpressions(detailedSummary);
+    const detailedSpeculative =
+      this.detectSpeculativeExpressions(detailedSummary);
     const speculativeResult = {
       count: summarySpeculative.count + detailedSpeculative.count,
       ratio: Math.max(summarySpeculative.ratio, detailedSpeculative.ratio),
-      expressions: [...summarySpeculative.expressions, ...detailedSpeculative.expressions],
+      expressions: [
+        ...summarySpeculative.expressions,
+        ...detailedSpeculative.expressions,
+      ],
     };
 
     if (contentAnalysis?.isThinContent && speculativeResult.count > 0) {
@@ -304,10 +304,15 @@ export class SummaryQualityChecker implements QualityChecker {
         });
         score = 0;
       } else {
-        const compareLength = Math.min(summary.length, detailedSummary.length, 100);
+        const compareLength = Math.min(
+          summary.length,
+          detailedSummary.length,
+          100
+        );
         if (
           compareLength >= 30 &&
-          summary.substring(0, compareLength) === detailedSummary.substring(0, compareLength)
+          summary.substring(0, compareLength) ===
+            detailedSummary.substring(0, compareLength)
         ) {
           issues.push({
             type: 'duplicate',
@@ -321,6 +326,9 @@ export class SummaryQualityChecker implements QualityChecker {
 
     score = Math.max(0, score);
 
+    // NOTE: requiresRegeneration is computed but not used by any caller.
+    // UnifiedSummaryService uses qualityResult.score for retry decisions.
+    // Kept for interface compatibility; consider removing in future cleanup.
     const minQualityScore = parseInt(process.env.QUALITY_MIN_SCORE || '70');
     const requiresRegeneration =
       score <= minQualityScore ||
@@ -357,14 +365,17 @@ export class SummaryQualityChecker implements QualityChecker {
     let score = baseCheck.score;
 
     if (baseCheck.speculativeExpressions) {
-      const speculativePenalty = baseCheck.speculativeExpressions.count * speculativeWeight;
+      const speculativePenalty =
+        baseCheck.speculativeExpressions.count * speculativeWeight;
       score = Math.max(0, score - speculativePenalty);
     }
 
     return score;
   }
 
-  private detectSpeculativeExpressions(text: string): SpeculativeExpressionResult {
+  private detectSpeculativeExpressions(
+    text: string
+  ): SpeculativeExpressionResult {
     if (!text) {
       return { count: 0, ratio: 0, expressions: [] };
     }

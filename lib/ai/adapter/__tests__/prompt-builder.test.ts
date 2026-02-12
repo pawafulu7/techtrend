@@ -24,10 +24,12 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('タイトル: Test Article');
       expect(prompt).toContain('内容: Test content');
-      expect(prompt).toContain('要約:');
-      expect(prompt).toContain('詳細要約:');
-      expect(prompt).toContain('カテゴリ:');
-      expect(prompt).toContain('タグ:');
+      expect(prompt).toContain('<<<ARTICLE_START>>>');
+      expect(prompt).toContain('<<<ARTICLE_END>>>');
+      // SYSTEM_INSTRUCTIONS should contain core rules
+      expect(prompt).toContain('summaryフィールド');
+      expect(prompt).toContain('detailedSummaryItemsフィールド');
+      expect(prompt).toContain('タグ正規化ルール');
     });
 
     it('should include tone guidance when specified', () => {
@@ -44,7 +46,8 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('【トーン指定】フォーマルな表現で作成してください');
+      expect(prompt).toContain('Tone: formal');
+      expect(prompt).toContain('professional language');
     });
 
     it('should include article type guidance when specified', () => {
@@ -61,7 +64,8 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('【記事タイプ】技術解説記事として');
+      expect(prompt).toContain('Article type: technical');
+      expect(prompt).toContain('implementation details');
     });
   });
 
@@ -80,14 +84,12 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('INTERNAL METADATA');
-      expect(prompt).toContain('very long article');
-      expect(prompt).toContain('target 1000-1300 characters');
-      expect(prompt).toContain('MUST be at least');
-      expect(prompt).toContain('7-9 items only');
-      expect(prompt).toContain('do not exceed 9 items');
-      expect(prompt).toContain('CRITICAL: Each item MUST be at least 150 characters');
-      expect(prompt).toContain('7 items x 150 chars');
+      expect(prompt).toContain('12000 characters (very long)');
+      expect(prompt).toContain('detailedSummaryItems: 7-9 items');
+      expect(prompt).toContain('120-180 characters with specific details');
+      expect(prompt).toContain(
+        'IMPORTANT: The above metadata is for your reference only'
+      );
     });
 
     it('should generate instructions for long content (5000-9999 chars)', () => {
@@ -104,14 +106,9 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('INTERNAL METADATA');
-      expect(prompt).toContain('long article');
-      expect(prompt).toContain('target 700-1000 characters');
-      expect(prompt).toContain('MUST be at least');
-      expect(prompt).toContain('5-7 items only');
-      expect(prompt).toContain('do not exceed 7 items');
-      expect(prompt).toContain('CRITICAL: Each item MUST be at least 120 characters');
-      expect(prompt).toContain('5 items x 120 chars');
+      expect(prompt).toContain('7000 characters (long)');
+      expect(prompt).toContain('detailedSummaryItems: 5-7 items');
+      expect(prompt).toContain('120-200 characters with concrete details');
     });
 
     it('should generate instructions for medium content (3000-4999 chars)', () => {
@@ -128,11 +125,9 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('INTERNAL METADATA');
       expect(prompt).toContain('4000 characters');
-      expect(prompt).toContain('600-1000 characters');
-      expect(prompt).toContain('4-5 items only');
-      expect(prompt).toContain('do not exceed 5 items');
+      expect(prompt).toContain('detailedSummaryItems: 4-5 items');
+      expect(prompt).toContain('150-200 characters');
     });
 
     it('should generate instructions for short content (1000-2999 chars)', () => {
@@ -149,11 +144,9 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('INTERNAL METADATA');
       expect(prompt).toContain('1500 characters');
-      expect(prompt).toContain('400-700 characters');
-      expect(prompt).toContain('3-4 items only');
-      expect(prompt).toContain('do not exceed 4 items');
+      expect(prompt).toContain('detailedSummaryItems: 3-4 items');
+      expect(prompt).toContain('130-175 characters');
     });
 
     it('should generate instructions for short-medium content (400-999 chars)', () => {
@@ -170,11 +163,9 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('INTERNAL METADATA');
-      expect(prompt).toContain('short article');
-      expect(prompt).toContain('200-400 characters');
-      expect(prompt).toContain('2-3 items only');
-      expect(prompt).toContain('do not exceed 3 items');
+      expect(prompt).toContain('500 characters (short)');
+      expect(prompt).toContain('detailedSummaryItems: 2-3 items');
+      expect(prompt).toContain('80-200 characters');
     });
 
     it('should generate instructions for very short content (<400 chars)', () => {
@@ -191,11 +182,9 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('INTERNAL METADATA');
-      expect(prompt).toContain('very short article');
-      expect(prompt).toContain('Plain text format ONLY');
-      expect(prompt).toContain('NO bullet points');
-      expect(prompt).toContain('Maximum length: 300 characters');
+      expect(prompt).toContain('200 characters (very short)');
+      expect(prompt).toContain('empty array []');
+      expect(prompt).toContain('Focus only on writing a good summary field');
     });
   });
 
@@ -214,8 +203,7 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('6-8 items only');
-      expect(prompt).toContain('do not exceed 8 items');
+      expect(prompt).toContain('detailedSummaryItems: 6-8 items');
     });
 
     it('should adjust item count for short policy', () => {
@@ -232,8 +220,8 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('5-5 items only');
-      expect(prompt).toContain('do not exceed 5 items');
+      // short policy: min=max(5, floor(5*0.8))=5, max=max(5, floor(7*0.8))=5
+      expect(prompt).toContain('detailedSummaryItems: 5-5 items');
     });
 
     it('should use default multiplier for medium policy', () => {
@@ -250,8 +238,7 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('5-7 items only');
-      expect(prompt).toContain('do not exceed 7 items');
+      expect(prompt).toContain('detailedSummaryItems: 5-7 items');
     });
   });
 
@@ -270,8 +257,8 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('フォーマルな表現で作成してください');
-      expect(prompt).toContain('専門的な用語を使用');
+      expect(prompt).toContain('Tone: formal');
+      expect(prompt).toContain('professional language and precise terminology');
     });
 
     it('should add casual tone guidance', () => {
@@ -288,8 +275,8 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('カジュアルな表現で作成してください');
-      expect(prompt).toContain('親しみやすい文体');
+      expect(prompt).toContain('Tone: casual');
+      expect(prompt).toContain('approachable and friendly language');
     });
 
     it('should not add tone guidance when not specified', () => {
@@ -305,7 +292,7 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).not.toContain('【トーン指定】');
+      expect(prompt).not.toContain('Tone:');
     });
   });
 
@@ -324,8 +311,8 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('技術解説記事として');
-      expect(prompt).toContain('実装詳細、技術仕様');
+      expect(prompt).toContain('Article type: technical');
+      expect(prompt).toContain('implementation details, specifications');
     });
 
     it('should add news article guidance', () => {
@@ -342,8 +329,8 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('ニュース記事として');
-      expect(prompt).toContain('発表内容、新機能');
+      expect(prompt).toContain('Article type: news');
+      expect(prompt).toContain('announcements, new features');
     });
 
     it('should add tutorial article guidance', () => {
@@ -360,8 +347,8 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('チュートリアル記事として');
-      expect(prompt).toContain('手順、実装方法');
+      expect(prompt).toContain('Article type: tutorial');
+      expect(prompt).toContain('steps, implementation methods');
     });
 
     it('should add opinion article guidance', () => {
@@ -378,8 +365,8 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('意見記事として');
-      expect(prompt).toContain('著者の見解');
+      expect(prompt).toContain('Article type: opinion');
+      expect(prompt).toContain("author's perspective");
     });
 
     it('should not add article type guidance when not specified', () => {
@@ -395,7 +382,7 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).not.toContain('【記事タイプ】');
+      expect(prompt).not.toContain('Article type:');
     });
   });
 
@@ -414,7 +401,7 @@ describe('PromptBuilder', () => {
 
       const prompt = builder.buildPrompt(input);
 
-      expect(prompt).toContain('...[文字数制限により以下省略]');
+      expect(prompt).toContain('...[truncated]');
       expect(prompt.length).toBeLessThan(veryLongContent.length);
     });
 
@@ -433,7 +420,7 @@ describe('PromptBuilder', () => {
       const prompt = builder.buildPrompt(input);
 
       expect(prompt).toContain(normalContent);
-      expect(prompt).not.toContain('...[文字数制限により以下省略]');
+      expect(prompt).not.toContain('...[truncated]');
     });
   });
 
@@ -454,12 +441,11 @@ describe('PromptBuilder', () => {
       const prompt = builder.buildPrompt(input);
 
       expect(prompt).toContain('タイトル: Complex Article');
-      expect(prompt).toContain('【トーン指定】フォーマル');
-      expect(prompt).toContain('【記事タイプ】技術解説');
-      expect(prompt).toContain('INTERNAL METADATA');
-      expect(prompt).toContain('long article');
-      expect(prompt).toContain('6-8 items only');
-      expect(prompt).toContain('do not exceed 8 items');
+      expect(prompt).toContain('Tone: formal');
+      expect(prompt).toContain('Article type: technical');
+      expect(prompt).toContain('5000 characters (long)');
+      // long policy on 5000-9999: min=max(5,floor(5*1.2))=6, max=max(6,floor(7*1.2))=8
+      expect(prompt).toContain('detailedSummaryItems: 6-8 items');
     });
   });
 });

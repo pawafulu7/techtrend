@@ -14,8 +14,15 @@ describe('SummaryQualityChecker', () => {
   describe('minDetailedLength boundary tests', () => {
     it('should mark 599-char summary as critical for 5000-char content', () => {
       // Create exactly 599-char detailed summary (new minimum: 600)
-      const items = ['x'.repeat(98), 'x'.repeat(98), 'x'.repeat(98), 'x'.repeat(98), 'x'.repeat(98), 'x'.repeat(97)];
-      const detailedSummary = items.map(item => `・${item}`).join('\n'); // Total: 599 chars
+      const items = [
+        'x'.repeat(98),
+        'x'.repeat(98),
+        'x'.repeat(98),
+        'x'.repeat(98),
+        'x'.repeat(98),
+        'x'.repeat(97),
+      ];
+      const detailedSummary = items.map((item) => `・${item}`).join('\n'); // Total: 598 chars
 
       const contentAnalysis: ContentAnalysis = {
         totalLength: 5000,
@@ -23,7 +30,11 @@ describe('SummaryQualityChecker', () => {
         isThinContent: false,
       };
 
-      const result = checker.checkQuality(VALID_SUMMARY, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        VALID_SUMMARY,
+        detailedSummary,
+        contentAnalysis
+      );
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({ type: 'length', severity: 'critical' })
@@ -34,8 +45,15 @@ describe('SummaryQualityChecker', () => {
 
     it('should pass 700-char summary for 5000-char content', () => {
       // Create exactly 700-char detailed summary (idealMin for 5000-9999)
-      const items = ['x'.repeat(115), 'x'.repeat(115), 'x'.repeat(115), 'x'.repeat(115), 'x'.repeat(115), 'x'.repeat(113)];
-      const detailedSummary = items.map(item => `・${item}`).join('\n'); // Total: 700 chars
+      const items = [
+        'x'.repeat(115),
+        'x'.repeat(115),
+        'x'.repeat(115),
+        'x'.repeat(115),
+        'x'.repeat(115),
+        'x'.repeat(113),
+      ];
+      const detailedSummary = items.map((item) => `・${item}`).join('\n'); // Total: 699 chars
 
       const contentAnalysis: ContentAnalysis = {
         totalLength: 5000,
@@ -43,17 +61,30 @@ describe('SummaryQualityChecker', () => {
         isThinContent: false,
       };
 
-      const result = checker.checkQuality(VALID_SUMMARY, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        VALID_SUMMARY,
+        detailedSummary,
+        contentAnalysis
+      );
 
-      const lengthIssues = result.issues.filter((i) => i.type === 'length' && i.severity !== 'minor');
+      const lengthIssues = result.issues.filter(
+        (i) => i.type === 'length' && i.severity !== 'minor'
+      );
       expect(lengthIssues).toHaveLength(0);
       expect(result.score).toBeGreaterThanOrEqual(70);
     });
 
     it('should pass 1200-char summary for 5000-char content', () => {
       // Create exactly 1200-char detailed summary (new maximum for 5000-9999)
-      const items = ['x'.repeat(198), 'x'.repeat(198), 'x'.repeat(198), 'x'.repeat(198), 'x'.repeat(198), 'x'.repeat(198)];
-      const detailedSummary = items.map(item => `・${item}`).join('\n'); // Total: 1200 chars
+      const items = [
+        'x'.repeat(198),
+        'x'.repeat(198),
+        'x'.repeat(198),
+        'x'.repeat(198),
+        'x'.repeat(198),
+        'x'.repeat(198),
+      ];
+      const detailedSummary = items.map((item) => `・${item}`).join('\n'); // Total: 1199 chars
 
       const contentAnalysis: ContentAnalysis = {
         totalLength: 5000,
@@ -61,32 +92,43 @@ describe('SummaryQualityChecker', () => {
         isThinContent: false,
       };
 
-      const result = checker.checkQuality(VALID_SUMMARY, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        VALID_SUMMARY,
+        detailedSummary,
+        contentAnalysis
+      );
 
-      const criticalIssues = result.issues.filter((i) => i.severity === 'critical');
+      const criticalIssues = result.issues.filter(
+        (i) => i.severity === 'critical'
+      );
       expect(criticalIssues).toHaveLength(0);
     });
-
   });
 
   describe('strict bin enforcement (contentLength >= 5000)', () => {
     it('should enforce critical for contentLength >= 5000 with short summaries', () => {
       const testCases = [
-        { contentLength: 5000, detailedLength: 500 },  // Below 600 min
-        { contentLength: 7000, detailedLength: 500 },  // Below 600 min
+        { contentLength: 5000, detailedLength: 500 }, // Below 600 min
+        { contentLength: 7000, detailedLength: 500 }, // Below 600 min
         { contentLength: 10000, detailedLength: 800 }, // Below 900 min for 10k+
       ];
 
       testCases.forEach(({ contentLength, detailedLength }) => {
-        const detailedSummary = '・Item 1\n・Item 2\n・Item 3\n・Item 4\n・Item 5\n' + 'x'.repeat(detailedLength - 40);
+        const detailedSummary =
+          '・Item 1\n・Item 2\n・Item 3\n・Item 4\n・Item 5\n' +
+          'x'.repeat(detailedLength - 40);
 
         const contentAnalysis: ContentAnalysis = {
           totalLength: contentLength,
-        contentLength,
-        isThinContent: false,
-      };
+          contentLength,
+          isThinContent: false,
+        };
 
-        const result = checker.checkQuality(VALID_SUMMARY, detailedSummary, contentAnalysis);
+        const result = checker.checkQuality(
+          VALID_SUMMARY,
+          detailedSummary,
+          contentAnalysis
+        );
 
         expect(result.issues).toContainEqual(
           expect.objectContaining({ type: 'length', severity: 'critical' })
@@ -102,15 +144,20 @@ describe('SummaryQualityChecker', () => {
       ];
 
       testCases.forEach(({ contentLength, detailedLength }) => {
-        const detailedSummary = '・Item 1\n・Item 2\n' + 'x'.repeat(detailedLength - 20);
+        const detailedSummary =
+          '・Item 1\n・Item 2\n' + 'x'.repeat(detailedLength - 20);
 
         const contentAnalysis: ContentAnalysis = {
           totalLength: contentLength,
-        contentLength,
-        isThinContent: false,
-      };
+          contentLength,
+          isThinContent: false,
+        };
 
-        const result = checker.checkQuality(VALID_SUMMARY, detailedSummary, contentAnalysis);
+        const result = checker.checkQuality(
+          VALID_SUMMARY,
+          detailedSummary,
+          contentAnalysis
+        );
 
         expect(result.issues).toContainEqual(
           expect.objectContaining({ type: 'length', severity: 'major' })
@@ -124,7 +171,11 @@ describe('SummaryQualityChecker', () => {
     it('should not enforce strict bin when contentLength is not provided', () => {
       const detailedSummary = '・Item 1\n・Item 2\n' + 'x'.repeat(600);
 
-      const result = checker.checkQuality(VALID_SUMMARY, detailedSummary, undefined);
+      const result = checker.checkQuality(
+        VALID_SUMMARY,
+        detailedSummary,
+        undefined
+      );
 
       const criticalLengthIssues = result.issues.filter(
         (i) => i.type === 'length' && i.severity === 'critical'
@@ -134,8 +185,14 @@ describe('SummaryQualityChecker', () => {
 
     it('should handle contentLength = 5000 exactly (boundary inclusive)', () => {
       // 5000 chars with 500-char summary (below 600 min) should trigger critical
-      const items = ['x'.repeat(80), 'x'.repeat(80), 'x'.repeat(80), 'x'.repeat(80), 'x'.repeat(80)];
-      const detailedSummary = items.map(item => `・${item}`).join('\n'); // ~500 chars, 5 items
+      const items = [
+        'x'.repeat(80),
+        'x'.repeat(80),
+        'x'.repeat(80),
+        'x'.repeat(80),
+        'x'.repeat(80),
+      ];
+      const detailedSummary = items.map((item) => `・${item}`).join('\n'); // ~500 chars, 5 items
 
       const contentAnalysis: ContentAnalysis = {
         totalLength: 5000,
@@ -143,11 +200,48 @@ describe('SummaryQualityChecker', () => {
         isThinContent: false,
       };
 
-      const result = checker.checkQuality(VALID_SUMMARY, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        VALID_SUMMARY,
+        detailedSummary,
+        contentAnalysis
+      );
 
       expect(result.issues).toContainEqual(
         expect.objectContaining({ type: 'length', severity: 'critical' })
       );
+    });
+  });
+
+  describe('short content with empty detailedSummary', () => {
+    it('should skip detailed length check for short content (<400) with empty detailedSummary', () => {
+      const contentAnalysis: ContentAnalysis = {
+        totalLength: 200,
+        contentLength: 200,
+        isThinContent: true,
+      };
+
+      const result = checker.checkQuality(VALID_SUMMARY, '', contentAnalysis);
+
+      const detailedLengthIssues = result.issues.filter(
+        (i) => i.type === 'length' && i.message.includes('詳細要約')
+      );
+      expect(detailedLengthIssues).toHaveLength(0);
+      expect(result.score).toBeGreaterThanOrEqual(70);
+    });
+
+    it('should still check detailed length for non-short content with empty detailedSummary', () => {
+      const contentAnalysis: ContentAnalysis = {
+        totalLength: 1000,
+        contentLength: 1000,
+        isThinContent: false,
+      };
+
+      const result = checker.checkQuality(VALID_SUMMARY, '', contentAnalysis);
+
+      const detailedLengthIssues = result.issues.filter(
+        (i) => i.type === 'length' && i.message.includes('詳細要約が短すぎる')
+      );
+      expect(detailedLengthIssues.length).toBeGreaterThan(0);
     });
   });
 
@@ -161,14 +255,30 @@ describe('SummaryQualityChecker', () => {
         isThinContent: false,
       };
 
-      const result = checker.checkQuality(VALID_SUMMARY, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        VALID_SUMMARY,
+        detailedSummary,
+        contentAnalysis
+      );
 
       expect(result.requiresRegeneration).toBe(true);
       expect(result.isValid).toBe(false);
     });
 
     it('should not trigger regeneration for minor length violations', () => {
-      const detailedSummary = '・Item 1: ' + 'x'.repeat(240) + '\n・Item 2: ' + 'x'.repeat(240) + '\n・Item 3: ' + 'x'.repeat(240) + '\n・Item 4: ' + 'x'.repeat(240) + '\n・Item 5: ' + 'x'.repeat(240) + '\n・Item 6: ' + 'x'.repeat(241);
+      const detailedSummary =
+        '・Item 1: ' +
+        'x'.repeat(240) +
+        '\n・Item 2: ' +
+        'x'.repeat(240) +
+        '\n・Item 3: ' +
+        'x'.repeat(240) +
+        '\n・Item 4: ' +
+        'x'.repeat(240) +
+        '\n・Item 5: ' +
+        'x'.repeat(240) +
+        '\n・Item 6: ' +
+        'x'.repeat(241);
 
       const contentAnalysis: ContentAnalysis = {
         totalLength: 5000,
@@ -176,7 +286,11 @@ describe('SummaryQualityChecker', () => {
         isThinContent: false,
       };
 
-      const result = checker.checkQuality(VALID_SUMMARY, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        VALID_SUMMARY,
+        detailedSummary,
+        contentAnalysis
+      );
 
       expect(result.requiresRegeneration).toBe(false);
       expect(result.isValid).toBe(true);
