@@ -45,14 +45,18 @@ describe('SummaryPostProcessor', () => {
     });
 
     it('should handle Japanese text correctly', () => {
-      const input = 'この記事では\nTypeScriptの型システムについて\n詳しく解説しています。';
+      const input =
+        'TypeScriptの型システムについて\n詳しく解説し、\n型安全性を保つ方法を紹介する。';
       const result = processor.cleanupSummary(input);
 
-      expect(result).toBe('この記事では TypeScriptの型システムについて 詳しく解説しています。');
+      expect(result).toBe(
+        'TypeScriptの型システムについて 詳しく解説し、 型安全性を保つ方法を紹介する。'
+      );
     });
 
     it('should handle combined formatting issues', () => {
-      const input = '  This  has\n\nmultiple\n\nissues。。With   formatting、、、  ';
+      const input =
+        '  This  has\n\nmultiple\n\nissues。。With   formatting、、、  ';
       const result = processor.cleanupSummary(input);
 
       expect(result).toBe('This has multiple issues。With formatting、');
@@ -105,14 +109,18 @@ describe('SummaryPostProcessor', () => {
     });
 
     it('should handle mixed Japanese and English content', () => {
-      const input = '・概要：TypeScriptの基本\n・特徴：Type safety and flexibility\n・実践：実際のプロジェクト例';
+      const input =
+        '・概要：TypeScriptの基本\n・特徴：Type safety and flexibility\n・実践：実際のプロジェクト例';
       const result = processor.cleanupDetailedSummary(input);
 
-      expect(result).toBe('・概要：TypeScriptの基本\n・特徴：Type safety and flexibility\n・実践：実際のプロジェクト例');
+      expect(result).toBe(
+        '・概要：TypeScriptの基本\n・特徴：Type safety and flexibility\n・実践：実際のプロジェクト例'
+      );
     });
 
     it('should handle complex formatting issues', () => {
-      const input = '  ・Item 1。。  \n\n\n  ・  \n  ・Item 2、、、  \n\n  ・Item 3  ';
+      const input =
+        '  ・Item 1。。  \n\n\n  ・  \n  ・Item 2、、、  \n\n  ・Item 3  ';
       const result = processor.cleanupDetailedSummary(input);
 
       expect(result).toBe('・Item 1。\n・Item 2、\n・Item 3');
@@ -134,10 +142,13 @@ describe('SummaryPostProcessor', () => {
     });
 
     it('should merge headers that contain additional colons inside the title', () => {
-      const input = '・顧客固有のセキュリティ：動的ベースライン：\n説明テキスト';
+      const input =
+        '・顧客固有のセキュリティ：動的ベースライン：\n説明テキスト';
       const result = processor.cleanupDetailedSummary(input);
 
-      expect(result).toBe('・顧客固有のセキュリティ：動的ベースライン： 説明テキスト');
+      expect(result).toBe(
+        '・顧客固有のセキュリティ：動的ベースライン： 説明テキスト'
+      );
     });
 
     it('should merge continuation lines for alternate bullet markers', () => {
@@ -155,10 +166,13 @@ describe('SummaryPostProcessor', () => {
     });
 
     it('should handle multiple bullets with newline issues', () => {
-      const input = '・項目1：\n内容1\n・項目2： 正常な内容2\n・項目3：\n内容3が改行後';
+      const input =
+        '・項目1：\n内容1\n・項目2： 正常な内容2\n・項目3：\n内容3が改行後';
       const result = processor.cleanupDetailedSummary(input);
 
-      expect(result).toBe('・項目1： 内容1\n・項目2： 正常な内容2\n・項目3： 内容3が改行後');
+      expect(result).toBe(
+        '・項目1： 内容1\n・項目2： 正常な内容2\n・項目3： 内容3が改行後'
+      );
       expect(result).not.toMatch(/：\s*\n[^・]/);
     });
 
@@ -197,14 +211,35 @@ describe('SummaryPostProcessor', () => {
       const result = processor.formatTags(input);
 
       expect(result).toHaveLength(10);
-      expect(result).toEqual(['tag1', 'tag2', 'tag3', 'tag4', 'tag5', 'tag6', 'tag7', 'tag8', 'tag9', 'tag10']);
+      expect(result).toEqual([
+        'tag1',
+        'tag2',
+        'tag3',
+        'tag4',
+        'tag5',
+        'tag6',
+        'tag7',
+        'tag8',
+        'tag9',
+        'tag10',
+      ]);
     });
 
     it('should handle mixed Japanese and English tags', () => {
-      const input = ['TypeScript', '型システム', 'JavaScript', 'プログラミング'];
+      const input = [
+        'TypeScript',
+        '型システム',
+        'JavaScript',
+        'プログラミング',
+      ];
       const result = processor.formatTags(input);
 
-      expect(result).toEqual(['TypeScript', '型システム', 'JavaScript', 'プログラミング']);
+      expect(result).toEqual([
+        'TypeScript',
+        '型システム',
+        'JavaScript',
+        'プログラミング',
+      ]);
     });
 
     it('should handle all formatting issues combined', () => {
@@ -229,7 +264,18 @@ describe('SummaryPostProcessor', () => {
       const result = processor.formatTags(input);
 
       expect(result).toHaveLength(10);
-      expect(result).toEqual(['tag1', 'tag2', 'tag3', 'tag4', 'tag5', 'tag6', 'tag7', 'tag8', 'tag9', 'tag10']);
+      expect(result).toEqual([
+        'tag1',
+        'tag2',
+        'tag3',
+        'tag4',
+        'tag5',
+        'tag6',
+        'tag7',
+        'tag8',
+        'tag9',
+        'tag10',
+      ]);
     });
 
     it('should preserve tag order', () => {
