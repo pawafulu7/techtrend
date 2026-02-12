@@ -15,12 +15,12 @@
       "avg": 95.71875
     },
     "thresholdCalibration": {
-      "percentile95": 0.9866603289220708,
+      "percentile95": 0.9501393267685833,
       "byCategory": {
-        "general": 0.8812141734181059,
-        "technical": 0.8865226409263047,
-        "thin_content": 0.8472028307778849,
-        "multilingual": 0.8545951028515402
+        "general": 0.8551253940917249,
+        "technical": 0.8531810567709802,
+        "thin_content": 0.716906861487461,
+        "multilingual": 0.8284366795440448
       }
     }
   },
@@ -53,7 +53,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8812141734181059,
+        "semanticSimilarity": 0.8551253940917249,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg6ibip80007te8uzuh2fm8t"
@@ -86,7 +86,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8812141734181059,
+        "semanticSimilarity": 0.8551253940917249,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgu56v6b0003tejj2z5kshl4"
@@ -119,7 +119,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8812141734181059,
+        "semanticSimilarity": 0.8551253940917249,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgs0140m0001teq9asa672j4"
@@ -152,7 +152,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8812141734181059,
+        "semanticSimilarity": 0.8551253940917249,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg8lcss5000dtett73drpluk"
@@ -185,7 +185,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8812141734181059,
+        "semanticSimilarity": 0.8551253940917249,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgbqx8xu0007teyeygizvwr3"
@@ -218,7 +218,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8812141734181059,
+        "semanticSimilarity": 0.8551253940917249,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgrcgazz0001te3p45qkulwj"
@@ -251,7 +251,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8812141734181059,
+        "semanticSimilarity": 0.8551253940917249,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgqgb1ca0001teqzwnce0juu"
@@ -284,7 +284,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8812141734181059,
+        "semanticSimilarity": 0.8551253940917249,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgheih0s000dtedfw24i1ucp"
@@ -317,7 +317,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8812141734181059,
+        "semanticSimilarity": 0.8551253940917249,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmghp8ar20001teiltq4lvfrh"
@@ -349,7 +349,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8812141734181059,
+        "semanticSimilarity": 0.8551253940917249,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmhcnsnvi0011teskwqerh4xd"
@@ -382,7 +382,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8812141734181059,
+        "semanticSimilarity": 0.8551253940917249,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmf9n6xis0001te02ohyucnxc"
@@ -414,7 +414,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8865226409263047,
+        "semanticSimilarity": 0.8531810567709802,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgut0uz2000dtelqb62u8gpt"
@@ -447,7 +447,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8865226409263047,
+        "semanticSimilarity": 0.8531810567709802,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmguk79br0007teygw6vx5jat"
@@ -479,7 +479,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8865226409263047,
+        "semanticSimilarity": 0.8531810567709802,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg8twg580005tepj91zab19q"
@@ -512,7 +512,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8865226409263047,
+        "semanticSimilarity": 0.8531810567709802,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgmaarkf0005te26vt2thf5g"
@@ -545,7 +545,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8865226409263047,
+        "semanticSimilarity": 0.8531810567709802,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgaqhzp70009te4otbt64r3q"
@@ -578,7 +578,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8865226409263047,
+        "semanticSimilarity": 0.8531810567709802,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmgh82yux0001te0uus9brlev"
@@ -610,7 +610,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8472028307778849,
+        "semanticSimilarity": 0.716906861487461,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmebcn2560003tenni47ulnfd"
@@ -643,7 +643,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8472028307778849,
+        "semanticSimilarity": 0.716906861487461,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmginiz9g000vteso783cdhz0"
@@ -676,7 +676,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8472028307778849,
+        "semanticSimilarity": 0.716906861487461,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg8lctyx000vtett2po242wz"
@@ -709,7 +709,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545951028515402,
+        "semanticSimilarity": 0.8284366795440448,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmewhs858000hte47d5cmcd7h"
@@ -722,14 +722,13 @@
         "url": "https://www.jefftk.com/p/pasta-cooking-time"
       },
       "expectedOutput": {
-        "summary": "Jeff Kaufman's experiment reveals that pasta cooking times on boxes are often too long, with his family preferring pasta cooked 3-5 minutes less than the recommended 'al dente' time for optimal texture and potentially lower glycemic index.",
-        "detailedSummary": "・Subjective Pasta Cooking Time Preferences： Jeff Kaufman conducted an experiment using Market Basket Rigatoni, finding that the box's recommended 13-15 minute cooking time resulted in mushy pasta for his family. He determined their ideal cooking window to be between 9 minutes 15 seconds and 11 minutes 30 seconds, with personal preference at 10 minutes 15 seconds.\n・Glycemic Index and Cultural Cooking Norms： The article suggests that cooking pasta for a shorter duration, closer to the family's preferred 10-12 minutes, may lead to a significantly lower glycemic index. Kaufman also notes that his family, with roots in Rome, agreed that Americans tend to overcook pasta, contrasting with traditional Italian preferences.\n・Microscopic Pasta Structure Analysis： Kaufman attempted to use a cheap microscope with an iodide stain to observe structural differences in pasta cooked for varying durations (3, 7, and 13 minutes). However, the staining method did not reveal significant or easily discernible structural variations in the pasta's interior.\n・Rigatoni Noodle Dimensions： The experiment specifically used Market Basket Rigatoni, a ridged cylindrical pasta shape. Kaufman measured the dimensions of these noodles, noting the ridges were approximately 1.74mm and the valleys were 1.32mm, providing a physical characteristic of the pasta used.",
+        "summary": "パスタの箱に記載されている調理時間は長すぎることが多く、リガトーニを使用した実験で9分から14分30秒まで15秒ごとに試食した結果、推奨時間よりも短い10〜12分程度で調理した方が好みの食感になる可能性を示唆している。家族全員の意見を取り入れ、より適切な調理時間の目安を提案している。",
+        "detailedSummary": "・パスタ調理時間の実験動機と概要： パスタの箱に記載されている調理時間は多くの場合長すぎると感じられ、最適な調理時間を見つけるためにマーケットバスケットのリガトーニを用いて実験を実施した。溝の深さ（1.74mm）と谷の深さ（1.32mm）を測定し、箱の推奨時間13〜15分に対して9分から14分30秒まで15秒刻みで取り出して食感を評価した。\n・家族の好みの調理時間と結果： 筆者自身は10分15秒が最も好ましく、9分15秒〜11分30秒が許容範囲と判断した。家族メンバーの意見は様々で、ある人は9分45秒をわずかに硬すぎ、11分45秒をわずかに柔らかすぎと感じた。全員が12分45秒では柔らかすぎると同意し、推奨時間は10〜12分が適切と結論付けた。\n・健康面と文化的背景： 調理時間が短いパスタは血糖値の上昇が緩やか（グリセミック指数が低い）という健康面の利点も指摘されている。ローマ出身の家族からは「アメリカ人はパスタを茹ですぎる」との意見があり、イタリアの伝統的な好みとの違いが裏付けられた。\n・顕微鏡による構造観察の試み： 安価な顕微鏡とヨウ素染色を用いて、3分・7分・13分で調理したパスタの構造的な違いを観察しようと試みたが、目立った構造的変化は確認できなかった。ただし子供たちと顕微鏡を楽しむ機会となった。",
         "tags": [
-          "cooking time",
-          "pasta experiment",
-          "glycemic index",
-          "rigatoni",
-          "food science"
+          "Pasta",
+          "Cooking Time",
+          "Experiment",
+          "Food Science"
         ]
       },
       "metadata": {
@@ -742,7 +741,7 @@
         "updatedAt": "2025-11-27T22:40:36.514Z"
       },
       "acceptanceThreshold": {
-        "semanticSimilarity": 0.8545951028515402,
+        "semanticSimilarity": 0.8284366795440448,
         "minimumQuality": 0.9
       },
       "sourceArticleId": "cmg7759na009btewp73fbkipx"
