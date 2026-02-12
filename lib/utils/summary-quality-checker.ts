@@ -198,6 +198,7 @@ export function checkSummaryQuality(
   // 薄いコンテンツで詳細要約が元記事の2倍を超える場合はcritical
   if (
     contentAnalysis?.isThinContent === true &&
+    contentLength > 0 &&
     detailedLength > contentLength * 2
   ) {
     issues.push({
