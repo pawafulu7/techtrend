@@ -185,7 +185,8 @@ async function generateAndScore(
 function compareResults(
   baseline: BenchmarkResult[],
   current: BenchmarkResult[]
-): void {
+): boolean {
+  let hasFailed = false;
   console.log('\n=== Benchmark Comparison ===\n');
 
   const bins = [...new Set(baseline.map((r) => r.bin))];
@@ -194,11 +195,15 @@ function compareResults(
     const currArticles = current.filter((r) => r.bin === bin);
 
     const baseAvg =
-      baseArticles.reduce((s, r) => s + r.qualityScore, 0) /
-      baseArticles.length;
+      baseArticles.length > 0
+        ? baseArticles.reduce((s, r) => s + r.qualityScore, 0) /
+          baseArticles.length
+        : 0;
     const currAvg =
-      currArticles.reduce((s, r) => s + r.qualityScore, 0) /
-      currArticles.length;
+      currArticles.length > 0
+        ? currArticles.reduce((s, r) => s + r.qualityScore, 0) /
+          currArticles.length
+        : 0;
     const diff = currAvg - baseAvg;
     const sign = diff >= 0 ? '+' : '';
 
@@ -229,9 +234,13 @@ function compareResults(
   }
 
   const baseTotal =
-    baseline.reduce((s, r) => s + r.qualityScore, 0) / baseline.length;
+    baseline.length > 0
+      ? baseline.reduce((s, r) => s + r.qualityScore, 0) / baseline.length
+      : 0;
   const currTotal =
-    current.reduce((s, r) => s + r.qualityScore, 0) / current.length;
+    current.length > 0
+      ? current.reduce((s, r) => s + r.qualityScore, 0) / current.length
+      : 0;
   const totalDiff = currTotal - baseTotal;
   const totalSign = totalDiff >= 0 ? '+' : '';
   console.log(
@@ -246,6 +255,7 @@ function compareResults(
     console.log(
       `\n[FAIL] Overall quality dropped by ${totalDiff.toFixed(1)} (threshold: ${OVERALL_THRESHOLD})`
     );
+    hasFailed = true;
   }
 
   for (const b of baseline) {
@@ -256,8 +266,11 @@ function compareResults(
       console.log(
         `[FAIL] ${b.title.substring(0, 40)}: dropped by ${individualDiff} (threshold: ${INDIVIDUAL_THRESHOLD})`
       );
+      hasFailed = true;
     }
   }
+
+  return hasFailed;
 }
 
 async function main(): Promise<void> {
@@ -291,7 +304,10 @@ async function main(): Promise<void> {
       const baseline = JSON.parse(
         fs.readFileSync(BASELINE_FILE, 'utf-8')
       ) as BenchmarkResult[];
-      compareResults(baseline, results);
+      const hasFailed = compareResults(baseline, results);
+      if (hasFailed) {
+        process.exit(1);
+      }
     } else {
       console.error(
         'Baseline not found. Run with --mode baseline first.'

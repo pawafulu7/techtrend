@@ -169,7 +169,10 @@ export class GeminiSummaryAdapter implements SummaryProvider {
     try {
       const parsed = JSON.parse(text) as SummaryJsonResponse;
 
-      if (!parsed.summary || !parsed.detailedSummaryItems) {
+      if (
+        typeof parsed.summary !== 'string' ||
+        !Array.isArray(parsed.detailedSummaryItems)
+      ) {
         throw new Error('Missing required fields in JSON response');
       }
 
