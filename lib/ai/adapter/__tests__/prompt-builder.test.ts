@@ -86,7 +86,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('12000 characters (very long)');
       expect(prompt).toContain('detailedSummaryItems: 7-9 items');
-      expect(prompt).toContain('at least 150 characters with specific details');
+      expect(prompt).toContain('120-180 characters with specific details');
       expect(prompt).toContain(
         'IMPORTANT: The above metadata is for your reference only'
       );
@@ -108,7 +108,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('7000 characters (long)');
       expect(prompt).toContain('detailedSummaryItems: 5-7 items');
-      expect(prompt).toContain('at least 120 characters with concrete details');
+      expect(prompt).toContain('120-200 characters with concrete details');
     });
 
     it('should generate instructions for medium content (3000-4999 chars)', () => {
@@ -127,7 +127,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('4000 characters');
       expect(prompt).toContain('detailedSummaryItems: 4-5 items');
-      expect(prompt).toContain('at least 150 characters');
+      expect(prompt).toContain('150-220 characters');
     });
 
     it('should generate instructions for short content (1000-2999 chars)', () => {
@@ -146,7 +146,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('1500 characters');
       expect(prompt).toContain('detailedSummaryItems: 3-4 items');
-      expect(prompt).toContain('at least 130 characters');
+      expect(prompt).toContain('130-200 characters');
     });
 
     it('should generate instructions for short-medium content (400-999 chars)', () => {
@@ -165,7 +165,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('500 characters (short)');
       expect(prompt).toContain('detailedSummaryItems: 2-3 items');
-      expect(prompt).toContain('at least 80 characters');
+      expect(prompt).toContain('80-250 characters');
     });
 
     it('should generate instructions for very short content (<400 chars)', () => {
