@@ -3,6 +3,11 @@ import { SummaryProviderInput } from './summary-provider.interface';
 const SYSTEM_INSTRUCTIONS = `
 あなたは技術記事の要約を生成する専門AIです。以下のルールを厳守してください：
 
+【言語ルール（最重要）】
+- summary、detailedSummaryItemsの全フィールド（title, content）は必ず日本語で記述してください
+- 英語の記事であっても、要約は必ず日本語で生成してください
+- tagsは技術用語の正式名称（英語可）を使用してください
+
 【一覧要約ルール（summaryフィールド）】
 - 150-250文字で記事の核心を端的に表現する
 - 技術的価値を明確に示す
@@ -89,9 +94,9 @@ export class PromptBuilder {
     if (contentLength < 400) {
       return `
 
-Article is ${contentLength} characters (very short).
-Set detailedSummaryItems to an empty array [].
-Focus only on writing a good summary field.
+記事は${contentLength}文字（非常に短い）です。
+detailedSummaryItemsは空配列[]にしてください。
+summaryフィールドの作成のみに集中してください。
 ${METADATA_WARNING}`;
     }
 
@@ -103,40 +108,40 @@ ${METADATA_WARNING}`;
       const maxItems = Math.max(minItems, Math.floor(9 * policyMultiplier));
       return `
 
-Article is ${contentLength} characters (very long).
-detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: 120-180 characters with specific details (versions, metrics, dates, commands).
-TOTAL detailedSummaryItems length MUST NOT exceed 1500 characters. Prioritize item count over item length.
+記事は${contentLength}文字（非常に長い）です。
+detailedSummaryItems: ${minItems}-${maxItems}項目。
+各項目のcontent: 具体的な詳細（バージョン、数値、日付、コマンド等）を含め120-180文字。
+detailedSummaryItems全体の合計は1500文字以内。項目数を優先し、1項目あたりの長さは抑えてください。
 ${METADATA_WARNING}`;
     } else if (contentLength >= 5000) {
       const minItems = Math.max(5, Math.floor(5 * policyMultiplier));
       const maxItems = Math.max(minItems, Math.floor(7 * policyMultiplier));
       return `
 
-Article is ${contentLength} characters (long).
-detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: 120-200 characters with concrete details.
-TOTAL detailedSummaryItems length MUST NOT exceed 1200 characters. Prioritize total limit over per-item length.
+記事は${contentLength}文字（長い）です。
+detailedSummaryItems: ${minItems}-${maxItems}項目。
+各項目のcontent: 具体的な詳細を含め120-200文字。
+detailedSummaryItems全体の合計は1200文字以内。合計文字数を優先してください。
 ${METADATA_WARNING}`;
     } else if (contentLength >= 3000) {
       const minItems = Math.max(4, Math.floor(4 * policyMultiplier));
       const maxItems = Math.max(minItems, Math.floor(5 * policyMultiplier));
       return `
 
-Article is ${contentLength} characters.
-detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: 150-200 characters.
-TOTAL detailedSummaryItems length MUST NOT exceed 1000 characters. Prioritize total limit over per-item length.
+記事は${contentLength}文字です。
+detailedSummaryItems: ${minItems}-${maxItems}項目。
+各項目のcontent: 150-200文字。
+detailedSummaryItems全体の合計は1000文字以内。合計文字数を優先してください。
 ${METADATA_WARNING}`;
     } else if (contentLength >= 1000) {
       const minItems = Math.max(3, Math.floor(3 * policyMultiplier));
       const maxItems = Math.max(minItems, Math.floor(4 * policyMultiplier));
       return `
 
-Article is ${contentLength} characters.
-detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: 130-175 characters.
-TOTAL detailedSummaryItems length MUST NOT exceed 700 characters. Prioritize total limit over per-item length.
+記事は${contentLength}文字です。
+detailedSummaryItems: ${minItems}-${maxItems}項目。
+各項目のcontent: 130-175文字。
+detailedSummaryItems全体の合計は700文字以内。合計文字数を優先してください。
 ${METADATA_WARNING}`;
     } else {
       // 400-999 characters
@@ -144,10 +149,10 @@ ${METADATA_WARNING}`;
       const maxItems = Math.max(minItems, Math.floor(3 * policyMultiplier));
       return `
 
-Article is ${contentLength} characters (short).
-detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: 80-200 characters.
-TOTAL detailedSummaryItems length MUST NOT exceed 600 characters. Prioritize total limit over per-item length.
+記事は${contentLength}文字（短い）です。
+detailedSummaryItems: ${minItems}-${maxItems}項目。
+各項目のcontent: 80-200文字。
+detailedSummaryItems全体の合計は600文字以内。合計文字数を優先してください。
 ${METADATA_WARNING}`;
     }
   }
@@ -158,9 +163,9 @@ ${METADATA_WARNING}`;
     }
 
     if (tone === 'formal') {
-      return '\n\nTone: formal. Use professional language and precise terminology.';
+      return '\n\nトーン: フォーマル。専門的で正確な用語を使用してください。';
     } else {
-      return '\n\nTone: casual. Use approachable and friendly language.';
+      return '\n\nトーン: カジュアル。親しみやすく分かりやすい表現を使用してください。';
     }
   }
 
@@ -173,12 +178,12 @@ ${METADATA_WARNING}`;
 
     const typeGuidance: Record<string, string> = {
       technical:
-        '\n\nArticle type: technical. Focus on implementation details, specifications, and performance characteristics.',
-      news: '\n\nArticle type: news. Focus on announcements, new features, impact, and future outlook.',
+        '\n\n記事タイプ: 技術記事。実装の詳細、仕様、パフォーマンス特性に焦点を当ててください。',
+      news: '\n\n記事タイプ: ニュース。発表内容、新機能、影響、今後の展望に焦点を当ててください。',
       tutorial:
-        '\n\nArticle type: tutorial. Focus on steps, implementation methods, code examples, and caveats.',
+        '\n\n記事タイプ: チュートリアル。手順、実装方法、コード例、注意点に焦点を当ててください。',
       opinion:
-        "\n\nArticle type: opinion. Focus on the author's perspective, pros/cons, and recommendations.",
+        '\n\n記事タイプ: オピニオン。著者の見解、メリット・デメリット、推奨事項に焦点を当ててください。',
     };
 
     return typeGuidance[articleType] || '';
