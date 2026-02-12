@@ -105,7 +105,8 @@ ${METADATA_WARNING}`;
 
 Article is ${contentLength} characters (very long).
 detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: at least 150 characters with specific details (versions, metrics, dates, commands).
+Each item's content: 120-180 characters with specific details (versions, metrics, dates, commands).
+TOTAL detailedSummaryItems length MUST NOT exceed 1500 characters. Prioritize item count over item length.
 ${METADATA_WARNING}`;
     } else if (contentLength >= 5000) {
       const minItems = Math.max(5, Math.floor(5 * policyMultiplier));
@@ -114,7 +115,8 @@ ${METADATA_WARNING}`;
 
 Article is ${contentLength} characters (long).
 detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: at least 120 characters with concrete details.
+Each item's content: 120-200 characters with concrete details.
+TOTAL detailedSummaryItems length MUST NOT exceed 1200 characters. Be concise.
 ${METADATA_WARNING}`;
     } else if (contentLength >= 3000) {
       const minItems = Math.max(4, Math.floor(4 * policyMultiplier));
@@ -123,7 +125,8 @@ ${METADATA_WARNING}`;
 
 Article is ${contentLength} characters.
 detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: at least 150 characters.
+Each item's content: 150-220 characters.
+TOTAL detailedSummaryItems length MUST NOT exceed 1000 characters. Be concise.
 ${METADATA_WARNING}`;
     } else if (contentLength >= 1000) {
       const minItems = Math.max(3, Math.floor(3 * policyMultiplier));
@@ -132,7 +135,8 @@ ${METADATA_WARNING}`;
 
 Article is ${contentLength} characters.
 detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: at least 130 characters.
+Each item's content: 130-200 characters.
+TOTAL detailedSummaryItems length MUST NOT exceed 700 characters. Be concise.
 ${METADATA_WARNING}`;
     } else {
       // 400-999 characters
@@ -142,7 +146,8 @@ ${METADATA_WARNING}`;
 
 Article is ${contentLength} characters (short).
 detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: at least 80 characters.
+Each item's content: 80-250 characters.
+TOTAL detailedSummaryItems length MUST NOT exceed 600 characters. Be concise.
 ${METADATA_WARNING}`;
     }
   }

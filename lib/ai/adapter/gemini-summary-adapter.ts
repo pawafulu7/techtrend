@@ -41,7 +41,7 @@ const SUMMARY_JSON_SCHEMA = {
           content: {
             type: 'STRING',
             description:
-              'Detailed content with 2-3+ sentences of concrete information',
+              'Detailed content with 2-3 sentences of concrete information (120-200 characters per item)',
           },
         },
         required: ['title', 'content'],
