@@ -116,7 +116,7 @@ export function checkSummaryQuality(
 
   // コンテンツ長に基づく項目数要件を追加
   const contentLength =
-    contentAnalysis?.totalLength || contentAnalysis?.contentLength || 0;
+    contentAnalysis?.totalLength ?? contentAnalysis?.contentLength ?? 0;
 
   // 動的な基準設定（contentAnalysisがある場合はそれを使用）
   const minSummaryLength = contentAnalysis?.isThinContent
@@ -244,7 +244,7 @@ export function checkSummaryQuality(
   }
 
   // ★★★ 重要な追加: 項目数チェック ★★★
-  const itemCount = (detailedSummary.match(/・/g) || []).length;
+  const itemCount = (detailedSummary.match(/^・/gm) || []).length;
 
   // コンテンツ長に応じた最低項目数の決定
   let minItems = 3; // デフォルト
@@ -309,8 +309,10 @@ export function checkSummaryQuality(
     count: summarySpeculative.count + detailedSpeculative.count,
     ratio: Math.max(summarySpeculative.ratio, detailedSpeculative.ratio),
     expressions: [
-      ...summarySpeculative.expressions,
-      ...detailedSpeculative.expressions,
+      ...new Set([
+        ...summarySpeculative.expressions,
+        ...detailedSpeculative.expressions,
+      ]),
     ],
   };
 
@@ -401,7 +403,9 @@ export function checkSummaryQuality(
     score,
     speculativeExpressions: speculativeResult,
     itemCount, // 項目数も返す
-    itemCountValid: itemCount >= minItems, // 項目数が有効かどうか
+    itemCountValid: contentAnalysis?.isThinContent
+      ? true
+      : itemCount >= minItems,
   };
 }
 
@@ -681,9 +685,14 @@ export function expandSummaryIfNeeded(
 export function calculateQualityScore(
   summary: string,
   detailedSummary: string,
-  speculativeWeight: number = 2.0
+  speculativeWeight: number = 2.0,
+  contentAnalysis?: ContentAnalysis
 ): number {
-  const baseCheck = checkSummaryQuality(summary, detailedSummary);
+  const baseCheck = checkSummaryQuality(
+    summary,
+    detailedSummary,
+    contentAnalysis
+  );
   let score = baseCheck.score;
 
   // 推測表現による追加ペナルティ

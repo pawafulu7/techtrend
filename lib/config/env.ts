@@ -7,85 +7,104 @@ import { z } from 'zod';
 import logger from '@/lib/logger';
 
 // Helpers to coerce empty strings to undefined for optional vars
-const emptyToUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
+const emptyToUndefined = (v: unknown) =>
+  typeof v === 'string' && v.trim() === '' ? undefined : v;
 const optionalUrl = z.preprocess(emptyToUndefined, z.string().url()).optional();
 const numericStringWithDefault = (def: string) =>
-  z.preprocess(emptyToUndefined, z.string().regex(/^\d+$/)).optional().default(def);
+  z
+    .preprocess(emptyToUndefined, z.string().regex(/^\d+$/))
+    .optional()
+    .default(def);
 
 // Environment variable schema
-const envSchema = z.object({
-  // Database
-  DATABASE_URL: optionalUrl,
-  
-  // Redis
-  REDIS_URL: z.string().optional(),
-  REDIS_HOST: z.string().optional().default('localhost'),
-  REDIS_PORT: numericStringWithDefault('6379'),
-  REDIS_PASSWORD: z.string().optional(),
-  
-  // Authentication (Auth.js v5 supports both AUTH_* and NEXTAUTH_*)
-  NEXTAUTH_URL: optionalUrl,
-  AUTH_SECRET: z.string().min(32).optional(),
-  NEXTAUTH_SECRET: z.string().min(32).optional(),
-  
-  // OAuth Providers (optional, but must be non-empty if provided)
-  GOOGLE_CLIENT_ID: z.string().trim().min(1).optional(),
-  GOOGLE_CLIENT_SECRET: z.string().trim().min(1).optional(),
-  GITHUB_CLIENT_ID: z.string().trim().min(1).optional(),
-  GITHUB_CLIENT_SECRET: z.string().trim().min(1).optional(),
-  
-  // AI Services
-  GEMINI_API_KEY: z.string().optional(),
-  OPENAI_API_KEY: z.string()
-    .startsWith('sk-', 'Invalid OpenAI API key format')
-    .optional(),
-  ANTHROPIC_API_KEY: z.string().optional(),
+const envSchema = z
+  .object({
+    // Database
+    DATABASE_URL: optionalUrl,
 
-  // RAG & Embeddings
-  EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
-  EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
-  EMBEDDING_BATCH_SIZE: z.coerce.number().int().min(1).max(2048).default(100),
-  EMBEDDING_CONCURRENCY: z.coerce.number().int().min(1).max(100).default(50),
+    // Redis
+    REDIS_URL: z.string().optional(),
+    REDIS_HOST: z.string().optional().default('localhost'),
+    REDIS_PORT: numericStringWithDefault('6379'),
+    REDIS_PASSWORD: z.string().optional(),
 
-  // RAG Configuration
-  RAG_TOP_K: z.coerce.number().int().min(1).max(100).default(10),
-  RAG_SIMILARITY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
-  RAG_ACTIVE_MODEL: z.string().default('text-embedding-3-small'),
-  RAG_ACTIVE_VERSION: z.coerce.number().int().positive().default(1),
-  RAG_ENABLED: z.enum(['true', 'false']).optional().default('false'),
+    // Authentication (Auth.js v5 supports both AUTH_* and NEXTAUTH_*)
+    NEXTAUTH_URL: optionalUrl,
+    AUTH_SECRET: z.string().min(32).optional(),
+    NEXTAUTH_SECRET: z.string().min(32).optional(),
 
-  // Upstash Redis (for rate limiting in production)
-  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
-  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
-  
-  // Feature Flags
-  ENABLE_CACHE: z.enum(['true', 'false']).optional().default('true'),
-  ENABLE_AUTH: z.enum(['true', 'false']).optional().default('true'),
-  ENABLE_ANALYTICS: z.enum(['true', 'false']).optional().default('false'),
-  AGENT_STREAMING_ENABLED: z.enum(['true', 'false']).optional().default('false'),
-  
-  // Quality Control
-  QUALITY_CHECK_ENABLED: z.enum(['true', 'false']).optional().default('false'),
-  QUALITY_MIN_SCORE: numericStringWithDefault('70'),
-  QUALITY_AUTO_FIX: z.enum(['true', 'false']).optional().default('false'),
-  MAX_REGENERATION_ATTEMPTS: numericStringWithDefault('3'),
-  
-  // Event Filtering
-  EXCLUDE_EVENT_ARTICLES: z.enum(['true', 'false']).optional().default('false'),
-  MAX_ARTICLES_PER_COMPANY: numericStringWithDefault('10'),
-  
-  // Application
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: numericStringWithDefault('3000'),
-  NEXT_PUBLIC_APP_URL: optionalUrl,
-  
-  // Logging
-  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional().default('info'),
-  
-  // Testing
-  CI: z.union([z.enum(['true', 'false']), z.literal('1'), z.literal('0')]).optional(),
-  TEST_DATABASE_URL: z.string().optional(),
-})
+    // OAuth Providers (optional, but must be non-empty if provided)
+    GOOGLE_CLIENT_ID: z.string().trim().min(1).optional(),
+    GOOGLE_CLIENT_SECRET: z.string().trim().min(1).optional(),
+    GITHUB_CLIENT_ID: z.string().trim().min(1).optional(),
+    GITHUB_CLIENT_SECRET: z.string().trim().min(1).optional(),
+
+    // AI Services
+    GEMINI_API_KEY: z.string().optional(),
+    OPENAI_API_KEY: z
+      .string()
+      .startsWith('sk-', 'Invalid OpenAI API key format')
+      .optional(),
+    ANTHROPIC_API_KEY: z.string().optional(),
+
+    // RAG & Embeddings
+    EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
+    EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
+    EMBEDDING_BATCH_SIZE: z.coerce.number().int().min(1).max(2048).default(100),
+    EMBEDDING_CONCURRENCY: z.coerce.number().int().min(1).max(100).default(50),
+
+    // RAG Configuration
+    RAG_TOP_K: z.coerce.number().int().min(1).max(100).default(10),
+    RAG_SIMILARITY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
+    RAG_ACTIVE_MODEL: z.string().default('text-embedding-3-small'),
+    RAG_ACTIVE_VERSION: z.coerce.number().int().positive().default(1),
+    RAG_ENABLED: z.enum(['true', 'false']).optional().default('false'),
+
+    // Upstash Redis (for rate limiting in production)
+    UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+    UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
+    // Feature Flags
+    ENABLE_CACHE: z.enum(['true', 'false']).optional().default('true'),
+    ENABLE_AUTH: z.enum(['true', 'false']).optional().default('true'),
+    ENABLE_ANALYTICS: z.enum(['true', 'false']).optional().default('false'),
+    AGENT_STREAMING_ENABLED: z
+      .enum(['true', 'false'])
+      .optional()
+      .default('false'),
+
+    // Quality Control
+    QUALITY_CHECK_ENABLED: z.enum(['true', 'false']).optional().default('true'),
+    QUALITY_MIN_SCORE: numericStringWithDefault('70'),
+    QUALITY_AUTO_FIX: z.enum(['true', 'false']).optional().default('false'),
+    MAX_REGENERATION_ATTEMPTS: numericStringWithDefault('3'),
+
+    // Event Filtering
+    EXCLUDE_EVENT_ARTICLES: z
+      .enum(['true', 'false'])
+      .optional()
+      .default('false'),
+    MAX_ARTICLES_PER_COMPANY: numericStringWithDefault('10'),
+
+    // Application
+    NODE_ENV: z
+      .enum(['development', 'production', 'test'])
+      .default('development'),
+    PORT: numericStringWithDefault('3000'),
+    NEXT_PUBLIC_APP_URL: optionalUrl,
+
+    // Logging
+    LOG_LEVEL: z
+      .enum(['debug', 'info', 'warn', 'error'])
+      .optional()
+      .default('info'),
+
+    // Testing
+    CI: z
+      .union([z.enum(['true', 'false']), z.literal('1'), z.literal('0')])
+      .optional(),
+    TEST_DATABASE_URL: z.string().optional(),
+  })
   .superRefine((env, ctx) => {
     // Ensure at least one auth secret is provided
     if (!env.AUTH_SECRET && !env.NEXTAUTH_SECRET) {
@@ -116,7 +135,7 @@ function formatValidationErrors(errors: z.ZodError): string {
     return '  - Unknown validation error';
   }
   return errors.issues
-    .map(err => `  - ${err.path.join('.')}: ${err.message}`)
+    .map((err) => `  - ${err.path.join('.')}: ${err.message}`)
     .join('\n');
 }
 
@@ -124,7 +143,8 @@ function formatValidationErrors(errors: z.ZodError): string {
 let _env: Env | null = null;
 
 // Development fallback secret
-const DEV_AUTH_SECRET = 'development-secret-key-change-me-in-production-min-32-chars';
+const DEV_AUTH_SECRET =
+  'development-secret-key-change-me-in-production-min-32-chars';
 
 /**
  * Check if ZodError is only about missing auth secrets
@@ -158,7 +178,10 @@ Please check your .env file and ensure all required variables are set correctly.
     `.trim();
 
     // In development, allow fallback ONLY for auth secret issues
-    if (process.env.NODE_ENV === 'development' && isAuthSecretOnlyError(parsed.error)) {
+    if (
+      process.env.NODE_ENV === 'development' &&
+      isAuthSecretOnlyError(parsed.error)
+    ) {
       logger.warn(errorMessage);
       logger.warn('Using development auth secret fallback');
 
@@ -201,11 +224,13 @@ export const features = {
   isCacheEnabled: () => env.ENABLE_CACHE === 'true',
   isAuthEnabled: () => env.ENABLE_AUTH === 'true',
   isAnalyticsEnabled: () => env.ENABLE_ANALYTICS === 'true',
-  isAgentStreamingEnabled: () => env.NODE_ENV === 'test' ? false : env.AGENT_STREAMING_ENABLED === 'true',
+  isAgentStreamingEnabled: () =>
+    env.NODE_ENV === 'test' ? false : env.AGENT_STREAMING_ENABLED === 'true',
   isQualityCheckEnabled: () => env.QUALITY_CHECK_ENABLED === 'true',
   shouldExcludeEventArticles: () => env.EXCLUDE_EVENT_ARTICLES === 'true',
   isRagEnabled: () => env.RAG_ENABLED === 'true' && !!env.OPENAI_API_KEY,
-  isRateLimitingEnabled: () => !!(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN),
+  isRateLimitingEnabled: () =>
+    !!(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN),
 };
 
 /**
@@ -213,7 +238,10 @@ export const features = {
  */
 export const config = {
   database: {
-    url: () => env.NODE_ENV === 'test' ? env.TEST_DATABASE_URL || env.DATABASE_URL : env.DATABASE_URL,
+    url: () =>
+      env.NODE_ENV === 'test'
+        ? env.TEST_DATABASE_URL || env.DATABASE_URL
+        : env.DATABASE_URL,
   },
   redis: {
     // Build URL strictly from validated env to ensure test determinism
