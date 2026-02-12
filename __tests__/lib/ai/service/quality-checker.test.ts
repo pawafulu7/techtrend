@@ -22,7 +22,7 @@ describe('SummaryQualityChecker', () => {
         'x'.repeat(98),
         'x'.repeat(97),
       ];
-      const detailedSummary = items.map((item) => `・${item}`).join('\n'); // Total: 599 chars
+      const detailedSummary = items.map((item) => `・${item}`).join('\n'); // Total: 598 chars
 
       const contentAnalysis: ContentAnalysis = {
         totalLength: 5000,
@@ -53,7 +53,7 @@ describe('SummaryQualityChecker', () => {
         'x'.repeat(115),
         'x'.repeat(113),
       ];
-      const detailedSummary = items.map((item) => `・${item}`).join('\n'); // Total: 700 chars
+      const detailedSummary = items.map((item) => `・${item}`).join('\n'); // Total: 699 chars
 
       const contentAnalysis: ContentAnalysis = {
         totalLength: 5000,
@@ -84,7 +84,7 @@ describe('SummaryQualityChecker', () => {
         'x'.repeat(198),
         'x'.repeat(198),
       ];
-      const detailedSummary = items.map((item) => `・${item}`).join('\n'); // Total: 1200 chars
+      const detailedSummary = items.map((item) => `・${item}`).join('\n'); // Total: 1199 chars
 
       const contentAnalysis: ContentAnalysis = {
         totalLength: 5000,

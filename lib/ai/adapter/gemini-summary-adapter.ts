@@ -172,7 +172,8 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       if (
         typeof parsed.summary !== 'string' ||
         !Array.isArray(parsed.detailedSummaryItems) ||
-        !Array.isArray(parsed.tags)
+        !Array.isArray(parsed.tags) ||
+        typeof parsed.category !== 'string'
       ) {
         throw new Error('Missing required fields in JSON response');
       }
@@ -426,11 +427,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         return true;
       }
 
-      if (
-        /^\[ここに.*\]$/.test(trimmedLine) ||
-        trimmedLine === '-' ||
-        /^文字数[:：]/.test(trimmedLine)
-      ) {
+      if (trimmedLine === '-') {
         return true;
       }
     }

@@ -282,20 +282,19 @@ export function checkSummaryQuality(
 
   // 4. 詳細要約の形式チェック（薄いコンテンツの場合は箇条書きを必須としない）
   if (!contentAnalysis?.isThinContent) {
-    const bulletPoints = (detailedSummary.match(/・/g) || []).length;
-    if (bulletPoints === 0) {
+    if (itemCount === 0) {
       issues.push({
         type: 'format',
         severity: 'major',
         message: '詳細要約に箇条書き（・）が含まれていない',
       });
       score -= 15;
-    } else if (bulletPoints < 3 && contentLength < 3000) {
+    } else if (itemCount < 3 && contentLength < 3000) {
       // 短い記事の場合のみ項目数チェック
       issues.push({
         type: 'format',
         severity: 'minor',
-        message: `詳細要約の項目数が少ない: ${bulletPoints}項目（理想は3-5項目）`,
+        message: `詳細要約の項目数が少ない: ${itemCount}項目（理想は3-5項目）`,
       });
       score -= 5;
     }
@@ -373,15 +372,7 @@ export function checkSummaryQuality(
       });
       score -= 30;
     }
-    // 詳細要約に箇条書きがないかチェック（薄いコンテンツ以外）
-    if (!contentAnalysis?.isThinContent && !detailedSummary.includes('・')) {
-      issues.push({
-        type: 'format',
-        severity: 'major',
-        message: '詳細要約に箇条書き形式がない',
-      });
-      score -= 20;
-    }
+    // Note: 箇条書きチェックはセクション4で実施済み（itemCount使用）
   }
 
   // スコアの調整
@@ -389,7 +380,7 @@ export function checkSummaryQuality(
 
   // 再生成が必要かどうかの判定（項目数不足も含む）
   const requiresRegeneration =
-    score < parseInt(process.env.QUALITY_MIN_SCORE || '70') ||
+    score < getMinQualityScore() ||
     issues.some((issue) => issue.severity === 'critical') ||
     (contentLength >= 5000 && itemCount < minItems); // 項目数不足も再生成トリガーに
 
@@ -413,9 +404,6 @@ export function checkSummaryQuality(
   };
 }
 
-/**
- * 品質チェック結果の統計情報を計算
- */
 /**
  * 品質チェック結果の統計情報を計算
  */
@@ -499,10 +487,7 @@ export function calculateQualityStats(results: QualityCheckResult[]): {
 }
 
 /**
- * 品質チェック機能が有効かどうか
- */
-/**
- * 品質チェックが有効かどうかを判定
+ * 品質チェック機能が有効かどうかを判定
  */
 export function isQualityCheckEnabled(): boolean {
   // 環境変数が設定されていない場合はデフォルトでtrue
@@ -512,9 +497,6 @@ export function isQualityCheckEnabled(): boolean {
   return process.env.QUALITY_CHECK_ENABLED === 'true';
 }
 
-/**
- * 最大再生成回数を取得
- */
 /**
  * 最大再生成試行回数を取得
  */
@@ -526,17 +508,11 @@ export function getMaxRegenerationAttempts(): number {
 /**
  * 品質スコアの最小値を取得
  */
-/**
- * 品質スコアの最小値を取得
- */
 export function getMinQualityScore(): number {
   const value = parseInt(process.env.QUALITY_MIN_SCORE || '70');
   return isNaN(value) ? 70 : value;
 }
 
-/**
- * 品質レポートを生成
- */
 /**
  * 品質チェック結果のレポートを生成
  */

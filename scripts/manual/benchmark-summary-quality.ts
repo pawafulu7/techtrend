@@ -181,6 +181,19 @@ async function generateAndScore(
       await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
       console.error(`  Error: ${(error as Error).message}`);
+      results.push({
+        articleId: article.id,
+        title: article.title,
+        contentLength: article.content_len,
+        bin: article.bin,
+        summary: '',
+        detailedSummary: '',
+        category: '',
+        tags: [],
+        qualityScore: 0,
+        issues: [{ type: 'error', severity: 'critical' as const, message: (error as Error).message }],
+        generatedAt: new Date().toISOString(),
+      });
     }
   }
   return results;
@@ -327,7 +340,6 @@ async function main(): Promise<void> {
     }
   }
 
-  await prisma.$disconnect();
 }
 
 main()

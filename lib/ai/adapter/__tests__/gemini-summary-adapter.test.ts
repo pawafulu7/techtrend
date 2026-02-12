@@ -225,6 +225,67 @@ describe('GeminiSummaryAdapter', () => {
         'Summary contains instruction markers'
       );
     });
+
+    it('should reject JSON response with instruction markers in detailedSummary', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Test',
+        content: 'Content',
+        constraints: { maxHeadlineChars: 200, detailPolicy: 'medium' },
+        requestId: 'test-detailed-instruction',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      const payload = makeJsonPayload({
+        summary: '正常な要約テキストです。',
+        detailedSummaryItems: [
+          { title: '【形式】', content: 'instruction contamination' },
+        ],
+        category: 'Other',
+        tags: [],
+      });
+
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        httpStatus: 200,
+        payload,
+        latencyMs: 500,
+        headers: {},
+      });
+
+      await expect(adapter.summarize(input)).rejects.toThrow(
+        'Detailed summary contains instruction markers'
+      );
+    });
+
+    it('should fallback to その他 for unknown category', async () => {
+      const input: SummaryProviderInput = {
+        title: 'Unknown Category',
+        content: 'Content',
+        constraints: { maxHeadlineChars: 200, detailPolicy: 'medium' },
+        requestId: 'test-unknown-cat',
+      };
+
+      mockPromptBuilder.buildPrompt.mockReturnValue('prompt');
+
+      const payload = makeJsonPayload({
+        summary: 'テスト要約です。',
+        detailedSummaryItems: [{ title: '項目', content: '内容' }],
+        category: 'UnknownCategory',
+        tags: ['test'],
+      });
+
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        httpStatus: 200,
+        payload,
+        latencyMs: 500,
+        headers: {},
+      });
+
+      const result = await adapter.summarize(input);
+      expect(result.category).toBe('その他');
+    });
   });
 
   describe('テキストフォールバック', () => {

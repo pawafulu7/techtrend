@@ -116,7 +116,7 @@ ${METADATA_WARNING}`;
 Article is ${contentLength} characters (long).
 detailedSummaryItems: ${minItems}-${maxItems} items.
 Each item's content: 120-200 characters with concrete details.
-TOTAL detailedSummaryItems length MUST NOT exceed 1200 characters. Be concise.
+TOTAL detailedSummaryItems length MUST NOT exceed 1200 characters. Prioritize total limit over per-item length.
 ${METADATA_WARNING}`;
     } else if (contentLength >= 3000) {
       const minItems = Math.max(4, Math.floor(4 * policyMultiplier));
@@ -125,8 +125,8 @@ ${METADATA_WARNING}`;
 
 Article is ${contentLength} characters.
 detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: 150-220 characters.
-TOTAL detailedSummaryItems length MUST NOT exceed 1000 characters. Be concise.
+Each item's content: 150-200 characters.
+TOTAL detailedSummaryItems length MUST NOT exceed 1000 characters. Prioritize total limit over per-item length.
 ${METADATA_WARNING}`;
     } else if (contentLength >= 1000) {
       const minItems = Math.max(3, Math.floor(3 * policyMultiplier));
@@ -135,8 +135,8 @@ ${METADATA_WARNING}`;
 
 Article is ${contentLength} characters.
 detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: 130-200 characters.
-TOTAL detailedSummaryItems length MUST NOT exceed 700 characters. Be concise.
+Each item's content: 130-175 characters.
+TOTAL detailedSummaryItems length MUST NOT exceed 700 characters. Prioritize total limit over per-item length.
 ${METADATA_WARNING}`;
     } else {
       // 400-999 characters
@@ -146,8 +146,8 @@ ${METADATA_WARNING}`;
 
 Article is ${contentLength} characters (short).
 detailedSummaryItems: ${minItems}-${maxItems} items.
-Each item's content: 80-250 characters.
-TOTAL detailedSummaryItems length MUST NOT exceed 600 characters. Be concise.
+Each item's content: 80-200 characters.
+TOTAL detailedSummaryItems length MUST NOT exceed 600 characters. Prioritize total limit over per-item length.
 ${METADATA_WARNING}`;
     }
   }

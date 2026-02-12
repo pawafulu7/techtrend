@@ -14,7 +14,7 @@ export const INSTRUCTION_PATTERNS = [
   /^-\s*技術的価値を/,
   /^ここに.*書く/,
   /^- \d+文字以上の記事/,
-  /^-\s*[0-9０-９]+(?:\s*[-〜~～]\s*[0-9０-９]+)?\s*文字.*の記事.*(?:作成|必ず|以上|以内)/,  // 範囲形式対応（「の記事」+指示語で誤検知防止）
+  /^-\s*[0-9０-９]+(?:\s*[-〜~～]\s*[0-9０-９]+)?\s*文字.*の記事.*(?:作成|必ず|以上|以内)/, // 範囲形式対応（「の記事」+指示語で誤検知防止）
 
   // 新規追加パターン（プロンプト混入問題対応）
   /^【文末】/,
@@ -26,26 +26,26 @@ export const INSTRUCTION_PATTERNS = [
   // プロンプト指示文混入問題対応（2025-11-24追加 + CodexMCP推奨）
   // 基本パターン
   /^【形式】/,
-  /^\s*【形式】[:：]/,          // コロン付き、先頭空白対応
+  /^\s*【形式】[:：]/, // コロン付き、先頭空白対応
   /^【出力形式】/,
   /^【項目数の必須要件】/,
   /^【各項目の必須要件】/,
   /^【指針】/,
   /^【推奨】/,
-  /^【注意事項】/,               // 「【注意】」を限定（誤検出防止）
+  /^【注意事項】/, // 「【注意】」を限定（誤検出防止）
   /^【注意点】/,
 
   // 番号付きパターン
-  /^\d+\.\s*【/,                // 「1. 【形式】」等
+  /^\d+\.\s*【/, // 「1. 【形式】」等
 
   // 箇条書き先頭記号（先頭空白対応）
-  /^\s*[・\-●\*]\s*【/,        // 「  ・【形式】」「- 【条件】」等
+  /^\s*[・\-●\*]\s*【/, // 「  ・【形式】」「- 【条件】」等
 
   // 汎用パターン
-  /^【.*】$/,           // 任意の【】記号のみの行
-  /^-\s*.*→.*/,        // 略称指示パターン (例: JavaScript→JS)
-  /^\[ここに.*\]/,     // テンプレート指示 (例: [ここに要約を出力])
-  /^-\s*文字数[:：]/,  // 文字数指示
+  /^【.*】$/, // 任意の【】記号のみの行
+  /^-\s*.*→.*/, // 略称指示パターン (例: JavaScript→JS)
+  /^\[ここに.*\]/, // テンプレート指示 (例: [ここに要約を出力])
+  /^-?\s*文字数[:：]/, // 文字数指示（ダッシュあり/なし両対応）
 
   // 再発防止パターン（2025-10-07追加）
   /^【記事文字数要件】/,
@@ -53,7 +53,7 @@ export const INSTRUCTION_PATTERNS = [
   /^Article content length:/,
   /^Summary requirements:/,
   /^IMPORTANT: The above metadata/,
-  /DO NOT OUTPUT/,  // 部分一致（行頭以外でも検出）
+  /DO NOT OUTPUT/, // 部分一致（行頭以外でも検出）
 ];
 
 // カテゴリ的なラベル（削除対象）
@@ -126,20 +126,20 @@ export const CONTAMINATION_SEARCH_TERMS = [
  * 変更時は両ファイルの整合性を保つこと
  */
 export interface ItemCountRule {
-  minLength: number;      // このルールが適用されるコンテンツ長の下限
-  minItems: number;       // 最小項目数
-  maxItems: number;       // 最大項目数
+  minLength: number; // このルールが適用されるコンテンツ長の下限
+  minItems: number; // 最小項目数
+  maxItems: number; // 最大項目数
   recommendedItems: string; // 推奨表示用文字列
 }
 
 // コンテンツ長の降順でソート（大きいものから評価）
 export const ITEM_COUNT_RULES: ItemCountRule[] = [
   { minLength: 10000, minItems: 7, maxItems: 9, recommendedItems: '7-9' },
-  { minLength: 5000,  minItems: 5, maxItems: 7, recommendedItems: '5-7' },
-  { minLength: 3000,  minItems: 4, maxItems: 5, recommendedItems: '4-5' },
-  { minLength: 1000,  minItems: 3, maxItems: 4, recommendedItems: '3-4' },
-  { minLength: 400,   minItems: 2, maxItems: 3, recommendedItems: '2-3' },
-  { minLength: 0,     minItems: 0, maxItems: 0, recommendedItems: '0' }, // 短文は箇条書き不要
+  { minLength: 5000, minItems: 5, maxItems: 7, recommendedItems: '5-7' },
+  { minLength: 3000, minItems: 4, maxItems: 5, recommendedItems: '4-5' },
+  { minLength: 1000, minItems: 3, maxItems: 4, recommendedItems: '3-4' },
+  { minLength: 400, minItems: 2, maxItems: 3, recommendedItems: '2-3' },
+  { minLength: 0, minItems: 0, maxItems: 0, recommendedItems: '0' }, // 短文は箇条書き不要
 ];
 
 /**

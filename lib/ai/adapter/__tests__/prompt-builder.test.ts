@@ -127,7 +127,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('4000 characters');
       expect(prompt).toContain('detailedSummaryItems: 4-5 items');
-      expect(prompt).toContain('150-220 characters');
+      expect(prompt).toContain('150-200 characters');
     });
 
     it('should generate instructions for short content (1000-2999 chars)', () => {
@@ -146,7 +146,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('1500 characters');
       expect(prompt).toContain('detailedSummaryItems: 3-4 items');
-      expect(prompt).toContain('130-200 characters');
+      expect(prompt).toContain('130-175 characters');
     });
 
     it('should generate instructions for short-medium content (400-999 chars)', () => {
@@ -165,7 +165,7 @@ describe('PromptBuilder', () => {
 
       expect(prompt).toContain('500 characters (short)');
       expect(prompt).toContain('detailedSummaryItems: 2-3 items');
-      expect(prompt).toContain('80-250 characters');
+      expect(prompt).toContain('80-200 characters');
     });
 
     it('should generate instructions for very short content (<400 chars)', () => {
