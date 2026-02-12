@@ -116,24 +116,8 @@ export class SummaryQualityChecker implements QualityChecker {
       }
     }
 
-    // 薄いコンテンツ（非短文）で詳細要約が元記事の2倍を超える場合はcritical
-    // 短文は1.5倍ルールで判定するため除外
-    if (
-      hasContentLength &&
-      contentAnalysis?.isThinContent === true &&
-      !isShortContent &&
-      detailedLength > contentLength * 2
-    ) {
-      issues.push({
-        type: 'length',
-        severity: 'critical',
-        message: `薄いコンテンツで詳細要約が長すぎる: ${detailedLength}文字（元記事${contentLength}文字の${Math.round(detailedLength / contentLength)}倍）`,
-      });
-      score = 0; // 自動Fail
-    }
-
     // 短文（<400字）で詳細要約が元記事の1.5倍を超える場合はcritical
-    // isShortContentフラグを使用して条件を統一
+    // isThinContent閾値が400に統一されたため、isThinContent===true && !isShortContentは発生しない
     if (isShortContent && detailedLength > contentLength * 1.5) {
       const ratio = Math.round((detailedLength / contentLength) * 10) / 10;
       issues.push({

@@ -171,7 +171,8 @@ export class GeminiSummaryAdapter implements SummaryProvider {
 
       if (
         typeof parsed.summary !== 'string' ||
-        !Array.isArray(parsed.detailedSummaryItems)
+        !Array.isArray(parsed.detailedSummaryItems) ||
+        !Array.isArray(parsed.tags)
       ) {
         throw new Error('Missing required fields in JSON response');
       }
@@ -182,8 +183,14 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         .join('\n');
 
       // Map English category to Japanese
-      const category =
-        CATEGORY_MAP[parsed.category] || parsed.category || 'その他';
+      const mappedCategory = CATEGORY_MAP[parsed.category];
+      if (!mappedCategory && parsed.category) {
+        logger.warn(
+          { requestId, rawCategory: parsed.category },
+          'Unknown category from Structured Output'
+        );
+      }
+      const category = mappedCategory || 'その他';
 
       // Instruction marker check on the parsed content
       if (this.containsInstructionMarkers(parsed.summary)) {
@@ -203,7 +210,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         headline: parsed.summary,
         detailedSummary,
         category,
-        tags: parsed.tags || [],
+        tags: parsed.tags,
         confidence: 0.95,
         rawResponse: payload,
       };
@@ -212,9 +219,9 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       if (err.message.includes('instruction markers')) {
         throw err;
       }
-      logger.warn(
+      logger.error(
         { requestId, error: err.message },
-        'JSON parse failed, falling back to text extraction'
+        'Structured Output JSON parse failed, falling back to text extraction'
       );
       return this.parseTextResponse(payload, requestId);
     }
@@ -273,14 +280,6 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       logger.error({ error: sanitizeError(err) }, 'Failed to parse response');
       throw new Error(`Response parsing failed: ${err.message}`);
     }
-  }
-
-  // Keep legacy parseResponse for backward compatibility (used by tests)
-  private parseResponse(
-    payload: Record<string, unknown>,
-    requestId: string
-  ): SummaryProviderOutput {
-    return this.parseTextResponse(payload, requestId);
   }
 
   private extractStructuredData(text: string): {

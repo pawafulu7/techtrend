@@ -67,6 +67,10 @@ async function selectAndFixBenchmarkArticles(): Promise<
       `) as ArticleRow[];
       if (rows.length > 0) {
         articles.push({ ...rows[0], bin: entry.bin });
+      } else {
+        console.error(
+          `WARNING: Benchmark article ${entry.id} (bin: ${entry.bin}) no longer exists in database`
+        );
       }
     }
     console.error(
@@ -326,4 +330,9 @@ async function main(): Promise<void> {
   await prisma.$disconnect();
 }
 
-main().catch(console.error);
+main()
+  .catch((err) => {
+    console.error('Benchmark failed:', err);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());
