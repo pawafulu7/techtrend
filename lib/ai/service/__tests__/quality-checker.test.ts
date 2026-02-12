@@ -11,7 +11,7 @@ describe('SummaryQualityChecker', () => {
   describe('基本的な品質チェック', () => {
     it('should pass quality check for valid summary', () => {
       const summary =
-        'この記事ではTypeScriptの型システムについて詳しく解説しています。型安全性を保ちながら柔軟なコードを書く方法を学びます。プリミティブ型からジェネリクスまで、実践的な例とともに理解を深めていきます。';
+        'TypeScriptの型システムを詳しく解説し、型安全性を保ちながら柔軟なコードを書く方法を紹介する。プリミティブ型からジェネリクス、ユニオン型まで、実践的な例とともに段階的に理解を深めていく構成となっている。';
       const detailedSummary = `・概要：TypeScriptの基本的な型システムの紹介と背景
 ・基本型：プリミティブ型とオブジェクト型の使い分け方
 ・高度な型：ジェネリクス、ユニオン型、インターセクション型の活用方法
@@ -40,7 +40,7 @@ describe('SummaryQualityChecker', () => {
 
     it('should detect detailed summary that is too short', () => {
       const summary =
-        'この記事ではTypeScriptの型システムについて詳しく解説しています。型安全性を保ちながら柔軟なコードを書く方法を学びます。';
+        'TypeScriptの型システムを詳しく解説し、型安全性を保ちながら柔軟なコードを書く方法を紹介する。';
       const detailedSummary = '・概要：TypeScript';
 
       const result = checker.checkQuality(summary, detailedSummary);
@@ -57,14 +57,16 @@ describe('SummaryQualityChecker', () => {
 
       const result = checker.checkQuality(summary, detailedSummary);
 
-      expect(result.issues.some((issue) => issue.type === 'punctuation')).toBe(true);
+      expect(result.issues.some((issue) => issue.type === 'punctuation')).toBe(
+        true
+      );
     });
   });
 
   describe('コンテンツ長に応じた品質チェック', () => {
     it('should apply strict item count check for long content', () => {
       const summary =
-        'この記事ではReactの高度なパターンについて詳細に解説しています。パフォーマンス最適化からコンポーネント設計まで幅広くカバーします。';
+        'Reactの高度なパターンを詳細に解説し、パフォーマンス最適化からコンポーネント設計まで幅広くカバーする。';
       const detailedSummary = `・概要：Reactの高度なパターン
 ・パフォーマンス：最適化手法
 ・設計：コンポーネント設計のベストプラクティス`;
@@ -75,16 +77,22 @@ describe('SummaryQualityChecker', () => {
         isThinContent: false,
       };
 
-      const result = checker.checkQuality(summary, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        summary,
+        detailedSummary,
+        contentAnalysis
+      );
 
-      expect(result.issues.some((issue) => issue.type === 'itemCount')).toBe(true);
+      expect(result.issues.some((issue) => issue.type === 'itemCount')).toBe(
+        true
+      );
       expect(result.itemCount).toBe(3);
       expect(result.itemCountValid).toBe(false);
     });
 
     it('should pass item count check for sufficient items in long content', () => {
       const summary =
-        'この記事ではReactの高度なパターンについて詳細に解説しています。パフォーマンス最適化からコンポーネント設計まで幅広くカバーします。';
+        'Reactの高度なパターンを詳細に解説し、パフォーマンス最適化からコンポーネント設計まで幅広くカバーする。';
       const detailedSummary = `・概要：Reactの高度なパターン紹介と背景
 ・Hooks：useCallback、useMemoを使った最適化
 ・Context：コンテキストを使った状態管理のパターン
@@ -97,7 +105,11 @@ describe('SummaryQualityChecker', () => {
         isThinContent: false,
       };
 
-      const result = checker.checkQuality(summary, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        summary,
+        detailedSummary,
+        contentAnalysis
+      );
 
       expect(result.itemCount).toBe(5);
       expect(result.itemCountValid).toBe(true);
@@ -105,7 +117,7 @@ describe('SummaryQualityChecker', () => {
 
     it('should require more items for very long content', () => {
       const summary =
-        'この記事ではNext.jsの包括的なガイドを提供します。サーバーサイドレンダリングから静的サイト生成、APIルートまで全てをカバーします。';
+        'Next.jsの包括的なガイドとして、サーバーサイドレンダリングから静的サイト生成、APIルートまで全てをカバーする。';
       const detailedSummary = `・概要：Next.jsの包括的ガイド
 ・SSR：サーバーサイドレンダリングの実装方法
 ・SSG：静的サイト生成の利点と使い方
@@ -118,9 +130,15 @@ describe('SummaryQualityChecker', () => {
         isThinContent: false,
       };
 
-      const result = checker.checkQuality(summary, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        summary,
+        detailedSummary,
+        contentAnalysis
+      );
 
-      expect(result.issues.some((issue) => issue.type === 'itemCount')).toBe(true);
+      expect(result.issues.some((issue) => issue.type === 'itemCount')).toBe(
+        true
+      );
       expect(result.itemCount).toBe(5);
       expect(result.itemCountValid).toBe(false);
     });
@@ -129,7 +147,7 @@ describe('SummaryQualityChecker', () => {
   describe('推測表現の検出', () => {
     it('should detect speculative expressions', () => {
       const summary =
-        'この記事ではTypeScriptについて解説していると考えられます。型システムが使われているようです。';
+        'TypeScriptについて解説していると考えられます。型システムが使われているようです。';
       const detailedSummary = `・概要：TypeScriptの基本的な型システムかもしれません
 ・基本型：プリミティブ型が使われているでしょう
 ・実践例：プロジェクト例があると思われます`;
@@ -138,11 +156,13 @@ describe('SummaryQualityChecker', () => {
 
       expect(result.speculativeExpressions).toBeDefined();
       expect(result.speculativeExpressions!.count).toBeGreaterThan(0);
-      expect(result.issues.some((issue) => issue.type === 'speculative')).toBe(true);
+      expect(result.issues.some((issue) => issue.type === 'speculative')).toBe(
+        true
+      );
     });
 
     it('should apply strict check for thin content with speculative expressions', () => {
-      const summary = 'この記事について解説していると考えられます。';
+      const summary = '技術的な内容について解説していると考えられます。';
       const detailedSummary = '・概要：基本的な内容があるようです';
 
       const contentAnalysis: ContentAnalysis = {
@@ -153,9 +173,15 @@ describe('SummaryQualityChecker', () => {
         recommendedMaxLength: 100,
       };
 
-      const result = checker.checkQuality(summary, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        summary,
+        detailedSummary,
+        contentAnalysis
+      );
 
-      expect(result.issues.some((issue) => issue.severity === 'critical')).toBe(true);
+      expect(result.issues.some((issue) => issue.severity === 'critical')).toBe(
+        true
+      );
       expect(result.requiresRegeneration).toBe(true);
     });
   });
@@ -163,7 +189,7 @@ describe('SummaryQualityChecker', () => {
   describe('形式チェック', () => {
     it('should detect missing bullet points in detailed summary', () => {
       const summary =
-        'この記事ではTypeScriptの型システムについて詳しく解説しています。型安全性を保ちながら柔軟なコードを書く方法を学びます。';
+        'TypeScriptの型システムを詳しく解説し、型安全性を保ちながら柔軟なコードを書く方法を紹介する。';
       const detailedSummary = 'TypeScriptの基本的な型システムを紹介します';
 
       const result = checker.checkQuality(summary, detailedSummary);
@@ -173,14 +199,18 @@ describe('SummaryQualityChecker', () => {
 
     it('should detect empty bullet points', () => {
       const summary =
-        'この記事ではTypeScriptの型システムについて詳しく解説しています。型安全性を保ちながら柔軟なコードを書く方法を学びます。';
+        'TypeScriptの型システムを詳しく解説し、型安全性を保ちながら柔軟なコードを書く方法を紹介する。';
       const detailedSummary = `・概要：TypeScriptの基本
 ・
 ・実践例：プロジェクト例`;
 
       const result = checker.checkQuality(summary, detailedSummary);
 
-      expect(result.issues.some((issue) => issue.type === 'format' && issue.severity === 'critical')).toBe(true);
+      expect(
+        result.issues.some(
+          (issue) => issue.type === 'format' && issue.severity === 'critical'
+        )
+      ).toBe(true);
     });
   });
 
@@ -190,26 +220,32 @@ describe('SummaryQualityChecker', () => {
 
       const result = checker.checkQuality(text, text);
 
-      expect(result.issues.some((issue) => issue.type === 'duplicate')).toBe(true);
+      expect(result.issues.some((issue) => issue.type === 'duplicate')).toBe(
+        true
+      );
       expect(result.score).toBe(0);
     });
 
     it('should detect similar beginning in summary and detailed summary', () => {
       const summary =
-        'この記事ではTypeScriptの型システムについて詳しく解説しています。型安全性を保ちながら柔軟なコードを書く方法を学びます。さらに実践的な例も紹介します。';
+        'TypeScriptの型システムを詳しく解説し、型安全性を保ちながら柔軟なコードを書く方法を紹介する。さらに実践的な例も紹介する。';
       const detailedSummary =
-        'この記事ではTypeScriptの型システムについて詳しく解説しています。型安全性を保ちながら柔軟なコードを書く方法を学びます。';
+        'TypeScriptの型システムを詳しく解説し、型安全性を保ちながら柔軟なコードを書く方法を紹介する。';
 
       const result = checker.checkQuality(summary, detailedSummary);
 
-      expect(result.issues.some((issue) => issue.type === 'duplicate')).toBe(true);
+      expect(result.issues.some((issue) => issue.type === 'duplicate')).toBe(
+        true
+      );
     });
   });
 
   describe('薄いコンテンツの処理', () => {
     it('should apply lenient checks for thin content', () => {
-      const summary = 'この記事では新しい機能について簡単に紹介しています。基本的な使い方を学べます。初心者にも分かりやすく解説されています。';
-      const detailedSummary = '新機能の概要と基本的な使い方について説明しています。初心者向けに分かりやすく書かれた内容となっています。';
+      const summary =
+        '新しい機能を簡単に紹介し、基本的な使い方を学べる内容となっている。初心者にも分かりやすく解説されている。';
+      const detailedSummary =
+        '新機能の概要と基本的な使い方について説明しています。初心者向けに分かりやすく書かれた内容となっています。';
 
       const contentAnalysis: ContentAnalysis = {
         contentLength: 500,
@@ -219,7 +255,11 @@ describe('SummaryQualityChecker', () => {
         recommendedMaxLength: 100,
       };
 
-      const result = checker.checkQuality(summary, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        summary,
+        detailedSummary,
+        contentAnalysis
+      );
 
       expect(result.isValid).toBe(true);
     });
@@ -236,7 +276,11 @@ describe('SummaryQualityChecker', () => {
         recommendedMaxLength: 100,
       };
 
-      const result = checker.checkQuality(summary, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        summary,
+        detailedSummary,
+        contentAnalysis
+      );
 
       expect(result.isValid).toBe(false);
     });
@@ -245,7 +289,7 @@ describe('SummaryQualityChecker', () => {
   describe('calculateScore', () => {
     it('should calculate score with speculative penalty', () => {
       const summary =
-        'この記事ではTypeScriptについて解説していると考えられます。型システムが使われているようです。';
+        'TypeScriptについて解説していると考えられます。型システムが使われているようです。';
       const detailedSummary = `・概要：TypeScriptの基本的な型システムかもしれません
 ・基本型：プリミティブ型が使われているでしょう
 ・実践例：プロジェクト例があると思われます`;
@@ -258,7 +302,7 @@ describe('SummaryQualityChecker', () => {
 
     it('should return high score for quality content without speculation', () => {
       const summary =
-        'この記事ではTypeScriptの型システムについて詳しく解説しています。型安全性を保ちながら柔軟なコードを書く方法を学びます。';
+        'TypeScriptの型システムを詳しく解説し、型安全性を保ちながら柔軟なコードを書く方法を紹介する。';
       const detailedSummary = `・概要：TypeScriptの基本的な型システムの紹介
 ・基本型：プリミティブ型とオブジェクト型の使い分け
 ・実践例：実際のプロジェクトでの型定義のベストプラクティス`;
@@ -292,7 +336,7 @@ describe('SummaryQualityChecker', () => {
 
     it('should require regeneration for insufficient items in long content', () => {
       const summary =
-        'この記事ではReactについて詳細に解説しています。パフォーマンス最適化からコンポーネント設計まで幅広くカバーします。';
+        'Reactを詳細に解説し、パフォーマンス最適化からコンポーネント設計まで幅広くカバーする。';
       const detailedSummary = `・概要：Reactの基本
 ・実践：プロジェクト例`;
 
@@ -302,7 +346,11 @@ describe('SummaryQualityChecker', () => {
         isThinContent: false,
       };
 
-      const result = checker.checkQuality(summary, detailedSummary, contentAnalysis);
+      const result = checker.checkQuality(
+        summary,
+        detailedSummary,
+        contentAnalysis
+      );
 
       expect(result.requiresRegeneration).toBe(true);
     });
