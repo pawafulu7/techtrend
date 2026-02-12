@@ -4,7 +4,10 @@ import {
   SummaryProviderInput,
   SummaryProviderOutput,
 } from './summary-provider.interface';
-import { GeminiTransport, TransportRequest } from '../transport/gemini-transport.interface';
+import {
+  GeminiTransport,
+  TransportRequest,
+} from '../transport/gemini-transport.interface';
 import { PromptBuilder } from './prompt-builder';
 import { INSTRUCTION_PATTERNS } from '../constants';
 
@@ -13,6 +16,81 @@ type GenerationConfig = {
   topK?: number;
   topP?: number;
   maxOutputTokens?: number;
+  responseMimeType?: string;
+  responseSchema?: Record<string, unknown>;
+};
+
+const SUMMARY_JSON_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    summary: {
+      type: 'STRING',
+      description: '150-250 characters, one-line article summary',
+    },
+    detailedSummaryItems: {
+      type: 'ARRAY',
+      description: 'Detailed summary items with specific titles and content',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          title: {
+            type: 'STRING',
+            description:
+              'Specific title for this item (generic names like "overview" are prohibited)',
+          },
+          content: {
+            type: 'STRING',
+            description:
+              'Detailed content with 2-3+ sentences of concrete information',
+          },
+        },
+        required: ['title', 'content'],
+      },
+    },
+    category: {
+      type: 'STRING',
+      description: 'Article category',
+      enum: [
+        'Programming Language',
+        'Framework/Library',
+        'AI/ML',
+        'Cloud/Infrastructure',
+        'Web Development',
+        'Mobile Development',
+        'Database',
+        'Security',
+        'Tools/DevEnv',
+        'Other',
+      ],
+    },
+    tags: {
+      type: 'ARRAY',
+      description: '3-5 technical tags',
+      items: { type: 'STRING' },
+    },
+  },
+  required: ['summary', 'detailedSummaryItems', 'category', 'tags'],
+};
+
+// Map English category names from JSON Schema to Japanese display names
+const CATEGORY_MAP: Record<string, string> = {
+  'Programming Language': 'プログラミング言語',
+  'Framework/Library': 'フレームワーク・ライブラリ',
+  'AI/ML': 'AI・機械学習',
+  'Cloud/Infrastructure': 'クラウド・インフラ',
+  'Web Development': 'Web開発',
+  'Mobile Development': 'モバイル開発',
+  Database: 'データベース',
+  Security: 'セキュリティ',
+  'Tools/DevEnv': 'ツール・開発環境',
+  Other: 'その他',
+};
+
+type SummaryJsonResponse = {
+  summary: string;
+  detailedSummaryItems: Array<{ title: string; content: string }>;
+  category: string;
+  tags: string[];
 };
 
 export class GeminiSummaryAdapter implements SummaryProvider {
@@ -36,6 +114,12 @@ export class GeminiSummaryAdapter implements SummaryProvider {
   async summarize(input: SummaryProviderInput): Promise<SummaryProviderOutput> {
     const prompt = this.promptBuilder.buildPrompt(input);
 
+    const {
+      responseMimeType: _rm,
+      responseSchema: _rs,
+      ...baseConfig
+    } = this.generationConfig;
+
     const transportRequest: TransportRequest = {
       model: this.model,
       body: {
@@ -44,60 +128,141 @@ export class GeminiSummaryAdapter implements SummaryProvider {
             parts: [{ text: prompt }],
           },
         ],
-        generationConfig: this.generationConfig,
+        generationConfig: {
+          ...baseConfig,
+          responseMimeType: 'application/json',
+          responseSchema: SUMMARY_JSON_SCHEMA,
+        },
       },
       requestId: input.requestId,
       timeoutMs: 60000,
     };
 
-    logger.debug({ title: input.title, requestId: input.requestId }, 'Summarizing article');
+    logger.debug(
+      { title: input.title, requestId: input.requestId },
+      'Summarizing article with Structured Output'
+    );
 
     const result = await this.transport.invoke(transportRequest);
 
     if (result.status === 'ok' && result.payload) {
-      return this.parseResponse(result.payload, input.requestId);
+      return this.parseJsonResponse(result.payload, input.requestId);
     }
 
     if (result.status === 'retryable_error') {
-      throw new Error(`Retryable error during summarization: ${result.error?.message || 'Unknown error'}`);
+      throw new Error(
+        `Retryable error during summarization: ${result.error?.message || 'Unknown error'}`
+      );
     }
 
-    throw new Error(`Fatal error during summarization: ${result.error?.message || 'Unknown error'}`);
+    throw new Error(
+      `Fatal error during summarization: ${result.error?.message || 'Unknown error'}`
+    );
   }
 
-  private parseResponse(payload: Record<string, unknown>, requestId: string): SummaryProviderOutput {
+  private parseJsonResponse(
+    payload: Record<string, unknown>,
+    requestId: string
+  ): SummaryProviderOutput {
+    const text = this.extractText(payload);
+
     try {
-      const candidates = payload.candidates as Array<Record<string, unknown>>;
-      if (!candidates || candidates.length === 0) {
-        throw new Error('No candidates in response');
+      const parsed = JSON.parse(text) as SummaryJsonResponse;
+
+      if (!parsed.summary || !parsed.detailedSummaryItems) {
+        throw new Error('Missing required fields in JSON response');
       }
 
-      const candidate = candidates[0];
-      const content = candidate.content as Record<string, unknown>;
-      if (!content) {
-        throw new Error('No content in candidate');
+      // Convert structured items to legacy bullet format for backward compatibility
+      const detailedSummary = parsed.detailedSummaryItems
+        .map((item) => `\u30FB${item.title}\uff1a ${item.content}`)
+        .join('\n');
+
+      // Map English category to Japanese
+      const category =
+        CATEGORY_MAP[parsed.category] || parsed.category || 'その他';
+
+      // Instruction marker check on the parsed content
+      if (this.containsInstructionMarkers(parsed.summary)) {
+        throw new Error(
+          'Summary contains instruction markers - regeneration required'
+        );
+      }
+      if (this.containsInstructionMarkers(detailedSummary)) {
+        throw new Error(
+          'Detailed summary contains instruction markers - regeneration required'
+        );
       }
 
-      const parts = content.parts as Array<Record<string, unknown>>;
-      if (!parts || parts.length === 0) {
-        throw new Error('No parts in content');
-      }
+      logger.debug({ requestId }, 'Successfully parsed JSON response');
 
-      const text = parts[0].text as string;
-      if (!text) {
-        throw new Error('No text in parts');
+      return {
+        headline: parsed.summary,
+        detailedSummary,
+        category,
+        tags: parsed.tags || [],
+        confidence: 0.95,
+        rawResponse: payload,
+      };
+    } catch (error) {
+      const err = error as Error;
+      if (err.message.includes('instruction markers')) {
+        throw err;
       }
+      logger.warn(
+        { requestId, error: err.message },
+        'JSON parse failed, falling back to text extraction'
+      );
+      return this.parseTextResponse(payload, requestId);
+    }
+  }
 
+  private extractText(payload: Record<string, unknown>): string {
+    const candidates = payload.candidates as Array<Record<string, unknown>>;
+    if (!candidates || candidates.length === 0) {
+      throw new Error('No candidates in response');
+    }
+
+    const candidate = candidates[0];
+    const content = candidate.content as Record<string, unknown>;
+    if (!content) {
+      throw new Error('No content in candidate');
+    }
+
+    const parts = content.parts as Array<Record<string, unknown>>;
+    if (!parts || parts.length === 0) {
+      throw new Error('No parts in content');
+    }
+
+    const text = parts[0].text as string;
+    if (!text) {
+      throw new Error('No text in parts');
+    }
+
+    return text;
+  }
+
+  private parseTextResponse(
+    payload: Record<string, unknown>,
+    requestId: string
+  ): SummaryProviderOutput {
+    try {
+      const text = this.extractText(payload);
       const parsed = this.extractStructuredData(text);
 
-      logger.debug({ requestId }, 'Successfully parsed response');
+      const candidates = payload.candidates as Array<Record<string, unknown>>;
+
+      logger.debug(
+        { requestId },
+        'Successfully parsed text response (fallback)'
+      );
 
       return {
         headline: parsed.headline,
         detailedSummary: parsed.detailedSummary,
         category: parsed.category,
         tags: parsed.tags,
-        confidence: this.calculateConfidence(candidate),
+        confidence: this.calculateConfidence(candidates[0]),
         rawResponse: payload,
       };
     } catch (error) {
@@ -105,6 +270,14 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       logger.error({ error: sanitizeError(err) }, 'Failed to parse response');
       throw new Error(`Response parsing failed: ${err.message}`);
     }
+  }
+
+  // Keep legacy parseResponse for backward compatibility (used by tests)
+  private parseResponse(
+    payload: Record<string, unknown>,
+    requestId: string
+  ): SummaryProviderOutput {
+    return this.parseTextResponse(payload, requestId);
   }
 
   private extractStructuredData(text: string): {
@@ -128,7 +301,9 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       if (line.startsWith('要約:')) {
         currentSection = 'headline';
         const content = line.substring('要約:'.length).trim();
-        const isInstruction = INSTRUCTION_PATTERNS.some(pattern => pattern.test(content));
+        const isInstruction = INSTRUCTION_PATTERNS.some((pattern) =>
+          pattern.test(content)
+        );
         if (content && !isInstruction) {
           headline = content;
         } else if (content && isInstruction) {
@@ -155,25 +330,31 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         currentSection = 'tags';
         const content = line.substring('タグ:'.length).trim();
         if (content) {
-          tags = content.split(',').map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+          tags = content
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter((tag) => tag.length > 0);
         }
         continue;
       }
-
 
       if (line.startsWith('【') || line === '') {
         continue;
       }
 
       if (currentSection === 'headline' && !headline) {
-        const isInstruction = INSTRUCTION_PATTERNS.some(pattern => pattern.test(line));
+        const isInstruction = INSTRUCTION_PATTERNS.some((pattern) =>
+          pattern.test(line)
+        );
         if (!isInstruction) {
           headline = line;
         } else {
           rejectedHeadlineDueToInstruction = true;
         }
       } else if (currentSection === 'detailed' && line) {
-        const isBullet = /^\s*(?:・|[-*•●]|[0-9０-９]+[.)\u3001\uff0e])/.test(line);
+        const isBullet = /^\s*(?:・|[-*•●]|[0-9０-９]+[.)\u3001\uff0e])/.test(
+          line
+        );
         if (isBullet) {
           detailedLines.push(line.trimStart());
         } else if (detailedLines.length > 0 && !/^\s*$/.test(line)) {
@@ -184,7 +365,10 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       } else if (currentSection === 'category' && !category && line) {
         category = line;
       } else if (currentSection === 'tags' && !tags && line) {
-        tags = line.split(',').map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+        tags = line
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0);
       }
     }
 
@@ -194,7 +378,9 @@ export class GeminiSummaryAdapter implements SummaryProvider {
 
     if (!headline) {
       if (rejectedHeadlineDueToInstruction) {
-        throw new Error('Headline contains instruction markers - regeneration required');
+        throw new Error(
+          'Headline contains instruction markers - regeneration required'
+        );
       }
       throw new Error('Failed to extract headline from response');
     }
@@ -204,13 +390,20 @@ export class GeminiSummaryAdapter implements SummaryProvider {
     }
 
     if (this.containsInstructionMarkers(headline)) {
-      logger.warn({ headline: headline.substring(0, 100) }, 'Headline contains instruction markers, rejecting');
-      throw new Error('Headline contains instruction markers - regeneration required');
+      logger.warn(
+        { headline: headline.substring(0, 100) },
+        'Headline contains instruction markers, rejecting'
+      );
+      throw new Error(
+        'Headline contains instruction markers - regeneration required'
+      );
     }
 
     if (this.containsInstructionMarkers(detailedSummary)) {
       logger.warn('Detailed summary contains instruction markers, rejecting');
-      throw new Error('Detailed summary contains instruction markers - regeneration required');
+      throw new Error(
+        'Detailed summary contains instruction markers - regeneration required'
+      );
     }
 
     return {
@@ -227,7 +420,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
     for (const line of lines) {
       const trimmedLine = line.trim();
 
-      if (INSTRUCTION_PATTERNS.some(pattern => pattern.test(trimmedLine))) {
+      if (INSTRUCTION_PATTERNS.some((pattern) => pattern.test(trimmedLine))) {
         return true;
       }
 
