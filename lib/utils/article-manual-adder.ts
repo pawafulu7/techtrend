@@ -411,6 +411,10 @@ export async function addArticleManually(
       message: '記事を正常に追加しました',
     };
   } catch (error) {
+    logger.error(
+      { error: sanitizeError(error) },
+      'Failed to add article manually'
+    );
     return {
       success: false,
       error:
