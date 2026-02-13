@@ -15,7 +15,6 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
     try {
       const { pathname } = new URL(url);
       return (
-        pathname === '/news' ||
         pathname.startsWith('/news/') ||
         anthropicNewsConfig.specialArticlePaths.some((p) => pathname === p)
       );
@@ -106,7 +105,10 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
         });
 
         if (paragraphs.length > 0) {
-          content = paragraphs.join('\n\n');
+          const fallbackContent = paragraphs.join('\n\n');
+          if (fallbackContent.length > content.length) {
+            content = fallbackContent;
+          }
         }
       }
 
@@ -146,9 +148,9 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
         content: content || null,
         thumbnail: thumbnail ?? null,
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error(
-        { error: _error, url },
+        { error, url },
         '[Anthropic News Enricher] Error enriching URL'
       );
       return null;

@@ -362,7 +362,14 @@ export class AnthropicNewsFetcher extends BaseFetcher {
     }
 
     try {
-      const url = src.startsWith('//') ? `https:${src}` : src;
+      let url: string;
+      if (src.startsWith('//')) {
+        url = `https:${src}`;
+      } else if (src.startsWith('/')) {
+        url = `https://www.anthropic.com${src}`;
+      } else {
+        url = src;
+      }
       const parsed = new URL(url);
 
       if (parsed.protocol !== 'https:') return undefined;
