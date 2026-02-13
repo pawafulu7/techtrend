@@ -12,7 +12,7 @@ export class ArticleDetailCache {
   constructor() {
     this.cache = new RedisCache({
       ttl: 1800, // 30分（詳細ページは長めにキャッシュ）
-      namespace: '@techtrend/cache:article-detail'
+      namespace: '@techtrend/cache:article-detail',
     });
   }
 
@@ -32,7 +32,7 @@ export class ArticleDetailCache {
 
     // Restore article date fields
     const dateFields = ['publishedAt', 'createdAt', 'updatedAt'];
-    dateFields.forEach(field => {
+    dateFields.forEach((field) => {
       if (restored[field] && typeof restored[field] === 'string') {
         restored[field] = new Date(restored[field]);
       }
@@ -41,7 +41,7 @@ export class ArticleDetailCache {
     // Restore source date fields if present
     if (restored.source && typeof restored.source === 'object') {
       const source = restored.source as Record<string, unknown>;
-      ['createdAt', 'updatedAt'].forEach(field => {
+      ['createdAt', 'updatedAt'].forEach((field) => {
         if (source[field] && typeof source[field] === 'string') {
           source[field] = new Date(source[field] as string);
         }
@@ -53,7 +53,7 @@ export class ArticleDetailCache {
       restored.tags = restored.tags.map((tag: unknown) => {
         if (tag && typeof tag === 'object') {
           const restoredTag = { ...tag };
-          ['createdAt', 'updatedAt'].forEach(field => {
+          ['createdAt', 'updatedAt'].forEach((field) => {
             if (restoredTag[field] && typeof restoredTag[field] === 'string') {
               restoredTag[field] = new Date(restoredTag[field]);
             }
@@ -67,7 +67,9 @@ export class ArticleDetailCache {
     return restored as T;
   }
 
-  async getArticleWithRelations(articleId: string): Promise<Prisma.ArticleGetPayload<{
+  async getArticleWithRelations(
+    articleId: string
+  ): Promise<Prisma.ArticleGetPayload<{
     include: {
       source: true;
       tags: true;
@@ -109,8 +111,11 @@ export class ArticleDetailCache {
   /**
    * 関連記事を取得（キャッシュ利用）
    */
-   
-  async getRelatedArticles(articleId: string, tagIds: string[]): Promise<any[]> {
+
+  async getRelatedArticles(
+    articleId: string,
+    tagIds: string[]
+  ): Promise<any[]> {
     if (tagIds.length === 0) {
       return [];
     }
@@ -124,10 +129,8 @@ export class ArticleDetailCache {
       return Array.isArray(cached) ? cached : [];
     }
 
-    // DBから取得（既存のクエリを使用）
-    const placeholders = tagIds.map((_, index) => `$${index + 1}`).join(',');
-    const relatedArticles = await prisma.$queryRawUnsafe(
-      `
+    // DBから取得
+    const relatedArticles = await prisma.$queryRaw`
       WITH RelatedArticles AS (
         SELECT DISTINCT
           a.id,
@@ -144,8 +147,8 @@ export class ArticleDetailCache {
         FROM "Article" a
         JOIN "_ArticleToTag" at ON a.id = at."A"
         JOIN "Source" s ON a."sourceId" = s.id
-        WHERE at."B" IN (${placeholders})
-          AND a.id != $${tagIds.length + 1}
+        WHERE at."B" = ANY(${tagIds}::text[])
+          AND a.id != ${articleId}
           AND a."qualityScore" >= 30
         GROUP BY a.id, a.title, a."translatedTitle", a.summary, a.url, a."publishedAt", a."sourceId", s.name, a."qualityScore", a.difficulty
         HAVING COUNT(DISTINCT at."B") > 0
@@ -160,10 +163,7 @@ export class ArticleDetailCache {
       LEFT JOIN "Tag" t ON at2."B" = t.id
       GROUP BY ra.id, ra.title, ra."translatedTitle", ra.summary, ra.url, ra."publishedAt", ra."sourceId", ra."sourceName", ra."qualityScore", ra.difficulty, ra."commonTags"
       ORDER BY ra."commonTags" DESC, ra."publishedAt" DESC
-      `,
-      ...tagIds,
-      articleId
-    );
+    `;
 
     // キャッシュに保存
     await this.cache.set(cacheKey, relatedArticles);
