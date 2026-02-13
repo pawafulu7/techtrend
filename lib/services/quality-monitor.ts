@@ -4,10 +4,9 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import { SUMMARY_VERSION } from '@/types/article';
-
-const prisma = new PrismaClient();
 
 interface QualityStats {
   totalArticles: number;
@@ -16,10 +15,10 @@ interface QualityStats {
   highQualityCount: number;
   needsRegenerationCount: number;
   distribution: {
-    excellent: number;    // 90点以上
-    good: number;        // 70-89点
-    fair: number;        // 50-69点
-    poor: number;        // 50点未満
+    excellent: number; // 90点以上
+    good: number; // 70-89点
+    fair: number; // 50-69点
+    poor: number; // 50点未満
   };
 }
 
@@ -66,26 +65,29 @@ export class QualityMonitor {
     });
 
     const scores = articles
-      .map(a => a.qualityScore)
+      .map((a) => a.qualityScore)
       .filter((score): score is number => score !== null);
 
     const totalArticles = articles.length;
-    const averageScore = scores.length > 0 
-      ? scores.reduce((sum, score) => sum + score, 0) / scores.length
-      : 0;
+    const averageScore =
+      scores.length > 0
+        ? scores.reduce((sum, score) => sum + score, 0) / scores.length
+        : 0;
 
     const distribution = {
-      excellent: scores.filter(s => s >= 90).length,
-      good: scores.filter(s => s >= 70 && s < 90).length,
-      fair: scores.filter(s => s >= 50 && s < 70).length,
-      poor: scores.filter(s => s < 50).length,
+      excellent: scores.filter((s) => s >= 90).length,
+      good: scores.filter((s) => s >= 70 && s < 90).length,
+      fair: scores.filter((s) => s >= 50 && s < 70).length,
+      poor: scores.filter((s) => s < 50).length,
     };
 
     const lowQualityCount = distribution.fair + distribution.poor;
     const highQualityCount = distribution.excellent + distribution.good;
-    const needsRegenerationCount = articles.filter(a => 
-      (a.qualityScore === null || a.qualityScore < 70) &&
-      (a.summaryVersion === null || a.summaryVersion < SUMMARY_VERSION.CURRENT)
+    const needsRegenerationCount = articles.filter(
+      (a) =>
+        (a.qualityScore === null || a.qualityScore < 70) &&
+        (a.summaryVersion === null ||
+          a.summaryVersion < SUMMARY_VERSION.CURRENT)
     ).length;
 
     return {
@@ -109,14 +111,20 @@ export class QualityMonitor {
       now.getUTCFullYear(),
       now.getUTCMonth(),
       now.getUTCDate(),
-      23, 59, 59, 999
+      23,
+      59,
+      59,
+      999
     );
 
     const startDateUTC = Date.UTC(
       now.getUTCFullYear(),
       now.getUTCMonth(),
       now.getUTCDate() - days + 1,
-      0, 0, 0, 0
+      0,
+      0,
+      0,
+      0
     );
 
     const today = new Date(todayUTC);
@@ -159,19 +167,23 @@ export class QualityMonitor {
         now.getUTCFullYear(),
         now.getUTCMonth(),
         now.getUTCDate() - days + 1 + i,
-        0, 0, 0, 0
+        0,
+        0,
+        0,
+        0
       );
       const date = new Date(dateUTC);
       const dateKey = date.toISOString().split('T')[0];
 
       const scores = trendMap.get(dateKey);
       if (scores && scores.length > 0) {
-        const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+        const averageScore =
+          scores.reduce((sum, score) => sum + score, 0) / scores.length;
         trends.push({
           date,
           averageScore: Math.round(averageScore * 10) / 10,
-          lowQualityCount: scores.filter(s => s < 70).length,
-          highQualityCount: scores.filter(s => s >= 70).length,
+          lowQualityCount: scores.filter((s) => s < 70).length,
+          highQualityCount: scores.filter((s) => s >= 70).length,
         });
       }
     }
@@ -182,7 +194,9 @@ export class QualityMonitor {
   /**
    * 再生成推薦を取得
    */
-  async getRegenerationRecommendations(limit: number = 20): Promise<RegenerationRecommendation[]> {
+  async getRegenerationRecommendations(
+    limit: number = 20
+  ): Promise<RegenerationRecommendation[]> {
     const articles = await this.prisma.article.findMany({
       where: {
         OR: [
@@ -210,7 +224,7 @@ export class QualityMonitor {
       },
     });
 
-    return articles.map(article => {
+    return articles.map((article) => {
       const score = article.qualityScore || 0;
       let priority: 'high' | 'medium' | 'low';
       let reason: string;
@@ -265,26 +279,29 @@ export class QualityMonitor {
 
     for (const source of sources) {
       const scores = source.articles
-        .map(a => a.qualityScore)
+        .map((a) => a.qualityScore)
         .filter((score): score is number => score !== null);
 
       const totalArticles = source.articles.length;
-      const averageScore = scores.length > 0
-        ? scores.reduce((sum, score) => sum + score, 0) / scores.length
-        : 0;
+      const averageScore =
+        scores.length > 0
+          ? scores.reduce((sum, score) => sum + score, 0) / scores.length
+          : 0;
 
       const distribution = {
-        excellent: scores.filter(s => s >= 90).length,
-        good: scores.filter(s => s >= 70 && s < 90).length,
-        fair: scores.filter(s => s >= 50 && s < 70).length,
-        poor: scores.filter(s => s < 50).length,
+        excellent: scores.filter((s) => s >= 90).length,
+        good: scores.filter((s) => s >= 70 && s < 90).length,
+        fair: scores.filter((s) => s >= 50 && s < 70).length,
+        poor: scores.filter((s) => s < 50).length,
       };
 
       const lowQualityCount = distribution.fair + distribution.poor;
       const highQualityCount = distribution.excellent + distribution.good;
-      const needsRegenerationCount = source.articles.filter(a =>
-        (a.qualityScore === null || a.qualityScore < 70) &&
-        (a.summaryVersion === null || a.summaryVersion < SUMMARY_VERSION.CURRENT)
+      const needsRegenerationCount = source.articles.filter(
+        (a) =>
+          (a.qualityScore === null || a.qualityScore < 70) &&
+          (a.summaryVersion === null ||
+            a.summaryVersion < SUMMARY_VERSION.CURRENT)
       ).length;
 
       statsBySource.set(source.name, {
@@ -333,7 +350,7 @@ export class QualityMonitor {
     const afterArticles = await this.prisma.article.findMany({
       where: {
         id: {
-          in: beforeArticles.map(a => a.id),
+          in: beforeArticles.map((a) => a.id),
         },
         updatedAt: {
           gte: after,
@@ -345,8 +362,10 @@ export class QualityMonitor {
       },
     });
 
-    const beforeMap = new Map(beforeArticles.map(a => [a.id, a.qualityScore!]));
-    const afterMap = new Map(afterArticles.map(a => [a.id, a.qualityScore!]));
+    const beforeMap = new Map(
+      beforeArticles.map((a) => [a.id, a.qualityScore!])
+    );
+    const afterMap = new Map(afterArticles.map((a) => [a.id, a.qualityScore!]));
 
     let improvedCount = 0;
     let degradedCount = 0;
@@ -416,15 +435,21 @@ if (require.main === module) {
       logger.info('\n品質トレンド（過去7日）:');
       const trends = await monitor.getQualityTrend(7);
       for (const trend of trends) {
-        logger.info(`  ${trend.date.toLocaleDateString('ja-JP')}: 平均${trend.averageScore}点 (高品質${trend.highQualityCount}件/低品質${trend.lowQualityCount}件)`);
+        logger.info(
+          `  ${trend.date.toLocaleDateString('ja-JP')}: 平均${trend.averageScore}点 (高品質${trend.highQualityCount}件/低品質${trend.lowQualityCount}件)`
+        );
       }
 
       // 推薦
       logger.info('\n再生成推薦（上位10件）:');
       const recommendations = await monitor.getRegenerationRecommendations(10);
       for (const rec of recommendations) {
-        logger.info(`  [${rec.priority.toUpperCase()}] ${rec.title.substring(0, 50)}...`);
-        logger.info(`    現在スコア: ${rec.currentScore}点 | 理由: ${rec.reason}`);
+        logger.info(
+          `  [${rec.priority.toUpperCase()}] ${rec.title.substring(0, 50)}...`
+        );
+        logger.info(
+          `    現在スコア: ${rec.currentScore}点 | 理由: ${rec.reason}`
+        );
       }
     }
 
