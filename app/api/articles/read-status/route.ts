@@ -3,7 +3,10 @@ import { prisma } from '@/lib/database';
 import { getRedisService } from '@/lib/redis/factory';
 import logger from '@/lib/logger';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
-import { invalidateUserViewCache, invalidateViewCache } from '@/lib/dataloader/article-view-loader';
+import {
+  invalidateUserViewCache,
+  invalidateViewCache,
+} from '@/lib/dataloader/article-view-loader';
 import {
   withUserValidation,
   type WithUserValidationContext,
@@ -21,32 +24,36 @@ async function getHandler(
     const { searchParams } = new URL(req.url);
     const articleIds = searchParams.get('articleIds')?.split(',') || [];
 
-    // 共通のwhere条件を定義
+    // 未読カウント条件（90日以内の記事のみ対象）
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
     const unreadWhere = {
+      publishedAt: { gte: ninetyDaysAgo },
       OR: [
         {
           articleViews: {
             none: {
-              userId: validatedUser.id
-            }
-          }
+              userId: validatedUser.id,
+            },
+          },
         },
         {
           articleViews: {
             some: {
               userId: validatedUser.id,
-              isRead: false
-            }
-          }
-        }
-      ]
+              isRead: false,
+            },
+          },
+        },
+      ],
     };
 
     // 既読記事取得用のwhere条件
     const readArticlesWhere = {
       userId: validatedUser.id,
       isRead: true,
-      ...(articleIds.length > 0 ? { articleId: { in: articleIds } } : {})
+      ...(articleIds.length > 0 ? { articleId: { in: articleIds } } : {}),
     };
 
     // トランザクションで両方のクエリを実行
@@ -54,13 +61,13 @@ async function getHandler(
       prisma.article.count({ where: unreadWhere }),
       prisma.articleView.findMany({
         where: readArticlesWhere,
-        select: { articleId: true }
-      })
+        select: { articleId: true },
+      }),
     ]);
 
     return NextResponse.json({
-      readArticleIds: readArticles.map(a => a.articleId),
-      unreadCount
+      readArticleIds: readArticles.map((a) => a.articleId),
+      unreadCount,
     });
   } catch (error) {
     logger.error({ error }, 'Error fetching read status');
@@ -92,27 +99,30 @@ async function postHandler(
       where: {
         userId_articleId: {
           userId: validatedUser.id,
-          articleId
-        }
+          articleId,
+        },
       },
       update: {
         isRead: true,
-        readAt: new Date()
+        readAt: new Date(),
         // viewedAtは更新しない（既読マークのみ）
       },
       create: {
         userId: validatedUser.id,
         articleId,
         isRead: true,
-        readAt: new Date()
-      }
+        readAt: new Date(),
+      },
     });
 
     // Invalidate view-status cache so list endpoints return fresh isRead immediately
     try {
       await invalidateViewCache(validatedUser.id, articleId);
     } catch (cacheError) {
-      logger.warn({ error: cacheError, userId: validatedUser.id, articleId }, 'Failed to invalidate view cache');
+      logger.warn(
+        { error: cacheError, userId: validatedUser.id, articleId },
+        'Failed to invalidate view cache'
+      );
     }
 
     return NextResponse.json({ success: true, articleView });
@@ -151,12 +161,13 @@ async function putHandler(
         NOW(),
         NULL
       FROM "Article" a
-      WHERE NOT EXISTS (
-        SELECT 1 FROM "ArticleView" av
-        WHERE av."userId" = ${validatedUser.id}
-        AND av."articleId" = a.id
-        AND av."isRead" = true
-      )
+      WHERE a."publishedAt" >= NOW() - INTERVAL '90 days'
+        AND NOT EXISTS (
+          SELECT 1 FROM "ArticleView" av
+          WHERE av."userId" = ${validatedUser.id}
+          AND av."articleId" = a.id
+          AND av."isRead" = true
+        )
       ON CONFLICT ("userId", "articleId")
       DO UPDATE SET
         "isRead" = true,
@@ -182,13 +193,16 @@ async function putHandler(
     try {
       await invalidateUserViewCache(validatedUser.id);
     } catch (cacheError) {
-      logger.warn({ error: cacheError, userId: validatedUser.id }, 'Failed to invalidate user view cache');
+      logger.warn(
+        { error: cacheError, userId: validatedUser.id },
+        'Failed to invalidate user view cache'
+      );
     }
 
     return NextResponse.json({
       success: true,
       markedCount,
-      remainingUnreadCount: 0
+      remainingUnreadCount: 0,
     });
   } catch (error) {
     // Handle FK constraint violations (race condition with user deletion)
@@ -227,19 +241,22 @@ async function deleteHandler(
     await prisma.articleView.updateMany({
       where: {
         userId: validatedUser.id,
-        articleId
+        articleId,
       },
       data: {
         isRead: false,
-        readAt: null
-      }
+        readAt: null,
+      },
     });
 
     // Invalidate view-status cache so list endpoints return fresh isRead immediately
     try {
       await invalidateViewCache(validatedUser.id, articleId);
     } catch (cacheError) {
-      logger.warn({ error: cacheError, userId: validatedUser.id, articleId }, 'Failed to invalidate view cache');
+      logger.warn(
+        { error: cacheError, userId: validatedUser.id, articleId },
+        'Failed to invalidate view cache'
+      );
     }
 
     return NextResponse.json({ success: true });
