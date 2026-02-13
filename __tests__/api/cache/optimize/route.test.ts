@@ -86,19 +86,21 @@ describe('/api/cache/optimize', () => {
     it('GET should succeed with CRON_SECRET', async () => {
       const originalEnv = process.env.CRON_SECRET;
       process.env.CRON_SECRET = 'test-cron-secret';
-      mockAuth.mockResolvedValue(null as any);
+      try {
+        mockAuth.mockResolvedValue(null as any);
 
-      const request = new NextRequest('http://localhost:3000/api/cache/optimize', {
-        method: 'GET',
-        headers: { Authorization: 'Bearer test-cron-secret' },
-      });
-      const response = await GET(request);
-      expect(response.status).toBe(200);
-
-      if (originalEnv === undefined) {
-        delete process.env.CRON_SECRET;
-      } else {
-        process.env.CRON_SECRET = originalEnv;
+        const request = new NextRequest('http://localhost:3000/api/cache/optimize', {
+          method: 'GET',
+          headers: { Authorization: 'Bearer test-cron-secret' },
+        });
+        const response = await GET(request);
+        expect(response.status).toBe(200);
+      } finally {
+        if (originalEnv === undefined) {
+          delete process.env.CRON_SECRET;
+        } else {
+          process.env.CRON_SECRET = originalEnv;
+        }
       }
     });
 
