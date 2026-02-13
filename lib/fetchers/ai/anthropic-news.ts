@@ -123,11 +123,15 @@ export class AnthropicNewsFetcher extends BaseFetcher {
       // Extract category
       const category = this.extractCategory($, $link);
 
+      // Extract thumbnail
+      const thumbnail = this.extractArticleThumbnail($, $link);
+
       candidates.push({
         url: validatedUrl,
         title,
         publishedAt,
         category,
+        thumbnail,
       });
     });
 
@@ -144,7 +148,9 @@ export class AnthropicNewsFetcher extends BaseFetcher {
     // Absolute URLs
     try {
       const url = new URL(
-        href.startsWith('http') ? href : `https://www.anthropic.com${href}`
+        href.startsWith('http')
+          ? href
+          : `https://www.anthropic.com${href.startsWith('/') ? '' : '/'}${href}`
       );
       const isAllowedHost = anthropicNewsConfig.allowedArticleHosts.some(
         (host) => url.hostname === host
@@ -275,6 +281,23 @@ export class AnthropicNewsFetcher extends BaseFetcher {
       const text = $area.text();
       for (const category of knownCategories) {
         if (text.includes(category)) return category;
+      }
+    }
+
+    return undefined;
+  }
+
+  private extractArticleThumbnail(
+    $: cheerio.CheerioAPI,
+    $link: cheerio.Cheerio<AnyNode>
+  ): string | undefined {
+    const searchAreas = [$link, $link.parent(), $link.parent().parent()];
+
+    for (const $area of searchAreas) {
+      const $img = $area.find('img[src]').first();
+      if ($img.length > 0) {
+        const src = $img.attr('src');
+        return this.validateThumbnailUrl(src);
       }
     }
 
