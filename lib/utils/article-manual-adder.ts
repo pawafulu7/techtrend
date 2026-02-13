@@ -2,7 +2,8 @@
  * 手動記事追加のコアロジック
  */
 
-import { PrismaClient, Source } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
+import { Source } from '@prisma/client';
 import { prisma as defaultPrisma } from '@/lib/prisma';
 import { UnifiedSummaryService } from '../ai/unified-summary-service';
 import { ContentEnricherFactory } from '../enrichers';
@@ -258,7 +259,7 @@ export async function addArticleManually(
             }
           }
         } catch (e) {
-          logger.debug(
+          logger.warn(
             { error: sanitizeError(e), url },
             'Enrichment failed, falling back to basic metadata'
           );

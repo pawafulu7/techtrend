@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { createDateRange } from '@/lib/types/prisma-helpers';
+import logger from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -61,29 +62,41 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      const orConditions: Prisma.ArticleWhereInput[] = [];
-      for (const term of includeTerms) {
-        orConditions.push(
-          { title: { contains: term, mode: 'insensitive' } },
-          { translatedTitle: { contains: term, mode: 'insensitive' } },
-          { summary: { contains: term, mode: 'insensitive' } }
-        );
-      }
-      if (orConditions.length > 0) {
-        whereConditions.OR = orConditions;
-      }
-
-      if (excludeTerms.length > 0) {
-        const notConditions: Prisma.ArticleWhereInput[] = excludeTerms.flatMap(
-          (term) => [
+      // 各検索語はAND（全てを含む）、各語はタイトル/翻訳タイトル/要約のいずれかにマッチ
+      if (includeTerms.length > 0) {
+        const termConditions = includeTerms.map((term) => ({
+          OR: [
             { title: { contains: term, mode: 'insensitive' as const } },
             {
               translatedTitle: { contains: term, mode: 'insensitive' as const },
             },
             { summary: { contains: term, mode: 'insensitive' as const } },
-          ]
-        );
-        whereConditions.NOT = { OR: notConditions };
+          ],
+        }));
+        whereConditions.AND = [
+          ...(Array.isArray(whereConditions.AND) ? whereConditions.AND : []),
+          ...termConditions,
+        ];
+      }
+
+      if (excludeTerms.length > 0) {
+        if (!Array.isArray(whereConditions.AND)) whereConditions.AND = [];
+        for (const term of excludeTerms) {
+          (whereConditions.AND as Prisma.ArticleWhereInput[]).push({
+            NOT: {
+              OR: [
+                { title: { contains: term, mode: 'insensitive' as const } },
+                {
+                  translatedTitle: {
+                    contains: term,
+                    mode: 'insensitive' as const,
+                  },
+                },
+                { summary: { contains: term, mode: 'insensitive' as const } },
+              ],
+            },
+          });
+        }
       }
     }
 
@@ -98,27 +111,12 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // タグフィルター（除外） - テキスト検索のNOTと競合する場合はANDで結合
+    // タグフィルター（除外） - AND配列で統一的に結合
     if (excludeTags.length > 0) {
-      const excludeTagCondition: Prisma.ArticleWhereInput = {
-        tags: {
-          some: {
-            name: {
-              in: excludeTags,
-            },
-          },
-        },
-      };
-      if (whereConditions.NOT) {
-        whereConditions.AND = [
-          ...(Array.isArray(whereConditions.AND) ? whereConditions.AND : []),
-          { NOT: whereConditions.NOT },
-          { NOT: excludeTagCondition },
-        ];
-        delete whereConditions.NOT;
-      } else {
-        whereConditions.NOT = excludeTagCondition;
-      }
+      if (!Array.isArray(whereConditions.AND)) whereConditions.AND = [];
+      (whereConditions.AND as Prisma.ArticleWhereInput[]).push({
+        NOT: { tags: { some: { name: { in: excludeTags } } } },
+      });
     }
 
     // ソースフィルター（包含）
@@ -130,29 +128,12 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // ソースフィルター（除外）
+    // ソースフィルター（除外） - AND配列で統一的に結合
     if (excludeSources.length > 0) {
-      const excludeSourceCondition: Prisma.ArticleWhereInput = {
-        source: {
-          is: {
-            name: { in: excludeSources },
-          },
-        },
-      };
-      if (whereConditions.NOT) {
-        if (!whereConditions.AND) whereConditions.AND = [];
-        (whereConditions.AND as Prisma.ArticleWhereInput[]).push(
-          { NOT: whereConditions.NOT },
-          { NOT: excludeSourceCondition }
-        );
-        delete whereConditions.NOT;
-      } else if (Array.isArray(whereConditions.AND)) {
-        (whereConditions.AND as Prisma.ArticleWhereInput[]).push({
-          NOT: excludeSourceCondition,
-        });
-      } else {
-        whereConditions.NOT = excludeSourceCondition;
-      }
+      if (!Array.isArray(whereConditions.AND)) whereConditions.AND = [];
+      (whereConditions.AND as Prisma.ArticleWhereInput[]).push({
+        NOT: { source: { is: { name: { in: excludeSources } } } },
+      });
     }
 
     // 難易度フィルター
@@ -187,7 +168,7 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // ソート条件
+    // ソート条件（relevanceはiLIKE検索のため日付順にフォールバック）
     const orderBy =
       sortBy === 'date'
         ? { publishedAt: 'desc' as const }
@@ -242,7 +223,8 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(totalCount / limit),
       },
     });
-  } catch {
+  } catch (error) {
+    logger.error({ error }, 'Advanced search failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
