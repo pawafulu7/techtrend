@@ -126,5 +126,29 @@ describe('/api/cache/optimize', () => {
       const response = await POST(request);
       expect(response.status).toBe(400);
     });
+
+    it('should execute warm action', async () => {
+      const request = createRequest('POST', { action: 'warm', target: 'articles' });
+      const response = await POST(request);
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.message).toContain('articles');
+    });
+
+    it('should execute warm action without target', async () => {
+      const request = createRequest('POST', { action: 'warm' });
+      const response = await POST(request);
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.message).toContain('all');
+    });
+
+    it('should return 500 when optimizer throws', async () => {
+      const { memoryOptimizer } = require('@/lib/cache/memory-optimizer');
+      memoryOptimizer.optimizeManual.mockRejectedValueOnce(new Error('fail'));
+      const request = createRequest('POST', { action: 'optimize' });
+      const response = await POST(request);
+      expect(response.status).toBe(500);
+    });
   });
 });

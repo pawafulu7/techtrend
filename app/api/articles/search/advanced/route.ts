@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
 
     // ArticleWithRelations形式に変換
     const articlesWithRelations = articles.map((article) => {
-      const bookmarkCount = article._count?.favorites || 0;
+      const bookmarkCount = article._count?.favorites ?? 0;
       const voteScore = article.userVotes ?? 0;
 
       return {

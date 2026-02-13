@@ -22,6 +22,10 @@ export function setPrismaClient(client: PrismaClient) {
   prisma = client;
 }
 
+export function resetPrismaClient() {
+  prisma = defaultPrisma;
+}
+
 export interface AddArticleOptions {
   url: string;
   title?: string;
@@ -77,7 +81,7 @@ async function upsertTagsBatch(tagNames: string[]): Promise<{ id: string }[]> {
 /**
  * テキストから技術タグを抽出（最小限のタグのみ）
  */
-function extractTags(text: string, sourceName: string): string[] {
+function extractTags(_text: string, sourceName: string): string[] {
   const tags: string[] = [];
 
   // ソースに基づく基本タグ（presentationは意味があるので残す）
