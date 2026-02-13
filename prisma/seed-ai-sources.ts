@@ -71,6 +71,7 @@ async function main() {
       type: 'SCRAPER' as const,
       url: 'https://www.anthropic.com/news',
       enabled: true,
+      groupId: 'group_company_global',
     },
   ];
 

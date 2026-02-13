@@ -138,8 +138,9 @@ export class AnthropicNewsFetcher extends BaseFetcher {
     // Match /news/{slug} but not /news itself or /news/
     if (href === '/news' || href === '/news/') return false;
     if (href.startsWith('/news/') && href.length > 6) return true;
-    // Special paths like /mars
-    if (href === '/mars') return true;
+    // Special paths (e.g. /mars for Claude on Mars announcement)
+    if (anthropicNewsConfig.specialArticlePaths.some((p) => href === p))
+      return true;
     // Absolute URLs
     try {
       const url = new URL(
@@ -151,7 +152,7 @@ export class AnthropicNewsFetcher extends BaseFetcher {
       if (!isAllowedHost) return false;
       return (
         (url.pathname.startsWith('/news/') && url.pathname.length > 6) ||
-        url.pathname === '/mars'
+        anthropicNewsConfig.specialArticlePaths.some((p) => url.pathname === p)
       );
     } catch (error) {
       if (anthropicNewsConfig.debug) {

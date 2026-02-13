@@ -31,4 +31,10 @@ export const anthropicNewsConfig = {
 
   /** URL最大長 */
   maxUrlLength: 2048,
+
+  /**
+   * /news/ 以外の特別な記事パス
+   * Anthropicが /news 以外のトップレベルパスで公開する記事（例: /mars はClaude on Mars発表）
+   */
+  specialArticlePaths: ['/mars'] as const,
 };

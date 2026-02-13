@@ -1,5 +1,6 @@
 import { BaseContentEnricher } from './base';
 import { isUrlFromDomain } from '@/lib/utils/url-validator';
+import { anthropicNewsConfig } from '@/lib/config/anthropic-news';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
 
@@ -16,7 +17,7 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
       return (
         pathname === '/news' ||
         pathname.startsWith('/news/') ||
-        pathname === '/mars'
+        anthropicNewsConfig.specialArticlePaths.some((p) => pathname === p)
       );
     } catch {
       return false;
