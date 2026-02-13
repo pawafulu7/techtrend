@@ -87,7 +87,10 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
             }
           });
 
-          content = texts.join('\n\n');
+          const joined = texts.join('\n\n');
+          if (joined.length > content.length) {
+            content = joined;
+          }
           if (content.length > 500) break;
         }
       }
@@ -159,22 +162,49 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
     baseUrl: string
   ): string | undefined {
     try {
-      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-        return imageUrl;
-      }
+      let resolved: string;
 
       if (imageUrl.startsWith('//')) {
-        return 'https:' + imageUrl;
-      }
-
-      if (imageUrl.startsWith('/')) {
+        resolved = 'https:' + imageUrl;
+      } else if (
+        imageUrl.startsWith('http://') ||
+        imageUrl.startsWith('https://')
+      ) {
+        resolved = imageUrl;
+      } else if (imageUrl.startsWith('/')) {
         const url = new URL(baseUrl);
-        return `${url.protocol}//${url.host}${imageUrl}`;
+        resolved = `${url.protocol}//${url.host}${imageUrl}`;
+      } else {
+        const url = new URL(baseUrl);
+        const basePath = url.pathname.substring(
+          0,
+          url.pathname.lastIndexOf('/')
+        );
+        resolved = `${url.protocol}//${url.host}${basePath}/${imageUrl}`;
       }
 
-      const url = new URL(baseUrl);
-      const basePath = url.pathname.substring(0, url.pathname.lastIndexOf('/'));
-      return `${url.protocol}//${url.host}${basePath}/${imageUrl}`;
+      const parsed = new URL(resolved);
+      if (parsed.protocol !== 'https:') {
+        logger.warn(
+          { imageUrl, baseUrl },
+          '[Anthropic News Enricher] Rejected non-HTTPS image URL'
+        );
+        return undefined;
+      }
+
+      const isAllowedHost = anthropicNewsConfig.allowedThumbnailHosts.some(
+        (host) =>
+          parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
+      );
+      if (!isAllowedHost) {
+        logger.warn(
+          { imageUrl, hostname: parsed.hostname },
+          '[Anthropic News Enricher] Rejected image URL from non-allowed host'
+        );
+        return undefined;
+      }
+
+      return resolved;
     } catch (error) {
       logger.warn(
         { imageUrl, baseUrl, error },

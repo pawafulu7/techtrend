@@ -86,6 +86,9 @@ async function main() {
           type: source.type,
           url: source.url,
           enabled: source.enabled,
+          ...('groupId' in source && source.groupId
+            ? { groupId: source.groupId }
+            : {}),
         },
         create: source,
       });

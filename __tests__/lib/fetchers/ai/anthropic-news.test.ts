@@ -168,9 +168,10 @@ describe('AnthropicNewsFetcher', () => {
 
         const fetchPromise = fetcher.fetch();
 
+        // Exponential backoff: 500ms * 2^0, 500ms * 2^1, 500ms * 2^2
         await jest.advanceTimersByTimeAsync(500);
         await jest.advanceTimersByTimeAsync(1000);
-        await jest.advanceTimersByTimeAsync(1500);
+        await jest.advanceTimersByTimeAsync(2000);
 
         const result = await fetchPromise;
 
@@ -188,9 +189,10 @@ describe('AnthropicNewsFetcher', () => {
 
         const fetchPromise = fetcher.fetch();
 
+        // Exponential backoff: 500ms * 2^0, 500ms * 2^1, 500ms * 2^2
         await jest.advanceTimersByTimeAsync(500);
         await jest.advanceTimersByTimeAsync(1000);
-        await jest.advanceTimersByTimeAsync(1500);
+        await jest.advanceTimersByTimeAsync(2000);
 
         const result = await fetchPromise;
 
@@ -309,6 +311,12 @@ describe('AnthropicNewsFetcher', () => {
       it('should reject javascript: thumbnail URLs', () => {
         expect(
           fetcher.validateThumbnailUrl('javascript:alert(1)')
+        ).toBeUndefined();
+      });
+
+      it('should reject http: thumbnail URLs', () => {
+        expect(
+          fetcher.validateThumbnailUrl('http://www.anthropic.com/image.jpg')
         ).toBeUndefined();
       });
 

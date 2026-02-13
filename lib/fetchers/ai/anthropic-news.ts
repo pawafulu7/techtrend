@@ -236,7 +236,10 @@ export class AnthropicNewsFetcher extends BaseFetcher {
   }
 
   private parseArticleDate(dateText: string): Date {
-    if (!dateText) return new Date();
+    if (!dateText) {
+      logger.warn('[Anthropic News] No date text found. Using current date.');
+      return new Date();
+    }
 
     // Try ISO format first
     const isoDate = new Date(dateText);
@@ -418,7 +421,8 @@ export class AnthropicNewsFetcher extends BaseFetcher {
       }
     } catch (error) {
       if (retries < anthropicNewsConfig.retryLimit) {
-        const waitTime = anthropicNewsConfig.requestDelay * (retries + 1);
+        const waitTime =
+          anthropicNewsConfig.requestDelay * Math.pow(2, retries);
         if (anthropicNewsConfig.debug) {
           logger.debug(
             `[Anthropic News] Retry ${retries + 1}/${anthropicNewsConfig.retryLimit} after error: ${error instanceof Error ? error.message : error}`
