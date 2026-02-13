@@ -54,7 +54,8 @@ export async function GET(request: NextRequest) {
 
       queryParts.forEach((term) => {
         if (term.startsWith('-')) {
-          excludeTerms.push(term.substring(1));
+          const stripped = term.substring(1);
+          if (stripped) excludeTerms.push(stripped);
         } else {
           includeTerms.push(term);
         }

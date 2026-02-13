@@ -3,7 +3,7 @@
  * 記事の品質を継続的に監視し、改善を管理
  */
 
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import { SUMMARY_VERSION } from '@/types/article';
@@ -400,13 +400,6 @@ export class QualityMonitor {
       degradedCount,
     };
   }
-
-  /**
-   * リソースのクリーンアップ
-   */
-  async disconnect(): Promise<void> {
-    await this.prisma.$disconnect();
-  }
 }
 
 // CLIとして実行された場合
@@ -453,7 +446,7 @@ if (require.main === module) {
       }
     }
 
-    await monitor.disconnect();
+    await prisma.$disconnect();
   })().catch((error) => {
     logger.error({ error }, 'Quality monitor execution failed');
   });

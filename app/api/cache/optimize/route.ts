@@ -43,7 +43,7 @@ export const POST = withCronOrAdminAuth(async (request: NextRequest) => {
         };
         break;
 
-      case 'warm':
+      case 'warm': {
         // キャッシュウォーミング実行
         const targets = target ? [target] : undefined;
         await cacheWarmer.warmManual(targets);
@@ -52,6 +52,7 @@ export const POST = withCronOrAdminAuth(async (request: NextRequest) => {
           status: cacheWarmer.getStatus(),
         };
         break;
+      }
 
       case 'start-monitoring':
         // メモリ監視開始

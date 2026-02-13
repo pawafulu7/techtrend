@@ -257,7 +257,12 @@ export async function addArticleManually(
               tagNames = enrichedData.tags;
             }
           }
-        } catch {}
+        } catch (e) {
+          logger.debug(
+            { error: sanitizeError(e), url },
+            'Enrichment failed, falling back to basic metadata'
+          );
+        }
       }
     }
 
@@ -387,9 +392,12 @@ export async function addArticleManually(
             },
           });
         }
-      } catch {}
-    } else if (skipSummary) {
-    } else {
+      } catch (e) {
+        logger.warn(
+          { error: sanitizeError(e), articleId: article.id },
+          'Summary generation failed'
+        );
+      }
     }
 
     return {
