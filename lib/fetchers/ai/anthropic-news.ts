@@ -74,7 +74,9 @@ export class AnthropicNewsFetcher extends BaseFetcher {
 
       logger.info(`[Anthropic News] Fetched ${articles.length} articles`);
     } catch (error) {
-      logger.error(`[Anthropic News] Fetch error: ${error}`);
+      logger.error(
+        `[Anthropic News] Fetch error: ${error instanceof Error ? error.message : String(error)}`
+      );
       errors.push(error instanceof Error ? error : new Error(String(error)));
     }
 
@@ -151,7 +153,12 @@ export class AnthropicNewsFetcher extends BaseFetcher {
         (url.pathname.startsWith('/news/') && url.pathname.length > 6) ||
         url.pathname === '/mars'
       );
-    } catch {
+    } catch (error) {
+      if (anthropicNewsConfig.debug) {
+        logger.debug(
+          `[Anthropic News] URL parse error in isArticlePath for "${href}": ${error instanceof Error ? error.message : 'Unknown'}`
+        );
+      }
       return false;
     }
   }
@@ -304,7 +311,12 @@ export class AnthropicNewsFetcher extends BaseFetcher {
       if (!isAllowedHost) return undefined;
 
       return parsed.href;
-    } catch {
+    } catch (error) {
+      if (anthropicNewsConfig.debug) {
+        logger.debug(
+          `[Anthropic News] URL validation error for "${href}": ${error instanceof Error ? error.message : 'Unknown'}`
+        );
+      }
       return undefined;
     }
   }
@@ -336,7 +348,12 @@ export class AnthropicNewsFetcher extends BaseFetcher {
       if (!isAllowedHost) return undefined;
 
       return parsed.href;
-    } catch {
+    } catch (error) {
+      if (anthropicNewsConfig.debug) {
+        logger.debug(
+          `[Anthropic News] Thumbnail URL validation error for "${src}": ${error instanceof Error ? error.message : 'Unknown'}`
+        );
+      }
       return undefined;
     }
   }
@@ -378,6 +395,11 @@ export class AnthropicNewsFetcher extends BaseFetcher {
     } catch (error) {
       if (retries < anthropicNewsConfig.retryLimit) {
         const waitTime = anthropicNewsConfig.requestDelay * (retries + 1);
+        if (anthropicNewsConfig.debug) {
+          logger.debug(
+            `[Anthropic News] Retry ${retries + 1}/${anthropicNewsConfig.retryLimit} after error: ${error instanceof Error ? error.message : error}`
+          );
+        }
         await this.delay(waitTime);
         return this.fetchWithRetry(url, retries + 1);
       }

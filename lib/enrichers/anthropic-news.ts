@@ -3,6 +3,8 @@ import { isUrlFromDomain } from '@/lib/utils/url-validator';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
 
+const ENRICHER_TIMEOUT = 15000; // 15 seconds
+
 export class AnthropicNewsEnricher extends BaseContentEnricher {
   /**
    * Anthropic News (anthropic.com/news) の記事URLかどうかを判定
@@ -27,8 +29,12 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
   async enrich(
     url: string
   ): Promise<{ content: string | null; thumbnail?: string | null } | null> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), ENRICHER_TIMEOUT);
+
     try {
       const response = await fetch(url, {
+        signal: controller.signal,
         headers: {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -142,25 +148,38 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
         '[Anthropic News Enricher] Error enriching URL'
       );
       return null;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
-  private normalizeImageUrl(imageUrl: string, baseUrl: string): string {
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
-    }
+  private normalizeImageUrl(
+    imageUrl: string,
+    baseUrl: string
+  ): string | undefined {
+    try {
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return imageUrl;
+      }
 
-    if (imageUrl.startsWith('//')) {
-      return 'https:' + imageUrl;
-    }
+      if (imageUrl.startsWith('//')) {
+        return 'https:' + imageUrl;
+      }
 
-    if (imageUrl.startsWith('/')) {
+      if (imageUrl.startsWith('/')) {
+        const url = new URL(baseUrl);
+        return `${url.protocol}//${url.host}${imageUrl}`;
+      }
+
       const url = new URL(baseUrl);
-      return `${url.protocol}//${url.host}${imageUrl}`;
+      const basePath = url.pathname.substring(0, url.pathname.lastIndexOf('/'));
+      return `${url.protocol}//${url.host}${basePath}/${imageUrl}`;
+    } catch (error) {
+      logger.warn(
+        { imageUrl, baseUrl, error },
+        '[Anthropic News Enricher] Failed to normalize image URL'
+      );
+      return undefined;
     }
-
-    const url = new URL(baseUrl);
-    const basePath = url.pathname.substring(0, url.pathname.lastIndexOf('/'));
-    return `${url.protocol}//${url.host}${basePath}/${imageUrl}`;
   }
 }
