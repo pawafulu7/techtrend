@@ -151,6 +151,10 @@ async function putHandler(
   try {
     // SQL直接実行による高速化
     // gen_random_uuid()はPostgreSQL 13以降で使用可能
+    // GETハンドラと同じ90日基準を使用（アプリ時間で統一）
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
     const result = await prisma.$executeRaw`
       INSERT INTO "ArticleView" ("id", "userId", "articleId", "isRead", "readAt", "viewedAt")
       SELECT
@@ -161,7 +165,7 @@ async function putHandler(
         NOW(),
         NULL
       FROM "Article" a
-      WHERE a."publishedAt" >= NOW() - INTERVAL '90 days'
+      WHERE a."publishedAt" >= ${ninetyDaysAgo}
         AND NOT EXISTS (
           SELECT 1 FROM "ArticleView" av
           WHERE av."userId" = ${validatedUser.id}

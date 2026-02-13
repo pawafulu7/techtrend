@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     // テキスト検索（iLIKE）
     if (query) {
       // 除外キーワードの処理
-      const queryParts = query.split(' ');
+      const queryParts = query.split(' ').filter(Boolean);
       const includeTerms: string[] = [];
       const excludeTerms: string[] = [];
 

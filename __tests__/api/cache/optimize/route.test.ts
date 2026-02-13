@@ -95,7 +95,11 @@ describe('/api/cache/optimize', () => {
       const response = await GET(request);
       expect(response.status).toBe(200);
 
-      process.env.CRON_SECRET = originalEnv;
+      if (originalEnv === undefined) {
+        delete process.env.CRON_SECRET;
+      } else {
+        process.env.CRON_SECRET = originalEnv;
+      }
     });
 
     it('POST should succeed with ADMIN session and valid action', async () => {
