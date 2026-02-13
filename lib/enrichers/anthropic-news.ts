@@ -193,8 +193,7 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
       }
 
       const isAllowedHost = anthropicNewsConfig.allowedThumbnailHosts.some(
-        (host) =>
-          parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
+        (host) => parsed.hostname === host
       );
       if (!isAllowedHost) {
         logger.warn(

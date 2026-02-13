@@ -369,8 +369,7 @@ export class AnthropicNewsFetcher extends BaseFetcher {
       if (parsed.username || parsed.password) return undefined;
 
       const isAllowedHost = anthropicNewsConfig.allowedThumbnailHosts.some(
-        (host) =>
-          parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
+        (host) => parsed.hostname === host
       );
       if (!isAllowedHost) return undefined;
 
