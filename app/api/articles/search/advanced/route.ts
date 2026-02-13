@@ -79,10 +79,10 @@ export async function GET(request: NextRequest) {
             {
               translatedTitle: { contains: term, mode: 'insensitive' as const },
             },
+            { summary: { contains: term, mode: 'insensitive' as const } },
           ]
         );
-        whereConditions.NOT =
-          notConditions.length === 1 ? notConditions[0] : { OR: notConditions };
+        whereConditions.NOT = { OR: notConditions };
       }
     }
 
