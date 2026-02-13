@@ -5,3 +5,4 @@ export { ArxivAIFetcher } from './arxiv-ai';
 export { ZennAIFetcher } from './zenn-ai';
 export { QiitaAIFetcher } from './qiita-ai';
 export { ClaudeBlogFetcher } from './anthropic-blog';
+export { AnthropicNewsFetcher } from './anthropic-news';

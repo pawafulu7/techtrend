@@ -25,6 +25,7 @@ import { SansanContentEnricher } from './sansan';
 import { MoneyForwardContentEnricher } from './moneyforward';
 import { GitHubBlogEnricher } from './github-blog';
 import { ClaudeBlogEnricher } from './anthropic-blog';
+import { AnthropicNewsEnricher } from './anthropic-news';
 import { CloudflareBlogEnricher } from './cloudflare-blog';
 import { MozillaHacksEnricher } from './mozilla-hacks';
 import { HackerNewsEnricher } from './hacker-news';
@@ -66,6 +67,7 @@ export { MediumEngineeringEnricher } from './medium-engineering';
 export { AWSEnricher } from './aws';
 export { SpeakerDeckEnricher } from './speakerdeck';
 export { ClaudeBlogEnricher } from './anthropic-blog';
+export { AnthropicNewsEnricher } from './anthropic-news';
 
 /**
  * エンリッチャーファクトリークラス
@@ -99,6 +101,7 @@ export class ContentEnricherFactory {
       // 新規追加（2025年8月27日）英語ソース
       new GitHubBlogEnricher(),
       new ClaudeBlogEnricher(), // 新規追加（2026年1月）Claude Blog専用
+      new AnthropicNewsEnricher(), // 新規追加（2026年2月）Anthropic News専用
       new CloudflareBlogEnricher(),
       new MozillaHacksEnricher(),
       new HackerNewsEnricher(),

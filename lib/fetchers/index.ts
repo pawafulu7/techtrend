@@ -32,6 +32,7 @@ import {
   ZennAIFetcher,
   QiitaAIFetcher,
   ClaudeBlogFetcher,
+  AnthropicNewsFetcher,
 } from './ai';
 import { NVIDIADeveloperBlogFetcher } from './nvidia-developer-blog';
 import { DeepMindBlogFetcher } from './deepmind-blog';
@@ -121,6 +122,8 @@ export function createFetcher(source: Source): BaseFetcher {
       return new QiitaAIFetcher(source);
     case 'Claude Blog':
       return new ClaudeBlogFetcher(source);
+    case 'Anthropic News':
+      return new AnthropicNewsFetcher(source);
     case 'NVIDIA Developer Blog':
       return new NVIDIADeveloperBlogFetcher(source);
     case 'DeepMind Blog':
