@@ -78,7 +78,7 @@ async function main() {
   for (const source of aiSources) {
     // Sources with fixed IDs use upsert to ensure ID consistency
     // This handles the case where source exists with a different ID
-    if ('id' in source && FIXED_ID_SOURCES.has(source.id)) {
+    if ('id' in source && source.id && FIXED_ID_SOURCES.has(source.id)) {
       const upsertedSource = await prisma.source.upsert({
         where: { id: source.id },
         update: {
