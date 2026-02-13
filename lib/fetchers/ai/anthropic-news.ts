@@ -1,5 +1,6 @@
 import { Source } from '@prisma/client';
 import * as cheerio from 'cheerio';
+import type { AnyNode } from 'domhandler';
 import { BaseFetcher } from '../base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
@@ -157,7 +158,7 @@ export class AnthropicNewsFetcher extends BaseFetcher {
 
   private extractTitle(
     $: cheerio.CheerioAPI,
-    $link: cheerio.Cheerio<cheerio.Element>
+    $link: cheerio.Cheerio<AnyNode>
   ): string {
     // Try headings inside the link
     const $heading = $link.find('h1, h2, h3, h4');
@@ -197,7 +198,7 @@ export class AnthropicNewsFetcher extends BaseFetcher {
 
   private extractDateText(
     $: cheerio.CheerioAPI,
-    $link: cheerio.Cheerio<cheerio.Element>
+    $link: cheerio.Cheerio<AnyNode>
   ): string {
     // Search within the link and nearby elements for date patterns
     const searchAreas = [$link, $link.parent(), $link.parent().parent()];
@@ -249,7 +250,7 @@ export class AnthropicNewsFetcher extends BaseFetcher {
 
   private extractCategory(
     $: cheerio.CheerioAPI,
-    $link: cheerio.Cheerio<cheerio.Element>
+    $link: cheerio.Cheerio<AnyNode>
   ): string | undefined {
     const knownCategories = [
       'Announcements',
