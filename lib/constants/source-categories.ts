@@ -21,6 +21,13 @@ export const CLAUDE_BLOG_SOURCE_ID = 'claude_blog_official';
 export const CLAUDE_BLOG_SOURCE_NAME = 'Claude Blog';
 
 /**
+ * Anthropic News source ID
+ * Used for consistent filtering across the app
+ */
+export const ANTHROPIC_NEWS_SOURCE_ID = 'anthropic_news';
+export const ANTHROPIC_NEWS_SOURCE_NAME = 'Anthropic News';
+
+/**
  * DevelopersIO source IDs (Classmethod Inc.)
  * Used for UI subgrouping in CompanyFilter
  */
@@ -154,6 +161,7 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'developersio_claude', // DevelopersIO Claude
       'developersio_mcp', // DevelopersIO MCP
       CLAUDE_BLOG_SOURCE_ID, // Claude Blog
+      ANTHROPIC_NEWS_SOURCE_ID, // Anthropic News
     ],
   },
   llm: {

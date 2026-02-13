@@ -11,8 +11,12 @@ const ARXIV_SOURCE_ID = 'cmfxa7efs0001teo0kjt70c5k';
 // IMPORTANT: This value MUST match lib/constants/source-categories.ts
 const CLAUDE_BLOG_SOURCE_ID = 'claude_blog_official';
 
+// Anthropic News source uses a fixed ID for consistent filtering
+// IMPORTANT: This value MUST match lib/constants/source-categories.ts
+const ANTHROPIC_NEWS_SOURCE_ID = 'anthropic_news';
+
 // Sources that require fixed IDs for app-wide filtering
-const FIXED_ID_SOURCES = new Set([ARXIV_SOURCE_ID, CLAUDE_BLOG_SOURCE_ID]);
+const FIXED_ID_SOURCES = new Set([ARXIV_SOURCE_ID, CLAUDE_BLOG_SOURCE_ID, ANTHROPIC_NEWS_SOURCE_ID]);
 
 async function main() {
   console.log('Adding AI/LLM sources to database...');
@@ -60,12 +64,21 @@ async function main() {
       url: 'https://claude.com/blog',
       enabled: true,
     },
+    {
+      // Use explicit ID for Anthropic News to ensure consistent filtering
+      id: ANTHROPIC_NEWS_SOURCE_ID,
+      name: 'Anthropic News',
+      type: 'SCRAPER' as const,
+      url: 'https://www.anthropic.com/news',
+      enabled: true,
+      groupId: 'group_company_global',
+    },
   ];
 
   for (const source of aiSources) {
     // Sources with fixed IDs use upsert to ensure ID consistency
     // This handles the case where source exists with a different ID
-    if ('id' in source && FIXED_ID_SOURCES.has(source.id)) {
+    if ('id' in source && source.id && FIXED_ID_SOURCES.has(source.id)) {
       const upsertedSource = await prisma.source.upsert({
         where: { id: source.id },
         update: {
@@ -73,6 +86,9 @@ async function main() {
           type: source.type,
           url: source.url,
           enabled: source.enabled,
+          ...('groupId' in source && source.groupId
+            ? { groupId: source.groupId }
+            : {}),
         },
         create: source,
       });
