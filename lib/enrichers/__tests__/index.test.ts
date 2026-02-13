@@ -212,4 +212,18 @@ describe('ContentEnricherFactory', () => {
       }
     );
   });
+
+  describe('AnthropicNewsEnricher boundary', () => {
+    it('should NOT match /newsroom path', () => {
+      const enricher = factory.getEnricher(
+        'https://www.anthropic.com/newsroom/press-release'
+      );
+      expect(enricher?.constructor.name).not.toBe('AnthropicNewsEnricher');
+    });
+
+    it('should NOT match /about path on anthropic.com', () => {
+      const enricher = factory.getEnricher('https://www.anthropic.com/about');
+      expect(enricher?.constructor.name).not.toBe('AnthropicNewsEnricher');
+    });
+  });
 });

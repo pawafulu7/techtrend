@@ -11,7 +11,11 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
     if (!isUrlFromDomain(url, 'anthropic.com')) return false;
     try {
       const { pathname } = new URL(url);
-      return pathname.startsWith('/news') || pathname === '/mars';
+      return (
+        pathname === '/news' ||
+        pathname.startsWith('/news/') ||
+        pathname === '/mars'
+      );
     } catch {
       return false;
     }
