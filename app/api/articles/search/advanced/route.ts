@@ -45,9 +45,10 @@ export async function GET(request: NextRequest) {
     const whereConditions: Prisma.ArticleWhereInput = {};
 
     // テキスト検索（iLIKE）
-    if (query) {
+    const trimmedQuery = query.trim();
+    if (trimmedQuery) {
       // 除外キーワードの処理
-      const queryParts = query.split(' ').filter(Boolean);
+      const queryParts = trimmedQuery.split(' ').filter(Boolean);
       const includeTerms: string[] = [];
       const excludeTerms: string[] = [];
 
