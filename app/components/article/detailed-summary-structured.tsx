@@ -1,5 +1,3 @@
-'use client';
-
 import { parseSummary } from '@/lib/utils/summary-parser';
 import { ArticleType } from '@/lib/utils/article-type-detector';
 

@@ -1,5 +1,3 @@
-'use client';
-
 import { DetailedSummaryStructured } from './detailed-summary-structured';
 import { ArticleType } from '@/lib/utils/article-type-detector';
 
@@ -12,7 +10,7 @@ interface DetailedSummaryDisplayProps {
 export function DetailedSummaryDisplay({
   detailedSummary,
   articleType,
-  summaryVersion
+  summaryVersion,
 }: DetailedSummaryDisplayProps) {
   return (
     <DetailedSummaryStructured
