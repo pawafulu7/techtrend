@@ -632,7 +632,7 @@ export async function GET(request: NextRequest) {
           userVotes: true,
           createdAt: true,
           updatedAt: true,
-          content: true, // For contentLength calculation, stripped before response
+          contentLength: true, // Pre-calculated by DB trigger
           // No tags relation selected (performance optimization)
           // No detailedSummary field selected (reduces data transfer)
         },
@@ -779,11 +779,8 @@ export async function GET(request: NextRequest) {
 
         // Normalize dates and add user data for actual page items
         normalizedArticles = pageData.items.map((article) => {
-          // Extract content for length calculation, then exclude from response
-          const { content, ...articleWithoutContent } =
-            article as typeof article & { content?: string | null };
           const normalized: LightweightArticle = {
-            ...articleWithoutContent,
+            ...article,
             publishedAt:
               article.publishedAt instanceof Date
                 ? article.publishedAt.toISOString()
@@ -796,7 +793,7 @@ export async function GET(request: NextRequest) {
               article.updatedAt instanceof Date
                 ? article.updatedAt.toISOString()
                 : article.updatedAt,
-            contentLength: typeof content === 'string' ? content.length : null,
+            // contentLength is already populated from DB trigger
           };
 
           // Add user-specific data if requested
@@ -827,11 +824,8 @@ export async function GET(request: NextRequest) {
       } else {
         // Traditional offset pagination - but generate cursor info for transition
         normalizedArticles = articles.map((article) => {
-          // Extract content for length calculation, then exclude from response
-          const { content, ...articleWithoutContent } =
-            article as typeof article & { content?: string | null };
           const normalized: LightweightArticle = {
-            ...articleWithoutContent,
+            ...article,
             publishedAt:
               article.publishedAt instanceof Date
                 ? article.publishedAt.toISOString()
@@ -844,7 +838,7 @@ export async function GET(request: NextRequest) {
               article.updatedAt instanceof Date
                 ? article.updatedAt.toISOString()
                 : article.updatedAt,
-            contentLength: typeof content === 'string' ? content.length : null,
+            // contentLength is already populated from DB trigger
           };
 
           // Add user-specific data if requested

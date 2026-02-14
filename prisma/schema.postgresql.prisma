@@ -14,6 +14,7 @@ model Article {
   summary         String?  @db.Text
   thumbnail       String?
   content         String?  @db.Text
+  contentLength   Int?     // DB trigger maintained: CHAR_LENGTH(content)
   publishedAt     DateTime
   sourceId        String
   bookmarks       Int      @default(0)
