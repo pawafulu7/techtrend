@@ -127,12 +127,12 @@ describe('/api/cache/optimize', () => {
       expect(response.status).toBe(400);
     });
 
-    it('should execute warm action', async () => {
-      const request = createRequest('POST', { action: 'warm', target: 'articles' });
+    it('should execute warm action with valid target', async () => {
+      const request = createRequest('POST', { action: 'warm', target: 'stats' });
       const response = await POST(request);
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data.message).toContain('articles');
+      expect(data.message).toContain('stats');
     });
 
     it('should execute warm action without target', async () => {
@@ -141,6 +141,14 @@ describe('/api/cache/optimize', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.message).toContain('all');
+    });
+
+    it('should return 400 for invalid warm target', async () => {
+      const request = createRequest('POST', { action: 'warm', target: 'invalid-target' });
+      const response = await POST(request);
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toContain('Invalid warm target');
     });
 
     it('should return 500 when optimizer throws', async () => {

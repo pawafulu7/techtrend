@@ -5,9 +5,9 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const sourceIds = searchParams.get('sourceIds');
-    const page = Math.max(
-      1,
-      parseInt(searchParams.get('page') || '1', 10) || 1
+    const page = Math.min(
+      1000,
+      Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
     );
     const limit = Math.min(
       100,

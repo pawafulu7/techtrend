@@ -45,6 +45,15 @@ export const POST = withCronOrAdminAuth(async (request: NextRequest) => {
 
       case 'warm': {
         // キャッシュウォーミング実行
+        const validTargets = ['stats', 'trends', 'keywords', 'search'];
+        if (target && !validTargets.includes(target)) {
+          return NextResponse.json(
+            {
+              error: `Invalid warm target. Valid targets: ${validTargets.join(', ')}`,
+            },
+            { status: 400 }
+          );
+        }
         const targets = target ? [target] : undefined;
         await cacheWarmer.warmManual(targets);
         result = {
