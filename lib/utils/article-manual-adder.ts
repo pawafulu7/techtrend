@@ -2,20 +2,28 @@
  * 手動記事追加のコアロジック
  */
 
-import { PrismaClient, Source } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
+import { Source } from '@prisma/client';
+import { prisma as defaultPrisma } from '@/lib/prisma';
 import { UnifiedSummaryService } from '../ai/unified-summary-service';
 import { ContentEnricherFactory } from '../enrichers';
-import { detectSourceFromUrl, normalizeSourceName, isValidUrl } from './source-detector';
+import {
+  detectSourceFromUrl,
+  normalizeSourceName,
+  isValidUrl,
+} from './source-detector';
 import { WebFetcher } from '../utils/web-fetcher';
 import * as cheerio from 'cheerio';
 import { logger, sanitizeError } from '@/lib/logger';
 
-// グローバルなPrismaインスタンス（テストで上書き可能）
-let prisma = new PrismaClient();
+let prisma: PrismaClient = defaultPrisma;
 
-// テスト用にPrismaインスタンスを設定できる関数
 export function setPrismaClient(client: PrismaClient) {
   prisma = client;
+}
+
+export function resetPrismaClient() {
+  prisma = defaultPrisma;
 }
 
 export interface AddArticleOptions {
@@ -50,13 +58,13 @@ async function upsertTagsBatch(tagNames: string[]): Promise<{ id: string }[]> {
     select: { id: true, name: true },
   });
 
-  const existingNames = new Set(existing.map(t => t.name));
-  const toCreate = tagNames.filter(name => !existingNames.has(name));
+  const existingNames = new Set(existing.map((t) => t.name));
+  const toCreate = tagNames.filter((name) => !existingNames.has(name));
 
   // 2) Insert missing tags in bulk (duplicates ignored if concurrent insert)
   if (toCreate.length) {
     await prisma.tag.createMany({
-      data: toCreate.map(name => ({ name })),
+      data: toCreate.map((name) => ({ name })),
       skipDuplicates: true,
     });
   }
@@ -67,23 +75,23 @@ async function upsertTagsBatch(tagNames: string[]): Promise<{ id: string }[]> {
     select: { id: true },
   });
 
-  return allTags.map(t => ({ id: t.id }));
+  return allTags.map((t) => ({ id: t.id }));
 }
 
 /**
  * テキストから技術タグを抽出（最小限のタグのみ）
  */
-function extractTags(text: string, sourceName: string): string[] {
+function extractTags(_text: string, sourceName: string): string[] {
   const tags: string[] = [];
-  
+
   // ソースに基づく基本タグ（presentationは意味があるので残す）
   if (sourceName === 'Speaker Deck') {
     tags.push('presentation');
   }
-  
+
   // タグ抽出は最小限にする（Geminiが後で適切なタグを生成するため）
   // 明確にタイトルに含まれる主要技術のみを抽出
-  
+
   return tags;
 }
 
@@ -95,102 +103,127 @@ async function fetchBasicMetadata(url: string) {
     const fetcher = new WebFetcher();
     const html = await fetcher.fetch(url);
     const $ = cheerio.load(html);
-    
+
     // タイトルの取得（優先順位: og:title > title > h1）
-    let title = $('meta[property="og:title"]').attr('content') ||
-                $('meta[name="twitter:title"]').attr('content') ||
-                $('title').text().trim() ||
-                $('h1').first().text().trim();
-    
+    let title =
+      $('meta[property="og:title"]').attr('content') ||
+      $('meta[name="twitter:title"]').attr('content') ||
+      $('title').text().trim() ||
+      $('h1').first().text().trim();
+
     // タイトルが取得できなかった場合、URLから生成
     if (!title || title === '') {
-      const pathParts = new URL(url).pathname.split('/').filter(p => p);
+      const pathParts = new URL(url).pathname.split('/').filter((p) => p);
       const lastPart = pathParts[pathParts.length - 1] || '';
       // URLのパスを人間が読みやすい形式に変換
       title = lastPart
         .replace(/[-_]/g, ' ')
         .replace(/\.\w+$/, '') // 拡張子を削除
         .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
-      
+
       if (!title) {
         title = 'Untitled Article';
       }
     }
-    
+
     // OGP画像の取得
-    const thumbnail = $('meta[property="og:image"]').attr('content') ||
-                     $('meta[name="twitter:image"]').attr('content') ||
-                     null;
-    
+    const thumbnail =
+      $('meta[property="og:image"]').attr('content') ||
+      $('meta[name="twitter:image"]').attr('content') ||
+      null;
+
     // 説明の取得
-    const description = $('meta[property="og:description"]').attr('content') ||
-                       $('meta[name="description"]').attr('content') ||
-                       $('meta[name="twitter:description"]').attr('content') ||
-                       '';
-    
+    const description =
+      $('meta[property="og:description"]').attr('content') ||
+      $('meta[name="description"]').attr('content') ||
+      $('meta[name="twitter:description"]').attr('content') ||
+      '';
+
     // キーワードの取得（タグとして使用）
     const keywordsContent = $('meta[name="keywords"]').attr('content') || '';
-    const keywords = keywordsContent ? keywordsContent.split(',').map(k => k.trim()).filter(k => k) : [];
+    const keywords = keywordsContent
+      ? keywordsContent
+          .split(',')
+          .map((k) => k.trim())
+          .filter((k) => k)
+      : [];
 
     return { title, thumbnail, description, content: description, keywords };
   } catch (error) {
-    logger.warn({ error: sanitizeError(error) }, 'Failed to fetch basic metadata');
-    return { title: 'Untitled Article', thumbnail: null, description: '', content: '', keywords: [] };
+    logger.warn(
+      { error: sanitizeError(error) },
+      'Failed to fetch basic metadata'
+    );
+    return {
+      title: 'Untitled Article',
+      thumbnail: null,
+      description: '',
+      content: '',
+      keywords: [],
+    };
   }
 }
 
 /**
  * 手動で記事を追加する
  */
-export async function addArticleManually(options: AddArticleOptions): Promise<AddArticleResult> {
-  const { url, title: customTitle, skipSummary = false, dryRun = false, skipEnrichment = false } = options;
-  
+export async function addArticleManually(
+  options: AddArticleOptions
+): Promise<AddArticleResult> {
+  const {
+    url,
+    title: customTitle,
+    skipSummary = false,
+    dryRun = false,
+    skipEnrichment = false,
+  } = options;
+
   // URL検証
   if (!isValidUrl(url)) {
     return {
       success: false,
-      error: '無効なURLです。http://またはhttps://で始まるURLを指定してください。'
+      error:
+        '無効なURLです。http://またはhttps://で始まるURLを指定してください。',
     };
   }
-  
+
   try {
     // 重複チェック
     const existingArticle = await prisma.article.findFirst({
-      where: { url }
+      where: { url },
     });
-    
+
     if (existingArticle) {
       return {
         success: false,
         error: '既に同じURLの記事が存在します。',
         articleId: existingArticle.id,
-        title: existingArticle.title
+        title: existingArticle.title,
       };
     }
-    
+
     // ソース判定
     const detectionResult = detectSourceFromUrl(url);
     const sourceName = normalizeSourceName(detectionResult.source);
-    
-    
+
     // ソースの取得または作成
     let source = await prisma.source.findFirst({
-      where: { name: sourceName }
+      where: { name: sourceName },
     });
-    
+
     if (!source) {
       if (dryRun) {
         // ドライランの場合は仮のソースオブジェクトを作成
-        source = { 
-          id: 'dry-run-source', 
+        source = {
+          id: 'dry-run-source',
           name: sourceName,
           type: 'manual',
           url: new URL(url).origin,
           enabled: true,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         } as Source;
       } else {
         source = await prisma.source.create({
@@ -198,23 +231,23 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
             name: sourceName,
             type: 'manual',
             url: new URL(url).origin,
-            enabled: true
-          }
+            enabled: true,
+          },
         });
       }
     }
-    
+
     // エンリッチメント処理
     let enrichedData = null;
     let content = '';
     let thumbnail = null;
     let finalTitle = customTitle || '';
     let tagNames: string[] = [];
-    
+
     if (!skipEnrichment) {
       const enricherFactory = new ContentEnricherFactory();
       const enricher = enricherFactory.getEnricher(url);
-      
+
       if (enricher) {
         try {
           enrichedData = await enricher.enrich(url);
@@ -229,13 +262,24 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
               tagNames = enrichedData.tags;
             }
           }
-        } catch {
+        } catch (e) {
+          logger.warn(
+            { error: sanitizeError(e), url },
+            'Enrichment failed, falling back to basic metadata'
+          );
         }
       }
     }
-    
+
     // エンリッチャーがタイトルを返さなかった場合、またはエンリッチャーが使えない場合は基本メタデータを取得
-    let metadata: {title?: string; description?: string; image?: string; content?: string; thumbnail?: string | null; keywords?: string[]} | null = null;
+    let metadata: {
+      title?: string;
+      description?: string;
+      image?: string;
+      content?: string;
+      thumbnail?: string | null;
+      keywords?: string[];
+    } | null = null;
     if (!finalTitle && !customTitle) {
       metadata = await fetchBasicMetadata(url);
       finalTitle = metadata.title;
@@ -248,39 +292,43 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
         thumbnail = metadata.thumbnail;
       }
       // メタデータからキーワードをタグとして使用（ただし既にタグがある場合はスキップ）
-      if (tagNames.length === 0 && metadata.keywords && metadata.keywords.length > 0) {
+      if (
+        tagNames.length === 0 &&
+        metadata.keywords &&
+        metadata.keywords.length > 0
+      ) {
         tagNames = metadata.keywords;
       }
     }
-    
+
     // カスタムタイトルが指定されている場合は優先
     if (customTitle) {
       finalTitle = customTitle;
     }
-    
+
     // タイトルが空の場合はURLから生成
     if (!finalTitle) {
       finalTitle = 'Untitled Article';
     }
-    
+
     // タグが未設定の場合、タイトルとコンテンツから自動抽出
     if (tagNames.length === 0) {
       const textForTagExtraction = `${finalTitle} ${content}`;
       tagNames = extractTags(textForTagExtraction, sourceName);
     }
-    
+
     if (dryRun) {
       return {
         success: true,
         title: finalTitle,
         source: sourceName,
-        message: 'ドライラン完了（実際の保存なし）'
+        message: 'ドライラン完了（実際の保存なし）',
       };
     }
-    
+
     // タグの処理（バッチ処理でN+1解消）
     const tagConnections = await upsertTagsBatch(tagNames);
-    
+
     // 記事の保存
     const article = await prisma.article.create({
       data: {
@@ -298,28 +346,33 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
         articleType: 'manual',
         ...(tagConnections.length > 0 && {
           tags: {
-            connect: tagConnections
-          }
-        })
-      }
+            connect: tagConnections,
+          },
+        }),
+      },
     });
-    
-    
+
     // 要約生成
     let summary = null;
     let detailedSummary = null;
     let generatedTags: string[] = [];
-    
+
     if (!skipSummary && content && content.length > 100) {
       try {
         const summaryService = new UnifiedSummaryService();
-        const result = await summaryService.generate(finalTitle, content, {}, {}, article.id);
-        
+        const result = await summaryService.generate(
+          finalTitle,
+          content,
+          {},
+          {},
+          article.id
+        );
+
         // resultが正常に返ってきた場合
         summary = result.summary;
         detailedSummary = result.detailedSummary;
         generatedTags = result.tags || [];
-        
+
         // 要約を更新
         await prisma.article.update({
           where: { id: article.id },
@@ -327,10 +380,10 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
             summary,
             detailedSummary,
             summaryVersion: result.summaryVersion || 7,
-            articleType: result.articleType || 'unified'
-          }
+            articleType: result.articleType || 'unified',
+          },
         });
-        
+
         // Geminiが生成したタグを記事に追加（バッチ処理でN+1解消）
         if (generatedTags.length > 0) {
           const generatedTagConnections = await upsertTagsBatch(generatedTags);
@@ -339,18 +392,19 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
             where: { id: article.id },
             data: {
               tags: {
-                connect: generatedTagConnections
-              }
-            }
+                connect: generatedTagConnections,
+              },
+            },
           });
         }
-        
-      } catch {
+      } catch (e) {
+        logger.warn(
+          { error: sanitizeError(e), articleId: article.id },
+          'Summary generation failed'
+        );
       }
-    } else if (skipSummary) {
-    } else {
     }
-    
+
     return {
       success: true,
       articleId: article.id,
@@ -358,34 +412,39 @@ export async function addArticleManually(options: AddArticleOptions): Promise<Ad
       source: sourceName,
       summary,
       detailedSummary,
-      message: '記事を正常に追加しました'
+      message: '記事を正常に追加しました',
     };
-    
   } catch (error) {
+    logger.error(
+      { error: sanitizeError(error) },
+      'Failed to add article manually'
+    );
     return {
       success: false,
-      error: error instanceof Error ? error.message : '不明なエラーが発生しました'
+      error:
+        error instanceof Error ? error.message : '不明なエラーが発生しました',
     };
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 /**
  * 複数のURLを一括で追加
  */
-export async function addArticlesBatch(urls: string[], options: Omit<AddArticleOptions, 'url'> = {}) {
+export async function addArticlesBatch(
+  urls: string[],
+  options: Omit<AddArticleOptions, 'url'> = {}
+) {
   const results: AddArticleResult[] = [];
-  
+
   for (const url of urls) {
     const result = await addArticleManually({ ...options, url });
     results.push(result);
-    
+
     // Rate limit対策
     if (result.success && !options.skipSummary) {
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
     }
   }
-  
+
   return results;
 }

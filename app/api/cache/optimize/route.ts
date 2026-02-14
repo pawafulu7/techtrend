@@ -1,21 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { memoryOptimizer } from '@/lib/cache/memory-optimizer';
 import { cacheWarmer } from '@/lib/cache/cache-warmer';
+import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 
 /**
  * キャッシュ最適化管理エンドポイント
- * GET: 最適化状態の取得
- * POST: 手動最適化の実行
+ * GET: 最適化状態の取得（認証必須）
+ * POST: 手動最適化の実行（認証必須）
  */
-export async function GET() {
+export const GET = withCronOrAdminAuth(async () => {
   try {
     const status = await memoryOptimizer.getStatus();
     const warmerStatus = cacheWarmer.getStatus();
-    
+
     return NextResponse.json({
       optimizer: status,
       warmer: warmerStatus,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch {
     return NextResponse.json(
@@ -23,69 +24,82 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withCronOrAdminAuth(async (request: NextRequest) => {
   try {
     const body = await request.json();
     const { action, target, aggressive = false } = body;
-    
+
     let result;
-    
+
     switch (action) {
       case 'optimize':
         // メモリ最適化実行
         await memoryOptimizer.optimizeManual(aggressive);
-        result = { 
+        result = {
           message: `Memory optimization completed (aggressive: ${aggressive})`,
-          status: await memoryOptimizer.getStatus()
+          status: await memoryOptimizer.getStatus(),
         };
         break;
-        
-      case 'warm':
+
+      case 'warm': {
         // キャッシュウォーミング実行
+        const validTargets = ['stats', 'trends', 'keywords', 'search'];
+        if (target && !validTargets.includes(target)) {
+          return NextResponse.json(
+            {
+              error: `Invalid warm target. Valid targets: ${validTargets.join(', ')}`,
+            },
+            { status: 400 }
+          );
+        }
         const targets = target ? [target] : undefined;
         await cacheWarmer.warmManual(targets);
-        result = { 
+        result = {
           message: `Cache warming completed for: ${targets?.join(', ') || 'all'}`,
-          status: cacheWarmer.getStatus()
+          status: cacheWarmer.getStatus(),
         };
         break;
-        
+      }
+
       case 'start-monitoring':
         // メモリ監視開始
         memoryOptimizer.startMonitoring();
         result = { message: 'Memory monitoring started' };
         break;
-        
+
       case 'stop-monitoring':
         // メモリ監視停止
         memoryOptimizer.stopMonitoring();
         result = { message: 'Memory monitoring stopped' };
         break;
-        
+
       case 'start-warming':
         // 定期ウォーミング開始
         cacheWarmer.startPeriodicWarming();
         result = { message: 'Periodic cache warming started' };
         break;
-        
+
       case 'stop-warming':
         // 定期ウォーミング停止
         cacheWarmer.stopPeriodicWarming();
         result = { message: 'Periodic cache warming stopped' };
         break;
-        
+
       default:
         return NextResponse.json(
-          { error: 'Invalid action. Valid actions: optimize, warm, start-monitoring, stop-monitoring, start-warming, stop-warming' },
+          {
+            error:
+              'Invalid action. Valid actions: optimize, warm, start-monitoring, stop-monitoring, start-warming, stop-warming',
+          },
           { status: 400 }
         );
     }
-    
+
     return NextResponse.json({
       ...result,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch {
     return NextResponse.json(
@@ -93,4 +107,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
