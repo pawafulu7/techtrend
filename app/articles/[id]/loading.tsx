@@ -51,13 +51,13 @@ export default function ArticleDetailLoading() {
                 </div>
 
                 {/* Detailed summary grid */}
-                <div className="rounded-xl bg-slate-100/40 p-4 dark:bg-slate-900/30">
+                <div className="rounded-xl bg-[var(--tt-color-surface-muted)] p-4">
                   <Skeleton className="mb-4 h-5 w-20" />
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {Array.from({ length: 6 }).map((_, i) => (
                       <div
                         key={i}
-                        className="space-y-2 rounded-lg border border-slate-200/60 bg-white p-4 dark:border-slate-700/60 dark:bg-slate-800"
+                        className="space-y-2 rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4"
                         style={{
                           borderLeftWidth: '3px',
                           borderLeftColor: 'var(--tt-color-primary)',

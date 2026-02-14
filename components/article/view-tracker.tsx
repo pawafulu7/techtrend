@@ -17,12 +17,15 @@ export function ViewTracker({ articleId }: ViewTrackerProps) {
     }
     if (hasRecordedRef.current) return;
 
+    const controller = new AbortController();
+
     const recordView = async () => {
       try {
         const response = await fetch('/api/article-views', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           keepalive: true,
+          signal: controller.signal,
           body: JSON.stringify({ articleId }),
         });
 
@@ -39,6 +42,8 @@ export function ViewTracker({ articleId }: ViewTrackerProps) {
           );
         }
       } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError')
+          return;
         console.error('[ViewTracker] Failed to record view:', error);
       }
     };
@@ -47,7 +52,10 @@ export function ViewTracker({ articleId }: ViewTrackerProps) {
     // Trade-off: users leaving within 1.5s won't have view recorded.
     // keepalive:true on fetch ensures delivery even during page unload after timer fires.
     const timeoutId = setTimeout(recordView, 1500);
-    return () => clearTimeout(timeoutId);
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, [articleId]);
 
   return null;

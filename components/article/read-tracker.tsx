@@ -19,6 +19,7 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
   const isMountedRef = useRef(false);
   const retryCount = useRef(0);
   const retryTimeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevArticleIdRef = useRef(articleId);
   const maxRetries = 3;
 
   useEffect(() => {
@@ -30,13 +31,16 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
       };
     }
 
-    // Reset refs when articleId changes
-    hasSentRequest.current = false;
-    isSendingRequest.current = false;
-    retryCount.current = 0;
-    if (retryTimeoutId.current) {
-      clearTimeout(retryTimeoutId.current);
-      retryTimeoutId.current = null;
+    // Reset refs only when articleId changes
+    if (prevArticleIdRef.current !== articleId) {
+      hasSentRequest.current = false;
+      isSendingRequest.current = false;
+      retryCount.current = 0;
+      if (retryTimeoutId.current) {
+        clearTimeout(retryTimeoutId.current);
+        retryTimeoutId.current = null;
+      }
+      prevArticleIdRef.current = articleId;
     }
 
     // Mark article as read
