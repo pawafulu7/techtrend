@@ -122,7 +122,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
         <ArticleTracker
           articleId={article.id}
           title={article.title}
-          tagNames={article.tags.map((t) => t.name)}
+          serializedTagNames={article.tags.map((t) => t.name).join(',')}
           sourceName={article.source.name}
           difficulty={article.difficulty}
         />

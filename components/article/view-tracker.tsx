@@ -38,7 +38,9 @@ export function ViewTracker({ articleId }: ViewTrackerProps) {
       }
     };
 
-    // Delay to avoid competing with RelatedArticles fetch during initial load
+    // Delay to avoid competing with RelatedArticles fetch during initial load.
+    // Trade-off: users leaving within 1.5s won't have view recorded.
+    // keepalive:true on fetch ensures delivery even during page unload after timer fires.
     const timeoutId = setTimeout(recordView, 1500);
     return () => clearTimeout(timeoutId);
   }, [articleId]);

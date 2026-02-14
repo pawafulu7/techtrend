@@ -6,7 +6,7 @@ import { analyticsTracker } from '@/lib/analytics/tracking';
 interface ArticleTrackerProps {
   articleId: string;
   title: string;
-  tagNames: string[];
+  serializedTagNames: string;
   sourceName: string;
   difficulty: string | null;
 }
@@ -14,10 +14,11 @@ interface ArticleTrackerProps {
 export function ArticleTracker({
   articleId,
   title,
-  tagNames,
+  serializedTagNames,
   sourceName,
   difficulty,
 }: ArticleTrackerProps) {
+  const tagNames = serializedTagNames.split(',').filter(Boolean);
   const hasStartedRef = useRef(false);
   const articleIdRef = useRef(articleId);
 
@@ -67,9 +68,7 @@ export function ArticleTracker({
         analyticsTracker.endReading(articleId);
       }
     };
-    // tagNames serialized to avoid array reference comparison
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [articleId, title, tagNames.join(','), sourceName, difficulty]);
+  }, [articleId, title, serializedTagNames, sourceName, difficulty]);
 
   return null;
 }

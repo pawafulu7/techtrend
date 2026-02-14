@@ -24,7 +24,11 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
   useEffect(() => {
     isMountedRef.current = true;
 
-    if (!session?.user?.id || !articleId) return;
+    if (!session?.user?.id || !articleId) {
+      return () => {
+        isMountedRef.current = false;
+      };
+    }
 
     // Reset refs when articleId changes
     hasSentRequest.current = false;
