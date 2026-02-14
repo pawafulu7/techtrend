@@ -777,7 +777,7 @@ export async function GET(request: NextRequest) {
           endCursor: pageData.endCursor,
         };
 
-        // Normalize dates and add user data for actual page items
+        // Normalize dates for actual page items (no user data - that's merged after cache)
         normalizedArticles = pageData.items.map((article) => {
           const normalized: LightweightArticle = {
             ...article,
@@ -795,12 +795,6 @@ export async function GET(request: NextRequest) {
                 : article.updatedAt,
             // contentLength is already populated from DB trigger
           };
-
-          // Add user-specific data if requested
-          if (includeUserData && userId) {
-            normalized.isFavorited = favoritesMap.get(article.id) || false;
-            normalized.isRead = readStatusMap.get(article.id) || false;
-          }
 
           // Add company name for hatena_blog_dev articles
           const companyName = companyNameMap.get(article.id);
@@ -823,6 +817,7 @@ export async function GET(request: NextRequest) {
         };
       } else {
         // Traditional offset pagination - but generate cursor info for transition
+        // Normalize without user data - that's merged after cache save
         normalizedArticles = articles.map((article) => {
           const normalized: LightweightArticle = {
             ...article,
@@ -840,12 +835,6 @@ export async function GET(request: NextRequest) {
                 : article.updatedAt,
             // contentLength is already populated from DB trigger
           };
-
-          // Add user-specific data if requested
-          if (includeUserData && userId) {
-            normalized.isFavorited = favoritesMap.get(article.id) || false;
-            normalized.isRead = readStatusMap.get(article.id) || false;
-          }
 
           // Add company name for hatena_blog_dev articles
           const companyName = companyNameMap.get(article.id);
@@ -925,10 +914,25 @@ export async function GET(request: NextRequest) {
         };
       }
 
-      // Save to cache
-      // Note: Cache is always saved regardless of includeUserData
-      // User data will be merged after cache fetch
+      // Save to cache (without user-specific data to prevent cross-user leakage)
       await cache.set(cacheKey, result);
+
+      // Merge user-specific data AFTER cache save
+      if (
+        includeUserData &&
+        userId &&
+        result.items &&
+        result.items.length > 0
+      ) {
+        result = {
+          ...result,
+          items: result.items.map((article) => ({
+            ...article,
+            isFavorited: favoritesMap.get(article.id) || false,
+            isRead: readStatusMap.get(article.id) || false,
+          })),
+        };
+      }
     }
 
     // Calculate response time
