@@ -43,6 +43,8 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
       prevArticleIdRef.current = articleId;
     }
 
+    const controller = new AbortController();
+
     // Mark article as read
     const markAsRead = async () => {
       // Prevent duplicate requests or post-unmount execution
@@ -60,6 +62,7 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           keepalive: true,
+          signal: controller.signal,
           body: JSON.stringify({ articleId }),
         });
 
@@ -72,7 +75,12 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
         // NOTE: We intentionally continue after unmount here — the server
         // already recorded the read, so updating the client cache / localStorage
         // keeps the UI consistent on back-navigation.
+        // Guard against stale closure: skip ref updates if articleId changed
+        // while fetch was in-flight.
         if (data.success) {
+          if (prevArticleIdRef.current !== articleId) {
+            return;
+          }
           hasSentRequest.current = true;
 
           // Update react-query caches even if the list page is unmounted (e.g., browser back)
@@ -129,13 +137,18 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
           }
         }
       } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
         logger.error(
           { error, articleId, retryCount: retryCount.current },
           'Error marking article as read'
         );
 
-        // Retry logic - guard against post-unmount retry scheduling
-        if (retryCount.current < maxRetries && isMountedRef.current) {
+        // Retry logic - guard against post-unmount and stale articleId
+        if (
+          retryCount.current < maxRetries &&
+          isMountedRef.current &&
+          prevArticleIdRef.current === articleId
+        ) {
           retryCount.current++;
           const retryDelay = Math.min(
             1000 * Math.pow(2, retryCount.current),
@@ -157,6 +170,7 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
 
     return () => {
       isMountedRef.current = false;
+      controller.abort();
       clearTimeout(delayId);
       if (retryTimeoutId.current) {
         clearTimeout(retryTimeoutId.current);

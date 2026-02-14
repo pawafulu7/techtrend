@@ -57,11 +57,7 @@ export default function ArticleDetailLoading() {
                     {Array.from({ length: 6 }).map((_, i) => (
                       <div
                         key={i}
-                        className="space-y-2 rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4"
-                        style={{
-                          borderLeftWidth: '3px',
-                          borderLeftColor: 'var(--tt-color-primary)',
-                        }}
+                        className="space-y-2 rounded-lg border border-l-[3px] border-[var(--tt-color-border)] border-l-[var(--tt-color-primary)] bg-[var(--tt-color-surface)] p-4"
                       >
                         <div className="flex items-center gap-2">
                           <Skeleton className="h-7 w-7 rounded-full" />

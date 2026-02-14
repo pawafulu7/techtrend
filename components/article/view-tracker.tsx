@@ -42,8 +42,7 @@ export function ViewTracker({ articleId }: ViewTrackerProps) {
           );
         }
       } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError')
-          return;
+        if (error instanceof Error && error.name === 'AbortError') return;
         console.error('[ViewTracker] Failed to record view:', error);
       }
     };
