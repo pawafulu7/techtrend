@@ -8,8 +8,13 @@ interface ViewTrackerProps {
 
 export function ViewTracker({ articleId }: ViewTrackerProps) {
   const hasRecordedRef = useRef(false);
+  const prevArticleIdRef = useRef(articleId);
 
   useEffect(() => {
+    if (prevArticleIdRef.current !== articleId) {
+      hasRecordedRef.current = false;
+      prevArticleIdRef.current = articleId;
+    }
     if (hasRecordedRef.current) return;
 
     const recordView = async () => {

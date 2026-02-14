@@ -16,7 +16,7 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
   const queryClient = useQueryClient();
   const hasSentRequest = useRef(false);
   const isSendingRequest = useRef(false);
-  const isMountedRef = useRef(true);
+  const isMountedRef = useRef(false);
   const retryCount = useRef(0);
   const retryTimeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxRetries = 3;
@@ -65,6 +65,9 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
 
         const data = await response.json();
 
+        // NOTE: We intentionally continue after unmount here — the server
+        // already recorded the read, so updating the client cache / localStorage
+        // keeps the UI consistent on back-navigation.
         if (data.success) {
           hasSentRequest.current = true;
 

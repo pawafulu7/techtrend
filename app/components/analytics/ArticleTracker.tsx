@@ -18,11 +18,12 @@ export function ArticleTracker({
   sourceName,
   difficulty,
 }: ArticleTrackerProps) {
-  const tagNames = serializedTagNames.split(',').filter(Boolean);
   const hasStartedRef = useRef(false);
   const articleIdRef = useRef(articleId);
 
   useEffect(() => {
+    const tagNames = serializedTagNames.split(',').filter(Boolean);
+
     if (articleIdRef.current !== articleId) {
       analyticsTracker.endReading(articleIdRef.current);
       articleIdRef.current = articleId;
