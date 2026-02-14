@@ -48,6 +48,21 @@ interface LightweightArticle {
   companyName?: string;
 }
 
+/**
+ * Merge user-specific data (favorites, read status) into article items
+ */
+function mergeUserDataIntoItems<T extends { id: string }>(
+  items: T[],
+  favoritesMap: Map<string, boolean>,
+  readStatusMap: Map<string, boolean>
+): (T & { isFavorited: boolean; isRead: boolean })[] {
+  return items.map((article) => ({
+    ...article,
+    isFavorited: favoritesMap.get(article.id) || false,
+    isRead: readStatusMap.get(article.id) || false,
+  }));
+}
+
 // Initialize Redis cache with 30 minutes TTL for lightweight articles
 const cache = new RedisCache({
   ttl: 1800, // 30 minutes (increased from 5 minutes)
@@ -261,14 +276,13 @@ export async function GET(request: NextRequest) {
             }
           });
 
-          // Create new items array with user data
           result = {
             ...result,
-            items: result.items.map((article) => ({
-              ...article,
-              isFavorited: favoritesMap.get(article.id) || false,
-              isRead: readStatusMap.get(article.id) || false,
-            })),
+            items: mergeUserDataIntoItems(
+              result.items,
+              favoritesMap,
+              readStatusMap
+            ),
           };
         }
       }
@@ -698,7 +712,7 @@ export async function GET(request: NextRequest) {
       if (includeUserData && userId) {
         const articleIds = articles.slice(0, limit).map((a) => a.id); // Use only the requested limit
 
-        logger.info(
+        logger.debug(
           `DataLoader integration: userId=${userId}, articles=${articleIds.length}`
         );
 
@@ -715,7 +729,7 @@ export async function GET(request: NextRequest) {
             loaders.view.loadMany(articleIds),
           ]);
 
-          logger.info(
+          logger.debug(
             `DataLoader results: favorites=${favoriteStatuses.length}, views=${viewStatuses.length}`
           );
 
@@ -736,12 +750,12 @@ export async function GET(request: NextRequest) {
             }
           });
 
-          logger.info(
+          logger.debug(
             `DataLoader maps: favorites=${favoritesMap.size}, reads=${readStatusMap.size}`
           );
         }
       } else {
-        logger.info(
+        logger.debug(
           `DataLoader skipped: includeUserData=${includeUserData}, userId=${userId}`
         );
       }
@@ -926,11 +940,11 @@ export async function GET(request: NextRequest) {
       ) {
         result = {
           ...result,
-          items: result.items.map((article) => ({
-            ...article,
-            isFavorited: favoritesMap.get(article.id) || false,
-            isRead: readStatusMap.get(article.id) || false,
-          })),
+          items: mergeUserDataIntoItems(
+            result.items,
+            favoritesMap,
+            readStatusMap
+          ),
         };
       }
     }

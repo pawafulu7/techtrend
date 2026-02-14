@@ -17,7 +17,7 @@ export class TagCache {
    * すべてのタグを記事数付きで取得
    */
   async getAllTags(): Promise<TagWithCount[]> {
-    return this.cache.getOrSet('all-tags', async () => {
+    return this.cache.getOrSetWithLock('all-tags', async () => {
       return prisma.tag.findMany({
         include: {
           _count: {
@@ -48,8 +48,7 @@ export class TagCache {
         take: limit,
       });
 
-      // 記事数が多い順にソート
-      return tags.sort((a, b) => b._count.articles - a._count.articles);
+      return tags;
     });
   }
 

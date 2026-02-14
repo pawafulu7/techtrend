@@ -149,6 +149,7 @@ export const ALLOWED_SELECTABLE_FIELDS = new Set([
   'articleType',
   'category',
   'detailedSummary',
+  'contentLength',
 ]);
 
 /**

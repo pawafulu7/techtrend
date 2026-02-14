@@ -446,7 +446,16 @@ export const getSourceCache = (): SourceCache => {
 // 既存のコードとの互換性のため、sourceCacheもエクスポート
 // ただし、遅延初期化を使う
 export const sourceCache = {
+  getAllSources: () => getSourceCache().getAllSources(),
+  getSource: (id: string) => getSourceCache().getSource(id),
+  getSourceByName: (name: string) => getSourceCache().getSourceByName(name),
+  getTopSources: (limit?: number) => getSourceCache().getTopSources(limit),
   getAllSourcesWithStats: () => getSourceCache().getAllSourcesWithStats(),
+  getCompanySources: () => getSourceCache().getCompanySources(),
+  getCompanySourcesByGroup: (groupId: string) =>
+    getSourceCache().getCompanySourcesByGroup(groupId),
+  getCompanySourcesByTag: (tagId: string) =>
+    getSourceCache().getCompanySourcesByTag(tagId),
   invalidate: () => getSourceCache().invalidate(),
   invalidateSource: (sourceId: string) =>
     getSourceCache().invalidateSource(sourceId),
