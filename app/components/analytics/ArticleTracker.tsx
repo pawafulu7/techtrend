@@ -66,6 +66,7 @@ export function ArticleTracker({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (hasStartedRef.current) {
         analyticsTracker.endReading(articleId);
+        hasStartedRef.current = false;
       }
     };
   }, [articleId, title, serializedTagNames, sourceName, difficulty]);

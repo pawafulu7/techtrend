@@ -39,7 +39,7 @@ export default function ArticleDetailLoading() {
                     <Skeleton className="h-6 w-16" />
                     <Skeleton className="h-6 w-20" />
                     <Skeleton className="h-6 w-14" />
-                    <Skeleton className="h-6 w-18" />
+                    <Skeleton className="h-6 w-20" />
                   </div>
                 </div>
               </CardHeader>
