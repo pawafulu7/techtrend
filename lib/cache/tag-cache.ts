@@ -9,7 +9,7 @@ export class TagCache {
   constructor() {
     this.cache = new RedisCache({
       ttl: 3600, // 1時間
-      namespace: '@techtrend/cache:tags'
+      namespace: '@techtrend/cache:tags',
     });
   }
 
@@ -19,12 +19,12 @@ export class TagCache {
   async getAllTags(): Promise<TagWithCount[]> {
     return this.cache.getOrSet('all-tags', async () => {
       return prisma.tag.findMany({
-        include: { 
-          _count: { 
-            select: { articles: true } 
-          } 
+        include: {
+          _count: {
+            select: { articles: true },
+          },
         },
-        orderBy: { name: 'asc' }
+        orderBy: { name: 'asc' },
       });
     });
   }
@@ -33,21 +33,21 @@ export class TagCache {
    * 人気タグを取得（記事数上位）
    */
   async getPopularTags(limit = 20): Promise<TagWithCount[]> {
-    return this.cache.getOrSet(`popular-tags:${limit}`, async () => {
+    return this.cache.getOrSetWithLock(`popular-tags:${limit}`, async () => {
       const tags = await prisma.tag.findMany({
-        include: { 
-          _count: { 
-            select: { articles: true } 
-          } 
+        include: {
+          _count: {
+            select: { articles: true },
+          },
         },
-        orderBy: { 
+        orderBy: {
           articles: {
-            _count: 'desc'
-          }
+            _count: 'desc',
+          },
         },
-        take: limit
+        take: limit,
       });
-      
+
       // 記事数が多い順にソート
       return tags.sort((a, b) => b._count.articles - a._count.articles);
     });
@@ -58,16 +58,16 @@ export class TagCache {
    */
   async findTagsByName(searchTerm: string): Promise<Tag[]> {
     const cacheKey = `search:${searchTerm.toLowerCase()}`;
-    
+
     return this.cache.getOrSet(cacheKey, async () => {
       return prisma.tag.findMany({
         where: {
           name: {
             contains: searchTerm,
-            mode: 'insensitive'
-          }
+            mode: 'insensitive',
+          },
         },
-        orderBy: { name: 'asc' }
+        orderBy: { name: 'asc' },
       });
     });
   }
@@ -79,11 +79,11 @@ export class TagCache {
     return this.cache.getOrSet(`tag:${id}`, async () => {
       return prisma.tag.findUnique({
         where: { id },
-        include: { 
-          _count: { 
-            select: { articles: true } 
-          } 
-        }
+        include: {
+          _count: {
+            select: { articles: true },
+          },
+        },
       });
     });
   }

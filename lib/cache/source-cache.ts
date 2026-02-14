@@ -6,7 +6,7 @@ import {
   SourceStats,
   estimateSourceCategory,
   SourceCategory,
-  calculateGrowthRateFromStats
+  calculateGrowthRateFromStats,
 } from '@/lib/utils/source-stats';
 
 interface SourceWithCount extends Source {
@@ -34,7 +34,7 @@ export class SourceCache {
   constructor() {
     this.cache = new RedisCache({
       ttl: 3600, // 1時間
-      namespace: '@techtrend/cache:sources'
+      namespace: '@techtrend/cache:sources',
     });
   }
 
@@ -59,7 +59,10 @@ export class SourceCache {
 
     this.refreshTimer = setTimeout(() => {
       this.refreshNameCache(true).catch((error) => {
-        logger.error({ err: error }, 'Failed to auto-refresh source name cache');
+        logger.error(
+          { err: error },
+          'Failed to auto-refresh source name cache'
+        );
       });
     }, this.nameCacheTtlMs);
 
@@ -124,7 +127,9 @@ export class SourceCache {
   }
 
   async resolveSourceIds(identifiers: string[]): Promise<string[]> {
-    const tokens = identifiers.map((identifier) => identifier.trim()).filter(Boolean);
+    const tokens = identifiers
+      .map((identifier) => identifier.trim())
+      .filter(Boolean);
     if (tokens.length === 0) {
       return [];
     }
@@ -192,15 +197,15 @@ export class SourceCache {
    * 有効なすべてのソースを取得
    */
   async getAllSources(): Promise<SourceWithCount[]> {
-    return this.cache.getOrSet('all-sources', async () => {
+    return this.cache.getOrSetWithLock('all-sources', async () => {
       return prisma.source.findMany({
         where: { enabled: true },
-        include: { 
-          _count: { 
-            select: { articles: true } 
-          } 
+        include: {
+          _count: {
+            select: { articles: true },
+          },
         },
-        orderBy: { name: 'asc' }
+        orderBy: { name: 'asc' },
       });
     });
   }
@@ -212,11 +217,11 @@ export class SourceCache {
     return this.cache.getOrSet(`source:${id}`, async () => {
       return prisma.source.findUnique({
         where: { id },
-        include: { 
-          _count: { 
-            select: { articles: true } 
-          } 
-        }
+        include: {
+          _count: {
+            select: { articles: true },
+          },
+        },
       });
     });
   }
@@ -227,10 +232,10 @@ export class SourceCache {
   async getSourceByName(name: string): Promise<Source | null> {
     return this.cache.getOrSet(`source:name:${name}`, async () => {
       return prisma.source.findFirst({
-        where: { 
+        where: {
           name,
-          enabled: true 
-        }
+          enabled: true,
+        },
       });
     });
   }
@@ -239,22 +244,22 @@ export class SourceCache {
    * 記事数の多いソースを取得
    */
   async getTopSources(limit = 10): Promise<SourceWithCount[]> {
-    return this.cache.getOrSet(`top-sources:${limit}`, async () => {
+    return this.cache.getOrSetWithLock(`top-sources:${limit}`, async () => {
       const sources = await prisma.source.findMany({
         where: { enabled: true },
-        include: { 
-          _count: { 
-            select: { articles: true } 
-          } 
+        include: {
+          _count: {
+            select: { articles: true },
+          },
         },
         orderBy: {
           articles: {
-            _count: 'desc'
-          }
+            _count: 'desc',
+          },
         },
-        take: limit
+        take: limit,
       });
-      
+
       // 記事数が多い順にソート
       return sources.sort((a, b) => b._count.articles - a._count.articles);
     });
@@ -269,16 +274,18 @@ export class SourceCache {
       const [sources, sourceStats] = await Promise.all([
         prisma.source.findMany({
           where: { enabled: true },
-          orderBy: { name: 'asc' }
+          orderBy: { name: 'asc' },
         }),
-        prisma.$queryRaw<Array<{
-          source_id: string;
-          total_articles: number;
-          avg_quality_score: number;
-          recent_articles: number;
-          past_month_articles: number;
-          last_published: Date | null;
-        }>>`
+        prisma.$queryRaw<
+          Array<{
+            source_id: string;
+            total_articles: number;
+            avg_quality_score: number;
+            recent_articles: number;
+            past_month_articles: number;
+            last_published: Date | null;
+          }>
+        >`
           SELECT
             s.id as source_id,
             COUNT(a.id)::int as total_articles,
@@ -291,14 +298,16 @@ export class SourceCache {
           LEFT JOIN "Article" a ON s.id = a."sourceId"
           WHERE s.enabled = true
           GROUP BY s.id
-        `
+        `,
       ]);
 
       // 統計情報をマップ化（テスト環境で$queryRawがundefinedを返す場合に備えてガード）
-      const statsMap = new Map((sourceStats || []).map(stat => [stat.source_id, stat]));
+      const statsMap = new Map(
+        (sourceStats || []).map((stat) => [stat.source_id, stat])
+      );
 
       // ソース情報と統計を結合
-      return sources.map(source => {
+      return sources.map((source) => {
         const stats = statsMap.get(source.id);
         const publishFrequency = stats ? stats.recent_articles / 30 : 0;
         const category = estimateSourceCategory(source.name);
@@ -309,11 +318,11 @@ export class SourceCache {
           stats: {
             totalArticles: stats?.total_articles || 0,
             avgQualityScore: stats?.avg_quality_score || 0,
-            popularTags: [],  // Phase 1: 一時的に空配列
+            popularTags: [], // Phase 1: 一時的に空配列
             publishFrequency: Math.round(publishFrequency * 10) / 10,
             lastPublished: stats?.last_published || null,
-            growthRate: calculateGrowthRateFromStats(stats)
-          }
+            growthRate: calculateGrowthRateFromStats(stats),
+          },
         };
       });
     });
@@ -340,61 +349,86 @@ export class SourceCache {
    * 企業ブログソースを取得（DatabaseProvider用）
    * TTL: 5分
    */
-  async getCompanySources(): Promise<import('@/lib/providers/company-source/interface').CompanySource[]> {
-    const { sourceInclude, toCompanySource } = await import('@/lib/providers/company-source/transforms');
+  async getCompanySources(): Promise<
+    import('@/lib/providers/company-source/interface').CompanySource[]
+  > {
+    const { sourceInclude, toCompanySource } =
+      await import('@/lib/providers/company-source/transforms');
 
-    return this.cache.getOrSet('company-sources', async () => {
-      const rows = await prisma.source.findMany({
-        where: {
-          enabled: true,
-          groupId: { not: null },
-          group: { type: 'company_blog' },
-        },
-        include: sourceInclude,
-        orderBy: { name: 'asc' },
-      });
-      return rows.map(toCompanySource);
-    }, 300);  // 5分
+    return this.cache.getOrSet(
+      'company-sources',
+      async () => {
+        const rows = await prisma.source.findMany({
+          where: {
+            enabled: true,
+            groupId: { not: null },
+            group: { type: 'company_blog' },
+          },
+          include: sourceInclude,
+          orderBy: { name: 'asc' },
+        });
+        return rows.map(toCompanySource);
+      },
+      300
+    ); // 5分
   }
 
   /**
    * グループ別企業ブログソースを取得
    * TTL: 5分
    */
-  async getCompanySourcesByGroup(groupId: string): Promise<import('@/lib/providers/company-source/interface').CompanySource[]> {
-    const { sourceInclude, toCompanySource } = await import('@/lib/providers/company-source/transforms');
+  async getCompanySourcesByGroup(
+    groupId: string
+  ): Promise<
+    import('@/lib/providers/company-source/interface').CompanySource[]
+  > {
+    const { sourceInclude, toCompanySource } =
+      await import('@/lib/providers/company-source/transforms');
 
-    return this.cache.getOrSet(`company-sources:group:${groupId}`, async () => {
-      const rows = await prisma.source.findMany({
-        where: {
-          enabled: true,
-          groupId,
-        },
-        include: sourceInclude,
-        orderBy: { name: 'asc' },
-      });
-      return rows.map(toCompanySource);
-    }, 300);  // 5分
+    return this.cache.getOrSet(
+      `company-sources:group:${groupId}`,
+      async () => {
+        const rows = await prisma.source.findMany({
+          where: {
+            enabled: true,
+            groupId,
+          },
+          include: sourceInclude,
+          orderBy: { name: 'asc' },
+        });
+        return rows.map(toCompanySource);
+      },
+      300
+    ); // 5分
   }
 
   /**
    * タグ別企業ブログソースを取得
    * TTL: 5分
    */
-  async getCompanySourcesByTag(tagId: string): Promise<import('@/lib/providers/company-source/interface').CompanySource[]> {
-    const { sourceInclude, toCompanySource } = await import('@/lib/providers/company-source/transforms');
+  async getCompanySourcesByTag(
+    tagId: string
+  ): Promise<
+    import('@/lib/providers/company-source/interface').CompanySource[]
+  > {
+    const { sourceInclude, toCompanySource } =
+      await import('@/lib/providers/company-source/transforms');
 
-    return this.cache.getOrSet(`company-sources:tag:${tagId}`, async () => {
-      const rows = await prisma.source.findMany({
-        where: {
-          enabled: true,
-          tagAssignments: { some: { tagId } },
-        },
-        include: sourceInclude,
-        orderBy: { name: 'asc' },
-      });
-      return rows.map(toCompanySource);
-    }, 300);  // 5分
+    return this.cache.getOrSet(
+      `company-sources:tag:${tagId}`,
+      async () => {
+        const rows = await prisma.source.findMany({
+          where: {
+            enabled: true,
+            tagAssignments: { some: { tagId } },
+          },
+          include: sourceInclude,
+          orderBy: { name: 'asc' },
+        });
+        return rows.map(toCompanySource);
+      },
+      300
+    ); // 5分
   }
 }
 
@@ -414,9 +448,12 @@ export const getSourceCache = (): SourceCache => {
 export const sourceCache = {
   getAllSourcesWithStats: () => getSourceCache().getAllSourcesWithStats(),
   invalidate: () => getSourceCache().invalidate(),
-  invalidateSource: (sourceId: string) => getSourceCache().invalidateSource(sourceId),
-  resolveSourceIds: (identifiers: string[]) => getSourceCache().resolveSourceIds(identifiers),
-  resolveSourceName: (sourceId: string) => getSourceCache().resolveSourceName(sourceId)
+  invalidateSource: (sourceId: string) =>
+    getSourceCache().invalidateSource(sourceId),
+  resolveSourceIds: (identifiers: string[]) =>
+    getSourceCache().resolveSourceIds(identifiers),
+  resolveSourceName: (sourceId: string) =>
+    getSourceCache().resolveSourceName(sourceId),
 };
 
 // test-only: インスタンスをリセット
