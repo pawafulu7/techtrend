@@ -119,7 +119,13 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   return (
     <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
       <div className="w-full px-6 py-6">
-        <ArticleTracker article={article} />
+        <ArticleTracker
+          articleId={article.id}
+          title={article.title}
+          serializedTagNames={article.tags.map((t) => t.name).join(',')}
+          sourceName={article.source.name}
+          difficulty={article.difficulty}
+        />
         <ViewTracker articleId={article.id} />
         <ReadTracker articleId={article.id} />
         <div className="mb-2">

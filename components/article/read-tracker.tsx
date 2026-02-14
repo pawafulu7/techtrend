@@ -16,30 +16,44 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
   const queryClient = useQueryClient();
   const hasSentRequest = useRef(false);
   const isSendingRequest = useRef(false);
+  const isMountedRef = useRef(false);
   const retryCount = useRef(0);
   const retryTimeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevArticleIdRef = useRef(articleId);
   const maxRetries = 3;
 
   useEffect(() => {
-    if (!session?.user?.id || !articleId) return;
+    isMountedRef.current = true;
 
-    // Debug log removed
-
-    // Reset refs when articleId changes
-    hasSentRequest.current = false;
-    isSendingRequest.current = false;
-    retryCount.current = 0;
-    if (retryTimeoutId.current) {
-      clearTimeout(retryTimeoutId.current);
-      retryTimeoutId.current = null;
+    if (!session?.user?.id || !articleId) {
+      return () => {
+        isMountedRef.current = false;
+      };
     }
+
+    // Reset refs only when articleId changes
+    if (prevArticleIdRef.current !== articleId) {
+      hasSentRequest.current = false;
+      isSendingRequest.current = false;
+      retryCount.current = 0;
+      if (retryTimeoutId.current) {
+        clearTimeout(retryTimeoutId.current);
+        retryTimeoutId.current = null;
+      }
+      prevArticleIdRef.current = articleId;
+    }
+
+    const controller = new AbortController();
 
     // Mark article as read
     const markAsRead = async () => {
-      // Prevent duplicate requests
-      if (hasSentRequest.current || isSendingRequest.current) return;
-
-      // Debug log removed
+      // Prevent duplicate requests or post-unmount execution
+      if (
+        hasSentRequest.current ||
+        isSendingRequest.current ||
+        !isMountedRef.current
+      )
+        return;
 
       try {
         isSendingRequest.current = true;
@@ -48,7 +62,8 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           keepalive: true,
-          body: JSON.stringify({ articleId })
+          signal: controller.signal,
+          body: JSON.stringify({ articleId }),
         });
 
         if (!response.ok) {
@@ -57,7 +72,15 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
 
         const data = await response.json();
 
+        // NOTE: We intentionally continue after unmount here — the server
+        // already recorded the read, so updating the client cache / localStorage
+        // keeps the UI consistent on back-navigation.
+        // Guard against stale closure: skip ref updates if articleId changed
+        // while fetch was in-flight.
         if (data.success) {
+          if (prevArticleIdRef.current !== articleId) {
+            return;
+          }
           hasSentRequest.current = true;
 
           // Update react-query caches even if the list page is unmounted (e.g., browser back)
@@ -81,7 +104,9 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
                   return item;
                 });
 
-                return pageChanged ? { ...page, data: { ...page.data, items: newItems } } : page;
+                return pageChanged
+                  ? { ...page, data: { ...page.data, items: newItems } }
+                  : page;
               });
 
               return changed ? { ...oldData, pages } : oldData;
@@ -89,9 +114,11 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
           );
 
           // Dispatch custom event to update UI
-          window.dispatchEvent(new CustomEvent('article-read-status-changed', {
-            detail: { articleId, isRead: true }
-          }));
+          window.dispatchEvent(
+            new CustomEvent('article-read-status-changed', {
+              detail: { articleId, isRead: true },
+            })
+          );
 
           // Also update localStorage cache used by useReadStatus()
           try {
@@ -100,21 +127,33 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
             const ids = Array.isArray(parsed) ? parsed : [];
             if (!ids.includes(articleId)) {
               ids.push(articleId);
-              localStorage.setItem(READ_STATUS_STORAGE_KEY, JSON.stringify(ids));
+              localStorage.setItem(
+                READ_STATUS_STORAGE_KEY,
+                JSON.stringify(ids)
+              );
             }
           } catch {
             // Ignore cache update errors
           }
-
-          // Suppress info logs on client to avoid console noise
         }
       } catch (error) {
-        logger.error({ error, articleId, retryCount: retryCount.current }, 'Error marking article as read');
+        if (error instanceof Error && error.name === 'AbortError') return;
+        logger.error(
+          { error, articleId, retryCount: retryCount.current },
+          'Error marking article as read'
+        );
 
-        // Retry logic
-        if (retryCount.current < maxRetries) {
+        // Retry logic - guard against post-unmount and stale articleId
+        if (
+          retryCount.current < maxRetries &&
+          isMountedRef.current &&
+          prevArticleIdRef.current === articleId
+        ) {
           retryCount.current++;
-          const retryDelay = Math.min(1000 * Math.pow(2, retryCount.current), 5000);
+          const retryDelay = Math.min(
+            1000 * Math.pow(2, retryCount.current),
+            5000
+          );
           retryTimeoutId.current = setTimeout(markAsRead, retryDelay);
         }
       } finally {
@@ -122,8 +161,17 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
       }
     };
 
-    void markAsRead();
+    // Delay to prioritize initial content rendering over analytics
+    const delayId = setTimeout(() => {
+      if (isMountedRef.current) {
+        void markAsRead();
+      }
+    }, 3000);
+
     return () => {
+      isMountedRef.current = false;
+      controller.abort();
+      clearTimeout(delayId);
       if (retryTimeoutId.current) {
         clearTimeout(retryTimeoutId.current);
         retryTimeoutId.current = null;

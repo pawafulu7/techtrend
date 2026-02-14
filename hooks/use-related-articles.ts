@@ -16,11 +16,15 @@ export interface RelatedArticle {
   similarity: number;
 }
 
+const RELATED_ARTICLES_LIMIT = 10;
+
 export function useRelatedArticles(articleId: string) {
   return useQuery<RelatedArticle[]>({
-    queryKey: ['related-articles', articleId],
+    queryKey: ['related-articles', articleId, RELATED_ARTICLES_LIMIT],
     queryFn: async () => {
-      const response = await fetch(`/api/articles/${articleId}/related`);
+      const response = await fetch(
+        `/api/articles/${articleId}/related?limit=${RELATED_ARTICLES_LIMIT}`
+      );
       if (!response.ok) {
         throw new Error('Failed to fetch related articles');
       }

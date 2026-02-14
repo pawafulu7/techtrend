@@ -2,52 +2,58 @@
 
 import { useEffect, useRef } from 'react';
 import { analyticsTracker } from '@/lib/analytics/tracking';
-import type { ArticleWithRelations } from '@/types/models';
 
 interface ArticleTrackerProps {
-  article: ArticleWithRelations;
+  articleId: string;
+  title: string;
+  serializedTagNames: string;
+  sourceName: string;
+  difficulty: string | null;
 }
 
-export function ArticleTracker({ article }: ArticleTrackerProps) {
+export function ArticleTracker({
+  articleId,
+  title,
+  serializedTagNames,
+  sourceName,
+  difficulty,
+}: ArticleTrackerProps) {
   const hasStartedRef = useRef(false);
-  const articleIdRef = useRef(article.id);
+  const articleIdRef = useRef(articleId);
 
   useEffect(() => {
-    // 記事が変更された場合の処理
-    if (articleIdRef.current !== article.id) {
-      // 前の記事の読書を終了
+    const tagNames = serializedTagNames.split(',').filter(Boolean);
+
+    if (articleIdRef.current !== articleId) {
       analyticsTracker.endReading(articleIdRef.current);
-      articleIdRef.current = article.id;
+      articleIdRef.current = articleId;
       hasStartedRef.current = false;
     }
 
-    // 読書開始
     if (!hasStartedRef.current) {
-      analyticsTracker.startReading(article.id, {
-        title: article.title,
-        tags: article.tags.map(t => t.name),
-        source: article.source.name,
-        difficulty: article.difficulty || undefined
+      analyticsTracker.startReading(articleId, {
+        title,
+        tags: tagNames,
+        source: sourceName,
+        difficulty: difficulty || undefined,
       });
       hasStartedRef.current = true;
     }
 
-    // ページ離脱時の処理
     const handleBeforeUnload = () => {
-      analyticsTracker.endReading(article.id);
+      analyticsTracker.endReading(articleId);
     };
 
-    // 可視性変更時の処理
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        analyticsTracker.endReading(article.id);
+        analyticsTracker.endReading(articleId);
         hasStartedRef.current = false;
       } else if (!hasStartedRef.current) {
-        analyticsTracker.startReading(article.id, {
-          title: article.title,
-          tags: article.tags.map(t => t.name),
-          source: article.source.name,
-          difficulty: article.difficulty || undefined
+        analyticsTracker.startReading(articleId, {
+          title,
+          tags: tagNames,
+          source: sourceName,
+          difficulty: difficulty || undefined,
         });
         hasStartedRef.current = true;
       }
@@ -59,13 +65,12 @@ export function ArticleTracker({ article }: ArticleTrackerProps) {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      // コンポーネントアンマウント時に読書終了
       if (hasStartedRef.current) {
-        analyticsTracker.endReading(article.id);
+        analyticsTracker.endReading(articleId);
+        hasStartedRef.current = false;
       }
     };
-  }, [article]);
+  }, [articleId, title, serializedTagNames, sourceName, difficulty]);
 
-  // 何も描画しない
   return null;
 }
