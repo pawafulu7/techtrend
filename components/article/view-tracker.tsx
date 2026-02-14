@@ -10,31 +10,38 @@ export function ViewTracker({ articleId }: ViewTrackerProps) {
   const hasRecordedRef = useRef(false);
 
   useEffect(() => {
-    // 重複記録を防ぐ
     if (hasRecordedRef.current) return;
-    
+
     const recordView = async () => {
       try {
         const response = await fetch('/api/article-views', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ articleId })
+          keepalive: true,
+          body: JSON.stringify({ articleId }),
         });
 
         if (response.ok) {
           hasRecordedRef.current = true;
         } else {
-          // エラーレスポンスの詳細を取得
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-          console.error('[ViewTracker] Server error:', response.status, errorData);
+          const errorData = await response
+            .json()
+            .catch(() => ({ error: 'Unknown error' }));
+          console.error(
+            '[ViewTracker] Server error:',
+            response.status,
+            errorData
+          );
         }
       } catch (error) {
         console.error('[ViewTracker] Failed to record view:', error);
       }
     };
-    
-    recordView();
+
+    // Delay to avoid competing with RelatedArticles fetch during initial load
+    const timeoutId = setTimeout(recordView, 1500);
+    return () => clearTimeout(timeoutId);
   }, [articleId]);
-  
+
   return null;
 }
