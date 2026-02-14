@@ -152,16 +152,18 @@ export async function GET(request: NextRequest) {
       return sourceId || 'all';
     })();
 
-    // Get session when readFilter requires user context or includeUserData is true
-    const shouldUseUserContext =
+    // needsAuth: session retrieval required (includeUserData or readFilter)
+    const needsAuth =
       readFilter === 'read' || readFilter === 'unread' || includeUserData;
-    const session = shouldUseUserContext ? await auth() : null;
+    // needsUserInCacheKey: only when readFilter changes the WHERE clause
+    // includeUserData does not affect WHERE - it triggers DataLoader merge after cache fetch
+    const needsUserInCacheKey =
+      readFilter === 'read' || readFilter === 'unread';
+    const session = needsAuth ? await auth() : null;
     const userId = session?.user?.id;
 
-    // Include userId in cache key only when user context is needed
-    const userCtxForKey = shouldUseUserContext
-      ? (userId ?? 'anonymous')
-      : 'n/a';
+    // Include userId in cache key only when readFilter modifies query results
+    const userCtxForKey = needsUserInCacheKey ? (userId ?? 'anonymous') : 'n/a';
 
     // Include cursor in cache key if using cursor pagination
     // Normalize excludeSources for cache key
