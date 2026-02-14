@@ -73,7 +73,7 @@ export function buildSelectFields(options: DisplayOptions): ArticleSelect {
       summaryVersion: true,
       articleType: true,
       category: true,
-      content: true, // Included for contentLength calculation, stripped before response
+      contentLength: true, // Pre-calculated by DB trigger
     };
   }
 

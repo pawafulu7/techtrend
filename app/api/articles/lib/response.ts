@@ -22,10 +22,16 @@ export function transformArticleItems<T>(items: T[] | undefined): T[] {
   return items.map((article) => {
     if (typeof article === 'object' && article !== null) {
       const { content, ...rest } = article as Record<string, unknown>;
-      return {
-        ...rest,
-        contentLength: typeof content === 'string' ? content.length : null,
-      } as T;
+      // Fallback for legacy cache shapes that still contain content field
+      if (content !== undefined) {
+        return {
+          ...rest,
+          contentLength:
+            rest.contentLength ??
+            (typeof content === 'string' ? content.length : null),
+        } as T;
+      }
+      return rest as T;
     }
     return article;
   });
@@ -91,7 +97,10 @@ export function createGetResponse(
 
   if (isUserDependent) {
     // User-specific responses should not be cached publicly
-    response.headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    response.headers.set(
+      'Cache-Control',
+      'private, no-cache, no-store, must-revalidate'
+    );
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
     response.headers.set('X-Cache-Bypass', 'user-context');
@@ -99,7 +108,10 @@ export function createGetResponse(
     // Public responses can be cached
     // s-maxageとCDN max-ageを整合させる（300秒）
     // stale-while-revalidateはバックグラウンド再検証用に60秒
-    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
+    response.headers.set(
+      'Cache-Control',
+      'public, s-maxage=300, stale-while-revalidate=60'
+    );
     response.headers.set('CDN-Cache-Control', 'max-age=300');
   }
 
@@ -112,7 +124,10 @@ export function createGetResponse(
 /**
  * Create an empty paginated response
  */
-export function createEmptyResponse(page: number, limit: number): ArticleQueryResult {
+export function createEmptyResponse(
+  page: number,
+  limit: number
+): ArticleQueryResult {
   return {
     items: [],
     total: 0,

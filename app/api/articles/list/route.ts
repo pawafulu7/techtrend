@@ -48,6 +48,21 @@ interface LightweightArticle {
   companyName?: string;
 }
 
+/**
+ * Merge user-specific data (favorites, read status) into article items
+ */
+function mergeUserDataIntoItems<T extends { id: string }>(
+  items: T[],
+  favoritesMap: Map<string, boolean>,
+  readStatusMap: Map<string, boolean>
+): (T & { isFavorited: boolean; isRead: boolean })[] {
+  return items.map((article) => ({
+    ...article,
+    isFavorited: favoritesMap.get(article.id) || false,
+    isRead: readStatusMap.get(article.id) || false,
+  }));
+}
+
 // Initialize Redis cache with 30 minutes TTL for lightweight articles
 const cache = new RedisCache({
   ttl: 1800, // 30 minutes (increased from 5 minutes)
@@ -152,16 +167,18 @@ export async function GET(request: NextRequest) {
       return sourceId || 'all';
     })();
 
-    // Get session when readFilter requires user context or includeUserData is true
-    const shouldUseUserContext =
+    // needsAuth: session retrieval required (includeUserData or readFilter)
+    const needsAuth =
       readFilter === 'read' || readFilter === 'unread' || includeUserData;
-    const session = shouldUseUserContext ? await auth() : null;
+    // needsUserInCacheKey: only when readFilter changes the WHERE clause
+    // includeUserData does not affect WHERE - it triggers DataLoader merge after cache fetch
+    const needsUserInCacheKey =
+      readFilter === 'read' || readFilter === 'unread';
+    const session = needsAuth ? await auth() : null;
     const userId = session?.user?.id;
 
-    // Include userId in cache key only when user context is needed
-    const userCtxForKey = shouldUseUserContext
-      ? (userId ?? 'anonymous')
-      : 'n/a';
+    // Include userId in cache key only when readFilter modifies query results
+    const userCtxForKey = needsUserInCacheKey ? (userId ?? 'anonymous') : 'n/a';
 
     // Include cursor in cache key if using cursor pagination
     // Normalize excludeSources for cache key
@@ -259,14 +276,13 @@ export async function GET(request: NextRequest) {
             }
           });
 
-          // Create new items array with user data
           result = {
             ...result,
-            items: result.items.map((article) => ({
-              ...article,
-              isFavorited: favoritesMap.get(article.id) || false,
-              isRead: readStatusMap.get(article.id) || false,
-            })),
+            items: mergeUserDataIntoItems(
+              result.items,
+              favoritesMap,
+              readStatusMap
+            ),
           };
         }
       }
@@ -630,7 +646,7 @@ export async function GET(request: NextRequest) {
           userVotes: true,
           createdAt: true,
           updatedAt: true,
-          content: true, // For contentLength calculation, stripped before response
+          contentLength: true, // Pre-calculated by DB trigger
           // No tags relation selected (performance optimization)
           // No detailedSummary field selected (reduces data transfer)
         },
@@ -696,7 +712,7 @@ export async function GET(request: NextRequest) {
       if (includeUserData && userId) {
         const articleIds = articles.slice(0, limit).map((a) => a.id); // Use only the requested limit
 
-        logger.info(
+        logger.debug(
           `DataLoader integration: userId=${userId}, articles=${articleIds.length}`
         );
 
@@ -713,7 +729,7 @@ export async function GET(request: NextRequest) {
             loaders.view.loadMany(articleIds),
           ]);
 
-          logger.info(
+          logger.debug(
             `DataLoader results: favorites=${favoriteStatuses.length}, views=${viewStatuses.length}`
           );
 
@@ -734,12 +750,12 @@ export async function GET(request: NextRequest) {
             }
           });
 
-          logger.info(
+          logger.debug(
             `DataLoader maps: favorites=${favoritesMap.size}, reads=${readStatusMap.size}`
           );
         }
       } else {
-        logger.info(
+        logger.debug(
           `DataLoader skipped: includeUserData=${includeUserData}, userId=${userId}`
         );
       }
@@ -775,13 +791,10 @@ export async function GET(request: NextRequest) {
           endCursor: pageData.endCursor,
         };
 
-        // Normalize dates and add user data for actual page items
+        // Normalize dates for actual page items (no user data - that's merged after cache)
         normalizedArticles = pageData.items.map((article) => {
-          // Extract content for length calculation, then exclude from response
-          const { content, ...articleWithoutContent } =
-            article as typeof article & { content?: string | null };
           const normalized: LightweightArticle = {
-            ...articleWithoutContent,
+            ...article,
             publishedAt:
               article.publishedAt instanceof Date
                 ? article.publishedAt.toISOString()
@@ -794,14 +807,8 @@ export async function GET(request: NextRequest) {
               article.updatedAt instanceof Date
                 ? article.updatedAt.toISOString()
                 : article.updatedAt,
-            contentLength: typeof content === 'string' ? content.length : null,
+            // contentLength is already populated from DB trigger
           };
-
-          // Add user-specific data if requested
-          if (includeUserData && userId) {
-            normalized.isFavorited = favoritesMap.get(article.id) || false;
-            normalized.isRead = readStatusMap.get(article.id) || false;
-          }
 
           // Add company name for hatena_blog_dev articles
           const companyName = companyNameMap.get(article.id);
@@ -824,12 +831,10 @@ export async function GET(request: NextRequest) {
         };
       } else {
         // Traditional offset pagination - but generate cursor info for transition
+        // Normalize without user data - that's merged after cache save
         normalizedArticles = articles.map((article) => {
-          // Extract content for length calculation, then exclude from response
-          const { content, ...articleWithoutContent } =
-            article as typeof article & { content?: string | null };
           const normalized: LightweightArticle = {
-            ...articleWithoutContent,
+            ...article,
             publishedAt:
               article.publishedAt instanceof Date
                 ? article.publishedAt.toISOString()
@@ -842,14 +847,8 @@ export async function GET(request: NextRequest) {
               article.updatedAt instanceof Date
                 ? article.updatedAt.toISOString()
                 : article.updatedAt,
-            contentLength: typeof content === 'string' ? content.length : null,
+            // contentLength is already populated from DB trigger
           };
-
-          // Add user-specific data if requested
-          if (includeUserData && userId) {
-            normalized.isFavorited = favoritesMap.get(article.id) || false;
-            normalized.isRead = readStatusMap.get(article.id) || false;
-          }
 
           // Add company name for hatena_blog_dev articles
           const companyName = companyNameMap.get(article.id);
@@ -929,10 +928,25 @@ export async function GET(request: NextRequest) {
         };
       }
 
-      // Save to cache
-      // Note: Cache is always saved regardless of includeUserData
-      // User data will be merged after cache fetch
+      // Save to cache (without user-specific data to prevent cross-user leakage)
       await cache.set(cacheKey, result);
+
+      // Merge user-specific data AFTER cache save
+      if (
+        includeUserData &&
+        userId &&
+        result.items &&
+        result.items.length > 0
+      ) {
+        result = {
+          ...result,
+          items: mergeUserDataIntoItems(
+            result.items,
+            favoritesMap,
+            readStatusMap
+          ),
+        };
+      }
     }
 
     // Calculate response time
