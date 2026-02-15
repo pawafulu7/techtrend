@@ -73,8 +73,11 @@ export function ArticleCard({
     return isSpeakerDeck || isDocswell;
   })();
 
-  // T1: Simplified thumbnail display - show whenever thumbnail exists
-  const showThumbnail = !!article.thumbnail;
+  // T1: Thumbnail display with validation and error fallback
+  const [thumbnailError, setThumbnailError] = useState(false);
+  const hasValidThumbnailUrl =
+    !!article.thumbnail && /^https?:\/\//.test(article.thumbnail);
+  const showThumbnail = hasValidThumbnailUrl && !thumbnailError;
   const trimmedSummary = article.summary?.trim() || '';
 
   const searchParams = useSearchParams();
@@ -120,8 +123,8 @@ export function ArticleCard({
           : sourceColor?.borderLeft
       )}
     >
-      {/* Header: Title (Pattern 2/3 only) */}
-      {!isPresentation && (
+      {/* Header: Title (Pattern 2/3, or presentation fallback when thumbnail fails) */}
+      {(!isPresentation || !showThumbnail) && (
         <h3
           className={cn(
             'font-heading text-foreground line-clamp-2 text-base leading-snug font-semibold sm:text-lg',
@@ -195,6 +198,7 @@ export function ArticleCard({
             priority={false}
             className="object-contain p-3 transition-transform duration-300 ease-out group-hover:scale-[1.01]"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            onError={() => setThumbnailError(true)}
           />
         </div>
       ) : showThumbnail ? (
@@ -208,6 +212,7 @@ export function ArticleCard({
               priority={false}
               className="object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01]"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              onError={() => setThumbnailError(true)}
             />
           </div>
           {trimmedSummary && (
