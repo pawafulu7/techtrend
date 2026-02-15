@@ -106,13 +106,10 @@ export class CloudflareBlogFetcher extends BaseFetcher {
                 // エラー時は元のコンテンツを使用
               }
             }
-          } else if (content && content.length >= 2000) {
           }
 
           // コンテンツ品質チェック
           const contentCheck = checkContentQuality(content, item.title);
-          if (contentCheck.warning) {
-          }
 
           // タグの生成
           const tags = this.generateCloudflareTags(item.categories, item.title);

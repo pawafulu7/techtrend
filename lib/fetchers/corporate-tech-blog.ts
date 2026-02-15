@@ -94,7 +94,8 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
 
         // 記事数制限を環境変数で設定可能に（デフォルト: 30件）
         const maxArticlesPerCompany = parseInt(
-          process.env.MAX_ARTICLES_PER_COMPANY || '30'
+          process.env.MAX_ARTICLES_PER_COMPANY || '30',
+          10
         );
         let processedCount = 0;
 
@@ -191,9 +192,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
                     '[Corporate Tech Blog] Enrichment failed'
                   );
                 }
-              } else {
               }
-            } else if (content && content.length >= 2000) {
             }
 
             const article: CreateArticleInput = {

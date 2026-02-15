@@ -166,9 +166,15 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
           );
           // エラー時は元のコンテンツを使用
         }
-      } else {
       }
-    } else if (content && content.length >= 2000) {
+    }
+
+    // enricherでサムネイル取得できなかった場合、コンテンツから抽出
+    if (!thumbnail && content) {
+      const extracted = this.extractThumbnail(content);
+      if (extracted) {
+        thumbnail = extracted;
+      }
     }
 
     const article: CreateArticleInput = {
@@ -179,7 +185,7 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
       publishedAt,
       sourceId: this.source.id,
       tagNames: item.categories || [],
-      thumbnail, // サムネイル追加
+      thumbnail,
     };
 
     return article;
