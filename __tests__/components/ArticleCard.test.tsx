@@ -333,19 +333,21 @@ describe('ArticleCard', () => {
     jest.useFakeTimers();
     jest.setSystemTime(fakeNow);
 
-    const recentArticle = {
-      ...mockArticle,
-      publishedAt: new Date('2025-06-15T09:00:00Z'), // 3 hours ago
-    };
+    try {
+      const recentArticle = {
+        ...mockArticle,
+        publishedAt: new Date('2025-06-15T09:00:00Z'), // 3 hours ago
+      };
 
-    renderWithProviders(<ArticleCard article={recentArticle} />);
+      renderWithProviders(<ArticleCard article={recentArticle} />);
 
-    // RelativeTimeはuseEffect後に表示されるため、waitForで待つ
-    await waitFor(() => {
-      expect(screen.getByText('3時間前')).toBeInTheDocument();
-    });
-
-    jest.useRealTimers();
+      // RelativeTimeはuseEffect後に表示されるため、waitForで待つ
+      await waitFor(() => {
+        expect(screen.getByText('3時間前')).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('renders external link button with icon only', () => {

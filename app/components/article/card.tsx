@@ -228,8 +228,8 @@ export function ArticleCard({
         </p>
       ) : null}
 
-      {/* Hover action buttons - top right overlay */}
-      <div className="pointer-events-none absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
+      {/* Action buttons - visible on hover (desktop) or always visible (touch devices) */}
+      <div className="pointer-events-auto absolute top-2 right-2 flex items-center gap-1 opacity-100 transition-opacity duration-200 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100">
         {votes > 0 && (
           <BadgeV2
             variant="secondary"
