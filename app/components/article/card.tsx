@@ -108,6 +108,9 @@ export function ArticleCard({
 
   const votes = article.userVotes || 0;
 
+  // Pattern 2: non-presentation article with valid thumbnail (YouTube-style layout)
+  const isPattern2Thumbnail = !isPresentation && showThumbnail;
+
   return (
     <CardV2
       variant="hover"
@@ -116,119 +119,130 @@ export function ArticleCard({
       data-article-id={article.id}
       onClick={handleCardClick}
       className={cn(
-        'group relative flex h-auto cursor-pointer flex-col gap-1.5 px-4 pt-3 pb-4 sm:min-h-[240px]',
+        'group relative flex h-auto cursor-pointer flex-col sm:min-h-[240px]',
+        isPattern2Thumbnail ? 'gap-0 pb-4' : 'gap-1.5 px-4 pt-3 pb-4',
         !showThumbnail && 'border-muted/40 border shadow-sm',
         isNew
           ? 'border-t-2 border-t-green-500/60 dark:border-t-green-400/40'
           : sourceColor?.borderLeft
       )}
     >
-      {/* Header: Title (Pattern 2/3, or presentation fallback when thumbnail fails) */}
-      {(!isPresentation || !showThumbnail) && (
-        <h3
-          className={cn(
-            'font-heading text-foreground line-clamp-2 text-base leading-snug font-semibold sm:text-lg',
-            isRead && 'opacity-70'
-          )}
-          title={article.translatedTitle || article.title}
-        >
-          {article.translatedTitle || article.title}
-        </h3>
-      )}
-
-      {/* Sub-line: badges + relative time */}
-      <div className="flex flex-wrap items-center gap-2 text-[12px]">
-        {isNew && (
-          <span
-            className="relative flex h-2.5 w-2.5 shrink-0"
-            aria-label="24時間以内の新着記事"
-            title="NEW"
-            role="img"
-          >
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
-          </span>
-        )}
-        {!isRead && (
-          <BadgeV2
-            variant="secondary"
-            className="text-xs"
-            data-testid="unread-badge"
-          >
-            未読
-          </BadgeV2>
-        )}
-        {showSource && article.source && sourceColor && (
-          <BadgeV2
-            variant="outline"
-            className={cn(
-              'flex items-center gap-1.5 text-xs',
-              sourceColor.tag,
-              sourceColor.border,
-              sourceColor.hover
-            )}
-            data-testid="article-source"
-          >
-            <span
-              className={cn('h-2 w-2 shrink-0 rounded-full', sourceColor.dot)}
-              aria-hidden="true"
-            />
-            {article.companyName ?? article.source.name}
-          </BadgeV2>
-        )}
-        <span className="text-muted-foreground">
-          <RelativeTime date={article.publishedAt} />
-        </span>
-        {sortBy === 'createdAt' && (
-          <span className="text-muted-foreground flex items-center gap-1">
-            <span>取得:</span>
-            <RelativeTime date={article.createdAt} />
-          </span>
-        )}
-      </div>
-
-      {/* Content area: 3 patterns */}
-      {isPresentation && showThumbnail ? (
-        // Pattern 1: Presentation - large thumbnail, no title
-        <div className="relative isolate min-h-[160px] w-full flex-1 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
+      {/* Pattern 2: Thumbnail first (YouTube-style) */}
+      {isPattern2Thumbnail && (
+        <div className="relative isolate h-[120px] w-full overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800">
           <OptimizedImage
             src={article.thumbnail!}
             alt={article.title}
             fill
             priority={false}
-            className="object-contain p-3 transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             onError={() => setThumbnailError(true)}
           />
         </div>
-      ) : showThumbnail ? (
-        // Pattern 2: Thumbnail + short summary
-        <div className="flex flex-col gap-1.5">
-          <div className="relative isolate h-[100px] w-full overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
+      )}
+
+      {/* Content area: padded for Pattern 2, inline for others */}
+      <div
+        className={cn(
+          'flex flex-col gap-1.5',
+          isPattern2Thumbnail && 'px-4 pt-2'
+        )}
+      >
+        {/* Title (Pattern 2/3, or presentation fallback when thumbnail fails) */}
+        {(!isPresentation || !showThumbnail) && (
+          <h3
+            className={cn(
+              'font-heading text-foreground line-clamp-2 text-base leading-snug font-semibold sm:text-lg',
+              isRead && 'opacity-70'
+            )}
+            title={article.translatedTitle || article.title}
+          >
+            {article.translatedTitle || article.title}
+          </h3>
+        )}
+
+        {/* Sub-line: badges + relative time */}
+        <div className="flex flex-wrap items-center gap-2 text-[12px]">
+          {isNew && (
+            <span
+              className="relative flex h-2.5 w-2.5 shrink-0"
+              aria-label="24時間以内の新着記事"
+              title="NEW"
+              role="img"
+            >
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+            </span>
+          )}
+          {!isRead && (
+            <BadgeV2
+              variant="secondary"
+              className="text-xs"
+              data-testid="unread-badge"
+            >
+              未読
+            </BadgeV2>
+          )}
+          {showSource && article.source && sourceColor && (
+            <BadgeV2
+              variant="outline"
+              className={cn(
+                'flex items-center gap-1.5 text-xs',
+                sourceColor.tag,
+                sourceColor.border,
+                sourceColor.hover
+              )}
+              data-testid="article-source"
+            >
+              <span
+                className={cn('h-2 w-2 shrink-0 rounded-full', sourceColor.dot)}
+                aria-hidden="true"
+              />
+              {article.companyName ?? article.source.name}
+            </BadgeV2>
+          )}
+          <span className="text-muted-foreground">
+            <RelativeTime date={article.publishedAt} />
+          </span>
+          {sortBy === 'createdAt' && (
+            <span className="text-muted-foreground flex items-center gap-1">
+              <span>取得:</span>
+              <RelativeTime date={article.createdAt} />
+            </span>
+          )}
+        </div>
+
+        {/* Content area: 3 patterns */}
+        {isPresentation && showThumbnail ? (
+          // Pattern 1: Presentation - large thumbnail, no title
+          <div className="relative isolate min-h-[160px] w-full flex-1 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
             <OptimizedImage
               src={article.thumbnail!}
               alt={article.title}
               fill
               priority={false}
-              className="object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+              className="object-contain p-3 transition-transform duration-300 ease-out group-hover:scale-[1.01]"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               onError={() => setThumbnailError(true)}
             />
           </div>
-          {trimmedSummary && (
+        ) : showThumbnail ? (
+          // Pattern 2: Summary only (thumbnail already rendered above)
+          trimmedSummary ? (
             <p className="text-foreground line-clamp-4 text-sm leading-relaxed">
               {trimmedSummary}
             </p>
-          )}
-        </div>
-      ) : trimmedSummary ? (
-        // Pattern 3: Text only - full summary
-        <p className="text-foreground flex-1 text-sm leading-relaxed">
-          {trimmedSummary.length > CARD_SUMMARY_MAX_LENGTH
-            ? `${trimmedSummary.slice(0, CARD_SUMMARY_MAX_LENGTH)}…`
-            : trimmedSummary}
-        </p>
-      ) : null}
+          ) : null
+        ) : trimmedSummary ? (
+          // Pattern 3: Text only - full summary
+          <p className="text-foreground flex-1 text-sm leading-relaxed">
+            {trimmedSummary.length > CARD_SUMMARY_MAX_LENGTH
+              ? `${trimmedSummary.slice(0, CARD_SUMMARY_MAX_LENGTH)}…`
+              : trimmedSummary}
+          </p>
+        ) : null}
+      </div>
 
       {/* Action buttons - visible on hover (desktop) or always visible (touch devices) */}
       <div className="pointer-events-auto absolute right-2 bottom-2 flex items-center gap-1 opacity-100 transition-opacity duration-200 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100">
