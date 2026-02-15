@@ -135,7 +135,7 @@ export function ArticleCard({
             alt={article.title}
             fill
             priority={false}
-            className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+            className="object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01]"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             onError={() => setThumbnailError(true)}
           />
@@ -230,7 +230,7 @@ export function ArticleCard({
         ) : showThumbnail ? (
           // Pattern 2: Summary only (thumbnail already rendered above)
           trimmedSummary ? (
-            <p className="text-foreground line-clamp-4 text-sm leading-relaxed">
+            <p className="text-foreground line-clamp-4 text-xs leading-relaxed">
               {trimmedSummary}
             </p>
           ) : null
