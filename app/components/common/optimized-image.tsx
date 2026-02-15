@@ -17,6 +17,9 @@ interface OptimizedImageProps {
   onError?: () => void;
 }
 
+const PLACEHOLDER_IMAGE =
+  'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2UyZThmMCIvPjx0ZXh0IHRleHQtYW5jaG9yPSJtaWRkbGUiIHg9IjE1MCIgeT0iMTAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY0NzQ4YiI+SW1hZ2U8L3RleHQ+PC9zdmc+';
+
 /**
  * 最適化された画像コンポーネント
  * - WebP/AVIF自動変換
@@ -24,10 +27,10 @@ interface OptimizedImageProps {
  * - レスポンシブ対応
  * - エラーハンドリング
  */
-export function OptimizedImage({ 
-  src, 
-  alt, 
-  width = 300, 
+export function OptimizedImage({
+  src,
+  alt,
+  width = 300,
   height = 200,
   priority = false,
   className = '',
@@ -35,42 +38,47 @@ export function OptimizedImage({
   fill = false,
   style,
   quality = 75,
-  onError
+  onError,
 }: OptimizedImageProps) {
-  const [imgSrc, setImgSrc] = useState(src);
   const [hasError, setHasError] = useState(false);
+  const [prevSrc, setPrevSrc] = useState(src);
 
-  // デフォルトのplaceholder画像（Base64エンコード）
-  const placeholderImage = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2UyZThmMCIvPjx0ZXh0IHRleHQtYW5jaG9yPSJtaWRkbGUiIHg9IjE1MCIgeT0iMTAwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY0NzQ4YiI+SW1hZ2U8L3RleHQ+PC9zdmc+';
+  // src変更時にエラー状態をリセット（useEffectではなくレンダリング中に導出）
+  if (src !== prevSrc) {
+    setPrevSrc(src);
+    setHasError(false);
+  }
+
+  const imgSrc = hasError ? PLACEHOLDER_IMAGE : src;
 
   const handleError = () => {
     if (!hasError) {
       setHasError(true);
-      setImgSrc(placeholderImage);
       onError?.();
     }
   };
 
-  // 外部URLの場合はそのまま使用、相対パスの場合は調整
-  const imageSrc = imgSrc.startsWith('http') || imgSrc.startsWith('data:') 
-    ? imgSrc 
-    : imgSrc;
+  const isExternal =
+    imgSrc.startsWith('http://') || imgSrc.startsWith('https://');
+  const isDataUri = imgSrc.startsWith('data:');
 
   // fillモードの場合
   if (fill) {
     return (
       <Image
-        src={imageSrc}
+        src={imgSrc}
         alt={alt}
         fill
         priority={priority}
         loading={priority ? 'eager' : 'lazy'}
         className={className}
         style={style}
-        sizes={sizes || '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'}
+        sizes={
+          sizes || '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
+        }
         quality={quality}
         onError={handleError}
-        unoptimized={imageSrc.startsWith('data:') || hasError}
+        unoptimized={isExternal || isDataUri || hasError}
       />
     );
   }
@@ -78,7 +86,7 @@ export function OptimizedImage({
   // 通常モード（width/height指定）
   return (
     <Image
-      src={imageSrc}
+      src={imgSrc}
       alt={alt}
       width={width}
       height={height}
@@ -89,7 +97,7 @@ export function OptimizedImage({
       sizes={sizes || `(max-width: 768px) 100vw, ${width}px`}
       quality={quality}
       onError={handleError}
-      unoptimized={imageSrc.startsWith('data:') || hasError}
+      unoptimized={isExternal || isDataUri || hasError}
     />
   );
 }
@@ -97,11 +105,11 @@ export function OptimizedImage({
 /**
  * 記事サムネイル用の最適化された画像コンポーネント
  */
-export function ArticleThumbnail({ 
-  src, 
+export function ArticleThumbnail({
+  src,
   alt,
   priority = false,
-  className = ''
+  className = '',
 }: {
   src: string;
   alt: string;
@@ -109,7 +117,9 @@ export function ArticleThumbnail({
   className?: string;
 }) {
   return (
-    <div className={`relative aspect-video overflow-hidden bg-gray-100 ${className}`}>
+    <div
+      className={`relative aspect-video overflow-hidden bg-gray-100 ${className}`}
+    >
       <OptimizedImage
         src={src}
         alt={alt}
@@ -126,11 +136,11 @@ export function ArticleThumbnail({
 /**
  * プロフィール画像用の最適化された画像コンポーネント
  */
-export function ProfileImage({ 
-  src, 
+export function ProfileImage({
+  src,
   alt,
   size = 40,
-  className = ''
+  className = '',
 }: {
   src: string;
   alt: string;
