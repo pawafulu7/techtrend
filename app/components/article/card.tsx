@@ -189,7 +189,7 @@ export function ArticleCard({
       {/* Content area: 3 patterns */}
       {isPresentation && showThumbnail ? (
         // Pattern 1: Presentation - large thumbnail, no title
-        <div className="relative isolate min-h-0 w-full flex-1 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
+        <div className="relative isolate min-h-[160px] w-full flex-1 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
           <OptimizedImage
             src={article.thumbnail!}
             alt={article.title}
@@ -214,18 +214,18 @@ export function ArticleCard({
           </div>
           {article.summary?.trim() && (
             <p className="text-foreground line-clamp-4 text-sm leading-relaxed">
-              {article.summary.length > MAX_SUMMARY_LENGTH_SHORT
-                ? `${article.summary.slice(0, MAX_SUMMARY_LENGTH_SHORT)}…`
-                : article.summary}
+              {article.summary.trim().length > MAX_SUMMARY_LENGTH_SHORT
+                ? `${article.summary.trim().slice(0, MAX_SUMMARY_LENGTH_SHORT)}…`
+                : article.summary.trim()}
             </p>
           )}
         </div>
-      ) : article.summary ? (
+      ) : article.summary?.trim() ? (
         // Pattern 3: Text only - full summary
         <p className="text-foreground flex-1 text-sm leading-relaxed">
-          {article.summary.length > MAX_SUMMARY_LENGTH
-            ? `${article.summary.slice(0, MAX_SUMMARY_LENGTH)}…`
-            : article.summary}
+          {article.summary.trim().length > MAX_SUMMARY_LENGTH
+            ? `${article.summary.trim().slice(0, MAX_SUMMARY_LENGTH)}…`
+            : article.summary.trim()}
         </p>
       ) : null}
 

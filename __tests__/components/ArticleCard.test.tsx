@@ -313,7 +313,7 @@ describe('ArticleCard', () => {
     expect(screen.queryByTestId('vote-count-badge')).not.toBeInTheDocument();
   });
 
-  it('displays quality score when available', () => {
+  it('renders card correctly with quality score data', () => {
     const articleWithScore = {
       ...mockArticle,
       qualityScore: 85,
@@ -321,14 +321,12 @@ describe('ArticleCard', () => {
 
     renderWithProviders(<ArticleCard article={articleWithScore} />);
 
-    // 品質スコアが表示される（実装に依存）
-    const scoreElement = screen.queryByText(/85/i);
-    if (scoreElement) {
-      expect(scoreElement).toBeInTheDocument();
-    }
+    // カードが正常にレンダリングされる（品質スコアはカード内に直接表示されない）
+    expect(screen.getByTestId('article-card')).toBeInTheDocument();
+    expect(screen.getByText('Test Article Title')).toBeInTheDocument();
   });
 
-  it('displays category label when category is present', () => {
+  it('renders card correctly with category data', () => {
     const articleWithCategory = {
       ...mockArticle,
       category: 'frontend',
@@ -336,25 +334,19 @@ describe('ArticleCard', () => {
 
     renderWithProviders(<ArticleCard article={articleWithCategory} />);
 
-    // カテゴリラベルが表示される（CategoryClassifierが適用される）
-    // CategoryClassifierがラベルを変換する可能性があるため、複数の可能性をチェック
-    const categoryBadge =
-      screen.queryByText(/frontend/i) ||
-      screen.queryByText(/フロントエンド/i) ||
-      screen.queryByText(/Frontend/i);
-
-    if (categoryBadge) {
-      expect(categoryBadge).toBeInTheDocument();
-    } else {
-      // カテゴリが別の形式で表示されている可能性
-      expect(screen.queryByText('frontend')).toBeNull();
-    }
+    // カードが正常にレンダリングされる（カテゴリはカード内に直接表示されない）
+    expect(screen.getByTestId('article-card')).toBeInTheDocument();
+    expect(screen.getByText('Test Article Title')).toBeInTheDocument();
   });
 
   it('displays relative time for publication date', async () => {
+    const fakeNow = new Date('2025-06-15T12:00:00Z');
+    jest.useFakeTimers();
+    jest.setSystemTime(fakeNow);
+
     const recentArticle = {
       ...mockArticle,
-      publishedAt: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
+      publishedAt: new Date('2025-06-15T09:00:00Z'), // 3 hours ago
     };
 
     renderWithProviders(<ArticleCard article={recentArticle} />);
@@ -363,6 +355,8 @@ describe('ArticleCard', () => {
     await waitFor(() => {
       expect(screen.getByText('3時間前')).toBeInTheDocument();
     });
+
+    jest.useRealTimers();
   });
 
   it('renders external link button with icon only', () => {
