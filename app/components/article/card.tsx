@@ -16,8 +16,8 @@ import {
   useIsNewArticle,
 } from '@/app/components/common/relative-time';
 
-const MAX_SUMMARY_LENGTH = 300;
-const MAX_SUMMARY_LENGTH_SHORT = 160;
+const CARD_SUMMARY_MAX_LENGTH = 300;
+const CARD_SUMMARY_MAX_LENGTH_SHORT = 160;
 
 export function ArticleCard({
   article,
@@ -213,8 +213,8 @@ export function ArticleCard({
           </div>
           {trimmedSummary && (
             <p className="text-foreground line-clamp-4 text-sm leading-relaxed">
-              {trimmedSummary.length > MAX_SUMMARY_LENGTH_SHORT
-                ? `${trimmedSummary.slice(0, MAX_SUMMARY_LENGTH_SHORT)}…`
+              {trimmedSummary.length > CARD_SUMMARY_MAX_LENGTH_SHORT
+                ? `${trimmedSummary.slice(0, CARD_SUMMARY_MAX_LENGTH_SHORT)}…`
                 : trimmedSummary}
             </p>
           )}
@@ -222,8 +222,8 @@ export function ArticleCard({
       ) : trimmedSummary ? (
         // Pattern 3: Text only - full summary
         <p className="text-foreground flex-1 text-sm leading-relaxed">
-          {trimmedSummary.length > MAX_SUMMARY_LENGTH
-            ? `${trimmedSummary.slice(0, MAX_SUMMARY_LENGTH)}…`
+          {trimmedSummary.length > CARD_SUMMARY_MAX_LENGTH
+            ? `${trimmedSummary.slice(0, CARD_SUMMARY_MAX_LENGTH)}…`
             : trimmedSummary}
         </p>
       ) : null}

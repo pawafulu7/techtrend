@@ -105,7 +105,6 @@ describe('ArticleCard', () => {
     source: {
       name: 'Test Source',
     },
-    tags: [{ name: 'React' }, { name: 'Testing' }],
   });
 
   beforeEach(() => {

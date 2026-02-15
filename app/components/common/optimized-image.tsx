@@ -59,7 +59,8 @@ export function OptimizedImage({
     }
   };
 
-  const isExternal = imgSrc.startsWith('http');
+  const isExternal =
+    imgSrc.startsWith('http://') || imgSrc.startsWith('https://');
   const isDataUri = imgSrc.startsWith('data:');
 
   // fillモードの場合
