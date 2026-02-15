@@ -579,7 +579,7 @@ describe('ArticleCard', () => {
       expect(thumbnail).toHaveClass('object-contain');
     });
 
-    it('uses object-cover for non-presentation sources with thumbnail', () => {
+    it('uses object-contain for non-presentation sources with thumbnail', () => {
       const regularArticle = createMockArticleWithRelations({
         article: {
           title: 'Regular Article',
@@ -592,7 +592,7 @@ describe('ArticleCard', () => {
       renderWithProviders(<ArticleCard article={regularArticle} />);
 
       const thumbnail = screen.getByRole('img', { name: 'Regular Article' });
-      expect(thumbnail).toHaveClass('object-cover');
+      expect(thumbnail).toHaveClass('object-contain');
     });
 
     it('does not show title for presentation sources', () => {

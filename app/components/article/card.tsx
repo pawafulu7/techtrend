@@ -154,7 +154,7 @@ export function ArticleCard({
       data-article-id={article.id}
       onClick={handleCardClick}
       className={cn(
-        'group relative flex h-auto cursor-pointer flex-col gap-1.5 p-4 sm:min-h-[240px]',
+        'group relative flex h-auto cursor-pointer flex-col gap-2 p-4 sm:min-h-[280px]',
         !showThumbnail && 'border-muted/40 border shadow-sm',
         isNew
           ? 'border-t-2 border-t-green-500/60 dark:border-t-green-400/40'
@@ -240,14 +240,14 @@ export function ArticleCard({
         </div>
       ) : showThumbnail ? (
         // Pattern 2: Thumbnail + short summary
-        <div className="flex flex-col gap-1.5">
-          <div className="relative isolate h-[60px] w-full overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
+        <div className="flex flex-col gap-2">
+          <div className="relative isolate h-[120px] w-full overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
             <OptimizedImage
               src={article.thumbnail!}
               alt={article.title}
               fill
               priority={false}
-              className="object-cover object-top transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+              className="object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01]"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           </div>
