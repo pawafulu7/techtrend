@@ -16,8 +16,6 @@ import {
   useIsNewArticle,
 } from '@/app/components/common/relative-time';
 
-const CARD_SUMMARY_MAX_LENGTH = 300;
-
 export function ArticleCard({
   article,
   onArticleClick,
