@@ -369,33 +369,65 @@ async function processSource({
                 `Post-save enrichment timeout after ${POST_SAVE_ENRICH_TIMEOUT_MS}ms for ${sourceName}`
               );
 
-              if (enrichedData && enrichedData.content) {
-                const originalContentLength = article.content?.length || 0;
-                const enrichedContentLength = enrichedData.content.length;
+              if (enrichedData) {
+                // サムネイル独立更新: コンテンツ品質に関係なくサムネイルを更新
+                const hasNewThumbnail = isValidThumbnailUrl(enrichedData.thumbnail);
+                const currentThumbnail = isValidThumbnailUrl(article.thumbnail) ? article.thumbnail : null;
+                const needsThumbnailUpdate = hasNewThumbnail && !currentThumbnail;
 
-                if (enrichedContentLength > originalContentLength && enrichedContentLength >= 250) {
-                  // 250-499 chars: require quality check
-                  const needsQualityCheck = enrichedContentLength < 500;
-                  const passesQualityCheck = !needsQualityCheck || isHighQuality(enrichedData.content);
+                if (enrichedData.content) {
+                  const originalContentLength = article.content?.length || 0;
+                  const enrichedContentLength = enrichedData.content.length;
 
-                  if (passesQualityCheck) {
-                    await prisma.article.update({
-                      where: { id: savedArticle.id },
-                      data: {
-                        content: enrichedData.content,
-                        contentUpdatedAt: new Date(),
-                        ...(isValidThumbnailUrl(enrichedData.thumbnail) && { thumbnail: enrichedData.thumbnail })
+                  if (enrichedContentLength > originalContentLength && enrichedContentLength >= 250) {
+                    // 250-499 chars: require quality check
+                    const needsQualityCheck = enrichedContentLength < 500;
+                    const passesQualityCheck = !needsQualityCheck || isHighQuality(enrichedData.content);
+
+                    if (passesQualityCheck) {
+                      await prisma.article.update({
+                        where: { id: savedArticle.id },
+                        data: {
+                          content: enrichedData.content,
+                          contentUpdatedAt: new Date(),
+                          ...(needsThumbnailUpdate && { thumbnail: enrichedData.thumbnail })
+                        }
+                      });
+                      console.error(`   [INFO] エンリッチメント成功: ${enrichedData.content.length}文字${needsThumbnailUpdate ? ' (サムネイル更新)' : ''}`);
+                    } else {
+                      console.warn(`   [WARN] エンリッチメント結果が品質基準未達: ${enrichedContentLength}文字`);
+                      // コンテンツ品質不足でもサムネイルは更新
+                      if (needsThumbnailUpdate) {
+                        await prisma.article.update({
+                          where: { id: savedArticle.id },
+                          data: { thumbnail: enrichedData.thumbnail! }
+                        });
+                        console.error(`   [INFO] サムネイルのみ更新`);
                       }
-                    });
-                    console.error(`   [INFO] エンリッチメント成功: ${enrichedData.content.length}文字`);
+                    }
                   } else {
-                    console.warn(`   [WARN] エンリッチメント結果が品質基準未達: ${enrichedContentLength}文字`);
+                    console.warn(`   [WARN] エンリッチメント結果が不十分: ${enrichedContentLength}文字（元: ${originalContentLength}文字）`);
+                    // コンテンツ不十分でもサムネイルは更新
+                    if (needsThumbnailUpdate) {
+                      await prisma.article.update({
+                        where: { id: savedArticle.id },
+                        data: { thumbnail: enrichedData.thumbnail! }
+                      });
+                      console.error(`   [INFO] サムネイルのみ更新`);
+                    }
                   }
+                } else if (needsThumbnailUpdate) {
+                  // コンテンツなし、サムネイルのみ更新
+                  await prisma.article.update({
+                    where: { id: savedArticle.id },
+                    data: { thumbnail: enrichedData.thumbnail! }
+                  });
+                  console.error(`   [INFO] サムネイルのみ更新（コンテンツなし）`);
                 } else {
-                  console.warn(`   [WARN] エンリッチメント結果が不十分: ${enrichedContentLength}文字（元: ${originalContentLength}文字）`);
+                  console.error('   [WARN] エンリッチメント失敗: コンテンツもサムネイルもなし');
                 }
               } else {
-                console.error('   [WARN] エンリッチメント失敗: コンテンツなし');
+                console.error('   [WARN] エンリッチメント失敗: データなし');
               }
             } catch (enrichError) {
               console.error('   [WARN] エンリッチメントエラー:', enrichError instanceof Error ? enrichError.message : String(enrichError));
