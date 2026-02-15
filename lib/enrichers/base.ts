@@ -71,11 +71,16 @@ export abstract class BaseContentEnricher implements IContentEnricher {
         if (paras.length > 0) text = paras.join('\n\n');
       }
 
+      const thumbnail = this.extractThumbnail(html);
+
       if (!this.isContentSufficient(text, 100)) {
+        // コンテンツ不足でもサムネイルがあれば返す
+        if (thumbnail) {
+          return { content: null, thumbnail };
+        }
         return null;
       }
 
-      const thumbnail = this.extractThumbnail(html);
       return { content: text || null, thumbnail: thumbnail ?? null };
     } catch (error) {
       this.logEnrichmentError(url, error);
@@ -112,8 +117,9 @@ export abstract class BaseContentEnricher implements IContentEnricher {
 
         const response = await fetch(url, {
           headers: {
-            'User-Agent': 'TechTrend/1.0 (https://techtrend.example.com) ContentEnricher',
-            'Accept': 'text/html,application/xhtml+xml',
+            'User-Agent':
+              'TechTrend/1.0 (https://techtrend.example.com) ContentEnricher',
+            Accept: 'text/html,application/xhtml+xml',
             'Accept-Language': 'ja,en;q=0.9',
           },
           signal: controller.signal,
@@ -132,10 +138,10 @@ export abstract class BaseContentEnricher implements IContentEnricher {
         }
 
         const html = await response.text();
-        
+
         // レート制限のための待機
         await this.delay(this.rateLimit);
-        
+
         return html;
       } catch (_error) {
         lastError = _error as Error;
@@ -150,7 +156,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
    */
   protected sanitizeContent(html: string, selector: string | string[]): string {
     const $ = cheerio.load(html);
-    
+
     // 不要な要素を削除
     $('script').remove();
     $('style').remove();
@@ -162,11 +168,11 @@ export abstract class BaseContentEnricher implements IContentEnricher {
     $('.comments').remove();
     $('footer').remove();
     $('header').remove();
-    
+
     // セレクタから本文を抽出
     const selectors = Array.isArray(selector) ? selector : [selector];
     let content = '';
-    
+
     for (const sel of selectors) {
       const element = $(sel);
       if (element.length > 0) {
@@ -174,12 +180,12 @@ export abstract class BaseContentEnricher implements IContentEnricher {
         break;
       }
     }
-    
+
     if (!content) {
       // フォールバック: body全体から取得
       content = $('body').text();
     }
-    
+
     // テキストのクリーンアップ
     return content
       .replace(/\s+/g, ' ') // 連続する空白を1つに
@@ -191,13 +197,16 @@ export abstract class BaseContentEnricher implements IContentEnricher {
    * 遅延処理
    */
   protected delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
    * コンテンツの最小文字数チェック
    */
-  protected isContentSufficient(content: string, minLength: number = 100): boolean {
+  protected isContentSufficient(
+    content: string,
+    minLength: number = 100
+  ): boolean {
     return !!content && content.length >= minLength;
   }
 
@@ -206,36 +215,86 @@ export abstract class BaseContentEnricher implements IContentEnricher {
    */
   protected extractThumbnail(html: string): string | null {
     const $ = cheerio.load(html);
-    
+
     // OGイメージを優先
     const ogImage = $('meta[property="og:image"]').attr('content');
     if (ogImage) {
       return ogImage;
     }
-    
+
     // Twitter用画像
     const twitterImage = $('meta[name="twitter:image"]').attr('content');
     if (twitterImage) {
       return twitterImage;
     }
-    
-    // JSON-LDからサムネイルを取得
-    const jsonLdScript = $('script[type="application/ld+json"]').html();
-    if (jsonLdScript) {
+
+    // JSON-LDからサムネイルを取得（複数scriptタグ・@graph対応）
+    const jsonLdScripts = $('script[type="application/ld+json"]');
+    for (let i = 0; i < jsonLdScripts.length; i++) {
+      const scriptHtml = $(jsonLdScripts[i]).html();
+      if (!scriptHtml) continue;
       try {
-        const data = JSON.parse(jsonLdScript);
-        if (data.thumbnailUrl) {
-          return data.thumbnailUrl;
-        }
-        if (data.image) {
-          if (typeof data.image === 'string') {
-            return data.image;
-          } else if (data.image.url) {
-            return data.image.url;
-          }
-        }
+        const data = JSON.parse(scriptHtml);
+        const image = this.extractImageFromJsonLd(data);
+        if (image) return image;
       } catch (_error) {
         // JSON解析エラーは無視
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * JSON-LDデータから画像URLを抽出
+   * @graph配列、ネストされたimage、配列形式に対応
+   */
+  private extractImageFromJsonLd(
+    data: unknown,
+    depth: number = 0
+  ): string | null {
+    if (!data || typeof data !== 'object' || depth > 5) return null;
+
+    // ルートが配列の場合（JSON-LDの一般的な形式）
+    if (Array.isArray(data)) {
+      for (const item of data) {
+        const image = this.extractImageFromJsonLd(item, depth + 1);
+        if (image) return image;
+      }
+      return null;
+    }
+
+    const obj = data as Record<string, unknown>;
+
+    // @graph配列を再帰的に処理
+    if (Array.isArray(obj['@graph'])) {
+      for (const item of obj['@graph']) {
+        const image = this.extractImageFromJsonLd(item, depth + 1);
+        if (image) return image;
+      }
+    }
+
+    // thumbnailUrl を優先
+    if (typeof obj.thumbnailUrl === 'string' && obj.thumbnailUrl) {
+      return obj.thumbnailUrl;
+    }
+
+    // image フィールド
+    if (typeof obj.image === 'string' && obj.image) {
+      return obj.image;
+    }
+    if (typeof obj.image === 'object' && obj.image !== null) {
+      const img = obj.image as Record<string, unknown>;
+      if (typeof img.url === 'string' && img.url) {
+        return img.url;
+      }
+    }
+    if (Array.isArray(obj.image) && obj.image.length > 0) {
+      const first = obj.image[0];
+      if (typeof first === 'string') return first;
+      if (typeof first === 'object' && first !== null) {
+        const img = first as Record<string, unknown>;
+        if (typeof img.url === 'string' && img.url) return img.url;
       }
     }
 
@@ -251,7 +310,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
         url,
         enricher: this.constructor.name,
         error: error instanceof Error ? error : new Error(String(error)),
-        status: 'failed'
+        status: 'failed',
       },
       '[Enrichment] failed'
     );
