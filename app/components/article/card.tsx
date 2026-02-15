@@ -226,7 +226,7 @@ export function ArticleCard({
       ) : null}
 
       {/* Action buttons - visible on hover (desktop) or always visible (touch devices) */}
-      <div className="pointer-events-auto absolute top-2 right-2 flex items-center gap-1 opacity-100 transition-opacity duration-200 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100">
+      <div className="pointer-events-auto absolute right-2 bottom-2 flex items-center gap-1 opacity-100 transition-opacity duration-200 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100">
         {votes > 0 && (
           <BadgeV2
             variant="secondary"
@@ -238,7 +238,7 @@ export function ArticleCard({
         )}
         <FavoriteButton
           articleId={article.id}
-          className="bg-background/80 h-9 min-h-[44px] w-9 min-w-[44px] backdrop-blur-sm"
+          className="bg-background/30 h-9 min-h-[44px] w-9 min-w-[44px]"
           isFavorited={isFavorited}
           onToggleFavorite={onToggleFavorite}
         />
@@ -257,7 +257,7 @@ export function ArticleCard({
               // Invalid URL, ignore
             }
           }}
-          className="bg-background/80 h-9 min-h-[44px] w-9 min-w-[44px] backdrop-blur-sm"
+          className="bg-background/30 h-9 min-h-[44px] w-9 min-w-[44px]"
           aria-label="元記事を開く"
         >
           <ExternalLink className="h-4 w-4" />
