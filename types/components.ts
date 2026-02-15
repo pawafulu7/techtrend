@@ -13,6 +13,7 @@ export interface ArticleCardProps {
   showSource?: boolean;
   showTags?: boolean;
   onTagClick?: (tagName: string) => void;
+  /** Side-effect callback (e.g. save scroll position). Does NOT replace navigation. */
   onArticleClick?: (articleId?: string) => void;
   isFavorited?: boolean;
   onToggleFavorite?: () => void;

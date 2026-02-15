@@ -17,7 +17,6 @@ import {
 } from '@/app/components/common/relative-time';
 
 const CARD_SUMMARY_MAX_LENGTH = 300;
-const CARD_SUMMARY_MAX_LENGTH_SHORT = 160;
 
 export function ArticleCard({
   article,
@@ -212,10 +211,8 @@ export function ArticleCard({
             />
           </div>
           {trimmedSummary && (
-            <p className="text-foreground line-clamp-4 text-sm leading-relaxed">
-              {trimmedSummary.length > CARD_SUMMARY_MAX_LENGTH_SHORT
-                ? `${trimmedSummary.slice(0, CARD_SUMMARY_MAX_LENGTH_SHORT)}…`
-                : trimmedSummary}
+            <p className="text-foreground line-clamp-3 text-sm leading-relaxed">
+              {trimmedSummary}
             </p>
           )}
         </div>

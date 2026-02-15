@@ -578,7 +578,7 @@ describe('ArticleCard', () => {
       expect(thumbnail).toHaveClass('object-contain');
     });
 
-    it('uses object-contain for non-presentation sources with thumbnail', () => {
+    it('applies object-contain to Pattern 2 thumbnail (non-presentation)', () => {
       const regularArticle = createMockArticleWithRelations({
         article: {
           title: 'Regular Article',
