@@ -143,10 +143,6 @@ describe('ArticleCard', () => {
 
     // ソース名が表示される
     expect(screen.getByText('Test Source')).toBeInTheDocument();
-
-    // タグが表示される
-    expect(screen.getByText('React')).toBeInTheDocument();
-    expect(screen.getByText('Testing')).toBeInTheDocument();
   });
 
   it('handles click events when onArticleClick is provided', async () => {

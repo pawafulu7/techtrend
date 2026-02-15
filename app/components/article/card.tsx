@@ -16,8 +16,8 @@ import {
   useIsNewArticle,
 } from '@/app/components/common/relative-time';
 
-const MAX_SUMMARY_LENGTH = 200;
-const MAX_SUMMARY_LENGTH_SHORT = 80;
+const MAX_SUMMARY_LENGTH = 300;
+const MAX_SUMMARY_LENGTH_SHORT = 160;
 
 export function ArticleCard({
   article,
@@ -106,44 +106,6 @@ export function ArticleCard({
     router.push(articleUrl);
   };
 
-  const renderTags = () => {
-    if (!showTags || !article.tags || article.tags.length === 0) {
-      return null;
-    }
-
-    const visibleTags = article.tags.slice(0, 2);
-    const remainingCount = article.tags.length - visibleTags.length;
-
-    return (
-      <>
-        {visibleTags.map((tag) => (
-          <BadgeV2
-            key={tag.id}
-            variant="outline"
-            className="cursor-pointer text-xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onTagClick) {
-                onTagClick(tag.name);
-              } else {
-                router.push(
-                  `/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`
-                );
-              }
-            }}
-          >
-            {tag.name}
-          </BadgeV2>
-        ))}
-        {remainingCount > 0 && (
-          <span className="text-muted-foreground text-xs">
-            +{remainingCount}
-          </span>
-        )}
-      </>
-    );
-  };
-
   const votes = article.userVotes || 0;
 
   return (
@@ -154,7 +116,7 @@ export function ArticleCard({
       data-article-id={article.id}
       onClick={handleCardClick}
       className={cn(
-        'group relative flex h-auto cursor-pointer flex-col gap-2 p-4 sm:min-h-[280px]',
+        'group relative flex h-auto cursor-pointer flex-col gap-2 p-4 sm:min-h-[240px]',
         !showThumbnail && 'border-muted/40 border shadow-sm',
         isNew
           ? 'border-t-2 border-t-green-500/60 dark:border-t-green-400/40'
@@ -252,7 +214,7 @@ export function ArticleCard({
             />
           </div>
           {article.summary && (
-            <p className="text-foreground line-clamp-2 text-sm leading-relaxed">
+            <p className="text-foreground line-clamp-4 text-sm leading-relaxed">
               {article.summary.length > MAX_SUMMARY_LENGTH_SHORT
                 ? `${article.summary.slice(0, MAX_SUMMARY_LENGTH_SHORT)}…`
                 : article.summary}
@@ -268,37 +230,32 @@ export function ArticleCard({
         </p>
       ) : null}
 
-      {/* Footer: tags + action buttons */}
-      <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-          {renderTags()}
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          {votes > 0 && (
-            <BadgeV2 variant="secondary" className="text-xs">
-              {votes}
-            </BadgeV2>
-          )}
-          <FavoriteButton
-            articleId={article.id}
-            className="h-9 min-h-[44px] w-9 min-w-[44px]"
-            isFavorited={isFavorited}
-            onToggleFavorite={onToggleFavorite}
-          />
-          <ButtonV2
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={(e) => {
-              e.stopPropagation();
-              window.open(article.url, '_blank', 'noopener,noreferrer');
-            }}
-            className="h-9 min-h-[44px] w-9 min-w-[44px]"
-            aria-label="元記事を開く"
-          >
-            <ExternalLink className="h-4 w-4" />
-          </ButtonV2>
-        </div>
+      {/* Hover action buttons - top right overlay */}
+      <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        {votes > 0 && (
+          <BadgeV2 variant="secondary" className="text-xs">
+            {votes}
+          </BadgeV2>
+        )}
+        <FavoriteButton
+          articleId={article.id}
+          className="bg-background/80 h-9 min-h-[44px] w-9 min-w-[44px] backdrop-blur-sm"
+          isFavorited={isFavorited}
+          onToggleFavorite={onToggleFavorite}
+        />
+        <ButtonV2
+          variant="ghost"
+          size="sm"
+          iconOnly
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(article.url, '_blank', 'noopener,noreferrer');
+          }}
+          className="bg-background/80 h-9 min-h-[44px] w-9 min-w-[44px] backdrop-blur-sm"
+          aria-label="元記事を開く"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </ButtonV2>
       </div>
     </CardV2>
   );
