@@ -93,6 +93,7 @@ export function ArticleCard({
     }
     if (onArticleClick) {
       onArticleClick(article.id);
+      return;
     }
 
     const params = new URLSearchParams(searchParams.toString());
@@ -211,7 +212,7 @@ export function ArticleCard({
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           </div>
-          {article.summary && (
+          {article.summary?.trim() && (
             <p className="text-foreground line-clamp-4 text-sm leading-relaxed">
               {article.summary.length > MAX_SUMMARY_LENGTH_SHORT
                 ? `${article.summary.slice(0, MAX_SUMMARY_LENGTH_SHORT)}…`
@@ -231,7 +232,11 @@ export function ArticleCard({
       {/* Hover action buttons - top right overlay */}
       <div className="pointer-events-none absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
         {votes > 0 && (
-          <BadgeV2 variant="secondary" className="text-xs">
+          <BadgeV2
+            variant="secondary"
+            className="text-xs"
+            data-testid="vote-count-badge"
+          >
             {votes}
           </BadgeV2>
         )}

@@ -297,7 +297,8 @@ describe('ArticleCard', () => {
     renderWithProviders(<ArticleCard article={articleWithVotes} />);
 
     // 投票数バッジが表示される
-    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByTestId('vote-count-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('vote-count-badge')).toHaveTextContent('5');
   });
 
   it('does not display vote count badge when userVotes is 0', () => {
@@ -309,7 +310,7 @@ describe('ArticleCard', () => {
     renderWithProviders(<ArticleCard article={articleNoVotes} />);
 
     // 投票数バッジが表示されない
-    expect(screen.queryByText('0')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('vote-count-badge')).not.toBeInTheDocument();
   });
 
   it('displays quality score when available', () => {
@@ -369,6 +370,23 @@ describe('ArticleCard', () => {
 
     const externalLinkButton = screen.getByLabelText('元記事を開く');
     expect(externalLinkButton).toBeInTheDocument();
+  });
+
+  it('does not open external link with javascript: URL', async () => {
+    const user = userEvent.setup();
+    const dangerousArticle = {
+      ...mockArticle,
+      url: 'javascript:alert(1)',
+    };
+    const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+
+    renderWithProviders(<ArticleCard article={dangerousArticle} />);
+
+    const externalLinkButton = screen.getByLabelText('元記事を開く');
+    await user.click(externalLinkButton);
+
+    expect(openSpy).not.toHaveBeenCalled();
+    openSpy.mockRestore();
   });
 
   it('applies design system card-hover styling', () => {
