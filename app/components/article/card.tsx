@@ -121,7 +121,6 @@ export function ArticleCard({
       className={cn(
         'group relative flex h-auto cursor-pointer flex-col sm:min-h-[240px]',
         isPattern2Thumbnail ? 'gap-0 pb-4' : 'gap-1.5 px-4 pt-3 pb-4',
-        !showThumbnail && 'border-muted/40 border shadow-sm',
         isNew
           ? 'border-t-2 border-t-green-500/60 dark:border-t-green-400/40'
           : sourceColor?.borderLeft
@@ -236,10 +235,8 @@ export function ArticleCard({
           ) : null
         ) : trimmedSummary ? (
           // Pattern 3: Text only - full summary
-          <p className="text-foreground flex-1 text-sm leading-relaxed">
-            {trimmedSummary.length > CARD_SUMMARY_MAX_LENGTH
-              ? `${trimmedSummary.slice(0, CARD_SUMMARY_MAX_LENGTH)}…`
-              : trimmedSummary}
+          <p className="text-foreground line-clamp-5 flex-1 text-xs leading-relaxed">
+            {trimmedSummary}
           </p>
         ) : null}
       </div>
