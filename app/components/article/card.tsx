@@ -76,6 +76,7 @@ export function ArticleCard({
 
   // T1: Simplified thumbnail display - show whenever thumbnail exists
   const showThumbnail = !!article.thumbnail;
+  const trimmedSummary = article.summary?.trim() || '';
 
   const searchParams = useSearchParams();
   const sortBy = searchParams.get('sortBy');
@@ -96,7 +97,6 @@ export function ArticleCard({
     }
 
     const params = new URLSearchParams(searchParams.toString());
-    params.delete('returning');
     params.set('returning', '1');
 
     const returnUrl = `/?${params.toString()}`;
@@ -211,20 +211,20 @@ export function ArticleCard({
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           </div>
-          {article.summary?.trim() && (
+          {trimmedSummary && (
             <p className="text-foreground line-clamp-4 text-sm leading-relaxed">
-              {article.summary.trim().length > MAX_SUMMARY_LENGTH_SHORT
-                ? `${article.summary.trim().slice(0, MAX_SUMMARY_LENGTH_SHORT)}…`
-                : article.summary.trim()}
+              {trimmedSummary.length > MAX_SUMMARY_LENGTH_SHORT
+                ? `${trimmedSummary.slice(0, MAX_SUMMARY_LENGTH_SHORT)}…`
+                : trimmedSummary}
             </p>
           )}
         </div>
-      ) : article.summary?.trim() ? (
+      ) : trimmedSummary ? (
         // Pattern 3: Text only - full summary
         <p className="text-foreground flex-1 text-sm leading-relaxed">
-          {article.summary.trim().length > MAX_SUMMARY_LENGTH
-            ? `${article.summary.trim().slice(0, MAX_SUMMARY_LENGTH)}…`
-            : article.summary.trim()}
+          {trimmedSummary.length > MAX_SUMMARY_LENGTH
+            ? `${trimmedSummary.slice(0, MAX_SUMMARY_LENGTH)}…`
+            : trimmedSummary}
         </p>
       ) : null}
 

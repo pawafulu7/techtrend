@@ -172,23 +172,11 @@ describe('ArticleCard', () => {
     expect(mockRouter.push).toHaveBeenCalled();
   });
 
-  it('displays favorite button for authenticated users', () => {
-    mockedUseSession.mockReturnValue({
-      data: {
-        user: { id: 'user1', email: 'test@example.com' },
-        expires: '2025-12-31',
-      } as any,
-      status: 'authenticated',
-      update: jest.fn(),
-    } as any);
-
+  it('displays favorite button', () => {
     renderWithProviders(<ArticleCard article={mockArticle} />);
 
-    // お気に入りボタンが表示される（data-testidがある場合）
-    const favoriteButton = screen.queryByTestId('favorite-button');
-    if (favoriteButton) {
-      expect(favoriteButton).toBeInTheDocument();
-    }
+    // お気に入りボタンが常に表示される
+    expect(screen.getByTestId('favorite-button')).toBeInTheDocument();
   });
 
   it('renders the article card container', () => {
