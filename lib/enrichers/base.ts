@@ -252,6 +252,15 @@ export abstract class BaseContentEnricher implements IContentEnricher {
   private extractImageFromJsonLd(data: unknown): string | null {
     if (!data || typeof data !== 'object') return null;
 
+    // ルートが配列の場合（JSON-LDの一般的な形式）
+    if (Array.isArray(data)) {
+      for (const item of data) {
+        const image = this.extractImageFromJsonLd(item);
+        if (image) return image;
+      }
+      return null;
+    }
+
     const obj = data as Record<string, unknown>;
 
     // @graph配列を再帰的に処理
