@@ -4,6 +4,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
+import logger from '@/lib/logger';
 
 interface CorporateRSSItem {
   title?: string;
@@ -185,7 +186,10 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
                     }
                   }
                 } catch (_error) {
-                  // エンリッチメント失敗時は元のコンテンツを使用
+                  logger.error(
+                    { error: _error, url: item.link },
+                    '[Corporate Tech Blog] Enrichment failed'
+                  );
                 }
               } else {
               }
@@ -204,16 +208,18 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
               author: item.creator || item['dc:creator'] || feedInfo.name,
             };
 
-            // サムネイルを抽出
-            if (
-              item.enclosure?.url &&
-              item.enclosure.type?.startsWith('image/')
-            ) {
-              article.thumbnail = item.enclosure.url;
-            } else if (content) {
-              const thumbnail = this.extractThumbnail(content);
-              if (thumbnail) {
-                article.thumbnail = thumbnail;
+            // enricherで取得済みでない場合のみ、他ソースからサムネイルを抽出
+            if (!article.thumbnail) {
+              if (
+                item.enclosure?.url &&
+                item.enclosure.type?.startsWith('image/')
+              ) {
+                article.thumbnail = item.enclosure.url;
+              } else if (content) {
+                const extracted = this.extractThumbnail(content);
+                if (extracted) {
+                  article.thumbnail = extracted;
+                }
               }
             }
 

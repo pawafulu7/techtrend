@@ -7,6 +7,7 @@ import { parseRSSDate } from '@/lib/utils/date';
 import { isUrlFromDomain } from '@/lib/utils/url-validator';
 import { generateZennThumbnail } from '@/lib/utils/zenn-thumbnail';
 import type { ContentEnricherFactory } from '../enrichers';
+import logger from '@/lib/logger';
 
 interface ZennRSSItem {
   title?: string;
@@ -136,7 +137,10 @@ export class ZennExtendedFetcher extends BaseFetcher {
             }
           }
         } catch (_error) {
-          // エンリッチメント失敗時は元のコンテンツを使用
+          logger.error(
+            { error: _error, url: article.url },
+            '[Zenn] Enrichment failed'
+          );
         }
       }
     }

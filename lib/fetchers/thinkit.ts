@@ -34,24 +34,35 @@ export class ThinkITFetcher extends BaseFetcher {
 
       const articles: CreateArticleInput[] = [];
 
+      const errors: Error[] = [];
+
       // 最新20件のみ取得
       for (const item of feed.items.slice(0, 20)) {
-        if (!item.title || !item.link) continue;
+        try {
+          if (!item.title || !item.link) continue;
 
-        const article = this.parseItem(item);
-        if (article) {
-          articles.push(article);
+          const article = this.parseItem(item);
+          if (article) {
+            articles.push(article);
+          }
+        } catch (_error) {
+          errors.push(
+            new Error(
+              `Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`
+            )
+          );
         }
       }
 
-      return {
-        articles,
-        errors: [],
-      };
+      return { articles, errors };
     } catch (_error) {
       return {
         articles: [],
-        errors: [_error as Error],
+        errors: [
+          new Error(
+            `Failed to fetch ThinkIT RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`
+          ),
+        ],
       };
     }
   }
