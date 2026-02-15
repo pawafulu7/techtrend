@@ -249,13 +249,16 @@ export abstract class BaseContentEnricher implements IContentEnricher {
    * JSON-LDデータから画像URLを抽出
    * @graph配列、ネストされたimage、配列形式に対応
    */
-  private extractImageFromJsonLd(data: unknown): string | null {
-    if (!data || typeof data !== 'object') return null;
+  private extractImageFromJsonLd(
+    data: unknown,
+    depth: number = 0
+  ): string | null {
+    if (!data || typeof data !== 'object' || depth > 5) return null;
 
     // ルートが配列の場合（JSON-LDの一般的な形式）
     if (Array.isArray(data)) {
       for (const item of data) {
-        const image = this.extractImageFromJsonLd(item);
+        const image = this.extractImageFromJsonLd(item, depth + 1);
         if (image) return image;
       }
       return null;
@@ -266,7 +269,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
     // @graph配列を再帰的に処理
     if (Array.isArray(obj['@graph'])) {
       for (const item of obj['@graph']) {
-        const image = this.extractImageFromJsonLd(item);
+        const image = this.extractImageFromJsonLd(item, depth + 1);
         if (image) return image;
       }
     }
