@@ -93,7 +93,6 @@ export function ArticleCard({
     }
     if (onArticleClick) {
       onArticleClick(article.id);
-      return;
     }
 
     const params = new URLSearchParams(searchParams.toString());

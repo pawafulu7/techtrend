@@ -145,7 +145,7 @@ describe('ArticleCard', () => {
     expect(screen.getByText('Test Source')).toBeInTheDocument();
   });
 
-  it('handles click events when onArticleClick is provided', async () => {
+  it('calls onArticleClick and still navigates when onArticleClick is provided', async () => {
     const user = userEvent.setup();
     const handleClick = jest.fn();
     renderWithProviders(
@@ -155,8 +155,10 @@ describe('ArticleCard', () => {
     const card = screen.getByTestId('article-card');
     await user.click(card);
 
-    // 実装では引数なしで呼ばれる
+    // onArticleClickが呼ばれる（スクロール位置保存等の副作用用）
     expect(handleClick).toHaveBeenCalled();
+    // ナビゲーションも発生する（onArticleClickは副作用フックであり、ナビゲーション代替ではない）
+    expect(mockRouter.push).toHaveBeenCalled();
   });
 
   it('navigates to article detail page when clicked without onArticleClick', async () => {
