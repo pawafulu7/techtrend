@@ -292,33 +292,28 @@ describe('ArticleCard', () => {
     ).toBeInTheDocument();
   });
 
-  it('handles vote button click correctly', async () => {
-    const user = userEvent.setup();
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ votes: 6 }),
-      } as Response)
-    );
+  it('displays vote count badge when userVotes > 0', () => {
+    const articleWithVotes = {
+      ...mockArticle,
+      userVotes: 5,
+    };
 
-    renderWithProviders(<ArticleCard article={mockArticle} />);
+    renderWithProviders(<ArticleCard article={articleWithVotes} />);
 
-    // data-testidで投票ボタンを取得
-    const voteButton = screen.getByTestId('vote-button');
+    // 投票数バッジが表示される
+    expect(screen.getByText('5')).toBeInTheDocument();
+  });
 
-    await user.click(voteButton);
+  it('does not display vote count badge when userVotes is 0', () => {
+    const articleNoVotes = {
+      ...mockArticle,
+      userVotes: 0,
+    };
 
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        `/api/articles/${mockArticle.id}/vote`,
-        expect.objectContaining({
-          method: 'POST',
-        })
-      );
-    });
+    renderWithProviders(<ArticleCard article={articleNoVotes} />);
 
-    // ボタンが無効化されていることを確認
-    expect(voteButton).toBeDisabled();
+    // 投票数バッジが表示されない
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 
   it('displays quality score when available', () => {
@@ -359,36 +354,25 @@ describe('ArticleCard', () => {
     }
   });
 
-  it('displays publication date correctly', () => {
-    const dateArticle = {
+  it('displays relative time for publication date', async () => {
+    const recentArticle = {
       ...mockArticle,
-      publishedAt: new Date('2025-01-01T10:00:00Z'),
-      createdAt: new Date('2025-01-01T10:00:00Z'),
+      publishedAt: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
     };
 
-    renderWithProviders(<ArticleCard article={dateArticle} />);
+    renderWithProviders(<ArticleCard article={recentArticle} />);
 
-    // 日付が表示される（formatDateWithTime関数でフォーマット）
-    // 複数の日付要素が存在する可能性があるため、最初の要素を取得
-    const dateElements = screen.queryAllByText(/2025/i);
-
-    if (dateElements.length > 0) {
-      expect(dateElements[0]).toBeInTheDocument();
-    } else {
-      // 日付が別の形式で表示されている可能性を考慮
-      const allText = screen.getByTestId('article-card').textContent;
-      expect(allText).toBeTruthy();
-    }
+    // RelativeTimeはuseEffect後に表示されるため、waitForで待つ
+    await waitFor(() => {
+      expect(screen.getByText('3時間前')).toBeInTheDocument();
+    });
   });
 
-  it('renders share button component', () => {
+  it('renders external link button with icon only', () => {
     renderWithProviders(<ArticleCard article={mockArticle} />);
 
-    // ShareButtonコンポーネントが表示される
-    const shareButton = screen.queryByTestId('share-button');
-    if (shareButton) {
-      expect(shareButton).toBeInTheDocument();
-    }
+    const externalLinkButton = screen.getByLabelText('元記事を開く');
+    expect(externalLinkButton).toBeInTheDocument();
   });
 
   it('applies design system card-hover styling', () => {
@@ -525,55 +509,107 @@ describe('ArticleCard', () => {
     );
   });
 
-  describe('qualityScore display logic', () => {
-    it('displays summary for low quality score articles instead of thumbnail', () => {
-      const lowQualityArticle = createMockArticleWithRelations({
+  describe('thumbnail display logic (T1: simplified)', () => {
+    it('shows thumbnail whenever article has thumbnail set', () => {
+      const articleWithThumbnail = createMockArticleWithRelations({
         article: {
-          id: 'low-quality-1',
-          title: 'Low Quality Article',
-          qualityScore: 18,
+          id: 'thumb-1',
+          title: 'Article With Thumbnail',
           thumbnail: 'https://example.com/thumbnail.jpg',
-          summary:
-            'This is a low quality article summary that should be displayed',
+          summary: 'This summary should also be displayed alongside thumbnail',
           content: 'Long content that exceeds 300 characters. '.repeat(20),
         },
         source: createMockSource({ name: 'Hugging Face Papers' }),
       });
 
-      renderWithProviders(<ArticleCard article={lowQualityArticle} />);
+      renderWithProviders(<ArticleCard article={articleWithThumbnail} />);
 
-      // サムネイルは表示されない
+      // サムネイルが表示される（thumbnailが存在すれば常に表示）
       expect(
-        screen.queryByRole('img', { name: 'Low Quality Article' })
-      ).not.toBeInTheDocument();
+        screen.getByRole('img', { name: 'Article With Thumbnail' })
+      ).toBeInTheDocument();
 
-      // 要約が表示される
+      // 要約も表示される（Pattern 2: thumbnail + short summary）
       expect(
-        screen.getByText(
-          'This is a low quality article summary that should be displayed'
-        )
+        screen.getByText(/This summary should also be displayed/)
       ).toBeInTheDocument();
     });
 
-    it('displays summary for articles with qualityScore below 30', () => {
+    it('shows full summary when no thumbnail exists', () => {
       const article = createMockArticleWithRelations({
         article: {
-          id: 'quality-test',
-          title: 'Quality Test Article',
-          qualityScore: 25,
-          thumbnail: '/static/images/arxiv-logo.png',
-          summary: 'Summary for quality score 25 article',
-          content: 'Content exceeding 300 characters threshold. '.repeat(15),
+          id: 'no-thumb-1',
+          title: 'No Thumbnail Article',
+          thumbnail: null,
+          summary:
+            'Summary for article without thumbnail that should be fully displayed',
         },
         source: createMockSource({ name: 'arXiv' }),
       });
 
       renderWithProviders(<ArticleCard article={article} />);
 
-      // 要約が表示される
+      // サムネイルが表示されない
       expect(
-        screen.getByText('Summary for quality score 25 article')
+        screen.queryByRole('img', { name: 'No Thumbnail Article' })
+      ).not.toBeInTheDocument();
+
+      // 要約が表示される（Pattern 3: full summary）
+      expect(
+        screen.getByText(
+          'Summary for article without thumbnail that should be fully displayed'
+        )
       ).toBeInTheDocument();
+    });
+
+    it('uses object-contain for presentation sources (Speaker Deck)', () => {
+      const presentationArticle = createMockArticleWithRelations({
+        article: {
+          title: 'Presentation Slides',
+          thumbnail: 'https://example.com/slide.jpg',
+        },
+        source: createMockSource({ name: 'Speaker Deck' }),
+      });
+
+      renderWithProviders(<ArticleCard article={presentationArticle} />);
+
+      const thumbnail = screen.getByRole('img', {
+        name: 'Presentation Slides',
+      });
+      expect(thumbnail).toHaveClass('object-contain');
+    });
+
+    it('uses object-cover for non-presentation sources with thumbnail', () => {
+      const regularArticle = createMockArticleWithRelations({
+        article: {
+          title: 'Regular Article',
+          thumbnail: 'https://example.com/ogp.jpg',
+          summary: 'Short summary',
+        },
+        source: createMockSource({ name: 'Qiita' }),
+      });
+
+      renderWithProviders(<ArticleCard article={regularArticle} />);
+
+      const thumbnail = screen.getByRole('img', { name: 'Regular Article' });
+      expect(thumbnail).toHaveClass('object-cover');
+    });
+
+    it('does not show title for presentation sources', () => {
+      const presentationArticle = createMockArticleWithRelations({
+        article: {
+          title: 'Hidden Title For Presentation',
+          thumbnail: 'https://example.com/slide.jpg',
+        },
+        source: createMockSource({ name: 'Speaker Deck' }),
+      });
+
+      renderWithProviders(<ArticleCard article={presentationArticle} />);
+
+      // プレゼン型ではタイトルが非表示
+      expect(
+        screen.queryByText('Hidden Title For Presentation')
+      ).not.toBeInTheDocument();
     });
   });
 });
