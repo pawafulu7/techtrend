@@ -26,8 +26,6 @@ export function ArticleCard({
   isFavorited,
   onToggleFavorite,
   showSource = true,
-  showTags = true,
-  onTagClick,
 }: ArticleCardProps & { isRead?: boolean }) {
   const [isRead, setIsRead] = useState(initialIsRead);
   const router = useRouter();
@@ -231,7 +229,7 @@ export function ArticleCard({
       ) : null}
 
       {/* Hover action buttons - top right overlay */}
-      <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+      <div className="pointer-events-none absolute top-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
         {votes > 0 && (
           <BadgeV2 variant="secondary" className="text-xs">
             {votes}
@@ -249,7 +247,14 @@ export function ArticleCard({
           iconOnly
           onClick={(e) => {
             e.stopPropagation();
-            window.open(article.url, '_blank', 'noopener,noreferrer');
+            try {
+              const url = new URL(article.url);
+              if (url.protocol === 'http:' || url.protocol === 'https:') {
+                window.open(article.url, '_blank', 'noopener,noreferrer');
+              }
+            } catch {
+              // Invalid URL, ignore
+            }
           }}
           className="bg-background/80 h-9 min-h-[44px] w-9 min-w-[44px] backdrop-blur-sm"
           aria-label="元記事を開く"
