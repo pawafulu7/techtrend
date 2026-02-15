@@ -5,6 +5,7 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import { isUrlFromDomain } from '@/lib/utils/url-validator';
+import { generateZennThumbnail } from '@/lib/utils/zenn-thumbnail';
 import type { ContentEnricherFactory } from '../enrichers';
 
 interface ZennRSSItem {
@@ -42,7 +43,7 @@ export class ZennExtendedFetcher extends BaseFetcher {
     // 複数のトピックから取得
     const topics = [
       'javascript',
-      'typescript', 
+      'typescript',
       'react',
       'nextjs',
       'python',
@@ -50,43 +51,56 @@ export class ZennExtendedFetcher extends BaseFetcher {
       'rust',
       'aws',
       'docker',
-      'kubernetes'
+      'kubernetes',
     ];
 
     // まずメインフィードから取得
     try {
-      const mainFeed = await this.retry(() => this.parser.parseURL(this.source.url));
+      const mainFeed = await this.retry(() =>
+        this.parser.parseURL(this.source.url)
+      );
       for (const item of mainFeed.items || []) {
         if (item.title && item.link && !seenUrls.has(item.link)) {
           seenUrls.add(item.link);
-          const article = await this.createArticleWithEnrichment(item, enricherFactory);
+          const article = await this.createArticleWithEnrichment(
+            item,
+            enricherFactory
+          );
           articles.push(article);
         }
       }
     } catch (_error) {
-      errors.push(new Error(`メインフィード取得エラー: ${_error instanceof Error ? _error.message : String(_error)}`));
+      errors.push(
+        new Error(
+          `メインフィード取得エラー: ${_error instanceof Error ? _error.message : String(_error)}`
+        )
+      );
     }
 
     // 各トピックから追加取得
     for (const topic of topics) {
       if (articles.length >= 30) break; // 30件に達したら終了
-      
+
       try {
         const topicUrl = `https://zenn.dev/topics/${topic}/feed?order=daily`;
         const feed = await this.retry(() => this.parser.parseURL(topicUrl));
-        
-        for (const item of (feed.items || []).slice(0, 5)) { // 各トピックから最大5件
+
+        for (const item of (feed.items || []).slice(0, 5)) {
+          // 各トピックから最大5件
           if (item.title && item.link && !seenUrls.has(item.link)) {
             seenUrls.add(item.link);
-            const article = await this.createArticleWithEnrichment(item, enricherFactory);
+            const article = await this.createArticleWithEnrichment(
+              item,
+              enricherFactory
+            );
             articles.push(article);
-            
+
             if (articles.length >= 30) break;
           }
         }
-        
+
         // レート制限対策
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 300));
       } catch (_error) {
         // 個別トピックのエラーは警告レベル
       }
@@ -96,12 +110,12 @@ export class ZennExtendedFetcher extends BaseFetcher {
   }
 
   private async createArticleWithEnrichment(
-    item: ZennRSSItem, 
+    item: ZennRSSItem,
     enricherFactory: ContentEnricherFactory
   ): Promise<CreateArticleInput> {
     // 基本的な記事データを作成
     const article = this.createArticle(item);
-    
+
     // エンリッチメント処理
     if (item.link && enricherFactory) {
       const enricher = enricherFactory.getEnricher(item.link);
@@ -109,12 +123,12 @@ export class ZennExtendedFetcher extends BaseFetcher {
         try {
           const currentContent = article.content || '';
           const enrichedData = await enricher.enrich(item.link);
-          
+
           if (enrichedData && enrichedData.content) {
             // より長いコンテンツが取得できた場合に更新
             if (enrichedData.content.length > currentContent.length) {
               article.content = enrichedData.content;
-              
+
               // サムネイルも取得できていれば更新
               if (enrichedData.thumbnail) {
                 article.thumbnail = enrichedData.thumbnail;
@@ -126,7 +140,7 @@ export class ZennExtendedFetcher extends BaseFetcher {
         }
       }
     }
-    
+
     return article;
   }
 
@@ -136,7 +150,11 @@ export class ZennExtendedFetcher extends BaseFetcher {
       url: this.normalizeUrl(item.link || ''),
       summary: undefined, // 要約は後で日本語で生成
       content: item.content || item.contentSnippet || undefined,
-      publishedAt: item.isoDate ? new Date(item.isoDate) : (item.pubDate ? parseRSSDate(item.pubDate) : new Date()),
+      publishedAt: item.isoDate
+        ? new Date(item.isoDate)
+        : item.pubDate
+          ? parseRSSDate(item.pubDate)
+          : new Date(),
       sourceId: this.source.id,
       tagNames: this.extractTagsFromUrl(item.link),
     };
@@ -144,6 +162,11 @@ export class ZennExtendedFetcher extends BaseFetcher {
     // Use enclosure URL as thumbnail if available
     if (item.enclosure?.url && item.enclosure.type?.startsWith('image/')) {
       article.thumbnail = item.enclosure.url;
+    }
+
+    // Fallback: generate Cloudinary OGP thumbnail from Zenn article URL
+    if (!article.thumbnail && item.link) {
+      article.thumbnail = generateZennThumbnail(item.link, item.title);
     }
 
     return article;
@@ -170,10 +193,24 @@ export class ZennExtendedFetcher extends BaseFetcher {
     if (match && match[1]) {
       // Extract potential topics from slug
       const slug = match[1];
-      
+
       // Common tech keywords
-      const techKeywords = ['react', 'vue', 'next', 'node', 'typescript', 'javascript', 'python', 'go', 'rust', 'docker', 'aws', 'gcp', 'azure'];
-      
+      const techKeywords = [
+        'react',
+        'vue',
+        'next',
+        'node',
+        'typescript',
+        'javascript',
+        'python',
+        'go',
+        'rust',
+        'docker',
+        'aws',
+        'gcp',
+        'azure',
+      ];
+
       for (const keyword of techKeywords) {
         if (slug.includes(keyword)) {
           tags.push(keyword);

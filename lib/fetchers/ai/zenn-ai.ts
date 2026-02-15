@@ -6,7 +6,7 @@ import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
 import { ZennAIEnricher } from '@/lib/enrichers/zenn-ai';
-import { sanitizeHtml } from '@/lib/utils/html-sanitizer';
+import { generateZennThumbnail } from '@/lib/utils/zenn-thumbnail';
 
 interface ZennTopic {
   name: string;
@@ -21,28 +21,28 @@ export class ZennAIFetcher extends BaseFetcher {
     {
       name: 'LLM',
       url: 'https://zenn.dev/topics/llm/feed',
-      maxArticles: 5
+      maxArticles: 5,
     },
     {
       name: 'NLP',
       url: 'https://zenn.dev/topics/nlp/feed',
-      maxArticles: 5
+      maxArticles: 5,
     },
     {
       name: 'ChatGPT',
       url: 'https://zenn.dev/topics/chatgpt/feed',
-      maxArticles: 5
+      maxArticles: 5,
     },
     {
       name: 'LangChain',
       url: 'https://zenn.dev/topics/langchain/feed',
-      maxArticles: 5
+      maxArticles: 5,
     },
     {
       name: '機械学習',
       url: 'https://zenn.dev/topics/%E6%A9%9F%E6%A2%B0%E5%AD%A6%E7%BF%92/feed',
-      maxArticles: 5
-    }
+      maxArticles: 5,
+    },
   ];
 
   constructor(source: Source) {
@@ -64,9 +64,7 @@ export class ZennAIFetcher extends BaseFetcher {
       try {
         logger.info(`Zenn ${topic.name}トピック記事取得開始`);
 
-        const feed = await this.retry(() =>
-          this.parser.parseURL(topic.url)
-        );
+        const feed = await this.retry(() => this.parser.parseURL(topic.url));
 
         if (!feed.items || feed.items.length === 0) {
           logger.warn(`Zenn ${topic.name}: 記事が見つかりませんでした`);
@@ -88,8 +86,9 @@ export class ZennAIFetcher extends BaseFetcher {
             continue;
           }
 
-          const publishedAt = item.pubDate ?
-            parseRSSDate(item.pubDate) : new Date();
+          const publishedAt = item.pubDate
+            ? parseRSSDate(item.pubDate)
+            : new Date();
 
           // 30日以内の記事のみ
           if (publishedAt < thirtyDaysAgo) {
@@ -102,7 +101,8 @@ export class ZennAIFetcher extends BaseFetcher {
 
           // Webページから本文を取得
           let fullContent: string | null = null;
-          let thumbnail: string | undefined = this.extractThumbnailFromItem(item);
+          let thumbnail: string | undefined =
+            this.extractThumbnailFromItem(item);
 
           try {
             const enrichedData = await this.enricher.enrich(item.link);
@@ -113,21 +113,30 @@ export class ZennAIFetcher extends BaseFetcher {
               }
             }
           } catch (_error) {
-            logger.warn(`Zenn ${topic.name}: エンリッチメント失敗 ${item.link}`);
+            logger.warn(
+              `Zenn ${topic.name}: エンリッチメント失敗 ${item.link}`
+            );
           }
 
           // フルコンテンツが取得できなかった場合はRSSコンテンツを使用
-          const content = fullContent || this.generateEnrichedContent(item, topic.name, author, tags);
+          const content =
+            fullContent ||
+            this.generateEnrichedContent(item, topic.name, author, tags);
 
           // エンリッチメント処理
-          const enrichedArticle = this.enrichArticle({
-            title: item.title,
-            url: item.link,
-            content, // Webから取得したフルコンテンツ
-            publishedAt,
-            sourceId: this.source.id,
-            thumbnail,
-          }, topic.name, author, tags);
+          const enrichedArticle = this.enrichArticle(
+            {
+              title: item.title,
+              url: item.link,
+              content, // Webから取得したフルコンテンツ
+              publishedAt,
+              sourceId: this.source.id,
+              thumbnail,
+            },
+            topic.name,
+            author,
+            tags
+          );
 
           articles.push(enrichedArticle);
           processedUrls.add(urlKey);
@@ -135,7 +144,6 @@ export class ZennAIFetcher extends BaseFetcher {
         }
 
         logger.info(`Zenn ${topic.name}: ${topicArticleCount}件の記事を取得`);
-
       } catch (error) {
         const errorMessage = `Zenn ${topic.name}取得エラー: ${error instanceof Error ? error.message : String(error)}`;
         logger.error(errorMessage);
@@ -204,19 +212,10 @@ export class ZennAIFetcher extends BaseFetcher {
       }
     }
 
-    // Zennのデフォルトサムネイル構造から抽出
+    // Cloudinary OGP画像URLを共通ユーティリティで生成
     if (itemAny.link) {
-      // Zenn記事URLから著者名と記事IDを抽出してOGP画像URLを構築
-      const match = itemAny.link.match(/zenn\.dev\/([^\/]+)\/articles\/([^\/\?]+)/);
-      if (match) {
-        // 著者スラッグのエンコード
-        const authorSlug = encodeURIComponent(match[1]);
-        // セキュアなHTML sanitizerを使用してタイトルをサニタイゼーション
-        const sanitizedTitle = sanitizeHtml(itemAny.title || 'Article');
-        // タイトルの長さ制限（過長なURLを防ぐ）
-        const safeTitle = sanitizedTitle.slice(0, 120);
-        return `https://res.cloudinary.com/zenn/image/upload/s--og-default--/co_rgb:222%2Cg_south_west%2Cl_text:notosansjp-medium.otf_37_bold:${authorSlug}%2Cx_203%2Cy_98/c_fit%2Cco_rgb:222%2Cg_north_west%2Cl_text:notosansjp-medium.otf_70_bold:${encodeURIComponent(safeTitle)}%2Cw_1010%2Cx_90%2Cy_100/bo_3px_solid_rgb:d6d6d6%2Cg_center%2Ch_630%2Cw_1200/v1627283836/default/og-bg-zenn.png`;
-      }
+      const thumbnail = generateZennThumbnail(itemAny.link, itemAny.title);
+      if (thumbnail) return thumbnail;
     }
 
     return undefined;
@@ -233,11 +232,11 @@ export class ZennAIFetcher extends BaseFetcher {
 
     // トピック別のタグ付け
     const topicTags: Record<string, string[]> = {
-      'LLM': ['LLM', '大規模言語モデル', 'AI実装'],
-      'NLP': ['自然言語処理', 'NLP', 'テキスト処理'],
-      'ChatGPT': ['ChatGPT', 'OpenAI', 'AIアプリ'],
-      'LangChain': ['LangChain', 'AI開発', 'LLMフレームワーク'],
-      '機械学習': ['機械学習', 'ML', 'データサイエンス']
+      LLM: ['LLM', '大規模言語モデル', 'AI実装'],
+      NLP: ['自然言語処理', 'NLP', 'テキスト処理'],
+      ChatGPT: ['ChatGPT', 'OpenAI', 'AIアプリ'],
+      LangChain: ['LangChain', 'AI開発', 'LLMフレームワーク'],
+      機械学習: ['機械学習', 'ML', 'データサイエンス'],
     };
 
     // メタデータとして記事情報を追加
@@ -252,9 +251,11 @@ export class ZennAIFetcher extends BaseFetcher {
         language: 'ja',
         keywords: aiKeywords,
         // タグの重複を排除
-        tags: Array.from(new Set([...(topicTags[topicName] || []), ...(tags || [])])),
+        tags: Array.from(
+          new Set([...(topicTags[topicName] || []), ...(tags || [])])
+        ),
         fetchedAt: new Date().toISOString(),
-      }
+      },
     };
 
     return enrichedArticle;
@@ -264,22 +265,22 @@ export class ZennAIFetcher extends BaseFetcher {
     const text = `${title} ${(tags || []).join(' ')}`.toLowerCase();
 
     const keywordPatterns = {
-      'GPT': ['gpt', 'chatgpt', 'openai'],
-      'Claude': ['claude', 'anthropic'],
-      'Gemini': ['gemini', 'bard', 'google ai'],
-      'LLM': ['llm', '大規模言語モデル', 'large language model'],
-      'RAG': ['rag', 'retrieval', '検索拡張'],
+      GPT: ['gpt', 'chatgpt', 'openai'],
+      Claude: ['claude', 'anthropic'],
+      Gemini: ['gemini', 'bard', 'google ai'],
+      LLM: ['llm', '大規模言語モデル', 'large language model'],
+      RAG: ['rag', 'retrieval', '検索拡張'],
       'Fine-tuning': ['fine-tun', 'ファインチューニング', '微調整'],
       'Prompt Engineering': ['prompt', 'プロンプト'],
-      'LangChain': ['langchain', 'ラングチェーン'],
+      LangChain: ['langchain', 'ラングチェーン'],
       'Vector DB': ['vector', 'ベクトル', 'embedding', '埋め込み'],
-      'Transformer': ['transformer', 'attention', 'bert'],
-      'Diffusion': ['diffusion', 'stable diffusion', '画像生成'],
+      Transformer: ['transformer', 'attention', 'bert'],
+      Diffusion: ['diffusion', 'stable diffusion', '画像生成'],
       'AI Agent': ['agent', 'エージェント', 'autonomous'],
       'Function Calling': ['function call', 'tool use', 'ツール使用'],
-      'Streaming': ['stream', 'ストリーミング', 'リアルタイム'],
-      'Token': ['token', 'トークン', 'context'],
-      'Hallucination': ['hallucination', 'ハルシネーション', '幻覚']
+      Streaming: ['stream', 'ストリーミング', 'リアルタイム'],
+      Token: ['token', 'トークン', 'context'],
+      Hallucination: ['hallucination', 'ハルシネーション', '幻覚'],
     };
 
     const detectedKeywords = new Set<string>();
@@ -288,7 +289,10 @@ export class ZennAIFetcher extends BaseFetcher {
       for (const pattern of patterns) {
         // ASCII文字のパターンは単語境界でチェック（誤検知低減）
         if (/^[a-z0-9\s-]+$/i.test(pattern)) {
-          const regex = new RegExp(`\\b${pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+          const regex = new RegExp(
+            `\\b${pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`,
+            'i'
+          );
           if (regex.test(text)) {
             detectedKeywords.add(keyword);
             break;
@@ -306,7 +310,12 @@ export class ZennAIFetcher extends BaseFetcher {
     return Array.from(detectedKeywords);
   }
 
-  private generateEnrichedContent(item: unknown, topicName: string, author?: string, tags?: string[]): string {
+  private generateEnrichedContent(
+    item: unknown,
+    topicName: string,
+    author?: string,
+    tags?: string[]
+  ): string {
     if (typeof item !== 'object' || item === null) return '';
 
     const itemAny = item as any;
@@ -332,7 +341,11 @@ export class ZennAIFetcher extends BaseFetcher {
     }
 
     // カテゴリ情報
-    if (itemAny.categories && Array.isArray(itemAny.categories) && itemAny.categories.length > 0) {
+    if (
+      itemAny.categories &&
+      Array.isArray(itemAny.categories) &&
+      itemAny.categories.length > 0
+    ) {
       enrichedParts.push(`カテゴリ: ${itemAny.categories.join(', ')}`);
     }
 
@@ -350,9 +363,9 @@ export class ZennAIFetcher extends BaseFetcher {
   protected normalizeUrl(url: string): string {
     try {
       const u = new URL(url);
-      u.search = '';  // クエリパラメータを除去
-      u.hash = '';    // ハッシュを除去
-      u.pathname = u.pathname.replace(/\/+$/, '');  // 末尾スラッシュを除去
+      u.search = ''; // クエリパラメータを除去
+      u.hash = ''; // ハッシュを除去
+      u.pathname = u.pathname.replace(/\/+$/, ''); // 末尾スラッシュを除去
       return u.toString();
     } catch {
       // URL構築に失敗した場合のフォールバック
