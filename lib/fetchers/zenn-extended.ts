@@ -124,15 +124,15 @@ export class ZennExtendedFetcher extends BaseFetcher {
           const currentContent = article.content || '';
           const enrichedData = await enricher.enrich(item.link);
 
-          if (enrichedData && enrichedData.content) {
-            // より長いコンテンツが取得できた場合に更新
-            if (enrichedData.content.length > currentContent.length) {
+          if (enrichedData) {
+            if (
+              enrichedData.content &&
+              enrichedData.content.length > currentContent.length
+            ) {
               article.content = enrichedData.content;
-
-              // サムネイルも取得できていれば更新
-              if (enrichedData.thumbnail) {
-                article.thumbnail = enrichedData.thumbnail;
-              }
+            }
+            if (enrichedData.thumbnail && !article.thumbnail) {
+              article.thumbnail = enrichedData.thumbnail;
             }
           }
         } catch (_error) {

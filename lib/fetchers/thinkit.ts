@@ -20,79 +20,81 @@ interface ThinkITItem {
 export class ThinkITFetcher extends BaseFetcher {
   name = 'thinkit';
   displayName = 'Think IT';
-  
+
   private parser = new Parser<unknown, ThinkITItem>();
   private rssUrl = 'https://thinkit.co.jp/rss.xml';
 
   async fetch(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {
     try {
       const feed = await this.parser.parseURL(this.rssUrl);
-      
+
       if (!feed.items || feed.items.length === 0) {
         return { articles: [], errors: [] };
       }
-      
-      
+
       const articles: CreateArticleInput[] = [];
-      
+
       // 最新20件のみ取得
       for (const item of feed.items.slice(0, 20)) {
         if (!item.title || !item.link) continue;
-        
+
         const article = this.parseItem(item);
         if (article) {
           articles.push(article);
         }
       }
-      
+
       return {
         articles,
-        errors: []
+        errors: [],
       };
-      
     } catch (_error) {
       return {
         articles: [],
-        errors: [_error as Error]
+        errors: [_error as Error],
       };
     }
   }
-  
+
   private parseItem(item: ThinkITItem): CreateArticleInput | null {
     if (!item.title || !item.link) return null;
-    
+
     // コンテンツの取得
     const content = item.content || item.description || '';
-    
+
     // 要約の生成
     let summary = '';
     if (item.description) {
-      summary = cleanHtml(item.description)
-        .substring(0, 200);
+      summary = cleanHtml(item.description).substring(0, 200);
     } else if (item.contentSnippet) {
       summary = item.contentSnippet
         .replace(/\s+/g, ' ')
         .trim()
         .substring(0, 200);
     }
-    
+
     // タグの処理
     const tags = item.categories || [];
-    
+
     // 日付の処理
-    const publishedAt = item.isoDate ? new Date(item.isoDate) : 
-                       item.pubDate ? new Date(item.pubDate) : 
-                       new Date();
-    
+    const publishedAt = item.isoDate
+      ? new Date(item.isoDate)
+      : item.pubDate
+        ? new Date(item.pubDate)
+        : new Date();
+
+    // コンテンツからサムネイルを抽出
+    const thumbnail = content ? this.extractThumbnail(content) : undefined;
+
     return {
       title: item.title,
       url: item.link,
       content,
       summary,
+      thumbnail: thumbnail || undefined,
       publishedAt,
       sourceId: this.source.id,
-      tagNames: tags
+      tagNames: tags,
     };
   }
-  
 }

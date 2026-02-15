@@ -3,7 +3,10 @@ import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
 import { parseRSSDate } from '@/lib/utils/date';
-import { extractContent, checkContentQuality } from '@/lib/utils/content-extractor';
+import {
+  extractContent,
+  checkContentQuality,
+} from '@/lib/utils/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import logger from '@/lib/logger';
@@ -23,7 +26,7 @@ interface CloudflareBlogItem {
 export class CloudflareBlogFetcher extends BaseFetcher {
   private parser: Parser<unknown, CloudflareBlogItem>;
   private rssUrl = 'https://blog.cloudflare.com/rss/';
-  
+
   constructor(source: Source) {
     super(source);
     this.parser = new Parser({
@@ -43,13 +46,13 @@ export class CloudflareBlogFetcher extends BaseFetcher {
     // 30日前の日付を計算
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     // 現在日時を取得（未来日付フィルタ用）
     const now = new Date();
 
     try {
       const feed = await this.retry(() => this.parser.parseURL(this.rssUrl));
-      
+
       if (!feed.items || feed.items.length === 0) {
         return { articles, errors };
       }
@@ -61,45 +64,59 @@ export class CloudflareBlogFetcher extends BaseFetcher {
         try {
           if (!item.title || !item.link) continue;
 
-          const publishedAt = item.isoDate ? new Date(item.isoDate) :
-                            item.pubDate ? parseRSSDate(item.pubDate) : new Date();
-          
+          const publishedAt = item.isoDate
+            ? new Date(item.isoDate)
+            : item.pubDate
+              ? parseRSSDate(item.pubDate)
+              : new Date();
+
           // 30日以内かつ未来でない記事のみ処理
           if (publishedAt < thirtyDaysAgo || publishedAt > now) {
             continue;
           }
 
           // コンテンツの取得
-          let content = extractContent(item as unknown as Record<string, unknown>);
+          let content = extractContent(
+            item as unknown as Record<string, unknown>
+          );
           let thumbnail: string | undefined;
-          
+
           // コンテンツエンリッチメント（2000文字未満の場合のみ実行）
           if (content && content.length < 2000) {
             const enricher = enricherFactory.getEnricher(item.link);
             if (enricher) {
               try {
                 const enrichedData = await enricher.enrich(item.link);
-                if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-                  content = enrichedData.content;
-                  thumbnail = enrichedData.thumbnail || undefined;
-                } else {
+                if (enrichedData) {
+                  if (
+                    enrichedData.content &&
+                    enrichedData.content.length > content.length
+                  ) {
+                    content = enrichedData.content;
+                  }
+                  if (enrichedData.thumbnail && !thumbnail) {
+                    thumbnail = enrichedData.thumbnail;
+                  }
                 }
               } catch (_error) {
-          logger.error({ error: _error }, `[Cloudflare Blog] Enrichment failed for ${item.link}`);
+                logger.error(
+                  { error: _error },
+                  `[Cloudflare Blog] Enrichment failed for ${item.link}`
+                );
                 // エラー時は元のコンテンツを使用
               }
             }
           } else if (content && content.length >= 2000) {
           }
-          
+
           // コンテンツ品質チェック
           const contentCheck = checkContentQuality(content, item.title);
           if (contentCheck.warning) {
           }
-          
+
           // タグの生成
           const tags = this.generateCloudflareTags(item.categories, item.title);
-          
+
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
             url: this.normalizeUrl(item.link),
@@ -123,15 +140,22 @@ export class CloudflareBlogFetcher extends BaseFetcher {
 
           articles.push(article);
         } catch (_error) {
-          errors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
+          errors.push(
+            new Error(
+              `Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`
+            )
+          );
         }
       }
-      
+
       // レート制限対策
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (_error) {
-      errors.push(new Error(`Failed to fetch Cloudflare Blog RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`));
+      errors.push(
+        new Error(
+          `Failed to fetch Cloudflare Blog RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`
+        )
+      );
     }
 
     // 日付順にソートして最新30件を返す
@@ -141,7 +165,10 @@ export class CloudflareBlogFetcher extends BaseFetcher {
     return { articles: limitedArticles, errors };
   }
 
-  private generateCloudflareTags(categories?: string[], title?: string): string[] {
+  private generateCloudflareTags(
+    categories?: string[],
+    title?: string
+  ): string[] {
     const tags = new Set<string>();
 
     // ソースベースタグ'Cloudflare'は削除
@@ -149,12 +176,20 @@ export class CloudflareBlogFetcher extends BaseFetcher {
     // タイトルベースのタグ
     if (title) {
       const lowerTitle = title.toLowerCase();
-      
-      if (lowerTitle.includes('security') || lowerTitle.includes('ddos') || lowerTitle.includes('waf')) {
+
+      if (
+        lowerTitle.includes('security') ||
+        lowerTitle.includes('ddos') ||
+        lowerTitle.includes('waf')
+      ) {
         tags.add('Security');
         tags.add('セキュリティ');
       }
-      if (lowerTitle.includes('performance') || lowerTitle.includes('speed') || lowerTitle.includes('optimization')) {
+      if (
+        lowerTitle.includes('performance') ||
+        lowerTitle.includes('speed') ||
+        lowerTitle.includes('optimization')
+      ) {
         tags.add('Performance');
         tags.add('パフォーマンス');
       }
@@ -168,19 +203,27 @@ export class CloudflareBlogFetcher extends BaseFetcher {
       if (lowerTitle.includes('dns')) {
         tags.add('DNS');
       }
-      if (lowerTitle.includes('ssl') || lowerTitle.includes('tls') || lowerTitle.includes('certificate')) {
+      if (
+        lowerTitle.includes('ssl') ||
+        lowerTitle.includes('tls') ||
+        lowerTitle.includes('certificate')
+      ) {
         tags.add('SSL/TLS');
       }
-      if (lowerTitle.includes('ai') || lowerTitle.includes('machine learning') || lowerTitle.includes('ml')) {
+      if (
+        lowerTitle.includes('ai') ||
+        lowerTitle.includes('machine learning') ||
+        lowerTitle.includes('ml')
+      ) {
         tags.add('AI');
       }
     }
-    
+
     // カテゴリベースのタグ
     if (categories && categories.length > 0) {
       for (const category of categories) {
         const normalizedCategory = category.toLowerCase().trim();
-        
+
         // カテゴリマッピング
         if (normalizedCategory.includes('security')) {
           tags.add('Security');
@@ -204,10 +247,10 @@ export class CloudflareBlogFetcher extends BaseFetcher {
         if (normalizedCategory.includes('analytics')) {
           tags.add('Analytics');
         }
-        
+
         // オリジナルカテゴリも追加（正規化）
         const normalizedTags = normalizeTagInput(category);
-        normalizedTags.forEach(tag => tags.add(tag));
+        normalizedTags.forEach((tag) => tags.add(tag));
       }
     }
 

@@ -50,14 +50,19 @@ export class PublickeyFetcher extends BaseFetcher {
     // TODO: Move outside loop if article count increases significantly.
 
     try {
-      const feed = await this.retry(() => this.parser.parseURL(this.source.url));
+      const feed = await this.retry(() =>
+        this.parser.parseURL(this.source.url)
+      );
 
       for (const item of feed.items || []) {
         try {
           if (!item.title || !item.link) continue;
 
-          const publishedAt = item.pubDate ? parseRSSDate(item.pubDate) :
-                        item['dc:date'] ? new Date(item['dc:date']) : new Date();
+          const publishedAt = item.pubDate
+            ? parseRSSDate(item.pubDate)
+            : item['dc:date']
+              ? new Date(item['dc:date'])
+              : new Date();
 
           // 30日以内の記事のみ処理
           if (publishedAt < thirtyDaysAgo) {
@@ -82,11 +87,20 @@ export class PublickeyFetcher extends BaseFetcher {
               );
 
               const enricherFactory = new ContentEnricherFactory();
-              const enrichedData = await enricherFactory.trySequential(item.link);
+              const enrichedData = await enricherFactory.trySequential(
+                item.link
+              );
 
-              if (enrichedData?.content && enrichedData.content.length >= RSS_SUFFICIENT_LENGTH) {
+              // サムネイルはコンテンツ条件に関わらず独立して取得
+              if (enrichedData?.thumbnail && !thumbnail) {
+                thumbnail = enrichedData.thumbnail;
+              }
+
+              if (
+                enrichedData?.content &&
+                enrichedData.content.length >= RSS_SUFFICIENT_LENGTH
+              ) {
                 content = enrichedData.content;
-                thumbnail = enrichedData.thumbnail || undefined;
                 logger.info(
                   {
                     url: item.link,
@@ -165,11 +179,19 @@ export class PublickeyFetcher extends BaseFetcher {
 
           articles.push(article);
         } catch (_error) {
-          errors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
+          errors.push(
+            new Error(
+              `Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`
+            )
+          );
         }
       }
     } catch (_error) {
-      errors.push(new Error(`Failed to fetch RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`));
+      errors.push(
+        new Error(
+          `Failed to fetch RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`
+        )
+      );
     }
 
     return { articles, errors };
