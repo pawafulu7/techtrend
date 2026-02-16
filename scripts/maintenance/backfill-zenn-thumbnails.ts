@@ -1,7 +1,7 @@
 /**
  * Zenn記事のthumbnailがNULLのものにCloudinary OGPサムネイルをバックフィルするスクリプト
  *
- * 対象: URLが https://zenn.dev/*/articles/* の記事（ソース問わず）
+ * 対象: URLが https://zenn.dev/{user}/articles/{id} の記事（ソース問わず）
  * はてなブックマーク経由のZenn記事も対象に含まれる
  *
  * 実行方法: npx tsx scripts/maintenance/backfill-zenn-thumbnails.ts
