@@ -39,10 +39,12 @@ export function RelativeTime({
     }
 
     const calculateMinutes = () => {
-      return Math.max(
-        1,
-        Math.floor((Date.now() - targetDate.getTime()) / (1000 * 60))
+      const diff = Math.floor(
+        (Date.now() - targetDate.getTime()) / (1000 * 60)
       );
+      // Future dates (clock skew, scheduled posts): treat as "1分前"
+      if (diff <= 0) return 1;
+      return diff;
     };
 
     setMinutesAgo(calculateMinutes());
