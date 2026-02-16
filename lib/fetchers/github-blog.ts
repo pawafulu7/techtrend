@@ -3,7 +3,7 @@ import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
 import { parseRSSDate } from '@/lib/utils/date';
-import { extractContent, checkContentQuality } from '@/lib/utils/content-extractor';
+import { extractContent } from '@/lib/utils/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import logger from '@/lib/logger';
@@ -23,7 +23,7 @@ interface GitHubBlogItem {
 export class GitHubBlogFetcher extends BaseFetcher {
   private parser: Parser<unknown, GitHubBlogItem>;
   private rssUrl = 'https://github.blog/feed/';
-  
+
   constructor(source: Source) {
     super(source);
     this.parser = new Parser({
@@ -43,13 +43,13 @@ export class GitHubBlogFetcher extends BaseFetcher {
     // 30日前の日付を計算
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     // 現在日時を取得（未来日付フィルタ用）
     const now = new Date();
 
     try {
       const feed = await this.retry(() => this.parser.parseURL(this.rssUrl));
-      
+
       if (!feed.items || feed.items.length === 0) {
         return { articles, errors };
       }
@@ -61,45 +61,53 @@ export class GitHubBlogFetcher extends BaseFetcher {
         try {
           if (!item.title || !item.link) continue;
 
-          const publishedAt = item.isoDate ? new Date(item.isoDate) :
-                            item.pubDate ? parseRSSDate(item.pubDate) : new Date();
-          
+          const publishedAt = item.isoDate
+            ? new Date(item.isoDate)
+            : item.pubDate
+              ? parseRSSDate(item.pubDate)
+              : new Date();
+
           // 30日以内かつ未来でない記事のみ処理
           if (publishedAt < thirtyDaysAgo || publishedAt > now) {
             continue;
           }
 
           // コンテンツの取得
-          let content = extractContent(item as unknown as Record<string, unknown>);
+          let content = extractContent(
+            item as unknown as Record<string, unknown>
+          );
           let thumbnail: string | undefined;
-          
+
           // コンテンツエンリッチメント（2000文字未満の場合のみ実行）
           if (content && content.length < 2000) {
             const enricher = enricherFactory.getEnricher(item.link);
             if (enricher) {
               try {
                 const enrichedData = await enricher.enrich(item.link);
-                if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-                  content = enrichedData.content;
-                  thumbnail = enrichedData.thumbnail || undefined;
-                } else {
+                if (enrichedData) {
+                  if (
+                    enrichedData.content &&
+                    enrichedData.content.length > content.length
+                  ) {
+                    content = enrichedData.content;
+                  }
+                  if (enrichedData.thumbnail && !thumbnail) {
+                    thumbnail = enrichedData.thumbnail;
+                  }
                 }
               } catch (_error) {
-          logger.error({ error: _error }, `[GitHub Blog] Enrichment failed for ${item.link}`);
+                logger.error(
+                  { error: _error },
+                  `[GitHub Blog] Enrichment failed for ${item.link}`
+                );
                 // エラー時は元のコンテンツを使用
               }
             }
-          } else if (content && content.length >= 2000) {
           }
-          
-          // コンテンツ品質チェック
-          const contentCheck = checkContentQuality(content, item.title);
-          if (contentCheck.warning) {
-          }
-          
+
           // タグの生成
           const tags = this.generateGitHubTags(item.categories);
-          
+
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
             url: this.normalizeUrl(item.link),
@@ -123,15 +131,22 @@ export class GitHubBlogFetcher extends BaseFetcher {
 
           articles.push(article);
         } catch (_error) {
-          errors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
+          errors.push(
+            new Error(
+              `Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`
+            )
+          );
         }
       }
-      
+
       // レート制限対策
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (_error) {
-      errors.push(new Error(`Failed to fetch GitHub Blog RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`));
+      errors.push(
+        new Error(
+          `Failed to fetch GitHub Blog RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`
+        )
+      );
     }
 
     // 日付順にソートして最新30件を返す
@@ -150,17 +165,23 @@ export class GitHubBlogFetcher extends BaseFetcher {
     if (categories && categories.length > 0) {
       for (const category of categories) {
         const normalizedCategory = category.toLowerCase().trim();
-        
+
         // カテゴリマッピング
         if (normalizedCategory.includes('security')) {
           tags.add('Security');
           tags.add('セキュリティ');
         }
-        if (normalizedCategory.includes('product') || normalizedCategory.includes('feature')) {
+        if (
+          normalizedCategory.includes('product') ||
+          normalizedCategory.includes('feature')
+        ) {
           tags.add('Product Update');
           tags.add('新機能');
         }
-        if (normalizedCategory.includes('engineering') || normalizedCategory.includes('technical')) {
+        if (
+          normalizedCategory.includes('engineering') ||
+          normalizedCategory.includes('technical')
+        ) {
           tags.add('Engineering');
           tags.add('技術');
         }
@@ -168,7 +189,10 @@ export class GitHubBlogFetcher extends BaseFetcher {
           tags.add('Open Source');
           tags.add('OSS');
         }
-        if (normalizedCategory.includes('ai') || normalizedCategory.includes('copilot')) {
+        if (
+          normalizedCategory.includes('ai') ||
+          normalizedCategory.includes('copilot')
+        ) {
           tags.add('AI');
           tags.add('GitHub Copilot');
         }
@@ -182,13 +206,13 @@ export class GitHubBlogFetcher extends BaseFetcher {
         if (normalizedCategory.includes('enterprise')) {
           tags.add('Enterprise');
         }
-        
+
         // オリジナルカテゴリも追加（正規化）
         const normalizedTags = normalizeTagInput(category);
-        normalizedTags.forEach(tag => tags.add(tag));
+        normalizedTags.forEach((tag) => tags.add(tag));
       }
     }
-    
+
     return Array.from(tags);
   }
 }

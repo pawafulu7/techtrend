@@ -4,6 +4,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
+import logger from '@/lib/logger';
 
 interface CorporateRSSItem {
   title?: string;
@@ -14,6 +15,7 @@ interface CorporateRSSItem {
   'dc:creator'?: string;
   content?: string;
   contentSnippet?: string;
+  summary?: string;
   guid?: string;
   categories?: string[];
   description?: string;
@@ -25,14 +27,20 @@ interface CorporateRSSItem {
 
 export class CorporateTechBlogFetcher extends BaseFetcher {
   private parser: Parser<unknown, CorporateRSSItem>;
-  
+
   // 日本企業テックブログのRSSフィード
   private rssUrls = [
     { url: 'https://engineering.dena.com/blog/index.xml', name: 'DeNA' },
     { url: 'https://techblog.yahoo.co.jp/index.xml', name: 'Yahoo! JAPAN' },
     { url: 'https://engineering.mercari.com/blog/feed.xml', name: 'メルカリ' },
-    { url: 'https://developers.cyberagent.co.jp/blog/feed/', name: 'サイバーエージェント' },
-    { url: 'https://techblog.lycorp.co.jp/ja/feed/index.xml', name: 'LINEヤフー' },
+    {
+      url: 'https://developers.cyberagent.co.jp/blog/feed/',
+      name: 'サイバーエージェント',
+    },
+    {
+      url: 'https://techblog.lycorp.co.jp/ja/feed/index.xml',
+      name: 'LINEヤフー',
+    },
     // 新規追加（2025年8月）
     { url: 'https://developers.gmo.jp/feed/', name: 'GMO' },
     { url: 'https://tech.smarthr.jp/feed', name: 'SmartHR' },
@@ -44,7 +52,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     { url: 'https://developer.hatenastaff.com/feed', name: 'はてなDeveloper' },
     { url: 'https://tech.pepabo.com/feed.rss', name: 'GMOペパボ' },
     { url: 'https://buildersbox.corp-sansan.com/feed', name: 'Sansan' },
-    { url: 'https://moneyforward-dev.jp/feed', name: 'マネーフォワード' }
+    { url: 'https://moneyforward-dev.jp/feed', name: 'マネーフォワード' },
   ];
 
   constructor(source: Source) {
@@ -58,7 +66,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
       },
       headers: {
         'User-Agent': 'TechTrend/1.0 (https://techtrend.example.com)',
-        'Accept': 'application/rss+xml, application/xml, text/xml',
+        Accept: 'application/rss+xml, application/xml, text/xml',
       },
     });
   }
@@ -68,7 +76,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     const allErrors: Error[] = [];
     const seenUrls = new Set<string>();
 
-    // ContentEnricherFactory をインポート（ファイル先頭でのインポートが必要）
+    // ContentEnricherFactory を動的インポート（循環依存回避のため）
     const { ContentEnricherFactory } = await import('../enrichers');
     const enricherFactory = new ContentEnricherFactory();
 
@@ -76,50 +84,61 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+    // 記事数制限を環境変数で設定可能に（デフォルト: 30件）
+    const parsed = parseInt(process.env.MAX_ARTICLES_PER_COMPANY || '30', 10);
+    const maxArticlesPerCompany =
+      Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
+
     // 各企業のRSSフィードから記事を取得
     for (const feedInfo of this.rssUrls) {
       try {
         const feed = await this.retry(() => this.parser.parseURL(feedInfo.url));
-        
+
         if (!feed.items || feed.items.length === 0) {
           continue;
         }
 
-
-        // 記事数制限を環境変数で設定可能に（デフォルト: 30件）
-        const maxArticlesPerCompany = parseInt(process.env.MAX_ARTICLES_PER_COMPANY || '30');
         let processedCount = 0;
 
         // 全記事を処理（日付フィルタリング後に件数制限）
         for (const item of feed.items) {
           try {
             if (!item.title || !item.link) continue;
-            
+
             // 重複チェック
             if (seenUrls.has(item.link)) continue;
             seenUrls.add(item.link);
 
             // 日付チェックを先に実施（30日以内の記事のみ処理）
-            const publishedAt = item.isoDate ? new Date(item.isoDate) :
-                          item.pubDate ? parseRSSDate(item.pubDate) : new Date();
-            
+            const publishedAt = item.isoDate
+              ? new Date(item.isoDate)
+              : item.pubDate
+                ? parseRSSDate(item.pubDate)
+                : new Date();
+
             if (publishedAt < thirtyDaysAgo) {
               continue;
             }
 
             // 日本語記事かチェック（タイトルまたは説明に日本語が含まれるか）
             // RSSフィードによってdescription/content/summaryと異なるフィールドに格納されるため全てチェック
-            const textToCheck = item.description || item.content || 
-                             item.summary || item.contentSnippet || '';
-            const hasJapanese = this.containsJapanese(item.title) || 
-                              this.containsJapanese(textToCheck);
-            
+            const textToCheck =
+              item.description ||
+              item.content ||
+              item.summary ||
+              item.contentSnippet ||
+              '';
+            const hasJapanese =
+              this.containsJapanese(item.title) ||
+              this.containsJapanese(textToCheck);
+
             if (!hasJapanese) {
               continue;
             }
 
             // イベント記事の除外（環境変数で制御）
-            const excludeEvents = process.env.EXCLUDE_EVENT_ARTICLES !== 'false';
+            const excludeEvents =
+              process.env.EXCLUDE_EVENT_ARTICLES !== 'false';
             if (excludeEvents && this.isEventArticle(item.title, item.link)) {
               continue;
             }
@@ -131,21 +150,24 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
 
             // タグを抽出（企業名と技術タグ）
             const tags = this.extractTags(item, feedInfo.name);
-            
+
             // Corporate Tech Blogタグを追加（最後に追加）
             if (!tags.includes('企業テックブログ')) {
               tags.push('企業テックブログ');
             }
-            
+
             // 企業名をタグとして必ず最初に追加（最も目立つ位置）
             // 企業名を正規化して統一
             const companyTagName = this.normalizeCompanyName(feedInfo.name);
             // 既存の企業名タグを削除して最初に追加
-            const tagsWithoutCompany = tags.filter(tag => tag !== feedInfo.name && tag !== companyTagName);
+            const tagsWithoutCompany = tags.filter(
+              (tag) => tag !== feedInfo.name && tag !== companyTagName
+            );
             const finalTags = [companyTagName, ...tagsWithoutCompany];
 
             // コンテンツの取得（優先順位: content > contentSnippet > description）
-            let content = item.content || item.contentSnippet || item.description || '';
+            let content =
+              item.content || item.contentSnippet || item.description || '';
 
             // コンテンツエンリッチメント（2000文字未満の場合は常に試みる）
             let thumbnail: string | undefined;
@@ -154,17 +176,24 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
               if (enricher) {
                 try {
                   const enrichedData = await enricher.enrich(item.link);
-                  if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-                    content = enrichedData.content;
-                    thumbnail = enrichedData.thumbnail || undefined;
-                  } else {
+                  if (enrichedData) {
+                    if (
+                      enrichedData.content &&
+                      enrichedData.content.length > content.length
+                    ) {
+                      content = enrichedData.content;
+                    }
+                    if (enrichedData.thumbnail && !thumbnail) {
+                      thumbnail = enrichedData.thumbnail;
+                    }
                   }
                 } catch (_error) {
-                  // エンリッチメント失敗時は元のコンテンツを使用
+                  logger.error(
+                    { error: _error, url: item.link },
+                    '[Corporate Tech Blog] Enrichment failed'
+                  );
                 }
-              } else {
               }
-            } else if (content && content.length >= 2000) {
             }
 
             const article: CreateArticleInput = {
@@ -179,32 +208,47 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
               author: item.creator || item['dc:creator'] || feedInfo.name,
             };
 
-            // サムネイルを抽出
-            if (item.enclosure?.url && item.enclosure.type?.startsWith('image/')) {
-              article.thumbnail = item.enclosure.url;
-            } else if (content) {
-              const thumbnail = this.extractThumbnail(content);
-              if (thumbnail) {
-                article.thumbnail = thumbnail;
+            // enricherで取得済みでない場合のみ、他ソースからサムネイルを抽出
+            if (!article.thumbnail) {
+              if (
+                item.enclosure?.url &&
+                item.enclosure.type?.startsWith('image/')
+              ) {
+                article.thumbnail = item.enclosure.url;
+              } else if (content) {
+                const extracted = this.extractThumbnail(content);
+                if (extracted) {
+                  article.thumbnail = extracted;
+                }
               }
             }
 
             allArticles.push(article);
             processedCount++; // 処理済み記事数をインクリメント
           } catch (_error) {
-            allErrors.push(new Error(`Failed to parse item from ${feedInfo.name}: ${_error instanceof Error ? _error.message : String(_error)}`));
+            allErrors.push(
+              new Error(
+                `Failed to parse item from ${feedInfo.name}: ${_error instanceof Error ? _error.message : String(_error)}`
+              )
+            );
           }
         }
 
         // レート制限対策
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (_error) {
-        allErrors.push(new Error(`Failed to fetch ${feedInfo.name} feed: ${_error instanceof Error ? _error.message : String(_error)}`));
+        allErrors.push(
+          new Error(
+            `Failed to fetch ${feedInfo.name} feed: ${_error instanceof Error ? _error.message : String(_error)}`
+          )
+        );
       }
     }
 
     // 日付順にソートして最大50件を返す
-    allArticles.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
+    allArticles.sort(
+      (a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()
+    );
     const limitedArticles = allArticles.slice(0, 50);
 
     return { articles: limitedArticles, errors: allErrors };
@@ -224,37 +268,51 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
   private isEventArticle(title: string, url: string): boolean {
     // 除外対象のイベント系キーワード
     const eventKeywords = [
-      '登壇', 'イベント', 'セミナー', '勉強会',
-      'カンファレンス', 'meetup', '参加募集', '開催しました',
-      '開催します', '参加者募集'
+      '登壇',
+      'イベント',
+      'セミナー',
+      '勉強会',
+      'カンファレンス',
+      'meetup',
+      '参加募集',
+      '開催しました',
+      '開催します',
+      '参加者募集',
     ];
-    
+
     // 除外しないキーワード（技術的価値がある可能性）
     const excludeExceptions = ['振り返り', 'レポート', '技術解説', 'まとめ'];
-    
+
     const titleLower = title.toLowerCase();
-    
+
     // 例外チェック
-    const hasException = excludeExceptions.some(exception => 
+    const hasException = excludeExceptions.some((exception) =>
       title.includes(exception)
     );
-    
+
     if (hasException) {
       return false; // 技術レポートは除外しない
     }
-    
+
     // イベントキーワードチェック
-    const hasEventKeyword = eventKeywords.some(keyword => 
-      title.includes(keyword) || titleLower.includes(keyword.toLowerCase())
+    const hasEventKeyword = eventKeywords.some(
+      (keyword) =>
+        title.includes(keyword) || titleLower.includes(keyword.toLowerCase())
     );
-    
+
     // URLパターンチェック
     const hasEventUrl = /\/(event|seminar|meetup|conference)/i.test(url);
-    
-    // 未来の日付パターンチェック（例：2025/8/20）
-    const futureDatePattern = /20\d{2}\/\d{1,2}\/\d{1,2}/;
-    const hasFutureDate = futureDatePattern.test(title);
-    
+
+    // タイトル中の日付が未来かチェック（例：2025/8/20）
+    const dateMatch = title.match(/20(\d{2})\/(\d{1,2})\/(\d{1,2})/);
+    let hasFutureDate = false;
+    if (dateMatch) {
+      const matched = new Date(
+        `20${dateMatch[1]}/${dateMatch[2]}/${dateMatch[3]}`
+      );
+      hasFutureDate = !isNaN(matched.getTime()) && matched > new Date();
+    }
+
     return hasEventKeyword || hasEventUrl || hasFutureDate;
   }
 
@@ -264,24 +322,24 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
   private normalizeCompanyName(name: string): string {
     // 企業名の正規化マッピング
     const nameMap: Record<string, string> = {
-      'DeNA': 'DeNA',
-      'Yahoo! JAPAN': 'LINEヤフー',  // 統合を反映
-      'メルカリ': 'メルカリ',
-      'サイバーエージェント': 'CyberAgent',
-      'LINEヤフー': 'LINEヤフー',
-      'GMO': 'GMO',
-      'SmartHR': 'SmartHR',
-      'freee': 'freee',
-      'クックパッド': 'クックパッド',
+      DeNA: 'DeNA',
+      'Yahoo! JAPAN': 'LINEヤフー', // 統合を反映
+      メルカリ: 'メルカリ',
+      サイバーエージェント: 'CyberAgent',
+      LINEヤフー: 'LINEヤフー',
+      GMO: 'GMO',
+      SmartHR: 'SmartHR',
+      freee: 'freee',
+      クックパッド: 'クックパッド',
       // 新規追加（2025年8月14日）
-      'ZOZO': 'ZOZO',
-      'リクルート': 'リクルート',
-      'はてなDeveloper': 'はてなDeveloper',
-      'GMOペパボ': 'GMOペパボ',
-      'Sansan': 'Sansan',
-      'マネーフォワード': 'マネーフォワード'
+      ZOZO: 'ZOZO',
+      リクルート: 'リクルート',
+      はてなDeveloper: 'はてなDeveloper',
+      GMOペパボ: 'GMOペパボ',
+      Sansan: 'Sansan',
+      マネーフォワード: 'マネーフォワード',
     };
-    
+
     return nameMap[name] || name;
   }
 
@@ -319,37 +377,133 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     const text = `${item.title} ${item.description || ''}`;
     const techKeywords = [
       // プログラミング言語
-      'JavaScript', 'TypeScript', 'Python', 'Go', 'Rust', 'Ruby', 'Java', 'Kotlin', 'Swift',
-      'PHP', 'C++', 'Scala', 'Elixir', 'Dart', 'R',
-      
+      'JavaScript',
+      'TypeScript',
+      'Python',
+      'Go',
+      'Rust',
+      'Ruby',
+      'Java',
+      'Kotlin',
+      'Swift',
+      'PHP',
+      'C++',
+      'Scala',
+      'Elixir',
+      'Dart',
+      'R',
+
       // フレームワーク・ライブラリ
-      'React', 'Vue', 'Angular', 'Next.js', 'Nuxt.js', 'Express', 'Django', 'Rails', 
-      'Spring', 'Laravel', 'Flutter', 'React Native', 'Svelte',
-      
+      'React',
+      'Vue',
+      'Angular',
+      'Next.js',
+      'Nuxt.js',
+      'Express',
+      'Django',
+      'Rails',
+      'Spring',
+      'Laravel',
+      'Flutter',
+      'React Native',
+      'Svelte',
+
       // インフラ・クラウド
-      'AWS', 'GCP', 'Azure', 'Docker', 'Kubernetes', 'Terraform', 'Ansible',
-      'CloudFormation', 'CI/CD', 'GitHub Actions', 'Jenkins', 'GitLab',
-      
+      'AWS',
+      'GCP',
+      'Azure',
+      'Docker',
+      'Kubernetes',
+      'Terraform',
+      'Ansible',
+      'CloudFormation',
+      'CI/CD',
+      'GitHub Actions',
+      'Jenkins',
+      'GitLab',
+
       // データベース
-      'MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Elasticsearch', 'DynamoDB',
-      'Firestore', 'BigQuery', 'Cassandra', 'Neo4j',
-      
+      'MySQL',
+      'PostgreSQL',
+      'MongoDB',
+      'Redis',
+      'Elasticsearch',
+      'DynamoDB',
+      'Firestore',
+      'BigQuery',
+      'Cassandra',
+      'Neo4j',
+
       // AI・機械学習
-      'AI', '機械学習', 'ディープラーニング', 'TensorFlow', 'PyTorch', 'LLM',
-      'ChatGPT', 'GPT-4', 'BERT', 'Transformer', 'NLP', '自然言語処理',
-      
+      'AI',
+      '機械学習',
+      'ディープラーニング',
+      'TensorFlow',
+      'PyTorch',
+      'LLM',
+      'ChatGPT',
+      'GPT-4',
+      'BERT',
+      'Transformer',
+      'NLP',
+      '自然言語処理',
+
       // その他の技術
-      'GraphQL', 'REST API', 'gRPC', 'WebSocket', 'マイクロサービス', 'サーバーレス',
-      'ブロックチェーン', 'IoT', 'AR', 'VR', 'WebAssembly', 'PWA',
-      
+      'GraphQL',
+      'REST API',
+      'gRPC',
+      'WebSocket',
+      'マイクロサービス',
+      'サーバーレス',
+      'ブロックチェーン',
+      'IoT',
+      'AR',
+      'VR',
+      'WebAssembly',
+      'PWA',
+
       // 開発手法・概念
-      'DevOps', 'SRE', 'アジャイル', 'スクラム', 'TDD', 'DDD', 'クリーンアーキテクチャ',
-      'リファクタリング', 'パフォーマンス', 'セキュリティ', 'アクセシビリティ'
+      'DevOps',
+      'SRE',
+      'アジャイル',
+      'スクラム',
+      'TDD',
+      'DDD',
+      'クリーンアーキテクチャ',
+      'リファクタリング',
+      'パフォーマンス',
+      'セキュリティ',
+      'アクセシビリティ',
     ];
 
+    const lowerText = text.toLowerCase();
     for (const keyword of techKeywords) {
-      if (text.toLowerCase().includes(keyword.toLowerCase())) {
-        tags.push(keyword);
+      // "Go" と "R" は汎用的すぎるため、関連コンテキストで判定
+      if (keyword === 'Go') {
+        if (
+          /\bgo(?:lang)?\b/i.test(lowerText) &&
+          !/\blet'?s go\b/i.test(lowerText)
+        ) {
+          tags.push(keyword);
+        }
+      } else if (keyword === 'R') {
+        if (
+          /\bR\s+language\b/i.test(text) ||
+          /R言語/.test(text) ||
+          /\bcran\b/i.test(lowerText)
+        ) {
+          tags.push(keyword);
+        }
+      } else if (keyword.length <= 3) {
+        const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+        if (regex.test(lowerText)) {
+          tags.push(keyword);
+        }
+      } else {
+        if (lowerText.includes(keyword.toLowerCase())) {
+          tags.push(keyword);
+        }
       }
     }
 

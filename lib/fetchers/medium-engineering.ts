@@ -3,7 +3,7 @@ import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
 import { parseRSSDate } from '@/lib/utils/date';
-import { extractContent, checkContentQuality } from '@/lib/utils/content-extractor';
+import { extractContent } from '@/lib/utils/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import logger from '@/lib/logger';
@@ -28,36 +28,36 @@ interface MediumFeed {
 
 export class MediumEngineeringFetcher extends BaseFetcher {
   private parser: Parser<unknown, MediumItem>;
-  
+
   // 主要な技術系Mediumブログ
   private feeds: MediumFeed[] = [
     {
       name: 'Engineering at Medium',
       url: 'https://medium.engineering/feed',
-      tags: ['Medium', 'Engineering']
+      tags: ['Medium', 'Engineering'],
     },
     {
       name: 'Netflix TechBlog',
       url: 'https://netflixtechblog.medium.com/feed',
-      tags: ['Netflix', 'Streaming', 'Scale']
+      tags: ['Netflix', 'Streaming', 'Scale'],
     },
     {
       name: 'Airbnb Engineering',
       url: 'https://medium.com/feed/airbnb-engineering',
-      tags: ['Airbnb', 'Travel Tech']
+      tags: ['Airbnb', 'Travel Tech'],
     },
     {
       name: 'Uber Engineering',
       url: 'https://eng.uber.com/feed/',
-      tags: ['Uber', 'Distributed Systems']
+      tags: ['Uber', 'Distributed Systems'],
     },
     {
       name: 'Spotify Engineering',
       url: 'https://engineering.atspotify.com/feed/',
-      tags: ['Spotify', 'Music Tech']
-    }
+      tags: ['Spotify', 'Music Tech'],
+    },
   ];
-  
+
   constructor(source: Source) {
     super(source);
     this.parser = new Parser({
@@ -78,10 +78,10 @@ export class MediumEngineeringFetcher extends BaseFetcher {
     // 30日前の日付を計算
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     // 現在日時を取得（未来日付フィルタ用）
     const now = new Date();
-    
+
     // ContentEnricherFactoryのインスタンス作成
     const enricherFactory = new ContentEnricherFactory();
 
@@ -89,7 +89,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
     for (const feedInfo of this.feeds) {
       try {
         const feed = await this.retry(() => this.parser.parseURL(feedInfo.url));
-        
+
         if (!feed.items || feed.items.length === 0) {
           continue;
         }
@@ -97,49 +97,59 @@ export class MediumEngineeringFetcher extends BaseFetcher {
         for (const item of feed.items) {
           try {
             if (!item.title || !item.link) continue;
-            
+
             // URLを正規化（Mediumのトラッキングパラメータを除去）
             const cleanUrl = this.cleanMediumUrl(item.link);
-            
+
             // 重複チェック
             if (seenUrls.has(cleanUrl)) {
               continue;
             }
             seenUrls.add(cleanUrl);
 
-            const publishedAt = item.isoDate ? new Date(item.isoDate) :
-                              item.pubDate ? parseRSSDate(item.pubDate) : new Date();
-            
+            const publishedAt = item.isoDate
+              ? new Date(item.isoDate)
+              : item.pubDate
+                ? parseRSSDate(item.pubDate)
+                : new Date();
+
             // 30日以内かつ未来でない記事のみ処理
             if (publishedAt < thirtyDaysAgo || publishedAt > now) {
               continue;
             }
 
             // コンテンツの取得
-          let content = extractContent(item as unknown as Record<string, unknown>);
+            let content = extractContent(
+              item as unknown as Record<string, unknown>
+            );
             let thumbnail: string | undefined;
-            
+
             // Medium記事のコンテンツエンリッチメント
             if (content && content.length < 2000) {
               const enricher = enricherFactory.getEnricher(cleanUrl);
               if (enricher) {
                 try {
                   const enrichedData = await enricher.enrich(cleanUrl);
-                  if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-                    content = enrichedData.content;
-                    thumbnail = enrichedData.thumbnail || undefined;
+                  if (enrichedData) {
+                    if (
+                      enrichedData.content &&
+                      enrichedData.content.length > content.length
+                    ) {
+                      content = enrichedData.content;
+                    }
+                    if (enrichedData.thumbnail && !thumbnail) {
+                      thumbnail = enrichedData.thumbnail;
+                    }
                   }
                 } catch (_error) {
-                  logger.error({ error: _error }, `[Medium Engineering] Enrichment failed for ${cleanUrl}`);
+                  logger.error(
+                    { error: _error },
+                    `[Medium Engineering] Enrichment failed for ${cleanUrl}`
+                  );
                 }
               }
             }
-            
-            // コンテンツ品質チェック
-            const contentCheck = checkContentQuality(content, item.title);
-            if (contentCheck.warning) {
-            }
-            
+
             // タグの生成（フィード固有のタグ + カテゴリ + 自動生成）
             const tags = this.generateMediumTags(
               feedInfo.tags,
@@ -147,7 +157,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
               item.title,
               item.creator
             );
-            
+
             const article: CreateArticleInput = {
               title: this.sanitizeText(item.title),
               url: cleanUrl,
@@ -168,26 +178,33 @@ export class MediumEngineeringFetcher extends BaseFetcher {
                 article.thumbnail = extractedThumbnail;
               }
             }
-            
+
             // メタデータとして著者情報を追加
             if (item.creator) {
               article.metadata = {
                 author: item.creator,
-                publication: feedInfo.name
+                publication: feedInfo.name,
               };
             }
 
             articles.push(article);
           } catch (_error) {
-            errors.push(new Error(`Failed to parse item from ${feedInfo.name}: ${_error instanceof Error ? _error.message : String(_error)}`));
+            errors.push(
+              new Error(
+                `Failed to parse item from ${feedInfo.name}: ${_error instanceof Error ? _error.message : String(_error)}`
+              )
+            );
           }
         }
-        
+
         // レート制限対策
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
+        await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (_error) {
-        errors.push(new Error(`Failed to fetch ${feedInfo.name} RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`));
+        errors.push(
+          new Error(
+            `Failed to fetch ${feedInfo.name} RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`
+          )
+        );
       }
     }
 
@@ -214,26 +231,26 @@ export class MediumEngineeringFetcher extends BaseFetcher {
 
     // ソースベースタグは削除（'Medium', 'Engineering Blog'）
     // フィード固有のタグから企業名を除外してから追加
-    feedTags.forEach(tag => {
+    feedTags.forEach((tag) => {
       // 企業名（Medium, Netflix, Airbnb, Uber, Spotify）は除外
       const companyNames = ['Medium', 'Netflix', 'Airbnb', 'Uber', 'Spotify'];
       if (!companyNames.includes(tag)) {
         tags.add(tag);
       }
     });
-    
+
     // カテゴリベースのタグ
     if (categories && categories.length > 0) {
       for (const category of categories) {
         const normalizedTags = normalizeTagInput(category);
-        normalizedTags.forEach(tag => tags.add(tag));
+        normalizedTags.forEach((tag) => tags.add(tag));
       }
     }
-    
+
     // タイトルベースのタグ
     if (title) {
       const lowerTitle = title.toLowerCase();
-      
+
       // プログラミング言語
       if (lowerTitle.includes('javascript') || lowerTitle.includes('js')) {
         tags.add('JavaScript');
@@ -259,7 +276,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
       if (lowerTitle.includes('ios')) {
         tags.add('iOS');
       }
-      
+
       // テクノロジー分野
       if (lowerTitle.includes('microservice')) {
         tags.add('Microservices');
@@ -270,10 +287,16 @@ export class MediumEngineeringFetcher extends BaseFetcher {
       if (lowerTitle.includes('docker')) {
         tags.add('Docker');
       }
-      if (lowerTitle.includes('machine learning') || lowerTitle.includes('ml')) {
+      if (
+        lowerTitle.includes('machine learning') ||
+        /\bml\b/.test(lowerTitle)
+      ) {
         tags.add('Machine Learning');
       }
-      if (lowerTitle.includes('data engineering') || lowerTitle.includes('data pipeline')) {
+      if (
+        lowerTitle.includes('data engineering') ||
+        lowerTitle.includes('data pipeline')
+      ) {
         tags.add('Data Engineering');
       }
       if (lowerTitle.includes('architecture')) {

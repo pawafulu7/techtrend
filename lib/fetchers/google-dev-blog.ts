@@ -25,8 +25,8 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
     super(source);
     this.parser = new Parser({
       customFields: {
-        item: ['dc:creator']
-      }
+        item: ['dc:creator'],
+      },
     });
   }
 
@@ -39,8 +39,10 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     try {
-      const feed = await this.retry(() => this.parser.parseURL(this.source.url));
-      
+      const feed = await this.retry(() =>
+        this.parser.parseURL(this.source.url)
+      );
+
       if (!feed.items || feed.items.length === 0) {
         return { articles, errors };
       }
@@ -55,18 +57,28 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
       for (const item of limitedItems) {
         try {
           // parseItemメソッドに処理を委譲
-          const article = await this.parseItem(item, enricherFactory, thirtyDaysAgo);
+          const article = await this.parseItem(
+            item,
+            enricherFactory,
+            thirtyDaysAgo
+          );
           if (article) {
             articles.push(article);
           }
         } catch (_error) {
-          errors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
+          errors.push(
+            new Error(
+              `Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`
+            )
+          );
         }
       }
-
-
     } catch (_error) {
-      errors.push(new Error(`Failed to fetch Google Dev Blog: ${_error instanceof Error ? _error.message : String(_error)}`));
+      errors.push(
+        new Error(
+          `Failed to fetch Google Dev Blog: ${_error instanceof Error ? _error.message : String(_error)}`
+        )
+      );
     }
 
     return { articles, errors };
@@ -81,17 +93,38 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
 
     // 技術記事のフィルタリング
     const techKeywords = [
-      'android', 'chrome', 'firebase', 'flutter', 'tensorflow',
-      'cloud', 'ai', 'ml', 'api', 'developer', 'web', 'mobile',
-      'platform', 'framework', 'release', 'update', 'beta',
-      'machine learning', 'artificial intelligence', 'gemini'
+      'android',
+      'chrome',
+      'firebase',
+      'flutter',
+      'tensorflow',
+      'cloud',
+      'ai',
+      'ml',
+      'api',
+      'developer',
+      'web',
+      'mobile',
+      'platform',
+      'framework',
+      'release',
+      'update',
+      'beta',
+      'machine learning',
+      'artificial intelligence',
+      'gemini',
     ];
 
     const titleLower = item.title.toLowerCase();
-    const contentLower = (item.content || item.contentSnippet || '').toLowerCase();
-    
-    const isTechArticle = techKeywords.some(keyword => 
-      titleLower.includes(keyword) || contentLower.includes(keyword)
+    const contentLower = (
+      item.content ||
+      item.contentSnippet ||
+      ''
+    ).toLowerCase();
+
+    const isTechArticle = techKeywords.some(
+      (keyword) =>
+        titleLower.includes(keyword) || contentLower.includes(keyword)
     );
 
     if (!isTechArticle) {
@@ -99,7 +132,7 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
     }
 
     const publishedAt = item.pubDate ? parseRSSDate(item.pubDate) : new Date();
-    
+
     // 30日以内の記事のみ処理
     if (publishedAt < thirtyDaysAgo) {
       return null;
@@ -115,29 +148,44 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
       if (enricher) {
         try {
           const enrichedData = await enricher.enrich(item.link);
-          if (enrichedData && enrichedData.content && enrichedData.content.length > content.length) {
-            content = enrichedData.content;
-            thumbnail = enrichedData.thumbnail || undefined;
-          } else {
+          if (enrichedData) {
+            if (
+              enrichedData.content &&
+              enrichedData.content.length > content.length
+            ) {
+              content = enrichedData.content;
+            }
+            if (enrichedData.thumbnail && !thumbnail) {
+              thumbnail = enrichedData.thumbnail;
+            }
           }
         } catch (_error) {
-          logger.error({ error: _error }, `[Google Dev Blog] Enrichment failed for ${item.link}`);
+          logger.error(
+            { error: _error },
+            `[Google Dev Blog] Enrichment failed for ${item.link}`
+          );
           // エラー時は元のコンテンツを使用
         }
-      } else {
       }
-    } else if (content && content.length >= 2000) {
+    }
+
+    // enricherでサムネイル取得できなかった場合、コンテンツから抽出
+    if (!thumbnail && content) {
+      const extracted = this.extractThumbnail(content);
+      if (extracted) {
+        thumbnail = extracted;
+      }
     }
 
     const article: CreateArticleInput = {
       title: this.sanitizeText(item.title),
       url: this.normalizeUrl(item.link),
       summary: undefined, // 要約は後で日本語で生成
-      content,
+      content: content || undefined,
       publishedAt,
       sourceId: this.source.id,
       tagNames: item.categories || [],
-      thumbnail, // サムネイル追加
+      thumbnail,
     };
 
     return article;
