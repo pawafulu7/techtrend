@@ -83,6 +83,12 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+    // 記事数制限を環境変数で設定可能に（デフォルト: 30件）
+    const maxArticlesPerCompany = parseInt(
+      process.env.MAX_ARTICLES_PER_COMPANY || '30',
+      10
+    );
+
     // 各企業のRSSフィードから記事を取得
     for (const feedInfo of this.rssUrls) {
       try {
@@ -92,11 +98,6 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
           continue;
         }
 
-        // 記事数制限を環境変数で設定可能に（デフォルト: 30件）
-        const maxArticlesPerCompany = parseInt(
-          process.env.MAX_ARTICLES_PER_COMPANY || '30',
-          10
-        );
         let processedCount = 0;
 
         // 全記事を処理（日付フィルタリング後に件数制限）

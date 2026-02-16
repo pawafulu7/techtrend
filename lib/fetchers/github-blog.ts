@@ -3,10 +3,7 @@ import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
 import { parseRSSDate } from '@/lib/utils/date';
-import {
-  extractContent,
-  checkContentQuality,
-} from '@/lib/utils/content-extractor';
+import { extractContent } from '@/lib/utils/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
 import logger from '@/lib/logger';
@@ -107,9 +104,6 @@ export class GitHubBlogFetcher extends BaseFetcher {
               }
             }
           }
-
-          // コンテンツ品質チェック
-          const contentCheck = checkContentQuality(content, item.title);
 
           // タグの生成
           const tags = this.generateGitHubTags(item.categories);

@@ -181,7 +181,7 @@ export class GoogleDevBlogFetcher extends BaseFetcher {
       title: this.sanitizeText(item.title),
       url: this.normalizeUrl(item.link),
       summary: undefined, // 要約は後で日本語で生成
-      content,
+      content: content || undefined,
       publishedAt,
       sourceId: this.source.id,
       tagNames: item.categories || [],
