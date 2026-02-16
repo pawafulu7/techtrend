@@ -219,8 +219,17 @@ export class HatenaExtendedFetcher extends BaseFetcher {
             // コンテンツの取得と検証
             const content =
               item.content || item.description || item.contentSnippet || '';
-            let thumbnail: string | undefined =
-              item.hatenaImageUrl || undefined;
+            let thumbnail: string | undefined;
+            if (item.hatenaImageUrl) {
+              try {
+                const url = new URL(item.hatenaImageUrl);
+                if (url.protocol === 'http:' || url.protocol === 'https:') {
+                  thumbnail = item.hatenaImageUrl;
+                }
+              } catch {
+                // Invalid URL - ignore
+              }
+            }
             if (
               !thumbnail &&
               item.link &&

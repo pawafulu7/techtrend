@@ -142,6 +142,34 @@ describe('HatenaExtendedFetcher - thumbnail logic', () => {
     );
   });
 
+  it('hatena:imageurlがjavascript:スキームの場合、thumbnailはundefined', async () => {
+    const item = createFeedItem({
+      link: 'https://example.com/article/xss-test',
+      hatenaImageUrl: 'javascript:alert(1)',
+    });
+    setupMockFeeds([item]);
+
+    const fetcher = new HatenaExtendedFetcher(mockSource);
+    const result = await fetcher.fetch();
+
+    expect(result.articles).toHaveLength(1);
+    expect(result.articles[0].thumbnail).toBeUndefined();
+  });
+
+  it('hatena:imageurlが不正なURL(foo)の場合、thumbnailはundefined', async () => {
+    const item = createFeedItem({
+      link: 'https://example.com/article/invalid-url',
+      hatenaImageUrl: 'foo',
+    });
+    setupMockFeeds([item]);
+
+    const fetcher = new HatenaExtendedFetcher(mockSource);
+    const result = await fetcher.fetch();
+
+    expect(result.articles).toHaveLength(1);
+    expect(result.articles[0].thumbnail).toBeUndefined();
+  });
+
   it('URLにzenn.dev文字列を含むがドメインがZennではない場合、フォールバックしない', async () => {
     const item = createFeedItem({
       link: 'https://example.com/?ref=zenn.dev',
