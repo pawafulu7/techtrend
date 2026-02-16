@@ -303,9 +303,15 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     // URLパターンチェック
     const hasEventUrl = /\/(event|seminar|meetup|conference)/i.test(url);
 
-    // 未来の日付パターンチェック（例：2025/8/20）
-    const futureDatePattern = /20\d{2}\/\d{1,2}\/\d{1,2}/;
-    const hasFutureDate = futureDatePattern.test(title);
+    // タイトル中の日付が未来かチェック（例：2025/8/20）
+    const dateMatch = title.match(/20(\d{2})\/(\d{1,2})\/(\d{1,2})/);
+    let hasFutureDate = false;
+    if (dateMatch) {
+      const matched = new Date(
+        `20${dateMatch[1]}/${dateMatch[2]}/${dateMatch[3]}`
+      );
+      hasFutureDate = !isNaN(matched.getTime()) && matched > new Date();
+    }
 
     return hasEventKeyword || hasEventUrl || hasFutureDate;
   }
@@ -472,7 +478,22 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
 
     const lowerText = text.toLowerCase();
     for (const keyword of techKeywords) {
-      if (keyword.length <= 3) {
+      // "Go" と "R" は汎用的すぎるため、関連コンテキストで判定
+      if (keyword === 'Go') {
+        if (
+          /\bgo(?:lang)?\b/i.test(lowerText) &&
+          !/\blet'?s go\b/i.test(lowerText)
+        ) {
+          tags.push(keyword);
+        }
+      } else if (keyword === 'R') {
+        if (
+          /\bR(?:\s+language|言語)\b/i.test(text) ||
+          /\bcran\b/i.test(lowerText)
+        ) {
+          tags.push(keyword);
+        }
+      } else if (keyword.length <= 3) {
         const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(`\\b${escaped}\\b`, 'i');
         if (regex.test(lowerText)) {
