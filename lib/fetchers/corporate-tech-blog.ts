@@ -488,7 +488,8 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
         }
       } else if (keyword === 'R') {
         if (
-          /\bR(?:\s+language|言語)\b/i.test(text) ||
+          /\bR\s+language\b/i.test(text) ||
+          /R言語/.test(text) ||
           /\bcran\b/i.test(lowerText)
         ) {
           tags.push(keyword);
