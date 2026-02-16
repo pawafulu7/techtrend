@@ -25,7 +25,7 @@ export function RelativeTime({
   showNewBadge = false,
   className,
 }: RelativeTimeProps) {
-  const [hoursAgo, setHoursAgo] = useState<number | null>(null);
+  const [minutesAgo, setMinutesAgo] = useState<number | null>(null);
 
   // Initialize state in useEffect to avoid Date.now() during render (purity rule)
   useEffect(() => {
@@ -34,39 +34,45 @@ export function RelativeTime({
     // Validate parsed date to avoid NaN
     if (Number.isNaN(targetDate.getTime())) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: keep null for invalid date
-      setHoursAgo(null);
+      setMinutesAgo(null);
       return;
     }
 
-    const calculateHours = () => {
-      return Math.floor((Date.now() - targetDate.getTime()) / (1000 * 60 * 60));
+    const calculateMinutes = () => {
+      const diff = Math.floor(
+        (Date.now() - targetDate.getTime()) / (1000 * 60)
+      );
+      // Future dates (clock skew, scheduled posts): treat as "1分前"
+      if (diff <= 0) return 1;
+      return diff;
     };
 
-    setHoursAgo(calculateHours());
+    setMinutesAgo(calculateMinutes());
 
     // 1分ごとに更新（リアルタイム性が必要な場合）
     const interval = setInterval(() => {
-      setHoursAgo(calculateHours());
+      setMinutesAgo(calculateMinutes());
     }, 60000);
 
     return () => clearInterval(interval);
   }, [date]);
 
   // SSR時またはマウント前はnullを返す
-  if (hoursAgo === null) {
+  if (minutesAgo === null) {
     return null;
   }
 
-  const isNew = hoursAgo < newThresholdHours;
+  const isNew = Math.floor(minutesAgo / 60) < newThresholdHours;
 
   if (showNewBadge) {
     return isNew ? <span className={className}>NEW</span> : null;
   }
 
   // 時間の表示フォーマット
-  if (hoursAgo < 1) {
-    return <span className={className}>たった今</span>;
+  if (minutesAgo < 60) {
+    return <span className={className}>{minutesAgo}分前</span>;
   }
+  const hoursAgo = Math.floor(minutesAgo / 60);
   if (hoursAgo < 24) {
     return <span className={className}>{hoursAgo}時間前</span>;
   }
@@ -78,7 +84,7 @@ export function RelativeTime({
   if (weeksAgo < 4) {
     return <span className={className}>{weeksAgo}週間前</span>;
   }
-  const monthsAgo = Math.floor(daysAgo / 30);
+  const monthsAgo = Math.max(1, Math.floor(daysAgo / 30));
   return <span className={className}>{monthsAgo}ヶ月前</span>;
 }
 

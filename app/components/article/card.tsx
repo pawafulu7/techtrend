@@ -106,8 +106,8 @@ export function ArticleCard({
 
   const votes = article.userVotes || 0;
 
-  // Pattern 2: non-presentation article with valid thumbnail (YouTube-style layout)
-  const isPattern2Thumbnail = !isPresentation && showThumbnail;
+  // Thumbnail displayed at card top for all patterns with valid thumbnail
+  const hasTopThumbnail = showThumbnail;
 
   return (
     <CardV2
@@ -118,21 +118,29 @@ export function ArticleCard({
       onClick={handleCardClick}
       className={cn(
         'group relative flex h-auto cursor-pointer flex-col sm:min-h-[240px]',
-        isPattern2Thumbnail ? 'gap-0 pb-4' : 'gap-1.5 px-4 pt-3 pb-4',
+        hasTopThumbnail ? 'gap-0 pb-4' : 'gap-1.5 px-4 pt-3 pb-4',
         isNew
           ? 'border-t-2 border-t-green-500/60 dark:border-t-green-400/40'
           : sourceColor?.borderLeft
       )}
     >
-      {/* Pattern 2: Thumbnail first (YouTube-style) */}
-      {isPattern2Thumbnail && (
-        <div className="relative isolate h-[120px] w-full overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800">
+      {/* Top thumbnail: both presentation and standard patterns */}
+      {hasTopThumbnail && (
+        <div
+          className={cn(
+            'relative isolate w-full overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800',
+            isPresentation ? 'min-h-[160px]' : 'h-[120px]'
+          )}
+        >
           <OptimizedImage
             src={article.thumbnail!}
             alt={article.title}
             fill
             priority={false}
-            className="object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01]"
+            className={cn(
+              'transition-transform duration-300 ease-out group-hover:scale-[1.01]',
+              isPresentation ? 'object-contain p-3' : 'object-contain'
+            )}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             onError={() => setThumbnailError(true)}
           />
@@ -141,23 +149,18 @@ export function ArticleCard({
 
       {/* Content area: padded for Pattern 2, inline for others */}
       <div
-        className={cn(
-          'flex flex-col gap-1.5',
-          isPattern2Thumbnail && 'px-4 pt-2'
-        )}
+        className={cn('flex flex-col gap-1.5', hasTopThumbnail && 'px-4 pt-2')}
       >
-        {/* Title (Pattern 2/3, or presentation fallback when thumbnail fails) */}
-        {(!isPresentation || !showThumbnail) && (
-          <h3
-            className={cn(
-              'font-heading text-foreground line-clamp-2 text-base leading-snug font-semibold sm:text-lg',
-              isRead && 'opacity-70'
-            )}
-            title={article.translatedTitle || article.title}
-          >
-            {article.translatedTitle || article.title}
-          </h3>
-        )}
+        {/* Title - always displayed */}
+        <h3
+          className={cn(
+            'font-heading text-foreground line-clamp-2 text-base leading-snug font-semibold sm:text-lg',
+            isRead && 'opacity-70'
+          )}
+          title={article.translatedTitle || article.title}
+        >
+          {article.translatedTitle || article.title}
+        </h3>
 
         {/* Sub-line: badges + relative time */}
         <div className="flex flex-wrap items-center gap-2 text-[12px]">
@@ -210,29 +213,16 @@ export function ArticleCard({
           )}
         </div>
 
-        {/* Content area: 3 patterns */}
-        {isPresentation && showThumbnail ? (
-          // Pattern 1: Presentation - large thumbnail, no title
-          <div className="relative isolate min-h-[160px] w-full flex-1 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
-            <OptimizedImage
-              src={article.thumbnail!}
-              alt={article.title}
-              fill
-              priority={false}
-              className="object-contain p-3 transition-transform duration-300 ease-out group-hover:scale-[1.01]"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              onError={() => setThumbnailError(true)}
-            />
-          </div>
-        ) : showThumbnail ? (
-          // Pattern 2: Summary only (thumbnail already rendered above)
+        {/* Content area: 2 patterns */}
+        {showThumbnail ? (
+          // Pattern with thumbnail: Summary only (thumbnail already rendered above)
           trimmedSummary ? (
             <p className="text-foreground line-clamp-4 text-xs leading-relaxed">
               {trimmedSummary}
             </p>
           ) : null
         ) : trimmedSummary ? (
-          // Pattern 3: Text only - full summary
+          // Pattern without thumbnail: full summary
           <p className="text-foreground line-clamp-5 flex-1 text-xs leading-relaxed">
             {trimmedSummary}
           </p>
