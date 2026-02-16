@@ -341,6 +341,8 @@ describe('ArticleCard', () => {
 
       renderWithProviders(<ArticleCard article={recentArticle} />);
 
+      // 「公開:」ラベルと相対時間は別々のspan要素で描画される
+      expect(screen.getByText('公開:')).toBeInTheDocument();
       // RelativeTimeはuseEffect後に表示されるため、waitForで待つ
       await waitFor(() => {
         expect(screen.getByText('3時間前')).toBeInTheDocument();
@@ -561,19 +563,19 @@ describe('ArticleCard', () => {
       ).toBeInTheDocument();
     });
 
-    it('uses object-contain for presentation sources (Speaker Deck)', () => {
-      const presentationArticle = createMockArticleWithRelations({
+    it('uses object-contain for thumbnail display', () => {
+      const articleWithThumbnail = createMockArticleWithRelations({
         article: {
-          title: 'Presentation Slides',
+          title: 'Article With Slides',
           thumbnail: 'https://example.com/slide.jpg',
         },
         source: createMockSource({ name: 'Speaker Deck' }),
       });
 
-      renderWithProviders(<ArticleCard article={presentationArticle} />);
+      renderWithProviders(<ArticleCard article={articleWithThumbnail} />);
 
       const thumbnail = screen.getByRole('img', {
-        name: 'Presentation Slides',
+        name: 'Article With Slides',
       });
       expect(thumbnail).toHaveClass('object-contain');
     });
@@ -594,19 +596,21 @@ describe('ArticleCard', () => {
       expect(thumbnail).toHaveClass('object-contain');
     });
 
-    it('shows title for presentation sources', () => {
-      const presentationArticle = createMockArticleWithRelations({
+    it('shows title alongside thumbnail', () => {
+      const articleWithThumbnail = createMockArticleWithRelations({
         article: {
-          title: 'Presentation Title',
+          title: 'Article Title With Thumbnail',
           thumbnail: 'https://example.com/slide.jpg',
         },
         source: createMockSource({ name: 'Speaker Deck' }),
       });
 
-      renderWithProviders(<ArticleCard article={presentationArticle} />);
+      renderWithProviders(<ArticleCard article={articleWithThumbnail} />);
 
-      // プレゼン型でもタイトルが表示される
-      expect(screen.getByText('Presentation Title')).toBeInTheDocument();
+      // サムネイル付きでもタイトルが表示される
+      expect(
+        screen.getByText('Article Title With Thumbnail')
+      ).toBeInTheDocument();
     });
   });
 });
