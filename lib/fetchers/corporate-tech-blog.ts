@@ -76,7 +76,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     const allErrors: Error[] = [];
     const seenUrls = new Set<string>();
 
-    // ContentEnricherFactory をインポート（ファイル先頭でのインポートが必要）
+    // ContentEnricherFactory を動的インポート（循環依存回避のため）
     const { ContentEnricherFactory } = await import('../enrichers');
     const enricherFactory = new ContentEnricherFactory();
 
@@ -470,9 +470,18 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
       'アクセシビリティ',
     ];
 
+    const lowerText = text.toLowerCase();
     for (const keyword of techKeywords) {
-      if (text.toLowerCase().includes(keyword.toLowerCase())) {
-        tags.push(keyword);
+      if (keyword.length <= 3) {
+        const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+        if (regex.test(lowerText)) {
+          tags.push(keyword);
+        }
+      } else {
+        if (lowerText.includes(keyword.toLowerCase())) {
+          tags.push(keyword);
+        }
       }
     }
 

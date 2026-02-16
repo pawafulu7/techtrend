@@ -200,9 +200,9 @@ export class CloudflareBlogFetcher extends BaseFetcher {
         tags.add('SSL/TLS');
       }
       if (
-        lowerTitle.includes('ai') ||
+        /\bai\b/.test(lowerTitle) ||
         lowerTitle.includes('machine learning') ||
-        lowerTitle.includes('ml')
+        /\bml\b/.test(lowerTitle)
       ) {
         tags.add('AI');
       }
