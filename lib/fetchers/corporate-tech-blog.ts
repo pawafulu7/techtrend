@@ -15,6 +15,7 @@ interface CorporateRSSItem {
   'dc:creator'?: string;
   content?: string;
   contentSnippet?: string;
+  summary?: string;
   guid?: string;
   categories?: string[];
   description?: string;
