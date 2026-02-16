@@ -164,7 +164,7 @@ export class ZennExtendedFetcher extends BaseFetcher {
     };
 
     // Use enclosure URL as thumbnail if available
-    if (item.enclosure?.url && item.enclosure.type?.startsWith('image/')) {
+    if (item.enclosure?.url) {
       article.thumbnail = item.enclosure.url;
     }
 
