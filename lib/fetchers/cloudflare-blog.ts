@@ -105,6 +105,14 @@ export class CloudflareBlogFetcher extends BaseFetcher {
             }
           }
 
+          // enricherでサムネイル取得できなかった場合、コンテンツから抽出
+          if (!thumbnail && content) {
+            const extracted = this.extractThumbnail(content);
+            if (extracted) {
+              thumbnail = extracted;
+            }
+          }
+
           // タグの生成
           const tags = this.generateCloudflareTags(item.categories, item.title);
 
@@ -116,18 +124,8 @@ export class CloudflareBlogFetcher extends BaseFetcher {
             publishedAt,
             sourceId: this.source.id,
             tagNames: tags,
+            thumbnail,
           };
-
-          // サムネイルがある場合は追加
-          if (thumbnail) {
-            article.thumbnail = thumbnail;
-          } else if (article.content) {
-            // コンテンツからサムネイルを抽出
-            const extractedThumbnail = this.extractThumbnail(article.content);
-            if (extractedThumbnail) {
-              article.thumbnail = extractedThumbnail;
-            }
-          }
 
           articles.push(article);
         } catch (_error) {
