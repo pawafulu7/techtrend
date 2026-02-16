@@ -10,11 +10,6 @@ jest.mock('rss-parser', () => {
   }));
 });
 
-// Mock BaseFetcher's retry to avoid waiting for retryDelay
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-jest.spyOn(BaseFetcher.prototype as any, 'retry')
-  .mockImplementation(async (fn: () => Promise<unknown>) => fn());
-
 describe('HatenaExtendedFetcher - thumbnail logic', () => {
   const mockSource: Source = {
     id: 'hatena_extended_test',
@@ -58,6 +53,10 @@ describe('HatenaExtendedFetcher - thumbnail logic', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Mock BaseFetcher's retry to avoid waiting for retryDelay
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    jest.spyOn(BaseFetcher.prototype as any, 'retry')
+      .mockImplementation(async (fn: () => Promise<unknown>) => fn());
   });
 
   it('hatena:imageurlが存在する場合、thumbnailに設定される', async () => {
