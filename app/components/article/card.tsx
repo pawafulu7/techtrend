@@ -50,27 +50,6 @@ export function ArticleCard({
     setIsRead(initialIsRead);
   }, [initialIsRead]);
 
-  // T1: Presentation type detection (Speaker Deck / Docswell)
-  const isPresentation = (() => {
-    let isSpeakerDeck = article.source?.name === 'Speaker Deck';
-    let isDocswell = article.source?.name === 'Docswell';
-
-    if (!isSpeakerDeck && !isDocswell && article.url) {
-      try {
-        const hostname = new URL(article.url).hostname;
-        isSpeakerDeck =
-          hostname === 'speakerdeck.com' ||
-          hostname.endsWith('.speakerdeck.com');
-        isDocswell =
-          hostname === 'www.docswell.com' || hostname === 'docswell.com';
-      } catch {
-        // Invalid URL, skip URL-based detection
-      }
-    }
-
-    return isSpeakerDeck || isDocswell;
-  })();
-
   // T1: Thumbnail display with validation and error fallback
   const [thumbnailError, setThumbnailError] = useState(false);
   const hasValidThumbnailUrl =
@@ -129,7 +108,7 @@ export function ArticleCard({
         <div
           className={cn(
             'relative isolate w-full overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800',
-            isPresentation ? 'min-h-[160px]' : 'h-[120px]'
+            'min-h-[160px]'
           )}
         >
           <OptimizedImage
@@ -139,7 +118,7 @@ export function ArticleCard({
             priority={false}
             className={cn(
               'transition-transform duration-300 ease-out group-hover:scale-[1.01]',
-              isPresentation ? 'object-contain p-3' : 'object-contain'
+              'object-contain'
             )}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             onError={() => setThumbnailError(true)}
@@ -202,7 +181,8 @@ export function ArticleCard({
               {article.companyName ?? article.source.name}
             </BadgeV2>
           )}
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground flex items-center gap-1">
+            <span>公開:</span>
             <RelativeTime date={article.publishedAt} />
           </span>
           {sortBy === 'createdAt' && (
