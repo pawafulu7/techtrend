@@ -594,10 +594,10 @@ describe('ArticleCard', () => {
       expect(thumbnail).toHaveClass('object-contain');
     });
 
-    it('does not show title for presentation sources', () => {
+    it('shows title for presentation sources', () => {
       const presentationArticle = createMockArticleWithRelations({
         article: {
-          title: 'Hidden Title For Presentation',
+          title: 'Presentation Title',
           thumbnail: 'https://example.com/slide.jpg',
         },
         source: createMockSource({ name: 'Speaker Deck' }),
@@ -605,10 +605,8 @@ describe('ArticleCard', () => {
 
       renderWithProviders(<ArticleCard article={presentationArticle} />);
 
-      // プレゼン型ではタイトルが非表示
-      expect(
-        screen.queryByText('Hidden Title For Presentation')
-      ).not.toBeInTheDocument();
+      // プレゼン型でもタイトルが表示される
+      expect(screen.getByText('Presentation Title')).toBeInTheDocument();
     });
   });
 });
