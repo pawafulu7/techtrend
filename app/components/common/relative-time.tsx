@@ -84,7 +84,7 @@ export function RelativeTime({
   if (weeksAgo < 4) {
     return <span className={className}>{weeksAgo}週間前</span>;
   }
-  const monthsAgo = Math.floor(daysAgo / 30);
+  const monthsAgo = Math.max(1, Math.floor(daysAgo / 30));
   return <span className={className}>{monthsAgo}ヶ月前</span>;
 }
 
