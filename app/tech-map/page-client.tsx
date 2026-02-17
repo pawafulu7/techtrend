@@ -127,7 +127,7 @@ export default function TechMapPageClient({
   const handleTypeFilter = useCallback((type: string) => {
     setActiveType(type);
     if (type) {
-      setHiddenTypes((prev) => {
+      setHiddenTypes((_prev) => {
         const allTypes = new Set([
           'LANGUAGE',
           'FRAMEWORK',
