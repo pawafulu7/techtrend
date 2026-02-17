@@ -35,6 +35,7 @@ const PROCESS_NAME = 'entity-extraction';
 const BATCH_CONCURRENCY = 3;
 const DELAY_BETWEEN_ITEMS_MS = 2000; // Gemini rate limiting
 const DEFAULT_BATCH_SIZE = 100;
+const DEFAULT_MAX_AGE_DAYS = 7;
 
 // =============================================================================
 // Main
@@ -54,10 +55,18 @@ async function extractEntities(): Promise<{
       parseInt(process.env.ENTITY_EXTRACTION_BATCH_SIZE ?? '', 10) ||
       DEFAULT_BATCH_SIZE;
 
+    const maxAgeDays =
+      parseInt(process.env.ENTITY_EXTRACTION_MAX_AGE_DAYS ?? '', 10) ||
+      DEFAULT_MAX_AGE_DAYS;
+    const cutoffDate = new Date(
+      Date.now() - maxAgeDays * 24 * 60 * 60 * 1000
+    );
+
     const articles = await prisma.article.findMany({
       where: {
         summary: { not: null },
         techMentions: { none: {} },
+        createdAt: { gte: cutoffDate },
       },
       select: {
         id: true,
@@ -77,7 +86,7 @@ async function extractEntities(): Promise<{
     }
 
     console.log(
-      `[entity-extraction] Found ${articles.length} articles to process`
+      `[entity-extraction] Found ${articles.length} articles to process (last ${maxAgeDays} days)`
     );
 
     // Initialize services
