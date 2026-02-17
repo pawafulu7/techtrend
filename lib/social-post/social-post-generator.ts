@@ -363,7 +363,7 @@ export class SocialPostGenerator {
    * ソースタイプに応じて生成
    */
   async generate(
-    source: 'ARTICLE' | 'DAILY_TREND' | 'DIFF_SUMMARY',
+    source: 'ARTICLE' | 'DAILY_TREND' | 'DIFF_SUMMARY' | 'INSIGHT',
     sourceId: string
   ): Promise<GeneratedContent> {
     switch (source) {
@@ -388,6 +388,10 @@ export class SocialPostGenerator {
         }
         return this.generateFromDiffSummary(diff);
       }
+      case 'INSIGHT':
+        throw new Error(
+          'INSIGHT source type generation is not yet implemented'
+        );
       default:
         throw new Error(`Unsupported source type: ${source}`);
     }

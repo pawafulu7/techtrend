@@ -562,7 +562,7 @@ export class SocialPostSelector {
    * 既に投稿済みのソースIDを取得
    */
   private async getPostedSourceIds(
-    source: 'ARTICLE' | 'DAILY_TREND' | 'DIFF_SUMMARY'
+    source: 'ARTICLE' | 'DAILY_TREND' | 'DIFF_SUMMARY' | 'INSIGHT'
   ): Promise<string[]> {
     const posts = await this.prisma.socialPost.findMany({
       where: {
