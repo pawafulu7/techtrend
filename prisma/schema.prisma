@@ -698,6 +698,7 @@ model TechRelationEvidence {
   article  Article      @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@unique([relationId, articleId], map: "uq_relation_evidence")
+  @@index([articleId], map: "idx_relation_evidence_article")
 }
 
 model ArticleTechMention {
@@ -740,4 +741,5 @@ model TagEntityMapping {
   entity TechEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 
   @@unique([tagId, entityId], map: "uq_tag_entity_mapping")
+  @@index([entityId], map: "idx_tag_entity_mapping_entity")
 }

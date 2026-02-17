@@ -4,12 +4,7 @@ import { MetricSource } from '@prisma/client';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
 
-const VALID_METRIC_SOURCES: string[] = [
-  'GITHUB_STARS',
-  'NPM_DOWNLOADS',
-  'PYPI_DOWNLOADS',
-  'SO_QUESTIONS',
-];
+const VALID_METRIC_SOURCES: string[] = Object.values(MetricSource);
 
 /**
  * GET /api/tech-map/entities/[id]/metrics

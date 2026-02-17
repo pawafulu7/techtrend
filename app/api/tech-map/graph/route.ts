@@ -7,14 +7,7 @@ import { RedisCache } from '@/lib/cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
 
-const VALID_ENTITY_TYPES: string[] = [
-  'FRAMEWORK',
-  'LANGUAGE',
-  'TOOL',
-  'CONCEPT',
-  'PLATFORM',
-  'LIBRARY',
-];
+const VALID_ENTITY_TYPES: string[] = Object.values(TechEntityType);
 
 // Lazy-init cache (5 min TTL for graph data)
 let graphCache: RedisCache | null = null;
@@ -202,8 +195,17 @@ async function handler(request: NextRequest) {
     }
 
     // Filter by minStrength AFTER normalization (0-1 range)
+    // Also remove orphaned nodes that lost all connections
     if (minStrength > 0) {
       edges = edges.filter((e) => e.strength >= minStrength);
+      // Remove orphaned nodes
+      const connectedNodeIds = new Set<string>();
+      if (center) connectedNodeIds.add(center);
+      edges.forEach((e) => {
+        connectedNodeIds.add(e.source);
+        connectedNodeIds.add(e.target);
+      });
+      nodes = nodes.filter((n) => connectedNodeIds.has(n.id));
     }
 
     const responseData = { nodes, edges };

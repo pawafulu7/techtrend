@@ -216,6 +216,7 @@ describe('/api/tech-map/graph', () => {
       for (const edge of data.edges) {
         expect(edge.strength).toBeGreaterThanOrEqual(clampedMinStrength);
       }
+      expect(data.edges.length).toBeLessThanOrEqual(1);
     });
 
     it('returns cached data when available', async () => {

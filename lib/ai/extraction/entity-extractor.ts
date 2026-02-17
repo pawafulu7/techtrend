@@ -227,6 +227,7 @@ export class EntityExtractor {
     const externalIds: Record<string, string> = {};
     if (raw.github) externalIds.github = raw.github;
     if (raw.npm) externalIds.npm = raw.npm;
+    if (raw.pypi) externalIds.pypi = raw.pypi;
 
     const entity = await this.entityService.findOrCreate({
       name: raw.name,

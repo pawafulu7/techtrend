@@ -5,14 +5,7 @@ import { TechEntityType } from '@prisma/client';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
 
-const VALID_ENTITY_TYPES: string[] = [
-  'FRAMEWORK',
-  'LANGUAGE',
-  'TOOL',
-  'CONCEPT',
-  'PLATFORM',
-  'LIBRARY',
-];
+const VALID_ENTITY_TYPES: string[] = Object.values(TechEntityType);
 
 const VALID_SORT_FIELDS = ['mentionCount', 'lastSeenAt', 'name'] as const;
 

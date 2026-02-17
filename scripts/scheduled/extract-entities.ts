@@ -77,7 +77,11 @@ async function extractEntities(): Promise<{
       take: batchSize,
     });
 
-    if (articles.length === 0) {
+    const articlesWithSummary = articles.filter(
+      (a): a is typeof a & { summary: string } => a.summary !== null
+    );
+
+    if (articlesWithSummary.length === 0) {
       console.log('[entity-extraction] No articles to process');
       await saveProcessingStatus(PROCESS_NAME, 0, 'success', {
         message: 'No articles to process',
@@ -86,7 +90,7 @@ async function extractEntities(): Promise<{
     }
 
     console.log(
-      `[entity-extraction] Found ${articles.length} articles to process (last ${maxAgeDays} days)`
+      `[entity-extraction] Found ${articlesWithSummary.length} articles to process (last ${maxAgeDays} days)`
     );
 
     // Initialize services
@@ -103,14 +107,14 @@ async function extractEntities(): Promise<{
     const limit = pLimit(BATCH_CONCURRENCY);
     const results: ExtractionResultSummary[] = [];
 
-    const tasks = articles.map((article) =>
+    const tasks = articlesWithSummary.map((article) =>
       limit(async () => {
         let result: ExtractionResultSummary;
         try {
           result = await extractor.extractFromArticle({
             id: article.id,
             title: article.title,
-            summary: article.summary!,
+            summary: article.summary,
           });
         } catch (error) {
           result = {
@@ -172,7 +176,7 @@ async function extractEntities(): Promise<{
     const status =
       failed === 0 ? 'success' : succeeded === 0 ? 'failed' : 'partial';
     await saveProcessingStatus(PROCESS_NAME, succeeded, status, {
-      total: articles.length,
+      total: articlesWithSummary.length,
       succeeded,
       failed,
       totalEntities,
@@ -180,7 +184,7 @@ async function extractEntities(): Promise<{
       totalMentions,
     });
 
-    return { processed: articles.length, succeeded, failed };
+    return { processed: articlesWithSummary.length, succeeded, failed };
   } finally {
     await prisma.$disconnect();
   }

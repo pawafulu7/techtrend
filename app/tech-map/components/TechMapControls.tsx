@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getEntityTypeBgColor } from '../constants';
 
 const ENTITY_TYPES = [
   { value: '', label: 'All Types' },
@@ -129,15 +130,6 @@ export function TechMapControls({
     };
   }, []);
 
-  const typeColorMap: Record<string, string> = {
-    LANGUAGE: 'bg-blue-500',
-    FRAMEWORK: 'bg-purple-500',
-    TOOL: 'bg-green-500',
-    CONCEPT: 'bg-amber-500',
-    PLATFORM: 'bg-red-500',
-    LIBRARY: 'bg-teal-500',
-  };
-
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-700 bg-slate-900/95 px-4 py-2.5">
       {/* Search */}
@@ -180,7 +172,7 @@ export function TechMapControls({
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-slate-700"
               >
                 <div
-                  className={`h-2.5 w-2.5 shrink-0 rounded-full ${typeColorMap[result.type] || 'bg-slate-500'}`}
+                  className={`h-2.5 w-2.5 shrink-0 rounded-full ${getEntityTypeBgColor(result.type)}`}
                 />
                 <span className="flex-1 truncate text-white">
                   {result.name}

@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { ExtractionConfig } from '../llm-extraction-pipeline';
 import { parseJSONFromLLM } from '../extraction-schemas';
+import logger from '@/lib/logger';
 
 // =============================================================================
 // Schema
@@ -26,6 +27,7 @@ export const ExtractedEntitySchema = z.object({
   aliases: z.array(z.string()),
   github: z.string().optional(),
   npm: z.string().optional(),
+  pypi: z.string().optional(),
 });
 
 export const ExtractedRelationSchema = z.object({
@@ -143,9 +145,9 @@ function parseEntityExtractionResponse(text: string): EntityExtractionOutput {
   try {
     return EntityExtractionOutputSchema.parse(normalized);
   } catch (error) {
-    console.error(
-      '[EntityExtraction] Schema validation failed, returning empty result:',
-      error
+    logger.error(
+      { context: 'EntityExtraction', error },
+      'Schema validation failed, returning empty result'
     );
     return { entities: [], relations: [], mentions: [] };
   }

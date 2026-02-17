@@ -96,6 +96,8 @@ export class TechRelationService {
     const allEdges: TechRelation[] = [];
     let currentIds = [entityId];
 
+    const edgeIdSet = new Set<string>();
+
     for (let d = 0; d < depth; d++) {
       if (currentIds.length === 0) break;
 
@@ -109,7 +111,6 @@ export class TechRelationService {
       });
 
       const nextIds: string[] = [];
-      const edgeIdSet = new Set(allEdges.map((e) => e.id));
 
       for (const rel of relations) {
         // Avoid duplicate edges (O(1) lookup with Set)

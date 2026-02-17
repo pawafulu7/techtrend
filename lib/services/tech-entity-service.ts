@@ -204,7 +204,7 @@ export class TechEntityService {
    * Entities with zero mentions get mentionCount=0 and null dates.
    */
   async refreshAllStats(): Promise<void> {
-    await this.prisma.$executeRawUnsafe(`
+    await this.prisma.$executeRaw`
       UPDATE "TechEntity" AS te
       SET
         "mentionCount" = COALESCE(agg."cnt", 0),
@@ -221,7 +221,7 @@ export class TechEntityService {
         GROUP BY e.id
       ) agg
       WHERE te.id = agg."entityId"
-    `);
+    `;
   }
 
   private buildOrderBy(

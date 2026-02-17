@@ -53,21 +53,32 @@ async function handler(
       const relationService = new TechRelationService(prisma);
       const graphData = await relationService.getRelationsForEntity(id, 1);
 
+      // Build name lookup from nodes
+      const nameMap = new Map<string, string>();
+      for (const node of graphData.nodes) {
+        nameMap.set(node.id, node.name);
+      }
+
       // Normalize strength to 0-1 range for UI consumption
       // DB stores strength as evidence count (integer); UI expects 0-1
       const rawEdges = graphData.edges;
-      if (rawEdges.length > 0) {
-        const maxStrength = Math.max(...rawEdges.map((e) => e.strength));
-        if (maxStrength > 1) {
-          responseData.relations = rawEdges.map((e) => ({
-            ...e,
-            strength: e.strength / maxStrength,
-          }));
-        } else {
-          responseData.relations = rawEdges;
-        }
+      const maxStrength =
+        rawEdges.length > 0
+          ? rawEdges.reduce((max, e) => Math.max(max, e.strength), 0)
+          : 0;
+      if (rawEdges.length > 0 && maxStrength > 1) {
+        responseData.relations = rawEdges.map((e) => ({
+          ...e,
+          strength: e.strength / maxStrength,
+          sourceEntityName: nameMap.get(e.sourceEntityId),
+          targetEntityName: nameMap.get(e.targetEntityId),
+        }));
       } else {
-        responseData.relations = rawEdges;
+        responseData.relations = rawEdges.map((e) => ({
+          ...e,
+          sourceEntityName: nameMap.get(e.sourceEntityId),
+          targetEntityName: nameMap.get(e.targetEntityId),
+        }));
       }
     }
 

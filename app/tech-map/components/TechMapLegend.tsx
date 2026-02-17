@@ -1,13 +1,6 @@
 'use client';
 
-const ENTITY_TYPE_COLORS: Record<string, { bg: string; label: string }> = {
-  LANGUAGE: { bg: 'bg-blue-500', label: 'Language' },
-  FRAMEWORK: { bg: 'bg-purple-500', label: 'Framework' },
-  TOOL: { bg: 'bg-green-500', label: 'Tool' },
-  CONCEPT: { bg: 'bg-amber-500', label: 'Concept' },
-  PLATFORM: { bg: 'bg-red-500', label: 'Platform' },
-  LIBRARY: { bg: 'bg-teal-500', label: 'Library' },
-};
+import { ENTITY_TYPE_COLORS } from '../constants';
 
 const EDGE_STYLES: Array<{ label: string; style: string }> = [
   { label: 'Depends On', style: 'border-t-2 border-solid border-slate-400' },

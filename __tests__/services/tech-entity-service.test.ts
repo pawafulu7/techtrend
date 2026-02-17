@@ -24,6 +24,8 @@ function createMockPrisma() {
       upsert: jest.fn(),
       aggregate: jest.fn(),
     },
+    $executeRawUnsafe: jest.fn(),
+    $executeRaw: jest.fn(),
   };
 }
 
@@ -373,27 +375,19 @@ describe('TechEntityService', () => {
   // refreshAllStats
   // -------------------------------------------------------------------------
   describe('refreshAllStats', () => {
-    it('should refresh stats for all entities', async () => {
-      mockPrisma.techEntity.findMany.mockResolvedValue([
-        { id: 'e1' },
-        { id: 'e2' },
-      ]);
-
-      // Mock aggregate and update for each entity
-      mockPrisma.articleTechMention.aggregate.mockResolvedValue({
-        _count: { id: 5 },
-        _min: { createdAt: new Date() },
-        _max: { createdAt: new Date() },
-      });
-      mockPrisma.techEntity.update.mockResolvedValue({});
+    it('should refresh stats for all entities using raw SQL', async () => {
+      mockPrisma.$executeRaw.mockResolvedValue(undefined);
 
       await service.refreshAllStats();
 
-      expect(mockPrisma.techEntity.findMany).toHaveBeenCalledWith({
-        select: { id: true },
-      });
-      expect(mockPrisma.articleTechMention.aggregate).toHaveBeenCalledTimes(2);
-      expect(mockPrisma.techEntity.update).toHaveBeenCalledTimes(2);
+      expect(mockPrisma.$executeRaw).toHaveBeenCalledTimes(1);
+      const callArgs = mockPrisma.$executeRaw.mock.calls[0];
+      // $executeRaw is called with a tagged template literal, which passes
+      // a TemplateStringsArray as first argument
+      const sql = Array.isArray(callArgs[0])
+        ? callArgs[0].join('')
+        : String(callArgs[0]);
+      expect(sql).toContain('UPDATE "TechEntity"');
     });
   });
 });

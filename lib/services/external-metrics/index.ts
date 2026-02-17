@@ -104,7 +104,7 @@ export class ExternalMetricsOrchestrator {
                 },
                 `Collector ${collector.source} returned null for ${entity.name}`
               );
-              summary.errors++;
+              summary.skipped++;
               return;
             }
 

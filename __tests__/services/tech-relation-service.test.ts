@@ -10,7 +10,7 @@ import { TechRelationService } from '../../lib/services/tech-relation-service';
 // --- Mock Prisma Client ---
 
 function createMockPrisma() {
-  return {
+  const mock: Record<string, unknown> = {
     techRelation: {
       upsert: jest.fn(),
       findMany: jest.fn(),
@@ -25,6 +25,8 @@ function createMockPrisma() {
       findMany: jest.fn(),
     },
   };
+  mock.$transaction = jest.fn().mockImplementation((cb: (tx: unknown) => Promise<unknown>) => cb(mock));
+  return mock;
 }
 
 type MockPrisma = ReturnType<typeof createMockPrisma>;

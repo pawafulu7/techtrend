@@ -2,8 +2,13 @@ import { NpmCollector } from '@/lib/services/external-metrics/npm-collector';
 import { TechEntity, TechEntityType, MetricSource } from '@prisma/client';
 
 // Mock global fetch
+const originalFetch = global.fetch;
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
+
+afterAll(() => {
+  global.fetch = originalFetch;
+});
 
 function createEntity(overrides: Partial<TechEntity> = {}): TechEntity {
   return {

@@ -6,25 +6,13 @@ import { TechMapSkeleton } from './components/TechMapSkeleton';
 import { TechMapSidePanel } from './components/TechMapSidePanel';
 import { TechMapControls } from './components/TechMapControls';
 import { TechMapLegend } from './components/TechMapLegend';
+import type { ApiNode, ApiEdge } from './types';
+import { ALL_ENTITY_TYPES } from './constants';
 
 const TechMapGraph = dynamic(() => import('./components/TechMapGraph'), {
   ssr: false,
   loading: () => <TechMapSkeleton />,
 });
-
-interface ApiNode {
-  id: string;
-  name: string;
-  type: string;
-  mentionCount: number;
-}
-
-interface ApiEdge {
-  source: string;
-  target: string;
-  relationType: string;
-  strength: number;
-}
 
 interface TechMapPageClientProps {
   initialEntities: ApiNode[];
@@ -128,14 +116,7 @@ export default function TechMapPageClient({
     setActiveType(type);
     if (type) {
       setHiddenTypes((_prev) => {
-        const allTypes = new Set([
-          'LANGUAGE',
-          'FRAMEWORK',
-          'TOOL',
-          'CONCEPT',
-          'PLATFORM',
-          'LIBRARY',
-        ]);
+        const allTypes = new Set<string>(ALL_ENTITY_TYPES);
         allTypes.delete(type);
         return allTypes;
       });

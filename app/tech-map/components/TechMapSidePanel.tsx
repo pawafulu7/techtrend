@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { X, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getEntityTypeTextColor } from '../constants';
 
 interface EntityDetail {
   entity: {
@@ -19,6 +20,8 @@ interface EntityDetail {
     targetEntityId: string;
     relationType: string;
     strength: number;
+    sourceEntityName?: string;
+    targetEntityName?: string;
   }>;
   recentMetrics?: Array<{
     id: string;
@@ -91,15 +94,6 @@ export function TechMapSidePanel({
 
   if (!entityId) return null;
 
-  const typeColorMap: Record<string, string> = {
-    LANGUAGE: 'text-blue-400',
-    FRAMEWORK: 'text-purple-400',
-    TOOL: 'text-green-400',
-    CONCEPT: 'text-amber-400',
-    PLATFORM: 'text-red-400',
-    LIBRARY: 'text-teal-400',
-  };
-
   return (
     <div className="flex h-full w-80 shrink-0 flex-col border-l border-slate-700 bg-slate-900/95 lg:w-96">
       {/* Header */}
@@ -136,7 +130,7 @@ export function TechMapSidePanel({
                 {detail.entity.name}
               </h3>
               <span
-                className={`text-xs font-medium ${typeColorMap[detail.entity.type] || 'text-slate-400'}`}
+                className={`text-xs font-medium ${getEntityTypeTextColor(detail.entity.type)}`}
               >
                 {detail.entity.type}
               </span>
@@ -181,10 +175,13 @@ export function TechMapSidePanel({
                 </h4>
                 <div className="space-y-1">
                   {detail.relations.slice(0, 10).map((rel, i) => {
-                    const relatedId =
-                      rel.sourceEntityId === entityId
-                        ? rel.targetEntityId
-                        : rel.sourceEntityId;
+                    const isSource = rel.sourceEntityId === entityId;
+                    const relatedId = isSource
+                      ? rel.targetEntityId
+                      : rel.sourceEntityId;
+                    const relatedName = isSource
+                      ? rel.targetEntityName
+                      : rel.sourceEntityName;
                     return (
                       <button
                         key={`${rel.sourceEntityId}-${rel.targetEntityId}-${i}`}
@@ -192,6 +189,11 @@ export function TechMapSidePanel({
                         className="flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs transition-colors hover:bg-slate-800"
                       >
                         <span className="text-slate-300">
+                          {relatedName && (
+                            <span className="mr-1 font-medium text-white">
+                              {relatedName}
+                            </span>
+                          )}
                           {rel.relationType.replace(/_/g, ' ')}
                         </span>
                         <div className="flex items-center gap-1">
