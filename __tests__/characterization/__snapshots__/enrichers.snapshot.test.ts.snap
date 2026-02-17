@@ -3,7 +3,7 @@
 exports[`ContentEnricherFactory Characterization Tests enricher registration - factory state enricher count matches domain count: domain-enricher-count-relationship 1`] = `
 {
   "domainCount": 5,
-  "enricherCount": 28,
+  "enricherCount": 29,
   "hasWildcard": true,
 }
 `;
@@ -94,7 +94,7 @@ exports[`ContentEnricherFactory Characterization Tests getEnricher - enricher se
 
 exports[`ContentEnricherFactory Characterization Tests getSupportedDomains - domain registry domain count is stable: enricher-count 1`] = `
 {
-  "enricherCount": 28,
+  "enricherCount": 29,
 }
 `;
 
