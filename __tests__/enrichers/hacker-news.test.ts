@@ -25,6 +25,7 @@ jest.mock('@/lib/logger', () => ({
 
 describe('HackerNewsEnricher', () => {
   let enricher: HackerNewsEnricher;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     enricher = new HackerNewsEnricher();
@@ -32,6 +33,7 @@ describe('HackerNewsEnricher', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    global.fetch = originalFetch;
   });
 
   // fetchをモック化するためのヘルパー

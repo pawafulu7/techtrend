@@ -4,6 +4,14 @@ import { GenericContentEnricher } from './generic';
 import logger from '@/lib/logger';
 
 export class HackerNewsEnricher extends BaseContentEnricher {
+  private static readonly DEFAULT_HEADERS = {
+    'User-Agent':
+      'Mozilla/5.0 (compatible; TechTrendBot/1.0; +https://techtrend.example.com/bot)',
+    Accept:
+      'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',
+  };
+
   private genericEnricher: GenericContentEnricher;
 
   constructor() {
@@ -46,13 +54,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
     try {
       // 30秒タイムアウトを設定
       const response = await fetch(url, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (compatible; TechTrendBot/1.0; +https://techtrend.example.com/bot)',
-          Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',
-        },
+        headers: HackerNewsEnricher.DEFAULT_HEADERS,
         signal: AbortSignal.timeout(30000), // 30秒タイムアウト
       });
 
@@ -116,12 +118,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
           if (repoRootUrl && repoRootUrl !== url.replace(/\/+$/, '')) {
             try {
               const repoResponse = await fetch(repoRootUrl, {
-                headers: {
-                  'User-Agent':
-                    'Mozilla/5.0 (compatible; TechTrendBot/1.0; +https://techtrend.example.com/bot)',
-                  Accept:
-                    'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                },
+                headers: HackerNewsEnricher.DEFAULT_HEADERS,
                 signal: AbortSignal.timeout(5000), // 5秒タイムアウト
               });
               if (repoResponse.ok) {
@@ -199,8 +196,8 @@ export class HackerNewsEnricher extends BaseContentEnricher {
 
       // Clean up content
       content = content
-        .replace(/\s+/g, ' ')
         .replace(/\n{3,}/g, '\n\n')
+        .replace(/[ \t]+/g, ' ')
         .trim();
 
       // Limit content length
