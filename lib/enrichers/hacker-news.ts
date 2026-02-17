@@ -212,8 +212,15 @@ export class HackerNewsEnricher extends BaseContentEnricher {
           { url, contentLength: content.length },
           '[HackerNewsEnricher] Content too short, falling back to GenericEnricher'
         );
-        const genericResult = await this.genericEnricher.enrich(url);
-        if (genericResult) return genericResult;
+        try {
+          const genericResult = await this.genericEnricher.enrich(url);
+          if (genericResult) return genericResult;
+        } catch (fallbackError) {
+          logger.debug(
+            { error: fallbackError, url },
+            '[HackerNewsEnricher] GenericEnricher threw during short-content fallback'
+          );
+        }
         if (thumbnail) return { content: null, thumbnail };
         return null;
       }
