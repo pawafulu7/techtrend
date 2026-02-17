@@ -74,7 +74,10 @@ async function handler(request: NextRequest) {
       3,
       Math.max(1, parseInt(depthParam || '1', 10) || 1)
     );
-    const minStrength = Math.max(0, parseFloat(minStrengthParam || '0') || 0);
+    const minStrength = Math.min(
+      1,
+      Math.max(0, parseFloat(minStrengthParam || '0') || 0)
+    );
     const limit = Math.min(
       100,
       Math.max(1, parseInt(limitParam || '50', 10) || 50)
@@ -149,14 +152,12 @@ async function handler(request: NextRequest) {
         mentionCount: n.mentionCount,
       }));
 
-      edges = graphData.edges
-        .filter((e) => e.strength >= minStrength)
-        .map((e) => ({
-          source: e.sourceEntityId,
-          target: e.targetEntityId,
-          relationType: e.relationType,
-          strength: e.strength,
-        }));
+      edges = graphData.edges.map((e) => ({
+        source: e.sourceEntityId,
+        target: e.targetEntityId,
+        relationType: e.relationType,
+        strength: e.strength,
+      }));
 
       // If type filter also provided, filter nodes (and their edges)
       if (typeParam) {
@@ -198,6 +199,11 @@ async function handler(request: NextRequest) {
           strength: e.strength / maxStrength,
         }));
       }
+    }
+
+    // Filter by minStrength AFTER normalization (0-1 range)
+    if (minStrength > 0) {
+      edges = edges.filter((e) => e.strength >= minStrength);
     }
 
     const responseData = { nodes, edges };

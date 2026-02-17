@@ -25,6 +25,7 @@ export class PyPICollector implements MetricCollector {
     try {
       const response = await fetch(url, {
         headers: { 'User-Agent': 'TechTrend-MetricsCollector' },
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!response.ok) {

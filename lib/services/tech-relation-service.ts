@@ -145,13 +145,15 @@ export class TechRelationService {
    * Strength = number of articles supporting the relation.
    */
   async recalculateStrength(relationId: string): Promise<void> {
-    const count = await this.prisma.techRelationEvidence.count({
-      where: { relationId },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      const count = await tx.techRelationEvidence.count({
+        where: { relationId },
+      });
 
-    await this.prisma.techRelation.update({
-      where: { id: relationId },
-      data: { strength: count },
+      await tx.techRelation.update({
+        where: { id: relationId },
+        data: { strength: count },
+      });
     });
   }
 }

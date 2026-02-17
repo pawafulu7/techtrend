@@ -167,7 +167,7 @@ export function TechMapControls({
         </div>
 
         {/* Autocomplete dropdown */}
-        {showResults && searchResults.length > 0 && (
+        {showResults && !searchLoading && searchResults.length > 0 && (
           <div className="absolute top-full left-0 z-50 mt-1 w-full rounded-md border border-slate-600 bg-slate-800 py-1 shadow-xl">
             {searchResults.map((result) => (
               <button

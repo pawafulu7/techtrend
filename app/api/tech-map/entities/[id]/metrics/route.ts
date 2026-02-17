@@ -20,6 +20,7 @@ const VALID_METRIC_SOURCES: string[] = [
  *   source - MetricSource enum filter
  *   from   - ISO date string for range start
  *   to     - ISO date string for range end
+ *   limit  - Max results (1-1000, default: 100)
  */
 async function handler(
   request: NextRequest,

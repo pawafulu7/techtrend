@@ -41,7 +41,10 @@ export class GitHubCollector implements MetricCollector {
     }
 
     try {
-      const response = await fetch(url, { headers });
+      const response = await fetch(url, {
+        headers,
+        signal: AbortSignal.timeout(10000),
+      });
 
       if (!response.ok) {
         logger.error(

@@ -96,6 +96,14 @@ export class ExternalMetricsOrchestrator {
             const result = await collector.collect(entity);
 
             if (!result) {
+              logger.warn(
+                {
+                  context: 'ExternalMetrics',
+                  source: collector.source,
+                  entityName: entity.name,
+                },
+                `Collector ${collector.source} returned null for ${entity.name}`
+              );
               summary.errors++;
               return;
             }

@@ -210,11 +210,12 @@ describe('/api/tech-map/graph', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      // Only rel1 has strength=5 (>= 4), rel2 has strength=3 (< 4)
-      const strongEdges = data.edges.filter(
-        (e: { strength: number }) => e.strength >= 4
-      );
-      expect(strongEdges.length).toBeLessThanOrEqual(data.edges.length);
+      // After normalization, minStrength is clamped to 0-1 range.
+      // All returned edges must have strength >= the clamped minStrength value.
+      const clampedMinStrength = Math.min(1, Math.max(0, 4));
+      for (const edge of data.edges) {
+        expect(edge.strength).toBeGreaterThanOrEqual(clampedMinStrength);
+      }
     });
 
     it('returns cached data when available', async () => {

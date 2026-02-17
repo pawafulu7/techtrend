@@ -38,7 +38,11 @@ export interface ExternalIds {
  * Parse externalIds from TechEntity's Json? field.
  */
 export function parseExternalIds(externalIds: unknown): ExternalIds | null {
-  if (!externalIds || typeof externalIds !== 'object') {
+  if (
+    !externalIds ||
+    typeof externalIds !== 'object' ||
+    Array.isArray(externalIds)
+  ) {
     return null;
   }
   const obj = externalIds as Record<string, unknown>;

@@ -24,7 +24,6 @@ const VALID_SORT_FIELDS = ['mentionCount', 'lastSeenAt', 'name'] as const;
  * Query params:
  *   type     - TechEntityType enum filter
  *   sort     - Sort field: mentionCount | lastSeenAt | name
- *   order    - Sort order: asc | desc (default: desc)
  *   limit    - Max results (1-100, default: 20)
  *   offset   - Pagination offset (default: 0)
  *   search   - Text search on entity name/aliases

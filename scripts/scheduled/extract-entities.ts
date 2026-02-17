@@ -105,11 +105,23 @@ async function extractEntities(): Promise<{
 
     const tasks = articles.map((article) =>
       limit(async () => {
-        const result = await extractor.extractFromArticle({
-          id: article.id,
-          title: article.title,
-          summary: article.summary!,
-        });
+        let result: ExtractionResultSummary;
+        try {
+          result = await extractor.extractFromArticle({
+            id: article.id,
+            title: article.title,
+            summary: article.summary!,
+          });
+        } catch (error) {
+          result = {
+            articleId: article.id,
+            success: false,
+            entitiesCreated: 0,
+            relationsCreated: 0,
+            mentionsCreated: 0,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
 
         if (result.success) {
           console.log(

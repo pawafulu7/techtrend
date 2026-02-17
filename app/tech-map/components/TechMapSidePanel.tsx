@@ -58,7 +58,7 @@ export function TechMapSidePanel({
     setError(null);
     try {
       const res = await fetch(
-        `/api/tech-map/entities/${id}?include=relations,metrics`,
+        `/api/tech-map/entities/${encodeURIComponent(id)}?include=relations,metrics`,
         { signal }
       );
       if (!isMountedRef.current) return;
@@ -109,6 +109,7 @@ export function TechMapSidePanel({
           variant="ghost"
           size="sm"
           onClick={onClose}
+          aria-label="Close entity details"
           className="h-7 w-7 p-0 text-slate-400 hover:text-white"
         >
           <X className="h-4 w-4" />

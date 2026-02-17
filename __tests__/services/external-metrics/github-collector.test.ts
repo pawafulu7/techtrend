@@ -85,28 +85,30 @@ describe('GitHubCollector', () => {
       const originalToken = process.env.GITHUB_TOKEN;
       process.env.GITHUB_TOKEN = 'test-token-123';
 
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ stargazers_count: 100 }),
-      });
+      try {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ stargazers_count: 100 }),
+        });
 
-      const entity = createEntity();
-      await collector.collect(entity);
+        const entity = createEntity();
+        await collector.collect(entity);
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: 'Bearer test-token-123',
-          }),
-        })
-      );
-
-      // Restore
-      if (originalToken === undefined) {
-        delete process.env.GITHUB_TOKEN;
-      } else {
-        process.env.GITHUB_TOKEN = originalToken;
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              Authorization: 'Bearer test-token-123',
+            }),
+          })
+        );
+      } finally {
+        // Restore
+        if (originalToken === undefined) {
+          delete process.env.GITHUB_TOKEN;
+        } else {
+          process.env.GITHUB_TOKEN = originalToken;
+        }
       }
     });
 
