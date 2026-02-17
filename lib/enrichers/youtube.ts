@@ -19,12 +19,15 @@ export class YouTubeEnricher implements IContentEnricher {
     try {
       const urlObj = new URL(url);
       const hostname = urlObj.hostname.toLowerCase();
-      return (
+      const isYouTubeDomain =
         hostname === 'youtube.com' ||
         hostname === 'www.youtube.com' ||
         hostname === 'm.youtube.com' ||
-        hostname === 'youtu.be'
-      );
+        hostname === 'youtu.be';
+      if (!isYouTubeDomain) return false;
+      // ビデオIDが抽出できるURLのみを対象とする
+      // チャンネルURL、プレイリスト専用URL等は除外
+      return this.extractVideoId(url) !== null;
     } catch {
       return false;
     }

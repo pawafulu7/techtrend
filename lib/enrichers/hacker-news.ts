@@ -239,7 +239,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
   }
 
   private extractRepoRootUrl(url: string): string | null {
-    const match = url.match(/^(https:\/\/github\.com\/[^/]+\/[^/]+)/);
+    const match = url.match(/^(https:\/\/(www\.)?github\.com\/[^/]+\/[^/]+)/);
     return match ? match[1] : null;
   }
 }

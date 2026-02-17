@@ -46,6 +46,16 @@ describe('YouTubeEnricher', () => {
       expect(enricher.canHandle('https://youtube.com.evil.com/watch?v=abc')).toBe(false);
       expect(enricher.canHandle('https://notyoutu.be/abc')).toBe(false);
     });
+
+    it('チャンネルURLではfalseを返すこと', () => {
+      expect(enricher.canHandle('https://www.youtube.com/c/channelname')).toBe(false);
+      expect(enricher.canHandle('https://www.youtube.com/@username')).toBe(false);
+      expect(enricher.canHandle('https://www.youtube.com/channel/UCxxxxxx')).toBe(false);
+    });
+
+    it('プレイリスト専用URLではfalseを返すこと', () => {
+      expect(enricher.canHandle('https://www.youtube.com/playlist?list=PLxxxxxxx')).toBe(false);
+    });
   });
 
   describe('extractVideoId (via enrich)', () => {

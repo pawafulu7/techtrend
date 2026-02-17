@@ -99,6 +99,17 @@ describe('HackerNewsEnricher', () => {
       expect(extract('https://github.com/owner')).toBeNull();
       expect(extract('https://github.com/')).toBeNull();
     });
+
+    it('www.github.comのURLからリポジトリルートURLを抽出できること', () => {
+      const extract = (enricher as any).extractRepoRootUrl.bind(enricher);
+
+      expect(extract('https://www.github.com/owner/repo/blob/main/README.md')).toBe(
+        'https://www.github.com/owner/repo'
+      );
+      expect(extract('https://www.github.com/owner/repo')).toBe(
+        'https://www.github.com/owner/repo'
+      );
+    });
   });
 
   describe('GitHub OGP fallback', () => {
