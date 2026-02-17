@@ -62,9 +62,14 @@ export class GenericContentEnricher extends BaseContentEnricher {
         const baseUrl = response.url || url;
 
         const $ = cheerio.load(html);
-        $('script:not([type="application/ld+json"]), style, noscript, iframe').remove();
+        $(
+          'script:not([type="application/ld+json"]), style, noscript, iframe'
+        ).remove();
 
         const metadata = this.extractMetadata($);
+        const hasMetadataThumbnail = !!(
+          metadata.ogImage || metadata.twitterImage
+        );
         let thumbnail = this.resolveThumbnail(
           metadata.ogImage || metadata.twitterImage,
           baseUrl,
@@ -104,6 +109,11 @@ export class GenericContentEnricher extends BaseContentEnricher {
             { url, attempt, length: content.length },
             '[GenericEnricher] Rejecting thin content'
           );
+          // Preserve thumbnail from og:image/twitter:image even when content is too short
+          // Do NOT preserve thumbnails from findFirstImage() fallback (may be logos/nav images)
+          if (hasMetadataThumbnail && thumbnail) {
+            return { content: null, thumbnail };
+          }
           return null;
         }
 
@@ -239,13 +249,8 @@ export class GenericContentEnricher extends BaseContentEnricher {
     return this.findFirstImage($, baseUrl) || undefined;
   }
 
-  private findFirstImage(
-    $: CheerioAPI,
-    baseUrl: string
-  ): string | undefined {
+  private findFirstImage($: CheerioAPI, baseUrl: string): string | undefined {
     const imageSelectors = [
-      'meta[property="og:image"]',
-      'meta[name="twitter:image"]',
       'article img',
       'main img',
       '.content img',
