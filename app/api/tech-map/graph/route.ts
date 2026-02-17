@@ -180,6 +180,18 @@ async function handler(request: NextRequest) {
       edges = [];
     }
 
+    // Normalize edge strength to 0-1 range for UI consumption
+    // DB stores strength as evidence count (integer); UI expects 0-1
+    if (edges.length > 0) {
+      const maxStrength = Math.max(...edges.map((e) => e.strength));
+      if (maxStrength > 1) {
+        edges = edges.map((e) => ({
+          ...e,
+          strength: e.strength / maxStrength,
+        }));
+      }
+    }
+
     const responseData = { nodes, edges };
 
     // Save to cache

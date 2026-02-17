@@ -61,6 +61,7 @@ export default function TechMapPageClient({
     abortRef.current = abortController;
 
     setGraphLoading(true);
+    let aborted = false;
     try {
       const res = await fetch(
         `/api/tech-map/graph?center=${entityId}&depth=2`,
@@ -72,10 +73,15 @@ export default function TechMapPageClient({
       setEdges(data.edges || []);
       setCenterId(entityId);
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return;
+      if ((err as Error).name === 'AbortError') {
+        aborted = true;
+        return;
+      }
       console.error('Failed to load graph:', err);
     } finally {
-      setGraphLoading(false);
+      if (!aborted) {
+        setGraphLoading(false);
+      }
     }
   }, []);
 

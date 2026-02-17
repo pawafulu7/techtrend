@@ -92,9 +92,18 @@ async function handler(
       where.measuredAt = measuredAtFilter;
     }
 
+    // Apply pagination limits
+    const limitParam = searchParams.get('limit');
+    const parsedLimit = limitParam ? parseInt(limitParam, 10) : 100;
+    const take = Math.min(
+      1000,
+      Math.max(1, isNaN(parsedLimit) ? 100 : parsedLimit)
+    );
+
     const metrics = await prisma.externalMetric.findMany({
       where,
       orderBy: { measuredAt: 'desc' },
+      take,
     });
 
     return NextResponse.json({ metrics });

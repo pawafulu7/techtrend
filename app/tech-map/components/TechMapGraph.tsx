@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, memo } from 'react';
+import { useMemo, useCallback, useEffect, memo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -307,7 +307,7 @@ export default function TechMapGraph({
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   // Sync when initialNodes/initialEdges change
-  useMemo(() => {
+  useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);

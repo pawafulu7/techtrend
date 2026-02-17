@@ -50,6 +50,7 @@ export function TechMapControls({
   const [showResults, setShowResults] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Debounced search
@@ -69,7 +70,12 @@ export function TechMapControls({
       }
 
       searchTimeoutRef.current = setTimeout(async () => {
+        // Abort previous search request
+        if (searchAbortRef.current) {
+          searchAbortRef.current.abort();
+        }
         const abortController = new AbortController();
+        searchAbortRef.current = abortController;
         setSearchLoading(true);
         try {
           const res = await fetch(
@@ -81,7 +87,7 @@ export function TechMapControls({
           setSearchResults(data.entities || []);
           setShowResults(true);
         } catch {
-          // ignore
+          // ignore (includes AbortError)
         } finally {
           setSearchLoading(false);
         }
@@ -104,11 +110,14 @@ export function TechMapControls({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeout and abort controller on unmount
   useEffect(() => {
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
+      }
+      if (searchAbortRef.current) {
+        searchAbortRef.current.abort();
       }
     };
   }, []);

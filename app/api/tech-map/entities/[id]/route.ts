@@ -52,7 +52,23 @@ async function handler(
     if (includeRelations) {
       const relationService = new TechRelationService(prisma);
       const graphData = await relationService.getRelationsForEntity(id, 1);
-      responseData.relations = graphData.edges;
+
+      // Normalize strength to 0-1 range for UI consumption
+      // DB stores strength as evidence count (integer); UI expects 0-1
+      const rawEdges = graphData.edges;
+      if (rawEdges.length > 0) {
+        const maxStrength = Math.max(...rawEdges.map((e) => e.strength));
+        if (maxStrength > 1) {
+          responseData.relations = rawEdges.map((e) => ({
+            ...e,
+            strength: e.strength / maxStrength,
+          }));
+        } else {
+          responseData.relations = rawEdges;
+        }
+      } else {
+        responseData.relations = rawEdges;
+      }
     }
 
     // Optionally include recent metrics

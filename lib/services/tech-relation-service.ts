@@ -32,45 +32,54 @@ export class TechRelationService {
    * Creates the relation if it doesn't exist, then adds the article as evidence.
    */
   async upsertRelation(data: UpsertRelationData): Promise<TechRelation> {
-    // Upsert the relation
-    const relation = await this.prisma.techRelation.upsert({
-      where: {
-        sourceEntityId_targetEntityId_relationType: {
+    return this.prisma.$transaction(async (tx) => {
+      // Upsert the relation
+      const relation = await tx.techRelation.upsert({
+        where: {
+          sourceEntityId_targetEntityId_relationType: {
+            sourceEntityId: data.sourceEntityId,
+            targetEntityId: data.targetEntityId,
+            relationType: data.relationType,
+          },
+        },
+        create: {
           sourceEntityId: data.sourceEntityId,
           targetEntityId: data.targetEntityId,
           relationType: data.relationType,
+          strength: 1,
         },
-      },
-      create: {
-        sourceEntityId: data.sourceEntityId,
-        targetEntityId: data.targetEntityId,
-        relationType: data.relationType,
-        strength: 1,
-      },
-      update: {},
-    });
+        update: {},
+      });
 
-    // Add evidence (idempotent via unique constraint)
-    await this.prisma.techRelationEvidence.upsert({
-      where: {
-        relationId_articleId: {
+      // Add evidence (idempotent via unique constraint)
+      await tx.techRelationEvidence.upsert({
+        where: {
+          relationId_articleId: {
+            relationId: relation.id,
+            articleId: data.articleId,
+          },
+        },
+        create: {
           relationId: relation.id,
           articleId: data.articleId,
         },
-      },
-      create: {
-        relationId: relation.id,
-        articleId: data.articleId,
-      },
-      update: {},
-    });
+        update: {},
+      });
 
-    // Recalculate strength after adding evidence
-    await this.recalculateStrength(relation.id);
+      // Recalculate strength after adding evidence
+      const count = await tx.techRelationEvidence.count({
+        where: { relationId: relation.id },
+      });
 
-    // Return updated relation
-    return this.prisma.techRelation.findUniqueOrThrow({
-      where: { id: relation.id },
+      await tx.techRelation.update({
+        where: { id: relation.id },
+        data: { strength: count },
+      });
+
+      // Return updated relation
+      return tx.techRelation.findUniqueOrThrow({
+        where: { id: relation.id },
+      });
     });
   }
 
@@ -100,10 +109,12 @@ export class TechRelationService {
       });
 
       const nextIds: string[] = [];
+      const edgeIdSet = new Set(allEdges.map((e) => e.id));
 
       for (const rel of relations) {
-        // Avoid duplicate edges
-        if (!allEdges.some((e) => e.id === rel.id)) {
+        // Avoid duplicate edges (O(1) lookup with Set)
+        if (!edgeIdSet.has(rel.id)) {
+          edgeIdSet.add(rel.id);
           allEdges.push(rel);
         }
 

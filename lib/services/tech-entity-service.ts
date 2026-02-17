@@ -65,16 +65,31 @@ export class TechEntityService {
       return existingByAlias;
     }
 
-    // Create new entity
-    return this.prisma.techEntity.create({
-      data: {
-        name: data.name,
-        type: data.type,
-        aliases: data.aliases ?? [],
-        description: data.description ?? null,
-        externalIds: data.externalIds ?? undefined,
-      },
-    });
+    // Create new entity (with P2002 duplicate retry)
+    try {
+      return await this.prisma.techEntity.create({
+        data: {
+          name: data.name,
+          type: data.type,
+          aliases: data.aliases ?? [],
+          description: data.description ?? null,
+          externalIds: data.externalIds ?? undefined,
+        },
+      });
+    } catch (error: unknown) {
+      // Handle race condition: another process created the entity concurrently
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        (error as { code: string }).code === 'P2002'
+      ) {
+        const retried = await this.prisma.techEntity.findUnique({
+          where: { name: data.name },
+        });
+        if (retried) return retried;
+      }
+      throw error;
+    }
   }
 
   /**
