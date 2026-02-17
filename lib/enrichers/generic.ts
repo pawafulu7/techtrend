@@ -251,8 +251,6 @@ export class GenericContentEnricher extends BaseContentEnricher {
 
   private findFirstImage($: CheerioAPI, baseUrl: string): string | undefined {
     const imageSelectors = [
-      'meta[property="og:image"]',
-      'meta[name="twitter:image"]',
       'article img',
       'main img',
       '.content img',

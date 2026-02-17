@@ -56,6 +56,10 @@ describe('YouTubeEnricher', () => {
     it('プレイリスト専用URLではfalseを返すこと', () => {
       expect(enricher.canHandle('https://www.youtube.com/playlist?list=PLxxxxxxx')).toBe(false);
     });
+
+    it('/live/VIDEO_ID パターンを正しく判定できること', () => {
+      expect(enricher.canHandle('https://www.youtube.com/live/dQw4w9WgXcQ')).toBe(true);
+    });
   });
 
   describe('extractVideoId (via enrich)', () => {
@@ -93,6 +97,12 @@ describe('YouTubeEnricher', () => {
       const result = await enricher.enrich('https://www.youtube.com/watch?v=abc-_def123');
       expect(result).not.toBeNull();
       expect(result!.thumbnail).toBe('https://img.youtube.com/vi/abc-_def123/hqdefault.jpg');
+    });
+
+    it('youtube.com/live/VIDEO_ID からIDを抽出できること', async () => {
+      const result = await enricher.enrich('https://www.youtube.com/live/dQw4w9WgXcQ');
+      expect(result).not.toBeNull();
+      expect(result!.thumbnail).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
     });
   });
 

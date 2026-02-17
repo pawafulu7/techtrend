@@ -167,7 +167,7 @@ export class ContentEnricherFactory {
       try {
         if (enricher.canHandle(url)) {
           const result = await enricher.enrich(url);
-          if (result && result.content) {
+          if (result && (result.content || result.thumbnail)) {
             // 有効な結果が得られたら即座に返す
             return result;
           }

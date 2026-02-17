@@ -38,9 +38,10 @@ describe('HackerNewsEnricher', () => {
   const mockFetch = (responses: Array<{ html: string; status?: number }>) => {
     const fetchMock = jest.fn();
     for (const resp of responses) {
+      const status = resp.status ?? 200;
       fetchMock.mockResolvedValueOnce({
-        ok: (resp.status ?? 200) === 200,
-        status: resp.status ?? 200,
+        ok: status >= 200 && status < 300,
+        status,
         text: jest.fn().mockResolvedValue(resp.html),
       } as any);
     }

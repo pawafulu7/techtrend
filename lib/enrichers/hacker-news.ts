@@ -85,6 +85,8 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       }
 
       // GitHub specific extraction
+      // Note: github.io is in canHandle's supportedDomains but intentionally excluded here.
+      // github.io hosts GitHub Pages sites which have different HTML structure than github.com repos.
       if (
         urlObj &&
         (urlObj.hostname === 'github.com' ||
@@ -111,7 +113,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
         // Fall back to repo root page's og:image
         if (!thumbnail) {
           const repoRootUrl = this.extractRepoRootUrl(url);
-          if (repoRootUrl && repoRootUrl !== url) {
+          if (repoRootUrl && repoRootUrl !== url.replace(/\/+$/, '')) {
             try {
               const repoResponse = await fetch(repoRootUrl, {
                 headers: {

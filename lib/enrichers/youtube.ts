@@ -63,6 +63,7 @@ export class YouTubeEnricher implements IContentEnricher {
    * - youtu.be/VIDEO_ID
    * - youtube.com/embed/VIDEO_ID
    * - youtube.com/shorts/VIDEO_ID
+   * - youtube.com/live/VIDEO_ID
    */
   private extractVideoId(url: string): string | null {
     try {
@@ -81,9 +82,9 @@ export class YouTubeEnricher implements IContentEnricher {
         return this.validateVideoId(vParam);
       }
 
-      // youtube.com/embed/VIDEO_ID or youtube.com/shorts/VIDEO_ID
+      // youtube.com/embed/VIDEO_ID, youtube.com/shorts/VIDEO_ID, or youtube.com/live/VIDEO_ID
       const pathMatch = urlObj.pathname.match(
-        /^\/(embed|shorts)\/([a-zA-Z0-9_-]+)/
+        /^\/(embed|shorts|live)\/([a-zA-Z0-9_-]+)/
       );
       if (pathMatch) {
         return this.validateVideoId(pathMatch[2]);
