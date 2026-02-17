@@ -134,11 +134,21 @@ function parseEntityExtractionResponse(text: string): EntityExtractionOutput {
     ...e,
     aliases: Array.isArray(e.aliases) ? e.aliases : [],
   }));
-  return {
+  const normalized = {
     entities: normalizedEntities,
     relations: Array.isArray(raw.relations) ? raw.relations : [],
     mentions: Array.isArray(raw.mentions) ? raw.mentions : [],
-  } as EntityExtractionOutput;
+  };
+
+  try {
+    return EntityExtractionOutputSchema.parse(normalized);
+  } catch (error) {
+    console.error(
+      '[EntityExtraction] Schema validation failed, returning empty result:',
+      error
+    );
+    return { entities: [], relations: [], mentions: [] };
+  }
 }
 
 // =============================================================================

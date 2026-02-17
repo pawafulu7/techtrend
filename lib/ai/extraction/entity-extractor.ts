@@ -193,7 +193,18 @@ export class EntityExtractor {
         }
       }
 
-      result.success = true;
+      // LLM extraction succeeded. Mark success=true if:
+      // - Any entities/relations/mentions were persisted, OR
+      // - The LLM returned empty results (extraction itself succeeded, just nothing to extract)
+      const llmReturnedEmpty =
+        data.entities.length === 0 &&
+        (data.relations ?? []).length === 0 &&
+        (data.mentions ?? []).length === 0;
+      result.success =
+        llmReturnedEmpty ||
+        result.entitiesCreated > 0 ||
+        result.relationsCreated > 0 ||
+        result.mentionsCreated > 0;
       return result;
     } catch (error) {
       result.error = (error as Error).message;

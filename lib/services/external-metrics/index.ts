@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import pLimit from 'p-limit';
+import { logger } from '@/lib/logger';
 import { MetricCollector, CollectionSummary } from './types';
 import { GitHubCollector } from './github-collector';
 import { NpmCollector } from './npm-collector';
@@ -62,14 +63,20 @@ export class ExternalMetricsOrchestrator {
     });
 
     if (entities.length === 0) {
-      console.log(
-        '[ExternalMetrics] No entities with externalIds found. Skipping.'
+      logger.info(
+        { context: 'ExternalMetrics' },
+        'No entities with externalIds found. Skipping.'
       );
       return summary;
     }
 
-    console.log(
-      `[ExternalMetrics] Processing ${entities.length} entities with ${this.collectors.length} collectors`
+    logger.info(
+      {
+        context: 'ExternalMetrics',
+        entityCount: entities.length,
+        collectorCount: this.collectors.length,
+      },
+      `Processing ${entities.length} entities with ${this.collectors.length} collectors`
     );
 
     const limit = pLimit(this.concurrencyLimit);
@@ -120,9 +127,14 @@ export class ExternalMetricsOrchestrator {
 
             summary.collected++;
           } catch (error) {
-            console.error(
-              `[ExternalMetrics] Error collecting ${collector.source} for ${entity.name}:`,
-              error instanceof Error ? error.message : String(error)
+            logger.error(
+              {
+                context: 'ExternalMetrics',
+                source: collector.source,
+                entityName: entity.name,
+                error: error instanceof Error ? error.message : String(error),
+              },
+              `Error collecting ${collector.source} for ${entity.name}`
             );
             summary.errors++;
           }
@@ -133,8 +145,14 @@ export class ExternalMetricsOrchestrator {
     // Execute all tasks with concurrency limit
     await Promise.allSettled(tasks.map((task) => limit(task)));
 
-    console.log(
-      `[ExternalMetrics] Done: collected=${summary.collected}, errors=${summary.errors}, skipped=${summary.skipped}`
+    logger.info(
+      {
+        context: 'ExternalMetrics',
+        collected: summary.collected,
+        errors: summary.errors,
+        skipped: summary.skipped,
+      },
+      `Done: collected=${summary.collected}, errors=${summary.errors}, skipped=${summary.skipped}`
     );
 
     return summary;

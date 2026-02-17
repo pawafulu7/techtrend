@@ -1,4 +1,11 @@
+import type { Metadata } from 'next';
+import { prisma } from '@/lib/prisma';
 import TechMapPageClient from './page-client';
+
+export const metadata: Metadata = {
+  title: '技術マップ - TechTrend',
+  description: 'テクノロジー間の関係性をインタラクティブに可視化',
+};
 
 interface ApiEntity {
   id: string;
@@ -9,18 +16,19 @@ interface ApiEntity {
 
 async function getInitialEntities(): Promise<ApiEntity[]> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const res = await fetch(
-      `${baseUrl}/api/tech-map/entities?sort=mentionCount&limit=50`,
-      {
-        next: { revalidate: 300 },
-      }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.entities || [];
-  } catch {
-    // During build or when API unavailable, return empty
+    const entities = await prisma.techEntity.findMany({
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        mentionCount: true,
+      },
+      orderBy: { mentionCount: 'desc' },
+      take: 50,
+    });
+    return entities;
+  } catch (error) {
+    console.error('[TechMapPage] Failed to fetch initial entities:', error);
     return [];
   }
 }

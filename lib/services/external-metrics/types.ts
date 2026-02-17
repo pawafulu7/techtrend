@@ -41,7 +41,16 @@ export function parseExternalIds(externalIds: unknown): ExternalIds | null {
   if (!externalIds || typeof externalIds !== 'object') {
     return null;
   }
-  return externalIds as ExternalIds;
+  const obj = externalIds as Record<string, unknown>;
+  const result: ExternalIds = {};
+
+  if (typeof obj.github === 'string') result.github = obj.github;
+  if (typeof obj.npm === 'string') result.npm = obj.npm;
+  if (typeof obj.pypi === 'string') result.pypi = obj.pypi;
+  if (typeof obj.stackoverflow === 'string')
+    result.stackoverflow = obj.stackoverflow;
+
+  return result;
 }
 
 /**

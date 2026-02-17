@@ -92,8 +92,8 @@ async function handler(request: NextRequest) {
       },
     });
 
-    // Check cache
-    const cached = await cache.get<{
+    // Check cache (fail-open: cache errors fall through to DB query)
+    let cached: {
       nodes: Array<{
         id: string;
         name: string;
@@ -106,7 +106,15 @@ async function handler(request: NextRequest) {
         relationType: string;
         strength: number;
       }>;
-    }>(cacheKey);
+    } | null = null;
+    try {
+      cached = await cache.get<typeof cached>(cacheKey);
+    } catch (cacheError) {
+      logger.warn(
+        { error: cacheError },
+        'Redis cache read failed, falling back to DB query'
+      );
+    }
     if (cached) {
       const response = NextResponse.json(cached);
       response.headers.set('X-Cache-Status', 'HIT');
@@ -194,8 +202,15 @@ async function handler(request: NextRequest) {
 
     const responseData = { nodes, edges };
 
-    // Save to cache
-    await cache.set(cacheKey, responseData);
+    // Save to cache (fail-open: cache write errors are non-fatal)
+    try {
+      await cache.set(cacheKey, responseData);
+    } catch (cacheError) {
+      logger.warn(
+        { error: cacheError },
+        'Redis cache write failed, response served without caching'
+      );
+    }
 
     const response = NextResponse.json(responseData);
     response.headers.set('X-Cache-Status', 'MISS');

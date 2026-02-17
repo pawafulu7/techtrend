@@ -1,4 +1,5 @@
 import { TechEntity, MetricSource } from '@prisma/client';
+import { logger } from '@/lib/logger';
 import { MetricCollector, MetricResult, parseExternalIds } from './types';
 
 /**
@@ -19,6 +20,16 @@ export class GitHubCollector implements MetricCollector {
     const repo = ids?.github;
     if (!repo) return null;
 
+    // Validate owner/repo format to prevent path traversal
+    const repoPattern = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
+    if (!repoPattern.test(repo)) {
+      logger.error(
+        { context: 'GitHubCollector', repo },
+        `Invalid repo format: ${repo}. Expected "owner/repo".`
+      );
+      return null;
+    }
+
     const url = `https://api.github.com/repos/${repo}`;
     const headers: Record<string, string> = {
       Accept: 'application/vnd.github.v3+json',
@@ -33,8 +44,9 @@ export class GitHubCollector implements MetricCollector {
       const response = await fetch(url, { headers });
 
       if (!response.ok) {
-        console.error(
-          `[GitHubCollector] Failed to fetch ${repo}: ${response.status} ${response.statusText}`
+        logger.error(
+          { context: 'GitHubCollector', repo, status: response.status },
+          `Failed to fetch ${repo}: ${response.status} ${response.statusText}`
         );
         return null;
       }
@@ -43,8 +55,9 @@ export class GitHubCollector implements MetricCollector {
       const stars = data.stargazers_count;
 
       if (typeof stars !== 'number') {
-        console.error(
-          `[GitHubCollector] Invalid response for ${repo}: missing stargazers_count`
+        logger.error(
+          { context: 'GitHubCollector', repo },
+          `Invalid response for ${repo}: missing stargazers_count`
         );
         return null;
       }
@@ -54,9 +67,13 @@ export class GitHubCollector implements MetricCollector {
         measuredAt: new Date(),
       };
     } catch (error) {
-      console.error(
-        `[GitHubCollector] Error fetching ${repo}:`,
-        error instanceof Error ? error.message : String(error)
+      logger.error(
+        {
+          context: 'GitHubCollector',
+          repo,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        `Error fetching ${repo}`
       );
       return null;
     }

@@ -45,6 +45,7 @@ export default function TechMapPageClient({
   const [activeTimeRange, setActiveTimeRange] = useState('3M');
   const [searchQuery, setSearchQuery] = useState('');
   const [graphLoading, setGraphLoading] = useState(false);
+  const [graphError, setGraphError] = useState<string | null>(null);
 
   // Side panel visibility on mobile
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
@@ -61,6 +62,7 @@ export default function TechMapPageClient({
     abortRef.current = abortController;
 
     setGraphLoading(true);
+    setGraphError(null);
     let aborted = false;
     try {
       const res = await fetch(
@@ -78,6 +80,9 @@ export default function TechMapPageClient({
         return;
       }
       console.error('Failed to load graph:', err);
+      setGraphError(
+        'グラフの読み込みに失敗しました。しばらくしてからもう一度お試しください。'
+      );
     } finally {
       if (!aborted) {
         setGraphLoading(false);
@@ -189,6 +194,13 @@ export default function TechMapPageClient({
               <div className="text-center">
                 <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-b-2 border-white" />
                 <p className="text-sm text-slate-300">Loading graph...</p>
+              </div>
+            </div>
+          )}
+          {graphError && (
+            <div className="absolute inset-x-0 top-4 z-10 mx-auto max-w-md px-4">
+              <div className="rounded-lg border border-red-500/30 bg-red-950/80 px-4 py-3 text-center text-sm text-red-200">
+                {graphError}
               </div>
             </div>
           )}

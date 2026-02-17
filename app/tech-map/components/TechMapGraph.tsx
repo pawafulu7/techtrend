@@ -228,7 +228,7 @@ function layoutNodes(
       const total =
         centerIndex >= 0 ? sortedNodes.length - 1 : sortedNodes.length;
       const angle = (2 * Math.PI * adjustedI) / total - Math.PI / 2;
-      const r = radius * (0.6 + Math.random() * 0.4);
+      const r = radius * (0.6 + (((i * 7919) % 100) / 100) * 0.4);
       x = Math.cos(angle) * r;
       y = Math.sin(angle) * r;
     }

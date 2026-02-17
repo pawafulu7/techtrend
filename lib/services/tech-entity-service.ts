@@ -199,16 +199,29 @@ export class TechEntityService {
   }
 
   /**
-   * Refresh stats for all entities.
+   * Refresh stats for all entities using a single SQL query.
+   * Updates mentionCount, firstSeenAt, and lastSeenAt from ArticleTechMention aggregates.
+   * Entities with zero mentions get mentionCount=0 and null dates.
    */
   async refreshAllStats(): Promise<void> {
-    const entities = await this.prisma.techEntity.findMany({
-      select: { id: true },
-    });
-
-    for (const entity of entities) {
-      await this.refreshStats(entity.id);
-    }
+    await this.prisma.$executeRawUnsafe(`
+      UPDATE "TechEntity" AS te
+      SET
+        "mentionCount" = COALESCE(agg."cnt", 0),
+        "firstSeenAt"  = agg."min_created",
+        "lastSeenAt"   = agg."max_created"
+      FROM (
+        SELECT
+          e.id AS "entityId",
+          COUNT(m.id)         AS "cnt",
+          MIN(m."createdAt")  AS "min_created",
+          MAX(m."createdAt")  AS "max_created"
+        FROM "TechEntity" e
+        LEFT JOIN "ArticleTechMention" m ON m."entityId" = e.id
+        GROUP BY e.id
+      ) agg
+      WHERE te.id = agg."entityId"
+    `);
   }
 
   private buildOrderBy(

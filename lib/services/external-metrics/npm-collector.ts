@@ -1,4 +1,5 @@
 import { TechEntity, MetricSource } from '@prisma/client';
+import { logger } from '@/lib/logger';
 import { MetricCollector, MetricResult, parseExternalIds } from './types';
 
 /**
@@ -27,8 +28,9 @@ export class NpmCollector implements MetricCollector {
       });
 
       if (!response.ok) {
-        console.error(
-          `[NpmCollector] Failed to fetch ${packageName}: ${response.status} ${response.statusText}`
+        logger.error(
+          { context: 'NpmCollector', packageName, status: response.status },
+          `Failed to fetch ${packageName}: ${response.status} ${response.statusText}`
         );
         return null;
       }
@@ -37,8 +39,9 @@ export class NpmCollector implements MetricCollector {
       const downloads = data.downloads;
 
       if (typeof downloads !== 'number') {
-        console.error(
-          `[NpmCollector] Invalid response for ${packageName}: missing downloads`
+        logger.error(
+          { context: 'NpmCollector', packageName },
+          `Invalid response for ${packageName}: missing downloads`
         );
         return null;
       }
@@ -48,9 +51,13 @@ export class NpmCollector implements MetricCollector {
         measuredAt: new Date(),
       };
     } catch (error) {
-      console.error(
-        `[NpmCollector] Error fetching ${packageName}:`,
-        error instanceof Error ? error.message : String(error)
+      logger.error(
+        {
+          context: 'NpmCollector',
+          packageName,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        `Error fetching ${packageName}`
       );
       return null;
     }

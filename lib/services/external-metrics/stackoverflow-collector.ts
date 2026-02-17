@@ -1,4 +1,5 @@
 import { TechEntity, MetricSource } from '@prisma/client';
+import { logger } from '@/lib/logger';
 import { MetricCollector, MetricResult, parseExternalIds } from './types';
 
 /**
@@ -32,8 +33,9 @@ export class StackOverflowCollector implements MetricCollector {
       });
 
       if (!response.ok) {
-        console.error(
-          `[StackOverflowCollector] Failed to fetch ${tag}: ${response.status} ${response.statusText}`
+        logger.error(
+          { context: 'StackOverflowCollector', tag, status: response.status },
+          `Failed to fetch ${tag}: ${response.status} ${response.statusText}`
         );
         return null;
       }
@@ -44,8 +46,9 @@ export class StackOverflowCollector implements MetricCollector {
       const count = data.items?.[0]?.count;
 
       if (typeof count !== 'number') {
-        console.error(
-          `[StackOverflowCollector] Invalid response for ${tag}: missing items[0].count`
+        logger.error(
+          { context: 'StackOverflowCollector', tag },
+          `Invalid response for ${tag}: missing items[0].count`
         );
         return null;
       }
@@ -55,9 +58,13 @@ export class StackOverflowCollector implements MetricCollector {
         measuredAt: new Date(),
       };
     } catch (error) {
-      console.error(
-        `[StackOverflowCollector] Error fetching ${tag}:`,
-        error instanceof Error ? error.message : String(error)
+      logger.error(
+        {
+          context: 'StackOverflowCollector',
+          tag,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        `Error fetching ${tag}`
       );
       return null;
     }

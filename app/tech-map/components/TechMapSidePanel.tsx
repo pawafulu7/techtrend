@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { X, ExternalLink, TrendingUp, TrendingDown } from 'lucide-react';
+import { X, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface EntityDetail {
@@ -44,6 +44,14 @@ export function TechMapSidePanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const prevEntityIdRef = useRef<string | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const fetchDetail = useCallback(async (id: string, signal: AbortSignal) => {
     setLoading(true);
@@ -53,14 +61,19 @@ export function TechMapSidePanel({
         `/api/tech-map/entities/${id}?include=relations,metrics`,
         { signal }
       );
+      if (!isMountedRef.current) return;
       if (!res.ok) throw new Error('Failed to fetch entity detail');
       const data: EntityDetail = await res.json();
+      if (!isMountedRef.current) return;
       setDetail(data);
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
+      if (!isMountedRef.current) return;
       setError((err as Error).message);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 

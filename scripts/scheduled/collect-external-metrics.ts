@@ -9,9 +9,8 @@ import { ExternalMetricsOrchestrator } from '@/lib/services/external-metrics';
 const PROCESS_NAME = 'external-metrics-collection';
 const INTERVAL_HOURS = 12;
 
-const prisma = new PrismaClient();
-
 async function main(): Promise<void> {
+  const prisma = new PrismaClient();
   setPrisma(prisma);
 
   console.log(`[${PROCESS_NAME}] Starting external metrics collection...`);

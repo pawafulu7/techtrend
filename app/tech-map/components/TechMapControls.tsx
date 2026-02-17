@@ -86,8 +86,15 @@ export function TechMapControls({
           const data = await res.json();
           setSearchResults(data.entities || []);
           setShowResults(true);
-        } catch {
-          // ignore (includes AbortError)
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            // Expected when a new search supersedes the previous one
+          } else {
+            console.error(
+              '[TechMapControls] Search autocomplete error:',
+              error
+            );
+          }
         } finally {
           setSearchLoading(false);
         }

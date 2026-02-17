@@ -1,4 +1,5 @@
 import { TechEntity, MetricSource } from '@prisma/client';
+import { logger } from '@/lib/logger';
 import { MetricCollector, MetricResult, parseExternalIds } from './types';
 
 /**
@@ -27,8 +28,9 @@ export class PyPICollector implements MetricCollector {
       });
 
       if (!response.ok) {
-        console.error(
-          `[PyPICollector] Failed to fetch ${packageName}: ${response.status} ${response.statusText}`
+        logger.error(
+          { context: 'PyPICollector', packageName, status: response.status },
+          `Failed to fetch ${packageName}: ${response.status} ${response.statusText}`
         );
         return null;
       }
@@ -40,8 +42,9 @@ export class PyPICollector implements MetricCollector {
         data.data?.last_week ?? data.data?.last_month ?? data.data?.last_day;
 
       if (typeof downloads !== 'number') {
-        console.error(
-          `[PyPICollector] Invalid response for ${packageName}: missing download stats`
+        logger.error(
+          { context: 'PyPICollector', packageName },
+          `Invalid response for ${packageName}: missing download stats`
         );
         return null;
       }
@@ -51,9 +54,13 @@ export class PyPICollector implements MetricCollector {
         measuredAt: new Date(),
       };
     } catch (error) {
-      console.error(
-        `[PyPICollector] Error fetching ${packageName}:`,
-        error instanceof Error ? error.message : String(error)
+      logger.error(
+        {
+          context: 'PyPICollector',
+          packageName,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        `Error fetching ${packageName}`
       );
       return null;
     }
