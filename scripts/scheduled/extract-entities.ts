@@ -51,13 +51,11 @@ async function extractEntities(): Promise<{
 
   try {
     // Query articles with summaries but NO ArticleTechMention records
-    const batchSize =
-      parseInt(process.env.ENTITY_EXTRACTION_BATCH_SIZE ?? '', 10) ||
-      DEFAULT_BATCH_SIZE;
+    const parsedBatchSize = parseInt(process.env.ENTITY_EXTRACTION_BATCH_SIZE ?? '', 10);
+    const batchSize = Number.isNaN(parsedBatchSize) ? DEFAULT_BATCH_SIZE : parsedBatchSize;
 
-    const maxAgeDays =
-      parseInt(process.env.ENTITY_EXTRACTION_MAX_AGE_DAYS ?? '', 10) ||
-      DEFAULT_MAX_AGE_DAYS;
+    const parsedMaxAge = parseInt(process.env.ENTITY_EXTRACTION_MAX_AGE_DAYS ?? '', 10);
+    const maxAgeDays = Number.isNaN(parsedMaxAge) ? DEFAULT_MAX_AGE_DAYS : parsedMaxAge;
     const cutoffDate = new Date(
       Date.now() - maxAgeDays * 24 * 60 * 60 * 1000
     );
@@ -73,7 +71,7 @@ async function extractEntities(): Promise<{
         title: true,
         summary: true,
       },
-      orderBy: { publishedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
       take: batchSize,
     });
 

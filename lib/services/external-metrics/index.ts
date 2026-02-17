@@ -60,6 +60,7 @@ export class ExternalMetricsOrchestrator {
       where: {
         externalIds: { not: null },
       },
+      select: { id: true, name: true, externalIds: true },
     });
 
     if (entities.length === 0) {

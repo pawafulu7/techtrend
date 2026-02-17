@@ -115,11 +115,9 @@ export default function TechMapPageClient({
   const handleTypeFilter = useCallback((type: string) => {
     setActiveType(type);
     if (type) {
-      setHiddenTypes((_prev) => {
-        const allTypes = new Set<string>(ALL_ENTITY_TYPES);
-        allTypes.delete(type);
-        return allTypes;
-      });
+      const allTypes = new Set<string>(ALL_ENTITY_TYPES);
+      allTypes.delete(type);
+      setHiddenTypes(allTypes);
     } else {
       setHiddenTypes(new Set());
     }
@@ -217,13 +215,19 @@ export default function TechMapPageClient({
 
       {/* Side panel - mobile (bottom sheet) */}
       {selectedEntityId && sidePanelOpen && (
-        <div className="fixed inset-x-0 bottom-0 z-50 h-1/2 lg:hidden">
-          <TechMapSidePanel
-            entityId={selectedEntityId}
-            onClose={handleCloseSidePanel}
-            onEntityNavigate={handleEntityNavigate}
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={handleCloseSidePanel}
           />
-        </div>
+          <div className="fixed inset-x-0 bottom-0 z-50 h-1/2 lg:hidden">
+            <TechMapSidePanel
+              entityId={selectedEntityId}
+              onClose={handleCloseSidePanel}
+              onEntityNavigate={handleEntityNavigate}
+            />
+          </div>
+        </>
       )}
     </div>
   );

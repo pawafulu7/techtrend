@@ -386,6 +386,10 @@ describe('EntityExtractor', () => {
       expect(result.success).toBe(true);
       // 2 out of 3 entities persisted
       expect(result.entitiesResolved).toBe(2);
+      // Next.js→React skipped (React failed), Next.js→Turbopack created
+      expect(result.relationsCreated).toBe(1);
+      // Only mentions for Next.js and Turbopack (React skipped)
+      expect(result.mentionsCreated).toBe(2);
     });
 
     it('should skip relations when source or target entity is missing', async () => {
