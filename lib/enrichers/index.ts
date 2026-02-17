@@ -112,7 +112,8 @@ export class ContentEnricherFactory {
       new AWSEnricher(),
       // 新規追加（2025年11月29日）Speaker Deck専用
       new SpeakerDeckEnricher(),
-      // 新規追加（2026年2月）YouTube サムネイル生成（HTTPリクエスト不要）
+      // YouTube サムネイル生成（HTTPリクエスト不要、HackerNewsEnricherより後に配置）
+      // HNソース以外のYouTube URLはここでキャッチ
       new YouTubeEnricher(),
       new HatenaContentEnricher(), // 汎用HTMLパーサー
       new GenericContentEnricher(), // 最後のフォールバック（すべてのURLに対応）

@@ -127,6 +127,11 @@ export class HackerNewsEnricher extends BaseContentEnricher {
                 const $repo = cheerio.load(repoHtml);
                 thumbnail =
                   $repo('meta[property="og:image"]').attr('content') || '';
+              } else {
+                logger.debug(
+                  { status: repoResponse.status, repoRootUrl },
+                  '[HackerNewsEnricher] Repo root fetch returned non-OK status'
+                );
               }
             } catch (repoError) {
               logger.debug(
@@ -239,7 +244,9 @@ export class HackerNewsEnricher extends BaseContentEnricher {
   }
 
   private extractRepoRootUrl(url: string): string | null {
-    const match = url.match(/^(https:\/\/(www\.)?github\.com\/[^/]+\/[^/]+)/);
+    const match = url.match(
+      /^(https:\/\/(www\.)?github\.com\/[^/?#]+\/[^/?#]+)/
+    );
     return match ? match[1] : null;
   }
 }
