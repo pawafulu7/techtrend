@@ -90,6 +90,7 @@ describe('TechRelationService', () => {
         update: {},
       });
 
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
       expect(result.strength).toBe(1);
     });
 
@@ -114,6 +115,7 @@ describe('TechRelationService', () => {
         where: { id: 'r1' },
         data: { strength: 3 },
       });
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
       expect(result.strength).toBe(3);
     });
   });

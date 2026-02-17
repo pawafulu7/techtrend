@@ -107,7 +107,7 @@ async function extractEntities(): Promise<{
     const limit = pLimit(BATCH_CONCURRENCY);
     const results: ExtractionResultSummary[] = [];
 
-    const tasks = articlesWithSummary.map((article) =>
+    const tasks = articlesWithSummary.map((article, index) =>
       limit(async () => {
         let result: ExtractionResultSummary;
         try {
@@ -140,8 +140,10 @@ async function extractEntities(): Promise<{
 
         results.push(result);
 
-        // Rate limiting delay
-        await delay(DELAY_BETWEEN_ITEMS_MS);
+        // Rate limiting delay (skip for the last item)
+        if (index < articlesWithSummary.length - 1) {
+          await delay(DELAY_BETWEEN_ITEMS_MS);
+        }
 
         return result;
       })

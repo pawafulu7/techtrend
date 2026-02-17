@@ -54,7 +54,7 @@ export default function TechMapPageClient({
     let aborted = false;
     try {
       const res = await fetch(
-        `/api/tech-map/graph?center=${entityId}&depth=2`,
+        `/api/tech-map/graph?center=${encodeURIComponent(entityId)}&depth=2`,
         { signal: abortController.signal }
       );
       if (!res.ok) throw new Error('Failed to load graph');

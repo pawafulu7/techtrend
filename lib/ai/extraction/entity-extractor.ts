@@ -53,24 +53,11 @@ export interface ExtractionResultSummary {
 // Helpers
 // =============================================================================
 
-const VALID_ENTITY_TYPES = new Set<string>([
-  'FRAMEWORK',
-  'LANGUAGE',
-  'TOOL',
-  'CONCEPT',
-  'PLATFORM',
-  'LIBRARY',
-]);
+const VALID_ENTITY_TYPES = new Set<string>(Object.values(TechEntityType));
 
-const VALID_RELATION_TYPES = new Set<string>([
-  'DEPENDS_ON',
-  'ALTERNATIVE',
-  'EVOLUTION',
-  'PART_OF',
-  'INTEGRATES_WITH',
-]);
+const VALID_RELATION_TYPES = new Set<string>(Object.values(TechRelationType));
 
-const VALID_SENTIMENTS = new Set<string>(['POSITIVE', 'NEUTRAL', 'NEGATIVE']);
+const VALID_SENTIMENTS = new Set<string>(Object.values(MentionSentiment));
 
 function isValidEntityType(type: string): type is TechEntityType {
   return VALID_ENTITY_TYPES.has(type);

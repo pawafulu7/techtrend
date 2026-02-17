@@ -124,6 +124,7 @@ export class ExternalMetricsOrchestrator {
               },
               update: {
                 value: result.value,
+                measuredAt: dayStart,
               },
               create: {
                 entityId: entity.id,

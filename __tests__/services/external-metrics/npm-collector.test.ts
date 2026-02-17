@@ -1,31 +1,19 @@
 import { NpmCollector } from '@/lib/services/external-metrics/npm-collector';
-import { TechEntity, TechEntityType, MetricSource } from '@prisma/client';
+import { MetricSource } from '@prisma/client';
+import { createEntity } from '../../helpers/create-entity';
 
 // Mock global fetch
-const originalFetch = global.fetch;
+let originalFetch: typeof global.fetch;
 const mockFetch = jest.fn();
-global.fetch = mockFetch;
+
+beforeAll(() => {
+  originalFetch = global.fetch;
+  global.fetch = mockFetch;
+});
 
 afterAll(() => {
   global.fetch = originalFetch;
 });
-
-function createEntity(overrides: Partial<TechEntity> = {}): TechEntity {
-  return {
-    id: 'test-entity-1',
-    name: 'React',
-    type: TechEntityType.FRAMEWORK,
-    aliases: [],
-    description: null,
-    firstSeenAt: null,
-    lastSeenAt: null,
-    mentionCount: 10,
-    externalIds: { npm: 'react' },
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    ...overrides,
-  };
-}
 
 describe('NpmCollector', () => {
   let collector: NpmCollector;

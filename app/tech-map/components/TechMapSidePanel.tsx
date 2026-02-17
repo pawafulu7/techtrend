@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { X, ExternalLink } from 'lucide-react';
+import { X, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getEntityTypeTextColor } from '../constants';
 
@@ -81,7 +81,9 @@ export function TechMapSidePanel({
   }, []);
 
   useEffect(() => {
-    if (!entityId || entityId === prevEntityIdRef.current) return;
+    if (!entityId) return;
+    // Allow re-fetch of the same entity if previous attempt resulted in error
+    if (entityId === prevEntityIdRef.current && !error) return;
     prevEntityIdRef.current = entityId;
 
     const abortController = new AbortController();
@@ -90,7 +92,7 @@ export function TechMapSidePanel({
     return () => {
       abortController.abort();
     };
-  }, [entityId, fetchDetail]);
+  }, [entityId, fetchDetail, error]);
 
   if (!entityId) return null;
 
@@ -200,7 +202,7 @@ export function TechMapSidePanel({
                           <span className="text-slate-500">
                             {Math.round(rel.strength * 100)}%
                           </span>
-                          <ExternalLink className="h-3 w-3 text-slate-500" />
+                          <ChevronRight className="h-3 w-3 text-slate-500" />
                         </div>
                       </button>
                     );

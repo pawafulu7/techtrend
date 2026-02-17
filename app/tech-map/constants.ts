@@ -19,7 +19,7 @@ export type EntityTypeKey = (typeof ALL_ENTITY_TYPES)[number];
  * Used across Legend, SidePanel, Controls, and Graph components.
  */
 export const ENTITY_TYPE_COLORS: Record<
-  string,
+  EntityTypeKey,
   { bg: string; text: string; label: string }
 > = {
   LANGUAGE: { bg: 'bg-blue-500', text: 'text-blue-400', label: 'Language' },

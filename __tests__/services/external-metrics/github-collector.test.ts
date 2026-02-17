@@ -1,31 +1,19 @@
 import { GitHubCollector } from '@/lib/services/external-metrics/github-collector';
-import { TechEntity, TechEntityType, MetricSource } from '@prisma/client';
+import { MetricSource } from '@prisma/client';
+import { createEntity } from '../../helpers/create-entity';
 
 // Mock global fetch
-const originalFetch = global.fetch;
+let originalFetch: typeof global.fetch;
 const mockFetch = jest.fn();
-global.fetch = mockFetch;
+
+beforeAll(() => {
+  originalFetch = global.fetch;
+  global.fetch = mockFetch;
+});
 
 afterAll(() => {
   global.fetch = originalFetch;
 });
-
-function createEntity(overrides: Partial<TechEntity> = {}): TechEntity {
-  return {
-    id: 'test-entity-1',
-    name: 'React',
-    type: TechEntityType.FRAMEWORK,
-    aliases: [],
-    description: null,
-    firstSeenAt: null,
-    lastSeenAt: null,
-    mentionCount: 10,
-    externalIds: { github: 'facebook/react' },
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    ...overrides,
-  };
-}
 
 describe('GitHubCollector', () => {
   let collector: GitHubCollector;
@@ -70,7 +58,7 @@ describe('GitHubCollector', () => {
         json: async () => ({ stargazers_count: 225000 }),
       });
 
-      const entity = createEntity();
+      const entity = createEntity({ externalIds: { github: 'facebook/react' } });
       const result = await collector.collect(entity);
 
       expect(result).not.toBeNull();
@@ -96,7 +84,7 @@ describe('GitHubCollector', () => {
           json: async () => ({ stargazers_count: 100 }),
         });
 
-        const entity = createEntity();
+        const entity = createEntity({ externalIds: { github: 'facebook/react' } });
         await collector.collect(entity);
 
         expect(mockFetch).toHaveBeenCalledWith(
@@ -131,7 +119,7 @@ describe('GitHubCollector', () => {
         statusText: 'Not Found',
       });
 
-      const entity = createEntity();
+      const entity = createEntity({ externalIds: { github: 'facebook/react' } });
       const result = await collector.collect(entity);
       expect(result).toBeNull();
     });
@@ -139,7 +127,7 @@ describe('GitHubCollector', () => {
     it('should return null on network error', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network timeout'));
 
-      const entity = createEntity();
+      const entity = createEntity({ externalIds: { github: 'facebook/react' } });
       const result = await collector.collect(entity);
       expect(result).toBeNull();
     });
@@ -150,7 +138,7 @@ describe('GitHubCollector', () => {
         json: async () => ({ name: 'react', full_name: 'facebook/react' }),
       });
 
-      const entity = createEntity();
+      const entity = createEntity({ externalIds: { github: 'facebook/react' } });
       const result = await collector.collect(entity);
       expect(result).toBeNull();
     });
