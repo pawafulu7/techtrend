@@ -32,6 +32,7 @@ import { HackerNewsEnricher } from './hacker-news';
 import { MediumEngineeringEnricher } from './medium-engineering';
 import { AWSEnricher } from './aws';
 import { SpeakerDeckEnricher } from './speakerdeck';
+import { YouTubeEnricher } from './youtube';
 import { GenericContentEnricher } from './generic';
 
 export { BaseContentEnricher } from './base';
@@ -68,6 +69,7 @@ export { AWSEnricher } from './aws';
 export { SpeakerDeckEnricher } from './speakerdeck';
 export { ClaudeBlogEnricher } from './anthropic-blog';
 export { AnthropicNewsEnricher } from './anthropic-news';
+export { YouTubeEnricher } from './youtube';
 
 /**
  * エンリッチャーファクトリークラス
@@ -110,6 +112,8 @@ export class ContentEnricherFactory {
       new AWSEnricher(),
       // 新規追加（2025年11月29日）Speaker Deck専用
       new SpeakerDeckEnricher(),
+      // 新規追加（2026年2月）YouTube サムネイル生成（HTTPリクエスト不要）
+      new YouTubeEnricher(),
       new HatenaContentEnricher(), // 汎用HTMLパーサー
       new GenericContentEnricher(), // 最後のフォールバック（すべてのURLに対応）
       // 将来的に他の企業のエンリッチャーを追加
