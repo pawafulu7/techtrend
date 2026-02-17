@@ -12,6 +12,7 @@ import {
   Database,
   Home,
   FileText,
+  Network,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -33,6 +34,7 @@ export function Header() {
     { href: '/papers', label: '論文', icon: FileText },
     { href: '/sources', label: 'ソース', icon: Database },
     { href: '/trends', label: 'トレンド', icon: BarChart3 },
+    { href: '/tech-map', label: '技術マップ', icon: Network },
     { href: '/stats', label: '統計', icon: LineChart },
   ];
 

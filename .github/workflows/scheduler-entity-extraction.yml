@@ -1,0 +1,51 @@
+name: Scheduler - Entity Extraction
+
+on:
+  schedule:
+    - cron: '30 * * * *' # Every hour at :30 (after RSS collection at :00)
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'YES' to confirm manual execution"
+        required: true
+        type: string
+        default: "NO"
+
+concurrency:
+  group: techtrend-scheduler-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  extract-entities:
+    if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      - name: Warm up database connection
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "SELECT 1;" | npx prisma db execute --stdin --url "$DATABASE_URL"
+      - name: Apply DB migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PRISMA_MIGRATE_ENGINE_ADVISORY_LOCK_TIMEOUT: 60000
+        run: npx prisma migrate deploy
+      - name: Extract entities from articles
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: npx tsx scripts/scheduled/extract-entities.ts
