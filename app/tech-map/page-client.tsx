@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { TechMapSkeleton } from './components/TechMapSkeleton';
 import { TechMapSidePanel } from './components/TechMapSidePanel';
@@ -145,12 +145,15 @@ export default function TechMapPageClient({
   }, []);
 
   // Filter nodes by search query (client-side)
-  const filteredNodes =
-    searchQuery.length >= 2
-      ? nodes.filter((n) =>
-          n.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      : nodes;
+  const filteredNodes = useMemo(
+    () =>
+      searchQuery.length >= 2
+        ? nodes.filter((n) =>
+            n.name.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+        : nodes,
+    [nodes, searchQuery]
+  );
 
   return (
     <div className="flex h-[calc(100vh-3rem)] flex-col">

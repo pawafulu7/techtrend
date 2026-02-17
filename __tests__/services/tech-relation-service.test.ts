@@ -258,6 +258,7 @@ describe('TechRelationService', () => {
         where: { id: 'r1' },
         data: { strength: 5 },
       });
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
     });
 
     it('should set strength to 0 when no evidence exists', async () => {
@@ -270,6 +271,7 @@ describe('TechRelationService', () => {
         where: { id: 'r1' },
         data: { strength: 0 },
       });
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
     });
   });
 });

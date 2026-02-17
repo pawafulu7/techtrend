@@ -43,7 +43,7 @@ export interface ArticleInput {
 export interface ExtractionResultSummary {
   articleId: string;
   success: boolean;
-  entitiesCreated: number;
+  entitiesResolved: number;
   relationsCreated: number;
   mentionsCreated: number;
   error?: string;
@@ -71,6 +71,12 @@ function isValidSentiment(sentiment: string): sentiment is MentionSentiment {
   return VALID_SENTIMENTS.has(sentiment);
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+const MAX_CONTEXT_LENGTH = 200;
+
 // =============================================================================
 // EntityExtractor
 // =============================================================================
@@ -93,7 +99,7 @@ export class EntityExtractor {
     const result: ExtractionResultSummary = {
       articleId: article.id,
       success: false,
-      entitiesCreated: 0,
+      entitiesResolved: 0,
       relationsCreated: 0,
       mentionsCreated: 0,
     };
@@ -124,13 +130,13 @@ export class EntityExtractor {
         try {
           const entityId = await this.persistEntity(rawEntity);
           entityNameToId.set(rawEntity.name, entityId);
-          result.entitiesCreated++;
+          result.entitiesResolved++;
         } catch (error) {
           logger.warn(
             {
               articleId: article.id,
               entityName: rawEntity.name,
-              error: (error as Error).message,
+              error: errorMessage(error),
             },
             'Failed to persist entity'
           );
@@ -152,7 +158,7 @@ export class EntityExtractor {
               articleId: article.id,
               source: rawRelation.source,
               target: rawRelation.target,
-              error: (error as Error).message,
+              error: errorMessage(error),
             },
             'Failed to persist relation'
           );
@@ -173,7 +179,7 @@ export class EntityExtractor {
             {
               articleId: article.id,
               entityName: rawMention.entity,
-              error: (error as Error).message,
+              error: errorMessage(error),
             },
             'Failed to persist mention'
           );
@@ -189,12 +195,12 @@ export class EntityExtractor {
         (data.mentions ?? []).length === 0;
       result.success =
         llmReturnedEmpty ||
-        result.entitiesCreated > 0 ||
+        result.entitiesResolved > 0 ||
         result.relationsCreated > 0 ||
         result.mentionsCreated > 0;
       return result;
     } catch (error) {
-      result.error = (error as Error).message;
+      result.error = errorMessage(error);
       logger.error(
         { articleId: article.id, error: result.error },
         'Unexpected error during entity extraction'
@@ -286,7 +292,7 @@ export class EntityExtractor {
     await this.entityService.addMention({
       articleId,
       entityId,
-      context: raw.context?.slice(0, 200),
+      context: raw.context?.slice(0, MAX_CONTEXT_LENGTH),
       sentiment,
     });
     return true;

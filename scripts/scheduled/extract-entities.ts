@@ -120,7 +120,7 @@ async function extractEntities(): Promise<{
           result = {
             articleId: article.id,
             success: false,
-            entitiesCreated: 0,
+            entitiesResolved: 0,
             relationsCreated: 0,
             mentionsCreated: 0,
             error: error instanceof Error ? error.message : String(error),
@@ -130,7 +130,7 @@ async function extractEntities(): Promise<{
         if (result.success) {
           console.log(
             `  [OK] ${article.title.substring(0, 60)}... ` +
-              `(entities: ${result.entitiesCreated}, relations: ${result.relationsCreated}, mentions: ${result.mentionsCreated})`
+              `(entities: ${result.entitiesResolved}, relations: ${result.relationsCreated}, mentions: ${result.mentionsCreated})`
           );
         } else {
           console.error(
@@ -155,7 +155,7 @@ async function extractEntities(): Promise<{
     const succeeded = results.filter((r) => r.success).length;
     const failed = results.filter((r) => !r.success).length;
     const totalEntities = results.reduce(
-      (sum, r) => sum + r.entitiesCreated,
+      (sum, r) => sum + r.entitiesResolved,
       0
     );
     const totalRelations = results.reduce(

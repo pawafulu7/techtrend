@@ -46,6 +46,7 @@ export function TechMapSidePanel({
   const [detail, setDetail] = useState<EntityDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const prevEntityIdRef = useRef<string | null>(null);
   const isMountedRef = useRef(true);
 
@@ -82,9 +83,9 @@ export function TechMapSidePanel({
 
   useEffect(() => {
     if (!entityId) return;
-    // Allow re-fetch of the same entity if previous attempt resulted in error
-    if (entityId === prevEntityIdRef.current && !error) return;
+    if (entityId === prevEntityIdRef.current && retryCount === 0) return;
     prevEntityIdRef.current = entityId;
+    setRetryCount(0);
 
     const abortController = new AbortController();
     fetchDetail(entityId, abortController.signal);
@@ -92,7 +93,7 @@ export function TechMapSidePanel({
     return () => {
       abortController.abort();
     };
-  }, [entityId, fetchDetail, error]);
+  }, [entityId, fetchDetail, retryCount]);
 
   if (!entityId) return null;
 
@@ -122,7 +123,17 @@ export function TechMapSidePanel({
           </div>
         )}
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && (
+          <div className="space-y-2">
+            <p className="text-sm text-red-400">{error}</p>
+            <button
+              onClick={() => setRetryCount((c) => c + 1)}
+              className="text-xs text-slate-400 underline hover:text-white"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {detail && !loading && (
           <div className="space-y-4">
@@ -256,6 +267,7 @@ function formatRelativeDate(isoDate: string): string {
     if (isNaN(date.getTime())) return 'Unknown';
 
     const diffMs = Date.now() - date.getTime();
+    if (diffMs < 0) return 'Just now'; // Future dates treated as current
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
 

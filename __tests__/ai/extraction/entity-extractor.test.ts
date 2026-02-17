@@ -188,7 +188,7 @@ describe('EntityExtractor', () => {
 
       expect(result.success).toBe(true);
       expect(result.articleId).toBe('article-001');
-      expect(result.entitiesCreated).toBe(3);
+      expect(result.entitiesResolved).toBe(3);
       expect(result.relationsCreated).toBe(2);
       expect(result.mentionsCreated).toBe(3);
       expect(result.error).toBeUndefined();
@@ -252,7 +252,7 @@ describe('EntityExtractor', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Failed to parse JSON');
-      expect(result.entitiesCreated).toBe(0);
+      expect(result.entitiesResolved).toBe(0);
       expect(result.relationsCreated).toBe(0);
       expect(result.mentionsCreated).toBe(0);
     });
@@ -284,7 +284,7 @@ describe('EntityExtractor', () => {
       const result = await extractor.extractFromArticle(SAMPLE_ARTICLE);
 
       expect(result.success).toBe(true);
-      expect(result.entitiesCreated).toBe(0);
+      expect(result.entitiesResolved).toBe(0);
       expect(result.relationsCreated).toBe(0);
       expect(result.mentionsCreated).toBe(0);
     });
@@ -332,7 +332,7 @@ describe('EntityExtractor', () => {
       const result = await extractor.extractFromArticle(SAMPLE_ARTICLE);
 
       expect(result.success).toBe(true);
-      expect(result.entitiesCreated).toBe(1);
+      expect(result.entitiesResolved).toBe(1);
       expect(result.mentionsCreated).toBe(1);
       // findOrCreate handles deduplication internally
       expect(mockEntityService.findOrCreate).toHaveBeenCalledTimes(1);
@@ -385,7 +385,7 @@ describe('EntityExtractor', () => {
       // Should still succeed overall - partial extraction is OK
       expect(result.success).toBe(true);
       // 2 out of 3 entities persisted
-      expect(result.entitiesCreated).toBe(2);
+      expect(result.entitiesResolved).toBe(2);
     });
 
     it('should skip relations when source or target entity is missing', async () => {
@@ -423,7 +423,7 @@ describe('EntityExtractor', () => {
       const result = await extractor.extractFromArticle(SAMPLE_ARTICLE);
 
       expect(result.success).toBe(true);
-      expect(result.entitiesCreated).toBe(1);
+      expect(result.entitiesResolved).toBe(1);
       // Relation should be skipped because target "React" has no ID
       expect(result.relationsCreated).toBe(0);
       expect(mockRelationService.upsertRelation).not.toHaveBeenCalled();
@@ -438,7 +438,7 @@ describe('EntityExtractor', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Network timeout');
-      expect(result.entitiesCreated).toBe(0);
+      expect(result.entitiesResolved).toBe(0);
     });
   });
 });
