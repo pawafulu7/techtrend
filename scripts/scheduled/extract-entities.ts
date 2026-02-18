@@ -184,6 +184,12 @@ async function extractEntities(): Promise<{
       totalMentions,
     });
 
+    // Refresh entity statistics (mentionCount, firstSeenAt, lastSeenAt)
+    // Always run -- even with 0 new mentions, existing stats may need recovery
+    console.log('\n[entity-extraction] Refreshing entity statistics...');
+    await entityService.refreshAllStats();
+    console.log('[entity-extraction] Entity statistics updated.');
+
     return { processed: articlesWithSummary.length, succeeded, failed };
   } finally {
     await prisma.$disconnect();
