@@ -56,6 +56,9 @@ export class TrendScoringService {
     const articleMentionGrowth =
       calculateGrowthRate(recentMentions, previousMentions) ?? 0;
 
+    // null -> 0 coercion is intentional: missing external metrics should not
+    // contribute to RISING/DECLINING classification. The weighted sum requires
+    // numeric values, and 0 ensures absent data has no effect on the score.
     const components: TrendScoreComponents = {
       articleMentionGrowth,
       githubStarsGrowth: metricGrowths.githubStarsGrowth ?? 0,
@@ -103,7 +106,8 @@ export class TrendScoringService {
 
     let calculated = 0;
     let errors = 0;
-    const today = new Date(new Date().toISOString().split('T')[0]);
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
 
     for (const { id } of entities) {
       try {
@@ -239,6 +243,9 @@ export class TrendScoringService {
     } = STAGE_THRESHOLDS;
 
     // Priority 1: DECLINING
+    // Entities without external metrics have growth=0 (via null ?? 0),
+    // so they cannot satisfy npmDownloadsGrowth < 0 || githubStarsGrowth < 0.
+    // This is intentional: missing data should not trigger DECLINING.
     if (
       articleMentionGrowth < DECLINING_ARTICLE_GROWTH &&
       (npmDownloadsGrowth < 0 || githubStarsGrowth < 0)
@@ -260,6 +267,9 @@ export class TrendScoringService {
     }
 
     // Priority 3: RISING
+    // Entities without external metrics have growth=0 (via null ?? 0),
+    // so they cannot satisfy the RISING_EXTERNAL_GROWTH threshold.
+    // This is intentional: missing data should not trigger RISING.
     if (
       articleMentionGrowth > RISING_ARTICLE_GROWTH &&
       (githubStarsGrowth > RISING_EXTERNAL_GROWTH ||
