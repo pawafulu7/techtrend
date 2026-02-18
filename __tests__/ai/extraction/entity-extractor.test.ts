@@ -12,7 +12,10 @@ import {
 import { LLMExtractionPipeline } from '@/lib/ai/extraction/llm-extraction-pipeline';
 import { TechEntityService } from '@/lib/services/tech-entity-service';
 import { TechRelationService } from '@/lib/services/tech-relation-service';
-import { EntityExtractionOutput } from '@/lib/ai/extraction/prompts/entity-extraction-prompt';
+import {
+  EntityExtractionOutput,
+  EntityExtractionOutputSchema,
+} from '@/lib/ai/extraction/prompts/entity-extraction-prompt';
 
 // =============================================================================
 // Mocks
@@ -47,15 +50,20 @@ jest.mock('@/lib/services/tech-relation-service', () => {
   };
 });
 
-// Mock logger
-jest.mock('@/lib/logger', () => ({
-  logger: {
+// Mock logger (default export + named export)
+jest.mock('@/lib/logger', () => {
+  const instance = {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
     debug: jest.fn(),
-  },
-}));
+  };
+  return {
+    __esModule: true,
+    default: instance,
+    logger: instance,
+  };
+});
 
 // =============================================================================
 // Test Data
@@ -148,7 +156,7 @@ describe('EntityExtractor', () => {
         success: true,
         data: SAMPLE_EXTRACTION_OUTPUT,
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.0',
+        promptVersion: '1.1',
       });
 
       // Setup entity service to return IDs
@@ -200,7 +208,7 @@ describe('EntityExtractor', () => {
       expect(mockPipeline.extract).toHaveBeenCalledTimes(1);
       expect(mockPipeline.extract).toHaveBeenCalledWith(
         { title: SAMPLE_ARTICLE.title, summary: SAMPLE_ARTICLE.summary },
-        expect.objectContaining({ promptVersion: '1.0' }),
+        expect.objectContaining({ promptVersion: '1.1' }),
         undefined
       );
     });
@@ -245,7 +253,7 @@ describe('EntityExtractor', () => {
         data: null,
         error: 'Failed to parse JSON from LLM response',
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.0',
+        promptVersion: '1.1',
       });
 
       const result = await extractor.extractFromArticle(SAMPLE_ARTICLE);
@@ -262,7 +270,7 @@ describe('EntityExtractor', () => {
         success: true,
         data: null,
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.0',
+        promptVersion: '1.1',
       });
 
       const result = await extractor.extractFromArticle(SAMPLE_ARTICLE);
@@ -278,7 +286,7 @@ describe('EntityExtractor', () => {
         success: true,
         data: { entities: [], relations: [], mentions: [] },
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.0',
+        promptVersion: '1.1',
       });
 
       const result = await extractor.extractFromArticle(SAMPLE_ARTICLE);
@@ -323,7 +331,7 @@ describe('EntityExtractor', () => {
           ],
         },
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.0',
+        promptVersion: '1.1',
       });
 
       mockEntityService.findOrCreate.mockResolvedValue(existingEntity);
@@ -345,7 +353,7 @@ describe('EntityExtractor', () => {
         success: true,
         data: SAMPLE_EXTRACTION_OUTPUT,
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.0',
+        promptVersion: '1.1',
       });
 
       let callCount = 0;
@@ -407,7 +415,7 @@ describe('EntityExtractor', () => {
           mentions: [],
         },
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.0',
+        promptVersion: '1.1',
       });
 
       mockEntityService.findOrCreate.mockResolvedValue({
@@ -444,5 +452,108 @@ describe('EntityExtractor', () => {
       expect(result.error).toBe('Network timeout');
       expect(result.entitiesResolved).toBe(0);
     });
+  });
+});
+
+describe('EntityExtractionOutputSchema', () => {
+  it('should accept null values for github/npm/pypi fields', () => {
+    const input = {
+      entities: [{ name: 'TestLib', type: 'FRAMEWORK', aliases: [], github: null, npm: null, pypi: null }],
+      relations: [],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('should map unknown entity types to valid enums via fallback', () => {
+    const input = {
+      entities: [{ name: 'GPT-4', type: 'MODEL', aliases: [] }],
+      relations: [],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.entities[0].type).toBe('CONCEPT');
+    }
+  });
+
+  it('should map unknown relation types to valid enums via fallback', () => {
+    const input = {
+      entities: [],
+      relations: [{ source: 'A', target: 'B', type: 'USES' }],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.relations[0].type).toBe('DEPENDS_ON');
+    }
+  });
+
+  it('should preserve valid entity types', () => {
+    const input = {
+      entities: [{ name: 'React', type: 'FRAMEWORK', aliases: ['react'] }],
+      relations: [],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.entities[0].type).toBe('FRAMEWORK');
+    }
+  });
+
+  it('should preserve valid relation types', () => {
+    const input = {
+      entities: [],
+      relations: [{ source: 'A', target: 'B', type: 'DEPENDS_ON' }],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.relations[0].type).toBe('DEPENDS_ON');
+    }
+  });
+
+  it('should fallback completely unknown entity type to CONCEPT', () => {
+    const input = {
+      entities: [{ name: 'Mystery', type: 'FOOBAR', aliases: [] }],
+      relations: [],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.entities[0].type).toBe('CONCEPT');
+    }
+  });
+
+  it('should normalize entity type with mixed case and whitespace', () => {
+    const input = {
+      entities: [{ name: 'Next.js', type: ' framework ', aliases: [] }],
+      relations: [],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.entities[0].type).toBe('FRAMEWORK');
+    }
+  });
+
+  it('should fallback empty string entity type to CONCEPT', () => {
+    const input = {
+      entities: [{ name: 'Unknown', type: '', aliases: [] }],
+      relations: [],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.entities[0].type).toBe('CONCEPT');
+    }
   });
 });

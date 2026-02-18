@@ -12,8 +12,8 @@ interface EntityDetail {
     type: string;
     mentionCount: number;
     aliases: string[];
-    firstSeenAt: string;
-    lastSeenAt: string;
+    firstSeenAt: string | null;
+    lastSeenAt: string | null;
   };
   relations?: Array<{
     sourceEntityId: string;
@@ -261,7 +261,8 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function formatRelativeDate(isoDate: string): string {
+function formatRelativeDate(isoDate: string | null | undefined): string {
+  if (!isoDate) return 'N/A';
   try {
     const date = new Date(isoDate);
     if (isNaN(date.getTime())) return 'Unknown';

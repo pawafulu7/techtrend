@@ -30,7 +30,8 @@ export interface ExtractionResult<T> {
 }
 
 export interface ExtractionConfig<T> {
-  schema: z.ZodType<T>;
+  // Input type widened to `any` to accept ZodObjects with .transform() (ZodEffects)
+  schema: z.ZodType<T, z.ZodTypeDef, any>;
   promptVersion: string;
   buildPrompt: (input: unknown) => string;
   parseResponse: (text: string) => T;
