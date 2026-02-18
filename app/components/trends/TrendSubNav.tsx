@@ -9,7 +9,12 @@ const trendNavItems = [
   { href: '/trends', label: '概要', icon: TrendingUp, exact: true },
   { href: '/trends/daily', label: 'デイリー', icon: Calendar, exact: false },
   { href: '/trends/diff', label: '週間変化', icon: GitCompare, exact: false },
-  { href: '/trends/scoring', label: 'Scoring', icon: Activity, exact: false },
+  {
+    href: '/trends/scoring',
+    label: 'スコアリング',
+    icon: Activity,
+    exact: false,
+  },
 ] as const;
 
 export function TrendSubNav() {

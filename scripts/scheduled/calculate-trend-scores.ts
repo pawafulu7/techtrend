@@ -136,8 +136,12 @@ if (require.main === module) {
   const shutdown = (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    console.log(`[${PROCESS_NAME}] Received ${signal}, shutting down...`);
-    process.exit(2);
+    console.log(`[${PROCESS_NAME}] Received ${signal}, shutting down gracefully...`);
+    // Allow main process to complete with timeout
+    setTimeout(() => {
+      console.log(`[${PROCESS_NAME}] Forced shutdown after timeout`);
+      process.exit(2);
+    }, 30000).unref();
   };
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));

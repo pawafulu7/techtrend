@@ -49,6 +49,15 @@ export function TrendScoreCard({
       variant="hover"
       className={`cursor-pointer ${selected ? 'ring-primary ring-2' : ''}`}
       onClick={() => onClick(score.entityId)}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick(score.entityId);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
     >
       <CardV2Content className="p-4">
         <div className="flex items-start justify-between">

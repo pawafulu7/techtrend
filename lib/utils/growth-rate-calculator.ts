@@ -3,24 +3,22 @@ import { GROWTH_RATE_CLIP } from '@/lib/types/trend-types';
 export interface GrowthRateOptions {
   clipMin?: number;
   clipMax?: number;
-  minDataPoints?: number;
 }
 
 const DEFAULT_OPTIONS: Required<GrowthRateOptions> = {
   clipMin: GROWTH_RATE_CLIP.MIN,
   clipMax: GROWTH_RATE_CLIP.MAX,
-  minDataPoints: 5,
 };
 
 /**
  * Calculate growth rate between two periods.
- * Returns null if insufficient data points.
+ * Result is clipped to [clipMin, clipMax] to prevent outliers.
  */
 export function calculateGrowthRate(
   current: number,
   previous: number,
   options?: GrowthRateOptions
-): number | null {
+): number {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
   let rate: number;
@@ -49,7 +47,7 @@ export function redistributeWeights(
   );
   const totalAvailable = available.reduce((sum, [, w]) => sum + w, 0);
 
-  if (totalAvailable === 0) return weights;
+  if (totalAvailable === 0) return {};
 
   const result: Record<string, number> = {};
   for (const [key, weight] of available) {
@@ -62,5 +60,8 @@ export function redistributeWeights(
  * Normalize raw score to 0-100 using sigmoid function.
  */
 export function sigmoidNormalize(rawScore: number, scale: number = 50): number {
+  if (scale <= 0) {
+    throw new RangeError('scale must be positive');
+  }
   return 100 / (1 + Math.exp(-rawScore / scale));
 }

@@ -103,12 +103,12 @@ describe('redistributeWeights', () => {
     expect(Object.keys(result)).toHaveLength(1);
   });
 
-  it('should return original weights when no keys are available', () => {
+  it('should return empty object when no keys are available', () => {
     const emptyKeys = new Set<string>();
     const result = redistributeWeights(fullWeights, emptyKeys);
 
-    // totalAvailable = 0, so returns original weights
-    expect(result).toEqual(fullWeights);
+    // totalAvailable = 0, returns empty object for consistency
+    expect(result).toEqual({});
   });
 
   it('should sum to 1.0 for any combination of available keys', () => {
@@ -156,6 +156,11 @@ describe('sigmoidNormalize', () => {
 
     // With smaller scale, 50 is "larger" relative to scale, so closer to 100
     expect(smallScale).toBeGreaterThan(largeScale);
+  });
+
+  it('should throw RangeError when scale is zero or negative', () => {
+    expect(() => sigmoidNormalize(50, 0)).toThrow(RangeError);
+    expect(() => sigmoidNormalize(50, -10)).toThrow(RangeError);
   });
 
   it('should always be between 0 and 100', () => {

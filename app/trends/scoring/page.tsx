@@ -24,7 +24,13 @@ async function getInitialScores(): Promise<ScoresApiResponse> {
     const service = new TrendScoringService(prisma);
     const result = await service.getLatestScores({ limit: 100, sort: 'score' });
     const lastUpdatedAt =
-      result.scores.length > 0 ? result.scores[0].calculatedAt : null;
+      result.scores.length > 0
+        ? result.scores.reduce(
+            (latest, score) =>
+              score.calculatedAt > latest ? score.calculatedAt : latest,
+            result.scores[0].calculatedAt
+          )
+        : null;
     return { scores: result.scores, total: result.total, lastUpdatedAt };
   } catch (error) {
     console.error('[ScoringPage] Failed to fetch initial scores:', error);
@@ -41,9 +47,7 @@ export default async function ScoringPage() {
         icon={Activity}
         title="Trend Scoring"
         description="Multi-source growth analysis across articles, GitHub, npm, and Stack Overflow"
-        count={
-          total > 0 ? { value: total, label: `${total} entities` } : undefined
-        }
+        count={total > 0 ? { value: total, label: 'entities' } : undefined}
         variant="default"
         className="mb-6"
       />

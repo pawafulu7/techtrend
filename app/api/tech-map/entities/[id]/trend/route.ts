@@ -102,7 +102,9 @@ async function handler(
       history: mappedHistory,
     };
 
-    await cache.set(cacheKey, response, CACHE_TTL);
+    cache.set(cacheKey, response, CACHE_TTL).catch((err) => {
+      logger.warn({ error: err, cacheKey }, 'Failed to cache response');
+    });
 
     return NextResponse.json(response);
   } catch (error) {

@@ -85,7 +85,13 @@ async function handler(request: NextRequest) {
     });
 
     const lastUpdatedAt =
-      result.scores.length > 0 ? result.scores[0].calculatedAt : null;
+      result.scores.length > 0
+        ? result.scores.reduce(
+            (latest, score) =>
+              score.calculatedAt > latest ? score.calculatedAt : latest,
+            result.scores[0].calculatedAt
+          )
+        : null;
 
     const response = {
       scores: result.scores,
@@ -93,7 +99,9 @@ async function handler(request: NextRequest) {
       lastUpdatedAt,
     };
 
-    await cache.set(cacheKey, response, CACHE_TTL);
+    cache.set(cacheKey, response, CACHE_TTL).catch((err) => {
+      logger.warn({ error: err, cacheKey }, 'Failed to cache response');
+    });
 
     return NextResponse.json(response);
   } catch (error) {
