@@ -51,6 +51,11 @@ jest.mock('@prisma/client', () => {
       ESTABLISHED: 'ESTABLISHED',
       DECLINING: 'DECLINING',
     },
+    MetricSource: {
+      GITHUB_STARS: 'GITHUB_STARS',
+      NPM_DOWNLOADS: 'NPM_DOWNLOADS',
+      SO_QUESTIONS: 'SO_QUESTIONS',
+    },
     Prisma: {
       PrismaClientInitializationError: class PrismaClientInitializationError extends Error {
         constructor(message: string) {
