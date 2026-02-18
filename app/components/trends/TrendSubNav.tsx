@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { TrendingUp, Calendar, GitCompare } from 'lucide-react';
+import { TrendingUp, Calendar, GitCompare, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const trendNavItems = [
   { href: '/trends', label: '概要', icon: TrendingUp, exact: true },
   { href: '/trends/daily', label: 'デイリー', icon: Calendar, exact: false },
   { href: '/trends/diff', label: '週間変化', icon: GitCompare, exact: false },
+  { href: '/trends/scoring', label: 'Scoring', icon: Activity, exact: false },
 ] as const;
 
 export function TrendSubNav() {
