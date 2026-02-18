@@ -23,17 +23,17 @@ type StageFilter = 'ALL' | TechMaturityStage;
 type SortOption = 'score' | 'name' | 'stage';
 
 const STAGE_FILTERS: { value: StageFilter; label: string }[] = [
-  { value: 'ALL', label: 'All' },
-  { value: 'EMERGING', label: 'Emerging' },
-  { value: 'RISING', label: 'Rising' },
-  { value: 'ESTABLISHED', label: 'Established' },
-  { value: 'DECLINING', label: 'Declining' },
+  { value: 'ALL', label: 'すべて' },
+  { value: 'EMERGING', label: '新興' },
+  { value: 'RISING', label: '上昇' },
+  { value: 'ESTABLISHED', label: '安定' },
+  { value: 'DECLINING', label: '衰退' },
 ];
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'score', label: 'Score' },
-  { value: 'name', label: 'Name' },
-  { value: 'stage', label: 'Stage' },
+  { value: 'score', label: 'スコア' },
+  { value: 'name', label: '名前' },
+  { value: 'stage', label: 'ステージ' },
 ];
 
 const STAGE_ORDER: Record<TechMaturityStage, number> = {
@@ -194,7 +194,7 @@ export default function ScoringPageClient({
           >
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                Sort: {opt.label}
+                並べ替え: {opt.label}
               </option>
             ))}
           </select>
@@ -202,7 +202,7 @@ export default function ScoringPageClient({
             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-(--tt-color-text-muted)" />
             <input
               type="text"
-              placeholder="Search entities..."
+              placeholder="エンティティを検索..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="エンティティを検索"
@@ -225,16 +225,16 @@ export default function ScoringPageClient({
       {/* Stats bar */}
       <div className="text-muted-foreground mb-4 flex items-center gap-4 text-sm">
         <span>
-          {filteredAndSorted.length} / {scores.length} entities
+          {filteredAndSorted.length} / {scores.length} 件
           {total > scores.length && (
             <span className="ml-1">
-              (showing top {scores.length} of {total})
+              (全{total}件中 上位{scores.length}件を表示)
             </span>
           )}
         </span>
         {lastUpdatedAt && (
           <span>
-            Last updated: {new Date(lastUpdatedAt).toLocaleDateString('ja-JP')}
+            最終更新: {new Date(lastUpdatedAt).toLocaleDateString('ja-JP')}
           </span>
         )}
       </div>
