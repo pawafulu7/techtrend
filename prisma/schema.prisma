@@ -76,6 +76,13 @@ enum MetricSource {
   SO_QUESTIONS
 }
 
+enum TechMaturityStage {
+  EMERGING
+  RISING
+  ESTABLISHED
+  DECLINING
+}
+
 model Article {
   id                     String             @id @default(cuid())
   title                  String
@@ -663,7 +670,9 @@ model TechEntity {
   relationsTo   TechRelation[]       @relation("RelationTarget")
   mentions      ArticleTechMention[]
   metrics       ExternalMetric[]
-  tagMappings   TagEntityMapping[]
+  tagMappings     TagEntityMapping[]
+  trendScores     TechTrendScore[]
+  healthSnapshots TechHealthSnapshot[]
 
   @@index([type], map: "idx_tech_entity_type")
   @@index([mentionCount(sort: Desc)], map: "idx_tech_entity_mention_count")
@@ -742,4 +751,45 @@ model TagEntityMapping {
 
   @@unique([tagId, entityId], map: "uq_tag_entity_mapping")
   @@index([entityId], map: "idx_tag_entity_mapping_entity")
+}
+
+model TechTrendScore {
+  id                   String            @id @default(cuid())
+  entityId             String
+  entity               TechEntity        @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  score                Float
+  articleMentionGrowth Float
+  githubStarsGrowth    Float
+  npmDownloadsGrowth   Float
+  soQuestionsGrowth    Float
+  stage                TechMaturityStage
+  calculatedAt         DateTime          @db.Date
+
+  createdAt            DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime          @updatedAt @db.Timestamptz(6)
+
+  @@unique([entityId, calculatedAt], map: "uq_trend_score_entity_date")
+  @@index([stage, score(sort: Desc)], map: "idx_trend_score_stage_score")
+  // idx_trend_score_entity_history removed: redundant with uq_trend_score_entity_date
+  // (PostgreSQL BTree indexes support reverse scans)
+}
+
+model TechHealthSnapshot {
+  id                  String     @id @default(cuid())
+  entityId            String
+  entity              TechEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  communityActivity   Float
+  developmentVelocity Float
+  articleAttention    Float
+  adoptionBreadth     Float
+  overallHealth       Float
+  calculatedAt        DateTime   @db.Date
+
+  createdAt           DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime   @updatedAt @db.Timestamptz(6)
+
+  @@unique([entityId, calculatedAt], map: "uq_health_snapshot_entity_date")
+  @@index([overallHealth(sort: Desc)], map: "idx_health_snapshot_overall")
+  // idx_health_snapshot_entity_history removed: redundant with uq_health_snapshot_entity_date
+  // (PostgreSQL BTree indexes support reverse scans)
 }
