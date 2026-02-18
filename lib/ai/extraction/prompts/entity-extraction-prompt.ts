@@ -37,7 +37,14 @@ function mapEntityType(raw: string): ValidEntityType {
   const upper = raw.trim().toUpperCase();
   if ((VALID_ENTITY_TYPES as readonly string[]).includes(upper))
     return upper as ValidEntityType;
-  return ENTITY_TYPE_FALLBACK[upper] ?? 'CONCEPT';
+  const fallback = ENTITY_TYPE_FALLBACK[upper];
+  if (!fallback) {
+    logger.warn(
+      { context: 'EntityExtraction', rawType: upper },
+      `Unknown entity type "${upper}", defaulting to CONCEPT`
+    );
+  }
+  return fallback ?? 'CONCEPT';
 }
 
 const VALID_RELATION_TYPES = [
@@ -69,13 +76,23 @@ function mapRelationType(raw: string): ValidRelationType {
   const upper = raw.trim().toUpperCase();
   if ((VALID_RELATION_TYPES as readonly string[]).includes(upper))
     return upper as ValidRelationType;
-  return RELATION_TYPE_FALLBACK[upper] ?? 'INTEGRATES_WITH';
+  const fallback = RELATION_TYPE_FALLBACK[upper];
+  if (!fallback) {
+    logger.warn(
+      { context: 'EntityExtraction', rawType: upper },
+      `Unknown relation type "${upper}", defaulting to INTEGRATES_WITH`
+    );
+  }
+  return fallback ?? 'INTEGRATES_WITH';
 }
 
 // =============================================================================
 // Schema
 // =============================================================================
 
+// Note: Prompt instructs LLM to use "" for unknown package fields, but schema
+// accepts null via .nullable().optional() as a defensive measure since LLMs
+// don't always follow instructions reliably.
 export const ExtractedEntitySchema = z.object({
   name: z.string().min(1),
   type: z.string().transform(mapEntityType),
@@ -213,8 +230,7 @@ export const ENTITY_EXTRACTION_PROMPT_VERSION = '1.1';
 
 export const entityExtractionConfig: ExtractionConfig<EntityExtractionOutput> =
   {
-    schema:
-      EntityExtractionOutputSchema as unknown as z.ZodType<EntityExtractionOutput>,
+    schema: EntityExtractionOutputSchema,
     promptVersion: ENTITY_EXTRACTION_PROMPT_VERSION,
     buildPrompt: buildEntityExtractionPrompt,
     parseResponse: parseEntityExtractionResponse,
