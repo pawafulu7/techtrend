@@ -3,6 +3,10 @@ import { Activity } from 'lucide-react';
 import { PageHeader } from '@/components/ui-v2/page-header';
 import ScoringPageClient from './page-client';
 import type { TrendScoreResult } from '@/lib/types/trend-types';
+import { prisma } from '@/lib/prisma';
+import { TrendScoringService } from '@/lib/services/trend-scoring-service';
+
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: 'Trend Scoring - TechTrend',
@@ -17,16 +21,13 @@ interface ScoresApiResponse {
 
 async function getInitialScores(): Promise<ScoresApiResponse> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const res = await fetch(
-      `${baseUrl}/api/trends/scores?limit=100&sort=score`,
-      { next: { revalidate: 300 } }
-    );
-    if (!res.ok) {
-      return { scores: [], total: 0, lastUpdatedAt: null };
-    }
-    return await res.json();
-  } catch {
+    const service = new TrendScoringService(prisma);
+    const result = await service.getLatestScores({ limit: 100, sort: 'score' });
+    const lastUpdatedAt =
+      result.scores.length > 0 ? result.scores[0].calculatedAt : null;
+    return { scores: result.scores, total: result.total, lastUpdatedAt };
+  } catch (error) {
+    console.error('[ScoringPage] Failed to fetch initial scores:', error);
     return { scores: [], total: 0, lastUpdatedAt: null };
   }
 }

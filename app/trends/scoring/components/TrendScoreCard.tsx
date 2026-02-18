@@ -13,28 +13,28 @@ interface TrendScoreCardProps {
 
 function GrowthIndicator({ label, value }: { label: string; value: number }) {
   const isPositive = value > 0;
-  const Icon = isPositive ? TrendingUp : TrendingDown;
+  const isNeutral = value === 0;
 
   return (
     <div className="flex items-center gap-1 text-xs">
-      <Icon
-        className={`h-3 w-3 ${
-          isPositive
-            ? 'text-(--tt-color-positive)'
-            : 'text-(--tt-color-negative)'
-        }`}
-      />
       <span className="text-(--tt-color-text-muted)">{label}</span>
-      <span
-        className={
-          isPositive
-            ? 'text-(--tt-color-positive)'
-            : 'text-(--tt-color-negative)'
-        }
-      >
-        {isPositive ? '+' : ''}
-        {value.toFixed(1)}%
-      </span>
+      {isNeutral ? (
+        <span className="text-(--tt-color-text-muted)">0%</span>
+      ) : isPositive ? (
+        <>
+          <TrendingUp className="h-3 w-3 text-(--tt-color-positive)" />
+          <span className="text-(--tt-color-positive)">
+            +{value.toFixed(1)}%
+          </span>
+        </>
+      ) : (
+        <>
+          <TrendingDown className="h-3 w-3 text-(--tt-color-negative)" />
+          <span className="text-(--tt-color-negative)">
+            {value.toFixed(1)}%
+          </span>
+        </>
+      )}
     </div>
   );
 }

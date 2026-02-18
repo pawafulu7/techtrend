@@ -86,10 +86,20 @@ async function handler(
         }
       : null;
 
+    const mappedHistory = history.map((h) => ({
+      score: h.score,
+      articleMentionGrowth: h.articleMentionGrowth,
+      githubStarsGrowth: h.githubStarsGrowth,
+      npmDownloadsGrowth: h.npmDownloadsGrowth,
+      soQuestionsGrowth: h.soQuestionsGrowth,
+      stage: h.stage,
+      calculatedAt: h.calculatedAt.toISOString(),
+    }));
+
     const response = {
       entity,
       currentScore,
-      history,
+      history: mappedHistory,
     };
 
     await cache.set(cacheKey, response, CACHE_TTL);

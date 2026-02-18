@@ -1,9 +1,11 @@
 import {
+  Prisma,
   PrismaClient,
   TechMaturityStage,
   TechEntity,
   TechTrendScore,
 } from '@prisma/client';
+import logger from '@/lib/logger';
 import {
   TrendScoreResult,
   TrendScoreComponents,
@@ -131,9 +133,15 @@ export class TrendScoringService {
         });
         calculated++;
       } catch (error) {
-        console.error(
-          `[ERROR] Failed to calculate score for entity ${id}:`,
-          error instanceof Error ? error.message : String(error)
+        if (
+          error instanceof Prisma.PrismaClientInitializationError ||
+          error instanceof Prisma.PrismaClientRustPanicError
+        ) {
+          throw error; // Fail fast on infrastructure errors
+        }
+        logger.error(
+          { error, entityId: id },
+          'Failed to calculate score for entity'
         );
         errors++;
       }

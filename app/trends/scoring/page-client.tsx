@@ -65,6 +65,7 @@ export default function ScoringPageClient({
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [history, setHistory] = useState<ScoreHistoryPoint[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const filteredAndSorted = useMemo(() => {
@@ -120,12 +121,15 @@ export default function ScoringPageClient({
       const data = await res.json();
       if (abortRef.current === controller) {
         setHistory(data.history ?? []);
+        setHistoryError(null);
       }
     } catch (err) {
       if (
         (err as Error).name !== 'AbortError' &&
         abortRef.current === controller
       ) {
+        console.error('[fetchHistory] Failed:', err);
+        setHistoryError('Failed to load trend history');
         setHistory([]);
       }
     } finally {
@@ -148,6 +152,7 @@ export default function ScoringPageClient({
       if (selectedEntityId === entityId) {
         setSelectedEntityId(null);
         setHistory([]);
+        setHistoryError(null);
       } else {
         setSelectedEntityId(entityId);
         fetchHistory(entityId);
@@ -246,6 +251,9 @@ export default function ScoringPageClient({
               </div>
             </div>
             <TrendScoreChart data={history} loading={historyLoading} />
+            {historyError && (
+              <p className="mt-2 text-sm text-red-500">{historyError}</p>
+            )}
           </CardV2Content>
         </CardV2>
       )}
