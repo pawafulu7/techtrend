@@ -2,6 +2,17 @@
  * TrendScoringService Tests
  */
 
+// Mock logger
+const mockLoggerError = jest.fn();
+jest.mock('@/lib/logger', () => ({
+  __esModule: true,
+  default: {
+    error: (...args: unknown[]) => mockLoggerError(...args),
+    warn: jest.fn(),
+    info: jest.fn(),
+  },
+}));
+
 // Mock implementations
 const mockFindUniqueOrThrow = jest.fn();
 const mockMentionCount = jest.fn();
@@ -37,6 +48,20 @@ jest.mock('@prisma/client', () => {
       RISING: 'RISING',
       ESTABLISHED: 'ESTABLISHED',
       DECLINING: 'DECLINING',
+    },
+    Prisma: {
+      PrismaClientInitializationError: class PrismaClientInitializationError extends Error {
+        constructor(message: string) {
+          super(message);
+          this.name = 'PrismaClientInitializationError';
+        }
+      },
+      PrismaClientRustPanicError: class PrismaClientRustPanicError extends Error {
+        constructor(message: string) {
+          super(message);
+          this.name = 'PrismaClientRustPanicError';
+        }
+      },
     },
   };
 });
@@ -292,17 +317,13 @@ describe('TrendScoringService', () => {
       mockExternalMetricFindMany.mockResolvedValue([]);
       mockUpsert.mockResolvedValue({});
 
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      mockLoggerError.mockClear();
 
       const result = await service.calculateAllScores();
 
       expect(result.calculated).toBe(2);
       expect(result.errors).toBe(1);
-      expect(consoleErrorSpy).toHaveBeenCalled();
-
-      consoleErrorSpy.mockRestore();
+      expect(mockLoggerError).toHaveBeenCalled();
     });
 
     it('should return { calculated: 0, errors: 0 } when no entities exist', async () => {
