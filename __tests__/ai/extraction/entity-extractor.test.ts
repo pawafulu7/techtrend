@@ -12,7 +12,10 @@ import {
 import { LLMExtractionPipeline } from '@/lib/ai/extraction/llm-extraction-pipeline';
 import { TechEntityService } from '@/lib/services/tech-entity-service';
 import { TechRelationService } from '@/lib/services/tech-relation-service';
-import { EntityExtractionOutput } from '@/lib/ai/extraction/prompts/entity-extraction-prompt';
+import {
+  EntityExtractionOutput,
+  EntityExtractionOutputSchema,
+} from '@/lib/ai/extraction/prompts/entity-extraction-prompt';
 
 // =============================================================================
 // Mocks
@@ -444,5 +447,69 @@ describe('EntityExtractor', () => {
       expect(result.error).toBe('Network timeout');
       expect(result.entitiesResolved).toBe(0);
     });
+  });
+});
+
+describe('EntityExtractionOutputSchema', () => {
+  it('should accept null values for github/npm/pypi fields', () => {
+    const input = {
+      entities: [{ name: 'TestLib', type: 'FRAMEWORK', aliases: [], github: null, npm: null, pypi: null }],
+      relations: [],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('should map unknown entity types to valid enums via fallback', () => {
+    const input = {
+      entities: [{ name: 'GPT-4', type: 'MODEL', aliases: [] }],
+      relations: [],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.entities[0].type).toBe('CONCEPT');
+    }
+  });
+
+  it('should map unknown relation types to valid enums via fallback', () => {
+    const input = {
+      entities: [],
+      relations: [{ source: 'A', target: 'B', type: 'USES' }],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.relations[0].type).toBe('DEPENDS_ON');
+    }
+  });
+
+  it('should preserve valid entity types', () => {
+    const input = {
+      entities: [{ name: 'React', type: 'FRAMEWORK', aliases: ['react'] }],
+      relations: [],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.entities[0].type).toBe('FRAMEWORK');
+    }
+  });
+
+  it('should preserve valid relation types', () => {
+    const input = {
+      entities: [],
+      relations: [{ source: 'A', target: 'B', type: 'DEPENDS_ON' }],
+      mentions: [],
+    };
+    const result = EntityExtractionOutputSchema.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.relations[0].type).toBe('DEPENDS_ON');
+    }
   });
 });
