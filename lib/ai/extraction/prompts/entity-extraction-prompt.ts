@@ -34,7 +34,7 @@ const ENTITY_TYPE_FALLBACK: Record<string, ValidEntityType> = {
 };
 
 function mapEntityType(raw: string): ValidEntityType {
-  const upper = raw.toUpperCase();
+  const upper = raw.trim().toUpperCase();
   if ((VALID_ENTITY_TYPES as readonly string[]).includes(upper))
     return upper as ValidEntityType;
   return ENTITY_TYPE_FALLBACK[upper] ?? 'CONCEPT';
@@ -66,7 +66,7 @@ const RELATION_TYPE_FALLBACK: Record<string, ValidRelationType> = {
 };
 
 function mapRelationType(raw: string): ValidRelationType {
-  const upper = raw.toUpperCase();
+  const upper = raw.trim().toUpperCase();
   if ((VALID_RELATION_TYPES as readonly string[]).includes(upper))
     return upper as ValidRelationType;
   return RELATION_TYPE_FALLBACK[upper] ?? 'INTEGRATES_WITH';
