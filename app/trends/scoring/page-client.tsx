@@ -111,6 +111,8 @@ export default function ScoringPageClient({
     abortRef.current = controller;
 
     setHistoryLoading(true);
+    setHistory([]);
+    setHistoryError(null);
     try {
       const res = await fetch(
         `/api/tech-map/entities/${encodeURIComponent(entityId)}/trend?days=30`,
