@@ -43,7 +43,7 @@ const STAGE_ORDER: Record<TechMaturityStage, number> = {
 };
 
 interface ScoreHistoryPoint {
-  date: string;
+  calculatedAt: string;
   score: number;
 }
 
@@ -118,13 +118,20 @@ export default function ScoringPageClient({
       );
       if (!res.ok) throw new Error('Failed to fetch history');
       const data = await res.json();
-      setHistory(data.history ?? []);
+      if (abortRef.current === controller) {
+        setHistory(data.history ?? []);
+      }
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
+      if (
+        (err as Error).name !== 'AbortError' &&
+        abortRef.current === controller
+      ) {
         setHistory([]);
       }
     } finally {
-      setHistoryLoading(false);
+      if (abortRef.current === controller) {
+        setHistoryLoading(false);
+      }
     }
   }, []);
 
@@ -150,7 +157,7 @@ export default function ScoringPageClient({
   );
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-6">
+    <div>
       {/* Controls */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">

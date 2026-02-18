@@ -12,7 +12,7 @@ import {
 import { useChartColors } from '@/app/components/trends/useChartColors';
 
 interface ScoreHistoryPoint {
-  date: string;
+  calculatedAt: string;
   score: number;
 }
 
@@ -49,7 +49,7 @@ export default function TrendScoreChart({
       >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
-          dataKey="date"
+          dataKey="calculatedAt"
           tick={{ fontSize: 12 }}
           tickFormatter={(value) => {
             const date = new Date(value);

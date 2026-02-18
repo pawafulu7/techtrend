@@ -205,6 +205,7 @@ export class TrendScoringService {
   ): Promise<TechTrendScore[]> {
     const since = new Date();
     since.setDate(since.getDate() - days);
+    since.setUTCHours(0, 0, 0, 0);
 
     return this.prisma.techTrendScore.findMany({
       where: {
