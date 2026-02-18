@@ -213,7 +213,8 @@ export const ENTITY_EXTRACTION_PROMPT_VERSION = '1.1';
 
 export const entityExtractionConfig: ExtractionConfig<EntityExtractionOutput> =
   {
-    schema: EntityExtractionOutputSchema,
+    schema:
+      EntityExtractionOutputSchema as unknown as z.ZodType<EntityExtractionOutput>,
     promptVersion: ENTITY_EXTRACTION_PROMPT_VERSION,
     buildPrompt: buildEntityExtractionPrompt,
     parseResponse: parseEntityExtractionResponse,
