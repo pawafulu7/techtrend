@@ -168,7 +168,9 @@ export class TrendScoringService {
         })
       );
 
-      for (const settledResult of results) {
+      for (let j = 0; j < results.length; j++) {
+        const settledResult = results[j];
+        const entityId = chunk[j].id;
         if (settledResult.status === 'fulfilled') {
           calculated++;
         } else {
@@ -179,7 +181,10 @@ export class TrendScoringService {
           ) {
             throw error; // Fail fast on infrastructure errors
           }
-          logger.error({ error }, 'Failed to calculate score for entity');
+          logger.error(
+            { error, entityId },
+            'Failed to calculate score for entity'
+          );
           errors++;
         }
       }

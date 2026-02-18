@@ -270,7 +270,7 @@ export default function ScoringPageClient({
       {/* Score cards grid */}
       {filteredAndSorted.length === 0 ? (
         <div className="text-muted-foreground py-12 text-center">
-          No entities found matching your criteria.
+          条件に一致するエンティティが見つかりませんでした。
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
