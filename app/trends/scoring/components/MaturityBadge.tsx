@@ -8,10 +8,10 @@ const STAGE_CONFIG: Record<
   TechMaturityStage,
   { label: string; variant: BadgeV2Variant }
 > = {
-  EMERGING: { label: 'Emerging', variant: 'info' },
-  RISING: { label: 'Rising', variant: 'positive' },
-  ESTABLISHED: { label: 'Established', variant: 'default' },
-  DECLINING: { label: 'Declining', variant: 'destructive' },
+  EMERGING: { label: '新興', variant: 'info' },
+  RISING: { label: '上昇', variant: 'positive' },
+  ESTABLISHED: { label: '安定', variant: 'secondary' },
+  DECLINING: { label: '衰退', variant: 'destructive' },
 };
 
 interface MaturityBadgeProps {

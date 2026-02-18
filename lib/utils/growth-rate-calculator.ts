@@ -11,8 +11,25 @@ const DEFAULT_OPTIONS: Required<GrowthRateOptions> = {
 };
 
 /**
- * Calculate growth rate between two periods.
- * Result is clipped to [clipMin, clipMax] to prevent outliers.
+ * Calculate percentage growth rate between two measurement periods.
+ *
+ * Domain assumptions:
+ * - Input values represent non-negative count metrics (article mentions,
+ *   GitHub stars, npm downloads, Stack Overflow questions).
+ * - Negative inputs are not expected but will not throw; they are handled
+ *   by the same formula (percentage change).
+ *
+ * Behavior when `previous <= 0`:
+ * - If `previous <= 0` and `current > 0`: returns 100 (treated as full emergence).
+ * - If both `previous <= 0` and `current <= 0`: returns 0 (no activity).
+ *
+ * The result is clipped to [clipMin, clipMax] (default: [-100, 500]) to
+ * prevent outlier values from skewing composite trend scores.
+ *
+ * @param current  - Metric value for the recent period.
+ * @param previous - Metric value for the preceding period.
+ * @param options  - Optional clip bounds override.
+ * @returns Percentage growth rate, clipped to the configured range.
  */
 export function calculateGrowthRate(
   current: number,

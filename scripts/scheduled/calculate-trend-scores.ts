@@ -116,9 +116,18 @@ async function calculateTrendScores(): Promise<{
       error instanceof Error ? error.message : String(error)
     );
 
-    await saveProcessingStatus(PROCESS_NAME, 0, 'failed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    try {
+      await saveProcessingStatus(PROCESS_NAME, 0, 'failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    } catch (statusError) {
+      console.error(
+        `[${PROCESS_NAME}] Failed to save processing status:`,
+        statusError instanceof Error
+          ? statusError.message
+          : String(statusError)
+      );
+    }
 
     throw error;
   } finally {
@@ -132,6 +141,12 @@ async function calculateTrendScores(): Promise<{
 
 if (require.main === module) {
   // Graceful shutdown
+  // shuttingDown flag: when a SIGINT/SIGTERM is received, the flag is set and
+  // a 30-second timeout starts. The main calculateTrendScores() promise is
+  // allowed to finish naturally within that window. If it does not, the process
+  // is forcefully terminated with exit code 2. Currently the flag is not checked
+  // inside calculateAllScores' per-entity loop; adding a cancellation signal
+  // there is a future improvement if graceful mid-loop cancellation is needed.
   let shuttingDown = false;
   const shutdown = (signal: string) => {
     if (shuttingDown) return;

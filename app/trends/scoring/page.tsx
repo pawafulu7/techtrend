@@ -5,6 +5,8 @@ import ScoringPageClient from './page-client';
 import type { TrendScoreResult } from '@/lib/types/trend-types';
 import { prisma } from '@/lib/prisma';
 import { TrendScoringService } from '@/lib/services/trend-scoring-service';
+import logger from '@/lib/logger';
+import { computeLastUpdatedAt } from '@/lib/utils/trend-helpers';
 
 export const revalidate = 300;
 
@@ -13,27 +15,24 @@ export const metadata: Metadata = {
   description: 'Technology trend scores based on multi-source growth analysis',
 };
 
-interface ScoresApiResponse {
+interface InitialScoresData {
   scores: TrendScoreResult[];
   total: number;
   lastUpdatedAt: string | null;
 }
 
-async function getInitialScores(): Promise<ScoresApiResponse> {
+const trendScoringService = new TrendScoringService(prisma);
+
+async function getInitialScores(): Promise<InitialScoresData> {
   try {
-    const service = new TrendScoringService(prisma);
-    const result = await service.getLatestScores({ limit: 100, sort: 'score' });
-    const lastUpdatedAt =
-      result.scores.length > 0
-        ? result.scores.reduce(
-            (latest, score) =>
-              score.calculatedAt > latest ? score.calculatedAt : latest,
-            result.scores[0].calculatedAt
-          )
-        : null;
+    const result = await trendScoringService.getLatestScores({
+      limit: 100,
+      sort: 'score',
+    });
+    const lastUpdatedAt = computeLastUpdatedAt(result.scores);
     return { scores: result.scores, total: result.total, lastUpdatedAt };
   } catch (error) {
-    console.error('[ScoringPage] Failed to fetch initial scores:', error);
+    logger.error({ error }, '[ScoringPage] Failed to fetch initial scores');
     return { scores: [], total: 0, lastUpdatedAt: null };
   }
 }

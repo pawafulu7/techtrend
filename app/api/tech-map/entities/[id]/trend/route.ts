@@ -8,6 +8,7 @@ import logger from '@/lib/logger';
 const CACHE_TTL = 1800; // 30 minutes
 
 const cache = new RedisCache({ namespace: 'techtrend', ttl: CACHE_TTL });
+const trendScoringService = new TrendScoringService(prisma);
 
 /**
  * GET /api/tech-map/entities/[id]/trend
@@ -43,6 +44,8 @@ async function handler(
       params: { id, days },
     });
 
+    // Note: Cache may serve stale data for up to TTL after entity deletion.
+    // This is acceptable as entity deletion is rare and cache TTL is short (30min).
     const cached = await cache.get<unknown>(cacheKey);
     if (cached) {
       return NextResponse.json(cached);
@@ -58,32 +61,17 @@ async function handler(
       return NextResponse.json({ error: 'Entity not found' }, { status: 404 });
     }
 
-    const service = new TrendScoringService(prisma);
-
     // Get current score and history in parallel
     const [latestScoreRecord, history] = await Promise.all([
       prisma.techTrendScore.findFirst({
         where: { entityId: id },
         orderBy: { calculatedAt: 'desc' },
       }),
-      service.getScoreHistory(id, days),
+      trendScoringService.getScoreHistory(id, days),
     ]);
 
     const currentScore = latestScoreRecord
-      ? {
-          entityId: entity.id,
-          entityName: entity.name,
-          entityType: entity.type,
-          score: latestScoreRecord.score,
-          components: {
-            articleMentionGrowth: latestScoreRecord.articleMentionGrowth,
-            githubStarsGrowth: latestScoreRecord.githubStarsGrowth,
-            npmDownloadsGrowth: latestScoreRecord.npmDownloadsGrowth,
-            soQuestionsGrowth: latestScoreRecord.soQuestionsGrowth,
-          },
-          stage: latestScoreRecord.stage,
-          calculatedAt: latestScoreRecord.calculatedAt.toISOString(),
-        }
+      ? TrendScoringService.toResult(latestScoreRecord, entity)
       : null;
 
     const mappedHistory = history.map((h) => ({

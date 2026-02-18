@@ -770,7 +770,8 @@ model TechTrendScore {
 
   @@unique([entityId, calculatedAt], map: "uq_trend_score_entity_date")
   @@index([stage, score(sort: Desc)], map: "idx_trend_score_stage_score")
-  @@index([entityId, calculatedAt(sort: Desc)], map: "idx_trend_score_entity_history")
+  // idx_trend_score_entity_history removed: redundant with uq_trend_score_entity_date
+  // (PostgreSQL BTree indexes support reverse scans)
 }
 
 model TechHealthSnapshot {
@@ -789,5 +790,6 @@ model TechHealthSnapshot {
 
   @@unique([entityId, calculatedAt], map: "uq_health_snapshot_entity_date")
   @@index([overallHealth(sort: Desc)], map: "idx_health_snapshot_overall")
-  @@index([entityId, calculatedAt(sort: Desc)], map: "idx_health_snapshot_entity_history")
+  // idx_health_snapshot_entity_history removed: redundant with uq_health_snapshot_entity_date
+  // (PostgreSQL BTree indexes support reverse scans)
 }

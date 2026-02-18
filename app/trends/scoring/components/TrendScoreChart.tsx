@@ -10,11 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useChartColors } from '@/app/components/trends/useChartColors';
-
-interface ScoreHistoryPoint {
-  calculatedAt: string;
-  score: number;
-}
+import type { ScoreHistoryPoint } from '@/lib/types/trend-types';
 
 interface TrendScoreChartProps {
   data: ScoreHistoryPoint[];
@@ -62,10 +58,10 @@ export default function TrendScoreChart({
             const date = new Date(value);
             return date.toLocaleDateString('ja-JP');
           }}
-          formatter={(value: number | undefined) => [
-            value != null ? value.toFixed(1) : '0',
-            'Score',
-          ]}
+          formatter={(value) => {
+            if (value == null) return ['—', ''];
+            return [`${Number(value).toFixed(1)}`, ''];
+          }}
         />
         <Line
           type="monotone"

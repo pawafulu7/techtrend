@@ -21,6 +21,29 @@ import {
 export class TrendScoringService {
   constructor(private prisma: PrismaClient) {}
 
+  /**
+   * Map a TechTrendScore record + entity to the public TrendScoreResult DTO.
+   */
+  static toResult(
+    record: TechTrendScore,
+    entity: { id: string; name: string; type: string }
+  ): TrendScoreResult {
+    return {
+      entityId: entity.id,
+      entityName: entity.name,
+      entityType: entity.type,
+      score: record.score,
+      components: {
+        articleMentionGrowth: record.articleMentionGrowth,
+        githubStarsGrowth: record.githubStarsGrowth,
+        npmDownloadsGrowth: record.npmDownloadsGrowth,
+        soQuestionsGrowth: record.soQuestionsGrowth,
+      },
+      stage: record.stage,
+      calculatedAt: record.calculatedAt.toISOString(),
+    };
+  }
+
   async calculateScore(entityId: string): Promise<TrendScoreResult> {
     const entity = await this.prisma.techEntity.findUniqueOrThrow({
       where: { id: entityId },
@@ -53,8 +76,10 @@ export class TrendScoringService {
       sixtyDaysAgo
     );
 
-    const articleMentionGrowth =
-      calculateGrowthRate(recentMentions, previousMentions) ?? 0;
+    const articleMentionGrowth = calculateGrowthRate(
+      recentMentions,
+      previousMentions
+    );
 
     // null -> 0 coercion is intentional: missing external metrics should not
     // contribute to RISING/DECLINING classification. The weighted sum requires
@@ -109,45 +134,53 @@ export class TrendScoringService {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
-    for (const { id } of entities) {
-      try {
-        const result = await this.calculateScore(id);
-        await this.prisma.techTrendScore.upsert({
-          where: {
-            entityId_calculatedAt: { entityId: id, calculatedAt: today },
-          },
-          create: {
-            entityId: id,
-            score: result.score,
-            articleMentionGrowth: result.components.articleMentionGrowth,
-            githubStarsGrowth: result.components.githubStarsGrowth,
-            npmDownloadsGrowth: result.components.npmDownloadsGrowth,
-            soQuestionsGrowth: result.components.soQuestionsGrowth,
-            stage: result.stage,
-            calculatedAt: today,
-          },
-          update: {
-            score: result.score,
-            articleMentionGrowth: result.components.articleMentionGrowth,
-            githubStarsGrowth: result.components.githubStarsGrowth,
-            npmDownloadsGrowth: result.components.npmDownloadsGrowth,
-            soQuestionsGrowth: result.components.soQuestionsGrowth,
-            stage: result.stage,
-          },
-        });
-        calculated++;
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientInitializationError ||
-          error instanceof Prisma.PrismaClientRustPanicError
-        ) {
-          throw error; // Fail fast on infrastructure errors
+    const CHUNK_SIZE = 5;
+    for (let i = 0; i < entities.length; i += CHUNK_SIZE) {
+      const chunk = entities.slice(i, i + CHUNK_SIZE);
+      const results = await Promise.allSettled(
+        chunk.map(async ({ id }) => {
+          const result = await this.calculateScore(id);
+          await this.prisma.techTrendScore.upsert({
+            where: {
+              entityId_calculatedAt: { entityId: id, calculatedAt: today },
+            },
+            create: {
+              entityId: id,
+              score: result.score,
+              articleMentionGrowth: result.components.articleMentionGrowth,
+              githubStarsGrowth: result.components.githubStarsGrowth,
+              npmDownloadsGrowth: result.components.npmDownloadsGrowth,
+              soQuestionsGrowth: result.components.soQuestionsGrowth,
+              stage: result.stage,
+              calculatedAt: today,
+            },
+            update: {
+              score: result.score,
+              articleMentionGrowth: result.components.articleMentionGrowth,
+              githubStarsGrowth: result.components.githubStarsGrowth,
+              npmDownloadsGrowth: result.components.npmDownloadsGrowth,
+              soQuestionsGrowth: result.components.soQuestionsGrowth,
+              stage: result.stage,
+            },
+          });
+          return id;
+        })
+      );
+
+      for (const settledResult of results) {
+        if (settledResult.status === 'fulfilled') {
+          calculated++;
+        } else {
+          const error = settledResult.reason;
+          if (
+            error instanceof Prisma.PrismaClientInitializationError ||
+            error instanceof Prisma.PrismaClientRustPanicError
+          ) {
+            throw error; // Fail fast on infrastructure errors
+          }
+          logger.error({ error }, 'Failed to calculate score for entity');
+          errors++;
         }
-        logger.error(
-          { error, entityId: id },
-          'Failed to calculate score for entity'
-        );
-        errors++;
       }
     }
 
@@ -162,16 +195,26 @@ export class TrendScoringService {
   }): Promise<{ scores: TrendScoreResult[]; total: number }> {
     const { stage, limit = 20, offset = 0, sort = 'score' } = options ?? {};
 
-    // Get latest calculatedAt per entity
-    const latestDate = await this.prisma.techTrendScore.findFirst({
-      orderBy: { calculatedAt: 'desc' },
-      select: { calculatedAt: true },
+    // Get per-entity latest scores using a subquery for the max calculatedAt
+    const latestDates = await this.prisma.techTrendScore.groupBy({
+      by: ['entityId'],
+      _max: { calculatedAt: true },
     });
 
-    if (!latestDate) return { scores: [], total: 0 };
+    if (latestDates.length === 0) return { scores: [], total: 0 };
+
+    // Build OR conditions to match each entity's latest date
+    const entityDatePairs = latestDates
+      .filter((d) => d._max.calculatedAt !== null)
+      .map((d) => ({
+        entityId: d.entityId,
+        calculatedAt: d._max.calculatedAt!,
+      }));
+
+    if (entityDatePairs.length === 0) return { scores: [], total: 0 };
 
     const where = {
-      calculatedAt: latestDate.calculatedAt,
+      OR: entityDatePairs,
       ...(stage ? { stage } : {}),
     };
 
@@ -193,20 +236,9 @@ export class TrendScoringService {
       this.prisma.techTrendScore.count({ where }),
     ]);
 
-    const scores: TrendScoreResult[] = records.map((r) => ({
-      entityId: r.entity.id,
-      entityName: r.entity.name,
-      entityType: r.entity.type,
-      score: r.score,
-      components: {
-        articleMentionGrowth: r.articleMentionGrowth,
-        githubStarsGrowth: r.githubStarsGrowth,
-        npmDownloadsGrowth: r.npmDownloadsGrowth,
-        soQuestionsGrowth: r.soQuestionsGrowth,
-      },
-      stage: r.stage,
-      calculatedAt: r.calculatedAt.toISOString(),
-    }));
+    const scores: TrendScoreResult[] = records.map((r) =>
+      TrendScoringService.toResult(r, r.entity)
+    );
 
     return { scores, total };
   }

@@ -4,6 +4,7 @@ import { TrendScoringService } from '@/lib/services/trend-scoring-service';
 import { TechMaturityStage } from '@prisma/client';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { RedisCache } from '@/lib/cache/redis-cache';
+import { computeLastUpdatedAt } from '@/lib/utils/trend-helpers';
 import logger from '@/lib/logger';
 
 const VALID_STAGES: string[] = Object.values(TechMaturityStage);
@@ -11,6 +12,7 @@ const VALID_SORT_FIELDS = ['score', 'name', 'stage'] as const;
 const CACHE_TTL = 1800; // 30 minutes
 
 const cache = new RedisCache({ namespace: 'techtrend', ttl: CACHE_TTL });
+const trendScoringService = new TrendScoringService(prisma);
 
 /**
  * GET /api/trends/scores
@@ -76,22 +78,14 @@ async function handler(request: NextRequest) {
       return NextResponse.json(cached);
     }
 
-    const service = new TrendScoringService(prisma);
-    const result = await service.getLatestScores({
+    const result = await trendScoringService.getLatestScores({
       stage: stageParam ? (stageParam as TechMaturityStage) : undefined,
       limit,
       offset,
       sort: sortParam as 'score' | 'name' | 'stage',
     });
 
-    const lastUpdatedAt =
-      result.scores.length > 0
-        ? result.scores.reduce(
-            (latest, score) =>
-              score.calculatedAt > latest ? score.calculatedAt : latest,
-            result.scores[0].calculatedAt
-          )
-        : null;
+    const lastUpdatedAt = computeLastUpdatedAt(result.scores);
 
     const response = {
       scores: result.scores,

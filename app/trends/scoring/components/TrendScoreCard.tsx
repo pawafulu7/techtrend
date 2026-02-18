@@ -12,14 +12,17 @@ interface TrendScoreCardProps {
 }
 
 function GrowthIndicator({ label, value }: { label: string; value: number }) {
-  const isPositive = value > 0;
-  const isNeutral = value === 0;
+  const isFiniteValue = Number.isFinite(value);
+  const isPositive = isFiniteValue && value > 0;
+  const isNeutral = !isFiniteValue || value === 0;
 
   return (
     <div className="flex items-center gap-1 text-xs">
       <span className="text-(--tt-color-text-muted)">{label}</span>
       {isNeutral ? (
-        <span className="text-(--tt-color-text-muted)">0%</span>
+        <span className="text-(--tt-color-text-muted)">
+          {isFiniteValue ? '0%' : '—'}
+        </span>
       ) : isPositive ? (
         <>
           <TrendingUp className="h-3 w-3 text-(--tt-color-positive)" />
@@ -58,6 +61,7 @@ export function TrendScoreCard({
       role="button"
       tabIndex={0}
       aria-pressed={selected}
+      aria-label={`${score.entityName} スコア ${Math.round(score.score)}`}
     >
       <CardV2Content className="p-4">
         <div className="flex items-start justify-between">

@@ -9,6 +9,7 @@ import { MaturityBadge } from './components/MaturityBadge';
 import type {
   TrendScoreResult,
   TechMaturityStage,
+  ScoreHistoryPoint,
 } from '@/lib/types/trend-types';
 
 const TrendScoreChart = dynamic(() => import('./components/TrendScoreChart'), {
@@ -41,11 +42,6 @@ const STAGE_ORDER: Record<TechMaturityStage, number> = {
   ESTABLISHED: 2,
   DECLINING: 3,
 };
-
-interface ScoreHistoryPoint {
-  calculatedAt: string;
-  score: number;
-}
 
 interface ScoringPageClientProps {
   initialScores: TrendScoreResult[];
@@ -177,7 +173,7 @@ export default function ScoringPageClient({
                   : 'hover:text-foreground bg-(--tt-color-surface-hover) text-(--tt-color-text-muted)'
               }`}
             >
-              {f.value === 'ALL' ? (
+              {f.value === 'ALL' || stageFilter === f.value ? (
                 f.label
               ) : (
                 <MaturityBadge stage={f.value as TechMaturityStage} />
@@ -221,7 +217,12 @@ export default function ScoringPageClient({
       {/* Stats bar */}
       <div className="text-muted-foreground mb-4 flex items-center gap-4 text-sm">
         <span>
-          {filteredAndSorted.length} / {total} entities
+          {filteredAndSorted.length} / {scores.length} entities
+          {total > scores.length && (
+            <span className="ml-1">
+              (showing top {scores.length} of {total})
+            </span>
+          )}
         </span>
         {lastUpdatedAt && (
           <span>

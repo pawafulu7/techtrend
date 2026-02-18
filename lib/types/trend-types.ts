@@ -44,6 +44,11 @@ export const SCORE_WEIGHTS = {
   SO_QUESTIONS: 0.15,
 } as const;
 
+export interface ScoreHistoryPoint {
+  calculatedAt: string;
+  score: number;
+}
+
 export const GROWTH_RATE_CLIP = {
   MIN: -100,
   MAX: 500,

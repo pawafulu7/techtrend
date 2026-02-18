@@ -22,6 +22,7 @@ const mockUpsert = jest.fn();
 const mockTrendScoreFindFirst = jest.fn();
 const mockTrendScoreFindMany = jest.fn();
 const mockTrendScoreCount = jest.fn();
+const mockTrendScoreGroupBy = jest.fn();
 
 jest.mock('@prisma/client', () => {
   return {
@@ -41,6 +42,7 @@ jest.mock('@prisma/client', () => {
         findFirst: mockTrendScoreFindFirst,
         findMany: mockTrendScoreFindMany,
         count: mockTrendScoreCount,
+        groupBy: mockTrendScoreGroupBy,
       },
     })),
     TechMaturityStage: {
@@ -194,8 +196,7 @@ describe('TrendScoringService', () => {
         firstSeenAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
       };
       mockFindUniqueOrThrow.mockResolvedValue(recentEntity);
-      // Positive but moderate growth: (8-5)/5*100 = 60% -- wait, needs to be <= RISING_ARTICLE_GROWTH (20)
-      // (11-10)/10*100 = 10%
+      // Article mention growth = (11-10)/10*100 = 10%, below RISING_ARTICLE_GROWTH threshold (20%)
       mockMentionCount.mockResolvedValueOnce(11).mockResolvedValueOnce(10);
       mockExternalMetricFindMany.mockResolvedValue([]);
 
@@ -251,6 +252,19 @@ describe('TrendScoringService', () => {
 
       expect(result.stage).toBe('ESTABLISHED');
     });
+
+    it('should handle zero previous mentions without division by zero', async () => {
+      mockFindUniqueOrThrow.mockResolvedValue(baseEntity);
+      // Recent: 10, Previous: 0 → growth defaults to 100 (capped at 500)
+      mockMentionCount.mockResolvedValueOnce(10).mockResolvedValueOnce(0);
+      mockExternalMetricFindMany.mockResolvedValue([]);
+
+      const result = await service.calculateScore('entity-1');
+
+      expect(result.score).toBeGreaterThanOrEqual(0);
+      expect(result.score).toBeLessThanOrEqual(100);
+      expect(Number.isFinite(result.score)).toBe(true);
+    });
   });
 
   describe('calculateAllScores', () => {
@@ -267,7 +281,7 @@ describe('TrendScoringService', () => {
       };
 
       mockFindUniqueOrThrow
-        .mockResolvedValueOnce({ ...baseEntity, id: 'entity-1', name: 'React' })
+        .mockResolvedValueOnce({ ...baseEntity })
         .mockResolvedValueOnce({
           ...baseEntity,
           id: 'entity-2',
@@ -339,9 +353,9 @@ describe('TrendScoringService', () => {
     const mockDate = new Date('2026-02-18');
 
     it('should return scores with pagination', async () => {
-      mockTrendScoreFindFirst.mockResolvedValue({
-        calculatedAt: mockDate,
-      });
+      mockTrendScoreGroupBy.mockResolvedValue([
+        { entityId: 'entity-1', _max: { calculatedAt: mockDate } },
+      ]);
 
       const mockRecords = [
         {
@@ -364,6 +378,17 @@ describe('TrendScoringService', () => {
         offset: 0,
       });
 
+      expect(mockTrendScoreGroupBy).toHaveBeenCalledWith({
+        by: ['entityId'],
+        _max: { calculatedAt: true },
+      });
+      expect(mockTrendScoreFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [{ entityId: 'entity-1', calculatedAt: mockDate }],
+          }),
+        })
+      );
       expect(result.scores).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(result.scores[0]).toEqual({
@@ -383,13 +408,13 @@ describe('TrendScoringService', () => {
     });
 
     it('should filter by stage', async () => {
-      mockTrendScoreFindFirst.mockResolvedValue({
-        calculatedAt: mockDate,
-      });
+      mockTrendScoreGroupBy.mockResolvedValue([
+        { entityId: 'entity-1', _max: { calculatedAt: mockDate } },
+      ]);
       mockTrendScoreFindMany.mockResolvedValue([]);
       mockTrendScoreCount.mockResolvedValue(0);
 
-      await service.getLatestScores({ stage: 'RISING' as never });
+      await service.getLatestScores({ stage: 'RISING' });
 
       expect(mockTrendScoreFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -401,7 +426,7 @@ describe('TrendScoringService', () => {
     });
 
     it('should return empty result when no scores exist', async () => {
-      mockTrendScoreFindFirst.mockResolvedValue(null);
+      mockTrendScoreGroupBy.mockResolvedValue([]);
 
       const result = await service.getLatestScores();
 
@@ -409,9 +434,9 @@ describe('TrendScoringService', () => {
     });
 
     it('should sort by score by default (desc)', async () => {
-      mockTrendScoreFindFirst.mockResolvedValue({
-        calculatedAt: mockDate,
-      });
+      mockTrendScoreGroupBy.mockResolvedValue([
+        { entityId: 'entity-1', _max: { calculatedAt: mockDate } },
+      ]);
       mockTrendScoreFindMany.mockResolvedValue([]);
       mockTrendScoreCount.mockResolvedValue(0);
 
@@ -425,9 +450,9 @@ describe('TrendScoringService', () => {
     });
 
     it('should sort by name when specified', async () => {
-      mockTrendScoreFindFirst.mockResolvedValue({
-        calculatedAt: mockDate,
-      });
+      mockTrendScoreGroupBy.mockResolvedValue([
+        { entityId: 'entity-1', _max: { calculatedAt: mockDate } },
+      ]);
       mockTrendScoreFindMany.mockResolvedValue([]);
       mockTrendScoreCount.mockResolvedValue(0);
 
@@ -441,9 +466,9 @@ describe('TrendScoringService', () => {
     });
 
     it('should cap limit at 100', async () => {
-      mockTrendScoreFindFirst.mockResolvedValue({
-        calculatedAt: mockDate,
-      });
+      mockTrendScoreGroupBy.mockResolvedValue([
+        { entityId: 'entity-1', _max: { calculatedAt: mockDate } },
+      ]);
       mockTrendScoreFindMany.mockResolvedValue([]);
       mockTrendScoreCount.mockResolvedValue(0);
 
@@ -499,16 +524,19 @@ describe('TrendScoringService', () => {
     });
 
     it('should default to 90 days', async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-01-15T00:00:00Z'));
+
       mockTrendScoreFindMany.mockResolvedValue([]);
 
       await service.getScoreHistory('entity-1');
 
       const call = mockTrendScoreFindMany.mock.calls[0][0];
       const sinceDate = call.where.calculatedAt.gte as Date;
-      const daysAgo = Math.round(
-        (Date.now() - sinceDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
-      expect(daysAgo).toBe(90);
+      const expectedDate = new Date('2025-10-17T00:00:00Z'); // 90 days before 2026-01-15
+      expect(sinceDate.toISOString()).toBe(expectedDate.toISOString());
+
+      jest.useRealTimers();
     });
 
     it('should return empty array when no history exists', async () => {
