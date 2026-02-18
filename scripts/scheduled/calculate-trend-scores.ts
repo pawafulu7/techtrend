@@ -95,15 +95,24 @@ async function calculateTrendScores(): Promise<{
           ? 'failed'
           : 'success';
 
-    await saveProcessingStatus(
-      PROCESS_NAME,
-      result.calculated,
-      status as 'success' | 'failed' | 'partial',
-      {
-        calculated: result.calculated,
-        errors: result.errors,
-      }
-    );
+    try {
+      await saveProcessingStatus(
+        PROCESS_NAME,
+        result.calculated,
+        status as 'success' | 'failed' | 'partial',
+        {
+          calculated: result.calculated,
+          errors: result.errors,
+        }
+      );
+    } catch (statusError) {
+      console.error(
+        `[${PROCESS_NAME}] Failed to save processing status:`,
+        statusError instanceof Error
+          ? statusError.message
+          : String(statusError)
+      );
+    }
 
     console.log(
       `[${PROCESS_NAME}] Completed: calculated=${result.calculated}, errors=${result.errors}, status=${status}`

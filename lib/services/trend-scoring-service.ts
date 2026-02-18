@@ -4,6 +4,7 @@ import {
   TechMaturityStage,
   TechEntity,
   TechTrendScore,
+  MetricSource,
 } from '@prisma/client';
 import logger from '@/lib/logger';
 import {
@@ -187,6 +188,7 @@ export class TrendScoringService {
     return { calculated, errors };
   }
 
+  // TODO: エンティティ数が数百を超える場合、DISTINCT ON / ROW_NUMBER()によるRaw SQL化を検討
   async getLatestScores(options?: {
     stage?: TechMaturityStage;
     limit?: number;
@@ -339,7 +341,7 @@ export class TrendScoringService {
       orderBy: { measuredAt: 'asc' },
     });
 
-    const calcGrowth = (source: string): number | null => {
+    const calcGrowth = (source: MetricSource): number | null => {
       const sourceMetrics = metrics.filter((m) => m.source === source);
       const recent = sourceMetrics.filter((m) => m.measuredAt >= thirtyDaysAgo);
       const previous = sourceMetrics.filter(
@@ -356,9 +358,9 @@ export class TrendScoringService {
     };
 
     return {
-      githubStarsGrowth: calcGrowth('GITHUB_STARS'),
-      npmDownloadsGrowth: calcGrowth('NPM_DOWNLOADS'),
-      soQuestionsGrowth: calcGrowth('SO_QUESTIONS'),
+      githubStarsGrowth: calcGrowth(MetricSource.GITHUB_STARS),
+      npmDownloadsGrowth: calcGrowth(MetricSource.NPM_DOWNLOADS),
+      soQuestionsGrowth: calcGrowth(MetricSource.SO_QUESTIONS),
     };
   }
 }

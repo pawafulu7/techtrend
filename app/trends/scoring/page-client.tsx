@@ -54,7 +54,10 @@ export default function ScoringPageClient({
   total,
   lastUpdatedAt,
 }: ScoringPageClientProps) {
-  const [scores] = useState(initialScores);
+  const [scores, setScores] = useState(initialScores);
+  useEffect(() => {
+    setScores(initialScores);
+  }, [initialScores]);
   const [stageFilter, setStageFilter] = useState<StageFilter>('ALL');
   const [sortBy, setSortBy] = useState<SortOption>('score');
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,6 +170,7 @@ export default function ScoringPageClient({
             <button
               key={f.value}
               onClick={() => setStageFilter(f.value)}
+              aria-pressed={stageFilter === f.value}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 stageFilter === f.value
                   ? 'bg-primary text-primary-foreground'
@@ -185,6 +189,7 @@ export default function ScoringPageClient({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
+            aria-label="ソート順"
             className="rounded-md border border-(--tt-color-border) bg-(--tt-color-surface) px-3 py-1.5 text-sm"
           >
             {SORT_OPTIONS.map((opt) => (
@@ -200,11 +205,14 @@ export default function ScoringPageClient({
               placeholder="Search entities..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="エンティティを検索"
               className="rounded-md border border-(--tt-color-border) bg-(--tt-color-surface) py-1.5 pr-8 pl-9 text-sm"
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery('')}
+                aria-label="検索をクリア"
                 className="hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 text-(--tt-color-text-muted)"
               >
                 <X className="h-4 w-4" />

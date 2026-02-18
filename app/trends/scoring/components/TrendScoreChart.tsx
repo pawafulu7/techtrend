@@ -32,7 +32,7 @@ export default function TrendScoreChart({
   if (!data || data.length === 0) {
     return (
       <div className="text-muted-foreground flex h-[250px] items-center justify-center">
-        No history data available
+        履歴データがありません
       </div>
     );
   }
