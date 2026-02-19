@@ -10,7 +10,7 @@
  * Exit codes:
  *   0 - All articles processed successfully, nothing to process, OR success rate >= 90%
  *   1 - Partial success with success rate below 90%
- *   2 - Fatal error (could not start or complete)
+ *   2 - Fatal error (could not start or complete) or total extraction failure (0 successes)
  */
 
 import { PrismaClient } from '@prisma/client';

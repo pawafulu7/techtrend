@@ -112,6 +112,7 @@ export const ExtractedMentionSchema = z.object({
   entity: z.string().min(1),
   sentiment: z.enum(['POSITIVE', 'NEUTRAL', 'NEGATIVE']),
   context: z.preprocess((val) => {
+    if (val === null) return undefined;
     if (typeof val === 'string' && val.length > 200) {
       logger.warn(
         { context: 'EntityExtraction', originalLength: val.length },
