@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { Building2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui-v2/page-header';
+import { CompanyTechAnalysisService } from '@/lib/services/company-tech-analysis-service';
+import { prisma } from '@/lib/prisma';
+import type { CompanyTechMatrix } from './types';
 import CompaniesPageClient from './page-client';
 
 export const revalidate = 300;
@@ -11,26 +14,10 @@ export const metadata: Metadata = {
     'Analyze technology adoption patterns across company engineering blogs',
 };
 
-interface CompanyTechMatrix {
-  companies: { groupId: string; name: string; articleCount: number }[];
-  technologies: { entityId: string; name: string; type: string }[];
-  matrix: {
-    companyGroupId: string;
-    entityId: string;
-    mentionCount: number;
-  }[];
-}
-
 async function getInitialMatrix(): Promise<CompanyTechMatrix> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/tech-map/companies?limit=30`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) {
-      return { companies: [], technologies: [], matrix: [] };
-    }
-    return await res.json();
+    const service = new CompanyTechAnalysisService(prisma);
+    return await service.getMatrix({ companyLimit: 30 });
   } catch {
     return { companies: [], technologies: [], matrix: [] };
   }

@@ -30,7 +30,6 @@ export function TechMapSubNav() {
   return (
     <nav
       className="bg-muted/50 flex items-center gap-1 rounded-lg p-1"
-      role="tablist"
       aria-label="Tech Map navigation"
     >
       {techMapNavItems.map((item) => {
@@ -41,8 +40,6 @@ export function TechMapSubNav() {
           <Link
             key={item.href}
             href={item.href}
-            role="tab"
-            aria-selected={active}
             aria-current={active ? 'page' : undefined}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200',

@@ -6,11 +6,13 @@ import {
 } from '@/lib/services/company-tech-analysis-service';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { RedisCache } from '@/lib/cache/redis-cache';
+import { CACHE_TTL } from '@/lib/cache/constants';
 import logger from '@/lib/logger';
 
-const CACHE_TTL = 3600; // 1 hour
-
-const cache = new RedisCache({ namespace: 'techtrend', ttl: CACHE_TTL });
+const cache = new RedisCache({
+  namespace: 'techtrend',
+  ttl: CACHE_TTL.VERY_LONG,
+});
 const service = new CompanyTechAnalysisService(prisma);
 
 /**
@@ -54,7 +56,7 @@ async function handler(
 
     const result = await service.getCompanyTimeline(groupId, months);
 
-    cache.set(cacheKey, result, CACHE_TTL).catch((err) => {
+    cache.set(cacheKey, result, CACHE_TTL.VERY_LONG).catch((err) => {
       logger.warn({ error: err, cacheKey }, 'Failed to cache company timeline');
     });
 

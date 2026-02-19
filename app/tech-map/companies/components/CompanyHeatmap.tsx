@@ -1,24 +1,7 @@
 'use client';
 
 import { Fragment, useState, useMemo, useCallback } from 'react';
-
-interface MatrixEntry {
-  companyGroupId: string;
-  entityId: string;
-  mentionCount: number;
-}
-
-interface Company {
-  groupId: string;
-  name: string;
-  articleCount: number;
-}
-
-interface Technology {
-  entityId: string;
-  name: string;
-  type: string;
-}
+import type { Company, Technology, MatrixEntry } from '../types';
 
 export interface CompanyHeatmapProps {
   companies: Company[];
@@ -123,6 +106,7 @@ export function CompanyHeatmap({
           {technologies.map((tech) => (
             <div
               key={tech.entityId}
+              role="columnheader"
               className="flex items-end justify-center pb-1"
               title={tech.name}
             >
@@ -137,6 +121,7 @@ export function CompanyHeatmap({
             <Fragment key={company.groupId}>
               <button
                 onClick={() => onCompanyClick(company.groupId)}
+                role="rowheader"
                 className="sticky left-0 z-10 flex items-center bg-(--tt-color-surface) pr-2 text-left text-sm hover:text-(--tt-color-primary) focus-visible:ring-2 focus-visible:ring-(--tt-color-primary) focus-visible:outline-none focus-visible:ring-inset"
                 title={`${company.name} (${company.articleCount} articles)`}
               >

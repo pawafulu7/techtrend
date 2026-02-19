@@ -50,15 +50,6 @@ export class CompanyTechAnalysisService {
       select: {
         id: true,
         name: true,
-        _count: {
-          select: {
-            sources: {
-              where: {
-                articles: { some: {} },
-              },
-            },
-          },
-        },
       },
     });
 
@@ -191,7 +182,9 @@ export class CompanyTechAnalysisService {
     const matrix: CompanyTechMatrix['matrix'] = [];
     for (const [key, count] of matrixMap) {
       if (count < minMentions) continue;
-      const [companyGroupId, entityId] = key.split(':');
+      const sepIndex = key.indexOf(':');
+      const companyGroupId = key.substring(0, sepIndex);
+      const entityId = key.substring(sepIndex + 1);
       matrix.push({ companyGroupId, entityId, mentionCount: count });
     }
 

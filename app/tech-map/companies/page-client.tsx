@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { SlidersHorizontal } from 'lucide-react';
 import { CardV2, CardV2Content } from '@/components/ui-v2/card-v2';
 import { CompanyHeatmap } from './components/CompanyHeatmap';
+import type { CompanyTechMatrix, CompanyTimelineData } from './types';
 
 const CompanyTimeline = dynamic(() => import('./components/CompanyTimeline'), {
   ssr: false,
@@ -12,40 +13,6 @@ const CompanyTimeline = dynamic(() => import('./components/CompanyTimeline'), {
     <div className="h-[300px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
   ),
 });
-
-interface Company {
-  groupId: string;
-  name: string;
-  articleCount: number;
-}
-
-interface Technology {
-  entityId: string;
-  name: string;
-  type: string;
-}
-
-interface MatrixEntry {
-  companyGroupId: string;
-  entityId: string;
-  mentionCount: number;
-}
-
-interface CompanyTechMatrix {
-  companies: Company[];
-  technologies: Technology[];
-  matrix: MatrixEntry[];
-}
-
-interface TimelineEntry {
-  month: string;
-  entities: { entityId: string; name: string; count: number }[];
-}
-
-interface CompanyTimeline {
-  company: { groupId: string; name: string };
-  timeline: TimelineEntry[];
-}
 
 const ENTITY_TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
@@ -72,14 +39,20 @@ export default function CompaniesPageClient({
   const [minMentions, setMinMentions] = useState(2);
   const [techLimit, setTechLimit] = useState(20);
   const [loading, setLoading] = useState(false);
+  const [matrixError, setMatrixError] = useState<string | null>(null);
 
   // Timeline state
   const [selectedCompany, setSelectedCompany] =
-    useState<CompanyTimeline | null>(null);
+    useState<CompanyTimelineData | null>(null);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  const selectedCompanyRef = useRef<CompanyTimelineData | null>(null);
+
+  useEffect(() => {
+    selectedCompanyRef.current = selectedCompany;
+  }, [selectedCompany]);
 
   useEffect(() => {
     return () => {
@@ -91,6 +64,7 @@ export default function CompaniesPageClient({
 
   const fetchMatrix = useCallback(async () => {
     setLoading(true);
+    setMatrixError(null);
     try {
       const params = new URLSearchParams();
       params.set('techLimit', techLimit.toString());
@@ -104,6 +78,7 @@ export default function CompaniesPageClient({
       setData(result);
     } catch (err) {
       console.error('[CompaniesPage] fetch matrix error:', err);
+      setMatrixError('Failed to load data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -113,51 +88,48 @@ export default function CompaniesPageClient({
     fetchMatrix();
   }, [fetchMatrix]);
 
-  const handleCompanyClick = useCallback(
-    async (groupId: string) => {
-      if (abortRef.current) {
-        abortRef.current.abort();
-      }
-      const controller = new AbortController();
-      abortRef.current = controller;
+  const handleCompanyClick = useCallback(async (groupId: string) => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-      // If same company clicked, toggle off
-      if (selectedCompany?.company.groupId === groupId) {
-        setSelectedCompany(null);
-        setTimelineError(null);
-        return;
-      }
-
-      setTimelineLoading(true);
+    // If same company clicked, toggle off
+    if (selectedCompanyRef.current?.company.groupId === groupId) {
+      setSelectedCompany(null);
       setTimelineError(null);
-      try {
-        const res = await fetch(
-          `/api/tech-map/companies/${encodeURIComponent(groupId)}`,
-          { signal: controller.signal }
-        );
-        if (!res.ok) throw new Error('Failed to fetch timeline');
-        const result: CompanyTimeline = await res.json();
-        if (abortRef.current === controller) {
-          setSelectedCompany(result);
-          setTimelineError(null);
-        }
-      } catch (err) {
-        if (
-          (err as Error).name !== 'AbortError' &&
-          abortRef.current === controller
-        ) {
-          console.error('[CompaniesPage] timeline error:', err);
-          setTimelineError('Failed to load company timeline');
-          setSelectedCompany(null);
-        }
-      } finally {
-        if (abortRef.current === controller) {
-          setTimelineLoading(false);
-        }
+      return;
+    }
+
+    setTimelineLoading(true);
+    setTimelineError(null);
+    try {
+      const res = await fetch(
+        `/api/tech-map/companies/${encodeURIComponent(groupId)}`,
+        { signal: controller.signal }
+      );
+      if (!res.ok) throw new Error('Failed to fetch timeline');
+      const result: CompanyTimelineData = await res.json();
+      if (abortRef.current === controller) {
+        setSelectedCompany(result);
+        setTimelineError(null);
       }
-    },
-    [selectedCompany]
-  );
+    } catch (err) {
+      if (
+        (err as Error).name !== 'AbortError' &&
+        abortRef.current === controller
+      ) {
+        console.error('[CompaniesPage] timeline error:', err);
+        setTimelineError('Failed to load company timeline');
+        setSelectedCompany(null);
+      }
+    } finally {
+      if (abortRef.current === controller) {
+        setTimelineLoading(false);
+      }
+    }
+  }, []);
 
   return (
     <div>
@@ -263,6 +235,9 @@ export default function CompaniesPageClient({
       )}
 
       {/* Heatmap */}
+      {matrixError && (
+        <p className="mb-4 text-sm text-red-500">{matrixError}</p>
+      )}
       {loading ? (
         <div className="h-64 animate-pulse rounded bg-(--tt-color-surface-muted)" />
       ) : (
