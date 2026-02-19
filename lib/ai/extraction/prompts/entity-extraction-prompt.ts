@@ -111,7 +111,16 @@ export const ExtractedRelationSchema = z.object({
 export const ExtractedMentionSchema = z.object({
   entity: z.string().min(1),
   sentiment: z.enum(['POSITIVE', 'NEUTRAL', 'NEGATIVE']),
-  context: z.string().max(200).optional(),
+  context: z.preprocess((val) => {
+    if (typeof val === 'string' && val.length > 200) {
+      logger.warn(
+        { context: 'EntityExtraction', originalLength: val.length },
+        `Mention context truncated from ${val.length} to 200 characters`
+      );
+      return val.slice(0, 200);
+    }
+    return val;
+  }, z.string().max(200).optional()),
 });
 
 export const EntityExtractionOutputSchema = z.object({
