@@ -1,7 +1,6 @@
 'use client';
 
 import { Fragment, useState, useMemo, useCallback } from 'react';
-import { cn } from '@/lib/utils';
 
 interface MatrixEntry {
   companyGroupId: string;

@@ -1,5 +1,4 @@
 import { PrismaClient, TechEntityType } from '@prisma/client';
-import logger from '@/lib/logger';
 
 export interface CompanyTechMatrix {
   companies: { groupId: string; name: string; articleCount: number }[];
@@ -63,21 +62,43 @@ export class CompanyTechAnalysisService {
       },
     });
 
-    // Get article counts per group
-    const companiesWithCounts = await Promise.all(
-      companiesRaw.map(async (group) => {
-        const articleCount = await this.prisma.article.count({
-          where: {
-            source: { groupId: group.id },
-          },
-        });
-        return {
-          groupId: group.id,
-          name: group.name,
-          articleCount,
-        };
-      })
-    );
+    // Get article counts per group using a single groupBy query
+    const groupIds = companiesRaw.map((g) => g.id);
+    const articleCounts = await this.prisma.article.groupBy({
+      by: ['sourceId'],
+      where: {
+        source: { groupId: { in: groupIds } },
+      },
+      _count: { id: true },
+    });
+
+    // Map sourceId -> groupId via sources
+    const sources = await this.prisma.source.findMany({
+      where: { groupId: { in: groupIds } },
+      select: { id: true, groupId: true },
+    });
+    const sourceToGroup = new Map<string, string>();
+    for (const s of sources) {
+      if (s.groupId) sourceToGroup.set(s.id, s.groupId);
+    }
+
+    // Aggregate article counts per group
+    const groupArticleCounts = new Map<string, number>();
+    for (const ac of articleCounts) {
+      const gId = sourceToGroup.get(ac.sourceId);
+      if (gId) {
+        groupArticleCounts.set(
+          gId,
+          (groupArticleCounts.get(gId) ?? 0) + ac._count.id
+        );
+      }
+    }
+
+    const companiesWithCounts = companiesRaw.map((group) => ({
+      groupId: group.id,
+      name: group.name,
+      articleCount: groupArticleCounts.get(group.id) ?? 0,
+    }));
 
     // Sort by article count descending and limit
     const companies = companiesWithCounts
@@ -135,20 +156,7 @@ export class CompanyTechAnalysisService {
     }));
 
     // Step 4: Build full matrix (company x technology mention counts)
-    const matrixData = await this.prisma.articleTechMention.groupBy({
-      by: ['entityId'],
-      where: {
-        entityId: { in: topEntityIds },
-        article: {
-          source: {
-            groupId: { in: companyGroupIds },
-          },
-        },
-      },
-      _count: { id: true },
-    });
-
-    // We need per-company breakdown, so query with source groupId
+    // Get per-company breakdown via source groupId
     // Use a raw-style approach: get all relevant mentions and aggregate in JS
     const rawMentions = await this.prisma.articleTechMention.findMany({
       where: {

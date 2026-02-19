@@ -54,7 +54,6 @@ const ENTITY_TYPE_OPTIONS = [
   { value: 'LIBRARY', label: 'Libraries' },
   { value: 'TOOL', label: 'Tools' },
   { value: 'PLATFORM', label: 'Platforms' },
-  { value: 'DATABASE', label: 'Databases' },
 ];
 
 interface CompaniesPageClientProps {
@@ -94,7 +93,7 @@ export default function CompaniesPageClient({
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      params.set('limit', techLimit.toString());
+      params.set('techLimit', techLimit.toString());
       params.set('minMentions', minMentions.toString());
       if (entityType) {
         params.set('entityTypes', entityType);
@@ -245,7 +244,7 @@ export default function CompaniesPageClient({
       </div>
 
       {/* Timeline Panel */}
-      {(selectedCompany || timelineLoading) && (
+      {(selectedCompany || timelineLoading || timelineError) && (
         <CardV2 className="mb-6">
           <CardV2Content className="p-6">
             {timelineLoading ? (
