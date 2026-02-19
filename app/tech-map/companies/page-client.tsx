@@ -37,7 +37,7 @@ export default function CompaniesPageClient({
 
   const [entityType, setEntityType] = useState('');
   const [minMentions, setMinMentions] = useState(2);
-  const [techLimit, setTechLimit] = useState(20);
+  const [techLimit, setTechLimit] = useState(30);
   const [loading, setLoading] = useState(false);
   const [matrixError, setMatrixError] = useState<string | null>(null);
 

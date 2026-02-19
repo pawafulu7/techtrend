@@ -206,8 +206,8 @@ export class CompanyTechAnalysisService {
     }
 
     const since = new Date();
-    since.setMonth(since.getMonth() - months);
     since.setDate(1);
+    since.setMonth(since.getMonth() - months);
     since.setHours(0, 0, 0, 0);
 
     // Get all mentions for this company's articles within the time range
@@ -285,7 +285,6 @@ export class CompanyTechAnalysisService {
           },
         },
       },
-      orderBy: { name: 'asc' },
     });
 
     return groups

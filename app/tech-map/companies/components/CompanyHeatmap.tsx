@@ -102,7 +102,10 @@ export function CompanyHeatmap({
           aria-label="Company technology mentions heatmap"
         >
           {/* Header row: empty corner + tech names */}
-          <div className="sticky left-0 z-10 bg-(--tt-color-surface)" />
+          <div
+            className="sticky left-0 z-10 bg-(--tt-color-surface)"
+            role="presentation"
+          />
           {technologies.map((tech) => (
             <div
               key={tech.entityId}
