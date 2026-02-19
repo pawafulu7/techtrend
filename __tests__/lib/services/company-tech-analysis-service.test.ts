@@ -16,6 +16,8 @@ jest.mock('@/lib/logger', () => ({
 const mockSourceGroupFindMany = jest.fn();
 const mockSourceGroupFindUnique = jest.fn();
 const mockArticleCount = jest.fn();
+const mockArticleGroupBy = jest.fn();
+const mockSourceFindMany = jest.fn();
 const mockMentionGroupBy = jest.fn();
 const mockMentionFindMany = jest.fn();
 const mockTechEntityFindMany = jest.fn();
@@ -29,6 +31,10 @@ jest.mock('@prisma/client', () => {
       },
       article: {
         count: mockArticleCount,
+        groupBy: mockArticleGroupBy,
+      },
+      source: {
+        findMany: mockSourceFindMany,
       },
       articleTechMention: {
         groupBy: mockMentionGroupBy,
@@ -72,10 +78,19 @@ describe('CompanyTechAnalysisService', () => {
         { id: 'group-2', name: 'Meta', _count: { sources: 1 } },
       ]);
 
-      // Article counts per group
-      mockArticleCount
-        .mockResolvedValueOnce(50) // Google
-        .mockResolvedValueOnce(30); // Meta
+      // Article counts per group (groupBy by sourceId)
+      mockArticleGroupBy.mockResolvedValue([
+        { sourceId: 'src-1', _count: { id: 30 } },
+        { sourceId: 'src-2', _count: { id: 20 } },
+        { sourceId: 'src-3', _count: { id: 30 } },
+      ]);
+
+      // Source -> Group mapping
+      mockSourceFindMany.mockResolvedValue([
+        { id: 'src-1', groupId: 'group-1' },
+        { id: 'src-2', groupId: 'group-1' },
+        { id: 'src-3', groupId: 'group-2' },
+      ]);
 
       // Step 2: Mention aggregates
       mockMentionGroupBy.mockResolvedValueOnce([
@@ -88,9 +103,6 @@ describe('CompanyTechAnalysisService', () => {
         { id: 'entity-react', name: 'React', type: 'FRAMEWORK' },
         { id: 'entity-ts', name: 'TypeScript', type: 'LANGUAGE' },
       ]);
-
-      // Step 4: Unused groupBy (matrixData)
-      mockMentionGroupBy.mockResolvedValueOnce([]);
 
       // Raw mentions for per-company breakdown
       mockMentionFindMany.mockResolvedValue([
@@ -143,7 +155,12 @@ describe('CompanyTechAnalysisService', () => {
       mockSourceGroupFindMany.mockResolvedValue([
         { id: 'group-1', name: 'Google', _count: { sources: 1 } },
       ]);
-      mockArticleCount.mockResolvedValue(10);
+      mockArticleGroupBy.mockResolvedValue([
+        { sourceId: 'src-1', _count: { id: 10 } },
+      ]);
+      mockSourceFindMany.mockResolvedValue([
+        { id: 'src-1', groupId: 'group-1' },
+      ]);
 
       // With minMentions = 5, having filter applies
       mockMentionGroupBy.mockResolvedValueOnce([
@@ -154,7 +171,6 @@ describe('CompanyTechAnalysisService', () => {
         { id: 'entity-1', name: 'React', type: 'FRAMEWORK' },
       ]);
 
-      mockMentionGroupBy.mockResolvedValueOnce([]);
       mockMentionFindMany.mockResolvedValue([
         { entityId: 'entity-1', article: { source: { groupId: 'group-1' } } },
         { entityId: 'entity-1', article: { source: { groupId: 'group-1' } } },
@@ -181,10 +197,16 @@ describe('CompanyTechAnalysisService', () => {
         { id: 'group-2', name: 'B', _count: { sources: 1 } },
         { id: 'group-3', name: 'C', _count: { sources: 1 } },
       ]);
-      mockArticleCount
-        .mockResolvedValueOnce(50)
-        .mockResolvedValueOnce(30)
-        .mockResolvedValueOnce(10);
+      mockArticleGroupBy.mockResolvedValue([
+        { sourceId: 'src-1', _count: { id: 50 } },
+        { sourceId: 'src-2', _count: { id: 30 } },
+        { sourceId: 'src-3', _count: { id: 10 } },
+      ]);
+      mockSourceFindMany.mockResolvedValue([
+        { id: 'src-1', groupId: 'group-1' },
+        { id: 'src-2', groupId: 'group-2' },
+        { id: 'src-3', groupId: 'group-3' },
+      ]);
 
       mockMentionGroupBy.mockResolvedValueOnce([]);
 
@@ -199,7 +221,12 @@ describe('CompanyTechAnalysisService', () => {
       mockSourceGroupFindMany.mockResolvedValue([
         { id: 'group-1', name: 'Google', _count: { sources: 1 } },
       ]);
-      mockArticleCount.mockResolvedValue(10);
+      mockArticleGroupBy.mockResolvedValue([
+        { sourceId: 'src-1', _count: { id: 10 } },
+      ]);
+      mockSourceFindMany.mockResolvedValue([
+        { id: 'src-1', groupId: 'group-1' },
+      ]);
 
       // 3 entities but limit to 1
       mockMentionGroupBy.mockResolvedValueOnce([
@@ -212,7 +239,6 @@ describe('CompanyTechAnalysisService', () => {
         { id: 'e1', name: 'React', type: 'FRAMEWORK' },
       ]);
 
-      mockMentionGroupBy.mockResolvedValueOnce([]);
       mockMentionFindMany.mockResolvedValue([
         { entityId: 'e1', article: { source: { groupId: 'group-1' } } },
         { entityId: 'e1', article: { source: { groupId: 'group-1' } } },
@@ -229,7 +255,12 @@ describe('CompanyTechAnalysisService', () => {
       mockSourceGroupFindMany.mockResolvedValue([
         { id: 'group-1', name: 'Google', _count: { sources: 1 } },
       ]);
-      mockArticleCount.mockResolvedValue(10);
+      mockArticleGroupBy.mockResolvedValue([
+        { sourceId: 'src-1', _count: { id: 10 } },
+      ]);
+      mockSourceFindMany.mockResolvedValue([
+        { id: 'src-1', groupId: 'group-1' },
+      ]);
 
       mockMentionGroupBy.mockResolvedValueOnce([
         { entityId: 'e1', _count: { id: 5 } },
@@ -239,7 +270,6 @@ describe('CompanyTechAnalysisService', () => {
         { id: 'e1', name: 'React', type: 'FRAMEWORK' },
       ]);
 
-      mockMentionGroupBy.mockResolvedValueOnce([]);
       mockMentionFindMany.mockResolvedValue([
         { entityId: 'e1', article: { source: { groupId: 'group-1' } } },
         { entityId: 'e1', article: { source: { groupId: 'group-1' } } },
@@ -261,7 +291,10 @@ describe('CompanyTechAnalysisService', () => {
       mockSourceGroupFindMany.mockResolvedValue([
         { id: 'group-1', name: 'Empty', _count: { sources: 0 } },
       ]);
-      mockArticleCount.mockResolvedValue(0);
+      mockArticleGroupBy.mockResolvedValue([]);
+      mockSourceFindMany.mockResolvedValue([
+        { id: 'src-1', groupId: 'group-1' },
+      ]);
 
       const result = await service.getMatrix();
 
@@ -276,7 +309,12 @@ describe('CompanyTechAnalysisService', () => {
       mockSourceGroupFindMany.mockResolvedValue([
         { id: 'group-1', name: 'Google', _count: { sources: 1 } },
       ]);
-      mockArticleCount.mockResolvedValue(10);
+      mockArticleGroupBy.mockResolvedValue([
+        { sourceId: 'src-1', _count: { id: 10 } },
+      ]);
+      mockSourceFindMany.mockResolvedValue([
+        { id: 'src-1', groupId: 'group-1' },
+      ]);
       mockMentionGroupBy.mockResolvedValueOnce([]); // No aggregates
 
       const result = await service.getMatrix();
@@ -290,14 +328,18 @@ describe('CompanyTechAnalysisService', () => {
       mockSourceGroupFindMany.mockResolvedValue([
         { id: 'group-1', name: 'Google', _count: { sources: 1 } },
       ]);
-      mockArticleCount.mockResolvedValue(10);
+      mockArticleGroupBy.mockResolvedValue([
+        { sourceId: 'src-1', _count: { id: 10 } },
+      ]);
+      mockSourceFindMany.mockResolvedValue([
+        { id: 'src-1', groupId: 'group-1' },
+      ]);
       mockMentionGroupBy.mockResolvedValueOnce([
         { entityId: 'e1', _count: { id: 3 } },
       ]);
       mockTechEntityFindMany.mockResolvedValue([
         { id: 'e1', name: 'React', type: 'FRAMEWORK' },
       ]);
-      mockMentionGroupBy.mockResolvedValueOnce([]);
 
       // Include mentions with null groupId
       mockMentionFindMany.mockResolvedValue([
