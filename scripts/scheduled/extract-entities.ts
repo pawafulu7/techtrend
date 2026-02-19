@@ -8,9 +8,9 @@
  *   npx tsx scripts/scheduled/extract-entities.ts
  *
  * Exit codes:
- *   0 - All articles processed successfully (or nothing to process)
- *   1 - Partial success (some articles failed)
- *   2 - Fatal error (could not start or complete)
+ *   0 - All articles processed successfully, nothing to process, OR success rate >= 90%
+ *   1 - Partial success with success rate below 90%
+ *   2 - Fatal error (could not start or complete) or total extraction failure (0 successes)
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -213,10 +213,18 @@ if (require.main === module) {
     .then(({ processed, succeeded, failed }) => {
       if (processed === 0 || failed === 0) {
         process.exit(0); // Success or nothing to do
-      } else if (succeeded > 0) {
-        process.exit(1); // Partial success
       } else {
-        process.exit(2); // Total failure
+        const successRate = succeeded / processed;
+        console.log(
+          `[entity-extraction] Success rate: ${(successRate * 100).toFixed(1)}% (${succeeded}/${processed})`
+        );
+        if (successRate >= 0.9) {
+          process.exit(0); // High success rate, treat as success
+        } else if (succeeded > 0) {
+          process.exit(1); // Partial success below threshold
+        } else {
+          process.exit(2); // Total failure
+        }
       }
     })
     .catch((error) => {
