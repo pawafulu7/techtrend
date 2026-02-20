@@ -56,7 +56,7 @@ export function calculateGrowthRate(
  * Maintains relative proportions of available weights.
  */
 export function redistributeWeights(
-  weights: Record<string, number>,
+  weights: Readonly<Record<string, number>>,
   availableKeys: Set<string>
 ): Record<string, number> {
   const available = Object.entries(weights).filter(([k]) =>
