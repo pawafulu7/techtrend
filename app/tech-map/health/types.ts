@@ -7,12 +7,7 @@ export interface HealthScoreResult {
   entityId: string;
   entityName: string;
   entityType: string;
-  axes: {
-    communityActivity: number;
-    developmentVelocity: number;
-    articleAttention: number;
-    adoptionBreadth: number;
-  };
+  axes: Record<string, AxisResult>;
   overallHealth: number;
   calculatedAt: string;
 }
@@ -33,10 +28,10 @@ export interface RadarDataPoint {
 }
 
 export const HEALTH_WEIGHTS = {
-  ARTICLE_ATTENTION: 0.35,
-  ADOPTION_BREADTH: 0.25,
-  COMMUNITY_ACTIVITY: 0.2,
-  DEVELOPMENT_VELOCITY: 0.2,
+  articleAttention: 0.35,
+  adoptionBreadth: 0.25,
+  communityActivity: 0.2,
+  developmentVelocity: 0.2,
 } as const;
 
 export const HEALTH_AXIS_LABELS = {

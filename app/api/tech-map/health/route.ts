@@ -125,7 +125,7 @@ async function handler(request: NextRequest) {
       offset,
     };
 
-    cache.set(cacheKey, response, CACHE_TTL.LONG).catch((err) => {
+    cache.set(cacheKey, response).catch((err) => {
       logger.warn({ error: err, cacheKey }, 'Failed to cache health response');
     });
 

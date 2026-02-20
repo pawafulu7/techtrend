@@ -14,6 +14,13 @@ interface HealthScoreCardProps {
 
 type AxisKey = keyof typeof HEALTH_AXIS_LABELS;
 
+const AXIS_KEYS: AxisKey[] = [
+  'communityActivity',
+  'developmentVelocity',
+  'articleAttention',
+  'adoptionBreadth',
+];
+
 interface AxisScoreIndicatorProps {
   label: string;
   value: number | null;
@@ -73,13 +80,6 @@ export function HealthScoreCard({
   selected,
   onClick,
 }: HealthScoreCardProps) {
-  const axisKeys: AxisKey[] = [
-    'communityActivity',
-    'developmentVelocity',
-    'articleAttention',
-    'adoptionBreadth',
-  ];
-
   return (
     <CardV2
       variant="hover"
@@ -115,13 +115,16 @@ export function HealthScoreCard({
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
-          {axisKeys.map((key) => (
-            <AxisScoreIndicator
-              key={key}
-              label={HEALTH_AXIS_LABELS[key]}
-              value={health.axes[key]}
-            />
-          ))}
+          {AXIS_KEYS.map((key) => {
+            const axis = health.axes[key];
+            return (
+              <AxisScoreIndicator
+                key={key}
+                label={HEALTH_AXIS_LABELS[key]}
+                value={axis.value}
+              />
+            );
+          })}
         </div>
       </CardV2Content>
     </CardV2>

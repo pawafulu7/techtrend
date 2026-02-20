@@ -32,14 +32,6 @@ async function getInitialHealth(): Promise<InitialHealthData> {
     };
   } catch (error) {
     logger.error({ error }, '[HealthPage] Failed to fetch initial health data');
-    // Re-throw fatal DB errors to Next.js error boundary
-    const { Prisma } = await import('@prisma/client');
-    if (
-      error instanceof Prisma.PrismaClientInitializationError ||
-      error instanceof Prisma.PrismaClientRustPanicError
-    ) {
-      throw error;
-    }
     return { health: [], total: 0 };
   }
 }

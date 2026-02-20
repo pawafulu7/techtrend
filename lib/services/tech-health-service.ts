@@ -255,10 +255,22 @@ export class TechHealthService {
       entityName: r.entity.name,
       entityType: r.entity.type,
       axes: {
-        communityActivity: r.communityActivity,
-        developmentVelocity: r.developmentVelocity,
-        articleAttention: r.articleAttention,
-        adoptionBreadth: r.adoptionBreadth,
+        communityActivity: {
+          value: r.communityActivity,
+          available: r.communityActivity > 0,
+        },
+        developmentVelocity: {
+          value: r.developmentVelocity,
+          available: r.developmentVelocity > 0,
+        },
+        articleAttention: {
+          value: r.articleAttention,
+          available: r.articleAttention > 0,
+        },
+        adoptionBreadth: {
+          value: r.adoptionBreadth,
+          available: r.adoptionBreadth > 0,
+        },
       },
       overallHealth: r.overallHealth,
       calculatedAt: r.calculatedAt.toISOString(),
@@ -459,18 +471,10 @@ export class TechHealthService {
    * Weights of unavailable axes are redistributed proportionally.
    */
   private calculateOverallHealth(axes: Record<string, AxisResult>): number {
-    const weightKeyMap: Record<string, string> = {
-      articleAttention: 'ARTICLE_ATTENTION',
-      adoptionBreadth: 'ADOPTION_BREADTH',
-      communityActivity: 'COMMUNITY_ACTIVITY',
-      developmentVelocity: 'DEVELOPMENT_VELOCITY',
-    };
-
     const availableKeys = new Set<string>();
     for (const [axisKey, axisResult] of Object.entries(axes)) {
-      if (axisResult.available) {
-        const weightKey = weightKeyMap[axisKey];
-        if (weightKey) availableKeys.add(weightKey);
+      if (axisResult.available && axisKey in HEALTH_WEIGHTS) {
+        availableKeys.add(axisKey);
       }
     }
 
@@ -480,9 +484,8 @@ export class TechHealthService {
 
     let score = 0;
     for (const [axisKey, axisResult] of Object.entries(axes)) {
-      const weightKey = weightKeyMap[axisKey];
-      if (weightKey && weights[weightKey] !== undefined) {
-        score += weights[weightKey] * axisResult.value;
+      if (weights[axisKey] !== undefined) {
+        score += weights[axisKey] * axisResult.value;
       }
     }
 

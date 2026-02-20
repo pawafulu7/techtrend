@@ -80,10 +80,10 @@ const mockHealthData = [
     entityName: 'React',
     entityType: 'FRAMEWORK',
     axes: {
-      communityActivity: 55,
-      developmentVelocity: 45,
-      articleAttention: 60,
-      adoptionBreadth: 40,
+      communityActivity: { value: 55, available: true },
+      developmentVelocity: { value: 45, available: true },
+      articleAttention: { value: 60, available: true },
+      adoptionBreadth: { value: 40, available: true },
     },
     overallHealth: 50.5,
     calculatedAt: '2026-02-20T00:00:00.000Z',
@@ -225,10 +225,10 @@ describe('GET /api/tech-map/health', () => {
     const data = await response.json();
     const item = data.data[0];
     expect(item.axes).toBeDefined();
-    expect(item.axes.communityActivity).toBe(55);
-    expect(item.axes.developmentVelocity).toBe(45);
-    expect(item.axes.articleAttention).toBe(60);
-    expect(item.axes.adoptionBreadth).toBe(40);
+    expect(item.axes.communityActivity).toEqual({ value: 55, available: true });
+    expect(item.axes.developmentVelocity).toEqual({ value: 45, available: true });
+    expect(item.axes.articleAttention).toEqual({ value: 60, available: true });
+    expect(item.axes.adoptionBreadth).toEqual({ value: 40, available: true });
     expect(item.overallHealth).toBe(50.5);
   });
 });
@@ -327,7 +327,7 @@ describe('GET /api/tech-map/entities/[id]/health', () => {
     expect(response.status).toBe(500);
   });
 
-  it('returns 400 for missing entity ID', async () => {
+  it('returns 400 for overly long entity ID', async () => {
     const request = new NextRequest(
       new URL('http://localhost/api/tech-map/entities/x/health')
     );

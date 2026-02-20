@@ -28,7 +28,7 @@ function transformToRadarData(health: HealthScoreResult): RadarDataPoint[] {
 
   return axisKeys.map((key) => ({
     axis: HEALTH_AXIS_LABELS[key],
-    value: health.axes[key] ?? 0,
+    value: health.axes[key]?.value ?? 0,
     fullMark: 100,
   }));
 }

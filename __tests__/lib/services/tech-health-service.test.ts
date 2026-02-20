@@ -58,12 +58,14 @@ jest.mock('@prisma/client', () => {
     },
     Prisma: {
       PrismaClientInitializationError: class PrismaClientInitializationError extends Error {
+        clientVersion = '6.0.0';
         constructor(message: string) {
           super(message);
           this.name = 'PrismaClientInitializationError';
         }
       },
       PrismaClientRustPanicError: class PrismaClientRustPanicError extends Error {
+        clientVersion = '6.0.0';
         constructor(message: string) {
           super(message);
           this.name = 'PrismaClientRustPanicError';
@@ -445,10 +447,10 @@ describe('TechHealthService', () => {
         entityName: 'React',
         entityType: 'FRAMEWORK',
         axes: {
-          communityActivity: 55,
-          developmentVelocity: 45,
-          articleAttention: 60,
-          adoptionBreadth: 40,
+          communityActivity: { value: 55, available: true },
+          developmentVelocity: { value: 45, available: true },
+          articleAttention: { value: 60, available: true },
+          adoptionBreadth: { value: 40, available: true },
         },
         overallHealth: 50.5,
         calculatedAt: mockDate.toISOString(),
