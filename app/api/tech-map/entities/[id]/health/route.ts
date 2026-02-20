@@ -3,11 +3,10 @@ import { prisma } from '@/lib/prisma';
 import { TechHealthService } from '@/lib/services/tech-health-service';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { RedisCache } from '@/lib/cache/redis-cache';
+import { CACHE_TTL } from '@/lib/cache/constants';
 import logger from '@/lib/logger';
 
-const CACHE_TTL = 1800; // 30 minutes
-
-const cache = new RedisCache({ namespace: 'techtrend', ttl: CACHE_TTL });
+const cache = new RedisCache({ namespace: 'techtrend', ttl: CACHE_TTL.LONG });
 const healthService = new TechHealthService(prisma);
 
 /**
@@ -63,7 +62,7 @@ async function handler(
       history,
     };
 
-    cache.set(cacheKey, response, CACHE_TTL).catch((err) => {
+    cache.set(cacheKey, response, CACHE_TTL.LONG).catch((err) => {
       logger.warn({ error: err, cacheKey }, 'Failed to cache health response');
     });
 

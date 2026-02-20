@@ -93,14 +93,11 @@ export class TechHealthService {
   ): Promise<ComputeHealthResult> {
     const result = await this.computeHealth(entityId);
 
+    const now = new Date();
     const date =
       calculatedAt ??
       new Date(
-        Date.UTC(
-          new Date().getUTCFullYear(),
-          new Date().getUTCMonth(),
-          new Date().getUTCDate()
-        )
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
       );
 
     await this.saveSnapshot(entityId, result, date);
@@ -201,7 +198,17 @@ export class TechHealthService {
 
     if (entityDatePairs.length === 0) return { data: [], total: 0 };
 
-    // Build where clause
+    if (entityDatePairs.length > 1000) {
+      logger.warn(
+        { count: entityDatePairs.length },
+        'getLatestHealth: OR clause has >1000 entity-date pairs; consider migrating to a subquery or window function'
+      );
+    }
+
+    // TODO: The OR-based approach may not scale beyond ~1000 entities.
+    // Consider migrating to a raw query with a window function
+    // (e.g. ROW_NUMBER() OVER (PARTITION BY entityId ORDER BY calculatedAt DESC))
+    // or a lateral join / subquery to fetch the latest snapshot per entity.
     const where: Prisma.TechHealthSnapshotWhereInput = {
       OR: entityDatePairs,
       ...(minScore !== undefined || maxScore !== undefined
@@ -341,27 +348,17 @@ export class TechHealthService {
       return { value: 0, available: false };
     }
 
-    // Count unique source groups that have articles mentioning this entity
-    const groups = await this.prisma.articleTechMention.findMany({
-      where: { entityId },
-      select: {
-        article: {
-          select: {
-            source: {
-              select: { groupId: true },
-            },
-          },
-        },
-      },
-    });
+    // Count unique source groups via DB-side COUNT(DISTINCT) for efficiency
+    const result = await this.prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(DISTINCT s."groupId") as count
+      FROM "ArticleTechMention" atm
+      JOIN "Article" a ON a.id = atm."articleId"
+      JOIN "Source" s ON s.id = a."sourceId"
+      WHERE atm."entityId" = ${entityId}
+        AND s."groupId" IS NOT NULL
+    `;
 
-    const uniqueGroupIds = new Set(
-      groups
-        .map((m) => m.article.source?.groupId)
-        .filter((id): id is string => id != null)
-    );
-
-    const entityGroupCount = uniqueGroupIds.size;
+    const entityGroupCount = Number(result[0].count);
     if (entityGroupCount === 0) {
       return { value: 0, available: false };
     }
@@ -479,10 +476,7 @@ export class TechHealthService {
 
     if (availableKeys.size === 0) return 0;
 
-    const weights = redistributeWeights(
-      HEALTH_WEIGHTS as unknown as Record<string, number>,
-      availableKeys
-    );
+    const weights = redistributeWeights(HEALTH_WEIGHTS, availableKeys);
 
     let score = 0;
     for (const [axisKey, axisResult] of Object.entries(axes)) {

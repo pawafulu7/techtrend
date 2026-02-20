@@ -19,16 +19,18 @@ interface AxisScoreIndicatorProps {
   value: number | null;
 }
 
+function getScoreToken(score: number): string {
+  if (score >= 60) return '--tt-color-positive';
+  if (score >= 40) return '--tt-color-text-muted';
+  return '--tt-color-destructive';
+}
+
 function getScoreColor(score: number): string {
-  if (score >= 60) return 'text-(--tt-color-positive)';
-  if (score >= 40) return 'text-(--tt-color-text-muted)';
-  return 'text-(--tt-color-destructive)';
+  return `text-(${getScoreToken(score)})`;
 }
 
 function getBarColor(score: number): string {
-  if (score >= 60) return 'bg-(--tt-color-positive)';
-  if (score >= 40) return 'bg-(--tt-color-text-muted)';
-  return 'bg-(--tt-color-destructive)';
+  return `bg-(${getScoreToken(score)})`;
 }
 
 function AxisScoreIndicator({ label, value }: AxisScoreIndicatorProps) {

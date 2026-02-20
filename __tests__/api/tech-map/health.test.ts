@@ -316,8 +316,33 @@ describe('GET /api/tech-map/entities/[id]/health', () => {
     expect(mockGetHealthHistory).toHaveBeenCalledWith('e-default', 30);
   });
 
-  // Cache behavior for entity health endpoint is tested through the health list
-  // tests above, which use the same RedisCache mock pattern and verify cache
-  // hit/miss correctly. Entity-specific cache key generation is confirmed by
-  // the unique entity IDs used in each test above (no cross-test collisions).
+  it('returns 500 when service throws', async () => {
+    mockGetEntity.mockRejectedValue(new Error('DB failure'));
+    const request = new NextRequest(
+      new URL('http://localhost/api/tech-map/entities/e-err/health')
+    );
+    const response = await getEntityHealth(request, {
+      params: Promise.resolve({ id: 'e-err' }),
+    });
+    expect(response.status).toBe(500);
+  });
+
+  it('returns 400 for missing entity ID', async () => {
+    const request = new NextRequest(
+      new URL('http://localhost/api/tech-map/entities/x/health')
+    );
+    // Test with overly long ID (>50 chars)
+    const longId = 'a'.repeat(51);
+    const response = await getEntityHealth(request, {
+      params: Promise.resolve({ id: longId }),
+    });
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toContain('Entity ID is required');
+  });
+
+  // Cache behavior for entity health endpoint follows the same pattern as
+  // the health list tests above: RedisCache mock with generateCacheKey + get/set.
+  // Entity-specific cache key generation uses unique entity IDs per test
+  // to prevent cross-test collisions from fire-and-forget cache.set().
 });

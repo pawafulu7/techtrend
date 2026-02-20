@@ -33,9 +33,9 @@ export interface RadarDataPoint {
 }
 
 export const HEALTH_WEIGHTS = {
-  ARTICLE_ATTENTION: 0.3,
+  ARTICLE_ATTENTION: 0.35,
   ADOPTION_BREADTH: 0.25,
-  COMMUNITY_ACTIVITY: 0.25,
+  COMMUNITY_ACTIVITY: 0.2,
   DEVELOPMENT_VELOCITY: 0.2,
 } as const;
 

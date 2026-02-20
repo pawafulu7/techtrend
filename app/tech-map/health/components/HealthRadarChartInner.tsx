@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   RadarChart,
   Radar,
@@ -12,6 +13,14 @@ import {
 import { useChartColors } from '@/app/components/trends/useChartColors';
 import type { RadarDataPoint } from '../types';
 
+function getCssVar(name: string, fallback: string): string {
+  if (typeof document === 'undefined') return fallback;
+  return (
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() ||
+    fallback
+  );
+}
+
 interface HealthRadarChartInnerProps {
   data: RadarDataPoint[];
   entityName: string;
@@ -23,38 +32,24 @@ export default function HealthRadarChartInner({
 }: HealthRadarChartInnerProps) {
   const colors = useChartColors();
 
-  const prefersReducedMotion =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false
+  );
 
-  // Use info color from theme, fallback to first chart color
-  const radarColor =
-    typeof document !== 'undefined'
-      ? getComputedStyle(document.documentElement)
-          .getPropertyValue('--tt-color-info')
-          .trim() || colors[0]
-      : colors[0];
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handler = (e: MediaQueryListEvent) =>
+      setPrefersReducedMotion(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
-  const textSecondary =
-    typeof document !== 'undefined'
-      ? getComputedStyle(document.documentElement)
-          .getPropertyValue('--tt-color-text-secondary')
-          .trim() || '#6b7280'
-      : '#6b7280';
-
-  const borderColor =
-    typeof document !== 'undefined'
-      ? getComputedStyle(document.documentElement)
-          .getPropertyValue('--tt-color-border')
-          .trim() || '#e5e7eb'
-      : '#e5e7eb';
-
-  const textMuted =
-    typeof document !== 'undefined'
-      ? getComputedStyle(document.documentElement)
-          .getPropertyValue('--tt-color-text-muted')
-          .trim() || '#9ca3af'
-      : '#9ca3af';
+  const radarColor = getCssVar('--tt-color-info', '') || colors[0];
+  const textSecondary = getCssVar('--tt-color-text-secondary', '#6b7280');
+  const borderColor = getCssVar('--tt-color-border', '#e5e7eb');
+  const textMuted = getCssVar('--tt-color-text-muted', '#9ca3af');
 
   return (
     <ResponsiveContainer width="100%" height={300}>

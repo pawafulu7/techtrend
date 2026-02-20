@@ -13,7 +13,7 @@ on:
 
 concurrency:
   group: techtrend-scheduler-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   calculate-health:

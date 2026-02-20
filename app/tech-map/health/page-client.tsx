@@ -33,6 +33,10 @@ export default function HealthPageClient({
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
 
+  useEffect(() => {
+    setSelectedEntityId(null);
+  }, [searchQuery]);
+
   const filteredAndSorted = useMemo(() => {
     let result = [...healthData];
 

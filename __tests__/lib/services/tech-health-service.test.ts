@@ -24,6 +24,7 @@ const mockHealthSnapshotFindMany = jest.fn();
 const mockHealthSnapshotCount = jest.fn();
 const mockHealthSnapshotGroupBy = jest.fn();
 const mockEntityFindUnique = jest.fn();
+const mockQueryRaw = jest.fn();
 
 jest.mock('@prisma/client', () => {
   return {
@@ -48,6 +49,7 @@ jest.mock('@prisma/client', () => {
         count: mockHealthSnapshotCount,
         groupBy: mockHealthSnapshotGroupBy,
       },
+      $queryRaw: mockQueryRaw,
     })),
     MetricSource: {
       GITHUB_STARS: 'GITHUB_STARS',
@@ -95,11 +97,7 @@ describe('TechHealthService', () => {
 
       // adoptionBreadth: 3 source groups total, entity in 2
       mockSourceGroupCount.mockResolvedValue(3);
-      mockMentionFindMany.mockResolvedValue([
-        { article: { source: { groupId: 'g1' } } },
-        { article: { source: { groupId: 'g2' } } },
-        { article: { source: { groupId: 'g1' } } }, // duplicate
-      ]);
+      mockQueryRaw.mockResolvedValue([{ count: BigInt(2) }]);
 
       // communityActivity + developmentVelocity via externalMetric
       // First call: communityActivity (GITHUB_STARS + SO_QUESTIONS)
@@ -138,9 +136,7 @@ describe('TechHealthService', () => {
 
       // adoptionBreadth: available
       mockSourceGroupCount.mockResolvedValue(5);
-      mockMentionFindMany.mockResolvedValue([
-        { article: { source: { groupId: 'g1' } } },
-      ]);
+      mockQueryRaw.mockResolvedValue([{ count: BigInt(1) }]);
 
       // communityActivity: no external metrics -> unavailable
       mockExternalMetricFindMany.mockResolvedValueOnce([]);
@@ -172,7 +168,7 @@ describe('TechHealthService', () => {
 
       // adoptionBreadth: has source groups but no mentions -> unavailable
       mockSourceGroupCount.mockResolvedValue(5);
-      mockMentionFindMany.mockResolvedValue([]);
+      mockQueryRaw.mockResolvedValue([{ count: BigInt(0) }]);
 
       // communityActivity: has data with zero growth -> available with non-50 value
       mockExternalMetricFindMany.mockResolvedValueOnce([
@@ -331,6 +327,23 @@ describe('TechHealthService', () => {
       expect(result.calculated).toBe(2);
       expect(result.errors).toBe(1);
       expect(mockLoggerError).toHaveBeenCalled();
+
+      calculateHealthSpy.mockRestore();
+    });
+
+    it('should rethrow PrismaClientInitializationError without logging', async () => {
+      const { Prisma } = jest.requireMock('@prisma/client');
+      mockEntityFindMany.mockResolvedValue([{ id: 'entity-1' }]);
+
+      const calculateHealthSpy = jest.spyOn(service, 'calculateHealth');
+      calculateHealthSpy.mockRejectedValueOnce(
+        new Prisma.PrismaClientInitializationError('Connection refused')
+      );
+
+      await expect(service.calculateAllHealth()).rejects.toThrow(
+        'Connection refused'
+      );
+      expect(mockLoggerError).not.toHaveBeenCalled();
 
       calculateHealthSpy.mockRestore();
     });

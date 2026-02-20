@@ -50,6 +50,9 @@ async function calculateHealthSnapshots(): Promise<{
       console.log(
         `[${PROCESS_NAME}] Skipping: last run was less than ${INTERVAL_HOURS} hours ago`
       );
+      await saveProcessingStatus(PROCESS_NAME, 0, 'success', {
+        reason: 'within_interval',
+      });
       return { calculated: 0, errors: 0 };
     }
 
@@ -72,10 +75,7 @@ async function calculateHealthSnapshots(): Promise<{
     console.log(`[${PROCESS_NAME}] Step 3: Invalidating Redis caches...`);
     try {
       const cache = new RedisCache({ namespace: 'techtrend' });
-      await Promise.all([
-        cache.invalidatePattern('health:*'),
-        cache.invalidatePattern('health:entity:*'),
-      ]);
+      await cache.invalidatePattern('health:*');
       console.log(`[${PROCESS_NAME}] Redis caches invalidated`);
     } catch (cacheError) {
       // Cache invalidation failure is non-fatal
