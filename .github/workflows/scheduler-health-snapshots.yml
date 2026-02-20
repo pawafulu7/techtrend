@@ -1,0 +1,50 @@
+name: Scheduler - Daily Health Snapshot Calculation
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # Daily at 8:00 UTC (JST 17:00)
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'YES' to confirm manual execution"
+        required: true
+        type: string
+        default: "NO"
+
+concurrency:
+  group: techtrend-scheduler-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  calculate-health:
+    if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      - name: Warm up database connection
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "SELECT 1;" | npx prisma db execute --stdin --url "$DATABASE_URL"
+      - name: Calculate health snapshots
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+        run: npx tsx scripts/scheduled/calculate-health-snapshots.ts
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Health snapshot calculation failed"
