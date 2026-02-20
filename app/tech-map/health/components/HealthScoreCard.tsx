@@ -121,7 +121,7 @@ export function HealthScoreCard({
               <AxisScoreIndicator
                 key={key}
                 label={HEALTH_AXIS_LABELS[key]}
-                value={axis.value}
+                value={axis.available ? axis.value : null}
               />
             );
           })}

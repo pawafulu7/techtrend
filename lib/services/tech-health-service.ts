@@ -228,16 +228,7 @@ export class TechHealthService {
         : {}),
     };
 
-    const orderBy =
-      sort === 'overallHealth'
-        ? { overallHealth: order }
-        : sort === 'communityActivity'
-          ? { communityActivity: order }
-          : sort === 'developmentVelocity'
-            ? { developmentVelocity: order }
-            : sort === 'articleAttention'
-              ? { articleAttention: order }
-              : { adoptionBreadth: order };
+    const orderBy = { [sort]: order };
 
     const [records, total] = await Promise.all([
       this.prisma.techHealthSnapshot.findMany({
@@ -257,19 +248,19 @@ export class TechHealthService {
       axes: {
         communityActivity: {
           value: r.communityActivity,
-          available: r.communityActivity > 0,
+          available: true,
         },
         developmentVelocity: {
           value: r.developmentVelocity,
-          available: r.developmentVelocity > 0,
+          available: true,
         },
         articleAttention: {
           value: r.articleAttention,
-          available: r.articleAttention > 0,
+          available: true,
         },
         adoptionBreadth: {
           value: r.adoptionBreadth,
-          available: r.adoptionBreadth > 0,
+          available: true,
         },
       },
       overallHealth: r.overallHealth,
@@ -299,7 +290,7 @@ export class TechHealthService {
     days: number = 30
   ): Promise<HealthHistoryPoint[]> {
     const since = new Date();
-    since.setDate(since.getDate() - days);
+    since.setUTCDate(since.getUTCDate() - days);
     since.setUTCHours(0, 0, 0, 0);
 
     const records = await this.prisma.techHealthSnapshot.findMany({

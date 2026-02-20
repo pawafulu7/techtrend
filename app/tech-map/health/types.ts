@@ -7,7 +7,7 @@ export interface HealthScoreResult {
   entityId: string;
   entityName: string;
   entityType: string;
-  axes: Record<string, AxisResult>;
+  axes: Record<keyof typeof HEALTH_AXIS_LABELS, AxisResult>;
   overallHealth: number;
   calculatedAt: string;
 }
