@@ -156,7 +156,7 @@ describe('EntityExtractor', () => {
         success: true,
         data: SAMPLE_EXTRACTION_OUTPUT,
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: '1.2',
       });
 
       // Setup entity service to return IDs
@@ -208,7 +208,7 @@ describe('EntityExtractor', () => {
       expect(mockPipeline.extract).toHaveBeenCalledTimes(1);
       expect(mockPipeline.extract).toHaveBeenCalledWith(
         { title: SAMPLE_ARTICLE.title, summary: SAMPLE_ARTICLE.summary },
-        expect.objectContaining({ promptVersion: '1.1' }),
+        expect.objectContaining({ promptVersion: '1.2' }),
         undefined
       );
     });
@@ -253,7 +253,7 @@ describe('EntityExtractor', () => {
         data: null,
         error: 'Failed to parse JSON from LLM response',
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: '1.2',
       });
 
       const result = await extractor.extractFromArticle(SAMPLE_ARTICLE);
@@ -270,7 +270,7 @@ describe('EntityExtractor', () => {
         success: true,
         data: null,
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: '1.2',
       });
 
       const result = await extractor.extractFromArticle(SAMPLE_ARTICLE);
@@ -286,7 +286,7 @@ describe('EntityExtractor', () => {
         success: true,
         data: { entities: [], relations: [], mentions: [] },
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: '1.2',
       });
 
       const result = await extractor.extractFromArticle(SAMPLE_ARTICLE);
@@ -331,7 +331,7 @@ describe('EntityExtractor', () => {
           ],
         },
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: '1.2',
       });
 
       mockEntityService.findOrCreate.mockResolvedValue(existingEntity);
@@ -353,7 +353,7 @@ describe('EntityExtractor', () => {
         success: true,
         data: SAMPLE_EXTRACTION_OUTPUT,
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: '1.2',
       });
 
       let callCount = 0;
@@ -415,7 +415,7 @@ describe('EntityExtractor', () => {
           mentions: [],
         },
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: '1.2',
       });
 
       mockEntityService.findOrCreate.mockResolvedValue({
