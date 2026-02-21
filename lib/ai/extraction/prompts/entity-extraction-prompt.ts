@@ -199,6 +199,7 @@ Important:
 - Include github repo (owner/repo format) and npm/pypi package names when identifiable
 - Only extract actual technology entities, not generic terms
 - Context should be a brief relevant excerpt (max 200 chars)
+- Do not use LaTeX, math notation, or special escape sequences in context fields. Use plain text only.
 - Return valid JSON only. No markdown or explanations.`;
 }
 

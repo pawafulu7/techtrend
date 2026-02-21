@@ -128,6 +128,14 @@ function extractBalancedJSON(text: string): string | null {
 }
 
 /**
+ * Sanitize invalid JSON escape sequences (e.g. LaTeX \ell, \alpha)
+ * Valid JSON escapes: \" \\ \/ \b \f \n \r \t \uXXXX
+ */
+function sanitizeJsonEscapes(text: string): string {
+  return text.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+}
+
+/**
  * Parse JSON from LLM response (handles markdown code blocks)
  */
 export function parseJSONFromLLM<T>(text: string): T {
@@ -144,20 +152,29 @@ export function parseJSONFromLLM<T>(text: string): T {
   try {
     return JSON.parse(cleanText) as T;
   } catch {
-    // Try to extract balanced JSON object from text
-    const jsonStr = extractBalancedJSON(cleanText);
-    if (jsonStr) {
-      try {
-        return JSON.parse(jsonStr) as T;
-      } catch (e) {
-        throw new Error(
-          `Failed to parse extracted JSON: ${e instanceof Error ? e.message : 'Unknown error'}`
-        );
+    // Retry with sanitized escapes (fixes LaTeX \ell, \alpha etc.)
+    try {
+      return JSON.parse(sanitizeJsonEscapes(cleanText)) as T;
+    } catch {
+      // Try to extract balanced JSON object from text
+      const jsonStr = extractBalancedJSON(cleanText);
+      if (jsonStr) {
+        try {
+          return JSON.parse(jsonStr) as T;
+        } catch {
+          try {
+            return JSON.parse(sanitizeJsonEscapes(jsonStr)) as T;
+          } catch (e) {
+            throw new Error(
+              `Failed to parse extracted JSON: ${e instanceof Error ? e.message : 'Unknown error'}`
+            );
+          }
+        }
       }
+      throw new Error(
+        'Failed to parse JSON from LLM response: No valid JSON found'
+      );
     }
-    throw new Error(
-      'Failed to parse JSON from LLM response: No valid JSON found'
-    );
   }
 }
 

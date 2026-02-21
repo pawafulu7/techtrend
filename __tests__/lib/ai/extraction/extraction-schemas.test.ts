@@ -168,6 +168,40 @@ describe('Extraction Schemas', () => {
         'Failed to parse JSON from LLM response'
       );
     });
+
+    it('should handle LaTeX escape sequences in JSON values', () => {
+      // Simulate raw LLM output containing LaTeX: {"context": "$\ell^p$ regularization with $\alpha$"}
+      // In JS string literal, a single backslash is written as \\
+      const jsonWithLatex =
+        '{"context": "$\\ell^p$ regularization with $\\alpha$"}';
+      const result = parseJSONFromLLM<{ context: string }>(jsonWithLatex);
+      expect(result.context).toContain('ell');
+      expect(result.context).toContain('alpha');
+    });
+
+    it('should preserve valid JSON escape sequences', () => {
+      const jsonWithValidEscapes =
+        '{"text": "line1\\nline2\\ttab", "quote": "say \\"hello\\"", "backslash": "a\\\\b"}';
+      const result = parseJSONFromLLM<{
+        text: string;
+        quote: string;
+        backslash: string;
+      }>(jsonWithValidEscapes);
+      expect(result.text).toBe('line1\nline2\ttab');
+      expect(result.quote).toBe('say "hello"');
+      expect(result.backslash).toBe('a\\b');
+    });
+
+    it('should not corrupt valid JSON containing escaped backslash before non-escape chars', () => {
+      // \\ell in JSON = literal string \ell (valid JSON, should not be modified)
+      const validJsonWithBackslash =
+        '{"path": "C:\\\\apps\\\\ell", "context": "\\\\alpha test"}';
+      const result = parseJSONFromLLM<{ path: string; context: string }>(
+        validJsonWithBackslash
+      );
+      expect(result.path).toBe('C:\\apps\\ell');
+      expect(result.context).toBe('\\alpha test');
+    });
   });
 
   describe('createCodeHash', () => {
