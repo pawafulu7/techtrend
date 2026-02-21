@@ -65,6 +65,7 @@ async function extractEntities(): Promise<{
         summary: { not: null },
         techMentions: { none: {} },
         createdAt: { gte: cutoffDate },
+        source: { url: { not: { startsWith: 'https://rss.arxiv.org' } } },
       },
       select: {
         id: true,

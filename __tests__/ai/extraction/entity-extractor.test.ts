@@ -15,6 +15,7 @@ import { TechRelationService } from '@/lib/services/tech-relation-service';
 import {
   EntityExtractionOutput,
   EntityExtractionOutputSchema,
+  ENTITY_EXTRACTION_PROMPT_VERSION,
 } from '@/lib/ai/extraction/prompts/entity-extraction-prompt';
 
 // =============================================================================
@@ -156,7 +157,7 @@ describe('EntityExtractor', () => {
         success: true,
         data: SAMPLE_EXTRACTION_OUTPUT,
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: ENTITY_EXTRACTION_PROMPT_VERSION,
       });
 
       // Setup entity service to return IDs
@@ -208,7 +209,7 @@ describe('EntityExtractor', () => {
       expect(mockPipeline.extract).toHaveBeenCalledTimes(1);
       expect(mockPipeline.extract).toHaveBeenCalledWith(
         { title: SAMPLE_ARTICLE.title, summary: SAMPLE_ARTICLE.summary },
-        expect.objectContaining({ promptVersion: '1.1' }),
+        expect.objectContaining({ promptVersion: ENTITY_EXTRACTION_PROMPT_VERSION }),
         undefined
       );
     });
@@ -253,7 +254,7 @@ describe('EntityExtractor', () => {
         data: null,
         error: 'Failed to parse JSON from LLM response',
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: ENTITY_EXTRACTION_PROMPT_VERSION,
       });
 
       const result = await extractor.extractFromArticle(SAMPLE_ARTICLE);
@@ -270,7 +271,7 @@ describe('EntityExtractor', () => {
         success: true,
         data: null,
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: ENTITY_EXTRACTION_PROMPT_VERSION,
       });
 
       const result = await extractor.extractFromArticle(SAMPLE_ARTICLE);
@@ -286,7 +287,7 @@ describe('EntityExtractor', () => {
         success: true,
         data: { entities: [], relations: [], mentions: [] },
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: ENTITY_EXTRACTION_PROMPT_VERSION,
       });
 
       const result = await extractor.extractFromArticle(SAMPLE_ARTICLE);
@@ -331,7 +332,7 @@ describe('EntityExtractor', () => {
           ],
         },
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: ENTITY_EXTRACTION_PROMPT_VERSION,
       });
 
       mockEntityService.findOrCreate.mockResolvedValue(existingEntity);
@@ -353,7 +354,7 @@ describe('EntityExtractor', () => {
         success: true,
         data: SAMPLE_EXTRACTION_OUTPUT,
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: ENTITY_EXTRACTION_PROMPT_VERSION,
       });
 
       let callCount = 0;
@@ -415,7 +416,7 @@ describe('EntityExtractor', () => {
           mentions: [],
         },
         modelVersion: 'gemini-2.5-flash-lite',
-        promptVersion: '1.1',
+        promptVersion: ENTITY_EXTRACTION_PROMPT_VERSION,
       });
 
       mockEntityService.findOrCreate.mockResolvedValue({
