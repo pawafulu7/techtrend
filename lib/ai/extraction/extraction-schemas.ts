@@ -132,7 +132,10 @@ function extractBalancedJSON(text: string): string | null {
  * Valid JSON escapes: \" \\ \/ \b \f \n \r \t \uXXXX
  */
 function sanitizeJsonEscapes(text: string): string {
-  return text.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+  return text.replace(
+    /(\\\\)|\\(?!["\\/bfnrtu])/g,
+    (_, pair) => pair ?? '\\\\'
+  );
 }
 
 /**

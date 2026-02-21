@@ -237,7 +237,7 @@ function parseEntityExtractionResponse(text: string): EntityExtractionOutput {
 // Config Export
 // =============================================================================
 
-export const ENTITY_EXTRACTION_PROMPT_VERSION = '1.1';
+export const ENTITY_EXTRACTION_PROMPT_VERSION = '1.2';
 
 export const entityExtractionConfig: ExtractionConfig<EntityExtractionOutput> =
   {

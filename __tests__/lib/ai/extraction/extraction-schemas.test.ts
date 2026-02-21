@@ -192,6 +192,16 @@ describe('Extraction Schemas', () => {
       expect(result.backslash).toBe('a\\b');
     });
 
+    it('should handle mixed valid and invalid escapes in same JSON', () => {
+      // Raw JSON from LLM: {"path": "C:\\apps", "latex": "\alpha"}
+      // "C:\\apps" is valid JSON (\\=backslash), but "\alpha" has invalid \a
+      // JSON.parse will fail, then sanitize fallback should fix \alpha without breaking \\apps
+      const mixed = '{"path": "C:\\\\apps", "latex": "\\alpha"}';
+      const result = parseJSONFromLLM<{ path: string; latex: string }>(mixed);
+      expect(result.path).toBe('C:\\apps');
+      expect(result.latex).toContain('alpha');
+    });
+
     it('should not corrupt valid JSON containing escaped backslash before non-escape chars', () => {
       // \\ell in JSON = literal string \ell (valid JSON, should not be modified)
       const validJsonWithBackslash =
