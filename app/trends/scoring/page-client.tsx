@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { CardV2, CardV2Content } from '@/components/ui-v2/card-v2';
@@ -65,7 +65,6 @@ export default function ScoringPageClient({
   const [history, setHistory] = useState<ScoreHistoryPoint[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
   const filteredAndSorted = useMemo(() => {
     let result = [...scores];
@@ -103,49 +102,10 @@ export default function ScoringPageClient({
     [scores, selectedEntityId]
   );
 
-  const fetchHistory = useCallback(async (entityId: string) => {
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    setHistoryLoading(true);
+  const fetchHistory = useCallback(async (_entityId: string) => {
+    // Tech map API removed - history data no longer available
     setHistory([]);
-    setHistoryError(null);
-    try {
-      const res = await fetch(
-        `/api/tech-map/entities/${encodeURIComponent(entityId)}/trend?days=30`,
-        { signal: controller.signal }
-      );
-      if (!res.ok) throw new Error('Failed to fetch history');
-      const data = await res.json();
-      if (abortRef.current === controller) {
-        setHistory(data.history ?? []);
-        setHistoryError(null);
-      }
-    } catch (err) {
-      if (
-        (err as Error).name !== 'AbortError' &&
-        abortRef.current === controller
-      ) {
-        console.error('[fetchHistory] Failed:', err);
-        setHistoryError('Failed to load trend history');
-        setHistory([]);
-      }
-    } finally {
-      if (abortRef.current === controller) {
-        setHistoryLoading(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (abortRef.current) {
-        abortRef.current.abort();
-      }
-    };
+    setHistoryLoading(false);
   }, []);
 
   const handleCardClick = useCallback(

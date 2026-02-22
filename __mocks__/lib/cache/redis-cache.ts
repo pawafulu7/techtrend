@@ -1,9 +1,12 @@
 // Redisキャッシュのモック
 export class RedisCache {
+  static lastInstance: RedisCache | null = null;
+
   constructor(options?: any) {
-    // コンストラクタパラメータは無視
+    RedisCache.lastInstance = this;
   }
 
+  generateCacheKey = jest.fn((base: string, _options?: any) => base);
   get = jest.fn().mockResolvedValue(null);
   set = jest.fn().mockResolvedValue(true);
   delete = jest.fn().mockResolvedValue(true);
