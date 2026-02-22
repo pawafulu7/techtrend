@@ -1,28 +1,15 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import type { ElementType } from 'react';
-import {
-  TrendingUp,
-  PieChart as PieChartIcon,
-  Grid3X3,
-  Globe,
-} from 'lucide-react';
 
 /**
  * Chart loading skeleton component
  * Provides visual feedback while recharts bundle is loading
  */
-const ChartSkeleton = ({
-  title,
-  icon: Icon,
-}: {
-  title: string;
-  icon: ElementType;
-}) => (
+const ChartSkeleton = ({ title }: { title: string }) => (
   <div className="bg-background rounded-lg border p-4 shadow-sm">
     <div className="mb-3 flex items-center gap-2">
-      <Icon className="text-muted-foreground h-4 w-4" />
+      <div className="bg-muted h-4 w-4 rounded" />
       <h3 className="text-sm font-semibold">{title}</h3>
     </div>
     <div className="h-[300px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
@@ -41,9 +28,7 @@ export const SourcePieChart = dynamic(
   () =>
     import('./SourcePieChart').then((mod) => ({ default: mod.SourcePieChart })),
   {
-    loading: () => (
-      <ChartSkeleton title="ソース別記事分布" icon={PieChartIcon} />
-    ),
+    loading: () => <ChartSkeleton title="ソース別記事分布" />,
     ssr: false,
   }
 );
@@ -52,9 +37,7 @@ export const TrendLineChart = dynamic(
   () =>
     import('./TrendLineChart').then((mod) => ({ default: mod.TrendLineChart })),
   {
-    loading: () => (
-      <ChartSkeleton title="タグトレンドの推移" icon={TrendingUp} />
-    ),
+    loading: () => <ChartSkeleton title="タグトレンドの推移" />,
     ssr: false,
   }
 );
@@ -65,9 +48,7 @@ export const TechSectorTreemap = dynamic(
       default: mod.TechSectorTreemap,
     })),
   {
-    loading: () => (
-      <ChartSkeleton title="テックセクターマップ" icon={Grid3X3} />
-    ),
+    loading: () => <ChartSkeleton title="テックセクターマップ" />,
     ssr: false,
   }
 );
@@ -76,9 +57,7 @@ export const SemanticAtlas = dynamic(
   () =>
     import('./SemanticAtlas').then((mod) => ({ default: mod.SemanticAtlas })),
   {
-    loading: () => (
-      <ChartSkeleton title="セマンティックアトラス" icon={Globe} />
-    ),
+    loading: () => <ChartSkeleton title="セマンティックアトラス" />,
     ssr: false,
   }
 );

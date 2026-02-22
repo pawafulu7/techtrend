@@ -103,8 +103,17 @@ function PointCloud({
   onPointHover,
 }: PointCloudProps) {
   const pointsRef = useRef<THREE.Points>(null);
-  const { camera, raycaster, pointer } = useThree();
+  const { camera, pointer } = useThree();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  // Use our own raycaster to avoid react-hooks/immutability issues
+  const raycasterRef = useRef(
+    (() => {
+      const rc = new THREE.Raycaster();
+      rc.params.Points = { threshold: 0.5 };
+      return rc;
+    })()
+  );
 
   // Build geometry buffers
   const { positions, colors, alphas, shaderMaterial } = useMemo(() => {
@@ -150,11 +159,11 @@ function PointCloud({
 
   // Raycaster for hover/click detection
   const handlePointerMove = useCallback(() => {
-    if (!pointsRef.current) return;
+    if (!pointsRef.current || !raycasterRef.current) return;
+    const rc = raycasterRef.current;
 
-    raycaster.setFromCamera(pointer, camera);
-    raycaster.params.Points = { threshold: 0.5 };
-    const intersections = raycaster.intersectObject(pointsRef.current);
+    rc.setFromCamera(pointer, camera);
+    const intersections = rc.intersectObject(pointsRef.current);
 
     if (intersections.length > 0) {
       const idx = intersections[0].index;
@@ -166,14 +175,14 @@ function PointCloud({
       setHoveredIndex(null);
       onPointHover(null);
     }
-  }, [camera, raycaster, pointer, points, hoveredIndex, onPointHover]);
+  }, [camera, pointer, points, hoveredIndex, onPointHover]);
 
   const handleClick = useCallback(() => {
-    if (!pointsRef.current) return;
+    if (!pointsRef.current || !raycasterRef.current) return;
+    const rc = raycasterRef.current;
 
-    raycaster.setFromCamera(pointer, camera);
-    raycaster.params.Points = { threshold: 0.5 };
-    const intersections = raycaster.intersectObject(pointsRef.current);
+    rc.setFromCamera(pointer, camera);
+    const intersections = rc.intersectObject(pointsRef.current);
 
     if (intersections.length > 0) {
       const idx = intersections[0].index;
@@ -181,7 +190,7 @@ function PointCloud({
         onPointClick(points[idx].articleId);
       }
     }
-  }, [camera, raycaster, pointer, points, onPointClick]);
+  }, [camera, pointer, points, onPointClick]);
 
   // Subtle rotation for ambient motion
   useFrame((_, delta) => {
