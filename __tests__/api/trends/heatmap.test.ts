@@ -47,14 +47,16 @@ describe('/api/trends/heatmap', () => {
     jest.clearAllMocks();
   });
 
-  it('returns category data with change rates (200)', async () => {
+  it('returns category data with share-based change rates (200)', async () => {
+    // current: ai_ml=60, frontend=40 → total=100, shares: 60%, 40%
+    // previous: ai_ml=50, frontend=50 → total=100, shares: 50%, 50%
     const currentData = [
-      { category: 'ai_ml', count: BigInt(50) },
-      { category: 'frontend', count: BigInt(20) },
+      { category: 'ai_ml', count: BigInt(60) },
+      { category: 'frontend', count: BigInt(40) },
     ];
     const previousData = [
-      { category: 'ai_ml', count: BigInt(40) },
-      { category: 'frontend', count: BigInt(25) },
+      { category: 'ai_ml', count: BigInt(50) },
+      { category: 'frontend', count: BigInt(50) },
     ];
 
     prismaMock.$queryRaw
@@ -68,21 +70,23 @@ describe('/api/trends/heatmap', () => {
     expect(data.period).toBe('week');
     expect(data.categories).toHaveLength(2);
 
-    // ai_ml: (50-40)/40 = 25%
+    // ai_ml: share 60% (was 50%) → changeRate = +10.0
     const aiCategory = data.categories.find(
       (c: any) => c.category === 'ai_ml'
     );
     expect(aiCategory).toBeDefined();
-    expect(aiCategory.count).toBe(50);
-    expect(aiCategory.changeRate).toBe(25);
+    expect(aiCategory.count).toBe(60);
+    expect(aiCategory.share).toBe(60);
+    expect(aiCategory.changeRate).toBe(10);
 
-    // frontend: (20-25)/25 = -20%
+    // frontend: share 40% (was 50%) → changeRate = -10.0
     const feCategory = data.categories.find(
       (c: any) => c.category === 'frontend'
     );
     expect(feCategory).toBeDefined();
-    expect(feCategory.count).toBe(20);
-    expect(feCategory.changeRate).toBe(-20);
+    expect(feCategory.count).toBe(40);
+    expect(feCategory.share).toBe(40);
+    expect(feCategory.changeRate).toBe(-10);
 
     // sorted by count desc
     expect(data.categories[0].category).toBe('ai_ml');
@@ -115,18 +119,21 @@ describe('/api/trends/heatmap', () => {
     expect(data.period).toBe('week');
   });
 
-  it('handles null category as uncategorized', async () => {
+  it('excludes null category articles', async () => {
     prismaMock.$queryRaw
-      .mockResolvedValueOnce([{ category: null, count: BigInt(15) }])
+      .mockResolvedValueOnce([
+        { category: 'ai_ml', count: BigInt(10) },
+        { category: null, count: BigInt(15) },
+      ])
       .mockResolvedValueOnce([]);
 
     const response = await GET(createRequest());
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.categories[0].category).toBe('uncategorized');
-    expect(data.categories[0].count).toBe(15);
-    expect(data.categories[0].changeRate).toBe(100);
+    expect(data.categories).toHaveLength(1);
+    expect(data.categories[0].category).toBe('ai_ml');
+    expect(data.categories[0].share).toBe(100);
   });
 
   it('filters out categories with 0 articles', async () => {

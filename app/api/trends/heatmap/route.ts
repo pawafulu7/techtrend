@@ -72,7 +72,7 @@ async function handler(request: NextRequest) {
     }
 
     const period = periodParam as Period;
-    const cacheKey = `heatmap:${period}`;
+    const cacheKey = `heatmap:v3:${period}`;
 
     const heatmapData = await trendsCache.getOrSet(cacheKey, async () => {
       const queries = buildQueries(period);
@@ -81,30 +81,48 @@ async function handler(request: NextRequest) {
         queries.previous,
       ]);
 
-      const previousMap = new Map<string, number>();
-      for (const row of previousRows) {
-        const cat = row.category || 'uncategorized';
-        previousMap.set(cat, Number(row.count));
+      // Filter out uncategorized (null category) articles
+      const currentCategorized = currentRows.filter((r) => r.category != null);
+      const previousCategorized = previousRows.filter(
+        (r) => r.category != null
+      );
+
+      // Calculate totals for share-based calculation
+      const currentTotal = currentCategorized.reduce(
+        (sum, r) => sum + Number(r.count),
+        0
+      );
+      const previousTotal = previousCategorized.reduce(
+        (sum, r) => sum + Number(r.count),
+        0
+      );
+
+      const previousShareMap = new Map<string, number>();
+      if (previousTotal > 0) {
+        for (const row of previousCategorized) {
+          const share = (Number(row.count) / previousTotal) * 100;
+          previousShareMap.set(row.category!, share);
+        }
       }
 
-      const categories = currentRows
+      const categories = currentCategorized
         .map((row) => {
-          const name = row.category || 'uncategorized';
-          const displayName = row.category || '\u305d\u306e\u4ed6';
           const count = Number(row.count);
-          const previousCount = previousMap.get(name) || 0;
+          const currentShare =
+            currentTotal > 0 ? (count / currentTotal) * 100 : 0;
+          const previousShare = previousShareMap.get(row.category!) ?? 0;
+          // changeRate = difference in share (percentage points)
           const changeRate =
-            previousCount > 0
-              ? Math.round(((count - previousCount) / previousCount) * 100)
-              : count > 0
-                ? 100
-                : 0;
+            previousTotal > 0
+              ? Math.round((currentShare - previousShare) * 10) / 10
+              : 0;
 
           return {
-            category: name,
-            label: displayName,
+            category: row.category!,
+            label: row.category!,
             count,
-            previousCount,
+            share: Math.round(currentShare * 10) / 10,
+            previousShare: Math.round(previousShare * 10) / 10,
             changeRate,
           };
         })

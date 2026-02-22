@@ -15,7 +15,8 @@ interface CategoryData {
   category: string;
   label: string;
   count: number;
-  previousCount: number;
+  share: number;
+  previousShare: number;
   changeRate: number;
 }
 
@@ -37,14 +38,14 @@ type TreemapNode = HierarchyRectangularNode<
 >;
 
 const changeColorScale = scaleLinear<string>()
-  .domain([-50, 0, 50])
-  .range(['rgb(220,50,50)', 'rgb(120,120,120)', 'rgb(34,197,94)'])
+  .domain([-2, 0, 2])
+  .range(['rgb(220,50,50)', 'rgb(160,160,160)', 'rgb(34,197,94)'])
   .interpolate(interpolateRgb)
   .clamp(true);
 
-function formatChangeRate(rate: number): string {
+function formatPt(rate: number): string {
   const sign = rate >= 0 ? '+' : '';
-  return `${sign}${rate.toFixed(1)}%`;
+  return `${sign}${rate.toFixed(1)}pt`;
 }
 
 export function TechSectorTreemap({
@@ -62,26 +63,38 @@ export function TechSectorTreemap({
   });
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
 
-  // Observe container size
+  // Observe container size once the treemap container is actually rendered.
+  // Initial mount can be a loading/empty branch where containerRef is null.
   useEffect(() => {
+    if (loading || data.length === 0) return;
+
     const container = containerRef.current;
     if (!container) return;
 
+    const updateDimensions = (width: number) => {
+      if (width > 0) {
+        const next = {
+          width,
+          height: Math.max(400, width * 0.6),
+        };
+        setDimensions((prev) =>
+          prev.width === next.width && prev.height === next.height ? prev : next
+        );
+      }
+    };
+
+    // Read initial size immediately
+    updateDimensions(container.clientWidth);
+
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const { width } = entry.contentRect;
-        if (width > 0) {
-          setDimensions({
-            width,
-            height: Math.max(400, width * 0.6),
-          });
-        }
+        updateDimensions(entry.contentRect.width);
       }
     });
 
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [loading, data.length]);
 
   // Compute treemap layout
   const nodes = useMemo(() => {
@@ -102,7 +115,10 @@ export function TechSectorTreemap({
     layout(root);
 
     return (root.leaves() as TreemapNode[]).filter(
-      (node) => node.x1 - node.x0 > 0 && node.y1 - node.y0 > 0
+      (node) =>
+        node.x1 - node.x0 > 0 &&
+        node.y1 - node.y0 > 0 &&
+        'category' in node.data
     );
   }, [data, dimensions]);
 
@@ -218,6 +234,7 @@ export function TechSectorTreemap({
       <div
         ref={containerRef}
         className="relative"
+        style={{ minHeight: dimensions.height || 400 }}
         onMouseLeave={handleMouseLeave}
       >
         {dimensions.width > 0 && (
@@ -229,6 +246,8 @@ export function TechSectorTreemap({
           >
             {nodes.map((node) => {
               const d = node.data as CategoryData;
+              if (!d.category) return null;
+              const displayLabel = d.label ?? d.category;
               const w = node.x1 - node.x0;
               const h = node.y1 - node.y0;
               const isHovered = hoveredCategory === d.category;
@@ -238,7 +257,7 @@ export function TechSectorTreemap({
                   key={d.category}
                   role="button"
                   tabIndex={0}
-                  aria-label={`${d.label}: ${d.count}件, 変化率${formatChangeRate(d.changeRate)}`}
+                  aria-label={`${displayLabel}: ${d.share}%, ${d.count}件, 変化${formatPt(d.changeRate)}`}
                   className="cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white"
                   onClick={() => handleCellClick(d.category)}
                   onKeyDown={(e) => handleKeyDown(e, d.category)}
@@ -277,12 +296,12 @@ export function TechSectorTreemap({
                       fontWeight="600"
                       className="pointer-events-none select-none"
                     >
-                      {d.label.length > Math.floor(w / 10)
-                        ? d.label.slice(0, Math.floor(w / 10)) + '...'
-                        : d.label}
+                      {displayLabel.length > Math.floor(w / 10)
+                        ? displayLabel.slice(0, Math.floor(w / 10)) + '...'
+                        : displayLabel}
                     </text>
                   )}
-                  {/* Change rate */}
+                  {/* Share percentage */}
                   {w > 60 && h > 60 && (
                     <text
                       x={node.x0 + w / 2}
@@ -290,13 +309,14 @@ export function TechSectorTreemap({
                       textAnchor="middle"
                       dominantBaseline="central"
                       fill="rgba(255,255,255,0.9)"
-                      fontSize={Math.min(12, w / 9)}
+                      fontSize={Math.min(14, w / 8)}
+                      fontWeight="500"
                       className="pointer-events-none select-none"
                     >
-                      {formatChangeRate(d.changeRate)}
+                      {d.share.toFixed(1)}%
                     </text>
                   )}
-                  {/* Count */}
+                  {/* Change rate in pt */}
                   {w > 80 && h > 80 && (
                     <text
                       x={node.x0 + w / 2}
@@ -307,7 +327,7 @@ export function TechSectorTreemap({
                       fontSize={Math.min(11, w / 10)}
                       className="pointer-events-none select-none"
                     >
-                      {d.count}件
+                      {formatPt(d.changeRate)}
                     </text>
                   )}
                 </g>
@@ -325,10 +345,13 @@ export function TechSectorTreemap({
               maxWidth: 200,
             }}
           >
-            <div className="text-sm font-semibold">{tooltip.data.label}</div>
+            <div className="text-sm font-semibold">
+              {tooltip.data.label ?? tooltip.data.category}
+            </div>
             <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
+              <div>シェア: {tooltip.data.share}%</div>
               <div>記事数: {tooltip.data.count}件</div>
-              <div>前期: {tooltip.data.previousCount}件</div>
+              <div>前期シェア: {tooltip.data.previousShare}%</div>
               <div
                 className={cn(
                   'font-medium',
@@ -339,7 +362,7 @@ export function TechSectorTreemap({
                       : ''
                 )}
               >
-                変化率: {formatChangeRate(tooltip.data.changeRate)}
+                変化: {formatPt(tooltip.data.changeRate)}
               </div>
             </div>
           </div>

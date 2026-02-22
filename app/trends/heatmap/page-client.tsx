@@ -29,7 +29,8 @@ interface CategoryData {
   category: string;
   label: string;
   count: number;
-  previousCount: number;
+  share: number;
+  previousShare: number;
   changeRate: number;
 }
 
@@ -47,11 +48,14 @@ interface DrilldownArticle {
   url: string;
   publishedAt: string;
   source?: { name: string } | null;
-  tags?: Array<{ tag: { name: string } }>;
+  tags?: Array<{ name: string }>;
 }
 
 interface ArticlesApiResponse {
-  articles?: DrilldownArticle[];
+  success?: boolean;
+  data?: {
+    items?: DrilldownArticle[];
+  };
   error?: string;
 }
 
@@ -175,7 +179,7 @@ export function HeatmapPageClient() {
         }
 
         const result: ArticlesApiResponse = await response.json();
-        setDrilldownArticles(result.articles ?? []);
+        setDrilldownArticles(result.data?.items ?? []);
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         if (process.env.NODE_ENV !== 'production') {
@@ -263,10 +267,10 @@ export function HeatmapPageClient() {
       {/* Legend */}
       {!loading && heatmapData.length > 0 && (
         <div className="flex items-center justify-center gap-4 text-xs">
-          <span className="text-muted-foreground">変化率:</span>
+          <span className="text-muted-foreground">シェア変化:</span>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded-sm bg-red-500" />
-            <span className="text-muted-foreground">減少</span>
+            <span className="text-muted-foreground">シェア低下</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded-sm bg-gray-500" />
@@ -274,7 +278,7 @@ export function HeatmapPageClient() {
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded-sm bg-green-500" />
-            <span className="text-muted-foreground">増加</span>
+            <span className="text-muted-foreground">シェア上昇</span>
           </div>
         </div>
       )}
@@ -336,10 +340,10 @@ export function HeatmapPageClient() {
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {article.tags.slice(0, 5).map((t) => (
                             <span
-                              key={t.tag.name}
+                              key={t.name}
                               className="bg-muted rounded px-1.5 py-0.5 text-[10px]"
                             >
-                              {t.tag.name}
+                              {t.name}
                             </span>
                           ))}
                         </div>
