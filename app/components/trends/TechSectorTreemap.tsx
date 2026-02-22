@@ -242,7 +242,7 @@ export function TechSectorTreemap({
                   key={d.category}
                   role="button"
                   tabIndex={0}
-                  aria-label={`${displayLabel}: ${d.share}%, ${d.count}件, 変化${formatPt(d.changeRate)}`}
+                  aria-label={`${displayLabel}: ${d.share.toFixed(1)}%, ${d.count}件, 変化${formatPt(d.changeRate)}`}
                   className="cursor-pointer outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white"
                   onClick={() => handleCellClick(d.category)}
                   onKeyDown={(e) => handleKeyDown(e, d.category)}
