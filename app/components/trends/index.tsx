@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import type { ElementType } from 'react';
-import { TrendingUp, PieChart as PieChartIcon } from 'lucide-react';
+import { TrendingUp, PieChart as PieChartIcon, Grid3X3 } from 'lucide-react';
 
 /**
  * Chart loading skeleton component
@@ -49,6 +49,19 @@ export const TrendLineChart = dynamic(
   {
     loading: () => (
       <ChartSkeleton title="タグトレンドの推移" icon={TrendingUp} />
+    ),
+    ssr: false,
+  }
+);
+
+export const TechSectorTreemap = dynamic(
+  () =>
+    import('./TechSectorTreemap').then((mod) => ({
+      default: mod.TechSectorTreemap,
+    })),
+  {
+    loading: () => (
+      <ChartSkeleton title="テックセクターマップ" icon={Grid3X3} />
     ),
     ssr: false,
   }
