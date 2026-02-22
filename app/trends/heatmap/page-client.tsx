@@ -34,9 +34,9 @@ interface CategoryData {
 }
 
 interface HeatmapApiResponse {
-  success: boolean;
-  data?: CategoryData[];
+  categories?: CategoryData[];
   period?: string;
+  generatedAt?: string;
   error?: string;
 }
 
@@ -115,7 +115,7 @@ export function HeatmapPageClient() {
         setError(result.error);
         setHeatmapData([]);
       } else {
-        setHeatmapData(result.data ?? []);
+        setHeatmapData(result.categories ?? []);
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;

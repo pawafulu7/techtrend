@@ -19,36 +19,39 @@ function buildQueries(period: Period) {
       return {
         current: prisma.$queryRaw<CategoryRow[]>`
           SELECT category, COUNT(*) as count FROM "Article"
-          WHERE "publishedAt" >= NOW() - INTERVAL '1 day'
+          WHERE "publishedAt" >= CURRENT_DATE - INTERVAL '1 day'
+            AND "publishedAt" < CURRENT_DATE
           GROUP BY category`,
         previous: prisma.$queryRaw<CategoryRow[]>`
           SELECT category, COUNT(*) as count FROM "Article"
-          WHERE "publishedAt" >= NOW() - INTERVAL '2 days'
-            AND "publishedAt" < NOW() - INTERVAL '1 day'
+          WHERE "publishedAt" >= CURRENT_DATE - INTERVAL '2 days'
+            AND "publishedAt" < CURRENT_DATE - INTERVAL '1 day'
           GROUP BY category`,
       };
     case 'week':
       return {
         current: prisma.$queryRaw<CategoryRow[]>`
           SELECT category, COUNT(*) as count FROM "Article"
-          WHERE "publishedAt" >= NOW() - INTERVAL '7 days'
+          WHERE "publishedAt" >= CURRENT_DATE - INTERVAL '7 days'
+            AND "publishedAt" < CURRENT_DATE
           GROUP BY category`,
         previous: prisma.$queryRaw<CategoryRow[]>`
           SELECT category, COUNT(*) as count FROM "Article"
-          WHERE "publishedAt" >= NOW() - INTERVAL '14 days'
-            AND "publishedAt" < NOW() - INTERVAL '7 days'
+          WHERE "publishedAt" >= CURRENT_DATE - INTERVAL '14 days'
+            AND "publishedAt" < CURRENT_DATE - INTERVAL '7 days'
           GROUP BY category`,
       };
     case 'month':
       return {
         current: prisma.$queryRaw<CategoryRow[]>`
           SELECT category, COUNT(*) as count FROM "Article"
-          WHERE "publishedAt" >= NOW() - INTERVAL '30 days'
+          WHERE "publishedAt" >= CURRENT_DATE - INTERVAL '30 days'
+            AND "publishedAt" < CURRENT_DATE
           GROUP BY category`,
         previous: prisma.$queryRaw<CategoryRow[]>`
           SELECT category, COUNT(*) as count FROM "Article"
-          WHERE "publishedAt" >= NOW() - INTERVAL '60 days'
-            AND "publishedAt" < NOW() - INTERVAL '30 days'
+          WHERE "publishedAt" >= CURRENT_DATE - INTERVAL '60 days'
+            AND "publishedAt" < CURRENT_DATE - INTERVAL '30 days'
           GROUP BY category`,
       };
   }
@@ -98,9 +101,10 @@ async function handler(request: NextRequest) {
                 : 0;
 
           return {
-            name,
-            displayName,
+            category: name,
+            label: displayName,
             count,
+            previousCount,
             changeRate,
           };
         })

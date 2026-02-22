@@ -70,7 +70,7 @@ describe('/api/trends/heatmap', () => {
 
     // ai_ml: (50-40)/40 = 25%
     const aiCategory = data.categories.find(
-      (c: any) => c.name === 'ai_ml'
+      (c: any) => c.category === 'ai_ml'
     );
     expect(aiCategory).toBeDefined();
     expect(aiCategory.count).toBe(50);
@@ -78,15 +78,15 @@ describe('/api/trends/heatmap', () => {
 
     // frontend: (20-25)/25 = -20%
     const feCategory = data.categories.find(
-      (c: any) => c.name === 'frontend'
+      (c: any) => c.category === 'frontend'
     );
     expect(feCategory).toBeDefined();
     expect(feCategory.count).toBe(20);
     expect(feCategory.changeRate).toBe(-20);
 
     // sorted by count desc
-    expect(data.categories[0].name).toBe('ai_ml');
-    expect(data.categories[1].name).toBe('frontend');
+    expect(data.categories[0].category).toBe('ai_ml');
+    expect(data.categories[1].category).toBe('frontend');
 
     // Cache-Control header
     expect(response.headers.get('Cache-Control')).toBe(
@@ -124,7 +124,7 @@ describe('/api/trends/heatmap', () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.categories[0].name).toBe('uncategorized');
+    expect(data.categories[0].category).toBe('uncategorized');
     expect(data.categories[0].count).toBe(15);
     expect(data.categories[0].changeRate).toBe(100);
   });
@@ -141,6 +141,6 @@ describe('/api/trends/heatmap', () => {
     const data = await response.json();
 
     expect(data.categories).toHaveLength(1);
-    expect(data.categories[0].name).toBe('ai_ml');
+    expect(data.categories[0].category).toBe('ai_ml');
   });
 });
