@@ -14,17 +14,9 @@ import {
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { TechSectorTreemap } from '@/app/components/trends';
+import type { CategoryData } from '@/app/components/trends/TechSectorTreemap';
 
 type Period = 'day' | 'week' | 'month';
-
-interface CategoryData {
-  category: string;
-  label: string;
-  count: number;
-  share: number;
-  previousShare: number;
-  changeRate: number;
-}
 
 interface HeatmapApiResponse {
   categories?: CategoryData[];

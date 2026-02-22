@@ -11,7 +11,7 @@ import { scaleLinear } from 'd3-scale';
 import { interpolateRgb } from 'd3-interpolate';
 import { cn } from '@/lib/utils';
 
-interface CategoryData {
+export interface CategoryData {
   category: string;
   label: string;
   count: number;
@@ -213,18 +213,7 @@ export function TechSectorTreemap({
   return (
     <div className="bg-background rounded-lg border p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
-        <svg
-          className="h-4 w-4 text-(--tt-color-secondary)"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <rect x="3" y="3" width="7" height="7" />
-          <rect x="14" y="3" width="7" height="7" />
-          <rect x="3" y="14" width="7" height="7" />
-          <rect x="14" y="14" width="7" height="7" />
-        </svg>
+        <SectorMapIcon className="h-4 w-4 text-(--tt-color-secondary)" />
         <h3 className="text-sm font-semibold">テックセクターマップ</h3>
       </div>
       <div
@@ -345,9 +334,9 @@ export function TechSectorTreemap({
               {tooltip.data.label ?? tooltip.data.category}
             </div>
             <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
-              <div>シェア: {tooltip.data.share}%</div>
+              <div>シェア: {tooltip.data.share.toFixed(1)}%</div>
               <div>記事数: {tooltip.data.count}件</div>
-              <div>前期シェア: {tooltip.data.previousShare}%</div>
+              <div>前期シェア: {tooltip.data.previousShare.toFixed(1)}%</div>
               <div
                 className={cn(
                   'font-medium',
