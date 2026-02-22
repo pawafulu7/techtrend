@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PCA } from 'ml-pca';
 import { UMAP } from 'umap-js';
-import kmeans from 'ml-kmeans';
+import { kmeans } from 'ml-kmeans';
 
 const prisma = new PrismaClient();
 
