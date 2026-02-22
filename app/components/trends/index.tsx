@@ -2,7 +2,12 @@
 
 import dynamic from 'next/dynamic';
 import type { ElementType } from 'react';
-import { TrendingUp, PieChart as PieChartIcon, Grid3X3 } from 'lucide-react';
+import {
+  TrendingUp,
+  PieChart as PieChartIcon,
+  Grid3X3,
+  Globe,
+} from 'lucide-react';
 
 /**
  * Chart loading skeleton component
@@ -62,6 +67,17 @@ export const TechSectorTreemap = dynamic(
   {
     loading: () => (
       <ChartSkeleton title="テックセクターマップ" icon={Grid3X3} />
+    ),
+    ssr: false,
+  }
+);
+
+export const SemanticAtlas = dynamic(
+  () =>
+    import('./SemanticAtlas').then((mod) => ({ default: mod.SemanticAtlas })),
+  {
+    loading: () => (
+      <ChartSkeleton title="セマンティックアトラス" icon={Globe} />
     ),
     ssr: false,
   }

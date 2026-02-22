@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { TrendingUp, Calendar, GitCompare, Grid3X3 } from 'lucide-react';
+import { TrendingUp, Calendar, GitCompare, Grid3X3, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const trendNavItems = [
@@ -13,6 +13,12 @@ const trendNavItems = [
     href: '/trends/heatmap',
     label: 'セクターマップ',
     icon: Grid3X3,
+    exact: false,
+  },
+  {
+    href: '/trends/semantic-atlas',
+    label: 'セマンティックアトラス',
+    icon: Globe,
     exact: false,
   },
 ] as const;
