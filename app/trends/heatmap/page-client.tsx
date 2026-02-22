@@ -78,7 +78,7 @@ export function HeatmapPageClient() {
 
   // Drilldown state
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [drilldownCategory, setDrilldownCategory] = useState<string | null>(
+  const [_drilldownCategory, setDrilldownCategory] = useState<string | null>(
     null
   );
   const [drilldownLabel, setDrilldownLabel] = useState<string>('');
