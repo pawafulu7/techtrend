@@ -90,6 +90,7 @@ export function HeatmapPageClient() {
     DrilldownArticle[]
   >([]);
   const [drilldownLoading, setDrilldownLoading] = useState(false);
+  const [drilldownError, setDrilldownError] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const drilldownAbortRef = useRef<AbortController | null>(null);
@@ -139,6 +140,7 @@ export function HeatmapPageClient() {
     fetchHeatmap(period);
     return () => {
       abortRef.current?.abort();
+      drilldownAbortRef.current?.abort();
     };
   }, [period, fetchHeatmap]);
 
@@ -162,6 +164,7 @@ export function HeatmapPageClient() {
       setSheetOpen(true);
       setDrilldownLoading(true);
       setDrilldownArticles([]);
+      setDrilldownError(false);
 
       drilldownAbortRef.current?.abort();
       const controller = new AbortController();
@@ -186,6 +189,7 @@ export function HeatmapPageClient() {
           console.error('Failed to fetch drilldown articles:', err);
         }
         setDrilldownArticles([]);
+        setDrilldownError(true);
       } finally {
         if (!controller.signal.aborted) {
           setDrilldownLoading(false);
@@ -306,6 +310,25 @@ export function HeatmapPageClient() {
                     className="h-16 animate-pulse rounded-md bg-(--tt-color-surface-muted)"
                   />
                 ))}
+              </div>
+            ) : drilldownError ? (
+              <div className="py-8 text-center">
+                <p className="text-muted-foreground text-sm">
+                  記事の取得に失敗しました
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 gap-2"
+                  onClick={() => {
+                    if (_drilldownCategory) {
+                      handleCategoryClick(_drilldownCategory);
+                    }
+                  }}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  再試行
+                </Button>
               </div>
             ) : drilldownArticles.length > 0 ? (
               drilldownArticles.map((article) => (
