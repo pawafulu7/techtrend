@@ -226,24 +226,6 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     telemetryEvent: 'ratelimit.admin.social-post-write',
   },
 
-  // Tech Map (Read Operations)
-  'read:tech-map': {
-    points: 60,
-    duration: 60,
-    blockDuration: 0,
-    keyStrategy: 'ip',
-    notes: 'Tech map entity listing',
-    telemetryEvent: 'ratelimit.read.tech-map',
-  },
-  'read:tech-map-graph': {
-    points: 30,
-    duration: 60,
-    blockDuration: 0,
-    keyStrategy: 'ip',
-    notes: 'Tech map graph traversal (computation-heavy)',
-    telemetryEvent: 'ratelimit.read.tech-map-graph',
-  },
-
   // Default Catch-All - No block
   default: {
     points: 100,

@@ -55,7 +55,6 @@ describe('Header', () => {
       expect(screen.getByTestId('nav-link-人気')).toBeInTheDocument();
       expect(screen.getByTestId('nav-link-ソース')).toBeInTheDocument();
       expect(screen.getByTestId('nav-link-トレンド')).toBeInTheDocument();
-      expect(screen.getByTestId('nav-link-技術マップ')).toBeInTheDocument();
       expect(screen.getByTestId('nav-link-統計')).toBeInTheDocument();
     });
 
@@ -198,7 +197,6 @@ describe('Header', () => {
         { testId: 'nav-link-人気', href: '/popular' },
         { testId: 'nav-link-ソース', href: '/sources' },
         { testId: 'nav-link-トレンド', href: '/trends' },
-        { testId: 'nav-link-技術マップ', href: '/tech-map' },
         { testId: 'nav-link-統計', href: '/stats' },
       ];
 
