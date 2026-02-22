@@ -21,7 +21,7 @@ for envfile in "$ROOT_DIR/.env.local" "$ROOT_DIR/.env"; do
     if [ -n "$db_line" ]; then
       db_url="${db_line#*=}"
       # 先頭末尾の空白を除去
-      db_url="$(echo -n "$db_url" | sed -E 's/^\s+|\s+$//g')"
+      db_url="$(echo -n "$db_url" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
       # 行末コメント（スペース+#）を除去（URL内の#は保持）
       db_url="$(echo -n "$db_url" | sed -E 's/[[:space:]]+#.*$//')"
       # 囲みのダブルクオートを除去
@@ -80,7 +80,7 @@ for candidate in \
 done
 # PATH上のpg_dumpをバージョン確認付きでフォールバック
 if [ -z "$PG_DUMP" ] && command -v pg_dump >/dev/null 2>&1; then
-  PG_DUMP_VER=$(pg_dump --version | grep -oP '\d+' | head -1)
+  PG_DUMP_VER=$(pg_dump --version | grep -oE '[0-9]+' | head -1)
   if [ "$PG_DUMP_VER" = "17" ]; then
     PG_DUMP="$(command -v pg_dump)"
   fi
@@ -90,9 +90,14 @@ if [ -z "$PG_DUMP" ]; then
   exit 1
 fi
 
+# パスワードをCLI引数に渡さないようPGPASSWORDを設定
+export PGPASSWORD
+PGPASSWORD="$(echo "$PROD_DATABASE_URL" | sed -E 's|^[^:]+://[^:]+:([^@]+)@.*|\1|')"
+PG_CONN_NOPASS="$(echo "$PROD_DATABASE_URL" | sed -E 's|://([^:]+):[^@]+@|://\1@|')"
+
 # TRUNCATE 前に本番DBへの接続を確認
 echo "[sync] 本番DBへの接続を確認中..."
-if ! "$PG_DUMP" "$PROD_DATABASE_URL" --format=custom --schema-only 2>/dev/null | head -c 1 > /dev/null; then
+if ! "$PG_DUMP" "$PG_CONN_NOPASS" --format=custom --schema-only > /dev/null 2>&1; then
   echo "[sync] ERROR: 本番DBに接続できません。PROD_DATABASE_URL を確認してください。"
   exit 1
 fi
@@ -119,7 +124,7 @@ echo "[sync] pg_dump を実行中..."
 
 # パイプアプローチ: pg_dump (PG17) | docker exec pg_restore (PG17コンテナ)
 # --clean なし: 事前にTRUNCATE済みなのでデータ挿入のみ
-"$PG_DUMP" "$PROD_DATABASE_URL" \
+"$PG_DUMP" "$PG_CONN_NOPASS" \
   --format=custom \
   --no-owner \
   --no-privileges \
