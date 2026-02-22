@@ -137,7 +137,7 @@ describe('/api/trends/semantic-atlas', () => {
       expect(data.totalCount).toBe(2);
       expect(data.generatedAt).toBe(now.toISOString());
       expect(response.headers.get('Cache-Control')).toBe(
-        'public, s-maxage=3600'
+        'public, s-maxage=3600, stale-while-revalidate=7200'
       );
     });
 
