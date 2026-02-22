@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -14,14 +13,7 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-
-const TechSectorTreemap = dynamic(
-  () =>
-    import('@/app/components/trends/TechSectorTreemap').then(
-      (mod) => mod.TechSectorTreemap
-    ),
-  { ssr: false }
-);
+import { TechSectorTreemap } from '@/app/components/trends';
 
 type Period = 'day' | 'week' | 'month';
 
@@ -82,7 +74,7 @@ export function HeatmapPageClient() {
 
   // Drilldown state
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [_drilldownCategory, setDrilldownCategory] = useState<string | null>(
+  const [drilldownCategory, setDrilldownCategory] = useState<string | null>(
     null
   );
   const [drilldownLabel, setDrilldownLabel] = useState<string>('');
@@ -320,9 +312,10 @@ export function HeatmapPageClient() {
                   variant="outline"
                   size="sm"
                   className="mt-3 gap-2"
+                  disabled={!drilldownCategory}
                   onClick={() => {
-                    if (_drilldownCategory) {
-                      handleCategoryClick(_drilldownCategory);
+                    if (drilldownCategory) {
+                      handleCategoryClick(drilldownCategory);
                     }
                   }}
                 >

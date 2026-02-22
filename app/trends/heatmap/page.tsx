@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { HeatmapPageClient } from './page-client';
 
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function HeatmapPage() {
-  return <HeatmapPageClient />;
+  return (
+    <Suspense fallback={null}>
+      <HeatmapPageClient />
+    </Suspense>
+  );
 }

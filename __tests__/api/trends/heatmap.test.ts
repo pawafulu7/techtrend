@@ -103,8 +103,8 @@ describe('/api/trends/heatmap', () => {
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.error).toContain('Invalid period');
-    expect(data.error).toContain('year');
+    expect(data.error).toContain('Invalid period parameter');
+    expect(data.error).not.toContain('year');
   });
 
   it('defaults to week period', async () => {
@@ -134,6 +134,24 @@ describe('/api/trends/heatmap', () => {
     expect(data.categories).toHaveLength(1);
     expect(data.categories[0].category).toBe('ai_ml');
     expect(data.categories[0].share).toBe(100);
+  });
+
+  it('returns 500 when database query fails', async () => {
+    prismaMock.$queryRaw.mockRejectedValueOnce(new Error('DB error'));
+    const response = await GET(createRequest());
+    const data = await response.json();
+    expect(response.status).toBe(500);
+    expect(data.error).toBeDefined();
+  });
+
+  it('includes generatedAt field in response', async () => {
+    prismaMock.$queryRaw
+      .mockResolvedValueOnce([{ category: 'ai_ml', count: BigInt(10) }])
+      .mockResolvedValueOnce([]);
+    const response = await GET(createRequest());
+    const data = await response.json();
+    expect(data.generatedAt).toBeDefined();
+    expect(new Date(data.generatedAt).getTime()).not.toBeNaN();
   });
 
   it('filters out categories with 0 articles', async () => {

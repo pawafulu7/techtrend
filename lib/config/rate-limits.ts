@@ -185,7 +185,7 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     points: 60,
     duration: 60,
     blockDuration: 0,
-    keyStrategy: 'ip' as const,
+    keyStrategy: 'ip',
     notes: 'Heatmap category analysis',
     telemetryEvent: 'ratelimit.read.heatmap',
   },

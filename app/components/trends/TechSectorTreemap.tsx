@@ -43,6 +43,23 @@ const changeColorScale = scaleLinear<string>()
   .interpolate(interpolateRgb)
   .clamp(true);
 
+function SectorMapIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+    </svg>
+  );
+}
+
 function formatPt(rate: number): string {
   const sign = rate >= 0 ? '+' : '';
   return `${sign}${rate.toFixed(1)}pt`;
@@ -133,15 +150,16 @@ export function TechSectorTreemap({
 
       // Flip tooltip when near right edge
       const flipX = x > dimensions.width - 200;
+      const clampedY = Math.max(10, Math.min(y - 10, dimensions.height - 100));
 
       setTooltip({
         visible: true,
         x: flipX ? x - 210 : x + 10,
-        y: y - 10,
+        y: clampedY,
         data: nodeData,
       });
     },
-    [dimensions.width]
+    [dimensions.width, dimensions.height]
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -170,18 +188,7 @@ export function TechSectorTreemap({
     return (
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
-          <svg
-            className="h-4 w-4 text-(--tt-color-secondary)"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <rect x="3" y="3" width="7" height="7" />
-            <rect x="14" y="3" width="7" height="7" />
-            <rect x="3" y="14" width="7" height="7" />
-            <rect x="14" y="14" width="7" height="7" />
-          </svg>
+          <SectorMapIcon className="h-4 w-4 text-(--tt-color-secondary)" />
           <h3 className="text-sm font-semibold">テックセクターマップ</h3>
         </div>
         <div className="h-[400px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
@@ -193,18 +200,7 @@ export function TechSectorTreemap({
     return (
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
-          <svg
-            className="h-4 w-4 text-(--tt-color-secondary)"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <rect x="3" y="3" width="7" height="7" />
-            <rect x="14" y="3" width="7" height="7" />
-            <rect x="3" y="14" width="7" height="7" />
-            <rect x="14" y="14" width="7" height="7" />
-          </svg>
+          <SectorMapIcon className="h-4 w-4 text-(--tt-color-secondary)" />
           <h3 className="text-sm font-semibold">テックセクターマップ</h3>
         </div>
         <div className="text-muted-foreground flex h-[400px] items-center justify-center">

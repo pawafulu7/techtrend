@@ -63,9 +63,10 @@ async function handler(request: NextRequest) {
     const periodParam = searchParams.get('period') || 'week';
 
     if (!VALID_PERIODS.includes(periodParam as Period)) {
+      logger.warn({ periodParam }, 'Invalid period parameter received');
       return NextResponse.json(
         {
-          error: `Invalid period: ${periodParam}. Must be one of: ${VALID_PERIODS.join(', ')}`,
+          error: `Invalid period parameter. Must be one of: ${VALID_PERIODS.join(', ')}`,
         },
         { status: 400 }
       );
