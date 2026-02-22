@@ -135,7 +135,8 @@
     "backfill:embeddings": "dotenv -e .env -- tsx scripts/rag/backfill-embeddings.ts",
     "backfill:embeddings:dry": "dotenv -e .env -- tsx scripts/rag/backfill-embeddings.ts --dry-run",
     "worker:embedding": "dotenv -e .env -- tsx scripts/dev/run-embedding-worker.ts",
-    "worker:embedding:dry": "dotenv -e .env -- tsx scripts/dev/run-embedding-worker.ts --dry-run"
+    "worker:embedding:dry": "dotenv -e .env -- tsx scripts/dev/run-embedding-worker.ts --dry-run",
+    "atlas:compute": "tsx scripts/compute-atlas.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.52",
@@ -260,6 +261,8 @@
     "jest-ctrf-json-reporter": "^0.0.10",
     "jest-environment-jsdom": "^30.1.2",
     "jest-mock-extended": "^4.0.0",
+    "ml-kmeans": "^7.0.0",
+    "ml-pca": "^4.1.1",
     "msw": "^2.11.2",
     "playwright-ctrf-json-reporter": "^0.0.27",
     "prettier": "^3.6.2",
@@ -269,6 +272,7 @@
     "tsx": "^4.20.5",
     "tw-animate-css": "^1.3.8",
     "typescript": "^5.8.3",
+    "umap-js": "^1.4.0",
     "undici": "^7.18.2",
     "web-streams-polyfill": "^4.2.0",
     "whatwg-fetch": "^3.6.20"

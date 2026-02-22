@@ -118,6 +118,7 @@ model Article {
   embeddingJob           EmbeddingJob?
   comments               Comment[]
   codeTips               CodeTip[]
+  projection             ArticleProjection?
   techMentions           ArticleTechMention[]
   relationEvidence       TechRelationEvidence[]
 
@@ -316,6 +317,21 @@ model ArticleEmbedding {
   @@index([model, version], map: "idx_article_embedding_model_version")
   @@index([embeddingKey], map: "idx_article_embedding_key")
   @@index([computedAt], map: "idx_article_embedding_computed_at")
+}
+
+model ArticleProjection {
+  id         String   @id @default(cuid())
+  articleId  String   @unique
+  x2d        Float
+  y2d        Float
+  x3d        Float
+  y3d        Float
+  z3d        Float
+  clusterId  Int
+  computedAt DateTime @default(now()) @db.Timestamptz(6)
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([clusterId])
 }
 
 enum JobStatus {
