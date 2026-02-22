@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { CardV2, CardV2Content } from '@/components/ui-v2/card-v2';
 import { TrendScoreCard } from './components/TrendScoreCard';
@@ -9,15 +8,7 @@ import { MaturityBadge } from './components/MaturityBadge';
 import type {
   TrendScoreResult,
   TechMaturityStage,
-  ScoreHistoryPoint,
 } from '@/lib/types/trend-types';
-
-const TrendScoreChart = dynamic(() => import('./components/TrendScoreChart'), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[250px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
-  ),
-});
 
 type StageFilter = 'ALL' | TechMaturityStage;
 type SortOption = 'score' | 'name' | 'stage';
@@ -62,9 +53,6 @@ export default function ScoringPageClient({
   const [sortBy, setSortBy] = useState<SortOption>('score');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
-  const [history, setHistory] = useState<ScoreHistoryPoint[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const filteredAndSorted = useMemo(() => {
     let result = [...scores];
@@ -102,24 +90,11 @@ export default function ScoringPageClient({
     [scores, selectedEntityId]
   );
 
-  const fetchHistory = useCallback(async (_entityId: string) => {
-    // Tech map API removed - history data no longer available
-    setHistory([]);
-    setHistoryLoading(false);
-  }, []);
-
   const handleCardClick = useCallback(
     (entityId: string) => {
-      if (selectedEntityId === entityId) {
-        setSelectedEntityId(null);
-        setHistory([]);
-        setHistoryError(null);
-      } else {
-        setSelectedEntityId(entityId);
-        fetchHistory(entityId);
-      }
+      setSelectedEntityId(selectedEntityId === entityId ? null : entityId);
     },
-    [selectedEntityId, fetchHistory]
+    [selectedEntityId]
   );
 
   return (
@@ -221,10 +196,6 @@ export default function ScoringPageClient({
                 {Math.round(selectedScore.score)}
               </div>
             </div>
-            <TrendScoreChart data={history} loading={historyLoading} />
-            {historyError && (
-              <p className="mt-2 text-sm text-red-500">{historyError}</p>
-            )}
           </CardV2Content>
         </CardV2>
       )}

@@ -2,6 +2,10 @@
 export class RedisCache {
   static lastInstance: RedisCache | null = null;
 
+  static reset() {
+    RedisCache.lastInstance = null;
+  }
+
   constructor(options?: any) {
     RedisCache.lastInstance = this;
   }
