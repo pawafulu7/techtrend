@@ -1,7 +1,7 @@
 # PostgreSQL with pgvector and Japanese locale support
-# Based on official pgvector/pgvector:pg15 image
+# Based on official pgvector/pgvector:pg17 image
 
-FROM pgvector/pgvector:pg15
+FROM pgvector/pgvector:pg17
 
 # Install Japanese locale support
 RUN apt-get update && \
