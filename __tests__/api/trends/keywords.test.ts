@@ -199,7 +199,7 @@ describe('/api/trends/keywords', () => {
     expect(data.trending[2].growthRate).toBe(150);
   });
 
-  it('filters out tags with growthRate <= 50 AND recentCount < 3', async () => {
+  it('filters out tags that are neither trending (growthRate>50 and recentCount>=2) nor frequent (recentCount>=3)', async () => {
     // Tag A: recentCount=1, weeklyAvg=1.0 → growthRate=0, isTrending=false, recentCount<3 → EXCLUDED
     // Tag B: recentCount=2, weeklyAvg=1.0 → growthRate=100, isTrending=true → INCLUDED
     // Tag C: recentCount=3, weeklyAvg=3.0 → growthRate=0, isTrending=false, recentCount>=3 → INCLUDED

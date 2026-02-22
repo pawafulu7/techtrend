@@ -67,7 +67,7 @@ export async function GET() {
             name: tag.name,
             recentCount,
             weeklyAverage: Math.round(weeklyAverage * 10) / 10,
-            growthRate: Math.round(growthRate),
+            growthRate,
             isTrending: growthRate > 50 && recentCount >= 2, // 50%以上の成長かつ2件以上
           };
         })
@@ -126,14 +126,15 @@ export async function GET() {
       },
     });
   } catch {
+    const now = new Date();
     return NextResponse.json(
       {
         error: 'Failed to fetch trending keywords',
         trending: [],
         newTags: [],
         period: {
-          from: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          to: new Date().toISOString(),
+          from: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+          to: now.toISOString(),
         },
       },
       { status: 500 }
