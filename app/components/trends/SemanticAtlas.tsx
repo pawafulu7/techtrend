@@ -187,7 +187,10 @@ function PointCloud({
     if (intersections.length > 0) {
       const idx = intersections[0].index;
       if (idx !== undefined) {
-        onPointClick(points[idx].articleId);
+        const point = points[idx];
+        if (point) {
+          onPointClick(point.articleId);
+        }
       }
     }
   }, [camera, pointer, points, onPointClick]);

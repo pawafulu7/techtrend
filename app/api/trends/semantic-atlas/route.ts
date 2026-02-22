@@ -35,7 +35,11 @@ async function handler(request: NextRequest) {
 
     // Validate cluster filter
     const clusterFilter =
-      clusterParam !== null ? parseInt(clusterParam, 10) : null;
+      clusterParam !== null
+        ? /^\d+$/.test(clusterParam)
+          ? parseInt(clusterParam, 10)
+          : NaN
+        : null;
     if (
       clusterParam !== null &&
       (isNaN(clusterFilter!) || clusterFilter! < 0)
@@ -143,7 +147,10 @@ async function handler(request: NextRequest) {
       generatedAt,
     });
 
-    response.headers.set('Cache-Control', 'public, s-maxage=3600');
+    response.headers.set(
+      'Cache-Control',
+      'public, s-maxage=3600, stale-while-revalidate=7200'
+    );
 
     return response;
   } catch (error) {

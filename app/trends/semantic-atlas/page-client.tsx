@@ -156,6 +156,7 @@ export default function SemanticAtlasClient() {
       if (result.error) {
         setError(result.error);
         setPoints([]);
+        setTotalCount(0);
       } else {
         setPoints(result.points);
         setTotalCount(result.totalCount);
@@ -167,6 +168,7 @@ export default function SemanticAtlasClient() {
       }
       setError('データの取得に失敗しました');
       setPoints([]);
+      setTotalCount(0);
     } finally {
       if (!controller.signal.aborted) {
         setLoading(false);
@@ -460,15 +462,18 @@ export default function SemanticAtlasClient() {
                   </p>
                 )}
 
-                <a
-                  href={articleDetail.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:bg-(--tt-color-surface-hover)"
-                >
-                  元の記事を読む
-                  <ExternalLink className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                </a>
+                {articleDetail.url &&
+                  /^https?:\/\//i.test(articleDetail.url) && (
+                    <a
+                      href={articleDetail.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:bg-(--tt-color-surface-hover)"
+                    >
+                      元の記事を読む
+                      <ExternalLink className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </a>
+                  )}
               </div>
             ) : (
               <p className="text-muted-foreground py-8 text-center text-sm">

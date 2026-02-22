@@ -47,6 +47,13 @@ function computeInertia(
 }
 
 function findElbowK(data: number[][]): number {
+  // Guard: if data is smaller than minimum k, use data.length - 1 or minimum 2
+  if (data.length <= ELBOW_K_MIN) {
+    const safeK = Math.max(2, Math.floor(data.length / 2));
+    console.log(`[KMeans] Dataset too small (${data.length}) for elbow detection, using k=${safeK}`);
+    return safeK;
+  }
+
   const inertias: { k: number; inertia: number }[] = [];
 
   console.log(`[KMeans] Testing k values from ${ELBOW_K_MIN} to ${ELBOW_K_MAX}...`);
@@ -188,42 +195,41 @@ async function main(): Promise<void> {
   const saveStart = Date.now();
   const computedAt = new Date();
 
-  // Build VALUES for bulk upsert
   const UPSERT_BATCH = 500;
   let upserted = 0;
 
   for (let i = 0; i < articleIds.length; i += UPSERT_BATCH) {
     const batchEnd = Math.min(i + UPSERT_BATCH, articleIds.length);
-    const values: string[] = [];
 
-    for (let j = i; j < batchEnd; j++) {
-      const aid = articleIds[j].replace(/'/g, "''");
-      const x2 = coords2d[j][0];
-      const y2 = coords2d[j][1];
-      const x3 = coords3d[j][0];
-      const y3 = coords3d[j][1];
-      const z3 = coords3d[j][2];
-      const cluster = kmeansResult.clusters[j];
-      values.push(
-        `('${aid}', ${x2}, ${y2}, ${x3}, ${y3}, ${z3}, ${cluster}, '${computedAt.toISOString()}'::timestamptz)`
-      );
-    }
+    // Use transaction for batch atomicity
+    await prisma.$transaction(
+      Array.from({ length: batchEnd - i }, (_, idx) => {
+        const j = i + idx;
+        return prisma.articleProjection.upsert({
+          where: { articleId: articleIds[j] },
+          create: {
+            articleId: articleIds[j],
+            x2d: coords2d[j][0],
+            y2d: coords2d[j][1],
+            x3d: coords3d[j][0],
+            y3d: coords3d[j][1],
+            z3d: coords3d[j][2],
+            clusterId: kmeansResult.clusters[j],
+            computedAt,
+          },
+          update: {
+            x2d: coords2d[j][0],
+            y2d: coords2d[j][1],
+            x3d: coords3d[j][0],
+            y3d: coords3d[j][1],
+            z3d: coords3d[j][2],
+            clusterId: kmeansResult.clusters[j],
+            computedAt,
+          },
+        });
+      })
+    );
 
-    const sql = `
-      INSERT INTO "ArticleProjection" ("articleId", "x2d", "y2d", "x3d", "y3d", "z3d", "clusterId", "computedAt")
-      VALUES ${values.join(',\n')}
-      ON CONFLICT ("articleId")
-      DO UPDATE SET
-        "x2d" = EXCLUDED."x2d",
-        "y2d" = EXCLUDED."y2d",
-        "x3d" = EXCLUDED."x3d",
-        "y3d" = EXCLUDED."y3d",
-        "z3d" = EXCLUDED."z3d",
-        "clusterId" = EXCLUDED."clusterId",
-        "computedAt" = EXCLUDED."computedAt"
-    `;
-
-    await prisma.$executeRawUnsafe(sql);
     upserted += batchEnd - i;
     console.log(`[Save] Upserted ${upserted}/${articleIds.length}`);
   }
