@@ -195,7 +195,8 @@ export function HeatmapPageClient() {
     [heatmapData]
   );
 
-  const handleSheetClose = useCallback(() => {
+  const handleSheetChange = useCallback((open: boolean) => {
+    if (open) return;
     setSheetOpen(false);
     drilldownAbortRef.current?.abort();
     setDrilldownCategory(null);
@@ -284,7 +285,7 @@ export function HeatmapPageClient() {
       )}
 
       {/* Drilldown Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={handleSheetClose}>
+      <Sheet open={sheetOpen} onOpenChange={handleSheetChange}>
         <SheetContent
           side="right"
           className="w-full overflow-y-auto sm:max-w-lg"
