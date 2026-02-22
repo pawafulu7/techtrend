@@ -37,6 +37,7 @@
     "db:backup": "bash scripts/db/backup-dev.sh",
     "db:backup:dev": "bash scripts/db/backup-dev.sh",
     "db:backup:test": "bash scripts/db/backup-test.sh",
+    "db:sync:prod": "bash scripts/db/sync-prod.sh",
     "test:node": "jest -c jest.config.node.js",
     "test:dom": "jest -c jest.config.dom.js",
     "test:integration": "jest --config ./jest.config.integration.js",
