@@ -181,6 +181,14 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'Search queries',
     telemetryEvent: 'ratelimit.read.search',
   },
+  'read:heatmap': {
+    points: 60,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'ip',
+    notes: 'Heatmap category analysis',
+    telemetryEvent: 'ratelimit.read.heatmap',
+  },
 
   // Public Endpoints (High Tolerance) - No block
   'public:stats': {
