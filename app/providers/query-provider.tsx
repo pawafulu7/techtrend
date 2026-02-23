@@ -1,7 +1,19 @@
 'use client';
 
-import { QueryClient, QueryClientProvider, InfiniteData } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import {
+  QueryClient,
+  QueryClientProvider,
+  InfiniteData,
+} from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
+
+const ReactQueryDevtools = dynamic(
+  () =>
+    import('@tanstack/react-query-devtools').then((mod) => ({
+      default: mod.ReactQueryDevtools,
+    })),
+  { ssr: false }
+);
 import { useEffect, useState, useRef } from 'react';
 import type { ArticleWithUserData } from '@/types/models';
 
@@ -53,7 +65,9 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       const { articleId, isFavorited } = detail;
-      const timestamp = Number.isFinite(detail.timestamp) ? detail.timestamp : Date.now();
+      const timestamp = Number.isFinite(detail.timestamp)
+        ? detail.timestamp
+        : Date.now();
 
       const lastUpdate = lastFavoriteUpdateRef.current.get(articleId) || 0;
       if (timestamp < lastUpdate) return;
@@ -92,7 +106,10 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener('article-favorite-changed', handleFavoriteChanged);
     return () => {
-      window.removeEventListener('article-favorite-changed', handleFavoriteChanged);
+      window.removeEventListener(
+        'article-favorite-changed',
+        handleFavoriteChanged
+      );
     };
   }, [queryClient]);
 
@@ -120,26 +137,34 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
               changed = true;
               return { ...item, isRead };
             });
-            return pageChanged ? { ...page, data: { ...page.data, items } } : page;
+            return pageChanged
+              ? { ...page, data: { ...page.data, items } }
+              : page;
           });
           return changed ? { ...oldData, pages } : oldData;
         }
       );
 
       // Read/unread filters may need a refetch to adjust membership
-      queryClient.getQueryCache().findAll({ queryKey: ['infinite-articles'], exact: false }).forEach((query) => {
-        if (!Array.isArray(query.queryKey)) return;
-        const filterKey = query.queryKey[1];
-        if (typeof filterKey !== 'string') return;
-        try {
-          const parsed = JSON.parse(filterKey) as { readFilter?: string };
-          if (parsed?.readFilter) {
-            queryClient.invalidateQueries({ queryKey: query.queryKey, refetchType: 'active' });
+      queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ['infinite-articles'], exact: false })
+        .forEach((query) => {
+          if (!Array.isArray(query.queryKey)) return;
+          const filterKey = query.queryKey[1];
+          if (typeof filterKey !== 'string') return;
+          try {
+            const parsed = JSON.parse(filterKey) as { readFilter?: string };
+            if (parsed?.readFilter) {
+              queryClient.invalidateQueries({
+                queryKey: query.queryKey,
+                refetchType: 'active',
+              });
+            }
+          } catch {
+            // Ignore non-JSON filter keys
           }
-        } catch {
-          // Ignore non-JSON filter keys
-        }
-      });
+        });
 
       queryClient.invalidateQueries({ queryKey: ['read-status'] });
     };
@@ -157,10 +182,16 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ['read-status'] });
     };
 
-    window.addEventListener('article-read-status-changed', handleReadStatusChanged);
+    window.addEventListener(
+      'article-read-status-changed',
+      handleReadStatusChanged
+    );
     window.addEventListener('articles-bulk-read', handleBulkRead);
     return () => {
-      window.removeEventListener('article-read-status-changed', handleReadStatusChanged);
+      window.removeEventListener(
+        'article-read-status-changed',
+        handleReadStatusChanged
+      );
       window.removeEventListener('articles-bulk-read', handleBulkRead);
     };
   }, [queryClient]);
@@ -168,7 +199,9 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <ReactQueryDevtools initialIsOpen={false} />
+      {process.env.NODE_ENV === 'development' && (
+        <ReactQueryDevtools initialIsOpen={false} />
+      )}
     </QueryClientProvider>
   );
 }

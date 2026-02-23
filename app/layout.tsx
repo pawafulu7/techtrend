@@ -1,41 +1,41 @@
-import type { Metadata } from "next";
-import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
-import { Header } from "@/app/components/layout/header";
-import { NoTransitions } from "@/app/components/layout/no-transitions";
-import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
-import { ToastProvider } from "@/providers/toast-provider";
-import { QueryProvider } from "@/app/providers/query-provider";
-import { ThemeProvider } from "@/components/providers/theme-provider";
-import { AuthProvider } from "@/app/providers/auth-provider";
-import { ScrollToTopButton } from "@/components/features/ScrollToTopButton";
-import { WebVitalsReporter } from "@/app/components/analytics/web-vitals-reporter";
+import type { Metadata } from 'next';
+import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
+import { Header } from '@/app/components/layout/header';
+import { NoTransitions } from '@/app/components/layout/no-transitions';
+import { SITE_NAME, SITE_DESCRIPTION } from '@/lib/constants';
+import { ToastProvider } from '@/providers/toast-provider';
+import { QueryProvider } from '@/app/providers/query-provider';
+import { ThemeProvider } from '@/components/providers/theme-provider';
+import { AuthProvider } from '@/app/providers/auth-provider';
+import { ScrollToTopButton } from '@/components/features/ScrollToTopButton';
+import { WebVitalsReporter } from '@/app/components/analytics/web-vitals-reporter';
 // import { OnboardingProvider } from "@/app/components/onboarding/onboarding-provider";
-import "./globals.css";
+import './globals.css';
 
 const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["400", "500", "600", "700"],
+  variable: '--font-space-grotesk',
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['500', '600', '700'],
   preload: true,
   adjustFontFallback: true,
 });
 
 const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["400", "500", "600", "700"],
+  variable: '--font-inter',
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['400', '500', '600'],
   preload: true,
   adjustFontFallback: true,
 });
 
 const jetBrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["400", "500", "600"],
-  preload: true,
+  variable: '--font-jetbrains-mono',
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['400', '500', '600'],
+  preload: false,
   adjustFontFallback: true,
 });
 
@@ -45,13 +45,20 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
-  keywords: ["tech", "technology", "news", "trends", "programming", "development"],
+  keywords: [
+    'tech',
+    'technology',
+    'news',
+    'trends',
+    'programming',
+    'development',
+  ],
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,
   openGraph: {
-    type: "website",
-    locale: "ja_JP",
-    url: "/",
+    type: 'website',
+    locale: 'ja_JP',
+    url: '/',
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
     siteName: SITE_NAME,
@@ -63,11 +70,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html
       lang="ja"
-      className={`h-full no-transitions ${spaceGrotesk.variable} ${inter.variable} ${jetBrainsMono.variable}`}
+      className={`no-transitions h-full ${spaceGrotesk.variable} ${inter.variable} ${jetBrainsMono.variable}`}
       suppressHydrationWarning
     >
       <head>
@@ -136,12 +142,10 @@ export default async function RootLayout({
         />
       </head>
       {/* 重要: overflow-hiddenは追加しないこと。トップページ以外でスクロール不可になる */}
-      <body
-        className="antialiased h-full flex flex-col overflow-hidden"
-      >
+      <body className="flex h-full flex-col overflow-hidden antialiased">
         <NoTransitions />
         <AuthProvider>
-          <ThemeProvider 
+          <ThemeProvider
             attribute="class"
             defaultTheme="system"
             enableSystem
@@ -149,11 +153,11 @@ export default async function RootLayout({
           >
             <QueryProvider>
               {/* <OnboardingProvider> */}
-                <Header />
-                <main className="flex-1 overflow-y-auto">{children}</main>
-                <ScrollToTopButton />
-                <ToastProvider />
-                <WebVitalsReporter />
+              <Header />
+              <main className="flex-1 overflow-y-auto">{children}</main>
+              <ScrollToTopButton />
+              <ToastProvider />
+              <WebVitalsReporter />
               {/* </OnboardingProvider> */}
             </QueryProvider>
           </ThemeProvider>
