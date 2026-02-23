@@ -205,7 +205,7 @@ const RSS_SOURCES = [
   // AI/LLM専門ソース
   'OpenAI Blog',
   'Hugging Face Papers',
-  // 'arXiv AI' は専用スケジュールで実行（1日2回: JST 14:30, 02:30）
+  // 'arXiv AI' は収集停止中（閲覧数ゼロのためコスト削減。再開時はgit履歴から復元）
   'Zenn AI',
   'Qiita AI',
   'NVIDIA Developer Blog',
@@ -373,14 +373,12 @@ let rssJobRunning = false;
 let scrapingJobRunning = false;
 let qiitaJobRunning = false;
 let embeddingRecoveryRunning = false;
-let arxivJobRunning = false;
 let trendReportJobRunning = false;
 
 // EmbeddingScheduler instance for auto-recovery
 const embeddingScheduler = new EmbeddingScheduler();
 
 // RSS系ソースの更新（毎時0分）
-// ※ arXiv AI は専用スケジュールで実行（下記参照）
 cron.schedule('0 * * * *', async () => {
   if (rssJobRunning) {
     console.error('[WARN] RSS job already running, skipping this execution');
@@ -395,32 +393,6 @@ cron.schedule('0 * * * *', async () => {
     rssJobRunning = false;
   }
 });
-
-// arXiv AI専用スケジュール（JST 09:45, 21:45）
-// arXivは1日1回更新（EST 0:00 = JST 14:00）のため、毎時実行は無駄
-// 取得件数リミット（デフォルト200件/回）で安定動作を確保
-// ※timezone: 'Asia/Tokyo' で明示的にJSTを指定
-const ARXIV_SOURCES = ['arXiv AI'];
-
-cron.schedule('45 9,21 * * *', async () => {
-  if (arxivJobRunning) {
-    console.error('[WARN] arXiv AI job already running, skipping this execution');
-    return;
-  }
-  arxivJobRunning = true;
-  const startTime = new Date();
-  console.error(`\n[INFO] arXiv AI記事取得を開始（専用スケジュール）: ${startTime.toLocaleString('ja-JP')}`);
-
-  try {
-    await executeUpdatePipeline(ARXIV_SOURCES, 'arXiv AI論文');
-    const duration = Math.round((Date.now() - startTime.getTime()) / 1000);
-    console.error(`[INFO] arXiv AI取得完了: ${duration}秒`);
-  } catch (error) {
-    console.error('[ERROR] arXiv AI取得でエラー:', error instanceof Error ? error.message : String(error));
-  } finally {
-    arxivJobRunning = false;
-  }
-}, { timezone: 'Asia/Tokyo' });
 
 // Embeddingジョブリカバリ（毎時15分）
 // RSS更新（毎時0分）の15分後に実行
@@ -624,11 +596,10 @@ cron.schedule('30 14 * * *', async () => {
   }
 }, { timezone: 'Asia/Tokyo' });
 
-// 初回実行（起動時） - RSS/スクレイピング系のみ（arXivは専用スケジュールで実行）
+// 初回実行（起動時）
 (async () => {
-  console.error('\n[INFO] 初回実行を開始します（RSS/スクレイピング系）...');
+  console.error('\n[INFO] 初回実行を開始します...');
   try {
-    // arXivは専用スケジュール（9:45/21:45 JST）で要約生成込みで実行されるため除外
     const allSources = [...RSS_SOURCES, ...SCRAPING_SOURCES];
 
     // 要約生成はスキップ（再起動時の追加通知を防止）
@@ -640,7 +611,6 @@ cron.schedule('30 14 * * *', async () => {
     console.error('[INFO] 初回実行が完了しました\n');
     console.error('[INFO] 次回の更新:');
     console.error('   - RSS系: 毎時0分');
-    console.error('   - arXiv AI: 9:45・21:45（JST）');
     console.error('   - Embeddingリカバリ: 毎時15分');
     console.error('   - スクレイピング系: 0:30・12:30');
     console.error('   - Qiita Popular: 5:05・17:05');
