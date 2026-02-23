@@ -5,6 +5,7 @@ import { qualityScoresCommand } from './commands/quality-scores';
 import { cleanupCommand } from './commands/cleanup';
 import { feedsCommand } from './commands/feeds';
 import { tagsCommand } from './commands/tags';
+import { dbCommand } from './commands/db';
 
 const program = new Command();
 
@@ -19,6 +20,7 @@ program.addCommand(qualityScoresCommand);
 program.addCommand(cleanupCommand);
 program.addCommand(feedsCommand);
 program.addCommand(tagsCommand);
+program.addCommand(dbCommand);
 
 // エラーハンドリング
 program.exitOverride();
