@@ -205,7 +205,7 @@ const RSS_SOURCES = [
   // AI/LLM専門ソース
   'OpenAI Blog',
   'Hugging Face Papers',
-  // 'arXiv AI' は専用スケジュールで実行（1日2回: JST 14:30, 02:30）
+  // 'arXiv AI' は収集停止中（閲覧数ゼロのためコスト削減。再開時はgit履歴から復元）
   'Zenn AI',
   'Qiita AI',
   'NVIDIA Developer Blog',
