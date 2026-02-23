@@ -108,16 +108,52 @@ export async function GET(request: NextRequest) {
       ...(categoryParam && { categorySlug: categoryParam }),
     };
 
-    const summaries = await prisma.diffSummary.findMany({
+    let summaries = await prisma.diffSummary.findMany({
       where: whereClause,
       orderBy: { generatedAt: 'desc' },
     });
+
+    // Fallback: if no data for the requested week, find the latest available week
+    let isFallback = false;
+    const requestedWeek = week;
+    if (summaries.length === 0) {
+      const latestRecord = await prisma.diffSummary.findFirst({
+        where: {
+          status: BatchStatus.SUCCESS,
+          ...(categoryParam && { categorySlug: categoryParam }),
+        },
+        orderBy: { currentPeriod: 'desc' },
+        select: { currentPeriod: true },
+      });
+
+      if (latestRecord) {
+        isFallback = true;
+        week = latestRecord.currentPeriod;
+
+        summaries = await prisma.diffSummary.findMany({
+          where: {
+            currentPeriod: week,
+            status: BatchStatus.SUCCESS,
+            ...(categoryParam && { categorySlug: categoryParam }),
+          },
+          orderBy: { generatedAt: 'desc' },
+        });
+
+        // Guard: if records were deleted between findFirst and findMany (TOCTOU),
+        // revert to non-fallback state to avoid returning isFallback:true with no data.
+        if (summaries.length === 0) {
+          isFallback = false;
+          week = requestedWeek;
+        }
+      }
+    }
 
     // Transform response
     const response = {
       success: true,
       week,
       previousWeek: getPreviousISOWeek(week),
+      ...(isFallback && { isFallback: true, requestedWeek }),
       data: summaries.map((s) => ({
         categorySlug: s.categorySlug,
         categoryName:
@@ -137,17 +173,23 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    // Save to cache
-    try {
-      await cacheInstance.set(cacheKey, response);
-    } catch (cacheError) {
-      logger.warn('Cache write error', cacheError);
+    // Only cache non-fallback responses with actual data
+    // Fallback responses contain request-specific metadata (requestedWeek) that would
+    // pollute the cache if stored under the actual week's key
+    if (summaries.length > 0 && !isFallback) {
+      try {
+        await cacheInstance.set(cacheKey, response);
+      } catch (cacheError) {
+        logger.warn('Cache write error', cacheError);
+      }
     }
 
     return NextResponse.json(response, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': 'public, max-age=300',
+        'Cache-Control': isFallback
+          ? 'public, max-age=60'
+          : 'public, max-age=300',
       },
     });
   } catch (error) {

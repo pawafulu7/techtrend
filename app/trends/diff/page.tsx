@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  Info,
   RefreshCw,
   TrendingUp,
   TrendingDown,
@@ -52,6 +53,8 @@ interface DiffSummaryResponse {
     totalCategories: number;
     summarizedCategories: number;
   };
+  isFallback?: boolean;
+  requestedWeek?: string;
 }
 
 interface ChangeWithCategory extends DiffChange {
@@ -67,7 +70,12 @@ export default function DiffSummaryPage() {
   const [selectedWeek, setSelectedWeek] = useState(() =>
     getPreviousISOWeek(getISOWeek(new Date()))
   );
+  const [isFallback, setIsFallback] = useState(false);
+  const [fallbackRequestedWeek, setFallbackRequestedWeek] = useState<
+    string | null
+  >(null);
   const [hoveredTopic, setHoveredTopic] = useState<string | null>(null);
+  const fallbackWeekUpdateRef = useRef(false);
 
   const currentWeek = getISOWeek(new Date());
   const canGoNext = selectedWeek < currentWeek;
@@ -92,7 +100,7 @@ export default function DiffSummaryPage() {
   }, []);
 
   const fetchData = useCallback(
-    async (week: string) => {
+    async (week: string, isRetry = false, originalWeek?: string) => {
       setLoading(true);
       setError(null);
       try {
@@ -101,7 +109,31 @@ export default function DiffSummaryPage() {
         if (!response.ok) {
           throw new Error(result.error || 'Failed to fetch data');
         }
+        // Handle stale cached empty response from before fallback code deployment:
+        // Redis may still have empty responses (TTL 3600s) without isFallback flag.
+        // Retry once with previous week; this workaround is only needed during
+        // the cache TTL window after deployment and is harmless afterward.
+        if (result.data?.length === 0 && !result.isFallback && !isRetry) {
+          const prevWeek = getPreviousISOWeek(week);
+          if (prevWeek < week) {
+            return fetchData(prevWeek, true, week);
+          }
+        }
+
         setData(result);
+        if (result.isFallback === true || isRetry) {
+          setIsFallback(true);
+          // When isRetry, the user's original week always takes precedence over
+          // the API's requestedWeek (which is the intermediate retry week).
+          setFallbackRequestedWeek(
+            isRetry ? (originalWeek ?? null) : (result.requestedWeek ?? null)
+          );
+          fallbackWeekUpdateRef.current = true;
+          setSelectedWeek(result.week);
+        } else {
+          setIsFallback(false);
+          setFallbackRequestedWeek(null);
+        }
         const allArticleIds: string[] = result.data.flatMap(
           (d: DiffSummaryData) =>
             d.changes.flatMap((c) => c.relatedArticleIds || [])
@@ -111,6 +143,8 @@ export default function DiffSummaryPage() {
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
+        setIsFallback(false);
+        setFallbackRequestedWeek(null);
       } finally {
         setLoading(false);
       }
@@ -119,6 +153,10 @@ export default function DiffSummaryPage() {
   );
 
   useEffect(() => {
+    if (fallbackWeekUpdateRef.current) {
+      fallbackWeekUpdateRef.current = false;
+      return;
+    }
     fetchData(selectedWeek);
   }, [selectedWeek, fetchData]);
 
@@ -422,6 +460,21 @@ export default function DiffSummaryPage() {
                 <RefreshCw className="h-3 w-3" />
                 再試行
               </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {/* Fallback info banner */}
+      {isFallback && fallbackRequestedWeek && (
+        <div className="container mx-auto max-w-6xl px-4 pt-4">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              {formatWeekDisplay(fallbackRequestedWeek)}
+              のデータは未生成のため、最新の
+              {data ? formatWeekDisplay(data.week) : ''}
+              のデータを表示しています。
             </AlertDescription>
           </Alert>
         </div>
