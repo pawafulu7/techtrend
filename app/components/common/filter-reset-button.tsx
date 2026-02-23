@@ -22,10 +22,13 @@ export function FilterResetButton() {
 
     try {
       // Clear all filter-related cookies (parallel)
-      await Promise.all([
+      const responses = await Promise.all([
         fetch('/api/filter-preferences', { method: 'DELETE' }),
         fetch('/api/source-filter', { method: 'DELETE' }),
       ]);
+      if (responses.some((r) => !r.ok)) {
+        throw new Error('Filter reset API failed');
+      }
 
       // Clear view mode cookie (if exists)
       document.cookie =

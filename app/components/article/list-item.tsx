@@ -216,6 +216,7 @@ export function ArticleListItem({
             }}
             className="h-11 min-h-[44px] w-11 min-w-[44px] p-0"
             title="元記事を開く"
+            aria-label="元記事を開く"
           >
             <ExternalLink className="h-3 w-3" />
           </ButtonV2>
