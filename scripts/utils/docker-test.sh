@@ -13,5 +13,9 @@ if [ -z "${1:-}" ]; then
 fi
 
 export TEST_FILE="$1"
-[ -n "${2:-}" ] && export TEST_NAME_PATTERN="$2"
+if [ -n "${2:-}" ]; then
+  export TEST_NAME_PATTERN="$2"
+else
+  unset TEST_NAME_PATTERN
+fi
 npm run docker:test:file

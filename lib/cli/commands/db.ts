@@ -59,7 +59,8 @@ dbCommand
       logger.success('DB統計取得完了');
     } catch (error) {
       logger.error('DB統計取得に失敗しました', error);
-      process.exit(1);
+      process.exitCode = 1;
+      return;
     } finally {
       await closePrismaClient();
     }

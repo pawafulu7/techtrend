@@ -86,7 +86,7 @@ async function runCommandWithTimeout(
     child.stdout?.on('data', (chunk: string) => {
       stdout += chunk;
       stdoutBytes += Buffer.byteLength(chunk, 'utf8');
-      if (shouldStreamOutput || /\[(ERROR|WARN)\]/i.test(chunk)) {
+      if (shouldStreamOutput || /\[(ERROR|WARN)\]|❌|⚠️/i.test(chunk)) {
         process.stderr.write(chunk);
       }
 
@@ -99,7 +99,7 @@ async function runCommandWithTimeout(
     child.stderr?.on('data', (chunk: string) => {
       stderr += chunk;
       stderrBytes += Buffer.byteLength(chunk, 'utf8');
-      if (shouldStreamOutput || /\[(ERROR|WARN)\]/i.test(chunk)) {
+      if (shouldStreamOutput || /\[(ERROR|WARN)\]|❌|⚠️/i.test(chunk)) {
         process.stderr.write(chunk);
       }
 
