@@ -99,7 +99,7 @@ export default function DiffSummaryPage() {
   }, []);
 
   const fetchData = useCallback(
-    async (week: string) => {
+    async (week: string, isRetry = false) => {
       setLoading(true);
       setError(null);
       try {
@@ -108,10 +108,21 @@ export default function DiffSummaryPage() {
         if (!response.ok) {
           throw new Error(result.error || 'Failed to fetch data');
         }
+        // Handle cached empty response (no fallback flag from stale cache)
+        // Retry once with previous week to trigger server-side fallback
+        if (result.data?.length === 0 && !result.isFallback && !isRetry) {
+          const prevWeek = getPreviousISOWeek(week);
+          if (prevWeek < week) {
+            return fetchData(prevWeek, true);
+          }
+        }
+
         setData(result);
-        if (result.isFallback === true) {
+        if (result.isFallback === true || isRetry) {
           setIsFallback(true);
-          setFallbackRequestedWeek(result.requestedWeek ?? null);
+          setFallbackRequestedWeek(
+            result.requestedWeek ?? (isRetry ? week : null)
+          );
           setSelectedWeek(result.week);
         } else {
           setIsFallback(false);

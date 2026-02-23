@@ -167,14 +167,17 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    // Save to cache (use actual week's key, not requested week's key for fallback)
-    const actualCacheKey = isFallback
-      ? `diff-summary:${week}:${categoryParam || 'all'}`
-      : cacheKey;
-    try {
-      await cacheInstance.set(actualCacheKey, response);
-    } catch (cacheError) {
-      logger.warn('Cache write error', cacheError);
+    // Save to cache only if there's actual data
+    // Empty responses and fallback responses should not be cached under the requested key
+    if (summaries.length > 0) {
+      const actualCacheKey = isFallback
+        ? `diff-summary:${week}:${categoryParam || 'all'}`
+        : cacheKey;
+      try {
+        await cacheInstance.set(actualCacheKey, response);
+      } catch (cacheError) {
+        logger.warn('Cache write error', cacheError);
+      }
     }
 
     return NextResponse.json(response, {

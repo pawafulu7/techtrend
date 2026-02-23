@@ -206,19 +206,6 @@ export default function DailyTrendPage() {
         </div>
       ) : report ? (
         <>
-          {/* Hero section with AI summary and navigation */}
-          <DailyTrendHero
-            aiSummary={report.aiSummary}
-            articleCount={report.articleCount}
-            periodStart={report.periodStart}
-            generatedAt={report.generatedAt}
-            topTags={report.tags}
-            topArticles={report.topArticles}
-            navigation={navigation}
-            onPrevDay={goToPreviousDay}
-            onNextDay={goToNextDay}
-          />
-
           {/* Fallback info banner */}
           {isFallback && fallbackInfo && (
             <div className="container mx-auto px-4 pt-4">
@@ -233,6 +220,19 @@ export default function DailyTrendPage() {
               </Alert>
             </div>
           )}
+
+          {/* Hero section with AI summary and navigation */}
+          <DailyTrendHero
+            aiSummary={report.aiSummary}
+            articleCount={report.articleCount}
+            periodStart={report.periodStart}
+            generatedAt={report.generatedAt}
+            topTags={report.tags}
+            topArticles={report.topArticles}
+            navigation={navigation}
+            onPrevDay={goToPreviousDay}
+            onNextDay={goToNextDay}
+          />
 
           {/* Content sections */}
           <div className="container mx-auto px-4 py-8">
