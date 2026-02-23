@@ -180,7 +180,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': 'public, max-age=300',
+        'Cache-Control': isFallback
+          ? 'public, max-age=60'
+          : 'public, max-age=300',
       },
     });
   } catch (error) {

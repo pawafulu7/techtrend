@@ -16,10 +16,12 @@ jest.mock('@/lib/services/trend-report-generator', () => ({
   })),
 }));
 
+const mockCacheSet = jest.fn().mockResolvedValue(undefined);
+
 jest.mock('@/lib/cache', () => ({
   RedisCache: jest.fn().mockImplementation(() => ({
     get: jest.fn().mockResolvedValue(null), // always cache MISS
-    set: jest.fn().mockResolvedValue(undefined),
+    set: mockCacheSet,
     generateCacheKey: jest.fn(
       (prefix: string, opts: { params: { date: string } }) =>
         `${prefix}:${opts.params.date}`
@@ -147,6 +149,9 @@ describe('/api/trends/daily - fallback logic', () => {
 
     // Fallback uses shorter Cache-Control TTL
     expect(response.headers.get('Cache-Control')).toBe('public, max-age=60');
+
+    // Verify cache.set was NOT called for fallback responses
+    expect(mockCacheSet).not.toHaveBeenCalled();
   });
 
   it('returns 404 when no reports exist at all', async () => {

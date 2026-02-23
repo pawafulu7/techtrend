@@ -109,8 +109,10 @@ export default function DiffSummaryPage() {
         if (!response.ok) {
           throw new Error(result.error || 'Failed to fetch data');
         }
-        // Handle cached empty response (no fallback flag from stale cache)
-        // Retry once with previous week to trigger server-side fallback
+        // Handle stale cached empty response from before fallback code deployment:
+        // Redis may still have empty responses (TTL 3600s) without isFallback flag.
+        // Retry once with previous week; this workaround is only needed during
+        // the cache TTL window after deployment and is harmless afterward.
         if (result.data?.length === 0 && !result.isFallback && !isRetry) {
           const prevWeek = getPreviousISOWeek(week);
           if (prevWeek < week) {
@@ -139,6 +141,8 @@ export default function DiffSummaryPage() {
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
+        setIsFallback(false);
+        setFallbackRequestedWeek(null);
       } finally {
         setLoading(false);
       }

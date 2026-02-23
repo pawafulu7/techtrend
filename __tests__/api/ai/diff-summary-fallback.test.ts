@@ -45,11 +45,12 @@ jest.mock('@/lib/ai/diff-summary', () => ({
   getDiffSummaryService: jest.fn(),
   getISOWeek: jest.fn().mockReturnValue('2026-W08'),
   getPreviousISOWeek: jest.fn((week: string) => {
-    // Simple mock: decrement week number
     const match = week.match(/^(\d{4})-W(\d{2})$/);
     if (!match) return '2026-W07';
+    const year = parseInt(match[1], 10);
     const num = parseInt(match[2], 10);
-    return `${match[1]}-W${String(num - 1).padStart(2, '0')}`;
+    if (num <= 1) return `${year - 1}-W52`;
+    return `${year}-W${String(num - 1).padStart(2, '0')}`;
   }),
 }));
 
@@ -236,5 +237,9 @@ describe('/api/ai/diff-summary GET fallback logic', () => {
 
     // Verify cache.set was NOT called for fallback responses
     expect(mockCacheSet).not.toHaveBeenCalled();
+
+    // Verify fallback response uses shorter TTL
+    expect(response.headers.get('X-Cache')).toBe('MISS');
+    expect(response.headers.get('Cache-Control')).toBe('public, max-age=60');
   });
 });
