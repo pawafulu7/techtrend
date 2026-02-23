@@ -134,7 +134,7 @@ export interface TrendReportData {
 }
 
 // プロンプトバージョン管理
-const PROMPT_VERSION = '2.0.0';
+const PROMPT_VERSION = '2.1.0';
 
 export class TrendReportGenerator {
   private prisma: PrismaClient;
