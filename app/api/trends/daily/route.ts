@@ -24,7 +24,7 @@ const getCache = () => {
   if (!cache) {
     cache = new RedisCache({
       ttl: 3600, // 1時間
-      namespace: '@techtrend/cache:trend'
+      namespace: '@techtrend/cache:trend',
     });
   }
   return cache;
@@ -70,7 +70,9 @@ export async function GET(request: NextRequest) {
 
     // キャッシュチェック
     const cacheInstance = getCache();
-    const cacheKey = cacheInstance.generateCacheKey('daily', { params: { date: dateKey } });
+    const cacheKey = cacheInstance.generateCacheKey('daily', {
+      params: { date: dateKey },
+    });
 
     try {
       const cached = await cacheInstance.get<object>(cacheKey);
@@ -78,8 +80,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(cached, {
           headers: {
             'X-Cache': 'HIT',
-            'Cache-Control': 'public, max-age=300'
-          }
+            'Cache-Control': 'public, max-age=300',
+          },
         });
       }
     } catch (cacheError) {
@@ -95,20 +97,67 @@ export async function GET(request: NextRequest) {
     const periodStartUTC = new Date(periodStart.getTime() - JST_OFFSET_MS);
 
     // 指定日付のレポートを取得
-    const report = await generator.getTrendReport(TrendPeriodType.DAILY, periodStartUTC);
+    const report = await generator.getTrendReport(
+      TrendPeriodType.DAILY,
+      periodStartUTC
+    );
 
     if (!report) {
-      // 指定日付のレポートがない場合、404を返す（フォールバックしない）
-      const latestDate = await generator.getLatestReportDate(TrendPeriodType.DAILY);
-
-      return NextResponse.json(
-        {
-          error: 'No report found for this date',
-          requestedDate: dateKey,
-          latestAvailableDate: latestDate ? toJSTDateString(latestDate) : null
-        },
-        { status: 404 }
+      // 指定日付のレポートがない場合、最新レポートへフォールバック
+      const latestReport = await generator.getLatestReport(
+        TrendPeriodType.DAILY
       );
+
+      if (!latestReport) {
+        // レポートが一切存在しない場合は404
+        return NextResponse.json(
+          {
+            error: 'No report found for this date',
+            requestedDate: dateKey,
+            latestAvailableDate: null,
+          },
+          { status: 404 }
+        );
+      }
+
+      // 最新レポートの日付でナビゲーション情報を取得
+      const fallbackAdjacentDates = await generator.getAdjacentReportDates(
+        TrendPeriodType.DAILY,
+        latestReport.periodStart
+      );
+
+      const actualDate = toJSTDateString(latestReport.periodStart);
+
+      const fallbackResponse = {
+        success: true,
+        isFallback: true,
+        requestedDate: dateKey,
+        actualDate,
+        data: {
+          ...latestReport,
+          periodStart: latestReport.periodStart.toISOString(),
+          periodEnd: latestReport.periodEnd.toISOString(),
+          generatedAt: latestReport.generatedAt?.toISOString(),
+        },
+        navigation: {
+          prevDate: fallbackAdjacentDates.prevDate
+            ? toJSTDateString(fallbackAdjacentDates.prevDate)
+            : null,
+          nextDate: fallbackAdjacentDates.nextDate
+            ? toJSTDateString(fallbackAdjacentDates.nextDate)
+            : null,
+        },
+      };
+
+      // フォールバックレスポンスはリクエスト日付のキーではキャッシュしない
+      // （実際の日付のキーは通常フローでキャッシュ済みのはず）
+
+      return NextResponse.json(fallbackResponse, {
+        headers: {
+          'X-Cache': 'MISS',
+          'Cache-Control': 'public, max-age=60', // フォールバックは短めのTTL
+        },
+      });
     }
 
     // 前後のレポート日付を取得
@@ -123,12 +172,16 @@ export async function GET(request: NextRequest) {
         ...report,
         periodStart: report.periodStart.toISOString(),
         periodEnd: report.periodEnd.toISOString(),
-        generatedAt: report.generatedAt?.toISOString()
+        generatedAt: report.generatedAt?.toISOString(),
       },
       navigation: {
-        prevDate: adjacentDates.prevDate ? toJSTDateString(adjacentDates.prevDate) : null,
-        nextDate: adjacentDates.nextDate ? toJSTDateString(adjacentDates.nextDate) : null
-      }
+        prevDate: adjacentDates.prevDate
+          ? toJSTDateString(adjacentDates.prevDate)
+          : null,
+        nextDate: adjacentDates.nextDate
+          ? toJSTDateString(adjacentDates.nextDate)
+          : null,
+      },
     };
 
     // キャッシュ保存
@@ -141,8 +194,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': 'public, max-age=300'
-      }
+        'Cache-Control': 'public, max-age=300',
+      },
     });
   } catch (error) {
     logger.error('Failed to get daily trend report', error);
@@ -195,7 +248,9 @@ async function generateDailyReportHandler(request: NextRequest) {
     try {
       // 日付ベースのキャッシュをクリア
       const dateKey = toJSTDateString(targetDate);
-      const cacheKey = cacheInstance.generateCacheKey('daily', { params: { date: dateKey } });
+      const cacheKey = cacheInstance.generateCacheKey('daily', {
+        params: { date: dateKey },
+      });
       await cacheInstance.del(cacheKey);
     } catch (cacheError) {
       logger.warn('Cache invalidation error', cacheError);
@@ -204,7 +259,7 @@ async function generateDailyReportHandler(request: NextRequest) {
     return NextResponse.json({
       success: true,
       reportId,
-      message: 'Daily trend report generated successfully'
+      message: 'Daily trend report generated successfully',
     });
   } catch (error) {
     logger.error('Failed to generate daily trend report', error);

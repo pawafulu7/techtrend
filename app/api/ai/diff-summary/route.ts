@@ -108,16 +108,46 @@ export async function GET(request: NextRequest) {
       ...(categoryParam && { categorySlug: categoryParam }),
     };
 
-    const summaries = await prisma.diffSummary.findMany({
+    let summaries = await prisma.diffSummary.findMany({
       where: whereClause,
       orderBy: { generatedAt: 'desc' },
     });
+
+    // Fallback: if no data for the requested week, find the latest available week
+    let isFallback = false;
+    const requestedWeek = week;
+    if (summaries.length === 0) {
+      const latestRecord = await prisma.diffSummary.findFirst({
+        where: {
+          status: BatchStatus.SUCCESS,
+          ...(categoryParam && { categorySlug: categoryParam }),
+        },
+        orderBy: { currentPeriod: 'desc' },
+        select: { currentPeriod: true },
+        distinct: ['currentPeriod'],
+      });
+
+      if (latestRecord) {
+        isFallback = true;
+        week = latestRecord.currentPeriod;
+
+        summaries = await prisma.diffSummary.findMany({
+          where: {
+            currentPeriod: week,
+            status: BatchStatus.SUCCESS,
+            ...(categoryParam && { categorySlug: categoryParam }),
+          },
+          orderBy: { generatedAt: 'desc' },
+        });
+      }
+    }
 
     // Transform response
     const response = {
       success: true,
       week,
       previousWeek: getPreviousISOWeek(week),
+      ...(isFallback && { isFallback: true, requestedWeek }),
       data: summaries.map((s) => ({
         categorySlug: s.categorySlug,
         categoryName:
@@ -137,9 +167,12 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    // Save to cache
+    // Save to cache (use actual week's key, not requested week's key for fallback)
+    const actualCacheKey = isFallback
+      ? `diff-summary:${week}:${categoryParam || 'all'}`
+      : cacheKey;
     try {
-      await cacheInstance.set(cacheKey, response);
+      await cacheInstance.set(actualCacheKey, response);
     } catch (cacheError) {
       logger.warn('Cache write error', cacheError);
     }

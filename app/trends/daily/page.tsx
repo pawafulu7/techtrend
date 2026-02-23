@@ -7,7 +7,7 @@ import {
   CategoryDistribution,
 } from '@/app/components/trends/daily';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, AlertCircle } from 'lucide-react';
+import { RefreshCw, AlertCircle, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Note: TrendReportData is defined locally for API response typing.
@@ -57,6 +57,14 @@ interface ApiResponse {
   };
   error?: string;
   latestAvailableDate?: string | null;
+  isFallback?: boolean;
+  requestedDate?: string;
+  actualDate?: string;
+}
+
+function formatDateJP(dateStr: string): string {
+  const [, m, d] = dateStr.split('-');
+  return `${Number(m)}月${Number(d)}日`;
 }
 
 export default function DailyTrendPage() {
@@ -70,6 +78,12 @@ export default function DailyTrendPage() {
     prevDate: string | null;
     nextDate: string | null;
   }>({ prevDate: null, nextDate: null });
+
+  const [isFallback, setIsFallback] = useState(false);
+  const [fallbackInfo, setFallbackInfo] = useState<{
+    requestedDate: string;
+    actualDate: string;
+  } | null>(null);
 
   // 初回ロード時は最新レポートを取得するため、日付指定なし
   const [requestedDate, setRequestedDate] = useState<string | null>(null);
@@ -101,6 +115,17 @@ export default function DailyTrendPage() {
         setReport(data.data);
         setNavigation(data.navigation || { prevDate: null, nextDate: null });
         setLatestAvailableDate(null);
+
+        if (data.isFallback && data.requestedDate && data.actualDate) {
+          setIsFallback(true);
+          setFallbackInfo({
+            requestedDate: data.requestedDate,
+            actualDate: data.actualDate,
+          });
+        } else {
+          setIsFallback(false);
+          setFallbackInfo(null);
+        }
       } else {
         setError(data.error || 'データの取得に失敗しました');
       }
@@ -193,6 +218,21 @@ export default function DailyTrendPage() {
             onPrevDay={goToPreviousDay}
             onNextDay={goToNextDay}
           />
+
+          {/* Fallback info banner */}
+          {isFallback && fallbackInfo && (
+            <div className="container mx-auto px-4 pt-4">
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  {formatDateJP(fallbackInfo.requestedDate)}
+                  のレポートは未生成のため、最新の
+                  {formatDateJP(fallbackInfo.actualDate)}
+                  のレポートを表示しています。
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
 
           {/* Content sections */}
           <div className="container mx-auto px-4 py-8">

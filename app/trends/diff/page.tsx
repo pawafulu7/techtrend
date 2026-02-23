@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  Info,
   RefreshCw,
   TrendingUp,
   TrendingDown,
@@ -52,6 +53,8 @@ interface DiffSummaryResponse {
     totalCategories: number;
     summarizedCategories: number;
   };
+  isFallback?: boolean;
+  requestedWeek?: string;
 }
 
 interface ChangeWithCategory extends DiffChange {
@@ -67,6 +70,10 @@ export default function DiffSummaryPage() {
   const [selectedWeek, setSelectedWeek] = useState(() =>
     getPreviousISOWeek(getISOWeek(new Date()))
   );
+  const [isFallback, setIsFallback] = useState(false);
+  const [fallbackRequestedWeek, setFallbackRequestedWeek] = useState<
+    string | null
+  >(null);
   const [hoveredTopic, setHoveredTopic] = useState<string | null>(null);
 
   const currentWeek = getISOWeek(new Date());
@@ -102,6 +109,14 @@ export default function DiffSummaryPage() {
           throw new Error(result.error || 'Failed to fetch data');
         }
         setData(result);
+        if (result.isFallback === true) {
+          setIsFallback(true);
+          setFallbackRequestedWeek(result.requestedWeek ?? null);
+          setSelectedWeek(result.week);
+        } else {
+          setIsFallback(false);
+          setFallbackRequestedWeek(null);
+        }
         const allArticleIds: string[] = result.data.flatMap(
           (d: DiffSummaryData) =>
             d.changes.flatMap((c) => c.relatedArticleIds || [])
@@ -422,6 +437,21 @@ export default function DiffSummaryPage() {
                 <RefreshCw className="h-3 w-3" />
                 再試行
               </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {/* Fallback info banner */}
+      {isFallback && fallbackRequestedWeek && (
+        <div className="container mx-auto max-w-6xl px-4 pt-4">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              {formatWeekDisplay(fallbackRequestedWeek)}
+              のデータは未生成のため、最新の
+              {data ? formatWeekDisplay(data.week) : ''}
+              のデータを表示しています。
             </AlertDescription>
           </Alert>
         </div>
