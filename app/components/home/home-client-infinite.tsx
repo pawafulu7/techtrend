@@ -235,7 +235,6 @@ export function HomeClientInfinite({
     isFetchingNextPage,
     isLoading,
     isError,
-    error,
     refetch,
   } = useInfiniteArticles({
     ...filters,
