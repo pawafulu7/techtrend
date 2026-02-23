@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import useSWR from 'swr';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,12 +39,15 @@ const STATUS_OPTIONS: Array<{ value: SocialPostStatus; label: string }> = [
 
 export function SocialPostEditor({ postId }: SocialPostEditorProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const {
     data: post,
     error,
     isLoading,
-    mutate,
-  } = useSWR<SocialPost>(`/api/admin/social-posts/${postId}`, fetcher);
+  } = useQuery<SocialPost>({
+    queryKey: ['social-post', postId],
+    queryFn: () => fetcher(`/api/admin/social-posts/${postId}`),
+  });
 
   // Form state
   const [content, setContent] = useState('');
@@ -110,7 +113,7 @@ export function SocialPostEditor({ postId }: SocialPostEditorProps) {
         throw new Error(errorMessage);
       }
 
-      mutate();
+      queryClient.invalidateQueries({ queryKey: ['social-post', postId] });
       alert('保存しました');
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : '保存に失敗しました');

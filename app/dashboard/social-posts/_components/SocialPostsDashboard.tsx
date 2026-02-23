@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import useSWR from 'swr';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SocialPostsToolbar } from './SocialPostsToolbar';
 import { SocialPostsTable } from './SocialPostsTable';
 import { GeneratePostDialog } from './GeneratePostDialog';
@@ -114,13 +114,12 @@ export function SocialPostsDashboard() {
   }).toString()}`;
 
   // Fetch data
-  const { data, error, isLoading, mutate } = useSWR<
-    PaginatedResult<SocialPost>
-  >(
-    apiUrl,
-    fetcher,
-    { refreshInterval: 30000 } // 30秒ごとに自動更新
-  );
+  const queryClient = useQueryClient();
+  const { data, error, isLoading } = useQuery<PaginatedResult<SocialPost>>({
+    queryKey: ['social-posts', filters.status, filters.source, filters.page],
+    queryFn: () => fetcher(apiUrl),
+    refetchInterval: 30000, // 30秒ごとに自動更新
+  });
 
   // Update URL when filters change
   const updateFilters = useCallback(
@@ -214,7 +213,10 @@ export function SocialPostsDashboard() {
         if (!res.ok) throw new Error('Bulk action failed');
 
         setSelectedIds(new Set());
-        mutate();
+        await queryClient.invalidateQueries({ queryKey: ['social-posts'] });
+        await queryClient.invalidateQueries({
+          queryKey: ['social-posts-stats'],
+        });
       } catch (error) {
         console.error('Bulk action failed:', error);
         alert('操作に失敗しました');
@@ -222,7 +224,7 @@ export function SocialPostsDashboard() {
         setIsProcessing(false);
       }
     },
-    [selectedIds, mutate, isProcessing]
+    [selectedIds, queryClient, isProcessing]
   );
 
   // Delete single post
@@ -239,7 +241,10 @@ export function SocialPostsDashboard() {
 
         if (!res.ok) throw new Error('Delete failed');
 
-        await mutate();
+        await queryClient.invalidateQueries({ queryKey: ['social-posts'] });
+        await queryClient.invalidateQueries({
+          queryKey: ['social-posts-stats'],
+        });
       } catch (error) {
         console.error('Delete failed:', error);
         alert('削除に失敗しました');
@@ -247,7 +252,7 @@ export function SocialPostsDashboard() {
         setIsProcessing(false);
       }
     },
-    [mutate, isProcessing]
+    [queryClient, isProcessing]
   );
 
   // Copy to clipboard
@@ -273,10 +278,11 @@ export function SocialPostsDashboard() {
   );
 
   // Generation complete callback
-  const handleGenerateComplete = useCallback(() => {
+  const handleGenerateComplete = useCallback(async () => {
     setIsGenerateDialogOpen(false);
-    mutate();
-  }, [mutate]);
+    await queryClient.invalidateQueries({ queryKey: ['social-posts'] });
+    await queryClient.invalidateQueries({ queryKey: ['social-posts-stats'] });
+  }, [queryClient]);
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">

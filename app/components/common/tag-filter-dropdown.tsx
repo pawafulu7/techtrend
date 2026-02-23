@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tag as TagIcon, ChevronDown, X } from 'lucide-react';
@@ -24,6 +24,7 @@ interface TagFilterDropdownProps {
 
 export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -86,14 +87,6 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
                 size="sm"
                 onClick={async (e) => {
                   e.preventDefault();
-                  // URLパラメータをクリア
-                  const params = new URLSearchParams(searchParams.toString());
-                  params.delete('tags');
-                  params.delete('tagMode');
-                  params.delete('page');
-                  window.location.href = `/?${params.toString()}`;
-
-                  // Clear tags from filter preferences cookie
                   try {
                     await fetch('/api/filter-preferences', {
                       method: 'POST',
@@ -104,6 +97,12 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
                       }),
                     });
                   } catch {}
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.delete('tags');
+                  params.delete('tagMode');
+                  params.delete('page');
+                  const qs = params.toString();
+                  router.replace(qs ? `/?${qs}` : '/');
                 }}
                 className="h-6 px-2 text-xs"
               >
