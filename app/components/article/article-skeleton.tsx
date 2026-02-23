@@ -27,10 +27,12 @@ export function ArticleSkeleton() {
         <div
           key={i}
           className="relative overflow-hidden rounded-lg border border-(--tt-color-border) bg-(--tt-color-surface)"
-          style={{ animationDelay: `${i * 100}ms` }}
         >
           {/* Shimmer effect */}
-          <div className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+          <div
+            className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
+            style={{ animationDelay: `${i * 100}ms` }}
+          />
 
           <div className="px-3 pt-3 pb-1 sm:px-4">
             {/* Badge skeleton */}
