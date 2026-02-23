@@ -2,27 +2,27 @@
 
 import { Calendar, Clock, Tag } from 'lucide-react';
 
+const titlePatterns = [
+  { line1: 'w-full', line2: 'w-4/5' },
+  { line1: 'w-5/6', line2: 'w-full' },
+  { line1: 'w-full', line2: 'w-3/4' },
+  { line1: 'w-4/5', line2: 'w-5/6' },
+  { line1: 'w-full', line2: 'w-2/3' },
+  { line1: 'w-3/4', line2: 'w-full' },
+];
+
+const tagPatterns = [
+  ['w-16', 'w-20', 'w-14'],
+  ['w-24', 'w-16', 'w-18'],
+  ['w-14', 'w-28', 'w-16'],
+  ['w-20', 'w-16', 'w-20'],
+  ['w-18', 'w-24', 'w-14'],
+  ['w-16', 'w-20', 'w-22'],
+];
+
 export function ArticleSkeleton() {
-  const titlePatterns = [
-    { line1: 'w-full', line2: 'w-4/5' },
-    { line1: 'w-5/6', line2: 'w-full' },
-    { line1: 'w-full', line2: 'w-3/4' },
-    { line1: 'w-4/5', line2: 'w-5/6' },
-    { line1: 'w-full', line2: 'w-2/3' },
-    { line1: 'w-3/4', line2: 'w-full' },
-  ];
-
-  const tagPatterns = [
-    ['w-16', 'w-20', 'w-14'],
-    ['w-24', 'w-16', 'w-18'],
-    ['w-14', 'w-28', 'w-16'],
-    ['w-20', 'w-16', 'w-20'],
-    ['w-18', 'w-24', 'w-14'],
-    ['w-16', 'w-20', 'w-22'],
-  ];
-
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-2 lg:gap-4 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:gap-4 xl:grid-cols-3">
       {[...Array(6)].map((_, i) => (
         <div
           key={i}
