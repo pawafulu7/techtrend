@@ -1,6 +1,6 @@
 'use client';
 
-import useSWR from 'swr';
+import { useQuery } from '@tanstack/react-query';
 import type { SocialPostStatus } from '@/lib/social-post';
 
 const fetcher = async (url: string) => {
@@ -83,9 +83,13 @@ const STATUS_CONFIG: Record<SocialPostStatus | 'total', StatusConfig> = {
 };
 
 export function StatusCounts() {
-  const { data, error, isLoading } = useSWR<
+  const { data, error, isLoading } = useQuery<
     Record<SocialPostStatus | 'total', number>
-  >('/api/admin/social-posts/stats', fetcher, { refreshInterval: 60000 });
+  >({
+    queryKey: ['social-posts-stats'],
+    queryFn: () => fetcher('/api/admin/social-posts/stats'),
+    refetchInterval: 60000,
+  });
 
   if (error) {
     return (
