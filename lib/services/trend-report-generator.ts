@@ -623,7 +623,7 @@ export class TrendReportGenerator {
 - 冗長な言い回し（簡潔に1回で伝える）
 - セクション間の同一視点での言い換え重複: core/keyTopics/trendChanges/actionsで同じ事象を同じ切り口で繰り返さない（同一テーマを別視点で扱うのは可）
 - keyTopicsで記事数の増減に言及しない（量的変化はtrendChangesの責務）
-- coreに「減少」「増加」「急増」等の量的変化の語を使う
+- coreに「減少」「増加」「急増」等の量的変化の語を使わない
 
 ## 出力ルール
 - 返答はJSONオブジェクトのみ（前後に文章・コードブロック・Markdownを付けない）
@@ -719,6 +719,14 @@ ${JSON.stringify(input)}`;
           hasStatParaphrase(t.whyItMatters)
         ) {
           errors.push(`keyTopics("${t.topic}") must not paraphrase stats`);
+        }
+        if (
+          hasQuantChangeWord(t.whatHappened) ||
+          hasQuantChangeWord(t.whyItMatters)
+        ) {
+          errors.push(
+            `keyTopics("${t.topic}") must not contain quantitative change words`
+          );
         }
       }
       for (const a of parsed.data.actions) {
