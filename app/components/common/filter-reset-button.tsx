@@ -38,6 +38,7 @@ export function FilterResetButton() {
       router.replace('/');
     } catch (err) {
       console.error('Filter reset failed:', err);
+      alert('フィルターのリセットに失敗しました');
     } finally {
       setIsResetting(false);
     }
