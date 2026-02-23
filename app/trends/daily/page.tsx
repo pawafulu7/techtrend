@@ -108,6 +108,8 @@ export default function DailyTrendPage() {
         }
         setReport(null);
         setNavigation({ prevDate: null, nextDate: null });
+        setIsFallback(false);
+        setFallbackInfo(null);
         return;
       }
 
@@ -131,6 +133,8 @@ export default function DailyTrendPage() {
       }
     } catch (_err) {
       setError('ネットワークエラーが発生しました');
+      setIsFallback(false);
+      setFallbackInfo(null);
     } finally {
       setLoading(false);
     }

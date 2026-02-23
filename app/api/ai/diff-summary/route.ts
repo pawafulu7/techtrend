@@ -124,7 +124,6 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { currentPeriod: 'desc' },
         select: { currentPeriod: true },
-        distinct: ['currentPeriod'],
       });
 
       if (latestRecord) {
@@ -167,14 +166,12 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    // Save to cache only if there's actual data
-    // Empty responses and fallback responses should not be cached under the requested key
-    if (summaries.length > 0) {
-      const actualCacheKey = isFallback
-        ? `diff-summary:${week}:${categoryParam || 'all'}`
-        : cacheKey;
+    // Only cache non-fallback responses with actual data
+    // Fallback responses contain request-specific metadata (requestedWeek) that would
+    // pollute the cache if stored under the actual week's key
+    if (summaries.length > 0 && !isFallback) {
       try {
-        await cacheInstance.set(actualCacheKey, response);
+        await cacheInstance.set(cacheKey, response);
       } catch (cacheError) {
         logger.warn('Cache write error', cacheError);
       }

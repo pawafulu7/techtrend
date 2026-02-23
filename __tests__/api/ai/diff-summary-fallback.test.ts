@@ -13,11 +13,15 @@
  *   3. diffSummary.findMany - query for latest week's data
  */
 
+const mockCacheSet = jest.fn().mockResolvedValue(undefined);
+const mockCacheGet = jest.fn().mockResolvedValue(null);
+const mockCacheDel = jest.fn().mockResolvedValue(undefined);
+
 jest.mock('@/lib/cache', () => ({
   RedisCache: jest.fn().mockImplementation(() => ({
-    get: jest.fn().mockResolvedValue(null),
-    set: jest.fn().mockResolvedValue(undefined),
-    del: jest.fn().mockResolvedValue(undefined),
+    get: mockCacheGet,
+    set: mockCacheSet,
+    del: mockCacheDel,
   })),
 }));
 
@@ -209,11 +213,7 @@ describe('/api/ai/diff-summary GET fallback logic', () => {
     expect(prismaMock.diffSummary.findMany).toHaveBeenCalledTimes(1);
   });
 
-  it('uses actual week cache key (not requested week) when fallback occurs', async () => {
-    const redisMockInstance = (RedisCache as jest.Mock).mock.results[0]?.value;
-    // Reset to get fresh mock tracking
-    jest.clearAllMocks();
-
+  it('does not cache fallback responses to avoid cache pollution', async () => {
     const latestSummary = createMockSummary({
       currentPeriod: '2026-W06',
       baselinePeriod: '2026-W05',
@@ -234,17 +234,7 @@ describe('/api/ai/diff-summary GET fallback logic', () => {
     expect(response.status).toBe(200);
     expect(data.isFallback).toBe(true);
 
-    // Verify cache.set was called with the actual week's key, not the requested week
-    // Get the RedisCache instance that was created
-    const cacheInstance = (RedisCache as jest.Mock).mock.results[0]?.value;
-    if (cacheInstance) {
-      const setCalls = cacheInstance.set.mock.calls;
-      // The cache key should use W06 (actual data week), not W08 (requested week)
-      if (setCalls.length > 0) {
-        const cacheKey = setCalls[0][0];
-        expect(cacheKey).toBe('diff-summary:2026-W06:all');
-        expect(cacheKey).not.toContain('W08');
-      }
-    }
+    // Verify cache.set was NOT called for fallback responses
+    expect(mockCacheSet).not.toHaveBeenCalled();
   });
 });
