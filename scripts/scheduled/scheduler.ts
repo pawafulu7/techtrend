@@ -41,6 +41,9 @@ async function runCommandWithTimeout(
   const durationSeconds = () => Math.round((Date.now() - startedAt) / 1000);
   const { timeout: _ignoredTimeout, maxBuffer: _ignoredMaxBuffer, ...spawnableOptions } = options;
 
+  const logLevel = (process.env.LOG_LEVEL || 'info').toLowerCase();
+  const shouldStreamOutput = logLevel === 'debug' || logLevel === 'info';
+
   console.error(`[INFO] ${stepName} started (timeout ${Math.round(timeoutMs / 1000)}s)`);
 
   return await new Promise<ExecutionResult>((resolve, reject) => {
@@ -83,7 +86,9 @@ async function runCommandWithTimeout(
     child.stdout?.on('data', (chunk: string) => {
       stdout += chunk;
       stdoutBytes += Buffer.byteLength(chunk, 'utf8');
-      process.stderr.write(chunk);
+      if (shouldStreamOutput || /\[(ERROR|WARN)\]/i.test(chunk)) {
+        process.stderr.write(chunk);
+      }
 
       if (stdoutBytes > maxBuffer) {
         bufferExceeded = true;
@@ -94,7 +99,9 @@ async function runCommandWithTimeout(
     child.stderr?.on('data', (chunk: string) => {
       stderr += chunk;
       stderrBytes += Buffer.byteLength(chunk, 'utf8');
-      process.stderr.write(chunk);
+      if (shouldStreamOutput || /\[(ERROR|WARN)\]/i.test(chunk)) {
+        process.stderr.write(chunk);
+      }
 
       if (stderrBytes > maxBuffer) {
         bufferExceeded = true;
