@@ -2,20 +2,78 @@ import { PrismaClient, Prisma, TrendPeriodType } from '@prisma/client';
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import logger from '@/lib/logger/index';
 import { GEMINI_API } from '@/lib/constants';
-import { extractFirstJsonObject, TrendAiSummarySchema } from '@/lib/types/trend-ai-summary';
+import {
+  extractFirstJsonObject,
+  TrendAiSummarySchema,
+} from '@/lib/types/trend-ai-summary';
 
 // JST offset constant (+9 hours in milliseconds)
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 // カテゴリタグ定義（大文字小文字を区別しない比較用）
 const CATEGORY_TAGS = {
-  'Frontend': ['React', 'Vue', 'Angular', 'CSS', 'JavaScript', 'TypeScript', 'Next.js', 'Svelte'],
-  'Backend': ['Node.js', 'Python', 'Ruby', 'Go', 'Java', 'PHP', 'Rails', 'Django', 'FastAPI'],
-  'AI/ML': ['AI', 'LLM', 'Claude', 'GPT', 'Gemini', '機械学習', 'ChatGPT', 'OpenAI', 'Anthropic', 'RAG'],
-  'Security': ['セキュリティ', 'Security', '脆弱性', 'CVE', 'XSS', 'CSRF', '認証'],
-  'DevOps': ['Docker', 'Kubernetes', 'CI/CD', 'AWS', 'GCP', 'Azure', 'Jenkins', 'GitHub Actions'],
-  'Database': ['PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'SQL', 'NoSQL', 'Prisma'],
-  'Mobile': ['iOS', 'Android', 'Flutter', 'React Native', 'Swift', 'Kotlin']
+  Frontend: [
+    'React',
+    'Vue',
+    'Angular',
+    'CSS',
+    'JavaScript',
+    'TypeScript',
+    'Next.js',
+    'Svelte',
+  ],
+  Backend: [
+    'Node.js',
+    'Python',
+    'Ruby',
+    'Go',
+    'Java',
+    'PHP',
+    'Rails',
+    'Django',
+    'FastAPI',
+  ],
+  'AI/ML': [
+    'AI',
+    'LLM',
+    'Claude',
+    'GPT',
+    'Gemini',
+    '機械学習',
+    'ChatGPT',
+    'OpenAI',
+    'Anthropic',
+    'RAG',
+  ],
+  Security: [
+    'セキュリティ',
+    'Security',
+    '脆弱性',
+    'CVE',
+    'XSS',
+    'CSRF',
+    '認証',
+  ],
+  DevOps: [
+    'Docker',
+    'Kubernetes',
+    'CI/CD',
+    'AWS',
+    'GCP',
+    'Azure',
+    'Jenkins',
+    'GitHub Actions',
+  ],
+  Database: [
+    'PostgreSQL',
+    'MySQL',
+    'MongoDB',
+    'Redis',
+    'SQL',
+    'NoSQL',
+    'Prisma',
+  ],
+  Mobile: ['iOS', 'Android', 'Flutter', 'React Native', 'Swift', 'Kotlin'],
 } as const;
 
 // 型定義
@@ -27,9 +85,9 @@ type ArticleWithRelations = Prisma.ArticleGetPayload<{
       select: {
         articleViews: true;
         favorites: true;
-      }
-    }
-  }
+      };
+    };
+  };
 }>;
 
 export interface TopArticleInfo {
@@ -140,13 +198,15 @@ export class TrendReportGenerator {
         where: {
           periodType_periodStart: {
             periodType,
-            periodStart
-          }
-        }
+            periodStart,
+          },
+        },
       });
 
       if (existing) {
-        logger.info(`Trend report already exists for ${periodType} starting ${periodStart.toISOString()}`);
+        logger.info(
+          `Trend report already exists for ${periodType} starting ${periodStart.toISOString()}`
+        );
         return existing.id;
       }
 
@@ -154,7 +214,9 @@ export class TrendReportGenerator {
       const articles = await this.fetchArticles(periodStart, periodEnd);
 
       if (articles.length === 0) {
-        logger.warn(`No articles found for ${periodType} period ${periodStart.toISOString()} - ${periodEnd.toISOString()}`);
+        logger.warn(
+          `No articles found for ${periodType} period ${periodStart.toISOString()} - ${periodEnd.toISOString()}`
+        );
       }
 
       // 統計計算
@@ -169,7 +231,15 @@ export class TrendReportGenerator {
 
       if (this.model && articles.length > 0) {
         try {
-          aiSummary = await this.generateAISummary(periodType, periodStart, periodEnd, articles, topArticles, categories, tags);
+          aiSummary = await this.generateAISummary(
+            periodType,
+            periodStart,
+            periodEnd,
+            articles,
+            topArticles,
+            categories,
+            tags
+          );
           aiModel = GEMINI_API.MODEL;
           generatedAt = new Date();
         } catch (error) {
@@ -191,11 +261,13 @@ export class TrendReportGenerator {
           aiSummary,
           aiModel,
           promptVersion: aiSummary ? PROMPT_VERSION : undefined,
-          generatedAt
-        }
+          generatedAt,
+        },
       });
 
-      logger.info(`Trend report created: ${report.id} (${periodType}) with ${articles.length} articles`);
+      logger.info(
+        `Trend report created: ${report.id} (${periodType}) with ${articles.length} articles`
+      );
       return report.id;
     } catch (error) {
       logger.error(`Failed to generate ${periodType} trend report`, error);
@@ -206,13 +278,16 @@ export class TrendReportGenerator {
   /**
    * 記事データを取得
    */
-  private async fetchArticles(start: Date, end: Date): Promise<ArticleWithRelations[]> {
+  private async fetchArticles(
+    start: Date,
+    end: Date
+  ): Promise<ArticleWithRelations[]> {
     return this.prisma.article.findMany({
       where: {
         publishedAt: {
           gte: start,
-          lt: end
-        }
+          lt: end,
+        },
       },
       include: {
         tags: true,
@@ -220,52 +295,58 @@ export class TrendReportGenerator {
         _count: {
           select: {
             articleViews: true,
-            favorites: true
-          }
-        }
+            favorites: true,
+          },
+        },
       },
       orderBy: {
-        publishedAt: 'desc'
-      }
+        publishedAt: 'desc',
+      },
     });
   }
 
   /**
    * トップ記事を計算
    */
-  private calculateTopArticles(articles: ArticleWithRelations[]): TopArticleInfo[] {
-    return articles.map(article => {
-      const viewCount = article._count.articleViews;
-      const favoriteCount = article._count.favorites;
-      const score = viewCount * 1 + favoriteCount * 3;
+  private calculateTopArticles(
+    articles: ArticleWithRelations[]
+  ): TopArticleInfo[] {
+    return articles
+      .map((article) => {
+        const viewCount = article._count.articleViews;
+        const favoriteCount = article._count.favorites;
+        const score = viewCount * 1 + favoriteCount * 3;
 
-      return {
-        id: article.id,
-        title: article.title,
-        translatedTitle: article.translatedTitle,
-        url: article.url,
-        sourceName: article.source.name,
-        viewCount,
-        favoriteCount,
-        score,
-        tags: article.tags.map(t => t.name)
-      };
-    }).sort((a, b) => b.score - a.score);
+        return {
+          id: article.id,
+          title: article.title,
+          translatedTitle: article.translatedTitle,
+          url: article.url,
+          sourceName: article.source.name,
+          viewCount,
+          favoriteCount,
+          score,
+          tags: article.tags.map((t) => t.name),
+        };
+      })
+      .sort((a, b) => b.score - a.score);
   }
 
   /**
    * カテゴリ別集計
    */
-  private calculateCategories(articles: ArticleWithRelations[]): CategoryInfo[] {
+  private calculateCategories(
+    articles: ArticleWithRelations[]
+  ): CategoryInfo[] {
     const categoryMap = new Map<string, Set<string>>();
     const categoryArticles = new Map<string, ArticleWithRelations[]>();
 
-    articles.forEach(article => {
-      const articleTags = article.tags.map(t => t.name.toLowerCase());
+    articles.forEach((article) => {
+      const articleTags = article.tags.map((t) => t.name.toLowerCase());
 
       for (const [category, tags] of Object.entries(CATEGORY_TAGS)) {
-        const lowerTags = tags.map(t => t.toLowerCase());
-        const hasMatch = articleTags.some(tag => lowerTags.includes(tag));
+        const lowerTags = tags.map((t) => t.toLowerCase());
+        const hasMatch = articleTags.some((tag) => lowerTags.includes(tag));
 
         if (hasMatch) {
           if (!categoryArticles.has(category)) {
@@ -282,19 +363,27 @@ export class TrendReportGenerator {
     });
 
     const categories: CategoryInfo[] = [];
-    const totalCategorized = Array.from(categoryArticles.values()).reduce((sum, arr) => sum + arr.length, 0);
+    const totalCategorized = Array.from(categoryArticles.values()).reduce(
+      (sum, arr) => sum + arr.length,
+      0
+    );
 
     for (const [name, catArticles] of categoryArticles.entries()) {
       const topArticle = this.calculateTopArticles(catArticles)[0];
       categories.push({
         name,
         count: catArticles.length,
-        percentage: totalCategorized > 0 ? Math.round((catArticles.length / totalCategorized) * 100) : 0,
-        topArticle: topArticle ? {
-          id: topArticle.id,
-          title: topArticle.title,
-          translatedTitle: topArticle.translatedTitle
-        } : null
+        percentage:
+          totalCategorized > 0
+            ? Math.round((catArticles.length / totalCategorized) * 100)
+            : 0,
+        topArticle: topArticle
+          ? {
+              id: topArticle.id,
+              title: topArticle.title,
+              translatedTitle: topArticle.translatedTitle,
+            }
+          : null,
       });
     }
 
@@ -307,19 +396,23 @@ export class TrendReportGenerator {
   private calculateTags(articles: ArticleWithRelations[]): TagInfo[] {
     const tagCount = new Map<string, number>();
 
-    articles.forEach(article => {
-      article.tags.forEach(tag => {
+    articles.forEach((article) => {
+      article.tags.forEach((tag) => {
         tagCount.set(tag.name, (tagCount.get(tag.name) || 0) + 1);
       });
     });
 
-    const totalTags = Array.from(tagCount.values()).reduce((sum, count) => sum + count, 0);
+    const totalTags = Array.from(tagCount.values()).reduce(
+      (sum, count) => sum + count,
+      0
+    );
 
     return Array.from(tagCount.entries())
       .map(([name, count]) => ({
         name,
         count,
-        percentage: totalTags > 0 ? Math.round((count / totalTags) * 100 * 10) / 10 : 0
+        percentage:
+          totalTags > 0 ? Math.round((count / totalTags) * 100 * 10) / 10 : 0,
       }))
       .sort((a, b) => b.count - a.count);
   }
@@ -342,10 +435,27 @@ export class TrendReportGenerator {
     }
 
     try {
-      return await this.generateAISummaryStructured(periodType, periodStart, periodEnd, articles, topArticles, categories, tags);
+      return await this.generateAISummaryStructured(
+        periodType,
+        periodStart,
+        periodEnd,
+        articles,
+        topArticles,
+        categories,
+        tags
+      );
     } catch (error) {
-      logger.warn('Failed to generate structured AI summary, falling back to legacy format', error);
-      return await this.generateAISummaryLegacyPlainText(periodType, articles, topArticles, categories, tags);
+      logger.warn(
+        'Failed to generate structured AI summary, falling back to legacy format',
+        error
+      );
+      return await this.generateAISummaryLegacyPlainText(
+        periodType,
+        articles,
+        topArticles,
+        categories,
+        tags
+      );
     }
   }
 
@@ -366,24 +476,24 @@ export class TrendReportGenerator {
     const periodLabel = {
       [TrendPeriodType.DAILY]: '本日',
       [TrendPeriodType.WEEKLY]: '今週',
-      [TrendPeriodType.MONTHLY]: '今月'
+      [TrendPeriodType.MONTHLY]: '今月',
     }[periodType];
 
     const input: Record<string, unknown> = {
       periodLabel,
       articleCount: articles.length,
-      topCategories: categories.slice(0, 8).map(c => ({
+      topCategories: categories.slice(0, 8).map((c) => ({
         name: c.name,
         count: c.count,
         percentage: c.percentage,
         topArticleId: c.topArticle?.id ?? null,
       })),
-      topTags: tags.slice(0, 12).map(t => ({
+      topTags: tags.slice(0, 12).map((t) => ({
         name: t.name,
         count: t.count,
         percentage: t.percentage,
       })),
-      topArticles: topArticles.slice(0, 10).map(a => ({
+      topArticles: topArticles.slice(0, 10).map((a) => ({
         id: a.id,
         title: a.translatedTitle || a.title,
         sourceName: a.sourceName,
@@ -405,17 +515,27 @@ export class TrendReportGenerator {
       const previousCategories = this.calculateCategories(previousArticles);
       const previousTags = this.calculateTags(previousArticles);
 
-      const toCountMap = (items: Array<{ name: string; count: number; percentage: number }>) =>
-        new Map(items.map(i => [i.name, { count: i.count, percentage: i.percentage }] as const));
+      const toCountMap = (
+        items: Array<{ name: string; count: number; percentage: number }>
+      ) =>
+        new Map(
+          items.map(
+            (i) =>
+              [i.name, { count: i.count, percentage: i.percentage }] as const
+          )
+        );
 
       const toDeltaList = (
         today: Array<{ name: string; count: number; percentage: number }>,
         prev: Array<{ name: string; count: number; percentage: number }>
       ) => {
         const prevMap = toCountMap(prev);
-        const names = new Set<string>([...today.map(t => t.name), ...prev.map(p => p.name)]);
-        const deltas = Array.from(names).map(name => {
-          const t = today.find(x => x.name === name);
+        const names = new Set<string>([
+          ...today.map((t) => t.name),
+          ...prev.map((p) => p.name),
+        ]);
+        const deltas = Array.from(names).map((name) => {
+          const t = today.find((x) => x.name === name);
           const p = prevMap.get(name);
           const todayCount = t?.count ?? 0;
           const prevCount = p?.count ?? 0;
@@ -429,9 +549,15 @@ export class TrendReportGenerator {
           };
         });
 
-        const newItems = deltas.filter(d => d.prevCount === 0 && d.todayCount > 0).sort((a, b) => b.todayCount - a.todayCount);
-        const rising = deltas.filter(d => d.deltaCount > 0 && d.prevCount > 0).sort((a, b) => b.deltaCount - a.deltaCount);
-        const falling = deltas.filter(d => d.deltaCount < 0).sort((a, b) => a.deltaCount - b.deltaCount);
+        const newItems = deltas
+          .filter((d) => d.prevCount === 0 && d.todayCount > 0)
+          .sort((a, b) => b.todayCount - a.todayCount);
+        const rising = deltas
+          .filter((d) => d.deltaCount > 0 && d.prevCount > 0)
+          .sort((a, b) => b.deltaCount - a.deltaCount);
+        const falling = deltas
+          .filter((d) => d.deltaCount < 0)
+          .sort((a, b) => a.deltaCount - b.deltaCount);
 
         return { newItems, rising, falling };
       };
@@ -454,12 +580,12 @@ export class TrendReportGenerator {
         },
         previous: {
           articleCount: previousArticles.length,
-          topCategories: previousCategories.slice(0, 8).map(c => ({
+          topCategories: previousCategories.slice(0, 8).map((c) => ({
             name: c.name,
             count: c.count,
             percentage: c.percentage,
           })),
-          topTags: previousTags.slice(0, 12).map(t => ({
+          topTags: previousTags.slice(0, 12).map((t) => ({
             name: t.name,
             count: t.count,
             percentage: t.percentage,
@@ -487,7 +613,7 @@ export class TrendReportGenerator {
 - 統計の言い換えではなく「何が起きているか」を言語化する
 - 類似記事を束ねて「潮流（テーマ）」として説明する
 - 読むべき記事を、具体的理由つきで推薦する
-- comparison.available=true の場合は前期間比の変化（新規/上昇/下降）を説明する
+- 前期間比の量的変化はtrendChangesセクションのみで扱う（core/keyTopics/actionsでは量の増減に言及しない）
 
 ## 絶対禁止（違反したら失格）
 - 「X件あるから注目」「Y%を占める」など、数字だけを根拠に重要と言う
@@ -495,6 +621,9 @@ export class TrendReportGenerator {
 - 「注目を集めています」「トレンドです」「学ぶべきです」など、具体性のない断定
 - 同義語・類似表現の繰り返し（例: 「AI/ML分野」と「AI関連」、「減少」と「激減」を同じ文で使う）
 - 冗長な言い回し（簡潔に1回で伝える）
+- セクション間の同一視点での言い換え重複: core/keyTopics/trendChanges/actionsで同じ事象を同じ切り口で繰り返さない（同一テーマを別視点で扱うのは可）
+- keyTopicsで記事数の増減に言及しない（量的変化はtrendChangesの責務）
+- coreに「減少」「増加」「急増」等の量的変化の語を使う
 
 ## 出力ルール
 - 返答はJSONオブジェクトのみ（前後に文章・コードブロック・Markdownを付けない）
@@ -506,12 +635,12 @@ export class TrendReportGenerator {
 ## 出力形式（厳守）
 {
   "version": "trend_ai_summary_v2",
-  "core": "今日の核心を1文で（例: Gemini 2.0発表でマルチモーダルAI開発が加速）。",
+  "core": "今日の核心を固有名詞で1文（例: Gemini 2.0発表でマルチモーダルAI開発が加速）。量的変化（増減）は書かない。",
   "keyTopics": [
     {
       "topic": "具体的な技術・ツール・手法（固有名詞、10文字以内）",
-      "whatHappened": "記事タイトルから読み取れる『出来事』を具体的に説明。複数の記事がある場合は共通点や傾向をまとめる。60-100文字程度で2-3文。",
-      "whyItMatters": "なぜ注目すべきか（影響/判断/実務への落とし込み）を具体的に説明。読者が行動に移せる示唆を含める。60-100文字程度で2-3文。",
+      "whatHappened": "記事の中身から読み取れる技術的な動き。「記事が増えた/減った」等の量的変化は書かない。何が議論・発表・提案されているかを説明する。60-100文字程度で2-3文。",
+      "whyItMatters": "whatHappenedとは異なる切り口で、実務者が得られる示唆を具体的に。whatHappenedの言い換えにしない。60-100文字程度で2-3文。",
       "evidenceArticleIds": ["topArticles.idから1-3件"]
     }
   ],
@@ -521,7 +650,7 @@ export class TrendReportGenerator {
     "new": [{ "topic": "トピック名", "deltaCount": 3, "reason": "なぜそう言えるか（タイトル/タグ変化から）を1文で。" }],
     "rising": [{ "topic": "トピック名", "deltaCount": 2, "reason": "具体的な変化を1文で。" }],
     "falling": [{ "topic": "トピック名", "deltaCount": -2, "reason": "具体的な変化を1文で。" }],
-    "summary": "前期間比の全体像を1-2文で。available=falseなら『前期間データなし』を明記。"
+    "summary": "前期間比の量的変化の全体像を1-2文で。これが量的変化を扱う唯一のセクション。available=falseなら『前期間データなし』を明記。"
   },
   "actions": [
     {
@@ -551,22 +680,39 @@ export class TrendReportGenerator {
 悪い例: "TypeScriptの型安全性に関する知見を深めることが推奨されます"
 良い例: "as const satisfiesをテストのフィクスチャ定義に適用し、破壊的変更をコンパイル時に検知できるようにする"
 
+### セクション間重複の例
+悪い例（3箇所で同じ事象を繰り返し）:
+- core: "AI/ML分野の記事数が大幅に減少し、新たなテーマが登場"
+- keyTopics[0].whatHappened: "AI/ML関連の話題が減少傾向にある一方..."
+- trendChanges.summary: "AI/MLカテゴリの記事が大幅に減少..."
+
+良い例（各セクションが異なる切り口で補完）:
+- core: "Bedrock AgentCoreとSoftware Engineering自動化が新たな焦点に"
+- keyTopics[0].whatHappened: "AWS Bedrock AgentCoreの実装パターンに関する記事が複数登場。エージェントのオーケストレーションとメモリ管理の手法が具体的に解説されている。"
+- trendChanges.summary: "AI/MLカテゴリが前日比で縮小し、代わりにOpen SourceとSoftware Engineeringが拡大。"
+
 ## 入力データ
 ${JSON.stringify(input)}`;
 
     // 統計言い換えの検出（明らかな悪いパターンのみ）
     // - 「XX%を占める」「XX件あるから」など、数値を根拠にした記述
-    const hasStatParaphrase = (value: string) => /(\d+(\.\d+)?%を占|(\d+)\s*件.{0,3}(ある|注目|重要))/.test(value);
+    const hasStatParaphrase = (value: string) =>
+      /(\d+(\.\d+)?%を占|(\d+)\s*件.{0,3}(ある|注目|重要))/.test(value);
 
     const validateV2Content = (obj: unknown): string[] => {
       const parsed = TrendAiSummarySchema.safeParse(obj);
       if (!parsed.success) return [`schema: ${parsed.error.message}`];
-      if (parsed.data.version !== 'trend_ai_summary_v2') return ['version must be trend_ai_summary_v2'];
+      if (parsed.data.version !== 'trend_ai_summary_v2')
+        return ['version must be trend_ai_summary_v2'];
 
       const errors: string[] = [];
-      if (hasStatParaphrase(parsed.data.core)) errors.push('core must not paraphrase stats');
+      if (hasStatParaphrase(parsed.data.core))
+        errors.push('core must not paraphrase stats');
       for (const t of parsed.data.keyTopics) {
-        if (hasStatParaphrase(t.whatHappened) || hasStatParaphrase(t.whyItMatters)) {
+        if (
+          hasStatParaphrase(t.whatHappened) ||
+          hasStatParaphrase(t.whyItMatters)
+        ) {
           errors.push(`keyTopics("${t.topic}") must not paraphrase stats`);
         }
       }
@@ -575,7 +721,10 @@ ${JSON.stringify(input)}`;
           errors.push(`actions("${a.action}") must not paraphrase stats`);
         }
       }
-      if (parsed.data.trendChanges && hasStatParaphrase(parsed.data.trendChanges.summary)) {
+      if (
+        parsed.data.trendChanges &&
+        hasStatParaphrase(parsed.data.trendChanges.summary)
+      ) {
         errors.push('trendChanges.summary must not paraphrase stats');
       }
       return errors;
@@ -626,7 +775,9 @@ ${rawText1}`;
     const json2 = extractFirstJsonObject(rawText2);
     const errors2 = validateV2Content(json2);
     if (errors2.length > 0) {
-      throw new Error(`Structured AI summary validation failed after repair: ${errors2.join(' / ')}`);
+      throw new Error(
+        `Structured AI summary validation failed after repair: ${errors2.join(' / ')}`
+      );
     }
 
     return JSON.stringify(json2);
@@ -646,12 +797,16 @@ ${rawText1}`;
     const periodLabel = {
       [TrendPeriodType.DAILY]: '本日',
       [TrendPeriodType.WEEKLY]: '今週',
-      [TrendPeriodType.MONTHLY]: '今月'
+      [TrendPeriodType.MONTHLY]: '今月',
     }[periodType];
 
-    const topArticlesText = topArticles.slice(0, 5).map((a, i) =>
-      `${i + 1}. [${a.sourceName}] ${a.translatedTitle || a.title}\n   - タグ: ${a.tags.slice(0, 3).join(', ')}\n   - スコア: ${a.score} (閲覧${a.viewCount}/お気に入り${a.favoriteCount})`
-    ).join('\n');
+    const topArticlesText = topArticles
+      .slice(0, 5)
+      .map(
+        (a, i) =>
+          `${i + 1}. [${a.sourceName}] ${a.translatedTitle || a.title}\n   - タグ: ${a.tags.slice(0, 3).join(', ')}\n   - スコア: ${a.score} (閲覧${a.viewCount}/お気に入り${a.favoriteCount})`
+      )
+      .join('\n');
 
     const prompt = `技術ニュース編集長として、記事タイトルを分析しエンジニア向けインサイトを作成してください。
 
@@ -699,14 +854,17 @@ ${topArticlesText}
   /**
    * 特定期間のトレンドレポートを取得
    */
-  async getTrendReport(periodType: TrendPeriodType, periodStart: Date): Promise<TrendReportData | null> {
+  async getTrendReport(
+    periodType: TrendPeriodType,
+    periodStart: Date
+  ): Promise<TrendReportData | null> {
     const report = await this.prisma.trendReport.findUnique({
       where: {
         periodType_periodStart: {
           periodType,
-          periodStart
-        }
-      }
+          periodStart,
+        },
+      },
     });
 
     if (!report) {
@@ -724,17 +882,19 @@ ${topArticlesText}
       aiSummary: report.aiSummary ?? undefined,
       aiModel: report.aiModel ?? undefined,
       promptVersion: report.promptVersion ?? undefined,
-      generatedAt: report.generatedAt ?? undefined
+      generatedAt: report.generatedAt ?? undefined,
     };
   }
 
   /**
    * 最新のトレンドレポートを取得
    */
-  async getLatestReport(periodType: TrendPeriodType): Promise<TrendReportData | null> {
+  async getLatestReport(
+    periodType: TrendPeriodType
+  ): Promise<TrendReportData | null> {
     const report = await this.prisma.trendReport.findFirst({
       where: { periodType },
-      orderBy: { periodStart: 'desc' }
+      orderBy: { periodStart: 'desc' },
     });
 
     if (!report) {
@@ -752,7 +912,7 @@ ${topArticlesText}
       aiSummary: report.aiSummary ?? undefined,
       aiModel: report.aiModel ?? undefined,
       promptVersion: report.promptVersion ?? undefined,
-      generatedAt: report.generatedAt ?? undefined
+      generatedAt: report.generatedAt ?? undefined,
     };
   }
 
@@ -771,8 +931,8 @@ ${topArticlesText}
         periodEnd: true,
         articleCount: true,
         aiSummary: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
   }
 
@@ -787,25 +947,25 @@ ${topArticlesText}
     const prevReport = await this.prisma.trendReport.findFirst({
       where: {
         periodType,
-        periodStart: { lt: currentPeriodStart }
+        periodStart: { lt: currentPeriodStart },
       },
       orderBy: { periodStart: 'desc' },
-      select: { periodStart: true }
+      select: { periodStart: true },
     });
 
     // 次のレポート
     const nextReport = await this.prisma.trendReport.findFirst({
       where: {
         periodType,
-        periodStart: { gt: currentPeriodStart }
+        periodStart: { gt: currentPeriodStart },
       },
       orderBy: { periodStart: 'asc' },
-      select: { periodStart: true }
+      select: { periodStart: true },
     });
 
     return {
       prevDate: prevReport?.periodStart ?? null,
-      nextDate: nextReport?.periodStart ?? null
+      nextDate: nextReport?.periodStart ?? null,
     };
   }
 
@@ -816,7 +976,7 @@ ${topArticlesText}
     const report = await this.prisma.trendReport.findFirst({
       where: { periodType },
       orderBy: { periodStart: 'desc' },
-      select: { periodStart: true }
+      select: { periodStart: true },
     });
     return report?.periodStart ?? null;
   }
@@ -836,8 +996,12 @@ ${topArticlesText}
     const day = jstDate.getUTCDate();
 
     // UTC時刻に変換して返す
-    const start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - JST_OFFSET_MS);
-    const end = new Date(Date.UTC(year, month, day + 1, 0, 0, 0, 0) - JST_OFFSET_MS);
+    const start = new Date(
+      Date.UTC(year, month, day, 0, 0, 0, 0) - JST_OFFSET_MS
+    );
+    const end = new Date(
+      Date.UTC(year, month, day + 1, 0, 0, 0, 0) - JST_OFFSET_MS
+    );
 
     return { start, end };
   }
