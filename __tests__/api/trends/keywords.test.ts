@@ -77,8 +77,8 @@ describe('/api/trends/keywords', () => {
   });
 
   it('applies effectiveAverage=1.0 when weeklyAverage < 1 (inflation prevention)', async () => {
-    // recentCount=4, weekly_count=2 → weeklyAverage=2/6=0.333...
-    // effectiveAverage = max(0.333, 1.0) = 1.0
+    // recentCount=4, weekly_count=2 → weeklyAverage=round(2/6*10)/10=0.3 (API returns rounded value)
+    // effectiveAverage = max(2/6, 1.0) = 1.0 (uses raw value for calculation)
     // growthRate = min(round(((4 - 1.0) / 1.0) * 100), 999) = 300
     const recentTags = [
       { id: 'tag-1', name: 'Vercel', recent_count: BigInt(4) },
@@ -132,6 +132,7 @@ describe('/api/trends/keywords', () => {
     expect(tag.recentCount).toBe(20);
     expect(tag.weeklyAverage).toBe(0);
     expect(tag.growthRate).toBe(999);
+    expect(tag.isTrending).toBe(true);
   });
 
   it('uses effectiveAverage=1.0 for weeklyAverage=0 (unified handling)', async () => {
@@ -157,6 +158,7 @@ describe('/api/trends/keywords', () => {
     const tag = data.trending[0];
     expect(tag.weeklyAverage).toBe(0);
     expect(tag.growthRate).toBe(300);
+    expect(tag.isTrending).toBe(true);
     // Confirm it is NOT the old fixed 100%
     expect(tag.growthRate).not.toBe(100);
   });
