@@ -6,17 +6,15 @@ export async function GET() {
   try {
     // キャッシュキーを生成（キーワード分析用の固定キー）
     const cacheKey = 'keywords:trending';
-    
-    // キャッシュから取得またはDBから取得してキャッシュに保存
-    const keywordsData = await keywordsCache.getOrSet(
-      cacheKey,
-      async () => {
-    const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // 過去24時間のタグ使用状況
-    const recentTags = await prisma.$queryRaw`
+    // キャッシュから取得またはDBから取得してキャッシュに保存
+    const keywordsData = await keywordsCache.getOrSet(cacheKey, async () => {
+      const now = new Date();
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      // 過去24時間のタグ使用状況
+      const recentTags = (await prisma.$queryRaw`
       SELECT 
         t.id,
         t.name,
@@ -28,10 +26,10 @@ export async function GET() {
         AND t.name <> ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
-    ` as { id: string; name: string; recent_count: bigint }[];
+    `) as { id: string; name: string; recent_count: bigint }[];
 
-    // 過去1週間のタグ使用状況
-    const weeklyTags = await prisma.$queryRaw`
+      // 過去1週間のタグ使用状況
+      const weeklyTags = (await prisma.$queryRaw`
       SELECT 
         t.id,
         t.name,
@@ -44,38 +42,43 @@ export async function GET() {
         AND t.name <> ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
-    ` as { id: string; name: string; weekly_count: bigint }[];
+    `) as { id: string; name: string; weekly_count: bigint }[];
 
-    // 週間平均と比較して急上昇を検出
-    const weeklyTagMap = new Map(
-      weeklyTags.map(tag => [tag.id, Number(tag.weekly_count) / 6]) // 6日間の平均
-    );
+      // 週間平均と比較して急上昇を検出
+      const weeklyTagMap = new Map(
+        weeklyTags.map((tag) => [tag.id, Number(tag.weekly_count) / 6]) // 6日間の平均
+      );
 
-    const trendingKeywords = recentTags
-      .map(tag => {
-        const recentCount = Number(tag.recent_count);
-        const weeklyAverage = weeklyTagMap.get(tag.id) || 0;
-        
-        // 成長率を計算（ゼロ除算を避ける）
-        const growthRate = weeklyAverage > 0 
-          ? ((recentCount - weeklyAverage) / weeklyAverage) * 100
-          : recentCount > 0 ? 100 : 0;
+      const trendingKeywords = recentTags
+        .map((tag) => {
+          const recentCount = Number(tag.recent_count);
+          const weeklyAverage = weeklyTagMap.get(tag.id) || 0;
 
-        return {
-          id: tag.id,
-          name: tag.name,
-          recentCount,
-          weeklyAverage: Math.round(weeklyAverage * 10) / 10,
-          growthRate: Math.round(growthRate),
-          isTrending: growthRate > 50 && recentCount >= 2 // 50%以上の成長かつ2件以上
-        };
-      })
-      .filter(tag => tag.isTrending || tag.recentCount >= 3) // トレンドまたは頻出タグ
-      .sort((a, b) => b.growthRate - a.growthRate)
-      .slice(0, 20);
+          // weeklyAverage（日平均）の最低値を1.0に設定（極小分母による膨張を防止）
+          // weeklyAverage=0 も含め、1.0未満は全て1.0に統一（不連続回避）
+          const effectiveAverage = Math.max(weeklyAverage, 1.0);
+          const rawGrowthRate =
+            ((recentCount - effectiveAverage) / effectiveAverage) * 100;
+          // 成長率を999%にキャップ
+          const growthRate = Math.min(Math.round(rawGrowthRate), 999);
 
-    // 新規タグ（過去24時間に初めて使われたタグ）
-    const newTags = await prisma.$queryRaw`
+          return {
+            id: tag.id,
+            name: tag.name,
+            recentCount,
+            weeklyAverage: Math.round(weeklyAverage * 10) / 10,
+            growthRate,
+            isTrending: growthRate > 50 && recentCount >= 2, // 50%以上の成長かつ2件以上
+          };
+        })
+        .filter((tag) => tag.isTrending || tag.recentCount >= 3) // トレンドまたは頻出タグ
+        .sort(
+          (a, b) => b.growthRate - a.growthRate || b.recentCount - a.recentCount
+        )
+        .slice(0, 20);
+
+      // 新規タグ（過去24時間に初めて使われたタグ）
+      const newTags = (await prisma.$queryRaw`
       SELECT DISTINCT
         t.id,
         t.name,
@@ -96,22 +99,21 @@ export async function GET() {
       GROUP BY t.id, t.name
       ORDER BY count DESC
       LIMIT 10
-    ` as { id: string; name: string; count: bigint }[];
+    `) as { id: string; name: string; count: bigint }[];
 
-        return {
-          trending: trendingKeywords,
-          newTags: newTags.map(tag => ({
-            id: tag.id,
-            name: tag.name,
-            count: Number(tag.count)
-          })),
-          period: {
-            from: oneDayAgo.toISOString(),
-            to: now.toISOString()
-          }
-        };
-      }
-    );
+      return {
+        trending: trendingKeywords,
+        newTags: newTags.map((tag) => ({
+          id: tag.id,
+          name: tag.name,
+          count: Number(tag.count),
+        })),
+        period: {
+          from: oneDayAgo.toISOString(),
+          to: now.toISOString(),
+        },
+      };
+    });
 
     // キャッシュ統計をログ出力
     const cacheStats = keywordsCache.getStats();
@@ -120,19 +122,20 @@ export async function GET() {
       ...keywordsData,
       cache: {
         hit: cacheStats.hits > 0,
-        stats: cacheStats
-      }
+        stats: cacheStats,
+      },
     });
   } catch {
+    const now = new Date();
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch trending keywords',
         trending: [],
         newTags: [],
         period: {
-          from: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          to: new Date().toISOString()
-        }
+          from: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+          to: now.toISOString(),
+        },
       },
       { status: 500 }
     );
