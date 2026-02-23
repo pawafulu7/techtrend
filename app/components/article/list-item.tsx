@@ -82,7 +82,7 @@ export function ArticleListItem({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.target !== e.currentTarget) return;
-      if (e.key === 'Enter' || e.key === ' ') {
+      if (e.key === 'Enter') {
         e.preventDefault();
         handleClick(e);
       }
@@ -94,7 +94,7 @@ export function ArticleListItem({
     <div
       id={`article-${article.id}`}
       data-article-id={article.id}
-      role="article"
+      role="link"
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -148,18 +148,24 @@ export function ArticleListItem({
                 key={tag.id}
                 variant="outline"
                 className="h-5 cursor-pointer px-1.5 py-0 text-xs"
-                onClick={(e: React.MouseEvent<HTMLElement>) => {
-                  e.stopPropagation();
-                  if (onTagClick) {
-                    onTagClick(tag.name);
-                  } else {
-                    router.push(
-                      `/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`
-                    );
-                  }
-                }}
+                asChild
               >
-                {tag.name}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onTagClick) {
+                      onTagClick(tag.name);
+                    } else {
+                      router.push(
+                        `/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`
+                      );
+                    }
+                  }}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  {tag.name}
+                </button>
               </BadgeV2>
             ))}
           </div>

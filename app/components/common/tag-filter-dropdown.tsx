@@ -101,7 +101,8 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
                   params.delete('tags');
                   params.delete('tagMode');
                   params.delete('page');
-                  router.replace(`/?${params.toString()}`);
+                  const qs = params.toString();
+                  router.replace(qs ? `/?${qs}` : '/');
                 }}
                 className="h-6 px-2 text-xs"
               >

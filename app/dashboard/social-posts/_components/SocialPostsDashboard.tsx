@@ -213,7 +213,10 @@ export function SocialPostsDashboard() {
         if (!res.ok) throw new Error('Bulk action failed');
 
         setSelectedIds(new Set());
-        queryClient.invalidateQueries({ queryKey: ['social-posts'] });
+        await queryClient.invalidateQueries({ queryKey: ['social-posts'] });
+        await queryClient.invalidateQueries({
+          queryKey: ['social-posts-stats'],
+        });
       } catch (error) {
         console.error('Bulk action failed:', error);
         alert('操作に失敗しました');
@@ -239,6 +242,9 @@ export function SocialPostsDashboard() {
         if (!res.ok) throw new Error('Delete failed');
 
         await queryClient.invalidateQueries({ queryKey: ['social-posts'] });
+        await queryClient.invalidateQueries({
+          queryKey: ['social-posts-stats'],
+        });
       } catch (error) {
         console.error('Delete failed:', error);
         alert('削除に失敗しました');
@@ -275,6 +281,7 @@ export function SocialPostsDashboard() {
   const handleGenerateComplete = useCallback(() => {
     setIsGenerateDialogOpen(false);
     queryClient.invalidateQueries({ queryKey: ['social-posts'] });
+    queryClient.invalidateQueries({ queryKey: ['social-posts-stats'] });
   }, [queryClient]);
 
   return (

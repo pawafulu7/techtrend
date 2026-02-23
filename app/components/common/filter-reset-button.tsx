@@ -38,7 +38,8 @@ export function FilterResetButton() {
 
       queryClient.invalidateQueries();
       router.replace('/');
-    } catch {
+    } catch (err) {
+      console.error('Filter reset failed:', err);
     } finally {
       setIsResetting(false);
     }
