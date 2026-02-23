@@ -13,12 +13,16 @@ interface CachedData {
 const trendCache = new Map<string, CachedData>();
 
 // トレンド計算関数
-function calculateTrend(currentRank: number, articleId: string, previousRankings: unknown): 'up' | 'down' | 'stable' | 'new' {
+function calculateTrend(
+  currentRank: number,
+  articleId: string,
+  previousRankings: unknown
+): 'up' | 'down' | 'stable' | 'new' {
   if (!previousRankings || !Array.isArray(previousRankings)) return 'new';
-  
-  const previousItem = previousRankings.find(item => item.id === articleId);
+
+  const previousItem = previousRankings.find((item) => item.id === articleId);
   if (!previousItem) return 'new';
-  
+
   const rankDiff = previousItem.rank - currentRank;
   if (rankDiff > 0) return 'up';
   if (rankDiff < 0) return 'down';
@@ -42,17 +46,21 @@ function mapPeriodToPopular(period: Period): PopularPeriod {
 }
 
 // カテゴリからソースIDを取得
-async function getSourceIdFromCategory(category: string): Promise<string | undefined> {
+async function getSourceIdFromCategory(
+  category: string
+): Promise<string | undefined> {
   const source = await prisma.source.findFirst({
-    where: { name: category }
+    where: { name: category },
   });
   return source?.id;
 }
 
 // カテゴリからタグIDを取得
-async function getTagIdFromCategory(category: string): Promise<string | undefined> {
+async function getTagIdFromCategory(
+  category: string
+): Promise<string | undefined> {
   const tag = await prisma.tag.findFirst({
-    where: { name: category }
+    where: { name: category },
   });
   return tag?.id;
 }
@@ -64,13 +72,15 @@ export async function GET(request: NextRequest) {
     const metric = (searchParams.get('metric') || 'combined') as Metric;
     const category = searchParams.get('category');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const includeEmptyContent = searchParams.get('includeEmptyContent') === 'true';
-    const excludeUnprocessed = searchParams.get('excludeUnprocessed') === 'true';
+    const includeEmptyContent =
+      searchParams.get('includeEmptyContent') === 'true';
+    const excludeUnprocessed =
+      searchParams.get('excludeUnprocessed') === 'true';
     const excludeLowQuality = searchParams.get('excludeLowQuality') === 'true'; // Default: false
 
     // PopularCacheを使用
     const popularPeriod = mapPeriodToPopular(period);
-    
+
     const result = await popularCache.getOrSet(
       popularPeriod,
       async () => {
@@ -100,16 +110,16 @@ export async function GET(request: NextRequest) {
         if (category) {
           // タグかソースかを判定
           const tag = await prisma.tag.findFirst({
-            where: { name: category }
+            where: { name: category },
           });
-          
+
           if (tag) {
             categoryFilter = {
-              tags: { some: { name: category } }
+              tags: { some: { name: category } },
             };
           } else {
             categoryFilter = {
-              source: { name: category }
+              source: { name: category },
             };
           }
         }
@@ -118,10 +128,7 @@ export async function GET(request: NextRequest) {
         const contentFilter = includeEmptyContent
           ? {}
           : {
-              AND: [
-                { content: { not: null } },
-                { content: { not: '' } }
-              ]
+              AND: [{ content: { not: null } }, { content: { not: '' } }],
             };
 
         // 処理済み記事フィルターの条件設定
@@ -135,8 +142,12 @@ export async function GET(request: NextRequest) {
           ? {
               OR: [
                 { skipReason: null },
-                { skipReason: { notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const] } }
-              ]
+                {
+                  skipReason: {
+                    notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const],
+                  },
+                },
+              ],
             }
           : {};
 
@@ -155,20 +166,20 @@ export async function GET(request: NextRequest) {
               qualityScoreFilter,
               contentFilter,
               processedFilter,
-              skipReasonFilter
-            ].filter(f => Object.keys(f).length > 0) // Remove empty filters
+              skipReasonFilter,
+            ].filter((f) => Object.keys(f).length > 0), // Remove empty filters
           },
           include: {
             source: true,
-            tags: true
+            tags: true,
           },
-          take: limit * 2 // スコア計算後にカットするため多めに取得
+          take: limit * 2, // スコア計算後にカットするため多めに取得
         });
 
         // スコア計算とソート
-        const scoredArticles = articles.map(article => {
+        const scoredArticles = articles.map((article) => {
           let score = 0;
-          
+
           switch (metric) {
             case 'bookmarks':
               score = article.bookmarks;
@@ -185,18 +196,20 @@ export async function GET(request: NextRequest) {
               const voteWeight = 0.2;
               const qualityWeight = 0.3;
               const recencyWeight = 0.2;
-              
-              const ageInDays = (Date.now() - article.publishedAt.getTime()) / (1000 * 60 * 60 * 24);
+
+              const ageInDays =
+                (Date.now() - article.publishedAt.getTime()) /
+                (1000 * 60 * 60 * 24);
               const recencyScore = Math.exp(-ageInDays / 7);
-              
-              score = 
+
+              score =
                 article.bookmarks * bookmarkWeight +
                 (article.userVotes || 0) * voteWeight +
                 article.qualityScore * qualityWeight +
                 recencyScore * 100 * recencyWeight;
               break;
           }
-          
+
           return { ...article, score };
         });
 
@@ -207,16 +220,20 @@ export async function GET(request: NextRequest) {
         // 前回のランキングを取得
         const rankCacheKey = `rankings_${period}_${metric}_${category || 'all'}`;
         const previousRankings = trendCache.get(rankCacheKey)?.data;
-        
+
         // ランキング情報を付与
         const rankedArticles = topArticles.map((article, index) => {
           const currentRank = index + 1;
-          const trend = calculateTrend(currentRank, article.id, previousRankings);
-          
+          const trend = calculateTrend(
+            currentRank,
+            article.id,
+            previousRankings
+          );
+
           return {
             ...article,
             rank: currentRank,
-            trend
+            trend,
           };
         });
 
@@ -224,29 +241,40 @@ export async function GET(request: NextRequest) {
           articles: rankedArticles,
           period,
           metric,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         };
 
         // 現在のランキングをトレンドキャッシュに保存
         trendCache.set(rankCacheKey, {
           data: rankedArticles,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
-        
+
         return response;
       },
       {
         limit,
-        sourceId: category ? await getSourceIdFromCategory(category) : undefined,
-        tagId: category ? await getTagIdFromCategory(category) : undefined
+        sourceId: category
+          ? await getSourceIdFromCategory(category)
+          : undefined,
+        tagId: category ? await getTagIdFromCategory(category) : undefined,
       }
     );
-    
-    return NextResponse.json(result);
+
+    return NextResponse.json(result, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
+      },
+    });
   } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
     );
   }
 }

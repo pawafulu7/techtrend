@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
   // 実験的機能で最適化
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['@radix-ui', 'lucide-react', 'recharts'],
+    optimizePackageImports: ['@radix-ui', 'lucide-react', 'recharts', 'd3-scale', 'd3-hierarchy', 'd3-interpolate', 'd3-force'],
   },
 
   // セキュリティヘッダはproxy.tsで管理

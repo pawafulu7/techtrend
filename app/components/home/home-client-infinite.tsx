@@ -13,7 +13,8 @@ import { PAGINATION, SCROLL } from '@/lib/constants/index';
 import type { Source, Tag } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
-import { Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Search } from 'lucide-react';
+import { CardV2 } from '@/components/ui-v2/card-v2';
 import type { ViewMode } from '@/types/components';
 
 interface HomeClientInfiniteProps {
@@ -235,6 +236,7 @@ export function HomeClientInfinite({
     isLoading,
     isError,
     error,
+    refetch,
   } = useInfiniteArticles({
     ...filters,
     includeUserData: true, // Include favorites and read status in API response
@@ -307,8 +309,30 @@ export function HomeClientInfinite({
 
   if (isError) {
     return (
-      <div className="py-8 text-center text-red-500">
-        エラーが発生しました: {error?.message || 'Unknown error'}
+      <div className="flex min-h-[400px] items-center justify-center px-4">
+        <CardV2 className="mx-auto max-w-md">
+          <div className="flex flex-col items-center justify-center px-4 py-12">
+            <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+              <AlertTriangle
+                className="text-muted-foreground h-8 w-8"
+                aria-hidden="true"
+              />
+            </div>
+            <p className="text-foreground mb-2 text-lg font-medium">
+              エラーが発生しました
+            </p>
+            <p className="text-muted-foreground mb-6 text-center text-sm">
+              記事の読み込みに失敗しました。しばらく経ってから再試行してください。
+            </p>
+            <Button
+              onClick={() => refetch()}
+              variant="outline"
+              className="min-h-[44px] min-w-[44px]"
+            >
+              再試行
+            </Button>
+          </div>
+        </CardV2>
       </div>
     );
   }
@@ -382,10 +406,23 @@ export function HomeClientInfinite({
         ) : isLoading ? (
           <ArticleSkeleton />
         ) : (
-          <div className="flex min-h-[600px] items-center justify-center">
-            <div className="text-muted-foreground text-center">
-              記事が見つかりませんでした
-            </div>
+          <div className="flex min-h-[400px] items-center justify-center px-4">
+            <CardV2 className="mx-auto max-w-md">
+              <div className="flex flex-col items-center justify-center px-4 py-12">
+                <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+                  <Search
+                    className="text-muted-foreground h-8 w-8"
+                    aria-hidden="true"
+                  />
+                </div>
+                <p className="text-foreground mb-2 text-lg font-medium">
+                  記事が見つかりませんでした
+                </p>
+                <p className="text-muted-foreground mb-6 text-center text-sm">
+                  フィルター条件を変更するか、別のカテゴリをお試しください。
+                </p>
+              </div>
+            </CardV2>
           </div>
         )}
       </div>
