@@ -699,6 +699,9 @@ ${JSON.stringify(input)}`;
     const hasStatParaphrase = (value: string) =>
       /(\d+(\.\d+)?%を占|(\d+)\s*件.{0,3}(ある|注目|重要))/.test(value);
 
+    const hasQuantChangeWord = (value: string) =>
+      /(増加|減少|急増|急減|増えた|減った|拡大|縮小)/.test(value);
+
     const validateV2Content = (obj: unknown): string[] => {
       const parsed = TrendAiSummarySchema.safeParse(obj);
       if (!parsed.success) return [`schema: ${parsed.error.message}`];
@@ -708,6 +711,8 @@ ${JSON.stringify(input)}`;
       const errors: string[] = [];
       if (hasStatParaphrase(parsed.data.core))
         errors.push('core must not paraphrase stats');
+      if (hasQuantChangeWord(parsed.data.core))
+        errors.push('core must not contain quantitative change words');
       for (const t of parsed.data.keyTopics) {
         if (
           hasStatParaphrase(t.whatHappened) ||
@@ -754,6 +759,9 @@ ${JSON.stringify(input)}`;
 指定キー（追加/欠落禁止）: version, core, keyTopics, trendChanges, actions, numbers, notes
 versionは必ず "trend_ai_summary_v2"。
 文章フィールドでは統計の言い換え（"件" "%""割合""占める" 等）をしない（数値はdeltaCountに入れる）。
+coreには「減少」「増加」「急増」等の量的変化の語を使わない。
+keyTopicsでは記事数の増減に言及しない（量的変化はtrendChanges.summaryの責務）。
+core/keyTopics/trendChanges/actionsで同じ事象を同じ切り口で繰り返さない。
 
 スキーマ例:
 {
