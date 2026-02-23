@@ -49,6 +49,7 @@ jest.mock('@/lib/middleware/with-cron-or-admin-auth', () => ({
 
 import { GET } from '@/app/api/trends/daily/route';
 import { NextRequest } from 'next/server';
+import { TrendPeriodType } from '@prisma/client';
 
 // --- Helpers ---
 
@@ -70,7 +71,7 @@ function createMockReport(dateStr: string) {
   const periodEnd = new Date(periodStart.getTime() + 24 * 60 * 60 * 1000);
   return {
     id: `report-${dateStr}`,
-    periodType: 'DAILY',
+    periodType: TrendPeriodType.DAILY,
     periodStart,
     periodEnd,
     generatedAt: new Date('2026-02-20T03:00:00Z'),
@@ -116,6 +117,9 @@ describe('/api/trends/daily - fallback logic', () => {
     // Cache header
     expect(response.headers.get('X-Cache')).toBe('MISS');
     expect(response.headers.get('Cache-Control')).toBe('public, max-age=300');
+
+    // Verify cache.set WAS called for normal (non-fallback) responses
+    expect(mockCacheSet).toHaveBeenCalledTimes(1);
   });
 
   it('returns fallback response when requested date has no data but latest report exists', async () => {
@@ -194,7 +198,7 @@ describe('/api/trends/daily - fallback logic', () => {
 
     // Verify getAdjacentReportDates was called with the fallback report's periodStart
     expect(mockGetAdjacentReportDates).toHaveBeenCalledWith(
-      'DAILY',
+      TrendPeriodType.DAILY,
       latestReport.periodStart
     );
   });

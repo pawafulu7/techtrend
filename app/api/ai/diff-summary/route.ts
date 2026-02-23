@@ -138,6 +138,13 @@ export async function GET(request: NextRequest) {
           },
           orderBy: { generatedAt: 'desc' },
         });
+
+        // Guard: if records were deleted between findFirst and findMany (TOCTOU),
+        // revert to non-fallback state to avoid returning isFallback:true with no data.
+        if (summaries.length === 0) {
+          isFallback = false;
+          week = requestedWeek;
+        }
       }
     }
 

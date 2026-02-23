@@ -123,8 +123,10 @@ export default function DiffSummaryPage() {
         setData(result);
         if (result.isFallback === true || isRetry) {
           setIsFallback(true);
+          // When isRetry, the user's original week always takes precedence over
+          // the API's requestedWeek (which is the intermediate retry week).
           setFallbackRequestedWeek(
-            result.requestedWeek ?? originalWeek ?? null
+            isRetry ? (originalWeek ?? null) : (result.requestedWeek ?? null)
           );
           fallbackWeekUpdateRef.current = true;
           setSelectedWeek(result.week);
