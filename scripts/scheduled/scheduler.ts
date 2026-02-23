@@ -83,12 +83,24 @@ async function runCommandWithTimeout(
     child.stdout?.setEncoding('utf8');
     child.stderr?.setEncoding('utf8');
 
+    const errorPattern = /\[(ERROR|WARN)\]|❌|⚠️/i;
+    const stdoutLineBuffer = { value: '' };
+    const stderrLineBuffer = { value: '' };
+    const streamFiltered = (chunk: string, buffer: { value: string }) => {
+      const combined = buffer.value + chunk;
+      const lines = combined.split(/\r?\n/);
+      buffer.value = lines.pop() ?? '';
+      for (const line of lines) {
+        if (shouldStreamOutput || errorPattern.test(line)) {
+          process.stderr.write(line + '\n');
+        }
+      }
+    };
+
     child.stdout?.on('data', (chunk: string) => {
       stdout += chunk;
       stdoutBytes += Buffer.byteLength(chunk, 'utf8');
-      if (shouldStreamOutput || /\[(ERROR|WARN)\]|❌|⚠️/i.test(chunk)) {
-        process.stderr.write(chunk);
-      }
+      streamFiltered(chunk, stdoutLineBuffer);
 
       if (stdoutBytes > maxBuffer) {
         bufferExceeded = true;
@@ -99,9 +111,7 @@ async function runCommandWithTimeout(
     child.stderr?.on('data', (chunk: string) => {
       stderr += chunk;
       stderrBytes += Buffer.byteLength(chunk, 'utf8');
-      if (shouldStreamOutput || /\[(ERROR|WARN)\]|❌|⚠️/i.test(chunk)) {
-        process.stderr.write(chunk);
-      }
+      streamFiltered(chunk, stderrLineBuffer);
 
       if (stderrBytes > maxBuffer) {
         bufferExceeded = true;
@@ -121,6 +131,14 @@ async function runCommandWithTimeout(
     });
 
     child.on('close', (code, signal) => {
+      // Flush remaining line buffers
+      if (stdoutLineBuffer.value && (shouldStreamOutput || errorPattern.test(stdoutLineBuffer.value))) {
+        process.stderr.write(stdoutLineBuffer.value + '\n');
+      }
+      if (stderrLineBuffer.value && (shouldStreamOutput || errorPattern.test(stderrLineBuffer.value))) {
+        process.stderr.write(stderrLineBuffer.value + '\n');
+      }
+
       const durationSec = durationSeconds();
 
       if (timedOut) {
