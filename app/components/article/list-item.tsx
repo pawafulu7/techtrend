@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Clock, TrendingUp, ExternalLink, Eye } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { BadgeV2 } from '@/components/ui-v2/badge-v2';
+import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import { formatDate, formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source-colors';
 import type { ArticleListItemProps } from '@/types/components';
@@ -61,113 +61,120 @@ export function ArticleListItem({
   const searchParams = useSearchParams();
   const sourceColor = getSourceColor(article.source?.name || 'Unknown');
 
-  const handleClick = (_e: React.MouseEvent) => {
-    // 親コンポーネントのスクロール位置保存処理を呼び出し
-    if (onArticleClick) {
-      onArticleClick(article.id);
-    }
+  const handleClick = useCallback(
+    (_e: React.MouseEvent | React.KeyboardEvent) => {
+      if (onArticleClick) {
+        onArticleClick(article.id);
+      }
 
-    // URLパラメータを保持して記事詳細ページに遷移
-    const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('returning');
+      params.set('returning', '1');
 
-    // returningパラメータは除外（記事詳細からの戻りを示すパラメータなので）
-    params.delete('returning');
+      const returnUrl = `/?${params.toString()}`;
+      const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
 
-    // 記事一覧に戻る時用にreturningパラメータを追加
-    params.set('returning', '1');
+      router.push(articleUrl);
+    },
+    [article.id, onArticleClick, searchParams, router]
+  );
 
-    // 現在のフィルター状態を保持したURLを生成
-    const returnUrl = `/?${params.toString()}`;
-    const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
-
-    // 遷移を実行
-    router.push(articleUrl);
-  };
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleClick(e);
+      }
+    },
+    [handleClick]
+  );
 
   return (
     <div
       id={`article-${article.id}`}
       data-article-id={article.id}
+      role="article"
+      tabIndex={0}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      aria-label={article.translatedTitle || article.title}
       className={cn(
         'group flex cursor-pointer items-center justify-between gap-4 rounded-lg p-3',
-        'bg-white dark:bg-gray-800/50',
+        'bg-(--tt-color-surface)',
         'transition-all duration-200',
-        'hover:bg-gray-50 dark:hover:bg-gray-700/50',
-        'border border-gray-200 dark:border-gray-700',
-        'hover:border-gray-300 dark:hover:border-gray-600',
+        'hover:bg-(--tt-color-surface-hover)',
+        'border border-(--tt-color-border)',
+        'hover:border-(--tt-color-border-hover)',
         'hover:shadow-sm',
+        'focus-visible:ring-2 focus-visible:ring-(--tt-color-primary) focus-visible:outline-none',
         sourceColor.hover
       )}
     >
-      {/* 左側: タイトルとタグ */}
+      {/* Left: title and tags */}
       <div className="min-w-0 flex-1">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {isNew && (
-              <Badge className="flex-shrink-0 text-xs" variant="destructive">
+              <BadgeV2 className="flex-shrink-0 text-xs" variant="positive">
                 <TrendingUp className="mr-0.5 h-3 w-3" />
                 New
-              </Badge>
+              </BadgeV2>
             )}
             {!isRead && (
-              <Badge className="flex-shrink-0 bg-blue-500 text-xs text-white hover:bg-blue-600">
+              <BadgeV2 className="flex-shrink-0 text-xs" variant="info">
                 <Eye className="mr-0.5 h-3 w-3" />
                 未読
-              </Badge>
+              </BadgeV2>
             )}
             <h3
-              className="line-clamp-1 text-sm font-medium text-gray-900 group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400"
+              className="text-foreground line-clamp-1 text-sm font-medium group-hover:text-(--tt-color-primary)"
               title={article.translatedTitle || article.title}
             >
               {article.translatedTitle || article.title}
             </h3>
           </div>
-          {/* 要約表示 */}
           {article.summary && (
-            <p className="mt-0.5 line-clamp-1 text-xs text-gray-600 dark:text-gray-400">
+            <p className="text-muted-foreground mt-0.5 line-clamp-1 text-xs">
               {article.summary}
             </p>
           )}
         </div>
 
-        {/* タグ（デスクトップのみ） */}
         {article.tags && article.tags.length > 0 && (
           <div className="mt-1 hidden flex-wrap gap-1 sm:flex">
             {article.tags.slice(0, 3).map((tag) => (
-              <Badge
+              <BadgeV2
                 key={tag.id}
                 variant="outline"
-                className="hover:bg-secondary h-5 cursor-pointer px-1.5 py-0 text-xs"
-                onClick={(e) => {
+                className="h-5 cursor-pointer px-1.5 py-0 text-xs"
+                onClick={(e: React.MouseEvent<HTMLElement>) => {
                   e.stopPropagation();
                   if (onTagClick) {
                     onTagClick(tag.name);
                   } else {
-                    window.location.href = `/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`;
+                    router.push(
+                      `/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`
+                    );
                   }
                 }}
               >
                 {tag.name}
-              </Badge>
+              </BadgeV2>
             ))}
           </div>
         )}
       </div>
 
-      {/* 右側: メタ情報とアクション */}
+      {/* Right: meta info and actions */}
       <div className="flex flex-shrink-0 items-center gap-2">
-        {/* ソースバッジ */}
-        <Badge
+        <BadgeV2
           variant="secondary"
           className={cn('text-xs font-medium', sourceColor.tag)}
         >
           {article.source?.name || 'Unknown'}
-        </Badge>
+        </BadgeV2>
 
-        {/* 時間表示 - デスクトップでは配信・取込両方、モバイルでは配信のみ */}
         <div className="text-muted-foreground flex flex-col gap-0.5 text-xs">
-          {/* デスクトップ: 配信と取込を表示 */}
           <div className="hidden flex-col gap-0.5 sm:flex">
             <span className="flex items-center gap-1">
               <span>📅</span>
@@ -178,7 +185,6 @@ export function ArticleListItem({
               <span>{formatDateWithTime(article.createdAt)}</span>
             </span>
           </div>
-          {/* モバイル: 配信日時のみ表示 */}
           <span className="flex items-center gap-1 sm:hidden">
             <Clock className="h-3 w-3" />
             {hoursAgo !== null && hoursAgo < 24
@@ -187,7 +193,6 @@ export function ArticleListItem({
           </span>
         </div>
 
-        {/* アクション（ホバー時表示） */}
         <div className="hidden items-center gap-1 group-hover:flex">
           <FavoriteButton
             articleId={article.id}
@@ -196,7 +201,7 @@ export function ArticleListItem({
             onToggleFavorite={onToggleFavorite}
             className="h-11 min-h-[44px] w-11 min-w-[44px]"
           />
-          <Button
+          <ButtonV2
             variant="ghost"
             size="sm"
             onClick={(e) => {
@@ -207,7 +212,7 @@ export function ArticleListItem({
             title="元記事を開く"
           >
             <ExternalLink className="h-3 w-3" />
-          </Button>
+          </ButtonV2>
         </div>
       </div>
     </div>
