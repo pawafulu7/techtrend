@@ -278,10 +278,10 @@ export function SocialPostsDashboard() {
   );
 
   // Generation complete callback
-  const handleGenerateComplete = useCallback(() => {
+  const handleGenerateComplete = useCallback(async () => {
     setIsGenerateDialogOpen(false);
-    queryClient.invalidateQueries({ queryKey: ['social-posts'] });
-    queryClient.invalidateQueries({ queryKey: ['social-posts-stats'] });
+    await queryClient.invalidateQueries({ queryKey: ['social-posts'] });
+    await queryClient.invalidateQueries({ queryKey: ['social-posts-stats'] });
   }, [queryClient]);
 
   return (

@@ -68,7 +68,6 @@ export function ArticleListItem({
       }
 
       const params = new URLSearchParams(searchParams.toString());
-      params.delete('returning');
       params.set('returning', '1');
 
       const returnUrl = `/?${params.toString()}`;
@@ -200,7 +199,7 @@ export function ArticleListItem({
           </span>
         </div>
 
-        <div className="hidden items-center gap-1 group-hover:flex">
+        <div className="hidden items-center gap-1 group-focus-within:flex group-hover:flex">
           <FavoriteButton
             articleId={article.id}
             compact

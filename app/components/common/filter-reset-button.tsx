@@ -21,22 +21,17 @@ export function FilterResetButton() {
     setIsResetting(true);
 
     try {
-      // Clear all filter-related cookies
-      // 1. Clear unified filter preferences
-      await fetch('/api/filter-preferences', {
-        method: 'DELETE',
-      });
+      // Clear all filter-related cookies (parallel)
+      await Promise.all([
+        fetch('/api/filter-preferences', { method: 'DELETE' }),
+        fetch('/api/source-filter', { method: 'DELETE' }),
+      ]);
 
-      // 2. Clear old source-filter cookie
-      await fetch('/api/source-filter', {
-        method: 'DELETE',
-      });
-
-      // 3. Clear view mode cookie (if exists)
+      // Clear view mode cookie (if exists)
       document.cookie =
         'article-view-mode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 
-      queryClient.invalidateQueries();
+      await queryClient.invalidateQueries();
       router.replace('/');
     } catch (err) {
       console.error('Filter reset failed:', err);
