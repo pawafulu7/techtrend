@@ -47,6 +47,7 @@ const esmAllowList = [
   'yocto-queue',
   'jsdom',
   'parse5',
+  'uuid',
 ];
 const esmPattern = esmAllowList.join('|');
 

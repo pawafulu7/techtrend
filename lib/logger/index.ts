@@ -1,72 +1,80 @@
-import winston from 'winston';
-import DailyRotateFile from 'winston-daily-rotate-file';
-import fs from 'fs';
-import path from 'path';
+import pino from 'pino';
 
 const logLevel = process.env.LOG_LEVEL || 'info';
+const isProduction = process.env.NODE_ENV === 'production';
+const isTest = process.env.NODE_ENV === 'test';
 
-// Detect serverless (e.g., Vercel) where filesystem is read-only (except /tmp)
-const isServerless = !!process.env.VERCEL;
+// Internal pino logger instance
+const pinoLogger = pino({
+  level: isTest ? 'silent' : logLevel,
 
-// Build transports dynamically to avoid file I/O on serverless platforms
-const transports: winston.transport[] = [
-  new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.simple()
-    ),
-    silent: process.env.NODE_ENV === 'test'
-  })
-];
+  formatters: {
+    level: (label) => {
+      return { level: label.toUpperCase() };
+    },
+  },
 
-if (process.env.NODE_ENV === 'production' && !isServerless) {
-  // Local/server targets: write rotating files to ./logs
-  const dir = path.resolve(process.cwd(), 'logs');
-  try {
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  } catch {
-    // ignore directory creation errors; console transport remains
-  }
-  transports.push(
-    new DailyRotateFile({
-      filename: path.join('logs', 'error-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      level: 'error',
-      maxFiles: '14d'
-    }),
-    new DailyRotateFile({
-      filename: path.join('logs', 'combined-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      maxFiles: '7d'
-    })
-  );
-}
-
-// Create winston logger instance
-export const logger = winston.createLogger({
-  level: logLevel,
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  defaultMeta: { service: 'techtrend' },
-  transports
+  ...(isProduction
+    ? {}
+    : {
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+          },
+        },
+      }),
 });
 
-// Compatibility layer with existing console.* calls
-export const log = {
-  error: (message: string, ...args: unknown[]) => {
+/**
+ * Wraps a pino log method to accept winston-style arguments:
+ *   winston: logger.error('msg', error)  or  logger.warn('msg', { key: val })
+ *   pino:    logger.error({ err: error }, 'msg')  or  logger.warn({ key: val }, 'msg')
+ */
+function winstonStyleLog(
+  pinoMethod: (obj: Record<string, unknown>, msg: string) => void,
+  pinoMethodStr: (msg: string) => void
+) {
+  return (message: string, ...args: unknown[]) => {
     if (args.length > 0 && args[0] instanceof Error) {
-      logger.error(message, { error: args[0].message, stack: args[0].stack });
+      pinoMethod({ err: args[0] }, message);
+    } else if (
+      args.length > 0 &&
+      typeof args[0] === 'object' &&
+      args[0] !== null
+    ) {
+      pinoMethod(args[0] as Record<string, unknown>, message);
     } else {
-      logger.error(message, ...args);
+      pinoMethodStr(message);
     }
-  },
-  warn: (message: string, ...args: unknown[]) => logger.warn(message, ...args),
-  info: (message: string, ...args: unknown[]) => logger.info(message, ...args),
-  debug: (message: string, ...args: unknown[]) => logger.debug(message, ...args),
+  };
+}
+
+/**
+ * Winston-compatible logger interface backed by pino.
+ * Accepts both winston-style (msg, obj) and plain (msg) calls.
+ */
+export const logger = {
+  error: winstonStyleLog(
+    pinoLogger.error.bind(pinoLogger),
+    pinoLogger.error.bind(pinoLogger)
+  ),
+  warn: winstonStyleLog(
+    pinoLogger.warn.bind(pinoLogger),
+    pinoLogger.warn.bind(pinoLogger)
+  ),
+  info: winstonStyleLog(
+    pinoLogger.info.bind(pinoLogger),
+    pinoLogger.info.bind(pinoLogger)
+  ),
+  debug: winstonStyleLog(
+    pinoLogger.debug.bind(pinoLogger),
+    pinoLogger.debug.bind(pinoLogger)
+  ),
 };
 
-// Export winston logger for advanced usage
+// Compatibility layer with existing console.* calls (same as logger)
+export const log = logger;
+
+// Export logger for advanced usage
 export default logger;
