@@ -78,6 +78,7 @@ const esmAllowList = [
   'rate-limiter-flexible',
   'jsdom',
   'parse5',
+  'uuid',
 ];
 const esmPattern = esmAllowList.join('|');
 
