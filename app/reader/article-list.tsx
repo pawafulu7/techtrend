@@ -70,7 +70,7 @@ export function ReaderArticleList({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-border bg-muted/50 shrink-0 border-b px-3 py-2">
+      <div className="border-border bg-muted/70 shrink-0 border-b px-3 py-2">
         <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
           記事一覧
         </h2>
