@@ -11,6 +11,7 @@ import {
   Hash,
   Database,
   Home,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -28,6 +29,7 @@ export function Header() {
   // ナビゲーション項目の定義
   const primaryNav = [
     { href: '/', label: 'ホーム', icon: Home },
+    { href: '/reader', label: 'リーダー', icon: BookOpen },
     { href: '/popular', label: '人気', icon: TrendingUp },
     { href: '/sources', label: 'ソース', icon: Database },
     { href: '/trends', label: 'トレンド', icon: BarChart3 },
