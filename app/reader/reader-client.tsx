@@ -7,6 +7,7 @@ import {
   useQuery,
   keepPreviousData,
 } from '@tanstack/react-query';
+import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
 import { FilterSidebarToggle } from '@/app/components/home/filter-sidebar';
 import { SearchBox } from '@/app/components/common/search-box';
 import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
@@ -22,7 +23,6 @@ import type {
 const ARTICLES_PER_PAGE = 20;
 
 interface ReaderClientProps {
-  sources: Array<{ id: string; name: string }>;
   tags: Array<{ id: string; name: string; count: number }>;
 }
 
@@ -37,6 +37,8 @@ async function fetchArticleList(
     sortOrder: 'desc',
     ...filterParams,
   });
+  // Exclude arXiv articles (matches home page behavior)
+  params.set('excludeSources', ARXIV_SOURCE_ID);
   const res = await fetch(`/api/articles/list?${params}`);
   const json = await res.json();
   if (!json.success)
@@ -58,7 +60,7 @@ async function fetchArticleDetail(id: string): Promise<ArticleDetailResponse> {
   return json;
 }
 
-export function ReaderClient({ sources, tags }: ReaderClientProps) {
+export function ReaderClient({ tags }: ReaderClientProps) {
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 

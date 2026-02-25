@@ -69,7 +69,7 @@ export default async function ReaderPage() {
               </div>
             }
           >
-            <ReaderClient sources={filteredSources} tags={tags} />
+            <ReaderClient tags={tags} />
           </Suspense>
         </div>
       </div>

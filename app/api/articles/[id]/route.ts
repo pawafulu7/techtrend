@@ -29,8 +29,8 @@ export async function GET(
       );
     }
 
-    // Check if article has content (exclude null and empty strings)
-    if (!article.content?.trim()) {
+    // Check if article has content (exclude null and empty strings, consistent with list API)
+    if (article.content === null || article.content === '') {
       return NextResponse.json(
         {
           success: false,

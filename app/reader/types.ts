@@ -1,3 +1,5 @@
+import type { ArticleType } from '@/lib/utils/article-type-prompts';
+
 // List API用の型（/api/articles/list の軽量レスポンス）
 export interface ReaderListArticle {
   id: string;
@@ -21,7 +23,7 @@ export interface ReaderDetailArticle {
   thumbnail: string | null;
   publishedAt: string;
   summaryVersion: number | null;
-  articleType: string | null;
+  articleType: ArticleType | null;
   source: { id: string; name: string; url: string } | null;
   tags: { id: string; name: string }[];
 }
