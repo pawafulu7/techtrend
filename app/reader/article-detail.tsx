@@ -96,96 +96,112 @@ export function ReaderArticleDetail({
   const dateStr = formatDate(article.publishedAt);
 
   return (
-    <div className="h-full overflow-y-auto bg-white dark:bg-slate-900">
-      <div className="px-8 py-6">
-        {/* Title */}
-        <h1 className="text-2xl leading-tight font-bold tracking-tight text-slate-900 dark:text-slate-50">
-          {displayTitle}
-        </h1>
-
-        {/* Meta: source + date + tags */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {article.source?.name && (
-            <span className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">
-              {article.source.name}
-            </span>
-          )}
-          {dateStr && <span className="text-xs text-slate-400">{dateStr}</span>}
-          {article.tags &&
-            article.tags.length > 0 &&
-            article.tags.slice(0, MAX_VISIBLE_TAGS).map((tag) => (
-              <span
-                key={tag.id}
-                className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-              >
-                #{tag.name}
+    <div className="h-full overflow-y-auto bg-slate-100/80 dark:bg-slate-950">
+      <div className="mx-auto max-w-3xl px-6 py-8">
+        {/* Card */}
+        <div className="rounded-2xl bg-white px-10 py-8 shadow-sm dark:bg-slate-900">
+          {/* Meta: source badge + date */}
+          <div className="flex items-center gap-3">
+            {article.source?.name && (
+              <span className="rounded-full bg-lime-400/80 px-3 py-0.5 text-xs font-bold tracking-wide text-lime-900 uppercase">
+                {article.source.name}
               </span>
-            ))}
-          {safeUrl && (
-            <a
-              href={safeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-200 motion-reduce:transition-none dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-            >
-              <ExternalLink className="h-3 w-3" />
-              元記事を読む
-            </a>
-          )}
-        </div>
-
-        {/* Summary */}
-        {article.summary && (
-          <p className="mt-5 text-[15px] leading-relaxed text-slate-700 dark:text-slate-200">
-            {article.summary}
-          </p>
-        )}
-
-        {/* Detailed sections */}
-        {visibleSections.length > 0 && (
-          <div className="mt-6 space-y-4">
-            {visibleSections.map((section, i) => (
-              <div
-                key={i}
-                className="border-l-[3px] border-teal-400 py-1 pl-4 dark:border-teal-500"
+            )}
+            {dateStr && (
+              <span className="rounded-full border border-slate-200 px-3 py-0.5 text-xs text-slate-400 dark:border-slate-700">
+                {dateStr}
+              </span>
+            )}
+            {safeUrl && (
+              <a
+                href={safeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-500 transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
               >
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-teal-500" />
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                    {section.title}
+                <ExternalLink className="h-3 w-3" />
+                元記事を読む
+              </a>
+            )}
+          </div>
+
+          {/* Title */}
+          <h1 className="mt-5 text-2xl leading-tight font-bold tracking-tight text-slate-900 dark:text-slate-50">
+            {displayTitle}
+          </h1>
+
+          {/* Tags */}
+          {article.tags && article.tags.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {article.tags.slice(0, MAX_VISIBLE_TAGS).map((tag) => (
+                <span
+                  key={tag.id}
+                  className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                >
+                  #{tag.name}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Divider */}
+          <hr className="mt-5 border-slate-100 dark:border-slate-800" />
+
+          {/* Summary */}
+          {article.summary && (
+            <p className="mt-6 text-[15px] leading-[1.9] text-slate-600 dark:text-slate-300">
+              {article.summary}
+            </p>
+          )}
+
+          {/* Detailed sections */}
+          {visibleSections.length > 0 && (
+            <div className="mt-8 space-y-5">
+              {visibleSections.map((section, i) => (
+                <div
+                  key={i}
+                  className="border-l-[3px] border-lime-400 py-1 pl-5 dark:border-lime-500"
+                >
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-lime-500" />
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      {section.title}
+                    </p>
+                  </div>
+                  <p className="mt-2 pl-6 text-sm leading-[1.8] text-slate-500 dark:text-slate-400">
+                    {section.content}
                   </p>
                 </div>
-                <p className="mt-1.5 pl-6 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-                  {section.content}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        {/* Fold toggle */}
-        {hasMoreSections && !showAllSections && (
-          <button
-            type="button"
-            onClick={() => setShowAllSections(true)}
-            className="mt-4 cursor-pointer rounded-full bg-teal-50 px-4 py-1.5 text-xs font-medium text-teal-600 transition-colors duration-150 hover:bg-teal-100 motion-reduce:transition-none dark:bg-teal-900/20 dark:text-teal-400 dark:hover:bg-teal-900/40"
-          >
-            +{remainingSections}件の詳細を表示
-          </button>
-        )}
-        {showAllSections && hasMoreSections && (
-          <button
-            type="button"
-            onClick={() => setShowAllSections(false)}
-            className="mt-4 cursor-pointer rounded-full bg-slate-100 px-4 py-1.5 text-xs font-medium text-slate-500 transition-colors duration-150 hover:bg-slate-200 motion-reduce:transition-none dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
-          >
-            折りたたむ
-          </button>
-        )}
+          {/* Fold toggle */}
+          {hasMoreSections && !showAllSections && (
+            <button
+              type="button"
+              onClick={() => setShowAllSections(true)}
+              className="mt-5 cursor-pointer rounded-full bg-lime-50 px-4 py-1.5 text-xs font-medium text-lime-700 transition-colors duration-150 hover:bg-lime-100 motion-reduce:transition-none dark:bg-lime-900/20 dark:text-lime-400 dark:hover:bg-lime-900/40"
+            >
+              +{remainingSections}件の詳細を表示
+            </button>
+          )}
+          {showAllSections && hasMoreSections && (
+            <button
+              type="button"
+              onClick={() => setShowAllSections(false)}
+              className="mt-5 cursor-pointer rounded-full bg-slate-100 px-4 py-1.5 text-xs font-medium text-slate-500 transition-colors duration-150 hover:bg-slate-200 motion-reduce:transition-none dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+            >
+              折りたたむ
+            </button>
+          )}
 
-        {!article.summary && sections.length === 0 && (
-          <p className="mt-4 text-sm text-slate-400 italic">要約はありません</p>
-        )}
+          {!article.summary && sections.length === 0 && (
+            <p className="mt-6 text-sm text-slate-400 italic">
+              要約はありません
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
