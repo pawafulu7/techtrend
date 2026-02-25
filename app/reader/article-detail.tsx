@@ -38,6 +38,7 @@ export function ReaderArticleDetail({
   error,
 }: ArticleDetailProps) {
   const [showAllSections, setShowAllSections] = useState(false);
+  const [heroError, setHeroError] = useState(false);
 
   if (error) {
     return (
@@ -69,6 +70,8 @@ export function ReaderArticleDetail({
 
   if (!article) return null;
 
+  const hasValidHero =
+    !!article.thumbnail && /^https?:\/\//.test(article.thumbnail) && !heroError;
   const displayTitle = article.translatedTitle || article.title;
   const sections = article.detailedSummary
     ? parseSummary(article.detailedSummary, {
@@ -97,7 +100,19 @@ export function ReaderArticleDetail({
 
   return (
     <div className="h-full overflow-y-auto bg-white dark:bg-slate-900">
-      <div className="px-8 py-6">
+      {/* Hero thumbnail */}
+      {hasValidHero && (
+        <div className="relative aspect-[2/1] w-full overflow-hidden bg-slate-900">
+          <img
+            src={article.thumbnail!}
+            alt=""
+            className="h-full w-full object-contain"
+            onError={() => setHeroError(true)}
+          />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white dark:from-slate-900" />
+        </div>
+      )}
+      <div className={`px-8 ${hasValidHero ? 'pt-4' : 'pt-6'} pb-6`}>
         {/* Title */}
         <h1 className="text-2xl leading-tight font-bold tracking-tight text-slate-900 dark:text-slate-50">
           {displayTitle}
@@ -183,7 +198,7 @@ export function ReaderArticleDetail({
           </button>
         )}
 
-        {!article.summary && sections.length === 0 && (
+        {!article.summary && sections.length === 0 && !hasValidHero && (
           <p className="mt-4 text-sm text-slate-400 italic">要約はありません</p>
         )}
       </div>
