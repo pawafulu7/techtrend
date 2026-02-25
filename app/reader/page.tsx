@@ -65,7 +65,7 @@ export default async function ReaderPage() {
           <Suspense
             fallback={
               <div className="flex h-full items-center justify-center">
-                <span className="text-muted-foreground">Loading...</span>
+                <span className="text-muted-foreground">読み込み中...</span>
               </div>
             }
           >

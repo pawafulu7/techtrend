@@ -129,6 +129,7 @@ function ScrollableArticleList({
     <div
       className="flex-1 overflow-y-auto"
       role="listbox"
+      tabIndex={0}
       aria-label="記事一覧"
       onKeyDown={onKeyDown}
     >

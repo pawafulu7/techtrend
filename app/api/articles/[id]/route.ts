@@ -30,7 +30,7 @@ export async function GET(
     }
 
     // Check if article has content (exclude null and empty strings, consistent with list API)
-    if (article.content === null || article.content === '') {
+    if (article.content === null || article.content.trim() === '') {
       return NextResponse.json(
         {
           success: false,

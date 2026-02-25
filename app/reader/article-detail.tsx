@@ -113,7 +113,7 @@ export function ReaderArticleDetail({
         )}
 
         {/* Card */}
-        <div className="rounded-2xl bg-white px-10 py-8 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
+        <div className="rounded-2xl bg-white px-10 py-8 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
           {/* Meta: source badge + date */}
           <div className="flex items-center gap-3">
             {article.source?.name && (
