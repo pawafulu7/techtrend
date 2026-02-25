@@ -1,13 +1,8 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { ArticleListItem } from './article-list-item';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  AlertCircle,
-  Newspaper,
-} from 'lucide-react';
+import { Loader2, AlertCircle, Newspaper } from 'lucide-react';
 import type { ReaderListArticle } from './types';
 
 interface ArticleListProps {
@@ -15,12 +10,12 @@ interface ArticleListProps {
   selectedId: string | null;
   isLoading: boolean;
   error: string | null;
-  page: number;
-  totalPages: number;
   onSelectArticle: (id: string) => void;
-  onPageChange: (page: number) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
   onRetry: () => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
 }
 
 export function ReaderArticleList({
@@ -28,12 +23,12 @@ export function ReaderArticleList({
   selectedId,
   isLoading,
   error,
-  page,
-  totalPages,
   onSelectArticle,
-  onPageChange,
   onKeyDown,
   onRetry,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
 }: ArticleListProps) {
   if (error && articles.length === 0) {
     return (
@@ -70,51 +65,98 @@ export function ReaderArticleList({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Combined header bar with pagination */}
-      <div className="border-border bg-muted/70 flex shrink-0 items-center justify-between border-b px-3 py-1.5">
-        <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-          記事一覧
-        </h2>
-        <div className="text-muted-foreground flex items-center gap-1 text-xs">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => onPageChange(page - 1)}
-            aria-label="前のページ"
-            className="hover:bg-muted cursor-pointer rounded p-0.5 disabled:cursor-not-allowed disabled:opacity-30"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-          <span aria-live="polite" aria-atomic="true">
-            {page}/{totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => onPageChange(page + 1)}
-            aria-label="次のページ"
-            className="hover:bg-muted cursor-pointer rounded p-0.5 disabled:cursor-not-allowed disabled:opacity-30"
-          >
-            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-      {/* Article list - takes full remaining height */}
-      <div
-        className="flex-1 overflow-y-auto"
-        role="listbox"
-        aria-label="記事一覧"
+      <ScrollableArticleList
+        articles={articles}
+        selectedId={selectedId}
+        onSelectArticle={onSelectArticle}
         onKeyDown={onKeyDown}
-      >
-        {articles.map((article) => (
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+        onLoadMore={onLoadMore}
+      />
+    </div>
+  );
+}
+
+function ScrollableArticleList({
+  articles,
+  selectedId,
+  onSelectArticle,
+  onKeyDown,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+}: {
+  articles: ReaderListArticle[];
+  selectedId: string | null;
+  onSelectArticle: (id: string) => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
+}) {
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Scroll selected item into view
+  useEffect(() => {
+    if (!selectedId) return;
+    const el = itemRefs.current.get(selectedId);
+    if (el) {
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  }, [selectedId]);
+
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          onLoadMore();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, onLoadMore]);
+
+  return (
+    <div
+      className="flex-1 overflow-y-auto"
+      role="listbox"
+      aria-label="記事一覧"
+      onKeyDown={onKeyDown}
+    >
+      {articles.map((article) => (
+        <div
+          key={article.id}
+          ref={(el) => {
+            if (el) {
+              itemRefs.current.set(article.id, el);
+            } else {
+              itemRefs.current.delete(article.id);
+            }
+          }}
+        >
           <ArticleListItem
-            key={article.id}
             article={article}
             isSelected={article.id === selectedId}
             onSelect={onSelectArticle}
           />
-        ))}
-      </div>
+        </div>
+      ))}
+      {/* Sentinel for infinite scroll */}
+      <div ref={sentinelRef} className="h-1" />
+      {isFetchingNextPage && (
+        <div className="flex justify-center py-4">
+          <Loader2 className="text-muted-foreground h-5 w-5 animate-spin motion-reduce:animate-none" />
+        </div>
+      )}
     </div>
   );
 }

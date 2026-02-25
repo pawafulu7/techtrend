@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   ExternalLink,
   Newspaper,
@@ -23,7 +22,6 @@ interface ArticleDetailProps {
   onNext?: () => void;
 }
 
-const MAX_VISIBLE_SECTIONS = 4;
 const MAX_VISIBLE_TAGS = 5;
 
 function formatDate(dateStr: string): string {
@@ -47,8 +45,6 @@ export function ReaderArticleDetail({
   onPrev,
   onNext,
 }: ArticleDetailProps) {
-  const [showAllSections, setShowAllSections] = useState(false);
-
   if (error) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
@@ -98,15 +94,10 @@ export function ReaderArticleDetail({
     }
   })();
 
-  const visibleSections = showAllSections
-    ? sections
-    : sections.slice(0, MAX_VISIBLE_SECTIONS);
-  const hasMoreSections = sections.length > MAX_VISIBLE_SECTIONS;
-  const remainingSections = sections.length - MAX_VISIBLE_SECTIONS;
   const dateStr = formatDate(article.publishedAt);
 
   return (
-    <div className="h-full overflow-y-auto bg-gradient-to-br from-slate-200/70 via-white to-slate-200/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="h-full overflow-y-auto bg-slate-900">
       <div className="mx-auto max-w-5xl px-5 py-8">
         {/* Prev / Next navigation */}
         {(hasPrev || hasNext) && (
@@ -115,7 +106,7 @@ export function ReaderArticleDetail({
               type="button"
               onClick={onPrev}
               disabled={!hasPrev}
-              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors duration-150 hover:bg-white disabled:cursor-default disabled:opacity-30 motion-reduce:transition-none dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition-colors duration-150 hover:bg-slate-600 hover:text-white disabled:cursor-default disabled:opacity-30 motion-reduce:transition-none"
             >
               <ChevronLeft className="h-4 w-4" />
               前の記事
@@ -124,7 +115,7 @@ export function ReaderArticleDetail({
               type="button"
               onClick={onNext}
               disabled={!hasNext}
-              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors duration-150 hover:bg-white disabled:cursor-default disabled:opacity-30 motion-reduce:transition-none dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition-colors duration-150 hover:bg-slate-600 hover:text-white disabled:cursor-default disabled:opacity-30 motion-reduce:transition-none"
             >
               次の記事
               <ChevronRight className="h-4 w-4" />
@@ -189,9 +180,9 @@ export function ReaderArticleDetail({
           )}
 
           {/* Detailed sections */}
-          {visibleSections.length > 0 && (
+          {sections.length > 0 && (
             <div className="mt-8 space-y-5">
-              {visibleSections.map((section, i) => (
+              {sections.map((section, i) => (
                 <div
                   key={i}
                   className="border-l-[3px] border-lime-400 py-1 pl-5 dark:border-lime-500"
@@ -208,26 +199,6 @@ export function ReaderArticleDetail({
                 </div>
               ))}
             </div>
-          )}
-
-          {/* Fold toggle */}
-          {hasMoreSections && !showAllSections && (
-            <button
-              type="button"
-              onClick={() => setShowAllSections(true)}
-              className="mt-5 cursor-pointer rounded-full bg-lime-50 px-4 py-1.5 text-xs font-medium text-lime-700 transition-colors duration-150 hover:bg-lime-100 motion-reduce:transition-none dark:bg-lime-900/20 dark:text-lime-400 dark:hover:bg-lime-900/40"
-            >
-              +{remainingSections}件の詳細を表示
-            </button>
-          )}
-          {showAllSections && hasMoreSections && (
-            <button
-              type="button"
-              onClick={() => setShowAllSections(false)}
-              className="mt-5 cursor-pointer rounded-full bg-slate-100 px-4 py-1.5 text-xs font-medium text-slate-500 transition-colors duration-150 hover:bg-slate-200 motion-reduce:transition-none dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
-            >
-              折りたたむ
-            </button>
           )}
 
           {!article.summary && sections.length === 0 && (

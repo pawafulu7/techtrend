@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -79,6 +79,7 @@ export function Filters({
 }: FiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   // 初期値の決定
   const getInitialSources = () => {
@@ -420,7 +421,9 @@ export function Filters({
     }
 
     // URLを構築（パラメータがない場合は "/" のみ）
-    const newURL = params.toString() ? `/?${params.toString()}` : '/';
+    const newURL = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
 
     // URL更新（Next.jsが自動的に競合を制御）
     router.push(newURL);

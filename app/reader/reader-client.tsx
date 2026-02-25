@@ -1,7 +1,16 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import {
+  useInfiniteQuery,
+  useQuery,
+  keepPreviousData,
+} from '@tanstack/react-query';
+import { FilterSidebarToggle } from '@/app/components/home/filter-sidebar';
+import { SearchBox } from '@/app/components/common/search-box';
+import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
+import { SortButtons } from '@/app/components/common/sort-buttons';
 import { ReaderArticleList } from './article-list';
 import { ReaderArticleDetail } from './article-detail';
 import type {
@@ -12,12 +21,21 @@ import type {
 
 const ARTICLES_PER_PAGE = 20;
 
-async function fetchArticleList(page: number): Promise<ArticleListResponse> {
+interface ReaderClientProps {
+  sources: Array<{ id: string; name: string }>;
+  tags: Array<{ id: string; name: string; count: number }>;
+}
+
+async function fetchArticleList(
+  page: number,
+  filterParams: Record<string, string>
+): Promise<ArticleListResponse> {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(ARTICLES_PER_PAGE),
     sortBy: 'publishedAt',
     sortOrder: 'desc',
+    ...filterParams,
   });
   const res = await fetch(`/api/articles/list?${params}`);
   const json = await res.json();
@@ -40,43 +58,90 @@ async function fetchArticleDetail(id: string): Promise<ArticleDetailResponse> {
   return json;
 }
 
-export function ReaderClient() {
-  const [page, setPage] = useState(1);
+export function ReaderClient({ sources, tags }: ReaderClientProps) {
+  const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // リスト取得（React Query）
+  // Extract filter params from URL
+  const filterParams = useMemo(() => {
+    const params: Record<string, string> = {};
+    const sortBy = searchParams.get('sortBy');
+    const sortOrder = searchParams.get('sortOrder');
+    const sourcesParam = searchParams.get('sources');
+    const sourceId = searchParams.get('sourceId');
+    const tagsParam = searchParams.get('tags');
+    const tagMode = searchParams.get('tagMode');
+    const searchParam = searchParams.get('search');
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
+    const dateRange = searchParams.get('dateRange');
+
+    if (sortBy) params.sortBy = sortBy;
+    if (sortOrder) params.sortOrder = sortOrder;
+    if (sourcesParam) params.sources = sourcesParam;
+    if (sourceId) params.sourceId = sourceId;
+    if (tagsParam) params.tags = tagsParam;
+    if (tagMode) params.tagMode = tagMode;
+    if (searchParam) params.search = searchParam;
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo) params.dateTo = dateTo;
+    if (dateRange) params.dateRange = dateRange;
+
+    return params;
+  }, [searchParams]);
+
+  // Reset selection when filters change
+  const filterKey = useMemo(() => JSON.stringify(filterParams), [filterParams]);
+
+  useEffect(() => {
+    setSelectedId(null);
+  }, [filterKey]);
+
+  // Infinite query for article list
   const {
     data: listData,
     isLoading: isLoadingList,
     error: listError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     refetch: refetchList,
-  } = useQuery({
-    queryKey: ['reader-articles', page],
-    queryFn: () => fetchArticleList(page),
+  } = useInfiniteQuery({
+    queryKey: ['reader-articles', filterParams],
+    queryFn: ({ pageParam }) => fetchArticleList(pageParam, filterParams),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const { page, totalPages } = lastPage.data;
+      return page < totalPages ? page + 1 : undefined;
+    },
     staleTime: 2 * 60 * 1000,
   });
 
-  const articles = listData?.data.items ?? [];
-  const totalPages = listData?.data.totalPages ?? 1;
+  // Flatten all pages into a single article array
+  const articles = useMemo(
+    () => listData?.pages.flatMap((p) => p.data.items) ?? [],
+    [listData]
+  );
 
-  // 先頭記事の自動選択
+  // Auto-select first article
   const effectiveSelectedId = selectedId ?? articles[0]?.id ?? null;
 
-  // 詳細取得（React Query - AbortController自動管理）
+  // Detail query (keep previous article visible while loading next)
   const {
     data: detailData,
-    isLoading: isLoadingDetail,
+    isFetching: isFetchingDetail,
     error: detailError,
   } = useQuery({
     queryKey: ['reader-article-detail', effectiveSelectedId],
     queryFn: () => fetchArticleDetail(effectiveSelectedId!),
     enabled: !!effectiveSelectedId,
     staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 
   const selectedArticle = detailData?.data ?? null;
 
-  // 前後ナビゲーション
+  // Prev/Next navigation
   const currentIndex = effectiveSelectedId
     ? articles.findIndex((a: ReaderListArticle) => a.id === effectiveSelectedId)
     : -1;
@@ -88,74 +153,116 @@ export function ReaderClient() {
   }, [hasPrev, articles, currentIndex]);
 
   const handleNext = useCallback(() => {
-    if (hasNext) setSelectedId(articles[currentIndex + 1].id);
-  }, [hasNext, articles, currentIndex]);
+    if (hasNext) {
+      setSelectedId(articles[currentIndex + 1].id);
+    } else if (hasNextPage && !isFetchingNextPage) {
+      // At the end of loaded articles — fetch next page
+      fetchNextPage().then((result) => {
+        if (result.data) {
+          const newArticles = result.data.pages.flatMap((p) => p.data.items);
+          const nextArticle = newArticles[currentIndex + 1];
+          if (nextArticle) {
+            setSelectedId(nextArticle.id);
+          }
+        }
+      });
+    }
+  }, [
+    hasNext,
+    hasNextPage,
+    isFetchingNextPage,
+    articles,
+    currentIndex,
+    fetchNextPage,
+  ]);
 
   const handleSelectArticle = useCallback((articleId: string) => {
     setSelectedId(articleId);
   }, []);
 
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
-    setSelectedId(null);
-  }, []);
-
-  // キーボードナビゲーション
+  // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!effectiveSelectedId || articles.length === 0) return;
-      const currentIndex = articles.findIndex(
+      const idx = articles.findIndex(
         (a: ReaderListArticle) => a.id === effectiveSelectedId
       );
-      if (e.key === 'ArrowDown' && currentIndex < articles.length - 1) {
+      if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedId(articles[currentIndex + 1].id);
-      } else if (e.key === 'ArrowUp' && currentIndex > 0) {
+        if (idx < articles.length - 1) {
+          setSelectedId(articles[idx + 1].id);
+        } else if (hasNextPage && !isFetchingNextPage) {
+          fetchNextPage().then((result) => {
+            if (result.data) {
+              const newArticles = result.data.pages.flatMap(
+                (p) => p.data.items
+              );
+              const nextArticle = newArticles[idx + 1];
+              if (nextArticle) setSelectedId(nextArticle.id);
+            }
+          });
+        }
+      } else if (e.key === 'ArrowUp' && idx > 0) {
         e.preventDefault();
-        setSelectedId(articles[currentIndex - 1].id);
+        setSelectedId(articles[idx - 1].id);
       }
     },
-    [effectiveSelectedId, articles]
+    [
+      effectiveSelectedId,
+      articles,
+      hasNextPage,
+      isFetchingNextPage,
+      fetchNextPage,
+    ]
   );
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden">
-      {/* 左パネル: 記事リスト */}
-      <div
-        className="w-[380px] shrink-0 overflow-y-auto border-r border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-900"
-        role="navigation"
-        aria-label="記事リスト"
-      >
-        <ReaderArticleList
-          articles={articles}
-          selectedId={effectiveSelectedId}
-          isLoading={isLoadingList}
-          error={listError instanceof Error ? listError.message : null}
-          page={page}
-          totalPages={totalPages}
-          onSelectArticle={handleSelectArticle}
-          onPageChange={handlePageChange}
-          onKeyDown={handleKeyDown}
-          onRetry={refetchList}
-        />
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-2 dark:border-slate-700">
+        <FilterSidebarToggle />
+        <SearchBox />
+        <TagFilterDropdown tags={tags} />
+        <SortButtons />
       </div>
-      {/* 右パネル: 記事詳細 */}
-      <div
-        className="flex-1 overflow-y-auto"
-        role="article"
-        aria-label="記事詳細"
-        aria-live="polite"
-      >
-        <ReaderArticleDetail
-          key={effectiveSelectedId}
-          article={selectedArticle}
-          isLoading={isLoadingDetail}
-          error={detailError instanceof Error ? detailError.message : null}
-          hasPrev={hasPrev}
-          hasNext={hasNext}
-          onPrev={handlePrev}
-          onNext={handleNext}
-        />
+      {/* Two-panel layout */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* Left panel: Article list */}
+        <div
+          className="w-[380px] shrink-0 overflow-y-auto border-r border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-900"
+          role="navigation"
+          aria-label="記事リスト"
+        >
+          <ReaderArticleList
+            articles={articles}
+            selectedId={effectiveSelectedId}
+            isLoading={isLoadingList}
+            error={listError instanceof Error ? listError.message : null}
+            onSelectArticle={handleSelectArticle}
+            onKeyDown={handleKeyDown}
+            onRetry={refetchList}
+            hasNextPage={!!hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={() => fetchNextPage()}
+          />
+        </div>
+        {/* Right panel: Article detail */}
+        <div
+          className="flex-1 overflow-y-auto"
+          role="article"
+          aria-label="記事詳細"
+          aria-live="polite"
+        >
+          <ReaderArticleDetail
+            article={selectedArticle}
+            isLoading={!detailData && isFetchingDetail}
+            error={detailError instanceof Error ? detailError.message : null}
+            hasPrev={hasPrev}
+            hasNext={hasNext || !!hasNextPage}
+            onPrev={handlePrev}
+            onNext={handleNext}
+          />
+        </div>
       </div>
     </div>
   );
