@@ -36,7 +36,7 @@ export function ArticleListItem({
       onClick={() => onSelect(article.id)}
       className={`border-border flex w-full cursor-pointer items-start gap-3 border-b p-3 text-left transition-colors duration-150 motion-reduce:transition-none ${
         isSelected
-          ? 'bg-primary/10 border-l-primary border-l-2'
+          ? 'bg-accent border-l-primary border-l-2'
           : 'hover:bg-muted/50 border-l-2 border-l-transparent'
       }`}
     >

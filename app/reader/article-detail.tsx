@@ -55,15 +55,27 @@ export function ReaderArticleDetail({
   const showThumbnail = hasValidThumbnail && !thumbnailError;
   const sections = article.detailedSummary
     ? parseSummary(article.detailedSummary, {
-        articleType: article.articleType as any,
+        articleType: article.articleType ?? undefined,
         summaryVersion: article.summaryVersion ?? undefined,
       })
     : [];
 
+  const safeUrl = (() => {
+    try {
+      const url = new URL(article.url);
+      return url.protocol === 'http:' || url.protocol === 'https:'
+        ? article.url
+        : null;
+    } catch {
+      return null;
+    }
+  })();
+
   return (
-    <div className="mx-auto max-w-2xl px-6 py-6">
+    <div className="mx-auto max-w-2xl space-y-4 px-6 py-6">
+      {/* Thumbnail - full width with rounded corners */}
       {showThumbnail && (
-        <div className="bg-muted mb-4 max-h-[240px] w-full overflow-hidden rounded-lg">
+        <div className="border-border max-h-[240px] w-full overflow-hidden rounded-xl border">
           <img
             src={article.thumbnail!}
             alt=""
@@ -73,46 +85,54 @@ export function ReaderArticleDetail({
         </div>
       )}
 
-      <h1 className="text-foreground mb-3 text-xl leading-relaxed font-bold">
-        {displayTitle}
-      </h1>
+      {/* Header Card */}
+      <div className="border-border bg-card rounded-lg border p-5 shadow-sm">
+        <h1 className="text-foreground mb-3 text-xl leading-relaxed font-bold">
+          {displayTitle}
+        </h1>
 
-      <div className="text-muted-foreground mb-4 flex items-center gap-3 text-sm">
-        {article.source?.name && (
-          <span className="text-foreground/80 font-medium">
-            {article.source.name}
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+          {article.source?.name && (
+            <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">
+              {article.source.name}
+            </span>
+          )}
+          <span className="text-muted-foreground">
+            <RelativeTime date={article.publishedAt} />
           </span>
+        </div>
+
+        {article.tags && article.tags.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {article.tags.slice(0, 5).map((tag) => (
+              <span
+                key={tag.id}
+                className="border-border bg-muted text-muted-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs"
+              >
+                {tag.name}
+              </span>
+            ))}
+          </div>
         )}
-        <RelativeTime date={article.publishedAt} />
-        <a
-          href={article.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:text-primary/80 inline-flex cursor-pointer items-center gap-1"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          <span>元記事</span>
-        </a>
+
+        {safeUrl && (
+          <a
+            href={safeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border-border bg-muted text-foreground hover:bg-accent inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors duration-150 motion-reduce:transition-none"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            <span>元記事を読む</span>
+          </a>
+        )}
       </div>
 
-      {article.tags && article.tags.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-1.5">
-          {article.tags.slice(0, 5).map((tag) => (
-            <span
-              key={tag.id}
-              className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs"
-            >
-              {tag.name}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <hr className="border-border mb-4" />
-
+      {/* Summary Card */}
       {article.summary && (
-        <div className="mb-4">
-          <h2 className="text-foreground/80 mb-1 text-sm font-semibold">
+        <div className="border-border bg-card rounded-lg border p-5 shadow-sm">
+          <h2 className="text-foreground mb-2 flex items-center gap-1.5 text-sm font-semibold">
+            <span className="bg-primary h-1 w-1 rounded-full" />
             概要
           </h2>
           <p className="text-muted-foreground text-sm leading-relaxed">
@@ -121,25 +141,35 @@ export function ReaderArticleDetail({
         </div>
       )}
 
+      {/* Detailed Summary Card */}
       {sections.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-foreground/80 text-sm font-semibold">詳細</h2>
-          {sections.map((section, i) => (
-            <div key={i} className="text-sm">
-              <h3 className="text-foreground mb-1 font-medium">
-                {section.icon && <span className="mr-1">{section.icon}</span>}
-                {section.title}
-              </h3>
-              <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                {section.content}
-              </p>
-            </div>
-          ))}
+        <div className="border-border bg-card rounded-lg border p-5 shadow-sm">
+          <h2 className="text-foreground mb-3 flex items-center gap-1.5 text-sm font-semibold">
+            <span className="bg-primary h-1 w-1 rounded-full" />
+            詳細
+          </h2>
+          <div className="space-y-3">
+            {sections.map((section, i) => (
+              <div key={i} className="text-sm">
+                <h3 className="text-foreground mb-1 font-medium">
+                  {section.icon && <span className="mr-1">{section.icon}</span>}
+                  {section.title}
+                </h3>
+                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                  {section.content}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       {!article.summary && sections.length === 0 && (
-        <p className="text-muted-foreground text-sm italic">要約はありません</p>
+        <div className="border-border bg-card rounded-lg border p-5 shadow-sm">
+          <p className="text-muted-foreground text-sm italic">
+            要約はありません
+          </p>
+        </div>
       )}
     </div>
   );

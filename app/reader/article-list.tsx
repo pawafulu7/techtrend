@@ -20,6 +20,7 @@ interface ArticleListProps {
   onSelectArticle: (id: string) => void;
   onPageChange: (page: number) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
+  onRetry: () => void;
 }
 
 export function ReaderArticleList({
@@ -32,6 +33,7 @@ export function ReaderArticleList({
   onSelectArticle,
   onPageChange,
   onKeyDown,
+  onRetry,
 }: ArticleListProps) {
   if (error && articles.length === 0) {
     return (
@@ -40,7 +42,7 @@ export function ReaderArticleList({
         <p className="text-muted-foreground text-sm">{error}</p>
         <button
           type="button"
-          onClick={() => onPageChange(page)}
+          onClick={onRetry}
           className="text-primary hover:text-primary/80 cursor-pointer text-sm"
         >
           再読み込み
@@ -68,6 +70,11 @@ export function ReaderArticleList({
 
   return (
     <div className="flex h-full flex-col">
+      <div className="border-border bg-muted/50 shrink-0 border-b px-3 py-2">
+        <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+          記事一覧
+        </h2>
+      </div>
       <div
         className="flex-1 overflow-y-auto"
         role="listbox"
@@ -83,7 +90,7 @@ export function ReaderArticleList({
           />
         ))}
       </div>
-      <div className="border-border bg-muted text-muted-foreground flex shrink-0 items-center justify-between border-t px-3 py-2 text-sm">
+      <div className="border-border bg-card text-muted-foreground flex shrink-0 items-center justify-between border-t px-3 py-2 text-sm">
         <button
           type="button"
           disabled={page <= 1}

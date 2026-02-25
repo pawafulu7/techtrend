@@ -22,7 +22,10 @@ async function fetchArticleList(page: number): Promise<ArticleListResponse> {
   const res = await fetch(`/api/articles/list?${params}`);
   const json = await res.json();
   if (!json.success)
-    throw new Error(json.error || '記事の読み込みに失敗しました');
+    throw new Error(
+      (typeof json.error === 'string' ? json.error : json.error?.message) ||
+        '記事の読み込みに失敗しました'
+    );
   return json;
 }
 
@@ -30,7 +33,10 @@ async function fetchArticleDetail(id: string): Promise<ArticleDetailResponse> {
   const res = await fetch(`/api/articles/${id}`);
   const json = await res.json();
   if (!res.ok || !json.success)
-    throw new Error(json.error || '記事の取得に失敗しました');
+    throw new Error(
+      (typeof json.error === 'string' ? json.error : json.error?.message) ||
+        '記事の取得に失敗しました'
+    );
   return json;
 }
 
@@ -43,6 +49,7 @@ export function ReaderClient() {
     data: listData,
     isLoading: isLoadingList,
     error: listError,
+    refetch: refetchList,
   } = useQuery({
     queryKey: ['reader-articles', page],
     queryFn: () => fetchArticleList(page),
@@ -114,6 +121,7 @@ export function ReaderClient() {
           onSelectArticle={handleSelectArticle}
           onPageChange={handlePageChange}
           onKeyDown={handleKeyDown}
+          onRetry={refetchList}
         />
       </div>
       {/* 右パネル: 記事詳細 */}
