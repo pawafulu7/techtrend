@@ -46,13 +46,13 @@ export function ArticleListItem({
       role="option"
       aria-selected={isSelected}
       onClick={() => onSelect(article.id)}
-      className={`w-full cursor-pointer border-b border-slate-100 text-left transition-colors duration-150 motion-reduce:transition-none dark:border-slate-800 ${
+      className={`mx-2 mb-2 cursor-pointer overflow-hidden rounded-xl text-left ring-1 transition-all duration-150 motion-reduce:transition-none ${
         isSelected
-          ? 'border-l-[3px] border-l-lime-400 bg-lime-50/40 dark:bg-lime-900/10'
-          : 'border-l-[3px] border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'
+          ? 'bg-lime-50/40 shadow-sm ring-lime-400 dark:bg-lime-900/10 dark:ring-lime-500'
+          : 'bg-white ring-slate-200 hover:shadow-sm hover:ring-slate-300 dark:bg-slate-800/50 dark:ring-slate-700 dark:hover:ring-slate-600'
       }`}
     >
-      <div className="max-h-[200px] overflow-hidden">
+      <div className="max-h-[200px] overflow-hidden rounded-t-xl">
         {showThumbnail ? (
           <img
             src={article.thumbnail!}
