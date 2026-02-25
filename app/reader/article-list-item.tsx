@@ -41,29 +41,38 @@ export function ArticleListItem({
   const dateStr = formatShortDate(article.publishedAt);
 
   return (
-    <button
-      type="button"
+    <div
       role="option"
       aria-selected={isSelected}
       onClick={() => onSelect(article.id)}
-      className={`mx-2 mb-2 cursor-pointer overflow-hidden rounded-xl text-left ring-1 transition-all duration-150 motion-reduce:transition-none ${
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(article.id);
+        }
+      }}
+      tabIndex={0}
+      className={`mx-2 mb-2 cursor-pointer overflow-hidden rounded-xl ring-1 transition-all duration-150 motion-reduce:transition-none ${
         isSelected
           ? 'bg-lime-50/40 shadow-sm ring-lime-400 dark:bg-lime-900/10 dark:ring-lime-500'
           : 'bg-white ring-slate-200 hover:shadow-sm hover:ring-slate-300 dark:bg-slate-800/50 dark:ring-slate-700 dark:hover:ring-slate-600'
       }`}
     >
-      <div className="max-h-[200px] overflow-hidden rounded-t-xl">
+      <div
+        className="relative w-full overflow-hidden bg-slate-100 dark:bg-slate-800"
+        style={{ paddingBottom: '60%' }}
+      >
         {showThumbnail ? (
           <img
             src={article.thumbnail!}
             alt=""
-            className="block w-full"
+            className="absolute inset-0 h-full w-full object-contain"
             loading="lazy"
             onError={() => setThumbnailError(true)}
           />
         ) : (
-          <div className="flex h-[80px] w-full items-center justify-center bg-slate-100 dark:bg-slate-800">
-            <Newspaper className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Newspaper className="h-10 w-10 text-slate-300 dark:text-slate-600" />
           </div>
         )}
       </div>
@@ -80,6 +89,6 @@ export function ArticleListItem({
           {dateStr && <span className="shrink-0">{dateStr}</span>}
         </div>
       </div>
-    </button>
+    </div>
   );
 }

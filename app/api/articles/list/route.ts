@@ -292,6 +292,16 @@ export async function GET(request: NextRequest) {
       // Build where clause
       const where: ArticleWhereInput = {};
 
+      // Exclude articles without content (matches home page behavior)
+      if (!where.AND) {
+        where.AND = [];
+      } else if (!Array.isArray(where.AND)) {
+        where.AND = [where.AND];
+      }
+      (where.AND as ArticleWhereInput[]).push({
+        AND: [{ content: { not: null } }, { content: { not: '' } }],
+      });
+
       // Exclude articles without processed summaries
       if (excludeUnprocessed) {
         where.summaryComputedAt = { not: null };
