@@ -96,10 +96,10 @@ export function ReaderArticleDetail({
   const dateStr = formatDate(article.publishedAt);
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-100/80 dark:bg-slate-950">
-      <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="h-full overflow-y-auto bg-gradient-to-br from-slate-50 via-slate-100/60 to-slate-50 dark:from-slate-950 dark:via-slate-900/60 dark:to-slate-950">
+      <div className="mx-auto max-w-5xl px-5 py-8">
         {/* Card */}
-        <div className="rounded-2xl bg-white px-10 py-8 shadow-sm dark:bg-slate-900">
+        <div className="rounded-2xl bg-white px-10 py-8 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
           {/* Meta: source badge + date */}
           <div className="flex items-center gap-3">
             {article.source?.name && (
@@ -149,7 +149,7 @@ export function ReaderArticleDetail({
 
           {/* Summary */}
           {article.summary && (
-            <p className="mt-6 text-[15px] leading-[1.9] text-slate-600 dark:text-slate-300">
+            <p className="mt-6 text-[15px] leading-[1.9] text-slate-800 dark:text-slate-200">
               {article.summary}
             </p>
           )}
@@ -168,7 +168,7 @@ export function ReaderArticleDetail({
                       {section.title}
                     </p>
                   </div>
-                  <p className="mt-2 pl-6 text-sm leading-[1.8] text-slate-500 dark:text-slate-400">
+                  <p className="mt-2 pl-6 text-sm leading-[1.8] text-slate-700 dark:text-slate-300">
                     {section.content}
                   </p>
                 </div>
