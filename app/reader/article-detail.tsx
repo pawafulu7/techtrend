@@ -7,6 +7,8 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { parseSummary } from '@/lib/utils/summary-parser';
 import type { ReaderDetailArticle } from './types';
@@ -15,6 +17,10 @@ interface ArticleDetailProps {
   article: ReaderDetailArticle | null;
   isLoading: boolean;
   error: string | null;
+  hasPrev?: boolean;
+  hasNext?: boolean;
+  onPrev?: () => void;
+  onNext?: () => void;
 }
 
 const MAX_VISIBLE_SECTIONS = 4;
@@ -36,6 +42,10 @@ export function ReaderArticleDetail({
   article,
   isLoading,
   error,
+  hasPrev,
+  hasNext,
+  onPrev,
+  onNext,
 }: ArticleDetailProps) {
   const [showAllSections, setShowAllSections] = useState(false);
 
@@ -96,8 +106,32 @@ export function ReaderArticleDetail({
   const dateStr = formatDate(article.publishedAt);
 
   return (
-    <div className="h-full overflow-y-auto bg-gradient-to-br from-slate-50 via-slate-100/60 to-slate-50 dark:from-slate-950 dark:via-slate-900/60 dark:to-slate-950">
+    <div className="h-full overflow-y-auto bg-gradient-to-br from-slate-200/70 via-white to-slate-200/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="mx-auto max-w-5xl px-5 py-8">
+        {/* Prev / Next navigation */}
+        {(hasPrev || hasNext) && (
+          <div className="mb-4 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={onPrev}
+              disabled={!hasPrev}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors duration-150 hover:bg-white disabled:cursor-default disabled:opacity-30 motion-reduce:transition-none dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              前の記事
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={!hasNext}
+              className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors duration-150 hover:bg-white disabled:cursor-default disabled:opacity-30 motion-reduce:transition-none dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              次の記事
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {/* Card */}
         <div className="rounded-2xl bg-white px-10 py-8 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800">
           {/* Meta: source badge + date */}

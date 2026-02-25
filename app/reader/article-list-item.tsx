@@ -52,26 +52,28 @@ export function ArticleListItem({
           : 'border-l-[3px] border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'
       }`}
     >
-      <div className="flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-slate-100 dark:bg-slate-800">
+      <div className="max-h-[200px] overflow-hidden">
         {showThumbnail ? (
           <img
             src={article.thumbnail!}
             alt=""
-            className="h-full w-full object-cover"
+            className="block w-full"
             loading="lazy"
             onError={() => setThumbnailError(true)}
           />
         ) : (
-          <Newspaper className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+          <div className="flex h-[80px] w-full items-center justify-center bg-slate-100 dark:bg-slate-800">
+            <Newspaper className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+          </div>
         )}
       </div>
-      <div className="px-3 py-2.5">
-        <h3 className="line-clamp-2 text-sm leading-snug font-medium text-slate-800 dark:text-slate-100">
+      <div className="px-3 py-2">
+        <h3 className="line-clamp-2 text-[13px] leading-snug font-medium text-slate-800 dark:text-slate-100">
           {displayTitle}
         </h3>
-        <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-400">
+        <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
           {article.source?.name && (
-            <span className="max-w-[140px] truncate font-medium text-lime-600 dark:text-lime-400">
+            <span className="max-w-[160px] truncate font-medium text-lime-600 dark:text-lime-400">
               {article.source.name}
             </span>
           )}

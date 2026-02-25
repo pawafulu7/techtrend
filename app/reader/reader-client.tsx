@@ -76,6 +76,21 @@ export function ReaderClient() {
 
   const selectedArticle = detailData?.data ?? null;
 
+  // 前後ナビゲーション
+  const currentIndex = effectiveSelectedId
+    ? articles.findIndex((a: ReaderListArticle) => a.id === effectiveSelectedId)
+    : -1;
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex >= 0 && currentIndex < articles.length - 1;
+
+  const handlePrev = useCallback(() => {
+    if (hasPrev) setSelectedId(articles[currentIndex - 1].id);
+  }, [hasPrev, articles, currentIndex]);
+
+  const handleNext = useCallback(() => {
+    if (hasNext) setSelectedId(articles[currentIndex + 1].id);
+  }, [hasNext, articles, currentIndex]);
+
   const handleSelectArticle = useCallback((articleId: string) => {
     setSelectedId(articleId);
   }, []);
@@ -107,7 +122,7 @@ export function ReaderClient() {
     <div className="flex h-full min-h-0 overflow-hidden">
       {/* 左パネル: 記事リスト */}
       <div
-        className="w-[400px] shrink-0 overflow-y-auto border-r border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/60"
+        className="w-[380px] shrink-0 overflow-y-auto border-r border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-900"
         role="navigation"
         aria-label="記事リスト"
       >
@@ -136,6 +151,10 @@ export function ReaderClient() {
           article={selectedArticle}
           isLoading={isLoadingDetail}
           error={detailError instanceof Error ? detailError.message : null}
+          hasPrev={hasPrev}
+          hasNext={hasNext}
+          onPrev={handlePrev}
+          onNext={handleNext}
         />
       </div>
     </div>
