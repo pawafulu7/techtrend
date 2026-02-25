@@ -52,7 +52,7 @@ export function ArticleListItem({
           : 'border-l-[3px] border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'
       }`}
     >
-      <div className="flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
+      <div className="flex h-[72px] w-[100px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
         {showThumbnail ? (
           <img
             src={article.thumbnail!}
@@ -62,7 +62,7 @@ export function ArticleListItem({
             onError={() => setThumbnailError(true)}
           />
         ) : (
-          <Newspaper className="h-7 w-7 text-slate-300 dark:text-slate-600" />
+          <Newspaper className="h-8 w-8 text-slate-300 dark:text-slate-600" />
         )}
       </div>
       <div className="min-w-0 flex-1">
