@@ -107,7 +107,7 @@ export function ReaderClient() {
     <div className="flex h-full min-h-0 overflow-hidden">
       {/* 左パネル: 記事リスト */}
       <div
-        className="border-border bg-muted/40 w-[360px] shrink-0 overflow-y-auto border-r"
+        className="w-[400px] shrink-0 overflow-y-auto border-r border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/60"
         role="navigation"
         aria-label="記事リスト"
       >
