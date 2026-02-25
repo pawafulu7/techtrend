@@ -70,11 +70,36 @@ export function ReaderArticleList({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-border bg-muted/70 shrink-0 border-b px-3 py-2">
+      {/* Combined header bar with pagination */}
+      <div className="border-border bg-muted/70 flex shrink-0 items-center justify-between border-b px-3 py-1.5">
         <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
           記事一覧
         </h2>
+        <div className="text-muted-foreground flex items-center gap-1 text-xs">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+            aria-label="前のページ"
+            className="hover:bg-muted cursor-pointer rounded p-0.5 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+          <span aria-live="polite" aria-atomic="true">
+            {page}/{totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+            aria-label="次のページ"
+            className="hover:bg-muted cursor-pointer rounded p-0.5 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
       </div>
+      {/* Article list - takes full remaining height */}
       <div
         className="flex-1 overflow-y-auto"
         role="listbox"
@@ -89,29 +114,6 @@ export function ReaderArticleList({
             onSelect={onSelectArticle}
           />
         ))}
-      </div>
-      <div className="border-border bg-card text-muted-foreground flex shrink-0 items-center justify-between border-t px-3 py-2 text-sm">
-        <button
-          type="button"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-          aria-label="前のページ"
-          className="hover:bg-muted/80 cursor-pointer rounded p-1 disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <span aria-live="polite" aria-atomic="true">
-          {page} / {totalPages}
-        </span>
-        <button
-          type="button"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
-          aria-label="次のページ"
-          className="hover:bg-muted/80 cursor-pointer rounded p-1 disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        </button>
       </div>
     </div>
   );

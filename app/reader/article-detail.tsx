@@ -20,7 +20,6 @@ export function ReaderArticleDetail({
   isLoading,
   error,
 }: ArticleDetailProps) {
-  const [thumbnailError, setThumbnailError] = useState(false);
   const [showAllSections, setShowAllSections] = useState(false);
 
   if (error) {
@@ -54,9 +53,6 @@ export function ReaderArticleDetail({
   if (!article) return null;
 
   const displayTitle = article.translatedTitle || article.title;
-  const hasValidThumbnail =
-    !!article.thumbnail && /^https?:\/\//.test(article.thumbnail);
-  const showThumbnail = hasValidThumbnail && !thumbnailError;
   const sections = article.detailedSummary
     ? parseSummary(article.detailedSummary, {
         articleType: article.articleType ?? undefined,
@@ -79,124 +75,103 @@ export function ReaderArticleDetail({
     ? sections
     : sections.slice(0, MAX_VISIBLE_SECTIONS);
   const hasMoreSections = sections.length > MAX_VISIBLE_SECTIONS;
+  const remainingSections = sections.length - MAX_VISIBLE_SECTIONS;
 
   return (
-    <div className="space-y-2 px-4 py-3">
-      {/* Header: Inline thumbnail + title + meta */}
-      <div className="flex items-start gap-3">
-        {/* Small inline thumbnail */}
-        {showThumbnail ? (
-          <div className="border-border h-20 w-20 shrink-0 overflow-hidden rounded-lg border">
-            <img
-              src={article.thumbnail!}
-              alt=""
-              className="h-full w-full object-cover"
-              onError={() => setThumbnailError(true)}
-            />
-          </div>
-        ) : (
-          <div className="bg-muted border-border flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border">
-            <Newspaper className="text-muted-foreground h-6 w-6" />
-          </div>
+    <div className="h-full overflow-y-auto">
+      {/* Content area - constrained width for readability */}
+      <div className="max-w-2xl px-6 py-4 lg:px-10">
+        {/* Title */}
+        <h1 className="text-foreground text-lg leading-snug font-bold">
+          {displayTitle}
+        </h1>
+
+        {/* Meta: source + date */}
+        <div className="text-muted-foreground mt-2 flex items-center gap-2 text-xs">
+          {article.source?.name && (
+            <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 font-medium">
+              {article.source.name}
+            </span>
+          )}
+          <RelativeTime date={article.publishedAt} />
+          {article.tags &&
+            article.tags.length > 0 &&
+            article.tags.slice(0, MAX_VISIBLE_TAGS).map((tag) => (
+              <span
+                key={tag.id}
+                className="border-border text-muted-foreground rounded-full border px-1.5 py-0 text-[10px]"
+              >
+                {tag.name}
+              </span>
+            ))}
+        </div>
+
+        {/* 元記事リンク */}
+        {safeUrl && (
+          <a
+            href={safeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:text-primary/80 mt-3 inline-flex items-center gap-1.5 text-sm font-medium transition-colors duration-150 motion-reduce:transition-none"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            元記事を読む
+          </a>
         )}
 
-        <div className="min-w-0 flex-1">
-          {/* Title */}
-          <h1 className="text-foreground text-lg leading-snug font-bold">
-            {displayTitle}
-          </h1>
-
-          {/* Source badge + date + link */}
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-            {article.source?.name && (
-              <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium">
-                {article.source.name}
-              </span>
-            )}
-            <span className="text-muted-foreground text-xs">
-              <RelativeTime date={article.publishedAt} />
-            </span>
-            {safeUrl && (
-              <a
-                href={safeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:text-primary/80 inline-flex items-center gap-1 text-xs font-medium transition-colors duration-150 motion-reduce:transition-none"
-              >
-                <ExternalLink className="h-3 w-3" />
-                <span>元記事を読む</span>
-              </a>
-            )}
-          </div>
-
-          {/* Tags */}
-          {article.tags && article.tags.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {article.tags.slice(0, MAX_VISIBLE_TAGS).map((tag) => (
-                <span
-                  key={tag.id}
-                  className="border-border bg-muted text-muted-foreground inline-flex items-center rounded-full border px-2 py-0.5 text-[11px]"
-                >
-                  {tag.name}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Summary Card */}
-      {article.summary && (
-        <div className="border-border bg-card rounded-lg border p-3 shadow-sm">
-          <h2 className="text-foreground mb-1.5 flex items-center gap-1.5 text-sm font-semibold">
-            <span className="bg-primary h-1 w-1 rounded-full" />
-            概要
-          </h2>
-          <p className="text-muted-foreground line-clamp-3 text-sm leading-relaxed">
+        {/* Summary */}
+        {article.summary && (
+          <p className="text-foreground mt-4 text-sm leading-relaxed">
             {article.summary}
           </p>
-        </div>
-      )}
+        )}
 
-      {/* Detailed Summary Card */}
-      {sections.length > 0 && (
-        <div className="border-border bg-card rounded-lg border p-3 shadow-sm">
-          <h2 className="text-foreground mb-2 flex items-center gap-1.5 text-sm font-semibold">
-            <span className="bg-primary h-1 w-1 rounded-full" />
-            詳細
-          </h2>
-          <div className="space-y-2">
+        {/* Divider */}
+        {sections.length > 0 && <div className="bg-border my-4 h-px" />}
+
+        {/* Detailed sections - title above, content below */}
+        {visibleSections.length > 0 && (
+          <div className="space-y-3">
             {visibleSections.map((section, i) => (
-              <div key={i} className="text-sm">
-                <h3 className="text-foreground font-medium">
+              <div key={i}>
+                <p className="text-foreground text-sm font-medium">
                   {section.icon && <span className="mr-1">{section.icon}</span>}
                   {section.title}
-                </h3>
-                <p className="text-muted-foreground line-clamp-2 leading-relaxed">
+                </p>
+                <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
                   {section.content}
                 </p>
               </div>
             ))}
           </div>
-          {hasMoreSections && !showAllSections && (
-            <button
-              type="button"
-              onClick={() => setShowAllSections(true)}
-              className="text-primary hover:text-primary/80 mt-2 cursor-pointer text-sm font-medium transition-colors duration-150 motion-reduce:transition-none"
-            >
-              もっと見る...
-            </button>
-          )}
-        </div>
-      )}
+        )}
 
-      {!article.summary && sections.length === 0 && (
-        <div className="border-border bg-card rounded-lg border p-3 shadow-sm">
-          <p className="text-muted-foreground text-sm italic">
+        {/* Fold toggle */}
+        {hasMoreSections && !showAllSections && (
+          <button
+            type="button"
+            onClick={() => setShowAllSections(true)}
+            className="text-primary hover:text-primary/80 mt-3 cursor-pointer text-xs font-medium transition-colors duration-150 motion-reduce:transition-none"
+          >
+            +{remainingSections}件の詳細を表示
+          </button>
+        )}
+        {showAllSections && hasMoreSections && (
+          <button
+            type="button"
+            onClick={() => setShowAllSections(false)}
+            className="text-primary hover:text-primary/80 mt-3 cursor-pointer text-xs font-medium transition-colors duration-150 motion-reduce:transition-none"
+          >
+            折りたたむ
+          </button>
+        )}
+
+        {!article.summary && sections.length === 0 && (
+          <p className="text-muted-foreground mt-3 text-sm italic">
             要約はありません
           </p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
