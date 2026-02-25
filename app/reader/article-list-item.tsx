@@ -46,13 +46,13 @@ export function ArticleListItem({
       role="option"
       aria-selected={isSelected}
       onClick={() => onSelect(article.id)}
-      className={`flex w-full cursor-pointer items-start gap-3 border-b border-slate-100 px-3 py-3.5 text-left transition-colors duration-150 motion-reduce:transition-none dark:border-slate-800 ${
+      className={`w-full cursor-pointer border-b border-slate-100 text-left transition-colors duration-150 motion-reduce:transition-none dark:border-slate-800 ${
         isSelected
-          ? 'border-l-[3px] border-l-teal-400 bg-teal-50/50 dark:bg-teal-900/20'
+          ? 'border-l-[3px] border-l-lime-400 bg-lime-50/40 dark:bg-lime-900/10'
           : 'border-l-[3px] border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'
       }`}
     >
-      <div className="flex h-[72px] w-[100px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
+      <div className="flex aspect-[16/9] w-full items-center justify-center overflow-hidden bg-slate-100 dark:bg-slate-800">
         {showThumbnail ? (
           <img
             src={article.thumbnail!}
@@ -62,16 +62,16 @@ export function ArticleListItem({
             onError={() => setThumbnailError(true)}
           />
         ) : (
-          <Newspaper className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+          <Newspaper className="h-10 w-10 text-slate-300 dark:text-slate-600" />
         )}
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="px-3 py-2.5">
         <h3 className="line-clamp-2 text-sm leading-snug font-medium text-slate-800 dark:text-slate-100">
           {displayTitle}
         </h3>
         <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-400">
           {article.source?.name && (
-            <span className="max-w-[120px] truncate font-medium text-teal-600 dark:text-teal-400">
+            <span className="max-w-[140px] truncate font-medium text-lime-600 dark:text-lime-400">
               {article.source.name}
             </span>
           )}
