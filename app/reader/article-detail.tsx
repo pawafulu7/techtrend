@@ -87,7 +87,7 @@ export function ReaderArticleDetail({
 
   return (
     <div className="h-full overflow-y-auto bg-slate-900">
-      <div className="mx-auto max-w-5xl px-5 py-8">
+      <div className="w-full px-5 py-8">
         {/* Prev / Next navigation */}
         {(hasPrev || hasNext) && (
           <div className="mb-4 flex items-center justify-between">

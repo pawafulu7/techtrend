@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { Newspaper } from 'lucide-react';
 import { formatDate } from './utils';
 
@@ -53,12 +52,12 @@ export function ArticleListItem({
         style={{ paddingBottom: '60%' }}
       >
         {showThumbnail ? (
-          <Image
+          // eslint-disable-next-line @next/next/no-img-element -- Custom image loader handles 800+ domains; see next.config.ts
+          <img
             src={article.thumbnail!}
             alt=""
-            fill
-            className="object-contain"
-            sizes="380px"
+            className="absolute inset-0 h-full w-full object-contain"
+            loading="lazy"
             onError={() => setThumbnailError(true)}
           />
         ) : (

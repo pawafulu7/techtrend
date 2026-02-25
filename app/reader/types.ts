@@ -28,20 +28,20 @@ export interface ReaderDetailArticle {
   tags: { id: string; name: string }[];
 }
 
-// API レスポンス型
-export interface ArticleListResponse {
-  success: boolean;
-  data: {
-    items: ReaderListArticle[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
+// API レスポンス型（discriminated union）
+export type ArticleListResponse =
+  | {
+      success: true;
+      data: {
+        items: ReaderListArticle[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      };
+    }
+  | { success: false; error: string };
 
-export interface ArticleDetailResponse {
-  success: boolean;
-  data: ReaderDetailArticle;
-  error?: string;
-}
+export type ArticleDetailResponse =
+  | { success: true; data: ReaderDetailArticle }
+  | { success: false; error: string };

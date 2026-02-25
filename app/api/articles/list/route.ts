@@ -299,6 +299,8 @@ export async function GET(request: NextRequest) {
         where.AND = [where.AND];
       }
       (where.AND as ArticleWhereInput[]).push({
+        // Exclude articles without content. Whitespace-only content (rare edge case)
+        // is additionally handled by the detail API which uses trim().
         AND: [{ content: { not: null } }, { content: { not: '' } }],
       });
 

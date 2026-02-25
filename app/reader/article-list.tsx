@@ -103,7 +103,13 @@ function ScrollableArticleList({
     if (!selectedId) return;
     const el = itemRefs.current.get(selectedId);
     if (el) {
-      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      const prefersReducedMotion = window.matchMedia(
+        '(prefers-reduced-motion: reduce)'
+      ).matches;
+      el.scrollIntoView({
+        block: 'start',
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      });
     }
   }, [selectedId]);
 

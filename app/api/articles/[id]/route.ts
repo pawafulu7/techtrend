@@ -49,7 +49,12 @@ export async function GET(
       {
         success: false,
         error: 'Failed to fetch article',
-        details: error instanceof Error ? error.message : undefined,
+        details:
+          process.env.NODE_ENV !== 'production'
+            ? error instanceof Error
+              ? error.message
+              : undefined
+            : undefined,
       } as ApiResponse<never>,
       { status: 500 }
     );
@@ -102,7 +107,12 @@ export async function PATCH(
       {
         success: false,
         error: 'Failed to update article',
-        details: error instanceof Error ? error.message : undefined,
+        details:
+          process.env.NODE_ENV !== 'production'
+            ? error instanceof Error
+              ? error.message
+              : undefined
+            : undefined,
       } as ApiResponse<never>,
       { status: 500 }
     );
@@ -131,7 +141,12 @@ export async function DELETE(
       {
         success: false,
         error: 'Failed to delete article',
-        details: error instanceof Error ? error.message : undefined,
+        details:
+          process.env.NODE_ENV !== 'production'
+            ? error instanceof Error
+              ? error.message
+              : undefined
+            : undefined,
       } as ApiResponse<never>,
       { status: 500 }
     );

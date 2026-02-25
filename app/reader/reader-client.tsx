@@ -29,7 +29,7 @@ interface ReaderClientProps {
 async function fetchArticleList(
   page: number,
   filterParams: Record<string, string>
-): Promise<ArticleListResponse> {
+): Promise<Extract<ArticleListResponse, { success: true }>> {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(ARTICLES_PER_PAGE),
@@ -40,24 +40,40 @@ async function fetchArticleList(
   // Exclude arXiv articles (matches home page behavior)
   params.set('excludeSources', ARXIV_SOURCE_ID);
   const res = await fetch(`/api/articles/list?${params}`);
-  const json = await res.json();
-  if (!json.success)
-    throw new Error(
-      (typeof json.error === 'string' ? json.error : json.error?.message) ||
-        '記事の読み込みに失敗しました'
-    );
-  return json;
-}
-
-async function fetchArticleDetail(id: string): Promise<ArticleDetailResponse> {
-  const res = await fetch(`/api/articles/${id}`);
-  const json = await res.json();
+  let json: Record<string, unknown>;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error(`HTTP ${res.status}: レスポンスの解析に失敗しました`);
+  }
   if (!res.ok || !json.success)
     throw new Error(
-      (typeof json.error === 'string' ? json.error : json.error?.message) ||
+      (typeof json.error === 'string'
+        ? json.error
+        : (json.error as { message?: string })?.message) ||
+        '記事の読み込みに失敗しました'
+    );
+  return json as unknown as Extract<ArticleListResponse, { success: true }>;
+}
+
+async function fetchArticleDetail(
+  id: string
+): Promise<Extract<ArticleDetailResponse, { success: true }>> {
+  const res = await fetch(`/api/articles/${id}`);
+  let json: Record<string, unknown>;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error(`HTTP ${res.status}: レスポンスの解析に失敗しました`);
+  }
+  if (!res.ok || !json.success)
+    throw new Error(
+      (typeof json.error === 'string'
+        ? json.error
+        : (json.error as { message?: string })?.message) ||
         '記事の取得に失敗しました'
     );
-  return json;
+  return json as unknown as Extract<ArticleDetailResponse, { success: true }>;
 }
 
 export function ReaderClient({ tags }: ReaderClientProps) {
@@ -163,6 +179,22 @@ function ReaderClientInner({
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex >= 0 && currentIndex < articles.length - 1;
 
+  const fetchNextAndSelect = useCallback(
+    (idx: number) => {
+      if (!hasNextPage || isFetchingNextPage) return;
+      fetchNextPage().then((result) => {
+        if (result.data) {
+          const newArticles = result.data.pages.flatMap((p) => p.data.items);
+          const nextArticle = newArticles[idx + 1];
+          if (nextArticle) {
+            setSelectedId(nextArticle.id);
+          }
+        }
+      });
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage]
+  );
+
   const handlePrev = useCallback(() => {
     if (hasPrev) setSelectedId(articles[currentIndex - 1].id);
   }, [hasPrev, articles, currentIndex]);
@@ -170,26 +202,10 @@ function ReaderClientInner({
   const handleNext = useCallback(() => {
     if (hasNext) {
       setSelectedId(articles[currentIndex + 1].id);
-    } else if (hasNextPage && !isFetchingNextPage) {
-      // At the end of loaded articles — fetch next page
-      fetchNextPage().then((result) => {
-        if (result.data) {
-          const newArticles = result.data.pages.flatMap((p) => p.data.items);
-          const nextArticle = newArticles[currentIndex + 1];
-          if (nextArticle) {
-            setSelectedId(nextArticle.id);
-          }
-        }
-      });
+    } else {
+      fetchNextAndSelect(currentIndex);
     }
-  }, [
-    hasNext,
-    hasNextPage,
-    isFetchingNextPage,
-    articles,
-    currentIndex,
-    fetchNextPage,
-  ]);
+  }, [hasNext, articles, currentIndex, fetchNextAndSelect]);
 
   const handleSelectArticle = useCallback((articleId: string) => {
     setSelectedId(articleId);
@@ -206,29 +222,15 @@ function ReaderClientInner({
         e.preventDefault();
         if (idx < articles.length - 1) {
           setSelectedId(articles[idx + 1].id);
-        } else if (hasNextPage && !isFetchingNextPage) {
-          fetchNextPage().then((result) => {
-            if (result.data) {
-              const newArticles = result.data.pages.flatMap(
-                (p) => p.data.items
-              );
-              const nextArticle = newArticles[idx + 1];
-              if (nextArticle) setSelectedId(nextArticle.id);
-            }
-          });
+        } else {
+          fetchNextAndSelect(idx);
         }
       } else if (e.key === 'ArrowUp' && idx > 0) {
         e.preventDefault();
         setSelectedId(articles[idx - 1].id);
       }
     },
-    [
-      effectiveSelectedId,
-      articles,
-      hasNextPage,
-      isFetchingNextPage,
-      fetchNextPage,
-    ]
+    [effectiveSelectedId, articles, fetchNextAndSelect]
   );
 
   return (
