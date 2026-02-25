@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Newspaper } from 'lucide-react';
 import { formatDate } from './utils';
 
@@ -52,11 +53,12 @@ export function ArticleListItem({
         style={{ paddingBottom: '60%' }}
       >
         {showThumbnail ? (
-          <img
+          <Image
             src={article.thumbnail!}
             alt=""
-            className="absolute inset-0 h-full w-full object-contain"
-            loading="lazy"
+            fill
+            className="object-contain"
+            sizes="380px"
             onError={() => setThumbnailError(true)}
           />
         ) : (

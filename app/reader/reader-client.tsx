@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   useInfiniteQuery,
@@ -62,7 +62,6 @@ async function fetchArticleDetail(id: string): Promise<ArticleDetailResponse> {
 
 export function ReaderClient({ tags }: ReaderClientProps) {
   const searchParams = useSearchParams();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Extract filter params from URL
   const filterParams = useMemo(() => {
@@ -92,12 +91,26 @@ export function ReaderClient({ tags }: ReaderClientProps) {
     return params;
   }, [searchParams]);
 
-  // Reset selection when filters change
-  const filterKey = useMemo(() => JSON.stringify(filterParams), [filterParams]);
+  // key forces remount (and selectedId reset) when filters change
+  const filterKey = searchParams.toString();
 
-  useEffect(() => {
-    setSelectedId(null);
-  }, [filterKey]);
+  return (
+    <ReaderClientInner
+      key={filterKey}
+      tags={tags}
+      filterParams={filterParams}
+    />
+  );
+}
+
+function ReaderClientInner({
+  tags,
+  filterParams,
+}: {
+  tags: ReaderClientProps['tags'];
+  filterParams: Record<string, string>;
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Infinite query for article list
   const {
