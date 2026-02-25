@@ -41,7 +41,7 @@ export function ArticleListItem({
         }
       }}
       tabIndex={isSelected ? 0 : -1}
-      className={`mx-2 mb-2 cursor-pointer overflow-hidden rounded-xl ring-1 transition-all duration-150 motion-reduce:transition-none ${
+      className={`mx-2 mb-2 cursor-pointer overflow-hidden rounded-xl ring-1 transition-all duration-150 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none motion-reduce:transition-none ${
         isSelected
           ? 'bg-lime-50/40 shadow-sm ring-lime-400 dark:bg-lime-900/10 dark:ring-lime-500'
           : 'bg-white ring-slate-200 hover:shadow-sm hover:ring-slate-300 dark:bg-slate-800/50 dark:ring-slate-700 dark:hover:ring-slate-600'

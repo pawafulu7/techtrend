@@ -212,7 +212,9 @@ function ReaderClientInner({
   }, [hasNext, articles, currentIndex, fetchNextAndSelect]);
 
   const handleLoadMore = useCallback(() => {
-    fetchNextPage();
+    fetchNextPage().catch(() => {
+      // Error handled by useInfiniteQuery's error state
+    });
   }, [fetchNextPage]);
 
   const handleSelectArticle = useCallback((articleId: string) => {
@@ -255,7 +257,7 @@ function ReaderClientInner({
         {/* Left panel: Article list */}
         <div
           className="w-[380px] shrink-0 overflow-y-auto border-r border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-900"
-          role="navigation"
+          role="region"
           aria-label="記事リスト"
         >
           <ReaderArticleList
@@ -276,7 +278,6 @@ function ReaderClientInner({
           className="flex-1 overflow-y-auto"
           role="region"
           aria-label="記事詳細"
-          aria-live="polite"
         >
           <ReaderArticleDetail
             article={selectedArticle}

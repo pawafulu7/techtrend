@@ -140,7 +140,10 @@ export function ReaderArticleDetail({
           </div>
 
           {/* Title */}
-          <h1 className="mt-5 text-2xl leading-tight font-bold tracking-tight text-slate-900 dark:text-slate-50">
+          <h1
+            className="mt-5 text-2xl leading-tight font-bold tracking-tight text-slate-900 dark:text-slate-50"
+            aria-live="polite"
+          >
             {displayTitle}
           </h1>
 
@@ -173,7 +176,7 @@ export function ReaderArticleDetail({
             <div className="mt-8 space-y-5">
               {sections.map((section, i) => (
                 <div
-                  key={section.title || `section-${i}`}
+                  key={`section-${section.title ?? ''}-${i}`}
                   className="border-l-[3px] border-lime-400 py-1 pl-5 dark:border-lime-500"
                 >
                   <div className="flex items-start gap-2">
