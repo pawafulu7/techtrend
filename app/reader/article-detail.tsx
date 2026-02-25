@@ -93,7 +93,7 @@ export function ReaderArticleDetail({
           <div className="mb-4 flex items-center justify-between">
             <button
               type="button"
-              onClick={onPrev}
+              onClick={() => onPrev?.()}
               disabled={!hasPrev}
               className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition-colors duration-150 hover:bg-slate-600 hover:text-white disabled:cursor-default disabled:opacity-30 motion-reduce:transition-none"
             >
@@ -102,7 +102,7 @@ export function ReaderArticleDetail({
             </button>
             <button
               type="button"
-              onClick={onNext}
+              onClick={() => onNext?.()}
               disabled={!hasNext}
               className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition-colors duration-150 hover:bg-slate-600 hover:text-white disabled:cursor-default disabled:opacity-30 motion-reduce:transition-none"
             >
@@ -173,7 +173,7 @@ export function ReaderArticleDetail({
             <div className="mt-8 space-y-5">
               {sections.map((section, i) => (
                 <div
-                  key={i}
+                  key={section.title || `section-${i}`}
                   className="border-l-[3px] border-lime-400 py-1 pl-5 dark:border-lime-500"
                 >
                   <div className="flex items-start gap-2">

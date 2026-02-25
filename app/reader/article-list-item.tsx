@@ -40,7 +40,7 @@ export function ArticleListItem({
           onSelect(article.id);
         }
       }}
-      tabIndex={0}
+      tabIndex={isSelected ? 0 : -1}
       className={`mx-2 mb-2 cursor-pointer overflow-hidden rounded-xl ring-1 transition-all duration-150 motion-reduce:transition-none ${
         isSelected
           ? 'bg-lime-50/40 shadow-sm ring-lime-400 dark:bg-lime-900/10 dark:ring-lime-500'

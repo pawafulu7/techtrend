@@ -20,7 +20,7 @@ import type {
   ArticleDetailResponse,
 } from './types';
 
-const ARTICLES_PER_PAGE = 20;
+const READER_ARTICLES_PER_PAGE = 20;
 
 interface ReaderClientProps {
   tags: Array<{ id: string; name: string; count: number }>;
@@ -32,7 +32,7 @@ async function fetchArticleList(
 ): Promise<Extract<ArticleListResponse, { success: true }>> {
   const params = new URLSearchParams({
     page: String(page),
-    limit: String(ARTICLES_PER_PAGE),
+    limit: String(READER_ARTICLES_PER_PAGE),
     sortBy: 'publishedAt',
     sortOrder: 'desc',
     ...filterParams,
@@ -182,15 +182,19 @@ function ReaderClientInner({
   const fetchNextAndSelect = useCallback(
     (idx: number) => {
       if (!hasNextPage || isFetchingNextPage) return;
-      fetchNextPage().then((result) => {
-        if (result.data) {
-          const newArticles = result.data.pages.flatMap((p) => p.data.items);
-          const nextArticle = newArticles[idx + 1];
-          if (nextArticle) {
-            setSelectedId(nextArticle.id);
+      fetchNextPage()
+        .then((result) => {
+          if (result.data) {
+            const newArticles = result.data.pages.flatMap((p) => p.data.items);
+            const nextArticle = newArticles[idx + 1];
+            if (nextArticle) {
+              setSelectedId(nextArticle.id);
+            }
           }
-        }
-      });
+        })
+        .catch(() => {
+          // Error handled by useInfiniteQuery's error state
+        });
     },
     [hasNextPage, isFetchingNextPage, fetchNextPage]
   );
@@ -206,6 +210,10 @@ function ReaderClientInner({
       fetchNextAndSelect(currentIndex);
     }
   }, [hasNext, articles, currentIndex, fetchNextAndSelect]);
+
+  const handleLoadMore = useCallback(() => {
+    fetchNextPage();
+  }, [fetchNextPage]);
 
   const handleSelectArticle = useCallback((articleId: string) => {
     setSelectedId(articleId);
@@ -260,13 +268,13 @@ function ReaderClientInner({
             onRetry={refetchList}
             hasNextPage={!!hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
-            onLoadMore={() => fetchNextPage()}
+            onLoadMore={handleLoadMore}
           />
         </div>
         {/* Right panel: Article detail */}
         <div
           className="flex-1 overflow-y-auto"
-          role="article"
+          role="region"
           aria-label="記事詳細"
           aria-live="polite"
         >

@@ -12,6 +12,8 @@ import { groupSourcesStatic } from '@/lib/utils/source-grouping-static';
 import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
 import { ReaderClient } from './reader-client';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Reader - TechTrend',
   description: '記事をリーダービューで閲覧',
