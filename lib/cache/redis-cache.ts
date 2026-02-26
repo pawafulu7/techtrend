@@ -306,7 +306,7 @@ export class RedisCache {
         } catch (fetchError) {
           // Fetcher failed while holding lock - log and re-throw without calling fetcher again
           logger.warn(
-            { error: fetchError, key },
+            { error: fetchError, cacheKey: hashSensitiveValue(key) },
             'Fetcher failed while holding lock'
           );
           throw fetchError;
@@ -314,7 +314,7 @@ export class RedisCache {
           // Release lock (best effort)
           await this.redis.del(fullLockKey).catch((err) => {
             logger.warn(
-              { err, lockKey: fullLockKey },
+              { err, lockKey: hashSensitiveValue(fullLockKey) },
               'Failed to release lock'
             );
           });
