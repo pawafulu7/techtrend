@@ -24,7 +24,9 @@ jest.mock('@/lib/cache/index', () => {
               keysToDelete.push(key);
             }
           });
-          keysToDelete.forEach((key) => storage.delete(key));
+          for (const key of keysToDelete) {
+            storage.delete(key);
+          }
         }),
         getStats: jest.fn(() => ({ hits: 0, misses: 0, errors: 0 })),
         resetStats: jest.fn(),
