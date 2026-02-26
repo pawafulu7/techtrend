@@ -97,7 +97,7 @@ export class TagCache {
   /**
    * 特定のタグのキャッシュを無効化
    */
-  async invalidateTag(tagId: string): Promise<void> {
+  async invalidateTag(_tagId: string): Promise<void> {
     // invalidate() がパターン '*' で全キーを削除するため、個別削除は不要
     await this.invalidate();
   }

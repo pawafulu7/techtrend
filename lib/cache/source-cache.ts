@@ -339,7 +339,7 @@ export class SourceCache {
   /**
    * 特定のソースのキャッシュを無効化
    */
-  async invalidateSource(sourceId: string): Promise<void> {
+  async invalidateSource(_sourceId: string): Promise<void> {
     // invalidate() がパターン '*' で全キーを削除するため、個別削除は不要
     await this.invalidate();
   }
