@@ -11,10 +11,8 @@ import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
-import {
-  RelativeTime,
-  useIsNewArticle,
-} from '@/app/components/common/relative-time';
+import { useIsNewArticle } from '@/app/components/common/relative-time';
+import { formatDateWithTime } from '@/lib/utils/date';
 
 export function ArticleCard({
   article,
@@ -183,12 +181,12 @@ export function ArticleCard({
           )}
           <span className="text-muted-foreground flex items-center gap-1">
             <span>公開:</span>
-            <RelativeTime date={article.publishedAt} />
+            <span>{formatDateWithTime(article.publishedAt)}</span>
           </span>
           {sortBy === 'createdAt' && (
             <span className="text-muted-foreground flex items-center gap-1">
               <span>取得:</span>
-              <RelativeTime date={article.createdAt} />
+              <span>{formatDateWithTime(article.createdAt)}</span>
             </span>
           )}
         </div>

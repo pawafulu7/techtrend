@@ -328,28 +328,14 @@ describe('ArticleCard', () => {
     expect(screen.getByText('Test Article Title')).toBeInTheDocument();
   });
 
-  it('displays relative time for publication date', async () => {
-    const fakeNow = new Date('2025-06-15T12:00:00Z');
-    jest.useFakeTimers();
-    jest.setSystemTime(fakeNow);
+  it('displays absolute date for publication date', () => {
+    renderWithProviders(<ArticleCard article={mockArticle} />);
 
-    try {
-      const recentArticle = {
-        ...mockArticle,
-        publishedAt: new Date('2025-06-15T09:00:00Z'), // 3 hours ago
-      };
-
-      renderWithProviders(<ArticleCard article={recentArticle} />);
-
-      // 「公開:」ラベルと相対時間は別々のspan要素で描画される
-      expect(screen.getByText('公開:')).toBeInTheDocument();
-      // RelativeTimeはuseEffect後に表示されるため、waitForで待つ
-      await waitFor(() => {
-        expect(screen.getByText('3時間前')).toBeInTheDocument();
-      });
-    } finally {
-      jest.useRealTimers();
-    }
+    expect(screen.getByText('公開:')).toBeInTheDocument();
+    // formatDateWithTime outputs "YYYY/MM/DD HH:MM" in JST
+    // mockArticle.publishedAt = 2025-01-01T10:00:00Z = 2025/01/01 19:00 JST
+    const dateSpans = screen.getAllByText(/\d{4}\/\d{2}\/\d{2}\s\d{2}:\d{2}/);
+    expect(dateSpans.length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders external link button with icon only', () => {
