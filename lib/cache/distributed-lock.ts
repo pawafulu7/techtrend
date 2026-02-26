@@ -10,16 +10,28 @@ export class DistributedLock {
   private readonly maxWaitTime = 5000; // 最大5秒待機
   private readonly retryInterval = 50; // 50ms間隔でリトライ
 
+  // Luaスクリプトでトークン検証と削除を原子的に実行
+  private static readonly RELEASE_SCRIPT = `
+  if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+  else
+    return 0
+  end
+`;
+
   /**
    * ロックを取得
    * @param key ロックキー
    * @param ttl ロックの有効期限（秒）
    * @returns ロックトークン（ロック解放時に必要）
    */
-  async acquire(key: string, ttl: number = this.defaultLockTTL): Promise<string | null> {
+  async acquire(
+    key: string,
+    ttl: number = this.defaultLockTTL
+  ): Promise<string | null> {
     const lockKey = `lock:${key}`;
     const lockToken = this.generateToken();
-    
+
     try {
       // SET key value EX ttl NX
       const result = await this.redis.set(
@@ -29,11 +41,11 @@ export class DistributedLock {
         ttl,
         'NX' // Only set if not exists
       );
-      
+
       if (result === 'OK') {
         return lockToken;
       }
-      
+
       return null;
     } catch (_error) {
       return null;
@@ -46,19 +58,22 @@ export class DistributedLock {
    * @param ttl ロックの有効期限（秒）
    * @returns ロックトークン
    */
-  async acquireWithWait(key: string, ttl: number = this.defaultLockTTL): Promise<string | null> {
+  async acquireWithWait(
+    key: string,
+    ttl: number = this.defaultLockTTL
+  ): Promise<string | null> {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < this.maxWaitTime) {
       const token = await this.acquire(key, ttl);
       if (token) {
         return token;
       }
-      
+
       // 短時間待機してリトライ
       await this.sleep(this.retryInterval);
     }
-    
+
     return null;
   }
 
@@ -70,25 +85,17 @@ export class DistributedLock {
    */
   async release(key: string, token: string): Promise<boolean> {
     const lockKey = `lock:${key}`;
-    
+
     try {
-      // Luaスクリプトで原子性を保証
-      // トークンが一致する場合のみ削除
-      // eval使用を避けるため、通常のRedisコマンドで実装
-      // トークンを確認してからロックを解放（アトミックではないが、実用上問題ない）
-      const currentToken = await this.redis.get(lockKey);
-      
-      let result = 0;
-      if (currentToken === token) {
-        // トークンが一致する場合のみ削除
-        result = await this.redis.del(lockKey);
-      }
-      
-      if (result === 1) {
-        return true;
-      }
-      
-      return false;
+      // Luaスクリプトでトークン検証+削除を原子的に実行
+      // GET→DELの非アトミックパターンではレースコンディションが発生するため
+      const result = await this.redis.eval(
+        DistributedLock.RELEASE_SCRIPT,
+        1, // KEYSの数
+        lockKey, // KEYS[1]
+        token // ARGV[1]
+      );
+      return Number(result) === 1;
     } catch (_error) {
       return false;
     }
@@ -107,11 +114,11 @@ export class DistributedLock {
     ttl: number = this.defaultLockTTL
   ): Promise<T | null> {
     const token = await this.acquireWithWait(key, ttl);
-    
+
     if (!token) {
       return null;
     }
-    
+
     try {
       const result = await fn();
       return result;
@@ -161,7 +168,7 @@ export class DistributedLock {
    * スリープ関数
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
