@@ -1,6 +1,5 @@
 import { getRedisClient } from '@/lib/redis/client';
 import { CacheStats, CacheKeyOptions } from './types';
-import type { Redis } from 'ioredis';
 import { CACHE_NAMESPACE_PREFIX } from './constants';
 import logger, { hashSensitiveValue } from '@/lib/logger';
 
@@ -17,7 +16,8 @@ export class RedisCache {
   constructor(options?: { ttl?: number; namespace?: string }) {
     const envName = process.env.NODE_ENV || 'development';
     this.defaultTTL = options?.ttl || 300; // デフォルト5分
-    this.namespace = options?.namespace || `${CACHE_NAMESPACE_PREFIX}:${envName}`;
+    this.namespace =
+      options?.namespace || `${CACHE_NAMESPACE_PREFIX}:${envName}`;
     this.redis = getRedisClient();
   }
 
@@ -33,19 +33,18 @@ export class RedisCache {
    */
   generateCacheKey(base: string, options?: CacheKeyOptions): string {
     let key = base;
-    
+
     if (options?.prefix) {
       key = `${options.prefix}:${key}`;
     }
-    
+
     if (options?.params) {
       const sortedParams = Object.entries(options.params)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([k, v]) => {
           // Handle nested objects and arrays properly
-          const value = typeof v === 'object' && v !== null
-            ? JSON.stringify(v)
-            : String(v);
+          const value =
+            typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
           return `${k}=${value}`;
         })
         .join(':');
@@ -53,7 +52,7 @@ export class RedisCache {
         key = `${key}:${sortedParams}`;
       }
     }
-    
+
     return key;
   }
 
@@ -64,18 +63,23 @@ export class RedisCache {
     const fullKey = this.generateKey(key);
     try {
       const value = await this.redis.get(fullKey);
-      
+
       if (value === null) {
         this.stats.misses++;
         return null;
       }
-      
+
       this.stats.hits++;
       return JSON.parse(value) as T;
     } catch (error) {
       this.stats.errors++;
       logger.warn(
-        { error, op: 'get', cacheKey: hashSensitiveValue(fullKey), namespace: this.namespace },
+        {
+          error,
+          op: 'get',
+          cacheKey: hashSensitiveValue(fullKey),
+          namespace: this.namespace,
+        },
         'RedisCache get failed'
       );
       return null;
@@ -91,15 +95,15 @@ export class RedisCache {
     const finalTTL = ttl ?? this.defaultTTL;
     // Skip caching if TTL is 0 or negative
     if (finalTTL <= 0) {
+      logger.warn(
+        { op: 'set', cacheKey: hashSensitiveValue(fullKey), ttl: finalTTL },
+        'RedisCache set skipped: non-positive TTL'
+      );
       return;
     }
     try {
       // Use setex method for setting with expiration
-      await this.redis.setex(
-        fullKey,
-        finalTTL,
-        JSON.stringify(value)
-      );
+      await this.redis.setex(fullKey, finalTTL, JSON.stringify(value));
     } catch (error) {
       this.stats.errors++;
       logger.warn(
@@ -127,7 +131,12 @@ export class RedisCache {
     } catch (error) {
       this.stats.errors++;
       logger.warn(
-        { error, op: 'delete', cacheKey: hashSensitiveValue(fullKey), namespace: this.namespace },
+        {
+          error,
+          op: 'delete',
+          cacheKey: hashSensitiveValue(fullKey),
+          namespace: this.namespace,
+        },
         'RedisCache delete failed'
       );
       // Re-throw to let upstream code handle the error if needed
@@ -150,101 +159,46 @@ export class RedisCache {
     const fullPattern = this.generateKey(pattern);
     try {
       const keys: string[] = [];
-      
+
       // Use SCAN instead of KEYS to avoid blocking
       const stream = this.redis.scanStream({
         match: fullPattern,
         count: 100, // Process 100 keys at a time
       });
-      
+
       stream.on('data', (resultKeys: string[]) => {
         keys.push(...resultKeys);
       });
-      
+
       await new Promise<void>((resolve, reject) => {
         stream.on('end', resolve);
         stream.on('error', reject);
       });
-      
+
       if (keys.length > 0) {
         // Delete keys in batches using UNLINK for non-blocking operation
         const batchSize = 1000;
         const pipeline = this.redis.pipeline();
-        
+
         for (let i = 0; i < keys.length; i += batchSize) {
           const batch = keys.slice(i, i + batchSize);
-          // Use UNLINK if available for non-blocking deletion
-          if ('unlink' in this.redis && typeof (this.redis as Redis & { unlink?: (...keys: string[]) => Promise<number> }).unlink === 'function') {
-            pipeline.unlink(...batch);
-          } else {
-            pipeline.del(...batch);
-          }
+          // Use UNLINK for non-blocking deletion (available in ioredis)
+          pipeline.unlink(...batch);
         }
-        
+
         await pipeline.exec();
       }
     } catch (error) {
       this.stats.errors++;
       logger.warn(
-        { error, op: 'invalidatePattern', pattern: hashSensitiveValue(fullPattern), namespace: this.namespace },
+        {
+          error,
+          op: 'invalidatePattern',
+          pattern: hashSensitiveValue(fullPattern),
+          namespace: this.namespace,
+        },
         'RedisCache invalidatePattern failed'
       );
-    }
-  }
-
-  /**
-   * Delete all keys matching a pattern using SCAN and batch deletion
-   * This method allows direct pattern matching without namespace prefix
-   * @param pattern - The pattern to match (e.g., 'related:articleId:*')
-   * @param batchSize - Number of keys to delete in each batch (default: 500)
-   */
-  async deleteByPattern(pattern: string, batchSize: number = 500): Promise<number> {
-    try {
-      const fullPattern = this.generateKey(pattern);
-      const keys: string[] = [];
-      
-      // Use SCAN to find all matching keys
-      const stream = this.redis.scanStream({
-        match: fullPattern,
-        count: 100, // Scan 100 keys at a time
-      });
-      
-      stream.on('data', (resultKeys: string[]) => {
-        keys.push(...resultKeys);
-      });
-      
-      await new Promise<void>((resolve, reject) => {
-        stream.on('end', resolve);
-        stream.on('error', reject);
-      });
-      
-      if (keys.length === 0) {
-        return 0;
-      }
-      
-      // Delete keys in batches using pipeline
-      const pipeline = this.redis.pipeline();
-      let deletedCount = 0;
-      
-      for (let i = 0; i < keys.length; i += batchSize) {
-        const batch = keys.slice(i, i + batchSize);
-        
-        // Prefer UNLINK for non-blocking deletion
-        if ('unlink' in this.redis && typeof (this.redis as Redis & { unlink?: (...keys: string[]) => Promise<number> }).unlink === 'function') {
-          pipeline.unlink(...batch);
-        } else {
-          pipeline.del(...batch);
-        }
-        
-        deletedCount += batch.length;
-      }
-      
-      await pipeline.exec();
-      return deletedCount;
-      
-    } catch (error) {
-      this.stats.errors++;
-      throw error;
     }
   }
 
@@ -343,12 +297,18 @@ export class RedisCache {
           return fresh;
         } catch (fetchError) {
           // Fetcher failed while holding lock - log and re-throw without calling fetcher again
-          logger.warn({ error: fetchError, key }, 'Fetcher failed while holding lock');
+          logger.warn(
+            { error: fetchError, cacheKey: hashSensitiveValue(key) },
+            'Fetcher failed while holding lock'
+          );
           throw fetchError;
         } finally {
           // Release lock (best effort)
           await this.redis.del(fullLockKey).catch((err) => {
-            logger.warn({ err, lockKey: fullLockKey }, 'Failed to release lock');
+            logger.warn(
+              { err, lockKey: hashSensitiveValue(fullLockKey) },
+              'Failed to release lock'
+            );
           });
         }
       } else {

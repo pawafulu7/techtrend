@@ -24,18 +24,6 @@ jest.mock('@/lib/cache/layered-cache', () => ({
   })),
 }));
 
-jest.mock('@/lib/cache/enhanced-redis-cache', () => ({
-  EnhancedRedisCache: jest.fn().mockImplementation(() => ({
-    generateCacheKey: jest.fn().mockReturnValue('test-cache-key'),
-    get: jest.fn().mockResolvedValue(null),
-    set: jest.fn().mockResolvedValue(undefined),
-    getOrFetch: jest.fn().mockImplementation(async (_key, fetcher) => {
-      // Always call the fetcher for tests to verify DB calls
-      return await fetcher();
-    }),
-    invalidatePattern: jest.fn().mockResolvedValue(undefined),
-  })),
-}));
 
 jest.mock('@/lib/metrics/performance', () => ({
   MetricsCollector: jest.fn().mockImplementation(() => ({

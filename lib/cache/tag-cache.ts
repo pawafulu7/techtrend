@@ -96,10 +96,9 @@ export class TagCache {
 
   /**
    * 特定のタグのキャッシュを無効化
+   * 内部的には全キャッシュを無効化する（パターン '*' で全削除）
    */
-  async invalidateTag(tagId: string): Promise<void> {
-    await this.cache.delete(`tag:${tagId}`);
-    // 関連するキャッシュも無効化
+  async invalidateTag(_tagId: string): Promise<void> {
     await this.invalidate();
   }
 }

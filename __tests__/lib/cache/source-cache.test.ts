@@ -81,12 +81,14 @@ describe('SourceCache', () => {
     cacheStub = createCacheStub();
     (sourceCache as any).cache = cacheStub;
 
-    prisma.source.findMany.mockImplementation(async (params?: { where?: { enabled?: boolean } }) => {
-      if (params?.where?.enabled === true) {
-        return mockSources.filter((source) => source.enabled);
+    prisma.source.findMany.mockImplementation(
+      async (params?: { where?: { enabled?: boolean } }) => {
+        if (params?.where?.enabled === true) {
+          return mockSources.filter((source) => source.enabled);
+        }
+        return mockSources;
       }
-      return mockSources;
-    });
+    );
     prisma.source.findUnique?.mockResolvedValue(mockSources[0] as any);
     prisma.source.findFirst?.mockResolvedValue(mockSources[0] as any);
     // 集計クエリのモック
@@ -105,19 +107,29 @@ describe('SourceCache', () => {
     });
 
     it('should pass through existing IDs unchanged', async () => {
-      const result = await sourceCache.resolveSourceIds(['source-1', 'source-2']);
+      const result = await sourceCache.resolveSourceIds([
+        'source-1',
+        'source-2',
+      ]);
       expect(result).toEqual(expect.arrayContaining(['source-1', 'source-2']));
       expect(result).toHaveLength(2);
     });
 
     it('should handle mixed names and IDs', async () => {
-      const result = await sourceCache.resolveSourceIds(['Dev.to', 'source-2', 'qiita']);
+      const result = await sourceCache.resolveSourceIds([
+        'Dev.to',
+        'source-2',
+        'qiita',
+      ]);
       expect(result).toEqual(expect.arrayContaining(['source-1', 'source-2']));
       expect(result).toHaveLength(2);
     });
 
     it('should filter out unresolvable names', async () => {
-      const result = await sourceCache.resolveSourceIds(['Unknown Source', 'Dev.to']);
+      const result = await sourceCache.resolveSourceIds([
+        'Unknown Source',
+        'Dev.to',
+      ]);
       expect(result).toEqual(['source-1']);
     });
 
@@ -127,7 +139,11 @@ describe('SourceCache', () => {
     });
 
     it('should handle whitespace and empty strings', async () => {
-      const result = await sourceCache.resolveSourceIds(['  ', '', '  Dev.to  ']);
+      const result = await sourceCache.resolveSourceIds([
+        '  ',
+        '',
+        '  Dev.to  ',
+      ]);
       expect(result).toEqual(['source-1']);
     });
 
@@ -205,7 +221,8 @@ describe('SourceCache', () => {
 
       await cache.invalidateSource('source-1');
 
-      expect(localStub.delete).toHaveBeenCalledWith('source:source-1');
+      // invalidate() がパターン '*' で全キーを削除するため、個別deleteは呼ばれない
+      expect(localStub.delete).not.toHaveBeenCalled();
       expect(localStub.invalidatePattern).toHaveBeenCalledWith('*');
     });
   });

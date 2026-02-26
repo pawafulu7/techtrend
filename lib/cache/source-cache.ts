@@ -338,10 +338,9 @@ export class SourceCache {
 
   /**
    * 特定のソースのキャッシュを無効化
+   * 内部的には全キャッシュを無効化する（パターン '*' で全削除）
    */
-  async invalidateSource(sourceId: string): Promise<void> {
-    await this.cache.delete(`source:${sourceId}`);
-    // 関連するキャッシュも無効化
+  async invalidateSource(_sourceId: string): Promise<void> {
     await this.invalidate();
   }
 

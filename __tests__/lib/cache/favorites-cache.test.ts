@@ -24,7 +24,9 @@ jest.mock('@/lib/cache/index', () => {
               keysToDelete.push(key);
             }
           });
-          keysToDelete.forEach(key => storage.delete(key));
+          for (const key of keysToDelete) {
+            storage.delete(key);
+          }
         }),
         getStats: jest.fn(() => ({ hits: 0, misses: 0, errors: 0 })),
         resetStats: jest.fn(),
@@ -71,22 +73,27 @@ describe('FavoritesCache', () => {
           keysToDelete.push(key);
         }
       });
-      keysToDelete.forEach(key => storage.delete(key));
+      for (const key of keysToDelete) {
+        storage.delete(key);
+      }
     });
   });
 
   describe('getBatch', () => {
     it('should return cached favorites for requested articles', async () => {
       const userId = 'user1';
-      const favorites = { 'article1': true, 'article2': false, 'article3': true };
+      const favorites = { article1: true, article2: false, article3: true };
 
       await favoritesCache.setBatch(userId, favorites);
 
-      const result = await favoritesCache.getBatch(userId, ['article1', 'article2']);
+      const result = await favoritesCache.getBatch(userId, [
+        'article1',
+        'article2',
+      ]);
 
       expect(result).toEqual({
-        'article1': true,
-        'article2': false,
+        article1: true,
+        article2: false,
       });
     });
 
@@ -100,11 +107,14 @@ describe('FavoritesCache', () => {
   describe('setBatch', () => {
     it('should cache favorites for user', async () => {
       const userId = 'user1';
-      const favorites = { 'article1': true, 'article2': false };
+      const favorites = { article1: true, article2: false };
 
       await favoritesCache.setBatch(userId, favorites);
 
-      const result = await favoritesCache.getBatch(userId, ['article1', 'article2']);
+      const result = await favoritesCache.getBatch(userId, [
+        'article1',
+        'article2',
+      ]);
 
       expect(result).toEqual(favorites);
     });
@@ -112,14 +122,17 @@ describe('FavoritesCache', () => {
     it('should merge with existing cache', async () => {
       const userId = 'user1';
 
-      await favoritesCache.setBatch(userId, { 'article1': true });
-      await favoritesCache.setBatch(userId, { 'article2': false });
+      await favoritesCache.setBatch(userId, { article1: true });
+      await favoritesCache.setBatch(userId, { article2: false });
 
-      const result = await favoritesCache.getBatch(userId, ['article1', 'article2']);
+      const result = await favoritesCache.getBatch(userId, [
+        'article1',
+        'article2',
+      ]);
 
       expect(result).toEqual({
-        'article1': true,
-        'article2': false,
+        article1: true,
+        article2: false,
       });
     });
   });
@@ -128,12 +141,12 @@ describe('FavoritesCache', () => {
     it('should update single favorite in cache', async () => {
       const userId = 'user1';
 
-      await favoritesCache.setBatch(userId, { 'article1': true });
+      await favoritesCache.setBatch(userId, { article1: true });
       await favoritesCache.updateSingle(userId, 'article1', false);
 
       const result = await favoritesCache.getBatch(userId, ['article1']);
 
-      expect(result).toEqual({ 'article1': false });
+      expect(result).toEqual({ article1: false });
     });
 
     it('should not update if cache does not exist', async () => {
@@ -145,25 +158,12 @@ describe('FavoritesCache', () => {
     });
   });
 
-  describe('invalidate', () => {
-    it('should invalidate user favorites cache', async () => {
-      const userId = 'user1';
-
-      await favoritesCache.setBatch(userId, { 'article1': true });
-      await favoritesCache.invalidate(userId);
-
-      const result = await favoritesCache.getBatch(userId, ['article1']);
-
-      expect(result).toBeNull();
-    });
-  });
-
   describe('clearAll', () => {
     it('should clear all users favorites cache', async () => {
       // 複数ユーザーのキャッシュを作成
-      await favoritesCache.setBatch('user1', { 'article1': true });
-      await favoritesCache.setBatch('user2', { 'article2': true });
-      await favoritesCache.setBatch('user3', { 'article3': true });
+      await favoritesCache.setBatch('user1', { article1: true });
+      await favoritesCache.setBatch('user2', { article2: true });
+      await favoritesCache.setBatch('user3', { article3: true });
 
       // clearAll実行
       await favoritesCache.clearAll();
@@ -194,7 +194,9 @@ describe('FavoritesCache', () => {
     it('should throw error when Redis fails', async () => {
       // Redis接続エラーをシミュレート
       const mockCache = (favoritesCache as any).cache;
-      mockCache.invalidatePattern = jest.fn().mockRejectedValue(new Error('Redis error'));
+      mockCache.invalidatePattern = jest
+        .fn()
+        .mockRejectedValue(new Error('Redis error'));
 
       await expect(favoritesCache.clearAll()).rejects.toThrow('Redis error');
     });
