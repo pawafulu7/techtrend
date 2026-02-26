@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ExternalLink } from 'lucide-react';
+import { Calendar, ExternalLink } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
@@ -11,10 +11,8 @@ import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
-import {
-  RelativeTime,
-  useIsNewArticle,
-} from '@/app/components/common/relative-time';
+import { useIsNewArticle } from '@/app/components/common/relative-time';
+import { formatDateWithTime } from '@/lib/utils/date';
 
 export function ArticleCard({
   article,
@@ -58,7 +56,6 @@ export function ArticleCard({
   const trimmedSummary = article.summary?.trim() || '';
 
   const searchParams = useSearchParams();
-  const sortBy = searchParams.get('sortBy');
   const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;
   const sourceColor = article.source
     ? getSourceColor(article.source.name)
@@ -182,15 +179,10 @@ export function ArticleCard({
             </BadgeV2>
           )}
           <span className="text-muted-foreground flex items-center gap-1">
-            <span>公開:</span>
-            <RelativeTime date={article.publishedAt} />
+            <Calendar className="h-3 w-3" aria-hidden="true" />
+            <span className="sr-only">公開日:</span>
+            <span>{formatDateWithTime(article.publishedAt)}</span>
           </span>
-          {sortBy === 'createdAt' && (
-            <span className="text-muted-foreground flex items-center gap-1">
-              <span>取得:</span>
-              <RelativeTime date={article.createdAt} />
-            </span>
-          )}
         </div>
 
         {/* Content area: 2 patterns */}
