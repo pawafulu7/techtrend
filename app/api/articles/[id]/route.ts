@@ -20,18 +20,24 @@ export async function GET(
     });
 
     if (!article) {
-      return NextResponse.json({
-        success: false,
-        error: 'Article not found',
-      } as ApiResponse<never>, { status: 404 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Article not found',
+        } as ApiResponse<never>,
+        { status: 404 }
+      );
     }
 
-    // Check if article has content (exclude null and empty strings)
-    if (!article.content?.trim()) {
-      return NextResponse.json({
-        success: false,
-        error: 'Article content not available',
-      } as ApiResponse<never>, { status: 404 });
+    // Check if article has content (exclude null and empty strings, consistent with list API)
+    if (article.content === null || article.content.trim() === '') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Article content not available',
+        } as ApiResponse<never>,
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({
@@ -39,11 +45,19 @@ export async function GET(
       data: article,
     } as ApiResponse<ArticleWithRelations>);
   } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to fetch article',
-      details: error instanceof Error ? error.message : undefined,
-    } as ApiResponse<never>, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to fetch article',
+        details:
+          process.env.NODE_ENV !== 'production'
+            ? error instanceof Error
+              ? error.message
+              : undefined
+            : undefined,
+      } as ApiResponse<never>,
+      { status: 500 }
+    );
   }
 }
 
@@ -89,11 +103,19 @@ export async function PATCH(
       data: article,
     } as ApiResponse<ArticleWithRelations>);
   } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to update article',
-      details: error instanceof Error ? error.message : undefined,
-    } as ApiResponse<never>, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to update article',
+        details:
+          process.env.NODE_ENV !== 'production'
+            ? error instanceof Error
+              ? error.message
+              : undefined
+            : undefined,
+      } as ApiResponse<never>,
+      { status: 500 }
+    );
   }
 }
 
@@ -115,10 +137,18 @@ export async function DELETE(
       data: { message: 'Article deleted successfully' },
     } as ApiResponse<{ message: string }>);
   } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to delete article',
-      details: error instanceof Error ? error.message : undefined,
-    } as ApiResponse<never>, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to delete article',
+        details:
+          process.env.NODE_ENV !== 'production'
+            ? error instanceof Error
+              ? error.message
+              : undefined
+            : undefined,
+      } as ApiResponse<never>,
+      { status: 500 }
+    );
   }
 }

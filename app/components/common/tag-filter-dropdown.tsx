@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tag as TagIcon, ChevronDown, X } from 'lucide-react';
@@ -25,6 +25,7 @@ interface TagFilterDropdownProps {
 export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -102,7 +103,7 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
                   params.delete('tagMode');
                   params.delete('page');
                   const qs = params.toString();
-                  router.replace(qs ? `/?${qs}` : '/');
+                  router.replace(qs ? `${pathname}?${qs}` : pathname);
                 }}
                 className="h-6 px-2 text-xs"
               >

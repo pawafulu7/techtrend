@@ -292,6 +292,25 @@ export async function GET(request: NextRequest) {
       // Build where clause
       const where: ArticleWhereInput = {};
 
+      // Exclude articles without content (matches home page behavior)
+      if (!where.AND) {
+        where.AND = [];
+      } else if (!Array.isArray(where.AND)) {
+        where.AND = [where.AND];
+      }
+      (where.AND as ArticleWhereInput[]).push({
+        // Exclude articles without meaningful content.
+        // Prisma does not support trim() in WHERE clauses, so we filter null
+        // and empty string here, and additionally exclude common whitespace-only
+        // patterns via notIn. The detail API (app/api/articles/[id]/route.ts)
+        // applies content.trim() === '' check as a secondary guard, returning
+        // 404 for any whitespace-only content that slips through.
+        AND: [
+          { content: { not: null } },
+          { content: { notIn: ['', ' ', '\n', '\r\n', '\t', '  ', '\n\n'] } },
+        ],
+      });
+
       // Exclude articles without processed summaries
       if (excludeUnprocessed) {
         where.summaryComputedAt = { not: null };
