@@ -331,9 +331,9 @@ describe('ArticleCard', () => {
   it('displays absolute date for publication date', () => {
     renderWithProviders(<ArticleCard article={mockArticle} />);
 
-    expect(screen.getByText('公開:')).toBeInTheDocument();
+    // Calendar icon with sr-only label (matching article detail page)
+    expect(screen.getByText('公開日:')).toBeInTheDocument();
     // formatDateWithTime outputs "YYYY/MM/DD HH:MM" in JST
-    // mockArticle.publishedAt = 2025-01-01T10:00:00Z = 2025/01/01 19:00 JST
     const dateSpans = screen.getAllByText(/\d{4}\/\d{2}\/\d{2}\s\d{2}:\d{2}/);
     expect(dateSpans.length).toBeGreaterThanOrEqual(1);
   });

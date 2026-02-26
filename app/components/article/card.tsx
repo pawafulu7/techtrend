@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ExternalLink } from 'lucide-react';
+import { Calendar, ExternalLink } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
@@ -179,7 +179,8 @@ export function ArticleCard({
             </BadgeV2>
           )}
           <span className="text-muted-foreground flex items-center gap-1">
-            <span>公開:</span>
+            <Calendar className="h-3 w-3" aria-hidden="true" />
+            <span className="sr-only">公開日:</span>
             <span>{formatDateWithTime(article.publishedAt)}</span>
           </span>
         </div>
