@@ -22,7 +22,8 @@ export function ArticleListItem({
   isSelected,
   onSelect,
 }: ArticleListItemProps) {
-  const [thumbnailError, setThumbnailError] = useState(false);
+  const [erroredThumbnail, setErroredThumbnail] = useState<string | null>(null);
+  const thumbnailError = erroredThumbnail === article.thumbnail;
   const displayTitle = article.translatedTitle || article.title;
   const hasValidThumbnail =
     !!article.thumbnail && /^https?:\/\//.test(article.thumbnail);
@@ -58,7 +59,7 @@ export function ArticleListItem({
             alt=""
             className="absolute inset-0 h-full w-full object-contain"
             loading="lazy"
-            onError={() => setThumbnailError(true)}
+            onError={() => setErroredThumbnail(article.thumbnail)}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

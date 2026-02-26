@@ -26,6 +26,25 @@ interface ReaderClientProps {
   tags: Array<{ id: string; name: string; count: number }>;
 }
 
+async function parseApiJson(res: Response): Promise<Record<string, unknown>> {
+  try {
+    return await res.json();
+  } catch {
+    throw new Error(`HTTP ${res.status}: レスポンスの解析に失敗しました`);
+  }
+}
+
+function getApiErrorMessage(
+  json: Record<string, unknown>,
+  fallback: string
+): string {
+  return (
+    (typeof json.error === 'string'
+      ? json.error
+      : (json.error as { message?: string })?.message) || fallback
+  );
+}
+
 async function fetchArticleList(
   page: number,
   filterParams: Record<string, string>
@@ -40,19 +59,9 @@ async function fetchArticleList(
   // Exclude arXiv articles (matches home page behavior)
   params.set('excludeSources', ARXIV_SOURCE_ID);
   const res = await fetch(`/api/articles/list?${params}`);
-  let json: Record<string, unknown>;
-  try {
-    json = await res.json();
-  } catch {
-    throw new Error(`HTTP ${res.status}: レスポンスの解析に失敗しました`);
-  }
+  const json = await parseApiJson(res);
   if (!res.ok || !json.success)
-    throw new Error(
-      (typeof json.error === 'string'
-        ? json.error
-        : (json.error as { message?: string })?.message) ||
-        '記事の読み込みに失敗しました'
-    );
+    throw new Error(getApiErrorMessage(json, '記事の読み込みに失敗しました'));
   return json as unknown as Extract<ArticleListResponse, { success: true }>;
 }
 
@@ -60,19 +69,9 @@ async function fetchArticleDetail(
   id: string
 ): Promise<Extract<ArticleDetailResponse, { success: true }>> {
   const res = await fetch(`/api/articles/${id}`);
-  let json: Record<string, unknown>;
-  try {
-    json = await res.json();
-  } catch {
-    throw new Error(`HTTP ${res.status}: レスポンスの解析に失敗しました`);
-  }
+  const json = await parseApiJson(res);
   if (!res.ok || !json.success)
-    throw new Error(
-      (typeof json.error === 'string'
-        ? json.error
-        : (json.error as { message?: string })?.message) ||
-        '記事の取得に失敗しました'
-    );
+    throw new Error(getApiErrorMessage(json, '記事の取得に失敗しました'));
   return json as unknown as Extract<ArticleDetailResponse, { success: true }>;
 }
 
