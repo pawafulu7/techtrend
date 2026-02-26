@@ -385,7 +385,7 @@ export class LayeredCache {
       },
       l2: {
         namespace: '@techtrend/cache:l2:user',
-        ttl: '15 minutes',
+        ttl: '20 minutes',
         ...l2Stats,
       },
       l3: {

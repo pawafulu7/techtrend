@@ -178,7 +178,7 @@ export class ArticleDetailCache {
   async invalidateArticle(articleId: string): Promise<void> {
     // Redisキャッシュを削除
     await this.cache.delete(`article:${articleId}:with-relations`);
-    await this.cache.deleteByPattern(`related:${articleId}:*`);
+    await this.cache.invalidatePattern(`related:${articleId}:*`);
 
     // Next.js ISRキャッシュを無効化
     try {
