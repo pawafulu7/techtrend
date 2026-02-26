@@ -70,17 +70,7 @@ jest.mock('@/lib/cache/source-cache', () => ({
   }
 }));
 
-jest.mock('@/lib/cache/tag-mapping-cache', () => ({
-  TagCache: jest.fn().mockImplementation(() => ({
-    getTagMapping: jest.fn().mockResolvedValue({}),
-    getSingleTag: jest.fn().mockResolvedValue(null),
-    getPopularTags: jest.fn().mockResolvedValue([]),
-    setTagMapping: jest.fn(),
-    setPopularTags: jest.fn(),
-    invalidate: jest.fn(),
-    getMetrics: jest.fn().mockReturnValue({ hits: 0, misses: 0 })
-  }))
-}));
+
 
 // Logger is now globally mocked in __mocks__/lib/logger.ts
 
