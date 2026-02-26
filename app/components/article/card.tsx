@@ -56,7 +56,6 @@ export function ArticleCard({
   const trimmedSummary = article.summary?.trim() || '';
 
   const searchParams = useSearchParams();
-  const sortBy = searchParams.get('sortBy');
   const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;
   const sourceColor = article.source
     ? getSourceColor(article.source.name)
@@ -183,12 +182,6 @@ export function ArticleCard({
             <span>公開:</span>
             <span>{formatDateWithTime(article.publishedAt)}</span>
           </span>
-          {sortBy === 'createdAt' && (
-            <span className="text-muted-foreground flex items-center gap-1">
-              <span>取得:</span>
-              <span>{formatDateWithTime(article.createdAt)}</span>
-            </span>
-          )}
         </div>
 
         {/* Content area: 2 patterns */}
