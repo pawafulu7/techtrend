@@ -71,7 +71,9 @@ describe('FavoritesCache', () => {
           keysToDelete.push(key);
         }
       });
-      keysToDelete.forEach((key) => storage.delete(key));
+      for (const key of keysToDelete) {
+        storage.delete(key);
+      }
     });
   });
 

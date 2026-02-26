@@ -1,6 +1,5 @@
 import { getRedisClient } from '@/lib/redis/client';
 import { CacheStats, CacheKeyOptions } from './types';
-import type { Redis } from 'ioredis';
 import { CACHE_NAMESPACE_PREFIX } from './constants';
 import logger, { hashSensitiveValue } from '@/lib/logger';
 
@@ -96,6 +95,10 @@ export class RedisCache {
     const finalTTL = ttl ?? this.defaultTTL;
     // Skip caching if TTL is 0 or negative
     if (finalTTL <= 0) {
+      logger.warn(
+        { op: 'set', cacheKey: hashSensitiveValue(fullKey), ttl: finalTTL },
+        'RedisCache set skipped: non-positive TTL'
+      );
       return;
     }
     try {
@@ -179,19 +182,8 @@ export class RedisCache {
 
         for (let i = 0; i < keys.length; i += batchSize) {
           const batch = keys.slice(i, i + batchSize);
-          // Use UNLINK if available for non-blocking deletion
-          if (
-            'unlink' in this.redis &&
-            typeof (
-              this.redis as Redis & {
-                unlink?: (...keys: string[]) => Promise<number>;
-              }
-            ).unlink === 'function'
-          ) {
-            pipeline.unlink(...batch);
-          } else {
-            pipeline.del(...batch);
-          }
+          // Use UNLINK for non-blocking deletion (available in ioredis)
+          pipeline.unlink(...batch);
         }
 
         await pipeline.exec();

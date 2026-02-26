@@ -19,7 +19,9 @@ describe('DistributedLock', () => {
   let lock: DistributedLock;
 
   beforeEach(() => {
-    Object.values(mockRedis).forEach((fn) => (fn as jest.Mock).mockClear());
+    Object.values(mockRedis).forEach((fn) => {
+      (fn as jest.Mock).mockClear();
+    });
     lock = new DistributedLock();
     // privateフィールドを直接差し替え
     (lock as any).redis = mockRedis;
