@@ -856,10 +856,25 @@ async function createStreamingResponse(
                     : 'Could not generate an answer from this article.';
                 controller.enqueue(
                   encoder.encode(
-                    `data: ${JSON.stringify({ type: 'text', content: noAnswerText })}\n\n`
+                    `data: ${JSON.stringify({
+                      type: 'fallback',
+                      text: noAnswerText,
+                      resultCount: 0,
+                    })}\n\n`
                   )
                 );
-                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      type: 'finish',
+                      text: noAnswerText,
+                      usage: { totalTokens: 0 },
+                      toolCalls: [],
+                      cached: false,
+                      fallback: true,
+                    })}\n\n`
+                  )
+                );
                 controller.close();
 
                 streamSpan.setAttribute('streaming.fallbackEmptyText', true);
@@ -985,49 +1000,82 @@ async function createStreamingResponse(
         );
 
         try {
-          const searchService = new VectorSearchService(prisma);
-          const fallbackResults = await searchService.search(
-            validatedRequest.query,
-            {
-              topK: 10,
-            }
-          );
+          if (modeContext.isArticleQa) {
+            // Article QA: do NOT search all articles - return scoped empty response
+            const noAnswerText =
+              modeContext.preferredLang === 'ja'
+                ? 'この記事の内容からは回答を生成できませんでした。'
+                : 'Could not generate an answer from this article.';
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'fallback',
+                  text: noAnswerText,
+                  resultCount: 0,
+                })}\n\n`
+              )
+            );
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'finish',
+                  text: noAnswerText,
+                  usage: { totalTokens: 0 },
+                  toolCalls: [],
+                  cached: false,
+                  fallback: true,
+                })}\n\n`
+              )
+            );
+            controller.close();
 
-          const fallbackText = formatResultsAsText(
-            fallbackResults,
-            modeContext.preferredLang
-          );
+            streamSpan.setAttribute('streaming.fallback', true);
+            streamSpan.setAttribute('streaming.articleQaNoAnswer', true);
+          } else {
+            const searchService = new VectorSearchService(prisma);
+            const fallbackResults = await searchService.search(
+              validatedRequest.query,
+              {
+                topK: 10,
+              }
+            );
 
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: 'fallback',
-                text: fallbackText,
-                resultCount: fallbackResults.length,
-              })}\n\n`
-            )
-          );
+            const fallbackText = formatResultsAsText(
+              fallbackResults,
+              modeContext.preferredLang
+            );
 
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: 'finish',
-                text: fallbackText,
-                usage: { totalTokens: 0 },
-                toolCalls: [],
-                cached: false,
-                fallback: true,
-              })}\n\n`
-            )
-          );
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'fallback',
+                  text: fallbackText,
+                  resultCount: fallbackResults.length,
+                })}\n\n`
+              )
+            );
 
-          controller.close();
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'finish',
+                  text: fallbackText,
+                  usage: { totalTokens: 0 },
+                  toolCalls: [],
+                  cached: false,
+                  fallback: true,
+                })}\n\n`
+              )
+            );
 
-          streamSpan.setAttribute('streaming.fallback', true);
-          streamSpan.setAttribute(
-            'streaming.fallbackResultCount',
-            fallbackResults.length
-          );
+            controller.close();
+
+            streamSpan.setAttribute('streaming.fallback', true);
+            streamSpan.setAttribute(
+              'streaming.fallbackResultCount',
+              fallbackResults.length
+            );
+          }
         } catch (fallbackError) {
           streamSpan.setAttribute('streaming.fallbackFailed', true);
           streamSpan.recordException(fallbackError as Error);
