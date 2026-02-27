@@ -4,6 +4,15 @@ import { CACHE_NAMESPACE_PREFIX } from './constants';
 import logger, { hashSensitiveValue } from '@/lib/logger';
 
 export class RedisCache {
+  // Luaスクリプトでトークン検証と削除を原子的に実行
+  private static readonly RELEASE_SCRIPT = `
+  if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+  else
+    return 0
+  end
+`;
+
   protected redis: ReturnType<typeof getRedisClient>;
   protected defaultTTL: number;
   protected namespace: string;
@@ -258,6 +267,13 @@ export class RedisCache {
   }
 
   /**
+   * ロックトークン生成
+   */
+  private generateLockToken(): string {
+    return `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  }
+
+  /**
    * Helper method to handle cache with fallback and lock (stampede protection)
    * Uses SETNX-based locking to prevent multiple concurrent fetches for the same key
    */
@@ -278,12 +294,13 @@ export class RedisCache {
 
     const lockKey = `${key}:lock`;
     const fullLockKey = this.generateKey(lockKey);
+    const lockToken = this.generateLockToken();
 
     try {
-      // Try to acquire lock using SET NX EX
+      // Try to acquire lock using SET NX EX with unique token
       const acquired = await this.redis.set(
         fullLockKey,
-        '1',
+        lockToken,
         'EX',
         lockTTL,
         'NX'
@@ -303,13 +320,20 @@ export class RedisCache {
           );
           throw fetchError;
         } finally {
-          // Release lock (best effort)
-          await this.redis.del(fullLockKey).catch((err) => {
+          // Atomic lock release: only delete if token matches (prevents deleting another process's lock)
+          try {
+            await this.redis.eval(
+              RedisCache.RELEASE_SCRIPT,
+              1,
+              fullLockKey,
+              lockToken
+            );
+          } catch (err) {
             logger.warn(
               { err, lockKey: hashSensitiveValue(fullLockKey) },
               'Failed to release lock'
             );
-          });
+          }
         }
       } else {
         // Lock not acquired - poll for cached value
@@ -325,7 +349,7 @@ export class RedisCache {
 
         // Timeout - fallback to direct fetch (without caching to avoid race)
         logger.warn(
-          { key, maxWaitTime },
+          { key: hashSensitiveValue(key), maxWaitTime },
           'Lock wait timeout, falling back to direct fetch'
         );
         return await fetcher();
@@ -333,7 +357,7 @@ export class RedisCache {
     } catch (error) {
       // On any error, fallback to direct fetch
       logger.warn(
-        { error, key },
+        { error, key: hashSensitiveValue(key) },
         'getOrSetWithLock error, falling back to direct fetch'
       );
       return await fetcher();

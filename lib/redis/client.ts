@@ -1,5 +1,8 @@
 import Redis from 'ioredis';
-import { getRedisService, closeRedisConnection as closeRedisServiceConnection } from './factory';
+import {
+  getRedisService,
+  closeRedisConnection as closeRedisServiceConnection,
+} from './factory';
 import { IoRedisClient } from './ioredis-client';
 
 let redisClient: Redis | null = null;
@@ -13,44 +16,88 @@ export function getRedisClient(): Redis {
     // In test environment, create a proxy that delegates to the test client
     if (process.env.NODE_ENV === 'test') {
       const service = getRedisService();
-      
+
       // Create a proxy that mimics ioredis interface
       redisClient = new Proxy({} as Redis, {
         get(target, prop) {
           const client = service.client;
-          
+
           // Map common methods
           if (prop === 'ping') return () => client.ping();
           if (prop === 'get') return (key: string) => client.get(key);
           if (prop === 'set') {
-            // Support both simple set and set with expiry
-            return (key: string, value: string, exMode?: string, ttl?: number) => {
+            // Support set(key, value), set(key, value, 'EX', ttl), set(key, value, 'EX', ttl, 'NX')
+            return async (
+              key: string,
+              value: string,
+              exMode?: string,
+              ttl?: number,
+              nxMode?: string
+            ) => {
+              if (exMode === 'EX' && ttl && nxMode === 'NX') {
+                // SET key value EX ttl NX - only set if not exists
+                const existing = await client.get(key);
+                if (existing !== null) {
+                  return null;
+                }
+                await client.setex(key, ttl, value);
+                return 'OK';
+              }
               if (exMode === 'EX' && ttl) {
                 return client.setex(key, ttl, value);
               }
               return client.set(key, value);
             };
           }
-          if (prop === 'setex') return (key: string, seconds: number, value: string) => client.setex(key, seconds, value);
-          if (prop === 'del') return (...keys: string[]) => client.del(keys.length === 1 ? keys[0] : keys);
+          if (prop === 'setex')
+            return (key: string, seconds: number, value: string) =>
+              client.setex(key, seconds, value);
+          if (prop === 'del')
+            return (...keys: string[]) =>
+              client.del(keys.length === 1 ? keys[0] : keys);
           if (prop === 'exists') return (key: string) => client.exists(key);
-          if (prop === 'expire') return (key: string, seconds: number) => client.expire(key, seconds);
+          if (prop === 'expire')
+            return (key: string, seconds: number) =>
+              client.expire(key, seconds);
           if (prop === 'ttl') return (key: string) => client.ttl(key);
           if (prop === 'keys') return (pattern: string) => client.keys(pattern);
           if (prop === 'quit') return () => client.quit();
-          
+          if (prop === 'eval') {
+            // In-memory eval for RELEASE_SCRIPT: check token match, delete if matches
+            return async (
+              _script: string,
+              _numKeys: number,
+              key: string,
+              token: string
+            ) => {
+              const stored = await client.get(key);
+              if (stored === token) {
+                await client.del(key);
+                return 1;
+              }
+              return 0;
+            };
+          }
+
           // Event emitter methods (no-op in test)
-          if (prop === 'on' || prop === 'once' || prop === 'off' || prop === 'emit') {
+          if (
+            prop === 'on' ||
+            prop === 'once' ||
+            prop === 'off' ||
+            prop === 'emit'
+          ) {
             return () => {};
           }
-          
+
           // Connection methods
           if (prop === 'connect') return () => Promise.resolve();
           if (prop === 'disconnect') return () => client.quit();
-          
+
           // Default - pass-through
-          return (target as unknown as Record<PropertyKey, unknown>)[prop as PropertyKey];
-        }
+          return (target as unknown as Record<PropertyKey, unknown>)[
+            prop as PropertyKey
+          ];
+        },
       });
     } else {
       // Production: Use IoRedisClient directly
@@ -73,7 +120,7 @@ export async function closeRedisConnection(): Promise<void> {
     }
     redisClient = null;
   }
-  
+
   // Also close the service connection
   await closeRedisServiceConnection();
 }
@@ -87,7 +134,9 @@ export const redis = (() => {
       if (!_instance) {
         _instance = getRedisClient();
       }
-      return (_instance as unknown as Record<PropertyKey, unknown>)[prop as PropertyKey];
-    }
+      return (_instance as unknown as Record<PropertyKey, unknown>)[
+        prop as PropertyKey
+      ];
+    },
   });
 })();
