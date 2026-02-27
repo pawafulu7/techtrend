@@ -577,6 +577,48 @@ function createCachedSSEResponse(
 }
 
 /**
+ * Get localized no-answer text for article QA mode
+ */
+function getArticleQaNoAnswerText(preferredLang: 'ja' | 'en'): string {
+  return preferredLang === 'ja'
+    ? 'この記事の内容からは回答を生成できませんでした。'
+    : 'Could not generate an answer from this article.';
+}
+
+/**
+ * Enqueue article-qa no-answer events to SSE stream
+ */
+function enqueueArticleQaNoAnswer(
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder,
+  preferredLang: 'ja' | 'en'
+): void {
+  const noAnswerText = getArticleQaNoAnswerText(preferredLang);
+  controller.enqueue(
+    encoder.encode(
+      `data: ${JSON.stringify({
+        type: 'fallback',
+        text: noAnswerText,
+        resultCount: 0,
+      })}\n\n`
+    )
+  );
+  controller.enqueue(
+    encoder.encode(
+      `data: ${JSON.stringify({
+        type: 'finish',
+        text: noAnswerText,
+        usage: { totalTokens: 0 },
+        toolCalls: [],
+        cached: false,
+        fallback: true,
+      })}\n\n`
+    )
+  );
+  controller.close();
+}
+
+/**
  * Handle streaming agent search request
  *
  * Resolves mode-specific context (agent, system prompt, cache strategy) prior to
@@ -644,16 +686,24 @@ async function handleStreamingRequest(
     : undefined;
   let cachedResponse: string | null = null;
 
-  if (modeContext.isArticleQa) {
-    const qaContext = modeContext.qaContext!;
-    cachedResponse = await articleQaCache!.getResponse(
-      qaContext.articleId,
-      validatedRequest.query,
-      modeContext.preferredLang,
-      qaContext.updatedAt
+  try {
+    if (modeContext.isArticleQa) {
+      const qaContext = modeContext.qaContext!;
+      cachedResponse = await articleQaCache!.getResponse(
+        qaContext.articleId,
+        validatedRequest.query,
+        modeContext.preferredLang,
+        qaContext.updatedAt
+      );
+    } else {
+      cachedResponse = await agentCache!.getResponse(validatedRequest.query);
+    }
+  } catch (cacheError) {
+    logger.warn(
+      { error: sanitizeError(cacheError), mode: modeContext.agentType },
+      'Cache read failed, treating as miss'
     );
-  } else {
-    cachedResponse = await agentCache!.getResponse(validatedRequest.query);
+    cachedResponse = null;
   }
 
   if (cachedResponse) {
@@ -850,32 +900,11 @@ async function createStreamingResponse(
             if (!fullText.trim()) {
               if (modeContext.isArticleQa) {
                 // Article QA: do NOT search all articles - return scoped empty response
-                const noAnswerText =
-                  modeContext.preferredLang === 'ja'
-                    ? 'この記事の内容からは回答を生成できませんでした。'
-                    : 'Could not generate an answer from this article.';
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({
-                      type: 'fallback',
-                      text: noAnswerText,
-                      resultCount: 0,
-                    })}\n\n`
-                  )
+                enqueueArticleQaNoAnswer(
+                  controller,
+                  encoder,
+                  modeContext.preferredLang
                 );
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({
-                      type: 'finish',
-                      text: noAnswerText,
-                      usage: { totalTokens: 0 },
-                      toolCalls: [],
-                      cached: false,
-                      fallback: true,
-                    })}\n\n`
-                  )
-                );
-                controller.close();
 
                 streamSpan.setAttribute('streaming.fallbackEmptyText', true);
                 streamSpan.setAttribute('streaming.articleQaNoAnswer', true);
@@ -1002,32 +1031,11 @@ async function createStreamingResponse(
         try {
           if (modeContext.isArticleQa) {
             // Article QA: do NOT search all articles - return scoped empty response
-            const noAnswerText =
-              modeContext.preferredLang === 'ja'
-                ? 'この記事の内容からは回答を生成できませんでした。'
-                : 'Could not generate an answer from this article.';
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: 'fallback',
-                  text: noAnswerText,
-                  resultCount: 0,
-                })}\n\n`
-              )
+            enqueueArticleQaNoAnswer(
+              controller,
+              encoder,
+              modeContext.preferredLang
             );
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: 'finish',
-                  text: noAnswerText,
-                  usage: { totalTokens: 0 },
-                  toolCalls: [],
-                  cached: false,
-                  fallback: true,
-                })}\n\n`
-              )
-            );
-            controller.close();
 
             streamSpan.setAttribute('streaming.fallback', true);
             streamSpan.setAttribute('streaming.articleQaNoAnswer', true);
@@ -1191,15 +1199,23 @@ async function handleBatchRequest(
 
   let cachedResponse: string | null = null;
 
-  if (modeContext.isArticleQa) {
-    cachedResponse = await articleQaCache!.getResponse(
-      qaContext!.articleId,
-      validatedRequest.query,
-      modeContext.preferredLang,
-      qaContext!.updatedAt
+  try {
+    if (modeContext.isArticleQa) {
+      cachedResponse = await articleQaCache!.getResponse(
+        qaContext!.articleId,
+        validatedRequest.query,
+        modeContext.preferredLang,
+        qaContext!.updatedAt
+      );
+    } else {
+      cachedResponse = await responseCache!.getResponse(validatedRequest.query);
+    }
+  } catch (cacheError) {
+    logger.warn(
+      { error: sanitizeError(cacheError), mode: modeContext.agentType },
+      'Cache read failed, treating as miss'
     );
-  } else {
-    cachedResponse = await responseCache!.getResponse(validatedRequest.query);
+    cachedResponse = null;
   }
 
   const cacheLogBase = {
@@ -1333,10 +1349,7 @@ async function handleBatchRequest(
 
     if (modeContext.isArticleQa) {
       // Article QA: do NOT search all articles - return scoped empty response
-      agentResponse =
-        modeContext.preferredLang === 'ja'
-          ? 'この記事の内容からは回答を生成できませんでした。'
-          : 'Could not generate an answer from this article.';
+      agentResponse = getArticleQaNoAnswerText(modeContext.preferredLang);
       span.setAttribute('fallback.articleQaNoAnswer', true);
     } else {
       // Fallback: Vector search across all articles (article-search mode only)
