@@ -83,8 +83,12 @@ export class MemoryOptimizer {
    */
   private initializeTTLBaselines(): void {
     if (this.ttlBaselineInitialized) return;
-    this.ttlBaselines.set('stats', statsCache.getDefaultTTL());
-    this.ttlBaselines.set('trends', trendsCache.getDefaultTTL());
+    if (!this.ttlBaselines.has('stats')) {
+      this.ttlBaselines.set('stats', statsCache.getDefaultTTL());
+    }
+    if (!this.ttlBaselines.has('trends')) {
+      this.ttlBaselines.set('trends', trendsCache.getDefaultTTL());
+    }
     this.ttlBaselineInitialized = true;
   }
 
@@ -205,7 +209,7 @@ export class MemoryOptimizer {
   private async adjustTTLs(factor?: number): Promise<void> {
     this.initializeTTLBaselines();
     const adjustmentFactor =
-      factor || this.optimizationConfig.ttlAdjustment.adjustmentFactor;
+      factor ?? this.optimizationConfig.ttlAdjustment.adjustmentFactor;
 
     // ベースライン基準でTTLを調整（current値ではなくbaseline * factorで計算）
     const statsBaseline =

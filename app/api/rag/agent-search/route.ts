@@ -171,17 +171,25 @@ function getPreferredLanguage(
   const acceptLanguage = request.headers.get('accept-language');
   if (acceptLanguage) {
     // Parse Accept-Language header (e.g., "ja,en-US;q=0.9,en;q=0.8")
-    const languages = acceptLanguage.split(',').map((lang) => {
-      const [code] = lang.trim().split(';');
-      return code.toLowerCase();
-    });
+    const languages = acceptLanguage
+      .split(',')
+      .map((part) => {
+        const [codePart, ...params] = part.trim().split(';');
+        const qParam = params.find((p) => p.trim().startsWith('q='));
+        const q = qParam ? Number.parseFloat(qParam.split('=')[1] ?? '1') : 1;
+        return {
+          code: codePart.toLowerCase(),
+          q: Number.isFinite(q) ? q : 0,
+        };
+      })
+      .sort((a, b) => b.q - a.q);
 
     // Check if Japanese is preferred
-    for (const lang of languages) {
-      if (lang.startsWith('ja')) {
+    for (const { code } of languages) {
+      if (code.startsWith('ja')) {
         return 'ja';
       }
-      if (lang.startsWith('en')) {
+      if (code.startsWith('en')) {
         return 'en';
       }
     }
