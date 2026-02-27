@@ -214,16 +214,74 @@ describe('SourceCache', () => {
   });
 
   describe('invalidateSource', () => {
-    it('should invalidate specific source cache', async () => {
-      const cache = new SourceCache();
-      const localStub = createCacheStub();
-      (cache as any).cache = localStub;
+    it('should delete specific source key', async () => {
+      await sourceCache.invalidateSource('source-1');
 
-      await cache.invalidateSource('source-1');
+      expect(cacheStub.delete).toHaveBeenCalledWith('source:source-1');
+    });
 
-      // invalidate() がパターン '*' で全キーを削除するため、個別deleteは呼ばれない
-      expect(localStub.delete).not.toHaveBeenCalled();
-      expect(localStub.invalidatePattern).toHaveBeenCalledWith('*');
+    it('should delete aggregate keys', async () => {
+      await sourceCache.invalidateSource('source-1');
+
+      expect(cacheStub.delete).toHaveBeenCalledWith('all-sources');
+      expect(cacheStub.delete).toHaveBeenCalledWith('all-sources-with-stats');
+      expect(cacheStub.delete).toHaveBeenCalledWith('company-sources');
+    });
+
+    it('should invalidate pattern-based keys', async () => {
+      await sourceCache.invalidateSource('source-1');
+
+      expect(cacheStub.invalidatePattern).toHaveBeenCalledWith('source:name:*');
+      expect(cacheStub.invalidatePattern).toHaveBeenCalledWith(
+        'company-sources:*'
+      );
+      expect(cacheStub.invalidatePattern).toHaveBeenCalledWith('top-sources:*');
+    });
+
+    it('should clear in-memory name cache', async () => {
+      // Prime the name cache first
+      await sourceCache.resolveSourceIds(['Dev.to']);
+      expect(prisma.source.findMany).toHaveBeenCalledTimes(1);
+
+      await sourceCache.invalidateSource('source-1');
+
+      // After invalidateSource, name cache should be cleared
+      // so resolveSourceIds should re-fetch from DB
+      await sourceCache.resolveSourceIds(['Dev.to']);
+      expect(prisma.source.findMany).toHaveBeenCalledTimes(2);
+    });
+
+    it('should NOT call invalidatePattern with wildcard *', async () => {
+      await sourceCache.invalidateSource('source-1');
+
+      // Should NOT do full clear (pattern '*')
+      expect(cacheStub.invalidatePattern).not.toHaveBeenCalledWith('*');
+    });
+
+    it('should NOT delete unrelated source keys', async () => {
+      const deletedKeys: string[] = [];
+      cacheStub.delete.mockImplementation(async (key: string) => {
+        deletedKeys.push(key);
+      });
+
+      await sourceCache.invalidateSource('source-1');
+
+      expect(deletedKeys).not.toContain('source:source-2');
+    });
+
+    it('should fallback to full invalidation on error', async () => {
+      cacheStub.delete.mockRejectedValue(new Error('Redis error'));
+      cacheStub.invalidatePattern
+        .mockRejectedValueOnce(new Error('Redis error'))
+        .mockRejectedValueOnce(new Error('Redis error'))
+        .mockRejectedValueOnce(new Error('Redis error'))
+        .mockResolvedValueOnce(undefined); // fallback invalidate('*') succeeds
+
+      await sourceCache.invalidateSource('source-1');
+
+      // After catch, it should call invalidate() which uses pattern '*'
+      const calls = cacheStub.invalidatePattern.mock.calls;
+      expect(calls[calls.length - 1][0]).toBe('*');
     });
   });
 });

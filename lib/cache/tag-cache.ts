@@ -96,11 +96,26 @@ export class TagCache {
   }
 
   /**
-   * 特定のタグのキャッシュを無効化
-   * 内部的には全キャッシュを無効化する（パターン '*' で全削除）
+   * 特定のタグのキャッシュをターゲット無効化
+   * 該当タグの個別キー、集約キー（all-tags, popular-tags）、検索キャッシュを削除する。
+   * 無関係なキャッシュは保持される。エラー時は全キャッシュ無効化にフォールバック。
    */
-  async invalidateTag(_tagId: string): Promise<void> {
-    await this.invalidate();
+  async invalidateTag(tagId: string): Promise<void> {
+    try {
+      await Promise.all([
+        // Individual tag data
+        this.cache.delete(`tag:${tagId}`).catch(() => {}),
+        // Aggregate keys (must refresh since tag membership changed)
+        this.cache.delete('all-tags').catch(() => {}),
+        // Popular tags (various limits)
+        this.cache.invalidatePattern('popular-tags:*'),
+        // Search results (may contain this tag)
+        this.cache.invalidatePattern('search:*'),
+      ]);
+    } catch (error) {
+      // Fallback to full invalidation on any error
+      await this.invalidate();
+    }
   }
 }
 
