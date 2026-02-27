@@ -8,15 +8,16 @@
  * - Article-scoped caching with locale and updatedAt tracking
  * - Token limit enforcement (max 10,000 tokens per entry)
  * - Query normalization (case-insensitive, whitespace, punctuation)
- * - Graceful degradation (continues without caching if Redis unavailable)
+ * - Graceful degradation (inherited from RedisCache)
+ * - Standardized namespace management and stats tracking
  *
  * @module article-qa-cache
  */
 
-import { getRedisClient } from '@/lib/redis-di';
+import { RedisCache } from './index';
+import { CACHE_TTL } from './constants';
 import { logger } from '@/lib/logger';
 import { countTokens } from '@/lib/utils/chunking';
-import { CACHE_TTL } from './constants';
 
 /**
  * Article QA Cache
@@ -24,10 +25,15 @@ import { CACHE_TTL } from './constants';
  * Caches responses for article-specific Q&A sessions.
  * Invalidates cache when article is updated (via updatedAt timestamp).
  */
-export class ArticleQACache {
-  private readonly prefix = 'article-qa:';
-  private readonly ttl = CACHE_TTL.SHORT;
+export class ArticleQACache extends RedisCache {
   private readonly maxTokensPerEntry = 10000; // CodexMCP recommendation
+
+  constructor() {
+    super({
+      ttl: CACHE_TTL.SHORT, // 300s
+      namespace: '@techtrend/cache:rag-qa',
+    });
+  }
 
   /**
    * Get cached response for an article query
@@ -38,47 +44,14 @@ export class ArticleQACache {
    * @param updatedAt - Article last updated timestamp
    * @returns Cached response or null if not found/error
    */
-  async get(
+  async getResponse(
     articleId: string,
     query: string,
     locale: 'ja' | 'en',
     updatedAt: Date
   ): Promise<string | null> {
-    try {
-      const redis = await getRedisClient();
-      if (!redis) {
-        logger.debug('Redis not available, cache disabled');
-        return null;
-      }
-
-      const key = this.getCacheKey(articleId, query, locale, updatedAt);
-      const cached = await redis.get(key);
-
-      if (cached) {
-        logger.debug(
-          {
-            articleId,
-            query: query.substring(0, 50),
-            locale,
-            hit: true,
-            cacheKey: key,
-          },
-          'Article QA cache hit'
-        );
-      }
-
-      return cached;
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          articleId,
-          query: query.substring(0, 50),
-        },
-        'Article QA cache get failed'
-      );
-      return null; // Fail gracefully (continue without caching)
-    }
+    const key = this.generateQAKey(articleId, query, locale, updatedAt);
+    return super.get<string>(key);
   }
 
   /**
@@ -92,61 +65,30 @@ export class ArticleQACache {
    * @param updatedAt - Article last updated timestamp
    * @param response - Agent response text
    */
-  async set(
+  async setResponse(
     articleId: string,
     query: string,
     locale: 'ja' | 'en',
     updatedAt: Date,
     response: string
   ): Promise<void> {
-    try {
-      const redis = await getRedisClient();
-      if (!redis) {
-        logger.debug('Redis not available, skipping cache set');
-        return;
-      }
-
-      // Enforce token limit
-      const tokenCount = countTokens(response);
-      if (tokenCount > this.maxTokensPerEntry) {
-        logger.warn(
-          {
-            articleId,
-            query: query.substring(0, 50),
-            tokenCount,
-            maxTokens: this.maxTokensPerEntry,
-          },
-          'Article QA response exceeds token limit, skipping cache'
-        );
-        return;
-      }
-
-      const key = this.getCacheKey(articleId, query, locale, updatedAt);
-      await redis.setex(key, this.ttl, response);
-
-      logger.debug(
+    // Enforce token limit
+    const tokenCount = countTokens(response);
+    if (tokenCount > this.maxTokensPerEntry) {
+      logger.warn(
         {
           articleId,
           query: query.substring(0, 50),
-          locale,
-          responseLength: response.length,
           tokenCount,
-          ttl: this.ttl,
-          cacheKey: key,
+          maxTokens: this.maxTokensPerEntry,
         },
-        'Article QA response cached'
+        'Article QA response exceeds token limit, skipping cache'
       );
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          articleId,
-          query: query.substring(0, 50),
-        },
-        'Article QA cache set failed'
-      );
-      // Continue without caching (non-critical error)
+      return;
     }
+
+    const key = this.generateQAKey(articleId, query, locale, updatedAt);
+    await super.set(key, response);
   }
 
   /**
@@ -157,35 +99,17 @@ export class ArticleQACache {
    * @param locale - User locale
    * @param updatedAt - Article last updated timestamp
    */
-  async invalidate(
+  async invalidateResponse(
     articleId: string,
     query: string,
     locale: 'ja' | 'en',
     updatedAt: Date
   ): Promise<void> {
+    const key = this.generateQAKey(articleId, query, locale, updatedAt);
     try {
-      const redis = await getRedisClient();
-      if (!redis) return;
-
-      const key = this.getCacheKey(articleId, query, locale, updatedAt);
-      await redis.del(key);
-
-      logger.debug(
-        {
-          articleId,
-          query: query.substring(0, 50),
-        },
-        'Article QA cache invalidated'
-      );
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          articleId,
-          query: query.substring(0, 50),
-        },
-        'Article QA cache invalidation failed'
-      );
+      await super.delete(key);
+    } catch {
+      // Graceful degradation
     }
   }
 
@@ -193,67 +117,26 @@ export class ArticleQACache {
    * Invalidate all cache entries for a specific article
    *
    * Useful when article content is updated.
-   * Uses SCAN instead of KEYS to avoid blocking Redis.
+   * Uses RedisCache's invalidatePattern with SCAN (non-blocking).
    *
    * @param articleId - Article ID
    */
   async invalidateArticle(articleId: string): Promise<void> {
-    try {
-      const redis = await getRedisClient();
-      if (!redis) return;
-
-      // Use SCAN instead of KEYS to avoid blocking Redis
-      const pattern = `${this.prefix}${articleId}:*`;
-      let cursor = '0';
-      const keysToDelete: string[] = [];
-
-      do {
-        const [nextCursor, keys] = await redis.scan(
-          cursor,
-          'MATCH',
-          pattern,
-          'COUNT',
-          100
-        );
-        cursor = nextCursor;
-        if (keys.length > 0) {
-          keysToDelete.push(...keys);
-        }
-      } while (cursor !== '0');
-
-      if (keysToDelete.length > 0) {
-        await redis.del(...keysToDelete);
-        logger.debug(
-          {
-            articleId,
-            keysDeleted: keysToDelete.length,
-          },
-          'Article QA cache invalidated for article'
-        );
-      }
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          articleId,
-        },
-        'Article QA cache invalidation (article) failed'
-      );
-    }
+    await this.invalidatePattern(`${articleId}:*`);
   }
 
   /**
    * Get cache key for an article query
    *
-   * Key format: article-qa:{articleId}:{normalizedQuery}:{locale}:{updatedAtMs}
+   * Key format (after namespace prefix): {articleId}:{normalizedQuery}:{locale}:{updatedAtMs}
    *
    * @param articleId - Article ID
    * @param query - User query
    * @param locale - User locale
    * @param updatedAt - Article last updated timestamp
-   * @returns Cache key
+   * @returns Cache key (without namespace prefix - added by RedisCache)
    */
-  private getCacheKey(
+  private generateQAKey(
     articleId: string,
     query: string,
     locale: 'ja' | 'en',
@@ -261,7 +144,7 @@ export class ArticleQACache {
   ): string {
     const normalized = this.normalizeQuery(query);
     const updatedAtMs = updatedAt.getTime();
-    return `${this.prefix}${articleId}:${normalized}:${locale}:${updatedAtMs}`;
+    return `${articleId}:${normalized}:${locale}:${updatedAtMs}`;
   }
 
   /**

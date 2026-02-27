@@ -1,54 +1,63 @@
 import { AgentResponseCache } from '@/lib/cache/agent-response-cache';
-import { getRedisClient } from '@/lib/redis-di';
 
-// Mock Redis DI
-jest.mock('@/lib/redis-di');
+jest.mock('@/lib/logger', () => ({
+  __esModule: true,
+  default: {
+    warn: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+  logger: {
+    warn: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+  hashSensitiveValue: jest.fn((v: string) => `hashed:${v}`),
+}));
+
+const NAMESPACE = '@techtrend/cache:rag-agent';
 
 const mockRedis = {
   get: jest.fn(),
+  set: jest.fn(),
   setex: jest.fn(),
   del: jest.fn(),
-  quit: jest.fn(),
 };
 
 describe('AgentResponseCache', () => {
   let cache: AgentResponseCache;
 
   beforeEach(() => {
+    Object.values(mockRedis).forEach((fn) => {
+      (fn as jest.Mock).mockReset();
+    });
     cache = new AgentResponseCache();
-    jest.clearAllMocks();
-    (getRedisClient as jest.Mock).mockResolvedValue(mockRedis);
+    // Replace private redis field with mock (pattern from redis-cache.test.ts)
+    (cache as any).redis = mockRedis;
   });
 
-  afterEach(() => {
-    jest.resetAllMocks();
-  });
-
-  describe('get', () => {
+  describe('getResponse', () => {
     it('should retrieve cached response', async () => {
       const query = 'React performance';
       const cachedResponse = 'Found 3 articles...';
 
-      mockRedis.get.mockResolvedValue(cachedResponse);
+      // RedisCache.get() does JSON.parse on the stored value
+      mockRedis.get.mockResolvedValue(JSON.stringify(cachedResponse));
 
-      const result = await cache.get(query);
+      const result = await cache.getResponse(query);
 
       expect(result).toBe(cachedResponse);
-      expect(mockRedis.get).toHaveBeenCalledWith('agent:response:react performance');
+      expect(mockRedis.get).toHaveBeenCalledWith(
+        `${NAMESPACE}:react performance`
+      );
     });
 
     it('should return null if cache miss', async () => {
       mockRedis.get.mockResolvedValue(null);
 
-      const result = await cache.get('TypeScript');
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null if Redis unavailable', async () => {
-      (getRedisClient as jest.Mock).mockResolvedValue(null);
-
-      const result = await cache.get('query');
+      const result = await cache.getResponse('TypeScript');
 
       expect(result).toBeNull();
     });
@@ -56,84 +65,95 @@ describe('AgentResponseCache', () => {
     it('should handle Redis errors gracefully', async () => {
       mockRedis.get.mockRejectedValue(new Error('Connection failed'));
 
-      const result = await cache.get('query');
+      const result = await cache.getResponse('query');
 
       expect(result).toBeNull(); // Fail gracefully
     });
   });
 
-  describe('set', () => {
+  describe('setResponse', () => {
     it('should cache response with TTL', async () => {
       const query = 'React performance';
       const response = 'Found 3 articles...';
 
-      await cache.set(query, response);
+      await cache.setResponse(query, response);
 
       expect(mockRedis.setex).toHaveBeenCalledWith(
-        'agent:response:react performance',
+        `${NAMESPACE}:react performance`,
         60, // TTL
-        response
+        JSON.stringify(response)
       );
-    });
-
-    it('should skip caching if Redis unavailable', async () => {
-      (getRedisClient as jest.Mock).mockResolvedValue(null);
-
-      await cache.set('query', 'response');
-
-      expect(mockRedis.setex).not.toHaveBeenCalled();
     });
 
     it('should handle Redis errors gracefully', async () => {
       mockRedis.setex.mockRejectedValue(new Error('Write failed'));
 
-      await expect(cache.set('query', 'response')).resolves.not.toThrow();
+      await expect(
+        cache.setResponse('query', 'response')
+      ).resolves.not.toThrow();
     });
   });
 
-  describe('invalidate', () => {
+  describe('invalidateResponse', () => {
     it('should delete cache entry', async () => {
       const query = 'React';
 
-      await cache.invalidate(query);
+      mockRedis.del.mockResolvedValue(1);
 
-      expect(mockRedis.del).toHaveBeenCalledWith('agent:response:react');
+      await cache.invalidateResponse(query);
+
+      expect(mockRedis.del).toHaveBeenCalledWith(`${NAMESPACE}:react`);
     });
 
     it('should handle errors gracefully', async () => {
       mockRedis.del.mockRejectedValue(new Error('Delete failed'));
 
-      await expect(cache.invalidate('query')).resolves.not.toThrow();
+      await expect(cache.invalidateResponse('query')).resolves.not.toThrow();
     });
   });
 
   describe('query normalization', () => {
     it('should normalize queries for cache keys', async () => {
-      mockRedis.get.mockResolvedValue('response');
+      mockRedis.get.mockResolvedValue(JSON.stringify('response'));
 
       // All these should hit the same cache key
-      await cache.get('  React   Performance  ');
-      await cache.get('react performance');
-      await cache.get('REACT PERFORMANCE');
-      await cache.get('React Performance!');
-      await cache.get('React Performance?');
+      await cache.getResponse('  React   Performance  ');
+      await cache.getResponse('react performance');
+      await cache.getResponse('REACT PERFORMANCE');
+      await cache.getResponse('React Performance!');
+      await cache.getResponse('React Performance?');
 
       // Verify all calls used the same normalized key
       const calls = mockRedis.get.mock.calls;
-      const keys = calls.map((call) => call[0]);
+      const keys = calls.map((call: unknown[]) => call[0]);
 
       expect(new Set(keys).size).toBe(1);
-      expect(keys[0]).toBe('agent:response:react performance');
+      expect(keys[0]).toBe(`${NAMESPACE}:react performance`);
     });
 
     it('should remove Japanese punctuation', async () => {
-      mockRedis.get.mockResolvedValue('response');
+      mockRedis.get.mockResolvedValue(JSON.stringify('response'));
 
-      await cache.get('最新のNext.js記事を教えて。');
-      await cache.get('最新のNextjs記事を教えて');
+      await cache.getResponse('最新のNext.js記事を教えて。');
+      await cache.getResponse('最新のNextjs記事を教えて');
 
       const calls = mockRedis.get.mock.calls;
       expect(calls[0][0]).toBe(calls[1][0]); // Same normalized key
+    });
+  });
+
+  describe('stats tracking', () => {
+    it('should track cache hits and misses', async () => {
+      mockRedis.get
+        .mockResolvedValueOnce(JSON.stringify('response'))
+        .mockResolvedValueOnce(null);
+
+      await cache.getResponse('hit query');
+      await cache.getResponse('miss query');
+
+      const stats = cache.getStats();
+      expect(stats.hits).toBe(1);
+      expect(stats.misses).toBe(1);
     });
   });
 });

@@ -48,7 +48,10 @@ interface DemoResult {
   };
 }
 
-async function runArticleQA(articleId: string, question: string): Promise<DemoResult> {
+async function runArticleQA(
+  articleId: string,
+  question: string
+): Promise<DemoResult> {
   const startTime = Date.now();
 
   // Fetch article metadata
@@ -68,8 +71,17 @@ async function runArticleQA(articleId: string, question: string): Promise<DemoRe
 
   // Check cache
   const cache = new ArticleQACache();
-  const locale: 'ja' | 'en' = /[\u3000-\u303F\u3040-\u30FF\u4E00-\u9FFF]/.test(question) ? 'ja' : 'en';
-  const cachedResponse = await cache.get(articleId, question, locale, article.updatedAt);
+  const locale: 'ja' | 'en' = /[\u3000-\u303F\u3040-\u30FF\u4E00-\u9FFF]/.test(
+    question
+  )
+    ? 'ja'
+    : 'en';
+  const cachedResponse = await cache.getResponse(
+    articleId,
+    question,
+    locale,
+    article.updatedAt
+  );
 
   if (cachedResponse) {
     const elapsedMs = Date.now() - startTime;
@@ -89,13 +101,17 @@ async function runArticleQA(articleId: string, question: string): Promise<DemoRe
   }
 
   // Execute agent
-  const localeInstruction = locale === 'ja'
-    ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
-    : 'User locale: English (en). Respond in English unless the user explicitly asks otherwise.';
+  const localeInstruction =
+    locale === 'ja'
+      ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
+      : 'User locale: English (en). Respond in English unless the user explicitly asks otherwise.';
 
   const result = await articleQaAgent.generate({
     messages: [
-      { role: 'system', content: `${localeInstruction}\n\nArticle ID: ${articleId}\nArticle Title: ${article.title}` },
+      {
+        role: 'system',
+        content: `${localeInstruction}\n\nArticle ID: ${articleId}\nArticle Title: ${article.title}`,
+      },
       { role: 'user', content: question },
     ],
   });
@@ -105,7 +121,13 @@ async function runArticleQA(articleId: string, question: string): Promise<DemoRe
   const usage = result.usage ?? { totalTokens: 0 };
 
   // Cache response
-  await cache.set(articleId, question, locale, article.updatedAt, answer);
+  await cache.setResponse(
+    articleId,
+    question,
+    locale,
+    article.updatedAt,
+    answer
+  );
 
   const elapsedMs = Date.now() - startTime;
   const normalizedQuestion = normalizeQuery(question);
@@ -128,8 +150,12 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args.length < 2) {
-    console.error('Usage: npx tsx lib/scripts/article-qa-demo.ts <articleId> "<question>"');
-    console.error('Example: npx tsx lib/scripts/article-qa-demo.ts cm123abc "この記事の前提となる概念を教えて"');
+    console.error(
+      'Usage: npx tsx lib/scripts/article-qa-demo.ts <articleId> "<question>"'
+    );
+    console.error(
+      'Example: npx tsx lib/scripts/article-qa-demo.ts cm123abc "この記事の前提となる概念を教えて"'
+    );
     throw new Error('Invalid arguments');
   }
 
@@ -152,7 +178,9 @@ async function main() {
     console.log('RESULT');
     console.log('='.repeat(80));
     console.log();
-    console.log(`Cached: ${result.cached ? 'YES (cache hit)' : 'NO (fresh generation)'}`);
+    console.log(
+      `Cached: ${result.cached ? 'YES (cache hit)' : 'NO (fresh generation)'}`
+    );
     console.log(`Elapsed: ${result.elapsedMs}ms`);
     console.log(`Tokens: ${result.usage.totalTokens || 0}`);
     console.log(`Tool Calls: ${result.toolCalls.length}`);
@@ -172,7 +200,9 @@ async function main() {
       console.log('-'.repeat(80));
       result.toolCalls.forEach((call, idx) => {
         console.log(`${idx + 1}. ${call.toolName}`);
-        console.log(`   Input: ${JSON.stringify(call.input, null, 2).substring(0, 200)}...`);
+        console.log(
+          `   Input: ${JSON.stringify(call.input, null, 2).substring(0, 200)}...`
+        );
       });
       console.log('-'.repeat(80));
       console.log();

@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { articleSearchAgent } from '@/lib/rag/agents/article-search-agent';
 import { articleQaAgent as _articleQaAgent } from '@/lib/rag/agents/article-qa-agent';
-import { checkRateLimit, ragAgentSearchRateLimit, articleQaRateLimit, RateLimitError } from '@/lib/rate-limiter';
+import {
+  checkRateLimit,
+  ragAgentSearchRateLimit,
+  articleQaRateLimit,
+  RateLimitError,
+} from '@/lib/rate-limiter';
 import { AgentResponseCache } from '@/lib/cache/agent-response-cache';
 import { ArticleQACache as _ArticleQACache } from '@/lib/cache/article-qa-cache';
-import { detectPromptInjection, sanitizeQuery } from '@/lib/rag/security/prompt-injection-detector';
-import { VectorSearchService, SearchResult } from '@/lib/rag/vector-search-service';
+import {
+  detectPromptInjection,
+  sanitizeQuery,
+} from '@/lib/rag/security/prompt-injection-detector';
+import {
+  VectorSearchService,
+  SearchResult,
+} from '@/lib/rag/vector-search-service';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
 import { trace, context, SpanStatusCode, Span } from '@opentelemetry/api';
@@ -96,37 +107,39 @@ const agentTypeSchema = z.object({
  * - article-search: Search across all articles (default)
  * - article-qa: Answer questions about a specific article (requires articleId)
  */
-const agentRequestSchema = z.object({
-  agentType: z
-    .enum(['article-search', 'article-qa'])
-    .optional()
-    .default('article-search')
-    .describe('Agent type: article-search (default) or article-qa'),
+const agentRequestSchema = z
+  .object({
+    agentType: z
+      .enum(['article-search', 'article-qa'])
+      .optional()
+      .default('article-search')
+      .describe('Agent type: article-search (default) or article-qa'),
 
-  query: z
-    .string()
-    .min(1, 'Query cannot be empty')
-    .max(500, 'Query too long (max 500 characters)')
-    .transform((q) => sanitizeQuery(q))
-    .refine((q) => q.length > 0, {
-      message: 'Query cannot be empty after sanitization',
-    }),
+    query: z
+      .string()
+      .min(1, 'Query cannot be empty')
+      .max(500, 'Query too long (max 500 characters)')
+      .transform((q) => sanitizeQuery(q))
+      .refine((q) => q.length > 0, {
+        message: 'Query cannot be empty after sanitization',
+      }),
 
-  articleId: z
-    .string()
-    .cuid()
-    .optional()
-    .describe('Article ID (required for article-qa mode)'),
-}).superRefine((data, ctx) => {
-  // articleId is required for article-qa mode
-  if (data.agentType === 'article-qa' && !data.articleId) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['articleId'],
-      message: 'articleId is required for article-qa mode',
-    });
-  }
-});
+    articleId: z
+      .string()
+      .cuid()
+      .optional()
+      .describe('Article ID (required for article-qa mode)'),
+  })
+  .superRefine((data, ctx) => {
+    // articleId is required for article-qa mode
+    if (data.agentType === 'article-qa' && !data.articleId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['articleId'],
+        message: 'articleId is required for article-qa mode',
+      });
+    }
+  });
 
 /**
  * Determine preferred language based on request context
@@ -145,7 +158,10 @@ const agentRequestSchema = z.object({
  * @param request - HTTP request with headers
  * @returns Preferred language ('ja' or 'en')
  */
-function getPreferredLanguage(query: string, request: NextRequest): 'ja' | 'en' {
+function getPreferredLanguage(
+  query: string,
+  request: NextRequest
+): 'ja' | 'en' {
   // Priority 1: If query contains Japanese characters, use Japanese
   if (/[\u3000-\u303F\u3040-\u30FF\u4E00-\u9FFF]/.test(query)) {
     return 'ja';
@@ -155,7 +171,7 @@ function getPreferredLanguage(query: string, request: NextRequest): 'ja' | 'en' 
   const acceptLanguage = request.headers.get('accept-language');
   if (acceptLanguage) {
     // Parse Accept-Language header (e.g., "ja,en-US;q=0.9,en;q=0.8")
-    const languages = acceptLanguage.split(',').map(lang => {
+    const languages = acceptLanguage.split(',').map((lang) => {
       const [code] = lang.trim().split(';');
       return code.toLowerCase();
     });
@@ -181,7 +197,10 @@ function getPreferredLanguage(query: string, request: NextRequest): 'ja' | 'en' 
  * @param results - Search results
  * @param lang - Language for formatting ('ja' or 'en')
  */
-function formatResultsAsText(results: SearchResult[], lang: 'ja' | 'en'): string {
+function formatResultsAsText(
+  results: SearchResult[],
+  lang: 'ja' | 'en'
+): string {
   if (results.length === 0) {
     return lang === 'ja'
       ? '該当する記事が見つかりませんでした。キーワードを広げて再検索してください。'
@@ -248,10 +267,12 @@ async function fetchQaContext(articleId: string): Promise<{
 
   // Generate snippet (first 100 characters of summary)
   const detailedSummary =
-    article.detailedSummary && article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__'
+    article.detailedSummary &&
+    article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__'
       ? stripHtmlTags(article.detailedSummary)
       : '';
-  const summarySource = detailedSummary || stripHtmlTags(article.summary ?? '') || '';
+  const summarySource =
+    detailedSummary || stripHtmlTags(article.summary ?? '') || '';
   const snippetSource = summarySource || article.title;
   const snippet = snippetSource.slice(0, 160);
 
@@ -286,15 +307,18 @@ async function resolveModeContext(
   const isArticleQa = validatedRequest.agentType === 'article-qa';
   const preferredLang = getPreferredLanguage(validatedRequest.query, request);
 
-  const localeInstruction = preferredLang === 'ja'
-    ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
-    : 'User locale: English (en). Respond in English unless the user explicitly asks otherwise.';
+  const localeInstruction =
+    preferredLang === 'ja'
+      ? 'User locale: Japanese (ja). Respond in Japanese unless the user explicitly asks otherwise.'
+      : 'User locale: English (en). Respond in English unless the user explicitly asks otherwise.';
 
   if (isArticleQa) {
     // Article QA mode
     const qaContext = await fetchQaContext(validatedRequest.articleId!);
 
-    const summaryLine = qaContext.snippet ? `- Summary preview: ${qaContext.snippet}` : '- Summary preview: (not available)';
+    const summaryLine = qaContext.snippet
+      ? `- Summary preview: ${qaContext.snippet}`
+      : '- Summary preview: (not available)';
     const systemMessage = `${localeInstruction}
 
 Active article metadata:
@@ -358,7 +382,10 @@ function attachRateLimitHeaders(
 
   if (rateLimitInfo) {
     response.headers.set('X-RateLimit-Limit', rateLimitInfo.limit.toString());
-    response.headers.set('X-RateLimit-Remaining', rateLimitInfo.remaining.toString());
+    response.headers.set(
+      'X-RateLimit-Remaining',
+      rateLimitInfo.remaining.toString()
+    );
     response.headers.set(
       'X-RateLimit-Reset',
       Math.floor(rateLimitInfo.reset.getTime() / 1000).toString()
@@ -426,7 +453,12 @@ interface ModeContext {
 function isLanguageModelToolResultOutput(
   output: unknown
 ): output is LanguageModelV2ToolResultOutput {
-  if (typeof output !== 'object' || output === null || !('type' in output) || !('value' in output)) {
+  if (
+    typeof output !== 'object' ||
+    output === null ||
+    !('type' in output) ||
+    !('value' in output)
+  ) {
     return false;
   }
   const validTypes = ['json', 'text', 'error-json', 'error-text', 'content'];
@@ -460,7 +492,7 @@ function createSSEResponse(
   const headers = new Headers({
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Connection': 'keep-alive',
+    Connection: 'keep-alive',
     'X-Accel-Buffering': 'no',
   });
 
@@ -552,14 +584,20 @@ async function handleStreamingRequest(
   } catch (error) {
     parentSpan.setAttribute('mode.resolve.failed', true);
     parentSpan.recordException(error as Error);
-    parentSpan.setStatus({ code: SpanStatusCode.ERROR, message: 'Failed to resolve mode context' });
+    parentSpan.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: 'Failed to resolve mode context',
+    });
     throw error;
   }
 
   if (modeContext.isArticleQa && !modeContext.qaContext) {
     const contextError = new Error('Article QA mode requires qaContext');
     parentSpan.recordException(contextError);
-    parentSpan.setStatus({ code: SpanStatusCode.ERROR, message: contextError.message });
+    parentSpan.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: contextError.message,
+    });
     throw contextError;
   }
 
@@ -581,23 +619,29 @@ async function handleStreamingRequest(
     parentSpan.setAttribute('mode.articleId', modeContext.qaContext.articleId);
   }
 
-  const cacheStrategy = modeContext.isArticleQa ? 'article-qa' : 'agent-response';
+  const cacheStrategy = modeContext.isArticleQa
+    ? 'article-qa'
+    : 'agent-response';
   parentSpan.setAttribute('cache.strategy', cacheStrategy);
 
-  const agentCache = modeContext.isArticleQa ? undefined : new AgentResponseCache();
-  const articleQaCache = modeContext.isArticleQa ? new _ArticleQACache() : undefined;
+  const agentCache = modeContext.isArticleQa
+    ? undefined
+    : new AgentResponseCache();
+  const articleQaCache = modeContext.isArticleQa
+    ? new _ArticleQACache()
+    : undefined;
   let cachedResponse: string | null = null;
 
   if (modeContext.isArticleQa) {
     const qaContext = modeContext.qaContext!;
-    cachedResponse = await articleQaCache!.get(
+    cachedResponse = await articleQaCache!.getResponse(
       qaContext.articleId,
       validatedRequest.query,
       modeContext.preferredLang,
       qaContext.updatedAt
     );
   } else {
-    cachedResponse = await agentCache!.get(validatedRequest.query);
+    cachedResponse = await agentCache!.getResponse(validatedRequest.query);
   }
 
   if (cachedResponse) {
@@ -623,7 +667,11 @@ async function handleStreamingRequest(
       logger.debug(logBase, 'Agent cache hit (streaming mode)');
     }
 
-    return createCachedSSEResponse(cachedResponse, modeContext.qaContext, rateLimitInfo);
+    return createCachedSSEResponse(
+      cachedResponse,
+      modeContext.qaContext,
+      rateLimitInfo
+    );
   }
 
   parentSpan.setAttribute('cache.hit', false);
@@ -654,10 +702,18 @@ async function createStreamingResponse(
   rateLimitInfo?: RateLimitInfo
 ): Promise<Response> {
   const encoder = new TextEncoder();
-  const responseCache = modeContext.isArticleQa ? undefined : new AgentResponseCache();
-  const articleQaCache = modeContext.isArticleQa ? new _ArticleQACache() : undefined;
+  const responseCache = modeContext.isArticleQa
+    ? undefined
+    : new AgentResponseCache();
+  const articleQaCache = modeContext.isArticleQa
+    ? new _ArticleQACache()
+    : undefined;
   const tracer = trace.getTracer('rag-agent');
-  const streamSpan = tracer.startSpan('rag.agent-search.stream', {}, trace.setSpan(context.active(), parentSpan));
+  const streamSpan = tracer.startSpan(
+    'rag.agent-search.stream',
+    {},
+    trace.setSpan(context.active(), parentSpan)
+  );
   const qaContext = modeContext.qaContext;
   const qaContextPayload =
     modeContext.isArticleQa && qaContext
@@ -672,7 +728,10 @@ async function createStreamingResponse(
   if (modeContext.isArticleQa && !qaContext) {
     const contextError = new Error('Article QA mode requires qaContext');
     streamSpan.recordException(contextError);
-    streamSpan.setStatus({ code: SpanStatusCode.ERROR, message: contextError.message });
+    streamSpan.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: contextError.message,
+    });
     streamSpan.end();
     throw contextError;
   }
@@ -682,7 +741,10 @@ async function createStreamingResponse(
     'mode.preferredLang': modeContext.preferredLang,
   });
 
-  streamSpan.setAttribute('cache.strategy', modeContext.isArticleQa ? 'article-qa' : 'agent-response');
+  streamSpan.setAttribute(
+    'cache.strategy',
+    modeContext.isArticleQa ? 'article-qa' : 'agent-response'
+  );
 
   if (modeContext.traceAttributes) {
     streamSpan.setAttributes(modeContext.traceAttributes);
@@ -780,27 +842,47 @@ async function createStreamingResponse(
               // This provides broader results when agent fails to respond
               try {
                 const searchService = new VectorSearchService(prisma);
-                const fallbackResults = await searchService.search(validatedRequest.query, { topK: 10 });
-                const fallbackText = formatResultsAsText(fallbackResults, modeContext.preferredLang);
+                const fallbackResults = await searchService.search(
+                  validatedRequest.query,
+                  { topK: 10 }
+                );
+                const fallbackText = formatResultsAsText(
+                  fallbackResults,
+                  modeContext.preferredLang
+                );
 
                 // Note: Fallback results are NOT cached (intentional)
                 // Avoids caching low-quality fallback responses
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'fallback', text: fallbackText, resultCount: fallbackResults.length })}\n\n`));
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'finish', text: fallbackText, usage: { totalTokens: 0 }, toolCalls: [], cached: false, fallback: true })}\n\n`));
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ type: 'fallback', text: fallbackText, resultCount: fallbackResults.length })}\n\n`
+                  )
+                );
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ type: 'finish', text: fallbackText, usage: { totalTokens: 0 }, toolCalls: [], cached: false, fallback: true })}\n\n`
+                  )
+                );
                 controller.close();
 
                 streamSpan.setAttribute('streaming.fallbackEmptyText', true);
                 streamSpan.end();
                 return;
               } catch (fallbackError) {
-                logger.error({ error: sanitizeError(fallbackError), userId: session.user.id }, 'Fallback failed for empty text');
+                logger.error(
+                  {
+                    error: sanitizeError(fallbackError),
+                    userId: session.user.id,
+                  },
+                  'Fallback failed for empty text'
+                );
                 throw fallbackError;
               }
             }
 
             try {
               if (modeContext.isArticleQa) {
-                await articleQaCache!.set(
+                await articleQaCache!.setResponse(
                   qaContext!.articleId,
                   validatedRequest.query,
                   modeContext.preferredLang,
@@ -808,10 +890,16 @@ async function createStreamingResponse(
                   fullText
                 );
               } else {
-                await responseCache!.set(validatedRequest.query, fullText);
+                await responseCache!.setResponse(
+                  validatedRequest.query,
+                  fullText
+                );
               }
             } catch (cacheError) {
-              logger.warn({ error: sanitizeError(cacheError), userId: session.user.id }, 'Failed to cache streaming response');
+              logger.warn(
+                { error: sanitizeError(cacheError), userId: session.user.id },
+                'Failed to cache streaming response'
+              );
             }
 
             controller.enqueue(
@@ -831,7 +919,10 @@ async function createStreamingResponse(
 
             streamSpan.setAttribute('streaming.success', true);
             streamSpan.setAttribute('streaming.textLength', fullText.length);
-            streamSpan.setAttribute('streaming.toolCallCount', toolCalls.length);
+            streamSpan.setAttribute(
+              'streaming.toolCallCount',
+              toolCalls.length
+            );
             streamSpan.end();
 
             logger.info(
@@ -865,11 +956,17 @@ async function createStreamingResponse(
         );
 
         const searchService = new VectorSearchService(prisma);
-        const fallbackResults = await searchService.search(validatedRequest.query, {
-          topK: 10,
-        });
+        const fallbackResults = await searchService.search(
+          validatedRequest.query,
+          {
+            topK: 10,
+          }
+        );
 
-        const fallbackText = formatResultsAsText(fallbackResults, modeContext.preferredLang);
+        const fallbackText = formatResultsAsText(
+          fallbackResults,
+          modeContext.preferredLang
+        );
 
         controller.enqueue(
           encoder.encode(
@@ -897,7 +994,10 @@ async function createStreamingResponse(
         controller.close();
 
         streamSpan.setAttribute('streaming.fallback', true);
-        streamSpan.setAttribute('streaming.fallbackResultCount', fallbackResults.length);
+        streamSpan.setAttribute(
+          'streaming.fallbackResultCount',
+          fallbackResults.length
+        );
         streamSpan.end();
       }
     },
@@ -938,14 +1038,20 @@ async function handleBatchRequest(
   } catch (error) {
     span.setAttribute('mode.resolve.failed', true);
     span.recordException(error as Error);
-    span.setStatus({ code: SpanStatusCode.ERROR, message: 'Failed to resolve mode context' });
+    span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: 'Failed to resolve mode context',
+    });
     throw error;
   }
 
   if (modeContext.isArticleQa && !modeContext.qaContext) {
     const contextError = new Error('Article QA mode requires qaContext');
     span.recordException(contextError);
-    span.setStatus({ code: SpanStatusCode.ERROR, message: contextError.message });
+    span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: contextError.message,
+    });
     throw contextError;
   }
 
@@ -968,31 +1074,38 @@ async function handleBatchRequest(
   }
 
   const qaContext = modeContext.qaContext;
-  const responseCache = modeContext.isArticleQa ? undefined : new AgentResponseCache();
-  const articleQaCache = modeContext.isArticleQa ? new _ArticleQACache() : undefined;
-  const cacheStrategy = modeContext.isArticleQa ? 'article-qa' : 'agent-response';
+  const responseCache = modeContext.isArticleQa
+    ? undefined
+    : new AgentResponseCache();
+  const articleQaCache = modeContext.isArticleQa
+    ? new _ArticleQACache()
+    : undefined;
+  const cacheStrategy = modeContext.isArticleQa
+    ? 'article-qa'
+    : 'agent-response';
   span.setAttribute('cache.strategy', cacheStrategy);
 
-  const contextPayload = modeContext.isArticleQa && qaContext
-    ? {
-        articleId: qaContext.articleId,
-        title: qaContext.title,
-        snippet: qaContext.snippet,
-        updatedAt: qaContext.updatedAt.toISOString(),
-      }
-    : undefined;
+  const contextPayload =
+    modeContext.isArticleQa && qaContext
+      ? {
+          articleId: qaContext.articleId,
+          title: qaContext.title,
+          snippet: qaContext.snippet,
+          updatedAt: qaContext.updatedAt.toISOString(),
+        }
+      : undefined;
 
   let cachedResponse: string | null = null;
 
   if (modeContext.isArticleQa) {
-    cachedResponse = await articleQaCache!.get(
+    cachedResponse = await articleQaCache!.getResponse(
       qaContext!.articleId,
       validatedRequest.query,
       modeContext.preferredLang,
       qaContext!.updatedAt
     );
   } else {
-    cachedResponse = await responseCache!.get(validatedRequest.query);
+    cachedResponse = await responseCache!.getResponse(validatedRequest.query);
   }
 
   const cacheLogBase = {
@@ -1050,10 +1163,14 @@ async function handleBatchRequest(
       ],
     });
 
-    const allToolCalls = result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];
-    const allToolResults = result.steps?.flatMap((step) => step.toolResults ?? []) ?? [];
+    const allToolCalls =
+      result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];
+    const allToolResults =
+      result.steps?.flatMap((step) => step.toolResults ?? []) ?? [];
 
-    const toolResultsMap = new Map(allToolResults.map((r) => [r.toolCallId, r]));
+    const toolResultsMap = new Map(
+      allToolResults.map((r) => [r.toolCallId, r])
+    );
 
     logger.debug(
       {
@@ -1083,7 +1200,9 @@ async function handleBatchRequest(
     usage = result.usage;
 
     if (!agentResponse) {
-      throw new Error('Agent returned empty response (tool-only mode detected)');
+      throw new Error(
+        'Agent returned empty response (tool-only mode detected)'
+      );
     }
 
     span.setAttributes({
@@ -1126,7 +1245,10 @@ async function handleBatchRequest(
       topK: 10,
     });
 
-    agentResponse = formatResultsAsText(fallbackResults, modeContext.preferredLang);
+    agentResponse = formatResultsAsText(
+      fallbackResults,
+      modeContext.preferredLang
+    );
     fallback = true;
 
     span.setAttribute('fallback.used', true);
@@ -1140,7 +1262,7 @@ async function handleBatchRequest(
   try {
     if (!fallback) {
       if (modeContext.isArticleQa) {
-        await articleQaCache!.set(
+        await articleQaCache!.setResponse(
           qaContext!.articleId,
           validatedRequest.query,
           modeContext.preferredLang,
@@ -1148,7 +1270,7 @@ async function handleBatchRequest(
           agentResponse
         );
       } else {
-        await responseCache!.set(validatedRequest.query, agentResponse);
+        await responseCache!.setResponse(validatedRequest.query, agentResponse);
       }
     }
   } catch (cacheError) {
@@ -1256,9 +1378,14 @@ export async function POST(request: NextRequest) {
       span.setAttribute('agent.type', agentType);
 
       // Layer 3: Rate limiting (agent-type-specific)
-      const rateLimit = agentType === 'article-qa' ? articleQaRateLimit : ragAgentSearchRateLimit;
+      const rateLimit =
+        agentType === 'article-qa'
+          ? articleQaRateLimit
+          : ragAgentSearchRateLimit;
       const rateKey = `rag:agent:${agentType}:${session.user.id}`;
-      let rateLimitInfo: { limit: number; remaining: number; reset: Date } | undefined;
+      let rateLimitInfo:
+        | { limit: number; remaining: number; reset: Date }
+        | undefined;
 
       try {
         rateLimitInfo = await checkRateLimit(rateKey, rateLimit);
@@ -1289,8 +1416,12 @@ export async function POST(request: NextRequest) {
               headers: {
                 'X-RateLimit-Limit': error.limit.toString(),
                 'X-RateLimit-Remaining': '0',
-                'X-RateLimit-Reset': Math.floor(error.reset.getTime() / 1000).toString(),
-                'Retry-After': Math.ceil((error.reset.getTime() - Date.now()) / 1000).toString(),
+                'X-RateLimit-Reset': Math.floor(
+                  error.reset.getTime() / 1000
+                ).toString(),
+                'Retry-After': Math.ceil(
+                  (error.reset.getTime() - Date.now()) / 1000
+                ).toString(),
               },
             }
           );
@@ -1333,9 +1464,21 @@ export async function POST(request: NextRequest) {
 
       // Router: Streaming vs. Batch based on feature flag
       if (features.isAgentStreamingEnabled()) {
-        return await handleStreamingRequest(validatedRequest, session, span, request, rateLimitInfo);
+        return await handleStreamingRequest(
+          validatedRequest,
+          session,
+          span,
+          request,
+          rateLimitInfo
+        );
       } else {
-        return await handleBatchRequest(validatedRequest, session, span, request, rateLimitInfo);
+        return await handleBatchRequest(
+          validatedRequest,
+          session,
+          span,
+          request,
+          rateLimitInfo
+        );
       }
     } catch (error) {
       span.setAttribute('error', true);
