@@ -716,7 +716,6 @@ async function createStreamingResponse(
   const articleQaCache = modeContext.isArticleQa
     ? new _ArticleQACache()
     : undefined;
-  const tracer = trace.getTracer('rag-agent');
   const streamSpan = tracer.startSpan(
     'rag.agent-search.stream',
     {},

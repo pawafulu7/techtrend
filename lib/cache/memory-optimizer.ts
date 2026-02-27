@@ -258,7 +258,10 @@ export class MemoryOptimizer {
   /**
    * TTLベースラインを更新（外部からsetCustomTTL使用時に呼び出し）
    */
-  updateBaseline(name: string, ttl: number): void {
+  updateBaseline(name: 'stats' | 'trends', ttl: number): void {
+    if (!Number.isFinite(ttl) || ttl <= 0) {
+      throw new Error(`[MemoryOptimizer] Invalid baseline TTL: ${ttl}`);
+    }
     this.ttlBaselines.set(name, ttl);
   }
 
