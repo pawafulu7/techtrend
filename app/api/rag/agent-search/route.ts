@@ -1419,8 +1419,9 @@ export async function POST(request: NextRequest) {
                 'X-RateLimit-Reset': Math.floor(
                   error.reset.getTime() / 1000
                 ).toString(),
-                'Retry-After': Math.ceil(
-                  (error.reset.getTime() - Date.now()) / 1000
+                'Retry-After': Math.max(
+                  0,
+                  Math.ceil((error.reset.getTime() - Date.now()) / 1000)
                 ).toString(),
               },
             }

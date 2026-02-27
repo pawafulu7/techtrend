@@ -296,6 +296,8 @@ export class RedisCache {
     const fullLockKey = this.generateKey(lockKey);
     const lockToken = this.generateLockToken();
 
+    let fetcherExecuted = false;
+
     try {
       // Try to acquire lock using SET NX EX with unique token
       const acquired = await this.redis.set(
@@ -309,6 +311,7 @@ export class RedisCache {
       if (acquired === 'OK') {
         // Lock acquired - fetch data and cache it
         try {
+          fetcherExecuted = true;
           const fresh = await fetcher();
           await this.set(key, fresh, ttl);
           return fresh;
@@ -355,7 +358,11 @@ export class RedisCache {
         return await fetcher();
       }
     } catch (error) {
-      // On any error, fallback to direct fetch
+      // If fetcher already executed and threw, re-throw instead of calling fetcher again
+      if (fetcherExecuted) {
+        throw error;
+      }
+      // On Redis/lock errors, fallback to direct fetch
       logger.warn(
         { error, key: hashSensitiveValue(key) },
         'getOrSetWithLock error, falling back to direct fetch'

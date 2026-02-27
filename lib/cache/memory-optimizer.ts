@@ -203,6 +203,7 @@ export class MemoryOptimizer {
    * TTLを調整（ベースライン基準で計算し、ratchet-downを防止）
    */
   private async adjustTTLs(factor?: number): Promise<void> {
+    this.initializeTTLBaselines();
     const adjustmentFactor =
       factor || this.optimizationConfig.ttlAdjustment.adjustmentFactor;
 

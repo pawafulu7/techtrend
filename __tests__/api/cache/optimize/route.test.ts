@@ -33,7 +33,7 @@ jest.mock('@/lib/cache/memory-optimizer', () => ({
 jest.mock('@/lib/cache/cache-warmer', () => ({
   cacheWarmer: {
     getStatus: jest.fn().mockReturnValue({ isRunning: false }),
-    warmManual: jest.fn().mockResolvedValue({ warmed: ['stats'], skipped: [] }),
+    warmManual: jest.fn().mockResolvedValue({ warmed: ['stats'], skipped: [], failed: [] }),
     startPeriodicWarming: jest.fn(),
     stopPeriodicWarming: jest.fn(),
   },
@@ -142,6 +142,7 @@ describe('/api/cache/optimize', () => {
       cacheWarmer.warmManual.mockResolvedValueOnce({
         warmed: ['stats', 'trends', 'keywords', 'search'],
         skipped: [],
+        failed: [],
       });
       const request = createRequest('POST', { action: 'warm' });
       const response = await POST(request);

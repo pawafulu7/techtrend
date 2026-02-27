@@ -64,6 +64,7 @@ export const POST = withCronOrAdminAuth(async (request: NextRequest) => {
               : `No targets needed warming (skipped: ${warmResult.skipped.join(', ')}). Use force:true to override.`,
           warmed: warmResult.warmed,
           skipped: warmResult.skipped,
+          failed: warmResult.failed,
           status: cacheWarmer.getStatus(),
         };
         break;
@@ -82,14 +83,12 @@ export const POST = withCronOrAdminAuth(async (request: NextRequest) => {
         break;
 
       case 'start-warming':
-        cacheWarmer.startPeriodicWarming();
         result = {
           message: 'Periodic warming is deprecated, use external cron',
         };
         break;
 
       case 'stop-warming':
-        cacheWarmer.stopPeriodicWarming();
         result = {
           message: 'Periodic warming is deprecated, use external cron',
         };

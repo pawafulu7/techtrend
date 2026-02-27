@@ -81,29 +81,34 @@ export class CacheWarmer {
    * 定期ウォーミング実行
    */
   private async performPeriodicWarming(): Promise<void> {
-    const tasks: { type: string; task: Promise<void> }[] = [];
+    this.isWarming = true;
+    try {
+      const tasks: { type: string; task: Promise<void> }[] = [];
 
-    if (await this.shouldWarmAndLock('stats', Date.now())) {
-      tasks.push({ type: 'stats', task: this.warmStats() });
-    }
-    if (await this.shouldWarmAndLock('trends', Date.now())) {
-      tasks.push({ type: 'trends', task: this.warmTrends() });
-    }
-    if (await this.shouldWarmAndLock('keywords', Date.now())) {
-      tasks.push({ type: 'keywords', task: this.warmKeywords() });
-    }
-    if (await this.shouldWarmAndLock('search', Date.now())) {
-      tasks.push({ type: 'search', task: this.warmSearchQueries() });
-    }
+      if (await this.shouldWarmAndLock('stats', Date.now())) {
+        tasks.push({ type: 'stats', task: this.warmStats() });
+      }
+      if (await this.shouldWarmAndLock('trends', Date.now())) {
+        tasks.push({ type: 'trends', task: this.warmTrends() });
+      }
+      if (await this.shouldWarmAndLock('keywords', Date.now())) {
+        tasks.push({ type: 'keywords', task: this.warmKeywords() });
+      }
+      if (await this.shouldWarmAndLock('search', Date.now())) {
+        tasks.push({ type: 'search', task: this.warmSearchQueries() });
+      }
 
-    if (tasks.length > 0) {
-      const results = await Promise.allSettled(tasks.map((t) => t.task));
-      // Record successful runs ONLY
-      for (let i = 0; i < results.length; i++) {
-        if (results[i].status === 'fulfilled') {
-          await this.recordWarmingRun(tasks[i].type);
+      if (tasks.length > 0) {
+        const results = await Promise.allSettled(tasks.map((t) => t.task));
+        // Record successful runs ONLY
+        for (let i = 0; i < results.length; i++) {
+          if (results[i].status === 'fulfilled') {
+            await this.recordWarmingRun(tasks[i].type);
+          }
         }
       }
+    } finally {
+      this.isWarming = false;
     }
   }
 
@@ -354,42 +359,50 @@ export class CacheWarmer {
    * 手動ウォーミング実行
    * @param targets - 対象タイプ配列
    * @param force - trueの場合、shouldWarmAndLockを無視して強制実行
-   * @returns 実行結果（warmed: 実行された件数、skipped: スキップされた件数）
+   * @returns 実行結果（warmed: 成功タイプ、skipped: スキップタイプ、failed: 失敗タイプ）
    */
   async warmManual(
     targets?: string[],
     force = false
-  ): Promise<{ warmed: string[]; skipped: string[] }> {
-    const validTargets = targets || ['stats', 'trends', 'keywords', 'search'];
-    const tasks: { type: string; task: Promise<void> }[] = [];
-    const skipped: string[] = [];
-    const now = Date.now();
+  ): Promise<{ warmed: string[]; skipped: string[]; failed: string[] }> {
+    this.isWarming = true;
+    try {
+      const validTargets = targets || ['stats', 'trends', 'keywords', 'search'];
+      const tasks: { type: string; task: Promise<void> }[] = [];
+      const skipped: string[] = [];
+      const now = Date.now();
 
-    for (const target of validTargets) {
-      const shouldRun = force || (await this.shouldWarmAndLock(target, now));
-      if (shouldRun) {
-        if (target === 'stats')
-          tasks.push({ type: 'stats', task: this.warmStats() });
-        else if (target === 'trends')
-          tasks.push({ type: 'trends', task: this.warmTrends() });
-        else if (target === 'keywords')
-          tasks.push({ type: 'keywords', task: this.warmKeywords() });
-        else if (target === 'search')
-          tasks.push({ type: 'search', task: this.warmSearchQueries() });
-      } else {
-        skipped.push(target);
+      for (const target of validTargets) {
+        const shouldRun = force || (await this.shouldWarmAndLock(target, now));
+        if (shouldRun) {
+          if (target === 'stats')
+            tasks.push({ type: 'stats', task: this.warmStats() });
+          else if (target === 'trends')
+            tasks.push({ type: 'trends', task: this.warmTrends() });
+          else if (target === 'keywords')
+            tasks.push({ type: 'keywords', task: this.warmKeywords() });
+          else if (target === 'search')
+            tasks.push({ type: 'search', task: this.warmSearchQueries() });
+        } else {
+          skipped.push(target);
+        }
       }
-    }
 
-    const warmed: string[] = [];
-    const results = await Promise.allSettled(tasks.map((t) => t.task));
-    for (let i = 0; i < results.length; i++) {
-      if (results[i].status === 'fulfilled') {
-        await this.recordWarmingRun(tasks[i].type);
-        warmed.push(tasks[i].type);
+      const warmed: string[] = [];
+      const failed: string[] = [];
+      const results = await Promise.allSettled(tasks.map((t) => t.task));
+      for (let i = 0; i < results.length; i++) {
+        if (results[i].status === 'fulfilled') {
+          await this.recordWarmingRun(tasks[i].type);
+          warmed.push(tasks[i].type);
+        } else {
+          failed.push(tasks[i].type);
+        }
       }
+      return { warmed, skipped, failed };
+    } finally {
+      this.isWarming = false;
     }
-    return { warmed, skipped };
   }
 }
 

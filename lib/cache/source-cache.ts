@@ -349,15 +349,15 @@ export class SourceCache {
 
       await Promise.all([
         // Individual source data
-        this.cache.delete(`source:${sourceId}`).catch(() => {}),
+        this.cache.delete(`source:${sourceId}`),
         // Name reverse lookup (name may have changed)
         this.cache.invalidatePattern('source:name:*'),
         // All sources list
-        this.cache.delete('all-sources').catch(() => {}),
+        this.cache.delete('all-sources'),
         // All sources with stats
-        this.cache.delete('all-sources-with-stats').catch(() => {}),
+        this.cache.delete('all-sources-with-stats'),
         // Company sources main list
-        this.cache.delete('company-sources').catch(() => {}),
+        this.cache.delete('company-sources'),
         // Company sources sub-keys (group/tag filtered)
         this.cache.invalidatePattern('company-sources:*'),
         // Top sources (various limits)
