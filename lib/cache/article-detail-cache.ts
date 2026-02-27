@@ -1,4 +1,5 @@
 import { RedisCache } from './redis-cache';
+import { CACHE_TTL } from './constants';
 import { prisma } from '@/lib/database';
 import type { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
@@ -11,7 +12,7 @@ export class ArticleDetailCache {
 
   constructor() {
     this.cache = new RedisCache({
-      ttl: 1800, // 30分（詳細ページは長めにキャッシュ）
+      ttl: CACHE_TTL.LONG,
       namespace: '@techtrend/cache:article-detail',
     });
   }

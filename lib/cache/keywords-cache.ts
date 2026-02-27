@@ -1,4 +1,5 @@
 import { RedisCache } from './redis-cache';
+import { CACHE_TTL } from './constants';
 
 /**
  * キーワード分析専用のキャッシュクラス
@@ -7,8 +8,8 @@ import { RedisCache } from './redis-cache';
 export class KeywordsCache extends RedisCache {
   constructor() {
     super({
-      ttl: 1800, // 30分（デフォルト）
-      namespace: '@techtrend/cache:keywords' // trendsとは別の名前空間
+      ttl: CACHE_TTL.LONG,
+      namespace: '@techtrend/cache:keywords', // trendsとは別の名前空間
     });
   }
 

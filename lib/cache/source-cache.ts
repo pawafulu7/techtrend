@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/database';
 import { RedisCache } from './index';
+import { CACHE_TTL } from './constants';
 import { Source } from '@prisma/client';
 import logger from '@/lib/logger';
 import {
@@ -33,7 +34,7 @@ export class SourceCache {
 
   constructor() {
     this.cache = new RedisCache({
-      ttl: 3600, // 1時間
+      ttl: CACHE_TTL.VERY_LONG,
       namespace: '@techtrend/cache:sources',
     });
   }
@@ -337,11 +338,35 @@ export class SourceCache {
   }
 
   /**
-   * 特定のソースのキャッシュを無効化
-   * 内部的には全キャッシュを無効化する（パターン '*' で全削除）
+   * 特定のソースのキャッシュをターゲット無効化
+   * 該当ソースの個別キー、名前逆引き、集約キー、企業ソース関連キャッシュを削除する。
+   * 無関係なキャッシュは保持される。エラー時は全キャッシュ無効化にフォールバック。
    */
-  async invalidateSource(_sourceId: string): Promise<void> {
-    await this.invalidate();
+  async invalidateSource(sourceId: string): Promise<void> {
+    try {
+      // Clear in-memory name cache (CRITICAL - must not forget this)
+      this.clearNameCache();
+
+      await Promise.all([
+        // Individual source data
+        this.cache.delete(`source:${sourceId}`),
+        // Name reverse lookup (name may have changed)
+        this.cache.invalidatePattern('source:name:*'),
+        // All sources list
+        this.cache.delete('all-sources'),
+        // All sources with stats
+        this.cache.delete('all-sources-with-stats'),
+        // Company sources main list
+        this.cache.delete('company-sources'),
+        // Company sources sub-keys (group/tag filtered)
+        this.cache.invalidatePattern('company-sources:*'),
+        // Top sources (various limits)
+        this.cache.invalidatePattern('top-sources:*'),
+      ]);
+    } catch (_error) {
+      // Fallback to full invalidation on any error
+      await this.invalidate();
+    }
   }
 
   /**
@@ -368,8 +393,8 @@ export class SourceCache {
         });
         return rows.map(toCompanySource);
       },
-      300
-    ); // 5分
+      CACHE_TTL.SHORT
+    );
   }
 
   /**
@@ -397,8 +422,8 @@ export class SourceCache {
         });
         return rows.map(toCompanySource);
       },
-      300
-    ); // 5分
+      CACHE_TTL.SHORT
+    );
   }
 
   /**
@@ -426,8 +451,8 @@ export class SourceCache {
         });
         return rows.map(toCompanySource);
       },
-      300
-    ); // 5分
+      CACHE_TTL.SHORT
+    );
   }
 }
 

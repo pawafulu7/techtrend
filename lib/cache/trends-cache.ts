@@ -1,4 +1,5 @@
 import { RedisCache } from './redis-cache';
+import { CACHE_TTL } from './constants';
 import crypto from 'crypto';
 
 /**
@@ -8,8 +9,8 @@ import crypto from 'crypto';
 export class TrendsCache extends RedisCache {
   constructor() {
     super({
-      ttl: 1800, // 30分（デフォルト）
-      namespace: '@techtrend/cache:trends'
+      ttl: CACHE_TTL.LONG,
+      namespace: '@techtrend/cache:trends',
     });
   }
 
@@ -32,11 +33,14 @@ export class TrendsCache extends RedisCache {
   generateHashKey(query: Record<string, unknown>): string {
     const sortedQuery = Object.keys(query)
       .sort()
-      .reduce((acc, key) => {
-        acc[key] = query[key];
-        return acc;
-      }, {} as Record<string, unknown>);
-    
+      .reduce(
+        (acc, key) => {
+          acc[key] = query[key];
+          return acc;
+        },
+        {} as Record<string, unknown>
+      );
+
     const queryString = JSON.stringify(sortedQuery);
     const hash = crypto.createHash('sha256').update(queryString).digest('hex');
     return `query:${hash.substring(0, 16)}`;

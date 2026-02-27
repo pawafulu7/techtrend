@@ -1,5 +1,5 @@
 import { RedisCache } from './index';
-import { CACHE_NAMESPACE_PREFIX } from './constants';
+import { CACHE_NAMESPACE_PREFIX, CACHE_TTL } from './constants';
 import logger from '@/lib/logger';
 
 /**
@@ -12,7 +12,7 @@ export class FavoritesCache {
   constructor() {
     // TTL: 5分（ユーザーアクションによる即座の無効化）
     this.cache = new RedisCache({
-      ttl: 300, // 5分
+      ttl: CACHE_TTL.SHORT,
       namespace: `${CACHE_NAMESPACE_PREFIX}:favorites`,
     });
   }

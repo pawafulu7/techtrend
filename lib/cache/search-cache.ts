@@ -1,4 +1,5 @@
 import { RedisCache } from './redis-cache';
+import { CACHE_TTL } from './constants';
 import * as crypto from 'crypto';
 
 /**
@@ -8,8 +9,8 @@ import * as crypto from 'crypto';
 export class SearchCache extends RedisCache {
   constructor() {
     super({
-      ttl: 600, // 10分（デフォルト）
-      namespace: '@techtrend/cache:search'
+      ttl: CACHE_TTL.MEDIUM,
+      namespace: '@techtrend/cache:search',
     });
   }
 
@@ -32,22 +33,29 @@ export class SearchCache extends RedisCache {
     // クエリパラメータをソートして一貫性のあるキーを生成
     const sortedQuery = Object.keys(query)
       .sort()
-      .reduce((acc, key) => {
-        if (query[key] !== undefined && query[key] !== null && query[key] !== '') {
-          acc[key] = query[key];
-        }
-        return acc;
-      }, {} as Record<string, unknown>);
-    
+      .reduce(
+        (acc, key) => {
+          if (
+            query[key] !== undefined &&
+            query[key] !== null &&
+            query[key] !== ''
+          ) {
+            acc[key] = query[key];
+          }
+          return acc;
+        },
+        {} as Record<string, unknown>
+      );
+
     // クエリが空の場合
     if (Object.keys(sortedQuery).length === 0) {
       return 'search:empty';
     }
-    
+
     // クエリ文字列をハッシュ化
     const queryString = JSON.stringify(sortedQuery);
     const hash = crypto.createHash('sha256').update(queryString).digest('hex');
-    
+
     // 可読性のためクエリ文字列の一部を含める（最初の20文字）
     const queryPreview = query.q ? query.q.substring(0, 20) : 'no-query';
     return `search:${queryPreview}:${hash.substring(0, 16)}`;
@@ -70,15 +78,19 @@ export class SearchCache extends RedisCache {
    */
   getSearchStats() {
     const baseStats = this.getStats();
-    const hitRate = baseStats.hits + baseStats.misses > 0
-      ? (baseStats.hits / (baseStats.hits + baseStats.misses) * 100).toFixed(2)
-      : 0;
-    
+    const hitRate =
+      baseStats.hits + baseStats.misses > 0
+        ? (
+            (baseStats.hits / (baseStats.hits + baseStats.misses)) *
+            100
+          ).toFixed(2)
+        : 0;
+
     return {
       ...baseStats,
       hitRate: `${hitRate}%`,
       avgCacheTTL: this.defaultTTL,
-      namespace: '@techtrend/cache:search'
+      namespace: '@techtrend/cache:search',
     };
   }
 }

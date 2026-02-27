@@ -3,8 +3,8 @@ import { trendsCache } from './trends-cache';
 import { searchCache } from './search-cache';
 import { keywordsCache } from './keywords-cache';
 import { prisma } from '@/lib/database';
-import { distributedLock } from './distributed-lock';
 import { logger } from '@/lib/logger';
+import { getRedisClient } from '@/lib/redis/client';
 import type { Prisma } from '@prisma/client';
 import pLimit from 'p-limit';
 
@@ -14,8 +14,8 @@ import pLimit from 'p-limit';
  */
 export class CacheWarmer {
   private isWarming = false;
-  private warmingInterval: NodeJS.Timeout | null = null;
-  private readonly warmingLockTTL = 300; // 5分
+  private redis = getRedisClient();
+  private static readonly LAST_RUN_PREFIX = 'cache-warmer:lastRun:';
 
   /**
    * ウォーミング設定
@@ -58,97 +58,57 @@ export class CacheWarmer {
   };
 
   /**
-   * 起動時の初期ウォーミング
-   */
-  async warmOnStartup(): Promise<void> {
-    // 分散ロックを取得（他のインスタンスと競合しない）
-    const lockToken = await distributedLock.acquire(
-      'cache:warming:startup',
-      this.warmingLockTTL
-    );
-    if (!lockToken) {
-      return;
-    }
-
-    try {
-      this.isWarming = true;
-
-      // 並列ウォーミング（4つのタスクを同時実行、部分失敗を許容）
-      const results = await Promise.allSettled([
-        this.warmStats(),
-        this.warmTrends(),
-        this.warmKeywords(),
-        this.warmSearchQueries(),
-      ]);
-
-      // 失敗したタスクをログ出力
-      const taskNames = ['stats', 'trends', 'keywords', 'search'];
-      results.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          logger.error(
-            { error: result.reason },
-            `[CacheWarmer] ${taskNames[index]} warming failed`
-          );
-        }
-      });
-    } finally {
-      this.isWarming = false;
-      await distributedLock.release('cache:warming:startup', lockToken);
-    }
-  }
-
-  /**
-   * 定期的なウォーミングを開始
+   * 定期的なウォーミングを開始（非推奨）
+   * @deprecated 外部cron（GHAスケジューラ）を使用してください
    */
   startPeriodicWarming(): void {
-    if (this.warmingInterval) {
-      return;
-    }
-
-    // 最小間隔で実行（10分）
-    const minInterval = 600000;
-    this.warmingInterval = setInterval(async () => {
-      await this.performPeriodicWarming();
-    }, minInterval);
+    logger.warn(
+      '[CacheWarmer] startPeriodicWarming is deprecated. Use external cron (GHA scheduler) instead.'
+    );
   }
 
   /**
-   * 定期的なウォーミングを停止
+   * 定期的なウォーミングを停止（非推奨）
+   * @deprecated 外部cron（GHAスケジューラ）を使用してください
    */
   stopPeriodicWarming(): void {
-    if (this.warmingInterval) {
-      clearInterval(this.warmingInterval);
-      this.warmingInterval = null;
-    }
+    logger.warn(
+      '[CacheWarmer] stopPeriodicWarming is deprecated. Use external cron (GHA scheduler) instead.'
+    );
   }
 
   /**
    * 定期ウォーミング実行
    */
   private async performPeriodicWarming(): Promise<void> {
-    const now = Date.now();
+    this.isWarming = true;
+    try {
+      const tasks: { type: string; task: Promise<void> }[] = [];
 
-    // 各設定をチェックして必要なものだけ実行
-    const tasks: Promise<void>[] = [];
+      if (await this.shouldWarmAndLock('stats', Date.now())) {
+        tasks.push({ type: 'stats', task: this.warmStats() });
+      }
+      if (await this.shouldWarmAndLock('trends', Date.now())) {
+        tasks.push({ type: 'trends', task: this.warmTrends() });
+      }
+      if (await this.shouldWarmAndLock('keywords', Date.now())) {
+        tasks.push({ type: 'keywords', task: this.warmKeywords() });
+      }
+      if (await this.shouldWarmAndLock('search', Date.now())) {
+        tasks.push({ type: 'search', task: this.warmSearchQueries() });
+      }
 
-    if (this.shouldWarm('stats', now)) {
-      tasks.push(this.warmStats());
-    }
-
-    if (this.shouldWarm('trends', now)) {
-      tasks.push(this.warmTrends());
-    }
-
-    if (this.shouldWarm('keywords', now)) {
-      tasks.push(this.warmKeywords());
-    }
-
-    if (this.shouldWarm('search', now)) {
-      tasks.push(this.warmSearchQueries());
-    }
-
-    if (tasks.length > 0) {
-      await Promise.allSettled(tasks);
+      if (tasks.length > 0) {
+        const results = await Promise.allSettled(tasks.map((t) => t.task));
+        // Record successful runs ONLY
+        for (let i = 0; i < results.length; i++) {
+          if (results[i].status === 'fulfilled') {
+            await this.recordWarmingRun(tasks[i].type);
+          }
+        }
+      }
+    } finally {
+      this.isWarming = false;
     }
   }
 
@@ -228,27 +188,53 @@ export class CacheWarmer {
   }
 
   /**
-   * ウォーミングが必要か判定
+   * ウォーミングが必要か判定し、必要なら実行権を原子的に取得（SET NX）
+   * @returns true = 実行権取得済み（warming必要かつロック確保）、false = 不要またはロック取得失敗
    */
-  private shouldWarm(type: string, now: number): boolean {
+  private async shouldWarmAndLock(type: string, now: number): Promise<boolean> {
     const config = this.warmingConfig[type as keyof typeof this.warmingConfig];
     if (!config || !config.enabled) {
       return false;
     }
 
-    // 最後の実行時刻を記録（簡易実装）
-    const lastRunKey = `lastWarm:${type}`;
-    const globalWithLastRun = global as typeof globalThis & {
-      [key: string]: number;
-    };
-    const lastRun = globalWithLastRun[lastRunKey] || 0;
-
-    if (now - lastRun >= config.interval) {
-      globalWithLastRun[lastRunKey] = now;
+    try {
+      const key = `${CacheWarmer.LAST_RUN_PREFIX}${type}`;
+      const lastRunStr = await this.redis.get(key);
+      const lastRun = lastRunStr ? parseInt(lastRunStr, 10) : 0;
+      if (now - lastRun < config.interval) {
+        return false;
+      }
+      // Atomic lock: SET NX with TTL prevents parallel pods from double-warming
+      const lockKey = `${CacheWarmer.LAST_RUN_PREFIX}${type}:lock`;
+      const lockTtl = Math.max(Math.ceil(config.interval / 1000), 60);
+      const acquired = await this.redis.set(
+        lockKey,
+        String(now),
+        'EX',
+        lockTtl,
+        'NX'
+      );
+      return acquired === 'OK';
+    } catch {
+      // On Redis error, allow warming (fail-open)
       return true;
     }
+  }
 
-    return false;
+  /**
+   * ウォーミング実行成功を記録
+   */
+  private async recordWarmingRun(type: string): Promise<void> {
+    try {
+      const key = `${CacheWarmer.LAST_RUN_PREFIX}${type}`;
+      // Store timestamp with TTL of 2x the interval (auto-cleanup)
+      const config =
+        this.warmingConfig[type as keyof typeof this.warmingConfig];
+      const ttl = config ? Math.ceil(config.interval / 1000) * 2 : 7200;
+      await this.redis.setex(key, ttl, String(Date.now()));
+    } catch {
+      // Non-critical - next check will just re-warm
+    }
   }
 
   /**
@@ -365,33 +351,58 @@ export class CacheWarmer {
   getStatus() {
     return {
       isWarming: this.isWarming,
-      periodicWarmingActive: this.warmingInterval !== null,
       config: this.warmingConfig,
     };
   }
 
   /**
    * 手動ウォーミング実行
+   * @param targets - 対象タイプ配列
+   * @param force - trueの場合、shouldWarmAndLockを無視して強制実行
+   * @returns 実行結果（warmed: 成功タイプ、skipped: スキップタイプ、failed: 失敗タイプ）
    */
-  async warmManual(targets?: string[]): Promise<void> {
-    const validTargets = targets || ['stats', 'trends', 'keywords', 'search'];
+  async warmManual(
+    targets?: string[],
+    force = false
+  ): Promise<{ warmed: string[]; skipped: string[]; failed: string[] }> {
+    this.isWarming = true;
+    try {
+      const validTargets = targets || ['stats', 'trends', 'keywords', 'search'];
+      const tasks: { type: string; task: Promise<void> }[] = [];
+      const skipped: string[] = [];
+      const now = Date.now();
 
-    const tasks: Promise<void>[] = [];
+      for (const target of validTargets) {
+        const shouldRun = force || (await this.shouldWarmAndLock(target, now));
+        if (shouldRun) {
+          if (target === 'stats')
+            tasks.push({ type: 'stats', task: this.warmStats() });
+          else if (target === 'trends')
+            tasks.push({ type: 'trends', task: this.warmTrends() });
+          else if (target === 'keywords')
+            tasks.push({ type: 'keywords', task: this.warmKeywords() });
+          else if (target === 'search')
+            tasks.push({ type: 'search', task: this.warmSearchQueries() });
+        } else {
+          skipped.push(target);
+        }
+      }
 
-    if (validTargets.includes('stats')) {
-      tasks.push(this.warmStats());
+      const warmed: string[] = [];
+      const failed: string[] = [];
+      const results = await Promise.allSettled(tasks.map((t) => t.task));
+      for (let i = 0; i < results.length; i++) {
+        if (results[i].status === 'fulfilled') {
+          await this.recordWarmingRun(tasks[i].type);
+          warmed.push(tasks[i].type);
+        } else {
+          failed.push(tasks[i].type);
+        }
+      }
+      return { warmed, skipped, failed };
+    } finally {
+      this.isWarming = false;
     }
-    if (validTargets.includes('trends')) {
-      tasks.push(this.warmTrends());
-    }
-    if (validTargets.includes('keywords')) {
-      tasks.push(this.warmKeywords());
-    }
-    if (validTargets.includes('search')) {
-      tasks.push(this.warmSearchQueries());
-    }
-
-    await Promise.allSettled(tasks);
   }
 }
 

@@ -33,7 +33,7 @@ jest.mock('@/lib/cache/memory-optimizer', () => ({
 jest.mock('@/lib/cache/cache-warmer', () => ({
   cacheWarmer: {
     getStatus: jest.fn().mockReturnValue({ isRunning: false }),
-    warmManual: jest.fn().mockResolvedValue(undefined),
+    warmManual: jest.fn().mockResolvedValue({ warmed: ['stats'], skipped: [], failed: [] }),
     startPeriodicWarming: jest.fn(),
     stopPeriodicWarming: jest.fn(),
   },
@@ -136,11 +136,19 @@ describe('/api/cache/optimize', () => {
     });
 
     it('should execute warm action without target', async () => {
+      const { cacheWarmer } = jest.requireMock('@/lib/cache/cache-warmer') as {
+        cacheWarmer: { warmManual: jest.Mock };
+      };
+      cacheWarmer.warmManual.mockResolvedValueOnce({
+        warmed: ['stats', 'trends', 'keywords', 'search'],
+        skipped: [],
+        failed: [],
+      });
       const request = createRequest('POST', { action: 'warm' });
       const response = await POST(request);
       expect(response.status).toBe(200);
       const data = await response.json();
-      expect(data.message).toContain('all');
+      expect(data.message).toContain('stats');
     });
 
     it('should return 400 for invalid warm target', async () => {
@@ -157,6 +165,37 @@ describe('/api/cache/optimize', () => {
       const request = createRequest('POST', { action: 'optimize' });
       const response = await POST(request);
       expect(response.status).toBe(500);
+    });
+
+    it('should execute warm action with force flag', async () => {
+      const { cacheWarmer } = jest.requireMock('@/lib/cache/cache-warmer') as {
+        cacheWarmer: { warmManual: jest.Mock };
+      };
+      cacheWarmer.warmManual.mockResolvedValueOnce({
+        warmed: ['stats'],
+        skipped: [],
+        failed: [],
+      });
+      const request = createRequest('POST', { action: 'warm', force: true });
+      const response = await POST(request);
+      expect(response.status).toBe(200);
+      expect(cacheWarmer.warmManual).toHaveBeenCalledWith(undefined, true);
+    });
+
+    it('should include failed targets in response', async () => {
+      const { cacheWarmer } = jest.requireMock('@/lib/cache/cache-warmer') as {
+        cacheWarmer: { warmManual: jest.Mock };
+      };
+      cacheWarmer.warmManual.mockResolvedValueOnce({
+        warmed: ['stats'],
+        skipped: [],
+        failed: ['trends'],
+      });
+      const request = createRequest('POST', { action: 'warm' });
+      const response = await POST(request);
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.failed).toContain('trends');
     });
   });
 });

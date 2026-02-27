@@ -37,6 +37,9 @@ export const CACHE_NAMESPACES = {
  * Cache TTL (Time To Live) constants in seconds
  */
 export const CACHE_TTL = {
+  /** Very short-lived cache for highly volatile data (1 minute) */
+  VERY_SHORT: 60,
+
   /** Short-lived cache for frequently changing data (5 minutes) */
   SHORT: 300,
 
@@ -54,12 +57,26 @@ export const CACHE_TTL = {
 } as const;
 
 /**
+ * Period-based cache durations for popular articles
+ * Centralized from popular-cache.ts
+ */
+export const POPULAR_CACHE_DURATION = {
+  daily: CACHE_TTL.MEDIUM, // 600s = 10min
+  weekly: CACHE_TTL.LONG, // 1800s = 30min
+  monthly: CACHE_TTL.VERY_LONG, // 3600s = 1h
+  yearly: CACHE_TTL.SESSION, // 86400s = 24h
+} as const;
+
+/**
  * Helper function to create cache key patterns
  * @param namespace - The cache namespace
  * @param pattern - The pattern to append (optional)
  * @returns Formatted cache key pattern
  */
-export function createCachePattern(namespace: string, pattern: string = '*'): string {
+export function createCachePattern(
+  namespace: string,
+  pattern: string = '*'
+): string {
   return `${namespace}:${pattern}`;
 }
 

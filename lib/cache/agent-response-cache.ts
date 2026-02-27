@@ -1,5 +1,5 @@
-import { getRedisClient } from '@/lib/redis-di';
-import { logger } from '@/lib/logger';
+import { RedisCache } from './index';
+import { CACHE_TTL } from './constants';
 
 /**
  * Agent Response Cache
@@ -9,15 +9,19 @@ import { logger } from '@/lib/logger';
  *
  * Features:
  * - Query normalization (case-insensitive, whitespace, punctuation)
- * - Graceful degradation (continues without caching if Redis unavailable)
- * - Structured logging
+ * - Graceful degradation (inherited from RedisCache)
+ * - Standardized namespace management and stats tracking
  *
  * @see CodexMCP Review: "Two-level caching strategy"
  * @see Plan: plan_20251019_141946_039_rag-agent-fuzzy-search.md:409-469
  */
-export class AgentResponseCache {
-  private readonly prefix = 'agent:response:';
-  private readonly ttl = 60; // 60 seconds (short-lived)
+export class AgentResponseCache extends RedisCache {
+  constructor() {
+    super({
+      ttl: CACHE_TTL.VERY_SHORT, // 60s
+      namespace: '@techtrend/cache:rag-agent',
+    });
+  }
 
   /**
    * Get cached response for a query
@@ -25,39 +29,9 @@ export class AgentResponseCache {
    * @param query - User query
    * @returns Cached response or null if not found/error
    */
-  async get(query: string): Promise<string | null> {
-    try {
-      const redis = await getRedisClient();
-      if (!redis) {
-        logger.debug('Redis not available, cache disabled');
-        return null;
-      }
-
-      const key = this.getCacheKey(query);
-      const cached = await redis.get(key);
-
-      if (cached) {
-        logger.debug(
-          {
-            query: query.substring(0, 50),
-            hit: true,
-            cacheKey: key,
-          },
-          'Agent response cache hit'
-        );
-      }
-
-      return cached;
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          query: query.substring(0, 50),
-        },
-        'Agent cache get failed'
-      );
-      return null; // Fail gracefully (continue without caching)
-    }
+  async getResponse(query: string): Promise<string | null> {
+    const key = this.generateAgentKey(query);
+    return super.get<string>(key);
   }
 
   /**
@@ -66,36 +40,9 @@ export class AgentResponseCache {
    * @param query - User query
    * @param response - Agent response text
    */
-  async set(query: string, response: string): Promise<void> {
-    try {
-      const redis = await getRedisClient();
-      if (!redis) {
-        logger.debug('Redis not available, skipping cache set');
-        return;
-      }
-
-      const key = this.getCacheKey(query);
-      await redis.setex(key, this.ttl, response);
-
-      logger.debug(
-        {
-          query: query.substring(0, 50),
-          responseLength: response.length,
-          ttl: this.ttl,
-          cacheKey: key,
-        },
-        'Agent response cached'
-      );
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          query: query.substring(0, 50),
-        },
-        'Agent cache set failed'
-      );
-      // Continue without caching (non-critical error)
-    }
+  async setResponse(query: string, response: string): Promise<void> {
+    const key = this.generateAgentKey(query);
+    await super.set(key, response);
   }
 
   /**
@@ -103,35 +50,20 @@ export class AgentResponseCache {
    *
    * @param query - User query
    */
-  async invalidate(query: string): Promise<void> {
+  async invalidateResponse(query: string): Promise<void> {
+    const key = this.generateAgentKey(query);
     try {
-      const redis = await getRedisClient();
-      if (!redis) return;
-
-      const key = this.getCacheKey(query);
-      await redis.del(key);
-
-      logger.debug({ query: query.substring(0, 50) }, 'Agent cache invalidated');
-    } catch (error) {
-      logger.error(
-        {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          query: query.substring(0, 50),
-        },
-        'Agent cache invalidation failed'
-      );
+      await super.delete(key);
+    } catch {
+      // Graceful degradation - continue without error
     }
   }
 
   /**
-   * Get cache key for a query
-   *
-   * @param query - User query
-   * @returns Normalized cache key
+   * Generate cache key with query normalization
    */
-  private getCacheKey(query: string): string {
-    const normalized = this.normalizeQuery(query);
-    return `${this.prefix}${normalized}`;
+  private generateAgentKey(query: string): string {
+    return this.normalizeQuery(query);
   }
 
   /**
@@ -141,7 +73,7 @@ export class AgentResponseCache {
    * - Lowercase (case-insensitive matching)
    * - Trim whitespace
    * - Collapse multiple spaces to single space
-   * - Remove punctuation (!?。、；：etc.)
+   * - Remove punctuation (!?。、；：etc. including .)
    *
    * @param query - Raw query
    * @returns Normalized query
@@ -156,7 +88,7 @@ export class AgentResponseCache {
     return query
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, ' ')                    // Collapse whitespace
-      .replace(/[!?。、；：！？、.]/g, '');    // Remove punctuation (including .)
+      .replace(/\s+/g, ' ') // Collapse whitespace
+      .replace(/[!?。、；：！？、.]/g, ''); // Remove punctuation (including .)
   }
 }

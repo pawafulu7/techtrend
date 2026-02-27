@@ -55,9 +55,16 @@ export const POST = withCronOrAdminAuth(async (request: NextRequest) => {
           );
         }
         const targets = target ? [target] : undefined;
-        await cacheWarmer.warmManual(targets);
+        const force = body.force === true;
+        const warmResult = await cacheWarmer.warmManual(targets, force);
         result = {
-          message: `Cache warming completed for: ${targets?.join(', ') || 'all'}`,
+          message:
+            warmResult.warmed.length > 0
+              ? `Cache warming completed for: ${warmResult.warmed.join(', ')}`
+              : `No targets needed warming (skipped: ${warmResult.skipped.join(', ')}). Use force:true to override.`,
+          warmed: warmResult.warmed,
+          skipped: warmResult.skipped,
+          failed: warmResult.failed,
           status: cacheWarmer.getStatus(),
         };
         break;
@@ -76,15 +83,15 @@ export const POST = withCronOrAdminAuth(async (request: NextRequest) => {
         break;
 
       case 'start-warming':
-        // 定期ウォーミング開始
-        cacheWarmer.startPeriodicWarming();
-        result = { message: 'Periodic cache warming started' };
+        result = {
+          message: 'Periodic warming is deprecated, use external cron',
+        };
         break;
 
       case 'stop-warming':
-        // 定期ウォーミング停止
-        cacheWarmer.stopPeriodicWarming();
-        result = { message: 'Periodic cache warming stopped' };
+        result = {
+          message: 'Periodic warming is deprecated, use external cron',
+        };
         break;
 
       default:
