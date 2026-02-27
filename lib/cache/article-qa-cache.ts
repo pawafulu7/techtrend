@@ -16,6 +16,7 @@
 import { getRedisClient } from '@/lib/redis-di';
 import { logger } from '@/lib/logger';
 import { countTokens } from '@/lib/utils/chunking';
+import { CACHE_TTL } from './constants';
 
 /**
  * Article QA Cache
@@ -25,7 +26,7 @@ import { countTokens } from '@/lib/utils/chunking';
  */
 export class ArticleQACache {
   private readonly prefix = 'article-qa:';
-  private readonly ttl = 300; // 5 minutes
+  private readonly ttl = CACHE_TTL.SHORT;
   private readonly maxTokensPerEntry = 10000; // CodexMCP recommendation
 
   /**
@@ -207,7 +208,13 @@ export class ArticleQACache {
       const keysToDelete: string[] = [];
 
       do {
-        const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+        const [nextCursor, keys] = await redis.scan(
+          cursor,
+          'MATCH',
+          pattern,
+          'COUNT',
+          100
+        );
         cursor = nextCursor;
         if (keys.length > 0) {
           keysToDelete.push(...keys);

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/database';
 import { RedisCache } from './index';
+import { CACHE_TTL } from './constants';
 import { Tag } from '@prisma/client';
 import type { TagWithCount } from '@/types/models';
 
@@ -8,7 +9,7 @@ export class TagCache {
 
   constructor() {
     this.cache = new RedisCache({
-      ttl: 3600, // 1時間
+      ttl: CACHE_TTL.VERY_LONG,
       namespace: '@techtrend/cache:tags',
     });
   }

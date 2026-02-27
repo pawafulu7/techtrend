@@ -1,5 +1,6 @@
 import { getRedisClient } from '@/lib/redis-di';
 import { logger } from '@/lib/logger';
+import { CACHE_TTL } from './constants';
 
 /**
  * Agent Response Cache
@@ -17,7 +18,7 @@ import { logger } from '@/lib/logger';
  */
 export class AgentResponseCache {
   private readonly prefix = 'agent:response:';
-  private readonly ttl = 60; // 60 seconds (short-lived)
+  private readonly ttl = CACHE_TTL.VERY_SHORT;
 
   /**
    * Get cached response for a query
@@ -111,7 +112,10 @@ export class AgentResponseCache {
       const key = this.getCacheKey(query);
       await redis.del(key);
 
-      logger.debug({ query: query.substring(0, 50) }, 'Agent cache invalidated');
+      logger.debug(
+        { query: query.substring(0, 50) },
+        'Agent cache invalidated'
+      );
     } catch (error) {
       logger.error(
         {
@@ -156,7 +160,7 @@ export class AgentResponseCache {
     return query
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, ' ')                    // Collapse whitespace
-      .replace(/[!?。、；：！？、.]/g, '');    // Remove punctuation (including .)
+      .replace(/\s+/g, ' ') // Collapse whitespace
+      .replace(/[!?。、；：！？、.]/g, ''); // Remove punctuation (including .)
   }
 }

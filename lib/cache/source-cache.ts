@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/database';
 import { RedisCache } from './index';
+import { CACHE_TTL } from './constants';
 import { Source } from '@prisma/client';
 import logger from '@/lib/logger';
 import {
@@ -33,7 +34,7 @@ export class SourceCache {
 
   constructor() {
     this.cache = new RedisCache({
-      ttl: 3600, // 1時間
+      ttl: CACHE_TTL.VERY_LONG,
       namespace: '@techtrend/cache:sources',
     });
   }
@@ -368,8 +369,8 @@ export class SourceCache {
         });
         return rows.map(toCompanySource);
       },
-      300
-    ); // 5分
+      CACHE_TTL.SHORT
+    );
   }
 
   /**
@@ -397,8 +398,8 @@ export class SourceCache {
         });
         return rows.map(toCompanySource);
       },
-      300
-    ); // 5分
+      CACHE_TTL.SHORT
+    );
   }
 
   /**
@@ -426,8 +427,8 @@ export class SourceCache {
         });
         return rows.map(toCompanySource);
       },
-      300
-    ); // 5分
+      CACHE_TTL.SHORT
+    );
   }
 }
 

@@ -9,6 +9,7 @@
  */
 
 import { RedisCache } from './index';
+import { CACHE_TTL } from './constants';
 import logger from '@/lib/logger';
 import type { PaginatedComments } from '@/lib/comments/comment-service';
 
@@ -31,7 +32,7 @@ export class CommentsCache {
   constructor() {
     // TTL: 60 seconds (private comments update frequently)
     this.cache = new RedisCache({
-      ttl: 60,
+      ttl: CACHE_TTL.VERY_SHORT,
       namespace: '@techtrend/cache:comments',
     });
   }
@@ -51,17 +52,11 @@ export class CommentsCache {
       const cached = await this.cache.get<PaginatedComments>(cacheKey);
 
       if (cached) {
-        logger.debug(
-          { articleId, userId, hit: true },
-          'Comments cache hit'
-        );
+        logger.debug({ articleId, userId, hit: true }, 'Comments cache hit');
         return cached;
       }
 
-      logger.debug(
-        { articleId, userId, hit: false },
-        'Comments cache miss'
-      );
+      logger.debug({ articleId, userId, hit: false }, 'Comments cache miss');
       return null;
     } catch (error) {
       logger.error(
@@ -91,10 +86,7 @@ export class CommentsCache {
         'Comments cached'
       );
     } catch (error) {
-      logger.error(
-        { error, articleId, userId },
-        'Failed to cache comments'
-      );
+      logger.error({ error, articleId, userId }, 'Failed to cache comments');
     }
   }
 
@@ -108,10 +100,7 @@ export class CommentsCache {
 
     try {
       await this.cache.invalidatePattern(pattern);
-      logger.debug(
-        { articleId, userId },
-        'Comments cache invalidated'
-      );
+      logger.debug({ articleId, userId }, 'Comments cache invalidated');
     } catch (error) {
       logger.error(
         { error, articleId, userId },

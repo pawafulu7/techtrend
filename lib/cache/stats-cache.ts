@@ -1,4 +1,5 @@
 import { RedisCache } from './redis-cache';
+import { CACHE_TTL } from './constants';
 
 /**
  * 統計情報専用のキャッシュクラス
@@ -7,8 +8,8 @@ import { RedisCache } from './redis-cache';
 export class StatsCache extends RedisCache {
   constructor() {
     super({
-      ttl: 3600, // 1時間（デフォルト）
-      namespace: '@techtrend/cache:stats'
+      ttl: CACHE_TTL.VERY_LONG,
+      namespace: '@techtrend/cache:stats',
     });
   }
 
