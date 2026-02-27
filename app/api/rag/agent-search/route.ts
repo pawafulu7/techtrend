@@ -176,12 +176,16 @@ function getPreferredLanguage(
       .map((part) => {
         const [codePart, ...params] = part.trim().split(';');
         const qParam = params.find((p) => p.trim().startsWith('q='));
-        const q = qParam ? Number.parseFloat(qParam.split('=')[1] ?? '1') : 1;
+        const rawQ = qParam
+          ? Number.parseFloat(qParam.split('=')[1] ?? '1')
+          : 1;
+        const q = Number.isFinite(rawQ) ? Math.min(1, Math.max(0, rawQ)) : 0;
         return {
           code: codePart.toLowerCase(),
-          q: Number.isFinite(q) ? q : 0,
+          q,
         };
       })
+      .filter(({ q }) => q > 0)
       .sort((a, b) => b.q - a.q);
 
     // Check if Japanese is preferred
@@ -844,9 +848,27 @@ async function createStreamingResponse(
             }
 
             if (!fullText.trim()) {
-              // Fallback: Vector search across all articles (both article-search and article-qa modes)
-              // Note: QA mode fallback is NOT restricted to the target article
-              // This provides broader results when agent fails to respond
+              if (modeContext.isArticleQa) {
+                // Article QA: do NOT search all articles - return scoped empty response
+                const noAnswerText =
+                  modeContext.preferredLang === 'ja'
+                    ? 'この記事の内容からは回答を生成できませんでした。'
+                    : 'Could not generate an answer from this article.';
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ type: 'text', content: noAnswerText })}\n\n`
+                  )
+                );
+                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                controller.close();
+
+                streamSpan.setAttribute('streaming.fallbackEmptyText', true);
+                streamSpan.setAttribute('streaming.articleQaNoAnswer', true);
+                streamSpan.end();
+                return;
+              }
+
+              // Fallback: Vector search across all articles (article-search mode only)
               try {
                 const searchService = new VectorSearchService(prisma);
                 const fallbackResults = await searchService.search(
@@ -1261,22 +1283,32 @@ async function handleBatchRequest(
       'Agent failed, using fallback'
     );
 
-    // Fallback: Vector search across all articles (both article-search and article-qa modes)
-    // Note: QA mode fallback is NOT restricted to the target article
-    // This provides broader results when agent fails to respond
-    const searchService = new VectorSearchService(prisma);
-    const fallbackResults = await searchService.search(validatedRequest.query, {
-      topK: 10,
-    });
+    if (modeContext.isArticleQa) {
+      // Article QA: do NOT search all articles - return scoped empty response
+      agentResponse =
+        modeContext.preferredLang === 'ja'
+          ? 'この記事の内容からは回答を生成できませんでした。'
+          : 'Could not generate an answer from this article.';
+      span.setAttribute('fallback.articleQaNoAnswer', true);
+    } else {
+      // Fallback: Vector search across all articles (article-search mode only)
+      const searchService = new VectorSearchService(prisma);
+      const fallbackResults = await searchService.search(
+        validatedRequest.query,
+        {
+          topK: 10,
+        }
+      );
 
-    agentResponse = formatResultsAsText(
-      fallbackResults,
-      modeContext.preferredLang
-    );
+      agentResponse = formatResultsAsText(
+        fallbackResults,
+        modeContext.preferredLang
+      );
+      span.setAttribute('fallback.resultCount', fallbackResults.length);
+    }
     fallback = true;
 
     span.setAttribute('fallback.used', true);
-    span.setAttribute('fallback.resultCount', fallbackResults.length);
   }
 
   // Cache successful responses
