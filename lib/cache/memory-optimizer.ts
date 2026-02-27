@@ -238,7 +238,7 @@ export class MemoryOptimizer {
   /**
    * TTLをベースラインに向けて段階的に回復
    */
-  private async restoreTTLs(): Promise<void> {
+  private restoreTTLs(): void {
     for (const [name, baseline] of this.ttlBaselines) {
       let cache: { getDefaultTTL(): number; setDefaultTTL(n: number): void };
       if (name === 'stats') cache = statsCache;
@@ -322,7 +322,7 @@ export class MemoryOptimizer {
           'MATCH',
           this.ns('*'),
           'COUNT',
-          String(Math.min(200, Math.max(50, count - deletedCount)))
+          Math.min(200, Math.max(50, count - deletedCount))
         );
         cursor = result[0];
         const keys = result[1];

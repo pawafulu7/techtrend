@@ -963,50 +963,67 @@ async function createStreamingResponse(
           'Agent streaming failed, using fallback'
         );
 
-        const searchService = new VectorSearchService(prisma);
-        const fallbackResults = await searchService.search(
-          validatedRequest.query,
-          {
-            topK: 10,
-          }
-        );
+        try {
+          const searchService = new VectorSearchService(prisma);
+          const fallbackResults = await searchService.search(
+            validatedRequest.query,
+            {
+              topK: 10,
+            }
+          );
 
-        const fallbackText = formatResultsAsText(
-          fallbackResults,
-          modeContext.preferredLang
-        );
+          const fallbackText = formatResultsAsText(
+            fallbackResults,
+            modeContext.preferredLang
+          );
 
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({
-              type: 'fallback',
-              text: fallbackText,
-              resultCount: fallbackResults.length,
-            })}\n\n`
-          )
-        );
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: 'fallback',
+                text: fallbackText,
+                resultCount: fallbackResults.length,
+              })}\n\n`
+            )
+          );
 
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({
-              type: 'finish',
-              text: fallbackText,
-              usage: { totalTokens: 0 },
-              toolCalls: [],
-              cached: false,
-              fallback: true,
-            })}\n\n`
-          )
-        );
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: 'finish',
+                text: fallbackText,
+                usage: { totalTokens: 0 },
+                toolCalls: [],
+                cached: false,
+                fallback: true,
+              })}\n\n`
+            )
+          );
 
-        controller.close();
+          controller.close();
 
-        streamSpan.setAttribute('streaming.fallback', true);
-        streamSpan.setAttribute(
-          'streaming.fallbackResultCount',
-          fallbackResults.length
-        );
-        streamSpan.end();
+          streamSpan.setAttribute('streaming.fallback', true);
+          streamSpan.setAttribute(
+            'streaming.fallbackResultCount',
+            fallbackResults.length
+          );
+        } catch (fallbackError) {
+          streamSpan.setAttribute('streaming.fallbackFailed', true);
+          streamSpan.recordException(fallbackError as Error);
+
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: 'error',
+                message: 'Failed to generate response',
+              })}\n\n`
+            )
+          );
+
+          controller.close();
+        } finally {
+          streamSpan.end();
+        }
       }
     },
     cancel() {
@@ -1391,9 +1408,7 @@ export async function POST(request: NextRequest) {
           ? articleQaRateLimit
           : ragAgentSearchRateLimit;
       const rateKey = `rag:agent:${agentType}:${session.user.id}`;
-      let rateLimitInfo:
-        | { limit: number; remaining: number; reset: Date }
-        | undefined;
+      let rateLimitInfo: RateLimitInfo | undefined;
 
       try {
         rateLimitInfo = await checkRateLimit(rateKey, rateLimit);
