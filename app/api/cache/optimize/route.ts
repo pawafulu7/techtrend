@@ -76,15 +76,17 @@ export const POST = withCronOrAdminAuth(async (request: NextRequest) => {
         break;
 
       case 'start-warming':
-        // 定期ウォーミング開始
         cacheWarmer.startPeriodicWarming();
-        result = { message: 'Periodic cache warming started' };
+        result = {
+          message: 'Periodic warming is deprecated, use external cron',
+        };
         break;
 
       case 'stop-warming':
-        // 定期ウォーミング停止
         cacheWarmer.stopPeriodicWarming();
-        result = { message: 'Periodic cache warming stopped' };
+        result = {
+          message: 'Periodic warming is deprecated, use external cron',
+        };
         break;
 
       default:
