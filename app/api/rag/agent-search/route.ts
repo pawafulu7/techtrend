@@ -696,7 +696,9 @@ async function handleStreamingRequest(
         qaContext.updatedAt
       );
     } else {
-      cachedResponse = await agentCache!.getResponse(validatedRequest.query);
+      cachedResponse = await agentCache!.getResponse(
+        `${modeContext.preferredLang}:${validatedRequest.query}`
+      );
     }
   } catch (cacheError) {
     logger.warn(
@@ -942,6 +944,8 @@ async function createStreamingResponse(
                 streamSpan.end();
                 return;
               } catch (fallbackError) {
+                streamSpan.setAttribute('streaming.fallbackFailed', true);
+                streamSpan.recordException(fallbackError as Error);
                 logger.error(
                   {
                     error: sanitizeError(fallbackError),
@@ -949,7 +953,17 @@ async function createStreamingResponse(
                   },
                   'Fallback failed for empty text'
                 );
-                throw fallbackError;
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      type: 'error',
+                      message: 'Failed to generate response',
+                    })}\n\n`
+                  )
+                );
+                controller.close();
+                streamSpan.end();
+                return;
               }
             }
 
@@ -964,7 +978,7 @@ async function createStreamingResponse(
                 );
               } else {
                 await responseCache!.setResponse(
-                  validatedRequest.query,
+                  `${modeContext.preferredLang}:${validatedRequest.query}`,
                   fullText
                 );
               }
@@ -1208,7 +1222,9 @@ async function handleBatchRequest(
         qaContext!.updatedAt
       );
     } else {
-      cachedResponse = await responseCache!.getResponse(validatedRequest.query);
+      cachedResponse = await responseCache!.getResponse(
+        `${modeContext.preferredLang}:${validatedRequest.query}`
+      );
     }
   } catch (cacheError) {
     logger.warn(
@@ -1387,7 +1403,10 @@ async function handleBatchRequest(
           agentResponse
         );
       } else {
-        await responseCache!.setResponse(validatedRequest.query, agentResponse);
+        await responseCache!.setResponse(
+          `${modeContext.preferredLang}:${validatedRequest.query}`,
+          agentResponse
+        );
       }
     }
   } catch (cacheError) {
