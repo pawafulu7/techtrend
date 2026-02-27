@@ -748,7 +748,8 @@ async function handleStreamingRequest(
     parentSpan,
     request,
     modeContext,
-    rateLimitInfo
+    rateLimitInfo,
+    { responseCache: agentCache, articleQaCache }
   );
 }
 
@@ -763,15 +764,19 @@ async function createStreamingResponse(
   parentSpan: Span,
   _request: NextRequest,
   modeContext: ModeContext,
-  rateLimitInfo?: RateLimitInfo
+  rateLimitInfo?: RateLimitInfo,
+  caches?: {
+    responseCache?: AgentResponseCache;
+    articleQaCache?: _ArticleQACache;
+  }
 ): Promise<Response> {
   const encoder = new TextEncoder();
-  const responseCache = modeContext.isArticleQa
-    ? undefined
-    : new AgentResponseCache();
-  const articleQaCache = modeContext.isArticleQa
-    ? new _ArticleQACache()
-    : undefined;
+  const responseCache =
+    caches?.responseCache ??
+    (modeContext.isArticleQa ? undefined : new AgentResponseCache());
+  const articleQaCache =
+    caches?.articleQaCache ??
+    (modeContext.isArticleQa ? new _ArticleQACache() : undefined);
   const streamSpan = tracer.startSpan(
     'rag.agent-search.stream',
     {},
