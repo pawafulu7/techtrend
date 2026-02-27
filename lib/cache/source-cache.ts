@@ -363,7 +363,7 @@ export class SourceCache {
         // Top sources (various limits)
         this.cache.invalidatePattern('top-sources:*'),
       ]);
-    } catch (error) {
+    } catch (_error) {
       // Fallback to full invalidation on any error
       await this.invalidate();
     }

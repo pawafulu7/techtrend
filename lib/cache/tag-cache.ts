@@ -112,7 +112,7 @@ export class TagCache {
         // Search results (may contain this tag)
         this.cache.invalidatePattern('search:*'),
       ]);
-    } catch (error) {
+    } catch (_error) {
       // Fallback to full invalidation on any error
       await this.invalidate();
     }
