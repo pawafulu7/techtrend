@@ -60,12 +60,13 @@ jest.mock('@/lib/cache/search-cache', () => ({
 // Factory function runs in jest.mock scope where jest.fn() is available
 jest.mock('../../../lib/redis/client', () => {
   const mockGet = jest.fn().mockResolvedValue(null);
+  const mockSet = jest.fn().mockResolvedValue('OK');
   const mockSetex = jest.fn().mockResolvedValue('OK');
   return {
     __esModule: true,
     getRedisClient: () => ({
       get: mockGet,
-      set: jest.fn().mockResolvedValue('OK'),
+      set: mockSet,
       setex: mockSetex,
       del: jest.fn().mockResolvedValue(1),
       exists: jest.fn().mockResolvedValue(0),
@@ -75,6 +76,7 @@ jest.mock('../../../lib/redis/client', () => {
     }),
     // Export mock fns for test assertions
     __mockGet: mockGet,
+    __mockSet: mockSet,
     __mockSetex: mockSetex,
   };
 });
@@ -85,9 +87,11 @@ import { logger } from '@/lib/logger';
 // Access mock functions from the mock module
 const redisMock = jest.requireMock('../../../lib/redis/client') as {
   __mockGet: jest.Mock;
+  __mockSet: jest.Mock;
   __mockSetex: jest.Mock;
 };
 const mockGet = redisMock.__mockGet;
+const mockSet = redisMock.__mockSet;
 const mockSetex = redisMock.__mockSetex;
 
 describe('CacheWarmer', () => {
@@ -95,6 +99,7 @@ describe('CacheWarmer', () => {
 
   beforeEach(() => {
     mockGet.mockReset().mockResolvedValue(null);
+    mockSet.mockReset().mockResolvedValue('OK');
     mockSetex.mockReset().mockResolvedValue('OK');
     (logger.warn as jest.Mock).mockClear();
 
@@ -127,13 +132,23 @@ describe('CacheWarmer', () => {
     warmer = new CacheWarmer();
   });
 
-  describe('shouldWarm (via warmManual)', () => {
+  describe('shouldWarmAndLock (via warmManual)', () => {
     it('returns true when Redis has no lastRun key (first run)', async () => {
       mockGet.mockResolvedValue(null);
+      mockSet.mockResolvedValue('OK');
 
       await warmer.warmManual(['stats']);
 
       expect(mockGet).toHaveBeenCalledWith('cache-warmer:lastRun:stats');
+      // NX lock acquired
+      expect(mockSet).toHaveBeenCalledWith(
+        'cache-warmer:lastRun:stats:lock',
+        expect.any(String),
+        'EX',
+        expect.any(Number),
+        'NX'
+      );
+      // recordWarmingRun called (warming happened)
       expect(mockSetex).toHaveBeenCalled();
     });
 
@@ -142,15 +157,28 @@ describe('CacheWarmer', () => {
 
       await warmer.warmManual(['stats']);
 
+      // No lock attempt when interval not elapsed
+      expect(mockSet).not.toHaveBeenCalled();
+      // No warming recorded
       expect(mockSetex).not.toHaveBeenCalled();
     });
 
     it('returns true when interval elapsed', async () => {
       const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
       mockGet.mockResolvedValue(String(twoHoursAgo));
+      mockSet.mockResolvedValue('OK');
 
       await warmer.warmManual(['stats']);
 
+      // Lock attempted and acquired
+      expect(mockSet).toHaveBeenCalledWith(
+        'cache-warmer:lastRun:stats:lock',
+        expect.any(String),
+        'EX',
+        expect.any(Number),
+        'NX'
+      );
+      // recordWarmingRun called
       expect(mockSetex).toHaveBeenCalled();
     });
 
@@ -161,11 +189,32 @@ describe('CacheWarmer', () => {
 
       expect(mockGet).toHaveBeenCalled();
     });
+
+    it('returns false when NX lock fails (another pod got lock)', async () => {
+      mockGet.mockResolvedValue(null); // first run - no lastRun
+      mockSet.mockResolvedValue(null); // NX fails - another pod got the lock
+
+      const result = await warmer.warmManual(['stats']);
+
+      // Lock was attempted
+      expect(mockSet).toHaveBeenCalledWith(
+        'cache-warmer:lastRun:stats:lock',
+        expect.any(String),
+        'EX',
+        expect.any(Number),
+        'NX'
+      );
+      // No warming happened (lock not acquired)
+      expect(mockSetex).not.toHaveBeenCalled();
+      expect(result.skipped).toContain('stats');
+      expect(result.warmed).not.toContain('stats');
+    });
   });
 
   describe('recordWarmingRun', () => {
     it('stores timestamp in Redis with TTL', async () => {
       mockGet.mockResolvedValue(null);
+      mockSet.mockResolvedValue('OK');
 
       await warmer.warmManual(['stats']);
 
@@ -179,13 +228,18 @@ describe('CacheWarmer', () => {
   });
 
   describe('warmManual', () => {
-    it('only warms targets that pass shouldWarm check', async () => {
+    it('only warms targets that pass shouldWarmAndLock check', async () => {
+      // stats: recent timestamp -> interval not elapsed -> skip (no lock attempt)
+      // trends: null -> first run, lock succeeds -> warm
       mockGet
         .mockResolvedValueOnce(String(Date.now())) // stats - skip
         .mockResolvedValueOnce(null); // trends - warm
+      mockSet.mockResolvedValue('OK'); // NX lock succeeds for trends
 
-      await warmer.warmManual(['stats', 'trends']);
+      const result = await warmer.warmManual(['stats', 'trends']);
 
+      expect(result.warmed).toContain('trends');
+      expect(result.skipped).toContain('stats');
       expect(mockSetex).toHaveBeenCalledTimes(1);
       expect(mockSetex).toHaveBeenCalledWith(
         'cache-warmer:lastRun:trends',
@@ -196,18 +250,57 @@ describe('CacheWarmer', () => {
 
     it('records successful runs only (not failures)', async () => {
       mockGet.mockResolvedValue(null);
+      mockSet.mockResolvedValue('OK');
 
       const { statsCache } = jest.requireMock('@/lib/cache/stats-cache') as {
         statsCache: { set: jest.Mock };
       };
       statsCache.set.mockRejectedValueOnce(new Error('cache write failed'));
 
-      await warmer.warmManual(['stats', 'trends']);
+      const result = await warmer.warmManual(['stats', 'trends']);
 
+      // stats failed, trends succeeded
       const setexCalls = mockSetex.mock.calls.filter(
         (call: string[]) => call[0] === 'cache-warmer:lastRun:trends'
       );
       expect(setexCalls.length).toBe(1);
+      expect(result.warmed).toContain('trends');
+      expect(result.warmed).not.toContain('stats');
+    });
+
+    it('force=true bypasses shouldWarmAndLock', async () => {
+      // Recent timestamp would normally cause skip
+      mockGet.mockResolvedValue(String(Date.now()));
+
+      const result = await warmer.warmManual(['stats'], true);
+
+      // shouldWarmAndLock not called - no lock attempt
+      expect(mockSet).not.toHaveBeenCalled();
+      // But warming still happened
+      expect(mockSetex).toHaveBeenCalledWith(
+        'cache-warmer:lastRun:stats',
+        7200,
+        expect.any(String)
+      );
+      expect(result.warmed).toContain('stats');
+      expect(result.skipped).toHaveLength(0);
+    });
+
+    it('returns warmed and skipped arrays', async () => {
+      // stats: skip (recent), trends: warm (no lastRun, lock OK)
+      mockGet
+        .mockResolvedValueOnce(String(Date.now())) // stats - recent
+        .mockResolvedValueOnce(null); // trends - no lastRun
+      mockSet.mockResolvedValue('OK');
+
+      const result = await warmer.warmManual(['stats', 'trends']);
+
+      expect(result).toHaveProperty('warmed');
+      expect(result).toHaveProperty('skipped');
+      expect(Array.isArray(result.warmed)).toBe(true);
+      expect(Array.isArray(result.skipped)).toBe(true);
+      expect(result.warmed).toContain('trends');
+      expect(result.skipped).toContain('stats');
     });
   });
 

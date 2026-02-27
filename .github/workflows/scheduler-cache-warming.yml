@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Trigger cache warming
         run: |
-          curl -s -X POST "${{ secrets.APP_URL }}/api/cache/optimize" \
+          curl -sf -X POST "${{ secrets.APP_URL }}/api/cache/optimize" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -d '{"action":"warm"}' \

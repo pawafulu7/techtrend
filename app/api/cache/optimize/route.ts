@@ -55,9 +55,15 @@ export const POST = withCronOrAdminAuth(async (request: NextRequest) => {
           );
         }
         const targets = target ? [target] : undefined;
-        await cacheWarmer.warmManual(targets);
+        const force = body.force === true;
+        const warmResult = await cacheWarmer.warmManual(targets, force);
         result = {
-          message: `Cache warming completed for: ${targets?.join(', ') || 'all'}`,
+          message:
+            warmResult.warmed.length > 0
+              ? `Cache warming completed for: ${warmResult.warmed.join(', ')}`
+              : `No targets needed warming (skipped: ${warmResult.skipped.join(', ')}). Use force:true to override.`,
+          warmed: warmResult.warmed,
+          skipped: warmResult.skipped,
           status: cacheWarmer.getStatus(),
         };
         break;

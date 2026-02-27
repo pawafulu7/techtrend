@@ -83,16 +83,16 @@ export class CacheWarmer {
   private async performPeriodicWarming(): Promise<void> {
     const tasks: { type: string; task: Promise<void> }[] = [];
 
-    if (await this.shouldWarm('stats', Date.now())) {
+    if (await this.shouldWarmAndLock('stats', Date.now())) {
       tasks.push({ type: 'stats', task: this.warmStats() });
     }
-    if (await this.shouldWarm('trends', Date.now())) {
+    if (await this.shouldWarmAndLock('trends', Date.now())) {
       tasks.push({ type: 'trends', task: this.warmTrends() });
     }
-    if (await this.shouldWarm('keywords', Date.now())) {
+    if (await this.shouldWarmAndLock('keywords', Date.now())) {
       tasks.push({ type: 'keywords', task: this.warmKeywords() });
     }
-    if (await this.shouldWarm('search', Date.now())) {
+    if (await this.shouldWarmAndLock('search', Date.now())) {
       tasks.push({ type: 'search', task: this.warmSearchQueries() });
     }
 
@@ -183,9 +183,10 @@ export class CacheWarmer {
   }
 
   /**
-   * ウォーミングが必要か判定（Redisベース）
+   * ウォーミングが必要か判定し、必要なら実行権を原子的に取得（SET NX）
+   * @returns true = 実行権取得済み（warming必要かつロック確保）、false = 不要またはロック取得失敗
    */
-  private async shouldWarm(type: string, _now: number): Promise<boolean> {
+  private async shouldWarmAndLock(type: string, now: number): Promise<boolean> {
     const config = this.warmingConfig[type as keyof typeof this.warmingConfig];
     if (!config || !config.enabled) {
       return false;
@@ -195,7 +196,20 @@ export class CacheWarmer {
       const key = `${CacheWarmer.LAST_RUN_PREFIX}${type}`;
       const lastRunStr = await this.redis.get(key);
       const lastRun = lastRunStr ? parseInt(lastRunStr, 10) : 0;
-      return Date.now() - lastRun >= config.interval;
+      if (now - lastRun < config.interval) {
+        return false;
+      }
+      // Atomic lock: SET NX with TTL prevents parallel pods from double-warming
+      const lockKey = `${CacheWarmer.LAST_RUN_PREFIX}${type}:lock`;
+      const lockTtl = Math.max(Math.ceil(config.interval / 1000), 60);
+      const acquired = await this.redis.set(
+        lockKey,
+        String(now),
+        'EX',
+        lockTtl,
+        'NX'
+      );
+      return acquired === 'OK';
     } catch {
       // On Redis error, allow warming (fail-open)
       return true;
@@ -338,13 +352,22 @@ export class CacheWarmer {
 
   /**
    * 手動ウォーミング実行
+   * @param targets - 対象タイプ配列
+   * @param force - trueの場合、shouldWarmAndLockを無視して強制実行
+   * @returns 実行結果（warmed: 実行された件数、skipped: スキップされた件数）
    */
-  async warmManual(targets?: string[]): Promise<void> {
+  async warmManual(
+    targets?: string[],
+    force = false
+  ): Promise<{ warmed: string[]; skipped: string[] }> {
     const validTargets = targets || ['stats', 'trends', 'keywords', 'search'];
     const tasks: { type: string; task: Promise<void> }[] = [];
+    const skipped: string[] = [];
+    const now = Date.now();
 
     for (const target of validTargets) {
-      if (await this.shouldWarm(target, Date.now())) {
+      const shouldRun = force || (await this.shouldWarmAndLock(target, now));
+      if (shouldRun) {
         if (target === 'stats')
           tasks.push({ type: 'stats', task: this.warmStats() });
         else if (target === 'trends')
@@ -353,15 +376,20 @@ export class CacheWarmer {
           tasks.push({ type: 'keywords', task: this.warmKeywords() });
         else if (target === 'search')
           tasks.push({ type: 'search', task: this.warmSearchQueries() });
+      } else {
+        skipped.push(target);
       }
     }
 
+    const warmed: string[] = [];
     const results = await Promise.allSettled(tasks.map((t) => t.task));
     for (let i = 0; i < results.length; i++) {
       if (results[i].status === 'fulfilled') {
         await this.recordWarmingRun(tasks[i].type);
+        warmed.push(tasks[i].type);
       }
     }
+    return { warmed, skipped };
   }
 }
 
