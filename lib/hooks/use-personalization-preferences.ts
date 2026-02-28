@@ -48,7 +48,9 @@ async function fetchPreferences(): Promise<UserCategoryPreferences> {
 
     if (!response.ok) {
       // API unavailable - fall back silently
-      console.info(`[personalization] preferences API unavailable (${response.status}) — using defaults`);
+      console.info(
+        `[personalization] preferences API unavailable (${response.status}) — using defaults`
+      );
       return { ...DEFAULT_PREFERENCES, isAuthenticated: false };
     }
 
@@ -67,15 +69,21 @@ async function fetchCategories(): Promise<InterestCategoryWithCount[]> {
 
     if (!response?.ok) {
       // API unavailable - fall back silently
-      console.info(`[personalization] category API unavailable (${response?.status ?? 'network'}) — falling back`);
+      console.info(
+        `[personalization] category API unavailable (${response?.status ?? 'network'}) — falling back`
+      );
       return EMPTY_CATEGORIES;
     }
 
-    const data = await response.json().catch(() => ({ categories: EMPTY_CATEGORIES }));
+    const data = await response
+      .json()
+      .catch(() => ({ categories: EMPTY_CATEGORIES }));
     return Array.isArray(data?.categories) ? data.categories : EMPTY_CATEGORIES;
   } catch {
     // Network error - fall back silently without logging error object
-    console.info('[personalization] category fetch failed — disabling personalization UI');
+    console.info(
+      '[personalization] category fetch failed — disabling personalization UI'
+    );
     return EMPTY_CATEGORIES;
   }
 }
@@ -103,7 +111,12 @@ async function updatePreferences(
     throw new Error(errorMessage);
   }
 
-  return responseBody || { success: true, selectedCategories: request.categoryIds ?? [] };
+  return (
+    responseBody || {
+      success: true,
+      selectedCategories: request.categoryIds ?? [],
+    }
+  );
 }
 
 // =============================================================================
@@ -156,7 +169,8 @@ export function useUpdatePreferences() {
           ...old,
           selectedCategories,
           filterEnabled: selectedCategories.length > 0,
-          periodMonths: nextPeriod !== undefined ? nextPeriod : (old?.periodMonths ?? 12),
+          periodMonths:
+            nextPeriod !== undefined ? nextPeriod : (old?.periodMonths ?? 12),
           isAuthenticated: true,
         })
       );
@@ -179,14 +193,17 @@ export function usePersonalizationPreferences() {
 
   const categories = categoriesQuery.data ?? EMPTY_CATEGORIES;
   const preferences = preferencesQuery.data ?? DEFAULT_PREFERENCES;
-  const selectedCategories = preferences.selectedCategories ?? EMPTY_SELECTED_CATEGORIES;
+  const selectedCategories =
+    preferences.selectedCategories ?? EMPTY_SELECTED_CATEGORIES;
 
   // Validate periodMonths against allowed presets
   const rawPeriodMonths = preferences.periodMonths ?? 12;
   const validPresets: PeriodPreset[] = [0, 3, 6, 12];
-  const periodMonths = (validPresets.includes(rawPeriodMonths as PeriodPreset)
-    ? rawPeriodMonths
-    : 12) as PeriodPreset;
+  const periodMonths = (
+    validPresets.includes(rawPeriodMonths as PeriodPreset)
+      ? rawPeriodMonths
+      : 12
+  ) as PeriodPreset;
 
   return {
     // Data
@@ -206,6 +223,7 @@ export function usePersonalizationPreferences() {
 
     // Mutation
     updatePreferences: updateMutation.mutate,
+    updatePreferencesAsync: updateMutation.mutateAsync,
     isUpdating: updateMutation.isPending,
     updateError: updateMutation.error,
 

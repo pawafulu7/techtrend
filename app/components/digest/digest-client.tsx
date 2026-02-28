@@ -27,7 +27,7 @@ export function DigestClient() {
     periodMonths,
     isLoading: prefLoading,
     isUpdating,
-    updatePreferences,
+    updatePreferencesAsync,
   } = usePersonalizationPreferences();
 
   const fetchDigest = useCallback(
@@ -68,18 +68,22 @@ export function DigestClient() {
   }, [period, fetchDigest]);
 
   const handleSavePreferences = useCallback(
-    (categoryIds: string[], selectedPeriod: PeriodPreset) => {
-      updatePreferences({
-        categoryIds,
-        filterEnabled: categoryIds.length > 0,
-        periodMonths: selectedPeriod,
-      });
+    async (categoryIds: string[], selectedPeriod: PeriodPreset) => {
+      try {
+        await updatePreferencesAsync({
+          categoryIds,
+          filterEnabled: categoryIds.length > 0,
+          periodMonths: selectedPeriod,
+        });
+      } catch {
+        // updatePreferencesAsync error is handled by React Query's error state
+      }
       setDialogOpen(false);
-      // Re-fetch digest after saving preferences
+      // Re-fetch digest after preferences are saved
       const controller = new AbortController();
       fetchDigest(period, controller.signal);
     },
-    [updatePreferences, fetchDigest, period]
+    [updatePreferencesAsync, fetchDigest, period]
   );
 
   const handlePeriodChange = (value: string) => {
