@@ -55,6 +55,7 @@ export function FavoriteButton({
     if (!fetchInitialStatus) return;
     if (sessionStatus === 'loading') return;
     if (onToggleFavorite) return;
+    setIsLoadingInitial(true);
 
     // If not authenticated, no need to fetch
     if (!session?.user?.id) {
