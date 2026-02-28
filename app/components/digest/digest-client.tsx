@@ -5,18 +5,30 @@ import { Newspaper, Settings, CheckCircle } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import { DigestSection } from './digest-section';
+import { CategoryPreferenceDialog } from '@/app/components/personalization/category-preference-dialog';
+import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
 import type {
   DigestResponse,
   DigestPeriod,
 } from '@/lib/services/digest-service';
+import type { PeriodPreset } from '@/lib/personalization/types';
 
 export function DigestClient() {
   const [period, setPeriod] = useState<DigestPeriod>('daily');
   const [digest, setDigest] = useState<DigestResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const {
+    categories,
+    selectedCategories,
+    periodMonths,
+    isLoading: prefLoading,
+    isUpdating,
+    updatePreferences,
+  } = usePersonalizationPreferences();
 
   const fetchDigest = useCallback(
     async (p: DigestPeriod, signal?: AbortSignal) => {
@@ -54,6 +66,21 @@ export function DigestClient() {
     fetchDigest(period, controller.signal);
     return () => controller.abort();
   }, [period, fetchDigest]);
+
+  const handleSavePreferences = useCallback(
+    (categoryIds: string[], selectedPeriod: PeriodPreset) => {
+      updatePreferences({
+        categoryIds,
+        filterEnabled: categoryIds.length > 0,
+        periodMonths: selectedPeriod,
+      });
+      setDialogOpen(false);
+      // Re-fetch digest after saving preferences
+      const controller = new AbortController();
+      fetchDigest(period, controller.signal);
+    },
+    [updatePreferences, fetchDigest, period]
+  );
 
   const handlePeriodChange = (value: string) => {
     if (value === 'daily' || value === 'weekly') {
@@ -123,8 +150,8 @@ export function DigestClient() {
           <p className="text-muted-foreground mb-6 max-w-md text-center text-sm">
             興味のあるカテゴリを選択すると、あなた向けのダイジェストが生成されます
           </p>
-          <Button asChild>
-            <Link href="/">ホームでカテゴリを設定</Link>
+          <Button onClick={() => setDialogOpen(true)}>
+            カテゴリを設定する
           </Button>
         </div>
       )}
@@ -153,6 +180,18 @@ export function DigestClient() {
           ))}
         </div>
       )}
+
+      {/* Category Preference Dialog */}
+      <CategoryPreferenceDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        categories={categories}
+        selectedCategories={selectedCategories}
+        selectedPeriod={periodMonths}
+        onSave={handleSavePreferences}
+        isLoading={prefLoading}
+        isSaving={isUpdating}
+      />
     </div>
   );
 }
