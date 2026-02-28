@@ -2,7 +2,7 @@
  * ITmedia系ソースをDBに登録するスクリプト
  *
  * 対象ソース:
- * - ITmedia NEWS
+ * - ITmedia Security
  * - ITmedia AI+
  * - @IT
  *
@@ -16,9 +16,9 @@ const prisma = new PrismaClient();
 
 const ITMEDIA_SOURCES = [
   {
-    id: 'itmedia_news',
-    name: 'ITmedia NEWS',
-    url: 'https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml',
+    id: 'itmedia_security',
+    name: 'ITmedia Security',
+    url: 'https://rss.itmedia.co.jp/rss/2.0/news_security.xml',
     type: 'RSS',
     enabled: true,
   },
