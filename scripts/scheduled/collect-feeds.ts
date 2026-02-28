@@ -560,7 +560,14 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
 
     if (totalNewArticles > 0) {
       console.error('[INFO] キャッシュを無効化中...');
-      await cacheInvalidator.onBulkImport();
+      try {
+        await cacheInvalidator.onBulkImport();
+      } catch (error) {
+        console.error(
+          '[WARN] キャッシュ無効化でエラーが発生しましたが、記事収集は成功しています:',
+          error instanceof Error ? error.message : String(error)
+        );
+      }
 
       console.error('\n[INFO] 要約生成を自動実行します...');
       try {
