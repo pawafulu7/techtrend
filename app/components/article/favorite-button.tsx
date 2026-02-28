@@ -15,6 +15,8 @@ interface FavoriteButtonProps {
   size?: 'sm' | 'default' | 'lg';
   showText?: boolean;
   compact?: boolean;
+  /** Always use outline style with hover preview of toggled state */
+  outline?: boolean;
   isFavorited?: boolean;
   onToggleFavorite?: () => void | Promise<void>;
   /** If true, fetch initial favorite status from API on mount (for ISR pages) */
@@ -27,9 +29,10 @@ export function FavoriteButton({
   size = 'sm',
   showText = false,
   compact = false,
+  outline = false,
   isFavorited: initialFavorited = false,
   onToggleFavorite,
-  fetchInitialStatus = false
+  fetchInitialStatus = false,
 }: FavoriteButtonProps) {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
@@ -38,9 +41,12 @@ export function FavoriteButton({
   const { toast } = useToast();
   const [isToggling, setIsToggling] = useState(false);
   const isControlled = typeof onToggleFavorite === 'function';
-  const [uncontrolledFavorited, setUncontrolledFavorited] = useState(initialFavorited);
+  const [uncontrolledFavorited, setUncontrolledFavorited] =
+    useState(initialFavorited);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isLoadingInitial, setIsLoadingInitial] = useState(fetchInitialStatus && !isControlled);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(
+    fetchInitialStatus && !isControlled
+  );
 
   const isFavorited = isControlled ? initialFavorited : uncontrolledFavorited;
 
@@ -49,6 +55,7 @@ export function FavoriteButton({
     if (!fetchInitialStatus) return;
     if (sessionStatus === 'loading') return;
     if (onToggleFavorite) return;
+    setIsLoadingInitial(true);
 
     // If not authenticated, no need to fetch
     if (!session?.user?.id) {
@@ -63,7 +70,7 @@ export function FavoriteButton({
         const response = await fetch(`/api/favorites/${articleId}`, {
           credentials: 'include',
           cache: 'no-store',
-          signal: abortController.signal
+          signal: abortController.signal,
         });
         if (response.ok) {
           const data = await response.json();
@@ -86,7 +93,13 @@ export function FavoriteButton({
     return () => {
       abortController.abort();
     };
-  }, [articleId, fetchInitialStatus, session?.user?.id, sessionStatus, onToggleFavorite]);
+  }, [
+    articleId,
+    fetchInitialStatus,
+    session?.user?.id,
+    sessionStatus,
+    onToggleFavorite,
+  ]);
 
   // Sync initial value in uncontrolled mode (for non-ISR pages)
   useEffect(() => {
@@ -103,7 +116,9 @@ export function FavoriteButton({
 
     if (!session) {
       // 未ログインの場合はログインページへ（現在のページをcallbackUrlとして設定）
-      const currentUrl = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
+      const currentUrl =
+        pathname +
+        (searchParams.toString() ? `?${searchParams.toString()}` : '');
       router.push(loginWithCallback(currentUrl));
       return;
     }
@@ -120,7 +135,8 @@ export function FavoriteButton({
           console.error('Failed to toggle favorite:', error);
           toast({
             title: 'エラー',
-            description: 'お気に入りの更新に失敗しました。もう一度お試しください。',
+            description:
+              'お気に入りの更新に失敗しました。もう一度お試しください。',
             variant: 'destructive',
           });
         }
@@ -138,9 +154,15 @@ export function FavoriteButton({
         });
         if (response.ok) {
           // API成功時にイベント発火（React Queryキャッシュ同期用）
-          window.dispatchEvent(new CustomEvent('article-favorite-changed', {
-            detail: { articleId, isFavorited: newState, timestamp: Date.now() }
-          }));
+          window.dispatchEvent(
+            new CustomEvent('article-favorite-changed', {
+              detail: {
+                articleId,
+                isFavorited: newState,
+                timestamp: Date.now(),
+              },
+            })
+          );
         } else {
           // エラー時は元に戻す
           setUncontrolledFavorited(!newState);
@@ -150,7 +172,8 @@ export function FavoriteButton({
         console.error('Failed to toggle favorite:', error);
         toast({
           title: 'エラー',
-          description: 'お気に入りの更新に失敗しました。もう一度お試しください。',
+          description:
+            'お気に入りの更新に失敗しました。もう一度お試しください。',
           variant: 'destructive',
         });
       }
@@ -166,21 +189,23 @@ export function FavoriteButton({
         onClick={handleClick}
         disabled={isToggling || isLoadingInitial || sessionStatus === 'loading'}
         className={cn(
-          "p-1.5 rounded-full transition-all duration-300",
-          "hover:bg-red-50 dark:hover:bg-red-950",
-          isAnimating && "scale-110",
-          isFavorited ? "text-red-500 hover:text-red-600" : "text-gray-500 hover:text-red-500",
-          isLoadingInitial && "opacity-50",
+          'rounded-full p-1.5 transition-all duration-300',
+          'hover:bg-red-50 dark:hover:bg-red-950',
+          isAnimating && 'scale-110',
+          isFavorited
+            ? 'text-red-500 hover:text-red-600'
+            : 'text-gray-500 hover:text-red-500',
+          isLoadingInitial && 'opacity-50',
           className
         )}
-        aria-label={isFavorited ? "お気に入りから削除" : "お気に入りに追加"}
+        aria-label={isFavorited ? 'お気に入りから削除' : 'お気に入りに追加'}
         data-testid="favorite-button"
       >
         <Heart
           className={cn(
-            "h-4 w-4 transition-colors",
-            isFavorited && "fill-red-500",
-            (isToggling || isLoadingInitial) && "opacity-50"
+            'h-4 w-4 transition-colors',
+            isFavorited && 'fill-red-500',
+            (isToggling || isLoadingInitial) && 'opacity-50'
           )}
         />
       </button>
@@ -189,30 +214,39 @@ export function FavoriteButton({
 
   return (
     <Button
-      variant={isFavorited ? "destructive" : "outline"}
+      variant={outline ? 'outline' : isFavorited ? 'destructive' : 'outline'}
       size={size}
       onClick={handleClick}
       disabled={isToggling || isLoadingInitial || sessionStatus === 'loading'}
       className={cn(
-        "transition-all duration-300",
-        isAnimating && "scale-110",
-        isFavorited ? "bg-red-500 hover:bg-red-600 text-white" : "hover:text-red-500",
-        isLoadingInitial && "opacity-50",
+        'transition-all duration-300',
+        outline && 'group',
+        isAnimating && 'scale-110',
+        outline
+          ? 'hover:bg-transparent dark:hover:bg-transparent'
+          : isFavorited
+            ? 'bg-red-500 text-white hover:bg-red-600'
+            : 'hover:text-red-500',
+        isLoadingInitial && 'opacity-50',
         className
       )}
       data-testid="favorite-button"
     >
       <Heart
         className={cn(
-          "h-4 w-4 transition-colors",
-          isFavorited ? "fill-white" : "fill-none",
-          showText && "mr-2",
-          (isToggling || isLoadingInitial) && "opacity-50"
+          'h-4 w-4 transition-colors',
+          outline
+            ? isFavorited
+              ? 'fill-current text-red-500 group-hover:fill-none group-hover:text-slate-400'
+              : 'fill-none group-hover:fill-current group-hover:text-red-400'
+            : isFavorited
+              ? 'fill-white'
+              : 'fill-none',
+          showText && 'mr-2',
+          (isToggling || isLoadingInitial) && 'opacity-50'
         )}
       />
-      {showText && (
-        isFavorited ? "お気に入り解除" : "お気に入りに追加"
-      )}
+      {showText && (isFavorited ? 'お気に入り解除' : 'お気に入りに追加')}
     </Button>
   );
 }
