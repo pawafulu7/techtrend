@@ -12,6 +12,7 @@ import {
   type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
+import { digestService } from '@/lib/services/digest-service';
 
 // GET: 記事の既読状態を取得
 async function getHandler(
@@ -125,6 +126,14 @@ async function postHandler(
       );
     }
 
+    // Also invalidate digest cache (fire-and-forget)
+    digestService.invalidateUserCache(validatedUser.id).catch((error) => {
+      logger.warn(
+        { error, userId: validatedUser.id },
+        'Failed to invalidate digest cache'
+      );
+    });
+
     return NextResponse.json({ success: true, articleView });
   } catch (error) {
     // Handle FK constraint violations (race condition with user deletion)
@@ -203,6 +212,14 @@ async function putHandler(
       );
     }
 
+    // Also invalidate digest cache (fire-and-forget)
+    digestService.invalidateUserCache(validatedUser.id).catch((error) => {
+      logger.warn(
+        { error, userId: validatedUser.id },
+        'Failed to invalidate digest cache'
+      );
+    });
+
     return NextResponse.json({
       success: true,
       markedCount,
@@ -262,6 +279,14 @@ async function deleteHandler(
         'Failed to invalidate view cache'
       );
     }
+
+    // Also invalidate digest cache (fire-and-forget)
+    digestService.invalidateUserCache(validatedUser.id).catch((error) => {
+      logger.warn(
+        { error, userId: validatedUser.id },
+        'Failed to invalidate digest cache'
+      );
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

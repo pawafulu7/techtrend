@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { CategoryCard, CategoryCardSkeleton } from './category-card';
@@ -35,7 +36,7 @@ export interface CategoryPreferenceDialogProps {
   categories: InterestCategoryWithCount[];
   selectedCategories: string[];
   selectedPeriod: PeriodPreset;
-  onSave: (categories: string[], period: PeriodPreset) => void;
+  onSave: (categories: string[], period: PeriodPreset) => Promise<void>;
   isLoading?: boolean;
   isSaving?: boolean;
 }
@@ -59,12 +60,14 @@ export function CategoryPreferenceDialog({
     useState<string[]>(selectedCategories);
   const [tempPeriod, setTempPeriod] = useState<PeriodPreset>(selectedPeriod);
   const [hasEdited, setHasEdited] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Reset local state when dialog opens or parent state changes
   useEffect(() => {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: reset edit tracking on dialog open
       setHasEdited(false);
+      setSaveError(null);
     }
   }, [open]);
 
@@ -103,10 +106,15 @@ export function CategoryPreferenceDialog({
   };
 
   // Save changes
-  const handleSave = () => {
-    onSave(tempCategories, tempPeriod);
-    setHasEdited(false);
-    onOpenChange(false);
+  const handleSave = async () => {
+    setSaveError(null);
+    try {
+      await onSave(tempCategories, tempPeriod);
+      setHasEdited(false);
+      onOpenChange(false);
+    } catch {
+      setSaveError('保存に失敗しました。もう一度お試しください。');
+    }
   };
 
   // Cancel and reset
@@ -114,6 +122,7 @@ export function CategoryPreferenceDialog({
     setTempCategories(selectedCategories);
     setTempPeriod(selectedPeriod);
     setHasEdited(false);
+    setSaveError(null);
     onOpenChange(false);
   };
 
@@ -123,8 +132,15 @@ export function CategoryPreferenceDialog({
     tempPeriod !== selectedPeriod;
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && handleCancel()}>
-      <DialogContent className="flex max-h-[90vh] w-full max-w-lg flex-col gap-0 p-0 sm:max-w-xl">
+    <Dialog
+      open={open}
+      onOpenChange={(next) => !next && !isSaving && handleCancel()}
+    >
+      <DialogContent
+        className="flex max-h-[90vh] w-full max-w-lg flex-col gap-0 p-0 sm:max-w-xl"
+        onInteractOutside={(e) => isSaving && e.preventDefault()}
+        onEscapeKeyDown={(e) => isSaving && e.preventDefault()}
+      >
         <DialogHeader className="p-6 pb-2">
           <DialogTitle>興味のある分野を選択</DialogTitle>
           <DialogDescription>
@@ -188,6 +204,15 @@ export function CategoryPreferenceDialog({
             />
           </div>
         </div>
+
+        {/* Save Error */}
+        {saveError && (
+          <div className="px-6">
+            <Alert variant="destructive">
+              <AlertDescription>{saveError}</AlertDescription>
+            </Alert>
+          </div>
+        )}
 
         {/* Footer Actions */}
         <DialogFooter className="flex-col-reverse gap-2 border-t p-6 pt-4 sm:flex-row">

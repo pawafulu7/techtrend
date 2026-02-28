@@ -41,7 +41,7 @@ export function PersonalizationToggle({
     filterEnabled,
     periodMonths,
     isLoading,
-    updatePreferences,
+    updatePreferencesAsync,
     isUpdating,
     hasPreferences,
   } = usePersonalizationPreferences();
@@ -52,8 +52,8 @@ export function PersonalizationToggle({
   };
 
   // Handle save from dialog
-  const handleSave = (categoryIds: string[], period: PeriodPreset) => {
-    updatePreferences({
+  const handleSave = async (categoryIds: string[], period: PeriodPreset) => {
+    await updatePreferencesAsync({
       categoryIds,
       filterEnabled: categoryIds.length > 0,
       periodMonths: period,
@@ -67,19 +67,20 @@ export function PersonalizationToggle({
         <Toggle
           pressed={filterEnabled && hasPreferences}
           onPressedChange={handleToggleClick}
-          onClick={handleToggleClick}
           aria-label="パーソナライズ設定"
           className={cn(
-            'gap-1.5 h-9 px-3 whitespace-nowrap',
+            'h-9 gap-1.5 px-3 whitespace-nowrap',
             'data-[state=on]:bg-primary data-[state=on]:text-primary-foreground',
             className
           )}
           data-testid="personalization-toggle"
         >
-          <Sparkles className="w-4 h-4 flex-shrink-0" />
-          <span className="hidden sm:inline text-sm">パーソナライズ</span>
+          <Sparkles className="h-4 w-4 flex-shrink-0" />
+          <span className="hidden text-sm sm:inline">パーソナライズ</span>
           {hasPreferences && (
-            <span className="text-xs opacity-70">({selectedCategories.length})</span>
+            <span className="text-xs opacity-70">
+              ({selectedCategories.length})
+            </span>
           )}
         </Toggle>
 
@@ -107,10 +108,12 @@ export function PersonalizationToggle({
         className={cn('gap-1.5 whitespace-nowrap', className)}
         data-testid="personalization-button"
       >
-        <Settings className="w-4 h-4 flex-shrink-0" />
+        <Settings className="h-4 w-4 flex-shrink-0" />
         <span className="hidden sm:inline">パーソナライズ</span>
         {hasPreferences && (
-          <span className="text-xs opacity-70">({selectedCategories.length})</span>
+          <span className="text-xs opacity-70">
+            ({selectedCategories.length})
+          </span>
         )}
       </Button>
 

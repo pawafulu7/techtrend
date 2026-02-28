@@ -189,6 +189,14 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'Heatmap category analysis',
     telemetryEvent: 'ratelimit.read.heatmap',
   },
+  'read:digest': {
+    points: 30,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'Personalized digest (user-specific, cached)',
+    telemetryEvent: 'ratelimit.read.digest',
+  },
 
   // Public Endpoints (High Tolerance) - No block
   'public:stats': {

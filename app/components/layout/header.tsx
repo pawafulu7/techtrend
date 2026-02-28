@@ -12,6 +12,7 @@ import {
   Database,
   Home,
   BookOpen,
+  Newspaper,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -30,6 +31,7 @@ export function Header() {
   const primaryNav = [
     { href: '/', label: 'ホーム', icon: Home },
     { href: '/reader', label: 'リーダー', icon: BookOpen },
+    { href: '/digest', label: 'ダイジェスト', icon: Newspaper },
     { href: '/popular', label: '人気', icon: TrendingUp },
     { href: '/sources', label: 'ソース', icon: Database },
     { href: '/trends', label: 'トレンド', icon: BarChart3 },
