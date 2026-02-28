@@ -74,18 +74,13 @@ export function DigestClient() {
 
   const handleSavePreferences = useCallback(
     async (categoryIds: string[], selectedPeriod: PeriodPreset) => {
-      try {
-        await updatePreferencesAsync({
-          categoryIds,
-          filterEnabled: categoryIds.length > 0,
-          periodMonths: selectedPeriod,
-        });
-        setDialogOpen(false);
-        // Trigger re-fetch via useEffect (proper AbortController management)
-        setFetchTrigger((prev) => prev + 1);
-      } catch {
-        setError('カテゴリの保存に失敗しました');
-      }
+      await updatePreferencesAsync({
+        categoryIds,
+        filterEnabled: categoryIds.length > 0,
+        periodMonths: selectedPeriod,
+      });
+      // Trigger re-fetch via useEffect (proper AbortController management)
+      setFetchTrigger((prev) => prev + 1);
     },
     [updatePreferencesAsync]
   );
