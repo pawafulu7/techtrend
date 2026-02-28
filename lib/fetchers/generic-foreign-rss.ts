@@ -351,10 +351,6 @@ export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
     tagPrefix: 'Rust',
   },
   // Japanese Tech Media
-  'ITmedia Technology': {
-    feedUrl: 'https://rss.itmedia.co.jp/rss/2.0/news_technology.xml',
-    tagPrefix: 'itmedia-tech',
-  },
   'ITmedia Security': {
     feedUrl: 'https://rss.itmedia.co.jp/rss/2.0/news_security.xml',
     tagPrefix: 'itmedia-security',

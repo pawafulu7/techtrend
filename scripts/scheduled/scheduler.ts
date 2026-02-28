@@ -273,7 +273,6 @@ const RSS_SOURCES = [
   'Go Blog',
   'Rust Blog',
   // 国内技術メディア（ITmedia系）
-  'ITmedia Technology',
   'ITmedia Security',
   'ITmedia AI+',
   '@IT',

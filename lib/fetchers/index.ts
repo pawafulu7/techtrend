@@ -188,7 +188,6 @@ export function createFetcher(source: Source): BaseFetcher {
     case 'Go Blog':
     case 'Rust Blog':
     // Japanese Tech Media
-    case 'ITmedia Technology':
     case 'ITmedia Security':
     case 'ITmedia AI+':
     case '@IT': {
