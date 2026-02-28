@@ -350,6 +350,19 @@ export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
     feedUrl: 'https://blog.rust-lang.org/feed.xml',
     tagPrefix: 'Rust',
   },
+  // Japanese Tech Media
+  'ITmedia NEWS': {
+    feedUrl: 'https://rss.itmedia.co.jp/rss/2.0/news_bursts.xml',
+    tagPrefix: 'itmedia',
+  },
+  'ITmedia AI+': {
+    feedUrl: 'https://rss.itmedia.co.jp/rss/2.0/aiplus.xml',
+    tagPrefix: 'itmedia-ai',
+  },
+  '@IT': {
+    feedUrl: 'https://rss.itmedia.co.jp/rss/2.0/ait.xml',
+    tagPrefix: 'atit',
+  },
 };
 
 /**

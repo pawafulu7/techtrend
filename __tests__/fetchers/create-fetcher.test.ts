@@ -70,6 +70,20 @@ describe('createFetcher - Japanese Corporate Tech Blogs', () => {
     });
   });
 
+  describe('Japanese Tech Media sources', () => {
+    it.each([
+      ['ITmedia NEWS', 'itmedia_news'],
+      ['ITmedia AI+', 'itmedia_aiplus'],
+      ['@IT', 'atit'],
+    ])('should create GenericForeignRssFetcher for "%s"', (name, id) => {
+      const source = createMockSource(name, id);
+      const fetcher = createFetcher(source);
+
+      expect(fetcher).toBeDefined();
+      expect(fetcher.constructor.name).toBe('GenericForeignRssFetcher');
+    });
+  });
+
   describe('Error handling', () => {
     it('should throw error for unknown source', () => {
       const source = createMockSource('Unknown Corporate Blog', 'unknown_corp');

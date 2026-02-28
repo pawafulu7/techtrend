@@ -186,7 +186,11 @@ export function createFetcher(source: Source): BaseFetcher {
     case 'Chrome Developers':
     case 'Kubernetes Blog':
     case 'Go Blog':
-    case 'Rust Blog': {
+    case 'Rust Blog':
+    // Japanese Tech Media
+    case 'ITmedia NEWS':
+    case 'ITmedia AI+':
+    case '@IT': {
       const foreignConfig = getForeignSourceConfig(source.name);
       if (!foreignConfig) {
         throw new Error(`Invalid foreign source name: ${source.name}`);
