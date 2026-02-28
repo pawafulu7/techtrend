@@ -20,6 +20,7 @@ export function DigestClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [fetchTrigger, setFetchTrigger] = useState(0);
 
   const {
     categories,
@@ -34,6 +35,7 @@ export function DigestClient() {
     async (p: DigestPeriod, signal?: AbortSignal) => {
       setIsLoading(true);
       setError(null);
+      setDigest(null);
       try {
         const res = await fetch(`/api/digest?period=${p}`, { signal });
         if (!res.ok) {
@@ -65,7 +67,7 @@ export function DigestClient() {
     const controller = new AbortController();
     fetchDigest(period, controller.signal);
     return () => controller.abort();
-  }, [period, fetchDigest]);
+  }, [period, fetchDigest, fetchTrigger]);
 
   const handleSavePreferences = useCallback(
     async (categoryIds: string[], selectedPeriod: PeriodPreset) => {
@@ -76,15 +78,14 @@ export function DigestClient() {
           periodMonths: selectedPeriod,
         });
         setDialogOpen(false);
-        // Re-fetch digest after preferences are saved
-        const controller = new AbortController();
-        fetchDigest(period, controller.signal);
+        // Trigger re-fetch via useEffect (proper AbortController management)
+        setFetchTrigger((prev) => prev + 1);
       } catch {
         setDialogOpen(false);
         setError('カテゴリの保存に失敗しました');
       }
     },
-    [updatePreferencesAsync, fetchDigest, period]
+    [updatePreferencesAsync]
   );
 
   const handlePeriodChange = (value: string) => {

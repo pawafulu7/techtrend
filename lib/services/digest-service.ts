@@ -198,7 +198,6 @@ export class DigestService {
     const allExcludeIds = [...personalizedIds, ...mustReadIds];
     const missedArticles = await this.getMissedArticles(
       userId,
-      period,
       categoryIds,
       allExcludeIds
     );
@@ -227,14 +226,17 @@ export class DigestService {
       hasPreferences: true,
     };
 
-    // 6. Cache result
-    try {
-      await this.cache.set(cacheKey, response);
-    } catch (error) {
-      logger.warn(
-        { error: sanitizeError(error), userId, period },
-        'Digest cache write failed'
-      );
+    // 6. Cache result (skip if all sections are empty - may indicate errors)
+    const hasAnyArticles = response.sections.some((s) => s.articles.length > 0);
+    if (hasAnyArticles) {
+      try {
+        await this.cache.set(cacheKey, response);
+      } catch (error) {
+        logger.warn(
+          { error: sanitizeError(error), userId, period },
+          'Digest cache write failed'
+        );
+      }
     }
 
     return response;
@@ -287,14 +289,9 @@ export class DigestService {
               AND av."articleId" = a.id
               AND av."isRead" = true
           )
+        ORDER BY array_position(${candidateIds}, a.id)
         LIMIT ${DIGEST_CONFIG.PERSONALIZED_RESULT_LIMIT}
       `;
-
-      // Re-sort by CategoryFilterService's finalScore ordering (candidateIds order)
-      const idOrder = new Map(candidateIds.map((id, i) => [id, i]));
-      rows.sort(
-        (a, b) => (idOrder.get(a.id) ?? 999) - (idOrder.get(b.id) ?? 999)
-      );
 
       if (rows.length === 0) {
         return [];
@@ -384,12 +381,14 @@ export class DigestService {
    */
   private async getMissedArticles(
     userId: string,
-    period: DigestPeriod,
     categoryIds: string[],
     excludeIds: string[]
   ): Promise<DigestArticle[]> {
     try {
-      const cutoff = getPeriodCutoff(period);
+      // missedセクションは常に過去MISSED_DAYS日間を対象（periodに依存しない）
+      const cutoff = new Date(
+        Date.now() - DIGEST_CONFIG.MISSED_DAYS * 24 * 60 * 60 * 1000
+      );
       const safeExcludeIds = excludeIds.length > 0 ? excludeIds : ['__none__'];
 
       const rows = await this.db.$queryRaw<RawArticleRow[]>`
@@ -429,7 +428,7 @@ export class DigestService {
       );
     } catch (error) {
       logger.error(
-        { error: sanitizeError(error), userId, period },
+        { error: sanitizeError(error), userId },
         'Failed to get missed articles'
       );
       return [];

@@ -241,8 +241,10 @@ export async function POST(
       }
     });
 
-    // Invalidate digest cache so next fetch reflects new preferences
-    await digestService.invalidateUserCache(userId);
+    // Invalidate digest cache (fire-and-forget, don't block response)
+    digestService.invalidateUserCache(userId).catch((error) => {
+      logger.warn({ error, userId }, 'Failed to invalidate digest cache');
+    });
 
     logger.info(
       {

@@ -40,6 +40,7 @@ describe('DigestService', () => {
     mockCache = {
       get: jest.fn().mockResolvedValue(null),
       set: jest.fn().mockResolvedValue(undefined),
+      delete: jest.fn().mockResolvedValue(undefined),
     };
 
     service = new DigestService(
@@ -233,7 +234,43 @@ describe('DigestService', () => {
       expect(result.sections[2].articles).toHaveLength(0);
     });
 
-    it('キャッシュミス時にキャッシュへ保存する', async () => {
+    it('キャッシュミス時に記事があればキャッシュへ保存する', async () => {
+      prismaMock.userCategoryPreference.count.mockResolvedValue(1);
+      prismaMock.userCategoryPreference.findMany.mockResolvedValue([
+        { categoryId: 'cat-1' },
+      ]);
+      filterServiceMock.filterArticles.mockResolvedValue({
+        articles: [{ articleId: 'article-1', score: 0.9 }],
+        total: 1,
+      } as any);
+      // personalized: 1記事, mustRead: 空, missed: 空
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce([
+          {
+            id: 'article-1',
+            title: 'Article 1',
+            url: 'https://example.com/1',
+            summary: null,
+            thumbnail: null,
+            publishedAt: new Date(),
+            qualityScore: 85,
+            sourceId: 'source-1',
+          },
+        ])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      await service.getDigest('user-1', 'weekly');
+
+      expect(mockCache.set).toHaveBeenCalledTimes(1);
+      const [cacheKey, cacheValue] = mockCache.set.mock.calls[0];
+      expect(cacheKey).toBe('digest:user-1:weekly');
+      expect(cacheValue.period).toBe('weekly');
+      expect(cacheValue.hasPreferences).toBe(true);
+      expect(cacheValue.sections).toHaveLength(3);
+    });
+
+    it('全セクションが空の場合はキャッシュに保存しない', async () => {
       prismaMock.userCategoryPreference.count.mockResolvedValue(1);
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
@@ -244,14 +281,9 @@ describe('DigestService', () => {
       } as any);
       prismaMock.$queryRaw.mockResolvedValue([]);
 
-      await service.getDigest('user-1', 'weekly');
+      await service.getDigest('user-1', 'daily');
 
-      expect(mockCache.set).toHaveBeenCalledTimes(1);
-      const [cacheKey, cacheValue] = mockCache.set.mock.calls[0];
-      expect(cacheKey).toBe('digest:user-1:weekly');
-      expect(cacheValue.period).toBe('weekly');
-      expect(cacheValue.hasPreferences).toBe(true);
-      expect(cacheValue.sections).toHaveLength(3);
+      expect(mockCache.set).not.toHaveBeenCalled();
     });
 
     it('キャッシュ読み込み失敗時もDBから取得して正常に動作する', async () => {
@@ -300,6 +332,22 @@ describe('DigestService', () => {
       expect(result.sections[0].articles).toHaveLength(0);
       // mustRead/missedは独立して取得される
       expect(result.sections).toHaveLength(3);
+    });
+  });
+
+  describe('invalidateUserCache', () => {
+    it('daily/weeklyの両方のキャッシュを削除する', async () => {
+      await service.invalidateUserCache('user-1');
+      expect(mockCache.delete).toHaveBeenCalledTimes(2);
+      expect(mockCache.delete).toHaveBeenCalledWith('digest:user-1:daily');
+      expect(mockCache.delete).toHaveBeenCalledWith('digest:user-1:weekly');
+    });
+
+    it('キャッシュ削除失敗時もエラーを投げない', async () => {
+      mockCache.delete.mockRejectedValue(new Error('Redis connection failed'));
+      await expect(
+        service.invalidateUserCache('user-1')
+      ).resolves.toBeUndefined();
     });
   });
 });
