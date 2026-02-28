@@ -131,8 +131,9 @@ export function ReaderArticleDetail({
               articleId={article.id}
               showText
               fetchInitialStatus
+              outline
               size="sm"
-              className="ml-auto rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-500 shadow-none transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+              className="ml-auto rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-500 shadow-none dark:border-slate-700 dark:text-slate-400"
             />
             {safeUrl && (
               <a
