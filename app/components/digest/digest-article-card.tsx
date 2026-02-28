@@ -14,6 +14,17 @@ interface DigestArticleCardProps {
 export function DigestArticleCard({ article }: DigestArticleCardProps) {
   const router = useRouter();
 
+  const safeUrl = (() => {
+    try {
+      const parsed = new URL(article.url);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+        ? article.url
+        : null;
+    } catch {
+      return null;
+    }
+  })();
+
   const handleClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('a, button, [role="button"]')) {
       return;
@@ -54,16 +65,18 @@ export function DigestArticleCard({ article }: DigestArticleCardProps) {
             </span>
           </div>
 
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            onClick={(e) => e.stopPropagation()}
-            aria-label="元記事を開く"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
+          {safeUrl && (
+            <a
+              href={safeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="元記事を開く"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
         </div>
       </div>
     </CardV2>

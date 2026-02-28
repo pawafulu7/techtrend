@@ -18,31 +18,41 @@ export function DigestClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDigest = useCallback(async (p: DigestPeriod) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/digest?period=${p}`);
-      if (!res.ok) {
-        if (res.status === 401) {
-          setError('ログインが必要です');
-          return;
+  const fetchDigest = useCallback(
+    async (p: DigestPeriod, signal?: AbortSignal) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/digest?period=${p}`, { signal });
+        if (!res.ok) {
+          if (res.status === 401) {
+            setError('ログインが必要です');
+            return;
+          }
+          throw new Error(`Failed to fetch digest: ${res.status}`);
         }
-        throw new Error(`Failed to fetch digest: ${res.status}`);
+        const data: DigestResponse = await res.json();
+        setDigest(data);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          return; // Aborted, ignore
+        }
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'ダイジェストの取得に失敗しました'
+        );
+      } finally {
+        setIsLoading(false);
       }
-      const data: DigestResponse = await res.json();
-      setDigest(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'ダイジェストの取得に失敗しました'
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   useEffect(() => {
-    fetchDigest(period);
+    const controller = new AbortController();
+    fetchDigest(period, controller.signal);
+    return () => controller.abort();
   }, [period, fetchDigest]);
 
   const handlePeriodChange = (value: string) => {

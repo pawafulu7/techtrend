@@ -48,15 +48,13 @@ describe('DigestService', () => {
       filterServiceMock as any
     );
 
-    // デフォルトのPrismaモック設定
-    prismaMock.userCategoryPreference = {
-      count: jest.fn().mockResolvedValue(0),
-      findMany: jest.fn().mockResolvedValue([]),
-    };
-    prismaMock.interestCategory = {
-      findFirst: jest.fn().mockResolvedValue({ name: 'フロントエンド' }),
-    };
-    prismaMock.$queryRaw = jest.fn().mockResolvedValue([]);
+    // デフォルトのPrismaモック設定（mockDeepのメソッドに直接設定）
+    prismaMock.userCategoryPreference.count.mockResolvedValue(0);
+    prismaMock.userCategoryPreference.findMany.mockResolvedValue([]);
+    prismaMock.interestCategory.findMany.mockResolvedValue([
+      { name: 'フロントエンド' },
+    ]);
+    prismaMock.$queryRaw.mockResolvedValue([]);
   });
 
   describe('getDigest', () => {

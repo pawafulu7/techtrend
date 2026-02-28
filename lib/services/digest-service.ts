@@ -100,7 +100,10 @@ function toDigestArticle(
     url: row.url,
     summary: row.summary,
     thumbnailUrl: row.thumbnail,
-    publishedAt: row.publishedAt,
+    publishedAt:
+      row.publishedAt instanceof Date
+        ? row.publishedAt
+        : new Date(row.publishedAt),
     qualityScore: Number(row.qualityScore),
     sourceId: row.sourceId,
     recommendationReason,
@@ -140,6 +143,12 @@ export class DigestService {
       const cached = await this.cache.get<DigestResponse>(cacheKey);
       if (cached) {
         logger.info({ userId, period }, 'Digest cache hit');
+        // Restore Date objects from JSON serialization
+        cached.sections.forEach((section) => {
+          section.articles.forEach((article) => {
+            article.publishedAt = new Date(article.publishedAt);
+          });
+        });
         return cached;
       }
     } catch (error) {
@@ -278,24 +287,31 @@ export class DigestService {
               AND av."articleId" = a.id
               AND av."isRead" = true
           )
-        ORDER BY a."publishedAt" DESC
         LIMIT ${DIGEST_CONFIG.PERSONALIZED_RESULT_LIMIT}
       `;
+
+      // Re-sort by CategoryFilterService's finalScore ordering (candidateIds order)
+      const idOrder = new Map(candidateIds.map((id, i) => [id, i]));
+      rows.sort(
+        (a, b) => (idOrder.get(a.id) ?? 999) - (idOrder.get(b.id) ?? 999)
+      );
 
       if (rows.length === 0) {
         return [];
       }
 
-      // Get the first matching category name for recommendation reason
-      const category = await this.db.interestCategory.findFirst({
+      // Get matching category names for recommendation reason
+      const categories = await this.db.interestCategory.findMany({
         where: { id: { in: categoryIds } },
         select: { name: true },
       });
-      const categoryName = category?.name ?? 'カスタム';
+      const categoryNames = categories.map((c) => c.name);
+      const reason =
+        categoryNames.length > 0
+          ? `あなたの興味: ${categoryNames.slice(0, 2).join('・')}`
+          : 'おすすめ記事';
 
-      return rows.map((row) =>
-        toDigestArticle(row, `あなたの興味: ${categoryName}`)
-      );
+      return rows.map((row) => toDigestArticle(row, reason));
     } catch (error) {
       logger.error(
         { error: sanitizeError(error), userId, period },

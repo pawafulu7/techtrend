@@ -12,7 +12,6 @@ import {
 } from '@/lib/middleware/with-user-validation';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { digestService } from '@/lib/services/digest-service';
-import type { DigestPeriod } from '@/lib/services/digest-service';
 
 // =============================================================================
 // Request Schema
@@ -59,10 +58,7 @@ async function getHandler(
     const { period } = parseResult.data;
 
     // 2. Get digest via service
-    const digest = await digestService.getDigest(
-      validatedUser.id,
-      period as DigestPeriod
-    );
+    const digest = await digestService.getDigest(validatedUser.id, period);
 
     return NextResponse.json(digest);
   } catch (error) {
