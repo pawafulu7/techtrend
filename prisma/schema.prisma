@@ -42,6 +42,11 @@ enum CommentVisibility {
   PRIVATE
 }
 
+enum PreferenceScope {
+  home
+  digest
+}
+
 // =============================================================================
 // Knowledge Graph: Technology entity tracking and relationship mapping
 // =============================================================================
@@ -439,15 +444,17 @@ model UserCategoryPreference {
   id         String           @id @default(cuid())
   userId     String
   categoryId String
+  scope      PreferenceScope  @default(home)
   weight     Int              @default(1)
   createdAt  DateTime         @default(now()) @db.Timestamptz(6)
   updatedAt  DateTime         @updatedAt @db.Timestamptz(6)
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   category   InterestCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, categoryId], map: "uq_user_category_preference")
+  @@unique([userId, categoryId, scope], map: "uq_user_category_preference")
   @@index([userId], map: "idx_user_category_preference_user")
   @@index([categoryId], map: "idx_user_category_preference_category")
+  @@index([userId, scope], map: "idx_user_category_preference_user_scope")
 }
 
 // =============================================================================
