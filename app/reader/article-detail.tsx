@@ -127,13 +127,19 @@ export function ReaderArticleDetail({
                 {dateStr}
               </span>
             )}
-            <FavoriteButton articleId={article.id} compact fetchInitialStatus />
+            <FavoriteButton
+              articleId={article.id}
+              showText
+              fetchInitialStatus
+              size="sm"
+              className="ml-auto rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-500 shadow-none transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+            />
             {safeUrl && (
               <a
                 href={safeUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-auto inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-500 transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-500 transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 <ExternalLink className="h-3 w-3" />
                 元記事を読む
