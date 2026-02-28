@@ -107,7 +107,8 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'cmdq3nwwf0004tegxuxj97z1k', // InfoQ Japan
       'cmdq3nwwu0007tegxcstlc8zt', // Publickey
       'cmdq3nwwk0005tegxdjv21wae', // Think IT
-      'itmedia_news', // ITmedia NEWS
+      '22366c9b-2b97-4a83-a08b-335118350085', // ITmedia Technology
+      '29958e53-647b-478d-b29a-ac66b061a468', // ITmedia Security
       'itmedia_aiplus', // ITmedia AI+
       'atit', // @IT
     ],

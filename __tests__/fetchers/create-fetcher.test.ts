@@ -72,7 +72,8 @@ describe('createFetcher - Japanese Corporate Tech Blogs', () => {
 
   describe('Japanese Tech Media sources', () => {
     it.each([
-      ['ITmedia NEWS', 'itmedia_news'],
+      ['ITmedia Technology', 'itmedia_technology'],
+      ['ITmedia Security', 'itmedia_security'],
       ['ITmedia AI+', 'itmedia_aiplus'],
       ['@IT', 'atit'],
     ])('should create GenericForeignRssFetcher for "%s"', (name, id) => {
