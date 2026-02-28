@@ -84,7 +84,6 @@ export function DigestClient() {
         // Trigger re-fetch via useEffect (proper AbortController management)
         setFetchTrigger((prev) => prev + 1);
       } catch {
-        setDialogOpen(false);
         setError('カテゴリの保存に失敗しました');
       }
     },

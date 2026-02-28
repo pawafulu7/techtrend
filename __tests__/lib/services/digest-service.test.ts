@@ -229,16 +229,17 @@ describe('DigestService', () => {
             sourceId: 'source-1',
           },
         ])
-        // mustRead → 空（excludeIdsにarticle-1が含まれるため）
+        // mustRead → 空を返す（実際のSQLではexcludeIdsで除外される想定）
         .mockResolvedValueOnce([])
-        // missed → 空（excludeIdsにarticle-1が含まれるため）
+        // missed → 空を返す（実際のSQLではexcludeIdsで除外される想定）
         .mockResolvedValueOnce([]);
 
       const result = await service.getDigest('user-1', 'daily');
 
-      // $queryRawが3回呼ばれることを確認（重複排除ロジックが動作）
+      // $queryRawが3回呼ばれることを確認（重複排除用のexcludeIdsがSQLに渡される）
       expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(3);
       expect(result.sections[0].articles).toHaveLength(1);
+      expect(result.sections[0].articles[0].articleId).toBe('article-1');
       expect(result.sections[1].articles).toHaveLength(0);
       expect(result.sections[2].articles).toHaveLength(0);
     });
@@ -351,14 +352,48 @@ describe('DigestService', () => {
       filterServiceMock.filterArticles.mockRejectedValue(
         new Error('Embedding service unavailable')
       );
-      prismaMock.$queryRaw.mockResolvedValue([]);
+      // filterArticles失敗時、personalized用$queryRawは呼ばれない
+      // mustRead → 実データを返す
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce([
+          {
+            id: 'article-must-1',
+            title: 'Must Read Article',
+            url: 'https://example.com/must-1',
+            summary: 'Must read summary',
+            thumbnail: null,
+            publishedAt: new Date(),
+            qualityScore: 90,
+            sourceId: 'source-2',
+            viewer_count: BigInt(50),
+          },
+        ])
+        // missed → 実データを返す
+        .mockResolvedValueOnce([
+          {
+            id: 'article-missed-1',
+            title: 'Missed Article',
+            url: 'https://example.com/missed-1',
+            summary: 'Missed summary',
+            thumbnail: null,
+            publishedAt: new Date(),
+            qualityScore: 80,
+            sourceId: 'source-3',
+          },
+        ]);
 
       const result = await service.getDigest('user-1', 'daily');
 
       expect(result.sections[0].type).toBe('personalized');
       expect(result.sections[0].articles).toHaveLength(0);
-      // mustRead/missedは独立して取得される
+      // filterArticles失敗時はpersonalized用$queryRawは呼ばれない（mustRead+missedの2回のみ）
+      expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+      // mustRead/missedはfilterArticles失敗に関わらず独立して取得される
       expect(result.sections).toHaveLength(3);
+      expect(result.sections[1].articles).toHaveLength(1);
+      expect(result.sections[1].articles[0].articleId).toBe('article-must-1');
+      expect(result.sections[2].articles).toHaveLength(1);
+      expect(result.sections[2].articles[0].articleId).toBe('article-missed-1');
     });
   });
 
