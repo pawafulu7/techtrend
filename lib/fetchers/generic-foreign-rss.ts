@@ -91,7 +91,7 @@ export class GenericForeignRssFetcher extends BaseFetcher {
 
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
-            url: normalizedUrl, // 正規化済みURLを保存
+            url: item.link, // 元URLを保存（エンリッチメントで正しくアクセスするため）
             content: this.extractContent(item),
             publishedAt: this.extractPublishDate(item),
             sourceId: this.source.id,
