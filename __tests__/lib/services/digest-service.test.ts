@@ -314,16 +314,33 @@ describe('DigestService', () => {
         { categoryId: 'cat-1' },
       ]);
       filterServiceMock.filterArticles.mockResolvedValue({
-        articles: [],
-        total: 0,
+        articles: [{ articleId: 'article-1', score: 0.9 }],
+        total: 1,
       } as any);
-      prismaMock.$queryRaw.mockResolvedValue([]);
+      // personalized: 1記事, mustRead: 空, missed: 空
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce([
+          {
+            id: 'article-1',
+            title: 'Article 1',
+            url: 'https://example.com/1',
+            summary: null,
+            thumbnail: null,
+            publishedAt: new Date(),
+            qualityScore: 85,
+            sourceId: 'source-1',
+          },
+        ])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
 
       const result = await service.getDigest('user-1', 'daily');
 
       // キャッシュ書き込みエラーでもレスポンスは返す
       expect(result.hasPreferences).toBe(true);
       expect(result.sections).toHaveLength(3);
+      // cache.setが実際に呼ばれたことを確認（エラーが発生しても握りつぶされる）
+      expect(mockCache.set).toHaveBeenCalled();
     });
 
     it('filterArticlesがエラーを返す場合、personalizedセクションは空になる', async () => {

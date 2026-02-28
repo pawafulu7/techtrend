@@ -58,7 +58,9 @@ export function DigestClient() {
             : 'ダイジェストの取得に失敗しました'
         );
       } finally {
-        setIsLoading(false);
+        if (!signal?.aborted) {
+          setIsLoading(false);
+        }
       }
     },
     []
