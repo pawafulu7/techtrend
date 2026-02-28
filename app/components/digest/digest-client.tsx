@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { DigestSection } from './digest-section';
+import { DigestSkeleton } from './digest-skeleton';
 import { CategoryPreferenceDialog } from '@/app/components/personalization/category-preference-dialog';
 import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
 import type {
@@ -134,23 +135,7 @@ export function DigestClient() {
       )}
 
       {/* Loading State */}
-      {isLoading && (
-        <div className="space-y-8">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="space-y-3">
-              <div className="bg-muted h-6 w-48 animate-pulse rounded" />
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {[1, 2, 3].map((j) => (
-                  <div
-                    key={j}
-                    className="bg-muted h-32 animate-pulse rounded-lg"
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {isLoading && <DigestSkeleton />}
 
       {/* No Preferences State */}
       {!isLoading && digest && !digest.hasPreferences && (

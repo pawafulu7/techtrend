@@ -127,7 +127,12 @@ async function postHandler(
     }
 
     // Also invalidate digest cache (fire-and-forget)
-    digestService.invalidateUserCache(validatedUser.id).catch(() => {});
+    digestService.invalidateUserCache(validatedUser.id).catch((error) => {
+      logger.warn(
+        { error, userId: validatedUser.id },
+        'Failed to invalidate digest cache'
+      );
+    });
 
     return NextResponse.json({ success: true, articleView });
   } catch (error) {
@@ -207,6 +212,14 @@ async function putHandler(
       );
     }
 
+    // Also invalidate digest cache (fire-and-forget)
+    digestService.invalidateUserCache(validatedUser.id).catch((error) => {
+      logger.warn(
+        { error, userId: validatedUser.id },
+        'Failed to invalidate digest cache'
+      );
+    });
+
     return NextResponse.json({
       success: true,
       markedCount,
@@ -268,7 +281,12 @@ async function deleteHandler(
     }
 
     // Also invalidate digest cache (fire-and-forget)
-    digestService.invalidateUserCache(validatedUser.id).catch(() => {});
+    digestService.invalidateUserCache(validatedUser.id).catch((error) => {
+      logger.warn(
+        { error, userId: validatedUser.id },
+        'Failed to invalidate digest cache'
+      );
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

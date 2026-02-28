@@ -166,7 +166,11 @@ export class DigestService {
     if (preferenceCount === 0) {
       const emptyResponse: DigestResponse = {
         period,
-        sections: [],
+        sections: [
+          { type: 'personalized', title: 'あなたへのおすすめ', articles: [] },
+          { type: 'mustRead', title: '必読記事', articles: [] },
+          { type: 'missed', title: '見逃した注目記事', articles: [] },
+        ],
         generatedAt: new Date().toISOString(),
         hasPreferences: false,
       };

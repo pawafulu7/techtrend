@@ -12,6 +12,7 @@ import {
 } from '@/lib/middleware/with-user-validation';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { digestService } from '@/lib/services/digest-service';
+import { logger, sanitizeError } from '@/lib/logger';
 
 // =============================================================================
 // Request Schema
@@ -61,7 +62,11 @@ async function getHandler(
     const digest = await digestService.getDigest(validatedUser.id, period);
 
     return NextResponse.json(digest);
-  } catch {
+  } catch (error) {
+    logger.error(
+      { error: sanitizeError(error), userId: validatedUser.id },
+      'Digest API error'
+    );
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

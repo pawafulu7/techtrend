@@ -80,13 +80,22 @@ describe('DigestService', () => {
       expect(prismaMock.userCategoryPreference.count).not.toHaveBeenCalled();
     });
 
-    it('プリファレンスが無い場合はhasPreferences: falseで空セクションを返す', async () => {
+    it('プリファレンスが無い場合はhasPreferences: falseで空記事の3セクションを返す', async () => {
       prismaMock.userCategoryPreference.count.mockResolvedValue(0);
 
       const result = await service.getDigest('user-1', 'daily');
 
       expect(result.hasPreferences).toBe(false);
-      expect(result.sections).toHaveLength(0);
+      expect(result.sections).toHaveLength(3);
+      expect(result.sections[0]).toEqual(
+        expect.objectContaining({ type: 'personalized', articles: [] })
+      );
+      expect(result.sections[1]).toEqual(
+        expect.objectContaining({ type: 'mustRead', articles: [] })
+      );
+      expect(result.sections[2]).toEqual(
+        expect.objectContaining({ type: 'missed', articles: [] })
+      );
       expect(result.period).toBe('daily');
       expect(result.generatedAt).toBeDefined();
       // キャッシュに保存しない（早期リターン）
@@ -294,7 +303,8 @@ describe('DigestService', () => {
 
       // キャッシュエラーでも正常レスポンスを返す
       expect(result.hasPreferences).toBe(false);
-      expect(result.sections).toHaveLength(0);
+      expect(result.sections).toHaveLength(3);
+      expect(result.sections.every((s) => s.articles.length === 0)).toBe(true);
     });
 
     it('キャッシュ書き込み失敗時もレスポンスを返す', async () => {
