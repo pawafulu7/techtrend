@@ -107,6 +107,9 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'cmdq3nwwf0004tegxuxj97z1k', // InfoQ Japan
       'cmdq3nwwu0007tegxcstlc8zt', // Publickey
       'cmdq3nwwk0005tegxdjv21wae', // Think IT
+      'itmedia_security', // ITmedia Security
+      'itmedia_aiplus', // ITmedia AI+
+      'atit', // @IT
     ],
   },
   company: {
@@ -162,6 +165,7 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'developersio_mcp', // DevelopersIO MCP
       CLAUDE_BLOG_SOURCE_ID, // Claude Blog
       ANTHROPIC_NEWS_SOURCE_ID, // Anthropic News
+      'itmedia_aiplus', // ITmedia AI+
     ],
   },
   llm: {

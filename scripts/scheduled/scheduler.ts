@@ -272,6 +272,10 @@ const RSS_SOURCES = [
   'Kubernetes Blog',
   'Go Blog',
   'Rust Blog',
+  // 国内技術メディア（ITmedia系）
+  'ITmedia Security',
+  'ITmedia AI+',
+  '@IT',
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）
