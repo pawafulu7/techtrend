@@ -20,6 +20,7 @@ import {
   createUserDeletedResponse,
 } from '@/lib/middleware/with-user-validation';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
+import { digestService } from '@/lib/services/digest-service';
 
 // =============================================================================
 // Configuration
@@ -60,7 +61,9 @@ interface ErrorResponse {
  *
  * Returns empty array with default settings if user has no preferences set.
  */
-export async function GET(): Promise<NextResponse<PreferencesResponse | ErrorResponse>> {
+export async function GET(): Promise<
+  NextResponse<PreferencesResponse | ErrorResponse>
+> {
   try {
     const session = await auth();
 
@@ -160,10 +163,7 @@ export async function POST(
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
     const { categoryIds, filterEnabled, periodMonths } = body;
@@ -240,6 +240,9 @@ export async function POST(
         });
       }
     });
+
+    // Invalidate digest cache so next fetch reflects new preferences
+    await digestService.invalidateUserCache(userId);
 
     logger.info(
       {

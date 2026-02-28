@@ -75,13 +75,14 @@ export function DigestClient() {
           filterEnabled: categoryIds.length > 0,
           periodMonths: selectedPeriod,
         });
+        setDialogOpen(false);
+        // Re-fetch digest after preferences are saved
+        const controller = new AbortController();
+        fetchDigest(period, controller.signal);
       } catch {
-        // updatePreferencesAsync error is handled by React Query's error state
+        setDialogOpen(false);
+        setError('カテゴリの保存に失敗しました');
       }
-      setDialogOpen(false);
-      // Re-fetch digest after preferences are saved
-      const controller = new AbortController();
-      fetchDigest(period, controller.signal);
     },
     [updatePreferencesAsync, fetchDigest, period]
   );

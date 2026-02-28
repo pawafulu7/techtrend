@@ -435,6 +435,24 @@ export class DigestService {
       return [];
     }
   }
+
+  /**
+   * Invalidate digest cache for a user.
+   * Called when user preferences change.
+   */
+  async invalidateUserCache(userId: string): Promise<void> {
+    const periods: DigestPeriod[] = ['daily', 'weekly'];
+    await Promise.all(
+      periods.map((period) =>
+        this.cache.delete(`digest:${userId}:${period}`).catch((error) => {
+          logger.warn(
+            { error: sanitizeError(error), userId, period },
+            'Failed to invalidate digest cache'
+          );
+        })
+      )
+    );
+  }
 }
 
 // =============================================================================
