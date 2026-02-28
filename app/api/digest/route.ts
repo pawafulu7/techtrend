@@ -61,7 +61,7 @@ async function getHandler(
     const digest = await digestService.getDigest(validatedUser.id, period);
 
     return NextResponse.json(digest);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -5,7 +5,7 @@
  * category preferences, trending articles, and missed high-quality content.
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
 import { RedisCache } from '@/lib/cache/redis-cache';
