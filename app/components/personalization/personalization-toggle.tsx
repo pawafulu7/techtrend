@@ -67,7 +67,6 @@ export function PersonalizationToggle({
         <Toggle
           pressed={filterEnabled && hasPreferences}
           onPressedChange={handleToggleClick}
-          onClick={handleToggleClick}
           aria-label="パーソナライズ設定"
           className={cn(
             'h-9 gap-1.5 px-3 whitespace-nowrap',
