@@ -10,6 +10,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { parseSummary } from '@/lib/utils/summary-parser';
+import { FavoriteButton } from '@/app/components/article/favorite-button';
 import type { ReaderDetailArticle } from './types';
 import { formatDate } from './utils';
 
@@ -126,6 +127,7 @@ export function ReaderArticleDetail({
                 {dateStr}
               </span>
             )}
+            <FavoriteButton articleId={article.id} compact fetchInitialStatus />
             {safeUrl && (
               <a
                 href={safeUrl}
