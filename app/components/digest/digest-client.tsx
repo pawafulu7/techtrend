@@ -99,6 +99,17 @@ export function DigestClient() {
       <header className="flex flex-wrap items-center gap-3 pb-4">
         <Newspaper className="text-primary h-5 w-5" aria-hidden="true" />
         <h1 className="text-foreground text-lg font-semibold">ダイジェスト</h1>
+        {digest?.hasPreferences && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDialogOpen(true)}
+            className="ml-auto"
+          >
+            <Settings className="h-4 w-4" aria-hidden="true" />
+            <span className="ml-1.5">カテゴリ設定</span>
+          </Button>
+        )}
       </header>
 
       {/* Period Tabs */}
