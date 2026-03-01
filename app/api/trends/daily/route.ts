@@ -96,7 +96,7 @@ async function enrichReportWithThumbnails(
     return { enrichedData: reportData, evidenceArticles: {} };
   }
 
-  // Fetch article data from DB
+  // Fetch article data from DB (sourceName is via source relation)
   const articles = await prisma.article.findMany({
     where: { id: { in: Array.from(allArticleIds) } },
     select: {
@@ -104,11 +104,13 @@ async function enrichReportWithThumbnails(
       title: true,
       translatedTitle: true,
       thumbnail: true,
-      sourceName: true,
+      source: { select: { name: true } },
     },
   });
 
-  const articleMap = new Map(articles.map((a) => [a.id, a]));
+  const articleMap = new Map(
+    articles.map((a) => [a.id, { ...a, sourceName: a.source.name }])
+  );
 
   // Enrich topArticles with thumbnails
   const enrichedTopArticles = topArticles.map((article) => {
