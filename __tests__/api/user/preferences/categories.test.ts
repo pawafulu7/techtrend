@@ -165,6 +165,16 @@ describe('User Category Preferences API', () => {
       expect(response.status).toBe(400);
       expect(data.error).toBe('Invalid scope parameter');
     });
+
+    it('should return 400 for empty string scope', async () => {
+      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+
+      const response = await GET(createGetRequest({ scope: '' }));
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Invalid scope parameter');
+    });
   });
 
   describe('POST /api/user/preferences/categories', () => {
@@ -328,6 +338,12 @@ describe('User Category Preferences API', () => {
         const response = await POST(request);
 
         expect(response.status).toBe(200);
+
+        // Verify user.update was called with the correct periodMonths
+        expect(prismaMock.user.update).toHaveBeenCalledWith({
+          where: { id: 'user-1' },
+          data: { personalizationPeriodMonths: validPeriod },
+        });
       }
     );
 
@@ -405,6 +421,10 @@ describe('User Category Preferences API', () => {
           { userId: 'user-1', categoryId: 'cat-1', scope: 'home', weight: 1 },
         ],
       });
+
+      // digest cache should NOT be invalidated for home scope
+      const { digestService } = require('@/lib/services/digest-service');
+      expect(digestService.invalidateUserCache).not.toHaveBeenCalled();
     });
 
     it('should save digest scope without affecting home', async () => {
@@ -433,6 +453,10 @@ describe('User Category Preferences API', () => {
           { userId: 'user-1', categoryId: 'cat-2', scope: 'digest', weight: 1 },
         ],
       });
+
+      // digest cache should be invalidated for digest scope
+      const { digestService } = require('@/lib/services/digest-service');
+      expect(digestService.invalidateUserCache).toHaveBeenCalledWith('user-1');
     });
 
     it('should not update periodMonths when scope is digest', async () => {
@@ -460,6 +484,20 @@ describe('User Category Preferences API', () => {
       const request = createRequest({
         categoryIds: ['cat-1'],
         scope: 'invalid',
+      });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Invalid scope parameter');
+    });
+
+    it('should return 400 for empty string scope in POST body', async () => {
+      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+
+      const request = createRequest({
+        categoryIds: ['cat-1'],
+        scope: '',
       });
       const response = await POST(request);
       const data = await response.json();
