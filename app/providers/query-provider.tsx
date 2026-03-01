@@ -114,6 +114,11 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   useEffect(() => {
+    const invalidateReadRelatedQueries = () => {
+      queryClient.invalidateQueries({ queryKey: ['read-status'] });
+      queryClient.invalidateQueries({ queryKey: ['digest'] });
+    };
+
     const handleReadStatusChanged = (event: Event) => {
       const customEvent = event as CustomEvent<ReadStatusChangedDetail>;
       const detail = customEvent.detail;
@@ -166,7 +171,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
           }
         });
 
-      queryClient.invalidateQueries({ queryKey: ['read-status'] });
+      invalidateReadRelatedQueries();
     };
 
     const handleBulkRead = (event: Event) => {
@@ -179,7 +184,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         queryKey: ['infinite-articles'],
         refetchType: 'active',
       });
-      queryClient.invalidateQueries({ queryKey: ['read-status'] });
+      invalidateReadRelatedQueries();
     };
 
     window.addEventListener(
