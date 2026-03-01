@@ -266,7 +266,18 @@ describe('User Category Preferences API', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toBe('categoryIds must be an array');
+      expect(data.error).toBe('categoryIds must be an array of strings');
+    });
+
+    it('should reject categoryIds with non-string elements', async () => {
+      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+
+      const request = createRequest({ categoryIds: ['valid-id', 123, null] });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('categoryIds must be an array of strings');
     });
 
     it('should accept empty category array (clear all)', async () => {

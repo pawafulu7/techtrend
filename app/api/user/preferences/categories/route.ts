@@ -208,10 +208,13 @@ export async function POST(
     }
     const scope: PreferenceScope = (bodyScope as PreferenceScope) || 'home';
 
-    // Validate categoryIds is an array
-    if (!Array.isArray(categoryIds)) {
+    // Validate categoryIds is an array of strings
+    if (
+      !Array.isArray(categoryIds) ||
+      !categoryIds.every((id: unknown) => typeof id === 'string')
+    ) {
       return NextResponse.json(
-        { error: 'categoryIds must be an array' },
+        { error: 'categoryIds must be an array of strings' },
         { status: 400 }
       );
     }

@@ -77,7 +77,6 @@ export function DigestClient() {
       await updatePreferencesAsync({
         categoryIds,
         filterEnabled: categoryIds.length > 0,
-        periodMonths: selectedPeriod,
       });
       // Trigger re-fetch via useEffect (proper AbortController management)
       setFetchTrigger((prev) => prev + 1);
