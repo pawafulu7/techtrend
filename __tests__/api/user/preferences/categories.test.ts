@@ -3,23 +3,48 @@
  */
 
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
-  withRateLimit: (_key: string, handler: Function) => handler,
+  withRateLimit: jest.fn((_key: string, handler: Function) => handler),
 }));
 jest.mock('@/lib/middleware/csrf-protection', () => ({
-  withCSRFProtection: (handler: Function) => handler,
+  withCSRFProtection: jest.fn((handler: Function) => handler),
 }));
-const mockValidateUser = jest.fn();
-const mockCreateUserDeletedResponse = jest.fn();
 jest.mock('@/lib/middleware/with-user-validation', () => ({
-  withUserValidation: (handler: Function) => handler,
-  validateUser: (...args: unknown[]) => mockValidateUser(...args),
-  createUserDeletedResponse: (...args: unknown[]) =>
-    mockCreateUserDeletedResponse(...args),
+  withUserValidation: jest.fn((handler: Function) => handler),
+  validateUser: jest.fn(),
+  createUserDeletedResponse: jest.fn(),
 }));
+
+const getMiddlewareMocks = () => {
+  const { withRateLimit } = jest.requireMock('@/lib/middleware/with-rate-limit') as {
+    withRateLimit: jest.MockedFunction<(key: string, handler: Function) => Function>;
+  };
+  const { withCSRFProtection } = jest.requireMock('@/lib/middleware/csrf-protection') as {
+    withCSRFProtection: jest.MockedFunction<(handler: Function) => Function>;
+  };
+  const { withUserValidation, validateUser, createUserDeletedResponse } =
+    jest.requireMock('@/lib/middleware/with-user-validation') as {
+      withUserValidation: jest.MockedFunction<(handler: Function) => Function>;
+      validateUser: jest.Mock;
+      createUserDeletedResponse: jest.Mock;
+    };
+  return { withRateLimit, withCSRFProtection, withUserValidation, validateUser, createUserDeletedResponse };
+};
 
 import { GET, POST } from '@/app/api/user/preferences/categories/route';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+
+// Snapshot middleware composition calls immediately after import
+// (before any clearAllMocks in beforeEach can erase them)
+const middlewareCompositionSnapshot = (() => {
+  const { withRateLimit, withCSRFProtection, withUserValidation } = getMiddlewareMocks();
+  return {
+    rateLimitKey: withRateLimit.mock.calls[0]?.[0] as string | undefined,
+    rateLimitCalled: withRateLimit.mock.calls.length > 0,
+    userValidationCalled: withUserValidation.mock.calls.length > 0,
+    csrfProtectionCalled: withCSRFProtection.mock.calls.length > 0,
+  };
+})();
 
 // Mock auth
 const mockAuth = jest.fn();
@@ -54,7 +79,7 @@ describe('User Category Preferences API', () => {
     resetPrismaMock();
     jest.clearAllMocks();
     // Default: validateUser returns a valid user (used by GET handler)
-    mockValidateUser.mockResolvedValue({ id: 'user-1', deletedAt: null });
+    getMiddlewareMocks().validateUser.mockResolvedValue({ id: 'user-1', deletedAt: null });
   });
 
   describe('GET /api/user/preferences/categories', () => {
@@ -208,17 +233,28 @@ describe('User Category Preferences API', () => {
       });
     };
 
+    const callPost = (body: unknown) => {
+      const request = createRequest(body);
+      return POST(request, mockContext as any);
+    };
+
+    it('should be wrapped with correct middleware chain', () => {
+      expect(middlewareCompositionSnapshot.rateLimitCalled).toBe(true);
+      expect(middlewareCompositionSnapshot.rateLimitKey).toBe('write:preferences');
+      expect(middlewareCompositionSnapshot.userValidationCalled).toBe(true);
+      expect(middlewareCompositionSnapshot.csrfProtectionCalled).toBe(true);
+    });
+
     it('should save user preferences', async () => {
       prismaMock.interestCategory.findMany.mockResolvedValue([
         { id: 'cat-1' },
         { id: 'cat-2' },
       ]);
 
-      const request = createRequest({
+      const response = await callPost({
         categoryIds: ['cat-1', 'cat-2'],
         filterEnabled: true,
       });
-      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -240,10 +276,9 @@ describe('User Category Preferences API', () => {
     it('should remove duplicates from category IDs', async () => {
       prismaMock.interestCategory.findMany.mockResolvedValue([{ id: 'cat-1' }]);
 
-      const request = createRequest({
+      const response = await callPost({
         categoryIds: ['cat-1', 'cat-1', 'cat-1'],
       });
-      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -253,10 +288,9 @@ describe('User Category Preferences API', () => {
     it('should reject invalid category IDs', async () => {
       prismaMock.interestCategory.findMany.mockResolvedValue([{ id: 'cat-1' }]);
 
-      const request = createRequest({
+      const response = await callPost({
         categoryIds: ['cat-1', 'invalid-cat'],
       });
-      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -266,8 +300,7 @@ describe('User Category Preferences API', () => {
 
     it('should reject when exceeding max selections', async () => {
       const manyIds = Array.from({ length: 25 }, (_, i) => `cat-${i}`);
-      const request = createRequest({ categoryIds: manyIds });
-      const response = await POST(request, mockContext as any);
+      const response = await callPost({ categoryIds: manyIds });
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -275,8 +308,7 @@ describe('User Category Preferences API', () => {
     });
 
     it('should reject non-array categoryIds', async () => {
-      const request = createRequest({ categoryIds: 'not-an-array' });
-      const response = await POST(request, mockContext as any);
+      const response = await callPost({ categoryIds: 'not-an-array' });
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -284,8 +316,7 @@ describe('User Category Preferences API', () => {
     });
 
     it('should reject categoryIds with non-string elements', async () => {
-      const request = createRequest({ categoryIds: ['valid-id', 123, null] });
-      const response = await POST(request, mockContext as any);
+      const response = await callPost({ categoryIds: ['valid-id', 123, null] });
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -293,11 +324,10 @@ describe('User Category Preferences API', () => {
     });
 
     it('should reject invalid periodMonths for home scope', async () => {
-      const request = createRequest({
+      const response = await callPost({
         categoryIds: ['cat-1'],
         periodMonths: 5,
       });
-      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -305,11 +335,10 @@ describe('User Category Preferences API', () => {
     });
 
     it('should reject non-number periodMonths for home scope', async () => {
-      const request = createRequest({
+      const response = await callPost({
         categoryIds: ['cat-1'],
         periodMonths: 'invalid',
       });
-      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -328,11 +357,10 @@ describe('User Category Preferences API', () => {
           }
         });
 
-        const request = createRequest({
+        const response = await callPost({
           categoryIds: ['cat-1'],
           periodMonths: validPeriod,
         });
-        const response = await POST(request, mockContext as any);
 
         expect(response.status).toBe(200);
 
@@ -345,8 +373,7 @@ describe('User Category Preferences API', () => {
     );
 
     it('should accept empty category array (clear all)', async () => {
-      const request = createRequest({ categoryIds: [] });
-      const response = await POST(request, mockContext as any);
+      const response = await callPost({ categoryIds: [] });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -379,8 +406,7 @@ describe('User Category Preferences API', () => {
       prismaMock.interestCategory.findMany.mockResolvedValue([{ id: 'cat-1' }]);
       prismaMock.$transaction.mockRejectedValue(new Error('Database error'));
 
-      const request = createRequest({ categoryIds: ['cat-1'] });
-      const response = await POST(request, mockContext as any);
+      const response = await callPost({ categoryIds: ['cat-1'] });
       const data = await response.json();
 
       expect(response.status).toBe(500);
@@ -392,11 +418,10 @@ describe('User Category Preferences API', () => {
         { id: 'cat-1' },
       ]);
 
-      const request = createRequest({
+      const response = await callPost({
         categoryIds: ['cat-1'],
         scope: 'home',
       });
-      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -423,11 +448,10 @@ describe('User Category Preferences API', () => {
         { id: 'cat-2' },
       ]);
 
-      const request = createRequest({
+      const response = await callPost({
         categoryIds: ['cat-2'],
         scope: 'digest',
       });
-      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -454,12 +478,11 @@ describe('User Category Preferences API', () => {
         { id: 'cat-1' },
       ]);
 
-      const request = createRequest({
+      const response = await callPost({
         categoryIds: ['cat-1'],
         scope: 'digest',
         periodMonths: 6,
       });
-      const response = await POST(request, mockContext as any);
 
       expect(response.status).toBe(200);
 
@@ -468,11 +491,10 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return 400 for invalid scope in POST body', async () => {
-      const request = createRequest({
+      const response = await callPost({
         categoryIds: ['cat-1'],
         scope: 'invalid',
       });
-      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -480,11 +502,10 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return 400 for empty string scope in POST body', async () => {
-      const request = createRequest({
+      const response = await callPost({
         categoryIds: ['cat-1'],
         scope: '',
       });
-      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
