@@ -132,102 +132,66 @@ function assertCorrectMiddlewareOrder(
   }
 }
 
+/**
+ * Rate-limited endpoints that must have withRateLimit wrapping withUserValidation.
+ * Add new entries here when adding rate limiting to new endpoints.
+ */
+const RATE_LIMITED_ENDPOINTS: {
+  method: string;
+  path: string;
+  modulePath: string;
+}[] = [
+  { method: 'GET', path: '/api/digest', modulePath: '@/app/api/digest/route' },
+  { method: 'POST', path: '/api/user/preferences/categories', modulePath: '@/app/api/user/preferences/categories/route' },
+  { method: 'PUT', path: '/api/user/source-presets/[id]', modulePath: '@/app/api/user/source-presets/[id]/route' },
+  { method: 'DELETE', path: '/api/user/source-presets/[id]', modulePath: '@/app/api/user/source-presets/[id]/route' },
+  { method: 'POST', path: '/api/user/source-presets', modulePath: '@/app/api/user/source-presets/route' },
+  { method: 'POST', path: '/api/comments', modulePath: '@/app/api/comments/route' },
+];
+
 describe('Middleware nesting order (issue #461 regression)', () => {
   beforeEach(() => {
     wrapCalls = [];
     jest.clearAllMocks();
   });
 
-  it('GET /api/digest: withRateLimit wraps withUserValidation', () => {
-    jest.isolateModules(() => {
-      wrapCalls = [];
-      const mod = require('@/app/api/digest/route');
-      // GET should be the result of withRateLimit (outermost for read endpoints)
-      expect(mod.GET).toBe(RATE_LIMIT_SENTINEL);
-      assertCorrectMiddlewareOrder(wrapCalls, 'GET /api/digest');
-    });
-  });
+  it.each(
+    RATE_LIMITED_ENDPOINTS.map((ep) => [
+      `${ep.method} ${ep.path}`,
+      ep.method,
+      ep.modulePath,
+    ])
+  )(
+    '%s: withRateLimit wraps withUserValidation',
+    (_label, method, modulePath) => {
+      jest.isolateModules(() => {
+        wrapCalls = [];
+        const mod = require(modulePath);
+        expect(mod[method]).toBe(RATE_LIMIT_SENTINEL);
+        assertCorrectMiddlewareOrder(wrapCalls, _label);
+      });
+    }
+  );
 
-  it('POST /api/user/preferences/categories: withRateLimit wraps withUserValidation', () => {
-    jest.isolateModules(() => {
-      wrapCalls = [];
-      const mod = require('@/app/api/user/preferences/categories/route');
-      // POST goes through CSRF -> withRateLimit -> withUserValidation
-      // CSRF is passthrough, so POST === RATE_LIMIT_SENTINEL
-      expect(mod.POST).toBe(RATE_LIMIT_SENTINEL);
-      assertCorrectMiddlewareOrder(wrapCalls, 'POST /api/user/preferences/categories');
-    });
-  });
-
-  it('PUT /api/user/source-presets/[id]: withRateLimit wraps withUserValidation', () => {
-    jest.isolateModules(() => {
-      wrapCalls = [];
-      const mod = require('@/app/api/user/source-presets/[id]/route');
-      expect(mod.PUT).toBe(RATE_LIMIT_SENTINEL);
-      assertCorrectMiddlewareOrder(wrapCalls, 'PUT /api/user/source-presets/[id]');
-    });
-  });
-
-  it('DELETE /api/user/source-presets/[id]: withRateLimit wraps withUserValidation', () => {
-    jest.isolateModules(() => {
-      wrapCalls = [];
-      const mod = require('@/app/api/user/source-presets/[id]/route');
-      // Both PUT and DELETE are in the same module
-      // Check that DELETE is also RATE_LIMIT_SENTINEL
-      expect(mod.DELETE).toBe(RATE_LIMIT_SENTINEL);
-      // The module defines two rate-limited endpoints (PUT, DELETE)
-      // Both should have correct nesting
-      const rateLimitCalls = wrapCalls.filter(
-        (c) => c.middleware === 'withRateLimit'
-      );
-      for (const call of rateLimitCalls) {
-        expect(call.receivedInner).toBe(USER_VALIDATION_SENTINEL);
-      }
-    });
-  });
-
-  it('POST /api/user/source-presets: withRateLimit wraps withUserValidation', () => {
-    jest.isolateModules(() => {
-      wrapCalls = [];
-      const mod = require('@/app/api/user/source-presets/route');
-      expect(mod.POST).toBe(RATE_LIMIT_SENTINEL);
-      assertCorrectMiddlewareOrder(wrapCalls, 'POST /api/user/source-presets');
-    });
-  });
-
-  it('POST /api/comments: withRateLimit wraps withUserValidation', () => {
-    jest.isolateModules(() => {
-      wrapCalls = [];
-      const mod = require('@/app/api/comments/route');
-      expect(mod.POST).toBe(RATE_LIMIT_SENTINEL);
-      assertCorrectMiddlewareOrder(wrapCalls, 'POST /api/comments');
-    });
-  });
-
-  it('withRateLimit always receives withUserValidation result (not raw handler)', () => {
-    // This is the core regression check: if someone reverses the order to
+  it('withRateLimit always receives withUserValidation result across all endpoints', () => {
+    // Core regression check: if someone reverses the order to
     // withUserValidation(withRateLimit(key, handler)), then withRateLimit
     // would receive a raw handler function, NOT the USER_VALIDATION_SENTINEL
+    const uniqueModules = [
+      ...new Set(RATE_LIMITED_ENDPOINTS.map((ep) => ep.modulePath)),
+    ];
+
     jest.isolateModules(() => {
       wrapCalls = [];
-      require('@/app/api/digest/route');
-      require('@/app/api/user/preferences/categories/route');
-      require('@/app/api/user/source-presets/route');
-      require('@/app/api/user/source-presets/[id]/route');
-      require('@/app/api/comments/route');
+      for (const modulePath of uniqueModules) {
+        require(modulePath);
+      }
 
       const rateLimitCalls = wrapCalls.filter(
         (c) => c.middleware === 'withRateLimit'
       );
 
-      // All rate-limited endpoints should have received the withUserValidation sentinel
-      // digest GET: 1
-      // categories POST: 1
-      // source-presets POST: 1
-      // source-presets/[id] PUT + DELETE: 2
-      // comments POST: 1
-      // Total: 6
-      expect(rateLimitCalls.length).toBe(6);
+      expect(rateLimitCalls.length).toBe(RATE_LIMITED_ENDPOINTS.length);
 
       for (const call of rateLimitCalls) {
         expect(call.receivedInner).toBe(USER_VALIDATION_SENTINEL);
