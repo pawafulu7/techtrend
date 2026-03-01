@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Newspaper, Settings, CheckCircle } from 'lucide-react';
+import { Newspaper, Settings, CheckCircle, Loader2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { DigestSection } from './digest-section';
-import { DigestSkeleton } from './digest-skeleton';
 import { CategoryPreferenceDialog } from '@/app/components/personalization/category-preference-dialog';
 import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
 import { useDigest } from '@/lib/hooks/use-digest';
@@ -84,7 +83,35 @@ export function DigestClient() {
       )}
 
       {/* Loading State */}
-      {isLoading && <DigestSkeleton />}
+      {isLoading && (
+        <div className="flex items-center justify-center py-24">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="relative">
+              <div className="border-primary/20 border-t-primary h-24 w-24 animate-spin rounded-full border-4" />
+              <Loader2 className="text-primary absolute inset-0 m-auto h-10 w-10 animate-pulse" />
+            </div>
+            <div className="space-y-2 text-center">
+              <p className="text-foreground text-lg font-semibold">
+                読み込み中
+              </p>
+              <div className="flex items-center justify-center space-x-1">
+                <span
+                  className="bg-primary h-2 w-2 animate-bounce rounded-full"
+                  style={{ animationDelay: '0ms' }}
+                />
+                <span
+                  className="bg-primary h-2 w-2 animate-bounce rounded-full"
+                  style={{ animationDelay: '150ms' }}
+                />
+                <span
+                  className="bg-primary h-2 w-2 animate-bounce rounded-full"
+                  style={{ animationDelay: '300ms' }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* No Preferences State */}
       {!isLoading && digest && !digest.hasPreferences && (
