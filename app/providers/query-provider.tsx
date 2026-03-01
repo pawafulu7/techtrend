@@ -167,6 +167,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         });
 
       queryClient.invalidateQueries({ queryKey: ['read-status'] });
+      queryClient.invalidateQueries({ queryKey: ['digest'] });
     };
 
     const handleBulkRead = (event: Event) => {
@@ -180,6 +181,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         refetchType: 'active',
       });
       queryClient.invalidateQueries({ queryKey: ['read-status'] });
+      queryClient.invalidateQueries({ queryKey: ['digest'] });
     };
 
     window.addEventListener(
