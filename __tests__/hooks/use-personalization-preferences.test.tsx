@@ -370,6 +370,15 @@ describe('Scope separation', () => {
   });
 
   it('should invalidate infinite-articles on home scope update', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    });
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
     mockFetch.mockImplementation(async () => ({
       ok: true,
       status: 200,
@@ -378,7 +387,7 @@ describe('Scope separation', () => {
     }));
 
     const { result } = renderHook(() => useUpdatePreferences('home'), {
-      wrapper: createWrapper(),
+      wrapper,
     });
 
     result.current.mutate({
@@ -398,6 +407,14 @@ describe('Scope separation', () => {
         body: expect.stringContaining('"scope":"home"'),
       })
     );
+
+    // infinite-articles should be invalidated for home scope
+    const infiniteArticlesCalls = invalidateSpy.mock.calls.filter(
+      (call: any[]) => call[0]?.queryKey?.[0] === 'infinite-articles'
+    );
+    expect(infiniteArticlesCalls.length).toBeGreaterThanOrEqual(1);
+
+    invalidateSpy.mockRestore();
   });
 
   it('should not invalidate infinite-articles on digest scope update', async () => {
