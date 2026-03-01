@@ -100,6 +100,8 @@ export interface TopArticleInfo {
   favoriteCount: number;
   score: number;
   tags: string[];
+  thumbnail?: string | null;
+  detailedSummary?: string | null;
 }
 
 export interface CategoryInfo {
@@ -134,7 +136,7 @@ export interface TrendReportData {
 }
 
 // プロンプトバージョン管理
-const PROMPT_VERSION = '2.1.0';
+const PROMPT_VERSION = '2.2.0';
 
 export class TrendReportGenerator {
   private prisma: PrismaClient;
@@ -327,6 +329,8 @@ export class TrendReportGenerator {
           favoriteCount,
           score,
           tags: article.tags.map((t) => t.name),
+          thumbnail: article.thumbnail,
+          detailedSummary: article.detailedSummary,
         };
       })
       .sort((a, b) => b.score - a.score);
@@ -502,6 +506,7 @@ export class TrendReportGenerator {
         favoriteCount: a.favoriteCount,
         score: a.score,
         tags: a.tags.slice(0, 6),
+        detailedSummary: a.detailedSummary?.slice(0, 500) ?? null,
       })),
     };
 
@@ -611,6 +616,7 @@ export class TrendReportGenerator {
 
 ## 目的（重要）
 - 統計の言い換えではなく「何が起きているか」を言語化する
+- 各記事にはdetailedSummary（記事要約、最大500文字）が含まれる。記事のdetailedSummaryから技術的な具体内容を読み取り、whatHappenedやwhyItMattersに反映してください。タイトルの言い換えではなく、要約から得られる技術的知見を含めてください。
 - 類似記事を束ねて「潮流（テーマ）」として説明する
 - 読むべき記事を、具体的理由つきで推薦する
 - 前期間比の量的変化はtrendChangesセクションのみで扱う（core/keyTopics/actionsでは量の増減に言及しない）
