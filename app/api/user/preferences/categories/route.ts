@@ -15,6 +15,7 @@ import type {
   UserCategoryPreferences,
   UpdateCategoryPreferencesRequest,
   PreferenceScope,
+  PeriodPreset,
 } from '@/lib/personalization/types';
 import {
   validateUser,
@@ -221,12 +222,14 @@ export async function POST(
     const scope: PreferenceScope = (bodyScope as PreferenceScope) || 'home';
 
     // Validate periodMonths if provided (only relevant for home scope)
-    const validPeriodMonths = [0, 3, 6, 12];
+    const validPeriodMonths = [
+      0, 3, 6, 12,
+    ] as const satisfies readonly PeriodPreset[];
     if (
       periodMonths !== undefined &&
       scope !== 'digest' &&
       (typeof periodMonths !== 'number' ||
-        !validPeriodMonths.includes(periodMonths))
+        !(validPeriodMonths as readonly number[]).includes(periodMonths))
     ) {
       return NextResponse.json(
         { error: 'periodMonths must be one of: 0, 3, 6, 12' },

@@ -308,6 +308,29 @@ describe('User Category Preferences API', () => {
       expect(data.error).toBe('periodMonths must be one of: 0, 3, 6, 12');
     });
 
+    it.each([0, 3, 6, 12])(
+      'should accept valid periodMonths %i for home scope',
+      async (validPeriod) => {
+        mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+        prismaMock.interestCategory.findMany.mockResolvedValue([
+          { id: 'cat-1', name: 'Test' },
+        ]);
+        prismaMock.$transaction.mockImplementation(async (fn: unknown) => {
+          if (typeof fn === 'function') {
+            return fn(prismaMock);
+          }
+        });
+
+        const request = createRequest({
+          categoryIds: ['cat-1'],
+          periodMonths: validPeriod,
+        });
+        const response = await POST(request);
+
+        expect(response.status).toBe(200);
+      }
+    );
+
     it('should accept empty category array (clear all)', async () => {
       mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
 
