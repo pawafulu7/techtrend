@@ -14,6 +14,7 @@ import { logger, sanitizeError } from '@/lib/logger';
 import type {
   UserCategoryPreferences,
   UpdateCategoryPreferencesRequest,
+  PreferenceScope,
 } from '@/lib/personalization/types';
 import {
   validateUser,
@@ -61,9 +62,9 @@ interface ErrorResponse {
  *
  * Returns empty array with default settings if user has no preferences set.
  */
-export async function GET(): Promise<
-  NextResponse<PreferencesResponse | ErrorResponse>
-> {
+export async function GET(
+  request: NextRequest
+): Promise<NextResponse<PreferencesResponse | ErrorResponse>> {
   try {
     const session = await auth();
 
@@ -82,10 +83,21 @@ export async function GET(): Promise<
 
     const userId = session.user.id;
 
+    // Parse and validate scope query parameter
+    const scopeParam = request.nextUrl.searchParams.get('scope');
+    const validScopes: PreferenceScope[] = ['home', 'digest'];
+    if (scopeParam && !validScopes.includes(scopeParam as PreferenceScope)) {
+      return NextResponse.json(
+        { error: 'Invalid scope parameter' },
+        { status: 400 }
+      );
+    }
+    const scope: PreferenceScope = (scopeParam as PreferenceScope) || 'home';
+
     // Get user's category preferences and period setting
     const [preferences, user] = await Promise.all([
       prisma.userCategoryPreference.findMany({
-        where: { userId },
+        where: { userId, scope },
         select: {
           categoryId: true,
         },
@@ -104,10 +116,11 @@ export async function GET(): Promise<
       selectedCategories: preferences.map((p) => p.categoryId),
       filterEnabled: hasPreferences, // Default to enabled if user has selections
       periodMonths: user?.personalizationPeriodMonths ?? DEFAULT_PERIOD_MONTHS,
+      scope,
     };
 
     logger.info(
-      { userId, categoryCount: preferences.length },
+      { userId, categoryCount: preferences.length, scope },
       'User category preferences retrieved'
     );
 
@@ -166,7 +179,17 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { categoryIds, filterEnabled, periodMonths } = body;
+    const { categoryIds, filterEnabled, periodMonths, scope: bodyScope } = body;
+
+    // Validate scope if provided
+    const validScopes: PreferenceScope[] = ['home', 'digest'];
+    if (bodyScope && !validScopes.includes(bodyScope)) {
+      return NextResponse.json(
+        { error: 'Invalid scope parameter' },
+        { status: 400 }
+      );
+    }
+    const scope: PreferenceScope = bodyScope || 'home';
 
     // Validate categoryIds is an array
     if (!Array.isArray(categoryIds)) {
@@ -216,24 +239,25 @@ export async function POST(
 
     // Update preferences in a transaction
     await prisma.$transaction(async (tx) => {
-      // Delete existing preferences
+      // Delete existing preferences for this scope only
       await tx.userCategoryPreference.deleteMany({
-        where: { userId },
+        where: { userId, scope },
       });
 
-      // Insert new preferences
+      // Insert new preferences with scope
       if (uniqueCategoryIds.length > 0) {
         await tx.userCategoryPreference.createMany({
           data: uniqueCategoryIds.map((categoryId) => ({
             userId,
             categoryId,
+            scope,
             weight: 1, // Default weight for now
           })),
         });
       }
 
-      // Update period months if provided
-      if (periodMonths !== undefined) {
+      // Update period months if provided (skip for digest scope)
+      if (periodMonths !== undefined && scope !== 'digest') {
         await tx.user.update({
           where: { id: userId },
           data: { personalizationPeriodMonths: periodMonths },
@@ -241,10 +265,12 @@ export async function POST(
       }
     });
 
-    // Invalidate digest cache (fire-and-forget, don't block response)
-    digestService.invalidateUserCache(userId).catch((error) => {
-      logger.warn({ error, userId }, 'Failed to invalidate digest cache');
-    });
+    // Invalidate digest cache only when digest scope changes (fire-and-forget)
+    if (scope === 'digest') {
+      digestService.invalidateUserCache(userId).catch((error) => {
+        logger.warn({ error, userId }, 'Failed to invalidate digest cache');
+      });
+    }
 
     logger.info(
       {
@@ -252,6 +278,7 @@ export async function POST(
         categoryCount: uniqueCategoryIds.length,
         filterEnabled,
         periodMonths,
+        scope,
       },
       'User category preferences saved'
     );

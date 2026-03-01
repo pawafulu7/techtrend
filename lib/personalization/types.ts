@@ -5,6 +5,17 @@
  */
 
 // =============================================================================
+// Scope Types
+// =============================================================================
+
+/**
+ * Preference scope determines where category preferences apply.
+ * - 'home': Home page article filtering
+ * - 'digest': Digest page article filtering
+ */
+export type PreferenceScope = 'home' | 'digest';
+
+// =============================================================================
 // Interest Category Types
 // =============================================================================
 
@@ -57,6 +68,7 @@ export interface UserCategoryPreferences {
   filterEnabled: boolean;
   periodMonths: number;
   isAuthenticated?: boolean;
+  scope?: PreferenceScope;
 }
 
 /**
@@ -66,6 +78,7 @@ export interface UpdateCategoryPreferencesRequest {
   categoryIds: string[];
   filterEnabled?: boolean;
   periodMonths?: number;
+  scope?: PreferenceScope;
 }
 
 // =============================================================================

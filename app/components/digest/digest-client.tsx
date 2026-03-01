@@ -30,7 +30,7 @@ export function DigestClient() {
     isLoading: prefLoading,
     isUpdating,
     updatePreferencesAsync,
-  } = usePersonalizationPreferences();
+  } = usePersonalizationPreferences('digest');
 
   const fetchDigest = useCallback(
     async (p: DigestPeriod, signal?: AbortSignal) => {
@@ -189,6 +189,7 @@ export function DigestClient() {
         onSave={handleSavePreferences}
         isLoading={prefLoading}
         isSaving={isUpdating}
+        showPeriodSelector={false}
       />
     </div>
   );

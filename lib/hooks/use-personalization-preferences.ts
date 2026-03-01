@@ -13,6 +13,7 @@ import type {
   UpdateCategoryPreferencesRequest,
   InterestCategoryWithCount,
   PeriodPreset,
+  PreferenceScope,
 } from '@/lib/personalization/types';
 
 const EMPTY_CATEGORIES: InterestCategoryWithCount[] = [];
@@ -29,7 +30,8 @@ const DEFAULT_PREFERENCES: UserCategoryPreferences = {
 // =============================================================================
 
 export const PERSONALIZATION_QUERY_KEYS = {
-  preferences: ['personalization-preferences'] as const,
+  preferences: (scope: PreferenceScope = 'home') =>
+    ['personalization-preferences', scope] as const,
   categories: ['interest-categories'] as const,
 };
 
@@ -37,9 +39,13 @@ export const PERSONALIZATION_QUERY_KEYS = {
 // API Fetchers
 // =============================================================================
 
-async function fetchPreferences(): Promise<UserCategoryPreferences> {
+async function fetchPreferences(
+  scope: PreferenceScope = 'home'
+): Promise<UserCategoryPreferences> {
   try {
-    const response = await fetch('/api/user/preferences/categories');
+    const response = await fetch(
+      `/api/user/preferences/categories?scope=${scope}`
+    );
 
     if (response.status === 401) {
       // Not authenticated - return default preferences silently
@@ -139,10 +145,10 @@ export function useInterestCategories() {
 /**
  * Hook for fetching user's category preferences
  */
-export function useUserPreferences() {
+export function useUserPreferences(scope: PreferenceScope = 'home') {
   return useQuery({
-    queryKey: PERSONALIZATION_QUERY_KEYS.preferences,
-    queryFn: fetchPreferences,
+    queryKey: PERSONALIZATION_QUERY_KEYS.preferences(scope),
+    queryFn: () => fetchPreferences(scope),
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 30, // 30 minutes
     retry: false, // fail gracefully for guest users or temporary API issues
@@ -152,11 +158,12 @@ export function useUserPreferences() {
 /**
  * Hook for updating user's category preferences
  */
-export function useUpdatePreferences() {
+export function useUpdatePreferences(scope: PreferenceScope = 'home') {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: updatePreferences,
+    mutationFn: (request: UpdateCategoryPreferencesRequest) =>
+      updatePreferences({ ...request, scope }),
     onSuccess: (data, variables) => {
       const selectedCategories =
         data?.selectedCategories ?? variables.categoryIds ?? [];
@@ -164,7 +171,7 @@ export function useUpdatePreferences() {
 
       // Update cache after successful mutation
       queryClient.setQueryData<UserCategoryPreferences>(
-        PERSONALIZATION_QUERY_KEYS.preferences,
+        PERSONALIZATION_QUERY_KEYS.preferences(scope),
         (old) => ({
           ...old,
           selectedCategories,
@@ -172,13 +179,16 @@ export function useUpdatePreferences() {
           periodMonths:
             nextPeriod !== undefined ? nextPeriod : (old?.periodMonths ?? 12),
           isAuthenticated: true,
+          scope,
         })
       );
 
-      // Invalidate article queries to refresh with new personalization
-      queryClient.invalidateQueries({
-        queryKey: ['infinite-articles'],
-      });
+      // Invalidate article queries to refresh with new personalization (home scope only)
+      if (scope === 'home') {
+        queryClient.invalidateQueries({
+          queryKey: ['infinite-articles'],
+        });
+      }
     },
   });
 }
@@ -186,10 +196,10 @@ export function useUpdatePreferences() {
 /**
  * Combined hook for personalization preferences management
  */
-export function usePersonalizationPreferences() {
+export function usePersonalizationPreferences(scope: PreferenceScope = 'home') {
   const categoriesQuery = useInterestCategories();
-  const preferencesQuery = useUserPreferences();
-  const updateMutation = useUpdatePreferences();
+  const preferencesQuery = useUserPreferences(scope);
+  const updateMutation = useUpdatePreferences(scope);
 
   const categories = categoriesQuery.data ?? EMPTY_CATEGORIES;
   const preferences = preferencesQuery.data ?? DEFAULT_PREFERENCES;

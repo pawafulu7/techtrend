@@ -158,9 +158,9 @@ export class DigestService {
       );
     }
 
-    // 2. Check if user has category preferences
+    // 2. Check if user has category preferences (digest scope)
     const preferenceCount = await this.db.userCategoryPreference.count({
-      where: { userId },
+      where: { userId, scope: 'digest' },
     });
 
     if (preferenceCount === 0) {
@@ -177,9 +177,9 @@ export class DigestService {
       return emptyResponse;
     }
 
-    // 3. Get user's categoryIds
+    // 3. Get user's categoryIds (digest scope)
     const preferences = await this.db.userCategoryPreference.findMany({
-      where: { userId },
+      where: { userId, scope: 'digest' },
       select: { categoryId: true },
     });
     const categoryIds = preferences.map((p) => p.categoryId);

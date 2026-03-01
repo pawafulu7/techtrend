@@ -39,6 +39,7 @@ export interface CategoryPreferenceDialogProps {
   onSave: (categories: string[], period: PeriodPreset) => Promise<void>;
   isLoading?: boolean;
   isSaving?: boolean;
+  showPeriodSelector?: boolean;
 }
 
 // =============================================================================
@@ -54,6 +55,7 @@ export function CategoryPreferenceDialog({
   onSave,
   isLoading = false,
   isSaving = false,
+  showPeriodSelector: showPeriodSelectorProp = true,
 }: CategoryPreferenceDialogProps) {
   // Local state for editing (committed on save)
   const [tempCategories, setTempCategories] =
@@ -196,13 +198,15 @@ export function CategoryPreferenceDialog({
           </fieldset>
 
           {/* Period Selector */}
-          <div className="border-t py-4">
-            <PeriodSelector
-              value={tempPeriod}
-              onChange={handlePeriodChange}
-              disabled={isLoading || isSaving}
-            />
-          </div>
+          {showPeriodSelectorProp && (
+            <div className="border-t py-4">
+              <PeriodSelector
+                value={tempPeriod}
+                onChange={handlePeriodChange}
+                disabled={isLoading || isSaving}
+              />
+            </div>
+          )}
         </div>
 
         {/* Save Error */}
