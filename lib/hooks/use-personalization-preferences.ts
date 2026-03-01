@@ -193,6 +193,13 @@ export function useUpdatePreferences(scope: PreferenceScope = 'home') {
           queryKey: ['infinite-articles'],
         });
       }
+
+      // Invalidate digest queries to refresh with new category preferences (digest scope only)
+      if (scope === 'digest') {
+        queryClient.invalidateQueries({
+          queryKey: ['digest'],
+        });
+      }
     },
   });
 }
