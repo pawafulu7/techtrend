@@ -100,13 +100,17 @@ export async function GET(
 
     // Parse and validate scope query parameter
     const scopeParam = request.nextUrl.searchParams.get('scope');
-    if (scopeParam && !validScopes.includes(scopeParam as PreferenceScope)) {
+    if (
+      scopeParam !== null &&
+      !validScopes.includes(scopeParam as PreferenceScope)
+    ) {
       return NextResponse.json(
         { error: 'Invalid scope parameter' },
         { status: 400 }
       );
     }
-    const scope: PreferenceScope = (scopeParam as PreferenceScope) || 'home';
+    const scope: PreferenceScope =
+      scopeParam === null ? 'home' : (scopeParam as PreferenceScope);
 
     // Get user's category preferences and period setting
     const [preferences, user] = await Promise.all([
@@ -186,12 +190,20 @@ export async function POST(
     const userId = session.user.id;
 
     // Parse and validate request body
-    let body: UpdateCategoryPreferencesRequest;
+    let parsedBody: unknown;
     try {
-      body = await request.json();
+      parsedBody = await request.json();
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
+    if (
+      parsedBody === null ||
+      typeof parsedBody !== 'object' ||
+      Array.isArray(parsedBody)
+    ) {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const body = parsedBody as UpdateCategoryPreferencesRequest;
 
     const { categoryIds, filterEnabled, periodMonths, scope: bodyScope } = body;
 

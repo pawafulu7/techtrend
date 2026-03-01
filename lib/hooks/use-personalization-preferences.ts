@@ -177,7 +177,11 @@ export function useUpdatePreferences(scope: PreferenceScope = 'home') {
           selectedCategories,
           filterEnabled: selectedCategories.length > 0,
           periodMonths:
-            nextPeriod !== undefined ? nextPeriod : (old?.periodMonths ?? 12),
+            scope === 'digest'
+              ? (old?.periodMonths ?? 12)
+              : nextPeriod !== undefined
+                ? nextPeriod
+                : (old?.periodMonths ?? 12),
           isAuthenticated: true,
           scope,
         })
