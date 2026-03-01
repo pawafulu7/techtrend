@@ -28,13 +28,13 @@ test.describe('Personalization Filter', () => {
       });
     });
 
-    // Mock the user preferences API
-    await page.route('**/api/user/preferences/categories', (route) => {
+    // Mock the user preferences API (with ?scope= query parameter support)
+    await page.route('**/api/user/preferences/categories**', (route) => {
       if (route.request().method() === 'GET') {
         route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ selectedCategories: [], filterEnabled: false, periodMonths: 12 }),
+          body: JSON.stringify({ selectedCategories: [], filterEnabled: false, periodMonths: 12, scope: 'home' }),
         });
       } else {
         // POST - return success with selected categories
