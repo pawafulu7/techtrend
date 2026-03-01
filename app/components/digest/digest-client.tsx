@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Newspaper, Settings, CheckCircle } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -17,7 +16,6 @@ import type { PeriodPreset } from '@/lib/personalization/types';
 export function DigestClient() {
   const [period, setPeriod] = useState<DigestPeriod>('daily');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const queryClient = useQueryClient();
 
   const { data: digest, isLoading, error } = useDigest(period);
 
@@ -38,7 +36,6 @@ export function DigestClient() {
       categoryIds,
       filterEnabled: categoryIds.length > 0,
     });
-    queryClient.invalidateQueries({ queryKey: ['digest'] });
   };
 
   const handlePeriodChange = (value: string) => {
