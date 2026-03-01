@@ -58,10 +58,7 @@ async function postHandler(
 
     if (!parseResult.success) {
       const firstError = parseResult.error.errors[0];
-      return NextResponse.json(
-        { error: firstError.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: firstError.message }, { status: 400 });
     }
 
     const { articleId, content, visibility } = parseResult.data;
@@ -139,10 +136,7 @@ async function getHandler(
 
     if (!parseResult.success) {
       const firstError = parseResult.error.errors[0];
-      return NextResponse.json(
-        { error: firstError.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: firstError.message }, { status: 400 });
     }
 
     const { articleId, cursor, limit } = parseResult.data;
@@ -184,7 +178,5 @@ export const GET = withUserValidation(getHandler);
 
 // POST: CSRF + Auth + Rate Limit
 export const POST = withCSRFProtection(
-  withUserValidation(
-    withRateLimit('write:comment', postHandler)
-  )
+  withRateLimit('write:comment', withUserValidation(postHandler))
 );

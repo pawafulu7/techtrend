@@ -189,10 +189,10 @@ async function deleteHandler(_request: NextRequest, context: RouteContext) {
 
 // PUT: CSRF + Auth + Rate Limit
 export const PUT = withCSRFProtection(
-  withUserValidation(withRateLimit('write:source-preset', putHandler))
+  withRateLimit('write:source-preset', withUserValidation(putHandler))
 );
 
 // DELETE: CSRF + Auth + Rate Limit
 export const DELETE = withCSRFProtection(
-  withUserValidation(withRateLimit('write:source-preset', deleteHandler))
+  withRateLimit('write:source-preset', withUserValidation(deleteHandler))
 );

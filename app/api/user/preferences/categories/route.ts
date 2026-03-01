@@ -361,5 +361,5 @@ async function postHandler(
 }
 
 export const POST = withCSRFProtection(
-  withUserValidation(withRateLimit('write:preferences', postHandler))
+  withRateLimit('write:preferences', withUserValidation(postHandler))
 );

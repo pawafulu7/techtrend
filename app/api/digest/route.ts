@@ -79,4 +79,4 @@ async function getHandler(
 // =============================================================================
 
 // GET: Auth + Rate Limit (no CSRF for read operations)
-export const GET = withUserValidation(withRateLimit('read:digest', getHandler));
+export const GET = withRateLimit('read:digest', withUserValidation(getHandler));

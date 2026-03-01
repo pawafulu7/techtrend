@@ -183,5 +183,5 @@ export const GET = withUserValidation(getHandler);
 
 // POST: CSRF + Auth + Rate Limit
 export const POST = withCSRFProtection(
-  withUserValidation(withRateLimit('write:source-preset', postHandler))
+  withRateLimit('write:source-preset', withUserValidation(postHandler))
 );
