@@ -2,6 +2,21 @@
  * User Category Preferences API Tests
  */
 
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: (_key: string, handler: Function) => handler,
+}));
+jest.mock('@/lib/middleware/csrf-protection', () => ({
+  withCSRFProtection: (handler: Function) => handler,
+}));
+const mockValidateUser = jest.fn();
+const mockCreateUserDeletedResponse = jest.fn();
+jest.mock('@/lib/middleware/with-user-validation', () => ({
+  withUserValidation: (handler: Function) => handler,
+  validateUser: (...args: unknown[]) => mockValidateUser(...args),
+  createUserDeletedResponse: (...args: unknown[]) =>
+    mockCreateUserDeletedResponse(...args),
+}));
+
 import { GET, POST } from '@/app/api/user/preferences/categories/route';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -38,6 +53,8 @@ describe('User Category Preferences API', () => {
   beforeEach(() => {
     resetPrismaMock();
     jest.clearAllMocks();
+    // Default: validateUser returns a valid user (used by GET handler)
+    mockValidateUser.mockResolvedValue({ id: 'user-1', deletedAt: null });
   });
 
   describe('GET /api/user/preferences/categories', () => {
@@ -178,6 +195,11 @@ describe('User Category Preferences API', () => {
   });
 
   describe('POST /api/user/preferences/categories', () => {
+    const mockContext = {
+      session: { user: { id: 'user-1' } },
+      validatedUser: { id: 'user-1', deletedAt: null },
+    };
+
     const createRequest = (body: unknown) => {
       return new NextRequest('http://localhost/api/user/preferences/categories', {
         method: 'POST',
@@ -186,19 +208,7 @@ describe('User Category Preferences API', () => {
       });
     };
 
-    it('should return 401 when not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
-
-      const request = createRequest({ categoryIds: ['cat-1'] });
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Authentication required');
-    });
-
     it('should save user preferences', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
       prismaMock.interestCategory.findMany.mockResolvedValue([
         { id: 'cat-1' },
         { id: 'cat-2' },
@@ -208,7 +218,7 @@ describe('User Category Preferences API', () => {
         categoryIds: ['cat-1', 'cat-2'],
         filterEnabled: true,
       });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -228,13 +238,12 @@ describe('User Category Preferences API', () => {
     });
 
     it('should remove duplicates from category IDs', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
       prismaMock.interestCategory.findMany.mockResolvedValue([{ id: 'cat-1' }]);
 
       const request = createRequest({
         categoryIds: ['cat-1', 'cat-1', 'cat-1'],
       });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -242,13 +251,12 @@ describe('User Category Preferences API', () => {
     });
 
     it('should reject invalid category IDs', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
       prismaMock.interestCategory.findMany.mockResolvedValue([{ id: 'cat-1' }]);
 
       const request = createRequest({
         categoryIds: ['cat-1', 'invalid-cat'],
       });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -257,11 +265,9 @@ describe('User Category Preferences API', () => {
     });
 
     it('should reject when exceeding max selections', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-
       const manyIds = Array.from({ length: 25 }, (_, i) => `cat-${i}`);
       const request = createRequest({ categoryIds: manyIds });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -269,10 +275,8 @@ describe('User Category Preferences API', () => {
     });
 
     it('should reject non-array categoryIds', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-
       const request = createRequest({ categoryIds: 'not-an-array' });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -280,10 +284,8 @@ describe('User Category Preferences API', () => {
     });
 
     it('should reject categoryIds with non-string elements', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-
       const request = createRequest({ categoryIds: ['valid-id', 123, null] });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -291,13 +293,11 @@ describe('User Category Preferences API', () => {
     });
 
     it('should reject invalid periodMonths for home scope', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-
       const request = createRequest({
         categoryIds: ['cat-1'],
         periodMonths: 5,
       });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -305,13 +305,11 @@ describe('User Category Preferences API', () => {
     });
 
     it('should reject non-number periodMonths for home scope', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-
       const request = createRequest({
         categoryIds: ['cat-1'],
         periodMonths: 'invalid',
       });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -321,7 +319,6 @@ describe('User Category Preferences API', () => {
     it.each([0, 3, 6, 12])(
       'should accept valid periodMonths %i for home scope',
       async (validPeriod) => {
-        mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
         prismaMock.interestCategory.findMany.mockResolvedValue([
           { id: 'cat-1', name: 'Test' },
         ]);
@@ -335,7 +332,7 @@ describe('User Category Preferences API', () => {
           categoryIds: ['cat-1'],
           periodMonths: validPeriod,
         });
-        const response = await POST(request);
+        const response = await POST(request, mockContext as any);
 
         expect(response.status).toBe(200);
 
@@ -348,10 +345,8 @@ describe('User Category Preferences API', () => {
     );
 
     it('should accept empty category array (clear all)', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-
       const request = createRequest({ categoryIds: [] });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -364,8 +359,6 @@ describe('User Category Preferences API', () => {
     });
 
     it('should handle invalid JSON body', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-
       const request = new NextRequest(
         'http://localhost/api/user/preferences/categories',
         {
@@ -375,7 +368,7 @@ describe('User Category Preferences API', () => {
         }
       );
 
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -383,12 +376,11 @@ describe('User Category Preferences API', () => {
     });
 
     it('should handle database errors', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
       prismaMock.interestCategory.findMany.mockResolvedValue([{ id: 'cat-1' }]);
       prismaMock.$transaction.mockRejectedValue(new Error('Database error'));
 
       const request = createRequest({ categoryIds: ['cat-1'] });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(500);
@@ -396,7 +388,6 @@ describe('User Category Preferences API', () => {
     });
 
     it('should save home scope without affecting digest', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
       prismaMock.interestCategory.findMany.mockResolvedValue([
         { id: 'cat-1' },
       ]);
@@ -405,7 +396,7 @@ describe('User Category Preferences API', () => {
         categoryIds: ['cat-1'],
         scope: 'home',
       });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -428,7 +419,6 @@ describe('User Category Preferences API', () => {
     });
 
     it('should save digest scope without affecting home', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
       prismaMock.interestCategory.findMany.mockResolvedValue([
         { id: 'cat-2' },
       ]);
@@ -437,7 +427,7 @@ describe('User Category Preferences API', () => {
         categoryIds: ['cat-2'],
         scope: 'digest',
       });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -460,7 +450,6 @@ describe('User Category Preferences API', () => {
     });
 
     it('should not update periodMonths when scope is digest', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
       prismaMock.interestCategory.findMany.mockResolvedValue([
         { id: 'cat-1' },
       ]);
@@ -470,7 +459,7 @@ describe('User Category Preferences API', () => {
         scope: 'digest',
         periodMonths: 6,
       });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
 
       expect(response.status).toBe(200);
 
@@ -479,13 +468,11 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return 400 for invalid scope in POST body', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-
       const request = createRequest({
         categoryIds: ['cat-1'],
         scope: 'invalid',
       });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -493,13 +480,11 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return 400 for empty string scope in POST body', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
-
       const request = createRequest({
         categoryIds: ['cat-1'],
         scope: '',
       });
-      const response = await POST(request);
+      const response = await POST(request, mockContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);

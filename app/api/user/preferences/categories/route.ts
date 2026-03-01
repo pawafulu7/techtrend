@@ -20,7 +20,11 @@ import type {
 import {
   validateUser,
   createUserDeletedResponse,
+  withUserValidation,
+  type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 import { digestService } from '@/lib/services/digest-service';
 
@@ -169,26 +173,12 @@ export async function GET(
  * 2. Number of selections does not exceed maximum
  * 3. Duplicate IDs are removed
  */
-export async function POST(
-  request: NextRequest
+async function postHandler(
+  request: NextRequest,
+  context: WithUserValidationContext
 ): Promise<NextResponse<SaveResponse | ErrorResponse>> {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse() as NextResponse<ErrorResponse>;
-    }
-
-    const userId = session.user.id;
+    const userId = context.validatedUser.id;
 
     // Parse and validate request body
     let parsedBody: unknown;
@@ -369,3 +359,7 @@ export async function POST(
     );
   }
 }
+
+export const POST = withCSRFProtection(
+  withUserValidation(withRateLimit('write:preferences', postHandler))
+);
