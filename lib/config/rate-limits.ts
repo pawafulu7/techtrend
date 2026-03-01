@@ -155,6 +155,14 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'Source preset CRUD (10 per minute)',
     telemetryEvent: 'ratelimit.write.source-preset',
   },
+  'write:preferences': {
+    points: 10,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user' as const,
+    notes: 'User category preferences update (10 per minute)',
+    telemetryEvent: 'ratelimit.write.preferences',
+  },
   'write:delete': {
     points: 3,
     duration: 3600,
