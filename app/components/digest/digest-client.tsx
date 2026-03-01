@@ -73,7 +73,7 @@ export function DigestClient() {
   }, [period, fetchDigest, fetchTrigger]);
 
   const handleSavePreferences = useCallback(
-    async (categoryIds: string[], selectedPeriod: PeriodPreset) => {
+    async (categoryIds: string[], _selectedPeriod: PeriodPreset) => {
       await updatePreferencesAsync({
         categoryIds,
         filterEnabled: categoryIds.length > 0,
