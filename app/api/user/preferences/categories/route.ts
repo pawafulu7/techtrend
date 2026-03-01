@@ -220,6 +220,20 @@ export async function POST(
     }
     const scope: PreferenceScope = (bodyScope as PreferenceScope) || 'home';
 
+    // Validate periodMonths if provided (only relevant for home scope)
+    const validPeriodMonths = [0, 3, 6, 12];
+    if (
+      periodMonths !== undefined &&
+      scope !== 'digest' &&
+      (typeof periodMonths !== 'number' ||
+        !validPeriodMonths.includes(periodMonths))
+    ) {
+      return NextResponse.json(
+        { error: 'periodMonths must be one of: 0, 3, 6, 12' },
+        { status: 400 }
+      );
+    }
+
     // Validate categoryIds is an array of strings
     if (
       !Array.isArray(categoryIds) ||

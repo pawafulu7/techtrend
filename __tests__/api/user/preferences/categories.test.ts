@@ -280,6 +280,34 @@ describe('User Category Preferences API', () => {
       expect(data.error).toBe('categoryIds must be an array of strings');
     });
 
+    it('should reject invalid periodMonths for home scope', async () => {
+      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+
+      const request = createRequest({
+        categoryIds: ['cat-1'],
+        periodMonths: 5,
+      });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('periodMonths must be one of: 0, 3, 6, 12');
+    });
+
+    it('should reject non-number periodMonths for home scope', async () => {
+      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+
+      const request = createRequest({
+        categoryIds: ['cat-1'],
+        periodMonths: 'invalid',
+      });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('periodMonths must be one of: 0, 3, 6, 12');
+    });
+
     it('should accept empty category array (clear all)', async () => {
       mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
 
