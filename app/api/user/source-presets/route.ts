@@ -181,7 +181,7 @@ async function postHandler(
 // GET: Auth only (CSRF not required for read operations)
 export const GET = withUserValidation(getHandler);
 
-// POST: CSRF + Auth + Rate Limit
+// POST: CSRF + Rate Limit + Auth
 export const POST = withCSRFProtection(
   withRateLimit('write:source-preset', withUserValidation(postHandler))
 );

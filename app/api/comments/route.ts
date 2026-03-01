@@ -43,7 +43,7 @@ const GetCommentsQuerySchema = z.object({
  *
  * Creates a new comment for an article.
  *
- * Middleware: CSRF + Auth + Rate Limit (write:comment)
+ * Middleware: CSRF + Rate Limit + Auth (write:comment)
  */
 async function postHandler(
   request: NextRequest,
@@ -176,7 +176,7 @@ async function getHandler(
 // GET: Auth only (CSRF not required for read operations)
 export const GET = withUserValidation(getHandler);
 
-// POST: CSRF + Auth + Rate Limit
+// POST: CSRF + Rate Limit + Auth
 export const POST = withCSRFProtection(
   withRateLimit('write:comment', withUserValidation(postHandler))
 );

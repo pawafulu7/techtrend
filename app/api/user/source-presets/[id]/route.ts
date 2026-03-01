@@ -187,12 +187,12 @@ async function deleteHandler(_request: NextRequest, context: RouteContext) {
 // Export with Middleware
 // =============================================================================
 
-// PUT: CSRF + Auth + Rate Limit
+// PUT: CSRF + Rate Limit + Auth
 export const PUT = withCSRFProtection(
   withRateLimit('write:source-preset', withUserValidation(putHandler))
 );
 
-// DELETE: CSRF + Auth + Rate Limit
+// DELETE: CSRF + Rate Limit + Auth
 export const DELETE = withCSRFProtection(
   withRateLimit('write:source-preset', withUserValidation(deleteHandler))
 );
