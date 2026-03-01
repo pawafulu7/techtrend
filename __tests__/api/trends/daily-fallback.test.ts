@@ -29,10 +29,6 @@ jest.mock('@/lib/cache', () => ({
   })),
 }));
 
-jest.mock('@/lib/prisma', () => ({
-  prisma: {},
-}));
-
 jest.mock('@/lib/logger/index', () => ({
   __esModule: true,
   default: {
@@ -48,6 +44,7 @@ jest.mock('@/lib/middleware/with-cron-or-admin-auth', () => ({
 }));
 
 import { GET } from '@/app/api/trends/daily/route';
+import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { TrendPeriodType } from '@prisma/client';
 
@@ -201,5 +198,134 @@ describe('/api/trends/daily - fallback logic', () => {
       TrendPeriodType.DAILY,
       latestReport.periodStart
     );
+  });
+});
+
+describe('/api/trends/daily - thumbnail enrichment', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (prisma.article.findMany as jest.Mock).mockResolvedValue([]);
+  });
+
+  it('enriches topArticles with thumbnails from DB when missing', async () => {
+    const report = createMockReport('2026-02-20');
+    report.topArticles = [
+      { id: 'art-1', title: 'Article 1', translatedTitle: null, url: 'https://example.com/1', sourceName: 'Qiita', viewCount: 100, favoriteCount: 10, score: 50, tags: ['AI'] },
+    ] as typeof report.topArticles;
+
+    mockGetTrendReport.mockResolvedValueOnce(report);
+    mockGetAdjacentReportDates.mockResolvedValueOnce({ prevDate: null, nextDate: null });
+    (prisma.article.findMany as jest.Mock).mockResolvedValueOnce([
+      { id: 'art-1', title: 'Article 1', translatedTitle: null, thumbnail: 'https://example.com/thumb1.jpg', source: { name: 'Qiita' } },
+    ]);
+
+    const response = await GET(createRequest({ date: '2026-02-20' }));
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data.topArticles[0].thumbnail).toBe('https://example.com/thumb1.jpg');
+    expect(data.evidenceArticles).toBeDefined();
+    expect(data.evidenceArticles['art-1'].thumbnail).toBe('https://example.com/thumb1.jpg');
+  });
+
+  it('preserves existing thumbnail when topArticle already has one', async () => {
+    const report = createMockReport('2026-02-20');
+    report.topArticles = [
+      { id: 'art-1', title: 'Article 1', translatedTitle: null, url: 'https://example.com/1', sourceName: 'Qiita', viewCount: 100, favoriteCount: 10, score: 50, tags: ['AI'], thumbnail: 'https://existing-thumb.jpg' },
+    ] as typeof report.topArticles;
+
+    mockGetTrendReport.mockResolvedValueOnce(report);
+    mockGetAdjacentReportDates.mockResolvedValueOnce({ prevDate: null, nextDate: null });
+    (prisma.article.findMany as jest.Mock).mockResolvedValueOnce([
+      { id: 'art-1', title: 'Article 1', translatedTitle: null, thumbnail: 'https://db-thumb.jpg', source: { name: 'Qiita' } },
+    ]);
+
+    const response = await GET(createRequest({ date: '2026-02-20' }));
+    const data = await response.json();
+
+    expect(data.data.topArticles[0].thumbnail).toBe('https://existing-thumb.jpg');
+  });
+
+  it('extracts evidenceArticleIds from aiSummary and fetches article data', async () => {
+    const report = createMockReport('2026-02-20');
+    report.topArticles = [
+      { id: 'art-1', title: 'Article 1', translatedTitle: null, url: 'https://example.com/1', sourceName: 'Qiita', viewCount: 100, favoriteCount: 10, score: 50, tags: ['AI'] },
+    ] as typeof report.topArticles;
+    (report as Record<string, unknown>).aiSummary = JSON.stringify({
+      version: 'trend_ai_summary_v2',
+      core: 'Test core',
+      keyTopics: [
+        { topic: 'AI', whatHappened: 'Test', whyItMatters: 'Test', evidenceArticleIds: ['art-1', 'art-external'] },
+      ],
+      actions: [
+        { action: 'Test', reason: 'Test', articleIds: ['art-2'] },
+      ],
+    });
+
+    mockGetTrendReport.mockResolvedValueOnce(report);
+    mockGetAdjacentReportDates.mockResolvedValueOnce({ prevDate: null, nextDate: null });
+    (prisma.article.findMany as jest.Mock).mockResolvedValueOnce([
+      { id: 'art-1', title: 'Article 1', translatedTitle: null, thumbnail: 'https://thumb1.jpg', source: { name: 'Qiita' } },
+      { id: 'art-external', title: 'External Article', translatedTitle: '外部記事', thumbnail: 'https://thumb-ext.jpg', source: { name: 'Zenn' } },
+      { id: 'art-2', title: 'Action Article', translatedTitle: null, thumbnail: null, source: { name: 'Hatena' } },
+    ]);
+
+    const response = await GET(createRequest({ date: '2026-02-20' }));
+    const data = await response.json();
+
+    expect(prisma.article.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: expect.arrayContaining(['art-1', 'art-external', 'art-2']) } },
+      })
+    );
+
+    expect(data.evidenceArticles['art-external']).toEqual({
+      title: 'External Article',
+      translatedTitle: '外部記事',
+      thumbnail: 'https://thumb-ext.jpg',
+      sourceName: 'Zenn',
+    });
+    expect(data.evidenceArticles['art-2']).toEqual({
+      title: 'Action Article',
+      translatedTitle: null,
+      thumbnail: null,
+      sourceName: 'Hatena',
+    });
+  });
+
+  it('skips DB query when no articles to enrich', async () => {
+    const report = createMockReport('2026-02-20');
+    report.topArticles = [];
+
+    mockGetTrendReport.mockResolvedValueOnce(report);
+    mockGetAdjacentReportDates.mockResolvedValueOnce({ prevDate: null, nextDate: null });
+
+    const response = await GET(createRequest({ date: '2026-02-20' }));
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(prisma.article.findMany).not.toHaveBeenCalled();
+    expect(data.evidenceArticles).toEqual({});
+  });
+
+  it('enriches fallback response with thumbnails', async () => {
+    const latestReport = createMockReport('2026-02-18');
+    latestReport.topArticles = [
+      { id: 'art-1', title: 'Article 1', translatedTitle: null, url: 'https://example.com/1', sourceName: 'Qiita', viewCount: 100, favoriteCount: 10, score: 50, tags: ['AI'] },
+    ] as typeof latestReport.topArticles;
+
+    mockGetTrendReport.mockResolvedValueOnce(null);
+    mockGetLatestReport.mockResolvedValueOnce(latestReport);
+    mockGetAdjacentReportDates.mockResolvedValueOnce({ prevDate: null, nextDate: null });
+    (prisma.article.findMany as jest.Mock).mockResolvedValueOnce([
+      { id: 'art-1', title: 'Article 1', translatedTitle: null, thumbnail: 'https://thumb1.jpg', source: { name: 'Qiita' } },
+    ]);
+
+    const response = await GET(createRequest({ date: '2026-02-20' }));
+    const data = await response.json();
+
+    expect(data.isFallback).toBe(true);
+    expect(data.data.topArticles[0].thumbnail).toBe('https://thumb1.jpg');
+    expect(data.evidenceArticles['art-1'].thumbnail).toBe('https://thumb1.jpg');
   });
 });
