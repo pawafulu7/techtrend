@@ -28,10 +28,16 @@ export function Header() {
   const pathname = usePathname();
 
   // ナビゲーション項目の定義
+  // prefetch: false は認証必須ページに設定（Server Component auth() redirect がprefetch時に走るのを防止）
   const primaryNav = [
     { href: '/', label: 'ホーム', icon: Home },
     { href: '/reader', label: 'リーダー', icon: BookOpen },
-    { href: '/digest', label: 'ダイジェスト', icon: Newspaper },
+    {
+      href: '/digest',
+      label: 'ダイジェスト',
+      icon: Newspaper,
+      prefetch: false as const,
+    },
     { href: '/popular', label: '人気', icon: TrendingUp },
     { href: '/sources', label: 'ソース', icon: Database },
     { href: '/trends', label: 'トレンド', icon: BarChart3 },
@@ -72,6 +78,7 @@ export function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={'prefetch' in item ? item.prefetch : undefined}
                   aria-current={isActive ? 'page' : undefined}
                   data-testid={`nav-link-${item.label.toLowerCase()}`}
                   className={cn(
@@ -130,6 +137,7 @@ export function Header() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={'prefetch' in item ? item.prefetch : undefined}
                     aria-current={isActive ? 'page' : undefined}
                     data-testid={`mobile-nav-link-${item.label.toLowerCase()}`}
                     className={cn(

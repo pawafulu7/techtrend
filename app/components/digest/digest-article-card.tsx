@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ExternalLink, Calendar } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
@@ -12,8 +12,6 @@ interface DigestArticleCardProps {
 }
 
 export function DigestArticleCard({ article }: DigestArticleCardProps) {
-  const router = useRouter();
-
   const safeUrl = (() => {
     try {
       const parsed = new URL(article.url);
@@ -25,19 +23,8 @@ export function DigestArticleCard({ article }: DigestArticleCardProps) {
     }
   })();
 
-  const handleClick = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('a, button, [role="button"]')) {
-      return;
-    }
-    const returnUrl = encodeURIComponent('/digest');
-    router.push(`/articles/${article.articleId}?from=${returnUrl}`);
-  };
-
   return (
-    <CardV2
-      className="group cursor-pointer transition-shadow hover:shadow-md"
-      onClick={handleClick}
-    >
+    <CardV2 className="group has-[:focus-visible]:ring-primary relative cursor-pointer transition-shadow hover:shadow-md has-[:focus-visible]:ring-2">
       <div className="space-y-2 p-3">
         {/* Recommendation Reason Badge */}
         <BadgeV2 variant="secondary" className="text-xs">
@@ -46,7 +33,12 @@ export function DigestArticleCard({ article }: DigestArticleCardProps) {
 
         {/* Title */}
         <h3 className="text-foreground group-hover:text-primary line-clamp-2 text-sm leading-snug font-medium transition-colors">
-          {article.title}
+          <Link
+            href={`/articles/${article.articleId}?from=${encodeURIComponent('/digest')}`}
+            className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+          >
+            {article.title}
+          </Link>
         </h3>
 
         {/* Summary (if available) */}
@@ -70,7 +62,7 @@ export function DigestArticleCard({ article }: DigestArticleCardProps) {
               href={safeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              className="text-muted-foreground hover:text-foreground relative z-10 transition-colors"
               onClick={(e) => e.stopPropagation()}
               aria-label="元記事を開く"
             >

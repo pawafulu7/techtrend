@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Newspaper, Settings, CheckCircle } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -9,19 +9,15 @@ import { DigestSection } from './digest-section';
 import { DigestSkeleton } from './digest-skeleton';
 import { CategoryPreferenceDialog } from '@/app/components/personalization/category-preference-dialog';
 import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
-import type {
-  DigestResponse,
-  DigestPeriod,
-} from '@/lib/services/digest-service';
+import { useDigest } from '@/lib/hooks/use-digest';
+import type { DigestPeriod } from '@/lib/services/digest-service';
 import type { PeriodPreset } from '@/lib/personalization/types';
 
 export function DigestClient() {
   const [period, setPeriod] = useState<DigestPeriod>('daily');
-  const [digest, setDigest] = useState<DigestResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [fetchTrigger, setFetchTrigger] = useState(0);
+
+  const { data: digest, isLoading, error } = useDigest(period);
 
   const {
     categories,
@@ -32,57 +28,15 @@ export function DigestClient() {
     updatePreferencesAsync,
   } = usePersonalizationPreferences('digest');
 
-  const fetchDigest = useCallback(
-    async (p: DigestPeriod, signal?: AbortSignal) => {
-      setIsLoading(true);
-      setError(null);
-      setDigest(null);
-      try {
-        const res = await fetch(`/api/digest?period=${p}`, { signal });
-        if (!res.ok) {
-          if (res.status === 401) {
-            setError('ログインが必要です');
-            return;
-          }
-          throw new Error(`Failed to fetch digest: ${res.status}`);
-        }
-        const data: DigestResponse = await res.json();
-        setDigest(data);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') {
-          return; // Aborted, ignore
-        }
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'ダイジェストの取得に失敗しました'
-        );
-      } finally {
-        if (!signal?.aborted) {
-          setIsLoading(false);
-        }
-      }
-    },
-    []
-  );
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchDigest(period, controller.signal);
-    return () => controller.abort();
-  }, [period, fetchDigest, fetchTrigger]);
-
-  const handleSavePreferences = useCallback(
-    async (categoryIds: string[], _selectedPeriod: PeriodPreset) => {
-      await updatePreferencesAsync({
-        categoryIds,
-        filterEnabled: categoryIds.length > 0,
-      });
-      // Trigger re-fetch via useEffect (proper AbortController management)
-      setFetchTrigger((prev) => prev + 1);
-    },
-    [updatePreferencesAsync]
-  );
+  const handleSavePreferences = async (
+    categoryIds: string[],
+    _selectedPeriod: PeriodPreset
+  ) => {
+    await updatePreferencesAsync({
+      categoryIds,
+      filterEnabled: categoryIds.length > 0,
+    });
+  };
 
   const handlePeriodChange = (value: string) => {
     if (value === 'daily' || value === 'weekly') {
@@ -125,7 +79,7 @@ export function DigestClient() {
       {/* Error State */}
       {error && (
         <Alert variant="destructive" className="mb-6">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{error.message}</AlertDescription>
         </Alert>
       )}
 
