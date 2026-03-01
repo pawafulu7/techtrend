@@ -156,6 +156,14 @@ describe('middleware - security headers', () => {
       expect(response.status).toBe(307);
       expect(response.headers.get('location')).toContain('/auth/login');
     });
+
+    it('should redirect to login for /digest without session', async () => {
+      const request = new NextRequest(new URL('http://localhost:3000/digest'));
+      const response = await proxy(request);
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toContain('/auth/login');
+    });
   });
 
   describe('セキュリティヘッダの順序', () => {

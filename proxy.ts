@@ -39,6 +39,7 @@ const protectedPaths = [
   '/profile',
   '/favorites',
   '/history',
+  '/digest',
 ];
 
 // 認証が必要なAPIパス
