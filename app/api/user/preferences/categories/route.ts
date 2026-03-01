@@ -14,6 +14,8 @@ import { logger, sanitizeError } from '@/lib/logger';
 import type {
   UserCategoryPreferences,
   UpdateCategoryPreferencesRequest,
+  PreferenceScope,
+  PeriodPreset,
 } from '@/lib/personalization/types';
 import {
   validateUser,
@@ -31,6 +33,21 @@ const MAX_CATEGORY_SELECTIONS = 20;
 
 /** Default period in months for filtering */
 const DEFAULT_PERIOD_MONTHS = 12;
+
+/** Valid preference scopes */
+const validScopes: PreferenceScope[] = ['home', 'digest'];
+
+// =============================================================================
+// Errors
+// =============================================================================
+
+/** Error thrown inside transaction when invalid category IDs are detected */
+class InvalidCategoryError extends Error {
+  constructor(public readonly invalidIds: string[]) {
+    super('Invalid category IDs');
+    this.name = 'InvalidCategoryError';
+  }
+}
 
 // =============================================================================
 // Response Types
@@ -61,9 +78,9 @@ interface ErrorResponse {
  *
  * Returns empty array with default settings if user has no preferences set.
  */
-export async function GET(): Promise<
-  NextResponse<PreferencesResponse | ErrorResponse>
-> {
+export async function GET(
+  request: NextRequest
+): Promise<NextResponse<PreferencesResponse | ErrorResponse>> {
   try {
     const session = await auth();
 
@@ -82,10 +99,24 @@ export async function GET(): Promise<
 
     const userId = session.user.id;
 
+    // Parse and validate scope query parameter
+    const scopeParam = request.nextUrl.searchParams.get('scope');
+    if (
+      scopeParam !== null &&
+      !validScopes.includes(scopeParam as PreferenceScope)
+    ) {
+      return NextResponse.json(
+        { error: 'Invalid scope parameter' },
+        { status: 400 }
+      );
+    }
+    const scope: PreferenceScope =
+      scopeParam === null ? 'home' : (scopeParam as PreferenceScope);
+
     // Get user's category preferences and period setting
     const [preferences, user] = await Promise.all([
       prisma.userCategoryPreference.findMany({
-        where: { userId },
+        where: { userId, scope },
         select: {
           categoryId: true,
         },
@@ -104,10 +135,11 @@ export async function GET(): Promise<
       selectedCategories: preferences.map((p) => p.categoryId),
       filterEnabled: hasPreferences, // Default to enabled if user has selections
       periodMonths: user?.personalizationPeriodMonths ?? DEFAULT_PERIOD_MONTHS,
+      scope,
     };
 
     logger.info(
-      { userId, categoryCount: preferences.length },
+      { userId, categoryCount: preferences.length, scope },
       'User category preferences retrieved'
     );
 
@@ -159,19 +191,59 @@ export async function POST(
     const userId = session.user.id;
 
     // Parse and validate request body
-    let body: UpdateCategoryPreferencesRequest;
+    let parsedBody: unknown;
     try {
-      body = await request.json();
+      parsedBody = await request.json();
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
+    if (
+      parsedBody === null ||
+      typeof parsedBody !== 'object' ||
+      Array.isArray(parsedBody)
+    ) {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const body = parsedBody as UpdateCategoryPreferencesRequest;
 
-    const { categoryIds, filterEnabled, periodMonths } = body;
+    const { categoryIds, filterEnabled, periodMonths, scope: bodyScope } = body;
 
-    // Validate categoryIds is an array
-    if (!Array.isArray(categoryIds)) {
+    // Validate scope if provided (must be a string and one of the valid scopes)
+    if (
+      bodyScope !== undefined &&
+      (typeof bodyScope !== 'string' ||
+        !validScopes.includes(bodyScope as PreferenceScope))
+    ) {
       return NextResponse.json(
-        { error: 'categoryIds must be an array' },
+        { error: 'Invalid scope parameter' },
+        { status: 400 }
+      );
+    }
+    const scope: PreferenceScope = (bodyScope as PreferenceScope) || 'home';
+
+    // Validate periodMonths if provided (only relevant for home scope)
+    const validPeriodMonths = [
+      0, 3, 6, 12,
+    ] as const satisfies readonly PeriodPreset[];
+    if (
+      periodMonths !== undefined &&
+      scope !== 'digest' &&
+      (typeof periodMonths !== 'number' ||
+        !(validPeriodMonths as readonly number[]).includes(periodMonths))
+    ) {
+      return NextResponse.json(
+        { error: 'periodMonths must be one of: 0, 3, 6, 12' },
+        { status: 400 }
+      );
+    }
+
+    // Validate categoryIds is an array of strings
+    if (
+      !Array.isArray(categoryIds) ||
+      !categoryIds.every((id: unknown) => typeof id === 'string')
+    ) {
+      return NextResponse.json(
+        { error: 'categoryIds must be an array of strings' },
         { status: 400 }
       );
     }
@@ -190,61 +262,68 @@ export async function POST(
       );
     }
 
-    // Validate all category IDs exist (if any provided)
-    if (uniqueCategoryIds.length > 0) {
-      const existingCategories = await prisma.interestCategory.findMany({
-        where: {
-          id: { in: uniqueCategoryIds },
-          isActive: true,
-        },
-        select: { id: true },
-      });
-
-      const existingIds = new Set(existingCategories.map((c) => c.id));
-      const invalidIds = uniqueCategoryIds.filter((id) => !existingIds.has(id));
-
-      if (invalidIds.length > 0) {
-        return NextResponse.json(
-          {
-            error: 'Invalid category IDs',
-            invalidCategoryIds: invalidIds,
-          },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Update preferences in a transaction
+    // Update preferences in a transaction (includes validation to avoid race conditions)
     await prisma.$transaction(async (tx) => {
-      // Delete existing preferences
+      // Validate all category IDs exist (if any provided)
+      if (uniqueCategoryIds.length > 0) {
+        const existingCategories = await tx.interestCategory.findMany({
+          where: {
+            id: { in: uniqueCategoryIds },
+            isActive: true,
+          },
+          select: { id: true },
+        });
+
+        const existingIds = new Set(existingCategories.map((c) => c.id));
+        const invalidIds = uniqueCategoryIds.filter(
+          (id) => !existingIds.has(id)
+        );
+
+        if (invalidIds.length > 0) {
+          throw new InvalidCategoryError(invalidIds);
+        }
+      }
+
+      // Delete existing preferences for this scope only
       await tx.userCategoryPreference.deleteMany({
-        where: { userId },
+        where: { userId, scope },
       });
 
-      // Insert new preferences
+      // Insert new preferences with scope
       if (uniqueCategoryIds.length > 0) {
         await tx.userCategoryPreference.createMany({
           data: uniqueCategoryIds.map((categoryId) => ({
             userId,
             categoryId,
+            scope,
             weight: 1, // Default weight for now
           })),
         });
       }
 
-      // Update period months if provided
-      if (periodMonths !== undefined) {
+      // Update period months if provided (skip for digest scope)
+      if (periodMonths !== undefined && scope !== 'digest') {
         await tx.user.update({
           where: { id: userId },
           data: { personalizationPeriodMonths: periodMonths },
         });
       }
+
+      // Warn if periodMonths is sent for digest scope (silently ignored)
+      if (periodMonths !== undefined && scope === 'digest') {
+        logger.warn(
+          { userId, scope, periodMonths },
+          'periodMonths ignored for digest scope'
+        );
+      }
     });
 
-    // Invalidate digest cache (fire-and-forget, don't block response)
-    digestService.invalidateUserCache(userId).catch((error) => {
-      logger.warn({ error, userId }, 'Failed to invalidate digest cache');
-    });
+    // Invalidate digest cache only when digest scope changes (fire-and-forget)
+    if (scope === 'digest') {
+      digestService.invalidateUserCache(userId).catch((error) => {
+        logger.warn({ error, userId }, 'Failed to invalidate digest cache');
+      });
+    }
 
     logger.info(
       {
@@ -252,6 +331,7 @@ export async function POST(
         categoryCount: uniqueCategoryIds.length,
         filterEnabled,
         periodMonths,
+        scope,
       },
       'User category preferences saved'
     );
@@ -261,6 +341,17 @@ export async function POST(
       selectedCategories: uniqueCategoryIds,
     });
   } catch (error) {
+    // Handle invalid category IDs thrown from within the transaction
+    if (error instanceof InvalidCategoryError) {
+      return NextResponse.json(
+        {
+          error: 'Invalid category IDs',
+          invalidCategoryIds: error.invalidIds,
+        },
+        { status: 400 }
+      );
+    }
+
     // Handle FK constraint violations (race condition with user deletion)
     const prismaErrorResponse = handlePrismaError(error);
     if (prismaErrorResponse) {

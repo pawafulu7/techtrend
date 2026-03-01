@@ -123,7 +123,7 @@ describe('useUserPreferences', () => {
     });
 
     expect(result.current.data).toEqual(mockPreferences);
-    expect(mockFetch).toHaveBeenCalledWith('/api/user/preferences/categories');
+    expect(mockFetch).toHaveBeenCalledWith('/api/user/preferences/categories?scope=home');
   });
 
   it('should return default preferences when not authenticated', async () => {
@@ -188,6 +188,7 @@ describe('useUpdatePreferences', () => {
           categoryIds: ['cat-1', 'cat-2'],
           filterEnabled: true,
           periodMonths: 12,
+          scope: 'home',
         }),
       })
     );
@@ -305,5 +306,152 @@ describe('usePersonalizationPreferences', () => {
     expect(result.current.periodMonths).toBe(12);
     expect(result.current.hasPreferences).toBe(false);
     expect(result.current.isAuthenticated).toBe(false);
+  });
+});
+
+describe('Scope separation', () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
+
+  it('should use independent cache keys for home and digest scopes', async () => {
+    // Track which URLs were fetched
+    const fetchedUrls: string[] = [];
+    mockFetch.mockImplementation(async (url: string) => {
+      fetchedUrls.push(url);
+      return {
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            selectedCategories: url.includes('scope=digest')
+              ? ['cat-2', 'cat-3']
+              : ['cat-1'],
+            filterEnabled: true,
+            periodMonths: 12,
+          }),
+      };
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    // Render home scope
+    const { result: homeResult } = renderHook(
+      () => useUserPreferences('home'),
+      { wrapper }
+    );
+
+    await waitFor(() => {
+      expect(homeResult.current.isSuccess).toBe(true);
+    });
+
+    // Render digest scope in same QueryClient (ensures separate cache entries)
+    const { result: digestResult } = renderHook(
+      () => useUserPreferences('digest'),
+      { wrapper }
+    );
+
+    await waitFor(() => {
+      expect(digestResult.current.isSuccess).toBe(true);
+    });
+
+    // Both scopes should have been fetched independently
+    expect(fetchedUrls).toContain(
+      '/api/user/preferences/categories?scope=home'
+    );
+    expect(fetchedUrls).toContain(
+      '/api/user/preferences/categories?scope=digest'
+    );
+  });
+
+  it('should invalidate infinite-articles on home scope update', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    });
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    mockFetch.mockImplementation(async () => ({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({ success: true, selectedCategories: ['cat-1'] }),
+    }));
+
+    const { result } = renderHook(() => useUpdatePreferences('home'), {
+      wrapper,
+    });
+
+    result.current.mutate({
+      categoryIds: ['cat-1'],
+      filterEnabled: true,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    // Verify fetch was called with scope in body
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/user/preferences/categories',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"scope":"home"'),
+      })
+    );
+
+    // infinite-articles should be invalidated for home scope
+    const infiniteArticlesCalls = invalidateSpy.mock.calls.filter(
+      (call: any[]) => call[0]?.queryKey?.[0] === 'infinite-articles'
+    );
+    expect(infiniteArticlesCalls.length).toBeGreaterThanOrEqual(1);
+
+    invalidateSpy.mockRestore();
+  });
+
+  it('should not invalidate infinite-articles on digest scope update', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    });
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    mockFetch.mockImplementation(async () => ({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({ success: true, selectedCategories: ['cat-2'] }),
+    }));
+
+    const { result } = renderHook(() => useUpdatePreferences('digest'), {
+      wrapper,
+    });
+
+    result.current.mutate({
+      categoryIds: ['cat-2'],
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    // infinite-articles should NOT be invalidated for digest scope
+    const infiniteArticlesCalls = invalidateSpy.mock.calls.filter(
+      (call: any[]) => call[0]?.queryKey?.[0] === 'infinite-articles'
+    );
+    expect(infiniteArticlesCalls).toHaveLength(0);
+
+    invalidateSpy.mockRestore();
   });
 });

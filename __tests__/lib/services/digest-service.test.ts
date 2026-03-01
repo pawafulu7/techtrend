@@ -397,6 +397,47 @@ describe('DigestService', () => {
     });
   });
 
+  describe('scope filtering', () => {
+    it('getDigest should query preferences with scope: digest', async () => {
+      prismaMock.userCategoryPreference.count.mockResolvedValue(1);
+      prismaMock.userCategoryPreference.findMany.mockResolvedValue([
+        { categoryId: 'cat-1' },
+      ]);
+      filterServiceMock.filterArticles.mockResolvedValue({
+        articles: [],
+        total: 0,
+      } as any);
+      prismaMock.$queryRaw.mockResolvedValue([]);
+
+      await service.getDigest('user-1', 'daily');
+
+      // count should filter by scope: 'digest'
+      expect(prismaMock.userCategoryPreference.count).toHaveBeenCalledWith({
+        where: { userId: 'user-1', scope: 'digest' },
+      });
+
+      // findMany should also filter by scope: 'digest'
+      expect(prismaMock.userCategoryPreference.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', scope: 'digest' },
+        select: { categoryId: true },
+      });
+    });
+
+    it('should return empty sections when user has no digest scope preferences', async () => {
+      // User has home preferences but no digest preferences
+      prismaMock.userCategoryPreference.count.mockResolvedValue(0);
+
+      const result = await service.getDigest('user-1', 'daily');
+
+      expect(result.hasPreferences).toBe(false);
+      expect(result.sections).toHaveLength(3);
+      expect(result.sections.every((s) => s.articles.length === 0)).toBe(true);
+
+      // findMany should not be called when count is 0 (early return)
+      expect(prismaMock.userCategoryPreference.findMany).not.toHaveBeenCalled();
+    });
+  });
+
   describe('invalidateUserCache', () => {
     it('daily/weeklyの両方のキャッシュを削除する', async () => {
       await service.invalidateUserCache('user-1');

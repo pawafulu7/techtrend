@@ -30,7 +30,7 @@ export function DigestClient() {
     isLoading: prefLoading,
     isUpdating,
     updatePreferencesAsync,
-  } = usePersonalizationPreferences();
+  } = usePersonalizationPreferences('digest');
 
   const fetchDigest = useCallback(
     async (p: DigestPeriod, signal?: AbortSignal) => {
@@ -73,11 +73,10 @@ export function DigestClient() {
   }, [period, fetchDigest, fetchTrigger]);
 
   const handleSavePreferences = useCallback(
-    async (categoryIds: string[], selectedPeriod: PeriodPreset) => {
+    async (categoryIds: string[], _selectedPeriod: PeriodPreset) => {
       await updatePreferencesAsync({
         categoryIds,
         filterEnabled: categoryIds.length > 0,
-        periodMonths: selectedPeriod,
       });
       // Trigger re-fetch via useEffect (proper AbortController management)
       setFetchTrigger((prev) => prev + 1);
@@ -189,6 +188,7 @@ export function DigestClient() {
         onSave={handleSavePreferences}
         isLoading={prefLoading}
         isSaving={isUpdating}
+        showPeriodSelector={false}
       />
     </div>
   );
