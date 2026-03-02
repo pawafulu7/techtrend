@@ -37,6 +37,7 @@ import {
 import { NVIDIADeveloperBlogFetcher } from './nvidia-developer-blog';
 import { DeepMindBlogFetcher } from './deepmind-blog';
 import { HatenaBlogDevFetcher } from './hatena-blog-dev';
+import { ForbesJapanFetcher } from './forbes-japan';
 import { DevelopersIOFetcher, getTagFromSourceName } from './developersio';
 
 // Foreign Tech Company Blog Fetchers
@@ -130,6 +131,8 @@ export function createFetcher(source: Source): BaseFetcher {
       return new DeepMindBlogFetcher(source);
     case '企業技術ブログ':
       return new HatenaBlogDevFetcher(source);
+    case 'Forbes Japan AI':
+      return new ForbesJapanFetcher(source);
 
     // Japanese Corporate Tech Blogs
     case 'DeNA Engineering':
@@ -238,5 +241,6 @@ export {
   HatenaBlogDevFetcher,
   DevelopersIOFetcher,
   GenericForeignRssFetcher,
+  ForbesJapanFetcher,
 };
 export type { FetchResult } from '@/types/fetchers';
