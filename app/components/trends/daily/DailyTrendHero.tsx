@@ -208,53 +208,6 @@ function KeyTopicArticleCards({
 
   if (resolved.length === 0) return null;
 
-  // Single article: horizontal card (thumbnail left, text right)
-  if (resolved.length === 1) {
-    const a = resolved[0];
-    return (
-      <Link
-        href={a.href}
-        className="bg-background/50 hover:bg-muted/50 flex overflow-hidden rounded-lg border transition-colors"
-      >
-        {a.thumbnail ? (
-          <div className="bg-muted relative h-[80px] w-[120px] flex-shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element -- External URLs from arbitrary domains; next/image requires remotePatterns config */}
-            <img
-              src={a.thumbnail}
-              alt=""
-              className="h-full w-full object-cover"
-              loading="lazy"
-              onError={(e) => {
-                const target = e.currentTarget;
-                target.style.display = 'none';
-                const fallback = target.nextElementSibling as HTMLElement;
-                if (fallback) fallback.style.display = 'flex';
-              }}
-            />
-            <div className="bg-muted absolute inset-0 hidden h-full w-full items-center justify-center">
-              <span className="text-muted-foreground text-xs">
-                {a.sourceName}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-muted flex h-[80px] w-[120px] flex-shrink-0 items-center justify-center">
-            <span className="text-muted-foreground text-xs">
-              {a.sourceName}
-            </span>
-          </div>
-        )}
-        <div className="flex min-w-0 flex-1 flex-col justify-center p-2.5">
-          <p className="line-clamp-2 text-xs leading-snug font-medium">
-            {a.title}
-          </p>
-          <p className="text-muted-foreground mt-1 text-xs">{a.sourceName}</p>
-        </div>
-      </Link>
-    );
-  }
-
-  // Multiple articles: horizontal scroll cards
   return (
     <div className="scrollbar-thin -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
       {resolved.map((a) => {
