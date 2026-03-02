@@ -1,7 +1,6 @@
 import { Source } from '@prisma/client';
 import * as cheerio from 'cheerio';
 import type { AnyNode } from 'domhandler';
-import { parse as parseDate } from 'date-fns';
 import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
@@ -118,9 +117,8 @@ export class ForbesJapanFetcher extends BaseFetcher {
         return;
       }
 
-      // Deduplicate by URL
+      // Deduplicate by URL - check only, don't add yet
       if (seenUrls.has(validatedUrl)) return;
-      seenUrls.add(validatedUrl);
 
       // Extract title: link text or closest heading/title element
       const title = this.extractTitle($, $link);
@@ -134,6 +132,8 @@ export class ForbesJapanFetcher extends BaseFetcher {
       // Extract thumbnail from parent or sibling elements
       const thumbnail = this.extractThumbnailFromContext($, $link);
 
+      // Mark as seen only after all validations pass
+      seenUrls.add(validatedUrl);
       candidates.push({
         url: validatedUrl,
         title,
@@ -212,21 +212,37 @@ export class ForbesJapanFetcher extends BaseFetcher {
     }
 
     try {
-      const parsed = parseDate(
-        dateText,
-        forbesJapanConfig.dateFormat,
-        new Date()
+      // Parse "yyyy.M.d HH:mm" format manually to avoid TZ dependency
+      const match = dateText.match(
+        /^(\d{4})\.(\d{1,2})\.(\d{1,2})\s+(\d{1,2}):(\d{2})$/
       );
+      if (!match) {
+        logger.warn(
+          `[Forbes Japan] Date parse failed for "${dateText.slice(0, 50)}": no match`
+        );
+        return undefined;
+      }
+      const [, year, month, day, hour, minute] = match;
+      // Construct as JST (UTC+9), then convert to UTC
+      // Date.UTC gives us a UTC timestamp, so we create the date as if it were UTC
+      // then subtract 9 hours to convert from JST to UTC
+      const jstTimestamp = Date.UTC(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        parseInt(hour),
+        parseInt(minute),
+        0,
+        0
+      );
+      const utcDate = new Date(jstTimestamp - JST_OFFSET_MS);
 
-      if (isNaN(parsed.getTime())) {
+      if (isNaN(utcDate.getTime())) {
         logger.warn(
           `[Forbes Japan] Date parse returned invalid date for "${dateText}"`
         );
         return undefined;
       }
-
-      // JST -> UTC: subtract 9 hours
-      const utcDate = new Date(parsed.getTime() - JST_OFFSET_MS);
       return utcDate;
     } catch (error) {
       logger.warn(
@@ -394,13 +410,12 @@ export class ForbesJapanFetcher extends BaseFetcher {
   }
 
   private async fetchWithRetry(url: string, retries = 0): Promise<string> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      forbesJapanConfig.timeout
+    );
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        forbesJapanConfig.timeout
-      );
-
       const response = await fetch(url, {
         signal: controller.signal,
         headers: {
@@ -411,8 +426,6 @@ export class ForbesJapanFetcher extends BaseFetcher {
           'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
         },
       });
-
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -431,6 +444,8 @@ export class ForbesJapanFetcher extends BaseFetcher {
         return this.fetchWithRetry(url, retries + 1);
       }
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

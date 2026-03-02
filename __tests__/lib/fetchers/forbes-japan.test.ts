@@ -2,7 +2,6 @@ import { ForbesJapanFetcher } from '@/lib/fetchers/forbes-japan';
 import { createFetcher } from '@/lib/fetchers';
 import { Source } from '@prisma/client';
 import { logger } from '@/lib/cli/utils/logger';
-import { parse as dateFnsParse } from 'date-fns';
 
 // Mock fetch
 global.fetch = jest.fn();
@@ -475,12 +474,24 @@ describe('ForbesJapanFetcher', () => {
   // 9. parseArticleDate() - direct public method tests
   // ------------------------------------------------------------------
   describe('parseArticleDate()', () => {
-    // Helper: compute expected UTC date the same way the implementation does
-    // (date-fns parse is local-TZ-dependent, so we replicate to stay TZ-independent)
+    // Helper: compute expected UTC date using Date.UTC (TZ-independent)
     const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
     function expectedUtc(dateText: string): string {
-      const parsed = dateFnsParse(dateText, 'yyyy.M.d HH:mm', new Date());
-      return new Date(parsed.getTime() - JST_OFFSET_MS).toISOString();
+      const match = dateText.match(
+        /^(\d{4})\.(\d{1,2})\.(\d{1,2})\s+(\d{1,2}):(\d{2})$/
+      );
+      if (!match) throw new Error('Bad test date');
+      const [, year, month, day, hour, minute] = match;
+      const jstTimestamp = Date.UTC(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        parseInt(hour),
+        parseInt(minute),
+        0,
+        0
+      );
+      return new Date(jstTimestamp - JST_OFFSET_MS).toISOString();
     }
 
     it('should parse "yyyy.M.d HH:mm" format with JST offset', () => {
@@ -530,14 +541,13 @@ describe('ForbesJapanFetcher', () => {
     });
 
     it('should subtract exactly 9 hours (JST offset) from parsed time', () => {
-      // Verify the JST offset is applied: result should be 9h less than
-      // what date-fns parse returns in local time
       const dateText = '2026.3.2 10:30';
-      const parsed = dateFnsParse(dateText, 'yyyy.M.d HH:mm', new Date());
+      // 2026.3.2 10:30 JST = Date.UTC(2026, 2, 2, 10, 30) - 9h
+      const jstTimestamp = Date.UTC(2026, 2, 2, 10, 30, 0, 0);
       const result = fetcher.parseArticleDate(dateText);
 
       expect(result).toBeDefined();
-      expect(result!.getTime()).toBe(parsed.getTime() - JST_OFFSET_MS);
+      expect(result!.getTime()).toBe(jstTimestamp - JST_OFFSET_MS);
     });
   });
 
