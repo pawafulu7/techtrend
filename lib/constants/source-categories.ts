@@ -110,6 +110,7 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'itmedia_security', // ITmedia Security
       'itmedia_aiplus', // ITmedia AI+
       'atit', // @IT
+      'forbes_japan_ai', // Forbes Japan AI
     ],
   },
   company: {
@@ -166,6 +167,7 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       CLAUDE_BLOG_SOURCE_ID, // Claude Blog
       ANTHROPIC_NEWS_SOURCE_ID, // Anthropic News
       'itmedia_aiplus', // ITmedia AI+
+      'forbes_japan_ai', // Forbes Japan AI
     ],
   },
   llm: {

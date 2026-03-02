@@ -281,7 +281,8 @@ const RSS_SOURCES = [
 // スクレイピング系ソース（12時間ごとに更新）
 const SCRAPING_SOURCES = [
   'Speaker Deck',
-  'Docswell'
+  'Docswell',
+  'Forbes Japan AI',
 ];
 
 // Qiita人気記事ソース（5:05と17:05に更新）
