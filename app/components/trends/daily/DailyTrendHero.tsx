@@ -332,13 +332,18 @@ function StructuredAISummaryView({
                     </div>
                   </div>
                   {t.evidenceArticleIds && t.evidenceArticleIds.length > 0 && (
-                    <div className="border-border/50 mt-2 border-t pt-2">
-                      <KeyTopicArticleCards
-                        articleIds={t.evidenceArticleIds}
-                        topArticlesById={topArticlesById}
-                        evidenceArticles={evidenceArticles}
-                      />
-                    </div>
+                    <details className="border-border/50 mt-2 border-t pt-2">
+                      <summary className="text-muted-foreground cursor-pointer text-xs hover:underline">
+                        関連記事 {t.evidenceArticleIds.length}件
+                      </summary>
+                      <div className="mt-2">
+                        <KeyTopicArticleCards
+                          articleIds={t.evidenceArticleIds}
+                          topArticlesById={topArticlesById}
+                          evidenceArticles={evidenceArticles}
+                        />
+                      </div>
+                    </details>
                   )}
                 </div>
               ))}
