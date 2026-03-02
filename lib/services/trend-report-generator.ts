@@ -1,7 +1,6 @@
 import { PrismaClient, Prisma, TrendPeriodType } from '@prisma/client';
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import logger from '@/lib/logger/index';
-import { GEMINI_API } from '@/lib/constants';
 import {
   extractFirstJsonObject,
   TrendAiSummarySchema,
@@ -151,7 +150,7 @@ export class TrendReportGenerator {
     if (apiKey) {
       this.genAI = new GoogleGenerativeAI(apiKey);
       this.model = this.genAI.getGenerativeModel({
-        model: GEMINI_API.MODEL,
+        model: 'gemini-2.5-flash',
       });
     }
   }
@@ -242,7 +241,7 @@ export class TrendReportGenerator {
             categories,
             tags
           );
-          aiModel = GEMINI_API.MODEL;
+          aiModel = 'gemini-2.5-flash';
           generatedAt = new Date();
         } catch (error) {
           logger.error('Failed to generate AI summary', error);

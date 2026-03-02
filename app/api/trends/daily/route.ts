@@ -97,26 +97,44 @@ async function enrichReportWithThumbnails(
   }
 
   // Fetch article data from DB (sourceName is via source relation)
-  const articles = await prisma.article.findMany({
-    where: { id: { in: Array.from(allArticleIds) } },
-    select: {
-      id: true,
-      title: true,
-      translatedTitle: true,
-      thumbnail: true,
-      source: { select: { name: true } },
-    },
-  });
+  let articles: Array<{
+    id: string;
+    title: string;
+    translatedTitle: string | null;
+    thumbnail: string | null;
+    source: { name: string };
+  }> = [];
+  try {
+    articles = await prisma.article.findMany({
+      where: { id: { in: Array.from(allArticleIds) } },
+      select: {
+        id: true,
+        title: true,
+        translatedTitle: true,
+        thumbnail: true,
+        source: { select: { name: true } },
+      },
+    });
+  } catch (error) {
+    logger.warn('Failed to fetch articles for thumbnail enrichment', error);
+    return { enrichedData: reportData, evidenceArticles: {} };
+  }
 
   const articleMap = new Map(
     articles.map((a) => [a.id, { ...a, sourceName: a.source.name }])
   );
 
-  // Enrich topArticles with thumbnails
+  // Enrich topArticles with thumbnails and strip detailedSummary (AI input only)
   const enrichedTopArticles = topArticles.map((article) => {
-    if (article.thumbnail !== undefined) return article;
-    const dbArticle = articleMap.get(article.id);
-    return { ...article, thumbnail: dbArticle?.thumbnail ?? null };
+    const { detailedSummary: _ignored, ...rest } = article as Record<
+      string,
+      unknown
+    >;
+    if (rest.thumbnail !== undefined) {
+      return rest;
+    }
+    const dbArticle = articleMap.get(rest.id as string);
+    return { ...rest, thumbnail: dbArticle?.thumbnail ?? null };
   });
 
   // Build evidenceArticles map (all fetched articles, for FE to look up by ID)
@@ -138,8 +156,15 @@ async function enrichReportWithThumbnails(
     };
   }
 
+  // detailedSummary is for AI input only, strip from API response
+  const { detailedSummary: _ds, ...cleanReportData } = reportData as Record<
+    string,
+    unknown
+  > & { detailedSummary?: unknown };
+  const enrichedData = { ...cleanReportData, topArticles: enrichedTopArticles };
+
   return {
-    enrichedData: { ...reportData, topArticles: enrichedTopArticles },
+    enrichedData,
     evidenceArticles,
   };
 }
