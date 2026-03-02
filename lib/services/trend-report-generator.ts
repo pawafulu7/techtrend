@@ -136,7 +136,7 @@ export interface TrendReportData {
 }
 
 // プロンプトバージョン管理
-const PROMPT_VERSION = '2.2.0';
+const PROMPT_VERSION = '2.3.0';
 
 export class TrendReportGenerator {
   private prisma: PrismaClient;
@@ -699,6 +699,7 @@ export class TrendReportGenerator {
 {
   "version": "trend_ai_summary_v2",
   "core": "今日の核心を固有名詞で1文（例: Gemini 2.0発表でマルチモーダルAI開発が加速）。量的変化（増減）は書かない。",
+  "overview": "その日の技術トレンド全体を俯瞰する概要。主要な話題・動向を2-3文（150-250文字程度）でまとめる。keyTopicsの列挙ではなく、記事群から読み取れる全体的な流れや傾向を説明する。",
   "keyTopics": [
     {
       "topic": "具体的な技術・ツール・手法（固有名詞、10文字以内）",
@@ -818,7 +819,7 @@ ${JSON.stringify(input)}`;
       const result = await model.generateContent({
         contents: [{ role: 'user', parts: [{ text: promptText }] }],
         generationConfig: {
-          maxOutputTokens: 4096,
+          maxOutputTokens: 8192,
           temperature,
           responseMimeType: 'application/json',
         },
@@ -846,7 +847,7 @@ ${JSON.stringify(input)}`;
 
     const repairPrompt = `次のモデル出力を、必ず指定のJSONスキーマ（trend_ai_summary_v2）に厳密準拠するJSONオブジェクトへ修正してください。
 返答はJSONのみ。追加の文章、コードブロック、コメント禁止。
-指定キー（追加/欠落禁止）: version, core, keyTopics, trendChanges, actions, numbers, notes
+指定キー（追加/欠落禁止）: version, core, overview, keyTopics, trendChanges, actions, numbers, notes
 versionは必ず "trend_ai_summary_v2"。
 文章フィールドでは統計の言い換え（"件" "%""割合""占める" 等）をしない（数値はdeltaCountに入れる）。
 coreには「減少」「増加」「急増」等の量的変化の語を使わない。
@@ -860,6 +861,7 @@ evidenceArticleIds / articleIds には参照キー（A1〜A10）を使うこと�
 {
   "version": "trend_ai_summary_v2",
   "core": "…。",
+  "overview": "その日の技術トレンド全体の概要を2-3文で。",
   "keyTopics": [{"topic":"…","whatHappened":"…。","whyItMatters":"…。","evidenceArticleIds":["A1"]}],
   "trendChanges": {"available": false, "basis": {"periodLabel":"前日","date":"YYYY-MM-DD"}, "new": [], "rising": [], "falling": [], "summary": "…。"},
   "actions": [{"action":"…","reason":"…","articleIds":["A2"]}],

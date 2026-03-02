@@ -53,6 +53,7 @@ export const TrendAiSummaryV2Schema = z
   .object({
     version: z.literal('trend_ai_summary_v2'),
     core: z.string().min(1),
+    overview: z.string().min(1),
     keyTopics: z
       .array(
         z.object({

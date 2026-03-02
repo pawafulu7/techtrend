@@ -290,6 +290,11 @@ function StructuredAISummaryView({
           <p className="text-foreground text-xl leading-tight font-semibold sm:text-2xl">
             {summary.core}
           </p>
+          {summary.overview && (
+            <p className="text-muted-foreground mt-3 text-sm leading-relaxed sm:text-base">
+              {summary.overview}
+            </p>
+          )}
         </div>
 
         {/* Trend Changes Summary - Prominent */}
