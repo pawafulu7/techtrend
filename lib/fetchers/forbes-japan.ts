@@ -263,6 +263,20 @@ export class ForbesJapanFetcher extends BaseFetcher {
         0,
         0
       );
+      // Verify Date.UTC didn't normalize an invalid calendar date (e.g., Feb 31 -> Mar 3)
+      const jstCheck = new Date(jstTimestamp);
+      if (
+        jstCheck.getUTCFullYear() !== parseInt(year) ||
+        jstCheck.getUTCMonth() + 1 !== m ||
+        jstCheck.getUTCDate() !== d ||
+        jstCheck.getUTCHours() !== h ||
+        jstCheck.getUTCMinutes() !== min
+      ) {
+        logger.warn(
+          `[Forbes Japan] Date normalization detected for "${dateText}": parsed ${year}-${month}-${day} ${hour}:${minute} but got ${jstCheck.toISOString()}`
+        );
+        return undefined;
+      }
       const utcDate = new Date(jstTimestamp - JST_OFFSET_MS);
 
       if (isNaN(utcDate.getTime())) {
@@ -367,7 +381,7 @@ export class ForbesJapanFetcher extends BaseFetcher {
         : src.startsWith('/')
           ? `https://forbesjapan.com${src}`
           : src;
-      const parsed = new URL(url);
+      const parsed = new URL(url, 'https://forbesjapan.com');
 
       // Protocol validation
       if (parsed.protocol !== 'https:') {
