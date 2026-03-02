@@ -319,12 +319,8 @@ export class ForbesJapanFetcher extends BaseFetcher {
     }
 
     try {
-      // Convert relative URL to absolute
-      const url = href.startsWith('http')
-        ? href
-        : `https://forbesjapan.com${href.startsWith('/') ? '' : '/'}${href}`;
-
-      const parsed = new URL(url);
+      // Resolve relative/protocol-relative URLs against the Forbes Japan base
+      const parsed = new URL(href, 'https://forbesjapan.com');
 
       // Protocol validation
       if (parsed.protocol !== 'https:') {
