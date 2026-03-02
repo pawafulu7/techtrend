@@ -215,6 +215,7 @@ function KeyTopicArticleCards({
           <div className="bg-background/50 hover:bg-muted/50 w-[180px] flex-shrink-0 overflow-hidden rounded-lg border transition-colors">
             {a.thumbnail ? (
               <div className="bg-muted relative h-[100px] w-full">
+                {/* eslint-disable-next-line @next/next/no-img-element -- External URLs from arbitrary domains; next/image requires remotePatterns config */}
                 <img
                   src={a.thumbnail}
                   alt=""
