@@ -362,13 +362,19 @@ export class ForbesJapanFetcher extends BaseFetcher {
   validateThumbnailUrl(src: string | undefined): string | undefined {
     if (!src) return undefined;
 
+    // Reject values containing whitespace (not valid URL path segments)
+    const trimmed = src.trim();
+    if (!trimmed || /\s/.test(trimmed)) {
+      return undefined;
+    }
+
     // URL length check
-    if (src.length > forbesJapanConfig.maxUrlLength) {
+    if (trimmed.length > forbesJapanConfig.maxUrlLength) {
       return undefined;
     }
 
     // Early rejection of dangerous protocols
-    const lowerSrc = src.toLowerCase();
+    const lowerSrc = trimmed.toLowerCase();
     for (const protocol of DANGEROUS_PROTOCOLS) {
       if (lowerSrc.startsWith(protocol)) {
         return undefined;
@@ -376,11 +382,11 @@ export class ForbesJapanFetcher extends BaseFetcher {
     }
 
     try {
-      const url = src.startsWith('//')
-        ? `https:${src}`
-        : src.startsWith('/')
-          ? `https://forbesjapan.com${src}`
-          : src;
+      const url = trimmed.startsWith('//')
+        ? `https:${trimmed}`
+        : trimmed.startsWith('/')
+          ? `https://forbesjapan.com${trimmed}`
+          : trimmed;
       const parsed = new URL(url, 'https://forbesjapan.com');
 
       // Protocol validation
@@ -406,7 +412,7 @@ export class ForbesJapanFetcher extends BaseFetcher {
     } catch (error) {
       if (forbesJapanConfig.debug) {
         logger.debug(
-          `[Forbes Japan] Thumbnail URL validation error for "${src}": ${error instanceof Error ? error.message : 'Unknown'}`
+          `[Forbes Japan] Thumbnail URL validation error for "${trimmed}": ${error instanceof Error ? error.message : 'Unknown'}`
         );
       }
       return undefined;
