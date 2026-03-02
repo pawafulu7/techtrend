@@ -186,6 +186,7 @@ function KeyTopicArticleCards({
                   alt=""
                   className="h-full w-full object-cover"
                   loading="lazy"
+                  referrerPolicy="no-referrer"
                   onError={(e) => {
                     const target = e.currentTarget;
                     target.style.display = 'none';
@@ -527,6 +528,7 @@ export function DailyTrendHero({
       month: 'long',
       day: 'numeric',
       weekday: 'short',
+      timeZone: 'Asia/Tokyo',
     });
   };
 
