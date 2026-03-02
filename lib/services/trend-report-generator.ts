@@ -472,15 +472,17 @@ export class TrendReportGenerator {
     refMap: Map<string, string>,
     fallbackId: string | undefined
   ): void {
+    const validIds = new Set(refMap.values());
     const resolve = (keys: unknown[]): string[] => {
       const resolved = keys
         .filter((k): k is string => typeof k === 'string')
-        .map((k) => refMap.get(k))
+        .map((k) => refMap.get(k) ?? (validIds.has(k) ? k : undefined))
         .filter((id): id is string => id !== undefined);
-      if (resolved.length === 0 && fallbackId) {
+      const deduped = Array.from(new Set(resolved));
+      if (deduped.length === 0 && fallbackId) {
         return [fallbackId];
       }
-      return resolved;
+      return deduped;
     };
 
     // keyTopics[].evidenceArticleIds

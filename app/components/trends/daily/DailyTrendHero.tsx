@@ -190,7 +190,7 @@ function KeyTopicArticleCards({
           title: topArticle.translatedTitle || topArticle.title,
           thumbnail: topArticle.thumbnail,
           sourceName: topArticle.sourceName,
-          url: topArticle.url,
+          href: `/articles/${topArticle.id}?from=${encodeURIComponent('/trends/daily')}`,
         };
       const ev = evidenceArticles[id];
       if (ev)
@@ -199,7 +199,7 @@ function KeyTopicArticleCards({
           title: ev.translatedTitle || ev.title,
           thumbnail: ev.thumbnail,
           sourceName: ev.sourceName,
-          url: null,
+          href: `/articles/${id}?from=${encodeURIComponent('/trends/daily')}`,
         };
       return null;
     })
@@ -252,21 +252,10 @@ function KeyTopicArticleCards({
           </div>
         );
 
-        if (a.url) {
-          return (
-            <Link
-              key={a.id}
-              href={`/articles/${a.id}?from=${encodeURIComponent('/trends/daily')}`}
-              className="flex-shrink-0"
-            >
-              {content}
-            </Link>
-          );
-        }
         return (
-          <div key={a.id} className="flex-shrink-0">
+          <Link key={a.id} href={a.href} className="flex-shrink-0">
             {content}
-          </div>
+          </Link>
         );
       })}
     </div>
@@ -394,9 +383,10 @@ function StructuredAISummaryView({
                             </p>
                             {a.articleIds.length > 0 && (
                               <div className="mt-2">
-                                <ArticleCitations
+                                <KeyTopicArticleCards
                                   articleIds={a.articleIds.slice(0, 1)}
                                   topArticlesById={topArticlesById}
+                                  evidenceArticles={evidenceArticles}
                                 />
                               </div>
                             )}

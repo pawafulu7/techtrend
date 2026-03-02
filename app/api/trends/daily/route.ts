@@ -42,11 +42,16 @@ async function enrichReportWithThumbnails(
   enrichedData: Record<string, unknown>;
   evidenceArticles: EvidenceArticleMap;
 }> {
-  const topArticles =
-    (reportData.topArticles as Array<{
-      id: string;
-      thumbnail?: string | null;
-    }>) || [];
+  const topArticlesRaw = reportData.topArticles;
+  const topArticles: Array<{ id: string; thumbnail?: string | null }> =
+    Array.isArray(topArticlesRaw)
+      ? topArticlesRaw.filter(
+          (a): a is { id: string; thumbnail?: string | null } =>
+            Boolean(a) &&
+            typeof a === 'object' &&
+            typeof (a as { id?: unknown }).id === 'string'
+        )
+      : [];
   const aiSummaryRaw = reportData.aiSummary as string | undefined;
 
   // Collect all article IDs that need enrichment
