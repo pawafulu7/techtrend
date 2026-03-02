@@ -91,41 +91,6 @@ function parseLegacyAISummary(text: string): LegacyAISummary | null {
   return { topics, actionText: actionText || null };
 }
 
-function ArticleCitations({
-  articleIds,
-  topArticlesById,
-}: {
-  articleIds: string[];
-  topArticlesById: Map<string, TopArticle>;
-}) {
-  const resolved = articleIds
-    .map((id) => topArticlesById.get(id))
-    .filter((a): a is TopArticle => Boolean(a))
-    .slice(0, 3);
-
-  if (resolved.length === 0) return null;
-
-  return (
-    <div className="mt-2 space-y-1">
-      {resolved.map((a) => (
-        <Link
-          key={a.id}
-          href={`/articles/${a.id}?from=${encodeURIComponent('/trends/daily')}`}
-          className="bg-muted/50 hover:bg-muted block rounded-md px-2 py-1 transition-colors"
-        >
-          <div className="line-clamp-1 text-sm leading-snug font-medium">
-            {a.translatedTitle || a.title}
-          </div>
-          <div className="text-muted-foreground text-xs">
-            {a.sourceName} · score {a.score} · views {a.viewCount} · fav{' '}
-            {a.favoriteCount}
-          </div>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
 function TrendChangesBadges({
   trendChanges,
 }: {
@@ -181,7 +146,7 @@ function KeyTopicArticleCards({
   topArticlesById: Map<string, TopArticle>;
   evidenceArticles: EvidenceArticleMap;
 }) {
-  const resolved = articleIds
+  const resolved = [...new Set(articleIds)]
     .map((id) => {
       const topArticle = topArticlesById.get(id);
       if (topArticle)
@@ -435,10 +400,13 @@ function StructuredAISummaryView({
                   </div>
                 </div>
                 {t.evidenceArticleIds && t.evidenceArticleIds.length > 0 && (
-                  <ArticleCitations
-                    articleIds={t.evidenceArticleIds}
-                    topArticlesById={topArticlesById}
-                  />
+                  <div className="mt-2">
+                    <KeyTopicArticleCards
+                      articleIds={t.evidenceArticleIds}
+                      topArticlesById={topArticlesById}
+                      evidenceArticles={evidenceArticles}
+                    />
+                  </div>
                 )}
               </div>
             ))}
@@ -479,10 +447,13 @@ function StructuredAISummaryView({
                       {a.detail}
                     </div>
                     {a.relatedArticleIds && a.relatedArticleIds.length > 0 && (
-                      <ArticleCitations
-                        articleIds={a.relatedArticleIds}
-                        topArticlesById={topArticlesById}
-                      />
+                      <div className="mt-1.5">
+                        <KeyTopicArticleCards
+                          articleIds={a.relatedArticleIds}
+                          topArticlesById={topArticlesById}
+                          evidenceArticles={evidenceArticles}
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
