@@ -165,7 +165,7 @@ function TrendChangesBadges({
           className="gap-1 border-orange-500/20 bg-orange-500/10 text-orange-700 dark:text-orange-400"
         >
           <ArrowDown className="h-3 w-3" />
-          {t.topic} -{t.deltaCount}
+          {t.topic} {t.deltaCount}
         </Badge>
       ))}
     </div>
