@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertCircle, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
 
 // Note: TrendReportData is defined locally for API response typing.
 // Consider extracting to a shared type if reused across multiple files.
@@ -27,6 +28,7 @@ interface TrendReportData {
     favoriteCount: number;
     score: number;
     tags: string[];
+    thumbnail?: string | null;
   }>;
   categories: Array<{
     name: string;
@@ -55,6 +57,7 @@ interface ApiResponse {
     prevDate: string | null;
     nextDate: string | null;
   };
+  evidenceArticles?: EvidenceArticleMap;
   error?: string;
   latestAvailableDate?: string | null;
   isFallback?: boolean;
@@ -79,6 +82,9 @@ export default function DailyTrendPage() {
     nextDate: string | null;
   }>({ prevDate: null, nextDate: null });
 
+  const [evidenceArticles, setEvidenceArticles] = useState<
+    ApiResponse['evidenceArticles']
+  >({});
   const [isFallback, setIsFallback] = useState(false);
   const [fallbackInfo, setFallbackInfo] = useState<{
     requestedDate: string;
@@ -117,6 +123,7 @@ export default function DailyTrendPage() {
         setReport(data.data);
         setNavigation(data.navigation || { prevDate: null, nextDate: null });
         setLatestAvailableDate(null);
+        setEvidenceArticles(data.evidenceArticles || {});
 
         if (data.isFallback && data.requestedDate && data.actualDate) {
           setIsFallback(true);
@@ -236,6 +243,7 @@ export default function DailyTrendPage() {
             navigation={navigation}
             onPrevDay={goToPreviousDay}
             onNextDay={goToNextDay}
+            evidenceArticles={evidenceArticles}
           />
 
           {/* Content sections */}

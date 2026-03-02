@@ -100,6 +100,8 @@ export interface TopArticleInfo {
   favoriteCount: number;
   score: number;
   tags: string[];
+  thumbnail?: string | null;
+  detailedSummary?: string | null;
 }
 
 export interface CategoryInfo {
@@ -134,7 +136,7 @@ export interface TrendReportData {
 }
 
 // プロンプトバージョン管理
-const PROMPT_VERSION = '2.1.0';
+const PROMPT_VERSION = '2.3.0';
 
 export class TrendReportGenerator {
   private prisma: PrismaClient;
@@ -149,7 +151,7 @@ export class TrendReportGenerator {
     if (apiKey) {
       this.genAI = new GoogleGenerativeAI(apiKey);
       this.model = this.genAI.getGenerativeModel({
-        model: GEMINI_API.MODEL,
+        model: GEMINI_API.TREND_MODEL,
       });
     }
   }
@@ -240,7 +242,7 @@ export class TrendReportGenerator {
             categories,
             tags
           );
-          aiModel = GEMINI_API.MODEL;
+          aiModel = GEMINI_API.TREND_MODEL;
           generatedAt = new Date();
         } catch (error) {
           logger.error('Failed to generate AI summary', error);
@@ -327,6 +329,8 @@ export class TrendReportGenerator {
           favoriteCount,
           score,
           tags: article.tags.map((t) => t.name),
+          thumbnail: article.thumbnail,
+          detailedSummary: article.detailedSummary,
         };
       })
       .sort((a, b) => b.score - a.score);
@@ -459,6 +463,61 @@ export class TrendReportGenerator {
     }
   }
 
+  /**
+   * 参照キー（A1〜A10）を実際の記事IDに変換するポストプロセス。
+   * 無効な参照キーは除外し、変換後に空配列になった場合はfallbackIdを挿入する。
+   */
+  private static resolveRefKeysToIds(
+    obj: Record<string, unknown>,
+    refMap: Map<string, string>,
+    fallbackId: string | undefined
+  ): void {
+    const validIds = new Set(refMap.values());
+    const resolve = (keys: unknown[]): string[] => {
+      const resolved = keys
+        .filter((k): k is string => typeof k === 'string')
+        .map((k) => refMap.get(k) ?? (validIds.has(k) ? k : undefined))
+        .filter((id): id is string => id !== undefined);
+      const deduped = Array.from(new Set(resolved));
+      if (deduped.length === 0 && fallbackId) {
+        return [fallbackId];
+      }
+      return deduped;
+    };
+
+    // keyTopics[].evidenceArticleIds
+    const keyTopics = obj.keyTopics;
+    if (Array.isArray(keyTopics)) {
+      for (const topic of keyTopics) {
+        if (
+          topic &&
+          typeof topic === 'object' &&
+          Array.isArray((topic as Record<string, unknown>).evidenceArticleIds)
+        ) {
+          (topic as Record<string, unknown>).evidenceArticleIds = resolve(
+            (topic as Record<string, unknown>).evidenceArticleIds as unknown[]
+          );
+        }
+      }
+    }
+
+    // actions[].articleIds
+    const actions = obj.actions;
+    if (Array.isArray(actions)) {
+      for (const action of actions) {
+        if (
+          action &&
+          typeof action === 'object' &&
+          Array.isArray((action as Record<string, unknown>).articleIds)
+        ) {
+          (action as Record<string, unknown>).articleIds = resolve(
+            (action as Record<string, unknown>).articleIds as unknown[]
+          );
+        }
+      }
+    }
+  }
+
   private async generateAISummaryStructured(
     periodType: TrendPeriodType,
     periodStart: Date,
@@ -493,7 +552,8 @@ export class TrendReportGenerator {
         count: t.count,
         percentage: t.percentage,
       })),
-      topArticles: topArticles.slice(0, 10).map((a) => ({
+      topArticles: topArticles.slice(0, 10).map((a, i) => ({
+        ref: `A${i + 1}`,
         id: a.id,
         title: a.translatedTitle || a.title,
         sourceName: a.sourceName,
@@ -502,6 +562,7 @@ export class TrendReportGenerator {
         favoriteCount: a.favoriteCount,
         score: a.score,
         tags: a.tags.slice(0, 6),
+        detailedSummary: a.detailedSummary?.slice(0, 500) ?? null,
       })),
     };
 
@@ -611,6 +672,7 @@ export class TrendReportGenerator {
 
 ## 目的（重要）
 - 統計の言い換えではなく「何が起きているか」を言語化する
+- 各記事にはdetailedSummary（記事要約、最大500文字）が含まれる。記事のdetailedSummaryから技術的な具体内容を読み取り、whatHappenedやwhyItMattersに反映してください。タイトルの言い換えではなく、要約から得られる技術的知見を含めてください。
 - 類似記事を束ねて「潮流（テーマ）」として説明する
 - 読むべき記事を、具体的理由つきで推薦する
 - 前期間比の量的変化はtrendChangesセクションのみで扱う（core/keyTopics/actionsでは量の増減に言及しない）
@@ -629,19 +691,23 @@ export class TrendReportGenerator {
 - 返答はJSONオブジェクトのみ（前後に文章・コードブロック・Markdownを付けない）
 - versionは必ず "trend_ai_summary_v2"
 - 指定キー以外を出力しない（追加キー禁止）
-- 記事の根拠は evidenceArticleIds / actions.articleIds に topArticles.id を入れて示す
+- 記事の根拠は evidenceArticleIds / actions.articleIds に入力の topArticles[].ref 値（A1〜A10）を入れて示す
 - 文章フィールドでは「件」「%」「割合」「占める」などの統計言い換えをしない（数値は deltaCount や numbers に逃がす）
 
 ## 出力形式（厳守）
+- keyTopicsは必ず3件以上6件以内で出力すること（入力記事が十分にある場合）
+- actionsは必ず3件以上6件以内で出力すること
+- evidenceArticleIds / articleIds には入力JSONの topArticles[].ref 値（A1〜A10）を使うこと（架空IDや実IDではなく、必ずref値を使用）
 {
   "version": "trend_ai_summary_v2",
   "core": "今日の核心を固有名詞で1文（例: Gemini 2.0発表でマルチモーダルAI開発が加速）。量的変化（増減）は書かない。",
+  "overview": "テック系ブログのリード文調で書く（250-350文字）。NG表現:「浮上しています」「求められています」「集約されています」「不可欠です」「注目を集めています」。OK表現:「〜が中心で」「〜を後押し」「〜が広がっています」「〜してみてください」「〜しましょう」。具体的なプロダクト名を挙げながら話題を自然につなぎ、「まずは〜から試してみてください」「〜で一歩リードしましょう」のような呼びかけで締める。例: '3月1日のAI話題は、Claudeのメモリー機能やプラグイン進化が中心で、業務自動化の可能性を広げています。...AIの波に乗り遅れず、さらなる活用で競争力を強化しましょう。'",
   "keyTopics": [
     {
       "topic": "具体的な技術・ツール・手法（固有名詞、10文字以内）",
-      "whatHappened": "記事の中身から読み取れる技術的な動き。「記事が増えた/減った」等の量的変化は書かない。何が議論・発表・提案されているかを説明する。60-100文字程度で2-3文。",
-      "whyItMatters": "whatHappenedとは異なる切り口で、実務者が得られる示唆を具体的に。whatHappenedの言い換えにしない。60-100文字程度で2-3文。",
-      "evidenceArticleIds": ["topArticles.idから1-3件"]
+      "whatHappened": "記事の中身から読み取れる技術的な動き。量的変化は書かない。禁止語: 増加/減少/急増/急減/増えた/減った/拡大/縮小。何が議論・発表・提案されているかを説明する。60-100文字程度で2-3文。",
+      "whyItMatters": "whatHappenedとは異なる切り口で、実務者が得られる示唆を具体的に。whatHappenedの言い換えにしない。禁止語: 増加/減少/急増/急減/増えた/減った/拡大/縮小。60-100文字程度で2-3文。",
+      "evidenceArticleIds": ["A1", "A3"]
     }
   ],
   "trendChanges": {
@@ -656,7 +722,7 @@ export class TrendReportGenerator {
     {
       "action": "読む/試す/設計に反映する等、実行可能な指示を短く",
       "reason": "なぜそれが有効か（何が得られるか）を具体的に。",
-      "articleIds": ["topArticles.idから1-3件"]
+      "articleIds": ["A1", "A5"]
     }
   ],
   "numbers": [{ "label": "補助指標（任意）", "value": "例: トップ記事score 123 / 記事総数 42" }],
@@ -693,6 +759,14 @@ export class TrendReportGenerator {
 
 ## 入力データ
 ${JSON.stringify(input)}`;
+
+    // 参照キー → 実IDのマッピングを構築
+    const refMap = new Map<string, string>();
+    const topArticleSlice = topArticles.slice(0, 10);
+    topArticleSlice.forEach((a, i) => {
+      refMap.set(`A${i + 1}`, a.id);
+    });
+    const fallbackId = topArticleSlice[0]?.id;
 
     // 統計言い換えの検出（明らかな悪いパターンのみ）
     // - 「XX%を占める」「XX件あるから」など、数値を根拠にした記述
@@ -747,7 +821,7 @@ ${JSON.stringify(input)}`;
       const result = await model.generateContent({
         contents: [{ role: 'user', parts: [{ text: promptText }] }],
         generationConfig: {
-          maxOutputTokens: 4096,
+          maxOutputTokens: 8192,
           temperature,
           responseMimeType: 'application/json',
         },
@@ -757,27 +831,42 @@ ${JSON.stringify(input)}`;
 
     const rawText1 = await generateOnce(prompt, 0.2);
     const json1 = extractFirstJsonObject(rawText1);
+    if (json1 && typeof json1 === 'object') {
+      TrendReportGenerator.resolveRefKeysToIds(
+        json1 as Record<string, unknown>,
+        refMap,
+        fallbackId
+      );
+    }
     const errors1 = validateV2Content(json1);
     if (errors1.length === 0) {
       return JSON.stringify(json1);
     }
 
+    const refMapInfo = Array.from(refMap.entries())
+      .map(([ref, id]) => `${ref} -> ${id}`)
+      .join(', ');
+
     const repairPrompt = `次のモデル出力を、必ず指定のJSONスキーマ（trend_ai_summary_v2）に厳密準拠するJSONオブジェクトへ修正してください。
 返答はJSONのみ。追加の文章、コードブロック、コメント禁止。
-指定キー（追加/欠落禁止）: version, core, keyTopics, trendChanges, actions, numbers, notes
+指定キー（追加/欠落禁止）: version, core, overview, keyTopics, trendChanges, actions, numbers, notes
 versionは必ず "trend_ai_summary_v2"。
 文章フィールドでは統計の言い換え（"件" "%""割合""占める" 等）をしない（数値はdeltaCountに入れる）。
 coreには「減少」「増加」「急増」等の量的変化の語を使わない。
 keyTopicsでは記事数の増減に言及しない（量的変化はtrendChanges.summaryの責務）。
 core/keyTopics/trendChanges/actionsで同じ事象を同じ切り口で繰り返さない。
+evidenceArticleIds / articleIds には参照キー（A1〜A10）を使うこと。
+
+参照キーと実IDの対応: ${refMapInfo}
 
 スキーマ例:
 {
   "version": "trend_ai_summary_v2",
   "core": "…。",
-  "keyTopics": [{"topic":"…","whatHappened":"…。","whyItMatters":"…。","evidenceArticleIds":["…"]}],
+  "overview": "ブログのリード文調で250-350文字。柔らかい口調で具体的なプロダクト名を挙げつつ話題をつなぎ、読者への呼びかけで締める。",
+  "keyTopics": [{"topic":"…","whatHappened":"…。","whyItMatters":"…。","evidenceArticleIds":["A1"]}],
   "trendChanges": {"available": false, "basis": {"periodLabel":"前日","date":"YYYY-MM-DD"}, "new": [], "rising": [], "falling": [], "summary": "…。"},
-  "actions": [{"action":"…","reason":"…","articleIds":["…"]}],
+  "actions": [{"action":"…","reason":"…","articleIds":["A2"]}],
   "numbers": [{"label":"…","value":"…"}],
   "notes": ["…"]
 }
@@ -789,6 +878,13 @@ ${rawText1}`;
 
     const rawText2 = await generateOnce(repairPrompt, 0.0);
     const json2 = extractFirstJsonObject(rawText2);
+    if (json2 && typeof json2 === 'object') {
+      TrendReportGenerator.resolveRefKeysToIds(
+        json2 as Record<string, unknown>,
+        refMap,
+        fallbackId
+      );
+    }
     const errors2 = validateV2Content(json2);
     if (errors2.length > 0) {
       throw new Error(

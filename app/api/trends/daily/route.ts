@@ -5,6 +5,7 @@ import { TrendReportGenerator } from '@/lib/services/trend-report-generator';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger/index';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
+import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
 
 // JST offset constant (+9 hours in milliseconds)
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -29,6 +30,142 @@ const getCache = () => {
   }
   return cache;
 };
+
+/**
+ * レポートデータにthumbnail情報をenrichする
+ * - topArticlesにthumbnailを追加（既存レポートのJSON列にthumbnailがない場合）
+ * - aiSummaryのevidenceArticleIds/articleIdsから参照される記事情報をevidenceArticlesとして提供
+ */
+async function enrichReportWithThumbnails(
+  reportData: Record<string, unknown>
+): Promise<{
+  enrichedData: Record<string, unknown>;
+  evidenceArticles: EvidenceArticleMap;
+}> {
+  const topArticlesRaw = reportData.topArticles;
+  const topArticles: Array<{ id: string; thumbnail?: string | null }> =
+    Array.isArray(topArticlesRaw)
+      ? topArticlesRaw.filter(
+          (a): a is { id: string; thumbnail?: string | null } =>
+            Boolean(a) &&
+            typeof a === 'object' &&
+            typeof (a as { id?: unknown }).id === 'string'
+        )
+      : [];
+  const aiSummaryRaw = reportData.aiSummary as string | undefined;
+
+  // Collect all article IDs that need enrichment
+  const allArticleIds = new Set<string>();
+
+  // Add topArticle IDs (for thumbnail enrichment of existing reports)
+  for (const article of topArticles) {
+    allArticleIds.add(article.id);
+  }
+
+  // Extract evidenceArticleIds from aiSummary
+  if (aiSummaryRaw) {
+    try {
+      const aiSummary = JSON.parse(aiSummaryRaw);
+      // keyTopics.evidenceArticleIds (v1 and v2)
+      if (aiSummary.keyTopics) {
+        for (const topic of aiSummary.keyTopics) {
+          if (topic.evidenceArticleIds) {
+            for (const id of topic.evidenceArticleIds) {
+              allArticleIds.add(id);
+            }
+          }
+        }
+      }
+      // actions.articleIds (v2) or actions.relatedArticleIds (v1)
+      if (aiSummary.actions) {
+        for (const action of aiSummary.actions) {
+          const ids = action.articleIds || action.relatedArticleIds || [];
+          for (const id of ids) {
+            allArticleIds.add(id);
+          }
+        }
+      }
+    } catch {
+      // aiSummary parse failure - skip evidence enrichment
+    }
+  }
+
+  if (allArticleIds.size === 0) {
+    const { detailedSummary: _ds, ...clean } = reportData as Record<
+      string,
+      unknown
+    > & { detailedSummary?: unknown };
+    return { enrichedData: clean, evidenceArticles: {} };
+  }
+
+  // Fetch article data from DB (sourceName is via source relation)
+  let articles: Array<{
+    id: string;
+    title: string;
+    translatedTitle: string | null;
+    thumbnail: string | null;
+    source: { name: string };
+  }> = [];
+  try {
+    articles = await prisma.article.findMany({
+      where: { id: { in: Array.from(allArticleIds) } },
+      select: {
+        id: true,
+        title: true,
+        translatedTitle: true,
+        thumbnail: true,
+        source: { select: { name: true } },
+      },
+    });
+  } catch (error) {
+    logger.warn('Failed to fetch articles for thumbnail enrichment', error);
+    const { detailedSummary: _ds2, ...clean } = reportData as Record<
+      string,
+      unknown
+    > & { detailedSummary?: unknown };
+    return { enrichedData: clean, evidenceArticles: {} };
+  }
+
+  const articleMap = new Map(
+    articles.map((a) => [a.id, { ...a, sourceName: a.source.name }])
+  );
+
+  // Enrich topArticles with thumbnails and strip detailedSummary (AI input only)
+  const enrichedTopArticles = topArticles.map((article) => {
+    const { detailedSummary: _ignored, ...rest } = article as Record<
+      string,
+      unknown
+    >;
+    if (rest.thumbnail !== undefined) {
+      return rest;
+    }
+    const dbArticle = articleMap.get(rest.id as string);
+    return { ...rest, thumbnail: dbArticle?.thumbnail ?? null };
+  });
+
+  // Build evidenceArticles map (all fetched articles, for FE to look up by ID)
+  const evidenceArticles: EvidenceArticleMap = {};
+  for (const [id, article] of articleMap) {
+    evidenceArticles[id] = {
+      title: article.title,
+      translatedTitle: article.translatedTitle,
+      thumbnail: article.thumbnail,
+      sourceName: article.sourceName,
+    };
+  }
+
+  // detailedSummary is for AI input only, strip from API response
+  const { detailedSummary: _ds, ...cleanReportData } = reportData as Record<
+    string,
+    unknown
+  > & { detailedSummary?: unknown };
+  const enrichedData = { ...cleanReportData, topArticles: enrichedTopArticles };
+
+  return {
+    enrichedData,
+    evidenceArticles,
+  };
+}
 
 /**
  * GET /api/trends/daily
@@ -128,17 +265,24 @@ export async function GET(request: NextRequest) {
 
       const actualDate = toJSTDateString(latestReport.periodStart);
 
+      // Enrich fallback with thumbnails
+      const {
+        enrichedData: enrichedFallbackData,
+        evidenceArticles: fallbackEvidenceArticles,
+      } = await enrichReportWithThumbnails({
+        ...latestReport,
+        periodStart: latestReport.periodStart.toISOString(),
+        periodEnd: latestReport.periodEnd.toISOString(),
+        generatedAt: latestReport.generatedAt?.toISOString(),
+      });
+
       const fallbackResponse = {
         success: true,
         isFallback: true,
         requestedDate: dateKey,
         actualDate,
-        data: {
-          ...latestReport,
-          periodStart: latestReport.periodStart.toISOString(),
-          periodEnd: latestReport.periodEnd.toISOString(),
-          generatedAt: latestReport.generatedAt?.toISOString(),
-        },
+        data: enrichedFallbackData,
+        evidenceArticles: fallbackEvidenceArticles,
         navigation: {
           prevDate: fallbackAdjacentDates.prevDate
             ? toJSTDateString(fallbackAdjacentDates.prevDate)
@@ -166,14 +310,20 @@ export async function GET(request: NextRequest) {
       report.periodStart
     );
 
-    const response = {
-      success: true,
-      data: {
+    // Enrich with thumbnails
+    const { enrichedData, evidenceArticles } = await enrichReportWithThumbnails(
+      {
         ...report,
         periodStart: report.periodStart.toISOString(),
         periodEnd: report.periodEnd.toISOString(),
         generatedAt: report.generatedAt?.toISOString(),
-      },
+      }
+    );
+
+    const response = {
+      success: true,
+      data: enrichedData,
+      evidenceArticles,
       navigation: {
         prevDate: adjacentDates.prevDate
           ? toJSTDateString(adjacentDates.prevDate)
