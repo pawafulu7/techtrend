@@ -378,12 +378,7 @@ export class ForbesJapanFetcher extends BaseFetcher {
     }
 
     try {
-      const url = trimmed.startsWith('//')
-        ? `https:${trimmed}`
-        : trimmed.startsWith('/')
-          ? `https://forbesjapan.com${trimmed}`
-          : trimmed;
-      const parsed = new URL(url, 'https://forbesjapan.com');
+      const parsed = new URL(trimmed, 'https://forbesjapan.com');
 
       // Protocol validation
       if (parsed.protocol !== 'https:') {
