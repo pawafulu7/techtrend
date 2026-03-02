@@ -280,7 +280,7 @@ function StructuredAISummaryView({
             {summary.core}
           </p>
           {summary.overview && (
-            <p className="text-foreground/90 mt-3 text-sm leading-relaxed sm:text-base">
+            <p className="text-foreground/90 mt-2 text-sm leading-relaxed sm:text-base">
               {summary.overview}
             </p>
           )}
@@ -295,7 +295,7 @@ function StructuredAISummaryView({
                 {summary.trendChanges.basis?.periodLabel || 'トレンド変化'}
               </span>
             </div>
-            <p className="text-foreground mb-4 text-sm leading-relaxed">
+            <p className="text-foreground mb-3 text-sm leading-relaxed">
               {summary.trendChanges.summary}
             </p>
             <TrendChangesBadges trendChanges={summary.trendChanges} />
@@ -303,19 +303,19 @@ function StructuredAISummaryView({
         )}
 
         {/* Main Content Grid: Key Topics (8cols) + Sidebar (4cols) */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           {/* Key Topics - Main Area */}
           <div className="space-y-4 lg:col-span-8">
             <div className="text-muted-foreground text-xs font-semibold tracking-wide">
               注目トピック
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {summary.keyTopics.slice(0, 4).map((t) => (
                 <div
                   key={t.topic}
-                  className="bg-card hover:bg-accent/50 rounded-xl border border-l-4 border-l-emerald-500/40 p-4 transition-colors sm:p-5 dark:border-l-emerald-400/30"
+                  className="bg-card hover:bg-accent/50 rounded-xl border border-l-4 border-l-emerald-500/40 p-3 transition-colors sm:p-4 dark:border-l-emerald-400/30"
                 >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                     <Badge
                       variant="secondary"
                       className="shrink-0 self-start px-3 py-1 text-sm"
@@ -326,13 +326,13 @@ function StructuredAISummaryView({
                       <p className="text-foreground text-sm leading-relaxed font-medium">
                         {t.whatHappened}
                       </p>
-                      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                      <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
                         {t.whyItMatters}
                       </p>
                     </div>
                   </div>
                   {t.evidenceArticleIds && t.evidenceArticleIds.length > 0 && (
-                    <div className="border-border/50 mt-3 border-t pt-3">
+                    <div className="border-border/50 mt-2 border-t pt-2">
                       <KeyTopicArticleCards
                         articleIds={t.evidenceArticleIds}
                         topArticlesById={topArticlesById}
@@ -364,11 +364,11 @@ function StructuredAISummaryView({
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pb-4">
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {summary.actions.slice(0, 3).map((a, idx) => (
                       <div
                         key={a.action}
-                        className="bg-muted/30 rounded-lg p-3"
+                        className="bg-muted/30 rounded-lg p-2"
                       >
                         <div className="flex items-start gap-2">
                           <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
@@ -382,7 +382,7 @@ function StructuredAISummaryView({
                               {a.reason}
                             </p>
                             {a.articleIds.length > 0 && (
-                              <div className="mt-2">
+                              <div className="mt-1.5">
                                 <KeyTopicArticleCards
                                   articleIds={a.articleIds.slice(0, 1)}
                                   topArticlesById={topArticlesById}
@@ -656,7 +656,7 @@ export function DailyTrendHero({
         {/* AI Analysis - Full Width with softer styling */}
         <div className="animate-slide-in-left">
           <Card className="border-border/30 bg-card border shadow-sm backdrop-blur-sm">
-            <CardContent className="p-5 sm:p-6">
+            <CardContent className="p-4 sm:p-5">
               <div className="mb-3 flex items-center gap-2">
                 <Sparkles className="text-primary h-4 w-4" />
                 <span className="text-primary text-sm font-semibold">
