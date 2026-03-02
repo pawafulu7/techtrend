@@ -245,7 +245,7 @@ function KeyTopicArticleCards({
               <p className="line-clamp-2 text-xs leading-snug font-medium">
                 {a.title}
               </p>
-              <p className="text-muted-foreground mt-1 text-[10px]">
+              <p className="text-muted-foreground mt-1 text-xs">
                 {a.sourceName}
               </p>
             </div>
@@ -273,14 +273,14 @@ function StructuredAISummaryView({
 }) {
   if (summary.version === 'trend_ai_summary_v2') {
     return (
-      <div className="flex-1 space-y-6">
+      <div className="flex-1 space-y-4">
         {/* Core Statement - Hero */}
-        <div className="from-primary/10 via-primary/5 rounded-xl bg-gradient-to-r to-transparent p-6">
+        <div className="rounded-xl border-l-4 border-l-[var(--tt-color-primary)] bg-[var(--tt-color-positive-bg)] p-4 sm:p-5">
           <p className="text-foreground text-xl leading-tight font-semibold sm:text-2xl">
             {summary.core}
           </p>
           {summary.overview && (
-            <p className="text-muted-foreground mt-3 text-sm leading-relaxed sm:text-base">
+            <p className="text-foreground/90 mt-3 text-sm leading-relaxed sm:text-base">
               {summary.overview}
             </p>
           )}
@@ -288,14 +288,14 @@ function StructuredAISummaryView({
 
         {/* Trend Changes Summary - Prominent */}
         {summary.trendChanges && summary.trendChanges.available && (
-          <div className="bg-card/50 rounded-xl border p-4 sm:p-5">
+          <div className="rounded-xl border border-[var(--tt-color-info-border)] bg-[var(--tt-color-info-bg)] p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
               <TrendingUp className="text-primary h-5 w-5" />
               <span className="text-foreground text-sm font-semibold">
                 {summary.trendChanges.basis?.periodLabel || 'トレンド変化'}
               </span>
             </div>
-            <p className="text-foreground/80 mb-4 text-sm leading-relaxed">
+            <p className="text-foreground mb-4 text-sm leading-relaxed">
               {summary.trendChanges.summary}
             </p>
             <TrendChangesBadges trendChanges={summary.trendChanges} />
@@ -313,7 +313,7 @@ function StructuredAISummaryView({
               {summary.keyTopics.slice(0, 4).map((t) => (
                 <div
                   key={t.topic}
-                  className="bg-card/50 hover:bg-card/80 rounded-xl border p-4 transition-colors sm:p-5"
+                  className="bg-card hover:bg-accent/50 rounded-xl border border-l-4 border-l-emerald-500/40 p-4 transition-colors sm:p-5 dark:border-l-emerald-400/30"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                     <Badge
@@ -326,7 +326,7 @@ function StructuredAISummaryView({
                       <p className="text-foreground text-sm leading-relaxed font-medium">
                         {t.whatHappened}
                       </p>
-                      <p className="text-foreground/70 mt-2 text-sm leading-relaxed">
+                      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                         {t.whyItMatters}
                       </p>
                     </div>
@@ -378,7 +378,7 @@ function StructuredAISummaryView({
                             <p className="text-foreground line-clamp-2 text-sm font-medium">
                               {a.action}
                             </p>
-                            <p className="text-foreground/70 mt-1 line-clamp-2 text-xs">
+                            <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
                               {a.reason}
                             </p>
                             {a.articleIds.length > 0 && (
@@ -562,9 +562,9 @@ export function DailyTrendHero({
   return (
     <section className="relative overflow-hidden">
       {/* Background gradient */}
-      <div className="from-primary/5 to-secondary/5 absolute inset-0 bg-gradient-to-br via-transparent" />
-      <div className="bg-primary/10 absolute top-0 right-0 h-96 w-96 translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl" />
-      <div className="bg-secondary/10 absolute bottom-0 left-0 h-64 w-64 -translate-x-1/2 translate-y-1/2 rounded-full blur-3xl" />
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/80 via-transparent to-sky-50/50 dark:from-emerald-950/20 dark:to-sky-950/10" />
+      <div className="absolute top-0 right-0 h-96 w-96 translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/[0.07] blur-3xl" />
+      <div className="absolute bottom-0 left-0 h-64 w-64 -translate-x-1/2 translate-y-1/2 rounded-full bg-sky-500/[0.05] blur-3xl" />
 
       <div className="relative container mx-auto px-4 py-6 sm:py-8">
         {/* Header with navigation - compact */}
@@ -625,7 +625,7 @@ export function DailyTrendHero({
         </div>
 
         {/* Stats Bar - Compact */}
-        <div className="animate-fade-in mb-6 flex flex-wrap items-center gap-3">
+        <div className="animate-fade-in mb-4 flex flex-wrap items-center gap-3">
           <Badge
             variant="outline"
             className="bg-muted/50 border-border/50 gap-2 px-3 py-1.5 text-sm"
@@ -655,9 +655,9 @@ export function DailyTrendHero({
 
         {/* AI Analysis - Full Width with softer styling */}
         <div className="animate-slide-in-left">
-          <Card className="border-border/30 bg-card/80 border shadow-sm backdrop-blur-sm">
+          <Card className="border-border/30 bg-card border shadow-sm backdrop-blur-sm">
             <CardContent className="p-5 sm:p-6">
-              <div className="mb-5 flex items-center gap-2">
+              <div className="mb-3 flex items-center gap-2">
                 <Sparkles className="text-primary h-4 w-4" />
                 <span className="text-primary text-sm font-semibold">
                   AI分析
