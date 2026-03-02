@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertCircle, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
 
 // Note: TrendReportData is defined locally for API response typing.
 // Consider extracting to a shared type if reused across multiple files.
@@ -56,15 +57,7 @@ interface ApiResponse {
     prevDate: string | null;
     nextDate: string | null;
   };
-  evidenceArticles?: Record<
-    string,
-    {
-      title: string;
-      translatedTitle?: string | null;
-      thumbnail?: string | null;
-      sourceName: string;
-    }
-  >;
+  evidenceArticles?: EvidenceArticleMap;
   error?: string;
   latestAvailableDate?: string | null;
   isFallback?: boolean;

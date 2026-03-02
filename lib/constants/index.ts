@@ -43,6 +43,7 @@ export const MAX_SUMMARY_LENGTH = 200;
 
 export const GEMINI_API = {
   MODEL: 'gemini-2.5-flash-lite',
+  TREND_MODEL: 'gemini-2.5-flash',
   MAX_TOKENS: 200,
   DETAILED_MAX_TOKENS: 2500, // 詳細要約用の拡張トークン数
   TEMPERATURE: 0.7,

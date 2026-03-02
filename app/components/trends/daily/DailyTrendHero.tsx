@@ -27,6 +27,7 @@ import {
   parseTrendAiSummary,
   type TrendAiSummary,
   type TrendAiSummaryV2,
+  type EvidenceArticleMap,
 } from '@/lib/types/trend-ai-summary';
 
 interface DailyTrendHeroProps {
@@ -47,15 +48,7 @@ interface DailyTrendHeroProps {
     tags: string[];
     thumbnail?: string | null;
   }>;
-  evidenceArticles?: Record<
-    string,
-    {
-      title: string;
-      translatedTitle?: string | null;
-      thumbnail?: string | null;
-      sourceName: string;
-    }
-  >;
+  evidenceArticles?: EvidenceArticleMap;
   navigation?: {
     prevDate: string | null;
     nextDate: string | null;
@@ -186,15 +179,7 @@ function KeyTopicArticleCards({
 }: {
   articleIds: string[];
   topArticlesById: Map<string, TopArticle>;
-  evidenceArticles: Record<
-    string,
-    {
-      title: string;
-      translatedTitle?: string | null;
-      thumbnail?: string | null;
-      sourceName: string;
-    }
-  >;
+  evidenceArticles: EvidenceArticleMap;
 }) {
   const resolved = articleIds
     .map((id) => {
@@ -294,15 +279,7 @@ function StructuredAISummaryView({
 }: {
   summary: TrendAiSummary;
   topArticlesById: Map<string, TopArticle>;
-  evidenceArticles: Record<
-    string,
-    {
-      title: string;
-      translatedTitle?: string | null;
-      thumbnail?: string | null;
-      sourceName: string;
-    }
-  >;
+  evidenceArticles: EvidenceArticleMap;
 }) {
   if (summary.version === 'trend_ai_summary_v2') {
     return (

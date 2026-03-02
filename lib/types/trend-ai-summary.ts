@@ -1,75 +1,131 @@
 import { z } from 'zod';
 
-export const TrendAiSummaryV1Schema = z.object({
-  version: z.literal('trend_ai_summary_v1'),
-  headline: z.string().min(1),
-  keyTopics: z.array(z.object({
-    topic: z.string().min(1),
-    reason: z.string().min(1),
-    evidenceArticleIds: z.array(z.string().min(1)).optional(),
-    evidenceNumbers: z.array(z.object({
-      label: z.string().min(1),
-      value: z.string().min(1),
-    })).optional(),
-  })).min(1).max(6),
-  numbers: z.array(z.object({
-    label: z.string().min(1),
-    value: z.string().min(1),
-  })).min(1).max(8).optional(),
-  actions: z.array(z.object({
-    title: z.string().min(1),
-    detail: z.string().min(1),
-    relatedTopics: z.array(z.string().min(1)).optional(),
-    relatedArticleIds: z.array(z.string().min(1)).optional(),
-  })).min(1).max(6),
-  notes: z.array(z.string().min(1)).max(6).optional(),
-}).strict();
+export const TrendAiSummaryV1Schema = z
+  .object({
+    version: z.literal('trend_ai_summary_v1'),
+    headline: z.string().min(1),
+    keyTopics: z
+      .array(
+        z.object({
+          topic: z.string().min(1),
+          reason: z.string().min(1),
+          evidenceArticleIds: z.array(z.string().min(1)).optional(),
+          evidenceNumbers: z
+            .array(
+              z.object({
+                label: z.string().min(1),
+                value: z.string().min(1),
+              })
+            )
+            .optional(),
+        })
+      )
+      .min(1)
+      .max(6),
+    numbers: z
+      .array(
+        z.object({
+          label: z.string().min(1),
+          value: z.string().min(1),
+        })
+      )
+      .min(1)
+      .max(8)
+      .optional(),
+    actions: z
+      .array(
+        z.object({
+          title: z.string().min(1),
+          detail: z.string().min(1),
+          relatedTopics: z.array(z.string().min(1)).optional(),
+          relatedArticleIds: z.array(z.string().min(1)).optional(),
+        })
+      )
+      .min(1)
+      .max(6),
+    notes: z.array(z.string().min(1)).max(6).optional(),
+  })
+  .strict();
 
 export type TrendAiSummaryV1 = z.infer<typeof TrendAiSummaryV1Schema>;
 
-export const TrendAiSummaryV2Schema = z.object({
-  version: z.literal('trend_ai_summary_v2'),
-  core: z.string().min(1),
-  keyTopics: z.array(z.object({
-    topic: z.string().min(1),
-    whatHappened: z.string().min(1),
-    whyItMatters: z.string().min(1),
-    evidenceArticleIds: z.array(z.string().min(1)).min(1).max(5),
-  })).min(1).max(6),
-  trendChanges: z.object({
-    available: z.boolean(),
-    basis: z.object({
-      periodLabel: z.string().min(1),
-      date: z.string().min(1).optional(),
-    }).optional(),
-    new: z.array(z.object({
-      topic: z.string().min(1),
-      deltaCount: z.number().int(),
-      reason: z.string().min(1),
-    })).max(10),
-    rising: z.array(z.object({
-      topic: z.string().min(1),
-      deltaCount: z.number().int(),
-      reason: z.string().min(1),
-    })).max(10),
-    falling: z.array(z.object({
-      topic: z.string().min(1),
-      deltaCount: z.number().int(),
-      reason: z.string().min(1),
-    })).max(10),
-    summary: z.string().min(1),
-  }).strict().optional(),
-  actions: z.array(z.object({
-    action: z.string().min(1),
-    reason: z.string().min(1),
-    articleIds: z.array(z.string().min(1)).min(1).max(5),
-  })).min(1).max(6),
-  numbers: z.array(z.object({
-    label: z.string().min(1),
-    value: z.string().min(1),
-  })).max(10).optional(),
-  notes: z.array(z.string().min(1)).max(10).optional(),
-}).strict();
+export const TrendAiSummaryV2Schema = z
+  .object({
+    version: z.literal('trend_ai_summary_v2'),
+    core: z.string().min(1),
+    keyTopics: z
+      .array(
+        z.object({
+          topic: z.string().min(1),
+          whatHappened: z.string().min(1),
+          whyItMatters: z.string().min(1),
+          evidenceArticleIds: z.array(z.string().min(1)).min(1).max(5),
+        })
+      )
+      .min(1)
+      .max(6),
+    trendChanges: z
+      .object({
+        available: z.boolean(),
+        basis: z
+          .object({
+            periodLabel: z.string().min(1),
+            date: z.string().min(1).optional(),
+          })
+          .optional(),
+        new: z
+          .array(
+            z.object({
+              topic: z.string().min(1),
+              deltaCount: z.number().int(),
+              reason: z.string().min(1),
+            })
+          )
+          .max(10),
+        rising: z
+          .array(
+            z.object({
+              topic: z.string().min(1),
+              deltaCount: z.number().int(),
+              reason: z.string().min(1),
+            })
+          )
+          .max(10),
+        falling: z
+          .array(
+            z.object({
+              topic: z.string().min(1),
+              deltaCount: z.number().int(),
+              reason: z.string().min(1),
+            })
+          )
+          .max(10),
+        summary: z.string().min(1),
+      })
+      .strict()
+      .optional(),
+    actions: z
+      .array(
+        z.object({
+          action: z.string().min(1),
+          reason: z.string().min(1),
+          articleIds: z.array(z.string().min(1)).min(1).max(5),
+        })
+      )
+      .min(1)
+      .max(6),
+    numbers: z
+      .array(
+        z.object({
+          label: z.string().min(1),
+          value: z.string().min(1),
+        })
+      )
+      .max(10)
+      .optional(),
+    notes: z.array(z.string().min(1)).max(10).optional(),
+  })
+  .strict();
 
 export type TrendAiSummaryV2 = z.infer<typeof TrendAiSummaryV2Schema>;
 
@@ -169,7 +225,9 @@ export function extractFirstJsonObject(text: string): unknown | null {
  * AI要約文字列をパースしてTrendAiSummaryV1に変換
  * JSONパースに失敗した場合はnullを返す
  */
-export function parseTrendAiSummary(aiSummary: string | null | undefined): TrendAiSummary | null {
+export function parseTrendAiSummary(
+  aiSummary: string | null | undefined
+): TrendAiSummary | null {
   if (!aiSummary) return null;
 
   const obj = extractFirstJsonObject(aiSummary);
@@ -186,7 +244,20 @@ export function parseTrendAiSummary(aiSummary: string | null | undefined): Trend
  * 旧形式のプレーンテキストをパースして簡易的なTrendAiSummaryV1に変換
  * フォールバック用
  */
-export function parseLegacyAiSummary(aiSummary: string | null | undefined): TrendAiSummaryV1 | null {
+/** Article metadata used for evidence lookups in trend API responses */
+export type EvidenceArticleMap = Record<
+  string,
+  {
+    title: string;
+    translatedTitle?: string | null;
+    thumbnail?: string | null;
+    sourceName: string;
+  }
+>;
+
+export function parseLegacyAiSummary(
+  aiSummary: string | null | undefined
+): TrendAiSummaryV1 | null {
   if (!aiSummary) return null;
 
   // JSON形式の場合は通常のパースを試みる
@@ -203,7 +274,9 @@ export function parseLegacyAiSummary(aiSummary: string | null | undefined): Tren
     const actions: TrendAiSummaryV1['actions'] = [];
 
     // (1) (2) (3) 形式のトピックを抽出
-    const topicMatches = aiSummary.matchAll(/\((\d+)\)\s*([^:]+)[：:]\s*([^(]+?)(?=\(\d+\)|$|\[)/g);
+    const topicMatches = aiSummary.matchAll(
+      /\((\d+)\)\s*([^:]+)[：:]\s*([^(]+?)(?=\(\d+\)|$|\[)/g
+    );
     for (const match of topicMatches) {
       keyTopics.push({
         topic: match[2].trim(),
@@ -212,10 +285,12 @@ export function parseLegacyAiSummary(aiSummary: string | null | undefined): Tren
     }
 
     // [アクションポイント] 以降のテキストを抽出
-    const actionMatch = aiSummary.match(/\[アクションポイント\]\s*([\s\S]+?)(?:$|\[)/);
+    const actionMatch = aiSummary.match(
+      /\[アクションポイント\]\s*([\s\S]+?)(?:$|\[)/
+    );
     if (actionMatch) {
       actions.push({
-        title: 'Today\'s Action',
+        title: "Today's Action",
         detail: actionMatch[1].trim(),
       });
     }
@@ -226,9 +301,19 @@ export function parseLegacyAiSummary(aiSummary: string | null | undefined): Tren
 
     return {
       version: 'trend_ai_summary_v1',
-      headline: keyTopics[0]?.topic ? `${keyTopics[0].topic}が注目を集める` : 'Tech Trend Analysis',
+      headline: keyTopics[0]?.topic
+        ? `${keyTopics[0].topic}が注目を集める`
+        : 'Tech Trend Analysis',
       keyTopics,
-      actions: actions.length > 0 ? actions : [{ title: 'Stay Updated', detail: 'Check the top articles below.' }],
+      actions:
+        actions.length > 0
+          ? actions
+          : [
+              {
+                title: 'Stay Updated',
+                detail: 'Check the top articles below.',
+              },
+            ],
     };
   } catch {
     return null;

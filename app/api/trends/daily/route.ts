@@ -5,6 +5,7 @@ import { TrendReportGenerator } from '@/lib/services/trend-report-generator';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger/index';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
+import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
 
 // JST offset constant (+9 hours in milliseconds)
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -39,15 +40,7 @@ async function enrichReportWithThumbnails(
   reportData: Record<string, unknown>
 ): Promise<{
   enrichedData: Record<string, unknown>;
-  evidenceArticles: Record<
-    string,
-    {
-      title: string;
-      translatedTitle?: string | null;
-      thumbnail?: string | null;
-      sourceName: string;
-    }
-  >;
+  evidenceArticles: EvidenceArticleMap;
 }> {
   const topArticles =
     (reportData.topArticles as Array<{
@@ -138,15 +131,7 @@ async function enrichReportWithThumbnails(
   });
 
   // Build evidenceArticles map (all fetched articles, for FE to look up by ID)
-  const evidenceArticles: Record<
-    string,
-    {
-      title: string;
-      translatedTitle?: string | null;
-      thumbnail?: string | null;
-      sourceName: string;
-    }
-  > = {};
+  const evidenceArticles: EvidenceArticleMap = {};
   for (const [id, article] of articleMap) {
     evidenceArticles[id] = {
       title: article.title,
