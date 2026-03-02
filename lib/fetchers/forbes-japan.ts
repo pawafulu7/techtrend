@@ -379,10 +379,9 @@ export class ForbesJapanFetcher extends BaseFetcher {
         return undefined;
       }
 
-      // Host whitelist validation
+      // Host whitelist validation (exact match, consistent with article URL validation)
       const isAllowedHost = forbesJapanConfig.allowedThumbnailHosts.some(
-        (host) =>
-          parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
+        (host) => parsed.hostname === host
       );
 
       if (!isAllowedHost) {
