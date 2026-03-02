@@ -86,7 +86,11 @@ async function enrichReportWithThumbnails(
   }
 
   if (allArticleIds.size === 0) {
-    return { enrichedData: reportData, evidenceArticles: {} };
+    const { detailedSummary: _ds, ...clean } = reportData as Record<
+      string,
+      unknown
+    > & { detailedSummary?: unknown };
+    return { enrichedData: clean, evidenceArticles: {} };
   }
 
   // Fetch article data from DB (sourceName is via source relation)
@@ -110,7 +114,11 @@ async function enrichReportWithThumbnails(
     });
   } catch (error) {
     logger.warn('Failed to fetch articles for thumbnail enrichment', error);
-    return { enrichedData: reportData, evidenceArticles: {} };
+    const { detailedSummary: _ds2, ...clean } = reportData as Record<
+      string,
+      unknown
+    > & { detailedSummary?: unknown };
+    return { enrichedData: clean, evidenceArticles: {} };
   }
 
   const articleMap = new Map(

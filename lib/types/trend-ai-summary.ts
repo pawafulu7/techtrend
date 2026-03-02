@@ -241,10 +241,6 @@ export function parseTrendAiSummary(
   return null;
 }
 
-/**
- * 旧形式のプレーンテキストをパースして簡易的なTrendAiSummaryV1に変換
- * フォールバック用
- */
 /** Article metadata used for evidence lookups in trend API responses */
 export type EvidenceArticleMap = Record<
   string,
@@ -256,6 +252,10 @@ export type EvidenceArticleMap = Record<
   }
 >;
 
+/**
+ * 旧形式のプレーンテキストをパースして簡易的なTrendAiSummaryV1に変換
+ * フォールバック用
+ */
 export function parseLegacyAiSummary(
   aiSummary: string | null | undefined
 ): TrendAiSummaryV1 | null {
