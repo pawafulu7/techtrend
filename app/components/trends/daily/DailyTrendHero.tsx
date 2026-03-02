@@ -532,6 +532,14 @@ export function DailyTrendHero({
     });
   };
 
+  const formatDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '日時不明';
+    return date.toLocaleString('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+    });
+  };
+
   const structuredSummary = parseTrendAiSummary(aiSummary);
   const legacySummary =
     !structuredSummary && aiSummary ? parseLegacyAISummary(aiSummary) : null;
@@ -642,7 +650,7 @@ export function DailyTrendHero({
                 </span>
                 {generatedAt && (
                   <span className="text-muted-foreground ml-auto text-xs">
-                    {new Date(generatedAt).toLocaleString('ja-JP')}
+                    {formatDateTime(generatedAt)}
                   </span>
                 )}
               </div>
