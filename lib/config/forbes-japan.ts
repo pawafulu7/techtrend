@@ -10,10 +10,10 @@ export const forbesJapanConfig = {
   articleLinkSelector: 'a[href^="/articles/detail/"]',
 
   /** 許可された記事URLホスト */
-  allowedArticleHosts: ['forbesjapan.com'] as const,
+  allowedArticleHosts: ['forbesjapan.com', 'www.forbesjapan.com'] as const,
 
   /** 許可されたサムネイルホスト */
-  allowedThumbnailHosts: ['forbesjapan.com'] as const,
+  allowedThumbnailHosts: ['forbesjapan.com', 'www.forbesjapan.com'] as const,
 
   /** 最大取得記事数 */
   maxArticles: 20,

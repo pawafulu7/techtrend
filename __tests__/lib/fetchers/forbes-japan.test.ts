@@ -388,6 +388,28 @@ describe('ForbesJapanFetcher', () => {
         expect(result.articles.length).toBe(0);
       });
 
+      it('should return articles sorted by date descending (newest first)', async () => {
+        const html = buildHtml([
+          {
+            id: 701,
+            title: 'Older article published first',
+            date: '2026.2.20 10:00',
+          },
+          {
+            id: 702,
+            title: 'Newer article published second',
+            date: '2026.3.1 10:00',
+          },
+        ]);
+        mockFetchSuccess(html);
+
+        const result = await fetcher.fetch();
+
+        expect(result.articles.length).toBe(2);
+        expect(result.articles[0].title).toBe('Newer article published second');
+        expect(result.articles[1].title).toBe('Older article published first');
+      });
+
       it('should keep articles within the 30-day window', async () => {
         // 2026.2.20 10:00 JST = 2026-02-20T01:00:00Z, within 30 days of Mar 2
         const html = buildHtml([
@@ -533,6 +555,22 @@ describe('ForbesJapanFetcher', () => {
       expect(result).toBeUndefined();
     });
 
+    it('should return undefined for invalid month (13)', () => {
+      expect(fetcher.parseArticleDate('2026.13.1 10:00')).toBeUndefined();
+    });
+
+    it('should return undefined for invalid day (32)', () => {
+      expect(fetcher.parseArticleDate('2026.1.32 10:00')).toBeUndefined();
+    });
+
+    it('should return undefined for invalid hour (25)', () => {
+      expect(fetcher.parseArticleDate('2026.1.1 25:00')).toBeUndefined();
+    });
+
+    it('should return undefined for invalid minute (60)', () => {
+      expect(fetcher.parseArticleDate('2026.1.1 10:60')).toBeUndefined();
+    });
+
     it('should handle midnight correctly', () => {
       const result = fetcher.parseArticleDate('2026.3.1 00:00');
 
@@ -615,6 +653,14 @@ describe('ForbesJapanFetcher', () => {
       expect(
         fetcher.validateArticleUrl('https://evil-forbesjapan.com/articles')
       ).toBeUndefined();
+    });
+
+    it('should accept valid absolute URLs from www subdomain', () => {
+      expect(
+        fetcher.validateArticleUrl(
+          'https://www.forbesjapan.com/articles/detail/12345'
+        )
+      ).toBe('https://www.forbesjapan.com/articles/detail/12345');
     });
 
     it('should reject URLs exceeding max length (2048)', () => {

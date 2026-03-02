@@ -58,6 +58,7 @@ export class ForbesJapanFetcher extends BaseFetcher {
             candidate.publishedAt >= thirtyDaysAgo &&
             candidate.publishedAt <= now
         )
+        .sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime())
         .slice(0, forbesJapanConfig.maxArticles);
 
       for (const candidate of filteredCandidates) {
@@ -194,8 +195,25 @@ export class ForbesJapanFetcher extends BaseFetcher {
     const searchTarget =
       $container.length > 0 ? $container : $link.parent().parent();
 
+    // First try: specific date elements
+    const dateSelectors = [
+      'p.date',
+      '.date',
+      'time',
+      'span.date',
+      '[class*="date"]',
+    ];
+    for (const selector of dateSelectors) {
+      const $dateEl = searchTarget.find(selector).first();
+      if ($dateEl.length > 0) {
+        const datePattern = /\d{4}\.\d{1,2}\.\d{1,2}\s+\d{1,2}:\d{2}/;
+        const dateMatch = $dateEl.text().match(datePattern);
+        if (dateMatch) return dateMatch[0];
+      }
+    }
+
+    // Fallback: search full text
     const text = searchTarget.text();
-    // Match Forbes Japan date format: yyyy.M.d HH:mm (e.g., "2026.3.2 10:30")
     const datePattern = /\d{4}\.\d{1,2}\.\d{1,2}\s+\d{1,2}:\d{2}/;
     const match = text.match(datePattern);
     return match ? match[0] : '';
@@ -223,6 +241,16 @@ export class ForbesJapanFetcher extends BaseFetcher {
         return undefined;
       }
       const [, year, month, day, hour, minute] = match;
+      const m = parseInt(month);
+      const d = parseInt(day);
+      const h = parseInt(hour);
+      const min = parseInt(minute);
+      if (m < 1 || m > 12 || d < 1 || d > 31 || h > 23 || min > 59) {
+        logger.warn(
+          `[Forbes Japan] Date range invalid for "${dateText}": month=${m}, day=${d}, hour=${h}, minute=${min}`
+        );
+        return undefined;
+      }
       // Construct as JST (UTC+9), then convert to UTC
       // Date.UTC gives us a UTC timestamp, so we create the date as if it were UTC
       // then subtract 9 hours to convert from JST to UTC
