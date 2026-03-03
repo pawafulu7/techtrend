@@ -53,7 +53,7 @@ jobs:
           SLACK_NOTIFICATION_ENABLED: ${{ secrets.SLACK_NOTIFICATION_ENABLED }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          npx tsx scripts/scheduled/collect-feeds.ts "Speaker Deck" "Docswell" "Claude Blog" "Anthropic News" "Forbes Japan AI"
+          npx tsx scripts/scheduled/collect-feeds.ts "Speaker Deck" "Docswell" "Claude Blog" "Anthropic News" "Forbes Japan AI" "Ledge.ai"
           npx tsx scripts/scheduled/manage-summaries.ts generate
           npx tsx scripts/scheduled/manage-quality-scores.ts calculate
           npx tsx scripts/scheduled/calculate-difficulty-levels.ts
