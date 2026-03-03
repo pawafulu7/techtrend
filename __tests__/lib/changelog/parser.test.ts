@@ -288,6 +288,22 @@ describe('parseChangelog', () => {
     expect(result.versions[0].version).toBe('2.0.0');
   });
 
+  it('parses version headers with square brackets (e.g. ## [1.2.3])', () => {
+    const md = [
+      '## [1.2.3]',
+      '- Added feature X',
+      '## [v0.9.0]',
+      '- Initial release',
+    ].join('\n');
+
+    const result = parseChangelog(md);
+    expect(result.versions).toHaveLength(2);
+    expect(result.versions[0].version).toBe('1.2.3');
+    expect(result.versions[0].entries).toHaveLength(1);
+    expect(result.versions[1].version).toBe('0.9.0');
+    expect(result.versions[1].entries).toHaveLength(1);
+  });
+
   it('assigns sequential orderIndex per version', () => {
     const md = [
       '## 1.0.0',

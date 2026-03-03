@@ -88,6 +88,7 @@ ${numberedEntries}`;
 
         const responseText = result.response.text();
         const lines = responseText.split('\n').filter((l) => l.trim());
+        const translatedIndexes = new Set<number>();
 
         for (const line of lines) {
           const match = line.match(/^(\d+)\.\s*(.+)/);
@@ -101,15 +102,22 @@ ${numberedEntries}`;
                   titleJa: content.substring(0, pipeIdx).trim(),
                   contentJa: content.substring(pipeIdx + 1).trim(),
                 });
+                translatedIndexes.add(idx);
               } else {
                 // Fallback: no pipe separator, use first 30 chars as title
                 translations.set(batch[idx], {
                   titleJa: content.length > 30 ? content.substring(0, 30) + '...' : content,
                   contentJa: content,
                 });
+                translatedIndexes.add(idx);
               }
             }
           }
+        }
+        if (translatedIndexes.size < batch.length) {
+          throw new Error(
+            `Incomplete translation response: ${translatedIndexes.size}/${batch.length}`
+          );
         }
         break; // 成功したらループ抜ける
       } catch (error) {
