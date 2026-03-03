@@ -173,6 +173,11 @@ async function collectChangelog(): Promise<void> {
       const parsed = parseChangelog(markdown);
       console.log(`[INFO] Parsed ${parsed.versions.length} versions`);
 
+      if (parsed.versions.length === 0) {
+        console.warn(`[WARN] No versions found in changelog for ${projectConfig.name}. Skipping.`);
+        continue;
+      }
+
       // Upsert project
       const project = await prisma.changelogProject.upsert({
         where: { slug: projectConfig.slug },
