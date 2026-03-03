@@ -29,5 +29,5 @@ export interface ChangelogResponse {
   project: ChangelogProject;
   versions: ChangelogVersion[];
   entries: ChangelogEntry[];
-  categoryCounts: Record<string, number>;
+  categoryCounts: Record<Category, number>;
 }

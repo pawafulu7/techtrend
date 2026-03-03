@@ -199,12 +199,14 @@ async function collectChangelog(): Promise<void> {
           }
         }
 
-        // Find entries that need translation
+        // Find entries that need translation (deduplicate across versions)
         const needsTranslation: string[] = [];
+        const seen = new Set<string>();
         for (const v of parsed.versions) {
           for (const entry of v.entries) {
-            if (!existingTranslations.has(entry.content) && !translationMap.has(entry.content)) {
+            if (!existingTranslations.has(entry.content) && !seen.has(entry.content)) {
               needsTranslation.push(entry.content);
+              seen.add(entry.content);
             }
           }
         }

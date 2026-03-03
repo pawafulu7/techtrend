@@ -7,17 +7,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-interface Version {
-  id: string;
-  version: string;
-  sortOrder: number;
-  createdAt: string;
-  entryCount: number;
-}
+import { ChangelogVersion } from '@/lib/changelog/types';
 
 interface VersionSelectorProps {
-  versions: Version[];
+  versions: ChangelogVersion[];
   currentVersion: string;
   onVersionChange: (version: string) => void;
 }

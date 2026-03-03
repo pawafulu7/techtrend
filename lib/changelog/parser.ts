@@ -68,14 +68,16 @@ export function classifyEntry(content: string): ChangelogCategory {
 // ---------------------------------------------------------------------------
 
 export function versionToSortOrder(version: string): number {
+  // ビルドメタデータを除去
+  const withoutBuild = version.replace(/\+.*$/, '');
   // プレリリースサフィックスを除去して数値部分のみ使用
-  const numericPart = version.replace(/-.*$/, '');
+  const numericPart = withoutBuild.replace(/-.*$/, '');
   const parts = numericPart.split('.');
   const major = parseInt(parts[0] ?? '0', 10) || 0;
   const minor = parseInt(parts[1] ?? '0', 10) || 0;
   const patch = parseInt(parts[2] ?? '0', 10) || 0;
   // プレリリースは同一数値版より前に並ぶようにする
-  const isPreRelease = version.includes('-') ? 0 : 1;
+  const isPreRelease = withoutBuild.includes('-') ? 0 : 1;
   return major * 1_000_000_000 + minor * 1_000_000 + patch * 10 + isPreRelease;
 }
 

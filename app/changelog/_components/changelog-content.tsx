@@ -68,7 +68,7 @@ export function ChangelogContent() {
       map.set(category, []);
     }
     for (const entry of entries) {
-      const cat = entry.category as Category;
+      const cat = entry.category;
       const list = map.get(cat);
       if (list) {
         list.push(entry);

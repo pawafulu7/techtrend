@@ -149,6 +149,19 @@ describe('versionToSortOrder', () => {
     // 1 * 1_000_000_000 + 2 * 1_000_000 + 3 * 10 + 1 (not prerelease)
     expect(versionToSortOrder('1.2.3')).toBe(1_002_000_031);
   });
+
+  it('ignores build metadata (treats 1.2.3+build-1 same as 1.2.3+build.2)', () => {
+    expect(versionToSortOrder('1.2.3+build-1')).toBe(
+      versionToSortOrder('1.2.3+build.2')
+    );
+  });
+
+  it('build metadata version is greater than prerelease version', () => {
+    // 1.2.3+build-1 is a release (not prerelease), 1.2.3-beta+build is prerelease
+    expect(versionToSortOrder('1.2.3+build-1')).toBeGreaterThan(
+      versionToSortOrder('1.2.3-beta+build')
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

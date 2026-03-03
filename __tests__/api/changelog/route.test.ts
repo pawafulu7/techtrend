@@ -442,4 +442,51 @@ describe('/api/changelog', () => {
       );
     });
   });
+
+  describe('バリデーション', () => {
+    it('不正なprojectパラメータで400を返す', async () => {
+      const request = new NextRequest(
+        new URL('http://localhost/api/changelog?project=INVALID!@#')
+      );
+      const response = await GET(request);
+
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toBe('Invalid project parameter');
+    });
+
+    it('不正なversionパラメータで400を返す', async () => {
+      const request = new NextRequest(
+        new URL('http://localhost/api/changelog?version=not-a-version')
+      );
+      const response = await GET(request);
+
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toBe('Invalid version parameter');
+    });
+
+    it('長すぎるversionパラメータで400を返す', async () => {
+      const longVersion = '1.0.0-' + 'x'.repeat(25);
+      const request = new NextRequest(
+        new URL(`http://localhost/api/changelog?version=${longVersion}`)
+      );
+      const response = await GET(request);
+
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error).toBe('Invalid version parameter');
+    });
+
+    it('ビルドメタデータ付きの有効なsemverバージョンで200を返す', async () => {
+      prismaMock.changelogEntry.findMany.mockResolvedValue([]);
+
+      const request = new NextRequest(
+        new URL('http://localhost/api/changelog?version=1.2.3%2Bbuild.1')
+      );
+      const response = await GET(request);
+
+      expect(response.status).toBe(200);
+    });
+  });
 });
