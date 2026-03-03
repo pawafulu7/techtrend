@@ -38,7 +38,9 @@ async function handler(request: NextRequest) {
     const versionParam = searchParams.get('version') || null;
     if (
       versionParam &&
-      !/^v?\d+\.\d+(?:\.\d+)?(?:-[a-zA-Z0-9.]+)?$/.test(versionParam)
+      !/^v?\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(
+        versionParam
+      )
     ) {
       return NextResponse.json(
         { error: 'Invalid version parameter' },

@@ -41,7 +41,8 @@ export function ChangelogContent() {
   const router = useRouter();
 
   const project = searchParams.get('project') || 'claude-code';
-  const version = searchParams.get('version') || undefined;
+  const rawVersion = searchParams.get('version') || undefined;
+  const version = rawVersion?.replace(/^v/i, '') || undefined;
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['changelog', project, version],
