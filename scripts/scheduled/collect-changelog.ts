@@ -75,8 +75,8 @@ Do not add any other text or explanations.
 
 ${numberedEntries}`;
 
-    const MAX_RETRIES = 3;
-    for (let retry = 0; retry <= MAX_RETRIES; retry++) {
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
         const result = await model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -113,16 +113,16 @@ ${numberedEntries}`;
         }
         break; // 成功したらループ抜ける
       } catch (error) {
-        if (retry === MAX_RETRIES) {
+        if (attempt === MAX_ATTEMPTS) {
           console.error(
-            `[WARN] Translation batch failed after ${MAX_RETRIES} retries (entries ${i + 1}-${i + batch.length}):`,
+            `[WARN] Translation batch failed after ${MAX_ATTEMPTS} attempts (entries ${i + 1}-${i + batch.length}):`,
             error instanceof Error ? error.message : String(error)
           );
           break;
         }
-        const delay = Math.min(1000 * 2 ** retry, 10000);
+        const delay = Math.min(1000 * 2 ** (attempt - 1), 10000);
         console.log(
-          `[WARN] Retry ${retry + 1}/${MAX_RETRIES} after ${delay}ms (entries ${i + 1}-${i + batch.length}):`,
+          `[WARN] Retry ${attempt}/${MAX_ATTEMPTS} after ${delay}ms (entries ${i + 1}-${i + batch.length}):`,
           error instanceof Error ? error.message : String(error)
         );
         await new Promise((r) => setTimeout(r, delay));
@@ -148,6 +148,8 @@ async function collectChangelog(): Promise<void> {
 
   try {
     for (const projectConfig of PROJECTS) {
+      let projectEntries = 0;
+      let projectTranslated = 0;
       console.log(`[INFO] Fetching changelog for ${projectConfig.name}...`);
 
       // Fetch CHANGELOG.md
@@ -244,7 +246,10 @@ async function collectChangelog(): Promise<void> {
         // Replace entries within a transaction (deleteMany + createMany)
         const entryData = parsedVersion.entries.map((entry, index) => {
           const translated = translationMap.get(entry.content) || null;
-          if (translated) totalTranslated++;
+          if (translated) {
+            totalTranslated++;
+            projectTranslated++;
+          }
           return {
             versionId: version.id,
             content: entry.content,
@@ -266,9 +271,10 @@ async function collectChangelog(): Promise<void> {
 
         totalVersionsUpserted++;
         totalEntries += entryData.length;
+        projectEntries += entryData.length;
       }
 
-      console.log(`[INFO] ${projectConfig.name}: ${parsed.versions.length} versions, ${totalEntries} entries upserted (${totalTranslated} translated)`);
+      console.log(`[INFO] ${projectConfig.name}: ${parsed.versions.length} versions, ${projectEntries} entries upserted (${projectTranslated} translated)`);
     }
 
     // Cache invalidation（changelog名前空間を直接クリア）

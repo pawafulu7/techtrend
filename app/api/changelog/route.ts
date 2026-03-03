@@ -22,6 +22,7 @@ const getChangelogCache = () => {
 
 async function handler(request: NextRequest) {
   try {
+    const normalizeVersion = (v: string) => v.replace(/^v/i, '');
     const url = new URL(request.url);
     const searchParams = url.searchParams;
 
@@ -54,13 +55,16 @@ async function handler(request: NextRequest) {
     // キャッシュキーを生成
     const cache = getChangelogCache();
     const cacheKey = cache.generateCacheKey('changelog', {
-      params: { project: projectSlug, version: versionParam || 'latest' },
+      params: {
+        project: projectSlug,
+        version: versionParam ? normalizeVersion(versionParam) : 'latest',
+      },
     });
 
     // キャッシュから取得
     const result = await cache.getOrSet(cacheKey, async () => {
       // プロジェクトを取得
-      const project = await prisma.changelogProject.findUnique({
+      const project = await prisma.changelogProject.findFirst({
         where: { slug: projectSlug, enabled: true },
         select: {
           id: true,
@@ -102,7 +106,9 @@ async function handler(request: NextRequest) {
       // 対象バージョンを決定
       let targetVersion: (typeof versions)[number] | undefined;
       if (versionParam) {
-        targetVersion = versions.find((v) => v.version === versionParam);
+        targetVersion = versions.find(
+          (v) => normalizeVersion(v.version) === normalizeVersion(versionParam)
+        );
       } else {
         // 最新バージョン（sortOrder最大）
         targetVersion = versions[0];

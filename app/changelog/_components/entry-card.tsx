@@ -9,7 +9,7 @@ interface EntryCardProps {
 export function EntryCard({ content, titleJa, contentJa }: EntryCardProps) {
   const title = titleJa || content;
   const description = contentJa || content;
-  const showDescription = titleJa && contentJa && titleJa !== contentJa;
+  const showDescription = Boolean(contentJa && description !== title);
 
   return (
     <div className="rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] px-4 py-3.5">

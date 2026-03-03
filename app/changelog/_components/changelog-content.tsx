@@ -8,40 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VersionSelector } from './version-selector';
 import { CategorySection } from './category-section';
-
-type Category = 'FEATURE' | 'BUGFIX' | 'IMPROVEMENT' | 'OTHER';
-
-interface Entry {
-  id: string;
-  content: string;
-  titleJa?: string | null;
-  contentJa?: string | null;
-  category: Category;
-  orderIndex: number;
-}
-
-interface Version {
-  id: string;
-  version: string;
-  sortOrder: number;
-  createdAt: string;
-  entryCount: number;
-}
-
-interface Project {
-  id: string;
-  slug: string;
-  name: string;
-  sourceUrl: string | null;
-  iconUrl: string | null;
-}
-
-interface ChangelogResponse {
-  project: Project;
-  versions: Version[];
-  entries: Entry[];
-  categoryCounts: Record<string, number>;
-}
+import {
+  Category,
+  ChangelogEntry,
+  ChangelogResponse,
+} from '@/lib/changelog/types';
 
 const CATEGORY_ORDER: Category[] = [
   'FEATURE',
@@ -89,9 +60,9 @@ export function ChangelogContent() {
 
   const entries = data?.entries;
   const entriesByCategory = useMemo(() => {
-    if (!entries) return new Map<Category, Entry[]>();
+    if (!entries) return new Map<Category, ChangelogEntry[]>();
 
-    const map = new Map<Category, Entry[]>();
+    const map = new Map<Category, ChangelogEntry[]>();
     for (const category of CATEGORY_ORDER) {
       map.set(category, []);
     }

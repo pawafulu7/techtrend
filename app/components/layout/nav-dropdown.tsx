@@ -50,7 +50,7 @@ export function NavDropdown({ items }: NavDropdownProps) {
               <Link
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
-                data-testid={`nav-dropdown-item-${item.label.toLowerCase()}`}
+                data-testid={`nav-dropdown-item-${item.href.replace(/\//g, '-').replace(/^-/, '')}`}
                 className={cn(
                   'flex w-full cursor-pointer items-center gap-2',
                   isActive && 'bg-primary/10 font-semibold'

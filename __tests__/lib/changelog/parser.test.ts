@@ -303,6 +303,21 @@ describe('parseChangelog', () => {
     expect(result.versions[0].entries[1].orderIndex).toBe(1);
     expect(result.versions[1].entries[0].orderIndex).toBe(0);
   });
+
+  it('parses prerelease version headers containing hyphen in identifier', () => {
+    const md = ['## 1.2.3-beta-1', '- Added experimental feature'].join('\n');
+    const result = parseChangelog(md);
+    expect(result.versions).toHaveLength(1);
+    expect(result.versions[0].version).toBe('1.2.3-beta-1');
+  });
+
+  it('parses "*" bullet entries', () => {
+    const md = ['## 1.0.0', '* Added A', '* Fixed B'].join('\n');
+    const result = parseChangelog(md);
+    expect(result.versions[0].entries).toHaveLength(2);
+    expect(result.versions[0].entries[0].content).toBe('Added A');
+    expect(result.versions[0].entries[1].content).toBe('Fixed B');
+  });
 });
 
 // ---------------------------------------------------------------------------

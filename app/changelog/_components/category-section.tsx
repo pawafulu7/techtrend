@@ -3,21 +3,11 @@
 import { Sparkles, Bug, Zap, MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { EntryCard } from './entry-card';
-
-type Category = 'FEATURE' | 'BUGFIX' | 'IMPROVEMENT' | 'OTHER';
-
-interface Entry {
-  id: string;
-  content: string;
-  titleJa?: string | null;
-  contentJa?: string | null;
-  category: Category;
-  orderIndex: number;
-}
+import { Category, ChangelogEntry } from '@/lib/changelog/types';
 
 interface CategorySectionProps {
   category: Category;
-  entries: Entry[];
+  entries: ChangelogEntry[];
 }
 
 const CATEGORY_CONFIG: Record<

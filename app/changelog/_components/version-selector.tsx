@@ -33,14 +33,14 @@ export function VersionSelector({
         htmlFor="version-select"
         className="text-sm font-medium whitespace-nowrap text-[var(--tt-color-text-muted)]"
       >
-        Version
+        バージョン
       </label>
       <Select value={currentVersion} onValueChange={onVersionChange}>
         <SelectTrigger
           id="version-select"
           className="w-[220px] bg-[var(--tt-color-surface)]"
         >
-          <SelectValue placeholder="Select version" />
+          <SelectValue placeholder="バージョンを選択" />
         </SelectTrigger>
         <SelectContent>
           {versions.map((v) => (
@@ -48,7 +48,7 @@ export function VersionSelector({
               <span className="flex items-center gap-2">
                 <span className="font-medium">v{v.version}</span>
                 <span className="text-muted-foreground text-xs tabular-nums">
-                  ({v.entryCount} entries)
+                  （{v.entryCount}件）
                 </span>
               </span>
             </SelectItem>

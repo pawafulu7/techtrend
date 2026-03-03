@@ -83,8 +83,9 @@ export function versionToSortOrder(version: string): number {
 // parseChangelog
 // ---------------------------------------------------------------------------
 
-const VERSION_HEADER_RE = /^##\s+v?(\d+\.\d+(?:\.\d+)?(?:-[a-zA-Z0-9.]+)?)/;
-const ENTRY_RE = /^- (.+)/;
+const VERSION_HEADER_RE =
+  /^##\s+v?(\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)/;
+const ENTRY_RE = /^[*-]\s+(.+)/;
 
 export function parseChangelog(markdown: string): ParsedChangelog {
   const lines = markdown.split('\n');

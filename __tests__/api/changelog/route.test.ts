@@ -143,7 +143,7 @@ describe('/api/changelog', () => {
 
     // Prismaモックの設定
     prismaMock.changelogProject = {
-      findUnique: jest.fn().mockResolvedValue(mockProject),
+      findFirst: jest.fn().mockResolvedValue(mockProject),
     };
     prismaMock.changelogVersion = {
       findMany: jest.fn().mockResolvedValue(mockVersions),
@@ -226,8 +226,30 @@ describe('/api/changelog', () => {
       );
     });
 
+    it('vプレフィックス付きのversionパラメータでも該当バージョンのエントリを返す', async () => {
+      prismaMock.changelogEntry.findMany.mockResolvedValue(mockEntriesV2);
+
+      const request = new NextRequest(
+        new URL('http://localhost/api/changelog?version=v1.1.0')
+      );
+      const response = await GET(request);
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+
+      expect(data.entries).toHaveLength(3);
+      expect(data.entries[0].content).toBe('Improved performance');
+
+      // v2のエントリを取得
+      expect(prismaMock.changelogEntry.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { versionId: 'v2' },
+        })
+      );
+    });
+
     it('プロジェクトが見つからない場合に404を返す', async () => {
-      prismaMock.changelogProject.findUnique.mockResolvedValue(null);
+      prismaMock.changelogProject.findFirst.mockResolvedValue(null);
 
       const request = new NextRequest(
         new URL('http://localhost/api/changelog?project=nonexistent')
@@ -344,7 +366,7 @@ describe('/api/changelog', () => {
       expect(data.project).toEqual(mockProject);
 
       // DBクエリは実行されない
-      expect(prismaMock.changelogProject.findUnique).not.toHaveBeenCalled();
+      expect(prismaMock.changelogProject.findFirst).not.toHaveBeenCalled();
       expect(prismaMock.changelogVersion.findMany).not.toHaveBeenCalled();
       expect(prismaMock.changelogEntry.findMany).not.toHaveBeenCalled();
     });
@@ -355,7 +377,7 @@ describe('/api/changelog', () => {
       );
       await GET(request);
 
-      expect(prismaMock.changelogProject.findUnique).toHaveBeenCalledWith(
+      expect(prismaMock.changelogProject.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { slug: 'claude-code', enabled: true },
         })
@@ -368,7 +390,7 @@ describe('/api/changelog', () => {
       );
       await GET(request);
 
-      expect(prismaMock.changelogProject.findUnique).toHaveBeenCalledWith(
+      expect(prismaMock.changelogProject.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { slug: 'other-project', enabled: true },
         })
@@ -398,7 +420,7 @@ describe('/api/changelog', () => {
 
     it('データベースエラー時にhandleApiErrorが呼ばれる', async () => {
       const { handleApiError } = require('@/lib/api/error-handler');
-      prismaMock.changelogProject.findUnique.mockRejectedValue(
+      prismaMock.changelogProject.findFirst.mockRejectedValue(
         new Error('Database error')
       );
       // getOrSetがfetcherを実行し、DBエラーを伝播するように設定
