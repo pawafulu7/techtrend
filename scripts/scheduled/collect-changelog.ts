@@ -194,6 +194,7 @@ async function collectChangelog(): Promise<void> {
       // Collect all unique entries that need translation
       // Only translate entries that don't already have a Japanese translation
       let translationMap = new Map<string, TranslatedEntry>();
+      const newlyTranslatedKeys = new Set<string>();
 
       if (translationEnabled) {
         // Get existing translations from DB
@@ -227,6 +228,9 @@ async function collectChangelog(): Promise<void> {
         if (needsTranslation.length > 0) {
           console.log(`[INFO] Translating ${needsTranslation.length} new entries...`);
           translationMap = await translateEntries(needsTranslation, geminiApiKey!);
+          for (const key of translationMap.keys()) {
+            newlyTranslatedKeys.add(key);
+          }
           console.log(`[INFO] Translated ${translationMap.size}/${needsTranslation.length} entries`);
         } else {
           console.log('[INFO] No new entries need translation');
@@ -261,7 +265,7 @@ async function collectChangelog(): Promise<void> {
         // Replace entries within a transaction (deleteMany + createMany)
         const entryData = parsedVersion.entries.map((entry, index) => {
           const translated = translationMap.get(entry.content) || null;
-          if (translated) {
+          if (translated && newlyTranslatedKeys.has(entry.content)) {
             totalTranslated++;
             projectTranslated++;
           }
