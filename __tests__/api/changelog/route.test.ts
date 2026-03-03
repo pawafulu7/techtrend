@@ -401,9 +401,11 @@ describe('/api/changelog', () => {
       prismaMock.changelogProject.findUnique.mockRejectedValue(
         new Error('Database error')
       );
-      // getOrSetがfetcherのエラーを伝播するように設定
-      mockCacheInstance.getOrSet.mockRejectedValue(
-        new Error('Database error')
+      // getOrSetがfetcherを実行し、DBエラーを伝播するように設定
+      mockCacheInstance.getOrSet.mockImplementation(
+        async (_key: string, fetcher: () => Promise<unknown>) => {
+          return await fetcher();
+        }
       );
 
       const request = new NextRequest(
