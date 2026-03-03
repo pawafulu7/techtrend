@@ -13,6 +13,7 @@ import {
   Home,
   BookOpen,
   Newspaper,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -21,7 +22,7 @@ import { SITE_NAME } from '@/lib/constants';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { cn } from '@/lib/utils';
-// import { NavDropdown } from '@/app/components/layout/nav-dropdown';
+import { NavDropdown } from '@/app/components/layout/nav-dropdown';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -48,6 +49,7 @@ export function Header() {
     { href: '/history', label: '閲覧履歴', icon: LineChart },
     { href: '/tags', label: 'タグ', icon: Hash },
     { href: '/analytics', label: '分析', icon: LineChart },
+    { href: '/changelog', label: 'AIエージェント更新情報', icon: FileText },
   ];
 
   return (
@@ -96,7 +98,7 @@ export function Header() {
             })}
 
             {/* ドロップダウンメニュー */}
-            {/* <NavDropdown items={secondaryNav} /> */}
+            <NavDropdown items={secondaryNav} />
           </nav>
 
           {/* Desktop Actions */}

@@ -800,3 +800,56 @@ model TechHealthSnapshot {
   // idx_health_snapshot_entity_history removed: redundant with uq_health_snapshot_entity_date
   // (PostgreSQL BTree indexes support reverse scans)
 }
+
+// ---------------------------------------------------------------------------
+// Changelog
+// ---------------------------------------------------------------------------
+
+enum ChangelogCategory {
+  FEATURE
+  BUGFIX
+  IMPROVEMENT
+  OTHER
+}
+
+model ChangelogProject {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  sourceUrl String
+  iconUrl   String?
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  versions ChangelogVersion[]
+}
+
+model ChangelogVersion {
+  id        String   @id @default(cuid())
+  projectId String
+  version   String
+  sortOrder Int
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  project ChangelogProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  entries ChangelogEntry[]
+
+  @@unique([projectId, version], map: "uq_changelog_version_project_version")
+  @@index([projectId, sortOrder(sort: Desc)], map: "idx_changelog_version_sort")
+}
+
+model ChangelogEntry {
+  id         String            @id @default(cuid())
+  versionId  String
+  content    String
+  contentJa  String?
+  titleJa    String?
+  category   ChangelogCategory
+  orderIndex Int
+
+  version ChangelogVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, orderIndex], map: "uq_changelog_entry_version_order")
+  @@index([category], map: "idx_changelog_entry_category")
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { Header } from '@/app/components/layout/header';
@@ -22,6 +22,23 @@ jest.mock('@/components/theme-toggle', () => ({
 
 jest.mock('@/components/auth/UserMenu', () => ({
   UserMenu: () => <button data-testid="user-menu">User Menu</button>,
+}));
+
+jest.mock('@/app/components/layout/nav-dropdown', () => ({
+  NavDropdown: ({ items }: any) => (
+    <div data-testid="nav-dropdown">
+      <span>その他</span>
+      {items.map((item: any) => (
+        <a
+          key={item.href}
+          href={item.href}
+          data-testid={`nav-dropdown-item-${item.href.replace(/\//g, '-').replace(/^-/, '')}`}
+        >
+          {item.label}
+        </a>
+      ))}
+    </div>
+  ),
 }));
 
 describe('Header', () => {
@@ -132,8 +149,9 @@ describe('Header', () => {
         screen.getByTestId('mobile-secondary-nav-link-分析')
       ).toBeInTheDocument();
 
-      // セクション見出し
-      expect(screen.getByText('その他')).toBeInTheDocument();
+      // セクション見出し（モバイルメニュー内）
+      const mobileNav = screen.getByTestId('mobile-nav');
+      expect(within(mobileNav).getByText('その他')).toBeInTheDocument();
     });
 
     it('モバイルナビのリンククリックでメニューが閉じる', async () => {
