@@ -283,6 +283,7 @@ const SCRAPING_SOURCES = [
   'Speaker Deck',
   'Docswell',
   'Forbes Japan AI',
+  'Ledge.ai',
 ];
 
 // Qiita人気記事ソース（5:05と17:05に更新）

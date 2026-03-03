@@ -111,6 +111,7 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'itmedia_aiplus', // ITmedia AI+
       'atit', // @IT
       'forbes_japan_ai', // Forbes Japan AI
+      'ledge_ai', // Ledge.ai
     ],
   },
   company: {
@@ -168,6 +169,7 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       ANTHROPIC_NEWS_SOURCE_ID, // Anthropic News
       'itmedia_aiplus', // ITmedia AI+
       'forbes_japan_ai', // Forbes Japan AI
+      'ledge_ai', // Ledge.ai
     ],
   },
   llm: {

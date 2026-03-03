@@ -38,6 +38,7 @@ import { NVIDIADeveloperBlogFetcher } from './nvidia-developer-blog';
 import { DeepMindBlogFetcher } from './deepmind-blog';
 import { HatenaBlogDevFetcher } from './hatena-blog-dev';
 import { ForbesJapanFetcher } from './forbes-japan';
+import { LedgeAiFetcher } from './ledge-ai';
 import { DevelopersIOFetcher, getTagFromSourceName } from './developersio';
 
 // Foreign Tech Company Blog Fetchers
@@ -133,6 +134,8 @@ export function createFetcher(source: Source): BaseFetcher {
       return new HatenaBlogDevFetcher(source);
     case 'Forbes Japan AI':
       return new ForbesJapanFetcher(source);
+    case 'Ledge.ai':
+      return new LedgeAiFetcher(source);
 
     // Japanese Corporate Tech Blogs
     case 'DeNA Engineering':
