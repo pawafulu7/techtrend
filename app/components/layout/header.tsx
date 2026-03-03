@@ -49,7 +49,7 @@ export function Header() {
     { href: '/history', label: '閲覧履歴', icon: LineChart },
     { href: '/tags', label: 'タグ', icon: Hash },
     { href: '/analytics', label: '分析', icon: LineChart },
-    { href: '/changelog', label: 'Changelog', icon: FileText },
+    { href: '/changelog', label: 'AIエージェント更新情報', icon: FileText },
   ];
 
   return (

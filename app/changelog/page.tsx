@@ -4,8 +4,8 @@ import { ChangelogContent } from './_components/changelog-content';
 import { ChangelogSkeleton } from './_components/changelog-content';
 
 export const metadata: Metadata = {
-  title: 'Changelog',
-  description: 'プロジェクトのリリースノートと変更履歴',
+  title: 'AIエージェント更新情報',
+  description: 'AIエージェントのリリースノートと変更履歴',
 };
 
 export default function ChangelogPage() {

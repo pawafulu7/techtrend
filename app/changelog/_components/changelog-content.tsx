@@ -145,7 +145,7 @@ export function ChangelogContent() {
                 {data.project.name}
               </h1>
               <p className="mt-0.5 text-sm text-[var(--tt-color-text)]">
-                リリースノート / 変更履歴
+                AIエージェント更新情報
               </p>
             </div>
           </div>
