@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // CHANGELOG.md parser
 // Parses markdown content structured as:
-//   ## X.Y.Z
+//   ## [v]X.Y.Z[-prerelease][+build]   (brackets and v-prefix optional)
 //   - Entry text ...
 // ---------------------------------------------------------------------------
 
