@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { parseChangelog } from '../../lib/changelog/parser';
-import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
+import { RedisCache } from '../../lib/cache';
 
 const prisma = new PrismaClient();
 
@@ -75,45 +75,58 @@ Do not add any other text or explanations.
 
 ${numberedEntries}`;
 
-    try {
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          maxOutputTokens: 8192,
-          temperature: 0.3,
-        },
-      });
+    const MAX_RETRIES = 3;
+    for (let retry = 0; retry <= MAX_RETRIES; retry++) {
+      try {
+        const result = await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: 8192,
+            temperature: 0.3,
+          },
+        });
 
-      const responseText = result.response.text();
-      const lines = responseText.split('\n').filter((l) => l.trim());
+        const responseText = result.response.text();
+        const lines = responseText.split('\n').filter((l) => l.trim());
 
-      for (const line of lines) {
-        const match = line.match(/^(\d+)\.\s*(.+)/);
-        if (match) {
-          const idx = parseInt(match[1], 10) - 1;
-          if (idx >= 0 && idx < batch.length) {
-            const content = match[2].trim();
-            const pipeIdx = content.indexOf('|');
-            if (pipeIdx > 0) {
-              translations.set(batch[idx], {
-                titleJa: content.substring(0, pipeIdx).trim(),
-                contentJa: content.substring(pipeIdx + 1).trim(),
-              });
-            } else {
-              // Fallback: no pipe separator, use first 30 chars as title
-              translations.set(batch[idx], {
-                titleJa: content.length > 30 ? content.substring(0, 30) + '...' : content,
-                contentJa: content,
-              });
+        for (const line of lines) {
+          const match = line.match(/^(\d+)\.\s*(.+)/);
+          if (match) {
+            const idx = parseInt(match[1], 10) - 1;
+            if (idx >= 0 && idx < batch.length) {
+              const content = match[2].trim();
+              const pipeIdx = content.indexOf('|');
+              if (pipeIdx > 0) {
+                translations.set(batch[idx], {
+                  titleJa: content.substring(0, pipeIdx).trim(),
+                  contentJa: content.substring(pipeIdx + 1).trim(),
+                });
+              } else {
+                // Fallback: no pipe separator, use first 30 chars as title
+                translations.set(batch[idx], {
+                  titleJa: content.length > 30 ? content.substring(0, 30) + '...' : content,
+                  contentJa: content,
+                });
+              }
             }
           }
         }
+        break; // 成功したらループ抜ける
+      } catch (error) {
+        if (retry === MAX_RETRIES) {
+          console.error(
+            `[WARN] Translation batch failed after ${MAX_RETRIES} retries (entries ${i + 1}-${i + batch.length}):`,
+            error instanceof Error ? error.message : String(error)
+          );
+          break;
+        }
+        const delay = Math.min(1000 * 2 ** retry, 10000);
+        console.log(
+          `[WARN] Retry ${retry + 1}/${MAX_RETRIES} after ${delay}ms (entries ${i + 1}-${i + batch.length}):`,
+          error instanceof Error ? error.message : String(error)
+        );
+        await new Promise((r) => setTimeout(r, delay));
       }
-    } catch (error) {
-      console.error(
-        `[WARN] Translation batch failed (entries ${i + 1}-${i + batch.length}):`,
-        error instanceof Error ? error.message : String(error)
-      );
     }
   }
 
@@ -258,11 +271,15 @@ async function collectChangelog(): Promise<void> {
       console.log(`[INFO] ${projectConfig.name}: ${parsed.versions.length} versions, ${totalEntries} entries upserted (${totalTranslated} translated)`);
     }
 
-    // Cache invalidation
-    console.log('[INFO] Invalidating cache...');
+    // Cache invalidation（changelog名前空間を直接クリア）
+    console.log('[INFO] Invalidating changelog cache...');
     try {
-      await cacheInvalidator.onBulkImport();
-      console.log('[INFO] Cache invalidated successfully');
+      const changelogCache = new RedisCache({
+        ttl: 3600,
+        namespace: '@techtrend/cache:changelog',
+      });
+      await changelogCache.invalidatePattern('*');
+      console.log('[INFO] Changelog cache invalidated successfully');
     } catch (error) {
       console.error(
         '[WARN] Cache invalidation failed, but data was saved successfully:',

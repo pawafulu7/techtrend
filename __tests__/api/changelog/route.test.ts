@@ -22,6 +22,9 @@ jest.mock('@/lib/api/error-handler', () => ({
     })
   ),
 }));
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: jest.fn().mockImplementation((_key: string, handler: Function) => handler),
+}));
 
 // モックインスタンスを保持する変数
 let mockCacheInstance: ReturnType<typeof createRedisCacheMock>;
@@ -372,7 +375,7 @@ describe('/api/changelog', () => {
       );
     });
 
-    it('バージョンが存在しない場合はentriesとcategoryCountsがnull', async () => {
+    it('バージョンが存在しない場合はentriesが空配列、categoryCountsがゼロ', async () => {
       prismaMock.changelogVersion.findMany.mockResolvedValue([]);
 
       const request = new NextRequest(
@@ -384,8 +387,13 @@ describe('/api/changelog', () => {
       const data = await response.json();
 
       expect(data.versions).toHaveLength(0);
-      expect(data.entries).toBeNull();
-      expect(data.categoryCounts).toBeNull();
+      expect(data.entries).toEqual([]);
+      expect(data.categoryCounts).toEqual({
+        FEATURE: 0,
+        BUGFIX: 0,
+        IMPROVEMENT: 0,
+        OTHER: 0,
+      });
     });
 
     it('データベースエラー時にhandleApiErrorが呼ばれる', async () => {

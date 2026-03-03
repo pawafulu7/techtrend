@@ -3,8 +3,8 @@ import {
   classifyEntry,
   versionToSortOrder,
   CLASSIFICATION_RULES,
-  type ChangelogCategory,
-  type ParsedVersion,
+  ChangelogCategory,
+  ParsedVersion,
 } from '@/lib/changelog/parser';
 
 // ---------------------------------------------------------------------------
@@ -106,32 +106,48 @@ describe('classifyEntry', () => {
 // ---------------------------------------------------------------------------
 
 describe('versionToSortOrder', () => {
-  it('converts 2.1.63 to 200_010_063', () => {
-    expect(versionToSortOrder('2.1.63')).toBe(200_010_063);
+  it('converts 2.1.63 correctly', () => {
+    // 2 * 1_000_000_000 + 1 * 1_000_000 + 63 * 10 + 1 (not prerelease)
+    expect(versionToSortOrder('2.1.63')).toBe(2_001_000_631);
   });
 
   it('converts 0.0.1 correctly', () => {
-    expect(versionToSortOrder('0.0.1')).toBe(1);
+    // 0 + 0 + 1 * 10 + 1 = 11
+    expect(versionToSortOrder('0.0.1')).toBe(11);
   });
 
   it('converts 10.20.30 correctly', () => {
-    expect(versionToSortOrder('10.20.30')).toBe(1_000_200_030);
+    // 10 * 1_000_000_000 + 20 * 1_000_000 + 30 * 10 + 1
+    expect(versionToSortOrder('10.20.30')).toBe(10_020_000_301);
   });
 
   it('handles major.minor only (no patch)', () => {
-    expect(versionToSortOrder('2.1')).toBe(200_010_000);
+    // 2 * 1_000_000_000 + 1 * 1_000_000 + 0 + 1
+    expect(versionToSortOrder('2.1')).toBe(2_001_000_001);
   });
 
   it('ensures higher versions produce higher sortOrder', () => {
     const ordered = ['0.0.1', '0.1.0', '1.0.0', '2.1.63', '10.20.30'];
     const sortOrders = ordered.map(versionToSortOrder);
     for (let i = 1; i < sortOrders.length; i++) {
-      expect(sortOrders[i]!).toBeGreaterThan(sortOrders[i - 1]!);
+      expect(sortOrders[i]).toBeGreaterThan(sortOrders[i - 1]);
     }
   });
 
   it('handles single number gracefully', () => {
-    expect(versionToSortOrder('5')).toBe(500_000_000);
+    // 5 * 1_000_000_000 + 0 + 0 + 1
+    expect(versionToSortOrder('5')).toBe(5_000_000_001);
+  });
+
+  it('handles prerelease versions', () => {
+    // プレリリースは同一数値版より前に並ぶ
+    expect(versionToSortOrder('1.2.3-beta.1')).toBeLessThan(
+      versionToSortOrder('1.2.3')
+    );
+    // 1 * 1_000_000_000 + 2 * 1_000_000 + 3 * 10 + 0 (prerelease)
+    expect(versionToSortOrder('1.2.3-beta.1')).toBe(1_002_000_030);
+    // 1 * 1_000_000_000 + 2 * 1_000_000 + 3 * 10 + 1 (not prerelease)
+    expect(versionToSortOrder('1.2.3')).toBe(1_002_000_031);
   });
 });
 
@@ -159,7 +175,7 @@ describe('parseChangelog', () => {
 
     const v63 = result.versions[0];
     expect(v63.version).toBe('2.1.63');
-    expect(v63.sortOrder).toBe(200_010_063);
+    expect(v63.sortOrder).toBe(2_001_000_631);
     expect(v63.entries).toHaveLength(2);
     expect(v63.entries[0]).toEqual({
       content: 'Added dark mode support',
@@ -241,6 +257,22 @@ describe('parseChangelog', () => {
     expect(result.versions).toHaveLength(1);
     expect(result.versions[0].version).toBe('2.0.0');
     expect(result.versions[0].entries).toHaveLength(1);
+  });
+
+  it('parses prerelease version headers', () => {
+    const md = ['## 1.2.3-beta.1', '- Added experimental feature'].join('\n');
+
+    const result = parseChangelog(md);
+    expect(result.versions).toHaveLength(1);
+    expect(result.versions[0].version).toBe('1.2.3-beta.1');
+  });
+
+  it('parses version headers with v prefix', () => {
+    const md = ['## v2.0.0', '- Added something new'].join('\n');
+
+    const result = parseChangelog(md);
+    expect(result.versions).toHaveLength(1);
+    expect(result.versions[0].version).toBe('2.0.0');
   });
 
   it('assigns sequential orderIndex per version', () => {

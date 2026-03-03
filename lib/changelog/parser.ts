@@ -68,18 +68,22 @@ export function classifyEntry(content: string): ChangelogCategory {
 // ---------------------------------------------------------------------------
 
 export function versionToSortOrder(version: string): number {
-  const parts = version.split('.');
+  // プレリリースサフィックスを除去して数値部分のみ使用
+  const numericPart = version.replace(/-.*$/, '');
+  const parts = numericPart.split('.');
   const major = parseInt(parts[0] ?? '0', 10) || 0;
   const minor = parseInt(parts[1] ?? '0', 10) || 0;
   const patch = parseInt(parts[2] ?? '0', 10) || 0;
-  return major * 100_000_000 + minor * 10_000 + patch;
+  // プレリリースは同一数値版より前に並ぶようにする
+  const isPreRelease = version.includes('-') ? 0 : 1;
+  return major * 1_000_000_000 + minor * 1_000_000 + patch * 10 + isPreRelease;
 }
 
 // ---------------------------------------------------------------------------
 // parseChangelog
 // ---------------------------------------------------------------------------
 
-const VERSION_HEADER_RE = /^##\s+(\d+\.\d+(?:\.\d+)?)/;
+const VERSION_HEADER_RE = /^##\s+v?(\d+\.\d+(?:\.\d+)?(?:-[a-zA-Z0-9.]+)?)/;
 const ENTRY_RE = /^- (.+)/;
 
 export function parseChangelog(markdown: string): ParsedChangelog {

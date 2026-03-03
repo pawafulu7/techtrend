@@ -90,7 +90,6 @@ export function CategorySection({ category, entries }: CategorySectionProps) {
               content={entry.content}
               titleJa={entry.titleJa}
               contentJa={entry.contentJa}
-              category={entry.category}
             />
           ))}
       </div>

@@ -1,12 +1,9 @@
 'use client';
 
-type Category = 'FEATURE' | 'BUGFIX' | 'IMPROVEMENT' | 'OTHER';
-
 interface EntryCardProps {
   content: string;
   titleJa?: string | null;
   contentJa?: string | null;
-  category: Category;
 }
 
 export function EntryCard({ content, titleJa, contentJa }: EntryCardProps) {

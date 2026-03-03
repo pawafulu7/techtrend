@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { RedisCache } from '@/lib/cache';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
 import { handleApiError } from '@/lib/api/error-handler';
+
+const NOT_FOUND_SENTINEL = { notFound: true as const };
 
 // Changelog用キャッシュを遅延初期化
 let changelogCache: RedisCache | null = null;
@@ -17,12 +20,36 @@ const getChangelogCache = () => {
   return changelogCache;
 };
 
-export async function GET(request: NextRequest) {
+async function handler(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const searchParams = url.searchParams;
+
+    // パラメータバリデーション（キャッシュキー爆発防止）
     const projectSlug = searchParams.get('project') || 'claude-code';
+    if (!/^[a-z0-9-]{1,50}$/.test(projectSlug)) {
+      return NextResponse.json(
+        { error: 'Invalid project parameter' },
+        { status: 400 }
+      );
+    }
+
     const versionParam = searchParams.get('version') || null;
+    if (
+      versionParam &&
+      !/^v?\d+\.\d+(?:\.\d+)?(?:-[a-zA-Z0-9.]+)?$/.test(versionParam)
+    ) {
+      return NextResponse.json(
+        { error: 'Invalid version parameter' },
+        { status: 400 }
+      );
+    }
+    if (versionParam && versionParam.length > 30) {
+      return NextResponse.json(
+        { error: 'Invalid version parameter' },
+        { status: 400 }
+      );
+    }
 
     // キャッシュキーを生成
     const cache = getChangelogCache();
@@ -45,7 +72,7 @@ export async function GET(request: NextRequest) {
       });
 
       if (!project) {
-        return null;
+        return NOT_FOUND_SENTINEL;
       }
 
       // 全バージョンを取得（sortOrder降順）
@@ -81,7 +108,7 @@ export async function GET(request: NextRequest) {
         targetVersion = versions[0];
       }
 
-      // エントリを取得
+      // エントリを取得（targetVersion未検出でも空配列/空オブジェクトを返す）
       let entries: Array<{
         id: string;
         content: string;
@@ -89,8 +116,13 @@ export async function GET(request: NextRequest) {
         contentJa: string | null;
         category: string;
         orderIndex: number;
-      }> | null = null;
-      let categoryCounts: Record<string, number> | null = null;
+      }> = [];
+      let categoryCounts: Record<string, number> = {
+        FEATURE: 0,
+        BUGFIX: 0,
+        IMPROVEMENT: 0,
+        OTHER: 0,
+      };
 
       if (targetVersion) {
         const versionEntries = await prisma.changelogEntry.findMany({
@@ -109,12 +141,6 @@ export async function GET(request: NextRequest) {
         entries = versionEntries;
 
         // カテゴリ別カウント
-        categoryCounts = {
-          FEATURE: 0,
-          BUGFIX: 0,
-          IMPROVEMENT: 0,
-          OTHER: 0,
-        };
         for (const entry of versionEntries) {
           categoryCounts[entry.category] =
             (categoryCounts[entry.category] || 0) + 1;
@@ -129,8 +155,8 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // プロジェクト未検出
-    if (result === null) {
+    // プロジェクト未検出（sentinel値によるキャッシュ対応）
+    if (result && 'notFound' in result) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
@@ -143,3 +169,5 @@ export async function GET(request: NextRequest) {
     return handleApiError(error, '/api/changelog');
   }
 }
+
+export const GET = withRateLimit('read:changelog', handler);
