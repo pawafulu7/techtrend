@@ -117,7 +117,7 @@ async function handler(request: NextRequest) {
         category: string;
         orderIndex: number;
       }> = [];
-      let categoryCounts: Record<string, number> = {
+      const categoryCounts: Record<string, number> = {
         FEATURE: 0,
         BUGFIX: 0,
         IMPROVEMENT: 0,

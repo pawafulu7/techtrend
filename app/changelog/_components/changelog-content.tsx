@@ -87,14 +87,15 @@ export function ChangelogContent() {
     [router, searchParams]
   );
 
+  const entries = data?.entries;
   const entriesByCategory = useMemo(() => {
-    if (!data?.entries) return new Map<Category, Entry[]>();
+    if (!entries) return new Map<Category, Entry[]>();
 
     const map = new Map<Category, Entry[]>();
     for (const category of CATEGORY_ORDER) {
       map.set(category, []);
     }
-    for (const entry of data.entries) {
+    for (const entry of entries) {
       const cat = entry.category as Category;
       const list = map.get(cat);
       if (list) {
@@ -105,7 +106,7 @@ export function ChangelogContent() {
       }
     }
     return map;
-  }, [data?.entries]);
+  }, [entries]);
 
   if (isLoading) {
     return <ChangelogSkeleton />;
