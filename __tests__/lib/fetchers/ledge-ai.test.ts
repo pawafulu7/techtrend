@@ -187,7 +187,7 @@ describe('LedgeAiFetcher', () => {
         );
       });
 
-      it('should limit articles to 30 (paginationLimit)', async () => {
+      it('should limit articles to 30 (paginationLimit) client-side', async () => {
         const articles = Array(35)
           .fill(0)
           .map((_, i) => ({
@@ -196,15 +196,11 @@ describe('LedgeAiFetcher', () => {
             publishedAt: '2026-03-01T10:00:00Z',
             contents: [{ content: `Content ${i}` }],
           }));
-        // The API returns 35 items but paginationLimit=30 is sent as query param.
-        // The fetcher processes whatever the API returns, so we test that all are processed.
-        // The actual limit is enforced by the API query param, not client-side truncation.
         mockApiSuccess(buildStrapiResponse(articles));
 
         const result = await fetcher.fetch();
 
-        // All 35 valid articles are processed (no client-side limit beyond API param)
-        expect(result.articles.length).toBe(35);
+        expect(result.articles.length).toBe(30);
       });
     });
 
@@ -486,6 +482,71 @@ describe('LedgeAiFetcher', () => {
     });
 
     // ------------------------------------------------------------------
+    // 7.5. Null-safe handling for schema anomalies
+    // ------------------------------------------------------------------
+    describe('null-safe handling', () => {
+      it('should handle null tags gracefully without breaking other articles', async () => {
+        const response = buildStrapiResponse([
+          {
+            id: 1,
+            slug: 'null-tags-article',
+            title: 'Article with null tags',
+            publishedAt: '2026-03-01T10:00:00Z',
+            contents: [{ content: 'Content' }],
+          },
+          {
+            id: 2,
+            slug: 'normal-article',
+            title: 'Normal Article',
+            publishedAt: '2026-03-01T10:00:00Z',
+            tags: [{ name: 'AI' }],
+            contents: [{ content: 'Normal content' }],
+          },
+        ]);
+        // Force tags to null on first article
+        (response as { data: { tags: null }[] }).data[0].tags = null as never;
+        mockApiSuccess(response);
+
+        const result = await fetcher.fetch();
+
+        // Second article should still be processed
+        expect(result.articles.length).toBeGreaterThanOrEqual(1);
+        expect(result.articles.some((a) => a.title === 'Normal Article')).toBe(
+          true
+        );
+      });
+
+      it('should handle null contents gracefully without breaking other articles', async () => {
+        const response = buildStrapiResponse([
+          {
+            id: 1,
+            slug: 'null-contents-article',
+            title: 'Article with null contents',
+            publishedAt: '2026-03-01T10:00:00Z',
+          },
+          {
+            id: 2,
+            slug: 'normal-article-2',
+            title: 'Normal Article 2',
+            publishedAt: '2026-03-01T10:00:00Z',
+            contents: [{ content: 'Normal content' }],
+          },
+        ]);
+        // Force contents to null on first article
+        (response as { data: { contents: null }[] }).data[0].contents =
+          null as never;
+        mockApiSuccess(response);
+
+        const result = await fetcher.fetch();
+
+        expect(result.articles.length).toBeGreaterThanOrEqual(1);
+        expect(
+          result.articles.some((a) => a.title === 'Normal Article 2')
+        ).toBe(true);
+      });
+    });
+
+    // ------------------------------------------------------------------
     // 8. Empty results
     // ------------------------------------------------------------------
     describe('empty results handling', () => {
@@ -643,6 +704,13 @@ describe('LedgeAiFetcher', () => {
 
     it('should handle empty string', () => {
       expect(fetcher.validateArticleUrl('')).toBeUndefined();
+    });
+
+    it('should reject URLs with non-/articles/ path prefix', () => {
+      expect(
+        fetcher.validateArticleUrl('https://ledge.ai/categories/ai')
+      ).toBeUndefined();
+      expect(fetcher.validateArticleUrl('https://ledge.ai/')).toBeUndefined();
     });
   });
 

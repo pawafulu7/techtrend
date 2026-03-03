@@ -67,42 +67,50 @@ export class LedgeAiFetcher extends BaseFetcher {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const now = new Date();
 
-      for (const item of response.data) {
-        // Promotional fallback filter (API param should exclude, but double-check)
-        if (item.is_promotional) continue;
+      const items = response.data.slice(0, ledgeAiConfig.paginationLimit);
 
-        const articleUrl = this.buildArticleUrl(item.slug);
-        const validatedUrl = this.validateArticleUrl(articleUrl);
-        if (!validatedUrl) {
-          if (ledgeAiConfig.debug) {
-            logger.debug(`[Ledge.ai] Invalid article URL: ${articleUrl}`);
+      for (const item of items) {
+        try {
+          // Promotional fallback filter (API param should exclude, but double-check)
+          if (item.is_promotional) continue;
+
+          const articleUrl = this.buildArticleUrl(item.slug);
+          const validatedUrl = this.validateArticleUrl(articleUrl);
+          if (!validatedUrl) {
+            if (ledgeAiConfig.debug) {
+              logger.debug(`[Ledge.ai] Invalid article URL: ${articleUrl}`);
+            }
+            continue;
           }
-          continue;
+
+          if (seenUrls.has(validatedUrl)) continue;
+
+          const publishedAt = this.parsePublishedAt(
+            item.publishedAt,
+            item.scheduled_at
+          );
+          if (!publishedAt) continue;
+
+          if (publishedAt < thirtyDaysAgo || publishedAt > now) continue;
+
+          const content = this.extractContent(item.contents ?? []);
+          const thumbnail = this.extractThumbnailUrl(item.thumbnail);
+
+          seenUrls.add(validatedUrl);
+          articles.push({
+            title: this.sanitizeText(item.title),
+            url: validatedUrl,
+            content,
+            publishedAt,
+            sourceId: this.source.id,
+            tagNames: (item.tags ?? []).map((tag) => tag.name),
+            thumbnail,
+          });
+        } catch (itemError) {
+          logger.warn(
+            `[Ledge.ai] Skipping article (id=${item.id}): ${itemError instanceof Error ? itemError.message : String(itemError)}`
+          );
         }
-
-        if (seenUrls.has(validatedUrl)) continue;
-
-        const publishedAt = this.parsePublishedAt(
-          item.publishedAt,
-          item.scheduled_at
-        );
-        if (!publishedAt) continue;
-
-        if (publishedAt < thirtyDaysAgo || publishedAt > now) continue;
-
-        const content = this.extractContent(item.contents);
-        const thumbnail = this.extractThumbnailUrl(item.thumbnail);
-
-        seenUrls.add(validatedUrl);
-        articles.push({
-          title: this.sanitizeText(item.title),
-          url: validatedUrl,
-          content,
-          publishedAt,
-          sourceId: this.source.id,
-          tagNames: item.tags.map((tag) => tag.name),
-          thumbnail,
-        });
       }
 
       logger.info(`[Ledge.ai] Fetched ${articles.length} articles`);
@@ -217,6 +225,8 @@ export class LedgeAiFetcher extends BaseFetcher {
         (host) => parsed.hostname === host
       );
       if (!isAllowedHost) return undefined;
+
+      if (!parsed.pathname.startsWith('/articles/')) return undefined;
 
       return parsed.href;
     } catch (error) {
