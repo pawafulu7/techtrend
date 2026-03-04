@@ -20,10 +20,10 @@ reviews:
     unit_tests:
       enabled: false
   path_instructions:
-    - path: "app/api/**/*.ts"
+    - path: "app/api/**/route.ts"
       instructions: |
         - 認証(withUserValidation)、レート制限(withRateLimit)、CSRF保護(withCSRFProtection)の漏れを重点チェック
-        - ミドルウェア順序: withRateLimit > withCSRFProtection > withUserValidation
+        - ミドルウェア順序: withCSRFProtection > withRateLimit > withUserValidation
         - バリデーション: zod schemaでの入力検証必須
     - path: "lib/**/*.ts"
       instructions: |
