@@ -59,8 +59,8 @@ describe('/api/user/delete', () => {
       const data = await response.json();
 
       expect(response.status).toBe(401);
-      expect(data.success).toBe(false);
-      expect(data.error).toBe('UNAUTHORIZED');
+      expect(data.error).toBe('Unauthorized');
+      expect(data.code).toBe('NOT_AUTHENTICATED');
     });
 
     it('should return 400 when confirmation word is invalid', async () => {
@@ -93,7 +93,7 @@ describe('/api/user/delete', () => {
       expect(data.error).toBe('VALIDATION_ERROR');
     });
 
-    it('should return 404 when user is not found', async () => {
+    it('should return 401 when user is not found (withUserValidation)', async () => {
       const { auth } = require('@/lib/auth/auth');
       (auth as jest.Mock).mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' }
@@ -114,9 +114,9 @@ describe('/api/user/delete', () => {
       const response = await DELETE(request);
       const data = await response.json();
 
-      expect(response.status).toBe(404);
-      expect(data.success).toBe(false);
-      expect(data.error).toBe('USER_NOT_FOUND');
+      expect(response.status).toBe(401);
+      expect(data.error).toBe('Session invalid');
+      expect(data.code).toBe('USER_DELETED');
     });
 
     it('should return 400 when password is missing for password user', async () => {

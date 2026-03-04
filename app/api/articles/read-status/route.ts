@@ -3,6 +3,7 @@ import { prisma } from '@/lib/database';
 import { getRedisService } from '@/lib/redis/factory';
 import logger from '@/lib/logger';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import {
   invalidateUserViewCache,
   invalidateViewCache,
@@ -305,6 +306,12 @@ async function deleteHandler(
 }
 
 export const GET = withUserValidation(getHandler);
-export const POST = withCSRFProtection(withUserValidation(postHandler));
-export const PUT = withCSRFProtection(withUserValidation(putHandler));
-export const DELETE = withCSRFProtection(withUserValidation(deleteHandler));
+export const POST = withCSRFProtection(
+  withRateLimit('write:read-status', withUserValidation(postHandler))
+);
+export const PUT = withCSRFProtection(
+  withRateLimit('write:read-status', withUserValidation(putHandler))
+);
+export const DELETE = withCSRFProtection(
+  withRateLimit('write:read-status', withUserValidation(deleteHandler))
+);

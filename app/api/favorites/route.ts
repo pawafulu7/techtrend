@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import {
   withUserValidation,
   type WithUserValidationContext,
@@ -35,62 +36,66 @@ async function getHandler(
       }),
       prisma.favorite.findMany({
         where: { userId: validatedUser.id },
-        include: lightweight ? {
-          article: {
-            select: {
-              id: true,
-              title: true,
-              url: true,
-              summary: true,
-              publishedAt: true,
-              thumbnail: true,
-              source: {
+        include: lightweight
+          ? {
+              article: {
                 select: {
                   id: true,
-                  name: true,
+                  title: true,
+                  url: true,
+                  summary: true,
+                  publishedAt: true,
+                  thumbnail: true,
+                  source: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
                 },
               },
-            },
-          },
-        } : includeRelations ? {
-          article: {
-            include: {
-              source: true,
-              tags: true,
-            },
-          },
-        } : {
-          article: {
-            select: {
-              id: true,
-              title: true,
-              url: true,
-              summary: true,
-              publishedAt: true,
-              thumbnail: true,
-              source: {
-                select: {
-                  id: true,
-                  name: true,
+            }
+          : includeRelations
+            ? {
+                article: {
+                  include: {
+                    source: true,
+                    tags: true,
+                  },
+                },
+              }
+            : {
+                article: {
+                  select: {
+                    id: true,
+                    title: true,
+                    url: true,
+                    summary: true,
+                    publishedAt: true,
+                    thumbnail: true,
+                    source: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                    tags: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                  },
                 },
               },
-              tags: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-        },
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
-      })
+      }),
     ]);
 
     return NextResponse.json({
-      favorites: favorites.map(f => ({
+      favorites: favorites.map((f) => ({
         ...f.article,
         favoriteId: f.id,
         favoritedAt: f.createdAt,
@@ -134,10 +139,7 @@ async function postHandler(
     });
 
     if (!article) {
-      return NextResponse.json(
-        { error: 'Article not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Article not found' }, { status: 404 });
     }
 
     // 既にお気に入りに追加されているか確認
@@ -151,10 +153,7 @@ async function postHandler(
     });
 
     if (existing) {
-      return NextResponse.json(
-        { error: 'Already favorited' },
-        { status: 409 }
-      );
+      return NextResponse.json({ error: 'Already favorited' }, { status: 409 });
     }
 
     const favorite = await prisma.favorite.create({
@@ -273,5 +272,9 @@ async function deleteHandler(
 }
 
 export const GET = withUserValidation(getHandler);
-export const POST = withCSRFProtection(withUserValidation(postHandler));
-export const DELETE = withCSRFProtection(withUserValidation(deleteHandler));
+export const POST = withCSRFProtection(
+  withRateLimit('write:favorite', withUserValidation(postHandler))
+);
+export const DELETE = withCSRFProtection(
+  withRateLimit('write:favorite', withUserValidation(deleteHandler))
+);
