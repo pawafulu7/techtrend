@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/database';
 import { getRedisService } from '@/lib/redis/factory';
 import logger from '@/lib/logger';
@@ -80,6 +81,10 @@ async function getHandler(
   }
 }
 
+const ReadStatusRequestSchema = z.object({
+  articleId: z.string().min(1, 'Article ID is required'),
+});
+
 // POST: 記事を既読にマーク
 async function postHandler(
   req: NextRequest,
@@ -88,13 +93,21 @@ async function postHandler(
   const { validatedUser } = context;
 
   try {
-    const { articleId } = await req.json();
-    if (!articleId) {
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+
+    const parseResult = ReadStatusRequestSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
         { error: 'Article ID is required' },
         { status: 400 }
       );
     }
+    const { articleId } = parseResult.data;
 
     // Upsert: 既存のレコードがあれば更新、なければ作成
     const articleView = await prisma.articleView.upsert({

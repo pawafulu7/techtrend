@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
@@ -116,6 +117,10 @@ async function getHandler(
   }
 }
 
+const FavoriteRequestSchema = z.object({
+  articleId: z.string().min(1, 'Article ID is required'),
+});
+
 // POST: 記事をお気に入りに追加
 async function postHandler(
   request: NextRequest,
@@ -124,14 +129,21 @@ async function postHandler(
   const { validatedUser } = context;
 
   try {
-    const { articleId } = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
 
-    if (!articleId) {
+    const parseResult = FavoriteRequestSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
         { error: 'Article ID is required' },
         { status: 400 }
       );
     }
+    const { articleId } = parseResult.data;
 
     // 記事の存在確認
     const article = await prisma.article.findUnique({
