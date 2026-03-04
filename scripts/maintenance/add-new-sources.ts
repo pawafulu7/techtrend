@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { sourceCache } from '../../lib/cache/source-cache';
 
 const prisma = new PrismaClient();
 
@@ -59,11 +60,14 @@ async function addNewSources() {
 async function main() {
   try {
     await addNewSources();
+    await sourceCache.invalidate();
+    console.error('[OK] Source cache invalidation attempted');
   } catch (error) {
     console.error('Error adding sources:', error);
     process.exit(1);
   } finally {
     await prisma.$disconnect();
+    process.exit(0);
   }
 }
 

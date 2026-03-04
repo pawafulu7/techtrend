@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { sourceCache } from '../../lib/cache/source-cache';
 
 const prisma = new PrismaClient();
 
@@ -23,6 +24,9 @@ async function addCorporateTechBlogSource() {
         enabled: true
       }
     });
+
+    await sourceCache.invalidate();
+    console.error('[OK] Source cache invalidation attempted');
 
     console.error('Successfully created Corporate Tech Blog source:', newSource);
     console.error('\n含まれる企業ブログ:');
@@ -50,4 +54,5 @@ addCorporateTechBlogSource()
   .catch((error) => {
     console.error('Script failed:', error);
     process.exit(1);
-  });
+  })
+  .finally(() => process.exit(0));
