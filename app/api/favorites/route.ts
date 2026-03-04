@@ -14,6 +14,21 @@ import {
   setFavoriteBustCookie,
 } from '@/lib/favorites/cache-helpers';
 
+const baseArticleSelect = {
+  id: true,
+  title: true,
+  url: true,
+  summary: true,
+  publishedAt: true,
+  thumbnail: true,
+  source: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
+} as const;
+
 // GET: ユーザーのお気に入り記事一覧を取得
 async function getHandler(
   request: NextRequest,
@@ -40,51 +55,21 @@ async function getHandler(
         include: lightweight
           ? {
               article: {
-                select: {
-                  id: true,
-                  title: true,
-                  url: true,
-                  summary: true,
-                  publishedAt: true,
-                  thumbnail: true,
-                  source: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
-                  },
-                },
+                select: baseArticleSelect,
               },
             }
           : includeRelations
             ? {
                 article: {
-                  include: {
-                    source: true,
-                    tags: true,
-                  },
+                  include: { source: true, tags: true },
                 },
               }
             : {
                 article: {
                   select: {
-                    id: true,
-                    title: true,
-                    url: true,
-                    summary: true,
-                    publishedAt: true,
-                    thumbnail: true,
-                    source: {
-                      select: {
-                        id: true,
-                        name: true,
-                      },
-                    },
+                    ...baseArticleSelect,
                     tags: {
-                      select: {
-                        id: true,
-                        name: true,
-                      },
+                      select: { id: true, name: true },
                     },
                   },
                 },
@@ -118,7 +103,7 @@ async function getHandler(
 }
 
 const FavoriteRequestSchema = z.object({
-  articleId: z.string().min(1, 'Article ID is required'),
+  articleId: z.string().trim().min(1, 'Article ID is required'),
 });
 
 // POST: 記事をお気に入りに追加
@@ -229,14 +214,17 @@ async function deleteHandler(
 
   try {
     const { searchParams } = new URL(request.url);
-    const articleId = searchParams.get('articleId');
+    const parseResult = FavoriteRequestSchema.safeParse({
+      articleId: searchParams.get('articleId'),
+    });
 
-    if (!articleId) {
+    if (!parseResult.success) {
       return NextResponse.json(
         { error: 'Article ID is required' },
         { status: 400 }
       );
     }
+    const { articleId } = parseResult.data;
 
     const favorite = await prisma.favorite.findUnique({
       where: {

@@ -82,7 +82,7 @@ async function getHandler(
 }
 
 const ReadStatusRequestSchema = z.object({
-  articleId: z.string().min(1, 'Article ID is required'),
+  articleId: z.string().trim().min(1, 'Article ID is required'),
 });
 
 // POST: 記事を既読にマーク
@@ -254,6 +254,10 @@ async function putHandler(
   }
 }
 
+const DeleteReadStatusQuerySchema = z.object({
+  articleId: z.string().trim().min(1, 'Article ID is required'),
+});
+
 // DELETE: 記事を未読に戻す
 async function deleteHandler(
   req: NextRequest,
@@ -263,14 +267,17 @@ async function deleteHandler(
 
   try {
     const { searchParams } = new URL(req.url);
-    const articleId = searchParams.get('articleId');
+    const parseResult = DeleteReadStatusQuerySchema.safeParse({
+      articleId: searchParams.get('articleId'),
+    });
 
-    if (!articleId) {
+    if (!parseResult.success) {
       return NextResponse.json(
         { error: 'Article ID is required' },
         { status: 400 }
       );
     }
+    const { articleId } = parseResult.data;
 
     // 既読状態をfalseに更新
     await prisma.articleView.updateMany({
