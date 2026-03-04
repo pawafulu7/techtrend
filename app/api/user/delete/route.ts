@@ -9,13 +9,17 @@ import {
 } from '@/types/api/delete-account';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import {
+  withUserValidation,
+  type WithUserValidationContext,
+} from '@/lib/middleware/with-user-validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 async function deleteAccountHandler(
   request: NextRequest,
-  context?: { session?: any }
+  context: WithUserValidationContext
 ): Promise<NextResponse<DeleteAccountResponse | DeleteAccountError>> {
   try {
     // 1. Parse request body (handle JSON parse errors)
@@ -48,20 +52,8 @@ async function deleteAccountHandler(
 
     const { password, confirmationWord, reason } = validationResult.data;
 
-    // 3. Verify session (from context, avoid double auth() call)
-    const session = context?.session;
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'UNAUTHORIZED',
-          message: '認証が必要です',
-        },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
+    // 3. User is already validated by withUserValidation middleware
+    const userId = context.validatedUser.id;
 
     // 4. Get user password for verification (other fields fetched in transaction)
     const user = await prisma.user.findUnique({
@@ -122,7 +114,10 @@ async function deleteAccountHandler(
     }
 
     // 7. Extract client info for audit log
-    const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined;
+    const clientIp =
+      request.headers.get('x-forwarded-for') ||
+      request.headers.get('x-real-ip') ||
+      undefined;
     const userAgent = request.headers.get('user-agent') || undefined;
 
     // 8. Delete user account with audit logging
@@ -180,4 +175,6 @@ async function deleteAccountHandler(
   }
 }
 
-export const DELETE = withCSRFProtection(withRateLimit('write:delete', deleteAccountHandler));
+export const DELETE = withCSRFProtection(
+  withRateLimit('write:delete', withUserValidation(deleteAccountHandler))
+);

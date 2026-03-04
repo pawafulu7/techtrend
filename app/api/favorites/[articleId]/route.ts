@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import {
-  validateUser,
-  createUserDeletedResponse,
+  withUserValidation,
+  type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 import logger from '@/lib/logger';
@@ -19,15 +20,11 @@ export async function GET(
   { params }: { params: Promise<{ articleId: string }> }
 ) {
   try {
-    
     const session = await auth();
     const { articleId } = await params;
-    
+
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { isFavorited: false },
-        { status: 200 }
-      );
+      return NextResponse.json({ isFavorited: false }, { status: 200 });
     }
 
     const favorite = await prisma.favorite.findUnique({
@@ -55,24 +52,13 @@ export async function GET(
 // POST: 記事をお気に入りに追加
 async function postHandler(
   request: NextRequest,
-  { params }: { params: Promise<{ articleId: string }> }
+  context: WithUserValidationContext & {
+    params: Promise<{ articleId: string }>;
+  }
 ) {
   try {
-    const session = await auth();
-    const { articleId } = await params;
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
+    const { validatedUser } = context;
+    const { articleId } = await context.params;
 
     // 記事の存在確認
     const article = await prisma.article.findUnique({
@@ -80,10 +66,7 @@ async function postHandler(
     });
 
     if (!article) {
-      return NextResponse.json(
-        { error: 'Article not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Article not found' }, { status: 404 });
     }
 
     // 既にお気に入りに追加されているか確認
@@ -97,10 +80,7 @@ async function postHandler(
     });
 
     if (existing) {
-      return NextResponse.json(
-        { error: 'Already favorited' },
-        { status: 409 }
-      );
+      return NextResponse.json({ error: 'Already favorited' }, { status: 409 });
     }
 
     const favorite = await prisma.favorite.create({
@@ -155,24 +135,13 @@ async function postHandler(
 // DELETE: お気に入りから削除
 async function deleteHandler(
   request: NextRequest,
-  { params }: { params: Promise<{ articleId: string }> }
+  context: WithUserValidationContext & {
+    params: Promise<{ articleId: string }>;
+  }
 ) {
   try {
-    const session = await auth();
-    const { articleId } = await params;
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
+    const { validatedUser } = context;
+    const { articleId } = await context.params;
 
     const favorite = await prisma.favorite.findUnique({
       where: {
@@ -220,5 +189,9 @@ async function deleteHandler(
   }
 }
 
-export const POST = withCSRFProtection(postHandler);
-export const DELETE = withCSRFProtection(deleteHandler);
+export const POST = withCSRFProtection(
+  withRateLimit('write:favorite', withUserValidation(postHandler))
+);
+export const DELETE = withCSRFProtection(
+  withRateLimit('write:favorite', withUserValidation(deleteHandler))
+);

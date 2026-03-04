@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/database';
 import { getRedisService } from '@/lib/redis/factory';
 import logger from '@/lib/logger';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import {
   invalidateUserViewCache,
   invalidateViewCache,
@@ -79,6 +81,10 @@ async function getHandler(
   }
 }
 
+const ReadStatusRequestSchema = z.object({
+  articleId: z.string().trim().min(1, 'Article ID is required'),
+});
+
 // POST: 記事を既読にマーク
 async function postHandler(
   req: NextRequest,
@@ -87,13 +93,21 @@ async function postHandler(
   const { validatedUser } = context;
 
   try {
-    const { articleId } = await req.json();
-    if (!articleId) {
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+
+    const parseResult = ReadStatusRequestSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
         { error: 'Article ID is required' },
         { status: 400 }
       );
     }
+    const { articleId } = parseResult.data;
 
     // Upsert: 既存のレコードがあれば更新、なければ作成
     const articleView = await prisma.articleView.upsert({
@@ -240,6 +254,10 @@ async function putHandler(
   }
 }
 
+const DeleteReadStatusQuerySchema = z.object({
+  articleId: z.string().trim().min(1, 'Article ID is required'),
+});
+
 // DELETE: 記事を未読に戻す
 async function deleteHandler(
   req: NextRequest,
@@ -249,14 +267,17 @@ async function deleteHandler(
 
   try {
     const { searchParams } = new URL(req.url);
-    const articleId = searchParams.get('articleId');
+    const parseResult = DeleteReadStatusQuerySchema.safeParse({
+      articleId: searchParams.get('articleId'),
+    });
 
-    if (!articleId) {
+    if (!parseResult.success) {
       return NextResponse.json(
         { error: 'Article ID is required' },
         { status: 400 }
       );
     }
+    const { articleId } = parseResult.data;
 
     // 既読状態をfalseに更新
     await prisma.articleView.updateMany({
@@ -305,6 +326,12 @@ async function deleteHandler(
 }
 
 export const GET = withUserValidation(getHandler);
-export const POST = withCSRFProtection(withUserValidation(postHandler));
-export const PUT = withCSRFProtection(withUserValidation(putHandler));
-export const DELETE = withCSRFProtection(withUserValidation(deleteHandler));
+export const POST = withCSRFProtection(
+  withRateLimit('write:read-status', withUserValidation(postHandler))
+);
+export const PUT = withCSRFProtection(
+  withRateLimit('write:read-status', withUserValidation(putHandler))
+);
+export const DELETE = withCSRFProtection(
+  withRateLimit('write:read-status', withUserValidation(deleteHandler))
+);

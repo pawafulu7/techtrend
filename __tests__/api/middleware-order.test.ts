@@ -97,6 +97,21 @@ jest.mock('@/lib/cache/comments-cache', () => ({
     invalidate: jest.fn(),
   },
 }));
+jest.mock('@/lib/favorites/cache-helpers', () => ({
+  updateFavoriteCacheBestEffort: jest.fn(),
+  setFavoriteBustCookie: jest.fn(),
+}));
+jest.mock('@/lib/redis/factory', () => ({
+  getRedisService: jest.fn(),
+}));
+jest.mock('@/lib/dataloader/article-view-loader', () => ({
+  invalidateUserViewCache: jest.fn(),
+  invalidateViewCache: jest.fn(),
+}));
+jest.mock('@/lib/auth/utils', () => ({
+  verifyPassword: jest.fn(),
+  deleteUserAccountWithAudit: jest.fn(),
+}));
 
 /**
  * Asserts that the middleware nesting order is correct:
@@ -147,6 +162,14 @@ const RATE_LIMITED_ENDPOINTS: {
   { method: 'DELETE', path: '/api/user/source-presets/[id]', modulePath: '@/app/api/user/source-presets/[id]/route' },
   { method: 'POST', path: '/api/user/source-presets', modulePath: '@/app/api/user/source-presets/route' },
   { method: 'POST', path: '/api/comments', modulePath: '@/app/api/comments/route' },
+  { method: 'POST', path: '/api/favorites', modulePath: '@/app/api/favorites/route' },
+  { method: 'DELETE', path: '/api/favorites', modulePath: '@/app/api/favorites/route' },
+  { method: 'POST', path: '/api/favorites/[articleId]', modulePath: '@/app/api/favorites/[articleId]/route' },
+  { method: 'DELETE', path: '/api/favorites/[articleId]', modulePath: '@/app/api/favorites/[articleId]/route' },
+  { method: 'POST', path: '/api/articles/read-status', modulePath: '@/app/api/articles/read-status/route' },
+  { method: 'PUT', path: '/api/articles/read-status', modulePath: '@/app/api/articles/read-status/route' },
+  { method: 'DELETE', path: '/api/articles/read-status', modulePath: '@/app/api/articles/read-status/route' },
+  { method: 'DELETE', path: '/api/user/delete', modulePath: '@/app/api/user/delete/route' },
 ];
 
 describe('Middleware nesting order (issue #461 regression)', () => {

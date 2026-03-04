@@ -171,6 +171,14 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'Account deletion (3 per hour)',
     telemetryEvent: 'ratelimit.write.delete',
   },
+  'write:read-status': {
+    points: 30,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'Read status update limit (30 per minute)',
+    telemetryEvent: 'ratelimit.write.read-status',
+  },
 
   // Read Operations (General Protection) - No block
   'read:articles': {
