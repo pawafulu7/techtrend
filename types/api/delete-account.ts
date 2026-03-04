@@ -22,7 +22,8 @@ export interface DeleteAccountError {
     | 'INVALID_PASSWORD'
     | 'INVALID_CONFIRMATION'
     | 'VALIDATION_ERROR'
-    | 'INTERNAL_ERROR';
+    | 'INTERNAL_ERROR'
+    | 'USER_NOT_FOUND';
   message: string;
 }
 

@@ -126,6 +126,7 @@ describe('/api/user/delete', () => {
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
+        id: 'user123',
         password: 'hashedPassword123',
       });
 
@@ -191,6 +192,7 @@ describe('/api/user/delete', () => {
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
+        id: 'user123',
         password: 'hashedPassword123',
       });
 
@@ -238,6 +240,7 @@ describe('/api/user/delete', () => {
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
+        id: 'user123',
         password: null,
       });
 
@@ -279,6 +282,11 @@ describe('/api/user/delete', () => {
         user: { id: 'user123', email: 'test@example.com' }
       });
 
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 'user123',
+        password: null,
+      });
+
       const request = new NextRequest('http://localhost:3000/api/user/delete', {
         method: 'DELETE',
         headers: {
@@ -305,6 +313,7 @@ describe('/api/user/delete', () => {
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
+        id: 'user123',
         password: null,
       });
 
