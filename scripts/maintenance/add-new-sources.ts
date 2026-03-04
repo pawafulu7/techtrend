@@ -64,10 +64,10 @@ async function main() {
     console.error('[OK] Source cache invalidation attempted');
   } catch (error) {
     console.error('Error adding sources:', error);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     await prisma.$disconnect();
-    process.exit(0);
+    process.exit(process.exitCode ?? 0);
   }
 }
 

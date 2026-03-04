@@ -129,9 +129,9 @@ async function main() {
 main()
   .catch((error) => {
     console.error('エラーが発生しました:', error);
-    process.exit(1);
+    process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();
-    process.exit(0);
+    process.exit(process.exitCode ?? 0);
   });

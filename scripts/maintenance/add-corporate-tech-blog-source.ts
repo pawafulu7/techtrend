@@ -53,6 +53,6 @@ addCorporateTechBlogSource()
   })
   .catch((error) => {
     console.error('Script failed:', error);
-    process.exit(1);
+    process.exitCode = 1;
   })
-  .finally(() => process.exit(0));
+  .finally(() => process.exit(process.exitCode ?? 0));
