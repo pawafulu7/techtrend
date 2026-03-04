@@ -20,7 +20,7 @@ reviews:
     unit_tests:
       enabled: false
   path_instructions:
-    - path: "app/api/**/route.ts"
+    - path: "app/api/**/*.ts"
       instructions: |
         - 認証(withUserValidation)、レート制限(withRateLimit)、CSRF保護(withCSRFProtection)の漏れを重点チェック
         - ミドルウェア順序: withCSRFProtection > withRateLimit > withUserValidation
