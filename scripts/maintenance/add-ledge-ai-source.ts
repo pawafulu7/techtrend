@@ -6,6 +6,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { sourceCache } from '../../lib/cache/source-cache';
 
 const prisma = new PrismaClient();
 
@@ -48,8 +49,11 @@ async function main() {
       `[ERROR] createFetcher() name mismatch! DB name="${result.name}" does not match any switch case.`,
       error instanceof Error ? error.message : String(error)
     );
-    process.exit(1);
+    throw error;
   }
+
+  await sourceCache.invalidate();
+  console.log('[OK] Source cache invalidation attempted');
 
   console.log('\n=== 完了 ===');
 }
@@ -57,6 +61,9 @@ async function main() {
 main()
   .catch((error) => {
     console.error('エラーが発生しました:', error);
-    process.exit(1);
+    process.exitCode = 1;
   })
-  .finally(() => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect();
+    process.exit(process.exitCode ?? 0);
+  });

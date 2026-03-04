@@ -12,6 +12,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { sourceCache } from '../../lib/cache/source-cache';
 
 const prisma = new PrismaClient();
 
@@ -73,6 +74,9 @@ async function main() {
     addedCount++;
   }
 
+  await sourceCache.invalidate();
+  console.log('[OK] Source cache invalidation attempted');
+
   console.log('\n=== 完了 ===');
   console.log(`追加: ${addedCount}件`);
   console.log(`スキップ: ${skippedCount}件`);
@@ -82,6 +86,9 @@ async function main() {
 main()
   .catch((error) => {
     console.error('エラーが発生しました:', error);
-    process.exit(1);
+    process.exitCode = 1;
   })
-  .finally(() => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect();
+    process.exit(process.exitCode ?? 0);
+  });
