@@ -49,7 +49,7 @@ async function main() {
       `[ERROR] createFetcher() name mismatch! DB name="${result.name}" does not match any switch case.`,
       error instanceof Error ? error.message : String(error)
     );
-    process.exit(1);
+    throw error;
   }
 
   await sourceCache.invalidate();
