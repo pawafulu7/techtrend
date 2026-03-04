@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "ja-JP"
+
+tone_instructions: |
+  具体的なコード修正案を含めて指摘してください。
+  問題の説明だけでなく、修正後のコード例を提示してください。
+
+reviews:
+  profile: "assertive"
+  sequence_diagrams: true
+  assess_linked_issues: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+  path_instructions:
+    - path: "app/api/**/*.ts"
+      instructions: |
+        - 認証(withUserValidation)、レート制限(withRateLimit)、CSRF保護(withCSRFProtection)の漏れを重点チェック
+        - ミドルウェア順序: withCSRFProtection > withRateLimit > withUserValidation
+        - バリデーション: zod schemaでの入力検証必須
+    - path: "lib/**/*.ts"
+      instructions: |
+        - 同一ファイル内の類似メソッド間でパース手法・検証ロジック・エラーハンドリングが統一されているか
+        - Redis キャッシュ操作は try-catch で囲み、失敗時はフォールバック
+    - path: "app/**/*.tsx"
+      instructions: |
+        - 共有型定義(lib/xxx/types.ts)があれば使用、ローカル型定義の重複禁止
+        - useMemoの適切な使用、不要な再レンダリング防止
+    - path: "scripts/**/*.ts"
+      instructions: |
+        - バッチ処理のリトライ・タイムアウト・エラーハンドリング
+        - 部分失敗時のアトミック性（中間データの保持防止）
+  tools:
+    eslint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    prismaLint:
+      enabled: true
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
