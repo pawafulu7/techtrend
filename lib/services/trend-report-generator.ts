@@ -10,6 +10,9 @@ import {
 // JST offset constant (+9 hours in milliseconds)
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
+// Legacy AI summary minimum length threshold
+const LEGACY_SUMMARY_MIN_LENGTH = 100;
+
 // カテゴリタグ定義（大文字小文字を区別しない比較用）
 const CATEGORY_TAGS = {
   Frontend: [
@@ -908,10 +911,14 @@ ${rawText}`;
     }
     const errors3 = validateV2Content(json3);
     if (errors3.length === 0) {
+      logger.info('Structured AI summary succeeded on retry (attempt 3)');
       return JSON.stringify(json3);
     }
 
     // リトライ生成もバリデーション失敗: もう一度repair
+    logger.warn(
+      `Retry generation failed (${errors3.join(' / ')}), attempting final repair`
+    );
     const repairPrompt2 = buildRepairPrompt(errors3, rawText3);
 
     const rawText4 = await generateOnce(repairPrompt2, 0.0);
@@ -926,10 +933,11 @@ ${rawText}`;
     const errors4 = validateV2Content(json4);
     if (errors4.length > 0) {
       throw new Error(
-        `Structured AI summary validation failed after retry: ${errors4.join(' / ')}`
+        `Structured AI summary validation failed after 4 attempts: ${errors4.join(' / ')}`
       );
     }
 
+    logger.info('Structured AI summary succeeded on final repair (attempt 4)');
     return JSON.stringify(json4);
   }
 
@@ -998,7 +1006,7 @@ ${topArticlesText}
     let summary = response.text().trim();
     summary = summary.replace(/^(要約[:：]?\s*|##\s*出力\s*)/i, '');
 
-    if (summary.length < 100) {
+    if (summary.length < LEGACY_SUMMARY_MIN_LENGTH) {
       throw new Error(
         `Legacy AI summary too short (${summary.length} chars), likely incomplete response`
       );
