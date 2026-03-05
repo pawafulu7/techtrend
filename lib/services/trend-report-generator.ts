@@ -852,8 +852,7 @@ ${JSON.stringify(input)}`;
 指定キー（追加/欠落禁止）: version, core, overview, keyTopics, trendChanges, actions, numbers, notes
 versionは必ず "trend_ai_summary_v2"。
 文章フィールドでは統計の言い換え（"件" "%""割合""占める" 等）をしない（数値はdeltaCountに入れる）。
-coreには「減少」「増加」「急増」等の量的変化の語を使わない。
-keyTopicsでは記事数の増減に言及しない（量的変化はtrendChanges.summaryの責務）。
+core/keyTopicsのwhatHappened/whyItMattersでは「増加」「減少」「急増」「急減」「増えた」「減った」「拡大」「縮小」の語を使わない。
 core/keyTopics/trendChanges/actionsで同じ事象を同じ切り口で繰り返さない。
 evidenceArticleIds / articleIds には参照キー（A1〜A10）を使うこと。
 
@@ -886,13 +885,54 @@ ${rawText1}`;
       );
     }
     const errors2 = validateV2Content(json2);
-    if (errors2.length > 0) {
+    if (errors2.length === 0) {
+      return JSON.stringify(json2);
+    }
+
+    // repair失敗: v2を再生成（temperature=0.0でリトライ）
+    logger.warn(
+      `Repair failed (${errors2.join(' / ')}), retrying v2 generation with temperature=0.0`
+    );
+
+    const rawText3 = await generateOnce(prompt, 0.0);
+    const json3 = extractFirstJsonObject(rawText3);
+    if (json3 && typeof json3 === 'object') {
+      TrendReportGenerator.resolveRefKeysToIds(
+        json3 as Record<string, unknown>,
+        refMap,
+        fallbackId
+      );
+    }
+    const errors3 = validateV2Content(json3);
+    if (errors3.length === 0) {
+      return JSON.stringify(json3);
+    }
+
+    // リトライ生成もバリデーション失敗: もう一度repair
+    const repairPrompt2 = repairPrompt
+      .replace(
+        `違反箇所: ${errors1.join(' / ')}`,
+        `違反箇所: ${errors3.join(' / ')}`
+      )
+      .replace(rawText1, rawText3);
+
+    const rawText4 = await generateOnce(repairPrompt2, 0.0);
+    const json4 = extractFirstJsonObject(rawText4);
+    if (json4 && typeof json4 === 'object') {
+      TrendReportGenerator.resolveRefKeysToIds(
+        json4 as Record<string, unknown>,
+        refMap,
+        fallbackId
+      );
+    }
+    const errors4 = validateV2Content(json4);
+    if (errors4.length > 0) {
       throw new Error(
-        `Structured AI summary validation failed after repair: ${errors2.join(' / ')}`
+        `Structured AI summary validation failed after retry: ${errors4.join(' / ')}`
       );
     }
 
-    return JSON.stringify(json2);
+    return JSON.stringify(json4);
   }
 
   private async generateAISummaryLegacyPlainText(
@@ -959,6 +999,12 @@ ${topArticlesText}
     const response = result.response;
     let summary = response.text().trim();
     summary = summary.replace(/^(要約[:：]?\s*|##\s*出力\s*)/i, '');
+
+    if (summary.length < 100) {
+      throw new Error(
+        `Legacy AI summary too short (${summary.length} chars), likely incomplete response`
+      );
+    }
 
     return summary;
   }
