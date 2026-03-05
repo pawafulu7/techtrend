@@ -193,6 +193,7 @@ export function createFetcher(source: Source): BaseFetcher {
     case 'Kubernetes Blog':
     case 'Go Blog':
     case 'Rust Blog':
+    case 'Business Insider':
     // Japanese Tech Media
     case 'ITmedia Security':
     case 'ITmedia AI+':

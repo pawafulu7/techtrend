@@ -11,6 +11,11 @@ import { logger } from '@/lib/logger';
 import { normalizeUrl } from '@/lib/utils/url-normalizer';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
 
+// Atom形式のカテゴリ型
+interface AtomCategory {
+  $?: { term?: string; scheme?: string };
+}
+
 // RSS項目の型定義
 interface RSSItem {
   title?: string;
@@ -22,6 +27,7 @@ interface RSSItem {
   pubDate?: string;
   isoDate?: string;
   categories?: string[] | { _?: string; term?: string }[];
+  category?: AtomCategory[] | AtomCategory;
   enclosure?: { url?: string; type?: string };
   'content:encoded'?: string;
   'dc:subject'?: string | string[];
@@ -34,6 +40,7 @@ export interface ForeignSourceConfig {
   feedUrl: string;
   // オプション: ソース固有のタグプレフィックス
   tagPrefix?: string;
+  categoryFilter?: string[];
 }
 
 export class GenericForeignRssFetcher extends BaseFetcher {
@@ -47,13 +54,20 @@ export class GenericForeignRssFetcher extends BaseFetcher {
 
   constructor(source: Source, config: ForeignSourceConfig) {
     super(source);
-    this.parser = new Parser({
+    const parserOptions: Parser.ParserOptions<
+      Record<string, unknown>,
+      Record<string, unknown>
+    > = {
       timeout: 30000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; TechTrend/1.0)',
         Accept: 'application/rss+xml, application/xml, text/xml, */*',
       },
-    });
+      customFields: {
+        item: [['category', 'category', { keepArray: true }]],
+      },
+    };
+    this.parser = new Parser(parserOptions);
     this.config = config;
   }
 
@@ -73,7 +87,31 @@ export class GenericForeignRssFetcher extends BaseFetcher {
       // 最新30件まで処理
       const items = feed.items?.slice(0, 30) || [];
 
-      for (const item of items) {
+      // カテゴリフィルタリング（設定がある場合のみ）
+      let filteredItems = items;
+      if (this.config.categoryFilter && this.config.categoryFilter.length > 0) {
+        const beforeCount = items.length;
+        filteredItems = items.filter((item) =>
+          this.matchesCategoryFilter(item)
+        );
+        logger.info(
+          {
+            source: this.source.name,
+            before: beforeCount,
+            after: filteredItems.length,
+            filter: this.config.categoryFilter,
+          },
+          'カテゴリフィルタ適用'
+        );
+        if (filteredItems.length === 0) {
+          logger.warn(
+            { source: this.source.name, filter: this.config.categoryFilter },
+            'カテゴリフィルタ後の記事が0件'
+          );
+        }
+      }
+
+      for (const item of filteredItems) {
         if (!item.link || !item.title) continue;
 
         try {
@@ -154,6 +192,75 @@ export class GenericForeignRssFetcher extends BaseFetcher {
   }
 
   /**
+   * Atom形式のカテゴリterm値を抽出
+   */
+  private extractAtomCategoryTerms(item: RSSItem): string[] {
+    const atomCategories = item.category;
+    const categoryList = Array.isArray(atomCategories)
+      ? atomCategories
+      : atomCategories
+        ? [atomCategories]
+        : [];
+    const terms: string[] = [];
+    for (const cat of categoryList) {
+      const term = cat.$?.term?.trim();
+      if (term && term.length > 0) {
+        terms.push(term);
+      }
+    }
+    return terms;
+  }
+
+  /**
+   * RSS categories フィールドからカテゴリ文字列を抽出
+   * string[] / object[] ({ _?: string; term?: string }) の両形式に対応
+   */
+  private extractRssCategoryTerms(item: RSSItem): string[] {
+    if (!item.categories || !Array.isArray(item.categories)) return [];
+    return item.categories
+      .map((cat) =>
+        typeof cat === 'string'
+          ? cat
+          : cat && typeof cat === 'object'
+            ? (cat as { _?: string; term?: string })._ ||
+              (cat as { _?: string; term?: string }).term ||
+              ''
+            : ''
+      )
+      .map((term) => term.trim())
+      .filter((term) => term.length > 0);
+  }
+
+  /**
+   * カテゴリフィルタに一致するかチェック
+   * Atomフィードの category 要素（{ $: { term, scheme } }形状）に対応
+   */
+  private matchesCategoryFilter(item: RSSItem): boolean {
+    if (!this.config.categoryFilter) return true;
+
+    const filterTerms = this.config.categoryFilter
+      .map((f) => f.trim().toLowerCase())
+      .filter((f) => f.length > 0);
+    if (filterTerms.length === 0) return true;
+
+    // 1. Atom形式カテゴリ
+    for (const term of this.extractAtomCategoryTerms(item)) {
+      if (filterTerms.includes(term.toLowerCase())) {
+        return true;
+      }
+    }
+
+    // 2. 標準のRSS categories（string[] / object[]形状）
+    for (const term of this.extractRssCategoryTerms(item)) {
+      if (filterTerms.includes(term.toLowerCase())) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * RSS項目からコンテンツを抽出
    */
   private extractContent(item: RSSItem): string {
@@ -200,23 +307,12 @@ export class GenericForeignRssFetcher extends BaseFetcher {
       tags.push(this.config.tagPrefix);
     }
 
+    // Atom形式のcategoryからタグを抽出
+    tags.push(...this.extractAtomCategoryTerms(item));
+
     // カテゴリーからタグを抽出
     if (item.categories) {
-      if (Array.isArray(item.categories)) {
-        tags.push(
-          ...item.categories
-            .map((cat) =>
-              typeof cat === 'string'
-                ? cat
-                : cat && typeof cat === 'object'
-                  ? cat._ || cat.term || ''
-                  : ''
-            )
-            .filter(Boolean)
-        );
-      } else if (typeof item.categories === 'string') {
-        tags.push(item.categories);
-      }
+      tags.push(...this.extractRssCategoryTerms(item));
     }
 
     // dc:subjectからもタグを抽出
@@ -362,6 +458,12 @@ export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
   '@IT': {
     feedUrl: 'https://rss.itmedia.co.jp/rss/2.0/ait.xml',
     tagPrefix: 'atit',
+  },
+  // Business Media
+  'Business Insider': {
+    feedUrl: 'https://feeds.businessinsider.com/custom/all',
+    tagPrefix: 'BusinessInsider',
+    categoryFilter: ['Tech', 'AI'],
   },
 };
 
