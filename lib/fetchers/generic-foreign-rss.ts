@@ -195,7 +195,7 @@ export class GenericForeignRssFetcher extends BaseFetcher {
    * Atom形式のカテゴリterm値を抽出
    */
   private extractAtomCategoryTerms(item: RSSItem): string[] {
-    const atomCategories = (item as Record<string, unknown>).category;
+    const atomCategories = item.category;
     const categoryList = Array.isArray(atomCategories)
       ? atomCategories
       : atomCategories
@@ -203,11 +203,9 @@ export class GenericForeignRssFetcher extends BaseFetcher {
         : [];
     const terms: string[] = [];
     for (const cat of categoryList) {
-      if (cat && typeof cat === 'object' && '$' in cat) {
-        const term = (cat as { $?: { term?: string } }).$?.term?.trim();
-        if (term && term.length > 0) {
-          terms.push(term);
-        }
+      const term = cat.$?.term?.trim();
+      if (term && term.length > 0) {
+        terms.push(term);
       }
     }
     return terms;
@@ -314,11 +312,7 @@ export class GenericForeignRssFetcher extends BaseFetcher {
 
     // カテゴリーからタグを抽出
     if (item.categories) {
-      if (Array.isArray(item.categories)) {
-        tags.push(...this.extractRssCategoryTerms(item));
-      } else if (typeof item.categories === 'string') {
-        tags.push(item.categories);
-      }
+      tags.push(...this.extractRssCategoryTerms(item));
     }
 
     // dc:subjectからもタグを抽出
