@@ -204,8 +204,8 @@ export class GenericForeignRssFetcher extends BaseFetcher {
     const terms: string[] = [];
     for (const cat of categoryList) {
       if (cat && typeof cat === 'object' && '$' in cat) {
-        const term = (cat as { $?: { term?: string } }).$?.term;
-        if (term) {
+        const term = (cat as { $?: { term?: string } }).$?.term?.trim();
+        if (term && term.length > 0) {
           terms.push(term);
         }
       }
@@ -240,7 +240,10 @@ export class GenericForeignRssFetcher extends BaseFetcher {
   private matchesCategoryFilter(item: RSSItem): boolean {
     if (!this.config.categoryFilter) return true;
 
-    const filterTerms = this.config.categoryFilter.map((f) => f.toLowerCase());
+    const filterTerms = this.config.categoryFilter
+      .map((f) => f.trim().toLowerCase())
+      .filter((f) => f.length > 0);
+    if (filterTerms.length === 0) return true;
 
     // 1. Atom形式カテゴリ
     for (const term of this.extractAtomCategoryTerms(item)) {
