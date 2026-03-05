@@ -6,7 +6,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { sourceCache } from '../../lib/cache/source-cache';
+import { sourceCache } from '@/lib/cache/source-cache';
 
 const prisma = new PrismaClient();
 

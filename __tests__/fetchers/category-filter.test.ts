@@ -109,6 +109,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       expect(result.articles[0].title).toBe('Tech Article');
       expect(result.articles[1].title).toBe('AI Article');
       expect(result.errors).toHaveLength(0);
+      expect(mockParseURL).toHaveBeenCalledWith('https://feeds.businessinsider.com/custom/all');
     });
 
     it('複数カテゴリを持つ記事で1つでもマッチすれば通過すること', async () => {
@@ -257,6 +258,8 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
     });
 
     it('RSS形式のcategories（string[]）でもフィルタが動作すること', async () => {
+      // RSS 2.0形式では categories (複数形) フィールドに文字列配列としてカテゴリが格納される
+      // Atom形式の category フィールド（オブジェクト配列）とは異なる形式
       const mockParseURL = jest.fn().mockResolvedValue({
         items: [
           {
@@ -359,6 +362,27 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
         }),
         'カテゴリフィルタ後の記事が0件'
       );
+    });
+  });
+
+  describe('エラーハンドリング', () => {
+    it('parseURLがエラーをスローした場合、エラーが適切に処理されること', async () => {
+      const mockParseURL = jest.fn().mockRejectedValue(new Error('Network error'));
+
+      MockedParser.mockImplementation(() => ({
+        parseURL: mockParseURL,
+      }) as unknown as Parser);
+
+      const fetcher = new GenericForeignRssFetcher(
+        createMockSource(),
+        createMockConfig()
+      );
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles).toHaveLength(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toContain('Network error');
     });
   });
 });

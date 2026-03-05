@@ -63,13 +63,9 @@ export class GenericForeignRssFetcher extends BaseFetcher {
         'User-Agent': 'Mozilla/5.0 (compatible; TechTrend/1.0)',
         Accept: 'application/rss+xml, application/xml, text/xml, */*',
       },
-      ...(config.categoryFilter
-        ? {
-            customFields: {
-              item: [['category', 'category', { keepArray: true }]],
-            },
-          }
-        : {}),
+      customFields: {
+        item: [['category', 'category', { keepArray: true }]],
+      },
     };
     this.parser = new Parser(parserOptions);
     this.config = config;
@@ -196,6 +192,28 @@ export class GenericForeignRssFetcher extends BaseFetcher {
   }
 
   /**
+   * Atom形式のカテゴリterm値を抽出
+   */
+  private extractAtomCategoryTerms(item: RSSItem): string[] {
+    const atomCategories = (item as Record<string, unknown>).category;
+    const categoryList = Array.isArray(atomCategories)
+      ? atomCategories
+      : atomCategories
+        ? [atomCategories]
+        : [];
+    const terms: string[] = [];
+    for (const cat of categoryList) {
+      if (cat && typeof cat === 'object' && '$' in cat) {
+        const term = (cat as { $?: { term?: string } }).$?.term;
+        if (term) {
+          terms.push(term);
+        }
+      }
+    }
+    return terms;
+  }
+
+  /**
    * カテゴリフィルタに一致するかチェック
    * Atomフィードの category 要素（{ $: { term, scheme } }形状）に対応
    */
@@ -204,21 +222,10 @@ export class GenericForeignRssFetcher extends BaseFetcher {
 
     const filterTerms = this.config.categoryFilter.map((f) => f.toLowerCase());
 
-    // 1. customFieldsで取得したAtom category（{ $: { term, scheme } }形状）
-    // keepArray: true で配列を維持するが、フォールバックとして単体オブジェクトも処理
-    const atomCategories = (item as Record<string, unknown>).category;
-    const categoryList = Array.isArray(atomCategories)
-      ? atomCategories
-      : atomCategories
-        ? [atomCategories]
-        : [];
-    for (const cat of categoryList) {
-      if (cat && typeof cat === 'object' && '$' in cat) {
-        const attrs = (cat as { $?: { term?: string; scheme?: string } }).$;
-        const term = attrs?.term?.toLowerCase();
-        if (term && filterTerms.includes(term)) {
-          return true;
-        }
+    // 1. Atom形式カテゴリ
+    for (const term of this.extractAtomCategoryTerms(item)) {
+      if (filterTerms.includes(term.toLowerCase())) {
+        return true;
       }
     }
 
@@ -289,20 +296,7 @@ export class GenericForeignRssFetcher extends BaseFetcher {
     }
 
     // Atom形式のcategoryからタグを抽出
-    const atomCategories = (item as Record<string, unknown>).category;
-    const categoryList = Array.isArray(atomCategories)
-      ? atomCategories
-      : atomCategories
-        ? [atomCategories]
-        : [];
-    for (const cat of categoryList) {
-      if (cat && typeof cat === 'object' && '$' in cat) {
-        const term = (cat as { $?: { term?: string } }).$?.term;
-        if (term) {
-          tags.push(term);
-        }
-      }
-    }
+    tags.push(...this.extractAtomCategoryTerms(item));
 
     // カテゴリーからタグを抽出
     if (item.categories) {
