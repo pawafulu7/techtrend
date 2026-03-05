@@ -1,0 +1,164 @@
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useState } from 'react';
+import { UserRoleDialog } from './user-role-dialog';
+import { UserDisableDialog } from './user-disable-dialog';
+
+interface User {
+  id: string;
+  name: string | null;
+  email: string;
+  role: string;
+  image: string | null;
+  createdAt: string;
+  deletedAt: string | null;
+}
+
+async function fetchUsers(): Promise<User[]> {
+  const res = await fetch('/api/admin/users');
+  if (!res.ok) throw new Error('Failed to fetch users');
+  const data = await res.json();
+  return data.users;
+}
+
+export function UsersTable() {
+  const {
+    data: users,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['admin', 'users'],
+    queryFn: fetchUsers,
+  });
+
+  const [roleDialogUser, setRoleDialogUser] = useState<User | null>(null);
+  const [disableDialogUser, setDisableDialogUser] = useState<User | null>(null);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
+        Failed to load users. Please try again.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>User</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Joined</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users?.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage
+                        src={user.image || ''}
+                        alt={user.name || ''}
+                      />
+                      <AvatarFallback>
+                        {(user.name || user.email).charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">
+                        {user.name || 'No name'}
+                      </div>
+                      <div className="text-muted-foreground text-sm">
+                        {user.email}
+                      </div>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={user.role === 'admin' ? 'default' : 'secondary'}
+                  >
+                    {user.role}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {user.deletedAt ? (
+                    <Badge variant="destructive">Deactivated</Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="border-green-300 text-green-700"
+                    >
+                      Active
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {new Date(user.createdAt).toLocaleDateString('ja-JP')}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRoleDialogUser(user)}
+                      disabled={!!user.deletedAt}
+                    >
+                      Change Role
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDisableDialogUser(user)}
+                      disabled={!!user.deletedAt}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Deactivate
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <UserRoleDialog
+        user={roleDialogUser}
+        onClose={() => setRoleDialogUser(null)}
+      />
+      <UserDisableDialog
+        user={disableDialogUser}
+        onClose={() => setDisableDialogUser(null)}
+      />
+    </>
+  );
+}
