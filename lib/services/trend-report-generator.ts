@@ -832,16 +832,26 @@ ${JSON.stringify(input)}`;
       return result.response.text().trim();
     };
 
-    const rawText1 = await generateOnce(prompt, 0.2);
-    const json1 = extractFirstJsonObject(rawText1);
-    if (json1 && typeof json1 === 'object') {
-      TrendReportGenerator.resolveRefKeysToIds(
-        json1 as Record<string, unknown>,
-        refMap,
-        fallbackId
-      );
-    }
-    const errors1 = validateV2Content(json1);
+    const runAttempt = async (promptText: string, temperature: number) => {
+      const rawText = await generateOnce(promptText, temperature);
+      const json = extractFirstJsonObject(rawText);
+      if (json && typeof json === 'object') {
+        TrendReportGenerator.resolveRefKeysToIds(
+          json as Record<string, unknown>,
+          refMap,
+          fallbackId
+        );
+      }
+      const errors = validateV2Content(json);
+      return { rawText, json, errors };
+    };
+
+    // Attempt 1: 初回生成 (temperature=0.2)
+    const {
+      rawText: rawText1,
+      json: json1,
+      errors: errors1,
+    } = await runAttempt(prompt, 0.2);
     if (errors1.length === 0) {
       return JSON.stringify(json1);
     }
@@ -879,58 +889,37 @@ evidenceArticleIds / articleIds には参照キー（A1〜A10）を使うこと�
 モデル出力:
 ${rawText}`;
 
-    const repairPrompt = buildRepairPrompt(errors1, rawText1);
-
-    const rawText2 = await generateOnce(repairPrompt, 0.0);
-    const json2 = extractFirstJsonObject(rawText2);
-    if (json2 && typeof json2 === 'object') {
-      TrendReportGenerator.resolveRefKeysToIds(
-        json2 as Record<string, unknown>,
-        refMap,
-        fallbackId
-      );
-    }
-    const errors2 = validateV2Content(json2);
+    // Attempt 2: repair (temperature=0.0)
+    const { json: json2, errors: errors2 } = await runAttempt(
+      buildRepairPrompt(errors1, rawText1),
+      0.0
+    );
     if (errors2.length === 0) {
       return JSON.stringify(json2);
     }
 
-    // repair失敗: v2を再生成（temperature=0.0でリトライ）
+    // Attempt 3: repair失敗 → v2再生成 (temperature=0.0)
     logger.warn(
       `Repair failed (${errors2.join(' / ')}), retrying v2 generation with temperature=0.0`
     );
-
-    const rawText3 = await generateOnce(prompt, 0.0);
-    const json3 = extractFirstJsonObject(rawText3);
-    if (json3 && typeof json3 === 'object') {
-      TrendReportGenerator.resolveRefKeysToIds(
-        json3 as Record<string, unknown>,
-        refMap,
-        fallbackId
-      );
-    }
-    const errors3 = validateV2Content(json3);
+    const {
+      rawText: rawText3,
+      json: json3,
+      errors: errors3,
+    } = await runAttempt(prompt, 0.0);
     if (errors3.length === 0) {
       logger.info('Structured AI summary succeeded on retry (attempt 3)');
       return JSON.stringify(json3);
     }
 
-    // リトライ生成もバリデーション失敗: もう一度repair
+    // Attempt 4: リトライ生成も失敗 → 最終repair
     logger.warn(
       `Retry generation failed (${errors3.join(' / ')}), attempting final repair`
     );
-    const repairPrompt2 = buildRepairPrompt(errors3, rawText3);
-
-    const rawText4 = await generateOnce(repairPrompt2, 0.0);
-    const json4 = extractFirstJsonObject(rawText4);
-    if (json4 && typeof json4 === 'object') {
-      TrendReportGenerator.resolveRefKeysToIds(
-        json4 as Record<string, unknown>,
-        refMap,
-        fallbackId
-      );
-    }
-    const errors4 = validateV2Content(json4);
+    const { json: json4, errors: errors4 } = await runAttempt(
+      buildRepairPrompt(errors3, rawText3),
+      0.0
+    );
     if (errors4.length > 0) {
       throw new Error(
         `Structured AI summary validation failed after 4 attempts: ${errors4.join(' / ')}`
