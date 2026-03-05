@@ -21,15 +21,23 @@ const BUSINESS_INSIDER_SOURCE = {
 async function main() {
   console.log('=== Business Insider ソース登録 ===\n');
 
-  const result = await prisma.source.upsert({
-    where: { id: BUSINESS_INSIDER_SOURCE.id },
-    update: {
-      name: BUSINESS_INSIDER_SOURCE.name,
-      url: BUSINESS_INSIDER_SOURCE.url,
-      type: BUSINESS_INSIDER_SOURCE.type,
-      enabled: BUSINESS_INSIDER_SOURCE.enabled,
-    },
-    create: BUSINESS_INSIDER_SOURCE,
+  const { createFetcher } = await import('@/lib/fetchers/index');
+
+  const result = await prisma.$transaction(async (tx) => {
+    const upserted = await tx.source.upsert({
+      where: { id: BUSINESS_INSIDER_SOURCE.id },
+      update: {
+        name: BUSINESS_INSIDER_SOURCE.name,
+        url: BUSINESS_INSIDER_SOURCE.url,
+        type: BUSINESS_INSIDER_SOURCE.type,
+        enabled: BUSINESS_INSIDER_SOURCE.enabled,
+      },
+      create: BUSINESS_INSIDER_SOURCE,
+    });
+
+    // createFetcher失敗時はトランザクション全体をロールバック
+    createFetcher(upserted);
+    return upserted;
   });
 
   // createdAtとupdatedAtの比較で新規/更新を判定
@@ -38,22 +46,10 @@ async function main() {
   } else {
     console.log(`[UPDATED] ${BUSINESS_INSIDER_SOURCE.name}`);
   }
+  console.log(`[OK] createFetcher() name match verified: "${result.name}"`);
 
-  // Post-check: createFetcher()で名前一致を検証
-  const { createFetcher } = await import('@/lib/fetchers/index');
-  try {
-    createFetcher(result);
-    console.log(`[OK] createFetcher() name match verified: "${result.name}"`);
-  } catch (error) {
-    console.error(
-      `[ERROR] createFetcher() name mismatch! DB name="${result.name}" does not match any switch case.`,
-      error instanceof Error ? error.message : String(error)
-    );
-    throw error;
-  }
-
-  await sourceCache.invalidate();
-  console.log('[OK] Source cache invalidation attempted');
+  await sourceCache.invalidateSource(result.id);
+  console.log(`[OK] Source cache invalidated: ${result.id}`);
 
   console.log('\n=== 完了 ===');
 }

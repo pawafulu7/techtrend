@@ -291,6 +291,38 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       expect(result.articles).toHaveLength(1);
       expect(result.articles[0].title).toBe('RSS Tech');
     });
+
+    it('RSS形式のcategories（object[]）でもフィルタが動作すること', async () => {
+      const mockParseURL = jest.fn().mockResolvedValue({
+        items: [
+          {
+            title: 'RSS Object Tech',
+            link: 'https://example.com/rss-object-tech',
+            isoDate: '2026-03-01T00:00:00Z',
+            categories: [{ term: 'Tech' }, { _: 'Innovation' }],
+          },
+          {
+            title: 'RSS Object Sports',
+            link: 'https://example.com/rss-object-sports',
+            isoDate: '2026-03-01T00:00:00Z',
+            categories: [{ term: 'Sports' }],
+          },
+        ],
+      });
+
+      MockedParser.mockImplementation(() => ({
+        parseURL: mockParseURL,
+      }) as unknown as Parser);
+
+      const fetcher = new GenericForeignRssFetcher(
+        createMockSource(),
+        createMockConfig()
+      );
+
+      const result = await fetcher.fetch();
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0].title).toBe('RSS Object Tech');
+    });
   });
 
   describe('categoryFilter未設定時の後方互換', () => {

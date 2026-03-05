@@ -214,6 +214,26 @@ export class GenericForeignRssFetcher extends BaseFetcher {
   }
 
   /**
+   * RSS categories フィールドからカテゴリ文字列を抽出
+   * string[] / object[] ({ _?: string; term?: string }) の両形式に対応
+   */
+  private extractRssCategoryTerms(item: RSSItem): string[] {
+    if (!item.categories || !Array.isArray(item.categories)) return [];
+    return item.categories
+      .map((cat) =>
+        typeof cat === 'string'
+          ? cat
+          : cat && typeof cat === 'object'
+            ? (cat as { _?: string; term?: string })._ ||
+              (cat as { _?: string; term?: string }).term ||
+              ''
+            : ''
+      )
+      .map((term) => term.trim())
+      .filter((term) => term.length > 0);
+  }
+
+  /**
    * カテゴリフィルタに一致するかチェック
    * Atomフィードの category 要素（{ $: { term, scheme } }形状）に対応
    */
@@ -229,19 +249,10 @@ export class GenericForeignRssFetcher extends BaseFetcher {
       }
     }
 
-    // 2. 標準のRSS categories（string[]形状）
-    if (item.categories && Array.isArray(item.categories)) {
-      for (const cat of item.categories) {
-        const catStr =
-          typeof cat === 'string'
-            ? cat
-            : cat && typeof cat === 'object'
-              ? (cat as { _?: string; term?: string })._ ||
-                (cat as { _?: string; term?: string }).term
-              : undefined;
-        if (catStr && filterTerms.includes(catStr.toLowerCase())) {
-          return true;
-        }
+    // 2. 標準のRSS categories（string[] / object[]形状）
+    for (const term of this.extractRssCategoryTerms(item)) {
+      if (filterTerms.includes(term.toLowerCase())) {
+        return true;
       }
     }
 
@@ -301,17 +312,7 @@ export class GenericForeignRssFetcher extends BaseFetcher {
     // カテゴリーからタグを抽出
     if (item.categories) {
       if (Array.isArray(item.categories)) {
-        tags.push(
-          ...item.categories
-            .map((cat) =>
-              typeof cat === 'string'
-                ? cat
-                : cat && typeof cat === 'object'
-                  ? cat._ || cat.term || ''
-                  : ''
-            )
-            .filter(Boolean)
-        );
+        tags.push(...this.extractRssCategoryTerms(item));
       } else if (typeof item.categories === 'string') {
         tags.push(item.categories);
       }
