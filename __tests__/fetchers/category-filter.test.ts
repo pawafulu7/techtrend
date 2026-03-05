@@ -187,6 +187,34 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       expect(result.articles[0].title).toBe('Tech Article');
     });
 
+    it('category が単体オブジェクト（keepArray未適用時のフォールバック）でもフィルタが動作すること', async () => {
+      const mockParseURL = jest.fn().mockResolvedValue({
+        items: [
+          {
+            title: 'Single Category Tech',
+            link: 'https://example.com/single-cat',
+            isoDate: '2026-03-01T00:00:00Z',
+            // keepArray未適用時: 単体オブジェクト（配列ではない）
+            category: createAtomCategory('Tech', 'https://www.businessinsider.com/tech'),
+          },
+        ],
+      });
+
+      Parser.mockImplementation(() => ({
+        parseURL: mockParseURL,
+      }));
+
+      const fetcher = new GenericForeignRssFetcher(
+        createMockSource(),
+        createMockConfig()
+      );
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0].title).toBe('Single Category Tech');
+    });
+
     it('RSS形式のcategories（string[]）でもフィルタが動作すること', async () => {
       const mockParseURL = jest.fn().mockResolvedValue({
         items: [

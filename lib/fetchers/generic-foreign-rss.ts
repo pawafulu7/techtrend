@@ -58,7 +58,11 @@ export class GenericForeignRssFetcher extends BaseFetcher {
         Accept: 'application/rss+xml, application/xml, text/xml, */*',
       },
       ...(config.categoryFilter
-        ? { customFields: { item: ['category'] } }
+        ? {
+            customFields: {
+              item: [['category', 'category', { keepArray: true }]],
+            },
+          }
         : {}),
     };
     this.parser = new Parser(parserOptions);
@@ -199,15 +203,19 @@ export class GenericForeignRssFetcher extends BaseFetcher {
     const filterTerms = this.config.categoryFilter.map((f) => f.toLowerCase());
 
     // 1. customFieldsで取得したAtom category（{ $: { term, scheme } }形状）
+    // keepArray: true で配列を維持するが、フォールバックとして単体オブジェクトも処理
     const atomCategories = (item as Record<string, unknown>).category;
-    if (Array.isArray(atomCategories)) {
-      for (const cat of atomCategories) {
-        if (cat && typeof cat === 'object' && '$' in cat) {
-          const attrs = (cat as { $?: { term?: string; scheme?: string } }).$;
-          const term = attrs?.term?.toLowerCase();
-          if (term && filterTerms.includes(term)) {
-            return true;
-          }
+    const categoryList = Array.isArray(atomCategories)
+      ? atomCategories
+      : atomCategories
+        ? [atomCategories]
+        : [];
+    for (const cat of categoryList) {
+      if (cat && typeof cat === 'object' && '$' in cat) {
+        const attrs = (cat as { $?: { term?: string; scheme?: string } }).$;
+        const term = attrs?.term?.toLowerCase();
+        if (term && filterTerms.includes(term)) {
+          return true;
         }
       }
     }
