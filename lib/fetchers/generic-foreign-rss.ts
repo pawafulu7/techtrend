@@ -11,6 +11,11 @@ import { logger } from '@/lib/logger';
 import { normalizeUrl } from '@/lib/utils/url-normalizer';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
 
+// Atom形式のカテゴリ型
+interface AtomCategory {
+  $?: { term?: string; scheme?: string };
+}
+
 // RSS項目の型定義
 interface RSSItem {
   title?: string;
@@ -22,6 +27,7 @@ interface RSSItem {
   pubDate?: string;
   isoDate?: string;
   categories?: string[] | { _?: string; term?: string }[];
+  category?: AtomCategory[] | AtomCategory;
   enclosure?: { url?: string; type?: string };
   'content:encoded'?: string;
   'dc:subject'?: string | string[];
@@ -193,11 +199,7 @@ export class GenericForeignRssFetcher extends BaseFetcher {
    * カテゴリフィルタに一致するかチェック
    * Atomフィードの category 要素（{ $: { term, scheme } }形状）に対応
    */
-  private matchesCategoryFilter(
-    item: RSSItem & {
-      category?: Array<{ $?: { term?: string; scheme?: string } }> | string;
-    }
-  ): boolean {
+  private matchesCategoryFilter(item: RSSItem): boolean {
     if (!this.config.categoryFilter) return true;
 
     const filterTerms = this.config.categoryFilter.map((f) => f.toLowerCase());
@@ -227,7 +229,8 @@ export class GenericForeignRssFetcher extends BaseFetcher {
           typeof cat === 'string'
             ? cat
             : cat && typeof cat === 'object'
-              ? (cat as { term?: string }).term
+              ? (cat as { _?: string; term?: string })._ ||
+                (cat as { _?: string; term?: string }).term
               : undefined;
         if (catStr && filterTerms.includes(catStr.toLowerCase())) {
           return true;

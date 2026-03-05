@@ -4,6 +4,8 @@
 
 import { GenericForeignRssFetcher, ForeignSourceConfig } from '@/lib/fetchers/generic-foreign-rss';
 import { Source } from '@prisma/client';
+import Parser from 'rss-parser';
+import { logger } from '@/lib/logger';
 
 // rss-parserをモック
 jest.mock('rss-parser', () => {
@@ -11,6 +13,7 @@ jest.mock('rss-parser', () => {
     parseURL: jest.fn(),
   }));
 });
+const MockedParser = jest.mocked(Parser);
 
 // loggerをモック
 jest.mock('@/lib/logger', () => ({
@@ -21,6 +24,7 @@ jest.mock('@/lib/logger', () => ({
     error: jest.fn(),
   },
 }));
+const mockedLogger = jest.mocked(logger);
 
 // duplicate-detectionをモック
 jest.mock('@/lib/utils/duplicate-detection', () => ({
@@ -55,11 +59,8 @@ const createAtomCategory = (term: string, scheme?: string) => ({
 });
 
 describe('GenericForeignRssFetcher categoryFilter', () => {
-  let Parser: jest.Mock;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    Parser = require('rss-parser');
   });
 
   describe('categoryFilter設定時のフィルタリング', () => {
@@ -93,9 +94,9 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
         ],
       });
 
-      Parser.mockImplementation(() => ({
+      MockedParser.mockImplementation(() => ({
         parseURL: mockParseURL,
-      }));
+      }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
         createMockSource(),
@@ -108,6 +109,46 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       expect(result.articles[0].title).toBe('Tech Article');
       expect(result.articles[1].title).toBe('AI Article');
       expect(result.errors).toHaveLength(0);
+    });
+
+    it('複数カテゴリを持つ記事で1つでもマッチすれば通過すること', async () => {
+      const mockParseURL = jest.fn().mockResolvedValue({
+        items: [
+          {
+            title: 'Multi Category Article',
+            link: 'https://example.com/multi-cat',
+            isoDate: '2026-03-01T00:00:00Z',
+            category: [
+              createAtomCategory('Sports'),
+              createAtomCategory('Tech'),
+              createAtomCategory('Finance'),
+            ],
+          },
+          {
+            title: 'No Match Article',
+            link: 'https://example.com/no-match',
+            isoDate: '2026-03-01T00:00:00Z',
+            category: [
+              createAtomCategory('Sports'),
+              createAtomCategory('Finance'),
+            ],
+          },
+        ],
+      });
+
+      MockedParser.mockImplementation(() => ({
+        parseURL: mockParseURL,
+      }) as unknown as Parser);
+
+      const fetcher = new GenericForeignRssFetcher(
+        createMockSource(),
+        createMockConfig()
+      );
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles).toHaveLength(1);
+      expect(result.articles[0].title).toBe('Multi Category Article');
     });
 
     it('case-insensitiveでマッチすること', async () => {
@@ -134,9 +175,9 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
         ],
       });
 
-      Parser.mockImplementation(() => ({
+      MockedParser.mockImplementation(() => ({
         parseURL: mockParseURL,
-      }));
+      }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
         createMockSource(),
@@ -172,9 +213,9 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
         ],
       });
 
-      Parser.mockImplementation(() => ({
+      MockedParser.mockImplementation(() => ({
         parseURL: mockParseURL,
-      }));
+      }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
         createMockSource(),
@@ -200,9 +241,9 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
         ],
       });
 
-      Parser.mockImplementation(() => ({
+      MockedParser.mockImplementation(() => ({
         parseURL: mockParseURL,
-      }));
+      }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
         createMockSource(),
@@ -233,9 +274,9 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
         ],
       });
 
-      Parser.mockImplementation(() => ({
+      MockedParser.mockImplementation(() => ({
         parseURL: mockParseURL,
-      }));
+      }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
         createMockSource(),
@@ -271,9 +312,9 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
         ],
       });
 
-      Parser.mockImplementation(() => ({
+      MockedParser.mockImplementation(() => ({
         parseURL: mockParseURL,
-      }));
+      }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
         createMockSource('Meta Engineering'),
@@ -288,8 +329,6 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
 
   describe('フィルタ後0件時のwarnログ', () => {
     it('フィルタ後0件の場合にwarnログが出力されること', async () => {
-      const { logger } = require('@/lib/logger');
-
       const mockParseURL = jest.fn().mockResolvedValue({
         items: [
           {
@@ -301,9 +340,9 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
         ],
       });
 
-      Parser.mockImplementation(() => ({
+      MockedParser.mockImplementation(() => ({
         parseURL: mockParseURL,
-      }));
+      }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
         createMockSource(),
@@ -313,7 +352,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       const result = await fetcher.fetch();
 
       expect(result.articles).toHaveLength(0);
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(mockedLogger.warn).toHaveBeenCalledWith(
         expect.objectContaining({
           source: 'Business Insider',
           filter: ['Tech', 'AI'],
