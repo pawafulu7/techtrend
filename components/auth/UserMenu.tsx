@@ -22,6 +22,7 @@ import {
   BarChart3,
   Cog,
   MessageSquare,
+  Shield,
 } from 'lucide-react';
 
 export function UserMenu() {
@@ -118,6 +119,12 @@ export function UserMenu() {
             <DropdownMenuLabel className="text-muted-foreground text-xs">
               管理者メニュー
             </DropdownMenuLabel>
+            <DropdownMenuItem asChild>
+              <Link href="/admin" className="cursor-pointer">
+                <Shield className="mr-2 h-4 w-4" />
+                管理ダッシュボード
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/dashboard/performance" className="cursor-pointer">
                 <BarChart3 className="mr-2 h-4 w-4" />
