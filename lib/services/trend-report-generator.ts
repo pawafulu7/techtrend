@@ -847,7 +847,8 @@ ${JSON.stringify(input)}`;
       .map(([ref, id]) => `${ref} -> ${id}`)
       .join(', ');
 
-    const repairPrompt = `次のモデル出力を、必ず指定のJSONスキーマ（trend_ai_summary_v2）に厳密準拠するJSONオブジェクトへ修正してください。
+    const buildRepairPrompt = (errors: string[], rawText: string) =>
+      `次のモデル出力を、必ず指定のJSONスキーマ（trend_ai_summary_v2）に厳密準拠するJSONオブジェクトへ修正してください。
 返答はJSONのみ。追加の文章、コードブロック、コメント禁止。
 指定キー（追加/欠落禁止）: version, core, overview, keyTopics, trendChanges, actions, numbers, notes
 versionは必ず "trend_ai_summary_v2"。
@@ -870,10 +871,12 @@ evidenceArticleIds / articleIds には参照キー（A1〜A10）を使うこと�
   "notes": ["…"]
 }
 
-違反箇所: ${errors1.join(' / ')}
+違反箇所: ${errors.join(' / ')}
 
 モデル出力:
-${rawText1}`;
+${rawText}`;
+
+    const repairPrompt = buildRepairPrompt(errors1, rawText1);
 
     const rawText2 = await generateOnce(repairPrompt, 0.0);
     const json2 = extractFirstJsonObject(rawText2);
@@ -909,12 +912,7 @@ ${rawText1}`;
     }
 
     // リトライ生成もバリデーション失敗: もう一度repair
-    const repairPrompt2 = repairPrompt
-      .replace(
-        `違反箇所: ${errors1.join(' / ')}`,
-        `違反箇所: ${errors3.join(' / ')}`
-      )
-      .replace(rawText1, rawText3);
+    const repairPrompt2 = buildRepairPrompt(errors3, rawText3);
 
     const rawText4 = await generateOnce(repairPrompt2, 0.0);
     const json4 = extractFirstJsonObject(rawText4);
