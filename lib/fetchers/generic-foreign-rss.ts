@@ -288,6 +288,22 @@ export class GenericForeignRssFetcher extends BaseFetcher {
       tags.push(this.config.tagPrefix);
     }
 
+    // Atom形式のcategoryからタグを抽出
+    const atomCategories = (item as Record<string, unknown>).category;
+    const categoryList = Array.isArray(atomCategories)
+      ? atomCategories
+      : atomCategories
+        ? [atomCategories]
+        : [];
+    for (const cat of categoryList) {
+      if (cat && typeof cat === 'object' && '$' in cat) {
+        const term = (cat as { $?: { term?: string } }).$?.term;
+        if (term) {
+          tags.push(term);
+        }
+      }
+    }
+
     // カテゴリーからタグを抽出
     if (item.categories) {
       if (Array.isArray(item.categories)) {
