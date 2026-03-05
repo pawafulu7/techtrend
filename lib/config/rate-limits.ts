@@ -232,6 +232,24 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     telemetryEvent: 'ratelimit.public.health',
   },
 
+  // Admin Dashboard Operations
+  'admin:read': {
+    points: 60,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'Admin dashboard read operations (stats, user list)',
+    telemetryEvent: 'ratelimit.admin.read',
+  },
+  'admin:write': {
+    points: 20,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'Admin dashboard write operations (role change, deactivation)',
+    telemetryEvent: 'ratelimit.admin.write',
+  },
+
   // Admin Operations (Social Post Management)
   'admin:social-post-generate': {
     points: 5,

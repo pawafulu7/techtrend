@@ -1,20 +1,24 @@
 import { auth } from '@/lib/auth/auth';
 import { redirect } from 'next/navigation';
+import { getUserAuthData } from '@/lib/auth/user-auth-cache';
 
 /**
- * 管理者権限チェック
- * 管理者でない場合はリダイレクト
+ * Server-side admin check for page protection
+ *
+ * Uses DB-backed role verification via getUserAuthData() for immediate
+ * role demotion enforcement (not JWT-cached role).
+ * Redirects non-admin users.
  */
 export async function requireAdmin() {
   const session = await auth();
 
-  if (!session?.user) {
-    // 未ログインの場合はログインページへ
+  if (!session?.user?.id) {
     redirect('/auth/login');
   }
 
-  if (session.user.role !== 'admin') {
-    // 権限がない場合はホームへリダイレクト
+  const authData = await getUserAuthData(session.user.id);
+
+  if (!authData || authData.deletedAt || authData.role !== 'admin') {
     redirect('/');
   }
 
@@ -22,17 +26,24 @@ export async function requireAdmin() {
 }
 
 /**
- * 管理者かどうかをチェック（boolean返却）
+ * Check if current user is admin (boolean)
+ * Uses DB-backed verification.
  */
 export async function isAdmin(): Promise<boolean> {
   const session = await auth();
-  return session?.user?.role === 'admin';
+  if (!session?.user?.id) return false;
+
+  const authData = await getUserAuthData(session.user.id);
+  return !!authData && !authData.deletedAt && authData.role === 'admin';
 }
 
 /**
- * ユーザーの権限レベルを取得
+ * Get user role from DB cache
  */
 export async function getUserRole(): Promise<string | null> {
   const session = await auth();
-  return session?.user?.role || null;
+  if (!session?.user?.id) return null;
+
+  const authData = await getUserAuthData(session.user.id);
+  return authData?.role || null;
 }

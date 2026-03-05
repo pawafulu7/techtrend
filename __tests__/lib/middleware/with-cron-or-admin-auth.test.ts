@@ -134,7 +134,7 @@ describe('withCronOrAdminAuth', () => {
   describe('Admin Session Authentication', () => {
     it('should authenticate admin user', async () => {
       mockAuth.mockResolvedValue({
-        user: { id: 'admin-1', email: 'admin@example.com', role: 'ADMIN' },
+        user: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
       } as any);
 
       const handler = withCronOrAdminAuth(mockHandler);
@@ -180,7 +180,7 @@ describe('withCronOrAdminAuth', () => {
 
     it('should pass session in context for admin users', async () => {
       const adminSession = {
-        user: { id: 'admin-1', email: 'admin@example.com', role: 'ADMIN' },
+        user: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
       };
       mockAuth.mockResolvedValue(adminSession as any);
 
@@ -204,13 +204,16 @@ describe('withCronOrAdminAuth', () => {
       mockAuth.mockResolvedValue(null);
 
       const handler = withCronOrAdminAuth(mockHandler);
-      const request = new NextRequest('http://localhost/api/summaries/generate', {
-        method: 'POST',
-        headers: {
-          'x-forwarded-for': '192.168.1.100',
-          'user-agent': 'Suspicious Bot/1.0',
-        },
-      });
+      const request = new NextRequest(
+        'http://localhost/api/summaries/generate',
+        {
+          method: 'POST',
+          headers: {
+            'x-forwarded-for': '192.168.1.100',
+            'user-agent': 'Suspicious Bot/1.0',
+          },
+        }
+      );
 
       await handler(request);
 
@@ -275,7 +278,7 @@ describe('withCronOrAdminAuth', () => {
     it('should handle empty CRON_SECRET gracefully', async () => {
       process.env.CRON_SECRET = '';
       mockAuth.mockResolvedValue({
-        user: { id: 'admin-1', role: 'ADMIN' },
+        user: { id: 'admin-1', role: 'admin' },
       } as any);
 
       const handler = withCronOrAdminAuth(mockHandler);
@@ -295,7 +298,7 @@ describe('withCronOrAdminAuth', () => {
     it('should handle undefined CRON_SECRET and CRON_TOKEN', async () => {
       // Both are already undefined in beforeEach
       mockAuth.mockResolvedValue({
-        user: { id: 'admin-1', role: 'ADMIN' },
+        user: { id: 'admin-1', role: 'admin' },
       } as any);
 
       const handler = withCronOrAdminAuth(mockHandler);
