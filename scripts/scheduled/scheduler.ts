@@ -276,6 +276,8 @@ const RSS_SOURCES = [
   'ITmedia Security',
   'ITmedia AI+',
   '@IT',
+  // Business Media
+  'Business Insider',
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）

@@ -34,6 +34,7 @@ export interface ForeignSourceConfig {
   feedUrl: string;
   // オプション: ソース固有のタグプレフィックス
   tagPrefix?: string;
+  categoryFilter?: string[];
 }
 
 export class GenericForeignRssFetcher extends BaseFetcher {
@@ -47,13 +48,20 @@ export class GenericForeignRssFetcher extends BaseFetcher {
 
   constructor(source: Source, config: ForeignSourceConfig) {
     super(source);
-    this.parser = new Parser({
+    const parserOptions: Parser.ParserOptions<
+      Record<string, unknown>,
+      Record<string, unknown>
+    > = {
       timeout: 30000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; TechTrend/1.0)',
         Accept: 'application/rss+xml, application/xml, text/xml, */*',
       },
-    });
+      ...(config.categoryFilter
+        ? { customFields: { item: ['category'] } }
+        : {}),
+    };
+    this.parser = new Parser(parserOptions);
     this.config = config;
   }
 
@@ -73,7 +81,31 @@ export class GenericForeignRssFetcher extends BaseFetcher {
       // 最新30件まで処理
       const items = feed.items?.slice(0, 30) || [];
 
-      for (const item of items) {
+      // カテゴリフィルタリング（設定がある場合のみ）
+      let filteredItems = items;
+      if (this.config.categoryFilter && this.config.categoryFilter.length > 0) {
+        const beforeCount = items.length;
+        filteredItems = items.filter((item) =>
+          this.matchesCategoryFilter(item)
+        );
+        logger.info(
+          {
+            source: this.source.name,
+            before: beforeCount,
+            after: filteredItems.length,
+            filter: this.config.categoryFilter,
+          },
+          'カテゴリフィルタ適用'
+        );
+        if (filteredItems.length === 0) {
+          logger.warn(
+            { source: this.source.name, filter: this.config.categoryFilter },
+            'カテゴリフィルタ後の記事が0件'
+          );
+        }
+      }
+
+      for (const item of filteredItems) {
         if (!item.link || !item.title) continue;
 
         try {
@@ -147,6 +179,51 @@ export class GenericForeignRssFetcher extends BaseFetcher {
     for (const existingTitle of this.processedTitles) {
       if (isDuplicate(existingTitle, title, 0.85)) {
         return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * カテゴリフィルタに一致するかチェック
+   * Atomフィードの category 要素（{ $: { term, scheme } }形状）に対応
+   */
+  private matchesCategoryFilter(
+    item: RSSItem & {
+      category?: Array<{ $?: { term?: string; scheme?: string } }> | string;
+    }
+  ): boolean {
+    if (!this.config.categoryFilter) return true;
+
+    const filterTerms = this.config.categoryFilter.map((f) => f.toLowerCase());
+
+    // 1. customFieldsで取得したAtom category（{ $: { term, scheme } }形状）
+    const atomCategories = (item as Record<string, unknown>).category;
+    if (Array.isArray(atomCategories)) {
+      for (const cat of atomCategories) {
+        if (cat && typeof cat === 'object' && '$' in cat) {
+          const attrs = (cat as { $?: { term?: string; scheme?: string } }).$;
+          const term = attrs?.term?.toLowerCase();
+          if (term && filterTerms.includes(term)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    // 2. 標準のRSS categories（string[]形状）
+    if (item.categories && Array.isArray(item.categories)) {
+      for (const cat of item.categories) {
+        const catStr =
+          typeof cat === 'string'
+            ? cat
+            : cat && typeof cat === 'object'
+              ? (cat as { term?: string }).term
+              : undefined;
+        if (catStr && filterTerms.includes(catStr.toLowerCase())) {
+          return true;
+        }
       }
     }
 
@@ -362,6 +439,12 @@ export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
   '@IT': {
     feedUrl: 'https://rss.itmedia.co.jp/rss/2.0/ait.xml',
     tagPrefix: 'atit',
+  },
+  // Business Media
+  'Business Insider': {
+    feedUrl: 'https://feeds.businessinsider.com/custom/all',
+    tagPrefix: 'BusinessInsider',
+    categoryFilter: ['Tech', 'AI'],
   },
 };
 

@@ -94,6 +94,8 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       // Phase 2: 言語公式ブログ
       'go_blog', // Go Blog
       'rust_blog', // Rust Blog
+      // Business Media
+      'business_insider', // Business Insider
     ],
   },
   domestic: {
