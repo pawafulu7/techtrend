@@ -72,6 +72,16 @@ export function UsersTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {users?.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={5}
+                  className="text-muted-foreground py-8 text-center"
+                >
+                  ユーザーが見つかりませんでした。
+                </TableCell>
+              </TableRow>
+            )}
             {users?.map((user) => (
               <TableRow key={user.id}>
                 <TableCell>

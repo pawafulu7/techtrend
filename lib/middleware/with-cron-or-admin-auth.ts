@@ -13,7 +13,7 @@ type Handler = (
  *
  * 認証方式:
  * 1. Cron Secret: Authorization: Bearer ${CRON_SECRET}
- * 2. Admin Session: Auth.js session with role=ADMIN
+ * 2. Admin Session: Auth.js session with role=admin
  *
  * セキュリティ機能:
  * - タイミング攻撃対策（定数時間比較）

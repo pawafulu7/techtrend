@@ -347,7 +347,8 @@ describe('PATCH /api/admin/users/[id]', () => {
         action: 'deactivate',
         reason: 'Violated ToS',
       });
-      await PATCH(request, createContext());
+      const response = await PATCH(request, createContext());
+      expect(response.status).toBe(200);
 
       expect(capturedDeletionLog.data).toEqual(
         expect.objectContaining({
