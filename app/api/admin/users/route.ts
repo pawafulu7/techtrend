@@ -4,7 +4,7 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { prisma } from '@/lib/database';
 
 async function handler(_request: NextRequest) {
-  const users = await prisma.user.findMany({
+  const rawUsers = await prisma.user.findMany({
     select: {
       id: true,
       name: true,
@@ -16,6 +16,11 @@ async function handler(_request: NextRequest) {
     },
     orderBy: { createdAt: 'desc' },
   });
+
+  const users = rawUsers.map((user) => ({
+    ...user,
+    role: user.role === 'admin' ? ('admin' as const) : ('user' as const),
+  }));
 
   return NextResponse.json({ users });
 }
