@@ -8,7 +8,7 @@ import { Source } from '@prisma/client';
 import { BaseFetcher } from './base';
 import { FetchResult, CreateArticleInput } from '@/types/fetchers';
 import { logger } from '@/lib/logger';
-import { normalizeUrl } from '@/lib/utils/url-normalizer';
+import { normalizeUrl } from '@/lib/utils/url/url-normalizer';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
 
 // Atom形式のカテゴリ型

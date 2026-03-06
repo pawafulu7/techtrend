@@ -8,7 +8,7 @@ import {
 } from '@/app/components/home/filter-sidebar';
 import { tagCache } from '@/lib/cache/tag-cache';
 import { getSourceCache } from '@/lib/cache/source-cache';
-import { groupSourcesStatic } from '@/lib/utils/source-grouping-static';
+import { groupSourcesStatic } from '@/lib/utils/source/source-grouping-static';
 import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
 import { ReaderClient } from './reader-client';
 

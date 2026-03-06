@@ -4,7 +4,7 @@ import { sourceCache } from '@/lib/cache/source-cache';
 import logger from '@/lib/logger';
 import { parseBoolean } from '@/lib/utils/env-parser';
 import { Prisma } from '@prisma/client';
-import { inferSourceCategory, sortSources, type SourceCategory } from '@/lib/utils/source-helpers';
+import { inferSourceCategory, sortSources, type SourceCategory } from '@/lib/utils/source/source-helpers';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();

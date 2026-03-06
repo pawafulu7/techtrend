@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { GeminiClient } from '../../lib/ai/gemini';
-import { validateSummary, validateDetailedSummary } from '../../lib/utils/summary-validator';
-import { postProcessSummaries } from '../../lib/utils/summary-post-processor';
+import { validateSummary, validateDetailedSummary } from '../../lib/utils/summary/summary-validator';
+import { postProcessSummaries } from '../../lib/utils/summary/summary-post-processor';
 
 const prisma = new PrismaClient();
 

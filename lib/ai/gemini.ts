@@ -1,12 +1,12 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { GEMINI_API } from '../constants';
 import { ExternalAPIError } from '../errors';
-import { cleanSummary as cleanSummaryUtil } from '../utils/summary-cleaner';
-import { validateSummary, cleanupSummary, validateAndNormalizeTags } from '../utils/summary-validator';
+import { cleanSummary as cleanSummaryUtil } from '../utils/summary/summary-cleaner';
+import { validateSummary, cleanupSummary, validateAndNormalizeTags } from '../utils/summary/summary-validator';
 import { calculateSummaryScore, needsRegeneration } from '../utils/quality-scorer';
-// import { detectArticleType } from '../utils/article-type-detector';  // 統一プロンプト移行により無効化
-// import { generatePromptForArticleType } from '../utils/article-type-prompts';  // 統一プロンプト移行により無効化
-import { generateUnifiedPrompt } from '../utils/article-type-prompts';
+// import { detectArticleType } from '../utils/article/article-type-detector';  // 統一プロンプト移行により無効化
+// import { generatePromptForArticleType } from '../utils/article/article-type-prompts';  // 統一プロンプト移行により無効化
+import { generateUnifiedPrompt } from '../utils/article/article-type-prompts';
 import { 
   createSummaryPrompt as createSummaryPromptNew,
   postProcessSummary,

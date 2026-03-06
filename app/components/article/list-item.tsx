@@ -6,7 +6,7 @@ import { Clock, TrendingUp, ExternalLink, Eye } from 'lucide-react';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import { formatDate, formatDateWithTime } from '@/lib/utils/date';
-import { getSourceColor } from '@/lib/utils/source-colors';
+import { getSourceColor } from '@/lib/utils/source/source-colors';
 import type { ArticleListItemProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';

@@ -1,5 +1,5 @@
 import { BaseContentEnricher } from './base';
-import { isUrlFromDomain } from '@/lib/utils/url-validator';
+import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 
 /**
  * Sansan Builders Boxのコンテンツエンリッチャー

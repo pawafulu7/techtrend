@@ -3,7 +3,7 @@ import {
   normalizeTitle,
   calculateSimilarity,
   isArticleDuplicate,
-} from '@/lib/utils/url-normalizer';
+} from '@/lib/utils/url/url-normalizer';
 
 describe('url-normalizer', () => {
   describe('normalizeUrl', () => {

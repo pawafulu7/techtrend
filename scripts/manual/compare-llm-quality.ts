@@ -7,8 +7,8 @@
 import { PrismaClient } from '@prisma/client';
 import { LocalLLMClient } from '../../lib/ai/local-llm';
 import { GeminiClient } from '../../lib/ai/gemini';
-import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
-import { checkSummaryQuality } from '../../lib/utils/summary-quality-checker';
+import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
+import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import fetch from 'node-fetch';
 import * as fs from 'fs';
 import * as path from 'path';

@@ -88,7 +88,7 @@ import { isDuplicate } from '@/lib/utils/duplicate-detection';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { adjustTimezoneForArticle } from '@/lib/utils/date';
 import { CategoryClassifier } from '@/lib/services/category-classifier';
-import { normalizeTag } from '@/lib/utils/tag-normalizer';
+import { normalizeTag } from '@/lib/utils/tag/tag-normalizer';
 import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
 
 // フェッチャーファクトリ（createFetcherですべてのソースを統一的に処理）

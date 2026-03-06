@@ -1,4 +1,4 @@
-import { parseSummary, highlightKeywords, SummarySection } from '@/lib/utils/summary-parser';
+import { parseSummary, highlightKeywords, SummarySection } from '@/lib/utils/summary/summary-parser';
 
 describe('summary-parser', () => {
   describe('parseSummary', () => {

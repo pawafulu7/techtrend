@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { getAppDependencies } from '@/lib/di/bootstrap';
-import { normalizeArticleCategory } from '@/lib/utils/article-category-normalizer';
+import { normalizeArticleCategory } from '@/lib/utils/article/article-category-normalizer';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import { getTagIdsForConnect } from '@/lib/services/tag-service';

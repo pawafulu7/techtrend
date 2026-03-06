@@ -4,7 +4,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
-import { extractTagsFromCategories, mergeWithBaseTags } from '@/lib/utils/tag-extractor';
+import { extractTagsFromCategories, mergeWithBaseTags } from '@/lib/utils/tag/tag-extractor';
 
 interface HuggingFaceRSSItem {
   title?: string;

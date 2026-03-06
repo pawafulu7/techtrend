@@ -8,7 +8,7 @@
 import { PrismaClient } from '@prisma/client';
 import { GeminiClient } from '@/lib/ai/gemini';
 import { calculateSummaryScore, needsRegeneration } from '@/lib/utils/quality-scorer';
-import { optimizeContentForSummary } from '@/lib/utils/content-extractor';
+import { optimizeContentForSummary } from '@/lib/utils/content/content-extractor';
 
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';

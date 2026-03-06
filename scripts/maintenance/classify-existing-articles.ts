@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { detectArticleType } from '@/lib/utils/article-type-detector';
+import { detectArticleType } from '@/lib/utils/article/article-type-detector';
 
 const prisma = new PrismaClient();
 

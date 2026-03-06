@@ -5,7 +5,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { AWSEnricher } from '../../lib/enrichers/aws';
-import { isUrlFromDomain } from '../../lib/utils/url-validator';
+import { isUrlFromDomain } from '../../lib/utils/url/url-validator';
 
 const prisma = new PrismaClient();
 const enricher = new AWSEnricher();

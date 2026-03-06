@@ -1,5 +1,5 @@
 import { BaseContentEnricher, EnrichedContent } from './base';
-import { isUrlFromDomain } from '@/lib/utils/url-validator';
+import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 import { logger, sanitizeError } from '@/lib/logger';
 
 /**

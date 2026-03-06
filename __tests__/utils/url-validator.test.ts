@@ -4,7 +4,7 @@ import {
   isHttpsUrl,
   isValidUrl,
   getUrlWithoutParams
-} from '@/lib/utils/url-validator';
+} from '@/lib/utils/url/url-validator';
 
 describe('URL Validator', () => {
   describe('isUrlFromDomain', () => {

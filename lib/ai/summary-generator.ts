@@ -3,16 +3,16 @@
  * 統一プロンプトによる品質保証と再生成ロジックを含む
  */
 
-// import { detectArticleType, ArticleType } from '../utils/article-type-detector';  // 統一プロンプト移行により無効化
-// import { generatePromptForArticleType } from '../utils/article-type-prompts';  // 統一プロンプト移行により無効化
-import { generateUnifiedPrompt } from '../utils/article-type-prompts';
-import { validateSummary, validateDetailedSummary } from '../utils/summary-validator';
+// import { detectArticleType, ArticleType } from '../utils/article/article-type-detector';  // 統一プロンプト移行により無効化
+// import { generatePromptForArticleType } from '../utils/article/article-type-prompts';  // 統一プロンプト移行により無効化
+import { generateUnifiedPrompt } from '../utils/article/article-type-prompts';
+import { validateSummary, validateDetailedSummary } from '../utils/summary/summary-validator';
 import { 
   checkSummaryQuality, 
   isQualityCheckEnabled,
   getMaxRegenerationAttempts,
   QualityCheckResult
-} from '../utils/summary-quality-checker';
+} from '../utils/summary/summary-quality-checker';
 import { generateSummaryAndTags as geminiGenerateSummary } from './gemini-handler';
 
 /**

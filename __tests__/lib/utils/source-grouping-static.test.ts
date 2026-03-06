@@ -1,4 +1,4 @@
-import { groupSourcesStatic } from '@/lib/utils/source-grouping-static';
+import { groupSourcesStatic } from '@/lib/utils/source/source-grouping-static';
 
 describe('groupSourcesStatic', () => {
   it('should group sources by static SOURCE_CATEGORIES', () => {

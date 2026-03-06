@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { checkContentQuality } from '@/lib/utils/content-quality-checker';
+import { checkContentQuality } from '@/lib/utils/content/content-quality-checker';
 
 const prisma = new PrismaClient();
 

@@ -3,7 +3,7 @@
  * summaryVersion: 5用の標準パーサー実装
  */
 
-import { normalizeTag } from '../utils/tag-normalizer';
+import { normalizeTag } from '../utils/tag/tag-normalizer';
 import { INSTRUCTION_PATTERNS, CATEGORY_LABELS, TITLE_CHAR_THRESHOLD, SENTENCE_MARKERS } from './constants';
 import { logger } from '@/lib/logger';
 

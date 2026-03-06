@@ -3,9 +3,9 @@ import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@prisma/client';
 import Parser from 'rss-parser';
 import { parseRSSDate } from '@/lib/utils/date';
-import { extractContent } from '@/lib/utils/content-extractor';
+import { extractContent } from '@/lib/utils/content/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
-import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
+import { normalizeTagInput } from '@/lib/utils/tag/tag-normalizer';
 import logger from '@/lib/logger';
 
 interface MozillaHacksItem {

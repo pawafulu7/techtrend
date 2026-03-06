@@ -83,8 +83,8 @@
     "lib/fetchers/generic-corporate-rss.ts",
     "lib/recommendation/**",
     "lib/services/**",
-    "lib/utils/article-manual-adder.ts",
-    "lib/utils/content-quality-checker.ts",
+    "lib/utils/article/article-manual-adder.ts",
+    "lib/utils/content/content-quality-checker.ts",
     "lib/utils/tech-terms-manager.ts",
     "prisma/**",
     "types/test-fixtures.ts"

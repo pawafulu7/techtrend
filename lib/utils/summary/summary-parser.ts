@@ -1,4 +1,7 @@
-import { ArticleType, getArticleTypeSections } from './article-type-prompts';
+import {
+  ArticleType,
+  getArticleTypeSections,
+} from '../article/article-type-prompts';
 import { INSTRUCTION_PATTERNS } from '@/lib/ai/constants';
 
 export interface SummarySection {
@@ -18,86 +21,89 @@ function getIconForFlexibleTitle(title: string): string {
   // タイトルに含まれるキーワードに基づいてアイコンを選択
   const iconMap: { [key: string]: string } = {
     // 性能・パフォーマンス関連
-    '性能': '⚡',
-    'パフォーマンス': '⚡',
-    '速度': '🚀',
-    'ベンチマーク': '📊',
-    
+    性能: '⚡',
+    パフォーマンス: '⚡',
+    速度: '🚀',
+    ベンチマーク: '📊',
+
     // 評価・比較関連
-    '評価': '📝',
-    '比較': '⚖️',
-    'メリット': '✅',
-    'デメリット': '⚠️',
-    '利点': '✅',
-    '欠点': '⚠️',
-    '課題': '🎯',
-    '問題': '❓',
-    
+    評価: '📝',
+    比較: '⚖️',
+    メリット: '✅',
+    デメリット: '⚠️',
+    利点: '✅',
+    欠点: '⚠️',
+    課題: '🎯',
+    問題: '❓',
+
     // 価格・コスト関連
-    '価格': '💰',
-    'コスト': '💰',
-    '料金': '💳',
-    '費用': '💸',
-    
+    価格: '💰',
+    コスト: '💰',
+    料金: '💳',
+    費用: '💸',
+
     // 機能・技術関連
-    '機能': '🔧',
-    '新機能': '✨',
-    '実装': '🛠️',
-    'ツール': '🔨',
-    '技術': '💻',
-    '仕様': '📋',
-    'API': '🔌',
-    
+    機能: '🔧',
+    新機能: '✨',
+    実装: '🛠️',
+    ツール: '🔨',
+    技術: '💻',
+    仕様: '📋',
+    API: '🔌',
+
     // 使用・適用関連
-    '使用': '👥',
-    '用途': '🎯',
-    '適用': '📍',
-    'ユースケース': '📚',
-    
+    使用: '👥',
+    用途: '🎯',
+    適用: '📍',
+    ユースケース: '📚',
+
     // モデル・設定関連
-    'モデル': '🤖',
-    '設定': '⚙️',
-    'パラメータ': '🎛️',
-    'オプション': '🔧',
-    
+    モデル: '🤖',
+    設定: '⚙️',
+    パラメータ: '🎛️',
+    オプション: '🔧',
+
     // 発表・リリース関連
-    '発表': '📢',
-    'リリース': '🚀',
-    'アップデート': '🔄',
-    '更新': '🔄',
-    
+    発表: '📢',
+    リリース: '🚀',
+    アップデート: '🔄',
+    更新: '🔄',
+
     // 影響・効果関連
-    '影響': '💫',
-    '効果': '📈',
-    '改善': '📈',
-    '展望': '🔮',
-    '将来': '🔮',
-    
+    影響: '💫',
+    効果: '📈',
+    改善: '📈',
+    展望: '🔮',
+    将来: '🔮',
+
     // セキュリティ関連
-    'セキュリティ': '🔒',
-    '認証': '🔐',
-    '暗号': '🔑',
-    
+    セキュリティ: '🔒',
+    認証: '🔐',
+    暗号: '🔑',
+
     // その他
-    '概要': '📄',
-    '背景': '📋',
-    '結論': '🎯',
-    '注意': '⚠️',
-    '補足': '📝'
+    概要: '📄',
+    背景: '📋',
+    結論: '🎯',
+    注意: '⚠️',
+    補足: '📝',
   };
-  
+
   // タイトルにマッチするキーワードを検索
   for (const [keyword, icon] of Object.entries(iconMap)) {
     if (title.includes(keyword)) {
       return icon;
     }
   }
-  
+
   // デフォルトアイコン
   return '📌';
 }
 
-export function parseSummary(detailedSummary: string, options?: ParseOptions): SummarySection[] {
+export function parseSummary(
+  detailedSummary: string,
+  options?: ParseOptions
+): SummarySection[] {
   if (!detailedSummary) return [];
 
   let sections: SummarySection[] = [];
@@ -109,8 +115,8 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
     const bulletPattern = /\s+(?=・[^:：]+[:：])/g;
     const fallbackLines = detailedSummary
       .split(bulletPattern)
-      .map(part => part.trim())
-      .filter(part => part.length > 0);
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
 
     if (fallbackLines.length > 1) {
       lines = fallbackLines;
@@ -126,21 +132,23 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
       if (!trimmedLine) continue;
 
       // プロンプト行をスキップ
-      const isInstruction = INSTRUCTION_PATTERNS.some(pattern => pattern.test(trimmedLine));
+      const isInstruction = INSTRUCTION_PATTERNS.some((pattern) =>
+        pattern.test(trimmedLine)
+      );
       if (isInstruction) continue;
 
       // メイン項目（・）とサブ項目（-）を区別
       const isMainItem = trimmedLine.startsWith('・');
       const isSubItem = trimmedLine.startsWith('-');
-      
+
       if (isMainItem || isSubItem) {
         // 正規表現で項目名と内容を分離（コロン後が空でも許可）
         const match = trimmedLine.match(/^[・-]\s*(.+?)[:：]\s*(.*)$/);
-        
+
         if (match) {
           const title = match[1].trim();
           const content = match[2].trim();
-          
+
           if (isMainItem && !content) {
             // コロン後が空のメイン項目
             // 前のメイン項目があれば先に追加
@@ -151,7 +159,7 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
             currentMainSection = {
               title: title,
               content: '',
-              icon: getIconForFlexibleTitle(title)
+              icon: getIconForFlexibleTitle(title),
             };
           } else if (isMainItem && content) {
             // 通常のメイン項目（コロン後に内容がある）
@@ -162,7 +170,7 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
             sections.push({
               title: title,
               content: content,
-              icon: getIconForFlexibleTitle(title)
+              icon: getIconForFlexibleTitle(title),
             });
             currentMainSection = null;
           } else if (isSubItem) {
@@ -178,7 +186,7 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
               sections.push({
                 title: title,
                 content: content,
-                icon: getIconForFlexibleTitle(title)
+                icon: getIconForFlexibleTitle(title),
               });
             }
           }
@@ -204,7 +212,7 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
             sections.push({
               title: '詳細',
               content: content,
-              icon: '📝'
+              icon: '📝',
             });
           }
         }
@@ -217,20 +225,25 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
     }
 
     // 空のcontentを持つセクションを除外
-    sections = sections.filter(section => section.content && section.content.trim() !== '');
+    sections = sections.filter(
+      (section) => section.content && section.content.trim() !== ''
+    );
 
     return sections;
   }
-  
+
   // セクションの定義を取得（記事タイプがある場合は動的に、ない場合は旧形式）
   let sectionDefinitions;
-  
-  if ((options?.articleType as unknown as string) === 'unified' || options?.summaryVersion === 5) {
+
+  if (
+    (options?.articleType as unknown as string) === 'unified' ||
+    options?.summaryVersion === 5
+  ) {
     // summaryVersion 5も動的項目名として処理する
     for (const line of lines) {
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
-      
+
       // 「・項目名：内容」形式をパース
       if (trimmedLine.startsWith('・') || trimmedLine.startsWith('-')) {
         // 正規表現で項目名と内容を分離
@@ -238,16 +251,16 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
         if (match) {
           const title = match[1].trim();
           const content = match[2].trim();
-          
+
           sections.push({
             title: title,
             content: content,
-            icon: getIconForFlexibleTitle(title)
+            icon: getIconForFlexibleTitle(title),
           });
         } else {
           // コロンがない場合は全体を内容として扱う
           let content = trimmedLine.replace(/^[・-]\s*/, '').trim();
-          
+
           // 古い形式のプレフィックスを削除
           const oldPrefixes = [
             '記事の主題は、',
@@ -256,16 +269,16 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
             '実装方法の詳細については、',
             '期待される効果は、',
             'この記事の主要なトピックは、',
-            '技術的な背景として、'
+            '技術的な背景として、',
           ];
-          
+
           for (const prefix of oldPrefixes) {
             if (content.startsWith(prefix)) {
               content = content.substring(prefix.length).trim();
               break;
             }
           }
-          
+
           // タイトルを内容から推測
           let title = '詳細';
           if (content.includes('問題') || content.includes('課題')) {
@@ -277,24 +290,24 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
           } else if (content.includes('実装') || content.includes('技術')) {
             title = '技術詳細';
           }
-          
+
           sections.push({
             title: title,
             content: content,
-            icon: getIconForFlexibleTitle(title)
+            icon: getIconForFlexibleTitle(title),
           });
         }
       }
     }
-    
+
     return sections; // 早期リターン
   } else if (options?.articleType && options?.summaryVersion === 2) {
     // 新形式：記事タイプ別のセクション定義を使用
     const typeSections = getArticleTypeSections(options.articleType);
-    sectionDefinitions = typeSections.map(section => ({
+    sectionDefinitions = typeSections.map((section) => ({
       keyword: section.title.replace(/[・、]/g, ''), // タイトルをキーワードとして使用
       title: section.title,
-      icon: section.icon
+      icon: section.icon,
     }));
   } else {
     // 旧形式：固定の問題解決型セクション定義
@@ -302,48 +315,50 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
       {
         keyword: '記事の主題',
         title: '技術的背景',
-        icon: '📋'
+        icon: '📋',
       },
       {
         keyword: '解決しようとしている問題',
         title: '解決する問題',
-        icon: '❓'
+        icon: '❓',
       },
       {
         keyword: '提示されている解決策',
         title: '解決策',
-        icon: '💡'
+        icon: '💡',
       },
       {
         keyword: '実装方法',
         title: '実装方法',
-        icon: '🔧'
+        icon: '🔧',
       },
       {
         keyword: '期待される効果',
         title: '期待される効果',
-        icon: '📈'
+        icon: '📈',
       },
       {
         keyword: '実装時の注意点',
         title: '注意点',
-        icon: '⚠️'
-      }
+        icon: '⚠️',
+      },
     ];
   }
 
   // 各行を処理してセクションに分類
   let currentSection: SummarySection | null = null;
-  
+
   for (const line of lines) {
     const trimmedLine = line.trim();
-    
+
     // 空行はスキップ
     if (!trimmedLine) continue;
-    
+
     // 箇条書きの開始文字を削除
-    const content = trimmedLine.startsWith('・') ? trimmedLine.substring(1).trim() : trimmedLine;
-    
+    const content = trimmedLine.startsWith('・')
+      ? trimmedLine.substring(1).trim()
+      : trimmedLine;
+
     // セクションの判定
     let foundSection = false;
     for (const def of sectionDefinitions) {
@@ -352,29 +367,29 @@ export function parseSummary(detailedSummary: string, options?: ParseOptions): S
         if (currentSection && currentSection.content) {
           sections.push(currentSection);
         }
-        
+
         // 新しいセクションを開始
         currentSection = {
           title: def.title,
           content: content,
-          icon: def.icon
+          icon: def.icon,
         };
         foundSection = true;
         break;
       }
     }
-    
+
     // セクションが見つからなかった場合、現在のセクションに追加
     if (!foundSection && currentSection) {
       currentSection.content += ' ' + content;
     }
   }
-  
+
   // 最後のセクションを保存
   if (currentSection && currentSection.content) {
     sections.push(currentSection);
   }
-  
+
   return sections;
 }
 
@@ -386,9 +401,9 @@ export function highlightKeywords(text: string): string {
   //   { pattern: /効果は(.+?)で/g, className: 'font-semibold text-green-700' },
   //   { pattern: /注意点は(.+?)で/g, className: 'font-semibold text-orange-600' }
   // ];
-  
+
   const result = text;
-  
+
   // Note: 実際のReactコンポーネントでは、dangerouslySetInnerHTMLではなく
   // 適切なReact要素として返す必要があります
   return result;

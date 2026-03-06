@@ -25,7 +25,7 @@ import { parseSourceFilterFromCookie } from '@/lib/cookies/source-filter-cookie'
 import { getFilterPreferencesFromCookies } from '@/lib/cookies/filter-preferences-cookie';
 import { tagCache } from '@/lib/cache/tag-cache';
 import { getSourceCache } from '@/lib/cache/source-cache';
-import { groupSourcesStatic } from '@/lib/utils/source-grouping-static';
+import { groupSourcesStatic } from '@/lib/utils/source/source-grouping-static';
 import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
 
 interface PageProps {

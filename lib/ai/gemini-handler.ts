@@ -1,4 +1,4 @@
-import { postProcessSummaries } from '../utils/summary-post-processor';
+import { postProcessSummaries } from '../utils/summary/summary-post-processor';
 import { getUnifiedSummaryService } from './unified-summary-service';
 
 interface SummaryAndTags {

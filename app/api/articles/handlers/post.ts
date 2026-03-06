@@ -11,7 +11,7 @@ import type { ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
 import { CacheInvalidator } from '@/lib/cache/cache-invalidator';
-import { normalizeTagInput } from '@/lib/utils/tag-normalizer';
+import { normalizeTagInput } from '@/lib/utils/tag/tag-normalizer';
 import logger from '@/lib/logger';
 
 // Initialize cache invalidator

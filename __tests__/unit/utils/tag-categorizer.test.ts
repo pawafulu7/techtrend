@@ -2,7 +2,7 @@ import {
   categorizeTag,
   categorizeMultipleTags,
   getTagStatistics,
-} from '@/lib/utils/tag-categorizer';
+} from '@/lib/utils/tag/tag-categorizer';
 
 describe('tag-categorizer', () => {
   describe('categorizeTag', () => {

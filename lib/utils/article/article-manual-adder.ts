@@ -5,14 +5,14 @@
 import type { PrismaClient } from '@prisma/client';
 import { Source } from '@prisma/client';
 import { prisma as defaultPrisma } from '@/lib/prisma';
-import { UnifiedSummaryService } from '../ai/unified-summary-service';
-import { ContentEnricherFactory } from '../enrichers';
+import { UnifiedSummaryService } from '../../ai/unified-summary-service';
+import { ContentEnricherFactory } from '../../enrichers';
 import {
   detectSourceFromUrl,
   normalizeSourceName,
   isValidUrl,
-} from './source-detector';
-import { WebFetcher } from '../utils/web-fetcher';
+} from '../source/source-detector';
+import { WebFetcher } from '../web-fetcher';
 import * as cheerio from 'cheerio';
 import { logger, sanitizeError } from '@/lib/logger';
 

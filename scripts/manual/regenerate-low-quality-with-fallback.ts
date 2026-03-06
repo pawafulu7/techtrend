@@ -14,8 +14,8 @@ import { PrismaClient, Article, Source } from '@prisma/client';
 import { 
   checkSummaryQuality,
   generateQualityReport
-} from '../../lib/utils/summary-quality-checker';
-import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
+} from '../../lib/utils/summary/summary-quality-checker';
+import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import fetch from 'node-fetch';
 

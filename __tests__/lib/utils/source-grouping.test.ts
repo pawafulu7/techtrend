@@ -1,4 +1,4 @@
-import { groupSourcesByGroupId } from '@/lib/utils/source-grouping';
+import { groupSourcesByGroupId } from '@/lib/utils/source/source-grouping';
 import { prisma } from '@/lib/database';
 
 // Mock Prisma

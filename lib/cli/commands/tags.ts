@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import { logger } from '../utils/logger';
 import { getPrismaClient } from '../utils/database';
 import { ProgressBar } from '../utils/progress';
-import { categorizeTag } from '@/lib/utils/tag-categorizer';
+import { categorizeTag } from '@/lib/utils/tag/tag-categorizer';
 
 export const tagsCommand = new Command('tags')
   .description('タグの管理');

@@ -1,7 +1,7 @@
 'use client';
 
 import { PieChart } from 'lucide-react';
-import { getSourceColor } from '@/lib/utils/source-colors';
+import { getSourceColor } from '@/lib/utils/source/source-colors';
 
 interface SourceChartProps {
   data: { id: string; name: string; count: number; percentage: number }[];

@@ -7,7 +7,7 @@ import type { Prisma, ArticleCategory } from '@prisma/client';
 import logger from '@/lib/logger';
 import { auth } from '@/lib/auth/auth';
 import { createLoaders } from '@/lib/dataloader';
-import { normalizeArticleCategory } from '@/lib/utils/article-category-normalizer';
+import { normalizeArticleCategory } from '@/lib/utils/article/article-category-normalizer';
 import { getCursorManager } from '@/lib/pagination/cursor-manager';
 import {
   getDateRangeFilter,

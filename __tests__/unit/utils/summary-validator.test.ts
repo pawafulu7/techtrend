@@ -5,7 +5,7 @@ import {
   cleanupSummary,
   autoFixSummary,
   validateByArticleType,
-} from '@/lib/utils/summary-validator';
+} from '@/lib/utils/summary/summary-validator';
 
 describe('summary-validator', () => {
   describe('validateSummary', () => {
