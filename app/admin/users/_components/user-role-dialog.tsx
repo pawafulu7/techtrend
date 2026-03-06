@@ -49,8 +49,14 @@ export function UserRoleDialog({ user, onClose }: Props) {
   };
 
   return (
-    <Dialog open={!!user} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent>
+    <Dialog
+      open={!!user}
+      onOpenChange={(open) => !open && !mutation.isPending && handleClose()}
+    >
+      <DialogContent
+        onInteractOutside={(e) => mutation.isPending && e.preventDefault()}
+        onEscapeKeyDown={(e) => mutation.isPending && e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>ロール変更</DialogTitle>
           <DialogDescription>
