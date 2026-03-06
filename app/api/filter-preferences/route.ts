@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  getFilterPreferences, 
-  setFilterPreferences, 
+import {
+  getFilterPreferences,
+  setFilterPreferences,
   deleteFilterPreferences,
-  FilterPreferences 
-} from '@/lib/filter-preferences-cookie';
+  FilterPreferences,
+} from '@/lib/cookies/filter-preferences-cookie';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,25 +22,25 @@ export async function POST(request: NextRequest) {
   try {
     const updates: Partial<FilterPreferences> = await request.json();
     const response = NextResponse.json({ success: true });
-    
+
     // Get current preferences
     const current = getFilterPreferences(request);
-    
+
     // Merge with updates, explicitly handling undefined values to clear fields
     const updated: FilterPreferences = {
       ...current,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
-    
+
     // Explicitly handle each field to allow clearing with undefined
-    Object.keys(updates).forEach(key => {
+    Object.keys(updates).forEach((key) => {
       const k = key as keyof FilterPreferences;
       const value = updates[k];
-      
+
       // undefinedの場合はフィールドを削除
       if (value === undefined) {
         delete updated[k];
-      } 
+      }
       // 配列の場合（空配列も含む）は有効な値として扱う
       else if (Array.isArray(value)) {
         (updated as Record<string, unknown>)[k] = value;
@@ -50,10 +50,10 @@ export async function POST(request: NextRequest) {
         (updated as Record<string, unknown>)[k] = value;
       }
     });
-    
+
     // Set cookie
     setFilterPreferences(response, updated);
-    
+
     return response;
   } catch {
     return NextResponse.json(
