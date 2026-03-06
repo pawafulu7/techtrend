@@ -11,14 +11,13 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { ROLE_LABELS } from '../_types';
 import type { AdminUser } from '../_types';
 
 interface Props {
   user: Pick<AdminUser, 'id' | 'name' | 'email' | 'role'> | null;
   onClose: () => void;
 }
-
-const roleLabel = { admin: '管理者', user: '一般ユーザー' } as const;
 
 export function UserRoleDialog({ user, onClose }: Props) {
   const queryClient = useQueryClient();
@@ -61,8 +60,8 @@ export function UserRoleDialog({ user, onClose }: Props) {
           <DialogTitle>ロール変更</DialogTitle>
           <DialogDescription>
             <strong>{user?.name || user?.email}</strong> のロールを{' '}
-            <strong>{user?.role ? roleLabel[user.role] : ''}</strong> から{' '}
-            <strong>{roleLabel[newRole]}</strong> に変更します。
+            <strong>{user?.role ? ROLE_LABELS[user.role] : ''}</strong> から{' '}
+            <strong>{ROLE_LABELS[newRole]}</strong> に変更します。
           </DialogDescription>
         </DialogHeader>
         {mutation.error && (
@@ -79,13 +78,13 @@ export function UserRoleDialog({ user, onClose }: Props) {
             キャンセル
           </Button>
           <Button
-            onClick={() => mutation.mutate(user!.id)}
+            onClick={() => user && mutation.mutate(user.id)}
             disabled={mutation.isPending}
           >
             {mutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {roleLabel[newRole]}に変更
+            {ROLE_LABELS[newRole]}に変更
           </Button>
         </DialogFooter>
       </DialogContent>

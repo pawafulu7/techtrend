@@ -7,3 +7,8 @@ export interface AdminUser {
   createdAt: string;
   deletedAt: string | null;
 }
+
+export const ROLE_LABELS: Record<AdminUser['role'], string> = {
+  admin: '管理者',
+  user: '一般ユーザー',
+} as const;

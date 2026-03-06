@@ -76,7 +76,7 @@ export function UserDisableDialog({ user, onClose }: Props) {
           </Button>
           <Button
             variant="destructive"
-            onClick={() => mutation.mutate(user!.id)}
+            onClick={() => user && mutation.mutate(user.id)}
             disabled={mutation.isPending}
           >
             {mutation.isPending && (

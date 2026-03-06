@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useState } from 'react';
 import { UserRoleDialog } from './user-role-dialog';
 import { UserDisableDialog } from './user-disable-dialog';
+import { ROLE_LABELS } from '../_types';
 import type { AdminUser } from '../_types';
 
 async function fetchUsers(): Promise<AdminUser[]> {
@@ -112,7 +113,7 @@ export function UsersTable() {
                   <Badge
                     variant={user.role === 'admin' ? 'default' : 'secondary'}
                   >
-                    {user.role}
+                    {ROLE_LABELS[user.role]}
                   </Badge>
                 </TableCell>
                 <TableCell>
