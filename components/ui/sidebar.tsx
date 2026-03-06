@@ -606,7 +606,7 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<'div'> & {
   showIcon?: boolean;
 }) {
-  // Deterministic width between 50 to 90% based on index.
+  // Fixed deterministic width for consistent loading state.
   const width = '70%';
 
   return (

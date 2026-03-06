@@ -32,7 +32,6 @@ describe('withAdminAuth', () => {
   });
 
   beforeEach(() => {
-    jest.restoreAllMocks();
     jest.clearAllMocks();
     mockLoggerWarn = jest.spyOn(logger as any, 'warn');
   });

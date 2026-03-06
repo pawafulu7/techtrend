@@ -22,8 +22,8 @@ export function UserDisableDialog({ user, onClose }: Props) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/admin/users/${user!.id}`, {
+    mutationFn: async (userId: string) => {
+      const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'deactivate' }),
@@ -41,7 +41,15 @@ export function UserDisableDialog({ user, onClose }: Props) {
   });
 
   return (
-    <Dialog open={!!user} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={!!user}
+      onOpenChange={(open) => {
+        if (!open) {
+          mutation.reset();
+          onClose();
+        }
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>ユーザー無効化</DialogTitle>
@@ -65,7 +73,7 @@ export function UserDisableDialog({ user, onClose }: Props) {
           </Button>
           <Button
             variant="destructive"
-            onClick={() => mutation.mutate()}
+            onClick={() => mutation.mutate(user!.id)}
             disabled={mutation.isPending}
           >
             {mutation.isPending && (

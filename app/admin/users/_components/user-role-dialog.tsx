@@ -18,13 +18,15 @@ interface Props {
   onClose: () => void;
 }
 
+const roleLabel = { admin: '管理者', user: '一般ユーザー' } as const;
+
 export function UserRoleDialog({ user, onClose }: Props) {
   const queryClient = useQueryClient();
   const newRole = user?.role === 'admin' ? 'user' : 'admin';
 
   const mutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/admin/users/${user!.id}`, {
+    mutationFn: async (userId: string) => {
+      const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'changeRole', role: newRole }),
@@ -42,14 +44,22 @@ export function UserRoleDialog({ user, onClose }: Props) {
   });
 
   return (
-    <Dialog open={!!user} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={!!user}
+      onOpenChange={(open) => {
+        if (!open) {
+          mutation.reset();
+          onClose();
+        }
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>ロール変更</DialogTitle>
           <DialogDescription>
             <strong>{user?.name || user?.email}</strong> のロールを{' '}
-            <strong>{user?.role}</strong> から <strong>{newRole}</strong>{' '}
-            に変更します。
+            <strong>{user?.role ? roleLabel[user.role] : ''}</strong> から{' '}
+            <strong>{roleLabel[newRole]}</strong> に変更します。
           </DialogDescription>
         </DialogHeader>
         {mutation.error && (
@@ -66,13 +76,13 @@ export function UserRoleDialog({ user, onClose }: Props) {
             キャンセル
           </Button>
           <Button
-            onClick={() => mutation.mutate()}
+            onClick={() => mutation.mutate(user!.id)}
             disabled={mutation.isPending}
           >
             {mutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            {newRole} に変更
+            {roleLabel[newRole]}に変更
           </Button>
         </DialogFooter>
       </DialogContent>

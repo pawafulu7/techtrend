@@ -4,9 +4,8 @@
  * 例: JSTで2026-03-06の場合、2026-03-05T15:00:00.000Z を返す
  * DBクエリで「本日のレコード」を絞り込む際に使用
  */
-export function getJSTToday(): Date {
+export function getJSTToday(now: Date = new Date()): Date {
   const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
-  const now = new Date();
   const jstNow = new Date(now.getTime() + JST_OFFSET_MS);
   return new Date(
     Date.UTC(

@@ -20,7 +20,10 @@ import type { AdminUser } from '../_types';
 
 async function fetchUsers(): Promise<AdminUser[]> {
   const res = await fetch('/api/admin/users');
-  if (!res.ok) throw new Error('Failed to fetch users');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to fetch users');
+  }
   const data = await res.json();
   return data.users;
 }
