@@ -64,13 +64,13 @@ async function handler(request: NextRequest, context: any) {
     if (targetUser.role === 'admin' && body.role === 'user') {
       try {
         const updatedUser = await prisma.$transaction(async (tx) => {
-          const adminCount = await tx.$queryRaw<[{ count: bigint }]>`
-            SELECT COUNT(*) as count FROM "User"
+          const adminRows = await tx.$queryRaw<{ id: string }[]>`
+            SELECT id FROM "User"
             WHERE role = 'admin' AND "deletedAt" IS NULL
             FOR UPDATE
           `;
 
-          if (Number(adminCount[0].count) <= 1) {
+          if (adminRows.length <= 1) {
             throw new Error('LAST_ADMIN');
           }
 
@@ -155,41 +155,63 @@ async function handler(request: NextRequest, context: any) {
       );
     }
 
-    const updatedUser = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.update({
-        where: { id: targetUserId },
-        data: { deletedAt: new Date() },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-          deletedAt: true,
-        },
+    try {
+      const updatedUser = await prisma.$transaction(async (tx) => {
+        if (targetUser.role === 'admin') {
+          const adminRows = await tx.$queryRaw<{ id: string }[]>`
+          SELECT id FROM "User"
+          WHERE role = 'admin' AND "deletedAt" IS NULL
+          FOR UPDATE
+        `;
+
+          if (adminRows.length <= 1) {
+            throw new Error('LAST_ADMIN');
+          }
+        }
+
+        const user = await tx.user.update({
+          where: { id: targetUserId },
+          data: { deletedAt: new Date() },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            createdAt: true,
+            deletedAt: true,
+          },
+        });
+
+        await tx.userDeletionLog.create({
+          data: {
+            userId: targetUserId,
+            email: targetUser.email,
+            reason: body.reason || 'Deactivated by admin',
+            deletedBy: 'admin',
+            adminUserId: currentUserId,
+          },
+        });
+
+        return user;
       });
 
-      await tx.userDeletionLog.create({
-        data: {
-          userId: targetUserId,
-          email: targetUser.email,
-          reason: body.reason || 'Deactivated by admin',
-          deletedBy: 'admin',
-          adminUserId: currentUserId,
-        },
-      });
+      await invalidateUserAuthCache(targetUserId);
 
-      return user;
-    });
+      logger.info(
+        { targetUserId, adminUserId: currentUserId, reason: body.reason },
+        'User deactivated by admin'
+      );
 
-    await invalidateUserAuthCache(targetUserId);
-
-    logger.info(
-      { targetUserId, adminUserId: currentUserId, reason: body.reason },
-      'User deactivated by admin'
-    );
-
-    return NextResponse.json({ user: updatedUser });
+      return NextResponse.json({ user: updatedUser });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'LAST_ADMIN') {
+        return NextResponse.json(
+          { error: 'Cannot deactivate the last admin' },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
   }
 
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 });

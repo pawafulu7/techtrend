@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { resolveSession } from './session-context';
 import { getUserAuthData } from '@/lib/auth/user-auth-cache';
 import logger from '@/lib/logger';
 
@@ -14,6 +14,10 @@ type Handler = (
  * Uses DB-backed role verification via getUserAuthData() instead of JWT role.
  * This ensures immediate role demotion enforcement (max 120s cache TTL vs 30-day JWT).
  *
+ * Integrates with SessionContext: reuses session from upstream middleware
+ * (e.g., withCSRFProtection) via resolveSession(), falling back to auth()
+ * if no context is available.
+ *
  * Returns:
  * - 401 if not authenticated or user deleted
  * - 403 if not admin role
@@ -21,7 +25,7 @@ type Handler = (
  */
 export function withAdminAuth(handler: Handler): Handler {
   return async (request: NextRequest, context?: any) => {
-    const session = await auth();
+    const session = await resolveSession(context);
 
     if (!session?.user?.id) {
       return NextResponse.json(

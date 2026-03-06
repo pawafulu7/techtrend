@@ -14,11 +14,11 @@ export interface NavSection {
 
 export const adminNavigation: NavSection[] = [
   {
-    label: 'Overview',
+    label: '概要',
     items: [{ title: 'Dashboard', href: '/admin', icon: LayoutDashboard }],
   },
   {
-    label: 'Management',
+    label: '管理',
     items: [{ title: 'Users', href: '/admin/users', icon: Users }],
   },
 ];

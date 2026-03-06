@@ -193,7 +193,7 @@ describe('PATCH /api/admin/users/[id]', () => {
       (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue(targetUser);
       (mockPrisma.$transaction as jest.Mock).mockImplementation(async (fn) => {
         const tx = {
-          $queryRaw: jest.fn().mockResolvedValue([{ count: BigInt(2) }]),
+          $queryRaw: jest.fn().mockResolvedValue([{ id: 'admin-1' }, { id: 'admin-2' }]),
           user: {
             update: jest.fn().mockResolvedValue(updatedUser),
           },
@@ -262,7 +262,7 @@ describe('PATCH /api/admin/users/[id]', () => {
       (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue(targetUser);
       (mockPrisma.$transaction as jest.Mock).mockImplementation(async (fn) => {
         const tx = {
-          $queryRaw: jest.fn().mockResolvedValue([{ count: BigInt(1) }]),
+          $queryRaw: jest.fn().mockResolvedValue([{ id: 'admin-1' }]),
           user: { update: jest.fn() },
         };
         return fn(tx);
@@ -376,6 +376,66 @@ describe('PATCH /api/admin/users/[id]', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Cannot deactivate your own account');
+    });
+
+    it('prevents deactivation of last admin', async () => {
+      const targetUser = {
+        id: 'user-2',
+        email: 'admin2@test.com',
+        role: 'admin',
+        deletedAt: null,
+      };
+
+      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue(targetUser);
+      (mockPrisma.$transaction as jest.Mock).mockImplementation(async (fn) => {
+        const tx = {
+          $queryRaw: jest.fn().mockResolvedValue([{ id: 'user-2' }]),
+          user: { update: jest.fn() },
+          userDeletionLog: { create: jest.fn() },
+        };
+        return fn(tx);
+      });
+
+      const request = createRequest({ action: 'deactivate' });
+      const response = await PATCH(request, createContext('user-2'));
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Cannot deactivate the last admin');
+    });
+
+    it('allows deactivation of admin when multiple admins exist', async () => {
+      const targetUser = {
+        id: 'user-2',
+        email: 'admin2@test.com',
+        role: 'admin',
+        deletedAt: null,
+      };
+      const updatedUser = {
+        id: 'user-2',
+        name: 'Admin Two',
+        email: 'admin2@test.com',
+        role: 'admin',
+        createdAt: new Date(),
+        deletedAt: new Date(),
+      };
+
+      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue(targetUser);
+      (mockPrisma.$transaction as jest.Mock).mockImplementation(async (fn) => {
+        const tx = {
+          $queryRaw: jest.fn().mockResolvedValue([{ id: 'admin-1' }, { id: 'user-2' }]),
+          user: { update: jest.fn().mockResolvedValue(updatedUser) },
+          userDeletionLog: { create: jest.fn().mockResolvedValue({}) },
+        };
+        return fn(tx);
+      });
+
+      const request = createRequest({ action: 'deactivate' });
+      const response = await PATCH(request, createContext('user-2'));
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.user.deletedAt).not.toBeNull();
     });
 
     it('rejects already deactivated user', async () => {

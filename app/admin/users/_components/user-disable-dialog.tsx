@@ -49,11 +49,10 @@ export function UserDisableDialog({ user, onClose }: Props) {
     <Dialog open={!!user} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Deactivate User</DialogTitle>
+          <DialogTitle>ユーザー無効化</DialogTitle>
           <DialogDescription>
-            Are you sure you want to deactivate{' '}
-            <strong>{user?.name || user?.email}</strong>? This will prevent the
-            user from logging in.
+            <strong>{user?.name || user?.email}</strong>{' '}
+            を無効化しますか？このユーザーはログインできなくなります。
           </DialogDescription>
         </DialogHeader>
         {mutation.error && (
@@ -67,7 +66,7 @@ export function UserDisableDialog({ user, onClose }: Props) {
             onClick={onClose}
             disabled={mutation.isPending}
           >
-            Cancel
+            キャンセル
           </Button>
           <Button
             variant="destructive"
@@ -77,7 +76,7 @@ export function UserDisableDialog({ user, onClose }: Props) {
             {mutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Deactivate
+            無効化
           </Button>
         </DialogFooter>
       </DialogContent>

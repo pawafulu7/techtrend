@@ -60,7 +60,7 @@ export function UsersTable() {
   if (error) {
     return (
       <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
-        Failed to load users. Please try again.
+        ユーザーの読み込みに失敗しました。再試行してください。
       </div>
     );
   }
@@ -71,11 +71,11 @@ export function UsersTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>ユーザー</TableHead>
+              <TableHead>ロール</TableHead>
+              <TableHead>ステータス</TableHead>
+              <TableHead>登録日</TableHead>
+              <TableHead className="text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -94,7 +94,7 @@ export function UsersTable() {
                     </Avatar>
                     <div>
                       <div className="font-medium">
-                        {user.name || 'No name'}
+                        {user.name || '名前なし'}
                       </div>
                       <div className="text-muted-foreground text-sm">
                         {user.email}
@@ -111,13 +111,13 @@ export function UsersTable() {
                 </TableCell>
                 <TableCell>
                   {user.deletedAt ? (
-                    <Badge variant="destructive">Deactivated</Badge>
+                    <Badge variant="destructive">無効</Badge>
                   ) : (
                     <Badge
                       variant="outline"
                       className="border-green-300 text-green-700"
                     >
-                      Active
+                      有効
                     </Badge>
                   )}
                 </TableCell>
@@ -132,7 +132,7 @@ export function UsersTable() {
                       onClick={() => setRoleDialogUser(user)}
                       disabled={!!user.deletedAt}
                     >
-                      Change Role
+                      ロール変更
                     </Button>
                     <Button
                       variant="outline"
@@ -141,7 +141,7 @@ export function UsersTable() {
                       disabled={!!user.deletedAt}
                       className="text-red-600 hover:text-red-700"
                     >
-                      Deactivate
+                      無効化
                     </Button>
                   </div>
                 </TableCell>

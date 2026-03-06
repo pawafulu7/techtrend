@@ -1,18 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Radio, Users, TrendingUp } from 'lucide-react';
 import { prisma } from '@/lib/database';
+import { getJSTToday } from '@/lib/utils/date';
 
 async function getStats() {
-  const now = new Date();
-  const jstOffset = 9 * 60 * 60 * 1000;
-  const jstNow = new Date(now.getTime() + jstOffset);
-  const jstToday = new Date(
-    Date.UTC(
-      jstNow.getUTCFullYear(),
-      jstNow.getUTCMonth(),
-      jstNow.getUTCDate()
-    ) - jstOffset
-  );
+  const jstToday = getJSTToday();
 
   const [articleCount, sourceCount, userCount, todayArticleCount] =
     await Promise.all([
@@ -28,25 +20,25 @@ async function getStats() {
 const statCards = [
   {
     key: 'articleCount',
-    title: 'Total Articles',
+    title: '記事総数',
     icon: FileText,
     format: (n: number) => n.toLocaleString(),
   },
   {
     key: 'sourceCount',
-    title: 'Active Sources',
+    title: 'アクティブソース',
     icon: Radio,
     format: (n: number) => String(n),
   },
   {
     key: 'userCount',
-    title: 'Registered Users',
+    title: '登録ユーザー',
     icon: Users,
     format: (n: number) => String(n),
   },
   {
     key: 'todayArticleCount',
-    title: "Today's Articles",
+    title: '本日の記事',
     icon: TrendingUp,
     format: (n: number) => String(n),
   },
@@ -60,7 +52,7 @@ export default async function AdminDashboardPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
-          Overview of TechTrend platform statistics.
+          TechTrend プラットフォームの統計概要
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

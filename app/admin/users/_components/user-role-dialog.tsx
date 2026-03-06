@@ -51,10 +51,11 @@ export function UserRoleDialog({ user, onClose }: Props) {
     <Dialog open={!!user} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Change User Role</DialogTitle>
+          <DialogTitle>ロール変更</DialogTitle>
           <DialogDescription>
-            Change the role of <strong>{user?.name || user?.email}</strong> from{' '}
-            <strong>{user?.role}</strong> to <strong>{newRole}</strong>.
+            <strong>{user?.name || user?.email}</strong> のロールを{' '}
+            <strong>{user?.role}</strong> から <strong>{newRole}</strong>{' '}
+            に変更します。
           </DialogDescription>
         </DialogHeader>
         {mutation.error && (
@@ -68,7 +69,7 @@ export function UserRoleDialog({ user, onClose }: Props) {
             onClick={onClose}
             disabled={mutation.isPending}
           >
-            Cancel
+            キャンセル
           </Button>
           <Button
             onClick={() => mutation.mutate()}
@@ -77,7 +78,7 @@ export function UserRoleDialog({ user, onClose }: Props) {
             {mutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Change to {newRole}
+            {newRole} に変更
           </Button>
         </DialogFooter>
       </DialogContent>
