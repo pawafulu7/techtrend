@@ -39,20 +39,17 @@ export function UserRoleDialog({ user, onClose }: Props) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
-      onClose();
+      handleClose();
     },
   });
 
+  const handleClose = () => {
+    mutation.reset();
+    onClose();
+  };
+
   return (
-    <Dialog
-      open={!!user}
-      onOpenChange={(open) => {
-        if (!open) {
-          mutation.reset();
-          onClose();
-        }
-      }}
-    >
+    <Dialog open={!!user} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>ロール変更</DialogTitle>
@@ -70,7 +67,7 @@ export function UserRoleDialog({ user, onClose }: Props) {
         <DialogFooter>
           <Button
             variant="outline"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={mutation.isPending}
           >
             キャンセル

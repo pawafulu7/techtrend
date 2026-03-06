@@ -39,7 +39,7 @@ export function AdminSidebar() {
               {section.items.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={isActive(item.href)}>
-                    <Link href={item.href}>
+                    <Link href={item.href} prefetch={false}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
