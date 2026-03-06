@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { prisma } from '@/lib/database';
+import { normalizeRole } from './_normalize';
 
 async function handler(_request: NextRequest) {
   const rawUsers = await prisma.user.findMany({
@@ -19,7 +20,7 @@ async function handler(_request: NextRequest) {
 
   const users = rawUsers.map((user) => ({
     ...user,
-    role: user.role === 'admin' ? ('admin' as const) : ('user' as const),
+    role: normalizeRole(user.role),
   }));
 
   return NextResponse.json({ users });

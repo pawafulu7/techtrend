@@ -6,6 +6,7 @@ import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { prisma } from '@/lib/database';
 import { invalidateUserAuthCache } from '@/lib/auth/user-auth-cache';
 import logger from '@/lib/logger';
+import { normalizeRole } from '../_normalize';
 
 const changeRoleSchema = z.object({
   action: z.literal('changeRole'),
@@ -113,7 +114,9 @@ async function handler(request: NextRequest, context: any) {
           'User role changed by admin'
         );
 
-        return NextResponse.json({ user: updatedUser });
+        return NextResponse.json({
+          user: { ...updatedUser, role: normalizeRole(updatedUser.role) },
+        });
       } catch (error) {
         if (isLastAdminError(error)) {
           return NextResponse.json(
@@ -143,7 +146,9 @@ async function handler(request: NextRequest, context: any) {
       'User role changed by admin'
     );
 
-    return NextResponse.json({ user: updatedUser });
+    return NextResponse.json({
+      user: { ...updatedUser, role: normalizeRole(updatedUser.role) },
+    });
   }
 
   if (body.action === 'deactivate') {
@@ -193,7 +198,9 @@ async function handler(request: NextRequest, context: any) {
         'User deactivated by admin'
       );
 
-      return NextResponse.json({ user: updatedUser });
+      return NextResponse.json({
+        user: { ...updatedUser, role: normalizeRole(updatedUser.role) },
+      });
     } catch (error) {
       if (isLastAdminError(error)) {
         return NextResponse.json(
