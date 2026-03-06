@@ -22,6 +22,34 @@ const patchSchema = z.discriminatedUnion('action', [
   deactivateSchema,
 ]);
 
+const USER_RESPONSE_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  createdAt: true,
+  deletedAt: true,
+} as const;
+
+const LAST_ADMIN_ERROR = 'LAST_ADMIN';
+
+async function ensureNotLastAdmin(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
+) {
+  const adminRows = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "User"
+    WHERE role = 'admin' AND "deletedAt" IS NULL
+    FOR UPDATE
+  `;
+  if (adminRows.length <= 1) {
+    throw new Error(LAST_ADMIN_ERROR);
+  }
+}
+
+function isLastAdminError(error: unknown): boolean {
+  return error instanceof Error && error.message === LAST_ADMIN_ERROR;
+}
+
 async function handler(request: NextRequest, context: any) {
   const { id: targetUserId } = await context.params;
   const session = context.session;
@@ -64,27 +92,12 @@ async function handler(request: NextRequest, context: any) {
     if (targetUser.role === 'admin' && body.role === 'user') {
       try {
         const updatedUser = await prisma.$transaction(async (tx) => {
-          const adminRows = await tx.$queryRaw<{ id: string }[]>`
-            SELECT id FROM "User"
-            WHERE role = 'admin' AND "deletedAt" IS NULL
-            FOR UPDATE
-          `;
-
-          if (adminRows.length <= 1) {
-            throw new Error('LAST_ADMIN');
-          }
+          await ensureNotLastAdmin(tx);
 
           return tx.user.update({
             where: { id: targetUserId },
             data: { role: body.role },
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true,
-              createdAt: true,
-              deletedAt: true,
-            },
+            select: USER_RESPONSE_SELECT,
           });
         });
 
@@ -102,7 +115,7 @@ async function handler(request: NextRequest, context: any) {
 
         return NextResponse.json({ user: updatedUser });
       } catch (error) {
-        if (error instanceof Error && error.message === 'LAST_ADMIN') {
+        if (isLastAdminError(error)) {
           return NextResponse.json(
             { error: 'Cannot demote the last admin' },
             { status: 400 }
@@ -115,14 +128,7 @@ async function handler(request: NextRequest, context: any) {
     const updatedUser = await prisma.user.update({
       where: { id: targetUserId },
       data: { role: body.role },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        deletedAt: true,
-      },
+      select: USER_RESPONSE_SELECT,
     });
 
     await invalidateUserAuthCache(targetUserId);
@@ -158,28 +164,13 @@ async function handler(request: NextRequest, context: any) {
     try {
       const updatedUser = await prisma.$transaction(async (tx) => {
         if (targetUser.role === 'admin') {
-          const adminRows = await tx.$queryRaw<{ id: string }[]>`
-          SELECT id FROM "User"
-          WHERE role = 'admin' AND "deletedAt" IS NULL
-          FOR UPDATE
-        `;
-
-          if (adminRows.length <= 1) {
-            throw new Error('LAST_ADMIN');
-          }
+          await ensureNotLastAdmin(tx);
         }
 
         const user = await tx.user.update({
           where: { id: targetUserId },
           data: { deletedAt: new Date() },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            createdAt: true,
-            deletedAt: true,
-          },
+          select: USER_RESPONSE_SELECT,
         });
 
         await tx.userDeletionLog.create({
@@ -204,7 +195,7 @@ async function handler(request: NextRequest, context: any) {
 
       return NextResponse.json({ user: updatedUser });
     } catch (error) {
-      if (error instanceof Error && error.message === 'LAST_ADMIN') {
+      if (isLastAdminError(error)) {
         return NextResponse.json(
           { error: 'Cannot deactivate the last admin' },
           { status: 400 }

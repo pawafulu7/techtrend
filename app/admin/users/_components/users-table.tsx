@@ -16,18 +16,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useState } from 'react';
 import { UserRoleDialog } from './user-role-dialog';
 import { UserDisableDialog } from './user-disable-dialog';
+import type { AdminUser } from '../_types';
 
-interface User {
-  id: string;
-  name: string | null;
-  email: string;
-  role: string;
-  image: string | null;
-  createdAt: string;
-  deletedAt: string | null;
-}
-
-async function fetchUsers(): Promise<User[]> {
+async function fetchUsers(): Promise<AdminUser[]> {
   const res = await fetch('/api/admin/users');
   if (!res.ok) throw new Error('Failed to fetch users');
   const data = await res.json();
@@ -44,8 +35,10 @@ export function UsersTable() {
     queryFn: fetchUsers,
   });
 
-  const [roleDialogUser, setRoleDialogUser] = useState<User | null>(null);
-  const [disableDialogUser, setDisableDialogUser] = useState<User | null>(null);
+  const [roleDialogUser, setRoleDialogUser] = useState<AdminUser | null>(null);
+  const [disableDialogUser, setDisableDialogUser] = useState<AdminUser | null>(
+    null
+  );
 
   if (isLoading) {
     return (

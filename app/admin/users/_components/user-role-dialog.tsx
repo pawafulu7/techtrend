@@ -11,16 +11,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-
-interface User {
-  id: string;
-  name: string | null;
-  email: string;
-  role: string;
-}
+import type { AdminUser } from '../_types';
 
 interface Props {
-  user: User | null;
+  user: Pick<AdminUser, 'id' | 'name' | 'email' | 'role'> | null;
   onClose: () => void;
 }
 
