@@ -6,7 +6,7 @@ import { NextRequest } from 'next/server';
 // 認証モック（ADMINセッションを返す）
 jest.mock('@/lib/auth/auth', () => ({
   auth: jest.fn().mockResolvedValue({
-    user: { id: 'admin-1', email: 'admin@example.com', role: 'ADMIN' },
+    user: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
   }),
 }));
 
