@@ -1,3 +1,21 @@
+/**
+ * JST (UTC+9) の本日0:00:00をUTC Dateとして返す
+ *
+ * 例: JSTで2026-03-06の場合、2026-03-05T15:00:00.000Z を返す
+ * DBクエリで「本日のレコード」を絞り込む際に使用
+ */
+export function getJSTToday(now: Date = new Date()): Date {
+  const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const jstNow = new Date(now.getTime() + JST_OFFSET_MS);
+  return new Date(
+    Date.UTC(
+      jstNow.getUTCFullYear(),
+      jstNow.getUTCMonth(),
+      jstNow.getUTCDate()
+    ) - JST_OFFSET_MS
+  );
+}
+
 export function formatDate(date: Date | string): string {
   const d = new Date(date);
   const now = new Date();
@@ -45,25 +63,25 @@ export function formatDateWithTime(date: Date | string): string {
 export function parseRSSDate(dateString: string): Date {
   // 様々な日付形式を試す
   const date = new Date(dateString);
-  
+
   // 無効な日付の場合
   if (isNaN(date.getTime())) {
     // 現在時刻を返す
     return new Date();
   }
-  
+
   // 未来の日付チェック（1年以上先）
   const oneYearFromNow = new Date();
   oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
   if (date > oneYearFromNow) {
     return new Date();
   }
-  
+
   // 異常に大きな値のチェック（例：1753888851754）
   if (date.getTime() > 9999999999999) {
     return new Date();
   }
-  
+
   return date;
 }
 
@@ -71,7 +89,7 @@ export function parseRSSDate(dateString: string): Date {
  * 記事の公開日時を調整する関数
  * タイムゾーンの問題により未来の日付になっている場合、現在時刻に調整する
  * これにより、createdAt < publishedAtという論理的矛盾を防ぐ
- * 
+ *
  * @param publishedAt - 記事の公開日時
  * @param sourceName - ソース名（将来的な拡張用、現在は未使用）
  * @returns 調整後の公開日時
@@ -81,12 +99,12 @@ export function adjustTimezoneForArticle(
   _sourceName?: string
 ): Date {
   const now = new Date();
-  
+
   // 未来日付の調整
   if (publishedAt > now) {
     return now;
   }
-  
+
   // 将来的にソース別の調整を追加する場合のプレースホルダー
   // 例：
   // if (sourceName === 'Google Developers Blog') {
@@ -97,6 +115,6 @@ export function adjustTimezoneForArticle(
   //   // EST/EDT（東部時間）の調整
   //   // 必要に応じて実装
   // }
-  
+
   return publishedAt;
 }

@@ -3,14 +3,17 @@ import { auth } from '@/lib/auth/auth';
 import { timingSafeEqual } from 'crypto';
 import logger from '@/lib/logger';
 
-type Handler = (request: NextRequest, context?: any) => Promise<Response> | Response;
+type Handler = (
+  request: NextRequest,
+  context?: any
+) => Promise<Response> | Response;
 
 /**
  * Cron Secret認証またはAdmin Session認証を要求するミドルウェア
  *
  * 認証方式:
  * 1. Cron Secret: Authorization: Bearer ${CRON_SECRET}
- * 2. Admin Session: Auth.js session with role=ADMIN
+ * 2. Admin Session: Auth.js session with role=admin
  *
  * セキュリティ機能:
  * - タイミング攻撃対策（定数時間比較）
@@ -45,14 +48,15 @@ export function withCronOrAdminAuth(handler: Handler): Handler {
 
     // 2. Admin Session認証
     const session = await auth();
-    if (session?.user?.role === 'ADMIN') {
+    if (session?.user?.role === 'admin') {
       // Admin実行時もレート制限なしで直接実行
       return handler(request, { ...context, session });
     }
 
     // 3. 認証失敗: ログ記録 + 401
     const clientIP =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      'unknown';
 
     logger.warn(
       {

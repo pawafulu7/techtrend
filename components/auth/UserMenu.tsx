@@ -22,6 +22,7 @@ import {
   BarChart3,
   Cog,
   MessageSquare,
+  Shield,
 } from 'lucide-react';
 
 export function UserMenu() {
@@ -119,19 +120,37 @@ export function UserMenu() {
               管理者メニュー
             </DropdownMenuLabel>
             <DropdownMenuItem asChild>
-              <Link href="/dashboard/performance" className="cursor-pointer">
+              <Link href="/admin" prefetch={false} className="cursor-pointer">
+                <Shield className="mr-2 h-4 w-4" />
+                管理ダッシュボード
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                href="/dashboard/performance"
+                prefetch={false}
+                className="cursor-pointer"
+              >
                 <BarChart3 className="mr-2 h-4 w-4" />
                 パフォーマンス
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/dashboard/jobs" className="cursor-pointer">
+              <Link
+                href="/dashboard/jobs"
+                prefetch={false}
+                className="cursor-pointer"
+              >
                 <Cog className="mr-2 h-4 w-4" />
                 ジョブ管理
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/dashboard/social-posts" className="cursor-pointer">
+              <Link
+                href="/dashboard/social-posts"
+                prefetch={false}
+                className="cursor-pointer"
+              >
                 <MessageSquare className="mr-2 h-4 w-4" />
                 SNS投稿管理
               </Link>

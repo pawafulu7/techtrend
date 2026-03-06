@@ -52,6 +52,9 @@ export function Header() {
     { href: '/changelog', label: 'AIエージェント更新情報', icon: FileText },
   ];
 
+  const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/');
+  if (isAdminRoute) return null;
+
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
       <div className="w-full px-6">
