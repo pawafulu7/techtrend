@@ -3,6 +3,8 @@ import { FileText, Radio, Users, TrendingUp } from 'lucide-react';
 import { prisma } from '@/lib/database';
 import { getJSTToday } from '@/lib/utils/date';
 
+export const dynamic = 'force-dynamic';
+
 async function getStats() {
   const jstToday = getJSTToday();
 
