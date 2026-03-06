@@ -1,29 +1,33 @@
-import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Header } from "@/app/components/layout/header";
-import { NoTransitions } from "@/app/components/layout/no-transitions";
-import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
-import { ToastProvider } from "@/providers/toast-provider";
-import { QueryProvider } from "@/app/providers/query-provider";
-import { ThemeProvider } from "@/app/providers/theme-provider";
-import { parseThemeFromCookie } from "@/lib/theme-cookie";
-import { AuthProvider } from "@/app/providers/auth-provider";
-import { CriticalStyles, ThemeInitializer, NoScriptStyles } from "@/app/components/common/critical-styles";
-import "./globals.css";
+import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { Geist, Geist_Mono } from 'next/font/google';
+import { Header } from '@/app/components/layout/header';
+import { NoTransitions } from '@/app/components/layout/no-transitions';
+import { SITE_NAME, SITE_DESCRIPTION } from '@/lib/constants';
+import { ToastProvider } from '@/providers/toast-provider';
+import { QueryProvider } from '@/app/providers/query-provider';
+import { ThemeProvider } from '@/app/providers/theme-provider';
+import { parseThemeFromCookie } from '@/lib/cookies/theme-cookie';
+import { AuthProvider } from '@/app/providers/auth-provider';
+import {
+  CriticalStyles,
+  ThemeInitializer,
+  NoScriptStyles,
+} from '@/app/components/common/critical-styles';
+import './globals.css';
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "optional",
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
+  display: 'optional',
   preload: true,
   adjustFontFallback: true,
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "optional",
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+  display: 'optional',
   preload: true,
   adjustFontFallback: true,
 });
@@ -34,13 +38,20 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
-  keywords: ["tech", "technology", "news", "trends", "programming", "development"],
+  keywords: [
+    'tech',
+    'technology',
+    'news',
+    'trends',
+    'programming',
+    'development',
+  ],
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,
   openGraph: {
-    type: "website",
-    locale: "ja_JP",
-    url: "/",
+    type: 'website',
+    locale: 'ja_JP',
+    url: '/',
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
     siteName: SITE_NAME,
@@ -55,20 +66,20 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const themeCookie = cookieStore.get('theme')?.value;
   const theme = parseThemeFromCookie(themeCookie);
-  
+
   // SSRでは実際のシステムテーマを判定できないため、デフォルトはlight
   // クライアント側でThemeProviderが正しいテーマを適用する
   const initialTheme = theme === 'system' ? 'light' : theme;
 
   return (
-    <html lang="ja" className={`h-full no-transitions ${initialTheme}`}>
+    <html lang="ja" className={`no-transitions h-full ${initialTheme}`}>
       <head>
         <CriticalStyles />
         <ThemeInitializer cookieTheme={theme} />
         <NoScriptStyles />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full flex flex-col overflow-hidden`}
+        className={`${geistSans.variable} ${geistMono.variable} flex h-full flex-col overflow-hidden antialiased`}
       >
         <NoTransitions />
         <AuthProvider>

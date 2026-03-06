@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getThemeFromCookie } from '@/lib/theme-cookie';
+import { getThemeFromCookie } from '@/lib/cookies/theme-cookie';
 import { setSecurityHeaders } from '@/config/security-headers';
 import {
   csrfProtection,

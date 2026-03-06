@@ -20,9 +20,9 @@ import {
   FilterSidebarOverlay,
 } from '@/app/components/home/filter-sidebar';
 import { ToolbarMoreMenu } from '@/app/components/home/toolbar-more-menu';
-import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
-import { parseSourceFilterFromCookie } from '@/lib/source-filter-cookie';
-import { getFilterPreferencesFromCookies } from '@/lib/filter-preferences-cookie';
+import { parseViewModeFromCookie } from '@/lib/cookies/view-mode-cookie';
+import { parseSourceFilterFromCookie } from '@/lib/cookies/source-filter-cookie';
+import { getFilterPreferencesFromCookies } from '@/lib/cookies/filter-preferences-cookie';
 import { tagCache } from '@/lib/cache/tag-cache';
 import { getSourceCache } from '@/lib/cache/source-cache';
 import { groupSourcesStatic } from '@/lib/utils/source-grouping-static';

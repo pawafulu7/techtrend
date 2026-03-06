@@ -6,7 +6,7 @@ import {
   _parseSourceFilterFromCookieClient,
   _SOURCE_FILTER_COOKIE_NAME,
   _SOURCE_FILTER_COOKIE_MAX_AGE,
-} from '@/lib/source-filter-cookie';
+} from '@/lib/cookies/source-filter-cookie';
 
 describe('source-filter-cookie', () => {
   describe('parseSourceFilterFromCookie', () => {

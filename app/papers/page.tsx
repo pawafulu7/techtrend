@@ -5,8 +5,8 @@ import { SearchBox } from '@/app/components/common/search-box';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { SortButtons } from '@/app/components/common/sort-buttons';
 import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
-import { parseViewModeFromCookie } from '@/lib/view-mode-cookie';
-import { getFilterPreferencesFromCookies } from '@/lib/filter-preferences-cookie';
+import { parseViewModeFromCookie } from '@/lib/cookies/view-mode-cookie';
+import { getFilterPreferencesFromCookies } from '@/lib/cookies/filter-preferences-cookie';
 import {
   ARXIV_SOURCE_ID,
   ARXIV_SOURCE_NAME,
