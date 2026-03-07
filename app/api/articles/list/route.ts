@@ -226,6 +226,7 @@ export async function GET(request: NextRequest) {
             !cursorManager.validateFilters(cursorPayload, {
               sources: normalizedSources,
               tags: tags || tag,
+              tagMode,
               search,
               dateRange,
               dateFrom,
@@ -336,6 +337,7 @@ export async function GET(request: NextRequest) {
         normalizedSources,
         tags,
         tag,
+        tagMode,
         search,
         dateRange,
         dateFrom,

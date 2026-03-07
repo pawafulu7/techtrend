@@ -199,7 +199,7 @@ async function parseSSEStream(
           cached = eventData.cached || cached;
           fallback = eventData.fallback || fallback;
           // Restore toolCalls from finish event (for cached responses)
-          if (eventData.toolCalls && Array.isArray(eventData.toolCalls)) {
+          if (Array.isArray(eventData.toolCalls)) {
             toolCalls.splice(0, toolCalls.length, ...eventData.toolCalls);
           }
 
@@ -357,7 +357,6 @@ export function useAgentSearch(
         setError(agentError);
         setCurrentStep('error');
         callbacksRef.current?.onError?.(agentError);
-        clearTimeout(timeoutId);
         return;
       }
 
@@ -378,7 +377,6 @@ export function useAgentSearch(
         setResult(streamResult);
         setCurrentStep('complete');
         callbacksRef.current?.onSuccess?.(streamResult);
-        clearTimeout(timeoutId);
       } else if (ct.includes('application/json')) {
         // Batch mode (backward compatibility)
         const data = await response.json();
@@ -417,13 +415,10 @@ export function useAgentSearch(
         setResult(resultWithArticles);
         setCurrentStep('complete');
         callbacksRef.current?.onSuccess?.(resultWithArticles);
-        clearTimeout(timeoutId);
       } else {
-        clearTimeout(timeoutId);
         throw new Error(`Unexpected content type: ${ct}`);
       }
     } catch (err) {
-      clearTimeout(timeoutId);
       if (activeRequestIdRef.current === requestId) {
         setPartialText('');
       }

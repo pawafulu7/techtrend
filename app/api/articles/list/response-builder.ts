@@ -110,6 +110,7 @@ export interface CursorPaginationParams {
   normalizedSources: string;
   tags: string | null;
   tag: string | null;
+  tagMode: string;
   search: string | null;
   dateRange: string | null;
   dateFrom: string | null;
@@ -139,6 +140,7 @@ export function buildCursorResult(
     {
       sources: params.normalizedSources,
       tags: params.tags || params.tag,
+      tagMode: params.tagMode,
       search: params.search,
       dateRange: params.dateRange,
       dateFrom: params.dateFrom,
@@ -184,6 +186,7 @@ export interface OffsetPaginationParams {
   normalizedSources: string;
   tags: string | null;
   tag: string | null;
+  tagMode: string;
   search: string | null;
   dateRange: string | null;
   dateFrom: string | null;
@@ -219,6 +222,7 @@ export function buildOffsetResult(
     const filterContext = {
       sources: params.normalizedSources,
       tags: params.tags || params.tag,
+      tagMode: params.tagMode,
       search: params.search,
       dateRange: params.dateRange,
       dateFrom: params.dateFrom,
