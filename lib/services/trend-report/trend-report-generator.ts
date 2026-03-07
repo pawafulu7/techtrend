@@ -172,8 +172,10 @@ export class TrendReportGenerator {
           if (existing) {
             return existing.id;
           }
-          // Should not reach here, but re-throw if findUnique returns null
-          throw error;
+          // Should not reach here, but throw if findUnique returns null
+          throw new Error(
+            `Failed to recover from race condition: trend report not found after P2002 for ${periodType} starting ${periodStart.toISOString()}`
+          );
         }
         throw error;
       }

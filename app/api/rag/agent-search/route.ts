@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
+import type { Session } from 'next-auth';
 import {
   checkRateLimit,
   ragAgentSearchRateLimit,
@@ -58,8 +59,9 @@ const tracer = trace.getTracer('rag-agent');
 
 async function postHandler(request: NextRequest) {
   return tracer.startActiveSpan('rag.agent-search', async (span) => {
+    let session: Session | null = null;
     try {
-      const session = await auth();
+      session = await auth();
       // Layer 1: Authentication
       if (!session?.user) {
         span.setAttribute('auth.status', 'unauthorized');

@@ -231,6 +231,8 @@ async function createStreamingResponse(
 
   let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
+  let isCancelled = false;
+
   const stream = new ReadableStream({
     async start(controller) {
       let fullText = '';
@@ -540,7 +542,7 @@ async function createStreamingResponse(
           clearInterval(heartbeatInterval);
           heartbeatInterval = null;
         }
-        if (!isClosed) {
+        if (!isClosed && !isCancelled) {
           // Stream ended without finish chunk (network disconnect, etc.)
           try {
             controller.enqueue(
@@ -565,6 +567,7 @@ async function createStreamingResponse(
       }
     },
     cancel() {
+      isCancelled = true;
       if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
         heartbeatInterval = null;

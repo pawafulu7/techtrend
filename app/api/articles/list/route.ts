@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Include userId in cache key only when readFilter modifies query results
-    const userCtxForKey = needsUserInCacheKey ? (userId ?? 'anonymous') : 'n/a';
+    const userCtxForKey = needsUserInCacheKey ? userId! : 'n/a';
 
     // Include cursor in cache key if using cursor pagination
     const normalizedExcludeSources =
@@ -209,8 +209,7 @@ export async function GET(request: NextRequest) {
     // Check cache first
     // readFilter requires user-specific queries so we skip cache in that case
     // includeUserData no longer skips cache - user data is merged after cache fetch
-    const shouldSkipCache =
-      (readFilter === 'read' || readFilter === 'unread') && userId;
+    const shouldSkipCache = needsUserInCacheKey;
     const cachedResult = shouldSkipCache
       ? null
       : await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);
