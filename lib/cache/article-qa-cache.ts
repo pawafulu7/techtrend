@@ -64,7 +64,6 @@ export class ArticleQACache extends RedisCache {
     }
     if (
       typeof raw !== 'object' ||
-      raw === null ||
       typeof (raw as { text?: unknown }).text !== 'string'
     ) {
       return null;

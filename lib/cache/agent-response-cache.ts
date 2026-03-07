@@ -44,7 +44,6 @@ export class AgentResponseCache extends RedisCache {
     }
     if (
       typeof raw !== 'object' ||
-      raw === null ||
       typeof (raw as { text?: unknown }).text !== 'string'
     ) {
       return null;

@@ -89,7 +89,7 @@ async function runArticleQA(
     return {
       question,
       answer: cachedResponse.text,
-      toolCalls: cachedResponse.toolCalls as any[],
+      toolCalls: cachedResponse.toolCalls,
       usage: { totalTokens: 0 },
       cached: true,
       elapsedMs,
