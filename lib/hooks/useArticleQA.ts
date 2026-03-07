@@ -351,8 +351,6 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-
       if (controller.signal.aborted) {
         return;
       }
@@ -441,7 +439,6 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
         throw new Error(`Unexpected content type: ${ct}`);
       }
     } catch (err) {
-      clearTimeout(timeoutId);
       if (activeRequestIdRef.current === requestId) {
         setPartialText('');
         setContextChunk(null);
@@ -465,6 +462,7 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
         currentOptions.onError?.(networkError);
       }
     } finally {
+      clearTimeout(timeoutId);
       if (didTimeout || !controller.signal.aborted) {
         setIsLoading(false);
       }

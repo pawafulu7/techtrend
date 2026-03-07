@@ -382,7 +382,7 @@ export function useAgentSearch(
       } else if (ct.includes('application/json')) {
         // Batch mode (backward compatibility)
         const data = await response.json();
-        const safeToolCalls = Array.isArray(data.toolCalls)
+        const safeToolCalls = Array.isArray(data?.toolCalls)
           ? data.toolCalls
           : [];
         const articles = extractArticlesFromToolCalls(safeToolCalls);
@@ -392,8 +392,26 @@ export function useAgentSearch(
           console.log('[useAgentSearch] toolCalls:', safeToolCalls);
         }
 
+        const usage =
+          data?.usage && typeof data.usage.totalTokens === 'number'
+            ? {
+                totalTokens: data.usage.totalTokens,
+                ...(typeof data.usage.promptTokens === 'number'
+                  ? { promptTokens: data.usage.promptTokens }
+                  : {}),
+                ...(typeof data.usage.completionTokens === 'number'
+                  ? { completionTokens: data.usage.completionTokens }
+                  : {}),
+              }
+            : { totalTokens: 0 };
+
         const resultWithArticles: AgentSearchResult = {
-          ...data,
+          query: typeof data?.query === 'string' ? data.query : query,
+          response: typeof data?.response === 'string' ? data.response : '',
+          toolCalls: safeToolCalls,
+          usage,
+          cached: Boolean(data?.cached),
+          fallback: Boolean(data?.fallback),
           articles,
         };
         setResult(resultWithArticles);
