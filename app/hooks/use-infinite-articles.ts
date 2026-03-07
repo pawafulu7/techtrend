@@ -92,7 +92,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
   // the debounced function creation, not the ref access itself.
   const handleFilterChange = useMemo(
     () =>
-      // Ref accessed in debounce callback, not during render
+      // eslint-disable-next-line react-hooks/refs -- Ref accessed in debounce callback, not during render
       debounce((newFilterKey: string) => {
         if (
           prevFilterKeyRef.current &&
@@ -354,22 +354,16 @@ export function useInfiniteArticles(filters: ArticleFilters) {
 
       if (!response.ok) {
         if (response.status === 401) {
+          let message = 'ログインが必要です。再度ログインしてください。';
           try {
             const errorData = await response.json();
-            throw new Error(
-              errorData?.error?.message ||
-                'ログインが必要です。再度ログインしてください。'
-            );
-          } catch (e) {
-            if (
-              e instanceof Error &&
-              e.message !==
-                `Failed to fetch articles: ${response.status} ${response.statusText}`
-            ) {
-              throw e;
+            if (errorData?.error?.message) {
+              message = errorData.error.message;
             }
-            throw new Error('ログインが必要です。再度ログインしてください。');
+          } catch {
+            // response.json() failed - keep default message
           }
+          throw new Error(message);
         }
         throw new Error(
           `Failed to fetch articles: ${response.status} ${response.statusText}`

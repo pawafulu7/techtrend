@@ -579,7 +579,10 @@ async function createStreamingResponse(
         heartbeatInterval = null;
       }
       streamSpan.setAttribute('streaming.cancelled', true);
-      streamSpan.end();
+      if (!streamSpanEnded) {
+        streamSpan.end();
+        streamSpanEnded = true;
+      }
     },
   });
 
