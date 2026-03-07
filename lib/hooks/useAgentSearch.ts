@@ -300,6 +300,8 @@ export function useAgentSearch(
       controller.abort();
     }, timeout);
 
+    const isStaleRequest = () => activeRequestIdRef.current !== requestId;
+
     try {
       const response = await fetch('/api/rag/agent-search', {
         method: 'POST',
@@ -354,6 +356,9 @@ export function useAgentSearch(
           retryAfter,
         };
 
+        if (isStaleRequest()) {
+          return;
+        }
         setError(agentError);
         setCurrentStep('error');
         callbacksRef.current?.onError?.(agentError);
@@ -374,6 +379,9 @@ export function useAgentSearch(
           setCurrentStep
         );
 
+        if (isStaleRequest()) {
+          return;
+        }
         setResult(streamResult);
         setCurrentStep('complete');
         callbacksRef.current?.onSuccess?.(streamResult);
@@ -412,6 +420,9 @@ export function useAgentSearch(
           fallback: Boolean(data?.fallback),
           articles,
         };
+        if (isStaleRequest()) {
+          return;
+        }
         setResult(resultWithArticles);
         setCurrentStep('complete');
         callbacksRef.current?.onSuccess?.(resultWithArticles);
@@ -419,9 +430,10 @@ export function useAgentSearch(
         throw new Error(`Unexpected content type: ${ct}`);
       }
     } catch (err) {
-      if (activeRequestIdRef.current === requestId) {
-        setPartialText('');
+      if (isStaleRequest()) {
+        return;
       }
+      setPartialText('');
 
       if (err instanceof Error && err.name === 'AbortError') {
         if (didTimeout) {

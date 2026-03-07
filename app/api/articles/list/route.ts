@@ -108,9 +108,68 @@ export async function GET(request: NextRequest) {
     const normalizedExcludeSources =
       normalizeExcludeSourcesForCacheKey(excludeSources);
 
+    // Validate cursor BEFORE generating cache key so useCursor reflects validated state
+    let cursorPayload: ReturnType<typeof cursorManager.decodeCursor> | null =
+      null;
+    let isBackwardCursor = false;
+    let cursorFilter: Prisma.ArticleWhereInput | null = null;
+    if (useCursor && effectiveCursor) {
+      cursorPayload = cursorManager.decodeCursor(effectiveCursor);
+      if (cursorPayload) {
+        if (
+          cursorManager.validateSortCondition(
+            cursorPayload,
+            finalSortBy,
+            sortOrder
+          )
+        ) {
+          const direction = before ? 'backward' : 'forward';
+          const cursorWhere = cursorManager.buildWhereClause(
+            cursorPayload,
+            direction
+          );
+          cursorFilter =
+            Object.keys(cursorWhere).length > 0 ? cursorWhere : null;
+          isBackwardCursor = Boolean(before);
+        } else {
+          logger.warn(
+            'cursor-pagination.sort-mismatch: Cursor invalidated due to sort change'
+          );
+          useCursor = false;
+        }
+        if (
+          cursorFilter !== null &&
+          !cursorManager.validateFilters(cursorPayload, {
+            sources: normalizedSources,
+            tags: tags || tag,
+            tagMode,
+            search,
+            dateRange,
+            dateFrom,
+            dateTo,
+            readFilter,
+            category,
+            excludeSources: normalizedExcludeSources,
+            excludeUnprocessed: excludeUnprocessed ? 'true' : 'false',
+            excludeLowQuality: excludeLowQuality ? 'true' : 'false',
+          })
+        ) {
+          logger.warn(
+            'cursor-pagination.filter-mismatch: Cursor invalidated due to filter change'
+          );
+          useCursor = false;
+          cursorPayload = null;
+          cursorFilter = null;
+        }
+      } else {
+        logger.warn('cursor-pagination.invalid-cursor: Falling back to offset');
+        useCursor = false;
+      }
+    }
+
     const cacheKey = cache.generateCacheKey('articles:lightweight', {
       params: {
-        cursor: effectiveCursor || 'none',
+        cursor: useCursor ? effectiveCursor || 'none' : 'none',
         page: useCursor ? 'cursor' : page.toString(),
         limit: limit.toString(),
         sortBy: finalSortBy,
@@ -193,65 +252,6 @@ export async function GET(request: NextRequest) {
 
       // Apply cursor-based pagination if cursor provided
       let hasPreviousPage = false;
-      let cursorPayload: ReturnType<typeof cursorManager.decodeCursor> | null =
-        null;
-      let isBackwardCursor = false;
-      let cursorFilter: Prisma.ArticleWhereInput | null = null;
-      if (useCursor && effectiveCursor) {
-        cursorPayload = cursorManager.decodeCursor(effectiveCursor);
-        if (cursorPayload) {
-          if (
-            cursorManager.validateSortCondition(
-              cursorPayload,
-              finalSortBy,
-              sortOrder
-            )
-          ) {
-            const direction = before ? 'backward' : 'forward';
-            const cursorWhere = cursorManager.buildWhereClause(
-              cursorPayload,
-              direction
-            );
-            cursorFilter =
-              Object.keys(cursorWhere).length > 0 ? cursorWhere : null;
-            isBackwardCursor = Boolean(before);
-          } else {
-            logger.warn(
-              'cursor-pagination.sort-mismatch: Cursor invalidated due to sort change'
-            );
-            useCursor = false;
-          }
-          if (
-            cursorFilter !== null &&
-            !cursorManager.validateFilters(cursorPayload, {
-              sources: normalizedSources,
-              tags: tags || tag,
-              tagMode,
-              search,
-              dateRange,
-              dateFrom,
-              dateTo,
-              readFilter,
-              category,
-              excludeSources: normalizedExcludeSources,
-              excludeUnprocessed: excludeUnprocessed ? 'true' : 'false',
-              excludeLowQuality: excludeLowQuality ? 'true' : 'false',
-            })
-          ) {
-            logger.warn(
-              'cursor-pagination.filter-mismatch: Cursor invalidated due to filter change'
-            );
-            useCursor = false;
-            cursorPayload = null;
-            cursorFilter = null;
-          }
-        } else {
-          logger.warn(
-            'cursor-pagination.invalid-cursor: Falling back to offset'
-          );
-          useCursor = false;
-        }
-      }
 
       // Get count and articles in parallel (Quick Win 2+3: 50-100ms improvement)
       const countPromise = fetchTotalCount({

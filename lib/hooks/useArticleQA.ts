@@ -332,6 +332,8 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
       controller.abort();
     }, timeout);
 
+    const isStaleRequest = () => activeRequestIdRef.current !== requestId;
+
     try {
       const payload: Record<string, unknown> = {
         query,
@@ -395,6 +397,9 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
           retryAfter,
         };
 
+        if (isStaleRequest()) {
+          return;
+        }
         setError(agentError);
         currentOptions.onError?.(agentError);
         return;
@@ -412,6 +417,9 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
           () => activeRequestIdRef.current
         );
 
+        if (isStaleRequest()) {
+          return;
+        }
         setResult(streamResult);
         currentOptions.onSuccess?.(streamResult);
       } else if (ct.includes('application/json')) {
@@ -433,16 +441,20 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
             normalizeQAContext(data?.context ?? data?.qaContext) ?? undefined,
         };
 
+        if (isStaleRequest()) {
+          return;
+        }
         setResult(resultWithContext);
         currentOptions.onSuccess?.(resultWithContext);
       } else {
         throw new Error(`Unexpected content type: ${ct}`);
       }
     } catch (err) {
-      if (activeRequestIdRef.current === requestId) {
-        setPartialText('');
-        setContextChunk(null);
+      if (isStaleRequest()) {
+        return;
       }
+      setPartialText('');
+      setContextChunk(null);
 
       if (err instanceof Error && err.name === 'AbortError') {
         if (didTimeout) {
