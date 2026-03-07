@@ -182,7 +182,9 @@ async function parseSSEStream(
             console.log('[SSE] Tool started:', eventData.toolName);
           }
         } else if (eventData.type === 'tool-complete') {
-          const toolCall = toolCalls.find((tc) => tc.id === eventData.toolCallId);
+          const toolCall = toolCalls.find(
+            (tc) => tc.id === eventData.toolCallId
+          );
           if (toolCall) {
             toolCall.output = eventData.result;
           }
@@ -191,7 +193,9 @@ async function parseSSEStream(
             console.log('[SSE] Tool completed:', eventData.toolCallId);
           }
         } else if (eventData.type === 'qa-context') {
-          handleContextPayload(eventData.context ?? eventData.payload ?? eventData.data);
+          handleContextPayload(
+            eventData.context ?? eventData.payload ?? eventData.data
+          );
         } else if (eventData.type === 'fallback') {
           if (isStaleChunk()) {
             continue;
@@ -201,11 +205,23 @@ async function parseSSEStream(
           setPartialText(accumulatedText);
 
           if (process.env.NEXT_PUBLIC_DEBUG) {
-            console.log('[SSE] Fallback mode, resultCount:', eventData.resultCount);
+            console.log(
+              '[SSE] Fallback mode, resultCount:',
+              eventData.resultCount
+            );
           }
         } else if (eventData.type === 'finish') {
-          if (eventData.usage && typeof eventData.usage.totalTokens === 'number') {
+          if (
+            eventData.usage &&
+            typeof eventData.usage.totalTokens === 'number'
+          ) {
             usage = { totalTokens: eventData.usage.totalTokens };
+          }
+          if (
+            Array.isArray(eventData.toolCalls) &&
+            eventData.toolCalls.length > 0
+          ) {
+            toolCalls.splice(0, toolCalls.length, ...eventData.toolCalls);
           }
           cached = eventData.cached ?? cached;
           fallback = eventData.fallback ?? fallback;
@@ -418,7 +434,8 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
           usage,
           cached: Boolean(data?.cached),
           fallback: Boolean(data?.fallback),
-          context: normalizeQAContext(data?.context ?? data?.qaContext) ?? undefined,
+          context:
+            normalizeQAContext(data?.context ?? data?.qaContext) ?? undefined,
         };
 
         setResult(resultWithContext);

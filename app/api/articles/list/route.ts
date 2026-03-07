@@ -219,6 +219,7 @@ export async function GET(request: NextRequest) {
             logger.warn(
               'cursor-pagination.sort-mismatch: Cursor invalidated due to sort change'
             );
+            useCursor = false;
           }
           if (
             cursorFilter !== null &&
@@ -247,6 +248,7 @@ export async function GET(request: NextRequest) {
           logger.warn(
             'cursor-pagination.invalid-cursor: Falling back to offset'
           );
+          useCursor = false;
         }
       }
 
