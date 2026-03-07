@@ -1,6 +1,6 @@
 import { TrendPeriodType } from '@prisma/client';
 
-import type { TopArticleInfo, CategoryInfo, TagInfo } from './types';
+import type { TopArticleInfo } from './types';
 
 /**
  * Period type to Japanese label mapping.

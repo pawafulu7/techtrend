@@ -10,11 +10,7 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { logger, sanitizeError } from '@/lib/logger';
 import { SUMMARY_VERSION } from '@/types/article';
 import type { ArticleWithSource } from '@/types/models';
-import type {
-  SummaryGenerationOptions,
-  SummaryGenerationResult,
-  SummaryAndTags,
-} from './types';
+import type { SummaryGenerationOptions, SummaryAndTags } from './types';
 
 /**
  * Concurrency limit for parallel summary generation.

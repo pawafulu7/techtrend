@@ -5,7 +5,6 @@
  */
 
 import { PrismaClient, Prisma } from '@prisma/client';
-import type { ScoreParameters } from '../types';
 import { DEFAULT_SCORE_PARAMETERS } from '../types';
 
 /** Legacy default for embedding candidates (kept for API compatibility; not used in threshold mode) */

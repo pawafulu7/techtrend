@@ -8,7 +8,6 @@ import type {
   QualityCheckResult,
   QualityIssue,
   ContentAnalysis,
-  SpeculativeExpressionResult,
 } from './quality-types';
 
 // Re-export types for backward compatibility
