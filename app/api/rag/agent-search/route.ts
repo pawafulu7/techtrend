@@ -15,6 +15,7 @@ import {
   validateUser,
   createUserDeletedResponse,
 } from '@/lib/middleware/with-user-validation';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 
 import {
   agentTypeSchema,
@@ -55,11 +56,10 @@ export const runtime = 'nodejs'; // Required for Prisma
 
 const tracer = trace.getTracer('rag-agent');
 
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   return tracer.startActiveSpan('rag.agent-search', async (span) => {
-    const session = await auth();
-
     try {
+      const session = await auth();
       // Layer 1: Authentication
       if (!session?.user) {
         span.setAttribute('auth.status', 'unauthorized');
@@ -332,3 +332,5 @@ export async function POST(request: NextRequest) {
     }
   });
 }
+
+export const POST = withCSRFProtection(postHandler);

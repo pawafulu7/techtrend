@@ -101,6 +101,20 @@ export async function GET(request: NextRequest) {
     const session = needsAuth ? await auth() : null;
     const userId = session?.user?.id;
 
+    // readFilter=read/unread requires authentication
+    if (needsUserInCacheKey && !userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required for read/unread filter',
+          },
+        },
+        { status: 401 }
+      );
+    }
+
     // Include userId in cache key only when readFilter modifies query results
     const userCtxForKey = needsUserInCacheKey ? (userId ?? 'anonymous') : 'n/a';
 
