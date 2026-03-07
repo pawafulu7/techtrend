@@ -401,7 +401,7 @@ export async function GET(request: NextRequest) {
       meta: {
         lightweight: true,
         info: 'This endpoint returns lightweight article data without relations for better performance',
-        userDataIncluded: includeUserData && userId ? true : false,
+        userDataIncluded: Boolean(includeUserData && userId),
         paginationMode: useCursor ? 'cursor' : 'offset',
       },
     } as ApiResponse<PaginatedResponse<LightweightArticle>>);
