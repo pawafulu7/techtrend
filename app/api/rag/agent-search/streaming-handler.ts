@@ -232,6 +232,7 @@ async function createStreamingResponse(
   let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
   let isCancelled = false;
+  let streamSpanEnded = false;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -434,6 +435,7 @@ async function createStreamingResponse(
               toolCalls.length
             );
             streamSpan.end();
+            streamSpanEnded = true;
 
             logger.info(
               {
@@ -535,6 +537,7 @@ async function createStreamingResponse(
           controller.close();
         } finally {
           streamSpan.end();
+          streamSpanEnded = true;
         }
       } finally {
         // Ensure cleanup regardless of how the loop exits
@@ -562,7 +565,10 @@ async function createStreamingResponse(
             // Controller may already be closed
           }
           streamSpan.setAttribute('streaming.unexpectedEnd', true);
-          streamSpan.end();
+          if (!streamSpanEnded) {
+            streamSpan.end();
+            streamSpanEnded = true;
+          }
         }
       }
     },

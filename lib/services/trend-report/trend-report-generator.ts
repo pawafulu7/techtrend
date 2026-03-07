@@ -161,7 +161,7 @@ export class TrendReportGenerator {
           logger.info(
             `Trend report race condition for ${periodType} starting ${periodStart.toISOString()}, fetching existing`
           );
-          const existing = await this.prisma.trendReport.findUnique({
+          const conflictingReport = await this.prisma.trendReport.findUnique({
             where: {
               periodType_periodStart: {
                 periodType,
@@ -169,8 +169,8 @@ export class TrendReportGenerator {
               },
             },
           });
-          if (existing) {
-            return existing.id;
+          if (conflictingReport) {
+            return conflictingReport.id;
           }
           // Should not reach here, but throw if findUnique returns null
           throw new Error(

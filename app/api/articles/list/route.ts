@@ -116,6 +116,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Include userId in cache key only when readFilter modifies query results
+    // userId is guaranteed non-null here due to auth guard at line 105
     const userCtxForKey = needsUserInCacheKey ? userId! : 'n/a';
 
     // Include cursor in cache key if using cursor pagination

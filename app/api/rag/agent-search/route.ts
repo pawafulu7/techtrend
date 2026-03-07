@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
 import type { Session } from 'next-auth';
+import { resolveSession } from '@/lib/middleware/session-context';
+import type { SessionContext } from '@/lib/middleware/session-context';
 import {
   checkRateLimit,
   ragAgentSearchRateLimit,
@@ -57,11 +58,11 @@ export const runtime = 'nodejs'; // Required for Prisma
 
 const tracer = trace.getTracer('rag-agent');
 
-async function postHandler(request: NextRequest) {
+async function postHandler(request: NextRequest, context?: SessionContext) {
   return tracer.startActiveSpan('rag.agent-search', async (span) => {
     let session: Session | null = null;
     try {
-      session = await auth();
+      session = await resolveSession(context);
       // Layer 1: Authentication
       if (!session?.user) {
         span.setAttribute('auth.status', 'unauthorized');
