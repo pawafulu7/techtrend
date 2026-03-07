@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TrendPeriodType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { TrendReportGenerator } from '@/lib/services/trend-report-generator';
+import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-generator';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger/index';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';

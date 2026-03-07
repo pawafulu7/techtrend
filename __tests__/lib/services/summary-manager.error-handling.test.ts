@@ -4,28 +4,28 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { SummaryManager } from '@/lib/services/summary-manager';
+import { SummaryManager } from '@/lib/services/summary/summary-manager';
 import { UnifiedSummaryService } from '@/lib/ai/service/unified-summary-service';
 
 // Mock dependencies
 jest.mock('@/lib/di/bootstrap', () => ({
   getAppDependencies: jest.fn(() => ({
     service: mockSummaryService,
-    translator: mockTranslator
-  }))
+    translator: mockTranslator,
+  })),
 }));
 
 jest.mock('@/lib/cache/cache-invalidator', () => ({
   cacheInvalidator: {
-    onBulkImport: jest.fn().mockResolvedValue(undefined)
-  }
+    onBulkImport: jest.fn().mockResolvedValue(undefined),
+  },
 }));
 
 jest.mock('@/scripts/utils/processing-status', () => ({
   getLastProcessedTime: jest.fn().mockResolvedValue(null),
   saveProcessingStatus: jest.fn().mockResolvedValue(undefined),
   hasContentUpdatesSince: jest.fn().mockResolvedValue(true),
-  setPrisma: jest.fn()
+  setPrisma: jest.fn(),
 }));
 
 let mockSummaryService: any;
@@ -53,13 +53,13 @@ describe('SummaryManager Error Handling', () => {
         summary: 'Test summary',
         detailedSummary: 'Detailed test summary',
         tags: ['test', 'mock'],
-        translatedTitle: 'Translated Title'
-      })
+        translatedTitle: 'Translated Title',
+      }),
     };
 
     // Mock Translator
     mockTranslator = {
-      translateTitle: jest.fn().mockResolvedValue('Translated Title')
+      translateTitle: jest.fn().mockResolvedValue('Translated Title'),
     };
 
     manager = new SummaryManager(prisma);
@@ -76,20 +76,23 @@ describe('SummaryManager Error Handling', () => {
         article: {
           findFirst: jest.fn().mockResolvedValue({ id: 'test-1' }),
           count: jest.fn().mockResolvedValue(1),
-          findMany: jest.fn().mockResolvedValue([{
-            id: 'test-1',
-            title: 'Test Article',
-            url: 'https://example.com/test',
-            content: 'This is test article content for summary generation. It needs to be at least 100 characters long to pass the MIN_CONTENT_LENGTH threshold check.',
-            publishedAt: new Date(),
-            source: { id: 'src-1', name: 'Test Source' }
-          }]),
-          update: jest.fn().mockResolvedValue({})
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'test-1',
+              title: 'Test Article',
+              url: 'https://example.com/test',
+              content:
+                'This is test article content for summary generation. It needs to be at least 100 characters long to pass the MIN_CONTENT_LENGTH threshold check.',
+              publishedAt: new Date(),
+              source: { id: 'src-1', name: 'Test Source' },
+            },
+          ]),
+          update: jest.fn().mockResolvedValue({}),
         },
         source: {
-          findMany: jest.fn().mockResolvedValue([])
+          findMany: jest.fn().mockResolvedValue([]),
         },
-        $disconnect: jest.fn().mockResolvedValue(undefined)
+        $disconnect: jest.fn().mockResolvedValue(undefined),
       } as any;
 
       const testManager = new SummaryManager(mockPrismaWithArticle);
@@ -106,19 +109,21 @@ describe('SummaryManager Error Handling', () => {
       // Mock Prisma to throw error
       const mockFailingPrisma = {
         article: {
-          findFirst: jest.fn().mockRejectedValue(new Error('Database connection failed'))
+          findFirst: jest
+            .fn()
+            .mockRejectedValue(new Error('Database connection failed')),
         },
         source: {
-          findMany: jest.fn().mockResolvedValue([])
+          findMany: jest.fn().mockResolvedValue([]),
         },
-        $disconnect: jest.fn().mockResolvedValue(undefined)
+        $disconnect: jest.fn().mockResolvedValue(undefined),
       } as any;
 
       const failingManager = new SummaryManager(mockFailingPrisma);
 
-      await expect(failingManager.generateSummaries({ limit: 1 })).rejects.toThrow(
-        'Database connection failed'
-      );
+      await expect(
+        failingManager.generateSummaries({ limit: 1 })
+      ).rejects.toThrow('Database connection failed');
     });
   });
 

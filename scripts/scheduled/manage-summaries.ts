@@ -1,4 +1,4 @@
-import { SummaryManager } from '@/lib/services/summary-manager';
+import { SummaryManager } from '@/lib/services/summary/summary-manager';
 import { getPrismaClient } from '@/lib/cli/utils/database';
 import { createNotifierFromEnv } from '@/lib/notification';
 import type { ArticleInfo } from '@/lib/notification/types';

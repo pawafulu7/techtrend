@@ -8,7 +8,7 @@ const mockGetTrendReport = jest.fn();
 const mockGetLatestReport = jest.fn();
 const mockGetAdjacentReportDates = jest.fn();
 
-jest.mock('@/lib/services/trend-report-generator', () => ({
+jest.mock('@/lib/services/trend-report/trend-report-generator', () => ({
   TrendReportGenerator: jest.fn().mockImplementation(() => ({
     getTrendReport: mockGetTrendReport,
     getLatestReport: mockGetLatestReport,

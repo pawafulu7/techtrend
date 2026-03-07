@@ -3,11 +3,11 @@
  * Tests the integration between CLI and SummaryManager
  */
 
-import { SummaryManager } from '@/lib/services/summary-manager';
+import { SummaryManager } from '@/lib/services/summary/summary-manager';
 import { getPrismaClient } from '@/lib/cli/utils/database';
 
 // Mocks
-jest.mock('@/lib/services/summary-manager');
+jest.mock('@/lib/services/summary/summary-manager');
 jest.mock('@/lib/cli/utils/database');
 
 describe('summaries CLI command', () => {
@@ -25,21 +25,25 @@ describe('summaries CLI command', () => {
 
     // Mock Prisma
     mockPrisma = {
-      $disconnect: jest.fn().mockResolvedValue(undefined)
+      $disconnect: jest.fn().mockResolvedValue(undefined),
     };
     (getPrismaClient as jest.Mock).mockReturnValue(mockPrisma);
 
     // Mock SummaryManager
     mockManager = {
-      generateSummaries: jest.fn().mockResolvedValue({ generated: 10, errors: 0 }),
-      regenerateSummaries: jest.fn().mockResolvedValue({ generated: 5, errors: 0 }),
+      generateSummaries: jest
+        .fn()
+        .mockResolvedValue({ generated: 10, errors: 0 }),
+      regenerateSummaries: jest
+        .fn()
+        .mockResolvedValue({ generated: 5, errors: 0 }),
       getStats: jest.fn().mockReturnValue({
         attempts: 10,
         successes: 10,
         failures: 0,
         overloadErrors: 0,
-        startTime: Date.now()
-      })
+        startTime: Date.now(),
+      }),
     };
     (SummaryManager as jest.Mock).mockImplementation(() => mockManager);
   });
@@ -60,14 +64,17 @@ describe('summaries CLI command', () => {
       expect(mockManager.generateSummaries).toHaveBeenCalledWith({
         source: undefined,
         limit: 100,
-        batch: 10
+        batch: 10,
       });
       expect(mockPrisma.$disconnect).toHaveBeenCalled();
       expect(process.exitCode).toBeUndefined(); // Success: no exitCode set
     });
 
     it('should exit with code 1 when result has errors', async () => {
-      mockManager.generateSummaries.mockResolvedValue({ generated: 5, errors: 3 });
+      mockManager.generateSummaries.mockResolvedValue({
+        generated: 5,
+        errors: 3,
+      });
 
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride();
@@ -94,7 +101,13 @@ describe('summaries CLI command', () => {
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride();
 
-      await summariesCommand.parseAsync(['node', 'summaries', 'generate', '--limit', 'invalid']);
+      await summariesCommand.parseAsync([
+        'node',
+        'summaries',
+        'generate',
+        '--limit',
+        'invalid',
+      ]);
 
       expect(mockManager.generateSummaries).not.toHaveBeenCalled(); // Stopped early (CodexMCP)
       expect(process.exitCode).toBe(1);
@@ -105,7 +118,13 @@ describe('summaries CLI command', () => {
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride();
 
-      await summariesCommand.parseAsync(['node', 'summaries', 'generate', '--source', 'Zenn']);
+      await summariesCommand.parseAsync([
+        'node',
+        'summaries',
+        'generate',
+        '--source',
+        'Zenn',
+      ]);
 
       expect(mockManager.generateSummaries).toHaveBeenCalledWith(
         expect.objectContaining({ source: 'Zenn' })
@@ -125,7 +144,7 @@ describe('summaries CLI command', () => {
         source: undefined,
         days: 7,
         force: undefined,
-        batch: 10
+        batch: 10,
       });
       expect(mockPrisma.$disconnect).toHaveBeenCalled();
       expect(process.exitCode).toBeUndefined();
@@ -147,7 +166,14 @@ describe('summaries CLI command', () => {
       const { summariesCommand } = await import('@/lib/cli/commands/summaries');
       summariesCommand.exitOverride();
 
-      await summariesCommand.parseAsync(['node', 'summaries', 'regenerate', '--force', '--batch', '20']);
+      await summariesCommand.parseAsync([
+        'node',
+        'summaries',
+        'regenerate',
+        '--force',
+        '--batch',
+        '20',
+      ]);
 
       expect(mockManager.regenerateSummaries).toHaveBeenCalledWith(
         expect.objectContaining({ force: true, batch: 20 })

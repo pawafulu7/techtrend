@@ -1,11 +1,12 @@
 import { Command } from 'commander';
 import { logger } from '../utils/logger';
 import { getPrismaClient } from '../utils/database';
-import { SummaryManager } from '@/lib/services/summary-manager';
+import { SummaryManager } from '@/lib/services/summary/summary-manager';
 
 // Root command
-export const summariesCommand = new Command('summaries')
-  .description('記事要約の管理');
+export const summariesCommand = new Command('summaries').description(
+  '記事要約の管理'
+);
 
 // generate subcommand
 summariesCommand
@@ -34,7 +35,7 @@ summariesCommand
       const result = await manager.generateSummaries({
         source: options.source,
         limit,
-        batch
+        batch,
       });
 
       if (result.errors > 0) {
@@ -79,7 +80,7 @@ summariesCommand
         source: options.source,
         days,
         force: options.force,
-        batch
+        batch,
       });
 
       if (result.errors > 0) {
@@ -109,27 +110,34 @@ summariesCommand
       const [totalArticles, withSummary, withoutSummary] = await Promise.all([
         prisma.article.count(),
         prisma.article.count({ where: { summary: { not: null } } }),
-        prisma.article.count({ where: { summary: null } })
+        prisma.article.count({ where: { summary: null } }),
       ]);
 
       logger.info(`全記事数: ${totalArticles.toLocaleString()}`);
       // ゼロ除算対策
-      const withSummaryPct = totalArticles > 0 ? Math.round(withSummary / totalArticles * 100) : 0;
-      const withoutSummaryPct = totalArticles > 0 ? Math.round(withoutSummary / totalArticles * 100) : 0;
-      logger.info(`要約あり: ${withSummary.toLocaleString()} (${withSummaryPct}%)`);
-      logger.info(`要約なし: ${withoutSummary.toLocaleString()} (${withoutSummaryPct}%)`);
-
+      const withSummaryPct =
+        totalArticles > 0 ? Math.round((withSummary / totalArticles) * 100) : 0;
+      const withoutSummaryPct =
+        totalArticles > 0
+          ? Math.round((withoutSummary / totalArticles) * 100)
+          : 0;
+      logger.info(
+        `要約あり: ${withSummary.toLocaleString()} (${withSummaryPct}%)`
+      );
+      logger.info(
+        `要約なし: ${withoutSummary.toLocaleString()} (${withoutSummaryPct}%)`
+      );
 
       // ソース別の統計 (N+1解消: groupByで1回のクエリに集約)
       const sourcesWithSummaryCounts = await prisma.article.groupBy({
         by: ['sourceId'],
         where: { summary: { not: null } },
-        _count: { _all: true }
+        _count: { _all: true },
       });
 
       // sourceId→サマリー数のマップを作成
       const summaryCountBySource = Object.fromEntries(
-        sourcesWithSummaryCounts.map(row => [row.sourceId, row._count._all])
+        sourcesWithSummaryCounts.map((row) => [row.sourceId, row._count._all])
       );
 
       const sources = await prisma.source.findMany({
@@ -137,18 +145,21 @@ summariesCommand
           id: true,
           name: true,
           _count: {
-            select: { articles: true }
-          }
-        }
+            select: { articles: true },
+          },
+        },
       });
 
       logger.info('\nソース別統計:');
       for (const source of sources) {
         const withSummaryCount = summaryCountBySource[source.id] ?? 0;
-        const percentage = source._count.articles > 0
-          ? Math.round(withSummaryCount / source._count.articles * 100)
-          : 0;
-        logger.info(`  ${source.name}: ${withSummaryCount}/${source._count.articles} (${percentage}%)`);
+        const percentage =
+          source._count.articles > 0
+            ? Math.round((withSummaryCount / source._count.articles) * 100)
+            : 0;
+        logger.info(
+          `  ${source.name}: ${withSummaryCount}/${source._count.articles} (${percentage}%)`
+        );
       }
 
       logger.success('チェックが完了しました');
