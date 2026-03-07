@@ -56,13 +56,25 @@ export class ArticleQACache extends RedisCache {
     updatedAt: Date
   ): Promise<ArticleQACachedResponse | null> {
     const key = this.generateQAKey(articleId, query, locale, updatedAt);
-    const raw = await super.get<string | ArticleQACachedResponse>(key);
+    const raw = await super.get<unknown>(key);
     if (raw === null) return null;
     // Backward compatibility: old entries stored as plain string
     if (typeof raw === 'string') {
       return { text: raw, toolCalls: [] };
     }
-    return raw;
+    if (
+      typeof raw !== 'object' ||
+      raw === null ||
+      typeof (raw as { text?: unknown }).text !== 'string'
+    ) {
+      return null;
+    }
+    return {
+      text: (raw as { text: string }).text,
+      toolCalls: Array.isArray((raw as { toolCalls?: unknown }).toolCalls)
+        ? (raw as { toolCalls: unknown[] }).toolCalls
+        : [],
+    };
   }
 
   /**

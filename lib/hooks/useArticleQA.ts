@@ -217,10 +217,7 @@ async function parseSSEStream(
           ) {
             usage = { totalTokens: eventData.usage.totalTokens };
           }
-          if (
-            Array.isArray(eventData.toolCalls) &&
-            eventData.toolCalls.length > 0
-          ) {
+          if (Array.isArray(eventData.toolCalls)) {
             toolCalls.splice(0, toolCalls.length, ...eventData.toolCalls);
           }
           cached = eventData.cached ?? cached;

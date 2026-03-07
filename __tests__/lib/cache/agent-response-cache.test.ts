@@ -199,6 +199,11 @@ describe('AgentResponseCache', () => {
         60,
         JSON.stringify(response)
       );
+
+      const storedValue = mockRedis.setex.mock.calls[0][2];
+      mockRedis.get.mockResolvedValue(storedValue);
+
+      await expect(cache.getResponse(query)).resolves.toEqual(response);
     });
   });
 });

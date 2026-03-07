@@ -157,7 +157,7 @@ export async function handleBatchRequest(
       cached: true,
       fallback: false,
       toolCalls: cachedResponse.toolCalls,
-      usage: {},
+      usage: { totalTokens: 0 },
     };
 
     if (contextPayload) {

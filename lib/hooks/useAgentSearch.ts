@@ -308,8 +308,6 @@ export function useAgentSearch(
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-
       if (controller.signal.aborted) {
         return;
       }
@@ -359,6 +357,7 @@ export function useAgentSearch(
         setError(agentError);
         setCurrentStep('error');
         callbacksRef.current?.onError?.(agentError);
+        clearTimeout(timeoutId);
         return;
       }
 
@@ -379,6 +378,7 @@ export function useAgentSearch(
         setResult(streamResult);
         setCurrentStep('complete');
         callbacksRef.current?.onSuccess?.(streamResult);
+        clearTimeout(timeoutId);
       } else if (ct.includes('application/json')) {
         // Batch mode (backward compatibility)
         const data = await response.json();
@@ -399,7 +399,9 @@ export function useAgentSearch(
         setResult(resultWithArticles);
         setCurrentStep('complete');
         callbacksRef.current?.onSuccess?.(resultWithArticles);
+        clearTimeout(timeoutId);
       } else {
+        clearTimeout(timeoutId);
         throw new Error(`Unexpected content type: ${ct}`);
       }
     } catch (err) {
@@ -428,6 +430,7 @@ export function useAgentSearch(
         callbacksRef.current?.onError?.(networkError);
       }
     } finally {
+      clearTimeout(timeoutId);
       if (didTimeout || !controller.signal.aborted) {
         setIsLoading(false);
       }
