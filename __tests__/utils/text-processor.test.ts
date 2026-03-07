@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { cleanupText } from '@/lib/services/summary-generation/text-processor';
-import { cleanupDetailedSummary } from '@/lib/utils/summary-quality-checker';
+import { cleanupDetailedSummary } from '@/lib/utils/summary/summary-quality-checker';
 
 describe('Text Processor Utilities', () => {
   describe('cleanupText', () => {

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Calendar, Star, Tag } from 'lucide-react';
 import { TranslationBadge } from '@/components/ui/translation-badge';
 import { formatDate } from '@/lib/utils/date';
-import { getSourceColor } from '@/lib/utils/source-colors';
+import { getSourceColor } from '@/lib/utils/source/source-colors';
 import { cn } from '@/lib/utils';
 import { RecommendedArticle } from '@/lib/recommendation/types';
 

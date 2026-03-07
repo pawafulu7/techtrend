@@ -1,5 +1,5 @@
-import { parseSummary } from '@/lib/utils/summary-parser';
-import { ArticleType } from '@/lib/utils/article-type-detector';
+import { parseSummary } from '@/lib/utils/summary/summary-parser';
+import { ArticleType } from '@/lib/utils/article/article-type-detector';
 
 interface DetailedSummaryStructuredProps {
   detailedSummary: string;

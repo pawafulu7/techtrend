@@ -7,7 +7,7 @@ import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import { formatDateWithTime } from '@/lib/utils/date';
-import { getSourceColor } from '@/lib/utils/source-colors';
+import { getSourceColor } from '@/lib/utils/source/source-colors';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { ShareButton } from '@/app/components/article/share-button';

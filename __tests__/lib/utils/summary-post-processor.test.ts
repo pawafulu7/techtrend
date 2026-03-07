@@ -1,4 +1,4 @@
-import { postProcessSummaries } from '@/lib/utils/summary-post-processor';
+import { postProcessSummaries } from '@/lib/utils/summary/summary-post-processor';
 
 describe('postProcessSummaries', () => {
   it('normalizes malformed detailed summaries with colon + newline patterns and multiple bullet items', () => {

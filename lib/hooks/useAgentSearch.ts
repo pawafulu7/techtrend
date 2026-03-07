@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ArticleLink } from '@/lib/types/article-link';
-import { extractArticlesFromToolCalls } from '@/lib/utils/article-link-extractor';
+import { extractArticlesFromToolCalls } from '@/lib/utils/article/article-link-extractor';
 
 export interface AgentSearchResult {
   query: string;

@@ -6,7 +6,7 @@ import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import logger from '@/lib/logger';
-import { extractTagsFromCategories } from '@/lib/utils/tag-extractor';
+import { extractTagsFromCategories } from '@/lib/utils/tag/tag-extractor';
 
 interface PublickeyRSSItem {
   title?: string;

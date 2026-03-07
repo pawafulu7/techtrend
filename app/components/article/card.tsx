@@ -6,7 +6,7 @@ import { Calendar, ExternalLink } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
-import { getSourceColor } from '@/lib/utils/source-colors';
+import { getSourceColor } from '@/lib/utils/source/source-colors';
 import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';

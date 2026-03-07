@@ -1,5 +1,5 @@
 import { sanitizeHtml } from './html-sanitizer';
-import { isUrlFromDomain } from './url-validator';
+import { isUrlFromDomain } from './url/url-validator';
 
 const CLOUDINARY_BASE = 'https://res.cloudinary.com/zenn/image/upload';
 const OG_BACKGROUND = 'v1627283836/default/og-bg-zenn.png';

@@ -1,5 +1,5 @@
 import { BaseContentEnricher } from './base';
-import { isUrlFromDomain } from '@/lib/utils/url-validator';
+import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
 

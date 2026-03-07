@@ -5,7 +5,7 @@ import {
   fixSummary,
   TECHNICAL_TERMS,
   QualityIssue,
-} from '@/lib/utils/content-quality-checker';
+} from '@/lib/utils/content/content-quality-checker';
 
 describe('content-quality-checker', () => {
   describe('checkContentQuality', () => {

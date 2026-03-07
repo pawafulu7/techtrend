@@ -4,7 +4,7 @@ import {
   isQiitaUrl,
   detectArticleType,
   sanitizeContent
-} from '@/lib/utils/content-validator';
+} from '@/lib/utils/content/content-validator';
 
 describe('content-validator', () => {
   describe('isDeletedContent', () => {

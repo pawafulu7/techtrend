@@ -6,7 +6,7 @@
 jest.mock('node-fetch');
 
 // 動的インポートのモック
-jest.mock('../../../lib/utils/summary-post-processor', () => ({
+jest.mock('../../../lib/utils/summary/summary-post-processor', () => ({
   postProcessSummaries: jest.fn((summary, detailedSummary) => ({
     summary,
     detailedSummary
@@ -14,7 +14,7 @@ jest.mock('../../../lib/utils/summary-post-processor', () => ({
 }));
 
 // 品質チェッカーのモック
-jest.mock('../../../lib/utils/summary-quality-checker', () => ({
+jest.mock('../../../lib/utils/summary/summary-quality-checker', () => ({
   checkSummaryQuality: jest.fn(() => ({
     score: 85,
     itemCountValid: true,

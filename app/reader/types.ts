@@ -1,4 +1,4 @@
-import type { ArticleType } from '@/lib/utils/article-type-prompts';
+import type { ArticleType } from '@/lib/utils/article/article-type-prompts';
 
 // List API用の型（/api/articles/list の軽量レスポンス）
 export interface ReaderListArticle {

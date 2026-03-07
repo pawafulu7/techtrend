@@ -13,7 +13,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
-import { getSourceColor } from '@/lib/utils/source-colors';
+import { getSourceColor } from '@/lib/utils/source/source-colors';
 import { cn } from '@/lib/utils';
 import { RelatedArticles } from '@/app/components/article/related-articles';
 import { ArticleTracker } from '@/app/components/analytics/ArticleTracker';

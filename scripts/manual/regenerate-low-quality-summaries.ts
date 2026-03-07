@@ -12,7 +12,7 @@
  */
 
 import { PrismaClient, Article, Source } from '@prisma/client';
-import { checkSummaryQuality } from '../../lib/utils/summary-quality-checker';
+import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { extractSkipReason, getSkipReasonLabel } from '../../lib/utils/skip-reason-extractor';

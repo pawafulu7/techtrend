@@ -1,7 +1,7 @@
 'use client';
 
 import { CalendarDays } from 'lucide-react';
-import { getSourceColor } from '@/lib/utils/source-colors';
+import { getSourceColor } from '@/lib/utils/source/source-colors';
 import { useState } from 'react';
 
 interface DailyChartProps {

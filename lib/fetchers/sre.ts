@@ -4,7 +4,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
-import { extractContent, checkContentQuality } from '@/lib/utils/content-extractor';
+import { extractContent, checkContentQuality } from '@/lib/utils/content/content-extractor';
 
 interface SRERSSItem {
   title?: string;

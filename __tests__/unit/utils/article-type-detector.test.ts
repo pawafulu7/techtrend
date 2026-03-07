@@ -1,4 +1,4 @@
-import { detectArticleType, getArticleTypeLabel, getArticleTypeDescription } from '@/lib/utils/article-type-detector';
+import { detectArticleType, getArticleTypeLabel, getArticleTypeDescription } from '@/lib/utils/article/article-type-detector';
 
 describe('article-type-detector', () => {
   describe('detectArticleType', () => {

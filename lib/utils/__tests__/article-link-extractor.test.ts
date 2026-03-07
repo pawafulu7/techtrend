@@ -1,4 +1,4 @@
-import { extractArticlesFromToolCalls } from '../article-link-extractor';
+import { extractArticlesFromToolCalls } from '../article/article-link-extractor';
 import { RAG_TOOL_NAMES } from '@/lib/rag/constants';
 
 describe('extractArticlesFromToolCalls', () => {
@@ -8,9 +8,24 @@ describe('extractArticlesFromToolCalls', () => {
         name: RAG_TOOL_NAMES.SEMANTIC_SEARCH,
         output: {
           articles: [
-            { articleId: '1', title: 'Article 1', similarity: 0.85, publishedAt: '2025-10-20T00:00:00Z' },
-            { articleId: '2', title: 'Article 2', similarity: 0.92, publishedAt: '2025-10-21T00:00:00Z' },
-            { articleId: '3', title: 'Article 3', similarity: 0.78, publishedAt: '2025-10-19T00:00:00Z' },
+            {
+              articleId: '1',
+              title: 'Article 1',
+              similarity: 0.85,
+              publishedAt: '2025-10-20T00:00:00Z',
+            },
+            {
+              articleId: '2',
+              title: 'Article 2',
+              similarity: 0.92,
+              publishedAt: '2025-10-21T00:00:00Z',
+            },
+            {
+              articleId: '3',
+              title: 'Article 3',
+              similarity: 0.78,
+              publishedAt: '2025-10-19T00:00:00Z',
+            },
           ],
         },
       },
@@ -30,17 +45,13 @@ describe('extractArticlesFromToolCalls', () => {
   });
 
   it('異常系: Semantic Search Toolが存在しない場合', () => {
-    const toolCalls = [
-      { name: 'other-tool', output: {} },
-    ];
+    const toolCalls = [{ name: 'other-tool', output: {} }];
     const result = extractArticlesFromToolCalls(toolCalls);
     expect(result).toEqual([]);
   });
 
   it('異常系: outputにarticlesが存在しない場合', () => {
-    const toolCalls = [
-      { name: RAG_TOOL_NAMES.SEMANTIC_SEARCH, output: {} },
-    ];
+    const toolCalls = [{ name: RAG_TOOL_NAMES.SEMANTIC_SEARCH, output: {} }];
     const result = extractArticlesFromToolCalls(toolCalls);
     expect(result).toEqual([]);
   });
@@ -49,7 +60,9 @@ describe('extractArticlesFromToolCalls', () => {
     const originalDebug = process.env.NEXT_PUBLIC_DEBUG;
     process.env.NEXT_PUBLIC_DEBUG = 'true';
 
-    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
 
     const toolCalls = [
       {
@@ -66,7 +79,9 @@ describe('extractArticlesFromToolCalls', () => {
 
     expect(result).toEqual([]);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[ArticleLinkExtractor] Invalid tool output structure'),
+      expect.stringContaining(
+        '[ArticleLinkExtractor] Invalid tool output structure'
+      ),
       expect.any(Object)
     );
 
@@ -78,7 +93,9 @@ describe('extractArticlesFromToolCalls', () => {
     const originalDebug = process.env.NEXT_PUBLIC_DEBUG;
     delete process.env.NEXT_PUBLIC_DEBUG;
 
-    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
 
     const toolCalls = [
       {
@@ -106,7 +123,12 @@ describe('extractArticlesFromToolCalls', () => {
         name: RAG_TOOL_NAMES.SEMANTIC_SEARCH,
         output: {
           articles: [
-            { articleId: '1', title: 'Article 1', similarity: 0.85, publishedAt: '2025-10-20T00:00:00Z' },
+            {
+              articleId: '1',
+              title: 'Article 1',
+              similarity: 0.85,
+              publishedAt: '2025-10-20T00:00:00Z',
+            },
           ],
         },
       },
@@ -114,7 +136,12 @@ describe('extractArticlesFromToolCalls', () => {
         name: RAG_TOOL_NAMES.SEMANTIC_SEARCH,
         output: {
           articles: [
-            { articleId: '2', title: 'Article 2', similarity: 0.92, publishedAt: '2025-10-21T00:00:00Z' },
+            {
+              articleId: '2',
+              title: 'Article 2',
+              similarity: 0.92,
+              publishedAt: '2025-10-21T00:00:00Z',
+            },
           ],
         },
       },

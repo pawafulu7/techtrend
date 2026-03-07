@@ -8,7 +8,7 @@ import {
   estimateSourceCategory,
   type ArticleWithTags,
   type _SourceCategory,
-} from '@/lib/utils/source-stats';
+} from '@/lib/utils/source/source-stats';
 
 describe('source-stats', () => {
   beforeEach(() => {

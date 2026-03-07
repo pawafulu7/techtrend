@@ -3,7 +3,7 @@ import {
   isValidTag,
   normalizeTags,
   TAG_NORMALIZATION_MAP
-} from '@/lib/utils/tag-normalizer';
+} from '@/lib/utils/tag/tag-normalizer';
 
 describe('tag-normalizer', () => {
   describe('normalizeTag', () => {

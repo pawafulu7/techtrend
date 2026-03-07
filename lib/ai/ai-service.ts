@@ -1,7 +1,7 @@
 import { GeminiClient } from './gemini';
 import { LocalLLMClient } from './local-llm';
 import { ExternalAPIError } from '../errors';
-import { cleanSummary, cleanDetailedSummary } from '../utils/summary-cleaner';
+import { cleanSummary, cleanDetailedSummary } from '../utils/summary/summary-cleaner';
 
 interface AIServiceConfig {
   geminiApiKey?: string;

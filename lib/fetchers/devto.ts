@@ -1,7 +1,7 @@
 import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
-import { normalizeTagInput } from '../utils/tag-normalizer';
+import { normalizeTagInput } from '../utils/tag/tag-normalizer';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout';
 
 interface DevToArticle {

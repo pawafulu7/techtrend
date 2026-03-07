@@ -4,8 +4,8 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
-import { checkSummaryQuality } from '../../lib/utils/summary-quality-checker';
+import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
+import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import fetch from 'node-fetch';
 
 const prisma = new PrismaClient();

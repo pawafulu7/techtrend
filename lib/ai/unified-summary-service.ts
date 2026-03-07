@@ -4,10 +4,14 @@
  */
 
 import fetch from 'node-fetch';
-import { generateEnhancedUnifiedPrompt } from '../utils/article-type-prompts';
-import { parseUnifiedResponse, validateParsedResult, ParsedSummaryResult } from './unified-summary-parser';
-import { checkSummaryQuality } from '../utils/summary-quality-checker';
-import { isUrlFromDomain } from '@/lib/utils/url-validator';
+import { generateEnhancedUnifiedPrompt } from '../utils/article/article-type-prompts';
+import {
+  parseUnifiedResponse,
+  validateParsedResult,
+  ParsedSummaryResult,
+} from './unified-summary-parser';
+import { checkSummaryQuality } from '../utils/summary/summary-quality-checker';
+import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { logger, sanitizeError } from '@/lib/logger';
 
@@ -34,7 +38,7 @@ export class UnifiedSummaryService {
     maxRetries: 3,
     retryDelay: 5000,
     minQualityScore: 40,
-    contentMaxLength: 150000  // Gemini 1.5 Flashの能力を活用、150,000文字まで対応
+    contentMaxLength: 150000, // Gemini 1.5 Flashの能力を活用、150,000文字まで対応
   };
 
   private apiKey: string;
@@ -58,26 +62,34 @@ export class UnifiedSummaryService {
     title: string,
     content: string,
     options?: GenerateOptions,
-    sourceInfo?: { sourceName?: string, url?: string },
+    sourceInfo?: { sourceName?: string; url?: string },
     articleId?: string
   ): Promise<UnifiedSummaryResult> {
     const opts = { ...UnifiedSummaryService.DEFAULT_OPTIONS, ...options };
-    
+
     // コンテンツの前処理
-    const processedContent = this.preprocessContent(title, content, opts.contentMaxLength!, sourceInfo);
-    
+    const processedContent = this.preprocessContent(
+      title,
+      content,
+      opts.contentMaxLength!,
+      sourceInfo
+    );
+
     // スキップマーカーのチェック
     if (processedContent.startsWith('__SKIP_SUMMARY_GENERATION__')) {
       const parts = processedContent.split(':');
       const reason = parts[1] || 'UNKNOWN';
 
       const messages: Record<string, string> = {
-        'PDF': 'PDFファイルのため要約生成をスキップします',
-        'SLIDE': 'スライド資料のため要約生成をスキップします',
-        'THIN_CONTENT': 'コンテンツ不足（< 300文字）のため要約生成をスキップします'
+        PDF: 'PDFファイルのため要約生成をスキップします',
+        SLIDE: 'スライド資料のため要約生成をスキップします',
+        THIN_CONTENT:
+          'コンテンツ不足（< 300文字）のため要約生成をスキップします',
       };
 
-      throw new Error(`SKIP_GENERATION:${reason}: ${messages[reason] || reason}`);
+      throw new Error(
+        `SKIP_GENERATION:${reason}: ${messages[reason] || reason}`
+      );
     }
 
     // 元記事の長さを保存（前処理前）
@@ -87,9 +99,9 @@ export class UnifiedSummaryService {
     // 100文字以下の極端に短い記事のみ詳細要約をスキップ
     // タイトルと合わせて最低限の情報があれば要約を生成する
     const skipDetailedSummary = rawLength <= 100 && rawWordCount < 20; // 元記事の長さで判定
-    
+
     let lastError: Error | null = null;
-    
+
     for (let attempt = 1; attempt <= opts.maxRetries!; attempt++) {
       try {
         // プロンプト生成（100文字以下かつ単語数が少ない場合のみ要約のみ）
@@ -103,50 +115,65 @@ export class UnifiedSummaryService {
           // 改善版プロンプトを使用（カテゴリとタグ正規化対応）
           prompt = generateEnhancedUnifiedPrompt(title, processedContent);
         }
-        
+
         // API呼び出し
         const responseText = await this.callGeminiAPI(prompt);
-        
+
         // 極端に短い記事の場合は特別処理
         if (skipDetailedSummary) {
           // 要約のみのレスポンスをパース
-          const summaryMatch = responseText.match(/要約[:：]\s*([\s\S]+?)(?:\n\n|タグ[:：]|$)/);
-          const tagsMatch = responseText.match(/タグ[:：]\s*([\s\S]+?)(?:\n|$)/);
-          
-          const summary = summaryMatch ? summaryMatch[1].trim() : responseText.split('\n')[0].trim();
+          const summaryMatch = responseText.match(
+            /要約[:：]\s*([\s\S]+?)(?:\n\n|タグ[:：]|$)/
+          );
+          const tagsMatch = responseText.match(
+            /タグ[:：]\s*([\s\S]+?)(?:\n|$)/
+          );
+
+          const summary = summaryMatch
+            ? summaryMatch[1].trim()
+            : responseText.split('\n')[0].trim();
           const tagsString = tagsMatch ? tagsMatch[1].trim() : '';
-          const tags = tagsString ? tagsString.split(/[,、]/).map(t => t.trim()).filter(Boolean) : [];
-          
+          const tags = tagsString
+            ? tagsString
+                .split(/[,、]/)
+                .map((t) => t.trim())
+                .filter(Boolean)
+            : [];
+
           return {
             summary,
             detailedSummary: '__SKIP_DETAILED_SUMMARY__',
             tags,
             articleType: UnifiedSummaryService.ARTICLE_TYPE,
             summaryVersion: UnifiedSummaryService.SUMMARY_VERSION,
-            qualityScore: 100
+            qualityScore: 100,
           };
         }
-        
+
         // レスポンスのパース
         const parsed = parseUnifiedResponse(responseText);
-        
+
         // 検証
         if (!validateParsedResult(parsed)) {
           throw new Error('Invalid parsed result');
         }
-        
+
         // postProcessSummariesをインポートして適用
-        const { postProcessSummaries } = await import('../utils/summary-post-processor');
-        const processed = postProcessSummaries(parsed.summary, parsed.detailedSummary);
+        const { postProcessSummaries } =
+          await import('../utils/summary/summary-post-processor');
+        const processed = postProcessSummaries(
+          parsed.summary,
+          parsed.detailedSummary
+        );
 
         // コンテンツ分析情報を作成（項目数チェック用）
         // 注意：品質チェックには元記事の長さを使用（前処理前）
         const contentAnalysis = {
-          contentLength: rawLength,  // 元記事の長さを使用
-          totalLength: rawLength,    // 互換性のため両方定義
+          contentLength: rawLength, // 元記事の長さを使用
+          totalLength: rawLength, // 互換性のため両方定義
           isThinContent: rawLength < 1000,
           recommendedMinLength: rawLength < 1000 ? 60 : 100,
-          recommendedMaxLength: rawLength < 1000 ? 100 : 200
+          recommendedMaxLength: rawLength < 1000 ? 100 : 200,
         };
 
         // 品質チェック（処理後のテキストで実施、コンテンツ分析情報も渡す）
@@ -160,16 +187,26 @@ export class UnifiedSummaryService {
         // 項目数不足の場合はログを出力
         if (qualityResult.itemCountValid === false) {
           logger.warn(
-            { itemCount: qualityResult.itemCount, titlePreview: title.substring(0, 50), contentLength: content.length },
+            {
+              itemCount: qualityResult.itemCount,
+              titlePreview: title.substring(0, 50),
+              contentLength: content.length,
+            },
             'Summary item count insufficient'
           );
         }
 
         // 品質スコアが閾値以下または項目数不足の場合、再試行
-        if (qualityScore < opts.minQualityScore! || qualityResult.itemCountValid === false) {
+        if (
+          qualityScore < opts.minQualityScore! ||
+          qualityResult.itemCountValid === false
+        ) {
           if (attempt < opts.maxRetries!) {
             if (qualityResult.itemCountValid === false) {
-              logger.info({ attempt: attempt + 1, maxRetries: opts.maxRetries }, 'Retrying due to insufficient item count');
+              logger.info(
+                { attempt: attempt + 1, maxRetries: opts.maxRetries },
+                'Retrying due to insufficient item count'
+              );
             }
             await this.delay(opts.retryDelay!);
             continue;
@@ -177,7 +214,7 @@ export class UnifiedSummaryService {
           // 最終試行でも基準未達 → 明示的に失敗扱い
           throw new Error('品質基準未達');
         }
-        
+
         // Schedule embedding job if articleId provided
         if (articleId) {
           try {
@@ -200,15 +237,14 @@ export class UnifiedSummaryService {
           summary: processed.summary,
           detailedSummary: processed.detailedSummary,
           tags: parsed.tags,
-          category: parsed.category,  // カテゴリを追加
+          category: parsed.category, // カテゴリを追加
           articleType: UnifiedSummaryService.ARTICLE_TYPE,
           summaryVersion: UnifiedSummaryService.SUMMARY_VERSION,
-          qualityScore
+          qualityScore,
         };
-        
       } catch (_error) {
         lastError = _error as Error;
-        
+
         // Rate limitエラーの場合は長めに待機
         if (this.isRateLimitError(_error)) {
           await this.delay(opts.retryDelay! * 3);
@@ -217,12 +253,16 @@ export class UnifiedSummaryService {
         }
       }
     }
-    
+
     // リトライ上限到達時のエラー詳細化
     if (lastError?.message && lastError.message.includes('品質基準未達')) {
-      throw new Error(`QUALITY_FAILED: 品質基準未達（試行回数: ${opts.maxRetries}）`);
+      throw new Error(
+        `QUALITY_FAILED: 品質基準未達（試行回数: ${opts.maxRetries}）`
+      );
     }
-    throw new Error(`Failed to generate summary after ${opts.maxRetries} attempts: ${lastError?.message}`);
+    throw new Error(
+      `Failed to generate summary after ${opts.maxRetries} attempts: ${lastError?.message}`
+    );
   }
 
   /**
@@ -230,13 +270,16 @@ export class UnifiedSummaryService {
    */
   parseResponse(text: string): UnifiedSummaryResult {
     const parsed = parseUnifiedResponse(text);
-    const qualityScore = checkSummaryQuality(parsed.summary, parsed.detailedSummary).score;
-    
+    const qualityScore = checkSummaryQuality(
+      parsed.summary,
+      parsed.detailedSummary
+    ).score;
+
     return {
       ...parsed,
       articleType: UnifiedSummaryService.ARTICLE_TYPE,
       summaryVersion: UnifiedSummaryService.SUMMARY_VERSION,
-      qualityScore
+      qualityScore,
     };
   }
 
@@ -244,9 +287,11 @@ export class UnifiedSummaryService {
    * 結果の検証（公開メソッド）
    */
   validateResult(result: UnifiedSummaryResult): boolean {
-    return validateParsedResult(result) && 
-           result.summaryVersion === UnifiedSummaryService.SUMMARY_VERSION &&
-           result.articleType === UnifiedSummaryService.ARTICLE_TYPE;
+    return (
+      validateParsedResult(result) &&
+      result.summaryVersion === UnifiedSummaryService.SUMMARY_VERSION &&
+      result.articleType === UnifiedSummaryService.ARTICLE_TYPE
+    );
   }
 
   /**
@@ -259,22 +304,31 @@ export class UnifiedSummaryService {
   /**
    * コンテンツの前処理
    */
-  private preprocessContent(title: string, content: string, maxLength: number, sourceInfo?: { sourceName?: string, url?: string }): string {
+  private preprocessContent(
+    title: string,
+    content: string,
+    maxLength: number,
+    sourceInfo?: { sourceName?: string; url?: string }
+  ): string {
     // PDFファイルの場合（URLが.pdfで終わる、またはPDFバイナリを含む）
-    if (sourceInfo?.url?.toLowerCase().endsWith('.pdf') ||
-        content.includes('%PDF-') ||
-        content.includes('%%EOF')) {
+    if (
+      sourceInfo?.url?.toLowerCase().endsWith('.pdf') ||
+      content.includes('%PDF-') ||
+      content.includes('%%EOF')
+    ) {
       // PDFは要約生成不可
       return '__SKIP_SUMMARY_GENERATION__:PDF';
     }
 
     // スライド資料の場合（Speaker Deck、Docswell、SlideShare）
     // コンテンツが不足している場合はスキップ
-    if (sourceInfo?.url &&
-        (isUrlFromDomain(sourceInfo.url, 'speakerdeck.com') ||
-         isUrlFromDomain(sourceInfo.url, 'docswell.com') ||
-         isUrlFromDomain(sourceInfo.url, 'slideshare.net')) &&
-        content.length < 500) {
+    if (
+      sourceInfo?.url &&
+      (isUrlFromDomain(sourceInfo.url, 'speakerdeck.com') ||
+        isUrlFromDomain(sourceInfo.url, 'docswell.com') ||
+        isUrlFromDomain(sourceInfo.url, 'slideshare.net')) &&
+      content.length < 500
+    ) {
       // スライド資料は要約生成不可
       return '__SKIP_SUMMARY_GENERATION__:SLIDE';
     }
@@ -305,16 +359,18 @@ export class UnifiedSummaryService {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }]
-        }],
+        contents: [
+          {
+            parts: [{ text: prompt }],
+          },
+        ],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 2500,  // 詳細要約に対応した統一設定
+          maxOutputTokens: 2500, // 詳細要約に対応した統一設定
           topP: 0.8,
-          topK: 40
-        }
-      })
+          topK: 40,
+        },
+      }),
     });
 
     if (!response.ok) {
@@ -322,7 +378,7 @@ export class UnifiedSummaryService {
       throw new Error(`API request failed: ${response.status} - ${error}`);
     }
 
-    const data = await response.json() as {
+    const data = (await response.json()) as {
       candidates?: Array<{
         content?: {
           parts?: Array<{
@@ -339,17 +395,19 @@ export class UnifiedSummaryService {
    */
   private isRateLimitError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error);
-    return message.includes('429') || 
-           message.includes('rate') || 
-           message.includes('quota') ||
-           message.includes('503');
+    return (
+      message.includes('429') ||
+      message.includes('rate') ||
+      message.includes('quota') ||
+      message.includes('503')
+    );
   }
 
   /**
    * 遅延処理
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -392,7 +450,7 @@ export class UnifiedSummaryService {
     } else {
       itemCount = '3-4個';
     }
-    
+
     return `
 以下の技術記事を分析し、日本語で要約を作成してください。
 
@@ -430,7 +488,9 @@ ${itemCount === '2-3個' ? '（項目は2-3個で十分です）' : `（項目�
  */
 let instance: UnifiedSummaryService | null = null;
 
-export function getUnifiedSummaryService(apiKey?: string): UnifiedSummaryService {
+export function getUnifiedSummaryService(
+  apiKey?: string
+): UnifiedSummaryService {
   if (!instance) {
     instance = new UnifiedSummaryService(apiKey);
   }

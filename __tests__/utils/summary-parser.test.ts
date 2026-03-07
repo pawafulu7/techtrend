@@ -1,4 +1,4 @@
-import { parseSummary } from '@/lib/utils/summary-parser';
+import { parseSummary } from '@/lib/utils/summary/summary-parser';
 
 describe('parseSummary with summaryVersion 8', () => {
   it('コロン後が空のメイン項目を正しく処理する', () => {

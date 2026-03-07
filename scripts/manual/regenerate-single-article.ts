@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { PrismaClient } from '@prisma/client';
-import { checkContentQuality, fixSummary } from '@/lib/utils/content-quality-checker';
+import { checkContentQuality, fixSummary } from '@/lib/utils/content/content-quality-checker';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import fetch from 'node-fetch';
 

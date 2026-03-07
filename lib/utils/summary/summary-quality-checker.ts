@@ -3,7 +3,7 @@
  * 統一プロンプトによる要約生成の品質を検証し、再生成の必要性を判定
  */
 
-import { ContentAnalysis as BaseContentAnalysis } from './content-analyzer';
+import { ContentAnalysis as BaseContentAnalysis } from '../content/content-analyzer';
 
 // ContentAnalysisを拡張して互換性を保つ
 export interface ContentAnalysis extends BaseContentAnalysis {

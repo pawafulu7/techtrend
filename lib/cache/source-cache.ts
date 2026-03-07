@@ -8,7 +8,7 @@ import {
   estimateSourceCategory,
   SourceCategory,
   calculateGrowthRateFromStats,
-} from '@/lib/utils/source-stats';
+} from '@/lib/utils/source/source-stats';
 
 interface SourceWithCount extends Source {
   _count: {

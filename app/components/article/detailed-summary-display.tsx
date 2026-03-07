@@ -1,5 +1,5 @@
 import { DetailedSummaryStructured } from './detailed-summary-structured';
-import { ArticleType } from '@/lib/utils/article-type-detector';
+import { ArticleType } from '@/lib/utils/article/article-type-detector';
 
 interface DetailedSummaryDisplayProps {
   detailedSummary: string;

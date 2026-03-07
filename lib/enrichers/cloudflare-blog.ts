@@ -1,7 +1,7 @@
 import { BaseContentEnricher } from './base';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
-import { isUrlFromDomain } from '@/lib/utils/url-validator';
+import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 
 export class CloudflareBlogEnricher extends BaseContentEnricher {
   /**

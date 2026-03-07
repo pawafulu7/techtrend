@@ -32,7 +32,7 @@ jest.mock('@/lib/utils/duplicate-detection', () => ({
 }));
 
 // url-normalizerをモック
-jest.mock('@/lib/utils/url-normalizer', () => ({
+jest.mock('@/lib/utils/url/url-normalizer', () => ({
   normalizeUrl: jest.fn((url: string) => url),
 }));
 

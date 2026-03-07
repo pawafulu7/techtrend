@@ -4,7 +4,7 @@
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
-import { isUrlFromDomain } from '@/lib/utils/url-validator';
+import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 
 export class InfoQEnricher extends BaseContentEnricher {
   /**

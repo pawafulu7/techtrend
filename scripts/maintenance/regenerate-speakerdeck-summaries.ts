@@ -5,9 +5,9 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
-import { analyzeContent } from '../../lib/utils/content-analyzer';
-import { checkSummaryQuality } from '../../lib/utils/summary-quality-checker';
+import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
+import { analyzeContent } from '../../lib/utils/content/content-analyzer';
+import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 
 const prisma = new PrismaClient();
 

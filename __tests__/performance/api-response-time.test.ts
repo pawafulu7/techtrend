@@ -258,7 +258,7 @@ describe('API Response Time (/api/sources)', () => {
 
   describe('SourceGroup Latency', () => {
     it('should fetch SourceGroups within acceptable latency', async () => {
-      const { groupSourcesByGroupId } = await import('@/lib/utils/source-grouping');
+      const { groupSourcesByGroupId } = await import('@/lib/utils/source/source-grouping');
 
       // Use seeded sources (not mockSources from fixtures)
       // seedPerformanceData() generated sources with matching groupIds

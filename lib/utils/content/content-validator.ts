@@ -3,7 +3,7 @@
  * 記事コンテンツの妥当性を検証する機能を提供
  */
 
-import { isUrlFromDomain } from './url-validator';
+import { isUrlFromDomain } from '../url/url-validator';
 
 /**
  * コンテンツが削除メッセージかどうかを判定
@@ -12,7 +12,7 @@ import { isUrlFromDomain } from './url-validator';
  */
 export function isDeletedContent(content: string | null | undefined): boolean {
   if (!content) return false;
-  
+
   // 削除メッセージのパターン
   const deletedPatterns = [
     // 英語パターン
@@ -23,7 +23,7 @@ export function isDeletedContent(content: string | null | undefined): boolean {
     'Post not found',
     'This content is no longer available',
     'Are you sure you want to delete this article',
-    
+
     // 日本語パターン
     '記事は削除されました',
     'この記事は削除されています',
@@ -32,10 +32,10 @@ export function isDeletedContent(content: string | null | undefined): boolean {
     'ページが見つかりません',
     'コンテンツは利用できません',
   ];
-  
+
   // いずれかのパターンが含まれているかチェック
   const lowerContent = content.toLowerCase();
-  return deletedPatterns.some(pattern => 
+  return deletedPatterns.some((pattern) =>
     lowerContent.includes(pattern.toLowerCase())
   );
 }
@@ -50,23 +50,23 @@ export function validateContentQuality(content: string | null | undefined): {
   issues: string[];
 } {
   const issues: string[] = [];
-  
+
   // 空のコンテンツ
   if (!content || content.trim().length === 0) {
     issues.push('コンテンツが空です');
     return { isValid: false, issues };
   }
-  
+
   // 削除メッセージ
   if (isDeletedContent(content)) {
     issues.push('削除メッセージが検出されました');
   }
-  
+
   // 短すぎるコンテンツ（50文字未満）
   if (content.trim().length < 50) {
     issues.push(`コンテンツが短すぎます（${content.trim().length}文字）`);
   }
-  
+
   // HTMLエラーメッセージのパターン
   const errorPatterns = [
     '404 not found',
@@ -75,14 +75,14 @@ export function validateContentQuality(content: string | null | undefined): {
     'access denied',
     'permission denied',
   ];
-  
+
   const lowerContent = content.toLowerCase();
-  errorPatterns.forEach(pattern => {
+  errorPatterns.forEach((pattern) => {
     if (lowerContent.includes(pattern)) {
       issues.push(`エラーメッセージが検出されました: ${pattern}`);
     }
   });
-  
+
   // プレースホルダーテキストの検出
   const placeholderPatterns = [
     'lorem ipsum',
@@ -91,16 +91,16 @@ export function validateContentQuality(content: string | null | undefined): {
     '準備中',
     '工事中',
   ];
-  
-  placeholderPatterns.forEach(pattern => {
+
+  placeholderPatterns.forEach((pattern) => {
     if (lowerContent.includes(pattern.toLowerCase())) {
       issues.push(`プレースホルダーテキストが検出されました: ${pattern}`);
     }
   });
-  
+
   return {
     isValid: issues.length === 0,
-    issues
+    issues,
   };
 }
 

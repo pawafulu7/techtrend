@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { generateUnifiedPrompt } from '../../lib/utils/article-type-prompts';
+import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import fetch from 'node-fetch';
 
 const prisma = new PrismaClient();

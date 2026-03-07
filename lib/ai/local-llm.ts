@@ -1,6 +1,6 @@
 import { ExternalAPIError } from '../errors';
 import fetch from 'node-fetch';
-import { cleanSummary as cleanSummaryUtil } from '../utils/summary-cleaner';
+import { cleanSummary as cleanSummaryUtil } from '../utils/summary/summary-cleaner';
 
 interface LocalLLMConfig {
   url: string;

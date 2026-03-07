@@ -5,7 +5,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { generateUnifiedPrompt } from '@/lib/utils/article-type-prompts';
+import { generateUnifiedPrompt } from '@/lib/utils/article/article-type-prompts';
 import { UnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 
 const prisma = new PrismaClient();

@@ -20,8 +20,8 @@ jest.mock('@prisma/client', () => {
   };
 });
 
-import { detectSourceFromUrl, normalizeSourceName, isValidUrl, isSupportedUrl } from '../../lib/utils/source-detector';
-import { addArticleManually, setPrismaClient } from '../../lib/utils/article-manual-adder';
+import { detectSourceFromUrl, normalizeSourceName, isValidUrl, isSupportedUrl } from '../../lib/utils/source/source-detector';
+import { addArticleManually, setPrismaClient } from '../../lib/utils/article/article-manual-adder';
 import { PrismaClient } from '@prisma/client';
 
 // UnifiedSummaryServiceのモック
