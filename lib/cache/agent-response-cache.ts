@@ -1,6 +1,11 @@
 import { RedisCache } from './index';
 import { CACHE_TTL } from './constants';
 
+export interface AgentCachedResponse {
+  text: string;
+  toolCalls: unknown[];
+}
+
 /**
  * Agent Response Cache
  *
@@ -29,18 +34,38 @@ export class AgentResponseCache extends RedisCache {
    * @param query - User query
    * @returns Cached response or null if not found/error
    */
-  async getResponse(query: string): Promise<string | null> {
+  async getResponse(query: string): Promise<AgentCachedResponse | null> {
     const key = this.generateAgentKey(query);
-    return super.get<string>(key);
+    const raw = await super.get<unknown>(key);
+    if (raw === null) return null;
+    // Backward compatibility: old entries stored as plain string
+    if (typeof raw === 'string') {
+      return { text: raw, toolCalls: [] };
+    }
+    if (
+      typeof raw !== 'object' ||
+      typeof (raw as { text?: unknown }).text !== 'string'
+    ) {
+      return null;
+    }
+    return {
+      text: (raw as { text: string }).text,
+      toolCalls: Array.isArray((raw as { toolCalls?: unknown }).toolCalls)
+        ? (raw as { toolCalls: unknown[] }).toolCalls
+        : [],
+    };
   }
 
   /**
    * Cache agent response
    *
    * @param query - User query
-   * @param response - Agent response text
+   * @param response - Agent response object with text and toolCalls
    */
-  async setResponse(query: string, response: string): Promise<void> {
+  async setResponse(
+    query: string,
+    response: AgentCachedResponse
+  ): Promise<void> {
     const key = this.generateAgentKey(query);
     await super.set(key, response);
   }

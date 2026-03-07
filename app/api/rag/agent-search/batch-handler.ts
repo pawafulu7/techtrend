@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AgentResponseCache } from '@/lib/cache/agent-response-cache';
-import { ArticleQACache as _ArticleQACache } from '@/lib/cache/article-qa-cache';
+import {
+  AgentResponseCache,
+  type AgentCachedResponse,
+} from '@/lib/cache/agent-response-cache';
+import {
+  ArticleQACache as _ArticleQACache,
+  type ArticleQACachedResponse,
+} from '@/lib/cache/article-qa-cache';
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
@@ -99,7 +105,8 @@ export async function handleBatchRequest(
         }
       : undefined;
 
-  let cachedResponse: string | null = null;
+  let cachedResponse: AgentCachedResponse | ArticleQACachedResponse | null =
+    null;
 
   try {
     if (modeContext.isArticleQa) {
@@ -146,11 +153,11 @@ export async function handleBatchRequest(
 
     const cachedPayload: Record<string, unknown> = {
       query: validatedRequest.query,
-      response: cachedResponse,
+      response: cachedResponse.text,
       cached: true,
       fallback: false,
-      toolCalls: [],
-      usage: {},
+      toolCalls: cachedResponse.toolCalls,
+      usage: { totalTokens: 0 },
     };
 
     if (contextPayload) {
@@ -288,12 +295,12 @@ export async function handleBatchRequest(
           validatedRequest.query,
           modeContext.preferredLang,
           qaContext!.updatedAt,
-          agentResponse
+          { text: agentResponse, toolCalls }
         );
       } else {
         await responseCache!.setResponse(
           `${modeContext.preferredLang}:${validatedRequest.query}`,
-          agentResponse
+          { text: agentResponse, toolCalls }
         );
       }
     }

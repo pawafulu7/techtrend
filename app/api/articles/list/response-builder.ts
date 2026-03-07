@@ -110,6 +110,7 @@ export interface CursorPaginationParams {
   normalizedSources: string;
   tags: string | null;
   tag: string | null;
+  tagMode: string;
   search: string | null;
   dateRange: string | null;
   dateFrom: string | null;
@@ -118,6 +119,9 @@ export interface CursorPaginationParams {
   category: string | null;
   hasPreviousPage: boolean;
   companyNameMap: Map<string, string>;
+  excludeSources: string;
+  excludeUnprocessed: boolean;
+  excludeLowQuality: boolean;
 }
 
 /**
@@ -136,12 +140,16 @@ export function buildCursorResult(
     {
       sources: params.normalizedSources,
       tags: params.tags || params.tag,
+      tagMode: params.tagMode,
       search: params.search,
       dateRange: params.dateRange,
       dateFrom: params.dateFrom,
       dateTo: params.dateTo,
       readFilter: params.readFilter,
       category: params.category,
+      excludeSources: params.excludeSources,
+      excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
+      excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
     },
     params.hasPreviousPage
   );
@@ -178,6 +186,7 @@ export interface OffsetPaginationParams {
   normalizedSources: string;
   tags: string | null;
   tag: string | null;
+  tagMode: string;
   search: string | null;
   dateRange: string | null;
   dateFrom: string | null;
@@ -185,6 +194,9 @@ export interface OffsetPaginationParams {
   readFilter: string | null;
   category: string | null;
   companyNameMap: Map<string, string>;
+  excludeSources: string;
+  excludeUnprocessed: boolean;
+  excludeLowQuality: boolean;
 }
 
 /**
@@ -210,12 +222,16 @@ export function buildOffsetResult(
     const filterContext = {
       sources: params.normalizedSources,
       tags: params.tags || params.tag,
+      tagMode: params.tagMode,
       search: params.search,
       dateRange: params.dateRange,
       dateFrom: params.dateFrom,
       dateTo: params.dateTo,
       readFilter: params.readFilter,
       category: params.category,
+      excludeSources: params.excludeSources,
+      excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
+      excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
     };
 
     const startCursor = cursorManager.encodeCursor({

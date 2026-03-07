@@ -1,6 +1,12 @@
 import { NextRequest } from 'next/server';
-import { AgentResponseCache } from '@/lib/cache/agent-response-cache';
-import { ArticleQACache as _ArticleQACache } from '@/lib/cache/article-qa-cache';
+import {
+  AgentResponseCache,
+  type AgentCachedResponse,
+} from '@/lib/cache/agent-response-cache';
+import {
+  ArticleQACache as _ArticleQACache,
+  type ArticleQACachedResponse,
+} from '@/lib/cache/article-qa-cache';
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
@@ -87,7 +93,8 @@ export async function handleStreamingRequest(
   const articleQaCache = modeContext.isArticleQa
     ? new _ArticleQACache()
     : undefined;
-  let cachedResponse: string | null = null;
+  let cachedResponse: AgentCachedResponse | ArticleQACachedResponse | null =
+    null;
 
   try {
     if (modeContext.isArticleQa) {
@@ -135,7 +142,8 @@ export async function handleStreamingRequest(
     }
 
     return createCachedSSEResponse(
-      cachedResponse,
+      cachedResponse.text,
+      cachedResponse.toolCalls,
       modeContext.qaContext,
       rateLimitInfo
     );
@@ -382,12 +390,12 @@ async function createStreamingResponse(
                   validatedRequest.query,
                   modeContext.preferredLang,
                   qaContext!.updatedAt,
-                  fullText
+                  { text: fullText, toolCalls }
                 );
               } else {
                 await responseCache!.setResponse(
                   `${modeContext.preferredLang}:${validatedRequest.query}`,
-                  fullText
+                  { text: fullText, toolCalls }
                 );
               }
             } catch (cacheError) {

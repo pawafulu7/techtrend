@@ -407,6 +407,8 @@ export interface CountParams {
   page: number;
   limit: number;
   totalParam: string | null;
+  excludeUnprocessed: boolean;
+  excludeLowQuality: boolean;
 }
 
 /**
@@ -430,6 +432,8 @@ export async function fetchTotalCount(params: CountParams): Promise<number> {
       readFilter: params.readFilter || 'all',
       category: params.category || 'all',
       userId: isUserScopedCount ? (params.userId ?? 'anonymous') : 'n/a',
+      excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
+      excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
     },
   });
 

@@ -172,6 +172,78 @@ describe('/api/articles/list', () => {
     expect(data.data.items[0].detailedSummary).toBeUndefined();
   });
 
+  it('should handle NaN page parameter gracefully', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+
+    const request = new NextRequest('http://localhost:3000/api/articles/list?page=abc');
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    // Should use default page=1, not produce NaN/500 error
+    expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 0, // page=1 means skip=0
+      })
+    );
+  });
+
+  it('should handle NaN limit parameter gracefully', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+
+    const request = new NextRequest('http://localhost:3000/api/articles/list?limit=xyz');
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    // Should use default limit=20
+    expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 20,
+      })
+    );
+  });
+
+  it('should fallback invalid sortOrder to desc', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+
+    const request = new NextRequest('http://localhost:3000/api/articles/list?sortOrder=invalid');
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [
+          { publishedAt: 'desc' },
+          { id: 'desc' },
+        ],
+      })
+    );
+  });
+
+  it('should accept valid sortOrder asc', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+
+    const request = new NextRequest('http://localhost:3000/api/articles/list?sortOrder=asc');
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [
+          { publishedAt: 'asc' },
+          { id: 'asc' },
+        ],
+      })
+    );
+  });
+
   it('should handle articles from specific sources correctly', async () => {
     // Arrange - Speaker Deckの記事をテスト
     const speakerDeckArticle = {

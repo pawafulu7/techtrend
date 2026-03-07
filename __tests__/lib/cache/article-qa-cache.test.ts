@@ -54,7 +54,7 @@ describe('ArticleQACache', () => {
 
   describe('getResponse', () => {
     it('should retrieve cached response with correct cache key', async () => {
-      const cachedResponse = 'この記事の前提知識は...';
+      const cachedResponse = { text: 'この記事の前提知識は...', toolCalls: [] };
 
       mockRedis.get.mockResolvedValue(JSON.stringify(cachedResponse));
 
@@ -65,7 +65,7 @@ describe('ArticleQACache', () => {
         updatedAt
       );
 
-      expect(result).toBe(cachedResponse);
+      expect(result).toEqual(cachedResponse);
       expect(mockRedis.get).toHaveBeenCalledWith(
         `${NAMESPACE}:article123:what are the prerequisites:ja:${updatedAt.getTime()}`
       );
@@ -101,7 +101,9 @@ describe('ArticleQACache', () => {
       const oldUpdatedAt = new Date('2025-10-15T10:00:00Z');
       const newUpdatedAt = new Date('2025-10-16T10:00:00Z');
 
-      mockRedis.get.mockResolvedValue(JSON.stringify('cached response'));
+      mockRedis.get.mockResolvedValue(
+        JSON.stringify({ text: 'cached response', toolCalls: [] })
+      );
 
       // Same query, different updatedAt should produce different cache keys
       await cache.getResponse(articleId, query, locale, oldUpdatedAt);
@@ -116,7 +118,7 @@ describe('ArticleQACache', () => {
 
   describe('setResponse', () => {
     it('should cache response with 5-minute TTL', async () => {
-      const response = 'この記事の前提知識は...';
+      const response = { text: 'この記事の前提知識は...', toolCalls: [] };
 
       await cache.setResponse(articleId, query, locale, updatedAt, response);
 
@@ -131,7 +133,10 @@ describe('ArticleQACache', () => {
       mockRedis.setex.mockRejectedValue(new Error('Write failed'));
 
       await expect(
-        cache.setResponse(articleId, query, locale, updatedAt, 'response')
+        cache.setResponse(articleId, query, locale, updatedAt, {
+          text: 'response',
+          toolCalls: [],
+        })
       ).resolves.not.toThrow();
     });
 
@@ -144,18 +149,15 @@ describe('ArticleQACache', () => {
         'architecture',
         'scalability',
       ];
-      const longResponse = words
+      const longText = words
         .map((w) => w.repeat(500))
         .join(' ')
         .repeat(10); // >40,000 tokens
 
-      await cache.setResponse(
-        articleId,
-        query,
-        locale,
-        updatedAt,
-        longResponse
-      );
+      await cache.setResponse(articleId, query, locale, updatedAt, {
+        text: longText,
+        toolCalls: [],
+      });
 
       // Should NOT cache (exceeds token limit)
       expect(mockRedis.setex).not.toHaveBeenCalled();
@@ -163,7 +165,7 @@ describe('ArticleQACache', () => {
 
     it('should cache response within token limit', async () => {
       // Create a normal response (~1,000 tokens)
-      const normalResponse = 'a'.repeat(4000); // ~1,000 tokens
+      const normalResponse = { text: 'a'.repeat(4000), toolCalls: [] }; // ~1,000 tokens
 
       await cache.setResponse(
         articleId,
@@ -248,7 +250,9 @@ describe('ArticleQACache', () => {
 
   describe('locale-specific caching', () => {
     it('should create different cache keys for different locales', async () => {
-      mockRedis.get.mockResolvedValue(JSON.stringify('cached'));
+      mockRedis.get.mockResolvedValue(
+        JSON.stringify({ text: 'cached', toolCalls: [] })
+      );
 
       await cache.getResponse(articleId, query, 'ja', updatedAt);
       await cache.getResponse(articleId, query, 'en', updatedAt);
@@ -262,7 +266,9 @@ describe('ArticleQACache', () => {
 
   describe('query normalization', () => {
     it('should normalize queries for cache keys', async () => {
-      mockRedis.get.mockResolvedValue(JSON.stringify('response'));
+      mockRedis.get.mockResolvedValue(
+        JSON.stringify({ text: 'response', toolCalls: [] })
+      );
 
       // All these should hit the same cache key
       await cache.getResponse(
@@ -305,7 +311,9 @@ describe('ArticleQACache', () => {
     });
 
     it('should remove Japanese punctuation', async () => {
-      mockRedis.get.mockResolvedValue(JSON.stringify('response'));
+      mockRedis.get.mockResolvedValue(
+        JSON.stringify({ text: 'response', toolCalls: [] })
+      );
 
       await cache.getResponse(
         articleId,
@@ -328,7 +336,9 @@ describe('ArticleQACache', () => {
   describe('stats tracking', () => {
     it('should track cache hits and misses', async () => {
       mockRedis.get
-        .mockResolvedValueOnce(JSON.stringify('response'))
+        .mockResolvedValueOnce(
+          JSON.stringify({ text: 'response', toolCalls: [] })
+        )
         .mockResolvedValueOnce(null);
 
       await cache.getResponse(articleId, 'hit query', locale, updatedAt);
@@ -337,6 +347,64 @@ describe('ArticleQACache', () => {
       const stats = cache.getStats();
       expect(stats.hits).toBe(1);
       expect(stats.misses).toBe(1);
+    });
+  });
+
+  describe('backward compatibility', () => {
+    it('should handle old string format from Redis', async () => {
+      mockRedis.get.mockResolvedValue(
+        JSON.stringify('old plain text response')
+      );
+
+      const result = await cache.getResponse(
+        articleId,
+        query,
+        locale,
+        updatedAt
+      );
+
+      expect(result).toEqual({
+        text: 'old plain text response',
+        toolCalls: [],
+      });
+    });
+  });
+
+  describe('toolCalls preservation', () => {
+    it('should preserve toolCalls through set/get cycle', async () => {
+      const toolCalls = [
+        {
+          id: 'tc1',
+          name: 'article-search',
+          input: { articleId: 'test' },
+          output: { content: 'result' },
+        },
+      ];
+      const response = { text: 'Answer about article', toolCalls };
+
+      await cache.setResponse(articleId, query, locale, updatedAt, response);
+
+      expect(mockRedis.setex).toHaveBeenCalledWith(
+        expect.any(String),
+        300,
+        JSON.stringify(response)
+      );
+    });
+
+    it('should enforce token limit on text only, not toolCalls', async () => {
+      // Text is within limit, but toolCalls are large
+      const largeToolCalls = Array(100).fill({
+        id: 'tc1',
+        name: 'semantic-search',
+        input: { query: 'test' },
+        output: { results: 'x'.repeat(1000) },
+      });
+      const response = { text: 'Short answer', toolCalls: largeToolCalls };
+
+      await cache.setResponse(articleId, query, locale, updatedAt, response);
+
+      // Should cache because text is short (token limit only checks text)
+      expect(mockRedis.setex).toHaveBeenCalled();
     });
   });
 });
