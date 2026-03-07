@@ -88,8 +88,8 @@ async function runArticleQA(
     const normalizedQuestion = normalizeQuery(question);
     return {
       question,
-      answer: cachedResponse,
-      toolCalls: [],
+      answer: cachedResponse.text,
+      toolCalls: cachedResponse.toolCalls as any[],
       usage: { totalTokens: 0 },
       cached: true,
       elapsedMs,
@@ -121,13 +121,10 @@ async function runArticleQA(
   const usage = result.usage ?? { totalTokens: 0 };
 
   // Cache response
-  await cache.setResponse(
-    articleId,
-    question,
-    locale,
-    article.updatedAt,
-    answer
-  );
+  await cache.setResponse(articleId, question, locale, article.updatedAt, {
+    text: answer,
+    toolCalls,
+  });
 
   const elapsedMs = Date.now() - startTime;
   const normalizedQuestion = normalizeQuery(question);

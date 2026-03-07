@@ -14,7 +14,11 @@ export interface AgentSearchResult {
     dynamic: boolean;
     output?: unknown;
   }>;
-  usage: { totalTokens: number; promptTokens?: number; completionTokens?: number };
+  usage: {
+    totalTokens: number;
+    promptTokens?: number;
+    completionTokens?: number;
+  };
   cached: boolean;
   fallback: boolean;
   articles?: ArticleLink[];
@@ -33,7 +37,13 @@ export interface UseAgentSearchOptions {
   timeout?: number;
 }
 
-export type SearchStep = 'idle' | 'searching' | 'analyzing' | 'generating' | 'complete' | 'error';
+export type SearchStep =
+  | 'idle'
+  | 'searching'
+  | 'analyzing'
+  | 'generating'
+  | 'complete'
+  | 'error';
 
 export interface UseAgentSearchReturn {
   search: (query: string) => Promise<void>;
@@ -160,7 +170,9 @@ async function parseSSEStream(
             console.log('[SSE] Tool started:', eventData.toolName);
           }
         } else if (eventData.type === 'tool-complete') {
-          const toolCall = toolCalls.find((tc) => tc.id === eventData.toolCallId);
+          const toolCall = toolCalls.find(
+            (tc) => tc.id === eventData.toolCallId
+          );
           if (toolCall) {
             toolCall.output = eventData.result;
           }
@@ -177,12 +189,19 @@ async function parseSSEStream(
           setPartialText(accumulatedText);
 
           if (process.env.NEXT_PUBLIC_DEBUG) {
-            console.log('[SSE] Fallback mode, resultCount:', eventData.resultCount);
+            console.log(
+              '[SSE] Fallback mode, resultCount:',
+              eventData.resultCount
+            );
           }
         } else if (eventData.type === 'finish') {
           usage = eventData.usage || usage;
           cached = eventData.cached || cached;
           fallback = eventData.fallback || fallback;
+          // Restore toolCalls from finish event (for cached responses)
+          if (eventData.toolCalls && Array.isArray(eventData.toolCalls)) {
+            toolCalls.splice(0, toolCalls.length, ...eventData.toolCalls);
+          }
 
           if (process.env.NEXT_PUBLIC_DEBUG) {
             console.log('[SSE] Stream finished', {
@@ -216,7 +235,9 @@ async function parseSSEStream(
   }
 }
 
-export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchReturn {
+export function useAgentSearch(
+  options?: UseAgentSearchOptions
+): UseAgentSearchReturn {
   const [result, setResult] = useState<AgentSearchResult | null>(null);
   const [error, setError] = useState<AgentSearchError | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -244,183 +265,182 @@ export function useAgentSearch(options?: UseAgentSearchOptions): UseAgentSearchR
     };
   }, []);
 
-  const search = useCallback(
-    async (query: string) => {
-      if (!query.trim()) {
-        const emptyError: AgentSearchError = {
-          status: 400,
-          message: 'Query cannot be empty',
-        };
-        setError(emptyError);
-        callbacksRef.current?.onError?.(emptyError);
+  const search = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      const emptyError: AgentSearchError = {
+        status: 400,
+        message: 'Query cannot be empty',
+      };
+      setError(emptyError);
+      callbacksRef.current?.onError?.(emptyError);
+      return;
+    }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const requestId = `req-${Date.now()}-${Math.random()}`;
+    activeRequestIdRef.current = requestId;
+    setActiveRequestId(requestId);
+
+    setIsLoading(true);
+    setError(null);
+    setResult(null);
+    setPartialText('');
+    setCurrentStep('searching');
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const timeout = callbacksRef.current?.timeout ?? DEFAULT_TIMEOUT;
+    let didTimeout = false;
+    const timeoutId = setTimeout(() => {
+      didTimeout = true;
+      controller.abort();
+    }, timeout);
+
+    try {
+      const response = await fetch('/api/rag/agent-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (controller.signal.aborted) {
         return;
       }
 
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      // Content-Type detection: SSE vs. JSON
+      const ct = response.headers.get('Content-Type') || '';
 
-      const requestId = `req-${Date.now()}-${Math.random()}`;
-      activeRequestIdRef.current = requestId;
-      setActiveRequestId(requestId);
-
-      setIsLoading(true);
-      setError(null);
-      setResult(null);
-      setPartialText('');
-      setCurrentStep('searching');
-
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      const timeout = callbacksRef.current?.timeout ?? DEFAULT_TIMEOUT;
-      let didTimeout = false;
-      const timeoutId = setTimeout(() => {
-        didTimeout = true;
-        controller.abort();
-      }, timeout);
-
-      try {
-        const response = await fetch('/api/rag/agent-search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query }),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        // Content-Type detection: SSE vs. JSON
-        const ct = response.headers.get('Content-Type') || '';
-
-        // Early error handling (401, 429, 400) - always JSON
-        if (!response.ok) {
-          let data: any = null;
-          if (ct.includes('application/json')) {
-            try {
-              data = await response.json();
-            } catch {
-              data = null;
-            }
-          } else {
-            try {
-              const text = await response.text();
-              data = text ? { error: text } : null;
-            } catch {
-              data = null;
-            }
-          }
-          let retryAfter: number | undefined;
-
-          if (response.status === 429) {
-            const retryAfterHeader = response.headers.get('Retry-After');
-            if (retryAfterHeader) {
-              const parsed = parseInt(retryAfterHeader, 10);
-              if (!isNaN(parsed) && parsed > 0) {
-                retryAfter = parsed;
-              }
-            }
-          }
-
-          const agentError: AgentSearchError = {
-            status: response.status,
-            message:
-              (data && typeof data.error === 'string' && data.error) ||
-              response.statusText ||
-              'Unknown error',
-            details: data?.details,
-            retryAfter,
-          };
-
-          setError(agentError);
-          setCurrentStep('error');
-          callbacksRef.current?.onError?.(agentError);
-          return;
-        }
-
-        // Success (200番台) - handle SSE or JSON
-        if (ct.includes('text/event-stream')) {
-          // Streaming mode
-          const streamResult = await parseSSEStream(
-            response,
-            controller,
-            callbacksRef,
-            query,
-            setPartialText,
-            requestId,
-            () => activeRequestIdRef.current,
-            setCurrentStep
-          );
-
-          setResult(streamResult);
-          setCurrentStep('complete');
-          callbacksRef.current?.onSuccess?.(streamResult);
-        } else if (ct.includes('application/json')) {
-          // Batch mode (backward compatibility)
-          const data = await response.json();
-          const safeToolCalls = Array.isArray(data.toolCalls) ? data.toolCalls : [];
-          const articles = extractArticlesFromToolCalls(safeToolCalls);
-
-          if (process.env.NEXT_PUBLIC_DEBUG) {
-            console.log('[useAgentSearch] Extracted articles:', articles);
-            console.log('[useAgentSearch] toolCalls:', safeToolCalls);
-          }
-
-          const resultWithArticles: AgentSearchResult = {
-            ...data,
-            articles,
-          };
-          setResult(resultWithArticles);
-          setCurrentStep('complete');
-          callbacksRef.current?.onSuccess?.(resultWithArticles);
-        } else {
-          throw new Error(`Unexpected content type: ${ct}`);
-        }
-      } catch (err) {
-        clearTimeout(timeoutId);
-        if (activeRequestIdRef.current === requestId) {
-          setPartialText('');
-        }
-
-        if (err instanceof Error && err.name === 'AbortError') {
-          if (didTimeout) {
-            const timeoutError: AgentSearchError = {
-              status: 408,
-              message: `Request timeout (${timeout / 1000}s)`,
-            };
-            setError(timeoutError);
-            setCurrentStep('error');
-            callbacksRef.current?.onError?.(timeoutError);
+      // Early error handling (401, 429, 400) - always JSON
+      if (!response.ok) {
+        let data: any = null;
+        if (ct.includes('application/json')) {
+          try {
+            data = await response.json();
+          } catch {
+            data = null;
           }
         } else {
-          const networkError: AgentSearchError = {
-            status: 0,
-            message: err instanceof Error ? err.message : 'Network error',
-          };
-          setError(networkError);
-          setCurrentStep('error');
-          callbacksRef.current?.onError?.(networkError);
+          try {
+            const text = await response.text();
+            data = text ? { error: text } : null;
+          } catch {
+            data = null;
+          }
         }
-      } finally {
-        if (didTimeout || !controller.signal.aborted) {
-          setIsLoading(false);
+        let retryAfter: number | undefined;
+
+        if (response.status === 429) {
+          const retryAfterHeader = response.headers.get('Retry-After');
+          if (retryAfterHeader) {
+            const parsed = parseInt(retryAfterHeader, 10);
+            if (!isNaN(parsed) && parsed > 0) {
+              retryAfter = parsed;
+            }
+          }
         }
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null;
-        }
-        if (activeRequestIdRef.current === requestId) {
-          activeRequestIdRef.current = null;
-          setActiveRequestId(null);
-          setPartialText('');
-        }
+
+        const agentError: AgentSearchError = {
+          status: response.status,
+          message:
+            (data && typeof data.error === 'string' && data.error) ||
+            response.statusText ||
+            'Unknown error',
+          details: data?.details,
+          retryAfter,
+        };
+
+        setError(agentError);
+        setCurrentStep('error');
+        callbacksRef.current?.onError?.(agentError);
+        return;
       }
-    },
-    []
-  );
+
+      // Success (200番台) - handle SSE or JSON
+      if (ct.includes('text/event-stream')) {
+        // Streaming mode
+        const streamResult = await parseSSEStream(
+          response,
+          controller,
+          callbacksRef,
+          query,
+          setPartialText,
+          requestId,
+          () => activeRequestIdRef.current,
+          setCurrentStep
+        );
+
+        setResult(streamResult);
+        setCurrentStep('complete');
+        callbacksRef.current?.onSuccess?.(streamResult);
+      } else if (ct.includes('application/json')) {
+        // Batch mode (backward compatibility)
+        const data = await response.json();
+        const safeToolCalls = Array.isArray(data.toolCalls)
+          ? data.toolCalls
+          : [];
+        const articles = extractArticlesFromToolCalls(safeToolCalls);
+
+        if (process.env.NEXT_PUBLIC_DEBUG) {
+          console.log('[useAgentSearch] Extracted articles:', articles);
+          console.log('[useAgentSearch] toolCalls:', safeToolCalls);
+        }
+
+        const resultWithArticles: AgentSearchResult = {
+          ...data,
+          articles,
+        };
+        setResult(resultWithArticles);
+        setCurrentStep('complete');
+        callbacksRef.current?.onSuccess?.(resultWithArticles);
+      } else {
+        throw new Error(`Unexpected content type: ${ct}`);
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (activeRequestIdRef.current === requestId) {
+        setPartialText('');
+      }
+
+      if (err instanceof Error && err.name === 'AbortError') {
+        if (didTimeout) {
+          const timeoutError: AgentSearchError = {
+            status: 408,
+            message: `Request timeout (${timeout / 1000}s)`,
+          };
+          setError(timeoutError);
+          setCurrentStep('error');
+          callbacksRef.current?.onError?.(timeoutError);
+        }
+      } else {
+        const networkError: AgentSearchError = {
+          status: 0,
+          message: err instanceof Error ? err.message : 'Network error',
+        };
+        setError(networkError);
+        setCurrentStep('error');
+        callbacksRef.current?.onError?.(networkError);
+      }
+    } finally {
+      if (didTimeout || !controller.signal.aborted) {
+        setIsLoading(false);
+      }
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
+      if (activeRequestIdRef.current === requestId) {
+        activeRequestIdRef.current = null;
+        setActiveRequestId(null);
+        setPartialText('');
+      }
+    }
+  }, []);
 
   const reset = useCallback(() => {
     if (abortControllerRef.current) {

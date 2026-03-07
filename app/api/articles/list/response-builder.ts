@@ -118,6 +118,9 @@ export interface CursorPaginationParams {
   category: string | null;
   hasPreviousPage: boolean;
   companyNameMap: Map<string, string>;
+  excludeSources: string;
+  excludeUnprocessed: boolean;
+  excludeLowQuality: boolean;
 }
 
 /**
@@ -142,6 +145,9 @@ export function buildCursorResult(
       dateTo: params.dateTo,
       readFilter: params.readFilter,
       category: params.category,
+      excludeSources: params.excludeSources,
+      excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
+      excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
     },
     params.hasPreviousPage
   );
@@ -185,6 +191,9 @@ export interface OffsetPaginationParams {
   readFilter: string | null;
   category: string | null;
   companyNameMap: Map<string, string>;
+  excludeSources: string;
+  excludeUnprocessed: boolean;
+  excludeLowQuality: boolean;
 }
 
 /**
@@ -216,6 +225,9 @@ export function buildOffsetResult(
       dateTo: params.dateTo,
       readFilter: params.readFilter,
       category: params.category,
+      excludeSources: params.excludeSources,
+      excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
+      excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
     };
 
     const startCursor = cursorManager.encodeCursor({

@@ -43,10 +43,12 @@ export async function GET(request: NextRequest) {
     const cursor = searchParams.get('cursor');
     const after = searchParams.get('after'); // Alternative cursor parameter
     const before = searchParams.get('before'); // For backward pagination
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    const rawPage = parseInt(searchParams.get('page') || '1', 10);
+    const page = Math.max(1, Number.isNaN(rawPage) ? 1 : rawPage);
+    const rawLimit = parseInt(searchParams.get('limit') || '20', 10);
     const limit = Math.min(
       100,
-      Math.max(1, parseInt(searchParams.get('limit') || '20'))
+      Math.max(1, Number.isNaN(rawLimit) ? 20 : rawLimit)
     );
     const sortBy = searchParams.get('sortBy') || 'publishedAt';
     const validSortFields = [
@@ -59,12 +61,13 @@ export async function GET(request: NextRequest) {
     const finalSortBy = validSortFields.includes(sortBy)
       ? sortBy
       : 'publishedAt';
-    const sortOrder = (searchParams.get('sortOrder') || 'desc') as
-      | 'asc'
-      | 'desc';
+    const rawSortOrder = searchParams.get('sortOrder') || 'desc';
+    const sortOrder: 'asc' | 'desc' = ['asc', 'desc'].includes(rawSortOrder)
+      ? (rawSortOrder as 'asc' | 'desc')
+      : 'desc';
 
     // Determine pagination mode
-    const useCursor = !!(cursor || after || before);
+    let useCursor = !!(cursor || after || before);
     const effectiveCursor = cursor || after || before;
 
     // Parse filters
@@ -217,6 +220,29 @@ export async function GET(request: NextRequest) {
               'cursor-pagination.sort-mismatch: Cursor invalidated due to sort change'
             );
           }
+          if (
+            cursorFilter !== null &&
+            !cursorManager.validateFilters(cursorPayload, {
+              sources: normalizedSources,
+              tags: tags || tag,
+              search,
+              dateRange,
+              dateFrom,
+              dateTo,
+              readFilter,
+              category,
+              excludeSources: normalizedExcludeSources,
+              excludeUnprocessed: excludeUnprocessed ? 'true' : 'false',
+              excludeLowQuality: excludeLowQuality ? 'true' : 'false',
+            })
+          ) {
+            logger.warn(
+              'cursor-pagination.filter-mismatch: Cursor invalidated due to filter change'
+            );
+            useCursor = false;
+            cursorPayload = null;
+            cursorFilter = null;
+          }
         } else {
           logger.warn(
             'cursor-pagination.invalid-cursor: Falling back to offset'
@@ -244,6 +270,8 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         totalParam,
+        excludeUnprocessed,
+        excludeLowQuality,
       });
 
       // Get articles - Optimized query with minimal source relation
@@ -313,6 +341,9 @@ export async function GET(request: NextRequest) {
         readFilter,
         category,
         companyNameMap,
+        excludeSources: normalizedExcludeSources,
+        excludeUnprocessed,
+        excludeLowQuality,
       };
 
       if (useCursor && cursorPayload) {

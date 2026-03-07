@@ -14,6 +14,11 @@
  * @module article-qa-cache
  */
 
+export interface ArticleQACachedResponse {
+  text: string;
+  toolCalls: unknown[];
+}
+
 import { RedisCache } from './index';
 import { CACHE_TTL } from './constants';
 import { logger } from '@/lib/logger';
@@ -49,31 +54,38 @@ export class ArticleQACache extends RedisCache {
     query: string,
     locale: 'ja' | 'en',
     updatedAt: Date
-  ): Promise<string | null> {
+  ): Promise<ArticleQACachedResponse | null> {
     const key = this.generateQAKey(articleId, query, locale, updatedAt);
-    return super.get<string>(key);
+    const raw = await super.get<string | ArticleQACachedResponse>(key);
+    if (raw === null) return null;
+    // Backward compatibility: old entries stored as plain string
+    if (typeof raw === 'string') {
+      return { text: raw, toolCalls: [] };
+    }
+    return raw;
   }
 
   /**
    * Cache article QA response
    *
    * Enforces token limit to prevent excessive cache growth.
+   * Token limit is checked against text content only.
    *
    * @param articleId - Article ID
    * @param query - User query
    * @param locale - User locale ('ja' or 'en')
    * @param updatedAt - Article last updated timestamp
-   * @param response - Agent response text
+   * @param response - Agent response object with text and toolCalls
    */
   async setResponse(
     articleId: string,
     query: string,
     locale: 'ja' | 'en',
     updatedAt: Date,
-    response: string
+    response: ArticleQACachedResponse
   ): Promise<void> {
-    // Enforce token limit
-    const tokenCount = countTokens(response);
+    // Enforce token limit on text content only
+    const tokenCount = countTokens(response.text);
     if (tokenCount > this.maxTokensPerEntry) {
       logger.warn(
         {

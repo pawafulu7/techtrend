@@ -96,10 +96,11 @@ export function createSSEResponse(
  * Create SSE response for cached results
  *
  * Returns cached text via SSE format for client-side compatibility.
- * Emits 'cached' event followed by 'finish' event.
+ * Emits 'cached' event followed by 'finish' event (with text and toolCalls).
  */
 export function createCachedSSEResponse(
   cachedText: string,
+  toolCalls: unknown[],
   qaContext?: ModeContext['qaContext'],
   rateLimitInfo?: RateLimitInfo
 ): Response {
@@ -136,6 +137,8 @@ export function createCachedSSEResponse(
         encoder.encode(
           `data: ${JSON.stringify({
             type: 'finish',
+            text: cachedText,
+            toolCalls,
             cached: true,
           })}\n\n`
         )
