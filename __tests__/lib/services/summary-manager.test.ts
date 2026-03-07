@@ -4,7 +4,10 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { SummaryManager, SummaryGenerationOptions } from '@/lib/services/summary-manager';
+import {
+  SummaryManager,
+  SummaryGenerationOptions,
+} from '@/lib/services/summary/summary-manager';
 
 describe('SummaryManager', () => {
   let prisma: PrismaClient;
@@ -59,7 +62,7 @@ describe('SummaryManager', () => {
     it('should accept valid options', async () => {
       const options: SummaryGenerationOptions = {
         limit: 10,
-        source: 'Test Source'
+        source: 'Test Source',
       };
 
       // This is a smoke test - actual execution would require test data
@@ -73,7 +76,7 @@ describe('SummaryManager', () => {
     it('should accept valid options with force flag', () => {
       const options: SummaryGenerationOptions = {
         force: true,
-        batch: 5
+        batch: 5,
       };
 
       expect(manager.regenerateSummaries).toBeDefined();
@@ -85,7 +88,7 @@ describe('SummaryManager', () => {
     it('should accept valid options with days parameter', () => {
       const options: SummaryGenerationOptions = {
         days: 7,
-        source: 'Test Source'
+        source: 'Test Source',
       };
 
       expect(manager.generateMissingSummaries).toBeDefined();

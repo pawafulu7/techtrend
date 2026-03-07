@@ -3,11 +3,11 @@
  * Tests script execution, command dispatch, and error handling
  */
 
-import { SummaryManager } from '@/lib/services/summary-manager';
+import { SummaryManager } from '@/lib/services/summary/summary-manager';
 import { getPrismaClient } from '@/lib/cli/utils/database';
 
 // Mocks
-jest.mock('@/lib/services/summary-manager');
+jest.mock('@/lib/services/summary/summary-manager');
 jest.mock('@/lib/cli/utils/database');
 
 describe('manage-summaries script', () => {
