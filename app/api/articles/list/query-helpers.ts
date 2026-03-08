@@ -154,6 +154,21 @@ function applyReadFilter(
   }
 }
 
+function parseSourceIds(
+  sources: string | null,
+  sourceId: string | null
+): string[] {
+  if (sources) {
+    return sources
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  const normalizedSourceId = sourceId?.trim();
+  return normalizedSourceId ? [normalizedSourceId] : [];
+}
+
 function applySourceFilter(
   where: ArticleWhereInput,
   sources: string | null,
@@ -165,12 +180,7 @@ function applySourceFilter(
     if (normalizedSourcesValue === 'none') {
       where.sourceId = { in: [] };
     } else if (normalizedSourcesValue !== 'all') {
-      const sourceIds = sources
-        ? sources
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [sourceId!.trim()];
+      const sourceIds = parseSourceIds(sources, sourceId);
 
       if (sourceIds.length > 0) {
         where.sourceId = {
@@ -365,14 +375,11 @@ export function normalizeSourcesForCacheKey(
     if (trimmedLower === 'all' || trimmedLower === 'none') {
       return trimmedLower;
     }
-    return sources
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .sort()
-      .join(',');
+    const sourceIds = [...new Set(parseSourceIds(sources, null))].sort();
+    return sourceIds.length > 0 ? sourceIds.join(',') : 'all';
   }
-  return sourceId?.trim() || 'all';
+  const sourceIds = parseSourceIds(null, sourceId);
+  return sourceIds.length > 0 ? sourceIds[0] : 'all';
 }
 
 /**
@@ -381,14 +388,9 @@ export function normalizeSourcesForCacheKey(
 export function normalizeExcludeSourcesForCacheKey(
   excludeSources: string | null
 ): string {
-  return excludeSources
-    ? excludeSources
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .sort()
-        .join(',')
-    : 'none';
+  if (!excludeSources) return 'none';
+  const ids = parseSourceIds(excludeSources, null).sort();
+  return ids.length > 0 ? ids.join(',') : 'none';
 }
 
 /** Parameters for fetching total count with caching */

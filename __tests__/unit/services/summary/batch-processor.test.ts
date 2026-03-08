@@ -192,5 +192,41 @@ describe('batch-processor', () => {
         expect(firstCall[0].data).toHaveProperty('summary', 'テスト要約。');
       });
     });
+
+    describe('cache invalidation failure handling', () => {
+      it('should continue successfully when cache invalidation fails', async () => {
+        const { cacheInvalidator } = jest.requireMock('@/lib/cache/cache-invalidator');
+        const { logger } = jest.requireMock('@/lib/logger');
+        const { prisma, articleUpdate } = makePrismaMock();
+        const article = makeArticle('article-cache-error');
+
+        cacheInvalidator.onArticleUpdated.mockRejectedValueOnce(
+          new Error('redis down')
+        );
+
+        const generateSummaryAndTags = jest.fn().mockResolvedValue({
+          summary: 'テスト要約。',
+          detailedSummary: '・テスト詳細',
+          translatedTitle: undefined,
+          tags: [],
+        });
+
+        const result = await processArticleWithTimeout(
+          article,
+          '記事の本文',
+          generateSummaryAndTags,
+          prisma
+        );
+
+        expect(result).toEqual({
+          success: true,
+          articleId: 'article-cache-error',
+        });
+        expect(logger.warn).toHaveBeenCalledWith(
+          expect.objectContaining({ articleId: 'article-cache-error' }),
+          'Cache invalidation failed, continuing'
+        );
+      });
+    });
   });
 });

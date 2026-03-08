@@ -192,13 +192,14 @@ export function useSourceFilter({
       const validIds = new Set(sources.map((s) => s.id));
       const parsedIds = sourcesParam
         .split(',')
+        .map((id) => id.trim())
         .filter((id) => id && validIds.has(id));
       // If all IDs were invalid, fall back to all sources
       setSelectedSources(
         parsedIds.length > 0 ? parsedIds : sources.map((s) => s.id)
       );
     } else if (sourceIdParam) {
-      setSelectedSources([sourceIdParam]);
+      setSelectedSources([sourceIdParam.trim()]);
     }
     // URLパラメータがない場合は既存のstateを維持（cookie由来の初期値を保持）
   }, [searchParams, sources]);

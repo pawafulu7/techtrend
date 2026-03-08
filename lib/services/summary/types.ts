@@ -30,5 +30,5 @@ export interface SummaryAndTags {
   summary: string;
   detailedSummary: string;
   translatedTitle?: string;
-  tags: string[];
+  tags: string[] | null;
 }
