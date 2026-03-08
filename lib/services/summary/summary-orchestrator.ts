@@ -227,7 +227,7 @@ export async function generateMissingSummaries(
       where,
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
-      take: options?.limit || 100,
+      take: options.batch || 10,
     };
 
     const articles = (await prisma.article.findMany(

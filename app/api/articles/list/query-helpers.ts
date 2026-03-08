@@ -170,7 +170,7 @@ function applySourceFilter(
             .split(',')
             .map((s) => s.trim())
             .filter(Boolean)
-        : [sourceId!];
+        : [sourceId!.trim()];
 
       if (sourceIds.length > 0) {
         where.sourceId = {
@@ -372,7 +372,7 @@ export function normalizeSourcesForCacheKey(
       .sort()
       .join(',');
   }
-  return sourceId || 'all';
+  return sourceId?.trim() || 'all';
 }
 
 /**
