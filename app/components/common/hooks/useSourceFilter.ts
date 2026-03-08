@@ -182,6 +182,8 @@ export function useSourceFilter({
     const sourcesParam = searchParams.get('sources');
     const sourceIdParam = searchParams.get('sourceId');
 
+    const validIds = new Set(sources.map((s) => s.id));
+
     if (sourcesParam === 'none') {
       setSelectedSources([]);
     } else if (sourcesParam === 'all') {
@@ -189,7 +191,6 @@ export function useSourceFilter({
       setSelectedSources(sources.map((s) => s.id));
     } else if (sourcesParam) {
       // Filter out invalid IDs (excluded or deleted sources)
-      const validIds = new Set(sources.map((s) => s.id));
       const parsedIds = [
         ...new Set(
           sourcesParam
@@ -204,8 +205,11 @@ export function useSourceFilter({
       );
     } else if (sourceIdParam) {
       const trimmedId = sourceIdParam.trim();
-      if (trimmedId) {
+      if (trimmedId && validIds.has(trimmedId)) {
         setSelectedSources([trimmedId]);
+      } else {
+        // Invalid sourceId: fall back to all sources (consistent with sourcesParam behavior)
+        setSelectedSources(sources.map((s) => s.id));
       }
     }
     // URLパラメータがない場合は既存のstateを維持（cookie由来の初期値を保持）

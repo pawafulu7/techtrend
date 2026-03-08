@@ -197,10 +197,7 @@ function applyExcludeSourcesFilter(
 ): void {
   if (!excludeSources) return;
 
-  const excludeIds = excludeSources
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const excludeIds = parseSourceIds(excludeSources, null);
 
   if (excludeIds.length === 0) return;
 
@@ -375,10 +372,14 @@ export function normalizeSourcesForCacheKey(
     if (trimmedLower === 'all' || trimmedLower === 'none') {
       return trimmedLower;
     }
-    const sourceIds = [...new Set(parseSourceIds(sources, null))].sort();
+    const sourceIds = [
+      ...new Set(parseSourceIds(sources, null).map((id) => id.toLowerCase())),
+    ].sort();
     return sourceIds.length > 0 ? sourceIds.join(',') : 'all';
   }
-  const sourceIds = parseSourceIds(null, sourceId);
+  const sourceIds = parseSourceIds(null, sourceId).map((id) =>
+    id.toLowerCase()
+  );
   return sourceIds.length > 0 ? sourceIds[0] : 'all';
 }
 
@@ -389,7 +390,11 @@ export function normalizeExcludeSourcesForCacheKey(
   excludeSources: string | null
 ): string {
   if (!excludeSources) return 'none';
-  const ids = [...new Set(parseSourceIds(excludeSources, null))].sort();
+  const ids = [
+    ...new Set(
+      parseSourceIds(excludeSources, null).map((id) => id.toLowerCase())
+    ),
+  ].sort();
   return ids.length > 0 ? ids.join(',') : 'none';
 }
 

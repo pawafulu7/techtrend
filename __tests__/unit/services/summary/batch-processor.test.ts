@@ -65,11 +65,17 @@ function makeArticle(id = 'article-1'): ArticleWithSource {
 /** PrismaClient の article.update をモックするオブジェクトを生成するヘルパー */
 function makePrismaMock() {
   const articleUpdate = jest.fn().mockResolvedValue({});
+  const txClient = {
+    article: { update: articleUpdate },
+  };
   return {
     prisma: {
       article: {
         update: articleUpdate,
       },
+      $transaction: jest.fn((fn: (tx: typeof txClient) => Promise<void>) =>
+        fn(txClient)
+      ),
     } as unknown as import('@prisma/client').PrismaClient,
     articleUpdate,
   };
