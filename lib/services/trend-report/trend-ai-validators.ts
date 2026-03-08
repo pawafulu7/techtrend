@@ -47,12 +47,21 @@ export function validateV2Content(obj: unknown): string[] {
     if (hasStatParaphrase(a.action) || hasStatParaphrase(a.reason)) {
       errors.push(`actions("${a.action}") must not paraphrase stats`);
     }
+    if (hasQuantChangeWord(a.action) || hasQuantChangeWord(a.reason)) {
+      errors.push(
+        `actions("${a.action}") must not contain quantitative change words`
+      );
+    }
   }
-  if (
-    parsed.data.trendChanges &&
-    hasStatParaphrase(parsed.data.trendChanges.summary)
-  ) {
-    errors.push('trendChanges.summary must not paraphrase stats');
+  if (parsed.data.trendChanges) {
+    if (hasStatParaphrase(parsed.data.trendChanges.summary)) {
+      errors.push('trendChanges.summary must not paraphrase stats');
+    }
+    if (hasQuantChangeWord(parsed.data.trendChanges.summary)) {
+      errors.push(
+        'trendChanges.summary must not contain quantitative change words'
+      );
+    }
   }
   return errors;
 }

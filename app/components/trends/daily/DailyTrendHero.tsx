@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import {
   Sparkles,
   Calendar,
@@ -150,10 +151,19 @@ export function DailyTrendHero({
     });
   };
 
-  const structuredSummary = parseTrendAiSummary(aiSummary);
-  const legacySummary =
-    !structuredSummary && aiSummary ? parseLegacyAISummary(aiSummary) : null;
-  const topArticlesById = new Map(topArticles.map((a) => [a.id, a] as const));
+  const structuredSummary = useMemo(
+    () => parseTrendAiSummary(aiSummary),
+    [aiSummary]
+  );
+  const legacySummary = useMemo(
+    () =>
+      !structuredSummary && aiSummary ? parseLegacyAISummary(aiSummary) : null,
+    [structuredSummary, aiSummary]
+  );
+  const topArticlesById = useMemo(
+    () => new Map(topArticles.map((a) => [a.id, a] as const)),
+    [topArticles]
+  );
 
   return (
     <section className="relative overflow-hidden">

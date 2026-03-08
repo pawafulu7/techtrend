@@ -201,8 +201,10 @@ export function checkEnglishMixing(summary: string): EnglishCheckResult {
   TECHNICAL_TERMS.forEach((term) => {
     // 特殊文字をエスケープ
     const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    // CI/CDのようなスラッシュを含む用語も検出できるように、単語境界の代わりに前後を見る
-    const regex = term.includes('/')
+    // CI/CDのようなスラッシュを含む用語、またはC++/C#のような\bが機能しない特殊文字末尾の用語は
+    // lookaroundパターンを使用する
+    const hasSpecialBoundary = term.includes('/') || /[+#]$/.test(term);
+    const regex = hasSpecialBoundary
       ? new RegExp(`(?<![\\w])${escapedTerm}(?![\\w])`, 'gi')
       : new RegExp(`\\b${escapedTerm}\\b`, 'gi');
     if (regex.test(processedText)) {
@@ -277,11 +279,9 @@ export function checkEnglishMixing(summary: string): EnglishCheckResult {
     if (matches) {
       result.hasProblematicEnglish = true;
 
-      // 元のテキストから該当箇所を復元（概算）
-      const originalMatch = summary.match(pattern);
-      if (originalMatch) {
-        result.problematicPhrases.push(`${originalMatch[0]} (${description})`);
-      }
+      // processedText のマッチ結果をそのまま使用する（元テキストへの再マッチは
+      // 技術用語置換後のテキストと異なるため誤検出が発生する）
+      result.problematicPhrases.push(`${matches[0]} (${description})`);
 
       // 最も深刻な問題レベルを記録
       if (severity === 'critical') maxSeverity = 'critical';

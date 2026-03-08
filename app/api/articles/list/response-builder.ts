@@ -285,7 +285,7 @@ export async function fetchAndMergeUserData(
   const articleIds = items.map((a) => a.id);
 
   logger.debug(
-    `DataLoader integration: userId=${userId}, articles=${articleIds.length}`
+    `DataLoader integration: isAuthenticated=${Boolean(userId)}, articles=${articleIds.length}`
   );
 
   const loaders = createLoaders(

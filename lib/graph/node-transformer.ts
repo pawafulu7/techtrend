@@ -134,9 +134,9 @@ export function adjustColorForSimilarity(
     GRAPH_CONSTANTS.MIN_BRIGHTNESS_FACTOR +
     similarity * GRAPH_CONSTANTS.BRIGHTNESS_RANGE;
 
-  const rAdj = Math.min(Math.round(r * factor), 255);
-  const gAdj = Math.min(Math.round(g * factor), 255);
-  const bAdj = Math.min(Math.round(b * factor), 255);
+  const rAdj = Math.max(0, Math.min(Math.round(r * factor), 255));
+  const gAdj = Math.max(0, Math.min(Math.round(g * factor), 255));
+  const bAdj = Math.max(0, Math.min(Math.round(b * factor), 255));
 
   return `#${rAdj.toString(16).padStart(2, '0')}${gAdj.toString(16).padStart(2, '0')}${bAdj.toString(16).padStart(2, '0')}`;
 }

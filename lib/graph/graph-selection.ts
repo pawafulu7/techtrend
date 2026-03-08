@@ -113,9 +113,7 @@ export function selectTopLayer2(
 
       group.forEach((candidate, index) => {
         const normalizedParentSimilarity =
-          denom === 0
-            ? 1
-            : (similarities[index] - minSimilarity) / (denom || 1);
+          denom === 0 ? 1 : (similarities[index] - minSimilarity) / denom;
 
         const centerSimilarity = resolveCenterSimilarity(
           candidate,
@@ -128,15 +126,20 @@ export function selectTopLayer2(
         const normalizedQuality = normalizeQualityScore(resolvedQuality);
         const globalPriority = 0.7 * centerSimilarity + 0.3 * normalizedQuality;
 
+        const rawPublishedAtMs =
+          candidate.publishedAt instanceof Date
+            ? candidate.publishedAt.getTime()
+            : new Date(candidate.publishedAt).getTime();
+        const publishedAtMs = Number.isNaN(rawPublishedAtMs)
+          ? 0
+          : rawPublishedAtMs;
+
         rankedCandidates.push({
           candidate,
           normalizedParentSimilarity,
           centerSimilarity,
           globalPriority,
-          publishedAtMs:
-            candidate.publishedAt instanceof Date
-              ? candidate.publishedAt.getTime()
-              : new Date(candidate.publishedAt).getTime(),
+          publishedAtMs,
         });
       });
     });

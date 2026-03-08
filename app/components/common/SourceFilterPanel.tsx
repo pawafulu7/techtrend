@@ -298,6 +298,8 @@ export function SourceFilterPanel({
                         {categorySources.map((source) => (
                           <div
                             key={source.id}
+                            role="button"
+                            tabIndex={0}
                             className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-gray-50 dark:hover:bg-gray-800"
                             onClick={(e) => {
                               // Prevent double toggle when clicking directly on checkbox
@@ -307,9 +309,16 @@ export function SourceFilterPanel({
                                 handleSourceToggle(source.id);
                               }
                             }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleSourceToggle(source.id);
+                              }
+                            }}
                             data-testid={`source-checkbox-${source.id}`}
                           >
                             <Checkbox
+                              id={`source-${source.id}`}
                               checked={selectedSources.includes(source.id)}
                               onCheckedChange={() =>
                                 handleSourceToggle(source.id)
@@ -317,7 +326,10 @@ export function SourceFilterPanel({
                               className="h-4 w-4"
                               onClick={(e) => e.stopPropagation()}
                             />
-                            <label className="flex-1 cursor-pointer text-xs">
+                            <label
+                              htmlFor={`source-${source.id}`}
+                              className="flex-1 cursor-pointer text-xs"
+                            >
                               {source.name}
                             </label>
                           </div>

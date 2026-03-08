@@ -92,7 +92,6 @@ export function calculateCategories(
           categoryMap.get(category)!.add(article.id);
           categoryArticles.get(category)!.push(article);
         }
-        break; // 1 article per category only
       }
     }
   });
