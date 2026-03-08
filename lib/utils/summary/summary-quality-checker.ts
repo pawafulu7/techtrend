@@ -314,7 +314,7 @@ export function checkSummaryQuality(
     (contentLength >= 5000 && itemCount < minItems); // 項目数不足も再生成トリガーに
 
   // isValidの判定: 薄いコンテンツの場合は最小文字数も厳格にチェック
-  let isValid = score >= 60;
+  let isValid = score >= getMinQualityScore();
   if (contentAnalysis?.isThinContent) {
     // 薄いコンテンツの場合、最小文字数未満はinvalid
     if (summaryLength < minSummaryLength) {

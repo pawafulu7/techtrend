@@ -71,6 +71,7 @@ export function useSourceFilter({
     null
   );
   const lastQueuedSourcesRef = useRef<string[]>(getInitialSources());
+  const isFlushedRef = useRef(false);
 
   // ソースをカテゴリごとにグループ化
   // Phase 2-A: Use server-provided groupedSources or fallback to static grouping
@@ -246,7 +247,8 @@ export function useSourceFilter({
       clearTimeout(cookieUpdateTimeoutRef.current);
       cookieUpdateTimeoutRef.current = null;
     }
-    if (lastQueuedSourcesRef.current) {
+    if (!isFlushedRef.current && lastQueuedSourcesRef.current) {
+      isFlushedRef.current = true;
       performCookieUpdate(lastQueuedSourcesRef.current);
     }
   };
@@ -287,10 +289,12 @@ export function useSourceFilter({
 
     // Cookie更新は150msデバウンス
     lastQueuedSourcesRef.current = sourceIds;
+    isFlushedRef.current = false; // 新しいリクエストでリセット
     if (cookieUpdateTimeoutRef.current) {
       clearTimeout(cookieUpdateTimeoutRef.current);
     }
     cookieUpdateTimeoutRef.current = setTimeout(() => {
+      isFlushedRef.current = true; // タイマー経由で送信されたらフラグセット
       performCookieUpdate(sourceIds);
     }, 150);
   };

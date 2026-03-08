@@ -485,6 +485,89 @@ describe('summary-quality-checker', () => {
         expect(getMaxRegenerationAttempts()).toBe(3);
       });
     });
+
+    describe('isValid threshold uses getMinQualityScore()', () => {
+      it('should use QUALITY_MIN_SCORE for isValid determination by default (70)', () => {
+        delete process.env.QUALITY_MIN_SCORE;
+        // 理想的な入力でscore=100。isValidはデフォルト閾値70と比較
+        const summary = 'x'.repeat(169) + '。';
+        const detailedSummary = Array(5).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
+        const result = checkSummaryQuality(summary, detailedSummary);
+        expect(result.isValid).toBe(result.score >= getMinQualityScore());
+        expect(result.isValid).toBe(true);
+      });
+
+      it('should change isValid threshold when QUALITY_MIN_SCORE is set to 90', () => {
+        process.env.QUALITY_MIN_SCORE = '90';
+        // 句点なし -5 -> score=95。isValid は score >= 90 なのでtrue
+        const summary = 'x'.repeat(169); // 句点なし
+        const detailedSummary = Array(5).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
+        const result = checkSummaryQuality(summary, detailedSummary);
+
+        expect(getMinQualityScore()).toBe(90);
+        expect(result.isValid).toBe(result.score >= 90);
+      });
+
+      it('should mark isValid=false when score is below custom QUALITY_MIN_SCORE', () => {
+        process.env.QUALITY_MIN_SCORE = '99';
+        // 句点なし -5 -> score=95 < 99 -> isValid=false
+        const summary = 'x'.repeat(169); // 句点なし
+        const detailedSummary = Array(5).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
+        const result = checkSummaryQuality(summary, detailedSummary);
+
+        expect(getMinQualityScore()).toBe(99);
+        expect(result.score).toBeLessThan(99);
+        expect(result.isValid).toBe(false);
+      });
+
+      it('should mark isValid=true when score meets lowered QUALITY_MIN_SCORE threshold', () => {
+        process.env.QUALITY_MIN_SCORE = '50';
+        // 詳細要約短すぎ -20, 句点なし -5, 箇条書き少なめ -5 -> score=70 >= 50 -> isValid=true
+        const summary = 'x'.repeat(169); // 句点なし
+        const detailedSummary = Array(2).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
+        const result = checkSummaryQuality(summary, detailedSummary);
+
+        expect(getMinQualityScore()).toBe(50);
+        expect(result.isValid).toBe(result.score >= 50);
+      });
+    });
+
+    describe('requiresRegeneration threshold uses getMinQualityScore()', () => {
+      it('should use default QUALITY_MIN_SCORE=70 for requiresRegeneration', () => {
+        delete process.env.QUALITY_MIN_SCORE;
+        // score=100 の理想入力 -> requiresRegeneration=false
+        const summary = 'x'.repeat(169) + '。';
+        const detailedSummary = Array(5).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
+        const result = checkSummaryQuality(summary, detailedSummary);
+
+        expect(result.requiresRegeneration).toBe(false);
+        expect(result.score).toBeGreaterThanOrEqual(getMinQualityScore());
+      });
+
+      it('should not require regeneration when score is above custom QUALITY_MIN_SCORE=50', () => {
+        process.env.QUALITY_MIN_SCORE = '50';
+        // 句点なし -5 -> score=95 >= 50 -> requiresRegeneration=false
+        const summary = 'x'.repeat(169); // 句点なし
+        const detailedSummary = Array(5).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
+        const result = checkSummaryQuality(summary, detailedSummary);
+
+        expect(getMinQualityScore()).toBe(50);
+        expect(result.requiresRegeneration).toBe(false);
+        expect(result.score).toBeGreaterThanOrEqual(50);
+      });
+
+      it('should require regeneration when score falls below custom QUALITY_MIN_SCORE=99', () => {
+        process.env.QUALITY_MIN_SCORE = '99';
+        // 句点なし -5 -> score=95 < 99 -> requiresRegeneration=true
+        const summary = 'x'.repeat(169); // 句点なし
+        const detailedSummary = Array(5).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
+        const result = checkSummaryQuality(summary, detailedSummary);
+
+        expect(getMinQualityScore()).toBe(99);
+        expect(result.score).toBeLessThan(99);
+        expect(result.requiresRegeneration).toBe(true);
+      });
+    });
   });
 
   describe('Thin Content Quality Criteria', () => {

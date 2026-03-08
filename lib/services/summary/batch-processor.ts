@@ -146,14 +146,21 @@ async function processArticle(
     },
   });
 
-  if (result.tags?.length > 0) {
+  if (result.tags != null) {
     await updateArticleTags(prisma, article.id, result.tags);
   }
 
-  await cacheInvalidator.onArticleUpdated(article.id, {
-    summary: result.summary,
-    detailedSummary: result.detailedSummary,
-  });
+  try {
+    await cacheInvalidator.onArticleUpdated(article.id, {
+      summary: result.summary,
+      detailedSummary: result.detailedSummary,
+    });
+  } catch (cacheError) {
+    logger.warn(
+      { articleId: article.id, error: sanitizeError(cacheError) },
+      'Cache invalidation failed, continuing'
+    );
+  }
 
   logger.info(
     { articleId: article.id, title: article.title.substring(0, 50) },

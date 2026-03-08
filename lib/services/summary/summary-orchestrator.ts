@@ -145,7 +145,7 @@ export async function regenerateSummaries(
           },
         });
 
-        if (result.tags?.length > 0) {
+        if (result.tags != null) {
           await updateArticleTags(prisma, article.id, result.tags);
         }
 
@@ -155,10 +155,17 @@ export async function regenerateSummaries(
         );
         generated++;
 
-        await cacheInvalidator.onArticleUpdated(article.id, {
-          summary: result.summary,
-          detailedSummary: result.detailedSummary,
-        });
+        try {
+          await cacheInvalidator.onArticleUpdated(article.id, {
+            summary: result.summary,
+            detailedSummary: result.detailedSummary,
+          });
+        } catch (cacheError) {
+          logger.warn(
+            { articleId: article.id, error: sanitizeError(cacheError) },
+            'Cache invalidation failed, continuing'
+          );
+        }
 
         // Rate limiting
         await sleep(3000);
@@ -220,6 +227,7 @@ export async function generateMissingSummaries(
       where,
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
+      take: options?.limit || 100,
     };
 
     const articles = (await prisma.article.findMany(
@@ -269,7 +277,7 @@ export async function generateMissingSummaries(
           },
         });
 
-        if (result.tags?.length > 0) {
+        if (result.tags != null) {
           await updateArticleTags(prisma, article.id, result.tags);
         }
 
@@ -279,10 +287,17 @@ export async function generateMissingSummaries(
         );
         generated++;
 
-        await cacheInvalidator.onArticleUpdated(article.id, {
-          summary: result.summary,
-          detailedSummary: result.detailedSummary,
-        });
+        try {
+          await cacheInvalidator.onArticleUpdated(article.id, {
+            summary: result.summary,
+            detailedSummary: result.detailedSummary,
+          });
+        } catch (cacheError) {
+          logger.warn(
+            { articleId: article.id, error: sanitizeError(cacheError) },
+            'Cache invalidation failed, continuing'
+          );
+        }
 
         // Rate limiting
         await sleep(2000);

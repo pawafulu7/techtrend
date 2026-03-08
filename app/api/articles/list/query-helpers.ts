@@ -166,7 +166,10 @@ function applySourceFilter(
       where.sourceId = { in: [] };
     } else if (normalizedSourcesValue !== 'all') {
       const sourceIds = sources
-        ? sources.split(',').filter((id) => id.trim())
+        ? sources
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
         : [sourceId!];
 
       if (sourceIds.length > 0) {
@@ -364,7 +367,8 @@ export function normalizeSourcesForCacheKey(
     }
     return sources
       .split(',')
-      .filter((id) => id.trim())
+      .map((s) => s.trim())
+      .filter(Boolean)
       .sort()
       .join(',');
   }
