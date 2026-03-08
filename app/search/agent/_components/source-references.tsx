@@ -54,16 +54,18 @@ export function SourceReferences({
     [isSubmittingFeedback, feedbackSubmitted, onFeedback]
   );
 
-  const hasTokenInfo =
-    typeof totalTokens === 'number' && Number.isFinite(totalTokens);
+  const safeTotalTokens =
+    typeof totalTokens === 'number' && Number.isFinite(totalTokens)
+      ? totalTokens
+      : null;
 
-  if (!hasTokenInfo && !onFeedback) return null;
+  if (safeTotalTokens === null && !onFeedback) return null;
 
   return (
     <div className="mt-4 flex items-center justify-between border-t pt-4">
       <div className="text-muted-foreground text-xs">
-        {typeof totalTokens === 'number' && (
-          <span>トークン使用: {totalTokens.toLocaleString()}</span>
+        {safeTotalTokens !== null && (
+          <span>トークン使用: {safeTotalTokens.toLocaleString()}</span>
         )}
       </div>
 

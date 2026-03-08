@@ -117,7 +117,7 @@ export function adjustColorForSimilarity(
   baseColor: string,
   similarity?: number
 ): string {
-  if (!similarity) return baseColor;
+  if (similarity === undefined || similarity === null) return baseColor;
 
   // Validate hex format (CodeRabbit: prevent parseInt issues)
   if (!/^#[0-9A-Fa-f]{6}$/.test(baseColor)) {

@@ -5,6 +5,7 @@
  * and sorting logic.
  */
 
+import { logger } from '@/lib/logger';
 import type {
   ScoreParameters,
   ScoredArticle,
@@ -99,6 +100,12 @@ export function computeWeightedCentroid(
       .split(',')
       .map((s) => {
         const n = Number(s);
+        if (isNaN(n)) {
+          logger.debug(
+            { token: s },
+            'NaN detected in centroid string, replacing with 0'
+          );
+        }
         return isNaN(n) ? 0 : n;
       });
     return parsed;

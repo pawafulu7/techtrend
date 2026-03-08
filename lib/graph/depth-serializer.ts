@@ -142,7 +142,6 @@ export function serializeWithDepthImpl(
 
     const layer1NodeIds = new Set(layer1Nodes.map((node) => node.id));
     const layer2NodeIds = new Set(layer2Nodes.map((node) => node.id));
-    const parentNodeIds = layer1NodeIds;
 
     const layer1Links: GraphLink[] = layer1Inputs
       .filter((input) => layer1NodeIds.has(input.id))
@@ -167,7 +166,7 @@ export function serializeWithDepthImpl(
           .filter(
             ({ input, candidate }) =>
               layer2NodeIds.has(input.id) &&
-              parentNodeIds.has(candidate.parentId)
+              layer1NodeIds.has(candidate.parentId)
           )
           .map(({ input, candidate, tagNames }) => {
             const link: GraphLink = {

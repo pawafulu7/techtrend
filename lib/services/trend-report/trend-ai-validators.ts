@@ -47,11 +47,6 @@ export function validateV2Content(obj: unknown): string[] {
     if (hasStatParaphrase(a.action) || hasStatParaphrase(a.reason)) {
       errors.push(`actions("${a.action}") must not paraphrase stats`);
     }
-    if (hasQuantChangeWord(a.action) || hasQuantChangeWord(a.reason)) {
-      errors.push(
-        `actions("${a.action}") must not contain quantitative change words`
-      );
-    }
   }
   if (
     parsed.data.trendChanges &&

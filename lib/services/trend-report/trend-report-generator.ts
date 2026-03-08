@@ -110,6 +110,7 @@ export class TrendReportGenerator {
 
       // AI summary generation (optional)
       let aiSummary: string | undefined;
+      let aiSummaryFormat: 'json' | 'text' | undefined;
       let aiModel: string | undefined;
       let generatedAt: Date | undefined;
 
@@ -127,6 +128,7 @@ export class TrendReportGenerator {
             tags
           );
           aiSummary = aiSummaryResult.content;
+          aiSummaryFormat = aiSummaryResult.format;
           aiModel = GEMINI_API.TREND_MODEL;
           generatedAt = new Date();
         } catch (error) {
@@ -149,7 +151,8 @@ export class TrendReportGenerator {
             tags: JSON.parse(JSON.stringify(tags.slice(0, 30))),
             aiSummary,
             aiModel,
-            promptVersion: aiSummary !== undefined ? PROMPT_VERSION : undefined,
+            promptVersion:
+              aiSummaryFormat === 'json' ? PROMPT_VERSION : undefined,
             generatedAt,
           },
         });

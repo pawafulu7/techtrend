@@ -46,6 +46,8 @@ interface DailyTrendHeroProps {
   onNextDay?: () => void;
 }
 
+const EMPTY_TOP_ARTICLES: NonNullable<DailyTrendHeroProps['topArticles']> = [];
+
 type LegacyAISummary = {
   topics: Array<{ topic: string; reason: string }>;
   actionText: string | null;
@@ -123,12 +125,13 @@ export function DailyTrendHero({
   periodStart,
   generatedAt,
   topTags = [],
-  topArticles = [],
+  topArticles,
   navigation,
   onPrevDay,
   onNextDay,
   evidenceArticles = {},
 }: DailyTrendHeroProps) {
+  const safeTopArticles = topArticles ?? EMPTY_TOP_ARTICLES;
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) {
@@ -161,8 +164,8 @@ export function DailyTrendHero({
     [structuredSummary, aiSummary]
   );
   const topArticlesById = useMemo(
-    () => new Map(topArticles.map((a) => [a.id, a] as const)),
-    [topArticles]
+    () => new Map(safeTopArticles.map((a) => [a.id, a] as const)),
+    [safeTopArticles]
   );
 
   return (

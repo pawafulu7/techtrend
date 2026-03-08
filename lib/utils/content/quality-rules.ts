@@ -281,7 +281,11 @@ export function checkEnglishMixing(summary: string): EnglishCheckResult {
 
       // processedText のマッチ結果をそのまま使用する（元テキストへの再マッチは
       // 技術用語置換後のテキストと異なるため誤検出が発生する）
-      result.problematicPhrases.push(`${matches[0]} (${description})`);
+      const matchedText = matches[0];
+      // プレースホルダーがユーザー向け出力に漏れないよう防御
+      if (!/__(?:TECH|QUOTED|PATH|ERROR|UNIT)__/.test(matchedText)) {
+        result.problematicPhrases.push(`${matchedText} (${description})`);
+      }
 
       // 最も深刻な問題レベルを記録
       if (severity === 'critical') maxSeverity = 'critical';
