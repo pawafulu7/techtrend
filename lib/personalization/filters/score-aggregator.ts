@@ -97,8 +97,10 @@ export function computeWeightedCentroid(
     const parsed = c
       .replace(/^\[|\]$/g, '')
       .split(',')
-      .map(Number)
-      .map((v) => (isNaN(v) ? 0 : v));
+      .map((s) => {
+        const n = Number(s);
+        return isNaN(n) ? 0 : n;
+      });
     return parsed;
   });
 
