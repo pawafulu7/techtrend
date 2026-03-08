@@ -89,13 +89,9 @@ export function computeWeightedCentroid(
     throw new Error('No centroids provided');
   }
 
-  if (centroids.length === 1) {
-    return centroids[0];
-  }
-
-  // Parse centroid strings to number arrays
-  const vectors = centroids.map((c) => {
-    const parsed = c
+  // Parse a single centroid string to number array with NaN sanitization
+  const parseCentroid = (c: string): number[] =>
+    c
       .replace(/^\[|\]$/g, '')
       .split(',')
       .map((s) => {
@@ -109,8 +105,14 @@ export function computeWeightedCentroid(
         }
         return isInvalid ? 0 : n;
       });
-    return parsed;
-  });
+
+  if (centroids.length === 1) {
+    const parsed = parseCentroid(centroids[0]);
+    return `[${parsed.join(',')}]`;
+  }
+
+  // Parse centroid strings to number arrays
+  const vectors = centroids.map(parseCentroid);
 
   // Validate dimensions
   const dim = vectors[0].length;

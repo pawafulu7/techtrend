@@ -227,6 +227,15 @@ describe('CategoryFilterService', () => {
         .map(Number);
       expect(parsed3.every((v) => isFinite(v))).toBe(true);
     });
+
+    it('should sanitize NaN in single centroid (early return path)', () => {
+      const result = computeWeightedCentroid(['[0.5,abc,0.5]']);
+      const parsed = result
+        .replace(/^\[|\]$/g, '')
+        .split(',')
+        .map(Number);
+      expect(parsed).toEqual([0.5, 0, 0.5]);
+    });
   });
 
   // ===========================================================================
