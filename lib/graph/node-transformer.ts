@@ -65,7 +65,11 @@ export function toGraphNode(
   let val: number;
   if (isCenter) {
     val = qualityScore * GRAPH_CONSTANTS.CENTER_NODE_SCALE; // Center: enhanced visibility (larger than related nodes)
-  } else if (input.similarity !== undefined && input.similarity !== null) {
+  } else if (
+    input.similarity !== undefined &&
+    input.similarity !== null &&
+    !Number.isNaN(input.similarity)
+  ) {
     // Related: hybrid (quality * similarity * factor)
     const hybridSize =
       input.similarity * qualityScore * GRAPH_CONSTANTS.RELATED_NODE_SCALE;
@@ -117,7 +121,19 @@ export function adjustColorForSimilarity(
   baseColor: string,
   similarity?: number
 ): string {
-  if (similarity === undefined || similarity === null) return baseColor;
+  if (
+    similarity === undefined ||
+    similarity === null ||
+    Number.isNaN(similarity)
+  ) {
+    if (Number.isNaN(similarity)) {
+      logger.warn(
+        { similarity, baseColor },
+        'NaN similarity detected, using base color'
+      );
+    }
+    return baseColor;
+  }
 
   // Validate hex format (CodeRabbit: prevent parseInt issues)
   if (!/^#[0-9A-Fa-f]{6}$/.test(baseColor)) {
