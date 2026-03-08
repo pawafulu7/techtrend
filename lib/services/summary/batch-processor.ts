@@ -135,25 +135,34 @@ async function processArticle(
     article.id
   );
 
-  await prisma.article.update({
-    where: { id: article.id },
-    data: {
+  await prisma.$transaction(async (tx) => {
+    await tx.article.update({
+      where: { id: article.id },
+      data: {
+        summary: result.summary,
+        detailedSummary: result.detailedSummary,
+        translatedTitle: result.translatedTitle,
+        summaryVersion: SUMMARY_VERSION.CURRENT,
+        summaryComputedAt: new Date(),
+      },
+    });
+
+    if (result.tags != null) {
+      await updateArticleTags(tx, article.id, result.tags);
+    }
+  });
+
+  try {
+    await cacheInvalidator.onArticleUpdated(article.id, {
       summary: result.summary,
       detailedSummary: result.detailedSummary,
-      translatedTitle: result.translatedTitle,
-      summaryVersion: SUMMARY_VERSION.CURRENT,
-      summaryComputedAt: new Date(),
-    },
-  });
-
-  if (result.tags?.length > 0) {
-    await updateArticleTags(prisma, article.id, result.tags);
+    });
+  } catch (cacheError) {
+    logger.warn(
+      { articleId: article.id, error: sanitizeError(cacheError) },
+      'Cache invalidation failed, continuing'
+    );
   }
-
-  await cacheInvalidator.onArticleUpdated(article.id, {
-    summary: result.summary,
-    detailedSummary: result.detailedSummary,
-  });
 
   logger.info(
     { articleId: article.id, title: article.title.substring(0, 50) },
@@ -167,7 +176,7 @@ async function processArticle(
  * Update article tags.
  */
 export async function updateArticleTags(
-  prisma: PrismaClient,
+  prisma: PrismaClient | Prisma.TransactionClient,
   articleId: string,
   tagNames: string[]
 ): Promise<void> {

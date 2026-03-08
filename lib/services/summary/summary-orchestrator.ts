@@ -59,6 +59,10 @@ export function validateArticleContent(
   return { valid: true, content: article.content! };
 }
 
+function normalizeBatchSize(batch?: number): number {
+  return batch && batch > 0 ? batch : 10;
+}
+
 /**
  * Regenerate existing summaries.
  */
@@ -75,18 +79,126 @@ export async function regenerateSummaries(
   const startTime = Date.now();
 
   try {
+    const batchSize = normalizeBatchSize(options.batch);
     const query: Prisma.ArticleFindManyArgs = {
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
-      take: options.batch || 10,
+      take: batchSize,
     };
 
     if (options.articleIds && options.articleIds.length > 0) {
-      query.where = {
-        id: { in: options.articleIds },
+      // Process all specified IDs by chunking rather than truncating with take
+      const chunks: string[][] = [];
+      for (let i = 0; i < options.articleIds.length; i += batchSize) {
+        chunks.push(options.articleIds.slice(i, i + batchSize));
+      }
+
+      let totalGenerated = 0;
+      let totalErrors = 0;
+      let totalSkipped = 0;
+
+      for (const [chunkIndex, chunk] of chunks.entries()) {
+        query.where = { id: { in: chunk } };
+        query.take = chunk.length;
+
+        const articles = (await prisma.article.findMany(
+          query
+        )) as ArticleWithSource[];
+
+        if (articles.length === 0) continue;
+
+        logger.info(
+          {
+            count: articles.length,
+            chunk: chunkIndex + 1,
+            totalChunks: chunks.length,
+          },
+          'Processing article chunk'
+        );
+
+        for (const article of articles) {
+          try {
+            const validation = validateArticleContent(article);
+            if (!validation.valid) {
+              logger.warn(
+                { articleId: article.id, reason: validation.reason },
+                'Skipping article'
+              );
+              totalSkipped++;
+              continue;
+            }
+
+            const result = await generateSummaryAndTags(
+              article.title,
+              validation.content!,
+              article.id
+            );
+
+            await prisma.$transaction(async (tx) => {
+              await tx.article.update({
+                where: { id: article.id },
+                data: {
+                  summary: result.summary,
+                  detailedSummary: result.detailedSummary,
+                  translatedTitle: result.translatedTitle,
+                  summaryVersion: SUMMARY_VERSION.CURRENT,
+                  summaryComputedAt: new Date(),
+                },
+              });
+
+              if (result.tags != null) {
+                await updateArticleTags(tx, article.id, result.tags);
+              }
+            });
+
+            logger.info(
+              { articleId: article.id, title: article.title.substring(0, 50) },
+              'Regenerated summary'
+            );
+            totalGenerated++;
+
+            try {
+              await cacheInvalidator.onArticleUpdated(article.id, {
+                summary: result.summary,
+                detailedSummary: result.detailedSummary,
+              });
+            } catch (cacheError) {
+              logger.warn(
+                { articleId: article.id, error: sanitizeError(cacheError) },
+                'Cache invalidation failed, continuing'
+              );
+            }
+
+            await sleep(3000);
+          } catch (error) {
+            logger.error(
+              { articleId: article.id, error: sanitizeError(error) },
+              'Error processing article'
+            );
+            totalErrors++;
+          }
+        }
+      }
+
+      const duration = Math.round((Date.now() - startTime) / 1000);
+      logger.info(
+        {
+          generated: totalGenerated,
+          skipped: totalSkipped,
+          errors: totalErrors,
+          durationSec: duration,
+        },
+        'Regeneration completed'
+      );
+
+      return {
+        generated: totalGenerated,
+        errors: totalErrors,
+        skipped: totalSkipped,
       };
-      query.take = options.articleIds.length;
-    } else if (!options.force) {
+    }
+
+    if (!options.force) {
       query.where = {
         OR: [
           { summary: { endsWith: '...' } },
@@ -134,20 +246,22 @@ export async function regenerateSummaries(
           article.id
         );
 
-        await prisma.article.update({
-          where: { id: article.id },
-          data: {
-            summary: result.summary,
-            detailedSummary: result.detailedSummary,
-            translatedTitle: result.translatedTitle,
-            summaryVersion: SUMMARY_VERSION.CURRENT,
-            summaryComputedAt: new Date(),
-          },
-        });
+        await prisma.$transaction(async (tx) => {
+          await tx.article.update({
+            where: { id: article.id },
+            data: {
+              summary: result.summary,
+              detailedSummary: result.detailedSummary,
+              translatedTitle: result.translatedTitle,
+              summaryVersion: SUMMARY_VERSION.CURRENT,
+              summaryComputedAt: new Date(),
+            },
+          });
 
-        if (result.tags?.length > 0) {
-          await updateArticleTags(prisma, article.id, result.tags);
-        }
+          if (result.tags != null) {
+            await updateArticleTags(tx, article.id, result.tags);
+          }
+        });
 
         logger.info(
           { articleId: article.id, title: article.title.substring(0, 50) },
@@ -155,10 +269,17 @@ export async function regenerateSummaries(
         );
         generated++;
 
-        await cacheInvalidator.onArticleUpdated(article.id, {
-          summary: result.summary,
-          detailedSummary: result.detailedSummary,
-        });
+        try {
+          await cacheInvalidator.onArticleUpdated(article.id, {
+            summary: result.summary,
+            detailedSummary: result.detailedSummary,
+          });
+        } catch (cacheError) {
+          logger.warn(
+            { articleId: article.id, error: sanitizeError(cacheError) },
+            'Cache invalidation failed, continuing'
+          );
+        }
 
         // Rate limiting
         await sleep(3000);
@@ -220,6 +341,7 @@ export async function generateMissingSummaries(
       where,
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
+      take: normalizeBatchSize(options.batch),
     };
 
     const articles = (await prisma.article.findMany(
@@ -258,20 +380,22 @@ export async function generateMissingSummaries(
           article.id
         );
 
-        await prisma.article.update({
-          where: { id: article.id },
-          data: {
-            summary: result.summary,
-            detailedSummary: result.detailedSummary,
-            translatedTitle: result.translatedTitle,
-            summaryVersion: SUMMARY_VERSION.CURRENT,
-            summaryComputedAt: new Date(),
-          },
-        });
+        await prisma.$transaction(async (tx) => {
+          await tx.article.update({
+            where: { id: article.id },
+            data: {
+              summary: result.summary,
+              detailedSummary: result.detailedSummary,
+              translatedTitle: result.translatedTitle,
+              summaryVersion: SUMMARY_VERSION.CURRENT,
+              summaryComputedAt: new Date(),
+            },
+          });
 
-        if (result.tags?.length > 0) {
-          await updateArticleTags(prisma, article.id, result.tags);
-        }
+          if (result.tags != null) {
+            await updateArticleTags(tx, article.id, result.tags);
+          }
+        });
 
         logger.info(
           { articleId: article.id, title: article.title.substring(0, 50) },
@@ -279,10 +403,17 @@ export async function generateMissingSummaries(
         );
         generated++;
 
-        await cacheInvalidator.onArticleUpdated(article.id, {
-          summary: result.summary,
-          detailedSummary: result.detailedSummary,
-        });
+        try {
+          await cacheInvalidator.onArticleUpdated(article.id, {
+            summary: result.summary,
+            detailedSummary: result.detailedSummary,
+          });
+        } catch (cacheError) {
+          logger.warn(
+            { articleId: article.id, error: sanitizeError(cacheError) },
+            'Cache invalidation failed, continuing'
+          );
+        }
 
         // Rate limiting
         await sleep(2000);

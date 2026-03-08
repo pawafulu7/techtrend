@@ -182,6 +182,8 @@ export function useSourceFilter({
     const sourcesParam = searchParams.get('sources');
     const sourceIdParam = searchParams.get('sourceId');
 
+    const validIds = new Set(sources.map((s) => s.id));
+
     if (sourcesParam === 'none') {
       setSelectedSources([]);
     } else if (sourcesParam === 'all') {
@@ -189,16 +191,26 @@ export function useSourceFilter({
       setSelectedSources(sources.map((s) => s.id));
     } else if (sourcesParam) {
       // Filter out invalid IDs (excluded or deleted sources)
-      const validIds = new Set(sources.map((s) => s.id));
-      const parsedIds = sourcesParam
-        .split(',')
-        .filter((id) => id && validIds.has(id));
+      const parsedIds = [
+        ...new Set(
+          sourcesParam
+            .split(',')
+            .map((id) => id.trim())
+            .filter((id) => id && validIds.has(id))
+        ),
+      ];
       // If all IDs were invalid, fall back to all sources
       setSelectedSources(
         parsedIds.length > 0 ? parsedIds : sources.map((s) => s.id)
       );
     } else if (sourceIdParam) {
-      setSelectedSources([sourceIdParam]);
+      const trimmedId = sourceIdParam.trim();
+      if (trimmedId && validIds.has(trimmedId)) {
+        setSelectedSources([trimmedId]);
+      } else {
+        // Invalid sourceId: fall back to all sources (consistent with sourcesParam behavior)
+        setSelectedSources(sources.map((s) => s.id));
+      }
     }
     // URLパラメータがない場合は既存のstateを維持（cookie由来の初期値を保持）
   }, [searchParams, sources]);
@@ -245,8 +257,6 @@ export function useSourceFilter({
     if (cookieUpdateTimeoutRef.current) {
       clearTimeout(cookieUpdateTimeoutRef.current);
       cookieUpdateTimeoutRef.current = null;
-    }
-    if (lastQueuedSourcesRef.current) {
       performCookieUpdate(lastQueuedSourcesRef.current);
     }
   };
@@ -291,6 +301,7 @@ export function useSourceFilter({
       clearTimeout(cookieUpdateTimeoutRef.current);
     }
     cookieUpdateTimeoutRef.current = setTimeout(() => {
+      cookieUpdateTimeoutRef.current = null;
       performCookieUpdate(sourceIds);
     }, 150);
   };

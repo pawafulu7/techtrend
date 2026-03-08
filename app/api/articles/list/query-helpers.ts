@@ -154,6 +154,21 @@ function applyReadFilter(
   }
 }
 
+function parseSourceIds(
+  sources: string | null,
+  sourceId: string | null
+): string[] {
+  if (sources) {
+    return sources
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  const normalizedSourceId = sourceId?.trim();
+  return normalizedSourceId ? [normalizedSourceId] : [];
+}
+
 function applySourceFilter(
   where: ArticleWhereInput,
   sources: string | null,
@@ -165,9 +180,7 @@ function applySourceFilter(
     if (normalizedSourcesValue === 'none') {
       where.sourceId = { in: [] };
     } else if (normalizedSourcesValue !== 'all') {
-      const sourceIds = sources
-        ? sources.split(',').filter((id) => id.trim())
-        : [sourceId!];
+      const sourceIds = parseSourceIds(sources, sourceId);
 
       if (sourceIds.length > 0) {
         where.sourceId = {
@@ -184,10 +197,7 @@ function applyExcludeSourcesFilter(
 ): void {
   if (!excludeSources) return;
 
-  const excludeIds = excludeSources
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const excludeIds = parseSourceIds(excludeSources, null);
 
   if (excludeIds.length === 0) return;
 
@@ -362,13 +372,15 @@ export function normalizeSourcesForCacheKey(
     if (trimmedLower === 'all' || trimmedLower === 'none') {
       return trimmedLower;
     }
-    return sources
-      .split(',')
-      .filter((id) => id.trim())
-      .sort()
-      .join(',');
+    const sourceIds = [
+      ...new Set(parseSourceIds(sources, null).map((id) => id.toLowerCase())),
+    ].sort();
+    return sourceIds.length > 0 ? sourceIds.join(',') : 'all';
   }
-  return sourceId || 'all';
+  const sourceIds = parseSourceIds(null, sourceId).map((id) =>
+    id.toLowerCase()
+  );
+  return sourceIds.length > 0 ? sourceIds[0] : 'all';
 }
 
 /**
@@ -377,14 +389,13 @@ export function normalizeSourcesForCacheKey(
 export function normalizeExcludeSourcesForCacheKey(
   excludeSources: string | null
 ): string {
-  return excludeSources
-    ? excludeSources
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .sort()
-        .join(',')
-    : 'none';
+  if (!excludeSources) return 'none';
+  const ids = [
+    ...new Set(
+      parseSourceIds(excludeSources, null).map((id) => id.toLowerCase())
+    ),
+  ].sort();
+  return ids.length > 0 ? ids.join(',') : 'none';
 }
 
 /** Parameters for fetching total count with caching */
