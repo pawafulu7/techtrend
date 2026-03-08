@@ -30,6 +30,14 @@ export function toGraphNodeInput(
   };
 }
 
+function normalizeSimilarity(similarity?: number): number | undefined {
+  return similarity !== undefined &&
+    similarity !== null &&
+    Number.isFinite(similarity)
+    ? similarity
+    : undefined;
+}
+
 /**
  * Convert GraphNodeInput to GraphNode
  *
@@ -46,6 +54,15 @@ export function toGraphNode(
     );
   }
 
+  // Normalize similarity early: NaN/Infinity -> undefined (single warning)
+  const similarity = normalizeSimilarity(input.similarity);
+  if (!isCenter && input.similarity != null && similarity === undefined) {
+    logger.warn(
+      { articleId: input.id, similarity: input.similarity },
+      'Invalid similarity detected, using fallbacks'
+    );
+  }
+
   // Phase 2: Use pre-computed category or calculate
   const category = input.category ?? getCategory(input.tags || []);
   const baseColor = getCategoryColor(category);
@@ -53,7 +70,7 @@ export function toGraphNode(
   // CodexMCP Phase 2: Adjust color brightness by similarity
   const color = isCenter
     ? '#FBBF24'
-    : adjustColorForSimilarity(baseColor, input.similarity);
+    : adjustColorForSimilarity(baseColor, similarity);
 
   // CodexMCP Phase 2: Clamp qualityScore to minimum baseline
   const qualityScore = Math.max(
@@ -65,10 +82,10 @@ export function toGraphNode(
   let val: number;
   if (isCenter) {
     val = qualityScore * GRAPH_CONSTANTS.CENTER_NODE_SCALE; // Center: enhanced visibility (larger than related nodes)
-  } else if (input.similarity) {
+  } else if (similarity !== undefined) {
     // Related: hybrid (quality * similarity * factor)
     const hybridSize =
-      input.similarity * qualityScore * GRAPH_CONSTANTS.RELATED_NODE_SCALE;
+      similarity * qualityScore * GRAPH_CONSTANTS.RELATED_NODE_SCALE;
     val = Math.min(
       Math.max(hybridSize, GRAPH_CONSTANTS.MIN_NODE_SIZE),
       GRAPH_CONSTANTS.MAX_NODE_SIZE
@@ -117,7 +134,9 @@ export function adjustColorForSimilarity(
   baseColor: string,
   similarity?: number
 ): string {
-  if (!similarity) return baseColor;
+  if (similarity === undefined || similarity === null) {
+    return baseColor;
+  }
 
   // Validate hex format (CodeRabbit: prevent parseInt issues)
   if (!/^#[0-9A-Fa-f]{6}$/.test(baseColor)) {
@@ -134,9 +153,9 @@ export function adjustColorForSimilarity(
     GRAPH_CONSTANTS.MIN_BRIGHTNESS_FACTOR +
     similarity * GRAPH_CONSTANTS.BRIGHTNESS_RANGE;
 
-  const rAdj = Math.min(Math.round(r * factor), 255);
-  const gAdj = Math.min(Math.round(g * factor), 255);
-  const bAdj = Math.min(Math.round(b * factor), 255);
+  const rAdj = Math.max(0, Math.min(Math.round(r * factor), 255));
+  const gAdj = Math.max(0, Math.min(Math.round(g * factor), 255));
+  const bAdj = Math.max(0, Math.min(Math.round(b * factor), 255));
 
   return `#${rAdj.toString(16).padStart(2, '0')}${gAdj.toString(16).padStart(2, '0')}${bAdj.toString(16).padStart(2, '0')}`;
 }

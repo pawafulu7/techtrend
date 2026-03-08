@@ -140,7 +140,7 @@ exports[`GraphDataSerializer Characterization Tests node properties - size and c
     "size": undefined,
   },
   {
-    "color": "#EC4899",
+    "color": "#a5326b",
     "id": "related",
     "size": undefined,
   },

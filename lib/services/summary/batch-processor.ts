@@ -251,25 +251,13 @@ export async function checkNewArticles(
   prisma: PrismaClient,
   options?: SummaryGenerationOptions
 ): Promise<boolean> {
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const days = options?.days ?? 1;
+  const from = new Date();
+  from.setDate(from.getDate() - days);
 
   const whereCondition: Prisma.ArticleWhereInput = {
-    AND: [
-      {
-        OR: [
-          { summary: null },
-          { summary: '' },
-          { detailedSummary: null },
-          { detailedSummary: '' },
-        ],
-      },
-      {
-        OR: [
-          { createdAt: { gte: oneHourAgo } },
-          { publishedAt: { gte: oneHourAgo } },
-        ],
-      },
-    ],
+    OR: [{ summary: null }, { summary: '' }],
+    publishedAt: { gte: from },
   };
 
   if (options?.source) {

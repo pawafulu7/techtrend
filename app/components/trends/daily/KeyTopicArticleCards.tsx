@@ -1,20 +1,11 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
+import type { TopArticleInfo } from '@/lib/services/trend-report/types';
 
-type TopArticle = {
-  id: string;
-  title: string;
-  translatedTitle?: string | null;
-  url: string;
-  sourceName: string;
-  viewCount: number;
-  favoriteCount: number;
-  score: number;
-  tags: string[];
-  thumbnail?: string | null;
-};
+type TopArticle = TopArticleInfo;
 
 interface KeyTopicArticleCardsProps {
   articleIds: string[];
@@ -27,30 +18,34 @@ export function KeyTopicArticleCards({
   topArticlesById,
   evidenceArticles,
 }: KeyTopicArticleCardsProps) {
-  const resolved = [...new Set(articleIds)]
-    .map((id) => {
-      const topArticle = topArticlesById.get(id);
-      if (topArticle)
-        return {
-          id: topArticle.id,
-          title: topArticle.translatedTitle || topArticle.title,
-          thumbnail: topArticle.thumbnail,
-          sourceName: topArticle.sourceName,
-          href: `/articles/${topArticle.id}?from=${encodeURIComponent('/trends/daily')}`,
-        };
-      const ev = evidenceArticles[id];
-      if (ev)
-        return {
-          id,
-          title: ev.translatedTitle || ev.title,
-          thumbnail: ev.thumbnail,
-          sourceName: ev.sourceName,
-          href: `/articles/${id}?from=${encodeURIComponent('/trends/daily')}`,
-        };
-      return null;
-    })
-    .filter((a): a is NonNullable<typeof a> => Boolean(a))
-    .slice(0, 5);
+  const resolved = useMemo(
+    () =>
+      [...new Set(articleIds)]
+        .map((id) => {
+          const topArticle = topArticlesById.get(id);
+          if (topArticle)
+            return {
+              id: topArticle.id,
+              title: topArticle.translatedTitle || topArticle.title,
+              thumbnail: topArticle.thumbnail,
+              sourceName: topArticle.sourceName,
+              href: `/articles/${topArticle.id}?from=${encodeURIComponent('/trends/daily')}`,
+            };
+          const ev = evidenceArticles[id];
+          if (ev)
+            return {
+              id,
+              title: ev.translatedTitle || ev.title,
+              thumbnail: ev.thumbnail,
+              sourceName: ev.sourceName,
+              href: `/articles/${id}?from=${encodeURIComponent('/trends/daily')}`,
+            };
+          return null;
+        })
+        .filter((a): a is NonNullable<typeof a> => Boolean(a))
+        .slice(0, 5),
+    [articleIds, topArticlesById, evidenceArticles]
+  );
 
   if (resolved.length === 0) return null;
 

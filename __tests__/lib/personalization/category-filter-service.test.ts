@@ -194,6 +194,48 @@ describe('CategoryFilterService', () => {
         'Centroid dimensions do not match'
       );
     });
+
+    it('should handle malformed centroid values by converting NaN to 0', () => {
+      // 非数値を含むセントロイド（複数セントロイドでNaN置換が走るパスをテスト）
+      // NaN は 0 に置換されるため、結果は有限値かつ非NaNになる
+      const centroidsWithNonNumeric = ['[0.5,abc,0.5]', '[0.5,0.5,0.5]'];
+      const result1 = computeWeightedCentroid(centroidsWithNonNumeric);
+      const parsed1 = result1
+        .replace(/^\[|\]$/g, '')
+        .split(',')
+        .map(Number);
+      expect(isNaN(parsed1[1])).toBe(false);
+      expect(isFinite(parsed1[1])).toBe(true);
+      expect(parsed1[1]).toBeGreaterThanOrEqual(0);
+
+      // 複数セントロイド加算時の malformed 処理
+      const centroidsMixed = ['[1,0,0]', '[0,abc,0]'];
+      const result2 = computeWeightedCentroid(centroidsMixed);
+      const parsed2 = result2
+        .replace(/^\[|\]$/g, '')
+        .split(',')
+        .map(Number);
+      expect(isNaN(parsed2[1])).toBe(false);
+      expect(parsed2[1]).toBeGreaterThanOrEqual(0);
+
+      // 全要素が malformed なセントロイドと正常なセントロイドの混在
+      const centroidsAllBad = ['[abc,abc,abc]', '[0.5,0.5,0.5]'];
+      const result3 = computeWeightedCentroid(centroidsAllBad);
+      const parsed3 = result3
+        .replace(/^\[|\]$/g, '')
+        .split(',')
+        .map(Number);
+      expect(parsed3.every((v) => isFinite(v))).toBe(true);
+    });
+
+    it('should sanitize NaN in single centroid (early return path)', () => {
+      const result = computeWeightedCentroid(['[0.5,abc,0.5]']);
+      const parsed = result
+        .replace(/^\[|\]$/g, '')
+        .split(',')
+        .map(Number);
+      expect(parsed).toEqual([0.5, 0, 0.5]);
+    });
   });
 
   // ===========================================================================

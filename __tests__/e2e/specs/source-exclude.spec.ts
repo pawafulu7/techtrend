@@ -55,9 +55,9 @@ test.describe('ソースフィルタリング機能', () => {
     // 展開アニメーションを待つ
     await page.waitForTimeout(500);
 
-    // Dev.toのチェックボックスを探す（海外ソース内）- 厳密マッチとbutton[role="checkbox"]使用
+    // Dev.toのチェックボックスを探す（海外ソース内）- label要素がdata-testid を持つ構造
     const devtoContainer = page.locator('[data-testid^="source-checkbox-"]')
-      .filter({ has: page.locator('label').filter({ hasText: /^Dev\.to$/ }) })
+      .filter({ hasText: /^Dev\.to$/ })
       .first();
     await expect(devtoContainer).toBeVisible();
 
@@ -85,12 +85,9 @@ test.describe('ソースフィルタリング機能', () => {
     const initialArticles = await page.locator('[data-testid="article-card"]').count();
     expect(initialArticles).toBeGreaterThan(0);
 
-    // フィルターエリアを取得
-    const _filterArea = page.locator('[data-testid="filter-area"]');
-
     // Dev.toのチェックボックスを探す（通常存在するソース）- 厳密マッチとbutton[role="checkbox"]使用
     const devtoContainer = page.locator('[data-testid^="source-checkbox-"]')
-      .filter({ has: page.locator('label').filter({ hasText: /^Dev\.to$/ }) })
+      .filter({ hasText: /^Dev\.to$/ })
       .first();
 
     if (await devtoContainer.isVisible()) {
@@ -140,9 +137,6 @@ test.describe('ソースフィルタリング機能', () => {
   });
 
   test('全て選択・全て解除ボタンが機能する', async ({ page }) => {
-    // フィルターエリアを取得
-    const _filterArea = page.locator('[data-testid="filter-area"]');
-
     // Firefox対応: 記事データの読み込み完了を待つ（タイムアウトを延長）
     try {
       await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({
@@ -274,9 +268,6 @@ test.describe('ソースフィルタリング機能', () => {
     });
 
     // CI環境でも待機は不要（適切なセレクタ待機で対応）
-
-    // フィルターエリアを取得
-    const _filterArea = page.locator('[data-testid="filter-area"]');
 
     // 記事カードが表示されるまで待つ
     await expect(page.locator('[data-testid="article-card"]').first()).toBeVisible({

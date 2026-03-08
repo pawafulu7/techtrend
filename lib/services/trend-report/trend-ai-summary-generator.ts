@@ -23,6 +23,11 @@ import {
 } from './trend-ai-prompts';
 import { validateV2Content, resolveRefKeysToIds } from './trend-ai-validators';
 
+export type AISummaryResult = {
+  content: string;
+  format: 'json' | 'text';
+};
+
 /**
  * Generate AI summary, falling back to legacy plain text on failure.
  */
@@ -36,9 +41,9 @@ export async function generateAISummary(
   topArticles: TopArticleInfo[],
   categories: CategoryInfo[],
   tags: TagInfo[]
-): Promise<string> {
+): Promise<AISummaryResult> {
   try {
-    return await generateAISummaryStructured(
+    const content = await generateAISummaryStructured(
       model,
       prisma,
       periodType,
@@ -49,16 +54,18 @@ export async function generateAISummary(
       categories,
       tags
     );
+    return { content, format: 'json' };
   } catch (error) {
     logger.warn(
       'Failed to generate structured AI summary, falling back to legacy format',
       error
     );
-    return await generateAISummaryLegacyPlainText(
+    const content = await generateAISummaryLegacyPlainText(
       model,
       periodType,
       topArticles
     );
+    return { content, format: 'text' };
   }
 }
 

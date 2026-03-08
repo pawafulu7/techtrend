@@ -5,6 +5,7 @@
  * and sorting logic.
  */
 
+import { logger } from '@/lib/logger';
 import type {
   ScoreParameters,
   ScoredArticle,
@@ -88,18 +89,30 @@ export function computeWeightedCentroid(
     throw new Error('No centroids provided');
   }
 
+  // Parse a single centroid string to number array with NaN sanitization
+  const parseCentroid = (c: string): number[] =>
+    c
+      .replace(/^\[|\]$/g, '')
+      .split(',')
+      .map((s) => {
+        const n = Number(s);
+        const isInvalid = isNaN(n);
+        if (isInvalid) {
+          logger.debug(
+            { token: s },
+            'NaN detected in centroid string, replacing with 0'
+          );
+        }
+        return isInvalid ? 0 : n;
+      });
+
   if (centroids.length === 1) {
-    return centroids[0];
+    const parsed = parseCentroid(centroids[0]);
+    return `[${parsed.join(',')}]`;
   }
 
   // Parse centroid strings to number arrays
-  const vectors = centroids.map((c) => {
-    const parsed = c
-      .replace(/^\[|\]$/g, '')
-      .split(',')
-      .map(Number);
-    return parsed;
-  });
+  const vectors = centroids.map(parseCentroid);
 
   // Validate dimensions
   const dim = vectors[0].length;

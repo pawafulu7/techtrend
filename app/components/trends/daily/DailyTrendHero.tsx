@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import {
   Sparkles,
   Calendar,
@@ -16,6 +17,7 @@ import {
   parseTrendAiSummary,
   type EvidenceArticleMap,
 } from '@/lib/types/trend-ai-summary';
+import type { TopArticleInfo } from '@/lib/services/trend-report/types';
 import { StructuredAISummaryView } from './StructuredAISummaryView';
 
 interface DailyTrendHeroProps {
@@ -24,18 +26,7 @@ interface DailyTrendHeroProps {
   periodStart: string;
   generatedAt?: string;
   topTags?: { name: string; count: number }[];
-  topArticles?: Array<{
-    id: string;
-    title: string;
-    translatedTitle?: string | null;
-    url: string;
-    sourceName: string;
-    viewCount: number;
-    favoriteCount: number;
-    score: number;
-    tags: string[];
-    thumbnail?: string | null;
-  }>;
+  topArticles?: TopArticleInfo[];
   evidenceArticles?: EvidenceArticleMap;
   navigation?: {
     prevDate: string | null;
@@ -44,6 +35,8 @@ interface DailyTrendHeroProps {
   onPrevDay?: () => void;
   onNextDay?: () => void;
 }
+
+const EMPTY_TOP_ARTICLES: TopArticleInfo[] = [];
 
 type LegacyAISummary = {
   topics: Array<{ topic: string; reason: string }>;
@@ -122,12 +115,13 @@ export function DailyTrendHero({
   periodStart,
   generatedAt,
   topTags = [],
-  topArticles = [],
+  topArticles,
   navigation,
   onPrevDay,
   onNextDay,
   evidenceArticles = {},
 }: DailyTrendHeroProps) {
+  const safeTopArticles = topArticles ?? EMPTY_TOP_ARTICLES;
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) {
@@ -150,10 +144,19 @@ export function DailyTrendHero({
     });
   };
 
-  const structuredSummary = parseTrendAiSummary(aiSummary);
-  const legacySummary =
-    !structuredSummary && aiSummary ? parseLegacyAISummary(aiSummary) : null;
-  const topArticlesById = new Map(topArticles.map((a) => [a.id, a] as const));
+  const structuredSummary = useMemo(
+    () => parseTrendAiSummary(aiSummary),
+    [aiSummary]
+  );
+  const legacySummary = useMemo(
+    () =>
+      !structuredSummary && aiSummary ? parseLegacyAISummary(aiSummary) : null,
+    [structuredSummary, aiSummary]
+  );
+  const topArticlesById = useMemo(
+    () => new Map(safeTopArticles.map((a) => [a.id, a] as const)),
+    [safeTopArticles]
+  );
 
   return (
     <section className="relative overflow-hidden">
