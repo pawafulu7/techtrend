@@ -308,13 +308,14 @@ export function checkSummaryQuality(
   score = Math.max(0, score);
 
   // 再生成が必要かどうかの判定（項目数不足も含む）
+  const minQualityScore = getMinQualityScore();
   const requiresRegeneration =
-    score < getMinQualityScore() ||
+    score < minQualityScore ||
     issues.some((issue) => issue.severity === 'critical') ||
     (contentLength >= 5000 && itemCount < minItems); // 項目数不足も再生成トリガーに
 
   // isValidの判定: 薄いコンテンツの場合は最小文字数も厳格にチェック
-  let isValid = score >= getMinQualityScore();
+  let isValid = score >= minQualityScore;
   if (contentAnalysis?.isThinContent) {
     // 薄いコンテンツの場合、最小文字数未満はinvalid
     if (summaryLength < minSummaryLength) {
