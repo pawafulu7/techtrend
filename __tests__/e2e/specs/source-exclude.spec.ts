@@ -55,9 +55,9 @@ test.describe('ソースフィルタリング機能', () => {
     // 展開アニメーションを待つ
     await page.waitForTimeout(500);
 
-    // Dev.toのチェックボックスを探す（海外ソース内）- 厳密マッチとbutton[role="checkbox"]使用
+    // Dev.toのチェックボックスを探す（海外ソース内）- label要素がdata-testid を持つ構造
     const devtoContainer = page.locator('[data-testid^="source-checkbox-"]')
-      .filter({ has: page.locator('label').filter({ hasText: /^Dev\.to$/ }) })
+      .filter({ hasText: /^Dev\.to$/ })
       .first();
     await expect(devtoContainer).toBeVisible();
 
