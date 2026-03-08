@@ -90,7 +90,7 @@ test.describe('ソースフィルタリング機能', () => {
 
     // Dev.toのチェックボックスを探す（通常存在するソース）- 厳密マッチとbutton[role="checkbox"]使用
     const devtoContainer = page.locator('[data-testid^="source-checkbox-"]')
-      .filter({ has: page.locator('label').filter({ hasText: /^Dev\.to$/ }) })
+      .filter({ hasText: /^Dev\.to$/ })
       .first();
 
     if (await devtoContainer.isVisible()) {
