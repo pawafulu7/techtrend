@@ -199,7 +199,10 @@ export function useSourceFilter({
         parsedIds.length > 0 ? parsedIds : sources.map((s) => s.id)
       );
     } else if (sourceIdParam) {
-      setSelectedSources([sourceIdParam.trim()]);
+      const trimmedId = sourceIdParam.trim();
+      if (trimmedId) {
+        setSelectedSources([trimmedId]);
+      }
     }
     // URLパラメータがない場合は既存のstateを維持（cookie由来の初期値を保持）
   }, [searchParams, sources]);

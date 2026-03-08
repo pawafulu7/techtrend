@@ -78,7 +78,7 @@ export async function regenerateSummaries(
     const query: Prisma.ArticleFindManyArgs = {
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
-      take: options.batch || 10,
+      take: options.batch && options.batch > 0 ? options.batch : 10,
     };
 
     if (options.articleIds && options.articleIds.length > 0) {
@@ -227,7 +227,7 @@ export async function generateMissingSummaries(
       where,
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
-      take: options.batch || 10,
+      take: options.batch && options.batch > 0 ? options.batch : 10,
     };
 
     const articles = (await prisma.article.findMany(
