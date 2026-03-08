@@ -78,6 +78,12 @@ export function toGraphNode(
       GRAPH_CONSTANTS.MAX_NODE_SIZE
     ); // Clamp to 30-140
   } else {
+    if (Number.isNaN(input.similarity)) {
+      logger.warn(
+        { articleId: input.id, similarity: input.similarity },
+        'NaN similarity detected in toGraphNode, using quality-based fallback'
+      );
+    }
     // Fallback: quality-based
     val = qualityScore;
   }
