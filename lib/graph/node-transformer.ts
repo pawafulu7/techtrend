@@ -65,7 +65,7 @@ export function toGraphNode(
   let val: number;
   if (isCenter) {
     val = qualityScore * GRAPH_CONSTANTS.CENTER_NODE_SCALE; // Center: enhanced visibility (larger than related nodes)
-  } else if (input.similarity) {
+  } else if (input.similarity !== undefined && input.similarity !== null) {
     // Related: hybrid (quality * similarity * factor)
     const hybridSize =
       input.similarity * qualityScore * GRAPH_CONSTANTS.RELATED_NODE_SCALE;

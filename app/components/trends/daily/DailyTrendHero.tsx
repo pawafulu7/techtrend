@@ -17,6 +17,7 @@ import {
   parseTrendAiSummary,
   type EvidenceArticleMap,
 } from '@/lib/types/trend-ai-summary';
+import type { TopArticleInfo } from '@/lib/services/trend-report/types';
 import { StructuredAISummaryView } from './StructuredAISummaryView';
 
 interface DailyTrendHeroProps {
@@ -25,18 +26,7 @@ interface DailyTrendHeroProps {
   periodStart: string;
   generatedAt?: string;
   topTags?: { name: string; count: number }[];
-  topArticles?: Array<{
-    id: string;
-    title: string;
-    translatedTitle?: string | null;
-    url: string;
-    sourceName: string;
-    viewCount: number;
-    favoriteCount: number;
-    score: number;
-    tags: string[];
-    thumbnail?: string | null;
-  }>;
+  topArticles?: TopArticleInfo[];
   evidenceArticles?: EvidenceArticleMap;
   navigation?: {
     prevDate: string | null;
@@ -46,7 +36,7 @@ interface DailyTrendHeroProps {
   onNextDay?: () => void;
 }
 
-const EMPTY_TOP_ARTICLES: NonNullable<DailyTrendHeroProps['topArticles']> = [];
+const EMPTY_TOP_ARTICLES: TopArticleInfo[] = [];
 
 type LegacyAISummary = {
   topics: Array<{ topic: string; reason: string }>;

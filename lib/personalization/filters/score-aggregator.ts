@@ -100,13 +100,14 @@ export function computeWeightedCentroid(
       .split(',')
       .map((s) => {
         const n = Number(s);
-        if (isNaN(n)) {
+        const isInvalid = isNaN(n);
+        if (isInvalid) {
           logger.debug(
             { token: s },
             'NaN detected in centroid string, replacing with 0'
           );
         }
-        return isNaN(n) ? 0 : n;
+        return isInvalid ? 0 : n;
       });
     return parsed;
   });
