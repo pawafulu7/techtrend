@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import type { Session } from 'next-auth';
+import { resolveSession } from '@/lib/middleware/session-context';
+import type { SessionContext } from '@/lib/middleware/session-context';
 import {
   checkRateLimit,
   ragAgentSearchRateLimit,
@@ -15,6 +17,7 @@ import {
   validateUser,
   createUserDeletedResponse,
 } from '@/lib/middleware/with-user-validation';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 
 import {
   agentTypeSchema,
@@ -55,11 +58,11 @@ export const runtime = 'nodejs'; // Required for Prisma
 
 const tracer = trace.getTracer('rag-agent');
 
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest, context?: SessionContext) {
   return tracer.startActiveSpan('rag.agent-search', async (span) => {
-    const session = await auth();
-
+    let session: Session | null = null;
     try {
+      session = await resolveSession(context);
       // Layer 1: Authentication
       if (!session?.user) {
         span.setAttribute('auth.status', 'unauthorized');
@@ -332,3 +335,5 @@ export async function POST(request: NextRequest) {
     }
   });
 }
+
+export const POST = withCSRFProtection(postHandler);

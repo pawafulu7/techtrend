@@ -231,11 +231,15 @@ async function createStreamingResponse(
 
   let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
+  let isCancelled = false;
+  let streamSpanEnded = false;
+
   const stream = new ReadableStream({
     async start(controller) {
       let fullText = '';
       const toolCalls: any[] = [];
       let usage: any = {};
+      let isClosed = false;
 
       try {
         const streamResult = await modeContext.agent.stream({
@@ -323,6 +327,7 @@ async function createStreamingResponse(
                   encoder,
                   modeContext.preferredLang
                 );
+                isClosed = true;
 
                 streamSpan.setAttribute('streaming.fallbackEmptyText', true);
                 streamSpan.setAttribute('streaming.articleQaNoAnswer', true);
@@ -354,6 +359,7 @@ async function createStreamingResponse(
                     `data: ${JSON.stringify({ type: 'finish', text: fallbackText, usage: { totalTokens: 0 }, toolCalls: [], cached: false, fallback: true })}\n\n`
                   )
                 );
+                isClosed = true;
                 controller.close();
 
                 streamSpan.setAttribute('streaming.fallbackEmptyText', true);
@@ -377,6 +383,7 @@ async function createStreamingResponse(
                     })}\n\n`
                   )
                 );
+                isClosed = true;
                 controller.close();
                 streamSpan.end();
                 return;
@@ -418,6 +425,7 @@ async function createStreamingResponse(
               )
             );
 
+            isClosed = true;
             controller.close();
 
             streamSpan.setAttribute('streaming.success', true);
@@ -427,6 +435,7 @@ async function createStreamingResponse(
               toolCalls.length
             );
             streamSpan.end();
+            streamSpanEnded = true;
 
             logger.info(
               {
@@ -441,9 +450,14 @@ async function createStreamingResponse(
           }
         }
       } catch (agentError) {
-        if (heartbeatInterval) {
-          clearInterval(heartbeatInterval);
-          heartbeatInterval = null;
+        // Skip fallback if client already disconnected
+        if (isCancelled) {
+          streamSpan.setAttribute('streaming.cancelledDuringGeneration', true);
+          if (!streamSpanEnded) {
+            streamSpan.end();
+            streamSpanEnded = true;
+          }
+          return;
         }
 
         streamSpan.setAttribute('streaming.failed', true);
@@ -466,6 +480,7 @@ async function createStreamingResponse(
               encoder,
               modeContext.preferredLang
             );
+            isClosed = true;
 
             streamSpan.setAttribute('streaming.fallback', true);
             streamSpan.setAttribute('streaming.articleQaNoAnswer', true);
@@ -477,6 +492,13 @@ async function createStreamingResponse(
                 topK: 10,
               }
             );
+            if (isCancelled) {
+              streamSpan.setAttribute(
+                'streaming.cancelledDuringFallback',
+                true
+              );
+              return;
+            }
 
             const fallbackText = formatResultsAsText(
               fallbackResults,
@@ -506,6 +528,7 @@ async function createStreamingResponse(
               )
             );
 
+            isClosed = true;
             controller.close();
 
             streamSpan.setAttribute('streaming.fallback', true);
@@ -527,19 +550,58 @@ async function createStreamingResponse(
             )
           );
 
+          isClosed = true;
           controller.close();
         } finally {
-          streamSpan.end();
+          if (!streamSpanEnded) {
+            streamSpan.end();
+            streamSpanEnded = true;
+          }
+        }
+      } finally {
+        // Ensure cleanup regardless of how the loop exits
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
+        }
+        if (!isClosed && !isCancelled) {
+          // Stream ended without finish chunk (network disconnect, etc.)
+          try {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'error',
+                  message: 'Stream ended unexpectedly',
+                })}\n\n`
+              )
+            );
+          } catch {
+            // Controller may already be in error state
+          }
+          try {
+            controller.close();
+          } catch {
+            // Controller may already be closed
+          }
+          streamSpan.setAttribute('streaming.unexpectedEnd', true);
+          if (!streamSpanEnded) {
+            streamSpan.end();
+            streamSpanEnded = true;
+          }
         }
       }
     },
     cancel() {
+      isCancelled = true;
       if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
         heartbeatInterval = null;
       }
-      streamSpan.setAttribute('streaming.cancelled', true);
-      streamSpan.end();
+      if (!streamSpanEnded) {
+        streamSpan.setAttribute('streaming.cancelled', true);
+        streamSpan.end();
+        streamSpanEnded = true;
+      }
     },
   });
 

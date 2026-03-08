@@ -353,6 +353,18 @@ export function useInfiniteArticles(filters: ArticleFilters) {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          let message = 'ログインが必要です。再度ログインしてください。';
+          try {
+            const errorData = await response.json();
+            if (errorData?.error?.message) {
+              message = errorData.error.message;
+            }
+          } catch {
+            // response.json() failed - keep default message
+          }
+          throw new Error(message);
+        }
         throw new Error(
           `Failed to fetch articles: ${response.status} ${response.statusText}`
         );

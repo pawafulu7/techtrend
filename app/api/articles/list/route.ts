@@ -101,8 +101,23 @@ export async function GET(request: NextRequest) {
     const session = needsAuth ? await auth() : null;
     const userId = session?.user?.id;
 
+    // readFilter=read/unread requires authentication
+    if (needsUserInCacheKey && !userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required for read/unread filter',
+          },
+        },
+        { status: 401 }
+      );
+    }
+
     // Include userId in cache key only when readFilter modifies query results
-    const userCtxForKey = needsUserInCacheKey ? (userId ?? 'anonymous') : 'n/a';
+    // userId is guaranteed non-null here due to the needsUserInCacheKey && !userId guard above
+    const userCtxForKey = needsUserInCacheKey ? userId! : 'n/a';
 
     // Include cursor in cache key if using cursor pagination
     const normalizedExcludeSources =
@@ -193,10 +208,11 @@ export async function GET(request: NextRequest) {
     });
 
     // Check cache first
-    // readFilter requires user-specific queries so we skip cache in that case
+    // readFilter requires user-specific queries so we skip cache in that case.
+    // userId check is unnecessary here because the auth guard above guarantees
+    // userId is non-null when needsUserInCacheKey is true.
     // includeUserData no longer skips cache - user data is merged after cache fetch
-    const shouldSkipCache =
-      (readFilter === 'read' || readFilter === 'unread') && userId;
+    const shouldSkipCache = needsUserInCacheKey;
     const cachedResult = shouldSkipCache
       ? null
       : await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);

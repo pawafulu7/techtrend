@@ -1,4 +1,4 @@
-import { PrismaClient, TrendPeriodType } from '@prisma/client';
+import { PrismaClient, TrendPeriodType, Prisma } from '@prisma/client';
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import logger from '@/lib/logger/index';
 import { GEMINI_API } from '@/lib/constants';
@@ -135,21 +135,50 @@ export class TrendReportGenerator {
       }
 
       // Save report
-      const report = await this.prisma.trendReport.create({
-        data: {
-          periodType,
-          periodStart,
-          periodEnd,
-          articleCount: articles.length,
-          topArticles: JSON.parse(JSON.stringify(topArticles.slice(0, 10))),
-          categories: JSON.parse(JSON.stringify(categories)),
-          tags: JSON.parse(JSON.stringify(tags.slice(0, 30))),
-          aiSummary,
-          aiModel,
-          promptVersion: aiSummary ? PROMPT_VERSION : undefined,
-          generatedAt,
-        },
-      });
+      let report;
+      try {
+        report = await this.prisma.trendReport.create({
+          data: {
+            periodType,
+            periodStart,
+            periodEnd,
+            articleCount: articles.length,
+            topArticles: JSON.parse(JSON.stringify(topArticles.slice(0, 10))),
+            categories: JSON.parse(JSON.stringify(categories)),
+            tags: JSON.parse(JSON.stringify(tags.slice(0, 30))),
+            aiSummary,
+            aiModel,
+            promptVersion: aiSummary ? PROMPT_VERSION : undefined,
+            generatedAt,
+          },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          // Race condition: another process created the report
+          logger.info(
+            `Trend report race condition for ${periodType} starting ${periodStart.toISOString()}, fetching existing`
+          );
+          const conflictingReport = await this.prisma.trendReport.findUnique({
+            where: {
+              periodType_periodStart: {
+                periodType,
+                periodStart,
+              },
+            },
+          });
+          if (conflictingReport) {
+            return conflictingReport.id;
+          }
+          // Should not reach here, but throw if findUnique returns null
+          throw new Error(
+            `Failed to recover from race condition: trend report not found after P2002 for ${periodType} starting ${periodStart.toISOString()}`
+          );
+        }
+        throw error;
+      }
 
       logger.info(
         `Trend report created: ${report.id} (${periodType}) with ${articles.length} articles`
