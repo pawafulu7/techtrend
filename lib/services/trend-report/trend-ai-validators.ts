@@ -53,15 +53,11 @@ export function validateV2Content(obj: unknown): string[] {
       );
     }
   }
-  if (parsed.data.trendChanges) {
-    if (hasStatParaphrase(parsed.data.trendChanges.summary)) {
-      errors.push('trendChanges.summary must not paraphrase stats');
-    }
-    if (hasQuantChangeWord(parsed.data.trendChanges.summary)) {
-      errors.push(
-        'trendChanges.summary must not contain quantitative change words'
-      );
-    }
+  if (
+    parsed.data.trendChanges &&
+    hasStatParaphrase(parsed.data.trendChanges.summary)
+  ) {
+    errors.push('trendChanges.summary must not paraphrase stats');
   }
   return errors;
 }

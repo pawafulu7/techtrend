@@ -296,25 +296,10 @@ export function SourceFilterPanel({
                       {/* Source Items */}
                       <div className="space-y-1 pl-6">
                         {categorySources.map((source) => (
-                          <div
+                          <label
                             key={source.id}
-                            role="button"
-                            tabIndex={0}
+                            htmlFor={`source-${source.id}`}
                             className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-gray-50 dark:hover:bg-gray-800"
-                            onClick={(e) => {
-                              // Prevent double toggle when clicking directly on checkbox
-                              if (
-                                (e.target as HTMLElement).tagName !== 'INPUT'
-                              ) {
-                                handleSourceToggle(source.id);
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                handleSourceToggle(source.id);
-                              }
-                            }}
                             data-testid={`source-checkbox-${source.id}`}
                           >
                             <Checkbox
@@ -324,15 +309,11 @@ export function SourceFilterPanel({
                                 handleSourceToggle(source.id)
                               }
                               className="h-4 w-4"
-                              onClick={(e) => e.stopPropagation()}
                             />
-                            <label
-                              htmlFor={`source-${source.id}`}
-                              className="flex-1 cursor-pointer text-xs"
-                            >
+                            <span className="flex-1 text-xs">
                               {source.name}
-                            </label>
-                          </div>
+                            </span>
+                          </label>
                         ))}
                       </div>
                     </div>

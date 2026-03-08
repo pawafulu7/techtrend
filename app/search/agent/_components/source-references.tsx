@@ -54,7 +54,10 @@ export function SourceReferences({
     [isSubmittingFeedback, feedbackSubmitted, onFeedback]
   );
 
-  if (!totalTokens && !onFeedback) return null;
+  const hasTokenInfo =
+    typeof totalTokens === 'number' && Number.isFinite(totalTokens);
+
+  if (!hasTokenInfo && !onFeedback) return null;
 
   return (
     <div className="mt-4 flex items-center justify-between border-t pt-4">
