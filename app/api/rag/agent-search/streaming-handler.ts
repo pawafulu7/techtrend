@@ -504,13 +504,6 @@ async function createStreamingResponse(
               fallbackResults,
               modeContext.preferredLang
             );
-            if (isCancelled) {
-              streamSpan.setAttribute(
-                'streaming.cancelledDuringFallback',
-                true
-              );
-              return;
-            }
 
             controller.enqueue(
               encoder.encode(
@@ -604,8 +597,8 @@ async function createStreamingResponse(
         clearInterval(heartbeatInterval);
         heartbeatInterval = null;
       }
-      streamSpan.setAttribute('streaming.cancelled', true);
       if (!streamSpanEnded) {
+        streamSpan.setAttribute('streaming.cancelled', true);
         streamSpan.end();
         streamSpanEnded = true;
       }
