@@ -30,6 +30,14 @@ export function toGraphNodeInput(
   };
 }
 
+function normalizeSimilarity(similarity?: number): number | undefined {
+  return similarity !== undefined &&
+    similarity !== null &&
+    Number.isFinite(similarity)
+    ? similarity
+    : undefined;
+}
+
 /**
  * Convert GraphNodeInput to GraphNode
  *
@@ -46,6 +54,15 @@ export function toGraphNode(
     );
   }
 
+  // Normalize similarity early: NaN/Infinity -> undefined (single warning)
+  const similarity = normalizeSimilarity(input.similarity);
+  if (!isCenter && input.similarity != null && similarity === undefined) {
+    logger.warn(
+      { articleId: input.id, similarity: input.similarity },
+      'Invalid similarity detected, using fallbacks'
+    );
+  }
+
   // Phase 2: Use pre-computed category or calculate
   const category = input.category ?? getCategory(input.tags || []);
   const baseColor = getCategoryColor(category);
@@ -53,7 +70,7 @@ export function toGraphNode(
   // CodexMCP Phase 2: Adjust color brightness by similarity
   const color = isCenter
     ? '#FBBF24'
-    : adjustColorForSimilarity(baseColor, input.similarity);
+    : adjustColorForSimilarity(baseColor, similarity);
 
   // CodexMCP Phase 2: Clamp qualityScore to minimum baseline
   const qualityScore = Math.max(
@@ -65,25 +82,15 @@ export function toGraphNode(
   let val: number;
   if (isCenter) {
     val = qualityScore * GRAPH_CONSTANTS.CENTER_NODE_SCALE; // Center: enhanced visibility (larger than related nodes)
-  } else if (
-    input.similarity !== undefined &&
-    input.similarity !== null &&
-    !Number.isNaN(input.similarity)
-  ) {
+  } else if (similarity !== undefined) {
     // Related: hybrid (quality * similarity * factor)
     const hybridSize =
-      input.similarity * qualityScore * GRAPH_CONSTANTS.RELATED_NODE_SCALE;
+      similarity * qualityScore * GRAPH_CONSTANTS.RELATED_NODE_SCALE;
     val = Math.min(
       Math.max(hybridSize, GRAPH_CONSTANTS.MIN_NODE_SIZE),
       GRAPH_CONSTANTS.MAX_NODE_SIZE
     ); // Clamp to 30-140
   } else {
-    if (Number.isNaN(input.similarity)) {
-      logger.warn(
-        { articleId: input.id, similarity: input.similarity },
-        'NaN similarity detected in toGraphNode, using quality-based fallback'
-      );
-    }
     // Fallback: quality-based
     val = qualityScore;
   }
@@ -127,17 +134,7 @@ export function adjustColorForSimilarity(
   baseColor: string,
   similarity?: number
 ): string {
-  if (
-    similarity === undefined ||
-    similarity === null ||
-    Number.isNaN(similarity)
-  ) {
-    if (Number.isNaN(similarity)) {
-      logger.warn(
-        { similarity, baseColor },
-        'NaN similarity detected, using base color'
-      );
-    }
+  if (similarity === undefined || similarity === null) {
     return baseColor;
   }
 
