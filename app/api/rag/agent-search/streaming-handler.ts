@@ -492,11 +492,25 @@ async function createStreamingResponse(
                 topK: 10,
               }
             );
+            if (isCancelled) {
+              streamSpan.setAttribute(
+                'streaming.cancelledDuringFallback',
+                true
+              );
+              return;
+            }
 
             const fallbackText = formatResultsAsText(
               fallbackResults,
               modeContext.preferredLang
             );
+            if (isCancelled) {
+              streamSpan.setAttribute(
+                'streaming.cancelledDuringFallback',
+                true
+              );
+              return;
+            }
 
             controller.enqueue(
               encoder.encode(
@@ -546,8 +560,10 @@ async function createStreamingResponse(
           isClosed = true;
           controller.close();
         } finally {
-          streamSpan.end();
-          streamSpanEnded = true;
+          if (!streamSpanEnded) {
+            streamSpan.end();
+            streamSpanEnded = true;
+          }
         }
       } finally {
         // Ensure cleanup regardless of how the loop exits
