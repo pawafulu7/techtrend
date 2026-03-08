@@ -450,6 +450,16 @@ async function createStreamingResponse(
           }
         }
       } catch (agentError) {
+        // Skip fallback if client already disconnected
+        if (isCancelled) {
+          streamSpan.setAttribute('streaming.cancelledDuringGeneration', true);
+          if (!streamSpanEnded) {
+            streamSpan.end();
+            streamSpanEnded = true;
+          }
+          return;
+        }
+
         streamSpan.setAttribute('streaming.failed', true);
         streamSpan.recordException(agentError as Error);
 

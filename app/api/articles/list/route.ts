@@ -208,7 +208,9 @@ export async function GET(request: NextRequest) {
     });
 
     // Check cache first
-    // readFilter requires user-specific queries so we skip cache in that case
+    // readFilter requires user-specific queries so we skip cache in that case.
+    // userId check is unnecessary here because the auth guard above guarantees
+    // userId is non-null when needsUserInCacheKey is true.
     // includeUserData no longer skips cache - user data is merged after cache fetch
     const shouldSkipCache = needsUserInCacheKey;
     const cachedResult = shouldSkipCache
