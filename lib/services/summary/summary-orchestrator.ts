@@ -75,17 +75,18 @@ export async function regenerateSummaries(
   const startTime = Date.now();
 
   try {
+    const batchSize = options.batch && options.batch > 0 ? options.batch : 10;
     const query: Prisma.ArticleFindManyArgs = {
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
-      take: options.batch && options.batch > 0 ? options.batch : 10,
+      take: batchSize,
     };
 
     if (options.articleIds && options.articleIds.length > 0) {
       query.where = {
         id: { in: options.articleIds },
       };
-      query.take = options.articleIds.length;
+      query.take = Math.min(options.articleIds.length, batchSize);
     } else if (!options.force) {
       query.where = {
         OR: [

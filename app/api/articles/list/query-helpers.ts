@@ -389,7 +389,7 @@ export function normalizeExcludeSourcesForCacheKey(
   excludeSources: string | null
 ): string {
   if (!excludeSources) return 'none';
-  const ids = parseSourceIds(excludeSources, null).sort();
+  const ids = [...new Set(parseSourceIds(excludeSources, null))].sort();
   return ids.length > 0 ? ids.join(',') : 'none';
 }
 

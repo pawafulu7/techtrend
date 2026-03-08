@@ -190,10 +190,14 @@ export function useSourceFilter({
     } else if (sourcesParam) {
       // Filter out invalid IDs (excluded or deleted sources)
       const validIds = new Set(sources.map((s) => s.id));
-      const parsedIds = sourcesParam
-        .split(',')
-        .map((id) => id.trim())
-        .filter((id) => id && validIds.has(id));
+      const parsedIds = [
+        ...new Set(
+          sourcesParam
+            .split(',')
+            .map((id) => id.trim())
+            .filter((id) => id && validIds.has(id))
+        ),
+      ];
       // If all IDs were invalid, fall back to all sources
       setSelectedSources(
         parsedIds.length > 0 ? parsedIds : sources.map((s) => s.id)
