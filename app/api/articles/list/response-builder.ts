@@ -290,7 +290,7 @@ export function buildOffsetResult(
 
 /**
  * Load favorite and read status maps for a list of article IDs.
- * Returns null if loaders are not available (unauthenticated or missing userId).
+ * Returns empty maps if loaders are not available (unauthenticated or missing userId).
  */
 async function loadUserDataMaps(
   articleIds: string[],
@@ -299,13 +299,15 @@ async function loadUserDataMaps(
 ): Promise<{
   favoritesMap: Map<string, boolean>;
   readStatusMap: Map<string, boolean>;
-} | null> {
+}> {
   const loaders = createLoaders(
     { userId },
     { favorite: { bypassL1: bypassFavoriteL1 } }
   );
 
-  if (!loaders.favorite || !loaders.view) return null;
+  if (!loaders.favorite || !loaders.view) {
+    return { favoritesMap: new Map(), readStatusMap: new Map() };
+  }
 
   const [favoriteStatuses, viewStatuses] = await Promise.all([
     loaders.favorite.loadMany(articleIds),
@@ -344,10 +346,11 @@ export async function fetchAndMergeUserData(
     `DataLoader integration: isAuthenticated=${Boolean(userId)}, articles=${articleIds.length}`
   );
 
-  const maps = await loadUserDataMaps(articleIds, userId, bypassFavoriteL1);
-  if (!maps) return items;
-
-  const { favoritesMap, readStatusMap } = maps;
+  const { favoritesMap, readStatusMap } = await loadUserDataMaps(
+    articleIds,
+    userId,
+    bypassFavoriteL1
+  );
 
   logger.debug(
     `DataLoader maps: favorites=${favoritesMap.size}, reads=${readStatusMap.size}`
@@ -366,10 +369,11 @@ export async function mergeUserDataIntoCachedResult(
 ): Promise<PaginatedResponse<LightweightArticle>> {
   const articleIds = result.items.map((a) => a.id);
 
-  const maps = await loadUserDataMaps(articleIds, userId, bypassFavoriteL1);
-  if (!maps) return result;
-
-  const { favoritesMap, readStatusMap } = maps;
+  const { favoritesMap, readStatusMap } = await loadUserDataMaps(
+    articleIds,
+    userId,
+    bypassFavoriteL1
+  );
 
   return {
     ...result,
