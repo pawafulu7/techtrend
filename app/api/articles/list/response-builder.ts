@@ -141,8 +141,8 @@ export interface FilterContext {
   readFilter: string | null;
   category: string | null;
   excludeSources: string;
-  excludeUnprocessed: string;
-  excludeLowQuality: string;
+  excludeUnprocessed: 'true' | 'false';
+  excludeLowQuality: 'true' | 'false';
 }
 
 /** Input parameters for buildFilterContext */
@@ -300,6 +300,10 @@ async function loadUserDataMaps(
   favoritesMap: Map<string, boolean>;
   readStatusMap: Map<string, boolean>;
 }> {
+  if (articleIds.length === 0) {
+    return { favoritesMap: new Map(), readStatusMap: new Map() };
+  }
+
   const loaders = createLoaders(
     { userId },
     { favorite: { bypassL1: bypassFavoriteL1 } }
