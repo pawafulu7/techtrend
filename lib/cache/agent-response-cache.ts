@@ -66,23 +66,24 @@ export class AgentResponseCache extends RedisCache {
     query: string,
     response: AgentCachedResponse
   ): Promise<void> {
-    const serialized = JSON.stringify(response);
-    if (serialized.length > CACHE_RESPONSE_SIZE_LIMIT.AGENT) {
-      logger.warn(
-        {
-          query: query.substring(0, 50),
-          responseSize: serialized.length,
-          maxSize: CACHE_RESPONSE_SIZE_LIMIT.AGENT,
-        },
-        'Agent response exceeds size limit, skipping cache'
-      );
-      return;
-    }
-    const key = this.generateKey(normalizeQuery(query));
     try {
+      const serialized = JSON.stringify(response);
+      const responseSize = Buffer.byteLength(serialized, 'utf8');
+      if (responseSize > CACHE_RESPONSE_SIZE_LIMIT.AGENT) {
+        logger.warn(
+          {
+            query: query.substring(0, 50),
+            responseSize,
+            maxSize: CACHE_RESPONSE_SIZE_LIMIT.AGENT,
+          },
+          'Agent response exceeds size limit, skipping cache'
+        );
+        return;
+      }
+      const key = this.generateKey(normalizeQuery(query));
       await this.redis.setex(key, this.defaultTTL, serialized);
     } catch {
-      // Graceful degradation - continue without error
+      // Graceful degradation - continue without error on serialize/write failure
     }
   }
 
