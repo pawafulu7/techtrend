@@ -35,7 +35,7 @@ export class AgentResponseCache extends RedisCache {
    * @returns Cached response or null if not found/error
    */
   async getResponse(query: string): Promise<AgentCachedResponse | null> {
-    const key = this.generateAgentKey(query);
+    const key = normalizeQuery(query);
     const raw = await super.get<unknown>(key);
     if (raw === null) return null;
     // Backward compatibility: old entries stored as plain string
@@ -78,8 +78,12 @@ export class AgentResponseCache extends RedisCache {
       );
       return;
     }
-    const key = this.generateAgentKey(query);
-    await super.set(key, response);
+    const key = this.generateKey(normalizeQuery(query));
+    try {
+      await this.redis.setex(key, this.defaultTTL, serialized);
+    } catch {
+      // Graceful degradation - continue without error
+    }
   }
 
   /**
@@ -88,18 +92,11 @@ export class AgentResponseCache extends RedisCache {
    * @param query - User query
    */
   async invalidateResponse(query: string): Promise<void> {
-    const key = this.generateAgentKey(query);
+    const key = normalizeQuery(query);
     try {
       await super.delete(key);
     } catch {
       // Graceful degradation - continue without error
     }
-  }
-
-  /**
-   * Generate cache key with query normalization
-   */
-  private generateAgentKey(query: string): string {
-    return normalizeQuery(query);
   }
 }
