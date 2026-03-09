@@ -68,6 +68,14 @@ export const POPULAR_CACHE_DURATION = {
 } as const;
 
 /**
+ * Cache entry size limits in bytes
+ * Prevents oversized entries from consuming excessive Redis memory
+ */
+export const CACHE_RESPONSE_SIZE_LIMIT = {
+  AGENT: 512_000, // 500KB - Agent response max serialized size
+} as const;
+
+/**
  * Helper function to create cache key patterns
  * @param namespace - The cache namespace
  * @param pattern - The pattern to append (optional)

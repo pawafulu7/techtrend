@@ -1,10 +1,10 @@
 import { RedisCache } from './index';
-import { CACHE_TTL } from './constants';
+import { CACHE_TTL, CACHE_RESPONSE_SIZE_LIMIT } from './constants';
+import { CachedAIResponse } from './types';
+import { normalizeQuery } from './normalize-query';
+import { logger } from '@/lib/logger';
 
-export interface AgentCachedResponse {
-  text: string;
-  toolCalls: unknown[];
-}
+export type AgentCachedResponse = CachedAIResponse;
 
 /**
  * Agent Response Cache
@@ -66,6 +66,18 @@ export class AgentResponseCache extends RedisCache {
     query: string,
     response: AgentCachedResponse
   ): Promise<void> {
+    const serialized = JSON.stringify(response);
+    if (serialized.length > CACHE_RESPONSE_SIZE_LIMIT.AGENT) {
+      logger.warn(
+        {
+          query: query.substring(0, 50),
+          responseSize: serialized.length,
+          maxSize: CACHE_RESPONSE_SIZE_LIMIT.AGENT,
+        },
+        'Agent response exceeds size limit, skipping cache'
+      );
+      return;
+    }
     const key = this.generateAgentKey(query);
     await super.set(key, response);
   }
@@ -88,32 +100,6 @@ export class AgentResponseCache extends RedisCache {
    * Generate cache key with query normalization
    */
   private generateAgentKey(query: string): string {
-    return this.normalizeQuery(query);
-  }
-
-  /**
-   * Normalize query for cache key generation
-   *
-   * Normalization strategy:
-   * - Lowercase (case-insensitive matching)
-   * - Trim whitespace
-   * - Collapse multiple spaces to single space
-   * - Remove punctuation (!?。、；：etc. including .)
-   *
-   * @param query - Raw query
-   * @returns Normalized query
-   *
-   * @example
-   * ```typescript
-   * normalizeQuery('  React   Performance!  ')
-   * // => 'react performance'
-   * ```
-   */
-  private normalizeQuery(query: string): string {
-    return query
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, ' ') // Collapse whitespace
-      .replace(/[!?。、；：！？、.]/g, ''); // Remove punctuation (including .)
+    return normalizeQuery(query);
   }
 }

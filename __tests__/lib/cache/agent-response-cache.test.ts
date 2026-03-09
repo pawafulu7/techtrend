@@ -1,4 +1,6 @@
 import { AgentResponseCache } from '@/lib/cache/agent-response-cache';
+import { CACHE_RESPONSE_SIZE_LIMIT } from '@/lib/cache/constants';
+import { logger } from '@/lib/logger';
 
 jest.mock('@/lib/logger', () => ({
   __esModule: true,
@@ -176,6 +178,41 @@ describe('AgentResponseCache', () => {
         text: 'old plain text response',
         toolCalls: [],
       });
+    });
+  });
+
+  describe('size limit enforcement', () => {
+    it('should cache response within size limit', async () => {
+      const response = { text: 'short response', toolCalls: [] };
+
+      await cache.setResponse('query', response);
+
+      expect(mockRedis.setex).toHaveBeenCalled();
+    });
+
+    it('should skip caching when response exceeds size limit', async () => {
+      // Create a response that exceeds 512KB when serialized
+      const largeText = 'x'.repeat(CACHE_RESPONSE_SIZE_LIMIT.AGENT + 1);
+      const response = { text: largeText, toolCalls: [] };
+
+      await cache.setResponse('query', response);
+
+      expect(mockRedis.setex).not.toHaveBeenCalled();
+    });
+
+    it('should call logger.warn when response exceeds size limit', async () => {
+      const largeText = 'x'.repeat(CACHE_RESPONSE_SIZE_LIMIT.AGENT + 1);
+      const response = { text: largeText, toolCalls: [] };
+
+      await cache.setResponse('large query', response);
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          responseSize: expect.any(Number),
+          maxSize: CACHE_RESPONSE_SIZE_LIMIT.AGENT,
+        }),
+        'Agent response exceeds size limit, skipping cache'
+      );
     });
   });
 

@@ -13,3 +13,8 @@ export interface CacheKeyOptions {
   prefix?: string;
   params?: Record<string, unknown>;
 }
+
+export interface CachedAIResponse {
+  text: string;
+  toolCalls: unknown[];
+}
