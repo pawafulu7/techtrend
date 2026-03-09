@@ -14,15 +14,14 @@
  * @module article-qa-cache
  */
 
-export interface ArticleQACachedResponse {
-  text: string;
-  toolCalls: unknown[];
-}
-
 import { RedisCache } from './index';
 import { CACHE_TTL } from './constants';
-import { logger } from '@/lib/logger';
+import { CachedAIResponse } from './types';
+import { normalizeQuery } from './normalize-query';
+import { hashSensitiveValue, logger } from '@/lib/logger';
 import { countTokens } from '@/lib/utils/chunking';
+
+export type ArticleQACachedResponse = CachedAIResponse;
 
 /**
  * Article QA Cache
@@ -101,7 +100,8 @@ export class ArticleQACache extends RedisCache {
       logger.warn(
         {
           articleId,
-          query: query.substring(0, 50),
+          queryHash: hashSensitiveValue(query),
+          queryLength: query.length,
           tokenCount,
           maxTokens: this.maxTokensPerEntry,
         },
@@ -111,7 +111,11 @@ export class ArticleQACache extends RedisCache {
     }
 
     const key = this.generateQAKey(articleId, query, locale, updatedAt);
-    await super.set(key, response);
+    try {
+      await super.set(key, response);
+    } catch {
+      // Graceful degradation - continue without error on write failure
+    }
   }
 
   /**
@@ -165,29 +169,8 @@ export class ArticleQACache extends RedisCache {
     locale: 'ja' | 'en',
     updatedAt: Date
   ): string {
-    const normalized = this.normalizeQuery(query);
+    const normalized = normalizeQuery(query, { preserveDot: true });
     const updatedAtMs = updatedAt.getTime();
     return `${articleId}:${normalized}:${locale}:${updatedAtMs}`;
-  }
-
-  /**
-   * Normalize query for cache key generation
-   *
-   * Normalization strategy:
-   * - Lowercase (case-insensitive matching)
-   * - Trim whitespace
-   * - Collapse multiple spaces to single space
-   * - Remove punctuation (!?。、；：etc.)
-   * - Preserve ASCII dot (.) to avoid version number collisions (e.g., v1.0 vs v10)
-   *
-   * @param query - Raw query
-   * @returns Normalized query
-   */
-  private normalizeQuery(query: string): string {
-    return query
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, ' ')
-      .replace(/[!?。、；：！？、]/g, '');
   }
 }

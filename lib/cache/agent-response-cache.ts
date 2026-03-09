@@ -1,10 +1,10 @@
 import { RedisCache } from './index';
-import { CACHE_TTL } from './constants';
+import { CACHE_TTL, CACHE_RESPONSE_SIZE_LIMIT } from './constants';
+import { CachedAIResponse } from './types';
+import { normalizeQuery } from './normalize-query';
+import { hashSensitiveValue, logger } from '@/lib/logger';
 
-export interface AgentCachedResponse {
-  text: string;
-  toolCalls: unknown[];
-}
+export type AgentCachedResponse = CachedAIResponse;
 
 /**
  * Agent Response Cache
@@ -35,7 +35,7 @@ export class AgentResponseCache extends RedisCache {
    * @returns Cached response or null if not found/error
    */
   async getResponse(query: string): Promise<AgentCachedResponse | null> {
-    const key = this.generateAgentKey(query);
+    const key = normalizeQuery(query);
     const raw = await super.get<unknown>(key);
     if (raw === null) return null;
     // Backward compatibility: old entries stored as plain string
@@ -66,8 +66,27 @@ export class AgentResponseCache extends RedisCache {
     query: string,
     response: AgentCachedResponse
   ): Promise<void> {
-    const key = this.generateAgentKey(query);
-    await super.set(key, response);
+    try {
+      const serialized = JSON.stringify(response);
+      const responseSize = Buffer.byteLength(serialized, 'utf8');
+      if (responseSize > CACHE_RESPONSE_SIZE_LIMIT.AGENT) {
+        logger.warn(
+          {
+            queryHash: hashSensitiveValue(query),
+            queryLength: query.length,
+            responseSize,
+            maxSize: CACHE_RESPONSE_SIZE_LIMIT.AGENT,
+          },
+          'Agent response exceeds size limit, skipping cache'
+        );
+        return;
+      }
+      // Use base class set() for stats tracking and consistent key generation
+      // (response is re-serialized by super.set, but size check above prevents oversized entries)
+      await super.set(normalizeQuery(query), response);
+    } catch {
+      // Graceful degradation - continue without error on serialize/write failure
+    }
   }
 
   /**
@@ -76,44 +95,11 @@ export class AgentResponseCache extends RedisCache {
    * @param query - User query
    */
   async invalidateResponse(query: string): Promise<void> {
-    const key = this.generateAgentKey(query);
+    const key = normalizeQuery(query);
     try {
       await super.delete(key);
     } catch {
       // Graceful degradation - continue without error
     }
-  }
-
-  /**
-   * Generate cache key with query normalization
-   */
-  private generateAgentKey(query: string): string {
-    return this.normalizeQuery(query);
-  }
-
-  /**
-   * Normalize query for cache key generation
-   *
-   * Normalization strategy:
-   * - Lowercase (case-insensitive matching)
-   * - Trim whitespace
-   * - Collapse multiple spaces to single space
-   * - Remove punctuation (!?。、；：etc. including .)
-   *
-   * @param query - Raw query
-   * @returns Normalized query
-   *
-   * @example
-   * ```typescript
-   * normalizeQuery('  React   Performance!  ')
-   * // => 'react performance'
-   * ```
-   */
-  private normalizeQuery(query: string): string {
-    return query
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, ' ') // Collapse whitespace
-      .replace(/[!?。、；：！？、.]/g, ''); // Remove punctuation (including .)
   }
 }
