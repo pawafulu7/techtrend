@@ -15,6 +15,7 @@ import {
   normalizeSourcesForCacheKey,
   normalizeExcludeSourcesForCacheKey,
   fetchTotalCount,
+  LIST_SORT_FIELDS,
 } from './query-helpers';
 import {
   fetchCompanyNames,
@@ -51,16 +52,9 @@ export async function GET(request: NextRequest) {
       Math.max(1, Number.isNaN(rawLimit) ? 20 : rawLimit)
     );
     const sortBy = searchParams.get('sortBy') || 'publishedAt';
-    const validSortFields = [
-      'publishedAt',
-      'createdAt',
-      'qualityScore',
-      'bookmarks',
-      'userVotes',
-    ];
-    const finalSortBy = validSortFields.includes(sortBy)
-      ? sortBy
-      : 'publishedAt';
+    const finalSortBy = (LIST_SORT_FIELDS as readonly string[]).includes(sortBy)
+      ? (sortBy as (typeof LIST_SORT_FIELDS)[number])
+      : ('publishedAt' as const);
     const rawSortOrder = searchParams.get('sortOrder') || 'desc';
     const sortOrder: 'asc' | 'desc' = ['asc', 'desc'].includes(rawSortOrder)
       ? (rawSortOrder as 'asc' | 'desc')

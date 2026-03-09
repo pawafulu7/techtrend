@@ -13,6 +13,7 @@ import logger from '@/lib/logger';
 
 import type { LightweightArticle } from './types';
 import { mergeUserDataIntoItems } from './types';
+import type { ListSortField } from './query-helpers';
 
 /** Raw article row from Prisma query (before normalization) */
 type RawArticle = {
@@ -105,7 +106,7 @@ export interface CursorPaginationParams {
   articles: RawArticle[];
   total: number;
   limit: number;
-  finalSortBy: string;
+  finalSortBy: ListSortField;
   sortOrder: 'asc' | 'desc';
   normalizedSources: string;
   tags: string | null;
@@ -125,6 +126,29 @@ export interface CursorPaginationParams {
 }
 
 /**
+ * Build the filter context object shared by cursor and offset pagination results.
+ * Used for cursor encoding and pageInfo generation.
+ */
+function buildFilterContext(
+  params: CursorPaginationParams | OffsetPaginationParams
+): Record<string, string | null | undefined> {
+  return {
+    sources: params.normalizedSources,
+    tags: params.tags || params.tag,
+    tagMode: params.tagMode,
+    search: params.search,
+    dateRange: params.dateRange,
+    dateFrom: params.dateFrom,
+    dateTo: params.dateTo,
+    readFilter: params.readFilter,
+    category: params.category,
+    excludeSources: params.excludeSources,
+    excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
+    excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
+  };
+}
+
+/**
  * Build cursor-based pagination result
  */
 export function buildCursorResult(
@@ -137,20 +161,7 @@ export function buildCursorResult(
     params.limit,
     params.finalSortBy,
     params.sortOrder,
-    {
-      sources: params.normalizedSources,
-      tags: params.tags || params.tag,
-      tagMode: params.tagMode,
-      search: params.search,
-      dateRange: params.dateRange,
-      dateFrom: params.dateFrom,
-      dateTo: params.dateTo,
-      readFilter: params.readFilter,
-      category: params.category,
-      excludeSources: params.excludeSources,
-      excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
-      excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
-    },
+    buildFilterContext(params),
     params.hasPreviousPage
   );
 
@@ -181,7 +192,7 @@ export interface OffsetPaginationParams {
   total: number;
   page: number;
   limit: number;
-  finalSortBy: string;
+  finalSortBy: ListSortField;
   sortOrder: 'asc' | 'desc';
   normalizedSources: string;
   tags: string | null;
@@ -219,20 +230,7 @@ export function buildOffsetResult(
     const firstItem = params.articles[0];
     const lastItem = params.articles[params.articles.length - 1];
 
-    const filterContext = {
-      sources: params.normalizedSources,
-      tags: params.tags || params.tag,
-      tagMode: params.tagMode,
-      search: params.search,
-      dateRange: params.dateRange,
-      dateFrom: params.dateFrom,
-      dateTo: params.dateTo,
-      readFilter: params.readFilter,
-      category: params.category,
-      excludeSources: params.excludeSources,
-      excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
-      excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
-    };
+    const filterContext = buildFilterContext(params);
 
     const startCursor = cursorManager.encodeCursor({
       sortBy: params.finalSortBy,
@@ -275,36 +273,28 @@ export function buildOffsetResult(
 }
 
 /**
- * Fetch and merge user-specific data (favorites, read status) into articles
+ * Load favorite and read status maps for a list of article IDs.
+ * Returns null if loaders are not available (unauthenticated or missing userId).
  */
-export async function fetchAndMergeUserData(
-  items: LightweightArticle[],
+async function loadUserDataMaps(
+  articleIds: string[],
   userId: string,
   bypassFavoriteL1: boolean
-): Promise<LightweightArticle[]> {
-  const articleIds = items.map((a) => a.id);
-
-  logger.debug(
-    `DataLoader integration: isAuthenticated=${Boolean(userId)}, articles=${articleIds.length}`
-  );
-
+): Promise<{
+  favoritesMap: Map<string, boolean>;
+  readStatusMap: Map<string, boolean>;
+} | null> {
   const loaders = createLoaders(
     { userId },
     { favorite: { bypassL1: bypassFavoriteL1 } }
   );
 
-  if (!loaders.favorite || !loaders.view) {
-    return items;
-  }
+  if (!loaders.favorite || !loaders.view) return null;
 
   const [favoriteStatuses, viewStatuses] = await Promise.all([
     loaders.favorite.loadMany(articleIds),
     loaders.view.loadMany(articleIds),
   ]);
-
-  logger.debug(
-    `DataLoader results: favorites=${favoriteStatuses.length}, views=${viewStatuses.length}`
-  );
 
   const favoritesMap = new Map<string, boolean>();
   const readStatusMap = new Map<string, boolean>();
@@ -320,6 +310,28 @@ export async function fetchAndMergeUserData(
       readStatusMap.set(status.articleId, status.isRead);
     }
   });
+
+  return { favoritesMap, readStatusMap };
+}
+
+/**
+ * Fetch and merge user-specific data (favorites, read status) into articles
+ */
+export async function fetchAndMergeUserData(
+  items: LightweightArticle[],
+  userId: string,
+  bypassFavoriteL1: boolean
+): Promise<LightweightArticle[]> {
+  const articleIds = items.map((a) => a.id);
+
+  logger.debug(
+    `DataLoader integration: isAuthenticated=${Boolean(userId)}, articles=${articleIds.length}`
+  );
+
+  const maps = await loadUserDataMaps(articleIds, userId, bypassFavoriteL1);
+  if (!maps) return items;
+
+  const { favoritesMap, readStatusMap } = maps;
 
   logger.debug(
     `DataLoader maps: favorites=${favoritesMap.size}, reads=${readStatusMap.size}`
@@ -337,34 +349,11 @@ export async function mergeUserDataIntoCachedResult(
   bypassFavoriteL1: boolean
 ): Promise<PaginatedResponse<LightweightArticle>> {
   const articleIds = result.items.map((a) => a.id);
-  const loaders = createLoaders(
-    { userId },
-    { favorite: { bypassL1: bypassFavoriteL1 } }
-  );
 
-  if (!loaders.favorite || !loaders.view) {
-    return result;
-  }
+  const maps = await loadUserDataMaps(articleIds, userId, bypassFavoriteL1);
+  if (!maps) return result;
 
-  const [favoriteStatuses, viewStatuses] = await Promise.all([
-    loaders.favorite.loadMany(articleIds),
-    loaders.view.loadMany(articleIds),
-  ]);
-
-  const favoritesMap = new Map<string, boolean>();
-  const readStatusMap = new Map<string, boolean>();
-
-  favoriteStatuses.forEach((status) => {
-    if (status && typeof status === 'object' && 'isFavorited' in status) {
-      favoritesMap.set(status.articleId, status.isFavorited);
-    }
-  });
-
-  viewStatuses.forEach((status) => {
-    if (status && typeof status === 'object' && 'isRead' in status) {
-      readStatusMap.set(status.articleId, status.isRead);
-    }
-  });
+  const { favoritesMap, readStatusMap } = maps;
 
   return {
     ...result,
