@@ -81,8 +81,9 @@ export class AgentResponseCache extends RedisCache {
         );
         return;
       }
-      const key = this.generateKey(normalizeQuery(query));
-      await this.redis.setex(key, this.defaultTTL, serialized);
+      // Use base class set() for stats tracking and consistent key generation
+      // (response is re-serialized by super.set, but size check above prevents oversized entries)
+      await super.set(normalizeQuery(query), response);
     } catch {
       // Graceful degradation - continue without error on serialize/write failure
     }

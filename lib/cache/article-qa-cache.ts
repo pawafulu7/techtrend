@@ -111,7 +111,11 @@ export class ArticleQACache extends RedisCache {
     }
 
     const key = this.generateQAKey(articleId, query, locale, updatedAt);
-    await super.set(key, response);
+    try {
+      await super.set(key, response);
+    } catch {
+      // Graceful degradation - continue without error on write failure
+    }
   }
 
   /**
