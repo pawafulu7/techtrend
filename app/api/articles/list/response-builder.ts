@@ -101,8 +101,8 @@ function normalizeArticle(
   return normalized;
 }
 
-/** Parameters for building cursor pagination result */
-export interface CursorPaginationParams {
+/** Common parameters shared by cursor and offset pagination builders */
+interface BasePaginationParams {
   articles: RawArticle[];
   total: number;
   limit: number;
@@ -118,20 +118,38 @@ export interface CursorPaginationParams {
   dateTo: string | null;
   readFilter: string | null;
   category: string | null;
-  hasPreviousPage: boolean;
   companyNameMap: Map<string, string>;
   excludeSources: string;
   excludeUnprocessed: boolean;
   excludeLowQuality: boolean;
 }
 
+/** Parameters for building cursor pagination result */
+export interface CursorPaginationParams extends BasePaginationParams {
+  hasPreviousPage: boolean;
+}
+
+/** Filter context for cursor encoding and validation */
+interface FilterContext {
+  sources: string;
+  tags: string | null;
+  tagMode: string;
+  search: string | null;
+  dateRange: string | null;
+  dateFrom: string | null;
+  dateTo: string | null;
+  readFilter: string | null;
+  category: string | null;
+  excludeSources: string;
+  excludeUnprocessed: string;
+  excludeLowQuality: string;
+}
+
 /**
  * Build the filter context object shared by cursor and offset pagination results.
  * Used for cursor encoding and pageInfo generation.
  */
-function buildFilterContext(
-  params: CursorPaginationParams | OffsetPaginationParams
-): Record<string, string | null | undefined> {
+function buildFilterContext(params: BasePaginationParams): FilterContext {
   return {
     sources: params.normalizedSources,
     tags: params.tags || params.tag,
@@ -187,27 +205,8 @@ export function buildCursorResult(
 }
 
 /** Parameters for building offset pagination result */
-export interface OffsetPaginationParams {
-  articles: RawArticle[];
-  total: number;
+export interface OffsetPaginationParams extends BasePaginationParams {
   page: number;
-  limit: number;
-  finalSortBy: ListSortField;
-  sortOrder: 'asc' | 'desc';
-  normalizedSources: string;
-  tags: string | null;
-  tag: string | null;
-  tagMode: string;
-  search: string | null;
-  dateRange: string | null;
-  dateFrom: string | null;
-  dateTo: string | null;
-  readFilter: string | null;
-  category: string | null;
-  companyNameMap: Map<string, string>;
-  excludeSources: string;
-  excludeUnprocessed: boolean;
-  excludeLowQuality: boolean;
 }
 
 /**
