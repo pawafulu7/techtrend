@@ -32,6 +32,11 @@ describe('normalizeQuery', () => {
   });
 
   describe('preserveDot option', () => {
+    it('re-normalizes spaces created by punctuation removal', () => {
+      expect(normalizeQuery('React ! Performance')).toBe('react performance');
+      expect(normalizeQuery('v1.0 ?', { preserveDot: true })).toBe('v1.0');
+    });
+
     it('preserves dots when preserveDot is true', () => {
       expect(normalizeQuery('v1.0 feature!', { preserveDot: true })).toBe(
         'v1.0 feature'

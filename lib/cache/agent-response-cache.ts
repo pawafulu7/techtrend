@@ -2,7 +2,7 @@ import { RedisCache } from './index';
 import { CACHE_TTL, CACHE_RESPONSE_SIZE_LIMIT } from './constants';
 import { CachedAIResponse } from './types';
 import { normalizeQuery } from './normalize-query';
-import { logger } from '@/lib/logger';
+import { hashSensitiveValue, logger } from '@/lib/logger';
 
 export type AgentCachedResponse = CachedAIResponse;
 
@@ -72,7 +72,8 @@ export class AgentResponseCache extends RedisCache {
       if (responseSize > CACHE_RESPONSE_SIZE_LIMIT.AGENT) {
         logger.warn(
           {
-            query: query.substring(0, 50),
+            queryHash: hashSensitiveValue(query),
+            queryLength: query.length,
             responseSize,
             maxSize: CACHE_RESPONSE_SIZE_LIMIT.AGENT,
           },

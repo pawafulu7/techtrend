@@ -18,7 +18,7 @@ import { RedisCache } from './index';
 import { CACHE_TTL } from './constants';
 import { CachedAIResponse } from './types';
 import { normalizeQuery } from './normalize-query';
-import { logger } from '@/lib/logger';
+import { hashSensitiveValue, logger } from '@/lib/logger';
 import { countTokens } from '@/lib/utils/chunking';
 
 export type ArticleQACachedResponse = CachedAIResponse;
@@ -100,7 +100,8 @@ export class ArticleQACache extends RedisCache {
       logger.warn(
         {
           articleId,
-          query: query.substring(0, 50),
+          queryHash: hashSensitiveValue(query),
+          queryLength: query.length,
           tokenCount,
           maxTokens: this.maxTokensPerEntry,
         },

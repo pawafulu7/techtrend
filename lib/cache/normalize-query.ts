@@ -20,10 +20,10 @@ export function normalizeQuery(
   query: string,
   options?: { preserveDot?: boolean }
 ): string {
-  const normalized = query.toLowerCase().trim().replace(/\s+/g, ' ');
+  const normalized = query.toLowerCase();
+  const punctuationPattern = options?.preserveDot
+    ? /[!?。、；：！？、]/g
+    : /[!?。、；：！？、.]/g;
 
-  if (options?.preserveDot) {
-    return normalized.replace(/[!?。、；：！？、]/g, '');
-  }
-  return normalized.replace(/[!?。、；：！？、.]/g, '');
+  return normalized.replace(punctuationPattern, '').replace(/\s+/g, ' ').trim();
 }
