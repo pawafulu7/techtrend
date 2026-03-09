@@ -23,6 +23,7 @@ import {
   buildOffsetResult,
   fetchAndMergeUserData,
   mergeUserDataIntoCachedResult,
+  buildFilterContext,
 } from './response-builder';
 
 /**
@@ -148,20 +149,24 @@ export async function GET(request: NextRequest) {
         }
         if (
           cursorFilter !== null &&
-          !cursorManager.validateFilters(cursorPayload, {
-            sources: normalizedSources,
-            tags: tags || tag,
-            tagMode,
-            search,
-            dateRange,
-            dateFrom,
-            dateTo,
-            readFilter,
-            category,
-            excludeSources: normalizedExcludeSources,
-            excludeUnprocessed: excludeUnprocessed ? 'true' : 'false',
-            excludeLowQuality: excludeLowQuality ? 'true' : 'false',
-          })
+          !cursorManager.validateFilters(
+            cursorPayload,
+            buildFilterContext({
+              normalizedSources,
+              tags,
+              tag,
+              tagMode,
+              search,
+              dateRange,
+              dateFrom,
+              dateTo,
+              readFilter,
+              category,
+              excludeSources: normalizedExcludeSources,
+              excludeUnprocessed,
+              excludeLowQuality,
+            })
+          )
         ) {
           logger.warn(
             'cursor-pagination.filter-mismatch: Cursor invalidated due to filter change'

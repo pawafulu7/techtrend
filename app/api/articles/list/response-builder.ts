@@ -130,7 +130,7 @@ export interface CursorPaginationParams extends BasePaginationParams {
 }
 
 /** Filter context for cursor encoding and validation */
-interface FilterContext {
+export interface FilterContext {
   sources: string;
   tags: string | null;
   tagMode: string;
@@ -145,11 +145,28 @@ interface FilterContext {
   excludeLowQuality: string;
 }
 
+/** Input parameters for buildFilterContext */
+export interface FilterContextInput {
+  normalizedSources: string;
+  tags: string | null;
+  tag: string | null;
+  tagMode: string;
+  search: string | null;
+  dateRange: string | null;
+  dateFrom: string | null;
+  dateTo: string | null;
+  readFilter: string | null;
+  category: string | null;
+  excludeSources: string;
+  excludeUnprocessed: boolean;
+  excludeLowQuality: boolean;
+}
+
 /**
- * Build the filter context object shared by cursor and offset pagination results.
- * Used for cursor encoding and pageInfo generation.
+ * Build the filter context object shared by cursor validation and pagination results.
+ * Used for cursor encoding, pageInfo generation, and filter-change detection.
  */
-function buildFilterContext(params: BasePaginationParams): FilterContext {
+export function buildFilterContext(params: FilterContextInput): FilterContext {
   return {
     sources: params.normalizedSources,
     tags: params.tags || params.tag,
