@@ -4,7 +4,7 @@ import {
   type AgentCachedResponse,
 } from '@/lib/cache/agent-response-cache';
 import {
-  ArticleQACache as _ArticleQACache,
+  ArticleQACache,
   type ArticleQACachedResponse,
 } from '@/lib/cache/article-qa-cache';
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
@@ -24,6 +24,7 @@ import {
   resolveModeContext,
   enqueueArticleQaNoAnswer,
 } from './request-handlers';
+import { resolveCaches, safeReadCache, safeWriteCache } from './cache-helpers';
 
 const tracer = trace.getTracer('rag-agent');
 
@@ -87,35 +88,30 @@ export async function handleStreamingRequest(
     : 'agent-response';
   parentSpan.setAttribute('cache.strategy', cacheStrategy);
 
-  const agentCache = modeContext.isArticleQa
-    ? undefined
-    : new AgentResponseCache();
-  const articleQaCache = modeContext.isArticleQa
-    ? new _ArticleQACache()
-    : undefined;
+  const { agentCache, articleQaCache } = resolveCaches(modeContext);
   let cachedResponse: AgentCachedResponse | ArticleQACachedResponse | null =
     null;
 
-  try {
-    if (modeContext.isArticleQa) {
-      const qaContext = modeContext.qaContext!;
-      cachedResponse = await articleQaCache!.getResponse(
-        qaContext.articleId,
-        validatedRequest.query,
-        modeContext.preferredLang,
-        qaContext.updatedAt
-      );
-    } else {
-      cachedResponse = await agentCache!.getResponse(
-        `${modeContext.preferredLang}:${validatedRequest.query}`
-      );
-    }
-  } catch (cacheError) {
-    logger.warn(
-      { error: sanitizeError(cacheError), mode: modeContext.agentType },
-      'Cache read failed, treating as miss'
+  if (modeContext.isArticleQa) {
+    const qaContext = modeContext.qaContext!;
+    cachedResponse = await safeReadCache(
+      () =>
+        articleQaCache!.getResponse(
+          qaContext.articleId,
+          validatedRequest.query,
+          modeContext.preferredLang,
+          qaContext.updatedAt
+        ),
+      modeContext.agentType
     );
-    cachedResponse = null;
+  } else {
+    cachedResponse = await safeReadCache(
+      () =>
+        agentCache!.getResponse(
+          `${modeContext.preferredLang}:${validatedRequest.query}`
+        ),
+      modeContext.agentType
+    );
   }
 
   if (cachedResponse) {
@@ -175,19 +171,15 @@ async function createStreamingResponse(
   parentSpan: Span,
   _request: NextRequest,
   modeContext: ModeContext,
-  rateLimitInfo?: RateLimitInfo,
-  caches?: {
-    responseCache?: AgentResponseCache;
-    articleQaCache?: _ArticleQACache;
+  rateLimitInfo: RateLimitInfo | undefined,
+  caches: {
+    responseCache: AgentResponseCache | undefined;
+    articleQaCache: ArticleQACache | undefined;
   }
 ): Promise<Response> {
   const encoder = new TextEncoder();
-  const responseCache =
-    caches?.responseCache ??
-    (modeContext.isArticleQa ? undefined : new AgentResponseCache());
-  const articleQaCache =
-    caches?.articleQaCache ??
-    (modeContext.isArticleQa ? new _ArticleQACache() : undefined);
+  const responseCache = caches.responseCache;
+  const articleQaCache = caches.articleQaCache;
   const streamSpan = tracer.startSpan(
     'rag.agent-search.stream',
     {},
@@ -390,27 +382,29 @@ async function createStreamingResponse(
               }
             }
 
-            try {
-              if (modeContext.isArticleQa) {
-                await articleQaCache!.setResponse(
-                  qaContext!.articleId,
-                  validatedRequest.query,
-                  modeContext.preferredLang,
-                  qaContext!.updatedAt,
-                  { text: fullText, toolCalls }
-                );
-              } else {
-                await responseCache!.setResponse(
-                  `${modeContext.preferredLang}:${validatedRequest.query}`,
-                  { text: fullText, toolCalls }
-                );
+            await safeWriteCache(
+              () => {
+                if (modeContext.isArticleQa) {
+                  return articleQaCache!.setResponse(
+                    qaContext!.articleId,
+                    validatedRequest.query,
+                    modeContext.preferredLang,
+                    qaContext!.updatedAt,
+                    { text: fullText, toolCalls }
+                  );
+                } else {
+                  return responseCache!.setResponse(
+                    `${modeContext.preferredLang}:${validatedRequest.query}`,
+                    { text: fullText, toolCalls }
+                  );
+                }
+              },
+              {
+                userId: session.user.id,
+                queryPreview: validatedRequest.query.substring(0, 50),
+                mode: modeContext.agentType,
               }
-            } catch (cacheError) {
-              logger.warn(
-                { error: sanitizeError(cacheError), userId: session.user.id },
-                'Failed to cache streaming response'
-              );
-            }
+            );
 
             controller.enqueue(
               encoder.encode(

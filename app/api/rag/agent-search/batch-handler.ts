@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  AgentResponseCache,
-  type AgentCachedResponse,
-} from '@/lib/cache/agent-response-cache';
-import {
-  ArticleQACache as _ArticleQACache,
-  type ArticleQACachedResponse,
-} from '@/lib/cache/article-qa-cache';
+import { type AgentCachedResponse } from '@/lib/cache/agent-response-cache';
+import { type ArticleQACachedResponse } from '@/lib/cache/article-qa-cache';
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
+import { resolveCaches, safeReadCache, safeWriteCache } from './cache-helpers';
 import { SpanStatusCode, Span } from '@opentelemetry/api';
 import type { Session } from 'next-auth';
 
@@ -84,12 +79,8 @@ export async function handleBatchRequest(
   }
 
   const qaContext = modeContext.qaContext;
-  const responseCache = modeContext.isArticleQa
-    ? undefined
-    : new AgentResponseCache();
-  const articleQaCache = modeContext.isArticleQa
-    ? new _ArticleQACache()
-    : undefined;
+  const { agentCache: responseCache, articleQaCache } =
+    resolveCaches(modeContext);
   const cacheStrategy = modeContext.isArticleQa
     ? 'article-qa'
     : 'agent-response';
@@ -108,25 +99,25 @@ export async function handleBatchRequest(
   let cachedResponse: AgentCachedResponse | ArticleQACachedResponse | null =
     null;
 
-  try {
-    if (modeContext.isArticleQa) {
-      cachedResponse = await articleQaCache!.getResponse(
-        qaContext!.articleId,
-        validatedRequest.query,
-        modeContext.preferredLang,
-        qaContext!.updatedAt
-      );
-    } else {
-      cachedResponse = await responseCache!.getResponse(
-        `${modeContext.preferredLang}:${validatedRequest.query}`
-      );
-    }
-  } catch (cacheError) {
-    logger.warn(
-      { error: sanitizeError(cacheError), mode: modeContext.agentType },
-      'Cache read failed, treating as miss'
+  if (modeContext.isArticleQa) {
+    cachedResponse = await safeReadCache(
+      () =>
+        articleQaCache!.getResponse(
+          qaContext!.articleId,
+          validatedRequest.query,
+          modeContext.preferredLang,
+          qaContext!.updatedAt
+        ),
+      modeContext.agentType
     );
-    cachedResponse = null;
+  } else {
+    cachedResponse = await safeReadCache(
+      () =>
+        responseCache!.getResponse(
+          `${modeContext.preferredLang}:${validatedRequest.query}`
+        ),
+      modeContext.agentType
+    );
   }
 
   const cacheLogBase = {
@@ -287,33 +278,29 @@ export async function handleBatchRequest(
   // Note: Fallback results are NOT cached (both streaming and batch modes)
   // Rationale: Avoid caching low-quality fallback responses
   // Agent failures may be temporary; retry may succeed
-  try {
-    if (!fallback) {
-      if (modeContext.isArticleQa) {
-        await articleQaCache!.setResponse(
-          qaContext!.articleId,
-          validatedRequest.query,
-          modeContext.preferredLang,
-          qaContext!.updatedAt,
-          { text: agentResponse, toolCalls }
-        );
-      } else {
-        await responseCache!.setResponse(
-          `${modeContext.preferredLang}:${validatedRequest.query}`,
-          { text: agentResponse, toolCalls }
-        );
-      }
-    }
-  } catch (cacheError) {
-    logger.warn(
+  if (!fallback) {
+    await safeWriteCache(
+      () => {
+        if (modeContext.isArticleQa) {
+          return articleQaCache!.setResponse(
+            qaContext!.articleId,
+            validatedRequest.query,
+            modeContext.preferredLang,
+            qaContext!.updatedAt,
+            { text: agentResponse, toolCalls }
+          );
+        } else {
+          return responseCache!.setResponse(
+            `${modeContext.preferredLang}:${validatedRequest.query}`,
+            { text: agentResponse, toolCalls }
+          );
+        }
+      },
       {
-        error: sanitizeError(cacheError),
         userId: session.user.id,
         queryPreview: validatedRequest.query.substring(0, 50),
         mode: modeContext.agentType,
-        fallback,
-      },
-      'Failed to cache batch response'
+      }
     );
   }
 

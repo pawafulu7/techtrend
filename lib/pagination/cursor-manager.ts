@@ -35,8 +35,8 @@ export interface PageInfo {
  */
 export interface CursorManagerConfig {
   secret: string;
-  maxAge?: number;  // カーソルの有効期限（秒）
-  version?: number;  // カーソルスキーマバージョン
+  maxAge?: number; // カーソルの有効期限（秒）
+  version?: number; // カーソルスキーマバージョン
 }
 
 /**
@@ -48,7 +48,10 @@ export class CursorManager {
   private version: number;
 
   constructor(config: CursorManagerConfig) {
-    this.secret = config.secret || process.env.CURSOR_SECRET || randomBytes(32).toString('hex');
+    this.secret =
+      config.secret ||
+      process.env.CURSOR_SECRET ||
+      randomBytes(32).toString('hex');
     this.maxAge = config.maxAge || 3600; // デフォルト1時間
     this.version = config.version || 1;
   }
@@ -83,10 +86,8 @@ export class CursorManager {
   decodeCursor(cursor: string): CursorPayload | null {
     try {
       // base64url デコード
-      const base64 = cursor
-        .replace(/-/g, '+')
-        .replace(/_/g, '/');
-      const padding = '='.repeat((4 - base64.length % 4) % 4);
+      const base64 = cursor.replace(/-/g, '+').replace(/_/g, '/');
+      const padding = '='.repeat((4 - (base64.length % 4)) % 4);
       const signedPayload = Buffer.from(base64 + padding, 'base64').toString();
 
       const sep = signedPayload.indexOf('.');
@@ -104,7 +105,10 @@ export class CursorManager {
       const expectedSignature = this.generateSignature(jsonStr);
       if (signature.length === expectedSignature.length) {
         try {
-          isValid = timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedSignature, 'hex'));
+          isValid = timingSafeEqual(
+            Buffer.from(signature, 'hex'),
+            Buffer.from(expectedSignature, 'hex')
+          );
         } catch (_err) {
           // hex decode エラーの場合は無効
           isValid = false;
@@ -115,7 +119,10 @@ export class CursorManager {
       if (!isValid && signature.length === 16) {
         const legacySignature = this.generateLegacySignature(jsonStr);
         try {
-          isValid = timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(legacySignature, 'hex'));
+          isValid = timingSafeEqual(
+            Buffer.from(signature, 'hex'),
+            Buffer.from(legacySignature, 'hex')
+          );
         } catch (_err) {
           isValid = false;
         }
@@ -130,7 +137,9 @@ export class CursorManager {
 
       // バージョンチェック（v1, v2 両方受け入れ・移行期間）
       if (payload.version !== this.version && payload.version !== 1) {
-        logger.warn(`cursor-manager.version-mismatch: expected=${this.version} or 1, got=${payload.version}`);
+        logger.warn(
+          `cursor-manager.version-mismatch: expected=${this.version} or 1, got=${payload.version}`
+        );
         return null;
       }
 
@@ -152,9 +161,7 @@ export class CursorManager {
    * HMAC署名を生成（フル長64文字）
    */
   private generateSignature(data: string): string {
-    return createHmac('sha256', this.secret)
-      .update(data)
-      .digest('hex'); // フル長（64文字）
+    return createHmac('sha256', this.secret).update(data).digest('hex'); // フル長（64文字）
   }
 
   /**
@@ -176,13 +183,18 @@ export class CursorManager {
     currentSortBy: string,
     currentSortOrder: 'asc' | 'desc'
   ): boolean {
-    return cursor.sortBy === currentSortBy && cursor.sortOrder === currentSortOrder;
+    return (
+      cursor.sortBy === currentSortBy && cursor.sortOrder === currentSortOrder
+    );
   }
 
   /**
    * フィルター条件の一致を検証（オプション）
    */
-  validateFilters(cursor: CursorPayload, currentFilters: Record<string, any>): boolean {
+  validateFilters(
+    cursor: CursorPayload,
+    currentFilters: Record<string, any>
+  ): boolean {
     if (!cursor.filters && !currentFilters) {
       return true;
     }
@@ -191,11 +203,16 @@ export class CursorManager {
       return false;
     }
 
-    // 簡易的な比較（深い比較が必要な場合は別途実装）
-    const cursorFilterStr = JSON.stringify(cursor.filters);
-    const currentFilterStr = JSON.stringify(currentFilters);
+    // キー順序に依存しないフィールド単位の比較（フィルター値はプリミティブ型を前提）
+    const cursorKeys = Object.keys(cursor.filters);
+    const currentKeys = Object.keys(currentFilters);
 
-    return cursorFilterStr === currentFilterStr;
+    if (cursorKeys.length !== currentKeys.length) return false;
+
+    return cursorKeys.every(
+      (key) =>
+        key in currentFilters && cursor.filters![key] === currentFilters[key]
+    );
   }
 
   /**
@@ -220,7 +237,8 @@ export class CursorManager {
 
     // Forward: 次のページ
     // Backward: 前のページ
-    const operator = (isDesc && isForward) || (!isDesc && !isForward) ? 'lt' : 'gt';
+    const operator =
+      (isDesc && isForward) || (!isDesc && !isForward) ? 'lt' : 'gt';
 
     return {
       OR: [
@@ -310,7 +328,8 @@ let globalCursorManager: CursorManager | null = null;
  */
 export function getCursorManager(): CursorManager {
   if (!globalCursorManager) {
-    const secret = process.env.CURSOR_SECRET || 'default-secret-change-in-production';
+    const secret =
+      process.env.CURSOR_SECRET || 'default-secret-change-in-production';
 
     // 本番環境でデフォルト秘密鍵の使用を禁止（CI/テスト環境は除外）
     if (
