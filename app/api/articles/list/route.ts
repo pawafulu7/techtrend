@@ -15,6 +15,7 @@ import {
   normalizeSourcesForCacheKey,
   normalizeExcludeSourcesForCacheKey,
   fetchTotalCount,
+  LIST_SORT_FIELDS,
 } from './query-helpers';
 import {
   fetchCompanyNames,
@@ -22,6 +23,7 @@ import {
   buildOffsetResult,
   fetchAndMergeUserData,
   mergeUserDataIntoCachedResult,
+  buildFilterContext,
 } from './response-builder';
 
 /**
@@ -51,16 +53,9 @@ export async function GET(request: NextRequest) {
       Math.max(1, Number.isNaN(rawLimit) ? 20 : rawLimit)
     );
     const sortBy = searchParams.get('sortBy') || 'publishedAt';
-    const validSortFields = [
-      'publishedAt',
-      'createdAt',
-      'qualityScore',
-      'bookmarks',
-      'userVotes',
-    ];
-    const finalSortBy = validSortFields.includes(sortBy)
-      ? sortBy
-      : 'publishedAt';
+    const finalSortBy = (LIST_SORT_FIELDS as readonly string[]).includes(sortBy)
+      ? (sortBy as (typeof LIST_SORT_FIELDS)[number])
+      : ('publishedAt' as const);
     const rawSortOrder = searchParams.get('sortOrder') || 'desc';
     const sortOrder: 'asc' | 'desc' = ['asc', 'desc'].includes(rawSortOrder)
       ? (rawSortOrder as 'asc' | 'desc')
@@ -154,20 +149,24 @@ export async function GET(request: NextRequest) {
         }
         if (
           cursorFilter !== null &&
-          !cursorManager.validateFilters(cursorPayload, {
-            sources: normalizedSources,
-            tags: tags || tag,
-            tagMode,
-            search,
-            dateRange,
-            dateFrom,
-            dateTo,
-            readFilter,
-            category,
-            excludeSources: normalizedExcludeSources,
-            excludeUnprocessed: excludeUnprocessed ? 'true' : 'false',
-            excludeLowQuality: excludeLowQuality ? 'true' : 'false',
-          })
+          !cursorManager.validateFilters(
+            cursorPayload,
+            buildFilterContext({
+              normalizedSources,
+              tags,
+              tag,
+              tagMode,
+              search,
+              dateRange,
+              dateFrom,
+              dateTo,
+              readFilter,
+              category,
+              excludeSources: normalizedExcludeSources,
+              excludeUnprocessed,
+              excludeLowQuality,
+            })
+          )
         ) {
           logger.warn(
             'cursor-pagination.filter-mismatch: Cursor invalidated due to filter change'

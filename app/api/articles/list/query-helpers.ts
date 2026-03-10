@@ -23,24 +23,62 @@ import { countCache } from './cache-config';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
-/** Parameters parsed from search params for WHERE clause building */
-export interface WhereClauseParams {
-  sources: string | null;
-  sourceId: string | null;
-  excludeSources: string | null;
+/**
+ * Valid sort fields for the list API.
+ * Note: This excludes 'finalScore' which is included in VALID_SORT_FIELDS
+ * (app/api/articles/lib/types.ts) for the general articles API, but is not
+ * applicable to the lightweight list API which does not compute final scores.
+ */
+export const LIST_SORT_FIELDS = [
+  'publishedAt',
+  'createdAt',
+  'qualityScore',
+  'bookmarks',
+  'userVotes',
+] as const;
+
+/** Sort field type specific to the list API */
+export type ListSortField = (typeof LIST_SORT_FIELDS)[number];
+
+/** Common filter parameters shared across list API query types */
+export interface ListFilterParams {
   tag: string | null;
   tags: string | null;
   tagMode: string;
-  search: string | null;
   dateRange: string | null;
   dateFrom: string | null;
   dateTo: string | null;
   readFilter: string | null;
-  userId: string | undefined;
   category: string | null;
   excludeUnprocessed: boolean;
   excludeLowQuality: boolean;
-  finalSortBy: string;
+  finalSortBy: ListSortField;
+}
+
+/** Parameters parsed from search params for WHERE clause building */
+export interface WhereClauseParams extends ListFilterParams {
+  sources: string | null;
+  sourceId: string | null;
+  excludeSources: string | null;
+  search: string | null;
+  userId: string | undefined;
+}
+
+/**
+ * Ensure where.AND is an array and push one or more conditions into it.
+ * This centralizes the defensive AND normalization pattern used throughout
+ * WHERE clause construction.
+ */
+function pushToAND(
+  where: ArticleWhereInput,
+  ...conditions: ArticleWhereInput[]
+): void {
+  if (!where.AND) {
+    where.AND = [];
+  } else if (!Array.isArray(where.AND)) {
+    where.AND = [where.AND];
+  }
+  (where.AND as ArticleWhereInput[]).push(...conditions);
 }
 
 /**
@@ -50,12 +88,7 @@ export function buildWhereClause(params: WhereClauseParams): ArticleWhereInput {
   const where: ArticleWhereInput = {};
 
   // Exclude articles without content (matches home page behavior)
-  if (!where.AND) {
-    where.AND = [];
-  } else if (!Array.isArray(where.AND)) {
-    where.AND = [where.AND];
-  }
-  (where.AND as ArticleWhereInput[]).push({
+  pushToAND(where, {
     // Exclude articles without meaningful content.
     // Prisma does not support trim() in WHERE clauses, so we filter null
     // and empty string here, and additionally exclude common whitespace-only
@@ -89,12 +122,7 @@ export function buildWhereClause(params: WhereClauseParams): ArticleWhereInput {
       { qualityScore: { gte: 30 } },
     ];
 
-    if (!where.AND) {
-      where.AND = [];
-    } else if (!Array.isArray(where.AND)) {
-      where.AND = [where.AND];
-    }
-    where.AND = [...where.AND, ...lowQualityFilters];
+    pushToAND(where, ...lowQualityFilters);
   }
 
   // Apply read filter if user is authenticated
@@ -264,12 +292,7 @@ function applyTagFilter(
         },
       },
     }));
-    if (!where.AND) {
-      where.AND = [];
-    } else if (!Array.isArray(where.AND)) {
-      where.AND = [where.AND];
-    }
-    where.AND = [...where.AND, ...tagConditions];
+    pushToAND(where, ...tagConditions);
   } else {
     where.tags = {
       some: {
@@ -304,12 +327,7 @@ function applySearchFilter(
         { summary: { contains: keyword, mode: 'insensitive' } },
       ],
     }));
-    if (!where.AND) {
-      where.AND = [];
-    } else if (!Array.isArray(where.AND)) {
-      where.AND = [where.AND];
-    }
-    where.AND = [...where.AND, ...keywordConditions];
+    pushToAND(where, ...keywordConditions);
   }
 }
 
@@ -399,27 +417,16 @@ export function normalizeExcludeSourcesForCacheKey(
 }
 
 /** Parameters for fetching total count with caching */
-export interface CountParams {
+export interface CountParams extends ListFilterParams {
   where: ArticleWhereInput;
   normalizedSources: string;
   normalizedExcludeSources: string;
-  tag: string | null;
-  tags: string | null;
-  tagMode: string;
   normalizedSearch: string;
-  dateRange: string | null;
-  dateFrom: string | null;
-  dateTo: string | null;
-  finalSortBy: string;
-  readFilter: string | null;
-  category: string | null;
   userId: string | undefined;
   useCursor: boolean;
   page: number;
   limit: number;
   totalParam: string | null;
-  excludeUnprocessed: boolean;
-  excludeLowQuality: boolean;
 }
 
 /**

@@ -1,11 +1,14 @@
 /**
  * API Route Integration Tests
- * 
+ *
  * These tests verify the API behavior without directly importing the route module,
  * avoiding issues with module-level initialization.
  */
 
-import { createMockArticleWithRelations, resetMockCounters } from '@/test/utils/mock-factories';
+import {
+  createMockArticleWithRelations,
+  resetMockCounters,
+} from '@/test/utils/mock-factories';
 
 // Mock all dependencies before any imports
 jest.mock('@/lib/database', () => ({
@@ -26,7 +29,7 @@ jest.mock('@/lib/logger');
 describe('API /api/articles Integration Tests', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { prisma } = require('@/lib/database');
-  
+
   beforeEach(() => {
     jest.clearAllMocks();
     resetMockCounters();
@@ -39,7 +42,7 @@ describe('API /api/articles Integration Tests', () => {
         createMockArticleWithRelations(),
         createMockArticleWithRelations(),
       ];
-      
+
       prisma.article.findMany.mockResolvedValue(mockArticles);
       prisma.article.count.mockResolvedValue(3);
 
@@ -49,8 +52,10 @@ describe('API /api/articles Integration Tests', () => {
     });
 
     it('should handle pagination parameters correctly', async () => {
-      const mockArticles = Array(5).fill(null).map(() => createMockArticleWithRelations());
-      
+      const mockArticles = Array(5)
+        .fill(null)
+        .map(() => createMockArticleWithRelations());
+
       prisma.article.findMany.mockResolvedValue(mockArticles);
       prisma.article.count.mockResolvedValue(50);
 
@@ -58,7 +63,7 @@ describe('API /api/articles Integration Tests', () => {
       const page = 2;
       const limit = 5;
       const skip = (page - 1) * limit;
-      
+
       expect(skip).toBe(5);
       expect(Math.ceil(50 / limit)).toBe(10); // totalPages
     });
@@ -69,7 +74,7 @@ describe('API /api/articles Integration Tests', () => {
       const mockArticles = [
         createMockArticleWithRelations({ source: { id: 'source-1' } }),
       ];
-      
+
       prisma.article.findMany.mockResolvedValue(mockArticles);
       prisma.article.count.mockResolvedValue(1);
 
@@ -83,7 +88,7 @@ describe('API /api/articles Integration Tests', () => {
         createMockArticleWithRelations({ source: { id: 'source-1' } }),
         createMockArticleWithRelations({ source: { id: 'source-2' } }),
       ];
-      
+
       prisma.article.findMany.mockResolvedValue(mockArticles);
       prisma.article.count.mockResolvedValue(2);
 
@@ -99,7 +104,7 @@ describe('API /api/articles Integration Tests', () => {
           tags: [{ name: 'javascript' }],
         }),
       ];
-      
+
       prisma.article.findMany.mockResolvedValue(mockArticles);
       prisma.article.count.mockResolvedValue(1);
 
@@ -123,7 +128,7 @@ describe('API /api/articles Integration Tests', () => {
           },
         }),
       ];
-      
+
       prisma.article.findMany.mockResolvedValue(mockArticles);
       prisma.article.count.mockResolvedValue(1);
 
@@ -147,14 +152,14 @@ describe('API /api/articles Integration Tests', () => {
           },
         }),
       ];
-      
+
       prisma.article.findMany.mockResolvedValue(mockArticles);
       prisma.article.count.mockResolvedValue(1);
 
       // Verify multi-keyword AND search
       const keywords = ['React', 'TypeScript'];
       const where = {
-        AND: keywords.map(keyword => ({
+        AND: keywords.map((keyword) => ({
           OR: [
             { title: { contains: keyword, mode: 'insensitive' as const } },
             { summary: { contains: keyword, mode: 'insensitive' as const } },
@@ -173,7 +178,7 @@ describe('API /api/articles Integration Tests', () => {
         createMockArticleWithRelations(),
         createMockArticleWithRelations(),
       ];
-      
+
       prisma.article.findMany.mockResolvedValue(mockArticles);
       prisma.article.count.mockResolvedValue(2);
 
@@ -187,7 +192,7 @@ describe('API /api/articles Integration Tests', () => {
         createMockArticleWithRelations(),
         createMockArticleWithRelations(),
       ];
-      
+
       prisma.article.findMany.mockResolvedValue(mockArticles);
       prisma.article.count.mockResolvedValue(2);
 
@@ -197,17 +202,25 @@ describe('API /api/articles Integration Tests', () => {
     });
 
     it('should validate sort fields', async () => {
-      const validSortFields = ['publishedAt', 'createdAt', 'qualityScore', 'bookmarks', 'userVotes'];
+      const { LIST_SORT_FIELDS } =
+        await import('@/app/api/articles/list/query-helpers');
+      const validSortFields = LIST_SORT_FIELDS;
       const sortBy = 'invalid';
-      const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'publishedAt';
-      
+      const finalSortBy = (validSortFields as readonly string[]).includes(
+        sortBy
+      )
+        ? sortBy
+        : 'publishedAt';
+
       expect(finalSortBy).toBe('publishedAt');
     });
   });
 
   describe('Error Handling', () => {
     it('should handle database errors gracefully', async () => {
-      prisma.article.findMany.mockRejectedValue(new Error('Database connection failed'));
+      prisma.article.findMany.mockRejectedValue(
+        new Error('Database connection failed')
+      );
 
       try {
         await prisma.article.findMany();

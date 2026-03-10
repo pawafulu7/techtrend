@@ -13,6 +13,7 @@ import logger from '@/lib/logger';
 
 import type { LightweightArticle } from './types';
 import { mergeUserDataIntoItems } from './types';
+import type { ListSortField } from './query-helpers';
 
 /** Raw article row from Prisma query (before normalization) */
 type RawArticle = {
@@ -100,12 +101,12 @@ function normalizeArticle(
   return normalized;
 }
 
-/** Parameters for building cursor pagination result */
-export interface CursorPaginationParams {
+/** Common parameters shared by cursor and offset pagination builders */
+interface BasePaginationParams {
   articles: RawArticle[];
   total: number;
   limit: number;
-  finalSortBy: string;
+  finalSortBy: ListSortField;
   sortOrder: 'asc' | 'desc';
   normalizedSources: string;
   tags: string | null;
@@ -117,11 +118,69 @@ export interface CursorPaginationParams {
   dateTo: string | null;
   readFilter: string | null;
   category: string | null;
-  hasPreviousPage: boolean;
   companyNameMap: Map<string, string>;
   excludeSources: string;
   excludeUnprocessed: boolean;
   excludeLowQuality: boolean;
+}
+
+/** Parameters for building cursor pagination result */
+export interface CursorPaginationParams extends BasePaginationParams {
+  hasPreviousPage: boolean;
+}
+
+/** Filter context for cursor encoding and validation */
+export interface FilterContext {
+  sources: string;
+  tags: string | null;
+  tagMode: string;
+  search: string | null;
+  dateRange: string | null;
+  dateFrom: string | null;
+  dateTo: string | null;
+  readFilter: string | null;
+  category: string | null;
+  excludeSources: string;
+  excludeUnprocessed: 'true' | 'false';
+  excludeLowQuality: 'true' | 'false';
+}
+
+/** Input parameters for buildFilterContext */
+export interface FilterContextInput {
+  normalizedSources: string;
+  tags: string | null;
+  tag: string | null;
+  tagMode: string;
+  search: string | null;
+  dateRange: string | null;
+  dateFrom: string | null;
+  dateTo: string | null;
+  readFilter: string | null;
+  category: string | null;
+  excludeSources: string;
+  excludeUnprocessed: boolean;
+  excludeLowQuality: boolean;
+}
+
+/**
+ * Build the filter context object shared by cursor validation and pagination results.
+ * Used for cursor encoding, pageInfo generation, and filter-change detection.
+ */
+export function buildFilterContext(params: FilterContextInput): FilterContext {
+  return {
+    sources: params.normalizedSources,
+    tags: params.tags || params.tag,
+    tagMode: params.tagMode,
+    search: params.search,
+    dateRange: params.dateRange,
+    dateFrom: params.dateFrom,
+    dateTo: params.dateTo,
+    readFilter: params.readFilter,
+    category: params.category,
+    excludeSources: params.excludeSources,
+    excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
+    excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
+  };
 }
 
 /**
@@ -137,20 +196,7 @@ export function buildCursorResult(
     params.limit,
     params.finalSortBy,
     params.sortOrder,
-    {
-      sources: params.normalizedSources,
-      tags: params.tags || params.tag,
-      tagMode: params.tagMode,
-      search: params.search,
-      dateRange: params.dateRange,
-      dateFrom: params.dateFrom,
-      dateTo: params.dateTo,
-      readFilter: params.readFilter,
-      category: params.category,
-      excludeSources: params.excludeSources,
-      excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
-      excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
-    },
+    buildFilterContext(params),
     params.hasPreviousPage
   );
 
@@ -176,27 +222,8 @@ export function buildCursorResult(
 }
 
 /** Parameters for building offset pagination result */
-export interface OffsetPaginationParams {
-  articles: RawArticle[];
-  total: number;
+export interface OffsetPaginationParams extends BasePaginationParams {
   page: number;
-  limit: number;
-  finalSortBy: string;
-  sortOrder: 'asc' | 'desc';
-  normalizedSources: string;
-  tags: string | null;
-  tag: string | null;
-  tagMode: string;
-  search: string | null;
-  dateRange: string | null;
-  dateFrom: string | null;
-  dateTo: string | null;
-  readFilter: string | null;
-  category: string | null;
-  companyNameMap: Map<string, string>;
-  excludeSources: string;
-  excludeUnprocessed: boolean;
-  excludeLowQuality: boolean;
 }
 
 /**
@@ -219,20 +246,7 @@ export function buildOffsetResult(
     const firstItem = params.articles[0];
     const lastItem = params.articles[params.articles.length - 1];
 
-    const filterContext = {
-      sources: params.normalizedSources,
-      tags: params.tags || params.tag,
-      tagMode: params.tagMode,
-      search: params.search,
-      dateRange: params.dateRange,
-      dateFrom: params.dateFrom,
-      dateTo: params.dateTo,
-      readFilter: params.readFilter,
-      category: params.category,
-      excludeSources: params.excludeSources,
-      excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
-      excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
-    };
+    const filterContext = buildFilterContext(params);
 
     const startCursor = cursorManager.encodeCursor({
       sortBy: params.finalSortBy,
@@ -275,18 +289,20 @@ export function buildOffsetResult(
 }
 
 /**
- * Fetch and merge user-specific data (favorites, read status) into articles
+ * Load favorite and read status maps for a list of article IDs.
+ * Returns empty maps if loaders are not available (unauthenticated or missing userId).
  */
-export async function fetchAndMergeUserData(
-  items: LightweightArticle[],
+async function loadUserDataMaps(
+  articleIds: string[],
   userId: string,
   bypassFavoriteL1: boolean
-): Promise<LightweightArticle[]> {
-  const articleIds = items.map((a) => a.id);
-
-  logger.debug(
-    `DataLoader integration: isAuthenticated=${Boolean(userId)}, articles=${articleIds.length}`
-  );
+): Promise<{
+  favoritesMap: Map<string, boolean>;
+  readStatusMap: Map<string, boolean>;
+}> {
+  if (articleIds.length === 0) {
+    return { favoritesMap: new Map(), readStatusMap: new Map() };
+  }
 
   const loaders = createLoaders(
     { userId },
@@ -294,7 +310,7 @@ export async function fetchAndMergeUserData(
   );
 
   if (!loaders.favorite || !loaders.view) {
-    return items;
+    return { favoritesMap: new Map(), readStatusMap: new Map() };
   }
 
   const [favoriteStatuses, viewStatuses] = await Promise.all([
@@ -302,9 +318,19 @@ export async function fetchAndMergeUserData(
     loaders.view.loadMany(articleIds),
   ]);
 
-  logger.debug(
-    `DataLoader results: favorites=${favoriteStatuses.length}, views=${viewStatuses.length}`
+  const favoriteError = favoriteStatuses.find(
+    (status): status is Error => status instanceof Error
   );
+  if (favoriteError) {
+    throw favoriteError;
+  }
+
+  const viewError = viewStatuses.find(
+    (status): status is Error => status instanceof Error
+  );
+  if (viewError) {
+    throw viewError;
+  }
 
   const favoritesMap = new Map<string, boolean>();
   const readStatusMap = new Map<string, boolean>();
@@ -320,6 +346,29 @@ export async function fetchAndMergeUserData(
       readStatusMap.set(status.articleId, status.isRead);
     }
   });
+
+  return { favoritesMap, readStatusMap };
+}
+
+/**
+ * Fetch and merge user-specific data (favorites, read status) into articles
+ */
+export async function fetchAndMergeUserData(
+  items: LightweightArticle[],
+  userId: string,
+  bypassFavoriteL1: boolean
+): Promise<LightweightArticle[]> {
+  const articleIds = items.map((a) => a.id);
+
+  logger.debug(
+    `DataLoader integration: isAuthenticated=${Boolean(userId)}, articles=${articleIds.length}`
+  );
+
+  const { favoritesMap, readStatusMap } = await loadUserDataMaps(
+    articleIds,
+    userId,
+    bypassFavoriteL1
+  );
 
   logger.debug(
     `DataLoader maps: favorites=${favoritesMap.size}, reads=${readStatusMap.size}`
@@ -337,34 +386,12 @@ export async function mergeUserDataIntoCachedResult(
   bypassFavoriteL1: boolean
 ): Promise<PaginatedResponse<LightweightArticle>> {
   const articleIds = result.items.map((a) => a.id);
-  const loaders = createLoaders(
-    { userId },
-    { favorite: { bypassL1: bypassFavoriteL1 } }
+
+  const { favoritesMap, readStatusMap } = await loadUserDataMaps(
+    articleIds,
+    userId,
+    bypassFavoriteL1
   );
-
-  if (!loaders.favorite || !loaders.view) {
-    return result;
-  }
-
-  const [favoriteStatuses, viewStatuses] = await Promise.all([
-    loaders.favorite.loadMany(articleIds),
-    loaders.view.loadMany(articleIds),
-  ]);
-
-  const favoritesMap = new Map<string, boolean>();
-  const readStatusMap = new Map<string, boolean>();
-
-  favoriteStatuses.forEach((status) => {
-    if (status && typeof status === 'object' && 'isFavorited' in status) {
-      favoritesMap.set(status.articleId, status.isFavorited);
-    }
-  });
-
-  viewStatuses.forEach((status) => {
-    if (status && typeof status === 'object' && 'isRead' in status) {
-      readStatusMap.set(status.articleId, status.isRead);
-    }
-  });
 
   return {
     ...result,
