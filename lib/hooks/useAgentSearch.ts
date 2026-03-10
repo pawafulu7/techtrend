@@ -242,7 +242,6 @@ export function useAgentSearch(
   const [error, setError] = useState<AgentSearchError | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [partialText, setPartialText] = useState<string | null>(null);
-  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<SearchStep>('idle');
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -252,10 +251,6 @@ export function useAgentSearch(
   useEffect(() => {
     callbacksRef.current = options;
   }, [options]);
-
-  useEffect(() => {
-    activeRequestIdRef.current = activeRequestId;
-  }, [activeRequestId]);
 
   useEffect(() => {
     return () => {
@@ -282,7 +277,6 @@ export function useAgentSearch(
 
     const requestId = `req-${Date.now()}-${Math.random()}`;
     activeRequestIdRef.current = requestId;
-    setActiveRequestId(requestId);
 
     setIsLoading(true);
     setError(null);
@@ -464,7 +458,6 @@ export function useAgentSearch(
       }
       if (activeRequestIdRef.current === requestId) {
         activeRequestIdRef.current = null;
-        setActiveRequestId(null);
         setPartialText('');
       }
     }
@@ -475,7 +468,6 @@ export function useAgentSearch(
       abortControllerRef.current.abort();
     }
     activeRequestIdRef.current = null;
-    setActiveRequestId(null);
     setResult(null);
     setError(null);
     setIsLoading(false);
