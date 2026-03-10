@@ -1,4 +1,19 @@
-import { CursorManager } from '@/lib/pagination/cursor-manager';
+import {
+  CursorManager,
+  type CursorPayload,
+} from '@/lib/pagination/cursor-manager';
+
+function makeCursor(overrides?: Partial<CursorPayload>): CursorPayload {
+  return {
+    sortBy: 'id',
+    sortOrder: 'desc',
+    values: {},
+    limit: 10,
+    version: 1,
+    timestamp: Date.now(),
+    ...overrides,
+  };
+}
 
 describe('CursorManager', () => {
   let manager: CursorManager;
@@ -9,111 +24,65 @@ describe('CursorManager', () => {
 
   describe('validateFilters', () => {
     it('should return true when both filters are undefined/falsy', () => {
-      const cursor = {
-        sortBy: 'id',
-        sortOrder: 'desc' as const,
-        values: {},
-        limit: 10,
-        version: 1,
-        timestamp: Date.now(),
-      };
-      expect(manager.validateFilters(cursor, undefined as any)).toBe(true);
+      expect(manager.validateFilters(makeCursor(), undefined as any)).toBe(
+        true
+      );
     });
 
     it('should return false when only cursor filters exist', () => {
-      const cursor = {
-        sortBy: 'id',
-        sortOrder: 'desc' as const,
-        values: {},
-        limit: 10,
-        version: 1,
-        timestamp: Date.now(),
-        filters: { source: 'rss' },
-      };
-      expect(manager.validateFilters(cursor, undefined as any)).toBe(false);
+      expect(
+        manager.validateFilters(
+          makeCursor({ filters: { source: 'rss' } }),
+          undefined as any
+        )
+      ).toBe(false);
     });
 
     it('should return false when only current filters exist', () => {
-      const cursor = {
-        sortBy: 'id',
-        sortOrder: 'desc' as const,
-        values: {},
-        limit: 10,
-        version: 1,
-        timestamp: Date.now(),
-      };
-      expect(manager.validateFilters(cursor, { source: 'rss' })).toBe(false);
+      expect(manager.validateFilters(makeCursor(), { source: 'rss' })).toBe(
+        false
+      );
     });
 
     it('should return true for identical filters', () => {
-      const cursor = {
-        sortBy: 'id',
-        sortOrder: 'desc' as const,
-        values: {},
-        limit: 10,
-        version: 1,
-        timestamp: Date.now(),
-        filters: { source: 'rss', tag: 'ai' },
-      };
       expect(
-        manager.validateFilters(cursor, { source: 'rss', tag: 'ai' })
+        manager.validateFilters(
+          makeCursor({ filters: { source: 'rss', tag: 'ai' } }),
+          { source: 'rss', tag: 'ai' }
+        )
       ).toBe(true);
     });
 
     it('should return true for same filters with different key order', () => {
-      const cursor = {
-        sortBy: 'id',
-        sortOrder: 'desc' as const,
-        values: {},
-        limit: 10,
-        version: 1,
-        timestamp: Date.now(),
-        filters: { source: 'rss', tag: 'ai' },
-      };
       expect(
-        manager.validateFilters(cursor, { tag: 'ai', source: 'rss' })
+        manager.validateFilters(
+          makeCursor({ filters: { source: 'rss', tag: 'ai' } }),
+          { tag: 'ai', source: 'rss' }
+        )
       ).toBe(true);
     });
 
     it('should return false when filter values differ', () => {
-      const cursor = {
-        sortBy: 'id',
-        sortOrder: 'desc' as const,
-        values: {},
-        limit: 10,
-        version: 1,
-        timestamp: Date.now(),
-        filters: { source: 'rss' },
-      };
-      expect(manager.validateFilters(cursor, { source: 'atom' })).toBe(false);
+      expect(
+        manager.validateFilters(makeCursor({ filters: { source: 'rss' } }), {
+          source: 'atom',
+        })
+      ).toBe(false);
     });
 
     it('should return false when filter key counts differ', () => {
-      const cursor = {
-        sortBy: 'id',
-        sortOrder: 'desc' as const,
-        values: {},
-        limit: 10,
-        version: 1,
-        timestamp: Date.now(),
-        filters: { source: 'rss' },
-      };
       expect(
-        manager.validateFilters(cursor, { source: 'rss', tag: 'ai' })
+        manager.validateFilters(makeCursor({ filters: { source: 'rss' } }), {
+          source: 'rss',
+          tag: 'ai',
+        })
       ).toBe(false);
     });
 
     it('should handle empty filter objects', () => {
-      const cursor = {
-        sortBy: 'id',
-        sortOrder: 'desc' as const,
-        values: {},
-        limit: 10,
-        version: 1,
-        timestamp: Date.now(),
-        filters: {},
-      };
-      expect(manager.validateFilters(cursor, {})).toBe(true);
+      expect(manager.validateFilters(makeCursor({ filters: {} }), {})).toBe(
+        true
+      );
     });
   });
 });
