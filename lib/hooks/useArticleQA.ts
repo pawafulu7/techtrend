@@ -263,8 +263,6 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [partialText, setPartialText] = useState<string | null>(null);
   const [contextChunk, setContextChunk] = useState<QAContext | null>(null);
-  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
-
   const abortControllerRef = useRef<AbortController | null>(null);
   const callbacksRef = useRef<UseArticleQAOptions>(options);
   const activeRequestIdRef = useRef<string | null>(null);
@@ -272,10 +270,6 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
   useEffect(() => {
     callbacksRef.current = options;
   }, [options]);
-
-  useEffect(() => {
-    activeRequestIdRef.current = activeRequestId;
-  }, [activeRequestId]);
 
   useEffect(() => {
     return () => {
@@ -314,7 +308,6 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
 
     const requestId = `req-${Date.now()}-${Math.random()}`;
     activeRequestIdRef.current = requestId;
-    setActiveRequestId(requestId);
 
     setIsLoading(true);
     setError(null);
@@ -483,7 +476,6 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
       }
       if (activeRequestIdRef.current === requestId) {
         activeRequestIdRef.current = null;
-        setActiveRequestId(null);
         setPartialText('');
         setContextChunk(null);
       }
@@ -495,7 +487,6 @@ export function useArticleQA(options: UseArticleQAOptions): UseArticleQAReturn {
       abortControllerRef.current.abort();
     }
     activeRequestIdRef.current = null;
-    setActiveRequestId(null);
     setResult(null);
     setError(null);
     setIsLoading(false);
