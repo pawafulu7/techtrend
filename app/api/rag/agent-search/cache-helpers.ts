@@ -3,18 +3,23 @@ import { ArticleQACache } from '@/lib/cache/article-qa-cache';
 import { logger, sanitizeError } from '@/lib/logger';
 import type { ModeContext } from './schemas';
 
+type CacheResolution =
+  | { isArticleQa: true; articleQaCache: ArticleQACache; agentCache?: never }
+  | {
+      isArticleQa: false;
+      agentCache: AgentResponseCache;
+      articleQaCache?: never;
+    };
+
 /**
  * Resolve cache instances based on mode context.
  * Returns agentCache for article-search mode, articleQaCache for article-qa mode.
  */
-export function resolveCaches(modeContext: ModeContext): {
-  agentCache: AgentResponseCache | undefined;
-  articleQaCache: ArticleQACache | undefined;
-} {
-  return {
-    agentCache: modeContext.isArticleQa ? undefined : new AgentResponseCache(),
-    articleQaCache: modeContext.isArticleQa ? new ArticleQACache() : undefined,
-  };
+export function resolveCaches(modeContext: ModeContext): CacheResolution {
+  if (modeContext.isArticleQa) {
+    return { isArticleQa: true, articleQaCache: new ArticleQACache() };
+  }
+  return { isArticleQa: false, agentCache: new AgentResponseCache() };
 }
 
 /**

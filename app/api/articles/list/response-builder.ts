@@ -131,6 +131,7 @@ export interface CursorPaginationParams extends BasePaginationParams {
 
 /** Filter context for cursor encoding and validation */
 export interface FilterContext {
+  [key: string]: string | null;
   sources: string;
   tags: string | null;
   tagMode: string;

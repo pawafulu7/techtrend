@@ -6,6 +6,9 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import logger from '@/lib/logger';
 
+type CursorFilterValue = string | number | boolean | null;
+export type CursorFilters = Record<string, CursorFilterValue>;
+
 /**
  * カーソルペイロードの型定義
  */
@@ -14,7 +17,7 @@ export interface CursorPayload {
   sortOrder: 'asc' | 'desc';
   values: Record<string, any>;
   limit: number;
-  filters?: Record<string, any>;
+  filters?: CursorFilters;
   version: number;
   timestamp: number;
 }
@@ -193,7 +196,7 @@ export class CursorManager {
    */
   validateFilters(
     cursor: CursorPayload,
-    currentFilters: Record<string, any>
+    currentFilters?: CursorFilters
   ): boolean {
     if (!cursor.filters && !currentFilters) {
       return true;
@@ -271,7 +274,7 @@ export class CursorManager {
     limit: number,
     sortBy: string,
     sortOrder: 'asc' | 'desc',
-    filters?: Record<string, any>,
+    filters?: CursorFilters,
     hasPreviousPage: boolean = false
   ): PageInfo & { items: any[] } {
     // limit+1 で取得して、次ページの存在を判定
@@ -332,10 +335,13 @@ export function getCursorManager(): CursorManager {
       process.env.CURSOR_SECRET || 'default-secret-change-in-production';
 
     // 本番環境でデフォルト秘密鍵の使用を禁止（CI/テスト環境は除外）
+    const allowInsecureCursorSecret =
+      process.env.CI === 'true' ||
+      process.env.ALLOW_INSECURE_CURSOR_SECRET === 'true';
+
     if (
       process.env.NODE_ENV === 'production' &&
-      !process.env.CI &&
-      !process.env.NEXTAUTH_SECRET?.includes('test') &&
+      !allowInsecureCursorSecret &&
       secret === 'default-secret-change-in-production'
     ) {
       throw new Error('CURSOR_SECRET is required in production');

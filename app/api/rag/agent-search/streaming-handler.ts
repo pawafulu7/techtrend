@@ -88,15 +88,15 @@ export async function handleStreamingRequest(
     : 'agent-response';
   parentSpan.setAttribute('cache.strategy', cacheStrategy);
 
-  const { agentCache, articleQaCache } = resolveCaches(modeContext);
+  const caches = resolveCaches(modeContext);
   let cachedResponse: AgentCachedResponse | ArticleQACachedResponse | null =
     null;
 
-  if (modeContext.isArticleQa) {
+  if (caches.isArticleQa) {
     const qaContext = modeContext.qaContext!;
     cachedResponse = await safeReadCache(
       () =>
-        articleQaCache!.getResponse(
+        caches.articleQaCache.getResponse(
           qaContext.articleId,
           validatedRequest.query,
           modeContext.preferredLang,
@@ -107,7 +107,7 @@ export async function handleStreamingRequest(
   } else {
     cachedResponse = await safeReadCache(
       () =>
-        agentCache!.getResponse(
+        caches.agentCache.getResponse(
           `${modeContext.preferredLang}:${validatedRequest.query}`
         ),
       modeContext.agentType
@@ -156,7 +156,10 @@ export async function handleStreamingRequest(
     request,
     modeContext,
     rateLimitInfo,
-    { responseCache: agentCache, articleQaCache }
+    {
+      responseCache: caches.agentCache,
+      articleQaCache: caches.articleQaCache,
+    }
   );
 }
 

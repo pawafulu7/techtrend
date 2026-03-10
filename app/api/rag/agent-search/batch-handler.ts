@@ -79,8 +79,7 @@ export async function handleBatchRequest(
   }
 
   const qaContext = modeContext.qaContext;
-  const { agentCache: responseCache, articleQaCache } =
-    resolveCaches(modeContext);
+  const caches = resolveCaches(modeContext);
   const cacheStrategy = modeContext.isArticleQa
     ? 'article-qa'
     : 'agent-response';
@@ -99,10 +98,10 @@ export async function handleBatchRequest(
   let cachedResponse: AgentCachedResponse | ArticleQACachedResponse | null =
     null;
 
-  if (modeContext.isArticleQa) {
+  if (caches.isArticleQa) {
     cachedResponse = await safeReadCache(
       () =>
-        articleQaCache!.getResponse(
+        caches.articleQaCache.getResponse(
           qaContext!.articleId,
           validatedRequest.query,
           modeContext.preferredLang,
@@ -113,7 +112,7 @@ export async function handleBatchRequest(
   } else {
     cachedResponse = await safeReadCache(
       () =>
-        responseCache!.getResponse(
+        caches.agentCache.getResponse(
           `${modeContext.preferredLang}:${validatedRequest.query}`
         ),
       modeContext.agentType
@@ -281,8 +280,8 @@ export async function handleBatchRequest(
   if (!fallback) {
     await safeWriteCache(
       () => {
-        if (modeContext.isArticleQa) {
-          return articleQaCache!.setResponse(
+        if (caches.isArticleQa) {
+          return caches.articleQaCache.setResponse(
             qaContext!.articleId,
             validatedRequest.query,
             modeContext.preferredLang,
@@ -290,7 +289,7 @@ export async function handleBatchRequest(
             { text: agentResponse, toolCalls }
           );
         } else {
-          return responseCache!.setResponse(
+          return caches.agentCache.setResponse(
             `${modeContext.preferredLang}:${validatedRequest.query}`,
             { text: agentResponse, toolCalls }
           );
