@@ -116,8 +116,7 @@ describe('CursorManager', () => {
     });
 
     it('rejects expired cursors', () => {
-      const realNow = Date.now;
-      Date.now = () => 1_700_000_000_000;
+      const spy = jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
       try {
         const expiringManager = new CursorManager({
           secret: 'test-secret',
@@ -131,10 +130,10 @@ describe('CursorManager', () => {
           limit: 10,
         });
 
-        Date.now = () => 1_700_000_002_000;
+        spy.mockReturnValue(1_700_000_002_000);
         expect(expiringManager.decodeCursor(cursor)).toBeNull();
       } finally {
-        Date.now = realNow;
+        spy.mockRestore();
       }
     });
 

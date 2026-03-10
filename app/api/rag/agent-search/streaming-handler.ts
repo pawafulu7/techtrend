@@ -1,12 +1,6 @@
 import { NextRequest } from 'next/server';
-import {
-  AgentResponseCache,
-  type AgentCachedResponse,
-} from '@/lib/cache/agent-response-cache';
-import {
-  ArticleQACache,
-  type ArticleQACachedResponse,
-} from '@/lib/cache/article-qa-cache';
+import { type AgentCachedResponse } from '@/lib/cache/agent-response-cache';
+import { type ArticleQACachedResponse } from '@/lib/cache/article-qa-cache';
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
@@ -24,7 +18,12 @@ import {
   resolveModeContext,
   enqueueArticleQaNoAnswer,
 } from './request-handlers';
-import { resolveCaches, safeReadCache, safeWriteCache } from './cache-helpers';
+import {
+  resolveCaches,
+  safeReadCache,
+  safeWriteCache,
+  type CacheResolution,
+} from './cache-helpers';
 
 const tracer = trace.getTracer('rag-agent');
 
@@ -156,10 +155,7 @@ export async function handleStreamingRequest(
     request,
     modeContext,
     rateLimitInfo,
-    {
-      responseCache: caches.agentCache,
-      articleQaCache: caches.articleQaCache,
-    }
+    caches
   );
 }
 
@@ -175,14 +171,9 @@ async function createStreamingResponse(
   _request: NextRequest,
   modeContext: ModeContext,
   rateLimitInfo: RateLimitInfo | undefined,
-  caches: {
-    responseCache: AgentResponseCache | undefined;
-    articleQaCache: ArticleQACache | undefined;
-  }
+  caches: CacheResolution
 ): Promise<Response> {
   const encoder = new TextEncoder();
-  const responseCache = caches.responseCache;
-  const articleQaCache = caches.articleQaCache;
   const streamSpan = tracer.startSpan(
     'rag.agent-search.stream',
     {},
@@ -387,8 +378,8 @@ async function createStreamingResponse(
 
             await safeWriteCache(
               () => {
-                if (modeContext.isArticleQa) {
-                  return articleQaCache!.setResponse(
+                if (caches.isArticleQa) {
+                  return caches.articleQaCache.setResponse(
                     qaContext!.articleId,
                     validatedRequest.query,
                     modeContext.preferredLang,
@@ -396,7 +387,7 @@ async function createStreamingResponse(
                     { text: fullText, toolCalls }
                   );
                 } else {
-                  return responseCache!.setResponse(
+                  return caches.agentCache.setResponse(
                     `${modeContext.preferredLang}:${validatedRequest.query}`,
                     { text: fullText, toolCalls }
                   );

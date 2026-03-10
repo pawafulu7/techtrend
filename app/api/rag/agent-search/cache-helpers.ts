@@ -3,7 +3,7 @@ import { ArticleQACache } from '@/lib/cache/article-qa-cache';
 import { logger, sanitizeError } from '@/lib/logger';
 import type { ModeContext } from './schemas';
 
-type CacheResolution =
+export type CacheResolution =
   | { isArticleQa: true; articleQaCache: ArticleQACache; agentCache?: never }
   | {
       isArticleQa: false;
