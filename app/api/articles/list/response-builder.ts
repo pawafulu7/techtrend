@@ -318,6 +318,20 @@ async function loadUserDataMaps(
     loaders.view.loadMany(articleIds),
   ]);
 
+  const favoriteError = favoriteStatuses.find(
+    (status): status is Error => status instanceof Error
+  );
+  if (favoriteError) {
+    throw favoriteError;
+  }
+
+  const viewError = viewStatuses.find(
+    (status): status is Error => status instanceof Error
+  );
+  if (viewError) {
+    throw viewError;
+  }
+
   const favoritesMap = new Map<string, boolean>();
   const readStatusMap = new Map<string, boolean>();
 
