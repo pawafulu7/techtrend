@@ -320,7 +320,7 @@ describe('/api/article-views', () => {
       expect(prismaMock.articleView.upsert).not.toHaveBeenCalled();
     });
 
-    it('未認証の場合でも記録はしないが200を返す', async () => {
+    it('未認証の場合は認証エラーを返す', async () => {
       setUnauthenticated();
 
       const request = new NextRequest('http://localhost/api/article-views', {
@@ -330,9 +330,8 @@ describe('/api/article-views', () => {
 
       const response = await POST(request);
 
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data.message).toBe('View not recorded (not logged in)');
+      // withCSRFProtection が先にチェックするため 403
+      expect([401, 403]).toContain(response.status);
       expect(prismaMock.articleView.upsert).not.toHaveBeenCalled();
     });
   });

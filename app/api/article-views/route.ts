@@ -122,34 +122,22 @@ export async function GET(request: Request) {
       'Handler error'
     );
     return NextResponse.json(
-      {
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
 
 // DELETE: 閲覧履歴をクリア
-export async function DELETE(_request: Request) {
+async function deleteHandler(
+  _request: Request,
+  context: WithUserValidationContext
+) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
-
     // viewedAtがnullでない記録のみ削除
     const result = await prisma.articleView.deleteMany({
       where: {
-        userId: session.user.id,
+        userId: context.validatedUser.id,
         viewedAt: { not: null },
       },
     });
@@ -170,17 +158,17 @@ export async function DELETE(_request: Request) {
       'Handler error'
     );
     return NextResponse.json(
-      {
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
 
 const createViewSchema = z.object({
-  articleId: z.string().trim().min(1, 'Article ID is required'),
+  articleId: z
+    .string({ required_error: 'Article ID is required' })
+    .trim()
+    .min(1, 'Article ID is required'),
 });
 
 // POST: 記事閲覧を記録
@@ -189,8 +177,22 @@ async function postHandler(
   context: WithUserValidationContext
 ) {
   try {
-    const body = await request.json();
-    const { articleId } = createViewSchema.parse(body);
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = createViewSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.errors[0]?.message || 'Invalid request body' },
+        { status: 400 }
+      );
+    }
+
+    const { articleId } = parsed.data;
 
     // 記事の存在確認
     const article = await prisma.article.findUnique({
@@ -229,13 +231,6 @@ async function postHandler(
       viewId: view.id,
     });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.errors[0]?.message || 'Invalid request body' },
-        { status: 400 }
-      );
-    }
-
     // Handle FK constraint violations (race condition with user deletion)
     const prismaErrorResponse = handlePrismaError(error);
     if (prismaErrorResponse) {
@@ -247,10 +242,7 @@ async function postHandler(
       'Handler error'
     );
     return NextResponse.json(
-      {
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -258,4 +250,8 @@ async function postHandler(
 
 export const POST = withCSRFProtection(
   withRateLimit('write:article-views', withUserValidation(postHandler))
+);
+
+export const DELETE = withCSRFProtection(
+  withRateLimit('write:article-views', withUserValidation(deleteHandler))
 );

@@ -41,29 +41,41 @@ async function cleanupArticleViews(): Promise<void> {
 
   for (const { userId } of usersOverLimit) {
     try {
-      // 最新100件のIDを取得
-      const recentViews = await prisma.articleView.findMany({
-        where: {
-          userId,
-          viewedAt: { not: null },
-        },
-        orderBy: { viewedAt: 'desc' },
-        take: 100,
-        select: { id: true },
+      await prisma.$transaction(async (tx) => {
+        // 最新100件のIDとcutoffを取得
+        const recentViews = await tx.articleView.findMany({
+          where: {
+            userId,
+            viewedAt: { not: null },
+          },
+          orderBy: [{ viewedAt: 'desc' }, { id: 'desc' }],
+          take: 100,
+          select: { id: true, viewedAt: true },
+        });
+
+        const cutoff = recentViews.at(-1)?.viewedAt;
+        if (!cutoff) {
+          return; // 100件以下ならスキップ（HAVINGで100超のはずだが安全策）
+        }
+
+        const recentViewIds = recentViews.map((v) => v.id);
+
+        // cutoff以前の古い履歴をトランザクションで削除
+        const result = await tx.articleView.deleteMany({
+          where: {
+            userId,
+            OR: [
+              { viewedAt: { lt: cutoff } },
+              {
+                viewedAt: cutoff,
+                id: { notIn: recentViewIds },
+              },
+            ],
+          },
+        });
+
+        totalDeleted += result.count;
       });
-
-      const recentViewIds = recentViews.map((v) => v.id);
-
-      // 最新100件以外の古い履歴を削除
-      const result = await prisma.articleView.deleteMany({
-        where: {
-          userId,
-          viewedAt: { not: null },
-          id: { notIn: recentViewIds },
-        },
-      });
-
-      totalDeleted += result.count;
     } catch (error) {
       logger.error({ err: error, userId }, 'Failed to cleanup views for user');
     }
