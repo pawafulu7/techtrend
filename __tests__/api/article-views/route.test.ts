@@ -256,6 +256,7 @@ describe('/api/article-views', () => {
         update: {
           viewedAt: expect.any(Date),
           isRead: true,
+          readAt: expect.any(Date),
         },
       });
     });

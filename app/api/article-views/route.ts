@@ -221,6 +221,7 @@ export async function POST(request: Request) {
     }
 
     // upsert: findFirst + update/create + P2002 catch を統合
+    const now = new Date();
     const view = await prisma.articleView.upsert({
       where: {
         userId_articleId: {
@@ -231,14 +232,14 @@ export async function POST(request: Request) {
       create: {
         userId: session.user.id,
         articleId,
-        viewedAt: new Date(),
+        viewedAt: now,
         isRead: true,
-        readAt: new Date(),
+        readAt: now,
       },
       update: {
-        viewedAt: new Date(),
+        viewedAt: now,
         isRead: true,
-        // readAt: 既存値を保持（create時に設定済み、upsertのupdateでは更新しない）
+        readAt: now,
       },
     });
 
