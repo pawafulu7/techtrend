@@ -43,9 +43,7 @@ describe('/api/article-views', () => {
     prismaMock.articleView = {
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
-      findFirst: jest.fn().mockResolvedValue(null),
-      create: jest.fn(),
-      update: jest.fn(),
+      upsert: jest.fn(),
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       updateMany: jest.fn().mockResolvedValue({ count: 0 }),
     };
@@ -223,9 +221,7 @@ describe('/api/article-views', () => {
 
     it('新規記事閲覧を記録する', async () => {
       prismaMock.article.findUnique.mockResolvedValue(mockArticle);
-      prismaMock.articleView.findFirst.mockResolvedValue(null);
-      prismaMock.articleView.create.mockResolvedValue(mockView);
-      prismaMock.articleView.count.mockResolvedValue(50);
+      prismaMock.articleView.upsert.mockResolvedValue(mockView);
 
       const request = new NextRequest('http://localhost/api/article-views', {
         method: 'POST',
@@ -236,45 +232,46 @@ describe('/api/article-views', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.message).toBe('Article view recorded');
       expect(data.viewId).toBe('view1');
 
       expect(prismaMock.article.findUnique).toHaveBeenCalledWith({
         where: { id: 'article1' },
       });
-      expect(prismaMock.articleView.create).toHaveBeenCalledWith({
-        data: {
+      expect(prismaMock.articleView.upsert).toHaveBeenCalledWith({
+        where: {
+          userId_articleId: {
+            userId: 'test-user-id',
+            articleId: 'article1',
+          },
+        },
+        create: {
           userId: 'test-user-id',
           articleId: 'article1',
           viewedAt: expect.any(Date),
           isRead: true,
           readAt: expect.any(Date),
         },
+        update: {
+          viewedAt: expect.any(Date),
+          isRead: true,
+        },
       });
     });
 
-    it('既存の閲覧記録がある場合は更新する', async () => {
-      const existingView = {
+    it('既存の閲覧記録がある場合もupsertで処理する', async () => {
+      const upsertedView = {
         id: 'existing-view',
         userId: 'test-user-id',
         articleId: 'article1',
-        viewedAt: new Date('2025-01-01T08:00:00Z'),
-        isRead: false,
-        readAt: null,
-      };
-
-      const updatedView = {
-        ...existingView,
         viewedAt: new Date('2025-01-01T10:00:00Z'),
         isRead: true,
-        readAt: new Date('2025-01-01T10:00:00Z'),
+        readAt: new Date('2025-01-01T08:00:00Z'),
       };
 
       prismaMock.article.findUnique.mockResolvedValue(mockArticle);
-      prismaMock.articleView.findFirst.mockResolvedValue(existingView);
-      prismaMock.articleView.update.mockResolvedValue(updatedView);
-      prismaMock.articleView.count.mockResolvedValue(50);
+      prismaMock.articleView.upsert.mockResolvedValue(upsertedView);
 
       const request = new NextRequest('http://localhost/api/article-views', {
         method: 'POST',
@@ -285,51 +282,11 @@ describe('/api/article-views', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
-      expect(data.message).toBe('View timestamp updated');
+
+      expect(data.message).toBe('Article view recorded');
       expect(data.viewId).toBe('existing-view');
 
-      expect(prismaMock.articleView.update).toHaveBeenCalledWith({
-        where: { id: 'existing-view' },
-        data: {
-          viewedAt: expect.any(Date),
-          isRead: true,
-          readAt: expect.any(Date),
-        },
-      });
-      expect(prismaMock.articleView.create).not.toHaveBeenCalled();
-    });
-
-    it('100件を超える履歴の場合、古い履歴のviewedAtをnullに更新する', async () => {
-      prismaMock.article.findUnique.mockResolvedValue(mockArticle);
-      prismaMock.articleView.findFirst.mockResolvedValue(null);
-      prismaMock.articleView.create.mockResolvedValue(mockView);
-      prismaMock.articleView.count.mockResolvedValue(101);
-      
-      // 最新100件のIDを返す
-      const recentViews = Array.from({ length: 100 }, (_, i) => ({ id: `view-${i}` }));
-      prismaMock.articleView.findMany.mockResolvedValue(recentViews);
-
-      const request = new NextRequest('http://localhost/api/article-views', {
-        method: 'POST',
-        body: JSON.stringify({ articleId: 'article1' }),
-      });
-
-      const response = await POST(request);
-
-      expect(response.status).toBe(200);
-
-      // viewedAtをnullに更新（削除ではない）
-      expect(prismaMock.articleView.updateMany).toHaveBeenCalledWith({
-        where: {
-          userId: 'test-user-id',
-          viewedAt: { not: null },
-          id: { notIn: recentViews.map(v => v.id) },
-        },
-        data: {
-          viewedAt: null,
-        },
-      });
+      expect(prismaMock.articleView.upsert).toHaveBeenCalledTimes(1);
     });
 
     it('articleIdが無い場合400を返す', async () => {
@@ -343,7 +300,7 @@ describe('/api/article-views', () => {
       expect(response.status).toBe(400);
       const data = await response.json();
       expect(data.error).toBe('Article ID is required');
-      expect(prismaMock.articleView.create).not.toHaveBeenCalled();
+      expect(prismaMock.articleView.upsert).not.toHaveBeenCalled();
     });
 
     it('記事が存在しない場合404を返す', async () => {
@@ -359,7 +316,7 @@ describe('/api/article-views', () => {
       expect(response.status).toBe(404);
       const data = await response.json();
       expect(data.error).toBe('Article not found');
-      expect(prismaMock.articleView.create).not.toHaveBeenCalled();
+      expect(prismaMock.articleView.upsert).not.toHaveBeenCalled();
     });
 
     it('未認証の場合でも記録はしないが200を返す', async () => {
@@ -375,7 +332,7 @@ describe('/api/article-views', () => {
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.message).toBe('View not recorded (not logged in)');
-      expect(prismaMock.articleView.create).not.toHaveBeenCalled();
+      expect(prismaMock.articleView.upsert).not.toHaveBeenCalled();
     });
   });
 

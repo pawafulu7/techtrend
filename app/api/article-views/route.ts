@@ -11,14 +11,10 @@ import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 // GET: ユーザーの閲覧履歴を取得
 export async function GET(request: Request) {
   try {
-
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Validate user exists and is not deleted
@@ -38,39 +34,43 @@ export async function GET(request: Request) {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    const articleSelect = lightweight ? {
-      select: {
-        id: true,
-        title: true,
-        url: true,
-        summary: true,
-        publishedAt: true,
-        thumbnail: true,
-        source: {
+    const articleSelect = lightweight
+      ? {
           select: {
             id: true,
-            name: true,
-            type: true,
-          }
-        }
-      },
-    } : includeRelations ? {
-      include: {
-        source: true,
-        tags: true,
-      },
-    } : {
-      include: {
-        source: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
+            title: true,
             url: true,
-          }
+            summary: true,
+            publishedAt: true,
+            thumbnail: true,
+            source: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+              },
+            },
+          },
         }
-      }
-    };
+      : includeRelations
+        ? {
+            include: {
+              source: true,
+              tags: true,
+            },
+          }
+        : {
+            include: {
+              source: {
+                select: {
+                  id: true,
+                  name: true,
+                  type: true,
+                  url: true,
+                },
+              },
+            },
+          };
 
     // Execute count and findMany in transaction for consistency
     const [total, views] = await prisma.$transaction([
@@ -79,7 +79,7 @@ export async function GET(request: Request) {
           userId: session.user.id,
           viewedAt: {
             gte: ninetyDaysAgo, // カウントも90日以内のみ
-          }
+          },
         },
       }),
       prisma.articleView.findMany({
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
           userId: session.user.id,
           viewedAt: {
             gte: ninetyDaysAgo, // 90日以内の履歴のみ取得
-          }
+          },
         },
         include: {
           article: articleSelect,
@@ -95,11 +95,11 @@ export async function GET(request: Request) {
         orderBy: { viewedAt: 'desc' },
         skip,
         take: limit,
-      })
+      }),
     ]);
 
     return NextResponse.json({
-      views: views.map(v => ({
+      views: views.map((v) => ({
         ...v.article,
         viewId: v.id,
         viewedAt: v.viewedAt,
@@ -117,7 +117,10 @@ export async function GET(request: Request) {
       'Handler error'
     );
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     );
   }
@@ -129,10 +132,7 @@ export async function DELETE(_request: Request) {
     const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Validate user exists and is not deleted
@@ -145,13 +145,13 @@ export async function DELETE(_request: Request) {
     const result = await prisma.articleView.deleteMany({
       where: {
         userId: session.user.id,
-        viewedAt: { not: null }
-      }
+        viewedAt: { not: null },
+      },
     });
-    
+
     return NextResponse.json({
       message: 'View history cleared',
-      clearedCount: result.count
+      clearedCount: result.count,
     });
   } catch (error) {
     // Handle FK constraint violations (race condition with user deletion)
@@ -165,7 +165,10 @@ export async function DELETE(_request: Request) {
       'Handler error'
     );
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     );
   }
@@ -174,12 +177,13 @@ export async function DELETE(_request: Request) {
 // POST: 記事閲覧を記録
 export async function POST(request: Request) {
   try {
-
     const session = await auth();
 
     if (!session?.user?.id) {
       // 未ログインユーザーの場合は記録しない
-      return NextResponse.json({ message: 'View not recorded (not logged in)' });
+      return NextResponse.json({
+        message: 'View not recorded (not logged in)',
+      });
     }
 
     // Validate user exists and is not deleted
@@ -213,127 +217,30 @@ export async function POST(request: Request) {
     });
 
     if (!article) {
-      return NextResponse.json(
-        { error: 'Article not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Article not found' }, { status: 404 });
     }
 
-    // 既存の閲覧記録を確認（ユニーク制約があるため）
-    const existingView = await prisma.articleView.findFirst({
+    // upsert: findFirst + update/create + P2002 catch を統合
+    const view = await prisma.articleView.upsert({
       where: {
-        userId: session.user.id,
-        articleId,
-      },
-    });
-
-    if (existingView) {
-      // 既存の記録がある場合は時刻を更新
-      const updatedView = await prisma.articleView.update({
-        where: { id: existingView.id },
-        data: { 
-          viewedAt: new Date(),
-          isRead: true,  // 閲覧時は既読にする
-          readAt: existingView.readAt || new Date()
-        },
-      });
-
-      return NextResponse.json({
-        message: 'View timestamp updated',
-        viewId: updatedView.id,
-      });
-    }
-
-    // 新規閲覧記録を作成（ユニーク制約エラーの処理を追加）
-    let view;
-    try {
-      view = await prisma.articleView.create({
-        data: {
+        userId_articleId: {
           userId: session.user.id,
           articleId,
-          viewedAt: new Date(),  // 明示的に設定
-          isRead: true,
-          readAt: new Date()
-        },
-      });
-    } catch (createError: any) {
-      // ユニーク制約違反の場合は既存のレコードを更新
-      if (createError?.code === 'P2002') {
-        logger.info('Unique constraint violation, updating existing record');
-        const existingView = await prisma.articleView.findFirst({
-          where: {
-            userId: session.user.id,
-            articleId,
-          },
-        });
-
-        if (existingView) {
-          view = await prisma.articleView.update({
-            where: { id: existingView.id },
-            data: {
-              viewedAt: new Date(),
-              isRead: true,
-              readAt: existingView.readAt || new Date()
-            },
-          });
-        } else {
-          // 既存レコードが見つからない場合はエラーを再throw
-          throw createError;
-        }
-      } else {
-        // ユニーク制約以外のエラーは再throw
-        throw createError;
-      }
-    }
-
-    // クリーンアップ処理: 古い履歴と超過分を削除
-    // 90日以上前の履歴を削除
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    
-    await prisma.articleView.deleteMany({
-      where: {
-        userId: session.user.id,
-        viewedAt: {
-          lt: ninetyDaysAgo,
         },
       },
-    });
-
-    // 閲覧履歴が100件を超える場合は古い履歴をクリア（既読状態は保持）
-    const viewedCount = await prisma.articleView.count({
-      where: { 
+      create: {
         userId: session.user.id,
-        viewedAt: { not: null }  // 閲覧履歴のあるレコードのみカウント
+        articleId,
+        viewedAt: new Date(),
+        isRead: true,
+        readAt: new Date(),
+      },
+      update: {
+        viewedAt: new Date(),
+        isRead: true,
+        // readAt: 既存値を保持（create時に設定済み、upsertのupdateでは更新しない）
       },
     });
-
-    if (viewedCount > 100) {
-      // 最新100件の閲覧履歴を保持
-      const recentViews = await prisma.articleView.findMany({
-        where: { 
-          userId: session.user.id,
-          viewedAt: { not: null }  // 閲覧履歴のみ対象
-        },
-        orderBy: { viewedAt: 'desc' },
-        take: 100,
-        select: { id: true },
-      });
-
-      const recentViewIds = recentViews.map(v => v.id);
-
-      // 削除ではなく、viewedAtをNULLに更新（既読状態は保持）
-      await prisma.articleView.updateMany({
-        where: {
-          userId: session.user.id,
-          viewedAt: { not: null },
-          id: { notIn: recentViewIds },
-        },
-        data: {
-          viewedAt: null  // 閲覧履歴のみクリア、isReadとreadAtは保持
-        }
-      });
-    }
 
     return NextResponse.json({
       message: 'Article view recorded',
@@ -351,7 +258,10 @@ export async function POST(request: Request) {
       'Handler error'
     );
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     );
   }

@@ -512,6 +512,11 @@ cron.schedule('0 22 * * *', async () => {
     const { stdout: tagCleanupOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/clean-tags.ts');
     console.error(tagCleanupOutput);
 
+    // 閲覧履歴のクリーンアップ（90日削除+100件上限）
+    console.error('[INFO] 閲覧履歴のクリーンアップ中...');
+    const { stdout: viewCleanupOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/cleanup-article-views.ts');
+    console.error(viewCleanupOutput);
+
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
     console.error(`[INFO] クリーンアップ完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);
