@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import {
   validateUser,
   createUserDeletedResponse,
+  withUserValidation,
+  type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 
 // GET: ユーザーの閲覧履歴を取得
@@ -174,42 +179,18 @@ export async function DELETE(_request: Request) {
   }
 }
 
+const createViewSchema = z.object({
+  articleId: z.string().trim().min(1, 'Article ID is required'),
+});
+
 // POST: 記事閲覧を記録
-export async function POST(request: Request) {
+async function postHandler(
+  request: Request,
+  context: WithUserValidationContext
+) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      // 未ログインユーザーの場合は記録しない
-      return NextResponse.json({
-        message: 'View not recorded (not logged in)',
-      });
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
-
-    let articleId: string;
-    try {
-      const body = await request.json();
-      articleId = body.articleId;
-    } catch (e) {
-      logger.error({ err: e as Error }, 'Failed to parse request body');
-      return NextResponse.json(
-        { error: 'Invalid request body' },
-        { status: 400 }
-      );
-    }
-
-    if (!articleId) {
-      return NextResponse.json(
-        { error: 'Article ID is required' },
-        { status: 400 }
-      );
-    }
+    const body = await request.json();
+    const { articleId } = createViewSchema.parse(body);
 
     // 記事の存在確認
     const article = await prisma.article.findUnique({
@@ -225,12 +206,12 @@ export async function POST(request: Request) {
     const view = await prisma.articleView.upsert({
       where: {
         userId_articleId: {
-          userId: session.user.id,
+          userId: context.validatedUser.id,
           articleId,
         },
       },
       create: {
-        userId: session.user.id,
+        userId: context.validatedUser.id,
         articleId,
         viewedAt: now,
         isRead: true,
@@ -248,6 +229,13 @@ export async function POST(request: Request) {
       viewId: view.id,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: error.errors[0]?.message || 'Invalid request body' },
+        { status: 400 }
+      );
+    }
+
     // Handle FK constraint violations (race condition with user deletion)
     const prismaErrorResponse = handlePrismaError(error);
     if (prismaErrorResponse) {
@@ -267,3 +255,7 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withCSRFProtection(
+  withRateLimit('write:article-views', withUserValidation(postHandler))
+);

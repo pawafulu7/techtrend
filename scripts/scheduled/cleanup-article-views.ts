@@ -3,7 +3,7 @@
  *
  * 機能:
  * 1. 90日以上前の閲覧履歴を削除
- * 2. ユーザーごとに100件上限を超える古い履歴のviewedAtをnullに更新（既読状態は保持）
+ * 2. ユーザーごとに100件上限を超える古い履歴を削除
  *
  * スケジューラ（scheduler.ts）の22時定期クリーンアップから実行
  */
@@ -37,41 +37,42 @@ async function cleanupArticleViews(): Promise<void> {
     HAVING COUNT(*) > 100
   `;
 
-  let totalCleared = 0;
+  let totalDeleted = 0;
 
   for (const { userId } of usersOverLimit) {
-    // 最新100件のIDを取得
-    const recentViews = await prisma.articleView.findMany({
-      where: {
-        userId,
-        viewedAt: { not: null },
-      },
-      orderBy: { viewedAt: 'desc' },
-      take: 100,
-      select: { id: true },
-    });
+    try {
+      // 最新100件のIDを取得
+      const recentViews = await prisma.articleView.findMany({
+        where: {
+          userId,
+          viewedAt: { not: null },
+        },
+        orderBy: { viewedAt: 'desc' },
+        take: 100,
+        select: { id: true },
+      });
 
-    const recentViewIds = recentViews.map((v) => v.id);
+      const recentViewIds = recentViews.map((v) => v.id);
 
-    // 古い履歴のviewedAtをnullに更新（既読状態は保持）
-    const result = await prisma.articleView.updateMany({
-      where: {
-        userId,
-        viewedAt: { not: null },
-        id: { notIn: recentViewIds },
-      },
-      data: {
-        viewedAt: null,
-      },
-    });
+      // 最新100件以外の古い履歴を削除
+      const result = await prisma.articleView.deleteMany({
+        where: {
+          userId,
+          viewedAt: { not: null },
+          id: { notIn: recentViewIds },
+        },
+      });
 
-    totalCleared += result.count;
+      totalDeleted += result.count;
+    } catch (error) {
+      logger.error({ err: error, userId }, 'Failed to cleanup views for user');
+    }
   }
 
   const duration = Math.round((Date.now() - startTime) / 1000);
   console.error(
     `[INFO] Article views cleanup completed in ${duration}s: ` +
-      `deleted=${deleted.count}, viewedAt_cleared=${totalCleared}, users_over_limit=${usersOverLimit.length}`
+      `deleted=${deleted.count}, excess_deleted=${totalDeleted}, users_over_limit=${usersOverLimit.length}`
   );
 }
 
