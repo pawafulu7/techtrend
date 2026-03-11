@@ -25,12 +25,12 @@ async function cleanupArticleViews(): Promise<void> {
     },
   });
 
-  console.log(`[INFO] Deleted ${deleted.count} article views older than 90 days`);
+  console.error(`[INFO] Deleted ${deleted.count} article views older than 90 days`);
 
   // 2. ユーザーごとに100件上限チェック
   // viewedAtがnullでない閲覧履歴が100件を超えるユーザーを取得
-  const usersOverLimit = await prisma.$queryRaw<Array<{ userId: string; viewCount: number }>>`
-    SELECT "userId", COUNT(*)::int as "viewCount"
+  const usersOverLimit = await prisma.$queryRaw<Array<{ userId: string }>>`
+    SELECT "userId"
     FROM "ArticleView"
     WHERE "viewedAt" IS NOT NULL
     GROUP BY "userId"
@@ -69,7 +69,7 @@ async function cleanupArticleViews(): Promise<void> {
   }
 
   const duration = Math.round((Date.now() - startTime) / 1000);
-  console.log(
+  console.error(
     `[INFO] Article views cleanup completed in ${duration}s: ` +
       `deleted=${deleted.count}, viewedAt_cleared=${totalCleared}, users_over_limit=${usersOverLimit.length}`
   );
