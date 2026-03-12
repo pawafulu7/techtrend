@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import {
-  validateUser,
-  createUserDeletedResponse,
   withUserValidation,
   type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
@@ -14,20 +11,11 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 
 // GET: ユーザーの閲覧履歴を取得
-async function getHandler(request: Request) {
+async function getHandler(
+  request: Request,
+  context: WithUserValidationContext
+) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
-
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -81,7 +69,7 @@ async function getHandler(request: Request) {
     const [total, views] = await prisma.$transaction([
       prisma.articleView.count({
         where: {
-          userId: session.user.id,
+          userId: context.validatedUser.id,
           viewedAt: {
             gte: ninetyDaysAgo, // カウントも90日以内のみ
           },
@@ -89,7 +77,7 @@ async function getHandler(request: Request) {
       }),
       prisma.articleView.findMany({
         where: {
-          userId: session.user.id,
+          userId: context.validatedUser.id,
           viewedAt: {
             gte: ninetyDaysAgo, // 90日以内の履歴のみ取得
           },
@@ -248,7 +236,10 @@ async function postHandler(
   }
 }
 
-export const GET = withRateLimit('read:article-views', getHandler);
+export const GET = withRateLimit(
+  'read:article-views',
+  withUserValidation(getHandler)
+);
 
 export const POST = withCSRFProtection(
   withRateLimit('write:article-views', withUserValidation(postHandler))

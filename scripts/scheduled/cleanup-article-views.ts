@@ -46,7 +46,7 @@ async function cleanupArticleViews(): Promise<void> {
 
   for (const { userId } of usersOverLimit) {
     try {
-      await prisma.$transaction(async (tx) => {
+      const deletedCount = await prisma.$transaction(async (tx) => {
         // 最新100件のIDとcutoffを取得
         const recentViews = await tx.articleView.findMany({
           where: {
@@ -60,7 +60,7 @@ async function cleanupArticleViews(): Promise<void> {
 
         const cutoff = recentViews.at(-1)?.viewedAt;
         if (!cutoff) {
-          return; // 100件以下ならスキップ（HAVINGで100超のはずだが安全策）
+          return 0; // 100件以下ならスキップ（HAVINGで100超のはずだが安全策）
         }
 
         const recentViewIds = recentViews.map((v) => v.id);
@@ -79,8 +79,9 @@ async function cleanupArticleViews(): Promise<void> {
           },
         });
 
-        totalDeleted += result.count;
+        return result.count;
       });
+      totalDeleted += deletedCount;
     } catch (error) {
       logger.error({ err: error, userId }, 'Failed to cleanup views for user');
     }
