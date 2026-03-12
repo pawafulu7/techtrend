@@ -81,13 +81,13 @@ export async function GET(request: NextRequest) {
     // PopularCacheを使用
     const popularPeriod = mapPeriodToPopular(period);
 
-    // カテゴリのソースID/タグIDを事前に1回だけ取得（キャッシュキー生成とフィルタ構築の両方で使用）
-    const resolvedSourceId = category
-      ? await getSourceIdFromCategory(category)
-      : undefined;
-    const resolvedTagId = category
-      ? await getTagIdFromCategory(category)
-      : undefined;
+    // カテゴリのソースID/タグIDを事前に1回だけ取得（キャッシュキー生成とタグ/ソース判定に使用）
+    const [resolvedSourceId, resolvedTagId] = category
+      ? await Promise.all([
+          getSourceIdFromCategory(category),
+          getTagIdFromCategory(category),
+        ])
+      : [undefined, undefined];
 
     const result = await popularCache.getOrSet(
       popularPeriod,
@@ -163,14 +163,14 @@ export async function GET(request: NextRequest) {
         // metric別のDB側orderByとtakeを決定
         // 単一フィールドmetricはDB側ソートで正確な結果が得られるためtake: limitで十分
         // combinedは複合スコア計算が必要なため多めに取得
-        const dbOrderBy =
-          metric === 'bookmarks'
-            ? { bookmarks: 'desc' as const }
-            : metric === 'votes'
-              ? { userVotes: 'desc' as const }
-              : metric === 'quality'
-                ? { qualityScore: 'desc' as const }
-                : undefined;
+        const metricOrderMap: Partial<
+          Record<Metric, { [key: string]: 'desc' }>
+        > = {
+          bookmarks: { bookmarks: 'desc' },
+          votes: { userVotes: 'desc' },
+          quality: { qualityScore: 'desc' },
+        };
+        const dbOrderBy = metricOrderMap[metric];
         const dbTake = dbOrderBy ? limit : limit * 2;
 
         // 記事取得
@@ -235,7 +235,10 @@ export async function GET(request: NextRequest) {
         });
 
         // ソートして上位を取得
-        scoredArticles.sort((a, b) => b.score - a.score);
+        // 単一フィールドmetricはDB側orderByで既にソート済みのためスキップ
+        if (!dbOrderBy) {
+          scoredArticles.sort((a, b) => b.score - a.score);
+        }
         const topArticles = scoredArticles.slice(0, limit);
 
         // 前回のランキングを取得
