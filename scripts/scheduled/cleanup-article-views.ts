@@ -34,13 +34,19 @@ async function cleanupArticleViews(): Promise<void> {
 
   // 2. ユーザーごとに100件上限チェック
   // viewedAtがnullでない閲覧履歴が100件を超えるユーザーを取得
-  const usersOverLimit = await prisma.$queryRaw<Array<{ userId: string }>>`
-    SELECT "userId"
-    FROM "ArticleView"
-    WHERE "viewedAt" IS NOT NULL
-    GROUP BY "userId"
-    HAVING COUNT(*) > 100
-  `;
+  let usersOverLimit: Array<{ userId: string }> = [];
+  try {
+    usersOverLimit = await prisma.$queryRaw<Array<{ userId: string }>>`
+      SELECT "userId"
+      FROM "ArticleView"
+      WHERE "viewedAt" IS NOT NULL
+      GROUP BY "userId"
+      HAVING COUNT(*) > 100
+    `;
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to query users over limit');
+    // ユーザー一覧取得に失敗した場合、上限チェックはスキップして終了
+  }
 
   let totalDeleted = 0;
 
