@@ -81,6 +81,14 @@ export async function GET(request: NextRequest) {
     // PopularCacheを使用
     const popularPeriod = mapPeriodToPopular(period);
 
+    // カテゴリのソースID/タグIDを事前に1回だけ取得（キャッシュキー生成とフィルタ構築の両方で使用）
+    const resolvedSourceId = category
+      ? await getSourceIdFromCategory(category)
+      : undefined;
+    const resolvedTagId = category
+      ? await getTagIdFromCategory(category)
+      : undefined;
+
     const result = await popularCache.getOrSet(
       popularPeriod,
       async () => {
@@ -105,15 +113,10 @@ export async function GET(request: NextRequest) {
             break;
         }
 
-        // カテゴリーフィルター
+        // カテゴリーフィルター（事前取得結果を使用、追加クエリなし）
         let categoryFilter = {};
         if (category) {
-          // タグかソースかを判定
-          const tag = await prisma.tag.findFirst({
-            where: { name: category },
-          });
-
-          if (tag) {
+          if (resolvedTagId) {
             categoryFilter = {
               tags: { some: { name: category } },
             };
@@ -157,6 +160,19 @@ export async function GET(request: NextRequest) {
           ? { qualityScore: { gte: 30 } }
           : {};
 
+        // metric別のDB側orderByとtakeを決定
+        // 単一フィールドmetricはDB側ソートで正確な結果が得られるためtake: limitで十分
+        // combinedは複合スコア計算が必要なため多めに取得
+        const dbOrderBy =
+          metric === 'bookmarks'
+            ? { bookmarks: 'desc' as const }
+            : metric === 'votes'
+              ? { userVotes: 'desc' as const }
+              : metric === 'quality'
+                ? { qualityScore: 'desc' as const }
+                : undefined;
+        const dbTake = dbOrderBy ? limit : limit * 2;
+
         // 記事取得
         const articles = await prisma.article.findMany({
           where: {
@@ -169,11 +185,16 @@ export async function GET(request: NextRequest) {
               skipReasonFilter,
             ].filter((f) => Object.keys(f).length > 0), // Remove empty filters
           },
+          omit: {
+            content: true,
+            detailedSummary: true,
+          },
           include: {
             source: true,
             tags: true,
           },
-          take: limit * 2, // スコア計算後にカットするため多めに取得
+          ...(dbOrderBy && { orderBy: dbOrderBy }),
+          take: dbTake,
         });
 
         // スコア計算とソート
@@ -254,10 +275,12 @@ export async function GET(request: NextRequest) {
       },
       {
         limit,
-        sourceId: category
-          ? await getSourceIdFromCategory(category)
-          : undefined,
-        tagId: category ? await getTagIdFromCategory(category) : undefined,
+        sourceId: resolvedSourceId,
+        tagId: resolvedTagId,
+        metric,
+        includeEmptyContent,
+        excludeUnprocessed,
+        excludeLowQuality,
       }
     );
 

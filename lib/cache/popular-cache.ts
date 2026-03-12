@@ -30,6 +30,10 @@ export class PopularCache {
       limit?: number;
       sourceId?: string;
       tagId?: string;
+      metric?: string;
+      includeEmptyContent?: boolean;
+      excludeUnprocessed?: boolean;
+      excludeLowQuality?: boolean;
     }
   ): string {
     const parts = [`articles:${period}`];
@@ -46,6 +50,22 @@ export class PopularCache {
       parts.push(`tag:${options.tagId}`);
     }
 
+    if (options?.metric) {
+      parts.push(`metric:${options.metric}`);
+    }
+
+    if (options?.includeEmptyContent) {
+      parts.push('emptyContent:1');
+    }
+
+    if (options?.excludeUnprocessed) {
+      parts.push('exUnprocessed:1');
+    }
+
+    if (options?.excludeLowQuality) {
+      parts.push('exLowQuality:1');
+    }
+
     return parts.join(':');
   }
 
@@ -59,6 +79,10 @@ export class PopularCache {
       limit?: number;
       sourceId?: string;
       tagId?: string;
+      metric?: string;
+      includeEmptyContent?: boolean;
+      excludeUnprocessed?: boolean;
+      excludeLowQuality?: boolean;
     }
   ): Promise<T> {
     const key = this.generateKey(period, options);

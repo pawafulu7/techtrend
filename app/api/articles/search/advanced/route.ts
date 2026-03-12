@@ -182,6 +182,10 @@ export async function GET(request: NextRequest) {
       prisma.article.count({ where: whereConditions }),
       prisma.article.findMany({
         where: whereConditions,
+        omit: {
+          content: true,
+          detailedSummary: true,
+        },
         include: {
           source: true,
           tags: true,
