@@ -241,8 +241,19 @@ export async function GET(request: NextRequest) {
         }
         const topArticles = scoredArticles.slice(0, limit);
 
-        // 前回のランキングを取得
-        const rankCacheKey = `rankings_${period}_${metric}_${category || 'all'}`;
+        // 前回のランキングを取得（フィルタ条件を含むキーで正確なtrend比較を保証）
+        const rankCacheKey = `rankings:${popularCache.generateKey(
+          popularPeriod,
+          {
+            limit,
+            sourceId: resolvedSourceId,
+            tagId: resolvedTagId,
+            metric,
+            includeEmptyContent,
+            excludeUnprocessed,
+            excludeLowQuality,
+          }
+        )}`;
         const previousRankings = trendCache.get(rankCacheKey)?.data;
 
         // ランキング情報を付与
