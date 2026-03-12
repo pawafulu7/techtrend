@@ -14,7 +14,7 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 
 // GET: ユーザーの閲覧履歴を取得
-export async function GET(request: Request) {
+async function getHandler(request: Request) {
   try {
     const session = await auth();
 
@@ -247,6 +247,8 @@ async function postHandler(
     );
   }
 }
+
+export const GET = withRateLimit('read:article-views', getHandler);
 
 export const POST = withCSRFProtection(
   withRateLimit('write:article-views', withUserValidation(postHandler))

@@ -213,6 +213,14 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'Heatmap category analysis',
     telemetryEvent: 'ratelimit.read.heatmap',
   },
+  'read:article-views': {
+    points: 60,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'Article view history read limit (60 per minute)',
+    telemetryEvent: 'ratelimit.read.article-views',
+  },
   'read:digest': {
     points: 30,
     duration: 60,

@@ -330,8 +330,8 @@ describe('/api/article-views', () => {
 
       const response = await POST(request);
 
-      // withCSRFProtection が先にチェックするため 403
-      expect([401, 403]).toContain(response.status);
+      // withCSRFProtection が先にチェックするため 403（CSRFトークンなし）
+      expect(response.status).toBe(403);
       expect(prismaMock.articleView.upsert).not.toHaveBeenCalled();
     });
   });

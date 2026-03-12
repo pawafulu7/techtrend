@@ -17,15 +17,20 @@ async function cleanupArticleViews(): Promise<void> {
   const ninetyDaysAgo = new Date();
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-  const deleted = await prisma.articleView.deleteMany({
-    where: {
-      viewedAt: {
-        lt: ninetyDaysAgo,
+  let deleted = { count: 0 };
+  try {
+    deleted = await prisma.articleView.deleteMany({
+      where: {
+        viewedAt: {
+          lt: ninetyDaysAgo,
+        },
       },
-    },
-  });
-
-  console.error(`[INFO] Deleted ${deleted.count} article views older than 90 days`);
+    });
+    logger.info({ count: deleted.count }, 'Deleted article views older than 90 days');
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to delete old article views');
+    // 古い履歴の削除に失敗しても、ユーザーごとの上限チェックは続行
+  }
 
   // 2. ユーザーごとに100件上限チェック
   // viewedAtがnullでない閲覧履歴が100件を超えるユーザーを取得
@@ -82,9 +87,14 @@ async function cleanupArticleViews(): Promise<void> {
   }
 
   const duration = Math.round((Date.now() - startTime) / 1000);
-  console.error(
-    `[INFO] Article views cleanup completed in ${duration}s: ` +
-      `deleted=${deleted.count}, excess_deleted=${totalDeleted}, users_over_limit=${usersOverLimit.length}`
+  logger.info(
+    {
+      durationSeconds: duration,
+      deletedOldViews: deleted.count,
+      deletedExcessViews: totalDeleted,
+      usersOverLimit: usersOverLimit.length,
+    },
+    'Article views cleanup completed'
   );
 }
 
