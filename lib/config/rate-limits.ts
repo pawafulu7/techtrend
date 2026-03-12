@@ -179,6 +179,14 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'Read status update limit (30 per minute)',
     telemetryEvent: 'ratelimit.write.read-status',
   },
+  'write:article-views': {
+    points: 60,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'Article view recording limit (60 per minute)',
+    telemetryEvent: 'ratelimit.write.article-views',
+  },
 
   // Read Operations (General Protection) - No block
   'read:articles': {
@@ -204,6 +212,14 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     keyStrategy: 'ip',
     notes: 'Heatmap category analysis',
     telemetryEvent: 'ratelimit.read.heatmap',
+  },
+  'read:article-views': {
+    points: 60,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'Article view history read limit (60 per minute)',
+    telemetryEvent: 'ratelimit.read.article-views',
   },
   'read:digest': {
     points: 30,
