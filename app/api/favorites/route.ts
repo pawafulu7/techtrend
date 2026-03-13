@@ -146,18 +146,6 @@ async function postHandler(
           userId: validatedUser.id,
           articleId,
         },
-        include: {
-          article: {
-            select: {
-              id: true,
-              title: true,
-              url: true,
-              summary: true,
-              thumbnail: true,
-              publishedAt: true,
-            },
-          },
-        },
       });
 
       // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
@@ -171,7 +159,7 @@ async function postHandler(
       const response = NextResponse.json({
         message: 'Article favorited successfully',
         favorite: {
-          ...favorite.article,
+          ...article,
           favoriteId: favorite.id,
           favoritedAt: favorite.createdAt,
         },
@@ -183,10 +171,13 @@ async function postHandler(
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        return NextResponse.json(
+        await updateFavoriteCacheBestEffort(validatedUser.id, articleId, true);
+        const response = NextResponse.json(
           { error: 'Already favorited' },
           { status: 409 }
         );
+        setFavoriteBustCookie(response);
+        return response;
       }
       throw error;
     }

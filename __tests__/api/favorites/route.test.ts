@@ -276,18 +276,6 @@ describe('/api/favorites', () => {
           userId: 'test-user-id',
           articleId: 'article1',
         },
-        include: {
-          article: {
-            select: {
-              id: true,
-              title: true,
-              url: true,
-              summary: true,
-              thumbnail: true,
-              publishedAt: true,
-            },
-          },
-        },
       });
     });
 
