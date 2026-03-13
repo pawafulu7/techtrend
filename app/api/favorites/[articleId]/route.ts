@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
@@ -69,54 +70,44 @@ async function postHandler(
       return NextResponse.json({ error: 'Article not found' }, { status: 404 });
     }
 
-    // 既にお気に入りに追加されているか確認
-    const existing = await prisma.favorite.findUnique({
-      where: {
-        userId_articleId: {
+    try {
+      const favorite = await prisma.favorite.create({
+        data: {
           userId: validatedUser.id,
           articleId,
         },
-      },
-    });
+      });
 
-    if (existing) {
-      return NextResponse.json({ error: 'Already favorited' }, { status: 409 });
-    }
-
-    const favorite = await prisma.favorite.create({
-      data: {
-        userId: validatedUser.id,
+      // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
+      await updateFavoriteCacheBestEffort(
+        validatedUser.id,
         articleId,
-      },
-      include: {
-        article: {
-          select: {
-            id: true,
-            title: true,
-            url: true,
-            summary: true,
-            thumbnail: true,
-            publishedAt: true,
-          },
-        },
-      },
-    });
+        true,
+        favorite.createdAt
+      );
 
-    // キャッシュを更新（DataLoaderキャッシュも含む）- best-effort
-    await updateFavoriteCacheBestEffort(
-      validatedUser.id,
-      articleId,
-      true,
-      favorite.createdAt
-    );
-
-    const response = NextResponse.json({
-      message: 'Article favorited successfully',
-      isFavorited: true,
-      favoriteId: favorite.id,
-    });
-    setFavoriteBustCookie(response);
-    return response;
+      const response = NextResponse.json({
+        message: 'Article favorited successfully',
+        isFavorited: true,
+        favoriteId: favorite.id,
+      });
+      setFavoriteBustCookie(response);
+      return response;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        await updateFavoriteCacheBestEffort(validatedUser.id, articleId, true);
+        const response = NextResponse.json(
+          { error: 'Already favorited' },
+          { status: 409 }
+        );
+        setFavoriteBustCookie(response);
+        return response;
+      }
+      throw error;
+    }
   } catch (error) {
     // Handle FK constraint violations (race condition with user deletion)
     const prismaErrorResponse = handlePrismaError(error);

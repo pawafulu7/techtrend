@@ -5,7 +5,6 @@
  * cursor/offset pagination info generation, and user data merging.
  */
 
-import { prisma } from '@/lib/prisma';
 import { createLoaders } from '@/lib/dataloader';
 import { getCursorManager } from '@/lib/pagination/cursor-manager';
 import type { PaginatedResponse } from '@/lib/types/api';
@@ -33,34 +32,27 @@ type RawArticle = {
   createdAt: Date;
   updatedAt: Date;
   contentLength: number | null;
+  tags?: Array<{ name: string }>;
   [key: string]: any;
 };
 
 /**
- * Fetch company names for hatena_blog_dev articles (batch query)
+ * Extract company names for hatena_blog_dev articles from already-fetched tag data.
+ * Pure function - no DB query needed since tags are included in the main article query.
  */
-export async function fetchCompanyNames(
-  articles: RawArticle[],
+export function extractCompanyNames(
+  articles: Array<{
+    id: string;
+    sourceId: string;
+    tags?: Array<{ name: string }>;
+  }>,
   limit: number
-): Promise<Map<string, string>> {
+): Map<string, string> {
   const companyNameMap = new Map<string, string>();
-  const hatenaArticleIds = articles
-    .slice(0, limit)
-    .filter((a) => a.sourceId === 'hatena_blog_dev')
-    .map((a) => a.id);
-
-  if (hatenaArticleIds.length === 0) return companyNameMap;
-
-  const hatenaArticlesWithTags = await prisma.article.findMany({
-    where: { id: { in: hatenaArticleIds } },
-    select: {
-      id: true,
-      tags: { select: { name: true } },
-    },
-  });
-
   const companyPattern = /株式会社|合同会社|有限会社/;
-  for (const article of hatenaArticlesWithTags) {
+
+  for (const article of articles.slice(0, limit)) {
+    if (article.sourceId !== 'hatena_blog_dev' || !article.tags) continue;
     const companyTag = article.tags.find((t) => companyPattern.test(t.name));
     if (companyTag) {
       companyNameMap.set(article.id, companyTag.name);
@@ -77,8 +69,11 @@ function normalizeArticle(
   article: RawArticle,
   companyNameMap: Map<string, string>
 ): LightweightArticle {
+  // Exclude tags from spread to prevent leaking into API response
+  // (tags are only used internally by extractCompanyNames)
+  const { tags: _tags, ...articleWithoutTags } = article;
   const normalized: LightweightArticle = {
-    ...article,
+    ...articleWithoutTags,
     publishedAt:
       article.publishedAt instanceof Date
         ? article.publishedAt.toISOString()

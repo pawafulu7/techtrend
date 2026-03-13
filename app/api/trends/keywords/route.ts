@@ -13,36 +13,61 @@ export async function GET() {
       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-      // 過去24時間のタグ使用状況
-      const recentTags = (await prisma.$queryRaw`
-      SELECT 
+      // 3クエリを並列実行
+      const [recentTags, weeklyTags, newTags] = await Promise.all([
+        // 過去24時間のタグ使用状況
+        prisma.$queryRaw`
+      SELECT
         t.id,
         t.name,
         COUNT(DISTINCT a.id) as recent_count
       FROM "Tag" t
       JOIN "_ArticleToTag" at ON t.id = at."B"
       JOIN "Article" a ON at."A" = a.id
-      WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamp
+      WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamptz
         AND t.name <> ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
-    `) as { id: string; name: string; recent_count: bigint }[];
-
-      // 過去1週間のタグ使用状況
-      const weeklyTags = (await prisma.$queryRaw`
-      SELECT 
+    ` as Promise<{ id: string; name: string; recent_count: bigint }[]>,
+        // 過去1週間のタグ使用状況
+        prisma.$queryRaw`
+      SELECT
         t.id,
         t.name,
         COUNT(DISTINCT a.id) as weekly_count
       FROM "Tag" t
       JOIN "_ArticleToTag" at ON t.id = at."B"
       JOIN "Article" a ON at."A" = a.id
-      WHERE a."publishedAt" >= ${oneWeekAgo.toISOString()}::timestamp
-        AND a."publishedAt" < ${oneDayAgo.toISOString()}::timestamp
+      WHERE a."publishedAt" >= ${oneWeekAgo.toISOString()}::timestamptz
+        AND a."publishedAt" < ${oneDayAgo.toISOString()}::timestamptz
         AND t.name <> ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
-    `) as { id: string; name: string; weekly_count: bigint }[];
+    ` as Promise<{ id: string; name: string; weekly_count: bigint }[]>,
+        // 新規タグ（過去24時間に初めて使われたタグ）
+        prisma.$queryRaw`
+      SELECT DISTINCT
+        t.id,
+        t.name,
+        COUNT(DISTINCT a.id) as count
+      FROM "Tag" t
+      JOIN "_ArticleToTag" at ON t.id = at."B"
+      JOIN "Article" a ON at."A" = a.id
+      WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamptz
+        AND t.name <> ''
+        AND t.name IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "_ArticleToTag" at2
+          JOIN "Article" a2 ON at2."A" = a2.id
+          WHERE at2."B" = t.id
+            AND a2."publishedAt" < ${oneDayAgo.toISOString()}::timestamptz
+        )
+      GROUP BY t.id, t.name
+      ORDER BY count DESC
+      LIMIT 10
+    ` as Promise<{ id: string; name: string; count: bigint }[]>,
+      ]);
 
       // 週間平均と比較して急上昇を検出
       const weeklyTagMap = new Map(
@@ -76,30 +101,6 @@ export async function GET() {
           (a, b) => b.growthRate - a.growthRate || b.recentCount - a.recentCount
         )
         .slice(0, 20);
-
-      // 新規タグ（過去24時間に初めて使われたタグ）
-      const newTags = (await prisma.$queryRaw`
-      SELECT DISTINCT
-        t.id,
-        t.name,
-        COUNT(DISTINCT a.id) as count
-      FROM "Tag" t
-      JOIN "_ArticleToTag" at ON t.id = at."B"
-      JOIN "Article" a ON at."A" = a.id
-      WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamp
-        AND t.name <> ''
-        AND t.name IS NOT NULL
-        AND NOT EXISTS (
-          SELECT 1 
-          FROM "_ArticleToTag" at2
-          JOIN "Article" a2 ON at2."A" = a2.id
-          WHERE at2."B" = t.id 
-            AND a2."publishedAt" < ${oneDayAgo.toISOString()}::timestamp
-        )
-      GROUP BY t.id, t.name
-      ORDER BY count DESC
-      LIMIT 10
-    `) as { id: string; name: string; count: bigint }[];
 
       return {
         trending: trendingKeywords,
