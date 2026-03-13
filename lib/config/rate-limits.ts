@@ -197,6 +197,14 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'General article listing',
     telemetryEvent: 'ratelimit.read.articles',
   },
+  'read:popular': {
+    points: 60,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'ip',
+    notes: 'Popular article rankings',
+    telemetryEvent: 'ratelimit.read.popular',
+  },
   'read:search': {
     points: 50,
     duration: 60,

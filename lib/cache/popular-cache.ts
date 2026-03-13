@@ -3,6 +3,16 @@ import { POPULAR_CACHE_DURATION } from './constants';
 
 export type PopularPeriod = keyof typeof POPULAR_CACHE_DURATION;
 
+export interface PopularCacheOptions {
+  limit?: number;
+  sourceId?: string;
+  tagId?: string;
+  metric?: string;
+  includeEmptyContent?: boolean;
+  excludeUnprocessed?: boolean;
+  excludeLowQuality?: boolean;
+}
+
 export class PopularCache {
   private caches: Map<PopularPeriod, RedisCache>;
 
@@ -24,14 +34,7 @@ export class PopularCache {
   /**
    * 人気記事のキャッシュキーを生成
    */
-  generateKey(
-    period: PopularPeriod,
-    options?: {
-      limit?: number;
-      sourceId?: string;
-      tagId?: string;
-    }
-  ): string {
+  generateKey(period: PopularPeriod, options?: PopularCacheOptions): string {
     const parts = [`articles:${period}`];
 
     if (options?.limit) {
@@ -46,6 +49,22 @@ export class PopularCache {
       parts.push(`tag:${options.tagId}`);
     }
 
+    if (options?.metric) {
+      parts.push(`metric:${options.metric}`);
+    }
+
+    if (options?.includeEmptyContent) {
+      parts.push('emptyContent:1');
+    }
+
+    if (options?.excludeUnprocessed) {
+      parts.push('exUnprocessed:1');
+    }
+
+    if (options?.excludeLowQuality) {
+      parts.push('exLowQuality:1');
+    }
+
     return parts.join(':');
   }
 
@@ -55,11 +74,7 @@ export class PopularCache {
   async getOrSet<T>(
     period: PopularPeriod,
     fetcher: () => Promise<T>,
-    options?: {
-      limit?: number;
-      sourceId?: string;
-      tagId?: string;
-    }
+    options?: PopularCacheOptions
   ): Promise<T> {
     const key = this.generateKey(period, options);
     const cache = this.caches.get(period);
@@ -69,6 +84,8 @@ export class PopularCache {
     }
 
     // 期間に対応するキャッシュインスタンスを使用
+    // RedisCache.getOrSetは内部でRedisエラーをswallowするため、
+    // ここに到達するエラーはfetcher由来。再実行せずそのまま伝播させる
     return await cache.getOrSet(key, fetcher);
   }
 
