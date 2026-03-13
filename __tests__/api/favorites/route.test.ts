@@ -252,7 +252,6 @@ describe('/api/favorites', () => {
 
     it('記事をお気に入りに追加する', async () => {
       prismaMock.article.findUnique.mockResolvedValue(mockArticle);
-      prismaMock.favorite.findUnique.mockResolvedValue(null);
       prismaMock.favorite.create.mockResolvedValue(mockFavorite);
 
       const request = new NextRequest('http://localhost/api/favorites', {
@@ -324,7 +323,14 @@ describe('/api/favorites', () => {
 
     it('既にお気に入りに追加されている場合409を返す', async () => {
       prismaMock.article.findUnique.mockResolvedValue(mockArticle);
-      prismaMock.favorite.findUnique.mockResolvedValue({ id: 'existing-fav' });
+      // P2002 (unique constraint violation) をスローしてcreateの重複を模倣
+      const { Prisma } = jest.requireActual('@prisma/client');
+      prismaMock.favorite.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          code: 'P2002',
+          clientVersion: '0.0.0',
+        })
+      );
 
       const request = new NextRequest('http://localhost/api/favorites', {
         method: 'POST',
@@ -336,7 +342,6 @@ describe('/api/favorites', () => {
       expect(response.status).toBe(409);
       const data = await response.json();
       expect(data.error).toBe('Already favorited');
-      expect(prismaMock.favorite.create).not.toHaveBeenCalled();
     });
 
     it('未認証の場合401を返す', async () => {

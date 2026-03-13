@@ -18,7 +18,7 @@ import {
   LIST_SORT_FIELDS,
 } from './query-helpers';
 import {
-  fetchCompanyNames,
+  extractCompanyNames,
   buildCursorResult,
   buildOffsetResult,
   fetchAndMergeUserData,
@@ -321,6 +321,7 @@ export async function GET(request: NextRequest) {
           createdAt: true,
           updatedAt: true,
           contentLength: true, // Pre-calculated by DB trigger
+          tags: { select: { name: true } },
         },
         orderBy: [
           { [finalSortBy]: sortOrder },
@@ -336,8 +337,8 @@ export async function GET(request: NextRequest) {
         articlesPromise,
       ]);
 
-      // Fetch company names for hatena_blog_dev articles
-      const companyNameMap = await fetchCompanyNames(articles as any, limit);
+      // Extract company names for hatena_blog_dev articles from already-fetched tags
+      const companyNameMap = extractCompanyNames(articles as any, limit);
 
       if (useCursor && cursorPayload) {
         if (isBackwardCursor) {

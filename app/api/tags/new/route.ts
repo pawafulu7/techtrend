@@ -23,57 +23,43 @@ export async function GET(request: NextRequest) {
     const since = new Date();
     since.setDate(since.getDate() - days);
 
-    // 最近作成されたタグを取得
+    // 最近の記事で初めて使用されたタグを取得（NOT EXISTSで古い記事に出現するタグを除外）
     // 注: Prismaではタグの作成日時を追跡していないため、
-    // 最近の記事で初めて使用されたタグを新規タグとみなす
-    const newTags = await prisma.tag.findMany({
-      where: {
-        articles: {
-          some: {
-            publishedAt: {
-              gte: since,
-            },
-          },
-        },
-      },
-      select: {
-        id: true,
-        name: true,
-        _count: {
-          select: {
-            articles: true,
-          },
-        },
-      },
-      orderBy: {
-        articles: {
-          _count: 'desc',
-        },
-      },
-    });
+    // 最近の記事のみで使用されたタグを新規タグとみなす
+    const sinceIso = since.toISOString();
+    const rawTags = await prisma.$queryRaw<
+      Array<{ id: string; name: string; article_count: bigint }>
+    >`
+      SELECT
+        t.id,
+        t.name,
+        COUNT(DISTINCT a.id) AS article_count
+      FROM "Tag" t
+      JOIN "_ArticleToTag" at ON t.id = at."B"
+      JOIN "Article" a ON at."A" = a.id
+      WHERE a."publishedAt" >= ${sinceIso}::timestamp
+        AND t.name <> ''
+        AND t.name IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "_ArticleToTag" at2
+          JOIN "Article" a2 ON at2."A" = a2.id
+          WHERE at2."B" = t.id
+            AND a2."publishedAt" < ${sinceIso}::timestamp
+        )
+      GROUP BY t.id, t.name
+      ORDER BY article_count DESC
+    `;
 
-    // 古い記事でも使用されているタグを除外
-    const oldTags = await prisma.tag.findMany({
-      where: {
-        articles: {
-          some: {
-            publishedAt: {
-              lt: since,
-            },
-          },
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    const oldTagIds = new Set(oldTags.map((t) => t.id));
-    const trulyNewTags = newTags.filter((t) => !oldTagIds.has(t.id));
+    const tags = rawTags.map((t) => ({
+      id: t.id,
+      name: t.name,
+      articleCount: Number(t.article_count),
+    }));
 
     return NextResponse.json({
-      count: trulyNewTags.length,
-      tags: trulyNewTags,
+      count: tags.length,
+      tags,
     });
   } catch {
     return NextResponse.json(
