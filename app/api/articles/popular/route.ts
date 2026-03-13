@@ -243,7 +243,7 @@ async function getPopularArticles(request: NextRequest) {
             source: true,
             tags: true,
           },
-          ...(dbOrderBy && { orderBy: dbOrderBy }),
+          orderBy: dbOrderBy ?? [{ publishedAt: 'desc' }, { id: 'desc' }],
           take: dbTake,
         });
 
