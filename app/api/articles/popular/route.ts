@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import { prisma } from '@/lib/database';
 import { popularCache, type PopularPeriod } from '@/lib/cache/popular-cache';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
 const boolParam = (defaultVal: 'true' | 'false' = 'false') =>
   z
@@ -95,7 +96,7 @@ async function getTagIdFromCategory(
   return tag?.id;
 }
 
-export async function GET(request: NextRequest) {
+async function getPopularArticles(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const {
@@ -196,14 +197,26 @@ export async function GET(request: NextRequest) {
         // 単一フィールドmetricはDB側ソートで正確な結果が得られるためtake: limitで十分
         // combinedは複合スコア計算が必要なため多めに取得
         const metricOrderMap: Partial<
-          Record<Metric, { [key: string]: 'desc' }>
+          Record<Metric, { [key: string]: 'desc' }[]>
         > = {
-          bookmarks: { bookmarks: 'desc' },
-          votes: { userVotes: 'desc' },
-          quality: { qualityScore: 'desc' },
+          bookmarks: [
+            { bookmarks: 'desc' },
+            { publishedAt: 'desc' },
+            { id: 'desc' },
+          ],
+          votes: [
+            { userVotes: 'desc' },
+            { publishedAt: 'desc' },
+            { id: 'desc' },
+          ],
+          quality: [
+            { qualityScore: 'desc' },
+            { publishedAt: 'desc' },
+            { id: 'desc' },
+          ],
         };
         const dbOrderBy = metricOrderMap[metric];
-        const dbTake = dbOrderBy ? limit : limit * 2;
+        const dbTake = dbOrderBy ? limit : undefined;
 
         // 記事取得
         const articles = await prisma.article.findMany({
@@ -226,7 +239,7 @@ export async function GET(request: NextRequest) {
             tags: true,
           },
           ...(dbOrderBy && { orderBy: dbOrderBy }),
-          take: dbTake,
+          ...(dbTake != null && { take: dbTake }),
         });
 
         // スコア計算とソート
@@ -354,3 +367,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withRateLimit('read:popular', getPopularArticles);
