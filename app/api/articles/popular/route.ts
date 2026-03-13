@@ -1,9 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z, ZodError } from 'zod';
 import { prisma } from '@/lib/database';
 import { popularCache, type PopularPeriod } from '@/lib/cache/popular-cache';
 
-type Period = 'today' | 'week' | 'month' | 'all';
-type Metric = 'bookmarks' | 'votes' | 'quality' | 'combined';
+const boolParam = (defaultVal: 'true' | 'false' = 'false') =>
+  z
+    .enum(['true', 'false'])
+    .default(defaultVal)
+    .transform((v) => v === 'true');
+
+const querySchema = z.object({
+  period: z.enum(['today', 'week', 'month', 'all']).default('week'),
+  metric: z
+    .enum(['bookmarks', 'votes', 'quality', 'combined'])
+    .default('combined'),
+  category: z.string().trim().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  includeEmptyContent: boolParam(),
+  excludeUnprocessed: boolParam(),
+  excludeLowQuality: boolParam(),
+});
+
+type ParsedQuery = z.infer<typeof querySchema>;
+type Period = ParsedQuery['period'];
+type Metric = ParsedQuery['metric'];
 
 // 前回ランキング用のキャッシュ（トレンド計算用）
 interface CachedData {
@@ -11,6 +31,26 @@ interface CachedData {
   timestamp: number;
 }
 const trendCache = new Map<string, CachedData>();
+const TREND_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function getTrendCache(key: string) {
+  const cached = trendCache.get(key);
+  if (!cached) return undefined;
+  if (Date.now() - cached.timestamp > TREND_CACHE_TTL_MS) {
+    trendCache.delete(key);
+    return undefined;
+  }
+  return cached.data;
+}
+
+function pruneTrendCache() {
+  const now = Date.now();
+  for (const [key, value] of trendCache) {
+    if (now - value.timestamp > TREND_CACHE_TTL_MS) {
+      trendCache.delete(key);
+    }
+  }
+}
 
 // トレンド計算関数
 function calculateTrend(
@@ -45,16 +85,6 @@ function mapPeriodToPopular(period: Period): PopularPeriod {
   }
 }
 
-// カテゴリからソースIDを取得
-async function getSourceIdFromCategory(
-  category: string
-): Promise<string | undefined> {
-  const source = await prisma.source.findFirst({
-    where: { name: category },
-  });
-  return source?.id;
-}
-
 // カテゴリからタグIDを取得
 async function getTagIdFromCategory(
   category: string
@@ -68,26 +98,28 @@ async function getTagIdFromCategory(
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const period = (searchParams.get('period') || 'week') as Period;
-    const metric = (searchParams.get('metric') || 'combined') as Metric;
-    const category = searchParams.get('category');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const includeEmptyContent =
-      searchParams.get('includeEmptyContent') === 'true';
-    const excludeUnprocessed =
-      searchParams.get('excludeUnprocessed') === 'true';
-    const excludeLowQuality = searchParams.get('excludeLowQuality') === 'true'; // Default: false
+    const {
+      period,
+      metric,
+      category,
+      limit,
+      includeEmptyContent,
+      excludeUnprocessed,
+      excludeLowQuality,
+    } = querySchema.parse(Object.fromEntries(searchParams));
 
     // PopularCacheを使用
     const popularPeriod = mapPeriodToPopular(period);
 
-    // カテゴリのソースID/タグIDを事前に1回だけ取得（キャッシュキー生成とタグ/ソース判定に使用）
-    const [resolvedSourceId, resolvedTagId] = category
-      ? await Promise.all([
-          getSourceIdFromCategory(category),
-          getTagIdFromCategory(category),
-        ])
-      : [undefined, undefined];
+    // カテゴリのタグIDを事前に取得（キャッシュキー生成とタグ/ソース判定に使用）
+    const resolvedTagId = category
+      ? await getTagIdFromCategory(category)
+      : undefined;
+    // ソースIDはフィルタに不要。キャッシュキーにはカテゴリ名を使用
+    const sourceCacheKey =
+      category && !resolvedTagId
+        ? `name:${encodeURIComponent(category)}`
+        : undefined;
 
     const result = await popularCache.getOrSet(
       popularPeriod,
@@ -246,7 +278,7 @@ export async function GET(request: NextRequest) {
           popularPeriod,
           {
             limit,
-            sourceId: resolvedSourceId,
+            sourceId: sourceCacheKey,
             tagId: resolvedTagId,
             metric,
             includeEmptyContent,
@@ -254,7 +286,7 @@ export async function GET(request: NextRequest) {
             excludeLowQuality,
           }
         )}`;
-        const previousRankings = trendCache.get(rankCacheKey)?.data;
+        const previousRankings = getTrendCache(rankCacheKey);
 
         // ランキング情報を付与
         const rankedArticles = topArticles.map((article, index) => {
@@ -280,6 +312,7 @@ export async function GET(request: NextRequest) {
         };
 
         // 現在のランキングをトレンドキャッシュに保存
+        pruneTrendCache();
         trendCache.set(rankCacheKey, {
           data: rankedArticles,
           timestamp: Date.now(),
@@ -289,7 +322,7 @@ export async function GET(request: NextRequest) {
       },
       {
         limit,
-        sourceId: resolvedSourceId,
+        sourceId: sourceCacheKey,
         tagId: resolvedTagId,
         metric,
         includeEmptyContent,
@@ -303,7 +336,13 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
       },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid query parameters', details: error.errors },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       {

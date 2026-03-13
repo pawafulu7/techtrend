@@ -84,6 +84,8 @@ export class PopularCache {
     }
 
     // 期間に対応するキャッシュインスタンスを使用
+    // RedisCache.getOrSetは内部でRedisエラーをswallowするため、
+    // ここに到達するエラーはfetcher由来。再実行せずそのまま伝播させる
     return await cache.getOrSet(key, fetcher);
   }
 
