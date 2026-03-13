@@ -235,13 +235,13 @@ export async function GET(request: NextRequest) {
 
           switch (metric) {
             case 'bookmarks':
-              score = article.bookmarks;
+              score = article.bookmarks ?? 0;
               break;
             case 'votes':
               score = article.userVotes || 0;
               break;
             case 'quality':
-              score = article.qualityScore;
+              score = article.qualityScore ?? 0;
               break;
             case 'combined':
               // 総合スコア計算
@@ -256,9 +256,9 @@ export async function GET(request: NextRequest) {
               const recencyScore = Math.exp(-ageInDays / 7);
 
               score =
-                article.bookmarks * bookmarkWeight +
+                (article.bookmarks ?? 0) * bookmarkWeight +
                 (article.userVotes || 0) * voteWeight +
-                article.qualityScore * qualityWeight +
+                (article.qualityScore ?? 0) * qualityWeight +
                 recencyScore * 100 * recencyWeight;
               break;
           }
