@@ -216,7 +216,12 @@ async function getPopularArticles(request: NextRequest) {
           ],
         };
         const dbOrderBy = metricOrderMap[metric];
-        const dbTake = dbOrderBy ? limit : undefined;
+        // 単一metric: DB側ソートで正確 → limitで十分
+        // combined: 複合スコア計算が必要 → 十分な候補を取得（上限1000件で安全性確保）
+        const MAX_COMBINED_CANDIDATES = 1000;
+        const dbTake = dbOrderBy
+          ? limit
+          : Math.min(limit * 10, MAX_COMBINED_CANDIDATES);
 
         // 記事取得
         const articles = await prisma.article.findMany({
@@ -239,7 +244,7 @@ async function getPopularArticles(request: NextRequest) {
             tags: true,
           },
           ...(dbOrderBy && { orderBy: dbOrderBy }),
-          ...(dbTake != null && { take: dbTake }),
+          take: dbTake,
         });
 
         // スコア計算とソート
