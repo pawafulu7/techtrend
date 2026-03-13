@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       FROM "Tag" t
       JOIN "_ArticleToTag" at ON t.id = at."B"
       JOIN "Article" a ON at."A" = a.id
-      WHERE a."publishedAt" >= ${sinceIso}::timestamp
+      WHERE a."publishedAt" >= ${sinceIso}::timestamptz
         AND t.name <> ''
         AND t.name IS NOT NULL
         AND NOT EXISTS (
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
           FROM "_ArticleToTag" at2
           JOIN "Article" a2 ON at2."A" = a2.id
           WHERE at2."B" = t.id
-            AND a2."publishedAt" < ${sinceIso}::timestamp
+            AND a2."publishedAt" < ${sinceIso}::timestamptz
         )
       GROUP BY t.id, t.name
       ORDER BY article_count DESC
