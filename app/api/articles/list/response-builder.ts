@@ -69,8 +69,11 @@ function normalizeArticle(
   article: RawArticle,
   companyNameMap: Map<string, string>
 ): LightweightArticle {
+  // Exclude tags from spread to prevent leaking into API response
+  // (tags are only used internally by extractCompanyNames)
+  const { tags: _tags, ...articleWithoutTags } = article;
   const normalized: LightweightArticle = {
-    ...article,
+    ...articleWithoutTags,
     publishedAt:
       article.publishedAt instanceof Date
         ? article.publishedAt.toISOString()

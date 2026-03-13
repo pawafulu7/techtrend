@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseIntParam, VALIDATION_RANGES } from '@/lib/utils/validation';
+import logger from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -61,7 +62,8 @@ export async function GET(request: NextRequest) {
       count: tags.length,
       tags,
     });
-  } catch {
+  } catch (error) {
+    logger.error({ error }, 'Tags new GET failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
