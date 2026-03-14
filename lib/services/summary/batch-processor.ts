@@ -303,6 +303,7 @@ export async function checkNewArticles(
 
   const whereCondition: Prisma.ArticleWhereInput = {
     OR: [{ summary: null }, { summary: '' }],
+    skipReason: null,
     publishedAt: { gte: from },
   };
 

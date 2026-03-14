@@ -95,7 +95,7 @@ export class SummaryManager {
       // Query articles without summaries
       const whereCondition: Prisma.ArticleWhereInput = {
         OR: [{ summary: null }, { summary: '' }],
-        skipReason: null,
+        ...(hasTargetArticleIds ? {} : { skipReason: null }),
       };
 
       if (hasTargetArticleIds) {

@@ -150,6 +150,8 @@ export async function regenerateSummaries(
                   translatedTitle: result.translatedTitle,
                   summaryVersion: SUMMARY_VERSION.CURRENT,
                   summaryComputedAt: new Date(),
+                  summaryError: null,
+                  skipReason: null,
                 },
               });
 
@@ -262,6 +264,8 @@ export async function regenerateSummaries(
               translatedTitle: result.translatedTitle,
               summaryVersion: SUMMARY_VERSION.CURRENT,
               summaryComputedAt: new Date(),
+              summaryError: null,
+              skipReason: null,
             },
           });
 
