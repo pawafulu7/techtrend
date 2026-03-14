@@ -501,7 +501,10 @@ export async function generateMissingSummaries(
     try {
       if (noContentIds.length > 0) {
         await prisma.article.updateMany({
-          where: { id: { in: noContentIds } },
+          where: {
+            id: { in: noContentIds },
+            OR: [{ summary: null }, { summary: '' }],
+          },
           data: {
             skipReason: SkipReason.CONTENT_FETCH_FAILED,
             summaryError: null,
@@ -510,7 +513,10 @@ export async function generateMissingSummaries(
       }
       if (thinContentIds.length > 0) {
         await prisma.article.updateMany({
-          where: { id: { in: thinContentIds } },
+          where: {
+            id: { in: thinContentIds },
+            OR: [{ summary: null }, { summary: '' }],
+          },
           data: {
             skipReason: SkipReason.THIN_CONTENT,
             summaryError: null,

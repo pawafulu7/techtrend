@@ -164,7 +164,10 @@ export class SummaryManager {
       try {
         if (noContentIds.length > 0) {
           await this.prisma.article.updateMany({
-            where: { id: { in: noContentIds } },
+            where: {
+              id: { in: noContentIds },
+              OR: [{ summary: null }, { summary: '' }],
+            },
             data: {
               skipReason: SkipReason.CONTENT_FETCH_FAILED,
               summaryError: null,
@@ -173,7 +176,10 @@ export class SummaryManager {
         }
         if (thinContentIds.length > 0) {
           await this.prisma.article.updateMany({
-            where: { id: { in: thinContentIds } },
+            where: {
+              id: { in: thinContentIds },
+              OR: [{ summary: null }, { summary: '' }],
+            },
             data: {
               skipReason: SkipReason.THIN_CONTENT,
               summaryError: null,
