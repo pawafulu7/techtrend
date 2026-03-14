@@ -11,7 +11,7 @@ import { SortButtons } from '@/app/components/common/sort-buttons';
 import { auth } from '@/lib/auth/auth';
 import { features } from '@/config/features';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
-import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
+import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { PersonalizationToggle } from '@/app/components/personalization';
 import {
   FilterSidebarProvider,
@@ -195,7 +195,11 @@ export default async function Home({ searchParams }: PageProps) {
 
             {/* Article list - 常にフルワイド */}
             <main className="flex h-full flex-col">
-              <Suspense fallback={<ArticleSkeleton />}>
+              <Suspense
+                fallback={
+                  <LoadingSpinner message="記事を読み込んでいます..." />
+                }
+              >
                 <HomeClientInfinite
                   key={`${params.sourceId ?? 'all'}-${params.tag ?? ''}-${params.search ?? ''}`}
                   viewMode={viewMode}

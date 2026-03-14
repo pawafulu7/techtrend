@@ -3,51 +3,6 @@
  * dangerouslySetInnerHTMLの使用を避けるための代替実装
  */
 
-// SSRローディング用のスタイル
-export const ssrLoadingStyles = `
-  @keyframes shimmer {
-    0% {
-      background-position: -1000px 0;
-    }
-    100% {
-      background-position: 1000px 0;
-    }
-  }
-  
-  .skeleton {
-    background: linear-gradient(
-      90deg,
-      #f0f0f0 25%,
-      #e0e0e0 50%,
-      #f0f0f0 75%
-    );
-    background-size: 1000px 100%;
-    animation: shimmer 2s infinite;
-    border-radius: 4px;
-  }
-  
-  .skeleton-container {
-    padding: 1rem;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  
-  .skeleton-header {
-    height: 60px;
-    margin-bottom: 1rem;
-  }
-  
-  .skeleton-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.5rem;
-  }
-  
-  .skeleton-card {
-    height: 200px;
-  }
-`;
-
 // テーマ切り替え用のスタイル
 export const themeStyles = `
   :root {
@@ -121,27 +76,6 @@ export const themeInitScript = `
     if (typeof console !== 'undefined' && console.warn) {
       console.warn('Failed to initialize theme from storage:', error);
     }
-  }
-})();
-`;
-
-// SSRローディング初期化スクリプト
-export const ssrLoadingInitScript = `
-(function() {
-  // DOMContentLoadedを待つ
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-      // ローディング要素を削除
-      const loader = document.getElementById('ssr-loading');
-      if (loader) {
-        setTimeout(function() {
-          loader.style.opacity = '0';
-          setTimeout(function() {
-            loader.remove();
-          }, 300);
-        }, 100);
-      }
-    });
   }
 })();
 `;

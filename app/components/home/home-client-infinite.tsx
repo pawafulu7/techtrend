@@ -3,7 +3,7 @@
 import { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
-import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
+import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
@@ -355,7 +355,7 @@ export function HomeClientInfinite({
         )}
 
         {isLoading && !isCategoryChanging ? (
-          <ArticleSkeleton />
+          <LoadingSpinner message="記事を読み込んでいます..." />
         ) : allArticles.length > 0 ? (
           <div className="relative">
             <ArticleList
@@ -403,7 +403,7 @@ export function HomeClientInfinite({
             )}
           </div>
         ) : isLoading ? (
-          <ArticleSkeleton />
+          <LoadingSpinner message="記事を読み込んでいます..." />
         ) : (
           <div className="flex min-h-[400px] items-center justify-center px-4">
             <CardV2 className="mx-auto max-w-md">
