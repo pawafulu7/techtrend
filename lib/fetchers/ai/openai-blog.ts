@@ -4,7 +4,10 @@ import { BaseFetcher } from '../base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
-import { extractContent, checkContentQuality } from '@/lib/utils/content/content-extractor';
+import {
+  extractContent,
+  checkContentQuality,
+} from '@/lib/utils/content/content-extractor';
 import { logger } from '@/lib/cli/utils/logger';
 
 interface OpenAIRSSItem {
@@ -25,9 +28,7 @@ export class OpenAIBlogFetcher extends BaseFetcher {
     super(source);
     this.parser = new Parser({
       customFields: {
-        item: [
-          ['content:encoded', 'contentEncoded'],
-        ],
+        item: [['content:encoded', 'contentEncoded']],
       },
     });
   }
@@ -59,7 +60,9 @@ export class OpenAIBlogFetcher extends BaseFetcher {
         try {
           if (!item.title || !item.link) continue;
 
-          const publishedAt = item.pubDate ? parseRSSDate(item.pubDate) : new Date();
+          const publishedAt = item.pubDate
+            ? parseRSSDate(item.pubDate)
+            : new Date();
 
           // 30日以内かつ未来でない記事のみ処理
           if (publishedAt < thirtyDaysAgo || publishedAt > now) continue;
@@ -67,12 +70,16 @@ export class OpenAIBlogFetcher extends BaseFetcher {
           // コンテンツを抽出
           // Note: Enrichment is handled by collect-feeds.ts standard flow
           // with proper timeout protection via Worker Threads
-          const content = extractContent(item as unknown as Record<string, unknown>);
+          const content = extractContent(
+            item as unknown as Record<string, unknown>
+          );
 
           // コンテンツ品質チェック
           const contentCheck = checkContentQuality(content, item.title);
           if (contentCheck.warning) {
-            logger.warn(`[OpenAI Blog] コンテンツ品質警告: ${contentCheck.warning}`);
+            logger.debug(
+              `[OpenAI Blog] コンテンツ品質警告: ${contentCheck.warning}`
+            );
           }
 
           const article: CreateArticleInput = {
@@ -97,7 +104,11 @@ export class OpenAIBlogFetcher extends BaseFetcher {
           processedCount++;
         } catch (itemError) {
           logger.error(`[OpenAI Blog] 記事処理エラー: ${itemError}`);
-          errors.push(itemError instanceof Error ? itemError : new Error(String(itemError)));
+          errors.push(
+            itemError instanceof Error
+              ? itemError
+              : new Error(String(itemError))
+          );
         }
       }
 

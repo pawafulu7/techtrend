@@ -275,9 +275,9 @@ async function processSource({
             });
             updatedCount++;
             if (updates.sourceId) {
-              console.error(`   既存記事を更新（sourceId + content）: ${article.title.substring(0, 50)}...`);
+              console.debug(`   既存記事を更新（sourceId + content）: ${article.title.substring(0, 50)}...`);
             } else {
-              console.error(`   既存記事を更新（content補完）: ${article.title.substring(0, 50)}...`);
+              console.debug(`   既存記事を更新（content補完）: ${article.title.substring(0, 50)}...`);
             }
           } else {
             duplicateCount++;
@@ -296,7 +296,7 @@ async function processSource({
         });
 
         if (shouldSkip) {
-          console.error(`   重複記事を検出: ${article.title.substring(0, 50)}...`);
+          console.debug(`   重複記事を検出: ${article.title.substring(0, 50)}...`);
           duplicateCount++;
           continue;
         }
@@ -362,7 +362,7 @@ async function processSource({
           const enricher = enricherFactory.getEnricher(article.url);
           if (enricher) {
             try {
-              console.error(`   [INFO] エンリッチメント実行: ${article.title.substring(0, 40)}...`);
+              console.debug(`   [INFO] エンリッチメント実行: ${article.title.substring(0, 40)}...`);
               const enrichedData = await runWithTimeout(
                 () => enricher.enrich(article.url),
                 POST_SAVE_ENRICH_TIMEOUT_MS,

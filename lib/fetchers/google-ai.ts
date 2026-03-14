@@ -4,7 +4,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
-import { extractContent, checkContentQuality } from '@/lib/utils/content/content-extractor';
+import { extractContent } from '@/lib/utils/content/content-extractor';
 
 interface GoogleAIRSSItem {
   title?: string;
@@ -23,9 +23,7 @@ export class GoogleAIFetcher extends BaseFetcher {
     super(source);
     this.parser = new Parser({
       customFields: {
-        item: [
-          ['content:encoded', 'contentEncoded'],
-        ],
+        item: [['content:encoded', 'contentEncoded']],
       },
     });
   }
@@ -39,27 +37,28 @@ export class GoogleAIFetcher extends BaseFetcher {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     try {
-      const feed = await this.retry(() => this.parser.parseURL(this.source.url));
-      
+      const feed = await this.retry(() =>
+        this.parser.parseURL(this.source.url)
+      );
+
       for (const item of feed.items || []) {
         try {
           if (!item.title || !item.link) continue;
 
-          const publishedAt = item.pubDate ? parseRSSDate(item.pubDate) : new Date();
-          
+          const publishedAt = item.pubDate
+            ? parseRSSDate(item.pubDate)
+            : new Date();
+
           // 30日以内の記事のみ処理
           if (publishedAt < thirtyDaysAgo) {
             continue;
           }
 
           // コンテンツを抽出
-          const content = extractContent(item as unknown as Record<string, unknown>);
-          
-          // コンテンツ品質チェック
-          const contentCheck = checkContentQuality(content, item.title);
-          if (contentCheck.warning) {
-          }
-          
+          const content = extractContent(
+            item as unknown as Record<string, unknown>
+          );
+
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
             url: this.normalizeUrl(item.link),
@@ -80,11 +79,19 @@ export class GoogleAIFetcher extends BaseFetcher {
 
           articles.push(article);
         } catch (_error) {
-          errors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
+          errors.push(
+            new Error(
+              `Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`
+            )
+          );
         }
       }
     } catch (_error) {
-      errors.push(new Error(`Failed to fetch RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`));
+      errors.push(
+        new Error(
+          `Failed to fetch RSS feed: ${_error instanceof Error ? _error.message : String(_error)}`
+        )
+      );
     }
 
     return { articles, errors };

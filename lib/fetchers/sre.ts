@@ -4,7 +4,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
-import { extractContent, checkContentQuality } from '@/lib/utils/content/content-extractor';
+import { extractContent } from '@/lib/utils/content/content-extractor';
 
 interface SRERSSItem {
   title?: string;
@@ -25,10 +25,13 @@ interface SRERSSItem {
 
 export class SREFetcher extends BaseFetcher {
   private parser: Parser<unknown, SRERSSItem>;
-  
+
   // SRE関連の複数のRSSフィードを統合
   private rssUrls = [
-    { url: 'https://cloud.google.com/blog/products/devops-sre/rss', name: 'Google Cloud SRE' },
+    {
+      url: 'https://cloud.google.com/blog/products/devops-sre/rss',
+      name: 'Google Cloud SRE',
+    },
     { url: 'https://www.datadoghq.com/blog/rss/', name: 'Datadog' },
     { url: 'https://www.hashicorp.com/blog/feed.xml', name: 'HashiCorp' },
     { url: 'https://www.cncf.io/feed/', name: 'CNCF' },
@@ -41,9 +44,7 @@ export class SREFetcher extends BaseFetcher {
     this.parser = new Parser({
       timeout: Number(process.env.FETCHER_TIMEOUT_MS ?? 120_000),
       customFields: {
-        item: [
-          ['dc:creator', 'dcCreator'],
-        ],
+        item: [['dc:creator', 'dcCreator']],
       },
     });
   }
@@ -57,52 +58,56 @@ export class SREFetcher extends BaseFetcher {
     for (const feedInfo of this.rssUrls) {
       try {
         const feed = await this.retry(() => this.parser.parseURL(feedInfo.url));
-        
+
         if (!feed.items || feed.items.length === 0) {
           continue;
         }
 
-
         for (const item of feed.items) {
           try {
             if (!item.title || !item.link) continue;
-            
+
             // 重複チェック
             if (seenUrls.has(item.link)) continue;
             seenUrls.add(item.link);
 
             // タグを抽出（必ずSREタグと取得元を含める）
             const tags = this.extractTags(item, feedInfo.name);
-            
+
             // 取得元をタグとして追加（スペースを除去）
-            const sourceName = feedInfo.name.replace(' SRE', '').replace(' Labs', '');
+            const sourceName = feedInfo.name
+              .replace(' SRE', '')
+              .replace(' Labs', '');
             if (!tags.includes(sourceName)) {
               tags.unshift(sourceName);
             }
-            
+
             tags.unshift('SRE'); // 必ずSREタグを先頭に追加
-            
+
             // コンテンツを抽出
-          const content = extractContent(item as unknown as Record<string, unknown>);
-            
-            // コンテンツ品質チェック
-            const contentCheck = checkContentQuality(content, item.title || '');
-            if (contentCheck.warning) {
-            }
+            const content = extractContent(
+              item as unknown as Record<string, unknown>
+            );
 
             const article: CreateArticleInput = {
               title: this.sanitizeText(item.title),
               url: this.normalizeUrl(item.link),
               summary: undefined, // 要約は後で日本語で生成
               content: content || '',
-              publishedAt: item.isoDate ? new Date(item.isoDate) :
-                          item.pubDate ? parseRSSDate(item.pubDate) : new Date(),
+              publishedAt: item.isoDate
+                ? new Date(item.isoDate)
+                : item.pubDate
+                  ? parseRSSDate(item.pubDate)
+                  : new Date(),
               sourceId: this.source.id,
               tagNames: tags,
             };
 
             // サムネイルを抽出
-            if (item.enclosure?.url && item.enclosure.type?.startsWith('image/')) {
+            if (
+              item.enclosure?.url &&
+              item.enclosure.type?.startsWith('image/')
+            ) {
               article.thumbnail = item.enclosure.url;
             } else if (article.content) {
               const thumbnail = this.extractThumbnail(article.content);
@@ -113,19 +118,29 @@ export class SREFetcher extends BaseFetcher {
 
             allArticles.push(article);
           } catch (_error) {
-            allErrors.push(new Error(`Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`));
+            allErrors.push(
+              new Error(
+                `Failed to parse item: ${_error instanceof Error ? _error.message : String(_error)}`
+              )
+            );
           }
         }
 
         // レート制限対策
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (_error) {
-        allErrors.push(new Error(`Failed to fetch SRE ${feedInfo.name} feed: ${_error instanceof Error ? _error.message : String(_error)}`));
+        allErrors.push(
+          new Error(
+            `Failed to fetch SRE ${feedInfo.name} feed: ${_error instanceof Error ? _error.message : String(_error)}`
+          )
+        );
       }
     }
 
     // 日付順にソートして最新80件を返す
-    allArticles.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
+    allArticles.sort(
+      (a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()
+    );
     const limitedArticles = allArticles.slice(0, 80);
 
     return { articles: limitedArticles, errors: allErrors };
@@ -164,11 +179,33 @@ export class SREFetcher extends BaseFetcher {
     // タイトルからSRE関連キーワードを抽出
     const title = item.title || '';
     const sreKeywords = [
-      'Kubernetes', 'k8s', 'Docker', 'Container', 'Terraform', 'Ansible',
-      'Prometheus', 'Grafana', 'Monitoring', 'Observability', 'Incident',
-      'Outage', 'Reliability', 'Performance', 'Scalability', 'DevOps',
-      'CI/CD', 'GitOps', 'Service Mesh', 'Istio', 'Envoy', 'OpenTelemetry',
-      'Chaos Engineering', 'SLO', 'SLI', 'Error Budget', 'Postmortem'
+      'Kubernetes',
+      'k8s',
+      'Docker',
+      'Container',
+      'Terraform',
+      'Ansible',
+      'Prometheus',
+      'Grafana',
+      'Monitoring',
+      'Observability',
+      'Incident',
+      'Outage',
+      'Reliability',
+      'Performance',
+      'Scalability',
+      'DevOps',
+      'CI/CD',
+      'GitOps',
+      'Service Mesh',
+      'Istio',
+      'Envoy',
+      'OpenTelemetry',
+      'Chaos Engineering',
+      'SLO',
+      'SLI',
+      'Error Budget',
+      'Postmortem',
     ];
 
     for (const keyword of sreKeywords) {
