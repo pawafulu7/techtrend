@@ -120,6 +120,11 @@ interface CollectResult {
   articles: ArticleInfo[];
 }
 
+const COLLECT_FEEDS_DEBUG = process.env.COLLECT_FEEDS_DEBUG === '1';
+const debugLog = (message: string) => {
+  if (COLLECT_FEEDS_DEBUG) console.log(message);
+};
+
 const DEFAULT_COLLECT_CONCURRENCY = 5;
 const POST_SAVE_ENRICH_TIMEOUT_MS =
   Number(process.env.POST_SAVE_ENRICH_TIMEOUT_MS ?? '') || 10_000; // 10s default
@@ -275,9 +280,9 @@ async function processSource({
             });
             updatedCount++;
             if (updates.sourceId) {
-              console.error(`   既存記事を更新（sourceId + content）: ${article.title.substring(0, 50)}...`);
+              debugLog(`   既存記事を更新（sourceId + content）: ${article.title.substring(0, 50)}...`);
             } else {
-              console.error(`   既存記事を更新（content補完）: ${article.title.substring(0, 50)}...`);
+              debugLog(`   既存記事を更新（content補完）: ${article.title.substring(0, 50)}...`);
             }
           } else {
             duplicateCount++;
@@ -296,7 +301,7 @@ async function processSource({
         });
 
         if (shouldSkip) {
-          console.error(`   重複記事を検出: ${article.title.substring(0, 50)}...`);
+          debugLog(`   重複記事を検出: ${article.title.substring(0, 50)}...`);
           duplicateCount++;
           continue;
         }
@@ -362,7 +367,7 @@ async function processSource({
           const enricher = enricherFactory.getEnricher(article.url);
           if (enricher) {
             try {
-              console.error(`   [INFO] エンリッチメント実行: ${article.title.substring(0, 40)}...`);
+              debugLog(`   [INFO] エンリッチメント実行: ${article.title.substring(0, 40)}...`);
               const enrichedData = await runWithTimeout(
                 () => enricher.enrich(article.url),
                 POST_SAVE_ENRICH_TIMEOUT_MS,
