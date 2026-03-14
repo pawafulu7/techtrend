@@ -111,36 +111,35 @@ export async function processArticleWithTimeout(
     // Record error in database
     try {
       const isTransientError = isRetryable(classifyError(error));
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const pendingWhere: Prisma.ArticleWhereInput = {
+        id: article.id,
+        skipReason: null,
+        OR: [{ summary: null }, { summary: '' }],
+      };
 
       if (isTransientError) {
-        if (article.summaryError) {
-          // Second failure - give up
-          await prisma.article.update({
-            where: { id: article.id },
+        const { count } = await prisma.article.updateMany({
+          where: { ...pendingWhere, summaryError: null },
+          data: { summaryError: errorMsg },
+        });
+
+        if (count === 0) {
+          await prisma.article.updateMany({
+            where: pendingWhere,
             data: {
               skipReason: SkipReason.QUALITY_FAILED,
-              summaryError:
-                error instanceof Error ? error.message : String(error),
-            },
-          });
-        } else {
-          // First failure - record error for retry
-          await prisma.article.update({
-            where: { id: article.id },
-            data: {
-              summaryError:
-                error instanceof Error ? error.message : String(error),
+              summaryError: errorMsg,
             },
           });
         }
       } else {
         // Content/quality issue - skip immediately, no retry
-        await prisma.article.update({
-          where: { id: article.id },
+        await prisma.article.updateMany({
+          where: pendingWhere,
           data: {
             skipReason: SkipReason.QUALITY_FAILED,
-            summaryError:
-              error instanceof Error ? error.message : String(error),
+            summaryError: errorMsg,
           },
         });
       }

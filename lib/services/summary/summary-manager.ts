@@ -165,13 +165,19 @@ export class SummaryManager {
         if (noContentIds.length > 0) {
           await this.prisma.article.updateMany({
             where: { id: { in: noContentIds } },
-            data: { skipReason: SkipReason.CONTENT_FETCH_FAILED },
+            data: {
+              skipReason: SkipReason.CONTENT_FETCH_FAILED,
+              summaryError: null,
+            },
           });
         }
         if (thinContentIds.length > 0) {
           await this.prisma.article.updateMany({
             where: { id: { in: thinContentIds } },
-            data: { skipReason: SkipReason.THIN_CONTENT },
+            data: {
+              skipReason: SkipReason.THIN_CONTENT,
+              summaryError: null,
+            },
           });
         }
       } catch (dbError) {

@@ -337,12 +337,17 @@ export async function generateMissingSummaries(
     const daysAgo = new Date();
     daysAgo.setDate(daysAgo.getDate() - (options.days || 7));
 
+    const hasTargetArticleIds =
+      Array.isArray(options.articleIds) && options.articleIds.length > 0;
+
     const where: Prisma.ArticleWhereInput = {
       OR: [{ summary: null }, { summary: '' }],
-      skipReason: null,
-      publishedAt: {
-        gte: daysAgo,
-      },
+      ...(hasTargetArticleIds
+        ? { id: { in: options.articleIds } }
+        : {
+            skipReason: null,
+            publishedAt: { gte: daysAgo },
+          }),
     };
 
     if (options.source) {
@@ -353,7 +358,9 @@ export async function generateMissingSummaries(
       where,
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
-      take: normalizeBatchSize(options.batch),
+      take: hasTargetArticleIds
+        ? options.articleIds!.length
+        : normalizeBatchSize(options.batch),
     };
 
     const articles = (await prisma.article.findMany(
@@ -449,16 +456,31 @@ export async function generateMissingSummaries(
           const errorMsg =
             error instanceof Error ? error.message : String(error);
           const isTransientError = isRetryable(classifyError(error));
+          const pendingWhere: Prisma.ArticleWhereInput = {
+            id: article.id,
+            skipReason: null,
+            OR: [{ summary: null }, { summary: '' }],
+          };
 
-          if (isTransientError && !article.summaryError) {
-            await prisma.article.update({
-              where: { id: article.id },
+          if (isTransientError) {
+            const { count } = await prisma.article.updateMany({
+              where: { ...pendingWhere, summaryError: null },
               data: { summaryError: errorMsg },
             });
+
+            if (count === 0) {
+              await prisma.article.updateMany({
+                where: pendingWhere,
+                data: {
+                  skipReason: SkipReason.QUALITY_FAILED,
+                  summaryError: errorMsg,
+                },
+              });
+            }
           } else {
             // Non-transient error or second transient failure - give up
-            await prisma.article.update({
-              where: { id: article.id },
+            await prisma.article.updateMany({
+              where: pendingWhere,
               data: {
                 skipReason: SkipReason.QUALITY_FAILED,
                 summaryError: errorMsg,
@@ -480,13 +502,19 @@ export async function generateMissingSummaries(
       if (noContentIds.length > 0) {
         await prisma.article.updateMany({
           where: { id: { in: noContentIds } },
-          data: { skipReason: SkipReason.CONTENT_FETCH_FAILED },
+          data: {
+            skipReason: SkipReason.CONTENT_FETCH_FAILED,
+            summaryError: null,
+          },
         });
       }
       if (thinContentIds.length > 0) {
         await prisma.article.updateMany({
           where: { id: { in: thinContentIds } },
-          data: { skipReason: SkipReason.THIN_CONTENT },
+          data: {
+            skipReason: SkipReason.THIN_CONTENT,
+            summaryError: null,
+          },
         });
       }
     } catch (dbError) {

@@ -546,12 +546,11 @@ cron.schedule('30 15 * * *', async () => {
     console.error(regenerateOutput);
 
     // 欠損要約の補完を実行
-    console.error('[INFO] 欠損要約の補完を実行中...');
-    const { stdout: missingOutput }: ExecutionResult = await execAsync(
+    await runCommandWithTimeout(
+      '欠損要約の補完',
       'npx tsx scripts/scheduled/manage-summaries.ts missing --days 3 --batch 10',
-      { timeout: 10 * 60 * 1000 }
+      10 * 60 * 1000
     );
-    console.error(missingOutput);
 
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
