@@ -30,20 +30,14 @@ export class AWSEnricher extends BaseContentEnricher {
     url: string
   ): Promise<{ content: string | null; thumbnail?: string | null } | null> {
     try {
-      // タイムアウト設定（15秒）
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
       const response = await fetch(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; TechTrend/1.0)',
           Accept: 'text/html,application/xhtml+xml',
           'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',
         },
-        signal: controller.signal,
+        signal: AbortSignal.timeout(15000),
       });
-
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         logger.error(
@@ -156,7 +150,7 @@ export class AWSEnricher extends BaseContentEnricher {
       };
     } catch (error) {
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
+        if (error.name === 'TimeoutError' || error.name === 'AbortError') {
           logger.error(
             { url },
             '[AWS Enricher] Request timeout after 15 seconds'
