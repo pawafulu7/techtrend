@@ -54,26 +54,8 @@ export class AWSEnricher extends BaseContentEnricher {
       let content = '';
       let thumbnail: string | null = null;
 
-      // メインコンテンツエリアを探す（複数のセレクタを試す）
-      const contentSelectors = [
-        // AWS Blog specific selectors
-        '.blog-post-content',
-        '.blog-content',
-        'article .content',
-        '.entry-content',
-        'main article',
-        '[itemprop="articleBody"]',
-        '.post-content',
-        '#aws-page-content',
-        '.aws-text-box',
-        // What's New specific selectors
-        '.whatsnew-content',
-        '.whats-new-content',
-        // Generic fallbacks
-        'article',
-        'main',
-        '.content',
-      ];
+      // メインコンテンツエリアを探す
+      const contentSelectors = this.getContentSelectors();
 
       for (const selector of contentSelectors) {
         const element = $(selector);
@@ -206,14 +188,23 @@ export class AWSEnricher extends BaseContentEnricher {
    */
   protected getContentSelectors(): string[] {
     return [
+      // AWS Blog specific selectors
       '.blog-post-content',
       '.blog-content',
       'article .content',
       '.entry-content',
+      'main article',
+      '[itemprop="articleBody"]',
+      '.post-content',
       '#aws-page-content',
       '.aws-text-box',
+      // What's New specific selectors
+      '.whatsnew-content',
+      '.whats-new-content',
+      // Generic fallbacks
       'article',
       'main',
+      '.content',
     ];
   }
 
