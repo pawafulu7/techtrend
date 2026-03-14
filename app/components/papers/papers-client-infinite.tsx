@@ -3,7 +3,7 @@
 import { useMemo, useCallback, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
-import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
+import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
@@ -206,7 +206,7 @@ export function PapersClientInfinite({
       )}
 
       {isLoading ? (
-        <ArticleSkeleton />
+        <LoadingSpinner message="論文を読み込んでいます..." />
       ) : allArticles.length > 0 ? (
         <div className="relative">
           <ArticleList

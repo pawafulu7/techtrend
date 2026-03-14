@@ -4,7 +4,7 @@ import { FileText } from 'lucide-react';
 import { SearchBox } from '@/app/components/common/search-box';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { SortButtons } from '@/app/components/common/sort-buttons';
-import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
+import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { parseViewModeFromCookie } from '@/lib/cookies/view-mode-cookie';
 import { getFilterPreferencesFromCookies } from '@/lib/cookies/filter-preferences-cookie';
 import {
@@ -68,7 +68,9 @@ export default async function PapersPage({ searchParams }: PageProps) {
           </div>
 
           {/* 論文リスト */}
-          <Suspense fallback={<ArticleSkeleton />}>
+          <Suspense
+            fallback={<LoadingSpinner message="論文を読み込んでいます..." />}
+          >
             <PapersClientInfinite
               key={`papers-${params.search || ''}-${params.tag || ''}`}
               viewMode={viewMode}

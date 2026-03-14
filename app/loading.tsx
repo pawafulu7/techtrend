@@ -1,28 +1,5 @@
-import { Loader2 } from 'lucide-react';
+import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 
 export default function Loading() {
-  // メインコンテンツのみローディング表示
-  return (
-    <div className="h-full flex items-center justify-center">
-      <div className="flex flex-col items-center space-y-4">
-        {/* メインローダー */}
-        <div className="relative">
-          <div className="h-24 w-24 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-          <Loader2 className="absolute inset-0 m-auto h-10 w-10 text-primary animate-pulse" />
-        </div>
-        
-        {/* テキスト */}
-        <div className="text-center space-y-2">
-          <p className="text-lg font-semibold text-foreground">
-            読み込み中
-          </p>
-          <div className="flex items-center justify-center space-x-1">
-            <span className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
-            <span className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
-            <span className="h-2 w-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <LoadingSpinner />;
 }

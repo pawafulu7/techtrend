@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
-import { ArticleSkeleton } from '@/app/components/article/article-skeleton';
+import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { ServerPagination } from '@/app/components/common/server-pagination';
 import type { ArticleWithRelations } from '@/types/models';
 import type { ViewMode } from '@/types/components';
@@ -79,7 +79,7 @@ export function HomeClient({ viewMode }: HomeClientProps) {
       {/* 記事リスト */}
       <div className="flex-1 overflow-y-auto px-4 py-4 lg:px-6">
         {loading ? (
-          <ArticleSkeleton />
+          <LoadingSpinner message="記事を読み込んでいます..." />
         ) : articles.length > 0 ? (
           <ArticleList articles={articles} viewMode={viewMode} />
         ) : (
