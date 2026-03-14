@@ -5,7 +5,7 @@
  * Extracted from scripts/scheduled/manage-summaries.ts for better reusability and testability.
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, SkipReason } from '@prisma/client';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { logger, sanitizeError } from '@/lib/logger';
 import {
@@ -139,6 +139,9 @@ export class SummaryManager {
       }> = [];
       let skipped = 0;
 
+      const noContentIds: string[] = [];
+      const thinContentIds: string[] = [];
+
       for (const article of articles) {
         const validation = validateArticleContent(article);
         if (!validation.valid) {
@@ -146,25 +149,36 @@ export class SummaryManager {
             { articleId: article.id, reason: validation.reason },
             'Skipping article'
           );
-          // Record skip reason in database
-          try {
-            const skipReason = validation.reason?.includes('no content')
-              ? 'CONTENT_FETCH_FAILED'
-              : 'THIN_CONTENT';
-            await this.prisma.article.update({
-              where: { id: article.id },
-              data: { skipReason },
-            });
-          } catch (dbError) {
-            logger.warn(
-              { articleId: article.id, error: sanitizeError(dbError) },
-              'Failed to record skip reason'
-            );
+          if (validation.reasonCode === 'NO_CONTENT') {
+            noContentIds.push(article.id);
+          } else {
+            thinContentIds.push(article.id);
           }
           skipped++;
         } else {
           validArticles.push({ article, content: validation.content! });
         }
+      }
+
+      // Batch update skip reasons for validation failures
+      try {
+        if (noContentIds.length > 0) {
+          await this.prisma.article.updateMany({
+            where: { id: { in: noContentIds } },
+            data: { skipReason: SkipReason.CONTENT_FETCH_FAILED },
+          });
+        }
+        if (thinContentIds.length > 0) {
+          await this.prisma.article.updateMany({
+            where: { id: { in: thinContentIds } },
+            data: { skipReason: SkipReason.THIN_CONTENT },
+          });
+        }
+      } catch (dbError) {
+        logger.warn(
+          { error: sanitizeError(dbError) },
+          'Failed to record skip reasons'
+        );
       }
 
       if (validArticles.length === 0) {

@@ -4,9 +4,10 @@
  * Handles parallel processing with timeout, rate limiting, and error tracking.
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, SkipReason } from '@prisma/client';
 import pLimit from 'p-limit';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { classifyError, isRetryable } from '@/lib/fetchers/retry-handler';
 import { logger, sanitizeError } from '@/lib/logger';
 import { SUMMARY_VERSION } from '@/types/article';
 import type { ArticleWithSource } from '@/types/models';
@@ -109,13 +110,7 @@ export async function processArticleWithTimeout(
 
     // Record error in database
     try {
-      const isTransientError =
-        isTimeout ||
-        isRateLimit ||
-        (error instanceof Error &&
-          (error.message.includes('503') ||
-            error.message.includes('500') ||
-            error.message.includes('502')));
+      const isTransientError = isRetryable(classifyError(error));
 
       if (isTransientError) {
         if (article.summaryError) {
@@ -123,7 +118,7 @@ export async function processArticleWithTimeout(
           await prisma.article.update({
             where: { id: article.id },
             data: {
-              skipReason: 'QUALITY_FAILED',
+              skipReason: SkipReason.QUALITY_FAILED,
               summaryError:
                 error instanceof Error ? error.message : String(error),
             },
@@ -143,7 +138,7 @@ export async function processArticleWithTimeout(
         await prisma.article.update({
           where: { id: article.id },
           data: {
-            skipReason: 'QUALITY_FAILED',
+            skipReason: SkipReason.QUALITY_FAILED,
             summaryError:
               error instanceof Error ? error.message : String(error),
           },

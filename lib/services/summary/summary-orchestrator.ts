@@ -4,8 +4,9 @@
  * Handles regeneration, missing summary detection, and sequential processing flows.
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, SkipReason } from '@prisma/client';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { classifyError, isRetryable } from '@/lib/fetchers/retry-handler';
 import { logger, sanitizeError } from '@/lib/logger';
 import { SUMMARY_VERSION } from '@/types/article';
 import type { ArticleWithSource } from '@/types/models';
@@ -34,6 +35,7 @@ interface ContentValidationResult {
   valid: boolean;
   content?: string;
   reason?: string;
+  reasonCode?: 'NO_CONTENT' | 'THIN_CONTENT';
 }
 
 /**
@@ -46,13 +48,18 @@ export function validateArticleContent(
   const contentLength = article.content?.trim().length || 0;
 
   if (contentLength === 0) {
-    return { valid: false, reason: 'no content available' };
+    return {
+      valid: false,
+      reason: 'no content available',
+      reasonCode: 'NO_CONTENT' as const,
+    };
   }
 
   if (MIN_CONTENT_LENGTH > 0 && contentLength < MIN_CONTENT_LENGTH) {
     return {
       valid: false,
       reason: `content too short (${contentLength} < ${MIN_CONTENT_LENGTH})`,
+      reasonCode: 'THIN_CONTENT' as const,
     };
   }
 
@@ -363,6 +370,9 @@ export async function generateMissingSummaries(
     let errors = 0;
     let skipped = 0;
 
+    const noContentIds: string[] = [];
+    const thinContentIds: string[] = [];
+
     for (const article of articles) {
       try {
         const validation = validateArticleContent(article);
@@ -371,20 +381,10 @@ export async function generateMissingSummaries(
             { articleId: article.id, reason: validation.reason },
             'Skipping article'
           );
-          // Record skip reason in database
-          try {
-            const skipReason = validation.reason?.includes('no content')
-              ? 'CONTENT_FETCH_FAILED'
-              : 'THIN_CONTENT';
-            await prisma.article.update({
-              where: { id: article.id },
-              data: { skipReason },
-            });
-          } catch (dbError) {
-            logger.warn(
-              { articleId: article.id, error: sanitizeError(dbError) },
-              'Failed to record skip reason'
-            );
+          if (validation.reasonCode === 'NO_CONTENT') {
+            noContentIds.push(article.id);
+          } else {
+            thinContentIds.push(article.id);
           }
           skipped++;
           continue;
@@ -444,13 +444,7 @@ export async function generateMissingSummaries(
         try {
           const errorMsg =
             error instanceof Error ? error.message : String(error);
-          const isTransientError =
-            errorMsg.includes('timed out') ||
-            errorMsg.includes('429') ||
-            errorMsg.includes('rate limit') ||
-            errorMsg.includes('503') ||
-            errorMsg.includes('500') ||
-            errorMsg.includes('502');
+          const isTransientError = isRetryable(classifyError(error));
 
           if (isTransientError && !article.summaryError) {
             await prisma.article.update({
@@ -462,7 +456,7 @@ export async function generateMissingSummaries(
             await prisma.article.update({
               where: { id: article.id },
               data: {
-                skipReason: 'QUALITY_FAILED',
+                skipReason: SkipReason.QUALITY_FAILED,
                 summaryError: errorMsg,
               },
             });
@@ -475,6 +469,27 @@ export async function generateMissingSummaries(
         }
         errors++;
       }
+    }
+
+    // Batch update skip reasons for validation failures
+    try {
+      if (noContentIds.length > 0) {
+        await prisma.article.updateMany({
+          where: { id: { in: noContentIds } },
+          data: { skipReason: SkipReason.CONTENT_FETCH_FAILED },
+        });
+      }
+      if (thinContentIds.length > 0) {
+        await prisma.article.updateMany({
+          where: { id: { in: thinContentIds } },
+          data: { skipReason: SkipReason.THIN_CONTENT },
+        });
+      }
+    } catch (dbError) {
+      logger.warn(
+        { error: sanitizeError(dbError) },
+        'Failed to record skip reasons'
+      );
     }
 
     logger.info({ generated, skipped, errors }, 'Missing summaries completed');
