@@ -1,4 +1,5 @@
 import { TrendingUp } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface LoadingSpinnerProps {
   message?: string;
@@ -13,16 +14,14 @@ export function LoadingSpinner({
     <div
       role="status"
       aria-live="polite"
-      className={`flex flex-col items-center justify-center gap-6 ${
+      className={cn(
+        'flex flex-col items-center justify-center gap-6',
         fullPage ? 'min-h-[400px]' : 'py-12'
-      }`}
+      )}
     >
       {/* Brand mark */}
       <div className="flex items-center gap-2">
-        <TrendingUp
-          className="text-primary h-6 w-6 motion-reduce:animate-none"
-          aria-hidden="true"
-        />
+        <TrendingUp className="text-primary h-6 w-6" aria-hidden="true" />
         <span className="text-foreground text-base font-semibold tracking-tight">
           TechTrend
         </span>
