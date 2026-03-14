@@ -16,7 +16,7 @@ export function LoadingSpinner({
       aria-live="polite"
       className={cn(
         'flex flex-col items-center justify-center gap-6',
-        fullPage ? 'min-h-[400px]' : 'py-12'
+        fullPage ? 'h-full min-h-[400px]' : 'py-12'
       )}
     >
       {/* Brand mark */}
