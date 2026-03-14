@@ -95,6 +95,7 @@ export class SummaryManager {
       // Query articles without summaries
       const whereCondition: Prisma.ArticleWhereInput = {
         OR: [{ summary: null }, { summary: '' }],
+        skipReason: null,
       };
 
       if (hasTargetArticleIds) {
@@ -145,6 +146,21 @@ export class SummaryManager {
             { articleId: article.id, reason: validation.reason },
             'Skipping article'
           );
+          // Record skip reason in database
+          try {
+            const skipReason = validation.reason?.includes('no content')
+              ? 'CONTENT_FETCH_FAILED'
+              : 'THIN_CONTENT';
+            await this.prisma.article.update({
+              where: { id: article.id },
+              data: { skipReason },
+            });
+          } catch (dbError) {
+            logger.warn(
+              { articleId: article.id, error: sanitizeError(dbError) },
+              'Failed to record skip reason'
+            );
+          }
           skipped++;
         } else {
           validArticles.push({ article, content: validation.content! });

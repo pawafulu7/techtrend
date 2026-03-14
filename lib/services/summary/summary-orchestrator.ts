@@ -328,6 +328,7 @@ export async function generateMissingSummaries(
 
     const where: Prisma.ArticleWhereInput = {
       OR: [{ summary: null }, { summary: '' }],
+      skipReason: null,
       publishedAt: {
         gte: daysAgo,
       },
@@ -370,6 +371,21 @@ export async function generateMissingSummaries(
             { articleId: article.id, reason: validation.reason },
             'Skipping article'
           );
+          // Record skip reason in database
+          try {
+            const skipReason = validation.reason?.includes('no content')
+              ? 'CONTENT_FETCH_FAILED'
+              : 'THIN_CONTENT';
+            await prisma.article.update({
+              where: { id: article.id },
+              data: { skipReason },
+            });
+          } catch (dbError) {
+            logger.warn(
+              { articleId: article.id, error: sanitizeError(dbError) },
+              'Failed to record skip reason'
+            );
+          }
           skipped++;
           continue;
         }
@@ -389,6 +405,8 @@ export async function generateMissingSummaries(
               translatedTitle: result.translatedTitle,
               summaryVersion: SUMMARY_VERSION.CURRENT,
               summaryComputedAt: new Date(),
+              summaryError: null,
+              skipReason: null,
             },
           });
 
@@ -422,6 +440,39 @@ export async function generateMissingSummaries(
           { articleId: article.id, error: sanitizeError(error) },
           'Error processing article'
         );
+        // Record error in database
+        try {
+          const errorMsg =
+            error instanceof Error ? error.message : String(error);
+          const isTransientError =
+            errorMsg.includes('timed out') ||
+            errorMsg.includes('429') ||
+            errorMsg.includes('rate limit') ||
+            errorMsg.includes('503') ||
+            errorMsg.includes('500') ||
+            errorMsg.includes('502');
+
+          if (isTransientError && !article.summaryError) {
+            await prisma.article.update({
+              where: { id: article.id },
+              data: { summaryError: errorMsg },
+            });
+          } else {
+            // Non-transient error or second transient failure - give up
+            await prisma.article.update({
+              where: { id: article.id },
+              data: {
+                skipReason: 'QUALITY_FAILED',
+                summaryError: errorMsg,
+              },
+            });
+          }
+        } catch (dbError) {
+          logger.warn(
+            { articleId: article.id, error: sanitizeError(dbError) },
+            'Failed to record summary error'
+          );
+        }
         errors++;
       }
     }

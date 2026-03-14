@@ -544,7 +544,15 @@ cron.schedule('30 15 * * *', async () => {
     console.error('[INFO] 低品質記事の自動再生成を実行中...');
     const { stdout: regenerateOutput }: ExecutionResult = await execAsync('npx tsx scripts/scheduled/auto-regenerate-low-quality.ts --threshold 70 --limit 10');
     console.error(regenerateOutput);
-    
+
+    // 欠損要約の補完を実行
+    console.error('[INFO] 欠損要約の補完を実行中...');
+    const { stdout: missingOutput }: ExecutionResult = await execAsync(
+      'npx tsx scripts/scheduled/manage-summaries.ts missing --days 3 --batch 10',
+      { timeout: 10 * 60 * 1000 }
+    );
+    console.error(missingOutput);
+
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
     console.error(`[INFO] 品質チェックと自動再生成が完了: ${endTime.toLocaleString('ja-JP')} (${duration}秒)`);

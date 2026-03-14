@@ -107,6 +107,55 @@ export async function processArticleWithTimeout(
       'Error processing article'
     );
 
+    // Record error in database
+    try {
+      const isTransientError =
+        isTimeout ||
+        isRateLimit ||
+        (error instanceof Error &&
+          (error.message.includes('503') ||
+            error.message.includes('500') ||
+            error.message.includes('502')));
+
+      if (isTransientError) {
+        if (article.summaryError) {
+          // Second failure - give up
+          await prisma.article.update({
+            where: { id: article.id },
+            data: {
+              skipReason: 'QUALITY_FAILED',
+              summaryError:
+                error instanceof Error ? error.message : String(error),
+            },
+          });
+        } else {
+          // First failure - record error for retry
+          await prisma.article.update({
+            where: { id: article.id },
+            data: {
+              summaryError:
+                error instanceof Error ? error.message : String(error),
+            },
+          });
+        }
+      } else {
+        // Content/quality issue - skip immediately, no retry
+        await prisma.article.update({
+          where: { id: article.id },
+          data: {
+            skipReason: 'QUALITY_FAILED',
+            summaryError:
+              error instanceof Error ? error.message : String(error),
+          },
+        });
+      }
+    } catch (dbError) {
+      logger.warn(
+        { articleId: article.id, error: sanitizeError(dbError) },
+        'Failed to record summary error'
+      );
+    }
+
     return { success: false, articleId: article.id };
   } finally {
     clearTimeout(timeoutId);
@@ -144,6 +193,8 @@ async function processArticle(
         translatedTitle: result.translatedTitle,
         summaryVersion: SUMMARY_VERSION.CURRENT,
         summaryComputedAt: new Date(),
+        summaryError: null,
+        skipReason: null,
       },
     });
 
