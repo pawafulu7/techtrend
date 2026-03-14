@@ -4,9 +4,10 @@
  * Handles parallel processing with timeout, rate limiting, and error tracking.
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, SkipReason } from '@prisma/client';
 import pLimit from 'p-limit';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { classifyError, isRetryable } from '@/lib/fetchers/retry-handler';
 import { logger, sanitizeError } from '@/lib/logger';
 import { SUMMARY_VERSION } from '@/types/article';
 import type { ArticleWithSource } from '@/types/models';
@@ -107,6 +108,48 @@ export async function processArticleWithTimeout(
       'Error processing article'
     );
 
+    // Record error in database
+    try {
+      const isTransientError = isRetryable(classifyError(error));
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const pendingWhere: Prisma.ArticleWhereInput = {
+        id: article.id,
+        skipReason: null,
+        OR: [{ summary: null }, { summary: '' }],
+      };
+
+      if (isTransientError) {
+        const { count } = await prisma.article.updateMany({
+          where: { ...pendingWhere, summaryError: null },
+          data: { summaryError: errorMsg },
+        });
+
+        if (count === 0) {
+          await prisma.article.updateMany({
+            where: pendingWhere,
+            data: {
+              skipReason: SkipReason.QUALITY_FAILED,
+              summaryError: errorMsg,
+            },
+          });
+        }
+      } else {
+        // Content/quality issue - skip immediately, no retry
+        await prisma.article.updateMany({
+          where: pendingWhere,
+          data: {
+            skipReason: SkipReason.QUALITY_FAILED,
+            summaryError: errorMsg,
+          },
+        });
+      }
+    } catch (dbError) {
+      logger.warn(
+        { articleId: article.id, error: sanitizeError(dbError) },
+        'Failed to record summary error'
+      );
+    }
+
     return { success: false, articleId: article.id };
   } finally {
     clearTimeout(timeoutId);
@@ -144,6 +187,8 @@ async function processArticle(
         translatedTitle: result.translatedTitle,
         summaryVersion: SUMMARY_VERSION.CURRENT,
         summaryComputedAt: new Date(),
+        summaryError: null,
+        skipReason: null,
       },
     });
 
@@ -257,6 +302,7 @@ export async function checkNewArticles(
 
   const whereCondition: Prisma.ArticleWhereInput = {
     OR: [{ summary: null }, { summary: '' }],
+    skipReason: null,
     publishedAt: { gte: from },
   };
 

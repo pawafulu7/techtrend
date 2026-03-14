@@ -58,6 +58,7 @@ async function fetchArticleList(
   });
   // Exclude arXiv articles (matches home page behavior)
   params.set('excludeSources', ARXIV_SOURCE_ID);
+  params.set('excludeUnprocessed', 'true');
   const res = await fetch(`/api/articles/list?${params}`);
   const json = await parseApiJson(res);
   if (!res.ok || !json.success)

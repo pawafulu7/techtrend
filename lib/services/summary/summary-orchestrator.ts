@@ -4,8 +4,9 @@
  * Handles regeneration, missing summary detection, and sequential processing flows.
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, SkipReason } from '@prisma/client';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { classifyError, isRetryable } from '@/lib/fetchers/retry-handler';
 import { logger, sanitizeError } from '@/lib/logger';
 import { SUMMARY_VERSION } from '@/types/article';
 import type { ArticleWithSource } from '@/types/models';
@@ -34,6 +35,7 @@ interface ContentValidationResult {
   valid: boolean;
   content?: string;
   reason?: string;
+  reasonCode?: 'NO_CONTENT' | 'THIN_CONTENT';
 }
 
 /**
@@ -46,13 +48,18 @@ export function validateArticleContent(
   const contentLength = article.content?.trim().length || 0;
 
   if (contentLength === 0) {
-    return { valid: false, reason: 'no content available' };
+    return {
+      valid: false,
+      reason: 'no content available',
+      reasonCode: 'NO_CONTENT' as const,
+    };
   }
 
   if (MIN_CONTENT_LENGTH > 0 && contentLength < MIN_CONTENT_LENGTH) {
     return {
       valid: false,
       reason: `content too short (${contentLength} < ${MIN_CONTENT_LENGTH})`,
+      reasonCode: 'THIN_CONTENT' as const,
     };
   }
 
@@ -143,6 +150,8 @@ export async function regenerateSummaries(
                   translatedTitle: result.translatedTitle,
                   summaryVersion: SUMMARY_VERSION.CURRENT,
                   summaryComputedAt: new Date(),
+                  summaryError: null,
+                  skipReason: null,
                 },
               });
 
@@ -255,6 +264,8 @@ export async function regenerateSummaries(
               translatedTitle: result.translatedTitle,
               summaryVersion: SUMMARY_VERSION.CURRENT,
               summaryComputedAt: new Date(),
+              summaryError: null,
+              skipReason: null,
             },
           });
 
@@ -326,11 +337,17 @@ export async function generateMissingSummaries(
     const daysAgo = new Date();
     daysAgo.setDate(daysAgo.getDate() - (options.days || 7));
 
+    const hasTargetArticleIds =
+      Array.isArray(options.articleIds) && options.articleIds.length > 0;
+
     const where: Prisma.ArticleWhereInput = {
       OR: [{ summary: null }, { summary: '' }],
-      publishedAt: {
-        gte: daysAgo,
-      },
+      ...(hasTargetArticleIds
+        ? { id: { in: options.articleIds } }
+        : {
+            skipReason: null,
+            publishedAt: { gte: daysAgo },
+          }),
     };
 
     if (options.source) {
@@ -341,7 +358,9 @@ export async function generateMissingSummaries(
       where,
       include: { source: true },
       orderBy: { publishedAt: 'desc' },
-      take: normalizeBatchSize(options.batch),
+      take: hasTargetArticleIds
+        ? options.articleIds!.length
+        : normalizeBatchSize(options.batch),
     };
 
     const articles = (await prisma.article.findMany(
@@ -362,6 +381,9 @@ export async function generateMissingSummaries(
     let errors = 0;
     let skipped = 0;
 
+    const noContentIds: string[] = [];
+    const thinContentIds: string[] = [];
+
     for (const article of articles) {
       try {
         const validation = validateArticleContent(article);
@@ -370,6 +392,11 @@ export async function generateMissingSummaries(
             { articleId: article.id, reason: validation.reason },
             'Skipping article'
           );
+          if (validation.reasonCode === 'NO_CONTENT') {
+            noContentIds.push(article.id);
+          } else {
+            thinContentIds.push(article.id);
+          }
           skipped++;
           continue;
         }
@@ -389,6 +416,8 @@ export async function generateMissingSummaries(
               translatedTitle: result.translatedTitle,
               summaryVersion: SUMMARY_VERSION.CURRENT,
               summaryComputedAt: new Date(),
+              summaryError: null,
+              skipReason: null,
             },
           });
 
@@ -422,8 +451,83 @@ export async function generateMissingSummaries(
           { articleId: article.id, error: sanitizeError(error) },
           'Error processing article'
         );
+        // Record error in database
+        try {
+          const errorMsg =
+            error instanceof Error ? error.message : String(error);
+          const isTransientError = isRetryable(classifyError(error));
+          const pendingWhere: Prisma.ArticleWhereInput = {
+            id: article.id,
+            skipReason: null,
+            OR: [{ summary: null }, { summary: '' }],
+          };
+
+          if (isTransientError) {
+            const { count } = await prisma.article.updateMany({
+              where: { ...pendingWhere, summaryError: null },
+              data: { summaryError: errorMsg },
+            });
+
+            if (count === 0) {
+              await prisma.article.updateMany({
+                where: pendingWhere,
+                data: {
+                  skipReason: SkipReason.QUALITY_FAILED,
+                  summaryError: errorMsg,
+                },
+              });
+            }
+          } else {
+            // Non-transient error or second transient failure - give up
+            await prisma.article.updateMany({
+              where: pendingWhere,
+              data: {
+                skipReason: SkipReason.QUALITY_FAILED,
+                summaryError: errorMsg,
+              },
+            });
+          }
+        } catch (dbError) {
+          logger.warn(
+            { articleId: article.id, error: sanitizeError(dbError) },
+            'Failed to record summary error'
+          );
+        }
         errors++;
       }
+    }
+
+    // Batch update skip reasons for validation failures
+    try {
+      if (noContentIds.length > 0) {
+        await prisma.article.updateMany({
+          where: {
+            id: { in: noContentIds },
+            OR: [{ summary: null }, { summary: '' }],
+          },
+          data: {
+            skipReason: SkipReason.CONTENT_FETCH_FAILED,
+            summaryError: null,
+          },
+        });
+      }
+      if (thinContentIds.length > 0) {
+        await prisma.article.updateMany({
+          where: {
+            id: { in: thinContentIds },
+            OR: [{ summary: null }, { summary: '' }],
+          },
+          data: {
+            skipReason: SkipReason.THIN_CONTENT,
+            summaryError: null,
+          },
+        });
+      }
+    } catch (dbError) {
+      logger.warn(
+        { error: sanitizeError(dbError) },
+        'Failed to record skip reasons'
+      );
     }
 
     logger.info({ generated, skipped, errors }, 'Missing summaries completed');
