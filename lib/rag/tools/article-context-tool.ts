@@ -136,6 +136,13 @@ async function scoreChunks(options: {
     const embeddingService = getEmbeddingService();
     const allTexts = [query, ...chunks.map((c) => c.text)];
     const allEmbeddings = await embeddingService.embedBatch(allTexts);
+
+    if (allEmbeddings.length !== allTexts.length) {
+      throw new Error(
+        `Embedding count mismatch: expected ${allTexts.length}, got ${allEmbeddings.length}`
+      );
+    }
+
     const queryEmbedding = allEmbeddings[0];
     const chunkEmbeddings = allEmbeddings.slice(1);
 

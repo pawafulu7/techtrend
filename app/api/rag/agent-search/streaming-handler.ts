@@ -490,6 +490,7 @@ async function createStreamingResponse(
           } else {
             // Check cancellation before expensive fallback search
             if (isCancelled || request.signal.aborted) {
+              isClosed = true;
               streamSpan.setAttribute(
                 'streaming.cancelledBeforeFallback',
                 true
