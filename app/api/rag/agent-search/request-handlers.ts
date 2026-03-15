@@ -251,3 +251,140 @@ export function enqueueArticleQaNoAnswer(
   );
   controller.close();
 }
+
+export function parseTemporalQuery(query: string): {
+  cleanQuery: string;
+  dateRange?: { from?: string; to?: string };
+  recencyBoost: number;
+} {
+  const now = new Date();
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const toISO = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  const todayStr = toISO(now);
+
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+  const thisMonday = new Date(now);
+  thisMonday.setDate(now.getDate() + mondayOffset);
+
+  const lastMonday = new Date(thisMonday);
+  lastMonday.setDate(thisMonday.getDate() - 7);
+  const lastSunday = new Date(lastMonday);
+  lastSunday.setDate(lastMonday.getDate() + 6);
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(now.getDate() - 7);
+
+  const thisYearStart = new Date(now.getFullYear(), 0, 1);
+  const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
+  const lastYearEnd = new Date(now.getFullYear() - 1, 11, 31);
+
+  type Pattern = {
+    regex: RegExp;
+    dateRange?: { from?: string; to?: string };
+    recencyBoost: number;
+  };
+
+  const patterns: Pattern[] = [
+    {
+      regex: /最新の?|最近の?|直近の?/,
+      dateRange: { from: toISO(sevenDaysAgo), to: todayStr },
+      recencyBoost: 2.0,
+    },
+    {
+      regex: /先週の?/,
+      dateRange: { from: toISO(lastMonday), to: toISO(lastSunday) },
+      recencyBoost: 1.5,
+    },
+    {
+      regex: /今週の?/,
+      dateRange: { from: toISO(thisMonday), to: todayStr },
+      recencyBoost: 1.5,
+    },
+    {
+      regex: /今月の?/,
+      dateRange: {
+        from: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`,
+        to: todayStr,
+      },
+      recencyBoost: 1.0,
+    },
+    {
+      regex: /昨日の?/,
+      dateRange: { from: toISO(yesterday), to: toISO(yesterday) },
+      recencyBoost: 1.5,
+    },
+    {
+      regex: /今年の?/,
+      dateRange: { from: toISO(thisYearStart), to: todayStr },
+      recencyBoost: 0.5,
+    },
+    {
+      regex: /去年の?|昨年の?/,
+      dateRange: { from: toISO(lastYearStart), to: toISO(lastYearEnd) },
+      recencyBoost: 0,
+    },
+    {
+      regex: /\b(?:latest|recent)\b/i,
+      dateRange: { from: toISO(sevenDaysAgo), to: todayStr },
+      recencyBoost: 2.0,
+    },
+    {
+      regex: /\blast\s+week\b/i,
+      dateRange: { from: toISO(lastMonday), to: toISO(lastSunday) },
+      recencyBoost: 1.5,
+    },
+    {
+      regex: /\bthis\s+week\b/i,
+      dateRange: { from: toISO(thisMonday), to: todayStr },
+      recencyBoost: 1.5,
+    },
+    {
+      regex: /\bthis\s+month\b/i,
+      dateRange: {
+        from: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`,
+        to: todayStr,
+      },
+      recencyBoost: 1.0,
+    },
+    {
+      regex: /\byesterday\b/i,
+      dateRange: { from: toISO(yesterday), to: toISO(yesterday) },
+      recencyBoost: 1.5,
+    },
+    {
+      regex: /\bthis\s+year\b/i,
+      dateRange: { from: toISO(thisYearStart), to: todayStr },
+      recencyBoost: 0.5,
+    },
+    {
+      regex: /\blast\s+year\b/i,
+      dateRange: { from: toISO(lastYearStart), to: toISO(lastYearEnd) },
+      recencyBoost: 0,
+    },
+  ];
+
+  for (const pattern of patterns) {
+    if (pattern.regex.test(query)) {
+      const rawClean = query
+        .replace(pattern.regex, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const cleanQuery = rawClean.length > 0 ? rawClean : query;
+      return {
+        cleanQuery,
+        dateRange: pattern.dateRange,
+        recencyBoost: pattern.recencyBoost,
+      };
+    }
+  }
+
+  return { cleanQuery: query, recencyBoost: 0 };
+}

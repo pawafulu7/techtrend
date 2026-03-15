@@ -19,6 +19,7 @@ import {
   resolveModeContext,
   getArticleQaNoAnswerText,
 } from './request-handlers';
+import { executeDirectSearch } from './direct-search-handler';
 
 /**
  * Handle batch (non-streaming) agent search request
@@ -160,6 +161,43 @@ export async function handleBatchRequest(
   }
 
   span.setAttribute('cache.hit', false);
+
+  // Article search: use direct vector search (no LLM)
+  if (!modeContext.isArticleQa) {
+    const directResult = await executeDirectSearch(
+      validatedRequest.query,
+      modeContext.preferredLang,
+      { signal: request.signal }
+    );
+
+    // Cache the result
+    await safeWriteCache(
+      () =>
+        caches.agentCache.setResponse(
+          `${modeContext.preferredLang}:${validatedRequest.query}`,
+          { text: directResult.response, toolCalls: directResult.toolCalls }
+        ),
+      {
+        userId: session.user.id,
+        queryPreview: validatedRequest.query.substring(0, 50),
+        mode: modeContext.agentType,
+      }
+    );
+
+    span.setAttributes({
+      'directSearch.resultCount':
+        (directResult.toolCalls[0]?.output as Record<string, unknown>)?.count ??
+        0,
+      'directSearch.responseLength': directResult.response.length,
+    });
+
+    const responseData: Record<string, unknown> = {
+      ...directResult,
+      query: validatedRequest.query,
+    };
+    const responseObject = NextResponse.json(responseData);
+    return attachRateLimitHeaders(responseObject, rateLimitInfo);
+  }
 
   // Layer 6: Agent execution with fallback
   let agentResponse: string;

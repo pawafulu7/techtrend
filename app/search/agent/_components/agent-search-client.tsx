@@ -15,6 +15,7 @@ import {
 import { AgentSearchInterpretation } from './agent-search-interpretation';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 import { CardV2 } from '@/components/ui-v2/card-v2';
+import { RAG_TOOL_NAMES } from '@/lib/rag/constants';
 
 // Schema for semantic-search tool output validation
 const SemanticSearchOutputSchema = z.object({
@@ -149,7 +150,10 @@ export function AgentSearchClient() {
 
     // Find semantic-search tool call
     const semanticSearchCall = result.toolCalls.find(
-      (tc) => tc.name === 'semantic-search' && tc.output
+      (tc) =>
+        (tc.name === RAG_TOOL_NAMES.SEMANTIC_SEARCH ||
+          tc.name === RAG_TOOL_NAMES.SEMANTIC_SEARCH_LEGACY) &&
+        tc.output
     );
 
     if (!semanticSearchCall?.output) return null;

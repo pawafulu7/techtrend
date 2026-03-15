@@ -177,8 +177,24 @@ export function AnswerContent({
     });
   }, [extractedAnswer.sections, articleMap, articles]);
 
-  // Use card display when we have extracted sections
-  const useCardDisplay = enrichedSections.length > 0;
+  // Build display items: prefer direct articles with summary (direct search result),
+  // fall back to extractArticleSections output (LLM response parse)
+  const displayItems = useMemo(() => {
+    const directArticles = articles ?? [];
+    if (directArticles.length > 0 && directArticles.some((a) => a.summary)) {
+      return directArticles.map((article, i) => ({
+        articleId: article.articleId,
+        title: article.translatedTitle?.trim() || article.title,
+        summary: article.summary ?? '',
+        index: i,
+        meta: article,
+      }));
+    }
+    return enrichedSections;
+  }, [articles, enrichedSections]);
+
+  // Use card display when displayItems are available
+  const useCardDisplay = displayItems.length > 0;
 
   return (
     <>
@@ -220,7 +236,7 @@ export function AnswerContent({
           className="mb-4 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3"
           data-testid="agent-answer-cards"
         >
-          {enrichedSections.map((item, i) => {
+          {displayItems.map((item, i) => {
             const accentColor =
               i % 2 === 0
                 ? 'var(--tt-color-primary)'

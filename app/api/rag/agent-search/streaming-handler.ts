@@ -25,6 +25,7 @@ import {
   safeWriteCache,
   type CacheResolution,
 } from './cache-helpers';
+import { executeDirectSearch } from './direct-search-handler';
 
 const tracer = trace.getTracer('rag-agent');
 
@@ -147,6 +148,19 @@ export async function handleStreamingRequest(
 
   parentSpan.setAttribute('cache.hit', false);
   parentSpan.setAttribute('streaming.cached', false);
+
+  // Article search: use direct vector search (no LLM) with SSE-compatible output
+  if (!modeContext.isArticleQa) {
+    return createDirectSearchSSEResponse(
+      validatedRequest,
+      session,
+      parentSpan,
+      request,
+      modeContext,
+      rateLimitInfo,
+      caches
+    );
+  }
 
   // Start streaming (implementation in createStreamingResponse)
   return createStreamingResponse(
@@ -613,6 +627,163 @@ async function createStreamingResponse(
         streamSpan.setAttribute('streaming.cancelled', true);
         streamSpan.end();
         streamSpanEnded = true;
+      }
+    },
+  });
+
+  return createSSEResponse(stream, rateLimitInfo);
+}
+
+/**
+ * Create SSE response using direct vector search (no LLM) for article-search mode
+ *
+ * Emits tool-start, tool-complete, text-delta, finish events to maintain
+ * SSE protocol compatibility with the LLM streaming path.
+ */
+async function createDirectSearchSSEResponse(
+  validatedRequest: ValidatedRequest,
+  session: Session,
+  parentSpan: Span,
+  request: NextRequest,
+  modeContext: ModeContext,
+  rateLimitInfo: RateLimitInfo | undefined,
+  caches: CacheResolution
+): Promise<Response> {
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const directResult = await executeDirectSearch(
+          validatedRequest.query,
+          modeContext.preferredLang,
+          { signal: request.signal }
+        );
+
+        // Emit tool-start event
+        const toolCall = directResult.toolCalls[0];
+        if (toolCall) {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: 'tool-start',
+                toolCallId: toolCall.id,
+                toolName: toolCall.name,
+                input: toolCall.input,
+              })}\n\n`
+            )
+          );
+
+          // Emit tool-complete event
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: 'tool-complete',
+                toolCallId: toolCall.id,
+                result: toolCall.output,
+              })}\n\n`
+            )
+          );
+        }
+
+        // Emit text-delta event (single chunk with full response)
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: 'text-delta',
+              delta: directResult.response,
+            })}\n\n`
+          )
+        );
+
+        // Cache the result
+        // caches.isArticleQa is always false in this path (article-search mode)
+        await safeWriteCache(
+          () =>
+            caches.isArticleQa
+              ? Promise.resolve()
+              : caches.agentCache.setResponse(
+                  `${modeContext.preferredLang}:${validatedRequest.query}`,
+                  {
+                    text: directResult.response,
+                    toolCalls: directResult.toolCalls,
+                  }
+                ),
+          {
+            userId: session.user.id,
+            queryPreview: validatedRequest.query.substring(0, 50),
+            mode: modeContext.agentType,
+          }
+        );
+
+        // Emit finish event
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: 'finish',
+              text: directResult.response,
+              usage: directResult.usage,
+              toolCalls: directResult.toolCalls,
+              cached: false,
+              fallback: false,
+            })}\n\n`
+          )
+        );
+
+        controller.close();
+
+        parentSpan.setAttributes({
+          'directSearch.success': true,
+          'directSearch.resultCount':
+            (directResult.toolCalls[0]?.output as any)?.count ?? 0,
+          'directSearch.responseLength': directResult.response.length,
+        });
+
+        logger.info(
+          {
+            userId: session.user.id,
+            queryPreview: validatedRequest.query.substring(0, 50),
+            resultCount: (directResult.toolCalls[0]?.output as any)?.count ?? 0,
+          },
+          'Direct search streaming completed'
+        );
+      } catch (error) {
+        // Client disconnect - just close
+        if (request.signal.aborted) {
+          parentSpan.setAttribute('directSearch.clientDisconnected', true);
+          try {
+            controller.close();
+          } catch {
+            /* already closed */
+          }
+          return;
+        }
+
+        parentSpan.setAttribute('directSearch.failed', true);
+        parentSpan.recordException(error as Error);
+
+        logger.warn(
+          {
+            error: sanitizeError(error),
+            userId: session.user.id,
+            queryPreview: validatedRequest.query.substring(0, 50),
+          },
+          'Direct search streaming failed'
+        );
+
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: 'error',
+              message: 'Failed to generate response',
+            })}\n\n`
+          )
+        );
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
       }
     },
   });
