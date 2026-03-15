@@ -89,16 +89,19 @@ describe('executeDirectSearch', () => {
     await executeDirectSearch('最新のReact記事', 'ja');
 
     // searchWithFallback should be called with parsed query
+    // "最新の" is a vague temporal word, so dateRange is NOT passed (recencyBoost only)
     expect(mockSearchWithFallback).toHaveBeenCalledWith(
       'React記事', // cleanQuery after temporal parsing
       expect.objectContaining({
         enableFallback: true,
-        topK: 10,
+        topK: 9,
         embeddingKey: 'summary',
-        dateRange: expect.any(Object),
         recencyBoost: expect.any(Number),
       })
     );
+    // Verify dateRange is NOT included for vague temporal queries
+    const callArgs = mockSearchWithFallback.mock.calls[0][1];
+    expect(callArgs).not.toHaveProperty('dateRange');
   });
 
   it('should clamp recencyBoost to max 1.0', async () => {
