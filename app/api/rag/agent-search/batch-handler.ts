@@ -9,6 +9,7 @@ import { SpanStatusCode, Span } from '@opentelemetry/api';
 import type { Session } from 'next-auth';
 
 import type { RateLimitInfo, ValidatedRequest, ModeContext } from './schemas';
+import { AGENT_TIMEOUT_MS } from './schemas';
 import {
   attachRateLimitHeaders,
   unwrapToolOutput,
@@ -167,12 +168,23 @@ export async function handleBatchRequest(
   let fallback = false;
 
   try {
-    const result = await modeContext.agent.generate({
+    const agentAbortSignal = AbortSignal.any([
+      request.signal,
+      AbortSignal.timeout(AGENT_TIMEOUT_MS),
+    ]);
+
+    // abortSignal is passed through to generateText via spread in Agent.generate()
+    // but not exposed in Agent's type definition (ai@5.x). Runtime-safe.
+    const generateOptions = {
       messages: [
-        { role: 'system', content: modeContext.systemMessage },
-        { role: 'user', content: validatedRequest.query },
+        { role: 'system' as const, content: modeContext.systemMessage },
+        { role: 'user' as const, content: validatedRequest.query },
       ],
-    });
+      abortSignal: agentAbortSignal,
+    };
+    const result = await modeContext.agent.generate(
+      generateOptions as Parameters<typeof modeContext.agent.generate>[0]
+    );
 
     const allToolCalls =
       result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];
@@ -235,6 +247,20 @@ export async function handleBatchRequest(
       'Agent search completed (batch)'
     );
   } catch (agentError) {
+    // クライアント切断: フォールバックせずエラー応答
+    if (request.signal.aborted) {
+      span.setAttribute('agent.clientDisconnected', true);
+      logger.info(
+        { userId: session.user.id },
+        'Client disconnected, skipping fallback'
+      );
+      return attachRateLimitHeaders(
+        NextResponse.json({ error: 'Request cancelled' }, { status: 499 }),
+        rateLimitInfo
+      );
+    }
+
+    // サーバー側タイムアウト or その他のエラー: 既存フォールバック実行
     span.setAttribute('agent.failed', true);
     span.recordException(agentError as Error);
 

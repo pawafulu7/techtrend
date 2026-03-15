@@ -8,6 +8,7 @@ import { trace, context, SpanStatusCode, Span } from '@opentelemetry/api';
 import type { Session } from 'next-auth';
 
 import type { RateLimitInfo, ValidatedRequest, ModeContext } from './schemas';
+import { AGENT_TIMEOUT_MS } from './schemas';
 import {
   unwrapToolOutput,
   createSSEResponse,
@@ -168,7 +169,7 @@ async function createStreamingResponse(
   validatedRequest: ValidatedRequest,
   session: Session,
   parentSpan: Span,
-  _request: NextRequest,
+  request: NextRequest,
   modeContext: ModeContext,
   rateLimitInfo: RateLimitInfo | undefined,
   caches: CacheResolution
@@ -228,12 +229,23 @@ async function createStreamingResponse(
       let isClosed = false;
 
       try {
-        const streamResult = await modeContext.agent.stream({
+        const agentAbortSignal = AbortSignal.any([
+          request.signal,
+          AbortSignal.timeout(AGENT_TIMEOUT_MS),
+        ]);
+
+        // abortSignal is passed through to streamText via spread in Agent.stream()
+        // but not exposed in Agent's type definition (ai@5.x). Runtime-safe.
+        const streamOptions = {
           messages: [
-            { role: 'system', content: modeContext.systemMessage },
-            { role: 'user', content: validatedRequest.query },
+            { role: 'system' as const, content: modeContext.systemMessage },
+            { role: 'user' as const, content: validatedRequest.query },
           ],
-        });
+          abortSignal: agentAbortSignal,
+        };
+        const streamResult = await modeContext.agent.stream(
+          streamOptions as Parameters<typeof modeContext.agent.stream>[0]
+        );
 
         if (qaContextPayload) {
           controller.enqueue(
@@ -438,8 +450,9 @@ async function createStreamingResponse(
           }
         }
       } catch (agentError) {
-        // Skip fallback if client already disconnected
-        if (isCancelled) {
+        // クライアント切断: フォールバックせずストリーム終了
+        if (isCancelled || request.signal.aborted) {
+          isClosed = true;
           streamSpan.setAttribute('streaming.cancelledDuringGeneration', true);
           if (!streamSpanEnded) {
             streamSpan.end();
@@ -447,6 +460,8 @@ async function createStreamingResponse(
           }
           return;
         }
+
+        // サーバー側タイムアウト or その他: 既存フォールバック実行
 
         streamSpan.setAttribute('streaming.failed', true);
         streamSpan.recordException(agentError as Error);
@@ -473,6 +488,15 @@ async function createStreamingResponse(
             streamSpan.setAttribute('streaming.fallback', true);
             streamSpan.setAttribute('streaming.articleQaNoAnswer', true);
           } else {
+            // Check cancellation before expensive fallback search
+            if (isCancelled || request.signal.aborted) {
+              isClosed = true;
+              streamSpan.setAttribute(
+                'streaming.cancelledBeforeFallback',
+                true
+              );
+              return;
+            }
             const searchService = new VectorSearchService(prisma);
             const fallbackResults = await searchService.search(
               validatedRequest.query,

@@ -81,24 +81,31 @@ export class EmbeddingService {
         if (this.shouldRetry(error, retryCount)) {
           const backoffMs = this.calculateBackoff(retryCount, error);
 
-          logger.warn({
-            attempt: retryCount + 1,
-            maxRetries: this.config.maxRetries,
-            backoffMs,
-            errorType: error instanceof Error ? error.constructor.name : 'Unknown',
-          }, 'Rate limited or transient error, retrying');
+          logger.warn(
+            {
+              attempt: retryCount + 1,
+              maxRetries: this.config.maxRetries,
+              backoffMs,
+              errorType:
+                error instanceof Error ? error.constructor.name : 'Unknown',
+            },
+            'Rate limited or transient error, retrying'
+          );
 
           await this.sleep(backoffMs);
           return this.embedText(text, retryCount + 1);
         }
 
         // Log error without exposing API key
-        logger.error({
-          error: sanitizeError(error),
-          textLength: trimmedText.length,
-          textPreview: trimmedText.substring(0, 50),
-          model: this.config.model,
-        }, 'Embedding generation failed');
+        logger.error(
+          {
+            error: sanitizeError(error),
+            textLength: trimmedText.length,
+            textPreview: trimmedText.substring(0, 50),
+            model: this.config.model,
+          },
+          'Embedding generation failed'
+        );
 
         throw error;
       }
@@ -106,13 +113,96 @@ export class EmbeddingService {
   }
 
   /**
-   * Generate embeddings for multiple texts in parallel
+   * Generate embeddings for multiple texts using a single API call per batch
+   *
+   * Uses OpenAI Embeddings API batch input (string[]) to minimize API calls.
+   * Splits into chunks of `batchSize` when input exceeds the limit.
    *
    * @param texts - Array of texts to embed
    * @returns Array of validated vectors (same order as input)
+   * @throws Error if any text is empty or embedding generation fails after max retries
    */
   async embedBatch(texts: string[]): Promise<number[][]> {
-    return Promise.all(texts.map(text => this.embedText(text)));
+    if (texts.length === 0) {
+      return [];
+    }
+
+    // Validate and trim upfront (same behaviour as embedText which trims before sending)
+    const normalizedTexts = texts.map((text) => {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        throw new Error('Cannot embed empty text');
+      }
+      return trimmed;
+    });
+
+    // Split into chunks of batchSize
+    const chunks: string[][] = [];
+    for (let i = 0; i < normalizedTexts.length; i += this.config.batchSize) {
+      chunks.push(normalizedTexts.slice(i, i + this.config.batchSize));
+    }
+
+    // Process chunks in parallel (p-limit inside embedChunk controls API concurrency)
+    const chunkResults = await Promise.all(
+      chunks.map((chunk) => this.embedChunk(chunk))
+    );
+
+    return chunkResults.flat();
+  }
+
+  /**
+   * Send a single batch API call for a chunk of texts with retry logic
+   *
+   * @param texts - Texts to embed (must be non-empty strings, length <= batchSize)
+   * @param retryCount - Internal retry counter (do not pass manually)
+   */
+  private async embedChunk(
+    texts: string[],
+    retryCount = 0
+  ): Promise<number[][]> {
+    return this.limit(async () => {
+      try {
+        const response = await this.openai.embeddings.create({
+          model: this.config.model,
+          input: texts,
+        });
+
+        // Sort by index to guarantee order matches input
+        const sorted = response.data.sort((a, b) => a.index - b.index);
+
+        return sorted.map((item) => embeddingSchema.parse(item.embedding));
+      } catch (error) {
+        if (this.shouldRetry(error, retryCount)) {
+          const backoffMs = this.calculateBackoff(retryCount, error);
+
+          logger.warn(
+            {
+              attempt: retryCount + 1,
+              maxRetries: this.config.maxRetries,
+              backoffMs,
+              batchSize: texts.length,
+              errorType:
+                error instanceof Error ? error.constructor.name : 'Unknown',
+            },
+            'Rate limited or transient error on batch, retrying'
+          );
+
+          await this.sleep(backoffMs);
+          return this.embedChunk(texts, retryCount + 1);
+        }
+
+        logger.error(
+          {
+            error: sanitizeError(error),
+            batchSize: texts.length,
+            model: this.config.model,
+          },
+          'Batch embedding generation failed'
+        );
+
+        throw error;
+      }
+    });
   }
 
   /**
@@ -179,6 +269,6 @@ export class EmbeddingService {
    * Sleep for specified milliseconds
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

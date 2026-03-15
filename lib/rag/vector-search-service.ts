@@ -3,7 +3,10 @@ import { EmbeddingService } from './embedding-service';
 import { logger, sanitizeError } from '@/lib/logger';
 import { searchOptionsSchema, SearchOptionsInput } from './schemas';
 import { getDynamicThreshold } from './query-utils';
-import { QueryExpansionService, QueryExpansionResult } from './query-expansion-service';
+import {
+  QueryExpansionService,
+  QueryExpansionResult,
+} from './query-expansion-service';
 
 /**
  * Vector Search Service
@@ -40,7 +43,10 @@ export class VectorSearchService {
   private activeModel: string;
   private activeVersion: number;
 
-  constructor(prisma: PrismaClient, embeddingService?: EmbeddingService | null) {
+  constructor(
+    prisma: PrismaClient,
+    embeddingService?: EmbeddingService | null
+  ) {
     this.prisma = prisma;
     if (embeddingService !== undefined) {
       this.embeddingService = embeddingService;
@@ -51,7 +57,9 @@ export class VectorSearchService {
     }
 
     if (!this.embeddingService) {
-      logger.warn('EmbeddingService unavailable (missing OPENAI_API_KEY); vector search will be limited');
+      logger.warn(
+        'EmbeddingService unavailable (missing OPENAI_API_KEY); vector search will be limited'
+      );
     }
     this.queryExpansionService = new QueryExpansionService();
     this.activeModel = process.env.RAG_ACTIVE_MODEL || 'text-embedding-3-small';
@@ -62,7 +70,9 @@ export class VectorSearchService {
    * Check if EmbeddingService is configured and ready
    */
   isEmbeddingServiceAvailable(): boolean {
-    return this.embeddingService !== null && this.embeddingService !== undefined;
+    return (
+      this.embeddingService !== null && this.embeddingService !== undefined
+    );
   }
 
   /**
@@ -82,8 +92,12 @@ export class VectorSearchService {
   }> {
     try {
       if (!this.embeddingService) {
-        logger.warn('Vector search requested but EmbeddingService is not configured (missing OPENAI_API_KEY)');
-        throw new Error('Vector search is unavailable because no EmbeddingService is configured');
+        logger.warn(
+          'Vector search requested but EmbeddingService is not configured (missing OPENAI_API_KEY)'
+        );
+        throw new Error(
+          'Vector search is unavailable because no EmbeddingService is configured'
+        );
       }
 
       const embeddingService = this.embeddingService;
@@ -92,7 +106,15 @@ export class VectorSearchService {
       // Validate options with Zod schema
       const validated = searchOptionsSchema.parse(options);
 
-      const { topK, similarityThreshold, sourceIds, tags, embeddingKey, dateRange, recencyBoost } = validated;
+      const {
+        topK,
+        similarityThreshold,
+        sourceIds,
+        tags,
+        embeddingKey,
+        dateRange,
+        recencyBoost,
+      } = validated;
 
       // Expand query before embedding generation (Phase 2)
       const expansion = await this.queryExpansionService.expandQuery(query);
@@ -104,27 +126,35 @@ export class VectorSearchService {
         ? similarityThreshold
         : getDynamicThreshold(query);
 
-      logger.info({
-        originalQuery: query.substring(0, 50),
-        expandedQuery: effectiveQuery !== query ? effectiveQuery.substring(0, 50) : undefined,
-        expansionMethod: expansion.method,
-        expansionLatency: expansion.latencyMs,
-        topK,
-        requestedThreshold: thresholdProvided ? similarityThreshold : undefined,
-        effectiveThreshold,
-        thresholdSource: thresholdProvided ? 'explicit' : 'dynamic',
-        embeddingKey,
-        hasSourceFilter: !!sourceIds,
-        hasTagFilter: !!tags,
-        hasDateFilter: !!(dateRange && (dateRange.from || dateRange.to)),
-        recencyBoost,
-      }, 'Vector search started');
+      logger.info(
+        {
+          originalQuery: query.substring(0, 50),
+          expandedQuery:
+            effectiveQuery !== query
+              ? effectiveQuery.substring(0, 50)
+              : undefined,
+          expansionMethod: expansion.method,
+          expansionLatency: expansion.latencyMs,
+          topK,
+          requestedThreshold: thresholdProvided
+            ? similarityThreshold
+            : undefined,
+          effectiveThreshold,
+          thresholdSource: thresholdProvided ? 'explicit' : 'dynamic',
+          embeddingKey,
+          hasSourceFilter: !!sourceIds,
+          hasTagFilter: !!tags,
+          hasDateFilter: !!(dateRange && (dateRange.from || dateRange.to)),
+          recencyBoost,
+        },
+        'Vector search started'
+      );
 
       // Generate query embedding (using expanded query)
       const queryEmbedding = await embeddingService.embedText(effectiveQuery);
 
       // Serialize vector with toFixed for PostgreSQL compatibility
-      const vectorString = `[${queryEmbedding.map(v => v.toFixed(8)).join(',')}]`;
+      const vectorString = `[${queryEmbedding.map((v) => v.toFixed(8)).join(',')}]`;
 
       // Execute search using shared helper (Phase 2: refactored)
       const results = await this.executeVectorSearch(vectorString, {
@@ -137,32 +167,44 @@ export class VectorSearchService {
         recencyBoost,
       });
 
-      logger.info({
-        query: query.substring(0, 50),
-        resultCount: results.length,
-        model: this.activeModel,
-        embeddingKey,
-        topK,
-        hasDateFilter: !!(dateRange && (dateRange.from || dateRange.to)),
-        recencyBoost,
-        avgSimilarity:
-          results.length > 0
-            ? (results.reduce((sum, r) => sum + r.similarity, 0) / results.length).toFixed(4)
-            : 0,
-      }, 'Vector search completed');
+      logger.info(
+        {
+          query: query.substring(0, 50),
+          resultCount: results.length,
+          model: this.activeModel,
+          embeddingKey,
+          topK,
+          hasDateFilter: !!(dateRange && (dateRange.from || dateRange.to)),
+          recencyBoost,
+          avgSimilarity:
+            results.length > 0
+              ? (
+                  results.reduce((sum, r) => sum + r.similarity, 0) /
+                  results.length
+                ).toFixed(4)
+              : '0.0000',
+        },
+        'Vector search completed'
+      );
 
       return { results, expansion, originalQuery: query };
     } catch (error) {
-      logger.error({
-        error: sanitizeError(error),
-        query: query.substring(0, 50),
-        options: {
-          topK: options.topK,
-          embeddingKey: options.embeddingKey,
-          hasDateFilter: !!(options.dateRange && (options.dateRange.from || options.dateRange.to)),
-          recencyBoost: options.recencyBoost,
+      logger.error(
+        {
+          error: sanitizeError(error),
+          query: query.substring(0, 50),
+          options: {
+            topK: options.topK,
+            embeddingKey: options.embeddingKey,
+            hasDateFilter: !!(
+              options.dateRange &&
+              (options.dateRange.from || options.dateRange.to)
+            ),
+            recencyBoost: options.recencyBoost,
+          },
         },
-      }, 'Vector search failed');
+        'Vector search failed'
+      );
 
       throw error;
     }
@@ -210,28 +252,109 @@ export class VectorSearchService {
       };
     }
 
-    const thresholds = [0.55, 0.50, 0.45, 0.40, 0.375, 0.35];
+    if (!this.embeddingService) {
+      logger.warn(
+        'Vector search requested but EmbeddingService is not configured (missing OPENAI_API_KEY)'
+      );
+      throw new Error(
+        'Vector search is unavailable because no EmbeddingService is configured'
+      );
+    }
+
+    const embeddingService = this.embeddingService;
+
+    // Validate options with Zod schema
+    const validated = searchOptionsSchema.parse(searchOptions);
+    const { topK, sourceIds, tags, embeddingKey, dateRange, recencyBoost } =
+      validated;
+
+    // Expand query once before threshold loop
+    const expansionStart = Date.now();
+    const expansion = await this.queryExpansionService.expandQuery(query);
+    const effectiveQuery = expansion.expandedQuery;
+    const expansionLatency = Date.now() - expansionStart;
+
+    logger.info(
+      {
+        originalQuery: query.substring(0, 50),
+        expandedQuery:
+          effectiveQuery !== query
+            ? effectiveQuery.substring(0, 50)
+            : undefined,
+        expansionMethod: expansion.method,
+        expansionLatency,
+        topK,
+        embeddingKey,
+        hasSourceFilter: !!sourceIds,
+        hasTagFilter: !!tags,
+        hasDateFilter: !!(dateRange && (dateRange.from || dateRange.to)),
+        recencyBoost,
+      },
+      'Vector search started (fallback mode)'
+    );
+
+    // Generate embedding once for all threshold iterations
+    const queryEmbedding = await embeddingService.embedText(effectiveQuery);
+    const vectorString = `[${queryEmbedding.map((v) => v.toFixed(8)).join(',')}]`;
+
+    logger.info(
+      {
+        query: query.substring(0, 50),
+        embeddingDim: queryEmbedding.length,
+      },
+      'Embedding generated (reused across threshold attempts)'
+    );
+
+    const thresholds = [0.55, 0.5, 0.45, 0.4, 0.375, 0.35];
     let attemptCount = 0;
     let lastResults: SearchResult[] = [];
 
     for (const threshold of thresholds) {
       attemptCount++;
-      const { results } = await this.searchWithExpansion(query, {
-        ...searchOptions,
+      const results = await this.executeVectorSearch(vectorString, {
+        topK,
         similarityThreshold: threshold,
+        embeddingKey,
+        sourceIds,
+        tags,
+        dateRange,
+        recencyBoost,
       });
 
       lastResults = results;
 
-      logger.info({
-        phase: 1,
-        attempt: attemptCount,
-        threshold,
-        resultCount: results.length,
-        query: query.substring(0, 50),
-      }, 'Threshold fallback attempt');
+      logger.info(
+        {
+          phase: 1,
+          attempt: attemptCount,
+          threshold,
+          resultCount: results.length,
+          query: query.substring(0, 50),
+        },
+        'Threshold fallback attempt'
+      );
 
       if (results.length >= 3) {
+        logger.info(
+          {
+            query: query.substring(0, 50),
+            resultCount: results.length,
+            model: this.activeModel,
+            embeddingKey,
+            topK,
+            hasDateFilter: !!(dateRange && (dateRange.from || dateRange.to)),
+            recencyBoost,
+            avgSimilarity:
+              results.length > 0
+                ? (
+                    results.reduce((sum, r) => sum + r.similarity, 0) /
+                    results.length
+                  ).toFixed(4)
+                : '0.0000',
+          },
+          'Vector search completed'
+        );
+
         return {
           results,
           metadata: {
@@ -244,11 +367,34 @@ export class VectorSearchService {
       }
     }
 
-    logger.warn({
-      query: query.substring(0, 50),
-      attemptCount,
-      finalThreshold: 0.35,
-    }, 'Threshold fallback completed but result count < 3');
+    logger.info(
+      {
+        query: query.substring(0, 50),
+        resultCount: lastResults.length,
+        model: this.activeModel,
+        embeddingKey,
+        topK,
+        hasDateFilter: !!(dateRange && (dateRange.from || dateRange.to)),
+        recencyBoost,
+        avgSimilarity:
+          lastResults.length > 0
+            ? (
+                lastResults.reduce((sum, r) => sum + r.similarity, 0) /
+                lastResults.length
+              ).toFixed(4)
+            : '0.0000',
+      },
+      'Vector search completed'
+    );
+
+    logger.warn(
+      {
+        query: query.substring(0, 50),
+        attemptCount,
+        finalThreshold: 0.35,
+      },
+      'Threshold fallback completed but result count < 3'
+    );
 
     return {
       results: lastResults,
@@ -268,7 +414,10 @@ export class VectorSearchService {
    * @param options - Search options (topK, filters, etc.)
    * @returns Array of articles ranked by similarity
    */
-  async search(query: string, options: SearchOptionsInput = {}): Promise<SearchResult[]> {
+  async search(
+    query: string,
+    options: SearchOptionsInput = {}
+  ): Promise<SearchResult[]> {
     const { results } = await this.searchWithExpansion(query, options);
     return results;
   }
@@ -298,7 +447,10 @@ export class VectorSearchService {
     } = options;
 
     if (!this.embeddingService) {
-      logger.warn({ articleId, embeddingKey }, 'EmbeddingService unavailable (no OPENAI_API_KEY), returning empty results');
+      logger.warn(
+        { articleId, embeddingKey },
+        'EmbeddingService unavailable (no OPENAI_API_KEY), returning empty results'
+      );
       return [];
     }
 
@@ -317,7 +469,10 @@ export class VectorSearchService {
 
       // Short-circuit if no embedding (CodexMCP: return empty + log)
       if (rows.length === 0) {
-        logger.warn({ articleId, embeddingKey }, 'No embedding found for article');
+        logger.warn(
+          { articleId, embeddingKey },
+          'No embedding found for article'
+        );
         return [];
       }
 
@@ -326,18 +481,21 @@ export class VectorSearchService {
 
       // Validate format (CodeRabbit: handle malformed data)
       if (!embeddingString.startsWith('[') || !embeddingString.endsWith(']')) {
-        logger.error({
-          articleId,
-          embeddingKey,
-          format: embeddingString.substring(0, 50),
-        }, 'Invalid embedding format');
+        logger.error(
+          {
+            articleId,
+            embeddingKey,
+            format: embeddingString.substring(0, 50),
+          },
+          'Invalid embedding format'
+        );
         return [];
       }
 
       const embeddingArray = embeddingString
         .slice(1, -1)
         .split(',')
-        .map(value => {
+        .map((value) => {
           const num = Number(value.trim());
           if (isNaN(num)) {
             throw new Error(`Invalid embedding value: ${value}`);
@@ -346,45 +504,60 @@ export class VectorSearchService {
         });
 
       // Validate dimension (CodeRabbit: detect data corruption)
-      const MIN_EMBEDDING_DIM = 10;  // Most models have at least 10 dimensions
-      if (embeddingArray.length === 0 || embeddingArray.length < MIN_EMBEDDING_DIM) {
-        logger.error({
-          articleId,
-          embeddingKey,
-          actualDim: embeddingArray.length,
-          model: this.activeModel,
-        }, 'Invalid embedding dimension');
+      const MIN_EMBEDDING_DIM = 10; // Most models have at least 10 dimensions
+      if (
+        embeddingArray.length === 0 ||
+        embeddingArray.length < MIN_EMBEDDING_DIM
+      ) {
+        logger.error(
+          {
+            articleId,
+            embeddingKey,
+            actualDim: embeddingArray.length,
+            model: this.activeModel,
+          },
+          'Invalid embedding dimension'
+        );
         return [];
       }
 
       // 3. Serialize vector (same format as search())
-      const vectorString = `[${embeddingArray.map(v => v.toFixed(8)).join(',')}]`;
+      const vectorString = `[${embeddingArray.map((v) => v.toFixed(8)).join(',')}]`;
 
       // 4. Execute search using shared helper
       const results = await this.executeVectorSearch(vectorString, {
         topK,
         similarityThreshold,
         embeddingKey,
-        excludeArticleId: articleId,  // Exclude self from results
+        excludeArticleId: articleId, // Exclude self from results
       });
 
-      logger.info({
-        articleId,
-        embeddingKey,
-        resultCount: results.length,
-        avgSimilarity:
-          results.length > 0
-            ? (results.reduce((sum, r) => sum + r.similarity, 0) / results.length).toFixed(4)
-            : 0,
-      }, 'Article similarity search completed');
+      logger.info(
+        {
+          articleId,
+          embeddingKey,
+          resultCount: results.length,
+          avgSimilarity:
+            results.length > 0
+              ? (
+                  results.reduce((sum, r) => sum + r.similarity, 0) /
+                  results.length
+                ).toFixed(4)
+              : '0.0000',
+        },
+        'Article similarity search completed'
+      );
 
       return results;
     } catch (error) {
-      logger.error({
-        error: sanitizeError(error),
-        articleId,
-        embeddingKey,
-      }, 'Article similarity search failed');
+      logger.error(
+        {
+          error: sanitizeError(error),
+          articleId,
+          embeddingKey,
+        },
+        'Article similarity search failed'
+      );
 
       throw error;
     }

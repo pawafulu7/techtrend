@@ -2,6 +2,15 @@ import { articleContextTool } from '@/lib/rag/tools/article-context-tool';
 import { prisma } from '@/lib/prisma';
 import { EmbeddingService } from '@/lib/rag/embedding-service';
 
+/** Create a 1536-dim zero vector with optional non-zero index */
+function makeEmbedding(setIndex?: number): number[] {
+  const vec = new Array(1536).fill(0);
+  if (setIndex !== undefined) {
+    vec[setIndex] = 1;
+  }
+  return vec;
+}
+
 // Mock dependencies
 jest.mock('@/lib/prisma', () => ({
   prisma: {
@@ -14,12 +23,12 @@ jest.mock('@/lib/prisma', () => ({
 jest.mock('@/lib/rag/embedding-service');
 
 const mockFindUnique = prisma.article.findUnique as jest.Mock;
-const mockEmbedText = jest.fn();
+const mockEmbedBatch = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
   (EmbeddingService as jest.Mock).mockImplementation(() => ({
-    embedText: mockEmbedText,
+    embedBatch: mockEmbedBatch,
   }));
 });
 
@@ -32,19 +41,32 @@ describe('ArticleContextTool', () => {
         url: 'https://example.com/react-perf',
         sourceId: 'source1',
         publishedAt: new Date('2025-10-15T10:00:00Z'),
-        content: '<p>React performance optimization requires understanding of rendering behavior.</p><p>Use React.memo to prevent unnecessary re-renders.</p>'.repeat(20), // Make it long enough to chunk
-        detailedSummary: '<p>Comprehensive guide to React performance optimization techniques.</p>',
+        content:
+          '<p>React performance optimization requires understanding of rendering behavior.</p><p>Use React.memo to prevent unnecessary re-renders.</p>'.repeat(
+            20
+          ), // Make it long enough to chunk
+        detailedSummary:
+          '<p>Comprehensive guide to React performance optimization techniques.</p>',
       };
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      // Mock embeddings
-      mockEmbedText.mockImplementation(async (text: string) => {
-        // Return different embeddings based on text content
-        if (text.includes('performance')) {
-          return new Array(1536).fill(0.9); // High similarity
-        }
-        return new Array(1536).fill(0.3); // Lower similarity
+      // Mock embedBatch: receives [query, ...chunks], returns array of embeddings
+      // i=0 is query (vec[0]=1), 'performance' chunks are collinear => high cosine similarity,
+      // other chunks are orthogonal (vec[1]=1) => cosine similarity = 0
+      mockEmbedBatch.mockImplementation(async (texts: string[]) => {
+        return texts.map((text, i) => {
+          if (i === 0) {
+            // query
+            return makeEmbedding(0);
+          }
+          if (text.includes('performance')) {
+            // queryと同方向 => 高類似度
+            return makeEmbedding(0);
+          }
+          // queryと直交 => 低類似度
+          return makeEmbedding(1);
+        });
       });
 
       const result = await articleContextTool.execute({
@@ -54,6 +76,11 @@ describe('ArticleContextTool', () => {
         minScore: 0.35,
         includeSummary: true,
       });
+
+      expect(mockEmbedBatch).toHaveBeenCalledTimes(1);
+      const [batchInput] = mockEmbedBatch.mock.calls[0] as [string[]];
+      expect(batchInput[0]).toBe('React performance optimization'); // 先頭はquery
+      expect(batchInput.length).toBeGreaterThan(1); // query + chunks
 
       expect(mockFindUnique).toHaveBeenCalledWith({
         where: { id: 'article1' },
@@ -93,13 +120,17 @@ describe('ArticleContextTool', () => {
         url: 'https://example.com/typescript',
         sourceId: 'source2',
         publishedAt: new Date('2025-10-14T09:00:00Z'),
-        content: '<p>TypeScript is a typed superset of JavaScript.</p><p>It compiles to plain JavaScript.</p>',
+        content:
+          '<p>TypeScript is a typed superset of JavaScript.</p><p>It compiles to plain JavaScript.</p>',
         detailedSummary: null,
       };
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      mockEmbedText.mockResolvedValue(new Array(1536).fill(0.5));
+      // embedBatch returns identical vectors for all texts -> cosine similarity = 1.0 (high)
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map(() => new Array(1536).fill(0.5))
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article2',
@@ -130,7 +161,9 @@ describe('ArticleContextTool', () => {
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      mockEmbedText.mockResolvedValue(new Array(1536).fill(0.5));
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map(() => new Array(1536).fill(0.5))
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article3',
@@ -196,7 +229,9 @@ describe('ArticleContextTool', () => {
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      mockEmbedText.mockResolvedValue(new Array(1536).fill(0.6));
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map(() => new Array(1536).fill(0.6))
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article5',
@@ -222,8 +257,12 @@ describe('ArticleContextTool', () => {
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      // Mock low similarity scores
-      mockEmbedText.mockResolvedValue(new Array(1536).fill(0.2));
+      // Mock low similarity scores: all embeddings identical → cosine similarity = 1.0
+      // but the query embedding vs chunk will be identical → high score.
+      // Use orthogonal vectors instead: query=[1,0,...], chunks=[0,1,...] → similarity=0
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map((_, i) => makeEmbedding(i % 1536))
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article6',
@@ -250,12 +289,12 @@ describe('ArticleContextTool', () => {
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      mockEmbedText.mockImplementation(async (text: string) => {
-        if (text === 'very unrelated question') {
-          return new Array(4).fill(1);
-        }
-        return new Array(4).fill(0);
-      });
+      // embedBatch receives [query, ...chunks]
+      // index 0 = query embedding, index 1+ = chunk embeddings
+      // Use orthogonal vectors so cosine similarity approaches 0 (low score)
+      mockEmbedBatch.mockImplementation(
+        async (texts: string[]) => texts.map((_, i) => makeEmbedding(i % 1536)) // Orthogonal unit vectors → similarity = 0
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article10',
@@ -276,13 +315,16 @@ describe('ArticleContextTool', () => {
         url: 'https://example.com/scripts',
         sourceId: 'source7',
         publishedAt: new Date('2025-10-09T04:00:00Z'),
-        content: '<p>Normal content</p><script>alert("xss")</script><p>More content</p>',
+        content:
+          '<p>Normal content</p><script>alert("xss")</script><p>More content</p>',
         detailedSummary: '<p>Summary</p>',
       };
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      mockEmbedText.mockResolvedValue(new Array(1536).fill(0.5));
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map(() => new Array(1536).fill(0.5))
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article7',
@@ -300,6 +342,35 @@ describe('ArticleContextTool', () => {
       }
     });
 
+    it('should fallback to keyword-only scoring when embedBatch fails', async () => {
+      const mockArticle = {
+        id: 'article-fallback',
+        title: 'Fallback Article',
+        url: 'https://example.com/fallback',
+        sourceId: 'source-fallback',
+        publishedAt: new Date('2025-10-06T01:00:00Z'),
+        content:
+          '<p>React performance fallback content.</p><p>More context.</p>',
+        detailedSummary: '<p>Fallback summary.</p>',
+      };
+
+      mockFindUnique.mockResolvedValue(mockArticle);
+      mockEmbedBatch.mockRejectedValueOnce(new Error('embedding timeout'));
+
+      const result = await articleContextTool.execute({
+        articleId: 'article-fallback',
+        query: 'react performance',
+        maxChunks: 3,
+        minScore: 0.35,
+        includeSummary: true,
+      });
+
+      expect(mockEmbedBatch).toHaveBeenCalledTimes(1);
+      expect(result.chunks.length).toBeGreaterThan(0);
+      expect(result.citations.length).toBe(result.chunks.length);
+      expect(result.metadata.articleId).toBe('article-fallback');
+    });
+
     it('should skip includeSummary when set to false', async () => {
       const mockArticle = {
         id: 'article8',
@@ -313,7 +384,9 @@ describe('ArticleContextTool', () => {
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      mockEmbedText.mockResolvedValue(new Array(1536).fill(0.5));
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map(() => new Array(1536).fill(0.5))
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article8',
