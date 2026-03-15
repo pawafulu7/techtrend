@@ -43,13 +43,24 @@ describe('ArticleContextTool', () => {
       mockFindUnique.mockResolvedValue(mockArticle);
 
       // Mock embedBatch: receives [query, ...chunks], returns array of embeddings
-      // query embedding and any chunk containing 'performance' get high value vectors
+      // i=0 is query (vec[0]=1), 'performance' chunks are collinear => high cosine similarity,
+      // other chunks are orthogonal (vec[1]=1) => cosine similarity = 0
       mockEmbedBatch.mockImplementation(async (texts: string[]) => {
-        return texts.map((text) => {
-          if (text.includes('performance')) {
-            return new Array(1536).fill(0.9); // High similarity
+        return texts.map((text, i) => {
+          const vec = new Array(1536).fill(0);
+          if (i === 0) {
+            // query
+            vec[0] = 1;
+            return vec;
           }
-          return new Array(1536).fill(0.3); // Lower similarity
+          if (text.includes('performance')) {
+            // queryと同方向 => 高類似度
+            vec[0] = 1;
+            return vec;
+          }
+          // queryと直交 => 低類似度
+          vec[1] = 1;
+          return vec;
         });
       });
 
@@ -60,6 +71,11 @@ describe('ArticleContextTool', () => {
         minScore: 0.35,
         includeSummary: true,
       });
+
+      expect(mockEmbedBatch).toHaveBeenCalledTimes(1);
+      const [batchInput] = mockEmbedBatch.mock.calls[0] as [string[]];
+      expect(batchInput[0]).toBe('React performance optimization'); // 先頭はquery
+      expect(batchInput.length).toBeGreaterThan(1); // query + chunks
 
       expect(mockFindUnique).toHaveBeenCalledWith({
         where: { id: 'article1' },
