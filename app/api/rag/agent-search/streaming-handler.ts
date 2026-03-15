@@ -234,13 +234,18 @@ async function createStreamingResponse(
           AbortSignal.timeout(AGENT_TIMEOUT_MS),
         ]);
 
-        const streamResult = await modeContext.agent.stream({
+        // abortSignal is passed through to streamText via spread in Agent.stream()
+        // but not exposed in Agent's type definition (ai@5.x). Runtime-safe.
+        const streamOptions = {
           messages: [
-            { role: 'system', content: modeContext.systemMessage },
-            { role: 'user', content: validatedRequest.query },
+            { role: 'system' as const, content: modeContext.systemMessage },
+            { role: 'user' as const, content: validatedRequest.query },
           ],
           abortSignal: agentAbortSignal,
-        });
+        };
+        const streamResult = await modeContext.agent.stream(
+          streamOptions as Parameters<typeof modeContext.agent.stream>[0]
+        );
 
         if (qaContextPayload) {
           controller.enqueue(

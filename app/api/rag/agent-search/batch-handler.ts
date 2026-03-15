@@ -173,13 +173,18 @@ export async function handleBatchRequest(
       AbortSignal.timeout(AGENT_TIMEOUT_MS),
     ]);
 
-    const result = await modeContext.agent.generate({
+    // abortSignal is passed through to generateText via spread in Agent.generate()
+    // but not exposed in Agent's type definition (ai@5.x). Runtime-safe.
+    const generateOptions = {
       messages: [
-        { role: 'system', content: modeContext.systemMessage },
-        { role: 'user', content: validatedRequest.query },
+        { role: 'system' as const, content: modeContext.systemMessage },
+        { role: 'user' as const, content: validatedRequest.query },
       ],
       abortSignal: agentAbortSignal,
-    });
+    };
+    const result = await modeContext.agent.generate(
+      generateOptions as Parameters<typeof modeContext.agent.generate>[0]
+    );
 
     const allToolCalls =
       result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];
