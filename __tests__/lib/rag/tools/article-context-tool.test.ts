@@ -2,6 +2,15 @@ import { articleContextTool } from '@/lib/rag/tools/article-context-tool';
 import { prisma } from '@/lib/prisma';
 import { EmbeddingService } from '@/lib/rag/embedding-service';
 
+/** Create a 1536-dim zero vector with optional non-zero index */
+function makeEmbedding(setIndex?: number): number[] {
+  const vec = new Array(1536).fill(0);
+  if (setIndex !== undefined) {
+    vec[setIndex] = 1;
+  }
+  return vec;
+}
+
 // Mock dependencies
 jest.mock('@/lib/prisma', () => ({
   prisma: {
@@ -47,20 +56,16 @@ describe('ArticleContextTool', () => {
       // other chunks are orthogonal (vec[1]=1) => cosine similarity = 0
       mockEmbedBatch.mockImplementation(async (texts: string[]) => {
         return texts.map((text, i) => {
-          const vec = new Array(1536).fill(0);
           if (i === 0) {
             // query
-            vec[0] = 1;
-            return vec;
+            return makeEmbedding(0);
           }
           if (text.includes('performance')) {
             // queryと同方向 => 高類似度
-            vec[0] = 1;
-            return vec;
+            return makeEmbedding(0);
           }
           // queryと直交 => 低類似度
-          vec[1] = 1;
-          return vec;
+          return makeEmbedding(1);
         });
       });
 
@@ -256,11 +261,7 @@ describe('ArticleContextTool', () => {
       // but the query embedding vs chunk will be identical → high score.
       // Use orthogonal vectors instead: query=[1,0,...], chunks=[0,1,...] → similarity=0
       mockEmbedBatch.mockImplementation(async (texts: string[]) =>
-        texts.map((_, i) => {
-          const vec = new Array(1536).fill(0);
-          vec[i % 1536] = 1; // Each text gets a different unit vector
-          return vec;
-        })
+        texts.map((_, i) => makeEmbedding(i % 1536))
       );
 
       const result = await articleContextTool.execute({
@@ -291,12 +292,8 @@ describe('ArticleContextTool', () => {
       // embedBatch receives [query, ...chunks]
       // index 0 = query embedding, index 1+ = chunk embeddings
       // Use orthogonal vectors so cosine similarity approaches 0 (low score)
-      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
-        texts.map((_, i) => {
-          const vec = new Array(1536).fill(0);
-          vec[i % 1536] = 1; // Orthogonal unit vectors → similarity = 0
-          return vec;
-        })
+      mockEmbedBatch.mockImplementation(
+        async (texts: string[]) => texts.map((_, i) => makeEmbedding(i % 1536)) // Orthogonal unit vectors → similarity = 0
       );
 
       const result = await articleContextTool.execute({
@@ -343,6 +340,35 @@ describe('ArticleContextTool', () => {
         expect(chunk.html).not.toContain('<script>');
         expect(chunk.text).not.toContain('alert');
       }
+    });
+
+    it('should fallback to keyword-only scoring when embedBatch fails', async () => {
+      const mockArticle = {
+        id: 'article-fallback',
+        title: 'Fallback Article',
+        url: 'https://example.com/fallback',
+        sourceId: 'source-fallback',
+        publishedAt: new Date('2025-10-06T01:00:00Z'),
+        content:
+          '<p>React performance fallback content.</p><p>More context.</p>',
+        detailedSummary: '<p>Fallback summary.</p>',
+      };
+
+      mockFindUnique.mockResolvedValue(mockArticle);
+      mockEmbedBatch.mockRejectedValueOnce(new Error('embedding timeout'));
+
+      const result = await articleContextTool.execute({
+        articleId: 'article-fallback',
+        query: 'react performance',
+        maxChunks: 3,
+        minScore: 0.35,
+        includeSummary: true,
+      });
+
+      expect(mockEmbedBatch).toHaveBeenCalledTimes(1);
+      expect(result.chunks.length).toBeGreaterThan(0);
+      expect(result.citations.length).toBe(result.chunks.length);
+      expect(result.metadata.articleId).toBe('article-fallback');
     });
 
     it('should skip includeSummary when set to false', async () => {
