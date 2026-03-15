@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { CLIENT_TIMEOUT_MS } from '@/lib/rag/agent-timeouts';
 
 export interface QAContext {
   articleId: string;
@@ -45,7 +46,7 @@ export interface UseArticleQAReturn {
   reset: () => void;
 }
 
-const DEFAULT_TIMEOUT = 30000;
+const DEFAULT_TIMEOUT = CLIENT_TIMEOUT_MS;
 
 const normalizeQAContext = (value: unknown): QAContext | null => {
   if (!value || typeof value !== 'object') {

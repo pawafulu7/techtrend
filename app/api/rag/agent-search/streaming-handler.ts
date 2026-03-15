@@ -8,7 +8,7 @@ import { trace, context, SpanStatusCode, Span } from '@opentelemetry/api';
 import type { Session } from 'next-auth';
 
 import type { RateLimitInfo, ValidatedRequest, ModeContext } from './schemas';
-import { AGENT_TIMEOUT_MS } from './schemas';
+import { AGENT_TIMEOUT_MS } from '@/lib/rag/agent-timeouts';
 import {
   unwrapToolOutput,
   createSSEResponse,

@@ -3,15 +3,6 @@ import { sanitizeQuery } from '@/lib/rag/security/prompt-injection-detector';
 import type { articleSearchAgent } from '@/lib/rag/agents/article-search-agent';
 import type { articleQaAgent as _articleQaAgent } from '@/lib/rag/agents/article-qa-agent';
 
-export const MAX_DURATION_MS = 30000;
-export const FALLBACK_MARGIN_MS = 10000;
-
-/**
- * Agent timeout in milliseconds.
- * Set to maxDuration (30s) minus 10s margin for fallback execution.
- */
-export const AGENT_TIMEOUT_MS = MAX_DURATION_MS - FALLBACK_MARGIN_MS;
-
 /**
  * Custom error for article not found (404)
  */

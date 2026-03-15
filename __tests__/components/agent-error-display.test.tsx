@@ -22,16 +22,24 @@ describe('AgentErrorDisplay', () => {
     render(<AgentErrorDisplay error={error} />);
 
     expect(screen.getByText('認証が必要です')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /ログイン/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /ログイン/ })
+    ).toBeInTheDocument();
 
     const loginButton = screen.getByRole('button', { name: /ログイン/ });
     fireEvent.click(loginButton);
 
-    expect(mockRouter.push).toHaveBeenCalledWith('/auth/login?callbackUrl=/search/agent');
+    expect(mockRouter.push).toHaveBeenCalledWith(
+      '/auth/login?callbackUrl=/search/agent'
+    );
   });
 
   test('renders 429 error with retry button and countdown', () => {
-    const error: AgentSearchError = { status: 429, message: 'Rate limit', retryAfter: 120 };
+    const error: AgentSearchError = {
+      status: 429,
+      message: 'Rate limit',
+      retryAfter: 120,
+    };
     const mockOnRetry = jest.fn();
     render(<AgentErrorDisplay error={error} onRetry={mockOnRetry} />);
 
@@ -55,7 +63,10 @@ describe('AgentErrorDisplay', () => {
   });
 
   test('renders timeout error (408)', () => {
-    const error: AgentSearchError = { status: 408, message: 'Request timeout (30s)' };
+    const error: AgentSearchError = {
+      status: 408,
+      message: 'Request timeout (65s)',
+    };
     render(<AgentErrorDisplay error={error} />);
 
     expect(screen.getByText('タイムアウト')).toBeInTheDocument();

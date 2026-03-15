@@ -191,5 +191,7 @@ regenerate.log
 backups/
 # Claude Code internal documentation
 .claude/docs/
+# AI workflow generated artifacts
+.workflow/
 dump.rdb
 .aigne/

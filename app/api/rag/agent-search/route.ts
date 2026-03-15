@@ -45,7 +45,7 @@ import { handleBatchRequest } from './batch-handler';
  * 6. Response caching (60s TTL, query normalization)
  *
  * Vercel-specific optimizations:
- * - maxDuration: 30 (supports streaming, extends default 10s timeout)
+ * - maxDuration: 60 (supports streaming, extends default 10s timeout)
  * - runtime: nodejs (required for Prisma compatibility)
  *
  * @see CodexMCP Review: "Use generate() not respond(), add OTEL tracing, implement fallback"
@@ -53,7 +53,7 @@ import { handleBatchRequest } from './batch-handler';
  */
 
 // Vercel serverless function configuration
-export const maxDuration = 30; // 30 seconds (streaming support)
+export const maxDuration = 60; // 60 seconds (AI agent processing requires longer execution)
 export const runtime = 'nodejs'; // Required for Prisma
 
 const tracer = trace.getTracer('rag-agent');
