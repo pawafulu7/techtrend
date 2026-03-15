@@ -53,7 +53,7 @@ import { handleBatchRequest } from './batch-handler';
  */
 
 // Vercel serverless function configuration
-export const maxDuration = 30; // 30 seconds (streaming support)
+export const maxDuration = 60; // 60 seconds (AI agent processing requires longer execution)
 export const runtime = 'nodejs'; // Required for Prisma
 
 const tracer = trace.getTracer('rag-agent');

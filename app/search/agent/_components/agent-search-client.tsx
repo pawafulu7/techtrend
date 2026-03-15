@@ -23,7 +23,7 @@ const SemanticSearchOutputSchema = z.object({
   expansionMethod: z.enum(['none', 'dictionary', 'ai']),
 });
 
-// Timeout threshold for "still processing" message (30 seconds)
+// Threshold for "still processing" UI message (not the request timeout)
 const STEP_TIMEOUT_MS = 30000;
 
 // Hook for reduced motion preference - reacts to system setting changes

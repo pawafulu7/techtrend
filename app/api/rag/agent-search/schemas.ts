@@ -3,8 +3,8 @@ import { sanitizeQuery } from '@/lib/rag/security/prompt-injection-detector';
 import type { articleSearchAgent } from '@/lib/rag/agents/article-search-agent';
 import type { articleQaAgent as _articleQaAgent } from '@/lib/rag/agents/article-qa-agent';
 
-export const MAX_DURATION_MS = 30000;
-export const FALLBACK_MARGIN_MS = 10000;
+export const MAX_DURATION_MS = 60000;
+export const FALLBACK_MARGIN_MS = 15000;
 
 /**
  * Agent timeout in milliseconds.

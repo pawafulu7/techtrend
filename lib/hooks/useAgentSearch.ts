@@ -55,7 +55,7 @@ export interface UseAgentSearchReturn {
   reset: () => void;
 }
 
-const DEFAULT_TIMEOUT = 30000;
+const DEFAULT_TIMEOUT = 65000;
 
 /**
  * Parse SSE stream
