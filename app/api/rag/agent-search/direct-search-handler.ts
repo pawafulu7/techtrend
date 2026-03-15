@@ -151,7 +151,7 @@ export async function executeDirectSearch(
       similarity: r.similarity,
       publishedAt:
         r.publishedAt instanceof Date
-          ? r.publishedAt.toISOString().split('T')[0]
+          ? r.publishedAt.toISOString()
           : String(r.publishedAt),
       sourceId: r.sourceId,
     })),
