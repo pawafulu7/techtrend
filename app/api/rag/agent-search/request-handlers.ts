@@ -260,10 +260,12 @@ export function parseTemporalQuery(query: string): {
   const now = new Date();
 
   const pad = (n: number) => String(n).padStart(2, '0');
-  const toISO = (d: Date) =>
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const toISOStart = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00:00.000Z`;
+  const toISOEnd = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T23:59:59.999Z`;
 
-  const todayStr = toISO(now);
+  const todayEnd = toISOEnd(now);
 
   const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -296,78 +298,78 @@ export function parseTemporalQuery(query: string): {
   const patterns: Pattern[] = [
     {
       regex: /最新の?|最近の?|直近の?/,
-      dateRange: { from: toISO(sevenDaysAgo), to: todayStr },
+      dateRange: { from: toISOStart(sevenDaysAgo), to: todayEnd },
       recencyBoost: 2.0,
     },
     {
       regex: /先週の?/,
-      dateRange: { from: toISO(lastMonday), to: toISO(lastSunday) },
+      dateRange: { from: toISOStart(lastMonday), to: toISOEnd(lastSunday) },
       recencyBoost: 1.5,
     },
     {
       regex: /今週の?/,
-      dateRange: { from: toISO(thisMonday), to: todayStr },
+      dateRange: { from: toISOStart(thisMonday), to: todayEnd },
       recencyBoost: 1.5,
     },
     {
       regex: /今月の?/,
       dateRange: {
-        from: toISO(thisMonthStart),
-        to: todayStr,
+        from: toISOStart(thisMonthStart),
+        to: todayEnd,
       },
       recencyBoost: 1.0,
     },
     {
       regex: /昨日の?/,
-      dateRange: { from: toISO(yesterday), to: toISO(yesterday) },
+      dateRange: { from: toISOStart(yesterday), to: toISOEnd(yesterday) },
       recencyBoost: 1.5,
     },
     {
       regex: /今年の?/,
-      dateRange: { from: toISO(thisYearStart), to: todayStr },
+      dateRange: { from: toISOStart(thisYearStart), to: todayEnd },
       recencyBoost: 0.5,
     },
     {
       regex: /去年の?|昨年の?/,
-      dateRange: { from: toISO(lastYearStart), to: toISO(lastYearEnd) },
+      dateRange: { from: toISOStart(lastYearStart), to: toISOEnd(lastYearEnd) },
       recencyBoost: 0,
     },
     {
       regex: /\b(?:latest|recent)\b/i,
-      dateRange: { from: toISO(sevenDaysAgo), to: todayStr },
+      dateRange: { from: toISOStart(sevenDaysAgo), to: todayEnd },
       recencyBoost: 2.0,
     },
     {
       regex: /\blast\s+week\b/i,
-      dateRange: { from: toISO(lastMonday), to: toISO(lastSunday) },
+      dateRange: { from: toISOStart(lastMonday), to: toISOEnd(lastSunday) },
       recencyBoost: 1.5,
     },
     {
       regex: /\bthis\s+week\b/i,
-      dateRange: { from: toISO(thisMonday), to: todayStr },
+      dateRange: { from: toISOStart(thisMonday), to: todayEnd },
       recencyBoost: 1.5,
     },
     {
       regex: /\bthis\s+month\b/i,
       dateRange: {
-        from: toISO(thisMonthStart),
-        to: todayStr,
+        from: toISOStart(thisMonthStart),
+        to: todayEnd,
       },
       recencyBoost: 1.0,
     },
     {
       regex: /\byesterday\b/i,
-      dateRange: { from: toISO(yesterday), to: toISO(yesterday) },
+      dateRange: { from: toISOStart(yesterday), to: toISOEnd(yesterday) },
       recencyBoost: 1.5,
     },
     {
       regex: /\bthis\s+year\b/i,
-      dateRange: { from: toISO(thisYearStart), to: todayStr },
+      dateRange: { from: toISOStart(thisYearStart), to: todayEnd },
       recencyBoost: 0.5,
     },
     {
       regex: /\blast\s+year\b/i,
-      dateRange: { from: toISO(lastYearStart), to: toISO(lastYearEnd) },
+      dateRange: { from: toISOStart(lastYearStart), to: toISOEnd(lastYearEnd) },
       recencyBoost: 0,
     },
   ];

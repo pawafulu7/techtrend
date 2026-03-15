@@ -93,11 +93,11 @@ describe('parseTemporalQuery', () => {
       expect(result.recencyBoost).toBe(2.0);
     });
 
-    it('should produce valid ISO date strings', () => {
+    it('should produce valid ISO datetime strings', () => {
       const result = parseTemporalQuery('今月のtest');
       if (result.dateRange) {
-        expect(result.dateRange.from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-        expect(result.dateRange.to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(result.dateRange.from).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
+        expect(result.dateRange.to).toMatch(/^\d{4}-\d{2}-\d{2}T23:59:59\.999Z$/);
       }
     });
   });
