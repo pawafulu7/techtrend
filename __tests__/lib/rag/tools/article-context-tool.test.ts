@@ -106,7 +106,7 @@ describe('ArticleContextTool', () => {
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      // embedBatch returns array of embeddings (same vector for all texts)
+      // embedBatch returns identical vectors for all texts -> cosine similarity = 1.0 (high)
       mockEmbedBatch.mockImplementation(async (texts: string[]) =>
         texts.map(() => new Array(1536).fill(0.5))
       );

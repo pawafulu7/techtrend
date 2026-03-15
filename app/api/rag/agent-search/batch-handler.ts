@@ -254,7 +254,10 @@ export async function handleBatchRequest(
         { userId: session.user.id },
         'Client disconnected, skipping fallback'
       );
-      return NextResponse.json({ error: 'Request cancelled' }, { status: 499 });
+      return attachRateLimitHeaders(
+        NextResponse.json({ error: 'Request cancelled' }, { status: 499 }),
+        rateLimitInfo
+      );
     }
 
     // サーバー側タイムアウト or その他のエラー: 既存フォールバック実行

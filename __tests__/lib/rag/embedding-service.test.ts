@@ -23,13 +23,33 @@ jest.mock('@/lib/logger', () => ({
   sanitizeError: jest.fn((err) => err),
 }));
 
+interface MockEmbeddingResponse {
+  data: Array<{ embedding: number[]; index: number }>;
+  model: string;
+  usage: { prompt_tokens: number; total_tokens: number };
+}
+
 // Helper to create a mock embedding API response
-function mockEmbeddingResponse(vectors: number[][]): object {
+function mockEmbeddingResponse(
+  vectors: number[][],
+  indices?: number[]
+): MockEmbeddingResponse {
   return {
-    data: vectors.map((embedding, index) => ({ embedding, index })),
+    data: vectors.map((embedding, i) => ({
+      embedding,
+      index: indices ? indices[i] : i,
+    })),
     model: 'text-embedding-3-small',
     usage: { prompt_tokens: 10, total_tokens: 10 },
   };
+}
+
+// Helper to access the latest OpenAI mock instance's embeddings.create
+function getLatestOpenAIMock(): jest.Mock {
+  const OpenAI = require('openai').default;
+  const openaiInstance =
+    OpenAI.mock.results[OpenAI.mock.results.length - 1].value;
+  return openaiInstance.embeddings.create;
 }
 
 describe('EmbeddingService.embedBatch', () => {
@@ -43,10 +63,7 @@ describe('EmbeddingService.embedBatch', () => {
     service = new EmbeddingService({ batchSize: 10 });
 
     // Access the OpenAI client's embeddings.create mock
-    const OpenAI = require('openai').default;
-    const openaiInstance =
-      OpenAI.mock.results[OpenAI.mock.results.length - 1].value;
-    mockCreate = openaiInstance.embeddings.create;
+    mockCreate = getLatestOpenAIMock();
   });
 
   it('should return empty array for empty input', async () => {
@@ -124,13 +141,9 @@ describe('EmbeddingService.embedBatch', () => {
     const vectorC = new Array(1536).fill(0.3);
 
     // Simulate API returning results out of order
-    mockCreate.mockResolvedValueOnce({
-      data: [
-        { embedding: vectorC, index: 2 },
-        { embedding: vectorA, index: 0 },
-        { embedding: vectorB, index: 1 },
-      ],
-    });
+    mockCreate.mockResolvedValueOnce(
+      mockEmbeddingResponse([vectorC, vectorA, vectorB], [2, 0, 1])
+    );
 
     const result = await service.embedBatch(texts);
 
@@ -144,10 +157,7 @@ describe('EmbeddingService.embedBatch', () => {
   it('should split large inputs into multiple API calls based on batchSize', async () => {
     // Create service with small batchSize to test chunking
     const smallBatchService = new EmbeddingService({ batchSize: 2 });
-    const OpenAI = require('openai').default;
-    const openaiInstance =
-      OpenAI.mock.results[OpenAI.mock.results.length - 1].value;
-    const smallBatchMockCreate = openaiInstance.embeddings.create;
+    const smallBatchMockCreate = getLatestOpenAIMock();
 
     const texts = ['text-1', 'text-2', 'text-3'];
     const makeVector = (val: number) => new Array(1536).fill(val);

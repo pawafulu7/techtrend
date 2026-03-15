@@ -182,7 +182,7 @@ export class VectorSearchService {
                   results.reduce((sum, r) => sum + r.similarity, 0) /
                   results.length
                 ).toFixed(4)
-              : 0,
+              : '0.0000',
         },
         'Vector search completed'
       );
@@ -350,7 +350,7 @@ export class VectorSearchService {
                     results.reduce((sum, r) => sum + r.similarity, 0) /
                     results.length
                   ).toFixed(4)
-                : 0,
+                : '0.0000',
           },
           'Vector search completed'
         );
@@ -382,7 +382,7 @@ export class VectorSearchService {
                 lastResults.reduce((sum, r) => sum + r.similarity, 0) /
                 lastResults.length
               ).toFixed(4)
-            : 0,
+            : '0.0000',
       },
       'Vector search completed'
     );
@@ -543,7 +543,7 @@ export class VectorSearchService {
                   results.reduce((sum, r) => sum + r.similarity, 0) /
                   results.length
                 ).toFixed(4)
-              : 0,
+              : '0.0000',
         },
         'Article similarity search completed'
       );
