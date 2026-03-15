@@ -163,6 +163,7 @@ export function formatResultsAsText(
     publishedAt: Date;
     translatedTitle?: string | null;
     title: string;
+    summary?: string | null;
   }>,
   lang: 'ja' | 'en'
 ): string {
@@ -182,9 +183,20 @@ export function formatResultsAsText(
     });
     const title = article.translatedTitle || article.title;
 
-    return lang === 'ja'
-      ? `${idx + 1}. ${title} (一致度: ${similarity}%) - ${date}公開`
-      : `${idx + 1}. ${title} (${similarity}% match) - Published: ${date}`;
+    const headline =
+      lang === 'ja'
+        ? `${idx + 1}. ${title} (一致度: ${similarity}%) - ${date}公開`
+        : `${idx + 1}. ${title} (${similarity}% match) - Published: ${date}`;
+
+    if (article.summary) {
+      const truncated =
+        article.summary.length > 200
+          ? article.summary.slice(0, 200) + '...'
+          : article.summary;
+      return `${headline}\n   ${truncated}`;
+    }
+
+    return headline;
   });
 
   return lang === 'ja'

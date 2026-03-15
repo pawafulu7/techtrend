@@ -13,3 +13,6 @@ export const SERVER_MAX_DURATION_MS = 60_000;
 export const FALLBACK_MARGIN_MS = 15_000;
 export const AGENT_TIMEOUT_MS = SERVER_MAX_DURATION_MS - FALLBACK_MARGIN_MS;
 export const CLIENT_TIMEOUT_MS = 65_000;
+
+/** Direct search timeout for article-search mode (no LLM, embedding + vector search only) */
+export const DIRECT_SEARCH_TIMEOUT_MS = 10_000;

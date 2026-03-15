@@ -19,6 +19,7 @@ import {
   resolveModeContext,
   getArticleQaNoAnswerText,
 } from './request-handlers';
+import { executeDirectSearch } from './direct-search-handler';
 
 /**
  * Handle batch (non-streaming) agent search request
@@ -110,10 +111,10 @@ export async function handleBatchRequest(
         ),
       modeContext.agentType
     );
-  } else {
+  } else if (caches.agentCache) {
     cachedResponse = await safeReadCache(
       () =>
-        caches.agentCache.getResponse(
+        caches.agentCache!.getResponse(
           `${modeContext.preferredLang}:${validatedRequest.query}`
         ),
       modeContext.agentType
@@ -160,6 +161,67 @@ export async function handleBatchRequest(
   }
 
   span.setAttribute('cache.hit', false);
+
+  // Article search: use direct vector search (no LLM)
+  if (!modeContext.isArticleQa) {
+    try {
+      const directResult = await executeDirectSearch(
+        validatedRequest.query,
+        modeContext.preferredLang,
+        { signal: request.signal }
+      );
+
+      if (caches.agentCache) {
+        await safeWriteCache(
+          () =>
+            caches.agentCache!.setResponse(
+              `${modeContext.preferredLang}:${validatedRequest.query}`,
+              { text: directResult.response, toolCalls: directResult.toolCalls }
+            ),
+          {
+            userId: session.user.id,
+            queryPreview: validatedRequest.query.substring(0, 50),
+            mode: modeContext.agentType,
+          }
+        );
+      }
+
+      span.setAttributes({
+        'directSearch.resultCount':
+          ((directResult.toolCalls[0]?.output as Record<string, unknown>)
+            ?.count as number) ?? 0,
+        'directSearch.responseLength': directResult.response.length,
+      });
+
+      const responseData: Record<string, unknown> = {
+        ...directResult,
+        query: validatedRequest.query,
+      };
+      const responseObject = NextResponse.json(responseData);
+      return attachRateLimitHeaders(responseObject, rateLimitInfo);
+    } catch (error) {
+      if (request.signal.aborted) {
+        span.setAttribute('directSearch.clientDisconnected', true);
+        return attachRateLimitHeaders(
+          NextResponse.json({ error: 'Request cancelled' }, { status: 499 }),
+          rateLimitInfo
+        );
+      }
+
+      span.setAttribute('directSearch.failed', true);
+      span.recordException(error as Error);
+      logger.warn(
+        {
+          error: sanitizeError(error),
+          userId: session.user.id,
+          queryPreview: validatedRequest.query.substring(0, 50),
+          mode: modeContext.agentType,
+        },
+        'Direct search failed (batch)'
+      );
+      throw error;
+    }
+  }
 
   // Layer 6: Agent execution with fallback
   let agentResponse: string;
@@ -315,7 +377,7 @@ export async function handleBatchRequest(
             { text: agentResponse, toolCalls }
           );
         } else {
-          return caches.agentCache.setResponse(
+          return caches.agentCache?.setResponse(
             `${modeContext.preferredLang}:${validatedRequest.query}`,
             { text: agentResponse, toolCalls }
           );

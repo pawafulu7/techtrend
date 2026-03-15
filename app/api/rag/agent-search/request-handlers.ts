@@ -7,6 +7,13 @@ import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 import type { ValidatedRequest, ModeContext } from './schemas';
 import { ArticleNotFoundError } from './schemas';
 
+export type TemporalPattern = {
+  regex: RegExp;
+  dateRange?: { from?: string; to?: string };
+  recencyBoost: number;
+  strict: boolean; // true = explicit period, false = vague recency
+};
+
 /**
  * Determine preferred language based on request context
  *
@@ -250,4 +257,182 @@ export function enqueueArticleQaNoAnswer(
     )
   );
   controller.close();
+}
+
+export function parseTemporalQuery(query: string): {
+  cleanQuery: string;
+  dateRange?: { from?: string; to?: string };
+  recencyBoost: number;
+  strict: boolean; // true = explicit period (先週, 昨日), false = vague recency (最新, latest)
+} {
+  const now = new Date();
+
+  const toISOStart = (d: Date) =>
+    new Date(
+      Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)
+    ).toISOString();
+  const toISOEnd = (d: Date) =>
+    new Date(
+      Date.UTC(
+        d.getUTCFullYear(),
+        d.getUTCMonth(),
+        d.getUTCDate(),
+        23,
+        59,
+        59,
+        999
+      )
+    ).toISOString();
+
+  const todayEnd = toISOEnd(now);
+
+  const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+  const thisMonday = new Date(now);
+  thisMonday.setUTCDate(now.getUTCDate() + mondayOffset);
+
+  const lastMonday = new Date(thisMonday);
+  lastMonday.setUTCDate(thisMonday.getUTCDate() - 7);
+  const lastSunday = new Date(lastMonday);
+  lastSunday.setUTCDate(lastMonday.getUTCDate() + 6);
+
+  const yesterday = new Date(now);
+  yesterday.setUTCDate(now.getUTCDate() - 1);
+
+  const thisMonthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
+  const thisYearStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+  const lastYearStart = new Date(Date.UTC(now.getUTCFullYear() - 1, 0, 1));
+  const lastYearEnd = new Date(Date.UTC(now.getUTCFullYear() - 1, 11, 31));
+
+  const patterns: TemporalPattern[] = [
+    // Vague recency (strict: false) - use recencyBoost only, no hard date filter
+    {
+      regex: /最新の?|最近の?|直近の?/,
+      recencyBoost: 2.0,
+      strict: false,
+    },
+    {
+      regex: /\b(?:latest|recent)\b/i,
+      recencyBoost: 2.0,
+      strict: false,
+    },
+    // Explicit periods (strict: true) - use dateRange as hard filter with fallback
+    {
+      regex: /先週の?/,
+      dateRange: { from: toISOStart(lastMonday), to: toISOEnd(lastSunday) },
+      recencyBoost: 1.5,
+      strict: true,
+    },
+    {
+      regex: /今週の?/,
+      dateRange: { from: toISOStart(thisMonday), to: todayEnd },
+      recencyBoost: 1.5,
+      strict: true,
+    },
+    {
+      regex: /今月の?/,
+      dateRange: {
+        from: toISOStart(thisMonthStart),
+        to: todayEnd,
+      },
+      recencyBoost: 1.0,
+      strict: true,
+    },
+    {
+      regex: /昨日の?/,
+      dateRange: { from: toISOStart(yesterday), to: toISOEnd(yesterday) },
+      recencyBoost: 1.5,
+      strict: true,
+    },
+    {
+      regex: /今年の?/,
+      dateRange: { from: toISOStart(thisYearStart), to: todayEnd },
+      recencyBoost: 0.5,
+      strict: true,
+    },
+    {
+      regex: /去年の?|昨年の?/,
+      dateRange: { from: toISOStart(lastYearStart), to: toISOEnd(lastYearEnd) },
+      recencyBoost: 0,
+      strict: true,
+    },
+    {
+      regex: /\blast\s+week\b/i,
+      dateRange: { from: toISOStart(lastMonday), to: toISOEnd(lastSunday) },
+      recencyBoost: 1.5,
+      strict: true,
+    },
+    {
+      regex: /\bthis\s+week\b/i,
+      dateRange: { from: toISOStart(thisMonday), to: todayEnd },
+      recencyBoost: 1.5,
+      strict: true,
+    },
+    {
+      regex: /\bthis\s+month\b/i,
+      dateRange: {
+        from: toISOStart(thisMonthStart),
+        to: todayEnd,
+      },
+      recencyBoost: 1.0,
+      strict: true,
+    },
+    {
+      regex: /\byesterday\b/i,
+      dateRange: { from: toISOStart(yesterday), to: toISOEnd(yesterday) },
+      recencyBoost: 1.5,
+      strict: true,
+    },
+    {
+      regex: /\bthis\s+year\b/i,
+      dateRange: { from: toISOStart(thisYearStart), to: todayEnd },
+      recencyBoost: 0.5,
+      strict: true,
+    },
+    {
+      regex: /\blast\s+year\b/i,
+      dateRange: { from: toISOStart(lastYearStart), to: toISOEnd(lastYearEnd) },
+      recencyBoost: 0,
+      strict: true,
+    },
+  ];
+
+  // Prefer strict matches (explicit periods) over vague recency patterns
+  const matches = patterns
+    .map((pattern) => ({ pattern, match: query.match(pattern.regex) }))
+    .filter(
+      (entry): entry is { pattern: TemporalPattern; match: RegExpMatchArray } =>
+        entry.match !== null
+    )
+    .sort((a, b) => {
+      // strict: true wins over strict: false
+      if (a.pattern.strict !== b.pattern.strict) {
+        return Number(b.pattern.strict) - Number(a.pattern.strict);
+      }
+      // Among same-strict patterns, prefer earliest match position
+      return (
+        (a.match.index ?? Number.MAX_SAFE_INTEGER) -
+        (b.match.index ?? Number.MAX_SAFE_INTEGER)
+      );
+    });
+
+  const matchedEntry = matches[0];
+  if (matchedEntry) {
+    const rawClean = query
+      .replace(matchedEntry.pattern.regex, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const cleanQuery = rawClean.length > 0 ? rawClean : query;
+    return {
+      cleanQuery,
+      dateRange: matchedEntry.pattern.dateRange,
+      recencyBoost: matchedEntry.pattern.recencyBoost,
+      strict: matchedEntry.pattern.strict,
+    };
+  }
+
+  return { cleanQuery: query, recencyBoost: 0, strict: false };
 }

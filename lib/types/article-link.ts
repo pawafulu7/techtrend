@@ -6,6 +6,7 @@ export const articleLinkSchema = z.object({
   translatedTitle: z.string().trim().optional().nullable(),
   similarity: z.number().min(0).max(1),
   publishedAt: z.string(), // ISO 8601
+  summary: z.string().optional().nullable(),
 });
 
 export type ArticleLink = z.infer<typeof articleLinkSchema>;

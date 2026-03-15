@@ -4,10 +4,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { z } from 'zod';
 import { AgentSearchBar } from './agent-search-bar';
 import { AgentSampleQueries } from './agent-sample-queries';
-import { AgentLoadingState } from './agent-loading-state';
+import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { AgentAnswerPanel } from './agent-answer-panel';
 import { AgentErrorDisplay } from './agent-error-display';
-import { AgentStepIndicator } from './agent-step-indicator';
+
 import {
   AgentRelatedQuestions,
   generateRelatedQuestions,
@@ -15,6 +15,7 @@ import {
 import { AgentSearchInterpretation } from './agent-search-interpretation';
 import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
 import { CardV2 } from '@/components/ui-v2/card-v2';
+import { RAG_TOOL_NAMES } from '@/lib/rag/constants';
 
 // Schema for semantic-search tool output validation
 const SemanticSearchOutputSchema = z.object({
@@ -22,9 +23,6 @@ const SemanticSearchOutputSchema = z.object({
   expandedQuery: z.string(),
   expansionMethod: z.enum(['none', 'dictionary', 'ai']),
 });
-
-// Threshold for "still processing" UI message (not the request timeout)
-const STEP_TIMEOUT_MS = 30000;
 
 // Hook for reduced motion preference - reacts to system setting changes
 const usePrefersReducedMotion = () => {
@@ -48,38 +46,17 @@ export function AgentSearchClient() {
   const [lastQuery, setLastQuery] = useState('');
   const prefersReducedMotion = usePrefersReducedMotion();
   const [showResult, setShowResult] = useState(false);
-  const [isStepTimedOut, setIsStepTimedOut] = useState(false);
-  const { search, result, error, isLoading, currentStep, reset } =
-    useAgentSearch();
+
+  const { search, result, error, isLoading, reset } = useAgentSearch();
   const prefillQueryRef = useRef<((query: string) => void) | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   const handleSearch = async (query: string) => {
     setLastQuery(query);
     setShowResult(false);
-    setIsStepTimedOut(false);
     reset();
     await search(query);
   };
-
-  // Step timeout effect - show "still processing" after 30 seconds
-  useEffect(() => {
-    if (
-      currentStep === 'idle' ||
-      currentStep === 'complete' ||
-      currentStep === 'error'
-    ) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: reset timeout state on step change
-      setIsStepTimedOut(false);
-      return;
-    }
-
-    const timeoutId = setTimeout(() => {
-      setIsStepTimedOut(true);
-    }, STEP_TIMEOUT_MS);
-
-    return () => clearTimeout(timeoutId);
-  }, [currentStep]);
 
   // Show result when loading completes
   useEffect(() => {
@@ -149,7 +126,10 @@ export function AgentSearchClient() {
 
     // Find semantic-search tool call
     const semanticSearchCall = result.toolCalls.find(
-      (tc) => tc.name === 'semantic-search' && tc.output
+      (tc) =>
+        (tc.name === RAG_TOOL_NAMES.SEMANTIC_SEARCH ||
+          tc.name === RAG_TOOL_NAMES.SEMANTIC_SEARCH_LEGACY) &&
+        tc.output
     );
 
     if (!semanticSearchCall?.output) return null;
@@ -208,18 +188,9 @@ export function AgentSearchClient() {
             tabIndex={-1}
           >
             {isLoading && (
-              <CardV2
-                variant="default"
-                className="bg-[var(--tt-color-surface-muted)] p-6 shadow-[var(--tt-shadow-card-rest)]"
-                data-testid="agent-loading-wrapper"
-              >
-                <AgentStepIndicator
-                  currentStep={currentStep}
-                  isTimedOut={isStepTimedOut}
-                  className="mb-6"
-                />
-                <AgentLoadingState />
-              </CardV2>
+              <div data-testid="agent-loading-wrapper">
+                <LoadingSpinner message="検索中..." fullPage={false} />
+              </div>
             )}
             {!isLoading && showResult && error && (
               <CardV2
