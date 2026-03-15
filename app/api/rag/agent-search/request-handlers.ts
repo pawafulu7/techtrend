@@ -7,6 +7,13 @@ import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 import type { ValidatedRequest, ModeContext } from './schemas';
 import { ArticleNotFoundError } from './schemas';
 
+export type TemporalPattern = {
+  regex: RegExp;
+  dateRange?: { from?: string; to?: string };
+  recencyBoost: number;
+  strict: boolean; // true = explicit period, false = vague recency
+};
+
 /**
  * Determine preferred language based on request context
  *
@@ -300,14 +307,7 @@ export function parseTemporalQuery(query: string): {
   const lastYearStart = new Date(Date.UTC(now.getUTCFullYear() - 1, 0, 1));
   const lastYearEnd = new Date(Date.UTC(now.getUTCFullYear() - 1, 11, 31));
 
-  type Pattern = {
-    regex: RegExp;
-    dateRange?: { from?: string; to?: string };
-    recencyBoost: number;
-    strict: boolean; // true = explicit period, false = vague recency
-  };
-
-  const patterns: Pattern[] = [
+  const patterns: TemporalPattern[] = [
     // Vague recency (strict: false) - use recencyBoost only, no hard date filter
     {
       regex: /最新の?|最近の?|直近の?/,
@@ -404,7 +404,7 @@ export function parseTemporalQuery(query: string): {
   const matches = patterns
     .map((pattern) => ({ pattern, match: query.match(pattern.regex) }))
     .filter(
-      (entry): entry is { pattern: Pattern; match: RegExpMatchArray } =>
+      (entry): entry is { pattern: TemporalPattern; match: RegExpMatchArray } =>
         entry.match !== null
     )
     .sort((a, b) => {

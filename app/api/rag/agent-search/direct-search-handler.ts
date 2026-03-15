@@ -10,6 +10,9 @@ import { parseTemporalQuery } from './request-handlers';
 import { formatResultsAsText } from './sse-helpers';
 import { generateId } from '@/lib/utils/id';
 
+/** Minimum results from strict dateRange search before fallback */
+const STRICT_SEARCH_MIN_RESULTS = 3;
+
 export interface DirectSearchResult {
   query: string;
   response: string;
@@ -110,7 +113,7 @@ export async function executeDirectSearch(
       })
     );
 
-    if (strictResult.results.length >= 3) {
+    if (strictResult.results.length >= STRICT_SEARCH_MIN_RESULTS) {
       results = strictResult.results;
       metadata = strictResult.metadata;
     } else {
