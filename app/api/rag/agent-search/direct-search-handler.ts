@@ -5,6 +5,7 @@ import {
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { RAG_TOOL_NAMES } from '@/lib/rag/constants';
+import { DIRECT_SEARCH_TIMEOUT_MS } from '@/lib/rag/agent-timeouts';
 import { parseTemporalQuery } from './request-handlers';
 import { formatResultsAsText } from './sse-helpers';
 
@@ -40,8 +41,14 @@ export async function executeDirectSearch(
   preferredLang: 'ja' | 'en',
   options?: { signal?: AbortSignal }
 ): Promise<DirectSearchResult> {
-  // Check for cancellation before doing any work
-  if (options?.signal?.aborted) {
+  // Build effective abort signal with direct search timeout
+  const signals: AbortSignal[] = [
+    AbortSignal.timeout(DIRECT_SEARCH_TIMEOUT_MS),
+  ];
+  if (options?.signal) signals.push(options.signal);
+  const effectiveSignal = AbortSignal.any(signals);
+
+  if (effectiveSignal.aborted) {
     throw new Error('Request aborted');
   }
 
@@ -75,7 +82,7 @@ export async function executeDirectSearch(
   );
 
   // Check for cancellation after search completes
-  if (options?.signal?.aborted) {
+  if (effectiveSignal.aborted) {
     throw new Error('Request aborted');
   }
 

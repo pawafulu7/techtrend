@@ -696,19 +696,16 @@ async function createDirectSearchSSEResponse(
           )
         );
 
-        // Cache the result
-        // caches.isArticleQa is always false in this path (article-search mode)
+        // Cache the result (this path is article-search only, not article-qa)
         await safeWriteCache(
           () =>
-            caches.isArticleQa
-              ? Promise.resolve()
-              : caches.agentCache.setResponse(
-                  `${modeContext.preferredLang}:${validatedRequest.query}`,
-                  {
-                    text: directResult.response,
-                    toolCalls: directResult.toolCalls,
-                  }
-                ),
+            caches.agentCache.setResponse(
+              `${modeContext.preferredLang}:${validatedRequest.query}`,
+              {
+                text: directResult.response,
+                toolCalls: directResult.toolCalls,
+              }
+            ),
           {
             userId: session.user.id,
             queryPreview: validatedRequest.query.substring(0, 50),

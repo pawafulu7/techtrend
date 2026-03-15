@@ -282,6 +282,7 @@ export function parseTemporalQuery(query: string): {
   const sevenDaysAgo = new Date(now);
   sevenDaysAgo.setDate(now.getDate() - 7);
 
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const thisYearStart = new Date(now.getFullYear(), 0, 1);
   const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
   const lastYearEnd = new Date(now.getFullYear() - 1, 11, 31);
@@ -311,7 +312,7 @@ export function parseTemporalQuery(query: string): {
     {
       regex: /今月の?/,
       dateRange: {
-        from: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`,
+        from: toISO(thisMonthStart),
         to: todayStr,
       },
       recencyBoost: 1.0,
@@ -349,7 +350,7 @@ export function parseTemporalQuery(query: string): {
     {
       regex: /\bthis\s+month\b/i,
       dateRange: {
-        from: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`,
+        from: toISO(thisMonthStart),
         to: todayStr,
       },
       recencyBoost: 1.0,
