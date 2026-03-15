@@ -8,6 +8,7 @@ import { trace, context, SpanStatusCode, Span } from '@opentelemetry/api';
 import type { Session } from 'next-auth';
 
 import type { RateLimitInfo, ValidatedRequest, ModeContext } from './schemas';
+import { AGENT_TIMEOUT_MS } from './schemas';
 import {
   unwrapToolOutput,
   createSSEResponse,
@@ -26,8 +27,6 @@ import {
 } from './cache-helpers';
 
 const tracer = trace.getTracer('rag-agent');
-
-const AGENT_TIMEOUT_MS = 20000; // 20 seconds (maxDuration=30s - 10s margin for fallback)
 
 /**
  * Handle streaming agent search request
@@ -483,6 +482,14 @@ async function createStreamingResponse(
             streamSpan.setAttribute('streaming.fallback', true);
             streamSpan.setAttribute('streaming.articleQaNoAnswer', true);
           } else {
+            // Check cancellation before expensive fallback search
+            if (isCancelled || request.signal.aborted) {
+              streamSpan.setAttribute(
+                'streaming.cancelledBeforeFallback',
+                true
+              );
+              return;
+            }
             const searchService = new VectorSearchService(prisma);
             const fallbackResults = await searchService.search(
               validatedRequest.query,

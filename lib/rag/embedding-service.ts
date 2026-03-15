@@ -140,14 +140,12 @@ export class EmbeddingService {
       chunks.push(texts.slice(i, i + this.config.batchSize));
     }
 
-    // Process each chunk sequentially (chunk-level concurrency controlled by p-limit inside)
-    const results: number[][] = [];
-    for (const chunk of chunks) {
-      const chunkResults = await this.embedChunk(chunk);
-      results.push(...chunkResults);
-    }
+    // Process chunks in parallel (p-limit inside embedChunk controls API concurrency)
+    const chunkResults = await Promise.all(
+      chunks.map((chunk) => this.embedChunk(chunk))
+    );
 
-    return results;
+    return chunkResults.flat();
   }
 
   /**

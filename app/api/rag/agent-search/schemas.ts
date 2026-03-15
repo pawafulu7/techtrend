@@ -4,6 +4,12 @@ import type { articleSearchAgent } from '@/lib/rag/agents/article-search-agent';
 import type { articleQaAgent as _articleQaAgent } from '@/lib/rag/agents/article-qa-agent';
 
 /**
+ * Agent timeout in milliseconds.
+ * Set to maxDuration (30s) minus 10s margin for fallback execution.
+ */
+export const AGENT_TIMEOUT_MS = 20000;
+
+/**
  * Custom error for article not found (404)
  */
 export class ArticleNotFoundError extends Error {

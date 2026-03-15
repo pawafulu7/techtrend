@@ -9,6 +9,7 @@ import { SpanStatusCode, Span } from '@opentelemetry/api';
 import type { Session } from 'next-auth';
 
 import type { RateLimitInfo, ValidatedRequest, ModeContext } from './schemas';
+import { AGENT_TIMEOUT_MS } from './schemas';
 import {
   attachRateLimitHeaders,
   unwrapToolOutput,
@@ -18,8 +19,6 @@ import {
   resolveModeContext,
   getArticleQaNoAnswerText,
 } from './request-handlers';
-
-const AGENT_TIMEOUT_MS = 20000; // 20 seconds (maxDuration=30s - 10s margin for fallback)
 
 /**
  * Handle batch (non-streaming) agent search request
