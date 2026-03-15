@@ -52,7 +52,8 @@ export async function executeDirectSearch(
     throw new Error('Request aborted');
   }
 
-  const { cleanQuery, dateRange, recencyBoost } = parseTemporalQuery(query);
+  const { cleanQuery, dateRange, recencyBoost, strict } =
+    parseTemporalQuery(query);
 
   logger.debug(
     {
@@ -61,6 +62,7 @@ export async function executeDirectSearch(
         cleanQuery !== query ? cleanQuery.substring(0, 50) : undefined,
       hasDateRange: !!(dateRange && (dateRange.from || dateRange.to)),
       recencyBoost,
+      strict,
     },
     'Direct search started'
   );
@@ -70,19 +72,59 @@ export async function executeDirectSearch(
   // recencyBoost from parseTemporalQuery can be up to 2.0; clamp to [0, 1]
   const clampedRecencyBoost = Math.min(1, recencyBoost);
 
-  // Use recencyBoost only (soft ranking signal), not dateRange (hard filter).
-  // Hard date filtering causes 0 results when no recent articles exist,
-  // which is worse UX than showing older but relevant results.
-  // The LLM agent also used recencyBoost without strict dateRange filtering.
-  const { results, metadata } = await searchService.searchWithFallback(
-    cleanQuery,
-    {
+  let results: SearchResult[];
+  let metadata: {
+    phase: 1 | null;
+    finalThreshold: number;
+    attemptCount: number;
+    usedFallback: boolean;
+  };
+
+  if (strict && dateRange) {
+    // Strict temporal (e.g., "先週の", "昨日の"): try dateRange first, fallback without
+    const strictResult = await searchService.searchWithFallback(cleanQuery, {
+      enableFallback: true,
+      topK: 10,
+      embeddingKey: 'summary',
+      dateRange,
+      recencyBoost: clampedRecencyBoost,
+    });
+
+    if (strictResult.results.length >= 3) {
+      results = strictResult.results;
+      metadata = strictResult.metadata;
+    } else {
+      // Fallback: remove dateRange, keep recencyBoost
+      logger.debug(
+        {
+          resultCount: strictResult.results.length,
+          query: query.substring(0, 50),
+        },
+        'Strict temporal search insufficient, falling back to recencyBoost only'
+      );
+      const fallbackResult = await searchService.searchWithFallback(
+        cleanQuery,
+        {
+          enableFallback: true,
+          topK: 10,
+          embeddingKey: 'summary',
+          recencyBoost: clampedRecencyBoost,
+        }
+      );
+      results = fallbackResult.results;
+      metadata = fallbackResult.metadata;
+    }
+  } else {
+    // Vague recency (e.g., "最新の", "latest"): recencyBoost only, no hard filter
+    const searchResult = await searchService.searchWithFallback(cleanQuery, {
       enableFallback: true,
       topK: 10,
       embeddingKey: 'summary',
       recencyBoost: clampedRecencyBoost,
-    }
-  );
+    });
+    results = searchResult.results;
+    metadata = searchResult.metadata;
+  }
 
   // Check for cancellation after search completes
   if (effectiveSignal.aborted) {

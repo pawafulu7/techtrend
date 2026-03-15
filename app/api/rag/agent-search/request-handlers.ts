@@ -256,6 +256,7 @@ export function parseTemporalQuery(query: string): {
   cleanQuery: string;
   dateRange?: { from?: string; to?: string };
   recencyBoost: number;
+  strict: boolean; // true = explicit period (先週, 昨日), false = vague recency (最新, latest)
 } {
   const now = new Date();
 
@@ -293,23 +294,35 @@ export function parseTemporalQuery(query: string): {
     regex: RegExp;
     dateRange?: { from?: string; to?: string };
     recencyBoost: number;
+    strict: boolean; // true = explicit period, false = vague recency
   };
 
   const patterns: Pattern[] = [
+    // Vague recency (strict: false) - use recencyBoost only, no hard date filter
     {
       regex: /最新の?|最近の?|直近の?/,
       dateRange: { from: toISOStart(sevenDaysAgo), to: todayEnd },
       recencyBoost: 2.0,
+      strict: false,
     },
+    {
+      regex: /\b(?:latest|recent)\b/i,
+      dateRange: { from: toISOStart(sevenDaysAgo), to: todayEnd },
+      recencyBoost: 2.0,
+      strict: false,
+    },
+    // Explicit periods (strict: true) - use dateRange as hard filter with fallback
     {
       regex: /先週の?/,
       dateRange: { from: toISOStart(lastMonday), to: toISOEnd(lastSunday) },
       recencyBoost: 1.5,
+      strict: true,
     },
     {
       regex: /今週の?/,
       dateRange: { from: toISOStart(thisMonday), to: todayEnd },
       recencyBoost: 1.5,
+      strict: true,
     },
     {
       regex: /今月の?/,
@@ -318,36 +331,37 @@ export function parseTemporalQuery(query: string): {
         to: todayEnd,
       },
       recencyBoost: 1.0,
+      strict: true,
     },
     {
       regex: /昨日の?/,
       dateRange: { from: toISOStart(yesterday), to: toISOEnd(yesterday) },
       recencyBoost: 1.5,
+      strict: true,
     },
     {
       regex: /今年の?/,
       dateRange: { from: toISOStart(thisYearStart), to: todayEnd },
       recencyBoost: 0.5,
+      strict: true,
     },
     {
       regex: /去年の?|昨年の?/,
       dateRange: { from: toISOStart(lastYearStart), to: toISOEnd(lastYearEnd) },
       recencyBoost: 0,
-    },
-    {
-      regex: /\b(?:latest|recent)\b/i,
-      dateRange: { from: toISOStart(sevenDaysAgo), to: todayEnd },
-      recencyBoost: 2.0,
+      strict: true,
     },
     {
       regex: /\blast\s+week\b/i,
       dateRange: { from: toISOStart(lastMonday), to: toISOEnd(lastSunday) },
       recencyBoost: 1.5,
+      strict: true,
     },
     {
       regex: /\bthis\s+week\b/i,
       dateRange: { from: toISOStart(thisMonday), to: todayEnd },
       recencyBoost: 1.5,
+      strict: true,
     },
     {
       regex: /\bthis\s+month\b/i,
@@ -356,21 +370,25 @@ export function parseTemporalQuery(query: string): {
         to: todayEnd,
       },
       recencyBoost: 1.0,
+      strict: true,
     },
     {
       regex: /\byesterday\b/i,
       dateRange: { from: toISOStart(yesterday), to: toISOEnd(yesterday) },
       recencyBoost: 1.5,
+      strict: true,
     },
     {
       regex: /\bthis\s+year\b/i,
       dateRange: { from: toISOStart(thisYearStart), to: todayEnd },
       recencyBoost: 0.5,
+      strict: true,
     },
     {
       regex: /\blast\s+year\b/i,
       dateRange: { from: toISOStart(lastYearStart), to: toISOEnd(lastYearEnd) },
       recencyBoost: 0,
+      strict: true,
     },
   ];
 
@@ -385,9 +403,10 @@ export function parseTemporalQuery(query: string): {
         cleanQuery,
         dateRange: pattern.dateRange,
         recencyBoost: pattern.recencyBoost,
+        strict: pattern.strict,
       };
     }
   }
 
-  return { cleanQuery: query, recencyBoost: 0 };
+  return { cleanQuery: query, recencyBoost: 0, strict: false };
 }
