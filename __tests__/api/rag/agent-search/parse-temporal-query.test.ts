@@ -47,6 +47,13 @@ describe('parseTemporalQuery', () => {
       expect(result.dateRange).toBeDefined();
       expect(result.recencyBoost).toBe(1.5);
     });
+
+    it('should parse "今年のNext.js"', () => {
+      const result = parseTemporalQuery('今年のNext.js');
+      expect(result.cleanQuery).toBe('Next.js');
+      expect(result.recencyBoost).toBe(0.5);
+      expect(result.strict).toBe(true);
+    });
   });
 
   describe('English patterns', () => {
@@ -68,6 +75,20 @@ describe('parseTemporalQuery', () => {
       expect(result.cleanQuery).toBe('AI news');
       expect(result.recencyBoost).toBe(1.0);
     });
+
+    it('should parse "yesterday news"', () => {
+      const result = parseTemporalQuery('yesterday news');
+      expect(result.cleanQuery).toBe('news');
+      expect(result.recencyBoost).toBe(1.5);
+      expect(result.strict).toBe(true);
+    });
+
+    it('should parse "this week updates"', () => {
+      const result = parseTemporalQuery('this week updates');
+      expect(result.cleanQuery).toBe('updates');
+      expect(result.recencyBoost).toBe(1.5);
+      expect(result.strict).toBe(true);
+    });
   });
 
   describe('no match', () => {
@@ -87,10 +108,11 @@ describe('parseTemporalQuery', () => {
       expect(result.recencyBoost).toBe(2.0);
     });
 
-    it('should handle multiple temporal patterns (first match only)', () => {
+    it('should prefer strict patterns over vague recency patterns', () => {
       const result = parseTemporalQuery('最新の先週のReact');
-      // "最新" matches first
-      expect(result.recencyBoost).toBe(2.0);
+      // "先週" (strict: true) wins over "最新" (strict: false)
+      expect(result.recencyBoost).toBe(1.5);
+      expect(result.strict).toBe(true);
     });
 
     it('should produce valid ISO datetime strings', () => {
@@ -99,6 +121,35 @@ describe('parseTemporalQuery', () => {
         expect(result.dateRange.from).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\.000Z$/);
         expect(result.dateRange.to).toMatch(/^\d{4}-\d{2}-\d{2}T23:59:59\.999Z$/);
       }
+    });
+
+    it('should prefer strict match in mixed query "先週の最新React記事"', () => {
+      const result = parseTemporalQuery('先週の最新React記事');
+      expect(result.strict).toBe(true);
+      expect(result.recencyBoost).toBe(1.5);
+    });
+
+    it('should prefer strict match in mixed query "latest React from last week"', () => {
+      const result = parseTemporalQuery('latest React from last week');
+      expect(result.strict).toBe(true);
+      expect(result.recencyBoost).toBe(1.5);
+    });
+  });
+
+  describe('strict flag', () => {
+    it('should return strict: false for vague recency patterns', () => {
+      const result = parseTemporalQuery('最新のReact');
+      expect(result.strict).toBe(false);
+    });
+
+    it('should return strict: true for explicit period patterns', () => {
+      const result = parseTemporalQuery('先週のReact');
+      expect(result.strict).toBe(true);
+    });
+
+    it('should return strict: false when no pattern matches', () => {
+      const result = parseTemporalQuery('React Server Components');
+      expect(result.strict).toBe(false);
     });
   });
 });

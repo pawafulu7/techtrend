@@ -46,9 +46,6 @@ export function AgentSearchInterpretation({
     return null;
   }
 
-  const expansionLabel =
-    interpretation.expansionMethod === 'ai' ? 'AI' : 'dictionary';
-
   return (
     <CardV2
       variant="ghost"
@@ -81,11 +78,7 @@ export function AgentSearchInterpretation({
           </p>
           <p className="mt-1 flex items-center gap-1 text-xs text-[var(--tt-color-text-muted)]">
             <Info className="h-3 w-3" aria-hidden="true" />
-            <span>
-              {expansionLabel === 'AI'
-                ? 'AIがクエリを解釈して検索範囲を拡張しました'
-                : '関連キーワードで検索範囲を拡張しました'}
-            </span>
+            <span>AIがクエリを解釈して検索範囲を拡張しました</span>
           </p>
         </div>
       </div>

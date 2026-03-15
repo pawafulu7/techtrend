@@ -260,35 +260,48 @@ export function parseTemporalQuery(query: string): {
 } {
   const now = new Date();
 
-  const pad = (n: number) => String(n).padStart(2, '0');
   const toISOStart = (d: Date) =>
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00:00.000Z`;
+    new Date(
+      Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)
+    ).toISOString();
   const toISOEnd = (d: Date) =>
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T23:59:59.999Z`;
+    new Date(
+      Date.UTC(
+        d.getUTCFullYear(),
+        d.getUTCMonth(),
+        d.getUTCDate(),
+        23,
+        59,
+        59,
+        999
+      )
+    ).toISOString();
 
   const todayEnd = toISOEnd(now);
 
-  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
 
   const thisMonday = new Date(now);
-  thisMonday.setDate(now.getDate() + mondayOffset);
+  thisMonday.setUTCDate(now.getUTCDate() + mondayOffset);
 
   const lastMonday = new Date(thisMonday);
-  lastMonday.setDate(thisMonday.getDate() - 7);
+  lastMonday.setUTCDate(thisMonday.getUTCDate() - 7);
   const lastSunday = new Date(lastMonday);
-  lastSunday.setDate(lastMonday.getDate() + 6);
+  lastSunday.setUTCDate(lastMonday.getUTCDate() + 6);
 
   const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
+  yesterday.setUTCDate(now.getUTCDate() - 1);
 
   const sevenDaysAgo = new Date(now);
-  sevenDaysAgo.setDate(now.getDate() - 7);
+  sevenDaysAgo.setUTCDate(now.getUTCDate() - 7);
 
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const thisYearStart = new Date(now.getFullYear(), 0, 1);
-  const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
-  const lastYearEnd = new Date(now.getFullYear() - 1, 11, 31);
+  const thisMonthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
+  const thisYearStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+  const lastYearStart = new Date(Date.UTC(now.getUTCFullYear() - 1, 0, 1));
+  const lastYearEnd = new Date(Date.UTC(now.getUTCFullYear() - 1, 11, 31));
 
   type Pattern = {
     regex: RegExp;
@@ -392,20 +405,38 @@ export function parseTemporalQuery(query: string): {
     },
   ];
 
-  for (const pattern of patterns) {
-    if (pattern.regex.test(query)) {
-      const rawClean = query
-        .replace(pattern.regex, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      const cleanQuery = rawClean.length > 0 ? rawClean : query;
-      return {
-        cleanQuery,
-        dateRange: pattern.dateRange,
-        recencyBoost: pattern.recencyBoost,
-        strict: pattern.strict,
-      };
-    }
+  // Prefer strict matches (explicit periods) over vague recency patterns
+  const matches = patterns
+    .map((pattern) => ({ pattern, match: query.match(pattern.regex) }))
+    .filter(
+      (entry): entry is { pattern: Pattern; match: RegExpMatchArray } =>
+        entry.match !== null
+    )
+    .sort((a, b) => {
+      // strict: true wins over strict: false
+      if (a.pattern.strict !== b.pattern.strict) {
+        return Number(b.pattern.strict) - Number(a.pattern.strict);
+      }
+      // Among same-strict patterns, prefer earliest match position
+      return (
+        (a.match.index ?? Number.MAX_SAFE_INTEGER) -
+        (b.match.index ?? Number.MAX_SAFE_INTEGER)
+      );
+    });
+
+  const matchedEntry = matches[0];
+  if (matchedEntry) {
+    const rawClean = query
+      .replace(matchedEntry.pattern.regex, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const cleanQuery = rawClean.length > 0 ? rawClean : query;
+    return {
+      cleanQuery,
+      dateRange: matchedEntry.pattern.dateRange,
+      recencyBoost: matchedEntry.pattern.recencyBoost,
+      strict: matchedEntry.pattern.strict,
+    };
   }
 
   return { cleanQuery: query, recencyBoost: 0, strict: false };

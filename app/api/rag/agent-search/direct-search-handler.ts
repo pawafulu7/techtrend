@@ -8,6 +8,7 @@ import { RAG_TOOL_NAMES } from '@/lib/rag/constants';
 import { DIRECT_SEARCH_TIMEOUT_MS } from '@/lib/rag/agent-timeouts';
 import { parseTemporalQuery } from './request-handlers';
 import { formatResultsAsText } from './sse-helpers';
+import { generateId } from '@/lib/utils/id';
 
 export interface DirectSearchResult {
   query: string;
@@ -140,7 +141,7 @@ export async function executeDirectSearch(
     'Direct search completed'
   );
 
-  const toolCallId = `direct-search-${Date.now()}`;
+  const toolCallId = `direct-search-${generateId()}`;
   const toolOutput = {
     articles: results.map((r: SearchResult) => ({
       articleId: r.articleId,
