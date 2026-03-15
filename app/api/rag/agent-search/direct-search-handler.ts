@@ -70,13 +70,16 @@ export async function executeDirectSearch(
   // recencyBoost from parseTemporalQuery can be up to 2.0; clamp to [0, 1]
   const clampedRecencyBoost = Math.min(1, recencyBoost);
 
+  // Use recencyBoost only (soft ranking signal), not dateRange (hard filter).
+  // Hard date filtering causes 0 results when no recent articles exist,
+  // which is worse UX than showing older but relevant results.
+  // The LLM agent also used recencyBoost without strict dateRange filtering.
   const { results, metadata } = await searchService.searchWithFallback(
     cleanQuery,
     {
       enableFallback: true,
       topK: 10,
       embeddingKey: 'summary',
-      dateRange,
       recencyBoost: clampedRecencyBoost,
     }
   );
