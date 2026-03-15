@@ -127,17 +127,19 @@ export class EmbeddingService {
       return [];
     }
 
-    // Validate upfront: reject any empty strings (same behaviour as embedText)
-    for (const text of texts) {
-      if (!text.trim()) {
+    // Validate and trim upfront (same behaviour as embedText which trims before sending)
+    const normalizedTexts = texts.map((text) => {
+      const trimmed = text.trim();
+      if (!trimmed) {
         throw new Error('Cannot embed empty text');
       }
-    }
+      return trimmed;
+    });
 
     // Split into chunks of batchSize
     const chunks: string[][] = [];
-    for (let i = 0; i < texts.length; i += this.config.batchSize) {
-      chunks.push(texts.slice(i, i + this.config.batchSize));
+    for (let i = 0; i < normalizedTexts.length; i += this.config.batchSize) {
+      chunks.push(normalizedTexts.slice(i, i + this.config.batchSize));
     }
 
     // Process chunks in parallel (p-limit inside embedChunk controls API concurrency)

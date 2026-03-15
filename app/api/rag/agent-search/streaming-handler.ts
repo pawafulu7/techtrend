@@ -447,6 +447,7 @@ async function createStreamingResponse(
       } catch (agentError) {
         // クライアント切断: フォールバックせずストリーム終了
         if (isCancelled || request.signal.aborted) {
+          isClosed = true;
           streamSpan.setAttribute('streaming.cancelledDuringGeneration', true);
           if (!streamSpanEnded) {
             streamSpan.end();
