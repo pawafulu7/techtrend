@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ArticleLink } from '@/lib/types/article-link';
 import { extractArticlesFromToolCalls } from '@/lib/utils/article/article-link-extractor';
+import { CLIENT_TIMEOUT_MS } from '@/lib/rag/agent-timeouts';
 
 export interface AgentSearchResult {
   query: string;
@@ -55,7 +56,7 @@ export interface UseAgentSearchReturn {
   reset: () => void;
 }
 
-const DEFAULT_TIMEOUT = 65000;
+const DEFAULT_TIMEOUT = CLIENT_TIMEOUT_MS;
 
 /**
  * Parse SSE stream
