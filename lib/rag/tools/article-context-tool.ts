@@ -63,7 +63,10 @@ function calculateKeywordBoost(chunkText: string, query: string): number {
       boost += 0.05; // +0.05 per keyword match
 
       // Additional boost if keyword appears in code block
-      if (lowerChunk.includes(`<code>${keyword}`) || lowerChunk.includes(`\`${keyword}\``)) {
+      if (
+        lowerChunk.includes(`<code>${keyword}`) ||
+        lowerChunk.includes(`\`${keyword}\``)
+      ) {
         boost += 0.05; // +0.05 for code context
       }
     }
@@ -83,7 +86,11 @@ function calculateKeywordBoost(chunkText: string, query: string): number {
  * @param totalChunks - Total number of chunks
  * @returns Position boost score (0-0.1)
  */
-function calculatePositionBoost(chunkIndex: number, isSummary: boolean, totalChunks: number): number {
+function calculatePositionBoost(
+  chunkIndex: number,
+  isSummary: boolean,
+  totalChunks: number
+): number {
   if (isSummary) {
     return 0.1; // Maximum boost for summary
   }
@@ -93,7 +100,7 @@ function calculatePositionBoost(chunkIndex: number, isSummary: boolean, totalChu
   }
 
   // Gradual decrease for later chunks
-  const positionRatio = 1 - (chunkIndex / totalChunks);
+  const positionRatio = 1 - chunkIndex / totalChunks;
   return positionRatio * 0.03; // 0-0.03 range
 }
 
@@ -125,38 +132,39 @@ async function scoreChunks(options: {
   }
 
   try {
-    // Generate query embedding
+    // Generate embeddings for query and all chunks in a single API call
     const embeddingService = getEmbeddingService();
-    const queryEmbedding = await embeddingService.embedText(query);
+    const allTexts = [query, ...chunks.map((c) => c.text)];
+    const allEmbeddings = await embeddingService.embedBatch(allTexts);
+    const queryEmbedding = allEmbeddings[0];
+    const chunkEmbeddings = allEmbeddings.slice(1);
 
     // Calculate semantic similarity for each chunk
-    const scoredChunks = await Promise.all(
-      chunks.map(async (chunk) => {
-        // Calculate semantic similarity using cosine similarity
-        // For simplicity, we'll use a basic implementation here
-        // In production, use pgvector or a dedicated similarity function
-        const chunkEmbedding = await embeddingService.embedText(chunk.text);
-        const semanticScore = cosineSimilarity(queryEmbedding, chunkEmbedding);
+    const scoredChunks = chunks.map((chunk, i) => {
+      const semanticScore = cosineSimilarity(
+        queryEmbedding,
+        chunkEmbeddings[i]
+      );
 
-        // Calculate boost scores
-        const keywordBoost = calculateKeywordBoost(chunk.html, query);
-        const positionBoost = calculatePositionBoost(
-          chunk.chunkIndex,
-          chunk.isSummary || false,
-          chunks.length
-        );
+      // Calculate boost scores
+      const keywordBoost = calculateKeywordBoost(chunk.html, query);
+      const positionBoost = calculatePositionBoost(
+        chunk.chunkIndex,
+        chunk.isSummary || false,
+        chunks.length
+      );
 
-        // Final score
-        const finalScore = Math.max(0, Math.min(1,
-          semanticScore * 0.8 + keywordBoost + positionBoost
-        ));
+      // Final score
+      const finalScore = Math.max(
+        0,
+        Math.min(1, semanticScore * 0.8 + keywordBoost + positionBoost)
+      );
 
-        return {
-          ...chunk,
-          score: finalScore,
-        };
-      })
-    );
+      return {
+        ...chunk,
+        score: finalScore,
+      };
+    });
 
     // Sort by score (filtering handled by caller to allow fallback logic)
     return scoredChunks.sort((a, b) => b.score - a.score);
@@ -215,10 +223,7 @@ DO NOT use this tool for:
   `.trim(),
 
   inputSchema: z.object({
-    articleId: z
-      .string()
-      .cuid()
-      .describe('Article ID to extract context from'),
+    articleId: z.string().cuid().describe('Article ID to extract context from'),
 
     query: z
       .string()
@@ -279,7 +284,13 @@ DO NOT use this tool for:
     }),
   }),
 
-  execute: async ({ articleId, query, maxChunks, minScore, includeSummary }) => {
+  execute: async ({
+    articleId,
+    query,
+    maxChunks,
+    minScore,
+    includeSummary,
+  }) => {
     const startTime = Date.now();
 
     try {
@@ -309,14 +320,20 @@ DO NOT use this tool for:
       });
 
       if (!article) {
-        throw new Error(`Article ${articleId} not found or content unavailable`);
+        throw new Error(
+          `Article ${articleId} not found or content unavailable`
+        );
       }
 
       const rawChunks: ScoredChunk[] = [];
       let sanitizationFallback = false;
 
       // Add detailed summary as first chunk if available and requested
-      if (includeSummary && article.detailedSummary && article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__') {
+      if (
+        includeSummary &&
+        article.detailedSummary &&
+        article.detailedSummary !== '__SKIP_DETAILED_SUMMARY__'
+      ) {
         try {
           const summaryHtml = sanitizeArticleHtml(article.detailedSummary);
           const summaryText = stripHtmlTags(summaryHtml);
@@ -451,7 +468,9 @@ DO NOT use this tool for:
 
       if (filteredChunks.length === 0 && scoredChunks.length > 0) {
         const loweredThreshold = Math.max(0.15, Math.min(0.3, minScore * 0.7));
-        filteredChunks = scoredChunks.filter((c) => c.score >= loweredThreshold);
+        filteredChunks = scoredChunks.filter(
+          (c) => c.score >= loweredThreshold
+        );
         if (filteredChunks.length > 0) {
           relaxedThreshold = loweredThreshold;
         } else {
@@ -467,7 +486,9 @@ DO NOT use this tool for:
       const elapsedMs = Date.now() - startTime;
       const avgScore =
         topChunks.length > 0
-          ? (topChunks.reduce((sum, c) => sum + c.score, 0) / topChunks.length).toFixed(4)
+          ? (
+              topChunks.reduce((sum, c) => sum + c.score, 0) / topChunks.length
+            ).toFixed(4)
           : 0;
 
       logger.info(

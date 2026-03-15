@@ -19,6 +19,8 @@ import {
   getArticleQaNoAnswerText,
 } from './request-handlers';
 
+const AGENT_TIMEOUT_MS = 20000; // 20 seconds (maxDuration=30s - 10s margin for fallback)
+
 /**
  * Handle batch (non-streaming) agent search request
  *
@@ -167,11 +169,17 @@ export async function handleBatchRequest(
   let fallback = false;
 
   try {
+    const agentAbortSignal = AbortSignal.any([
+      request.signal,
+      AbortSignal.timeout(AGENT_TIMEOUT_MS),
+    ]);
+
     const result = await modeContext.agent.generate({
       messages: [
         { role: 'system', content: modeContext.systemMessage },
         { role: 'user', content: validatedRequest.query },
       ],
+      abortSignal: agentAbortSignal,
     });
 
     const allToolCalls =
@@ -235,6 +243,17 @@ export async function handleBatchRequest(
       'Agent search completed (batch)'
     );
   } catch (agentError) {
+    // クライアント切断: フォールバックせずエラー応答
+    if (request.signal.aborted) {
+      span.setAttribute('agent.clientDisconnected', true);
+      logger.info(
+        { userId: session.user.id },
+        'Client disconnected, skipping fallback'
+      );
+      return NextResponse.json({ error: 'Request cancelled' }, { status: 499 });
+    }
+
+    // サーバー側タイムアウト or その他のエラー: 既存フォールバック実行
     span.setAttribute('agent.failed', true);
     span.recordException(agentError as Error);
 

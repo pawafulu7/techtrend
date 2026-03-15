@@ -27,6 +27,8 @@ import {
 
 const tracer = trace.getTracer('rag-agent');
 
+const AGENT_TIMEOUT_MS = 20000; // 20 seconds (maxDuration=30s - 10s margin for fallback)
+
 /**
  * Handle streaming agent search request
  *
@@ -168,7 +170,7 @@ async function createStreamingResponse(
   validatedRequest: ValidatedRequest,
   session: Session,
   parentSpan: Span,
-  _request: NextRequest,
+  request: NextRequest,
   modeContext: ModeContext,
   rateLimitInfo: RateLimitInfo | undefined,
   caches: CacheResolution
@@ -228,11 +230,17 @@ async function createStreamingResponse(
       let isClosed = false;
 
       try {
+        const agentAbortSignal = AbortSignal.any([
+          request.signal,
+          AbortSignal.timeout(AGENT_TIMEOUT_MS),
+        ]);
+
         const streamResult = await modeContext.agent.stream({
           messages: [
             { role: 'system', content: modeContext.systemMessage },
             { role: 'user', content: validatedRequest.query },
           ],
+          abortSignal: agentAbortSignal,
         });
 
         if (qaContextPayload) {
@@ -438,8 +446,8 @@ async function createStreamingResponse(
           }
         }
       } catch (agentError) {
-        // Skip fallback if client already disconnected
-        if (isCancelled) {
+        // クライアント切断: フォールバックせずストリーム終了
+        if (isCancelled || request.signal.aborted) {
           streamSpan.setAttribute('streaming.cancelledDuringGeneration', true);
           if (!streamSpanEnded) {
             streamSpan.end();
@@ -447,6 +455,8 @@ async function createStreamingResponse(
           }
           return;
         }
+
+        // サーバー側タイムアウト or その他: 既存フォールバック実行
 
         streamSpan.setAttribute('streaming.failed', true);
         streamSpan.recordException(agentError as Error);
