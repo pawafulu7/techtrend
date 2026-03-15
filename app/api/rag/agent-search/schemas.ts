@@ -8,7 +8,7 @@ export const FALLBACK_MARGIN_MS = 15000;
 
 /**
  * Agent timeout in milliseconds.
- * Set to maxDuration (30s) minus 10s margin for fallback execution.
+ * Set to maxDuration (60s) minus 15s margin for fallback execution.
  */
 export const AGENT_TIMEOUT_MS = MAX_DURATION_MS - FALLBACK_MARGIN_MS;
 
