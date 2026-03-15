@@ -49,9 +49,26 @@ export async function executeDirectSearch(
   if (options?.signal) signals.push(options.signal);
   const effectiveSignal = AbortSignal.any(signals);
 
-  if (effectiveSignal.aborted) {
-    throw new Error('Request aborted');
-  }
+  const abortError = () =>
+    effectiveSignal.reason instanceof Error
+      ? effectiveSignal.reason
+      : Object.assign(new Error('Request aborted'), { name: 'AbortError' });
+
+  const runWithAbort = <T>(promise: Promise<T>): Promise<T> =>
+    effectiveSignal.aborted
+      ? Promise.reject(abortError())
+      : Promise.race([
+          promise,
+          new Promise<never>((_, reject) => {
+            effectiveSignal.addEventListener(
+              'abort',
+              () => reject(abortError()),
+              {
+                once: true,
+              }
+            );
+          }),
+        ]);
 
   const { cleanQuery, dateRange, recencyBoost, strict } =
     parseTemporalQuery(query);
@@ -83,13 +100,15 @@ export async function executeDirectSearch(
 
   if (strict && dateRange) {
     // Strict temporal (e.g., "先週の", "昨日の"): try dateRange first, fallback without
-    const strictResult = await searchService.searchWithFallback(cleanQuery, {
-      enableFallback: true,
-      topK: 9,
-      embeddingKey: 'summary',
-      dateRange,
-      recencyBoost: clampedRecencyBoost,
-    });
+    const strictResult = await runWithAbort(
+      searchService.searchWithFallback(cleanQuery, {
+        enableFallback: true,
+        topK: 9,
+        embeddingKey: 'summary',
+        dateRange,
+        recencyBoost: clampedRecencyBoost,
+      })
+    );
 
     if (strictResult.results.length >= 3) {
       results = strictResult.results;
@@ -103,33 +122,29 @@ export async function executeDirectSearch(
         },
         'Strict temporal search insufficient, falling back to recencyBoost only'
       );
-      const fallbackResult = await searchService.searchWithFallback(
-        cleanQuery,
-        {
+      const fallbackResult = await runWithAbort(
+        searchService.searchWithFallback(cleanQuery, {
           enableFallback: true,
           topK: 9,
           embeddingKey: 'summary',
           recencyBoost: clampedRecencyBoost,
-        }
+        })
       );
       results = fallbackResult.results;
       metadata = fallbackResult.metadata;
     }
   } else {
     // Vague recency (e.g., "最新の", "latest"): recencyBoost only, no hard filter
-    const searchResult = await searchService.searchWithFallback(cleanQuery, {
-      enableFallback: true,
-      topK: 9,
-      embeddingKey: 'summary',
-      recencyBoost: clampedRecencyBoost,
-    });
+    const searchResult = await runWithAbort(
+      searchService.searchWithFallback(cleanQuery, {
+        enableFallback: true,
+        topK: 9,
+        embeddingKey: 'summary',
+        recencyBoost: clampedRecencyBoost,
+      })
+    );
     results = searchResult.results;
     metadata = searchResult.metadata;
-  }
-
-  // Check for cancellation after search completes
-  if (effectiveSignal.aborted) {
-    throw new Error('Request aborted');
   }
 
   logger.debug(

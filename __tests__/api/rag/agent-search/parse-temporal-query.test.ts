@@ -7,9 +7,7 @@ describe('parseTemporalQuery', () => {
     it('should parse "最新のReact記事"', () => {
       const result = parseTemporalQuery('最新のReact記事');
       expect(result.cleanQuery).toBe('React記事');
-      expect(result.dateRange).toBeDefined();
-      expect(result.dateRange!.from).toBeDefined();
-      expect(result.dateRange!.to).toBeDefined();
+      expect(result.dateRange).toBeUndefined();
       expect(result.recencyBoost).toBe(2.0);
     });
 
@@ -60,7 +58,7 @@ describe('parseTemporalQuery', () => {
     it('should parse "latest Docker updates"', () => {
       const result = parseTemporalQuery('latest Docker updates');
       expect(result.cleanQuery).toBe('Docker updates');
-      expect(result.dateRange).toBeDefined();
+      expect(result.dateRange).toBeUndefined();
       expect(result.recencyBoost).toBe(2.0);
     });
 
@@ -104,7 +102,7 @@ describe('parseTemporalQuery', () => {
     it('should return original query if cleanQuery would be empty', () => {
       const result = parseTemporalQuery('最新');
       expect(result.cleanQuery).toBe('最新');
-      expect(result.dateRange).toBeDefined();
+      expect(result.dateRange).toBeUndefined();
       expect(result.recencyBoost).toBe(2.0);
     });
 

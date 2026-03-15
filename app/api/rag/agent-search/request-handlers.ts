@@ -293,9 +293,6 @@ export function parseTemporalQuery(query: string): {
   const yesterday = new Date(now);
   yesterday.setUTCDate(now.getUTCDate() - 1);
 
-  const sevenDaysAgo = new Date(now);
-  sevenDaysAgo.setUTCDate(now.getUTCDate() - 7);
-
   const thisMonthStart = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
   );
@@ -314,13 +311,11 @@ export function parseTemporalQuery(query: string): {
     // Vague recency (strict: false) - use recencyBoost only, no hard date filter
     {
       regex: /最新の?|最近の?|直近の?/,
-      dateRange: { from: toISOStart(sevenDaysAgo), to: todayEnd },
       recencyBoost: 2.0,
       strict: false,
     },
     {
       regex: /\b(?:latest|recent)\b/i,
-      dateRange: { from: toISOStart(sevenDaysAgo), to: todayEnd },
       recencyBoost: 2.0,
       strict: false,
     },
