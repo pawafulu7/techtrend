@@ -84,7 +84,7 @@ export async function executeDirectSearch(
     // Strict temporal (e.g., "先週の", "昨日の"): try dateRange first, fallback without
     const strictResult = await searchService.searchWithFallback(cleanQuery, {
       enableFallback: true,
-      topK: 10,
+      topK: 9,
       embeddingKey: 'summary',
       dateRange,
       recencyBoost: clampedRecencyBoost,
@@ -106,7 +106,7 @@ export async function executeDirectSearch(
         cleanQuery,
         {
           enableFallback: true,
-          topK: 10,
+          topK: 9,
           embeddingKey: 'summary',
           recencyBoost: clampedRecencyBoost,
         }
@@ -118,7 +118,7 @@ export async function executeDirectSearch(
     // Vague recency (e.g., "最新の", "latest"): recencyBoost only, no hard filter
     const searchResult = await searchService.searchWithFallback(cleanQuery, {
       enableFallback: true,
-      topK: 10,
+      topK: 9,
       embeddingKey: 'summary',
       recencyBoost: clampedRecencyBoost,
     });
@@ -170,7 +170,7 @@ export async function executeDirectSearch(
       {
         id: toolCallId,
         name: RAG_TOOL_NAMES.SEMANTIC_SEARCH,
-        input: { query: cleanQuery, topK: 10, enableFallback: true },
+        input: { query: cleanQuery, topK: 9, enableFallback: true },
         output: toolOutput,
         dynamic: false,
       },

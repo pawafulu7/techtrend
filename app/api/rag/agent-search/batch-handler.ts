@@ -111,10 +111,10 @@ export async function handleBatchRequest(
         ),
       modeContext.agentType
     );
-  } else {
+  } else if (caches.agentCache) {
     cachedResponse = await safeReadCache(
       () =>
-        caches.agentCache.getResponse(
+        caches.agentCache!.getResponse(
           `${modeContext.preferredLang}:${validatedRequest.query}`
         ),
       modeContext.agentType
@@ -171,23 +171,25 @@ export async function handleBatchRequest(
     );
 
     // Cache the result
-    await safeWriteCache(
-      () =>
-        caches.agentCache.setResponse(
-          `${modeContext.preferredLang}:${validatedRequest.query}`,
-          { text: directResult.response, toolCalls: directResult.toolCalls }
-        ),
-      {
-        userId: session.user.id,
-        queryPreview: validatedRequest.query.substring(0, 50),
-        mode: modeContext.agentType,
-      }
-    );
+    if (caches.agentCache) {
+      await safeWriteCache(
+        () =>
+          caches.agentCache!.setResponse(
+            `${modeContext.preferredLang}:${validatedRequest.query}`,
+            { text: directResult.response, toolCalls: directResult.toolCalls }
+          ),
+        {
+          userId: session.user.id,
+          queryPreview: validatedRequest.query.substring(0, 50),
+          mode: modeContext.agentType,
+        }
+      );
+    }
 
     span.setAttributes({
       'directSearch.resultCount':
-        (directResult.toolCalls[0]?.output as Record<string, unknown>)?.count ??
-        0,
+        ((directResult.toolCalls[0]?.output as Record<string, unknown>)
+          ?.count as number) ?? 0,
       'directSearch.responseLength': directResult.response.length,
     });
 
@@ -353,7 +355,7 @@ export async function handleBatchRequest(
             { text: agentResponse, toolCalls }
           );
         } else {
-          return caches.agentCache.setResponse(
+          return caches.agentCache?.setResponse(
             `${modeContext.preferredLang}:${validatedRequest.query}`,
             { text: agentResponse, toolCalls }
           );

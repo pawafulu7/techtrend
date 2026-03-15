@@ -31,8 +31,13 @@ export function AgentSearchInterpretation({
   interpretation,
   className = '',
 }: AgentSearchInterpretationProps) {
-  // Don't render if no interpretation or no expansion happened
-  if (!interpretation || interpretation.expansionMethod === 'none') {
+  // Direct search mode uses dictionary expansion which doesn't provide
+  // meaningful query transformation info to users. Hide entirely.
+  if (
+    !interpretation ||
+    interpretation.expansionMethod === 'none' ||
+    interpretation.expansionMethod === 'dictionary'
+  ) {
     return null;
   }
 
@@ -41,12 +46,13 @@ export function AgentSearchInterpretation({
     return null;
   }
 
-  const expansionLabel = interpretation.expansionMethod === 'ai' ? 'AI' : 'dictionary';
+  const expansionLabel =
+    interpretation.expansionMethod === 'ai' ? 'AI' : 'dictionary';
 
   return (
     <CardV2
       variant="ghost"
-      className={`p-3 bg-[var(--tt-color-primary)]/5 border border-[var(--tt-color-primary)]/20 ${className}`}
+      className={`border border-[var(--tt-color-primary)]/20 bg-[var(--tt-color-primary)]/5 p-3 ${className}`}
       role="status"
       aria-live="polite"
       aria-label="AI search interpretation"
@@ -54,15 +60,18 @@ export function AgentSearchInterpretation({
     >
       <div className="flex items-start gap-2">
         <Sparkles
-          className="h-4 w-4 text-[var(--tt-color-primary)] shrink-0 mt-0.5"
+          className="mt-0.5 h-4 w-4 shrink-0 text-[var(--tt-color-primary)]"
           aria-hidden="true"
         />
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-sm text-[var(--tt-color-text-muted)]">
             <span className="font-medium text-[var(--tt-color-text)]">
               {interpretation.originalQuery}
             </span>
-            <span className="mx-2 text-[var(--tt-color-text-muted)]" aria-hidden="true">
+            <span
+              className="mx-2 text-[var(--tt-color-text-muted)]"
+              aria-hidden="true"
+            >
               →
             </span>
             <span className="sr-only">expanded to</span>
@@ -70,7 +79,7 @@ export function AgentSearchInterpretation({
               {interpretation.expandedQuery}
             </span>
           </p>
-          <p className="text-xs text-[var(--tt-color-text-muted)] mt-1 flex items-center gap-1">
+          <p className="mt-1 flex items-center gap-1 text-xs text-[var(--tt-color-text-muted)]">
             <Info className="h-3 w-3" aria-hidden="true" />
             <span>
               {expansionLabel === 'AI'

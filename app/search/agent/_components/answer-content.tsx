@@ -316,7 +316,7 @@ export function AnswerContent({
 
                 {/* Summary text - flex-1 fills remaining space */}
                 {item.summary && (
-                  <p className="line-clamp-4 flex-1 font-[family-name:var(--tt-font-body)] text-sm leading-relaxed break-words text-[var(--tt-color-text)]">
+                  <p className="line-clamp-4 overflow-hidden font-[family-name:var(--tt-font-body)] text-sm leading-relaxed break-words text-[var(--tt-color-text)]">
                     {item.summary}
                   </p>
                 )}

@@ -105,10 +105,10 @@ export async function handleStreamingRequest(
         ),
       modeContext.agentType
     );
-  } else {
+  } else if (caches.agentCache) {
     cachedResponse = await safeReadCache(
       () =>
-        caches.agentCache.getResponse(
+        caches.agentCache!.getResponse(
           `${modeContext.preferredLang}:${validatedRequest.query}`
         ),
       modeContext.agentType
@@ -413,7 +413,7 @@ async function createStreamingResponse(
                     { text: fullText, toolCalls }
                   );
                 } else {
-                  return caches.agentCache.setResponse(
+                  return caches.agentCache?.setResponse(
                     `${modeContext.preferredLang}:${validatedRequest.query}`,
                     { text: fullText, toolCalls }
                   );
@@ -697,21 +697,23 @@ async function createDirectSearchSSEResponse(
         );
 
         // Cache the result (this path is article-search only, not article-qa)
-        await safeWriteCache(
-          () =>
-            caches.agentCache.setResponse(
-              `${modeContext.preferredLang}:${validatedRequest.query}`,
-              {
-                text: directResult.response,
-                toolCalls: directResult.toolCalls,
-              }
-            ),
-          {
-            userId: session.user.id,
-            queryPreview: validatedRequest.query.substring(0, 50),
-            mode: modeContext.agentType,
-          }
-        );
+        if (caches.agentCache) {
+          await safeWriteCache(
+            () =>
+              caches.agentCache!.setResponse(
+                `${modeContext.preferredLang}:${validatedRequest.query}`,
+                {
+                  text: directResult.response,
+                  toolCalls: directResult.toolCalls,
+                }
+              ),
+            {
+              userId: session.user.id,
+              queryPreview: validatedRequest.query.substring(0, 50),
+              mode: modeContext.agentType,
+            }
+          );
+        }
 
         // Emit finish event
         controller.enqueue(

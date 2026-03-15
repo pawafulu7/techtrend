@@ -113,10 +113,7 @@ export function ArticleCard({
             alt={article.title}
             fill
             priority={false}
-            className={cn(
-              'transition-transform duration-300 ease-out group-hover:scale-[1.01]',
-              'object-contain'
-            )}
+            className="object-contain"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             onError={() => setThumbnailError(true)}
           />
