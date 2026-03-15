@@ -14,12 +14,12 @@ jest.mock('@/lib/prisma', () => ({
 jest.mock('@/lib/rag/embedding-service');
 
 const mockFindUnique = prisma.article.findUnique as jest.Mock;
-const mockEmbedText = jest.fn();
+const mockEmbedBatch = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
   (EmbeddingService as jest.Mock).mockImplementation(() => ({
-    embedText: mockEmbedText,
+    embedBatch: mockEmbedBatch,
   }));
 });
 
@@ -32,19 +32,25 @@ describe('ArticleContextTool', () => {
         url: 'https://example.com/react-perf',
         sourceId: 'source1',
         publishedAt: new Date('2025-10-15T10:00:00Z'),
-        content: '<p>React performance optimization requires understanding of rendering behavior.</p><p>Use React.memo to prevent unnecessary re-renders.</p>'.repeat(20), // Make it long enough to chunk
-        detailedSummary: '<p>Comprehensive guide to React performance optimization techniques.</p>',
+        content:
+          '<p>React performance optimization requires understanding of rendering behavior.</p><p>Use React.memo to prevent unnecessary re-renders.</p>'.repeat(
+            20
+          ), // Make it long enough to chunk
+        detailedSummary:
+          '<p>Comprehensive guide to React performance optimization techniques.</p>',
       };
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      // Mock embeddings
-      mockEmbedText.mockImplementation(async (text: string) => {
-        // Return different embeddings based on text content
-        if (text.includes('performance')) {
-          return new Array(1536).fill(0.9); // High similarity
-        }
-        return new Array(1536).fill(0.3); // Lower similarity
+      // Mock embedBatch: receives [query, ...chunks], returns array of embeddings
+      // query embedding and any chunk containing 'performance' get high value vectors
+      mockEmbedBatch.mockImplementation(async (texts: string[]) => {
+        return texts.map((text) => {
+          if (text.includes('performance')) {
+            return new Array(1536).fill(0.9); // High similarity
+          }
+          return new Array(1536).fill(0.3); // Lower similarity
+        });
       });
 
       const result = await articleContextTool.execute({
@@ -93,13 +99,17 @@ describe('ArticleContextTool', () => {
         url: 'https://example.com/typescript',
         sourceId: 'source2',
         publishedAt: new Date('2025-10-14T09:00:00Z'),
-        content: '<p>TypeScript is a typed superset of JavaScript.</p><p>It compiles to plain JavaScript.</p>',
+        content:
+          '<p>TypeScript is a typed superset of JavaScript.</p><p>It compiles to plain JavaScript.</p>',
         detailedSummary: null,
       };
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      mockEmbedText.mockResolvedValue(new Array(1536).fill(0.5));
+      // embedBatch returns array of embeddings (same vector for all texts)
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map(() => new Array(1536).fill(0.5))
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article2',
@@ -130,7 +140,9 @@ describe('ArticleContextTool', () => {
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      mockEmbedText.mockResolvedValue(new Array(1536).fill(0.5));
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map(() => new Array(1536).fill(0.5))
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article3',
@@ -196,7 +208,9 @@ describe('ArticleContextTool', () => {
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      mockEmbedText.mockResolvedValue(new Array(1536).fill(0.6));
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map(() => new Array(1536).fill(0.6))
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article5',
@@ -222,8 +236,16 @@ describe('ArticleContextTool', () => {
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      // Mock low similarity scores
-      mockEmbedText.mockResolvedValue(new Array(1536).fill(0.2));
+      // Mock low similarity scores: all embeddings identical → cosine similarity = 1.0
+      // but the query embedding vs chunk will be identical → high score.
+      // Use orthogonal vectors instead: query=[1,0,...], chunks=[0,1,...] → similarity=0
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map((_, i) => {
+          const vec = new Array(1536).fill(0);
+          vec[i % 1536] = 1; // Each text gets a different unit vector
+          return vec;
+        })
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article6',
@@ -250,12 +272,16 @@ describe('ArticleContextTool', () => {
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      mockEmbedText.mockImplementation(async (text: string) => {
-        if (text === 'very unrelated question') {
-          return new Array(4).fill(1);
-        }
-        return new Array(4).fill(0);
-      });
+      // embedBatch receives [query, ...chunks]
+      // index 0 = query embedding, index 1+ = chunk embeddings
+      // Use orthogonal vectors so cosine similarity approaches 0 (low score)
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map((_, i) => {
+          const vec = new Array(1536).fill(0);
+          vec[i % 1536] = 1; // Orthogonal unit vectors → similarity = 0
+          return vec;
+        })
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article10',
@@ -276,13 +302,16 @@ describe('ArticleContextTool', () => {
         url: 'https://example.com/scripts',
         sourceId: 'source7',
         publishedAt: new Date('2025-10-09T04:00:00Z'),
-        content: '<p>Normal content</p><script>alert("xss")</script><p>More content</p>',
+        content:
+          '<p>Normal content</p><script>alert("xss")</script><p>More content</p>',
         detailedSummary: '<p>Summary</p>',
       };
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      mockEmbedText.mockResolvedValue(new Array(1536).fill(0.5));
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map(() => new Array(1536).fill(0.5))
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article7',
@@ -313,7 +342,9 @@ describe('ArticleContextTool', () => {
 
       mockFindUnique.mockResolvedValue(mockArticle);
 
-      mockEmbedText.mockResolvedValue(new Array(1536).fill(0.5));
+      mockEmbedBatch.mockImplementation(async (texts: string[]) =>
+        texts.map(() => new Array(1536).fill(0.5))
+      );
 
       const result = await articleContextTool.execute({
         articleId: 'article8',
