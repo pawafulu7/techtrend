@@ -12,6 +12,8 @@ import { optimizeContentForSummary } from '@/lib/utils/content/content-extractor
 
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
+import { getOrCreateTags } from '@/lib/services/tag-service';
+import { prisma as sharedPrisma } from '@/lib/prisma';
 const prisma = new PrismaClient();
 
 // 環境変数チェック
@@ -48,6 +50,7 @@ async function main() {
     process.exit(1);
   } finally {
     await prisma.$disconnect();
+    await sharedPrisma.$disconnect();
   }
 }
 
@@ -173,21 +176,6 @@ async function regenerateArticles(articles: Array<{
 
       // 改善された場合のみ更新
       if (newScore.totalScore > article.score) {
-        // 既存のタグを取得
-        const existingTags = await prisma.tag.findMany({
-          where: {
-            articles: {
-              some: {
-                articleId: article.id,
-              },
-            },
-          },
-        });
-        const existingTagNames = existingTags.map(t => t.name);
-
-        // 新しいタグと既存のタグをマージ（重複を除く）
-        const mergedTags = [...new Set([...existingTagNames, ...tags])];
-
         // データベースを更新
         await prisma.article.update({
           where: { id: article.id },
@@ -201,25 +189,12 @@ async function regenerateArticles(articles: Array<{
           },
         });
 
-        // タグを更新
-        for (const tagName of tags) {
-          if (!existingTagNames.includes(tagName)) {
-            // タグが存在しない場合は作成
-            const tag = await prisma.tag.upsert({
-              where: { name: tagName },
-              update: {},
-              create: { name: tagName },
-            });
-
-            // 記事とタグの関連を作成
-            await prisma.articleTag.create({
-              data: {
-                articleId: article.id,
-                tagId: tag.id,
-              },
-            });
-          }
-        }
+        // タグを取得または作成し、記事に関連付け（connectは冪等）
+        const newTags = await getOrCreateTags(tags);
+        await prisma.article.update({
+          where: { id: article.id },
+          data: { tags: { connect: newTags.map(t => ({ id: t.id })) } },
+        });
 
         console.error(`  ✅ 更新成功（+${newScore.totalScore - article.score}点改善）`);
         results.push({
