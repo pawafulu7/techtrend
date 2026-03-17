@@ -174,19 +174,21 @@ async function regenerateArticles(articles: Array<{
 
       // 改善された場合のみ更新
       if (newScore.totalScore > article.score) {
-        // タグを取得または作成し、記事データと一括更新（connectは冪等）
-        const newTags = await getOrCreateTags(tags);
-        await prisma.article.update({
-          where: { id: article.id },
-          data: {
-            summary,
-            summaryVersion: SUMMARY_VERSION.CURRENT, // 統一フォーマットバージョン
-            detailedSummary: result.detailedSummary,
-            translatedTitle: result.translatedTitle,
-            articleType: result.articleType,
-            updatedAt: new Date(),
-            tags: { set: newTags.map(t => ({ id: t.id })) },
-          },
+        // タグを取得または作成し、記事データと一括更新（setで既存タグを置換）
+        await prisma.$transaction(async (tx) => {
+          const newTags = await getOrCreateTags(tags);
+          await tx.article.update({
+            where: { id: article.id },
+            data: {
+              summary,
+              summaryVersion: SUMMARY_VERSION.CURRENT, // 統一フォーマットバージョン
+              detailedSummary: result.detailedSummary,
+              translatedTitle: result.translatedTitle,
+              articleType: result.articleType,
+              updatedAt: new Date(),
+              tags: { set: newTags.map(t => ({ id: t.id })) },
+            },
+          });
         });
 
         console.error(`  ✅ 更新成功（+${newScore.totalScore - article.score}点改善）`);

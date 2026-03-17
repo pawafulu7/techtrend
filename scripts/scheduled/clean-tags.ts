@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -13,33 +13,17 @@ async function cleanTags() {
     });
 
     if (emptyTag) {
-      // 空タグが関連付けられている記事を取得
-      const articlesWithEmptyTag = await prisma.article.findMany({
-        where: {
-          tags: {
-            some: { id: emptyTag.id }
-          }
-        }
-      });
-
-      // 各記事から空タグを削除
-      for (const article of articlesWithEmptyTag) {
-        await prisma.article.update({
-          where: { id: article.id },
-          data: {
-            tags: {
-              disconnect: { id: emptyTag.id }
-            }
-          }
-        });
-      }
+      // 空タグへの関連を一括削除
+      const deleteResult = await prisma.$executeRaw`
+        DELETE FROM "_ArticleToTag" WHERE "B" = ${emptyTag.id}
+      `;
 
       // タグを削除
       await prisma.tag.delete({
         where: { id: emptyTag.id }
       });
 
-      console.error(`✓ 空タグを削除しました (${articlesWithEmptyTag.length}記事から削除)`);
+      console.error(`✓ 空タグを削除しました (${deleteResult}件の関連を削除)`);
     } else {
       console.error('✓ 空タグは存在しません');
     }
