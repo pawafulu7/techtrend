@@ -78,6 +78,8 @@ async function cleanTags() {
     const tagMap = new Map(fetchedTags.map((t) => [t.name, t]));
 
     // Phase 2: Per-mapping processing with $transaction
+    const mappingErrors: Array<{ from: string; to: string; error: unknown }> = [];
+
     for (const mapping of tagMappings) {
       try {
         const fromTag = tagMap.get(mapping.from);
@@ -161,7 +163,12 @@ async function cleanTags() {
         }
       } catch (err) {
         console.error(`❌ "${mapping.from}" → "${mapping.to}" の処理に失敗:`, err);
+        mappingErrors.push({ from: mapping.from, to: mapping.to, error: err });
       }
+    }
+
+    if (mappingErrors.length > 0) {
+      throw new Error(`タグ正規化で ${mappingErrors.length} 件のマッピングが失敗: ${mappingErrors.map(e => `${e.from}->${e.to}`).join(', ')}`);
     }
 
     // 3. 統計情報を表示

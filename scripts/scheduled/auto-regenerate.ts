@@ -185,7 +185,7 @@ async function regenerateArticles(articles: Array<{
             translatedTitle: result.translatedTitle,
             articleType: result.articleType,
             updatedAt: new Date(),
-            tags: { connect: newTags.map(t => ({ id: t.id })) },
+            tags: { set: newTags.map(t => ({ id: t.id })) },
           },
         });
 
