@@ -189,4 +189,7 @@ async function cleanTags() {
   }
 }
 
-cleanTags().catch(console.error);
+cleanTags().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

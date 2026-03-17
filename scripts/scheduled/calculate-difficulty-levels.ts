@@ -54,6 +54,8 @@ async function calculateDifficultyLevels() {
 
       // bulk UPDATE（VALUES が 1000 件を超える場合はチャンク分割）
       const chunkSize = 1000;
+      let hasChunkFailure = false;
+      const failedIds: string[] = [];
       for (let j = 0; j < tuples.length; j += chunkSize) {
         const chunk = tuples.slice(j, j + chunkSize);
         if (chunk.length === 0) continue;
@@ -69,7 +71,12 @@ async function calculateDifficultyLevels() {
           `;
         } catch (err) {
           console.error(`❌ チャンク ${Math.floor(j / chunkSize) + 1} の更新に失敗:`, err);
+          hasChunkFailure = true;
+          failedIds.push(...chunk.map(t => t.id));
         }
+      }
+      if (hasChunkFailure) {
+        throw new Error(`difficulty bulk update failed for ${failedIds.length} records`);
       }
 
       console.error(`✓ 処理済み: ${processedCount}/${articles.length}件`);

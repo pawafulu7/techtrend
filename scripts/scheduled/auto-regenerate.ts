@@ -174,7 +174,8 @@ async function regenerateArticles(articles: Array<{
 
       // 改善された場合のみ更新
       if (newScore.totalScore > article.score) {
-        // データベースを更新
+        // タグを取得または作成し、記事データと一括更新（connectは冪等）
+        const newTags = await getOrCreateTags(tags);
         await prisma.article.update({
           where: { id: article.id },
           data: {
@@ -184,14 +185,8 @@ async function regenerateArticles(articles: Array<{
             translatedTitle: result.translatedTitle,
             articleType: result.articleType,
             updatedAt: new Date(),
+            tags: { connect: newTags.map(t => ({ id: t.id })) },
           },
-        });
-
-        // タグを取得または作成し、記事に関連付け（connectは冪等）
-        const newTags = await getOrCreateTags(tags);
-        await prisma.article.update({
-          where: { id: article.id },
-          data: { tags: { connect: newTags.map(t => ({ id: t.id })) } },
         });
 
         console.error(`  ✅ 更新成功（+${newScore.totalScore - article.score}点改善）`);
