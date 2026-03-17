@@ -146,38 +146,56 @@ async function calculateAllQualityScores(options: Options) {
 
     let processedCount = 0;
     const batchSize = options.batch || 100;
-    
+
     // バッチ処理で更新
     for (let i = 0; i < articles.length; i += batchSize) {
       const batch = articles.slice(i, i + batchSize);
-      
-      await Promise.all(
-        batch.map(async (article) => {
-          const baseScore = calculateQualityScore(article);
-          const { qualityBonus } = checkCategoryQuality(article);
-          const finalScore = Math.min(100, baseScore + qualityBonus);
 
-          // 無駄なUPDATEを避けてupdatedAt汚染を抑制
-          if (article.qualityScore !== finalScore) {
-            await prisma.article.update({
-              where: { id: article.id },
-              data: {
-                qualityScore: finalScore,
-                qualityScoreComputedAt: checkpoint
-              },
-            });
-          } else if (!article.qualityScoreComputedAt) {
-            // スコア同一でも未計算扱いを解消
-            await prisma.article.update({
-              where: { id: article.id },
-              data: { qualityScoreComputedAt: checkpoint },
-            });
+      // スコア計算とタプル収集
+      type UpdateTuple = { id: string; score: number; computedAt: Date };
+      const tuples: UpdateTuple[] = [];
+
+      for (const article of batch) {
+        const baseScore = calculateQualityScore(article);
+        const { qualityBonus } = checkCategoryQuality(article);
+        const finalScore = Math.min(100, baseScore + qualityBonus);
+
+        // 無駄なUPDATEを避けてupdatedAt汚染を抑制
+        if (article.qualityScore !== finalScore || !article.qualityScoreComputedAt) {
+          tuples.push({ id: article.id, score: finalScore, computedAt: checkpoint });
+        }
+
+        processedCount++;
+      }
+
+      // バルクUPDATE（タプルが存在する場合のみ）
+      if (tuples.length > 0) {
+        // 1000件超はチャンク分割
+        const chunkSize = 1000;
+        const failedChunks: number[] = [];
+        for (let c = 0; c < tuples.length; c += chunkSize) {
+          const chunk = tuples.slice(c, c + chunkSize);
+          const values = chunk.map(t => Prisma.sql`(${t.id}, ${t.score}::double precision, ${t.computedAt}::timestamptz)`);
+          try {
+            await prisma.$executeRaw`
+              UPDATE "Article"
+              SET
+                "qualityScore" = v.score::double precision,
+                "qualityScoreComputedAt" = v.computed_at::timestamptz,
+                "updatedAt" = NOW()
+              FROM (VALUES ${Prisma.join(values)}) AS v(id, score, computed_at)
+              WHERE "Article".id = v.id::text
+            `;
+          } catch (err) {
+            console.error(`❌ チャンク ${Math.floor(c / chunkSize) + 1} の更新に失敗:`, err);
+            failedChunks.push(Math.floor(c / chunkSize) + 1);
           }
+        }
+        if (failedChunks.length > 0) {
+          throw new Error(`quality-score bulk update failed in chunks: ${failedChunks.join(', ')}`);
+        }
+      }
 
-          processedCount++;
-        })
-      );
-      
       console.error(`✓ 処理済み: ${processedCount}/${articles.length}件`);
     }
 
@@ -295,6 +313,11 @@ async function fixZeroScores(options: Options) {
       return;
     }
 
+    // スコア計算とタプル収集
+    const now = new Date();
+    type FixTuple = { id: string; score: number; computedAt: Date };
+    const tuples: FixTuple[] = [];
+
     for (const article of articlesWithoutScore) {
       // シンプルな品質スコア計算
       let score = 50; // 基本スコア
@@ -322,16 +345,37 @@ async function fixZeroScores(options: Options) {
       // 最大100に制限
       const finalScore = Math.min(100, score);
 
-      // 更新
-      await prisma.article.update({
-        where: { id: article.id },
-        data: {
-          qualityScore: finalScore,
-          qualityScoreComputedAt: new Date()
-        }
-      });
+      tuples.push({ id: article.id, score: finalScore, computedAt: now });
 
       console.error(`✓ ${article.title.slice(0, 50)}... -> スコア: ${finalScore}`);
+    }
+
+    // バルクUPDATE（タプルが存在する場合のみ）
+    if (tuples.length > 0) {
+      // 1000件超はチャンク分割
+      const chunkSize = 1000;
+      const failedChunks: number[] = [];
+      for (let c = 0; c < tuples.length; c += chunkSize) {
+        const chunk = tuples.slice(c, c + chunkSize);
+        const values = chunk.map(t => Prisma.sql`(${t.id}, ${t.score}::double precision, ${t.computedAt}::timestamptz)`);
+        try {
+          await prisma.$executeRaw`
+            UPDATE "Article"
+            SET
+              "qualityScore" = v.score::double precision,
+              "qualityScoreComputedAt" = v.computed_at::timestamptz,
+              "updatedAt" = NOW()
+            FROM (VALUES ${Prisma.join(values)}) AS v(id, score, computed_at)
+            WHERE "Article".id = v.id::text
+          `;
+        } catch (err) {
+          console.error(`❌ チャンク ${Math.floor(c / chunkSize) + 1} の更新に失敗:`, err);
+          failedChunks.push(Math.floor(c / chunkSize) + 1);
+        }
+      }
+      if (failedChunks.length > 0) {
+        throw new Error(`quality-score bulk update failed in chunks: ${failedChunks.join(', ')}`);
+      }
     }
 
     console.error('\n✅ 品質スコアの修正が完了しました');

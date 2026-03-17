@@ -5,7 +5,7 @@
  * これにより処理時間と負荷を大幅に削減
  */
 
-import { PrismaClient, ProcessingStatus } from '@prisma/client';
+import { PrismaClient, Prisma, ProcessingStatus } from '@prisma/client';
 import logger from '@/lib/logger';
 
 const prisma = new PrismaClient();
@@ -96,34 +96,46 @@ async function processBatch() {
       batchSize: BATCH_SIZE
     }, 'Articles to process');
 
-    // バッチ処理
+    // バッチ処理: スコアを計算してタプルを収集
+    const computedAt = new Date();
+    const tuples: Array<{ id: string; score: number; computedAt: Date }> = [];
+
     for (const article of articlesToProcess) {
+      const newScore = calculateQualityScore(article);
+      tuples.push({ id: article.id, score: newScore, computedAt });
+    }
+
+    // 一括 UPDATE
+    if (tuples.length > 0) {
       try {
-        const newScore = calculateQualityScore(article);
-
-        await prisma.article.update({
-          where: { id: article.id },
-          data: {
-            qualityScore: newScore,
-            qualityScoreComputedAt: new Date()
-          }
-        });
-
-        processedCount++;
+        const values = Prisma.join(
+          tuples.map(t => Prisma.sql`(${t.id}, ${t.score}, ${t.computedAt})`),
+          ', '
+        );
+        await prisma.$executeRaw`
+          UPDATE "Article"
+          SET
+            "qualityScore" = v.score::double precision,
+            "qualityScoreComputedAt" = v.computed_at::timestamptz,
+            "updatedAt" = NOW()
+          FROM (VALUES ${values}) AS v(id, score, computed_at)
+          WHERE "Article".id = v.id::text
+        `;
+        processedCount += tuples.length;
       } catch (err) {
         logger.error({
-          articleId: article.id,
-          error: err
-        }, 'Failed to update quality score for article');
+          error: err,
+          batchSize: tuples.length
+        }, 'Failed to bulk update quality scores');
         status = 'partial';
       }
     }
 
-    // ProcessingLogを更新（成功時のみチェックポイント時刻を記録）
+    // ProcessingLogを更新（失敗時も lastProcessedAt を前進させて無限リトライを防ぐ）
     await prisma.processingLog.upsert({
       where: { processName: PROCESS_NAME },
       update: {
-        lastProcessedAt: processingCheckpoint,  // チェックポイント時刻を使用
+        lastProcessedAt: processingCheckpoint,
         processedCount: {
           increment: processedCount
         },
@@ -136,7 +148,7 @@ async function processBatch() {
       },
       create: {
         processName: PROCESS_NAME,
-        lastProcessedAt: processingCheckpoint,  // チェックポイント時刻を使用
+        lastProcessedAt: processingCheckpoint,
         processedCount,
         status,
         metadata: {

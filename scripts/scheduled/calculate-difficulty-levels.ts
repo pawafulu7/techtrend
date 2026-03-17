@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { determineDifficulty } from '@/lib/utils/quality-score';
 import { getLastProcessedTime, saveProcessingStatus } from '../utils/processing-status';
 
@@ -43,20 +43,31 @@ async function calculateDifficultyLevels() {
     for (let i = 0; i < articles.length; i += batchSize) {
       const batch = articles.slice(i, i + batchSize);
       
-      await Promise.all(
-        batch.map(async (article) => {
-          const difficulty = determineDifficulty(article);
-          difficultyCount[difficulty]++;
-          
-          await prisma.article.update({
-            where: { id: article.id },
-            data: { difficulty },
-          });
-          
-          processedCount++;
-        })
-      );
-      
+      // (id, difficulty) タプルを収集
+      const tuples: { id: string; difficulty: string }[] = [];
+      for (const article of batch) {
+        const difficulty = determineDifficulty(article);
+        difficultyCount[difficulty]++;
+        tuples.push({ id: article.id, difficulty });
+        processedCount++;
+      }
+
+      // bulk UPDATE（VALUES が 1000 件を超える場合はチャンク分割）
+      const chunkSize = 1000;
+      await prisma.$transaction(async (tx) => {
+        for (let j = 0; j < tuples.length; j += chunkSize) {
+          const chunk = tuples.slice(j, j + chunkSize);
+          if (chunk.length === 0) continue;
+          const values = chunk.map(t => Prisma.sql`(${t.id}, ${t.difficulty})`);
+          await tx.$executeRaw`
+            UPDATE "Article"
+            SET "difficulty" = v.difficulty::text
+            FROM (VALUES ${Prisma.join(values)}) AS v(id, difficulty)
+            WHERE "Article".id = v.id::text
+          `;
+        }
+      });
+
       console.error(`✓ 処理済み: ${processedCount}/${articles.length}件`);
     }
 

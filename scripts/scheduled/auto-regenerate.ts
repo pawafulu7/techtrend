@@ -12,6 +12,7 @@ import { optimizeContentForSummary } from '@/lib/utils/content/content-extractor
 
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
+import { getOrCreateTags } from '@/lib/services/tag-service';
 const prisma = new PrismaClient();
 
 // 環境変数チェック
@@ -173,53 +174,22 @@ async function regenerateArticles(articles: Array<{
 
       // 改善された場合のみ更新
       if (newScore.totalScore > article.score) {
-        // 既存のタグを取得
-        const existingTags = await prisma.tag.findMany({
-          where: {
-            articles: {
-              some: {
-                articleId: article.id,
-              },
+        // タグを取得または作成し、記事データと一括更新（setで既存タグを置換）
+        await prisma.$transaction(async (tx) => {
+          const newTags = await getOrCreateTags(tags);
+          await tx.article.update({
+            where: { id: article.id },
+            data: {
+              summary,
+              summaryVersion: SUMMARY_VERSION.CURRENT, // 統一フォーマットバージョン
+              detailedSummary: result.detailedSummary,
+              translatedTitle: result.translatedTitle,
+              articleType: result.articleType,
+              updatedAt: new Date(),
+              tags: { set: newTags.map(t => ({ id: t.id })) },
             },
-          },
+          });
         });
-        const existingTagNames = existingTags.map(t => t.name);
-
-        // 新しいタグと既存のタグをマージ（重複を除く）
-        const mergedTags = [...new Set([...existingTagNames, ...tags])];
-
-        // データベースを更新
-        await prisma.article.update({
-          where: { id: article.id },
-          data: {
-            summary,
-            summaryVersion: SUMMARY_VERSION.CURRENT, // 統一フォーマットバージョン
-            detailedSummary: result.detailedSummary,
-            translatedTitle: result.translatedTitle,
-            articleType: result.articleType,
-            updatedAt: new Date(),
-          },
-        });
-
-        // タグを更新
-        for (const tagName of tags) {
-          if (!existingTagNames.includes(tagName)) {
-            // タグが存在しない場合は作成
-            const tag = await prisma.tag.upsert({
-              where: { name: tagName },
-              update: {},
-              create: { name: tagName },
-            });
-
-            // 記事とタグの関連を作成
-            await prisma.articleTag.create({
-              data: {
-                articleId: article.id,
-                tagId: tag.id,
-              },
-            });
-          }
-        }
 
         console.error(`  ✅ 更新成功（+${newScore.totalScore - article.score}点改善）`);
         results.push({

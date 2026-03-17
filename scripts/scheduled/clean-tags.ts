@@ -13,33 +13,17 @@ async function cleanTags() {
     });
 
     if (emptyTag) {
-      // 空タグが関連付けられている記事を取得
-      const articlesWithEmptyTag = await prisma.article.findMany({
-        where: {
-          tags: {
-            some: { id: emptyTag.id }
-          }
-        }
-      });
-
-      // 各記事から空タグを削除
-      for (const article of articlesWithEmptyTag) {
-        await prisma.article.update({
-          where: { id: article.id },
-          data: {
-            tags: {
-              disconnect: { id: emptyTag.id }
-            }
-          }
-        });
-      }
+      // 空タグへの関連を一括削除
+      const deleteResult = await prisma.$executeRaw`
+        DELETE FROM "_ArticleToTag" WHERE "B" = ${emptyTag.id}
+      `;
 
       // タグを削除
       await prisma.tag.delete({
         where: { id: emptyTag.id }
       });
 
-      console.error(`✓ 空タグを削除しました (${articlesWithEmptyTag.length}記事から削除)`);
+      console.error(`✓ 空タグを削除しました (${deleteResult}件の関連を削除)`);
     } else {
       console.error('✓ 空タグは存在しません');
     }
@@ -63,63 +47,112 @@ async function cleanTags() {
       { from: 'git', to: 'Git' },
     ];
 
+    // Phase 1: Bulk tag lookup — fetch all from/to names in one query
+    const allNames = Array.from(
+      new Set(tagMappings.flatMap((m) => [m.from, m.to]))
+    );
+    const fetchedTags = await prisma.tag.findMany({
+      where: { name: { in: allNames } },
+      include: {
+        _count: { select: { articles: true } },
+      },
+    });
+
+    // Build a mutable Map<name, Tag> for quick lookup
+    const tagMap = new Map(fetchedTags.map((t) => [t.name, t]));
+
+    // Phase 2: Per-mapping processing with $transaction
+    const mappingErrors: Array<{ from: string; to: string; error: unknown }> = [];
+
     for (const mapping of tagMappings) {
-      // 小文字のタグを検索
-      const fromTag = await prisma.tag.findUnique({
-        where: { name: mapping.from },
-        include: {
-          _count: {
-            select: { articles: true }
-          }
+      try {
+        const fromTag = tagMap.get(mapping.from);
+
+        if (!fromTag) {
+          continue;
         }
-      });
 
-      if (!fromTag) {
-        continue;
-      }
+        const toTag = tagMap.get(mapping.to);
 
-      // 正規化されたタグが既に存在するか確認
-      const toTag = await prisma.tag.findUnique({
-        where: { name: mapping.to }
-      });
-
-      if (!toTag) {
-        // 正規化されたタグが存在しない場合は、タグ名を更新
-        await prisma.tag.update({
-          where: { id: fromTag.id },
-          data: { name: mapping.to }
-        });
-        console.error(`✓ "${mapping.from}" → "${mapping.to}" に更新 (${fromTag._count.articles}記事)`);
-      } else {
-        // 正規化されたタグが既に存在する場合は、記事を移動してから削除
-        const articlesWithFromTag = await prisma.article.findMany({
-          where: {
-            tags: {
-              some: { id: fromTag.id }
-            }
-          }
-        });
-
-        // 各記事のタグを更新
-        for (const article of articlesWithFromTag) {
-          await prisma.article.update({
-            where: { id: article.id },
-            data: {
-              tags: {
-                disconnect: { id: fromTag.id },
-                connect: { id: toTag.id }
-              }
-            }
+        if (!toTag) {
+          // Case A: toTag does NOT exist → simple rename
+          await prisma.$transaction(async (tx) => {
+            await tx.tag.update({
+              where: { id: fromTag.id },
+              data: { name: mapping.to },
+            });
           });
+
+          // Update the Map to reflect the rename
+          tagMap.set(mapping.to, { ...fromTag, name: mapping.to });
+          tagMap.delete(mapping.from);
+
+          console.error(`✓ "${mapping.from}" → "${mapping.to}" に更新 (${fromTag._count.articles}記事)`);
+        } else {
+          // Case B: toTag exists → remap articles + migrate related data + delete fromTag
+          const fromTagId = fromTag.id;
+          const toTagId = toTag.id;
+          const articleCount = fromTag._count.articles;
+
+          await prisma.$transaction(async (tx) => {
+            // 1. Remap articles: move fromTag links to toTag, skipping duplicates
+            await tx.$executeRaw`
+              UPDATE "_ArticleToTag"
+              SET "B" = ${toTagId}
+              WHERE "B" = ${fromTagId}
+              AND "A" NOT IN (
+                SELECT "A" FROM "_ArticleToTag" WHERE "B" = ${toTagId}
+              )
+            `;
+
+            // 2. Clean orphan links (articles that already had toTag)
+            await tx.$executeRaw`
+              DELETE FROM "_ArticleToTag" WHERE "B" = ${fromTagId}
+            `;
+
+            // 3. Migrate TagCategoryMapping: move fromTag's category mappings to toTag
+            await tx.$executeRaw`
+              INSERT INTO "TagCategoryMapping" (id, "tagId", "categoryId", "createdAt")
+              SELECT gen_random_uuid()::text, ${toTagId}::text, "categoryId", NOW()
+              FROM "TagCategoryMapping"
+              WHERE "tagId" = ${fromTagId}::text
+              AND "categoryId" NOT IN (
+                SELECT "categoryId" FROM "TagCategoryMapping" WHERE "tagId" = ${toTagId}::text
+              )
+              ON CONFLICT DO NOTHING
+            `;
+
+            // 4. Migrate TagEntityMapping: move fromTag's entity mappings to toTag
+            await tx.$executeRaw`
+              INSERT INTO "TagEntityMapping" (id, "tagId", "entityId", "createdAt")
+              SELECT gen_random_uuid()::text, ${toTagId}::text, "entityId", NOW()
+              FROM "TagEntityMapping"
+              WHERE "tagId" = ${fromTagId}::text
+              AND "entityId" NOT IN (
+                SELECT "entityId" FROM "TagEntityMapping" WHERE "tagId" = ${toTagId}::text
+              )
+              ON CONFLICT DO NOTHING
+            `;
+
+            // 5. Delete fromTag (cascades TagCategoryMapping + TagEntityMapping for fromTag)
+            await tx.$executeRaw`
+              DELETE FROM "Tag" WHERE id = ${fromTagId}
+            `;
+          });
+
+          // Update the Map: fromTag is gone
+          tagMap.delete(mapping.from);
+
+          console.error(`✓ "${mapping.from}" の記事を "${mapping.to}" に統合 (${articleCount}記事)`);
         }
-
-        // 古いタグを削除
-        await prisma.tag.delete({
-          where: { id: fromTag.id }
-        });
-
-        console.error(`✓ "${mapping.from}" の記事を "${mapping.to}" に統合 (${articlesWithFromTag.length}記事)`);
+      } catch (err) {
+        console.error(`❌ "${mapping.from}" → "${mapping.to}" の処理に失敗:`, err);
+        mappingErrors.push({ from: mapping.from, to: mapping.to, error: err });
       }
+    }
+
+    if (mappingErrors.length > 0) {
+      throw new Error(`タグ正規化で ${mappingErrors.length} 件のマッピングが失敗: ${mappingErrors.map(e => `${e.from}->${e.to}`).join(', ')}`);
     }
 
     // 3. 統計情報を表示
@@ -147,4 +180,7 @@ async function cleanTags() {
   }
 }
 
-cleanTags().catch(console.error);
+cleanTags().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

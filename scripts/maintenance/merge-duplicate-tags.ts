@@ -39,28 +39,16 @@ interface TagStats {
 
 async function getDuplicateGroups(): Promise<DuplicateGroup[]> {
   // Use COLLATE "C" (binary) to bypass potentially corrupt index
-  // Step 1: Get duplicate names with binary collation
-  const duplicateNames = await prisma.$queryRaw<{ name: string }[]>`
-    SELECT name COLLATE "C" as name
+  // Single query: group by name with binary collation and aggregate IDs
+  const rows = await prisma.$queryRaw<{ name: string; ids: string[] }[]>`
+    SELECT name COLLATE "C" as name, json_agg(id ORDER BY id ASC) as ids
     FROM "Tag"
     GROUP BY name COLLATE "C"
     HAVING COUNT(*) > 1
     ORDER BY COUNT(*) DESC
   `;
 
-  // Step 2: For each name, get all IDs using raw query with binary collation
-  const result: DuplicateGroup[] = [];
-  for (const { name } of duplicateNames) {
-    const tags = await prisma.$queryRaw<{ id: string }[]>`
-      SELECT id FROM "Tag" WHERE name COLLATE "C" = ${name} COLLATE "C" ORDER BY id ASC
-    `;
-    result.push({
-      name,
-      ids: tags.map((t) => t.id),
-    });
-  }
-
-  return result;
+  return rows;
 }
 
 async function getTagStats(tagIds: string[]): Promise<TagStats[]> {
@@ -165,6 +153,23 @@ async function mergeGroup(
 
     // 3. Delete old category mappings
     await tx.tagCategoryMapping.deleteMany({
+      where: { tagId: { in: duplicateIds } },
+    });
+
+    // 3b. Migrate entity mappings (if any)
+    await tx.$executeRaw`
+      INSERT INTO "TagEntityMapping" (id, "tagId", "entityId", "createdAt")
+      SELECT gen_random_uuid()::text, ${canonicalId}::text, "entityId", NOW()
+      FROM "TagEntityMapping"
+      WHERE "tagId" = ANY(${duplicateIds}::text[])
+      AND "entityId" NOT IN (
+        SELECT "entityId" FROM "TagEntityMapping" WHERE "tagId" = ${canonicalId}::text
+      )
+      ON CONFLICT DO NOTHING
+    `;
+
+    // 3c. Delete old entity mappings
+    await tx.tagEntityMapping.deleteMany({
       where: { tagId: { in: duplicateIds } },
     });
 
