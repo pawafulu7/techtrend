@@ -172,6 +172,7 @@ async function calculateAllQualityScores(options: Options) {
       if (tuples.length > 0) {
         // 1000件超はチャンク分割
         const chunkSize = 1000;
+        const failedChunks: number[] = [];
         for (let c = 0; c < tuples.length; c += chunkSize) {
           const chunk = tuples.slice(c, c + chunkSize);
           const values = chunk.map(t => Prisma.sql`(${t.id}, ${t.score}::double precision, ${t.computedAt}::timestamptz)`);
@@ -187,7 +188,11 @@ async function calculateAllQualityScores(options: Options) {
             `;
           } catch (err) {
             console.error(`❌ チャンク ${Math.floor(c / chunkSize) + 1} の更新に失敗:`, err);
+            failedChunks.push(Math.floor(c / chunkSize) + 1);
           }
+        }
+        if (failedChunks.length > 0) {
+          throw new Error(`quality-score bulk update failed in chunks: ${failedChunks.join(', ')}`);
         }
       }
 
@@ -349,6 +354,7 @@ async function fixZeroScores(options: Options) {
     if (tuples.length > 0) {
       // 1000件超はチャンク分割
       const chunkSize = 1000;
+      const failedChunks: number[] = [];
       for (let c = 0; c < tuples.length; c += chunkSize) {
         const chunk = tuples.slice(c, c + chunkSize);
         const values = chunk.map(t => Prisma.sql`(${t.id}, ${t.score}::double precision, ${t.computedAt}::timestamptz)`);
@@ -364,7 +370,11 @@ async function fixZeroScores(options: Options) {
           `;
         } catch (err) {
           console.error(`❌ チャンク ${Math.floor(c / chunkSize) + 1} の更新に失敗:`, err);
+          failedChunks.push(Math.floor(c / chunkSize) + 1);
         }
+      }
+      if (failedChunks.length > 0) {
+        throw new Error(`quality-score bulk update failed in chunks: ${failedChunks.join(', ')}`);
       }
     }
 

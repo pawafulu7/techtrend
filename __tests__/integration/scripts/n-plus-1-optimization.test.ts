@@ -300,8 +300,7 @@ describe('N+1 最適化 統合テスト', () => {
 
       await prisma.$executeRaw`
         UPDATE "Article"
-        SET "difficulty" = v.difficulty::text,
-            "updatedAt"  = NOW()
+        SET "difficulty" = v.difficulty::text
         FROM (VALUES ${values}) AS v(id, difficulty)
         WHERE "Article".id = v.id::text
       `;
