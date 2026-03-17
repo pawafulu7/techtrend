@@ -79,84 +79,88 @@ async function cleanTags() {
 
     // Phase 2: Per-mapping processing with $transaction
     for (const mapping of tagMappings) {
-      const fromTag = tagMap.get(mapping.from);
+      try {
+        const fromTag = tagMap.get(mapping.from);
 
-      if (!fromTag) {
-        continue;
-      }
+        if (!fromTag) {
+          continue;
+        }
 
-      const toTag = tagMap.get(mapping.to);
+        const toTag = tagMap.get(mapping.to);
 
-      if (!toTag) {
-        // Case A: toTag does NOT exist → simple rename
-        await prisma.$transaction(async (tx) => {
-          await tx.tag.update({
-            where: { id: fromTag.id },
-            data: { name: mapping.to },
+        if (!toTag) {
+          // Case A: toTag does NOT exist → simple rename
+          await prisma.$transaction(async (tx) => {
+            await tx.tag.update({
+              where: { id: fromTag.id },
+              data: { name: mapping.to },
+            });
           });
-        });
 
-        // Update the Map to reflect the rename
-        tagMap.set(mapping.to, { ...fromTag, name: mapping.to });
-        tagMap.delete(mapping.from);
+          // Update the Map to reflect the rename
+          tagMap.set(mapping.to, { ...fromTag, name: mapping.to });
+          tagMap.delete(mapping.from);
 
-        console.error(`✓ "${mapping.from}" → "${mapping.to}" に更新 (${fromTag._count.articles}記事)`);
-      } else {
-        // Case B: toTag exists → remap articles + migrate related data + delete fromTag
-        const fromTagId = fromTag.id;
-        const toTagId = toTag.id;
-        const articleCount = fromTag._count.articles;
+          console.error(`✓ "${mapping.from}" → "${mapping.to}" に更新 (${fromTag._count.articles}記事)`);
+        } else {
+          // Case B: toTag exists → remap articles + migrate related data + delete fromTag
+          const fromTagId = fromTag.id;
+          const toTagId = toTag.id;
+          const articleCount = fromTag._count.articles;
 
-        await prisma.$transaction(async (tx) => {
-          // 1. Remap articles: move fromTag links to toTag, skipping duplicates
-          await tx.$executeRaw`
-            UPDATE "_ArticleToTag"
-            SET "B" = ${toTagId}
-            WHERE "B" = ${fromTagId}
-            AND "A" NOT IN (
-              SELECT "A" FROM "_ArticleToTag" WHERE "B" = ${toTagId}
-            )
-          `;
+          await prisma.$transaction(async (tx) => {
+            // 1. Remap articles: move fromTag links to toTag, skipping duplicates
+            await tx.$executeRaw`
+              UPDATE "_ArticleToTag"
+              SET "B" = ${toTagId}
+              WHERE "B" = ${fromTagId}
+              AND "A" NOT IN (
+                SELECT "A" FROM "_ArticleToTag" WHERE "B" = ${toTagId}
+              )
+            `;
 
-          // 2. Clean orphan links (articles that already had toTag)
-          await tx.$executeRaw`
-            DELETE FROM "_ArticleToTag" WHERE "B" = ${fromTagId}
-          `;
+            // 2. Clean orphan links (articles that already had toTag)
+            await tx.$executeRaw`
+              DELETE FROM "_ArticleToTag" WHERE "B" = ${fromTagId}
+            `;
 
-          // 3. Migrate TagCategoryMapping: move fromTag's category mappings to toTag
-          await tx.$executeRaw`
-            INSERT INTO "TagCategoryMapping" (id, "tagId", "categoryId", "createdAt")
-            SELECT gen_random_uuid()::text, ${toTagId}::text, "categoryId", NOW()
-            FROM "TagCategoryMapping"
-            WHERE "tagId" = ${fromTagId}::text
-            AND "categoryId" NOT IN (
-              SELECT "categoryId" FROM "TagCategoryMapping" WHERE "tagId" = ${toTagId}::text
-            )
-            ON CONFLICT DO NOTHING
-          `;
+            // 3. Migrate TagCategoryMapping: move fromTag's category mappings to toTag
+            await tx.$executeRaw`
+              INSERT INTO "TagCategoryMapping" (id, "tagId", "categoryId", "createdAt")
+              SELECT gen_random_uuid()::text, ${toTagId}::text, "categoryId", NOW()
+              FROM "TagCategoryMapping"
+              WHERE "tagId" = ${fromTagId}::text
+              AND "categoryId" NOT IN (
+                SELECT "categoryId" FROM "TagCategoryMapping" WHERE "tagId" = ${toTagId}::text
+              )
+              ON CONFLICT DO NOTHING
+            `;
 
-          // 4. Migrate TagEntityMapping: move fromTag's entity mappings to toTag
-          await tx.$executeRaw`
-            INSERT INTO "TagEntityMapping" (id, "tagId", "entityId", "createdAt")
-            SELECT gen_random_uuid()::text, ${toTagId}::text, "entityId", NOW()
-            FROM "TagEntityMapping"
-            WHERE "tagId" = ${fromTagId}::text
-            AND "entityId" NOT IN (
-              SELECT "entityId" FROM "TagEntityMapping" WHERE "tagId" = ${toTagId}::text
-            )
-            ON CONFLICT DO NOTHING
-          `;
+            // 4. Migrate TagEntityMapping: move fromTag's entity mappings to toTag
+            await tx.$executeRaw`
+              INSERT INTO "TagEntityMapping" (id, "tagId", "entityId", "createdAt")
+              SELECT gen_random_uuid()::text, ${toTagId}::text, "entityId", NOW()
+              FROM "TagEntityMapping"
+              WHERE "tagId" = ${fromTagId}::text
+              AND "entityId" NOT IN (
+                SELECT "entityId" FROM "TagEntityMapping" WHERE "tagId" = ${toTagId}::text
+              )
+              ON CONFLICT DO NOTHING
+            `;
 
-          // 5. Delete fromTag (cascades TagCategoryMapping + TagEntityMapping for fromTag)
-          await tx.$executeRaw`
-            DELETE FROM "Tag" WHERE id = ${fromTagId}
-          `;
-        });
+            // 5. Delete fromTag (cascades TagCategoryMapping + TagEntityMapping for fromTag)
+            await tx.$executeRaw`
+              DELETE FROM "Tag" WHERE id = ${fromTagId}
+            `;
+          });
 
-        // Update the Map: fromTag is gone
-        tagMap.delete(mapping.from);
+          // Update the Map: fromTag is gone
+          tagMap.delete(mapping.from);
 
-        console.error(`✓ "${mapping.from}" の記事を "${mapping.to}" に統合 (${articleCount}記事)`);
+          console.error(`✓ "${mapping.from}" の記事を "${mapping.to}" に統合 (${articleCount}記事)`);
+        }
+      } catch (err) {
+        console.error(`❌ "${mapping.from}" → "${mapping.to}" の処理に失敗:`, err);
       }
     }
 

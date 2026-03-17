@@ -13,7 +13,6 @@ import { optimizeContentForSummary } from '@/lib/utils/content/content-extractor
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
 import { getOrCreateTags } from '@/lib/services/tag-service';
-import { prisma as sharedPrisma } from '@/lib/prisma';
 const prisma = new PrismaClient();
 
 // 環境変数チェック
@@ -50,7 +49,6 @@ async function main() {
     process.exit(1);
   } finally {
     await prisma.$disconnect();
-    await sharedPrisma.$disconnect();
   }
 }
 

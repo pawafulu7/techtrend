@@ -59,13 +59,17 @@ async function calculateDifficultyLevels() {
         if (chunk.length === 0) continue;
 
         const values = chunk.map(t => Prisma.sql`(${t.id}, ${t.difficulty})`);
-        await prisma.$executeRaw`
-          UPDATE "Article"
-          SET "difficulty" = v.difficulty::text,
-              "updatedAt"  = NOW()
-          FROM (VALUES ${Prisma.join(values)}) AS v(id, difficulty)
-          WHERE "Article".id = v.id::text
-        `;
+        try {
+          await prisma.$executeRaw`
+            UPDATE "Article"
+            SET "difficulty" = v.difficulty::text,
+                "updatedAt"  = NOW()
+            FROM (VALUES ${Prisma.join(values)}) AS v(id, difficulty)
+            WHERE "Article".id = v.id::text
+          `;
+        } catch (err) {
+          console.error(`❌ チャンク ${Math.floor(j / chunkSize) + 1} の更新に失敗:`, err);
+        }
       }
 
       console.error(`✓ 処理済み: ${processedCount}/${articles.length}件`);
