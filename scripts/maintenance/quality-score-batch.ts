@@ -131,13 +131,11 @@ async function processBatch() {
       }
     }
 
-    // ProcessingLogを更新（成功時のみチェックポイント時刻を記録）
-    const bulkSucceeded = status !== 'partial';
+    // ProcessingLogを更新（失敗時も lastProcessedAt を前進させて無限リトライを防ぐ）
     await prisma.processingLog.upsert({
       where: { processName: PROCESS_NAME },
       update: {
-        // バルク UPDATE 失敗時は lastProcessedAt を更新しない（前回成功時の値を維持）
-        ...(bulkSucceeded ? { lastProcessedAt: processingCheckpoint } : {}),
+        lastProcessedAt: processingCheckpoint,
         processedCount: {
           increment: processedCount
         },
@@ -150,7 +148,7 @@ async function processBatch() {
       },
       create: {
         processName: PROCESS_NAME,
-        lastProcessedAt: bulkSucceeded ? processingCheckpoint : new Date(0),
+        lastProcessedAt: processingCheckpoint,
         processedCount,
         status,
         metadata: {

@@ -109,44 +109,36 @@ describe('N+1 最適化 統合テスト', () => {
   // =========================================================================
   describe('H1: getDuplicateGroups — COLLATE "C" による重複グループ取得', () => {
     const dupTagName = `${TEST_PREFIX}dup_tag`;
-    const extraIds: string[] = [];
 
     beforeAll(async () => {
-      // Tag.name は @unique 制約があるため、通常の INSERT では同名タグを複数作れない。
-      // unique 制約・インデックスを一時削除して重複を INSERT し、テスト後に復元する。
+      // 一時テーブルを作成（Tag 構造を模倣、unique 制約なし）
+      await prisma.$executeRaw`
+        CREATE TEMP TABLE IF NOT EXISTS tag_dup_test_temp (
+          id       TEXT NOT NULL,
+          name     TEXT NOT NULL,
+          category TEXT
+        )
+      `;
+      // テーブルをクリア（前回テストの残骸があれば消す）
+      await prisma.$executeRaw`DELETE FROM tag_dup_test_temp`;
 
-      // unique 制約と idx_tag_name を DROP
-      await prisma.$executeRaw`ALTER TABLE "Tag" DROP CONSTRAINT IF EXISTS "Tag_name_key"`;
-      await prisma.$executeRaw`DROP INDEX IF EXISTS "idx_tag_name"`;
-
-      // 3 件の重複レコードを直接 INSERT
+      // 3 件の重複レコードを直接 INSERT（unique 制約なしなので問題なし）
       for (let i = 0; i < 3; i++) {
-        const result = await prisma.$queryRaw<{ id: string }[]>`
-          INSERT INTO "Tag" (id, name, category)
+        await prisma.$executeRaw`
+          INSERT INTO tag_dup_test_temp (id, name, category)
           VALUES (gen_random_uuid()::text, ${dupTagName}, NULL)
-          RETURNING id
         `;
-        extraIds.push(result[0].id);
       }
     });
 
     afterAll(async () => {
-      // 重複レコードを削除
-      await prisma.$executeRaw`DELETE FROM "Tag" WHERE name = ${dupTagName}`;
-
-      // unique 制約とインデックスを復元（既存の制約名に合わせる）
-      await prisma.$executeRaw`
-        ALTER TABLE "Tag" ADD CONSTRAINT "Tag_name_key" UNIQUE (name)
-      `;
-      await prisma.$executeRaw`
-        CREATE INDEX IF NOT EXISTS "idx_tag_name" ON "Tag" (name)
-      `;
+      await prisma.$executeRaw`DROP TABLE IF EXISTS tag_dup_test_temp`;
     });
 
     it('同名タグが 3 件あれば 1 グループとして返される', async () => {
       const rows = await prisma.$queryRaw<{ name: string; ids: string[] }[]>`
         SELECT name COLLATE "C" as name, json_agg(id ORDER BY id ASC) as ids
-        FROM "Tag"
+        FROM tag_dup_test_temp
         WHERE name = ${dupTagName}
         GROUP BY name COLLATE "C"
         HAVING COUNT(*) > 1
@@ -533,6 +525,53 @@ describe('N+1 最適化 統合テスト', () => {
 
       // クリーンアップ
       await prisma.tagCategoryMapping.deleteMany({ where: { tagId: dstTag.id } });
+      await prisma.tag.deleteMany({ where: { id: { in: [srcTag.id, dstTag.id] } } });
+    });
+
+    it('TagEntityMapping のマイグレーション — fromTag のマッピングが toTag に移る', async () => {
+      const entityCount = await prisma.techEntity.count();
+      if (entityCount === 0) {
+        console.warn('TechEntity が 0 件のため TagEntityMapping テストをスキップ');
+        return;
+      }
+
+      const entity = await prisma.techEntity.findFirst();
+      if (!entity) return;
+
+      const srcTag = await createTestTag(`${TEST_PREFIX}tem_src`);
+      const dstTag = await createTestTag(`${TEST_PREFIX}tem_dst`);
+
+      await prisma.tagEntityMapping.create({
+        data: { tagId: srcTag.id, entityId: entity.id },
+      });
+
+      // マイグレーション実行（merge-duplicate-tags.ts と同一パターン）
+      await prisma.$executeRaw`
+        INSERT INTO "TagEntityMapping" (id, "tagId", "entityId", "createdAt")
+        SELECT gen_random_uuid()::text, ${dstTag.id}::text, "entityId", NOW()
+        FROM "TagEntityMapping"
+        WHERE "tagId" = ${srcTag.id}::text
+        AND "entityId" NOT IN (
+          SELECT "entityId" FROM "TagEntityMapping" WHERE "tagId" = ${dstTag.id}::text
+        )
+        ON CONFLICT DO NOTHING
+      `;
+
+      await prisma.tagEntityMapping.deleteMany({ where: { tagId: srcTag.id } });
+
+      const dstMappings = await prisma.tagEntityMapping.findMany({
+        where: { tagId: dstTag.id },
+      });
+      expect(dstMappings).toHaveLength(1);
+      expect(dstMappings[0].entityId).toBe(entity.id);
+
+      const srcMappings = await prisma.tagEntityMapping.findMany({
+        where: { tagId: srcTag.id },
+      });
+      expect(srcMappings).toHaveLength(0);
+
+      // クリーンアップ
+      await prisma.tagEntityMapping.deleteMany({ where: { tagId: dstTag.id } });
       await prisma.tag.deleteMany({ where: { id: { in: [srcTag.id, dstTag.id] } } });
     });
   });
