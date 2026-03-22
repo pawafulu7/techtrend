@@ -7,6 +7,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import pLimit from 'p-limit';
 import { logger, sanitizeError } from '@/lib/logger';
 import type {
   PersonalizedFilterOptions,
@@ -283,69 +284,25 @@ export class CategoryFilterService {
       'Starting OR-based multi-category search'
     );
 
-    // Build search promises; apply semaphore if maxConcurrency is specified
+    // Build search promises; apply concurrency limit if maxConcurrency is specified
     const maxConcurrency = options.maxConcurrency;
-    let settledResults: PromiseSettledResult<EmbeddingCandidate[]>[];
+    const concurrencyLimit =
+      maxConcurrency && maxConcurrency > 0 && maxConcurrency < centroids.length
+        ? pLimit(maxConcurrency)
+        : null;
 
-    if (
-      maxConcurrency &&
-      maxConcurrency > 0 &&
-      maxConcurrency < centroids.length
-    ) {
-      // Simple semaphore: run at most maxConcurrency searches in parallel
-      let activeCount = 0;
-      let index = 0;
-      const results: PromiseSettledResult<EmbeddingCandidate[]>[] = new Array(
-        centroids.length
-      );
-
-      await new Promise<void>((resolve) => {
-        const tryNext = () => {
-          while (activeCount < maxConcurrency && index < centroids.length) {
-            const currentIndex = index++;
-            activeCount++;
-            getEmbeddingCandidates(
-              this.db,
-              centroids[currentIndex].centroid_embedding!,
-              periodMonths,
-              kPerCategory,
-              options.excludeSourceIds
-            )
-              .then((value) => {
-                results[currentIndex] = { status: 'fulfilled', value };
-              })
-              .catch((reason) => {
-                results[currentIndex] = { status: 'rejected', reason };
-              })
-              .finally(() => {
-                activeCount--;
-                if (index < centroids.length) {
-                  tryNext();
-                } else if (activeCount === 0) {
-                  resolve();
-                }
-              });
-          }
-          if (index >= centroids.length && activeCount === 0) {
-            resolve();
-          }
-        };
-        tryNext();
-      });
-
-      settledResults = results;
-    } else {
-      const searchPromises = centroids.map((c) =>
+    const searchPromises = centroids.map((c) => {
+      const search = () =>
         getEmbeddingCandidates(
           this.db,
           c.centroid_embedding!,
           periodMonths,
           kPerCategory,
           options.excludeSourceIds
-        )
-      );
-      settledResults = await Promise.allSettled(searchPromises);
-    }
+        );
+      return concurrencyLimit ? concurrencyLimit(search) : search();
+    });
+    const settledResults = await Promise.allSettled(searchPromises);
 
     const categoryResults: EmbeddingCandidate[][] = [];
     const failedCategories: number[] = [];

@@ -13,6 +13,7 @@ import {
   CategoryFilterService,
   categoryFilterService,
 } from '@/lib/personalization/category-filter-service';
+import type { InterestCategoryWithCount } from '@/lib/personalization/types';
 
 // =============================================================================
 // Configuration
@@ -62,15 +63,7 @@ export interface DigestResponse {
   generatedAt: string;
   hasPreferences: boolean;
   selectedCategories: string[];
-  categories: {
-    id: string;
-    slug: string;
-    name: string;
-    description: string | null;
-    icon: string | null;
-    sortOrder: number;
-    isActive: boolean;
-  }[];
+  categories: InterestCategoryWithCount[];
 }
 
 // Internal type for section build results with error tracking
