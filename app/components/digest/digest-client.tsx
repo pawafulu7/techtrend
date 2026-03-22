@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Newspaper, Settings, CheckCircle, Loader2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -21,8 +21,14 @@ export function DigestClient() {
   const { mutateAsync: updatePreferencesAsync, isPending: isUpdating } =
     useUpdatePreferences('digest');
 
-  const categories = digest?.categories ?? [];
-  const selectedCategories = digest?.selectedCategories ?? [];
+  const categories = useMemo(
+    () => digest?.categories ?? [],
+    [digest?.categories]
+  );
+  const selectedCategories = useMemo(
+    () => digest?.selectedCategories ?? [],
+    [digest?.selectedCategories]
+  );
 
   const handleSavePreferences = async (
     categoryIds: string[],
@@ -162,7 +168,7 @@ export function DigestClient() {
         onOpenChange={setDialogOpen}
         categories={categories}
         selectedCategories={selectedCategories}
-        selectedPeriod={12}
+        selectedPeriod={12} // Digest uses fixed 12-month period; replace with user preference when period selector is enabled
         onSave={handleSavePreferences}
         isLoading={isLoading}
         isSaving={isUpdating}
