@@ -9,7 +9,6 @@ import {
   BarChart3,
   LineChart,
   Hash,
-  Database,
   Home,
   BookOpen,
   Newspaper,
@@ -40,9 +39,7 @@ export function Header() {
       prefetch: false as const,
     },
     { href: '/popular', label: '人気', icon: TrendingUp },
-    { href: '/sources', label: 'ソース', icon: Database },
     { href: '/trends', label: 'トレンド', icon: BarChart3 },
-    { href: '/stats', label: '統計', icon: LineChart },
   ];
 
   const secondaryNav = [

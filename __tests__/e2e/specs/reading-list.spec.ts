@@ -179,8 +179,8 @@ test.describe('リーディングリスト機能', () => {
       expect(savedBefore.length).toBeGreaterThan(0);
     }
     
-    // 別のページへ移動
-    await page.goto('/sources');
+    // 別のページへ移動（/sources は管理者限定のため /trends を使用）
+    await page.goto('/trends');
     await waitForPageLoad(page);
     
     // LocalStorageが維持されていることを確認

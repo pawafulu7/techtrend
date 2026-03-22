@@ -2,6 +2,9 @@
  * /api/sources エンドポイントのテスト
  */
 
+// withAdminAuth をパススルーにして既存テストを維持
+jest.mock('@/lib/middleware/with-admin-auth', () => ({ withAdminAuth: (fn: any) => fn }));
+
 // モックの設定
 jest.mock('@/lib/database');
 
@@ -284,11 +287,41 @@ describe('/api/sources', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       // デフォルトは記事数降順
       expect(data.sources[0].stats.totalArticles).toBe(200);
       expect(data.sources[1].stats.totalArticles).toBe(150);
       expect(data.sources[2].stats.totalArticles).toBe(100);
     });
+  });
+});
+
+describe('GET /api/sources - 認可テスト', () => {
+  afterEach(() => {
+    jest.resetModules();
+  });
+
+  it('非管理者からのリクエストは withAdminAuth により拒否される', async () => {
+    // ファイルスコープの jest.mock を一時的に上書きするため resetModules で
+    // モジュールキャッシュをクリアしてから doMock + require で再ロードする
+    jest.resetModules();
+    jest.doMock('@/lib/middleware/with-admin-auth', () => ({
+      // withAdminAuth が常に 401 を返すラッパーを差し替え（認可拒否を模擬）
+      withAdminAuth: (_handler: any) => async () =>
+        new Response(
+          JSON.stringify({ error: 'Unauthorized', message: 'Authentication required.' }),
+          { status: 401, headers: { 'Content-Type': 'application/json' } }
+        ),
+    }));
+    jest.doMock('@/lib/database', () => ({ prisma: {} }));
+    jest.doMock('@/lib/cache/source-cache', () => ({ sourceCache: {} }));
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { GET: unauthorizedGET } = require('@/app/api/sources/route');
+
+    const request = new NextRequest(new URL('http://localhost/api/sources'));
+    const response = await unauthorizedGET(request);
+
+    expect(response.status).toBe(401);
   });
 });
