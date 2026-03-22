@@ -7,6 +7,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import pLimit from 'p-limit';
 import { logger, sanitizeError } from '@/lib/logger';
 import type {
   PersonalizedFilterOptions,
@@ -234,7 +235,7 @@ export class CategoryFilterService {
       this.db,
       centroid.centroid_embedding!,
       periodMonths,
-      DEFAULT_TOP_K_CANDIDATES,
+      options.topK ?? DEFAULT_TOP_K_CANDIDATES,
       options.excludeSourceIds
     );
 
@@ -270,25 +271,37 @@ export class CategoryFilterService {
   }> {
     const { categoryIds, periodMonths, limit, offset = 0 } = options;
 
-    const kPerCategory = Math.max(
-      50,
-      Math.min(500, Math.ceil((limit + offset) / centroids.length) * 3)
-    );
+    // If topK is specified, treat it as total budget and derive perCategory from it
+    const kPerCategory = options.topK
+      ? Math.max(30, Math.floor(options.topK / centroids.length))
+      : Math.max(
+          50,
+          Math.min(500, Math.ceil((limit + offset) / centroids.length) * 3)
+        );
 
     logger.info(
       { categoryIds, kPerCategory, centroidCount: centroids.length },
       'Starting OR-based multi-category search'
     );
 
-    const searchPromises = centroids.map((c) =>
-      getEmbeddingCandidates(
-        this.db,
-        c.centroid_embedding!,
-        periodMonths,
-        kPerCategory,
-        options.excludeSourceIds
-      )
-    );
+    // Build search promises; apply concurrency limit if maxConcurrency is specified
+    const maxConcurrency = options.maxConcurrency;
+    const concurrencyLimit =
+      maxConcurrency && maxConcurrency > 0 && maxConcurrency < centroids.length
+        ? pLimit(maxConcurrency)
+        : null;
+
+    const searchPromises = centroids.map((c) => {
+      const search = () =>
+        getEmbeddingCandidates(
+          this.db,
+          c.centroid_embedding!,
+          periodMonths,
+          kPerCategory,
+          options.excludeSourceIds
+        );
+      return concurrencyLimit ? concurrencyLimit(search) : search();
+    });
     const settledResults = await Promise.allSettled(searchPromises);
 
     const categoryResults: EmbeddingCandidate[][] = [];

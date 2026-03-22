@@ -13,6 +13,7 @@ import {
   CategoryFilterService,
   categoryFilterService,
 } from '@/lib/personalization/category-filter-service';
+import type { InterestCategoryWithCount } from '@/lib/personalization/types';
 
 // =============================================================================
 // Configuration
@@ -26,6 +27,10 @@ export const DIGEST_CONFIG = {
   MUST_READ_LIMIT: 10,
   MISSED_LIMIT: 10,
   PERSONALIZED_RESULT_LIMIT: 10,
+  OVERFETCH_MULTIPLIER: 3,
+  NEGATIVE_CACHE_TTL: 300, // 5 minutes
+  DIGEST_TOP_K: 300,
+  DIGEST_MAX_CONCURRENCY: 5,
 } as const;
 
 // =============================================================================
@@ -57,6 +62,14 @@ export interface DigestResponse {
   sections: DigestSection[];
   generatedAt: string;
   hasPreferences: boolean;
+  selectedCategories: string[];
+  categories: InterestCategoryWithCount[];
+}
+
+// Internal type for section build results with error tracking
+interface SectionResult {
+  articles: DigestArticle[];
+  ok: boolean;
 }
 
 // =============================================================================
@@ -164,6 +177,15 @@ export class DigestService {
     });
 
     if (preferenceCount === 0) {
+      const allCategories = await this.filterService
+        .getActiveCategories()
+        .catch((error) => {
+          logger.warn(
+            { error: sanitizeError(error), userId },
+            'getActiveCategories failed, falling back to empty list'
+          );
+          return [];
+        });
       const emptyResponse: DigestResponse = {
         period,
         sections: [
@@ -173,40 +195,76 @@ export class DigestService {
         ],
         generatedAt: new Date().toISOString(),
         hasPreferences: false,
+        selectedCategories: [],
+        categories: allCategories,
       };
       return emptyResponse;
     }
 
-    // 3. Get user's categoryIds (digest scope)
-    const preferences = await this.db.userCategoryPreference.findMany({
-      where: { userId, scope: 'digest' },
-      select: { categoryId: true },
-    });
+    // 3. Get user's categoryIds (digest scope) and all active categories in parallel
+    const [preferences, allCategories] = await Promise.all([
+      this.db.userCategoryPreference.findMany({
+        where: { userId, scope: 'digest' },
+        select: { categoryId: true },
+      }),
+      this.filterService.getActiveCategories().catch((error) => {
+        logger.warn(
+          { error: sanitizeError(error), userId },
+          'getActiveCategories failed, falling back to empty list'
+        );
+        return [] as Awaited<
+          ReturnType<CategoryFilterService['getActiveCategories']>
+        >;
+      }),
+    ]);
     const categoryIds = preferences.map((p) => p.categoryId);
 
-    // 4. Build sections sequentially with deduplication
-    const personalizedArticles = await this.getPersonalizedArticles(
-      userId,
-      period,
-      categoryIds
-    );
-    const personalizedIds = new Set(
-      personalizedArticles.map((a) => a.articleId)
-    );
+    // 4. Build sections in parallel with overfetch (dedupe after)
+    const overfetchLimit =
+      DIGEST_CONFIG.PERSONALIZED_RESULT_LIMIT *
+      DIGEST_CONFIG.OVERFETCH_MULTIPLIER;
+    const mustReadOverfetch =
+      DIGEST_CONFIG.MUST_READ_LIMIT * DIGEST_CONFIG.OVERFETCH_MULTIPLIER;
+    const missedOverfetch =
+      DIGEST_CONFIG.MISSED_LIMIT * DIGEST_CONFIG.OVERFETCH_MULTIPLIER;
 
-    const mustReadArticles = await this.getMustReadArticles(userId, period, [
-      ...personalizedIds,
-    ]);
-    const mustReadIds = new Set(mustReadArticles.map((a) => a.articleId));
+    const [personalizedResult, mustReadResult, missedResult] =
+      await Promise.all([
+        this.getPersonalizedArticles(
+          userId,
+          period,
+          categoryIds,
+          overfetchLimit
+        ),
+        this.getMustReadArticles(userId, period, mustReadOverfetch),
+        this.getMissedArticles(userId, categoryIds, missedOverfetch),
+      ]);
 
-    const allExcludeIds = [...personalizedIds, ...mustReadIds];
-    const missedArticles = await this.getMissedArticles(
-      userId,
-      categoryIds,
-      allExcludeIds
+    // 5. Deduplicate in priority order: personalized > mustRead > missed
+    const seenIds = new Set<string>();
+
+    const deduped = (result: SectionResult, limit: number): DigestArticle[] => {
+      const out: DigestArticle[] = [];
+      for (const article of result.articles) {
+        if (!seenIds.has(article.articleId) && out.length < limit) {
+          seenIds.add(article.articleId);
+          out.push(article);
+        }
+      }
+      return out;
+    };
+
+    const personalizedArticles = deduped(
+      personalizedResult,
+      DIGEST_CONFIG.PERSONALIZED_RESULT_LIMIT
     );
+    const mustReadArticles = deduped(
+      mustReadResult,
+      DIGEST_CONFIG.MUST_READ_LIMIT
+    );
+    const missedArticles = deduped(missedResult, DIGEST_CONFIG.MISSED_LIMIT);
 
-    // 5. Build response
+    // 6. Build response
     const response: DigestResponse = {
       period,
       sections: [
@@ -228,13 +286,24 @@ export class DigestService {
       ],
       generatedAt: new Date().toISOString(),
       hasPreferences: true,
+      selectedCategories: categoryIds,
+      categories: allCategories,
     };
 
-    // 6. Cache result (skip if all sections are empty - may indicate errors)
+    // 7. Cache result
+    // - Normal case (has articles): cache with default TTL
+    // - Negative cache (all empty but all sections ok): short TTL (5 min)
+    // - Fault case (any section failed): do NOT cache
     const hasAnyArticles = response.sections.some((s) => s.articles.length > 0);
-    if (hasAnyArticles) {
+    const allSectionsOk =
+      personalizedResult.ok && mustReadResult.ok && missedResult.ok;
+
+    if (hasAnyArticles || allSectionsOk) {
+      const cacheTtl = hasAnyArticles
+        ? undefined // use default CACHE_TTL
+        : DIGEST_CONFIG.NEGATIVE_CACHE_TTL;
       try {
-        await this.cache.set(cacheKey, response);
+        await this.cache.set(cacheKey, response, cacheTtl);
       } catch (error) {
         logger.warn(
           { error: sanitizeError(error), userId, period },
@@ -254,18 +323,26 @@ export class DigestService {
   private async getPersonalizedArticles(
     userId: string,
     period: DigestPeriod,
-    categoryIds: string[]
-  ): Promise<DigestArticle[]> {
+    categoryIds: string[],
+    limit: number
+  ): Promise<SectionResult> {
     try {
-      // Get candidates via CategoryFilterService
-      const { articles: candidates } = await this.filterService.filterArticles({
-        categoryIds,
-        periodMonths: 12,
-        limit: DIGEST_CONFIG.PERSONALIZED_LIMIT,
-      });
+      // Get candidates via CategoryFilterService with digest-optimized topK
+      const { articles: candidates, meta } =
+        await this.filterService.filterArticles({
+          categoryIds,
+          periodMonths: 12,
+          limit: DIGEST_CONFIG.PERSONALIZED_LIMIT,
+          topK: DIGEST_CONFIG.DIGEST_TOP_K,
+          maxConcurrency: DIGEST_CONFIG.DIGEST_MAX_CONCURRENCY,
+        });
+
+      // Detect if filterArticles fell back internally (centroid/embedding failure)
+      const filterFellBack =
+        categoryIds.length > 0 && (meta?.appliedCategories?.length ?? 0) === 0;
 
       if (candidates.length === 0) {
-        return [];
+        return { articles: [], ok: !filterFellBack };
       }
 
       const candidateIds = candidates.map((c) => c.articleId);
@@ -294,11 +371,11 @@ export class DigestService {
               AND av."isRead" = true
           )
         ORDER BY array_position(${candidateIds}, a.id)
-        LIMIT ${DIGEST_CONFIG.PERSONALIZED_RESULT_LIMIT}
+        LIMIT ${limit}
       `;
 
       if (rows.length === 0) {
-        return [];
+        return { articles: [], ok: !filterFellBack };
       }
 
       // Get matching category names for recommendation reason
@@ -312,13 +389,16 @@ export class DigestService {
           ? `あなたの興味: ${categoryNames.slice(0, 2).join('・')}`
           : 'おすすめ記事';
 
-      return rows.map((row) => toDigestArticle(row, reason));
+      return {
+        articles: rows.map((row) => toDigestArticle(row, reason)),
+        ok: !filterFellBack,
+      };
     } catch (error) {
       logger.error(
         { error: sanitizeError(error), userId, period },
         'Failed to get personalized articles'
       );
-      return [];
+      return { articles: [], ok: false };
     }
   }
 
@@ -329,12 +409,10 @@ export class DigestService {
   private async getMustReadArticles(
     userId: string,
     period: DigestPeriod,
-    excludeIds: string[]
-  ): Promise<DigestArticle[]> {
+    limit: number
+  ): Promise<SectionResult> {
     try {
       const cutoff = getPeriodCutoff(period);
-      // Use empty array guard for ANY() - Prisma requires non-empty for some drivers
-      const safeExcludeIds = excludeIds.length > 0 ? excludeIds : ['__none__'];
 
       const rows = await this.db.$queryRaw<RawMustReadRow[]>`
         SELECT
@@ -352,7 +430,6 @@ export class DigestService {
         JOIN "Source" s ON a."sourceId" = s.id AND s.enabled = true
         WHERE a."publishedAt" >= ${cutoff}
           AND a.content IS NOT NULL
-          AND a.id != ALL(${safeExcludeIds})
           AND NOT EXISTS (
             SELECT 1 FROM "ArticleView" av2
             WHERE av2."userId" = ${userId}
@@ -361,21 +438,24 @@ export class DigestService {
           )
         GROUP BY a.id
         ORDER BY viewer_count DESC
-        LIMIT ${DIGEST_CONFIG.MUST_READ_LIMIT}
+        LIMIT ${limit}
       `;
 
-      return rows.map((row) =>
-        toDigestArticle(
-          row,
-          `注目度トップ - ${Number(row.viewer_count)}人が閲覧`
-        )
-      );
+      return {
+        articles: rows.map((row) =>
+          toDigestArticle(
+            row,
+            `注目度トップ - ${Number(row.viewer_count)}人が閲覧`
+          )
+        ),
+        ok: true,
+      };
     } catch (error) {
       logger.error(
         { error: sanitizeError(error), userId, period },
         'Failed to get must-read articles'
       );
-      return [];
+      return { articles: [], ok: false };
     }
   }
 
@@ -386,14 +466,13 @@ export class DigestService {
   private async getMissedArticles(
     userId: string,
     categoryIds: string[],
-    excludeIds: string[]
-  ): Promise<DigestArticle[]> {
+    limit: number
+  ): Promise<SectionResult> {
     try {
       // missedセクションは常に過去MISSED_DAYS日間を対象（periodに依存しない）
       const cutoff = new Date(
         Date.now() - DIGEST_CONFIG.MISSED_DAYS * 24 * 60 * 60 * 1000
       );
-      const safeExcludeIds = excludeIds.length > 0 ? excludeIds : ['__none__'];
 
       const rows = await this.db.$queryRaw<RawArticleRow[]>`
         SELECT DISTINCT
@@ -413,7 +492,6 @@ export class DigestService {
           AND a.content IS NOT NULL
           AND a."qualityScore" >= ${DIGEST_CONFIG.QUALITY_THRESHOLD}
           AND tcm."categoryId" = ANY(${categoryIds})
-          AND a.id != ALL(${safeExcludeIds})
           AND NOT EXISTS (
             SELECT 1 FROM "ArticleView" av
             WHERE av."userId" = ${userId}
@@ -421,21 +499,24 @@ export class DigestService {
               AND av."isRead" = true
           )
         ORDER BY a."qualityScore" DESC
-        LIMIT ${DIGEST_CONFIG.MISSED_LIMIT}
+        LIMIT ${limit}
       `;
 
-      return rows.map((row) =>
-        toDigestArticle(
-          row,
-          `見逃した注目 - 品質スコア ${Number(row.qualityScore)}`
-        )
-      );
+      return {
+        articles: rows.map((row) =>
+          toDigestArticle(
+            row,
+            `見逃した注目 - 品質スコア ${Number(row.qualityScore)}`
+          )
+        ),
+        ok: true,
+      };
     } catch (error) {
       logger.error(
         { error: sanitizeError(error), userId },
         'Failed to get missed articles'
       );
-      return [];
+      return { articles: [], ok: false };
     }
   }
 

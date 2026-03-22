@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Newspaper, Settings, CheckCircle, Loader2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { DigestSection } from './digest-section';
 import { CategoryPreferenceDialog } from '@/app/components/personalization/category-preference-dialog';
-import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
+import { useUpdatePreferences } from '@/lib/hooks/use-personalization-preferences';
 import { useDigest } from '@/lib/hooks/use-digest';
 import type { DigestPeriod } from '@/lib/services/digest-service';
 import type { PeriodPreset } from '@/lib/personalization/types';
@@ -18,14 +18,17 @@ export function DigestClient() {
 
   const { data: digest, isLoading, error } = useDigest(period);
 
-  const {
-    categories,
-    selectedCategories,
-    periodMonths,
-    isLoading: prefLoading,
-    isUpdating,
-    updatePreferencesAsync,
-  } = usePersonalizationPreferences('digest');
+  const { mutateAsync: updatePreferencesAsync, isPending: isUpdating } =
+    useUpdatePreferences('digest');
+
+  const categories = useMemo(
+    () => digest?.categories ?? [],
+    [digest?.categories]
+  );
+  const selectedCategories = useMemo(
+    () => digest?.selectedCategories ?? [],
+    [digest?.selectedCategories]
+  );
 
   const handleSavePreferences = async (
     categoryIds: string[],
@@ -165,9 +168,9 @@ export function DigestClient() {
         onOpenChange={setDialogOpen}
         categories={categories}
         selectedCategories={selectedCategories}
-        selectedPeriod={periodMonths}
+        selectedPeriod={12} // Digest uses fixed 12-month period; replace with user preference when period selector is enabled
         onSave={handleSavePreferences}
-        isLoading={prefLoading}
+        isLoading={isLoading}
         isSaving={isUpdating}
         showPeriodSelector={false}
       />
