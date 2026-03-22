@@ -23,6 +23,8 @@ import {
   Cog,
   MessageSquare,
   Shield,
+  Database,
+  LineChart,
 } from 'lucide-react';
 
 export function UserMenu() {
@@ -153,6 +155,18 @@ export function UserMenu() {
               >
                 <MessageSquare className="mr-2 h-4 w-4" />
                 SNS投稿管理
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/sources" prefetch={false} className="cursor-pointer">
+                <Database className="mr-2 h-4 w-4" />
+                ソース
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/stats" prefetch={false} className="cursor-pointer">
+                <LineChart className="mr-2 h-4 w-4" />
+                統計
               </Link>
             </DropdownMenuItem>
           </>
