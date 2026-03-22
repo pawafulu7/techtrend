@@ -177,7 +177,15 @@ export class DigestService {
     });
 
     if (preferenceCount === 0) {
-      const allCategories = await this.filterService.getActiveCategories();
+      const allCategories = await this.filterService
+        .getActiveCategories()
+        .catch((error) => {
+          logger.warn(
+            { error: sanitizeError(error), userId },
+            'getActiveCategories failed, falling back to empty list'
+          );
+          return [];
+        });
       const emptyResponse: DigestResponse = {
         period,
         sections: [
@@ -199,7 +207,15 @@ export class DigestService {
         where: { userId, scope: 'digest' },
         select: { categoryId: true },
       }),
-      this.filterService.getActiveCategories(),
+      this.filterService.getActiveCategories().catch((error) => {
+        logger.warn(
+          { error: sanitizeError(error), userId },
+          'getActiveCategories failed, falling back to empty list'
+        );
+        return [] as Awaited<
+          ReturnType<CategoryFilterService['getActiveCategories']>
+        >;
+      }),
     ]);
     const categoryIds = preferences.map((p) => p.categoryId);
 
@@ -312,16 +328,21 @@ export class DigestService {
   ): Promise<SectionResult> {
     try {
       // Get candidates via CategoryFilterService with digest-optimized topK
-      const { articles: candidates } = await this.filterService.filterArticles({
-        categoryIds,
-        periodMonths: 12,
-        limit: DIGEST_CONFIG.PERSONALIZED_LIMIT,
-        topK: DIGEST_CONFIG.DIGEST_TOP_K,
-        maxConcurrency: DIGEST_CONFIG.DIGEST_MAX_CONCURRENCY,
-      });
+      const { articles: candidates, meta } =
+        await this.filterService.filterArticles({
+          categoryIds,
+          periodMonths: 12,
+          limit: DIGEST_CONFIG.PERSONALIZED_LIMIT,
+          topK: DIGEST_CONFIG.DIGEST_TOP_K,
+          maxConcurrency: DIGEST_CONFIG.DIGEST_MAX_CONCURRENCY,
+        });
+
+      // Detect if filterArticles fell back internally (centroid/embedding failure)
+      const filterFellBack =
+        categoryIds.length > 0 && (meta?.appliedCategories?.length ?? 0) === 0;
 
       if (candidates.length === 0) {
-        return { articles: [], ok: true };
+        return { articles: [], ok: !filterFellBack };
       }
 
       const candidateIds = candidates.map((c) => c.articleId);
@@ -354,7 +375,7 @@ export class DigestService {
       `;
 
       if (rows.length === 0) {
-        return { articles: [], ok: true };
+        return { articles: [], ok: !filterFellBack };
       }
 
       // Get matching category names for recommendation reason
@@ -370,7 +391,7 @@ export class DigestService {
 
       return {
         articles: rows.map((row) => toDigestArticle(row, reason)),
-        ok: true,
+        ok: !filterFellBack,
       };
     } catch (error) {
       logger.error(

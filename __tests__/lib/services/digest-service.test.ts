@@ -71,7 +71,10 @@ describe('DigestService', () => {
     ]);
     prismaMock.$queryRaw.mockResolvedValue([]);
 
-    // getActiveCategories のデフォルトモック
+    // filterArticles / getActiveCategories のデフォルトモック（各テストで上書き可能）
+    // jest.clearAllMocks() は実装をクリアしないが、明示的に再設定することで確実に初期化する
+    (filterServiceMock as any).filterArticles = jest.fn();
+    (filterServiceMock as any).getActiveCategories = jest.fn();
     filterServiceMock.getActiveCategories.mockResolvedValue(mockAllCategories);
   });
 
@@ -135,6 +138,13 @@ describe('DigestService', () => {
           { articleId: 'article-1', score: 0.9 },
           { articleId: 'article-2', score: 0.8 },
         ],
+        meta: {
+          filterMode: 'category',
+          appliedCategories: ['cat-1'],
+          periodMonths: 12,
+          totalMatched: 2,
+          queryMs: 10,
+        },
         total: 2,
       } as any);
 
@@ -184,7 +194,9 @@ describe('DigestService', () => {
       // $queryRawは3回呼ばれる（personalized, mustRead, missed）
       // Promise.allによる並列実行のため、クエリ内容でセクションを識別して返す
       prismaMock.$queryRaw.mockImplementation((query: any) => {
-        const sql = query?.strings?.join('') ?? String(query);
+        const sql = Array.isArray(query)
+          ? query.join('')
+          : (query?.strings?.join('') ?? String(query));
         if (sql.includes('array_position'))
           return Promise.resolve(personalizedRows);
         if (sql.includes('viewer_count') || sql.includes('COUNT(DISTINCT'))
@@ -239,12 +251,21 @@ describe('DigestService', () => {
 
       filterServiceMock.filterArticles.mockResolvedValue({
         articles: [{ articleId: 'article-1', score: 0.9 }],
+        meta: {
+          filterMode: 'category',
+          appliedCategories: ['cat-1'],
+          periodMonths: 12,
+          totalMatched: 1,
+          queryMs: 10,
+        },
         total: 1,
       } as any);
 
       // Promise.allによる並列実行のため、クエリ内容でセクションを識別して返す
       prismaMock.$queryRaw.mockImplementation((query: any) => {
-        const sql = query?.strings?.join('') ?? String(query);
+        const sql = Array.isArray(query)
+          ? query.join('')
+          : (query?.strings?.join('') ?? String(query));
         if (sql.includes('array_position'))
           return Promise.resolve([
             {
@@ -283,6 +304,13 @@ describe('DigestService', () => {
       ]);
       filterServiceMock.filterArticles.mockResolvedValue({
         articles: [{ articleId: 'article-1', score: 0.9 }],
+        meta: {
+          filterMode: 'category',
+          appliedCategories: ['cat-1'],
+          periodMonths: 12,
+          totalMatched: 1,
+          queryMs: 10,
+        },
         total: 1,
       } as any);
       // personalized: 1記事, mustRead: 空, missed: 空
@@ -319,6 +347,13 @@ describe('DigestService', () => {
       ]);
       filterServiceMock.filterArticles.mockResolvedValue({
         articles: [],
+        meta: {
+          filterMode: 'category',
+          appliedCategories: ['cat-1'],
+          periodMonths: 12,
+          totalMatched: 0,
+          queryMs: 10,
+        },
         total: 0,
       } as any);
       prismaMock.$queryRaw.mockResolvedValue([]);
@@ -351,6 +386,13 @@ describe('DigestService', () => {
       ]);
       filterServiceMock.filterArticles.mockResolvedValue({
         articles: [{ articleId: 'article-1', score: 0.9 }],
+        meta: {
+          filterMode: 'category',
+          appliedCategories: ['cat-1'],
+          periodMonths: 12,
+          totalMatched: 1,
+          queryMs: 10,
+        },
         total: 1,
       } as any);
       // personalized: 1記事, mustRead: 空, missed: 空
@@ -442,6 +484,13 @@ describe('DigestService', () => {
       ]);
       filterServiceMock.filterArticles.mockResolvedValue({
         articles: [{ articleId: 'article-1', score: 0.9 }],
+        meta: {
+          filterMode: 'category',
+          appliedCategories: ['cat-1'],
+          periodMonths: 12,
+          totalMatched: 1,
+          queryMs: 10,
+        },
         total: 1,
       } as any);
 
@@ -497,6 +546,13 @@ describe('DigestService', () => {
           { articleId: 'article-dup', score: 0.9 },
           { articleId: 'article-only-p', score: 0.8 },
         ],
+        meta: {
+          filterMode: 'category',
+          appliedCategories: ['cat-1'],
+          periodMonths: 12,
+          totalMatched: 2,
+          queryMs: 10,
+        },
         total: 2,
       } as any);
 
@@ -538,7 +594,9 @@ describe('DigestService', () => {
 
       // Promise.allによる並列実行のため、クエリ内容でセクションを識別して返す
       prismaMock.$queryRaw.mockImplementation((query: any) => {
-        const sql = query?.strings?.join('') ?? String(query);
+        const sql = Array.isArray(query)
+          ? query.join('')
+          : (query?.strings?.join('') ?? String(query));
         if (sql.includes('array_position'))
           return Promise.resolve([dupArticle, onlyPArticle]);
         if (sql.includes('viewer_count') || sql.includes('COUNT(DISTINCT'))
@@ -575,6 +633,13 @@ describe('DigestService', () => {
 
       filterServiceMock.filterArticles.mockResolvedValue({
         articles: [{ articleId: 'article-shared', score: 0.9 }],
+        meta: {
+          filterMode: 'category',
+          appliedCategories: ['cat-1'],
+          periodMonths: 12,
+          totalMatched: 1,
+          queryMs: 10,
+        },
         total: 1,
       } as any);
 
@@ -591,7 +656,9 @@ describe('DigestService', () => {
 
       // Promise.allによる並列実行のため、クエリ内容でセクションを識別して返す
       prismaMock.$queryRaw.mockImplementation((query: any) => {
-        const sql = query?.strings?.join('') ?? String(query);
+        const sql = Array.isArray(query)
+          ? query.join('')
+          : (query?.strings?.join('') ?? String(query));
         if (sql.includes('array_position'))
           return Promise.resolve([sharedArticle]);
         if (sql.includes('viewer_count') || sql.includes('COUNT(DISTINCT'))
@@ -637,6 +704,13 @@ describe('DigestService', () => {
       ]);
       filterServiceMock.filterArticles.mockResolvedValue({
         articles: [],
+        meta: {
+          filterMode: 'category',
+          appliedCategories: ['cat-1'],
+          periodMonths: 12,
+          totalMatched: 0,
+          queryMs: 10,
+        },
         total: 0,
       } as any);
       // 全セクション空（ok: true）
@@ -681,6 +755,13 @@ describe('DigestService', () => {
       ]);
       filterServiceMock.filterArticles.mockResolvedValue({
         articles: [],
+        meta: {
+          filterMode: 'category',
+          appliedCategories: ['cat-1', 'cat-2'],
+          periodMonths: 12,
+          totalMatched: 0,
+          queryMs: 10,
+        },
         total: 0,
       } as any);
       prismaMock.$queryRaw.mockResolvedValue([]);
@@ -711,6 +792,13 @@ describe('DigestService', () => {
       ]);
       filterServiceMock.filterArticles.mockResolvedValue({
         articles: [],
+        meta: {
+          filterMode: 'category',
+          appliedCategories: ['cat-1'],
+          periodMonths: 12,
+          totalMatched: 0,
+          queryMs: 10,
+        },
         total: 0,
       } as any);
       prismaMock.$queryRaw.mockResolvedValue([]);

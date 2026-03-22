@@ -63,6 +63,8 @@ const mockDigestResponse = {
   ],
   generatedAt: new Date().toISOString(),
   hasPreferences: true,
+  selectedCategories: [],
+  categories: [],
 };
 
 describe('/api/digest', () => {
