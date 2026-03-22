@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { DigestSection } from './digest-section';
 import { CategoryPreferenceDialog } from '@/app/components/personalization/category-preference-dialog';
-import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
+import { useUpdatePreferences } from '@/lib/hooks/use-personalization-preferences';
 import { useDigest } from '@/lib/hooks/use-digest';
 import type { DigestPeriod } from '@/lib/services/digest-service';
 import type { PeriodPreset } from '@/lib/personalization/types';
@@ -18,14 +18,11 @@ export function DigestClient() {
 
   const { data: digest, isLoading, error } = useDigest(period);
 
-  const {
-    categories,
-    selectedCategories,
-    periodMonths,
-    isLoading: prefLoading,
-    isUpdating,
-    updatePreferencesAsync,
-  } = usePersonalizationPreferences('digest');
+  const { mutateAsync: updatePreferencesAsync, isPending: isUpdating } =
+    useUpdatePreferences('digest');
+
+  const categories = digest?.categories ?? [];
+  const selectedCategories = digest?.selectedCategories ?? [];
 
   const handleSavePreferences = async (
     categoryIds: string[],
@@ -165,9 +162,9 @@ export function DigestClient() {
         onOpenChange={setDialogOpen}
         categories={categories}
         selectedCategories={selectedCategories}
-        selectedPeriod={periodMonths}
+        selectedPeriod={12}
         onSave={handleSavePreferences}
-        isLoading={prefLoading}
+        isLoading={isLoading}
         isSaving={isUpdating}
         showPeriodSelector={false}
       />

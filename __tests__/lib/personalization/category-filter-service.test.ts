@@ -861,4 +861,271 @@ describe('CategoryFilterService', () => {
       expect(art3?.tagBoost).toBe(0);
     });
   });
+
+  // ===========================================================================
+  // topK オプションテスト
+  // ===========================================================================
+
+  describe('filterArticles - topK option', () => {
+    const mockSingleCentroid = [
+      { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0]' },
+    ];
+    const mockMultiCentroids3 = [
+      { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0]' },
+      { id: 'cat-2', slug: 'backend', centroid_embedding: '[0,0.5,0.5]' },
+      { id: 'cat-3', slug: 'infra', centroid_embedding: '[0.5,0,0.5]' },
+    ];
+
+    const mockCandidatesSimple = [
+      {
+        id: 'art-1',
+        title: 'React Guide',
+        url: 'https://example.com/react',
+        published_at: new Date(),
+        created_at: new Date(),
+        quality_score: 0.8,
+        bookmarks: 20,
+        user_votes: 5,
+        source_id: 'src-1',
+        summary: 'A guide to React',
+        thumbnail_url: null,
+        sim_emb: 0.9,
+      },
+    ];
+
+    it('topK指定時はDEFAULT_TOP_K_CANDIDATESが使われず指定値がgetEmbeddingCandidatesに渡される', async () => {
+      // topK=50 を指定する
+      // getEmbeddingCandidates は $queryRaw の 2回目の呼び出し（1回目はgetCategoryCentroids）
+      // template literal の LIMIT 値として topK=50 が渡される
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockSingleCentroid) // getCategoryCentroids
+        .mockResolvedValueOnce(mockCandidatesSimple) // getEmbeddingCandidates
+        .mockResolvedValueOnce([]); // checkTagMatches
+
+      await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 5,
+        topK: 50,
+      });
+
+      // $queryRaw の 2回目呼び出し (index=1) が getEmbeddingCandidates
+      // template literal は $queryRaw(strings, ...values) 形式で呼ばれる
+      // LIMIT ${effectiveLimit} の値が calls[1] の最後の引数に入る
+      const embeddingCandidateCallArgs = mockPrisma.$queryRaw.mock.calls[1];
+      // template literalの値 (strings以外の引数) を取得
+      const templateValues = embeddingCandidateCallArgs.slice(1);
+
+      // topK=50 が effectiveLimit として LIMIT 句に渡されていることを確認
+      // 値は numbers として渡される
+      expect(templateValues).toContain(50);
+    });
+
+    it('topK未指定時はDEFAULT_TOP_K_CANDIDATES(1000)がLIMITとして渡される', async () => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockSingleCentroid) // getCategoryCentroids
+        .mockResolvedValueOnce(mockCandidatesSimple) // getEmbeddingCandidates
+        .mockResolvedValueOnce([]); // checkTagMatches
+
+      await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 5,
+        // topK: 未指定 → DEFAULT_TOP_K_CANDIDATES = 1000
+      });
+
+      const embeddingCandidateCallArgs = mockPrisma.$queryRaw.mock.calls[1];
+      const templateValues = embeddingCandidateCallArgs.slice(1);
+
+      // DEFAULT_TOP_K_CANDIDATES=1000 が LIMIT 句に渡される
+      expect(templateValues).toContain(1000);
+    });
+
+    it('topK指定時はmulti-categoryでtopKが総予算としてperCategoryに分配される', async () => {
+      // topK=90, 3カテゴリ → kPerCategory = Math.max(30, Math.floor(90/3)) = Math.max(30, 30) = 30
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockMultiCentroids3) // getCategoryCentroids
+        .mockResolvedValueOnce(mockCandidatesSimple) // cat-1 getEmbeddingCandidates
+        .mockResolvedValueOnce(mockCandidatesSimple) // cat-2 getEmbeddingCandidates
+        .mockResolvedValueOnce(mockCandidatesSimple) // cat-3 getEmbeddingCandidates
+        .mockResolvedValueOnce([]); // checkTagMatches
+
+      await service.filterArticles({
+        categoryIds: ['cat-1', 'cat-2', 'cat-3'],
+        periodMonths: 12,
+        limit: 10,
+        topK: 90,
+      });
+
+      // $queryRaw の 2〜4回目が各カテゴリのgetEmbeddingCandidates
+      // それぞれ kPerCategory=30 が LIMIT として渡されることを確認
+      for (const callIndex of [1, 2, 3]) {
+        const callArgs = mockPrisma.$queryRaw.mock.calls[callIndex];
+        const templateValues = callArgs.slice(1);
+        expect(templateValues).toContain(30);
+      }
+    });
+
+    it('topK指定時のperCategory分配: topKがカテゴリ数より少なくても最低30が保証される', async () => {
+      // topK=10, 3カテゴリ → kPerCategory = Math.max(30, Math.floor(10/3)) = Math.max(30, 3) = 30
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockMultiCentroids3) // getCategoryCentroids
+        .mockResolvedValueOnce(mockCandidatesSimple) // cat-1
+        .mockResolvedValueOnce(mockCandidatesSimple) // cat-2
+        .mockResolvedValueOnce(mockCandidatesSimple) // cat-3
+        .mockResolvedValueOnce([]); // checkTagMatches
+
+      await service.filterArticles({
+        categoryIds: ['cat-1', 'cat-2', 'cat-3'],
+        periodMonths: 12,
+        limit: 10,
+        topK: 10,
+      });
+
+      // 最低30が保証される
+      for (const callIndex of [1, 2, 3]) {
+        const callArgs = mockPrisma.$queryRaw.mock.calls[callIndex];
+        const templateValues = callArgs.slice(1);
+        expect(templateValues).toContain(30);
+      }
+    });
+  });
+
+  // ===========================================================================
+  // maxConcurrency オプションテスト
+  // ===========================================================================
+
+  describe('filterArticles - maxConcurrency option', () => {
+    const mockCandidatesFrontend = [
+      {
+        id: 'art-1',
+        title: 'React Guide',
+        url: 'https://example.com/react',
+        published_at: new Date(),
+        created_at: new Date(),
+        quality_score: 0.8,
+        bookmarks: 20,
+        user_votes: 5,
+        source_id: 'src-1',
+        summary: 'A guide to React',
+        thumbnail_url: null,
+        sim_emb: 0.9,
+      },
+    ];
+    const mockCandidatesBackend = [
+      {
+        id: 'art-2',
+        title: 'Node Guide',
+        url: 'https://example.com/node',
+        published_at: new Date(),
+        created_at: new Date(),
+        quality_score: 0.85,
+        bookmarks: 15,
+        user_votes: 3,
+        source_id: 'src-2',
+        summary: 'Node guide',
+        thumbnail_url: null,
+        sim_emb: 0.85,
+      },
+    ];
+    const mockCandidatesInfra = [
+      {
+        id: 'art-3',
+        title: 'K8s Guide',
+        url: 'https://example.com/k8s',
+        published_at: new Date(),
+        created_at: new Date(),
+        quality_score: 0.8,
+        bookmarks: 10,
+        user_votes: 2,
+        source_id: 'src-3',
+        summary: 'K8s guide',
+        thumbnail_url: null,
+        sim_emb: 0.8,
+      },
+    ];
+
+    const mockCentroids3 = [
+      { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0]' },
+      { id: 'cat-2', slug: 'backend', centroid_embedding: '[0,0.5,0.5]' },
+      { id: 'cat-3', slug: 'infra', centroid_embedding: '[0.5,0,0.5]' },
+    ];
+
+    it('maxConcurrency指定時もカテゴリ数 > maxConcurrency で全カテゴリの結果が返る', async () => {
+      // 3カテゴリ, maxConcurrency=2 → 順次処理されるが最終的に全結果がマージされる
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockCentroids3) // getCategoryCentroids
+        .mockResolvedValueOnce(mockCandidatesFrontend) // cat-1
+        .mockResolvedValueOnce(mockCandidatesBackend) // cat-2
+        .mockResolvedValueOnce(mockCandidatesInfra) // cat-3
+        .mockResolvedValueOnce([]); // checkTagMatches
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1', 'cat-2', 'cat-3'],
+        periodMonths: 12,
+        limit: 10,
+        maxConcurrency: 2,
+      });
+
+      // 全3カテゴリの記事が取得され、ユニーク3件になる
+      const articleIds = result.articles.map((a) => a.articleId);
+      expect(articleIds).toContain('art-1');
+      expect(articleIds).toContain('art-2');
+      expect(articleIds).toContain('art-3');
+      expect(result.articles).toHaveLength(3);
+    });
+
+    it('maxConcurrency >= カテゴリ数の場合はPromise.allSettledで並列実行され全結果が返る', async () => {
+      // 2カテゴリ, maxConcurrency=5 → maxConcurrency >= centroids.length なので通常のPromise.allSettled
+      const mockCentroids2 = [
+        { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0]' },
+        { id: 'cat-2', slug: 'backend', centroid_embedding: '[0,0.5,0.5]' },
+      ];
+
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockCentroids2) // getCategoryCentroids
+        .mockResolvedValueOnce(mockCandidatesFrontend) // cat-1
+        .mockResolvedValueOnce(mockCandidatesBackend) // cat-2
+        .mockResolvedValueOnce([]); // checkTagMatches
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1', 'cat-2'],
+        periodMonths: 12,
+        limit: 10,
+        maxConcurrency: 5,
+      });
+
+      expect(result.articles).toHaveLength(2);
+      const articleIds = result.articles.map((a) => a.articleId);
+      expect(articleIds).toContain('art-1');
+      expect(articleIds).toContain('art-2');
+    });
+
+    it('maxConcurrency指定時にカテゴリ検索が一部失敗しても他のカテゴリ結果は返る', async () => {
+      const { logger } = jest.requireMock('@/lib/logger');
+
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockCentroids3) // getCategoryCentroids
+        .mockResolvedValueOnce(mockCandidatesFrontend) // cat-1: 成功
+        .mockRejectedValueOnce(new Error('DB error')) // cat-2: 失敗
+        .mockResolvedValueOnce(mockCandidatesInfra) // cat-3: 成功
+        .mockResolvedValueOnce([]); // checkTagMatches
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1', 'cat-2', 'cat-3'],
+        periodMonths: 12,
+        limit: 10,
+        maxConcurrency: 2,
+      });
+
+      // cat-2 は失敗するが cat-1, cat-3 の結果は取得できる
+      const articleIds = result.articles.map((a) => a.articleId);
+      expect(articleIds).toContain('art-1');
+      expect(articleIds).toContain('art-3');
+      expect(articleIds).not.toContain('art-2');
+
+      // 失敗がwarnとして記録される
+      expect(logger.warn).toHaveBeenCalled();
+    });
+  });
 });

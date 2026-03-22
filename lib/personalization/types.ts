@@ -101,6 +101,8 @@ export interface PersonalizedFilterOptions {
   sortBy?: PersonalizedSortBy;
   sortOrder?: 'asc' | 'desc';
   excludeSourceIds?: string[];
+  topK?: number;
+  maxConcurrency?: number;
 }
 
 /**

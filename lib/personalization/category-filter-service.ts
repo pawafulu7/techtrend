@@ -234,7 +234,7 @@ export class CategoryFilterService {
       this.db,
       centroid.centroid_embedding!,
       periodMonths,
-      DEFAULT_TOP_K_CANDIDATES,
+      options.topK ?? DEFAULT_TOP_K_CANDIDATES,
       options.excludeSourceIds
     );
 
@@ -270,26 +270,82 @@ export class CategoryFilterService {
   }> {
     const { categoryIds, periodMonths, limit, offset = 0 } = options;
 
-    const kPerCategory = Math.max(
-      50,
-      Math.min(500, Math.ceil((limit + offset) / centroids.length) * 3)
-    );
+    // If topK is specified, treat it as total budget and derive perCategory from it
+    const kPerCategory = options.topK
+      ? Math.max(30, Math.floor(options.topK / centroids.length))
+      : Math.max(
+          50,
+          Math.min(500, Math.ceil((limit + offset) / centroids.length) * 3)
+        );
 
     logger.info(
       { categoryIds, kPerCategory, centroidCount: centroids.length },
       'Starting OR-based multi-category search'
     );
 
-    const searchPromises = centroids.map((c) =>
-      getEmbeddingCandidates(
-        this.db,
-        c.centroid_embedding!,
-        periodMonths,
-        kPerCategory,
-        options.excludeSourceIds
-      )
-    );
-    const settledResults = await Promise.allSettled(searchPromises);
+    // Build search promises; apply semaphore if maxConcurrency is specified
+    const maxConcurrency = options.maxConcurrency;
+    let settledResults: PromiseSettledResult<EmbeddingCandidate[]>[];
+
+    if (
+      maxConcurrency &&
+      maxConcurrency > 0 &&
+      maxConcurrency < centroids.length
+    ) {
+      // Simple semaphore: run at most maxConcurrency searches in parallel
+      let activeCount = 0;
+      let index = 0;
+      const results: PromiseSettledResult<EmbeddingCandidate[]>[] = new Array(
+        centroids.length
+      );
+
+      await new Promise<void>((resolve) => {
+        const tryNext = () => {
+          while (activeCount < maxConcurrency && index < centroids.length) {
+            const currentIndex = index++;
+            activeCount++;
+            getEmbeddingCandidates(
+              this.db,
+              centroids[currentIndex].centroid_embedding!,
+              periodMonths,
+              kPerCategory,
+              options.excludeSourceIds
+            )
+              .then((value) => {
+                results[currentIndex] = { status: 'fulfilled', value };
+              })
+              .catch((reason) => {
+                results[currentIndex] = { status: 'rejected', reason };
+              })
+              .finally(() => {
+                activeCount--;
+                if (index < centroids.length) {
+                  tryNext();
+                } else if (activeCount === 0) {
+                  resolve();
+                }
+              });
+          }
+          if (index >= centroids.length && activeCount === 0) {
+            resolve();
+          }
+        };
+        tryNext();
+      });
+
+      settledResults = results;
+    } else {
+      const searchPromises = centroids.map((c) =>
+        getEmbeddingCandidates(
+          this.db,
+          c.centroid_embedding!,
+          periodMonths,
+          kPerCategory,
+          options.excludeSourceIds
+        )
+      );
+      settledResults = await Promise.allSettled(searchPromises);
+    }
 
     const categoryResults: EmbeddingCandidate[][] = [];
     const failedCategories: number[] = [];
