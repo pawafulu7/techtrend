@@ -297,6 +297,10 @@ describe('/api/sources', () => {
 });
 
 describe('GET /api/sources - 認可テスト', () => {
+  afterEach(() => {
+    jest.resetModules();
+  });
+
   it('非管理者からのリクエストは withAdminAuth により拒否される', async () => {
     // ファイルスコープの jest.mock を一時的に上書きするため resetModules で
     // モジュールキャッシュをクリアしてから doMock + require で再ロードする
