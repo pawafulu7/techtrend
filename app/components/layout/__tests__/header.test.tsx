@@ -67,12 +67,10 @@ describe('Header', () => {
       const desktopNav = screen.getByTestId('desktop-nav');
       expect(desktopNav).toBeInTheDocument();
 
-      // 主要ナビゲーション項目
+      // 主要ナビゲーション項目（/sources・/stats は管理者限定のため除外）
       expect(screen.getByTestId('nav-link-ホーム')).toBeInTheDocument();
       expect(screen.getByTestId('nav-link-人気')).toBeInTheDocument();
-      expect(screen.getByTestId('nav-link-ソース')).toBeInTheDocument();
       expect(screen.getByTestId('nav-link-トレンド')).toBeInTheDocument();
-      expect(screen.getByTestId('nav-link-統計')).toBeInTheDocument();
     });
 
     it('モバイルメニューボタンが表示される', () => {
@@ -210,12 +208,11 @@ describe('Header', () => {
     it('正しいhref属性が設定されている', () => {
       render(<Header />);
 
+      // /sources・/stats は管理者限定のため primaryNav から除外済み
       const links = [
         { testId: 'nav-link-ホーム', href: '/' },
         { testId: 'nav-link-人気', href: '/popular' },
-        { testId: 'nav-link-ソース', href: '/sources' },
         { testId: 'nav-link-トレンド', href: '/trends' },
-        { testId: 'nav-link-統計', href: '/stats' },
       ];
 
       links.forEach((link) => {
@@ -271,12 +268,13 @@ describe('Header', () => {
 
   describe('アクセシビリティ', () => {
     it('aria-current属性が正しく設定される', () => {
-      (usePathname as jest.Mock).mockReturnValue('/stats');
+      // /stats は管理者限定のため、代わりに /trends を使用
+      (usePathname as jest.Mock).mockReturnValue('/trends');
 
       render(<Header />);
 
-      const statsLink = screen.getByTestId('nav-link-統計');
-      expect(statsLink).toHaveAttribute('aria-current', 'page');
+      const trendsLink = screen.getByTestId('nav-link-トレンド');
+      expect(trendsLink).toHaveAttribute('aria-current', 'page');
 
       const homeLink = screen.getByTestId('nav-link-ホーム');
       expect(homeLink).not.toHaveAttribute('aria-current');

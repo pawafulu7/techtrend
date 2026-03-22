@@ -11,6 +11,9 @@
  * @see Plan: plan_20251116_123239_756_phase2a-day6-performance-tests.md
  */
 
+// withAdminAuth をパススルーにして既存テストを維持
+jest.mock('@/lib/middleware/with-admin-auth', () => ({ withAdminAuth: (fn: any) => fn }));
+
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/sources/route';
 import { prisma } from '@/lib/prisma';
