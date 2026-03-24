@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,18 +14,19 @@ import {
 import { useDebounce } from '@/hooks/use-debounce';
 import {
   CATEGORY_OPTIONS,
+  QUALITY_STATUS_VALUES,
   type AdminSource,
   type QualityStatus,
 } from '../_types';
 
-const QUALITY_STATUS_OPTIONS = [
-  { value: 'missing_summary', label: '要約なし' },
-  { value: 'missing_category', label: 'カテゴリなし' },
-  { value: 'missing_content', label: '本文なし' },
-  { value: 'low_quality', label: '低品質(score<30)' },
-  { value: 'has_error', label: 'エラーあり' },
-  { value: 'skipped', label: 'スキップ' },
-] as const;
+const QUALITY_STATUS_LABELS: Record<QualityStatus, string> = {
+  missing_summary: '要約なし',
+  missing_category: 'カテゴリなし',
+  missing_content: '本文なし',
+  low_quality: '低品質(score<30)',
+  has_error: 'エラーあり',
+  skipped: 'スキップ',
+};
 
 interface ArticlesFiltersProps {
   query: string;
@@ -53,6 +54,7 @@ export function ArticlesFilters({
   const [inputValue, setInputValue] = useState(query);
   const [isComposing, setIsComposing] = useState(false);
   const debouncedValue = useDebounce(inputValue, 300);
+  const lastSentRef = useRef(query);
 
   // 外部からqueryが変わった場合（クリア等）に同期
   useEffect(() => {
@@ -65,7 +67,8 @@ export function ArticlesFilters({
   // デバウンス後に親へ通知（IME入力中は発火しない）
   useEffect(() => {
     if (isComposing) return;
-    if (debouncedValue !== query) {
+    if (debouncedValue !== lastSentRef.current) {
+      lastSentRef.current = debouncedValue;
       onQueryChange(debouncedValue);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,6 +76,7 @@ export function ArticlesFilters({
 
   const handleClear = () => {
     setInputValue('');
+    lastSentRef.current = '';
     onQueryChange('');
   };
 
@@ -83,13 +87,15 @@ export function ArticlesFilters({
         <Input
           type="text"
           placeholder="キーワードで検索..."
+          aria-label="記事をキーワードで検索"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onCompositionStart={() => setIsComposing(true)}
           onCompositionEnd={(e) => {
             setIsComposing(false);
             const value = (e.target as HTMLInputElement).value;
-            if (value !== query) {
+            if (value !== lastSentRef.current) {
+              lastSentRef.current = value;
               onQueryChange(value);
             }
           }}
@@ -112,7 +118,7 @@ export function ArticlesFilters({
         value={sourceId || 'all'}
         onValueChange={(v) => onSourceIdChange(v === 'all' ? '' : v)}
       >
-        <SelectTrigger className="h-9 w-40">
+        <SelectTrigger className="h-9 w-40" aria-label="ソースフィルタ">
           <SelectValue placeholder="全てのソース" />
         </SelectTrigger>
         <SelectContent>
@@ -129,7 +135,7 @@ export function ArticlesFilters({
         value={category || 'all'}
         onValueChange={(v) => onCategoryChange(v === 'all' ? '' : v)}
       >
-        <SelectTrigger className="h-9 w-44">
+        <SelectTrigger className="h-9 w-44" aria-label="カテゴリフィルタ">
           <SelectValue placeholder="全てのカテゴリ" />
         </SelectTrigger>
         <SelectContent>
@@ -148,14 +154,14 @@ export function ArticlesFilters({
           onQualityStatusChange(v === 'all' ? '' : (v as QualityStatus))
         }
       >
-        <SelectTrigger className="h-9 w-44">
+        <SelectTrigger className="h-9 w-44" aria-label="品質ステータスフィルタ">
           <SelectValue placeholder="全ての品質状態" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">全て</SelectItem>
-          {QUALITY_STATUS_OPTIONS.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
+          {QUALITY_STATUS_VALUES.map((v) => (
+            <SelectItem key={v} value={v}>
+              {QUALITY_STATUS_LABELS[v]}
             </SelectItem>
           ))}
         </SelectContent>

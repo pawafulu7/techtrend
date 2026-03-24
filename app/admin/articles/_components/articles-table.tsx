@@ -38,10 +38,14 @@ function StatusBadge({ article }: { article: AdminArticleListItem }) {
       </Badge>
     );
   }
-  if (article.hasSummary && article.hasContent) {
-    return <Badge variant="default">正常</Badge>;
+  if (!article.hasContent) {
+    return (
+      <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+        本文なし
+      </Badge>
+    );
   }
-  return <Badge variant="outline">-</Badge>;
+  return <Badge variant="default">正常</Badge>;
 }
 
 export function ArticlesTable({

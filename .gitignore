@@ -195,4 +195,3 @@ backups/
 .workflow/
 dump.rdb
 .aigne/
-.claude/.agent-gate-passed-*

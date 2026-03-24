@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import type { QualitySummary, QualityStatus } from '../_types';
 
@@ -23,32 +24,35 @@ export function QualitySummaryCards({
 }: QualitySummaryCardsProps) {
   const total = summary.totalArticles;
 
-  const cards: CardConfig[] = [
-    {
-      label: '要約なし',
-      count: summary.missingSummary,
-      statusValue: 'missing_summary',
-      colorClass: 'text-yellow-600 dark:text-yellow-400',
-    },
-    {
-      label: 'カテゴリなし',
-      count: summary.missingCategory,
-      statusValue: 'missing_category',
-      colorClass: 'text-orange-600 dark:text-orange-400',
-    },
-    {
-      label: '重大低品質(score<30)',
-      count: summary.lowQuality,
-      statusValue: 'low_quality',
-      colorClass: 'text-red-600 dark:text-red-400',
-    },
-    {
-      label: '本文なし',
-      count: summary.missingContent,
-      statusValue: 'missing_content',
-      colorClass: 'text-slate-600 dark:text-slate-400',
-    },
-  ];
+  const cards = useMemo<CardConfig[]>(
+    () => [
+      {
+        label: '要約なし',
+        count: summary.missingSummary,
+        statusValue: 'missing_summary',
+        colorClass: 'text-yellow-600 dark:text-yellow-400',
+      },
+      {
+        label: 'カテゴリなし',
+        count: summary.missingCategory,
+        statusValue: 'missing_category',
+        colorClass: 'text-orange-600 dark:text-orange-400',
+      },
+      {
+        label: '重大低品質(score<30)',
+        count: summary.lowQuality,
+        statusValue: 'low_quality',
+        colorClass: 'text-red-600 dark:text-red-400',
+      },
+      {
+        label: '本文なし',
+        count: summary.missingContent,
+        statusValue: 'missing_content',
+        colorClass: 'text-slate-600 dark:text-slate-400',
+      },
+    ],
+    [summary]
+  );
 
   const formatPercent = (count: number) => {
     if (total === 0) return '0.0%';

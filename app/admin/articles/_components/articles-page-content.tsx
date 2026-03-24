@@ -81,8 +81,7 @@ export function ArticlesPageContent() {
   };
 
   const handleQualityCardClick = (status: QualityStatus | '') => {
-    const next = qualityStatus === status ? '' : status;
-    setQualityStatus(next);
+    setQualityStatus(status);
     setPage(1);
   };
 
