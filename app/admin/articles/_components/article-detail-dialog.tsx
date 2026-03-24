@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
+import { formatDateWithTime } from '@/lib/utils/date';
 import type { AdminArticleDetail } from '../_types';
 
 const SKIP_DETAILED_SUMMARY_MARKER = '__SKIP_DETAILED_SUMMARY__';
@@ -32,8 +33,7 @@ async function fetchArticleDetail(id: string): Promise<AdminArticleDetail> {
 
 function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '-';
-  const d = new Date(dateStr);
-  return d.toLocaleString('ja-JP');
+  return formatDateWithTime(dateStr);
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {

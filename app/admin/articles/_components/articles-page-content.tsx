@@ -2,12 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { useDebounce } from '@/hooks/use-debounce';
 import { QualitySummaryCards } from './quality-summary-cards';
 import { ArticlesFilters } from './articles-filters';
 import { ArticlesTable } from './articles-table';
 import { ArticleDetailDialog } from './article-detail-dialog';
-import type { AdminArticlesResponse } from '../_types';
+import type { AdminArticlesResponse, QualityStatus } from '../_types';
 
 async function fetchAdminArticles(params: {
   page: number;
@@ -37,19 +36,17 @@ export function ArticlesPageContent() {
   const [query, setQuery] = useState('');
   const [sourceId, setSourceId] = useState('');
   const [category, setCategory] = useState('');
-  const [qualityStatus, setQualityStatus] = useState('');
+  const [qualityStatus, setQualityStatus] = useState<QualityStatus | ''>('');
   const [page, setPage] = useState(1);
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(
     null
   );
 
-  const debouncedQuery = useDebounce(query, 300);
-
   const { data, isLoading, error } = useQuery({
     queryKey: [
       'admin',
       'articles',
-      { page, sourceId, category, qualityStatus, query: debouncedQuery },
+      { page, sourceId, category, qualityStatus, query },
     ],
     queryFn: () =>
       fetchAdminArticles({
@@ -57,7 +54,7 @@ export function ArticlesPageContent() {
         sourceId,
         category,
         qualityStatus,
-        query: debouncedQuery,
+        query,
       }),
     staleTime: 60_000,
     placeholderData: keepPreviousData,
@@ -78,12 +75,12 @@ export function ArticlesPageContent() {
     setPage(1);
   };
 
-  const handleQualityStatusChange = (newStatus: string) => {
+  const handleQualityStatusChange = (newStatus: QualityStatus | '') => {
     setQualityStatus(newStatus);
     setPage(1);
   };
 
-  const handleQualityCardClick = (status: string) => {
+  const handleQualityCardClick = (status: QualityStatus | '') => {
     const next = qualityStatus === status ? '' : status;
     setQualityStatus(next);
     setPage(1);

@@ -12,22 +12,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDebounce } from '@/hooks/use-debounce';
-import type { AdminSource } from '../_types';
-
-const CATEGORY_OPTIONS = [
-  { value: 'frontend', label: 'フロントエンド' },
-  { value: 'backend', label: 'バックエンド' },
-  { value: 'infrastructure', label: 'インフラ' },
-  { value: 'mobile', label: 'モバイル' },
-  { value: 'ai', label: 'AI/ML' },
-  { value: 'security', label: 'セキュリティ' },
-  { value: 'database', label: 'データベース' },
-  { value: 'devops', label: 'DevOps' },
-  { value: 'architecture', label: 'アーキテクチャ' },
-  { value: 'career', label: 'キャリア' },
-  { value: 'business', label: 'ビジネス' },
-  { value: 'other', label: 'その他' },
-] as const;
+import {
+  CATEGORY_OPTIONS,
+  type AdminSource,
+  type QualityStatus,
+} from '../_types';
 
 const QUALITY_STATUS_OPTIONS = [
   { value: 'missing_summary', label: '要約なし' },
@@ -45,8 +34,8 @@ interface ArticlesFiltersProps {
   onSourceIdChange: (sourceId: string) => void;
   category: string;
   onCategoryChange: (category: string) => void;
-  qualityStatus: string;
-  onQualityStatusChange: (status: string) => void;
+  qualityStatus: QualityStatus | '';
+  onQualityStatusChange: (status: QualityStatus | '') => void;
   sources: AdminSource[];
 }
 
@@ -89,7 +78,6 @@ export function ArticlesFilters({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {/* 検索Input */}
       <div className="relative">
         <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
         <Input
@@ -120,7 +108,6 @@ export function ArticlesFilters({
         )}
       </div>
 
-      {/* ソースSelect */}
       <Select value={sourceId || ''} onValueChange={onSourceIdChange}>
         <SelectTrigger className="h-9 w-40">
           <SelectValue placeholder="全てのソース" />
@@ -135,7 +122,6 @@ export function ArticlesFilters({
         </SelectContent>
       </Select>
 
-      {/* カテゴリSelect */}
       <Select value={category || ''} onValueChange={onCategoryChange}>
         <SelectTrigger className="h-9 w-44">
           <SelectValue placeholder="全てのカテゴリ" />
@@ -150,7 +136,6 @@ export function ArticlesFilters({
         </SelectContent>
       </Select>
 
-      {/* 品質ステータスSelect */}
       <Select value={qualityStatus || ''} onValueChange={onQualityStatusChange}>
         <SelectTrigger className="h-9 w-44">
           <SelectValue placeholder="全ての品質状態" />

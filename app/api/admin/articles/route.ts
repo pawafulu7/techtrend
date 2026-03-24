@@ -11,23 +11,15 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import type { Prisma } from '@prisma/client';
-import type {
-  AdminArticlesResponse,
-  AdminArticleListItem,
-  QualitySummary,
-  QualityStatus,
+import {
+  QUALITY_STATUS_VALUES,
+  type AdminArticlesResponse,
+  type AdminArticleListItem,
+  type QualitySummary,
+  type QualityStatus,
 } from '@/app/admin/articles/_types';
 
 export const dynamic = 'force-dynamic';
-
-const QUALITY_STATUS_VALUES: QualityStatus[] = [
-  'missing_summary',
-  'missing_category',
-  'missing_content',
-  'low_quality',
-  'has_error',
-  'skipped',
-];
 
 const ARTICLE_CATEGORY_VALUES = [
   'frontend',
@@ -148,7 +140,7 @@ async function handler(request: NextRequest) {
           category: true,
           qualityScore: true,
           summary: true,
-          content: true,
+          contentLength: true,
           skipReason: true,
           summaryError: true,
           bookmarks: true,
@@ -177,7 +169,7 @@ async function handler(request: NextRequest) {
       category: a.category,
       qualityScore: a.qualityScore,
       hasSummary: a.summary != null && a.summary !== '',
-      hasContent: a.content != null && a.content !== '',
+      hasContent: a.contentLength != null && a.contentLength > 0,
       skipReason: a.skipReason,
       hasSummaryError: a.summaryError != null,
       bookmarks: a.bookmarks,
@@ -218,20 +210,14 @@ async function getQualitySummary(): Promise<QualitySummary> {
     skipped,
   ] = await Promise.all([
     prisma.article.count(),
+    prisma.article.count({ where: buildQualityStatusWhere('missing_summary') }),
     prisma.article.count({
-      where: { OR: [{ summary: null }, { summary: '' }] },
+      where: buildQualityStatusWhere('missing_category'),
     }),
-    prisma.article.count({ where: { category: null } }),
-    prisma.article.count({
-      where: { OR: [{ content: null }, { content: '' }] },
-    }),
-    prisma.article.count({
-      where: {
-        AND: [{ qualityScore: { gt: 0 } }, { qualityScore: { lt: 30 } }],
-      },
-    }),
-    prisma.article.count({ where: { summaryError: { not: null } } }),
-    prisma.article.count({ where: { skipReason: { not: null } } }),
+    prisma.article.count({ where: buildQualityStatusWhere('missing_content') }),
+    prisma.article.count({ where: buildQualityStatusWhere('low_quality') }),
+    prisma.article.count({ where: buildQualityStatusWhere('has_error') }),
+    prisma.article.count({ where: buildQualityStatusWhere('skipped') }),
   ]);
 
   return {

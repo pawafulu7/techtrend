@@ -1,19 +1,19 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import type { QualitySummary } from '../_types';
+import type { QualitySummary, QualityStatus } from '../_types';
 
 interface CardConfig {
   label: string;
   count: number;
-  statusValue: string;
+  statusValue: QualityStatus;
   colorClass: string;
 }
 
 interface QualitySummaryCardsProps {
   summary: QualitySummary;
-  activeStatus: string;
-  onStatusClick: (status: string) => void;
+  activeStatus: QualityStatus | '';
+  onStatusClick: (status: QualityStatus | '') => void;
 }
 
 export function QualitySummaryCards({

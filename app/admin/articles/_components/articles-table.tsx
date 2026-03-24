@@ -11,6 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Pagination } from '@/app/components/common/pagination';
+import { formatDateWithTime } from '@/lib/utils/date';
 import type { AdminArticleListItem } from '../_types';
 
 interface ArticlesTableProps {
@@ -21,14 +22,6 @@ interface ArticlesTableProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   onArticleClick: (articleId: string) => void;
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}/${m}/${day}`;
 }
 
 function StatusBadge({ article }: { article: AdminArticleListItem }) {
@@ -80,15 +73,13 @@ export function ArticlesTable({
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={6}>
-                      <Skeleton className="h-12 w-full" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={6}>
+                    <Skeleton className="h-12 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))
             ) : articles.length === 0 ? (
               <TableRow>
                 <TableCell
@@ -133,7 +124,7 @@ export function ArticlesTable({
                     {article.qualityScore}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                    {formatDate(article.publishedAt)}
+                    {formatDateWithTime(article.publishedAt)}
                   </TableCell>
                   <TableCell>
                     <StatusBadge article={article} />
