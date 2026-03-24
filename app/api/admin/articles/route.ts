@@ -41,9 +41,7 @@ const querySchema = z.object({
   perPage: z.coerce.number().int().min(1).max(100).default(20),
   sourceId: z.string().optional(),
   category: z.enum(ARTICLE_CATEGORY_VALUES).optional(),
-  qualityStatus: z
-    .enum(QUALITY_STATUS_VALUES as unknown as [string, ...string[]])
-    .optional(),
+  qualityStatus: z.enum(QUALITY_STATUS_VALUES).optional(),
   query: z.string().max(200).optional(),
 });
 
@@ -56,7 +54,7 @@ function buildQualityStatusWhere(
     case 'missing_category':
       return { category: null };
     case 'missing_content':
-      return { OR: [{ content: null }, { content: '' }] };
+      return { OR: [{ contentLength: null }, { contentLength: 0 }] };
     case 'low_quality':
       return {
         AND: [{ qualityScore: { gt: 0 } }, { qualityScore: { lt: 30 } }],
