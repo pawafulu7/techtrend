@@ -72,7 +72,11 @@ export function ArticleDetailDialog({
 }: ArticleDetailDialogProps) {
   const [isContentOpen, setIsContentOpen] = useState(false);
 
-  const { data: article, isLoading } = useQuery({
+  const {
+    data: article,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['admin', 'article-detail', articleId],
     queryFn: () => fetchArticleDetail(articleId!),
     enabled: !!articleId,
@@ -82,7 +86,11 @@ export function ArticleDetailDialog({
   return (
     <Dialog open={!!articleId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        {isLoading ? (
+        {isError ? (
+          <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
+            記事の読み込みに失敗しました。
+          </div>
+        ) : isLoading ? (
           <div className="space-y-3 p-2">
             <Skeleton className="h-6 w-3/4" />
             <Skeleton className="h-4 w-full" />

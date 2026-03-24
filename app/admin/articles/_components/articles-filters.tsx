@@ -108,12 +108,15 @@ export function ArticlesFilters({
         )}
       </div>
 
-      <Select value={sourceId || ''} onValueChange={onSourceIdChange}>
+      <Select
+        value={sourceId || 'all'}
+        onValueChange={(v) => onSourceIdChange(v === 'all' ? '' : v)}
+      >
         <SelectTrigger className="h-9 w-40">
           <SelectValue placeholder="全てのソース" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">全て</SelectItem>
+          <SelectItem value="all">全て</SelectItem>
           {sources.map((source) => (
             <SelectItem key={source.id} value={source.id}>
               {source.name}
@@ -122,12 +125,15 @@ export function ArticlesFilters({
         </SelectContent>
       </Select>
 
-      <Select value={category || ''} onValueChange={onCategoryChange}>
+      <Select
+        value={category || 'all'}
+        onValueChange={(v) => onCategoryChange(v === 'all' ? '' : v)}
+      >
         <SelectTrigger className="h-9 w-44">
           <SelectValue placeholder="全てのカテゴリ" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">全て</SelectItem>
+          <SelectItem value="all">全て</SelectItem>
           {CATEGORY_OPTIONS.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>
               {opt.label}
@@ -136,12 +142,17 @@ export function ArticlesFilters({
         </SelectContent>
       </Select>
 
-      <Select value={qualityStatus || ''} onValueChange={onQualityStatusChange}>
+      <Select
+        value={qualityStatus || 'all'}
+        onValueChange={(v) =>
+          onQualityStatusChange(v === 'all' ? '' : (v as QualityStatus))
+        }
+      >
         <SelectTrigger className="h-9 w-44">
           <SelectValue placeholder="全ての品質状態" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">全て</SelectItem>
+          <SelectItem value="all">全て</SelectItem>
           {QUALITY_STATUS_OPTIONS.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>
               {opt.label}

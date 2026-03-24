@@ -145,7 +145,7 @@ async function handler(request: NextRequest) {
           summaryError: true,
           bookmarks: true,
         },
-        orderBy: { publishedAt: 'desc' },
+        orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * perPage,
         take: perPage,
       }),
