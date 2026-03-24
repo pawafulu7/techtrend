@@ -87,18 +87,28 @@ export function ArticleDetailDialog({
     <Dialog open={!!articleId} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         {isError ? (
-          <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
-            記事の読み込みに失敗しました。
-          </div>
+          <>
+            <DialogHeader>
+              <DialogTitle>記事詳細</DialogTitle>
+            </DialogHeader>
+            <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
+              記事の読み込みに失敗しました。
+            </div>
+          </>
         ) : isLoading ? (
-          <div className="space-y-3 p-2">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-2/3" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-          </div>
+          <>
+            <DialogHeader>
+              <DialogTitle>記事詳細</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 p-2">
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+          </>
         ) : article ? (
           <div className="space-y-6">
             <DialogHeader>
