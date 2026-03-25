@@ -63,6 +63,8 @@ export function ArticlesFilters({
     if (query !== inputValue) {
       setInputValue(query);
     }
+    // 親からの外部更新時に重複送信しないよう同期
+    lastSentRef.current = query;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
