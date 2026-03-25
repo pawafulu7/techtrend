@@ -40,7 +40,7 @@ function StatusBadge({ article }: { article: AdminArticleListItem }) {
   }
   if (!article.hasContent) {
     return (
-      <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+      <Badge className="bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400">
         本文なし
       </Badge>
     );

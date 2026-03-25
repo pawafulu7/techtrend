@@ -57,6 +57,7 @@ export function ArticlesFilters({
   const lastSentRef = useRef(query);
 
   // 外部からqueryが変わった場合（クリア等）に同期
+  // inputValueは意図的に依存配列から除外（含めるとinput→state→effectの無限ループ）
   useEffect(() => {
     if (query !== inputValue) {
       setInputValue(query);

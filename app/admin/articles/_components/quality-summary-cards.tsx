@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import type { QualitySummary, QualityStatus } from '../_types';
 
@@ -54,10 +54,13 @@ export function QualitySummaryCards({
     [summary]
   );
 
-  const formatPercent = (count: number) => {
-    if (total === 0) return '0.0%';
-    return `${((count / total) * 100).toFixed(1)}%`;
-  };
+  const formatPercent = useCallback(
+    (count: number) => {
+      if (total === 0) return '0.0%';
+      return `${((count / total) * 100).toFixed(1)}%`;
+    },
+    [total]
+  );
 
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
