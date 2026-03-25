@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDebounce } from '@/hooks/use-debounce';
+import { Label } from '@/components/ui/label';
 import {
   CATEGORY_OPTIONS,
   QUALITY_STATUS_VALUES,
@@ -84,11 +85,14 @@ export function ArticlesFilters({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative">
+        <Label htmlFor="admin-article-search" className="sr-only">
+          記事をキーワードで検索
+        </Label>
         <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
         <Input
+          id="admin-article-search"
           type="text"
           placeholder="キーワードで検索..."
-          aria-label="記事をキーワードで検索"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onCompositionStart={() => setIsComposing(true)}
@@ -119,7 +123,7 @@ export function ArticlesFilters({
         value={sourceId || 'all'}
         onValueChange={(v) => onSourceIdChange(v === 'all' ? '' : v)}
       >
-        <SelectTrigger className="h-9 w-40" aria-label="ソースフィルタ">
+        <SelectTrigger className="h-9 w-40">
           <SelectValue placeholder="全てのソース" />
         </SelectTrigger>
         <SelectContent>
@@ -136,7 +140,7 @@ export function ArticlesFilters({
         value={category || 'all'}
         onValueChange={(v) => onCategoryChange(v === 'all' ? '' : v)}
       >
-        <SelectTrigger className="h-9 w-44" aria-label="カテゴリフィルタ">
+        <SelectTrigger className="h-9 w-44">
           <SelectValue placeholder="全てのカテゴリ" />
         </SelectTrigger>
         <SelectContent>
@@ -155,7 +159,7 @@ export function ArticlesFilters({
           onQualityStatusChange(v === 'all' ? '' : (v as QualityStatus))
         }
       >
-        <SelectTrigger className="h-9 w-44" aria-label="品質ステータスフィルタ">
+        <SelectTrigger className="h-9 w-44">
           <SelectValue placeholder="全ての品質状態" />
         </SelectTrigger>
         <SelectContent>
