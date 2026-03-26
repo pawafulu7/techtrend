@@ -25,6 +25,9 @@ interface ArticlesTableProps {
 }
 
 function StatusBadge({ article }: { article: AdminArticleListItem }) {
+  if (article.isHidden) {
+    return <Badge variant="secondary">非表示</Badge>;
+  }
   if (article.skipReason) {
     return <Badge variant="secondary">{article.skipReason}</Badge>;
   }
