@@ -1,4 +1,5 @@
-import { PrismaClient, Source, Prisma } from '@prisma/client';
+import { Source, Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import pLimit from 'p-limit';
 import { Mutex } from 'async-mutex';
 import * as fs from 'fs';
@@ -97,8 +98,6 @@ import { createFetcher } from '@/lib/fetchers';
 // エンリッチャーをインポート
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { isHighQuality } from '@/lib/enrichers/strategies/quality';
-
-const prisma = new PrismaClient();
 
 /**
  * Local ArticleInfo for collect-feeds internal use.

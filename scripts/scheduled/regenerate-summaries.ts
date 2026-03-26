@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { GeminiClient } from '../../lib/ai/gemini';
 import { validateSummary, validateDetailedSummary } from '../../lib/utils/summary/summary-validator';
 import { postProcessSummaries } from '../../lib/utils/summary/summary-post-processor';
-
-const prisma = new PrismaClient();
 
 interface RegenerationOptions {
   articleIds?: string[];

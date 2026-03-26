@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 async function cleanTags() {
   console.error('🧹 タグのクリーンアップを開始します...\n');

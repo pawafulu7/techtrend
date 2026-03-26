@@ -1,8 +1,7 @@
-import { PrismaClient, Article, Source, Tag } from '@prisma/client';
+import { Article, Source, Tag } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import fetch from 'node-fetch';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
-
-const prisma = new PrismaClient();
 
 type ArticleWithSourceAndTags = Article & {
   source: Source;
