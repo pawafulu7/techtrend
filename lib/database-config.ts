@@ -94,8 +94,10 @@ export function getPrismaConfig(): Prisma.PrismaClientOptions | undefined {
     // Interactive transaction timeout (default: 5000ms, override: DB_TRANSACTION_TIMEOUT)
     // Extended to 10s for summary generation transactions with multiple tag operations
     transactionOptions: {
-      timeout:
-        parseInt(process.env.DB_TRANSACTION_TIMEOUT ?? '10000', 10) || 10000,
+      timeout: parseInt(
+        parseNumericEnv(process.env.DB_TRANSACTION_TIMEOUT, 10000),
+        10
+      ),
     },
   } as Prisma.PrismaClientOptions;
 }
