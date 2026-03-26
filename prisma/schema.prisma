@@ -113,6 +113,7 @@ model Article {
   qualityScoreComputedAt DateTime?          @db.Timestamptz(6)
   summaryComputedAt      DateTime?          @db.Timestamptz(6)
   skipReason             SkipReason? // スキップ理由（NULL = 正常生成）
+  isHidden               Boolean     @default(false)
   summaryError           String? // エラーメッセージ（NULL = エラーなし）
   source                 Source             @relation(fields: [sourceId], references: [id])
   articleViews           ArticleView[]
@@ -137,6 +138,7 @@ model Article {
   @@index([qualityScoreComputedAt], map: "idx_article_quality_score_computed_at")
   @@index([summaryComputedAt], map: "idx_article_summary_computed_at")
   @@index([skipReason], map: "idx_article_skip_reason")
+  @@index([isHidden], map: "idx_article_is_hidden")
   @@index([userVotes(sort: Desc)], map: "idx_article_user_votes")
   @@index([category], map: "idx_article_category")
 }
