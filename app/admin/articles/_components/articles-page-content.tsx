@@ -102,6 +102,7 @@ export function ArticlesPageContent() {
     lowQuality: 0,
     hasError: 0,
     skipped: 0,
+    hidden: 0,
   };
 
   return (

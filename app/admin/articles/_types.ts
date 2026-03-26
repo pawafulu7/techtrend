@@ -45,6 +45,7 @@ export interface AdminArticleListItem {
   skipReason: string | null;
   hasSummaryError: boolean;
   bookmarks: number;
+  isHidden: boolean;
 }
 
 // 品質集計サマリー
@@ -56,6 +57,7 @@ export interface QualitySummary {
   lowQuality: number; // qualityScore > 0 AND < 30
   hasError: number;
   skipped: number;
+  hidden: number;
 }
 
 // ソース情報（フィルタ用）
@@ -93,4 +95,15 @@ export interface AdminArticleDetail extends AdminArticleListItem {
   createdAt: string;
   updatedAt: string;
   tags: { id: string; name: string }[];
+}
+
+// 一覧APIのフィルタパラメータ型
+export interface AdminArticleFilterParams {
+  page?: number;
+  perPage?: number;
+  sourceId?: string;
+  category?: string;
+  qualityStatus?: QualityStatus;
+  query?: string;
+  visibility?: 'all' | 'visible' | 'hidden';
 }

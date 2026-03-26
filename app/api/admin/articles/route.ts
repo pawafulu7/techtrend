@@ -43,6 +43,7 @@ const querySchema = z.object({
   category: z.enum(ARTICLE_CATEGORY_VALUES).optional(),
   qualityStatus: z.enum(QUALITY_STATUS_VALUES).optional(),
   query: z.string().max(200).optional(),
+  visibility: z.enum(['all', 'visible', 'hidden']).optional(),
 });
 
 function buildQualityStatusWhere(
@@ -86,6 +87,7 @@ async function handler(request: NextRequest) {
       category: searchParams.get('category') ?? undefined,
       qualityStatus: searchParams.get('qualityStatus') ?? undefined,
       query: searchParams.get('query') ?? undefined,
+      visibility: searchParams.get('visibility') ?? undefined,
     };
 
     const parseResult = querySchema.safeParse(rawParams);
@@ -99,8 +101,15 @@ async function handler(request: NextRequest) {
       );
     }
 
-    const { page, perPage, sourceId, category, qualityStatus, query } =
-      parseResult.data;
+    const {
+      page,
+      perPage,
+      sourceId,
+      category,
+      qualityStatus,
+      query,
+      visibility,
+    } = parseResult.data;
 
     // Build WHERE clause
     const where: Prisma.ArticleWhereInput = {};
@@ -117,6 +126,11 @@ async function handler(request: NextRequest) {
     }
     if (query) {
       conditions.push(buildSearchWhere(query));
+    }
+    if (visibility === 'visible') {
+      conditions.push({ isHidden: false });
+    } else if (visibility === 'hidden') {
+      conditions.push({ isHidden: true });
     }
 
     if (conditions.length > 0) {
@@ -142,6 +156,7 @@ async function handler(request: NextRequest) {
           skipReason: true,
           summaryError: true,
           bookmarks: true,
+          isHidden: true,
         },
         orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * perPage,
@@ -171,6 +186,7 @@ async function handler(request: NextRequest) {
       skipReason: a.skipReason,
       hasSummaryError: a.summaryError != null,
       bookmarks: a.bookmarks,
+      isHidden: a.isHidden,
     }));
 
     const response: AdminArticlesResponse = {
@@ -206,6 +222,7 @@ async function getQualitySummary(): Promise<QualitySummary> {
     lowQuality,
     hasError,
     skipped,
+    hidden,
   ] = await Promise.all([
     prisma.article.count(),
     prisma.article.count({ where: buildQualityStatusWhere('missing_summary') }),
@@ -216,6 +233,7 @@ async function getQualitySummary(): Promise<QualitySummary> {
     prisma.article.count({ where: buildQualityStatusWhere('low_quality') }),
     prisma.article.count({ where: buildQualityStatusWhere('has_error') }),
     prisma.article.count({ where: buildQualityStatusWhere('skipped') }),
+    prisma.article.count({ where: { isHidden: true } }),
   ]);
 
   return {
@@ -226,6 +244,7 @@ async function getQualitySummary(): Promise<QualitySummary> {
     lowQuality,
     hasError,
     skipped,
+    hidden,
   };
 }
 

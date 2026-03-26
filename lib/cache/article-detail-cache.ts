@@ -196,6 +196,14 @@ export class ArticleDetailCache {
   }
 
   /**
+   * 全関連記事キャッシュを無効化
+   * 非表示トグル時など、関連記事の表示が変わる可能性がある場合に使用
+   */
+  async invalidateAllRelated(): Promise<void> {
+    await this.cache.invalidatePattern('related:*');
+  }
+
+  /**
    * キャッシュ統計を取得
    */
   getStats() {

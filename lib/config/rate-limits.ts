@@ -300,6 +300,14 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     telemetryEvent: 'ratelimit.admin.social-post-write',
   },
 
+  'admin:ai-generate': {
+    points: 5,
+    duration: 60,
+    keyStrategy: 'user' as const,
+    notes: 'Admin AI summary regeneration (5 per minute)',
+    telemetryEvent: 'ratelimit.admin.ai-generate',
+  },
+
   // Default Catch-All - No block
   default: {
     points: 100,
