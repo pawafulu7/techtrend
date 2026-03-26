@@ -161,7 +161,7 @@ describe('PATCH /api/admin/articles/[id] - hide toggle', () => {
     });
   });
 
-  it('未認証時は withAdminAuth が 401 を返すこと（ミドルウェア呼び出しの確認）', async () => {
+  it('未認証時は withAdminAuth が 401 を返すこと（実際のハンドラで検証）', async () => {
     // withAdminAuth を未認証として設定
     mockWithAdminAuth.mockImplementation((_handler: any) => {
       return (_request: any, _context: any) => {
@@ -172,17 +172,18 @@ describe('PATCH /api/admin/articles/[id] - hide toggle', () => {
       };
     });
 
-    // withAdminAuth でラップされた新しいハンドラを作成
-    const unauthHandler = mockWithAdminAuth(async () => {
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    });
+    // モジュールを再インポートして新しいモック設定を反映
+    jest.resetModules();
+    const mod = await import('@/app/api/admin/articles/[id]/route');
+    const unauthPATCH = mod.PATCH;
 
     const request = new NextRequest(`http://localhost/api/admin/articles/${VALID_ID}`, {
       method: 'PATCH',
       body: JSON.stringify({ isHidden: true }),
     });
+    const context = { params: Promise.resolve({ id: VALID_ID }) };
 
-    const response = await unauthHandler(request, {});
+    const response = await unauthPATCH(request, context);
     expect(response.status).toBe(401);
   });
 
@@ -296,7 +297,7 @@ describe('POST /api/admin/articles/[id]/regenerate-summary', () => {
     });
   });
 
-  it('未認証時は withAdminAuth が 401 を返すこと（ミドルウェア呼び出しの確認）', async () => {
+  it('未認証時は withAdminAuth が 401 を返すこと（実際のハンドラで検証）', async () => {
     // withAdminAuth を未認証として設定
     mockWithAdminAuth.mockImplementation((_handler: any) => {
       return (_request: any, _context: any) => {
@@ -307,16 +308,18 @@ describe('POST /api/admin/articles/[id]/regenerate-summary', () => {
       };
     });
 
-    const unauthHandler = mockWithAdminAuth(async () => {
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    });
+    // モジュールを再インポートして新しいモック設定を反映
+    jest.resetModules();
+    const mod = await import('@/app/api/admin/articles/[id]/regenerate-summary/route');
+    const unauthPOST = mod.POST;
 
     const request = new NextRequest(
       `http://localhost/api/admin/articles/${VALID_ID}/regenerate-summary`,
       { method: 'POST' }
     );
+    const context = { params: Promise.resolve({ id: VALID_ID }) };
 
-    const response = await unauthHandler(request, {});
+    const response = await unauthPOST(request, context);
     expect(response.status).toBe(401);
   });
 

@@ -10,6 +10,7 @@ import type {
   AdminArticlesResponse,
   QualityStatus,
   AdminArticleFilterParams,
+  VisibilityFilter,
 } from '../_types';
 
 async function fetchAdminArticles(
@@ -39,9 +40,7 @@ export function ArticlesPageContent() {
   const [sourceId, setSourceId] = useState('');
   const [category, setCategory] = useState('');
   const [qualityStatus, setQualityStatus] = useState<QualityStatus | ''>('');
-  const [visibility, setVisibility] = useState<'all' | 'visible' | 'hidden'>(
-    'all'
-  );
+  const [visibility, setVisibility] = useState<VisibilityFilter>('all');
   const [page, setPage] = useState(1);
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(
     null
@@ -86,9 +85,7 @@ export function ArticlesPageContent() {
     setPage(1);
   };
 
-  const handleVisibilityChange = (
-    newVisibility: 'all' | 'visible' | 'hidden'
-  ) => {
+  const handleVisibilityChange = (newVisibility: VisibilityFilter) => {
     setVisibility(newVisibility);
     setPage(1);
   };

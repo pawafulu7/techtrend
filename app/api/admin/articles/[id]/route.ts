@@ -7,12 +7,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { prisma } from '@/lib/prisma';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
+import { trendsCache } from '@/lib/cache/trends-cache';
 import logger from '@/lib/logger';
 import type { AdminArticleDetail } from '@/app/admin/articles/_types';
 
@@ -67,8 +69,8 @@ export function serializeArticleDetail(
     sourceId: article.sourceId,
     category: article.category,
     qualityScore: article.qualityScore,
-    hasSummary: article.summary != null && article.summary !== '',
-    hasContent: article.content != null && article.content !== '',
+    hasSummary: (article.summary?.trim() ?? '') !== '',
+    hasContent: (article.content?.trim() ?? '') !== '',
     skipReason: article.skipReason,
     hasSummaryError: article.summaryError != null,
     bookmarks: article.bookmarks,
@@ -174,10 +176,11 @@ async function patchHandler(
       },
     });
 
-    // キャッシュ無効化（isHidden 変更時は関連記事キャッシュも無効化）
+    // キャッシュ無効化（isHidden 変更時は関連記事・カテゴリ・トレンドキャッシュも無効化）
     await cacheInvalidator.onArticleUpdated(id);
     await articleDetailCache.invalidateArticle(id);
     await articleDetailCache.invalidateAllRelated();
+    await trendsCache.invalidatePattern('*');
 
     logger.info(
       { articleId: id, isHidden: body.isHidden },
@@ -190,6 +193,15 @@ async function patchHandler(
       },
     });
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'Article not found' },
+        { status: 404 }
+      );
+    }
     logger.error({ error }, '[AdminArticleDetailAPI] Failed to update article');
     return NextResponse.json(
       { error: 'Failed to update article' },
@@ -198,7 +210,7 @@ async function patchHandler(
   }
 }
 
-export const GET = withAdminAuth(withRateLimit('admin:read', getHandler));
+export const GET = withRateLimit('admin:read', withAdminAuth(getHandler));
 export const PATCH = withCSRFProtection(
   withRateLimit('admin:write', withAdminAuth(patchHandler))
 );

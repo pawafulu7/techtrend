@@ -47,7 +47,7 @@ async function toggleArticleHidden(
   return res.json();
 }
 
-async function regenerateSummary(id: string): Promise<AdminArticleDetail> {
+async function regenerateSummaryApi(id: string): Promise<AdminArticleDetail> {
   const res = await fetch(`/api/admin/articles/${id}/regenerate-summary`, {
     method: 'POST',
   });
@@ -111,24 +111,25 @@ export function ArticleDetailDialog({
     staleTime: 300_000,
   });
 
-  const invalidateQueries = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['admin', 'articles'] }),
-      queryClient.invalidateQueries({
-        queryKey: ['admin', 'article-detail', articleId],
-      }),
-    ]);
-  };
-
   const toggleHiddenMutation = useMutation({
-    mutationFn: (isHidden: boolean) =>
-      toggleArticleHidden(articleId!, isHidden),
-    onSuccess: invalidateQueries,
+    mutationFn: ({ id, isHidden }: { id: string; isHidden: boolean }) =>
+      toggleArticleHidden(id, isHidden),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'articles'] });
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'article-detail', variables.id],
+      });
+    },
   });
 
   const regenerateSummaryMutation = useMutation({
-    mutationFn: () => regenerateSummary(articleId!),
-    onSuccess: invalidateQueries,
+    mutationFn: ({ id }: { id: string }) => regenerateSummaryApi(id),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'articles'] });
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'article-detail', variables.id],
+      });
+    },
   });
 
   return (
@@ -169,7 +170,12 @@ export function ArticleDetailDialog({
                   size="sm"
                   className="shrink-0"
                   disabled={toggleHiddenMutation.isPending}
-                  onClick={() => toggleHiddenMutation.mutate(!article.isHidden)}
+                  onClick={() =>
+                    toggleHiddenMutation.mutate({
+                      id: articleId!,
+                      isHidden: !article.isHidden,
+                    })
+                  }
                 >
                   {article.isHidden ? (
                     <>
@@ -228,7 +234,9 @@ export function ArticleDetailDialog({
                   disabled={
                     regenerateSummaryMutation.isPending || !article.hasContent
                   }
-                  onClick={() => regenerateSummaryMutation.mutate()}
+                  onClick={() =>
+                    regenerateSummaryMutation.mutate({ id: articleId! })
+                  }
                   title={
                     !article.hasContent
                       ? '本文がないため再生成できません'

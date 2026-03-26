@@ -200,7 +200,11 @@ export class ArticleDetailCache {
    * 非表示トグル時など、関連記事の表示が変わる可能性がある場合に使用
    */
   async invalidateAllRelated(): Promise<void> {
-    await this.cache.invalidatePattern('related:*');
+    try {
+      await this.cache.invalidatePattern('related:*');
+    } catch (error) {
+      console.error('Failed to invalidate related article cache:', error);
+    }
   }
 
   /**

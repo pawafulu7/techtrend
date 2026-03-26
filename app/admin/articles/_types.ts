@@ -97,6 +97,9 @@ export interface AdminArticleDetail extends AdminArticleListItem {
   tags: { id: string; name: string }[];
 }
 
+// 表示状態フィルタ型
+export type VisibilityFilter = 'all' | 'visible' | 'hidden';
+
 // 一覧APIのフィルタパラメータ型
 export interface AdminArticleFilterParams {
   page?: number;
@@ -105,5 +108,5 @@ export interface AdminArticleFilterParams {
   category?: string;
   qualityStatus?: QualityStatus;
   query?: string;
-  visibility?: 'all' | 'visible' | 'hidden';
+  visibility?: VisibilityFilter;
 }

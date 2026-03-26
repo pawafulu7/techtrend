@@ -106,9 +106,16 @@ async function handler(
       },
     });
 
-    // キャッシュ無効化
-    await cacheInvalidator.onArticleUpdated(id);
-    await articleDetailCache.invalidateArticle(id);
+    // キャッシュ無効化（best-effort: 失敗しても要約生成成功は維持）
+    try {
+      await cacheInvalidator.onArticleUpdated(id);
+      await articleDetailCache.invalidateArticle(id);
+    } catch (cacheError) {
+      logger.error(
+        { error: cacheError, articleId: id },
+        '[AdminRegenerateSummaryAPI] Cache invalidation failed'
+      );
+    }
 
     logger.info(
       { articleId: id, qualityScore: result.qualityScore },

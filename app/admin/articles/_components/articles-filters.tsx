@@ -18,9 +18,8 @@ import {
   QUALITY_STATUS_VALUES,
   type AdminSource,
   type QualityStatus,
+  type VisibilityFilter,
 } from '../_types';
-
-type VisibilityFilter = 'all' | 'visible' | 'hidden';
 
 const QUALITY_STATUS_LABELS: Record<QualityStatus, string> = {
   missing_summary: '要約なし',
