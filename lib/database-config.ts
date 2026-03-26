@@ -91,10 +91,11 @@ export function getPrismaConfig(): Prisma.PrismaClientOptions | undefined {
     },
     // Error formatting for production
     errorFormat: isProduction ? 'minimal' : 'pretty',
-    // Interactive transaction timeout (default: 5000ms)
+    // Interactive transaction timeout (default: 5000ms, override: DB_TRANSACTION_TIMEOUT)
     // Extended to 10s for summary generation transactions with multiple tag operations
     transactionOptions: {
-      timeout: 10000,
+      timeout:
+        parseInt(process.env.DB_TRANSACTION_TIMEOUT ?? '10000', 10) || 10000,
     },
   } as Prisma.PrismaClientOptions;
 }
