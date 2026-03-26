@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { invalidateUserAuthCache } from '@/lib/auth/user-auth-cache';
 import logger from '@/lib/logger';
 import { normalizeRole } from '../_normalize';

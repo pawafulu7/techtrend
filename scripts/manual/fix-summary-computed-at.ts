@@ -3,7 +3,7 @@
  * summaryがあるのにsummaryComputedAtがnullの記事を修正
  */
 
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 
 async function main() {
   console.log('🔧 summaryComputedAtの修正を開始します...');

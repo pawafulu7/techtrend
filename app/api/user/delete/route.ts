@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPassword, deleteUserAccountWithAudit } from '@/lib/auth/utils';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import {
   DeleteAccountRequestSchema,

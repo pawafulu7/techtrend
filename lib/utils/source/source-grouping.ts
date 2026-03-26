@@ -5,7 +5,7 @@
  * Can use Prisma because it runs on server only.
  */
 
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import type { GroupedSources } from '@/lib/types/source-grouping';
 
 /**

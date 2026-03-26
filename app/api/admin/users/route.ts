@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { normalizeRole } from './_normalize';
 
 async function handler(_request: NextRequest) {

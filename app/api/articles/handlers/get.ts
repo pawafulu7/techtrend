@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, formatErrorResponse } from '@/lib/errors';
 import {
