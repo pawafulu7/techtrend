@@ -323,10 +323,11 @@ DO NOT use this tool for:
           publishedAt: true,
           content: true,
           detailedSummary: true,
+          isHidden: true,
         },
       });
 
-      if (!article) {
+      if (!article || article.isHidden) {
         throw new Error(
           `Article ${articleId} not found or content unavailable`
         );

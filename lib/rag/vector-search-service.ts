@@ -676,6 +676,7 @@ export class VectorSearchService {
         AND e.version = ${this.activeVersion}
         ${embeddingKeyFilter}
         AND 1 - (e.embedding <=> ${vectorString}::vector) >= ${similarityThreshold}
+        AND a."isHidden" = false
         ${sourceFilter}
         ${tagFilter}
         ${dateFilter}

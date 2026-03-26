@@ -102,6 +102,7 @@ export async function fetchQaContext(articleId: string): Promise<{
       updatedAt: true,
       summary: true,
       detailedSummary: true,
+      isHidden: true,
     },
   });
 
@@ -109,10 +110,9 @@ export async function fetchQaContext(articleId: string): Promise<{
     throw new ArticleNotFoundError(articleId);
   }
 
-  // TODO: Enforce article.visibility once visibility model is finalized
-  // if (article.visibility !== 'public') {
-  //   throw new Error(`Article ${articleId} is not accessible`);
-  // }
+  if (article.isHidden) {
+    throw new ArticleNotFoundError(articleId);
+  }
 
   // Generate snippet (first 100 characters of summary)
   const detailedSummary =

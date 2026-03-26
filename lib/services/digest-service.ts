@@ -363,6 +363,7 @@ export class DigestService {
         JOIN "Source" s ON a."sourceId" = s.id AND s.enabled = true
         WHERE a.id = ANY(${candidateIds})
           AND a.content IS NOT NULL
+          AND a."isHidden" = false
           AND a."publishedAt" >= ${cutoff}
           AND NOT EXISTS (
             SELECT 1 FROM "ArticleView" av
@@ -430,6 +431,7 @@ export class DigestService {
         JOIN "Source" s ON a."sourceId" = s.id AND s.enabled = true
         WHERE a."publishedAt" >= ${cutoff}
           AND a.content IS NOT NULL
+          AND a."isHidden" = false
           AND NOT EXISTS (
             SELECT 1 FROM "ArticleView" av2
             WHERE av2."userId" = ${userId}
@@ -490,6 +492,7 @@ export class DigestService {
         JOIN "TagCategoryMapping" tcm ON att."B" = tcm."tagId"
         WHERE a."publishedAt" >= ${cutoff}
           AND a.content IS NOT NULL
+          AND a."isHidden" = false
           AND a."qualityScore" >= ${DIGEST_CONFIG.QUALITY_THRESHOLD}
           AND tcm."categoryId" = ANY(${categoryIds})
           AND NOT EXISTS (

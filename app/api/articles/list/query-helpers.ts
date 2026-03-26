@@ -87,6 +87,9 @@ function pushToAND(
 export function buildWhereClause(params: WhereClauseParams): ArticleWhereInput {
   const where: ArticleWhereInput = {};
 
+  // Always exclude hidden articles from public-facing APIs
+  pushToAND(where, { isHidden: false });
+
   // Exclude articles without content (matches home page behavior)
   pushToAND(where, {
     // Exclude articles without meaningful content.

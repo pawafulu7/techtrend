@@ -227,6 +227,7 @@ async function getPopularArticles(request: NextRequest) {
         const articles = await prisma.article.findMany({
           where: {
             AND: [
+              { isHidden: false },
               dateFilter,
               categoryFilter,
               qualityScoreFilter,

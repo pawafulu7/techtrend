@@ -136,6 +136,7 @@ export async function getEmbeddingCandidates(
     INNER JOIN "ArticleEmbedding" ae ON a.id = ae."articleId"
     WHERE ae."embeddingKey" = 'summary'::"EmbeddingKey"
       AND a."summaryComputedAt" IS NOT NULL
+      AND a."isHidden" = false
       AND (ae.embedding <=> ${centroid}::vector) < ${maxDistance}
       ${periodFilter}
       ${sourceExcludeFilter}
