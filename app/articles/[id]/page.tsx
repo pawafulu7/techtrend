@@ -80,7 +80,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   // 記事を取得（お気に入り状態はクライアントサイドで取得）
   const article = await getArticle(id);
 
-  if (!article) {
+  if (!article || article.isHidden) {
     notFound();
   }
 

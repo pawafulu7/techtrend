@@ -46,6 +46,7 @@ interface MockArticle {
   summaryComputedAt: Date | null;
   skipReason: SkipReason | null;
   summaryError: string | null;
+  isHidden: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -157,6 +158,7 @@ export function createMockArticle(overrides?: Partial<MockArticle>): MockArticle
     summaryComputedAt: now,
     skipReason: null,
     summaryError: null,
+    isHidden: false,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -337,6 +339,7 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
     summaryComputedAt: now,
     skipReason: null,
     summaryError: null,
+    isHidden: false,
     createdAt: now,
     updatedAt: now,
     ...overrides,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, EyeOff, Eye, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { formatDateWithTime } from '@/lib/utils/date';
 import type { AdminArticleDetail } from '../_types';
@@ -27,6 +27,33 @@ async function fetchArticleDetail(id: string): Promise<AdminArticleDetail> {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error || 'Failed to fetch article detail');
+  }
+  return res.json();
+}
+
+async function toggleArticleHidden(
+  id: string,
+  isHidden: boolean
+): Promise<AdminArticleDetail> {
+  const res = await fetch(`/api/admin/articles/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ isHidden }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to update article visibility');
+  }
+  return res.json();
+}
+
+async function regenerateSummaryApi(id: string): Promise<AdminArticleDetail> {
+  const res = await fetch(`/api/admin/articles/${id}/regenerate-summary`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to regenerate summary');
   }
   return res.json();
 }
@@ -71,6 +98,7 @@ export function ArticleDetailDialog({
   onClose,
 }: ArticleDetailDialogProps) {
   const [isContentOpen, setIsContentOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const {
     data: article,
@@ -81,6 +109,27 @@ export function ArticleDetailDialog({
     queryFn: () => fetchArticleDetail(articleId!),
     enabled: !!articleId,
     staleTime: 300_000,
+  });
+
+  const toggleHiddenMutation = useMutation({
+    mutationFn: ({ id, isHidden }: { id: string; isHidden: boolean }) =>
+      toggleArticleHidden(id, isHidden),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'articles'] });
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'article-detail', variables.id],
+      });
+    },
+  });
+
+  const regenerateSummaryMutation = useMutation({
+    mutationFn: ({ id }: { id: string }) => regenerateSummaryApi(id),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'articles'] });
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'article-detail', variables.id],
+      });
+    },
   });
 
   return (
@@ -112,9 +161,35 @@ export function ArticleDetailDialog({
         ) : article ? (
           <div className="space-y-6">
             <DialogHeader>
-              <DialogTitle className="text-base leading-snug">
-                {article.translatedTitle ?? article.title}
-              </DialogTitle>
+              <div className="flex items-start justify-between gap-3">
+                <DialogTitle className="text-base leading-snug">
+                  {article.translatedTitle ?? article.title}
+                </DialogTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  disabled={toggleHiddenMutation.isPending}
+                  onClick={() =>
+                    toggleHiddenMutation.mutate({
+                      id: articleId!,
+                      isHidden: !article.isHidden,
+                    })
+                  }
+                >
+                  {article.isHidden ? (
+                    <>
+                      <Eye className="mr-1.5 h-4 w-4" />
+                      表示に戻す
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="mr-1.5 h-4 w-4" />
+                      非表示にする
+                    </>
+                  )}
+                </Button>
+              </div>
             </DialogHeader>
 
             {/* 基本情報 */}
@@ -151,7 +226,31 @@ export function ArticleDetailDialog({
 
             {/* 要約 */}
             <section className="space-y-2">
-              <SectionTitle>要約</SectionTitle>
+              <div className="flex items-center justify-between">
+                <SectionTitle>要約</SectionTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={
+                    regenerateSummaryMutation.isPending || !article.hasContent
+                  }
+                  onClick={() =>
+                    regenerateSummaryMutation.mutate({ id: articleId! })
+                  }
+                  title={
+                    !article.hasContent
+                      ? '本文がないため再生成できません'
+                      : undefined
+                  }
+                >
+                  <RefreshCw
+                    className={`mr-1.5 h-4 w-4 ${regenerateSummaryMutation.isPending ? 'animate-spin' : ''}`}
+                  />
+                  {regenerateSummaryMutation.isPending
+                    ? '再生成中...'
+                    : '要約を再生成'}
+                </Button>
+              </div>
               {article.summary ? (
                 <InfoRow label="一行要約">{article.summary}</InfoRow>
               ) : (

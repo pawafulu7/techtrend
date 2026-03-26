@@ -18,6 +18,7 @@ import {
   QUALITY_STATUS_VALUES,
   type AdminSource,
   type QualityStatus,
+  type VisibilityFilter,
 } from '../_types';
 
 const QUALITY_STATUS_LABELS: Record<QualityStatus, string> = {
@@ -38,6 +39,8 @@ interface ArticlesFiltersProps {
   onCategoryChange: (category: string) => void;
   qualityStatus: QualityStatus | '';
   onQualityStatusChange: (status: QualityStatus | '') => void;
+  visibility: VisibilityFilter;
+  onVisibilityChange: (visibility: VisibilityFilter) => void;
   sources: AdminSource[];
 }
 
@@ -50,6 +53,8 @@ export function ArticlesFilters({
   onCategoryChange,
   qualityStatus,
   onQualityStatusChange,
+  visibility,
+  onVisibilityChange,
   sources,
 }: ArticlesFiltersProps) {
   const [inputValue, setInputValue] = useState(query);
@@ -171,6 +176,20 @@ export function ArticlesFilters({
               {QUALITY_STATUS_LABELS[v]}
             </SelectItem>
           ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={visibility}
+        onValueChange={(v) => onVisibilityChange(v as VisibilityFilter)}
+      >
+        <SelectTrigger className="h-9 w-36">
+          <SelectValue placeholder="表示状態" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">全て</SelectItem>
+          <SelectItem value="visible">表示のみ</SelectItem>
+          <SelectItem value="hidden">非表示のみ</SelectItem>
         </SelectContent>
       </Select>
     </div>

@@ -7,13 +7,13 @@ import logger from '@/lib/logger';
 // Initialize Redis cache with 1 hour TTL for category stats
 const cache = new RedisCache({
   ttl: 10800, // 3 hours (increased from 1 hour)
-  namespace: '@techtrend/cache:categories'
+  namespace: '@techtrend/cache:categories',
 });
 
 export async function GET(_request: NextRequest) {
   try {
     const cacheKey = 'category-stats';
-    
+
     // Check cache first
     const cachedResult = await cache.get(cacheKey);
     if (cachedResult) {
@@ -23,32 +23,34 @@ export async function GET(_request: NextRequest) {
     // Get category counts
     const categoryStats = await prisma.article.groupBy({
       by: ['category'],
+      where: { isHidden: false },
       _count: {
-        _all: true
+        _all: true,
       },
       orderBy: {
         _count: {
-          category: 'desc'
-        }
-      }
+          category: 'desc',
+        },
+      },
     });
 
     // Transform results
     const categories = categoryStats
-      .filter(stat => stat.category !== null)
-      .map(stat => ({
+      .filter((stat) => stat.category !== null)
+      .map((stat) => ({
         value: stat.category,
         label: CategoryClassifier.getCategoryLabel(stat.category),
-        count: stat._count._all
+        count: stat._count._all,
       }));
 
     // Add uncategorized count
-    const uncategorizedCount = categoryStats.find(stat => stat.category === null)?._count._all || 0;
+    const uncategorizedCount =
+      categoryStats.find((stat) => stat.category === null)?._count._all || 0;
     if (uncategorizedCount > 0) {
       categories.push({
         value: null,
         label: '未分類',
-        count: uncategorizedCount
+        count: uncategorizedCount,
       });
     }
 
@@ -58,7 +60,7 @@ export async function GET(_request: NextRequest) {
     const result = {
       categories,
       total,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     // Cache the result

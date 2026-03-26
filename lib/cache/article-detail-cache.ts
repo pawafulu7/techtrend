@@ -103,6 +103,11 @@ export class ArticleDetailCache {
       return null;
     }
 
+    // Exclude hidden articles (centralized check for all callers)
+    if (article.isHidden) {
+      return null;
+    }
+
     // キャッシュに保存
     await this.cache.set(cacheKey, article);
 
@@ -150,6 +155,7 @@ export class ArticleDetailCache {
         JOIN "Source" s ON a."sourceId" = s.id
         WHERE at."B" = ANY(${tagIds}::text[])
           AND a.id != ${articleId}
+          AND a."isHidden" = false
           AND a."qualityScore" >= 30
         GROUP BY a.id, a.title, a."translatedTitle", a.summary, a.url, a."publishedAt", a."sourceId", s.name, a."qualityScore", a.difficulty
         HAVING COUNT(DISTINCT at."B") > 0
@@ -186,6 +192,18 @@ export class ArticleDetailCache {
       revalidatePath(`/articles/${articleId}`);
     } catch {
       // スクリプト実行時など、Next.jsコンテキスト外では無視
+    }
+  }
+
+  /**
+   * 全関連記事キャッシュを無効化
+   * 非表示トグル時など、関連記事の表示が変わる可能性がある場合に使用
+   */
+  async invalidateAllRelated(): Promise<void> {
+    try {
+      await this.cache.invalidatePattern('related:*');
+    } catch (error) {
+      console.error('Failed to invalidate related article cache:', error);
     }
   }
 

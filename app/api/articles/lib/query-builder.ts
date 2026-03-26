@@ -111,6 +111,8 @@ export class ArticleWhereClauseBuilder {
 
   constructor(metrics: MetricsCollector) {
     this.metrics = metrics;
+    // Always exclude hidden articles from public-facing APIs
+    this.where.isHidden = false;
   }
 
   /**

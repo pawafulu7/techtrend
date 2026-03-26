@@ -6,23 +6,26 @@ import { QualitySummaryCards } from './quality-summary-cards';
 import { ArticlesFilters } from './articles-filters';
 import { ArticlesTable } from './articles-table';
 import { ArticleDetailDialog } from './article-detail-dialog';
-import type { AdminArticlesResponse, QualityStatus } from '../_types';
+import type {
+  AdminArticlesResponse,
+  QualityStatus,
+  AdminArticleFilterParams,
+  VisibilityFilter,
+} from '../_types';
 
-async function fetchAdminArticles(params: {
-  page: number;
-  sourceId: string;
-  category: string;
-  qualityStatus: string;
-  query: string;
-}): Promise<AdminArticlesResponse> {
+async function fetchAdminArticles(
+  params: AdminArticleFilterParams & { query: string }
+): Promise<AdminArticlesResponse> {
   const searchParams = new URLSearchParams();
-  searchParams.set('page', String(params.page));
+  searchParams.set('page', String(params.page ?? 1));
   searchParams.set('perPage', '20');
   if (params.sourceId) searchParams.set('sourceId', params.sourceId);
   if (params.category) searchParams.set('category', params.category);
   if (params.qualityStatus)
     searchParams.set('qualityStatus', params.qualityStatus);
   if (params.query) searchParams.set('query', params.query);
+  if (params.visibility && params.visibility !== 'all')
+    searchParams.set('visibility', params.visibility);
 
   const res = await fetch(`/api/admin/articles?${searchParams.toString()}`);
   if (!res.ok) {
@@ -37,6 +40,7 @@ export function ArticlesPageContent() {
   const [sourceId, setSourceId] = useState('');
   const [category, setCategory] = useState('');
   const [qualityStatus, setQualityStatus] = useState<QualityStatus | ''>('');
+  const [visibility, setVisibility] = useState<VisibilityFilter>('all');
   const [page, setPage] = useState(1);
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(
     null
@@ -46,15 +50,16 @@ export function ArticlesPageContent() {
     queryKey: [
       'admin',
       'articles',
-      { page, sourceId, category, qualityStatus, query },
+      { page, sourceId, category, qualityStatus, query, visibility },
     ],
     queryFn: () =>
       fetchAdminArticles({
         page,
         sourceId,
         category,
-        qualityStatus,
+        qualityStatus: qualityStatus || undefined,
         query,
+        visibility,
       }),
     staleTime: 60_000,
     placeholderData: keepPreviousData,
@@ -80,6 +85,11 @@ export function ArticlesPageContent() {
     setPage(1);
   };
 
+  const handleVisibilityChange = (newVisibility: VisibilityFilter) => {
+    setVisibility(newVisibility);
+    setPage(1);
+  };
+
   const handleQualityCardClick = (status: QualityStatus | '') => {
     setQualityStatus(status);
     setPage(1);
@@ -102,6 +112,7 @@ export function ArticlesPageContent() {
     lowQuality: 0,
     hasError: 0,
     skipped: 0,
+    hidden: 0,
   };
 
   return (
@@ -121,6 +132,8 @@ export function ArticlesPageContent() {
         onCategoryChange={handleCategoryChange}
         qualityStatus={qualityStatus}
         onQualityStatusChange={handleQualityStatusChange}
+        visibility={visibility}
+        onVisibilityChange={handleVisibilityChange}
         sources={data?.sources ?? []}
       />
 

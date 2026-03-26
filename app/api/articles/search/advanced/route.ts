@@ -43,7 +43,9 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // WHERE条件の構築
-    const whereConditions: Prisma.ArticleWhereInput = {};
+    const whereConditions: Prisma.ArticleWhereInput = {
+      isHidden: false,
+    };
 
     // テキスト検索（iLIKE）
     const trimmedQuery = query.trim();

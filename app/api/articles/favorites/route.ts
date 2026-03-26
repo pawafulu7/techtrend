@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     const [articles, totalCount] = await Promise.all([
       prisma.article.findMany({
         where: {
+          isHidden: false,
           sourceId: {
             in: sourceIdArray,
           },
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.article.count({
         where: {
+          isHidden: false,
           sourceId: {
             in: sourceIdArray,
           },
