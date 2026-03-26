@@ -612,6 +612,7 @@ describe('/api/articles - Extended Tests', () => {
                 ]
               }
             ],
+            isHidden: false,
             source: { enabled: true }
           }
         })
