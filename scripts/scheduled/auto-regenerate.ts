@@ -5,15 +5,14 @@
  * PM2スケジューラーで定期実行（推奨: 1日1回）
  */
 
-import { PrismaClient } from '@prisma/client';
 import { GeminiClient } from '@/lib/ai/gemini';
+import { prisma } from '@/lib/prisma';
 import { calculateSummaryScore, needsRegeneration } from '@/lib/utils/quality-scorer';
 import { optimizeContentForSummary } from '@/lib/utils/content/content-extractor';
 
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
 import { getOrCreateTags } from '@/lib/services/tag-service';
-const prisma = new PrismaClient();
 
 // 環境変数チェック
 if (!process.env.GEMINI_API_KEY) {
@@ -175,20 +174,18 @@ async function regenerateArticles(articles: Array<{
       // 改善された場合のみ更新
       if (newScore.totalScore > article.score) {
         // タグを取得または作成し、記事データと一括更新（setで既存タグを置換）
-        await prisma.$transaction(async (tx) => {
-          const newTags = await getOrCreateTags(tags);
-          await tx.article.update({
-            where: { id: article.id },
-            data: {
-              summary,
-              summaryVersion: SUMMARY_VERSION.CURRENT, // 統一フォーマットバージョン
-              detailedSummary: result.detailedSummary,
-              translatedTitle: result.translatedTitle,
-              articleType: result.articleType,
-              updatedAt: new Date(),
-              tags: { set: newTags.map(t => ({ id: t.id })) },
-            },
-          });
+        const newTags = await getOrCreateTags(tags);
+        await prisma.article.update({
+          where: { id: article.id },
+          data: {
+            summary,
+            summaryVersion: SUMMARY_VERSION.CURRENT, // 統一フォーマットバージョン
+            detailedSummary: result.detailedSummary,
+            translatedTitle: result.translatedTitle,
+            articleType: result.articleType,
+            updatedAt: new Date(),
+            tags: { set: newTags.map(t => ({ id: t.id })) },
+          },
         });
 
         console.error(`  ✅ 更新成功（+${newScore.totalScore - article.score}点改善）`);
