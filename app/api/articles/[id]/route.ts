@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/database';
 import { Prisma } from '@prisma/client';
 import type { ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 
 export async function GET(
   request: NextRequest,
@@ -20,6 +24,16 @@ export async function GET(
     });
 
     if (!article) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Article not found',
+        } as ApiResponse<never>,
+        { status: 404 }
+      );
+    }
+
+    if (article.isHidden) {
       return NextResponse.json(
         {
           success: false,
@@ -61,13 +75,55 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+const patchSchema = z.object({
+  title: z.string().optional(),
+  summary: z.string().optional(),
+  thumbnail: z.string().optional(),
+  content: z.string().optional(),
+  tagNames: z.array(z.string()).optional(),
+});
+
+const idSchema = z.string().cuid();
+
+async function patchHandler(request: NextRequest, context: any) {
   try {
-    const { id } = await params;
-    const body = await request.json();
+    const { id } = await context.params;
+
+    const idResult = idSchema.safeParse(id);
+    if (!idResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid article ID',
+        } as ApiResponse<never>,
+        { status: 400 }
+      );
+    }
+
+    let body: z.infer<typeof patchSchema>;
+    try {
+      const rawBody = await request.json();
+      body = patchSchema.parse(rawBody);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Validation failed',
+            details: error.errors,
+          } as ApiResponse<never>,
+          { status: 400 }
+        );
+      }
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid request body',
+        } as ApiResponse<never>,
+        { status: 400 }
+      );
+    }
+
     const { title, summary, thumbnail, content, tagNames } = body;
 
     const updateData: Prisma.ArticleUpdateInput = {};
@@ -119,12 +175,21 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+async function deleteHandler(request: NextRequest, context: any) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
+
+    const idResult = idSchema.safeParse(id);
+    if (!idResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid article ID',
+        } as ApiResponse<never>,
+        { status: 400 }
+      );
+    }
+
     await prisma.article.delete({
       where: { id },
     });
@@ -152,3 +217,11 @@ export async function DELETE(
     );
   }
 }
+
+export const PATCH = withCSRFProtection(
+  withRateLimit('admin:write', withAdminAuth(patchHandler))
+);
+
+export const DELETE = withCSRFProtection(
+  withRateLimit('admin:write', withAdminAuth(deleteHandler))
+);
