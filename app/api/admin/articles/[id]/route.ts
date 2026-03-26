@@ -176,11 +176,18 @@ async function patchHandler(
       },
     });
 
-    // キャッシュ無効化（isHidden 変更時は関連記事・カテゴリ・トレンドキャッシュも無効化）
-    await cacheInvalidator.onArticleUpdated(id);
-    await articleDetailCache.invalidateArticle(id);
-    await articleDetailCache.invalidateAllRelated();
-    await trendsCache.invalidatePattern('*');
+    // キャッシュ無効化（best-effort: DB更新成功後の失敗は無視）
+    try {
+      await cacheInvalidator.onArticleUpdated(id);
+      await articleDetailCache.invalidateArticle(id);
+      await articleDetailCache.invalidateAllRelated();
+      await trendsCache.invalidatePattern('*');
+    } catch (cacheError) {
+      logger.error(
+        { articleId: id, error: cacheError },
+        '[AdminArticleDetailAPI] Cache invalidation failed (DB update succeeded)'
+      );
+    }
 
     logger.info(
       { articleId: id, isHidden: body.isHidden },
