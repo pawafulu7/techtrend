@@ -21,11 +21,13 @@ function buildQueries(period: Period) {
           SELECT category, COUNT(*) as count FROM "Article"
           WHERE "publishedAt" >= CURRENT_DATE - INTERVAL '1 day'
             AND "publishedAt" < CURRENT_DATE
+            AND "isHidden" = false
           GROUP BY category`,
         previous: prisma.$queryRaw<CategoryRow[]>`
           SELECT category, COUNT(*) as count FROM "Article"
           WHERE "publishedAt" >= CURRENT_DATE - INTERVAL '2 days'
             AND "publishedAt" < CURRENT_DATE - INTERVAL '1 day'
+            AND "isHidden" = false
           GROUP BY category`,
       };
     case 'week':
@@ -34,11 +36,13 @@ function buildQueries(period: Period) {
           SELECT category, COUNT(*) as count FROM "Article"
           WHERE "publishedAt" >= CURRENT_DATE - INTERVAL '7 days'
             AND "publishedAt" < CURRENT_DATE
+            AND "isHidden" = false
           GROUP BY category`,
         previous: prisma.$queryRaw<CategoryRow[]>`
           SELECT category, COUNT(*) as count FROM "Article"
           WHERE "publishedAt" >= CURRENT_DATE - INTERVAL '14 days'
             AND "publishedAt" < CURRENT_DATE - INTERVAL '7 days'
+            AND "isHidden" = false
           GROUP BY category`,
       };
     case 'month':
@@ -47,11 +51,13 @@ function buildQueries(period: Period) {
           SELECT category, COUNT(*) as count FROM "Article"
           WHERE "publishedAt" >= CURRENT_DATE - INTERVAL '30 days'
             AND "publishedAt" < CURRENT_DATE
+            AND "isHidden" = false
           GROUP BY category`,
         previous: prisma.$queryRaw<CategoryRow[]>`
           SELECT category, COUNT(*) as count FROM "Article"
           WHERE "publishedAt" >= CURRENT_DATE - INTERVAL '60 days'
             AND "publishedAt" < CURRENT_DATE - INTERVAL '30 days'
+            AND "isHidden" = false
           GROUP BY category`,
       };
   }

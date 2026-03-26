@@ -108,7 +108,7 @@ async function enrichReportWithThumbnails(
   }> = [];
   try {
     articles = await prisma.article.findMany({
-      where: { id: { in: Array.from(allArticleIds) } },
+      where: { id: { in: Array.from(allArticleIds) }, isHidden: false },
       select: {
         id: true,
         title: true,

@@ -387,6 +387,7 @@ export class CategoryFilterService {
     logger.info('Using fallback: recent articles by published date');
 
     const whereFilter = {
+      isHidden: false,
       summaryComputedAt: { not: null },
       ...(periodMonths > 0
         ? {
