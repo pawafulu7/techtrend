@@ -148,10 +148,13 @@ const mockArticleDetail = {
 // ============================================================
 describe('PATCH /api/admin/articles/[id] - hide toggle', () => {
   let PATCH: any;
+  let withAdminAuthCalledOnLoad = false;
 
   beforeAll(async () => {
+    const callsBefore = mockWithAdminAuth.mock.calls.length;
     const mod = await import('@/app/api/admin/articles/[id]/route');
     PATCH = mod.PATCH;
+    withAdminAuthCalledOnLoad = mockWithAdminAuth.mock.calls.length > callsBefore;
   });
 
   beforeEach(() => {
@@ -167,11 +170,11 @@ describe('PATCH /api/admin/articles/[id] - hide toggle', () => {
     });
   });
 
-  it('PATCH ハンドラが export されていること（認証ミドルウェア適用済み）', () => {
-    // PATCH が withAdminAuth でラップされた関数として export されていることを確認
-    // ミドルウェア自体の認証ロジックテストは with-admin-auth.test.ts に委任
+  it('PATCH ハンドラが withAdminAuth でラップされて export されていること', () => {
     expect(PATCH).toBeDefined();
     expect(typeof PATCH).toBe('function');
+    // モジュール評価時に withAdminAuth が呼ばれたことを確認
+    expect(withAdminAuthCalledOnLoad).toBe(true);
   });
 
   it('isHidden: true でトグル成功、レスポンスに isHidden: true が含まれること', async () => {
@@ -285,10 +288,13 @@ describe('PATCH /api/admin/articles/[id] - hide toggle', () => {
 // ============================================================
 describe('POST /api/admin/articles/[id]/regenerate-summary', () => {
   let POST: any;
+  let withAdminAuthCalledOnLoad = false;
 
   beforeAll(async () => {
+    const callsBefore = mockWithAdminAuth.mock.calls.length;
     const mod = await import('@/app/api/admin/articles/[id]/regenerate-summary/route');
     POST = mod.POST;
+    withAdminAuthCalledOnLoad = mockWithAdminAuth.mock.calls.length > callsBefore;
   });
 
   beforeEach(() => {
@@ -304,9 +310,10 @@ describe('POST /api/admin/articles/[id]/regenerate-summary', () => {
     });
   });
 
-  it('POST ハンドラが export されていること（認証ミドルウェア適用済み）', () => {
+  it('POST ハンドラが withAdminAuth でラップされて export されていること', () => {
     expect(POST).toBeDefined();
     expect(typeof POST).toBe('function');
+    expect(withAdminAuthCalledOnLoad).toBe(true);
   });
 
   it('不正なID形式で400を返すこと', async () => {
@@ -371,6 +378,8 @@ describe('POST /api/admin/articles/[id]/regenerate-summary', () => {
     const response = await POST(request, context);
 
     expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toContain('no content');
   });
 
   it('AI要約生成成功時に200と更新された記事を返すこと', async () => {
