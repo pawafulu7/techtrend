@@ -50,3 +50,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_API_TOKEN }}
           SO_API_KEY: ${{ secrets.SO_API_KEY }}
         run: npx tsx scripts/scheduled/collect-external-metrics.ts
+      - name: Notify failure to Slack
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -s -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-type: application/json' \
+              -d "{\"text\":\"[TechTrend] ${{ github.workflow }} failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+          fi
