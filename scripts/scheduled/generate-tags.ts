@@ -137,17 +137,28 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
         if (tags.length > 0) {
           // AI生成タグのみ正規化（既存タグはDB上の名前を維持 — 'article'等の特殊タグ保護）
           const newTagRecords = await getOrCreateTags(tags, { normalize: true, maxTags: 30 });
-          const existingTagIds = article.tags.map(t => ({ id: t.id }));
-          const newTagIds = newTagRecords.map(t => ({ id: t.id }));
-          const allTagIds = [...new Map([...existingTagIds, ...newTagIds].map(t => [t.id, t])).values()];
 
-          // 記事にタグを関連付け
-          await prisma.article.update({
-            where: { id: article.id },
-            data: {
-              tags: {
-                set: allTagIds
-              }
+          // 更新直前に現在のタグを読み、追加分のみconnect（staleスナップショット書き戻し防止）
+          await prisma.$transaction(async (tx) => {
+            const current = await tx.article.findUniqueOrThrow({
+              where: { id: article.id },
+              select: { tags: { select: { id: true } } }
+            });
+
+            const currentTagIdSet = new Set(current.tags.map(t => t.id));
+            const tagsToConnect = newTagRecords
+              .filter(t => !currentTagIdSet.has(t.id))
+              .map(t => ({ id: t.id }));
+
+            if (tagsToConnect.length > 0) {
+              await tx.article.update({
+                where: { id: article.id },
+                data: {
+                  tags: {
+                    connect: tagsToConnect
+                  }
+                }
+              });
             }
           });
           

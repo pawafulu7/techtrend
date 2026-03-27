@@ -467,7 +467,41 @@ async function processSource({
           metaTarget.includes('url');
 
         if (isPrismaDuplicateUrlError) {
-          duplicateCount++;
+          // Re-fetch latest article for self-healing on concurrent URL collision
+          const latestExisting = await prisma.article.findUnique({
+            where: { url: article.url },
+            select: { id: true, sourceId: true, contentLength: true, thumbnail: true, url: true }
+          });
+
+          if (latestExisting) {
+            const updates: Prisma.ArticleUpdateInput = {};
+
+            if (latestExisting.sourceId === HATENA_SOURCE_ID && source.id !== HATENA_SOURCE_ID) {
+              updates.sourceId = source.id;
+              console.error(`   [INFO] sourceId更新: ${source.name} <- Hatena`);
+            }
+
+            if ((!latestExisting.contentLength || latestExisting.contentLength === 0) &&
+                article.content && article.content.length > 0) {
+              Object.assign(updates, {
+                content: article.content,
+                thumbnail: article.thumbnail ?? latestExisting.thumbnail,
+                contentUpdatedAt: new Date(),
+              });
+            }
+
+            if (Object.keys(updates).length > 0) {
+              await prisma.article.update({
+                where: { id: latestExisting.id },
+                data: updates,
+              });
+              updatedCount++;
+            } else {
+              duplicateCount++;
+            }
+          } else {
+            duplicateCount++;
+          }
         } else {
           console.error(`   記事保存エラー: ${article.title}`, error instanceof Error ? error.message : String(error));
         }
