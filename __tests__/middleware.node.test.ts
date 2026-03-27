@@ -9,6 +9,7 @@ describe('middleware - security headers', () => {
     delete process.env.BASIC_AUTH_ENABLED;
     delete process.env.BASIC_AUTH_PASS;
     delete process.env.CRON_TOKEN;
+    delete process.env.CRON_SECRET;
   });
 
   describe('Security headers設定', () => {
