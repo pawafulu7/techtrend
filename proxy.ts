@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { getThemeFromCookie } from '@/lib/cookies/theme-cookie';
 import { setSecurityHeaders } from '@/config/security-headers';
 import {
@@ -15,8 +16,13 @@ function needsBasicAuth(): boolean {
 }
 
 function checkBasicAuth(request: NextRequest): boolean {
-  // Allow Vercel Cron without auth
-  if (request.headers.get('x-vercel-cron') === '1') return true;
+  // Allow cron requests with valid CRON_SECRET Bearer token
+  const cronSecret = process.env.CRON_TOKEN || process.env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring('Bearer '.length) : undefined;
+    if (token && compareCronSecret(token, cronSecret)) return true;
+  }
 
   const user = process.env.BASIC_AUTH_USER || 'user';
   const pass = process.env.BASIC_AUTH_PASS || process.env.BASIC_PASSWORD || '';
@@ -29,6 +35,18 @@ function checkBasicAuth(request: NextRequest): boolean {
     const decoded = atob(base64);
     const [u, p] = decoded.split(':');
     return u === user && p === pass;
+  } catch {
+    return false;
+  }
+}
+
+function compareCronSecret(a: string, b: string): boolean {
+  try {
+    if (a.length !== b.length) {
+      timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(a, 'utf8'));
+      return false;
+    }
+    return timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'));
   } catch {
     return false;
   }

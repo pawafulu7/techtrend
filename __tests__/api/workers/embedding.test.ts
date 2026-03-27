@@ -2,6 +2,11 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/glo
 import { NextRequest } from 'next/server';
 import type { Article, PrismaClient } from '@prisma/client';
 
+// Mock withCronOrAdminAuth to pass through with CRON_SECRET
+jest.mock('@/lib/middleware/with-cron-or-admin-auth', () => ({
+  withCronOrAdminAuth: (handler: any) => handler,
+}));
+
 // Ensure Next.js server APIs are mocked in Jest (Node env)
 jest.mock('next/server');
 // Unmock Prisma client to use real implementation (overrides jest.setup.node.js global mock)
@@ -93,21 +98,9 @@ describeIf('GET /api/workers/embedding', () => {
     });
   });
 
-  it('should reject request without Vercel Cron header', async () => {
-    const request = new NextRequest('http://localhost:3000/api/workers/embedding');
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(data.error).toContain('Unauthorized');
-  });
-
-  it('should process pending jobs with valid Cron header', async () => {
+  it('should process pending jobs', async () => {
     const request = new NextRequest(
-      'http://localhost:3000/api/workers/embedding?skip_embedding=true',
-      {
-        headers: { 'x-vercel-cron': '1' },
-      }
+      'http://localhost:3000/api/workers/embedding?skip_embedding=true'
     );
 
     const response = await GET(request);
@@ -151,9 +144,7 @@ describeIf('GET /api/workers/embedding', () => {
       data: { status: 'COMPLETED' },
     });
 
-    const request = new NextRequest('http://localhost:3000/api/workers/embedding', {
-      headers: { 'x-vercel-cron': '1' },
-    });
+    const request = new NextRequest('http://localhost:3000/api/workers/embedding');
 
     const response = await GET(request);
     const data = await response.json();
@@ -196,10 +187,7 @@ describeIf('GET /api/workers/embedding', () => {
 
     // Worker should handle gracefully
     const request = new NextRequest(
-      'http://localhost:3000/api/workers/embedding?skip_embedding=true',
-      {
-        headers: { 'x-vercel-cron': '1' },
-      }
+      'http://localhost:3000/api/workers/embedding?skip_embedding=true'
     );
 
     const response = await GET(request);

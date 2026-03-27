@@ -8,6 +8,8 @@ describe('middleware - security headers', () => {
     process.env.NODE_ENV = originalEnv;
     delete process.env.BASIC_AUTH_ENABLED;
     delete process.env.BASIC_AUTH_PASS;
+    delete process.env.CRON_TOKEN;
+    delete process.env.CRON_SECRET;
   });
 
   describe('Security headers設定', () => {
@@ -137,12 +139,13 @@ describe('middleware - security headers', () => {
       expect(response.headers.get('WWW-Authenticate')).toBeTruthy();
     });
 
-    it('should allow Vercel Cron without Basic Auth', async () => {
+    it('should allow cron requests with valid CRON_SECRET without Basic Auth', async () => {
       process.env.BASIC_AUTH_ENABLED = 'true';
       process.env.BASIC_AUTH_PASS = 'secret';
+      process.env.CRON_TOKEN = 'test-cron-secret';
 
       const request = new NextRequest(new URL('http://localhost:3000/'));
-      request.headers.set('x-vercel-cron', '1');
+      request.headers.set('authorization', 'Bearer test-cron-secret');
       const response = await proxy(request);
 
       expect(response.status).not.toBe(401);
