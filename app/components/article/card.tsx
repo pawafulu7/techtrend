@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Calendar, ExternalLink } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
@@ -13,6 +13,7 @@ import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
 import { useIsNewArticle } from '@/app/components/common/relative-time';
 import { formatDateWithTime } from '@/lib/utils/date';
+import { useReadStatus } from '@/app/components/article/hooks/use-read-status';
 
 export function ArticleCard({
   article,
@@ -22,31 +23,8 @@ export function ArticleCard({
   onToggleFavorite,
   showSource = true,
 }: ArticleCardProps & { isRead?: boolean }) {
-  const [isRead, setIsRead] = useState(initialIsRead);
+  const isRead = useReadStatus(article.id, initialIsRead);
   const router = useRouter();
-
-  useEffect(() => {
-    const handleReadStatusChange = (event: CustomEvent) => {
-      if (event.detail.articleId === article.id) {
-        setIsRead(event.detail.isRead);
-      }
-    };
-
-    window.addEventListener(
-      'article-read-status-changed',
-      handleReadStatusChange as EventListener
-    );
-    return () => {
-      window.removeEventListener(
-        'article-read-status-changed',
-        handleReadStatusChange as EventListener
-      );
-    };
-  }, [article.id]);
-
-  useEffect(() => {
-    setIsRead(initialIsRead);
-  }, [initialIsRead]);
 
   // T1: Thumbnail display with validation and error fallback
   const [thumbnailError, setThumbnailError] = useState(false);

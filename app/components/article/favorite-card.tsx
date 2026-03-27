@@ -14,12 +14,14 @@ import { ShareButton } from '@/app/components/article/share-button';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { FavoriteArticle } from '@/lib/types/favorites';
+import { getReadingTime } from '@/app/components/article/hooks/get-reading-time';
 
 export interface FavoriteArticleCardProps {
   article: FavoriteArticle;
   onArticleClick?: (articleId: string) => void;
   onTagClick?: (tagName: string) => void;
   onRemoveFavorite?: (articleId: string) => void;
+  from?: string;
 }
 
 export function FavoriteArticleCard({
@@ -27,14 +29,13 @@ export function FavoriteArticleCard({
   onArticleClick,
   onTagClick,
   onRemoveFavorite,
+  from = '/favorites',
 }: FavoriteArticleCardProps) {
   const router = useRouter();
   const sourceColor = getSourceColor(article.source.name);
 
-  // Reading time calculation (~500 chars/min for Japanese content)
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
-  const readingTime =
-    contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
+  const readingTime = getReadingTime(contentLength);
 
   // Pre-compute favoritedAt formatting to avoid duplicate Date object creation
   // Use try-catch to handle invalid date values gracefully
@@ -63,7 +64,7 @@ export function FavoriteArticleCard({
       onArticleClick(article.id);
     }
 
-    const articleUrl = `/articles/${article.id}?from=${encodeURIComponent('/favorites')}`;
+    const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(from)}`;
     router.push(articleUrl);
   };
 
@@ -88,13 +89,15 @@ export function FavoriteArticleCard({
           <BadgeV2
             key={tag.id}
             variant="outline"
-            className="text-xs cursor-pointer"
+            className="cursor-pointer text-xs"
             onClick={(e) => {
               e.stopPropagation();
               if (onTagClick) {
                 onTagClick(tag.name);
               } else {
-                router.push(`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`);
+                router.push(
+                  `/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`
+                );
               }
             }}
           >
@@ -103,7 +106,7 @@ export function FavoriteArticleCard({
         ))}
         {remainingCount > 0 && (
           <span
-            className="text-xs text-muted-foreground"
+            className="text-muted-foreground text-xs"
             aria-label={`他${remainingCount}件のタグ`}
           >
             +{remainingCount}
@@ -120,7 +123,7 @@ export function FavoriteArticleCard({
       data-article-id={article.id}
       onClick={handleCardClick}
       className={cn(
-        'group relative flex h-full flex-col gap-3 p-4 cursor-pointer',
+        'group relative flex h-full cursor-pointer flex-col gap-3 p-4',
         'shadow-md hover:shadow-lg',
         'transition-[transform,box-shadow] duration-200 hover:scale-[1.01]',
         sourceColor?.borderLeft
@@ -135,7 +138,7 @@ export function FavoriteArticleCard({
               <BadgeV2
                 variant="outline"
                 className={cn(
-                  'text-xs flex items-center gap-1.5',
+                  'flex items-center gap-1.5 text-xs',
                   sourceColor.tag,
                   sourceColor.border,
                   sourceColor.hover
@@ -143,7 +146,10 @@ export function FavoriteArticleCard({
                 data-testid="article-source"
               >
                 <span
-                  className={cn('w-2 h-2 rounded-full shrink-0', sourceColor.dot)}
+                  className={cn(
+                    'h-2 w-2 shrink-0 rounded-full',
+                    sourceColor.dot
+                  )}
                   aria-hidden="true"
                 />
                 {article.companyName ?? article.source.name}
@@ -153,7 +159,7 @@ export function FavoriteArticleCard({
             {/* Favorited At Badge */}
             <BadgeV2
               variant="secondary"
-              className="text-xs flex items-center gap-1"
+              className="flex items-center gap-1 text-xs"
               aria-label={`保存: ${favoritedTimeAgo}`}
             >
               <Heart className="h-3 w-3" aria-hidden="true" />
@@ -161,7 +167,7 @@ export function FavoriteArticleCard({
             </BadgeV2>
 
             {/* Published At - inline with badges */}
-            <span className="flex items-center gap-1 text-muted-foreground">
+            <span className="text-muted-foreground flex items-center gap-1">
               <Calendar className="h-3 w-3" aria-hidden="true" />
               <time dateTime={article.publishedAt}>
                 {formatDateWithTime(article.publishedAt)}
@@ -170,7 +176,7 @@ export function FavoriteArticleCard({
           </div>
         </div>
 
-        <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0">
+        <div className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center">
           <ShareButton
             title={article.translatedTitle || article.title}
             url={article.url}
@@ -181,9 +187,9 @@ export function FavoriteArticleCard({
       </div>
 
       {/* Title */}
-      <h3 className="font-heading text-lg sm:text-xl font-semibold leading-snug text-foreground line-clamp-2">
+      <h3 className="font-heading text-foreground line-clamp-2 text-lg leading-snug font-semibold sm:text-xl">
         <Link
-          href={`/articles/${article.id}`}
+          href={`/articles/${article.id}?from=${encodeURIComponent(from)}`}
           className="hover:text-primary transition-colors"
           onClick={(e) => e.stopPropagation()}
         >
@@ -193,7 +199,7 @@ export function FavoriteArticleCard({
 
       {/* Summary */}
       {article.summary && (
-        <p className="text-sm leading-relaxed text-foreground line-clamp-3">
+        <p className="text-foreground line-clamp-3 text-sm leading-relaxed">
           {article.summary}
         </p>
       )}
@@ -205,13 +211,13 @@ export function FavoriteArticleCard({
       <div className="mt-auto flex items-center justify-between pt-1">
         <FavoriteButton
           articleId={article.id}
-          className="h-11 px-4 min-w-[44px] min-h-[44px]"
+          className="h-11 min-h-[44px] min-w-[44px] px-4"
           isFavorited={true}
           onToggleFavorite={handleToggleFavorite}
         />
         <div className="flex items-center gap-3">
-          {readingTime && contentLength > 0 && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          {readingTime && (
+            <span className="text-muted-foreground flex items-center gap-1 text-xs">
               <Clock className="h-3 w-3" aria-hidden="true" />
               <span>
                 {readingTime}分 / {contentLength.toLocaleString('ja-JP')}文字
@@ -225,10 +231,10 @@ export function FavoriteArticleCard({
               e.stopPropagation();
               window.open(article.url, '_blank', 'noopener,noreferrer');
             }}
-            className="h-11 px-4 text-xs min-w-[44px] min-h-[44px]"
+            className="h-11 min-h-[44px] min-w-[44px] px-4 text-xs"
             aria-label="元記事を新しいタブで開く"
           >
-            <ExternalLink className="h-4 w-4 mr-1" aria-hidden="true" />
+            <ExternalLink className="mr-1 h-4 w-4" aria-hidden="true" />
             元記事
           </ButtonV2>
         </div>
@@ -243,27 +249,27 @@ export function FavoriteArticleCard({
 export function FavoriteCardSkeleton() {
   return (
     <div
-      className="animate-pulse rounded-lg border bg-card p-4 space-y-3 h-[280px]"
+      className="bg-card h-[280px] animate-pulse space-y-3 rounded-lg border p-4"
       role="status"
       aria-label="読み込み中"
     >
       <div className="flex items-center gap-2">
-        <div className="h-5 w-20 bg-muted rounded" />
-        <div className="h-5 w-16 bg-muted rounded" />
+        <div className="bg-muted h-5 w-20 rounded" />
+        <div className="bg-muted h-5 w-16 rounded" />
       </div>
-      <div className="h-6 w-full bg-muted rounded" />
+      <div className="bg-muted h-6 w-full rounded" />
       <div className="space-y-2">
-        <div className="h-4 w-full bg-muted rounded" />
-        <div className="h-4 w-5/6 bg-muted rounded" />
-        <div className="h-4 w-4/6 bg-muted rounded" />
+        <div className="bg-muted h-4 w-full rounded" />
+        <div className="bg-muted h-4 w-5/6 rounded" />
+        <div className="bg-muted h-4 w-4/6 rounded" />
       </div>
       <div className="flex gap-1 pt-2">
-        <div className="h-5 w-12 bg-muted rounded" />
-        <div className="h-5 w-14 bg-muted rounded" />
+        <div className="bg-muted h-5 w-12 rounded" />
+        <div className="bg-muted h-5 w-14 rounded" />
       </div>
-      <div className="mt-auto flex justify-between items-center pt-2">
-        <div className="h-8 w-8 bg-muted rounded" />
-        <div className="h-8 w-20 bg-muted rounded" />
+      <div className="mt-auto flex items-center justify-between pt-2">
+        <div className="bg-muted h-8 w-8 rounded" />
+        <div className="bg-muted h-8 w-20 rounded" />
       </div>
     </div>
   );
@@ -275,7 +281,7 @@ export function FavoriteCardSkeleton() {
 export function FavoriteSkeletonGrid() {
   return (
     <div
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
       role="status"
       aria-live="polite"
       aria-label="お気に入りを読み込み中"
