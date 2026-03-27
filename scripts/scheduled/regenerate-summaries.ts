@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { GeminiClient } from '../../lib/ai/gemini';
 import { validateSummary, validateDetailedSummary } from '../../lib/utils/summary/summary-validator';
 import { postProcessSummaries } from '../../lib/utils/summary/summary-post-processor';
-
-const prisma = new PrismaClient();
 
 interface RegenerationOptions {
   articleIds?: string[];
@@ -16,14 +14,15 @@ interface RegenerationOptions {
  * 問題のある要約を持つ記事を再生成
  */
 async function regenerateSummaries(options: RegenerationOptions = {}) {
+  try {
   console.error('===== 要約再生成スクリプト =====\n');
-  
+
   const geminiApiKey = process.env.GEMINI_API_KEY;
   if (!geminiApiKey) {
     console.error('❌ GEMINI_API_KEY環境変数が設定されていません');
     process.exit(1);
   }
-  
+
   const geminiClient = new GeminiClient(geminiApiKey);
   
   // 対象記事の取得
@@ -197,7 +196,9 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
     });
   }
   
-  await prisma.$disconnect();
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 // コマンドライン引数の処理

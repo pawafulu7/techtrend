@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Radio, Users, TrendingUp } from 'lucide-react';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { getJSTToday } from '@/lib/utils/date';
 
 export const dynamic = 'force-dynamic';

@@ -31,6 +31,12 @@ const eslintConfig = defineConfig([
       // Note: Hardcoded Tailwind color detection is handled by grep in CI
       // See: npm run lint:colors (uses grep to find bg-/text-/border- patterns)
       // ESLint's no-restricted-syntax cannot reliably detect class names in strings
+      'no-restricted-imports': ['error', {
+        paths: [{
+          name: '@/lib/database',
+          message: "Use '@/lib/prisma' instead. @/lib/database is deprecated.",
+        }],
+      }],
     },
   },
   // Override default ignores of eslint-config-next.

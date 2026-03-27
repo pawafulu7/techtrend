@@ -1,34 +1,11 @@
-import { PrismaClient, Prisma } from '@prisma/client';
-
-// DI化: PrismaClientの多重生成を防ぐため依存性注入パターンを採用
-let injectedPrisma: PrismaClient | null = null;
-
-/**
- * PrismaClientインスタンスを設定
- * 呼び出し側スクリプトで起動時に一度だけ呼び出す
- */
-export const setPrisma = (client: PrismaClient) => {
-  injectedPrisma = client;
-};
-
-/**
- * PrismaClientインスタンスを取得
- * 未注入の場合は新規作成（後方互換性のため）
- */
-export const getPrisma = (): PrismaClient => {
-  if (!injectedPrisma) {
-    // 警告: 理想的にはsetPrismaで注入すべき
-    console.warn('[processing-status] PrismaClient not injected, creating new instance');
-    injectedPrisma = new PrismaClient();
-  }
-  return injectedPrisma;
-};
+import { Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 /**
  * 最終処理時刻を取得
  */
 export async function getLastProcessedTime(processName: string): Promise<Date | null> {
-  const log = await getPrisma().processingLog.findUnique({
+  const log = await prisma.processingLog.findUnique({
     where: { processName }
   });
 
@@ -46,7 +23,7 @@ export async function saveProcessingStatus(
   processedAt?: Date
 ): Promise<void> {
   const ts = processedAt ?? new Date();
-  await getPrisma().processingLog.upsert({
+  await prisma.processingLog.upsert({
     where: { processName },
     update: {
       lastProcessedAt: ts,
@@ -96,7 +73,7 @@ export async function hasUpdatedArticlesSince(processName: string): Promise<bool
     return true; // 初回実行
   }
 
-  const count = await getPrisma().article.count({
+  const count = await prisma.article.count({
     where: {
       updatedAt: { gt: lastProcessedAt }
     }
@@ -116,7 +93,7 @@ export async function hasContentUpdatesSince(processName: string): Promise<boole
     return true; // 初回実行
   }
 
-  const count = await getPrisma().article.count({
+  const count = await prisma.article.count({
     where: {
       contentUpdatedAt: { gt: lastProcessedAt }
     }
@@ -131,7 +108,7 @@ export async function hasContentUpdatesSince(processName: string): Promise<boole
 export async function cleanupOldLogs(daysToKeep: number = 30): Promise<void> {
   const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
 
-  await getPrisma().processingLog.deleteMany({
+  await prisma.processingLog.deleteMany({
     where: {
       updatedAt: { lt: cutoffDate }
     }

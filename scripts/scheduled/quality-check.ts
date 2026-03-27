@@ -5,12 +5,10 @@
  * PM2スケジューラーで実行可能
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { calculateSummaryScore, calculateAverageScore, needsRegeneration } from '@/lib/utils/quality-scorer';
 import { parseArgs } from 'util';
 import type { ArticleWhereClause } from '../../types/database';
-
-const prisma = new PrismaClient();
 
 interface QualityCheckOptions {
   days?: number;

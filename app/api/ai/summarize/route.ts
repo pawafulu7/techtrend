@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { ArticleSummarizer } from '@/lib/ai';
 import { Prisma } from '@prisma/client';
 import type { ApiResponse } from '@/lib/types/api';

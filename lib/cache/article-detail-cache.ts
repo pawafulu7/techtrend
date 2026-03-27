@@ -1,6 +1,6 @@
 import { RedisCache } from './redis-cache';
 import { CACHE_TTL } from './constants';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 

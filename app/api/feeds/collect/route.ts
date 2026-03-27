@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { createFetcher } from '@/lib/fetchers';
 import { ArticleSummarizer } from '@/lib/ai';
 import { normalizeTagInput, isValidTagArray } from '@/lib/utils/tag/tag-normalizer';

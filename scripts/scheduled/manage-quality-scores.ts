@@ -1,11 +1,7 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { calculateQualityScore, checkCategoryQuality } from '@/lib/utils/quality-score';
-import { getLastProcessedTime, saveProcessingStatus, setPrisma } from '../utils/processing-status';
-
-const prisma = new PrismaClient();
-
-// processing-statusモジュールに同じインスタンスを注入
-setPrisma(prisma);
+import { getLastProcessedTime, saveProcessingStatus } from '../utils/processing-status';
 
 interface Options {
   command: 'calculate' | 'fix-zero' | 'recalculate';

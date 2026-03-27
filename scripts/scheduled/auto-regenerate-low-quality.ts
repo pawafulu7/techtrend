@@ -3,12 +3,10 @@
  * 品質スコア70点未満の記事を自動的に再生成
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { SUMMARY_VERSION } from '@/types/article';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { calculateQualityScore } from '../../lib/utils/quality-score';
-
-const prisma = new PrismaClient();
 const summaryService = new UnifiedSummaryService();
 
 interface AutoRegenerateOptions {

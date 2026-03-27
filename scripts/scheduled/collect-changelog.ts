@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { parseChangelog } from '../../lib/changelog/parser';
 import { RedisCache } from '../../lib/cache';
-
-const prisma = new PrismaClient();
 
 const FETCH_TIMEOUT_MS = 30_000;
 const USER_AGENT = 'TechTrend-ChangelogCollector/1.0';

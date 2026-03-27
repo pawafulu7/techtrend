@@ -33,6 +33,7 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/$1',
     // Mock Prisma client
     '^@/lib/database$': '<rootDir>/__mocks__/lib/database.ts',
+    '^@/lib/prisma$': '<rootDir>/__mocks__/lib/prisma.ts',
     '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
   },
   testPathIgnorePatterns: [

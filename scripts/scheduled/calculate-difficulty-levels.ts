@@ -1,8 +1,7 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { determineDifficulty } from '@/lib/utils/quality-score';
 import { getLastProcessedTime, saveProcessingStatus } from '../utils/processing-status';
-
-const prisma = new PrismaClient();
 
 async function calculateDifficultyLevels() {
   console.error('📊 記事の難易度レベルを計算します...\n');
