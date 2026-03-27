@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { getThemeFromCookie } from '@/lib/cookies/theme-cookie';
 import { setSecurityHeaders } from '@/config/security-headers';
 import {
@@ -20,7 +21,7 @@ function checkBasicAuth(request: NextRequest): boolean {
   if (cronSecret) {
     const authHeader = request.headers.get('authorization');
     const token = authHeader?.startsWith('Bearer ') ? authHeader.substring('Bearer '.length) : undefined;
-    if (token && token === cronSecret) return true;
+    if (token && compareCronSecret(token, cronSecret)) return true;
   }
 
   const user = process.env.BASIC_AUTH_USER || 'user';
@@ -34,6 +35,18 @@ function checkBasicAuth(request: NextRequest): boolean {
     const decoded = atob(base64);
     const [u, p] = decoded.split(':');
     return u === user && p === pass;
+  } catch {
+    return false;
+  }
+}
+
+function compareCronSecret(a: string, b: string): boolean {
+  try {
+    if (a.length !== b.length) {
+      timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(a, 'utf8'));
+      return false;
+    }
+    return timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'));
   } catch {
     return false;
   }

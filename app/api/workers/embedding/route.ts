@@ -12,11 +12,9 @@ import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
  * Security: Requires CRON_SECRET Bearer token or admin auth (via withCronOrAdminAuth)
  */
 async function embeddingHandler(request: NextRequest) {
-  // Get skip flag from query params (for local testing)
   const skipEmbedding =
     request.nextUrl.searchParams.get('skip_embedding') === 'true';
 
-  // Create worker
   const worker = new EmbeddingWorker({
     batchSize: 300, // Reduced for Vercel 10s timeout
     maxAttempts: 3,
@@ -24,13 +22,10 @@ async function embeddingHandler(request: NextRequest) {
     skipEmbedding,
   });
 
-  // Log worker start
   logger.info({ skipEmbedding }, 'Embedding worker started');
 
-  // Run worker
   const result = await worker.run();
 
-  // Log result
   if (result.status === 'error') {
     logger.error({ result }, 'Embedding worker error');
   } else if (result.status === 'timeout') {
@@ -39,7 +34,6 @@ async function embeddingHandler(request: NextRequest) {
     logger.info({ result }, 'Embedding worker completed');
   }
 
-  // Return result
   return NextResponse.json(result, {
     status: result.status === 'error' ? 500 : 200,
   });
