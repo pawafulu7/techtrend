@@ -2,6 +2,7 @@ import { Article, Source, Tag } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import fetch from 'node-fetch';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { getOrCreateTags } from '@/lib/services/tag-service';
 
 type ArticleWithSourceAndTags = Article & {
   source: Source;
@@ -139,21 +140,7 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
           const allTags = [...new Set([...existingTags, ...tags])];
           
           // タグレコードを作成または取得
-          const tagRecords = await Promise.all(
-            allTags.map(async (tagName) => {
-              let tag = await prisma.tag.findUnique({
-                where: { name: tagName }
-              });
-              
-              if (!tag) {
-                tag = await prisma.tag.create({
-                  data: { name: tagName }
-                });
-              }
-              
-              return tag;
-            })
-          );
+          const tagRecords = await getOrCreateTags(allTags, { normalize: true, maxTags: 30 });
           
           // 記事にタグを関連付け
           await prisma.article.update({

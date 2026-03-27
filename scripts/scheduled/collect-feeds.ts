@@ -246,11 +246,17 @@ async function processSource({
       return result;
     }
 
+    // Bulk pre-fetch existing articles by URL to avoid N+1 queries
+    const articleUrls = articles.map(a => a.url);
+    const existingArticles = await prisma.article.findMany({
+      where: { url: { in: articleUrls } },
+      select: { id: true, sourceId: true, content: true, thumbnail: true, url: true }
+    });
+    const existingArticleMap = new Map(existingArticles.map(a => [a.url, a]));
+
     for (const article of articles) {
       try {
-        const existing = await prisma.article.findFirst({
-          where: { url: article.url }
-        });
+        const existing = existingArticleMap.get(article.url) ?? null;
 
         if (existing) {
           const updates: Prisma.ArticleUpdateInput = {};
