@@ -246,11 +246,17 @@ async function processSource({
       return result;
     }
 
+    // Pre-fetch to avoid per-article findFirst N+1
+    const articleUrls = articles.map(a => a.url);
+    const existingArticles = await prisma.article.findMany({
+      where: { url: { in: articleUrls } },
+      select: { id: true, sourceId: true, contentLength: true, thumbnail: true, url: true }
+    });
+    const existingArticleMap = new Map(existingArticles.map(a => [a.url, a]));
+
     for (const article of articles) {
       try {
-        const existing = await prisma.article.findFirst({
-          where: { url: article.url }
-        });
+        const existing = existingArticleMap.get(article.url);
 
         if (existing) {
           const updates: Prisma.ArticleUpdateInput = {};
@@ -262,7 +268,7 @@ async function processSource({
           }
 
           // content=null/empty の場合は更新を許可（全ソース共通の自己修復メカニズム）
-          if ((!existing.content || existing.content.length === 0) &&
+          if ((!existing.contentLength || existing.contentLength === 0) &&
               article.content && article.content.length > 0) {
             Object.assign(updates, {
               content: article.content,
@@ -461,7 +467,41 @@ async function processSource({
           metaTarget.includes('url');
 
         if (isPrismaDuplicateUrlError) {
-          duplicateCount++;
+          // Re-fetch latest article for self-healing on concurrent URL collision
+          const latestExisting = await prisma.article.findUnique({
+            where: { url: article.url },
+            select: { id: true, sourceId: true, contentLength: true, thumbnail: true, url: true }
+          });
+
+          if (latestExisting) {
+            const updates: Prisma.ArticleUpdateInput = {};
+
+            if (latestExisting.sourceId === HATENA_SOURCE_ID && source.id !== HATENA_SOURCE_ID) {
+              updates.sourceId = source.id;
+              console.error(`   [INFO] sourceId更新: ${source.name} <- Hatena`);
+            }
+
+            if ((!latestExisting.contentLength || latestExisting.contentLength === 0) &&
+                article.content && article.content.length > 0) {
+              Object.assign(updates, {
+                content: article.content,
+                thumbnail: article.thumbnail ?? latestExisting.thumbnail,
+                contentUpdatedAt: new Date(),
+              });
+            }
+
+            if (Object.keys(updates).length > 0) {
+              await prisma.article.update({
+                where: { id: latestExisting.id },
+                data: updates,
+              });
+              updatedCount++;
+            } else {
+              duplicateCount++;
+            }
+          } else {
+            duplicateCount++;
+          }
         } else {
           console.error(`   記事保存エラー: ${article.title}`, error instanceof Error ? error.message : String(error));
         }

@@ -2,6 +2,7 @@ import { Article, Source, Tag } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import fetch from 'node-fetch';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { getOrCreateTags } from '@/lib/services/tag-service';
 
 type ArticleWithSourceAndTags = Article & {
   source: Source;
@@ -134,35 +135,30 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
         const tags = await generateTags(article.title, content);
         
         if (tags.length > 0) {
-          // 既存のタグを保持しつつ新しいタグを追加
-          const existingTags = article.tags.map(t => t.name);
-          const allTags = [...new Set([...existingTags, ...tags])];
-          
-          // タグレコードを作成または取得
-          const tagRecords = await Promise.all(
-            allTags.map(async (tagName) => {
-              let tag = await prisma.tag.findUnique({
-                where: { name: tagName }
+          // AI生成タグのみ正規化（既存タグはDB上の名前を維持 — 'article'等の特殊タグ保護）
+          const newTagRecords = await getOrCreateTags(tags, { normalize: true, maxTags: 30 });
+
+          // 更新直前に現在のタグを読み、追加分のみconnect（staleスナップショット書き戻し防止）
+          await prisma.$transaction(async (tx) => {
+            const current = await tx.article.findUniqueOrThrow({
+              where: { id: article.id },
+              select: { tags: { select: { id: true } } }
+            });
+
+            const currentTagIdSet = new Set(current.tags.map(t => t.id));
+            const tagsToConnect = newTagRecords
+              .filter(t => !currentTagIdSet.has(t.id))
+              .map(t => ({ id: t.id }));
+
+            if (tagsToConnect.length > 0) {
+              await tx.article.update({
+                where: { id: article.id },
+                data: {
+                  tags: {
+                    connect: tagsToConnect
+                  }
+                }
               });
-              
-              if (!tag) {
-                tag = await prisma.tag.create({
-                  data: { name: tagName }
-                });
-              }
-              
-              return tag;
-            })
-          );
-          
-          // 記事にタグを関連付け
-          await prisma.article.update({
-            where: { id: article.id },
-            data: {
-              tags: {
-                set: [],  // 既存の関連をクリア
-                connect: tagRecords.map(tag => ({ id: tag.id }))
-              }
             }
           });
           
