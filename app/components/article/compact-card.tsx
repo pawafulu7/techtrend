@@ -54,7 +54,6 @@ export function CompactCard({
     ? getSourceColor(article.source.name)
     : null;
 
-  // Reading time calculation (~500 chars/min for Japanese content)
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
   const readingTime = getReadingTime(contentLength);
 
@@ -230,7 +229,7 @@ export function CompactCard({
           className="h-9 min-h-[36px] min-w-[36px] px-3"
         />
         <div className="flex items-center gap-2">
-          {readingTime && contentLength > 0 && (
+          {readingTime && (
             <span className="text-muted-foreground flex items-center gap-1 text-xs">
               <Clock className="h-3 w-3" aria-hidden="true" />
               <span>

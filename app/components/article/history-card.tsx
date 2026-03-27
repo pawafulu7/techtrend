@@ -51,7 +51,6 @@ export function HistoryArticleCard({
   const router = useRouter();
   const sourceColor = getSourceColor(article.source.name);
 
-  // Reading time calculation (~500 chars/min for Japanese content)
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
   const readingTime = getReadingTime(contentLength);
 
@@ -217,7 +216,7 @@ export function HistoryArticleCard({
           fetchInitialStatus
         />
         <div className="flex items-center gap-3">
-          {readingTime && contentLength > 0 && (
+          {readingTime && (
             <span className="text-muted-foreground flex items-center gap-1 text-xs">
               <Clock className="h-3 w-3" aria-hidden="true" />
               <span>
