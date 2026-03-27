@@ -246,17 +246,17 @@ async function processSource({
       return result;
     }
 
-    // Bulk pre-fetch existing articles by URL to avoid N+1 queries
+    // Pre-fetch to avoid per-article findFirst N+1
     const articleUrls = articles.map(a => a.url);
     const existingArticles = await prisma.article.findMany({
       where: { url: { in: articleUrls } },
-      select: { id: true, sourceId: true, content: true, thumbnail: true, url: true }
+      select: { id: true, sourceId: true, contentLength: true, thumbnail: true, url: true }
     });
     const existingArticleMap = new Map(existingArticles.map(a => [a.url, a]));
 
     for (const article of articles) {
       try {
-        const existing = existingArticleMap.get(article.url) ?? null;
+        const existing = existingArticleMap.get(article.url);
 
         if (existing) {
           const updates: Prisma.ArticleUpdateInput = {};
@@ -268,7 +268,7 @@ async function processSource({
           }
 
           // content=null/empty の場合は更新を許可（全ソース共通の自己修復メカニズム）
-          if ((!existing.content || existing.content.length === 0) &&
+          if ((!existing.contentLength || existing.contentLength === 0) &&
               article.content && article.content.length > 0) {
             Object.assign(updates, {
               content: article.content,
