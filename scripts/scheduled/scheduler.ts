@@ -421,7 +421,7 @@ cron.schedule('0 * * * *', async () => {
   try {
     await executeUpdatePipeline(RSS_SOURCES, 'RSS系記事');
   } catch (error) {
-    // エラーは関数内でログ出力済み
+    console.error('[ERROR] RSS系記事更新ジョブが失敗しました:', error instanceof Error ? error.message : String(error));
   } finally {
     rssJobRunning = false;
   }
@@ -479,7 +479,7 @@ cron.schedule('30 0,12 * * *', async () => {
   try {
     await executeUpdatePipeline(SCRAPING_SOURCES, 'スクレイピング系記事');
   } catch (error) {
-    // エラーは関数内でログ出力済み
+    console.error('[ERROR] スクレイピング系記事更新ジョブが失敗しました:', error instanceof Error ? error.message : String(error));
   } finally {
     scrapingJobRunning = false;
   }
@@ -495,7 +495,7 @@ cron.schedule('5 5,17 * * *', async () => {
   try {
     await executeUpdatePipeline(QIITA_POPULAR_SOURCE, 'Qiita人気記事');
   } catch (error) {
-    // エラーは関数内でログ出力済み
+    console.error('[ERROR] Qiita人気記事更新ジョブが失敗しました:', error instanceof Error ? error.message : String(error));
   } finally {
     qiitaJobRunning = false;
   }

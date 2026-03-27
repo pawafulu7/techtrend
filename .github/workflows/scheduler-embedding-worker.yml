@@ -47,3 +47,13 @@ jobs:
           EMBEDDING_WORKER_TIMEOUT_MS: 300000  # 5 minutes (GitHub Actions has 10 min limit)
           EMBEDDING_WORKER_BATCH_SIZE: 500     # Increased from 300 for better throughput
         run: npx tsx scripts/dev/run-embedding-worker.ts
+      - name: Notify failure to Slack
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-type: application/json' \
+              -d "{\"text\":\"[TechTrend] ${{ github.workflow }} failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+          fi

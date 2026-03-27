@@ -52,3 +52,13 @@ jobs:
         run: |
           npx tsx scripts/scheduled/quality-check.ts --days 7 --auto-regenerate
           npx tsx scripts/scheduled/auto-regenerate-low-quality.ts --threshold 70 --limit 10
+      - name: Notify failure to Slack
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-type: application/json' \
+              -d "{\"text\":\"[TechTrend] ${{ github.workflow }} failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+          fi
