@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from 'react';
 
+interface ReadStatusChangeDetail {
+  articleId: string;
+  isRead: boolean;
+}
+
 /**
  * Track article read status via custom events and prop sync
  */
@@ -12,7 +17,9 @@ export function useReadStatus(
   const [isRead, setIsRead] = useState(initialIsRead);
 
   useEffect(() => {
-    const handleReadStatusChange = (event: CustomEvent) => {
+    const handleReadStatusChange = (
+      event: CustomEvent<ReadStatusChangeDetail>
+    ) => {
       if (event.detail.articleId === articleId) {
         setIsRead(event.detail.isRead);
       }
