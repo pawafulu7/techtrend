@@ -39,7 +39,7 @@ export function useReadStatus(
 
   useEffect(() => {
     setIsRead(initialIsRead);
-  }, [initialIsRead]);
+  }, [articleId, initialIsRead]);
 
   return isRead;
 }
