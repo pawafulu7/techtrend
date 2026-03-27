@@ -15,8 +15,13 @@ function needsBasicAuth(): boolean {
 }
 
 function checkBasicAuth(request: NextRequest): boolean {
-  // Allow Vercel Cron without auth
-  if (request.headers.get('x-vercel-cron') === '1') return true;
+  // Allow cron requests with valid CRON_SECRET Bearer token
+  const cronSecret = process.env.CRON_TOKEN || process.env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring('Bearer '.length) : undefined;
+    if (token && token === cronSecret) return true;
+  }
 
   const user = process.env.BASIC_AUTH_USER || 'user';
   const pass = process.env.BASIC_AUTH_PASS || process.env.BASIC_PASSWORD || '';

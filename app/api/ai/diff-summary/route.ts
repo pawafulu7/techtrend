@@ -20,6 +20,7 @@ import {
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger/index';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { DiffChange } from '@/lib/ai/extraction/extraction-schemas';
 
 // Cache instance (lazy initialized)
@@ -42,7 +43,7 @@ const getCache = () => {
  * - week: ISO week format (YYYY-Www), default: current week
  * - category: Specific category slug (optional)
  */
-export async function GET(request: NextRequest) {
+async function getDiffSummaryHandler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const weekParam = searchParams.get('week');
@@ -325,5 +326,9 @@ async function generateDiffSummaryHandler(request: NextRequest) {
   }
 }
 
+export const GET = withRateLimit('read:diff-summary', getDiffSummaryHandler);
+
 // Wrap with auth middleware for POST
-export const POST = withCronOrAdminAuth(generateDiffSummaryHandler);
+export const POST = withCronOrAdminAuth(
+  withRateLimit('admin:ai-generate', generateDiffSummaryHandler)
+);
