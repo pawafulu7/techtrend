@@ -11,6 +11,7 @@ import type { ArticleListItemProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { useIsNewArticle } from '@/app/components/common/relative-time';
+import { useReadStatus } from '@/app/components/article/hooks/use-read-status';
 export function ArticleListItem({
   article,
   onTagClick,
@@ -19,34 +20,8 @@ export function ArticleListItem({
   isFavorited = false,
   onToggleFavorite,
 }: ArticleListItemProps) {
-  const [isRead, setIsRead] = useState(initialIsRead);
+  const isRead = useReadStatus(article.id, initialIsRead);
   const router = useRouter();
-
-  // Listen for read status changes
-  useEffect(() => {
-    const handleReadStatusChange = (event: CustomEvent) => {
-      if (event.detail.articleId === article.id) {
-        setIsRead(event.detail.isRead);
-      }
-    };
-
-    window.addEventListener(
-      'article-read-status-changed',
-      handleReadStatusChange as EventListener
-    );
-
-    return () => {
-      window.removeEventListener(
-        'article-read-status-changed',
-        handleReadStatusChange as EventListener
-      );
-    };
-  }, [article.id]);
-
-  // Update isRead when prop changes
-  useEffect(() => {
-    setIsRead(initialIsRead);
-  }, [initialIsRead]);
 
   // Note: Use hook and state to avoid Date.now() during render (React Compiler purity rule)
   const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;

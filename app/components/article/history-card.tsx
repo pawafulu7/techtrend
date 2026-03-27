@@ -13,6 +13,7 @@ import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { ShareButton } from '@/app/components/article/share-button';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { getReadingTime } from '@/app/components/article/hooks/get-reading-time';
 
 export interface HistoryArticleCardProps {
   article: {
@@ -37,6 +38,7 @@ export interface HistoryArticleCardProps {
   viewedAt: string | null;
   onArticleClick?: (articleId: string) => void;
   onTagClick?: (tagName: string) => void;
+  from?: string;
 }
 
 export function HistoryArticleCard({
@@ -44,13 +46,14 @@ export function HistoryArticleCard({
   viewedAt,
   onArticleClick,
   onTagClick,
+  from = '/history',
 }: HistoryArticleCardProps) {
   const router = useRouter();
   const sourceColor = getSourceColor(article.source.name);
 
   // Reading time calculation (~500 chars/min for Japanese content)
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
-  const readingTime = contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
+  const readingTime = getReadingTime(contentLength);
 
   // Pre-compute viewedAt formatting to avoid duplicate Date object creation
   const viewedTimeAgo = viewedAt
@@ -68,7 +71,7 @@ export function HistoryArticleCard({
       onArticleClick(article.id);
     }
 
-    const articleUrl = `/articles/${article.id}?from=${encodeURIComponent('/history')}`;
+    const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(from)}`;
     router.push(articleUrl);
   };
 
@@ -86,13 +89,15 @@ export function HistoryArticleCard({
           <BadgeV2
             key={tag.id}
             variant="outline"
-            className="text-xs cursor-pointer"
+            className="cursor-pointer text-xs"
             onClick={(e) => {
               e.stopPropagation();
               if (onTagClick) {
                 onTagClick(tag.name);
               } else {
-                router.push(`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`);
+                router.push(
+                  `/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`
+                );
               }
             }}
           >
@@ -101,7 +106,7 @@ export function HistoryArticleCard({
         ))}
         {remainingCount > 0 && (
           <span
-            className="text-xs text-muted-foreground"
+            className="text-muted-foreground text-xs"
             aria-label={`他${remainingCount}件のタグ`}
           >
             +{remainingCount}
@@ -118,7 +123,7 @@ export function HistoryArticleCard({
       data-article-id={article.id}
       onClick={handleCardClick}
       className={cn(
-        'group relative flex h-full flex-col gap-3 p-4 cursor-pointer',
+        'group relative flex h-full cursor-pointer flex-col gap-3 p-4',
         'shadow-md hover:shadow-lg',
         'transition-[transform,box-shadow] duration-200 hover:scale-[1.01]',
         sourceColor?.borderLeft
@@ -133,7 +138,7 @@ export function HistoryArticleCard({
               <BadgeV2
                 variant="outline"
                 className={cn(
-                  'text-xs flex items-center gap-1.5',
+                  'flex items-center gap-1.5 text-xs',
                   sourceColor.tag,
                   sourceColor.border,
                   sourceColor.hover
@@ -141,7 +146,10 @@ export function HistoryArticleCard({
                 data-testid="article-source"
               >
                 <span
-                  className={cn('w-2 h-2 rounded-full shrink-0', sourceColor.dot)}
+                  className={cn(
+                    'h-2 w-2 shrink-0 rounded-full',
+                    sourceColor.dot
+                  )}
                   aria-hidden="true"
                 />
                 {article.companyName ?? article.source.name}
@@ -152,7 +160,7 @@ export function HistoryArticleCard({
             {viewedAt && viewedTimeAgo && (
               <BadgeV2
                 variant="secondary"
-                className="text-xs flex items-center gap-1"
+                className="flex items-center gap-1 text-xs"
                 aria-label={`閲覧: ${viewedTimeAgo}`}
               >
                 <Clock className="h-3 w-3" aria-hidden="true" />
@@ -161,7 +169,7 @@ export function HistoryArticleCard({
             )}
 
             {/* Published At - inline with badges */}
-            <span className="flex items-center gap-1 text-muted-foreground">
+            <span className="text-muted-foreground flex items-center gap-1">
               <Calendar className="h-3 w-3" aria-hidden="true" />
               <time dateTime={article.publishedAt}>
                 {formatDateWithTime(article.publishedAt)}
@@ -170,7 +178,7 @@ export function HistoryArticleCard({
           </div>
         </div>
 
-        <div className="min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0">
+        <div className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center">
           <ShareButton
             title={article.translatedTitle || article.title}
             url={article.url}
@@ -181,9 +189,9 @@ export function HistoryArticleCard({
       </div>
 
       {/* Title */}
-      <h3 className="font-heading text-lg sm:text-xl font-semibold leading-snug text-foreground line-clamp-2">
+      <h3 className="font-heading text-foreground line-clamp-2 text-lg leading-snug font-semibold sm:text-xl">
         <Link
-          href={`/articles/${article.id}`}
+          href={`/articles/${article.id}?from=${encodeURIComponent(from)}`}
           className="hover:text-primary transition-colors"
           onClick={(e) => e.stopPropagation()}
         >
@@ -193,7 +201,7 @@ export function HistoryArticleCard({
 
       {/* Summary */}
       {article.summary && (
-        <p className="text-sm leading-relaxed text-foreground line-clamp-3">
+        <p className="text-foreground line-clamp-3 text-sm leading-relaxed">
           {article.summary}
         </p>
       )}
@@ -205,14 +213,16 @@ export function HistoryArticleCard({
       <div className="mt-auto flex items-center justify-between pt-1">
         <FavoriteButton
           articleId={String(article.id)}
-          className="h-11 px-4 min-w-[44px] min-h-[44px]"
+          className="h-11 min-h-[44px] min-w-[44px] px-4"
           fetchInitialStatus
         />
         <div className="flex items-center gap-3">
           {readingTime && contentLength > 0 && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="text-muted-foreground flex items-center gap-1 text-xs">
               <Clock className="h-3 w-3" aria-hidden="true" />
-              <span>{readingTime}分 / {contentLength.toLocaleString('ja-JP')}文字</span>
+              <span>
+                {readingTime}分 / {contentLength.toLocaleString('ja-JP')}文字
+              </span>
             </span>
           )}
           <ButtonV2
@@ -222,10 +232,10 @@ export function HistoryArticleCard({
               e.stopPropagation();
               window.open(article.url, '_blank', 'noopener,noreferrer');
             }}
-            className="h-11 px-4 text-xs min-w-[44px] min-h-[44px]"
+            className="h-11 min-h-[44px] min-w-[44px] px-4 text-xs"
             aria-label="元記事を新しいタブで開く"
           >
-            <ExternalLink className="h-4 w-4 mr-1" aria-hidden="true" />
+            <ExternalLink className="mr-1 h-4 w-4" aria-hidden="true" />
             元記事
           </ButtonV2>
         </div>

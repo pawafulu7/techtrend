@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Calendar, Download, Clock, ExternalLink } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
@@ -12,6 +11,8 @@ import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { useIsNewArticle } from '@/app/components/common/relative-time';
+import { useReadStatus } from '@/app/components/article/hooks/use-read-status';
+import { getReadingTime } from '@/app/components/article/hooks/get-reading-time';
 
 /**
  * CompactCard - Title-only card for increased article density
@@ -43,34 +44,9 @@ export function CompactCard({
   showTags = true,
   onTagClick,
 }: ArticleCardProps & { isRead?: boolean }) {
-  const [isRead, setIsRead] = useState(initialIsRead);
+  const isRead = useReadStatus(article.id, initialIsRead);
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  // Listen for read status changes
-  useEffect(() => {
-    const handleReadStatusChange = (event: CustomEvent) => {
-      if (event.detail.articleId === article.id) {
-        setIsRead(event.detail.isRead);
-      }
-    };
-
-    window.addEventListener(
-      'article-read-status-changed',
-      handleReadStatusChange as EventListener
-    );
-    return () => {
-      window.removeEventListener(
-        'article-read-status-changed',
-        handleReadStatusChange as EventListener
-      );
-    };
-  }, [article.id]);
-
-  // Update isRead when prop changes
-  useEffect(() => {
-    setIsRead(initialIsRead);
-  }, [initialIsRead]);
 
   // Note: Use hook to avoid Date.now() during render (React Compiler purity rule)
   const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;
@@ -80,8 +56,7 @@ export function CompactCard({
 
   // Reading time calculation (~500 chars/min for Japanese content)
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
-  const readingTime =
-    contentLength > 0 ? Math.max(1, Math.ceil(contentLength / 500)) : null;
+  const readingTime = getReadingTime(contentLength);
 
   const navigateToArticle = () => {
     if (onArticleClick) {
