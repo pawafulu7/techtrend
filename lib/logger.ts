@@ -155,7 +155,7 @@ const logger = pino({
 
   serializers: {
     // Custom error serializer with sanitization (handles API keys in messages)
-    error: (err) => {
+    err: (err) => {
       return sanitizeError(err);
     },
     request: (req) => ({
