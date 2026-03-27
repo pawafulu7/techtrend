@@ -29,7 +29,7 @@ jest.mock('@/lib/cache', () => ({
   })),
 }));
 
-jest.mock('@/lib/logger/index', () => ({
+jest.mock('@/lib/logger', () => ({
   __esModule: true,
   default: {
     error: jest.fn(),

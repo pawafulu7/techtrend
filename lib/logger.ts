@@ -2,6 +2,7 @@ import pino from 'pino';
 import crypto from 'crypto';
 
 const isProduction = process.env.NODE_ENV === 'production';
+const isTest = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
 
 /**
  * Hash sensitive values for privacy while maintaining debuggability
@@ -136,7 +137,9 @@ const REDACT_PATHS = [
 ];
 
 const logger = pino({
-  level: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
+  level: isTest
+    ? 'silent'
+    : process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
 
   // Pino's redact feature for structured data masking
   redact: {
@@ -152,7 +155,7 @@ const logger = pino({
 
   serializers: {
     // Custom error serializer with sanitization (handles API keys in messages)
-    error: (err) => {
+    err: (err) => {
       return sanitizeError(err);
     },
     request: (req) => ({

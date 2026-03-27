@@ -18,7 +18,7 @@ import {
   SourceCategoryId,
 } from '@/lib/constants/source-categories';
 import { RedisCache } from '@/lib/cache';
-import logger from '@/lib/logger/index';
+import logger from '@/lib/logger';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { DiffChange } from '@/lib/ai/extraction/extraction-schemas';
@@ -99,7 +99,7 @@ async function getDiffSummaryHandler(request: NextRequest) {
         });
       }
     } catch (cacheError) {
-      logger.warn('Cache read error', cacheError);
+      logger.warn({ err: cacheError }, 'Cache read error');
     }
 
     // Query database
@@ -181,7 +181,7 @@ async function getDiffSummaryHandler(request: NextRequest) {
       try {
         await cacheInstance.set(cacheKey, response);
       } catch (cacheError) {
-        logger.warn('Cache write error', cacheError);
+        logger.warn({ err: cacheError }, 'Cache write error');
       }
     }
 
@@ -194,7 +194,7 @@ async function getDiffSummaryHandler(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('Failed to get diff summaries', error);
+    logger.error({ err: error }, 'Failed to get diff summaries');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -278,7 +278,7 @@ async function generateDiffSummaryHandler(request: NextRequest) {
           cacheInstance.del(`diff-summary:${week}:all`),
         ]);
       } catch (cacheError) {
-        logger.warn('Cache invalidation error', cacheError);
+        logger.warn({ err: cacheError }, 'Cache invalidation error');
       }
 
       return NextResponse.json({
@@ -302,7 +302,7 @@ async function generateDiffSummaryHandler(request: NextRequest) {
         ];
         await Promise.all(cacheKeys.map((key) => cacheInstance.del(key)));
       } catch (cacheError) {
-        logger.warn('Cache invalidation error', cacheError);
+        logger.warn({ err: cacheError }, 'Cache invalidation error');
       }
 
       return NextResponse.json({
@@ -318,7 +318,7 @@ async function generateDiffSummaryHandler(request: NextRequest) {
       });
     }
   } catch (error) {
-    logger.error('Failed to generate diff summaries', error);
+    logger.error({ err: error }, 'Failed to generate diff summaries');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

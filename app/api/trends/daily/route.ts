@@ -3,7 +3,7 @@ import { TrendPeriodType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-generator';
 import { RedisCache } from '@/lib/cache';
-import logger from '@/lib/logger/index';
+import logger from '@/lib/logger';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
 
@@ -118,7 +118,10 @@ async function enrichReportWithThumbnails(
       },
     });
   } catch (error) {
-    logger.warn('Failed to fetch articles for thumbnail enrichment', error);
+    logger.warn(
+      { err: error },
+      'Failed to fetch articles for thumbnail enrichment'
+    );
     const { detailedSummary: _ds2, ...clean } = reportData as Record<
       string,
       unknown
@@ -222,7 +225,7 @@ export async function GET(request: NextRequest) {
         });
       }
     } catch (cacheError) {
-      logger.warn('Cache read error', cacheError);
+      logger.warn({ err: cacheError }, 'Cache read error');
     }
 
     // レポート取得（日付指定でフィルタリング）
@@ -338,7 +341,7 @@ export async function GET(request: NextRequest) {
     try {
       await cacheInstance.set(cacheKey, response);
     } catch (cacheError) {
-      logger.warn('Cache write error', cacheError);
+      logger.warn({ err: cacheError }, 'Cache write error');
     }
 
     return NextResponse.json(response, {
@@ -348,7 +351,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('Failed to get daily trend report', error);
+    logger.error({ err: error }, 'Failed to get daily trend report');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -403,7 +406,7 @@ async function generateDailyReportHandler(request: NextRequest) {
       });
       await cacheInstance.del(cacheKey);
     } catch (cacheError) {
-      logger.warn('Cache invalidation error', cacheError);
+      logger.warn({ err: cacheError }, 'Cache invalidation error');
     }
 
     return NextResponse.json({
@@ -412,7 +415,7 @@ async function generateDailyReportHandler(request: NextRequest) {
       message: 'Daily trend report generated successfully',
     });
   } catch (error) {
-    logger.error('Failed to generate daily trend report', error);
+    logger.error({ err: error }, 'Failed to generate daily trend report');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

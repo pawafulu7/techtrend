@@ -1,6 +1,6 @@
 import { PrismaClient, TrendPeriodType } from '@prisma/client';
 import type { GenerativeModel } from '@google/generative-ai';
-import logger from '@/lib/logger/index';
+import logger from '@/lib/logger';
 import { extractFirstJsonObject } from '@/lib/types/trend-ai-summary';
 import type {
   ArticleWithRelations,
@@ -57,8 +57,8 @@ export async function generateAISummary(
     return { content, format: 'json' };
   } catch (error) {
     logger.warn(
-      'Failed to generate structured AI summary, falling back to legacy format',
-      error
+      { err: error },
+      'Failed to generate structured AI summary, falling back to legacy format'
     );
     const content = await generateAISummaryLegacyPlainText(
       model,
@@ -208,7 +208,10 @@ async function buildStructuredInput(
       },
     };
   } catch (error) {
-    logger.warn('Failed to build comparison data for AI summary', error);
+    logger.warn(
+      { err: error },
+      'Failed to build comparison data for AI summary'
+    );
     input.comparison = { available: false };
   }
 

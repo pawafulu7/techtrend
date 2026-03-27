@@ -54,7 +54,7 @@ jest.mock('@/lib/ai/diff-summary', () => ({
   }),
 }));
 
-jest.mock('@/lib/logger/index', () => ({
+jest.mock('@/lib/logger', () => ({
   __esModule: true,
   default: {
     error: jest.fn(),
