@@ -1,175 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { createFetcher } from '@/lib/fetchers';
-import { ArticleSummarizer } from '@/lib/ai';
-import { normalizeTagInput, isValidTagArray } from '@/lib/utils/tag/tag-normalizer';
-import type { ApiResponse, CollectResult } from '@/types/api';
+import { collectFeeds } from '@/lib/services/feed-collect-service';
+import { withFeedCollectAuth } from './with-feed-collect-auth';
 import { distributedLock } from '@/lib/cache/distributed-lock';
+import type { ApiResponse } from '@/types/api';
 
 // Force dynamic to prevent Next.js 16 build-time page data collection
 // This route uses jsdom (ESM-only) which fails during static analysis
 export const dynamic = 'force-dynamic';
 
-function isAuthorized(req: NextRequest): boolean {
-  // Accept either our CRON_TOKEN or Vercel's CRON_SECRET (added to Authorization header by Vercel Cron)
-  const token = process.env.CRON_TOKEN || process.env.CRON_SECRET || '';
-  if (!token) return false;
-  const auth = req.headers.get('authorization');
-  const bearer = auth?.startsWith('Bearer ')
-    ? auth.substring('Bearer '.length)
-    : undefined;
-  const qp = req.nextUrl.searchParams.get('token') || undefined;
-  return bearer === token || qp === token;
-}
-
-async function performCollect() {
-  try {
-    const results: CollectResult[] = [];
-    
-    // Get all enabled sources
-    const sources = await prisma.source.findMany({
-      where: { enabled: true },
-    });
-
-    // Initialize AI summarizer
-    const apiKey = process.env.GEMINI_API_KEY;
-    const summarizer = apiKey ? new ArticleSummarizer(apiKey) : null;
-
-    for (const source of sources) {
-      const result: CollectResult = {
-        source: source.name,
+async function collectHandler(_request: NextRequest) {
+  const result = await distributedLock.executeWithLock(
+    'feeds:collect',
+    async () => {
+      const data = await collectFeeds();
+      return NextResponse.json({
         success: true,
-        newArticles: 0,
-        totalArticles: 0,
-      };
+        data,
+      } as ApiResponse<typeof data>);
+    },
+    300
+  );
 
-      try {
-        // Create fetcher for source
-        const fetcher = createFetcher(source);
-        const { articles, errors } = await fetcher.fetch();
-        
-        result.totalArticles = articles.length;
-        if (errors.length > 0) {
-          result.success = false;
-          result.error = errors.map(e => e.message).join(', ');
-        }
-
-        // Batch check for existing articles (N+1 optimization)
-        const articleURLs = articles.map(a => a.url);
-        const existingArticles = await prisma.article.findMany({
-          where: { url: { in: articleURLs } },
-          select: { url: true }
-        });
-        const existingURLSet = new Set(existingArticles.map(a => a.url));
-
-        // Filter to only new articles
-        const newArticles = articles.filter(a => !existingURLSet.has(a.url));
-
-        // Process only new articles
-        for (const articleData of newArticles) {
-          try {
-              // タグを正規化してバリデーション
-              // Note: articleData is CreateArticleInput with tagNames property
-              // The RSS categories have already been converted to tagNames in the fetcher layer
-              const tagNames = articleData.tagNames || [];
-              const normalizedTags = normalizeTagInput(tagNames);
-              
-              // デバッグ: 不正なタグが検出された場合は警告
-              if (process.env.NODE_ENV !== 'production' && tagNames.length > 0) {
-                if (!isValidTagArray(tagNames) && Array.isArray(tagNames)) {
-                }
-              }
-
-              // Create article
-              const article = await prisma.article.create({
-                data: {
-                  title: articleData.title,
-                  url: articleData.url,
-                  summary: articleData.summary,
-                  thumbnail: articleData.thumbnail,
-                  content: articleData.content,
-                  publishedAt: articleData.publishedAt,
-                  sourceId: articleData.sourceId,
-                  tags: {
-                    connectOrCreate: normalizedTags.map(name => ({
-                      where: { name },
-                      create: { name },
-                    })),
-                  },
-                },
-              });
-
-              result.newArticles++;
-
-              // Generate AI summary with unified format if not present and summarizer available
-              if (!article.summary && article.content && summarizer) {
-                try {
-                  const result = await summarizer.summarizeUnified(
-                    article.id,
-                    article.title,
-                    article.content
-                  );
-                  
-                  await prisma.article.update({
-                    where: { id: article.id },
-                    data: { 
-                      summary: result.summary,
-                      detailedSummary: result.detailedSummary,
-                      articleType: result.articleType,
-                      summaryVersion: result.summaryVersion,
-                    },
-                  });
-                } catch {
-                }
-              }
-          } catch (error) {
-            if (!result.error) {
-              result.error = '';
-            }
-            result.error += `Article error: ${error instanceof Error ? error.message : String(error)}; `;
-          }
-        }
-      } catch (error) {
-        result.success = false;
-        result.error = `Source error: ${error instanceof Error ? error.message : String(error)}`;
-      }
-
-      results.push(result);
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        results,
-        summary: {
-          totalFetched: results.reduce((sum, r) => sum + r.totalArticles, 0),
-          totalCreated: results.reduce((sum, r) => sum + r.newArticles, 0),
-          totalErrors: results.filter(r => !r.success).length,
-        },
-      },
-    } as ApiResponse<{ results: CollectResult[]; summary: { totalFetched: number; totalCreated: number; totalErrors: number; } }>);
-  } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to collect feeds',
-      details: error instanceof Error ? error.message : undefined,
-    } as ApiResponse<never>, { status: 500 });
-  }
-}
-
-export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
-  // Avoid concurrent runs
-  const result = await distributedLock.executeWithLock('feeds:collect', performCollect, 300);
   if (!result) {
-    return NextResponse.json({ success: false, error: 'Another run in progress' }, { status: 423 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Another run in progress',
+      } as ApiResponse<never>,
+      { status: 423 }
+    );
   }
   return result;
 }
 
+export const POST = withFeedCollectAuth(collectHandler);
+
 // Allow manual triggering via GET with token
-export async function GET(req: NextRequest) {
-  return POST(req);
-}
+export const GET = withFeedCollectAuth(collectHandler);
