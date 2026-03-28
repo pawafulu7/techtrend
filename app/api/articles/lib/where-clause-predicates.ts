@@ -18,12 +18,13 @@
  *   normalizeArticleCategory() — different validation approaches.
  */
 
-import type { Prisma } from '@prisma/client';
+import { SkipReason, type Prisma } from '@prisma/client';
 import {
   getDateRangeFilter,
   parseDateFromTo,
   getDateFieldForSort,
 } from '@/app/lib/date-utils';
+import logger from '@/lib/logger';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -52,7 +53,7 @@ export function pushLowQualityFilter(
         { skipReason: null },
         {
           skipReason: {
-            notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const],
+            notIn: [SkipReason.THIN_CONTENT, SkipReason.QUALITY_FAILED],
           },
         },
       ],
@@ -143,14 +144,14 @@ export function pushTagFilter(
   tags: string | null | undefined,
   tagMode: string | null | undefined
 ): void {
-  // Build unified tag list: `tags` takes precedence, `tag` is the fallback
-  const tagList = tags
-    ? tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0)
-    : tag
-      ? [tag]
+  // Build unified tag list: `tag` takes precedence for backward compatibility
+  const tagList = tag
+    ? [tag]
+    : tags
+      ? tags
+          .split(',')
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0)
       : [];
 
   if (tagList.length === 0) return;
@@ -251,6 +252,10 @@ export function pushDateRangeFilter(
         gte: customRange.from,
         lte: customRange.to,
       };
+    } else {
+      logger.warn(
+        `pushDateRangeFilter: Invalid custom date range ignored dateFrom=${dateFrom} dateTo=${dateTo}`
+      );
     }
   } else if (dateRange && dateRange !== 'all') {
     const startDate = getDateRangeFilter(dateRange);

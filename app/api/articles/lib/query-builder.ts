@@ -126,18 +126,10 @@ export class ArticleWhereClauseBuilder {
   withContentFilter(includeEmptyContent: boolean): this {
     if (!includeEmptyContent) {
       // Optimize for partial index: use single AND condition
-      this.where.AND = Array.isArray(this.where.AND)
-        ? [
-            ...this.where.AND,
-            {
-              AND: [{ content: { not: null } }, { content: { not: '' } }],
-            },
-          ]
-        : [
-            {
-              AND: [{ content: { not: null } }, { content: { not: '' } }],
-            },
-          ];
+      // AND array is always initialized in the constructor
+      (this.where.AND as ArticleWhereInput[]).push({
+        AND: [{ content: { not: null } }, { content: { not: '' } }],
+      });
     }
     return this;
   }
@@ -323,12 +315,11 @@ export class ArticleWhereClauseBuilder {
     tags: string | undefined,
     tagMode: string | undefined
   ): this {
-    // Preserve backward compatibility: single `tag` takes precedence over `tags`
     pushTagFilter(
       this.where,
       this.where.AND as ArticleWhereInput[],
       tag,
-      tag ? undefined : tags,
+      tags,
       tagMode
     );
     return this;
