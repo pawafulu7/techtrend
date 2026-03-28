@@ -109,26 +109,26 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
     }
   }, []);
 
-  const goToPreviousDay = () => {
+  const goToPreviousDay = useCallback(() => {
     if (navigation.prevDate) {
       setRequestedDate(navigation.prevDate);
       fetchReport(navigation.prevDate);
     }
-  };
+  }, [navigation.prevDate, fetchReport]);
 
-  const goToNextDay = () => {
+  const goToNextDay = useCallback(() => {
     if (navigation.nextDate) {
       setRequestedDate(navigation.nextDate);
       fetchReport(navigation.nextDate);
     }
-  };
+  }, [navigation.nextDate, fetchReport]);
 
-  const goToLatest = () => {
+  const goToLatest = useCallback(() => {
     if (latestAvailableDate) {
       setRequestedDate(latestAvailableDate);
       fetchReport(latestAvailableDate);
     }
-  };
+  }, [latestAvailableDate, fetchReport]);
 
   return (
     <div>

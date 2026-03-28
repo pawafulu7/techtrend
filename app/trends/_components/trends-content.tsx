@@ -9,13 +9,18 @@ import { TrendLineChart, SourcePieChart } from '@/app/components/trends';
 import { TrendingKeywordCard } from '@/app/components/trends/overview/TrendingKeywordCard';
 import { TrendStatsBar } from '@/app/components/trends/overview/TrendStatsBar';
 import { TrendNavigationCards } from '@/app/components/trends/overview/TrendNavigationCards';
-import { TrendingKeyword, NewTag, TrendAnalysis } from './trends-data';
+import {
+  TrendingKeyword,
+  NewTag,
+  TrendAnalysis,
+  SourceDataItem,
+} from './trends-data';
 
 interface TrendsContentProps {
   initialKeywords: TrendingKeyword[];
   initialNewTags: NewTag[];
   initialAnalysis: TrendAnalysis | null;
-  initialSourceData: { name: string; value: number; percentage: number }[];
+  initialSourceData: SourceDataItem[];
 }
 
 export function TrendsContent({

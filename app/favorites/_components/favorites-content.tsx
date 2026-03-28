@@ -162,10 +162,10 @@ export function FavoritesContent({
 
   // Focus on empty state after all items removed
   useEffect(() => {
-    if (!isLoading && allFavorites.length === 0) {
+    if (!isLoading && !error && allFavorites.length === 0) {
       emptyStateRef.current?.focus();
     }
-  }, [isLoading, allFavorites.length]);
+  }, [isLoading, error, allFavorites.length]);
 
   // Loading state
   if (isLoading && allFavorites.length === 0) {

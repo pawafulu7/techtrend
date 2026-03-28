@@ -94,8 +94,8 @@ async function enrichReportWithThumbnails(
           }
         }
       }
-    } catch {
-      // aiSummary parse failure - skip evidence enrichment
+    } catch (e) {
+      logger.debug({ error: e }, 'Failed to parse aiSummary');
     }
   }
 

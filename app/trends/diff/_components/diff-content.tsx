@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -148,7 +148,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
     fetchData(next);
   };
 
-  const grouped = getGroupedChanges(data);
+  const grouped = useMemo(() => getGroupedChanges(data), [data]);
 
   return (
     <div>

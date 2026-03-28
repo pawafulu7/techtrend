@@ -13,7 +13,9 @@ import {
   Newspaper,
   TrendingUp,
   Clock,
+  AlertCircle,
 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useFavoriteSources } from '@/lib/favorites/hooks';
 import Link from 'next/link';
 import type { ArticleWithRelations } from '@/types/models';
@@ -38,6 +40,7 @@ export function FavoriteFeedContent() {
 
   const [articles, setArticles] = useState<ArticleWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
@@ -91,11 +94,13 @@ export function FavoriteFeedContent() {
 
       setArticles(data.articles);
       setTotalPages(data.pagination.totalPages);
+      setFetchError(null);
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') return;
       if (process.env.NODE_ENV !== 'production') {
         console.error('Failed to load favorite articles:', error);
       }
+      setFetchError('記事の取得に失敗しました');
     } finally {
       if (!controller.signal.aborted) {
         setLoading(false);
@@ -271,7 +276,12 @@ export function FavoriteFeedContent() {
             <CardV2 key={i} className="bg-muted h-32 animate-pulse" />
           ))}
         </div>
-      ) : sortedArticles.length === 0 ? (
+      ) : fetchError ? (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{fetchError}</AlertDescription>
+        </Alert>
+      ) : sortedArticles.length === 0 && !loading && !fetchError ? (
         <CardV2 className="mx-auto max-w-md">
           <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
             <Newspaper className="text-muted-foreground mx-auto mb-4 h-12 w-12" />

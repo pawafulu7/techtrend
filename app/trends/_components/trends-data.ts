@@ -42,6 +42,7 @@ export interface SourceDataItem {
   name: string;
   value: number;
   percentage: number;
+  [key: string]: string | number | undefined;
 }
 
 export async function fetchKeywordsData(): Promise<{
@@ -230,7 +231,12 @@ export async function fetchAnalysisData(
       {} as Record<string, Record<string, number>>
     );
 
-    const dates = Object.keys(timelineByDate).sort();
+    const dates: string[] = [];
+    const current = new Date(startDate);
+    while (current <= now) {
+      dates.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
     const tagNames = topTags.map((t) => t.name);
 
     const completeTimeline = dates.map((date) => {
