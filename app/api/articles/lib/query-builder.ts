@@ -323,11 +323,12 @@ export class ArticleWhereClauseBuilder {
     tags: string | undefined,
     tagMode: string | undefined
   ): this {
+    // Preserve backward compatibility: single `tag` takes precedence over `tags`
     pushTagFilter(
       this.where,
       this.where.AND as ArticleWhereInput[],
       tag,
-      tags,
+      tag ? undefined : tags,
       tagMode
     );
     return this;
