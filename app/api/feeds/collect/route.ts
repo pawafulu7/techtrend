@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { collectFeeds } from '@/lib/services/feed-collect-service';
-import { withFeedCollectAuth } from './with-feed-collect-auth';
+import {
+  withFeedCollectAuth,
+  withFeedCollectTokenAuth,
+} from './with-feed-collect-auth';
 import { distributedLock } from '@/lib/cache/distributed-lock';
 import type { ApiResponse } from '@/types/api';
 
@@ -9,25 +12,39 @@ import type { ApiResponse } from '@/types/api';
 export const dynamic = 'force-dynamic';
 
 async function collectHandler(_request: NextRequest) {
-  const data = await distributedLock.executeWithLock(
-    'feeds:collect',
-    () => collectFeeds(),
-    300
-  );
+  try {
+    const data = await distributedLock.executeWithLock(
+      'feeds:collect',
+      () => collectFeeds(),
+      300
+    );
 
-  if (!data) {
+    if (!data) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Another run in progress',
+        } as ApiResponse<never>,
+        { status: 423 }
+      );
+    }
+    return NextResponse.json({ success: true, data } as ApiResponse<
+      typeof data
+    >);
+  } catch (error) {
     return NextResponse.json(
       {
         success: false,
-        error: 'Another run in progress',
+        error: 'Failed to collect feeds',
+        details: error instanceof Error ? error.message : undefined,
       } as ApiResponse<never>,
-      { status: 423 }
+      { status: 500 }
     );
   }
-  return NextResponse.json({ success: true, data } as ApiResponse<typeof data>);
 }
 
+// POST: Bearer + ?token= + admin session
 export const POST = withFeedCollectAuth(collectHandler);
 
-// Allow manual triggering via GET with token
-export const GET = withFeedCollectAuth(collectHandler);
+// GET: Bearer + ?token= のみ（admin sessionは不可 — GETはCSRF保護対象外のため）
+export const GET = withFeedCollectTokenAuth(collectHandler);
