@@ -5,12 +5,7 @@
  * for article queries with support for various filters.
  */
 
-import { Prisma, ArticleCategory } from '@prisma/client';
-import {
-  getDateRangeFilter,
-  parseDateFromTo,
-  getDateFieldForSort,
-} from '@/app/lib/date-utils';
+import { ArticleCategory } from '@prisma/client';
 import { sourceCache } from '@/lib/cache/source-cache';
 import { MetricsCollector, withCacheTiming } from '@/lib/metrics/performance';
 import logger from '@/lib/logger';
@@ -21,6 +16,14 @@ import {
   type FilterParams,
   type DisplayOptions,
 } from './types';
+import {
+  pushLowQualityFilter,
+  pushProcessedFilter,
+  pushReadFilter,
+  pushTagFilter,
+  pushSearchFilter,
+  pushDateRangeFilter,
+} from './where-clause-predicates';
 
 /**
  * Build select fields based on display options
@@ -113,6 +116,8 @@ export class ArticleWhereClauseBuilder {
     this.metrics = metrics;
     // Always exclude hidden articles from public-facing APIs
     this.where.isHidden = false;
+    // Initialize AND array so predicate functions can safely push into it
+    this.where.AND = [];
   }
 
   /**
@@ -121,18 +126,10 @@ export class ArticleWhereClauseBuilder {
   withContentFilter(includeEmptyContent: boolean): this {
     if (!includeEmptyContent) {
       // Optimize for partial index: use single AND condition
-      this.where.AND = Array.isArray(this.where.AND)
-        ? [
-            ...this.where.AND,
-            {
-              AND: [{ content: { not: null } }, { content: { not: '' } }],
-            },
-          ]
-        : [
-            {
-              AND: [{ content: { not: null } }, { content: { not: '' } }],
-            },
-          ];
+      // AND array is always initialized in the constructor
+      (this.where.AND as ArticleWhereInput[]).push({
+        AND: [{ content: { not: null } }, { content: { not: '' } }],
+      });
     }
     return this;
   }
@@ -141,9 +138,7 @@ export class ArticleWhereClauseBuilder {
    * Exclude articles without processed summaries
    */
   withProcessedFilter(excludeUnprocessed: boolean): this {
-    if (excludeUnprocessed) {
-      this.where.summaryComputedAt = { not: null };
-    }
+    pushProcessedFilter(this.where, excludeUnprocessed);
     return this;
   }
 
@@ -155,35 +150,10 @@ export class ArticleWhereClauseBuilder {
    * PDF and SLIDE skip reasons are NOT excluded (valid content types)
    */
   withLowQualityFilter(excludeLowQuality: boolean): this {
-    if (excludeLowQuality) {
-      // Build AND conditions for low quality filter
-      // Import SkipReason enum values for type-safe filtering
-      const lowQualityFilters: ArticleWhereInput[] = [
-        // Exclude THIN_CONTENT and QUALITY_FAILED skip reasons
-        // PDF and SLIDE are valid content types, so they are NOT excluded
-        {
-          OR: [
-            { skipReason: null },
-            {
-              skipReason: {
-                notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const],
-              },
-            },
-          ],
-        },
-        // Exclude low quality score (< 30)
-        // Note: qualityScore is Float @default(0), so null is not possible
-        { qualityScore: { gte: 30 } },
-      ];
-
-      // Merge with existing AND conditions
-      if (!this.where.AND) {
-        this.where.AND = [];
-      } else if (!Array.isArray(this.where.AND)) {
-        this.where.AND = [this.where.AND];
-      }
-      this.where.AND = [...this.where.AND, ...lowQualityFilters];
-    }
+    pushLowQualityFilter(
+      this.where.AND as ArticleWhereInput[],
+      excludeLowQuality
+    );
     return this;
   }
 
@@ -194,23 +164,7 @@ export class ArticleWhereClauseBuilder {
     readFilter: string | undefined,
     userId: string | undefined
   ): this {
-    if (readFilter && userId) {
-      if (readFilter === 'unread') {
-        this.where.articleViews = {
-          none: {
-            userId: userId,
-            isRead: true,
-          },
-        };
-      } else if (readFilter === 'read') {
-        this.where.articleViews = {
-          some: {
-            userId: userId,
-            isRead: true,
-          },
-        };
-      }
-    }
+    pushReadFilter(this.where, readFilter, userId);
     return this;
   }
 
@@ -358,45 +312,13 @@ export class ArticleWhereClauseBuilder {
     tags: string | undefined,
     tagMode: string | undefined
   ): this {
-    if (tag) {
-      // Single tag (backward compatibility) - case-insensitive
-      this.where.tags = {
-        some: {
-          name: { equals: tag, mode: 'insensitive' },
-        },
-      };
-    } else if (tags) {
-      const tagList = tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0);
-
-      if (tagList.length > 0) {
-        if (tagMode === 'AND') {
-          // AND search: articles with all specified tags (case-insensitive)
-          const tagAnd = tagList.map((tagName) => ({
-            tags: {
-              some: {
-                name: { equals: tagName, mode: 'insensitive' as const },
-              },
-            },
-          }));
-          this.where.AND = Array.isArray(this.where.AND)
-            ? [...this.where.AND, ...tagAnd]
-            : tagAnd;
-        } else {
-          // OR search: articles with any of the specified tags (case-insensitive)
-          // Note: Prisma's `in` doesn't support mode, so we use OR conditions
-          this.where.tags = {
-            some: {
-              OR: tagList.map((tagName) => ({
-                name: { equals: tagName, mode: 'insensitive' as const },
-              })),
-            },
-          };
-        }
-      }
-    }
+    pushTagFilter(
+      this.where,
+      this.where.AND as ArticleWhereInput[],
+      tag,
+      tags,
+      tagMode
+    );
     return this;
   }
 
@@ -423,51 +345,7 @@ export class ArticleWhereClauseBuilder {
    * Filter by search keywords (supports multiple keywords with AND)
    */
   withSearchFilter(search: string | undefined): this {
-    if (search) {
-      const keywords = search
-        .trim()
-        .split(/[\s\u3000]+/)
-        .filter((k) => k.length > 0);
-
-      if (keywords.length === 1) {
-        // Single keyword
-        const searchOr: Prisma.ArticleWhereInput[] = [
-          {
-            title: {
-              contains: keywords[0],
-              mode: Prisma.QueryMode.insensitive,
-            },
-          },
-          {
-            summary: {
-              contains: keywords[0],
-              mode: Prisma.QueryMode.insensitive,
-            },
-          },
-        ];
-        this.where.AND = Array.isArray(this.where.AND)
-          ? [...this.where.AND, { OR: searchOr }]
-          : [{ OR: searchOr }];
-      } else if (keywords.length > 1) {
-        // Multiple keywords - AND search
-        const keywordConditions = keywords.map((keyword) => ({
-          OR: [
-            {
-              title: { contains: keyword, mode: Prisma.QueryMode.insensitive },
-            },
-            {
-              summary: {
-                contains: keyword,
-                mode: Prisma.QueryMode.insensitive,
-              },
-            },
-          ] as Prisma.ArticleWhereInput[],
-        }));
-        this.where.AND = Array.isArray(this.where.AND)
-          ? [...this.where.AND, ...keywordConditions]
-          : keywordConditions;
-      }
-    }
+    pushSearchFilter(this.where.AND as ArticleWhereInput[], search);
     return this;
   }
 
@@ -490,27 +368,7 @@ export class ArticleWhereClauseBuilder {
         ? { dateRange: optionsOrDateRange }
         : (optionsOrDateRange ?? {});
     const { dateRange, dateFrom, dateTo, sortBy } = options;
-    const dateField = getDateFieldForSort(sortBy);
-
-    if (dateFrom || dateTo) {
-      const customRange = parseDateFromTo(dateFrom, dateTo);
-      if (customRange) {
-        this.where[dateField] = {
-          gte: customRange.from,
-          lte: customRange.to,
-        };
-      }
-    } else if (dateRange && dateRange !== 'all') {
-      const startDate = getDateRangeFilter(dateRange);
-      if (startDate) {
-        const now = new Date();
-        const validStartDate = startDate > now ? now : startDate;
-        this.where[dateField] = {
-          gte: validStartDate,
-          lte: now,
-        };
-      }
-    }
+    pushDateRangeFilter(this.where, sortBy, dateRange, dateFrom, dateTo);
     return this;
   }
 
