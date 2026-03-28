@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { SourceCard } from '@/app/components/sources/SourceCard';
 import { Input } from '@/components/ui/input';
@@ -54,7 +54,7 @@ export default function SourcesContent() {
     },
   });
 
-  const allSources = data ?? [];
+  const allSources = useMemo(() => data ?? [], [data]);
 
   const sources = useMemo(() => {
     if (allSources.length === 0) return [];
@@ -109,11 +109,6 @@ export default function SourcesContent() {
     return filtered;
   }, [allSources, category, sortBy, order, search]);
 
-  // フィルタ/ソート条件変更時にページをリセット
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [category, sortBy, order, search]);
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
   };
@@ -157,12 +152,21 @@ export default function SourcesContent() {
             type="search"
             placeholder="ソースを検索..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             className="bg-card border-input pl-10"
           />
         </form>
 
-        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+        <Select
+          value={sortBy}
+          onValueChange={(v) => {
+            setSortBy(v as SortBy);
+            setCurrentPage(1);
+          }}
+        >
           <SelectTrigger className="w-[160px]">
             <SortAsc className="mr-2 h-4 w-4" />
             <SelectValue placeholder="並び替え" />
@@ -178,7 +182,10 @@ export default function SourcesContent() {
         <Button
           variant="outline"
           size="icon"
-          onClick={() => setOrder(order === 'desc' ? 'asc' : 'desc')}
+          onClick={() => {
+            setOrder(order === 'desc' ? 'asc' : 'desc');
+            setCurrentPage(1);
+          }}
           aria-label={order === 'desc' ? '昇順に切り替え' : '降順に切り替え'}
         >
           <SortAsc
@@ -190,7 +197,10 @@ export default function SourcesContent() {
       {/* Category tabs */}
       <Tabs
         value={category}
-        onValueChange={(v) => setCategory(v as SourceCategoryWithAll)}
+        onValueChange={(v) => {
+          setCategory(v as SourceCategoryWithAll);
+          setCurrentPage(1);
+        }}
       >
         <TabsList className="mb-4 w-full overflow-x-auto">
           <TabsTrigger value="all">

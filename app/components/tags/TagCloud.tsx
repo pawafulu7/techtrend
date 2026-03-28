@@ -16,6 +16,11 @@ interface Tag {
   trend: 'rising' | 'stable' | 'falling';
 }
 
+// Pre-compute skeleton widths at module level to avoid Math.random() during render
+const SKELETON_WIDTHS = Array.from({ length: 20 }, () =>
+  Math.floor(Math.random() * 100 + 50)
+);
+
 interface TagCloudProps {
   className?: string;
   limit?: number;
@@ -45,8 +50,8 @@ export function TagCloud({
     },
   });
 
-  const tags: Tag[] = data?.tags ?? [];
   const loading = isPending || isFetching;
+  const tags: Tag[] = useMemo(() => data?.tags ?? [], [data?.tags]);
   const errorMessage = isError
     ? error instanceof Error
       ? error.message
@@ -167,11 +172,11 @@ export function TagCloud({
       <CardContent>
         {loading ? (
           <div className="space-y-2">
-            {Array.from({ length: 20 }).map((_, i) => (
+            {SKELETON_WIDTHS.map((width, i) => (
               <Skeleton
                 key={i}
                 className="mr-2 mb-2 inline-block h-6"
-                style={{ width: `${Math.random() * 100 + 50}px` }}
+                style={{ width: `${width}px` }}
               />
             ))}
           </div>

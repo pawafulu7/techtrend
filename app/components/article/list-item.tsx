@@ -23,11 +23,12 @@ export function ArticleListItem({
   const isRead = useReadStatus(article.id, initialIsRead);
   const router = useRouter();
 
-  // Note: Use hook and state to avoid Date.now() during render (React Compiler purity rule)
+  // Note: Date.now() called in useEffect to avoid purity violations during render
   const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;
   const [hoursAgo, setHoursAgo] = useState<number | null>(null);
   useEffect(() => {
     const publishedDate = new Date(article.publishedAt);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: derive display value from current time
     setHoursAgo(
       Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60))
     );

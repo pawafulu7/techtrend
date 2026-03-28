@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -22,19 +22,11 @@ import {
   useMetricsPolling,
   usePollingControl,
 } from './hooks/useMetricsPolling';
-import type { MetricsHistory } from './types/dashboard';
-
 /**
  * パフォーマンスダッシュボード
  * DBアクセス最適化Phase 3のメトリクスを可視化
  */
 export default function PerformanceDashboard() {
-  const [history, setHistory] = useState<MetricsHistory>({
-    cacheHitRate: [],
-    latency: [],
-    batchSize: [],
-    throughput: [],
-  });
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // ポーリング制御（バックグラウンドタブでは停止）
@@ -45,55 +37,6 @@ export default function PerformanceDashboard() {
     interval,
     isActive
   );
-
-  // メトリクス更新時に履歴データを追記（最大50件保持）
-  useEffect(() => {
-    if (!metrics) return;
-
-    const timestamp = new Date().toLocaleTimeString('ja-JP', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-
-    const hitRate = parseFloat(
-      metrics.summary.totalCacheHitRate?.replace('%', '') || '0'
-    );
-    const favLatency =
-      metrics.summary.latencyP95?.favorite === 'N/A'
-        ? 0
-        : metrics.summary.latencyP95?.favorite || 0;
-    const viewLat =
-      metrics.summary.latencyP95?.view === 'N/A'
-        ? 0
-        : metrics.summary.latencyP95?.view || 0;
-    const avgLatency = (favLatency + viewLat) / 2;
-
-    const favBatch =
-      metrics.summary.batchSizes?.favorite === 'N/A'
-        ? 0
-        : metrics.summary.batchSizes?.favorite || 0;
-    const viewBatch =
-      metrics.summary.batchSizes?.view === 'N/A'
-        ? 0
-        : metrics.summary.batchSizes?.view || 0;
-    const avgBatchSize = (favBatch + viewBatch) / 2;
-
-    setHistory((prev) => ({
-      cacheHitRate: [
-        ...prev.cacheHitRate,
-        { time: timestamp, value: hitRate },
-      ].slice(-50),
-      latency: [...prev.latency, { time: timestamp, value: avgLatency }].slice(
-        -50
-      ),
-      batchSize: [
-        ...prev.batchSize,
-        { time: timestamp, value: avgBatchSize },
-      ].slice(-50),
-      throughput: prev.throughput,
-    }));
-  }, [metrics]);
 
   // 手動リフレッシュ
   const handleRefresh = async () => {

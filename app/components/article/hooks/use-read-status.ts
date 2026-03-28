@@ -14,7 +14,17 @@ export function useReadStatus(
   articleId: string,
   initialIsRead: boolean
 ): boolean {
+  // Store prev props in state to detect changes without using refs during render
+  const [prevArticleId, setPrevArticleId] = useState(articleId);
+  const [prevInitialIsRead, setPrevInitialIsRead] = useState(initialIsRead);
   const [isRead, setIsRead] = useState(initialIsRead);
+
+  // Sync state when articleId or initialIsRead prop changes (derived state pattern)
+  if (prevArticleId !== articleId || prevInitialIsRead !== initialIsRead) {
+    setPrevArticleId(articleId);
+    setPrevInitialIsRead(initialIsRead);
+    setIsRead(initialIsRead);
+  }
 
   useEffect(() => {
     const handleReadStatusChange = (
@@ -36,10 +46,6 @@ export function useReadStatus(
       );
     };
   }, [articleId]);
-
-  useEffect(() => {
-    setIsRead(initialIsRead);
-  }, [articleId, initialIsRead]);
 
   return isRead;
 }

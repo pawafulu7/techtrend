@@ -1,7 +1,7 @@
 'use client';
 
 import { useQueries } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type {
   ProcessingLogsResponse,
   EmbeddingSummaryResponse,
@@ -28,8 +28,6 @@ export function useJobsPolling(
   enabled: boolean = true,
   articleStatsRange: string = '7d'
 ): JobsPollingResult {
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-
   const results = useQueries({
     queries: [
       {
@@ -85,24 +83,33 @@ export function useJobsPolling(
   const loading =
     logsQuery.isLoading || embeddingQuery.isLoading || statsQuery.isLoading;
 
-  // lastUpdated を更新（いずれかのデータが存在すれば更新）
-  useEffect(() => {
+  // lastUpdated を派生（いずれかのデータが存在すれば現在時刻を返す）
+  const lastUpdated = useMemo(() => {
     if (
       !logsQuery.isLoading &&
       !embeddingQuery.isLoading &&
-      !statsQuery.isLoading
+      !statsQuery.isLoading &&
+      (logsQuery.dataUpdatedAt ||
+        embeddingQuery.dataUpdatedAt ||
+        statsQuery.dataUpdatedAt)
     ) {
-      if (logsQuery.data || embeddingQuery.data || statsQuery.data) {
-        setLastUpdated(new Date().toLocaleString('ja-JP'));
-      }
+      const latestUpdate = Math.max(
+        logsQuery.dataUpdatedAt ?? 0,
+        embeddingQuery.dataUpdatedAt ?? 0,
+        statsQuery.dataUpdatedAt ?? 0
+      );
+      return latestUpdate > 0
+        ? new Date(latestUpdate).toLocaleString('ja-JP')
+        : null;
     }
+    return null;
   }, [
     logsQuery.isLoading,
+    logsQuery.dataUpdatedAt,
     embeddingQuery.isLoading,
+    embeddingQuery.dataUpdatedAt,
     statsQuery.isLoading,
-    logsQuery.data,
-    embeddingQuery.data,
-    statsQuery.data,
+    statsQuery.dataUpdatedAt,
   ]);
 
   // 部分失敗ハンドリング: 各クエリが独立しているため、失敗した箇所のみエラー報告

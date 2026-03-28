@@ -1,5 +1,5 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { PerformanceMetrics, DashboardError } from '../types/dashboard';
 import { createEmptyPerformanceMetrics } from '../types/dashboard';
 
@@ -11,8 +11,6 @@ export function useMetricsPolling(
   interval: number = 30000, // デフォルト30秒
   enabled: boolean = true
 ) {
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-
   const results = useQueries({
     queries: [
       {
@@ -43,18 +41,27 @@ export function useMetricsPolling(
 
   const loading = optimizerQuery.isLoading || cacheQuery.isLoading;
 
-  // 両クエリが成功したときにlastUpdatedを更新
-  useEffect(() => {
-    if (!optimizerQuery.isLoading && !cacheQuery.isLoading) {
-      if (optimizerQuery.data || cacheQuery.data) {
-        setLastUpdated(new Date().toLocaleString('ja-JP'));
-      }
+  // 両クエリが成功したときにlastUpdatedを派生
+  const lastUpdated = useMemo(() => {
+    if (
+      !optimizerQuery.isLoading &&
+      !cacheQuery.isLoading &&
+      (optimizerQuery.dataUpdatedAt || cacheQuery.dataUpdatedAt)
+    ) {
+      const latestUpdate = Math.max(
+        optimizerQuery.dataUpdatedAt ?? 0,
+        cacheQuery.dataUpdatedAt ?? 0
+      );
+      return latestUpdate > 0
+        ? new Date(latestUpdate).toLocaleString('ja-JP')
+        : null;
     }
+    return null;
   }, [
     optimizerQuery.isLoading,
+    optimizerQuery.dataUpdatedAt,
     cacheQuery.isLoading,
-    optimizerQuery.data,
-    cacheQuery.data,
+    cacheQuery.dataUpdatedAt,
   ]);
 
   // エラー状態を統合
