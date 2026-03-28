@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -60,73 +61,65 @@ export function HeatmapPageClient() {
   const paramPeriod = searchParams.get('period');
   const period: Period = isValidPeriod(paramPeriod) ? paramPeriod : 'week';
 
-  const [heatmapData, setHeatmapData] = useState<CategoryData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   // Drilldown state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [drilldownCategory, setDrilldownCategory] = useState<string | null>(
     null
   );
   const [drilldownLabel, setDrilldownLabel] = useState<string>('');
-  const [drilldownArticles, setDrilldownArticles] = useState<
-    DrilldownArticle[]
-  >([]);
-  const [drilldownLoading, setDrilldownLoading] = useState(false);
-  const [drilldownError, setDrilldownError] = useState(false);
-
-  const abortRef = useRef<AbortController | null>(null);
-  const drilldownAbortRef = useRef<AbortController | null>(null);
 
   // Fetch heatmap data
-  const fetchHeatmap = useCallback(async (p: Period) => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/trends/heatmap?period=${p}`, {
+  const {
+    data: heatmapData = [],
+    isLoading: loading,
+    error: heatmapQueryError,
+    refetch: refetchHeatmap,
+  } = useQuery<CategoryData[]>({
+    queryKey: ['heatmap', { period }],
+    queryFn: async ({ signal }) => {
+      const response = await fetch(`/api/trends/heatmap?period=${period}`, {
         cache: 'no-store',
-        signal: controller.signal,
+        signal,
       });
-
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-
       const result: HeatmapApiResponse = await response.json();
-
       if (result.error) {
-        setError(result.error);
-        setHeatmapData([]);
-      } else {
-        setHeatmapData(result.categories ?? []);
+        throw new Error(result.error);
       }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Failed to fetch heatmap data:', err);
-      }
-      setError('データの取得に失敗しました');
-      setHeatmapData([]);
-    } finally {
-      if (!controller.signal.aborted) {
-        setLoading(false);
-      }
-    }
-  }, []);
+      return result.categories ?? [];
+    },
+  });
 
-  useEffect(() => {
-    fetchHeatmap(period);
-    return () => {
-      abortRef.current?.abort();
-      drilldownAbortRef.current?.abort();
-    };
-  }, [period, fetchHeatmap]);
+  const error = heatmapQueryError ? heatmapQueryError.message : null;
+
+  // Fetch drilldown articles
+  const {
+    data: drilldownArticles = [],
+    isLoading: drilldownInitialLoading,
+    isFetching: drilldownFetching,
+    isError: drilldownError,
+    refetch: refetchDrilldown,
+  } = useQuery<DrilldownArticle[]>({
+    queryKey: ['heatmap-articles', { category: drilldownCategory }],
+    queryFn: async ({ signal }) => {
+      const url = `/api/articles?category=${encodeURIComponent(drilldownCategory!)}&limit=20&sortBy=publishedAt&sortOrder=desc&includeRelations=true`;
+      const response = await fetch(url, { cache: 'no-store', signal });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const result: ArticlesApiResponse = await response.json();
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      if (result.success === false) {
+        throw new Error('記事の取得に失敗しました');
+      }
+      return result.data?.items ?? [];
+    },
+    enabled: drilldownCategory !== null,
+  });
 
   // Period toggle handler
   const handlePeriodChange = useCallback(
@@ -141,44 +134,11 @@ export function HeatmapPageClient() {
 
   // Category click -> drilldown
   const handleCategoryClick = useCallback(
-    async (category: string) => {
+    (category: string) => {
       const clicked = heatmapData.find((d) => d.category === category);
       setDrilldownCategory(category);
       setDrilldownLabel(clicked?.label ?? category);
       setSheetOpen(true);
-      setDrilldownLoading(true);
-      setDrilldownArticles([]);
-      setDrilldownError(false);
-
-      drilldownAbortRef.current?.abort();
-      const controller = new AbortController();
-      drilldownAbortRef.current = controller;
-
-      try {
-        const url = `/api/articles?category=${encodeURIComponent(category)}&limit=20&sortBy=publishedAt&sortOrder=desc&includeRelations=true`;
-        const response = await fetch(url, {
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const result: ArticlesApiResponse = await response.json();
-        setDrilldownArticles(result.data?.items ?? []);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return;
-        if (process.env.NODE_ENV !== 'production') {
-          console.error('Failed to fetch drilldown articles:', err);
-        }
-        setDrilldownArticles([]);
-        setDrilldownError(true);
-      } finally {
-        if (!controller.signal.aborted) {
-          setDrilldownLoading(false);
-        }
-      }
     },
     [heatmapData]
   );
@@ -186,7 +146,6 @@ export function HeatmapPageClient() {
   const handleSheetChange = useCallback((open: boolean) => {
     if (open) return;
     setSheetOpen(false);
-    drilldownAbortRef.current?.abort();
     setDrilldownCategory(null);
   }, []);
 
@@ -236,7 +195,7 @@ export function HeatmapPageClient() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => fetchHeatmap(period)}
+              onClick={() => void refetchHeatmap()}
               className="shrink-0 gap-2"
             >
               <RefreshCw className="h-4 w-4" />
@@ -279,14 +238,19 @@ export function HeatmapPageClient() {
           className="w-full overflow-y-auto sm:max-w-lg"
         >
           <SheetHeader>
-            <SheetTitle>{drilldownLabel}</SheetTitle>
+            <div className="flex items-center gap-2">
+              <SheetTitle>{drilldownLabel}</SheetTitle>
+              {drilldownFetching && !drilldownInitialLoading && (
+                <RefreshCw className="text-muted-foreground h-3.5 w-3.5 animate-spin" />
+              )}
+            </div>
             <SheetDescription>
               カテゴリ「{drilldownLabel}」の最新記事
             </SheetDescription>
           </SheetHeader>
 
           <div className="mt-6 space-y-3">
-            {drilldownLoading ? (
+            {drilldownInitialLoading ? (
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
                   <div
@@ -305,11 +269,7 @@ export function HeatmapPageClient() {
                   size="sm"
                   className="mt-3 gap-2"
                   disabled={!drilldownCategory}
-                  onClick={() => {
-                    if (drilldownCategory) {
-                      handleCategoryClick(drilldownCategory);
-                    }
-                  }}
+                  onClick={() => void refetchDrilldown()}
                 >
                   <RefreshCw className="h-4 w-4" />
                   再試行

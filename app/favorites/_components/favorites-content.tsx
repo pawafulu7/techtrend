@@ -60,7 +60,7 @@ export function FavoritesContent({
   // Filter and sort favorites
   const filteredFavorites = useMemo(() => {
     // Search filter (title and summary)
-    let result = searchQuery.trim()
+    const result = searchQuery.trim()
       ? allFavorites.filter((article) => {
           const query = searchQuery.toLowerCase();
           return (
@@ -157,7 +157,7 @@ export function FavoritesContent({
         queryClient.invalidateQueries({ queryKey: ['infinite-favorites'] });
       }
     },
-    [removeFavoriteFromCache]
+    [removeFavoriteFromCache, queryClient]
   );
 
   // Focus on empty state after all items removed

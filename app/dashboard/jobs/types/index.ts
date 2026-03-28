@@ -104,6 +104,8 @@ export interface JobDashboardError {
   message: string;
   code?: string;
   timestamp: string;
+  kind: 'partial' | 'full';
+  failedApis?: string[];
 }
 
 export interface JobDashboardState {

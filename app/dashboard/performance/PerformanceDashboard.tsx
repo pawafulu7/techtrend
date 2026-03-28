@@ -1,145 +1,58 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, Activity, Database, TrendingUp, Zap, RefreshCw } from 'lucide-react';
-import { usePollingControl } from './hooks/useMetricsPolling';
-import type {
-  PerformanceMetrics,
-  DashboardState
-} from './types/dashboard';
-
+import {
+  AlertCircle,
+  Activity,
+  Database,
+  TrendingUp,
+  Zap,
+  RefreshCw,
+} from 'lucide-react';
+import {
+  useMetricsPolling,
+  usePollingControl,
+} from './hooks/useMetricsPolling';
 /**
  * パフォーマンスダッシュボード
  * DBアクセス最適化Phase 3のメトリクスを可視化
  */
 export default function PerformanceDashboard() {
-  const [state, setState] = useState<DashboardState>({
-    metrics: null,
-    history: {
-      cacheHitRate: [],
-      latency: [],
-      batchSize: [],
-      throughput: []
-    },
-    loading: true,
-    error: null,
-    lastUpdated: null
-  });
-
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // メトリクスデータ取得
-  const fetchMetrics = async () => {
+  // ポーリング制御（バックグラウンドタブでは停止）
+  const { isActive, interval } = usePollingControl(30000);
+
+  // React Query によるメトリクス取得
+  const { metrics, loading, error, lastUpdated, refresh } = useMetricsPolling(
+    interval,
+    isActive
+  );
+
+  // 手動リフレッシュ
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
     try {
-      setIsRefreshing(true);
-
-      // 並行してAPIを呼び出す
-      const [optimizerRes, cacheRes] = await Promise.all([
-        fetch('/api/metrics/batch-optimizer'),
-        fetch('/api/cache/stats')
-      ]);
-
-      if (!optimizerRes.ok || !cacheRes.ok) {
-        throw new Error('Failed to fetch metrics');
-      }
-
-      const optimizerData = await optimizerRes.json();
-      const cacheData = await cacheRes.json();
-
-      // データを統合（batch-optimizerはdata属性、cache/statsは直接プロパティ）
-      const metrics: PerformanceMetrics = {
-        timestamp: new Date().toISOString(),
-        optimizers: optimizerData.data?.optimizers || {},
-        dataloaders: optimizerData.data?.dataloaders || {},
-        caches: cacheData.caches || {},
-        redis: cacheData.redis || {},
-        summary: optimizerData.data?.summary || {},
-        recommendations: cacheData.recommendations || []
-      };
-
-      // 履歴データを更新（最大50件保持）
-      setState(prev => {
-        const newHistory = { ...prev.history };
-        const timestamp = new Date().toLocaleTimeString('ja-JP', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit'
-        });
-
-        // キャッシュヒット率
-        const hitRate = parseFloat(metrics.summary.totalCacheHitRate?.replace('%', '') || '0');
-        newHistory.cacheHitRate = [
-          ...prev.history.cacheHitRate,
-          { time: timestamp, value: hitRate }
-        ].slice(-50);
-
-        // レイテンシ（P95の平均）
-        const favLatency = metrics.summary.latencyP95?.favorite === 'N/A'
-          ? 0
-          : (metrics.summary.latencyP95?.favorite || 0);
-        const viewLat = metrics.summary.latencyP95?.view === 'N/A'
-          ? 0
-          : (metrics.summary.latencyP95?.view || 0);
-        const avgLatency = (favLatency + viewLat) / 2;
-        newHistory.latency = [
-          ...prev.history.latency,
-          { time: timestamp, value: avgLatency }
-        ].slice(-50);
-
-        // バッチサイズ（平均）
-        const favBatch = metrics.summary.batchSizes?.favorite === 'N/A'
-          ? 0
-          : (metrics.summary.batchSizes?.favorite || 0);
-        const viewBatch = metrics.summary.batchSizes?.view === 'N/A'
-          ? 0
-          : (metrics.summary.batchSizes?.view || 0);
-        const avgBatchSize = (favBatch + viewBatch) / 2;
-        newHistory.batchSize = [
-          ...prev.history.batchSize,
-          { time: timestamp, value: avgBatchSize }
-        ].slice(-50);
-
-        return {
-          metrics,
-          history: newHistory,
-          loading: false,
-          error: null,
-          lastUpdated: new Date().toLocaleString('ja-JP')
-        };
-      });
-
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        }
-      }));
+      await refresh();
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  // ポーリング制御（バックグラウンドタブでは停止）
-  const { isActive, interval } = usePollingControl(30000);
-
-  // 初回取得と定期更新（可視状態に連動）
-  useEffect(() => {
-    if (!isActive) return;
-
-    fetchMetrics();
-    const intervalId = setInterval(fetchMetrics, interval);
-
-    return () => clearInterval(intervalId);
-  }, [isActive, interval]);
-
   // メトリクス値のフォーマット
-  const formatMetricValue = (value: number | string | undefined, unit?: string): string => {
+  const formatMetricValue = (
+    value: number | string | undefined,
+    unit?: string
+  ): string => {
     if (value === undefined || value === null) return 'N/A';
     if (typeof value === 'string') return value;
 
@@ -154,7 +67,10 @@ export default function PerformanceDashboard() {
   };
 
   // ステータス判定
-  const getStatus = (metric: string, value: number): 'good' | 'warning' | 'critical' => {
+  const getStatus = (
+    metric: string,
+    value: number
+  ): 'good' | 'warning' | 'critical' => {
     switch (metric) {
       case 'cacheHitRate':
         return value >= 80 ? 'good' : value >= 60 ? 'warning' : 'critical';
@@ -168,13 +84,13 @@ export default function PerformanceDashboard() {
   };
 
   // ローディング表示
-  if (state.loading && !state.metrics) {
+  if (loading && !metrics) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="container mx-auto space-y-6 p-6">
+        <div className="mb-6 flex items-center justify-between">
           <h1 className="text-3xl font-bold">パフォーマンスダッシュボード</h1>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
               <CardHeader>
@@ -190,58 +106,61 @@ export default function PerformanceDashboard() {
     );
   }
 
-  // エラー表示
-  if (state.error && !state.metrics) {
-    return (
-      <div className="container mx-auto p-6">
-        <Alert className="bg-red-50 border-red-200">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            メトリクスの取得に失敗しました: {state.error.message}
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  const { metrics } = state;
-  const cacheHitRate = parseFloat(metrics?.summary?.totalCacheHitRate?.replace('%', '') || '0');
+  const cacheHitRate = parseFloat(
+    metrics?.summary?.totalCacheHitRate?.replace('%', '') || '0'
+  );
 
   // N/Aの場合は0として扱う
-  const favoriteLatency = metrics?.summary?.latencyP95?.favorite === 'N/A'
-    ? 0
-    : (metrics?.summary?.latencyP95?.favorite || 0);
-  const viewLatency = metrics?.summary?.latencyP95?.view === 'N/A'
-    ? 0
-    : (metrics?.summary?.latencyP95?.view || 0);
+  const favoriteLatency =
+    metrics?.summary?.latencyP95?.favorite === 'N/A'
+      ? 0
+      : metrics?.summary?.latencyP95?.favorite || 0;
+  const viewLatency =
+    metrics?.summary?.latencyP95?.view === 'N/A'
+      ? 0
+      : metrics?.summary?.latencyP95?.view || 0;
   const avgLatency = (favoriteLatency + viewLatency) / 2;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
+      {/* 部分失敗警告 */}
+      {error && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            メトリクスの取得に失敗しました: {error.message}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* ヘッダー */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">パフォーマンスダッシュボード</h1>
-          <p className="text-gray-600 mt-1">
+          <p className="mt-1 text-gray-600">
             DBアクセス最適化Phase 3 - リアルタイムメトリクス
           </p>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-500">
-            最終更新: {state.lastUpdated || 'N/A'}
+            最終更新: {lastUpdated || 'N/A'}
           </span>
           <button
-            onClick={fetchMetrics}
+            onClick={handleRefresh}
             disabled={isRefreshing}
-            className="p-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+            aria-label="データを更新"
+            title="データを更新"
+            className="rounded-lg bg-blue-500 p-2 text-white hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+            />
           </button>
         </div>
       </div>
 
       {/* リアルタイムメトリクス */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* キャッシュヒット率 */}
         <Card>
           <CardHeader>
@@ -254,13 +173,20 @@ export default function PerformanceDashboard() {
             <div className="text-2xl font-bold">
               {formatMetricValue(cacheHitRate, '%')}
             </div>
-            <div className={`text-sm mt-1 ${
-              getStatus('cacheHitRate', cacheHitRate) === 'good' ? 'text-green-600' :
-              getStatus('cacheHitRate', cacheHitRate) === 'warning' ? 'text-yellow-600' :
-              'text-red-600'
-            }`}>
-              {getStatus('cacheHitRate', cacheHitRate) === 'good' ? '良好' :
-               getStatus('cacheHitRate', cacheHitRate) === 'warning' ? '注意' : '要改善'}
+            <div
+              className={`mt-1 text-sm ${
+                getStatus('cacheHitRate', cacheHitRate) === 'good'
+                  ? 'text-green-600'
+                  : getStatus('cacheHitRate', cacheHitRate) === 'warning'
+                    ? 'text-yellow-600'
+                    : 'text-red-600'
+              }`}
+            >
+              {getStatus('cacheHitRate', cacheHitRate) === 'good'
+                ? '良好'
+                : getStatus('cacheHitRate', cacheHitRate) === 'warning'
+                  ? '注意'
+                  : '要改善'}
             </div>
           </CardContent>
         </Card>
@@ -277,13 +203,20 @@ export default function PerformanceDashboard() {
             <div className="text-2xl font-bold">
               {formatMetricValue(avgLatency, 'ms')}
             </div>
-            <div className={`text-sm mt-1 ${
-              getStatus('latency', avgLatency) === 'good' ? 'text-green-600' :
-              getStatus('latency', avgLatency) === 'warning' ? 'text-yellow-600' :
-              'text-red-600'
-            }`}>
-              {getStatus('latency', avgLatency) === 'good' ? '高速' :
-               getStatus('latency', avgLatency) === 'warning' ? '標準' : '遅延あり'}
+            <div
+              className={`mt-1 text-sm ${
+                getStatus('latency', avgLatency) === 'good'
+                  ? 'text-green-600'
+                  : getStatus('latency', avgLatency) === 'warning'
+                    ? 'text-yellow-600'
+                    : 'text-red-600'
+              }`}
+            >
+              {getStatus('latency', avgLatency) === 'good'
+                ? '高速'
+                : getStatus('latency', avgLatency) === 'warning'
+                  ? '標準'
+                  : '遅延あり'}
             </div>
           </CardContent>
         </Card>
@@ -300,14 +233,17 @@ export default function PerformanceDashboard() {
             <div className="text-2xl font-bold">
               {formatMetricValue(
                 metrics?.summary?.batchSizes
-                  ? ((metrics.summary.batchSizes.favorite === 'N/A' ? 0 : metrics.summary.batchSizes.favorite) +
-                     (metrics.summary.batchSizes.view === 'N/A' ? 0 : metrics.summary.batchSizes.view)) / 2
+                  ? ((metrics.summary.batchSizes.favorite === 'N/A'
+                      ? 0
+                      : metrics.summary.batchSizes.favorite) +
+                      (metrics.summary.batchSizes.view === 'N/A'
+                        ? 0
+                        : metrics.summary.batchSizes.view)) /
+                      2
                   : 0
               )}
             </div>
-            <div className="text-sm text-gray-600 mt-1">
-              最適化中
-            </div>
+            <div className="mt-1 text-sm text-gray-600">最適化中</div>
           </CardContent>
         </Card>
 
@@ -323,9 +259,11 @@ export default function PerformanceDashboard() {
             <div className="text-2xl font-bold">
               {metrics?.redis?.memoryUsed || 'N/A'}
             </div>
-            <div className={`text-sm mt-1 ${
-              metrics?.redis?.connected ? 'text-green-600' : 'text-red-600'
-            }`}>
+            <div
+              className={`mt-1 text-sm ${
+                metrics?.redis?.connected ? 'text-green-600' : 'text-red-600'
+              }`}
+            >
               {metrics?.redis?.connected ? '接続中' : '切断'}
             </div>
           </CardContent>
@@ -333,7 +271,7 @@ export default function PerformanceDashboard() {
       </div>
 
       {/* DataLoader詳細 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Favorite DataLoader */}
         <Card>
           <CardHeader>

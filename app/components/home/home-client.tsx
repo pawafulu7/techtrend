@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
 import { LoadingSpinner } from '@/app/components/common/loading-spinner';
@@ -12,64 +12,70 @@ interface HomeClientProps {
   viewMode: ViewMode;
 }
 
+interface ArticlePagination {
+  total: number;
+  page: number;
+  totalPages: number;
+  limit: number;
+}
+
+interface ArticleListResult {
+  articles: ArticleWithRelations[];
+  pagination: ArticlePagination;
+}
+
+async function fetchArticles(
+  queryString: string,
+  signal?: AbortSignal
+): Promise<ArticleListResult> {
+  const response = await fetch(
+    `/api/articles${queryString ? `?${queryString}` : ''}`,
+    { signal }
+  );
+  if (!response.ok) {
+    throw new Error('Failed to fetch articles');
+  }
+  const result = await response.json();
+  const data = result.data || result;
+  return {
+    articles: data.items || data.articles || [],
+    pagination: {
+      total: data.total ?? 0,
+      page: data.page ?? 1,
+      totalPages: data.totalPages ?? 1,
+      limit: data.limit ?? 24,
+    },
+  };
+}
+
 export function HomeClient({ viewMode }: HomeClientProps) {
   const searchParams = useSearchParams();
-  const [articles, setArticles] = useState<ArticleWithRelations[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
+  const queryString = searchParams.toString();
+
+  const {
+    data,
+    isLoading: loading,
+    isError,
+    error,
+  } = useQuery<ArticleListResult>({
+    queryKey: ['article-list', queryString],
+    queryFn: ({ signal }) => fetchArticles(queryString, signal),
+    placeholderData: keepPreviousData,
+  });
+
+  const articles = data?.articles ?? [];
+  const pagination = data?.pagination ?? {
     total: 0,
     page: 1,
     totalPages: 1,
     limit: 24,
-  });
+  };
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function fetchArticles() {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const queryString = searchParams.toString();
-        const response = await fetch(
-          `/api/articles${queryString ? `?${queryString}` : ''}`,
-          { signal: controller.signal }
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch articles');
-        }
-
-        const result = await response.json();
-        const data = result.data || result;
-        setArticles(data.items || data.articles || []);
-        setPagination({
-          total: data.total ?? 0,
-          page: data.page ?? 1,
-          totalPages: data.totalPages ?? 1,
-          limit: data.limit ?? 24,
-        });
-
-        setLoading(false);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          return;
-        }
-        setError(error instanceof Error ? error.message : 'An error occurred');
-        setLoading(false);
-      }
-    }
-
-    fetchArticles();
-    return () => controller.abort();
-  }, [searchParams]);
-
-  if (error) {
+  if (isError) {
     return (
       <div className="text-destructive py-8 text-center">
-        エラーが発生しました: {error}
+        エラーが発生しました:{' '}
+        {error instanceof Error ? error.message : 'An error occurred'}
       </div>
     );
   }

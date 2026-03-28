@@ -1,11 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useQueries } from '@tanstack/react-query';
+import { useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, Hash, Calendar, Activity } from 'lucide-react';
 import logger from '@/lib/logger.client';
+
+interface TagCloudItem {
+  id?: string;
+  name: string;
+  count: number;
+  trend?: string;
+  growthRate?: number;
+}
 
 interface TagStat {
   totalTags: number;
@@ -17,67 +26,106 @@ interface TagStat {
   }>;
 }
 
+async function fetchTagStats() {
+  const res = await fetch('/api/tags/stats');
+  if (!res.ok) throw new Error(`Failed to fetch tag stats: ${res.status}`);
+  return res.json();
+}
+
+async function fetchTagCloudSummary() {
+  const res = await fetch('/api/tags/cloud?period=30d&limit=1000');
+  if (!res.ok)
+    throw new Error(`Failed to fetch tag cloud summary: ${res.status}`);
+  return res.json();
+}
+
+async function fetchTagsNew() {
+  const res = await fetch('/api/tags/new?days=7');
+  if (!res.ok) throw new Error(`Failed to fetch new tags: ${res.status}`);
+  return res.json();
+}
+
 export function TagStats() {
-  const [stats, setStats] = useState<TagStat | null>(null);
-  const [loading, setLoading] = useState(true);
+  const results = useQueries({
+    queries: [
+      { queryKey: ['tag-stats'], queryFn: fetchTagStats },
+      {
+        queryKey: ['tag-cloud-summary', { period: '30d', limit: 1000 }],
+        queryFn: fetchTagCloudSummary,
+      },
+      { queryKey: ['tags-new'], queryFn: fetchTagsNew },
+    ],
+  });
 
+  const [totalResult, activeResult, newResult] = results;
+  const loading = results.some((r) => r.isPending);
+
+  // エラーは各クエリの初回発生時のみログ出力（レンダリング毎の重複出力を防ぐ）
+  const totalIsError = results[0].isError;
+  const activeIsError = results[1].isError;
+  const newIsError = results[2].isError;
+  const loggedErrorRef = useRef<boolean[]>([false, false, false]);
   useEffect(() => {
-    loadStats();
-  }, []);
+    results.forEach((r, i) => {
+      if (r.isError && !loggedErrorRef.current[i]) {
+        logger.error({ error: r.error }, 'Failed to load tag stats');
+        loggedErrorRef.current[i] = true;
+      }
+      if (!r.isError) {
+        loggedErrorRef.current[i] = false;
+      }
+    });
+  }, [totalIsError, activeIsError, newIsError]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadStats = async () => {
-    try {
-      const [totalResponse, activeResponse, newResponse] = await Promise.all([
-        fetch('/api/tags/stats'),
-        fetch('/api/tags/cloud?period=30d&limit=1000'),
-        fetch('/api/tags/new?days=7'),
-      ]);
+  const totalData = useMemo(
+    () =>
+      totalResult.isError ? { total: 0 } : (totalResult.data ?? { total: 0 }),
+    [totalResult.isError, totalResult.data]
+  );
+  const activeData = useMemo(
+    () =>
+      activeResult.isError ? { tags: [] } : (activeResult.data ?? { tags: [] }),
+    [activeResult.isError, activeResult.data]
+  );
+  const newData = useMemo(
+    () => (newResult.isError ? { count: 0 } : (newResult.data ?? { count: 0 })),
+    [newResult.isError, newResult.data]
+  );
 
-      const totalData = totalResponse.ok
-        ? await totalResponse.json()
-        : { total: 0 };
-      const activeData = activeResponse.ok
-        ? await activeResponse.json()
-        : { tags: [] };
-      const newData = newResponse.ok ? await newResponse.json() : { count: 0 };
+  // NOTE: /api/tags/cloud?limit=1000 の上限に制約されるため、
+  // アクティブタグ数は最大1000件までの近似値。
+  // /api/tags/stats は totalTags のみを返すため、activeTags の正確なカウントには
+  // サーバー側でのカウントAPIの追加が必要（現状はAPIが提供していない）。
+  const activeTags = useMemo(
+    () => (Array.isArray(activeData.tags) ? activeData.tags.length : 0),
+    [activeData.tags]
+  );
 
-      const activeTags = Array.isArray(activeData.tags)
-        ? activeData.tags.length
-        : 0;
+  // 成長率の高いタグ（APIから返されるgrowthRateを使用）
+  const growthTags = useMemo(() => {
+    const tags = Array.isArray(activeData.tags) ? activeData.tags : [];
+    return tags
+      .filter((tag: TagCloudItem) => tag.trend === 'rising')
+      .sort(
+        (a: TagCloudItem, b: TagCloudItem) =>
+          (b.growthRate || 0) - (a.growthRate || 0)
+      )
+      .slice(0, 5)
+      .map((tag: TagCloudItem) => ({
+        name: tag.name,
+        growthRate: tag.growthRate || 0,
+      }));
+  }, [activeData.tags]);
 
-      // 成長率の高いタグ（APIから返されるgrowthRateを使用）
-      const tags = Array.isArray(activeData.tags) ? activeData.tags : [];
-      const growthTags = tags
-        .filter(
-          (tag: {
-            name: string;
-            count: number;
-            trend?: string;
-            growthRate?: number;
-          }) => tag.trend === 'rising'
-        )
-        .sort(
-          (a: { growthRate?: number }, b: { growthRate?: number }) =>
-            (b.growthRate || 0) - (a.growthRate || 0)
-        )
-        .slice(0, 5)
-        .map((tag: { name: string; count: number; growthRate?: number }) => ({
-          name: tag.name,
-          growthRate: tag.growthRate || 0,
-        }));
-
-      setStats({
-        totalTags: totalData.total || 0,
-        activeTags,
-        newTags: newData.count || 0,
-        topGrowthTags: growthTags,
-      });
-    } catch (error) {
-      logger.error({ error }, 'Failed to load tag stats');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const stats: TagStat = useMemo(
+    () => ({
+      totalTags: totalData.total || 0,
+      activeTags,
+      newTags: newData.count || 0,
+      topGrowthTags: growthTags,
+    }),
+    [totalData.total, activeTags, newData.count, growthTags]
+  );
 
   if (loading) {
     return (
@@ -93,10 +141,6 @@ export function TagStats() {
         </Card>
       </div>
     );
-  }
-
-  if (!stats) {
-    return null;
   }
 
   return (

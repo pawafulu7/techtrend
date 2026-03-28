@@ -12,7 +12,6 @@ import { HotTopicChip } from './topic-card';
 import { UpdatedRow, DeprecatedBadge } from './topic-list-items';
 import type {
   ArticleInfo,
-  ChangeWithCategory,
   DiffSummaryResponse,
   GroupedChanges,
 } from './diff-utils';

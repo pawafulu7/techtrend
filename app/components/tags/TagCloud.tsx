@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,11 @@ interface Tag {
   count: number;
   trend: 'rising' | 'stable' | 'falling';
 }
+
+// Pre-compute skeleton widths at module level to avoid Math.random() during render
+const SKELETON_WIDTHS = Array.from({ length: 20 }, () =>
+  Math.floor(Math.random() * 100 + 50)
+);
 
 interface TagCloudProps {
   className?: string;
@@ -29,36 +35,28 @@ export function TagCloud({
   onTagClick,
 }: TagCloudProps) {
   const router = useRouter();
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState(initialPeriod);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadTags = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
+  const { data, isPending, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ['tag-cloud', { period, limit }],
+    queryFn: async () => {
       const response = await fetch(
         `/api/tags/cloud?period=${period}&limit=${limit}`
       );
-
       if (!response.ok) {
         throw new Error('Failed to load tags');
       }
+      return response.json();
+    },
+  });
 
-      const data = await response.json();
-      setTags(data.tags);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'エラーが発生しました');
-    } finally {
-      setLoading(false);
-    }
-  }, [period, limit]);
-
-  useEffect(() => {
-    loadTags();
-  }, [loadTags]);
+  const loading = isPending; // 初回ロードのみスケルトン表示（バックグラウンド再取得では表示しない）
+  const tags: Tag[] = useMemo(() => data?.tags ?? [], [data?.tags]);
+  const errorMessage = isError
+    ? error instanceof Error
+      ? error.message
+      : 'エラーが発生しました'
+    : null;
 
   // フォントサイズの計算
   const { minCount, maxCount, fontSizes } = useMemo(() => {
@@ -163,10 +161,12 @@ export function TagCloud({
             <Button
               variant="ghost"
               size="sm"
-              onClick={loadTags}
-              disabled={loading}
+              onClick={() => refetch()}
+              disabled={isFetching}
             >
-              <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+              <RefreshCw
+                className={cn('h-4 w-4', isFetching && 'animate-spin')}
+              />
             </Button>
           </div>
         </div>
@@ -174,21 +174,21 @@ export function TagCloud({
       <CardContent>
         {loading ? (
           <div className="space-y-2">
-            {Array.from({ length: 20 }).map((_, i) => (
+            {SKELETON_WIDTHS.map((width, i) => (
               <Skeleton
                 key={i}
                 className="mr-2 mb-2 inline-block h-6"
-                style={{ width: `${Math.random() * 100 + 50}px` }}
+                style={{ width: `${width}px` }}
               />
             ))}
           </div>
-        ) : error ? (
+        ) : errorMessage ? (
           <div className="text-muted-foreground py-8 text-center">
-            <p>{error}</p>
+            <p>{errorMessage}</p>
             <Button
               variant="outline"
               size="sm"
-              onClick={loadTags}
+              onClick={() => refetch()}
               className="mt-4"
             >
               再試行
@@ -220,7 +220,7 @@ export function TagCloud({
           </div>
         )}
 
-        {!loading && !error && tags.length > 0 && (
+        {!loading && !errorMessage && tags.length > 0 && (
           <div className="mt-4 border-t pt-4">
             <div className="text-muted-foreground flex items-center justify-center gap-4 text-xs">
               <span className="flex items-center gap-1">

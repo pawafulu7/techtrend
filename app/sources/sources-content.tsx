@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { SourceCard } from '@/app/components/sources/SourceCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -29,9 +30,6 @@ type SortBy = 'articles' | 'quality' | 'frequency' | 'name';
 const ITEMS_PER_PAGE = 20;
 
 export default function SourcesContent() {
-  const [allSources, setAllSources] = useState<SourceWithStats[]>([]);
-  const [sources, setSources] = useState<SourceWithStats[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<SourceCategoryWithAll>('all');
   const [sortBy, setSortBy] = useState<SortBy>('articles');
@@ -39,9 +37,13 @@ export default function SourcesContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const { isFavorite } = useFavoriteSources();
 
-  const loadAllSources = useCallback(async () => {
-    setLoading(true);
-    try {
+  const {
+    data,
+    isPending: loading,
+    isError,
+  } = useQuery<SourceWithStats[]>({
+    queryKey: ['sources'],
+    queryFn: async () => {
       const response = await fetch('/api/sources');
       if (!response.ok) {
         const body = await response.text().catch(() => '');
@@ -49,28 +51,26 @@ export default function SourcesContent() {
           { status: response.status, body },
           'Failed to load sources'
         );
-        setAllSources([]);
-        return;
+        throw new Error(`Failed to load sources: ${response.status}`);
       }
-      const data = await response.json();
-      setAllSources(Array.isArray(data.sources) ? data.sources : []);
-    } catch (error) {
-      logger.error({ error }, 'Failed to load sources');
-      setAllSources([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      let json: { sources?: unknown };
+      try {
+        json = await response.json();
+      } catch (parseError) {
+        logger.error(
+          { parseError },
+          'Failed to parse sources response as JSON'
+        );
+        throw new Error('Failed to parse sources response as JSON');
+      }
+      return Array.isArray(json.sources) ? json.sources : [];
+    },
+  });
 
-  useEffect(() => {
-    loadAllSources();
-  }, [loadAllSources]);
+  const allSources = useMemo(() => data ?? [], [data]);
 
-  const applyFiltersAndSort = useCallback(() => {
-    if (allSources.length === 0) {
-      setSources([]);
-      return;
-    }
+  const sources = useMemo(() => {
+    if (allSources.length === 0) return [];
 
     let filtered = [...allSources];
 
@@ -119,13 +119,8 @@ export default function SourcesContent() {
       }
     });
 
-    setSources(filtered);
+    return filtered;
   }, [allSources, category, sortBy, order, search]);
-
-  useEffect(() => {
-    applyFiltersAndSort();
-    setCurrentPage(1);
-  }, [applyFiltersAndSort]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,9 +148,39 @@ export default function SourcesContent() {
     currentPage * ITEMS_PER_PAGE
   );
 
+  // エラー時にキャッシュデータ（data）がなければ早期リターン
+  if (isError && !data) {
+    return (
+      <div className="space-y-6">
+        <h1 className="sr-only">ソース一覧</h1>
+        <div
+          className="border-destructive/20 bg-destructive/10 rounded-md border p-4"
+          role="alert"
+        >
+          <p className="text-destructive text-sm">
+            ソースの読み込みに失敗しました。しばらく経ってから再試行してください。
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="sr-only">ソース一覧</h1>
+
+      {/* エラーバナー: キャッシュデータがある場合は上部に表示して表示継続 */}
+      {isError && data && (
+        <div
+          className="border-destructive/20 bg-destructive/10 rounded-md border p-4"
+          role="alert"
+        >
+          <p className="text-destructive text-sm">
+            最新データの取得に失敗しました。表示中のデータはキャッシュです。
+          </p>
+        </div>
+      )}
+
       {loading ? (
         <SourcesOverviewSkeleton />
       ) : (
@@ -170,12 +195,21 @@ export default function SourcesContent() {
             type="search"
             placeholder="ソースを検索..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             className="bg-card border-input pl-10"
           />
         </form>
 
-        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+        <Select
+          value={sortBy}
+          onValueChange={(v) => {
+            setSortBy(v as SortBy);
+            setCurrentPage(1);
+          }}
+        >
           <SelectTrigger className="w-[160px]">
             <SortAsc className="mr-2 h-4 w-4" />
             <SelectValue placeholder="並び替え" />
@@ -191,7 +225,10 @@ export default function SourcesContent() {
         <Button
           variant="outline"
           size="icon"
-          onClick={() => setOrder(order === 'desc' ? 'asc' : 'desc')}
+          onClick={() => {
+            setOrder(order === 'desc' ? 'asc' : 'desc');
+            setCurrentPage(1);
+          }}
           aria-label={order === 'desc' ? '昇順に切り替え' : '降順に切り替え'}
         >
           <SortAsc
@@ -203,7 +240,10 @@ export default function SourcesContent() {
       {/* Category tabs */}
       <Tabs
         value={category}
-        onValueChange={(v) => setCategory(v as SourceCategoryWithAll)}
+        onValueChange={(v) => {
+          setCategory(v as SourceCategoryWithAll);
+          setCurrentPage(1);
+        }}
       >
         <TabsList className="mb-4 w-full overflow-x-auto">
           <TabsTrigger value="all">
