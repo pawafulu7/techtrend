@@ -281,7 +281,7 @@ export async function fetchSourceData(): Promise<SourceDataItem[]> {
                 : 0,
           }));
 
-          await statsCache.set<StatsPayload>(cacheKey, { sources });
+          await statsCache.set(cacheKey, { sources });
 
           return sources;
         })();

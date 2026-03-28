@@ -103,8 +103,7 @@ export function FavoriteFeedContent() {
     switch (sortBy) {
       case 'popular':
         sorted.sort(
-          (a, b) =>
-            b.bookmarkCount - a.bookmarkCount || a.id.localeCompare(b.id)
+          (a, b) => b.bookmarks - a.bookmarks || a.id.localeCompare(b.id)
         );
         break;
       case 'quality':
