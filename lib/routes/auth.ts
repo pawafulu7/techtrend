@@ -3,17 +3,23 @@
  */
 
 /**
+ * callbackUrlを検証し、内部相対パスのみ許可する。
+ * 外部URL（//プロトコル相対）や/auth/*自己参照をブロック。
+ */
+export function sanitizeCallbackUrl(raw?: string): string {
+  if (!raw || typeof raw !== 'string') return '/';
+  const startsWithSingleSlash = raw.startsWith('/') && !raw.startsWith('//');
+  const notAuthPath = !raw.startsWith('/auth/');
+  return startsWithSingleSlash && notAuthPath ? raw : '/';
+}
+
+/**
  * ログインページへのパスを生成する
  * @param callbackUrl - ログイン後にリダイレクトするURL（相対パスのみ許可）
  * @returns ログインページのURL
  */
 export function loginWithCallback(callbackUrl: string): string {
-  const raw = typeof callbackUrl === 'string' ? callbackUrl : '/';
-  // 先頭は単一の '/' に限定し、'//'（プロトコル相対）を拒否
-  const startsWithSingleSlash = raw.startsWith('/') && !raw.startsWith('//');
-  // /auth/* への自己参照はループになる可能性があるためブロック
-  const notAuthPath = !raw.startsWith('/auth/');
-  const safeCallbackUrl = startsWithSingleSlash && notAuthPath ? raw : '/';
+  const safeCallbackUrl = sanitizeCallbackUrl(callbackUrl);
   const params = new URLSearchParams({ callbackUrl: safeCallbackUrl });
   return `/auth/login?${params.toString()}`;
 }

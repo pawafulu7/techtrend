@@ -1,12 +1,9 @@
-'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { notFound } from 'next/navigation';
+import logger from '@/lib/logger';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ArticleCard } from '@/app/components/article/card';
 import {
   ArrowLeft,
@@ -20,13 +17,10 @@ import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { ArticleWithRelations } from '@/types/models';
 import type { Source } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 interface SourceDetail {
-  source: Source & {
-    _count: {
-      articles: number;
-    };
-  };
+  source: Source;
   stats: {
     totalArticles: number;
     avgQualityScore: number;
@@ -39,66 +33,118 @@ interface SourceDetail {
   tagDistribution: Record<string, number>;
 }
 
-export default function SourceDetailPage() {
-  const params = useParams();
-  const sourceId = params.id as string;
-  const [data, setData] = useState<SourceDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+async function getSourceDetail(id: string): Promise<SourceDetail | null> {
+  const source = await prisma.source.findUnique({
+    where: { id },
+  });
 
-  const loadSourceDetail = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/sources/${sourceId}`);
-      if (!response.ok) {
-        throw new Error('Failed to load source detail');
-      }
-      const data = await response.json();
-      setData(data);
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Failed to load source detail:', error);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [sourceId]);
+  if (!source) {
+    return null;
+  }
 
-  useEffect(() => {
-    if (sourceId) {
-      loadSourceDetail();
-    }
-  }, [sourceId, loadSourceDetail]);
+  const [
+    articleAgg,
+    recentArticlesCount,
+    recentArticles,
+    topArticles,
+    tagDistribution,
+  ] = await Promise.all([
+    prisma.article.aggregate({
+      where: { sourceId: id, isHidden: false },
+      _count: { _all: true },
+      _avg: { qualityScore: true, bookmarks: true },
+    }),
 
-  if (loading) {
-    return (
-      <div>
-        <Skeleton className="mb-4 h-8 w-64" />
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
-            <Skeleton className="h-40" />
-            <Skeleton className="h-96" />
-          </div>
-          <div className="space-y-6">
-            <Skeleton className="h-40" />
-            <Skeleton className="h-60" />
-          </div>
-        </div>
-      </div>
-    );
+    prisma.article.count({
+      where: {
+        sourceId: id,
+        isHidden: false,
+        publishedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      },
+    }),
+
+    prisma.article.findMany({
+      where: { sourceId: id, isHidden: false },
+      include: {
+        source: true,
+        tags: true,
+      },
+      orderBy: {
+        publishedAt: 'desc',
+      },
+      take: 10,
+    }),
+
+    prisma.article.findMany({
+      where: { sourceId: id, isHidden: false },
+      include: {
+        source: true,
+        tags: true,
+      },
+      orderBy: [{ bookmarks: 'desc' }, { publishedAt: 'desc' }],
+      take: 5,
+    }),
+
+    prisma.$queryRaw<Array<{ name: string; count: bigint }>>`
+      SELECT t.name, COUNT(*)::bigint AS count
+      FROM "Tag" t
+      INNER JOIN "_ArticleToTag" at ON t.id = at."B"
+      INNER JOIN "Article" a ON at."A" = a.id
+      WHERE a."sourceId" = ${id} AND a."isHidden" = false
+      GROUP BY t.name
+      ORDER BY count DESC
+      LIMIT 20
+    `,
+  ]);
+
+  const totalArticles = articleAgg._count._all;
+  const avgQualityScore = Number(articleAgg._avg.qualityScore ?? 0);
+  const avgBookmarks = Number(articleAgg._avg.bookmarks ?? 0);
+  const publishFrequency = recentArticlesCount / 30;
+
+  const lastPublished =
+    recentArticles.length > 0 ? recentArticles[0].publishedAt : null;
+
+  const tagDistributionObj = tagDistribution.reduce(
+    (acc, tag) => {
+      acc[tag.name] = Number(tag.count);
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  return {
+    source,
+    stats: {
+      totalArticles,
+      avgQualityScore: Math.round(avgQualityScore),
+      avgBookmarks: Math.round(avgBookmarks),
+      publishFrequency: Math.round(publishFrequency * 10) / 10,
+      lastPublished: lastPublished ?? null,
+    },
+    recentArticles,
+    topArticles,
+    tagDistribution: tagDistributionObj,
+  };
+}
+
+export default async function SourceDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+
+  let data: SourceDetail | null;
+  try {
+    data = await getSourceDetail(id);
+  } catch (error) {
+    logger.error({ sourceId: id, error }, 'Failed to load source detail');
+    notFound();
   }
 
   if (!data) {
-    return (
-      <div>
-        <div className="py-12 text-center">
-          <p className="text-muted-foreground text-lg">
-            ソースが見つかりませんでした
-          </p>
-          <Button asChild className="mt-4">
-            <Link href="/sources">ソース一覧に戻る</Link>
-          </Button>
-        </div>
-      </div>
-    );
+    notFound();
   }
 
   const { source, stats, recentArticles, topArticles, tagDistribution } = data;
