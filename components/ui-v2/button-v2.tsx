@@ -9,7 +9,7 @@ const DEFAULT_SIZE = 'h-9 px-4 py-2 text-sm has-[>svg]:px-3';
 
 const buttonV2Variants = cva(
   [
-    'inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all',
+    'inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-(--tt-color-primary)',
     'disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed',
     '[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-4',
@@ -99,6 +99,7 @@ function ButtonV2({
   return (
     <Comp
       data-slot="button"
+      data-variant={variant}
       type={asChild ? undefined : type}
       disabled={isDisabled}
       className={buttonV2Variants({ variant, size: resolvedSize, className })}

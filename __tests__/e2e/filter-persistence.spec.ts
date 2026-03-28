@@ -435,7 +435,7 @@ test.describe('フィルター条件の永続化', () => {
 
     if (!sortParamUpdated) {
       const immediateClassName = await qualityButton.getAttribute('class');
-      expect(immediateClassName ?? '').toContain('bg-primary');
+      expect(immediateClassName ?? '').toContain('shadow-sm');
     }
 
     // 2. 記事詳細ページへ遷移  
@@ -453,7 +453,7 @@ test.describe('フィルター条件の永続化', () => {
     const qualityButtonAfterNav = page.getByRole('button', { name: '品質' }).first();
     const className = await qualityButtonAfterNav.getAttribute('class');
     // ボタンのvariantがdefaultの場合、特定のクラスが含まれる
-    expect(className).toContain('bg-primary');
+    expect(className).toContain('shadow-sm');
   });
 
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
@@ -548,7 +548,7 @@ test.describe('フィルター条件の永続化', () => {
     } catch {
       // URLに反映されない実装では、UIのアクティブ状態で代替検証
       const active = await page.getByRole('button', { name: '人気' }).getAttribute('class');
-      expect(active ?? '').toContain('bg-primary');
+      expect(active ?? '').toContain('shadow-sm');
     }
 
     // ネットワーク安定化待機
