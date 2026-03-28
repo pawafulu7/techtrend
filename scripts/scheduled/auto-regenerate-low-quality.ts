@@ -192,8 +192,7 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
     }
 
     // 結果サマリー
-    console.error(`\n処理件数: ${articles.length}件`);
-    reportResults('再生成結果', { success: succeeded, failed });
+    reportResults('再生成結果', { total: articles.length, success: succeeded, failed });
 
     if (results.length > 0) {
       const successfulResults = results.filter(r => r.success && r.newScore !== null);

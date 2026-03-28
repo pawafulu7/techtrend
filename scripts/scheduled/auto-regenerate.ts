@@ -242,15 +242,10 @@ async function generateReport(results: Array<{
   success: boolean;
   error?: string;
 }>) {
-  console.error('\n' + '='.repeat(60));
-  console.error('📊 自動再生成レポート');
-  console.error('='.repeat(60));
-
   const successful = results.filter(r => r.success);
   const failed = results.filter(r => !r.success);
 
-  console.error(`\n総処理数: ${results.length}件`);
-  reportResults('自動再生成レポート', { success: successful.length, failed: failed.length });
+  reportResults('自動再生成レポート', { total: results.length, success: successful.length, failed: failed.length });
 
   if (successful.length > 0) {
     const totalImprovement = successful.reduce(

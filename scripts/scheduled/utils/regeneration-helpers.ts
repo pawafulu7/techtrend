@@ -4,6 +4,7 @@
  */
 
 export interface RegenerationStats {
+  total?: number;
   success: number;
   failed: number;
   skipped?: number;
@@ -14,12 +15,16 @@ export interface RegenerationStats {
  * 出力先は console.error に統一（スケジューラーログとして stderr を使用）
  */
 export function reportResults(label: string, stats: RegenerationStats): void {
-  console.error(`\n===== ${label} =====`);
-  console.error(`成功: ${stats.success}件`);
-  console.error(`失敗: ${stats.failed}件`);
-  if (stats.skipped !== undefined) {
-    console.error(`スキップ: ${stats.skipped}件`);
+  const lines = [`\n===== ${label} =====`];
+  if (stats.total !== undefined) {
+    lines.push(`処理件数: ${stats.total}件`);
   }
+  lines.push(`成功: ${stats.success}件`);
+  lines.push(`失敗: ${stats.failed}件`);
+  if (stats.skipped !== undefined) {
+    lines.push(`スキップ: ${stats.skipped}件`);
+  }
+  console.error(lines.join('\n'));
 }
 
 /**
