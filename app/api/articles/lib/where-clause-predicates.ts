@@ -67,16 +67,16 @@ export function pushLowQualityFilter(
 // ---------------------------------------------------------------------------
 
 /**
- * Push a summaryComputedAt not-null condition into AND conditions when
+ * Set summaryComputedAt not-null condition directly onto the WHERE object when
  * `excludeUnprocessed` is true. Excludes articles without processed summaries.
  */
 export function pushProcessedFilter(
-  andConditions: ArticleWhereInput[],
+  where: ArticleWhereInput,
   excludeUnprocessed: boolean
 ): void {
   if (!excludeUnprocessed) return;
 
-  andConditions.push({ summaryComputedAt: { not: null } });
+  where.summaryComputedAt = { not: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -168,13 +168,23 @@ export function pushTagFilter(
     andConditions.push(...tagConditions);
   } else {
     // OR search: articles with any of the specified tags
-    where.tags = {
-      some: {
-        OR: tagList.map((tagName) => ({
-          name: { equals: tagName, mode: 'insensitive' as const },
-        })),
-      },
-    };
+    if (tagList.length === 1) {
+      // Single tag: direct match (backward-compatible structure)
+      where.tags = {
+        some: {
+          name: { equals: tagList[0], mode: 'insensitive' as const },
+        },
+      };
+    } else {
+      // Multiple tags: OR condition
+      where.tags = {
+        some: {
+          OR: tagList.map((tagName) => ({
+            name: { equals: tagName, mode: 'insensitive' as const },
+          })),
+        },
+      };
+    }
   }
 }
 

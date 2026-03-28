@@ -112,10 +112,7 @@ export function buildWhereClause(params: WhereClauseParams): ArticleWhereInput {
   });
 
   // Exclude articles without processed summaries
-  pushProcessedFilter(
-    where.AND as ArticleWhereInput[],
-    params.excludeUnprocessed
-  );
+  pushProcessedFilter(where, params.excludeUnprocessed);
 
   // Exclude low quality articles
   pushLowQualityFilter(

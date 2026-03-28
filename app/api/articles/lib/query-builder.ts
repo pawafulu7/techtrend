@@ -138,10 +138,7 @@ export class ArticleWhereClauseBuilder {
    * Exclude articles without processed summaries
    */
   withProcessedFilter(excludeUnprocessed: boolean): this {
-    pushProcessedFilter(
-      this.where.AND as ArticleWhereInput[],
-      excludeUnprocessed
-    );
+    pushProcessedFilter(this.where, excludeUnprocessed);
     return this;
   }
 
