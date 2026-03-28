@@ -10,7 +10,7 @@
  * - 記事詳細画面（ArticleQADialog 下）への配置
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import {
@@ -45,7 +45,10 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
   const isAuthenticated = sessionStatus === 'authenticated' && !!session?.user;
   const currentUserId = session?.user?.id || '';
 
-  const queryKey = ['comments', { articleId }] as const;
+  const queryKey = useMemo(
+    () => ['comments', { articleId }] as const,
+    [articleId]
+  );
 
   // コメント一覧をuseInfiniteQueryで取得
   const {

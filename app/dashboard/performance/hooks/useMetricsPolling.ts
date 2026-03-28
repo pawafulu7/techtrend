@@ -62,17 +62,22 @@ export function useMetricsPolling(
     optimizerQuery.error || cacheQuery.error
       ? {
           message:
-            (optimizerQuery.error as Error | null)?.message ||
-            (cacheQuery.error as Error | null)?.message ||
+            (optimizerQuery.error instanceof Error
+              ? optimizerQuery.error.message
+              : undefined) ||
+            (cacheQuery.error instanceof Error
+              ? cacheQuery.error.message
+              : undefined) ||
             'Unknown error occurred',
           timestamp: new Date().toISOString(),
         }
       : null;
 
-  // データを統合
+  // データを統合（batch-optimizerはdata属性、cache/statsは直接プロパティ）
   let metrics: PerformanceMetrics | null = null;
   if (optimizerQuery.data || cacheQuery.data) {
-    const optimizerData = optimizerQuery.data ?? {};
+    const optimizerRaw = optimizerQuery.data ?? {};
+    const optimizerData = optimizerRaw.data ?? {};
     const cacheData = cacheQuery.data ?? {};
     const defaults = createEmptyPerformanceMetrics();
 

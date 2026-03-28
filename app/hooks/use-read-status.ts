@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -79,7 +79,10 @@ export function useReadStatus(articleIds?: string[]) {
     refetchOnMount: 'always',
   });
 
-  const readArticleIds = readStatusData?.readArticleIds ?? new Set<string>();
+  const readArticleIds = useMemo(
+    () => readStatusData?.readArticleIds ?? new Set<string>(),
+    [readStatusData]
+  );
   const unreadCount = readStatusData?.unreadCount ?? 0;
 
   // bfcache復元時にサーバーの最新状態を再取得

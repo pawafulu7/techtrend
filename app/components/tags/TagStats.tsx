@@ -47,7 +47,6 @@ export function TagStats() {
 
   const [totalResult, activeResult, newResult] = results;
   const loading = results.some((r) => r.isPending);
-  const hasError = results.some((r) => r.isError);
 
   if (loading) {
     return (
@@ -65,18 +64,22 @@ export function TagStats() {
     );
   }
 
-  if (hasError) {
-    results.forEach((r) => {
-      if (r.isError) {
-        logger.error({ error: r.error }, 'Failed to load tag stats');
-      }
-    });
-    return null;
-  }
+  // エラーは個別にログ出力し、部分表示にフォールバック
+  results.forEach((r) => {
+    if (r.isError) {
+      logger.error({ error: r.error }, 'Failed to load tag stats');
+    }
+  });
 
-  const totalData = totalResult.data ?? { total: 0 };
-  const activeData = activeResult.data ?? { tags: [] };
-  const newData = newResult.data ?? { count: 0 };
+  const totalData = totalResult.isError
+    ? { total: 0 }
+    : (totalResult.data ?? { total: 0 });
+  const activeData = activeResult.isError
+    ? { tags: [] }
+    : (activeResult.data ?? { tags: [] });
+  const newData = newResult.isError
+    ? { count: 0 }
+    : (newResult.data ?? { count: 0 });
 
   const activeTags = Array.isArray(activeData.tags)
     ? activeData.tags.length
