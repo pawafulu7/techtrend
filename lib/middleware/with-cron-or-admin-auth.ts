@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
-import { timingSafeEqual } from 'crypto';
+import { compareSecrets } from '@/lib/utils/compare-secrets';
 import logger from '@/lib/logger';
 
-type Handler = (
+export type Handler = (
   request: NextRequest,
   context?: any
 ) => Promise<Response> | Response;
@@ -79,26 +79,4 @@ export function withCronOrAdminAuth(handler: Handler): Handler {
       { status: 401 }
     );
   };
-}
-
-/**
- * タイミング攻撃対策: 定数時間での文字列比較
- *
- * 通常の文字列比較（===）は、不一致が見つかった時点で即座に返すため、
- * 比較時間からシークレットの一部が推測される可能性がある。
- * timingSafeEqualは常に同じ時間で比較を完了するため、この攻撃を防ぐ。
- */
-function compareSecrets(a: string, b: string): boolean {
-  try {
-    // 長さが異なる場合も定数時間で処理するため、
-    // まず長さを比較してから実際の値を比較
-    if (a.length !== b.length) {
-      // 長さ情報の漏洩を最小化するため、ダミー比較を実行
-      timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(a, 'utf8'));
-      return false;
-    }
-    return timingSafeEqual(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'));
-  } catch {
-    return false;
-  }
 }
