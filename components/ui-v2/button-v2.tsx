@@ -12,6 +12,7 @@ const buttonV2Variants = cva(
     'inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-(--tt-color-primary)',
     'disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed',
+    'data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed',
     '[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-4',
   ].join(' '),
   {
@@ -104,10 +105,17 @@ function ButtonV2({
   const Comp = asChild ? Slot.Root : 'button';
   const resolvedSize = iconOnly ? (ICON_SIZE_MAP[size!] ?? 'icon') : size;
 
+  const buttonClassName = buttonV2Variants({
+    variant,
+    size: resolvedSize,
+    className,
+  });
+
   const disabledProps = asChild
     ? {
+        'data-disabled': isDisabled ? 'true' : undefined,
         'aria-disabled': isDisabled || undefined,
-        tabIndex: isDisabled ? -1 : undefined,
+        tabIndex: isDisabled ? -1 : props.tabIndex,
         onClick: isDisabled
           ? (e: React.MouseEvent) => {
               e.preventDefault();
@@ -117,12 +125,35 @@ function ButtonV2({
       }
     : { disabled: isDisabled, onClick };
 
+  // asChild + disabled: clone child to fully override props (Slot merges, child onClick runs first)
+  if (
+    asChild &&
+    isDisabled &&
+    React.isValidElement<{ className?: string }>(children)
+  ) {
+    return React.cloneElement(children, {
+      ...props,
+      'data-slot': 'button',
+      'data-variant': variant,
+      'data-disabled': 'true',
+      'aria-disabled': true,
+      tabIndex: -1,
+      className: [buttonClassName, children.props.className]
+        .filter(Boolean)
+        .join(' '),
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+      },
+    } as React.HTMLAttributes<HTMLElement>);
+  }
+
   return (
     <Comp
       data-slot="button"
       data-variant={variant}
       type={asChild ? undefined : type}
-      className={buttonV2Variants({ variant, size: resolvedSize, className })}
+      className={buttonClassName}
       {...props}
       {...disabledProps}
     >
