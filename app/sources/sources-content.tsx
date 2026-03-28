@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { SourceCard } from '@/app/components/sources/SourceCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -29,9 +30,6 @@ type SortBy = 'articles' | 'quality' | 'frequency' | 'name';
 const ITEMS_PER_PAGE = 20;
 
 export default function SourcesContent() {
-  const [allSources, setAllSources] = useState<SourceWithStats[]>([]);
-  const [sources, setSources] = useState<SourceWithStats[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<SourceCategoryWithAll>('all');
   const [sortBy, setSortBy] = useState<SortBy>('articles');
@@ -39,9 +37,9 @@ export default function SourcesContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const { isFavorite } = useFavoriteSources();
 
-  const loadAllSources = useCallback(async () => {
-    setLoading(true);
-    try {
+  const { data, isPending: loading } = useQuery<SourceWithStats[]>({
+    queryKey: ['sources'],
+    queryFn: async () => {
       const response = await fetch('/api/sources');
       if (!response.ok) {
         const body = await response.text().catch(() => '');
@@ -49,28 +47,17 @@ export default function SourcesContent() {
           { status: response.status, body },
           'Failed to load sources'
         );
-        setAllSources([]);
-        return;
+        return [];
       }
-      const data = await response.json();
-      setAllSources(Array.isArray(data.sources) ? data.sources : []);
-    } catch (error) {
-      logger.error({ error }, 'Failed to load sources');
-      setAllSources([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      const json = await response.json();
+      return Array.isArray(json.sources) ? json.sources : [];
+    },
+  });
 
-  useEffect(() => {
-    loadAllSources();
-  }, [loadAllSources]);
+  const allSources = data ?? [];
 
-  const applyFiltersAndSort = useCallback(() => {
-    if (allSources.length === 0) {
-      setSources([]);
-      return;
-    }
+  const sources = useMemo(() => {
+    if (allSources.length === 0) return [];
 
     let filtered = [...allSources];
 
@@ -119,13 +106,13 @@ export default function SourcesContent() {
       }
     });
 
-    setSources(filtered);
+    return filtered;
   }, [allSources, category, sortBy, order, search]);
 
+  // フィルタ/ソート条件変更時にページをリセット
   useEffect(() => {
-    applyFiltersAndSort();
     setCurrentPage(1);
-  }, [applyFiltersAndSort]);
+  }, [category, sortBy, order, search]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
