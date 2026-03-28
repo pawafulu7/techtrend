@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Heart, AlertCircle, Search, ArrowUpDown } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Input } from '@/components/ui/input';
 import {
   Select,

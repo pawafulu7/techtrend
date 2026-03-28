@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Input } from '@/components/ui/input';
 import { Tag as TagIcon, Search, X, ChevronRight, Loader2 } from 'lucide-react';
 // DropdownMenuコンポーネントは現在使用していないためコメントアウト

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { TrendingUp, Sparkles, BarChart3, ArrowUpRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import Link from 'next/link';
 import { TrendLineChart, SourcePieChart } from '@/app/components/trends';
 import { TrendingKeywordCard } from '@/app/components/trends/overview/TrendingKeywordCard';

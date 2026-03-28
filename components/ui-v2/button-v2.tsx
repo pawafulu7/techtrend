@@ -1,98 +1,184 @@
-import { cn } from '@/lib/utils';
-import { forwardRef } from 'react';
+import * as React from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { Slot } from 'radix-ui';
 import { Loader2 } from 'lucide-react';
 
-export interface ButtonV2Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'primary' | 'secondary' | 'ghost' | 'outline';
-  size?: 'sm' | 'md' | 'lg';
+const PRIMARY_STYLE =
+  'bg-(--tt-color-primary) text-(--tt-color-on-primary) hover:bg-(--tt-color-primary-hover) shadow-sm hover:shadow-md';
+const DEFAULT_SIZE = 'h-9 px-4 py-2 text-sm has-[>svg]:px-3';
+
+const buttonV2Variants = cva(
+  [
+    'inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-(--tt-color-primary)',
+    'disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed',
+    'data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed',
+    '[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-4',
+  ].join(' '),
+  {
+    variants: {
+      variant: {
+        // v1 "default" = primary-colored button (alias kept for v1 compat)
+        default: PRIMARY_STYLE,
+        primary: PRIMARY_STYLE,
+        secondary:
+          'bg-(--tt-color-secondary) text-white hover:bg-(--tt-color-secondary-hover) shadow-sm hover:shadow-md',
+        ghost: 'hover:bg-(--tt-color-surface-hover) text-(--tt-color-text)',
+        outline:
+          'border border-(--tt-color-border) bg-transparent hover:bg-(--tt-color-surface-hover) hover:border-(--tt-color-border-hover) text-(--tt-color-text)',
+        destructive:
+          'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40',
+        link: 'text-(--tt-color-primary) underline-offset-4 hover:underline',
+      },
+      size: {
+        default: DEFAULT_SIZE,
+        xs: 'h-6 gap-1 px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*="size-"])]:size-3',
+        sm: 'h-8 gap-1.5 px-3 has-[>svg]:px-2.5',
+        md: DEFAULT_SIZE, // alias for v2 consumers
+        lg: 'h-10 px-6 has-[>svg]:px-4',
+        icon: 'size-9',
+        'icon-xs': 'size-6 [&_svg:not([class*="size-"])]:size-3',
+        'icon-sm': 'size-8',
+        'icon-lg': 'size-10',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
+    },
+  }
+);
+
+type ButtonV2VariantProps = VariantProps<typeof buttonV2Variants>;
+
+/**
+ * @param asChild - Renders as child element via Radix Slot.Root.
+ *   When true, loading spinner is not rendered (Slot requires a single child).
+ *   The disabled state is conveyed via aria-disabled + click guard instead of native disabled.
+ * @param loading - Shows spinner and disables the button. Ignored visually when asChild is true.
+ * @param iconOnly - Maps size to fixed-dimension icon variant (e.g. sm -> icon-sm).
+ */
+interface ButtonV2Props
+  extends React.ComponentProps<'button'>, ButtonV2VariantProps {
+  asChild?: boolean;
   loading?: boolean;
   iconOnly?: boolean;
 }
 
-const ButtonV2 = forwardRef<HTMLButtonElement, ButtonV2Props>(
-  (
-    {
-      variant = 'default',
-      size = 'md',
-      loading = false,
-      iconOnly = false,
-      disabled,
-      className,
-      children,
-      type = 'button',
-      ...props
-    },
-    ref
-  ) => {
-    const isDisabled = disabled || loading;
+type SizeKey = NonNullable<ButtonV2VariantProps['size']>;
 
-    return (
-      <button
-        ref={ref}
-        type={type}
-        disabled={isDisabled}
-        className={cn(
-          'inline-flex items-center justify-center font-medium transition-all',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-          'focus-visible:ring-(--tt-color-primary)',
-          'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
+const ICON_SIZE_MAP: Record<SizeKey, ButtonV2VariantProps['size']> = {
+  default: 'icon',
+  xs: 'icon-xs',
+  sm: 'icon-sm',
+  md: 'icon',
+  lg: 'icon-lg',
+  icon: 'icon',
+  'icon-xs': 'icon-xs',
+  'icon-sm': 'icon-sm',
+  'icon-lg': 'icon-lg',
+};
 
-          // Variants
-          variant === 'default' && [
-            'bg-(--tt-color-surface) text-(--tt-color-text)',
-            'border border-(--tt-color-border)',
-            'hover:bg-(--tt-color-surface-hover) hover:border-(--tt-color-border-hover)',
-          ],
-          variant === 'primary' && [
-            'bg-(--tt-color-primary) text-(--tt-color-on-primary)',
-            'hover:bg-(--tt-color-primary-hover)',
-            'shadow-sm hover:shadow-md',
-          ],
-          variant === 'secondary' && [
-            'bg-(--tt-color-secondary) text-white',
-            'hover:bg-(--tt-color-secondary-hover)',
-            'shadow-sm hover:shadow-md',
-          ],
-          variant === 'ghost' && [
-            'hover:bg-(--tt-color-surface-hover)',
-            'text-(--tt-color-text)',
-          ],
-          variant === 'outline' && [
-            'border border-(--tt-color-border)',
-            'bg-transparent',
-            'hover:bg-(--tt-color-surface-hover) hover:border-(--tt-color-border-hover)',
-            'text-(--tt-color-text)',
-          ],
+const SPINNER_SIZE: Partial<Record<SizeKey, string>> = {
+  xs: 'size-3',
+  sm: 'size-3',
+  'icon-xs': 'size-3',
+  'icon-sm': 'size-3',
+  lg: 'size-5',
+  'icon-lg': 'size-5',
+};
 
-          // Sizes
-          size === 'sm' && (iconOnly ? 'p-2' : 'px-3 py-1.5 text-sm'),
-          size === 'md' && (iconOnly ? 'p-2.5' : 'px-4 py-2 text-base'),
-          size === 'lg' && (iconOnly ? 'p-3' : 'px-6 py-3 text-lg'),
+function ButtonV2({
+  className,
+  variant = 'default',
+  size = 'default',
+  asChild = false,
+  loading = false,
+  iconOnly = false,
+  disabled,
+  children,
+  type = 'button',
+  onClick,
+  ...props
+}: ButtonV2Props) {
+  const isDisabled = disabled || loading;
+  const Comp = asChild ? Slot.Root : 'button';
+  const resolvedSize = iconOnly ? (ICON_SIZE_MAP[size!] ?? 'icon') : size;
 
-          // Border radius
-          'rounded-md',
+  const buttonClassName = buttonV2Variants({
+    variant,
+    size: resolvedSize,
+    className,
+  });
 
-          className
-        )}
-        {...props}
-      >
-        {loading && (
-          <Loader2
-            className={cn(
-              'animate-spin',
-              !iconOnly && 'mr-2',
-              size === 'sm' && 'h-3 w-3',
-              size === 'md' && 'h-4 w-4',
-              size === 'lg' && 'h-5 w-5'
-            )}
-          />
-        )}
-        {children}
-      </button>
-    );
+  const disabledProps = asChild
+    ? {
+        'data-disabled': isDisabled ? 'true' : undefined,
+        'aria-disabled': isDisabled || undefined,
+        tabIndex: isDisabled ? -1 : props.tabIndex,
+        onClick: isDisabled
+          ? (e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          : onClick,
+      }
+    : { disabled: isDisabled, onClick };
+
+  // asChild + disabled: clone child to fully override props (Slot merges, child onClick runs first)
+  if (
+    asChild &&
+    isDisabled &&
+    React.isValidElement<{ className?: string }>(children)
+  ) {
+    return React.cloneElement(children, {
+      ...props,
+      'data-slot': 'button',
+      'data-variant': variant,
+      'data-disabled': 'true',
+      'aria-disabled': true,
+      tabIndex: -1,
+      className: [buttonClassName, children.props.className]
+        .filter(Boolean)
+        .join(' '),
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+      },
+    } as React.HTMLAttributes<HTMLElement>);
   }
-);
+
+  return (
+    <Comp
+      data-slot="button"
+      data-variant={variant}
+      type={asChild ? undefined : type}
+      className={buttonClassName}
+      {...props}
+      {...disabledProps}
+    >
+      {/* asChild uses Slot.Root which requires a single child element */}
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {loading && (
+            <Loader2
+              className={`animate-spin ${SPINNER_SIZE[resolvedSize ?? 'default'] ?? 'size-4'}`}
+            />
+          )}
+          {children}
+        </>
+      )}
+    </Comp>
+  );
+}
 
 ButtonV2.displayName = 'ButtonV2';
 
-export { ButtonV2 };
+// v1-compatible re-exports for gradual migration
+const Button = ButtonV2;
+const buttonVariants = buttonV2Variants;
+
+export { ButtonV2, buttonV2Variants, Button, buttonVariants };
+export type { ButtonV2Props };

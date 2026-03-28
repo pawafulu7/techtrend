@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { Network, ArrowLeft } from 'lucide-react';
 import { forceCollide } from 'd3-force';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import type { GraphData, GraphNode, GraphLink } from '@/lib/types/graph';
 import { darkenColor, truncateLabel } from '@/lib/utils/graph-helpers';
 

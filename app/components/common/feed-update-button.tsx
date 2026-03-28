@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { TrendingUp, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 

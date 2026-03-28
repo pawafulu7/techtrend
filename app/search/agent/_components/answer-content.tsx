@@ -7,7 +7,7 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkExtractArticleId from './remark-extract-article-id';
 import { ExternalLink, FileText, Calendar, Link2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
@@ -223,7 +223,6 @@ export function AnswerContent({
             <li>- 検索期間を調整する</li>
           </ul>
           <div className="flex justify-center gap-2">
-            {/* shadcn/ui ButtonをasChildで維持: ButtonV2がasChildプロップをサポートしていないため */}
             <Button asChild variant="outline">
               <Link href="/search">通常検索を試す</Link>
             </Button>
@@ -373,7 +372,6 @@ export function AnswerContent({
                     <li {...props}>
                       {children}
                       {article && (
-                        // shadcn/ui ButtonをasChildで維持: ButtonV2がasChildプロップをサポートしていないため
                         <Button
                           asChild
                           size="sm"

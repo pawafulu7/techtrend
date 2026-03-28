@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Loader2 } from 'lucide-react';
 import { ROLE_LABELS } from '../_types';
 import type { AdminUser } from '../_types';

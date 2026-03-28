@@ -3,7 +3,7 @@
 import { ExternalLink, Eye, Heart, Award, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import Link from 'next/link';
 
 interface TopArticle {

@@ -11,7 +11,7 @@ import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-p
 import { buildScrollStorageKey } from '@/lib/utils/scroll';
 import { PAGINATION, SCROLL } from '@/lib/constants/index';
 import type { Source, Tag } from '@prisma/client';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
 import { AlertTriangle, Loader2, Search } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';

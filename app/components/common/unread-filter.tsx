@@ -1,7 +1,7 @@
 'use client';
 
 import { Eye, EyeOff, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import {
   DropdownMenu,
   DropdownMenuContent,

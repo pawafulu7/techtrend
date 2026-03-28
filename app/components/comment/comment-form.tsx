@@ -12,7 +12,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Lock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CommentResponse, CreateCommentInput } from './types';
