@@ -6,7 +6,7 @@ import {
   TopArticleList,
   CategoryDistribution,
 } from '@/app/components/trends/daily';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { RefreshCw, AlertCircle, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';

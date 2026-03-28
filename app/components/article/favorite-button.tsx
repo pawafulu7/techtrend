@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSession } from 'next-auth/react';

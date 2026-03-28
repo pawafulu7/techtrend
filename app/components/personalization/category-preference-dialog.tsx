@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Loader2 } from 'lucide-react';
 import { CategoryCard, CategoryCardSkeleton } from './category-card';
 import { PeriodSelector } from './period-selector';

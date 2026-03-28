@@ -18,7 +18,7 @@ import {
   type ArticleQAResult,
   type ArticleQAError,
 } from '@/lib/hooks/useArticleQA';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { DialogTitle } from '@/components/ui/dialog';
 
 const ENABLE_STREAMING_UI =

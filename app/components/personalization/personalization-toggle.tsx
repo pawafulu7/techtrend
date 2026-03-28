@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { Toggle } from '@/components/ui/toggle';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Settings, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CategoryPreferenceDialog } from './category-preference-dialog';

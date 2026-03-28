@@ -12,7 +12,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Textarea } from '@/components/ui/textarea';
 import { Pencil, Trash2, X, Check, Loader2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';

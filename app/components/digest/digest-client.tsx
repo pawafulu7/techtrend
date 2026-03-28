@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { Newspaper, Settings, CheckCircle, Loader2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { DigestSection } from './digest-section';
 import { CategoryPreferenceDialog } from '@/app/components/personalization/category-preference-dialog';
 import { useUpdatePreferences } from '@/lib/hooks/use-personalization-preferences';

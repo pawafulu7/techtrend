@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PanelLeft, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'home-sidebar-open';

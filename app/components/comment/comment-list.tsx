@@ -10,7 +10,7 @@
  * - aria-live でコメント数変更を通知
  */
 
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Loader2, StickyNote } from 'lucide-react';
 import { CommentItem } from './comment-item';
 import { CommentListSkeleton } from './comment-skeletons';

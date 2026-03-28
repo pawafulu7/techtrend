@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Share2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 

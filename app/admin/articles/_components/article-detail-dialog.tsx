@@ -14,7 +14,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { ChevronDown, EyeOff, Eye, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { formatDateWithTime } from '@/lib/utils/date';

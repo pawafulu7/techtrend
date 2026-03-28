@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { Search as SearchIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 export function Search() {

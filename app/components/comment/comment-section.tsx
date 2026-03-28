@@ -19,7 +19,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { StickyNote, Lock, LogIn } from 'lucide-react';
 import { CommentForm } from './comment-form';
 import { CommentList } from './comment-list';

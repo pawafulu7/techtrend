@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useForm } from 'react-hook-form';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';

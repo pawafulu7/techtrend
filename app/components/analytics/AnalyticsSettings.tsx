@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Settings, Trash2, AlertTriangle } from 'lucide-react';
 import { analyticsTracker } from '@/lib/analytics/tracking';
 import { useRouter } from 'next/navigation';

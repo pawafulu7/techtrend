@@ -14,7 +14,7 @@ import {
   Newspaper,
   FileText,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { SITE_NAME } from '@/lib/constants';

@@ -1,7 +1,7 @@
 'use client';
 
 import { Loader2, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import { Progress } from '@/components/ui/progress';
 
 interface ScrollRestorationLoadingProps {

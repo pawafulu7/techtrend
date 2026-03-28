@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, Save, Trash2, Bookmark } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui-v2/button-v2';
 import {
   DropdownMenu,
   DropdownMenuContent,
