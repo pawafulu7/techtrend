@@ -20,11 +20,7 @@ import type { Source } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 interface SourceDetail {
-  source: Source & {
-    _count: {
-      articles: number;
-    };
-  };
+  source: Source;
   stats: {
     totalArticles: number;
     avgQualityScore: number;
@@ -40,13 +36,6 @@ interface SourceDetail {
 async function getSourceDetail(id: string): Promise<SourceDetail | null> {
   const source = await prisma.source.findUnique({
     where: { id },
-    include: {
-      _count: {
-        select: {
-          articles: true,
-        },
-      },
-    },
   });
 
   if (!source) {
@@ -131,7 +120,7 @@ async function getSourceDetail(id: string): Promise<SourceDetail | null> {
       avgQualityScore: Math.round(avgQualityScore),
       avgBookmarks: Math.round(avgBookmarks),
       publishFrequency: Math.round(publishFrequency * 10) / 10,
-      lastPublished: lastPublished ? new Date(lastPublished) : null,
+      lastPublished: lastPublished ?? null,
     },
     recentArticles,
     topArticles,
