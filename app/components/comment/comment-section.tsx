@@ -331,7 +331,11 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
               )}
 
               {/* コメントフォーム */}
-              <CommentForm articleId={articleId} onSubmit={handleCreate} />
+              <CommentForm
+                articleId={articleId}
+                onSubmit={handleCreate}
+                onSuccess={() => queryClient.invalidateQueries({ queryKey })}
+              />
 
               {/* コメント一覧 */}
               <div className="mt-4">

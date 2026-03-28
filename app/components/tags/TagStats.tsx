@@ -8,6 +8,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, Hash, Calendar, Activity } from 'lucide-react';
 import logger from '@/lib/logger.client';
 
+interface TagCloudItem {
+  id?: string;
+  name: string;
+  count: number;
+  trend?: string;
+  growthRate?: number;
+}
+
 interface TagStat {
   totalTags: number;
   activeTags: number; // 過去30日間に使用されたタグ
@@ -97,20 +105,13 @@ export function TagStats() {
   const growthTags = useMemo(() => {
     const tags = Array.isArray(activeData.tags) ? activeData.tags : [];
     return tags
-      .filter(
-        (tag: {
-          name: string;
-          count: number;
-          trend?: string;
-          growthRate?: number;
-        }) => tag.trend === 'rising'
-      )
+      .filter((tag: TagCloudItem) => tag.trend === 'rising')
       .sort(
-        (a: { growthRate?: number }, b: { growthRate?: number }) =>
+        (a: TagCloudItem, b: TagCloudItem) =>
           (b.growthRate || 0) - (a.growthRate || 0)
       )
       .slice(0, 5)
-      .map((tag: { name: string; count: number; growthRate?: number }) => ({
+      .map((tag: TagCloudItem) => ({
         name: tag.name,
         growthRate: tag.growthRate || 0,
       }));

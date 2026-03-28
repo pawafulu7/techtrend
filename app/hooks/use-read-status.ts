@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -160,6 +160,17 @@ export function useReadStatus(articleIds?: string[]) {
       );
   }, [queryClient, queryKey]);
 
+  const bulkReadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // アンマウント時にpending setTimeout をクリア
+  useEffect(() => {
+    return () => {
+      if (bulkReadTimeoutRef.current !== null) {
+        clearTimeout(bulkReadTimeoutRef.current);
+      }
+    };
+  }, []);
+
   type MutationContext = { previous: ReadStatusCache | undefined };
 
   // 記事を既読にマーク
@@ -301,7 +312,11 @@ export function useReadStatus(articleIds?: string[]) {
     },
     onSuccess: () => {
       // 記事リストを再取得するためのカスタムイベントを発火
-      setTimeout(() => {
+      if (bulkReadTimeoutRef.current !== null) {
+        clearTimeout(bulkReadTimeoutRef.current);
+      }
+      bulkReadTimeoutRef.current = setTimeout(() => {
+        bulkReadTimeoutRef.current = null;
         window.dispatchEvent(
           new CustomEvent('articles-bulk-read', {
             detail: { isRead: true },

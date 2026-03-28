@@ -46,6 +46,7 @@ export function useJobsPolling(
         },
         refetchInterval: enabled ? interval : false,
         enabled,
+        retry: false,
       },
       {
         queryKey: ['jobs-embedding-summary'],
@@ -62,6 +63,7 @@ export function useJobsPolling(
         },
         refetchInterval: enabled ? interval : false,
         enabled,
+        retry: false,
       },
       {
         queryKey: ['jobs-article-stats', articleStatsRange],
@@ -79,6 +81,7 @@ export function useJobsPolling(
         },
         refetchInterval: enabled ? interval : false,
         enabled,
+        retry: false,
       },
     ],
   });
