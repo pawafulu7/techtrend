@@ -16,7 +16,7 @@ describe('FavoriteButton', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useFakeTimers();
+    jest.useFakeTimers({ advanceTimers: true });
 
     // デフォルトのモック実装
     (useFavoriteSources as jest.Mock).mockReturnValue({
@@ -42,8 +42,8 @@ describe('FavoriteButton', () => {
   afterEach(() => {
     // Clear all timers to prevent test leaks
     act(() => {
-      jest.clearAllTimers();
       jest.runOnlyPendingTimers();
+      jest.clearAllTimers();
     });
     jest.useRealTimers();
     jest.restoreAllMocks();
@@ -57,7 +57,7 @@ describe('FavoriteButton', () => {
 
       const button = screen.getByRole('button');
       expect(button).toBeInTheDocument();
-      expect(button).toHaveClass('bg-transparent'); // outline variant
+      expect(button).toHaveAttribute('data-variant', 'outline'); // outline variant
 
       const star = button.querySelector('.lucide-star');
       expect(star).toBeInTheDocument();
@@ -70,7 +70,7 @@ describe('FavoriteButton', () => {
       render(<FavoriteButton sourceId="source-1" />);
 
       const button = screen.getByRole('button');
-      expect(button).toHaveClass('shadow-sm'); // default variant
+      expect(button).toHaveAttribute('data-variant', 'default'); // default variant
 
       const star = button.querySelector('.lucide-star');
       expect(star).toHaveClass('fill-current');
@@ -134,7 +134,7 @@ describe('FavoriteButton', () => {
       const { rerender } = render(<FavoriteButton sourceId="source-1" />);
 
       let button = screen.getByRole('button');
-      expect(button).toHaveClass('bg-transparent');
+      expect(button).toHaveAttribute('data-variant', 'outline');
 
       // クリックしてトグルを呼び出す
       await user.click(button);
@@ -145,7 +145,7 @@ describe('FavoriteButton', () => {
       rerender(<FavoriteButton sourceId="source-1" />);
 
       button = screen.getByRole('button');
-      expect(button).toHaveClass('shadow-sm');
+      expect(button).toHaveAttribute('data-variant', 'default');
     });
   });
 
@@ -286,12 +286,12 @@ describe('FavoriteButton', () => {
 
       // source-1はお気に入りではない
       let button = screen.getByRole('button');
-      expect(button).toHaveClass('bg-transparent');
+      expect(button).toHaveAttribute('data-variant', 'outline');
 
       // source-2はお気に入り
       rerender(<FavoriteButton sourceId="source-2" />);
       button = screen.getByRole('button');
-      expect(button).toHaveClass('shadow-sm');
+      expect(button).toHaveAttribute('data-variant', 'default');
 
       // source-1をクリック
       rerender(<FavoriteButton sourceId="source-1" />);

@@ -57,7 +57,9 @@ interface ButtonV2Props
   iconOnly?: boolean;
 }
 
-const ICON_SIZE_MAP: Record<string, ButtonV2VariantProps['size']> = {
+type SizeKey = NonNullable<ButtonV2VariantProps['size']>;
+
+const ICON_SIZE_MAP: Record<SizeKey, ButtonV2VariantProps['size']> = {
   default: 'icon',
   xs: 'icon-xs',
   sm: 'icon-sm',
@@ -69,7 +71,7 @@ const ICON_SIZE_MAP: Record<string, ButtonV2VariantProps['size']> = {
   'icon-lg': 'icon-lg',
 };
 
-const SPINNER_SIZE: Record<string, string> = {
+const SPINNER_SIZE: Partial<Record<SizeKey, string>> = {
   xs: 'size-3',
   sm: 'size-3',
   'icon-xs': 'size-3',
@@ -88,6 +90,7 @@ function ButtonV2({
   disabled,
   children,
   type = 'button',
+  onClick,
   ...props
 }: ButtonV2Props) {
   const isDisabled = disabled || loading;
@@ -96,14 +99,27 @@ function ButtonV2({
     ? (ICON_SIZE_MAP[size ?? 'default'] ?? 'icon')
     : size;
 
+  const disabledProps = asChild
+    ? {
+        'aria-disabled': isDisabled || undefined,
+        tabIndex: isDisabled ? -1 : undefined,
+        onClick: isDisabled
+          ? (e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          : onClick,
+      }
+    : { disabled: isDisabled, onClick };
+
   return (
     <Comp
       data-slot="button"
       data-variant={variant}
       type={asChild ? undefined : type}
-      disabled={isDisabled}
       className={buttonV2Variants({ variant, size: resolvedSize, className })}
       {...props}
+      {...disabledProps}
     >
       {/* asChild uses Slot.Root which requires a single child element */}
       {asChild ? (
