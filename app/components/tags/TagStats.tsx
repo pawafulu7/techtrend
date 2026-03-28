@@ -1,6 +1,7 @@
 'use client';
 
 import { useQueries } from '@tanstack/react-query';
+import { useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,13 +41,83 @@ export function TagStats() {
   const results = useQueries({
     queries: [
       { queryKey: ['tag-stats'], queryFn: fetchTagStats },
-      { queryKey: ['tag-cloud-summary'], queryFn: fetchTagCloudSummary },
+      {
+        queryKey: ['tag-cloud-summary', { period: '30d', limit: 1000 }],
+        queryFn: fetchTagCloudSummary,
+      },
       { queryKey: ['tags-new'], queryFn: fetchTagsNew },
     ],
   });
 
   const [totalResult, activeResult, newResult] = results;
   const loading = results.some((r) => r.isPending);
+
+  // エラーは初回発生時のみログ出力（レンダリング毎の重複出力を防ぐ）
+  const prevHadErrorRef = useRef(false);
+  useEffect(() => {
+    const hasError = results.some((r) => r.isError);
+    if (hasError && !prevHadErrorRef.current) {
+      results.forEach((r) => {
+        if (r.isError) {
+          logger.error({ error: r.error }, 'Failed to load tag stats');
+        }
+      });
+    }
+    prevHadErrorRef.current = hasError;
+  }, [results]);
+
+  const totalData = useMemo(
+    () =>
+      totalResult.isError ? { total: 0 } : (totalResult.data ?? { total: 0 }),
+    [totalResult.isError, totalResult.data]
+  );
+  const activeData = useMemo(
+    () =>
+      activeResult.isError ? { tags: [] } : (activeResult.data ?? { tags: [] }),
+    [activeResult.isError, activeResult.data]
+  );
+  const newData = useMemo(
+    () => (newResult.isError ? { count: 0 } : (newResult.data ?? { count: 0 })),
+    [newResult.isError, newResult.data]
+  );
+
+  const activeTags = useMemo(
+    () => (Array.isArray(activeData.tags) ? activeData.tags.length : 0),
+    [activeData.tags]
+  );
+
+  // 成長率の高いタグ（APIから返されるgrowthRateを使用）
+  const growthTags = useMemo(() => {
+    const tags = Array.isArray(activeData.tags) ? activeData.tags : [];
+    return tags
+      .filter(
+        (tag: {
+          name: string;
+          count: number;
+          trend?: string;
+          growthRate?: number;
+        }) => tag.trend === 'rising'
+      )
+      .sort(
+        (a: { growthRate?: number }, b: { growthRate?: number }) =>
+          (b.growthRate || 0) - (a.growthRate || 0)
+      )
+      .slice(0, 5)
+      .map((tag: { name: string; count: number; growthRate?: number }) => ({
+        name: tag.name,
+        growthRate: tag.growthRate || 0,
+      }));
+  }, [activeData.tags]);
+
+  const stats: TagStat = useMemo(
+    () => ({
+      totalTags: totalData.total || 0,
+      activeTags,
+      newTags: newData.count || 0,
+      topGrowthTags: growthTags,
+    }),
+    [totalData.total, activeTags, newData.count, growthTags]
+  );
 
   if (loading) {
     return (
@@ -63,55 +134,6 @@ export function TagStats() {
       </div>
     );
   }
-
-  // エラーは個別にログ出力し、部分表示にフォールバック
-  results.forEach((r) => {
-    if (r.isError) {
-      logger.error({ error: r.error }, 'Failed to load tag stats');
-    }
-  });
-
-  const totalData = totalResult.isError
-    ? { total: 0 }
-    : (totalResult.data ?? { total: 0 });
-  const activeData = activeResult.isError
-    ? { tags: [] }
-    : (activeResult.data ?? { tags: [] });
-  const newData = newResult.isError
-    ? { count: 0 }
-    : (newResult.data ?? { count: 0 });
-
-  const activeTags = Array.isArray(activeData.tags)
-    ? activeData.tags.length
-    : 0;
-
-  // 成長率の高いタグ（APIから返されるgrowthRateを使用）
-  const tags = Array.isArray(activeData.tags) ? activeData.tags : [];
-  const growthTags = tags
-    .filter(
-      (tag: {
-        name: string;
-        count: number;
-        trend?: string;
-        growthRate?: number;
-      }) => tag.trend === 'rising'
-    )
-    .sort(
-      (a: { growthRate?: number }, b: { growthRate?: number }) =>
-        (b.growthRate || 0) - (a.growthRate || 0)
-    )
-    .slice(0, 5)
-    .map((tag: { name: string; count: number; growthRate?: number }) => ({
-      name: tag.name,
-      growthRate: tag.growthRate || 0,
-    }));
-
-  const stats: TagStat = {
-    totalTags: totalData.total || 0,
-    activeTags,
-    newTags: newData.count || 0,
-    topGrowthTags: growthTags,
-  };
 
   return (
     <div className="space-y-4">

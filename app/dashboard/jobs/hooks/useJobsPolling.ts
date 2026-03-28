@@ -130,12 +130,16 @@ export function useJobsPolling(
           ? firstError.message
           : 'Failed to fetch all job data',
       timestamp: new Date().toISOString(),
+      kind: 'full',
+      failedApis,
     };
   } else if (failedApis.length > 0) {
     // 部分失敗
     error = {
       message: `Partial failure: ${failedApis.join(', ')} API(s) failed`,
       timestamp: new Date().toISOString(),
+      kind: 'partial',
+      failedApis,
     };
   }
 

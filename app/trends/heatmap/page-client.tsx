@@ -96,7 +96,8 @@ export function HeatmapPageClient() {
   // Fetch drilldown articles
   const {
     data: drilldownArticles = [],
-    isFetching: drilldownLoading,
+    isLoading: drilldownInitialLoading,
+    isFetching: drilldownFetching,
     isError: drilldownError,
     refetch: refetchDrilldown,
   } = useQuery<DrilldownArticle[]>({
@@ -108,6 +109,12 @@ export function HeatmapPageClient() {
         throw new Error(`HTTP ${response.status}`);
       }
       const result: ArticlesApiResponse = await response.json();
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      if (result.success === false) {
+        throw new Error('記事の取得に失敗しました');
+      }
       return result.data?.items ?? [];
     },
     enabled: drilldownCategory !== null,
@@ -230,14 +237,19 @@ export function HeatmapPageClient() {
           className="w-full overflow-y-auto sm:max-w-lg"
         >
           <SheetHeader>
-            <SheetTitle>{drilldownLabel}</SheetTitle>
+            <div className="flex items-center gap-2">
+              <SheetTitle>{drilldownLabel}</SheetTitle>
+              {drilldownFetching && !drilldownInitialLoading && (
+                <RefreshCw className="text-muted-foreground h-3.5 w-3.5 animate-spin" />
+              )}
+            </div>
             <SheetDescription>
               カテゴリ「{drilldownLabel}」の最新記事
             </SheetDescription>
           </SheetHeader>
 
           <div className="mt-6 space-y-3">
-            {drilldownLoading ? (
+            {drilldownInitialLoading ? (
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
                   <div

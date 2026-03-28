@@ -42,7 +42,14 @@ function loadFromLocalStorage(): Set<string> {
 export function useReadStatus(articleIds?: string[]) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  const queryKey = READ_STATUS_QUERY_KEY;
+  const queryKey = useMemo(
+    () =>
+      [
+        ...READ_STATUS_QUERY_KEY,
+        { articleIds: articleIds?.join(',') ?? 'all', auth: !!session?.user },
+      ] as const,
+    [articleIds, session?.user]
+  );
 
   // 既読状態を取得
   const {
@@ -183,6 +190,7 @@ export function useReadStatus(articleIds?: string[]) {
     onError: (_err, _articleId, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
+        saveToLocalStorage(context.previous.readArticleIds);
       }
     },
     onSettled: () => {
@@ -227,6 +235,7 @@ export function useReadStatus(articleIds?: string[]) {
     onError: (_err, _articleId, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
+        saveToLocalStorage(context.previous.readArticleIds);
       }
     },
     onSettled: () => {
@@ -278,6 +287,7 @@ export function useReadStatus(articleIds?: string[]) {
     onError: (_err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
+        saveToLocalStorage(context.previous.readArticleIds);
       }
       console.error('Error marking all as read:', _err.message);
     },

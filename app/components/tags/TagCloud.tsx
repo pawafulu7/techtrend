@@ -50,7 +50,7 @@ export function TagCloud({
     },
   });
 
-  const loading = isPending || isFetching;
+  const loading = isPending; // 初回ロードのみスケルトン表示（バックグラウンド再取得では表示しない）
   const tags: Tag[] = useMemo(() => data?.tags ?? [], [data?.tags]);
   const errorMessage = isError
     ? error instanceof Error
@@ -162,9 +162,11 @@ export function TagCloud({
               variant="ghost"
               size="sm"
               onClick={() => refetch()}
-              disabled={loading}
+              disabled={isFetching}
             >
-              <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+              <RefreshCw
+                className={cn('h-4 w-4', isFetching && 'animate-spin')}
+              />
             </Button>
           </div>
         </div>

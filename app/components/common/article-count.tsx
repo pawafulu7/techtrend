@@ -23,7 +23,11 @@ export function ArticleCount({
     isLoading: isLoadingPreferences,
   } = usePersonalizationPreferences();
 
-  const { data: count, isLoading: isFetchingCount } = useQuery<number>({
+  const {
+    data: count,
+    isLoading: isFetchingCount,
+    isError,
+  } = useQuery<number>({
     queryKey: [
       'article-count',
       {
@@ -78,8 +82,7 @@ export function ArticleCount({
       });
 
       if (!response.ok) {
-        console.error('[ArticleCount] API error:', response.status);
-        return 0;
+        throw new Error(`[ArticleCount] API error: ${response.status}`);
       }
 
       const result = await response.json();
@@ -101,6 +104,10 @@ export function ArticleCount({
     return (
       <div className="h-5 w-20 animate-pulse rounded bg-(--tt-color-surface-muted)" />
     );
+  }
+
+  if (isError) {
+    return null;
   }
 
   return (

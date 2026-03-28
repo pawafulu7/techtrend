@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,7 +60,11 @@ export function PopularArticles({
     ? initialMetric
     : ((searchParams.get('metric') || initialMetric) as MetricType);
 
-  const { data, isLoading: loading } = useQuery<RankedArticle[]>({
+  const {
+    data,
+    isLoading: loading,
+    isError,
+  } = useQuery<RankedArticle[]>({
     queryKey: ['popular-articles', { period, metric, limit }],
     queryFn: async () => {
       const response = await fetch(
@@ -74,7 +78,7 @@ export function PopularArticles({
     },
   });
 
-  const articles = data ?? [];
+  const articles = useMemo(() => data ?? [], [data]);
 
   const handleMetricChange = useCallback(
     (value: string) => {
@@ -111,7 +115,11 @@ export function PopularArticles({
           </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {isError ? (
+            <div className="text-muted-foreground py-4 text-center text-sm">
+              読み込みに失敗しました
+            </div>
+          ) : loading ? (
             <div className="space-y-2" aria-live="polite">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
@@ -147,6 +155,14 @@ export function PopularArticles({
           )}
         </CardContent>
       </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-muted-foreground py-8 text-center">
+        読み込みに失敗しました
+      </div>
     );
   }
 

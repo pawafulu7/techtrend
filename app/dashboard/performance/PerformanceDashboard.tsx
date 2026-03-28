@@ -106,20 +106,6 @@ export default function PerformanceDashboard() {
     );
   }
 
-  // エラー表示
-  if (error && !metrics) {
-    return (
-      <div className="container mx-auto p-6">
-        <Alert className="border-red-200 bg-red-50">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            メトリクスの取得に失敗しました: {error.message}
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
   const cacheHitRate = parseFloat(
     metrics?.summary?.totalCacheHitRate?.replace('%', '') || '0'
   );
@@ -137,6 +123,16 @@ export default function PerformanceDashboard() {
 
   return (
     <div className="container mx-auto space-y-6 p-6">
+      {/* 部分失敗警告 */}
+      {error && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            メトリクスの取得に失敗しました: {error.message}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* ヘッダー */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -152,7 +148,9 @@ export default function PerformanceDashboard() {
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="rounded-lg bg-blue-500 p-2 text-white hover:bg-blue-600 disabled:opacity-50"
+            aria-label="データを更新"
+            title="データを更新"
+            className="rounded-lg bg-blue-500 p-2 text-white hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
           >
             <RefreshCw
               className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}

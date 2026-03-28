@@ -24,9 +24,13 @@ interface ArticleListResult {
   pagination: ArticlePagination;
 }
 
-async function fetchArticles(queryString: string): Promise<ArticleListResult> {
+async function fetchArticles(
+  queryString: string,
+  signal?: AbortSignal
+): Promise<ArticleListResult> {
   const response = await fetch(
-    `/api/articles${queryString ? `?${queryString}` : ''}`
+    `/api/articles${queryString ? `?${queryString}` : ''}`,
+    { signal }
   );
   if (!response.ok) {
     throw new Error('Failed to fetch articles');
@@ -55,7 +59,7 @@ export function HomeClient({ viewMode }: HomeClientProps) {
     error,
   } = useQuery<ArticleListResult>({
     queryKey: ['article-list', queryString],
-    queryFn: () => fetchArticles(queryString),
+    queryFn: ({ signal }) => fetchArticles(queryString, signal),
     placeholderData: keepPreviousData,
   });
 

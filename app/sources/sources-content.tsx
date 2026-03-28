@@ -49,7 +49,16 @@ export default function SourcesContent() {
         );
         return [];
       }
-      const json = await response.json();
+      let json: { sources?: unknown };
+      try {
+        json = await response.json();
+      } catch (parseError) {
+        logger.error(
+          { parseError },
+          'Failed to parse sources response as JSON'
+        );
+        return [];
+      }
       return Array.isArray(json.sources) ? json.sources : [];
     },
   });

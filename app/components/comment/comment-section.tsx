@@ -72,8 +72,14 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
         credentials: 'include',
       });
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Failed to fetch comments');
+        let errMessage = 'Failed to fetch comments';
+        try {
+          const errData = await response.json();
+          errMessage = errData.error || errMessage;
+        } catch {
+          // JSON パース失敗時はデフォルトメッセージを使用
+        }
+        throw new Error(errMessage);
       }
       return response.json() as Promise<PaginatedCommentsResponse>;
     },
@@ -83,8 +89,14 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
   });
 
   // 全ページのコメントをフラットに展開
-  const comments = data?.pages.flatMap((page) => page.comments) ?? [];
-  const totalCount = data?.pages[data.pages.length - 1]?.totalCount ?? 0;
+  const comments = useMemo(
+    () => data?.pages.flatMap((p) => p.comments) ?? [],
+    [data]
+  );
+  const totalCount = useMemo(
+    () => data?.pages[data.pages.length - 1]?.totalCount ?? 0,
+    [data]
+  );
   const fetchError = queryError instanceof Error ? queryError.message : null;
 
   // コメント作成 mutation
@@ -101,8 +113,14 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'コメントの投稿に失敗しました');
+        let errMessage = 'コメントの投稿に失敗しました';
+        try {
+          const errData = await response.json();
+          errMessage = errData.error || errMessage;
+        } catch {
+          // JSON パース失敗時はデフォルトメッセージを使用
+        }
+        throw new Error(errMessage);
       }
       return response.json();
     },
@@ -125,8 +143,14 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Failed to update comment');
+        let errMessage = 'Failed to update comment';
+        try {
+          const errData = await response.json();
+          errMessage = errData.error || errMessage;
+        } catch {
+          // JSON パース失敗時はデフォルトメッセージを使用
+        }
+        throw new Error(errMessage);
       }
       return response.json();
     },
@@ -143,8 +167,14 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
         credentials: 'include',
       });
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Failed to delete comment');
+        let errMessage = 'Failed to delete comment';
+        try {
+          const errData = await response.json();
+          errMessage = errData.error || errMessage;
+        } catch {
+          // JSON パース失敗時はデフォルトメッセージを使用
+        }
+        throw new Error(errMessage);
       }
     },
     onSuccess: () => {
