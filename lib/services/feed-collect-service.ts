@@ -39,8 +39,16 @@ export async function collectFeeds(): Promise<{
         collectResult.error = errors.map((e) => e.message).join(', ');
       }
 
+      // Deduplicate fetched articles by URL
+      const seenFetchedURLs = new Set<string>();
+      const uniqueArticles = articles.filter((article) => {
+        if (seenFetchedURLs.has(article.url)) return false;
+        seenFetchedURLs.add(article.url);
+        return true;
+      });
+
       // Batch check for existing articles (N+1 optimization)
-      const articleURLs = articles.map((a) => a.url);
+      const articleURLs = uniqueArticles.map((a) => a.url);
       const existingArticles = await prisma.article.findMany({
         where: { url: { in: articleURLs } },
         select: { url: true },
@@ -48,7 +56,9 @@ export async function collectFeeds(): Promise<{
       const existingURLSet = new Set(existingArticles.map((a) => a.url));
 
       // Filter to only new articles
-      const newArticles = articles.filter((a) => !existingURLSet.has(a.url));
+      const newArticles = uniqueArticles.filter(
+        (a) => !existingURLSet.has(a.url)
+      );
 
       // Process only new articles
       for (const articleData of newArticles) {
@@ -56,7 +66,7 @@ export async function collectFeeds(): Promise<{
           // タグを正規化
           // Note: articleData is CreateArticleInput with tagNames property
           // The RSS categories have already been converted to tagNames in the fetcher layer
-          const tagNames = articleData.tagNames || [];
+          const tagNames = articleData.tagNames ?? articleData.tags ?? [];
           const normalizedTags = normalizeTagInput(tagNames);
 
           // Create article
@@ -106,6 +116,7 @@ export async function collectFeeds(): Promise<{
             }
           }
         } catch (error) {
+          collectResult.success = false;
           logger.error(
             { source: source.name, url: articleData.url, error },
             'Failed to process article'

@@ -5,13 +5,15 @@ import {
   withFeedCollectTokenAuth,
 } from './with-feed-collect-auth';
 import { distributedLock } from '@/lib/cache/distributed-lock';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import logger from '@/lib/logger';
 import type { ApiResponse } from '@/types/api';
 
 // Force dynamic to prevent Next.js 16 build-time page data collection
 // This route uses jsdom (ESM-only) which fails during static analysis
 export const dynamic = 'force-dynamic';
 
-async function collectHandler(_request: NextRequest) {
+async function collectHandler(request: NextRequest) {
   try {
     const data = await distributedLock.executeWithLock(
       'feeds:collect',
@@ -32,6 +34,10 @@ async function collectHandler(_request: NextRequest) {
       typeof data
     >);
   } catch (error) {
+    logger.error(
+      { path: request.nextUrl.pathname, method: request.method, error },
+      'Failed to collect feeds'
+    );
     return NextResponse.json(
       {
         success: false,
@@ -43,8 +49,10 @@ async function collectHandler(_request: NextRequest) {
   }
 }
 
+const rateLimitedCollectHandler = withRateLimit('cron:collect', collectHandler);
+
 // POST: Bearer + ?token= + admin session
-export const POST = withFeedCollectAuth(collectHandler);
+export const POST = withFeedCollectAuth(rateLimitedCollectHandler);
 
 // GET: Bearer + ?token= のみ（admin sessionは不可 — GETはCSRF保護対象外のため）
-export const GET = withFeedCollectTokenAuth(collectHandler);
+export const GET = withFeedCollectTokenAuth(rateLimitedCollectHandler);

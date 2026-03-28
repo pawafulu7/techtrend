@@ -316,6 +316,16 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     telemetryEvent: 'ratelimit.admin.ai-generate',
   },
 
+  // Cron / Internal Batch Operations
+  'cron:collect': {
+    points: 10,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'ip',
+    notes: 'Feed collection cron endpoint (internal use)',
+    telemetryEvent: 'ratelimit.cron.collect',
+  },
+
   // Default Catch-All - No block
   default: {
     points: 100,
