@@ -63,6 +63,10 @@ const ICON_SIZE_MAP: Record<string, ButtonV2VariantProps['size']> = {
   sm: 'icon-sm',
   md: 'icon',
   lg: 'icon-lg',
+  icon: 'icon',
+  'icon-xs': 'icon-xs',
+  'icon-sm': 'icon-sm',
+  'icon-lg': 'icon-lg',
 };
 
 const SPINNER_SIZE: Record<string, string> = {
