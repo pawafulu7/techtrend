@@ -3,16 +3,7 @@
 import Link from 'next/link';
 import { Sparkles, Zap, ArrowUpRight, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DiffChange } from '@/lib/ai/extraction/extraction-schemas';
-
-interface ArticleInfo {
-  id: string;
-  title: string;
-}
-
-interface ChangeWithCategory extends DiffChange {
-  category: string;
-}
+import { ArticleInfo, ChangeWithCategory } from './diff-utils';
 
 interface HotTopicChipProps {
   change: ChangeWithCategory;

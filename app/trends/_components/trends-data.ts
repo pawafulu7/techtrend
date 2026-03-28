@@ -270,7 +270,7 @@ export async function fetchSourceData(): Promise<SourceDataItem[]> {
             }),
           ]);
 
-          return sourceStats.map((source) => ({
+          const sources = sourceStats.map((source) => ({
             id: source.id,
             name: source.name,
             count: source._count.articles,
@@ -280,6 +280,10 @@ export async function fetchSourceData(): Promise<SourceDataItem[]> {
                   10
                 : 0,
           }));
+
+          await statsCache.set<StatsPayload>(cacheKey, { sources });
+
+          return sources;
         })();
 
     const topSources = sourcesRaw.slice(0, 6);

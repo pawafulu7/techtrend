@@ -9,34 +9,7 @@ import { TrendLineChart, SourcePieChart } from '@/app/components/trends';
 import { TrendingKeywordCard } from '@/app/components/trends/overview/TrendingKeywordCard';
 import { TrendStatsBar } from '@/app/components/trends/overview/TrendStatsBar';
 import { TrendNavigationCards } from '@/app/components/trends/overview/TrendNavigationCards';
-
-interface TrendingKeyword {
-  id: string;
-  name: string;
-  recentCount: number;
-  weeklyAverage: number;
-  growthRate: number;
-  isTrending: boolean;
-}
-
-interface NewTag {
-  id: string;
-  name: string;
-  count: number;
-}
-
-interface TrendAnalysis {
-  topTags: { name: string; totalCount: number }[];
-  timeline: Array<{
-    date: string;
-    [key: string]: string | number;
-  }>;
-  period: {
-    from: string;
-    to: string;
-    days: number;
-  };
-}
+import { TrendingKeyword, NewTag, TrendAnalysis } from './trends-data';
 
 interface TrendsContentProps {
   initialKeywords: TrendingKeyword[];
@@ -51,16 +24,13 @@ export function TrendsContent({
   initialAnalysis,
   initialSourceData,
 }: TrendsContentProps) {
-  const [trendingKeywords] = useState<TrendingKeyword[]>(initialKeywords);
-  const [newTags] = useState<NewTag[]>(initialNewTags);
+  const trendingKeywords = initialKeywords;
+  const newTags = initialNewTags;
+  const sourceData = initialSourceData;
   const [trendAnalysis, setTrendAnalysis] = useState<TrendAnalysis | null>(
     initialAnalysis
   );
   const [selectedDays, setSelectedDays] = useState(7);
-  const [sourceData] =
-    useState<{ name: string; value: number; percentage: number }[]>(
-      initialSourceData
-    );
 
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 

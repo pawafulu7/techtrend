@@ -75,25 +75,7 @@ export function FavoriteFeedContent() {
       }
       const data = await response.json();
 
-      // ソート処理
-      const sortedArticles = [...data.articles];
-      switch (sortBy) {
-        case 'popular':
-          sortedArticles.sort(
-            (a, b) =>
-              b.bookmarkCount - a.bookmarkCount || a.id.localeCompare(b.id)
-          );
-          break;
-        case 'quality':
-          sortedArticles.sort(
-            (a, b) =>
-              b.qualityScore - a.qualityScore || a.id.localeCompare(b.id)
-          );
-          break;
-        // 'recent'はデフォルトでpublishedAtでソート済み
-      }
-
-      setArticles(sortedArticles);
+      setArticles(data.articles);
       setTotalPages(data.pagination.totalPages);
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
@@ -103,7 +85,7 @@ export function FavoriteFeedContent() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [favorites, selectedFolder, page, sortBy, getFavoritesByFolder]);
+  }, [favorites, selectedFolder, page, getFavoritesByFolder]);
 
   useEffect(() => {
     if (!favoritesLoading) {
@@ -116,7 +98,26 @@ export function FavoriteFeedContent() {
     loadArticles();
   };
 
-  const articleCount = articles.length;
+  const sortedArticles = useMemo(() => {
+    const sorted = [...articles];
+    switch (sortBy) {
+      case 'popular':
+        sorted.sort(
+          (a, b) =>
+            b.bookmarkCount - a.bookmarkCount || a.id.localeCompare(b.id)
+        );
+        break;
+      case 'quality':
+        sorted.sort(
+          (a, b) => b.qualityScore - a.qualityScore || a.id.localeCompare(b.id)
+        );
+        break;
+      // 'recent'はデフォルトでpublishedAtでソート済み
+    }
+    return sorted;
+  }, [articles, sortBy]);
+
+  const articleCount = sortedArticles.length;
   const folderCount = useMemo(
     () =>
       selectedFolder === 'all'
@@ -251,7 +252,7 @@ export function FavoriteFeedContent() {
             <CardV2 key={i} className="bg-muted h-32 animate-pulse" />
           ))}
         </div>
-      ) : articles.length === 0 ? (
+      ) : sortedArticles.length === 0 ? (
         <CardV2 className="mx-auto max-w-md">
           <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
             <Newspaper className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
@@ -279,7 +280,7 @@ export function FavoriteFeedContent() {
           )}
 
           <div className="space-y-4">
-            {articles.map((article) => (
+            {sortedArticles.map((article) => (
               <ArticleCard key={article.id} article={article} />
             ))}
           </div>

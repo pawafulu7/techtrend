@@ -4,9 +4,7 @@ import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-g
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
-
-// JST offset constant (+9 hours in milliseconds)
-const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+import { JST_OFFSET_MS } from '@/lib/services/trend-report/types';
 
 /**
  * UTC DateをJST日付文字列（YYYY-MM-DD）に変換

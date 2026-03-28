@@ -3,11 +3,7 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { RefreshCw, ArrowUpRight } from 'lucide-react';
-import { DiffChange } from '@/lib/ai/extraction/extraction-schemas';
-
-interface ChangeWithCategory extends DiffChange {
-  category: string;
-}
+import { ChangeWithCategory } from './diff-utils';
 
 export function UpdatedRow({ change }: { change: ChangeWithCategory }) {
   return (
