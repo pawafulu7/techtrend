@@ -319,8 +319,8 @@ test.describe('ソースカテゴリフィルター機能', () => {
   test('モバイル表示でもカテゴリフィルターが動作する', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
 
-    // モバイルのフィルタートリガー（文言は環境依存のため緩く）
-    const mobileFilterButton = page.getByRole('button', { name: /フィルタ|フィルター/ });
+    // モバイルのフィルタートリガー（data-testidで一意特定）
+    const mobileFilterButton = page.getByTestId('mobile-filter-trigger');
     await mobileFilterButton.click();
 
     const sheet = page.getByTestId('mobile-filter-sheet');
