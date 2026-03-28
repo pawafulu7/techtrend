@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TagCloud } from '@/app/components/tags/TagCloud';
 import { useRouter } from 'next/navigation';
 
@@ -12,6 +13,16 @@ jest.mock('next/navigation', () => ({
 
 // fetchのモック
 global.fetch = jest.fn();
+
+// テスト用QueryClient（リトライ無効）
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+}
 
 const mockTags = [
   { id: '1', name: 'React', count: 100, trend: 'rising' },
@@ -30,7 +41,12 @@ interface TagCloudTestProps {
 }
 
 const renderTagCloud = async (props?: TagCloudTestProps) => {
-  const result = render(<TagCloud {...props} />);
+  const queryClient = createTestQueryClient();
+  const result = render(
+    <QueryClientProvider client={queryClient}>
+      <TagCloud {...props} />
+    </QueryClientProvider>
+  );
   // Wait for initial loading to complete using waitFor
   await waitFor(
     () => {
@@ -88,7 +104,12 @@ describe('TagCloud', () => {
 
     it('初期状態でローディングが表示される', () => {
       // 初期状態を確認するため、actなしでレンダリング
-      render(<TagCloud />);
+      const queryClient = createTestQueryClient();
+      render(
+        <QueryClientProvider client={queryClient}>
+          <TagCloud />
+        </QueryClientProvider>
+      );
 
       // Skeletonローディングが表示される（animate-pulseクラスを探す）
       const skeletons = document.querySelectorAll('.animate-pulse');
@@ -383,7 +404,12 @@ describe('TagCloud', () => {
   describe('ローディング状態', () => {
     it('リフレッシュ中はボタンがdisabledになる', async () => {
       // 初期状態を確認
-      render(<TagCloud />);
+      const queryClient = createTestQueryClient();
+      render(
+        <QueryClientProvider client={queryClient}>
+          <TagCloud />
+        </QueryClientProvider>
+      );
 
       // 初期ローディング中
       const refreshButton = screen.getByRole('button', { name: '' }); // RefreshCw icon
@@ -397,7 +423,12 @@ describe('TagCloud', () => {
 
     it('リフレッシュ中はアイコンが回転する', async () => {
       // 初期状態を確認
-      render(<TagCloud />);
+      const queryClient = createTestQueryClient();
+      render(
+        <QueryClientProvider client={queryClient}>
+          <TagCloud />
+        </QueryClientProvider>
+      );
 
       const refreshIcon = document.querySelector('.lucide-refresh-cw');
       expect(refreshIcon).toHaveClass('animate-spin');
