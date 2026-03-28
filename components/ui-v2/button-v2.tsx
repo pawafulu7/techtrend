@@ -3,7 +3,9 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { Slot } from 'radix-ui';
 import { Loader2 } from 'lucide-react';
 
-import { cn } from '@/lib/utils';
+const PRIMARY_STYLE =
+  'bg-(--tt-color-primary) text-(--tt-color-on-primary) hover:bg-(--tt-color-primary-hover) shadow-sm hover:shadow-md';
+const DEFAULT_SIZE = 'h-9 px-4 py-2 text-sm has-[>svg]:px-3';
 
 const buttonV2Variants = cva(
   [
@@ -15,10 +17,9 @@ const buttonV2Variants = cva(
   {
     variants: {
       variant: {
-        default:
-          'bg-(--tt-color-primary) text-(--tt-color-on-primary) hover:bg-(--tt-color-primary-hover) shadow-sm hover:shadow-md',
-        primary:
-          'bg-(--tt-color-primary) text-(--tt-color-on-primary) hover:bg-(--tt-color-primary-hover) shadow-sm hover:shadow-md',
+        // v1 "default" = primary-colored button (alias kept for v1 compat)
+        default: PRIMARY_STYLE,
+        primary: PRIMARY_STYLE,
         secondary:
           'bg-(--tt-color-secondary) text-white hover:bg-(--tt-color-secondary-hover) shadow-sm hover:shadow-md',
         ghost: 'hover:bg-(--tt-color-surface-hover) text-(--tt-color-text)',
@@ -29,10 +30,10 @@ const buttonV2Variants = cva(
         link: 'text-(--tt-color-primary) underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-9 px-4 py-2 text-sm has-[>svg]:px-3',
+        default: DEFAULT_SIZE,
         xs: 'h-6 gap-1 px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*="size-"])]:size-3',
         sm: 'h-8 gap-1.5 px-3 has-[>svg]:px-2.5',
-        md: 'h-9 px-4 py-2 text-sm has-[>svg]:px-3',
+        md: DEFAULT_SIZE, // alias for v2 consumers
         lg: 'h-10 px-6 has-[>svg]:px-4',
         icon: 'size-9',
         'icon-xs': 'size-6 [&_svg:not([class*="size-"])]:size-3',
@@ -56,6 +57,23 @@ interface ButtonV2Props
   iconOnly?: boolean;
 }
 
+const ICON_SIZE_MAP: Record<string, ButtonV2VariantProps['size']> = {
+  default: 'icon',
+  xs: 'icon-xs',
+  sm: 'icon-sm',
+  md: 'icon',
+  lg: 'icon-lg',
+};
+
+const SPINNER_SIZE: Record<string, string> = {
+  xs: 'size-3',
+  sm: 'size-3',
+  'icon-xs': 'size-3',
+  'icon-sm': 'size-3',
+  lg: 'size-5',
+  'icon-lg': 'size-5',
+};
+
 function ButtonV2({
   className,
   variant = 'default',
@@ -70,14 +88,8 @@ function ButtonV2({
 }: ButtonV2Props) {
   const isDisabled = disabled || loading;
   const Comp = asChild ? Slot.Root : 'button';
-
-  // iconOnly: override size to fixed-dimension icon size
   const resolvedSize = iconOnly
-    ? size === 'sm'
-      ? 'icon-sm'
-      : size === 'lg'
-        ? 'icon-lg'
-        : 'icon'
+    ? (ICON_SIZE_MAP[size ?? 'default'] ?? 'icon')
     : size;
 
   return (
@@ -85,25 +97,17 @@ function ButtonV2({
       data-slot="button"
       type={asChild ? undefined : type}
       disabled={isDisabled}
-      className={cn(
-        buttonV2Variants({ variant, size: resolvedSize, className })
-      )}
+      className={buttonV2Variants({ variant, size: resolvedSize, className })}
       {...props}
     >
+      {/* asChild uses Slot.Root which requires a single child element */}
       {asChild ? (
         children
       ) : (
         <>
           {loading && (
             <Loader2
-              className={cn(
-                'animate-spin',
-                resolvedSize === 'sm' || resolvedSize === 'icon-sm'
-                  ? 'h-3 w-3'
-                  : resolvedSize === 'lg' || resolvedSize === 'icon-lg'
-                    ? 'h-5 w-5'
-                    : 'h-4 w-4'
-              )}
+              className={`animate-spin ${SPINNER_SIZE[resolvedSize ?? 'default'] ?? 'size-4'}`}
             />
           )}
           {children}
