@@ -53,18 +53,25 @@ export function TagStats() {
   const loading = results.some((r) => r.isPending);
 
   // エラーは初回発生時のみログ出力（レンダリング毎の重複出力を防ぐ）
+  const totalIsError = results[0].isError;
+  const activeIsError = results[1].isError;
+  const newIsError = results[2].isError;
+  const hasError = totalIsError || activeIsError || newIsError;
+  const resultsRef = useRef(results);
   const prevHadErrorRef = useRef(false);
   useEffect(() => {
-    const hasError = results.some((r) => r.isError);
+    resultsRef.current = results;
+  });
+  useEffect(() => {
     if (hasError && !prevHadErrorRef.current) {
-      results.forEach((r) => {
+      resultsRef.current.forEach((r) => {
         if (r.isError) {
           logger.error({ error: r.error }, 'Failed to load tag stats');
         }
       });
     }
     prevHadErrorRef.current = hasError;
-  }, [results]);
+  }, [hasError]);
 
   const totalData = useMemo(
     () =>

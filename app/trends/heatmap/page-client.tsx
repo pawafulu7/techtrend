@@ -76,9 +76,10 @@ export function HeatmapPageClient() {
     refetch: refetchHeatmap,
   } = useQuery<CategoryData[]>({
     queryKey: ['heatmap', { period }],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const response = await fetch(`/api/trends/heatmap?period=${period}`, {
         cache: 'no-store',
+        signal,
       });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -102,9 +103,9 @@ export function HeatmapPageClient() {
     refetch: refetchDrilldown,
   } = useQuery<DrilldownArticle[]>({
     queryKey: ['heatmap-articles', { category: drilldownCategory }],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const url = `/api/articles?category=${encodeURIComponent(drilldownCategory!)}&limit=20&sortBy=publishedAt&sortOrder=desc&includeRelations=true`;
-      const response = await fetch(url, { cache: 'no-store' });
+      const response = await fetch(url, { cache: 'no-store', signal });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }

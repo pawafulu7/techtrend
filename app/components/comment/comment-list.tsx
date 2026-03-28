@@ -25,9 +25,6 @@ interface CommentListProps {
   onLoadMore: () => Promise<void>;
   onUpdate: (id: string, input: UpdateCommentInput) => Promise<CommentResponse>;
   onDelete: (id: string) => Promise<void>;
-  onUpdateOptimistic: (id: string, comment: Partial<CommentResponse>) => void;
-  onRemoveOptimistic: (id: string) => void;
-  onRollback: () => void;
 }
 
 export function CommentList({
@@ -39,9 +36,6 @@ export function CommentList({
   onLoadMore,
   onUpdate,
   onDelete,
-  onUpdateOptimistic,
-  onRemoveOptimistic,
-  onRollback,
 }: CommentListProps) {
   // ローディング中（初回）
   if (isLoading && comments.length === 0) {
@@ -56,11 +50,9 @@ export function CommentList({
         role="status"
         aria-label="コメントなし"
       >
-        <StickyNote className="h-10 w-10 text-muted-foreground/50 mb-3" />
-        <p className="text-sm text-muted-foreground">
-          まだメモはありません
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">
+        <StickyNote className="text-muted-foreground/50 mb-3 h-10 w-10" />
+        <p className="text-muted-foreground text-sm">まだメモはありません</p>
+        <p className="text-muted-foreground mt-1 text-xs">
           この記事についてメモを残してみましょう
         </p>
       </div>
@@ -83,16 +75,13 @@ export function CommentList({
             isOwner={comment.userId === currentUserId}
             onUpdate={onUpdate}
             onDelete={onDelete}
-            onUpdateOptimistic={onUpdateOptimistic}
-            onRemoveOptimistic={onRemoveOptimistic}
-            onRollback={onRollback}
           />
         ))}
       </div>
 
       {/* もっと見る */}
       {hasMore && (
-        <div className="pt-2 flex justify-center">
+        <div className="flex justify-center pt-2">
           <Button
             variant="outline"
             size="sm"
@@ -101,7 +90,7 @@ export function CommentList({
           >
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                 読み込み中
               </>
             ) : (

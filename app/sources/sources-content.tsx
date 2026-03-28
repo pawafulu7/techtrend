@@ -37,7 +37,11 @@ export default function SourcesContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const { isFavorite } = useFavoriteSources();
 
-  const { data, isPending: loading } = useQuery<SourceWithStats[]>({
+  const {
+    data,
+    isPending: loading,
+    isError,
+  } = useQuery<SourceWithStats[]>({
     queryKey: ['sources'],
     queryFn: async () => {
       const response = await fetch('/api/sources');
@@ -47,7 +51,7 @@ export default function SourcesContent() {
           { status: response.status, body },
           'Failed to load sources'
         );
-        return [];
+        throw new Error(`Failed to load sources: ${response.status}`);
       }
       let json: { sources?: unknown };
       try {
@@ -57,7 +61,7 @@ export default function SourcesContent() {
           { parseError },
           'Failed to parse sources response as JSON'
         );
-        return [];
+        throw new Error('Failed to parse sources response as JSON');
       }
       return Array.isArray(json.sources) ? json.sources : [];
     },
@@ -143,6 +147,22 @@ export default function SourcesContent() {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <h1 className="sr-only">ソース一覧</h1>
+        <div
+          className="border-destructive/20 bg-destructive/10 rounded-md border p-4"
+          role="alert"
+        >
+          <p className="text-destructive text-sm">
+            ソースの読み込みに失敗しました。しばらく経ってから再試行してください。
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

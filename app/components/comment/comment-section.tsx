@@ -46,8 +46,8 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
   const currentUserId = session?.user?.id || '';
 
   const queryKey = useMemo(
-    () => ['comments', { articleId }] as const,
-    [articleId]
+    () => ['comments', { articleId, userId: currentUserId }] as const,
+    [articleId, currentUserId]
   );
 
   // コメント一覧をuseInfiniteQueryで取得
@@ -133,7 +133,8 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
   const updateMutation = useMutation<
     CommentResponse,
     Error,
-    { id: string; input: UpdateCommentInput }
+    { id: string; input: UpdateCommentInput },
+    { snapshot: ReturnType<typeof queryClient.getQueryData> }
   >({
     mutationFn: async ({ id, input }) => {
       const response = await fetch(`/api/comments/${id}`, {
@@ -154,13 +155,40 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onMutate: async ({ id, input }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const snapshot = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, (old: typeof data) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            comments: page.comments.map((c) =>
+              c.id === id ? { ...c, ...input } : c
+            ),
+          })),
+        };
+      });
+      return { snapshot };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.snapshot) {
+        queryClient.setQueryData(queryKey, context.snapshot);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
     },
   });
 
   // コメント削除 mutation
-  const deleteMutation = useMutation<void, Error, string>({
+  const deleteMutation = useMutation<
+    void,
+    Error,
+    string,
+    { snapshot: ReturnType<typeof queryClient.getQueryData> }
+  >({
     mutationFn: async (id) => {
       const response = await fetch(`/api/comments/${id}`, {
         method: 'DELETE',
@@ -177,7 +205,28 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
         throw new Error(errMessage);
       }
     },
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey });
+      const snapshot = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, (old: typeof data) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            comments: page.comments.filter((c) => c.id !== id),
+            totalCount: Math.max(0, page.totalCount - 1),
+          })),
+        };
+      });
+      return { snapshot };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.snapshot) {
+        queryClient.setQueryData(queryKey, context.snapshot);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
     },
   });
@@ -205,48 +254,6 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
     },
     [deleteMutation]
   );
-
-  // 楽観的更新: コメント更新
-  const handleUpdateOptimistic = useCallback(
-    (id: string, partial: Partial<CommentResponse>) => {
-      queryClient.setQueryData(queryKey, (old: typeof data) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) => ({
-            ...page,
-            comments: page.comments.map((c) =>
-              c.id === id ? { ...c, ...partial } : c
-            ),
-          })),
-        };
-      });
-    },
-    [queryClient, queryKey]
-  );
-
-  // 楽観的更新: コメント削除
-  const handleRemoveOptimistic = useCallback(
-    (id: string) => {
-      queryClient.setQueryData(queryKey, (old: typeof data) => {
-        if (!old) return old;
-        return {
-          ...old,
-          pages: old.pages.map((page) => ({
-            ...page,
-            comments: page.comments.filter((c) => c.id !== id),
-            totalCount: Math.max(0, page.totalCount - 1),
-          })),
-        };
-      });
-    },
-    [queryClient, queryKey]
-  );
-
-  // ロールバック
-  const handleRollback = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey });
-  }, [queryClient, queryKey]);
 
   // もっと読み込む
   const handleLoadMore = useCallback(async () => {
@@ -323,9 +330,6 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
                   onLoadMore={handleLoadMore}
                   onUpdate={handleUpdate}
                   onDelete={handleDelete}
-                  onUpdateOptimistic={handleUpdateOptimistic}
-                  onRemoveOptimistic={handleRemoveOptimistic}
-                  onRollback={handleRollback}
                 />
               </div>
             </section>

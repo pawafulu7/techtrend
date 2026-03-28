@@ -113,35 +113,37 @@ export function useJobsPolling(
   ]);
 
   // 部分失敗ハンドリング: 各クエリが独立しているため、失敗した箇所のみエラー報告
-  let error: JobDashboardError | null = null;
-  const failedApis: string[] = [];
+  const error = useMemo<JobDashboardError | null>(() => {
+    const failedApis: string[] = [];
 
-  if (logsQuery.error) failedApis.push('processing-logs');
-  if (embeddingQuery.error) failedApis.push('embedding-summary');
-  if (statsQuery.error) failedApis.push('article-stats');
+    if (logsQuery.error) failedApis.push('processing-logs');
+    if (embeddingQuery.error) failedApis.push('embedding-summary');
+    if (statsQuery.error) failedApis.push('article-stats');
 
-  if (failedApis.length === 3) {
-    // 全失敗: 最初のエラーメッセージを使用
-    const firstError =
-      logsQuery.error || embeddingQuery.error || statsQuery.error;
-    error = {
-      message:
-        firstError instanceof Error
-          ? firstError.message
-          : 'Failed to fetch all job data',
-      timestamp: new Date().toISOString(),
-      kind: 'full',
-      failedApis,
-    };
-  } else if (failedApis.length > 0) {
-    // 部分失敗
-    error = {
-      message: `Partial failure: ${failedApis.join(', ')} API(s) failed`,
-      timestamp: new Date().toISOString(),
-      kind: 'partial',
-      failedApis,
-    };
-  }
+    if (failedApis.length === 3) {
+      // 全失敗: 最初のエラーメッセージを使用
+      const firstError =
+        logsQuery.error || embeddingQuery.error || statsQuery.error;
+      return {
+        message:
+          firstError instanceof Error
+            ? firstError.message
+            : 'Failed to fetch all job data',
+        timestamp: new Date().toISOString(),
+        kind: 'full',
+        failedApis,
+      };
+    } else if (failedApis.length > 0) {
+      // 部分失敗
+      return {
+        message: `Partial failure: ${failedApis.join(', ')} API(s) failed`,
+        timestamp: new Date().toISOString(),
+        kind: 'partial',
+        failedApis,
+      };
+    }
+    return null;
+  }, [logsQuery.error, embeddingQuery.error, statsQuery.error]);
 
   const refresh = async () => {
     await Promise.all([

@@ -94,7 +94,7 @@ export function ArticleCount({
       } else if (Array.isArray(result?.data?.items)) {
         return result.data.items.length as number;
       }
-      return 0;
+      throw new Error('Unexpected API response format');
     },
     // Wait for preferences to load before fetching
     enabled: !isLoadingPreferences,

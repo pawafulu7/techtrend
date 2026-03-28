@@ -58,14 +58,16 @@ export function useReadStatus(articleIds?: string[]) {
     refetch,
   } = useQuery<ReadStatusCache>({
     queryKey,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!session?.user) {
         return { readArticleIds: loadFromLocalStorage(), unreadCount: 0 };
       }
       const params = articleIds?.length
         ? `?articleIds=${articleIds.join(',')}`
         : '';
-      const response = await fetch(`/api/articles/read-status${params}`);
+      const response = await fetch(`/api/articles/read-status${params}`, {
+        signal,
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch read status');
       }

@@ -28,9 +28,6 @@ interface CommentItemProps {
   isOwner: boolean;
   onUpdate: (id: string, input: UpdateCommentInput) => Promise<CommentResponse>;
   onDelete: (id: string) => Promise<void>;
-  onUpdateOptimistic?: (id: string, comment: Partial<CommentResponse>) => void;
-  onRemoveOptimistic?: (id: string) => void;
-  onRollback?: () => void;
 }
 
 export function CommentItem({
@@ -38,9 +35,6 @@ export function CommentItem({
   isOwner,
   onUpdate,
   onDelete,
-  onUpdateOptimistic,
-  onRemoveOptimistic,
-  onRollback,
 }: CommentItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
@@ -87,36 +81,28 @@ export function CommentItem({
     setIsUpdating(true);
     setError(null);
 
-    // 楽観的更新
-    onUpdateOptimistic?.(comment.id, { content: trimmedContent });
-
     try {
       await onUpdate(comment.id, { content: trimmedContent });
       setIsEditing(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : '更新に失敗しました');
-      onRollback?.();
     } finally {
       setIsUpdating(false);
     }
-  }, [comment.id, editContent, canSave, onUpdate, onUpdateOptimistic, onRollback]);
+  }, [comment.id, editContent, canSave, onUpdate]);
 
   const handleDelete = useCallback(async () => {
     setIsDeleting(true);
     setError(null);
-
-    // 楽観的削除
-    onRemoveOptimistic?.(comment.id);
 
     try {
       await onDelete(comment.id);
       setShowDeleteConfirm(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : '削除に失敗しました');
-      onRollback?.();
       setIsDeleting(false);
     }
-  }, [comment.id, onDelete, onRemoveOptimistic, onRollback]);
+  }, [comment.id, onDelete]);
 
   // Esc で編集キャンセル
   const handleKeyDown = useCallback(
@@ -140,8 +126,8 @@ export function CommentItem({
   return (
     <article
       className={cn(
-        'p-3 rounded-lg bg-muted/50 space-y-2',
-        isDeleting && 'opacity-50 pointer-events-none'
+        'bg-muted/50 space-y-2 rounded-lg p-3',
+        isDeleting && 'pointer-events-none opacity-50'
       )}
       aria-label={`コメント（${formattedDate}）`}
     >
@@ -149,7 +135,7 @@ export function CommentItem({
       <div className="flex items-center justify-between">
         <time
           dateTime={comment.createdAt}
-          className="text-xs text-muted-foreground"
+          className="text-muted-foreground text-xs"
         >
           {formattedDate}
         </time>
@@ -168,7 +154,7 @@ export function CommentItem({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+              className="text-destructive hover:text-destructive h-7 w-7 p-0"
               onClick={() => setShowDeleteConfirm(true)}
               aria-label="削除"
             >
@@ -217,7 +203,7 @@ export function CommentItem({
                 disabled={isUpdating}
                 className="h-7"
               >
-                <X className="h-3.5 w-3.5 mr-1" />
+                <X className="mr-1 h-3.5 w-3.5" />
                 キャンセル
               </Button>
               <Button
@@ -227,9 +213,9 @@ export function CommentItem({
                 className="h-7"
               >
                 {isUpdating ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Check className="h-3.5 w-3.5 mr-1" />
+                  <Check className="mr-1 h-3.5 w-3.5" />
                 )}
                 保存
               </Button>
@@ -237,17 +223,19 @@ export function CommentItem({
           </div>
         </div>
       ) : (
-        <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
+        <p className="text-sm break-words whitespace-pre-wrap">
+          {comment.content}
+        </p>
       )}
 
       {/* 削除確認 */}
       {showDeleteConfirm && (
-        <div className="border border-destructive/50 bg-destructive/10 p-3 rounded-md space-y-2">
+        <div className="border-destructive/50 bg-destructive/10 space-y-2 rounded-md border p-3">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+            <AlertTriangle className="text-destructive mt-0.5 h-4 w-4 shrink-0" />
             <p className="text-sm">このコメントを削除しますか？</p>
           </div>
-          <div className="flex gap-2 justify-end">
+          <div className="flex justify-end gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -265,7 +253,7 @@ export function CommentItem({
               className="h-7"
             >
               {isDeleting ? (
-                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
               ) : null}
               削除
             </Button>
@@ -275,7 +263,7 @@ export function CommentItem({
 
       {/* エラー表示 */}
       {error && (
-        <p className="text-xs text-destructive" role="alert">
+        <p className="text-destructive text-xs" role="alert">
           {error}
         </p>
       )}
