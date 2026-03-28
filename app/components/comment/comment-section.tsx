@@ -10,7 +10,7 @@
  * - 記事詳細画面（ArticleQADialog 下）への配置
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import {
@@ -41,12 +41,6 @@ interface CommentSectionProps {
 export function CommentSection({ articleId, className }: CommentSectionProps) {
   const { data: session, status: sessionStatus } = useSession();
   const queryClient = useQueryClient();
-
-  // 楽観的更新用のロールバックデータ（comments と totalCount を両方保存）
-  const rollbackRef = useRef<{
-    comments: CommentResponse[];
-    totalCount: number;
-  } | null>(null);
 
   const isAuthenticated = sessionStatus === 'authenticated' && !!session?.user;
   const currentUserId = session?.user?.id || '';
@@ -163,11 +157,6 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
     [createMutation]
   );
 
-  // コメント作成成功時（CommentFormのonSuccessコールバック用 — キャッシュinvalidateはmutation側で実施済み）
-  const handleCreateSuccess = useCallback((_comment: CommentResponse) => {
-    // invalidateは createMutation.onSuccess で実施済み
-  }, []);
-
   // コメント更新ハンドラ
   const handleUpdate = useCallback(
     async (id: string, input: UpdateCommentInput): Promise<CommentResponse> => {
@@ -187,7 +176,6 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
   // 楽観的更新: コメント更新
   const handleUpdateOptimistic = useCallback(
     (id: string, partial: Partial<CommentResponse>) => {
-      rollbackRef.current = { comments: [...comments], totalCount };
       queryClient.setQueryData(queryKey, (old: typeof data) => {
         if (!old) return old;
         return {
@@ -201,13 +189,12 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
         };
       });
     },
-    [comments, totalCount, queryClient, queryKey, data]
+    [queryClient, queryKey]
   );
 
   // 楽観的更新: コメント削除
   const handleRemoveOptimistic = useCallback(
     (id: string) => {
-      rollbackRef.current = { comments: [...comments], totalCount };
       queryClient.setQueryData(queryKey, (old: typeof data) => {
         if (!old) return old;
         return {
@@ -220,15 +207,12 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
         };
       });
     },
-    [comments, totalCount, queryClient, queryKey, data]
+    [queryClient, queryKey]
   );
 
   // ロールバック
   const handleRollback = useCallback(() => {
-    if (rollbackRef.current) {
-      queryClient.invalidateQueries({ queryKey });
-      rollbackRef.current = null;
-    }
+    queryClient.invalidateQueries({ queryKey });
   }, [queryClient, queryKey]);
 
   // もっと読み込む
@@ -293,11 +277,7 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
               )}
 
               {/* コメントフォーム */}
-              <CommentForm
-                articleId={articleId}
-                onSubmit={handleCreate}
-                onSuccess={handleCreateSuccess}
-              />
+              <CommentForm articleId={articleId} onSubmit={handleCreate} />
 
               {/* コメント一覧 */}
               <div className="mt-4">

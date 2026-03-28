@@ -46,10 +46,6 @@ export function useJobsPolling(
         },
         refetchInterval: enabled ? interval : false,
         enabled,
-        retry: 1,
-        staleTime: 5 * 60 * 1000,
-        gcTime: 10 * 60 * 1000,
-        refetchOnWindowFocus: false,
       },
       {
         queryKey: ['jobs-embedding-summary'],
@@ -64,10 +60,6 @@ export function useJobsPolling(
         },
         refetchInterval: enabled ? interval : false,
         enabled,
-        retry: 1,
-        staleTime: 5 * 60 * 1000,
-        gcTime: 10 * 60 * 1000,
-        refetchOnWindowFocus: false,
       },
       {
         queryKey: ['jobs-article-stats', articleStatsRange],
@@ -84,10 +76,6 @@ export function useJobsPolling(
         },
         refetchInterval: enabled ? interval : false,
         enabled,
-        retry: 1,
-        staleTime: 5 * 60 * 1000,
-        gcTime: 10 * 60 * 1000,
-        refetchOnWindowFocus: false,
       },
     ],
   });

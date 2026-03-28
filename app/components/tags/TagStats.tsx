@@ -19,17 +19,21 @@ interface TagStat {
 
 async function fetchTagStats() {
   const res = await fetch('/api/tags/stats');
-  return res.ok ? res.json() : { total: 0 };
+  if (!res.ok) throw new Error(`Failed to fetch tag stats: ${res.status}`);
+  return res.json();
 }
 
 async function fetchTagCloudSummary() {
   const res = await fetch('/api/tags/cloud?period=30d&limit=1000');
-  return res.ok ? res.json() : { tags: [] };
+  if (!res.ok)
+    throw new Error(`Failed to fetch tag cloud summary: ${res.status}`);
+  return res.json();
 }
 
 async function fetchTagsNew() {
   const res = await fetch('/api/tags/new?days=7');
-  return res.ok ? res.json() : { count: 0 };
+  if (!res.ok) throw new Error(`Failed to fetch new tags: ${res.status}`);
+  return res.json();
 }
 
 export function TagStats() {

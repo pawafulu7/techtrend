@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const STORAGE_KEY = 'techtrend-read-articles';
+const READ_STATUS_QUERY_KEY = ['read-status'] as const;
 
 interface ReadStatusResponse {
   readArticleIds: string[];
@@ -41,7 +42,7 @@ function loadFromLocalStorage(): Set<string> {
 export function useReadStatus(articleIds?: string[]) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  const queryKey = ['read-status'] as const;
+  const queryKey = READ_STATUS_QUERY_KEY;
 
   // 既読状態を取得
   const {

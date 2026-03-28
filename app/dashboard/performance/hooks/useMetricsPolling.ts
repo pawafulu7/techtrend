@@ -25,10 +25,6 @@ export function useMetricsPolling(
         },
         refetchInterval: enabled ? interval : false,
         enabled,
-        retry: 1,
-        staleTime: 5 * 60 * 1000,
-        gcTime: 10 * 60 * 1000,
-        refetchOnWindowFocus: false,
       },
       {
         queryKey: ['metrics-cache-stats'],
@@ -39,10 +35,6 @@ export function useMetricsPolling(
         },
         refetchInterval: enabled ? interval : false,
         enabled,
-        retry: 1,
-        staleTime: 5 * 60 * 1000,
-        gcTime: 10 * 60 * 1000,
-        refetchOnWindowFocus: false,
       },
     ],
   });
@@ -127,10 +119,6 @@ export function useMetricsData(endpoint: string) {
       }
       return response.json();
     },
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
   });
 
   return {
