@@ -39,12 +39,16 @@ export function formatWeekDisplay(week: string): string {
   return match ? `${match[1]}年 第${parseInt(match[2], 10)}週` : week;
 }
 
-export function getGroupedChanges(data: DiffSummaryResponse | null): {
+export interface GroupedChanges {
   new: ChangeWithCategory[];
   trending: ChangeWithCategory[];
   updated: ChangeWithCategory[];
   deprecated: ChangeWithCategory[];
-} {
+}
+
+export function getGroupedChanges(
+  data: DiffSummaryResponse | null
+): GroupedChanges {
   if (!data) return { new: [], trending: [], updated: [], deprecated: [] };
 
   const allChanges: ChangeWithCategory[] = data.data.flatMap((d) =>

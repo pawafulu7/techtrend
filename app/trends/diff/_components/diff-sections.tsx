@@ -14,16 +14,12 @@ import type {
   ArticleInfo,
   ChangeWithCategory,
   DiffSummaryResponse,
+  GroupedChanges,
 } from './diff-utils';
 
 interface DiffMainContentProps {
   data: DiffSummaryResponse;
-  grouped: {
-    new: ChangeWithCategory[];
-    trending: ChangeWithCategory[];
-    updated: ChangeWithCategory[];
-    deprecated: ChangeWithCategory[];
-  };
+  grouped: GroupedChanges;
   articles: Record<string, ArticleInfo>;
   hoveredTopic: string | null;
   onHoverEnter: (key: string) => void;

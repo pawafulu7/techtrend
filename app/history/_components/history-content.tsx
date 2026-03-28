@@ -128,7 +128,6 @@ export function HistoryContent() {
           return;
         }
         setError(err instanceof Error ? err.message : 'エラーが発生しました');
-        setHasFetched(true);
       } finally {
         setLoading(false);
       }

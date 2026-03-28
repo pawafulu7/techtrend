@@ -78,6 +78,21 @@ export async function fetchInitialDiffData(
     orderBy: { generatedAt: 'desc' },
   });
 
+  if (fallbackSummaries.length === 0) {
+    // TOCTOUガード: findFirstで見つけた週のデータが消えた場合
+    return {
+      success: true,
+      data: [],
+      week: week,
+      previousWeek: getPreviousISOWeek(week),
+      isFallback: false,
+      meta: {
+        totalCategories: Object.keys(SOURCE_CATEGORIES).length,
+        summarizedCategories: 0,
+      },
+    };
+  }
+
   return {
     success: true,
     week: fallbackWeek,

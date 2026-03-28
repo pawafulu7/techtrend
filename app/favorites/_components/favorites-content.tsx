@@ -21,8 +21,7 @@ import {
   FavoriteSkeletonGrid,
 } from '@/app/components/article/favorite-card';
 import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
-
-type SortOption = 'favoritedAt-desc' | 'favoritedAt-asc' | 'publishedAt-desc';
+import type { SortOption } from '../_types';
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'favoritedAt-desc', label: '保存日（新しい順）' },
@@ -44,7 +43,6 @@ export function FavoritesContent({
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [sortOption, setSortOption] = useState<SortOption>(initialSort);
-  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
   const {
     allFavorites,
@@ -54,23 +52,22 @@ export function FavoritesContent({
     hasNextPage,
     fetchNextPage,
     error,
+    removeFavoriteFromCache,
   } = useInfiniteFavorites({ limit: 20, includeRelations: true });
 
   // Filter and sort favorites
   const filteredFavorites = useMemo(() => {
-    // Filter out removed items first (for immediate UI update)
-    let result = allFavorites.filter((a) => !removedIds.has(a.id));
-
     // Search filter (title and summary)
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (article) =>
-          article.title.toLowerCase().includes(query) ||
-          article.translatedTitle?.toLowerCase().includes(query) ||
-          article.summary?.toLowerCase().includes(query)
-      );
-    }
+    let result = searchQuery.trim()
+      ? allFavorites.filter((article) => {
+          const query = searchQuery.toLowerCase();
+          return (
+            article.title.toLowerCase().includes(query) ||
+            article.translatedTitle?.toLowerCase().includes(query) ||
+            article.summary?.toLowerCase().includes(query)
+          );
+        })
+      : [...allFavorites];
 
     // Sort with stable tiebreaker
     result.sort((a, b) => {
@@ -102,7 +99,7 @@ export function FavoritesContent({
     });
 
     return result;
-  }, [allFavorites, removedIds, searchQuery, sortOption]);
+  }, [allFavorites, searchQuery, sortOption]);
 
   // Update URL when filters change (only if URL actually differs)
   useEffect(() => {
@@ -130,47 +127,39 @@ export function FavoritesContent({
     [router]
   );
 
-  // Handle favorite removal (immediate UI update + API call)
-  const handleRemoveFavorite = useCallback(async (articleId: string) => {
-    // Immediate UI update via local state
-    setRemovedIds((prev) => new Set([...prev, articleId]));
+  // Handle favorite removal (optimistic cache update + API call)
+  const handleRemoveFavorite = useCallback(
+    async (articleId: string) => {
+      // Optimistic cache update
+      removeFavoriteFromCache(articleId);
 
-    try {
-      const response = await fetch(`/api/favorites/${articleId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        // Non-OK response (4xx, 5xx): restore the item
-        console.error(
-          'Failed to remove favorite:',
-          response.status,
-          response.statusText
-        );
-        setRemovedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(articleId);
-          return next;
+      try {
+        const response = await fetch(`/api/favorites/${articleId}`, {
+          method: 'DELETE',
         });
-        return;
-      }
 
-      // Dispatch event for cross-screen cache sync
-      window.dispatchEvent(
-        new CustomEvent('article-favorite-changed', {
-          detail: { articleId, isFavorited: false, timestamp: Date.now() },
-        })
-      );
-    } catch (error) {
-      console.error('Failed to remove favorite:', error);
-      // On network error, restore the item
-      setRemovedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(articleId);
-        return next;
-      });
-    }
-  }, []);
+        if (!response.ok) {
+          // Non-OK response (4xx, 5xx): invalidate query to restore from server
+          console.error(
+            'Failed to remove favorite:',
+            response.status,
+            response.statusText
+          );
+          return;
+        }
+
+        // Dispatch event for cross-screen cache sync
+        window.dispatchEvent(
+          new CustomEvent('article-favorite-changed', {
+            detail: { articleId, isFavorited: false, timestamp: Date.now() },
+          })
+        );
+      } catch (error) {
+        console.error('Failed to remove favorite:', error);
+      }
+    },
+    [removeFavoriteFromCache]
+  );
 
   // Focus on empty state after all items removed
   useEffect(() => {
@@ -208,7 +197,7 @@ export function FavoritesContent({
           role="status"
           aria-live="polite"
         >
-          ({Math.max(0, totalCount - removedIds.size)}件)
+          ({Math.max(0, totalCount)}件)
         </span>
         <div className="flex-1" />
         <div className="relative">

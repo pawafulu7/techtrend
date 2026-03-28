@@ -36,7 +36,10 @@ export function TrendsContent({
 
   useEffect(() => {
     // 初回レンダリング時（selectedDays===7）はサーバー取得済みデータを使用
-    if (selectedDays === 7) return;
+    if (selectedDays === 7) {
+      setTrendAnalysis(initialAnalysis);
+      return;
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {

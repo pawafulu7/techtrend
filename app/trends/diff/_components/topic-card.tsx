@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { Sparkles, Zap, ArrowUpRight, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ArticleInfo, ChangeWithCategory } from './diff-utils';
@@ -24,10 +25,14 @@ export function HotTopicChip({
 }: HotTopicChipProps) {
   const isNew = variant === 'new';
   const topicKey = `${variant}-${change.topic}`;
-  const relatedArticles = (change.relatedArticleIds || [])
-    .slice(0, 2)
-    .map((id) => articles[id])
-    .filter(Boolean);
+  const relatedArticles = useMemo(
+    () =>
+      (change.relatedArticleIds || [])
+        .slice(0, 2)
+        .map((id) => articles[id])
+        .filter(Boolean),
+    [articles, change.relatedArticleIds]
+  );
   const isHovered = hoveredTopic === topicKey;
 
   return (

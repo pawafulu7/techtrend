@@ -175,81 +175,86 @@ export async function fetchAnalysisData(
 ): Promise<TrendAnalysis | null> {
   try {
     const cacheKey = trendsCache.generateTrendsKey({ days });
-    const analysisData = await trendsCache.getOrSet(cacheKey, async () => {
-      const now = new Date();
-      const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-      const topTags = (await prisma.$queryRaw`
+    // キャッシュ読み取りのみ。書き込みは /api/trends/analysis ルートが担当。
+    const cached = await trendsCache.get<TrendAnalysis>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // キャッシュミス時はDBから直接フェッチ（キャッシュへの書き込みなし）
+    const now = new Date();
+    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+    const topTags = (await prisma.$queryRaw`
+      SELECT
+        t.name,
+        COUNT(DISTINCT a.id) as total_count
+      FROM "Tag" t
+      JOIN "_ArticleToTag" at ON t.id = at."B"
+      JOIN "Article" a ON at."A" = a.id
+      WHERE a."publishedAt" >= ${startDate.toISOString()}::timestamp
+        AND a."isHidden" = false
+      GROUP BY t.name
+      ORDER BY total_count DESC
+      LIMIT 10
+    `) as { name: string; total_count: bigint }[];
+
+    let timelineData: { date: string; tag_name: string; count: bigint }[] = [];
+
+    if (topTags.length > 0) {
+      const tagNames = topTags.map((t) => t.name);
+      timelineData = (await prisma.$queryRaw`
         SELECT
-          t.name,
-          COUNT(DISTINCT a.id) as total_count
+          TO_CHAR(a."publishedAt", 'YYYY-MM-DD') as date,
+          t.name as tag_name,
+          COUNT(DISTINCT a.id) as count
         FROM "Tag" t
         JOIN "_ArticleToTag" at ON t.id = at."B"
         JOIN "Article" a ON at."A" = a.id
         WHERE a."publishedAt" >= ${startDate.toISOString()}::timestamp
           AND a."isHidden" = false
-        GROUP BY t.name
-        ORDER BY total_count DESC
-        LIMIT 10
-      `) as { name: string; total_count: bigint }[];
+          AND t.name IN (${Prisma.join(tagNames)})
+        GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), t.name
+        ORDER BY date ASC, count DESC
+      `) as { date: string; tag_name: string; count: bigint }[];
+    }
 
-      let timelineData: { date: string; tag_name: string; count: bigint }[] =
-        [];
+    const timelineByDate = timelineData.reduce(
+      (acc, item) => {
+        const date = item.date;
+        if (!acc[date]) acc[date] = {};
+        acc[date][item.tag_name] = Number(item.count);
+        return acc;
+      },
+      {} as Record<string, Record<string, number>>
+    );
 
-      if (topTags.length > 0) {
-        const tagNames = topTags.map((t) => t.name);
-        timelineData = (await prisma.$queryRaw`
-          SELECT
-            TO_CHAR(a."publishedAt", 'YYYY-MM-DD') as date,
-            t.name as tag_name,
-            COUNT(DISTINCT a.id) as count
-          FROM "Tag" t
-          JOIN "_ArticleToTag" at ON t.id = at."B"
-          JOIN "Article" a ON at."A" = a.id
-          WHERE a."publishedAt" >= ${startDate.toISOString()}::timestamp
-            AND a."isHidden" = false
-            AND t.name IN (${Prisma.join(tagNames)})
-          GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), t.name
-          ORDER BY date ASC, count DESC
-        `) as { date: string; tag_name: string; count: bigint }[];
-      }
+    const dates = Object.keys(timelineByDate).sort();
+    const tagNames = topTags.map((t) => t.name);
 
-      const timelineByDate = timelineData.reduce(
-        (acc, item) => {
-          const date = item.date;
-          if (!acc[date]) acc[date] = {};
-          acc[date][item.tag_name] = Number(item.count);
-          return acc;
-        },
-        {} as Record<string, Record<string, number>>
-      );
-
-      const dates = Object.keys(timelineByDate).sort();
-      const tagNames = topTags.map((t) => t.name);
-
-      const completeTimeline = dates.map((date) => {
-        const dayData: Record<string, string | number> = { date };
-        tagNames.forEach((tag) => {
-          dayData[tag] = timelineByDate[date]?.[tag] || 0;
-        });
-        return dayData;
-      });
-
-      return {
-        topTags: topTags.map((t) => ({
-          name: t.name,
-          totalCount: Number(t.total_count),
-        })),
-        timeline: completeTimeline,
-        period: {
-          from: startDate.toISOString(),
-          to: now.toISOString(),
-          days,
-        },
+    const completeTimeline = dates.map((date) => {
+      const dayData: { date: string; [key: string]: string | number } = {
+        date,
       };
+      tagNames.forEach((tag) => {
+        dayData[tag] = timelineByDate[date]?.[tag] || 0;
+      });
+      return dayData;
     });
 
-    return analysisData as TrendAnalysis;
+    return {
+      topTags: topTags.map((t) => ({
+        name: t.name,
+        totalCount: Number(t.total_count),
+      })),
+      timeline: completeTimeline,
+      period: {
+        from: startDate.toISOString(),
+        to: now.toISOString(),
+        days,
+      },
+    };
   } catch {
     return null;
   }

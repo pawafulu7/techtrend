@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui/button';
 import { ArticleCard } from '@/app/components/article/card';
@@ -43,8 +43,14 @@ export function FavoriteFeedContent() {
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortByOption>('recent');
   const [refreshing, setRefreshing] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const loadArticles = useCallback(async () => {
+    // Abort any in-flight request to prevent race conditions
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     try {
       // フォルダーに基づいてソースIDを取得
@@ -68,22 +74,33 @@ export function FavoriteFeedContent() {
       });
 
       const response = await fetch(
-        `/api/articles/favorites?${params.toString()}`
+        `/api/articles/favorites?${params.toString()}`,
+        { signal: controller.signal }
       );
+
+      // Ignore aborted requests
+      if (controller.signal.aborted) return;
+
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
       }
       const data = await response.json();
 
+      // Final abort check before updating state
+      if (controller.signal.aborted) return;
+
       setArticles(data.articles);
       setTotalPages(data.pagination.totalPages);
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
       if (process.env.NODE_ENV !== 'production') {
         console.error('Failed to load favorite articles:', error);
       }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [favorites, selectedFolder, page, getFavoritesByFolder]);
 
@@ -98,6 +115,9 @@ export function FavoriteFeedContent() {
     loadArticles();
   };
 
+  // Note: Sorting is done client-side because /api/articles/favorites does not
+  // currently support a sort query parameter. If server-side sorting is added
+  // in the future, pass `sort` in the fetch params and remove this useMemo.
   const sortedArticles = useMemo(() => {
     const sorted = [...articles];
     switch (sortBy) {

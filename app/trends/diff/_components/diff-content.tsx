@@ -36,7 +36,10 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
   const [articles, setArticles] = useState<Record<string, ArticleInfo>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedWeek, setSelectedWeek] = useState(initialWeek);
+  const [displayWeek, setDisplayWeek] = useState(
+    initialData?.week ?? initialWeek
+  );
+  const [requestedWeek, setRequestedWeek] = useState(initialWeek);
   const [isFallback, setIsFallback] = useState(
     initialData?.isFallback === true
   );
@@ -47,7 +50,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
   const fallbackWeekUpdateRef = useRef(false);
 
   const currentWeek = getISOWeek(new Date());
-  const canGoNext = selectedWeek < currentWeek;
+  const canGoNext = requestedWeek < currentWeek;
 
   const fetchArticleTitles = useCallback(async (articleIds: string[]) => {
     if (articleIds.length === 0) return;
@@ -108,10 +111,11 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
             isRetry ? (originalWeek ?? null) : (result.requestedWeek ?? null)
           );
           fallbackWeekUpdateRef.current = true;
-          setSelectedWeek(result.week);
+          setDisplayWeek(result.week);
         } else {
           setIsFallback(false);
           setFallbackRequestedWeek(null);
+          setDisplayWeek(result.week);
         }
         const allArticleIds: string[] = result.data.flatMap(
           (d: DiffSummaryData) =>
@@ -132,20 +136,19 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
   );
 
   const handlePreviousWeek = () => {
-    const prev = getPreviousISOWeek(selectedWeek);
-    setSelectedWeek(prev);
+    const prev = getPreviousISOWeek(requestedWeek);
+    setRequestedWeek(prev);
     fetchData(prev);
   };
 
   const handleNextWeek = () => {
     if (!canGoNext) return;
-    const next = getNextISOWeek(selectedWeek);
-    setSelectedWeek(next);
+    const next = getNextISOWeek(requestedWeek);
+    setRequestedWeek(next);
     fetchData(next);
   };
 
   const grouped = getGroupedChanges(data);
-  const totalChanges = Object.values(grouped).flat().length;
 
   return (
     <div>
@@ -170,9 +173,9 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
               </h1>
               <div className="flex items-center justify-center gap-2">
                 <span className="text-muted-foreground text-xs">
-                  {formatWeekDisplay(selectedWeek)}
+                  {formatWeekDisplay(displayWeek)}
                 </span>
-                {selectedWeek === currentWeek && (
+                {displayWeek === currentWeek && (
                   <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-[10px] font-medium">
                     今週
                   </span>
@@ -204,7 +207,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => fetchData(selectedWeek)}
+                onClick={() => fetchData(requestedWeek)}
                 className="ml-4 gap-1.5"
               >
                 <RefreshCw className="h-3 w-3" />
@@ -242,7 +245,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
             </div>
           </div>
         </div>
-      ) : data && totalChanges > 0 ? (
+      ) : data?.data && data.data.length > 0 ? (
         <DiffMainContent
           data={data}
           grouped={grouped}
@@ -258,7 +261,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
           </div>
           <h3 className="mb-2 text-lg font-semibold">データがありません</h3>
           <p className="text-muted-foreground text-sm">
-            {formatWeekDisplay(selectedWeek)}のデータはまだ生成されていません。
+            {formatWeekDisplay(displayWeek)}のデータはまだ生成されていません。
           </p>
         </div>
       )}

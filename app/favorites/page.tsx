@@ -1,14 +1,7 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth/auth';
 import { FavoritesContent } from './_components/favorites-content';
-
-type SortOption = 'favoritedAt-desc' | 'favoritedAt-asc' | 'publishedAt-desc';
-
-const VALID_SORT_OPTIONS: SortOption[] = [
-  'favoritedAt-desc',
-  'favoritedAt-asc',
-  'publishedAt-desc',
-];
+import { type SortOption, VALID_SORT_OPTIONS } from './_types';
 
 export default async function FavoritesPage({
   searchParams,
@@ -17,7 +10,12 @@ export default async function FavoritesPage({
 }) {
   const session = await auth();
   if (!session?.user) {
-    redirect('/auth/login?callbackUrl=/favorites');
+    const { q, sort } = await searchParams;
+    const callbackUrl =
+      q || sort
+        ? `/favorites?${new URLSearchParams({ ...(q && { q }), ...(sort && { sort }) }).toString()}`
+        : '/favorites';
+    redirect(`/auth/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
   }
 
   const { q, sort } = await searchParams;

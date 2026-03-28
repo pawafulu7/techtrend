@@ -197,8 +197,10 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
           <DailyTrendHero
             aiSummary={report.aiSummary}
             articleCount={report.articleCount}
-            periodStart={report.periodStart}
-            generatedAt={report.generatedAt}
+            periodStart={String(report.periodStart)}
+            generatedAt={
+              report.generatedAt ? String(report.generatedAt) : undefined
+            }
             topTags={report.tags}
             topArticles={report.topArticles}
             navigation={navigation}

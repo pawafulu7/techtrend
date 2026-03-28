@@ -4,7 +4,12 @@ import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-g
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
-import { JST_OFFSET_MS } from '@/lib/services/trend-report/types';
+import {
+  JST_OFFSET_MS,
+  TrendReportData,
+} from '@/lib/services/trend-report/types';
+
+export type { TrendReportData };
 
 /**
  * UTC DateをJST日付文字列（YYYY-MM-DD）に変換
@@ -26,43 +31,6 @@ const getCache = () => {
   }
   return cache;
 };
-
-export interface TrendReportData {
-  periodType: string;
-  periodStart: string;
-  periodEnd: string;
-  articleCount: number;
-  topArticles: Array<{
-    id: string;
-    title: string;
-    translatedTitle?: string | null;
-    url: string;
-    sourceName: string;
-    viewCount: number;
-    favoriteCount: number;
-    score: number;
-    tags: string[];
-    thumbnail?: string | null;
-  }>;
-  categories: Array<{
-    name: string;
-    count: number;
-    percentage: number;
-    topArticle?: {
-      id: string;
-      title: string;
-      translatedTitle?: string | null;
-    } | null;
-  }>;
-  tags: Array<{
-    name: string;
-    count: number;
-    percentage: number;
-  }>;
-  aiSummary?: string;
-  aiModel?: string;
-  generatedAt?: string;
-}
 
 export interface DailyTrendResponse {
   success: boolean;
