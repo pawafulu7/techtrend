@@ -21,6 +21,7 @@ import {
   FavoriteSkeletonGrid,
 } from '@/app/components/article/favorite-card';
 import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
+import { useQueryClient } from '@tanstack/react-query';
 import type { SortOption } from '../_types';
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
@@ -39,6 +40,7 @@ export function FavoritesContent({
   initialSort,
 }: FavoritesContentProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const emptyStateRef = useRef<HTMLDivElement>(null);
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
@@ -139,12 +141,8 @@ export function FavoritesContent({
         });
 
         if (!response.ok) {
-          // Non-OK response (4xx, 5xx): invalidate query to restore from server
-          console.error(
-            'Failed to remove favorite:',
-            response.status,
-            response.statusText
-          );
+          // Non-OK response: invalidate query to restore from server
+          queryClient.invalidateQueries({ queryKey: ['infinite-favorites'] });
           return;
         }
 
@@ -154,8 +152,9 @@ export function FavoritesContent({
             detail: { articleId, isFavorited: false, timestamp: Date.now() },
           })
         );
-      } catch (error) {
-        console.error('Failed to remove favorite:', error);
+      } catch {
+        // Network error: invalidate query to restore from server
+        queryClient.invalidateQueries({ queryKey: ['infinite-favorites'] });
       }
     },
     [removeFavoriteFromCache]

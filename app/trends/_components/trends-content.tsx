@@ -24,9 +24,6 @@ export function TrendsContent({
   initialAnalysis,
   initialSourceData,
 }: TrendsContentProps) {
-  const trendingKeywords = initialKeywords;
-  const newTags = initialNewTags;
-  const sourceData = initialSourceData;
   const [trendAnalysis, setTrendAnalysis] = useState<TrendAnalysis | null>(
     initialAnalysis
   );
@@ -50,7 +47,7 @@ export function TrendsContent({
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [selectedDays]);
+  }, [selectedDays, initialAnalysis]);
 
   const fetchTrendAnalysis = async (days: number, signal?: AbortSignal) => {
     try {
@@ -93,8 +90,8 @@ export function TrendsContent({
 
       {/* Stats Bar */}
       <TrendStatsBar
-        trendingCount={trendingKeywords.length}
-        newTagCount={newTags.length}
+        trendingCount={initialKeywords.length}
+        newTagCount={initialNewTags.length}
         topTagCount={trendAnalysis?.topTags?.length ?? 0}
         loading={false}
       />
@@ -110,9 +107,9 @@ export function TrendsContent({
           <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-secondary)/50 to-transparent" />
         </div>
 
-        {trendingKeywords.length > 0 ? (
+        {initialKeywords.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {trendingKeywords.slice(0, 8).map((keyword) => (
+            {initialKeywords.slice(0, 8).map((keyword) => (
               <TrendingKeywordCard key={keyword.id} keyword={keyword} />
             ))}
           </div>
@@ -128,13 +125,13 @@ export function TrendsContent({
         <div className="mb-3 flex items-center gap-2">
           <Sparkles className="h-3.5 w-3.5 text-(--tt-color-positive)" />
           <h2 className="text-muted-foreground text-xs font-medium tracking-wide">
-            新着タグ{` (${newTags.length})`}
+            新着タグ{` (${initialNewTags.length})`}
           </h2>
         </div>
 
-        {newTags.length > 0 ? (
+        {initialNewTags.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {newTags.map((tag) => (
+            {initialNewTags.map((tag) => (
               <BadgeV2 key={tag.id} variant="positive" asChild>
                 <Link href={`/?tags=${encodeURIComponent(tag.name)}`}>
                   {tag.name}
@@ -241,7 +238,7 @@ export function TrendsContent({
             </div>
 
             {/* Source Pie Chart */}
-            <SourcePieChart data={sourceData} loading={false} />
+            <SourcePieChart data={initialSourceData} loading={false} />
           </div>
         </div>
       </section>
