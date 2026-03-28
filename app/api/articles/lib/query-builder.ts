@@ -5,7 +5,7 @@
  * for article queries with support for various filters.
  */
 
-import { Prisma, ArticleCategory } from '@prisma/client';
+import { ArticleCategory } from '@prisma/client';
 import { sourceCache } from '@/lib/cache/source-cache';
 import { MetricsCollector, withCacheTiming } from '@/lib/metrics/performance';
 import logger from '@/lib/logger';
