@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { StatsOverview } from '@/app/components/stats/overview';
 import { SourceChart } from '@/app/components/stats/source-chart';
 import { DailyChart } from '@/app/components/stats/daily-chart';
@@ -33,36 +34,23 @@ interface StatsData {
 }
 
 export function StatsClient() {
-  const [stats, setStats] = useState<StatsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const response = await fetch('/api/stats');
-        if (!response.ok) {
-          throw new Error('Failed to fetch stats');
-        }
-        const result = await response.json();
-
-        setStats(result.data);
-
-        // Wait for two animation frames so the browser paints the skeleton
-        // before swapping to the real content, avoiding a flash of unstyled layout.
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            setLoading(false);
-          });
-        });
-      } catch (error) {
-        setError(error instanceof Error ? error.message : 'An error occurred');
-        setLoading(false);
+  const {
+    data: statsData,
+    isPending,
+    isError,
+    error,
+  } = useQuery<{ data: StatsData }>({
+    queryKey: ['stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/stats');
+      if (!response.ok) {
+        throw new Error('Failed to fetch stats');
       }
-    }
+      return response.json();
+    },
+  });
 
-    fetchStats();
-  }, []);
+  const stats = statsData?.data ?? null;
 
   const groupedSources = useMemo(() => {
     if (!stats) return [];
@@ -83,15 +71,16 @@ export function StatsClient() {
     ];
   }, [stats]);
 
-  if (error) {
+  if (isError) {
     return (
       <div className="text-destructive py-8 text-center">
-        エラーが発生しました: {error}
+        エラーが発生しました:{' '}
+        {error instanceof Error ? error.message : 'An error occurred'}
       </div>
     );
   }
 
-  if (loading) {
+  if (isPending) {
     return <StatsPageSkeleton />;
   }
 

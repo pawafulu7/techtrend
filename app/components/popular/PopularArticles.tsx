@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,9 +52,6 @@ export function PopularArticles({
   const router = useRouter();
   const pathname = usePathname();
 
-  const [articles, setArticles] = useState<RankedArticle[]>([]);
-  const [loading, setLoading] = useState(true);
-
   // In full mode, period and metric are driven by URL params
   const period = compact
     ? initialPeriod
@@ -62,31 +60,21 @@ export function PopularArticles({
     ? initialMetric
     : ((searchParams.get('metric') || initialMetric) as MetricType);
 
-  const loadArticles = useCallback(async () => {
-    setLoading(true);
-    try {
+  const { data, isLoading: loading } = useQuery<RankedArticle[]>({
+    queryKey: ['popular-articles', { period, metric, limit }],
+    queryFn: async () => {
       const response = await fetch(
         `/api/articles/popular?period=${period}&metric=${metric}&limit=${limit}`
       );
-
       if (!response.ok) {
         throw new Error('Failed to load popular articles');
       }
+      const json = await response.json();
+      return json.articles as RankedArticle[];
+    },
+  });
 
-      const data = await response.json();
-      setArticles(data.articles);
-    } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Failed to load popular articles:', error);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [period, metric, limit]);
-
-  useEffect(() => {
-    loadArticles();
-  }, [loadArticles]);
+  const articles = data ?? [];
 
   const handleMetricChange = useCallback(
     (value: string) => {

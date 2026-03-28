@@ -1,4 +1,5 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useQueries, useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import type { PerformanceMetrics, DashboardError } from '../types/dashboard';
 import { createEmptyPerformanceMetrics } from '../types/dashboard';
 
@@ -10,124 +11,101 @@ export function useMetricsPolling(
   interval: number = 30000, // デフォルト30秒
   enabled: boolean = true
 ) {
-  const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<DashboardError | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // メトリクス取得関数
-  const fetchMetrics = useCallback(async () => {
-    // 前回のリクエストをキャンセル
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+  const results = useQueries({
+    queries: [
+      {
+        queryKey: ['metrics-batch-optimizer'],
+        queryFn: async () => {
+          const res = await fetch('/api/metrics/batch-optimizer');
+          if (!res.ok)
+            throw new Error('Failed to fetch batch-optimizer metrics');
+          return res.json();
+        },
+        refetchInterval: enabled ? interval : false,
+        enabled,
+        retry: 1,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        refetchOnWindowFocus: false,
+      },
+      {
+        queryKey: ['metrics-cache-stats'],
+        queryFn: async () => {
+          const res = await fetch('/api/cache/stats');
+          if (!res.ok) throw new Error('Failed to fetch cache stats');
+          return res.json();
+        },
+        refetchInterval: enabled ? interval : false,
+        enabled,
+        retry: 1,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        refetchOnWindowFocus: false,
+      },
+    ],
+  });
 
-    // 新しいAbortControllerを作成
-    abortControllerRef.current = new AbortController();
+  const [optimizerQuery, cacheQuery] = results;
 
-    try {
-      setLoading(true);
-      setError(null);
+  const loading = optimizerQuery.isLoading || cacheQuery.isLoading;
 
-      // 並行してAPIを呼び出す
-      const [optimizerRes, cacheRes] = await Promise.all([
-        fetch('/api/metrics/batch-optimizer', {
-          signal: abortControllerRef.current.signal
-        }),
-        fetch('/api/cache/stats', {
-          signal: abortControllerRef.current.signal
-        })
-      ]);
-
-      if (!optimizerRes.ok || !cacheRes.ok) {
-        throw new Error('Failed to fetch metrics');
+  // 両クエリが成功したときにlastUpdatedを更新
+  useEffect(() => {
+    if (!optimizerQuery.isLoading && !cacheQuery.isLoading) {
+      if (optimizerQuery.data || cacheQuery.data) {
+        setLastUpdated(new Date().toLocaleString('ja-JP'));
       }
-
-      const optimizerData = await optimizerRes.json();
-      const cacheData = await cacheRes.json();
-
-      // デフォルト値を取得
-      const defaults = createEmptyPerformanceMetrics();
-
-      // データを統合（デフォルト値で安全に初期化）
-      const metrics: PerformanceMetrics = {
-        timestamp: new Date().toISOString(),
-        optimizers: optimizerData.optimizers ?? defaults.optimizers,
-        dataloaders: optimizerData.dataloaders ?? defaults.dataloaders,
-        caches: cacheData.caches ?? defaults.caches,
-        redis: cacheData.redis ?? defaults.redis,
-        summary: optimizerData.summary ?? defaults.summary,
-        recommendations: cacheData.recommendations ?? defaults.recommendations
-      };
-
-      setMetrics(metrics);
-      setLastUpdated(new Date().toLocaleString('ja-JP'));
-      setLoading(false);
-
-      return metrics;
-    } catch (err: any) {
-      // AbortErrorは無視
-      if (err.name === 'AbortError') {
-        return null;
-      }
-
-      const error: DashboardError = {
-        message: err.message || 'Unknown error occurred',
-        code: err.code,
-        timestamp: new Date().toISOString()
-      };
-
-      setError(error);
-      setLoading(false);
-      return null;
     }
-  }, []);
+  }, [
+    optimizerQuery.isLoading,
+    cacheQuery.isLoading,
+    optimizerQuery.data,
+    cacheQuery.data,
+  ]);
+
+  // エラー状態を統合
+  const error: DashboardError | null =
+    optimizerQuery.error || cacheQuery.error
+      ? {
+          message:
+            (optimizerQuery.error as Error | null)?.message ||
+            (cacheQuery.error as Error | null)?.message ||
+            'Unknown error occurred',
+          timestamp: new Date().toISOString(),
+        }
+      : null;
+
+  // データを統合
+  let metrics: PerformanceMetrics | null = null;
+  if (optimizerQuery.data || cacheQuery.data) {
+    const optimizerData = optimizerQuery.data ?? {};
+    const cacheData = cacheQuery.data ?? {};
+    const defaults = createEmptyPerformanceMetrics();
+
+    metrics = {
+      timestamp: new Date().toISOString(),
+      optimizers: optimizerData.optimizers ?? defaults.optimizers,
+      dataloaders: optimizerData.dataloaders ?? defaults.dataloaders,
+      caches: cacheData.caches ?? defaults.caches,
+      redis: cacheData.redis ?? defaults.redis,
+      summary: optimizerData.summary ?? defaults.summary,
+      recommendations: cacheData.recommendations ?? defaults.recommendations,
+    };
+  }
 
   // 手動リフレッシュ関数
-  const refresh = useCallback(async () => {
-    return fetchMetrics();
-  }, [fetchMetrics]);
-
-  // ポーリング開始/停止
-  useEffect(() => {
-    if (!enabled) {
-      // ポーリング停止
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
-    }
-
-    // 初回取得
-    fetchMetrics();
-
-    // ポーリング開始
-    intervalRef.current = setInterval(() => {
-      fetchMetrics();
-    }, interval);
-
-    // クリーンアップ
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    };
-  }, [enabled, interval, fetchMetrics]);
+  const refresh = async () => {
+    await Promise.all([optimizerQuery.refetch(), cacheQuery.refetch()]);
+  };
 
   return {
     metrics,
     loading,
     error,
     lastUpdated,
-    refresh
+    refresh,
   };
 }
 
@@ -136,46 +114,30 @@ export function useMetricsPolling(
  * 単一のAPI呼び出しでメトリクスを取得
  */
 export function useMetricsData(endpoint: string) {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    const abortController = new AbortController();
-
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await fetch(endpoint, {
-          signal: abortController.signal
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch data from ${endpoint}`);
-        }
-
-        const data = await response.json();
-        setData(data);
-        setLoading(false);
-      } catch (err: any) {
-        if (err.name === 'AbortError') {
-          return;
-        }
-        setError(err);
-        setLoading(false);
+  const {
+    data,
+    isLoading: loading,
+    error,
+  } = useQuery({
+    queryKey: ['metrics-data', endpoint],
+    queryFn: async () => {
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data from ${endpoint}`);
       }
-    };
+      return response.json();
+    },
+    retry: 1,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
-    fetchData();
-
-    return () => {
-      abortController.abort();
-    };
-  }, [endpoint]);
-
-  return { data, loading, error };
+  return {
+    data: data ?? null,
+    loading,
+    error: error as Error | null,
+  };
 }
 
 /**
@@ -209,6 +171,6 @@ export function usePollingControl(defaultInterval: number = 30000) {
     interval,
     setInterval,
     pause: () => setIsActive(false),
-    resume: () => setIsActive(true)
+    resume: () => setIsActive(true),
   };
 }

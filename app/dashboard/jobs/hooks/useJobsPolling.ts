@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useQueries } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import type {
   ProcessingLogsResponse,
   EmbeddingSummaryResponse,
@@ -27,155 +28,134 @@ export function useJobsPolling(
   enabled: boolean = true,
   articleStatsRange: string = '7d'
 ): JobsPollingResult {
-  const [processingLogs, setProcessingLogs] =
-    useState<ProcessingLogsResponse | null>(null);
-  const [embeddingSummary, setEmbeddingSummary] =
-    useState<EmbeddingSummaryResponse | null>(null);
-  const [articleStats, setArticleStats] =
-    useState<ArticleStatsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<JobDashboardError | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const results = useQueries({
+    queries: [
+      {
+        queryKey: ['jobs-processing-logs'],
+        queryFn: async () => {
+          const res = await fetch('/api/admin/jobs/processing-logs');
+          // Check for auth errors
+          if (res.status === 401)
+            throw new Error('Unauthorized. Authentication required.');
+          if (res.status === 403)
+            throw new Error('Forbidden. Admin access required.');
+          if (!res.ok) throw new Error('processing-logs API failed');
+          return res.json() as Promise<ProcessingLogsResponse>;
+        },
+        refetchInterval: enabled ? interval : false,
+        enabled,
+        retry: 1,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        refetchOnWindowFocus: false,
+      },
+      {
+        queryKey: ['jobs-embedding-summary'],
+        queryFn: async () => {
+          const res = await fetch('/api/admin/jobs/embedding-summary');
+          if (res.status === 401)
+            throw new Error('Unauthorized. Authentication required.');
+          if (res.status === 403)
+            throw new Error('Forbidden. Admin access required.');
+          if (!res.ok) throw new Error('embedding-summary API failed');
+          return res.json() as Promise<EmbeddingSummaryResponse>;
+        },
+        refetchInterval: enabled ? interval : false,
+        enabled,
+        retry: 1,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        refetchOnWindowFocus: false,
+      },
+      {
+        queryKey: ['jobs-article-stats', articleStatsRange],
+        queryFn: async () => {
+          const res = await fetch(
+            `/api/admin/jobs/article-stats?range=${articleStatsRange}`
+          );
+          if (res.status === 401)
+            throw new Error('Unauthorized. Authentication required.');
+          if (res.status === 403)
+            throw new Error('Forbidden. Admin access required.');
+          if (!res.ok) throw new Error('article-stats API failed');
+          return res.json() as Promise<ArticleStatsResponse>;
+        },
+        refetchInterval: enabled ? interval : false,
+        enabled,
+        retry: 1,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        refetchOnWindowFocus: false,
+      },
+    ],
+  });
 
-  const fetchAllData = useCallback(async () => {
-    // Cancel previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+  const [logsQuery, embeddingQuery, statsQuery] = results;
 
-    abortControllerRef.current = new AbortController();
+  const loading =
+    logsQuery.isLoading || embeddingQuery.isLoading || statsQuery.isLoading;
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Fetch all APIs in parallel using allSettled for partial failure handling
-      const results = await Promise.allSettled([
-        fetch('/api/admin/jobs/processing-logs', {
-          signal: abortControllerRef.current.signal,
-        }),
-        fetch('/api/admin/jobs/embedding-summary', {
-          signal: abortControllerRef.current.signal,
-        }),
-        fetch(`/api/admin/jobs/article-stats?range=${articleStatsRange}`, {
-          signal: abortControllerRef.current.signal,
-        }),
-      ]);
-
-      const [logsResult, embeddingResult, statsResult] = results;
-
-      // Check for auth errors (401 or 403 indicates auth issues)
-      const responses = results
-        .filter((r): r is PromiseFulfilledResult<Response> => r.status === 'fulfilled')
-        .map((r) => r.value);
-
-      const authError = responses.find((r) => r.status === 401 || r.status === 403);
-      if (authError) {
-        throw new Error(
-          authError.status === 401
-            ? 'Unauthorized. Authentication required.'
-            : 'Forbidden. Admin access required.'
-        );
-      }
-
-      // Process each result independently
-      const errors: string[] = [];
-
-      if (logsResult.status === 'fulfilled' && logsResult.value.ok) {
-        const logsData = await logsResult.value.json();
-        setProcessingLogs(logsData);
-      } else {
-        errors.push('processing-logs');
-        // Keep previous data on partial failure
-      }
-
-      if (embeddingResult.status === 'fulfilled' && embeddingResult.value.ok) {
-        const embeddingData = await embeddingResult.value.json();
-        setEmbeddingSummary(embeddingData);
-      } else {
-        errors.push('embedding-summary');
-      }
-
-      if (statsResult.status === 'fulfilled' && statsResult.value.ok) {
-        const statsData = await statsResult.value.json();
-        setArticleStats(statsData);
-      } else {
-        errors.push('article-stats');
-      }
-
-      // Set partial error if some APIs failed
-      if (errors.length > 0 && errors.length < 3) {
-        setError({
-          message: `Partial failure: ${errors.join(', ')} API(s) failed`,
-          timestamp: new Date().toISOString(),
-        });
-      } else if (errors.length === 3) {
-        throw new Error('Failed to fetch all job data');
-      } else {
-        setError(null);
-      }
-
-      // Use Japanese locale for admin dashboard (internal tool)
-      setLastUpdated(new Date().toLocaleString('ja-JP'));
-      setLoading(false);
-    } catch (err: unknown) {
-      // Ignore AbortError
-      if (err instanceof Error && err.name === 'AbortError') {
-        return;
-      }
-
-      const dashboardError: JobDashboardError = {
-        message: err instanceof Error ? err.message : 'Unknown error occurred',
-        timestamp: new Date().toISOString(),
-      };
-
-      setError(dashboardError);
-      setLoading(false);
-    }
-  }, [articleStatsRange]);
-
-  const refresh = useCallback(async () => {
-    await fetchAllData();
-  }, [fetchAllData]);
-
-  // Start/stop polling
+  // lastUpdated を更新（いずれかのデータが存在すれば更新）
   useEffect(() => {
-    if (!enabled) {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+    if (
+      !logsQuery.isLoading &&
+      !embeddingQuery.isLoading &&
+      !statsQuery.isLoading
+    ) {
+      if (logsQuery.data || embeddingQuery.data || statsQuery.data) {
+        setLastUpdated(new Date().toLocaleString('ja-JP'));
       }
-      return;
     }
+  }, [
+    logsQuery.isLoading,
+    embeddingQuery.isLoading,
+    statsQuery.isLoading,
+    logsQuery.data,
+    embeddingQuery.data,
+    statsQuery.data,
+  ]);
 
-    // Initial fetch
-    fetchAllData();
+  // 部分失敗ハンドリング: 各クエリが独立しているため、失敗した箇所のみエラー報告
+  let error: JobDashboardError | null = null;
+  const failedApis: string[] = [];
 
-    // Start polling
-    intervalRef.current = setInterval(() => {
-      fetchAllData();
-    }, interval);
+  if (logsQuery.error) failedApis.push('processing-logs');
+  if (embeddingQuery.error) failedApis.push('embedding-summary');
+  if (statsQuery.error) failedApis.push('article-stats');
 
-    // Cleanup
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
+  if (failedApis.length === 3) {
+    // 全失敗: 最初のエラーメッセージを使用
+    const firstError =
+      logsQuery.error || embeddingQuery.error || statsQuery.error;
+    error = {
+      message:
+        firstError instanceof Error
+          ? firstError.message
+          : 'Failed to fetch all job data',
+      timestamp: new Date().toISOString(),
     };
-  }, [enabled, interval, fetchAllData]);
+  } else if (failedApis.length > 0) {
+    // 部分失敗
+    error = {
+      message: `Partial failure: ${failedApis.join(', ')} API(s) failed`,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  const refresh = async () => {
+    await Promise.all([
+      logsQuery.refetch(),
+      embeddingQuery.refetch(),
+      statsQuery.refetch(),
+    ]);
+  };
 
   return {
-    processingLogs,
-    embeddingSummary,
-    articleStats,
+    processingLogs: logsQuery.data ?? null,
+    embeddingSummary: embeddingQuery.data ?? null,
+    articleStats: statsQuery.data ?? null,
     loading,
     error,
     lastUpdated,

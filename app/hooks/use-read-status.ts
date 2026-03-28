@@ -1,238 +1,324 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const STORAGE_KEY = 'techtrend-read-articles';
 
+interface ReadStatusResponse {
+  readArticleIds: string[];
+  unreadCount: number;
+}
+
+interface ReadStatusCache {
+  readArticleIds: Set<string>;
+  unreadCount: number;
+}
+
+// localStorage との同期ユーティリティ
+function saveToLocalStorage(ids: Set<string>) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(ids)));
+  } catch (error) {
+    console.error('Error saving read status to localStorage:', error);
+  }
+}
+
+function loadFromLocalStorage(): Set<string> {
+  if (typeof window === 'undefined') return new Set<string>();
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return new Set<string>(JSON.parse(stored));
+    }
+  } catch (error) {
+    console.error('Error loading read status from localStorage:', error);
+  }
+  return new Set<string>();
+}
+
 export function useReadStatus(articleIds?: string[]) {
   const { data: session } = useSession();
-  
-  // localStorageから初期値を読み込む
-  const getInitialReadStatus = () => {
-    if (typeof window === 'undefined') return new Set<string>();
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        return new Set<string>(JSON.parse(stored));
-      }
-    } catch (error) {
-      console.error('Error loading read status from localStorage:', error);
-    }
-    return new Set<string>();
-  };
-  
-  const [readArticleIds, setReadArticleIds] = useState<Set<string>>(getInitialReadStatus);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const queryKey = ['read-status'] as const;
 
   // 既読状態を取得
-  const fetchReadStatus = useCallback(async () => {
-    if (!session?.user) {
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const params = articleIds?.length 
+  const {
+    data: readStatusData,
+    isLoading,
+    refetch,
+  } = useQuery<ReadStatusCache>({
+    queryKey,
+    queryFn: async () => {
+      if (!session?.user) {
+        return { readArticleIds: loadFromLocalStorage(), unreadCount: 0 };
+      }
+      const params = articleIds?.length
         ? `?articleIds=${articleIds.join(',')}`
         : '';
       const response = await fetch(`/api/articles/read-status${params}`);
-      if (response.ok) {
-        const data = await response.json();
-        const newReadArticleIds = new Set<string>(data.readArticleIds as string[]);
-        setReadArticleIds(newReadArticleIds);
-        setUnreadCount(data.unreadCount || 0);
-        // localStorageに保存
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newReadArticleIds)));
-        } catch (error) {
-          console.error('Error saving read status to localStorage:', error);
-        }
+      if (!response.ok) {
+        throw new Error('Failed to fetch read status');
       }
-    } catch (error) {
-      console.error('Error fetching read status:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session, articleIds]);
+      const data: ReadStatusResponse = await response.json();
+      const newReadArticleIds = new Set<string>(data.readArticleIds);
+      saveToLocalStorage(newReadArticleIds);
+      return {
+        readArticleIds: newReadArticleIds,
+        unreadCount: data.unreadCount ?? 0,
+      };
+    },
+    enabled: true,
+    // localStorageから初期値を設定
+    initialData: () => ({
+      readArticleIds: loadFromLocalStorage(),
+      unreadCount: 0,
+    }),
+    refetchOnMount: 'always',
+  });
 
-  // 記事を既読にマーク
-  const markAsRead = useCallback(async (articleId: string) => {
-    if (!session?.user) return;
+  const readArticleIds = readStatusData?.readArticleIds ?? new Set<string>();
+  const unreadCount = readStatusData?.unreadCount ?? 0;
 
-    try {
-      const response = await fetch('/api/articles/read-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ articleId })
-      });
-
-      if (response.ok) {
-        setReadArticleIds(prev => {
-          const newSet = new Set([...prev, articleId]);
-          // localStorageに保存
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
-          } catch (error) {
-            console.error('Error saving read status to localStorage:', error);
-          }
-          return newSet;
-        });
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
-    } catch (error) {
-      console.error('Error marking as read:', error);
-    }
-  }, [session]);
-
-  // 記事を未読に戻す
-  const markAsUnread = useCallback(async (articleId: string) => {
-    if (!session?.user) return;
-
-    try {
-      const response = await fetch(`/api/articles/read-status?articleId=${articleId}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        setReadArticleIds(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(articleId);
-          // localStorageに保存
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
-          } catch (error) {
-            console.error('Error saving read status to localStorage:', error);
-          }
-          return newSet;
-        });
-        setUnreadCount(prev => prev + 1);
-      }
-    } catch (error) {
-      console.error('Error marking as unread:', error);
-    }
-  }, [session]);
-
-  // 全未読記事を一括既読にマーク
-  const markAllAsRead = useCallback(async () => {
-    if (!session?.user) return;
-
-    // タイムアウトを5分に延長
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 300000);
-
-    try {
-      const response = await fetch('/api/articles/read-status', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}), // 空のボディ（サーバー側で全未読を取得）
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        // 未読数を0に即座に更新
-        setUnreadCount(0);
-        
-        // 記事リストを再取得するためのカスタムイベントを発火
-        // タイミングを少し遅らせて確実にキャッシュをクリアする
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('articles-bulk-read', {
-            detail: { isRead: true }
-          }));
-        }, 100);
-        
-        // 全記事を既読として扱うため、再取得
-        await fetchReadStatus();
-        
-        return data;
-      }
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.error('Request timeout after 5 minutes');
-      } else {
-        console.error('Error marking all as read:', error);
-      }
-    }
-  }, [session, fetchReadStatus]);
-
-  // 記事が既読かどうか
-  const isRead = useCallback((articleId: string) => {
-    return readArticleIds.has(articleId);
-  }, [readArticleIds]);
-
-  // 初回マウント時に既読状態を取得
-  useEffect(() => {
-    fetchReadStatus();
-  }, [fetchReadStatus]);
-
-  // bfcache復元時にlocalStorageを再読み込み
+  // bfcache復元時にサーバーの最新状態を再取得
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
-        // bfcacheから復元された場合、localStorageを再読み込み
-        try {
-          const stored = localStorage.getItem(STORAGE_KEY);
-          if (stored) {
-            setReadArticleIds(new Set<string>(JSON.parse(stored)));
-          }
-        } catch (error) {
-          console.error('Error reloading read status from localStorage:', error);
-        }
-        // サーバーの最新状態も取得
-        fetchReadStatus();
+        // bfcacheから復元された場合、localStorageを再読み込みしてからサーバー再取得
+        const stored = loadFromLocalStorage();
+        queryClient.setQueryData(
+          queryKey,
+          (old: ReadStatusCache | undefined) => ({
+            readArticleIds: stored,
+            unreadCount: old?.unreadCount ?? 0,
+          })
+        );
+        refetch();
       }
     };
 
     window.addEventListener('pageshow', handlePageShow);
     return () => window.removeEventListener('pageshow', handlePageShow);
-  }, [fetchReadStatus]);
+  }, [refetch, queryClient, queryKey]);
 
   // ReadTrackerからのカスタムイベントをリッスン
   useEffect(() => {
     const handleReadStatusChanged = (event: Event) => {
-      const customEvent = event as CustomEvent<{ articleId: string; isRead: boolean }>;
+      const customEvent = event as CustomEvent<{
+        articleId: string;
+        isRead: boolean;
+      }>;
       const { articleId, isRead: newIsRead } = customEvent.detail;
 
-      if (newIsRead) {
-        // 既読になった場合
-        setReadArticleIds(prev => {
-          if (prev.has(articleId)) return prev;
-          const newSet = new Set([...prev, articleId]);
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
-          } catch (error) {
-            console.error('Error saving read status to localStorage:', error);
-          }
-          return newSet;
-        });
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      } else {
-        // 未読に戻った場合
-        setReadArticleIds(prev => {
-          if (!prev.has(articleId)) return prev;
-          const newSet = new Set(prev);
+      queryClient.setQueryData(queryKey, (old: ReadStatusCache | undefined) => {
+        if (!old) return old;
+        const newSet = new Set(old.readArticleIds);
+        if (newIsRead) {
+          if (newSet.has(articleId)) return old;
+          newSet.add(articleId);
+          saveToLocalStorage(newSet);
+          return {
+            readArticleIds: newSet,
+            unreadCount: Math.max(0, old.unreadCount - 1),
+          };
+        } else {
+          if (!newSet.has(articleId)) return old;
           newSet.delete(articleId);
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
-          } catch (error) {
-            console.error('Error saving read status to localStorage:', error);
-          }
-          return newSet;
-        });
-        setUnreadCount(prev => prev + 1);
-      }
+          saveToLocalStorage(newSet);
+          return {
+            readArticleIds: newSet,
+            unreadCount: old.unreadCount + 1,
+          };
+        }
+      });
     };
 
-    window.addEventListener('article-read-status-changed', handleReadStatusChanged);
-    return () => window.removeEventListener('article-read-status-changed', handleReadStatusChanged);
-  }, []);
+    window.addEventListener(
+      'article-read-status-changed',
+      handleReadStatusChanged
+    );
+    return () =>
+      window.removeEventListener(
+        'article-read-status-changed',
+        handleReadStatusChanged
+      );
+  }, [queryClient, queryKey]);
+
+  type MutationContext = { previous: ReadStatusCache | undefined };
+
+  // 記事を既読にマーク
+  const markAsReadMutation = useMutation<void, Error, string, MutationContext>({
+    mutationFn: async (articleId) => {
+      if (!session?.user) return;
+      const response = await fetch('/api/articles/read-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ articleId }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to mark as read');
+      }
+    },
+    onMutate: async (articleId) => {
+      // 楽観的更新
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<ReadStatusCache>(queryKey);
+      queryClient.setQueryData(queryKey, (old: ReadStatusCache | undefined) => {
+        if (!old) return old;
+        if (old.readArticleIds.has(articleId)) return old;
+        const newSet = new Set([...old.readArticleIds, articleId]);
+        saveToLocalStorage(newSet);
+        return {
+          readArticleIds: newSet,
+          unreadCount: Math.max(0, old.unreadCount - 1),
+        };
+      });
+      return { previous };
+    },
+    onError: (_err, _articleId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  // 記事を未読に戻す
+  const markAsUnreadMutation = useMutation<
+    void,
+    Error,
+    string,
+    MutationContext
+  >({
+    mutationFn: async (articleId) => {
+      if (!session?.user) return;
+      const response = await fetch(
+        `/api/articles/read-status?articleId=${articleId}`,
+        { method: 'DELETE' }
+      );
+      if (!response.ok) {
+        throw new Error('Failed to mark as unread');
+      }
+    },
+    onMutate: async (articleId) => {
+      // 楽観的更新
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<ReadStatusCache>(queryKey);
+      queryClient.setQueryData(queryKey, (old: ReadStatusCache | undefined) => {
+        if (!old) return old;
+        if (!old.readArticleIds.has(articleId)) return old;
+        const newSet = new Set(old.readArticleIds);
+        newSet.delete(articleId);
+        saveToLocalStorage(newSet);
+        return {
+          readArticleIds: newSet,
+          unreadCount: old.unreadCount + 1,
+        };
+      });
+      return { previous };
+    },
+    onError: (_err, _articleId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  // 全未読記事を一括既読にマーク
+  const markAllAsReadMutation = useMutation<
+    { markedCount?: number } | void,
+    Error,
+    void,
+    MutationContext
+  >({
+    mutationFn: async () => {
+      if (!session?.user) return;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000);
+      try {
+        const response = await fetch('/api/articles/read-status', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+          throw new Error('Failed to mark all as read');
+        }
+        return response.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new Error('Request timeout after 5 minutes');
+        }
+        throw error;
+      }
+    },
+    onMutate: async () => {
+      // 楽観的更新: 未読数を0に
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<ReadStatusCache>(queryKey);
+      queryClient.setQueryData(queryKey, (old: ReadStatusCache | undefined) => {
+        if (!old) return old;
+        return { ...old, unreadCount: 0 };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
+      console.error('Error marking all as read:', _err.message);
+    },
+    onSuccess: () => {
+      // 記事リストを再取得するためのカスタムイベントを発火
+      setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent('articles-bulk-read', {
+            detail: { isRead: true },
+          })
+        );
+      }, 100);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  // 記事が既読かどうか
+  const isRead = useCallback(
+    (articleId: string) => readArticleIds.has(articleId),
+    [readArticleIds]
+  );
+
+  // markAsRead / markAsUnread は async 関数として公開（既存APIとの互換性維持）
+  const markAsRead = useCallback(
+    async (articleId: string) => {
+      if (!session?.user) return;
+      await markAsReadMutation.mutateAsync(articleId);
+    },
+    [session, markAsReadMutation]
+  );
+
+  const markAsUnread = useCallback(
+    async (articleId: string) => {
+      if (!session?.user) return;
+      await markAsUnreadMutation.mutateAsync(articleId);
+    },
+    [session, markAsUnreadMutation]
+  );
+
+  const markAllAsRead = useCallback(async () => {
+    if (!session?.user) return;
+    return markAllAsReadMutation.mutateAsync();
+  }, [session, markAllAsReadMutation]);
 
   return {
     readArticleIds,
@@ -242,6 +328,6 @@ export function useReadStatus(articleIds?: string[]) {
     markAsUnread,
     markAllAsRead,
     isLoading,
-    refetch: fetchReadStatus
+    refetch,
   };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,67 +17,33 @@ interface TagStat {
   }>;
 }
 
+async function fetchTagStats() {
+  const res = await fetch('/api/tags/stats');
+  return res.ok ? res.json() : { total: 0 };
+}
+
+async function fetchTagCloudSummary() {
+  const res = await fetch('/api/tags/cloud?period=30d&limit=1000');
+  return res.ok ? res.json() : { tags: [] };
+}
+
+async function fetchTagsNew() {
+  const res = await fetch('/api/tags/new?days=7');
+  return res.ok ? res.json() : { count: 0 };
+}
+
 export function TagStats() {
-  const [stats, setStats] = useState<TagStat | null>(null);
-  const [loading, setLoading] = useState(true);
+  const results = useQueries({
+    queries: [
+      { queryKey: ['tag-stats'], queryFn: fetchTagStats },
+      { queryKey: ['tag-cloud-summary'], queryFn: fetchTagCloudSummary },
+      { queryKey: ['tags-new'], queryFn: fetchTagsNew },
+    ],
+  });
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
-    try {
-      const [totalResponse, activeResponse, newResponse] = await Promise.all([
-        fetch('/api/tags/stats'),
-        fetch('/api/tags/cloud?period=30d&limit=1000'),
-        fetch('/api/tags/new?days=7'),
-      ]);
-
-      const totalData = totalResponse.ok
-        ? await totalResponse.json()
-        : { total: 0 };
-      const activeData = activeResponse.ok
-        ? await activeResponse.json()
-        : { tags: [] };
-      const newData = newResponse.ok ? await newResponse.json() : { count: 0 };
-
-      const activeTags = Array.isArray(activeData.tags)
-        ? activeData.tags.length
-        : 0;
-
-      // 成長率の高いタグ（APIから返されるgrowthRateを使用）
-      const tags = Array.isArray(activeData.tags) ? activeData.tags : [];
-      const growthTags = tags
-        .filter(
-          (tag: {
-            name: string;
-            count: number;
-            trend?: string;
-            growthRate?: number;
-          }) => tag.trend === 'rising'
-        )
-        .sort(
-          (a: { growthRate?: number }, b: { growthRate?: number }) =>
-            (b.growthRate || 0) - (a.growthRate || 0)
-        )
-        .slice(0, 5)
-        .map((tag: { name: string; count: number; growthRate?: number }) => ({
-          name: tag.name,
-          growthRate: tag.growthRate || 0,
-        }));
-
-      setStats({
-        totalTags: totalData.total || 0,
-        activeTags,
-        newTags: newData.count || 0,
-        topGrowthTags: growthTags,
-      });
-    } catch (error) {
-      logger.error({ error }, 'Failed to load tag stats');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [totalResult, activeResult, newResult] = results;
+  const loading = results.some((r) => r.isPending);
+  const hasError = results.some((r) => r.isError);
 
   if (loading) {
     return (
@@ -95,9 +61,50 @@ export function TagStats() {
     );
   }
 
-  if (!stats) {
+  if (hasError) {
+    results.forEach((r) => {
+      if (r.isError) {
+        logger.error({ error: r.error }, 'Failed to load tag stats');
+      }
+    });
     return null;
   }
+
+  const totalData = totalResult.data ?? { total: 0 };
+  const activeData = activeResult.data ?? { tags: [] };
+  const newData = newResult.data ?? { count: 0 };
+
+  const activeTags = Array.isArray(activeData.tags)
+    ? activeData.tags.length
+    : 0;
+
+  // 成長率の高いタグ（APIから返されるgrowthRateを使用）
+  const tags = Array.isArray(activeData.tags) ? activeData.tags : [];
+  const growthTags = tags
+    .filter(
+      (tag: {
+        name: string;
+        count: number;
+        trend?: string;
+        growthRate?: number;
+      }) => tag.trend === 'rising'
+    )
+    .sort(
+      (a: { growthRate?: number }, b: { growthRate?: number }) =>
+        (b.growthRate || 0) - (a.growthRate || 0)
+    )
+    .slice(0, 5)
+    .map((tag: { name: string; count: number; growthRate?: number }) => ({
+      name: tag.name,
+      growthRate: tag.growthRate || 0,
+    }));
+
+  const stats: TagStat = {
+    totalTags: totalData.total || 0,
+    activeTags,
+    newTags: newData.count || 0,
+    topGrowthTags: growthTags,
+  };
 
   return (
     <div className="space-y-4">

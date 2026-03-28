@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,36 +30,28 @@ export function TagCloud({
   onTagClick,
 }: TagCloudProps) {
   const router = useRouter();
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState(initialPeriod);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadTags = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
+  const { data, isPending, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ['tag-cloud', { period, limit }],
+    queryFn: async () => {
       const response = await fetch(
         `/api/tags/cloud?period=${period}&limit=${limit}`
       );
-
       if (!response.ok) {
         throw new Error('Failed to load tags');
       }
+      return response.json();
+    },
+  });
 
-      const data = await response.json();
-      setTags(data.tags);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'エラーが発生しました');
-    } finally {
-      setLoading(false);
-    }
-  }, [period, limit]);
-
-  useEffect(() => {
-    loadTags();
-  }, [loadTags]);
+  const tags: Tag[] = data?.tags ?? [];
+  const loading = isPending || isFetching;
+  const errorMessage = isError
+    ? error instanceof Error
+      ? error.message
+      : 'エラーが発生しました'
+    : null;
 
   // フォントサイズの計算
   const { minCount, maxCount, fontSizes } = useMemo(() => {
@@ -163,7 +156,7 @@ export function TagCloud({
             <Button
               variant="ghost"
               size="sm"
-              onClick={loadTags}
+              onClick={() => refetch()}
               disabled={loading}
             >
               <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
@@ -182,13 +175,13 @@ export function TagCloud({
               />
             ))}
           </div>
-        ) : error ? (
+        ) : errorMessage ? (
           <div className="text-muted-foreground py-8 text-center">
-            <p>{error}</p>
+            <p>{errorMessage}</p>
             <Button
               variant="outline"
               size="sm"
-              onClick={loadTags}
+              onClick={() => refetch()}
               className="mt-4"
             >
               再試行
@@ -220,7 +213,7 @@ export function TagCloud({
           </div>
         )}
 
-        {!loading && !error && tags.length > 0 && (
+        {!loading && !errorMessage && tags.length > 0 && (
           <div className="mt-4 border-t pt-4">
             <div className="text-muted-foreground flex items-center justify-center gap-4 text-xs">
               <span className="flex items-center gap-1">
