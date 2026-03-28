@@ -18,6 +18,13 @@ import {
 } from '@/app/lib/date-utils';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
+import {
+  pushLowQualityFilter,
+  pushProcessedFilter,
+  pushReadFilter,
+  pushTagFilter,
+  pushSearchFilter,
+} from '@/app/api/articles/lib/where-clause-predicates';
 
 import { countCache } from './cache-config';
 
@@ -105,31 +112,19 @@ export function buildWhereClause(params: WhereClauseParams): ArticleWhereInput {
   });
 
   // Exclude articles without processed summaries
-  if (params.excludeUnprocessed) {
-    where.summaryComputedAt = { not: null };
-  }
+  pushProcessedFilter(
+    where.AND as ArticleWhereInput[],
+    params.excludeUnprocessed
+  );
 
   // Exclude low quality articles
-  if (params.excludeLowQuality) {
-    const lowQualityFilters: ArticleWhereInput[] = [
-      {
-        OR: [
-          { skipReason: null },
-          {
-            skipReason: {
-              notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const],
-            },
-          },
-        ],
-      },
-      { qualityScore: { gte: 30 } },
-    ];
-
-    pushToAND(where, ...lowQualityFilters);
-  }
+  pushLowQualityFilter(
+    where.AND as ArticleWhereInput[],
+    params.excludeLowQuality
+  );
 
   // Apply read filter if user is authenticated
-  applyReadFilter(where, params.readFilter, params.userId);
+  pushReadFilter(where, params.readFilter, params.userId);
 
   // Apply source filter
   applySourceFilter(where, params.sources, params.sourceId);
@@ -144,12 +139,18 @@ export function buildWhereClause(params: WhereClauseParams): ArticleWhereInput {
   applyCategoryFilter(where, params.category);
 
   // Apply tag filter
-  applyTagFilter(where, params.tag, params.tags, params.tagMode);
+  pushTagFilter(
+    where,
+    where.AND as ArticleWhereInput[],
+    params.tag,
+    params.tags,
+    params.tagMode
+  );
 
   // Apply search filter
-  applySearchFilter(where, params.search);
+  pushSearchFilter(where.AND as ArticleWhereInput[], params.search);
 
-  // Apply date range filter
+  // Apply date range filter (uses local wrapper to preserve logger.warn on invalid input)
   applyDateRangeFilter(
     where,
     params.finalSortBy,
@@ -159,30 +160,6 @@ export function buildWhereClause(params: WhereClauseParams): ArticleWhereInput {
   );
 
   return where;
-}
-
-function applyReadFilter(
-  where: ArticleWhereInput,
-  readFilter: string | null,
-  userId: string | undefined
-): void {
-  if (readFilter && userId) {
-    if (readFilter === 'unread') {
-      where.articleViews = {
-        none: {
-          userId: userId,
-          isRead: true,
-        },
-      };
-    } else if (readFilter === 'read') {
-      where.articleViews = {
-        some: {
-          userId: userId,
-          isRead: true,
-        },
-      };
-    }
-  }
 }
 
 function parseSourceIds(
@@ -265,72 +242,6 @@ function applyCategoryFilter(
         where.category = normalizedCategory;
       }
     }
-  }
-}
-
-function applyTagFilter(
-  where: ArticleWhereInput,
-  tag: string | null,
-  tags: string | null,
-  tagMode: string
-): void {
-  if (!tag && !tags) return;
-
-  const tagList = tags
-    ? tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0)
-    : tag
-      ? [tag]
-      : [];
-
-  if (tagList.length === 0) return;
-
-  if (tagMode === 'AND') {
-    const tagConditions: ArticleWhereInput[] = tagList.map((tagName) => ({
-      tags: {
-        some: {
-          name: { equals: tagName, mode: 'insensitive' as const },
-        },
-      },
-    }));
-    pushToAND(where, ...tagConditions);
-  } else {
-    where.tags = {
-      some: {
-        OR: tagList.map((tagName) => ({
-          name: { equals: tagName, mode: 'insensitive' as const },
-        })),
-      },
-    };
-  }
-}
-
-function applySearchFilter(
-  where: ArticleWhereInput,
-  search: string | null
-): void {
-  if (!search) return;
-
-  const keywords = search
-    .trim()
-    .split(/[\s\u3000]+/)
-    .filter((k) => k.length > 0);
-
-  if (keywords.length === 1) {
-    where.OR = [
-      { title: { contains: keywords[0], mode: 'insensitive' } },
-      { summary: { contains: keywords[0], mode: 'insensitive' } },
-    ];
-  } else if (keywords.length > 1) {
-    const keywordConditions: ArticleWhereInput[] = keywords.map((keyword) => ({
-      OR: [
-        { title: { contains: keyword, mode: 'insensitive' } },
-        { summary: { contains: keyword, mode: 'insensitive' } },
-      ],
-    }));
-    pushToAND(where, ...keywordConditions);
   }
 }
 
