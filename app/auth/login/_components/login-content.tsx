@@ -28,7 +28,8 @@ export function LoginContent({ callbackUrl }: LoginContentProps) {
     setIsLoading(true);
     try {
       await signIn(provider, { callbackUrl });
-    } catch {
+    } catch (error) {
+      console.error('OAuth sign-in failed:', error);
     } finally {
       setIsLoading(false);
     }

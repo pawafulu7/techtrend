@@ -26,7 +26,8 @@ export function SignupContent() {
     setIsLoading(true);
     try {
       await signIn(provider, { callbackUrl: '/profile' });
-    } catch {
+    } catch (error) {
+      console.error('OAuth sign-in failed:', error);
     } finally {
       setIsLoading(false);
     }
