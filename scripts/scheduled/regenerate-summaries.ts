@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { GeminiClient } from '../../lib/ai/gemini';
 import { validateSummary, validateDetailedSummary } from '../../lib/utils/summary/summary-validator';
 import { postProcessSummaries } from '../../lib/utils/summary/summary-post-processor';
+import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
 
 interface RegenerationOptions {
   articleIds?: string[];
@@ -180,13 +181,11 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
     }
     
     // API制限対策
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await rateLimitDelay(2000);
   }
   
   // 結果サマリー
-  console.error('\n===== 再生成完了 =====');
-  console.error(`成功: ${successCount}件`);
-  console.error(`失敗: ${failureCount}件`);
+  reportResults('再生成完了', { success: successCount, failed: failureCount });
   
   if (errors.length > 0) {
     console.error('\n失敗した記事:');
