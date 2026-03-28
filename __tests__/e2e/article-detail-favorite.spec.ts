@@ -42,26 +42,14 @@ test.describe('Article Detail Favorite Button', () => {
     await expect(buttonInHeader).toBeVisible({ timeout: 10000 });
   });
 
-  test('should show login prompt when clicking favorite button while not logged in', async ({ page }) => {
+  test('should redirect to login when clicking favorite button while not logged in', async ({ page }) => {
     // お気に入りボタンをクリック（data-testidを使用）
     const favoriteButton = page.locator('[data-testid="favorite-button"]');
     await favoriteButton.click();
-    
-    // トースト通知またはリダイレクトを確認
-    // より具体的なトーストセレクターを使用（最初の実際のトーストメッセージ）
-    const toastMessage = page.locator('[role="status"]').first();
-    const hasToast = await toastMessage.isVisible({ timeout: 2000 }).catch(() => false);
-    
-    if (hasToast) {
-      // トーストメッセージにログイン関連のテキストが含まれることを確認
-      await expect(toastMessage).toContainText(/ログイン|login/i);
-    } else {
-      // リダイレクトされた場合
-      await page.waitForURL(/\/auth\/login/, { timeout: 5000 }).catch(() => {
-        // リダイレクトされない場合もある（実装による）
-        console.log('Neither toast nor redirect occurred - this may be expected behavior');
-      });
-    }
+
+    // 未ログイン時はログインページへリダイレクトされることを確認
+    await page.waitForURL(/\/auth\/login/, { timeout: 10000 });
+    expect(page.url()).toContain('callbackUrl=');
   });
 
   test('should be positioned to the right of date/time display', async ({ page }) => {
