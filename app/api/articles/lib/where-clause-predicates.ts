@@ -28,18 +28,6 @@ import {
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
 // ---------------------------------------------------------------------------
-// pushIsHiddenFilter
-// ---------------------------------------------------------------------------
-
-/**
- * Push the isHidden: false condition into AND conditions.
- * Excludes hidden articles from public-facing API results.
- */
-export function pushIsHiddenFilter(andConditions: ArticleWhereInput[]): void {
-  andConditions.push({ isHidden: false });
-}
-
-// ---------------------------------------------------------------------------
 // pushLowQualityFilter
 // ---------------------------------------------------------------------------
 
