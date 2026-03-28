@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { SUMMARY_VERSION } from '@/types/article';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { calculateQualityScore } from '../../lib/utils/quality-score';
+import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
 const summaryService = new UnifiedSummaryService();
 
 interface AutoRegenerateOptions {
@@ -161,7 +162,7 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
         }
 
         // Rate limit対策
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await rateLimitDelay(5000);
         
       } catch (error) {
         failed++;
@@ -181,7 +182,7 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
         // Rate limitエラーの場合は長めに待機
         if (error instanceof Error && error.message.includes('429')) {
           console.log('\nRate limit検出。60秒待機...');
-          await new Promise(resolve => setTimeout(resolve, 60000));
+          await rateLimitDelay(60000);
         }
       }
     }
@@ -191,10 +192,7 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
     }
 
     // 結果サマリー
-    console.log('\n=== 再生成結果 ===');
-    console.log(`処理件数: ${articles.length}件`);
-    console.log(`成功: ${succeeded}件`);
-    console.log(`失敗: ${failed}件`);
+    reportResults('再生成結果', { total: articles.length, success: succeeded, failed }, console.log);
 
     if (results.length > 0) {
       const successfulResults = results.filter(r => r.success && r.newScore !== null);

@@ -13,6 +13,7 @@ import { optimizeContentForSummary } from '@/lib/utils/content/content-extractor
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
 import { getOrCreateTags } from '@/lib/services/tag-service';
+import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
 
 // 環境変数チェック
 if (!process.env.GEMINI_API_KEY) {
@@ -209,7 +210,7 @@ async function regenerateArticles(articles: Array<{
       }
 
       // レート制限対策
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await rateLimitDelay(2000);
 
     } catch (error) {
       console.error(`  ❌ エラー: ${error instanceof Error ? error.message : String(error)}`);
@@ -223,7 +224,7 @@ async function regenerateArticles(articles: Array<{
       });
 
       // エラー時も次の記事を処理するため続行
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await rateLimitDelay(3000);
     }
   }
 
@@ -241,19 +242,10 @@ async function generateReport(results: Array<{
   success: boolean;
   error?: string;
 }>) {
-  console.error('\n' + '='.repeat(60));
-  console.error('📊 自動再生成レポート');
-  console.error('='.repeat(60));
-
   const successful = results.filter(r => r.success);
   const failed = results.filter(r => !r.success);
 
-  console.error(`
-処理結果:
-  総処理数: ${results.length}件
-  成功: ${successful.length}件
-  失敗: ${failed.length}件
-`);
+  reportResults('自動再生成レポート', { total: results.length, success: successful.length, failed: failed.length });
 
   if (successful.length > 0) {
     const totalImprovement = successful.reduce(
