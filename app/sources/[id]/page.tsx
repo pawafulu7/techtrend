@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import logger from '@/lib/logger';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -60,7 +61,7 @@ async function getSourceDetail(id: string): Promise<SourceDetail | null> {
     tagDistribution,
   ] = await Promise.all([
     prisma.article.aggregate({
-      where: { sourceId: id },
+      where: { sourceId: id, isHidden: false },
       _count: { _all: true },
       _avg: { qualityScore: true, bookmarks: true },
     }),
@@ -68,12 +69,13 @@ async function getSourceDetail(id: string): Promise<SourceDetail | null> {
     prisma.article.count({
       where: {
         sourceId: id,
+        isHidden: false,
         publishedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
       },
     }),
 
     prisma.article.findMany({
-      where: { sourceId: id },
+      where: { sourceId: id, isHidden: false },
       include: {
         source: true,
         tags: true,
@@ -85,7 +87,7 @@ async function getSourceDetail(id: string): Promise<SourceDetail | null> {
     }),
 
     prisma.article.findMany({
-      where: { sourceId: id },
+      where: { sourceId: id, isHidden: false },
       include: {
         source: true,
         tags: true,
@@ -99,7 +101,7 @@ async function getSourceDetail(id: string): Promise<SourceDetail | null> {
       FROM "Tag" t
       INNER JOIN "_ArticleToTag" at ON t.id = at."B"
       INNER JOIN "Article" a ON at."A" = a.id
-      WHERE a."sourceId" = ${id}
+      WHERE a."sourceId" = ${id} AND a."isHidden" = false
       GROUP BY t.name
       ORDER BY count DESC
       LIMIT 20
@@ -143,7 +145,14 @@ export default async function SourceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const data = await getSourceDetail(id);
+
+  let data: SourceDetail | null;
+  try {
+    data = await getSourceDetail(id);
+  } catch (error) {
+    logger.error({ sourceId: id, error }, 'Failed to load source detail');
+    notFound();
+  }
 
   if (!data) {
     notFound();
