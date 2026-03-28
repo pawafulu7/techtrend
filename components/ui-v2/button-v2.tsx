@@ -90,19 +90,25 @@ function ButtonV2({
       )}
       {...props}
     >
-      {loading && (
-        <Loader2
-          className={cn(
-            'animate-spin',
-            resolvedSize === 'sm' || resolvedSize === 'icon-sm'
-              ? 'h-3 w-3'
-              : resolvedSize === 'lg' || resolvedSize === 'icon-lg'
-                ? 'h-5 w-5'
-                : 'h-4 w-4'
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {loading && (
+            <Loader2
+              className={cn(
+                'animate-spin',
+                resolvedSize === 'sm' || resolvedSize === 'icon-sm'
+                  ? 'h-3 w-3'
+                  : resolvedSize === 'lg' || resolvedSize === 'icon-lg'
+                    ? 'h-5 w-5'
+                    : 'h-4 w-4'
+              )}
+            />
           )}
-        />
+          {children}
+        </>
       )}
-      {children}
     </Comp>
   );
 }

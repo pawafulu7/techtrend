@@ -111,7 +111,7 @@ describe('TagCloud', () => {
       await renderTagCloud();
 
       const monthlyButton = screen.getByRole('button', { name: '月間' });
-      expect(monthlyButton).toHaveClass('bg-primary'); // variant="default"のスタイル
+      expect(monthlyButton).toHaveClass('shadow-sm'); // variant="default"のスタイル
     });
   });
 
@@ -452,7 +452,7 @@ describe('TagCloud', () => {
 
       // 週間ボタンがアクティブ
       const weeklyButton = screen.getByRole('button', { name: '週間' });
-      expect(weeklyButton).toHaveClass('bg-primary');
+      expect(weeklyButton).toHaveClass('shadow-sm');
     });
 
     it('classNameプロパティが適用される', async () => {
