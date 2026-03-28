@@ -46,6 +46,13 @@ export function ArticleCount({
       params.set('excludeUnprocessed', 'true');
       params.set('includeEmptyContent', 'true');
 
+      // filterEnabled=falseの場合、パーソナライズパラメータをURLから除去
+      if (!filterEnabled) {
+        params.delete('categoryIds');
+        params.delete('periodMonths');
+        params.delete('selectedCategories');
+      }
+
       // URLにsourcesパラメータがない場合、cookie由来のinitialSourceIdsを使用
       const hasSourcesParam = searchParams.has('sources');
       const hasSourceIdParam = searchParams.has('sourceId');

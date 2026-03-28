@@ -148,7 +148,8 @@ export default function SourcesContent() {
     currentPage * ITEMS_PER_PAGE
   );
 
-  if (isError) {
+  // エラー時にキャッシュデータ（data）がなければ早期リターン
+  if (isError && !data) {
     return (
       <div className="space-y-6">
         <h1 className="sr-only">ソース一覧</h1>
@@ -167,6 +168,19 @@ export default function SourcesContent() {
   return (
     <div className="space-y-6">
       <h1 className="sr-only">ソース一覧</h1>
+
+      {/* エラーバナー: キャッシュデータがある場合は上部に表示して表示継続 */}
+      {isError && data && (
+        <div
+          className="border-destructive/20 bg-destructive/10 rounded-md border p-4"
+          role="alert"
+        >
+          <p className="text-destructive text-sm">
+            最新データの取得に失敗しました。表示中のデータはキャッシュです。
+          </p>
+        </div>
+      )}
+
       {loading ? (
         <SourcesOverviewSkeleton />
       ) : (

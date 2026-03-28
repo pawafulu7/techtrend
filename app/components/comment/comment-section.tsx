@@ -10,7 +10,7 @@
  * - 記事詳細画面（ArticleQADialog 下）への配置
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import {
@@ -44,6 +44,7 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
 
   const isAuthenticated = sessionStatus === 'authenticated' && !!session?.user;
   const currentUserId = session?.user?.id || '';
+  const [deletionError, setDeletionError] = useState<string | null>(null);
 
   const queryKey = useMemo(
     () => ['comments', { articleId, userId: currentUserId }] as const,
@@ -60,7 +61,7 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
     error: queryError,
   } = useInfiniteQuery<PaginatedCommentsResponse>({
     queryKey,
-    queryFn: async ({ pageParam }) => {
+    queryFn: async ({ pageParam, signal }) => {
       const params = new URLSearchParams({
         articleId,
         limit: String(DEFAULT_LIMIT),
@@ -70,9 +71,10 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
       }
       const response = await fetch(`/api/comments?${params.toString()}`, {
         credentials: 'include',
+        signal,
       });
       if (!response.ok) {
-        let errMessage = 'Failed to fetch comments';
+        let errMessage = 'コメントの取得に失敗しました';
         try {
           const errData = await response.json();
           errMessage = errData.error || errMessage;
@@ -144,7 +146,7 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
         body: JSON.stringify(input),
       });
       if (!response.ok) {
-        let errMessage = 'Failed to update comment';
+        let errMessage = 'コメントの更新に失敗しました';
         try {
           const errData = await response.json();
           errMessage = errData.error || errMessage;
@@ -195,7 +197,7 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
         credentials: 'include',
       });
       if (!response.ok) {
-        let errMessage = 'Failed to delete comment';
+        let errMessage = 'コメントの削除に失敗しました';
         try {
           const errData = await response.json();
           errMessage = errData.error || errMessage;
@@ -225,6 +227,8 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
       if (context?.snapshot) {
         queryClient.setQueryData(queryKey, context.snapshot);
       }
+      setDeletionError('コメントの削除に失敗しました');
+      setTimeout(() => setDeletionError(null), 5000);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey });
@@ -313,6 +317,16 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
                   role="alert"
                 >
                   <p className="text-destructive text-sm">{fetchError}</p>
+                </div>
+              )}
+
+              {/* 削除エラー表示 */}
+              {deletionError && (
+                <div
+                  className="bg-destructive/10 border-destructive/20 mb-4 rounded-md border p-3"
+                  role="alert"
+                >
+                  <p className="text-destructive text-sm">{deletionError}</p>
                 </div>
               )}
 

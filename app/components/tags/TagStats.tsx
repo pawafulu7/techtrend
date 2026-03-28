@@ -52,26 +52,22 @@ export function TagStats() {
   const [totalResult, activeResult, newResult] = results;
   const loading = results.some((r) => r.isPending);
 
-  // エラーは初回発生時のみログ出力（レンダリング毎の重複出力を防ぐ）
+  // エラーは各クエリの初回発生時のみログ出力（レンダリング毎の重複出力を防ぐ）
   const totalIsError = results[0].isError;
   const activeIsError = results[1].isError;
   const newIsError = results[2].isError;
-  const hasError = totalIsError || activeIsError || newIsError;
-  const resultsRef = useRef(results);
-  const prevHadErrorRef = useRef(false);
+  const loggedErrorRef = useRef<boolean[]>([false, false, false]);
   useEffect(() => {
-    resultsRef.current = results;
-  });
-  useEffect(() => {
-    if (hasError && !prevHadErrorRef.current) {
-      resultsRef.current.forEach((r) => {
-        if (r.isError) {
-          logger.error({ error: r.error }, 'Failed to load tag stats');
-        }
-      });
-    }
-    prevHadErrorRef.current = hasError;
-  }, [hasError]);
+    results.forEach((r, i) => {
+      if (r.isError && !loggedErrorRef.current[i]) {
+        logger.error({ error: r.error }, 'Failed to load tag stats');
+        loggedErrorRef.current[i] = true;
+      }
+      if (!r.isError) {
+        loggedErrorRef.current[i] = false;
+      }
+    });
+  }, [totalIsError, activeIsError, newIsError]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalData = useMemo(
     () =>
@@ -88,6 +84,10 @@ export function TagStats() {
     [newResult.isError, newResult.data]
   );
 
+  // NOTE: /api/tags/cloud?limit=1000 の上限に制約されるため、
+  // アクティブタグ数は最大1000件までの近似値。
+  // /api/tags/stats は totalTags のみを返すため、activeTags の正確なカウントには
+  // サーバー側でのカウントAPIの追加が必要（現状はAPIが提供していない）。
   const activeTags = useMemo(
     () => (Array.isArray(activeData.tags) ? activeData.tags.length : 0),
     [activeData.tags]

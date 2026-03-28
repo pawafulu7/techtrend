@@ -32,8 +32,10 @@ export function useJobsPolling(
     queries: [
       {
         queryKey: ['jobs-processing-logs'],
-        queryFn: async () => {
-          const res = await fetch('/api/admin/jobs/processing-logs');
+        queryFn: async ({ signal }) => {
+          const res = await fetch('/api/admin/jobs/processing-logs', {
+            signal,
+          });
           // Check for auth errors
           if (res.status === 401)
             throw new Error('Unauthorized. Authentication required.');
@@ -47,8 +49,10 @@ export function useJobsPolling(
       },
       {
         queryKey: ['jobs-embedding-summary'],
-        queryFn: async () => {
-          const res = await fetch('/api/admin/jobs/embedding-summary');
+        queryFn: async ({ signal }) => {
+          const res = await fetch('/api/admin/jobs/embedding-summary', {
+            signal,
+          });
           if (res.status === 401)
             throw new Error('Unauthorized. Authentication required.');
           if (res.status === 403)
@@ -61,9 +65,10 @@ export function useJobsPolling(
       },
       {
         queryKey: ['jobs-article-stats', articleStatsRange],
-        queryFn: async () => {
+        queryFn: async ({ signal }) => {
           const res = await fetch(
-            `/api/admin/jobs/article-stats?range=${articleStatsRange}`
+            `/api/admin/jobs/article-stats?range=${articleStatsRange}`,
+            { signal }
           );
           if (res.status === 401)
             throw new Error('Unauthorized. Authentication required.');
@@ -83,32 +88,19 @@ export function useJobsPolling(
   const loading =
     logsQuery.isLoading || embeddingQuery.isLoading || statsQuery.isLoading;
 
-  // lastUpdated を派生（いずれかのデータが存在すれば現在時刻を返す）
+  // lastUpdated を派生（dataUpdatedAt のみで計算）
   const lastUpdated = useMemo(() => {
-    if (
-      !logsQuery.isLoading &&
-      !embeddingQuery.isLoading &&
-      !statsQuery.isLoading &&
-      (logsQuery.dataUpdatedAt ||
-        embeddingQuery.dataUpdatedAt ||
-        statsQuery.dataUpdatedAt)
-    ) {
-      const latestUpdate = Math.max(
-        logsQuery.dataUpdatedAt ?? 0,
-        embeddingQuery.dataUpdatedAt ?? 0,
-        statsQuery.dataUpdatedAt ?? 0
-      );
-      return latestUpdate > 0
-        ? new Date(latestUpdate).toLocaleString('ja-JP')
-        : null;
-    }
-    return null;
+    const latestUpdate = Math.max(
+      logsQuery.dataUpdatedAt ?? 0,
+      embeddingQuery.dataUpdatedAt ?? 0,
+      statsQuery.dataUpdatedAt ?? 0
+    );
+    return latestUpdate > 0
+      ? new Date(latestUpdate).toLocaleString('ja-JP')
+      : null;
   }, [
-    logsQuery.isLoading,
     logsQuery.dataUpdatedAt,
-    embeddingQuery.isLoading,
     embeddingQuery.dataUpdatedAt,
-    statsQuery.isLoading,
     statsQuery.dataUpdatedAt,
   ]);
 

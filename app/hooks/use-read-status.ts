@@ -42,14 +42,16 @@ function loadFromLocalStorage(): Set<string> {
 export function useReadStatus(articleIds?: string[]) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  const queryKey = useMemo(
-    () =>
-      [
-        ...READ_STATUS_QUERY_KEY,
-        { articleIds: articleIds?.join(',') ?? 'all', auth: !!session?.user },
-      ] as const,
-    [articleIds, session?.user]
-  );
+  const queryKey = useMemo(() => {
+    const normalizedArticleIds = articleIds ? [...articleIds].sort() : [];
+    const articleIdsKey = normalizedArticleIds.length
+      ? normalizedArticleIds.join(',')
+      : 'all';
+    return [
+      ...READ_STATUS_QUERY_KEY,
+      { articleIds: articleIdsKey, auth: !!session?.user },
+    ] as const;
+  }, [articleIds, session?.user]);
 
   // 既読状態を取得
   const {
@@ -277,12 +279,16 @@ export function useReadStatus(articleIds?: string[]) {
       }
     },
     onMutate: async () => {
-      // 楽観的更新: 未読数を0に
+      // 楽観的更新: 未読数を0に、readArticleIdsをarticleIdsの全件で更新
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<ReadStatusCache>(queryKey);
       queryClient.setQueryData(queryKey, (old: ReadStatusCache | undefined) => {
         if (!old) return old;
-        return { ...old, unreadCount: 0 };
+        const newReadArticleIds = articleIds?.length
+          ? new Set([...old.readArticleIds, ...articleIds])
+          : old.readArticleIds;
+        saveToLocalStorage(newReadArticleIds);
+        return { readArticleIds: newReadArticleIds, unreadCount: 0 };
       });
       return { previous };
     },
