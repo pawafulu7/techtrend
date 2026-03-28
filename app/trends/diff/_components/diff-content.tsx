@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -67,6 +67,22 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
       // Silent fail
     }
   }, []);
+
+  // 初期データの関連記事タイトルをmount時に取得
+  // SC化によりmount時にfetchDataが走らなくなったため、initialDataから直接抽出する
+  useEffect(() => {
+    if (data) {
+      const allArticleIds = data.data.flatMap((item: DiffSummaryData) =>
+        (item.changes || []).flatMap(
+          (c: DiffChange) => c.relatedArticleIds || []
+        )
+      );
+      if (allArticleIds.length > 0) {
+        fetchArticleTitles([...new Set(allArticleIds)] as string[]);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // mount時のみ実行
 
   const fetchData = useCallback(
     async (week: string, isRetry = false, originalWeek?: string) => {

@@ -4,6 +4,7 @@ import { keywordsCache } from '@/lib/cache/keywords-cache';
 import { trendsCache } from '@/lib/cache/trends-cache';
 import { RedisCache } from '@/lib/cache';
 
+// 読み取り専用: キャッシュへの書き込みは /api/stats ルートが担当
 const statsCache = new RedisCache({
   ttl: 300,
   namespace: '@techtrend/cache:stats:v2',
@@ -49,13 +50,29 @@ export async function fetchKeywordsData(): Promise<{
 }> {
   try {
     const cacheKey = 'keywords:trending';
-    const keywordsData = await keywordsCache.getOrSet(cacheKey, async () => {
-      const now = new Date();
-      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-      const [recentTags, weeklyTags, newTagsRaw] = await Promise.all([
-        prisma.$queryRaw`
+    // キャッシュ読み取りのみ。書き込みは /api/trends/keywords ルートが担当。
+    // APIルートは { trending, newTags, period } を書き込むため、
+    // SC側が { trending, newTags } のみを書き込むとpayload不一致が発生する。
+    type KeywordsPayload = {
+      trending: TrendingKeyword[];
+      newTags: NewTag[];
+    };
+    const cached = await keywordsCache.get<KeywordsPayload>(cacheKey);
+    if (cached) {
+      return {
+        trending: cached.trending || [],
+        newTags: cached.newTags || [],
+      };
+    }
+
+    // キャッシュミス時はDBから直接フェッチ（キャッシュへの書き込みなし）
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [recentTags, weeklyTags, newTagsRaw] = await Promise.all([
+      prisma.$queryRaw`
           SELECT
             t.id,
             t.name,
@@ -70,7 +87,7 @@ export async function fetchKeywordsData(): Promise<{
           GROUP BY t.id, t.name
         ` as Promise<{ id: string; name: string; recent_count: bigint }[]>,
 
-        prisma.$queryRaw`
+      prisma.$queryRaw`
           SELECT
             t.id,
             t.name,
@@ -86,7 +103,7 @@ export async function fetchKeywordsData(): Promise<{
           GROUP BY t.id, t.name
         ` as Promise<{ id: string; name: string; weekly_count: bigint }[]>,
 
-        prisma.$queryRaw`
+      prisma.$queryRaw`
           SELECT DISTINCT
             t.id,
             t.name,
@@ -110,49 +127,43 @@ export async function fetchKeywordsData(): Promise<{
           ORDER BY count DESC
           LIMIT 10
         ` as Promise<{ id: string; name: string; count: bigint }[]>,
-      ]);
+    ]);
 
-      const weeklyTagMap = new Map(
-        weeklyTags.map((tag) => [tag.id, Number(tag.weekly_count) / 6])
-      );
+    const weeklyTagMap = new Map(
+      weeklyTags.map((tag) => [tag.id, Number(tag.weekly_count) / 6])
+    );
 
-      const trendingKeywords = recentTags
-        .map((tag) => {
-          const recentCount = Number(tag.recent_count);
-          const weeklyAverage = weeklyTagMap.get(tag.id) || 0;
-          const effectiveAverage = Math.max(weeklyAverage, 1.0);
-          const rawGrowthRate =
-            ((recentCount - effectiveAverage) / effectiveAverage) * 100;
-          const growthRate = Math.min(Math.round(rawGrowthRate), 999);
+    const trendingKeywords = recentTags
+      .map((tag) => {
+        const recentCount = Number(tag.recent_count);
+        const weeklyAverage = weeklyTagMap.get(tag.id) || 0;
+        const effectiveAverage = Math.max(weeklyAverage, 1.0);
+        const rawGrowthRate =
+          ((recentCount - effectiveAverage) / effectiveAverage) * 100;
+        const growthRate = Math.min(Math.round(rawGrowthRate), 999);
 
-          return {
-            id: tag.id,
-            name: tag.name,
-            recentCount,
-            weeklyAverage: Math.round(weeklyAverage * 10) / 10,
-            growthRate,
-            isTrending: growthRate > 50 && recentCount >= 2,
-          };
-        })
-        .filter((tag) => tag.isTrending || tag.recentCount >= 3)
-        .sort(
-          (a, b) => b.growthRate - a.growthRate || b.recentCount - a.recentCount
-        )
-        .slice(0, 20);
-
-      return {
-        trending: trendingKeywords,
-        newTags: newTagsRaw.map((tag) => ({
+        return {
           id: tag.id,
           name: tag.name,
-          count: Number(tag.count),
-        })),
-      };
-    });
+          recentCount,
+          weeklyAverage: Math.round(weeklyAverage * 10) / 10,
+          growthRate,
+          isTrending: growthRate > 50 && recentCount >= 2,
+        };
+      })
+      .filter((tag) => tag.isTrending || tag.recentCount >= 3)
+      .sort(
+        (a, b) => b.growthRate - a.growthRate || b.recentCount - a.recentCount
+      )
+      .slice(0, 20);
 
     return {
-      trending: keywordsData.trending || [],
-      newTags: keywordsData.newTags || [],
+      trending: trendingKeywords,
+      newTags: newTagsRaw.map((tag) => ({
+        id: tag.id,
+        name: tag.name,
+        count: Number(tag.count),
+      })),
     };
   } catch {
     return { trending: [], newTags: [] };
@@ -280,8 +291,6 @@ export async function fetchSourceData(): Promise<SourceDataItem[]> {
                   10
                 : 0,
           }));
-
-          await statsCache.set(cacheKey, { sources });
 
           return sources;
         })();
