@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth/auth';
 import { compareSecrets } from '@/lib/utils/compare-secrets';
 import logger from '@/lib/logger';
 
-type Handler = (
+export type Handler = (
   request: NextRequest,
   context?: any
 ) => Promise<Response> | Response;

@@ -1,12 +1,10 @@
 import { NextRequest } from 'next/server';
-import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
+import {
+  withCronOrAdminAuth,
+  type Handler,
+} from '@/lib/middleware/with-cron-or-admin-auth';
 import { compareSecrets } from '@/lib/utils/compare-secrets';
 import logger from '@/lib/logger';
-
-type Handler = (
-  request: NextRequest,
-  context?: any
-) => Promise<Response> | Response;
 
 /**
  * feeds/collect専用認証アダプター

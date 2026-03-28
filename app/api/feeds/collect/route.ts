@@ -9,19 +9,13 @@ import type { ApiResponse } from '@/types/api';
 export const dynamic = 'force-dynamic';
 
 async function collectHandler(_request: NextRequest) {
-  const result = await distributedLock.executeWithLock(
+  const data = await distributedLock.executeWithLock(
     'feeds:collect',
-    async () => {
-      const data = await collectFeeds();
-      return NextResponse.json({
-        success: true,
-        data,
-      } as ApiResponse<typeof data>);
-    },
+    () => collectFeeds(),
     300
   );
 
-  if (!result) {
+  if (!data) {
     return NextResponse.json(
       {
         success: false,
@@ -30,7 +24,7 @@ async function collectHandler(_request: NextRequest) {
       { status: 423 }
     );
   }
-  return result;
+  return NextResponse.json({ success: true, data } as ApiResponse<typeof data>);
 }
 
 export const POST = withFeedCollectAuth(collectHandler);

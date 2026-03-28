@@ -10,6 +10,8 @@ export function compareSecrets(a: string, b: string): boolean {
     const hashB = createHash('sha256').update(b, 'utf8').digest();
     return timingSafeEqual(hashA, hashB);
   } catch {
+    // SHA-256 output is always 32 bytes so timingSafeEqual should never throw here.
+    // Defensive fallback only.
     return false;
   }
 }
