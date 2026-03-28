@@ -181,7 +181,7 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
 
         // Rate limitエラーの場合は長めに待機
         if (error instanceof Error && error.message.includes('429')) {
-          console.error('\nRate limit検出。60秒待機...');
+          console.log('\nRate limit検出。60秒待機...');
           await rateLimitDelay(60000);
         }
       }
@@ -192,7 +192,7 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
     }
 
     // 結果サマリー
-    reportResults('再生成結果', { total: articles.length, success: succeeded, failed });
+    reportResults('再生成結果', { total: articles.length, success: succeeded, failed }, console.log);
 
     if (results.length > 0) {
       const successfulResults = results.filter(r => r.success && r.newScore !== null);

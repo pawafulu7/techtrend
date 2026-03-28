@@ -10,11 +10,13 @@ export interface RegenerationStats {
   skipped?: number;
 }
 
+type LogFn = (message: string) => void;
+
 /**
  * 再生成結果のフォーマット済みログ出力
- * 出力先は console.error に統一（スケジューラーログとして stderr を使用）
+ * デフォルトはstderr。scheduler.ts経由でstdoutキャプチャされるスクリプトはconsole.logを渡す
  */
-export function reportResults(label: string, stats: RegenerationStats): void {
+export function reportResults(label: string, stats: RegenerationStats, log: LogFn = console.error): void {
   const lines = [`\n===== ${label} =====`];
   if (stats.total !== undefined) {
     lines.push(`処理件数: ${stats.total}件`);
@@ -24,7 +26,7 @@ export function reportResults(label: string, stats: RegenerationStats): void {
   if (stats.skipped !== undefined) {
     lines.push(`スキップ: ${stats.skipped}件`);
   }
-  console.error(lines.join('\n'));
+  log(lines.join('\n'));
 }
 
 /**
