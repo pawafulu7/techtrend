@@ -50,6 +50,13 @@ const buttonV2Variants = cva(
 
 type ButtonV2VariantProps = VariantProps<typeof buttonV2Variants>;
 
+/**
+ * @param asChild - Renders as child element via Radix Slot.Root.
+ *   When true, loading spinner is not rendered (Slot requires a single child).
+ *   The disabled state is conveyed via aria-disabled + click guard instead of native disabled.
+ * @param loading - Shows spinner and disables the button. Ignored visually when asChild is true.
+ * @param iconOnly - Maps size to fixed-dimension icon variant (e.g. sm -> icon-sm).
+ */
 interface ButtonV2Props
   extends React.ComponentProps<'button'>, ButtonV2VariantProps {
   asChild?: boolean;
@@ -95,9 +102,7 @@ function ButtonV2({
 }: ButtonV2Props) {
   const isDisabled = disabled || loading;
   const Comp = asChild ? Slot.Root : 'button';
-  const resolvedSize = iconOnly
-    ? (ICON_SIZE_MAP[size ?? 'default'] ?? 'icon')
-    : size;
+  const resolvedSize = iconOnly ? (ICON_SIZE_MAP[size!] ?? 'icon') : size;
 
   const disabledProps = asChild
     ? {
