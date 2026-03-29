@@ -11,7 +11,7 @@ const CardV2 = forwardRef<HTMLDivElement, CardV2Props>(
       <div
         ref={ref}
         className={cn(
-          'rounded-lg border transition-all duration-200',
+          'flex flex-col rounded-lg border transition-all duration-200',
           variant === 'default' && [
             'border-(--tt-color-border) bg-(--tt-color-surface)',
           ],
@@ -45,7 +45,7 @@ const CardV2Header = forwardRef<
 CardV2Header.displayName = 'CardV2Header';
 
 const CardV2Title = forwardRef<
-  HTMLParagraphElement,
+  HTMLHeadingElement,
   React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
   <h3
@@ -100,7 +100,8 @@ export {
   CardV2Footer,
 };
 
-// v1-compatible re-exports (PR6 migration)
+// v1 name re-exports for import path migration (PR6)
+// Note: v2 API differs from v1 — no CardAction, no asChild on CardTitle, no data-slot attributes
 export {
   CardV2 as Card,
   CardV2Header as CardHeader,

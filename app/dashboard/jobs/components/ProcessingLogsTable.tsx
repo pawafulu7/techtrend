@@ -1,7 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import {
   Table,
@@ -12,7 +17,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui-v2/button-v2';
-import { ChevronDown, ChevronRight, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+} from 'lucide-react';
 import type { ProcessingLogsResponse, ProcessingLogEntry } from '../types';
 
 interface ProcessingLogsTableProps {
@@ -28,22 +39,25 @@ function getStatusBadge(status: ProcessingLogEntry['status']) {
     case 'success':
       return {
         variant: 'default' as const,
-        className: 'bg-[var(--tt-color-positive)] hover:bg-[var(--tt-color-positive)]',
-        icon: <CheckCircle className="h-3 w-3 mr-1" />,
+        className:
+          'bg-[var(--tt-color-positive)] hover:bg-[var(--tt-color-positive)]',
+        icon: <CheckCircle className="mr-1 h-3 w-3" />,
         label: 'Success',
       };
     case 'failed':
       return {
         variant: 'destructive' as const,
-        className: 'bg-[var(--tt-color-negative)] hover:bg-[var(--tt-color-negative)]',
-        icon: <XCircle className="h-3 w-3 mr-1" />,
+        className:
+          'bg-[var(--tt-color-negative)] hover:bg-[var(--tt-color-negative)]',
+        icon: <XCircle className="mr-1 h-3 w-3" />,
         label: 'Failed',
       };
     case 'partial':
       return {
         variant: 'secondary' as const,
-        className: 'bg-[var(--tt-color-warning)] hover:bg-[var(--tt-color-warning)] text-white',
-        icon: <AlertTriangle className="h-3 w-3 mr-1" />,
+        className:
+          'bg-[var(--tt-color-warning)] hover:bg-[var(--tt-color-warning)] text-white',
+        icon: <AlertTriangle className="mr-1 h-3 w-3" />,
         label: 'Partial',
       };
     default:
@@ -89,7 +103,10 @@ function ProcessingLogRow({ log }: { log: ProcessingLogEntry }) {
       <TableRow className="hover:bg-muted/50">
         <TableCell className="font-medium">{log.processName}</TableCell>
         <TableCell>
-          <Badge variant={statusBadge.variant} className={statusBadge.className}>
+          <Badge
+            variant={statusBadge.variant}
+            className={statusBadge.className}
+          >
             {statusBadge.icon}
             {statusBadge.label}
           </Badge>
@@ -122,11 +139,11 @@ function ProcessingLogRow({ log }: { log: ProcessingLogEntry }) {
       {hasMetadata && isOpen && (
         <TableRow className="bg-muted/30">
           <TableCell colSpan={5} className="py-2">
-            <div className="rounded-md bg-muted p-3">
-              <p className="text-xs font-medium text-muted-foreground mb-2">
+            <div className="bg-muted rounded-md p-3">
+              <p className="text-muted-foreground mb-2 text-xs font-medium">
                 Metadata
               </p>
-              <pre className="text-xs overflow-x-auto whitespace-pre-wrap break-words">
+              <pre className="overflow-x-auto text-xs break-words whitespace-pre-wrap">
                 {JSON.stringify(log.metadata, null, 2)}
               </pre>
             </div>
@@ -140,7 +157,10 @@ function ProcessingLogRow({ log }: { log: ProcessingLogEntry }) {
 /**
  * Processing Logs Table Component
  */
-export function ProcessingLogsTable({ data, loading }: ProcessingLogsTableProps) {
+export function ProcessingLogsTable({
+  data,
+  loading,
+}: ProcessingLogsTableProps) {
   if (loading || !data) {
     return (
       <Card>
@@ -152,10 +172,7 @@ export function ProcessingLogsTable({ data, loading }: ProcessingLogsTableProps)
         <CardContent>
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                className="h-12 bg-muted animate-pulse rounded-md"
-              />
+              <div key={i} className="bg-muted h-12 animate-pulse rounded-md" />
             ))}
           </div>
         </CardContent>
@@ -166,8 +183,8 @@ export function ProcessingLogsTable({ data, loading }: ProcessingLogsTableProps)
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Processing Logs</span>
+        <div className="flex items-center justify-between">
+          <CardTitle>Processing Logs</CardTitle>
           <div className="flex items-center gap-2 text-sm font-normal">
             <Badge variant="outline" className="tabular-nums">
               {data.summary.total} total
@@ -179,7 +196,7 @@ export function ProcessingLogsTable({ data, loading }: ProcessingLogsTableProps)
               {data.summary.successRate.toFixed(1)}% success
             </Badge>
           </div>
-        </CardTitle>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="rounded-md border">
@@ -188,7 +205,9 @@ export function ProcessingLogsTable({ data, loading }: ProcessingLogsTableProps)
               <TableRow>
                 <TableHead className="w-[200px]">Process Name</TableHead>
                 <TableHead className="w-[100px]">Status</TableHead>
-                <TableHead className="w-[100px] text-right">Processed</TableHead>
+                <TableHead className="w-[100px] text-right">
+                  Processed
+                </TableHead>
                 <TableHead className="w-[180px]">Last Run</TableHead>
                 <TableHead className="w-[50px]" />
               </TableRow>
@@ -198,7 +217,7 @@ export function ProcessingLogsTable({ data, loading }: ProcessingLogsTableProps)
                 <TableRow>
                   <TableCell
                     colSpan={5}
-                    className="text-center text-muted-foreground py-8"
+                    className="text-muted-foreground py-8 text-center"
                   >
                     No processing logs found
                   </TableCell>
