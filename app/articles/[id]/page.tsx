@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui-v2/button-v2';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui-v2/card-v2';
 import {
   ArrowLeft,
   Calendar,

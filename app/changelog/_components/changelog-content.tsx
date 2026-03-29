@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { FileText, Package } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui-v2/badge-v2';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VersionSelector } from './version-selector';
 import { CategorySection } from './category-section';

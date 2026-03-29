@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
 import { FileText, Radio, Users, TrendingUp } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { getJSTToday } from '@/lib/utils/date';

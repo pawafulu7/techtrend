@@ -93,3 +93,7 @@ const BadgeV2 = forwardRef<HTMLElement, BadgeV2Props>(
 BadgeV2.displayName = 'BadgeV2';
 
 export { BadgeV2 };
+
+// v1-compatible re-exports (PR6 migration)
+export { BadgeV2 as Badge };
+export type { BadgeV2Props as BadgeProps, BadgeV2Variant as BadgeVariant };

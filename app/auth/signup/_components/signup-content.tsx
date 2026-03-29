@@ -14,7 +14,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@/components/ui-v2/card-v2';
 import { Separator } from '@/components/ui/separator';
 import { Github } from 'lucide-react';
 import { GoogleIcon } from '@/components/icons/google';

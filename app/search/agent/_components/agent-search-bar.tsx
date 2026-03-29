@@ -11,7 +11,7 @@ import {
 import { Search, X, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui-v2/button-v2';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui-v2/badge-v2';
 import {
   useSearchHistory,
   type SearchHistoryItem,

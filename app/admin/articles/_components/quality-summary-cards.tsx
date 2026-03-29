@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui-v2/card-v2';
 import type { QualitySummary, QualityStatus } from '../_types';
 
 interface CardConfig {

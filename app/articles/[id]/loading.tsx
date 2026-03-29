@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui-v2/card-v2';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ArticleDetailLoading() {
