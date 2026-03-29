@@ -346,10 +346,21 @@ describe('Environment Configuration - getEnv', () => {
     expect(result.AUTH_SECRET).toBeDefined();
   });
 
-  it('warns when auth secret missing in production', () => {
+  it('throws when auth secret missing in production without opt-in', () => {
     process.env.NODE_ENV = 'production';
     delete process.env.AUTH_SECRET;
     delete process.env.NEXTAUTH_SECRET;
+    delete process.env.ALLOW_INSECURE_AUTH_FALLBACK;
+    resetEnvCache();
+
+    expect(() => getEnv()).toThrow('Environment validation failed');
+  });
+
+  it('allows fallback in production with explicit opt-in flag', () => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.AUTH_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
+    process.env.ALLOW_INSECURE_AUTH_FALLBACK = 'true';
     resetEnvCache();
 
     const loggerSpy = jest.spyOn(logger, 'warn').mockImplementation();
@@ -358,6 +369,7 @@ describe('Environment Configuration - getEnv', () => {
     expect(result).toBeDefined();
     expect(loggerSpy).toHaveBeenCalled();
     loggerSpy.mockRestore();
+    delete process.env.ALLOW_INSECURE_AUTH_FALLBACK;
   });
 });
 

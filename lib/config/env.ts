@@ -296,13 +296,23 @@ ${formatValidationErrors(parsed.error)}
 Please check your .env file and ensure all required variables are set correctly.
     `.trim();
 
-    // Allow fallback for auth secret issues in any environment
+    // Allow fallback for auth secret issues in non-production environments
     // (batch scripts in GHA don't need auth but import env.ts transitively)
     if (isAuthSecretOnlyError(parsed.error)) {
+      const allowFallback =
+        process.env.NODE_ENV !== 'production' ||
+        process.env.ALLOW_INSECURE_AUTH_FALLBACK === 'true';
+
+      if (!allowFallback) {
+        // Production without explicit opt-in: fail fast to prevent
+        // DEV_AUTH_SECRET (a public constant) from being used as session secret
+        throw new Error(errorMessage);
+      }
+
       if (process.env.NODE_ENV === 'production') {
         logger.warn(errorMessage);
         logger.warn(
-          'AUTH_SECRET not set in production — auth-dependent features will fail at request time'
+          'AUTH_SECRET not set in production — using insecure fallback (ALLOW_INSECURE_AUTH_FALLBACK=true)'
         );
       }
 
