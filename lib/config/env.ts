@@ -6,16 +6,36 @@
 import { z } from 'zod';
 import logger from '@/lib/logger';
 
-// Helpers to coerce empty strings to undefined for optional vars
-const emptyToUndefined = (v: unknown) =>
-  typeof v === 'string' && v.trim() === '' ? undefined : v;
-const optionalUrl = z.preprocess(emptyToUndefined, z.string().url()).optional();
+// Preprocess all env vars: empty/whitespace-only strings → undefined
+// GHA/CI environments often set secrets to '' when not configured
+function sanitizeEnv(
+  raw: NodeJS.ProcessEnv
+): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(raw).map(([k, v]) => [
+      k,
+      typeof v === 'string' && v.trim() === '' ? undefined : v,
+    ])
+  );
+}
+const optionalUrl = z.string().url().optional();
 const numericStringWithDefault = (def: string) =>
   z.preprocess((v) => {
-    if (typeof v !== 'string' || v.trim() === '' || !/^\d+$/.test(v))
-      return def;
+    if (typeof v !== 'string' || !/^\d+$/.test(v)) return def;
     return v;
   }, z.string());
+const safeCoerceInt = (def: number) =>
+  z.preprocess((v) => {
+    if (v === undefined || v === null) return undefined;
+    const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  }, z.number().int().default(def));
+const safeCoerceNumber = (def: number) =>
+  z.preprocess((v) => {
+    if (v === undefined || v === null) return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  }, z.number().default(def));
 const booleanEnum = z.preprocess(
   (v) => (typeof v === 'string' ? v.toLowerCase() : v),
   z.enum(['true', 'false'])
@@ -54,19 +74,19 @@ const envSchema = z
 
     // RAG & Embeddings
     EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
-    EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
-    EMBEDDING_BATCH_SIZE: z.coerce.number().int().min(1).max(2048).default(100),
-    EMBEDDING_CONCURRENCY: z.coerce.number().int().min(1).max(100).default(50),
+    EMBEDDING_DIMENSIONS: safeCoerceInt(1536),
+    EMBEDDING_BATCH_SIZE: safeCoerceInt(100),
+    EMBEDDING_CONCURRENCY: safeCoerceInt(50),
 
     // RAG Configuration
-    RAG_TOP_K: z.coerce.number().int().min(1).max(100).default(10),
-    RAG_SIMILARITY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
+    RAG_TOP_K: safeCoerceInt(10),
+    RAG_SIMILARITY_THRESHOLD: safeCoerceNumber(0.7),
     RAG_ACTIVE_MODEL: z.string().default('text-embedding-3-small'),
-    RAG_ACTIVE_VERSION: z.coerce.number().int().positive().default(1),
+    RAG_ACTIVE_VERSION: safeCoerceInt(1),
     RAG_ENABLED: booleanEnum.optional().default('false'),
 
     // Upstash Redis (for rate limiting in production)
-    UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+    UPSTASH_REDIS_REST_URL: optionalUrl,
     UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 
     // Feature Flags
@@ -111,7 +131,7 @@ const envSchema = z
     GMAIL_USER: z.string().optional(),
     GMAIL_APP_PASSWORD: z.string().optional(),
     SMTP_HOST: z.string().optional(),
-    SMTP_PORT: z.coerce.number().int().positive().default(587),
+    SMTP_PORT: safeCoerceInt(587),
     SMTP_USER: z.string().optional(),
     SMTP_PASSWORD: z.string().optional(),
     SMTP_SECURE: booleanEnum.optional().default('false'),
@@ -132,61 +152,65 @@ const envSchema = z
     PREFER_LOCAL_LLM: booleanEnum.optional().default('false'),
     LOCAL_LLM_URL: optionalUrl,
     LOCAL_LLM_MODEL: z.string().optional(),
-    LOCAL_LLM_MAX_TOKENS: z.coerce.number().int().positive().default(800),
-    LOCAL_LLM_MAX_CONTENT_LENGTH: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(8000),
+    LOCAL_LLM_MAX_TOKENS: safeCoerceInt(800),
+    LOCAL_LLM_MAX_CONTENT_LENGTH: safeCoerceInt(8000),
 
     // Regression Testing
     REGRESSION_MODE: booleanEnum.optional().default('false'),
-    REGRESSION_TEMPERATURE: z.coerce.number().min(0).max(2).optional(),
-    REGRESSION_TOP_P: z.coerce.number().min(0).max(1).optional(),
-    REGRESSION_TOP_K: z.coerce.number().int().positive().optional(),
+    REGRESSION_TEMPERATURE: z.preprocess((v) => {
+      if (v === undefined || v === null) return undefined;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }, z.number().optional()),
+    REGRESSION_TOP_P: z.preprocess((v) => {
+      if (v === undefined || v === null) return undefined;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }, z.number().optional()),
+    REGRESSION_TOP_K: z.preprocess((v) => {
+      if (v === undefined || v === null) return undefined;
+      const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }, z.number().int().optional()),
 
     // Notifications
     SLACK_WEBHOOK_URL: optionalUrl,
     SLACK_NOTIFICATION_ENABLED: booleanEnum.optional().default('false'),
 
     // Summary / Batch Processing
-    SUMMARY_CONCURRENCY: z.coerce.number().int().min(1).default(3),
-    SUMMARY_TIMEOUT: z.coerce.number().int().positive().default(90000),
-    SUMMARY_REQUEST_DELAY: z.coerce.number().int().min(0).default(500),
-    MIN_CONTENT_LENGTH: z.coerce.number().int().min(0).default(100),
+    SUMMARY_CONCURRENCY: safeCoerceInt(3),
+    SUMMARY_TIMEOUT: safeCoerceInt(90000),
+    SUMMARY_REQUEST_DELAY: safeCoerceInt(500),
+    MIN_CONTENT_LENGTH: safeCoerceInt(100),
 
     // Fetchers
-    FETCHER_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
-    ARXIV_MAX_ARTICLES_PER_FETCH: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(50),
-    ARXIV_ENRICHMENT_CONCURRENCY: z.coerce.number().int().min(1).default(5),
-    HATENA_BLOG_DEV_MAX_PAGES: z.coerce.number().int().positive().default(3),
-    HATENA_BLOG_DEV_TIMEOUT: z.coerce.number().int().positive().default(30000),
+    FETCHER_TIMEOUT_MS: safeCoerceInt(120000),
+    ARXIV_MAX_ARTICLES_PER_FETCH: safeCoerceInt(50),
+    ARXIV_ENRICHMENT_CONCURRENCY: safeCoerceInt(5),
+    HATENA_BLOG_DEV_MAX_PAGES: safeCoerceInt(3),
+    HATENA_BLOG_DEV_TIMEOUT: safeCoerceInt(30000),
 
     // Database Configuration
-    DB_CONNECTION_LIMIT: z.coerce.number().int().positive().default(20),
-    DB_POOL_TIMEOUT: z.coerce.number().int().positive().default(10),
-    DB_STATEMENT_CACHE_SIZE: z.coerce.number().int().min(0).optional(),
-    DB_CONNECT_TIMEOUT: z.coerce.number().int().positive().default(10),
-    DB_TRANSACTION_TIMEOUT: z.coerce.number().int().positive().default(10000),
+    DB_CONNECTION_LIMIT: safeCoerceInt(20),
+    DB_POOL_TIMEOUT: safeCoerceInt(10),
+    DB_STATEMENT_CACHE_SIZE: z.preprocess((v) => {
+      if (v === undefined || v === null) return undefined;
+      const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }, z.number().int().optional()),
+    DB_CONNECT_TIMEOUT: safeCoerceInt(10),
+    DB_TRANSACTION_TIMEOUT: safeCoerceInt(10000),
     PGBOUNCER_MODE: z.string().optional(),
 
     // Caching
-    CACHE_L1_TTL: z.coerce.number().int().positive().default(3600),
-    CACHE_L2_TTL: z.coerce.number().int().positive().default(1200),
-    CACHE_L3_TTL: z.coerce.number().int().positive().default(600),
+    CACHE_L1_TTL: safeCoerceInt(3600),
+    CACHE_L2_TTL: safeCoerceInt(1200),
+    CACHE_L3_TTL: safeCoerceInt(600),
 
     // Workers
-    EMBEDDING_WORKER_BATCH_SIZE: z.coerce.number().int().min(1).default(300),
-    EMBEDDING_WORKER_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(3),
-    EMBEDDING_WORKER_TIMEOUT_MS: z.coerce
-      .number()
-      .int()
-      .min(1000)
-      .default(9000),
+    EMBEDDING_WORKER_BATCH_SIZE: safeCoerceInt(300),
+    EMBEDDING_WORKER_MAX_ATTEMPTS: safeCoerceInt(3),
+    EMBEDDING_WORKER_TIMEOUT_MS: safeCoerceInt(9000),
 
     // Security / Middleware
     CURSOR_SECRET: z.string().optional(),
@@ -198,12 +222,16 @@ const envSchema = z
 
     // Translation / Tech Terms
     ENABLE_TITLE_TRANSLATION: booleanEnum.optional().default('true'),
-    TRANSLATION_RATE_LIMIT: z.coerce.number().int().positive().optional(),
+    TRANSLATION_RATE_LIMIT: z.preprocess((v) => {
+      if (v === undefined || v === null) return undefined;
+      const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }, z.number().int().optional()),
     TECH_TERMS_UPDATE_URL: optionalUrl,
 
     // Monitoring / Diagnostics
     ENABLE_DEBUG_METRICS: booleanEnum.optional().default('false'),
-    NODE_MAX_HEAP_MB: z.coerce.number().int().positive().default(512),
+    NODE_MAX_HEAP_MB: safeCoerceInt(512),
     PROCESS_TYPE: z.string().optional(),
     DEBUG: z.string().optional(),
 
@@ -272,7 +300,8 @@ function isAuthSecretOnlyError(error: z.ZodError): boolean {
  */
 export function getEnv(): Env {
   if (_env === null) {
-    const parsed = envSchema.safeParse(process.env);
+    const sanitized = sanitizeEnv(process.env);
+    const parsed = envSchema.safeParse(sanitized);
 
     if (parsed.success) {
       _env = parsed.data;
@@ -287,19 +316,33 @@ ${formatValidationErrors(parsed.error)}
 Please check your .env file and ensure all required variables are set correctly.
     `.trim();
 
-    // In development, allow fallback ONLY for auth secret issues
-    if (
-      (process.env.NODE_ENV === 'development' ||
-        process.env.NODE_ENV === 'test') &&
-      isAuthSecretOnlyError(parsed.error)
-    ) {
-      logger.warn(errorMessage);
-      logger.warn('Using development auth secret fallback');
+    // Allow fallback for auth secret issues only when secrets are truly missing
+    // (not when provided but invalid, e.g. 'short')
+    const authSecretsMissing =
+      sanitized.AUTH_SECRET == null && sanitized.NEXTAUTH_SECRET == null;
+
+    if (authSecretsMissing && isAuthSecretOnlyError(parsed.error)) {
+      const allowFallback =
+        sanitized.NODE_ENV !== 'production' ||
+        sanitized.ALLOW_INSECURE_AUTH_FALLBACK?.toLowerCase() === 'true';
+
+      if (!allowFallback) {
+        // Production without explicit opt-in: fail fast to prevent
+        // DEV_AUTH_SECRET (a public constant) from being used as session secret
+        throw new Error(errorMessage);
+      }
+
+      if (sanitized.NODE_ENV === 'production') {
+        logger.warn(errorMessage);
+        logger.warn(
+          'AUTH_SECRET not set in production — using insecure fallback (ALLOW_INSECURE_AUTH_FALLBACK=true)'
+        );
+      }
 
       const retryParsed = envSchema.safeParse({
-        ...process.env,
-        AUTH_SECRET: process.env.AUTH_SECRET || DEV_AUTH_SECRET,
-        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || DEV_AUTH_SECRET,
+        ...sanitized,
+        AUTH_SECRET: sanitized.AUTH_SECRET || DEV_AUTH_SECRET,
+        NEXTAUTH_SECRET: sanitized.NEXTAUTH_SECRET || DEV_AUTH_SECRET,
       });
 
       if (retryParsed.success) {
@@ -311,7 +354,7 @@ Please check your .env file and ensure all required variables are set correctly.
       throw new Error(errorMessage);
     }
 
-    // Production or non-auth errors: fail fast
+    // Non-auth errors: fail fast
     throw new Error(errorMessage);
   }
 

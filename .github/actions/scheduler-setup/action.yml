@@ -21,6 +21,9 @@ runs:
       with:
         node-version: ${{ inputs.node_version }}
         cache: 'npm'
+    - name: Set batch environment flags
+      shell: bash
+      run: echo "ALLOW_INSECURE_AUTH_FALLBACK=true" >> "$GITHUB_ENV"
     - name: Install deps
       shell: bash
       run: npm ci
