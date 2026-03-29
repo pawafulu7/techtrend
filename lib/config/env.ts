@@ -74,7 +74,7 @@ const envSchema = z
     RAG_ENABLED: booleanEnum.optional().default('false'),
 
     // Upstash Redis (for rate limiting in production)
-    UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+    UPSTASH_REDIS_REST_URL: optionalUrl,
     UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 
     // Feature Flags

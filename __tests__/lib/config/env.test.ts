@@ -417,6 +417,16 @@ describe('Boolean enum case-insensitivity', () => {
     expect(result.SLACK_WEBHOOK_URL).toBeUndefined();
   });
 
+  it('treats whitespace-only strings the same as empty', () => {
+    process.env.ENABLE_CACHE = '  ';
+    process.env.SLACK_WEBHOOK_URL = '   ';
+    resetEnvCache();
+
+    const result = getEnv();
+    expect(result.ENABLE_CACHE).toBe('true'); // default
+    expect(result.SLACK_WEBHOOK_URL).toBeUndefined();
+  });
+
   it('treats empty string AUTH_SECRET as missing (uses fallback)', () => {
     process.env.AUTH_SECRET = '';
     process.env.NEXTAUTH_SECRET = '';
