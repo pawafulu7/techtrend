@@ -20,9 +20,28 @@ describe('Card Component', () => {
     });
 
     it('data-slot属性が設定される', () => {
-      render(<Card data-testid="card">Content</Card>);
+      render(
+        <Card data-testid="card">
+          <CardHeader data-testid="header">
+            <CardTitle data-testid="title">Title</CardTitle>
+          </CardHeader>
+          <CardContent data-testid="content">Content</CardContent>
+        </Card>
+      );
       const card = screen.getByTestId('card');
       expect(card).toHaveAttribute('data-slot', 'card');
+      expect(screen.getByTestId('header')).toHaveAttribute(
+        'data-slot',
+        'card-header'
+      );
+      expect(screen.getByTestId('title')).toHaveAttribute(
+        'data-slot',
+        'card-title'
+      );
+      expect(screen.getByTestId('content')).toHaveAttribute(
+        'data-slot',
+        'card-content'
+      );
     });
 
     it('variant="hover"でcard-hoverクラスが適用される', () => {
