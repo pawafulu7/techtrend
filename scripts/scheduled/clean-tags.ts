@@ -120,19 +120,7 @@ async function cleanTags() {
               ON CONFLICT DO NOTHING
             `;
 
-            // 4. Migrate TagEntityMapping: move fromTag's entity mappings to toTag
-            await tx.$executeRaw`
-              INSERT INTO "TagEntityMapping" (id, "tagId", "entityId", "createdAt")
-              SELECT gen_random_uuid()::text, ${toTagId}::text, "entityId", NOW()
-              FROM "TagEntityMapping"
-              WHERE "tagId" = ${fromTagId}::text
-              AND "entityId" NOT IN (
-                SELECT "entityId" FROM "TagEntityMapping" WHERE "tagId" = ${toTagId}::text
-              )
-              ON CONFLICT DO NOTHING
-            `;
-
-            // 5. Delete fromTag (cascades TagCategoryMapping + TagEntityMapping for fromTag)
+            // 4. Delete fromTag (cascades TagCategoryMapping for fromTag)
             await tx.$executeRaw`
               DELETE FROM "Tag" WHERE id = ${fromTagId}
             `;

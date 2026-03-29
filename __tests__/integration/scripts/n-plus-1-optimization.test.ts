@@ -526,53 +526,6 @@ describe('N+1 最適化 統合テスト', () => {
       await prisma.tagCategoryMapping.deleteMany({ where: { tagId: dstTag.id } });
       await prisma.tag.deleteMany({ where: { id: { in: [srcTag.id, dstTag.id] } } });
     });
-
-    it('TagEntityMapping のマイグレーション — fromTag のマッピングが toTag に移る', async () => {
-      const entityCount = await prisma.techEntity.count();
-      if (entityCount === 0) {
-        console.warn('TechEntity が 0 件のため TagEntityMapping テストをスキップ');
-        return;
-      }
-
-      const entity = await prisma.techEntity.findFirst();
-      if (!entity) return;
-
-      const srcTag = await createTestTag(`${TEST_PREFIX}tem_src`);
-      const dstTag = await createTestTag(`${TEST_PREFIX}tem_dst`);
-
-      await prisma.tagEntityMapping.create({
-        data: { tagId: srcTag.id, entityId: entity.id },
-      });
-
-      // マイグレーション実行（merge-duplicate-tags.ts と同一パターン）
-      await prisma.$executeRaw`
-        INSERT INTO "TagEntityMapping" (id, "tagId", "entityId", "createdAt")
-        SELECT gen_random_uuid()::text, ${dstTag.id}::text, "entityId", NOW()
-        FROM "TagEntityMapping"
-        WHERE "tagId" = ${srcTag.id}::text
-        AND "entityId" NOT IN (
-          SELECT "entityId" FROM "TagEntityMapping" WHERE "tagId" = ${dstTag.id}::text
-        )
-        ON CONFLICT DO NOTHING
-      `;
-
-      await prisma.tagEntityMapping.deleteMany({ where: { tagId: srcTag.id } });
-
-      const dstMappings = await prisma.tagEntityMapping.findMany({
-        where: { tagId: dstTag.id },
-      });
-      expect(dstMappings).toHaveLength(1);
-      expect(dstMappings[0].entityId).toBe(entity.id);
-
-      const srcMappings = await prisma.tagEntityMapping.findMany({
-        where: { tagId: srcTag.id },
-      });
-      expect(srcMappings).toHaveLength(0);
-
-      // クリーンアップ
-      await prisma.tagEntityMapping.deleteMany({ where: { tagId: dstTag.id } });
-      await prisma.tag.deleteMany({ where: { id: { in: [srcTag.id, dstTag.id] } } });
-    });
   });
 
   // =========================================================================

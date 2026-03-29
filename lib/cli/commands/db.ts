@@ -27,7 +27,6 @@ dbCommand
           name: 'ArticleEmbedding',
           query: () => prisma.articleEmbedding.count(),
         },
-        { name: 'TechEntity', query: () => prisma.techEntity.count() },
       ];
 
       const results = await Promise.all(

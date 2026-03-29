@@ -47,47 +47,6 @@ enum PreferenceScope {
   digest
 }
 
-// =============================================================================
-// Knowledge Graph: Technology entity tracking and relationship mapping
-// =============================================================================
-
-enum TechEntityType {
-  FRAMEWORK
-  LANGUAGE
-  TOOL
-  CONCEPT
-  PLATFORM
-  LIBRARY
-}
-
-enum TechRelationType {
-  DEPENDS_ON
-  ALTERNATIVE
-  EVOLUTION
-  PART_OF
-  INTEGRATES_WITH
-}
-
-enum MentionSentiment {
-  POSITIVE
-  NEUTRAL
-  NEGATIVE
-}
-
-enum MetricSource {
-  GITHUB_STARS
-  NPM_DOWNLOADS
-  PYPI_DOWNLOADS
-  SO_QUESTIONS
-}
-
-enum TechMaturityStage {
-  EMERGING
-  RISING
-  ESTABLISHED
-  DECLINING
-}
-
 model Article {
   id                     String             @id @default(cuid())
   title                  String
@@ -124,8 +83,6 @@ model Article {
   embeddingJob           EmbeddingJob?
   comments               Comment[]
   codeTips               CodeTip[]
-  techMentions           ArticleTechMention[]
-  relationEvidence       TechRelationEvidence[]
 
   @@index([publishedAt(sort: Desc)], map: "idx_article_published_at")
   @@index([sourceId], map: "idx_article_source_id")
@@ -165,7 +122,6 @@ model Tag {
   category         String?
   articles         Article[]            @relation("ArticleToTag")
   categoryMappings TagCategoryMapping[]
-  entityMappings   TagEntityMapping[]
 
   @@index([name], map: "idx_tag_name")
 }
@@ -660,151 +616,6 @@ model UserSourcePreset {
   // See migration: 20260208130321_add_user_source_preset
   @@unique([userId, name], map: "uq_user_source_preset_name")
   @@index([userId], map: "idx_user_source_preset_user")
-}
-
-// =============================================================================
-// Knowledge Graph: Technology entities, relations, mentions, and metrics
-// =============================================================================
-
-model TechEntity {
-  id           String         @id @default(cuid())
-  name         String         @unique
-  type         TechEntityType
-  aliases      String[]       @default([])
-  description  String?        @db.Text
-  firstSeenAt  DateTime?      @db.Timestamptz(6)
-  lastSeenAt   DateTime?      @db.Timestamptz(6)
-  mentionCount Int            @default(0)
-  externalIds  Json?
-  createdAt    DateTime       @default(now()) @db.Timestamptz(6)
-  updatedAt    DateTime       @updatedAt @db.Timestamptz(6)
-
-  relationsFrom TechRelation[]       @relation("RelationSource")
-  relationsTo   TechRelation[]       @relation("RelationTarget")
-  mentions      ArticleTechMention[]
-  metrics       ExternalMetric[]
-  tagMappings     TagEntityMapping[]
-  trendScores     TechTrendScore[]
-  healthSnapshots TechHealthSnapshot[]
-
-  @@index([type], map: "idx_tech_entity_type")
-  @@index([mentionCount(sort: Desc)], map: "idx_tech_entity_mention_count")
-  @@index([lastSeenAt(sort: Desc)], map: "idx_tech_entity_last_seen")
-}
-
-model TechRelation {
-  id             String           @id @default(cuid())
-  sourceEntityId String
-  targetEntityId String
-  relationType   TechRelationType
-  strength       Float            @default(0)
-  detectedAt     DateTime         @default(now()) @db.Timestamptz(6)
-  updatedAt      DateTime         @updatedAt @db.Timestamptz(6)
-
-  sourceEntity TechEntity             @relation("RelationSource", fields: [sourceEntityId], references: [id], onDelete: Cascade)
-  targetEntity TechEntity             @relation("RelationTarget", fields: [targetEntityId], references: [id], onDelete: Cascade)
-  evidence     TechRelationEvidence[]
-
-  @@unique([sourceEntityId, targetEntityId, relationType], map: "uq_tech_relation")
-  @@index([targetEntityId], map: "idx_tech_relation_target")
-  @@index([relationType], map: "idx_tech_relation_type")
-}
-
-model TechRelationEvidence {
-  id         String   @id @default(cuid())
-  relationId String
-  articleId  String
-  createdAt  DateTime @default(now()) @db.Timestamptz(6)
-
-  relation TechRelation @relation(fields: [relationId], references: [id], onDelete: Cascade)
-  article  Article      @relation(fields: [articleId], references: [id], onDelete: Cascade)
-
-  @@unique([relationId, articleId], map: "uq_relation_evidence")
-  @@index([articleId], map: "idx_relation_evidence_article")
-}
-
-model ArticleTechMention {
-  id        String           @id @default(cuid())
-  articleId String
-  entityId  String
-  context   String?          @db.VarChar(500)
-  sentiment MentionSentiment @default(NEUTRAL)
-  createdAt DateTime         @default(now()) @db.Timestamptz(6)
-
-  article Article    @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  entity  TechEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
-
-  @@unique([articleId, entityId], map: "uq_article_tech_mention")
-  @@index([entityId], map: "idx_article_tech_mention_entity")
-}
-
-model ExternalMetric {
-  id         String       @id @default(cuid())
-  entityId   String
-  source     MetricSource
-  value      Float
-  measuredAt DateTime     @db.Timestamptz(6)
-  createdAt  DateTime     @default(now()) @db.Timestamptz(6)
-
-  entity TechEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
-
-  @@unique([entityId, source, measuredAt], map: "uq_external_metric")
-  @@index([source], map: "idx_external_metric_source")
-  @@index([measuredAt(sort: Desc)], map: "idx_external_metric_time")
-}
-
-model TagEntityMapping {
-  id        String   @id @default(cuid())
-  tagId     String
-  entityId  String
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-
-  tag    Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
-  entity TechEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
-
-  @@unique([tagId, entityId], map: "uq_tag_entity_mapping")
-  @@index([entityId], map: "idx_tag_entity_mapping_entity")
-}
-
-model TechTrendScore {
-  id                   String            @id @default(cuid())
-  entityId             String
-  entity               TechEntity        @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  score                Float
-  articleMentionGrowth Float
-  githubStarsGrowth    Float
-  npmDownloadsGrowth   Float
-  soQuestionsGrowth    Float
-  stage                TechMaturityStage
-  calculatedAt         DateTime          @db.Date
-
-  createdAt            DateTime          @default(now()) @db.Timestamptz(6)
-  updatedAt            DateTime          @updatedAt @db.Timestamptz(6)
-
-  @@unique([entityId, calculatedAt], map: "uq_trend_score_entity_date")
-  @@index([stage, score(sort: Desc)], map: "idx_trend_score_stage_score")
-  // idx_trend_score_entity_history removed: redundant with uq_trend_score_entity_date
-  // (PostgreSQL BTree indexes support reverse scans)
-}
-
-model TechHealthSnapshot {
-  id                  String     @id @default(cuid())
-  entityId            String
-  entity              TechEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  communityActivity   Float
-  developmentVelocity Float
-  articleAttention    Float
-  adoptionBreadth     Float
-  overallHealth       Float
-  calculatedAt        DateTime   @db.Date
-
-  createdAt           DateTime   @default(now()) @db.Timestamptz(6)
-  updatedAt           DateTime   @updatedAt @db.Timestamptz(6)
-
-  @@unique([entityId, calculatedAt], map: "uq_health_snapshot_entity_date")
-  @@index([overallHealth(sort: Desc)], map: "idx_health_snapshot_overall")
-  // idx_health_snapshot_entity_history removed: redundant with uq_health_snapshot_entity_date
-  // (PostgreSQL BTree indexes support reverse scans)
 }
 
 // ---------------------------------------------------------------------------

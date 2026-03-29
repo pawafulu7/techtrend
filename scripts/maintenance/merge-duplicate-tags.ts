@@ -156,23 +156,6 @@ async function mergeGroup(
       where: { tagId: { in: duplicateIds } },
     });
 
-    // 3b. Migrate entity mappings (if any)
-    await tx.$executeRaw`
-      INSERT INTO "TagEntityMapping" (id, "tagId", "entityId", "createdAt")
-      SELECT gen_random_uuid()::text, ${canonicalId}::text, "entityId", NOW()
-      FROM "TagEntityMapping"
-      WHERE "tagId" = ANY(${duplicateIds}::text[])
-      AND "entityId" NOT IN (
-        SELECT "entityId" FROM "TagEntityMapping" WHERE "tagId" = ${canonicalId}::text
-      )
-      ON CONFLICT DO NOTHING
-    `;
-
-    // 3c. Delete old entity mappings
-    await tx.tagEntityMapping.deleteMany({
-      where: { tagId: { in: duplicateIds } },
-    });
-
     // 4. Delete old article associations
     await tx.$executeRaw`
       DELETE FROM "_ArticleToTag" WHERE "B" = ANY(${duplicateIds}::text[])
