@@ -50,6 +50,7 @@ const eslintConfig = defineConfig([
       'lib/cookies/**',
       'lib/errors/**',
       'lib/utils/article/article-link-extractor.ts',
+      'lib/config/feature-flags.ts',
     ],
     rules: {
       'no-restricted-syntax': ['error',
