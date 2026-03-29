@@ -3,7 +3,11 @@ import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { searchRequestSchema } from '@/lib/rag/schemas';
-import { ragSearchRateLimit, checkRateLimit, RateLimitError } from '@/lib/rate-limiter';
+import {
+  ragSearchRateLimit,
+  checkRateLimit,
+  RateLimitError,
+} from '@/lib/rate-limiter';
 import { logger, sanitizeError } from '@/lib/logger';
 import { ZodError } from 'zod';
 import { APIError } from 'openai/error';
@@ -11,6 +15,7 @@ import {
   validateUser,
   createUserDeletedResponse,
 } from '@/lib/middleware/with-user-validation';
+import { env } from '@/lib/config/env';
 
 /**
  * RAG Semantic Search API
@@ -41,7 +46,7 @@ const getSearchService = (): VectorSearchService => {
     return searchService;
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!env.OPENAI_API_KEY) {
     throw new RagSearchNotConfiguredError();
   }
 
@@ -60,7 +65,9 @@ const getSearchService = (): VectorSearchService => {
  */
 export const __resetSearchServiceForTest = (): void => {
   if (process.env.NODE_ENV !== 'test') {
-    throw new Error('__resetSearchServiceForTest can only be called in test environment');
+    throw new Error(
+      '__resetSearchServiceForTest can only be called in test environment'
+    );
   }
   searchService = null;
 };
@@ -70,11 +77,13 @@ export async function POST(request: NextRequest) {
   const session = await auth();
 
   try {
-
     if (!session?.user) {
-      logger.warn({
-        ip: request.headers.get('x-forwarded-for') || 'unknown',
-      }, 'Unauthorized RAG search attempt');
+      logger.warn(
+        {
+          ip: request.headers.get('x-forwarded-for') || 'unknown',
+        },
+        'Unauthorized RAG search attempt'
+      );
 
       return NextResponse.json(
         { error: 'Unauthorized - Authentication required' },
@@ -89,17 +98,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Layer 2: Rate limiting (REQUIRED)
-    let rateLimitInfo: { limit: number; remaining: number; reset: Date } | undefined;
+    let rateLimitInfo:
+      | { limit: number; remaining: number; reset: Date }
+      | undefined;
 
     try {
-      rateLimitInfo = await checkRateLimit(`rag:search:${session.user.id}`, ragSearchRateLimit);
+      rateLimitInfo = await checkRateLimit(
+        `rag:search:${session.user.id}`,
+        ragSearchRateLimit
+      );
     } catch (error) {
       if (error instanceof RateLimitError) {
-        logger.warn({
-          userId: session.user.id,
-          limit: error.limit,
-          remaining: error.remaining,
-        }, 'Rate limit exceeded');
+        logger.warn(
+          {
+            userId: session.user.id,
+            limit: error.limit,
+            remaining: error.remaining,
+          },
+          'Rate limit exceeded'
+        );
 
         return NextResponse.json(
           {
@@ -113,8 +130,12 @@ export async function POST(request: NextRequest) {
             headers: {
               'X-RateLimit-Limit': error.limit.toString(),
               'X-RateLimit-Remaining': error.remaining.toString(),
-              'X-RateLimit-Reset': Math.floor(error.reset.getTime() / 1000).toString(),
-              'Retry-After': Math.ceil((error.reset.getTime() - Date.now()) / 1000).toString(),
+              'X-RateLimit-Reset': Math.floor(
+                error.reset.getTime() / 1000
+              ).toString(),
+              'Retry-After': Math.ceil(
+                (error.reset.getTime() - Date.now()) / 1000
+              ).toString(),
             },
           }
         );
@@ -128,10 +149,13 @@ export async function POST(request: NextRequest) {
       body = await request.json();
     } catch (error) {
       // Handle malformed JSON
-      logger.warn({
-        userId: session.user.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }, 'Malformed JSON in RAG search request');
+      logger.warn(
+        {
+          userId: session.user.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+        'Malformed JSON in RAG search request'
+      );
 
       return NextResponse.json(
         {
@@ -144,12 +168,15 @@ export async function POST(request: NextRequest) {
 
     const validatedRequest = searchRequestSchema.parse(body);
 
-    logger.info({
-      userId: session.user.id,
-      queryPreview: validatedRequest.query.substring(0, 50),
-      topK: validatedRequest.topK,
-      embeddingKey: validatedRequest.embeddingKey,
-    }, 'RAG search request');
+    logger.info(
+      {
+        userId: session.user.id,
+        queryPreview: validatedRequest.query.substring(0, 50),
+        topK: validatedRequest.topK,
+        embeddingKey: validatedRequest.embeddingKey,
+      },
+      'RAG search request'
+    );
 
     // Layer 4: Execute search (SECURE - Prisma.sql in VectorSearchService)
     const vectorSearch = getSearchService();
@@ -166,29 +193,39 @@ export async function POST(request: NextRequest) {
       query: validatedRequest.query,
       results,
       count: results.length,
-      model: process.env.RAG_ACTIVE_MODEL || 'text-embedding-3-small',
-      version: parseInt(process.env.RAG_ACTIVE_VERSION || '1', 10),
+      model: env.RAG_ACTIVE_MODEL,
+      version: env.RAG_ACTIVE_VERSION,
     });
 
     // Add rate limit headers to successful response
     if (rateLimitInfo) {
       response.headers.set('X-RateLimit-Limit', rateLimitInfo.limit.toString());
-      response.headers.set('X-RateLimit-Remaining', rateLimitInfo.remaining.toString());
-      response.headers.set('X-RateLimit-Reset', Math.floor(rateLimitInfo.reset.getTime() / 1000).toString());
+      response.headers.set(
+        'X-RateLimit-Remaining',
+        rateLimitInfo.remaining.toString()
+      );
+      response.headers.set(
+        'X-RateLimit-Reset',
+        Math.floor(rateLimitInfo.reset.getTime() / 1000).toString()
+      );
     }
 
     return response;
   } catch (error) {
     // Handle RAG not configured error
     if (error instanceof RagSearchNotConfiguredError) {
-      logger.warn({
-        userId: session?.user?.id,
-      }, 'RAG search requested without OpenAI API key');
+      logger.warn(
+        {
+          userId: session?.user?.id,
+        },
+        'RAG search requested without OpenAI API key'
+      );
 
       return NextResponse.json(
         {
           error: 'Semantic search is not configured',
-          details: 'Contact an administrator to set OPENAI_API_KEY on the server.',
+          details:
+            'Contact an administrator to set OPENAI_API_KEY on the server.',
         },
         { status: 503 }
       );
@@ -196,15 +233,18 @@ export async function POST(request: NextRequest) {
 
     // Handle Zod validation errors
     if (error instanceof ZodError) {
-      logger.warn({
-        userId: session?.user?.id,
-        errors: error.errors,
-      }, 'Invalid RAG search request');
+      logger.warn(
+        {
+          userId: session?.user?.id,
+          errors: error.errors,
+        },
+        'Invalid RAG search request'
+      );
 
       return NextResponse.json(
         {
           error: 'Invalid request parameters',
-          details: error.errors.map(e => ({
+          details: error.errors.map((e) => ({
             field: e.path.join('.'),
             message: e.message,
           })),
@@ -234,29 +274,41 @@ export async function POST(request: NextRequest) {
         );
       } else if (status >= 500) {
         // OpenAI server errors
-        logger.error({
-          error: sanitizeError(error),
-          userId: session?.user?.id,
-        }, 'OpenAI API error');
+        logger.error(
+          {
+            error: sanitizeError(error),
+            userId: session?.user?.id,
+          },
+          'OpenAI API error'
+        );
 
         return NextResponse.json(
           {
             error: 'Embedding service temporarily unavailable',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+            details:
+              process.env.NODE_ENV === 'development'
+                ? error.message
+                : undefined,
           },
           { status: 503 }
         );
       } else {
         // OpenAI 4xx client errors
-        logger.error({
-          error: sanitizeError(error),
-          userId: session?.user?.id,
-        }, 'OpenAI client error');
+        logger.error(
+          {
+            error: sanitizeError(error),
+            userId: session?.user?.id,
+          },
+          'OpenAI client error'
+        );
 
         return NextResponse.json(
           {
             error: 'Invalid embedding request',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+            details:
+              process.env.NODE_ENV === 'development'
+                ? error.message
+                : undefined,
           },
           { status: 502 }
         );
@@ -264,26 +316,36 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle database connection errors
-    if (error instanceof Error && error.message.toLowerCase().includes('prisma')) {
-      logger.error({
-        error: sanitizeError(error),
-        userId: session?.user?.id,
-      }, 'Database connection error');
+    if (
+      error instanceof Error &&
+      error.message.toLowerCase().includes('prisma')
+    ) {
+      logger.error(
+        {
+          error: sanitizeError(error),
+          userId: session?.user?.id,
+        },
+        'Database connection error'
+      );
 
       return NextResponse.json(
         {
           error: 'Database temporarily unavailable',
-          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+          details:
+            process.env.NODE_ENV === 'development' ? error.message : undefined,
         },
         { status: 503 }
       );
     }
 
     // Other unexpected errors
-    logger.error({
-      error: sanitizeError(error),
-      userId: session?.user?.id,
-    }, 'RAG search API error');
+    logger.error(
+      {
+        error: sanitizeError(error),
+        userId: session?.user?.id,
+      },
+      'RAG search API error'
+    );
 
     return NextResponse.json(
       {

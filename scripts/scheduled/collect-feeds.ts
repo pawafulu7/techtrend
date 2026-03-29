@@ -3,9 +3,10 @@ import { prisma } from '@/lib/prisma';
 import pLimit from 'p-limit';
 import { Mutex } from 'async-mutex';
 import * as fs from 'fs';
+import { env } from '@/lib/config/env';
 
 // PID file for exclusive execution control
-const PID_FILE = process.env.COLLECT_FEEDS_PID_FILE || '/tmp/techtrend-collect-feeds.pid';
+const PID_FILE = env.COLLECT_FEEDS_PID_FILE;
 
 /**
  * Acquire exclusive lock using PID file
@@ -119,16 +120,13 @@ interface CollectResult {
   articles: ArticleInfo[];
 }
 
-const COLLECT_FEEDS_DEBUG = process.env.COLLECT_FEEDS_DEBUG === '1';
+const COLLECT_FEEDS_DEBUG = env.COLLECT_FEEDS_DEBUG === '1';
 const debugLog = (message: string) => {
   if (COLLECT_FEEDS_DEBUG) console.log(message);
 };
 
-const DEFAULT_COLLECT_CONCURRENCY = 5;
-const POST_SAVE_ENRICH_TIMEOUT_MS =
-  Number(process.env.POST_SAVE_ENRICH_TIMEOUT_MS ?? '') || 10_000; // 10s default
-const POST_SAVE_ENRICH_SLEEP_MS =
-  Number(process.env.POST_SAVE_ENRICH_SLEEP_MS ?? '') || 0;
+const POST_SAVE_ENRICH_TIMEOUT_MS = env.POST_SAVE_ENRICH_TIMEOUT_MS;
+const POST_SAVE_ENRICH_SLEEP_MS = env.POST_SAVE_ENRICH_SLEEP_MS;
 
 interface ProcessSourceContext {
   source: Source;
@@ -172,18 +170,7 @@ async function runWithTimeout<T>(
 }
 
 function resolveCollectConcurrency(): number {
-  const rawValue = process.env.COLLECT_FEEDS_CONCURRENCY;
-  if (!rawValue) {
-    return DEFAULT_COLLECT_CONCURRENCY;
-  }
-
-  const parsed = Number.parseInt(rawValue, 10);
-  if (Number.isNaN(parsed)) {
-    console.error(`[WARN] COLLECT_FEEDS_CONCURRENCYの値が不正です (${rawValue})。デフォルト${DEFAULT_COLLECT_CONCURRENCY}を使用します。`);
-    return DEFAULT_COLLECT_CONCURRENCY;
-  }
-
-  return Math.max(1, parsed);
+  return env.COLLECT_FEEDS_CONCURRENCY;
 }
 
 async function processSource({
@@ -222,8 +209,8 @@ async function processSource({
     console.error(`[START] ${sourceName} - ${new Date().toISOString()}`);
 
     // Add per-source timeout to prevent infinite hang
-    const ARXIV_TIMEOUT_MS = Number(process.env.ARXIV_FETCHER_TIMEOUT_MS) || 600_000; // 10 minutes for arXiv
-    const defaultTimeoutMs = Number(process.env.FETCHER_TIMEOUT_MS) || 120_000; // 2 minutes default
+    const ARXIV_TIMEOUT_MS = env.ARXIV_FETCHER_TIMEOUT_MS;
+    const defaultTimeoutMs = env.FETCHER_TIMEOUT_MS;
     const fetchTimeoutMs = sourceName === 'arXiv AI' ? ARXIV_TIMEOUT_MS : defaultTimeoutMs;
     const timeoutMessage = `Fetcher timeout after ${fetchTimeoutMs}ms for ${sourceName}`;
     const { articles, errors } = await runWithTimeout(
@@ -368,7 +355,7 @@ async function processSource({
           sourceName: sourceName
         });
 
-        if (process.env.SKIP_POST_SAVE_ENRICHMENT !== '1') {
+        if (env.SKIP_POST_SAVE_ENRICHMENT !== '1') {
           const enricher = enricherFactory.getEnricher(article.url);
           if (enricher) {
             try {
@@ -534,7 +521,7 @@ async function processSource({
 
 async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
   console.error('[INFO] フィード収集を開始します...');
-  console.error(`   SKIP_POST_SAVE_ENRICHMENT: ${process.env.SKIP_POST_SAVE_ENRICHMENT || 'not set'}`);
+  console.error(`   SKIP_POST_SAVE_ENRICHMENT: ${env.SKIP_POST_SAVE_ENRICHMENT}`);
   if (sourceTypes && sourceTypes.length > 0) {
     console.error(`   対象ソース: ${sourceTypes.join(', ')}`);
   }

@@ -2,6 +2,7 @@ import { SummaryManager } from '@/lib/services/summary/summary-manager';
 import { getPrismaClient } from '@/lib/cli/utils/database';
 import { createNotifierFromEnv } from '@/lib/notification';
 import type { ArticleInfo } from '@/lib/notification/types';
+import { env } from '@/lib/config/env';
 
 interface Options {
   command: 'generate' | 'regenerate' | 'missing';
@@ -213,14 +214,7 @@ async function main() {
     const processed = result.generated + result.errors;
 
     // 最小処理件数閾値（小サンプルでのfalse positive回避）
-    const DEFAULT_MIN_PROCESSED = 5;
-    const rawMinProcessed = process.env.MIN_PROCESSED_FOR_FAILURE;
-    const parsedMin = Number.parseInt(rawMinProcessed ?? String(DEFAULT_MIN_PROCESSED), 10);
-    const MIN_PROCESSED_FOR_FAILURE =
-      Number.isFinite(parsedMin) && parsedMin >= 1 ? parsedMin : DEFAULT_MIN_PROCESSED;
-    if (rawMinProcessed !== undefined && MIN_PROCESSED_FOR_FAILURE !== parsedMin) {
-      console.error(`[WARN] Invalid MIN_PROCESSED_FOR_FAILURE='${rawMinProcessed}', falling back to ${DEFAULT_MIN_PROCESSED}`);
-    }
+    const MIN_PROCESSED_FOR_FAILURE = env.MIN_PROCESSED_FOR_FAILURE;
 
     // 終了条件の判定
     if (processed === 0) {

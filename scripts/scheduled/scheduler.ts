@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { env } from '@/lib/config/env';
 
 // Load .env.local for local development (pm2 environment)
 // In production (GHA), environment variables are set via workflow
@@ -41,7 +42,7 @@ async function runCommandWithTimeout(
   const durationSeconds = () => Math.round((Date.now() - startedAt) / 1000);
   const { timeout: _ignoredTimeout, maxBuffer: _ignoredMaxBuffer, ...spawnableOptions } = options;
 
-  const logLevel = (process.env.LOG_LEVEL || 'info').toLowerCase();
+  const logLevel = (env.LOG_LEVEL || 'info').toLowerCase();
   const shouldStreamOutput = logLevel === 'debug' || logLevel === 'info';
 
   console.error(`[INFO] ${stepName} started (timeout ${Math.round(timeoutMs / 1000)}s)`);
@@ -430,8 +431,8 @@ cron.schedule('0 * * * *', async () => {
 // Embeddingジョブリカバリ（毎時15分）
 // RSS更新（毎時0分）の15分後に実行
 // 環境変数で閾値とバッチサイズを設定可能
-const EMBEDDING_STUCK_THRESHOLD = parseInt(process.env.EMBEDDING_STUCK_THRESHOLD_MINUTES || '30', 10);
-const EMBEDDING_RECOVERY_LIMIT = parseInt(process.env.EMBEDDING_RECOVERY_BATCH_LIMIT || '100', 10);
+const EMBEDDING_STUCK_THRESHOLD = env.EMBEDDING_STUCK_THRESHOLD_MINUTES;
+const EMBEDDING_RECOVERY_LIMIT = env.EMBEDDING_RECOVERY_BATCH_LIMIT;
 
 cron.schedule('15 * * * *', async () => {
   if (embeddingRecoveryRunning) {

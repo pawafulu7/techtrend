@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { parseChangelog } from '../../lib/changelog/parser';
 import { RedisCache } from '../../lib/cache';
+import { env } from '@/lib/config/env';
 
 const FETCH_TIMEOUT_MS = 30_000;
 const USER_AGENT = 'TechTrend-ChangelogCollector/1.0';
@@ -150,7 +151,7 @@ async function collectChangelog(): Promise<void> {
   let totalEntries = 0;
   let totalTranslated = 0;
 
-  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const geminiApiKey = env.GEMINI_API_KEY;
   const translationEnabled = !!geminiApiKey;
 
   if (!translationEnabled) {

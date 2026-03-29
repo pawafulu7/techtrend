@@ -4,35 +4,41 @@ import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { env } from '@/lib/config/env';
 
 // 確認メール送信用の関数をインポート
 async function sendVerificationEmail(email: string, token: string) {
-
   let nodemailer: typeof import('nodemailer') | null = null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     nodemailer = require('nodemailer');
   } catch (_error) {
-    logger.warn({ event: 'nodemailer_check', installed: false }, 'Nodemailer not installed. Email sending disabled.');
+    logger.warn(
+      { event: 'nodemailer_check', installed: false },
+      'Nodemailer not installed. Email sending disabled.'
+    );
     return;
   }
 
   if (!nodemailer) return;
-  
+
   // Gmail設定がある場合はそれを使用
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user: env.GMAIL_USER,
+      pass: env.GMAIL_APP_PASSWORD,
     },
   });
 
-  const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl =
+    env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    'http://localhost:3000';
   const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
 
   const mailOptions = {
-    from: process.env.EMAIL_FROM || 'noreply@techtrend.com',
+    from: env.EMAIL_FROM || 'noreply@techtrend.com',
     to: email,
     subject: 'TechTrend - メールアドレスの確認',
     html: `
@@ -94,7 +100,10 @@ ${verifyUrl}
 }
 
 // パスワード強度検証関数
-function validatePasswordStrength(password: string): { isValid: boolean; message?: string } {
+function validatePasswordStrength(password: string): {
+  isValid: boolean;
+  message?: string;
+} {
   const checks = {
     minLength: password.length >= 8,
     hasUpperCase: /[A-Z]/.test(password),
@@ -104,7 +113,10 @@ function validatePasswordStrength(password: string): { isValid: boolean; message
   };
 
   if (!checks.minLength) {
-    return { isValid: false, message: 'パスワードは8文字以上で入力してください' };
+    return {
+      isValid: false,
+      message: 'パスワードは8文字以上で入力してください',
+    };
   }
   if (!checks.hasUpperCase) {
     return { isValid: false, message: 'パスワードには大文字を含めてください' };
@@ -116,7 +128,10 @@ function validatePasswordStrength(password: string): { isValid: boolean; message
     return { isValid: false, message: 'パスワードには数字を含めてください' };
   }
   if (!checks.hasSpecial) {
-    return { isValid: false, message: 'パスワードには記号(!@#$%^&*等)を含めてください' };
+    return {
+      isValid: false,
+      message: 'パスワードには記号(!@#$%^&*等)を含めてください',
+    };
   }
 
   return { isValid: true };
