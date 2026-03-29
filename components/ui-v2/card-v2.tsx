@@ -9,6 +9,7 @@ const CardV2 = forwardRef<HTMLDivElement, CardV2Props>(
   ({ variant = 'default', className, children, ...props }, ref) => {
     return (
       <div
+        data-slot="card"
         ref={ref}
         className={cn(
           'flex flex-col rounded-lg border transition-all duration-200',
@@ -37,6 +38,7 @@ const CardV2Header = forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
   <div
+    data-slot="card-header"
     ref={ref}
     className={cn('flex flex-col space-y-1.5 p-6', className)}
     {...props}
@@ -49,6 +51,7 @@ const CardV2Title = forwardRef<
   React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
   <h3
+    data-slot="card-title"
     ref={ref}
     className={cn(
       'text-2xl leading-none font-semibold tracking-tight',
@@ -64,6 +67,7 @@ const CardV2Description = forwardRef<
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
   <p
+    data-slot="card-description"
     ref={ref}
     className={cn('text-muted-foreground text-sm', className)}
     {...props}
@@ -75,7 +79,12 @@ const CardV2Content = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('p-6 pt-0', className)} {...props} />
+  <div
+    data-slot="card-content"
+    ref={ref}
+    className={cn('p-6 pt-0', className)}
+    {...props}
+  />
 ));
 CardV2Content.displayName = 'CardV2Content';
 
@@ -84,6 +93,7 @@ const CardV2Footer = forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
   <div
+    data-slot="card-footer"
     ref={ref}
     className={cn('flex items-center p-6 pt-0', className)}
     {...props}
@@ -101,7 +111,8 @@ export {
 };
 
 // v1 name re-exports for import path migration (PR6)
-// Note: v2 API differs from v1 — no CardAction, no asChild on CardTitle, no data-slot attributes
+// Note: v2 API differs from v1 — no CardAction, no asChild on CardTitle
+// data-slot attributes are kept for migration-time CSS compatibility
 export {
   CardV2 as Card,
   CardV2Header as CardHeader,

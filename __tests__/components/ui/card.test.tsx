@@ -19,6 +19,12 @@ describe('Card Component', () => {
       expect(card).toHaveClass('border');
     });
 
+    it('data-slot属性が設定される', () => {
+      render(<Card data-testid="card">Content</Card>);
+      const card = screen.getByTestId('card');
+      expect(card).toHaveAttribute('data-slot', 'card');
+    });
+
     it('variant="hover"でcard-hoverクラスが適用される', () => {
       render(
         <Card variant="hover" data-testid="card">
