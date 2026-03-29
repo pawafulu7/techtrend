@@ -122,7 +122,16 @@ async function handler(request: NextRequest) {
           },
         }),
         // 統計情報を集計クエリで取得
-        prisma.$queryRaw`
+        prisma.$queryRaw<
+          Array<{
+            source_id: string;
+            total_articles: number;
+            avg_quality_score: number;
+            recent_articles: number;
+            past_month_articles: number;
+            last_published: Date | null;
+          }>
+        >`
           SELECT
             s.id as source_id,
             COUNT(a.id)::int as total_articles,
@@ -137,16 +146,7 @@ async function handler(request: NextRequest) {
           ${ids ? Prisma.sql`AND s.id IN (${Prisma.join(ids.split(','))})` : Prisma.empty}
           ${search ? Prisma.sql`AND s.name ILIKE ${`%${search}%`}` : Prisma.empty}
           GROUP BY s.id
-        ` as Promise<
-          Array<{
-            source_id: string;
-            total_articles: number;
-            avg_quality_score: number;
-            recent_articles: number;
-            past_month_articles: number;
-            last_published: Date | null;
-          }>
-        >,
+        `,
       ]);
 
       // 統計情報をマップ化

@@ -293,8 +293,8 @@ async function regenerateSpeakerDeckSummaries(): Promise<RegenerationResult> {
 
       const summaryStats = await prisma.$queryRaw<{ avg_summary_length: number | null; avg_content_length: number | null; summary_longer_than_content: bigint }[]>`
         SELECT
-          AVG(LENGTH(summary)) as avg_summary_length,
-          AVG(LENGTH(content)) as avg_content_length,
+          AVG(LENGTH(summary))::float8 as avg_summary_length,
+          AVG(LENGTH(content))::float8 as avg_content_length,
           COUNT(CASE WHEN LENGTH(summary) > LENGTH(content) AND LENGTH(content) > 0 THEN 1 END) as summary_longer_than_content
         FROM Article a
         JOIN Source s ON a.sourceId = s.id
