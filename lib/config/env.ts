@@ -24,6 +24,18 @@ const numericStringWithDefault = (def: string) =>
     if (typeof v !== 'string' || !/^\d+$/.test(v)) return def;
     return v;
   }, z.string());
+const safeCoerceInt = (def: number) =>
+  z.preprocess((v) => {
+    if (v === undefined || v === null) return undefined;
+    const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  }, z.number().int().default(def));
+const safeCoerceNumber = (def: number) =>
+  z.preprocess((v) => {
+    if (v === undefined || v === null) return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : undefined;
+  }, z.number().default(def));
 const booleanEnum = z.preprocess(
   (v) => (typeof v === 'string' ? v.toLowerCase() : v),
   z.enum(['true', 'false'])
@@ -62,15 +74,15 @@ const envSchema = z
 
     // RAG & Embeddings
     EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
-    EMBEDDING_DIMENSIONS: z.coerce.number().int().positive().default(1536),
-    EMBEDDING_BATCH_SIZE: z.coerce.number().int().min(1).max(2048).default(100),
-    EMBEDDING_CONCURRENCY: z.coerce.number().int().min(1).max(100).default(50),
+    EMBEDDING_DIMENSIONS: safeCoerceInt(1536),
+    EMBEDDING_BATCH_SIZE: safeCoerceInt(100),
+    EMBEDDING_CONCURRENCY: safeCoerceInt(50),
 
     // RAG Configuration
-    RAG_TOP_K: z.coerce.number().int().min(1).max(100).default(10),
-    RAG_SIMILARITY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
+    RAG_TOP_K: safeCoerceInt(10),
+    RAG_SIMILARITY_THRESHOLD: safeCoerceNumber(0.7),
     RAG_ACTIVE_MODEL: z.string().default('text-embedding-3-small'),
-    RAG_ACTIVE_VERSION: z.coerce.number().int().positive().default(1),
+    RAG_ACTIVE_VERSION: safeCoerceInt(1),
     RAG_ENABLED: booleanEnum.optional().default('false'),
 
     // Upstash Redis (for rate limiting in production)
@@ -119,7 +131,7 @@ const envSchema = z
     GMAIL_USER: z.string().optional(),
     GMAIL_APP_PASSWORD: z.string().optional(),
     SMTP_HOST: z.string().optional(),
-    SMTP_PORT: z.coerce.number().int().positive().default(587),
+    SMTP_PORT: safeCoerceInt(587),
     SMTP_USER: z.string().optional(),
     SMTP_PASSWORD: z.string().optional(),
     SMTP_SECURE: booleanEnum.optional().default('false'),
@@ -140,61 +152,65 @@ const envSchema = z
     PREFER_LOCAL_LLM: booleanEnum.optional().default('false'),
     LOCAL_LLM_URL: optionalUrl,
     LOCAL_LLM_MODEL: z.string().optional(),
-    LOCAL_LLM_MAX_TOKENS: z.coerce.number().int().positive().default(800),
-    LOCAL_LLM_MAX_CONTENT_LENGTH: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(8000),
+    LOCAL_LLM_MAX_TOKENS: safeCoerceInt(800),
+    LOCAL_LLM_MAX_CONTENT_LENGTH: safeCoerceInt(8000),
 
     // Regression Testing
     REGRESSION_MODE: booleanEnum.optional().default('false'),
-    REGRESSION_TEMPERATURE: z.coerce.number().min(0).max(2).optional(),
-    REGRESSION_TOP_P: z.coerce.number().min(0).max(1).optional(),
-    REGRESSION_TOP_K: z.coerce.number().int().positive().optional(),
+    REGRESSION_TEMPERATURE: z.preprocess((v) => {
+      if (v === undefined || v === null) return undefined;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }, z.number().optional()),
+    REGRESSION_TOP_P: z.preprocess((v) => {
+      if (v === undefined || v === null) return undefined;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }, z.number().optional()),
+    REGRESSION_TOP_K: z.preprocess((v) => {
+      if (v === undefined || v === null) return undefined;
+      const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }, z.number().int().optional()),
 
     // Notifications
     SLACK_WEBHOOK_URL: optionalUrl,
     SLACK_NOTIFICATION_ENABLED: booleanEnum.optional().default('false'),
 
     // Summary / Batch Processing
-    SUMMARY_CONCURRENCY: z.coerce.number().int().min(1).default(3),
-    SUMMARY_TIMEOUT: z.coerce.number().int().positive().default(90000),
-    SUMMARY_REQUEST_DELAY: z.coerce.number().int().min(0).default(500),
-    MIN_CONTENT_LENGTH: z.coerce.number().int().min(0).default(100),
+    SUMMARY_CONCURRENCY: safeCoerceInt(3),
+    SUMMARY_TIMEOUT: safeCoerceInt(90000),
+    SUMMARY_REQUEST_DELAY: safeCoerceInt(500),
+    MIN_CONTENT_LENGTH: safeCoerceInt(100),
 
     // Fetchers
-    FETCHER_TIMEOUT_MS: z.coerce.number().int().positive().default(120000),
-    ARXIV_MAX_ARTICLES_PER_FETCH: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(50),
-    ARXIV_ENRICHMENT_CONCURRENCY: z.coerce.number().int().min(1).default(5),
-    HATENA_BLOG_DEV_MAX_PAGES: z.coerce.number().int().positive().default(3),
-    HATENA_BLOG_DEV_TIMEOUT: z.coerce.number().int().positive().default(30000),
+    FETCHER_TIMEOUT_MS: safeCoerceInt(120000),
+    ARXIV_MAX_ARTICLES_PER_FETCH: safeCoerceInt(50),
+    ARXIV_ENRICHMENT_CONCURRENCY: safeCoerceInt(5),
+    HATENA_BLOG_DEV_MAX_PAGES: safeCoerceInt(3),
+    HATENA_BLOG_DEV_TIMEOUT: safeCoerceInt(30000),
 
     // Database Configuration
-    DB_CONNECTION_LIMIT: z.coerce.number().int().positive().default(20),
-    DB_POOL_TIMEOUT: z.coerce.number().int().positive().default(10),
-    DB_STATEMENT_CACHE_SIZE: z.coerce.number().int().min(0).optional(),
-    DB_CONNECT_TIMEOUT: z.coerce.number().int().positive().default(10),
-    DB_TRANSACTION_TIMEOUT: z.coerce.number().int().positive().default(10000),
+    DB_CONNECTION_LIMIT: safeCoerceInt(20),
+    DB_POOL_TIMEOUT: safeCoerceInt(10),
+    DB_STATEMENT_CACHE_SIZE: z.preprocess((v) => {
+      if (v === undefined || v === null) return undefined;
+      const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }, z.number().int().optional()),
+    DB_CONNECT_TIMEOUT: safeCoerceInt(10),
+    DB_TRANSACTION_TIMEOUT: safeCoerceInt(10000),
     PGBOUNCER_MODE: z.string().optional(),
 
     // Caching
-    CACHE_L1_TTL: z.coerce.number().int().positive().default(3600),
-    CACHE_L2_TTL: z.coerce.number().int().positive().default(1200),
-    CACHE_L3_TTL: z.coerce.number().int().positive().default(600),
+    CACHE_L1_TTL: safeCoerceInt(3600),
+    CACHE_L2_TTL: safeCoerceInt(1200),
+    CACHE_L3_TTL: safeCoerceInt(600),
 
     // Workers
-    EMBEDDING_WORKER_BATCH_SIZE: z.coerce.number().int().min(1).default(300),
-    EMBEDDING_WORKER_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(3),
-    EMBEDDING_WORKER_TIMEOUT_MS: z.coerce
-      .number()
-      .int()
-      .min(1000)
-      .default(9000),
+    EMBEDDING_WORKER_BATCH_SIZE: safeCoerceInt(300),
+    EMBEDDING_WORKER_MAX_ATTEMPTS: safeCoerceInt(3),
+    EMBEDDING_WORKER_TIMEOUT_MS: safeCoerceInt(9000),
 
     // Security / Middleware
     CURSOR_SECRET: z.string().optional(),
@@ -206,12 +222,16 @@ const envSchema = z
 
     // Translation / Tech Terms
     ENABLE_TITLE_TRANSLATION: booleanEnum.optional().default('true'),
-    TRANSLATION_RATE_LIMIT: z.coerce.number().int().positive().optional(),
+    TRANSLATION_RATE_LIMIT: z.preprocess((v) => {
+      if (v === undefined || v === null) return undefined;
+      const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }, z.number().int().optional()),
     TECH_TERMS_UPDATE_URL: optionalUrl,
 
     // Monitoring / Diagnostics
     ENABLE_DEBUG_METRICS: booleanEnum.optional().default('false'),
-    NODE_MAX_HEAP_MB: z.coerce.number().int().positive().default(512),
+    NODE_MAX_HEAP_MB: safeCoerceInt(512),
     PROCESS_TYPE: z.string().optional(),
     DEBUG: z.string().optional(),
 
