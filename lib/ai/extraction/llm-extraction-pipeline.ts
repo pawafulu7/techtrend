@@ -11,6 +11,7 @@
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
 import { BatchExecutor, BatchJob } from './batch-executor';
+import { env } from '@/lib/config/env';
 
 // Types
 export interface ExtractionOptions {
@@ -53,12 +54,12 @@ export class LLMExtractionPipeline {
   private modelVersion: string;
 
   constructor(apiKey?: string, model?: string) {
-    this.apiKey = apiKey || process.env.GEMINI_API_KEY || '';
+    this.apiKey = apiKey || env.GEMINI_API_KEY || '';
     if (!this.apiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
     this.modelVersion =
-      model || process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+      model || env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
     // API key is passed via x-goog-api-key header for security (not in URL)
     this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelVersion}:generateContent`;
   }
@@ -72,7 +73,7 @@ export class LLMExtractionPipeline {
     options?: ExtractionOptions
   ): Promise<ExtractionResult<T>> {
     const opts = { ...DEFAULT_OPTIONS, ...options };
-    const shouldLogRaw = process.env.LOG_LLM_RAW_RESPONSE === 'true';
+    const shouldLogRaw = env.LOG_LLM_RAW_RESPONSE === 'true';
     const prompt = config.buildPrompt(input);
 
     let lastError: Error | null = null;

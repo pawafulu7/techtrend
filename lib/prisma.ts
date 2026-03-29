@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { getPrismaConfig } from './database-config';
+import { env } from '@/lib/config/env';
 
 // Type-safe global declaration
 declare global {
@@ -30,9 +31,9 @@ export const prisma: PrismaClient = getPrismaClient();
 
 // Graceful shutdown handling (skip in serverless environments)
 if (process.env.NODE_ENV === 'production' && 
-    !process.env.VERCEL && 
-    !process.env.AWS_EXECUTION_ENV &&
-    !process.env.NETLIFY) {
+    !env.VERCEL && 
+    !env.AWS_EXECUTION_ENV &&
+    !env.NETLIFY) {
   const cleanup = async () => {
     try { 
       await prisma.$disconnect(); 

@@ -5,6 +5,7 @@
 
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import logger from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 type CursorFilterValue = string | number | boolean | null;
 export type CursorFilters = Record<string, CursorFilterValue>;
@@ -53,7 +54,7 @@ export class CursorManager {
   constructor(config: CursorManagerConfig) {
     this.secret =
       config.secret ||
-      process.env.CURSOR_SECRET ||
+      env.CURSOR_SECRET ||
       randomBytes(32).toString('hex');
     this.maxAge = config.maxAge || 3600; // デフォルト1時間
     this.version = config.version || 1;
@@ -332,12 +333,12 @@ let globalCursorManager: CursorManager | null = null;
 export function getCursorManager(): CursorManager {
   if (!globalCursorManager) {
     const secret =
-      process.env.CURSOR_SECRET || 'default-secret-change-in-production';
+      env.CURSOR_SECRET || 'default-secret-change-in-production';
 
     // 本番環境でデフォルト秘密鍵の使用を禁止（CI/テスト環境は除外）
     const allowInsecureCursorSecret =
-      process.env.CI === 'true' ||
-      process.env.ALLOW_INSECURE_CURSOR_SECRET === 'true';
+      env.CI === 'true' ||
+      env.ALLOW_INSECURE_CURSOR_SECRET === 'true';
 
     if (
       process.env.NODE_ENV === 'production' &&

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { logger, sanitizeError } from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 /**
  * Rate limit configuration schema
@@ -352,7 +353,7 @@ export function getRateLimitConfig(key: string): RateLimitConfig {
   const config = RATE_LIMIT_POLICIES[key] || RATE_LIMIT_POLICIES['default'];
 
   // Apply environment overrides with validation
-  const overrides = process.env.RATE_LIMIT_OVERRIDES;
+  const overrides = env.RATE_LIMIT_OVERRIDES;
   if (overrides) {
     try {
       const parsed = JSON.parse(overrides);

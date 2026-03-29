@@ -1,6 +1,7 @@
 import Redis from 'ioredis';
 import { IRedisClient, IRedisConfig } from './interfaces';
 import logger from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 /**
  * IoRedis wrapper implementing IRedisClient interface
@@ -9,7 +10,7 @@ export class IoRedisClient implements IRedisClient {
   private client: Redis;
 
   constructor(config?: IRedisConfig) {
-    const url = process.env.REDIS_URL;
+    const url = env.REDIS_URL;
 
     // Common options
     const commonOptions = {
@@ -36,9 +37,9 @@ export class IoRedisClient implements IRedisClient {
     } else {
       // Fallback to host/port/password
       this.client = new Redis({
-        host: config?.host || process.env.REDIS_HOST || 'localhost',
-        port: config?.port || parseInt(process.env.REDIS_PORT || '6379'),
-        password: config?.password ?? process.env.REDIS_PASSWORD,
+        host: config?.host || env.REDIS_HOST || 'localhost',
+        port: config?.port || parseInt(env.REDIS_PORT || '6379'),
+        password: config?.password ?? env.REDIS_PASSWORD,
         ...commonOptions,
       });
     }

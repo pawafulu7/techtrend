@@ -2,7 +2,11 @@
  * Tests for notification configuration
  */
 
-import { validateSlackWebhookUrl, loadNotificationConfig } from '../../../lib/notification/config';
+import {
+  validateSlackWebhookUrl,
+  loadNotificationConfig,
+} from '../../../lib/notification/config';
+import { resetEnvCache } from '@/lib/config/env';
 
 describe('validateSlackWebhookUrl', () => {
   describe('valid URLs', () => {
@@ -16,7 +20,9 @@ describe('validateSlackWebhookUrl', () => {
 
     it('should accept URL with various team/channel/token lengths', () => {
       expect(
-        validateSlackWebhookUrl('https://hooks.slack.com/services/T1234/B5678/abcABC123')
+        validateSlackWebhookUrl(
+          'https://hooks.slack.com/services/T1234/B5678/abcABC123'
+        )
       ).toBe(true);
     });
 
@@ -31,7 +37,9 @@ describe('validateSlackWebhookUrl', () => {
 
   describe('invalid URLs', () => {
     it('should reject non-Slack URLs', () => {
-      expect(validateSlackWebhookUrl('https://example.com/webhook')).toBe(false);
+      expect(validateSlackWebhookUrl('https://example.com/webhook')).toBe(
+        false
+      );
     });
 
     it('should reject HTTP (non-HTTPS) URLs', () => {
@@ -43,11 +51,15 @@ describe('validateSlackWebhookUrl', () => {
     });
 
     it('should reject URLs with wrong path structure', () => {
-      expect(validateSlackWebhookUrl('https://hooks.slack.com/api/chat.postMessage')).toBe(false);
+      expect(
+        validateSlackWebhookUrl('https://hooks.slack.com/api/chat.postMessage')
+      ).toBe(false);
     });
 
     it('should reject URLs with missing parts', () => {
-      expect(validateSlackWebhookUrl('https://hooks.slack.com/services/T00000000')).toBe(false);
+      expect(
+        validateSlackWebhookUrl('https://hooks.slack.com/services/T00000000')
+      ).toBe(false);
     });
 
     it('should reject empty strings', () => {
@@ -61,7 +73,9 @@ describe('validateSlackWebhookUrl', () => {
     it('should reject URLs with lowercase team/channel IDs', () => {
       // Slack team/channel IDs are uppercase
       expect(
-        validateSlackWebhookUrl('https://hooks.slack.com/services/t00000000/b00000000/token')
+        validateSlackWebhookUrl(
+          'https://hooks.slack.com/services/t00000000/b00000000/token'
+        )
       ).toBe(false);
     });
   });
@@ -73,10 +87,12 @@ describe('loadNotificationConfig', () => {
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv };
+    resetEnvCache();
   });
 
   afterAll(() => {
     process.env = originalEnv;
+    resetEnvCache();
   });
 
   describe('when notification is disabled', () => {

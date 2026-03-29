@@ -7,6 +7,7 @@ import {
   QueryExpansionService,
   QueryExpansionResult,
 } from './query-expansion-service';
+import { env } from '@/lib/config/env';
 
 /**
  * Vector Search Service
@@ -50,7 +51,7 @@ export class VectorSearchService {
     this.prisma = prisma;
     if (embeddingService !== undefined) {
       this.embeddingService = embeddingService;
-    } else if (process.env.OPENAI_API_KEY) {
+    } else if (env.OPENAI_API_KEY) {
       this.embeddingService = new EmbeddingService();
     } else {
       this.embeddingService = null;
@@ -62,8 +63,8 @@ export class VectorSearchService {
       );
     }
     this.queryExpansionService = new QueryExpansionService();
-    this.activeModel = process.env.RAG_ACTIVE_MODEL || 'text-embedding-3-small';
-    this.activeVersion = parseInt(process.env.RAG_ACTIVE_VERSION || '1', 10);
+    this.activeModel = env.RAG_ACTIVE_MODEL || 'text-embedding-3-small';
+    this.activeVersion = env.RAG_ACTIVE_VERSION;
   }
 
   /**

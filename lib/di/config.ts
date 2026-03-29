@@ -1,3 +1,5 @@
+import { env } from '@/lib/config/env';
+
 type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
 };
@@ -65,45 +67,41 @@ export const defaultConfig: AppConfig = {
 };
 
 export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
-  const parseNumber = (envVar: string | undefined, defaultValue: number): number => {
-    if (envVar === undefined) return defaultValue;
-    const parsed = parseFloat(envVar);
-    return Number.isNaN(parsed) ? defaultValue : parsed;
-  };
-
-  const parseIntSafe = (envVar: string | undefined, defaultValue: number): number => {
-    if (envVar === undefined) return defaultValue;
-    const parsed = parseInt(envVar, 10);
-    return Number.isNaN(parsed) ? defaultValue : parsed;
-  };
-
-  const regressionEnabled = process.env.REGRESSION_MODE === 'true';
-  const regressionTemperature = parseNumber(
-    process.env.REGRESSION_TEMPERATURE,
-    defaultConfig.regression.temperature,
-  );
-  const regressionTopP = parseNumber(process.env.REGRESSION_TOP_P, defaultConfig.regression.topP);
-  const regressionTopK = parseIntSafe(process.env.REGRESSION_TOP_K, defaultConfig.regression.topK);
+  const regressionEnabled = env.REGRESSION_MODE === 'true';
+  const regressionTemperature =
+    env.REGRESSION_TEMPERATURE ?? defaultConfig.regression.temperature;
+  const regressionTopP = env.REGRESSION_TOP_P ?? defaultConfig.regression.topP;
+  const regressionTopK = env.REGRESSION_TOP_K ?? defaultConfig.regression.topK;
 
   const envConfig: Partial<AppConfig> = {
     gemini: {
-      apiKey: process.env.GEMINI_API_KEY || defaultConfig.gemini.apiKey,
-      model: process.env.GEMINI_MODEL || defaultConfig.gemini.model,
+      apiKey: env.GEMINI_API_KEY || defaultConfig.gemini.apiKey,
+      model: env.GEMINI_MODEL || defaultConfig.gemini.model,
     } as any,
     quality: {
-      threshold: parseInt(process.env.QUALITY_MIN_SCORE || String(defaultConfig.quality.threshold)),
-      maxRetries: parseInt(process.env.MAX_REGENERATION_ATTEMPTS || String(defaultConfig.quality.maxRetries)),
+      threshold: parseInt(
+        env.QUALITY_MIN_SCORE || String(defaultConfig.quality.threshold)
+      ),
+      maxRetries: parseInt(
+        env.MAX_REGENERATION_ATTEMPTS ||
+          String(defaultConfig.quality.maxRetries)
+      ),
     },
     logging: {
-      level: (process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error') || defaultConfig.logging.level,
+      level:
+        (env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error') ||
+        defaultConfig.logging.level,
     },
     translation: {
-      enabled: process.env.ENABLE_TITLE_TRANSLATION !== 'false',
-      rateLimit: parseInt(process.env.TRANSLATION_RATE_LIMIT || String(defaultConfig.translation.rateLimit)),
+      enabled: env.ENABLE_TITLE_TRANSLATION !== 'false',
+      rateLimit:
+        env.TRANSLATION_RATE_LIMIT ?? defaultConfig.translation.rateLimit,
     },
     regression: {
       enabled: regressionEnabled,
-      temperature: regressionEnabled ? regressionTemperature : defaultConfig.regression.temperature,
+      temperature: regressionEnabled
+        ? regressionTemperature
+        : defaultConfig.regression.temperature,
       topP: regressionEnabled ? regressionTopP : defaultConfig.regression.topP,
       topK: regressionEnabled ? regressionTopK : defaultConfig.regression.topK,
     },

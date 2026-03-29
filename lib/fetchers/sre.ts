@@ -5,6 +5,7 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
 import { extractContent } from '@/lib/utils/content/content-extractor';
+import { env } from '@/lib/config/env';
 
 interface SRERSSItem {
   title?: string;
@@ -42,7 +43,7 @@ export class SREFetcher extends BaseFetcher {
   constructor(source: Source) {
     super(source);
     this.parser = new Parser({
-      timeout: Number(process.env.FETCHER_TIMEOUT_MS ?? 120_000),
+      timeout: Number(env.FETCHER_TIMEOUT_MS ?? 120_000),
       customFields: {
         item: [['dc:creator', 'dcCreator']],
       },

@@ -4,6 +4,7 @@ import {
   validateRateLimitConfigs,
   RateLimitConfigSchema,
 } from '@/lib/config/rate-limits';
+import { resetEnvCache } from '@/lib/config/env';
 
 describe('Rate Limit Configuration', () => {
   describe('RATE_LIMIT_POLICIES', () => {
@@ -79,6 +80,7 @@ describe('Rate Limit Configuration', () => {
 
     afterEach(() => {
       process.env.RATE_LIMIT_OVERRIDES = originalEnv;
+      resetEnvCache();
     });
 
     it('should get config by key', () => {
@@ -99,6 +101,7 @@ describe('Rate Limit Configuration', () => {
       process.env.RATE_LIMIT_OVERRIDES = JSON.stringify({
         'auth:login': { points: 10 },
       });
+      resetEnvCache();
 
       const config = getRateLimitConfig('auth:login');
       expect(config.points).toBe(10);
@@ -109,6 +112,7 @@ describe('Rate Limit Configuration', () => {
       process.env.RATE_LIMIT_OVERRIDES = JSON.stringify({
         'auth:login': { points: 'invalid' }, // Invalid type
       });
+      resetEnvCache();
 
       const config = getRateLimitConfig('auth:login');
       // Should fallback to original config on validation error
@@ -117,6 +121,7 @@ describe('Rate Limit Configuration', () => {
 
     it('should handle malformed JSON in overrides', () => {
       process.env.RATE_LIMIT_OVERRIDES = 'invalid json';
+      resetEnvCache();
 
       const config = getRateLimitConfig('auth:login');
       // Should fallback to original config
@@ -127,6 +132,7 @@ describe('Rate Limit Configuration', () => {
       process.env.RATE_LIMIT_OVERRIDES = JSON.stringify({
         'auth:login': { points: 20, duration: 120 },
       });
+      resetEnvCache();
 
       const config = getRateLimitConfig('auth:login');
       expect(config.points).toBe(20);
@@ -138,6 +144,7 @@ describe('Rate Limit Configuration', () => {
       process.env.RATE_LIMIT_OVERRIDES = JSON.stringify({
         'auth:login': { blockDuration: 300 },
       });
+      resetEnvCache();
 
       const config = getRateLimitConfig('auth:login');
       expect(config.blockDuration).toBe(300);

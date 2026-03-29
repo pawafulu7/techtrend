@@ -9,6 +9,7 @@ import type {
   QualityIssue,
   ContentAnalysis,
 } from './quality-types';
+import { env } from '@/lib/config/env';
 
 // Re-export types for backward compatibility
 export type {
@@ -22,7 +23,7 @@ export type {
  * 品質スコアの最小値を取得
  */
 export function getMinQualityScore(): number {
-  const value = parseInt(process.env.QUALITY_MIN_SCORE || '70');
+  const value = parseInt(env.QUALITY_MIN_SCORE || '70');
   return isNaN(value) ? 70 : value;
 }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { compareSecrets } from '@/lib/utils/compare-secrets';
 import logger from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 export type Handler = (
   request: NextRequest,
@@ -33,7 +34,7 @@ export type Handler = (
 export function withCronOrAdminAuth(handler: Handler): Handler {
   return async (request: NextRequest, context?: any) => {
     // 1. Cron Secret認証（Bearer）
-    const cronSecret = process.env.CRON_TOKEN || process.env.CRON_SECRET;
+    const cronSecret = env.CRON_TOKEN || env.CRON_SECRET;
     if (cronSecret) {
       const authHeader = request.headers.get('authorization');
       const token = authHeader?.startsWith('Bearer ')

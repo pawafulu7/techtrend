@@ -3,6 +3,7 @@ import { UnifiedSummaryService } from '../unified-summary-service';
 import * as articleTypePrompts from '../../utils/article/article-type-prompts';
 import * as unifiedSummaryParser from '../unified-summary-parser';
 import * as summaryQualityChecker from '../../utils/summary/summary-quality-checker';
+import { resetEnvCache } from '@/lib/config/env';
 
 // ESM compatible mock
 jest.mock('node-fetch', () => jest.fn());
@@ -36,16 +37,19 @@ describe('UnifiedSummaryService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.GEMINI_API_KEY = mockApiKey;
+    resetEnvCache();
     service = new UnifiedSummaryService();
   });
 
   afterEach(() => {
     delete process.env.GEMINI_API_KEY;
+    resetEnvCache();
   });
 
   afterAll(() => {
     // Restore environment variables
     process.env = originalEnv;
+    resetEnvCache();
   });
 
   describe('constructor', () => {
@@ -59,6 +63,7 @@ describe('UnifiedSummaryService', () => {
 
     it('should throw error when no API key is available', () => {
       delete process.env.GEMINI_API_KEY;
+      resetEnvCache();
       expect(() => new UnifiedSummaryService()).toThrow(
         'GEMINI_API_KEY is not set'
       );

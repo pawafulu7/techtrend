@@ -4,6 +4,7 @@
  */
 
 import logger from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 export interface PerformanceMetrics {
   startTime: number;
@@ -129,7 +130,7 @@ export class MetricsCollector {
     headers.set('Server-Timing', this.getServerTimingHeader());
     
     // Add breakdown as JSON for debugging
-    if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEBUG_METRICS === 'true') {
+    if (process.env.NODE_ENV !== 'production' || env.ENABLE_DEBUG_METRICS === 'true') {
       headers.set('X-Performance-Breakdown', JSON.stringify(metrics.breakdown));
     }
   }

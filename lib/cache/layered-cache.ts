@@ -2,6 +2,7 @@ import { RedisCache } from './index';
 import type { PaginatedResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import logger from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 /**
  * 記事クエリパラメータの型定義
@@ -49,21 +50,21 @@ export class LayeredCache {
     // デフォルトは最適化された値を使用
 
     // L1: パブリックキャッシュ（デフォルト: 1時間）- RSS更新頻度に同期
-    const l1Ttl = parseInt(process.env.CACHE_L1_TTL || '3600', 10);
+    const l1Ttl = env.CACHE_L1_TTL;
     this.l1Cache = new RedisCache({
       ttl: l1Ttl, // デフォルト1時間（RSS更新サイクルに合わせる）
       namespace: '@techtrend/cache:l1:public',
     });
 
     // L2: ユーザーキャッシュ（デフォルト: 20分）- 実際のセッション利用パターンに合わせる
-    const l2Ttl = parseInt(process.env.CACHE_L2_TTL || '1200', 10);
+    const l2Ttl = env.CACHE_L2_TTL;
     this.l2Cache = new RedisCache({
       ttl: l2Ttl, // デフォルト20分（ユーザーセッション実態に合わせる）
       namespace: '@techtrend/cache:l2:user',
     });
 
     // L3: 検索キャッシュ（デフォルト: 10分）- 検索の即時性を重視
-    const l3Ttl = parseInt(process.env.CACHE_L3_TTL || '600', 10);
+    const l3Ttl = env.CACHE_L3_TTL;
     this.l3Cache = new RedisCache({
       ttl: l3Ttl, // デフォルト10分（検索結果の鮮度を優先）
       namespace: '@techtrend/cache:l3:search',

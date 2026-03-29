@@ -28,6 +28,7 @@ import {
   PromptInjectionError,
   InsufficientDataError,
 } from './errors';
+import { env } from '@/lib/config/env';
 
 // =============================================================================
 // Generator Class
@@ -134,7 +135,7 @@ export class SocialPostGenerator {
           articleId: article.id,
           error: result.error,
           rawResponse:
-            process.env.LOG_LLM_RAW_RESPONSE === 'true'
+            env.LOG_LLM_RAW_RESPONSE === 'true'
               ? result.rawResponse?.slice(0, 300)
               : '[REDACTED]',
           modelVersion: result.modelVersion,

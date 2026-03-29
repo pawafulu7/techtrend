@@ -11,6 +11,7 @@ import {
   CSRF_EXEMPT_PATHS,
   CSRF_PROTECTED_METHODS,
 } from '@/lib/middleware/csrf-protection';
+import { resetEnvCache } from '@/lib/config/env';
 
 // Mock auth function
 jest.mock('@/lib/auth/auth', () => ({
@@ -28,6 +29,7 @@ describe('csrf-protection', () => {
     delete process.env.NEXTAUTH_URL;
     delete process.env.NEXT_PUBLIC_APP_URL;
     delete process.env.CSRF_TRUSTED_ORIGINS;
+    resetEnvCache();
   });
 
   describe('validateOrigin', () => {
@@ -135,6 +137,7 @@ describe('csrf-protection', () => {
 
     it('should allow requests from NEXTAUTH_URL', async () => {
       process.env.NEXTAUTH_URL = 'https://myapp.example.com';
+      resetEnvCache();
 
       const request = new NextRequest(
         new URL('https://myapp.example.com/api/test'),
@@ -153,6 +156,7 @@ describe('csrf-protection', () => {
     it('should allow requests from CSRF_TRUSTED_ORIGINS', async () => {
       process.env.CSRF_TRUSTED_ORIGINS =
         'https://trusted1.com, https://trusted2.com';
+      resetEnvCache();
 
       const request = new NextRequest(
         new URL('http://localhost:3000/api/test'),

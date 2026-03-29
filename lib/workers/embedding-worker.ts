@@ -1,18 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { JobProcessor } from './job-processor';
 import { logger } from '@/lib/logger';
-
-/**
- * Parse environment variable as integer with validation.
- * Returns fallback if value is undefined, non-numeric, or below min threshold.
- */
-function parseEnvInt(value: string | undefined, fallback: number, min: number = 1): number {
-  const parsed = Number.parseInt(value ?? '', 10);
-  if (Number.isNaN(parsed) || parsed < min) {
-    return fallback;
-  }
-  return parsed;
-}
+import { env } from '@/lib/config/env';
 
 export interface WorkerConfig {
   batchSize: number;
@@ -38,9 +27,9 @@ export class EmbeddingWorker {
 
   constructor(config: Partial<WorkerConfig> = {}) {
     this.config = {
-      batchSize: config.batchSize ?? parseEnvInt(process.env.EMBEDDING_WORKER_BATCH_SIZE, 300, 1),
-      maxAttempts: config.maxAttempts ?? parseEnvInt(process.env.EMBEDDING_WORKER_MAX_ATTEMPTS, 3, 1),
-      timeoutMs: config.timeoutMs ?? parseEnvInt(process.env.EMBEDDING_WORKER_TIMEOUT_MS, 9000, 1000), // Default 9s for Vercel, min 1s
+      batchSize: config.batchSize ?? env.EMBEDDING_WORKER_BATCH_SIZE,
+      maxAttempts: config.maxAttempts ?? env.EMBEDDING_WORKER_MAX_ATTEMPTS,
+      timeoutMs: config.timeoutMs ?? env.EMBEDDING_WORKER_TIMEOUT_MS, // Default 9s for Vercel, min 1s
       skipEmbedding: config.skipEmbedding ?? false,
     };
 
@@ -106,13 +95,18 @@ export class EmbeddingWorker {
       let timedOut = 0;
 
       const createTimeoutError = () => {
-        const error = new Error(WORKER_TIMEOUT_MESSAGE) as Error & { code?: string };
+        const error = new Error(WORKER_TIMEOUT_MESSAGE) as Error & {
+          code?: string;
+        };
         error.code = WORKER_TIMEOUT_CODE;
         return error;
       };
 
-      const isTimeoutError = (error: unknown): error is Error & { code?: string } =>
-        error instanceof Error && (error as { code?: string }).code === WORKER_TIMEOUT_CODE;
+      const isTimeoutError = (
+        error: unknown
+      ): error is Error & { code?: string } =>
+        error instanceof Error &&
+        (error as { code?: string }).code === WORKER_TIMEOUT_CODE;
 
       const runJobWithTimeout = async (job: (typeof jobs)[number]) => {
         if (abortController.signal.aborted) {
@@ -166,7 +160,9 @@ export class EmbeddingWorker {
         }
       };
 
-      const workerTasks = Array.from({ length: concurrencyLimit }, () => worker());
+      const workerTasks = Array.from({ length: concurrencyLimit }, () =>
+        worker()
+      );
       await Promise.allSettled(workerTasks);
 
       clearTimeout(timeoutHandle);

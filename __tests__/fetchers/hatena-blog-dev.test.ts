@@ -1,6 +1,7 @@
 import { HatenaBlogDevFetcher } from '@/lib/fetchers/hatena-blog-dev';
 import { BaseFetcher } from '@/lib/fetchers/base';
 import { Source } from '@prisma/client';
+import { resetEnvCache } from '@/lib/config/env';
 
 // Mock BaseFetcher's retry to avoid waiting for retryDelay
 jest.spyOn(BaseFetcher.prototype as unknown as { retry: <T>(fn: () => Promise<T>) => Promise<T> }, 'retry')
@@ -81,12 +82,14 @@ describe('HatenaBlogDevFetcher', () => {
     mockFetch = jest.spyOn(global, 'fetch');
     // Set maxPages to 1 for most tests
     process.env.HATENA_BLOG_DEV_MAX_PAGES = '1';
+    resetEnvCache();
     fetcher = new HatenaBlogDevFetcher(mockSource);
   });
 
   afterEach(() => {
     mockFetch.mockRestore();
     delete process.env.HATENA_BLOG_DEV_MAX_PAGES;
+    resetEnvCache();
   });
 
   describe('fetch', () => {
@@ -113,6 +116,7 @@ describe('HatenaBlogDevFetcher', () => {
     it('should handle pagination and stop when hasNextPage is false', async () => {
       // Need more pages for this test
       process.env.HATENA_BLOG_DEV_MAX_PAGES = '3';
+      resetEnvCache();
       const paginationFetcher = new HatenaBlogDevFetcher(mockSource);
 
       const page1Response = createGraphQLResponse(mockEntries.page1, true);
@@ -139,6 +143,7 @@ describe('HatenaBlogDevFetcher', () => {
     it('should deduplicate articles by URL', async () => {
       // Need more pages for this test
       process.env.HATENA_BLOG_DEV_MAX_PAGES = '3';
+      resetEnvCache();
       const dedupFetcher = new HatenaBlogDevFetcher(mockSource);
 
       const page1Response = createGraphQLResponse(mockEntries.page1, true);
@@ -218,6 +223,7 @@ describe('HatenaBlogDevFetcher', () => {
 
     it('should continue fetching despite individual page errors', async () => {
       process.env.HATENA_BLOG_DEV_MAX_PAGES = '2';
+      resetEnvCache();
       const multiFetcher = new HatenaBlogDevFetcher(mockSource);
 
       const page2Response = createGraphQLResponse(mockEntries.page2, false);
@@ -343,6 +349,7 @@ describe('HatenaBlogDevFetcher', () => {
   describe('environment variable configuration', () => {
     it('should respect HATENA_BLOG_DEV_MAX_PAGES', async () => {
       process.env.HATENA_BLOG_DEV_MAX_PAGES = '2';
+      resetEnvCache();
       const configuredFetcher = new HatenaBlogDevFetcher(mockSource);
 
       const page1Response = createGraphQLResponse(mockEntries.page1, true);
@@ -361,6 +368,7 @@ describe('HatenaBlogDevFetcher', () => {
 
     it('should default to 3 pages when env var is not set', async () => {
       delete process.env.HATENA_BLOG_DEV_MAX_PAGES;
+      resetEnvCache();
       const defaultFetcher = new HatenaBlogDevFetcher(mockSource);
 
       const pageResponse = createGraphQLResponse(mockEntries.page1, true);

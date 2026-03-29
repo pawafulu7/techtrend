@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import { auth } from '@/lib/auth/auth';
 import logger from '@/lib/logger';
+import { resetEnvCache } from '@/lib/config/env';
 
 // モック関数の取得
 const mockAuth = auth as jest.MockedFunction<typeof auth>;
@@ -33,16 +34,19 @@ describe('withCronOrAdminAuth', () => {
     // Reset env vars
     delete process.env.CRON_SECRET;
     delete process.env.CRON_TOKEN;
+    resetEnvCache();
   });
 
   afterEach(() => {
     delete process.env.CRON_SECRET;
     delete process.env.CRON_TOKEN;
+    resetEnvCache();
   });
 
   describe('Cron Secret Authentication', () => {
     it('should authenticate with valid Bearer token (CRON_SECRET)', async () => {
       process.env.CRON_SECRET = 'valid-secret-token-12345';
+      resetEnvCache();
 
       const handler = withCronOrAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/test', {
@@ -61,6 +65,7 @@ describe('withCronOrAdminAuth', () => {
 
     it('should authenticate with valid Bearer token (CRON_TOKEN)', async () => {
       process.env.CRON_TOKEN = 'valid-cron-token-67890';
+      resetEnvCache();
 
       const handler = withCronOrAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/test', {
@@ -79,6 +84,7 @@ describe('withCronOrAdminAuth', () => {
     it('should prefer CRON_TOKEN over CRON_SECRET when both are set', async () => {
       process.env.CRON_TOKEN = 'preferred-token';
       process.env.CRON_SECRET = 'secondary-secret';
+      resetEnvCache();
 
       const handler = withCronOrAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/test', {
@@ -96,6 +102,7 @@ describe('withCronOrAdminAuth', () => {
 
     it('should reject invalid Bearer token', async () => {
       process.env.CRON_SECRET = 'valid-secret';
+      resetEnvCache();
       mockAuth.mockResolvedValue(null);
 
       const handler = withCronOrAdminAuth(mockHandler);
@@ -114,6 +121,7 @@ describe('withCronOrAdminAuth', () => {
 
     it('should reject non-Bearer authorization header', async () => {
       process.env.CRON_SECRET = 'valid-secret';
+      resetEnvCache();
       mockAuth.mockResolvedValue(null);
 
       const handler = withCronOrAdminAuth(mockHandler);
@@ -232,6 +240,7 @@ describe('withCronOrAdminAuth', () => {
 
     it('should log authorization header presence (but not value)', async () => {
       process.env.CRON_SECRET = 'valid-secret';
+      resetEnvCache();
       mockAuth.mockResolvedValue(null);
 
       const handler = withCronOrAdminAuth(mockHandler);
@@ -277,6 +286,7 @@ describe('withCronOrAdminAuth', () => {
   describe('Edge Cases', () => {
     it('should handle empty CRON_SECRET gracefully', async () => {
       process.env.CRON_SECRET = '';
+      resetEnvCache();
       mockAuth.mockResolvedValue({
         user: { id: 'admin-1', role: 'admin' },
       } as any);
@@ -355,6 +365,7 @@ describe('withCronOrAdminAuth', () => {
   describe('Integration with other middleware', () => {
     it('should work as outer wrapper for handler chain', async () => {
       process.env.CRON_SECRET = 'valid-secret';
+      resetEnvCache();
 
       // Simulate wrapping another middleware
       const innerMiddleware = jest.fn().mockImplementation(async () => {

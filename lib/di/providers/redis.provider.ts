@@ -1,13 +1,14 @@
 import Redis from 'ioredis';
 import { container } from '../container';
 import { DI_TOKENS } from '../types';
+import { env } from '@/lib/config/env';
 
 let redisInstance: Redis | null = null;
 
 export function registerRedisProvider(): void {
   container.registerSingleton(DI_TOKENS.REDIS, () => {
-    if (!redisInstance && process.env.REDIS_URL) {
-      redisInstance = new Redis(process.env.REDIS_URL, {
+    if (!redisInstance && env.REDIS_URL) {
+      redisInstance = new Redis(env.REDIS_URL, {
         maxRetriesPerRequest: 3,
         retryStrategy: (times) => {
           if (times > 3) return null;

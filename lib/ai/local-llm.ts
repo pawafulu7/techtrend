@@ -1,6 +1,7 @@
 import { ExternalAPIError } from '../errors';
 import fetch from 'node-fetch';
 import { cleanSummary as cleanSummaryUtil } from '../utils/summary/summary-cleaner';
+import { env } from '@/lib/config/env';
 
 interface LocalLLMConfig {
   url: string;
@@ -37,9 +38,9 @@ export class LocalLLMClient {
 
   constructor(config: LocalLLMConfig) {
     this.config = {
-      maxTokens: parseInt(process.env.LOCAL_LLM_MAX_TOKENS || '800'),
+      maxTokens: env.LOCAL_LLM_MAX_TOKENS,
       temperature: 0.3,
-      maxContentLength: parseInt(process.env.LOCAL_LLM_MAX_CONTENT_LENGTH || '8000'),
+      maxContentLength: env.LOCAL_LLM_MAX_CONTENT_LENGTH,
       ...config,
     };
   }
@@ -47,10 +48,8 @@ export class LocalLLMClient {
   async generateSummary(title: string, content: string): Promise<string> {
     try {
       const prompt = this.createSummaryPrompt(title, content);
-      const response = await this.callAPI([
-        { role: 'user', content: prompt }
-      ]);
-      
+      const response = await this.callAPI([{ role: 'user', content: prompt }]);
+
       return this.cleanSummary(response);
     } catch (error) {
       throw new ExternalAPIError(
@@ -61,13 +60,14 @@ export class LocalLLMClient {
     }
   }
 
-  async generateSummaryWithTags(title: string, content: string): Promise<{ summary: string; tags: string[] }> {
+  async generateSummaryWithTags(
+    title: string,
+    content: string
+  ): Promise<{ summary: string; tags: string[] }> {
     try {
       const prompt = this.createSummaryAndTagsPrompt(title, content);
-      const response = await this.callAPI([
-        { role: 'user', content: prompt }
-      ]);
-      
+      const response = await this.callAPI([{ role: 'user', content: prompt }]);
+
       return this.parseSummaryAndTags(response);
     } catch (error) {
       throw new ExternalAPIError(
@@ -84,10 +84,8 @@ export class LocalLLMClient {
   ): Promise<{ summary: string; detailedSummary: string; tags: string[] }> {
     try {
       const prompt = this.createDetailedSummaryPrompt(title, content);
-      const response = await this.callAPI([
-        { role: 'user', content: prompt }
-      ]);
-      
+      const response = await this.callAPI([{ role: 'user', content: prompt }]);
+
       return this.parseDetailedSummary(response);
     } catch (error) {
       throw new ExternalAPIError(
@@ -102,11 +100,12 @@ export class LocalLLMClient {
     // 日本語応答を促すシステムメッセージを追加
     const systemMessage: ChatMessage = {
       role: 'system',
-      content: 'あなたは日本語で応答する技術記事分析アシスタントです。すべての応答は日本語で行ってください。技術用語は適切な日本語またはカタカナ表記を使用してください。思考過程や文字数カウントは出力せず、要求された内容のみを出力してください。'
+      content:
+        'あなたは日本語で応答する技術記事分析アシスタントです。すべての応答は日本語で行ってください。技術用語は適切な日本語またはカタカナ表記を使用してください。思考過程や文字数カウントは出力せず、要求された内容のみを出力してください。',
     };
-    
+
     const messagesWithSystem = [systemMessage, ...messages];
-    
+
     const response = await fetch(`${this.config.url}/v1/chat/completions`, {
       method: 'POST',
       headers: {
@@ -124,8 +123,8 @@ export class LocalLLMClient {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const data = await response.json() as ChatCompletionResponse;
-    
+    const data = (await response.json()) as ChatCompletionResponse;
+
     if (!data.choices || data.choices.length === 0) {
       throw new Error('No response from Local LLM');
     }
@@ -134,8 +133,11 @@ export class LocalLLMClient {
   }
 
   private createSummaryPrompt(title: string, content: string): string {
-    const truncatedContent = content.substring(0, this.config.maxContentLength || 8000);
-    
+    const truncatedContent = content.substring(
+      0,
+      this.config.maxContentLength || 8000
+    );
+
     return `以下の技術記事を必ず日本語で60-80文字に要約してください。
 
 重要な指示:
@@ -155,9 +157,12 @@ export class LocalLLMClient {
 
   private createSummaryAndTagsPrompt(title: string, content: string): string {
     // タグ生成には少し多めの内容を使用
-    const maxLength = Math.min((this.config.maxContentLength || 8000) + 2000, 10000);
+    const maxLength = Math.min(
+      (this.config.maxContentLength || 8000) + 2000,
+      10000
+    );
     const truncatedContent = content.substring(0, maxLength);
-    
+
     return `技術記事を日本語で分析してください。
 
 タイトル: ${title}
@@ -178,9 +183,12 @@ export class LocalLLMClient {
 
   private createDetailedSummaryPrompt(title: string, content: string): string {
     // 詳細要約用にはより多くの内容を使用
-    const maxLength = Math.min((this.config.maxContentLength || 8000) + 4000, 12000);
+    const maxLength = Math.min(
+      (this.config.maxContentLength || 8000) + 4000,
+      12000
+    );
     const truncatedContent = content.substring(0, maxLength);
-    
+
     return `以下の技術記事を詳細に分析して、日本語で要約、詳細要約、タグを生成してください。
 
 タイトル: ${title}
@@ -210,32 +218,39 @@ export class LocalLLMClient {
   private cleanSummary(summary: string): string {
     // 共通のクリーンアップユーティリティを使用
     let cleaned = cleanSummaryUtil(summary);
-    
+
     // LocalLLM特有の英語思考過程を除去
     const englishThinkingPatterns = [
       /^.*?(?:need|let's|count|chars?|craft).*?(?=[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF])/gi,
-      /^[^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]*[a-zA-Z][^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]*(?=[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF])/g
+      /^[^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]*[a-zA-Z][^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]*(?=[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF])/g,
     ];
-    
+
     for (const pattern of englishThinkingPatterns) {
       cleaned = cleaned.replace(pattern, '');
     }
-    
+
     return cleaned.trim();
   }
 
-  private parseSummaryAndTags(text: string): { summary: string; tags: string[] } {
+  private parseSummaryAndTags(text: string): {
+    summary: string;
+    tags: string[];
+  } {
     // 英語の思考過程を含む行を除去
-    const cleanedText = text.split('\n')
-      .filter(line => {
+    const cleanedText = text
+      .split('\n')
+      .filter((line) => {
         // 英語の思考過程パターンを検出
-        const hasEnglishThinking = /^.*?(?:need|let's|count|chars?|craft|summary|tags).*$/i.test(line);
-        const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(line);
+        const hasEnglishThinking =
+          /^.*?(?:need|let's|count|chars?|craft|summary|tags).*$/i.test(line);
+        const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(
+          line
+        );
         // 英語の思考過程があり、かつ日本語が含まれない行は除外
         return !(hasEnglishThinking && !hasJapanese);
       })
       .join('\n');
-    
+
     const lines = cleanedText.split('\n');
     let summary = '';
     let tags: string[] = [];
@@ -245,18 +260,20 @@ export class LocalLLMClient {
         summary = this.cleanSummary(line.replace(/^要約[:：]\s*/, ''));
       } else if (line.startsWith('タグ:') || line.startsWith('タグ：')) {
         const tagLine = line.replace(/^タグ[:：]\s*/, '');
-        tags = tagLine.split(/[,、，]/)
-          .map(tag => tag.trim())
-          .filter(tag => tag.length > 0 && tag.length <= 30)
-          .map(tag => this.normalizeTag(tag));
+        tags = tagLine
+          .split(/[,、，]/)
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0 && tag.length <= 30)
+          .map((tag) => this.normalizeTag(tag));
       }
     }
 
     if (!summary) {
       // 最初の日本語文を探す
-      const japaneseLines = lines.filter(line => 
-        /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(line) && 
-        line.trim().length > 0
+      const japaneseLines = lines.filter(
+        (line) =>
+          /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(line) &&
+          line.trim().length > 0
       );
       if (japaneseLines.length > 0) {
         summary = this.cleanSummary(japaneseLines[0]);
@@ -264,13 +281,13 @@ export class LocalLLMClient {
         // 文字数制限を200文字に拡張
         const maxLength = 200;
         let truncatedText = text.substring(0, maxLength);
-        
+
         // 最後の句点で切る
         const lastPeriod = truncatedText.lastIndexOf('。');
         if (lastPeriod > 0) {
           truncatedText = truncatedText.substring(0, lastPeriod + 1);
         }
-        
+
         summary = this.cleanSummary(truncatedText);
       }
     }
@@ -278,7 +295,11 @@ export class LocalLLMClient {
     return { summary, tags };
   }
 
-  private parseDetailedSummary(text: string): { summary: string; detailedSummary: string; tags: string[] } {
+  private parseDetailedSummary(text: string): {
+    summary: string;
+    detailedSummary: string;
+    tags: string[];
+  } {
     const lines = text.split('\n');
     let summary = '';
     let detailedSummary = '';
@@ -292,18 +313,28 @@ export class LocalLLMClient {
         const summaryContent = line.replace(/^要約[:：]\s*/, '');
         summary = this.cleanSummary(summaryContent);
         isDetailedSummary = false;
-      } else if (line.startsWith('詳細要約:') || line.startsWith('詳細要約：')) {
+      } else if (
+        line.startsWith('詳細要約:') ||
+        line.startsWith('詳細要約：')
+      ) {
         isDetailedSummary = true;
       } else if (line.startsWith('タグ:') || line.startsWith('タグ：')) {
         isDetailedSummary = false;
         const tagLine = line.replace(/^タグ[:：]\s*/, '');
-        tags = tagLine.split(/[,、，]/)
-          .map(tag => tag.trim())
-          .filter(tag => tag.length > 0 && tag.length <= 30)
-          .map(tag => this.normalizeTag(tag));
+        tags = tagLine
+          .split(/[,、，]/)
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0 && tag.length <= 30)
+          .map((tag) => this.normalizeTag(tag));
       } else if (isDetailedSummary && line.trim().startsWith('・')) {
         detailedSummaryLines.push(line.trim());
-      } else if (summary === '' && !isDetailedSummary && !line.startsWith('詳細要約') && !line.startsWith('タグ') && line.trim() !== '') {
+      } else if (
+        summary === '' &&
+        !isDetailedSummary &&
+        !line.startsWith('詳細要約') &&
+        !line.startsWith('タグ') &&
+        line.trim() !== ''
+      ) {
         // 要約が複数行にまたがっている場合の続き
         summary = summary + ' ' + this.cleanSummary(line);
       }
@@ -317,24 +348,26 @@ export class LocalLLMClient {
     // フォールバック
     if (!summary || summary.length < 30) {
       // テキスト全体から要約らしき部分を探す
-      const summaryMatch = text.match(/要約[:：]?\s*([^\n]+(?:\n[^・詳細要約タグ][^\n]*)*)/i);
+      const summaryMatch = text.match(
+        /要約[:：]?\s*([^\n]+(?:\n[^・詳細要約タグ][^\n]*)*)/i
+      );
       if (summaryMatch) {
         summary = this.cleanSummary(summaryMatch[1]);
       } else {
         // それでも見つからない場合は最初の文を使用（200文字まで）
         const maxLength = 200;
         let truncatedText = text.split('\n')[0].substring(0, maxLength);
-        
+
         // 最後の句点で切る
         const lastPeriod = truncatedText.lastIndexOf('。');
         if (lastPeriod > 0) {
           truncatedText = truncatedText.substring(0, lastPeriod + 1);
         }
-        
+
         summary = this.cleanSummary(truncatedText);
       }
     }
-    
+
     // 要約が途切れている場合の処理
     if (summary && (summary.endsWith('。') === false || summary.length < 50)) {
       // 最後が句点でない、または短すぎる場合は補完を試みる
@@ -358,26 +391,26 @@ export class LocalLLMClient {
 
   private normalizeTag(tag: string): string {
     const tagNormalizationMap: Record<string, string> = {
-      'javascript': 'JavaScript',
-      'js': 'JavaScript',
-      'typescript': 'TypeScript',
-      'ts': 'TypeScript',
-      'react': 'React',
-      'vue': 'Vue.js',
-      'angular': 'Angular',
-      'node': 'Node.js',
-      'nodejs': 'Node.js',
-      'python': 'Python',
-      'docker': 'Docker',
-      'kubernetes': 'Kubernetes',
-      'k8s': 'Kubernetes',
-      'aws': 'AWS',
-      'gcp': 'GCP',
-      'azure': 'Azure',
-      'ai': 'AI',
-      'ml': '機械学習',
-      'github': 'GitHub',
-      'git': 'Git',
+      javascript: 'JavaScript',
+      js: 'JavaScript',
+      typescript: 'TypeScript',
+      ts: 'TypeScript',
+      react: 'React',
+      vue: 'Vue.js',
+      angular: 'Angular',
+      node: 'Node.js',
+      nodejs: 'Node.js',
+      python: 'Python',
+      docker: 'Docker',
+      kubernetes: 'Kubernetes',
+      k8s: 'Kubernetes',
+      aws: 'AWS',
+      gcp: 'GCP',
+      azure: 'Azure',
+      ai: 'AI',
+      ml: '機械学習',
+      github: 'GitHub',
+      git: 'Git',
     };
 
     const lowerTag = tag.toLowerCase();
@@ -392,7 +425,7 @@ export class LocalLLMClient {
           'Content-Type': 'application/json',
         },
       });
-      
+
       return response.ok;
     } catch (_error) {
       return false;

@@ -5,6 +5,7 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 interface CorporateRSSItem {
   title?: string;
@@ -85,7 +86,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     // 記事数制限を環境変数で設定可能に（デフォルト: 30件）
-    const parsed = parseInt(process.env.MAX_ARTICLES_PER_COMPANY || '30', 10);
+    const parsed = parseInt(env.MAX_ARTICLES_PER_COMPANY || '30', 10);
     const maxArticlesPerCompany =
       Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
 
@@ -138,7 +139,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
 
             // イベント記事の除外（環境変数で制御）
             const excludeEvents =
-              process.env.EXCLUDE_EVENT_ARTICLES !== 'false';
+              env.EXCLUDE_EVENT_ARTICLES !== 'false';
             if (excludeEvents && this.isEventArticle(item.title, item.link)) {
               continue;
             }

@@ -1,6 +1,7 @@
 import { Experimental_Agent as Agent, stepCountIs } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { semanticSearchTool } from '../tools/semantic-search-tool';
+import { env } from '@/lib/config/env';
 
 /**
  * Article Search Agent
@@ -24,7 +25,7 @@ import { semanticSearchTool } from '../tools/semantic-search-tool';
  */
 
 export const articleSearchAgent = new Agent({
-  model: openai(process.env.AGENT_MODEL || 'gpt-4o-mini'),
+  model: openai(env.AGENT_MODEL || 'gpt-4o-mini'),
 
   // Allow multiple reasoning steps: tool call + retry logic + text response generation
   // Increased to 32 to support 2D fallback with extended threshold ladder

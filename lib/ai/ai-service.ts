@@ -2,6 +2,7 @@ import { GeminiClient } from './gemini';
 import { LocalLLMClient } from './local-llm';
 import { ExternalAPIError } from '../errors';
 import { cleanSummary, cleanDetailedSummary } from '../utils/summary/summary-cleaner';
+import { env } from '@/lib/config/env';
 
 interface AIServiceConfig {
   geminiApiKey?: string;
@@ -254,11 +255,11 @@ export class AIService {
 
   static fromEnv(): AIService {
     return new AIService({
-      geminiApiKey: process.env.GEMINI_API_KEY,
-      localLLMUrl: process.env.LOCAL_LLM_URL,
-      localLLMModel: process.env.LOCAL_LLM_MODEL || 'openai/gpt-oss-20b',
-      useLocalLLMFallback: process.env.USE_LOCAL_LLM_FALLBACK === 'true',
-      preferLocalLLM: process.env.PREFER_LOCAL_LLM === 'true',
+      geminiApiKey: env.GEMINI_API_KEY,
+      localLLMUrl: env.LOCAL_LLM_URL,
+      localLLMModel: env.LOCAL_LLM_MODEL || 'openai/gpt-oss-20b',
+      useLocalLLMFallback: env.USE_LOCAL_LLM_FALLBACK === 'true',
+      preferLocalLLM: env.PREFER_LOCAL_LLM === 'true',
     });
   }
 }

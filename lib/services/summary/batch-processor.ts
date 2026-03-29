@@ -12,42 +12,22 @@ import { logger, sanitizeError } from '@/lib/logger';
 import { SUMMARY_VERSION } from '@/types/article';
 import type { ArticleWithSource } from '@/types/models';
 import type { SummaryGenerationOptions, SummaryAndTags } from './types';
+import { env } from '@/lib/config/env';
 
 /**
  * Concurrency limit for parallel summary generation.
  */
-const parsedConcurrency = Number.parseInt(
-  process.env.SUMMARY_CONCURRENCY ?? '3',
-  10
-);
-const SUMMARY_CONCURRENCY =
-  Number.isFinite(parsedConcurrency) && parsedConcurrency >= 1
-    ? parsedConcurrency
-    : 3;
+const SUMMARY_CONCURRENCY = env.SUMMARY_CONCURRENCY;
 
 /**
  * Timeout for individual summary generation in milliseconds.
  */
-const parsedTimeout = Number.parseInt(
-  process.env.SUMMARY_TIMEOUT ?? '90000',
-  10
-);
-const SUMMARY_TIMEOUT =
-  Number.isFinite(parsedTimeout) && parsedTimeout >= 1000
-    ? parsedTimeout
-    : 90000;
+const SUMMARY_TIMEOUT = env.SUMMARY_TIMEOUT;
 
 /**
  * Minimum delay between requests to respect rate limits (milliseconds).
  */
-const parsedRequestDelay = Number.parseInt(
-  process.env.SUMMARY_REQUEST_DELAY ?? '500',
-  10
-);
-const SUMMARY_REQUEST_DELAY =
-  Number.isFinite(parsedRequestDelay) && parsedRequestDelay >= 0
-    ? parsedRequestDelay
-    : 500;
+const SUMMARY_REQUEST_DELAY = env.SUMMARY_REQUEST_DELAY;
 
 export { SUMMARY_CONCURRENCY, SUMMARY_TIMEOUT };
 

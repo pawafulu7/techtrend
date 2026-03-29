@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { logger } from './logger';
+import { env } from '@/lib/config/env';
 
 // グローバルPrismaクライアントのインスタンス
 let prisma: PrismaClient | null = null;
@@ -7,7 +8,7 @@ let prisma: PrismaClient | null = null;
 export function getPrismaClient(): PrismaClient {
   if (!prisma) {
     prisma = new PrismaClient({
-      log: process.env.DEBUG ? ['query', 'info', 'warn', 'error'] : ['error'],
+      log: env.DEBUG ? ['query', 'info', 'warn', 'error'] : ['error'],
     });
   }
   return prisma;

@@ -5,6 +5,7 @@ import Parser from 'rss-parser';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
 import { getContentFromItem, getAuthorFromItem } from '@/lib/types/rss';
+import { env } from '@/lib/config/env';
 
 /**
  * 企業ブログフェッチャーの基底クラス
@@ -36,7 +37,7 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
     this.thirtyDaysAgo.setDate(this.thirtyDaysAgo.getDate() - 30);
 
     // 環境変数から最大記事数を取得（堅牢化: NaN/負値ガード＋上限）
-    const maxArticles = process.env.MAX_ARTICLES_PER_COMPANY;
+    const maxArticles = env.MAX_ARTICLES_PER_COMPANY;
     if (maxArticles != null) {
       const n = Number.parseInt(maxArticles, 10);
       if (Number.isFinite(n) && n > 0) {
@@ -116,7 +117,7 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
           }
 
           // イベント記事の除外（環境変数の解釈を厳密化）
-          const excludeEvents = !/^(false|0|no)$/i.test(String(process.env.EXCLUDE_EVENT_ARTICLES ?? 'true'));
+          const excludeEvents = !/^(false|0|no)$/i.test(String(env.EXCLUDE_EVENT_ARTICLES ?? 'true'));
           if (excludeEvents && this.isEventArticle(item.title, item.link)) {
             continue;
           }
