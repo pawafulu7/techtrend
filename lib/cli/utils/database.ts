@@ -8,7 +8,8 @@ let prisma: PrismaClient | null = null;
 export function getPrismaClient(): PrismaClient {
   if (!prisma) {
     prisma = new PrismaClient({
-      log: env.DEBUG ? ['query', 'info', 'warn', 'error'] : ['error'],
+      log:
+        env.DEBUG === 'true' ? ['query', 'info', 'warn', 'error'] : ['error'],
     });
   }
   return prisma;
@@ -18,7 +19,7 @@ export async function withTransaction<T>(
   fn: (tx: PrismaClient) => Promise<T>
 ): Promise<T> {
   const client = getPrismaClient();
-  
+
   try {
     logger.debug('トランザクション開始');
     const result = await client.$transaction(async (tx) => {

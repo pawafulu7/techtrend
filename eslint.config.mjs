@@ -52,10 +52,16 @@ const eslintConfig = defineConfig([
       'lib/utils/article/article-link-extractor.ts',
     ],
     rules: {
-      'no-restricted-syntax': ['error', {
-        selector: "MemberExpression[object.object.name='process'][object.property.name='env'][property.name!='NODE_ENV']",
-        message: "Use `env` from `@/lib/config/env` instead of direct `process.env` access."
-      }],
+      'no-restricted-syntax': ['error',
+        {
+          selector: "MemberExpression[object.object.name='process'][object.property.name='env'][property.name!='NODE_ENV']",
+          message: "Use `env` from `@/lib/config/env` instead of direct `process.env` access."
+        },
+        {
+          selector: "VariableDeclarator[id.type='ObjectPattern'][init.object.name='process'][init.property.name='env']",
+          message: "Destructure from `env` in `@/lib/config/env`, not from `process.env`."
+        }
+      ],
     },
   },
   // Override default ignores of eslint-config-next.

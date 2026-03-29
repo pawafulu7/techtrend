@@ -6,7 +6,7 @@ import {
   SpeculativeExpressionResult,
 } from './quality-checker.interface';
 import { getItemCountRule } from '../constants';
-import { env } from '@/lib/config/env';
+import { config } from '@/lib/config/env';
 
 const SPECULATIVE_PATTERNS = [
   'と考えられます',
@@ -330,7 +330,7 @@ export class SummaryQualityChecker implements QualityChecker {
     // NOTE: requiresRegeneration is computed but not used by any caller.
     // UnifiedSummaryService uses qualityResult.score for retry decisions.
     // Kept for interface compatibility; consider removing in future cleanup.
-    const minQualityScore = parseInt(env.QUALITY_MIN_SCORE || '70');
+    const minQualityScore = config.quality.minScore();
     const requiresRegeneration =
       score <= minQualityScore ||
       issues.some((issue) => issue.severity === 'critical') ||

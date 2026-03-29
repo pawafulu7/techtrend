@@ -4,7 +4,7 @@
  */
 
 import type { QualityCheckResult } from './quality-types';
-import { env } from '@/lib/config/env';
+import { env, config } from '@/lib/config/env';
 
 /**
  * 品質チェック結果の統計情報を計算
@@ -103,8 +103,7 @@ export function isQualityCheckEnabled(): boolean {
  * 最大再生成試行回数を取得
  */
 export function getMaxRegenerationAttempts(): number {
-  const value = parseInt(env.MAX_REGENERATION_ATTEMPTS || '3');
-  return isNaN(value) ? 3 : value;
+  return config.quality.maxAttempts();
 }
 
 /**

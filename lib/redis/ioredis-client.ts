@@ -15,15 +15,17 @@ export class IoRedisClient implements IRedisClient {
     // Common options
     const commonOptions = {
       db: config?.db || 0,
-      retryStrategy: config?.retryStrategy || ((times: number) => {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      }),
+      retryStrategy:
+        config?.retryStrategy ||
+        ((times: number) => {
+          const delay = Math.min(times * 50, 2000);
+          return delay;
+        }),
       enableOfflineQueue: config?.enableOfflineQueue !== false,
       connectTimeout: config?.connectTimeout || 10000,
       maxRetriesPerRequest: config?.maxRetriesPerRequest ?? 3,
       enableReadyCheck: true,
-      lazyConnect: false,  // Connect immediately on instantiation
+      lazyConnect: false, // Connect immediately on instantiation
     } as const;
 
     // Prefer URL (e.g. Upstash rediss://)
@@ -38,7 +40,7 @@ export class IoRedisClient implements IRedisClient {
       // Fallback to host/port/password
       this.client = new Redis({
         host: config?.host || env.REDIS_HOST || 'localhost',
-        port: config?.port || parseInt(env.REDIS_PORT || '6379'),
+        port: config?.port || parseInt(env.REDIS_PORT),
         password: config?.password ?? env.REDIS_PASSWORD,
         ...commonOptions,
       });

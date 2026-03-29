@@ -28,7 +28,7 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
       },
       headers: {
         'User-Agent': 'TechTrend/1.0 (https://techtrend.example.com)',
-        'Accept': 'application/rss+xml, application/xml, text/xml',
+        Accept: 'application/rss+xml, application/xml, text/xml',
       },
     });
 
@@ -74,7 +74,9 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
     try {
       logger.info(`Fetching articles from ${this.getCompanyName()}...`);
 
-      const feed = await this.retry(() => this.parser.parseURL(this.getRssUrl()));
+      const feed = await this.retry(() =>
+        this.parser.parseURL(this.getRssUrl())
+      );
 
       if (!feed.items || feed.items.length === 0) {
         logger.info(`No articles found for ${this.getCompanyName()}`);
@@ -105,19 +107,18 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
           }
 
           // 日本語チェック（content:encodedを含めて誤除外を防止）
-          const textToCheck = getContentFromItem(item)
-                            || item.description
-                            || item.summary
-                            || '';
-          const hasJapanese = this.containsJapanese(item.title) ||
-                            this.containsJapanese(textToCheck);
+          const textToCheck =
+            getContentFromItem(item) || item.description || item.summary || '';
+          const hasJapanese =
+            this.containsJapanese(item.title) ||
+            this.containsJapanese(textToCheck);
 
           if (!hasJapanese) {
             continue;
           }
 
           // イベント記事の除外（環境変数の解釈を厳密化）
-          const excludeEvents = !/^(false|0|no)$/i.test(String(env.EXCLUDE_EVENT_ARTICLES ?? 'true'));
+          const excludeEvents = env.EXCLUDE_EVENT_ARTICLES !== 'false';
           if (excludeEvents && this.isEventArticle(item.title, item.link)) {
             continue;
           }
@@ -147,22 +148,27 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
           };
 
           // サムネイル抽出（enclosure）
-          if (item.enclosure?.url && item.enclosure.type?.startsWith('image/')) {
+          if (
+            item.enclosure?.url &&
+            item.enclosure.type?.startsWith('image/')
+          ) {
             article.thumbnail = item.enclosure.url;
           }
 
           articles.push(article);
           processedCount++;
-
         } catch (error) {
-          errors.push(new Error(
-            `Failed to parse item from ${this.getCompanyName()}: ${error instanceof Error ? error.message : String(error)}`
-          ));
+          errors.push(
+            new Error(
+              `Failed to parse item from ${this.getCompanyName()}: ${error instanceof Error ? error.message : String(error)}`
+            )
+          );
         }
       }
 
-      logger.info(`${this.getCompanyName()}: Fetched ${articles.length} articles`);
-
+      logger.info(
+        `${this.getCompanyName()}: Fetched ${articles.length} articles`
+      );
     } catch (error) {
       const errorMessage = `Failed to fetch ${this.getCompanyName()} feed: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(errorMessage);
@@ -170,7 +176,10 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
     }
 
     // 念のためpublishedAt降順にソート（フィード順のばらつき対策）
-    articles.sort((a, b) => (b.publishedAt as Date).getTime() - (a.publishedAt as Date).getTime());
+    articles.sort(
+      (a, b) =>
+        (b.publishedAt as Date).getTime() - (a.publishedAt as Date).getTime()
+    );
     return { articles, errors };
   }
 
@@ -180,7 +189,8 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
   protected containsJapanese(text: string): boolean {
     if (!text) return false;
     // CJK末尾（〜9FFF）と和文記号（3000-303F）、半角カナも含める
-    const japaneseRegex = /[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\uFF65-\uFF9F]/u;
+    const japaneseRegex =
+      /[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\uFF65-\uFF9F]/u;
     return japaneseRegex.test(text);
   }
 
@@ -190,33 +200,72 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
   protected isEventArticle(title: string, url: string): boolean {
     const eventKeywords = [
       // イベント関連
-      'イベント', 'カンファレンス', 'セミナー', 'ミートアップ', 'meetup',
-      'conference', 'summit', 'expo', '展示会', 'ウェビナー', 'webinar',
-      '勉強会', 'ハッカソン', 'hackathon', 'コンテスト', 'contest',
+      'イベント',
+      'カンファレンス',
+      'セミナー',
+      'ミートアップ',
+      'meetup',
+      'conference',
+      'summit',
+      'expo',
+      '展示会',
+      'ウェビナー',
+      'webinar',
+      '勉強会',
+      'ハッカソン',
+      'hackathon',
+      'コンテスト',
+      'contest',
 
       // 登壇・発表関連
-      '登壇', '発表', 'LT', 'ライトニングトーク', 'プレゼン',
-      'presentation', 'talk', 'session', 'スピーカー', 'speaker',
+      '登壇',
+      '発表',
+      'LT',
+      'ライトニングトーク',
+      'プレゼン',
+      'presentation',
+      'talk',
+      'session',
+      'スピーカー',
+      'speaker',
 
       // 参加・レポート関連
-      '参加レポート', '参加報告', '開催レポート', '開催報告',
-      'イベントレポート', 'カンファレンスレポート',
+      '参加レポート',
+      '参加報告',
+      '開催レポート',
+      '開催報告',
+      'イベントレポート',
+      'カンファレンスレポート',
 
       // 告知・募集関連
-      '開催のお知らせ', '募集', '参加者募集', '登壇者募集',
-      'Call for', 'CFP', '申し込み', '受付中', '締切',
+      '開催のお知らせ',
+      '募集',
+      '参加者募集',
+      '登壇者募集',
+      'Call for',
+      'CFP',
+      '申し込み',
+      '受付中',
+      '締切',
 
       // 特定のイベント名
-      'AWS Summit', 'Google I/O', 'WWDC', 'Build',
-      'Tech Conference', 'DevFest', 'DroidKaigi', 'iOSDC'
+      'AWS Summit',
+      'Google I/O',
+      'WWDC',
+      'Build',
+      'Tech Conference',
+      'DevFest',
+      'DroidKaigi',
+      'iOSDC',
     ];
 
     const lowerTitle = title.toLowerCase();
     const lowerUrl = url.toLowerCase();
 
-    return eventKeywords.some(keyword =>
-      lowerTitle.includes(keyword.toLowerCase()) ||
-      lowerUrl.includes(keyword.toLowerCase())
+    return eventKeywords.some(
+      (keyword) =>
+        lowerTitle.includes(keyword.toLowerCase()) ||
+        lowerUrl.includes(keyword.toLowerCase())
     );
   }
 
@@ -232,7 +281,7 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
       if (itemAny.categories && Array.isArray(itemAny.categories)) {
         itemAny.categories.forEach((category: string) => {
           const tag = (category ?? '').trim();
-          if (tag && !tags.some(t => t.toLowerCase() === tag.toLowerCase())) {
+          if (tag && !tags.some((t) => t.toLowerCase() === tag.toLowerCase())) {
             tags.push(tag);
           }
         });

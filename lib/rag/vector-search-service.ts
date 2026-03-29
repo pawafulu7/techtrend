@@ -63,7 +63,7 @@ export class VectorSearchService {
       );
     }
     this.queryExpansionService = new QueryExpansionService();
-    this.activeModel = env.RAG_ACTIVE_MODEL || 'text-embedding-3-small';
+    this.activeModel = env.RAG_ACTIVE_MODEL;
     this.activeVersion = env.RAG_ACTIVE_VERSION;
   }
 

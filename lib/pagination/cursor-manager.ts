@@ -53,9 +53,7 @@ export class CursorManager {
 
   constructor(config: CursorManagerConfig) {
     this.secret =
-      config.secret ||
-      env.CURSOR_SECRET ||
-      randomBytes(32).toString('hex');
+      config.secret || env.CURSOR_SECRET || randomBytes(32).toString('hex');
     this.maxAge = config.maxAge || 3600; // デフォルト1時間
     this.version = config.version || 1;
   }
@@ -332,12 +330,12 @@ let globalCursorManager: CursorManager | null = null;
  */
 export function getCursorManager(): CursorManager {
   if (!globalCursorManager) {
-    const secret =
-      env.CURSOR_SECRET || 'default-secret-change-in-production';
+    const secret = env.CURSOR_SECRET || 'default-secret-change-in-production';
 
     // 本番環境でデフォルト秘密鍵の使用を禁止（CI/テスト環境は除外）
     const allowInsecureCursorSecret =
       env.CI === 'true' ||
+      env.CI === '1' ||
       env.ALLOW_INSECURE_CURSOR_SECRET === 'true';
 
     if (
