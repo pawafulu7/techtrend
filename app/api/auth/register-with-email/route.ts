@@ -32,9 +32,7 @@ async function sendVerificationEmail(email: string, token: string) {
   });
 
   const baseUrl =
-    env.NEXTAUTH_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    'http://localhost:3000';
+    env.NEXTAUTH_URL || env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
 
   const mailOptions = {
