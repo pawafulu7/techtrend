@@ -74,8 +74,8 @@ const eslintConfig = defineConfig([
     rules: {
       'no-restricted-syntax': ['error',
         {
-          selector: "MemberExpression[object.object.name='process'][object.property.name='env'][property.name!='NODE_ENV'][property.name!=/^NEXT_PUBLIC_/]",
-          message: "Use `env` from `@/lib/config/env` instead of direct `process.env` access. (NEXT_PUBLIC_* and NODE_ENV are exempt)"
+          selector: "MemberExpression[object.object.name='process'][object.property.name='env'][property.name!='NODE_ENV'][property.name!='JEST_WORKER_ID'][property.name!=/^NEXT_PUBLIC_/]",
+          message: "Use `env` from `@/lib/config/env` instead of direct `process.env` access. (NEXT_PUBLIC_*, NODE_ENV, JEST_WORKER_ID are exempt)"
         },
         {
           selector: "VariableDeclarator[id.type='ObjectPattern'][init.object.name='process'][init.property.name='env']",

@@ -602,6 +602,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
 
       console.error('\n[INFO] 要約生成を自動実行します...');
       try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { generateSummaries } = require('../maintenance/generate-summaries.ts');
         const result = await generateSummaries({ articleIds: newArticleIds });
         console.error(`[INFO] 要約生成完了: ${result.generated}件の要約を生成`);
