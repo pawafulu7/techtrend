@@ -16,7 +16,7 @@ export async function GET() {
       // 3クエリを並列実行
       const [recentTags, weeklyTags, newTags] = await Promise.all([
         // 過去24時間のタグ使用状況
-        prisma.$queryRaw`
+        prisma.$queryRaw<{ id: string; name: string; recent_count: bigint }[]>`
       SELECT
         t.id,
         t.name,
@@ -29,9 +29,9 @@ export async function GET() {
         AND t.name <> ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
-    ` as Promise<{ id: string; name: string; recent_count: bigint }[]>,
+    `,
         // 過去1週間のタグ使用状況
-        prisma.$queryRaw`
+        prisma.$queryRaw<{ id: string; name: string; weekly_count: bigint }[]>`
       SELECT
         t.id,
         t.name,
@@ -45,9 +45,9 @@ export async function GET() {
         AND t.name <> ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
-    ` as Promise<{ id: string; name: string; weekly_count: bigint }[]>,
+    `,
         // 新規タグ（過去24時間に初めて使われたタグ）
-        prisma.$queryRaw`
+        prisma.$queryRaw<{ id: string; name: string; count: bigint }[]>`
       SELECT DISTINCT
         t.id,
         t.name,
@@ -70,7 +70,7 @@ export async function GET() {
       GROUP BY t.id, t.name
       ORDER BY count DESC
       LIMIT 10
-    ` as Promise<{ id: string; name: string; count: bigint }[]>,
+    `,
       ]);
 
       // 週間平均と比較して急上昇を検出

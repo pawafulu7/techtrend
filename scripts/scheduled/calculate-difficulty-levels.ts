@@ -76,8 +76,8 @@ async function calculateDifficultyLevels() {
     console.error(`上級 (advanced): ${difficultyCount.advanced}件 (${((difficultyCount.advanced / articles.length) * 100).toFixed(1)}%)`);
 
     // ソース別の難易度分布
-    const sourceStats = await prisma.$queryRaw`
-      SELECT 
+    const sourceStats = await prisma.$queryRaw<{ source_name: string; difficulty: string; count: bigint }[]>`
+      SELECT
         s.name as source_name,
         a."difficulty",
         COUNT(*) as count
@@ -86,7 +86,7 @@ async function calculateDifficultyLevels() {
       WHERE a."difficulty" IS NOT NULL
       GROUP BY s.name, a."difficulty"
       ORDER BY s.name, a."difficulty"
-    ` as { source_name: string; difficulty: string; count: bigint }[];
+    `;
 
     console.error('\n【ソース別難易度分布】');
     let currentSource = '';

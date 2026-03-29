@@ -199,9 +199,9 @@ async function calculateAllQualityScores(options: Options) {
     let scoreDistribution: { range: string; count: bigint }[];
     
     if (options.source) {
-      scoreDistribution = await prisma.$queryRaw`
-        SELECT 
-          CASE 
+      scoreDistribution = await prisma.$queryRaw<{ range: string; count: bigint }[]>`
+        SELECT
+          CASE
             WHEN "qualityScore" >= 80 THEN '80-100 (優秀)'
             WHEN "qualityScore" >= 60 THEN '60-79 (良好)'
             WHEN "qualityScore" >= 40 THEN '40-59 (普通)'
@@ -215,9 +215,9 @@ async function calculateAllQualityScores(options: Options) {
         ORDER BY MIN("qualityScore") DESC
       `;
     } else {
-      scoreDistribution = await prisma.$queryRaw`
-        SELECT 
-          CASE 
+      scoreDistribution = await prisma.$queryRaw<{ range: string; count: bigint }[]>`
+        SELECT
+          CASE
             WHEN "qualityScore" >= 80 THEN '80-100 (優秀)'
             WHEN "qualityScore" >= 60 THEN '60-79 (良好)'
             WHEN "qualityScore" >= 40 THEN '40-59 (普通)'

@@ -115,8 +115,8 @@ export async function GET() {
         }),
 
         // 日別統計（過去30日）- ソース別内訳付き
-        prisma.$queryRaw`
-        SELECT 
+        prisma.$queryRaw<{ date: string; sourceName: string; count: number }[]>`
+        SELECT
           TO_CHAR(a."publishedAt", 'YYYY-MM-DD') as date,
           s.name as "sourceName",
           COUNT(*)::int as count
@@ -125,7 +125,7 @@ export async function GET() {
         WHERE a."publishedAt" >= NOW() - INTERVAL '30 days'
         GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), s.name
         ORDER BY date DESC, count DESC
-      ` as Promise<{ date: string; sourceName: string; count: number }[]>,
+      `,
 
         // 人気タグTOP10
         prisma.tag.findMany({
