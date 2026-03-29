@@ -371,6 +371,31 @@ describe('Environment Configuration - getEnv', () => {
     loggerSpy.mockRestore();
     delete process.env.ALLOW_INSECURE_AUTH_FALLBACK;
   });
+
+  it('allows fallback in production with uppercase opt-in flag', () => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.AUTH_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
+    process.env.ALLOW_INSECURE_AUTH_FALLBACK = 'TRUE';
+    resetEnvCache();
+
+    const loggerSpy = jest.spyOn(logger, 'warn').mockImplementation();
+    const result = getEnv();
+
+    expect(result).toBeDefined();
+    expect(loggerSpy).toHaveBeenCalled();
+    loggerSpy.mockRestore();
+    delete process.env.ALLOW_INSECURE_AUTH_FALLBACK;
+  });
+
+  it('does not fall back when a provided auth secret is invalid', () => {
+    process.env.NODE_ENV = 'development';
+    process.env.AUTH_SECRET = 'short';
+    delete process.env.NEXTAUTH_SECRET;
+    resetEnvCache();
+
+    expect(() => getEnv()).toThrow('Environment validation failed');
+  });
 });
 
 describe('Boolean enum case-insensitivity', () => {

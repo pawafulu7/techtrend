@@ -296,12 +296,15 @@ ${formatValidationErrors(parsed.error)}
 Please check your .env file and ensure all required variables are set correctly.
     `.trim();
 
-    // Allow fallback for auth secret issues in non-production environments
-    // (batch scripts in GHA don't need auth but import env.ts transitively)
-    if (isAuthSecretOnlyError(parsed.error)) {
+    // Allow fallback for auth secret issues only when secrets are truly missing
+    // (not when provided but invalid, e.g. 'short')
+    const authSecretsMissing =
+      sanitized.AUTH_SECRET == null && sanitized.NEXTAUTH_SECRET == null;
+
+    if (authSecretsMissing && isAuthSecretOnlyError(parsed.error)) {
       const allowFallback =
-        process.env.NODE_ENV !== 'production' ||
-        process.env.ALLOW_INSECURE_AUTH_FALLBACK === 'true';
+        sanitized.NODE_ENV !== 'production' ||
+        sanitized.ALLOW_INSECURE_AUTH_FALLBACK?.toLowerCase() === 'true';
 
       if (!allowFallback) {
         // Production without explicit opt-in: fail fast to prevent
@@ -309,7 +312,7 @@ Please check your .env file and ensure all required variables are set correctly.
         throw new Error(errorMessage);
       }
 
-      if (process.env.NODE_ENV === 'production') {
+      if (sanitized.NODE_ENV === 'production') {
         logger.warn(errorMessage);
         logger.warn(
           'AUTH_SECRET not set in production — using insecure fallback (ALLOW_INSECURE_AUTH_FALLBACK=true)'
