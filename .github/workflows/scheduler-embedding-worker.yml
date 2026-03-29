@@ -24,20 +24,11 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Scheduler setup
+        uses: ./.github/actions/scheduler-setup
         with:
-          node-version: '20'
-          cache: 'npm'
-      - name: Install deps
-        run: npm ci
-      - name: Generate Prisma Client
-        run: npx prisma generate
-      - name: Warm up database connection
-        shell: bash
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          echo "SELECT 1;" | npx prisma db execute --stdin --url "$DATABASE_URL"
+          database_url: ${{ secrets.DATABASE_URL }}
+          skip_migrate: 'true'
       - name: Run embedding worker
         env:
           NODE_ENV: production
