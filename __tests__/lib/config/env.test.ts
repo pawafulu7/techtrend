@@ -354,6 +354,53 @@ describe('Environment Configuration - getEnv', () => {
   });
 });
 
+describe('Boolean enum case-insensitivity', () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    jest.resetModules();
+    resetEnvCache();
+    process.env = { ...originalEnv };
+    process.env.NEXTAUTH_SECRET =
+      'test-secret-key-for-testing-purposes-only-32chars';
+  });
+
+  afterEach(() => {
+    resetEnvCache();
+    process.env = originalEnv;
+  });
+
+  it('accepts uppercase TRUE/FALSE for boolean env vars', () => {
+    process.env.ENABLE_CACHE = 'TRUE';
+    process.env.ENABLE_AUTH = 'FALSE';
+    process.env.ENABLE_TITLE_TRANSLATION = 'TRUE';
+    resetEnvCache();
+
+    const result = getEnv();
+    expect(result.ENABLE_CACHE).toBe('true');
+    expect(result.ENABLE_AUTH).toBe('false');
+    expect(result.ENABLE_TITLE_TRANSLATION).toBe('true');
+  });
+
+  it('accepts mixed-case True/False for boolean env vars', () => {
+    process.env.ENABLE_CACHE = 'True';
+    process.env.QUALITY_CHECK_ENABLED = 'False';
+    resetEnvCache();
+
+    const result = getEnv();
+    expect(result.ENABLE_CACHE).toBe('true');
+    expect(result.QUALITY_CHECK_ENABLED).toBe('false');
+  });
+
+  it('still rejects non-boolean strings', () => {
+    process.env.ENABLE_CACHE = 'yes';
+    process.env.NODE_ENV = 'production';
+    resetEnvCache();
+
+    expect(() => getEnv()).toThrow('Environment validation failed');
+  });
+});
+
 // Phase 2 Stage 2: features tests (enabled)
 describe('Environment Configuration - features', () => {
   const originalEnv = { ...process.env };
