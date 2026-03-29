@@ -47,11 +47,6 @@ enum PreferenceScope {
   digest
 }
 
-// =============================================================================
-// Knowledge Graph: Technology entity tracking and relationship mapping
-// =============================================================================
-
-
 model Article {
   id                     String             @id @default(cuid())
   title                  String
@@ -622,10 +617,6 @@ model UserSourcePreset {
   @@unique([userId, name], map: "uq_user_source_preset_name")
   @@index([userId], map: "idx_user_source_preset_user")
 }
-
-// =============================================================================
-// Knowledge Graph: Technology entities, relations, mentions, and metrics
-// =============================================================================
 
 // ---------------------------------------------------------------------------
 // Changelog
