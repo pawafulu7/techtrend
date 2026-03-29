@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui-v2/badge-v2';
 import { TrendingUp, Tag as TagIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

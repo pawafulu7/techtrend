@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Tag as TagIcon, ChevronDown, X } from 'lucide-react';
 import {

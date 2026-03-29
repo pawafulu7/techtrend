@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui-v2/badge-v2';
 import {
   BookOpen,
   Star,

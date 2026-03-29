@@ -18,7 +18,7 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { StickyNote, Lock, LogIn } from 'lucide-react';
 import { CommentForm } from './comment-form';

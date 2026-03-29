@@ -7,7 +7,7 @@ import {
   ArrowUp,
   ArrowDown,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui-v2/badge-v2';
 import {
   Accordion,
   AccordionContent,

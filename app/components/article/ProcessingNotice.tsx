@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
 import { Info } from 'lucide-react';
 
 interface ProcessingNoticeProps {

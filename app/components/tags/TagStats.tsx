@@ -2,8 +2,8 @@
 
 import { useQueries } from '@tanstack/react-query';
 import { useEffect, useRef, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import { Badge } from '@/components/ui-v2/badge-v2';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, Hash, Calendar, Activity } from 'lucide-react';
 import logger from '@/lib/logger.client';

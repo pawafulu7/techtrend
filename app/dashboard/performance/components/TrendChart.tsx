@@ -15,7 +15,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
 import type { TrendChartProps, TimeSeriesData } from '../types/dashboard';
 
 // カスタムツールチップ用のProps型

@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
 import logger from '@/lib/logger';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui-v2/badge-v2';
 import { ArticleCard } from '@/app/components/article/card';
 import {
   ArrowLeft,

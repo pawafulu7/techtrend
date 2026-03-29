@@ -14,7 +14,12 @@
  */
 import { render, screen, within } from '@testing-library/react';
 import { PageHeader } from '@/components/ui-v2/page-header';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from '@/components/ui-v2/card-v2';
 import { TrendingUp, Settings } from 'lucide-react';
 
 describe('Design Modernization Phase 2 Integration', () => {
@@ -65,14 +70,12 @@ describe('Design Modernization Phase 2 Integration', () => {
     });
   });
 
-  describe('CardTitle asChild セマンティクス Integration', () => {
-    it('asChildでh2としてレンダリングされスタイルが適用される', () => {
+  describe('CardTitle セマンティクス Integration', () => {
+    it('h3としてレンダリングされスタイルが適用される', () => {
       render(
         <Card>
           <CardHeader>
-            <CardTitle asChild>
-              <h2>セマンティックなタイトル</h2>
-            </CardTitle>
+            <CardTitle>セマンティックなタイトル</CardTitle>
           </CardHeader>
           <CardContent>
             <p>コンテンツ</p>
@@ -80,11 +83,10 @@ describe('Design Modernization Phase 2 Integration', () => {
         </Card>
       );
       const heading = screen.getByRole('heading', {
-        level: 2,
+        level: 3,
         name: 'セマンティックなタイトル',
       });
       expect(heading).toBeInTheDocument();
-      // スタイルが適用されていることを確認（asChildの動作検証）
       expect(heading).toHaveClass('leading-none');
       expect(heading).toHaveClass('font-semibold');
     });
@@ -103,9 +105,7 @@ describe('Design Modernization Phase 2 Integration', () => {
           <div className="grid gap-6 lg:grid-cols-3">
             <Card data-testid="card-1">
               <CardHeader>
-                <CardTitle asChild>
-                  <h2>設定項目1</h2>
-                </CardTitle>
+                <CardTitle>設定項目1</CardTitle>
               </CardHeader>
               <CardContent>
                 <p>設定内容</p>
@@ -113,9 +113,7 @@ describe('Design Modernization Phase 2 Integration', () => {
             </Card>
             <Card data-testid="card-2">
               <CardHeader>
-                <CardTitle asChild>
-                  <h2>設定項目2</h2>
-                </CardTitle>
+                <CardTitle>設定項目2</CardTitle>
               </CardHeader>
               <CardContent>
                 <p>別の設定</p>
@@ -130,11 +128,11 @@ describe('Design Modernization Phase 2 Integration', () => {
         screen.getByRole('heading', { level: 1, name: '設定ページ' })
       ).toBeInTheDocument();
 
-      // 複数のCard h2 セマンティクス検証（見出し階層が正しいか）
-      const h2Headings = screen.getAllByRole('heading', { level: 2 });
-      expect(h2Headings).toHaveLength(2);
-      expect(h2Headings[0]).toHaveTextContent('設定項目1');
-      expect(h2Headings[1]).toHaveTextContent('設定項目2');
+      // 複数のCard h3 セマンティクス検証（見出し階層が正しいか）
+      const h3Headings = screen.getAllByRole('heading', { level: 3 });
+      expect(h3Headings).toHaveLength(2);
+      expect(h3Headings[0]).toHaveTextContent('設定項目1');
+      expect(h3Headings[1]).toHaveTextContent('設定項目2');
 
       // Card同士が独立して存在することを確認
       expect(screen.getByTestId('card-1')).toBeInTheDocument();

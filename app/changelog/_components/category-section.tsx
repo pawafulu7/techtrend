@@ -1,7 +1,7 @@
 'use client';
 
 import { Sparkles, Bug, Zap, MoreHorizontal } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui-v2/badge-v2';
 import { EntryCard } from './entry-card';
 import { Category, ChangelogEntry } from '@/lib/changelog/types';
 
