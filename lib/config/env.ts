@@ -16,6 +16,10 @@ const numericStringWithDefault = (def: string) =>
       return def;
     return v;
   }, z.string());
+const booleanEnum = z.preprocess(
+  (v) => (typeof v === 'string' ? v.toLowerCase() : v),
+  z.enum(['true', 'false'])
+);
 
 // Environment variable schema
 const envSchema = z
@@ -59,32 +63,26 @@ const envSchema = z
     RAG_SIMILARITY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
     RAG_ACTIVE_MODEL: z.string().default('text-embedding-3-small'),
     RAG_ACTIVE_VERSION: z.coerce.number().int().positive().default(1),
-    RAG_ENABLED: z.enum(['true', 'false']).optional().default('false'),
+    RAG_ENABLED: booleanEnum.optional().default('false'),
 
     // Upstash Redis (for rate limiting in production)
     UPSTASH_REDIS_REST_URL: z.string().url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 
     // Feature Flags
-    ENABLE_CACHE: z.enum(['true', 'false']).optional().default('true'),
-    ENABLE_AUTH: z.enum(['true', 'false']).optional().default('true'),
-    ENABLE_ANALYTICS: z.enum(['true', 'false']).optional().default('false'),
-    AGENT_STREAMING_ENABLED: z
-      .enum(['true', 'false'])
-      .optional()
-      .default('false'),
+    ENABLE_CACHE: booleanEnum.optional().default('true'),
+    ENABLE_AUTH: booleanEnum.optional().default('true'),
+    ENABLE_ANALYTICS: booleanEnum.optional().default('false'),
+    AGENT_STREAMING_ENABLED: booleanEnum.optional().default('false'),
 
     // Quality Control
-    QUALITY_CHECK_ENABLED: z.enum(['true', 'false']).optional().default('true'),
+    QUALITY_CHECK_ENABLED: booleanEnum.optional().default('true'),
     QUALITY_MIN_SCORE: numericStringWithDefault('70'),
-    QUALITY_AUTO_FIX: z.enum(['true', 'false']).optional().default('false'),
+    QUALITY_AUTO_FIX: booleanEnum.optional().default('false'),
     MAX_REGENERATION_ATTEMPTS: numericStringWithDefault('3'),
 
     // Event Filtering
-    EXCLUDE_EVENT_ARTICLES: z
-      .enum(['true', 'false'])
-      .optional()
-      .default('false'),
+    EXCLUDE_EVENT_ARTICLES: booleanEnum.optional().default('false'),
     MAX_ARTICLES_PER_COMPANY: numericStringWithDefault('10'),
 
     // Application
@@ -103,22 +101,20 @@ const envSchema = z
       .optional(),
 
     // Testing
-    CI: z
-      .union([z.enum(['true', 'false']), z.literal('1'), z.literal('0')])
-      .optional(),
+    CI: z.union([booleanEnum, z.literal('1'), z.literal('0')]).optional(),
     TEST_DATABASE_URL: z.string().optional(),
 
     // Email / SMTP
     RESEND_API_KEY: z.string().optional(),
     EMAIL_FROM: z.string().optional(),
-    SKIP_EMAIL_SEND: z.enum(['true', 'false']).optional().default('false'),
+    SKIP_EMAIL_SEND: booleanEnum.optional().default('false'),
     GMAIL_USER: z.string().optional(),
     GMAIL_APP_PASSWORD: z.string().optional(),
     SMTP_HOST: z.string().optional(),
     SMTP_PORT: z.coerce.number().int().positive().default(587),
     SMTP_USER: z.string().optional(),
     SMTP_PASSWORD: z.string().optional(),
-    SMTP_SECURE: z.enum(['true', 'false']).optional().default('false'),
+    SMTP_SECURE: booleanEnum.optional().default('false'),
 
     // GitHub OAuth Aliases
     GITHUB_ID: z.string().trim().min(1).optional(),
@@ -131,12 +127,9 @@ const envSchema = z
     // LLM Configuration
     GEMINI_MODEL: z.string().optional(),
     AGENT_MODEL: z.string().optional(),
-    LOG_LLM_RAW_RESPONSE: z.enum(['true', 'false']).optional().default('false'),
-    USE_LOCAL_LLM_FALLBACK: z
-      .enum(['true', 'false'])
-      .optional()
-      .default('false'),
-    PREFER_LOCAL_LLM: z.enum(['true', 'false']).optional().default('false'),
+    LOG_LLM_RAW_RESPONSE: booleanEnum.optional().default('false'),
+    USE_LOCAL_LLM_FALLBACK: booleanEnum.optional().default('false'),
+    PREFER_LOCAL_LLM: booleanEnum.optional().default('false'),
     LOCAL_LLM_URL: optionalUrl,
     LOCAL_LLM_MODEL: z.string().optional(),
     LOCAL_LLM_MAX_TOKENS: z.coerce.number().int().positive().default(800),
@@ -147,17 +140,14 @@ const envSchema = z
       .default(8000),
 
     // Regression Testing
-    REGRESSION_MODE: z.enum(['true', 'false']).optional().default('false'),
+    REGRESSION_MODE: booleanEnum.optional().default('false'),
     REGRESSION_TEMPERATURE: z.coerce.number().min(0).max(2).optional(),
     REGRESSION_TOP_P: z.coerce.number().min(0).max(1).optional(),
     REGRESSION_TOP_K: z.coerce.number().int().positive().optional(),
 
     // Notifications
     SLACK_WEBHOOK_URL: optionalUrl,
-    SLACK_NOTIFICATION_ENABLED: z
-      .enum(['true', 'false'])
-      .optional()
-      .default('false'),
+    SLACK_NOTIFICATION_ENABLED: booleanEnum.optional().default('false'),
 
     // Summary / Batch Processing
     SUMMARY_CONCURRENCY: z.coerce.number().int().min(1).default(3),
@@ -200,34 +190,25 @@ const envSchema = z
 
     // Security / Middleware
     CURSOR_SECRET: z.string().optional(),
-    ALLOW_INSECURE_CURSOR_SECRET: z
-      .enum(['true', 'false'])
-      .optional()
-      .default('false'),
+    ALLOW_INSECURE_CURSOR_SECRET: booleanEnum.optional().default('false'),
     CRON_SECRET: z.string().optional(),
     CRON_TOKEN: z.string().optional(),
     CSRF_TRUSTED_ORIGINS: z.string().optional(),
     RATE_LIMIT_OVERRIDES: z.string().optional(),
 
     // Translation / Tech Terms
-    ENABLE_TITLE_TRANSLATION: z
-      .enum(['true', 'false'])
-      .optional()
-      .default('true'),
+    ENABLE_TITLE_TRANSLATION: booleanEnum.optional().default('true'),
     TRANSLATION_RATE_LIMIT: z.coerce.number().int().positive().optional(),
     TECH_TERMS_UPDATE_URL: optionalUrl,
 
     // Monitoring / Diagnostics
-    ENABLE_DEBUG_METRICS: z.enum(['true', 'false']).optional().default('false'),
+    ENABLE_DEBUG_METRICS: booleanEnum.optional().default('false'),
     NODE_MAX_HEAP_MB: z.coerce.number().int().positive().default(512),
     PROCESS_TYPE: z.string().optional(),
     DEBUG: z.string().optional(),
 
     // Feature Flags (additional)
-    USE_DATABASE_PROVIDER: z
-      .enum(['true', 'false'])
-      .optional()
-      .default('false'),
+    USE_DATABASE_PROVIDER: booleanEnum.optional().default('false'),
 
     // Platform Detection (runtime-injected)
     VERCEL: z.string().optional(),
