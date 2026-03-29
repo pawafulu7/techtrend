@@ -25,7 +25,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/scheduler-setup
+      - name: Scheduler setup
+        uses: ./.github/actions/scheduler-setup
         with:
           database_url: ${{ secrets.DATABASE_URL }}
       - name: Collect Qiita Popular and post-process

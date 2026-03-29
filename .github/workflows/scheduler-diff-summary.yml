@@ -29,9 +29,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/scheduler-setup
-        with:
-          database_url: ${{ secrets.DATABASE_URL }}
       - name: Calculate target week
         id: week
         env:
@@ -51,6 +48,10 @@ jobs:
             echo "target=$PREV_WEEK" >> $GITHUB_OUTPUT
           fi
           echo "Target week: $(grep target $GITHUB_OUTPUT | cut -d= -f2)"
+      - name: Scheduler setup
+        uses: ./.github/actions/scheduler-setup
+        with:
+          database_url: ${{ secrets.DATABASE_URL }}
       - name: Generate diff summaries
         env:
           NODE_ENV: production
