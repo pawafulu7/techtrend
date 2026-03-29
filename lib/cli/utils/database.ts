@@ -9,7 +9,9 @@ export function getPrismaClient(): PrismaClient {
   if (!prisma) {
     prisma = new PrismaClient({
       log:
-        env.DEBUG === 'true' ? ['query', 'info', 'warn', 'error'] : ['error'],
+        env.DEBUG && !/^(false|0)$/i.test(env.DEBUG)
+          ? ['query', 'info', 'warn', 'error']
+          : ['error'],
     });
   }
   return prisma;

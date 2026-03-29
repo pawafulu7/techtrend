@@ -85,7 +85,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // 記事数制限を環境変数で設定可能に（デフォルト: 30件）
+    // 記事数制限を環境変数で設定可能に（デフォルト: 10件、上限: 100件）
     const parsed = parseInt(env.MAX_ARTICLES_PER_COMPANY, 10);
     const maxArticlesPerCompany =
       Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 100) : 10;
