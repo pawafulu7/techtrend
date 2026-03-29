@@ -5,7 +5,6 @@
  * PM2スケジューラーで定期実行（推奨: 1日1回）
  */
 
-import { GeminiClient } from '@/lib/ai/gemini';
 import { prisma } from '@/lib/prisma';
 import { calculateSummaryScore, needsRegeneration } from '@/lib/utils/quality-scorer';
 import { optimizeContentForSummary } from '@/lib/utils/content/content-extractor';
@@ -21,8 +20,6 @@ if (!env.GEMINI_API_KEY) {
   console.error('❌ GEMINI_API_KEY環境変数が設定されていません');
   process.exit(1);
 }
-
-const geminiClient = new GeminiClient(env.GEMINI_API_KEY!);
 
 async function main() {
   console.error('🔄 自動再生成プロセスを開始します...');
