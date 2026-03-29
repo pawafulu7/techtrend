@@ -291,19 +291,21 @@ async function regenerateSpeakerDeckSummaries(): Promise<RegenerationResult> {
         }
       });
 
-      const summaryStats = await prisma.$queryRaw`
-        SELECT 
-          AVG(LENGTH(summary)) as avg_summary_length,
-          AVG(LENGTH(content)) as avg_content_length,
+      const summaryStats = await prisma.$queryRaw<{ avg_summary_length: number | null; avg_content_length: number | null; summary_longer_than_content: bigint }[]>`
+        SELECT
+          AVG(LENGTH(summary))::float8 as avg_summary_length,
+          AVG(LENGTH(content))::float8 as avg_content_length,
           COUNT(CASE WHEN LENGTH(summary) > LENGTH(content) AND LENGTH(content) > 0 THEN 1 END) as summary_longer_than_content
         FROM Article a
         JOIN Source s ON a.sourceId = s.id
         WHERE s.name = 'Speaker Deck'
-      ` as any[];
+      `;
 
       console.error('\n📈 更新後の統計:');
-      console.error(`   平均要約長: ${Math.round(summaryStats[0].avg_summary_length)}文字`);
-      console.error(`   平均コンテンツ長: ${Math.round(summaryStats[0].avg_content_length)}文字`);
+      const avgSummary = summaryStats[0].avg_summary_length;
+      const avgContent = summaryStats[0].avg_content_length;
+      console.error(`   平均要約長: ${avgSummary !== null ? `${Math.round(avgSummary)}文字` : 'N/A'}`);
+      console.error(`   平均コンテンツ長: ${avgContent !== null ? `${Math.round(avgContent)}文字` : 'N/A'}`);
       console.error(`   要約がコンテンツより長い: ${summaryStats[0].summary_longer_than_content}件`);
     }
 

@@ -73,7 +73,7 @@ export async function fetchKeywordsData(): Promise<{
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     const [recentTags, weeklyTags, newTagsRaw] = await Promise.all([
-      prisma.$queryRaw`
+      prisma.$queryRaw<{ id: string; name: string; recent_count: bigint }[]>`
           SELECT
             t.id,
             t.name,
@@ -86,9 +86,9 @@ export async function fetchKeywordsData(): Promise<{
             AND t.name <> ''
             AND t.name IS NOT NULL
           GROUP BY t.id, t.name
-        ` as Promise<{ id: string; name: string; recent_count: bigint }[]>,
+        `,
 
-      prisma.$queryRaw`
+      prisma.$queryRaw<{ id: string; name: string; weekly_count: bigint }[]>`
           SELECT
             t.id,
             t.name,
@@ -102,9 +102,9 @@ export async function fetchKeywordsData(): Promise<{
             AND t.name <> ''
             AND t.name IS NOT NULL
           GROUP BY t.id, t.name
-        ` as Promise<{ id: string; name: string; weekly_count: bigint }[]>,
+        `,
 
-      prisma.$queryRaw`
+      prisma.$queryRaw<{ id: string; name: string; count: bigint }[]>`
           SELECT DISTINCT
             t.id,
             t.name,
@@ -127,7 +127,7 @@ export async function fetchKeywordsData(): Promise<{
           GROUP BY t.id, t.name
           ORDER BY count DESC
           LIMIT 10
-        ` as Promise<{ id: string; name: string; count: bigint }[]>,
+        `,
     ]);
 
     const weeklyTagMap = new Map(
@@ -187,7 +187,9 @@ export async function fetchAnalysisData(
     const now = new Date();
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-    const topTags = (await prisma.$queryRaw`
+    const topTags = await prisma.$queryRaw<
+      { name: string; total_count: bigint }[]
+    >`
       SELECT
         t.name,
         COUNT(DISTINCT a.id) as total_count
@@ -199,13 +201,15 @@ export async function fetchAnalysisData(
       GROUP BY t.name
       ORDER BY total_count DESC
       LIMIT 10
-    `) as { name: string; total_count: bigint }[];
+    `;
 
     let timelineData: { date: string; tag_name: string; count: bigint }[] = [];
 
     if (topTags.length > 0) {
       const tagNames = topTags.map((t) => t.name);
-      timelineData = (await prisma.$queryRaw`
+      timelineData = await prisma.$queryRaw<
+        { date: string; tag_name: string; count: bigint }[]
+      >`
         SELECT
           TO_CHAR(a."publishedAt", 'YYYY-MM-DD') as date,
           t.name as tag_name,
@@ -218,7 +222,7 @@ export async function fetchAnalysisData(
           AND t.name IN (${Prisma.join(tagNames)})
         GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), t.name
         ORDER BY date ASC, count DESC
-      `) as { date: string; tag_name: string; count: bigint }[];
+      `;
     }
 
     const timelineByDate = timelineData.reduce(

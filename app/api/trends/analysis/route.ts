@@ -37,7 +37,9 @@ export async function GET(request: NextRequest) {
 
       if (tagName) {
         // 特定タグの時系列データ
-        const tagData = (await prisma.$queryRaw`
+        const tagData = await prisma.$queryRaw<
+          { date: string; count: bigint }[]
+        >`
             SELECT
               TO_CHAR(a."publishedAt", 'YYYY-MM-DD') as date,
               COUNT(DISTINCT a.id) as count
@@ -49,10 +51,12 @@ export async function GET(request: NextRequest) {
               AND a."isHidden" = false
             GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD')
             ORDER BY date ASC
-          `) as { date: string; count: bigint }[];
+          `;
 
         // 関連タグを取得
-        const relatedTags = (await prisma.$queryRaw`
+        const relatedTags = await prisma.$queryRaw<
+          { name: string; count: bigint }[]
+        >`
             SELECT
               t2.name,
               COUNT(DISTINCT a.id) as count
@@ -68,7 +72,7 @@ export async function GET(request: NextRequest) {
             GROUP BY t2.name
             ORDER BY count DESC
             LIMIT 10
-          `) as { name: string; count: bigint }[];
+          `;
 
         return {
           tag: tagName,
@@ -88,7 +92,9 @@ export async function GET(request: NextRequest) {
         };
       } else {
         // 全体のトレンド分析
-        const topTags = (await prisma.$queryRaw`
+        const topTags = await prisma.$queryRaw<
+          { name: string; total_count: bigint }[]
+        >`
             SELECT
               t.name,
               COUNT(DISTINCT a.id) as total_count
@@ -100,7 +106,7 @@ export async function GET(request: NextRequest) {
             GROUP BY t.name
             ORDER BY total_count DESC
             LIMIT 10
-          `) as { name: string; total_count: bigint }[];
+          `;
 
         // 上位タグの時系列データ
         let timelineData: { date: string; tag_name: string; count: bigint }[] =
@@ -108,7 +114,9 @@ export async function GET(request: NextRequest) {
 
         if (topTags.length > 0) {
           const tagNames = topTags.map((t) => t.name);
-          timelineData = (await prisma.$queryRaw`
+          timelineData = await prisma.$queryRaw<
+            { date: string; tag_name: string; count: bigint }[]
+          >`
               SELECT
                 TO_CHAR(a."publishedAt", 'YYYY-MM-DD') as date,
                 t.name as tag_name,
@@ -121,7 +129,7 @@ export async function GET(request: NextRequest) {
                 AND t.name IN (${Prisma.join(tagNames)})
               GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), t.name
               ORDER BY date ASC, count DESC
-            `) as { date: string; tag_name: string; count: bigint }[];
+            `;
         }
 
         // データを整形

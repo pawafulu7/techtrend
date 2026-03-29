@@ -136,7 +136,22 @@ export class ArticleDetailCache {
     }
 
     // DBから取得
-    const relatedArticles = await prisma.$queryRaw`
+    const relatedArticles = await prisma.$queryRaw<
+      {
+        id: string;
+        title: string;
+        translatedTitle: string | null;
+        summary: string | null;
+        url: string;
+        publishedAt: Date;
+        sourceId: string;
+        sourceName: string;
+        qualityScore: number | null;
+        difficulty: string | null;
+        commonTags: bigint;
+        tags: string | null;
+      }[]
+    >`
       WITH RelatedArticles AS (
         SELECT DISTINCT
           a.id,
