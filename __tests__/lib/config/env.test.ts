@@ -92,22 +92,19 @@ describe('Environment Configuration', () => {
       expect(() => getEnv()).toThrow('Environment validation failed');
     });
 
-    it('handles development mode with warnings', () => {
+    it('handles missing auth secret with fallback', () => {
       // モジュールキャッシュをクリア
       jest.resetModules();
       resetEnvCache();
 
       process.env.NODE_ENV = 'development';
-      // Missing both AUTH_SECRET and NEXTAUTH_SECRET (triggers warning)
+      // Missing both AUTH_SECRET and NEXTAUTH_SECRET (triggers fallback)
       delete process.env.AUTH_SECRET;
       delete process.env.NEXTAUTH_SECRET;
 
-      const loggerSpy = jest.spyOn(logger, 'warn').mockImplementation();
       const result = getEnv();
-
       expect(result).toBeDefined();
-      expect(loggerSpy).toHaveBeenCalled();
-      loggerSpy.mockRestore();
+      expect(result.AUTH_SECRET).toBeDefined();
     });
   });
 
@@ -338,9 +335,19 @@ describe('Environment Configuration - getEnv', () => {
     expect(() => getEnv()).toThrow();
   });
 
-  it('handles development mode with warnings', () => {
+  it('handles missing auth secret with fallback in development', () => {
     process.env.NODE_ENV = 'development';
-    // Missing both AUTH_SECRET and NEXTAUTH_SECRET (triggers warning)
+    delete process.env.AUTH_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
+    resetEnvCache();
+
+    const result = getEnv();
+    expect(result).toBeDefined();
+    expect(result.AUTH_SECRET).toBeDefined();
+  });
+
+  it('warns when auth secret missing in production', () => {
+    process.env.NODE_ENV = 'production';
     delete process.env.AUTH_SECRET;
     delete process.env.NEXTAUTH_SECRET;
     resetEnvCache();
@@ -390,6 +397,50 @@ describe('Boolean enum case-insensitivity', () => {
     const result = getEnv();
     expect(result.ENABLE_CACHE).toBe('true');
     expect(result.QUALITY_CHECK_ENABLED).toBe('false');
+  });
+
+  it('treats empty string as default for boolean env vars', () => {
+    process.env.SLACK_NOTIFICATION_ENABLED = '';
+    process.env.ENABLE_CACHE = '';
+    resetEnvCache();
+
+    const result = getEnv();
+    expect(result.SLACK_NOTIFICATION_ENABLED).toBe('false'); // default
+    expect(result.ENABLE_CACHE).toBe('true'); // default
+  });
+
+  it('treats empty string as undefined for optional URL env vars', () => {
+    process.env.SLACK_WEBHOOK_URL = '';
+    resetEnvCache();
+
+    const result = getEnv();
+    expect(result.SLACK_WEBHOOK_URL).toBeUndefined();
+  });
+
+  it('treats empty string AUTH_SECRET as missing (uses fallback)', () => {
+    process.env.AUTH_SECRET = '';
+    process.env.NEXTAUTH_SECRET = '';
+    resetEnvCache();
+
+    const result = getEnv();
+    expect(result.AUTH_SECRET).toBeDefined();
+    expect(result.AUTH_SECRET.length).toBeGreaterThanOrEqual(32);
+  });
+
+  it('treats empty string OPENAI_API_KEY as undefined', () => {
+    process.env.OPENAI_API_KEY = '';
+    resetEnvCache();
+
+    const result = getEnv();
+    expect(result.OPENAI_API_KEY).toBeUndefined();
+  });
+
+  it('treats empty string GOOGLE_CLIENT_ID as undefined', () => {
+    process.env.GOOGLE_CLIENT_ID = '';
+    resetEnvCache();
+
+    const result = getEnv();
+    expect(result.GOOGLE_CLIENT_ID).toBeUndefined();
   });
 
   it('still rejects non-boolean strings', () => {

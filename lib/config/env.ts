@@ -6,14 +6,22 @@
 import { z } from 'zod';
 import logger from '@/lib/logger';
 
-// Helpers to coerce empty strings to undefined for optional vars
-const emptyToUndefined = (v: unknown) =>
-  typeof v === 'string' && v.trim() === '' ? undefined : v;
-const optionalUrl = z.preprocess(emptyToUndefined, z.string().url()).optional();
+// Preprocess all env vars: empty/whitespace-only strings → undefined
+// GHA/CI environments often set secrets to '' when not configured
+function sanitizeEnv(
+  raw: NodeJS.ProcessEnv
+): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(raw).map(([k, v]) => [
+      k,
+      typeof v === 'string' && v.trim() === '' ? undefined : v,
+    ])
+  );
+}
+const optionalUrl = z.string().url().optional();
 const numericStringWithDefault = (def: string) =>
   z.preprocess((v) => {
-    if (typeof v !== 'string' || v.trim() === '' || !/^\d+$/.test(v))
-      return def;
+    if (typeof v !== 'string' || !/^\d+$/.test(v)) return def;
     return v;
   }, z.string());
 const booleanEnum = z.preprocess(
@@ -272,7 +280,8 @@ function isAuthSecretOnlyError(error: z.ZodError): boolean {
  */
 export function getEnv(): Env {
   if (_env === null) {
-    const parsed = envSchema.safeParse(process.env);
+    const sanitized = sanitizeEnv(process.env);
+    const parsed = envSchema.safeParse(sanitized);
 
     if (parsed.success) {
       _env = parsed.data;
@@ -287,19 +296,20 @@ ${formatValidationErrors(parsed.error)}
 Please check your .env file and ensure all required variables are set correctly.
     `.trim();
 
-    // In development, allow fallback ONLY for auth secret issues
-    if (
-      (process.env.NODE_ENV === 'development' ||
-        process.env.NODE_ENV === 'test') &&
-      isAuthSecretOnlyError(parsed.error)
-    ) {
-      logger.warn(errorMessage);
-      logger.warn('Using development auth secret fallback');
+    // Allow fallback for auth secret issues in any environment
+    // (batch scripts in GHA don't need auth but import env.ts transitively)
+    if (isAuthSecretOnlyError(parsed.error)) {
+      if (process.env.NODE_ENV === 'production') {
+        logger.warn(errorMessage);
+        logger.warn(
+          'AUTH_SECRET not set in production — auth-dependent features will fail at request time'
+        );
+      }
 
       const retryParsed = envSchema.safeParse({
-        ...process.env,
-        AUTH_SECRET: process.env.AUTH_SECRET || DEV_AUTH_SECRET,
-        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || DEV_AUTH_SECRET,
+        ...sanitized,
+        AUTH_SECRET: sanitized.AUTH_SECRET || DEV_AUTH_SECRET,
+        NEXTAUTH_SECRET: sanitized.NEXTAUTH_SECRET || DEV_AUTH_SECRET,
       });
 
       if (retryParsed.success) {
@@ -311,7 +321,7 @@ Please check your .env file and ensure all required variables are set correctly.
       throw new Error(errorMessage);
     }
 
-    // Production or non-auth errors: fail fast
+    // Non-auth errors: fail fast
     throw new Error(errorMessage);
   }
 
