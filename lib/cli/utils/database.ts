@@ -8,10 +8,12 @@ let prisma: PrismaClient | null = null;
 export function getPrismaClient(): PrismaClient {
   if (!prisma) {
     prisma = new PrismaClient({
-      log:
-        env.DEBUG && !/^(false|0)$/i.test(env.DEBUG)
+      log: (() => {
+        const debug = env.DEBUG?.trim();
+        return debug && !/^(false|0)$/i.test(debug)
           ? ['query', 'info', 'warn', 'error']
-          : ['error'],
+          : ['error'];
+      })(),
     });
   }
   return prisma;

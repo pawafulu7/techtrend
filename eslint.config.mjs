@@ -39,7 +39,7 @@ const eslintConfig = defineConfig([
       }],
     },
   },
-  // Enforce centralized env access in lib/ (process.env.NODE_ENV is allowed)
+  // Enforce centralized env access in lib/ (only direct process.env.NODE_ENV allowed, no destructuring)
   {
     files: ['lib/**/*.ts', 'lib/**/*.tsx'],
     ignores: [
