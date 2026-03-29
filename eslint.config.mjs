@@ -39,6 +39,32 @@ const eslintConfig = defineConfig([
       }],
     },
   },
+  // Enforce centralized env access in lib/ (only direct process.env.NODE_ENV allowed, no destructuring)
+  {
+    files: ['lib/**/*.ts', 'lib/**/*.tsx'],
+    ignores: [
+      'lib/config/env.ts',
+      'lib/logger.ts',
+      'lib/logger.client.ts',
+      'lib/hooks/**',
+      'lib/cookies/**',
+      'lib/errors/**',
+      'lib/utils/article/article-link-extractor.ts',
+      'lib/config/feature-flags.ts',
+    ],
+    rules: {
+      'no-restricted-syntax': ['error',
+        {
+          selector: "MemberExpression[object.object.name='process'][object.property.name='env'][property.name!='NODE_ENV']",
+          message: "Use `env` from `@/lib/config/env` instead of direct `process.env` access."
+        },
+        {
+          selector: "VariableDeclarator[id.type='ObjectPattern'][init.object.name='process'][init.property.name='env']",
+          message: "Destructure from `env` in `@/lib/config/env`, not from `process.env`."
+        }
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores

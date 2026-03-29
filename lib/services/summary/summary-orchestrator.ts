@@ -16,17 +16,12 @@ import type {
   SummaryAndTags,
 } from './types';
 import { updateArticleTags } from './batch-processor';
+import { env } from '@/lib/config/env';
 
 /**
  * Minimum content length required for summary generation.
  */
-const parsedMinContentLength = Number.parseInt(
-  process.env.MIN_CONTENT_LENGTH ?? '100',
-  10
-);
-const MIN_CONTENT_LENGTH = Number.isNaN(parsedMinContentLength)
-  ? 100
-  : parsedMinContentLength;
+const MIN_CONTENT_LENGTH = env.MIN_CONTENT_LENGTH;
 
 /**
  * Content validation result for article processing.

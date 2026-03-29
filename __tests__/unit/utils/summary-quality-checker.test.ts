@@ -9,6 +9,7 @@ import {
 } from '../../../lib/utils/summary/summary-quality-checker';
 
 import { ContentAnalysis } from '../../../lib/utils/content/content-analyzer';
+import { resetEnvCache } from '@/lib/config/env';
 
 describe('summary-quality-checker', () => {
   describe('checkSummaryQuality', () => {
@@ -429,10 +430,12 @@ describe('summary-quality-checker', () => {
 
     beforeEach(() => {
       process.env = { ...originalEnv };
+      resetEnvCache();
     });
 
     afterEach(() => {
       process.env = originalEnv;
+      resetEnvCache();
     });
 
     describe('isQualityCheckEnabled', () => {
@@ -443,11 +446,13 @@ describe('summary-quality-checker', () => {
 
       it('should return true when enabled', () => {
         process.env.QUALITY_CHECK_ENABLED = 'true';
+        resetEnvCache();
         expect(isQualityCheckEnabled()).toBe(true);
       });
 
       it('should return false when disabled', () => {
         process.env.QUALITY_CHECK_ENABLED = 'false';
+        resetEnvCache();
         expect(isQualityCheckEnabled()).toBe(false);
       });
     });
@@ -460,11 +465,13 @@ describe('summary-quality-checker', () => {
 
       it('should return custom value', () => {
         process.env.QUALITY_MIN_SCORE = '80';
+        resetEnvCache();
         expect(getMinQualityScore()).toBe(80);
       });
 
       it('should return default for invalid value', () => {
         process.env.QUALITY_MIN_SCORE = 'invalid';
+        resetEnvCache();
         expect(getMinQualityScore()).toBe(70);
       });
     });
@@ -477,11 +484,13 @@ describe('summary-quality-checker', () => {
 
       it('should return custom value', () => {
         process.env.MAX_REGENERATION_ATTEMPTS = '5';
+        resetEnvCache();
         expect(getMaxRegenerationAttempts()).toBe(5);
       });
 
       it('should return default for invalid value', () => {
         process.env.MAX_REGENERATION_ATTEMPTS = 'invalid';
+        resetEnvCache();
         expect(getMaxRegenerationAttempts()).toBe(3);
       });
     });
@@ -499,6 +508,7 @@ describe('summary-quality-checker', () => {
 
       it('should change isValid threshold when QUALITY_MIN_SCORE is set to 90', () => {
         process.env.QUALITY_MIN_SCORE = '90';
+        resetEnvCache();
         // 句点なし -5 -> score=95。isValid は score >= 90 なのでtrue
         const summary = 'x'.repeat(169); // 句点なし
         const detailedSummary = Array(5).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
@@ -510,6 +520,7 @@ describe('summary-quality-checker', () => {
 
       it('should mark isValid=false when score is below custom QUALITY_MIN_SCORE', () => {
         process.env.QUALITY_MIN_SCORE = '99';
+        resetEnvCache();
         // 句点なし -5 -> score=95 < 99 -> isValid=false
         const summary = 'x'.repeat(169); // 句点なし
         const detailedSummary = Array(5).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
@@ -522,6 +533,7 @@ describe('summary-quality-checker', () => {
 
       it('should mark isValid=true when score meets lowered QUALITY_MIN_SCORE threshold', () => {
         process.env.QUALITY_MIN_SCORE = '50';
+        resetEnvCache();
         // 詳細要約短すぎ -20, 句点なし -5, 箇条書き少なめ -5 -> score=70 >= 50 -> isValid=true
         const summary = 'x'.repeat(169); // 句点なし
         const detailedSummary = Array(2).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
@@ -546,6 +558,7 @@ describe('summary-quality-checker', () => {
 
       it('should not require regeneration when score is above custom QUALITY_MIN_SCORE=50', () => {
         process.env.QUALITY_MIN_SCORE = '50';
+        resetEnvCache();
         // 句点なし -5 -> score=95 >= 50 -> requiresRegeneration=false
         const summary = 'x'.repeat(169); // 句点なし
         const detailedSummary = Array(5).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');
@@ -558,6 +571,7 @@ describe('summary-quality-checker', () => {
 
       it('should require regeneration when score falls below custom QUALITY_MIN_SCORE=99', () => {
         process.env.QUALITY_MIN_SCORE = '99';
+        resetEnvCache();
         // 句点なし -5 -> score=95 < 99 -> requiresRegeneration=true
         const summary = 'x'.repeat(169); // 句点なし
         const detailedSummary = Array(5).fill(0).map(() => '・' + 'x'.repeat(100)).join('\n');

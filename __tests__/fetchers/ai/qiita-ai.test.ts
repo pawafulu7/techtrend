@@ -1,6 +1,7 @@
 import { QiitaAIFetcher } from '../../../lib/fetchers/ai/qiita-ai';
 import { Source } from '@prisma/client';
 import axios from 'axios';
+import { resetEnvCache } from '@/lib/config/env';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -110,6 +111,7 @@ describe('QiitaAIFetcher', () => {
 
     it('環境変数からAPIトークンを使用する', async () => {
       process.env.QIITA_API_TOKEN = 'test-token';
+      resetEnvCache();
 
       mockedAxios.get.mockResolvedValueOnce({
         data: { likes_count: 10 },
@@ -131,6 +133,7 @@ describe('QiitaAIFetcher', () => {
       );
 
       delete process.env.QIITA_API_TOKEN;
+      resetEnvCache();
     });
 
     it('429エラーを適切に処理する', async () => {

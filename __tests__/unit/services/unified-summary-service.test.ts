@@ -2,6 +2,8 @@
  * UnifiedSummaryService のユニットテスト
  */
 
+import { resetEnvCache } from '@/lib/config/env';
+
 // node-fetchのモックを先に定義
 jest.mock('node-fetch');
 
@@ -64,6 +66,7 @@ describe('UnifiedSummaryService', () => {
     mockFetch = require('node-fetch').default;
     // 環境変数をモック
     process.env = { ...originalEnv, GEMINI_API_KEY: 'test-api-key' };
+    resetEnvCache();
     // デフォルトのfetchモック設定
     mockFetch.mockImplementation(() => Promise.resolve({
       ok: true,
@@ -75,11 +78,13 @@ describe('UnifiedSummaryService', () => {
   afterEach(() => {
     // Clear environment for next test
     process.env = { ...originalEnv };
+    resetEnvCache();
   });
 
   afterAll(() => {
     // Restore original environment
     process.env = originalEnv;
+    resetEnvCache();
   });
 
   describe('generate', () => {

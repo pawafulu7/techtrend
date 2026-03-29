@@ -14,6 +14,7 @@ import { checkSummaryQuality } from '../utils/summary/summary-quality-checker';
 import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { logger, sanitizeError } from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 export interface UnifiedSummaryResult extends ParsedSummaryResult {
   articleType: 'unified';
@@ -46,11 +47,11 @@ export class UnifiedSummaryService {
   private embeddingScheduler: EmbeddingScheduler;
 
   constructor(apiKey?: string) {
-    this.apiKey = apiKey || process.env.GEMINI_API_KEY || '';
+    this.apiKey = apiKey || env.GEMINI_API_KEY || '';
     if (!this.apiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+    const model = env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
     this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
     this.embeddingScheduler = new EmbeddingScheduler();
   }

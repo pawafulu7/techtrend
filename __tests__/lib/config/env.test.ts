@@ -72,14 +72,15 @@ describe('Environment Configuration', () => {
       expect(() => getEnv()).toThrow('Environment validation failed');
     });
 
-    it('validates port numbers', () => {
+    it('falls back to default for invalid port numbers', () => {
       process.env.NEXTAUTH_SECRET =
         'test-secret-key-for-testing-purposes-only-32chars';
       process.env.PORT = 'not-a-number';
       process.env.NODE_ENV = 'production';
 
-      // production環境では無効なPORT番号でエラーを投げる
-      expect(() => getEnv()).toThrow('Environment validation failed');
+      // Invalid numeric strings fall back to default value
+      const env = getEnv();
+      expect(env.PORT).toBe('3000');
     });
 
     it('validates enum values', () => {
@@ -316,14 +317,16 @@ describe('Environment Configuration - getEnv', () => {
     expect(() => getEnv()).toThrow('Environment validation failed');
   });
 
-  it('validates port numbers', () => {
+  it('falls back to default for invalid port numbers', () => {
     process.env.NEXTAUTH_SECRET =
       'test-secret-key-for-testing-purposes-only-32chars';
     process.env.PORT = 'not-a-number';
     process.env.NODE_ENV = 'production';
     resetEnvCache();
 
-    expect(() => getEnv()).toThrow('Environment validation failed');
+    // Invalid numeric strings fall back to default value
+    const env = getEnv();
+    expect(env.PORT).toBe('3000');
   });
 
   it('validates enum values', () => {

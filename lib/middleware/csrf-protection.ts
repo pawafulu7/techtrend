@@ -10,6 +10,7 @@ import {
   extendWithSessionContext,
   type SessionContext,
 } from './session-context';
+import { env } from '@/lib/config/env';
 
 /**
  * Safely extract origin from a URL string using URL constructor.
@@ -113,12 +114,12 @@ export const CSRF_PROTECTED_METHODS = [
 function getAllowedOrigins(): string[] {
   const origins: string[] = [];
 
-  if (process.env.NEXTAUTH_URL) {
-    origins.push(normalizeOrigin(process.env.NEXTAUTH_URL));
+  if (env.NEXTAUTH_URL) {
+    origins.push(normalizeOrigin(env.NEXTAUTH_URL));
   }
 
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    origins.push(normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL));
+  if (env.NEXT_PUBLIC_APP_URL) {
+    origins.push(normalizeOrigin(env.NEXT_PUBLIC_APP_URL));
   }
 
   // Development environment origins
@@ -128,7 +129,7 @@ function getAllowedOrigins(): string[] {
   }
 
   // Additional trusted origins from environment
-  const trustedOrigins = process.env.CSRF_TRUSTED_ORIGINS;
+  const trustedOrigins = env.CSRF_TRUSTED_ORIGINS;
   if (trustedOrigins) {
     origins.push(
       ...trustedOrigins.split(',').map((o) => normalizeOrigin(o.trim()))

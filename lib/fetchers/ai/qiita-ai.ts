@@ -7,6 +7,7 @@ import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
 import axios from 'axios';
 import { QiitaAIEnricher } from '@/lib/enrichers/qiita-ai';
+import { env } from '@/lib/config/env';
 
 interface QiitaTag {
   name: string;
@@ -265,7 +266,7 @@ export class QiitaAIFetcher extends BaseFetcher {
           headers: {
             'Accept': 'application/json',
             // 環境変数からトークンを取得（オプション）
-            ...(process.env.QIITA_API_TOKEN && { 'Authorization': `Bearer ${process.env.QIITA_API_TOKEN}` })
+            ...(env.QIITA_API_TOKEN && { 'Authorization': `Bearer ${env.QIITA_API_TOKEN}` })
           }
         }
       );

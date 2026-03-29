@@ -4,6 +4,7 @@ import { ArticleSummarizer } from '@/lib/ai';
 import { normalizeTagInput } from '@/lib/utils/tag/tag-normalizer';
 import type { CollectResult } from '@/types/api';
 import logger from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 export async function collectFeeds(): Promise<{
   results: CollectResult[];
@@ -17,7 +18,7 @@ export async function collectFeeds(): Promise<{
   });
 
   // Initialize AI summarizer
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = env.GEMINI_API_KEY;
   const summarizer = apiKey ? new ArticleSummarizer(apiKey) : null;
 
   for (const source of sources) {

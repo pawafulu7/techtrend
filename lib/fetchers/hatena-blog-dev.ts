@@ -7,6 +7,7 @@
 import { BaseFetcher } from './base';
 import type { FetchResult, CreateArticleInput } from '@/types/fetchers';
 import { logger } from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 /**
  * hatena.blog/dev/entries から取得する記事エントリの型
@@ -65,10 +66,8 @@ export class HatenaBlogDevFetcher extends BaseFetcher {
   constructor(source: import('@prisma/client').Source) {
     super(source);
     // Validate environment variable parsing (handle NaN and negative values)
-    const parsedMaxPages = parseInt(process.env.HATENA_BLOG_DEV_MAX_PAGES || '3', 10);
-    this.maxPages = Number.isNaN(parsedMaxPages) || parsedMaxPages < 1 ? 3 : parsedMaxPages;
-    const parsedTimeout = parseInt(process.env.HATENA_BLOG_DEV_TIMEOUT || '30000', 10);
-    this.timeout = Number.isNaN(parsedTimeout) || parsedTimeout < 1000 ? 30000 : parsedTimeout;
+    this.maxPages = env.HATENA_BLOG_DEV_MAX_PAGES;
+    this.timeout = env.HATENA_BLOG_DEV_TIMEOUT;
   }
 
   /**
@@ -141,7 +140,9 @@ export class HatenaBlogDevFetcher extends BaseFetcher {
       const json = (await response.json()) as GraphQLResponse;
 
       if (json.errors && json.errors.length > 0) {
-        throw new Error(`GraphQL errors: ${json.errors.map((e) => e.message).join(', ')}`);
+        throw new Error(
+          `GraphQL errors: ${json.errors.map((e) => e.message).join(', ')}`
+        );
       }
 
       if (!json.data?.recentEntries) {
@@ -180,13 +181,18 @@ export class HatenaBlogDevFetcher extends BaseFetcher {
     const publishedAt = new Date(entry.created);
     if (Number.isNaN(publishedAt.getTime())) {
       // Fall back to current time if date is invalid
-      logger.warn({ dateValue: entry.created }, 'HatenaBlogDevFetcher: Invalid date format, using current time');
+      logger.warn(
+        { dateValue: entry.created },
+        'HatenaBlogDevFetcher: Invalid date format, using current time'
+      );
     }
 
     return {
       title: entry.title,
       url: entry.url,
-      publishedAt: Number.isNaN(publishedAt.getTime()) ? new Date() : publishedAt,
+      publishedAt: Number.isNaN(publishedAt.getTime())
+        ? new Date()
+        : publishedAt,
       sourceId: this.source.id,
       thumbnail: null,
       content: null, // Enricherで取得

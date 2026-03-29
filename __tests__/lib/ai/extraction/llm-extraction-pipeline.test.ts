@@ -4,6 +4,7 @@ import {
   ExtractionConfig,
   resetLLMExtractionPipeline,
 } from '@/lib/ai/extraction/llm-extraction-pipeline';
+import { resetEnvCache } from '@/lib/config/env';
 
 // Mock fetch
 const mockFetch = jest.fn();
@@ -26,15 +27,18 @@ describe('LLMExtractionPipeline', () => {
     jest.clearAllMocks();
     resetLLMExtractionPipeline();
     process.env = { ...originalEnv, GEMINI_API_KEY: 'test-api-key' };
+    resetEnvCache();
   });
 
   afterEach(() => {
     process.env = originalEnv;
+    resetEnvCache();
   });
 
   describe('constructor', () => {
     it('should throw if API key is not provided', () => {
       delete process.env.GEMINI_API_KEY;
+      resetEnvCache();
       expect(() => new LLMExtractionPipeline()).toThrow(
         'GEMINI_API_KEY is not set'
       );
@@ -42,6 +46,7 @@ describe('LLMExtractionPipeline', () => {
 
     it('should accept API key as parameter', () => {
       delete process.env.GEMINI_API_KEY;
+      resetEnvCache();
       const pipeline = new LLMExtractionPipeline('custom-api-key');
       expect(pipeline.getModelVersion()).toBe('gemini-2.5-flash-lite');
     });

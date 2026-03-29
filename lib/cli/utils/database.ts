@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { logger } from './logger';
+import { env } from '@/lib/config/env';
 
 // グローバルPrismaクライアントのインスタンス
 let prisma: PrismaClient | null = null;
@@ -7,7 +8,12 @@ let prisma: PrismaClient | null = null;
 export function getPrismaClient(): PrismaClient {
   if (!prisma) {
     prisma = new PrismaClient({
-      log: process.env.DEBUG ? ['query', 'info', 'warn', 'error'] : ['error'],
+      log: (() => {
+        const debug = env.DEBUG?.trim();
+        return debug && !/^(false|0)$/i.test(debug)
+          ? ['query', 'info', 'warn', 'error']
+          : ['error'];
+      })(),
     });
   }
   return prisma;
@@ -17,7 +23,7 @@ export async function withTransaction<T>(
   fn: (tx: PrismaClient) => Promise<T>
 ): Promise<T> {
   const client = getPrismaClient();
-  
+
   try {
     logger.debug('トランザクション開始');
     const result = await client.$transaction(async (tx) => {

@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import pLimit from 'p-limit';
 import { logger, sanitizeError } from '@/lib/logger';
 import { embeddingSchema } from './schemas';
+import { env } from '@/lib/config/env';
 
 /**
  * Embedding Service for RAG
@@ -30,14 +31,14 @@ export class EmbeddingService {
 
   constructor(config?: Partial<EmbeddingConfig>) {
     this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: env.OPENAI_API_KEY,
     });
 
     this.config = {
-      model: process.env.EMBEDDING_MODEL || 'text-embedding-3-small',
-      dimensions: parseInt(process.env.EMBEDDING_DIMENSIONS || '1536', 10),
-      batchSize: parseInt(process.env.EMBEDDING_BATCH_SIZE || '100', 10),
-      concurrency: parseInt(process.env.EMBEDDING_CONCURRENCY || '5', 10),
+      model: env.EMBEDDING_MODEL || 'text-embedding-3-small',
+      dimensions: env.EMBEDDING_DIMENSIONS,
+      batchSize: env.EMBEDDING_BATCH_SIZE,
+      concurrency: env.EMBEDDING_CONCURRENCY,
       maxRetries: 5,
       ...config,
     };

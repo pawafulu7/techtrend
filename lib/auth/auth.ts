@@ -65,17 +65,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         port: 465,
         auth: {
           user: 'resend',
-          pass: process.env.RESEND_API_KEY || 'dummy',
+          pass: env.RESEND_API_KEY ?? 'dummy',
         },
       },
-      from: process.env.EMAIL_FROM || 'noreply@techtrend.example.com',
+      from: env.EMAIL_FROM ?? 'noreply@techtrend.example.com',
       // Use Nodemailer if Gmail is configured
-      sendVerificationRequest: process.env.GMAIL_USER 
-        ? sendVerificationRequestNodemailer 
+      sendVerificationRequest: env.GMAIL_USER
+        ? sendVerificationRequestNodemailer
         : sendVerificationRequest,
       maxAge: 24 * 60 * 60, // 24 hours
     }),
-    
+
     CredentialsProvider({
       name: 'credentials',
       credentials: {
@@ -165,20 +165,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
 
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? [
-      GoogleProvider({
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      })
-    ] : []),
+    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+      ? [
+          GoogleProvider({
+            clientId: env.GOOGLE_CLIENT_ID,
+            clientSecret: env.GOOGLE_CLIENT_SECRET,
+          }),
+        ]
+      : []),
 
-    ...((process.env.GITHUB_CLIENT_ID || process.env.GITHUB_ID) &&
-        (process.env.GITHUB_CLIENT_SECRET || process.env.GITHUB_SECRET) ? [
-      GitHubProvider({
-        clientId: process.env.GITHUB_CLIENT_ID || process.env.GITHUB_ID!,
-        clientSecret: process.env.GITHUB_CLIENT_SECRET || process.env.GITHUB_SECRET!,
-      })
-    ] : []),
+    ...((env.GITHUB_CLIENT_ID || env.GITHUB_ID) &&
+    (env.GITHUB_CLIENT_SECRET || env.GITHUB_SECRET)
+      ? [
+          GitHubProvider({
+            clientId: env.GITHUB_CLIENT_ID || env.GITHUB_ID!,
+            clientSecret: env.GITHUB_CLIENT_SECRET || env.GITHUB_SECRET!,
+          }),
+        ]
+      : []),
   ],
 
   session: {

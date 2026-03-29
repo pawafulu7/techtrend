@@ -4,33 +4,13 @@
  */
 
 import { Prisma } from '@prisma/client';
-import logger from '@/lib/logger';
-
-/**
- * Parse numeric environment variable with fallback
- */
-function parseNumericEnv(
-  value: string | undefined,
-  defaultValue: number
-): string {
-  if (!value) return String(defaultValue);
-
-  const parsed = parseInt(value, 10);
-  if (isNaN(parsed) || parsed <= 0) {
-    logger.warn(
-      `Invalid numeric environment variable: ${value}, using default: ${defaultValue}`
-    );
-    return String(defaultValue);
-  }
-
-  return String(parsed);
-}
+import { env } from '@/lib/config/env';
 
 /**
  * Get optimized database URL with connection pool parameters
  */
 export function getOptimizedDatabaseUrl(): string | undefined {
-  const baseUrl = process.env.DATABASE_URL;
+  const baseUrl = env.DATABASE_URL;
 
   // Return undefined if DATABASE_URL is not set (for build time)
   if (!baseUrl) {
@@ -44,16 +24,13 @@ export function getOptimizedDatabaseUrl(): string | undefined {
   // These parameters optimize connection handling in production
   const poolParams = {
     // Maximum number of connections in the pool
-    connection_limit: parseNumericEnv(process.env.DB_CONNECTION_LIMIT, 20),
+    connection_limit: String(env.DB_CONNECTION_LIMIT),
     // Maximum time to wait for a connection from the pool (in seconds)
-    pool_timeout: parseNumericEnv(process.env.DB_POOL_TIMEOUT, 10),
+    pool_timeout: String(env.DB_POOL_TIMEOUT),
     // Statement cache size for prepared statements
-    statement_cache_size: parseNumericEnv(
-      process.env.DB_STATEMENT_CACHE_SIZE,
-      200
-    ),
+    statement_cache_size: String(env.DB_STATEMENT_CACHE_SIZE ?? 200),
     // Connection timeout in seconds
-    connect_timeout: parseNumericEnv(process.env.DB_CONNECT_TIMEOUT, 10),
+    connect_timeout: String(env.DB_CONNECT_TIMEOUT),
   };
 
   // Add parameters to the URL
@@ -62,7 +39,7 @@ export function getOptimizedDatabaseUrl(): string | undefined {
   }
 
   // Add pgbouncer mode if using connection pooler
-  if (process.env.PGBOUNCER_MODE) {
+  if (env.PGBOUNCER_MODE) {
     url.searchParams.set('pgbouncer', 'true');
     url.searchParams.set('statement_cache_size', '0'); // Disable statement cache with pgbouncer
   }
@@ -94,10 +71,7 @@ export function getPrismaConfig(): Prisma.PrismaClientOptions | undefined {
     // Interactive transaction timeout (default: 5000ms, override: DB_TRANSACTION_TIMEOUT)
     // Extended to 10s for summary generation transactions with multiple tag operations
     transactionOptions: {
-      timeout: parseInt(
-        parseNumericEnv(process.env.DB_TRANSACTION_TIMEOUT, 10000),
-        10
-      ),
+      timeout: env.DB_TRANSACTION_TIMEOUT,
     },
   } as Prisma.PrismaClientOptions;
 }

@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import fetch from 'node-fetch';
 import { logger, sanitizeError } from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 export class TechTermsManager {
   private static instance: TechTermsManager;
@@ -102,7 +103,7 @@ export class TechTermsManager {
   
   // リモートソースから用語を更新
   public async updateFromRemote(url?: string): Promise<void> {
-    const updateUrl = url || process.env.TECH_TERMS_UPDATE_URL;
+    const updateUrl = url || env.TECH_TERMS_UPDATE_URL;
     
     if (!updateUrl) {
       return;

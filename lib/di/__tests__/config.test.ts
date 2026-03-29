@@ -1,4 +1,5 @@
 import { loadConfig, defaultConfig, AppConfig } from '../config';
+import { resetEnvCache } from '@/lib/config/env';
 
 describe('config', () => {
   const originalEnv = process.env;
@@ -6,10 +7,12 @@ describe('config', () => {
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv };
+    resetEnvCache();
   });
 
   afterEach(() => {
     process.env = originalEnv;
+    resetEnvCache();
   });
 
   describe('defaultConfig', () => {
@@ -72,7 +75,9 @@ describe('config', () => {
 
       expect(config.gemini.model).toBe('gemini-2.5-pro');
       expect(config.gemini.temperature).toBe(0.5);
-      expect(config.gemini.maxOutputTokens).toBe(defaultConfig.gemini.maxOutputTokens);
+      expect(config.gemini.maxOutputTokens).toBe(
+        defaultConfig.gemini.maxOutputTokens
+      );
     });
 
     it('should merge quality config overrides', () => {

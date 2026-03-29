@@ -1,4 +1,5 @@
 import logger from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 // Theme type for email template
 interface Theme {
@@ -10,11 +11,11 @@ interface Theme {
 // Initialize Resend client dynamically
  
 let resend: any = null;
-if (process.env.RESEND_API_KEY) {
+if (env.RESEND_API_KEY) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { Resend } = require('resend');
-    resend = new Resend(process.env.RESEND_API_KEY);
+    resend = new Resend(env.RESEND_API_KEY);
   } catch (_error) {
     logger.warn('Resend module not installed. Email sending via Resend will be disabled.');
   }
@@ -108,7 +109,7 @@ export interface SendVerificationRequestParams {
 export async function sendVerificationRequest(params: SendVerificationRequestParams) {
   const { identifier: to, url, provider } = params;
   const { host } = new URL(url);
-  const from = provider.from || process.env.EMAIL_FROM || 'noreply@techtrend.example.com';
+  const from = provider.from || env.EMAIL_FROM || 'noreply@techtrend.example.com';
 
   // Development mode - just log the email
   if (process.env.NODE_ENV === 'development' && !resend) {
@@ -121,7 +122,7 @@ export async function sendVerificationRequest(params: SendVerificationRequestPar
   }
 
   // Test mode - skip actual email sending
-  if (process.env.NODE_ENV === 'test' || process.env.SKIP_EMAIL_SEND === 'true') {
+  if (process.env.NODE_ENV === 'test' || env.SKIP_EMAIL_SEND === 'true') {
     // console.log('📧 [TEST] Skipping email send to:', to);
     return;
   }

@@ -19,6 +19,7 @@ import {
   getMonthRangeJST,
 } from './trend-data-aggregator';
 import { generateAISummary } from './trend-ai-summary-generator';
+import { env } from '@/lib/config/env';
 
 export class TrendReportGenerator {
   private prisma: PrismaClient;
@@ -29,7 +30,7 @@ export class TrendReportGenerator {
     this.prisma = prisma;
 
     // Gemini API initialization (optional)
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    const apiKey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
     if (apiKey) {
       this.genAI = new GoogleGenerativeAI(apiKey);
       this.model = this.genAI.getGenerativeModel({

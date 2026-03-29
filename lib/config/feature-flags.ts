@@ -5,6 +5,8 @@
  * All flags are evaluated from environment variables.
  */
 
+// NOTE: This file is imported by client components via source-presets.ts.
+// Do NOT import from env.ts (server-only due to pino/zod dependencies).
 export const FEATURE_FLAGS = {
   /**
    * Enable database-backed provider for company sources

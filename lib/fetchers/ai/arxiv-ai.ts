@@ -9,6 +9,7 @@ import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
 import { RSSItem } from '@/lib/types/rss';
 import { prisma } from '@/lib/prisma';
+import { env } from '@/lib/config/env';
 
 export class ArxivAIFetcher extends BaseFetcher {
   private parser: Parser;
@@ -20,14 +21,14 @@ export class ArxivAIFetcher extends BaseFetcher {
   // Note: Keep at 5 to avoid arXiv rate limiting/IP blocking
   private readonly ENRICHMENT_CONCURRENCY = Math.max(
     1,
-    parseInt(process.env.ARXIV_ENRICHMENT_CONCURRENCY || '5', 10) || 5
+    env.ARXIV_ENRICHMENT_CONCURRENCY
   );
 
   // Maximum articles per fetch to prevent timeout (adjustable via env)
   // Reduced from 200 to 50 to reduce Gemini API costs (2025-12-23)
   private readonly MAX_ARTICLES_PER_FETCH = Math.max(
     1,
-    parseInt(process.env.ARXIV_MAX_ARTICLES_PER_FETCH || '50', 10) || 50
+    env.ARXIV_MAX_ARTICLES_PER_FETCH
   );
 
   // Maximum length for arXiv abstracts
@@ -35,7 +36,7 @@ export class ArxivAIFetcher extends BaseFetcher {
 
   constructor(source: Source) {
     super(source);
-    const rawTimeout = process.env.FETCHER_TIMEOUT_MS;
+    const rawTimeout = env.FETCHER_TIMEOUT_MS;
     const parsedTimeout = rawTimeout ? Number(rawTimeout) : NaN;
     const timeout =
       Number.isFinite(parsedTimeout) && parsedTimeout > 0
@@ -60,9 +61,7 @@ export class ArxivAIFetcher extends BaseFetcher {
       logger.info('arXiv AI記事取得開始（統合フィード使用）');
 
       // Fetch combined RSS feed (single HTTP request)
-      const feed = await this.retry(() =>
-        this.parser.parseURL(this.RSS_URL)
-      );
+      const feed = await this.retry(() => this.parser.parseURL(this.RSS_URL));
 
       if (!feed.items || feed.items.length === 0) {
         logger.warn('arXiv AI: 記事が見つかりませんでした');
@@ -78,9 +77,9 @@ export class ArxivAIFetcher extends BaseFetcher {
 
       const existingArticles = await prisma.article.findMany({
         where: {
-          url: { in: feedUrls }
+          url: { in: feedUrls },
         },
-        select: { url: true }
+        select: { url: true },
       });
       const existingUrlSet = new Set(existingArticles.map((a) => a.url));
 
@@ -158,9 +157,10 @@ export class ArxivAIFetcher extends BaseFetcher {
           total: limitedItems.length,
           success: successCount,
           failure: failureCount,
-          successRate: limitedItems.length > 0
-            ? `${((successCount / limitedItems.length) * 100).toFixed(1)}%`
-            : 'N/A',
+          successRate:
+            limitedItems.length > 0
+              ? `${((successCount / limitedItems.length) * 100).toFixed(1)}%`
+              : 'N/A',
           concurrency: this.ENRICHMENT_CONCURRENCY,
         },
         'arXiv AI: エンリッチメント完了'
@@ -180,7 +180,9 @@ export class ArxivAIFetcher extends BaseFetcher {
    * Enrich a single RSS item with metadata (RSS content only, no HTML fetch)
    * HTML enrichment was disabled on 2025-12-23 to reduce Gemini API costs
    */
-  private async enrichSingle(item: RSSItem): Promise<CreateArticleInput | null> {
+  private async enrichSingle(
+    item: RSSItem
+  ): Promise<CreateArticleInput | null> {
     if (!item.title || !item.link) return null;
 
     try {
@@ -195,7 +197,12 @@ export class ArxivAIFetcher extends BaseFetcher {
       const category = this.detectCategory(item);
 
       // Use RSS content only (no HTML enrichment to reduce API costs)
-      const content = this.generateEnrichedContent(item, category, arxivId, abstract);
+      const content = this.generateEnrichedContent(
+        item,
+        category,
+        arxivId,
+        abstract
+      );
 
       // Enrich article with metadata
       const enrichedArticle = this.enrichArticle(
@@ -215,10 +222,7 @@ export class ArxivAIFetcher extends BaseFetcher {
 
       return enrichedArticle;
     } catch (error) {
-      logger.warn(
-        { url: item.link, error },
-        'arXiv AI: 記事処理エラー'
-      );
+      logger.warn({ url: item.link, error }, 'arXiv AI: 記事処理エラー');
       return null;
     }
   }

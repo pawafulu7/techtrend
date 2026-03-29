@@ -2,6 +2,7 @@ import { RateLimiterRedis, RateLimiterMemory, RateLimiterAbstract } from 'rate-l
 import { getRedisClient } from '@/lib/redis/client';
 import { logger } from '@/lib/logger';
 import { getRateLimitConfig } from '@/lib/config/rate-limits';
+import { env } from '@/lib/config/env';
 
 /**
  * Rate Limiter for RAG operations and general API protection
@@ -42,7 +43,7 @@ function createRateLimiter(
   blockDuration: number = 0
 ): RateLimiterAbstract {
   // Use memory-based limiter in test environment or when Redis URL is not configured
-  if (process.env.NODE_ENV === 'test' || !process.env.REDIS_URL) {
+  if (process.env.NODE_ENV === 'test' || !env.REDIS_URL) {
     return new RateLimiterMemory({
       points,
       duration,

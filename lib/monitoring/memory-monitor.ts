@@ -6,6 +6,7 @@
  */
 
 import logger from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 /**
  * Memory usage statistics
@@ -27,9 +28,9 @@ export interface MemoryStats {
  * Memory alert thresholds
  */
 export interface MemoryThresholds {
-  warningPercent: number;  // Warn when heap usage exceeds this percentage
+  warningPercent: number; // Warn when heap usage exceeds this percentage
   criticalPercent: number; // Critical alert when heap usage exceeds this percentage
-  maxHeapMB: number;       // Maximum expected heap size in MB
+  maxHeapMB: number; // Maximum expected heap size in MB
 }
 
 /**
@@ -37,10 +38,10 @@ export interface MemoryThresholds {
  */
 export interface MemoryMonitorConfig {
   thresholds: MemoryThresholds;
-  intervalMs: number;        // Monitoring interval in milliseconds
-  enableLogging: boolean;    // Enable periodic logging
-  enableAlerts: boolean;     // Enable threshold alerts
-  historySize: number;       // Number of samples to keep in history
+  intervalMs: number; // Monitoring interval in milliseconds
+  enableLogging: boolean; // Enable periodic logging
+  enableAlerts: boolean; // Enable threshold alerts
+  historySize: number; // Number of samples to keep in history
 }
 
 // Hardcoded fallback constant for calculateHeapUsedPercent (avoids circular reference)
@@ -50,10 +51,7 @@ const DEFAULT_CONFIG: MemoryMonitorConfig = {
   thresholds: {
     warningPercent: 70,
     criticalPercent: 85,
-    maxHeapMB: (() => {
-      const parsed = parseInt(process.env.NODE_MAX_HEAP_MB || '512', 10);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : FALLBACK_MAX_HEAP_MB;
-    })(),
+    maxHeapMB: env.NODE_MAX_HEAP_MB,
   },
   intervalMs: 60000, // 1 minute
   enableLogging: process.env.NODE_ENV !== 'test',
@@ -65,7 +63,10 @@ const DEFAULT_CONFIG: MemoryMonitorConfig = {
  * Calculate heap used percentage with safe bounds
  * Handles edge cases: NaN, 0, negative maxHeapMB values
  */
-function calculateHeapUsedPercent(heapUsedMB: number, maxHeapMB: number): number {
+function calculateHeapUsedPercent(
+  heapUsedMB: number,
+  maxHeapMB: number
+): number {
   // Validate maxHeapMB: must be a positive finite number
   const safeMaxHeapMB =
     typeof maxHeapMB === 'number' && Number.isFinite(maxHeapMB) && maxHeapMB > 0
@@ -360,15 +361,20 @@ export interface MemorySummary {
 export function getRecommendedHeapSize(): number {
   // Default recommendation: 512MB for web workers, 1024MB for background jobs
   // Priority: PROCESS_TYPE env var > process.argv detection
-  const processType = process.env.PROCESS_TYPE?.toLowerCase();
-  
-  if (processType === 'worker' || processType === 'job' || processType === 'scheduled') {
+  const processType = env.PROCESS_TYPE?.toLowerCase();
+
+  if (
+    processType === 'worker' ||
+    processType === 'job' ||
+    processType === 'scheduled'
+  ) {
     return 1024;
   }
-  
+
   // Fallback to process.argv detection (less reliable in containerized environments)
   const isBackgroundJob = process.argv.some(
-    (arg) => arg.includes('worker') || arg.includes('job') || arg.includes('scheduled')
+    (arg) =>
+      arg.includes('worker') || arg.includes('job') || arg.includes('scheduled')
   );
 
   return isBackgroundJob ? 1024 : 512;

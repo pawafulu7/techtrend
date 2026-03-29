@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { env } from '@/lib/config/env';
 
 // ログレベル定義
 export enum LogLevel {
@@ -18,7 +19,7 @@ export interface LoggerConfig {
 
 // 環境変数からログレベルを取得
 function getLogLevelFromEnv(): LogLevel {
-  const envLevel = process.env.LOG_LEVEL?.toUpperCase();
+  const envLevel = env.LOG_LEVEL?.toUpperCase();
   if (envLevel && envLevel in LogLevel) {
     return LogLevel[envLevel as keyof typeof LogLevel] as unknown as LogLevel;
   }

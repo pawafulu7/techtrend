@@ -5,6 +5,7 @@
  */
 
 import logger from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 export interface NotificationConfig {
   /** Whether Slack notification is enabled */
@@ -41,8 +42,8 @@ export function validateSlackWebhookUrl(url: string): boolean {
  * @returns Validated notification configuration
  */
 export function loadNotificationConfig(): NotificationConfig {
-  const enabled = process.env.SLACK_NOTIFICATION_ENABLED === 'true';
-  const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL?.trim() || null;
+  const enabled = env.SLACK_NOTIFICATION_ENABLED === 'true';
+  const slackWebhookUrl = env.SLACK_WEBHOOK_URL?.trim() || null;
 
   // If disabled, return early
   if (!enabled) {

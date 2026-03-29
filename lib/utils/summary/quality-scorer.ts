@@ -4,6 +4,7 @@
  */
 
 import type { QualityCheckResult } from './quality-types';
+import { env, config } from '@/lib/config/env';
 
 /**
  * 品質チェック結果の統計情報を計算
@@ -92,18 +93,17 @@ export function calculateQualityStats(results: QualityCheckResult[]): {
  */
 export function isQualityCheckEnabled(): boolean {
   // 環境変数が設定されていない場合はデフォルトでtrue
-  if (process.env.QUALITY_CHECK_ENABLED === undefined) {
+  if (env.QUALITY_CHECK_ENABLED === undefined) {
     return true;
   }
-  return process.env.QUALITY_CHECK_ENABLED === 'true';
+  return env.QUALITY_CHECK_ENABLED === 'true';
 }
 
 /**
  * 最大再生成試行回数を取得
  */
 export function getMaxRegenerationAttempts(): number {
-  const value = parseInt(process.env.MAX_REGENERATION_ATTEMPTS || '3');
-  return isNaN(value) ? 3 : value;
+  return config.quality.maxAttempts();
 }
 
 /**

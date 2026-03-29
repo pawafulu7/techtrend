@@ -1,6 +1,7 @@
 import { PrismaClient, Article } from '@prisma/client';
 import { EmbeddingService } from './embedding-service';
 import { logger, sanitizeError } from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 /**
  * Article Embedding Pipeline
@@ -30,8 +31,8 @@ export class ArticleEmbeddingPipeline {
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
     this.embeddingService = new EmbeddingService();
-    this.activeModel = process.env.RAG_ACTIVE_MODEL || 'text-embedding-3-small';
-    this.activeVersion = parseInt(process.env.RAG_ACTIVE_VERSION || '1', 10);
+    this.activeModel = env.RAG_ACTIVE_MODEL || 'text-embedding-3-small';
+    this.activeVersion = env.RAG_ACTIVE_VERSION;
   }
 
   /**
@@ -51,12 +52,16 @@ export class ArticleEmbeddingPipeline {
 
       // Generate embeddings for available fields
       if (article.title) {
-        const titleVector = await this.embeddingService.embedText(article.title);
+        const titleVector = await this.embeddingService.embedText(
+          article.title
+        );
         embeddings.push({ key: 'title', vector: titleVector });
       }
 
       if (article.summary) {
-        const summaryVector = await this.embeddingService.embedText(article.summary);
+        const summaryVector = await this.embeddingService.embedText(
+          article.summary
+        );
         embeddings.push({ key: 'summary', vector: summaryVector });
       }
 
@@ -65,7 +70,7 @@ export class ArticleEmbeddingPipeline {
       for (const { key, vector } of embeddings) {
         // Serialize vector with toFixed for consistency
         // Prevents scientific notation and NaN issues
-        const vectorString = `[${vector.map(v => v.toFixed(8)).join(',')}]`;
+        const vectorString = `[${vector.map((v) => v.toFixed(8)).join(',')}]`;
 
         // SECURE: Prisma.sql template literals with parameter binding
         await this.prisma.$executeRaw`
@@ -96,12 +101,15 @@ export class ArticleEmbeddingPipeline {
         embeddingsCreated.push(key);
       }
 
-      logger.info({
-        articleId: article.id,
-        keys: embeddingsCreated,
-        model: this.activeModel,
-        version: this.activeVersion,
-      }, 'Article embeddings created');
+      logger.info(
+        {
+          articleId: article.id,
+          keys: embeddingsCreated,
+          model: this.activeModel,
+          version: this.activeVersion,
+        },
+        'Article embeddings created'
+      );
 
       return {
         articleId: article.id,
@@ -109,10 +117,13 @@ export class ArticleEmbeddingPipeline {
         success: true,
       };
     } catch (error) {
-      logger.error({
-        articleId: article.id,
-        error: sanitizeError(error),
-      }, 'Article embedding failed');
+      logger.error(
+        {
+          articleId: article.id,
+          error: sanitizeError(error),
+        },
+        'Article embedding failed'
+      );
 
       return {
         articleId: article.id,
@@ -143,21 +154,26 @@ export class ArticleEmbeddingPipeline {
 
       // Progress logging every 10 articles
       if (results.length % 10 === 0) {
-        const successCount = results.filter(r => r.success).length;
-        logger.info(`Embedding progress: ${results.length}/${articles.length} (${successCount} success)`);
+        const successCount = results.filter((r) => r.success).length;
+        logger.info(
+          `Embedding progress: ${results.length}/${articles.length} (${successCount} success)`
+        );
       }
     }
 
     // Final summary
-    const successCount = results.filter(r => r.success).length;
+    const successCount = results.filter((r) => r.success).length;
     const failureCount = results.length - successCount;
 
-    logger.info({
-      total: results.length,
-      success: successCount,
-      failure: failureCount,
-      successRate: ((successCount / results.length) * 100).toFixed(2) + '%',
-    }, 'Batch embedding completed');
+    logger.info(
+      {
+        total: results.length,
+        success: successCount,
+        failure: failureCount,
+        successRate: ((successCount / results.length) * 100).toFixed(2) + '%',
+      },
+      'Batch embedding completed'
+    );
 
     return results;
   }
@@ -174,7 +190,9 @@ export class ArticleEmbeddingPipeline {
    * @param limit - Maximum number of articles to process
    * @returns Array of job results
    */
-  async embedArticlesWithoutEmbeddings(limit: number = 100): Promise<EmbeddingJobResult[]> {
+  async embedArticlesWithoutEmbeddings(
+    limit: number = 100
+  ): Promise<EmbeddingJobResult[]> {
     // SECURE: Use Prisma.sql for parameterized query
     const articlesWithoutEmbeddings = await this.prisma.$queryRaw<Article[]>`
       SELECT a.*
@@ -191,12 +209,15 @@ export class ArticleEmbeddingPipeline {
       LIMIT ${limit}
     `;
 
-    logger.info({
-      count: articlesWithoutEmbeddings.length,
-      model: this.activeModel,
-      version: this.activeVersion,
-      limit,
-    }, `Found ${articlesWithoutEmbeddings.length} articles without embeddings`);
+    logger.info(
+      {
+        count: articlesWithoutEmbeddings.length,
+        model: this.activeModel,
+        version: this.activeVersion,
+        limit,
+      },
+      `Found ${articlesWithoutEmbeddings.length} articles without embeddings`
+    );
 
     if (articlesWithoutEmbeddings.length === 0) {
       logger.info('No articles to embed');

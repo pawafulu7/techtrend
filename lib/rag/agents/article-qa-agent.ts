@@ -11,6 +11,7 @@ import { Experimental_Agent as Agent, stepCountIs } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { articleContextTool } from '../tools/article-context-tool';
 import { semanticSearchTool } from '../tools/semantic-search-tool';
+import { env } from '@/lib/config/env';
 
 /**
  * System prompt for Article QA Agent
@@ -141,7 +142,7 @@ IMPORTANT: Always maintain a helpful, educational tone. Encourage follow-up ques
  * Combines article content extraction with semantic search for comprehensive answers.
  */
 export const articleQaAgent = new Agent({
-  model: openai(process.env.AGENT_MODEL || 'gpt-4o-mini'),
+  model: openai(env.AGENT_MODEL || 'gpt-4o-mini'),
 
   // Allow dual-tool loop: context lookup + related search + follow-up
   // Average path: 8-12 steps, max 40 for complex questions
