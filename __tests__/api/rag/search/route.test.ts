@@ -240,6 +240,8 @@ describe('POST /api/rag/search', () => {
       // Mock OPENAI_API_KEY to prevent 503
       const originalApiKey = process.env.OPENAI_API_KEY;
       process.env.OPENAI_API_KEY = 'sk-test-key';
+      const { resetEnvCache } = require('@/lib/config/env');
+      resetEnvCache();
 
       // Reset cache and override mock to throw error
       const { __resetSearchServiceForTest } = require('@/app/api/rag/search/route');
@@ -271,12 +273,15 @@ describe('POST /api/rag/search', () => {
 
       // Restore original API key
       process.env.OPENAI_API_KEY = originalApiKey;
+      resetEnvCache();
     });
 
     it('should return generic error for unexpected failures (500)', async () => {
       // Mock OPENAI_API_KEY to prevent 503 (RagSearchNotConfiguredError)
       const originalApiKey = process.env.OPENAI_API_KEY;
       process.env.OPENAI_API_KEY = 'sk-test-key';
+      const { resetEnvCache } = require('@/lib/config/env');
+      resetEnvCache();
 
       // Reset service cache so mockImplementationOnce is picked up
       const { __resetSearchServiceForTest } = require('@/app/api/rag/search/route');
@@ -306,6 +311,7 @@ describe('POST /api/rag/search', () => {
 
       // Restore original API key
       process.env.OPENAI_API_KEY = originalApiKey;
+      resetEnvCache();
     });
   });
 
