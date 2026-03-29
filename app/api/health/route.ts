@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import logger from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -15,11 +16,12 @@ export async function GET() {
       },
     });
   } catch (error) {
+    logger.error({ err: error }, 'Health check: database connection failed');
     return NextResponse.json(
       {
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Internal server error',
         services: {
           database: 'disconnected',
           api: 'operational',

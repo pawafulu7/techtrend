@@ -302,8 +302,10 @@ async function regenerateSpeakerDeckSummaries(): Promise<RegenerationResult> {
       `;
 
       console.error('\n📈 更新後の統計:');
-      console.error(`   平均要約長: ${Math.round(summaryStats[0].avg_summary_length)}文字`);
-      console.error(`   平均コンテンツ長: ${Math.round(summaryStats[0].avg_content_length)}文字`);
+      const avgSummary = summaryStats[0].avg_summary_length;
+      const avgContent = summaryStats[0].avg_content_length;
+      console.error(`   平均要約長: ${avgSummary !== null ? `${Math.round(avgSummary)}文字` : 'N/A'}`);
+      console.error(`   平均コンテンツ長: ${avgContent !== null ? `${Math.round(avgContent)}文字` : 'N/A'}`);
       console.error(`   要約がコンテンツより長い: ${summaryStats[0].summary_longer_than_content}件`);
     }
 
