@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { sourceCache } from '@/lib/cache/source-cache';
 import logger from '@/lib/logger';
@@ -9,7 +10,34 @@ import {
   type SourceCategory,
 } from '@/lib/utils/source/source-helpers';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { env } from '@/lib/config/env';
+
+const sourcesQuerySchema = z.object({
+  search: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .transform((v) => v || undefined),
+  ids: z
+    .string()
+    .optional()
+    .refine(
+      (v) => {
+        if (!v) return true;
+        const parts = v.split(',').map((p) => p.trim());
+        return (
+          parts.length <= 50 &&
+          parts.every((p) => p.length >= 1 && p.length <= 100)
+        );
+      },
+      { message: 'ids must have at most 50 elements, each 1-100 chars' }
+    ),
+  category: z.string().optional(),
+  sortBy: z.string().optional(),
+  order: z.string().optional(),
+});
 
 async function handler(request: NextRequest) {
   const startTime = Date.now();
@@ -18,11 +46,29 @@ async function handler(request: NextRequest) {
     // Next.js 15.xでのNextRequest対応
     const url = new URL(request.url);
     const searchParams = url.searchParams;
-    const category = searchParams.get('category') as SourceCategory | null;
-    const sortBy = searchParams.get('sortBy') || 'articles';
-    const order = searchParams.get('order') || 'desc';
-    const search = searchParams.get('search');
-    const ids = searchParams.get('ids');
+
+    // 入力バリデーション（searchとidsのみ厳格チェック。category/sortBy/orderは既存ロジックで安全に処理）
+    const parseResult = sourcesQuerySchema.safeParse({
+      search: searchParams.get('search') ?? undefined,
+      ids: searchParams.get('ids') ?? undefined,
+      category: searchParams.get('category') ?? undefined,
+      sortBy: searchParams.get('sortBy') ?? undefined,
+      order: searchParams.get('order') ?? undefined,
+    });
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Bad Request', details: parseResult.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const parsed = parseResult.data;
+    const category = (parsed.category ?? null) as SourceCategory | null;
+    const sortBy = parsed.sortBy || 'articles';
+    const order = parsed.order || 'desc';
+    const search = parsed.search ?? null;
+    const ids = parsed.ids ?? null;
 
     // idsパラメータがある場合はキャッシュを使わない（特定のソース取得）
     if (!ids) {
@@ -107,7 +153,7 @@ async function handler(request: NextRequest) {
             enabled: true,
             ...(ids && {
               id: {
-                in: ids.split(','),
+                in: ids.split(',').map((s) => s.trim()),
               },
             }),
             ...(search && {
@@ -140,7 +186,7 @@ async function handler(request: NextRequest) {
           FROM "Source" s
           LEFT JOIN "Article" a ON s.id = a."sourceId"
           WHERE s.enabled = true
-          ${ids ? Prisma.sql`AND s.id IN (${Prisma.join(ids.split(','))})` : Prisma.empty}
+          ${ids ? Prisma.sql`AND s.id IN (${Prisma.join(ids.split(',').map((s) => s.trim()))})` : Prisma.empty}
           ${search ? Prisma.sql`AND s.name ILIKE ${`%${search}%`}` : Prisma.empty}
           GROUP BY s.id
         `,
@@ -226,7 +272,7 @@ async function handler(request: NextRequest) {
         enabled: true,
         ...(ids && {
           id: {
-            in: ids.split(','),
+            in: ids.split(',').map((s) => s.trim()),
           },
         }),
         ...(search && {
@@ -366,4 +412,4 @@ async function handler(request: NextRequest) {
   }
 }
 
-export const GET = withAdminAuth(handler);
+export const GET = withAdminAuth(withRateLimit('admin:read', handler));
