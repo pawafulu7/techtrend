@@ -114,7 +114,7 @@ test.describe('スクロール機能のテスト', () => {
   test('ソース一覧ページでスクロールが可能', async ({ page }) => {
     test.skip(isRunningInCI(), 'Admin tests require admin fixtures in CI');
     // /sources は管理者限定ページのため、管理者ログインが必要
-    await loginAsAdmin(page);
+    expect(await loginAsAdmin(page)).toBe(true);
     await page.goto('/sources');
     await expect(page).toHaveURL(/\/sources/);
 
@@ -178,9 +178,7 @@ test.describe('スクロール機能のテスト', () => {
   });
 
   test('統計ページでスクロールが可能', async ({ page }) => {
-    test.skip(isRunningInCI(), 'Admin tests require admin fixtures in CI');
-    // /stats は管理者限定ページのため、管理者ログインが必要
-    await loginAsAdmin(page);
+    // /stats は公開ページのため、ログイン不要
     await page.goto('/stats');
     await expect(page).toHaveURL(/\/stats/);
 

@@ -26,9 +26,12 @@ const sourcesQuerySchema = z.object({
       (v) => {
         if (!v) return true;
         const parts = v.split(',');
-        return parts.length <= 50 && parts.every((p) => p.length >= 1);
+        return (
+          parts.length <= 50 &&
+          parts.every((p) => p.length >= 1 && p.length <= 100)
+        );
       },
-      { message: 'ids must have at most 50 elements, each non-empty' }
+      { message: 'ids must have at most 50 elements, each 1-100 chars' }
     ),
   category: z.string().optional(),
   sortBy: z.string().optional(),

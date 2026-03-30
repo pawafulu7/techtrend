@@ -167,6 +167,37 @@ export async function cleanupTestUser() {
   }
 }
 
+/**
+ * 管理者ユーザーのクリーンアップ
+ */
+export async function cleanupAdminUser() {
+  const TEST_DATABASE_URL = resolveTestDbUrl();
+
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: TEST_DATABASE_URL,
+      },
+    },
+  });
+
+  try {
+    await prisma.user.deleteMany({
+      where: {
+        email: ADMIN_TEST_USER.email,
+      },
+    });
+
+    console.log('Admin user cleaned up successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to cleanup admin user:', error);
+    return false;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 // CLIから直接実行された場合の処理
 if (require.main === module) {
   setupTestUser()
