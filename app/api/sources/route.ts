@@ -411,4 +411,4 @@ async function handler(request: NextRequest) {
   }
 }
 
-export const GET = withRateLimit('admin:read', withAdminAuth(handler));
+export const GET = withAdminAuth(withRateLimit('admin:read', handler));

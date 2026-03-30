@@ -91,7 +91,6 @@ test.describe('Visual Regression Tests', () => {
   });
 
   test('統計ダッシュボード - ライトモード', async ({ page }) => {
-    test.skip(isRunningInCI(), 'Admin tests require admin fixtures in CI');
     // /stats は管理者限定ページのため、管理者ログインが必要
     const loggedIn = await loginAsAdmin(page);
     if (!loggedIn) {

@@ -1,8 +1,18 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { isRunningInCI, waitForPageLoad } from '../../e2e/helpers/wait-utils';
 import { loginAsAdmin } from './utils/e2e-helpers';
 
 test.describe('スクロール機能のテスト', () => {
+  const requireAdminSessionOrSkip = async (page: Page) => {
+    test.skip(isRunningInCI(), 'Admin tests require admin fixtures in CI');
+    const loggedIn = await loginAsAdmin(page);
+    if (!loggedIn) {
+      test.skip(true, 'Admin login/setup unavailable');
+      return false;
+    }
+    return true;
+  };
+
   test('トップページの3ペインレイアウトでスクロールが正常に動作する', async ({ page }) => {
     await page.goto('/');
     
@@ -112,13 +122,8 @@ test.describe('スクロール機能のテスト', () => {
   });
 
   test('ソース一覧ページでスクロールが可能', async ({ page }) => {
-    test.skip(isRunningInCI(), 'Admin tests require admin fixtures in CI');
     // /sources は管理者限定ページのため、管理者ログインが必要
-    const loggedIn = await loginAsAdmin(page);
-    if (!loggedIn) {
-      test.skip(true, 'Admin login/setup unavailable');
-      return;
-    }
+    if (!(await requireAdminSessionOrSkip(page))) return;
     await page.goto('/sources');
     await expect(page).toHaveURL(/\/sources/);
 
@@ -182,13 +187,8 @@ test.describe('スクロール機能のテスト', () => {
   });
 
   test('統計ページでスクロールが可能', async ({ page }) => {
-    test.skip(isRunningInCI(), 'Admin tests require admin fixtures in CI');
     // /stats は管理者限定ページのため、管理者ログインが必要
-    const loggedIn = await loginAsAdmin(page);
-    if (!loggedIn) {
-      test.skip(true, 'Admin login/setup unavailable');
-      return;
-    }
+    if (!(await requireAdminSessionOrSkip(page))) return;
     await page.goto('/stats');
     await expect(page).toHaveURL(/\/stats/);
 
