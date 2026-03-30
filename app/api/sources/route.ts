@@ -16,6 +16,7 @@ import { env } from '@/lib/config/env';
 const sourcesQuerySchema = z.object({
   search: z
     .string()
+    .trim()
     .max(200)
     .optional()
     .transform((v) => v || undefined),
