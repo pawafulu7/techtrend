@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sourceCache } from '@/lib/cache/source-cache';
 import logger from '@/lib/logger';
-import { parseBoolean } from '@/lib/utils/env-parser';
 import { Prisma } from '@prisma/client';
 import {
   inferSourceCategory,
@@ -10,6 +9,7 @@ import {
   type SourceCategory,
 } from '@/lib/utils/source/source-helpers';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { env } from '@/lib/config/env';
 
 async function handler(request: NextRequest) {
   const startTime = Date.now();
@@ -96,10 +96,7 @@ async function handler(request: NextRequest) {
 
     // 特定のIDsの場合は従来の処理（キャッシュなし）
     // フィーチャーフラグで最適化バージョンを選択
-    const useOptimized = parseBoolean(
-      process.env.USE_OPTIMIZED_SOURCES_API,
-      false
-    );
+    const useOptimized = env.USE_OPTIMIZED_SOURCES_API === 'true';
 
     if (useOptimized) {
       // Phase 2: メモリ最適化版（集計クエリのみ実行）

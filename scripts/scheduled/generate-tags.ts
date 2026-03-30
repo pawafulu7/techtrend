@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import fetch from 'node-fetch';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { getOrCreateTags } from '@/lib/services/tag-service';
+import { env } from '@/lib/config/env';
 
 type ArticleWithSourceAndTags = Article & {
   source: Source;
@@ -16,12 +17,12 @@ interface GenerateResult {
 
 // タグ生成用の関数（要約生成から分離）
 async function generateTags(title: string, content: string): Promise<string[]> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not set');
   }
 
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+  const model = env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const prompt = `以下の技術記事から適切なタグを生成してください。

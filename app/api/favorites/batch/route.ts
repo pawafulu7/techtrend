@@ -8,10 +8,14 @@ import {
   validateUser,
   createUserDeletedResponse,
 } from '@/lib/middleware/with-user-validation';
+import { env } from '@/lib/config/env';
 
 // DataLoaderインスタンスキャッシュ
 // リクエストスコープでDataLoaderを再利用
-const dataLoaderCache = new WeakMap<any, ReturnType<typeof createFavoriteLoader>>();
+const dataLoaderCache = new WeakMap<
+  any,
+  ReturnType<typeof createFavoriteLoader>
+>();
 
 /**
  * お気に入り状態を一括取得するAPI
@@ -26,10 +30,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Validate user exists and is not deleted
@@ -48,12 +49,15 @@ export async function POST(request: NextRequest) {
       res.headers.set('X-Response-Time', `${responseTime}ms`);
       return res;
     }
-    const { articleIds, useDataLoader = false } = body as { articleIds?: unknown; useDataLoader?: boolean };
+    const { articleIds, useDataLoader = false } = body as {
+      articleIds?: unknown;
+      useDataLoader?: boolean;
+    };
 
     if (
       !Array.isArray(articleIds) ||
       articleIds.length === 0 ||
-      !articleIds.every(id => typeof id === 'string' && id.trim().length > 0)
+      !articleIds.every((id) => typeof id === 'string' && id.trim().length > 0)
     ) {
       return NextResponse.json(
         { error: 'Invalid articleIds' },
@@ -73,7 +77,8 @@ export async function POST(request: NextRequest) {
 
     // DataLoader方式とキャッシュ方式を環境変数で切り替え可能にする
     // 環境変数の解析を堅牢化（デフォルトはfalseで安全側に）
-    const shouldUseDataLoader = useDataLoader && parseBoolean(process.env.USE_DATALOADER, false);
+    const shouldUseDataLoader =
+      useDataLoader && parseBoolean(env.USE_DATALOADER, false);
 
     if (shouldUseDataLoader) {
       // DataLoaderインスタンスをキャッシュから取得または作成
@@ -93,7 +98,11 @@ export async function POST(request: NextRequest) {
           return;
         }
         // DataLoaderの戻り値の型を安全にチェック
-        if (typeof status === 'object' && status !== null && 'isFavorited' in status) {
+        if (
+          typeof status === 'object' &&
+          status !== null &&
+          'isFavorited' in status
+        ) {
           const statusObj = status as { isFavorited: boolean };
           favoritesMap[id] = Boolean(statusObj.isFavorited);
         } else if (typeof status === 'boolean') {
@@ -108,12 +117,15 @@ export async function POST(request: NextRequest) {
       response.headers.set('X-Response-Time', `${responseTime}ms`);
       response.headers.set('X-Query-Strategy', 'dataloader');
 
-      logger.info({
-        userId,
-        count: articleIds.length,
-        responseTime,
-        strategy: 'dataloader',
-      }, 'Favorites batch fetched via DataLoader');
+      logger.info(
+        {
+          userId,
+          count: articleIds.length,
+          responseTime,
+          strategy: 'dataloader',
+        },
+        'Favorites batch fetched via DataLoader'
+      );
 
       return response;
     }
@@ -127,34 +139,40 @@ export async function POST(request: NextRequest) {
       response.headers.set('X-Response-Time', `${responseTime}ms`);
       response.headers.set('X-Query-Strategy', 'cache');
 
-      logger.debug({
-        userId,
-        count: articleIds.length,
-        responseTime,
-      }, 'Favorites batch cache hit');
+      logger.debug(
+        {
+          userId,
+          count: articleIds.length,
+          responseTime,
+        },
+        'Favorites batch cache hit'
+      );
 
       return response;
     }
 
     // キャッシュミスの場合、DBから取得（既存の処理）
-    logger.debug({ userId, count: articleIds.length }, 'Favorites batch cache miss, fetching from DB');
+    logger.debug(
+      { userId, count: articleIds.length },
+      'Favorites batch cache miss, fetching from DB'
+    );
 
     const { prisma } = await import('@/lib/prisma');
     const favorites = await prisma.favorite.findMany({
       where: {
         userId,
         articleId: {
-          in: articleIds
-        }
+          in: articleIds,
+        },
       },
       select: {
-        articleId: true
-      }
+        articleId: true,
+      },
     });
 
     // お気に入り状態のマップを作成
     const favoritesMap: { [key: string]: boolean } = {};
-    const favoriteArticleIds = new Set(favorites.map(f => f.articleId));
+    const favoriteArticleIds = new Set(favorites.map((f) => f.articleId));
 
     for (const articleId of articleIds) {
       favoritesMap[articleId] = favoriteArticleIds.has(articleId);
@@ -171,10 +189,13 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     const responseTime = Date.now() - startTime;
-    logger.error({
-      error,
-      responseTime,
-    }, 'Failed to get batch favorites');
+    logger.error(
+      {
+        error,
+        responseTime,
+      },
+      'Failed to get batch favorites'
+    );
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -182,4 +203,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

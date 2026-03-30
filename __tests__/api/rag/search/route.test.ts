@@ -14,6 +14,7 @@
 import { POST } from '@/app/api/rag/search/route';
 import { NextRequest } from 'next/server';
 import { RateLimitError } from '@/lib/rate-limiter';
+import { resetEnvCache } from '@/lib/config/env';
 
 // Mock dependencies
 jest.mock('@/lib/auth/auth', () => ({
@@ -240,6 +241,7 @@ describe('POST /api/rag/search', () => {
       // Mock OPENAI_API_KEY to prevent 503
       const originalApiKey = process.env.OPENAI_API_KEY;
       process.env.OPENAI_API_KEY = 'sk-test-key';
+      resetEnvCache();
 
       // Reset cache and override mock to throw error
       const { __resetSearchServiceForTest } = require('@/app/api/rag/search/route');
@@ -271,12 +273,14 @@ describe('POST /api/rag/search', () => {
 
       // Restore original API key
       process.env.OPENAI_API_KEY = originalApiKey;
+      resetEnvCache();
     });
 
     it('should return generic error for unexpected failures (500)', async () => {
       // Mock OPENAI_API_KEY to prevent 503 (RagSearchNotConfiguredError)
       const originalApiKey = process.env.OPENAI_API_KEY;
       process.env.OPENAI_API_KEY = 'sk-test-key';
+      resetEnvCache();
 
       // Reset service cache so mockImplementationOnce is picked up
       const { __resetSearchServiceForTest } = require('@/app/api/rag/search/route');
@@ -306,6 +310,7 @@ describe('POST /api/rag/search', () => {
 
       // Restore original API key
       process.env.OPENAI_API_KEY = originalApiKey;
+      resetEnvCache();
     });
   });
 

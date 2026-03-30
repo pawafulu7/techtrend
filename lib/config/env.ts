@@ -182,13 +182,27 @@ const envSchema = z
     SUMMARY_TIMEOUT: safeCoerceInt(90000),
     SUMMARY_REQUEST_DELAY: safeCoerceInt(500),
     MIN_CONTENT_LENGTH: safeCoerceInt(100),
+    MIN_PROCESSED_FOR_FAILURE: z.preprocess((v) => {
+      if (v === undefined || v === null) return undefined;
+      const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
+      return Number.isFinite(n) && n >= 1 ? n : undefined;
+    }, z.number().int().min(1).default(5)),
+    POST_SAVE_ENRICH_TIMEOUT_MS: safeCoerceInt(10000),
+    POST_SAVE_ENRICH_SLEEP_MS: safeCoerceInt(0),
+    SKIP_POST_SAVE_ENRICHMENT: z.enum(['0', '1']).optional().default('0'),
 
     // Fetchers
     FETCHER_TIMEOUT_MS: safeCoerceInt(120000),
     ARXIV_MAX_ARTICLES_PER_FETCH: safeCoerceInt(50),
+    ARXIV_FETCHER_TIMEOUT_MS: safeCoerceInt(600000),
     ARXIV_ENRICHMENT_CONCURRENCY: safeCoerceInt(5),
     HATENA_BLOG_DEV_MAX_PAGES: safeCoerceInt(3),
     HATENA_BLOG_DEV_TIMEOUT: safeCoerceInt(30000),
+    COLLECT_FEEDS_CONCURRENCY: safeCoerceInt(5),
+    COLLECT_FEEDS_PID_FILE: z
+      .string()
+      .default('/tmp/techtrend-collect-feeds.pid'),
+    COLLECT_FEEDS_DEBUG: z.enum(['0', '1']).optional().default('0'),
 
     // Database Configuration
     DB_CONNECTION_LIMIT: safeCoerceInt(20),
@@ -211,6 +225,8 @@ const envSchema = z
     EMBEDDING_WORKER_BATCH_SIZE: safeCoerceInt(300),
     EMBEDDING_WORKER_MAX_ATTEMPTS: safeCoerceInt(3),
     EMBEDDING_WORKER_TIMEOUT_MS: safeCoerceInt(9000),
+    EMBEDDING_STUCK_THRESHOLD_MINUTES: safeCoerceInt(30),
+    EMBEDDING_RECOVERY_BATCH_LIMIT: safeCoerceInt(100),
 
     // Security / Middleware
     CURSOR_SECRET: z.string().optional(),
@@ -237,6 +253,8 @@ const envSchema = z
 
     // Feature Flags (additional)
     USE_DATABASE_PROVIDER: booleanEnum.optional().default('false'),
+    USE_OPTIMIZED_SOURCES_API: booleanEnum.optional().default('false'),
+    USE_DATALOADER: booleanEnum.optional().default('false'),
 
     // Platform Detection (runtime-injected)
     VERCEL: z.string().optional(),

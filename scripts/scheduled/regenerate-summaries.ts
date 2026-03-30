@@ -3,6 +3,7 @@ import { GeminiClient } from '../../lib/ai/gemini';
 import { validateSummary, validateDetailedSummary } from '../../lib/utils/summary/summary-validator';
 import { postProcessSummaries } from '../../lib/utils/summary/summary-post-processor';
 import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
+import { env } from '@/lib/config/env';
 
 interface RegenerationOptions {
   articleIds?: string[];
@@ -18,7 +19,7 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
   try {
   console.error('===== 要約再生成スクリプト =====\n');
 
-  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const geminiApiKey = env.GEMINI_API_KEY;
   if (!geminiApiKey) {
     console.error('❌ GEMINI_API_KEY環境変数が設定されていません');
     process.exit(1);
