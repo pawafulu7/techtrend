@@ -25,6 +25,14 @@ export const TEST_USER: TestUser = {
   password: process.env.E2E_TEST_USER_PASSWORD ?? 'TestPassword123',
 };
 
+// Admin test user configuration (overridable with environment variables)
+export const ADMIN_TEST_USER: TestUser = {
+  id: process.env.E2E_ADMIN_USER_ID ?? 'admin-user-id',
+  email: process.env.E2E_ADMIN_EMAIL ?? 'admin@example.com',
+  name: process.env.E2E_ADMIN_NAME ?? 'Admin User',
+  password: process.env.E2E_ADMIN_PASSWORD ?? 'AdminPassword123',
+};
+
 // Browser-specific test users (for parallel testing)
 // Prefer PLAYWRIGHT_WORKER_INDEX, fallback to TEST_PARALLEL_INDEX
 const WORKER_INDEX = process.env.PLAYWRIGHT_WORKER_INDEX ?? process.env.TEST_PARALLEL_INDEX;
@@ -657,4 +665,21 @@ export async function loginTestUser(
     }
     return false;
   }
+}
+
+/**
+ * 管理者ユーザーでログインする
+ * @param page - Playwright page object
+ * @param options - Login options (email/password は ADMIN_TEST_USER から取得)
+ * @returns true if login successful, false otherwise
+ */
+export async function loginAsAdmin(
+  page: Page,
+  options: Omit<LoginOptions, 'email' | 'password'> = {}
+): Promise<boolean> {
+  return loginTestUser(page, {
+    ...options,
+    email: ADMIN_TEST_USER.email,
+    password: ADMIN_TEST_USER.password,
+  });
 }

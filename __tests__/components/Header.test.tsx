@@ -147,13 +147,8 @@ describe('Header', () => {
 
     const header = container.querySelector('header');
 
-    // ヘッダーにstickyまたはfixedクラスが適用されている
-    if (header) {
-      const _hasSticky =
-        header.classList.contains('sticky') ||
-        header.classList.contains('fixed');
-      expect(header).toBeInTheDocument();
-    }
+    // header.tsx は className="... sticky top-0 ..." を持っている
+    expect(header?.classList.contains('sticky')).toBe(true);
   });
 
   it('shows notification icon for authenticated users', () => {

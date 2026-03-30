@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import logger from '@/lib/logger';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+
+const idSchema = z.string().min(1).max(100);
 
 interface Params {
   params: Promise<{
@@ -12,7 +17,17 @@ async function handler(request: NextRequest, { params }: Params) {
   const startTime = Date.now();
 
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+
+    // idバリデーション
+    const idParseResult = idSchema.safeParse(rawId);
+    if (!idParseResult.success) {
+      return NextResponse.json(
+        { error: 'Bad Request', details: idParseResult.error.flatten() },
+        { status: 400 }
+      );
+    }
+    const id = idParseResult.data;
 
     // ソース情報を先に取得して404を早期リターン
     const source = await prisma.source.findUnique({
@@ -148,7 +163,11 @@ async function handler(request: NextRequest, { params }: Params) {
 
     return response;
   } catch (error) {
-    console.error('Error in sources/[id] API:', error);
+    const durationMs = Date.now() - startTime;
+    logger.error(
+      { err: error as Error, route: '/api/sources/[id]', durationMs },
+      'API error'
+    );
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -156,4 +175,4 @@ async function handler(request: NextRequest, { params }: Params) {
   }
 }
 
-export const GET = withAdminAuth(handler);
+export const GET = withRateLimit('admin:read', withAdminAuth(handler));

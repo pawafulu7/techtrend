@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { TEST_USER } from './utils/e2e-helpers';
+import { TEST_USER, ADMIN_TEST_USER } from './utils/e2e-helpers';
 
 // TEST_DATABASE_URL が未設定のときのみ .env.test を読み込む
 if (!process.env.TEST_DATABASE_URL) {
@@ -80,6 +80,54 @@ export async function setupTestUser() {
     return true;
   } catch (error) {
     console.error('Failed to create/update test user:', error);
+    return false;
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+/**
+ * E2Eテスト用の管理者ユーザーをセットアップする
+ * PrismaClientを使用してデータベースに直接接続
+ */
+export async function setupAdminUser() {
+  const TEST_DATABASE_URL = resolveTestDbUrl();
+
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: TEST_DATABASE_URL,
+      },
+    },
+  });
+
+  try {
+    const hashedPassword = bcrypt.hashSync(ADMIN_TEST_USER.password, 10);
+
+    await prisma.user.upsert({
+      where: {
+        email: ADMIN_TEST_USER.email,
+      },
+      update: {
+        name: ADMIN_TEST_USER.name,
+        password: hashedPassword,
+        emailVerified: new Date(),
+        role: 'admin',
+      },
+      create: {
+        id: ADMIN_TEST_USER.id,
+        email: ADMIN_TEST_USER.email,
+        name: ADMIN_TEST_USER.name,
+        password: hashedPassword,
+        emailVerified: new Date(),
+        role: 'admin',
+      },
+    });
+
+    console.log('Admin user created/updated successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to create/update admin user:', error);
     return false;
   } finally {
     await prisma.$disconnect();

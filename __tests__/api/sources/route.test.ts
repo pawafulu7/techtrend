@@ -2,8 +2,9 @@
  * /api/sources エンドポイントのテスト
  */
 
-// withAdminAuth をパススルーにして既存テストを維持
+// withAdminAuth, withRateLimit をパススルーにして既存テストを維持
 jest.mock('@/lib/middleware/with-admin-auth', () => ({ withAdminAuth: (fn: any) => fn }));
+jest.mock('@/lib/middleware/with-rate-limit', () => ({ withRateLimit: (_key: any, fn: any) => fn }));
 
 // モックの設定
 jest.mock('@/lib/database');

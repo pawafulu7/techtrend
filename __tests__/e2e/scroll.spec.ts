@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { waitForPageLoad } from '../../e2e/helpers/wait-utils';
+import { isRunningInCI, waitForPageLoad } from '../../e2e/helpers/wait-utils';
+import { loginAsAdmin } from './utils/e2e-helpers';
 
 test.describe('スクロール機能のテスト', () => {
   test('トップページの3ペインレイアウトでスクロールが正常に動作する', async ({ page }) => {
@@ -110,9 +111,12 @@ test.describe('スクロール機能のテスト', () => {
     }
   });
 
-  test.skip('ソース一覧ページでスクロールが可能', async ({ page }) => {
+  test('ソース一覧ページでスクロールが可能', async ({ page }) => {
+    test.skip(isRunningInCI(), 'Admin tests require admin fixtures in CI');
     // /sources は管理者限定ページのため、管理者ログインが必要
+    await loginAsAdmin(page);
     await page.goto('/sources');
+    await expect(page).toHaveURL(/\/sources/);
 
     // ページが読み込まれるまで待機
     await waitForPageLoad(page, { waitForNetworkIdle: false });
@@ -173,9 +177,12 @@ test.describe('スクロール機能のテスト', () => {
     expect(['auto', 'scroll', 'visible']).toContain(overflow);
   });
 
-  test.skip('統計ページでスクロールが可能', async ({ page }) => {
+  test('統計ページでスクロールが可能', async ({ page }) => {
+    test.skip(isRunningInCI(), 'Admin tests require admin fixtures in CI');
     // /stats は管理者限定ページのため、管理者ログインが必要
+    await loginAsAdmin(page);
     await page.goto('/stats');
+    await expect(page).toHaveURL(/\/stats/);
 
     // ページが読み込まれるまで待機
     await waitForPageLoad(page, { waitForNetworkIdle: false });

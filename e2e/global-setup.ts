@@ -1,5 +1,5 @@
 import { FullConfig } from '@playwright/test';
-import { setupTestUser } from './setup-test-user';
+import { setupTestUser, setupAdminUser } from './setup-test-user';
 
 /**
  * Playwrightのグローバルセットアップ
@@ -29,7 +29,16 @@ async function globalSetup(_config: FullConfig) {
     throw new Error(`Failed to create test user after ${attempts} retries`);
   }
   console.log('✅ Test user created successfully');
-  
+
+  // 管理者ユーザーを作成
+  console.log('📦 Creating admin user...');
+  const adminCreated = await setupAdminUser();
+  if (!adminCreated) {
+    console.warn('⚠️ Failed to create admin user; admin-only tests may fail');
+  } else {
+    console.log('✅ Admin user created successfully');
+  }
+
   console.log('✅ Global setup completed');
 }
 

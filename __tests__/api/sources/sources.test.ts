@@ -3,8 +3,9 @@
  * MSW依存を排除し、純粋なJestモックを使用
  */
 
-// withAdminAuth をパススルーにして既存テストを維持
+// withAdminAuth, withRateLimit をパススルーにして既存テストを維持
 jest.mock('@/lib/middleware/with-admin-auth', () => ({ withAdminAuth: (fn: any) => fn }));
+jest.mock('@/lib/middleware/with-rate-limit', () => ({ withRateLimit: (_key: any, fn: any) => fn }));
 
 // モックを先に設定
 jest.mock('@/lib/database');

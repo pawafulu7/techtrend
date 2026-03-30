@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { isRunningInCI, getTimeout, waitForArticles } from '../../e2e/helpers/wait-utils';
+import { loginAsAdmin } from './utils/e2e-helpers';
 
 // CI環境ではVRTテストをスキップ（環境依存のため）
 test.describe('Visual Regression Tests', () => {
@@ -89,9 +90,12 @@ test.describe('Visual Regression Tests', () => {
     });
   });
 
-  test.skip('統計ダッシュボード - ライトモード', async ({ page }) => {
+  test('統計ダッシュボード - ライトモード', async ({ page }) => {
+    test.skip(isRunningInCI(), 'Admin tests require admin fixtures in CI');
     // /stats は管理者限定ページのため、管理者ログインが必要
+    await loginAsAdmin(page);
     await page.goto('/stats');
+    await expect(page).toHaveURL(/\/stats/);
     await page.waitForLoadState('networkidle');
     
     // ページコンテンツが読み込まれるまで待機
