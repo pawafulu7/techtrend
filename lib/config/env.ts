@@ -182,7 +182,11 @@ const envSchema = z
     SUMMARY_TIMEOUT: safeCoerceInt(90000),
     SUMMARY_REQUEST_DELAY: safeCoerceInt(500),
     MIN_CONTENT_LENGTH: safeCoerceInt(100),
-    MIN_PROCESSED_FOR_FAILURE: safeCoerceInt(5),
+    MIN_PROCESSED_FOR_FAILURE: z.preprocess((v) => {
+      if (v === undefined || v === null) return undefined;
+      const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
+      return Number.isFinite(n) && n >= 1 ? n : undefined;
+    }, z.number().int().min(1).default(5)),
     POST_SAVE_ENRICH_TIMEOUT_MS: safeCoerceInt(10000),
     POST_SAVE_ENRICH_SLEEP_MS: safeCoerceInt(0),
     SKIP_POST_SAVE_ENRICHMENT: z.enum(['0', '1']).optional().default('0'),
