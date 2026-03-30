@@ -148,7 +148,8 @@ describe('Header', () => {
     const header = container.querySelector('header');
 
     // header.tsx は className="... sticky top-0 ..." を持っている
-    expect(header?.classList.contains('sticky')).toBe(true);
+    expect(header).toBeTruthy();
+    expect(header!.classList.contains('sticky')).toBe(true);
   });
 
   it('shows notification icon for authenticated users', () => {

@@ -25,7 +25,7 @@ const sourcesQuerySchema = z.object({
     .refine(
       (v) => {
         if (!v) return true;
-        const parts = v.split(',');
+        const parts = v.split(',').map((p) => p.trim());
         return (
           parts.length <= 50 &&
           parts.every((p) => p.length >= 1 && p.length <= 100)
@@ -152,7 +152,7 @@ async function handler(request: NextRequest) {
             enabled: true,
             ...(ids && {
               id: {
-                in: ids.split(','),
+                in: ids.split(',').map((s) => s.trim()),
               },
             }),
             ...(search && {
@@ -185,7 +185,7 @@ async function handler(request: NextRequest) {
           FROM "Source" s
           LEFT JOIN "Article" a ON s.id = a."sourceId"
           WHERE s.enabled = true
-          ${ids ? Prisma.sql`AND s.id IN (${Prisma.join(ids.split(','))})` : Prisma.empty}
+          ${ids ? Prisma.sql`AND s.id IN (${Prisma.join(ids.split(',').map((s) => s.trim()))})` : Prisma.empty}
           ${search ? Prisma.sql`AND s.name ILIKE ${`%${search}%`}` : Prisma.empty}
           GROUP BY s.id
         `,
@@ -271,7 +271,7 @@ async function handler(request: NextRequest) {
         enabled: true,
         ...(ids && {
           id: {
-            in: ids.split(','),
+            in: ids.split(',').map((s) => s.trim()),
           },
         }),
         ...(search && {

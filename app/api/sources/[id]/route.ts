@@ -5,7 +5,7 @@ import logger from '@/lib/logger';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
-const idSchema = z.string().min(1).max(100);
+const idSchema = z.string().trim().min(1).max(100);
 
 interface Params {
   params: Promise<{
