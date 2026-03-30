@@ -186,7 +186,7 @@
     "next-themes": "^0.4.6",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^7.0.11",
+    "nodemailer": "^8.0.4",
     "openai": "^4.77.3",
     "p-limit": "^7.2.0",
     "pino": "^9.9.5",
@@ -272,6 +272,7 @@
     "minimatch@10": "10.2.3",
     "@prisma/config": {
       "effect": "3.20.0"
-    }
+    },
+    "nodemailer": "^8.0.4"
   }
 }
