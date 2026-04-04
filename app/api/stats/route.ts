@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RedisCache } from '@/lib/cache';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
 
 // Optimized cache configuration: 5-minute TTL for stats
@@ -9,7 +10,7 @@ const statsCache = new RedisCache({
   namespace: '@techtrend/cache:stats:v2',
 });
 
-export async function GET() {
+async function statsHandler() {
   const startTime = Date.now();
 
   try {
@@ -245,3 +246,5 @@ export async function GET() {
     );
   }
 }
+
+export const GET = withRateLimit('public:stats', statsHandler);

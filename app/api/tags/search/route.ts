@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
-export async function GET(request: NextRequest) {
+async function handler(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q') || '';
-    
-    
+
     // 空クエリの場合は人気順で返す
     if (!query) {
       const tags = await prisma.tag.findMany({
@@ -15,16 +15,17 @@ export async function GET(request: NextRequest) {
         orderBy: { articles: { _count: 'desc' } },
         take: 50,
       });
-      
-      
-      return Response.json(tags.map(tag => ({
-        id: tag.id,
-        name: tag.name,
-        count: tag._count.articles,
-        category: tag.category,
-      })));
+
+      return Response.json(
+        tags.map((tag) => ({
+          id: tag.id,
+          name: tag.name,
+          count: tag._count.articles,
+          category: tag.category,
+        }))
+      );
     }
-    
+
     // 検索クエリがある場合
     const tags = await prisma.tag.findMany({
       where: {
@@ -37,20 +38,18 @@ export async function GET(request: NextRequest) {
       orderBy: { articles: { _count: 'desc' } },
       take: 100, // 検索結果は最大100件
     });
-    
-    
-    const result = tags.map(tag => ({
+
+    const result = tags.map((tag) => ({
       id: tag.id,
       name: tag.name,
       count: tag._count.articles,
       category: tag.category,
     }));
-    
+
     return Response.json(result);
   } catch {
-    return Response.json(
-      { error: 'Failed to search tags' },
-      { status: 500 }
-    );
+    return Response.json({ error: 'Failed to search tags' }, { status: 500 });
   }
 }
+
+export const GET = withRateLimit('read:tags-search', handler);

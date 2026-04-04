@@ -38,19 +38,27 @@ async function generateTags(title: string, content: string): Promise<string[]> {
 
 タグ: `;
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{ text: prompt }]
-      }],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 200,
-      }
-    })
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+  let response;
+  try {
+    response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 200,
+        }
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const error = await response.text();
@@ -174,6 +182,7 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
         console.error(`✗ [${article.source.name}] ${article.title.substring(0, 40)}...`);
         console.error(`  エラー: ${error instanceof Error ? error.message : String(error)}`);
         errorCount++;
+        await sleep(2000);  // エラー連続時のAPI連打防止
       }
     }
 

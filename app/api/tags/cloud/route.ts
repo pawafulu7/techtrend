@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RedisCache } from '@/lib/cache';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
 
 // タグクラウド用のキャッシュを遅延初期化
@@ -16,7 +17,7 @@ const getTagCloudCache = () => {
   return tagCloudCache;
 };
 
-export async function GET(request: NextRequest) {
+async function tagCloudHandler(request: NextRequest) {
   try {
     // Next.js 15.xでのNextRequest対応
     const url = new URL(request.url);
@@ -215,3 +216,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withRateLimit('read:tags-cloud', tagCloudHandler);

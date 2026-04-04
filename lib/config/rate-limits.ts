@@ -246,6 +246,22 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'Personalized digest (user-specific, cached)',
     telemetryEvent: 'ratelimit.read.digest',
   },
+  'read:tags-search': {
+    points: 60,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'ip',
+    notes: 'Tag search queries',
+    telemetryEvent: 'ratelimit.read.tags-search',
+  },
+  'read:tags-cloud': {
+    points: 60,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'ip',
+    notes: 'Tag cloud data',
+    telemetryEvent: 'ratelimit.read.tags-cloud',
+  },
 
   // Public Endpoints (High Tolerance) - No block
   'public:stats': {

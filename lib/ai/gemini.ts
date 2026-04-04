@@ -2,15 +2,22 @@ import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { GEMINI_API } from '../constants';
 import { ExternalAPIError } from '../errors';
 import { cleanSummary as cleanSummaryUtil } from '../utils/summary/summary-cleaner';
-import { validateSummary, cleanupSummary, validateAndNormalizeTags } from '../utils/summary/summary-validator';
-import { calculateSummaryScore, needsRegeneration } from '../utils/quality-scorer';
+import {
+  validateSummary,
+  cleanupSummary,
+  validateAndNormalizeTags,
+} from '../utils/summary/summary-validator';
+import {
+  calculateSummaryScore,
+  needsRegeneration,
+} from '../utils/quality-scorer';
 // import { detectArticleType } from '../utils/article/article-type-detector';  // 統一プロンプト移行により無効化
 // import { generatePromptForArticleType } from '../utils/article/article-type-prompts';  // 統一プロンプト移行により無効化
 import { generateUnifiedPrompt } from '../utils/article/article-type-prompts';
-import { 
+import {
   createSummaryPrompt as createSummaryPromptNew,
   postProcessSummary,
-  validateSummaryQuality
+  validateSummaryQuality,
 } from './summary-generator';
 
 export class GeminiClient {
@@ -19,7 +26,7 @@ export class GeminiClient {
 
   constructor(apiKey: string) {
     this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ 
+    this.model = this.genAI.getGenerativeModel({
       model: GEMINI_API.MODEL,
     });
   }
@@ -28,29 +35,32 @@ export class GeminiClient {
     try {
       // 共通処理を使用してプロンプトを生成
       const prompt = createSummaryPromptNew(title, content);
-      
-      const result = await this.model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          maxOutputTokens: GEMINI_API.MAX_TOKENS,
-          temperature: GEMINI_API.TEMPERATURE,
+
+      const result = await this.model.generateContent(
+        {
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: GEMINI_API.MAX_TOKENS,
+            temperature: GEMINI_API.TEMPERATURE,
+          },
         },
-      });
+        { timeout: 60_000 }
+      );
 
       const response = await result.response;
       let summary = response.text();
-      
+
       // クリーンアップ
       summary = this.cleanSummary(summary);
-      
+
       // 後処理（文字数調整、前置き文言除去）
       summary = postProcessSummary(summary, 130);
-      
+
       // 品質検証
       const validation = validateSummaryQuality(summary, 'normal');
       if (!validation.isValid) {
       }
-      
+
       return summary;
     } catch (error) {
       throw new ExternalAPIError(
@@ -61,29 +71,38 @@ export class GeminiClient {
     }
   }
 
-  async generateSummaryWithTags(title: string, content: string, maxRetries: number = 1): Promise<{ summary: string; tags: string[] }> {
+  async generateSummaryWithTags(
+    title: string,
+    content: string,
+    maxRetries: number = 1
+  ): Promise<{ summary: string; tags: string[] }> {
     try {
       const prompt = this.createSummaryAndTagsPrompt(title, content);
-      
-      const result = await this.model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          maxOutputTokens: GEMINI_API.MAX_TOKENS,
-          temperature: GEMINI_API.TEMPERATURE,
+
+      const result = await this.model.generateContent(
+        {
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: GEMINI_API.MAX_TOKENS,
+            temperature: GEMINI_API.TEMPERATURE,
+          },
         },
-      });
+        { timeout: 60_000 }
+      );
 
       const response = result.response;
       const text = response.text();
-      
+
       const parsedResult = this.parseSummaryAndTags(text);
-      
+
       // 品質チェックと再生成
-      const score = calculateSummaryScore(parsedResult.summary, { tags: parsedResult.tags });
+      const score = calculateSummaryScore(parsedResult.summary, {
+        tags: parsedResult.tags,
+      });
       if (needsRegeneration(score) && maxRetries > 0) {
         return this.generateSummaryWithTags(title, content, maxRetries - 1);
       }
-      
+
       return parsedResult;
     } catch (error) {
       throw new ExternalAPIError(
@@ -101,33 +120,42 @@ export class GeminiClient {
     try {
       // 統一フォーマットを使用してプロンプトを生成
       const prompt = this.createDetailedSummaryPrompt(title, content);
-      
-      const result = await this.model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          maxOutputTokens: GEMINI_API.DETAILED_MAX_TOKENS, // 詳細要約は長いため増やす
-          temperature: GEMINI_API.TEMPERATURE,
+
+      const result = await this.model.generateContent(
+        {
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: GEMINI_API.DETAILED_MAX_TOKENS, // 詳細要約は長いため増やす
+            temperature: GEMINI_API.TEMPERATURE,
+          },
         },
-      });
+        { timeout: 60_000 }
+      );
 
       const response = result.response;
       const text = response.text();
-      
+
       const parsedResult = this.parseDetailedSummary(text);
-      
+
       // 通常要約の後処理
       parsedResult.summary = postProcessSummary(parsedResult.summary, 130);
-      
+
       // 品質検証
-      const summaryValidation = validateSummaryQuality(parsedResult.summary, 'normal');
-      const detailedValidation = validateSummaryQuality(parsedResult.detailedSummary, 'detailed');
-      
+      const summaryValidation = validateSummaryQuality(
+        parsedResult.summary,
+        'normal'
+      );
+      const detailedValidation = validateSummaryQuality(
+        parsedResult.detailedSummary,
+        'detailed'
+      );
+
       if (!summaryValidation.isValid) {
       }
-      
+
       if (!detailedValidation.isValid) {
       }
-      
+
       return parsedResult;
     } catch (error) {
       throw new ExternalAPIError(
@@ -141,7 +169,7 @@ export class GeminiClient {
   private createSummaryPrompt(title: string, content: string): string {
     // Limit content length to avoid token limits
     const truncatedContent = content.substring(0, 2000);
-    
+
     // 統一プロンプトの簡易版（通常要約のみ）
     return `以下の技術記事を日本語で要約してください。
 
@@ -173,7 +201,7 @@ export class GeminiClient {
   private createSummaryAndTagsPrompt(title: string, content: string): string {
     // Limit content length to avoid token limits
     const truncatedContent = content.substring(0, 3000);
-    
+
     return `以下の技術記事を詳細に分析してください。
 
 タイトル: ${title}
@@ -215,7 +243,10 @@ export class GeminiClient {
 - 概念: API設計, パフォーマンス最適化, セキュリティ, テスト, アーキテクチャ`;
   }
 
-  private parseSummaryAndTags(text: string): { summary: string; tags: string[] } {
+  private parseSummaryAndTags(text: string): {
+    summary: string;
+    tags: string[];
+  } {
     const lines = text.split('\n');
     let summary = '';
     let tags: string[] = [];
@@ -226,9 +257,10 @@ export class GeminiClient {
         summary = cleanupSummary(rawSummary);
       } else if (line.startsWith('タグ:') || line.startsWith('タグ：')) {
         const tagLine = line.replace(/^タグ[:：]\s*/, '');
-        const rawTags = tagLine.split(/[,、，]/)
-          .map(tag => tag.trim())
-          .map(tag => this.normalizeTag(tag));
+        const rawTags = tagLine
+          .split(/[,、，]/)
+          .map((tag) => tag.trim())
+          .map((tag) => this.normalizeTag(tag));
         tags = validateAndNormalizeTags(rawTags);
       }
     }
@@ -238,16 +270,16 @@ export class GeminiClient {
       // 文字数制限を200文字に拡張し、完全な文で終わるようにする
       const maxLength = 200;
       let truncatedText = text.substring(0, maxLength);
-      
+
       // 最後の句点で切る
       const lastPeriod = truncatedText.lastIndexOf('。');
       if (lastPeriod > 0) {
         truncatedText = truncatedText.substring(0, lastPeriod + 1);
       }
-      
+
       summary = cleanupSummary(truncatedText);
     }
-    
+
     // 要約の検証
     const validation = validateSummary(summary);
     if (!validation.isValid) {
@@ -266,12 +298,16 @@ export class GeminiClient {
   private createDetailedSummaryPrompt(title: string, content: string): string {
     // コンテンツを適切な長さに制限
     const truncatedContent = content.substring(0, 4000);
-    
+
     // 統一プロンプトを使用
     return generateUnifiedPrompt(title, truncatedContent);
   }
 
-  private parseDetailedSummary(text: string): { summary: string; detailedSummary: string; tags: string[] } {
+  private parseDetailedSummary(text: string): {
+    summary: string;
+    detailedSummary: string;
+    tags: string[];
+  } {
     const lines = text.split('\n');
     let summary = '';
     let detailedSummary = '';
@@ -283,14 +319,19 @@ export class GeminiClient {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      
+
       // 要約セクションの検出（改行対応）
-      if (/^(要約|Summary|短い要約|一覧要約)[:：]/.test(line) && !isDetailedSummary) {
+      if (
+        /^(要約|Summary|短い要約|一覧要約)[:：]/.test(line) &&
+        !isDetailedSummary
+      ) {
         isSummarySection = true;
         isDetailedSummary = false;
         isTagSection = false;
-        
-        const content = line.replace(/^(?:要約|Summary|短い要約|一覧要約)[:：]\s*/, '').trim();
+
+        const content = line
+          .replace(/^(?:要約|Summary|短い要約|一覧要約)[:：]\s*/, '')
+          .trim();
         if (content) {
           summary = cleanupSummary(content);
           isSummarySection = false;
@@ -307,12 +348,13 @@ export class GeminiClient {
         isTagSection = true;
         isDetailedSummary = false;
         isSummarySection = false;
-        
+
         const tagContent = line.replace(/^(?:タグ|Tags)[:：]\s*/, '').trim();
         if (tagContent) {
-          const rawTags = tagContent.split(/[,、，]/)
-            .map(tag => tag.trim())
-            .map(tag => this.normalizeTag(tag));
+          const rawTags = tagContent
+            .split(/[,、，]/)
+            .map((tag) => tag.trim())
+            .map((tag) => this.normalizeTag(tag));
           tags = validateAndNormalizeTags(rawTags);
           isTagSection = false;
         }
@@ -328,9 +370,10 @@ export class GeminiClient {
       }
       // タグセクションで次の行に内容がある場合
       else if (isTagSection && line) {
-        const rawTags = line.split(/[,、，]/)
-          .map(tag => tag.trim())
-          .map(tag => this.normalizeTag(tag));
+        const rawTags = line
+          .split(/[,、，]/)
+          .map((tag) => tag.trim())
+          .map((tag) => this.normalizeTag(tag));
         tags = validateAndNormalizeTags(rawTags);
         isTagSection = false;
       }
@@ -346,22 +389,22 @@ export class GeminiClient {
       // 文字数制限を200文字に拡張し、完全な文で終わるようにする
       const maxLength = 200;
       let truncatedText = text.substring(0, maxLength);
-      
+
       // 最後の句点で切る
       const lastPeriod = truncatedText.lastIndexOf('。');
       if (lastPeriod > 0) {
         truncatedText = truncatedText.substring(0, lastPeriod + 1);
       }
-      
+
       summary = cleanupSummary(truncatedText);
     }
-    
+
     // 要約の検証
     const summaryValidation = validateSummary(summary);
     if (!summaryValidation.isValid) {
       summary = cleanupSummary(summary);
     }
-    
+
     if (!detailedSummary) {
       // フォールバック: より意味のある内容を生成
       const bulletPoints: string[] = [];
@@ -379,26 +422,26 @@ export class GeminiClient {
   private normalizeTag(tag: string): string {
     // タグの正規化マップ
     const tagNormalizationMap: Record<string, string> = {
-      'javascript': 'JavaScript',
-      'js': 'JavaScript',
-      'typescript': 'TypeScript',
-      'ts': 'TypeScript',
-      'react': 'React',
-      'vue': 'Vue.js',
-      'angular': 'Angular',
-      'node': 'Node.js',
-      'nodejs': 'Node.js',
-      'python': 'Python',
-      'docker': 'Docker',
-      'kubernetes': 'Kubernetes',
-      'k8s': 'Kubernetes',
-      'aws': 'AWS',
-      'gcp': 'GCP',
-      'azure': 'Azure',
-      'ai': 'AI',
-      'ml': '機械学習',
-      'github': 'GitHub',
-      'git': 'Git',
+      javascript: 'JavaScript',
+      js: 'JavaScript',
+      typescript: 'TypeScript',
+      ts: 'TypeScript',
+      react: 'React',
+      vue: 'Vue.js',
+      angular: 'Angular',
+      node: 'Node.js',
+      nodejs: 'Node.js',
+      python: 'Python',
+      docker: 'Docker',
+      kubernetes: 'Kubernetes',
+      k8s: 'Kubernetes',
+      aws: 'AWS',
+      gcp: 'GCP',
+      azure: 'Azure',
+      ai: 'AI',
+      ml: '機械学習',
+      github: 'GitHub',
+      git: 'Git',
     };
 
     const lowerTag = tag.toLowerCase();
@@ -409,29 +452,32 @@ export class GeminiClient {
     articles: Array<{ title: string; content: string }>
   ): Promise<Map<number, string>> {
     const summaries = new Map<number, string>();
-    
+
     // Process in batches to respect rate limits
     const batchSize = 5;
     for (let i = 0; i < articles.length; i += batchSize) {
       const batch = articles.slice(i, i + batchSize);
-      
+
       await Promise.all(
         batch.map(async (article, index) => {
           try {
-            const summary = await this.generateSummary(article.title, article.content || '');
+            const summary = await this.generateSummary(
+              article.title,
+              article.content || ''
+            );
             summaries.set(i + index, summary);
           } catch (_error) {
             // Continue with other articles even if one fails
           }
         })
       );
-      
+
       // Wait between batches to avoid rate limiting
       if (i + batchSize < articles.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
-    
+
     return summaries;
   }
 }

@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
 const articleIdSchema = z.object({
-  id: z.string().min(1).max(30).regex(/^[a-z0-9]+$/i, 'Invalid article ID format'),
+  id: z
+    .string()
+    .min(1)
+    .max(30)
+    .regex(/^[a-z0-9]+$/i, 'Invalid article ID format'),
 });
 
 async function voteHandler(
@@ -29,8 +34,8 @@ async function voteHandler(
     const article = await prisma.article.update({
       where: { id },
       data: {
-        userVotes: { increment: 1 }
-      }
+        userVotes: { increment: 1 },
+      },
     });
 
     // 品質スコアを再計算（ユーザー投票を反映）
@@ -38,37 +43,37 @@ async function voteHandler(
       where: { id },
       include: {
         source: true,
-        tags: true
-      }
+        tags: true,
+      },
     });
 
     if (articleWithDetails) {
-      const { calculateQualityScore } = await import('@/lib/utils/quality-score');
+      const { calculateQualityScore } =
+        await import('@/lib/utils/quality-score');
       const newScore = calculateQualityScore(articleWithDetails);
-      
+
       await prisma.article.update({
         where: { id },
-        data: { qualityScore: newScore }
+        data: { qualityScore: newScore },
       });
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      votes: article.userVotes 
+    return NextResponse.json({
+      success: true,
+      votes: article.userVotes,
     });
   } catch (error) {
     // Handle Prisma "record not found" error
-    if (error instanceof Error && error.message.includes('Record to update not found')) {
-      return NextResponse.json(
-        { error: 'Article not found' },
-        { status: 404 }
-      );
+    if (
+      error instanceof Error &&
+      error.message.includes('Record to update not found')
+    ) {
+      return NextResponse.json({ error: 'Article not found' }, { status: 404 });
     }
-    return NextResponse.json(
-      { error: 'Failed to vote' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to vote' }, { status: 500 });
   }
 }
 
-export const POST = withCSRFProtection(voteHandler);
+export const POST = withCSRFProtection(
+  withRateLimit('write:vote', voteHandler)
+);
