@@ -5,6 +5,7 @@ import { RedisCache } from '../../lib/cache';
 import { env } from '@/lib/config/env';
 
 const FETCH_TIMEOUT_MS = 30_000;
+const GEMINI_TIMEOUT_MS = 60_000;
 const USER_AGENT = 'TechTrend-ChangelogCollector/1.0';
 const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 const TRANSLATION_BATCH_SIZE = 30;
@@ -85,7 +86,7 @@ ${numberedEntries}`;
               temperature: 0.3,
             },
           },
-          { timeout: 60_000 }
+          { timeout: GEMINI_TIMEOUT_MS }
         );
 
         const responseText = result.response.text();

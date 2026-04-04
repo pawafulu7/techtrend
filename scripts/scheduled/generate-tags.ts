@@ -56,6 +56,12 @@ async function generateTags(title: string, content: string): Promise<string[]> {
       }),
       signal: controller.signal,
     });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Gemini API request timed out after 30s`);
+    }
+    throw error;
   } finally {
     clearTimeout(timeoutId);
   }

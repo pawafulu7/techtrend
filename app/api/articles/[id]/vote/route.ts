@@ -74,6 +74,9 @@ async function voteHandler(
   }
 }
 
+// NOTE: This endpoint currently lacks user authentication. The rate limiter's
+// 'write:vote' policy uses keyStrategy: 'user' and falls back to IP when
+// unauthenticated. Adding proper auth for the vote API is tracked in a separate Issue.
 export const POST = withCSRFProtection(
   withRateLimit('write:vote', voteHandler)
 );

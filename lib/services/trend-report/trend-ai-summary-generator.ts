@@ -23,6 +23,8 @@ import {
 } from './trend-ai-prompts';
 import { validateV2Content, resolveRefKeysToIds } from './trend-ai-validators';
 
+const GEMINI_TIMEOUT_MS = 60_000;
+
 export type AISummaryResult = {
   content: string;
   format: 'json' | 'text';
@@ -260,7 +262,7 @@ async function generateAISummaryStructured(
           responseMimeType: 'application/json',
         },
       },
-      { timeout: 60_000 }
+      { timeout: GEMINI_TIMEOUT_MS }
     );
     return result.response.text().trim();
   };
@@ -346,7 +348,7 @@ async function generateAISummaryLegacyPlainText(
         temperature: 0.5,
       },
     },
-    { timeout: 60_000 }
+    { timeout: GEMINI_TIMEOUT_MS }
   );
 
   const response = result.response;

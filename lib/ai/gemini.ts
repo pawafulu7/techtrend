@@ -20,6 +20,8 @@ import {
   validateSummaryQuality,
 } from './summary-generator';
 
+const GEMINI_TIMEOUT_MS = 60_000;
+
 export class GeminiClient {
   private genAI: GoogleGenerativeAI;
   private model: GenerativeModel;
@@ -44,7 +46,7 @@ export class GeminiClient {
             temperature: GEMINI_API.TEMPERATURE,
           },
         },
-        { timeout: 60_000 }
+        { timeout: GEMINI_TIMEOUT_MS }
       );
 
       const response = await result.response;
@@ -87,10 +89,10 @@ export class GeminiClient {
             temperature: GEMINI_API.TEMPERATURE,
           },
         },
-        { timeout: 60_000 }
+        { timeout: GEMINI_TIMEOUT_MS }
       );
 
-      const response = result.response;
+      const response = await result.response;
       const text = response.text();
 
       const parsedResult = this.parseSummaryAndTags(text);
@@ -129,10 +131,10 @@ export class GeminiClient {
             temperature: GEMINI_API.TEMPERATURE,
           },
         },
-        { timeout: 60_000 }
+        { timeout: GEMINI_TIMEOUT_MS }
       );
 
-      const response = result.response;
+      const response = await result.response;
       const text = response.text();
 
       const parsedResult = this.parseDetailedSummary(text);
