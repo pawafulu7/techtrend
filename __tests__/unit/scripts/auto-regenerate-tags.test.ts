@@ -2,34 +2,14 @@
  * auto-regenerate.ts の applyRegeneratedArticle ヘルパーテスト
  *
  * テスト対象: applyRegeneratedArticle（summary更新 + タグdisconnect/connect + キャッシュ無効化）
+ *
+ * prisma は jest.config.node.js の moduleNameMapper により
+ * __mocks__/lib/prisma.ts → test/utils/prisma-mock.js (jest-mock-extended mockDeep) が使われる。
+ * $transaction は setupDefaultTransactionMock により operations(prismaMock) を実行するため、
+ * tx === prismaMock となる。各テストでは prismaMock.article.* を直接設定する。
  */
 
 // --- モック定義（import より前） ---
-// NOTE: jest.mock ファクトリはホイストされるため、ファクトリ内で参照する変数は
-//       "mock" プレフィックス付きにする必要がある（Jestのホイスティング制約）。
-//       テストからは jest.requireMock 経由でアクセスする。
-
-jest.mock('@/lib/prisma', () => {
-  const mockArticleUpdate = jest.fn().mockResolvedValue({});
-  const mockArticleFindUniqueOrThrow = jest.fn().mockResolvedValue({ tags: [] });
-
-  const mockTxClient = {
-    article: {
-      update: mockArticleUpdate,
-      findUniqueOrThrow: mockArticleFindUniqueOrThrow,
-    },
-  };
-
-  return {
-    prisma: {
-      $transaction: jest.fn((fn: (tx: typeof mockTxClient) => Promise<void>) =>
-        fn(mockTxClient)
-      ),
-      $disconnect: jest.fn().mockResolvedValue(undefined),
-      __mockTxClient: mockTxClient,
-    },
-  };
-});
 
 jest.mock('@/lib/cache/cache-invalidator', () => ({
   cacheInvalidator: {
@@ -78,20 +58,9 @@ jest.mock('fs/promises', () => ({
 // --- import ---
 
 import { applyRegeneratedArticle } from '@/scripts/scheduled/auto-regenerate';
+const { prismaMock } = require('../../../test/utils/prisma-mock');
 
-// --- ヘルパー: モックアクセサ ---
-
-function getPrisma() {
-  return jest.requireMock('@/lib/prisma').prisma as {
-    $transaction: jest.Mock;
-    __mockTxClient: {
-      article: {
-        update: jest.Mock;
-        findUniqueOrThrow: jest.Mock;
-      };
-    };
-  };
-}
+// --- ヘルパー ---
 
 function getCacheInvalidator() {
   return jest.requireMock('@/lib/cache/cache-invalidator').cacheInvalidator as {
@@ -103,25 +72,14 @@ function getCacheInvalidator() {
 // --- テスト ---
 
 describe('auto-regenerate: disconnect-connect パターン', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-
-    // clearAllMocks 後に $transaction の実装を復元
-    const { prisma } = jest.requireMock('@/lib/prisma');
-    const txClient = prisma.__mockTxClient;
-    (prisma.$transaction as jest.Mock).mockImplementation(
-      (fn: (tx: typeof txClient) => Promise<void>) => fn(txClient)
-    );
-
-    // findUniqueOrThrow のデフォルト戻り値を復元（clearAllMocks でリセットされるため）
-    (txClient.article.findUniqueOrThrow as jest.Mock).mockResolvedValue({ tags: [] });
-  });
+  // jest.setup.node.js の beforeEach で resetPrismaMock() が呼ばれるため、
+  // 各テストで必要なモックを設定するだけでよい。
+  // $transaction は setupDefaultTransactionMock により operations(prismaMock) を実行 → tx === prismaMock
 
   describe('1. disconnect-connect パターンの正しさ', () => {
     it('旧タグ[id:1, id:2]を disconnect し、新タグ[id:3, id:4]を connect すること', async () => {
-      // Arrange
-      const { __mockTxClient: txClient } = getPrisma();
-      (txClient.article.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+      // Arrange: トランザクション内の findUniqueOrThrow が旧タグを返す
+      prismaMock.article.findUniqueOrThrow.mockResolvedValue({
         tags: [{ id: '1' }, { id: '2' }],
       });
 
@@ -138,31 +96,30 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
       );
 
       // Assert: summary更新(1回目) + disconnect(2回目) + connect(3回目)
-      const articleUpdate = txClient.article.update;
-      expect(articleUpdate).toHaveBeenCalledTimes(3);
+      expect(prismaMock.article.update).toHaveBeenCalledTimes(3);
 
       // 1回目: summary更新
-      expect(articleUpdate).toHaveBeenNthCalledWith(1, {
+      expect(prismaMock.article.update).toHaveBeenNthCalledWith(1, {
         where: { id: 'article-dc' },
         data: expect.objectContaining({ summary: 'テスト要約' }),
       });
 
       // 2回目: disconnect
-      expect(articleUpdate).toHaveBeenNthCalledWith(2, {
+      expect(prismaMock.article.update).toHaveBeenNthCalledWith(2, {
         where: { id: 'article-dc' },
         data: { tags: { disconnect: [{ id: '1' }, { id: '2' }] } },
       });
 
       // 3回目: connect
-      expect(articleUpdate).toHaveBeenNthCalledWith(3, {
+      expect(prismaMock.article.update).toHaveBeenNthCalledWith(3, {
         where: { id: 'article-dc' },
         data: { tags: { connect: [{ id: '3' }, { id: '4' }] } },
       });
     });
 
     it('旧タグがない場合は disconnect をスキップし、connect のみ呼び出すこと', async () => {
-      // Arrange: 旧タグ空（beforeEach のデフォルトが { tags: [] } なので追加設定不要）
-      const { __mockTxClient: txClient } = getPrisma();
+      // Arrange: 旧タグ空
+      prismaMock.article.findUniqueOrThrow.mockResolvedValue({ tags: [] });
 
       // Act
       await applyRegeneratedArticle(
@@ -172,22 +129,20 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
       );
 
       // Assert: summary更新(1回目) + connect(2回目)。disconnectなし
-      const articleUpdate = txClient.article.update;
-      expect(articleUpdate).toHaveBeenCalledTimes(2);
-      expect(articleUpdate).toHaveBeenNthCalledWith(2, {
+      expect(prismaMock.article.update).toHaveBeenCalledTimes(2);
+      expect(prismaMock.article.update).toHaveBeenNthCalledWith(2, {
         where: { id: 'article-no-old' },
         data: { tags: { connect: [{ id: '3' }] } },
       });
       // disconnect が含まれていないことを確認
-      const calls = (articleUpdate as jest.Mock).mock.calls;
-      const hasDisconnect = calls.some((c: any[]) => c[0]?.data?.tags?.disconnect !== undefined);
+      const calls: any[][] = prismaMock.article.update.mock.calls;
+      const hasDisconnect = calls.some((c) => c[0]?.data?.tags?.disconnect !== undefined);
       expect(hasDisconnect).toBe(false);
     });
 
     it('新タグがない場合は connect をスキップし、disconnect のみ呼び出すこと', async () => {
       // Arrange: 旧タグあり
-      const { __mockTxClient: txClient } = getPrisma();
-      (txClient.article.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+      prismaMock.article.findUniqueOrThrow.mockResolvedValue({
         tags: [{ id: '1' }],
       });
 
@@ -199,21 +154,21 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
       );
 
       // Assert: summary更新(1回目) + disconnect(2回目)。connectなし
-      const articleUpdate = txClient.article.update;
-      expect(articleUpdate).toHaveBeenCalledTimes(2);
-      expect(articleUpdate).toHaveBeenNthCalledWith(2, {
+      expect(prismaMock.article.update).toHaveBeenCalledTimes(2);
+      expect(prismaMock.article.update).toHaveBeenNthCalledWith(2, {
         where: { id: 'article-no-new' },
         data: { tags: { disconnect: [{ id: '1' }] } },
       });
       // connect が含まれていないことを確認
-      const calls = (articleUpdate as jest.Mock).mock.calls;
-      const hasConnect = calls.some((c: any[]) => c[0]?.data?.tags?.connect !== undefined);
+      const calls: any[][] = prismaMock.article.update.mock.calls;
+      const hasConnect = calls.some((c) => c[0]?.data?.tags?.connect !== undefined);
       expect(hasConnect).toBe(false);
     });
   });
 
   describe('2. キャッシュ無効化', () => {
     it('onArticleUpdated と onTagUpdated が両方呼ばれること', async () => {
+      prismaMock.article.findUniqueOrThrow.mockResolvedValue({ tags: [] });
       const cacheInvalidator = getCacheInvalidator();
 
       await applyRegeneratedArticle(
@@ -230,6 +185,7 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
     });
 
     it('キャッシュ無効化エラー時も例外が外に漏れないこと', async () => {
+      prismaMock.article.findUniqueOrThrow.mockResolvedValue({ tags: [] });
       const cacheInvalidator = getCacheInvalidator();
       (cacheInvalidator.onArticleUpdated as jest.Mock).mockRejectedValueOnce(new Error('redis down'));
 
@@ -244,6 +200,7 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
     });
 
     it('detailedSummary が null の場合は onArticleUpdated に undefined が渡されること', async () => {
+      prismaMock.article.findUniqueOrThrow.mockResolvedValue({ tags: [] });
       const cacheInvalidator = getCacheInvalidator();
 
       await applyRegeneratedArticle(
@@ -261,15 +218,14 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
 
   describe('3. 実行順序の検証', () => {
     it('summary更新 → findUniqueOrThrow → disconnect → connect の順で実行されること', async () => {
-      const { __mockTxClient: txClient } = getPrisma();
       const callOrder: string[] = [];
 
-      (txClient.article.findUniqueOrThrow as jest.Mock).mockImplementation(async () => {
+      prismaMock.article.findUniqueOrThrow.mockImplementation(async () => {
         callOrder.push('findUniqueOrThrow');
         return { tags: [{ id: '1' }] };
       });
 
-      (txClient.article.update as jest.Mock).mockImplementation(
+      prismaMock.article.update.mockImplementation(
         async (args: { data: { tags?: { disconnect?: unknown; connect?: unknown }; summary?: string } }) => {
           if (args.data.tags && 'disconnect' in args.data.tags) {
             callOrder.push('disconnect');
