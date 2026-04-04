@@ -38,26 +38,38 @@ async function generateTags(title: string, content: string): Promise<string[]> {
 
 タグ: `;
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{ text: prompt }]
-      }],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 200,
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API request failed: ${response.status} - ${error}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
+  let data: any;
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 200,
+        }
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API request failed: ${response.status} - ${errorText}`);
+    }
+    data = await response.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Gemini API request timed out after 30s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await response.json() as any;
   const responseText = data.candidates[0].content.parts[0].text.trim();
   
   // タグの抽出
@@ -174,6 +186,7 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
         console.error(`✗ [${article.source.name}] ${article.title.substring(0, 40)}...`);
         console.error(`  エラー: ${error instanceof Error ? error.message : String(error)}`);
         errorCount++;
+        await sleep(2000);  // エラー連続時のAPI連打防止
       }
     }
 

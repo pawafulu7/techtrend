@@ -5,6 +5,7 @@ import { RedisCache } from '../../lib/cache';
 import { env } from '@/lib/config/env';
 
 const FETCH_TIMEOUT_MS = 30_000;
+const GEMINI_TIMEOUT_MS = 60_000;
 const USER_AGENT = 'TechTrend-ChangelogCollector/1.0';
 const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 const TRANSLATION_BATCH_SIZE = 30;
@@ -77,13 +78,16 @@ ${numberedEntries}`;
     const MAX_ATTEMPTS = 3;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
-        const result = await model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens: 8192,
-            temperature: 0.3,
+        const result = await model.generateContent(
+          {
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              maxOutputTokens: 8192,
+              temperature: 0.3,
+            },
           },
-        });
+          { timeout: GEMINI_TIMEOUT_MS }
+        );
 
         const responseText = result.response.text();
         const lines = responseText.split('\n').filter((l) => l.trim());

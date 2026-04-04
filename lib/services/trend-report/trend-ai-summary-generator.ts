@@ -23,6 +23,8 @@ import {
 } from './trend-ai-prompts';
 import { validateV2Content, resolveRefKeysToIds } from './trend-ai-validators';
 
+const GEMINI_TIMEOUT_MS = 60_000;
+
 export type AISummaryResult = {
   content: string;
   format: 'json' | 'text';
@@ -251,14 +253,17 @@ async function generateAISummaryStructured(
   const fallbackId = topArticleSlice[0]?.id;
 
   const generateOnce = async (promptText: string, temperature: number) => {
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: promptText }] }],
-      generationConfig: {
-        maxOutputTokens: 8192,
-        temperature,
-        responseMimeType: 'application/json',
+    const result = await model.generateContent(
+      {
+        contents: [{ role: 'user', parts: [{ text: promptText }] }],
+        generationConfig: {
+          maxOutputTokens: 8192,
+          temperature,
+          responseMimeType: 'application/json',
+        },
       },
-    });
+      { timeout: GEMINI_TIMEOUT_MS }
+    );
     return result.response.text().trim();
   };
 
@@ -335,13 +340,16 @@ async function generateAISummaryLegacyPlainText(
   const periodLabel = PERIOD_LABELS[periodType];
   const prompt = buildLegacyPrompt(periodLabel, topArticles);
 
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: {
-      maxOutputTokens: 600,
-      temperature: 0.5,
+  const result = await model.generateContent(
+    {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        maxOutputTokens: 600,
+        temperature: 0.5,
+      },
     },
-  });
+    { timeout: GEMINI_TIMEOUT_MS }
+  );
 
   const response = result.response;
   let summary = response.text().trim();
