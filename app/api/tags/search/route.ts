@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import logger from '@/lib/logger';
 
 async function handler(request: NextRequest) {
   try {
@@ -47,7 +48,8 @@ async function handler(request: NextRequest) {
     }));
 
     return Response.json(result);
-  } catch {
+  } catch (error) {
+    logger.error({ error }, 'Tags search failed');
     return Response.json({ error: 'Failed to search tags' }, { status: 500 });
   }
 }

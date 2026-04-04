@@ -77,13 +77,16 @@ ${numberedEntries}`;
     const MAX_ATTEMPTS = 3;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
-        const result = await model.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens: 8192,
-            temperature: 0.3,
+        const result = await model.generateContent(
+          {
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              maxOutputTokens: 8192,
+              temperature: 0.3,
+            },
           },
-        });
+          { timeout: 60_000 }
+        );
 
         const responseText = result.response.text();
         const lines = responseText.split('\n').filter((l) => l.trim());

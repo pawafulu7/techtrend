@@ -251,14 +251,17 @@ async function generateAISummaryStructured(
   const fallbackId = topArticleSlice[0]?.id;
 
   const generateOnce = async (promptText: string, temperature: number) => {
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: promptText }] }],
-      generationConfig: {
-        maxOutputTokens: 8192,
-        temperature,
-        responseMimeType: 'application/json',
+    const result = await model.generateContent(
+      {
+        contents: [{ role: 'user', parts: [{ text: promptText }] }],
+        generationConfig: {
+          maxOutputTokens: 8192,
+          temperature,
+          responseMimeType: 'application/json',
+        },
       },
-    });
+      { timeout: 60_000 }
+    );
     return result.response.text().trim();
   };
 
@@ -335,13 +338,16 @@ async function generateAISummaryLegacyPlainText(
   const periodLabel = PERIOD_LABELS[periodType];
   const prompt = buildLegacyPrompt(periodLabel, topArticles);
 
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: {
-      maxOutputTokens: 600,
-      temperature: 0.5,
+  const result = await model.generateContent(
+    {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        maxOutputTokens: 600,
+        temperature: 0.5,
+      },
     },
-  });
+    { timeout: 60_000 }
+  );
 
   const response = result.response;
   let summary = response.text().trim();
