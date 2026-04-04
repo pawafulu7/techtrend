@@ -13,6 +13,7 @@ import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
 import { getOrCreateTags } from '@/lib/services/tag-service';
 import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { env } from '@/lib/config/env';
 
 // 環境変数チェック
@@ -172,20 +173,10 @@ async function regenerateArticles(articles: Array<{
 
       // 改善された場合のみ更新
       if (newScore.totalScore > article.score) {
-        // タグを取得または作成し、記事データと一括更新（setで既存タグを置換）
+        // タグを取得または作成し、記事データ更新（disconnect-connectで旧タグ置換）
         const newTags = await getOrCreateTags(tags);
-        await prisma.article.update({
-          where: { id: article.id },
-          data: {
-            summary,
-            summaryVersion: SUMMARY_VERSION.CURRENT, // 統一フォーマットバージョン
-            detailedSummary: result.detailedSummary,
-            translatedTitle: result.translatedTitle,
-            articleType: result.articleType,
-            updatedAt: new Date(),
-            tags: { set: newTags.map(t => ({ id: t.id })) },
-          },
-        });
+
+        await applyRegeneratedArticle(article.id, result, newTags);
 
         console.error(`  ✅ 更新成功（+${newScore.totalScore - article.score}点改善）`);
         results.push({
@@ -227,6 +218,67 @@ async function regenerateArticles(articles: Array<{
   }
 
   return results;
+}
+
+/**
+ * 再生成された記事のsummary更新 + タグ置換 + キャッシュ無効化を1トランザクションで実行する。
+ */
+export async function applyRegeneratedArticle(
+  articleId: string,
+  summaryResult: {
+    summary: string;
+    detailedSummary?: string | null;
+    translatedTitle?: string | null;
+    articleType?: string | null;
+  },
+  newTags: Array<{ id: string }>
+): Promise<void> {
+  // summary更新 + タグ置換を1トランザクションにまとめる
+  await prisma.$transaction(async (tx) => {
+    // summary更新
+    await tx.article.update({
+      where: { id: articleId },
+      data: {
+        summary: summaryResult.summary,
+        summaryVersion: SUMMARY_VERSION.CURRENT,
+        detailedSummary: summaryResult.detailedSummary,
+        translatedTitle: summaryResult.translatedTitle,
+        articleType: summaryResult.articleType,
+        updatedAt: new Date(),
+      },
+    });
+
+    // タグ更新: disconnect-connect方式（旧タグ全削除→新タグ接続）
+    const current = await tx.article.findUniqueOrThrow({
+      where: { id: articleId },
+      select: { tags: { select: { id: true } } },
+    });
+
+    if (current.tags.length > 0) {
+      await tx.article.update({
+        where: { id: articleId },
+        data: { tags: { disconnect: current.tags } },
+      });
+    }
+
+    if (newTags.length > 0) {
+      await tx.article.update({
+        where: { id: articleId },
+        data: { tags: { connect: newTags.map(t => ({ id: t.id })) } },
+      });
+    }
+  });
+
+  // キャッシュ無効化
+  try {
+    await cacheInvalidator.onArticleUpdated(articleId, {
+      summary: summaryResult.summary,
+      detailedSummary: summaryResult.detailedSummary ?? undefined,
+    });
+    await cacheInvalidator.onTagUpdated();
+  } catch (cacheError) {
+    console.error(`  ⚠️ キャッシュ無効化エラー:`, cacheError instanceof Error ? cacheError.message : String(cacheError));
+  }
 }
 
 /**

@@ -205,18 +205,30 @@ export async function updateArticleTags(
   articleId: string,
   tagNames: string[]
 ): Promise<void> {
-  await prisma.article.update({
+  if (tagNames.length === 0) return;
+
+  // 現在のタグ名を取得
+  const current = await prisma.article.findUniqueOrThrow({
     where: { id: articleId },
-    data: {
-      tags: {
-        set: [],
-        connectOrCreate: tagNames.map((name) => ({
-          where: { name },
-          create: { name },
-        })),
-      },
-    },
+    select: { tags: { select: { name: true } } },
   });
+
+  const currentTagNames = new Set(current.tags.map((t) => t.name));
+  const newTagNames = tagNames.filter((name) => !currentTagNames.has(name));
+
+  if (newTagNames.length > 0) {
+    await prisma.article.update({
+      where: { id: articleId },
+      data: {
+        tags: {
+          connectOrCreate: newTagNames.map((name) => ({
+            where: { name },
+            create: { name },
+          })),
+        },
+      },
+    });
+  }
 }
 
 /**
