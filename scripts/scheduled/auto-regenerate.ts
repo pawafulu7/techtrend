@@ -176,21 +176,22 @@ async function regenerateArticles(articles: Array<{
         // タグを取得または作成し、記事データ更新（disconnect-connectで旧タグ置換）
         const newTags = await getOrCreateTags(tags);
 
-        // summary更新（tagsは分離して更新）
-        await prisma.article.update({
-          where: { id: article.id },
-          data: {
-            summary,
-            summaryVersion: SUMMARY_VERSION.CURRENT, // 統一フォーマットバージョン
-            detailedSummary: result.detailedSummary,
-            translatedTitle: result.translatedTitle,
-            articleType: result.articleType,
-            updatedAt: new Date(),
-          },
-        });
-
-        // タグ更新: disconnect-connect方式（旧タグ全削除→新タグ接続）
+        // summary更新 + タグ置換を1トランザクションにまとめる
         await prisma.$transaction(async (tx) => {
+          // summary更新
+          await tx.article.update({
+            where: { id: article.id },
+            data: {
+              summary,
+              summaryVersion: SUMMARY_VERSION.CURRENT, // 統一フォーマットバージョン
+              detailedSummary: result.detailedSummary,
+              translatedTitle: result.translatedTitle,
+              articleType: result.articleType,
+              updatedAt: new Date(),
+            },
+          });
+
+          // タグ更新: disconnect-connect方式（旧タグ全削除→新タグ接続）
           const current = await tx.article.findUniqueOrThrow({
             where: { id: article.id },
             select: { tags: { select: { id: true } } },
@@ -217,6 +218,7 @@ async function regenerateArticles(articles: Array<{
             summary,
             detailedSummary: result.detailedSummary,
           });
+          await cacheInvalidator.onTagUpdated();
         } catch (cacheError) {
           console.error(`  ⚠️ キャッシュ無効化エラー:`, cacheError instanceof Error ? cacheError.message : String(cacheError));
         }
