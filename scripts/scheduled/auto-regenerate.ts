@@ -13,6 +13,7 @@ import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
 import { getOrCreateTags } from '@/lib/services/tag-service';
 import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { env } from '@/lib/config/env';
 
 // 環境変数チェック
@@ -172,8 +173,10 @@ async function regenerateArticles(articles: Array<{
 
       // 改善された場合のみ更新
       if (newScore.totalScore > article.score) {
-        // タグを取得または作成し、記事データと一括更新（setで既存タグを置換）
+        // タグを取得または作成し、記事データ更新（disconnect-connectで旧タグ置換）
         const newTags = await getOrCreateTags(tags);
+
+        // summary更新（tagsは分離して更新）
         await prisma.article.update({
           where: { id: article.id },
           data: {
@@ -183,9 +186,40 @@ async function regenerateArticles(articles: Array<{
             translatedTitle: result.translatedTitle,
             articleType: result.articleType,
             updatedAt: new Date(),
-            tags: { set: newTags.map(t => ({ id: t.id })) },
           },
         });
+
+        // タグ更新: disconnect-connect方式（旧タグ全削除→新タグ接続）
+        await prisma.$transaction(async (tx) => {
+          const current = await tx.article.findUniqueOrThrow({
+            where: { id: article.id },
+            select: { tags: { select: { id: true } } },
+          });
+
+          if (current.tags.length > 0) {
+            await tx.article.update({
+              where: { id: article.id },
+              data: { tags: { disconnect: current.tags } },
+            });
+          }
+
+          if (newTags.length > 0) {
+            await tx.article.update({
+              where: { id: article.id },
+              data: { tags: { connect: newTags.map(t => ({ id: t.id })) } },
+            });
+          }
+        });
+
+        // キャッシュ無効化
+        try {
+          await cacheInvalidator.onArticleUpdated(article.id, {
+            summary,
+            detailedSummary: result.detailedSummary,
+          });
+        } catch (cacheError) {
+          console.error(`  ⚠️ キャッシュ無効化エラー:`, cacheError instanceof Error ? cacheError.message : String(cacheError));
+        }
 
         console.error(`  ✅ 更新成功（+${newScore.totalScore - article.score}点改善）`);
         results.push({
