@@ -40,9 +40,9 @@ async function generateTags(title: string, content: string): Promise<string[]> {
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30_000);
-  let response;
+  let data: any;
   try {
-    response = await fetch(apiUrl, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -56,6 +56,11 @@ async function generateTags(title: string, content: string): Promise<string[]> {
       }),
       signal: controller.signal,
     });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API request failed: ${response.status} - ${errorText}`);
+    }
+    data = await response.json();
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {
@@ -65,13 +70,6 @@ async function generateTags(title: string, content: string): Promise<string[]> {
   } finally {
     clearTimeout(timeoutId);
   }
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`API request failed: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json() as any;
   const responseText = data.candidates[0].content.parts[0].text.trim();
   
   // タグの抽出
