@@ -76,6 +76,12 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
   // 各テストで必要なモックを設定するだけでよい。
   // $transaction は setupDefaultTransactionMock により operations(prismaMock) を実行 → tx === prismaMock
 
+  beforeEach(() => {
+    const { cacheInvalidator } = jest.requireMock('@/lib/cache/cache-invalidator');
+    (cacheInvalidator.onArticleUpdated as jest.Mock).mockClear().mockResolvedValue(undefined);
+    (cacheInvalidator.onTagUpdated as jest.Mock).mockClear().mockResolvedValue(undefined);
+  });
+
   describe('1. disconnect-connect パターンの正しさ', () => {
     it('旧タグ[id:1, id:2]を disconnect し、新タグ[id:3, id:4]を connect すること', async () => {
       // Arrange: トランザクション内の findUniqueOrThrow が旧タグを返す
