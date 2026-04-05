@@ -11,14 +11,18 @@ async function cleanTags() {
     });
 
     if (emptyTag) {
-      // 空タグへの関連を一括削除
-      const deleteResult = await prisma.$executeRaw`
-        DELETE FROM "_ArticleToTag" WHERE "B" = ${emptyTag.id}
-      `;
+      const deleteResult = await prisma.$transaction(async (tx) => {
+        // 空タグへの関連を一括削除
+        const count = await tx.$executeRaw`
+          DELETE FROM "_ArticleToTag" WHERE "B" = ${emptyTag.id}
+        `;
 
-      // タグを削除
-      await prisma.tag.delete({
-        where: { id: emptyTag.id }
+        // タグを削除
+        await tx.tag.delete({
+          where: { id: emptyTag.id }
+        });
+
+        return count;
       });
 
       console.error(`✓ 空タグを削除しました (${deleteResult}件の関連を削除)`);
@@ -154,7 +158,8 @@ async function cleanTags() {
     });
 
     console.error(`- 総タグ数: ${totalTags}`);
-    console.error(`- タグ付き記事: ${articlesWithTags}/${totalArticles} (${((articlesWithTags / totalArticles) * 100).toFixed(1)}%)`);
+    const taggedPercent = totalArticles > 0 ? ((articlesWithTags / totalArticles) * 100).toFixed(1) : '0.0';
+    console.error(`- タグ付き記事: ${articlesWithTags}/${totalArticles} (${taggedPercent}%)`);
 
     console.error('\n✅ タグのクリーンアップが完了しました');
 
