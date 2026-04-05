@@ -173,10 +173,8 @@ async function regenerateArticles(articles: Array<{
 
       // 改善された場合のみ更新
       if (newScore.totalScore > article.score) {
-        // タグを取得または作成し、記事データ更新（disconnect-connectで旧タグ置換）
-        const newTags = await getOrCreateTags(tags);
-
-        await applyRegeneratedArticle(article.id, result, newTags);
+        // タグ取得・記事データ更新をtransaction内でatomicに実行
+        await applyRegeneratedArticle(article.id, result, tags);
 
         console.error(`  ✅ 更新成功（+${newScore.totalScore - article.score}点改善）`);
         results.push({
@@ -231,10 +229,13 @@ export async function applyRegeneratedArticle(
     translatedTitle?: string | null;
     articleType?: string | null;
   },
-  newTags: Array<{ id: string }>
+  tagNames: string[]
 ): Promise<void> {
-  // summary更新 + タグ置換を1トランザクションにまとめる
+  // summary更新 + タグupsert + タグ置換を1トランザクションにまとめる
   await prisma.$transaction(async (tx) => {
+    // タグを取得または作成（tx内でatomicに実行）
+    const newTags = await getOrCreateTags(tagNames, undefined, tx);
+
     // summary更新
     await tx.article.update({
       where: { id: articleId },

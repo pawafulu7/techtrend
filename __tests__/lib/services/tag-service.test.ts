@@ -64,6 +64,48 @@ describe('TagService', () => {
       expect(mockTransaction).not.toHaveBeenCalled();
     });
 
+    describe('with tx parameter', () => {
+      it('should use tx.tag.upsert instead of prisma.$transaction', async () => {
+        const mockTxUpsert = jest
+          .fn()
+          .mockResolvedValueOnce({
+            id: '1',
+            name: 'javascript',
+            category: null,
+          })
+          .mockResolvedValueOnce({
+            id: '2',
+            name: 'typescript',
+            category: null,
+          });
+        const mockTx = { tag: { upsert: mockTxUpsert } } as any;
+
+        const result = await getOrCreateTags(
+          ['JavaScript', 'TypeScript'],
+          undefined,
+          mockTx
+        );
+
+        expect(mockTransaction).not.toHaveBeenCalled();
+        expect(mockTxUpsert).toHaveBeenCalledTimes(2);
+        expect(result).toEqual([
+          { id: '1', name: 'javascript', category: null },
+          { id: '2', name: 'typescript', category: null },
+        ]);
+      });
+
+      it('should return empty array for empty input even with tx', async () => {
+        const mockTxUpsert = jest.fn();
+        const mockTx = { tag: { upsert: mockTxUpsert } } as any;
+
+        const result = await getOrCreateTags([], undefined, mockTx);
+
+        expect(result).toEqual([]);
+        expect(mockTxUpsert).not.toHaveBeenCalled();
+        expect(mockTransaction).not.toHaveBeenCalled();
+      });
+    });
+
     it('should return empty array for null/undefined input', async () => {
       const result = await getOrCreateTags(null as unknown as string[]);
       expect(result).toEqual([]);
@@ -146,6 +188,34 @@ describe('TagService', () => {
     it('should return empty array for empty input', async () => {
       const result = await getTagIdsForConnect([]);
       expect(result).toEqual([]);
+    });
+
+    describe('with tx parameter', () => {
+      it('should use tx.tag.upsert and return IDs without calling prisma.$transaction', async () => {
+        const mockTxUpsert = jest
+          .fn()
+          .mockResolvedValueOnce({
+            id: 'abc123',
+            name: 'javascript',
+            category: null,
+          })
+          .mockResolvedValueOnce({
+            id: 'def456',
+            name: 'typescript',
+            category: null,
+          });
+        const mockTx = { tag: { upsert: mockTxUpsert } } as any;
+
+        const result = await getTagIdsForConnect(
+          ['javascript', 'typescript'],
+          undefined,
+          mockTx
+        );
+
+        expect(mockTransaction).not.toHaveBeenCalled();
+        expect(mockTxUpsert).toHaveBeenCalledTimes(2);
+        expect(result).toEqual([{ id: 'abc123' }, { id: 'def456' }]);
+      });
     });
   });
 

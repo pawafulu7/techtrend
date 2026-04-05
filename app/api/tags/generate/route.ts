@@ -4,6 +4,7 @@ import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import { getTagIdsForConnect } from '@/lib/services/tag-service';
+import logger from '@/lib/logger';
 
 async function generateTagsHandler(_request: NextRequest) {
   try {
@@ -53,24 +54,35 @@ async function generateTagsHandler(_request: NextRequest) {
           continue;
         }
 
-        // Safe tag creation using upsert pattern (prevents race condition duplicates)
-        const tagConnections = await getTagIdsForConnect(normalizedTags, {
-          normalize: false, // Already normalized by service
-        });
+        // タグ作成と記事更新をatomicに実行
+        const didUpdate = await prisma.$transaction(async (tx) => {
+          // Safe tag creation using upsert pattern (prevents race condition duplicates)
+          const tagConnections = await getTagIdsForConnect(
+            normalizedTags,
+            { normalize: false }, // Already normalized by service
+            tx
+          );
 
-        // 記事にタグを追加
-        if (tagConnections.length > 0) {
-          await prisma.article.update({
-            where: { id: article.id },
-            data: {
-              tags: {
-                connect: tagConnections,
+          // 記事にタグを追加
+          if (tagConnections.length > 0) {
+            await tx.article.update({
+              where: { id: article.id },
+              data: {
+                tags: {
+                  connect: tagConnections,
+                },
               },
-            },
-          });
-          generated++;
-        }
-      } catch {
+            });
+            return true;
+          }
+          return false;
+        });
+        if (didUpdate) generated++;
+      } catch (error) {
+        logger.error(
+          { err: error, articleId: article.id },
+          '[TagGenerateAPI] Tag generation failed'
+        );
         errors++;
       }
     }
@@ -83,7 +95,11 @@ async function generateTagsHandler(_request: NextRequest) {
         total: articlesWithoutTags.length,
       },
     });
-  } catch {
+  } catch (error) {
+    logger.error(
+      { err: error },
+      '[TagGenerateAPI] Batch tag generation failed'
+    );
     return NextResponse.json(
       {
         success: false,
