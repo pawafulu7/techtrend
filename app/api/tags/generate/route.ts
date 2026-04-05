@@ -72,9 +72,9 @@ async function generateTagsHandler(_request: NextRequest) {
                 },
               },
             });
-            generated++;
           }
         });
+        generated++;
       } catch {
         errors++;
       }
