@@ -2,18 +2,22 @@ import { PrismaClient } from '@prisma/client';
 import { container } from '../container';
 import { DI_TOKENS } from '../types';
 import { env } from '@/lib/config/env';
+import { getPrismaConfig } from '@/lib/database-config';
 
 let prismaInstance: PrismaClient | null = null;
 
 export function registerPrismaProvider(): void {
   container.registerSingleton(DI_TOKENS.PRISMA, () => {
     if (!prismaInstance) {
-      prismaInstance = new PrismaClient({
-        log:
-          env.PRISMA_QUERY_LOG === 'true'
-            ? ['query', 'error', 'warn']
-            : ['error'],
-      });
+      const config = getPrismaConfig();
+      prismaInstance = new PrismaClient(
+        config || {
+          log:
+            env.PRISMA_QUERY_LOG === 'true'
+              ? ['query', 'error', 'warn']
+              : ['error', 'warn'],
+        }
+      );
     }
     return prismaInstance;
   });
