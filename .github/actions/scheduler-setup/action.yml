@@ -1,5 +1,5 @@
 name: 'Scheduler Setup'
-description: 'Common setup steps for scheduler workflows (Node.js, npm ci, Prisma generate, DB warm-up, migrate deploy)'
+description: 'Common setup steps for scheduler workflows (Node.js, npm ci, Prisma generate, DB warm-up, optional migrate deploy)'
 
 inputs:
   node_version:
@@ -9,7 +9,7 @@ inputs:
   skip_migrate:
     description: 'Skip prisma migrate deploy step'
     required: false
-    default: 'false'
+    default: 'true'
   database_url:
     description: 'Database URL for DB warm-up and migration'
     required: true
@@ -41,5 +41,4 @@ runs:
       shell: bash
       env:
         DATABASE_URL: ${{ inputs.database_url }}
-        PRISMA_MIGRATE_ENGINE_ADVISORY_LOCK_TIMEOUT: '60000'
       run: npx prisma migrate deploy
