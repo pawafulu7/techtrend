@@ -10,6 +10,7 @@ import {
   createUserDeletedResponse,
 } from '@/lib/middleware/with-user-validation';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { env } from '@/lib/config/env';
 
 const batchFavoritesSchema = z.object({
@@ -196,4 +197,6 @@ async function postHandler(request: NextRequest) {
   }
 }
 
-export const POST = withCSRFProtection(postHandler);
+export const POST = withCSRFProtection(
+  withRateLimit('read:favorite:batch', postHandler)
+);
