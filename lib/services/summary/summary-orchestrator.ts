@@ -136,24 +136,27 @@ export async function regenerateSummaries(
               article.id
             );
 
-            await prisma.$transaction(async (tx) => {
-              await tx.article.update({
-                where: { id: article.id },
-                data: {
-                  summary: result.summary,
-                  detailedSummary: result.detailedSummary,
-                  translatedTitle: result.translatedTitle,
-                  summaryVersion: SUMMARY_VERSION.CURRENT,
-                  summaryComputedAt: new Date(),
-                  summaryError: null,
-                  skipReason: null,
-                },
-              });
+            await prisma.$transaction(
+              async (tx) => {
+                await tx.article.update({
+                  where: { id: article.id },
+                  data: {
+                    summary: result.summary,
+                    detailedSummary: result.detailedSummary,
+                    translatedTitle: result.translatedTitle,
+                    summaryVersion: SUMMARY_VERSION.CURRENT,
+                    summaryComputedAt: new Date(),
+                    summaryError: null,
+                    skipReason: null,
+                  },
+                });
 
-              if (result.tags != null) {
-                await updateArticleTags(tx, article.id, result.tags);
-              }
-            });
+                if (result.tags != null) {
+                  await updateArticleTags(tx, article.id, result.tags);
+                }
+              },
+              { timeout: env.DB_TRANSACTION_TIMEOUT }
+            );
 
             logger.info(
               { articleId: article.id, title: article.title.substring(0, 50) },
@@ -250,24 +253,27 @@ export async function regenerateSummaries(
           article.id
         );
 
-        await prisma.$transaction(async (tx) => {
-          await tx.article.update({
-            where: { id: article.id },
-            data: {
-              summary: result.summary,
-              detailedSummary: result.detailedSummary,
-              translatedTitle: result.translatedTitle,
-              summaryVersion: SUMMARY_VERSION.CURRENT,
-              summaryComputedAt: new Date(),
-              summaryError: null,
-              skipReason: null,
-            },
-          });
+        await prisma.$transaction(
+          async (tx) => {
+            await tx.article.update({
+              where: { id: article.id },
+              data: {
+                summary: result.summary,
+                detailedSummary: result.detailedSummary,
+                translatedTitle: result.translatedTitle,
+                summaryVersion: SUMMARY_VERSION.CURRENT,
+                summaryComputedAt: new Date(),
+                summaryError: null,
+                skipReason: null,
+              },
+            });
 
-          if (result.tags != null) {
-            await updateArticleTags(tx, article.id, result.tags);
-          }
-        });
+            if (result.tags != null) {
+              await updateArticleTags(tx, article.id, result.tags);
+            }
+          },
+          { timeout: env.DB_TRANSACTION_TIMEOUT }
+        );
 
         logger.info(
           { articleId: article.id, title: article.title.substring(0, 50) },
@@ -306,10 +312,7 @@ export async function regenerateSummaries(
 
     return { generated, errors, skipped };
   } catch (error) {
-    logger.error(
-      { err: error },
-      'Fatal error in regeneration'
-    );
+    logger.error({ err: error }, 'Fatal error in regeneration');
     throw error;
   }
 }
@@ -402,24 +405,27 @@ export async function generateMissingSummaries(
           article.id
         );
 
-        await prisma.$transaction(async (tx) => {
-          await tx.article.update({
-            where: { id: article.id },
-            data: {
-              summary: result.summary,
-              detailedSummary: result.detailedSummary,
-              translatedTitle: result.translatedTitle,
-              summaryVersion: SUMMARY_VERSION.CURRENT,
-              summaryComputedAt: new Date(),
-              summaryError: null,
-              skipReason: null,
-            },
-          });
+        await prisma.$transaction(
+          async (tx) => {
+            await tx.article.update({
+              where: { id: article.id },
+              data: {
+                summary: result.summary,
+                detailedSummary: result.detailedSummary,
+                translatedTitle: result.translatedTitle,
+                summaryVersion: SUMMARY_VERSION.CURRENT,
+                summaryComputedAt: new Date(),
+                summaryError: null,
+                skipReason: null,
+              },
+            });
 
-          if (result.tags != null) {
-            await updateArticleTags(tx, article.id, result.tags);
-          }
-        });
+            if (result.tags != null) {
+              await updateArticleTags(tx, article.id, result.tags);
+            }
+          },
+          { timeout: env.DB_TRANSACTION_TIMEOUT }
+        );
 
         logger.info(
           { articleId: article.id, title: article.title.substring(0, 50) },
@@ -519,20 +525,14 @@ export async function generateMissingSummaries(
         });
       }
     } catch (dbError) {
-      logger.warn(
-        { err: dbError },
-        'Failed to record skip reasons'
-      );
+      logger.warn({ err: dbError }, 'Failed to record skip reasons');
     }
 
     logger.info({ generated, skipped, errors }, 'Missing summaries completed');
 
     return { generated, errors, skipped };
   } catch (error) {
-    logger.error(
-      { err: error },
-      'Fatal error in missing summaries generation'
-    );
+    logger.error({ err: error }, 'Fatal error in missing summaries generation');
     throw error;
   }
 }

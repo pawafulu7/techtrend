@@ -23,6 +23,7 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 import { processArticleWithTimeout } from '@/lib/services/summary/batch-processor';
+import { env } from '@/lib/config/env';
 import type { ArticleWithSource } from '@/types/models';
 
 /** ArticleWithSource のミニマムなスタブを生成するヘルパー */
@@ -79,8 +80,11 @@ function makePrismaMock(existingTags: string[] = []) {
         update: articleUpdate,
         findUniqueOrThrow: articleFindUniqueOrThrow,
       },
-      $transaction: jest.fn((fn: (tx: typeof txClient) => Promise<void>) =>
-        fn(txClient)
+      $transaction: jest.fn(
+        (
+          fn: (tx: typeof txClient) => Promise<void>,
+          _options?: { timeout?: number }
+        ) => fn(txClient)
       ),
     } as unknown as import('@prisma/client').PrismaClient,
     articleUpdate,
@@ -275,6 +279,32 @@ describe('batch-processor', () => {
         expect(logger.warn).toHaveBeenCalledWith(
           expect.objectContaining({ articleId: 'article-cache-error' }),
           'Cache invalidation failed, continuing'
+        );
+      });
+    });
+
+    describe('transaction timeout configuration', () => {
+      it('should pass DB_TRANSACTION_TIMEOUT to $transaction options', async () => {
+        const { prisma, articleUpdate } = makePrismaMock();
+        const article = makeArticle('article-timeout-check');
+
+        const generateSummaryAndTags = jest.fn().mockResolvedValue({
+          summary: 'テスト要約。',
+          detailedSummary: '・テスト詳細',
+          translatedTitle: undefined,
+          tags: [],
+        });
+
+        await processArticleWithTimeout(
+          article,
+          '記事の本文',
+          generateSummaryAndTags,
+          prisma
+        );
+
+        expect(prisma.$transaction).toHaveBeenCalledWith(
+          expect.any(Function),
+          { timeout: env.DB_TRANSACTION_TIMEOUT }
         );
       });
     });

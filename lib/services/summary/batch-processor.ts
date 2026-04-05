@@ -158,24 +158,27 @@ async function processArticle(
     article.id
   );
 
-  await prisma.$transaction(async (tx) => {
-    await tx.article.update({
-      where: { id: article.id },
-      data: {
-        summary: result.summary,
-        detailedSummary: result.detailedSummary,
-        translatedTitle: result.translatedTitle,
-        summaryVersion: SUMMARY_VERSION.CURRENT,
-        summaryComputedAt: new Date(),
-        summaryError: null,
-        skipReason: null,
-      },
-    });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.article.update({
+        where: { id: article.id },
+        data: {
+          summary: result.summary,
+          detailedSummary: result.detailedSummary,
+          translatedTitle: result.translatedTitle,
+          summaryVersion: SUMMARY_VERSION.CURRENT,
+          summaryComputedAt: new Date(),
+          summaryError: null,
+          skipReason: null,
+        },
+      });
 
-    if (result.tags != null) {
-      await updateArticleTags(tx, article.id, result.tags);
-    }
-  });
+      if (result.tags != null) {
+        await updateArticleTags(tx, article.id, result.tags);
+      }
+    },
+    { timeout: env.DB_TRANSACTION_TIMEOUT }
+  );
 
   try {
     await cacheInvalidator.onArticleUpdated(article.id, {
