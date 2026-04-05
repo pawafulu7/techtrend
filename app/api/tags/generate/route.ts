@@ -54,7 +54,7 @@ async function generateTagsHandler(_request: NextRequest) {
         }
 
         // タグ作成と記事更新をatomicに実行
-        await prisma.$transaction(async (tx) => {
+        const didUpdate = await prisma.$transaction(async (tx) => {
           // Safe tag creation using upsert pattern (prevents race condition duplicates)
           const tagConnections = await getTagIdsForConnect(
             normalizedTags,
@@ -72,9 +72,11 @@ async function generateTagsHandler(_request: NextRequest) {
                 },
               },
             });
+            return true;
           }
+          return false;
         });
-        generated++;
+        if (didUpdate) generated++;
       } catch {
         errors++;
       }

@@ -147,9 +147,10 @@ describe('/api/summaries/generate', () => {
     // TagService receives only unique new tags after filtering existing
     expect(mockGetTagIdsForConnect).toHaveBeenCalledTimes(1);
     // 第3引数はPrisma TransactionClient（tx）
-    const [tags, opts] = mockGetTagIdsForConnect.mock.calls[0];
+    const [tags, opts, tx] = mockGetTagIdsForConnect.mock.calls[0];
     expect(tags).toEqual(['new']);
     expect(opts).toEqual({ normalize: false });
+    expect(tx).toBeDefined();
   });
 
   it('should handle service errors gracefully', async () => {
