@@ -278,5 +278,31 @@ describe('batch-processor', () => {
         );
       });
     });
+
+    describe('transaction timeout configuration', () => {
+      it('should pass DB_TRANSACTION_TIMEOUT to $transaction options', async () => {
+        const { prisma, articleUpdate } = makePrismaMock();
+        const article = makeArticle('article-timeout-check');
+
+        const generateSummaryAndTags = jest.fn().mockResolvedValue({
+          summary: 'テスト要約。',
+          detailedSummary: '・テスト詳細',
+          translatedTitle: undefined,
+          tags: [],
+        });
+
+        await processArticleWithTimeout(
+          article,
+          '記事の本文',
+          generateSummaryAndTags,
+          prisma
+        );
+
+        expect(prisma.$transaction).toHaveBeenCalledWith(
+          expect.any(Function),
+          { timeout: expect.any(Number) }
+        );
+      });
+    });
   });
 });
