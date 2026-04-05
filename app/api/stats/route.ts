@@ -34,7 +34,15 @@ async function statsHandler() {
       daily: { date: string; total: number; sources: Record<string, number> }[];
       tags: { id: string; name: string; count: number }[];
     };
-    const cachedStats = await statsCache.get<StatsPayload>(cacheKey);
+    let cachedStats: StatsPayload | null = null;
+    try {
+      cachedStats = await statsCache.get<StatsPayload>(cacheKey);
+    } catch (cacheError) {
+      logger.warn(
+        { err: cacheError, route: '/api/stats' },
+        'Cache get error, continuing without cache'
+      );
+    }
 
     if (cachedStats) {
       const responseTime = Date.now() - startTime;
@@ -195,7 +203,14 @@ async function statsHandler() {
     })();
 
     // Store stats in cache
-    await statsCache.set(cacheKey, stats);
+    try {
+      await statsCache.set(cacheKey, stats);
+    } catch (cacheError) {
+      logger.warn(
+        { err: cacheError, route: '/api/stats' },
+        'Cache set error, continuing without caching'
+      );
+    }
 
     const responseTime = Date.now() - startTime;
     const response = NextResponse.json({

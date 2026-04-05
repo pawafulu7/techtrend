@@ -15,9 +15,16 @@ export async function GET(_request: NextRequest) {
     const cacheKey = 'category-stats';
 
     // Check cache first
-    const cachedResult = await cache.get(cacheKey);
-    if (cachedResult) {
-      return NextResponse.json(cachedResult);
+    try {
+      const cachedResult = await cache.get(cacheKey);
+      if (cachedResult) {
+        return NextResponse.json(cachedResult);
+      }
+    } catch (cacheError) {
+      logger.warn(
+        { err: cacheError, route: '/api/articles/categories' },
+        'Cache get error, continuing without cache'
+      );
     }
 
     // Get category counts
@@ -64,7 +71,14 @@ export async function GET(_request: NextRequest) {
     };
 
     // Cache the result
-    await cache.set(cacheKey, result);
+    try {
+      await cache.set(cacheKey, result);
+    } catch (cacheError) {
+      logger.warn(
+        { err: cacheError, route: '/api/articles/categories' },
+        'Cache set error, continuing without caching'
+      );
+    }
 
     return NextResponse.json(result);
   } catch (error) {
