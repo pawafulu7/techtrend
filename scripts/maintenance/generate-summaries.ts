@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { SummaryManager } from '@/lib/services/summary/summary-manager';
 import { createNotifierFromEnv } from '@/lib/notification';
 import type { ArticleInfo } from '@/lib/notification/types';
-
-const prisma = new PrismaClient();
 
 interface GenerateResult {
   generated: number;
@@ -85,7 +83,7 @@ async function generateSummaries(options: GenerateSummariesOptions = {}): Promis
     console.error('❌ 要約生成でエラーが発生しました:', error instanceof Error ? error.message : String(error));
     throw error;
   } finally {
-    await prisma.$disconnect();
+    // prisma singleton is managed by lib/prisma.ts (graceful shutdown handlers)
   }
 }
 
