@@ -6,25 +6,25 @@ async function cleanTags() {
   try {
     // 1. 空のタグを削除
     console.error('【空タグの削除】');
-    const emptyTag = await prisma.tag.findUnique({
-      where: { name: '' }
-    });
+    const deleteResult = await prisma.$transaction(async (tx) => {
+      const emptyTag = await tx.tag.findUnique({
+        where: { name: '' },
+        select: { id: true },
+      });
+      if (!emptyTag) return null;
 
-    if (emptyTag) {
-      const deleteResult = await prisma.$transaction(async (tx) => {
-        // 空タグへの関連を一括削除
-        const count = await tx.$executeRaw`
-          DELETE FROM "_ArticleToTag" WHERE "B" = ${emptyTag.id}
-        `;
+      const count = await tx.$executeRaw`
+        DELETE FROM "_ArticleToTag" WHERE "B" = ${emptyTag.id}
+      `;
 
-        // タグを削除
-        await tx.tag.delete({
-          where: { id: emptyTag.id }
-        });
-
-        return count;
+      await tx.tag.deleteMany({
+        where: { id: emptyTag.id },
       });
 
+      return count;
+    });
+
+    if (deleteResult !== null) {
       console.error(`✓ 空タグを削除しました (${deleteResult}件の関連を削除)`);
     } else {
       console.error('✓ 空タグは存在しません');
