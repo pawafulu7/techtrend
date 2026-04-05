@@ -155,7 +155,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
               logger.error(
                 {
                   articleId: params.articleId,
-                  err: err,
+                  err,
                 },
                 'Embedding job enqueue failed'
               )
