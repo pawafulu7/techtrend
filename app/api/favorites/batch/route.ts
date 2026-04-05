@@ -9,6 +9,7 @@ import {
   validateUser,
   createUserDeletedResponse,
 } from '@/lib/middleware/with-user-validation';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { env } from '@/lib/config/env';
 
 const batchFavoritesSchema = z.object({
@@ -30,7 +31,7 @@ const dataLoaderCache = new WeakMap<
  * Body: { articleIds: string[], useDataLoader?: boolean }
  * Response: { favorites: { [articleId: string]: boolean } }
  */
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   const startTime = Date.now();
 
   try {
@@ -194,3 +195,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withCSRFProtection(postHandler);
