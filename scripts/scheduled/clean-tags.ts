@@ -6,21 +6,25 @@ async function cleanTags() {
   try {
     // 1. 空のタグを削除
     console.error('【空タグの削除】');
-    const emptyTag = await prisma.tag.findUnique({
-      where: { name: '' }
-    });
+    const deleteResult = await prisma.$transaction(async (tx) => {
+      const emptyTag = await tx.tag.findUnique({
+        where: { name: '' },
+        select: { id: true },
+      });
+      if (!emptyTag) return null;
 
-    if (emptyTag) {
-      // 空タグへの関連を一括削除
-      const deleteResult = await prisma.$executeRaw`
+      const count = await tx.$executeRaw`
         DELETE FROM "_ArticleToTag" WHERE "B" = ${emptyTag.id}
       `;
 
-      // タグを削除
-      await prisma.tag.delete({
-        where: { id: emptyTag.id }
+      await tx.tag.deleteMany({
+        where: { id: emptyTag.id },
       });
 
+      return count;
+    });
+
+    if (deleteResult !== null) {
       console.error(`✓ 空タグを削除しました (${deleteResult}件の関連を削除)`);
     } else {
       console.error('✓ 空タグは存在しません');
@@ -154,7 +158,8 @@ async function cleanTags() {
     });
 
     console.error(`- 総タグ数: ${totalTags}`);
-    console.error(`- タグ付き記事: ${articlesWithTags}/${totalArticles} (${((articlesWithTags / totalArticles) * 100).toFixed(1)}%)`);
+    const taggedPercent = totalArticles > 0 ? ((articlesWithTags / totalArticles) * 100).toFixed(1) : '0.0';
+    console.error(`- タグ付き記事: ${articlesWithTags}/${totalArticles} (${taggedPercent}%)`);
 
     console.error('\n✅ タグのクリーンアップが完了しました');
 
