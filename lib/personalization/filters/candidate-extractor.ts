@@ -6,9 +6,16 @@
 
 import { PrismaClient, Prisma } from '@prisma/client';
 import { DEFAULT_SCORE_PARAMETERS } from '../types';
+import { RedisCache } from '@/lib/cache/redis-cache';
+
+/** Module-level singleton for centroid cache (TTL: 1 hour) */
+const centroidCache = new RedisCache({
+  ttl: 3600,
+  namespace: 'personalization',
+});
 
 /** Legacy default for embedding candidates (kept for API compatibility; not used in threshold mode) */
-export const DEFAULT_TOP_K_CANDIDATES = 1000;
+export const DEFAULT_TOP_K_CANDIDATES = 200;
 
 /** Minimum similarity threshold to include in results (derived from ScoreParameters) */
 export const DEFAULT_MIN_SIMILARITY =
@@ -66,23 +73,27 @@ export type CategoryCentroidRow = {
 };
 
 /**
- * Get category centroids from database.
+ * Get category centroids from database, with Redis cache (TTL: 1 hour).
  */
 export async function getCategoryCentroids(
   db: PrismaClient,
   categoryIds: string[]
 ): Promise<CategoryCentroidRow[]> {
-  const result = await db.$queryRaw<CategoryCentroidRow[]>`
-    SELECT
-      id,
-      slug,
-      "centroidEmbedding"::text as centroid_embedding
-    FROM "InterestCategory"
-    WHERE id = ANY(${categoryIds}::text[])
-      AND "centroidEmbedding" IS NOT NULL
-  `;
+  const cacheKey = `centroids:${categoryIds.slice().sort().join(',')}`;
 
-  return result;
+  return centroidCache.getOrSetWithLock<CategoryCentroidRow[]>(
+    cacheKey,
+    () =>
+      db.$queryRaw<CategoryCentroidRow[]>`
+        SELECT
+          id,
+          slug,
+          "centroidEmbedding"::text as centroid_embedding
+        FROM "InterestCategory"
+        WHERE id = ANY(${categoryIds}::text[])
+          AND "centroidEmbedding" IS NOT NULL
+      `
+  );
 }
 
 /**
@@ -112,11 +123,31 @@ export async function getEmbeddingCandidates(
       ? Prisma.sql`AND a."sourceId" != ALL(${excludeSourceIds}::text[])`
       : Prisma.empty;
 
-  // Use threshold-based filtering with topK limit
-  const maxDistance = 1 - DEFAULT_MIN_SIMILARITY;
-
   // Apply guard rail: limit topK to safety cap
   const effectiveLimit = Math.min(topK, DEFAULT_THRESHOLD_RESULT_LIMIT);
+
+  // Stage 1: Pure kNN query on partial HNSW index (no JOINs, no extra filters)
+  // The partial index on embeddingKey = 'summary' enables HNSW usage here.
+  type Stage1Row = { articleId: string; sim_emb: number };
+  const stage1Results = await db.$queryRaw<Stage1Row[]>`
+    SELECT "articleId", 1 - (embedding <=> ${centroid}::vector) AS sim_emb
+    FROM "ArticleEmbedding"
+    WHERE "embeddingKey" = 'summary'::"EmbeddingKey"
+    ORDER BY embedding <=> ${centroid}::vector
+    LIMIT ${effectiveLimit}
+  `;
+
+  if (stage1Results.length === 0) {
+    return [];
+  }
+
+  // Stage 2: Data fetch + filtering using Stage 1 results via VALUES clause
+  const valuesClause = Prisma.join(
+    stage1Results.map(
+      (r) => Prisma.sql`(${r.articleId}::text, ${r.sim_emb}::float8)`
+    ),
+    ','
+  );
 
   const result = await db.$queryRaw<RawEmbeddingCandidate[]>`
     SELECT
@@ -131,17 +162,14 @@ export async function getEmbeddingCandidates(
       a."sourceId" as source_id,
       a.summary,
       a.thumbnail as thumbnail_url,
-      1 - (ae.embedding <=> ${centroid}::vector) AS sim_emb
-    FROM "Article" a
-    INNER JOIN "ArticleEmbedding" ae ON a.id = ae."articleId"
-    WHERE ae."embeddingKey" = 'summary'::"EmbeddingKey"
-      AND a."summaryComputedAt" IS NOT NULL
+      s1.sim_emb
+    FROM (VALUES ${valuesClause}) AS s1("articleId", sim_emb)
+    INNER JOIN "Article" a ON a.id = s1."articleId"
+    WHERE a."summaryComputedAt" IS NOT NULL
       AND a."isHidden" = false
-      AND (ae.embedding <=> ${centroid}::vector) < ${maxDistance}
       ${periodFilter}
       ${sourceExcludeFilter}
-    ORDER BY ae.embedding <=> ${centroid}::vector
-    LIMIT ${effectiveLimit}
+      AND s1.sim_emb >= ${DEFAULT_MIN_SIMILARITY}
   `;
 
   return result.map((row) => ({

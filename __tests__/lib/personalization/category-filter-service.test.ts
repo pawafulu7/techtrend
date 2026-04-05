@@ -34,6 +34,36 @@ jest.mock('@/lib/prisma', () => ({
   prisma: mockPrisma,
 }));
 
+// Mock candidate-extractor: bypass centroidCache + make getEmbeddingCandidates overridable for pLimit tests
+const mockGetEmbeddingCandidates = jest.fn();
+jest.mock('@/lib/personalization/filters/candidate-extractor', () => {
+  const actual = jest.requireActual(
+    '@/lib/personalization/filters/candidate-extractor'
+  );
+  return {
+    ...actual,
+    getCategoryCentroids: async (
+      db: any,
+      categoryIds: string[]
+    ): Promise<any[]> => {
+      return db.$queryRaw`
+        SELECT id, slug, "centroidEmbedding"::text as centroid_embedding
+        FROM "InterestCategory"
+        WHERE id = ANY(${categoryIds}::text[])
+          AND "centroidEmbedding" IS NOT NULL
+      `;
+    },
+    getEmbeddingCandidates: (...args: any[]) => {
+      // If mockGetEmbeddingCandidates has an implementation, use it (for pLimit tests).
+      // Otherwise, delegate to actual implementation (for all other tests).
+      if (mockGetEmbeddingCandidates.getMockImplementation()) {
+        return mockGetEmbeddingCandidates(...args);
+      }
+      return actual.getEmbeddingCandidates(...args);
+    },
+  };
+});
+
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -50,6 +80,9 @@ describe('CategoryFilterService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // mockResolvedValue (non-Once) persists through clearAllMocks — reset individually
+    mockPrisma.article.findMany.mockReset().mockResolvedValue([]);
+    mockPrisma.article.count.mockReset().mockResolvedValue(0);
     service = new CategoryFilterService(mockPrisma as any);
   });
 
@@ -324,7 +357,10 @@ describe('CategoryFilterService', () => {
       // Mock centroid query
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockCentroids) // getCategoryCentroids
-        .mockResolvedValueOnce(mockCandidates) // getEmbeddingCandidates
+        .mockResolvedValueOnce(
+          mockCandidates.map((c) => ({ articleId: c.id, sim_emb: c.sim_emb }))
+        ) // Stage 1: kNN
+        .mockResolvedValueOnce(mockCandidates) // Stage 2: data fetch
         .mockResolvedValueOnce([{ article_id: 'art-1' }]); // checkTagMatches
 
       const result = await service.filterArticles({
@@ -406,7 +442,10 @@ describe('CategoryFilterService', () => {
 
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockCentroids)
-        .mockResolvedValueOnce(lowSimCandidates)
+        .mockResolvedValueOnce(
+          lowSimCandidates.map((c) => ({ articleId: c.id, sim_emb: c.sim_emb }))
+        ) // Stage 1: kNN
+        .mockResolvedValueOnce(lowSimCandidates) // Stage 2: data fetch
         .mockResolvedValueOnce([]);
 
       const result = await service.filterArticles({
@@ -423,7 +462,10 @@ describe('CategoryFilterService', () => {
     it('should apply offset correctly', async () => {
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockCentroids)
-        .mockResolvedValueOnce(mockCandidates)
+        .mockResolvedValueOnce(
+          mockCandidates.map((c) => ({ articleId: c.id, sim_emb: c.sim_emb }))
+        ) // Stage 1: kNN
+        .mockResolvedValueOnce(mockCandidates) // Stage 2: data fetch
         .mockResolvedValueOnce([]);
 
       const result = await service.filterArticles({
@@ -441,7 +483,10 @@ describe('CategoryFilterService', () => {
     it('should honor sortBy when provided', async () => {
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockCentroids)
-        .mockResolvedValueOnce(mockCandidates)
+        .mockResolvedValueOnce(
+          mockCandidates.map((c) => ({ articleId: c.id, sim_emb: c.sim_emb }))
+        ) // Stage 1: kNN
+        .mockResolvedValueOnce(mockCandidates) // Stage 2: data fetch
         .mockResolvedValueOnce([]);
 
       const result = await service.filterArticles({
@@ -533,8 +578,20 @@ describe('CategoryFilterService', () => {
     it('should use max similarity when article appears in multiple category results', async () => {
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockMultiCentroids)
-        .mockResolvedValueOnce(mockCandidatesFrontend)
-        .mockResolvedValueOnce(mockCandidatesBackend)
+        .mockResolvedValueOnce(
+          mockCandidatesFrontend.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // cat-1 Stage 1: kNN
+        .mockResolvedValueOnce(
+          mockCandidatesBackend.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // cat-2 Stage 1: kNN (interleaved - all S1 first)
+        .mockResolvedValueOnce(mockCandidatesFrontend) // cat-1 Stage 2: data fetch
+        .mockResolvedValueOnce(mockCandidatesBackend) // cat-2 Stage 2: data fetch
         .mockResolvedValueOnce([]);
 
       const result = await service.filterArticles({
@@ -560,9 +617,15 @@ describe('CategoryFilterService', () => {
     it('should handle empty results from one category gracefully', async () => {
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockMultiCentroids)
-        .mockResolvedValueOnce(mockCandidatesFrontend)
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+        .mockResolvedValueOnce(
+          mockCandidatesFrontend.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // cat-1 Stage 1: kNN
+        .mockResolvedValueOnce([]) // cat-2 Stage 1: empty → early return (interleaved)
+        .mockResolvedValueOnce(mockCandidatesFrontend) // cat-1 Stage 2: data fetch (no cat-2 S2 since S1 was empty)
+        .mockResolvedValueOnce([]); // checkTagMatches
 
       const result = await service.filterArticles({
         categoryIds: ['cat-1', 'cat-2'],
@@ -602,8 +665,20 @@ describe('CategoryFilterService', () => {
       const excludeSourceIds = ['arxiv-source-id'];
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockMultiCentroids)
-        .mockResolvedValueOnce(mockCandidatesFrontend)
-        .mockResolvedValueOnce(mockCandidatesBackend)
+        .mockResolvedValueOnce(
+          mockCandidatesFrontend.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // cat-1 Stage 1: kNN
+        .mockResolvedValueOnce(
+          mockCandidatesBackend.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // cat-2 Stage 1: kNN (interleaved - all S1 first)
+        .mockResolvedValueOnce(mockCandidatesFrontend) // cat-1 Stage 2: data fetch
+        .mockResolvedValueOnce(mockCandidatesBackend) // cat-2 Stage 2: data fetch
         .mockResolvedValueOnce([]);
 
       await service.filterArticles({
@@ -613,11 +688,12 @@ describe('CategoryFilterService', () => {
         excludeSourceIds,
       });
 
-      // getEmbeddingCandidates is called via $queryRaw (2nd and 3rd calls)
+      // getEmbeddingCandidates Stage 2 calls contain sourceId exclude filter
+      // NEW layout: calls[0]=centroids, calls[1]=cat1-s1, calls[2]=cat2-s1, calls[3]=cat1-s2, calls[4]=cat2-s2, calls[5]=checkTagMatches
       // $queryRaw receives tagged template args: [stringsArray, ...values]
       // Prisma.sql fragments are passed as objects with {strings, values} structure
-      const secondCallValues = mockPrisma.$queryRaw.mock.calls[1].slice(1);
-      const thirdCallValues = mockPrisma.$queryRaw.mock.calls[2].slice(1);
+      const cat1Stage2Values = mockPrisma.$queryRaw.mock.calls[3].slice(1);
+      const cat2Stage2Values = mockPrisma.$queryRaw.mock.calls[4].slice(1);
 
       // The sourceExcludeFilter is a Prisma.sql fragment containing the excludeSourceIds
       const findExcludeFragment = (values: unknown[]) =>
@@ -632,15 +708,15 @@ describe('CategoryFilterService', () => {
             )
         );
 
-      const secondFragment = findExcludeFragment(secondCallValues);
-      const thirdFragment = findExcludeFragment(thirdCallValues);
+      const cat1Fragment = findExcludeFragment(cat1Stage2Values);
+      const cat2Fragment = findExcludeFragment(cat2Stage2Values);
 
-      expect(secondFragment).toBeDefined();
-      expect(secondFragment!.values).toEqual(
+      expect(cat1Fragment).toBeDefined();
+      expect(cat1Fragment!.values).toEqual(
         expect.arrayContaining([excludeSourceIds])
       );
-      expect(thirdFragment).toBeDefined();
-      expect(thirdFragment!.values).toEqual(
+      expect(cat2Fragment).toBeDefined();
+      expect(cat2Fragment!.values).toEqual(
         expect.arrayContaining([excludeSourceIds])
       );
     });
@@ -653,7 +729,13 @@ describe('CategoryFilterService', () => {
 
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockSingleCentroids) // getCategoryCentroids
-        .mockResolvedValueOnce(mockCandidatesFrontend) // getEmbeddingCandidates
+        .mockResolvedValueOnce(
+          mockCandidatesFrontend.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // Stage 1: kNN
+        .mockResolvedValueOnce(mockCandidatesFrontend) // Stage 2: data fetch
         .mockResolvedValueOnce([]); // checkTagMatches
 
       await service.filterArticles({
@@ -663,11 +745,12 @@ describe('CategoryFilterService', () => {
         excludeSourceIds,
       });
 
-      // getEmbeddingCandidates is the 2nd $queryRaw call
-      const secondCallValues = mockPrisma.$queryRaw.mock.calls[1].slice(1);
+      // getEmbeddingCandidates Stage 2 is the 3rd $queryRaw call (index=2)
+      // Stage 2 contains the sourceId exclude filter (Stage 1 is pure kNN without filters)
+      const stage2CallValues = mockPrisma.$queryRaw.mock.calls[2].slice(1);
 
       // Find the Prisma.sql fragment containing sourceId exclude filter
-      const excludeFragment = secondCallValues.find(
+      const excludeFragment = stage2CallValues.find(
         (v: unknown): v is { strings: string[]; values: unknown[] } =>
           typeof v === 'object' &&
           v !== null &&
@@ -717,7 +800,13 @@ describe('CategoryFilterService', () => {
       // Test embedding path: no excludeSourceIds in SQL
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockSingleCentroids) // getCategoryCentroids
-        .mockResolvedValueOnce(mockCandidatesFrontend) // getEmbeddingCandidates
+        .mockResolvedValueOnce(
+          mockCandidatesFrontend.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // Stage 1: kNN
+        .mockResolvedValueOnce(mockCandidatesFrontend) // Stage 2: data fetch
         .mockResolvedValueOnce([]); // checkTagMatches
 
       await service.filterArticles({
@@ -727,11 +816,11 @@ describe('CategoryFilterService', () => {
         // excludeSourceIds is not specified
       });
 
-      // getEmbeddingCandidates is the 2nd $queryRaw call
-      const secondCallValues = mockPrisma.$queryRaw.mock.calls[1].slice(1);
+      // Stage 2 is the 3rd $queryRaw call (index=2) — check no sourceId exclude fragment
+      const stage2CallValues = mockPrisma.$queryRaw.mock.calls[2].slice(1);
 
       // When excludeSourceIds is undefined, Prisma.empty is used (no sourceId exclude fragment)
-      const excludeFragment = secondCallValues.find(
+      const excludeFragment = stage2CallValues.find(
         (v: unknown): v is { strings: string[]; values: unknown[] } =>
           typeof v === 'object' &&
           v !== null &&
@@ -794,7 +883,13 @@ describe('CategoryFilterService', () => {
 
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockSingleCentroids) // getCategoryCentroids
-        .mockResolvedValueOnce(mockCandidatesFrontend) // getEmbeddingCandidates
+        .mockResolvedValueOnce(
+          mockCandidatesFrontend.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // Stage 1: kNN
+        .mockResolvedValueOnce(mockCandidatesFrontend) // Stage 2: data fetch
         .mockResolvedValueOnce([]); // checkTagMatches
 
       await service.filterArticles({
@@ -804,11 +899,11 @@ describe('CategoryFilterService', () => {
         excludeSourceIds: [], // empty array
       });
 
-      // getEmbeddingCandidates is the 2nd $queryRaw call
-      const secondCallValues = mockPrisma.$queryRaw.mock.calls[1].slice(1);
+      // Stage 2 is the 3rd $queryRaw call (index=2) — check no sourceId exclude fragment
+      const stage2CallValues = mockPrisma.$queryRaw.mock.calls[2].slice(1);
 
       // Empty array should not add exclude filter (Prisma.empty is used)
-      const excludeFragment = secondCallValues.find(
+      const excludeFragment = stage2CallValues.find(
         (v: unknown): v is { strings: string[]; values: unknown[] } =>
           typeof v === 'object' &&
           v !== null &&
@@ -842,8 +937,20 @@ describe('CategoryFilterService', () => {
     it('should apply tag boost from any matching category (OR)', async () => {
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockMultiCentroids)
-        .mockResolvedValueOnce(mockCandidatesFrontend)
-        .mockResolvedValueOnce(mockCandidatesBackend)
+        .mockResolvedValueOnce(
+          mockCandidatesFrontend.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // cat-1 Stage 1: kNN
+        .mockResolvedValueOnce(
+          mockCandidatesBackend.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // cat-2 Stage 1: kNN (interleaved - all S1 first)
+        .mockResolvedValueOnce(mockCandidatesFrontend) // cat-1 Stage 2: data fetch
+        .mockResolvedValueOnce(mockCandidatesBackend) // cat-2 Stage 2: data fetch
         .mockResolvedValueOnce([{ article_id: 'art-1' }]);
 
       const result = await service.filterArticles({
@@ -895,11 +1002,17 @@ describe('CategoryFilterService', () => {
 
     it('topK指定時はDEFAULT_TOP_K_CANDIDATESが使われず指定値がgetEmbeddingCandidatesに渡される', async () => {
       // topK=50 を指定する
-      // getEmbeddingCandidates は $queryRaw の 2回目の呼び出し（1回目はgetCategoryCentroids）
-      // template literal の LIMIT 値として topK=50 が渡される
+      // Stage 1 は $queryRaw の 2回目の呼び出し（1回目はgetCategoryCentroids）
+      // template literal の LIMIT 値として topK=50 が Stage 1 に渡される
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockSingleCentroid) // getCategoryCentroids
-        .mockResolvedValueOnce(mockCandidatesSimple) // getEmbeddingCandidates
+        .mockResolvedValueOnce(
+          mockCandidatesSimple.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // Stage 1: kNN (LIMIT=50)
+        .mockResolvedValueOnce(mockCandidatesSimple) // Stage 2: data fetch
         .mockResolvedValueOnce([]); // checkTagMatches
 
       await service.filterArticles({
@@ -909,9 +1022,8 @@ describe('CategoryFilterService', () => {
         topK: 50,
       });
 
-      // $queryRaw の 2回目呼び出し (index=1) が getEmbeddingCandidates
+      // $queryRaw の Stage 1 呼び出し (index=1) に LIMIT 値が入る
       // template literal は $queryRaw(strings, ...values) 形式で呼ばれる
-      // LIMIT ${effectiveLimit} の値が calls[1] の最後の引数に入る
       const embeddingCandidateCallArgs = mockPrisma.$queryRaw.mock.calls[1];
       // template literalの値 (strings以外の引数) を取得
       const templateValues = embeddingCandidateCallArgs.slice(1);
@@ -921,33 +1033,47 @@ describe('CategoryFilterService', () => {
       expect(templateValues).toContain(50);
     });
 
-    it('topK未指定時はDEFAULT_TOP_K_CANDIDATES(1000)がLIMITとして渡される', async () => {
+    it('topK未指定時はDEFAULT_TOP_K_CANDIDATES(200)がLIMITとして渡される', async () => {
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockSingleCentroid) // getCategoryCentroids
-        .mockResolvedValueOnce(mockCandidatesSimple) // getEmbeddingCandidates
+        .mockResolvedValueOnce(
+          mockCandidatesSimple.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // Stage 1: kNN (LIMIT=1000)
+        .mockResolvedValueOnce(mockCandidatesSimple) // Stage 2: data fetch
         .mockResolvedValueOnce([]); // checkTagMatches
 
       await service.filterArticles({
         categoryIds: ['cat-1'],
         periodMonths: 12,
         limit: 5,
-        // topK: 未指定 → DEFAULT_TOP_K_CANDIDATES = 1000
+        // topK: 未指定 → DEFAULT_TOP_K_CANDIDATES = 200
       });
 
+      // Stage 1 呼び出し (index=1) に LIMIT 値が入る
       const embeddingCandidateCallArgs = mockPrisma.$queryRaw.mock.calls[1];
       const templateValues = embeddingCandidateCallArgs.slice(1);
 
-      // DEFAULT_TOP_K_CANDIDATES=1000 が LIMIT 句に渡される
-      expect(templateValues).toContain(1000);
+      // DEFAULT_TOP_K_CANDIDATES=200 が LIMIT 句に渡される
+      expect(templateValues).toContain(200);
     });
 
     it('topK指定時はmulti-categoryでtopKが総予算としてperCategoryに分配される', async () => {
       // topK=90, 3カテゴリ → kPerCategory = Math.max(30, Math.floor(90/3)) = Math.max(30, 30) = 30
+      const stage1Simple = mockCandidatesSimple.map((c) => ({
+        articleId: c.id,
+        sim_emb: c.sim_emb,
+      }));
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockMultiCentroids3) // getCategoryCentroids
-        .mockResolvedValueOnce(mockCandidatesSimple) // cat-1 getEmbeddingCandidates
-        .mockResolvedValueOnce(mockCandidatesSimple) // cat-2 getEmbeddingCandidates
-        .mockResolvedValueOnce(mockCandidatesSimple) // cat-3 getEmbeddingCandidates
+        .mockResolvedValueOnce(stage1Simple) // cat-1 Stage 1: kNN (LIMIT=30)
+        .mockResolvedValueOnce(stage1Simple) // cat-2 Stage 1: kNN (LIMIT=30) (interleaved - all S1 first)
+        .mockResolvedValueOnce(stage1Simple) // cat-3 Stage 1: kNN (LIMIT=30)
+        .mockResolvedValueOnce(mockCandidatesSimple) // cat-1 Stage 2: data fetch
+        .mockResolvedValueOnce(mockCandidatesSimple) // cat-2 Stage 2: data fetch
+        .mockResolvedValueOnce(mockCandidatesSimple) // cat-3 Stage 2: data fetch
         .mockResolvedValueOnce([]); // checkTagMatches
 
       await service.filterArticles({
@@ -957,7 +1083,7 @@ describe('CategoryFilterService', () => {
         topK: 90,
       });
 
-      // $queryRaw の 2〜4回目が各カテゴリのgetEmbeddingCandidates
+      // Stage 1 は calls[1], calls[2], calls[3] (各カテゴリの kNN クエリ - 全S1が先に来る)
       // それぞれ kPerCategory=30 が LIMIT として渡されることを確認
       for (const callIndex of [1, 2, 3]) {
         const callArgs = mockPrisma.$queryRaw.mock.calls[callIndex];
@@ -968,11 +1094,18 @@ describe('CategoryFilterService', () => {
 
     it('topK指定時のperCategory分配: topKがカテゴリ数より少なくても最低30が保証される', async () => {
       // topK=10, 3カテゴリ → kPerCategory = Math.max(30, Math.floor(10/3)) = Math.max(30, 3) = 30
+      const stage1Simple = mockCandidatesSimple.map((c) => ({
+        articleId: c.id,
+        sim_emb: c.sim_emb,
+      }));
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockMultiCentroids3) // getCategoryCentroids
-        .mockResolvedValueOnce(mockCandidatesSimple) // cat-1
-        .mockResolvedValueOnce(mockCandidatesSimple) // cat-2
-        .mockResolvedValueOnce(mockCandidatesSimple) // cat-3
+        .mockResolvedValueOnce(stage1Simple) // cat-1 Stage 1: kNN (LIMIT=30)
+        .mockResolvedValueOnce(stage1Simple) // cat-2 Stage 1: kNN (LIMIT=30) (interleaved - all S1 first)
+        .mockResolvedValueOnce(stage1Simple) // cat-3 Stage 1: kNN (LIMIT=30)
+        .mockResolvedValueOnce(mockCandidatesSimple) // cat-1 Stage 2: data fetch
+        .mockResolvedValueOnce(mockCandidatesSimple) // cat-2 Stage 2: data fetch
+        .mockResolvedValueOnce(mockCandidatesSimple) // cat-3 Stage 2: data fetch
         .mockResolvedValueOnce([]); // checkTagMatches
 
       await service.filterArticles({
@@ -982,6 +1115,7 @@ describe('CategoryFilterService', () => {
         topK: 10,
       });
 
+      // Stage 1 は calls[1], calls[2], calls[3] (各カテゴリの kNN クエリ - 全S1が先に来る)
       // 最低30が保証される
       for (const callIndex of [1, 2, 3]) {
         const callArgs = mockPrisma.$queryRaw.mock.calls[callIndex];
@@ -1052,12 +1186,58 @@ describe('CategoryFilterService', () => {
     ];
 
     it('maxConcurrency指定時もカテゴリ数 > maxConcurrency で全カテゴリの結果が返る', async () => {
-      // 3カテゴリ, maxConcurrency=2 → 順次処理されるが最終的に全結果がマージされる
+      // Mock getEmbeddingCandidates directly to avoid pLimit interleaving issues with $queryRaw mock order
+      const candidatesByCentroid: Record<string, any[]> = {
+        '[0.5,0.5,0]': mockCandidatesFrontend.map((c) => ({
+          id: c.id,
+          title: c.title,
+          url: c.url,
+          publishedAt: c.published_at,
+          createdAt: c.created_at,
+          qualityScore: c.quality_score ?? 0,
+          bookmarks: c.bookmarks ?? 0,
+          userVotes: c.user_votes ?? 0,
+          sourceId: c.source_id,
+          summary: c.summary,
+          thumbnailUrl: c.thumbnail_url,
+          embeddingSimilarity: c.sim_emb,
+        })),
+        '[0,0.5,0.5]': mockCandidatesBackend.map((c) => ({
+          id: c.id,
+          title: c.title,
+          url: c.url,
+          publishedAt: c.published_at,
+          createdAt: c.created_at,
+          qualityScore: c.quality_score ?? 0,
+          bookmarks: c.bookmarks ?? 0,
+          userVotes: c.user_votes ?? 0,
+          sourceId: c.source_id,
+          summary: c.summary,
+          thumbnailUrl: c.thumbnail_url,
+          embeddingSimilarity: c.sim_emb,
+        })),
+        '[0.5,0,0.5]': mockCandidatesInfra.map((c) => ({
+          id: c.id,
+          title: c.title,
+          url: c.url,
+          publishedAt: c.published_at,
+          createdAt: c.created_at,
+          qualityScore: c.quality_score ?? 0,
+          bookmarks: c.bookmarks ?? 0,
+          userVotes: c.user_votes ?? 0,
+          sourceId: c.source_id,
+          summary: c.summary,
+          thumbnailUrl: c.thumbnail_url,
+          embeddingSimilarity: c.sim_emb,
+        })),
+      };
+      mockGetEmbeddingCandidates.mockImplementation(
+        async (_db: any, centroid: string) =>
+          candidatesByCentroid[centroid] ?? []
+      );
+
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockCentroids3) // getCategoryCentroids
-        .mockResolvedValueOnce(mockCandidatesFrontend) // cat-1
-        .mockResolvedValueOnce(mockCandidatesBackend) // cat-2
-        .mockResolvedValueOnce(mockCandidatesInfra) // cat-3
         .mockResolvedValueOnce([]); // checkTagMatches
 
       const result = await service.filterArticles({
@@ -1067,7 +1247,9 @@ describe('CategoryFilterService', () => {
         maxConcurrency: 2,
       });
 
-      // 全3カテゴリの記事が取得され、ユニーク3件になる
+      // Reset mock for other tests
+      mockGetEmbeddingCandidates.mockReset();
+
       const articleIds = result.articles.map((a) => a.articleId);
       expect(articleIds).toContain('art-1');
       expect(articleIds).toContain('art-2');
@@ -1077,6 +1259,7 @@ describe('CategoryFilterService', () => {
 
     it('maxConcurrency >= カテゴリ数の場合はPromise.allSettledで並列実行され全結果が返る', async () => {
       // 2カテゴリ, maxConcurrency=5 → maxConcurrency >= centroids.length なので通常のPromise.allSettled
+      // 実行順: cat1-S1 → cat2-S1 (interleaved) → cat1-S2 → cat2-S2
       const mockCentroids2 = [
         { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0]' },
         { id: 'cat-2', slug: 'backend', centroid_embedding: '[0,0.5,0.5]' },
@@ -1084,8 +1267,20 @@ describe('CategoryFilterService', () => {
 
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockCentroids2) // getCategoryCentroids
-        .mockResolvedValueOnce(mockCandidatesFrontend) // cat-1
-        .mockResolvedValueOnce(mockCandidatesBackend) // cat-2
+        .mockResolvedValueOnce(
+          mockCandidatesFrontend.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // cat-1 Stage 1: kNN
+        .mockResolvedValueOnce(
+          mockCandidatesBackend.map((c) => ({
+            articleId: c.id,
+            sim_emb: c.sim_emb,
+          }))
+        ) // cat-2 Stage 1: kNN (interleaved - all S1 first)
+        .mockResolvedValueOnce(mockCandidatesFrontend) // cat-1 Stage 2: data fetch
+        .mockResolvedValueOnce(mockCandidatesBackend) // cat-2 Stage 2: data fetch
         .mockResolvedValueOnce([]); // checkTagMatches
 
       const result = await service.filterArticles({
@@ -1104,11 +1299,36 @@ describe('CategoryFilterService', () => {
     it('maxConcurrency指定時にカテゴリ検索が一部失敗しても他のカテゴリ結果は返る', async () => {
       const { logger } = jest.requireMock('@/lib/logger');
 
+      // Mock getEmbeddingCandidates: cat-2 fails, cat-1 and cat-3 succeed
+      const toEmbeddingCandidate = (c: any) => ({
+        id: c.id,
+        title: c.title,
+        url: c.url,
+        publishedAt: c.published_at,
+        createdAt: c.created_at,
+        qualityScore: c.quality_score ?? 0,
+        bookmarks: c.bookmarks ?? 0,
+        userVotes: c.user_votes ?? 0,
+        sourceId: c.source_id,
+        summary: c.summary,
+        thumbnailUrl: c.thumbnail_url,
+        embeddingSimilarity: c.sim_emb,
+      });
+      const candidatesByCentroid: Record<string, any> = {
+        '[0.5,0.5,0]': mockCandidatesFrontend.map(toEmbeddingCandidate),
+        '[0,0.5,0.5]': 'FAIL', // cat-2 fails
+        '[0.5,0,0.5]': mockCandidatesInfra.map(toEmbeddingCandidate),
+      };
+      mockGetEmbeddingCandidates.mockImplementation(
+        async (_db: any, centroid: string) => {
+          const result = candidatesByCentroid[centroid];
+          if (result === 'FAIL') throw new Error('DB error');
+          return result ?? [];
+        }
+      );
+
       mockPrisma.$queryRaw
         .mockResolvedValueOnce(mockCentroids3) // getCategoryCentroids
-        .mockResolvedValueOnce(mockCandidatesFrontend) // cat-1: 成功
-        .mockRejectedValueOnce(new Error('DB error')) // cat-2: 失敗
-        .mockResolvedValueOnce(mockCandidatesInfra) // cat-3: 成功
         .mockResolvedValueOnce([]); // checkTagMatches
 
       const result = await service.filterArticles({
@@ -1117,6 +1337,9 @@ describe('CategoryFilterService', () => {
         limit: 10,
         maxConcurrency: 2,
       });
+
+      // Reset mock for other tests
+      mockGetEmbeddingCandidates.mockReset();
 
       // cat-2 は失敗するが cat-1, cat-3 の結果は取得できる
       const articleIds = result.articles.map((a) => a.articleId);
