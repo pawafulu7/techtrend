@@ -8,7 +8,7 @@ import {
 } from './unified-summary-service.interface';
 import { TitleTranslator } from '../translator/gemini-title-translator';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 
 import { SUMMARY_VERSION } from '@/types/article';
 
@@ -120,7 +120,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
                     {
                       requestId,
                       maxAttempts: MAX_TRANSLATION_RETRIES,
-                      error: sanitizeError(err),
+                      err,
                     },
                     'Title translation failed after max attempts'
                   );
@@ -129,7 +129,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
                     {
                       requestId,
                       attempt: translationAttempt + 1,
-                      error: sanitizeError(err),
+                      err,
                     },
                     'Title translation attempt failed, retrying'
                   );
@@ -155,7 +155,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
               logger.error(
                 {
                   articleId: params.articleId,
-                  error: sanitizeError(err),
+                  err,
                 },
                 'Embedding job enqueue failed'
               )

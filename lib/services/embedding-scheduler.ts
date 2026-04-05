@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import type { EmbeddingJob, Article, PrismaClient } from '@prisma/client';
 
 type EmbeddingJobWithArticle = EmbeddingJob & {
@@ -45,7 +45,7 @@ export class EmbeddingScheduler {
       logger.error(
         {
           articleId,
-          error: sanitizeError(error),
+          err: error,
           errorCode: (error as any)?.code,
         },
         'CRITICAL: Failed to enqueue embedding job'

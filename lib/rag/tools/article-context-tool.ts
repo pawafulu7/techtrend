@@ -10,7 +10,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { sanitizeArticleHtml, stripHtmlTags } from '@/lib/utils/html-sanitizer';
 import { countTokens, chunkByTokens } from '@/lib/utils/chunking';
 import { cosineSimilarity } from '@/lib/utils/vector-math';
@@ -178,7 +178,7 @@ async function scoreChunks(options: {
   } catch (error) {
     logger.warn(
       {
-        error: sanitizeError(error),
+        err: error,
         articleId: options.articleId,
         chunkCount: chunks.length,
       },
@@ -361,7 +361,7 @@ DO NOT use this tool for:
         } catch (error) {
           logger.warn(
             {
-              error: sanitizeError(error),
+              err: error,
               articleId,
             },
             'article-context summary sanitization failed'
@@ -428,7 +428,7 @@ DO NOT use this tool for:
         } catch (error) {
           logger.warn(
             {
-              error: sanitizeError(error),
+              err: error,
               articleId,
             },
             'article-context content sanitization failed'
@@ -545,7 +545,7 @@ DO NOT use this tool for:
     } catch (error) {
       logger.error(
         {
-          error: sanitizeError(error),
+          err: error,
           articleId,
           query: query.substring(0, 50),
         },

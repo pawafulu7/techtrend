@@ -97,7 +97,7 @@ export class MozillaHacksFetcher extends BaseFetcher {
                 }
               } catch (_error) {
                 logger.error(
-                  { error: _error },
+                  { err: _error },
                   `[Mozilla Hacks] Enrichment failed for ${item.link}`
                 );
                 // エラー時は元のコンテンツを使用

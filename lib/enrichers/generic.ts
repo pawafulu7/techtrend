@@ -128,7 +128,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
             : 'Request failed';
 
         logger.error(
-          { error, url, attempt, maxRetries },
+          { err: error, url, attempt, maxRetries },
           `[GenericEnricher] ${errorMessage}`
         );
 
@@ -175,7 +175,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
       logger.debug(
         {
           strategy: name,
-          error: error instanceof Error ? error.message : String(error),
+          errorMessage: error instanceof Error ? error.message : String(error),
         },
         'Extraction error'
       );

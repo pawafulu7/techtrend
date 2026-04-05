@@ -143,7 +143,7 @@ export async function sendVerificationRequest(params: SendVerificationRequestPar
 
     // console.log('📧 Email sent successfully:', data);
   } catch (error) {
-    logger.error({ error }, 'Failed to send email');
+    logger.error({ err: error }, 'Failed to send email');
     throw new Error('Failed to send verification email');
   }
 }

@@ -222,7 +222,7 @@ export class ArxivAIFetcher extends BaseFetcher {
 
       return enrichedArticle;
     } catch (error) {
-      logger.warn({ url: item.link, error }, 'arXiv AI: 記事処理エラー');
+      logger.warn({ url: item.link, err: error }, 'arXiv AI: 記事処理エラー');
       return null;
     }
   }

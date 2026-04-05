@@ -2,7 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { VectorSearchService } from '../vector-search-service';
 import { prisma } from '@/lib/prisma';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 
 /**
  * Semantic Article Search Tool
@@ -254,7 +254,7 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
     } catch (error) {
       logger.error(
         {
-          error: sanitizeError(error),
+          err: error,
           query: query.substring(0, 50),
           topK,
         },

@@ -1,4 +1,8 @@
-import { RateLimiterRedis, RateLimiterMemory, RateLimiterAbstract } from 'rate-limiter-flexible';
+import {
+  RateLimiterRedis,
+  RateLimiterMemory,
+  RateLimiterAbstract,
+} from 'rate-limiter-flexible';
 import { getRedisClient } from '@/lib/redis/client';
 import { logger } from '@/lib/logger';
 import { getRateLimitConfig } from '@/lib/config/rate-limits';
@@ -66,7 +70,7 @@ function createRateLimiter(
     // Fallback to memory if Redis connection fails
     logger.warn(
       {
-        error: error instanceof Error ? error.message : 'Unknown error',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
         keyPrefix,
       },
       'Rate limiter falling back to memory'
@@ -96,7 +100,9 @@ function createRateLimiter(
  * await checkRateLimit('user:123', limiter);
  * ```
  */
-export function createRateLimiterFromConfig(configKey: string): RateLimiterAbstract {
+export function createRateLimiterFromConfig(
+  configKey: string
+): RateLimiterAbstract {
   if (limiterCache.has(configKey)) {
     return limiterCache.get(configKey)!;
   }
@@ -122,7 +128,11 @@ export function createRateLimiterFromConfig(configKey: string): RateLimiterAbstr
  * - TCP connection via ioredis (< 2ms latency) or in-memory fallback
  * - Used by: /api/rag/search (direct vector search, low cost)
  */
-export const ragSearchRateLimit = createRateLimiter(10, 60, 'ratelimit:rag:search');
+export const ragSearchRateLimit = createRateLimiter(
+  10,
+  60,
+  'ratelimit:rag:search'
+);
 
 /**
  * RAG Agent Search Rate Limiter
@@ -138,7 +148,11 @@ export const ragSearchRateLimit = createRateLimiter(10, 60, 'ratelimit:rag:searc
  *
  * @see CodexMCP Review: "Tighten agent-specific limit to 3-5/min for cost control"
  */
-export const ragAgentSearchRateLimit = createRateLimiter(5, 60, 'ratelimit:rag:agent');
+export const ragAgentSearchRateLimit = createRateLimiter(
+  5,
+  60,
+  'ratelimit:rag:agent'
+);
 
 /**
  * Article QA Rate Limiter
@@ -154,14 +168,22 @@ export const ragAgentSearchRateLimit = createRateLimiter(5, 60, 'ratelimit:rag:a
  *
  * @see Plan: plan_20251121_085951_509_conversational-learning-coach.md
  */
-export const articleQaRateLimit = createRateLimiter(10, 60, 'ratelimit:rag:article-qa');
+export const articleQaRateLimit = createRateLimiter(
+  10,
+  60,
+  'ratelimit:rag:article-qa'
+);
 
 /**
  * Embedding Generation Rate Limiter
  * - 100 requests per hour per user
  * - Fixed window algorithm (default)
  */
-export const embeddingRateLimit = createRateLimiter(100, 3600, 'ratelimit:embedding');
+export const embeddingRateLimit = createRateLimiter(
+  100,
+  3600,
+  'ratelimit:embedding'
+);
 
 /**
  * Custom error for rate limit exceeded
@@ -207,7 +229,7 @@ export async function checkRateLimit(
   try {
     // Consume 1 point from the rate limiter
     const res = await ratelimiter.consume(limitKey, 1);
-    
+
     // Success: return rate limit info for headers
     const limit = ratelimiter.points;
     const remaining = Math.max(0, res.remainingPoints);
@@ -218,23 +240,24 @@ export async function checkRateLimit(
     // Handle rejection (rate limit exceeded or Redis error)
     if (rejRes instanceof Error) {
       // Redis connection error or other unexpected error
-      throw new Error(
-        `Rate limit check failed: ${rejRes.message}`
-      );
+      throw new Error(`Rate limit check failed: ${rejRes.message}`);
     }
 
     // Rate limit exceeded: rejRes is RateLimiterRes
     // Map to RateLimitError for API compatibility
-    const rateLimiterRes = rejRes as { msBeforeNext: number; remainingPoints: number };
+    const rateLimiterRes = rejRes as {
+      msBeforeNext: number;
+      remainingPoints: number;
+    };
     const resetDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
     const limit = ratelimiter.points; // Extract configured limit
     const remaining = Math.max(0, rateLimiterRes.remainingPoints); // Never negative
 
     throw new RateLimitError(
       'Rate limit exceeded',
-      limit,      // Configured limit (e.g., 10 req/min)
-      remaining,  // Remaining points (0 or positive)
-      resetDate   // When the limit resets
+      limit, // Configured limit (e.g., 10 req/min)
+      remaining, // Remaining points (0 or positive)
+      resetDate // When the limit resets
     );
   }
 }

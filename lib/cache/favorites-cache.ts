@@ -47,7 +47,7 @@ export class FavoritesCache {
       logger.debug({ userId, hit: false }, 'Favorites cache miss');
       return null;
     } catch (error) {
-      logger.error({ error, userId }, 'Failed to get favorites from cache');
+      logger.error({ err: error, userId }, 'Failed to get favorites from cache');
       return null;
     }
   }
@@ -80,7 +80,7 @@ export class FavoritesCache {
         'Favorites cached'
       );
     } catch (error) {
-      logger.error({ error, userId }, 'Failed to cache favorites');
+      logger.error({ err: error, userId }, 'Failed to cache favorites');
     }
   }
 
@@ -112,7 +112,7 @@ export class FavoritesCache {
       }
     } catch (error) {
       logger.error(
-        { error, userId, articleId },
+        { err: error, userId, articleId },
         'Failed to update single favorite in cache'
       );
     }
@@ -127,7 +127,7 @@ export class FavoritesCache {
       await this.cache.invalidatePattern('user:*');
       logger.info('All favorites cache cleared successfully');
     } catch (error) {
-      logger.error({ error }, 'Failed to clear all favorites cache');
+      logger.error({ err: error }, 'Failed to clear all favorites cache');
       throw error;
     }
   }

@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import pLimit from 'p-limit';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { embeddingSchema } from './schemas';
 import { env } from '@/lib/config/env';
 
@@ -100,7 +100,7 @@ export class EmbeddingService {
         // Log error without exposing API key
         logger.error(
           {
-            error: sanitizeError(error),
+            err: error,
             textLength: trimmedText.length,
             textPreview: trimmedText.substring(0, 50),
             model: this.config.model,
@@ -194,7 +194,7 @@ export class EmbeddingService {
 
         logger.error(
           {
-            error: sanitizeError(error),
+            err: error,
             batchSize: texts.length,
             model: this.config.model,
           },

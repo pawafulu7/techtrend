@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { env } from '@/lib/config/env';
 
 /**
@@ -380,7 +380,7 @@ export function getRateLimitConfig(key: string): RateLimitConfig {
       }
     } catch (error) {
       logger.error(
-        { error: sanitizeError(error) },
+        { err: error },
         'Failed to parse/validate RATE_LIMIT_OVERRIDES'
       );
     }

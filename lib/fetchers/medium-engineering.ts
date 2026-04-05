@@ -143,7 +143,7 @@ export class MediumEngineeringFetcher extends BaseFetcher {
                   }
                 } catch (_error) {
                   logger.error(
-                    { error: _error },
+                    { err: _error },
                     `[Medium Engineering] Enrichment failed for ${cleanUrl}`
                   );
                 }

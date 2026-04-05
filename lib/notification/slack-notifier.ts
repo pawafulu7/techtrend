@@ -10,7 +10,11 @@
 
 import { IncomingWebhook } from '@slack/webhook';
 import logger from '@/lib/logger';
-import type { Notifier, NotificationPayload, SlackWebhookClient } from './types';
+import type {
+  Notifier,
+  NotificationPayload,
+  SlackWebhookClient,
+} from './types';
 
 export class SlackNotifier implements Notifier {
   private webhook: SlackWebhookClient;
@@ -65,7 +69,11 @@ export class SlackNotifier implements Notifier {
         if (attempt < this.maxRetries) {
           const delayMs = 1000 * (attempt + 1); // 1s, 2s backoff
           logger.warn(
-            { attempt: attempt + 1, maxRetries: this.maxRetries, error: lastError.message },
+            {
+              attempt: attempt + 1,
+              maxRetries: this.maxRetries,
+              err: lastError,
+            },
             'Slack notification failed, retrying'
           );
           await this.delay(delayMs);
@@ -118,7 +126,10 @@ export class SlackNotifier implements Notifier {
    * Escapes special characters for Slack mrkdwn format
    */
   private escapeSlackText(text: string): string {
-    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   /**

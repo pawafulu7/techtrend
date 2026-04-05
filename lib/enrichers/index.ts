@@ -175,7 +175,7 @@ export class ContentEnricherFactory {
       } catch (error) {
         // エラーは無視して次のエンリッチャーを試す
         logger.error(
-          { error },
+          { err: error },
           `[ContentEnricherFactory] Error with ${enricher.constructor.name}`
         );
       }

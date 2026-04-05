@@ -203,7 +203,8 @@ export class EmbeddingWorker {
 
       logger.error(
         {
-          error: error instanceof Error ? error.message : 'Unknown error',
+          errorMessage:
+            error instanceof Error ? error.message : 'Unknown error',
           durationMs,
         },
         'Embedding worker error'

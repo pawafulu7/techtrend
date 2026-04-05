@@ -139,13 +139,13 @@ export class AWSEnricher extends BaseContentEnricher {
           );
         } else {
           logger.error(
-            { error, url },
+            { err: error, url },
             '[AWS Enricher] Error during enrichment'
           );
         }
       } else {
         logger.error(
-          { error, url },
+          { err: error, url },
           '[AWS Enricher] Unknown error during enrichment'
         );
       }

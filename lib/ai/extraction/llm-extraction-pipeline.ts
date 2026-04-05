@@ -58,8 +58,7 @@ export class LLMExtractionPipeline {
     if (!this.apiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
-    this.modelVersion =
-      model || env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+    this.modelVersion = model || env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
     // API key is passed via x-goog-api-key header for security (not in URL)
     this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelVersion}:generateContent`;
   }
@@ -104,7 +103,7 @@ export class LLMExtractionPipeline {
           {
             attempt,
             maxRetries: opts.maxRetries,
-            error: lastError.message,
+            errorMessage: lastError.message,
             rawResponse: shouldLogRaw ? rawResponse?.slice(0, 300) : undefined,
           },
           'LLM extraction attempt failed'
@@ -122,7 +121,7 @@ export class LLMExtractionPipeline {
 
     logger.error(
       {
-        error: lastError?.message,
+        errorMessage: lastError?.message,
         rawResponse,
       },
       'LLM extraction failed after all retries'
@@ -212,7 +211,7 @@ export class LLMExtractionPipeline {
       };
     } catch (error) {
       logger.error(
-        { error: (error as Error).message },
+        { errorMessage: (error as Error).message },
         'LLM raw extraction failed'
       );
       return {

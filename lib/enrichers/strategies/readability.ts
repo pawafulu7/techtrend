@@ -44,8 +44,19 @@ function stripHeavyContent(html: string): string {
   const sanitized = sanitizeHtml(html, {
     // Allow all tags except script and style
     allowedTags: sanitizeHtml.defaults.allowedTags.concat([
-      'article', 'section', 'header', 'footer', 'nav', 'aside',
-      'figure', 'figcaption', 'main', 'time', 'mark', 'details', 'summary',
+      'article',
+      'section',
+      'header',
+      'footer',
+      'nav',
+      'aside',
+      'figure',
+      'figcaption',
+      'main',
+      'time',
+      'mark',
+      'details',
+      'summary',
     ]),
     // Explicitly exclude dangerous tags
     exclusiveFilter: (frame) => {
@@ -147,7 +158,10 @@ export async function extractWithReadability(
             });
           } else {
             if (result.error) {
-              logger.debug({ url, error: result.error }, 'Readability worker returned error');
+              logger.debug(
+                { url, errorMessage: result.error },
+                'Readability worker returned error'
+              );
             }
             resolve(null);
           }
@@ -159,7 +173,7 @@ export async function extractWithReadability(
           isResolved = true;
           clearTimeout(timer);
           cleanup();
-          logger.debug({ url, error: error.message }, 'Readability worker error');
+          logger.debug({ url, err: error }, 'Readability worker error');
           resolve(null);
         }
       });
@@ -170,7 +184,10 @@ export async function extractWithReadability(
           clearTimeout(timer);
           cleanup();
           if (code !== 0) {
-            logger.debug({ url, exitCode: code }, 'Readability worker exited with error');
+            logger.debug(
+              { url, exitCode: code },
+              'Readability worker exited with error'
+            );
           }
           resolve(null);
         }
@@ -181,7 +198,10 @@ export async function extractWithReadability(
         clearTimeout(timer);
         cleanup();
         logger.error(
-          { url, error: error instanceof Error ? error.message : String(error) },
+          {
+            url,
+            err: error instanceof Error ? error : new Error(String(error)),
+          },
           'Failed to spawn Readability worker'
         );
         resolve(null);

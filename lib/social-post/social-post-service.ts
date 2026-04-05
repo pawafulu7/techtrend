@@ -297,7 +297,7 @@ export class SocialPostService {
         }
         success++;
       } catch (error) {
-        logger.warn({ id, action, error }, 'Bulk action failed for item');
+        logger.warn({ id, action, err: error }, 'Bulk action failed for item');
         failed++;
       }
     }
@@ -358,7 +358,7 @@ export class SocialPostService {
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
-        logger.error({ source, sourceId, error }, 'Failed to generate post');
+        logger.error({ source, sourceId, err: error }, 'Failed to generate post');
         failed.push({ sourceId, error: errorMessage });
         // 部分成功のため続行
       }
@@ -414,7 +414,7 @@ export class SocialPostService {
         results.push(post);
       } catch (error) {
         logger.error(
-          { articleId: article.id, error },
+          { articleId: article.id, err: error },
           'Failed to generate scheduled post'
         );
         // 1件失敗しても続行
@@ -469,7 +469,7 @@ export class SocialPostService {
 
         results.push(post);
       } catch (error) {
-        logger.error({ error, index: i }, 'Failed to generate opinion post');
+        logger.error({ err: error, index: i }, 'Failed to generate opinion post');
         // 1件失敗しても続行
       }
     }
@@ -569,7 +569,7 @@ export class SocialPostService {
     } catch (error) {
       // 監査ログの失敗はメイン処理に影響させない
       logger.error(
-        { socialPostId, action, error },
+        { socialPostId, action, err: error },
         'Failed to create audit log'
       );
     }

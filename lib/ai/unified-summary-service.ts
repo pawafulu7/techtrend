@@ -13,7 +13,7 @@ import {
 import { checkSummaryQuality } from '../utils/summary/summary-quality-checker';
 import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { env } from '@/lib/config/env';
 
 export interface UnifiedSummaryResult extends ParsedSummaryResult {
@@ -225,7 +225,7 @@ export class UnifiedSummaryService {
             logger.error(
               {
                 articleId,
-                error: sanitizeError(err),
+                err,
               },
               'Failed to enqueue embedding job'
             );

@@ -80,7 +80,7 @@ export class RecommendationService {
         };
       }
     } catch (_error) {
-      logger.error({ error: _error }, '[RecommendationService] Failed to restore cache');
+      logger.error({ err: _error }, '[RecommendationService] Failed to restore cache');
       // キャッシュを無視して処理を継続
     }
 

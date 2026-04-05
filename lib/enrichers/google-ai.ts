@@ -113,7 +113,7 @@ export class GoogleAIEnricher extends BaseContentEnricher {
 
       return { content, thumbnail };
     } catch (error) {
-      logger.error({ error, url }, '[GoogleAIEnricher] Enrichment failed');
+      logger.error({ err: error, url }, '[GoogleAIEnricher] Enrichment failed');
       return null;
     }
   }

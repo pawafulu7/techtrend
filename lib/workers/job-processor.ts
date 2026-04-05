@@ -46,13 +46,19 @@ export class JobProcessor {
 
       // Job already claimed by another worker or re-queued
       if (updated.count === 0) {
-        logger.debug({ jobId: job.id }, 'Job already claimed or re-queued, skipping');
+        logger.debug(
+          { jobId: job.id },
+          'Job already claimed or re-queued, skipping'
+        );
         return;
       }
 
       // Check if article still exists (cascade delete handling)
       if (!job.article || !job.article.summary) {
-        logger.warn({ jobId: job.id }, 'Article deleted or has no summary, marking as skipped');
+        logger.warn(
+          { jobId: job.id },
+          'Article deleted or has no summary, marking as skipped'
+        );
 
         // Try to mark as SKIPPED (may fail if cascade deleted)
         try {
@@ -66,7 +72,7 @@ export class JobProcessor {
         } catch (error) {
           // Job likely deleted by cascade - this is OK
           logger.debug(
-            { jobId: job.id, error: sanitizeError(error) },
+            { jobId: job.id, err: error },
             'Failed to update job status (likely cascade deleted)'
           );
         }
@@ -75,7 +81,10 @@ export class JobProcessor {
 
       // Skip embedding generation if flag set (for testing)
       if (this.options.skipEmbedding) {
-        logger.debug({ jobId: job.id }, 'Skipping embedding generation (test mode)');
+        logger.debug(
+          { jobId: job.id },
+          'Skipping embedding generation (test mode)'
+        );
 
         await prisma.embeddingJob.updateMany({
           where: { id: job.id },
@@ -88,7 +97,9 @@ export class JobProcessor {
       }
 
       // Generate embedding
-      const result = await this.getPipeline().embedArticle(job.article as Article);
+      const result = await this.getPipeline().embedArticle(
+        job.article as Article
+      );
 
       // Check if job still exists (may have been cascade deleted during processing)
       const currentJob = await prisma.embeddingJob.findUnique({
@@ -96,7 +107,10 @@ export class JobProcessor {
       });
 
       if (!currentJob) {
-        logger.info({ jobId: job.id }, 'Job deleted during processing (article cascade)');
+        logger.info(
+          { jobId: job.id },
+          'Job deleted during processing (article cascade)'
+        );
         return;
       }
 
@@ -138,7 +152,7 @@ export class JobProcessor {
           {
             jobId: job.id,
             articleId: job.articleId,
-            error: result.error,
+            errorMessage: result.error,
             willRetry: shouldRetry,
           },
           'Embedding job failed'
@@ -153,7 +167,7 @@ export class JobProcessor {
         const safeMessage =
           typeof sanitized === 'string'
             ? sanitized
-            : (sanitized as any).message ?? 'Unknown error';
+            : ((sanitized as any).message ?? 'Unknown error');
 
         await prisma.embeddingJob.updateMany({
           where: { id: job.id },
@@ -167,7 +181,7 @@ export class JobProcessor {
         logger.debug(
           {
             jobId: job.id,
-            error: sanitizeError(updateError),
+            err: updateError,
           },
           'Failed to update job (likely cascade deleted)'
         );

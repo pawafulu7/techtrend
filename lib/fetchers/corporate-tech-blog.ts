@@ -189,7 +189,7 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
                   }
                 } catch (_error) {
                   logger.error(
-                    { error: _error, url: item.link },
+                    { err: _error, url: item.link },
                     '[Corporate Tech Blog] Enrichment failed'
                   );
                 }

@@ -102,7 +102,7 @@ export class ZennService {
 
       return match[1];
     } catch (error) {
-      logger.error({ url, error }, 'Error extracting slug from URL');
+      logger.error({ url, err: error }, 'Error extracting slug from URL');
       return null;
     }
   }

@@ -142,7 +142,7 @@ export class ClaudeBlogEnricher extends BaseContentEnricher {
       };
     } catch (_error) {
       logger.error(
-        { error: _error, url },
+        { err: _error, url },
         '[Claude Blog Enricher] Error enriching URL'
       );
       return null;

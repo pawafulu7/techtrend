@@ -134,7 +134,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
               }
             } catch (repoError) {
               logger.debug(
-                { error: repoError, repoRootUrl },
+                { err: repoError, repoRootUrl },
                 '[HackerNewsEnricher] Failed to fetch repo root for OGP fallback'
               );
             }
@@ -217,7 +217,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
           if (genericResult) return genericResult;
         } catch (fallbackError) {
           logger.debug(
-            { error: fallbackError, url },
+            { err: fallbackError, url },
             '[HackerNewsEnricher] GenericEnricher threw during short-content fallback'
           );
         }
@@ -230,7 +230,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
         thumbnail: thumbnail || undefined,
       };
     } catch (error) {
-      logger.error({ error, url }, '[HackerNewsEnricher] Error enriching URL');
+      logger.error({ err: error, url }, '[HackerNewsEnricher] Error enriching URL');
 
       // フォールバック: GenericEnricherを試す
       try {
@@ -240,7 +240,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
         }
       } catch (fallbackError) {
         logger.error(
-          { error: fallbackError, url },
+          { err: fallbackError, url },
           '[HackerNewsEnricher] GenericEnricher also failed'
         );
       }

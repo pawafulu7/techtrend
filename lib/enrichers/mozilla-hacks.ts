@@ -128,7 +128,7 @@ export class MozillaHacksEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      logger.error({ error: _error, url }, '[Mozilla Hacks Enricher] Error enriching URL');
+      logger.error({ err: _error, url }, '[Mozilla Hacks Enricher] Error enriching URL');
       return null;
     }
   }

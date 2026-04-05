@@ -150,7 +150,7 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
       };
     } catch (error) {
       logger.error(
-        { error, url },
+        { err: error, url },
         '[Anthropic News Enricher] Error enriching URL'
       );
       return null;
@@ -208,7 +208,7 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
       return resolved;
     } catch (error) {
       logger.warn(
-        { imageUrl, baseUrl, error },
+        { imageUrl, baseUrl, err: error },
         '[Anthropic News Enricher] Failed to normalize image URL'
       );
       return undefined;

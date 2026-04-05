@@ -98,7 +98,7 @@ export class CacheInvalidator {
         await this.invalidateSourceCache(article.sourceId);
       }
     } catch (error) {
-      logger.error({ error, articleId: article?.id }, 'Failed to invalidate cache on article create');
+      logger.error({ err: error, articleId: article?.id }, 'Failed to invalidate cache on article create');
     }
   }
 
@@ -134,7 +134,7 @@ export class CacheInvalidator {
         await this.invalidateSearchCaches();
       }
     } catch (error) {
-      logger.error({ error, articleId }, 'Failed to invalidate cache on article update');
+      logger.error({ err: error, articleId }, 'Failed to invalidate cache on article update');
     }
   }
 
@@ -151,7 +151,7 @@ export class CacheInvalidator {
       // 統計キャッシュもクリア
       await this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.STATS));
     } catch (error) {
-      logger.error({ error, articleId }, 'Failed to invalidate cache on article delete');
+      logger.error({ err: error, articleId }, 'Failed to invalidate cache on article delete');
     }
   }
 
@@ -242,7 +242,7 @@ export class CacheInvalidator {
         }
       }
     } catch (error) {
-      logger.error({ error, userId, type }, 'Failed to invalidate user cache');
+      logger.error({ err: error, userId, type }, 'Failed to invalidate user cache');
     }
   }
 
@@ -303,7 +303,7 @@ export class CacheInvalidator {
 
       logger.info('All caches invalidated successfully');
     } catch (error) {
-      logger.error({ error }, 'Failed to invalidate all caches');
+      logger.error({ err: error }, 'Failed to invalidate all caches');
     }
   }
 }

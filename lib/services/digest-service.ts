@@ -7,7 +7,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { RedisCache } from '@/lib/cache/redis-cache';
 import {
   CategoryFilterService,
@@ -166,7 +166,7 @@ export class DigestService {
       }
     } catch (error) {
       logger.warn(
-        { error: sanitizeError(error), userId, period },
+        { err: error, userId, period },
         'Digest cache read failed, proceeding without cache'
       );
     }
@@ -181,7 +181,7 @@ export class DigestService {
         .getActiveCategories()
         .catch((error) => {
           logger.warn(
-            { error: sanitizeError(error), userId },
+            { err: error, userId },
             'getActiveCategories failed, falling back to empty list'
           );
           return [];
@@ -209,7 +209,7 @@ export class DigestService {
       }),
       this.filterService.getActiveCategories().catch((error) => {
         logger.warn(
-          { error: sanitizeError(error), userId },
+          { err: error, userId },
           'getActiveCategories failed, falling back to empty list'
         );
         return [] as Awaited<
@@ -306,7 +306,7 @@ export class DigestService {
         await this.cache.set(cacheKey, response, cacheTtl);
       } catch (error) {
         logger.warn(
-          { error: sanitizeError(error), userId, period },
+          { err: error, userId, period },
           'Digest cache write failed'
         );
       }
@@ -396,7 +396,7 @@ export class DigestService {
       };
     } catch (error) {
       logger.error(
-        { error: sanitizeError(error), userId, period },
+        { err: error, userId, period },
         'Failed to get personalized articles'
       );
       return { articles: [], ok: false };
@@ -454,7 +454,7 @@ export class DigestService {
       };
     } catch (error) {
       logger.error(
-        { error: sanitizeError(error), userId, period },
+        { err: error, userId, period },
         'Failed to get must-read articles'
       );
       return { articles: [], ok: false };
@@ -516,7 +516,7 @@ export class DigestService {
       };
     } catch (error) {
       logger.error(
-        { error: sanitizeError(error), userId },
+        { err: error, userId },
         'Failed to get missed articles'
       );
       return { articles: [], ok: false };
@@ -533,7 +533,7 @@ export class DigestService {
       periods.map((period) =>
         this.cache.delete(`digest:${userId}:${period}`).catch((error) => {
           logger.warn(
-            { error: sanitizeError(error), userId, period },
+            { err: error, userId, period },
             'Failed to invalidate digest cache'
           );
         })

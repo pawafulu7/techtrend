@@ -241,7 +241,7 @@ export class BatchMetrics {
       jobId,
       jobName: job.jobName,
       duration: job.duration,
-      error: job.error,
+      errorMessage: job.error,
       itemsProcessed: job.itemsProcessed,
       itemsFailed: job.itemsFailed,
     });
@@ -290,7 +290,9 @@ export class BatchMetrics {
    * Get statistics for a specific job
    */
   getJobStats(jobName: string): BatchJobStats | undefined {
-    const executions = this.executionHistory.filter((e) => e.jobName === jobName);
+    const executions = this.executionHistory.filter(
+      (e) => e.jobName === jobName
+    );
     if (executions.length === 0) {
       return undefined;
     }
@@ -317,7 +319,10 @@ export class BatchMetrics {
           : 0,
       minDuration: durations.length > 0 ? Math.min(...durations) : 0,
       maxDuration: durations.length > 0 ? Math.max(...durations) : 0,
-      totalItemsProcessed: executions.reduce((sum, e) => sum + e.itemsProcessed, 0),
+      totalItemsProcessed: executions.reduce(
+        (sum, e) => sum + e.itemsProcessed,
+        0
+      ),
       totalItemsFailed: executions.reduce((sum, e) => sum + e.itemsFailed, 0),
       lastExecution: executions[executions.length - 1],
     };
@@ -346,8 +351,12 @@ export class BatchMetrics {
   getSummary(): BatchMetricsSummary {
     const allStats = this.getAllJobStats();
     const totalExecutions = this.executionHistory.length;
-    const successCount = this.executionHistory.filter((e) => e.status === 'completed').length;
-    const failureCount = this.executionHistory.filter((e) => e.status === 'failed').length;
+    const successCount = this.executionHistory.filter(
+      (e) => e.status === 'completed'
+    ).length;
+    const failureCount = this.executionHistory.filter(
+      (e) => e.status === 'failed'
+    ).length;
 
     return {
       timestamp: new Date().toISOString(),

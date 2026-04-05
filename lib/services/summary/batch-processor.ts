@@ -8,7 +8,7 @@ import { PrismaClient, Prisma, SkipReason } from '@prisma/client';
 import pLimit from 'p-limit';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { classifyError, isRetryable } from '@/lib/fetchers/retry-handler';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { SUMMARY_VERSION } from '@/types/article';
 import type { ArticleWithSource } from '@/types/models';
 import type { SummaryGenerationOptions, SummaryAndTags } from './types';
@@ -81,7 +81,7 @@ export async function processArticleWithTimeout(
     logger.error(
       {
         articleId: article.id,
-        error: sanitizeError(error),
+        err: error,
         isTimeout,
         isRateLimit,
       },
@@ -125,7 +125,7 @@ export async function processArticleWithTimeout(
       }
     } catch (dbError) {
       logger.warn(
-        { articleId: article.id, error: sanitizeError(dbError) },
+        { articleId: article.id, err: dbError },
         'Failed to record summary error'
       );
     }
@@ -184,7 +184,7 @@ async function processArticle(
     });
   } catch (cacheError) {
     logger.warn(
-      { articleId: article.id, error: sanitizeError(cacheError) },
+      { articleId: article.id, err: cacheError },
       'Cache invalidation failed, continuing'
     );
   }
@@ -271,7 +271,7 @@ export async function runParallelBatch(
       }
     } else {
       logger.error(
-        { error: sanitizeError(result.reason) },
+        { err: result.reason },
         'Unexpected error in parallel processing'
       );
       errors++;

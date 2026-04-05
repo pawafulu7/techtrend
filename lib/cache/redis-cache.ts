@@ -84,7 +84,7 @@ export class RedisCache {
       this.stats.errors++;
       logger.warn(
         {
-          error,
+          err: error,
           op: 'get',
           cacheKey: hashSensitiveValue(fullKey),
           namespace: this.namespace,
@@ -117,7 +117,7 @@ export class RedisCache {
       this.stats.errors++;
       logger.warn(
         {
-          error,
+          err: error,
           op: 'set',
           cacheKey: hashSensitiveValue(fullKey),
           namespace: this.namespace,
@@ -141,7 +141,7 @@ export class RedisCache {
       this.stats.errors++;
       logger.warn(
         {
-          error,
+          err: error,
           op: 'delete',
           cacheKey: hashSensitiveValue(fullKey),
           namespace: this.namespace,
@@ -201,7 +201,7 @@ export class RedisCache {
       this.stats.errors++;
       logger.warn(
         {
-          error,
+          err: error,
           op: 'invalidatePattern',
           pattern: hashSensitiveValue(fullPattern),
           namespace: this.namespace,
@@ -318,7 +318,7 @@ export class RedisCache {
         } catch (fetchError) {
           // Fetcher failed while holding lock - log and re-throw without calling fetcher again
           logger.warn(
-            { error: fetchError, cacheKey: hashSensitiveValue(key) },
+            { err: fetchError, cacheKey: hashSensitiveValue(key) },
             'Fetcher failed while holding lock'
           );
           throw fetchError;
@@ -364,7 +364,7 @@ export class RedisCache {
       }
       // On Redis/lock errors, fallback to direct fetch
       logger.warn(
-        { error, key: hashSensitiveValue(key) },
+        { err: error, key: hashSensitiveValue(key) },
         'getOrSetWithLock error, falling back to direct fetch'
       );
       return await fetcher();

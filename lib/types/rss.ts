@@ -12,36 +12,38 @@ import { logger } from '@/lib/logger';
  * - Requires at least title or link (core RSS fields)
  * - Lightweight validation (safeParse for performance)
  */
-export const RSSItemSchema = z.object({
-  title: z.string().optional(),
-  link: z.string().optional(),
-  pubDate: z.string().optional(),
+export const RSSItemSchema = z
+  .object({
+    title: z.string().optional(),
+    link: z.string().optional(),
+    pubDate: z.string().optional(),
 
-  // Content fields (multiple formats supported by rss-parser)
-  content: z.string().optional(),
-  contentEncoded: z.string().optional(),
-  'content:encoded': z.string().optional(),
-  contentSnippet: z.string().optional(),
-  description: z.string().optional(),
+    // Content fields (multiple formats supported by rss-parser)
+    content: z.string().optional(),
+    contentEncoded: z.string().optional(),
+    'content:encoded': z.string().optional(),
+    contentSnippet: z.string().optional(),
+    description: z.string().optional(),
 
-  // Author fields (multiple formats)
-  author: z.string().optional(),
-  dcCreator: z.string().optional(),
-  creator: z.string().optional(),
-  'dc:creator': z.string().optional(),
-  'itunes:author': z.string().optional(),
+    // Author fields (multiple formats)
+    author: z.string().optional(),
+    dcCreator: z.string().optional(),
+    creator: z.string().optional(),
+    'dc:creator': z.string().optional(),
+    'itunes:author': z.string().optional(),
 
-  // Tags (categories: array format, category: string format for arXiv compatibility)
-  categories: z.union([z.array(z.string()), z.string()]).optional(),
-  category: z.union([z.array(z.string()), z.string()]).optional(),
+    // Tags (categories: array format, category: string format for arXiv compatibility)
+    categories: z.union([z.array(z.string()), z.string()]).optional(),
+    category: z.union([z.array(z.string()), z.string()]).optional(),
 
-  // Metadata
-  guid: z.string().optional(),
-  isoDate: z.string().optional(),
-}).passthrough().refine(
-  (item) => item.title || item.link,
-  { message: 'RSS item must have at least title or link' }
-);
+    // Metadata
+    guid: z.string().optional(),
+    isoDate: z.string().optional(),
+  })
+  .passthrough()
+  .refine((item) => item.title || item.link, {
+    message: 'RSS item must have at least title or link',
+  });
 
 /**
  * RSS Item Type
@@ -51,7 +53,10 @@ export const RSSItemSchema = z.object({
 export type RSSItem = z.infer<typeof RSSItemSchema>;
 
 // Parse result cache for performance optimization
-const parseCache = new WeakMap<object, { success: boolean; data?: RSSItem; error?: z.ZodError }>();
+const parseCache = new WeakMap<
+  object,
+  { success: boolean; data?: RSSItem; error?: z.ZodError }
+>();
 
 /**
  * Type guard for RSS items
@@ -75,11 +80,17 @@ export function isRSSItem(item: unknown): item is RSSItem {
   if (!result.success) {
     // Log validation failure for debugging with item context
     const itemObj = item as Record<string, unknown>;
-    logger.debug({
-      error: result.error.flatten(),
-      title: typeof itemObj.title === 'string' ? itemObj.title.substring(0, 50) : undefined,
-      link: typeof itemObj.link === 'string' ? itemObj.link : undefined,
-    }, 'RSS item validation failed');
+    logger.debug(
+      {
+        validationError: result.error.flatten(),
+        title:
+          typeof itemObj.title === 'string'
+            ? itemObj.title.substring(0, 50)
+            : undefined,
+        link: typeof itemObj.link === 'string' ? itemObj.link : undefined,
+      },
+      'RSS item validation failed'
+    );
   }
 
   parseCache.set(item, {
@@ -128,11 +139,13 @@ export function getContentFromItem(item: unknown): string | undefined {
   const validated = getValidatedItem(item);
   if (!validated) return undefined;
 
-  return validated.contentEncoded
-    || validated['content:encoded']
-    || validated.content
-    || validated.description
-    || validated.contentSnippet;
+  return (
+    validated.contentEncoded ||
+    validated['content:encoded'] ||
+    validated.content ||
+    validated.description ||
+    validated.contentSnippet
+  );
 }
 
 /**
@@ -148,11 +161,13 @@ export function getAuthorFromItem(item: unknown): string | undefined {
   const validated = getValidatedItem(item);
   if (!validated) return undefined;
 
-  return validated.author
-    || validated.dcCreator
-    || validated.creator
-    || validated['dc:creator']
-    || validated['itunes:author'];
+  return (
+    validated.author ||
+    validated.dcCreator ||
+    validated.creator ||
+    validated['dc:creator'] ||
+    validated['itunes:author']
+  );
 }
 
 /**
@@ -201,12 +216,18 @@ export function getThumbnailFromItem(item: unknown): string | undefined {
   }
 
   // Check media:content
-  if (itemAny['media:content']?.['@_url'] && typeof itemAny['media:content']['@_url'] === 'string') {
+  if (
+    itemAny['media:content']?.['@_url'] &&
+    typeof itemAny['media:content']['@_url'] === 'string'
+  ) {
     return itemAny['media:content']['@_url'];
   }
 
   // Check media:thumbnail
-  if (itemAny['media:thumbnail']?.['@_url'] && typeof itemAny['media:thumbnail']['@_url'] === 'string') {
+  if (
+    itemAny['media:thumbnail']?.['@_url'] &&
+    typeof itemAny['media:thumbnail']['@_url'] === 'string'
+  ) {
     return itemAny['media:thumbnail']['@_url'];
   }
 
@@ -216,7 +237,10 @@ export function getThumbnailFromItem(item: unknown): string | undefined {
     if (typeof itemAny['itunes:image'] === 'string') {
       return itemAny['itunes:image'];
     }
-    if (itemAny['itunes:image']?.href && typeof itemAny['itunes:image'].href === 'string') {
+    if (
+      itemAny['itunes:image']?.href &&
+      typeof itemAny['itunes:image'].href === 'string'
+    ) {
       return itemAny['itunes:image'].href;
     }
   }

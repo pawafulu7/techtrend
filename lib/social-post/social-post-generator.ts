@@ -133,7 +133,7 @@ export class SocialPostGenerator {
       logger.warn(
         {
           articleId: article.id,
-          error: result.error,
+          errorMessage: result.error,
           rawResponse:
             env.LOG_LLM_RAW_RESPONSE === 'true'
               ? result.rawResponse?.slice(0, 300)

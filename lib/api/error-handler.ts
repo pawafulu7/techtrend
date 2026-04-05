@@ -105,7 +105,7 @@ export function handleApiError(
 ): NextResponse<ErrorResponse> {
   // Log error for monitoring
   logger.error({
-    error,
+    err: error,
     path,
     timestamp: new Date().toISOString(),
   }, '[API Error]');

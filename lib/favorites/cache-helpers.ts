@@ -30,7 +30,7 @@ export async function updateFavoriteCacheBestEffort(
     await updateFavoriteCache(userId, articleId, isFavorited, favoritedAt);
   } catch (error) {
     logger.warn(
-      { error, userId, articleId },
+      { err: error, userId, articleId },
       'Cache update failed (best-effort)'
     );
   }
