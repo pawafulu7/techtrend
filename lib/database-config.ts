@@ -60,7 +60,10 @@ export function getPrismaConfig(): Prisma.PrismaClientOptions | undefined {
   }
 
   return {
-    log: isProduction ? ['error', 'warn'] : ['query', 'error', 'warn'],
+    log:
+      env.PRISMA_QUERY_LOG === 'true'
+        ? ['query', 'error', 'warn']
+        : ['error', 'warn'],
     datasources: {
       db: {
         url: databaseUrl,

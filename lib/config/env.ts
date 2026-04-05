@@ -205,6 +205,7 @@ const envSchema = z
     COLLECT_FEEDS_DEBUG: z.enum(['0', '1']).optional().default('0'),
 
     // Database Configuration
+    PRISMA_QUERY_LOG: booleanEnum.optional(),
     DB_CONNECTION_LIMIT: safeCoerceInt(20),
     DB_POOL_TIMEOUT: safeCoerceInt(10),
     DB_STATEMENT_CACHE_SIZE: z.preprocess((v) => {
