@@ -377,13 +377,28 @@ export async function fetchTotalCount(params: CountParams): Promise<number> {
     }
   }
 
-  const cachedCount = await countCache.get<number>(countCacheKey);
-  if (cachedCount !== null && cachedCount !== undefined) {
+  let cachedCount: number | null = null;
+  try {
+    cachedCount = await countCache.get<number>(countCacheKey);
+  } catch (cacheError) {
+    logger.warn(
+      { err: cacheError, route: '/api/articles/list' },
+      'Cache get error, continuing without cache'
+    );
+  }
+  if (cachedCount !== null) {
     return cachedCount;
   }
 
   const countWhere = { ...params.where };
   const computedTotal = await prisma.article.count({ where: countWhere });
-  await countCache.set(countCacheKey, computedTotal);
+  try {
+    await countCache.set(countCacheKey, computedTotal);
+  } catch (cacheError) {
+    logger.warn(
+      { err: cacheError, route: '/api/articles/list' },
+      'Cache set error, continuing without caching'
+    );
+  }
   return computedTotal;
 }

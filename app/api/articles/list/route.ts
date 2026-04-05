@@ -212,9 +212,18 @@ export async function GET(request: NextRequest) {
     // userId is non-null when needsUserInCacheKey is true.
     // includeUserData no longer skips cache - user data is merged after cache fetch
     const shouldSkipCache = needsUserInCacheKey;
-    const cachedResult = shouldSkipCache
-      ? null
-      : await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);
+    let cachedResult: PaginatedResponse<LightweightArticle> | null = null;
+    if (!shouldSkipCache) {
+      try {
+        cachedResult =
+          await cache.get<PaginatedResponse<LightweightArticle>>(cacheKey);
+      } catch (cacheError) {
+        logger.warn(
+          { err: cacheError, route: '/api/articles/list' },
+          'Cache get error, continuing without cache'
+        );
+      }
+    }
     // Legacy cache entries may lack cursor metadata; treat them as stale so pageInfo is rebuilt
     const needsPageInfoHydration = Boolean(
       cachedResult &&
@@ -389,7 +398,14 @@ export async function GET(request: NextRequest) {
       }
 
       // Save to cache (without user-specific data to prevent cross-user leakage)
-      await cache.set(cacheKey, result);
+      try {
+        await cache.set(cacheKey, result);
+      } catch (cacheError) {
+        logger.warn(
+          { err: cacheError, route: '/api/articles/list' },
+          'Cache set error, continuing without caching'
+        );
+      }
 
       // Merge user-specific data AFTER cache save
       if (
