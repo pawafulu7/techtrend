@@ -72,7 +72,7 @@ export class SlackNotifier implements Notifier {
             {
               attempt: attempt + 1,
               maxRetries: this.maxRetries,
-              errorMessage: lastError.message,
+              err: lastError,
             },
             'Slack notification failed, retrying'
           );

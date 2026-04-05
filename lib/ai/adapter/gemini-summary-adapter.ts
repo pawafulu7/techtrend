@@ -222,7 +222,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
         throw err;
       }
       logger.error(
-        { requestId, error: err.message },
+        { requestId, errorMessage: err.message },
         'Structured Output JSON parse failed, falling back to text extraction'
       );
       return this.parseTextResponse(payload, requestId);
@@ -279,7 +279,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       };
     } catch (error) {
       const err = error as Error;
-      logger.error({ err: err }, 'Failed to parse response');
+      logger.error({ err }, 'Failed to parse response');
       throw new Error(`Response parsing failed: ${err.message}`);
     }
   }

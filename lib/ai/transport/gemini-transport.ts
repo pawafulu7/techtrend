@@ -45,14 +45,20 @@ export class GeminiTransportImpl implements GeminiTransport {
     }
 
     logger.debug(
-      { requestId: opts.requestId, status: result.status, latencyMs: result.latencyMs },
+      {
+        requestId: opts.requestId,
+        status: result.status,
+        latencyMs: result.latencyMs,
+      },
       'Transport request end'
     );
 
     return result;
   }
 
-  private async invokeWithRetry(opts: TransportRequest): Promise<TransportResult> {
+  private async invokeWithRetry(
+    opts: TransportRequest
+  ): Promise<TransportResult> {
     let lastResult: TransportResult | null = null;
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
@@ -70,7 +76,10 @@ export class GeminiTransportImpl implements GeminiTransport {
       const jitter = Math.random() * 1000;
       const delay = baseDelay + jitter;
 
-      logger.debug({ attempt: attempt + 1, delayMs: Math.round(delay) }, 'Transport retry attempt');
+      logger.debug(
+        { attempt: attempt + 1, delayMs: Math.round(delay) },
+        'Transport retry attempt'
+      );
       await this.sleep(delay);
     }
 
@@ -83,7 +92,10 @@ export class GeminiTransportImpl implements GeminiTransport {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), opts.timeoutMs ?? 30000);
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        opts.timeoutMs ?? 30000
+      );
 
       const response = await fetch(url, {
         method: 'POST',
@@ -106,10 +118,15 @@ export class GeminiTransportImpl implements GeminiTransport {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error');
-        logger.error({ httpStatus: response.status, errorText }, 'Transport HTTP error');
+        logger.error(
+          { httpStatus: response.status, errorText },
+          'Transport HTTP error'
+        );
 
         return {
-          status: this.isRetryableStatus(response.status) ? 'retryable_error' : 'fatal_error',
+          status: this.isRetryableStatus(response.status)
+            ? 'retryable_error'
+            : 'fatal_error',
           httpStatus: response.status,
           error: new Error(`HTTP ${response.status}: ${errorText}`),
           latencyMs,
@@ -130,7 +147,7 @@ export class GeminiTransportImpl implements GeminiTransport {
       const latencyMs = Date.now() - startTime;
       const err = error as Error;
 
-      logger.error({ err: err, latencyMs }, 'Transport request failed');
+      logger.error({ err, latencyMs }, 'Transport request failed');
 
       return {
         status: this.isRetryableError(err) ? 'retryable_error' : 'fatal_error',
@@ -142,12 +159,27 @@ export class GeminiTransportImpl implements GeminiTransport {
   }
 
   private isRetryableStatus(status: number): boolean {
-    return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+    return (
+      status === 429 ||
+      status === 500 ||
+      status === 502 ||
+      status === 503 ||
+      status === 504
+    );
   }
 
   private isRetryableError(error: Error): boolean {
-    const retryablePatterns = ['timeout', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'abort', 'network'];
-    return retryablePatterns.some((pattern) => error.message.toLowerCase().includes(pattern));
+    const retryablePatterns = [
+      'timeout',
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'ECONNREFUSED',
+      'abort',
+      'network',
+    ];
+    return retryablePatterns.some((pattern) =>
+      error.message.toLowerCase().includes(pattern)
+    );
   }
 
   private sleep(ms: number): Promise<void> {

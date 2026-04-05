@@ -173,10 +173,7 @@ export async function extractWithReadability(
           isResolved = true;
           clearTimeout(timer);
           cleanup();
-          logger.debug(
-            { url, errorMessage: error.message },
-            'Readability worker error'
-          );
+          logger.debug({ url, err: error }, 'Readability worker error');
           resolve(null);
         }
       });
@@ -203,8 +200,7 @@ export async function extractWithReadability(
         logger.error(
           {
             url,
-            errorMessage:
-              error instanceof Error ? error.message : String(error),
+            err: error instanceof Error ? error : new Error(String(error)),
           },
           'Failed to spawn Readability worker'
         );

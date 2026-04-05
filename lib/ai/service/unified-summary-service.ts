@@ -120,7 +120,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
                     {
                       requestId,
                       maxAttempts: MAX_TRANSLATION_RETRIES,
-                      err: err,
+                      err,
                     },
                     'Title translation failed after max attempts'
                   );
@@ -129,7 +129,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
                     {
                       requestId,
                       attempt: translationAttempt + 1,
-                      err: err,
+                      err,
                     },
                     'Title translation attempt failed, retrying'
                   );

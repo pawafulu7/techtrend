@@ -225,7 +225,7 @@ export class UnifiedSummaryService {
             logger.error(
               {
                 articleId,
-                err: err,
+                err,
               },
               'Failed to enqueue embedding job'
             );
