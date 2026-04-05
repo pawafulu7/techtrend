@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { container } from '../container';
 import { DI_TOKENS } from '../types';
+import { env } from '@/lib/config/env';
 
 let prismaInstance: PrismaClient | null = null;
 
@@ -9,7 +10,7 @@ export function registerPrismaProvider(): void {
     if (!prismaInstance) {
       prismaInstance = new PrismaClient({
         log:
-          process.env.PRISMA_QUERY_LOG === 'true'
+          env.PRISMA_QUERY_LOG === 'true'
             ? ['query', 'error', 'warn']
             : ['error'],
       });

@@ -61,7 +61,7 @@ export function getPrismaConfig(): Prisma.PrismaClientOptions | undefined {
 
   return {
     log:
-      process.env.PRISMA_QUERY_LOG === 'true'
+      env.PRISMA_QUERY_LOG === 'true'
         ? ['query', 'error', 'warn']
         : ['error', 'warn'],
     datasources: {

@@ -18,7 +18,7 @@ const prismaClientSingleton = (): PrismaClient => {
   return new PrismaClient(
     config || {
       log:
-        process.env.PRISMA_QUERY_LOG === 'true'
+        env.PRISMA_QUERY_LOG === 'true'
           ? ['query', 'error', 'warn']
           : ['error', 'warn'],
     }
