@@ -79,8 +79,11 @@ function makePrismaMock(existingTags: string[] = []) {
         update: articleUpdate,
         findUniqueOrThrow: articleFindUniqueOrThrow,
       },
-      $transaction: jest.fn((fn: (tx: typeof txClient) => Promise<void>) =>
-        fn(txClient)
+      $transaction: jest.fn(
+        (
+          fn: (tx: typeof txClient) => Promise<void>,
+          _options?: { timeout?: number }
+        ) => fn(txClient)
       ),
     } as unknown as import('@prisma/client').PrismaClient,
     articleUpdate,
