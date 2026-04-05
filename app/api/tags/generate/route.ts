@@ -4,6 +4,7 @@ import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import { getTagIdsForConnect } from '@/lib/services/tag-service';
+import logger from '@/lib/logger';
 
 async function generateTagsHandler(_request: NextRequest) {
   try {
@@ -77,7 +78,11 @@ async function generateTagsHandler(_request: NextRequest) {
           return false;
         });
         if (didUpdate) generated++;
-      } catch {
+      } catch (error) {
+        logger.error(
+          { err: error, articleId: article.id },
+          '[TagGenerateAPI] Tag generation failed'
+        );
         errors++;
       }
     }
@@ -90,7 +95,11 @@ async function generateTagsHandler(_request: NextRequest) {
         total: articlesWithoutTags.length,
       },
     });
-  } catch {
+  } catch (error) {
+    logger.error(
+      { err: error },
+      '[TagGenerateAPI] Batch tag generation failed'
+    );
     return NextResponse.json(
       {
         success: false,
