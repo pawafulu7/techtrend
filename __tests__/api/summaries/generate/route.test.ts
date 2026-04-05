@@ -146,7 +146,7 @@ describe('/api/summaries/generate', () => {
     // 'new'のみがTagService対象（重複除外確認）
     // TagService receives only unique new tags after filtering existing
     expect(mockGetTagIdsForConnect).toHaveBeenCalledTimes(1);
-    expect(mockGetTagIdsForConnect).toHaveBeenCalledWith(['new'], { normalize: false });
+    expect(mockGetTagIdsForConnect).toHaveBeenCalledWith(['new'], { normalize: false }, expect.anything());
   });
 
   it('should handle service errors gracefully', async () => {

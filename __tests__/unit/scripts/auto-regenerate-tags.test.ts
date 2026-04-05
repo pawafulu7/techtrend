@@ -58,7 +58,10 @@ jest.mock('fs/promises', () => ({
 // --- import ---
 
 import { applyRegeneratedArticle } from '@/scripts/scheduled/auto-regenerate';
+import { getOrCreateTags } from '@/lib/services/tag-service';
 const { prismaMock } = require('../../../test/utils/prisma-mock');
+
+const mockGetOrCreateTags = getOrCreateTags as jest.MockedFunction<typeof getOrCreateTags>;
 
 // --- ヘルパー ---
 
@@ -89,6 +92,12 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
         tags: [{ id: '1' }, { id: '2' }],
       });
 
+      // getOrCreateTags がtx内で呼ばれ、Tagレコードを返す
+      mockGetOrCreateTags.mockResolvedValueOnce([
+        { id: '3', name: 'tag-c', category: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: '4', name: 'tag-d', category: null, createdAt: new Date(), updatedAt: new Date() },
+      ] as any);
+
       // Act
       await applyRegeneratedArticle(
         'article-dc',
@@ -98,7 +107,7 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
           translatedTitle: 'Test Article',
           articleType: 'tech',
         },
-        [{ id: '3' }, { id: '4' }]
+        ['tag-c', 'tag-d']
       );
 
       // Assert: summary更新(1回目) + disconnect(2回目) + connect(3回目)
@@ -127,11 +136,15 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
       // Arrange: 旧タグ空
       prismaMock.article.findUniqueOrThrow.mockResolvedValue({ tags: [] });
 
+      mockGetOrCreateTags.mockResolvedValueOnce([
+        { id: '3', name: 'tag-c', category: null, createdAt: new Date(), updatedAt: new Date() },
+      ] as any);
+
       // Act
       await applyRegeneratedArticle(
         'article-no-old',
         { summary: 'テスト要約', detailedSummary: '・詳細', translatedTitle: null, articleType: null },
-        [{ id: '3' }]
+        ['tag-c']
       );
 
       // Assert: summary更新(1回目) + connect(2回目)。disconnectなし
@@ -151,6 +164,8 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
       prismaMock.article.findUniqueOrThrow.mockResolvedValue({
         tags: [{ id: '1' }],
       });
+
+      mockGetOrCreateTags.mockResolvedValueOnce([] as any);
 
       // Act
       await applyRegeneratedArticle(
@@ -175,6 +190,7 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
   describe('2. キャッシュ無効化', () => {
     it('onArticleUpdated と onTagUpdated が両方呼ばれること', async () => {
       prismaMock.article.findUniqueOrThrow.mockResolvedValue({ tags: [] });
+      mockGetOrCreateTags.mockResolvedValueOnce([] as any);
       const cacheInvalidator = getCacheInvalidator();
 
       await applyRegeneratedArticle(
@@ -195,6 +211,8 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
       const cacheInvalidator = getCacheInvalidator();
       (cacheInvalidator.onArticleUpdated as jest.Mock).mockRejectedValueOnce(new Error('redis down'));
 
+      mockGetOrCreateTags.mockResolvedValueOnce([] as any);
+
       // エラーが外に漏れないことを確認（applyRegeneratedArticle内でcatchされる）
       await expect(
         applyRegeneratedArticle(
@@ -207,6 +225,7 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
 
     it('detailedSummary が null の場合は onArticleUpdated に undefined が渡されること', async () => {
       prismaMock.article.findUniqueOrThrow.mockResolvedValue({ tags: [] });
+      mockGetOrCreateTags.mockResolvedValueOnce([] as any);
       const cacheInvalidator = getCacheInvalidator();
 
       await applyRegeneratedArticle(
@@ -223,8 +242,13 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
   });
 
   describe('3. 実行順序の検証', () => {
-    it('summary更新 → findUniqueOrThrow → disconnect → connect の順で実行されること', async () => {
+    it('getOrCreateTags → summary更新 → findUniqueOrThrow → disconnect → connect の順で実行されること', async () => {
       const callOrder: string[] = [];
+
+      mockGetOrCreateTags.mockImplementationOnce(async () => {
+        callOrder.push('getOrCreateTags');
+        return [{ id: '2', name: 'tag-b', category: null, createdAt: new Date(), updatedAt: new Date() }] as any;
+      });
 
       prismaMock.article.findUniqueOrThrow.mockImplementation(async () => {
         callOrder.push('findUniqueOrThrow');
@@ -247,11 +271,11 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
       await applyRegeneratedArticle(
         'article-order',
         { summary: 'テスト要約', detailedSummary: null, translatedTitle: null, articleType: null },
-        [{ id: '2' }]
+        ['tag-b']
       );
 
-      // summary-update → findUniqueOrThrow → disconnect → connect の順
-      expect(callOrder).toEqual(['summary-update', 'findUniqueOrThrow', 'disconnect', 'connect']);
+      // getOrCreateTags → summary-update → findUniqueOrThrow → disconnect → connect の順
+      expect(callOrder).toEqual(['getOrCreateTags', 'summary-update', 'findUniqueOrThrow', 'disconnect', 'connect']);
     });
   });
 });

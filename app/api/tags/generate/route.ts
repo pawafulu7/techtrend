@@ -53,23 +53,28 @@ async function generateTagsHandler(_request: NextRequest) {
           continue;
         }
 
-        // Safe tag creation using upsert pattern (prevents race condition duplicates)
-        const tagConnections = await getTagIdsForConnect(normalizedTags, {
-          normalize: false, // Already normalized by service
-        });
+        // タグ作成と記事更新をatomicに実行
+        await prisma.$transaction(async (tx) => {
+          // Safe tag creation using upsert pattern (prevents race condition duplicates)
+          const tagConnections = await getTagIdsForConnect(
+            normalizedTags,
+            { normalize: false }, // Already normalized by service
+            tx
+          );
 
-        // 記事にタグを追加
-        if (tagConnections.length > 0) {
-          await prisma.article.update({
-            where: { id: article.id },
-            data: {
-              tags: {
-                connect: tagConnections,
+          // 記事にタグを追加
+          if (tagConnections.length > 0) {
+            await tx.article.update({
+              where: { id: article.id },
+              data: {
+                tags: {
+                  connect: tagConnections,
+                },
               },
-            },
-          });
-          generated++;
-        }
+            });
+            generated++;
+          }
+        });
       } catch {
         errors++;
       }

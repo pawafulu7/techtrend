@@ -148,11 +148,12 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
         const tags = await generateTags(article.title, content);
         
         if (tags.length > 0) {
-          // AI生成タグのみ正規化（既存タグはDB上の名前を維持 — 'article'等の特殊タグ保護）
-          const newTagRecords = await getOrCreateTags(tags, { normalize: true, maxTags: 30 });
-
           // 更新直前に現在のタグを読み、追加分のみconnect（staleスナップショット書き戻し防止）
+          // getOrCreateTagsをtx内に移動してタグupsertと記事更新をatomicに実行
           await prisma.$transaction(async (tx) => {
+            // AI生成タグのみ正規化（既存タグはDB上の名前を維持 — 'article'等の特殊タグ保護）
+            const newTagRecords = await getOrCreateTags(tags, { normalize: true, maxTags: 30 }, tx);
+
             const current = await tx.article.findUniqueOrThrow({
               where: { id: article.id },
               select: { tags: { select: { id: true } } }

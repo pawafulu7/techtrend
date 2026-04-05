@@ -58,12 +58,6 @@ async function generateSummariesHandler(_request: NextRequest) {
           (tagName) => !existingTagNames.includes(tagName)
         );
 
-        // Safe tag creation using upsert pattern (prevents race condition duplicates)
-        const tagConnections =
-          uniqueNewTags.length > 0
-            ? await getTagIdsForConnect(uniqueNewTags, { normalize: false })
-            : [];
-
         // category正規化
         const normalizedCategory = result.category
           ? normalizeArticleCategory(result.category)
@@ -71,25 +65,38 @@ async function generateSummariesHandler(_request: NextRequest) {
 
         const now = new Date();
 
-        // 記事を更新
-        await prisma.article.update({
-          where: { id: article.id },
-          data: {
-            summary: result.summary,
-            detailedSummary: result.detailedSummary,
-            articleType: 'unified',
-            summaryVersion: result.summaryVersion,
-            qualityScore: result.qualityScore,
-            summaryComputedAt: now,
-            qualityScoreComputedAt: now,
-            ...(result.translatedTitle && {
-              translatedTitle: result.translatedTitle,
-            }),
-            ...(normalizedCategory && { category: normalizedCategory }),
-            ...(tagConnections.length > 0 && {
-              tags: { connect: tagConnections },
-            }),
-          },
+        // タグ作成と記事更新をatomicに実行
+        await prisma.$transaction(async (tx) => {
+          // Safe tag creation using upsert pattern (prevents race condition duplicates)
+          const tagConnections =
+            uniqueNewTags.length > 0
+              ? await getTagIdsForConnect(
+                  uniqueNewTags,
+                  { normalize: false },
+                  tx
+                )
+              : [];
+
+          // 記事を更新
+          await tx.article.update({
+            where: { id: article.id },
+            data: {
+              summary: result.summary,
+              detailedSummary: result.detailedSummary,
+              articleType: 'unified',
+              summaryVersion: result.summaryVersion,
+              qualityScore: result.qualityScore,
+              summaryComputedAt: now,
+              qualityScoreComputedAt: now,
+              ...(result.translatedTitle && {
+                translatedTitle: result.translatedTitle,
+              }),
+              ...(normalizedCategory && { category: normalizedCategory }),
+              ...(tagConnections.length > 0 && {
+                tags: { connect: tagConnections },
+              }),
+            },
+          });
         });
 
         generated++;

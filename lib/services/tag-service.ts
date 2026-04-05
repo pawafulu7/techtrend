@@ -5,7 +5,7 @@
  * Uses upsert pattern instead of createMany to avoid race conditions.
  */
 
-import { Tag } from '@prisma/client';
+import { Prisma, Tag } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { TagNormalizer } from './tag-normalizer';
 
@@ -36,7 +36,8 @@ interface NormalizedTag {
  */
 export async function getOrCreateTags(
   tagNames: string[],
-  options?: TagServiceOptions
+  options?: TagServiceOptions,
+  tx?: Prisma.TransactionClient
 ): Promise<Tag[]> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
@@ -68,6 +69,20 @@ export async function getOrCreateTags(
 
   if (processedTags.length === 0) {
     return [];
+  }
+
+  if (tx) {
+    // Use provided transaction client — sequential upserts
+    const tags: Tag[] = [];
+    for (const tag of processedTags) {
+      const result = await tx.tag.upsert({
+        where: { name: tag.name },
+        create: { name: tag.name, category: tag.category || null },
+        update: {},
+      });
+      tags.push(result);
+    }
+    return tags;
   }
 
   // Use upsert in a transaction to prevent race conditions
@@ -139,9 +154,10 @@ export async function getOrCreateTagsWithCategory(
  */
 export async function getTagIdsForConnect(
   tagNames: string[],
-  options?: TagServiceOptions
+  options?: TagServiceOptions,
+  tx?: Prisma.TransactionClient
 ): Promise<{ id: string }[]> {
-  const tags = await getOrCreateTags(tagNames, options);
+  const tags = await getOrCreateTags(tagNames, options, tx);
   return tags.map((tag) => ({ id: tag.id }));
 }
 

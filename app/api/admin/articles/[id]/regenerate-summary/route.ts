@@ -67,11 +67,6 @@ async function handler(
     const uniqueNewTags = [...new Set(resultTags)].filter(
       (tagName) => !existingTagNames.includes(tagName)
     );
-    const tagConnections =
-      uniqueNewTags.length > 0
-        ? await getTagIdsForConnect(uniqueNewTags, { normalize: false })
-        : [];
-
     // category 正規化
     const normalizedCategory = result.category
       ? normalizeArticleCategory(result.category)
@@ -79,31 +74,39 @@ async function handler(
 
     const now = new Date();
 
-    // DB 更新
-    const updatedArticle = await prisma.article.update({
-      where: { id },
-      data: {
-        summary: result.summary,
-        detailedSummary: result.detailedSummary,
-        articleType: 'unified',
-        summaryVersion: result.summaryVersion,
-        qualityScore: result.qualityScore,
-        summaryComputedAt: now,
-        qualityScoreComputedAt: now,
-        summaryError: null,
-        skipReason: null,
-        ...(result.translatedTitle && {
-          translatedTitle: result.translatedTitle,
-        }),
-        ...(normalizedCategory && { category: normalizedCategory }),
-        ...(tagConnections.length > 0 && {
-          tags: { connect: tagConnections },
-        }),
-      },
-      include: {
-        source: { select: { id: true, name: true } },
-        tags: { select: { id: true, name: true } },
-      },
+    // タグ作成とDB更新をatomicに実行
+    const updatedArticle = await prisma.$transaction(async (tx) => {
+      const tagConnections =
+        uniqueNewTags.length > 0
+          ? await getTagIdsForConnect(uniqueNewTags, { normalize: false }, tx)
+          : [];
+
+      // DB 更新
+      return tx.article.update({
+        where: { id },
+        data: {
+          summary: result.summary,
+          detailedSummary: result.detailedSummary,
+          articleType: 'unified',
+          summaryVersion: result.summaryVersion,
+          qualityScore: result.qualityScore,
+          summaryComputedAt: now,
+          qualityScoreComputedAt: now,
+          summaryError: null,
+          skipReason: null,
+          ...(result.translatedTitle && {
+            translatedTitle: result.translatedTitle,
+          }),
+          ...(normalizedCategory && { category: normalizedCategory }),
+          ...(tagConnections.length > 0 && {
+            tags: { connect: tagConnections },
+          }),
+        },
+        include: {
+          source: { select: { id: true, name: true } },
+          tags: { select: { id: true, name: true } },
+        },
+      });
     });
 
     // キャッシュ無効化（best-effort: 失敗しても要約生成成功は維持）
