@@ -150,7 +150,7 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
         if (tags.length > 0) {
           // 更新直前に現在のタグを読み、追加分のみconnect（staleスナップショット書き戻し防止）
           // getOrCreateTagsをtx内に移動してタグupsertと記事更新をatomicに実行
-          await prisma.$transaction(async (tx) => {
+          const connectedCount = await prisma.$transaction(async (tx) => {
             // AI生成タグのみ正規化（既存タグはDB上の名前を維持 — 'article'等の特殊タグ保護）
             const newTagRecords = await getOrCreateTags(tags, { normalize: true, maxTags: 30 }, tx);
 
@@ -174,10 +174,14 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
                 }
               });
             }
+
+            return tagsToConnect.length;
           });
-          
-          console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
-          generatedCount++;
+
+          if (connectedCount > 0) {
+            console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
+            generatedCount++;
+          }
         }
         
         // APIレート制限対策
