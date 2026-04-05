@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { env } from '@/lib/config/env';
 
 // 確認メール送信用の関数をインポート
@@ -214,4 +215,6 @@ async function registerHandler(request: NextRequest) {
   }
 }
 
-export const POST = withRateLimit('auth:register', registerHandler);
+export const POST = withCSRFProtection(
+  withRateLimit('auth:register', registerHandler)
+);

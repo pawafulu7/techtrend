@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { auth } from '@/lib/auth/auth';
 import { createFavoriteLoader } from '@/lib/dataloader/favorite-loader';
 import { favoriteCache } from '@/lib/cache/favorites-cache';
@@ -9,6 +10,11 @@ import {
   createUserDeletedResponse,
 } from '@/lib/middleware/with-user-validation';
 import { env } from '@/lib/config/env';
+
+const batchFavoritesSchema = z.object({
+  articleIds: z.array(z.string().trim().min(1)).min(1).max(100),
+  useDataLoader: z.boolean().optional().default(false),
+});
 
 // DataLoaderインスタンスキャッシュ
 // リクエストスコープでDataLoaderを再利用
@@ -49,29 +55,14 @@ export async function POST(request: NextRequest) {
       res.headers.set('X-Response-Time', `${responseTime}ms`);
       return res;
     }
-    const { articleIds, useDataLoader = false } = body as {
-      articleIds?: unknown;
-      useDataLoader?: boolean;
-    };
-
-    if (
-      !Array.isArray(articleIds) ||
-      articleIds.length === 0 ||
-      !articleIds.every((id) => typeof id === 'string' && id.trim().length > 0)
-    ) {
+    const parsed = batchFavoritesSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
         { error: 'Invalid articleIds' },
         { status: 400 }
       );
     }
-
-    // 最大100件まで
-    if (articleIds.length > 100) {
-      return NextResponse.json(
-        { error: 'Too many articleIds (max: 100)' },
-        { status: 400 }
-      );
-    }
+    const { articleIds, useDataLoader } = parsed.data;
 
     const userId = session.user.id;
 

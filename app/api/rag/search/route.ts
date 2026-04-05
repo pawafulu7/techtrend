@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
     logger.info(
       {
         userId: session.user.id,
-        queryPreview: validatedRequest.query.substring(0, 50),
+        queryLength: validatedRequest.query.length,
         topK: validatedRequest.topK,
         embeddingKey: validatedRequest.embeddingKey,
       },
@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
       logger.warn(
         {
           userId: session?.user?.id,
-          errors: error.errors,
+          issues: error.issues,
         },
         'Invalid RAG search request'
       );
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Invalid request parameters',
-          details: error.errors.map((e) => ({
+          details: error.issues.map((e) => ({
             field: e.path.join('.'),
             message: e.message,
           })),
