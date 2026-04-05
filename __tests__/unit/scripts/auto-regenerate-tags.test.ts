@@ -63,6 +63,10 @@ const { prismaMock } = require('../../../test/utils/prisma-mock');
 
 const mockGetOrCreateTags = getOrCreateTags as jest.MockedFunction<typeof getOrCreateTags>;
 
+function expectGetOrCreateTagsCalledInTx(tagNames: string[]) {
+  expect(mockGetOrCreateTags).toHaveBeenCalledWith(tagNames, undefined, prismaMock);
+}
+
 // --- ヘルパー ---
 
 function getCacheInvalidator() {
@@ -110,6 +114,8 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
         ['tag-c', 'tag-d']
       );
 
+      expectGetOrCreateTagsCalledInTx(['tag-c', 'tag-d']);
+
       // Assert: summary更新(1回目) + disconnect(2回目) + connect(3回目)
       expect(prismaMock.article.update).toHaveBeenCalledTimes(3);
 
@@ -147,6 +153,8 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
         ['tag-c']
       );
 
+      expectGetOrCreateTagsCalledInTx(['tag-c']);
+
       // Assert: summary更新(1回目) + connect(2回目)。disconnectなし
       expect(prismaMock.article.update).toHaveBeenCalledTimes(2);
       expect(prismaMock.article.update).toHaveBeenNthCalledWith(2, {
@@ -173,6 +181,8 @@ describe('auto-regenerate: disconnect-connect パターン', () => {
         { summary: 'テスト要約', detailedSummary: null, translatedTitle: null, articleType: null },
         []
       );
+
+      expectGetOrCreateTagsCalledInTx([]);
 
       // Assert: summary更新(1回目) + disconnect(2回目)。connectなし
       expect(prismaMock.article.update).toHaveBeenCalledTimes(2);
