@@ -203,7 +203,8 @@ export async function extractWithReadability(
         logger.error(
           {
             url,
-            error: error instanceof Error ? error.message : String(error),
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
           },
           'Failed to spawn Readability worker'
         );

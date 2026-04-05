@@ -103,7 +103,7 @@ export class LLMExtractionPipeline {
           {
             attempt,
             maxRetries: opts.maxRetries,
-            error: lastError.message,
+            errorMessage: lastError.message,
             rawResponse: shouldLogRaw ? rawResponse?.slice(0, 300) : undefined,
           },
           'LLM extraction attempt failed'
@@ -121,7 +121,7 @@ export class LLMExtractionPipeline {
 
     logger.error(
       {
-        err: lastError?.message,
+        errorMessage: lastError?.message,
         rawResponse,
       },
       'LLM extraction failed after all retries'
