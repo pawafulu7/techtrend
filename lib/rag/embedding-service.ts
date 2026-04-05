@@ -18,7 +18,6 @@ import { env } from '@/lib/config/env';
 
 export interface EmbeddingConfig {
   model: string;
-  dimensions: number;
   batchSize: number;
   concurrency: number;
   maxRetries: number;
@@ -36,7 +35,6 @@ export class EmbeddingService {
 
     this.config = {
       model: env.EMBEDDING_MODEL || 'text-embedding-3-small',
-      dimensions: env.EMBEDDING_DIMENSIONS,
       batchSize: env.EMBEDDING_BATCH_SIZE,
       concurrency: env.EMBEDDING_CONCURRENCY,
       maxRetries: 5,

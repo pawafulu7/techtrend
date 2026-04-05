@@ -260,11 +260,7 @@ export class LocalLLMClient {
         summary = this.cleanSummary(line.replace(/^要約[:：]\s*/, ''));
       } else if (line.startsWith('タグ:') || line.startsWith('タグ：')) {
         const tagLine = line.replace(/^タグ[:：]\s*/, '');
-        tags = tagLine
-          .split(/[,、，]/)
-          .map((tag) => tag.trim())
-          .filter((tag) => tag.length > 0 && tag.length <= 30)
-          .map((tag) => this.normalizeTag(tag));
+        tags = this.parseTagLine(tagLine);
       }
     }
 
@@ -321,11 +317,7 @@ export class LocalLLMClient {
       } else if (line.startsWith('タグ:') || line.startsWith('タグ：')) {
         isDetailedSummary = false;
         const tagLine = line.replace(/^タグ[:：]\s*/, '');
-        tags = tagLine
-          .split(/[,、，]/)
-          .map((tag) => tag.trim())
-          .filter((tag) => tag.length > 0 && tag.length <= 30)
-          .map((tag) => this.normalizeTag(tag));
+        tags = this.parseTagLine(tagLine);
       } else if (isDetailedSummary && line.trim().startsWith('・')) {
         detailedSummaryLines.push(line.trim());
       } else if (
@@ -387,6 +379,14 @@ export class LocalLLMClient {
     }
 
     return { summary, detailedSummary, tags };
+  }
+
+  private parseTagLine(tagLine: string): string[] {
+    return tagLine
+      .split(/[,、，]/)
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0 && tag.length <= 30)
+      .map((tag) => this.normalizeTag(tag));
   }
 
   private normalizeTag(tag: string): string {

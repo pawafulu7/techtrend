@@ -447,7 +447,6 @@ export const config = {
   },
   embedding: {
     model: () => env.EMBEDDING_MODEL,
-    dimensions: () => env.EMBEDDING_DIMENSIONS,
     batchSize: () => env.EMBEDDING_BATCH_SIZE,
     concurrency: () => env.EMBEDDING_CONCURRENCY,
   },
