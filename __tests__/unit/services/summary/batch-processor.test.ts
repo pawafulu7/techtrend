@@ -23,6 +23,7 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 import { processArticleWithTimeout } from '@/lib/services/summary/batch-processor';
+import { env } from '@/lib/config/env';
 import type { ArticleWithSource } from '@/types/models';
 
 /** ArticleWithSource のミニマムなスタブを生成するヘルパー */
@@ -303,7 +304,7 @@ describe('batch-processor', () => {
 
         expect(prisma.$transaction).toHaveBeenCalledWith(
           expect.any(Function),
-          { timeout: expect.any(Number) }
+          { timeout: env.DB_TRANSACTION_TIMEOUT }
         );
       });
     });
