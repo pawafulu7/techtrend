@@ -1,5 +1,5 @@
 name: 'Scheduler Setup'
-description: 'Common setup steps for scheduler workflows (Node.js, npm ci, Prisma generate, DB warm-up, migrate deploy)'
+description: 'Common setup steps for scheduler workflows (Node.js, npm ci, Prisma generate, DB warm-up, optional migrate deploy)'
 
 inputs:
   node_version:
