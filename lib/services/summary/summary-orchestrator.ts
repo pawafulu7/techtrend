@@ -7,7 +7,7 @@
 import { PrismaClient, Prisma, SkipReason } from '@prisma/client';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { classifyError, isRetryable } from '@/lib/fetchers/retry-handler';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { SUMMARY_VERSION } from '@/types/article';
 import type { ArticleWithSource } from '@/types/models';
 import type {
@@ -168,7 +168,7 @@ export async function regenerateSummaries(
               });
             } catch (cacheError) {
               logger.warn(
-                { articleId: article.id, error: sanitizeError(cacheError) },
+                { articleId: article.id, err: cacheError },
                 'Cache invalidation failed, continuing'
               );
             }
@@ -176,7 +176,7 @@ export async function regenerateSummaries(
             await sleep(3000);
           } catch (error) {
             logger.error(
-              { articleId: article.id, error: sanitizeError(error) },
+              { articleId: article.id, err: error },
               'Error processing article'
             );
             totalErrors++;
@@ -282,7 +282,7 @@ export async function regenerateSummaries(
           });
         } catch (cacheError) {
           logger.warn(
-            { articleId: article.id, error: sanitizeError(cacheError) },
+            { articleId: article.id, err: cacheError },
             'Cache invalidation failed, continuing'
           );
         }
@@ -291,7 +291,7 @@ export async function regenerateSummaries(
         await sleep(3000);
       } catch (error) {
         logger.error(
-          { articleId: article.id, error: sanitizeError(error) },
+          { articleId: article.id, err: error },
           'Error processing article'
         );
         errors++;
@@ -307,7 +307,7 @@ export async function regenerateSummaries(
     return { generated, errors, skipped };
   } catch (error) {
     logger.error(
-      { error: sanitizeError(error) },
+      { err: error },
       'Fatal error in regeneration'
     );
     throw error;
@@ -434,7 +434,7 @@ export async function generateMissingSummaries(
           });
         } catch (cacheError) {
           logger.warn(
-            { articleId: article.id, error: sanitizeError(cacheError) },
+            { articleId: article.id, err: cacheError },
             'Cache invalidation failed, continuing'
           );
         }
@@ -443,7 +443,7 @@ export async function generateMissingSummaries(
         await sleep(2000);
       } catch (error) {
         logger.error(
-          { articleId: article.id, error: sanitizeError(error) },
+          { articleId: article.id, err: error },
           'Error processing article'
         );
         // Record error in database
@@ -484,7 +484,7 @@ export async function generateMissingSummaries(
           }
         } catch (dbError) {
           logger.warn(
-            { articleId: article.id, error: sanitizeError(dbError) },
+            { articleId: article.id, err: dbError },
             'Failed to record summary error'
           );
         }
@@ -520,7 +520,7 @@ export async function generateMissingSummaries(
       }
     } catch (dbError) {
       logger.warn(
-        { error: sanitizeError(dbError) },
+        { err: dbError },
         'Failed to record skip reasons'
       );
     }
@@ -530,7 +530,7 @@ export async function generateMissingSummaries(
     return { generated, errors, skipped };
   } catch (error) {
     logger.error(
-      { error: sanitizeError(error) },
+      { err: error },
       'Fatal error in missing summaries generation'
     );
     throw error;

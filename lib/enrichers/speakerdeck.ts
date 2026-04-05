@@ -49,7 +49,7 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
             thumbnail = this.extractThumbnail(html);
           } catch (htmlError) {
             logger.debug(
-              { error: htmlError, url },
+              { err: htmlError, url },
               '[SpeakerDeckEnricher] Failed to fetch thumbnail from HTML'
             );
             // HTMLフェッチ失敗時は無視（contentは取得済み）
@@ -71,7 +71,7 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
       return this.extractFromHtml(html, url);
     } catch (error) {
       logger.error(
-        { error, url },
+        { err: error, url },
         '[SpeakerDeckEnricher] Enrichment failed'
       );
       return null;
@@ -109,7 +109,7 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
       return data;
     } catch (error) {
       logger.debug(
-        { error, url },
+        { err: error, url },
         '[SpeakerDeckEnricher] oEmbed fetch error'
       );
       return null;

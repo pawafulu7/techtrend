@@ -448,7 +448,7 @@ if (require.main === module) {
         }
       }
     } catch (error) {
-      logger.error({ error }, 'Quality monitor execution failed');
+      logger.error({ err: error }, 'Quality monitor execution failed');
     } finally {
       await prisma.$disconnect();
     }

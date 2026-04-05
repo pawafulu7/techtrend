@@ -112,7 +112,7 @@ export class CloudflareBlogEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      logger.error({ error: _error, url }, '[Cloudflare Blog Enricher] Error enriching URL');
+      logger.error({ err: _error, url }, '[Cloudflare Blog Enricher] Error enriching URL');
       return null;
     }
   }

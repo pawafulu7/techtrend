@@ -60,7 +60,7 @@ export class CommentsCache {
       return null;
     } catch (error) {
       logger.error(
-        { error, articleId, userId },
+        { err: error, articleId, userId },
         'Failed to get comments from cache'
       );
       return null;
@@ -86,7 +86,7 @@ export class CommentsCache {
         'Comments cached'
       );
     } catch (error) {
-      logger.error({ error, articleId, userId }, 'Failed to cache comments');
+      logger.error({ err: error, articleId, userId }, 'Failed to cache comments');
     }
   }
 
@@ -103,7 +103,7 @@ export class CommentsCache {
       logger.debug({ articleId, userId }, 'Comments cache invalidated');
     } catch (error) {
       logger.error(
-        { error, articleId, userId },
+        { err: error, articleId, userId },
         'Failed to invalidate comments cache'
       );
     }
@@ -117,7 +117,7 @@ export class CommentsCache {
       await this.cache.invalidatePattern('*');
       logger.info('All comments cache cleared');
     } catch (error) {
-      logger.error({ error }, 'Failed to clear all comments cache');
+      logger.error({ err: error }, 'Failed to clear all comments cache');
       throw error;
     }
   }

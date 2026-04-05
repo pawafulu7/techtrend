@@ -15,8 +15,10 @@ class TestContentEnricher extends BaseContentEnricher {
     try {
       const parsedUrl = new URL(url);
       // Check if the hostname is exactly test.com or a subdomain of test.com
-      return parsedUrl.hostname === 'test.com' || 
-             parsedUrl.hostname.endsWith('.test.com');
+      return (
+        parsedUrl.hostname === 'test.com' ||
+        parsedUrl.hostname.endsWith('.test.com')
+      );
     } catch {
       // Invalid URL
       return false;
@@ -132,7 +134,12 @@ describe('BaseContentEnricher', () => {
       enricher.setMockHtml(mockHtml);
       enricher.setShouldFail(true, 2); // Allow 2 failures before success
 
-      const fetchSpy = jest.spyOn(enricher as unknown as { fetchWithRetry: (url: string) => Promise<string> }, 'fetchWithRetry');
+      const fetchSpy = jest.spyOn(
+        enricher as unknown as {
+          fetchWithRetry: (url: string) => Promise<string>;
+        },
+        'fetchWithRetry'
+      );
 
       const result = await enricher.enrich(testUrl);
 
@@ -183,12 +190,14 @@ describe('BaseContentEnricher', () => {
       expect(enricher.canHandle('https://test.com/article')).toBe(true);
       expect(enricher.canHandle('https://example.test.com/page')).toBe(true);
       expect(enricher.canHandle('https://other.com/article')).toBe(false);
-      
+
       // 追加の境界ケーステスト（セキュリティ検証）
       expect(enricher.canHandle('https://evil-test.com/article')).toBe(false);
       expect(enricher.canHandle('https://test.com.evil.tld')).toBe(false);
       expect(enricher.canHandle('not a url')).toBe(false);
-      expect(enricher.canHandle('http://test.com?redirect=evil.com')).toBe(true);
+      expect(enricher.canHandle('http://test.com?redirect=evil.com')).toBe(
+        true
+      );
       expect(enricher.canHandle('https://sub.test.com/path')).toBe(true);
     });
   });
@@ -249,7 +258,7 @@ describe('BaseContentEnricher', () => {
           </body>
         </html>
       `;
-      
+
       enricher.setMockHtml(html);
       const result = await enricher.enrich(testUrl);
       expect(result?.thumbnail).toBeNull();
@@ -267,7 +276,7 @@ describe('BaseContentEnricher', () => {
           </body>
         </html>
       `;
-      
+
       enricher.setMockHtml(html);
       const result = await enricher.enrich(testUrl);
       expect(result).not.toBeNull();
@@ -284,7 +293,7 @@ describe('BaseContentEnricher', () => {
           </body>
         </html>
       `;
-      
+
       enricher.setMockHtml(html);
       const result = await enricher.enrich(testUrl);
       expect(result).toBeNull();
@@ -298,7 +307,7 @@ describe('BaseContentEnricher', () => {
           </body>
         </html>
       `;
-      
+
       enricher.setMockHtml(html);
       const result = await enricher.enrich(testUrl);
       expect(result).toBeNull();
@@ -307,7 +316,9 @@ describe('BaseContentEnricher', () => {
 
   describe('logEnrichmentError', () => {
     it('should log error when enrichment fails', async () => {
-      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation(() => {});
+      const loggerSpy = jest
+        .spyOn(logger, 'error')
+        .mockImplementation(() => {});
       enricher.setShouldFail(true);
 
       const result = await enricher.enrich(testUrl);
@@ -317,8 +328,8 @@ describe('BaseContentEnricher', () => {
         expect.objectContaining({
           url: testUrl,
           enricher: 'TestContentEnricher',
-          error: expect.any(Error),
-          status: 'failed'
+          err: expect.any(Error),
+          status: 'failed',
         }),
         '[Enrichment] failed'
       );
@@ -327,13 +338,15 @@ describe('BaseContentEnricher', () => {
     });
 
     it('should preserve error stack trace', async () => {
-      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation(() => {});
+      const loggerSpy = jest
+        .spyOn(logger, 'error')
+        .mockImplementation(() => {});
       enricher.setShouldFail(true);
 
       await enricher.enrich(testUrl);
 
       expect(loggerSpy).toHaveBeenCalled();
-      const loggedError = loggerSpy.mock.calls[0][0].error;
+      const loggedError = loggerSpy.mock.calls[0][0].err;
       expect(loggedError).toBeInstanceOf(Error);
       expect(loggedError.stack).toBeDefined();
 
@@ -341,7 +354,9 @@ describe('BaseContentEnricher', () => {
     });
 
     it('should call logger.error with correct message', async () => {
-      const loggerSpy = jest.spyOn(logger, 'error').mockImplementation(() => {});
+      const loggerSpy = jest
+        .spyOn(logger, 'error')
+        .mockImplementation(() => {});
       enricher.setShouldFail(true);
 
       await enricher.enrich(testUrl);

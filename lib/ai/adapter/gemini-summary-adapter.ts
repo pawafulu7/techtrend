@@ -1,4 +1,4 @@
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import {
   SummaryProvider,
   SummaryProviderInput,
@@ -279,7 +279,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       };
     } catch (error) {
       const err = error as Error;
-      logger.error({ error: sanitizeError(err) }, 'Failed to parse response');
+      logger.error({ err: err }, 'Failed to parse response');
       throw new Error(`Response parsing failed: ${err.message}`);
     }
   }

@@ -8,7 +8,7 @@
 import { PrismaClient } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import pLimit from 'p-limit';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import type {
   PersonalizedFilterOptions,
   ScoredArticle,
@@ -172,7 +172,7 @@ export class CategoryFilterService {
       };
     } catch (error) {
       logger.error(
-        { error: sanitizeError(error), categoryIds },
+        { err: error, categoryIds },
         'Failed to filter articles'
       );
       return this.getFallbackResults(
@@ -314,7 +314,7 @@ export class CategoryFilterService {
         failedCategories.push(index);
         categoryResults.push([]);
         logger.warn(
-          { categoryIndex: index, error: sanitizeError(result.reason) },
+          { categoryIndex: index, err: result.reason },
           'Category search failed, continuing with other categories'
         );
       }

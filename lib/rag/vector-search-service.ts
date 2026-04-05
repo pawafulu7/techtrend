@@ -1,6 +1,6 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { EmbeddingService } from './embedding-service';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { searchOptionsSchema, SearchOptionsInput } from './schemas';
 import { getDynamicThreshold } from './query-utils';
 import {
@@ -192,7 +192,7 @@ export class VectorSearchService {
     } catch (error) {
       logger.error(
         {
-          error: sanitizeError(error),
+          err: error,
           query: query.substring(0, 50),
           options: {
             topK: options.topK,
@@ -553,7 +553,7 @@ export class VectorSearchService {
     } catch (error) {
       logger.error(
         {
-          error: sanitizeError(error),
+          err: error,
           articleId,
           embeddingKey,
         },

@@ -1,6 +1,6 @@
 import { BaseContentEnricher, EnrichedContent } from './base';
 import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 
 /**
  * マネーフォワード技術ブログのコンテンツエンリッチャー
@@ -67,7 +67,7 @@ export class MoneyForwardContentEnricher extends BaseContentEnricher {
       }
 
     } catch (error) {
-      logger.error({ url, error: sanitizeError(error) }, 'MoneyForward: Enrichment error');
+      logger.error({ url, err: error }, 'MoneyForward: Enrichment error');
       return null;
     }
   }

@@ -7,7 +7,7 @@
 
 import { PrismaClient, Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import type { CentroidComputationResult } from './types';
 
 // =============================================================================
@@ -167,7 +167,7 @@ export class CentroidService {
       return results;
     } catch (error) {
       logger.error(
-        { error: sanitizeError(error) },
+        { err: error },
         'Failed to compute centroids'
       );
       throw error;
@@ -223,7 +223,7 @@ export class CentroidService {
       };
     } catch (error: unknown) {
       logger.error(
-        { categoryId, error: sanitizeError(error) },
+        { categoryId, err: error },
         'Failed to compute category centroid'
       );
       return {

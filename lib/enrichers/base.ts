@@ -309,7 +309,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
       {
         url,
         enricher: this.constructor.name,
-        error: error instanceof Error ? error : new Error(String(error)),
+        err: error instanceof Error ? error : new Error(String(error)),
         status: 'failed',
       },
       '[Enrichment] failed'

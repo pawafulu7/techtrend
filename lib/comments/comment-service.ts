@@ -115,7 +115,7 @@ export class CommentService {
       return { success: true, data: comment };
     } catch (error) {
       logger.error(
-        { error, articleId, userId },
+        { err: error, articleId, userId },
         'Failed to create comment in database'
       );
       return {

@@ -111,7 +111,7 @@ export async function collectFeeds(): Promise<{
               });
             } catch (error) {
               logger.error(
-                { articleId: article.id, error },
+                { articleId: article.id, err: error },
                 'Failed to generate AI summary for article'
               );
             }
@@ -119,7 +119,7 @@ export async function collectFeeds(): Promise<{
         } catch (error) {
           collectResult.success = false;
           logger.error(
-            { source: source.name, url: articleData.url, error },
+            { source: source.name, url: articleData.url, err: error },
             'Failed to process article'
           );
           if (!collectResult.error) {
@@ -129,7 +129,7 @@ export async function collectFeeds(): Promise<{
         }
       }
     } catch (error) {
-      logger.error({ source: source.name, error }, 'Failed to collect source');
+      logger.error({ source: source.name, err: error }, 'Failed to collect source');
       collectResult.success = false;
       collectResult.error = `Source error: ${error instanceof Error ? error.message : String(error)}`;
     }

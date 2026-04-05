@@ -7,7 +7,7 @@
 
 import { PrismaClient, Prisma, SkipReason } from '@prisma/client';
 import { getAppDependencies } from '@/lib/di/bootstrap';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import {
   cleanupText,
   normalizeDetailedSummary,
@@ -188,7 +188,7 @@ export class SummaryManager {
         }
       } catch (dbError) {
         logger.warn(
-          { error: sanitizeError(dbError) },
+          { err: dbError },
           'Failed to record skip reasons'
         );
       }
@@ -214,7 +214,7 @@ export class SummaryManager {
       return { generated, errors, skipped };
     } catch (error) {
       logger.error(
-        { error: sanitizeError(error) },
+        { err: error },
         'Fatal error in summary generation'
       );
       throw error;

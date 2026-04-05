@@ -14,7 +14,7 @@ import {
 } from '../source/source-detector';
 import { WebFetcher } from '../web-fetcher';
 import * as cheerio from 'cheerio';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 
 let prisma: PrismaClient = defaultPrisma;
 
@@ -153,7 +153,7 @@ async function fetchBasicMetadata(url: string) {
     return { title, thumbnail, description, content: description, keywords };
   } catch (error) {
     logger.warn(
-      { error: sanitizeError(error) },
+      { err: error },
       'Failed to fetch basic metadata'
     );
     return {
@@ -264,7 +264,7 @@ export async function addArticleManually(
           }
         } catch (e) {
           logger.warn(
-            { error: sanitizeError(e), url },
+            { err: e, url },
             'Enrichment failed, falling back to basic metadata'
           );
         }
@@ -399,7 +399,7 @@ export async function addArticleManually(
         }
       } catch (e) {
         logger.warn(
-          { error: sanitizeError(e), articleId: article.id },
+          { err: e, articleId: article.id },
           'Summary generation failed'
         );
       }
@@ -416,7 +416,7 @@ export async function addArticleManually(
     };
   } catch (error) {
     logger.error(
-      { error: sanitizeError(error) },
+      { err: error },
       'Failed to add article manually'
     );
     return {

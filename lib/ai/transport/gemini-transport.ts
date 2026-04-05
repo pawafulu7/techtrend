@@ -1,4 +1,4 @@
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import {
   GeminiTransport,
   TransportRequest,
@@ -130,7 +130,7 @@ export class GeminiTransportImpl implements GeminiTransport {
       const latencyMs = Date.now() - startTime;
       const err = error as Error;
 
-      logger.error({ error: sanitizeError(err), latencyMs }, 'Transport request failed');
+      logger.error({ err: err, latencyMs }, 'Transport request failed');
 
       return {
         status: this.isRetryableError(err) ? 'retryable_error' : 'fatal_error',

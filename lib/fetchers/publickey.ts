@@ -129,7 +129,7 @@ export class PublickeyFetcher extends BaseFetcher {
             } catch (enrichError) {
               logger.error(
                 {
-                  error: enrichError,
+                  err: enrichError,
                   url: item.link,
                   title: item.title,
                   rssContentLength,

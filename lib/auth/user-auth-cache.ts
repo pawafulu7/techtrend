@@ -76,7 +76,7 @@ export async function getUserAuthData(
     }
   } catch (error) {
     // Log but don't fail - cache is optional optimization
-    logger.warn({ error, userId }, 'Redis cache read failed for user auth');
+    logger.warn({ err: error, userId }, 'Redis cache read failed for user auth');
   }
 
   // Cache miss - fetch from database
@@ -101,7 +101,7 @@ export async function getUserAuthData(
     await redisService.setJSON(cacheKey, data, CACHE_TTL);
     logger.debug({ userId, ttl: CACHE_TTL }, 'User auth data cached');
   } catch (error) {
-    logger.warn({ error, userId }, 'Redis cache write failed for user auth');
+    logger.warn({ err: error, userId }, 'Redis cache write failed for user auth');
   }
 
   return data;
@@ -137,7 +137,7 @@ export async function invalidateUserAuthCache(userId: string): Promise<void> {
   } catch (error) {
     // Log error but don't throw - invalidation failure is non-critical
     // Cache will expire naturally within TTL
-    logger.warn({ error, userId }, 'Redis cache invalidation failed');
+    logger.warn({ err: error, userId }, 'Redis cache invalidation failed');
   }
 }
 

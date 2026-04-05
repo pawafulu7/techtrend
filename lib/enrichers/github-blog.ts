@@ -109,7 +109,7 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
       };
       
     } catch (_error) {
-      logger.error({ error: _error, url }, '[GitHub Blog Enricher] Error enriching URL');
+      logger.error({ err: _error, url }, '[GitHub Blog Enricher] Error enriching URL');
       return null;
     }
   }

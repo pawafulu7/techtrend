@@ -1,6 +1,6 @@
 import { PrismaClient, Article } from '@prisma/client';
 import { EmbeddingService } from './embedding-service';
-import { logger, sanitizeError } from '@/lib/logger';
+import { logger } from '@/lib/logger';
 import { env } from '@/lib/config/env';
 
 /**
@@ -120,7 +120,7 @@ export class ArticleEmbeddingPipeline {
       logger.error(
         {
           articleId: article.id,
-          error: sanitizeError(error),
+          err: error,
         },
         'Article embedding failed'
       );

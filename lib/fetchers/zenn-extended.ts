@@ -138,7 +138,7 @@ export class ZennExtendedFetcher extends BaseFetcher {
           }
         } catch (_error) {
           logger.error(
-            { error: _error, url: article.url },
+            { err: _error, url: article.url },
             '[Zenn] Enrichment failed'
           );
         }
