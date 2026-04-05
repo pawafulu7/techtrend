@@ -386,7 +386,7 @@ export async function fetchTotalCount(params: CountParams): Promise<number> {
       'Cache get error, continuing without cache'
     );
   }
-  if (cachedCount !== null && cachedCount !== undefined) {
+  if (cachedCount !== null) {
     return cachedCount;
   }
 
