@@ -125,6 +125,7 @@ export function HomeClientInfinite({
     filterEnabled: isPersonalized,
     periodMonths: personalizedPeriod,
     hasPreferences,
+    isLoading: isLoadingPreferences,
   } = usePersonalizationPreferences();
 
   // カテゴリの変更を検出
@@ -236,10 +237,13 @@ export function HomeClientInfinite({
     isLoading,
     isError,
     refetch,
-  } = useInfiniteArticles({
-    ...filters,
-    includeUserData: true, // Include favorites and read status in API response
-  });
+  } = useInfiniteArticles(
+    {
+      ...filters,
+      includeUserData: true, // Include favorites and read status in API response
+    },
+    { enabled: !isLoadingPreferences }
+  );
 
   // ページごとの記事を1つの配列にフラット化（重複除去付き）
   const allArticles = useMemo(() => {

@@ -13,6 +13,7 @@ import {
   LayeredCache,
   type ArticleQueryParams,
 } from '@/lib/cache/layered-cache';
+import { RedisCache } from '@/lib/cache/redis-cache';
 import { auth } from '@/lib/auth/auth';
 import {
   MetricsCollector,
@@ -47,6 +48,10 @@ import {
 
 // Initialize Layered cache system for articles
 const cache = new LayeredCache();
+const personalizationCache = new RedisCache({
+  ttl: 300,
+  namespace: 'personalization',
+});
 
 /**
  * Parse query parameters from request
@@ -315,8 +320,65 @@ async function executePersonalizedQuery(
         : undefined,
     };
 
-    const { articles: scoredArticles, meta: personalizationMeta } =
-      await categoryFilterService.filterArticles(personalizationOptions);
+    // Build cache key from personalization-specific parameters only
+    const sortedCategoryIds = personalizationOptions.categoryIds
+      .slice()
+      .sort()
+      .join(',');
+    const excludeKey =
+      personalizationOptions.excludeSourceIds?.slice().sort().join(',') ||
+      'none';
+    const cacheKey = `ids:${sortedCategoryIds}:p${personalizationOptions.periodMonths}:${personalizationOptions.sortBy}:${personalizationOptions.sortOrder}:page${page}:lim${limit}:excl${excludeKey}`;
+
+    type CachedPersonalizationResult = {
+      articles: Array<{
+        articleId: string;
+        embeddingSimilarity: number;
+        tagBoost: number;
+        recencyDecay: number;
+        finalScore: number;
+      }>;
+      meta: { totalMatched: number; queryMs?: number };
+    };
+
+    // Try cache first; skip caching if result is a fallback (appliedCategories empty)
+    let cached: CachedPersonalizationResult | null = null;
+    try {
+      cached =
+        await personalizationCache.get<CachedPersonalizationResult>(cacheKey);
+    } catch (cacheError) {
+      logger.warn(
+        { err: cacheError },
+        'Personalization cache get failed, proceeding without cache'
+      );
+    }
+    let scoredArticles: CachedPersonalizationResult['articles'];
+    let personalizationMeta: CachedPersonalizationResult['meta'];
+
+    if (cached) {
+      scoredArticles = cached.articles;
+      personalizationMeta = cached.meta;
+    } else {
+      const result = await categoryFilterService.filterArticles(
+        personalizationOptions
+      );
+      scoredArticles = result.articles;
+      personalizationMeta = {
+        totalMatched: result.meta?.totalMatched ?? 0,
+        queryMs: result.meta?.queryMs,
+      };
+      // Only cache real personalization results (appliedCategories is empty for fallback)
+      if ((result.meta?.appliedCategories?.length ?? 0) > 0) {
+        try {
+          await personalizationCache.set(cacheKey, {
+            articles: scoredArticles,
+            meta: personalizationMeta,
+          });
+        } catch (cacheError) {
+          logger.warn({ err: cacheError }, 'Personalization cache set failed');
+        }
+      }
+    }
 
     const personalizedIds = scoredArticles.map((article) => article.articleId);
 
@@ -330,7 +392,11 @@ async function executePersonalizedQuery(
       metrics,
       () =>
         prisma.article.findMany({
-          where: { id: { in: personalizedIds } },
+          where: {
+            id: { in: personalizedIds },
+            isHidden: false,
+            summaryComputedAt: { not: null },
+          },
           select: selectFields,
         }),
       'db_query'
@@ -349,15 +415,20 @@ async function executePersonalizedQuery(
         Boolean(article)
       );
 
-    const totalMatched =
-      personalizationMeta?.totalMatched ?? personalizedIds.length;
+    // Post-filter (isHidden, summaryComputedAt) may exclude some cached IDs
+    const filteredOutCount = personalizedIds.length - orderedItems.length;
+    const adjustedTotal = Math.max(
+      0,
+      (personalizationMeta?.totalMatched ?? personalizedIds.length) -
+        filteredOutCount
+    );
 
     return {
       items: orderedItems as ArticleWithRelations[],
-      total: totalMatched,
+      total: adjustedTotal,
       page,
       limit,
-      totalPages: Math.ceil(totalMatched / limit),
+      totalPages: Math.ceil(adjustedTotal / limit),
     };
   } catch (error) {
     logger.error(
