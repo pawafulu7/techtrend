@@ -341,22 +341,32 @@ async function executePersonalizedQuery(
       meta: { totalMatched: number; queryMs?: number };
     };
 
-    const { articles: scoredArticles, meta: personalizationMeta } =
-      await personalizationCache.getOrSetWithLock<CachedPersonalizationResult>(
-        cacheKey,
-        async () => {
-          const result = await categoryFilterService.filterArticles(
-            personalizationOptions
-          );
-          return {
-            articles: result.articles,
-            meta: {
-              totalMatched: result.meta?.totalMatched ?? 0,
-              queryMs: result.meta?.queryMs,
-            },
-          };
-        }
+    // Try cache first; skip caching if result is a fallback (appliedCategories empty)
+    const cached =
+      await personalizationCache.get<CachedPersonalizationResult>(cacheKey);
+    let scoredArticles: CachedPersonalizationResult['articles'];
+    let personalizationMeta: CachedPersonalizationResult['meta'];
+
+    if (cached) {
+      scoredArticles = cached.articles;
+      personalizationMeta = cached.meta;
+    } else {
+      const result = await categoryFilterService.filterArticles(
+        personalizationOptions
       );
+      scoredArticles = result.articles;
+      personalizationMeta = {
+        totalMatched: result.meta?.totalMatched ?? 0,
+        queryMs: result.meta?.queryMs,
+      };
+      // Only cache real personalization results (appliedCategories is empty for fallback)
+      if ((result.meta?.appliedCategories?.length ?? 0) > 0) {
+        await personalizationCache.set(cacheKey, {
+          articles: scoredArticles,
+          meta: personalizationMeta,
+        });
+      }
+    }
 
     const personalizedIds = scoredArticles.map((article) => article.articleId);
 
@@ -370,7 +380,11 @@ async function executePersonalizedQuery(
       metrics,
       () =>
         prisma.article.findMany({
-          where: { id: { in: personalizedIds } },
+          where: {
+            id: { in: personalizedIds },
+            isHidden: false,
+            summaryComputedAt: { not: null },
+          },
           select: selectFields,
         }),
       'db_query'

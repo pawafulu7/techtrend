@@ -219,11 +219,16 @@ async function main(): Promise<void> {
   const elapsed = Date.now() - startTime;
   console.log(`\nCompleted in ${elapsed}ms`);
 
-  // Invalidate centroid cache after successful computation
+  // Invalidate centroid and personalization caches after successful computation
   if (!options.dryRun && !options.statsOnly) {
-    const centroidCache = new RedisCache({ ttl: 3600, namespace: 'personalization' });
-    await centroidCache.invalidatePattern('centroids:*');
-    console.log('Centroid cache invalidated');
+    try {
+      const centroidCache = new RedisCache({ ttl: 3600, namespace: 'personalization' });
+      await centroidCache.invalidatePattern('centroids:*');
+      await centroidCache.invalidatePattern('ids:*');
+      console.log('Centroid and personalization caches invalidated');
+    } catch (e) {
+      console.warn('Cache invalidation failed (non-fatal):', e);
+    }
   }
 
   // Show final stats
