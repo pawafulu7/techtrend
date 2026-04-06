@@ -342,8 +342,16 @@ async function executePersonalizedQuery(
     };
 
     // Try cache first; skip caching if result is a fallback (appliedCategories empty)
-    const cached =
-      await personalizationCache.get<CachedPersonalizationResult>(cacheKey);
+    let cached: CachedPersonalizationResult | null = null;
+    try {
+      cached =
+        await personalizationCache.get<CachedPersonalizationResult>(cacheKey);
+    } catch (cacheError) {
+      logger.warn(
+        { err: cacheError },
+        'Personalization cache get failed, proceeding without cache'
+      );
+    }
     let scoredArticles: CachedPersonalizationResult['articles'];
     let personalizationMeta: CachedPersonalizationResult['meta'];
 
@@ -361,10 +369,14 @@ async function executePersonalizedQuery(
       };
       // Only cache real personalization results (appliedCategories is empty for fallback)
       if ((result.meta?.appliedCategories?.length ?? 0) > 0) {
-        await personalizationCache.set(cacheKey, {
-          articles: scoredArticles,
-          meta: personalizationMeta,
-        });
+        try {
+          await personalizationCache.set(cacheKey, {
+            articles: scoredArticles,
+            meta: personalizationMeta,
+          });
+        } catch (cacheError) {
+          logger.warn({ err: cacheError }, 'Personalization cache set failed');
+        }
       }
     }
 
@@ -403,15 +415,20 @@ async function executePersonalizedQuery(
         Boolean(article)
       );
 
-    const totalMatched =
-      personalizationMeta?.totalMatched ?? personalizedIds.length;
+    // Post-filter (isHidden, summaryComputedAt) may exclude some cached IDs
+    const filteredOutCount = personalizedIds.length - orderedItems.length;
+    const adjustedTotal = Math.max(
+      0,
+      (personalizationMeta?.totalMatched ?? personalizedIds.length) -
+        filteredOutCount
+    );
 
     return {
       items: orderedItems as ArticleWithRelations[],
-      total: totalMatched,
+      total: adjustedTotal,
       page,
       limit,
-      totalPages: Math.ceil(totalMatched / limit),
+      totalPages: Math.ceil(adjustedTotal / limit),
     };
   } catch (error) {
     logger.error(

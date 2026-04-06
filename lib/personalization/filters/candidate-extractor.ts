@@ -7,6 +7,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { DEFAULT_SCORE_PARAMETERS } from '../types';
 import { RedisCache } from '@/lib/cache/redis-cache';
+import { logger } from '@/lib/logger';
 
 /** Module-level singleton for centroid cache (TTL: 1 hour) */
 const centroidCache = new RedisCache({
@@ -172,7 +173,7 @@ export async function getEmbeddingCandidates(
       AND s1.sim_emb >= ${DEFAULT_MIN_SIMILARITY}
   `;
 
-  return result.map((row) => ({
+  const mapped = result.map((row) => ({
     id: row.id,
     title: row.title,
     url: row.url,
@@ -186,6 +187,16 @@ export async function getEmbeddingCandidates(
     thumbnailUrl: row.thumbnail_url,
     embeddingSimilarity: row.sim_emb,
   }));
+
+  // Monitor for potential recall issues after topK reduction
+  if (mapped.length < 10 && effectiveLimit >= 50) {
+    logger.warn(
+      { candidateCount: mapped.length, effectiveLimit },
+      'Low candidate count relative to topK limit — potential recall issue'
+    );
+  }
+
+  return mapped;
 }
 
 /**
