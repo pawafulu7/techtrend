@@ -42,7 +42,10 @@ interface ArticlesResponse {
 
 type InfiniteArticlesData = InfiniteData<ArticlesResponse, number>;
 
-export function useInfiniteArticles(filters: ArticleFilters) {
+export function useInfiniteArticles(
+  filters: ArticleFilters,
+  options?: { enabled?: boolean }
+) {
   const queryClient = useQueryClient();
   const prevFilterKeyRef = useRef<string>('');
   const totalCountRef = useRef<number | undefined>(undefined);
@@ -394,6 +397,7 @@ export function useInfiniteArticles(filters: ArticleFilters) {
     refetchInterval: false, // 自動リフェッチを無効化
     retry: 1, // リトライ回数を制限
     retryDelay: 1000, // リトライ間隔を設定
+    enabled: options?.enabled,
   });
 
   return infiniteQuery;

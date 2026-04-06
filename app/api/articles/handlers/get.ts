@@ -13,6 +13,7 @@ import {
   LayeredCache,
   type ArticleQueryParams,
 } from '@/lib/cache/layered-cache';
+import { RedisCache } from '@/lib/cache/redis-cache';
 import { auth } from '@/lib/auth/auth';
 import {
   MetricsCollector,
@@ -47,6 +48,10 @@ import {
 
 // Initialize Layered cache system for articles
 const cache = new LayeredCache();
+const personalizationCache = new RedisCache({
+  ttl: 300,
+  namespace: 'personalization',
+});
 
 /**
  * Parse query parameters from request
@@ -315,8 +320,43 @@ async function executePersonalizedQuery(
         : undefined,
     };
 
+    // Build cache key from personalization-specific parameters only
+    const sortedCategoryIds = personalizationOptions.categoryIds
+      .slice()
+      .sort()
+      .join(',');
+    const excludeKey =
+      personalizationOptions.excludeSourceIds?.slice().sort().join(',') ||
+      'none';
+    const cacheKey = `ids:${sortedCategoryIds}:p${personalizationOptions.periodMonths}:${personalizationOptions.sortBy}:${personalizationOptions.sortOrder}:page${page}:lim${limit}:excl${excludeKey}`;
+
+    type CachedPersonalizationResult = {
+      articles: Array<{
+        articleId: string;
+        embeddingSimilarity: number;
+        tagBoost: number;
+        recencyDecay: number;
+        finalScore: number;
+      }>;
+      meta: { totalMatched: number; queryMs?: number };
+    };
+
     const { articles: scoredArticles, meta: personalizationMeta } =
-      await categoryFilterService.filterArticles(personalizationOptions);
+      await personalizationCache.getOrSetWithLock<CachedPersonalizationResult>(
+        cacheKey,
+        async () => {
+          const result = await categoryFilterService.filterArticles(
+            personalizationOptions
+          );
+          return {
+            articles: result.articles,
+            meta: {
+              totalMatched: result.meta?.totalMatched ?? 0,
+              queryMs: result.meta?.queryMs,
+            },
+          };
+        }
+      );
 
     const personalizedIds = scoredArticles.map((article) => article.articleId);
 
