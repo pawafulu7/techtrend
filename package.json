@@ -181,12 +181,12 @@
     "ioredis": "^5.7.0",
     "jsdom": "^27.0.0",
     "lucide-react": "^0.525.0",
-    "next": "^16.2.1",
+    "next": "^16.2.3",
     "next-auth": "^5.0.0-beta.30",
     "next-themes": "^0.4.6",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^8.0.4",
+    "nodemailer": "^8.0.5",
     "openai": "^4.77.3",
     "p-limit": "^7.2.0",
     "pino": "^9.9.5",
@@ -273,7 +273,7 @@
     "@prisma/config": {
       "effect": "3.20.0"
     },
-    "nodemailer": "^8.0.4",
+    "nodemailer": "^8.0.5",
     "defu": "6.1.6"
   }
 }
