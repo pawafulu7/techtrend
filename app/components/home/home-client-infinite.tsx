@@ -125,7 +125,7 @@ export function HomeClientInfinite({
     filterEnabled: isPersonalized,
     periodMonths: personalizedPeriod,
     hasPreferences,
-    isLoading: isLoadingPreferences,
+    isLoadingPreferences,
   } = usePersonalizationPreferences();
 
   // カテゴリの変更を検出
@@ -358,7 +358,7 @@ export function HomeClientInfinite({
           />
         )}
 
-        {isLoading && !isCategoryChanging ? (
+        {(isLoading || isLoadingPreferences) && !isCategoryChanging ? (
           <LoadingSpinner message="記事を読み込んでいます..." />
         ) : allArticles.length > 0 ? (
           <div className="relative">
