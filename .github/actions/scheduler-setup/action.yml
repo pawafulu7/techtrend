@@ -30,8 +30,11 @@ runs:
         for attempt in 1 2 3; do
           npm ci && break
           if [ "$attempt" -lt 3 ]; then
-            echo "npm ci attempt $attempt/3 failed, retrying in 10s..."
-            sleep 10
+            sleep_sec=$((attempt * 10))
+            [ "$sleep_sec" -gt 20 ] && sleep_sec=20
+            jitter=$((RANDOM % 3))
+            echo "npm ci attempt $attempt/3 failed, retrying in $((sleep_sec + jitter))s..."
+            sleep $((sleep_sec + jitter))
           else
             echo "npm ci failed after 3 attempts"
             exit 1
@@ -48,8 +51,11 @@ runs:
         for attempt in 1 2 3 4 5; do
           echo "SELECT 1;" | npx prisma db execute --stdin --url "$DATABASE_URL" && break
           if [ "$attempt" -lt 5 ]; then
-            echo "DB warm-up attempt $attempt/5 failed, retrying in 10s..."
-            sleep 10
+            sleep_sec=$((attempt * 10))
+            [ "$sleep_sec" -gt 40 ] && sleep_sec=40
+            jitter=$((RANDOM % 3))
+            echo "DB warm-up attempt $attempt/5 failed, retrying in $((sleep_sec + jitter))s..."
+            sleep $((sleep_sec + jitter))
           else
             echo "DB warm-up failed after 5 attempts"
             exit 1
@@ -64,8 +70,11 @@ runs:
         for attempt in 1 2 3; do
           npx prisma migrate deploy && break
           if [ "$attempt" -lt 3 ]; then
-            echo "migrate deploy attempt $attempt/3 failed, retrying in 15s..."
-            sleep 15
+            sleep_sec=$((attempt * 15))
+            [ "$sleep_sec" -gt 30 ] && sleep_sec=30
+            jitter=$((RANDOM % 3))
+            echo "migrate deploy attempt $attempt/3 failed, retrying in $((sleep_sec + jitter))s..."
+            sleep $((sleep_sec + jitter))
           else
             echo "migrate deploy failed after 3 attempts"
             exit 1
