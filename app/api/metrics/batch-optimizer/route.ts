@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { getAllOptimizerStats } from '@/lib/dataloader/batch-optimizer';
 import { getFavoriteLoaderStats } from '@/lib/dataloader/favorite-loader';
 import { getViewLoaderStats } from '@/lib/dataloader/article-view-loader';
@@ -13,7 +13,7 @@ import logger from '@/lib/logger';
 
 export async function GET() {
   // 管理者権限チェック
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user || session.user.role !== 'admin') {
     return NextResponse.json(
       { error: 'Unauthorized. Admin access required.' },
@@ -55,17 +55,27 @@ export async function GET() {
     });
   } catch (error) {
     logger.error({ err: error }, 'Failed to fetch batch optimizer metrics');
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to fetch metrics',
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to fetch metrics',
+      },
+      { status: 500 }
+    );
   }
 }
 
-function calculateTotalHitRate(favoriteStats: PartialDataLoaderStats | null, viewStats: PartialDataLoaderStats | null): string {
-  const totalHits = (favoriteStats?.l1Hits || 0) + (favoriteStats?.l2Hits || 0) +
-                    (viewStats?.l1Hits || 0) + (viewStats?.l2Hits || 0);
-  const totalRequests = (favoriteStats?.totalRequests || 0) + (viewStats?.totalRequests || 0);
+function calculateTotalHitRate(
+  favoriteStats: PartialDataLoaderStats | null,
+  viewStats: PartialDataLoaderStats | null
+): string {
+  const totalHits =
+    (favoriteStats?.l1Hits || 0) +
+    (favoriteStats?.l2Hits || 0) +
+    (viewStats?.l1Hits || 0) +
+    (viewStats?.l2Hits || 0);
+  const totalRequests =
+    (favoriteStats?.totalRequests || 0) + (viewStats?.totalRequests || 0);
 
   if (totalRequests === 0) {
     return '0%';

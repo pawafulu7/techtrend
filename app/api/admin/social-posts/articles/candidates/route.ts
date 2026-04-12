@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import {
@@ -25,7 +25,7 @@ import { prisma } from '@/lib/prisma';
  * レート制限: 30回/分 (admin:social-post-candidates)
  */
 async function candidatesHandler(request: NextRequest) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return NextResponse.json(

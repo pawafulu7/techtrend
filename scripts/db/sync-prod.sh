@@ -8,7 +8,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
 # 除外テーブル（ユーザー関連、Prisma PascalCase）
 EXCLUDE_TABLES=(
-  '"User"' '"Account"' '"VerificationToken"'
+  '"User"' '"Account"' '"Session"' '"Verification"'
   '"Favorite"' '"ArticleView"' '"UserDeletionLog"'
   '"UserCategoryPreference"' '"Comment"' '"UserSourcePreset"'
 )

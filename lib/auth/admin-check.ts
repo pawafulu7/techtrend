@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import { auth } from '@/lib/auth/auth';
 import { redirect } from 'next/navigation';
 import { getUserAuthData } from '@/lib/auth/user-auth-cache';
@@ -10,7 +11,7 @@ import { getUserAuthData } from '@/lib/auth/user-auth-cache';
  * Redirects non-admin users.
  */
 export async function requireAdmin() {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session?.user?.id) {
     redirect('/auth/login');
@@ -30,7 +31,7 @@ export async function requireAdmin() {
  * Uses DB-backed verification.
  */
 export async function isAdmin(): Promise<boolean> {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) return false;
 
   const authData = await getUserAuthData(session.user.id);
@@ -41,7 +42,7 @@ export async function isAdmin(): Promise<boolean> {
  * Get user role from DB cache
  */
 export async function getUserRole(): Promise<string | null> {
-  const session = await auth();
+  const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) return null;
 
   const authData = await getUserAuthData(session.user.id);

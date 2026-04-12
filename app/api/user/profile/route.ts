@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import { auth } from '@/lib/auth/auth';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
@@ -10,13 +11,10 @@ export const dynamic = 'force-dynamic';
 export async function GET(_request: NextRequest) {
   try {
     // 1. セッション確認
-    const session = await auth();
-    
+    const session = await auth.api.getSession({ headers: await headers() });
+
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 2. ユーザー情報取得（必要なフィールドのみ選択）
@@ -30,11 +28,11 @@ export async function GET(_request: NextRequest) {
         name: true,
         image: true,
         createdAt: true,
-        password: true, // hasPasswordの判定に必要
         deletedAt: true, // Check if user is deleted
         accounts: {
           select: {
-            provider: true,
+            providerId: true,
+            password: true,
           },
         },
       },
@@ -46,14 +44,17 @@ export async function GET(_request: NextRequest) {
     }
 
     // 3. レスポンス構造の作成
+    const credentialAccount = user.accounts.find(
+      (a) => a.providerId === 'credential'
+    );
     const userProfile = {
       id: user.id,
       email: user.email,
       name: user.name,
       image: user.image,
       createdAt: user.createdAt.toISOString(), // ISO 8601形式
-      hasPassword: !!user.password,
-      providers: Array.from(new Set(user.accounts.map(a => a.provider))), // 重複排除
+      hasPassword: !!credentialAccount?.password,
+      providers: Array.from(new Set(user.accounts.map((a) => a.providerId))), // 重複排除
     };
 
     return NextResponse.json(userProfile);

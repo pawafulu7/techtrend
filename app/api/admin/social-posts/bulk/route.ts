@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { getSocialPostService, SocialPostBulkSchema } from '@/lib/social-post';
@@ -20,7 +20,7 @@ import { getSocialPostService, SocialPostBulkSchema } from '@/lib/social-post';
  * レート制限: 10回/分 (admin:social-post-bulk)
  */
 async function bulkHandler(request: NextRequest) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return NextResponse.json(

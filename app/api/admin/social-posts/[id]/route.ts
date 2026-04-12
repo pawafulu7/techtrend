@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import {
@@ -25,7 +25,7 @@ interface RouteContext {
  * GET - 詳細取得
  */
 export async function GET(request: NextRequest, { params }: RouteContext) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return NextResponse.json(
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
  * レート制限: 20回/分 (admin:social-post-write)
  */
 async function updateHandler(request: NextRequest, context: RouteContext) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return NextResponse.json(
@@ -169,7 +169,7 @@ async function updateHandler(request: NextRequest, context: RouteContext) {
  * レート制限: 20回/分 (admin:social-post-write)
  */
 async function deleteHandler(request: NextRequest, context: RouteContext) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return NextResponse.json(

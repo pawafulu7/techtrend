@@ -6,7 +6,6 @@
 import { NextResponse } from 'next/server';
 import { ZodError, z } from 'zod';
 import { Prisma } from '@prisma/client';
-import type { Session } from 'next-auth';
 import logger from '@/lib/logger';
 
 // Error types
@@ -104,33 +103,34 @@ export function handleApiError(
   path?: string
 ): NextResponse<ErrorResponse> {
   // Log error for monitoring
-  logger.error({
-    err: error,
-    path,
-    timestamp: new Date().toISOString(),
-  }, '[API Error]');
+  logger.error(
+    {
+      err: error,
+      path,
+      timestamp: new Date().toISOString(),
+    },
+    '[API Error]'
+  );
 
   // Handle known error types
   if (error instanceof ApiError) {
-    return NextResponse.json(
-      formatErrorResponse(error, path),
-      { status: error.statusCode }
-    );
+    return NextResponse.json(formatErrorResponse(error, path), {
+      status: error.statusCode,
+    });
   }
 
   // Handle Zod validation errors
   if (error instanceof ZodError) {
     const validationError = new ValidationError(
       'Validation failed',
-      error.issues.map(e => ({
+      error.issues.map((e) => ({
         field: e.path.join('.'),
         message: e.message,
       }))
     );
-    return NextResponse.json(
-      formatErrorResponse(validationError, path),
-      { status: 400 }
-    );
+    return NextResponse.json(formatErrorResponse(validationError, path), {
+      status: 400,
+    });
   }
 
   // Handle Prisma errors
@@ -189,10 +189,7 @@ export function handleApiError(
 
   // Handle unknown errors
   return NextResponse.json(
-    formatErrorResponse(
-      new ApiError('An unexpected error occurred'),
-      path
-    ),
+    formatErrorResponse(new ApiError('An unexpected error occurred'), path),
     { status: 500 }
   );
 }
@@ -200,9 +197,9 @@ export function handleApiError(
 /**
  * Async error wrapper for API routes
  */
-export function withErrorHandler<T extends (...args: unknown[]) => Promise<unknown>>(
-  handler: T
-): T {
+export function withErrorHandler<
+  T extends (...args: unknown[]) => Promise<unknown>,
+>(handler: T): T {
   return (async (...args) => {
     try {
       return await handler(...args);
@@ -233,7 +230,7 @@ export async function validateRequest<T>(
 /**
  * Check if user is authenticated
  */
-export function requireAuth(session: Session | null): void {
+export function requireAuth(session: { user?: unknown } | null): void {
   if (!session?.user) {
     throw new UnauthorizedError('Authentication required');
   }
@@ -242,9 +239,12 @@ export function requireAuth(session: Session | null): void {
 /**
  * Check if user has required role
  */
-export function requireRole(session: Session | null, role: string): void {
+export function requireRole(
+  session: { user?: { role?: string } } | null,
+  role: string
+): void {
   requireAuth(session);
-  if (!session || session.user.role !== role) {
+  if (!session || (session.user as { role?: string })?.role !== role) {
     throw new ForbiddenError(`Role '${role}' required`);
   }
 }

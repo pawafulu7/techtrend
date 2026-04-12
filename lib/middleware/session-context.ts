@@ -2,28 +2,30 @@
  * Session Context for Middleware Chain
  *
  * Provides utilities for sharing session data across middleware chain
- * to avoid redundant auth() calls.
+ * to avoid redundant auth.api.getSession() calls.
  *
  * Usage:
  * - Create context at outermost middleware using extendWithSessionContext()
  * - Pass context through middleware chain
- * - Use resolveSession(context) instead of auth() directly
+ * - Use resolveSession(context) instead of auth.api.getSession() directly
  */
 
-import type { Session } from 'next-auth';
+import { headers } from 'next/headers';
 import { auth } from '@/lib/auth/auth';
+
+type BetterAuthSession = Awaited<ReturnType<typeof auth.api.getSession>>;
 
 /**
  * Session sharing context for middleware chain
- * Used to limit auth() calls to once per request
+ * Used to limit auth.api.getSession() calls to once per request
  */
 export type SessionContext = {
-  session?: Session | null;
-  sessionPromise?: Promise<Session | null>;
+  session?: BetterAuthSession | null;
+  sessionPromise?: Promise<BetterAuthSession | null>;
 };
 
 /**
- * Resolve session from context or fetch from auth()
+ * Resolve session from context or fetch from auth.api.getSession()
  *
  * - If context.session exists, reuse it
  * - If not, create sessionPromise and share it
@@ -34,16 +36,21 @@ export type SessionContext = {
  */
 export async function resolveSession(
   context?: SessionContext
-): Promise<Session | null> {
+): Promise<BetterAuthSession | null> {
+  const fetchSession = async (): Promise<BetterAuthSession | null> => {
+    const hdrs = await headers();
+    return auth.api.getSession({ headers: hdrs });
+  };
+
   // Early return: no context provided
-  if (!context) return auth();
+  if (!context) return fetchSession();
 
   // Cache hit: session already resolved
   if (context.session !== undefined) return context.session;
 
   // Lazy evaluation: create promise on first call only
   if (!context.sessionPromise) {
-    context.sessionPromise = auth().then((session) => {
+    context.sessionPromise = fetchSession().then((session) => {
       context.session = session ?? null;
       return context.session;
     });

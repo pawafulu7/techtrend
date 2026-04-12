@@ -1,251 +1,175 @@
-import NextAuth from 'next-auth';
-import { PrismaAdapter } from '@auth/prisma-adapter';
-import CredentialsProvider from 'next-auth/providers/credentials';
-import EmailProvider from 'next-auth/providers/email';
-import GoogleProvider from 'next-auth/providers/google';
-import GitHubProvider from 'next-auth/providers/github';
-import bcrypt from 'bcryptjs';
+import { betterAuth } from 'better-auth';
+import { prismaAdapter } from '@better-auth/prisma-adapter';
+import { admin } from 'better-auth/plugins';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/config/env';
-// Use Nodemailer if Gmail is configured, otherwise use Resend
-import { sendVerificationRequest } from './email-provider';
-import { sendVerificationRequestNodemailer } from './email-provider-nodemailer';
-import { getUserAuthData } from './user-auth-cache';
+import logger from '@/lib/logger';
 
-// Use centralized env config for consistency
+// Email sending logic
+let resend: any = null;
+if (env.RESEND_API_KEY) {
+  try {
+    const { Resend } = require('resend');
+    resend = new Resend(env.RESEND_API_KEY);
+  } catch (_error) {
+    logger.warn('Resend module not installed.');
+  }
+}
+
+function createNodemailerTransporter() {
+  let nodemailer: any;
+  try {
+    nodemailer = require('nodemailer');
+  } catch (_error) {
+    return null;
+  }
+  if (env.GMAIL_USER && env.GMAIL_APP_PASSWORD) {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
+    });
+  }
+  if (env.SMTP_HOST) {
+    return nodemailer.createTransport({
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      secure: env.SMTP_SECURE === 'true',
+      auth: env.SMTP_USER
+        ? { user: env.SMTP_USER, pass: env.SMTP_PASSWORD }
+        : undefined,
+    });
+  }
+  return null;
+}
+
 const isProduction = process.env.NODE_ENV === 'production';
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  // Use normalized auth secret from env config
+export const auth = betterAuth({
+  database: prismaAdapter(prisma, { provider: 'postgresql' }),
   secret: env.AUTH_SECRET,
-  adapter: PrismaAdapter(prisma),
+  baseURL:
+    process.env.BETTER_AUTH_URL ||
+    env.NEXT_PUBLIC_APP_URL ||
+    `http://localhost:${env.PORT}`,
 
-  // Explicit cookie configuration for security
-  cookies: {
-    sessionToken: {
-      name: isProduction
-        ? '__Secure-authjs.session-token'
-        : 'authjs.session-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax', // OAuth compatible
-        path: '/',
-        secure: isProduction,
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false,
+  },
+
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async (
+      data: {
+        user: { email: string; [key: string]: any };
+        url: string;
+        token: string;
       },
-    },
-    callbackUrl: {
-      name: isProduction
-        ? '__Secure-authjs.callback-url'
-        : 'authjs.callback-url',
-      options: {
-        // Note: callbackUrl must NOT be httpOnly for OAuth redirect flow to work
-        // httpOnly breaks Auth.js OAuth callbacks (missing state errors)
-        sameSite: 'lax',
-        path: '/',
-        secure: isProduction,
-      },
-    },
-    csrfToken: {
-      name: isProduction ? '__Host-authjs.csrf-token' : 'authjs.csrf-token',
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: isProduction,
-      },
+      _request?: Request
+    ) => {
+      if (process.env.NODE_ENV === 'test' || env.SKIP_EMAIL_SEND === 'true') {
+        return;
+      }
+
+      const { host } = new URL(data.url);
+      const from = env.EMAIL_FROM || 'noreply@techtrend.example.com';
+      const subject = 'TechTrend - メールアドレスの確認';
+      const htmlContent = buildVerificationEmailHtml(data.url, host);
+      const textContent = buildVerificationEmailText(data.url, host);
+
+      // Gmail/SMTP configured → use nodemailer
+      if (env.GMAIL_USER) {
+        const transporter = createNodemailerTransporter();
+        if (transporter) {
+          void transporter.sendMail({
+            from,
+            to: data.user.email,
+            subject,
+            html: htmlContent,
+            text: textContent,
+          });
+          return;
+        }
+      }
+      // Fallback to Resend
+      if (resend) {
+        void resend.emails.send({
+          from,
+          to: data.user.email,
+          subject,
+          html: htmlContent,
+          text: textContent,
+        });
+        return;
+      }
+      if (process.env.NODE_ENV !== 'development') {
+        logger.error('No email provider configured');
+      }
     },
   },
 
-  providers: [
-    // Email provider for magic link authentication
-    EmailProvider({
-      // Dummy server config for Resend (actual sending is handled by sendVerificationRequest)
-      server: {
-        host: 'smtp.resend.com',
-        port: 465,
-        auth: {
-          user: 'resend',
-          pass: env.RESEND_API_KEY ?? 'dummy',
-        },
-      },
-      from: env.EMAIL_FROM ?? 'noreply@techtrend.example.com',
-      // Use Nodemailer if Gmail is configured
-      sendVerificationRequest: env.GMAIL_USER
-        ? sendVerificationRequestNodemailer
-        : sendVerificationRequest,
-      maxAge: 24 * 60 * 60, // 24 hours
-    }),
-
-    CredentialsProvider({
-      name: 'credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
-        loginToken: { label: 'Login Token', type: 'text' }, // 一時トークンでのログイン用
-      },
-      async authorize(credentials) {
-        if (!credentials?.email) {
-          return null;
-        }
-
-        // 一時トークンでのログイン（メール認証後の自動ログイン用）
-        if (credentials.loginToken) {
-          // トークンの検証
-          const tempToken = await prisma.verificationToken.findFirst({
-            where: {
-              identifier: `login:${credentials.email}`,
-              token: credentials.loginToken,
-              expires: {
-                gt: new Date(),
-              },
-            },
-          });
-
-          if (!tempToken) {
-            return null;
-          }
-
-          // ユーザー情報取得
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email as string },
-          });
-
-          if (!user || !user.emailVerified || user.deletedAt) {
-            return null;
-          }
-
-          // 使用済みトークンを削除
-          await prisma.verificationToken.delete({
-            where: {
-              identifier_token: {
-                identifier: `login:${credentials.email}`,
-                token: credentials.loginToken as string,
-              },
-            },
-          });
-
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            image: user.image,
-          };
-        }
-
-        // 通常のパスワードログイン
-        if (!credentials.password) {
-          return null;
-        }
-
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email as string,
-          },
-        });
-
-        if (!user || !user.password || user.deletedAt) {
-          return null;
-        }
-
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
-
-        if (!isPasswordValid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-        };
-      },
-    }),
-
+  socialProviders: {
     ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
-      ? [
-          GoogleProvider({
+      ? {
+          google: {
             clientId: env.GOOGLE_CLIENT_ID,
             clientSecret: env.GOOGLE_CLIENT_SECRET,
-          }),
-        ]
-      : []),
-
+          },
+        }
+      : {}),
     ...((env.GITHUB_CLIENT_ID || env.GITHUB_ID) &&
     (env.GITHUB_CLIENT_SECRET || env.GITHUB_SECRET)
-      ? [
-          GitHubProvider({
-            clientId: env.GITHUB_CLIENT_ID || env.GITHUB_ID!,
-            clientSecret: env.GITHUB_CLIENT_SECRET || env.GITHUB_SECRET!,
-          }),
-        ]
-      : []),
-  ],
+      ? {
+          github: {
+            clientId: (env.GITHUB_CLIENT_ID || env.GITHUB_ID)!,
+            clientSecret: (env.GITHUB_CLIENT_SECRET || env.GITHUB_SECRET)!,
+          },
+        }
+      : {}),
+  },
 
   session: {
-    strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    expiresIn: 30 * 24 * 60 * 60, // 30 days in seconds
+    updateAge: 24 * 60 * 60, // 1 day in seconds
   },
 
-  pages: {
-    signIn: '/auth/login',
-    signOut: '/auth/logout',
-    error: '/auth/error',
-    verifyRequest: '/auth/verify',
-    newUser: '/profile',
-  },
+  plugins: [
+    admin({
+      defaultRole: 'user',
+      adminRoles: ['admin'],
+    }),
+  ],
 
-  callbacks: {
-    async session({ session, token }) {
-      // Check if user is deleted (early exit)
-      if (token.deleted) {
-        return null as any;
-      }
-
-      if (session?.user && token?.sub) {
-        session.user.id = token.sub;
-        // Add role to session
-        if (token.role) {
-          session.user.role = token.role as string;
-        }
-      }
-      return session;
-    },
-
-    async jwt({ token, user, trigger }) {
-      // Check if token is marked as deleted
-      if (token.deleted) {
-        return null as any;
-      }
-
-      // On user login or update, refresh user data
-      if (user || trigger === 'update') {
-        const userId = user?.id || token.sub;
-        if (userId) {
-          // Fetch user status from cache (Redis-backed, 2-min TTL)
-          // This reduces DB load while maintaining reasonable freshness
-          const authData = await getUserAuthData(userId as string);
-
-          // If user not found or is deleted, mark token as deleted and return null
-          if (!authData || authData.deletedAt) {
-            token.deleted = true;
-            return null as any;
-          }
-
-          // Update token with fresh data
-          if (user) {
-            token.uid = user.id;
-          }
-          token.role = authData.role || 'user';
-        }
-      }
-
-      return token;
+  user: {
+    additionalFields: {
+      deletedAt: {
+        type: 'date' as const,
+        required: false,
+        input: false,
+      },
+      personalizationPeriodMonths: {
+        type: 'number' as const,
+        required: false,
+        defaultValue: 12,
+        input: false,
+      },
     },
   },
 
-  debug: process.env.NODE_ENV === 'development',
+  advanced: {
+    useSecureCookies: isProduction,
+  },
 });
+
+// Email HTML template
+function buildVerificationEmailHtml(url: string, host: string): string {
+  const escapedHost = host.replace(/\./g, '&#8203;.');
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="margin:0;padding:0;background-color:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:20px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);"><tr><td style="padding:40px 30px;text-align:center;"><h1 style="color:#333333;margin:0 0 20px 0;font-size:24px;">TechTrend メールアドレスの確認</h1><p style="color:#666666;margin:0 0 30px 0;font-size:16px;line-height:1.5;"><strong>${escapedHost}</strong> へのサインインを完了するには、<br>以下のボタンをクリックしてください。</p><table cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr><td style="background-color:#0070f3;border-radius:6px;"><a href="${url}" target="_blank" style="display:inline-block;padding:14px 30px;color:#ffffff;text-decoration:none;font-size:16px;font-weight:500;">メールアドレスを確認する</a></td></tr></table><p style="color:#999999;margin:30px 0 0 0;font-size:14px;">このメールに心当たりがない場合は、無視してください。<br>リンクは24時間有効です。</p></td></tr><tr><td style="padding:20px 30px;background-color:#f8f8f8;border-top:1px solid #e0e0e0;text-align:center;border-radius:0 0 8px 8px;"><p style="color:#999999;margin:0;font-size:12px;">このメールは自動送信されています。返信はできません。</p></td></tr></table></td></tr></table></body></html>`;
+}
+
+function buildVerificationEmailText(url: string, host: string): string {
+  return `TechTrend メールアドレスの確認\n\n${host} へのサインインを完了するには、以下のリンクをクリックしてください：\n\n${url}\n\nこのメールに心当たりがない場合は、無視してください。\nリンクは24時間有効です。\n\nこのメールは自動送信されています。`;
+}
+
+export type Auth = typeof auth;

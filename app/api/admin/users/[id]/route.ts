@@ -193,6 +193,25 @@ async function handler(request: NextRequest, context: any) {
 
       await invalidateUserAuthCache(targetUserId);
 
+      // Revoke all sessions for the deactivated user
+      // Retry once on failure; log error but do not throw (deactivation itself succeeded)
+      try {
+        await prisma.session.deleteMany({ where: { userId: targetUserId } });
+      } catch (firstError) {
+        logger.warn(
+          { targetUserId, error: firstError },
+          'Session revocation failed, retrying'
+        );
+        try {
+          await prisma.session.deleteMany({ where: { userId: targetUserId } });
+        } catch (retryError) {
+          logger.error(
+            { targetUserId, error: retryError },
+            'Session revocation failed after retry — sessions may remain active'
+          );
+        }
+      }
+
       logger.info(
         { targetUserId, adminUserId: currentUserId, reason: body.reason },
         'User deactivated by admin'

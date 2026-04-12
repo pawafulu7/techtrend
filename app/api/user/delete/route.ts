@@ -55,27 +55,14 @@ async function deleteAccountHandler(
     // 3. User is already validated by withUserValidation middleware
     const userId = context.validatedUser.id;
 
-    // 4. Get user password for verification (other fields fetched in transaction)
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        password: true,
-      },
+    // 4. Get credential account for password verification
+    const account = await prisma.account.findFirst({
+      where: { userId, providerId: 'credential' },
+      select: { password: true },
     });
 
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'USER_NOT_FOUND',
-          message: 'ユーザーが見つかりません',
-        },
-        { status: 404 }
-      );
-    }
-
     // 5. Verify password for password-based users
-    if (user.password) {
+    if (account?.password) {
       if (!password) {
         return NextResponse.json(
           {
@@ -87,7 +74,7 @@ async function deleteAccountHandler(
         );
       }
 
-      const isPasswordValid = await verifyPassword(password, user.password);
+      const isPasswordValid = await verifyPassword(password, account.password);
       if (!isPasswordValid) {
         return NextResponse.json(
           {

@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import {
@@ -25,7 +25,7 @@ import {
  * レート制限: 5回/分 (admin:social-post-generate)
  */
 async function generateHandler(request: NextRequest) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return NextResponse.json(

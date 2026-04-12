@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { FavoritesContent } from './_components/favorites-content';
 import { type SortOption, VALID_SORT_OPTIONS } from './_types';
 
@@ -8,7 +8,7 @@ export default async function FavoritesPage({
 }: {
   searchParams: Promise<{ q?: string; sort?: string }>;
 }) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) {
     const { q, sort } = await searchParams;
     const callbackUrl =

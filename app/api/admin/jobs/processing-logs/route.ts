@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import type {
@@ -31,7 +31,10 @@ type ProcessingStatus = (typeof VALID_STATUSES)[number];
  * Type guard to validate status value
  */
 function isValidStatus(status: unknown): status is ProcessingStatus {
-  return typeof status === 'string' && VALID_STATUSES.includes(status as ProcessingStatus);
+  return (
+    typeof status === 'string' &&
+    VALID_STATUSES.includes(status as ProcessingStatus)
+  );
 }
 
 /**
@@ -96,9 +99,7 @@ function sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {
 /**
  * Sanitize metadata to remove sensitive information recursively
  */
-function sanitizeMetadata(
-  metadata: unknown
-): Record<string, unknown> | null {
+function sanitizeMetadata(metadata: unknown): Record<string, unknown> | null {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
     return null;
   }
@@ -108,7 +109,7 @@ function sanitizeMetadata(
 
 export async function GET(request: NextRequest) {
   // Authentication check
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) {
     return NextResponse.json(
       { error: 'Unauthorized. Authentication required.' },
@@ -164,7 +165,9 @@ export async function GET(request: NextRequest) {
 
     const formattedLogs: ProcessingLogEntry[] = logs.map((log) => {
       // Validate status with type guard, default to 'failed' for unknown values
-      const status: ProcessingStatus = isValidStatus(log.status) ? log.status : 'failed';
+      const status: ProcessingStatus = isValidStatus(log.status)
+        ? log.status
+        : 'failed';
       statusCounts[status]++;
 
       return {

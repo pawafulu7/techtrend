@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { Session } from 'next-auth';
 import { resolveSession } from '@/lib/middleware/session-context';
 import type { SessionContext } from '@/lib/middleware/session-context';
+import { auth } from '@/lib/auth/auth';
 import {
   checkRateLimit,
   ragAgentSearchRateLimit,
@@ -18,7 +18,6 @@ import {
   createUserDeletedResponse,
 } from '@/lib/middleware/with-user-validation';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
-
 import {
   agentTypeSchema,
   agentRequestSchema,
@@ -28,6 +27,10 @@ import {
 import type { RateLimitInfo } from './schemas';
 import { handleStreamingRequest } from './streaming-handler';
 import { handleBatchRequest } from './batch-handler';
+
+type BetterAuthSession = NonNullable<
+  Awaited<ReturnType<typeof auth.api.getSession>>
+>;
 
 /**
  * RAG Agent Search API (Vercel AI SDK)
@@ -60,7 +63,7 @@ const tracer = trace.getTracer('rag-agent');
 
 async function postHandler(request: NextRequest, context?: SessionContext) {
   return tracer.startActiveSpan('rag.agent-search', async (span) => {
-    let session: Session | null = null;
+    let session: BetterAuthSession | null = null;
     try {
       session = await resolveSession(context);
       // Layer 1: Authentication
@@ -86,7 +89,7 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
         );
       }
 
-      span.setAttribute('auth.userId', session.user.id);
+      span.setAttribute('auth.userId', session.user.id ?? '');
 
       // Layer 1.5: User validation (check if user is deleted)
       const validatedUser = await validateUser(session);

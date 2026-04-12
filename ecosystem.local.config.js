@@ -24,6 +24,7 @@ module.exports = {
         DATABASE_URL: process.env.DATABASE_URL,
         REDIS_URL: process.env.REDIS_URL,
         NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+        BETTER_AUTH_URL: process.env.BETTER_AUTH_URL || process.env.NEXTAUTH_URL,
         NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
         SKIP_POST_SAVE_ENRICHMENT: '0', // Enable post-save enrichment (required for Phase 2)
         COLLECT_FEEDS_CONCURRENCY: '5', // Parallel source processing (30min->10-15min)

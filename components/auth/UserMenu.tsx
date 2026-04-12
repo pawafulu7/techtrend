@@ -115,7 +115,7 @@ export function UserMenu() {
             閲覧履歴
           </Link>
         </DropdownMenuItem>
-        {session.user?.role === 'admin' && (
+        {(session.user as any)?.role === 'admin' && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-muted-foreground text-xs">

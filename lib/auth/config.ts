@@ -39,13 +39,21 @@ const providers: Provider[] = [
         },
       });
 
-      if (!user || !user.password) {
+      // Better Auth stores passwords in Account table, not User table.
+      // This config.ts is kept for reference only and is superseded by lib/auth/auth.ts.
+      if (!user) {
+        return null;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const userPassword = (user as any).password as string | undefined;
+      if (!userPassword) {
         return null;
       }
 
       const isPasswordValid = await bcrypt.compare(
         credentials.password as string,
-        user.password
+        userPassword
       );
 
       if (!isPasswordValid) {
@@ -131,19 +139,15 @@ export const authOptions: NextAuthConfig = {
   },
 
   events: {
-    async signIn({ user: _user, account: _account, profile: _profile }) {
-    },
+    async signIn({ user: _user, account: _account, profile: _profile }) {},
     async signOut(params) {
       // sessionまたはtokenが含まれる可能性がある
       const _session = 'session' in params ? params.session : null;
       const _token = 'token' in params ? params.token : null;
     },
-    async createUser({ user: _user }) {
-    },
-    async updateUser({ user: _user }) {
-    },
-    async linkAccount({ user: _user, account: _account }) {
-    },
+    async createUser({ user: _user }) {},
+    async updateUser({ user: _user }) {},
+    async linkAccount({ user: _user, account: _account }) {},
   },
 
   debug: process.env.NODE_ENV === 'development',

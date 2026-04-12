@@ -48,7 +48,7 @@ export function withCronOrAdminAuth(handler: Handler): Handler {
     }
 
     // 2. Admin Session認証
-    const session = await auth();
+    const session = await auth.api.getSession({ headers: request.headers });
     if (session?.user?.role === 'admin') {
       // Admin実行時もレート制限なしで直接実行
       return handler(request, { ...context, session });

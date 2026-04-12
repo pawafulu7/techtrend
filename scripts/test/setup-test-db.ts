@@ -55,8 +55,9 @@ async function setupTestDatabase() {
       await prisma.article.deleteMany();
       await prisma.tag.deleteMany();
       await prisma.source.deleteMany();
+      await prisma.session.deleteMany();
       await prisma.account.deleteMany();
-      await prisma.verificationToken.deleteMany();
+      await prisma.verification.deleteMany();
       await prisma.user.deleteMany();
     } else {
       console.error('Safety check failed: Not in test environment');

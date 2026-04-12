@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import {
@@ -33,7 +33,7 @@ const OpinionGenerateSchema = z.object({
  * レート制限: 5回/分 (admin:social-post-generate)
  */
 async function generateOpinionHandler(request: NextRequest) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return NextResponse.json(

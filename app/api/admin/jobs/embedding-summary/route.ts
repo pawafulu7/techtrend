@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import type {
@@ -20,7 +20,7 @@ const HIGH_RETRY_THRESHOLD = 2;
 
 export async function GET(request: NextRequest) {
   // Authentication check
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) {
     return NextResponse.json(
       { error: 'Unauthorized. Authentication required.' },
@@ -45,9 +45,10 @@ export async function GET(request: NextRequest) {
       : DEFAULT_STUCK_THRESHOLD_MINUTES;
 
     // Validate threshold is within acceptable range (1-1440 minutes)
-    const stuckThreshold = Number.isNaN(parsedThreshold)
-      || parsedThreshold < MIN_STUCK_THRESHOLD_MINUTES
-      || parsedThreshold > MAX_STUCK_THRESHOLD_MINUTES
+    const stuckThreshold =
+      Number.isNaN(parsedThreshold) ||
+      parsedThreshold < MIN_STUCK_THRESHOLD_MINUTES ||
+      parsedThreshold > MAX_STUCK_THRESHOLD_MINUTES
         ? DEFAULT_STUCK_THRESHOLD_MINUTES
         : parsedThreshold;
 

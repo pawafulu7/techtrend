@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
 import type {
@@ -86,7 +86,7 @@ export async function GET(
   request: NextRequest
 ): Promise<NextResponse<PreferencesResponse | ErrorResponse>> {
   try {
-    const session = await auth();
+    const session = await getSession();
 
     if (!session?.user?.id) {
       return NextResponse.json(

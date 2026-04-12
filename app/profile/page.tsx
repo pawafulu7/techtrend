@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { ProfileContent } from './_components/profile-content';
 
 export default async function ProfilePage() {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) {
     redirect('/auth/login?callbackUrl=/profile');
   }

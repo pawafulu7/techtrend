@@ -4,6 +4,7 @@ import { getRateLimitConfig } from '@/lib/config/rate-limits';
 import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
 import { trace } from '@opentelemetry/api';
 import { resolveSession } from './session-context';
+import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
 
 type RouteHandler = (
   request: NextRequest,
@@ -189,9 +190,7 @@ async function resolveDefaultKey(
     }
 
     case 'session': {
-      const sessionCookie =
-        request.cookies.get('authjs.session-token') ||
-        request.cookies.get('__Secure-authjs.session-token');
+      const sessionCookie = request.cookies.get(AUTH_COOKIES.sessionToken);
       return `session:${sessionCookie?.value || 'anonymous'}`;
     }
 

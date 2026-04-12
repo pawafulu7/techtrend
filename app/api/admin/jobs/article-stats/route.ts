@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import type {
@@ -26,7 +26,7 @@ function hasValidSummary(summary: string | null | undefined): boolean {
 
 export async function GET(request: NextRequest) {
   // Authentication check
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) {
     return NextResponse.json(
       { error: 'Unauthorized. Authentication required.' },
@@ -48,9 +48,12 @@ export async function GET(request: NextRequest) {
     const rangeParam = searchParams.get('range') || `${DEFAULT_RANGE_DAYS}d`;
     const parsedDays = parseInt(rangeParam.replace('d', ''), 10);
     // Validate range: must be between MIN and MAX, default to DEFAULT if invalid
-    const rangeDays = Number.isNaN(parsedDays) || parsedDays < MIN_RANGE_DAYS || parsedDays > MAX_RANGE_DAYS
-      ? DEFAULT_RANGE_DAYS
-      : parsedDays;
+    const rangeDays =
+      Number.isNaN(parsedDays) ||
+      parsedDays < MIN_RANGE_DAYS ||
+      parsedDays > MAX_RANGE_DAYS
+        ? DEFAULT_RANGE_DAYS
+        : parsedDays;
 
     // Calculate date range (JST-based)
     const endDate = new Date();
@@ -87,7 +90,10 @@ export async function GET(request: NextRequest) {
       .map(([source, count]) => ({
         source,
         count,
-        percentage: totalArticles > 0 ? Math.round((count / totalArticles) * 1000) / 10 : 0,
+        percentage:
+          totalArticles > 0
+            ? Math.round((count / totalArticles) * 1000) / 10
+            : 0,
       }))
       .sort((a, b) => b.count - a.count);
 
@@ -114,9 +120,10 @@ export async function GET(request: NextRequest) {
         date: dateKey,
         total: stats.total,
         withSummary: stats.withSummary,
-        summaryRate: stats.total > 0
-          ? Math.round((stats.withSummary / stats.total) * 1000) / 10
-          : 0,
+        summaryRate:
+          stats.total > 0
+            ? Math.round((stats.withSummary / stats.total) * 1000) / 10
+            : 0,
       });
       currentDate.setDate(currentDate.getDate() + 1);
     }
@@ -125,7 +132,9 @@ export async function GET(request: NextRequest) {
     byDate.sort((a, b) => b.date.localeCompare(a.date));
 
     // Calculate totals
-    const totalWithSummary = articles.filter((a) => hasValidSummary(a.summary)).length;
+    const totalWithSummary = articles.filter((a) =>
+      hasValidSummary(a.summary)
+    ).length;
 
     const response: ArticleStatsResponse = {
       bySource,

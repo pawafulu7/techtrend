@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { searchRequestSchema } from '@/lib/rag/schemas';
@@ -74,7 +74,7 @@ export const __resetSearchServiceForTest = (): void => {
 
 export async function POST(request: NextRequest) {
   // Layer 1: Authentication check (REQUIRED)
-  const session = await auth();
+  const session = await getSession();
 
   try {
     if (!session?.user) {
