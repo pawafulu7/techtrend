@@ -78,19 +78,17 @@ export const auth = betterAuth({
       const htmlContent = buildVerificationEmailHtml(data.url, host);
       const textContent = buildVerificationEmailText(data.url, host);
 
-      // Gmail/SMTP configured → use nodemailer
-      if (env.GMAIL_USER) {
-        const transporter = createNodemailerTransporter();
-        if (transporter) {
-          void transporter.sendMail({
-            from,
-            to: data.user.email,
-            subject,
-            html: htmlContent,
-            text: textContent,
-          });
-          return;
-        }
+      // Try nodemailer first (Gmail or SMTP)
+      const transporter = createNodemailerTransporter();
+      if (transporter) {
+        void transporter.sendMail({
+          from,
+          to: data.user.email,
+          subject,
+          html: htmlContent,
+          text: textContent,
+        });
+        return;
       }
       // Fallback to Resend
       if (resend) {

@@ -167,6 +167,7 @@ model Account {
   updatedAt             DateTime  @updatedAt @db.Timestamptz(6)
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([providerId, accountId])
   @@index([userId], map: "idx_account_user_id")
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
 import { compareSecrets } from '@/lib/utils/compare-secrets';
+import { getUserAuthData } from '@/lib/auth/user-auth-cache';
 import logger from '@/lib/logger';
 import { env } from '@/lib/config/env';
 
@@ -47,11 +48,13 @@ export function withCronOrAdminAuth(handler: Handler): Handler {
       }
     }
 
-    // 2. Admin Session認証
+    // 2. Admin Session認証（DB-backed role + deletedAt verification）
     const session = await auth.api.getSession({ headers: request.headers });
-    if (session?.user?.role === 'admin') {
-      // Admin実行時もレート制限なしで直接実行
-      return handler(request, { ...context, session });
+    if (session?.user?.id) {
+      const authData = await getUserAuthData(session.user.id);
+      if (authData && !authData.deletedAt && authData.role === 'admin') {
+        return handler(request, { ...context, session });
+      }
     }
 
     // 3. 認証失敗: ログ記録 + 401
