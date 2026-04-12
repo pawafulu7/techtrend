@@ -199,6 +199,7 @@
     "react-dom": "^19.2.0",
     "react-force-graph-2d": "^1.29.0",
     "react-hook-form": "^7.62.0",
+    "react-is": "^19.2.5",
     "react-markdown": "^9.1.0",
     "recharts": "^3.2.0",
     "remark-breaks": "^4.0.0",
