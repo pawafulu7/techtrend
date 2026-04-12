@@ -1,7 +1,11 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { FavoriteArticleCard, FavoriteCardSkeleton, FavoriteSkeletonGrid } from '@/app/components/article/favorite-card';
+import {
+  FavoriteArticleCard,
+  FavoriteCardSkeleton,
+  FavoriteSkeletonGrid,
+} from '@/app/components/article/favorite-card';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth/auth-client';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 // Mock next/navigation
@@ -11,9 +15,18 @@ jest.mock('next/navigation', () => ({
   useSearchParams: jest.fn(),
 }));
 
-// Mock next-auth/react
-jest.mock('next-auth/react', () => ({
-  useSession: jest.fn(),
+// Mock @/lib/auth/auth-client
+jest.mock('@/lib/auth/auth-client', () => ({
+  authClient: {
+    useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+    signIn: { email: jest.fn(), social: jest.fn() },
+    signOut: jest.fn(),
+    signUp: { email: jest.fn() },
+  },
+  useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  signUp: jest.fn(),
 }));
 
 // Mock FavoriteButton to avoid complex state management in tests
@@ -83,7 +96,10 @@ describe('FavoriteArticleCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
+    (useSession as jest.Mock).mockReturnValue({
+      data: null,
+      isPending: false,
+    });
     (usePathname as jest.Mock).mockReturnValue('/favorites');
     (useSearchParams as jest.Mock).mockReturnValue(new URLSearchParams());
   });
@@ -115,7 +131,9 @@ describe('FavoriteArticleCard', () => {
 
     it('should display source name', () => {
       render(<FavoriteArticleCard {...defaultProps} />);
-      expect(screen.getByTestId('article-source')).toHaveTextContent('Hugging Face Papers');
+      expect(screen.getByTestId('article-source')).toHaveTextContent(
+        'Hugging Face Papers'
+      );
     });
 
     it('should display first 2 tags with +N for remaining', () => {
@@ -145,7 +163,10 @@ describe('FavoriteArticleCard', () => {
       render(<FavoriteArticleCard {...defaultProps} />);
       const shareButton = screen.getByTestId('share-button');
       expect(shareButton).toHaveAttribute('data-title', 'Translated Title');
-      expect(shareButton).toHaveAttribute('data-url', 'https://example.com/article');
+      expect(shareButton).toHaveAttribute(
+        'data-url',
+        'https://example.com/article'
+      );
     });
 
     it('should display favorited at time', () => {
@@ -161,7 +182,9 @@ describe('FavoriteArticleCard', () => {
       render(<FavoriteArticleCard {...defaultProps} />);
       const card = screen.getByTestId('favorite-article-card');
       fireEvent.click(card);
-      expect(mockRouter.push).toHaveBeenCalledWith('/articles/cltest123abc?from=%2Ffavorites');
+      expect(mockRouter.push).toHaveBeenCalledWith(
+        '/articles/cltest123abc?from=%2Ffavorites'
+      );
     });
 
     it('should not navigate when interactive element is clicked', () => {
@@ -173,7 +196,12 @@ describe('FavoriteArticleCard', () => {
 
     it('should call onArticleClick when provided', () => {
       const onArticleClick = jest.fn();
-      render(<FavoriteArticleCard {...defaultProps} onArticleClick={onArticleClick} />);
+      render(
+        <FavoriteArticleCard
+          {...defaultProps}
+          onArticleClick={onArticleClick}
+        />
+      );
       const card = screen.getByTestId('favorite-article-card');
       fireEvent.click(card);
       expect(onArticleClick).toHaveBeenCalledWith('cltest123abc');
@@ -200,7 +228,12 @@ describe('FavoriteArticleCard', () => {
   describe('Remove Favorite', () => {
     it('should call onRemoveFavorite when favorite button is clicked', () => {
       const onRemoveFavorite = jest.fn();
-      render(<FavoriteArticleCard {...defaultProps} onRemoveFavorite={onRemoveFavorite} />);
+      render(
+        <FavoriteArticleCard
+          {...defaultProps}
+          onRemoveFavorite={onRemoveFavorite}
+        />
+      );
       const favoriteButton = screen.getByTestId('favorite-button');
       fireEvent.click(favoriteButton);
       expect(onRemoveFavorite).toHaveBeenCalledWith('cltest123abc');
@@ -211,7 +244,8 @@ describe('FavoriteArticleCard', () => {
     it('should open external link in new tab when Original button is clicked', () => {
       const windowOpenSpy = jest.spyOn(window, 'open').mockImplementation();
       render(<FavoriteArticleCard {...defaultProps} />);
-      const externalLinkButton = screen.getByLabelText(/元記事を新しいタブで開く/);
+      const externalLinkButton =
+        screen.getByLabelText(/元記事を新しいタブで開く/);
       fireEvent.click(externalLinkButton);
       expect(windowOpenSpy).toHaveBeenCalledWith(
         'https://example.com/article',
@@ -237,7 +271,9 @@ describe('FavoriteArticleCard', () => {
 
     it('should have proper aria-label for external link button', () => {
       render(<FavoriteArticleCard {...defaultProps} />);
-      const externalLinkButton = screen.getByRole('button', { name: /元記事を新しいタブで開く/ });
+      const externalLinkButton = screen.getByRole('button', {
+        name: /元記事を新しいタブで開く/,
+      });
       expect(externalLinkButton).toBeInTheDocument();
     });
   });

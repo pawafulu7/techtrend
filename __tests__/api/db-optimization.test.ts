@@ -1,16 +1,16 @@
 // Mock dependencies
 jest.mock('@/lib/prisma');
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/cache/favorites-cache');
 
 import { NextRequest } from 'next/server';
 import { GET as articlesGET } from '@/app/api/articles/route';
 import { GET as favoritesGET } from '@/app/api/favorites/route';
 import { GET as articleViewsGET } from '@/app/api/article-views/route';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
+const mockAuth = getSession as jest.MockedFunction<typeof getSession>;
 
 describe.skip('DB Optimization - Parallel Queries (Skipped: Implementation changed from $transaction to Promise.all)', () => {
   beforeEach(() => {
@@ -45,6 +45,7 @@ describe.skip('DB Optimization - Parallel Queries (Skipped: Implementation chang
     it('should execute count and findMany in transaction', async () => {
       mockAuth.mockResolvedValue({
         user: { id: 'user-1', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user-1', token: 'tok', expiresAt: new Date('2099-01-01') },
       } as any);
 
       const mockFavorites = [
@@ -75,6 +76,7 @@ describe.skip('DB Optimization - Parallel Queries (Skipped: Implementation chang
     it('should execute count and findMany in transaction', async () => {
       mockAuth.mockResolvedValue({
         user: { id: 'user-1', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user-1', token: 'tok', expiresAt: new Date('2099-01-01') },
       } as any);
 
       const mockViews = [

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useCallback, useMemo, useRef } from 'react';
-import { useSession } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const STORAGE_KEY = 'techtrend-read-articles';
@@ -40,7 +40,7 @@ function loadFromLocalStorage(): Set<string> {
 }
 
 export function useReadStatus(articleIds?: string[]) {
-  const { data: session } = useSession();
+  const { data: session } = authClient.useSession();
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => {
     const normalizedArticleIds = articleIds ? [...articleIds].sort() : [];

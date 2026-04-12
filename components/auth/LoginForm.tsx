@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui-v2/button-v2';
@@ -35,16 +35,14 @@ export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
     setError(null);
 
     try {
-      const result = await signIn('credentials', {
+      const { error: signInError } = await authClient.signIn.email({
         email: data.email,
         password: data.password,
-        redirect: false,
-        callbackUrl,
       });
 
-      if (result?.error) {
+      if (signInError) {
         setError('メールアドレスまたはパスワードが正しくありません');
-      } else if (result?.ok) {
+      } else {
         router.push(callbackUrl);
         router.refresh();
       }
@@ -82,7 +80,7 @@ export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
           disabled={isLoading}
         />
         {errors.email && (
-          <p className="text-sm text-destructive">{errors.email.message}</p>
+          <p className="text-destructive text-sm">{errors.email.message}</p>
         )}
       </div>
 
@@ -103,7 +101,7 @@ export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
           disabled={isLoading}
         />
         {errors.password && (
-          <p className="text-sm text-destructive">{errors.password.message}</p>
+          <p className="text-destructive text-sm">{errors.password.message}</p>
         )}
       </div>
 

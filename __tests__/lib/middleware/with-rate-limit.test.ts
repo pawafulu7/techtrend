@@ -3,7 +3,7 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { RateLimitError } from '@/lib/rate-limiter';
 
 // Mock dependencies (preserve RateLimitError class)
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/rate-limiter', () => {
   const actual = jest.requireActual('@/lib/rate-limiter');
   return {
@@ -15,16 +15,24 @@ jest.mock('@/lib/rate-limiter', () => {
 jest.mock('@/lib/config/rate-limits');
 jest.mock('@opentelemetry/api');
 
-import { auth } from '@/lib/auth/auth';
-import { checkRateLimit, createRateLimiterFromConfig } from '@/lib/rate-limiter';
+import { getSession } from '@/lib/auth/get-session';
+import {
+  checkRateLimit,
+  createRateLimiterFromConfig,
+} from '@/lib/rate-limiter';
 import { getRateLimitConfig } from '@/lib/config/rate-limits';
 
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
-const mockCheckRateLimit = checkRateLimit as jest.MockedFunction<typeof checkRateLimit>;
-const mockGetRateLimitConfig = getRateLimitConfig as jest.MockedFunction<typeof getRateLimitConfig>;
-const mockCreateRateLimiterFromConfig = createRateLimiterFromConfig as jest.MockedFunction<
-  typeof createRateLimiterFromConfig
+const mockAuth = getSession as jest.MockedFunction<typeof getSession>;
+const mockCheckRateLimit = checkRateLimit as jest.MockedFunction<
+  typeof checkRateLimit
 >;
+const mockGetRateLimitConfig = getRateLimitConfig as jest.MockedFunction<
+  typeof getRateLimitConfig
+>;
+const mockCreateRateLimiterFromConfig =
+  createRateLimiterFromConfig as jest.MockedFunction<
+    typeof createRateLimiterFromConfig
+  >;
 
 describe('withRateLimit', () => {
   const mockLimiter = {} as any;
@@ -65,7 +73,9 @@ describe('withRateLimit', () => {
       expect(response.status).toBe(200);
       expect(response.headers.get('X-RateLimit-Limit')).toBe('10');
       expect(response.headers.get('X-RateLimit-Remaining')).toBe('9');
-      expect(response.headers.get('X-RateLimit-Reset')).toBe('2025-11-03T10:00:00.000Z');
+      expect(response.headers.get('X-RateLimit-Reset')).toBe(
+        '2025-11-03T10:00:00.000Z'
+      );
     });
 
     it('should call onAllowed callback when provided', async () => {
@@ -126,7 +136,12 @@ describe('withRateLimit', () => {
       mockAuth.mockResolvedValue(null);
 
       const resetDate = new Date();
-      const rateLimitError = new RateLimitError('Rate limit exceeded', 10, 0, resetDate);
+      const rateLimitError = new RateLimitError(
+        'Rate limit exceeded',
+        10,
+        0,
+        resetDate
+      );
       mockCheckRateLimit.mockRejectedValue(rateLimitError);
 
       const onBlocked = jest.fn();
@@ -169,7 +184,10 @@ describe('withRateLimit', () => {
       const request = new NextRequest('http://localhost/api/test');
       await handler(request);
 
-      expect(mockCheckRateLimit).toHaveBeenCalledWith('user:user123', mockLimiter);
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(
+        'user:user123',
+        mockLimiter
+      );
     });
 
     it('should fallback to IP when user strategy but no session', async () => {
@@ -197,7 +215,10 @@ describe('withRateLimit', () => {
       });
       await handler(request);
 
-      expect(mockCheckRateLimit).toHaveBeenCalledWith('anon:192.168.1.1', mockLimiter);
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(
+        'anon:192.168.1.1',
+        mockLimiter
+      );
     });
 
     it('should use IP when ip strategy', async () => {
@@ -225,7 +246,10 @@ describe('withRateLimit', () => {
       });
       await handler(request);
 
-      expect(mockCheckRateLimit).toHaveBeenCalledWith('ip:10.0.0.1', mockLimiter);
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(
+        'ip:10.0.0.1',
+        mockLimiter
+      );
     });
 
     it('should use anonymous when anonymous strategy', async () => {
@@ -276,14 +300,19 @@ describe('withRateLimit', () => {
       await handler(request);
 
       expect(customKeyResolver).toHaveBeenCalledWith(request, session);
-      expect(mockCheckRateLimit).toHaveBeenCalledWith('custom:key123', mockLimiter);
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(
+        'custom:key123',
+        mockLimiter
+      );
     });
   });
 
   describe('Error Handling', () => {
     it('should propagate non-RateLimitError errors', async () => {
       mockAuth.mockResolvedValue(null);
-      mockCheckRateLimit.mockRejectedValue(new Error('Redis connection failed'));
+      mockCheckRateLimit.mockRejectedValue(
+        new Error('Redis connection failed')
+      );
 
       const handler = withRateLimit('test:policy', async () => {
         return NextResponse.json({ success: true });

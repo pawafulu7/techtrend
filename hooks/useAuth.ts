@@ -1,52 +1,47 @@
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 
 export function useAuth() {
-  const { data: session, status, update } = useSession();
+  const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      });
+      const { error } = await authClient.signIn.email({ email, password });
 
-      if (result?.ok) {
+      if (!error) {
         router.refresh();
         return { success: true };
       }
 
       return {
         success: false,
-        error: result?.error || 'ログインに失敗しました',
+        error: error.message || 'ログインに失敗しました',
       };
     },
     [router]
   );
 
   const logout = useCallback(async () => {
-    await signOut({ redirect: false });
+    await authClient.signOut();
     router.push('/');
     router.refresh();
   }, [router]);
 
   const loginWithProvider = useCallback(
     async (provider: 'google' | 'github', callbackUrl?: string) => {
-      await signIn(provider, { callbackUrl: callbackUrl || '/' });
+      await authClient.signIn.social({ provider, callbackURL: callbackUrl || '/' });
     },
     []
   );
 
   return {
     user: session?.user,
-    isAuthenticated: status === 'authenticated',
-    isLoading: status === 'loading',
+    isAuthenticated: !!session,
+    isLoading: isPending,
     login,
     logout,
     loginWithProvider,
-    updateSession: update,
   };
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 
 interface UserSourcePreset {
   id: string;
@@ -80,7 +80,7 @@ async function deletePresetApi(id: string): Promise<void> {
 }
 
 export function useSourcePresets() {
-  const { data: session } = useSession();
+  const { data: session } = authClient.useSession();
   const queryClient = useQueryClient();
   const userId = session?.user?.id;
 

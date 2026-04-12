@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ArticleListItem } from '@/app/components/article/list-item';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth/auth-client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createMockArticleWithRelations } from '@/test/utils/mock-factories';
 
@@ -13,8 +13,17 @@ jest.mock('next/navigation', () => ({
   useSearchParams: jest.fn(),
 }));
 
-jest.mock('next-auth/react', () => ({
-  useSession: jest.fn(),
+jest.mock('@/lib/auth/auth-client', () => ({
+  authClient: {
+    useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+    signIn: { email: jest.fn(), social: jest.fn() },
+    signOut: jest.fn(),
+    signUp: { email: jest.fn() },
+  },
+  useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  signUp: jest.fn(),
 }));
 
 // Next/Imageモック
@@ -46,7 +55,8 @@ describe('ArticleListItem', () => {
     article: {
       id: '1',
       title: 'Test Article Title',
-      summary: 'This is a test article summary that should be displayed in the list item.',
+      summary:
+        'This is a test article summary that should be displayed in the list item.',
       url: 'https://example.com/article',
       publishedAt: new Date('2025-01-01T10:00:00Z'),
       createdAt: new Date('2025-01-01T11:00:00Z'),
@@ -70,8 +80,11 @@ describe('ArticleListItem', () => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
     (useSearchParams as jest.Mock).mockReturnValue(mockSearchParams);
-    (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
-    
+    (useSession as jest.Mock).mockReturnValue({
+      data: null,
+      isPending: false,
+    });
+
     // window.locationのモック（jsdom互換の方法）
     Object.defineProperty(window, 'location', {
       writable: true,
@@ -93,16 +106,18 @@ describe('ArticleListItem', () => {
   describe('基本的なレンダリング', () => {
     it('記事情報を正しく表示する', () => {
       render(<ArticleListItem article={mockArticle} />);
-      
+
       // タイトルが表示される
       expect(screen.getByText('Test Article Title')).toBeInTheDocument();
-      
+
       // 要約が表示される
-      expect(screen.getByText(/This is a test article summary/)).toBeInTheDocument();
-      
+      expect(
+        screen.getByText(/This is a test article summary/)
+      ).toBeInTheDocument();
+
       // ソース名が表示される
       expect(screen.getByText('Test Source')).toBeInTheDocument();
-      
+
       // タグが表示される（最大3つ、デスクトップのみ）
       const tags = screen.queryAllByText(/React|Testing|JavaScript/);
       expect(tags.length).toBeGreaterThan(0);
@@ -115,23 +130,23 @@ describe('ArticleListItem', () => {
           publishedAt: new Date(), // 現在時刻
         },
       });
-      
+
       render(<ArticleListItem article={newArticle} />);
-      
+
       // Newバッジが表示される
       expect(screen.getByText('New')).toBeInTheDocument();
     });
 
     it('未読バッジを未読記事に表示する', () => {
       render(<ArticleListItem article={mockArticle} isRead={false} />);
-      
+
       // 未読バッジが表示される
       expect(screen.getByText('未読')).toBeInTheDocument();
     });
 
     it('既読記事では未読バッジを表示しない', () => {
       render(<ArticleListItem article={mockArticle} isRead={true} />);
-      
+
       // 未読バッジが表示されない
       expect(screen.queryByText('未読')).not.toBeInTheDocument();
     });
@@ -141,24 +156,30 @@ describe('ArticleListItem', () => {
     it('記事クリック時にコールバックを実行する', async () => {
       const handleClick = jest.fn();
       const user = userEvent.setup();
-      
-      render(<ArticleListItem article={mockArticle} onArticleClick={handleClick} />);
-      
-      const listItem = screen.getByText('Test Article Title').closest('div[class*="group"]');
+
+      render(
+        <ArticleListItem article={mockArticle} onArticleClick={handleClick} />
+      );
+
+      const listItem = screen
+        .getByText('Test Article Title')
+        .closest('div[class*="group"]');
       await user.click(listItem!);
-      
+
       expect(handleClick).toHaveBeenCalledTimes(1);
     });
 
     it('タグクリック時にカスタムハンドラーを実行する', async () => {
       const handleTagClick = jest.fn();
       const user = userEvent.setup();
-      
-      render(<ArticleListItem article={mockArticle} onTagClick={handleTagClick} />);
-      
+
+      render(
+        <ArticleListItem article={mockArticle} onTagClick={handleTagClick} />
+      );
+
       const reactTag = screen.getByText('React');
       await user.click(reactTag);
-      
+
       expect(handleTagClick).toHaveBeenCalledWith('React');
     });
 
@@ -166,16 +187,18 @@ describe('ArticleListItem', () => {
       const user = userEvent.setup();
       const mockOpen = jest.fn();
       window.open = mockOpen;
-      
+
       render(<ArticleListItem article={mockArticle} />);
-      
+
       // まずホバーしてボタンを表示
-      const listItem = screen.getByText('Test Article Title').closest('div[class*="group"]');
+      const listItem = screen
+        .getByText('Test Article Title')
+        .closest('div[class*="group"]');
       await user.hover(listItem!);
-      
+
       const externalLinkButton = screen.getByTitle('元記事を開く');
       await user.click(externalLinkButton);
-      
+
       expect(mockOpen).toHaveBeenCalledWith(
         'https://example.com/article',
         '_blank',
@@ -187,12 +210,12 @@ describe('ArticleListItem', () => {
   describe('表示要素のバリエーション', () => {
     it('3つを超えるタグは最初の3つのみ表示する', () => {
       render(<ArticleListItem article={mockArticle} />);
-      
+
       // 最初の3つのタグが表示される
       expect(screen.getByText('React')).toBeInTheDocument();
       expect(screen.getByText('Testing')).toBeInTheDocument();
       expect(screen.getByText('JavaScript')).toBeInTheDocument();
-      
+
       // 4つ目のタグは表示されない
       expect(screen.queryByText('TypeScript')).not.toBeInTheDocument();
     });
@@ -202,11 +225,13 @@ describe('ArticleListItem', () => {
         article: mockArticle,
         tags: [],
       });
-      
+
       render(<ArticleListItem article={articleWithoutTags} />);
-      
+
       // タグセクションが存在しない
-      const badges = screen.queryAllByRole('button', { name: /React|Testing|JavaScript/ });
+      const badges = screen.queryAllByRole('button', {
+        name: /React|Testing|JavaScript/,
+      });
       expect(badges).toHaveLength(0);
     });
 
@@ -217,24 +242,26 @@ describe('ArticleListItem', () => {
           summary: null,
         },
       });
-      
+
       render(<ArticleListItem article={articleWithoutSummary} />);
-      
+
       // タイトルは表示される
       expect(screen.getByText('Test Article Title')).toBeInTheDocument();
       // 要約セクションは表示されない
-      expect(screen.queryByText(/This is a test article summary/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/This is a test article summary/)
+      ).not.toBeInTheDocument();
     });
   });
 
   describe('レスポンシブ表示', () => {
     it('デスクトップではタグと詳細な時間情報を表示する', () => {
       render(<ArticleListItem article={mockArticle} />);
-      
+
       // タグが表示される（hidden sm:flex クラス）
       const tagContainer = screen.getByText('React').closest('div');
       expect(tagContainer).toHaveClass('hidden sm:flex');
-      
+
       // 配信・取込時刻が両方表示される（hidden sm:flex クラス）
       expect(screen.getByText('📅')).toBeInTheDocument();
       expect(screen.getByText('📥')).toBeInTheDocument();
@@ -244,9 +271,11 @@ describe('ArticleListItem', () => {
   describe('スタイリング', () => {
     it('ホバー時にスタイルが変更される', () => {
       render(<ArticleListItem article={mockArticle} />);
-      
-      const listItem = screen.getByText('Test Article Title').closest('div[class*="group"]');
-      
+
+      const listItem = screen
+        .getByText('Test Article Title')
+        .closest('div[class*="group"]');
+
       // ホバー関連のクラスが適用されている
       expect(listItem).toHaveClass('hover:bg-gray-50');
       expect(listItem).toHaveClass('hover:shadow-sm');
@@ -255,9 +284,11 @@ describe('ArticleListItem', () => {
 
     it('ダークモード対応のクラスがある', () => {
       render(<ArticleListItem article={mockArticle} />);
-      
-      const listItem = screen.getByText('Test Article Title').closest('div[class*="group"]');
-      
+
+      const listItem = screen
+        .getByText('Test Article Title')
+        .closest('div[class*="group"]');
+
       // ダークモード対応クラス
       expect(listItem).toHaveClass('dark:bg-gray-800/50');
       expect(listItem).toHaveClass('dark:hover:bg-gray-700/50');

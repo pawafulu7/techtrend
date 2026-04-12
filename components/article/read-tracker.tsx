@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useSession } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 import { useQueryClient } from '@tanstack/react-query';
 import logger from '@/lib/logger.client';
 
@@ -12,7 +12,7 @@ interface ReadTrackerProps {
 const READ_STATUS_STORAGE_KEY = 'techtrend-read-articles';
 
 export function ReadTracker({ articleId }: ReadTrackerProps) {
-  const { data: session } = useSession();
+  const { data: session } = authClient.useSession();
   const queryClient = useQueryClient();
   const hasSentRequest = useRef(false);
   const isSendingRequest = useRef(false);

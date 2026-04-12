@@ -9,18 +9,18 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/auth/user-auth-cache');
 
 // Imports
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { getUserAuthData } from '@/lib/auth/user-auth-cache';
 import logger from '@/lib/logger';
 
 // Mock function references
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
+const mockAuth = getSession as jest.MockedFunction<typeof getSession>;
 const mockGetUserAuthData = getUserAuthData as jest.MockedFunction<
   typeof getUserAuthData
 >;

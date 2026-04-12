@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signOut } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 import { Button } from '@/components/ui-v2/button-v2';
 import {
   Dialog,
@@ -69,7 +69,12 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
 
       if (!response.ok || !data.success) {
         // Validate error response structure
-        if (!data || typeof data !== 'object' || !('error' in data) || !('message' in data)) {
+        if (
+          !data ||
+          typeof data !== 'object' ||
+          !('error' in data) ||
+          !('message' in data)
+        ) {
           toast({
             title: 'エラーが発生しました',
             description: 'もう一度お試しください',
@@ -113,7 +118,8 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
 
       // Handle sign out with error recovery
       try {
-        await signOut({ callbackUrl: '/' });
+        await authClient.signOut();
+        window.location.href = '/';
       } catch (signOutError) {
         console.error('Sign out failed after account deletion:', signOutError);
         // Even if sign out fails, the account is deleted, so redirect manually
@@ -147,7 +153,11 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="destructive" size="sm" data-test="delete-account-button">
+        <Button
+          variant="destructive"
+          size="sm"
+          data-test="delete-account-button"
+        >
           アカウントを削除
         </Button>
       </DialogTrigger>
@@ -217,7 +227,7 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
               rows={3}
               data-test="delete-reason-textarea"
             />
-            <p className="text-xs text-muted-foreground text-right">
+            <p className="text-muted-foreground text-right text-xs">
               {reason.length}/500
             </p>
           </div>

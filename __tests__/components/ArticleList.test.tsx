@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ArticleList } from '@/app/components/article/list';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth/auth-client';
 import { useRouter } from 'next/navigation';
 import { useReadStatus } from '@/app/hooks/use-read-status';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -28,8 +28,17 @@ jest.mock('next/navigation', () => ({
   })),
 }));
 
-jest.mock('next-auth/react', () => ({
-  useSession: jest.fn(),
+jest.mock('@/lib/auth/auth-client', () => ({
+  authClient: {
+    useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+    signIn: { email: jest.fn(), social: jest.fn() },
+    signOut: jest.fn(),
+    signUp: { email: jest.fn() },
+  },
+  useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  signUp: jest.fn(),
 }));
 
 jest.mock('@/app/hooks/use-read-status', () => ({
@@ -165,7 +174,7 @@ describe('ArticleList', () => {
     mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
     mockedUseSession.mockReturnValue({
       data: { user: { id: 'user1', email: 'test@example.com' } },
-      status: 'authenticated',
+      isPending: false,
     });
     mockedUseReadStatus.mockReturnValue(mockReadStatus);
   });
@@ -267,7 +276,7 @@ describe('ArticleList', () => {
     it('treats all articles as read for unauthenticated users', () => {
       mockedUseSession.mockReturnValue({
         data: null,
-        status: 'unauthenticated',
+        isPending: false,
       });
 
       renderWithProviders(<ArticleList articles={mockArticles} />);

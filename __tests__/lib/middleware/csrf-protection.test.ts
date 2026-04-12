@@ -13,14 +13,14 @@ import {
 } from '@/lib/middleware/csrf-protection';
 import { resetEnvCache } from '@/lib/config/env';
 
-// Mock auth function
-jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn(),
+// Mock getSession function
+jest.mock('@/lib/auth/get-session', () => ({
+  getSession: jest.fn(),
 }));
 
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
+const mockAuth = getSession as jest.MockedFunction<typeof getSession>;
 
 describe('csrf-protection', () => {
   beforeEach(() => {
@@ -99,7 +99,12 @@ describe('csrf-protection', () => {
     it('should allow requests with valid Authorization header and session', async () => {
       mockAuth.mockResolvedValue({
         user: { id: 'user-1', email: 'test@example.com' },
-        expires: new Date(Date.now() + 86400000).toISOString(),
+        session: {
+          id: 's1',
+          userId: 'user-1',
+          token: 'tok',
+          expiresAt: new Date(Date.now() + 86400000),
+        },
       });
 
       const request = new NextRequest(
@@ -189,7 +194,12 @@ describe('csrf-protection', () => {
     it('should allow requests without Origin or Referer but with valid session', async () => {
       mockAuth.mockResolvedValue({
         user: { id: 'user-1', email: 'test@example.com' },
-        expires: new Date(Date.now() + 86400000).toISOString(),
+        session: {
+          id: 's1',
+          userId: 'user-1',
+          token: 'tok',
+          expiresAt: new Date(Date.now() + 86400000),
+        },
       });
 
       const request = new NextRequest(

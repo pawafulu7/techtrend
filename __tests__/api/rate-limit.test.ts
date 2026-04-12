@@ -4,13 +4,13 @@ import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
 import { getRateLimitConfig } from '@/lib/config/rate-limits';
 
 // Mock auth
-jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn().mockResolvedValue(null),
+jest.mock('@/lib/auth/get-session', () => ({
+  getSession: jest.fn().mockResolvedValue(null),
 }));
 
 // Import after mock
-import { auth } from '@/lib/auth/auth';
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
+import { getSession } from '@/lib/auth/get-session';
+const mockAuth = getSession as jest.MockedFunction<typeof getSession>;
 
 describe('Rate Limiting Integration Tests', () => {
   describe('Config-driven rate limiting', () => {
@@ -60,6 +60,7 @@ describe('Rate Limiting Integration Tests', () => {
     it('should use user ID when authenticated', async () => {
       mockAuth.mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 'tok', expiresAt: new Date('2099-01-01') },
       } as any);
 
       const config = getRateLimitConfig('ai:summary');

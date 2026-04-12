@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui-v2/button-v2';
@@ -36,38 +36,20 @@ export function SignupForm() {
     setError(null);
 
     try {
-      // Create user account
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: data.name,
-          email: data.email,
-          password: data.password,
-        }),
+      // Create user account and auto sign in
+      const { error: signUpError } = await authClient.signUp.email({
+        name: data.name,
+        email: data.email,
+        password: data.password,
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        setError(result.error || '登録中にエラーが発生しました');
+      if (signUpError) {
+        setError(signUpError.message || '登録中にエラーが発生しました');
         return;
       }
 
-      // Auto sign in after successful registration
-      const signInResult = await signIn('credentials', {
-        email: data.email,
-        password: data.password,
-        redirect: false,
-        callbackUrl: '/profile',
-      });
-
-      if (signInResult?.ok) {
-        router.push('/profile');
-        router.refresh();
-      }
+      router.push('/profile');
+      router.refresh();
     } catch {
       setError('登録中にエラーが発生しました');
     } finally {
@@ -99,7 +81,7 @@ export function SignupForm() {
           disabled={isLoading}
         />
         {errors.name && (
-          <p className="text-sm text-destructive">{errors.name.message}</p>
+          <p className="text-destructive text-sm">{errors.name.message}</p>
         )}
       </div>
 
@@ -119,7 +101,7 @@ export function SignupForm() {
           disabled={isLoading}
         />
         {errors.email && (
-          <p className="text-sm text-destructive">{errors.email.message}</p>
+          <p className="text-destructive text-sm">{errors.email.message}</p>
         )}
       </div>
 
@@ -143,7 +125,7 @@ export function SignupForm() {
           disabled={isLoading}
         />
         {errors.password && (
-          <p className="text-sm text-destructive">{errors.password.message}</p>
+          <p className="text-destructive text-sm">{errors.password.message}</p>
         )}
       </div>
 
@@ -161,7 +143,7 @@ export function SignupForm() {
           disabled={isLoading}
         />
         {errors.confirmPassword && (
-          <p className="text-sm text-destructive">
+          <p className="text-destructive text-sm">
             {errors.confirmPassword.message}
           </p>
         )}

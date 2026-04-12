@@ -1,5 +1,4 @@
-import { useSession as useNextAuthSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { authClient } from '@/lib/auth/auth-client';
 
 interface SessionUser {
   id: string;
@@ -10,22 +9,10 @@ interface SessionUser {
 
 interface ExtendedSession {
   user: SessionUser;
-  expires: string;
 }
 
 export function useSession() {
-  const { data: session, status, update } = useNextAuthSession();
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    if (status !== 'loading') {
-      setIsReady(true);
-    }
-  }, [status]);
-
-  const refreshSession = async () => {
-    await update();
-  };
+  const { data: session, isPending } = authClient.useSession();
 
   const hasRole = (role: string): boolean => {
     // 将来的にロールベースのアクセス制御を実装
@@ -35,7 +22,7 @@ export function useSession() {
   const canAccess = (resource: string): boolean => {
     // リソースベースのアクセス制御チェック
     if (!session) return false;
-    
+
     // 基本的な認証チェック
     return true;
   };
@@ -43,12 +30,10 @@ export function useSession() {
   return {
     session: session as ExtendedSession | null,
     user: session?.user as SessionUser | undefined,
-    status,
-    isReady,
-    isAuthenticated: status === 'authenticated',
-    isLoading: status === 'loading',
-    isUnauthenticated: status === 'unauthenticated',
-    refreshSession,
+    isReady: !isPending,
+    isAuthenticated: !!session,
+    isLoading: isPending,
+    isUnauthenticated: !isPending && !session,
     hasRole,
     canAccess,
   };

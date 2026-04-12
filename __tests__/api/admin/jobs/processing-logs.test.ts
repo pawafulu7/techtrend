@@ -4,11 +4,11 @@
 
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/admin/jobs/processing-logs/route';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 
 // Mock dependencies
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/prisma', () => ({
   prisma: {
     processingLog: {
@@ -17,7 +17,7 @@ jest.mock('@/lib/prisma', () => ({
   },
 }));
 
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
+const mockAuth = getSession as jest.MockedFunction<typeof getSession>;
 const mockFindMany = prisma.processingLog.findMany as jest.Mock;
 
 function createMockRequest(searchParams?: Record<string, string>): NextRequest {
@@ -50,7 +50,7 @@ describe('GET /api/admin/jobs/processing-logs', () => {
     it('should return 403 if user is not admin', async () => {
       mockAuth.mockResolvedValue({
         user: { id: '1', email: 'user@example.com', role: 'user' },
-        expires: '2099-01-01',
+        session: { id: 's1', userId: '1', token: 'tok', expiresAt: new Date('2099-01-01') },
       });
 
       const request = createMockRequest();
@@ -66,7 +66,7 @@ describe('GET /api/admin/jobs/processing-logs', () => {
     beforeEach(() => {
       mockAuth.mockResolvedValue({
         user: { id: '1', email: 'admin@example.com', role: 'admin' },
-        expires: '2099-01-01',
+        session: { id: 's1', userId: '1', token: 'tok', expiresAt: new Date('2099-01-01') },
       });
     });
 

@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { HistoryArticleCard } from '@/app/components/article/history-card';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth/auth-client';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 // Mock next/navigation
@@ -11,9 +11,18 @@ jest.mock('next/navigation', () => ({
   useSearchParams: jest.fn(),
 }));
 
-// Mock next-auth/react
-jest.mock('next-auth/react', () => ({
-  useSession: jest.fn(),
+// Mock @/lib/auth/auth-client
+jest.mock('@/lib/auth/auth-client', () => ({
+  authClient: {
+    useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+    signIn: { email: jest.fn(), social: jest.fn() },
+    signOut: jest.fn(),
+    signUp: { email: jest.fn() },
+  },
+  useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  signUp: jest.fn(),
 }));
 
 // Mock FavoriteButton to avoid complex state management in tests
@@ -66,7 +75,10 @@ describe('HistoryArticleCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
-    (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
+    (useSession as jest.Mock).mockReturnValue({
+      data: null,
+      isPending: false,
+    });
     (usePathname as jest.Mock).mockReturnValue('/history');
     (useSearchParams as jest.Mock).mockReturnValue(new URLSearchParams());
   });
@@ -135,7 +147,10 @@ describe('HistoryArticleCard', () => {
       render(<HistoryArticleCard {...defaultProps} />);
       const shareButton = screen.getByTestId('share-button');
       expect(shareButton).toHaveAttribute('data-title', 'テスト記事タイトル');
-      expect(shareButton).toHaveAttribute('data-url', 'https://example.com/article');
+      expect(shareButton).toHaveAttribute(
+        'data-url',
+        'https://example.com/article'
+      );
     });
   });
 
@@ -144,7 +159,9 @@ describe('HistoryArticleCard', () => {
       render(<HistoryArticleCard {...defaultProps} />);
       const card = screen.getByTestId('history-article-card');
       fireEvent.click(card);
-      expect(mockRouter.push).toHaveBeenCalledWith('/articles/cltest123abc?from=%2Fhistory');
+      expect(mockRouter.push).toHaveBeenCalledWith(
+        '/articles/cltest123abc?from=%2Fhistory'
+      );
     });
 
     it('should not navigate when interactive element is clicked', () => {
@@ -156,7 +173,9 @@ describe('HistoryArticleCard', () => {
 
     it('should call onArticleClick when provided', () => {
       const onArticleClick = jest.fn();
-      render(<HistoryArticleCard {...defaultProps} onArticleClick={onArticleClick} />);
+      render(
+        <HistoryArticleCard {...defaultProps} onArticleClick={onArticleClick} />
+      );
       const card = screen.getByTestId('history-article-card');
       fireEvent.click(card);
       expect(onArticleClick).toHaveBeenCalledWith('cltest123abc');
@@ -178,7 +197,9 @@ describe('HistoryArticleCard', () => {
       fireEvent.click(reactTag);
       expect(onTagClick).toHaveBeenCalledWith('React');
       // Should not navigate when onTagClick is provided
-      expect(mockRouter.push).not.toHaveBeenCalledWith(expect.stringContaining('tags=React'));
+      expect(mockRouter.push).not.toHaveBeenCalledWith(
+        expect.stringContaining('tags=React')
+      );
     });
   });
 
@@ -186,7 +207,9 @@ describe('HistoryArticleCard', () => {
     it('should open external link in new tab when Original button is clicked', () => {
       const windowOpenSpy = jest.spyOn(window, 'open').mockImplementation();
       render(<HistoryArticleCard {...defaultProps} />);
-      const originalButton = screen.getByRole('button', { name: /元記事を新しいタブで開く/ });
+      const originalButton = screen.getByRole('button', {
+        name: /元記事を新しいタブで開く/,
+      });
       fireEvent.click(originalButton);
       expect(windowOpenSpy).toHaveBeenCalledWith(
         'https://example.com/article',
@@ -212,7 +235,9 @@ describe('HistoryArticleCard', () => {
 
     it('should have proper aria-label for external link button', () => {
       render(<HistoryArticleCard {...defaultProps} />);
-      const externalLinkButton = screen.getByRole('button', { name: /元記事を新しいタブで開く/ });
+      const externalLinkButton = screen.getByRole('button', {
+        name: /元記事を新しいタブで開く/,
+      });
       expect(externalLinkButton).toBeInTheDocument();
     });
   });

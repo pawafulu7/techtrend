@@ -3,7 +3,7 @@
  */
 
 // モックの設定（import前に定義）
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
   withRateLimit: (_policy: string, handler: Function) => handler,
 }));
@@ -14,10 +14,10 @@ jest.mock('@/lib/services/digest-service', () => ({
 }));
 
 import { NextRequest } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { digestService } from '@/lib/services/digest-service';
 
-const authMock = auth as jest.MockedFunction<typeof auth>;
+const authMock = getSession as jest.MockedFunction<typeof getSession>;
 const digestServiceMock = digestService as jest.Mocked<typeof digestService>;
 
 const setUnauthenticated = () => authMock.mockResolvedValue(null);
@@ -28,7 +28,7 @@ const resetMockSession = () =>
       email: 'test@example.com',
       name: 'Test User',
     },
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    session: { id: 's1', userId: 'test-user-id', token: 'tok', expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
   });
 
 // モック後に動的インポート

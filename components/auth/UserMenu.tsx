@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -28,20 +28,21 @@ import {
 } from 'lucide-react';
 
 export function UserMenu() {
-  const { data: session, status } = useSession();
+  const { data: session, isPending } = authClient.useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await signOut({ callbackUrl: '/' });
+      await authClient.signOut();
+      window.location.href = '/';
     } catch (_error) {
     } finally {
       setIsSigningOut(false);
     }
   };
 
-  if (status === 'loading') {
+  if (isPending) {
     return (
       <div className="flex items-center">
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -49,7 +50,7 @@ export function UserMenu() {
     );
   }
 
-  if (status === 'unauthenticated' || !session) {
+  if (!session) {
     return (
       <div className="flex items-center gap-2">
         <Button variant="ghost" asChild>

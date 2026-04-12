@@ -5,7 +5,7 @@ import { ArticleListItem } from './list-item';
 import { CompactCard } from './compact-card';
 import type { ArticleListProps } from '@/types/components';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useSession } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 import { cn } from '@/lib/utils';
 
 // 既読状態変更イベントの型定義
@@ -24,7 +24,7 @@ export function ArticleList({
   className,
 }: ArticleListProps) {
   // 認証状態を取得（お気に入り切り替え用）
-  const { data: session } = useSession();
+  const { data: session } = authClient.useSession();
 
   // ローカルで記事データを管理
   const [articles, setArticles] = useState(initialArticles);

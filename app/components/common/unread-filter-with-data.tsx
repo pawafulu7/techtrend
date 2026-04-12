@@ -1,15 +1,15 @@
 'use client';
 
 import { UnreadFilter } from './unread-filter';
-import { useSession } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 
 export function UnreadFilterWithData() {
-  const { data: session } = useSession();
-  
+  const { data: session } = authClient.useSession();
+
   // 認証チェックを追加
   if (!session?.user) {
     return null;
   }
-  
+
   return <UnreadFilter />;
 }

@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ArticleCard } from '@/app/components/article/card';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth/auth-client';
 import { useRouter } from 'next/navigation';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -29,8 +29,17 @@ jest.mock('next/navigation', () => ({
   })),
 }));
 
-jest.mock('next-auth/react', () => ({
-  useSession: jest.fn(),
+jest.mock('@/lib/auth/auth-client', () => ({
+  authClient: {
+    useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+    signIn: { email: jest.fn(), social: jest.fn() },
+    signOut: jest.fn(),
+    signUp: { email: jest.fn() },
+  },
+  useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  signUp: jest.fn(),
 }));
 
 jest.mock('next/image', () => ({
@@ -118,8 +127,7 @@ describe('ArticleCard', () => {
     mockedUseRouter.mockReturnValue(mockRouter);
     mockedUseSession.mockReturnValue({
       data: null,
-      status: 'unauthenticated',
-      update: jest.fn(),
+      isPending: false,
     } as any);
   });
 

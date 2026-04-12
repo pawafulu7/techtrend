@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useSession } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { loginWithCallback } from '@/lib/routes/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -34,7 +34,7 @@ export function FavoriteButton({
   onToggleFavorite,
   fetchInitialStatus = false,
 }: FavoriteButtonProps) {
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -53,7 +53,7 @@ export function FavoriteButton({
   // Fetch initial status from API if fetchInitialStatus is true (for ISR pages)
   useEffect(() => {
     if (!fetchInitialStatus) return;
-    if (sessionStatus === 'loading') return;
+    if (isPending) return;
     if (onToggleFavorite) return;
     setIsLoadingInitial(true);
 
@@ -97,7 +97,7 @@ export function FavoriteButton({
     articleId,
     fetchInitialStatus,
     session?.user?.id,
-    sessionStatus,
+    isPending,
     onToggleFavorite,
   ]);
 
@@ -112,7 +112,7 @@ export function FavoriteButton({
     e.preventDefault();
     e.stopPropagation();
 
-    if (sessionStatus === 'loading') return;
+    if (isPending) return;
 
     if (!session) {
       // 未ログインの場合はログインページへ（現在のページをcallbackUrlとして設定）
@@ -187,7 +187,7 @@ export function FavoriteButton({
     return (
       <button
         onClick={handleClick}
-        disabled={isToggling || isLoadingInitial || sessionStatus === 'loading'}
+        disabled={isToggling || isLoadingInitial || isPending}
         className={cn(
           'rounded-full p-1.5 transition-all duration-300',
           'hover:bg-red-50 dark:hover:bg-red-950',
@@ -217,7 +217,7 @@ export function FavoriteButton({
       variant={outline ? 'outline' : isFavorited ? 'destructive' : 'outline'}
       size={size}
       onClick={handleClick}
-      disabled={isToggling || isLoadingInitial || sessionStatus === 'loading'}
+      disabled={isToggling || isLoadingInitial || isPending}
       className={cn(
         'transition-all duration-300',
         outline && 'group',

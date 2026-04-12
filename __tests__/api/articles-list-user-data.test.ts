@@ -1,24 +1,9 @@
 import { NextRequest } from 'next/server';
 // Import GET after mocks are registered via require below
 
-// Mock auth first
-jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn(),
-}));
-
-// Mock next-auth
-jest.mock('next-auth', () => ({
-  default: jest.fn(() => ({
-    handlers: {},
-    auth: jest.fn(),
-    signIn: jest.fn(),
-    signOut: jest.fn(),
-  })),
-  getServerSession: jest.fn(),
-}));
-
-jest.mock('@/lib/auth/config', () => ({
-  authOptions: {},
+// Mock auth
+jest.mock('@/lib/auth/get-session', () => ({
+  getSession: jest.fn(),
 }));
 
 // Mock RedisCache

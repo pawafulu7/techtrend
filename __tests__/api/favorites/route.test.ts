@@ -4,7 +4,7 @@
 
 // モックの設定
 jest.mock('@/lib/prisma');
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/favorites/cache-helpers', () => ({
   updateFavoriteCacheBestEffort: jest.fn().mockResolvedValue(undefined),
   setFavoriteBustCookie: jest.fn(),
@@ -12,20 +12,20 @@ jest.mock('@/lib/favorites/cache-helpers', () => ({
 
 import { GET, POST, DELETE } from '@/app/api/favorites/route';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { NextRequest } from 'next/server';
 
 // モック関数のヘルパーを取得
 const prismaMock = prisma as any;
-const authMock = auth as jest.MockedFunction<typeof auth>;
+const authMock = getSession as jest.MockedFunction<typeof getSession>;
 const setUnauthenticated = () => authMock.mockResolvedValue(null);
 const resetMockSession = () => authMock.mockResolvedValue({
   user: {
     id: 'test-user-id',
     email: 'test@example.com',
-    name: 'Test User'
+    name: 'Test User',
   },
-  expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  session: { id: 's1', userId: 'test-user-id', token: 'tok', expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
 });
 
 describe('/api/favorites', () => {

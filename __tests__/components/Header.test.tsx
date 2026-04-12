@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { Header } from '@/app/components/layout/header';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth/auth-client';
 import { useRouter, usePathname } from 'next/navigation';
 import { renderWithProviders } from '../helpers/test-providers';
 
@@ -13,9 +13,17 @@ jest.mock('next/navigation', () => ({
   usePathname: jest.fn(),
 }));
 
-jest.mock('next-auth/react', () => ({
-  useSession: jest.fn(),
+jest.mock('@/lib/auth/auth-client', () => ({
+  authClient: {
+    useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+    signIn: { email: jest.fn(), social: jest.fn() },
+    signOut: jest.fn(),
+    signUp: { email: jest.fn() },
+  },
+  useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+  signIn: jest.fn(),
   signOut: jest.fn(),
+  signUp: jest.fn(),
 }));
 
 jest.mock('next/link', () => {
@@ -31,7 +39,7 @@ jest.mock('@/components/auth/UserMenu', () => ({
 
 const mockedUseRouter = jest.mocked(useRouter);
 const mockedUsePathname = jest.mocked(usePathname);
-const mockedUseSession = jest.mocked(useSession);
+const mockedUseSession = useSession as jest.Mock;
 
 describe('Header', () => {
   const mockRouter = {
@@ -44,7 +52,7 @@ describe('Header', () => {
     jest.clearAllMocks();
     mockedUseRouter.mockReturnValue(mockRouter as ReturnType<typeof useRouter>);
     mockedUsePathname.mockReturnValue('/');
-    mockedUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
+    mockedUseSession.mockReturnValue({ data: null, isPending: false });
   });
 
   it('renders the header with logo and navigation', () => {
@@ -59,11 +67,11 @@ describe('Header', () => {
   });
 
   it('shows different navigation items for authenticated users', () => {
-    (useSession as jest.Mock).mockReturnValue({
+    mockedUseSession.mockReturnValue({
       data: {
         user: { id: 'user1', email: 'test@example.com', name: 'Test User' },
       },
-      status: 'authenticated',
+      isPending: false,
     });
 
     renderWithProviders(<Header />);
@@ -153,9 +161,9 @@ describe('Header', () => {
   });
 
   it('shows notification icon for authenticated users', () => {
-    (useSession as jest.Mock).mockReturnValue({
+    mockedUseSession.mockReturnValue({
       data: { user: { id: 'user1', email: 'test@example.com' } },
-      status: 'authenticated',
+      isPending: false,
     });
 
     renderWithProviders(<Header />);

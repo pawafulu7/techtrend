@@ -9,17 +9,17 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/get-session');
 
 // インポート
 import { NextRequest, NextResponse } from 'next/server';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
 import { resetEnvCache } from '@/lib/config/env';
 
 // モック関数の取得
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
+const mockAuth = getSession as jest.MockedFunction<typeof getSession>;
 let mockLoggerWarn: jest.SpyInstance;
 
 describe('withCronOrAdminAuth', () => {

@@ -1,11 +1,20 @@
 import { render, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReadTracker } from '@/components/article/read-tracker';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth/auth-client';
 
-// Mock next-auth/react
-jest.mock('next-auth/react', () => ({
-  useSession: jest.fn(),
+// Mock @/lib/auth/auth-client
+jest.mock('@/lib/auth/auth-client', () => ({
+  authClient: {
+    useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+    signIn: { email: jest.fn(), social: jest.fn() },
+    signOut: jest.fn(),
+    signUp: { email: jest.fn() },
+  },
+  useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  signUp: jest.fn(),
 }));
 
 // Mock logger
@@ -61,6 +70,7 @@ describe('ReadTracker', () => {
     // Default: authenticated session
     (useSession as jest.Mock).mockReturnValue({
       data: { user: { id: 'user-1' } },
+      isPending: false,
     });
 
     // Mock fetch
@@ -262,7 +272,7 @@ describe('ReadTracker', () => {
   // 6. No beacon when unauthenticated
   // -------------------------------------------------------------------------
   it('does not fire sendBeacon or fetch when unauthenticated', () => {
-    (useSession as jest.Mock).mockReturnValue({ data: null });
+    (useSession as jest.Mock).mockReturnValue({ data: null, isPending: false });
 
     const { unmount } = renderReadTracker(queryClient);
     unmount();
