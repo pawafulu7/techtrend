@@ -18,7 +18,7 @@ import Link from 'next/link';
 export default function VerifyPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { data: session, isPending: sessionIsPending } =
+  const { data: session, isPending: _sessionIsPending } =
     authClient.useSession();
   const [verificationState, setVerificationState] = useState<
     'verifying' | 'success' | 'error' | 'expired'

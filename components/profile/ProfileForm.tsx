@@ -53,9 +53,7 @@ export function ProfileForm() {
         throw new Error('プロフィールの更新に失敗しました');
       }
 
-      const updatedUser = await response.json();
-
-      // Session will reflect updated profile on next request
+      await response.json();
 
       // Success toast
       toast({

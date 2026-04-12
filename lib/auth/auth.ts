@@ -5,10 +5,11 @@ import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/config/env';
 import logger from '@/lib/logger';
 
-// Email sending logic
+// Email sending logic — dynamic imports to handle optional deps
 let resend: any = null;
 if (env.RESEND_API_KEY) {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { Resend } = require('resend');
     resend = new Resend(env.RESEND_API_KEY);
   } catch (_error) {
@@ -19,6 +20,7 @@ if (env.RESEND_API_KEY) {
 function createNodemailerTransporter() {
   let nodemailer: any;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     nodemailer = require('nodemailer');
   } catch (_error) {
     return null;
@@ -42,13 +44,13 @@ function createNodemailerTransporter() {
   return null;
 }
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = env.NODE_ENV === 'production';
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   secret: env.AUTH_SECRET,
   baseURL:
-    process.env.BETTER_AUTH_URL ||
+    env.BETTER_AUTH_URL ||
     env.NEXT_PUBLIC_APP_URL ||
     `http://localhost:${env.PORT}`,
 
