@@ -21,7 +21,11 @@ jest.mock('@/lib/rate-limiter', () => ({
 
 // Mock auth
 jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn().mockResolvedValue(null),
+  auth: {
+    api: {
+      getSession: jest.fn().mockResolvedValue(null),
+    },
+  },
 }));
 
 // Mock prisma

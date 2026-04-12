@@ -45,7 +45,13 @@ jest.mock('@/lib/middleware/csrf-protection', () => ({
 }));
 
 // Mock dependencies that route modules import at module level
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/auth', () => ({
+  auth: {
+    api: {
+      getSession: jest.fn(),
+    },
+  },
+}));
 jest.mock('@/lib/prisma', () => ({
   prisma: {},
 }));

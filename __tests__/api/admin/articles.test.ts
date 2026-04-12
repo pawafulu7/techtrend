@@ -7,7 +7,13 @@ jest.mock('@/lib/logger', () => ({
   logger: { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn() },
 }));
 
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/auth', () => ({
+  auth: {
+    api: {
+      getSession: jest.fn(),
+    },
+  },
+}));
 
 // prismaモック - @/lib/prismaをモック（@/lib/databaseではない）
 jest.mock('@/lib/prisma', () => ({

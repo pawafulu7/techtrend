@@ -23,7 +23,13 @@ jest.mock('@/lib/database', () => ({
 }));
 
 jest.mock('@/lib/cache');
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/auth', () => ({
+  auth: {
+    api: {
+      getSession: jest.fn(),
+    },
+  },
+}));
 jest.mock('@/lib/logger');
 
 describe('API /api/articles Integration Tests', () => {

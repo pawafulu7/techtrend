@@ -4,7 +4,11 @@ import { NextRequest } from 'next/server';
 // モック設定（password.test.tsと同じパターン）
 jest.mock('@/lib/database');
 jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn()
+  auth: {
+    api: {
+      getSession: jest.fn(),
+    },
+  },
 }));
 jest.mock('@/lib/auth/utils', () => ({
   verifyPassword: jest.fn(),
@@ -42,7 +46,7 @@ describe('/api/user/delete', () => {
   describe('DELETE', () => {
     it('should return 401 when user is not authenticated', async () => {
       const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(null);
+      (auth.api.getSession as jest.Mock).mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/user/delete', {
         method: 'DELETE',
@@ -65,8 +69,9 @@ describe('/api/user/delete', () => {
 
     it('should return 400 when confirmation word is invalid', async () => {
       const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
@@ -95,8 +100,9 @@ describe('/api/user/delete', () => {
 
     it('should return 401 when user is not found (withUserValidation)', async () => {
       const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
       prismaMock.user.findUnique.mockResolvedValue(null);
@@ -121,8 +127,9 @@ describe('/api/user/delete', () => {
 
     it('should return 400 when password is missing for password user', async () => {
       const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
@@ -152,8 +159,9 @@ describe('/api/user/delete', () => {
       const { auth } = require('@/lib/auth/auth');
       const { verifyPassword } = require('@/lib/auth/utils');
 
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
@@ -187,8 +195,9 @@ describe('/api/user/delete', () => {
       const { auth } = require('@/lib/auth/auth');
       const { verifyPassword, deleteUserAccountWithAudit } = require('@/lib/auth/utils');
 
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
@@ -235,8 +244,9 @@ describe('/api/user/delete', () => {
       const { auth } = require('@/lib/auth/auth');
       const { deleteUserAccountWithAudit } = require('@/lib/auth/utils');
 
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'oauth@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'oauth@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
@@ -278,8 +288,9 @@ describe('/api/user/delete', () => {
     it('should return 400 when request body is malformed JSON', async () => {
       const { auth } = require('@/lib/auth/auth');
 
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
       prismaMock.user.findUnique.mockResolvedValue({
@@ -308,8 +319,9 @@ describe('/api/user/delete', () => {
       const { auth } = require('@/lib/auth/auth');
       const { deleteUserAccountWithAudit } = require('@/lib/auth/utils');
 
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
       prismaMock.user.findUnique.mockResolvedValue({

@@ -47,9 +47,9 @@ const middlewareCompositionSnapshot = (() => {
 })();
 
 // Mock auth
-const mockAuth = jest.fn();
-jest.mock('@/lib/auth/auth', () => ({
-  auth: () => mockAuth(),
+const mockGetSession = jest.fn();
+jest.mock('@/lib/auth/get-session', () => ({
+  getSession: () => mockGetSession(),
 }));
 
 const prismaMock = prisma as jest.Mocked<typeof prisma>;
@@ -94,7 +94,7 @@ describe('User Category Preferences API', () => {
     };
 
     it('should return 401 when not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
+      mockGetSession.mockResolvedValue(null);
 
       const response = await GET(createGetRequest());
       const data = await response.json();
@@ -104,7 +104,7 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return user preferences', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
         { categoryId: 'cat-2' },
@@ -120,7 +120,7 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return empty preferences for new users', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([]);
 
       const response = await GET(createGetRequest());
@@ -132,7 +132,7 @@ describe('User Category Preferences API', () => {
     });
 
     it('should handle database errors', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
       prismaMock.userCategoryPreference.findMany.mockRejectedValue(
         new Error('Database error')
       );
@@ -145,7 +145,7 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return home preferences when scope=home', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
       ]);
@@ -164,7 +164,7 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return digest preferences when scope=digest', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-3' },
       ]);
@@ -183,7 +183,7 @@ describe('User Category Preferences API', () => {
     });
 
     it('should default to home scope when scope is not specified', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([]);
 
       const response = await GET(createGetRequest());
@@ -199,7 +199,7 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return 400 for invalid scope value', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
 
       const response = await GET(createGetRequest({ scope: 'invalid' }));
       const data = await response.json();
@@ -209,7 +209,7 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return 400 for empty string scope', async () => {
-      mockAuth.mockResolvedValue({ user: { id: 'user-1' } });
+      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
 
       const response = await GET(createGetRequest({ scope: '' }));
       const data = await response.json();

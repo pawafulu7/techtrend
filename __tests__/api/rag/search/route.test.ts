@@ -17,8 +17,8 @@ import { RateLimitError } from '@/lib/rate-limiter';
 import { resetEnvCache } from '@/lib/config/env';
 
 // Mock dependencies
-jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn(),
+jest.mock('@/lib/auth/get-session', () => ({
+  getSession: jest.fn(),
 }));
 
 jest.mock('@/lib/rate-limiter', () => {
@@ -62,7 +62,7 @@ function makeRequest(body: any): NextRequest {
 }
 
 describe('POST /api/rag/search', () => {
-  let mockAuth: jest.Mock;
+  let mockGetSession: jest.Mock;
   let mockCheckRateLimit: jest.Mock;
 
   beforeEach(() => {
@@ -72,12 +72,13 @@ describe('POST /api/rag/search', () => {
     const { __resetSearchServiceForTest } = require('@/app/api/rag/search/route');
     __resetSearchServiceForTest();
 
-    mockAuth = require('@/lib/auth/auth').auth;
+    mockGetSession = require('@/lib/auth/get-session').getSession;
     mockCheckRateLimit = require('@/lib/rate-limiter').checkRateLimit;
 
     // Default: authenticated session
-    mockAuth.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       user: { id: 'test-user-1', email: 'test@example.com' },
+      session: { id: 's1', userId: 'test-user-1', token: 't1', expiresAt: new Date() },
     });
 
     // Default: rate limit OK with info
@@ -90,7 +91,7 @@ describe('POST /api/rag/search', () => {
 
   describe('Layer 1: Authentication', () => {
     it('should reject unauthenticated requests (401)', async () => {
-      mockAuth.mockResolvedValueOnce(null);
+      mockGetSession.mockResolvedValueOnce(null);
 
       const request = makeRequest({
         query: 'test query',
@@ -107,8 +108,9 @@ describe('POST /api/rag/search', () => {
     });
 
     it('should accept authenticated requests', async () => {
-      mockAuth.mockResolvedValueOnce({
+      mockGetSession.mockResolvedValueOnce({
         user: { id: 'test-user-1', email: 'test@example.com' },
+        session: { id: 's1', userId: 'test-user-1', token: 't1', expiresAt: new Date() },
       });
 
       const request = makeRequest({

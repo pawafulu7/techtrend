@@ -18,7 +18,13 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/auth', () => ({
+  auth: {
+    api: {
+      getSession: jest.fn(),
+    },
+  },
+}));
 jest.mock('@/lib/auth/user-auth-cache');
 
 jest.mock('@/lib/database', () => ({

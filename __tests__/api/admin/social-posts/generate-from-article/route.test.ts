@@ -2,9 +2,9 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { NextRequest } from 'next/server';
 
 // Mock auth
-const mockAuth = jest.fn();
-jest.mock('@/lib/auth/auth', () => ({
-  auth: mockAuth,
+const mockGetSession = jest.fn();
+jest.mock('@/lib/auth/get-session', () => ({
+  getSession: mockGetSession,
 }));
 
 // Mock rate limiter
@@ -57,8 +57,9 @@ describe('POST /api/admin/social-posts/generate-from-article', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAuth.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       user: { id: 'admin-user', role: 'admin' },
+      session: { id: 's1', userId: 'admin-user', token: 't1', expiresAt: new Date() },
     });
     mockGenerate.mockResolvedValue({
       succeeded: [mockPost],
@@ -67,7 +68,7 @@ describe('POST /api/admin/social-posts/generate-from-article', () => {
   });
 
   it('should return 401 when not authenticated', async () => {
-    mockAuth.mockResolvedValue(null);
+    mockGetSession.mockResolvedValue(null);
 
     const request = new NextRequest(
       'http://localhost:3000/api/admin/social-posts/generate-from-article',
@@ -84,8 +85,9 @@ describe('POST /api/admin/social-posts/generate-from-article', () => {
   });
 
   it('should return 403 when user is not admin', async () => {
-    mockAuth.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       user: { id: 'regular-user', role: 'user' },
+      session: { id: 's2', userId: 'regular-user', token: 't2', expiresAt: new Date() },
     });
 
     const request = new NextRequest(

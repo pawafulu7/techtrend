@@ -2,8 +2,8 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { NextRequest } from 'next/server';
 
 // Mock auth
-jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn(),
+jest.mock('@/lib/auth/get-session', () => ({
+  getSession: jest.fn(),
 }));
 
 // Mock rate limiter
@@ -104,10 +104,12 @@ const { GET: GET_STATS } = require('@/app/api/admin/social-posts/stats/route');
 describe('Social Posts API', () => {
   const adminSession = {
     user: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+    session: { id: 's1', userId: 'admin-1', token: 't1', expiresAt: new Date() },
   };
 
   const userSession = {
     user: { id: 'user-1', email: 'user@example.com', role: 'user' },
+    session: { id: 's2', userId: 'user-1', token: 't2', expiresAt: new Date() },
   };
 
   const mockPost = {
@@ -126,8 +128,8 @@ describe('Social Posts API', () => {
 
   describe('GET /api/admin/social-posts', () => {
     it('should return 401 when not authenticated', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(null);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts');
       const response = await GET(request);
@@ -138,8 +140,8 @@ describe('Social Posts API', () => {
     });
 
     it('should return 403 when user is not admin', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(userSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(userSession);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts');
       const response = await GET(request);
@@ -150,8 +152,8 @@ describe('Social Posts API', () => {
     });
 
     it('should return posts list for admin', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.list.mockResolvedValue({
         items: [mockPost],
         total: 1,
@@ -172,8 +174,8 @@ describe('Social Posts API', () => {
 
   describe('POST /api/admin/social-posts', () => {
     it('should create a new post for admin', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.create.mockResolvedValue(mockPost);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts', {
@@ -195,8 +197,8 @@ describe('Social Posts API', () => {
     });
 
     it('should return 409 for duplicate content', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.create.mockRejectedValue(new DuplicateContentError());
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts', {
@@ -220,8 +222,8 @@ describe('Social Posts API', () => {
 
   describe('GET /api/admin/social-posts/[id]', () => {
     it('should return post details for admin', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.getById.mockResolvedValue(mockPost);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/post-1');
@@ -233,8 +235,8 @@ describe('Social Posts API', () => {
     });
 
     it('should return 404 for non-existent post', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.getById.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/non-existent');
@@ -248,8 +250,8 @@ describe('Social Posts API', () => {
 
   describe('PATCH /api/admin/social-posts/[id]', () => {
     it('should update post for admin', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.update.mockResolvedValue({ ...mockPost, content: 'Updated content' });
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/post-1', {
@@ -266,8 +268,8 @@ describe('Social Posts API', () => {
     });
 
     it('should return 404 when updating non-existent post', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.update.mockRejectedValue(new NotFoundError('SocialPost', 'non-existent'));
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/non-existent', {
@@ -286,8 +288,8 @@ describe('Social Posts API', () => {
 
   describe('DELETE /api/admin/social-posts/[id]', () => {
     it('should delete post for admin', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.delete.mockResolvedValue(undefined);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/post-1', {
@@ -300,8 +302,8 @@ describe('Social Posts API', () => {
     });
 
     it('should return 404 when deleting non-existent post', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.delete.mockRejectedValue(new NotFoundError('SocialPost', 'non-existent'));
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/non-existent', {
@@ -318,8 +320,8 @@ describe('Social Posts API', () => {
 
   describe('POST /api/admin/social-posts/generate', () => {
     it('should auto-generate posts for admin', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.generateScheduledPosts.mockResolvedValue([mockPost]);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/generate', {
@@ -338,8 +340,8 @@ describe('Social Posts API', () => {
     });
 
     it('should return 404 when no articles available', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.generateScheduledPosts.mockRejectedValue(new NotFoundError('Article', 'none'));
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/generate', {
@@ -358,8 +360,8 @@ describe('Social Posts API', () => {
 
   describe('POST /api/admin/social-posts/bulk', () => {
     it('should execute bulk delete for admin', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.bulkAction.mockResolvedValue({ success: 2, failed: 0 });
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/bulk', {
@@ -381,8 +383,8 @@ describe('Social Posts API', () => {
     });
 
     it('should return 400 for changeStatus without status', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
 
       // Override mock for this test
       const { SocialPostBulkSchema } = require('@/lib/social-post');
@@ -410,8 +412,8 @@ describe('Social Posts API', () => {
 
   describe('GET /api/admin/social-posts/stats', () => {
     it('should return status counts for admin', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(adminSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.getStatusCounts.mockResolvedValue({
         DRAFT: 5,
         REVIEWED: 3,
@@ -429,8 +431,8 @@ describe('Social Posts API', () => {
     });
 
     it('should return 403 when user is not admin', async () => {
-      const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(userSession);
+      const { getSession } = require('@/lib/auth/get-session');
+      (getSession as jest.Mock).mockResolvedValue(userSession);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/stats');
       const response = await GET_STATS(request);
