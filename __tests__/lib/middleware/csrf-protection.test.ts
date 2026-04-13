@@ -13,7 +13,7 @@ import {
 } from '@/lib/middleware/csrf-protection';
 import { resetEnvCache } from '@/lib/config/env';
 
-// Mock getSession function
+// Mock getSession function (kept for any direct callers)
 jest.mock('@/lib/auth/get-session', () => ({
   getSession: jest.fn(),
 }));
@@ -21,6 +21,12 @@ jest.mock('@/lib/auth/get-session', () => ({
 import { getSession } from '@/lib/auth/get-session';
 
 const mockAuth = getSession as jest.MockedFunction<typeof getSession>;
+
+// auth.api.getSession ヘルパー（validateOrigin が resolveSession 経由で呼ぶ）
+const getAuthApiGetSession = () => {
+  const { auth } = require('@/lib/auth/auth');
+  return auth.api.getSession as jest.Mock;
+};
 
 describe('csrf-protection', () => {
   beforeEach(() => {
@@ -30,6 +36,8 @@ describe('csrf-protection', () => {
     delete process.env.NEXT_PUBLIC_APP_URL;
     delete process.env.CSRF_TRUSTED_ORIGINS;
     resetEnvCache();
+    // デフォルトは未認証（auth.api.getSession）
+    getAuthApiGetSession().mockResolvedValue(null);
   });
 
   describe('validateOrigin', () => {
@@ -80,7 +88,7 @@ describe('csrf-protection', () => {
     });
 
     it('should reject requests from different origin', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const request = new NextRequest(
         new URL('http://localhost:3000/api/test'),
@@ -97,7 +105,7 @@ describe('csrf-protection', () => {
     });
 
     it('should allow requests with valid Authorization header and session', async () => {
-      mockAuth.mockResolvedValue({
+      getAuthApiGetSession().mockResolvedValue({
         user: { id: 'user-1', email: 'test@example.com' },
         session: {
           id: 's1',
@@ -123,7 +131,7 @@ describe('csrf-protection', () => {
     });
 
     it('should reject requests with Authorization header but no valid session', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const request = new NextRequest(
         new URL('http://localhost:3000/api/test'),
@@ -178,7 +186,7 @@ describe('csrf-protection', () => {
     });
 
     it('should reject requests without Origin or Referer and no session', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const request = new NextRequest(
         new URL('http://localhost:3000/api/test'),
@@ -192,7 +200,7 @@ describe('csrf-protection', () => {
     });
 
     it('should allow requests without Origin or Referer but with valid session', async () => {
-      mockAuth.mockResolvedValue({
+      getAuthApiGetSession().mockResolvedValue({
         user: { id: 'user-1', email: 'test@example.com' },
         session: {
           id: 's1',
@@ -231,14 +239,18 @@ describe('csrf-protection', () => {
     it('should return false for non-exempt paths', () => {
       expect(isCSRFExemptPath('/api/articles')).toBe(false);
       expect(isCSRFExemptPath('/api/user/profile')).toBe(false);
-      expect(isCSRFExemptPath('/api/auth/register-with-email')).toBe(false);
+    });
+
+    it('should return true for /api/auth/* subpaths (Better Auth handles its own CSRF)', () => {
+      // /api/auth プレフィックスは全てexempt（Better Auth が自前のCSRF保護を持つため）
+      expect(isCSRFExemptPath('/api/auth/register-with-email')).toBe(true);
+      expect(isCSRFExemptPath('/api/auth/callbackadmin')).toBe(true);
+      expect(isCSRFExemptPath('/api/auth/signinpage')).toBe(true);
     });
 
     it('should reject paths that only share prefix but are not subpaths', () => {
-      // Prevent false positives from prefix-only matching
-      expect(isCSRFExemptPath('/api/auth/callbackadmin')).toBe(false);
+      // /api/healthcheck は /api/health の部分一致ではなく異なるパス
       expect(isCSRFExemptPath('/api/healthcheck')).toBe(false);
-      expect(isCSRFExemptPath('/api/auth/signinpage')).toBe(false);
     });
   });
 
@@ -286,7 +298,7 @@ describe('csrf-protection', () => {
     });
 
     it('should return 403 for invalid origin on POST', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const request = new NextRequest(
         new URL('http://localhost:3000/api/articles'),
@@ -344,7 +356,7 @@ describe('csrf-protection', () => {
     });
 
     it('should return 403 without calling handler for invalid requests', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const handler = jest.fn().mockResolvedValue({ success: true });
       const wrappedHandler = withCSRFProtection(handler);
@@ -367,8 +379,7 @@ describe('csrf-protection', () => {
 
   describe('constants', () => {
     it('should have expected exempt paths', () => {
-      expect(CSRF_EXEMPT_PATHS).toContain('/api/auth/callback');
-      expect(CSRF_EXEMPT_PATHS).toContain('/api/auth/signin');
+      expect(CSRF_EXEMPT_PATHS).toContain('/api/auth');
       expect(CSRF_EXEMPT_PATHS).toContain('/api/health');
     });
 

@@ -16,16 +16,26 @@ import { NextRequest } from 'next/server';
 const prismaMock = prisma as any;
 const authMock = getSession as jest.MockedFunction<typeof getSession>;
 
-// モック関数のヘルパー
-const setUnauthenticated = () => authMock.mockResolvedValue(null);
-const resetMockSession = () => authMock.mockResolvedValue({
+const mockSessionData = {
   user: {
     id: 'test-user-id',
     email: 'test@example.com',
     name: 'Test User',
   },
   session: { id: 's1', userId: 'test-user-id', token: 'tok', expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
-});
+};
+
+// モック関数のヘルパー
+const setUnauthenticated = () => {
+  authMock.mockResolvedValue(null);
+  const { auth } = require('@/lib/auth/auth');
+  (auth.api.getSession as jest.Mock).mockResolvedValue(null);
+};
+const resetMockSession = () => {
+  authMock.mockResolvedValue(mockSessionData);
+  const { auth } = require('@/lib/auth/auth');
+  (auth.api.getSession as jest.Mock).mockResolvedValue(mockSessionData);
+};
 
 describe('/api/articles/read-status', () => {
   beforeEach(() => {
@@ -52,6 +62,11 @@ describe('/api/articles/read-status', () => {
     };
 
     prismaMock.$executeRaw = jest.fn().mockResolvedValue(0);
+
+    // withUserValidation用のユーザー存在確認モック
+    prismaMock.user = {
+      findUnique: jest.fn().mockResolvedValue({ id: 'test-user-id', deletedAt: null }),
+    };
 
     // Redisサービスのモック設定
     // getRedisServiceは__mocks__/lib/redis/factory.tsで定義されている
@@ -234,6 +249,7 @@ describe('/api/articles/read-status', () => {
 
       const request = new NextRequest('http://localhost/api/articles/read-status', {
         method: 'PUT',
+        headers: { 'Origin': 'http://localhost' },
       });
 
       const response = await PUT(request);
@@ -276,6 +292,7 @@ describe('/api/articles/read-status', () => {
 
       const request = new NextRequest('http://localhost/api/articles/read-status', {
         method: 'PUT',
+        headers: { 'Origin': 'http://localhost' },
       });
 
       const response = await PUT(request);
@@ -293,6 +310,7 @@ describe('/api/articles/read-status', () => {
 
       const request = new NextRequest('http://localhost/api/articles/read-status', {
         method: 'PUT',
+        headers: { 'Origin': 'http://localhost' },
       });
 
       const response = await PUT(request);

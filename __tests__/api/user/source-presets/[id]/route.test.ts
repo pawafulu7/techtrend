@@ -20,16 +20,26 @@ import { Prisma } from '@prisma/client';
 const { prismaMock, resetPrismaMock } = require('../../../../../test/utils/prisma-mock');
 
 const authMock = getSession as jest.MockedFunction<typeof getSession>;
-const setUnauthenticated = () => authMock.mockResolvedValue(null);
-const resetMockSession = () =>
-  authMock.mockResolvedValue({
-    user: {
-      id: 'test-user-id',
-      email: 'test@example.com',
-      name: 'Test User',
-    },
-    session: { id: 's1', userId: 'test-user-id', token: 'tok', expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
-  });
+
+const mockSessionData = {
+  user: {
+    id: 'test-user-id',
+    email: 'test@example.com',
+    name: 'Test User',
+  },
+  session: { id: 's1', userId: 'test-user-id', token: 'tok', expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+};
+
+const setUnauthenticated = () => {
+  authMock.mockResolvedValue(null);
+  const { auth } = require('@/lib/auth/auth');
+  (auth.api.getSession as jest.Mock).mockResolvedValue(null);
+};
+const resetMockSession = () => {
+  authMock.mockResolvedValue(mockSessionData);
+  const { auth } = require('@/lib/auth/auth');
+  (auth.api.getSession as jest.Mock).mockResolvedValue(mockSessionData);
+};
 
 const mockPreset = {
   id: 'preset-1',

@@ -18,15 +18,26 @@ import { NextRequest } from 'next/server';
 // モック関数のヘルパーを取得
 const prismaMock = prisma as any;
 const authMock = getSession as jest.MockedFunction<typeof getSession>;
-const setUnauthenticated = () => authMock.mockResolvedValue(null);
-const resetMockSession = () => authMock.mockResolvedValue({
+
+const mockSessionData = {
   user: {
     id: 'test-user-id',
     email: 'test@example.com',
     name: 'Test User',
   },
   session: { id: 's1', userId: 'test-user-id', token: 'tok', expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
-});
+};
+
+const setUnauthenticated = () => {
+  authMock.mockResolvedValue(null);
+  const { auth } = require('@/lib/auth/auth');
+  (auth.api.getSession as jest.Mock).mockResolvedValue(null);
+};
+const resetMockSession = () => {
+  authMock.mockResolvedValue(mockSessionData);
+  const { auth } = require('@/lib/auth/auth');
+  (auth.api.getSession as jest.Mock).mockResolvedValue(mockSessionData);
+};
 
 describe('/api/favorites', () => {
   beforeEach(() => {
@@ -52,6 +63,11 @@ describe('/api/favorites', () => {
 
     prismaMock.article = {
       findUnique: jest.fn().mockResolvedValue(null),
+    };
+
+    // withUserValidation用のユーザー存在確認モック
+    prismaMock.user = {
+      findUnique: jest.fn().mockResolvedValue({ id: 'test-user-id', deletedAt: null }),
     };
   });
 
@@ -256,6 +272,7 @@ describe('/api/favorites', () => {
 
       const request = new NextRequest('http://localhost/api/favorites', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Origin': 'http://localhost' },
         body: JSON.stringify({ articleId: 'article1' }),
       });
 
@@ -282,6 +299,7 @@ describe('/api/favorites', () => {
     it('articleIdが無い場合400を返す', async () => {
       const request = new NextRequest('http://localhost/api/favorites', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Origin': 'http://localhost' },
         body: JSON.stringify({}),
       });
 
@@ -298,6 +316,7 @@ describe('/api/favorites', () => {
 
       const request = new NextRequest('http://localhost/api/favorites', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Origin': 'http://localhost' },
         body: JSON.stringify({ articleId: 'nonexistent' }),
       });
 
@@ -322,6 +341,7 @@ describe('/api/favorites', () => {
 
       const request = new NextRequest('http://localhost/api/favorites', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Origin': 'http://localhost' },
         body: JSON.stringify({ articleId: 'article1' }),
       });
 
@@ -362,7 +382,10 @@ describe('/api/favorites', () => {
       prismaMock.favorite.findUnique.mockResolvedValue(mockFavorite);
       prismaMock.favorite.delete.mockResolvedValue(mockFavorite);
 
-      const request = new NextRequest('http://localhost/api/favorites?articleId=article1');
+      const request = new NextRequest('http://localhost/api/favorites?articleId=article1', {
+        method: 'DELETE',
+        headers: { 'Origin': 'http://localhost' },
+      });
       const response = await DELETE(request);
 
       expect(response.status).toBe(200);
@@ -383,7 +406,10 @@ describe('/api/favorites', () => {
     });
 
     it('articleIdが無い場合400を返す', async () => {
-      const request = new NextRequest('http://localhost/api/favorites');
+      const request = new NextRequest('http://localhost/api/favorites', {
+        method: 'DELETE',
+        headers: { 'Origin': 'http://localhost' },
+      });
       const response = await DELETE(request);
 
       expect(response.status).toBe(400);
@@ -395,7 +421,10 @@ describe('/api/favorites', () => {
     it('お気に入りが見つからない場合404を返す', async () => {
       prismaMock.favorite.findUnique.mockResolvedValue(null);
 
-      const request = new NextRequest('http://localhost/api/favorites?articleId=nonexistent');
+      const request = new NextRequest('http://localhost/api/favorites?articleId=nonexistent', {
+        method: 'DELETE',
+        headers: { 'Origin': 'http://localhost' },
+      });
       const response = await DELETE(request);
 
       expect(response.status).toBe(404);

@@ -20,16 +20,25 @@ import { digestService } from '@/lib/services/digest-service';
 const authMock = getSession as jest.MockedFunction<typeof getSession>;
 const digestServiceMock = digestService as jest.Mocked<typeof digestService>;
 
-const setUnauthenticated = () => authMock.mockResolvedValue(null);
-const resetMockSession = () =>
-  authMock.mockResolvedValue({
-    user: {
-      id: 'test-user-id',
-      email: 'test@example.com',
-      name: 'Test User',
-    },
-    session: { id: 's1', userId: 'test-user-id', token: 'tok', expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
-  });
+const mockSessionData = {
+  user: {
+    id: 'test-user-id',
+    email: 'test@example.com',
+    name: 'Test User',
+  },
+  session: { id: 's1', userId: 'test-user-id', token: 'tok', expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+};
+
+const setUnauthenticated = () => {
+  authMock.mockResolvedValue(null);
+  const { auth } = require('@/lib/auth/auth');
+  (auth.api.getSession as jest.Mock).mockResolvedValue(null);
+};
+const resetMockSession = () => {
+  authMock.mockResolvedValue(mockSessionData);
+  const { auth } = require('@/lib/auth/auth');
+  (auth.api.getSession as jest.Mock).mockResolvedValue(mockSessionData);
+};
 
 // モック後に動的インポート
 const getHandler = async () => {

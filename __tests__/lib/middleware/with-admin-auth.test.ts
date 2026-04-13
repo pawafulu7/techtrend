@@ -26,6 +26,12 @@ const mockGetUserAuthData = getUserAuthData as jest.MockedFunction<
 >;
 let mockLoggerWarn: jest.SpyInstance;
 
+// withAdminAuth は resolveSession → auth.api.getSession を呼ぶ
+const getAuthApiGetSession = () => {
+  const { auth } = require('@/lib/auth/auth');
+  return auth.api.getSession as jest.Mock;
+};
+
 describe('withAdminAuth', () => {
   const mockHandler = jest.fn().mockImplementation(async () => {
     return NextResponse.json({ success: true });
@@ -34,11 +40,13 @@ describe('withAdminAuth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockLoggerWarn = jest.spyOn(logger as any, 'warn');
+    // デフォルトは未認証（resolveSession → auth.api.getSession を使う）
+    getAuthApiGetSession().mockResolvedValue(null);
   });
 
   describe('Unauthenticated requests', () => {
     it('should return 401 when no session exists', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const handler = withAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/admin/test', {
@@ -56,7 +64,7 @@ describe('withAdminAuth', () => {
     });
 
     it('should return 401 when session has no user id', async () => {
-      mockAuth.mockResolvedValue({ user: {} } as any);
+      getAuthApiGetSession().mockResolvedValue({ user: {} });
 
       const handler = withAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/admin/test', {
@@ -72,9 +80,9 @@ describe('withAdminAuth', () => {
 
   describe('Deleted user handling', () => {
     it('should return 401 with USER_DELETED code when user is deleted', async () => {
-      mockAuth.mockResolvedValue({
+      getAuthApiGetSession().mockResolvedValue({
         user: { id: 'user-1', email: 'deleted@example.com' },
-      } as any);
+      });
       mockGetUserAuthData.mockResolvedValue({
         role: 'admin',
         deletedAt: new Date('2026-01-01'),
@@ -95,9 +103,9 @@ describe('withAdminAuth', () => {
     });
 
     it('should return 401 when authData is null (user not found)', async () => {
-      mockAuth.mockResolvedValue({
+      getAuthApiGetSession().mockResolvedValue({
         user: { id: 'user-nonexistent', email: 'ghost@example.com' },
-      } as any);
+      });
       mockGetUserAuthData.mockResolvedValue(null);
 
       const handler = withAdminAuth(mockHandler);
@@ -116,9 +124,9 @@ describe('withAdminAuth', () => {
 
   describe('Non-admin user handling', () => {
     it('should return 403 for non-admin user', async () => {
-      mockAuth.mockResolvedValue({
+      getAuthApiGetSession().mockResolvedValue({
         user: { id: 'user-1', email: 'user@example.com' },
-      } as any);
+      });
       mockGetUserAuthData.mockResolvedValue({
         role: 'user',
         deletedAt: null,
@@ -139,9 +147,9 @@ describe('withAdminAuth', () => {
     });
 
     it('should log warning for non-admin access attempt', async () => {
-      mockAuth.mockResolvedValue({
+      getAuthApiGetSession().mockResolvedValue({
         user: { id: 'user-42', email: 'hacker@example.com' },
-      } as any);
+      });
       mockGetUserAuthData.mockResolvedValue({
         role: 'user',
         deletedAt: null,
@@ -170,7 +178,7 @@ describe('withAdminAuth', () => {
       const adminSession = {
         user: { id: 'admin-1', email: 'admin@example.com' },
       };
-      mockAuth.mockResolvedValue(adminSession as any);
+      getAuthApiGetSession().mockResolvedValue(adminSession);
       mockGetUserAuthData.mockResolvedValue({
         role: 'admin',
         deletedAt: null,
@@ -194,7 +202,7 @@ describe('withAdminAuth', () => {
       const adminSession = {
         user: { id: 'admin-1', email: 'admin@example.com' },
       };
-      mockAuth.mockResolvedValue(adminSession as any);
+      getAuthApiGetSession().mockResolvedValue(adminSession);
       mockGetUserAuthData.mockResolvedValue({
         role: 'admin',
         deletedAt: null,

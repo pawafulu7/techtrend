@@ -41,6 +41,11 @@ describe('/api/user/delete', () => {
     prismaMock.user = {
       findUnique: jest.fn().mockResolvedValue(null),
     };
+
+    // account.findFirst: デフォルトはnull（OAuthユーザー扱い）
+    prismaMock.account = {
+      findFirst: jest.fn().mockResolvedValue(null),
+    };
   });
 
   describe('DELETE', () => {
@@ -134,8 +139,11 @@ describe('/api/user/delete', () => {
 
       prismaMock.user.findUnique.mockResolvedValue({
         id: 'user123',
-        password: 'hashedPassword123',
+        deletedAt: null,
       });
+
+      // account.findFirst: パスワードユーザー
+      prismaMock.account.findFirst.mockResolvedValue({ password: 'hashedPassword123' });
 
       const request = new NextRequest('http://localhost:3000/api/user/delete', {
         method: 'DELETE',
@@ -166,9 +174,11 @@ describe('/api/user/delete', () => {
 
       prismaMock.user.findUnique.mockResolvedValue({
         id: 'user123',
-        email: 'test@example.com',
-        password: 'hashedPassword123',
+        deletedAt: null,
       });
+
+      // account.findFirst: パスワードユーザー
+      prismaMock.account.findFirst.mockResolvedValue({ password: 'hashedPassword123' });
 
       (verifyPassword as jest.Mock).mockResolvedValue(false);
 
@@ -202,8 +212,11 @@ describe('/api/user/delete', () => {
 
       prismaMock.user.findUnique.mockResolvedValue({
         id: 'user123',
-        password: 'hashedPassword123',
+        deletedAt: null,
       });
+
+      // account.findFirst: パスワードユーザー
+      prismaMock.account.findFirst.mockResolvedValue({ password: 'hashedPassword123' });
 
       (verifyPassword as jest.Mock).mockResolvedValue(true);
       (deleteUserAccountWithAudit as jest.Mock).mockResolvedValue({
