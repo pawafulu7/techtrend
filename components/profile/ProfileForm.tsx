@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui-v2/button-v2';
@@ -26,6 +26,7 @@ export function ProfileForm() {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<ProfileFormData>({
     defaultValues: {
@@ -36,6 +37,18 @@ export function ProfileForm() {
       github: '',
     },
   });
+
+  useEffect(() => {
+    if (session?.user?.name) {
+      reset({
+        name: session.user.name,
+        bio: '',
+        website: '',
+        twitter: '',
+        github: '',
+      });
+    }
+  }, [session?.user?.name, reset]);
 
   const onSubmit = async (data: ProfileFormData) => {
     setIsLoading(true);

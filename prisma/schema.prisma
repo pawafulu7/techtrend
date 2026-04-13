@@ -184,7 +184,6 @@ model Session {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "idx_session_user_id")
-  @@index([token], map: "idx_session_token")
 }
 
 model Verification {

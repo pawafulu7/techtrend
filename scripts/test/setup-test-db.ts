@@ -50,15 +50,17 @@ async function setupTestDatabase() {
     // テスト環境でのみデータクリア
     if (process.env.NODE_ENV === 'test' || process.env.FORCE_TEST_SETUP) {
       console.error('Clearing existing data...');
-      await prisma.articleView.deleteMany();
-      await prisma.favorite.deleteMany();
-      await prisma.article.deleteMany();
-      await prisma.tag.deleteMany();
-      await prisma.source.deleteMany();
-      await prisma.session.deleteMany();
-      await prisma.account.deleteMany();
-      await prisma.verification.deleteMany();
-      await prisma.user.deleteMany();
+      await prisma.$transaction([
+        prisma.articleView.deleteMany(),
+        prisma.favorite.deleteMany(),
+        prisma.article.deleteMany(),
+        prisma.tag.deleteMany(),
+        prisma.source.deleteMany(),
+        prisma.session.deleteMany(),
+        prisma.account.deleteMany(),
+        prisma.verification.deleteMany(),
+        prisma.user.deleteMany(),
+      ]);
     } else {
       console.error('Safety check failed: Not in test environment');
       process.exit(1);

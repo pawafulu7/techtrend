@@ -19,7 +19,13 @@ interface LoginFormProps {
   callbackUrl?: string;
 }
 
+function safeCallbackUrl(url: string): string {
+  if (!url || url.startsWith('//') || url.startsWith('http')) return '/';
+  return url.startsWith('/') ? url : '/';
+}
+
 export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
+  const safeUrl = safeCallbackUrl(callbackUrl);
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +49,7 @@ export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
       if (signInError) {
         setError('メールアドレスまたはパスワードが正しくありません');
       } else {
-        router.push(callbackUrl);
+        router.push(safeUrl);
         router.refresh();
       }
     } catch {

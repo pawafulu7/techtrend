@@ -94,8 +94,8 @@ export async function resolveSessionFromRequest(
   context: SessionContext | undefined,
   fallbackHeaders: Headers
 ): Promise<BetterAuthSession> {
-  const ctx = context?.requestHeaders
-    ? context
-    : { ...context, requestHeaders: fallbackHeaders };
-  return resolveSession(ctx);
+  if (context && !context.requestHeaders) {
+    context.requestHeaders = fallbackHeaders;
+  }
+  return resolveSession(context ?? { requestHeaders: fallbackHeaders });
 }

@@ -19,24 +19,24 @@ const MAX_STUCK_THRESHOLD_MINUTES = 1440; // 24 hours
 const HIGH_RETRY_THRESHOLD = 2;
 
 export async function GET(request: NextRequest) {
-  // Authentication check
-  const session = await getSession();
-  if (!session?.user) {
-    return NextResponse.json(
-      { error: 'Unauthorized. Authentication required.' },
-      { status: 401 }
-    );
-  }
-
-  // Authorization check (admin only)
-  if (session.user.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Forbidden. Admin access required.' },
-      { status: 403 }
-    );
-  }
-
   try {
+    // Authentication check
+    const session = await getSession();
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Authentication required.' },
+        { status: 401 }
+      );
+    }
+
+    // Authorization check (admin only)
+    if (session.user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden. Admin access required.' },
+        { status: 403 }
+      );
+    }
+
     // Parse and validate query parameters
     const searchParams = request.nextUrl.searchParams;
     const stuckThresholdParam = searchParams.get('stuckThreshold');

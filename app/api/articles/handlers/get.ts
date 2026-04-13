@@ -451,15 +451,12 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
     const { pagination, filters, display, personalization } = params;
     const { page, limit } = pagination;
 
-    // Start auth early for parallel execution
-    const sessionPromise = getSession();
-
     // Check if user session is required
     const requiresUserSession =
       filters.readFilter === 'read' ||
       filters.readFilter === 'unread' ||
       display.includeUserData;
-    const session = requiresUserSession ? await sessionPromise : null;
+    const session = requiresUserSession ? await getSession() : null;
     const userId = session?.user?.id;
 
     // Return 401 if readFilter is used without authentication

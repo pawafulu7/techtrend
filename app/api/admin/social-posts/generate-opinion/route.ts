@@ -9,6 +9,11 @@ import { z } from 'zod';
 import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 import {
   getSocialPostService,
   NotFoundError,
@@ -40,6 +45,11 @@ async function generateOpinionHandler(request: NextRequest) {
       { error: 'Unauthorized. Authentication required.' },
       { status: 401 }
     );
+  }
+
+  const validatedUser = await validateUser(session);
+  if (!validatedUser) {
+    return createUserDeletedResponse();
   }
 
   if (session.user.role !== 'admin') {
@@ -137,7 +147,6 @@ async function generateOpinionHandler(request: NextRequest) {
   }
 }
 
-export const POST = withRateLimit(
-  'admin:social-post-generate',
-  generateOpinionHandler
+export const POST = withCSRFProtection(
+  withRateLimit('admin:social-post-generate', generateOpinionHandler)
 );

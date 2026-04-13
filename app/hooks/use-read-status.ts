@@ -4,7 +4,7 @@ import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-const STORAGE_KEY = 'techtrend-read-articles';
+const STORAGE_KEY_PREFIX = 'techtrend-read-articles';
 const READ_STATUS_QUERY_KEY = ['read-status'] as const;
 
 interface ReadStatusResponse {
@@ -17,19 +17,26 @@ interface ReadStatusCache {
   unreadCount: number;
 }
 
+function getStorageKey(userId?: string): string {
+  return `${STORAGE_KEY_PREFIX}:${userId ?? 'guest'}`;
+}
+
 // localStorage との同期ユーティリティ
-function saveToLocalStorage(ids: Set<string>) {
+function saveToLocalStorage(ids: Set<string>, userId?: string) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(ids)));
+    localStorage.setItem(
+      getStorageKey(userId),
+      JSON.stringify(Array.from(ids))
+    );
   } catch (error) {
     console.error('Error saving read status to localStorage:', error);
   }
 }
 
-function loadFromLocalStorage(): Set<string> {
+function loadFromLocalStorage(userId?: string): Set<string> {
   if (typeof window === 'undefined') return new Set<string>();
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(getStorageKey(userId));
     if (stored) {
       return new Set<string>(JSON.parse(stored));
     }
@@ -41,6 +48,7 @@ function loadFromLocalStorage(): Set<string> {
 
 export function useReadStatus(articleIds?: string[]) {
   const { data: session } = authClient.useSession();
+  const userId = session?.user?.id;
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => {
     const normalizedArticleIds = articleIds ? [...articleIds].sort() : [];
@@ -49,9 +57,9 @@ export function useReadStatus(articleIds?: string[]) {
       : 'all';
     return [
       ...READ_STATUS_QUERY_KEY,
-      { articleIds: articleIdsKey, auth: !!session?.user },
+      { articleIds: articleIdsKey, userId: userId ?? 'guest' },
     ] as const;
-  }, [articleIds, session?.user]);
+  }, [articleIds, userId]);
 
   // 既読状態を取得
   const {
@@ -62,7 +70,7 @@ export function useReadStatus(articleIds?: string[]) {
     queryKey,
     queryFn: async ({ signal }) => {
       if (!session?.user) {
-        return { readArticleIds: loadFromLocalStorage(), unreadCount: 0 };
+        return { readArticleIds: loadFromLocalStorage(userId), unreadCount: 0 };
       }
       const params = articleIds?.length
         ? `?articleIds=${articleIds.join(',')}`
@@ -75,7 +83,7 @@ export function useReadStatus(articleIds?: string[]) {
       }
       const data: ReadStatusResponse = await response.json();
       const newReadArticleIds = new Set<string>(data.readArticleIds);
-      saveToLocalStorage(newReadArticleIds);
+      saveToLocalStorage(newReadArticleIds, userId);
       return {
         readArticleIds: newReadArticleIds,
         unreadCount: data.unreadCount ?? 0,
@@ -84,7 +92,7 @@ export function useReadStatus(articleIds?: string[]) {
     enabled: true,
     // localStorageから初期値を設定
     initialData: () => ({
-      readArticleIds: loadFromLocalStorage(),
+      readArticleIds: loadFromLocalStorage(userId),
       unreadCount: 0,
     }),
     refetchOnMount: 'always',
@@ -101,7 +109,7 @@ export function useReadStatus(articleIds?: string[]) {
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         // bfcacheから復元された場合、localStorageを再読み込みしてからサーバー再取得
-        const stored = loadFromLocalStorage();
+        const stored = loadFromLocalStorage(userId);
         queryClient.setQueryData(
           queryKey,
           (old: ReadStatusCache | undefined) => ({
@@ -132,7 +140,7 @@ export function useReadStatus(articleIds?: string[]) {
         if (newIsRead) {
           if (newSet.has(articleId)) return old;
           newSet.add(articleId);
-          saveToLocalStorage(newSet);
+          saveToLocalStorage(newSet, userId);
           return {
             readArticleIds: newSet,
             unreadCount: Math.max(0, old.unreadCount - 1),
@@ -140,7 +148,7 @@ export function useReadStatus(articleIds?: string[]) {
         } else {
           if (!newSet.has(articleId)) return old;
           newSet.delete(articleId);
-          saveToLocalStorage(newSet);
+          saveToLocalStorage(newSet, userId);
           return {
             readArticleIds: newSet,
             unreadCount: old.unreadCount + 1,
@@ -194,7 +202,7 @@ export function useReadStatus(articleIds?: string[]) {
         if (!old) return old;
         if (old.readArticleIds.has(articleId)) return old;
         const newSet = new Set([...old.readArticleIds, articleId]);
-        saveToLocalStorage(newSet);
+        saveToLocalStorage(newSet, userId);
         return {
           readArticleIds: newSet,
           unreadCount: Math.max(0, old.unreadCount - 1),
@@ -205,7 +213,7 @@ export function useReadStatus(articleIds?: string[]) {
     onError: (_err, _articleId, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
-        saveToLocalStorage(context.previous.readArticleIds);
+        saveToLocalStorage(context.previous.readArticleIds, userId);
       }
     },
     onSettled: () => {
@@ -239,7 +247,7 @@ export function useReadStatus(articleIds?: string[]) {
         if (!old.readArticleIds.has(articleId)) return old;
         const newSet = new Set(old.readArticleIds);
         newSet.delete(articleId);
-        saveToLocalStorage(newSet);
+        saveToLocalStorage(newSet, userId);
         return {
           readArticleIds: newSet,
           unreadCount: old.unreadCount + 1,
@@ -250,7 +258,7 @@ export function useReadStatus(articleIds?: string[]) {
     onError: (_err, _articleId, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
-        saveToLocalStorage(context.previous.readArticleIds);
+        saveToLocalStorage(context.previous.readArticleIds, userId);
       }
     },
     onSettled: () => {
@@ -298,7 +306,7 @@ export function useReadStatus(articleIds?: string[]) {
         const newReadArticleIds = articleIds?.length
           ? new Set([...old.readArticleIds, ...articleIds])
           : old.readArticleIds;
-        saveToLocalStorage(newReadArticleIds);
+        saveToLocalStorage(newReadArticleIds, userId);
         return { readArticleIds: newReadArticleIds, unreadCount: 0 };
       });
       return { previous };
@@ -306,7 +314,7 @@ export function useReadStatus(articleIds?: string[]) {
     onError: (_err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
-        saveToLocalStorage(context.previous.readArticleIds);
+        saveToLocalStorage(context.previous.readArticleIds, userId);
       }
       console.error('Error marking all as read:', _err.message);
     },

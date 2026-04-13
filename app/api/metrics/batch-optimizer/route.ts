@@ -12,15 +12,15 @@ import type { PartialDataLoaderStats } from '@/lib/types/metrics';
 import logger from '@/lib/logger';
 
 export async function GET() {
-  // 管理者権限チェック
-  const session = await getSession();
-  if (!session?.user || session.user.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Unauthorized. Admin access required.' },
-      { status: 401 }
-    );
-  }
   try {
+    // 管理者権限チェック
+    const session = await getSession();
+    if (!session?.user || session.user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Unauthorized. Admin access required.' },
+        { status: 401 }
+      );
+    }
     // オプティマイザーの統計
     const optimizerStats = getAllOptimizerStats();
 

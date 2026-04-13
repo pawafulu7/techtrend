@@ -25,7 +25,14 @@ export function SignupContent() {
   const handleOAuthSignIn = async (provider: 'google' | 'github') => {
     setIsLoading(true);
     try {
-      await authClient.signIn.social({ provider, callbackURL: '/profile' });
+      const { error } = await authClient.signIn.social({
+        provider,
+        callbackURL: '/profile',
+      });
+      if (error) {
+        console.error('OAuth sign-in failed:', error);
+        return;
+      }
     } catch (error) {
       console.error('OAuth sign-in failed:', error);
     } finally {

@@ -25,23 +25,23 @@ import { prisma } from '@/lib/prisma';
  * レート制限: 30回/分 (admin:social-post-candidates)
  */
 async function candidatesHandler(request: NextRequest) {
-  const session = await getSession();
-
-  if (!session?.user) {
-    return NextResponse.json(
-      { error: 'Unauthorized. Authentication required.' },
-      { status: 401 }
-    );
-  }
-
-  if (session.user.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Forbidden. Admin access required.' },
-      { status: 403 }
-    );
-  }
-
   try {
+    const session = await getSession();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Authentication required.' },
+        { status: 401 }
+      );
+    }
+
+    if (session.user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden. Admin access required.' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
 
     // クエリパラメータを取得（z.coerce.number()で文字列→数値変換をZodに委任）

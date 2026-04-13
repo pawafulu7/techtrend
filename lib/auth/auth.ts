@@ -83,23 +83,39 @@ export const auth = betterAuth({
       const textContent = buildVerificationEmailText(data.url, host);
 
       if (nodemailerTransporter) {
-        void nodemailerTransporter.sendMail({
-          from,
-          to: data.user.email,
-          subject,
-          html: htmlContent,
-          text: textContent,
-        });
+        try {
+          await nodemailerTransporter.sendMail({
+            from,
+            to: data.user.email,
+            subject,
+            html: htmlContent,
+            text: textContent,
+          });
+        } catch (error) {
+          logger.error(
+            { error, email: data.user.email },
+            'Failed to send verification email via nodemailer'
+          );
+          throw error;
+        }
         return;
       }
       if (resend) {
-        void resend.emails.send({
-          from,
-          to: data.user.email,
-          subject,
-          html: htmlContent,
-          text: textContent,
-        });
+        try {
+          await resend.emails.send({
+            from,
+            to: data.user.email,
+            subject,
+            html: htmlContent,
+            text: textContent,
+          });
+        } catch (error) {
+          logger.error(
+            { error, email: data.user.email },
+            'Failed to send verification email via resend'
+          );
+          throw error;
+        }
         return;
       }
       if (process.env.NODE_ENV !== 'development') {

@@ -46,21 +46,25 @@ export async function createUser({
 
   const hashedPassword = await hashPassword(password);
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      name,
-      emailVerified: false,
-    },
-  });
+  const user = await prisma.$transaction(async (tx) => {
+    const createdUser = await tx.user.create({
+      data: {
+        email,
+        name,
+        emailVerified: false,
+      },
+    });
 
-  await prisma.account.create({
-    data: {
-      userId: user.id,
-      providerId: CREDENTIAL_PROVIDER_ID,
-      accountId: user.id,
-      password: hashedPassword,
-    },
+    await tx.account.create({
+      data: {
+        userId: createdUser.id,
+        providerId: CREDENTIAL_PROVIDER_ID,
+        accountId: createdUser.id,
+        password: hashedPassword,
+      },
+    });
+
+    return createdUser;
   });
 
   return {
@@ -247,7 +251,15 @@ export async function deleteUserAccountWithAudit(
 
   // 6. Invalidate user auth cache after successful transaction
   // This ensures subsequent JWT validations detect the deleted state
-  await invalidateUserAuthCache(userId);
+  // Best-effort: cache invalidation failure should not block session revocation
+  try {
+    await invalidateUserAuthCache(userId);
+  } catch (error) {
+    logger.warn(
+      { userId, error },
+      'Auth cache invalidation failed after deletion'
+    );
+  }
 
   // 7. Revoke all sessions for the deleted user
   // Retry once on failure; log error but do not throw (data integrity is preserved)

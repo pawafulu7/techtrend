@@ -11,6 +11,7 @@ import {
 import { logger, sanitizeError } from '@/lib/logger';
 import { ZodError } from 'zod';
 import { APIError } from 'openai/error';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import {
   validateUser,
   createUserDeletedResponse,
@@ -72,7 +73,7 @@ export const __resetSearchServiceForTest = (): void => {
   searchService = null;
 };
 
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   // Layer 1: Authentication check (REQUIRED)
   const session = await getSession();
 
@@ -359,3 +360,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withCSRFProtection(postHandler);

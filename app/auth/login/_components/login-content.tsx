@@ -27,7 +27,14 @@ export function LoginContent({ callbackUrl }: LoginContentProps) {
   const handleOAuthSignIn = async (provider: 'google' | 'github') => {
     setIsLoading(true);
     try {
-      await authClient.signIn.social({ provider, callbackURL: callbackUrl });
+      const { error } = await authClient.signIn.social({
+        provider,
+        callbackURL: callbackUrl,
+      });
+      if (error) {
+        console.error('OAuth sign-in failed:', error);
+        return;
+      }
     } catch (error) {
       console.error('OAuth sign-in failed:', error);
     } finally {

@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
@@ -17,6 +18,15 @@ const DEFAULT_RANGE_DAYS = 7;
 const MIN_RANGE_DAYS = 1;
 const MAX_RANGE_DAYS = 90;
 
+const RangeQuerySchema = z.object({
+  range: z
+    .string()
+    .regex(/^\d+d$/)
+    .transform((v) => Number.parseInt(v.slice(0, -1), 10))
+    .refine((d) => d >= MIN_RANGE_DAYS && d <= MAX_RANGE_DAYS)
+    .optional(),
+});
+
 /**
  * Check if an article has a valid (non-empty) summary
  */
@@ -25,35 +35,34 @@ function hasValidSummary(summary: string | null | undefined): boolean {
 }
 
 export async function GET(request: NextRequest) {
-  // Authentication check
-  const session = await getSession();
-  if (!session?.user) {
-    return NextResponse.json(
-      { error: 'Unauthorized. Authentication required.' },
-      { status: 401 }
-    );
-  }
-
-  // Authorization check (admin only)
-  if (session.user.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Forbidden. Admin access required.' },
-      { status: 403 }
-    );
-  }
-
   try {
+    // Authentication check
+    const session = await getSession();
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Authentication required.' },
+        { status: 401 }
+      );
+    }
+
+    // Authorization check (admin only)
+    if (session.user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden. Admin access required.' },
+        { status: 403 }
+      );
+    }
+
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
-    const rangeParam = searchParams.get('range') || `${DEFAULT_RANGE_DAYS}d`;
-    const parsedDays = parseInt(rangeParam.replace('d', ''), 10);
-    // Validate range: must be between MIN and MAX, default to DEFAULT if invalid
+    const rangeParseResult = RangeQuerySchema.safeParse({
+      range: searchParams.get('range') ?? undefined,
+    });
+    // Default to DEFAULT_RANGE_DAYS if param is absent or fails validation
     const rangeDays =
-      Number.isNaN(parsedDays) ||
-      parsedDays < MIN_RANGE_DAYS ||
-      parsedDays > MAX_RANGE_DAYS
-        ? DEFAULT_RANGE_DAYS
-        : parsedDays;
+      rangeParseResult.success && rangeParseResult.data.range !== undefined
+        ? rangeParseResult.data.range
+        : DEFAULT_RANGE_DAYS;
 
     // Calculate date range (JST-based)
     const endDate = new Date();

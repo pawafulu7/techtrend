@@ -12,7 +12,7 @@ const customJestConfig = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   reporters: ['default'],
   transformIgnorePatterns: [
-    'node_modules/(?!(node-fetch|next-auth|@auth)/)',
+    'node_modules/(?!(node-fetch)/)',
   ],
   moduleNameMapper: {
     // 統合テストでは実際のPrismaとRedisを使用するため、モックをマッピングしない
@@ -41,8 +41,6 @@ const nextJestConfig = createJestConfig(customJestConfig);
 const esmAllowList = [
   'geist',
   'node-fetch',
-  'next-auth',
-  '@auth(?:[+/].+)?',
   'p-limit',
   'yocto-queue',
   'jsdom',

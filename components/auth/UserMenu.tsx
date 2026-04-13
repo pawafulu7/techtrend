@@ -35,9 +35,10 @@ export function UserMenu() {
     setIsSigningOut(true);
     try {
       await authClient.signOut();
-      window.location.href = '/';
-    } catch (_error) {
+    } catch (error) {
+      console.error('Sign-out failed:', error);
     } finally {
+      window.location.href = '/';
       setIsSigningOut(false);
     }
   };
