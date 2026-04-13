@@ -10,17 +10,17 @@
  * - Use resolveSession(context) instead of auth.api.getSession() directly
  */
 
-import { auth } from '@/lib/auth/auth';
+import type { Auth } from '@/lib/auth/auth';
 
-type BetterAuthSession = Awaited<ReturnType<typeof auth.api.getSession>>;
+type BetterAuthSession = Awaited<ReturnType<Auth['api']['getSession']>> | null;
 
 /**
  * Session sharing context for middleware chain
  * Used to limit auth.api.getSession() calls to once per request
  */
 export type SessionContext = {
-  session?: BetterAuthSession | null;
-  sessionPromise?: Promise<BetterAuthSession | null>;
+  session?: BetterAuthSession;
+  sessionPromise?: Promise<BetterAuthSession>;
   requestHeaders?: Headers;
 };
 
@@ -36,9 +36,10 @@ export type SessionContext = {
  */
 export async function resolveSession(
   context?: SessionContext
-): Promise<BetterAuthSession | null> {
-  const fetchSession = async (): Promise<BetterAuthSession | null> => {
+): Promise<BetterAuthSession> {
+  const fetchSession = async (): Promise<BetterAuthSession> => {
     if (!context?.requestHeaders) return null;
+    const { auth } = await import('@/lib/auth/auth');
     return auth.api.getSession({ headers: context.requestHeaders });
   };
 
