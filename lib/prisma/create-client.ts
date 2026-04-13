@@ -6,8 +6,13 @@
  */
 import { PrismaClient } from '@/lib/prisma-exports';
 import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 import { getPoolConfig } from '@/lib/database-config';
 import { env } from '@/lib/config/env';
+
+// Ensure pg returns Date objects for timestamp columns (same as lib/prisma.ts)
+pg.types.setTypeParser(1114, (val: string) => new Date(val + '+00:00'));
+pg.types.setTypeParser(1184, (val: string) => new Date(val));
 
 export function createPrismaClient(options?: {
   connectionString?: string;

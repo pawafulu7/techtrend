@@ -1,7 +1,15 @@
 import { PrismaClient } from '@/lib/prisma-exports';
 import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 import { getPoolConfig } from '@/lib/database-config';
 import { env } from '@/lib/config/env';
+
+// Prisma v7 PrismaPg: ensure pg returns Date objects for timestamp columns.
+// PrismaPg's adapter may override pg's default timestamp parsing, causing
+// $queryRaw results to return strings instead of Date objects.
+// OID 1114 = timestamp without time zone, OID 1184 = timestamp with time zone.
+pg.types.setTypeParser(1114, (val: string) => new Date(val + '+00:00'));
+pg.types.setTypeParser(1184, (val: string) => new Date(val));
 
 // Prisma v7 PrismaPg returns BigInt for PostgreSQL bigint columns (e.g. COUNT(*)).
 // JSON.stringify doesn't handle BigInt natively, causing "Do not know how to
