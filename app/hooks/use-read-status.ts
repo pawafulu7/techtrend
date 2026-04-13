@@ -131,6 +131,8 @@ export function useReadStatus(articleIds?: string[]) {
       const mergedIds = articleIds?.length
         ? updateStoredReadIds(storageUserId, (current) => {
             const next = new Set(current);
+            // Remove all IDs in the queried scope, then add back what server returned
+            for (const id of articleIds!) next.delete(id);
             for (const id of fetchedIds) next.add(id);
             return next;
           })
@@ -249,6 +251,7 @@ export function useReadStatus(articleIds?: string[]) {
   type MutationContext = {
     previous: ReadStatusCache | undefined;
     previousStoredIds: Set<string>;
+    capturedStorageUserId: string | undefined;
   };
 
   // 記事を既読にマーク
@@ -269,6 +272,7 @@ export function useReadStatus(articleIds?: string[]) {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<ReadStatusCache>(queryKey);
       const previousStoredIds = loadFromLocalStorage(storageUserId);
+      const capturedStorageUserId = storageUserId;
       queryClient.setQueryData(queryKey, (old: ReadStatusCache | undefined) => {
         if (!old) return old;
         if (old.readArticleIds.has(articleId)) return old;
@@ -282,14 +286,17 @@ export function useReadStatus(articleIds?: string[]) {
           unreadCount: Math.max(0, old.unreadCount - 1),
         };
       });
-      return { previous, previousStoredIds };
+      return { previous, previousStoredIds, capturedStorageUserId };
     },
     onError: (_err, _articleId, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
       }
       if (context?.previousStoredIds) {
-        saveToLocalStorage(context.previousStoredIds, storageUserId);
+        saveToLocalStorage(
+          context.previousStoredIds,
+          context.capturedStorageUserId
+        );
       }
     },
     onSettled: () => {
@@ -319,6 +326,7 @@ export function useReadStatus(articleIds?: string[]) {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<ReadStatusCache>(queryKey);
       const previousStoredIds = loadFromLocalStorage(storageUserId);
+      const capturedStorageUserId = storageUserId;
       queryClient.setQueryData(queryKey, (old: ReadStatusCache | undefined) => {
         if (!old) return old;
         if (!old.readArticleIds.has(articleId)) return old;
@@ -332,14 +340,17 @@ export function useReadStatus(articleIds?: string[]) {
           unreadCount: old.unreadCount + 1,
         };
       });
-      return { previous, previousStoredIds };
+      return { previous, previousStoredIds, capturedStorageUserId };
     },
     onError: (_err, _articleId, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
       }
       if (context?.previousStoredIds) {
-        saveToLocalStorage(context.previousStoredIds, storageUserId);
+        saveToLocalStorage(
+          context.previousStoredIds,
+          context.capturedStorageUserId
+        );
       }
     },
     onSettled: () => {
@@ -383,6 +394,7 @@ export function useReadStatus(articleIds?: string[]) {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<ReadStatusCache>(queryKey);
       const previousStoredIds = loadFromLocalStorage(storageUserId);
+      const capturedStorageUserId = storageUserId;
       queryClient.setQueryData(queryKey, (old: ReadStatusCache | undefined) => {
         if (!old) return old;
         const newReadArticleIds = articleIds?.length
@@ -394,14 +406,17 @@ export function useReadStatus(articleIds?: string[]) {
           : old.readArticleIds;
         return { readArticleIds: newReadArticleIds, unreadCount: 0 };
       });
-      return { previous, previousStoredIds };
+      return { previous, previousStoredIds, capturedStorageUserId };
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
       }
       if (context?.previousStoredIds) {
-        saveToLocalStorage(context.previousStoredIds, storageUserId);
+        saveToLocalStorage(
+          context.previousStoredIds,
+          context.capturedStorageUserId
+        );
       }
       console.error('Error marking all as read:', _err.message);
     },

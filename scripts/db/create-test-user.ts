@@ -22,6 +22,7 @@ async function createTestUser() {
     const hashedPassword = await hashPassword('TestPassword123');
 
     // 各ブラウザ用のテストユーザーを作成（$transaction でアトミックに）
+    const createdEmails: string[] = [];
     await prisma.$transaction(async (tx) => {
       // 既存データを削除（id と email 両方で一致するものを確実に削除）
       await tx.account.deleteMany({
@@ -58,9 +59,12 @@ async function createTestUser() {
           },
         });
 
-        console.log('Test user created:', user.email);
+        createdEmails.push(user.email);
       }
     });
+    for (const email of createdEmails) {
+      console.log('Test user created:', email);
+    }
 
     console.log('All test users created successfully');
   } catch (error) {

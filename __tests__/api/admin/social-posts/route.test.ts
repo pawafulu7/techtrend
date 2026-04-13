@@ -86,7 +86,7 @@ jest.mock('@/lib/social-post', () => {
 
 // Mock CSRF protection (pass-through in tests)
 jest.mock('@/lib/middleware/csrf-protection', () => ({
-  withCSRFProtection: (handler: any) => handler,
+  withCSRFProtection: jest.fn((handler: any) => handler),
 }));
 
 // Mock user validation

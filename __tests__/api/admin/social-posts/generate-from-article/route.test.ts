@@ -35,13 +35,15 @@ jest.mock('@/lib/social-post', () => {
 
 // Mock CSRF protection (pass-through in tests)
 jest.mock('@/lib/middleware/csrf-protection', () => ({
-  withCSRFProtection: (handler: any) => handler,
+  withCSRFProtection: jest.fn((handler: any) => handler),
 }));
 
 // Mock user validation
 jest.mock('@/lib/middleware/with-user-validation', () => ({
   validateUser: jest.fn().mockImplementation(async (session) => session?.user ? { id: session.user.id, deletedAt: null } : null),
-  createUserDeletedResponse: jest.fn(),
+  createUserDeletedResponse: jest.fn().mockReturnValue(
+    new Response(JSON.stringify({ error: 'Session invalid', code: 'USER_DELETED', message: 'Your session is no longer valid.', requiresLogout: true }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+  ),
 }));
 
 // Mock logger
