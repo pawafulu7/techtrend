@@ -1,4 +1,4 @@
-import { createPrismaClient } from '@/lib/prisma/create-client';
+import pg from 'pg';
 import { hashPassword } from '@better-auth/utils/password';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -31,12 +31,12 @@ const maskConnectionString = (url: string): string => {
 
 /**
  * E2Eテスト用のユーザーをセットアップする
- * PrismaClientを使用してデータベースに直接接続
+ * pg.Pool を使用してデータベースに直接接続
  */
 export async function setupTestUser() {
   // テスト用データベースURLを明示的に指定
   const TEST_DATABASE_URL = resolveTestDbUrl();
-  
+
   // セキュアなデバッグ出力（パスワードをマスク）
   if (process.env.DEBUG_E2E) {
     console.log('🔍 Database connection info (DEBUG mode):');
@@ -44,48 +44,33 @@ export async function setupTestUser() {
     console.log('  Using connection string:', maskConnectionString(TEST_DATABASE_URL));
     console.log('  DATABASE_URL from env:', process.env.DATABASE_URL ? maskConnectionString(process.env.DATABASE_URL) : 'Not set');
   }
-  
-  const prisma = createPrismaClient({ connectionString: TEST_DATABASE_URL });
+
+  const pool = new pg.Pool({ connectionString: TEST_DATABASE_URL });
 
   try {
     // Hash the password (Better Auth uses scrypt)
     const hashedPassword = await hashPassword(TEST_USER.password);
 
     // Upsert test user (Better Auth schema: password in Account table)
-    const user = await prisma.user.upsert({
-      where: {
-        email: TEST_USER.email,
-      },
-      update: {
-        name: TEST_USER.name,
-        emailVerified: true,
-      },
-      create: {
-        id: TEST_USER.id,
-        email: TEST_USER.email,
-        name: TEST_USER.name,
-        emailVerified: true,
-      },
-    });
+    const { rows } = await pool.query<{ id: string }>(
+      `INSERT INTO "User" (id, email, name, "emailVerified")
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (email) DO UPDATE SET
+         name = EXCLUDED.name,
+         "emailVerified" = EXCLUDED."emailVerified"
+       RETURNING id`,
+      [TEST_USER.id, TEST_USER.email, TEST_USER.name, true]
+    );
+    const userId = rows[0].id;
 
     // Upsert credential account with password
-    await prisma.account.upsert({
-      where: {
-        providerId_accountId: {
-          providerId: 'credential',
-          accountId: user.id,
-        },
-      },
-      update: {
-        password: hashedPassword,
-      },
-      create: {
-        userId: user.id,
-        providerId: 'credential',
-        accountId: user.id,
-        password: hashedPassword,
-      },
-    });
+    await pool.query(
+      `INSERT INTO "Account" ("userId", "providerId", "accountId", password)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT ("providerId", "accountId") DO UPDATE SET
+         password = EXCLUDED.password`,
+      [userId, 'credential', userId, hashedPassword]
+    );
 
     console.log('Test user created/updated successfully');
     return true;
@@ -93,7 +78,7 @@ export async function setupTestUser() {
     console.error('Failed to create/update test user:', error);
     return false;
   } finally {
-    await prisma.$disconnect();
+    await pool.end();
   }
 }
 
@@ -103,16 +88,15 @@ export async function setupTestUser() {
 export async function cleanupTestUser() {
   // テスト用データベースURLを明示的に指定
   const TEST_DATABASE_URL = resolveTestDbUrl();
-  
-  const prisma = createPrismaClient({ connectionString: TEST_DATABASE_URL });
+
+  const pool = new pg.Pool({ connectionString: TEST_DATABASE_URL });
 
   try {
     // Delete test user if exists
-    await prisma.user.deleteMany({
-      where: {
-        email: TEST_USER.email,
-      },
-    });
+    await pool.query(
+      `DELETE FROM "User" WHERE email = $1`,
+      [TEST_USER.email]
+    );
 
     console.log('Test user cleaned up successfully');
     return true;
@@ -120,7 +104,7 @@ export async function cleanupTestUser() {
     console.error('Failed to cleanup test user:', error);
     return false;
   } finally {
-    await prisma.$disconnect();
+    await pool.end();
   }
 }
 
