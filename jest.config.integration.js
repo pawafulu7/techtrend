@@ -36,6 +36,7 @@ const customJestConfig = {
 // Export async config to override Next.js default transformIgnorePatterns
 const nextJestConfig = createJestConfig(customJestConfig);
 const esmAllowList = [
+  '@prisma',
   'geist',
   'node-fetch',
   'p-limit',
