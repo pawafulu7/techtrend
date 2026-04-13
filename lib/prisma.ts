@@ -3,6 +3,23 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { getPoolConfig } from '@/lib/database-config';
 import { env } from '@/lib/config/env';
 
+// Prisma v7 PrismaPg returns BigInt for PostgreSQL bigint columns (e.g. COUNT(*)).
+// JSON.stringify doesn't handle BigInt natively, causing "Do not know how to
+// serialize a BigInt" errors in Redis cache and API responses.
+// Safe for this project: all bigint values are counts that fit in Number.
+if (
+  typeof (BigInt.prototype as unknown as { toJSON?: unknown }).toJSON ===
+  'undefined'
+) {
+  Object.defineProperty(BigInt.prototype, 'toJSON', {
+    value: function (this: bigint) {
+      return Number(this);
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
 declare global {
   var __prisma: PrismaClient | undefined;
 }
