@@ -82,7 +82,7 @@ interface RawArticleRow {
   url: string;
   summary: string | null;
   thumbnail: string | null;
-  publishedAt: Date;
+  publishedAt: string;
   qualityScore: number;
   sourceId: string | null;
 }
@@ -113,10 +113,7 @@ function toDigestArticle(
     url: row.url,
     summary: row.summary,
     thumbnailUrl: row.thumbnail,
-    publishedAt:
-      row.publishedAt instanceof Date
-        ? row.publishedAt
-        : new Date(row.publishedAt),
+    publishedAt: new Date(row.publishedAt),
     qualityScore: Number(row.qualityScore),
     sourceId: row.sourceId,
     recommendationReason,
@@ -515,10 +512,7 @@ export class DigestService {
         ok: true,
       };
     } catch (error) {
-      logger.error(
-        { err: error, userId },
-        'Failed to get missed articles'
-      );
+      logger.error({ err: error, userId }, 'Failed to get missed articles');
       return { articles: [], ok: false };
     }
   }
