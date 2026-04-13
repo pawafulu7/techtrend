@@ -10,7 +10,7 @@
  * - 記事詳細画面（ArticleQADialog 下）への配置
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import Link from 'next/link';
 import {
@@ -44,6 +44,11 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({ articleId, className }: CommentSectionProps) {
+  // Prevent hydration mismatch: useSession returns different initial values
+  // on server (isPending=false) vs client (isPending=true).
+  // Always show skeleton until mounted to ensure SSR/client HTML matches.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const { data: session, isPending } = authClient.useSession();
   const queryClient = useQueryClient();
 
@@ -271,8 +276,8 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
     }
   }, [hasNextPage, fetchNextPage]);
 
-  // セッションローディング中
-  if (isPending) {
+  // Show skeleton until mounted + session loaded (prevents hydration mismatch)
+  if (!mounted || isPending) {
     return <CommentSectionSkeleton />;
   }
 
