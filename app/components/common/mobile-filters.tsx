@@ -21,6 +21,7 @@ interface MobileFiltersProps {
   groupedSources?: GroupedSources[];
   tags: { id: string; name: string; count: number }[];
   initialSourceIds?: string[];
+  initialIsAuthenticated: boolean;
 }
 
 export function MobileFilters({
@@ -28,6 +29,7 @@ export function MobileFilters({
   groupedSources,
   tags,
   initialSourceIds,
+  initialIsAuthenticated,
 }: MobileFiltersProps) {
   const [open, setOpen] = useState(false);
 
@@ -59,6 +61,7 @@ export function MobileFilters({
             groupedSources={groupedSources}
             tags={tags}
             initialSourceIds={initialSourceIds}
+            initialIsAuthenticated={initialIsAuthenticated}
           />
           {/* モバイル用TagFilter */}
           {tags.length > 0 && (

@@ -54,6 +54,7 @@ function getCategoryIcon(categoryOrGroupId: string): React.ReactNode {
 
 interface SourceFilterPanelProps {
   sources: Array<{ id: string; name: string }>;
+  initialIsAuthenticated: boolean;
   selectedSources: string[];
   expandedCategories: Set<string>;
   setExpandedCategories: React.Dispatch<React.SetStateAction<Set<string>>>;
@@ -78,6 +79,7 @@ interface SourceFilterPanelProps {
 
 export function SourceFilterPanel({
   sources,
+  initialIsAuthenticated,
   selectedSources,
   expandedCategories,
   setExpandedCategories,
@@ -188,6 +190,7 @@ export function SourceFilterPanel({
             selectedSources={selectedSources}
             onApplyPreset={(sourceIds) => applySourceFilter(sourceIds)}
             allSources={sources}
+            initialIsAuthenticated={initialIsAuthenticated}
           />
         </div>
 

@@ -79,17 +79,18 @@ async function deletePresetApi(id: string): Promise<void> {
   }
 }
 
-export function useSourcePresets() {
+export function useSourcePresets(initialIsAuthenticated = false) {
   const { data: session, isPending } = authClient.useSession();
   const queryClient = useQueryClient();
   const userId = session?.user?.id;
+  const resolvedIsAuthenticated = isPending ? initialIsAuthenticated : !!userId;
 
   const queryKey = ['source-presets', userId] as const;
 
   const query = useQuery({
     queryKey,
     queryFn: fetchPresets,
-    enabled: !!userId,
+    enabled: resolvedIsAuthenticated,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -117,7 +118,7 @@ export function useSourcePresets() {
   return {
     presets: query.data?.presets ?? [],
     isLoading: query.isLoading,
-    isAuthenticated: !isPending && !!userId,
+    isAuthenticated: resolvedIsAuthenticated,
     isSessionPending: isPending,
     createPreset: createMutation.mutateAsync,
     updatePreset: updateMutation.mutateAsync,

@@ -155,6 +155,7 @@ export default async function Home({ searchParams }: PageProps) {
               groupedSources={filteredGroupedSources}
               tags={tags}
               initialSourceIds={initialSourceIds}
+              initialIsAuthenticated={!!session?.user}
             />
             <div className="hidden lg:block">
               <SearchBox />
@@ -189,6 +190,7 @@ export default async function Home({ searchParams }: PageProps) {
                 groupedSources={filteredGroupedSources}
                 tags={tags}
                 initialSourceIds={initialSourceIds}
+                initialIsAuthenticated={!!session?.user}
               />
             </FilterSidebarPanel>
             <FilterSidebarOverlay />
