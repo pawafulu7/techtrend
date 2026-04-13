@@ -32,25 +32,21 @@ jest.mock('@prisma/client', () => {
   };
 });
 
-// next-authのEmailProviderをモック
-jest.mock('next-auth/providers/email', () => {
-  return jest.fn(() => ({
-    id: 'email',
-    type: 'email',
-    name: 'Email',
-    server: {
-      host: 'smtp.resend.com',
-      port: 465,
-      auth: {
-        user: 'resend',
-        pass: 'dummy',
-      },
+// Better Auth のモック（auth.ts のトップレベル side effect を回避）
+jest.mock('@/lib/auth/auth', () => ({
+  auth: {
+    api: {
+      getSession: jest.fn().mockResolvedValue(null),
+      revokeSessions: jest.fn().mockResolvedValue(undefined),
     },
-    from: 'noreply@techtrend.example.com',
-    sendVerificationRequest: jest.fn(),
-    maxAge: 24 * 60 * 60,
-  }));
-});
+    handler: jest.fn(),
+  },
+}));
+
+jest.mock('@/lib/auth/get-session', () => ({
+  getSession: jest.fn().mockResolvedValue(null),
+  getRequiredSession: jest.fn().mockRejectedValue(new Error('Unauthorized')),
+}));
 
 // テスト環境のDI初期化
 beforeAll(() => {
