@@ -21,6 +21,13 @@ jest.mock('@/lib/auth/auth', () => ({
   },
 }));
 
+// Helper to create a context with requestHeaders (required by resolveSession)
+const mockHeaders = new Headers({ 'x-test': 'test' });
+const makeContext = (overrides?: Partial<SessionContext>): SessionContext => ({
+  requestHeaders: mockHeaders,
+  ...overrides,
+});
+
 describe('session-context', () => {
   const mockSession: BetterAuthSession = {
     user: {
@@ -42,17 +49,16 @@ describe('session-context', () => {
 
   describe('resolveSession', () => {
     it('should call auth() when context is undefined', async () => {
-      mockGetSession.mockResolvedValue(mockSession);
-
+      // When context is undefined, fetchSession returns null (no requestHeaders)
       const result = await resolveSession(undefined);
 
-      expect(mockGetSession).toHaveBeenCalledTimes(1);
-      expect(result).toBe(mockSession);
+      expect(mockGetSession).not.toHaveBeenCalled();
+      expect(result).toBeNull();
     });
 
-    it('should call auth() when context is empty object', async () => {
+    it('should call auth() when context has requestHeaders', async () => {
       mockGetSession.mockResolvedValue(mockSession);
-      const context: SessionContext = {};
+      const context: SessionContext = makeContext();
 
       const result = await resolveSession(context);
 
@@ -61,9 +67,19 @@ describe('session-context', () => {
       expect(context.session).toBe(mockSession);
     });
 
+    it('should return null when context has no requestHeaders', async () => {
+      const context: SessionContext = {};
+
+      const result = await resolveSession(context);
+
+      expect(mockGetSession).not.toHaveBeenCalled();
+      expect(result).toBeNull();
+    });
+
     it('should reuse session from context when already resolved', async () => {
       const context: SessionContext = {
         session: mockSession,
+        requestHeaders: mockHeaders,
       };
 
       const result = await resolveSession(context);
@@ -75,6 +91,7 @@ describe('session-context', () => {
     it('should reuse null session from context', async () => {
       const context: SessionContext = {
         session: null,
+        requestHeaders: mockHeaders,
       };
 
       const result = await resolveSession(context);
@@ -85,7 +102,7 @@ describe('session-context', () => {
 
     it('should share sessionPromise to prevent duplicate auth() calls', async () => {
       mockGetSession.mockResolvedValue(mockSession);
-      const context: SessionContext = {};
+      const context: SessionContext = makeContext();
 
       // Call resolveSession multiple times concurrently
       const [result1, result2, result3] = await Promise.all([
@@ -103,7 +120,7 @@ describe('session-context', () => {
 
     it('should cache session after promise resolves', async () => {
       mockGetSession.mockResolvedValue(mockSession);
-      const context: SessionContext = {};
+      const context: SessionContext = makeContext();
 
       // First call - creates promise
       await resolveSession(context);
@@ -120,7 +137,7 @@ describe('session-context', () => {
 
     it('should handle auth() returning null', async () => {
       mockGetSession.mockResolvedValue(null);
-      const context: SessionContext = {};
+      const context: SessionContext = makeContext();
 
       const result = await resolveSession(context);
 
@@ -131,7 +148,7 @@ describe('session-context', () => {
     it('should propagate auth() errors', async () => {
       const authError = new Error('Auth failed');
       mockGetSession.mockRejectedValue(authError);
-      const context: SessionContext = {};
+      const context: SessionContext = makeContext();
 
       await expect(resolveSession(context)).rejects.toThrow('Auth failed');
     });
@@ -196,8 +213,15 @@ describe('session-context', () => {
     it('should create isolated session context for each call', async () => {
       mockGetSession.mockResolvedValue(mockSession);
 
-      const context1 = extendWithSessionContext({ requestId: '1' });
-      const context2 = extendWithSessionContext({ requestId: '2' });
+      // Pass requestHeaders so resolveSession can fetch the session
+      const context1 = extendWithSessionContext(
+        { requestId: '1' },
+        mockHeaders
+      );
+      const context2 = extendWithSessionContext(
+        { requestId: '2' },
+        mockHeaders
+      );
 
       // Resolve session for context1 only
       await resolveSession(context1);
@@ -245,8 +269,11 @@ describe('session-context', () => {
     it('should share session across middleware chain', async () => {
       mockGetSession.mockResolvedValue(mockSession);
 
-      // Simulate middleware chain
-      const outerContext = extendWithSessionContext({ params: { id: '123' } });
+      // Simulate middleware chain (requestHeaders required for resolveSession)
+      const outerContext = extendWithSessionContext(
+        { params: { id: '123' } },
+        mockHeaders
+      );
 
       // First middleware calls resolveSession
       const session1 = await resolveSession(outerContext);
@@ -270,8 +297,8 @@ describe('session-context', () => {
     it('should handle CSRF branch calling auth() then downstream reusing', async () => {
       mockGetSession.mockResolvedValue(mockSession);
 
-      // Outer middleware creates context
-      const context = extendWithSessionContext({});
+      // Outer middleware creates context (requestHeaders required for resolveSession)
+      const context = extendWithSessionContext({}, mockHeaders);
 
       // CSRF validation calls resolveSession (Bearer token case)
       const csrfSession = await resolveSession(context);
