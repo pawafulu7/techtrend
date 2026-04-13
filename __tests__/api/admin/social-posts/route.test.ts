@@ -84,6 +84,17 @@ jest.mock('@/lib/social-post', () => {
   };
 });
 
+// Mock CSRF protection (pass-through in tests)
+jest.mock('@/lib/middleware/csrf-protection', () => ({
+  withCSRFProtection: (handler: any) => handler,
+}));
+
+// Mock user validation
+jest.mock('@/lib/middleware/with-user-validation', () => ({
+  validateUser: jest.fn().mockResolvedValue({ id: 'admin-1', deletedAt: null }),
+  createUserDeletedResponse: jest.fn(),
+}));
+
 // Mock logger
 const mockLogger = {
   info: jest.fn(),
