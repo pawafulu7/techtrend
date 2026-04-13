@@ -15,4 +15,8 @@ export function getPrismaClient(): PrismaClient {
 
 export async function closePrismaConnection(): Promise<void> {
   await prisma.$disconnect();
+  // Reset global singleton so a fresh client is created on next access
+  // (relevant for scripts that disconnect mid-process)
+  const g = globalThis as unknown as { __prisma: unknown };
+  g.__prisma = undefined;
 }

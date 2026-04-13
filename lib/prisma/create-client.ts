@@ -6,21 +6,21 @@
  */
 import { PrismaClient } from '@/lib/prisma-exports';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { getPoolConfig } from '@/lib/database-config';
 
 export function createPrismaClient(options?: {
   connectionString?: string;
   log?: Array<'query' | 'info' | 'warn' | 'error'>;
 }): PrismaClient {
-  const connectionString =
-    options?.connectionString ?? process.env.DATABASE_URL;
+  const poolConfig = getPoolConfig(options?.connectionString);
 
-  if (!connectionString) {
+  if (!poolConfig) {
     throw new Error(
       'DATABASE_URL is not set. Provide connectionString or set the env var.'
     );
   }
 
-  const adapter = new PrismaPg({ connectionString });
+  const adapter = new PrismaPg(poolConfig);
 
   return new PrismaClient({
     adapter,
