@@ -3,7 +3,8 @@ import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import type { Article, PrismaClient } from '@/lib/prisma-exports';
 
 // Use real Prisma client (bypass mock)
-const { createPrismaClient: realCreatePrismaClient } = jest.requireActual('@/lib/prisma/create-client');
+// Relative path bypasses moduleNameMapper which would redirect to __mocks__
+const { createPrismaClient: realCreatePrismaClient } = jest.requireActual('../../../../lib/prisma/create-client');
 const prisma: PrismaClient = realCreatePrismaClient({
   connectionString: process.env.DATABASE_URL!,
 });

@@ -18,7 +18,8 @@ jest.mock('@/lib/prisma', () => jest.requireActual('../../../lib/prisma'));
 import { GET } from '@/app/api/workers/embedding/route';
 
 // Use real Prisma client (bypass mock) with production DB protection
-const { createPrismaClient: realCreatePrismaClient } = jest.requireActual('@/lib/prisma/create-client');
+// Relative path bypasses moduleNameMapper which would redirect to __mocks__
+const { createPrismaClient: realCreatePrismaClient } = jest.requireActual('../../../lib/prisma/create-client');
 const DB_URL = process.env.DATABASE_URL;
 const isSafeTestDb = !!DB_URL && /(localhost|127\.0\.0\.1|test|_test)/i.test(DB_URL);
 const describeIf = isSafeTestDb ? describe : describe.skip;
