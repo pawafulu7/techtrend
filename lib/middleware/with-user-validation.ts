@@ -68,7 +68,10 @@ export interface WithUserValidationContext {
 export function withUserValidation(handler: RouteHandler): RouteHandler {
   return async (request: NextRequest, context?: SessionContext) => {
     // Get session - reuse from context if available (auth() call optimization)
-    const session = await resolveSession(context);
+    const ctx = context?.requestHeaders
+      ? context
+      : { ...context, requestHeaders: request.headers };
+    const session = await resolveSession(ctx);
 
     // Check if user is authenticated
     if (!session?.user?.id) {

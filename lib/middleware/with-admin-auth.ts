@@ -25,7 +25,10 @@ type Handler = (
  */
 export function withAdminAuth(handler: Handler): Handler {
   return async (request: NextRequest, context?: any) => {
-    const session = await resolveSession(context);
+    const ctx = context?.requestHeaders
+      ? context
+      : { ...context, requestHeaders: request.headers };
+    const session = await resolveSession(ctx);
 
     if (!session?.user?.id) {
       return NextResponse.json(

@@ -10,7 +10,6 @@
  * - Use resolveSession(context) instead of auth.api.getSession() directly
  */
 
-import { headers } from 'next/headers';
 import { auth } from '@/lib/auth/auth';
 
 type BetterAuthSession = Awaited<ReturnType<typeof auth.api.getSession>>;
@@ -22,6 +21,7 @@ type BetterAuthSession = Awaited<ReturnType<typeof auth.api.getSession>>;
 export type SessionContext = {
   session?: BetterAuthSession | null;
   sessionPromise?: Promise<BetterAuthSession | null>;
+  requestHeaders?: Headers;
 };
 
 /**
@@ -31,15 +31,15 @@ export type SessionContext = {
  * - If not, create sessionPromise and share it
  * - Once resolved, cache session in context
  *
- * @param context - Optional session context from upstream middleware
+ * @param context - Optional session context from upstream middleware (must include requestHeaders)
  * @returns Session or null
  */
 export async function resolveSession(
   context?: SessionContext
 ): Promise<BetterAuthSession | null> {
   const fetchSession = async (): Promise<BetterAuthSession | null> => {
-    const hdrs = await headers();
-    return auth.api.getSession({ headers: hdrs });
+    if (!context?.requestHeaders) return null;
+    return auth.api.getSession({ headers: context.requestHeaders });
   };
 
   // Early return: no context provided
@@ -78,8 +78,9 @@ export function createSessionContext(): SessionContext {
  * @returns Extended context with SessionContext fields
  */
 export function extendWithSessionContext<T extends object>(
-  context?: T
+  context?: T,
+  requestHeaders?: Headers
 ): T & SessionContext {
-  // Spread SessionContext first, then context - preserves existing session data
-  return { ...createSessionContext(), ...context } as T & SessionContext;
+  return { ...createSessionContext(), requestHeaders, ...context } as T &
+    SessionContext;
 }

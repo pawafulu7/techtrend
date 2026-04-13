@@ -298,7 +298,8 @@ export function withCSRFProtection<T, C = undefined>(
     // Extend context with SessionContext for auth() call optimization
     // Cast to object for type safety - context is either undefined or an object with params
     const extendedContext = extendWithSessionContext(
-      context as object | undefined
+      context as object | undefined,
+      request.headers
     );
 
     const csrfResponse = await csrfProtection(request, extendedContext);

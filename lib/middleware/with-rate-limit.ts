@@ -69,7 +69,10 @@ export function withRateLimit(
       const limiter = createRateLimiterFromConfig(configKey);
 
       // Resolve session from context or fetch via auth() (SessionContext optimization)
-      const session = await resolveSession(context);
+      const ctx = context?.requestHeaders
+        ? context
+        : { ...context, requestHeaders: request.headers };
+      const session = await resolveSession(ctx);
 
       // Resolve identity key
       const limitKey = options?.keyResolver
