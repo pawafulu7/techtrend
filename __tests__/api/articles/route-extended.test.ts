@@ -10,7 +10,7 @@ declare global {
 
 // モックの設定
 jest.mock('@/lib/database');
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/cache/cache-invalidator');
 
 // LayeredCacheを直接モック
@@ -61,12 +61,12 @@ jest.mock('@/lib/cache', () => {
 
 import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { RedisCache } from '@/lib/cache';
 import { NextRequest } from 'next/server';
 
 const prismaMock = prisma as any;
-const authMock = auth as jest.MockedFunction<typeof auth>;
+const authMock = getSession as jest.MockedFunction<typeof getSession>;
 const RedisCacheMock = RedisCache as jest.MockedClass<typeof RedisCache>;
 
 // モック関数のヘルパー
@@ -75,9 +75,9 @@ const resetMockSession = () => authMock.mockResolvedValue({
   user: {
     id: 'test-user-id',
     email: 'test@example.com',
-    name: 'Test User'
+    name: 'Test User',
   },
-  expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+  session: { id: 's1', userId: 'test-user-id', token: 'tok', expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
 });
 
 describe('/api/articles - Extended Tests', () => {

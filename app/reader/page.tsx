@@ -10,6 +10,7 @@ import { tagCache } from '@/lib/cache/tag-cache';
 import { getSourceCache } from '@/lib/cache/source-cache';
 import { groupSourcesStatic } from '@/lib/utils/source/source-grouping-static';
 import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
+import { getSession } from '@/lib/auth/get-session';
 import { ReaderClient } from './reader-client';
 
 export const dynamic = 'force-dynamic';
@@ -38,9 +39,10 @@ async function getPopularTags() {
 }
 
 export default async function ReaderPage() {
-  const [sourceData, tags] = await Promise.all([
+  const [sourceData, tags, session] = await Promise.all([
     getSources(),
     getPopularTags(),
+    getSession(),
   ]);
 
   const { sources, groupedSources } = sourceData;
@@ -61,6 +63,7 @@ export default async function ReaderPage() {
               sources={filteredSources}
               groupedSources={filteredGroupedSources}
               tags={tags}
+              initialIsAuthenticated={!!session?.user}
             />
           </FilterSidebarPanel>
           <FilterSidebarOverlay />

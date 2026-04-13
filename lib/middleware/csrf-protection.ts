@@ -86,15 +86,11 @@ function getEffectiveRequestOrigin(request: NextRequest): string {
 
 /**
  * Paths exempt from CSRF protection
- * These are NextAuth callbacks and public health endpoints
+ * Better Auth handles its own CSRF protection for /api/auth/* routes.
+ * All /api/auth/* paths are exempt to avoid double-protection conflicts.
  */
 export const CSRF_EXEMPT_PATHS = [
-  '/api/auth/callback', // OAuth callbacks only
-  '/api/auth/signin', // NextAuth built-in signin
-  '/api/auth/signout', // NextAuth built-in signout
-  '/api/auth/session', // Session retrieval (GET)
-  '/api/auth/csrf', // CSRF token endpoint
-  '/api/auth/providers', // Providers list (GET)
+  '/api/auth', // All Better Auth routes (sign-in, sign-up, sign-out, callback, session, verify-email, reset-password, forget-password, error, etc.)
   '/api/health', // Health check endpoint
 ] as const;
 
@@ -302,7 +298,8 @@ export function withCSRFProtection<T, C = undefined>(
     // Extend context with SessionContext for auth() call optimization
     // Cast to object for type safety - context is either undefined or an object with params
     const extendedContext = extendWithSessionContext(
-      context as object | undefined
+      context as object | undefined,
+      request.headers
     );
 
     const csrfResponse = await csrfProtection(request, extendedContext);

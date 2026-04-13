@@ -1,4 +1,3 @@
-import type { Session } from 'next-auth';
 import {
   resolveSession,
   createSessionContext,
@@ -6,21 +5,42 @@ import {
   type SessionContext,
 } from '@/lib/middleware/session-context';
 
+// Better Auth session type for tests
+type BetterAuthSession = {
+  user: { id: string; name?: string | null; email?: string | null };
+  session: { id: string; userId: string; token: string; expiresAt: Date };
+};
+
 // Mock auth module
-jest.mock('@/lib/auth/auth');
+const mockGetSession = jest.fn();
+jest.mock('@/lib/auth/auth', () => ({
+  auth: {
+    api: {
+      getSession: (...args: unknown[]) => mockGetSession(...args),
+    },
+  },
+}));
 
-import { auth } from '@/lib/auth/auth';
-
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
+// Helper to create a context with requestHeaders (required by resolveSession)
+const mockHeaders = new Headers({ 'x-test': 'test' });
+const makeContext = (overrides?: Partial<SessionContext>): SessionContext => ({
+  requestHeaders: mockHeaders,
+  ...overrides,
+});
 
 describe('session-context', () => {
-  const mockSession: Session = {
+  const mockSession: BetterAuthSession = {
     user: {
       id: 'user-123',
       name: 'Test User',
       email: 'test@example.com',
     },
-    expires: new Date(Date.now() + 86400000).toISOString(),
+    session: {
+      id: 's1',
+      userId: 'user-123',
+      token: 'tok',
+      expiresAt: new Date(Date.now() + 86400000),
+    },
   };
 
   beforeEach(() => {
@@ -29,50 +49,60 @@ describe('session-context', () => {
 
   describe('resolveSession', () => {
     it('should call auth() when context is undefined', async () => {
-      mockAuth.mockResolvedValue(mockSession);
-
+      // When context is undefined, fetchSession returns null (no requestHeaders)
       const result = await resolveSession(undefined);
 
-      expect(mockAuth).toHaveBeenCalledTimes(1);
-      expect(result).toBe(mockSession);
+      expect(mockGetSession).not.toHaveBeenCalled();
+      expect(result).toBeNull();
     });
 
-    it('should call auth() when context is empty object', async () => {
-      mockAuth.mockResolvedValue(mockSession);
+    it('should call auth() when context has requestHeaders', async () => {
+      mockGetSession.mockResolvedValue(mockSession);
+      const context: SessionContext = makeContext();
+
+      const result = await resolveSession(context);
+
+      expect(mockGetSession).toHaveBeenCalledTimes(1);
+      expect(result).toBe(mockSession);
+      expect(context.session).toBe(mockSession);
+    });
+
+    it('should return null when context has no requestHeaders', async () => {
       const context: SessionContext = {};
 
       const result = await resolveSession(context);
 
-      expect(mockAuth).toHaveBeenCalledTimes(1);
-      expect(result).toBe(mockSession);
-      expect(context.session).toBe(mockSession);
+      expect(mockGetSession).not.toHaveBeenCalled();
+      expect(result).toBeNull();
     });
 
     it('should reuse session from context when already resolved', async () => {
       const context: SessionContext = {
         session: mockSession,
+        requestHeaders: mockHeaders,
       };
 
       const result = await resolveSession(context);
 
-      expect(mockAuth).not.toHaveBeenCalled();
+      expect(mockGetSession).not.toHaveBeenCalled();
       expect(result).toBe(mockSession);
     });
 
     it('should reuse null session from context', async () => {
       const context: SessionContext = {
         session: null,
+        requestHeaders: mockHeaders,
       };
 
       const result = await resolveSession(context);
 
-      expect(mockAuth).not.toHaveBeenCalled();
+      expect(mockGetSession).not.toHaveBeenCalled();
       expect(result).toBeNull();
     });
 
     it('should share sessionPromise to prevent duplicate auth() calls', async () => {
-      mockAuth.mockResolvedValue(mockSession);
-      const context: SessionContext = {};
+      mockGetSession.mockResolvedValue(mockSession);
+      const context: SessionContext = makeContext();
 
       // Call resolveSession multiple times concurrently
       const [result1, result2, result3] = await Promise.all([
@@ -82,15 +112,15 @@ describe('session-context', () => {
       ]);
 
       // auth() should only be called once
-      expect(mockAuth).toHaveBeenCalledTimes(1);
+      expect(mockGetSession).toHaveBeenCalledTimes(1);
       expect(result1).toBe(mockSession);
       expect(result2).toBe(mockSession);
       expect(result3).toBe(mockSession);
     });
 
     it('should cache session after promise resolves', async () => {
-      mockAuth.mockResolvedValue(mockSession);
-      const context: SessionContext = {};
+      mockGetSession.mockResolvedValue(mockSession);
+      const context: SessionContext = makeContext();
 
       // First call - creates promise
       await resolveSession(context);
@@ -98,16 +128,16 @@ describe('session-context', () => {
       expect(context.sessionPromise).toBeDefined();
 
       // Second call - should use cached session
-      mockAuth.mockClear();
+      mockGetSession.mockClear();
       const result2 = await resolveSession(context);
 
-      expect(mockAuth).not.toHaveBeenCalled();
+      expect(mockGetSession).not.toHaveBeenCalled();
       expect(result2).toBe(mockSession);
     });
 
     it('should handle auth() returning null', async () => {
-      mockAuth.mockResolvedValue(null);
-      const context: SessionContext = {};
+      mockGetSession.mockResolvedValue(null);
+      const context: SessionContext = makeContext();
 
       const result = await resolveSession(context);
 
@@ -117,8 +147,8 @@ describe('session-context', () => {
 
     it('should propagate auth() errors', async () => {
       const authError = new Error('Auth failed');
-      mockAuth.mockRejectedValue(authError);
-      const context: SessionContext = {};
+      mockGetSession.mockRejectedValue(authError);
+      const context: SessionContext = makeContext();
 
       await expect(resolveSession(context)).rejects.toThrow('Auth failed');
     });
@@ -181,10 +211,17 @@ describe('session-context', () => {
     });
 
     it('should create isolated session context for each call', async () => {
-      mockAuth.mockResolvedValue(mockSession);
+      mockGetSession.mockResolvedValue(mockSession);
 
-      const context1 = extendWithSessionContext({ requestId: '1' });
-      const context2 = extendWithSessionContext({ requestId: '2' });
+      // Pass requestHeaders so resolveSession can fetch the session
+      const context1 = extendWithSessionContext(
+        { requestId: '1' },
+        mockHeaders
+      );
+      const context2 = extendWithSessionContext(
+        { requestId: '2' },
+        mockHeaders
+      );
 
       // Resolve session for context1 only
       await resolveSession(context1);
@@ -230,10 +267,13 @@ describe('session-context', () => {
 
   describe('integration: middleware chain simulation', () => {
     it('should share session across middleware chain', async () => {
-      mockAuth.mockResolvedValue(mockSession);
+      mockGetSession.mockResolvedValue(mockSession);
 
-      // Simulate middleware chain
-      const outerContext = extendWithSessionContext({ params: { id: '123' } });
+      // Simulate middleware chain (requestHeaders required for resolveSession)
+      const outerContext = extendWithSessionContext(
+        { params: { id: '123' } },
+        mockHeaders
+      );
 
       // First middleware calls resolveSession
       const session1 = await resolveSession(outerContext);
@@ -245,7 +285,7 @@ describe('session-context', () => {
       const session3 = await resolveSession(outerContext);
 
       // auth() should only be called once
-      expect(mockAuth).toHaveBeenCalledTimes(1);
+      expect(mockGetSession).toHaveBeenCalledTimes(1);
       expect(session1).toBe(mockSession);
       expect(session2).toBe(mockSession);
       expect(session3).toBe(mockSession);
@@ -255,17 +295,17 @@ describe('session-context', () => {
     });
 
     it('should handle CSRF branch calling auth() then downstream reusing', async () => {
-      mockAuth.mockResolvedValue(mockSession);
+      mockGetSession.mockResolvedValue(mockSession);
 
-      // Outer middleware creates context
-      const context = extendWithSessionContext({});
+      // Outer middleware creates context (requestHeaders required for resolveSession)
+      const context = extendWithSessionContext({}, mockHeaders);
 
       // CSRF validation calls resolveSession (Bearer token case)
       const csrfSession = await resolveSession(context);
       expect(csrfSession).toBe(mockSession);
 
       // Clear mock to verify no additional calls
-      mockAuth.mockClear();
+      mockGetSession.mockClear();
 
       // Downstream middleware (withUserValidation) reuses session
       const userValidationSession = await resolveSession(context);
@@ -276,7 +316,7 @@ describe('session-context', () => {
       expect(rateLimitSession).toBe(mockSession);
 
       // No additional auth() calls after CSRF validation
-      expect(mockAuth).not.toHaveBeenCalled();
+      expect(mockGetSession).not.toHaveBeenCalled();
     });
   });
 });

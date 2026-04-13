@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
 import { getSocialPostService } from '@/lib/social-post';
 
@@ -13,7 +13,7 @@ import { getSocialPostService } from '@/lib/social-post';
  * GET - ステータス別件数取得
  */
 export async function GET() {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return NextResponse.json(

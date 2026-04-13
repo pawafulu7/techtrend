@@ -128,7 +128,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.52",
-    "@auth/prisma-adapter": "^2.0.0",
+    "@better-auth/prisma-adapter": "^1.6.2",
     "@dqbd/tiktoken": "^1.0.22",
     "@google/generative-ai": "^0.24.1",
     "@mozilla/readability": "^0.6.0",
@@ -165,6 +165,7 @@
     "async-mutex": "^0.5.0",
     "axios": "^1.15.0",
     "bcryptjs": "^3.0.2",
+    "better-auth": "^1.6.2",
     "cheerio": "^1.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -182,7 +183,6 @@
     "jsdom": "^27.0.0",
     "lucide-react": "^0.525.0",
     "next": "^16.2.3",
-    "next-auth": "^5.0.0-beta.30",
     "next-themes": "^0.4.6",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
@@ -197,6 +197,7 @@
     "react-dom": "^19.2.0",
     "react-force-graph-2d": "^1.29.0",
     "react-hook-form": "^7.62.0",
+    "react-is": "^19.2.5",
     "react-markdown": "^9.1.0",
     "recharts": "^3.2.0",
     "remark-breaks": "^4.0.0",
@@ -274,6 +275,9 @@
       "effect": "3.20.0"
     },
     "nodemailer": "^8.0.5",
-    "defu": "6.1.6"
+    "defu": "6.1.6",
+    "better-call": {
+      "zod": "$zod"
+    }
   }
 }

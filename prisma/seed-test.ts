@@ -438,40 +438,66 @@ async function createTags() {
 async function createUsers() {
   // Hash password for test users
   const hashedPassword = await bcrypt.hash('TestPassword123', 10);
-  
+
+  // Better Auth: password is stored in Account table, not User table
+  // emailVerified is Boolean (not DateTime)
   const usersData = [
     {
       email: 'test@example.com',  // Main test user for E2E tests
       name: 'Test User',
-      password: hashedPassword,
-      emailVerified: new Date(),
+      emailVerified: true,
     },
     {
       email: 'test1@example.com',
       name: 'Test User 1',
-      password: hashedPassword,
-      emailVerified: new Date(),
+      emailVerified: true,
     },
     {
       email: 'test2@example.com',
       name: 'Test User 2',
-      password: hashedPassword,
-      emailVerified: new Date(),
+      emailVerified: true,
     },
     {
       email: 'test3@example.com',
       name: 'Test User 3',
-      emailVerified: null,
+      emailVerified: false,
     },
   ];
 
-  return Promise.all(
+  const users = await Promise.all(
     usersData.map(data => prisma.user.upsert({
       where: { email: data.email },
       update: data,
       create: data,
     }))
   );
+
+  // Create credential accounts for users with passwords (Better Auth schema)
+  // Only create for users that need password-based authentication
+  const usersWithPassword = users.filter(u =>
+    ['test@example.com', 'test1@example.com', 'test2@example.com'].includes(u.email!)
+  );
+  await Promise.all(
+    usersWithPassword.map(user =>
+      prisma.account.upsert({
+        where: {
+          providerId_accountId: {
+            providerId: 'credential',
+            accountId: user.id,
+          },
+        },
+        update: { password: hashedPassword },
+        create: {
+          userId: user.id,
+          providerId: 'credential',
+          accountId: user.id,
+          password: hashedPassword,
+        },
+      })
+    )
+  );
+
+  return users;
 }
 
 async function createArticles(sources: Source[], tags: Tag[]) {

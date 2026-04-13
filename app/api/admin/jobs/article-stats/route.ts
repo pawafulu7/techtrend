@@ -4,7 +4,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { z } from 'zod';
+import { getSession } from '@/lib/auth/get-session';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import type {
@@ -17,6 +22,15 @@ const DEFAULT_RANGE_DAYS = 7;
 const MIN_RANGE_DAYS = 1;
 const MAX_RANGE_DAYS = 90;
 
+const RangeQuerySchema = z.object({
+  range: z
+    .string()
+    .regex(/^\d+d$/)
+    .transform((v) => Number.parseInt(v.slice(0, -1), 10))
+    .refine((d) => d >= MIN_RANGE_DAYS && d <= MAX_RANGE_DAYS)
+    .optional(),
+});
+
 /**
  * Check if an article has a valid (non-empty) summary
  */
@@ -25,32 +39,51 @@ function hasValidSummary(summary: string | null | undefined): boolean {
 }
 
 export async function GET(request: NextRequest) {
-  // Authentication check
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json(
-      { error: 'Unauthorized. Authentication required.' },
-      { status: 401 }
-    );
-  }
-
-  // Authorization check (admin only)
-  if (session.user.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Forbidden. Admin access required.' },
-      { status: 403 }
-    );
-  }
-
   try {
+    // Authentication check
+    const session = await getSession();
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Authentication required.' },
+        { status: 401 }
+      );
+    }
+
+    // User existence check (prevent deleted user access)
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
+    }
+
+    // Authorization check (admin only)
+    if (session.user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden. Admin access required.' },
+        { status: 403 }
+      );
+    }
+
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
-    const rangeParam = searchParams.get('range') || `${DEFAULT_RANGE_DAYS}d`;
-    const parsedDays = parseInt(rangeParam.replace('d', ''), 10);
-    // Validate range: must be between MIN and MAX, default to DEFAULT if invalid
-    const rangeDays = Number.isNaN(parsedDays) || parsedDays < MIN_RANGE_DAYS || parsedDays > MAX_RANGE_DAYS
-      ? DEFAULT_RANGE_DAYS
-      : parsedDays;
+    const rawRange = searchParams.get('range');
+    const rangeParseResult = RangeQuerySchema.safeParse({
+      range: rawRange ?? undefined,
+    });
+    // Return 400 if range param was provided but failed validation
+    if (!rangeParseResult.success && rawRange !== null) {
+      return NextResponse.json(
+        {
+          error: 'Invalid query parameter',
+          details: rangeParseResult.error.issues,
+        },
+        { status: 400 }
+      );
+    }
+    // Use parsed value when present, otherwise fall back to default
+    const rangeDays =
+      rangeParseResult.success && rangeParseResult.data.range !== undefined
+        ? rangeParseResult.data.range
+        : DEFAULT_RANGE_DAYS;
 
     // Calculate date range (JST-based)
     const endDate = new Date();
@@ -87,7 +120,10 @@ export async function GET(request: NextRequest) {
       .map(([source, count]) => ({
         source,
         count,
-        percentage: totalArticles > 0 ? Math.round((count / totalArticles) * 1000) / 10 : 0,
+        percentage:
+          totalArticles > 0
+            ? Math.round((count / totalArticles) * 1000) / 10
+            : 0,
       }))
       .sort((a, b) => b.count - a.count);
 
@@ -114,9 +150,10 @@ export async function GET(request: NextRequest) {
         date: dateKey,
         total: stats.total,
         withSummary: stats.withSummary,
-        summaryRate: stats.total > 0
-          ? Math.round((stats.withSummary / stats.total) * 1000) / 10
-          : 0,
+        summaryRate:
+          stats.total > 0
+            ? Math.round((stats.withSummary / stats.total) * 1000) / 10
+            : 0,
       });
       currentDate.setDate(currentDate.getDate() + 1);
     }
@@ -125,7 +162,9 @@ export async function GET(request: NextRequest) {
     byDate.sort((a, b) => b.date.localeCompare(a.date));
 
     // Calculate totals
-    const totalWithSummary = articles.filter((a) => hasValidSummary(a.summary)).length;
+    const totalWithSummary = articles.filter((a) =>
+      hasValidSummary(a.summary)
+    ).length;
 
     const response: ArticleStatsResponse = {
       bySource,

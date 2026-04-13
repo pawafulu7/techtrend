@@ -1,19 +1,18 @@
-import bcrypt from 'bcryptjs';
-
 // Use the manual mock to keep shared state
 jest.mock('@/lib/prisma');
 
-// Explicitly mock bcryptjs
-jest.mock('bcryptjs', () => ({
-  hash: jest.fn(),
-  compare: jest.fn(),
+// Mock @better-auth/utils/password (scrypt-based)
+jest.mock('@better-auth/utils/password', () => ({
+  hashPassword: jest.fn(),
+  verifyPassword: jest.fn(),
 }));
 
 import { prisma } from '@/lib/prisma';
 import { hashPassword, verifyPassword, createUser } from '../utils';
-
-// Constants
-const SALT_ROUNDS = 12;
+import {
+  hashPassword as baHashPassword,
+  verifyPassword as baVerifyPassword,
+} from '@better-auth/utils/password';
 
 describe('Auth Utils', () => {
   beforeEach(() => {
@@ -21,23 +20,25 @@ describe('Auth Utils', () => {
   });
 
   describe('hashPassword', () => {
-    it('should hash a password with correct salt rounds', async () => {
+    it('should hash a password using scrypt', async () => {
       const password = 'testPassword123';
-      const hashedPassword = 'hashedPassword123';
-      
-      (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
-      
+      const hashedPassword = 'scrypt:hashedPassword123';
+
+      (baHashPassword as jest.Mock).mockResolvedValue(hashedPassword);
+
       const result = await hashPassword(password);
-      
-      expect(bcrypt.hash).toHaveBeenCalledWith(password, SALT_ROUNDS);
+
+      expect(baHashPassword).toHaveBeenCalledWith(password);
       expect(result).toBe(hashedPassword);
     });
 
-    it('should handle bcrypt errors', async () => {
+    it('should handle hashing errors', async () => {
       const password = 'testPassword123';
-      
-      (bcrypt.hash as jest.Mock).mockRejectedValue(new Error('Hashing failed'));
-      
+
+      (baHashPassword as jest.Mock).mockRejectedValue(
+        new Error('Hashing failed')
+      );
+
       await expect(hashPassword(password)).rejects.toThrow('Hashing failed');
     });
   });
@@ -45,34 +46,39 @@ describe('Auth Utils', () => {
   describe('verifyPassword', () => {
     it('should verify correct password', async () => {
       const password = 'testPassword123';
-      const hashedPassword = 'hashedPassword123';
-      
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-      
+      const hashedPassword = 'scrypt:hashedPassword123';
+
+      (baVerifyPassword as jest.Mock).mockResolvedValue(true);
+
       const result = await verifyPassword(password, hashedPassword);
-      
-      expect(bcrypt.compare).toHaveBeenCalledWith(password, hashedPassword);
+
+      // utils.ts calls baVerifyPassword(hashedPassword, password)
+      expect(baVerifyPassword).toHaveBeenCalledWith(hashedPassword, password);
       expect(result).toBe(true);
     });
 
     it('should reject incorrect password', async () => {
       const password = 'wrongPassword';
-      const hashedPassword = 'hashedPassword123';
-      
-      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
-      
+      const hashedPassword = 'scrypt:hashedPassword123';
+
+      (baVerifyPassword as jest.Mock).mockResolvedValue(false);
+
       const result = await verifyPassword(password, hashedPassword);
-      
+
       expect(result).toBe(false);
     });
 
-    it('should handle bcrypt errors', async () => {
+    it('should handle verification errors', async () => {
       const password = 'testPassword123';
-      const hashedPassword = 'hashedPassword123';
-      
-      (bcrypt.compare as jest.Mock).mockRejectedValue(new Error('Comparison failed'));
-      
-      await expect(verifyPassword(password, hashedPassword)).rejects.toThrow('Comparison failed');
+      const hashedPassword = 'scrypt:hashedPassword123';
+
+      (baVerifyPassword as jest.Mock).mockRejectedValue(
+        new Error('Comparison failed')
+      );
+
+      await expect(verifyPassword(password, hashedPassword)).rejects.toThrow(
+        'Comparison failed'
+      );
     });
   });
 
@@ -91,19 +97,22 @@ describe('Auth Utils', () => {
         password: hashedPassword,
         name: mockUserData.name,
       };
-      
+
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
       (prisma.user.create as jest.Mock).mockResolvedValue(createdUser);
-      
+
       const result = await createUser(mockUserData);
-      
+
       expect(prisma.user.findUnique).toHaveBeenCalledWith({
         where: { email: mockUserData.email },
       });
-      
-      expect(bcrypt.hash).toHaveBeenCalledWith(mockUserData.password, SALT_ROUNDS);
-      
+
+      expect(bcrypt.hash).toHaveBeenCalledWith(
+        mockUserData.password,
+        SALT_ROUNDS
+      );
+
       expect(prisma.user.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -113,7 +122,7 @@ describe('Auth Utils', () => {
           }),
         })
       );
-      
+
       expect(result).toEqual(createdUser);
     });
 
@@ -129,13 +138,13 @@ describe('Auth Utils', () => {
         password: hashedPassword,
         name: undefined,
       };
-      
+
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
       (prisma.user.create as jest.Mock).mockResolvedValue(createdUser);
-      
+
       const result = await createUser(userDataWithoutName);
-      
+
       expect(prisma.user.create).toHaveBeenCalledWith({
         data: {
           email: userDataWithoutName.email,
@@ -143,7 +152,7 @@ describe('Auth Utils', () => {
           name: undefined,
         },
       });
-      
+
       expect(result).toEqual(createdUser);
     });
 
@@ -154,31 +163,35 @@ describe('Auth Utils', () => {
         password: 'existingHash',
         name: 'Existing User',
       };
-      
+
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(existingUser);
-      
-      await expect(createUser(mockUserData)).rejects.toThrow('User already exists');
-      
+
+      await expect(createUser(mockUserData)).rejects.toThrow(
+        'User already exists'
+      );
+
       expect(bcrypt.hash).not.toHaveBeenCalled();
       expect(prisma.user.create).not.toHaveBeenCalled();
     });
 
     it('should handle database errors during user creation', async () => {
       const hashedPassword = 'hashedPassword123';
-      
+
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
-      (prisma.user.create as jest.Mock).mockRejectedValue(new Error('Database error'));
-      
+      (prisma.user.create as jest.Mock).mockRejectedValue(
+        new Error('Database error')
+      );
+
       await expect(createUser(mockUserData)).rejects.toThrow('Database error');
     });
 
     it('should handle hashing errors', async () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
       (bcrypt.hash as jest.Mock).mockRejectedValue(new Error('Hashing failed'));
-      
+
       await expect(createUser(mockUserData)).rejects.toThrow('Hashing failed');
-      
+
       expect(prisma.user.create).not.toHaveBeenCalled();
     });
   });

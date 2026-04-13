@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
 import { resolveCaches, safeReadCache, safeWriteCache } from './cache-helpers';
 import { SpanStatusCode, Span } from '@opentelemetry/api';
-import type { Session } from 'next-auth';
+import type { BetterAuthSession } from '@/lib/auth/auth';
 
 import type { RateLimitInfo, ValidatedRequest, ModeContext } from './schemas';
 import { AGENT_TIMEOUT_MS } from '@/lib/rag/agent-timeouts';
@@ -34,7 +34,7 @@ import { executeDirectSearch } from './direct-search-handler';
  */
 export async function handleBatchRequest(
   validatedRequest: ValidatedRequest,
-  session: Session,
+  session: BetterAuthSession,
   span: Span,
   request: NextRequest,
   rateLimitInfo?: RateLimitInfo

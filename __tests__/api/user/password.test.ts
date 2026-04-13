@@ -3,7 +3,11 @@ import { NextRequest } from 'next/server';
 
 // Mock auth
 jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn()
+  auth: {
+    api: {
+      getSession: jest.fn(),
+    },
+  },
 }));
 
 // Mock changePassword
@@ -34,7 +38,7 @@ describe('/api/user/password', () => {
   describe('POST', () => {
     it('should return 401 when user is not authenticated', async () => {
       const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue(null);
+      (auth.api.getSession as jest.Mock).mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/user/password', {
         method: 'POST',
@@ -57,8 +61,9 @@ describe('/api/user/password', () => {
 
     it('should return 400 when passwords do not match', async () => {
       const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
       const request = new NextRequest('http://localhost:3000/api/user/password', {
@@ -83,8 +88,9 @@ describe('/api/user/password', () => {
 
     it('should return 400 when new password does not meet requirements', async () => {
       const { auth } = require('@/lib/auth/auth');
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
       const request = new NextRequest('http://localhost:3000/api/user/password', {
@@ -111,8 +117,9 @@ describe('/api/user/password', () => {
       const { auth } = require('@/lib/auth/auth');
       const { changePassword } = require('@/lib/auth/utils');
       
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
       
       (changePassword as jest.Mock).mockRejectedValue(
@@ -142,8 +149,9 @@ describe('/api/user/password', () => {
       const { auth } = require('@/lib/auth/auth');
       const { changePassword } = require('@/lib/auth/utils');
       
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
       
       (changePassword as jest.Mock).mockResolvedValue(true);
@@ -177,8 +185,9 @@ describe('/api/user/password', () => {
       const { auth } = require('@/lib/auth/auth');
       const { changePassword } = require('@/lib/auth/utils');
       
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
       
       (changePassword as jest.Mock).mockRejectedValue(
@@ -208,8 +217,9 @@ describe('/api/user/password', () => {
       const { auth } = require('@/lib/auth/auth');
       const { changePassword } = require('@/lib/auth/utils');
       
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
       
       (changePassword as jest.Mock).mockRejectedValue(
@@ -238,8 +248,9 @@ describe('/api/user/password', () => {
     it('should handle missing request body gracefully', async () => {
       const { auth } = require('@/lib/auth/auth');
       
-      (auth as jest.Mock).mockResolvedValue({
-        user: { id: 'user123', email: 'test@example.com' }
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
       const request = new NextRequest('http://localhost:3000/api/user/password', {

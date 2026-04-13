@@ -14,7 +14,7 @@ import {
   type ArticleQueryParams,
 } from '@/lib/cache/layered-cache';
 import { RedisCache } from '@/lib/cache/redis-cache';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import {
   MetricsCollector,
   withDbTiming,
@@ -451,15 +451,12 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
     const { pagination, filters, display, personalization } = params;
     const { page, limit } = pagination;
 
-    // Start auth early for parallel execution
-    const sessionPromise = auth();
-
     // Check if user session is required
     const requiresUserSession =
       filters.readFilter === 'read' ||
       filters.readFilter === 'unread' ||
       display.includeUserData;
-    const session = requiresUserSession ? await sessionPromise : null;
+    const session = requiresUserSession ? await getSession() : null;
     const userId = session?.user?.id;
 
     // Return 401 if readFilter is used without authentication

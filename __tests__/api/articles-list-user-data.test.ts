@@ -1,24 +1,9 @@
 import { NextRequest } from 'next/server';
 // Import GET after mocks are registered via require below
 
-// Mock auth first
-jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn(),
-}));
-
-// Mock next-auth
-jest.mock('next-auth', () => ({
-  default: jest.fn(() => ({
-    handlers: {},
-    auth: jest.fn(),
-    signIn: jest.fn(),
-    signOut: jest.fn(),
-  })),
-  getServerSession: jest.fn(),
-}));
-
-jest.mock('@/lib/auth/config', () => ({
-  authOptions: {},
+// Mock auth
+jest.mock('@/lib/auth/get-session', () => ({
+  getSession: jest.fn(),
 }));
 
 // Mock RedisCache
@@ -44,8 +29,8 @@ describe('/api/articles/list with user data', () => {
 
   it('should include user data when includeUserData=true and user is authenticated', async () => {
     const { GET } = require('@/app/api/articles/list/route');
-    const { auth } = require('@/lib/auth/auth');
-    auth.mockResolvedValueOnce({
+    const { getSession } = require('@/lib/auth/get-session');
+    getSession.mockResolvedValueOnce({
       user: { id: mockUserId }
     });
 
@@ -115,8 +100,8 @@ describe('/api/articles/list with user data', () => {
 
   it('should return articles without user data when includeUserData=false', async () => {
     const { GET } = require('@/app/api/articles/list/route');
-    const { auth } = require('@/lib/auth/auth');
-    auth.mockResolvedValueOnce(null);
+    const { getSession } = require('@/lib/auth/get-session');
+    getSession.mockResolvedValueOnce(null);
 
     const mockArticles = [
       {
@@ -152,8 +137,8 @@ describe('/api/articles/list with user data', () => {
 
   it('should handle empty result set gracefully', async () => {
     const { GET } = require('@/app/api/articles/list/route');
-    const { auth } = require('@/lib/auth/auth');
-    auth.mockResolvedValueOnce({
+    const { getSession } = require('@/lib/auth/get-session');
+    getSession.mockResolvedValueOnce({
       user: { id: mockUserId }
     });
 

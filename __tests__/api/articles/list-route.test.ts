@@ -18,8 +18,8 @@ jest.mock('@/lib/cache', () => ({
   })),
 }));
 
-jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn().mockResolvedValue(null),
+jest.mock('@/lib/auth/get-session', () => ({
+  getSession: jest.fn().mockResolvedValue(null),
 }));
 
 import { NextRequest } from 'next/server';

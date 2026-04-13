@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { searchRequestSchema } from '@/lib/rag/schemas';
@@ -11,6 +11,7 @@ import {
 import { logger, sanitizeError } from '@/lib/logger';
 import { ZodError } from 'zod';
 import { APIError } from 'openai/error';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import {
   validateUser,
   createUserDeletedResponse,
@@ -23,7 +24,7 @@ import { env } from '@/lib/config/env';
  * POST /api/rag/search
  *
  * Security layers:
- * 1. Authentication (Auth.js v5) - REQUIRED
+ * 1. Authentication (Better Auth) - REQUIRED
  * 2. Rate limiting (Upstash Redis) - 10 req/min/user
  * 3. Input validation (Zod) - searchRequestSchema
  * 4. SQL injection prevention (Prisma.sql)
@@ -72,11 +73,12 @@ export const __resetSearchServiceForTest = (): void => {
   searchService = null;
 };
 
-export async function POST(request: NextRequest) {
-  // Layer 1: Authentication check (REQUIRED)
-  const session = await auth();
-
+async function postHandler(request: NextRequest) {
+  let session: Awaited<ReturnType<typeof getSession>> = null;
   try {
+    // Layer 1: Authentication check (REQUIRED)
+    session = await getSession();
+
     if (!session?.user) {
       logger.warn(
         {
@@ -89,12 +91,6 @@ export async function POST(request: NextRequest) {
         { error: 'Unauthorized - Authentication required' },
         { status: 401 }
       );
-    }
-
-    // Layer 1.5: User validation (check if user is deleted)
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
     }
 
     // Layer 2: Rate limiting (REQUIRED)
@@ -141,6 +137,12 @@ export async function POST(request: NextRequest) {
         );
       }
       throw error;
+    }
+
+    // Layer 2.5: User validation (check if user is deleted)
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
     }
 
     // Layer 3: Input validation (Zod)
@@ -359,3 +361,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withCSRFProtection(postHandler);

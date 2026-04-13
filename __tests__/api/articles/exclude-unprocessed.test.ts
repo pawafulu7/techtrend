@@ -3,7 +3,11 @@ jest.mock('@/lib/database');
 jest.mock('@/lib/cache/cache-invalidator');
 
 jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn().mockResolvedValue(null),
+  auth: {
+    api: {
+      getSession: jest.fn().mockResolvedValue(null),
+    },
+  },
 }));
 
 jest.mock('@/lib/cache/layered-cache', () => {

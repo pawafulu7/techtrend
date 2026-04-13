@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -28,20 +28,22 @@ import {
 } from 'lucide-react';
 
 export function UserMenu() {
-  const { data: session, status } = useSession();
+  const { data: session, isPending } = authClient.useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
+    if (isSigningOut) return;
     setIsSigningOut(true);
     try {
-      await signOut({ callbackUrl: '/' });
-    } catch (_error) {
+      await authClient.signOut();
+    } catch (error) {
+      console.error('Sign-out failed:', error);
     } finally {
-      setIsSigningOut(false);
+      window.location.href = '/';
     }
   };
 
-  if (status === 'loading') {
+  if (isPending) {
     return (
       <div className="flex items-center">
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -49,7 +51,7 @@ export function UserMenu() {
     );
   }
 
-  if (status === 'unauthenticated' || !session) {
+  if (!session) {
     return (
       <div className="flex items-center gap-2">
         <Button variant="ghost" asChild>
@@ -173,7 +175,10 @@ export function UserMenu() {
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={handleSignOut}
+          onSelect={(event) => {
+            event.preventDefault();
+            void handleSignOut();
+          }}
           disabled={isSigningOut}
           className="cursor-pointer"
         >

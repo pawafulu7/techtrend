@@ -3,7 +3,8 @@ import { checkRateLimit, RateLimitError } from '@/lib/rate-limiter';
 import { getRateLimitConfig } from '@/lib/config/rate-limits';
 import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
 import { trace } from '@opentelemetry/api';
-import { resolveSession } from './session-context';
+import { resolveSessionFromRequest } from './session-context';
+import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
 
 type RouteHandler = (
   request: NextRequest,
@@ -68,7 +69,7 @@ export function withRateLimit(
       const limiter = createRateLimiterFromConfig(configKey);
 
       // Resolve session from context or fetch via auth() (SessionContext optimization)
-      const session = await resolveSession(context);
+      const session = await resolveSessionFromRequest(context, request.headers);
 
       // Resolve identity key
       const limitKey = options?.keyResolver
@@ -189,9 +190,7 @@ async function resolveDefaultKey(
     }
 
     case 'session': {
-      const sessionCookie =
-        request.cookies.get('authjs.session-token') ||
-        request.cookies.get('__Secure-authjs.session-token');
+      const sessionCookie = request.cookies.get(AUTH_COOKIES.sessionToken);
       return `session:${sessionCookie?.value || 'anonymous'}`;
     }
 

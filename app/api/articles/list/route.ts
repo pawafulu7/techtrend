@@ -4,7 +4,7 @@ import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import { DatabaseError, formatErrorResponse } from '@/lib/errors';
 import type { Prisma } from '@prisma/client';
 import logger from '@/lib/logger';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { getCursorManager } from '@/lib/pagination/cursor-manager';
 
 import type { LightweightArticle } from './types';
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
       readFilter === 'read' || readFilter === 'unread' || includeUserData;
     const needsUserInCacheKey =
       readFilter === 'read' || readFilter === 'unread';
-    const session = needsAuth ? await auth() : null;
+    const session = needsAuth ? await getSession() : null;
     const userId = session?.user?.id;
 
     // readFilter=read/unread requires authentication

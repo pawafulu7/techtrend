@@ -4,25 +4,35 @@
 
 // モックの設定
 jest.mock('@/lib/prisma');
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/get-session');
 
 import { GET, POST, DELETE } from '@/app/api/article-views/route';
 import { prisma } from '@/lib/prisma';
-// モック関数は jest.mock によって自動的に __mocks__ から読み込まれる
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { NextRequest } from 'next/server';
 
 // モック関数のヘルパーを取得
-const authMock = auth as jest.MockedFunction<typeof auth>;
-const setUnauthenticated = () => authMock.mockResolvedValue(null);
-const resetMockSession = () => authMock.mockResolvedValue({
+const authMock = getSession as jest.MockedFunction<typeof getSession>;
+
+const mockSessionData = {
   user: {
     id: 'test-user-id',
     email: 'test@example.com',
-    name: 'Test User'
+    name: 'Test User',
   },
-  expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-});
+  session: { id: 's1', userId: 'test-user-id', token: 'tok', expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+};
+
+const setUnauthenticated = () => {
+  authMock.mockResolvedValue(null);
+  const { auth } = require('@/lib/auth/auth');
+  (auth.api.getSession as jest.Mock).mockResolvedValue(null);
+};
+const resetMockSession = () => {
+  authMock.mockResolvedValue(mockSessionData);
+  const { auth } = require('@/lib/auth/auth');
+  (auth.api.getSession as jest.Mock).mockResolvedValue(mockSessionData);
+};
 
 const prismaMock = prisma as any;
 
@@ -50,6 +60,11 @@ describe('/api/article-views', () => {
 
     prismaMock.article = {
       findUnique: jest.fn().mockResolvedValue(null),
+    };
+
+    // withUserValidation用のユーザー存在確認モック
+    prismaMock.user = {
+      findUnique: jest.fn().mockResolvedValue({ id: 'test-user-id', deletedAt: null }),
     };
   });
 
@@ -225,6 +240,7 @@ describe('/api/article-views', () => {
 
       const request = new NextRequest('http://localhost/api/article-views', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Origin': 'http://localhost' },
         body: JSON.stringify({ articleId: 'article1' }),
       });
 
@@ -276,6 +292,7 @@ describe('/api/article-views', () => {
 
       const request = new NextRequest('http://localhost/api/article-views', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Origin': 'http://localhost' },
         body: JSON.stringify({ articleId: 'article1' }),
       });
 
@@ -293,6 +310,7 @@ describe('/api/article-views', () => {
     it('articleIdが無い場合400を返す', async () => {
       const request = new NextRequest('http://localhost/api/article-views', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Origin': 'http://localhost' },
         body: JSON.stringify({}),
       });
 
@@ -309,6 +327,7 @@ describe('/api/article-views', () => {
 
       const request = new NextRequest('http://localhost/api/article-views', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Origin': 'http://localhost' },
         body: JSON.stringify({ articleId: 'nonexistent' }),
       });
 
@@ -340,7 +359,10 @@ describe('/api/article-views', () => {
     it('閲覧履歴をクリアする（viewedAtがnullでないもののみ）', async () => {
       prismaMock.articleView.deleteMany.mockResolvedValue({ count: 10 });
 
-      const request = new NextRequest('http://localhost/api/article-views');
+      const request = new NextRequest('http://localhost/api/article-views', {
+        method: 'DELETE',
+        headers: { 'Origin': 'http://localhost' },
+      });
       const response = await DELETE(request);
 
       expect(response.status).toBe(200);
@@ -371,7 +393,10 @@ describe('/api/article-views', () => {
     it('削除対象がない場合でも成功を返す', async () => {
       prismaMock.articleView.deleteMany.mockResolvedValue({ count: 0 });
 
-      const request = new NextRequest('http://localhost/api/article-views');
+      const request = new NextRequest('http://localhost/api/article-views', {
+        method: 'DELETE',
+        headers: { 'Origin': 'http://localhost' },
+      });
       const response = await DELETE(request);
 
       expect(response.status).toBe(200);

@@ -5,9 +5,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 import {
   getSocialPostService,
   SocialPostAutoGenerateSchema,
@@ -25,13 +30,18 @@ import {
  * レート制限: 5回/分 (admin:social-post-generate)
  */
 async function generateHandler(request: NextRequest) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return NextResponse.json(
       { error: 'Unauthorized. Authentication required.' },
       { status: 401 }
     );
+  }
+
+  const validatedUser = await validateUser(session);
+  if (!validatedUser) {
+    return createUserDeletedResponse();
   }
 
   if (session.user.role !== 'admin') {
@@ -114,7 +124,6 @@ async function generateHandler(request: NextRequest) {
   }
 }
 
-export const POST = withRateLimit(
-  'admin:social-post-generate',
-  generateHandler
+export const POST = withCSRFProtection(
+  withRateLimit('admin:social-post-generate', generateHandler)
 );

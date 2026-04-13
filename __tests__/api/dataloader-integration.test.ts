@@ -15,8 +15,8 @@ import { NextRequest } from 'next/server';
 // DataLoaderは動的にインポート
 
 // Mock auth
-jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn()
+jest.mock('@/lib/auth/get-session', () => ({
+  getSession: jest.fn()
 }));
 
 // Mock Redis cache to isolate DataLoader behavior
@@ -83,7 +83,7 @@ describe('DataLoader Integration Tests', () => {
   let resetFavoriteLoaderCaches: any;
   let articlesListGET: typeof import('@/app/api/articles/list/route').GET;
   let articlesGET: typeof import('@/app/api/articles/route').GET;
-  let mockAuth: jest.Mock;
+  let mockGetSession: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -193,7 +193,7 @@ describe('DataLoader Integration Tests', () => {
     createLoaders = mockDataLoaderModule.createLoaders;
     articlesListGET = require('@/app/api/articles/list/route').GET;
     articlesGET = require('@/app/api/articles/route').GET;
-    mockAuth = require('@/lib/auth/auth').auth as jest.Mock;
+    mockGetSession = require('@/lib/auth/get-session').getSession as jest.Mock;
 
     // キャッシュをリセット（各テスト前に必ず実行）
     if (resetFavoriteLoaderCaches) {
@@ -201,8 +201,9 @@ describe('DataLoader Integration Tests', () => {
     }
 
     // Setup auth mock
-    mockAuth.mockResolvedValue({
-      user: { id: userId }
+    mockGetSession.mockResolvedValue({
+      user: { id: userId },
+      session: { id: 's1', userId, token: 't1', expiresAt: new Date() },
     });
 
     // Ensure mockPrisma has required properties

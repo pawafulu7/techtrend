@@ -2,9 +2,9 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { NextRequest } from 'next/server';
 
 // Mock auth
-const mockAuth = jest.fn();
-jest.mock('@/lib/auth/auth', () => ({
-  auth: mockAuth,
+const mockGetSession = jest.fn();
+jest.mock('@/lib/auth/get-session', () => ({
+  getSession: mockGetSession,
 }));
 
 // Mock rate limiter
@@ -33,6 +33,29 @@ jest.mock('@/lib/social-post', () => {
   };
 });
 
+// Mock CSRF protection (pass-through in tests)
+jest.mock('@/lib/middleware/csrf-protection', () => ({
+  withCSRFProtection: jest.fn((handler: any) => handler),
+}));
+
+// Mock user validation
+jest.mock('@/lib/middleware/with-user-validation', () => ({
+  validateUser: jest.fn().mockImplementation(async (session) =>
+    session?.user?.id ? { id: session.user.id, deletedAt: null } : null
+  ),
+  createUserDeletedResponse: jest.fn().mockImplementation(() =>
+    new Response(
+      JSON.stringify({
+        error: 'Session invalid',
+        code: 'USER_DELETED',
+        message: 'Your session is no longer valid. Please sign in again.',
+        requiresLogout: true,
+      }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } }
+    )
+  ),
+}));
+
 // Mock logger
 const mockLogger = {
   info: jest.fn(),
@@ -57,8 +80,9 @@ describe('POST /api/admin/social-posts/generate-from-article', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAuth.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       user: { id: 'admin-user', role: 'admin' },
+      session: { id: 's1', userId: 'admin-user', token: 't1', expiresAt: new Date() },
     });
     mockGenerate.mockResolvedValue({
       succeeded: [mockPost],
@@ -67,7 +91,7 @@ describe('POST /api/admin/social-posts/generate-from-article', () => {
   });
 
   it('should return 401 when not authenticated', async () => {
-    mockAuth.mockResolvedValue(null);
+    mockGetSession.mockResolvedValue(null);
 
     const request = new NextRequest(
       'http://localhost:3000/api/admin/social-posts/generate-from-article',
@@ -84,8 +108,9 @@ describe('POST /api/admin/social-posts/generate-from-article', () => {
   });
 
   it('should return 403 when user is not admin', async () => {
-    mockAuth.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       user: { id: 'regular-user', role: 'user' },
+      session: { id: 's2', userId: 'regular-user', token: 't2', expiresAt: new Date() },
     });
 
     const request = new NextRequest(
@@ -207,4 +232,28 @@ describe('POST /api/admin/social-posts/generate-from-article', () => {
     expect(response.status).toBe(400);
     expect(data.error).toBe('Invalid JSON in request body');
   });
+
+  it('should return 401 when authenticated user has been deleted', async () => {
+    const {
+      validateUser,
+      createUserDeletedResponse,
+    } = require('@/lib/middleware/with-user-validation');
+
+    (validateUser as jest.Mock).mockResolvedValueOnce(null);
+
+    const request = new NextRequest(
+      'http://localhost:3000/api/admin/social-posts/generate-from-article',
+      {
+        method: 'POST',
+        body: JSON.stringify({ articleId: 'article-1' }),
+      }
+    );
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.code).toBe('USER_DELETED');
+    expect(createUserDeletedResponse).toHaveBeenCalled();
+  });
+
 });

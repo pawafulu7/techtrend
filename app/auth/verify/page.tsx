@@ -2,8 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useSession, signIn } from 'next-auth/react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import { authClient } from '@/lib/auth/auth-client';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle, XCircle, Mail } from 'lucide-react';
@@ -12,11 +18,14 @@ import Link from 'next/link';
 export default function VerifyPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { status } = useSession();
-  const [verificationState, setVerificationState] = useState<'verifying' | 'success' | 'error' | 'expired'>('verifying');
+  const { data: session, isPending: _sessionIsPending } =
+    authClient.useSession();
+  const [verificationState, setVerificationState] = useState<
+    'verifying' | 'success' | 'error' | 'expired'
+  >('verifying');
   const [message, setMessage] = useState('');
   const [isAutoLogin, setIsAutoLogin] = useState(false);
-  
+
   // 自動ログイン処理
   const performAutoLogin = async (email: string, loginToken: string) => {
     try {
@@ -28,21 +37,20 @@ export default function VerifyPage() {
       });
 
       if (validateResponse.ok) {
-        // NextAuthのsignInを使用してログイン
-        const result = await signIn('credentials', {
+        // Better AuthのsignIn.emailを使用してログイン
+        const { error: signInError } = await authClient.signIn.email({
           email,
-          loginToken, // パスワードの代わりに一時トークンを使用
-          redirect: false, // 手動でリダイレクトを制御
+          password: loginToken, // パスワードの代わりに一時トークンを使用
         });
 
-        if (result?.ok) {
+        if (!signInError) {
           // 3秒後にホームへリダイレクト
           setTimeout(() => {
             router.push('/');
             router.refresh();
           }, 3000);
         } else {
-          console.error('Auto-login failed:', result?.error);
+          console.error('Auto-login failed:', signInError.message);
         }
       } else {
         console.error('Token validation failed');
@@ -63,7 +71,7 @@ export default function VerifyPage() {
       setVerificationState('success');
       setMessage('メールアドレスの確認が完了しました！');
       setIsAutoLogin(true);
-      
+
       // 自動ログイン処理
       performAutoLogin(email, loginToken);
     } else if (success === 'true') {
@@ -88,15 +96,15 @@ export default function VerifyPage() {
 
   // 自動ログイン後のリダイレクト処理
   useEffect(() => {
-    if (isAutoLogin && status === 'authenticated') {
+    if (isAutoLogin && !!session) {
       // 3秒後にホームへリダイレクト
       const timer = setTimeout(() => {
         router.push('/');
       }, 3000);
-      
+
       return () => clearTimeout(timer);
     }
-  }, [isAutoLogin, status, router]);
+  }, [isAutoLogin, session, router]);
 
   const getIcon = () => {
     switch (verificationState) {
@@ -124,54 +132,44 @@ export default function VerifyPage() {
   };
 
   return (
-    <div className="container max-w-lg mx-auto py-10">
+    <div className="container mx-auto max-w-lg py-10">
       <Card>
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            {getIcon()}
-          </div>
+          <div className="mb-4 flex justify-center">{getIcon()}</div>
           <CardTitle className="text-2xl">{getTitle()}</CardTitle>
-          <CardDescription className="mt-2">
-            {message}
-          </CardDescription>
+          <CardDescription className="mt-2">{message}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {verificationState === 'success' && (
             <div className="space-y-4">
-              <Alert className="bg-green-50 border-green-200">
+              <Alert className="border-green-200 bg-green-50">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <AlertDescription className="text-green-800">
-                  {isAutoLogin && status === 'authenticated' 
+                  {isAutoLogin && !!session
                     ? '自動ログインしました。まもなくホームページへ移動します...'
                     : 'アカウントが有効化されました。ログインしてTechTrendをお楽しみください。'}
                 </AlertDescription>
               </Alert>
-              
-              {isAutoLogin && status === 'authenticated' ? (
+
+              {isAutoLogin && !!session ? (
                 <div className="space-y-4">
                   <div className="flex justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                   </div>
-                  <p className="text-center text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-center text-sm">
                     リダイレクト中...
                   </p>
                   <Button asChild variant="outline" className="w-full">
-                    <Link href="/">
-                      今すぐホームへ移動
-                    </Link>
+                    <Link href="/">今すぐホームへ移動</Link>
                   </Button>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
                   <Button asChild className="w-full">
-                    <Link href="/auth/login">
-                      ログインページへ
-                    </Link>
+                    <Link href="/auth/login">ログインページへ</Link>
                   </Button>
                   <Button asChild variant="outline" className="w-full">
-                    <Link href="/">
-                      ホームへ戻る
-                    </Link>
+                    <Link href="/">ホームへ戻る</Link>
                   </Button>
                 </div>
               )}
@@ -180,23 +178,24 @@ export default function VerifyPage() {
 
           {verificationState === 'expired' && (
             <div className="space-y-4">
-              <Alert className="bg-yellow-50 border-yellow-200">
+              <Alert className="border-yellow-200 bg-yellow-50">
                 <AlertDescription className="text-yellow-800">
                   認証リンクの有効期限は24時間です。新しい認証メールをリクエストしてください。
                 </AlertDescription>
               </Alert>
               <div className="flex flex-col gap-2">
-                <Button className="w-full" onClick={() => {
-                  // TODO: Implement resend verification email
-                  alert('再送信機能は実装予定です');
-                }}>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    // TODO: Implement resend verification email
+                    alert('再送信機能は実装予定です');
+                  }}
+                >
                   <Mail className="mr-2 h-4 w-4" />
                   認証メールを再送信
                 </Button>
                 <Button asChild variant="outline" className="w-full">
-                  <Link href="/auth/signup">
-                    新規登録ページへ
-                  </Link>
+                  <Link href="/auth/signup">新規登録ページへ</Link>
                 </Button>
               </div>
             </div>
@@ -211,14 +210,10 @@ export default function VerifyPage() {
               </Alert>
               <div className="flex flex-col gap-2">
                 <Button asChild variant="outline" className="w-full">
-                  <Link href="/auth/signup">
-                    新規登録ページへ
-                  </Link>
+                  <Link href="/auth/signup">新規登録ページへ</Link>
                 </Button>
                 <Button asChild variant="outline" className="w-full">
-                  <Link href="/">
-                    ホームへ戻る
-                  </Link>
+                  <Link href="/">ホームへ戻る</Link>
                 </Button>
               </div>
             </div>

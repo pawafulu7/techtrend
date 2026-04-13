@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
@@ -21,7 +21,7 @@ export async function GET(
   { params }: { params: Promise<{ articleId: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getSession();
     const { articleId } = await params;
 
     if (!session?.user?.id) {

@@ -9,18 +9,27 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/get-session');
+jest.mock('@/lib/auth/user-auth-cache');
 
 // インポート
 import { NextRequest, NextResponse } from 'next/server';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
-import { auth } from '@/lib/auth/auth';
+import { getUserAuthData } from '@/lib/auth/user-auth-cache';
 import logger from '@/lib/logger';
 import { resetEnvCache } from '@/lib/config/env';
 
-// モック関数の取得
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
+// モック関数の取得（auth.api.getSession はグローバルモック済み）
+const mockGetUserAuthData = getUserAuthData as jest.MockedFunction<
+  typeof getUserAuthData
+>;
 let mockLoggerWarn: jest.SpyInstance;
+
+// auth.api.getSession ヘルパー
+const getAuthApiGetSession = () => {
+  const { auth } = require('@/lib/auth/auth');
+  return auth.api.getSession as jest.Mock;
+};
 
 describe('withCronOrAdminAuth', () => {
   const mockHandler = jest.fn().mockImplementation(async () => {
@@ -35,6 +44,8 @@ describe('withCronOrAdminAuth', () => {
     delete process.env.CRON_SECRET;
     delete process.env.CRON_TOKEN;
     resetEnvCache();
+    // デフォルトは未認証
+    getAuthApiGetSession().mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -60,7 +71,8 @@ describe('withCronOrAdminAuth', () => {
 
       expect(response.status).toBe(200);
       expect(mockHandler).toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled(); // Should skip session check
+      // Cron token auth: auth.api.getSession should not be called
+      expect(getAuthApiGetSession()).not.toHaveBeenCalled();
     });
 
     it('should authenticate with valid Bearer token (CRON_TOKEN)', async () => {
@@ -103,7 +115,7 @@ describe('withCronOrAdminAuth', () => {
     it('should reject invalid Bearer token', async () => {
       process.env.CRON_SECRET = 'valid-secret';
       resetEnvCache();
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const handler = withCronOrAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/test', {
@@ -122,7 +134,7 @@ describe('withCronOrAdminAuth', () => {
     it('should reject non-Bearer authorization header', async () => {
       process.env.CRON_SECRET = 'valid-secret';
       resetEnvCache();
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const handler = withCronOrAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/test', {
@@ -141,8 +153,12 @@ describe('withCronOrAdminAuth', () => {
 
   describe('Admin Session Authentication', () => {
     it('should authenticate admin user', async () => {
-      mockAuth.mockResolvedValue({
+      getAuthApiGetSession().mockResolvedValue({
         user: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      });
+      mockGetUserAuthData.mockResolvedValue({
+        role: 'admin',
+        deletedAt: null,
       } as any);
 
       const handler = withCronOrAdminAuth(mockHandler);
@@ -157,8 +173,12 @@ describe('withCronOrAdminAuth', () => {
     });
 
     it('should reject non-admin user', async () => {
-      mockAuth.mockResolvedValue({
+      getAuthApiGetSession().mockResolvedValue({
         user: { id: 'user-1', email: 'user@example.com', role: 'USER' },
+      });
+      mockGetUserAuthData.mockResolvedValue({
+        role: 'user',
+        deletedAt: null,
       } as any);
 
       const handler = withCronOrAdminAuth(mockHandler);
@@ -173,7 +193,7 @@ describe('withCronOrAdminAuth', () => {
     });
 
     it('should reject unauthenticated request', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const handler = withCronOrAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/test', {
@@ -190,7 +210,11 @@ describe('withCronOrAdminAuth', () => {
       const adminSession = {
         user: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
       };
-      mockAuth.mockResolvedValue(adminSession as any);
+      getAuthApiGetSession().mockResolvedValue(adminSession);
+      mockGetUserAuthData.mockResolvedValue({
+        role: 'admin',
+        deletedAt: null,
+      } as any);
 
       const handler = withCronOrAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/test', {
@@ -209,7 +233,7 @@ describe('withCronOrAdminAuth', () => {
 
   describe('Security Features', () => {
     it('should log unauthorized access attempts', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const handler = withCronOrAdminAuth(mockHandler);
       const request = new NextRequest(
@@ -241,7 +265,7 @@ describe('withCronOrAdminAuth', () => {
     it('should log authorization header presence (but not value)', async () => {
       process.env.CRON_SECRET = 'valid-secret';
       resetEnvCache();
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const handler = withCronOrAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/test', {
@@ -266,7 +290,7 @@ describe('withCronOrAdminAuth', () => {
     });
 
     it('should return appropriate error message', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const handler = withCronOrAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/test', {
@@ -287,8 +311,12 @@ describe('withCronOrAdminAuth', () => {
     it('should handle empty CRON_SECRET gracefully', async () => {
       process.env.CRON_SECRET = '';
       resetEnvCache();
-      mockAuth.mockResolvedValue({
+      getAuthApiGetSession().mockResolvedValue({
         user: { id: 'admin-1', role: 'admin' },
+      });
+      mockGetUserAuthData.mockResolvedValue({
+        role: 'admin',
+        deletedAt: null,
       } as any);
 
       const handler = withCronOrAdminAuth(mockHandler);
@@ -307,8 +335,12 @@ describe('withCronOrAdminAuth', () => {
 
     it('should handle undefined CRON_SECRET and CRON_TOKEN', async () => {
       // Both are already undefined in beforeEach
-      mockAuth.mockResolvedValue({
+      getAuthApiGetSession().mockResolvedValue({
         user: { id: 'admin-1', role: 'admin' },
+      });
+      mockGetUserAuthData.mockResolvedValue({
+        role: 'admin',
+        deletedAt: null,
       } as any);
 
       const handler = withCronOrAdminAuth(mockHandler);
@@ -323,7 +355,7 @@ describe('withCronOrAdminAuth', () => {
     });
 
     it('should extract first IP from x-forwarded-for chain', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const handler = withCronOrAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/test', {
@@ -344,7 +376,7 @@ describe('withCronOrAdminAuth', () => {
     });
 
     it('should handle missing x-forwarded-for header', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const handler = withCronOrAdminAuth(mockHandler);
       const request = new NextRequest('http://localhost/api/test', {

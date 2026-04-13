@@ -77,7 +77,9 @@ async function resetTestDatabase() {
     console.log('📋 既存のテーブルと制約をクリーンアップ中...');
 
     const cleanupSQL = `
-      -- Drop VerificationToken table and its constraints if they exist
+      -- Drop Verification table and its constraints if they exist
+      DROP TABLE IF EXISTS "Verification" CASCADE;
+      -- Also drop legacy VerificationToken table if it still exists
       DROP TABLE IF EXISTS "VerificationToken" CASCADE;
 
       -- Drop ArticleView constraints if they exist

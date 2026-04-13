@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { createFavoriteLoader } from '@/lib/dataloader/favorite-loader';
 import { favoriteCache } from '@/lib/cache/favorites-cache';
 import { parseBoolean } from '@/lib/utils/env-parser';
@@ -36,7 +36,7 @@ async function postHandler(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const session = await auth();
+    const session = await getSession();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

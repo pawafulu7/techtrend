@@ -8,7 +8,7 @@ import { SearchBox } from '@/app/components/common/search-box';
 import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { SortButtons } from '@/app/components/common/sort-buttons';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { features } from '@/config/features';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import { LoadingSpinner } from '@/app/components/common/loading-spinner';
@@ -76,7 +76,7 @@ export default async function Home({ searchParams }: PageProps) {
     cookies(),
     getSources(),
     getPopularTags(),
-    auth(),
+    getSession(),
   ]);
 
   const { sources, groupedSources } = sourceData;
@@ -155,6 +155,7 @@ export default async function Home({ searchParams }: PageProps) {
               groupedSources={filteredGroupedSources}
               tags={tags}
               initialSourceIds={initialSourceIds}
+              initialIsAuthenticated={!!session?.user}
             />
             <div className="hidden lg:block">
               <SearchBox />
@@ -189,6 +190,7 @@ export default async function Home({ searchParams }: PageProps) {
                 groupedSources={filteredGroupedSources}
                 tags={tags}
                 initialSourceIds={initialSourceIds}
+                initialIsAuthenticated={!!session?.user}
               />
             </FilterSidebarPanel>
             <FilterSidebarOverlay />

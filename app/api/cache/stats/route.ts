@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { statsCache } from '@/lib/cache/stats-cache';
 import { trendsCache } from '@/lib/cache/trends-cache';
 import { getRedisClient } from '@/lib/redis/client';
@@ -10,7 +10,7 @@ import { getRedisClient } from '@/lib/redis/client';
  */
 export async function GET() {
   // 管理者権限チェック
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user || session.user.role !== 'admin') {
     return NextResponse.json(
       { error: 'Unauthorized. Admin access required.' },
@@ -21,35 +21,44 @@ export async function GET() {
     // 各キャッシュの統計を取得
     const statsCacheStats = statsCache.getStats();
     const trendsCacheStats = trendsCache.getStats();
-    
+
     // ヒット率を計算
     const calculateHitRate = (stats: { hits: number; misses: number }) => {
       const total = stats.hits + stats.misses;
       if (total === 0) return 0;
       return Math.round((stats.hits / total) * 100);
     };
-    
+
     // Redis情報を取得
-    let redisInfo: { memoryUsed?: string; memoryPeak?: string; connected: boolean; error?: string } | null = null;
+    let redisInfo: {
+      memoryUsed?: string;
+      memoryPeak?: string;
+      connected: boolean;
+      error?: string;
+    } | null = null;
     try {
       const redis = getRedisClient();
       const info = await redis.info('memory');
       const lines = info.split('\r\n');
-      const memoryUsed = lines.find(line => line.startsWith('used_memory_human:'))?.split(':')[1];
-      const memoryPeak = lines.find(line => line.startsWith('used_memory_peak_human:'))?.split(':')[1];
-      
+      const memoryUsed = lines
+        .find((line) => line.startsWith('used_memory_human:'))
+        ?.split(':')[1];
+      const memoryPeak = lines
+        .find((line) => line.startsWith('used_memory_peak_human:'))
+        ?.split(':')[1];
+
       redisInfo = {
         memoryUsed,
         memoryPeak,
-        connected: true
+        connected: true,
       };
     } catch {
       redisInfo = {
         connected: false,
-        error: 'Failed to connect to Redis'
+        error: 'Failed to connect to Redis',
       };
     }
-    
+
     // レスポンスデータを整形
     const response = {
       timestamp: new Date().toISOString(),
@@ -59,39 +68,43 @@ export async function GET() {
           hits: statsCacheStats.hits,
           misses: statsCacheStats.misses,
           hitRate: calculateHitRate(statsCacheStats),
-           
-          lastResetAt: (statsCacheStats as { lastResetAt?: Date | null }).lastResetAt || null
+
+          lastResetAt:
+            (statsCacheStats as { lastResetAt?: Date | null }).lastResetAt ||
+            null,
         },
         trends: {
           namespace: '@techtrend/cache:trends',
           hits: trendsCacheStats.hits,
           misses: trendsCacheStats.misses,
           hitRate: calculateHitRate(trendsCacheStats),
-           
-          lastResetAt: (trendsCacheStats as { lastResetAt?: Date | null }).lastResetAt || null
-        }
+
+          lastResetAt:
+            (trendsCacheStats as { lastResetAt?: Date | null }).lastResetAt ||
+            null,
+        },
       },
       overall: {
         totalHits: statsCacheStats.hits + trendsCacheStats.hits,
         totalMisses: statsCacheStats.misses + trendsCacheStats.misses,
         overallHitRate: calculateHitRate({
           hits: statsCacheStats.hits + trendsCacheStats.hits,
-          misses: statsCacheStats.misses + trendsCacheStats.misses
-        })
+          misses: statsCacheStats.misses + trendsCacheStats.misses,
+        }),
       },
       redis: redisInfo,
       recommendations: generateRecommendations({
         statsHitRate: calculateHitRate(statsCacheStats),
-        trendsHitRate: calculateHitRate(trendsCacheStats)
-      })
+        trendsHitRate: calculateHitRate(trendsCacheStats),
+      }),
     };
-    
+
     return NextResponse.json(response);
   } catch {
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to fetch cache statistics'
+        error: 'Failed to fetch cache statistics',
       },
       { status: 500 }
     );
@@ -106,26 +119,32 @@ function generateRecommendations(params: {
   trendsHitRate: number;
 }): string[] {
   const recommendations: string[] = [];
-  
+
   if (params.statsHitRate < 60) {
-    recommendations.push('Stats cache hit rate is low. Consider increasing TTL.');
+    recommendations.push(
+      'Stats cache hit rate is low. Consider increasing TTL.'
+    );
   }
-  
+
   if (params.trendsHitRate < 60) {
-    recommendations.push('Trends cache hit rate is low. Consider optimizing cache keys or increasing TTL.');
+    recommendations.push(
+      'Trends cache hit rate is low. Consider optimizing cache keys or increasing TTL.'
+    );
   }
-  
+
   if (params.statsHitRate > 90) {
     recommendations.push('Stats cache performing well with high hit rate.');
   }
-  
+
   if (params.trendsHitRate > 90) {
     recommendations.push('Trends cache performing well with high hit rate.');
   }
-  
+
   if (recommendations.length === 0) {
-    recommendations.push('Cache performance is moderate. Monitor for optimization opportunities.');
+    recommendations.push(
+      'Cache performance is moderate. Monitor for optimization opportunities.'
+    );
   }
-  
+
   return recommendations;
 }

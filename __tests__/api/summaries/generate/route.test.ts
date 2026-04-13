@@ -5,9 +5,19 @@ import { NextRequest } from 'next/server';
 
 // 認証モック（ADMINセッションを返す）
 jest.mock('@/lib/auth/auth', () => ({
-  auth: jest.fn().mockResolvedValue({
-    user: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-  }),
+  auth: {
+    api: {
+      getSession: jest.fn().mockResolvedValue({
+        user: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+        session: { id: 's1', userId: 'admin-1', token: 't1', expiresAt: new Date() },
+      }),
+    },
+  },
+}));
+
+// withCronOrAdminAuth が getUserAuthData でロールを確認するためモック
+jest.mock('@/lib/auth/user-auth-cache', () => ({
+  getUserAuthData: jest.fn().mockResolvedValue({ role: 'admin', deletedAt: null }),
 }));
 
 jest.mock('@/lib/logger', () => {
@@ -22,6 +32,8 @@ jest.mock('@/lib/logger', () => {
   return {
     __esModule: true,
     default: mockLogger,
+    logger: mockLogger,
+    sanitizeError: jest.fn((e) => e),
   };
 });
 
@@ -61,6 +73,15 @@ jest.mock('@/lib/rate-limiter', () => ({
 describe('/api/summaries/generate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // withCronOrAdminAuth が auth.api.getSession を直接呼ぶため再設定
+    const { auth } = require('@/lib/auth/auth');
+    (auth.api.getSession as jest.Mock).mockResolvedValue({
+      user: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      session: { id: 's1', userId: 'admin-1', token: 't1', expiresAt: new Date() },
+    });
+    // getUserAuthData: adminロール
+    const { getUserAuthData } = require('@/lib/auth/user-auth-cache');
+    (getUserAuthData as jest.Mock).mockResolvedValue({ role: 'admin', deletedAt: null });
   });
 
   it('should generate summaries with complete Prisma payload', async () => {

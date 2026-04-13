@@ -7,9 +7,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 import {
   getSocialPostService,
   SocialPostUpdateSchema,
@@ -25,13 +30,18 @@ interface RouteContext {
  * GET - 詳細取得
  */
 export async function GET(request: NextRequest, { params }: RouteContext) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return NextResponse.json(
       { error: 'Unauthorized. Authentication required.' },
       { status: 401 }
     );
+  }
+
+  const validatedUser = await validateUser(session);
+  if (!validatedUser) {
+    return createUserDeletedResponse();
   }
 
   if (session.user.role !== 'admin') {
@@ -78,13 +88,18 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
  * レート制限: 20回/分 (admin:social-post-write)
  */
 async function updateHandler(request: NextRequest, context: RouteContext) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return NextResponse.json(
       { error: 'Unauthorized. Authentication required.' },
       { status: 401 }
     );
+  }
+
+  const validatedUser = await validateUser(session);
+  if (!validatedUser) {
+    return createUserDeletedResponse();
   }
 
   if (session.user.role !== 'admin') {
@@ -169,13 +184,18 @@ async function updateHandler(request: NextRequest, context: RouteContext) {
  * レート制限: 20回/分 (admin:social-post-write)
  */
 async function deleteHandler(request: NextRequest, context: RouteContext) {
-  const session = await auth();
+  const session = await getSession();
 
   if (!session?.user) {
     return NextResponse.json(
       { error: 'Unauthorized. Authentication required.' },
       { status: 401 }
     );
+  }
+
+  const validatedUser = await validateUser(session);
+  if (!validatedUser) {
+    return createUserDeletedResponse();
   }
 
   if (session.user.role !== 'admin') {
@@ -218,5 +238,9 @@ async function deleteHandler(request: NextRequest, context: RouteContext) {
   }
 }
 
-export const PATCH = withRateLimit('admin:social-post-write', updateHandler);
-export const DELETE = withRateLimit('admin:social-post-write', deleteHandler);
+export const PATCH = withCSRFProtection(
+  withRateLimit('admin:social-post-write', updateHandler)
+);
+export const DELETE = withCSRFProtection(
+  withRateLimit('admin:social-post-write', deleteHandler)
+);

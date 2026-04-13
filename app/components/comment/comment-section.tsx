@@ -11,14 +11,19 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 import Link from 'next/link';
 import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { StickyNote, Lock, LogIn } from 'lucide-react';
 import { CommentForm } from './comment-form';
@@ -39,10 +44,10 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({ articleId, className }: CommentSectionProps) {
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: session, isPending } = authClient.useSession();
   const queryClient = useQueryClient();
 
-  const isAuthenticated = sessionStatus === 'authenticated' && !!session?.user;
+  const isAuthenticated = !!session && !!session?.user;
   const currentUserId = session?.user?.id || '';
   const [deletionError, setDeletionError] = useState<string | null>(null);
 
@@ -267,7 +272,7 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
   }, [hasNextPage, fetchNextPage]);
 
   // セッションローディング中
-  if (sessionStatus === 'loading') {
+  if (isPending) {
     return <CommentSectionSkeleton />;
   }
 

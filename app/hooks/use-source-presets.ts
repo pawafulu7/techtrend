@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 
 interface UserSourcePreset {
   id: string;
@@ -79,17 +79,18 @@ async function deletePresetApi(id: string): Promise<void> {
   }
 }
 
-export function useSourcePresets() {
-  const { data: session } = useSession();
+export function useSourcePresets(initialIsAuthenticated = false) {
+  const { data: session, isPending } = authClient.useSession();
   const queryClient = useQueryClient();
   const userId = session?.user?.id;
+  const resolvedIsAuthenticated = isPending ? initialIsAuthenticated : !!userId;
 
   const queryKey = ['source-presets', userId] as const;
 
   const query = useQuery({
     queryKey,
     queryFn: fetchPresets,
-    enabled: !!userId,
+    enabled: resolvedIsAuthenticated,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -117,7 +118,8 @@ export function useSourcePresets() {
   return {
     presets: query.data?.presets ?? [],
     isLoading: query.isLoading,
-    isAuthenticated: !!userId,
+    isAuthenticated: resolvedIsAuthenticated,
+    isSessionPending: isPending,
     createPreset: createMutation.mutateAsync,
     updatePreset: updateMutation.mutateAsync,
     deletePreset: deleteMutation.mutateAsync,

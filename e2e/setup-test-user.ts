@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
+import { hashPassword } from '@better-auth/utils/password';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { TEST_USER, ADMIN_TEST_USER } from './utils/e2e-helpers';
@@ -54,25 +54,42 @@ export async function setupTestUser() {
   });
 
   try {
-    // Hash the password (use hashSync for bcryptjs)
-    const hashedPassword = bcrypt.hashSync(TEST_USER.password, 10);
+    // Hash the password (Better Auth uses scrypt via @better-auth/utils)
+    const hashedPassword = await hashPassword(TEST_USER.password);
 
-    // Upsert test user (create or update)
-    await prisma.user.upsert({
+    // Upsert test user (Better Auth schema: password in Account table)
+    const user = await prisma.user.upsert({
       where: {
         email: TEST_USER.email,
       },
       update: {
         name: TEST_USER.name,
-        password: hashedPassword,
-        emailVerified: new Date(),
+        emailVerified: true,
       },
       create: {
         id: TEST_USER.id,
         email: TEST_USER.email,
         name: TEST_USER.name,
+        emailVerified: true,
+      },
+    });
+
+    // Upsert credential account with password
+    await prisma.account.upsert({
+      where: {
+        providerId_accountId: {
+          providerId: 'credential',
+          accountId: user.id,
+        },
+      },
+      update: {
         password: hashedPassword,
-        emailVerified: new Date(),
+      },
+      create: {
+        userId: user.id,
+        providerId: 'credential',
+        accountId: user.id,
+        password: hashedPassword,
       },
     });
 
@@ -102,25 +119,43 @@ export async function setupAdminUser() {
   });
 
   try {
-    const hashedPassword = bcrypt.hashSync(ADMIN_TEST_USER.password, 10);
+    const hashedPassword = await hashPassword(ADMIN_TEST_USER.password);
 
-    await prisma.user.upsert({
+    // Upsert admin user (Better Auth schema: password in Account table)
+    const user = await prisma.user.upsert({
       where: {
         email: ADMIN_TEST_USER.email,
       },
       update: {
         name: ADMIN_TEST_USER.name,
-        password: hashedPassword,
-        emailVerified: new Date(),
+        emailVerified: true,
         role: 'admin',
       },
       create: {
         id: ADMIN_TEST_USER.id,
         email: ADMIN_TEST_USER.email,
         name: ADMIN_TEST_USER.name,
-        password: hashedPassword,
-        emailVerified: new Date(),
+        emailVerified: true,
         role: 'admin',
+      },
+    });
+
+    // Upsert credential account with password
+    await prisma.account.upsert({
+      where: {
+        providerId_accountId: {
+          providerId: 'credential',
+          accountId: user.id,
+        },
+      },
+      update: {
+        password: hashedPassword,
+      },
+      create: {
+        userId: user.id,
+        providerId: 'credential',
+        accountId: user.id,
+        password: hashedPassword,
       },
     });
 

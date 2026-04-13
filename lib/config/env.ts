@@ -53,8 +53,9 @@ const envSchema = z
     REDIS_PORT: numericStringWithDefault('6379'),
     REDIS_PASSWORD: z.string().optional(),
 
-    // Authentication (Auth.js v5 supports both AUTH_* and NEXTAUTH_*)
+    // Better Auth (supports AUTH_* and NEXTAUTH_* for backwards compatibility)
     NEXTAUTH_URL: optionalUrl,
+    BETTER_AUTH_URL: optionalUrl,
     AUTH_SECRET: z.string().min(32).optional(),
     NEXTAUTH_SECRET: z.string().min(32).optional(),
 

@@ -1,28 +1,31 @@
-import bcrypt from 'bcryptjs';
+import {
+  hashPassword as baHashPassword,
+  verifyPassword as baVerifyPassword,
+} from '@better-auth/utils/password';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { invalidateUserAuthCache } from './user-auth-cache';
+import { CREDENTIAL_PROVIDER_ID } from './auth';
 
 /**
- * Hash a password using bcrypt
+ * Hash a password using Better Auth's scrypt implementation
  */
 export async function hashPassword(password: string): Promise<string> {
-  const saltRounds = 12;
-  return bcrypt.hash(password, saltRounds);
+  return baHashPassword(password);
 }
 
 /**
- * Verify a password against a hash
+ * Verify a password against a Better Auth scrypt hash
  */
 export async function verifyPassword(
   password: string,
   hashedPassword: string
 ): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword);
+  return baVerifyPassword(hashedPassword, password);
 }
 
 /**
- * Create a new user with email/password
+ * Create a new user with email/password (test/seed use only)
  */
 export async function createUser({
   email,
@@ -43,12 +46,25 @@ export async function createUser({
 
   const hashedPassword = await hashPassword(password);
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      name,
-    },
+  const user = await prisma.$transaction(async (tx) => {
+    const createdUser = await tx.user.create({
+      data: {
+        email,
+        name,
+        emailVerified: false,
+      },
+    });
+
+    await tx.account.create({
+      data: {
+        userId: createdUser.id,
+        providerId: CREDENTIAL_PROVIDER_ID,
+        accountId: createdUser.id,
+        password: hashedPassword,
+      },
+    });
+
+    return createdUser;
   });
 
   return {
@@ -105,23 +121,23 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string
 ) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
+  const account = await prisma.account.findFirst({
+    where: { userId, providerId: CREDENTIAL_PROVIDER_ID },
   });
 
-  if (!user || !user.password) {
+  if (!account || !account.password) {
     throw new Error('User not found');
   }
 
-  const isValid = await verifyPassword(currentPassword, user.password);
+  const isValid = await verifyPassword(currentPassword, account.password);
   if (!isValid) {
     throw new Error('Invalid current password');
   }
 
   const hashedPassword = await hashPassword(newPassword);
 
-  await prisma.user.update({
-    where: { id: userId },
+  await prisma.account.update({
+    where: { id: account.id },
     data: { password: hashedPassword },
   });
 
@@ -183,9 +199,8 @@ export async function deleteUserAccountWithAudit(
         where: { id: userId },
         select: {
           email: true,
-          password: true,
           accounts: {
-            select: { provider: true },
+            select: { providerId: true, password: true },
           },
         },
       });
@@ -195,12 +210,15 @@ export async function deleteUserAccountWithAudit(
       }
 
       // 2. Determine authentication method
-      const authMethod = user.password
+      const credentialAccount = user.accounts.find(
+        (a) => a.providerId === CREDENTIAL_PROVIDER_ID
+      );
+      const authMethod = credentialAccount?.password
         ? 'credentials'
-        : user.accounts.map((a) => a.provider).join(',');
+        : user.accounts.map((a) => a.providerId).join(',');
 
       // 3. Delete verification tokens (no FK, manual cleanup required)
-      await tx.verificationToken.deleteMany({
+      await tx.verification.deleteMany({
         where: {
           identifier: user.email,
         },
@@ -233,7 +251,34 @@ export async function deleteUserAccountWithAudit(
 
   // 6. Invalidate user auth cache after successful transaction
   // This ensures subsequent JWT validations detect the deleted state
-  await invalidateUserAuthCache(userId);
+  // Best-effort: cache invalidation failure should not block session revocation
+  try {
+    await invalidateUserAuthCache(userId);
+  } catch (error) {
+    logger.warn(
+      { userId, error },
+      'Auth cache invalidation failed after deletion'
+    );
+  }
+
+  // 7. Revoke all sessions for the deleted user
+  // Retry once on failure; log error but do not throw (data integrity is preserved)
+  try {
+    await prisma.session.deleteMany({ where: { userId } });
+  } catch (firstError) {
+    logger.warn(
+      { userId, error: firstError },
+      'Session revocation failed, retrying'
+    );
+    try {
+      await prisma.session.deleteMany({ where: { userId } });
+    } catch (retryError) {
+      logger.error(
+        { userId, error: retryError },
+        'Session revocation failed after retry — sessions may remain active'
+      );
+    }
+  }
 
   return result;
 }

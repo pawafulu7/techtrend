@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { authClient } from '@/lib/auth/auth-client';
 import Link from 'next/link';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { Button } from '@/components/ui-v2/button-v2';
@@ -27,7 +27,14 @@ export function LoginContent({ callbackUrl }: LoginContentProps) {
   const handleOAuthSignIn = async (provider: 'google' | 'github') => {
     setIsLoading(true);
     try {
-      await signIn(provider, { callbackUrl });
+      const { error } = await authClient.signIn.social({
+        provider,
+        callbackURL: callbackUrl,
+      });
+      if (error) {
+        console.error('OAuth sign-in failed:', error);
+        return;
+      }
     } catch (error) {
       console.error('OAuth sign-in failed:', error);
     } finally {

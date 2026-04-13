@@ -11,12 +11,14 @@ interface FiltersProps {
   groupedSources?: GroupedSources[];
   tags: Array<{ id: string; name: string; count: number }>;
   initialSourceIds?: string[];
+  initialIsAuthenticated: boolean;
 }
 
 export function Filters({
   sources,
   groupedSources,
   initialSourceIds,
+  initialIsAuthenticated,
 }: FiltersProps) {
   const sourceFilter = useSourceFilter({
     sources,
@@ -29,6 +31,7 @@ export function Filters({
       {/* Source Filter with Categories */}
       <SourceFilterPanel
         sources={sources}
+        initialIsAuthenticated={initialIsAuthenticated}
         selectedSources={sourceFilter.selectedSources}
         expandedCategories={sourceFilter.expandedCategories}
         setExpandedCategories={sourceFilter.setExpandedCategories}

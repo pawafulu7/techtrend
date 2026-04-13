@@ -196,3 +196,4 @@ backups/
 dump.rdb
 .aigne/
 .docker-ci-build-timestamp
+.codex

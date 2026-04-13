@@ -147,7 +147,7 @@ export class UserBuilder {
     id: 'test-user-1',
     email: 'test@example.com',
     name: 'Test User',
-    emailVerified: null,
+    emailVerified: false,
     image: null,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -173,8 +173,8 @@ export class UserBuilder {
     return this;
   }
 
-  withEmailVerified(date: Date | null): UserBuilder {
-    this.user.emailVerified = date;
+  withEmailVerified(verified: boolean): UserBuilder {
+    this.user.emailVerified = verified;
     return this;
   }
 
@@ -184,7 +184,7 @@ export class UserBuilder {
       ...this.user,
       createdAt: new Date(this.user.createdAt!),
       updatedAt: new Date(this.user.updatedAt!),
-      emailVerified: this.user.emailVerified ? new Date(this.user.emailVerified) : null,
+      emailVerified: this.user.emailVerified ?? false,
     } as User;
   }
 }

@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '@better-auth/utils/password';
 
 const prisma = new PrismaClient();
 
@@ -18,28 +18,52 @@ async function createTestUser() {
       { id: 'test-user-password-change', email: 'test-password-change@example.com', name: 'Test User Password Change' },
     ];
 
-    // パスワードをハッシュ化（全ユーザー同じパスワード）
-    const hashedPassword = await bcrypt.hash('TestPassword123', 10);
+    // パスワードをハッシュ化（全ユーザー同じパスワード、Better Auth の scrypt を使用）
+    const hashedPassword = await hashPassword('TestPassword123');
 
-    // 既存のテストユーザーを全て削除
-    await prisma.user.deleteMany({
-      where: {
-        email: {
-          in: testUsers.map(u => u.email)
-        }
+    // 各ブラウザ用のテストユーザーを作成（$transaction でアトミックに）
+    const createdEmails: string[] = [];
+    await prisma.$transaction(async (tx) => {
+      // 既存データを削除（id と email 両方で一致するものを確実に削除）
+      await tx.account.deleteMany({
+        where: {
+          userId: { in: testUsers.map(u => u.id) },
+        },
+      });
+      await tx.user.deleteMany({
+        where: {
+          OR: [
+            { id: { in: testUsers.map(u => u.id) } },
+            { email: { in: testUsers.map(u => u.email) } },
+          ],
+        },
+      });
+
+      // 各テストユーザーを作成
+      for (const userData of testUsers) {
+        // User を作成
+        const user = await tx.user.create({
+          data: {
+            ...userData,
+            emailVerified: true,
+          },
+        });
+
+        // Account テーブルにパスワードを格納（Better Auth スキーマ）
+        await tx.account.create({
+          data: {
+            userId: user.id,
+            providerId: 'credential',
+            accountId: user.id,
+            password: hashedPassword,
+          },
+        });
+
+        createdEmails.push(user.email);
       }
     });
-
-    // 各ブラウザ用のテストユーザーを作成
-    for (const userData of testUsers) {
-      const user = await prisma.user.create({
-        data: {
-          ...userData,
-          password: hashedPassword,
-          emailVerified: new Date()
-        }
-      });
-      console.log('Test user created:', user.email);
+    for (const email of createdEmails) {
+      console.log('Test user created:', email);
     }
 
     console.log('All test users created successfully');

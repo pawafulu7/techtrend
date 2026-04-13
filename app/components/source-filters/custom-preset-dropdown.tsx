@@ -18,12 +18,14 @@ interface CustomPresetDropdownProps {
   selectedSources: string[];
   onApplyPreset: (sourceIds: string[]) => void;
   allSources: Array<{ id: string; name: string }>;
+  initialIsAuthenticated: boolean;
 }
 
 export function CustomPresetDropdown({
   selectedSources,
   onApplyPreset,
   allSources,
+  initialIsAuthenticated,
 }: CustomPresetDropdownProps) {
   const {
     presets,
@@ -32,7 +34,7 @@ export function CustomPresetDropdown({
     deletePreset,
     isCreating,
     isDeleting,
-  } = useSourcePresets();
+  } = useSourcePresets(initialIsAuthenticated);
   const { toast } = useToast();
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 

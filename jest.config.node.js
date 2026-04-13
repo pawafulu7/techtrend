@@ -71,8 +71,6 @@ const nextJestConfig = createJestConfig(customJestConfig);
 const esmAllowList = [
   'geist',
   'node-fetch',
-  'next-auth',
-  '@auth(?:[+/].+)?',
   'p-limit',
   'yocto-queue',
   'rate-limiter-flexible',

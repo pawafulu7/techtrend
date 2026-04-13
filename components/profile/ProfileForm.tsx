@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useEffect, useState } from 'react';
+import { authClient } from '@/lib/auth/auth-client';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Input } from '@/components/ui/input';
@@ -19,13 +19,14 @@ type ProfileFormData = {
 };
 
 export function ProfileForm() {
-  const { data: session, update } = useSession();
+  const { data: session } = authClient.useSession();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<ProfileFormData>({
     defaultValues: {
@@ -36,6 +37,12 @@ export function ProfileForm() {
       github: '',
     },
   });
+
+  useEffect(() => {
+    if (session?.user?.name !== undefined) {
+      setValue('name', session.user.name ?? '', { shouldDirty: false });
+    }
+  }, [session?.user?.name, setValue]);
 
   const onSubmit = async (data: ProfileFormData) => {
     setIsLoading(true);
@@ -53,16 +60,10 @@ export function ProfileForm() {
         throw new Error('プロフィールの更新に失敗しました');
       }
 
-      const updatedUser = await response.json();
-
-      // Update session
-      await update({
-        ...session,
-        user: {
-          ...session?.user,
-          name: updatedUser.name,
-        },
-      });
+      const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        await response.json();
+      }
 
       // Success toast
       toast({
@@ -96,7 +97,7 @@ export function ProfileForm() {
           disabled={isLoading}
         />
         {errors.name && (
-          <p className="text-sm text-destructive">{errors.name.message}</p>
+          <p className="text-destructive text-sm">{errors.name.message}</p>
         )}
       </div>
 
@@ -115,7 +116,7 @@ export function ProfileForm() {
           rows={4}
         />
         {errors.bio && (
-          <p className="text-sm text-destructive">{errors.bio.message}</p>
+          <p className="text-destructive text-sm">{errors.bio.message}</p>
         )}
       </div>
 
@@ -134,7 +135,7 @@ export function ProfileForm() {
           disabled={isLoading}
         />
         {errors.website && (
-          <p className="text-sm text-destructive">{errors.website.message}</p>
+          <p className="text-destructive text-sm">{errors.website.message}</p>
         )}
       </div>
 
@@ -153,7 +154,7 @@ export function ProfileForm() {
             disabled={isLoading}
           />
           {errors.twitter && (
-            <p className="text-sm text-destructive">{errors.twitter.message}</p>
+            <p className="text-destructive text-sm">{errors.twitter.message}</p>
           )}
         </div>
 
@@ -171,7 +172,7 @@ export function ProfileForm() {
             disabled={isLoading}
           />
           {errors.github && (
-            <p className="text-sm text-destructive">{errors.github.message}</p>
+            <p className="text-destructive text-sm">{errors.github.message}</p>
           )}
         </div>
       </div>

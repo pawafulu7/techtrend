@@ -218,8 +218,10 @@ export class RateLimitError extends Error {
  * @example
  * ```typescript
  * // In API route
- * const session = await auth();
- * await checkRateLimit(`rag:search:${session.user.id}`, ragSearchRateLimit);
+ * const session = await getSession();
+ * if (!session?.user?.id) return;
+ * const key = `rag:search:${session.user.id}`;
+ * await checkRateLimit(key, ragSearchRateLimit);
  * ```
  */
 export async function checkRateLimit(

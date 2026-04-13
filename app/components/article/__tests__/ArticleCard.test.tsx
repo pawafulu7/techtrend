@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ArticleCard } from '@/app/components/article/card';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/lib/auth/auth-client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createMockArticleWithRelations } from '@/test/utils/mock-factories';
 
@@ -13,8 +13,17 @@ jest.mock('next/navigation', () => ({
   useSearchParams: jest.fn(),
 }));
 
-jest.mock('next-auth/react', () => ({
-  useSession: jest.fn(),
+jest.mock('@/lib/auth/auth-client', () => ({
+  authClient: {
+    useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+    signIn: { email: jest.fn(), social: jest.fn() },
+    signOut: jest.fn(),
+    signUp: { email: jest.fn() },
+  },
+  useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  signUp: jest.fn(),
 }));
 
 // Next/Imageモック
@@ -61,7 +70,8 @@ describe('ArticleCard', () => {
     article: {
       id: '1',
       title: 'Test Article Title',
-      summary: 'This is a test article summary that should be displayed on the card.',
+      summary:
+        'This is a test article summary that should be displayed on the card.',
       url: 'https://example.com/article',
       publishedAt: new Date('2025-01-01T10:00:00Z'),
       createdAt: new Date('2025-01-01T11:00:00Z'),
@@ -86,8 +96,11 @@ describe('ArticleCard', () => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
     (useSearchParams as jest.Mock).mockReturnValue(mockSearchParams);
-    (useSession as jest.Mock).mockReturnValue({ data: null, status: 'unauthenticated' });
-    
+    (useSession as jest.Mock).mockReturnValue({
+      data: null,
+      isPending: false,
+    });
+
     // windowのlocation.hrefをモック（jsdom互換の方法）
     Object.defineProperty(window, 'location', {
       writable: true,
@@ -100,7 +113,7 @@ describe('ArticleCard', () => {
         reload: jest.fn(),
       },
     });
-    
+
     // fetchのモック
     global.fetch = jest.fn();
   });
@@ -112,16 +125,18 @@ describe('ArticleCard', () => {
   describe('基本的なレンダリング', () => {
     it('記事情報を正しく表示する', () => {
       render(<ArticleCard article={mockArticle} />);
-      
+
       // タイトルが表示される
       expect(screen.getByText('Test Article Title')).toBeInTheDocument();
-      
+
       // 要約が表示される
-      expect(screen.getByText(/This is a test article summary/)).toBeInTheDocument();
-      
+      expect(
+        screen.getByText(/This is a test article summary/)
+      ).toBeInTheDocument();
+
       // ソース名が表示される
       expect(screen.getByText('Test Source')).toBeInTheDocument();
-      
+
       // タグが表示される（最大2つ）
       expect(screen.getByText('React')).toBeInTheDocument();
       expect(screen.getByText('Testing')).toBeInTheDocument();
@@ -136,23 +151,23 @@ describe('ArticleCard', () => {
           publishedAt: new Date(), // 現在時刻
         },
       });
-      
+
       render(<ArticleCard article={newArticle} />);
-      
+
       // Newバッジが表示される
       expect(screen.getByText('New')).toBeInTheDocument();
     });
 
     it('未読バッジを未読記事に表示する', () => {
       render(<ArticleCard article={mockArticle} isRead={false} />);
-      
+
       // 未読バッジが表示される
       expect(screen.getByText('未読')).toBeInTheDocument();
     });
 
     it('既読記事ではタイトルの透明度が変わる', () => {
       render(<ArticleCard article={mockArticle} isRead={true} />);
-      
+
       const title = screen.getByText('Test Article Title');
       expect(title).toHaveClass('opacity-70');
     });
@@ -169,9 +184,9 @@ describe('ArticleCard', () => {
           name: 'Speaker Deck',
         },
       });
-      
+
       render(<ArticleCard article={speakerDeckArticle} />);
-      
+
       expect(screen.getByTestId('article-thumbnail')).toBeInTheDocument();
     });
 
@@ -185,9 +200,9 @@ describe('ArticleCard', () => {
           name: 'Docswell',
         },
       });
-      
+
       render(<ArticleCard article={docswellArticle} />);
-      
+
       expect(screen.getByTestId('article-thumbnail')).toBeInTheDocument();
     });
 
@@ -199,9 +214,9 @@ describe('ArticleCard', () => {
           thumbnail: 'https://example.com/thumbnail.jpg',
         },
       });
-      
+
       render(<ArticleCard article={thinContentArticle} />);
-      
+
       expect(screen.getByTestId('article-thumbnail')).toBeInTheDocument();
     });
 
@@ -212,7 +227,9 @@ describe('ArticleCard', () => {
           qualityScore: 25,
           thumbnail: 'https://example.com/thumbnail.jpg',
           summary: 'This is a low quality article summary',
-          content: 'This is a very long content that exceeds 300 characters...' + 'x'.repeat(300),
+          content:
+            'This is a very long content that exceeds 300 characters...' +
+            'x'.repeat(300),
         },
       });
 
@@ -221,23 +238,29 @@ describe('ArticleCard', () => {
       // サムネイルは表示されない
       expect(screen.queryByTestId('article-thumbnail')).not.toBeInTheDocument();
       // 要約が表示される
-      expect(screen.getByText('This is a low quality article summary')).toBeInTheDocument();
+      expect(
+        screen.getByText('This is a low quality article summary')
+      ).toBeInTheDocument();
     });
 
     it('通常の記事ではサムネイルの代わりに要約を表示する', () => {
       const normalArticle = createMockArticleWithRelations({
         article: {
           ...mockArticle,
-          content: 'This is a very long content that exceeds 300 characters...' + 'x'.repeat(300),
+          content:
+            'This is a very long content that exceeds 300 characters...' +
+            'x'.repeat(300),
           qualityScore: 80,
           thumbnail: 'https://example.com/thumbnail.jpg',
         },
       });
-      
+
       render(<ArticleCard article={normalArticle} />);
-      
+
       expect(screen.queryByTestId('article-thumbnail')).not.toBeInTheDocument();
-      expect(screen.getByText(/This is a test article summary/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/This is a test article summary/)
+      ).toBeInTheDocument();
     });
   });
 
@@ -245,23 +268,25 @@ describe('ArticleCard', () => {
     it('onArticleClickコールバックが提供されている場合実行する', async () => {
       const handleClick = jest.fn();
       const user = userEvent.setup();
-      
-      render(<ArticleCard article={mockArticle} onArticleClick={handleClick} />);
-      
+
+      render(
+        <ArticleCard article={mockArticle} onArticleClick={handleClick} />
+      );
+
       const card = screen.getByTestId('article-card');
       await user.click(card);
-      
+
       expect(handleClick).toHaveBeenCalledTimes(1);
     });
 
     it('カードクリック時に記事詳細ページにナビゲートする', async () => {
       const user = userEvent.setup();
-      
+
       render(<ArticleCard article={mockArticle} />);
-      
+
       const card = screen.getByTestId('article-card');
       await user.click(card);
-      
+
       // window.location.hrefが更新される
       expect(window.location.href).toContain('/articles/1');
     });
@@ -269,12 +294,14 @@ describe('ArticleCard', () => {
     it('ボタンクリック時はカードのクリックイベントを発火しない', async () => {
       const handleClick = jest.fn();
       const user = userEvent.setup();
-      
-      render(<ArticleCard article={mockArticle} onArticleClick={handleClick} />);
-      
+
+      render(
+        <ArticleCard article={mockArticle} onArticleClick={handleClick} />
+      );
+
       const favoriteButton = screen.getByTestId('favorite-button');
       await user.click(favoriteButton);
-      
+
       expect(handleClick).not.toHaveBeenCalled();
     });
 
@@ -282,12 +309,12 @@ describe('ArticleCard', () => {
       const user = userEvent.setup();
       const mockOpen = jest.fn();
       window.open = mockOpen;
-      
+
       render(<ArticleCard article={mockArticle} />);
-      
+
       const externalLinkButton = screen.getByTitle('元記事を開く');
       await user.click(externalLinkButton);
-      
+
       expect(mockOpen).toHaveBeenCalledWith(
         'https://example.com/article',
         '_blank',
@@ -297,12 +324,12 @@ describe('ArticleCard', () => {
 
     it('タグをクリックするとタグフィルターページに遷移する', async () => {
       const user = userEvent.setup();
-      
+
       render(<ArticleCard article={mockArticle} />);
-      
+
       const reactTag = screen.getByText('React');
       await user.click(reactTag);
-      
+
       expect(window.location.href).toContain('/?tags=React&tagMode=OR');
     });
 
@@ -312,18 +339,18 @@ describe('ArticleCard', () => {
         ok: true,
         json: async () => ({ votes: 6 }),
       });
-      
+
       render(<ArticleCard article={mockArticle} />);
-      
+
       const voteButton = screen.getByRole('button', { name: /5/i });
       await user.click(voteButton);
-      
+
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith('/api/articles/1/vote', {
           method: 'POST',
         });
       });
-      
+
       // 投票数が更新される
       expect(screen.getByText('6')).toBeInTheDocument();
     });
@@ -334,39 +361,41 @@ describe('ArticleCard', () => {
         ok: true,
         json: async () => ({ votes: 6 }),
       });
-      
+
       render(<ArticleCard article={mockArticle} />);
-      
+
       const voteButton = screen.getByRole('button', { name: /5/i });
-      
+
       // 1回目の投票
       await user.click(voteButton);
-      
+
       await waitFor(() => {
         expect(voteButton).toBeDisabled();
       });
-      
+
       // 2回目の投票試行
       await user.click(voteButton);
-      
+
       // APIは1回しか呼ばれない
       expect(global.fetch).toHaveBeenCalledTimes(1);
     });
 
     it('投票APIがエラーを返しても適切に処理する', async () => {
       const user = userEvent.setup();
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
-      
+      (global.fetch as jest.Mock).mockRejectedValueOnce(
+        new Error('Network error')
+      );
+
       render(<ArticleCard article={mockArticle} />);
-      
+
       const voteButton = screen.getByRole('button', { name: /5/i });
       await user.click(voteButton);
-      
+
       // エラーが発生しても投票数は変わらない
       await waitFor(() => {
         expect(screen.getByText('5')).toBeInTheDocument();
       });
-      
+
       // ボタンは無効化されない
       expect(voteButton).not.toBeDisabled();
     });
@@ -376,14 +405,14 @@ describe('ArticleCard', () => {
     it('現在のフィルター状態を記事詳細URLに含める', async () => {
       const searchParams = new URLSearchParams('tags=React&sortBy=publishedAt');
       (useSearchParams as jest.Mock).mockReturnValue(searchParams);
-      
+
       const user = userEvent.setup();
-      
+
       render(<ArticleCard article={mockArticle} />);
-      
+
       const card = screen.getByTestId('article-card');
       await user.click(card);
-      
+
       // URLにfromパラメータが含まれる
       expect(window.location.href).toContain('from=');
       expect(window.location.href).toContain('tags%3DReact');
@@ -393,14 +422,14 @@ describe('ArticleCard', () => {
     it('returningパラメータを除外して新しく追加する', async () => {
       const searchParams = new URLSearchParams('returning=1&tags=React');
       (useSearchParams as jest.Mock).mockReturnValue(searchParams);
-      
+
       const user = userEvent.setup();
-      
+
       render(<ArticleCard article={mockArticle} />);
-      
+
       const card = screen.getByTestId('article-card');
       await user.click(card);
-      
+
       // URLにreturning=1が1つだけ含まれる
       const url = window.location.href;
       const returningCount = (url.match(/returning%3D1/g) || []).length;
@@ -411,7 +440,7 @@ describe('ArticleCard', () => {
   describe('アクセシビリティ', () => {
     it('適切なdata-testidを持つ', () => {
       render(<ArticleCard article={mockArticle} />);
-      
+
       expect(screen.getByTestId('article-card')).toBeInTheDocument();
       expect(screen.getByTestId('favorite-button')).toBeInTheDocument();
       expect(screen.getByTestId('share-button')).toBeInTheDocument();
@@ -419,14 +448,14 @@ describe('ArticleCard', () => {
 
     it('クリック可能な要素にカーソルポインターを設定', () => {
       render(<ArticleCard article={mockArticle} />);
-      
+
       const card = screen.getByTestId('article-card');
       expect(card).toHaveClass('cursor-pointer');
     });
 
     it('ホバー時のスタイル変更', () => {
       render(<ArticleCard article={mockArticle} />);
-      
+
       const card = screen.getByTestId('article-card');
       expect(card).toHaveClass('hover:shadow-lg');
       expect(card).toHaveClass('hover:-translate-y-0.5');
@@ -439,9 +468,9 @@ describe('ArticleCard', () => {
         article: mockArticle,
         tags: [],
       });
-      
+
       render(<ArticleCard article={articleWithoutTags} />);
-      
+
       // タグセクションが存在しない
       expect(screen.queryByText('React')).not.toBeInTheDocument();
       expect(screen.queryByText('Testing')).not.toBeInTheDocument();
@@ -457,13 +486,15 @@ describe('ArticleCard', () => {
           summary: null,
         },
       });
-      
+
       render(<ArticleCard article={articleWithoutSummary} />);
-      
+
       // タイトルは表示される
       expect(screen.getByText('Test Article Title')).toBeInTheDocument();
       // 要約セクションは表示されない
-      expect(screen.queryByText(/This is a test article summary/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/This is a test article summary/)
+      ).not.toBeInTheDocument();
     });
   });
 });

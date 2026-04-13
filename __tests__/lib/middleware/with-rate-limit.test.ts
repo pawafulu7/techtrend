@@ -3,7 +3,7 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { RateLimitError } from '@/lib/rate-limiter';
 
 // Mock dependencies (preserve RateLimitError class)
-jest.mock('@/lib/auth/auth');
+jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/rate-limiter', () => {
   const actual = jest.requireActual('@/lib/rate-limiter');
   return {
@@ -15,16 +15,30 @@ jest.mock('@/lib/rate-limiter', () => {
 jest.mock('@/lib/config/rate-limits');
 jest.mock('@opentelemetry/api');
 
-import { auth } from '@/lib/auth/auth';
-import { checkRateLimit, createRateLimiterFromConfig } from '@/lib/rate-limiter';
+import { getSession } from '@/lib/auth/get-session';
+import {
+  checkRateLimit,
+  createRateLimiterFromConfig,
+} from '@/lib/rate-limiter';
 import { getRateLimitConfig } from '@/lib/config/rate-limits';
 
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
-const mockCheckRateLimit = checkRateLimit as jest.MockedFunction<typeof checkRateLimit>;
-const mockGetRateLimitConfig = getRateLimitConfig as jest.MockedFunction<typeof getRateLimitConfig>;
-const mockCreateRateLimiterFromConfig = createRateLimiterFromConfig as jest.MockedFunction<
-  typeof createRateLimiterFromConfig
+const mockAuth = getSession as jest.MockedFunction<typeof getSession>;
+
+// withRateLimit は resolveSession → auth.api.getSession を呼ぶ
+const getAuthApiGetSession = () => {
+  const { auth } = require('@/lib/auth/auth');
+  return auth.api.getSession as jest.Mock;
+};
+const mockCheckRateLimit = checkRateLimit as jest.MockedFunction<
+  typeof checkRateLimit
 >;
+const mockGetRateLimitConfig = getRateLimitConfig as jest.MockedFunction<
+  typeof getRateLimitConfig
+>;
+const mockCreateRateLimiterFromConfig =
+  createRateLimiterFromConfig as jest.MockedFunction<
+    typeof createRateLimiterFromConfig
+  >;
 
 describe('withRateLimit', () => {
   const mockLimiter = {} as any;
@@ -41,11 +55,14 @@ describe('withRateLimit', () => {
     });
 
     mockCreateRateLimiterFromConfig.mockReturnValue(mockLimiter);
+
+    // デフォルトは未認証（resolveSession → auth.api.getSession を使う）
+    getAuthApiGetSession().mockResolvedValue(null);
   });
 
   describe('Success Cases', () => {
     it('should allow requests within limit', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
       mockCheckRateLimit.mockResolvedValue({
         limit: 10,
         remaining: 9,
@@ -65,11 +82,13 @@ describe('withRateLimit', () => {
       expect(response.status).toBe(200);
       expect(response.headers.get('X-RateLimit-Limit')).toBe('10');
       expect(response.headers.get('X-RateLimit-Remaining')).toBe('9');
-      expect(response.headers.get('X-RateLimit-Reset')).toBe('2025-11-03T10:00:00.000Z');
+      expect(response.headers.get('X-RateLimit-Reset')).toBe(
+        '2025-11-03T10:00:00.000Z'
+      );
     });
 
     it('should call onAllowed callback when provided', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
       mockCheckRateLimit.mockResolvedValue({
         limit: 10,
         remaining: 5,
@@ -96,7 +115,7 @@ describe('withRateLimit', () => {
 
   describe('Rate Limit Exceeded', () => {
     it('should return 429 when rate limit exceeded', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const resetDate = new Date(Date.now() + 60_000); // 60 seconds in the future
       mockCheckRateLimit.mockRejectedValue(
@@ -123,10 +142,15 @@ describe('withRateLimit', () => {
     });
 
     it('should call onBlocked callback when provided', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const resetDate = new Date();
-      const rateLimitError = new RateLimitError('Rate limit exceeded', 10, 0, resetDate);
+      const rateLimitError = new RateLimitError(
+        'Rate limit exceeded',
+        10,
+        0,
+        resetDate
+      );
       mockCheckRateLimit.mockRejectedValue(rateLimitError);
 
       const onBlocked = jest.fn();
@@ -145,9 +169,9 @@ describe('withRateLimit', () => {
 
   describe('Key Resolution', () => {
     it('should use user ID when user strategy and session exists', async () => {
-      mockAuth.mockResolvedValue({
+      getAuthApiGetSession().mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' },
-      } as any);
+      });
 
       mockGetRateLimitConfig.mockReturnValue({
         points: 10,
@@ -169,11 +193,14 @@ describe('withRateLimit', () => {
       const request = new NextRequest('http://localhost/api/test');
       await handler(request);
 
-      expect(mockCheckRateLimit).toHaveBeenCalledWith('user:user123', mockLimiter);
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(
+        'user:user123',
+        mockLimiter
+      );
     });
 
     it('should fallback to IP when user strategy but no session', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       mockGetRateLimitConfig.mockReturnValue({
         points: 10,
@@ -197,11 +224,14 @@ describe('withRateLimit', () => {
       });
       await handler(request);
 
-      expect(mockCheckRateLimit).toHaveBeenCalledWith('anon:192.168.1.1', mockLimiter);
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(
+        'anon:192.168.1.1',
+        mockLimiter
+      );
     });
 
     it('should use IP when ip strategy', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       mockGetRateLimitConfig.mockReturnValue({
         points: 10,
@@ -225,11 +255,14 @@ describe('withRateLimit', () => {
       });
       await handler(request);
 
-      expect(mockCheckRateLimit).toHaveBeenCalledWith('ip:10.0.0.1', mockLimiter);
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(
+        'ip:10.0.0.1',
+        mockLimiter
+      );
     });
 
     it('should use anonymous when anonymous strategy', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       mockGetRateLimitConfig.mockReturnValue({
         points: 500,
@@ -256,7 +289,7 @@ describe('withRateLimit', () => {
 
     it('should use custom keyResolver when provided', async () => {
       const session = { user: { id: 'user123', email: 'test@example.com' } };
-      mockAuth.mockResolvedValue(session as any);
+      getAuthApiGetSession().mockResolvedValue(session);
 
       mockCheckRateLimit.mockResolvedValue({
         limit: 10,
@@ -276,14 +309,19 @@ describe('withRateLimit', () => {
       await handler(request);
 
       expect(customKeyResolver).toHaveBeenCalledWith(request, session);
-      expect(mockCheckRateLimit).toHaveBeenCalledWith('custom:key123', mockLimiter);
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(
+        'custom:key123',
+        mockLimiter
+      );
     });
   });
 
   describe('Error Handling', () => {
     it('should propagate non-RateLimitError errors', async () => {
-      mockAuth.mockResolvedValue(null);
-      mockCheckRateLimit.mockRejectedValue(new Error('Redis connection failed'));
+      getAuthApiGetSession().mockResolvedValue(null);
+      mockCheckRateLimit.mockRejectedValue(
+        new Error('Redis connection failed')
+      );
 
       const handler = withRateLimit('test:policy', async () => {
         return NextResponse.json({ success: true });
@@ -295,7 +333,7 @@ describe('withRateLimit', () => {
     });
 
     it('should calculate retryAfter correctly', async () => {
-      mockAuth.mockResolvedValue(null);
+      getAuthApiGetSession().mockResolvedValue(null);
 
       const resetDate = new Date(Date.now() + 45000); // 45 seconds from now
       mockCheckRateLimit.mockRejectedValue(
@@ -317,9 +355,9 @@ describe('withRateLimit', () => {
 
   describe('Session Handling', () => {
     it('should fetch session only once', async () => {
-      mockAuth.mockResolvedValue({
+      getAuthApiGetSession().mockResolvedValue({
         user: { id: 'user123' },
-      } as any);
+      });
 
       mockGetRateLimitConfig.mockReturnValue({
         points: 10,
@@ -341,8 +379,8 @@ describe('withRateLimit', () => {
       const request = new NextRequest('http://localhost/api/test');
       await handler(request);
 
-      // Verify auth() called exactly once
-      expect(mockAuth).toHaveBeenCalledTimes(1);
+      // Verify auth.api.getSession called exactly once
+      expect(getAuthApiGetSession()).toHaveBeenCalledTimes(1);
     });
   });
 });
