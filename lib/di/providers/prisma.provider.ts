@@ -13,10 +13,11 @@ export function getPrismaClient(): PrismaClient {
   return container.get<PrismaClient>(DI_TOKENS.PRISMA);
 }
 
+/**
+ * Disconnect the singleton PrismaClient.
+ * After calling this, the exported `prisma` const still holds the old instance.
+ * Only call this at process exit — do not attempt to reuse prisma afterwards.
+ */
 export async function closePrismaConnection(): Promise<void> {
   await prisma.$disconnect();
-  // Reset global singleton so a fresh client is created on next access
-  // (relevant for scripts that disconnect mid-process)
-  const g = globalThis as unknown as { __prisma: unknown };
-  g.__prisma = undefined;
 }

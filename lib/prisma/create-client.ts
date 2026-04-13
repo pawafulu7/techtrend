@@ -7,6 +7,7 @@
 import { PrismaClient } from '@/lib/prisma-exports';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { getPoolConfig } from '@/lib/database-config';
+import { env } from '@/lib/config/env';
 
 export function createPrismaClient(options?: {
   connectionString?: string;
@@ -25,5 +26,8 @@ export function createPrismaClient(options?: {
   return new PrismaClient({
     adapter,
     log: options?.log ?? ['error', 'warn'],
+    transactionOptions: {
+      timeout: env.DB_TRANSACTION_TIMEOUT,
+    },
   });
 }

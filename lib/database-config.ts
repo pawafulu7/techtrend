@@ -10,6 +10,11 @@
  * - `connection_limit` → `max` (pg.PoolConfig)
  * - `pool_timeout` → `connectionTimeoutMillis` (seconds → milliseconds)
  * - `connect_timeout` → connection string parameter (stays in seconds)
+ *
+ * pgbouncer note:
+ *   PGBOUNCER_MODE handling is deferred (OQ3 in plan). When pgbouncer support
+ *   is added, set `preparedStatements: false` in PrismaPg options to disable
+ *   prepared statements (incompatible with pgbouncer transaction pooling).
  */
 
 import { env } from '@/lib/config/env';
