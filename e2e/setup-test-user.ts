@@ -64,8 +64,8 @@ export async function setupTestUser() {
 
     // Upsert credential account with password
     await client.query(
-      `INSERT INTO "Account" ("userId", "providerId", "accountId", password, "updatedAt")
-       VALUES ($1, $2, $3, $4, NOW())
+      `INSERT INTO "Account" (id, "userId", "providerId", "accountId", password, "updatedAt")
+       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, NOW())
        ON CONFLICT ("providerId", "accountId") DO UPDATE SET
          password = EXCLUDED.password,
          "updatedAt" = NOW()`,
@@ -109,8 +109,8 @@ export async function setupAdminUser() {
 
     // Upsert credential account with password
     await client.query(
-      `INSERT INTO "Account" ("userId", "providerId", "accountId", password, "updatedAt")
-       VALUES ($1, $2, $3, $4, NOW())
+      `INSERT INTO "Account" (id, "userId", "providerId", "accountId", password, "updatedAt")
+       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, NOW())
        ON CONFLICT ("providerId", "accountId") DO UPDATE SET
          password = EXCLUDED.password,
          "updatedAt" = NOW()`,
