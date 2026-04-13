@@ -31,7 +31,6 @@ const maskConnectionString = (url: string): string => {
 
 /**
  * E2Eテスト用のユーザーをセットアップする
- * pg.Pool を使用してデータベースに直接接続
  */
 export async function setupTestUser() {
   // テスト用データベースURLを明示的に指定
@@ -45,14 +44,13 @@ export async function setupTestUser() {
     console.log('  DATABASE_URL from env:', process.env.DATABASE_URL ? maskConnectionString(process.env.DATABASE_URL) : 'Not set');
   }
 
-  const pool = new pg.Pool({ connectionString: TEST_DATABASE_URL });
+  const client = new pg.Client({ connectionString: TEST_DATABASE_URL });
+  await client.connect();
 
   try {
-    // Hash the password (Better Auth uses scrypt via @better-auth/utils)
     const hashedPassword = await hashPassword(TEST_USER.password);
 
-    // Upsert test user (Better Auth schema: password in Account table)
-    const { rows } = await pool.query<{ id: string }>(
+    const { rows } = await client.query<{ id: string }>(
       `INSERT INTO "User" (id, email, name, "emailVerified")
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (email) DO UPDATE SET
@@ -64,7 +62,7 @@ export async function setupTestUser() {
     const userId = rows[0].id;
 
     // Upsert credential account with password
-    await pool.query(
+    await client.query(
       `INSERT INTO "Account" ("userId", "providerId", "accountId", password)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT ("providerId", "accountId") DO UPDATE SET
@@ -78,24 +76,23 @@ export async function setupTestUser() {
     console.error('Failed to create/update test user:', error);
     return false;
   } finally {
-    await pool.end();
+    await client.end();
   }
 }
 
 /**
  * E2Eテスト用の管理者ユーザーをセットアップする
- * pg.Pool を使用してデータベースに直接接続
  */
 export async function setupAdminUser() {
   const TEST_DATABASE_URL = resolveTestDbUrl();
 
-  const pool = new pg.Pool({ connectionString: TEST_DATABASE_URL });
+  const client = new pg.Client({ connectionString: TEST_DATABASE_URL });
+  await client.connect();
 
   try {
     const hashedPassword = await hashPassword(ADMIN_TEST_USER.password);
 
-    // Upsert admin user (Better Auth schema: password in Account table)
-    const { rows } = await pool.query<{ id: string }>(
+    const { rows } = await client.query<{ id: string }>(
       `INSERT INTO "User" (id, email, name, "emailVerified", role)
        VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (email) DO UPDATE SET
@@ -108,7 +105,7 @@ export async function setupAdminUser() {
     const userId = rows[0].id;
 
     // Upsert credential account with password
-    await pool.query(
+    await client.query(
       `INSERT INTO "Account" ("userId", "providerId", "accountId", password)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT ("providerId", "accountId") DO UPDATE SET
@@ -122,7 +119,7 @@ export async function setupAdminUser() {
     console.error('Failed to create/update admin user:', error);
     return false;
   } finally {
-    await pool.end();
+    await client.end();
   }
 }
 
@@ -130,14 +127,13 @@ export async function setupAdminUser() {
  * テストユーザーのクリーンアップ
  */
 export async function cleanupTestUser() {
-  // テスト用データベースURLを明示的に指定
   const TEST_DATABASE_URL = resolveTestDbUrl();
 
-  const pool = new pg.Pool({ connectionString: TEST_DATABASE_URL });
+  const client = new pg.Client({ connectionString: TEST_DATABASE_URL });
+  await client.connect();
 
   try {
-    // Delete test user if exists
-    await pool.query(
+    await client.query(
       `DELETE FROM "User" WHERE email = $1`,
       [TEST_USER.email]
     );
@@ -148,7 +144,7 @@ export async function cleanupTestUser() {
     console.error('Failed to cleanup test user:', error);
     return false;
   } finally {
-    await pool.end();
+    await client.end();
   }
 }
 
@@ -158,10 +154,11 @@ export async function cleanupTestUser() {
 export async function cleanupAdminUser() {
   const TEST_DATABASE_URL = resolveTestDbUrl();
 
-  const pool = new pg.Pool({ connectionString: TEST_DATABASE_URL });
+  const client = new pg.Client({ connectionString: TEST_DATABASE_URL });
+  await client.connect();
 
   try {
-    await pool.query(
+    await client.query(
       `DELETE FROM "User" WHERE email = $1`,
       [ADMIN_TEST_USER.email]
     );
@@ -172,7 +169,7 @@ export async function cleanupAdminUser() {
     console.error('Failed to cleanup admin user:', error);
     return false;
   } finally {
-    await pool.end();
+    await client.end();
   }
 }
 
