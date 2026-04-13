@@ -80,7 +80,7 @@ async function deletePresetApi(id: string): Promise<void> {
 }
 
 export function useSourcePresets() {
-  const { data: session } = authClient.useSession();
+  const { data: session, isPending } = authClient.useSession();
   const queryClient = useQueryClient();
   const userId = session?.user?.id;
 
@@ -117,7 +117,8 @@ export function useSourcePresets() {
   return {
     presets: query.data?.presets ?? [],
     isLoading: query.isLoading,
-    isAuthenticated: !!userId,
+    isAuthenticated: !isPending && !!userId,
+    isSessionPending: isPending,
     createPreset: createMutation.mutateAsync,
     updatePreset: updateMutation.mutateAsync,
     deletePreset: deleteMutation.mutateAsync,

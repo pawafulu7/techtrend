@@ -28,6 +28,7 @@ export function CustomPresetDropdown({
   const {
     presets,
     isAuthenticated,
+    isSessionPending,
     createPreset,
     deletePreset,
     isCreating,
@@ -36,7 +37,7 @@ export function CustomPresetDropdown({
   const { toast } = useToast();
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  if (!isAuthenticated) return null;
+  if (isSessionPending || !isAuthenticated) return null;
 
   const handleApplyPreset = (sourceIds: string[]) => {
     // Filter to only currently valid sources
