@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -27,7 +27,17 @@ export function ArticleQADialog({
   children,
 }: ArticleQADialogProps) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMounted(true), []);
+
+  // SSR: render children directly (no Dialog wrapper) to ensure the trigger
+  // button appears in the server HTML. Radix Dialog may not SSR its trigger,
+  // causing a hydration mismatch with sibling components.
+  if (!mounted) {
+    return <>{children}</>;
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -38,7 +48,9 @@ export function ArticleQADialog({
       >
         <DialogHeader className="sr-only">
           <DialogTitle>{articleTitle}の記事について質問する</DialogTitle>
-          <DialogDescription>AIアシスタントに記事内容の疑問を質問できます。</DialogDescription>
+          <DialogDescription>
+            AIアシスタントに記事内容の疑問を質問できます。
+          </DialogDescription>
         </DialogHeader>
         <div
           ref={scrollContainerRef}
