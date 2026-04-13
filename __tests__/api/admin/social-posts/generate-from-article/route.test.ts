@@ -232,4 +232,28 @@ describe('POST /api/admin/social-posts/generate-from-article', () => {
     expect(response.status).toBe(400);
     expect(data.error).toBe('Invalid JSON in request body');
   });
+
+  it('should return 401 when authenticated user has been deleted', async () => {
+    const {
+      validateUser,
+      createUserDeletedResponse,
+    } = require('@/lib/middleware/with-user-validation');
+
+    (validateUser as jest.Mock).mockResolvedValueOnce(null);
+
+    const request = new NextRequest(
+      'http://localhost:3000/api/admin/social-posts/generate-from-article',
+      {
+        method: 'POST',
+        body: JSON.stringify({ articleId: 'article-1' }),
+      }
+    );
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.code).toBe('USER_DELETED');
+    expect(createUserDeletedResponse).toHaveBeenCalled();
+  });
+
 });

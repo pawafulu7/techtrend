@@ -463,4 +463,5 @@ describe('Social Posts API', () => {
       expect(data.error).toContain('Forbidden');
     });
   });
+
 });
