@@ -17,9 +17,10 @@ jest.mock('@/lib/prisma', () => jest.requireActual('../../../lib/prisma'));
 // Import route handler AFTER mock setup
 import { GET } from '@/app/api/workers/embedding/route';
 
-// Use real Prisma client (bypass mock) with production DB protection
-// Relative path bypasses moduleNameMapper which would redirect to __mocks__
-const { createPrismaClient: realCreatePrismaClient } = jest.requireActual('../../../lib/prisma/create-client');
+// Use real Prisma client (bypass all mocks)
+// jest.requireActual bypasses jest.mock('@/lib/prisma-exports') from jest.setup.node.js
+const { PrismaClient: RealPrismaClient } = jest.requireActual('@/lib/prisma-exports');
+const { PrismaPg } = jest.requireActual('@prisma/adapter-pg');
 const DB_URL = process.env.DATABASE_URL;
 const isSafeTestDb = !!DB_URL && /(localhost|127\.0\.0\.1|test|_test)/i.test(DB_URL);
 const describeIf = isSafeTestDb ? describe : describe.skip;
@@ -31,9 +32,8 @@ describeIf('GET /api/workers/embedding', () => {
 
   beforeAll(async () => {
     // Lazily create client when tests actually run
-    prisma = realCreatePrismaClient({
-      connectionString: DB_URL!,
-    });
+    const adapter = new PrismaPg({ connectionString: DB_URL! });
+    prisma = new RealPrismaClient({ adapter });
     await prisma.$connect();
 
     // Always create an isolated test source
