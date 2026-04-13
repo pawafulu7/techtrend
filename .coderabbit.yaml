@@ -7,6 +7,8 @@ tone_instructions: |
   問題の説明だけでなく、修正後のコード例を提示してください。
 
 reviews:
+  path_filters:
+    - "!package-lock.json"
   profile: "assertive"
   sequence_diagrams: true
   assess_linked_issues: true

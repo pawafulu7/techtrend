@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { AIService } from '@/lib/ai/ai-service';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const AFFECTED_ARTICLE_IDS = [
   'cmgkcfh8t0035te5ro5zpm068',  // AI時代の働き方

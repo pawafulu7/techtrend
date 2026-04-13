@@ -3,10 +3,10 @@
  * Google Developers Blogの記事コンテンツを完全版で取得・更新
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { GoogleDevEnricher } from '../../lib/enrichers/google-dev';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const enricher = new GoogleDevEnricher();
 
 async function enrichGoogleDevContent() {

@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 import { keywordsCache } from '@/lib/cache/keywords-cache';
 import { trendsCache } from '@/lib/cache/trends-cache';
 import { RedisCache } from '@/lib/cache';

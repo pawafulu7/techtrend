@@ -3,7 +3,8 @@
  * Basic smoke tests for summary management functionality
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/lib/prisma-exports';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import {
   SummaryManager,
   SummaryGenerationOptions,
@@ -14,7 +15,7 @@ describe('SummaryManager', () => {
   let manager: SummaryManager;
 
   beforeAll(() => {
-    prisma = new PrismaClient();
+    prisma = createPrismaClient();
   });
 
   afterAll(async () => {

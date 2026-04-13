@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { SummaryManager } from '@/lib/services/summary/summary-manager';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const CANARY_ARTICLE_IDS = [
   'cmiguke0n001atem7owtd3gej', // Shortest: 263 chars

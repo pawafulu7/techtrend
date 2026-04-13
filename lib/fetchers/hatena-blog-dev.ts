@@ -63,7 +63,7 @@ export class HatenaBlogDevFetcher extends BaseFetcher {
     }
   `;
 
-  constructor(source: import('@prisma/client').Source) {
+  constructor(source: import('@/lib/prisma-exports').Source) {
     super(source);
     // Validate environment variable parsing (handle NaN and negative values)
     this.maxPages = env.HATENA_BLOG_DEV_MAX_PAGES;

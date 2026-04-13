@@ -3,10 +3,10 @@
  * エンリッチメントされたGoogle AI Blog記事の要約を再生成
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const summaryService = new UnifiedSummaryService();
 
 async function regenerateSummaries() {

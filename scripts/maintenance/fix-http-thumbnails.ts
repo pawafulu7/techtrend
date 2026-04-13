@@ -18,9 +18,9 @@
  * 5. Set failed conversions to NULL
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface ThumbnailRecord {
   id: string;

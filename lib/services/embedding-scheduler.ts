@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import type { EmbeddingJob, Article, PrismaClient } from '@prisma/client';
+import type { EmbeddingJob, Article, PrismaClient } from '@/lib/prisma-exports';
 
 type EmbeddingJobWithArticle = EmbeddingJob & {
   article: Pick<Article, 'id' | 'title' | 'summary'>;

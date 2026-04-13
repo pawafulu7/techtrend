@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { sourceCache } from '@/lib/cache/source-cache';
 import logger from '@/lib/logger';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 import {
   inferSourceCategory,
   sortSources,
@@ -172,7 +172,7 @@ async function handler(request: NextRequest) {
             avg_quality_score: number;
             recent_articles: number;
             past_month_articles: number;
-            last_published: Date | null;
+            last_published: string | null;
           }>
         >`
           SELECT

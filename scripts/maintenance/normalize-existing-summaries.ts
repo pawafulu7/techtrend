@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // 詳細要約の正規化関数（manage-summaries.tsと同じロジック）
 function normalizeDetailedSummary(text: string): string {

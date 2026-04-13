@@ -9,7 +9,7 @@ const mockTransaction = jest.fn();
 const mockUpsert = jest.fn();
 
 // Mock PrismaClient - must be before any imports that use it
-jest.mock('@prisma/client', () => {
+jest.mock('@/lib/prisma-exports', () => {
   return {
     PrismaClient: jest.fn(() => ({
       tag: {

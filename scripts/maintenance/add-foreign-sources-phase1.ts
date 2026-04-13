@@ -11,10 +11,10 @@
  *   npx tsx scripts/maintenance/add-foreign-sources-phase1.ts
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { sourceCache } from '../../lib/cache/source-cache';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const PHASE1_SOURCES = [
   {

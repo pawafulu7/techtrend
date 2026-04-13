@@ -1,20 +1,20 @@
-// Prismaクライアントの新しいエクスポート（DI対応）
-import { PrismaClient } from '@prisma/client';
+// Prisma client export (DI integration)
+import { PrismaClient } from '@/lib/prisma-exports';
 import { initializeDI, getPrismaClient } from './di';
 
-// 初期化
+// Initialize DI container (skip in test environments)
 if (process.env.NODE_ENV !== 'test') {
   initializeDI();
 }
 
-// Prismaクライアントを取得（遅延評価）
+// Get PrismaClient via DI (lazy evaluation)
 export function getPrisma(): PrismaClient {
   return getPrismaClient();
 }
 
-// 互換性のための既存エクスポート
+// Backwards-compatible proxy export
 export const prisma = new Proxy({} as PrismaClient, {
-  get: (target, prop) => {
+  get: (_target, prop) => {
     const client = getPrisma();
     return client[prop as keyof PrismaClient];
   },

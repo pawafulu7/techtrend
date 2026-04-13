@@ -86,7 +86,7 @@ function makePrismaMock(existingTags: string[] = []) {
           _options?: { timeout?: number }
         ) => fn(txClient)
       ),
-    } as unknown as import('@prisma/client').PrismaClient,
+    } as unknown as import('@/lib/prisma-exports').PrismaClient,
     articleUpdate,
     articleFindUniqueOrThrow,
   };

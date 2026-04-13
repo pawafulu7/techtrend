@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
+import { PrismaClient } from '@/lib/prisma-exports';
 import { logger } from './logger';
 import { env } from '@/lib/config/env';
 
@@ -7,12 +8,14 @@ let prisma: PrismaClient | null = null;
 
 export function getPrismaClient(): PrismaClient {
   if (!prisma) {
-    prisma = new PrismaClient({
+    prisma = createPrismaClient({
       log: (() => {
         const debug = env.DEBUG?.trim();
         return debug && !/^(false|0)$/i.test(debug)
-          ? ['query', 'info', 'warn', 'error']
-          : ['error'];
+          ? (['query', 'info', 'warn', 'error'] as Array<
+              'query' | 'info' | 'warn' | 'error'
+            >)
+          : (['error'] as Array<'query' | 'info' | 'warn' | 'error'>);
       })(),
     });
   }

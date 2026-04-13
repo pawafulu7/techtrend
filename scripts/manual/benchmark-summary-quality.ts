@@ -9,14 +9,14 @@
  * compare:  Generate summaries with updated prompts and compare against baseline
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { PromptBuilder } from '@/lib/ai/adapter/prompt-builder';
 import { GeminiSummaryAdapter } from '@/lib/ai/adapter/gemini-summary-adapter';
 import { GeminiTransportImpl } from '@/lib/ai/transport/gemini-transport';
 import { SummaryQualityChecker } from '@/lib/ai/service/quality-checker';
 import * as fs from 'fs';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const CONTENT_LENGTH_BINS = [
   { label: '<400', min: 100, max: 399, count: 2 },

@@ -4,12 +4,12 @@
  * 薄いコンテンツ用の新しいプロンプトで要約を再生成
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import { analyzeContent } from '../../lib/utils/content/content-analyzer';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // コマンドライン引数の処理
 const args = process.argv.slice(2);

@@ -4,12 +4,12 @@
  * 特にコンテンツが短い記事を対象に、エンリッチャーを使って本文を再取得
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // 進捗ファイル
 const PROGRESS_FILE = '.re-enrich-progress.json';

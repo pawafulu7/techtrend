@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function analyzeProblems() {
   // 問題データを読み込み

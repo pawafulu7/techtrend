@@ -1,4 +1,4 @@
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import { BaseFetcher } from './base';
 import { HatenaExtendedFetcher } from './hatena-extended';
 import { QiitaPopularFetcher } from './qiita-popular';

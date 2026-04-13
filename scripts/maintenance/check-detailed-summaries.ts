@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { createPrismaClient } from '@/lib/prisma/create-client';
+const prisma = createPrismaClient();
 
 async function checkDetailedSummaries() {
   const articles = await prisma.article.findMany({

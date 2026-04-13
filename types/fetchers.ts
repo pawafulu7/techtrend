@@ -1,5 +1,5 @@
 // フェッチャー関連の型定義
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 export type CreateArticleInput = import('./models').CreateArticleInput;
 
 // フェッチ結果の型

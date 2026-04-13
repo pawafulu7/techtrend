@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { detectArticleType } from '@/lib/utils/article/article-type-detector';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface ClassificationResult {
   total: number;

@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@/lib/prisma-exports';
 import { EmbeddingService } from './embedding-service';
 import { logger } from '@/lib/logger';
 import { searchOptionsSchema, SearchOptionsInput } from './schemas';
@@ -35,6 +35,11 @@ export interface SearchResult {
   sourceName?: string;
   tags?: Array<{ id: string; name: string }>;
   thumbnail?: string | null;
+}
+
+/** Raw $queryRaw result before normalization - PrismaPg returns timestamps as strings */
+interface RawSearchResult extends Omit<SearchResult, 'publishedAt'> {
+  publishedAt: string;
 }
 
 export class VectorSearchService {
@@ -639,7 +644,8 @@ export class VectorSearchService {
 
     // Execute search with LATERAL JOIN for tags (Phase 2)
     // JSONB will be auto-decoded by Prisma driver
-    const results = await this.prisma.$queryRaw<SearchResult[]>`
+    // PrismaPg returns timestamps as strings; normalize to Date after query
+    const results = await this.prisma.$queryRaw<RawSearchResult[]>`
       SELECT
         a.id as "articleId",
         a.title,
@@ -686,6 +692,6 @@ export class VectorSearchService {
       LIMIT ${topK}
     `;
 
-    return results;
+    return results.map((r) => ({ ...r, publishedAt: new Date(r.publishedAt) }));
   }
 }

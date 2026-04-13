@@ -1,4 +1,4 @@
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import * as cheerio from 'cheerio';
 import type { AnyNode } from 'domhandler';
 import { BaseFetcher } from './base';

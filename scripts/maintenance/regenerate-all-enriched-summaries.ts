@@ -3,10 +3,10 @@
  * 複数ソースの記事を一括で再生成
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const summaryService = new UnifiedSummaryService();
 
 // 対象ソース（エンリッチメント対応済み）

@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import * as fs from 'fs';
 import * as path from 'path';
 import { CONTAMINATION_SEARCH_TERMS, INSTRUCTION_PATTERNS } from '@/lib/ai/constants';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface BackupManifest {
   createdAt: string;

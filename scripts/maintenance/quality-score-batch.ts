@@ -5,10 +5,11 @@
  * これにより処理時間と負荷を大幅に削減
  */
 
-import { PrismaClient, Prisma, ProcessingStatus } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
+import { Prisma, ProcessingStatus } from '@/lib/prisma-exports';
 import logger from '@/lib/logger';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const PROCESS_NAME = 'quality_score_batch';
 const BATCH_SIZE = 100;

@@ -10,7 +10,7 @@ import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@/lib/prisma-exports';
 import {
   QUALITY_STATUS_VALUES,
   type AdminArticlesResponse,

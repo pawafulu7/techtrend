@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import Parser from 'rss-parser';
 import { ContentEnricherFactory } from '../../lib/enrichers';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const parser = new Parser();
 
 interface DiagnosticResult {

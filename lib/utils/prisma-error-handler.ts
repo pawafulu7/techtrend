@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 import { logger } from '@/lib/logger';
 
 /**

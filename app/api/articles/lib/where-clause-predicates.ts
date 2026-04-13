@@ -18,7 +18,7 @@
  *   normalizeArticleCategory() — different validation approaches.
  */
 
-import { SkipReason, type Prisma } from '@prisma/client';
+import { SkipReason, type Prisma } from '@/lib/prisma-exports';
 import {
   getDateRangeFilter,
   parseDateFromTo,

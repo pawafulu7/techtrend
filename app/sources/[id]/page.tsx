@@ -16,7 +16,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { ArticleWithRelations } from '@/types/models';
-import type { Source } from '@prisma/client';
+import type { Source } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 
 interface SourceDetail {

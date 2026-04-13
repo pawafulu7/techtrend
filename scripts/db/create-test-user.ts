@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { hashPassword } from '@better-auth/utils/password';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // セキュリティ: パスワードハッシュの生成状況をログに出力しない
 

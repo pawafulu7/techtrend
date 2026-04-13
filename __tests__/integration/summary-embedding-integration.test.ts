@@ -8,7 +8,7 @@ import { SummaryQualityChecker } from '@/lib/ai/service/quality-checker';
 import { SummaryPostProcessor } from '@/lib/ai/service/post-processor';
 import { GeminiTitleTranslator } from '@/lib/ai/translator/gemini-title-translator';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
-import type { Article } from '@prisma/client';
+import type { Article } from '@/lib/prisma-exports';
 
 const EMBEDDING_ENQUEUE_DELAY_MS = 200;
 const TIMESTAMP_PRECISION_DELAY_MS = 100;

@@ -10,11 +10,11 @@
  * npx tsx scripts/maintenance/generate-summaries-v2.ts --source "Hugging Face Papers"
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface GenerationResult {
   success: boolean;

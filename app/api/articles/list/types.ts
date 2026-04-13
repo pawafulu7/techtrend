@@ -1,4 +1,4 @@
-import type { ArticleCategory } from '@prisma/client';
+import type { ArticleCategory } from '@/lib/prisma-exports';
 
 // Lightweight article type with minimal source relation included for UI rendering
 export interface LightweightArticle {

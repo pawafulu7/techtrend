@@ -1,10 +1,10 @@
 #!/usr/bin/env tsx
 import { CorporateTechBlogFetcher } from '../../lib/fetchers/corporate-tech-blog';
-import { PrismaClient } from '@prisma/client';
-import { Source } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
+import { Source } from '@/lib/prisma-exports';
 
 async function fetchAndSaveCorporateBlog() {
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
   
   console.error("=== Corporate Tech Blog 記事取得・保存 ===");
   console.error(`環境変数 EXCLUDE_EVENT_ARTICLES: ${process.env.EXCLUDE_EVENT_ARTICLES || 'false'}`);

@@ -1,5 +1,5 @@
 import type { GraphNode } from '@/lib/types/graph';
-import type { Article } from '@prisma/client';
+import type { Article } from '@/lib/prisma-exports';
 import { logger } from '@/lib/logger';
 import type { GraphNodeInput } from './graph-node-input';
 import {

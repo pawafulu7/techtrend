@@ -14,7 +14,8 @@
 
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { EmbeddingService } from '@/lib/rag/embedding-service';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/lib/prisma-exports';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ZodError } from 'zod';
 
 describe('RAG Security - SQL Injection Prevention', () => {
@@ -22,7 +23,7 @@ describe('RAG Security - SQL Injection Prevention', () => {
   let prisma: PrismaClient;
 
   beforeAll(async () => {
-    prisma = new PrismaClient();
+    prisma = createPrismaClient();
     searchService = new VectorSearchService(prisma);
 
     // Mock OpenAI API to avoid external dependencies and flakiness

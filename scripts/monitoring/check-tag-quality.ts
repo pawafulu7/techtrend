@@ -1,7 +1,7 @@
 #!/usr/bin/env -S npx tsx
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface QualityIssue {
   type: 'source_based' | 'overly_generic' | 'case_duplicate';

@@ -2,10 +2,10 @@
  * Stack Overflow Blog Content Enrichment Script
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { StackOverflowEnricher } from '../../lib/enrichers/stackoverflow';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const enricher = new StackOverflowEnricher();
 
 async function enrichStackOverflowContent() {

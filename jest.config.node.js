@@ -21,6 +21,8 @@ const customJestConfig = {
   moduleNameMapper: {
     // Manual mocks for Prisma and Redis (must come before generic alias)
     '^@/lib/prisma$': '<rootDir>/__mocks__/lib/prisma.ts',
+    // Order matters: specific create-client mock MUST precede the wildcard
+    '^@/lib/prisma/create-client$': '<rootDir>/__mocks__/lib/prisma/create-client.ts',
     '^@/lib/prisma/(.*)$': '<rootDir>/__mocks__/lib/prisma.ts',
     '^@/lib/database$': '<rootDir>/__mocks__/lib/database.ts',
     '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
@@ -69,6 +71,7 @@ const customJestConfig = {
 // Export async config to override Next.js default transformIgnorePatterns
 const nextJestConfig = createJestConfig(customJestConfig);
 const esmAllowList = [
+  '@prisma',
   'geist',
   'node-fetch',
   'p-limit',

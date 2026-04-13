@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 
 async function generateMoneyForwardSummaries() {
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
   const summaryService = new UnifiedSummaryService();
   
   console.error("=== マネーフォワード記事の要約生成 ===");

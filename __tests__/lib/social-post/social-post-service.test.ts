@@ -1,5 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/lib/prisma-exports';
 import { mockDeep, mockReset, DeepMockProxy } from 'jest-mock-extended';
 
 // Create mock before importing the service

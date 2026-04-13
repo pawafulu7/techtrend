@@ -4,10 +4,10 @@
  * NVIDIA Developer BlogとDeepMind Blogを登録
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import logger from '@/lib/logger';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function addAILLMSources() {
   logger.info('AI/LLM新規ソース追加開始');

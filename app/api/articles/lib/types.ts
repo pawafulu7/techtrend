@@ -2,7 +2,7 @@
  * Shared types for Articles API
  */
 
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@/lib/prisma-exports';
 import type { ArticleWithRelations } from '@/types/models';
 import type { PaginatedResponse } from '@/lib/types/api';
 import type { ArticleQueryParams } from '@/lib/cache/layered-cache';

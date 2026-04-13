@@ -8,7 +8,7 @@
  */
 
 import { GraphDataSerializer } from '../../lib/graph/graph-data-serializer';
-import { Article } from '@prisma/client';
+import { Article } from '@/lib/prisma-exports';
 
 // Type definitions for test data
 type ArticleTag = { id: string; name: string };

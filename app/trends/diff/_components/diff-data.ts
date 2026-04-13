@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { BatchStatus } from '@prisma/client';
+import { BatchStatus } from '@/lib/prisma-exports';
 import { getPreviousISOWeek } from '@/lib/ai/diff-summary';
 import {
   SOURCE_CATEGORIES,

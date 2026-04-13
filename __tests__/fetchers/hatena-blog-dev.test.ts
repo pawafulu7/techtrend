@@ -1,6 +1,6 @@
 import { HatenaBlogDevFetcher } from '@/lib/fetchers/hatena-blog-dev';
 import { BaseFetcher } from '@/lib/fetchers/base';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import { resetEnvCache } from '@/lib/config/env';
 
 // Mock BaseFetcher's retry to avoid waiting for retryDelay

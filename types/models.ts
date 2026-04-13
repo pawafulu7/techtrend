@@ -1,5 +1,5 @@
 // Prismaモデルの再エクスポートと拡張型定義
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 
 // Prismaの自動生成型を再エクスポート
 export type {
@@ -7,7 +7,7 @@ export type {
   Source,
   Tag,
   PrismaClient,
-} from '@prisma/client';
+} from '@/lib/prisma-exports';
 
 // 関連を含むモデル型
 export type ArticleWithRelations = Prisma.ArticleGetPayload<{

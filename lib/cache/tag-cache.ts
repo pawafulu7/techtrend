@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { RedisCache } from './index';
 import { CACHE_TTL } from './constants';
-import { Tag } from '@prisma/client';
+import { Tag } from '@/lib/prisma-exports';
 import type { TagWithCount } from '@/types/models';
 
 export class TagCache {

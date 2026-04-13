@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { NextRequest } from 'next/server';
-import type { Article, PrismaClient } from '@prisma/client';
+import type { Article, PrismaClient } from '@/lib/prisma-exports';
 
 // Mock withCronOrAdminAuth to pass through with CRON_SECRET
 jest.mock('@/lib/middleware/with-cron-or-admin-auth', () => ({
@@ -10,15 +10,17 @@ jest.mock('@/lib/middleware/with-cron-or-admin-auth', () => ({
 // Ensure Next.js server APIs are mocked in Jest (Node env)
 jest.mock('next/server');
 // Unmock Prisma client to use real implementation (overrides jest.setup.node.js global mock)
-jest.mock('@prisma/client', () => jest.requireActual('@prisma/client'));
+jest.mock('@/lib/prisma-exports', () => jest.requireActual('@/lib/prisma-exports'));
 // Mock @/lib/prisma to use real Prisma client instead of mock
 jest.mock('@/lib/prisma', () => jest.requireActual('../../../lib/prisma'));
 
 // Import route handler AFTER mock setup
 import { GET } from '@/app/api/workers/embedding/route';
 
-// Use real Prisma client (bypass mock) with production DB protection
-const { PrismaClient: RealPrismaClient } = jest.requireActual('@prisma/client');
+// Use real Prisma client (bypass all mocks)
+// jest.requireActual bypasses jest.mock('@/lib/prisma-exports') from jest.setup.node.js
+const { PrismaClient: RealPrismaClient } = jest.requireActual('@/lib/prisma-exports');
+const { PrismaPg } = jest.requireActual('@prisma/adapter-pg');
 const DB_URL = process.env.DATABASE_URL;
 const isSafeTestDb = !!DB_URL && /(localhost|127\.0\.0\.1|test|_test)/i.test(DB_URL);
 const describeIf = isSafeTestDb ? describe : describe.skip;
@@ -30,9 +32,8 @@ describeIf('GET /api/workers/embedding', () => {
 
   beforeAll(async () => {
     // Lazily create client when tests actually run
-    prisma = new RealPrismaClient({
-      datasources: { db: { url: DB_URL! } },
-    });
+    const adapter = new PrismaPg({ connectionString: DB_URL! });
+    prisma = new RealPrismaClient({ adapter });
     await prisma.$connect();
 
     // Always create an isolated test source

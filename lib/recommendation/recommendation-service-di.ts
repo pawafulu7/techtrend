@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/lib/prisma-exports';
 import { ExtendedArticle } from '@/types/common';
 import { 
   UserInterests, 

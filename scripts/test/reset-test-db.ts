@@ -7,7 +7,7 @@
  */
 
 import { execSync } from 'child_process';
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -57,13 +57,7 @@ const TEST_DB_URL = process.env.TEST_DATABASE_URL ||
 
 const { dbName, dbUser, dbPass } = parseDbUrl(TEST_DB_URL);
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: TEST_DB_URL
-    }
-  }
-});
+const prisma = createPrismaClient({ connectionString: TEST_DB_URL });
 
 async function resetTestDatabase() {
   console.log('🔄 テスト環境データベースのリセットを開始します...');

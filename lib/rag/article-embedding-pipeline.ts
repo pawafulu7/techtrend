@@ -1,4 +1,4 @@
-import { PrismaClient, Article } from '@prisma/client';
+import { PrismaClient, Article } from '@/lib/prisma-exports';
 import { EmbeddingService } from './embedding-service';
 import { logger } from '@/lib/logger';
 import { env } from '@/lib/config/env';

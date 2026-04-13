@@ -13,12 +13,12 @@
  *   --company NAME        特定企業のみ処理（GMO, freee）
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface Options {
   dryRun: boolean;

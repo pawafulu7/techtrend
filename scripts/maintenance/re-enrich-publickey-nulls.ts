@@ -13,11 +13,11 @@
  *   --limit <n>        処理する記事数の上限
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
 import * as fs from 'fs';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // 進捗ファイル
 const PROGRESS_FILE = '.re-enrich-publickey-progress.json';

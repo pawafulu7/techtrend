@@ -3,7 +3,8 @@
  * Tests error scenarios and try/catch/finally paths
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/lib/prisma-exports';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { SummaryManager } from '@/lib/services/summary/summary-manager';
 import { UnifiedSummaryService } from '@/lib/ai/service/unified-summary-service';
 
@@ -36,7 +37,7 @@ describe('SummaryManager Error Handling', () => {
   let manager: SummaryManager;
 
   beforeAll(() => {
-    prisma = new PrismaClient();
+    prisma = createPrismaClient();
   });
 
   afterAll(async () => {

@@ -1,4 +1,4 @@
-import { PrismaClient, TrendPeriodType, Prisma } from '@prisma/client';
+import { PrismaClient, TrendPeriodType, Prisma } from '@/lib/prisma-exports';
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import logger from '@/lib/logger';
 import { GEMINI_API } from '@/lib/constants';

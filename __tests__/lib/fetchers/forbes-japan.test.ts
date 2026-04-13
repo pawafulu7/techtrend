@@ -1,6 +1,6 @@
 import { ForbesJapanFetcher } from '@/lib/fetchers/forbes-japan';
 import { createFetcher } from '@/lib/fetchers';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import { logger } from '@/lib/cli/utils/logger';
 
 // Mock fetch

@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import type { SkipReason } from '@prisma/client';
+import type { SkipReason } from '@/lib/prisma-exports';
 
 /**
  * テスト用のモックデータファクトリー

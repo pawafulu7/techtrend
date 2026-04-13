@@ -10,7 +10,8 @@
  * --dry-run      実際の更新を行わずにシミュレーション実行
  */
 
-import { PrismaClient, Article, Source } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
+import { Article, Source } from '@/lib/prisma-exports';
 import { 
   checkSummaryQuality,
   generateQualityReport
@@ -19,7 +20,7 @@ import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prom
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import fetch from 'node-fetch';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // コマンドライン引数の解析
 const args = process.argv.slice(2);

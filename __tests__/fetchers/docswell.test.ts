@@ -1,5 +1,5 @@
 import { DocswellFetcher } from '../../lib/fetchers/docswell';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import * as cheerio from 'cheerio';
 
 // Mock fetch

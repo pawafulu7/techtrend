@@ -5,7 +5,7 @@
  * Uses upsert pattern instead of createMany to avoid race conditions.
  */
 
-import { Prisma, Tag } from '@prisma/client';
+import { Prisma, Tag } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import { TagNormalizer } from './tag-normalizer';
 

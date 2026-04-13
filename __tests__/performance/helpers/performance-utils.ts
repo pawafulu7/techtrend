@@ -8,7 +8,7 @@
  */
 
 import type { DeepMockProxy } from 'jest-mock-extended';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@/lib/prisma-exports';
 import { mockSourceGroups, mockSources, buildSource, buildSourceGroup } from '../../helpers/phase2a-test-fixtures';
 import type { SourceGroupPlain } from '@/lib/types/source-grouping';
 

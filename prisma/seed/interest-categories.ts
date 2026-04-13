@@ -5,14 +5,14 @@
  * Run: npx tsx prisma/seed/interest-categories.ts
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import {
   INTEREST_CATEGORIES,
   isGenericTag,
 } from '../../lib/personalization/constants';
 import { TagNormalizer } from '../../lib/services/tag-normalizer';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 /**
  * Build a normalized pattern map for efficient matching

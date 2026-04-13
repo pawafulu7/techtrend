@@ -2,8 +2,8 @@
  * 手動記事追加のコアロジック
  */
 
-import type { PrismaClient } from '@prisma/client';
-import { Source } from '@prisma/client';
+import type { PrismaClient } from '@/lib/prisma-exports';
+import { Source } from '@/lib/prisma-exports';
 import { prisma as defaultPrisma } from '@/lib/prisma';
 import { UnifiedSummaryService } from '../../ai/unified-summary-service';
 import { ContentEnricherFactory } from '../../enrichers';

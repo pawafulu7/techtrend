@@ -1,9 +1,9 @@
 #!/usr/bin/env tsx
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import Parser from 'rss-parser';
 
 async function saveMoneyForwardArticles() {
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
   const parser = new Parser();
   
   console.error("=== マネーフォワード記事を保存 ===");

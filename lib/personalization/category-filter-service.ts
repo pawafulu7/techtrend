@@ -5,7 +5,7 @@
  * Uses pgvector for efficient similarity search against category centroids.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import pLimit from 'p-limit';
 import { logger } from '@/lib/logger';

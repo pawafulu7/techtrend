@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { RedisCache } from './index';
 import { CACHE_TTL } from './constants';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import logger from '@/lib/logger';
 import {
   SourceStats,
@@ -284,7 +284,7 @@ export class SourceCache {
             avg_quality_score: number;
             recent_articles: number;
             past_month_articles: number;
-            last_published: Date | null;
+            last_published: string | null;
           }>
         >`
           SELECT

@@ -1,4 +1,4 @@
-import { TrendPeriodType } from '@prisma/client';
+import { TrendPeriodType } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-generator';
 import { RedisCache } from '@/lib/cache';

@@ -1,4 +1,4 @@
-import { Article, Source, Tag } from '@prisma/client';
+import { Article, Source, Tag } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import fetch from 'node-fetch';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';

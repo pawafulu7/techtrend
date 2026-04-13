@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/lib/prisma-exports';
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
 import { container } from '../container';
 import { DI_TOKENS } from '../types';

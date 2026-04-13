@@ -162,7 +162,7 @@ describe('/api/favorites/[articleId]', () => {
 
     it('既にお気に入りの場合P2002で409を返す', async () => {
       prismaMock.article.findUnique.mockResolvedValue(mockArticle);
-      const { Prisma } = jest.requireActual('@prisma/client');
+      const { Prisma } = jest.requireActual('@/lib/prisma-exports');
       prismaMock.favorite.create.mockRejectedValue(
         new Prisma.PrismaClientKnownRequestError(
           'Unique constraint failed',

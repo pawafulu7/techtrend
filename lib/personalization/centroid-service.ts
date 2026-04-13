@@ -5,7 +5,7 @@
  * Uses pgvector's AVG() aggregate for efficient SQL-level computation.
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import type { CentroidComputationResult } from './types';

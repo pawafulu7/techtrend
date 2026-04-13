@@ -4,11 +4,11 @@
  * DataLoaderの最適なバッチサイズを決定するための計測
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface BatchSizeMetrics {
   timestamp: string;

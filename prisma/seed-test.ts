@@ -1,4 +1,5 @@
-import { PrismaClient, Source, Tag } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
+import { Source, Tag } from '@/lib/prisma-exports';
 import * as bcrypt from 'bcryptjs';
 import Redis from 'ioredis';
 
@@ -82,12 +83,8 @@ const random = new SeededRandom(
     : 12345
 );
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL || 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test'
-    }
-  }
+const prisma = createPrismaClient({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test',
 });
 
 async function main() {

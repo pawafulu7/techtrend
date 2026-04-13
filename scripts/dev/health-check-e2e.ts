@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import Redis from 'ioredis';
 
 async function healthCheck() {
@@ -11,13 +11,7 @@ async function healthCheck() {
 
   // DB接続チェック
   try {
-    const prisma = new PrismaClient({
-      datasources: {
-        db: {
-          url: 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test'
-        }
-      }
-    });
+    const prisma = createPrismaClient({ connectionString: 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test' });
     const count = await prisma.article.count();
     checks.database = true;
     checks.seedData = count === 50;

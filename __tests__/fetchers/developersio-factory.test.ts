@@ -1,4 +1,4 @@
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import { createFetcher } from '../../lib/fetchers/index';
 import { DevelopersIOFetcher } from '../../lib/fetchers/developersio';
 

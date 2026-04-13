@@ -4,7 +4,7 @@
  * Handles pgvector similarity search and category centroid retrieval.
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@/lib/prisma-exports';
 import { DEFAULT_SCORE_PARAMETERS } from '../types';
 import { RedisCache } from '@/lib/cache/redis-cache';
 import { logger } from '@/lib/logger';
@@ -34,8 +34,8 @@ type RawEmbeddingCandidate = {
   id: string;
   title: string;
   url: string;
-  published_at: Date;
-  created_at: Date;
+  published_at: string;
+  created_at: string;
   quality_score: number | null;
   bookmarks: number | null;
   user_votes: number | null;
@@ -177,8 +177,8 @@ export async function getEmbeddingCandidates(
     id: row.id,
     title: row.title,
     url: row.url,
-    publishedAt: row.published_at,
-    createdAt: row.created_at,
+    publishedAt: new Date(row.published_at),
+    createdAt: new Date(row.created_at),
     qualityScore: row.quality_score ?? 0,
     bookmarks: row.bookmarks ?? 0,
     userVotes: row.user_votes ?? 0,

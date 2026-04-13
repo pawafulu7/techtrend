@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@/lib/prisma-exports';
 
 /**
  * バッチ処理の設定オプション

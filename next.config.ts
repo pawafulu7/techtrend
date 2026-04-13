@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 import bundleAnalyzer from '@next/bundle-analyzer';
 
@@ -14,7 +15,7 @@ const nextConfig: NextConfig = {
   // Server external packages
   // jsdom and parse5 must be unbundled due to ESM/CJS compatibility
   // @dqbd/tiktoken must be unbundled due to WASM dependency (tiktoken_bg.wasm)
-  serverExternalPackages: ['jsdom', 'parse5', '@mozilla/readability', '@dqbd/tiktoken'],
+  serverExternalPackages: ['jsdom', 'parse5', '@mozilla/readability', '@dqbd/tiktoken', '@prisma/adapter-pg', 'pg'],
 
   // 実験的機能で最適化
   experimental: {
@@ -36,8 +37,36 @@ const nextConfig: NextConfig = {
     loaderFile: './lib/image-loader.js',
   },
 
-  // Webpack configuration for development environment
+  // Webpack configuration
   webpack(config, { dev, isServer }) {
+    // Prisma v7 generated client uses importFileExtension="ts".
+    // Webpack needs extensionAlias to resolve .ts imports in .js context.
+    config.resolve = {
+      ...config.resolve,
+      extensionAlias: {
+        ...config.resolve?.extensionAlias,
+        '.ts': ['.ts', '.tsx', '.js'],
+      },
+    };
+
+    // Prisma v7: server-only modules in client bundles.
+    // 1. Generated client.ts → browser.ts (types only, no PrismaClient/node:fs)
+    // 2. Node.js built-ins fallback (pg depends on net/tls/dns)
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        [path.resolve(__dirname, 'prisma/generated/prisma/client.ts')]:
+          path.resolve(__dirname, 'prisma/generated/prisma/browser.ts'),
+      };
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        net: false,
+        tls: false,
+        dns: false,
+        fs: false,
+      };
+    }
+
     // Externalize @dqbd/tiktoken in development mode (for WASM support)
     // serverExternalPackages only works in production build
     if (dev && isServer) {

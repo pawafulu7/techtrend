@@ -1,5 +1,5 @@
 import { CorporateTechBlogFetcher } from '../corporate-tech-blog';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 
 describe('CorporateTechBlogFetcher', () => {
   let fetcher: CorporateTechBlogFetcher;

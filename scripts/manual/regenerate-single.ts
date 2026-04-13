@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import fetch from 'node-fetch';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function generateUnifiedSummary(title: string, content: string) {
   const apiKey = process.env.GEMINI_API_KEY;

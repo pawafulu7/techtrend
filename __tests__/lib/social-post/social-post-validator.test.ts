@@ -10,7 +10,7 @@ import {
   ArticleCandidatesSearchSchema,
   ARTICLE_CATEGORIES,
 } from '@/lib/social-post/social-post-validator';
-import { ArticleCategory } from '@prisma/client';
+import { ArticleCategory } from '@/lib/prisma-exports';
 
 describe('SocialPostValidator', () => {
   describe('SocialPostCreateSchema', () => {

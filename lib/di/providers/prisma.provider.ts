@@ -1,25 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/lib/prisma-exports';
 import { container } from '../container';
 import { DI_TOKENS } from '../types';
-import { env } from '@/lib/config/env';
-import { getPrismaConfig } from '@/lib/database-config';
-
-let prismaInstance: PrismaClient | null = null;
+import { prisma } from '@/lib/prisma';
 
 export function registerPrismaProvider(): void {
   container.registerSingleton(DI_TOKENS.PRISMA, () => {
-    if (!prismaInstance) {
-      const config = getPrismaConfig();
-      prismaInstance = new PrismaClient(
-        config || {
-          log:
-            env.PRISMA_QUERY_LOG === 'true'
-              ? ['query', 'error', 'warn']
-              : ['error', 'warn'],
-        }
-      );
-    }
-    return prismaInstance;
+    return prisma;
   });
 }
 
@@ -27,9 +13,11 @@ export function getPrismaClient(): PrismaClient {
   return container.get<PrismaClient>(DI_TOKENS.PRISMA);
 }
 
+/**
+ * Disconnect the singleton PrismaClient.
+ * After calling this, the exported `prisma` const still holds the old instance.
+ * Only call this at process exit — do not attempt to reuse prisma afterwards.
+ */
 export async function closePrismaConnection(): Promise<void> {
-  if (prismaInstance) {
-    await prismaInstance.$disconnect();
-    prismaInstance = null;
-  }
+  await prisma.$disconnect();
 }

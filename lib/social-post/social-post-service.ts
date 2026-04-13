@@ -5,7 +5,7 @@
  */
 
 import { createHash } from 'crypto';
-import type { PrismaClient, Prisma } from '@prisma/client';
+import type { PrismaClient, Prisma } from '@/lib/prisma-exports';
 import logger from '@/lib/logger';
 import { prisma as defaultPrisma } from '@/lib/prisma';
 

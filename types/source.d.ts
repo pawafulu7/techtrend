@@ -10,7 +10,7 @@ export interface SourceStats {
   avgQualityScore: number;
   popularTags: string[];
   publishFrequency: number;
-  lastPublished: Date | null;
+  lastPublished: Date | string | null;
   growthRate: number;
 }
 

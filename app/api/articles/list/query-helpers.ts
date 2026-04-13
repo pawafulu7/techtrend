@@ -9,7 +9,7 @@
  * This module handles lightweight-specific filtering (e.g., content notIn whitespace patterns).
  */
 
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@/lib/prisma-exports';
 import { normalizeArticleCategory } from '@/lib/utils/article/article-category-normalizer';
 import {
   getDateRangeFilter,

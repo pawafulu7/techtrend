@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { CONTAMINATION_SEARCH_TERMS } from '@/lib/ai/constants';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface FixOptions {
   dryRun: boolean;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import { createDateRange } from '@/lib/types/prisma-helpers';
 import logger from '@/lib/logger';

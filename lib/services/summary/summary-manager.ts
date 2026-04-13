@@ -5,7 +5,7 @@
  * Extracted from scripts/scheduled/manage-summaries.ts for better reusability and testability.
  */
 
-import { PrismaClient, Prisma, SkipReason } from '@prisma/client';
+import { PrismaClient, Prisma, SkipReason } from '@/lib/prisma-exports';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { logger } from '@/lib/logger';
 import {

@@ -1,5 +1,5 @@
 import { GoogleDevBlogFetcher } from '../../lib/fetchers/google-dev-blog';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 
 // モックの設定
 jest.mock('../../lib/enrichers', () => ({

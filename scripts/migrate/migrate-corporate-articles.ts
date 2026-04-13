@@ -3,9 +3,9 @@
  * 既存の企業ブログ記事を新しい個別ソースに移行するスクリプト
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // 既存のCorporate Tech BlogのソースID
 const ORIGINAL_SOURCE_ID = 'cmdwgsk1b0000te2vrjnpm6gc';

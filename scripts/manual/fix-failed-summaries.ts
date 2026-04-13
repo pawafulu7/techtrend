@@ -3,12 +3,12 @@
  * 要約生成に失敗した記事を修正するスクリプト
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import fetch from 'node-fetch';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface SummaryResult {
   summary: string;

@@ -1,7 +1,7 @@
 import { RedisCache } from './redis-cache';
 import { CACHE_TTL } from './constants';
 import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@/lib/prisma-exports';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -136,14 +136,16 @@ export class ArticleDetailCache {
     }
 
     // DBから取得
-    const relatedArticles = await prisma.$queryRaw<
+    // PrismaPg $queryRaw returns timestamps as strings and COUNT as BigInt.
+    // We normalize to Date/number after the query.
+    const rawResults = await prisma.$queryRaw<
       {
         id: string;
         title: string;
         translatedTitle: string | null;
         summary: string | null;
         url: string;
-        publishedAt: Date;
+        publishedAt: string;
         sourceId: string;
         sourceName: string;
         qualityScore: number | null;
@@ -187,10 +189,19 @@ export class ArticleDetailCache {
       ORDER BY ra."commonTags" DESC, ra."publishedAt" DESC
     `;
 
+    // Normalize PrismaPg raw types: string→Date, BigInt→number
+    const relatedArticles = (Array.isArray(rawResults) ? rawResults : []).map(
+      (row) => ({
+        ...row,
+        publishedAt: new Date(row.publishedAt),
+        commonTags: Number(row.commonTags),
+      })
+    );
+
     // キャッシュに保存
     await this.cache.set(cacheKey, relatedArticles);
 
-    return Array.isArray(relatedArticles) ? relatedArticles : [];
+    return relatedArticles;
   }
 
   /**

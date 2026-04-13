@@ -11,12 +11,13 @@
  *     __tests__/integration/scripts/n-plus-1-optimization.test.ts
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
 const TEST_PREFIX = '__test_n1_';
 
-const prisma = new PrismaClient({
-  datasourceUrl:
+const prisma = createPrismaClient({
+  connectionString:
     process.env.DATABASE_URL ||
     'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test',
 });

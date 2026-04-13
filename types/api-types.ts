@@ -3,7 +3,7 @@
  * Replaces any usage in API routes and responses
  */
 
-import { Article, Source, Tag, User } from '@prisma/client';
+import { Article, Source, Tag, User } from '@/lib/prisma-exports';
 
 // Base API Response type
 export interface ApiResponse<T = unknown> {

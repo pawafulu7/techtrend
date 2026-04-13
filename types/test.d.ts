@@ -2,7 +2,7 @@
  * Test-specific type definitions
  */
 
-import { Article, Source, Tag } from '@prisma/client';
+import { Article, Source, Tag } from '@/lib/prisma-exports';
 
 // Test article data with relations
 export interface TestArticle extends Article {

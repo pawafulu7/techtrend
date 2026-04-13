@@ -1,5 +1,5 @@
 import { HackerNewsFetcher } from '@/lib/fetchers/hacker-news';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 
 describe('HackerNewsFetcher', () => {
   let fetcher: HackerNewsFetcher;

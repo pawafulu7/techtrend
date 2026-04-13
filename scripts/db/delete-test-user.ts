@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function deleteTestUser() {
   const email = process.env.TEST_USER_EMAIL || process.argv[2];

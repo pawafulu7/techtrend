@@ -4,7 +4,7 @@
  * Handles parallel processing with timeout, rate limiting, and error tracking.
  */
 
-import { PrismaClient, Prisma, SkipReason } from '@prisma/client';
+import { PrismaClient, Prisma, SkipReason } from '@/lib/prisma-exports';
 import pLimit from 'p-limit';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { classifyError, isRetryable } from '@/lib/fetchers/retry-handler';

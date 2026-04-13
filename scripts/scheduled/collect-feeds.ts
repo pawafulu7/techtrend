@@ -1,4 +1,4 @@
-import { Source, Prisma } from '@prisma/client';
+import { Source, Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import pLimit from 'p-limit';
 import { Mutex } from 'async-mutex';

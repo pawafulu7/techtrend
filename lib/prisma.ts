@@ -1,8 +1,25 @@
-import { PrismaClient } from '@prisma/client';
-import { getPrismaConfig } from './database-config';
+import { PrismaClient } from '@/lib/prisma-exports';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { getPoolConfig } from '@/lib/database-config';
 import { env } from '@/lib/config/env';
 
-// Type-safe global declaration
+// Prisma v7 PrismaPg returns BigInt for PostgreSQL bigint columns (e.g. COUNT(*)).
+// JSON.stringify doesn't handle BigInt natively, causing "Do not know how to
+// serialize a BigInt" errors in Redis cache and API responses.
+// Safe for this project: all bigint values are counts that fit in Number.
+if (
+  typeof (BigInt.prototype as unknown as { toJSON?: unknown }).toJSON ===
+  'undefined'
+) {
+  Object.defineProperty(BigInt.prototype, 'toJSON', {
+    value: function (this: bigint) {
+      return Number(this);
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
 declare global {
   var __prisma: PrismaClient | undefined;
 }
@@ -11,24 +28,37 @@ const globalForPrisma = globalThis as unknown as {
   __prisma: PrismaClient | undefined;
 };
 
-// Singleton pattern to prevent multiple instances
-const prismaClientSingleton = (): PrismaClient => {
-  const config = getPrismaConfig();
-  // Use default config if DATABASE_URL is not set (for build time)
-  return new PrismaClient(
-    config || {
-      log:
-        env.PRISMA_QUERY_LOG === 'true'
-          ? ['query', 'error', 'warn']
-          : ['error', 'warn'],
+function createSingleton(): PrismaClient {
+  const poolConfig = getPoolConfig();
+
+  // Build time: no DATABASE_URL, use dummy adapter (pg.Pool connects lazily)
+  const adapter = new PrismaPg(
+    poolConfig ?? {
+      connectionString: 'postgresql://dummy:dummy@localhost:5432/dummy',
+      max: 1,
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 5000,
     }
   );
-};
 
-// Use existing instance or create new one with lazy initialization
+  const logLevels: Array<'query' | 'error' | 'warn'> =
+    env.PRISMA_QUERY_LOG === 'true'
+      ? ['query', 'error', 'warn']
+      : ['error', 'warn'];
+
+  return new PrismaClient({
+    adapter,
+    log: logLevels,
+    errorFormat: process.env.NODE_ENV === 'production' ? 'minimal' : 'pretty',
+    transactionOptions: {
+      timeout: env.DB_TRANSACTION_TIMEOUT,
+    },
+  });
+}
+
 function getPrismaClient(): PrismaClient {
   if (!globalForPrisma.__prisma) {
-    globalForPrisma.__prisma = prismaClientSingleton();
+    globalForPrisma.__prisma = createSingleton();
   }
   return globalForPrisma.__prisma;
 }

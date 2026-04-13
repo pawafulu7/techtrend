@@ -1,6 +1,6 @@
 import DataLoader from 'dataloader';
 import { prisma } from '@/lib/prisma';
-import type { ArticleView } from '@prisma/client';
+import type { ArticleView } from '@/lib/prisma-exports';
 import type { ViewStatus, LoaderOptions } from './types';
 
 /**

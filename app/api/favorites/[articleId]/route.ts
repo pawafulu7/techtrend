@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';

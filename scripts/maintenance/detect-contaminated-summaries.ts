@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { INSTRUCTION_PATTERNS, CONTAMINATION_SEARCH_TERMS } from '@/lib/ai/constants';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function detectContaminatedSummaries() {
   console.log('=== Contaminated Summaries Detection ===\n');
