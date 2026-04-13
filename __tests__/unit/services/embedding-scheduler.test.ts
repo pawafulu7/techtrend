@@ -3,13 +3,9 @@ import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import type { Article, PrismaClient } from '@/lib/prisma-exports';
 
 // Use real Prisma client (bypass mock)
-const { PrismaClient: RealPrismaClient } = jest.requireActual('@/lib/prisma-exports');
-const prisma: PrismaClient = new RealPrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL!,
-    },
-  },
+const { createPrismaClient: realCreatePrismaClient } = jest.requireActual('@/lib/prisma/create-client');
+const prisma: PrismaClient = realCreatePrismaClient({
+  connectionString: process.env.DATABASE_URL!,
 });
 
 describe('EmbeddingScheduler', () => {
