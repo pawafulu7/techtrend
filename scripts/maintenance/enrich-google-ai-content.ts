@@ -3,10 +3,10 @@
  * Google AI Blogの記事コンテンツを完全版で取得・更新
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { GoogleAIEnricher } from '../../lib/enrichers/google-ai';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const enricher = new GoogleAIEnricher();
 
 async function enrichGoogleAIContent() {

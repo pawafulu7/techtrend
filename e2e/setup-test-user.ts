@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { hashPassword } from '@better-auth/utils/password';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -45,13 +45,7 @@ export async function setupTestUser() {
     console.log('  DATABASE_URL from env:', process.env.DATABASE_URL ? maskConnectionString(process.env.DATABASE_URL) : 'Not set');
   }
   
-  const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: TEST_DATABASE_URL,
-      },
-    },
-  });
+  const prisma = createPrismaClient({ connectionString: TEST_DATABASE_URL });
 
   try {
     // Hash the password (Better Auth uses scrypt via @better-auth/utils)
@@ -110,13 +104,7 @@ export async function setupTestUser() {
 export async function setupAdminUser() {
   const TEST_DATABASE_URL = resolveTestDbUrl();
 
-  const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: TEST_DATABASE_URL,
-      },
-    },
-  });
+  const prisma = createPrismaClient({ connectionString: TEST_DATABASE_URL });
 
   try {
     const hashedPassword = await hashPassword(ADMIN_TEST_USER.password);
@@ -176,13 +164,7 @@ export async function cleanupTestUser() {
   // テスト用データベースURLを明示的に指定
   const TEST_DATABASE_URL = resolveTestDbUrl();
   
-  const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: TEST_DATABASE_URL,
-      },
-    },
-  });
+  const prisma = createPrismaClient({ connectionString: TEST_DATABASE_URL });
 
   try {
     // Delete test user if exists
@@ -208,13 +190,7 @@ export async function cleanupTestUser() {
 export async function cleanupAdminUser() {
   const TEST_DATABASE_URL = resolveTestDbUrl();
 
-  const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: TEST_DATABASE_URL,
-      },
-    },
-  });
+  const prisma = createPrismaClient({ connectionString: TEST_DATABASE_URL });
 
   try {
     await prisma.user.deleteMany({

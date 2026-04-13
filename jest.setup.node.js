@@ -24,8 +24,8 @@ try {
 jest.mock('@/lib/redis/client');
 
 // Prisma Clientのモック
-jest.mock('@prisma/client', () => {
-  const actual = jest.requireActual('@prisma/client');
+jest.mock('@/lib/prisma-exports', () => {
+  const actual = jest.requireActual('@/lib/prisma-exports');
   return {
     ...actual,
     PrismaClient: jest.fn(() => prismaMock),

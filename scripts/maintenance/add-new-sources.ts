@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { sourceCache } from '../../lib/cache/source-cache';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function addNewSources() {
   console.error('Adding new AI and Tech blog sources...');

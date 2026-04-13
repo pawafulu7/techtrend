@@ -4,7 +4,7 @@
  * AI生成ロジック
  */
 
-import type { Article, TrendReport, DiffSummary } from '@prisma/client';
+import type { Article, TrendReport, DiffSummary } from '@/lib/prisma-exports';
 import { LLMExtractionPipeline } from '@/lib/ai/extraction/llm-extraction-pipeline';
 import { detectPromptInjection } from '@/lib/rag/security/prompt-injection-detector';
 import { sanitizeHtml } from '@/lib/utils/html-sanitizer';

@@ -10,7 +10,7 @@ import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
 import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
 import { buildScrollStorageKey } from '@/lib/utils/scroll';
 import { PAGINATION, SCROLL } from '@/lib/constants/index';
-import type { Source, Tag } from '@prisma/client';
+import type { Source, Tag } from '@/lib/prisma-exports';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
 import { AlertTriangle, Loader2, Search } from 'lucide-react';

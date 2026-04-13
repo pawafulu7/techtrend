@@ -1,4 +1,4 @@
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import sanitizeHtml from 'sanitize-html';
 import pLimit from 'p-limit';

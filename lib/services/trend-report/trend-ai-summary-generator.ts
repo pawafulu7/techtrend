@@ -1,4 +1,4 @@
-import { PrismaClient, TrendPeriodType } from '@prisma/client';
+import { PrismaClient, TrendPeriodType } from '@/lib/prisma-exports';
 import type { GenerativeModel } from '@google/generative-ai';
 import logger from '@/lib/logger';
 import { extractFirstJsonObject } from '@/lib/types/trend-ai-summary';

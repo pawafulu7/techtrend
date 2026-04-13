@@ -6,14 +6,14 @@
  * - API負荷軽減のため適切な間隔で実行
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { getUnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import fetch from 'node-fetch';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // コマンドライン引数
 const args = process.argv.slice(2);

@@ -7,11 +7,11 @@
  * 実行方法: npx tsx scripts/maintenance/backfill-zenn-thumbnails.ts
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { generateZennThumbnail } from '../../lib/utils/zenn-thumbnail';
 
 async function main() {
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
 
   try {
     // 1. URLベースで thumbnail が NULL の Zenn 記事を取得（ソース問わず）

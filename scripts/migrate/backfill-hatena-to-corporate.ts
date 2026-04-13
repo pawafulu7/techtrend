@@ -5,10 +5,10 @@
  * but actually belong to corporate blogs (based on URL domain).
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 /**
  * Domain to Source ID mapping

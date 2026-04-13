@@ -3,7 +3,7 @@
  * 記事の品質を継続的に監視し、改善を管理
  */
 
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import { SUMMARY_VERSION } from '@/types/article';

@@ -46,7 +46,7 @@ jest.mock('@/lib/middleware/with-cron-or-admin-auth', () => ({
 import { GET } from '@/app/api/trends/daily/route';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
-import { TrendPeriodType } from '@prisma/client';
+import { TrendPeriodType } from '@/lib/prisma-exports';
 
 // --- Helpers ---
 

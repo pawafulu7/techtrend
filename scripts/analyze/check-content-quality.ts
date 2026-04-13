@@ -3,9 +3,9 @@
  * 各ソースのコンテンツ取得品質をチェック
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface SourceStats {
   sourceName: string;

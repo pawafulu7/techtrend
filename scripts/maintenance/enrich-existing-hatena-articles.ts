@@ -4,10 +4,10 @@
  * 短いRSS抜粋を実際の記事コンテンツに置き換える
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface EnrichmentResult {
   total: number;

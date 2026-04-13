@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { ArticleEmbeddingPipeline } from '@/lib/rag/article-embedding-pipeline';
 import { logger, sanitizeError } from '@/lib/logger';
-import type { EmbeddingJob, Article } from '@prisma/client';
+import type { EmbeddingJob, Article } from '@/lib/prisma-exports';
 
 type EmbeddingJobWithArticle = EmbeddingJob & {
   article: Pick<Article, 'id' | 'title' | 'summary'> | null;

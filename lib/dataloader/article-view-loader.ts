@@ -6,7 +6,7 @@
 
 import DataLoader from 'dataloader';
 import { prisma } from '@/lib/prisma';
-import type { ArticleView } from '@prisma/client';
+import type { ArticleView } from '@/lib/prisma-exports';
 import type { LoaderOptions } from './types';
 import { DataLoaderMemoryCache } from '@/lib/cache/memory-cache';
 import { RedisCache } from '@/lib/cache/redis-cache';

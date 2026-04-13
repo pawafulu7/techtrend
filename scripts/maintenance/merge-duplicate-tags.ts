@@ -17,9 +17,10 @@
  *   --batch-size  Number of duplicate groups to process per batch (default: 100)
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
+import { Prisma } from '@/lib/prisma-exports';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface MergeOptions {
   dryRun: boolean;

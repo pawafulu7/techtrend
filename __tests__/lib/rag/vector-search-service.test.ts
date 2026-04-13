@@ -1,5 +1,5 @@
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/lib/prisma-exports';
 
 // Mock dependencies
 jest.mock('@/lib/rag/embedding-service');

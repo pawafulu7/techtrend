@@ -1,10 +1,10 @@
 #!/usr/bin/env tsx
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { checkContentQuality, fixSummary } from '@/lib/utils/content/content-quality-checker';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import fetch from 'node-fetch';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function regenerateSingleArticle(articleId: string) {
   

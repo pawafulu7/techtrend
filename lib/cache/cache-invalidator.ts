@@ -1,4 +1,4 @@
-import { ArticleCategory } from '@prisma/client';
+import { ArticleCategory } from '@/lib/prisma-exports';
 import { tagCache } from './tag-cache';
 import { sourceCache } from './source-cache';
 import { popularCache } from './popular-cache';

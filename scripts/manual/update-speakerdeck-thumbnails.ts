@@ -4,10 +4,10 @@
  * 既存のSpeaker Deck記事のサムネイルURLを取得してデータベースを更新
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import * as cheerio from 'cheerio';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // コマンドライン引数の処理
 const args = process.argv.slice(2);

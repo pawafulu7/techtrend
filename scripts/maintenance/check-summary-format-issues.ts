@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function checkSummaryFormatIssues() {
   // 詳細要約のフォーマット問題を詳しく調査

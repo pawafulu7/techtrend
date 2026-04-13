@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@/lib/prisma-exports';
 import { EmbeddingService } from './embedding-service';
 import { logger } from '@/lib/logger';
 import { searchOptionsSchema, SearchOptionsInput } from './schemas';

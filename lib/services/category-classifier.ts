@@ -1,4 +1,4 @@
-import { Tag, ArticleCategory } from '@prisma/client';
+import { Tag, ArticleCategory } from '@/lib/prisma-exports';
 
 // カテゴリとタグのマッピング（Enumのアンダースコア形式に対応）
 export const CATEGORY_MAPPINGS = {

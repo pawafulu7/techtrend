@@ -1,5 +1,5 @@
 import { AnthropicNewsFetcher } from '@/lib/fetchers/ai/anthropic-news';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import * as fs from 'fs';
 import * as path from 'path';
 

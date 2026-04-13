@@ -3,7 +3,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 
 jest.mock('@/lib/logger', () => ({
   logger: {

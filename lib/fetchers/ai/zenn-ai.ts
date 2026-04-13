@@ -1,4 +1,4 @@
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import { BaseFetcher } from '../base';
 import { FetchResult } from '@/types/fetchers';

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { NextRequest } from 'next/server';
-import type { Article, PrismaClient } from '@prisma/client';
+import type { Article, PrismaClient } from '@/lib/prisma-exports';
 
 // Mock withCronOrAdminAuth to pass through with CRON_SECRET
 jest.mock('@/lib/middleware/with-cron-or-admin-auth', () => ({
@@ -10,7 +10,7 @@ jest.mock('@/lib/middleware/with-cron-or-admin-auth', () => ({
 // Ensure Next.js server APIs are mocked in Jest (Node env)
 jest.mock('next/server');
 // Unmock Prisma client to use real implementation (overrides jest.setup.node.js global mock)
-jest.mock('@prisma/client', () => jest.requireActual('@prisma/client'));
+jest.mock('@/lib/prisma-exports', () => jest.requireActual('@/lib/prisma-exports'));
 // Mock @/lib/prisma to use real Prisma client instead of mock
 jest.mock('@/lib/prisma', () => jest.requireActual('../../../lib/prisma'));
 
@@ -18,7 +18,7 @@ jest.mock('@/lib/prisma', () => jest.requireActual('../../../lib/prisma'));
 import { GET } from '@/app/api/workers/embedding/route';
 
 // Use real Prisma client (bypass mock) with production DB protection
-const { PrismaClient: RealPrismaClient } = jest.requireActual('@prisma/client');
+const { PrismaClient: RealPrismaClient } = jest.requireActual('@/lib/prisma-exports');
 const DB_URL = process.env.DATABASE_URL;
 const isSafeTestDb = !!DB_URL && /(localhost|127\.0\.0\.1|test|_test)/i.test(DB_URL);
 const describeIf = isSafeTestDb ? describe : describe.skip;

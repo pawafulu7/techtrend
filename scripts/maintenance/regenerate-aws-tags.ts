@@ -1,7 +1,8 @@
-import { PrismaClient, Article, Tag } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
+import { Article, Tag } from '@/lib/prisma-exports';
 import { logger } from '@/lib/cli/utils/logger';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 type ArticleWithTags = Article & {
   tags: Tag[];

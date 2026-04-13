@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const domainToSourceMap: Record<string, string> = {
   'developers.freee.co.jp': 'freee_tech_blog',

@@ -1,5 +1,5 @@
 import { QiitaAIFetcher } from '../../../lib/fetchers/ai/qiita-ai';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import axios from 'axios';
 import { resetEnvCache } from '@/lib/config/env';
 

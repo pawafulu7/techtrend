@@ -12,9 +12,9 @@
  *   --batch-size  Number of tags to process per batch (default: 1000)
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface CleanupOptions {
   dryRun: boolean;

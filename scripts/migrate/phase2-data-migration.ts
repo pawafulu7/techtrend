@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const groupSeeds = [
   { id: 'group_company_japan', name: '日本企業技術ブログ', type: 'company_blog', ordering: 1 },

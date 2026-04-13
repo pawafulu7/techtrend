@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/sheet';
 import { Filters } from './filters';
 import { TagFilter } from './tag-filter';
-import type { Source } from '@prisma/client';
+import type { Source } from '@/lib/prisma-exports';
 import type { GroupedSources } from '@/lib/types/source-grouping';
 
 interface MobileFiltersProps {

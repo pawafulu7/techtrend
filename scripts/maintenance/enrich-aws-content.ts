@@ -3,11 +3,11 @@
  * AWS記事のコンテンツを自動的にエンリッチメント
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { AWSEnricher } from '../../lib/enrichers/aws';
 import { isUrlFromDomain } from '../../lib/utils/url/url-validator';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const enricher = new AWSEnricher();
 
 async function enrichAWSContent() {

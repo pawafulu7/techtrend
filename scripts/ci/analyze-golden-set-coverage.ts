@@ -7,7 +7,7 @@
  *  - lib/ai/testing/candidate-pool-report.json
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 
@@ -132,7 +132,7 @@ const TECHNICAL_KEYWORDS: Record<string, string[]> = {
 
 const ALL_TECHNICAL_KEYWORDS = Object.values(TECHNICAL_KEYWORDS).flat();
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 function createCountMap<T extends string>(keys: readonly T[]): Record<T, number> {
   return keys.reduce((acc, key) => {

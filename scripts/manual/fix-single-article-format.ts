@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import fetch from 'node-fetch';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function fixArticleFormat() {
   const articleId = 'cme3sdz74000fte6gig7urb0t';

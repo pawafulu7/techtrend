@@ -3,7 +3,7 @@
  * テストデータを簡単に作成するためのヘルパー
  */
 
-import type { Article, Source, Tag, User } from '@prisma/client';
+import type { Article, Source, Tag, User } from '@/lib/prisma-exports';
 
 /**
  * 記事ビルダー

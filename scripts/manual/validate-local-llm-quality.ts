@@ -4,7 +4,7 @@
  * ロール明確化版プロンプトを使用して実際の記事で品質を検証
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { GeminiClient } from '../../lib/ai/gemini';
 import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
@@ -12,7 +12,7 @@ import fetch from 'node-fetch';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // ロール明確化版プロンプト（テストで最良の結果）
 const OPTIMIZED_SYSTEM_PROMPT = `【役割】日本語技術記事要約者

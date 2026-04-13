@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { hashPassword } from '@better-auth/utils/password';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -45,13 +45,7 @@ export async function setupTestUser() {
     console.log('  DATABASE_URL from env:', process.env.DATABASE_URL ? maskConnectionString(process.env.DATABASE_URL) : 'Not set');
   }
   
-  const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: TEST_DATABASE_URL,
-      },
-    },
-  });
+  const prisma = createPrismaClient({ connectionString: TEST_DATABASE_URL });
 
   try {
     // Hash the password (Better Auth uses scrypt)
@@ -110,13 +104,7 @@ export async function cleanupTestUser() {
   // テスト用データベースURLを明示的に指定
   const TEST_DATABASE_URL = resolveTestDbUrl();
   
-  const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: TEST_DATABASE_URL,
-      },
-    },
-  });
+  const prisma = createPrismaClient({ connectionString: TEST_DATABASE_URL });
 
   try {
     // Delete test user if exists

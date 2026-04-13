@@ -1,6 +1,6 @@
 import { BaseFetcher } from './base';
 import { CreateArticleInput, FetchResult } from '@/types';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import { parseRSSDate } from '@/lib/utils/date';
 import { extractContent } from '@/lib/utils/content/content-extractor';

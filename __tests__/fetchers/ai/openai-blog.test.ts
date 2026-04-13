@@ -1,5 +1,5 @@
 import { OpenAIBlogFetcher } from '../../../lib/fetchers/ai/openai-blog';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 
 // モックの設定
 jest.mock('rss-parser', () => {

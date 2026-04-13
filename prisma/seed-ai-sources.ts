@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // arXiv AI source uses a fixed ID for consistent filtering across the app
 // IMPORTANT: This value MUST match lib/constants/source-categories.ts ARXIV_SOURCE_ID

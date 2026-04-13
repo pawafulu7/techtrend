@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function main() {
   console.log('=== コロン直後に改行がある記事の再生成スクリプト ===\n');

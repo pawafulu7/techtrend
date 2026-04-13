@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
 import { DatabaseError, formatErrorResponse } from '@/lib/errors';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@/lib/prisma-exports';
 import logger from '@/lib/logger';
 import { getSession } from '@/lib/auth/get-session';
 import { getCursorManager } from '@/lib/pagination/cursor-manager';

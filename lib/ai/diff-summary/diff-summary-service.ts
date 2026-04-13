@@ -6,7 +6,7 @@
  */
 
 import { getISOWeek as getDateFnsISOWeek, getISOWeekYear } from 'date-fns';
-import { PrismaClient, BatchStatus } from '@prisma/client';
+import { PrismaClient, BatchStatus } from '@/lib/prisma-exports';
 import { logger } from '@/lib/logger';
 import { prisma as defaultPrisma } from '@/lib/prisma';
 import {

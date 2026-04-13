@@ -62,7 +62,7 @@ jest.mock('redis', () => ({
 }));
 
 // Prismaクライアントのモック
-jest.mock('@prisma/client', () => {
+jest.mock('@/lib/prisma-exports', () => {
   const mockPrismaClient = {
     article: {
       findMany: jest.fn().mockResolvedValue([]),

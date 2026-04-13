@@ -3,9 +3,9 @@
  * 企業ブログを個別のソースとして登録するスクリプト
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface CorporateSource {
   id: string;

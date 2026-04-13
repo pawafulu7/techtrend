@@ -12,11 +12,11 @@
  *   --id ID      特定の記事IDのみ処理
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import fetch from 'node-fetch';
 import { stripHtmlTags } from '../../lib/utils/html-sanitizer';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // Rate Limit設定
 const RATE_LIMIT = {

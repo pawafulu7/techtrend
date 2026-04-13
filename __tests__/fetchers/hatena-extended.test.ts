@@ -1,6 +1,6 @@
 import { HatenaExtendedFetcher } from '@/lib/fetchers/hatena-extended';
 import { BaseFetcher } from '@/lib/fetchers/base';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 
 // Mock rss-parser
 const mockParseURL = jest.fn();

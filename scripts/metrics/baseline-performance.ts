@@ -4,20 +4,18 @@
  * DBアクセス最適化Phase 3.3の効果測定用
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { RedisCache } from '../../lib/cache/redis-cache';
 import { createHash } from 'crypto';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 
-const prisma = new PrismaClient({
-  log: [
+const prisma = createPrismaClient({ log: [
     { level: 'query', emit: 'event' },
     { level: 'info', emit: 'stdout' },
     { level: 'warn', emit: 'stdout' },
     { level: 'error', emit: 'stdout' },
-  ],
-});
+  ] });
 
 interface MetricResult {
   timestamp: string;

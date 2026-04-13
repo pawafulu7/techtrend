@@ -21,7 +21,10 @@ for i in {1..30}; do
   sleep 1
 done
 
-# 3. スキーマ適用とシード投入
+# 3. Prisma Client生成とスキーマ適用
+echo "Prisma Clientを生成中..."
+npx prisma generate
+
 echo "スキーマを適用中..."
 export DATABASE_URL="postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test"
 npx prisma db push

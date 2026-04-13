@@ -247,7 +247,7 @@ describe('PATCH /api/admin/articles/[id] - hide toggle', () => {
 
   it('存在しないIDでP2025エラーが発生し404を返すこと', async () => {
     // 実際の Prisma P2025 エラークラスを使用
-    const { Prisma } = require('@prisma/client');
+    const { Prisma } = require('@/lib/prisma-exports');
     const p2025Error = new Prisma.PrismaClientKnownRequestError(
       'Record to update not found.',
       { code: 'P2025', clientVersion: '6.19.2' }

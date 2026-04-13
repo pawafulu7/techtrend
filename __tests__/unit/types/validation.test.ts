@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 import type { ArticleWhereInput, ArticleOrderByInput } from '@/types/models';
 
 describe('型定義の検証', () => {

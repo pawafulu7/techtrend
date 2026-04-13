@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { sourceCache } from '@/lib/cache/source-cache';
 import logger from '@/lib/logger';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 import {
   inferSourceCategory,
   sortSources,

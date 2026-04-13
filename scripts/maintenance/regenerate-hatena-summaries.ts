@@ -4,12 +4,12 @@
  * より充実したコンテンツから正確な要約を生成
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const PROGRESS_FILE = path.join(process.cwd(), '.regenerate-hatena-progress.json');
 
 interface RegenerationResult {

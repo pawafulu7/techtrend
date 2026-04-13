@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { checkContentQuality } from '@/lib/utils/content/content-quality-checker';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function checkSummaryQuality() {
   console.error('📊 要約品質チェックを開始します...\n');

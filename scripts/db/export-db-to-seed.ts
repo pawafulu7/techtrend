@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import fs from 'fs/promises';
 import path from 'path';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function exportData() {
   console.log('📊 データベースからデータをエクスポート中...');
@@ -121,10 +121,10 @@ async function exportData() {
 async function generateSeedFile() {
   console.log('\n🌱 seed.tsファイルを生成中...');
   
-  const seedContent = `import { PrismaClient } from '@prisma/client';
+  const seedContent = `import { createPrismaClient } from '@/lib/prisma/create-client';
 import seedData from './seed-data-full.json';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function main() {
   console.log('🌱 シーディング開始...');

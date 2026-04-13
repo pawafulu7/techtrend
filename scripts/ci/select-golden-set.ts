@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { writeFile } from 'fs/promises';
 import type { GoldenExample, GoldenSetMetadata } from '@/lib/ai/testing/types';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 type Category = 'general' | 'technical' | 'thin_content' | 'multilingual';
 type TargetSize = 48 | 50 | 75 | 100;

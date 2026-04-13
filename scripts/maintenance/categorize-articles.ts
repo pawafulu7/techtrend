@@ -3,11 +3,11 @@
  * 既存記事にカテゴリを一括適用するスクリプト
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { CategoryClassifier } from '@/lib/services/category-classifier';
 import logger from '@/lib/logger';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function categorizeArticles() {
   logger.info('📂 記事カテゴリ分類を開始します...');

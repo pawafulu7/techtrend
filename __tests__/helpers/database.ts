@@ -3,7 +3,7 @@
  * Prismaクライアントのモックとテストデータビルダーを提供
  */
 
-import { Article, Source, Tag } from '@prisma/client';
+import { Article, Source, Tag } from '@/lib/prisma-exports';
 
 // ArticleTagは多対多の中間テーブル
 interface ArticleTag {

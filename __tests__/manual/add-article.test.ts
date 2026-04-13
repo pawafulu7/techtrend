@@ -3,7 +3,7 @@
  */
 
 // Prismaのモック（巻き上げのために先に定義）
-jest.mock('@prisma/client', () => {
+jest.mock('@/lib/prisma-exports', () => {
   return {
     PrismaClient: jest.fn().mockImplementation(() => ({
       article: {
@@ -22,7 +22,7 @@ jest.mock('@prisma/client', () => {
 
 import { detectSourceFromUrl, normalizeSourceName, isValidUrl, isSupportedUrl } from '../../lib/utils/source/source-detector';
 import { addArticleManually, setPrismaClient } from '../../lib/utils/article/article-manual-adder';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/lib/prisma-exports';
 
 // UnifiedSummaryServiceのモック
 jest.mock('../../lib/ai/unified-summary-service', () => ({

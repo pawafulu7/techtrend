@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { isLikelyJapanese } from '@/lib/utils/language-detection';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface FixOptions {
   dryRun?: boolean;

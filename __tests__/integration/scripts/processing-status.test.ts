@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import {
   getLastProcessedTime,
   saveProcessingStatus,
@@ -6,8 +6,8 @@ import {
   hasUpdatedArticlesSince
 } from '../../../scripts/utils/processing-status';
 
-const prisma = new PrismaClient({
-  datasourceUrl: process.env.DATABASE_URL || 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test'
+const prisma = createPrismaClient({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test',
 });
 
 describe('ProcessingStatus', () => {

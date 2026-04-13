@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import * as cheerio from 'cheerio';
 import { speakerDeckConfig } from '@/lib/config/speakerdeck';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface UpdateResult {
   success: number;

@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { BatchStatus } from '@prisma/client';
+import { BatchStatus } from '@/lib/prisma-exports';
 import {
   getDiffSummaryService,
   getISOWeek,

@@ -3,7 +3,7 @@
  * テストデータフィクスチャの型定義
  */
 
-import type { User, Favorite, ArticleView } from '@prisma/client';
+import type { User, Favorite, ArticleView } from '@/lib/prisma-exports';
 import type { Article, Source, Tag, ArticleWithRelations } from './prisma-override';
 
 // テスト用の基本データ生成

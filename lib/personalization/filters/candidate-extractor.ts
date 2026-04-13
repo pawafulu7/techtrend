@@ -4,7 +4,7 @@
  * Handles pgvector similarity search and category centroid retrieval.
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@/lib/prisma-exports';
 import { DEFAULT_SCORE_PARAMETERS } from '../types';
 import { RedisCache } from '@/lib/cache/redis-cache';
 import { logger } from '@/lib/logger';

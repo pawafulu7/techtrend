@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { ZodError, z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 import logger from '@/lib/logger';
 
 // Error types

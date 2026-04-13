@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const embeddingScheduler = new EmbeddingScheduler(prisma);
 
 interface BackfillResult {

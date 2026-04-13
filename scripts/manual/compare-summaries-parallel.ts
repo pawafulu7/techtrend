@@ -1,4 +1,5 @@
-import { PrismaClient, Article, Source, Tag } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
+import { Article, Source, Tag } from '@/lib/prisma-exports';
 import { GeminiClient } from '../../lib/ai/gemini';
 import { ClaudeHandler } from '../../lib/ai/claude-handler';
 import * as readline from 'readline';
@@ -6,7 +7,7 @@ import fetch from 'node-fetch';
 import { detectArticleType } from '../../lib/utils/article/article-type-detector';
 import { generatePromptForArticleType } from '../../lib/utils/article/article-type-prompts';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const claudeHandler = new ClaudeHandler();
 
 // 対話的インターフェース用のreadline設定

@@ -1,5 +1,5 @@
 import { ZennAIFetcher } from '../../../lib/fetchers/ai/zenn-ai';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 
 // テスト用のモックSourceオブジェクト
 const mockSource: Source = {

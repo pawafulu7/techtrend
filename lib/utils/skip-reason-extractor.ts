@@ -3,7 +3,7 @@
  * 要約生成のエラーメッセージからskipReasonを抽出
  */
 
-import type { SkipReason as PrismaSkipReason } from '@prisma/client';
+import type { SkipReason as PrismaSkipReason } from '@/lib/prisma-exports';
 
 export type SkipReason = PrismaSkipReason;
 

@@ -5,12 +5,12 @@
  * SQLiteデータベースから全データをJSON形式でエクスポート
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import fs from 'fs/promises';
 import path from 'path';
 
 // デフォルトのPrismaクライアントを使用（環境変数DATABASE_URLを使用）
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const EXPORT_DIR = path.join(__dirname, 'exported-data');
 

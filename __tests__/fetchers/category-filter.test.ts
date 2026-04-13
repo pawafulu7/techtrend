@@ -3,7 +3,7 @@
  */
 
 import { GenericForeignRssFetcher, ForeignSourceConfig } from '@/lib/fetchers/generic-foreign-rss';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import { logger } from '@/lib/logger';
 

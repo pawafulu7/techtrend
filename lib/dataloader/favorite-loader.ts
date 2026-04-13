@@ -7,7 +7,7 @@
 
 import DataLoader from 'dataloader';
 import { prisma } from '@/lib/prisma';
-import type { Favorite } from '@prisma/client';
+import type { Favorite } from '@/lib/prisma-exports';
 import type { FavoriteStatus, LoaderOptions } from './types';
 import { DataLoaderMemoryCache } from '@/lib/cache/memory-cache';
 import { RedisCache } from '@/lib/cache/redis-cache';

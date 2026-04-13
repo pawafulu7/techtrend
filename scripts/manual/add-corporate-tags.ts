@@ -8,11 +8,11 @@
  *   npx tsx scripts/add-corporate-tags.ts --dry-run # ドライラン
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // ドメインと企業名のマッピング
 const domainToCompany: Record<string, string> = {

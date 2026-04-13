@@ -3,11 +3,11 @@
  * 壊れた要約を修正するスクリプト
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { generateUnifiedPrompt } from '@/lib/utils/article/article-type-prompts';
 import { UnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function fixBrokenSummaries() {
   const brokenArticleIds = [

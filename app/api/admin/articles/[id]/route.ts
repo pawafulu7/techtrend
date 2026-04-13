@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';

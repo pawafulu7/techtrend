@@ -1,5 +1,5 @@
 import { AWSFetcher } from '@/lib/fetchers/aws';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 
 // テスト用のソースオブジェクト
 const mockSource: Source = {

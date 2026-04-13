@@ -1,4 +1,4 @@
-import { Prisma, TrendPeriodType } from '@prisma/client';
+import { Prisma, TrendPeriodType } from '@/lib/prisma-exports';
 
 // JST offset constant (+9 hours in milliseconds)
 export const JST_OFFSET_MS = 9 * 60 * 60 * 1000;

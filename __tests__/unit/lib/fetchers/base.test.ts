@@ -1,5 +1,5 @@
 import { BaseFetcher } from '@/lib/fetchers/base';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import { CreateArticleInput, FetchResult } from '@/types/fetchers';
 
 // loggerをモック

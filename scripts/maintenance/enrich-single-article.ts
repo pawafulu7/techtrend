@@ -3,11 +3,11 @@
  * 特定の記事IDを指定してエンリッチメントと要約再生成を実行
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { GoogleAIEnricher } from '../../lib/enrichers/google-ai';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const enricher = new GoogleAIEnricher();
 const summaryService = new UnifiedSummaryService();
 

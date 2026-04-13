@@ -5,10 +5,10 @@
  *   npx tsx scripts/maintenance/add-ledge-ai-source.ts
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { sourceCache } from '../../lib/cache/source-cache';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const LEDGE_AI_SOURCE = {
   id: 'ledge_ai',

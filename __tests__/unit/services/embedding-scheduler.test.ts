@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from '@jest/globals';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
-import type { Article, PrismaClient } from '@prisma/client';
+import type { Article, PrismaClient } from '@/lib/prisma-exports';
 
 // Use real Prisma client (bypass mock)
-const { PrismaClient: RealPrismaClient } = jest.requireActual('@prisma/client');
+const { PrismaClient: RealPrismaClient } = jest.requireActual('@/lib/prisma-exports');
 const prisma: PrismaClient = new RealPrismaClient({
   datasources: {
     db: {

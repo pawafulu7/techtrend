@@ -5,10 +5,10 @@
  *   npx tsx scripts/maintenance/add-forbes-japan-source.ts
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { sourceCache } from '../../lib/cache/source-cache';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const FORBES_JAPAN_SOURCE = {
   id: 'forbes_japan_ai',

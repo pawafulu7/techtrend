@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import fetch from 'node-fetch';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function debug() {
   const article = await prisma.article.findUnique({

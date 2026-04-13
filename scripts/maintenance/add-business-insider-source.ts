@@ -5,10 +5,10 @@
  *   npx tsx scripts/maintenance/add-business-insider-source.ts
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { sourceCache } from '@/lib/cache/source-cache';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const BUSINESS_INSIDER_SOURCE = {
   id: 'business_insider',

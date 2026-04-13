@@ -11,7 +11,7 @@ import type { SourceGroupPlain, GroupedSources } from '@/lib/types/source-groupi
 import type { SourceCategoryId } from '@/lib/constants/source-categories';
 import { SOURCE_CATEGORIES } from '@/lib/constants/source-categories';
 import type { DeepMockProxy } from 'jest-mock-extended';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@/lib/prisma-exports';
 
 /**
  * Mock SourceGroup data (Plain Object types, no Prisma dependency)

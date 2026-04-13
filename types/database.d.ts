@@ -2,7 +2,7 @@
  * Database query and model type definitions
  */
 
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 
 // Article where clause type
 export interface ArticleWhereClause {

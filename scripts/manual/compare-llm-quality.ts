@@ -4,7 +4,7 @@
  * 同じ記事で両方のLLMを使って要約を生成し、品質を比較
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { LocalLLMClient } from '../../lib/ai/local-llm';
 import { GeminiClient } from '../../lib/ai/gemini';
 import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
@@ -13,7 +13,7 @@ import fetch from 'node-fetch';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface ComparisonResult {
   articleId: string;

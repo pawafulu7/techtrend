@@ -1,5 +1,5 @@
 import { GraphDataSerializer } from '@/lib/graph/graph-data-serializer';
-import type { Article } from '@prisma/client';
+import type { Article } from '@/lib/prisma-exports';
 
 // Mock logger
 jest.mock('@/lib/logger', () => ({

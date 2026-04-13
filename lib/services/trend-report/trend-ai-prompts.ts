@@ -1,4 +1,4 @@
-import { TrendPeriodType } from '@prisma/client';
+import { TrendPeriodType } from '@/lib/prisma-exports';
 
 import type { TopArticleInfo } from './types';
 

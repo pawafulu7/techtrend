@@ -1,4 +1,4 @@
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import { FetchResult } from '@/types/fetchers';
 import { logger } from '@/lib/cli/utils/logger';
 import { stripHtmlTags } from '@/lib/utils/html-sanitizer';

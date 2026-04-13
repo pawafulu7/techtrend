@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import { calculateQualityScore, checkCategoryQuality } from '@/lib/utils/quality-score';
 import { getLastProcessedTime, saveProcessingStatus } from '../utils/processing-status';

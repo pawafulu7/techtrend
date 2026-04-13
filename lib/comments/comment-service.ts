@@ -12,7 +12,7 @@ import { prisma } from '@/lib/prisma';
 import { sanitizeUserInput } from '@/lib/utils/html-sanitizer';
 import { commentsCache } from '@/lib/cache/comments-cache';
 import { logger } from '@/lib/logger';
-import type { Comment, CommentVisibility } from '@prisma/client';
+import type { Comment, CommentVisibility } from '@/lib/prisma-exports';
 
 // =============================================================================
 // Types

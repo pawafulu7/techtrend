@@ -10,7 +10,7 @@ import {
   type TrendReport,
   type DiffSummary,
   ArticleCategory,
-} from '@prisma/client';
+} from '@/lib/prisma-exports';
 import type { OpinionForPrompt } from './types';
 import {
   type ArticleCandidatesSearchInput,

@@ -11,13 +11,14 @@
  * --score <数値>  品質スコアの閾値を指定（デフォルト: 70）
  */
 
-import { PrismaClient, Article, Source } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
+import { Article, Source } from '@/lib/prisma-exports';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { extractSkipReason, getSkipReasonLabel } from '../../lib/utils/skip-reason-extractor';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 // コマンドライン引数の解析
 const args = process.argv.slice(2);

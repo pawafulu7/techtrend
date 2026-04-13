@@ -3,11 +3,11 @@
  * 小分けにして実行可能
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { StackOverflowEnricher } from '../../lib/enrichers/stackoverflow';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 const enricher = new StackOverflowEnricher();
 const summaryService = new UnifiedSummaryService();
 

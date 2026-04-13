@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { SummaryManager } from '@/lib/services/summary/summary-manager';
 import * as fs from 'fs';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

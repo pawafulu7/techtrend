@@ -6,7 +6,7 @@
  */
 
 import { execSync } from 'child_process';
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 
 // テストDB接続設定
 const TEST_DATABASE_URL = 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test';
@@ -15,13 +15,7 @@ const TEST_DATABASE_URL = 'postgresql://postgres:postgres_dev_password@localhost
 process.env.DATABASE_URL = TEST_DATABASE_URL;
 
 // PrismaClientを初期化（明示的にURLを指定）
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: TEST_DATABASE_URL
-    }
-  }
-});
+const prisma = createPrismaClient({ connectionString: TEST_DATABASE_URL });
 
 async function setupTestDatabase() {
   // 環境チェック

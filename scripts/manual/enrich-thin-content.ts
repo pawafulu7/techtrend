@@ -12,13 +12,13 @@
  * --skip-summary   要約のリセットをスキップ
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 interface Options {
   dryRun: boolean;

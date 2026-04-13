@@ -4,7 +4,7 @@
  * レガシーカテゴリ名を新しいArticleCategory列挙型に変換
  */
 
-import { ArticleCategory } from '@prisma/client';
+import { ArticleCategory } from '@/lib/prisma-exports';
 
 // レガシーカテゴリ名のマッピング
 const CATEGORY_ALIASES: Record<string, ArticleCategory> = {

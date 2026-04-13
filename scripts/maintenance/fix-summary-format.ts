@@ -12,10 +12,10 @@
  * - 各項目を1行に連結（句点補完）
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { INSTRUCTION_PATTERNS, CATEGORY_LABELS, TITLE_CHAR_THRESHOLD, SENTENCE_MARKERS } from '../../lib/ai/constants';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 function fixDetailedSummaryFormat(detailedSummary: string): string {
   const lines = detailedSummary.split('\n');

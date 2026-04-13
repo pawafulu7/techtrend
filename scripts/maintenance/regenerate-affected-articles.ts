@@ -5,11 +5,11 @@
  * 最新のparseUnifiedResponse（カテゴリ削除ロジック）で正しいフォーマットに修正
  */
 
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '@/lib/prisma/create-client';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import * as fs from 'fs';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function main() {
   const args = process.argv.slice(2);

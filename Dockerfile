@@ -67,9 +67,8 @@ COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
 COPY next.config.ts ./
 COPY tsconfig.json ./
-# Use client generated in builder
-COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+# Copy generated Prisma client (v7: output goes to prisma/generated/)
+COPY --from=builder /app/prisma/generated ./prisma/generated
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001

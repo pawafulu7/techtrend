@@ -1,6 +1,6 @@
 import { LedgeAiFetcher } from '@/lib/fetchers/ledge-ai';
 import { createFetcher } from '@/lib/fetchers';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import { logger } from '@/lib/cli/utils/logger';
 
 // Mock fetch

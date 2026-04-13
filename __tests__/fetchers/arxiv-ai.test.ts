@@ -1,4 +1,4 @@
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 
 // Mock Prisma client
 jest.mock('@/lib/prisma', () => ({

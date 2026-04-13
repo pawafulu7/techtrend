@@ -1,6 +1,6 @@
 import { BaseFetcher } from './base';
 import { CreateArticleInput, FetchResult } from '@/types';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 import { fetchWithTimeout } from '../utils/fetch-with-timeout';
 

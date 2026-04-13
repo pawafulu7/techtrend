@@ -1,4 +1,4 @@
-import { Article, Tag, Source } from '@prisma/client';
+import { Article, Tag, Source } from '@/lib/prisma-exports';
 
 // DataLoaderで使用する拡張型定義
 export interface ArticleWithRelations extends Article {

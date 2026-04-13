@@ -4,7 +4,7 @@
  * Handles regeneration, missing summary detection, and sequential processing flows.
  */
 
-import { PrismaClient, Prisma, SkipReason } from '@prisma/client';
+import { PrismaClient, Prisma, SkipReason } from '@/lib/prisma-exports';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { classifyError, isRetryable } from '@/lib/fetchers/retry-handler';
 import { logger } from '@/lib/logger';

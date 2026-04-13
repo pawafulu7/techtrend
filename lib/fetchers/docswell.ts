@@ -4,7 +4,7 @@
  */
 
 import { BaseFetcher } from './base';
-import { Source } from '@prisma/client';
+import { Source } from '@/lib/prisma-exports';
 import { CreateArticleInput } from '@/types';
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';

@@ -1,4 +1,4 @@
-import type { Article } from '@prisma/client';
+import type { Article } from '@/lib/prisma-exports';
 import { logger } from '@/lib/logger';
 import type { SearchResult } from '@/lib/rag/vector-search-service';
 import { GRAPH_CONSTANTS, clamp01, normalizeQualityScore } from './graph-utils';

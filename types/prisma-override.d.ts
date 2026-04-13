@@ -1,5 +1,5 @@
 // Prisma型の一時的な修正
-import type { Tag as _PrismaTag, Source as _PrismaSource, Article as _PrismaArticle } from '@prisma/client';
+import type { Tag as _PrismaTag, Source as _PrismaSource, Article as _PrismaArticle } from '@/lib/prisma-exports';
 
 // 明示的に型を定義
 export interface Tag {

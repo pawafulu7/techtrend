@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import type { Favorite, ArticleView } from '@prisma/client';
+import type { Favorite, ArticleView } from '@/lib/prisma-exports';
 
 /**
  * 複数記事のお気に入り状態を一括取得
