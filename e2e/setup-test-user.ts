@@ -51,11 +51,12 @@ export async function setupTestUser() {
     const hashedPassword = await hashPassword(TEST_USER.password);
 
     const { rows } = await client.query<{ id: string }>(
-      `INSERT INTO "User" (id, email, name, "emailVerified")
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO "User" (id, email, name, "emailVerified", "updatedAt")
+       VALUES ($1, $2, $3, $4, NOW())
        ON CONFLICT (email) DO UPDATE SET
          name = EXCLUDED.name,
-         "emailVerified" = EXCLUDED."emailVerified"
+         "emailVerified" = EXCLUDED."emailVerified",
+         "updatedAt" = NOW()
        RETURNING id`,
       [TEST_USER.id, TEST_USER.email, TEST_USER.name, true]
     );
@@ -63,10 +64,11 @@ export async function setupTestUser() {
 
     // Upsert credential account with password
     await client.query(
-      `INSERT INTO "Account" ("userId", "providerId", "accountId", password)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO "Account" ("userId", "providerId", "accountId", password, "updatedAt")
+       VALUES ($1, $2, $3, $4, NOW())
        ON CONFLICT ("providerId", "accountId") DO UPDATE SET
-         password = EXCLUDED.password`,
+         password = EXCLUDED.password,
+         "updatedAt" = NOW()`,
       [userId, 'credential', userId, hashedPassword]
     );
 
@@ -93,12 +95,13 @@ export async function setupAdminUser() {
     const hashedPassword = await hashPassword(ADMIN_TEST_USER.password);
 
     const { rows } = await client.query<{ id: string }>(
-      `INSERT INTO "User" (id, email, name, "emailVerified", role)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO "User" (id, email, name, "emailVerified", role, "updatedAt")
+       VALUES ($1, $2, $3, $4, $5, NOW())
        ON CONFLICT (email) DO UPDATE SET
          name = EXCLUDED.name,
          "emailVerified" = EXCLUDED."emailVerified",
-         role = EXCLUDED.role
+         role = EXCLUDED.role,
+         "updatedAt" = NOW()
        RETURNING id`,
       [ADMIN_TEST_USER.id, ADMIN_TEST_USER.email, ADMIN_TEST_USER.name, true, 'admin']
     );
@@ -106,10 +109,11 @@ export async function setupAdminUser() {
 
     // Upsert credential account with password
     await client.query(
-      `INSERT INTO "Account" ("userId", "providerId", "accountId", password)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO "Account" ("userId", "providerId", "accountId", password, "updatedAt")
+       VALUES ($1, $2, $3, $4, NOW())
        ON CONFLICT ("providerId", "accountId") DO UPDATE SET
-         password = EXCLUDED.password`,
+         password = EXCLUDED.password,
+         "updatedAt" = NOW()`,
       [userId, 'credential', userId, hashedPassword]
     );
 
