@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '@better-auth/utils/password';
 
 const prisma = new PrismaClient();
 
@@ -18,28 +18,40 @@ async function createTestUser() {
       { id: 'test-user-password-change', email: 'test-password-change@example.com', name: 'Test User Password Change' },
     ];
 
-    // パスワードをハッシュ化（全ユーザー同じパスワード）
-    const hashedPassword = await bcrypt.hash('TestPassword123', 10);
+    // パスワードをハッシュ化（全ユーザー同じパスワード、Better Auth の scrypt を使用）
+    const hashedPassword = await hashPassword('TestPassword123');
 
-    // 既存のテストユーザーを全て削除
-    await prisma.user.deleteMany({
-      where: {
-        email: {
-          in: testUsers.map(u => u.email)
-        }
-      }
-    });
-
-    // 各ブラウザ用のテストユーザーを作成
+    // 各ブラウザ用のテストユーザーを作成（$transaction でアトミックに）
     for (const userData of testUsers) {
-      const user = await prisma.user.create({
-        data: {
-          ...userData,
-          password: hashedPassword,
-          emailVerified: true
-        }
+      await prisma.$transaction(async (tx) => {
+        // 既存ユーザーを削除（Account は cascadeで削除されるか、明示的に先に削除）
+        await tx.account.deleteMany({
+          where: { userId: userData.id },
+        });
+        await tx.user.deleteMany({
+          where: { email: userData.email },
+        });
+
+        // User を作成
+        const user = await tx.user.create({
+          data: {
+            ...userData,
+            emailVerified: true,
+          },
+        });
+
+        // Account テーブルにパスワードを格納（Better Auth スキーマ）
+        await tx.account.create({
+          data: {
+            userId: user.id,
+            providerId: 'credential',
+            accountId: user.id,
+            password: hashedPassword,
+          },
+        });
+
+        console.log('Test user created:', user.email);
       });
-      console.log('Test user created:', user.email);
     }
 
     console.log('All test users created successfully');

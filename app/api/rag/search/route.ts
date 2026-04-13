@@ -93,12 +93,6 @@ async function postHandler(request: NextRequest) {
       );
     }
 
-    // Layer 1.5: User validation (check if user is deleted)
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
-
     // Layer 2: Rate limiting (REQUIRED)
     let rateLimitInfo:
       | { limit: number; remaining: number; reset: Date }
@@ -143,6 +137,12 @@ async function postHandler(request: NextRequest) {
         );
       }
       throw error;
+    }
+
+    // Layer 2.5: User validation (check if user is deleted)
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
     }
 
     // Layer 3: Input validation (Zod)

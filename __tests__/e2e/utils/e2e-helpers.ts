@@ -687,175 +687,269 @@ export interface LoginOptions {
   successUrls?: string[];
 }
 
+const E2E_BASE_URL =
+  process.env.BASE_URL ??
+  process.env.PLAYWRIGHT_TEST_BASE_URL ??
+  'http://localhost:3000';
+
+function getAuthOrigin(): string {
+  return new URL(E2E_BASE_URL).origin;
+}
+
+function parseSetCookieForBrowserContext(header: string): {
+  name: string;
+  value: string;
+  url: string;
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: 'Lax' | 'None' | 'Strict';
+  expires?: number;
+} | null {
+  const parts = header.split(';').map((part) => part.trim()).filter(Boolean);
+  const [nameValue, ...attributes] = parts;
+
+  if (!nameValue) return null;
+
+  const separatorIndex = nameValue.indexOf('=');
+  if (separatorIndex <= 0) return null;
+
+  const name = nameValue.slice(0, separatorIndex).trim();
+  const value = nameValue.slice(separatorIndex + 1).trim();
+  if (!name) return null;
+
+  const cookie: {
+    name: string;
+    value: string;
+    url: string;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: 'Lax' | 'None' | 'Strict';
+    expires?: number;
+  } = {
+    name,
+    value,
+    url: getAuthOrigin(),
+  };
+
+  for (const attribute of attributes) {
+    const [rawKey, ...rawValueParts] = attribute.split('=');
+    const key = rawKey?.trim().toLowerCase();
+    const rawValue = rawValueParts.join('=').trim();
+
+    if (key === 'httponly') {
+      cookie.httpOnly = true;
+      continue;
+    }
+
+    if (key === 'secure') {
+      cookie.secure = true;
+      continue;
+    }
+
+    if (key === 'samesite') {
+      const sameSite = rawValue.toLowerCase();
+      if (sameSite === 'lax' || sameSite === 'strict' || sameSite === 'none') {
+        cookie.sameSite =
+          sameSite === 'lax'
+            ? 'Lax'
+            : sameSite === 'strict'
+              ? 'Strict'
+              : 'None';
+      }
+      continue;
+    }
+
+    if (key === 'max-age') {
+      const maxAge = Number.parseInt(rawValue, 10);
+      if (Number.isFinite(maxAge)) {
+        cookie.expires = Math.floor(Date.now() / 1000) + maxAge;
+      }
+      continue;
+    }
+
+    if (key === 'expires') {
+      const expiresAt = Date.parse(rawValue);
+      if (!Number.isNaN(expiresAt)) {
+        cookie.expires = Math.floor(expiresAt / 1000);
+      }
+    }
+  }
+
+  return cookie;
+}
+
+async function syncAuthCookiesToBrowserContext(
+  page: Page,
+  setCookieHeaders: string[],
+  debug: boolean
+): Promise<void> {
+  const cookies = setCookieHeaders
+    .map((header) => parseSetCookieForBrowserContext(header))
+    .filter((cookie): cookie is NonNullable<typeof cookie> => cookie !== null);
+
+  if (cookies.length === 0) {
+    if (debug) console.log('[loginTestUser] No Set-Cookie headers to sync');
+    return;
+  }
+
+  await page.context().addCookies(cookies);
+
+  if (debug) {
+    const cookieNames = cookies.map((cookie) => cookie.name).join(', ');
+    console.log(`[loginTestUser] Synced cookies to browser context: ${cookieNames}`);
+  }
+}
+
+async function hasAuthenticatedSession(
+  page: Page,
+  email: string,
+  debug: boolean
+): Promise<boolean> {
+  const response = await page.request.get('/api/auth/get-session', {
+    failOnStatusCode: false,
+  });
+
+  if (!response.ok()) {
+    if (debug) {
+      console.log(
+        `[loginTestUser] get-session returned ${response.status()}`
+      );
+    }
+    return false;
+  }
+
+  const body = await response.json().catch(() => null);
+  const sessionEmail =
+    typeof body === 'object' && body !== null
+      ? (body as { user?: { email?: string | null } | null }).user?.email
+      : undefined;
+
+  if (debug) {
+    console.log(
+      `[loginTestUser] get-session user: ${sessionEmail ?? 'anonymous'}`
+    );
+  }
+
+  return sessionEmail === email;
+}
+
+async function waitForAuthenticatedSession(
+  page: Page,
+  email: string,
+  timeout: number,
+  debug: boolean
+): Promise<boolean> {
+  const deadline = Date.now() + timeout;
+
+  while (Date.now() < deadline) {
+    if (await hasAuthenticatedSession(page, email, debug)) {
+      return true;
+    }
+    await page.waitForTimeout(250);
+  }
+
+  return false;
+}
+
 export async function loginTestUser(
   page: Page,
   options: LoginOptions = {}
 ): Promise<boolean> {
-  const { 
+  const {
     debug = false,
     email = TEST_USER.email,
     password = TEST_USER.password,
     timeout = 30000
   } = options;
-  
+
+  // Strategy 1: Direct API login (bypasses UI timing issues)
   try {
-    if (debug) console.log(`[loginTestUser] Navigating to login page with email: ${email}`);
-    
-    // Navigate to login page with retry
+    if (debug) console.log(`[loginTestUser] Attempting API login for: ${email}`);
+
+    const response = await page.request.post('/api/auth/sign-in/email', {
+      data: { email, password },
+      failOnStatusCode: false,
+      headers: {
+        origin: getAuthOrigin(),
+        referer: `${getAuthOrigin()}/auth/login`,
+      },
+    });
+
+    if (response.ok()) {
+      if (debug) console.log('[loginTestUser] API login successful');
+      const setCookieHeaders = response
+        .headersArray()
+        .filter((header) => header.name.toLowerCase() === 'set-cookie')
+        .map((header) => header.value);
+
+      await syncAuthCookiesToBrowserContext(page, setCookieHeaders, debug);
+
+      if (await waitForAuthenticatedSession(page, email, 5000, debug)) {
+        await page.goto('/', { waitUntil: 'domcontentloaded', timeout });
+        if (debug) console.log(`[loginTestUser] Session verified after API login`);
+        return true;
+      }
+
+      if (debug) {
+        console.log(
+          '[loginTestUser] API login did not establish a browser session, falling back to UI'
+        );
+      }
+    } else if (debug) {
+      console.log(
+        `[loginTestUser] API login returned ${response.status()}: ${await response.text()}`
+      );
+    }
+  } catch (error) {
+    if (debug) console.error('[loginTestUser] API login error:', error);
+  }
+
+  // Strategy 2: UI-based login (fallback)
+  try {
+    if (debug) console.log(`[loginTestUser] Falling back to UI login for: ${email}`);
+
     await page.goto('/auth/login', { waitUntil: 'domcontentloaded', timeout });
     await waitForPageLoad(page, { timeout });
-    
-    if (debug) console.log('[loginTestUser] Page loaded, looking for form elements...');
-    
-    // Wait for form elements (fallback selectors)
+
     const emailInput = page.locator('input#email, input[name="email"], input[type="email"]').first();
     const passwordInput = page.locator('input#password, input[name="password"], input[type="password"]').first();
-    
-    // Check if elements exist
-    const emailCount = await emailInput.count();
-    const passwordCount = await passwordInput.count();
-    
-    if (debug) {
-      console.log(`[loginTestUser] Email input found: ${emailCount > 0}`);
-      console.log(`[loginTestUser] Password input found: ${passwordCount > 0}`);
-    }
-    
-    if (emailCount === 0 || passwordCount === 0) {
-      if (debug) console.log('[loginTestUser] Form elements not found, page might not be ready');
-      throw new Error('Login form elements not found');
-    }
-    
+
     await emailInput.waitFor({ state: 'visible', timeout: 5000 });
     await passwordInput.waitFor({ state: 'visible', timeout: 5000 });
-    
-    if (debug) console.log('[loginTestUser] Filling form fields...');
+
     await emailInput.fill(email);
     await passwordInput.fill(password);
-    
-    if (debug) console.log('[loginTestUser] Submitting login form...');
-    
-    // Submit login - try multiple methods
+
     const submitButton = page
       .locator('button[type="submit"], [data-testid="login-submit"], button:has-text("ログイン"), button:has-text("Login")')
       .first();
-    
-    const submitCount = await submitButton.count();
-    if (debug) console.log(`[loginTestUser] Submit button found: ${submitCount > 0}`);
-    
-    if (submitCount === 0) {
-      throw new Error('Submit button not found');
-    }
-    
     await submitButton.waitFor({ state: 'visible', timeout: 5000 });
-    
-    // ナビゲーションを待つPromiseを先に作成
-    const navigationPromise = page.waitForURL((u) => {
-      try { 
-        const url = new URL(u);
-        const isNotLogin = !url.pathname.includes('/auth/login');
-        if (debug && isNotLogin) {
-          console.log(`[loginTestUser] Navigated to: ${url.pathname}`);
-        }
-        return isNotLogin;
-      } catch { 
-        return false; 
-      }
-    }, { timeout: 20000 }).catch((err) => {
-      if (debug) console.log(`[loginTestUser] Navigation timeout: ${err.message}`);
-      return null;
-    });
-    
-    // ボタンをクリック
-    if (debug) console.log('[loginTestUser] Clicking submit button...');
+
     await submitButton.click();
-    
-    // Enterキーも試す（フォーム送信のフォールバック）
-    await page.waitForTimeout(500); // 少し待機
-    if (debug) console.log('[loginTestUser] Pressing Enter key as fallback...');
-    await page.keyboard.press('Enter');
-    
-    // ナビゲーションを待つ
-    if (debug) console.log('[loginTestUser] Waiting for navigation...');
-    const navigationResult = await navigationPromise;
-    
-    if (!navigationResult) {
-      if (debug) console.log('[loginTestUser] Navigation timeout, checking current state...');
-      
-      // 少し待ってから再度URLをチェック
-      await page.waitForTimeout(2000);
-      
-      const currentUrl = page.url();
-      if (debug) console.log(`[loginTestUser] Current URL: ${currentUrl}`);
-      
-      if (currentUrl.includes('/auth/login')) {
-        // エラーメッセージを確認
-        const errorMessage = await page.locator('p.text-destructive, .text-red-500, [role="alert"]').count();
-        if (errorMessage > 0) {
-          const errorText = await page.locator('p.text-destructive, .text-red-500, [role="alert"]').first().textContent();
-          if (debug) console.log(`[loginTestUser] Login error message detected: ${errorText}`);
-          return false;
-        }
-        
-        // フォームが送信されていない可能性があるので、再度送信を試みる
-        if (debug) console.log('Retrying form submission...');
-        await submitButton.click({ force: true });
-        
-        // 再度ナビゲーションを待つ
-        try {
-          await page.waitForURL((u) => !u.includes('/auth/login'), { timeout: 10000 });
-        } catch {
-          if (debug) console.log('Second navigation attempt failed');
-          return false;
-        }
-      }
-    }
-    
-    // 最終確認
-    const finalUrl = page.url();
-    const isSuccess = !finalUrl.includes('/auth/login') && !finalUrl.includes('/error');
-    
-    if (isSuccess) {
-      if (debug) console.log(`[loginTestUser] Login successful! ✅ Redirected to: ${finalUrl}`);
-      
-      // ユーザーインジケーターの確認（オプション）
-      try {
-        const userIndicator = page.locator(
-          '[data-testid="user-menu-trigger"], [data-testid="user-menu"], button:has-text("ログアウト")'
-        ).first();
-        await userIndicator.waitFor({ state: 'visible', timeout: 3000 });
-        if (debug) console.log('[loginTestUser] User indicator confirmed ✅');
-      } catch {
-        if (debug) console.log('[loginTestUser] User indicator not visible, but login succeeded');
-      }
-    } else {
+
+    const sessionReady = await waitForAuthenticatedSession(
+      page,
+      email,
+      Math.min(timeout, 10000),
+      debug
+    );
+
+    if (!sessionReady) {
       if (debug) {
-        console.log(`[loginTestUser] Login failed ❌ Still on: ${finalUrl}`);
-        
-        // ページの状態を詳しく調査
-        try {
-          const pageTitle = await page.title();
-          console.log(`[loginTestUser] Page title: ${pageTitle}`);
-          
-          const hasLoginForm = await page.locator('input[type="email"], input[type="password"]').count() > 0;
-          console.log(`[loginTestUser] Login form present: ${hasLoginForm}`);
-          
-          const errorMessages = await page.locator('[role="alert"], .text-destructive, .text-red-500').allTextContents();
-          if (errorMessages.length > 0) {
-            console.log(`[loginTestUser] Error messages found:`, errorMessages);
-          }
-        } catch (err) {
-          console.log('[loginTestUser] Could not get page details');
-        }
+        const finalUrl = page.url();
+        console.log(
+          `[loginTestUser] UI login did not establish a session, final URL: ${finalUrl}`
+        );
       }
+      return false;
     }
-    
-    return isSuccess;
+
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout });
+
+    if (debug) console.log('[loginTestUser] UI login succeeded');
+    return true;
   } catch (error) {
-    if (debug) {
-      console.error('[loginTestUser] Login failed with error:', error);
-      console.error('[loginTestUser] Error details:', (error as Error).message);
-      console.error('[loginTestUser] Current URL:', page.url());
-    }
+    if (debug) console.error('[loginTestUser] UI login failed:', (error as Error).message);
     return false;
   }
 }

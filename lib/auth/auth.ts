@@ -175,6 +175,10 @@ export const auth = betterAuth({
   advanced: {
     useSecureCookies: isProduction,
   },
+
+  rateLimit: {
+    enabled: isProduction && !env.CI,
+  },
 });
 
 function buildVerificationEmailHtml(url: string, host: string): string {

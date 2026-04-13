@@ -33,6 +33,27 @@ function saveToLocalStorage(ids: Set<string>, userId?: string) {
   }
 }
 
+/**
+ * 旧ストレージキー ('techtrend-read-articles') から新ゲストキーへの一回限りのマイグレーション。
+ * 新キーにデータが存在しない場合のみ実行し、マイグレーション後は旧キーを削除する。
+ */
+function migrateGuestStorageKey() {
+  if (typeof window === 'undefined') return;
+  const OLD_KEY = STORAGE_KEY_PREFIX;
+  const newKey = getStorageKey('guest');
+  try {
+    // 新キーに既にデータがある場合はスキップ
+    if (localStorage.getItem(newKey) !== null) return;
+    const oldData = localStorage.getItem(OLD_KEY);
+    if (oldData !== null) {
+      localStorage.setItem(newKey, oldData);
+      localStorage.removeItem(OLD_KEY);
+    }
+  } catch (error) {
+    console.error('Error migrating guest read status storage key:', error);
+  }
+}
+
 function loadFromLocalStorage(userId?: string): Set<string> {
   if (typeof window === 'undefined') return new Set<string>();
   try {
@@ -93,11 +114,16 @@ export function useReadStatus(articleIds?: string[]) {
       };
     },
     enabled: !isPending,
-    // localStorageから初期値を設定
-    initialData: () => ({
-      readArticleIds: loadFromLocalStorage(userId),
-      unreadCount: 0,
-    }),
+    // localStorageから初期値を設定（ゲスト時は旧キーからマイグレーション）
+    initialData: () => {
+      if (!userId) {
+        migrateGuestStorageKey();
+      }
+      return {
+        readArticleIds: loadFromLocalStorage(userId),
+        unreadCount: 0,
+      };
+    },
     refetchOnMount: 'always',
   });
 

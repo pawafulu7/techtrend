@@ -32,6 +32,7 @@ export function UserMenu() {
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
+    if (isSigningOut) return;
     setIsSigningOut(true);
     try {
       await authClient.signOut();
@@ -39,7 +40,6 @@ export function UserMenu() {
       console.error('Sign-out failed:', error);
     } finally {
       window.location.href = '/';
-      setIsSigningOut(false);
     }
   };
 

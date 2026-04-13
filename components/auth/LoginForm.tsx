@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import { useRouter } from 'next/navigation';
+import { sanitizeCallbackUrl } from '@/lib/routes/auth';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Input } from '@/components/ui/input';
@@ -19,12 +20,8 @@ interface LoginFormProps {
   callbackUrl?: string;
 }
 
-function safeCallbackUrl(url: string): string {
-  return url.startsWith('/') && !url.startsWith('//') ? url : '/';
-}
-
 export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
-  const safeUrl = safeCallbackUrl(callbackUrl);
+  const safeUrl = sanitizeCallbackUrl(callbackUrl);
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);

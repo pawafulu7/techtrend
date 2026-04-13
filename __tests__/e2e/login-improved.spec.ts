@@ -222,19 +222,16 @@ test.describe.serial('Login Feature - Improved', () => {
     expect(finalUrl).not.toContain('/auth/login');
   });
 
-  test('9. ローディング状態が表示される', async ({ page, browserName }) => {
+  test('9. ローディング状態が表示される', async ({ page }) => {
     // 新しいコンテキストでテスト（前のセッションを引き継がない）
     await page.context().clearCookies();
 
     // ログインページへ移動
     await page.goto('/auth/login');
 
-    // ブラウザ固有のテストユーザーを使用
-    const testUser = TEST_USERS[browserName as keyof typeof TEST_USERS] || TEST_USER;
-
-    // ログイン情報を入力
-    await page.fill('input[id="email"]', testUser.email);
-    await page.fill('input[id="password"]', testUser.password);
+    // DBに存在するテストユーザーを使用（ローディング→リダイレクトの完全フローを確認）
+    await page.fill('input[id="email"]', TEST_USER.email);
+    await page.fill('input[id="password"]', TEST_USER.password);
 
     // ログインボタンをクリック
     const submitButton = page.locator('button[type="submit"]:has-text("ログイン")');

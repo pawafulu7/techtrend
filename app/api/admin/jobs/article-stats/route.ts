@@ -65,10 +65,21 @@ export async function GET(request: NextRequest) {
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
+    const rawRange = searchParams.get('range');
     const rangeParseResult = RangeQuerySchema.safeParse({
-      range: searchParams.get('range') ?? undefined,
+      range: rawRange ?? undefined,
     });
-    // Default to DEFAULT_RANGE_DAYS if param is absent or fails validation
+    // Return 400 if range param was provided but failed validation
+    if (!rangeParseResult.success && rawRange !== null) {
+      return NextResponse.json(
+        {
+          error: 'Invalid query parameter',
+          details: rangeParseResult.error.issues,
+        },
+        { status: 400 }
+      );
+    }
+    // Use parsed value when present, otherwise fall back to default
     const rangeDays =
       rangeParseResult.success && rangeParseResult.data.range !== undefined
         ? rangeParseResult.data.range
