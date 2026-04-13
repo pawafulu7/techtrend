@@ -172,7 +172,7 @@ test.describe('Custom Image Loader - Page Rendering', () => {
                !err.includes('401') &&
                !err.includes('Failed to fetch') &&
                !err.includes('NetworkError') &&
-               !err.includes('api/auth')
+               !err.includes('/api/auth/get-session')
     );
     expect(criticalErrors.length).toBe(0);
   });

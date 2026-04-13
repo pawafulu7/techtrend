@@ -35,6 +35,20 @@ function saveToLocalStorage(ids: Set<string>, storageUserId?: string) {
 }
 
 /**
+ * 既存の localStorage データにマージしてから保存するヘルパー。
+ * 部分的な Set で上書きして他ページの既読データを失う問題を防ぐ。
+ */
+function updateStoredReadIds(
+  storageUserId: string | undefined,
+  updater: (current: Set<string>) => Set<string>
+): Set<string> {
+  if (!storageUserId) return new Set<string>();
+  const next = updater(loadFromLocalStorage(storageUserId));
+  saveToLocalStorage(next, storageUserId);
+  return next;
+}
+
+/**
  * 旧ストレージキー ('techtrend-read-articles') から新ゲストキーへの一回限りのマイグレーション。
  * 新キーにデータが存在しない場合のみ実行し、マイグレーション後は旧キーを削除する。
  */
@@ -111,16 +125,30 @@ export function useReadStatus(articleIds?: string[]) {
         throw new Error('Failed to fetch read status');
       }
       const data: ReadStatusResponse = await response.json();
-      const newReadArticleIds = new Set<string>(data.readArticleIds);
-      saveToLocalStorage(newReadArticleIds, storageUserId);
+      const fetchedIds = new Set<string>(data.readArticleIds);
+      // articleIds 指定時（部分取得）は既存の localStorage データにマージして上書き損失を防ぐ
+      // 全件取得時は取得結果で完全置換する
+      const mergedIds = articleIds?.length
+        ? updateStoredReadIds(storageUserId, (current) => {
+            const next = new Set(current);
+            for (const id of fetchedIds) next.add(id);
+            return next;
+          })
+        : (() => {
+            saveToLocalStorage(fetchedIds, storageUserId);
+            return fetchedIds;
+          })();
       return {
-        readArticleIds: newReadArticleIds,
+        readArticleIds: mergedIds,
         unreadCount: data.unreadCount ?? 0,
       };
     },
     enabled: !isPending,
     // localStorageから初期値を設定（ゲスト時は旧キーからマイグレーション）
     initialData: () => {
+      if (isPending) {
+        return { readArticleIds: new Set<string>(), unreadCount: 0 };
+      }
       if (!userId) {
         migrateGuestStorageKey();
       }
@@ -170,19 +198,24 @@ export function useReadStatus(articleIds?: string[]) {
 
       queryClient.setQueryData(queryKey, (old: ReadStatusCache | undefined) => {
         if (!old) return old;
-        const newSet = new Set(old.readArticleIds);
         if (newIsRead) {
-          if (newSet.has(articleId)) return old;
-          newSet.add(articleId);
-          saveToLocalStorage(newSet, storageUserId);
+          if (old.readArticleIds.has(articleId)) return old;
+          const newSet = updateStoredReadIds(storageUserId, (current) => {
+            const next = new Set(current);
+            next.add(articleId);
+            return next;
+          });
           return {
             readArticleIds: newSet,
             unreadCount: Math.max(0, old.unreadCount - 1),
           };
         } else {
-          if (!newSet.has(articleId)) return old;
-          newSet.delete(articleId);
-          saveToLocalStorage(newSet, storageUserId);
+          if (!old.readArticleIds.has(articleId)) return old;
+          const newSet = updateStoredReadIds(storageUserId, (current) => {
+            const next = new Set(current);
+            next.delete(articleId);
+            return next;
+          });
           return {
             readArticleIds: newSet,
             unreadCount: old.unreadCount + 1,
@@ -213,7 +246,10 @@ export function useReadStatus(articleIds?: string[]) {
     };
   }, []);
 
-  type MutationContext = { previous: ReadStatusCache | undefined };
+  type MutationContext = {
+    previous: ReadStatusCache | undefined;
+    previousStoredIds: Set<string>;
+  };
 
   // 記事を既読にマーク
   const markAsReadMutation = useMutation<void, Error, string, MutationContext>({
@@ -232,22 +268,28 @@ export function useReadStatus(articleIds?: string[]) {
       // 楽観的更新
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<ReadStatusCache>(queryKey);
+      const previousStoredIds = loadFromLocalStorage(storageUserId);
       queryClient.setQueryData(queryKey, (old: ReadStatusCache | undefined) => {
         if (!old) return old;
         if (old.readArticleIds.has(articleId)) return old;
-        const newSet = new Set([...old.readArticleIds, articleId]);
-        saveToLocalStorage(newSet, storageUserId);
+        const newSet = updateStoredReadIds(storageUserId, (current) => {
+          const next = new Set(current);
+          next.add(articleId);
+          return next;
+        });
         return {
           readArticleIds: newSet,
           unreadCount: Math.max(0, old.unreadCount - 1),
         };
       });
-      return { previous };
+      return { previous, previousStoredIds };
     },
     onError: (_err, _articleId, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
-        saveToLocalStorage(context.previous.readArticleIds, storageUserId);
+      }
+      if (context?.previousStoredIds) {
+        saveToLocalStorage(context.previousStoredIds, storageUserId);
       }
     },
     onSettled: () => {
@@ -276,23 +318,28 @@ export function useReadStatus(articleIds?: string[]) {
       // 楽観的更新
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<ReadStatusCache>(queryKey);
+      const previousStoredIds = loadFromLocalStorage(storageUserId);
       queryClient.setQueryData(queryKey, (old: ReadStatusCache | undefined) => {
         if (!old) return old;
         if (!old.readArticleIds.has(articleId)) return old;
-        const newSet = new Set(old.readArticleIds);
-        newSet.delete(articleId);
-        saveToLocalStorage(newSet, storageUserId);
+        const newSet = updateStoredReadIds(storageUserId, (current) => {
+          const next = new Set(current);
+          next.delete(articleId);
+          return next;
+        });
         return {
           readArticleIds: newSet,
           unreadCount: old.unreadCount + 1,
         };
       });
-      return { previous };
+      return { previous, previousStoredIds };
     },
     onError: (_err, _articleId, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
-        saveToLocalStorage(context.previous.readArticleIds, storageUserId);
+      }
+      if (context?.previousStoredIds) {
+        saveToLocalStorage(context.previousStoredIds, storageUserId);
       }
     },
     onSettled: () => {
@@ -335,20 +382,26 @@ export function useReadStatus(articleIds?: string[]) {
       // 楽観的更新: 未読数を0に、readArticleIdsをarticleIdsの全件で更新
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<ReadStatusCache>(queryKey);
+      const previousStoredIds = loadFromLocalStorage(storageUserId);
       queryClient.setQueryData(queryKey, (old: ReadStatusCache | undefined) => {
         if (!old) return old;
         const newReadArticleIds = articleIds?.length
-          ? new Set([...old.readArticleIds, ...articleIds])
+          ? updateStoredReadIds(storageUserId, (current) => {
+              const next = new Set(current);
+              for (const id of articleIds) next.add(id);
+              return next;
+            })
           : old.readArticleIds;
-        saveToLocalStorage(newReadArticleIds, storageUserId);
         return { readArticleIds: newReadArticleIds, unreadCount: 0 };
       });
-      return { previous };
+      return { previous, previousStoredIds };
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
-        saveToLocalStorage(context.previous.readArticleIds, storageUserId);
+      }
+      if (context?.previousStoredIds) {
+        saveToLocalStorage(context.previousStoredIds, storageUserId);
       }
       console.error('Error marking all as read:', _err.message);
     },

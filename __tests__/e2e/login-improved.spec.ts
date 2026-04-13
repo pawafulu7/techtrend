@@ -244,11 +244,8 @@ test.describe.serial('Login Feature - Improved', () => {
         // ボタンがdisabledになる（ローディング状態）
         expect(submitButton).toBeDisabled({ timeout: 2000 }),
         // またはホームページにリダイレクトされる
-        expect(page).toHaveURL('http://localhost:3000/', { timeout: 2000 })
+        expect(page).toHaveURL('/', { timeout: 2000 })
       ]);
-
-      // いずれかの条件が満たされればテスト成功
-      expect(true).toBe(true);
     } catch (error) {
       // タイムアウトした場合は、現在のURLを確認
       const currentUrl = page.url();

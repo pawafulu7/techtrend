@@ -2,7 +2,7 @@
  * RAG Search API Endpoint Tests
  *
  * CRITICAL: Validates 5-layer security architecture:
- * 1. Authentication (Auth.js v5)
+ * 1. Authentication (Better Auth)
  * 2. Rate Limiting (rate-limiter-flexible)
  * 3. Input Validation (Zod)
  * 4. SQL Injection Prevention (Prisma.sql)
@@ -116,6 +116,27 @@ describe('POST /api/rag/search', () => {
 
       const body = await response.json();
       expect(body.error).toBe('Unauthorized - Authentication required');
+    });
+
+    it('should return 401 when authenticated user is deleted', async () => {
+      const { validateUser } = require('@/lib/middleware/with-user-validation');
+      const { createUserDeletedResponse } = require('@/lib/middleware/with-user-validation');
+      (validateUser as jest.Mock).mockResolvedValueOnce(null);
+      (createUserDeletedResponse as jest.Mock).mockReturnValueOnce(
+        new Response(JSON.stringify({ error: 'User account has been deleted', code: 'USER_DELETED', requiresLogout: true, message: 'Your account has been deleted' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+      );
+
+      const request = makeRequest({
+        query: 'test query',
+        topK: 5,
+        similarityThreshold: 0.5,
+      });
+
+      const response = await POST(request);
+      const body = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(body.code).toBe('USER_DELETED');
     });
 
     it('should accept authenticated requests', async () => {

@@ -93,7 +93,7 @@ export const auth = betterAuth({
           });
         } catch (error) {
           logger.error(
-            { error, email: data.user.email },
+            { error },
             'Failed to send verification email via nodemailer'
           );
           throw error;
@@ -111,16 +111,20 @@ export const auth = betterAuth({
           });
         } catch (error) {
           logger.error(
-            { error, email: data.user.email },
+            { error },
             'Failed to send verification email via resend'
           );
           throw error;
         }
         return;
       }
-      if (process.env.NODE_ENV !== 'development') {
-        logger.error('No email provider configured');
+      if (env.NODE_ENV === 'development') {
+        logger.warn('No email provider configured');
+        return;
       }
+      const error = new Error('No email provider configured');
+      logger.error({ error }, 'No email provider configured');
+      throw error;
     },
   },
 

@@ -884,7 +884,7 @@ export async function loginTestUser(
 
       await syncAuthCookiesToBrowserContext(page, setCookieHeaders, debug);
 
-      if (await waitForAuthenticatedSession(page, email, 5000, debug)) {
+      if (await waitForAuthenticatedSession(page, email, Math.min(timeout, 5000), debug)) {
         await page.goto('/', { waitUntil: 'domcontentloaded', timeout });
         if (debug) console.log(`[loginTestUser] Session verified after API login`);
         return true;

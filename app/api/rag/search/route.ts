@@ -24,7 +24,7 @@ import { env } from '@/lib/config/env';
  * POST /api/rag/search
  *
  * Security layers:
- * 1. Authentication (Auth.js v5) - REQUIRED
+ * 1. Authentication (Better Auth) - REQUIRED
  * 2. Rate limiting (Upstash Redis) - 10 req/min/user
  * 3. Input validation (Zod) - searchRequestSchema
  * 4. SQL injection prevention (Prisma.sql)

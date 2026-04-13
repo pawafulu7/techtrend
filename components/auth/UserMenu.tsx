@@ -175,7 +175,10 @@ export function UserMenu() {
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={handleSignOut}
+          onSelect={(event) => {
+            event.preventDefault();
+            void handleSignOut();
+          }}
           disabled={isSigningOut}
           className="cursor-pointer"
         >

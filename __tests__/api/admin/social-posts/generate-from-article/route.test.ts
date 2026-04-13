@@ -40,7 +40,7 @@ jest.mock('@/lib/middleware/csrf-protection', () => ({
 
 // Mock user validation
 jest.mock('@/lib/middleware/with-user-validation', () => ({
-  validateUser: jest.fn().mockImplementation((session) => session?.user ? { id: session.user.id, deletedAt: null } : null),
+  validateUser: jest.fn().mockImplementation(async (session) => session?.user ? { id: session.user.id, deletedAt: null } : null),
   createUserDeletedResponse: jest.fn(),
 }));
 

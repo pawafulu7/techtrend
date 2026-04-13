@@ -93,7 +93,7 @@ jest.mock('@/lib/middleware/csrf-protection', () => ({
 jest.mock('@/lib/middleware/with-user-validation', () => ({
   validateUser: jest.fn().mockResolvedValue({ id: 'admin-1', deletedAt: null }),
   createUserDeletedResponse: jest.fn().mockReturnValue(
-    new Response(JSON.stringify({ error: 'User account has been deleted', code: 'USER_DELETED' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
+    new Response(JSON.stringify({ error: 'User account has been deleted', code: 'USER_DELETED', requiresLogout: true, message: 'Your account has been deleted' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
   ),
 }));
 
