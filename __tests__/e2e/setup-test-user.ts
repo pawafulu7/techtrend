@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
+import { hashPassword } from '@better-auth/utils/password';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { TEST_USER } from './utils/e2e-helpers';
@@ -54,25 +54,42 @@ export async function setupTestUser() {
   });
 
   try {
-    // Hash the password (use hashSync for bcryptjs)
-    const hashedPassword = bcrypt.hashSync(TEST_USER.password, 10);
+    // Hash the password (Better Auth uses scrypt)
+    const hashedPassword = await hashPassword(TEST_USER.password);
 
-    // Upsert test user (create or update)
-    await prisma.user.upsert({
+    // Upsert test user (Better Auth schema: password in Account table)
+    const user = await prisma.user.upsert({
       where: {
         email: TEST_USER.email,
       },
       update: {
         name: TEST_USER.name,
-        password: hashedPassword,
-        emailVerified: new Date(),
+        emailVerified: true,
       },
       create: {
         id: TEST_USER.id,
         email: TEST_USER.email,
         name: TEST_USER.name,
+        emailVerified: true,
+      },
+    });
+
+    // Upsert credential account with password
+    await prisma.account.upsert({
+      where: {
+        providerId_accountId: {
+          providerId: 'credential',
+          accountId: user.id,
+        },
+      },
+      update: {
         password: hashedPassword,
-        emailVerified: new Date(),
+      },
+      create: {
+        userId: user.id,
+        providerId: 'credential',
+        accountId: user.id,
+        password: hashedPassword,
       },
     });
 

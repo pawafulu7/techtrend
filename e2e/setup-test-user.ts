@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
+import { hashPassword } from '@better-auth/utils/password';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { TEST_USER, ADMIN_TEST_USER } from './utils/e2e-helpers';
@@ -54,8 +54,8 @@ export async function setupTestUser() {
   });
 
   try {
-    // Hash the password (use hashSync for bcryptjs)
-    const hashedPassword = bcrypt.hashSync(TEST_USER.password, 10);
+    // Hash the password (Better Auth uses scrypt via @better-auth/utils)
+    const hashedPassword = await hashPassword(TEST_USER.password);
 
     // Upsert test user (Better Auth schema: password in Account table)
     const user = await prisma.user.upsert({
@@ -119,7 +119,7 @@ export async function setupAdminUser() {
   });
 
   try {
-    const hashedPassword = bcrypt.hashSync(ADMIN_TEST_USER.password, 10);
+    const hashedPassword = await hashPassword(ADMIN_TEST_USER.password);
 
     // Upsert admin user (Better Auth schema: password in Account table)
     const user = await prisma.user.upsert({
