@@ -4,7 +4,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getSession } from '@/lib/auth/get-session';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import type {
@@ -14,9 +19,16 @@ import type {
 } from '@/app/dashboard/jobs/types';
 
 const DEFAULT_STUCK_THRESHOLD_MINUTES = 30;
-const MIN_STUCK_THRESHOLD_MINUTES = 1;
-const MAX_STUCK_THRESHOLD_MINUTES = 1440; // 24 hours
 const HIGH_RETRY_THRESHOLD = 2;
+
+const QuerySchema = z.object({
+  stuckThreshold: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .pipe(z.number().min(1).max(168))
+    .optional(),
+});
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,6 +41,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // User existence check (prevent deleted user access)
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
+    }
+
     // Authorization check (admin only)
     if (session.user.role !== 'admin') {
       return NextResponse.json(
@@ -37,20 +55,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Parse and validate query parameters
+    // Parse and validate query parameters with Zod
     const searchParams = request.nextUrl.searchParams;
-    const stuckThresholdParam = searchParams.get('stuckThreshold');
-    const parsedThreshold = stuckThresholdParam
-      ? parseInt(stuckThresholdParam, 10)
-      : DEFAULT_STUCK_THRESHOLD_MINUTES;
-
-    // Validate threshold is within acceptable range (1-1440 minutes)
+    const queryParseResult = QuerySchema.safeParse({
+      stuckThreshold: searchParams.get('stuckThreshold') ?? undefined,
+    });
     const stuckThreshold =
-      Number.isNaN(parsedThreshold) ||
-      parsedThreshold < MIN_STUCK_THRESHOLD_MINUTES ||
-      parsedThreshold > MAX_STUCK_THRESHOLD_MINUTES
-        ? DEFAULT_STUCK_THRESHOLD_MINUTES
-        : parsedThreshold;
+      queryParseResult.success &&
+      queryParseResult.data.stuckThreshold !== undefined
+        ? queryParseResult.data.stuckThreshold
+        : DEFAULT_STUCK_THRESHOLD_MINUTES;
 
     // Calculate cutoff time for stuck jobs
     const stuckCutoff = new Date(Date.now() - stuckThreshold * 60 * 1000);

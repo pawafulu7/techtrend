@@ -74,10 +74,11 @@ export const __resetSearchServiceForTest = (): void => {
 };
 
 async function postHandler(request: NextRequest) {
-  // Layer 1: Authentication check (REQUIRED)
-  const session = await getSession();
-
+  let session: Awaited<ReturnType<typeof getSession>> = null;
   try {
+    // Layer 1: Authentication check (REQUIRED)
+    session = await getSession();
+
     if (!session?.user) {
       logger.warn(
         {

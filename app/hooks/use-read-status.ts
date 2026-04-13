@@ -47,7 +47,7 @@ function loadFromLocalStorage(userId?: string): Set<string> {
 }
 
 export function useReadStatus(articleIds?: string[]) {
-  const { data: session } = authClient.useSession();
+  const { data: session, isPending } = authClient.useSession();
   const userId = session?.user?.id;
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => {
@@ -57,9 +57,12 @@ export function useReadStatus(articleIds?: string[]) {
       : 'all';
     return [
       ...READ_STATUS_QUERY_KEY,
-      { articleIds: articleIdsKey, userId: userId ?? 'guest' },
+      {
+        articleIds: articleIdsKey,
+        userId: userId ?? (isPending ? undefined : 'guest'),
+      },
     ] as const;
-  }, [articleIds, userId]);
+  }, [articleIds, userId, isPending]);
 
   // 既読状態を取得
   const {
@@ -89,7 +92,7 @@ export function useReadStatus(articleIds?: string[]) {
         unreadCount: data.unreadCount ?? 0,
       };
     },
-    enabled: true,
+    enabled: !isPending,
     // localStorageから初期値を設定
     initialData: () => ({
       readArticleIds: loadFromLocalStorage(userId),

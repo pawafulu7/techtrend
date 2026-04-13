@@ -11,9 +11,6 @@ const customJestConfig = {
   testEnvironment: 'node',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   reporters: ['default'],
-  transformIgnorePatterns: [
-    'node_modules/(?!(node-fetch)/)',
-  ],
   moduleNameMapper: {
     // 統合テストでは実際のPrismaとRedisを使用するため、モックをマッピングしない
     '^@/(.*)$': '<rootDir>/$1',

@@ -184,7 +184,7 @@ export class UserBuilder {
       ...this.user,
       createdAt: new Date(this.user.createdAt!),
       updatedAt: new Date(this.user.updatedAt!),
-      emailVerified: this.user.emailVerified ? new Date(this.user.emailVerified) : null,
+      emailVerified: this.user.emailVerified ?? false,
     } as User;
   }
 }

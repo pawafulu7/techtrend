@@ -6,6 +6,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/auth/get-session';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import type {
@@ -43,6 +47,12 @@ export async function GET(request: NextRequest) {
         { error: 'Unauthorized. Authentication required.' },
         { status: 401 }
       );
+    }
+
+    // User existence check (prevent deleted user access)
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
     }
 
     // Authorization check (admin only)

@@ -20,8 +20,7 @@ interface LoginFormProps {
 }
 
 function safeCallbackUrl(url: string): string {
-  if (!url || url.startsWith('//') || url.startsWith('http')) return '/';
-  return url.startsWith('/') ? url : '/';
+  return url.startsWith('/') && !url.startsWith('//') ? url : '/';
 }
 
 export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {

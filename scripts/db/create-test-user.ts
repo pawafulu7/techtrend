@@ -36,7 +36,7 @@ async function createTestUser() {
         data: {
           ...userData,
           password: hashedPassword,
-          emailVerified: new Date()
+          emailVerified: true
         }
       });
       console.log('Test user created:', user.email);

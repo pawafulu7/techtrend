@@ -6,6 +6,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/get-session';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import {
@@ -33,6 +37,12 @@ async function candidatesHandler(request: NextRequest) {
         { error: 'Unauthorized. Authentication required.' },
         { status: 401 }
       );
+    }
+
+    // User existence check (prevent deleted user access)
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
     }
 
     if (session.user.role !== 'admin') {

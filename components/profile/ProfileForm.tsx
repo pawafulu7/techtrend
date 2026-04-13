@@ -26,7 +26,7 @@ export function ProfileForm() {
   const {
     register,
     handleSubmit,
-    reset,
+    setValue,
     formState: { errors },
   } = useForm<ProfileFormData>({
     defaultValues: {
@@ -39,16 +39,10 @@ export function ProfileForm() {
   });
 
   useEffect(() => {
-    if (session?.user?.name) {
-      reset({
-        name: session.user.name,
-        bio: '',
-        website: '',
-        twitter: '',
-        github: '',
-      });
+    if (session?.user?.name !== undefined) {
+      setValue('name', session.user.name ?? '', { shouldDirty: false });
     }
-  }, [session?.user?.name, reset]);
+  }, [session?.user?.name, setValue]);
 
   const onSubmit = async (data: ProfileFormData) => {
     setIsLoading(true);
@@ -66,7 +60,10 @@ export function ProfileForm() {
         throw new Error('プロフィールの更新に失敗しました');
       }
 
-      await response.json();
+      const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        await response.json();
+      }
 
       // Success toast
       toast({

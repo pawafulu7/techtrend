@@ -5,6 +5,10 @@
 
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/get-session';
+import {
+  validateUser,
+  createUserDeletedResponse,
+} from '@/lib/middleware/with-user-validation';
 import { getAllOptimizerStats } from '@/lib/dataloader/batch-optimizer';
 import { getFavoriteLoaderStats } from '@/lib/dataloader/favorite-loader';
 import { getViewLoaderStats } from '@/lib/dataloader/article-view-loader';
@@ -15,10 +19,23 @@ export async function GET() {
   try {
     // 管理者権限チェック
     const session = await getSession();
-    if (!session?.user || session.user.role !== 'admin') {
+    if (!session?.user) {
       return NextResponse.json(
-        { error: 'Unauthorized. Admin access required.' },
+        { error: 'Unauthorized. Authentication required.' },
         { status: 401 }
+      );
+    }
+
+    // User existence check (prevent deleted user access)
+    const validatedUser = await validateUser(session);
+    if (!validatedUser) {
+      return createUserDeletedResponse();
+    }
+
+    if (session.user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden. Admin access required.' },
+        { status: 403 }
       );
     }
     // オプティマイザーの統計
