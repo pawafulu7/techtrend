@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { SignupForm } from '@/components/auth/SignupForm';
-import { signIn } from '@/lib/auth/auth-client';
+import { authClient } from '@/lib/auth/auth-client';
 import { useRouter } from 'next/navigation';
 
 // モック
@@ -24,12 +24,8 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 
-// fetch のモック
-global.fetch = jest.fn();
-
-const mockedSignIn = jest.mocked(signIn);
+const mockedSignUpEmail = jest.mocked(authClient.signUp.email);
 const mockedUseRouter = jest.mocked(useRouter);
-const mockedFetch = jest.mocked(global.fetch);
 
 describe('SignupForm', () => {
   const mockRouter = {
@@ -211,12 +207,7 @@ describe('SignupForm', () => {
     it('successfully registers and logs in user', async () => {
       const user = userEvent.setup();
 
-      mockedFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ success: true }),
-      } as Response);
-
-      mockedSignIn.mockResolvedValue({ ok: true, error: null } as any);
+      mockedSignUpEmail.mockResolvedValue({ data: {}, error: null } as any);
 
       render(<SignupForm />);
 
@@ -236,23 +227,10 @@ describe('SignupForm', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(mockedFetch).toHaveBeenCalledWith('/api/auth/signup', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: '山田太郎',
-            email: 'test@example.com',
-            password: 'Password123',
-          }),
-        });
-
-        expect(mockedSignIn).toHaveBeenCalledWith('credentials', {
+        expect(mockedSignUpEmail).toHaveBeenCalledWith({
+          name: '山田太郎',
           email: 'test@example.com',
           password: 'Password123',
-          redirect: false,
-          callbackUrl: '/profile',
         });
 
         expect(mockRouter.push).toHaveBeenCalledWith('/profile');
@@ -263,12 +241,10 @@ describe('SignupForm', () => {
     it('displays error when email already exists', async () => {
       const user = userEvent.setup();
 
-      mockedFetch.mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({
-          error: 'このメールアドレスは既に登録されています',
-        }),
-      } as Response);
+      mockedSignUpEmail.mockResolvedValue({
+        data: null,
+        error: { message: 'このメールアドレスは既に登録されています' },
+      } as any);
 
       render(<SignupForm />);
 
@@ -297,7 +273,7 @@ describe('SignupForm', () => {
     it('handles network error gracefully', async () => {
       const user = userEvent.setup();
 
-      mockedFetch.mockRejectedValueOnce(new Error('Network error'));
+      mockedSignUpEmail.mockRejectedValue(new Error('Network error'));
 
       render(<SignupForm />);
 
@@ -329,11 +305,11 @@ describe('SignupForm', () => {
       const user = userEvent.setup();
 
       // 非同期Promise設定
-      let resolveFetch: (value: any) => void;
-      const fetchPromise = new Promise((resolve) => {
-        resolveFetch = resolve;
+      let resolveSignUp: (value: any) => void;
+      const signUpPromise = new Promise((resolve) => {
+        resolveSignUp = resolve;
       });
-      mockedFetch.mockReturnValue(fetchPromise as any);
+      mockedSignUpEmail.mockReturnValue(signUpPromise as any);
 
       render(<SignupForm />);
 
@@ -369,10 +345,7 @@ describe('SignupForm', () => {
       });
 
       // 完了後の確認
-      resolveFetch!({
-        ok: true,
-        json: async () => ({ success: true }),
-      });
+      resolveSignUp!({ data: {}, error: null });
 
       await waitFor(() => {
         expect(screen.queryByText('登録中...')).not.toBeInTheDocument();

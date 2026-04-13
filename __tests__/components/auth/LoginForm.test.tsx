@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { LoginForm } from '@/components/auth/LoginForm';
-import { signIn } from '@/lib/auth/auth-client';
+import { authClient } from '@/lib/auth/auth-client';
 import { useRouter } from 'next/navigation';
 
 // モック
@@ -24,7 +24,7 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 
-const mockedSignIn = jest.mocked(signIn);
+const mockedSignInEmail = jest.mocked(authClient.signIn.email);
 const mockedUseRouter = jest.mocked(useRouter);
 
 describe('LoginForm', () => {
@@ -147,7 +147,7 @@ describe('LoginForm', () => {
   describe('Authentication', () => {
     it('successfully logs in with valid credentials', async () => {
       const user = userEvent.setup();
-      mockedSignIn.mockResolvedValue({ ok: true, error: null } as any);
+      mockedSignInEmail.mockResolvedValue({ data: {}, error: null } as any);
 
       render(<LoginForm />);
 
@@ -161,11 +161,9 @@ describe('LoginForm', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(mockedSignIn).toHaveBeenCalledWith('credentials', {
+        expect(mockedSignInEmail).toHaveBeenCalledWith({
           email: 'test@example.com',
           password: 'password123',
-          redirect: false,
-          callbackUrl: '/',
         });
         expect(mockRouter.push).toHaveBeenCalledWith('/');
         expect(mockRouter.refresh).toHaveBeenCalled();
@@ -174,11 +172,9 @@ describe('LoginForm', () => {
 
     it('displays error message for invalid credentials', async () => {
       const user = userEvent.setup();
-      mockedSignIn.mockResolvedValue({
-        ok: false,
-        error: 'CredentialsSignin',
-        status: 401,
-        url: null,
+      mockedSignInEmail.mockResolvedValue({
+        data: null,
+        error: { message: 'CredentialsSignin', status: 401 },
       } as any);
 
       render(<LoginForm />);
@@ -201,7 +197,7 @@ describe('LoginForm', () => {
 
     it('handles network error gracefully', async () => {
       const user = userEvent.setup();
-      mockedSignIn.mockRejectedValue(new Error('Network error'));
+      mockedSignInEmail.mockRejectedValue(new Error('Network error'));
 
       render(<LoginForm />);
 
@@ -231,7 +227,7 @@ describe('LoginForm', () => {
       const signInPromise = new Promise((resolve) => {
         resolveSignIn = resolve;
       });
-      mockedSignIn.mockReturnValue(signInPromise as any);
+      mockedSignInEmail.mockReturnValue(signInPromise as any);
 
       render(<LoginForm />);
 
@@ -251,7 +247,7 @@ describe('LoginForm', () => {
       });
 
       // 完了後の確認
-      resolveSignIn!({ ok: true, error: null });
+      resolveSignIn!({ data: {}, error: null });
 
       await waitFor(() => {
         expect(screen.queryByText('ログイン中...')).not.toBeInTheDocument();
@@ -266,7 +262,7 @@ describe('LoginForm', () => {
       const signInPromise = new Promise((resolve) => {
         resolveSignIn = resolve;
       });
-      mockedSignIn.mockReturnValue(signInPromise as any);
+      mockedSignInEmail.mockReturnValue(signInPromise as any);
 
       render(<LoginForm />);
 
@@ -290,7 +286,7 @@ describe('LoginForm', () => {
       });
 
       // 完了後の確認
-      resolveSignIn!({ ok: true, error: null });
+      resolveSignIn!({ data: {}, error: null });
 
       await waitFor(() => {
         expect(emailInput).not.toBeDisabled();
@@ -303,7 +299,7 @@ describe('LoginForm', () => {
     it('redirects to custom callbackUrl after successful login', async () => {
       const user = userEvent.setup();
       const customCallbackUrl = '/dashboard';
-      mockedSignIn.mockResolvedValue({ ok: true, error: null } as any);
+      mockedSignInEmail.mockResolvedValue({ data: {}, error: null } as any);
 
       render(<LoginForm callbackUrl={customCallbackUrl} />);
 
@@ -317,11 +313,9 @@ describe('LoginForm', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(mockedSignIn).toHaveBeenCalledWith('credentials', {
+        expect(mockedSignInEmail).toHaveBeenCalledWith({
           email: 'test@example.com',
           password: 'password123',
-          redirect: false,
-          callbackUrl: customCallbackUrl,
         });
         expect(mockRouter.push).toHaveBeenCalledWith(customCallbackUrl);
       });
