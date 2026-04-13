@@ -30,6 +30,7 @@ export function ArticleQADialog({
   const [mounted, setMounted] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: hydration mismatch fix
   useEffect(() => setMounted(true), []);
 
   // SSR: render children directly (no Dialog wrapper) to ensure the trigger

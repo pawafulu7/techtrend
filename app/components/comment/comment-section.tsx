@@ -48,6 +48,7 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
   // on server (isPending=false) vs client (isPending=true).
   // Always show skeleton until mounted to ensure SSR/client HTML matches.
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: hydration mismatch fix
   useEffect(() => setMounted(true), []);
   const { data: session, isPending } = authClient.useSession();
   const queryClient = useQueryClient();
