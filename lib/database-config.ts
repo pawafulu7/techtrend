@@ -1,80 +1,46 @@
 /**
- * Database connection configuration
- * Optimizes connection pooling for production environments
+ * Database connection configuration for Prisma v7 + PrismaPg driver adapter.
+ *
+ * In v7, connection pooling is handled by PrismaPg (backed by node-postgres Pool),
+ * not by Prisma's internal pool. This module provides pool configuration helpers.
+ *
+ * Migration notes (v6 → v7):
+ * - `statement_cache_size` is no longer supported (was a Prisma query engine feature).
+ *   The node-postgres driver uses its own prepared statement handling.
+ * - `connection_limit` → `max` (pg.PoolConfig)
+ * - `pool_timeout` → `connectionTimeoutMillis` (seconds → milliseconds)
+ * - `connect_timeout` → connection string parameter (stays in seconds)
  */
 
-import { Prisma } from '@prisma/client';
 import { env } from '@/lib/config/env';
 
-/**
- * Get optimized database URL with connection pool parameters
- */
-export function getOptimizedDatabaseUrl(): string | undefined {
-  const baseUrl = env.DATABASE_URL;
-
-  // Return undefined if DATABASE_URL is not set (for build time)
-  if (!baseUrl) {
-    return undefined;
-  }
-
-  // Parse the URL to add connection pool parameters
-  const url = new URL(baseUrl);
-
-  // Add connection pool parameters for PostgreSQL with validation
-  // These parameters optimize connection handling in production
-  const poolParams = {
-    // Maximum number of connections in the pool
-    connection_limit: String(env.DB_CONNECTION_LIMIT),
-    // Maximum time to wait for a connection from the pool (in seconds)
-    pool_timeout: String(env.DB_POOL_TIMEOUT),
-    // Statement cache size for prepared statements
-    statement_cache_size: String(env.DB_STATEMENT_CACHE_SIZE ?? 200),
-    // Connection timeout in seconds
-    connect_timeout: String(env.DB_CONNECT_TIMEOUT),
-  };
-
-  // Add parameters to the URL
-  for (const [key, value] of Object.entries(poolParams)) {
-    url.searchParams.set(key, value);
-  }
-
-  // Add pgbouncer mode if using connection pooler
-  if (env.PGBOUNCER_MODE) {
-    url.searchParams.set('pgbouncer', 'true');
-    url.searchParams.set('statement_cache_size', '0'); // Disable statement cache with pgbouncer
-  }
-
-  return url.toString();
+export interface PoolConfig {
+  connectionString: string;
+  max: number;
+  idleTimeoutMillis: number;
+  connectionTimeoutMillis: number;
 }
 
 /**
- * Get Prisma client configuration optimized for production
+ * Build a pg.PoolConfig from environment variables.
+ * Used by lib/prisma.ts for the singleton and lib/prisma/create-client.ts for scripts.
  */
-export function getPrismaConfig(): Prisma.PrismaClientOptions | undefined {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const databaseUrl = getOptimizedDatabaseUrl();
+export function getPoolConfig(
+  connectionStringOverride?: string
+): PoolConfig | undefined {
+  const baseUrl = connectionStringOverride ?? env.DATABASE_URL;
+  if (!baseUrl) return undefined;
 
-  // Return undefined if no DATABASE_URL (for build time)
-  if (!databaseUrl) {
-    return undefined;
+  // Append connect_timeout to connection string if missing
+  const url = new URL(baseUrl);
+  if (!url.searchParams.has('connect_timeout')) {
+    url.searchParams.set('connect_timeout', String(env.DB_CONNECT_TIMEOUT));
   }
 
   return {
-    log:
-      env.PRISMA_QUERY_LOG === 'true'
-        ? ['query', 'error', 'warn']
-        : ['error', 'warn'],
-    datasources: {
-      db: {
-        url: databaseUrl,
-      },
-    },
-    // Error formatting for production
-    errorFormat: isProduction ? 'minimal' : 'pretty',
-    // Interactive transaction timeout (default: 5000ms, override: DB_TRANSACTION_TIMEOUT)
-    // Extended to 10s for summary generation transactions with multiple tag operations
-    transactionOptions: {
-      timeout: env.DB_TRANSACTION_TIMEOUT,
-    },
-  } as Prisma.PrismaClientOptions;
+    connectionString: url.toString(),
+    max: env.DB_CONNECTION_LIMIT,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: env.DB_POOL_TIMEOUT * 1000,
+  };
 }

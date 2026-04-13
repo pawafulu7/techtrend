@@ -1,8 +1,7 @@
-import { PrismaClient } from '@prisma/client';
-import { getPrismaConfig } from './database-config';
+import { PrismaClient } from '@/lib/prisma-exports';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { env } from '@/lib/config/env';
 
-// Type-safe global declaration
 declare global {
   var __prisma: PrismaClient | undefined;
 }
@@ -11,24 +10,47 @@ const globalForPrisma = globalThis as unknown as {
   __prisma: PrismaClient | undefined;
 };
 
-// Singleton pattern to prevent multiple instances
-const prismaClientSingleton = (): PrismaClient => {
-  const config = getPrismaConfig();
-  // Use default config if DATABASE_URL is not set (for build time)
-  return new PrismaClient(
-    config || {
-      log:
-        env.PRISMA_QUERY_LOG === 'true'
-          ? ['query', 'error', 'warn']
-          : ['error', 'warn'],
-    }
-  );
-};
+function createSingleton(): PrismaClient {
+  const connectionString = env.DATABASE_URL;
 
-// Use existing instance or create new one with lazy initialization
+  // Build time: no DATABASE_URL available, use dummy adapter
+  // (pg.Pool connects lazily, so this won't attempt a real connection)
+  const connStr =
+    connectionString ?? 'postgresql://dummy:dummy@localhost:5432/dummy';
+
+  // Append connect_timeout to connection string if not already present
+  const url = new URL(connStr);
+  if (!url.searchParams.has('connect_timeout')) {
+    url.searchParams.set('connect_timeout', String(env.DB_CONNECT_TIMEOUT));
+  }
+
+  const adapter = new PrismaPg({
+    connectionString: url.toString(),
+    max: connectionString ? env.DB_CONNECTION_LIMIT : 1,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: connectionString
+      ? env.DB_POOL_TIMEOUT * 1000
+      : 5000,
+  });
+
+  const logLevels: Array<'query' | 'error' | 'warn'> =
+    env.PRISMA_QUERY_LOG === 'true'
+      ? ['query', 'error', 'warn']
+      : ['error', 'warn'];
+
+  return new PrismaClient({
+    adapter,
+    log: logLevels,
+    errorFormat: process.env.NODE_ENV === 'production' ? 'minimal' : 'pretty',
+    transactionOptions: {
+      timeout: env.DB_TRANSACTION_TIMEOUT,
+    },
+  });
+}
+
 function getPrismaClient(): PrismaClient {
   if (!globalForPrisma.__prisma) {
-    globalForPrisma.__prisma = prismaClientSingleton();
+    globalForPrisma.__prisma = createSingleton();
   }
   return globalForPrisma.__prisma;
 }
