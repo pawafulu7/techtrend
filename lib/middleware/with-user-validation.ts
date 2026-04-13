@@ -9,7 +9,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { resolveSession, type SessionContext } from './session-context';
+import {
+  resolveSessionFromRequest,
+  type SessionContext,
+} from './session-context';
 
 type RouteHandler = (
   request: NextRequest,
@@ -68,10 +71,7 @@ export interface WithUserValidationContext {
 export function withUserValidation(handler: RouteHandler): RouteHandler {
   return async (request: NextRequest, context?: SessionContext) => {
     // Get session - reuse from context if available (auth() call optimization)
-    const ctx = context?.requestHeaders
-      ? context
-      : { ...context, requestHeaders: request.headers };
-    const session = await resolveSession(ctx);
+    const session = await resolveSessionFromRequest(context, request.headers);
 
     // Check if user is authenticated
     if (!session?.user?.id) {

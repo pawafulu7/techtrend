@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { CREDENTIAL_PROVIDER_ID } from '@/lib/auth/auth';
 import { verifyPassword, deleteUserAccountWithAudit } from '@/lib/auth/utils';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
@@ -57,7 +58,7 @@ async function deleteAccountHandler(
 
     // 4. Get credential account for password verification
     const account = await prisma.account.findFirst({
-      where: { userId, providerId: 'credential' },
+      where: { userId, providerId: CREDENTIAL_PROVIDER_ID },
       select: { password: true },
     });
 

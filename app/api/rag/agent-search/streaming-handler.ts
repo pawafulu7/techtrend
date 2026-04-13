@@ -5,11 +5,7 @@ import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
 import { trace, context, SpanStatusCode, Span } from '@opentelemetry/api';
-import { auth } from '@/lib/auth/auth';
-
-type BetterAuthSession = NonNullable<
-  Awaited<ReturnType<typeof auth.api.getSession>>
->;
+import type { BetterAuthSession } from '@/lib/auth/auth';
 
 import type { RateLimitInfo, ValidatedRequest, ModeContext } from './schemas';
 import { AGENT_TIMEOUT_MS } from '@/lib/rag/agent-timeouts';

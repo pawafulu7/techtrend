@@ -85,3 +85,17 @@ export function extendWithSessionContext<T extends object>(
   return { ...createSessionContext(), requestHeaders, ...context } as T &
     SessionContext;
 }
+
+/**
+ * Resolve session, injecting request headers if context lacks them.
+ * Eliminates repeated boilerplate in middleware wrappers.
+ */
+export async function resolveSessionFromRequest(
+  context: SessionContext | undefined,
+  fallbackHeaders: Headers
+): Promise<BetterAuthSession> {
+  const ctx = context?.requestHeaders
+    ? context
+    : { ...context, requestHeaders: fallbackHeaders };
+  return resolveSession(ctx);
+}

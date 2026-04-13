@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveSession } from '@/lib/middleware/session-context';
 import type { SessionContext } from '@/lib/middleware/session-context';
-import { auth } from '@/lib/auth/auth';
+import type { BetterAuthSession } from '@/lib/auth/auth';
 import {
   checkRateLimit,
   ragAgentSearchRateLimit,
@@ -27,10 +27,6 @@ import {
 import type { RateLimitInfo } from './schemas';
 import { handleStreamingRequest } from './streaming-handler';
 import { handleBatchRequest } from './batch-handler';
-
-type BetterAuthSession = NonNullable<
-  Awaited<ReturnType<typeof auth.api.getSession>>
->;
 
 /**
  * RAG Agent Search API (Vercel AI SDK)

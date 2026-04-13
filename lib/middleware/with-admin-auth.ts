@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveSession } from './session-context';
+import { resolveSessionFromRequest } from './session-context';
 import { getUserAuthData } from '@/lib/auth/user-auth-cache';
 import logger from '@/lib/logger';
 
@@ -25,10 +25,7 @@ type Handler = (
  */
 export function withAdminAuth(handler: Handler): Handler {
   return async (request: NextRequest, context?: any) => {
-    const ctx = context?.requestHeaders
-      ? context
-      : { ...context, requestHeaders: request.headers };
-    const session = await resolveSession(ctx);
+    const session = await resolveSessionFromRequest(context, request.headers);
 
     if (!session?.user?.id) {
       return NextResponse.json(

@@ -6,11 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
 import { resolveCaches, safeReadCache, safeWriteCache } from './cache-helpers';
 import { SpanStatusCode, Span } from '@opentelemetry/api';
-import { auth } from '@/lib/auth/auth';
-
-type BetterAuthSession = NonNullable<
-  Awaited<ReturnType<typeof auth.api.getSession>>
->;
+import type { BetterAuthSession } from '@/lib/auth/auth';
 
 import type { RateLimitInfo, ValidatedRequest, ModeContext } from './schemas';
 import { AGENT_TIMEOUT_MS } from '@/lib/rag/agent-timeouts';

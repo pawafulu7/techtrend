@@ -5,6 +5,7 @@ import {
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { invalidateUserAuthCache } from './user-auth-cache';
+import { CREDENTIAL_PROVIDER_ID } from './auth';
 
 /**
  * Hash a password using Better Auth's scrypt implementation
@@ -24,8 +25,7 @@ export async function verifyPassword(
 }
 
 /**
- * Create a new user with email/password
- * For test/seed use only. Stores hashed password in Account table per Better Auth schema.
+ * Create a new user with email/password (test/seed use only)
  */
 export async function createUser({
   email,
@@ -57,7 +57,7 @@ export async function createUser({
   await prisma.account.create({
     data: {
       userId: user.id,
-      providerId: 'credential',
+      providerId: CREDENTIAL_PROVIDER_ID,
       accountId: user.id,
       password: hashedPassword,
     },
@@ -111,7 +111,6 @@ export async function updateUserProfile(
 
 /**
  * Change user password
- * Reads/writes password from Account table (Better Auth credential provider).
  */
 export async function changePassword(
   userId: string,
@@ -119,7 +118,7 @@ export async function changePassword(
   newPassword: string
 ) {
   const account = await prisma.account.findFirst({
-    where: { userId, providerId: 'credential' },
+    where: { userId, providerId: CREDENTIAL_PROVIDER_ID },
   });
 
   if (!account || !account.password) {
@@ -208,7 +207,7 @@ export async function deleteUserAccountWithAudit(
 
       // 2. Determine authentication method
       const credentialAccount = user.accounts.find(
-        (a) => a.providerId === 'credential'
+        (a) => a.providerId === CREDENTIAL_PROVIDER_ID
       );
       const authMethod = credentialAccount?.password
         ? 'credentials'

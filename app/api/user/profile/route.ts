@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { headers } from 'next/headers';
-import { auth } from '@/lib/auth/auth';
+import { CREDENTIAL_PROVIDER_ID } from '@/lib/auth/auth';
+import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import { createUserDeletedResponse } from '@/lib/middleware/with-user-validation';
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(_request: NextRequest) {
   try {
     // 1. セッション確認
-    const session = await auth.api.getSession({ headers: await headers() });
+    const session = await getSession();
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -45,7 +45,7 @@ export async function GET(_request: NextRequest) {
 
     // 3. レスポンス構造の作成
     const credentialAccount = user.accounts.find(
-      (a) => a.providerId === 'credential'
+      (a) => a.providerId === CREDENTIAL_PROVIDER_ID
     );
     const userProfile = {
       id: user.id,

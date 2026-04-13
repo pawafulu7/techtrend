@@ -5,7 +5,6 @@ import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/config/env';
 import logger from '@/lib/logger';
 
-// Email sending logic — dynamic imports to handle optional deps
 let resend: any = null;
 if (env.RESEND_API_KEY) {
   try {
@@ -44,6 +43,9 @@ function createNodemailerTransporter() {
   return null;
 }
 
+// Cache transporter at module level to reuse connection pool
+const nodemailerTransporter = createNodemailerTransporter();
+
 const isProduction = env.NODE_ENV === 'production';
 
 export const auth = betterAuth({
@@ -80,10 +82,8 @@ export const auth = betterAuth({
       const htmlContent = buildVerificationEmailHtml(data.url, host);
       const textContent = buildVerificationEmailText(data.url, host);
 
-      // Try nodemailer first (Gmail or SMTP)
-      const transporter = createNodemailerTransporter();
-      if (transporter) {
-        void transporter.sendMail({
+      if (nodemailerTransporter) {
+        void nodemailerTransporter.sendMail({
           from,
           to: data.user.email,
           subject,
@@ -92,7 +92,6 @@ export const auth = betterAuth({
         });
         return;
       }
-      // Fallback to Resend
       if (resend) {
         void resend.emails.send({
           from,
@@ -162,10 +161,30 @@ export const auth = betterAuth({
   },
 });
 
-// Email HTML template
 function buildVerificationEmailHtml(url: string, host: string): string {
   const escapedHost = host.replace(/\./g, '&#8203;.');
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="margin:0;padding:0;background-color:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:20px 0;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);"><tr><td style="padding:40px 30px;text-align:center;"><h1 style="color:#333333;margin:0 0 20px 0;font-size:24px;">TechTrend メールアドレスの確認</h1><p style="color:#666666;margin:0 0 30px 0;font-size:16px;line-height:1.5;"><strong>${escapedHost}</strong> へのサインインを完了するには、<br>以下のボタンをクリックしてください。</p><table cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr><td style="background-color:#0070f3;border-radius:6px;"><a href="${url}" target="_blank" style="display:inline-block;padding:14px 30px;color:#ffffff;text-decoration:none;font-size:16px;font-weight:500;">メールアドレスを確認する</a></td></tr></table><p style="color:#999999;margin:30px 0 0 0;font-size:14px;">このメールに心当たりがない場合は、無視してください。<br>リンクは24時間有効です。</p></td></tr><tr><td style="padding:20px 30px;background-color:#f8f8f8;border-top:1px solid #e0e0e0;text-align:center;border-radius:0 0 8px 8px;"><p style="color:#999999;margin:0;font-size:12px;">このメールは自動送信されています。返信はできません。</p></td></tr></table></td></tr></table></body></html>`;
+  return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:20px 0;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+  <tr><td style="padding:40px 30px;text-align:center;">
+    <h1 style="color:#333333;margin:0 0 20px 0;font-size:24px;">TechTrend メールアドレスの確認</h1>
+    <p style="color:#666666;margin:0 0 30px 0;font-size:16px;line-height:1.5;">
+      <strong>${escapedHost}</strong> へのサインインを完了するには、<br>以下のボタンをクリックしてください。
+    </p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr>
+      <td style="background-color:#0070f3;border-radius:6px;">
+        <a href="${url}" target="_blank" style="display:inline-block;padding:14px 30px;color:#ffffff;text-decoration:none;font-size:16px;font-weight:500;">メールアドレスを確認する</a>
+      </td>
+    </tr></table>
+    <p style="color:#999999;margin:30px 0 0 0;font-size:14px;">このメールに心当たりがない場合は、無視してください。<br>リンクは24時間有効です。</p>
+  </td></tr>
+  <tr><td style="padding:20px 30px;background-color:#f8f8f8;border-top:1px solid #e0e0e0;text-align:center;border-radius:0 0 8px 8px;">
+    <p style="color:#999999;margin:0;font-size:12px;">このメールは自動送信されています。返信はできません。</p>
+  </td></tr>
+</table>
+</td></tr></table></body></html>`;
 }
 
 function buildVerificationEmailText(url: string, host: string): string {
@@ -173,3 +192,8 @@ function buildVerificationEmailText(url: string, host: string): string {
 }
 
 export type Auth = typeof auth;
+export type BetterAuthSession = NonNullable<
+  Awaited<ReturnType<typeof auth.api.getSession>>
+>;
+
+export const CREDENTIAL_PROVIDER_ID = 'credential' as const;
