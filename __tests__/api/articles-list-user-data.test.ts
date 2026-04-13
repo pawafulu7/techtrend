@@ -29,8 +29,8 @@ describe('/api/articles/list with user data', () => {
 
   it('should include user data when includeUserData=true and user is authenticated', async () => {
     const { GET } = require('@/app/api/articles/list/route');
-    const { auth } = require('@/lib/auth/auth');
-    auth.mockResolvedValueOnce({
+    const { getSession } = require('@/lib/auth/get-session');
+    getSession.mockResolvedValueOnce({
       user: { id: mockUserId }
     });
 
@@ -100,8 +100,8 @@ describe('/api/articles/list with user data', () => {
 
   it('should return articles without user data when includeUserData=false', async () => {
     const { GET } = require('@/app/api/articles/list/route');
-    const { auth } = require('@/lib/auth/auth');
-    auth.mockResolvedValueOnce(null);
+    const { getSession } = require('@/lib/auth/get-session');
+    getSession.mockResolvedValueOnce(null);
 
     const mockArticles = [
       {
@@ -137,8 +137,8 @@ describe('/api/articles/list with user data', () => {
 
   it('should handle empty result set gracefully', async () => {
     const { GET } = require('@/app/api/articles/list/route');
-    const { auth } = require('@/lib/auth/auth');
-    auth.mockResolvedValueOnce({
+    const { getSession } = require('@/lib/auth/get-session');
+    getSession.mockResolvedValueOnce({
       user: { id: mockUserId }
     });
 
