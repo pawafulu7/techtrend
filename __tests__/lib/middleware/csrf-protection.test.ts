@@ -11,6 +11,7 @@ import {
   CSRF_EXEMPT_PATHS,
   CSRF_PROTECTED_METHODS,
 } from '@/lib/middleware/csrf-protection';
+import { extendWithSessionContext } from '@/lib/middleware/session-context';
 import { resetEnvCache } from '@/lib/config/env';
 
 // Mock getSession function (kept for any direct callers)
@@ -126,7 +127,9 @@ describe('csrf-protection', () => {
         }
       );
 
-      const result = await validateOrigin(request);
+      // validateOriginはextendWithSessionContextで渡されたrequestHeadersからsessionを解決する
+      const ctx = extendWithSessionContext(undefined, request.headers);
+      const result = await validateOrigin(request, ctx);
       expect(result).toBe(true);
     });
 
@@ -217,7 +220,9 @@ describe('csrf-protection', () => {
         }
       );
 
-      const result = await validateOrigin(request);
+      // validateOriginはextendWithSessionContextで渡されたrequestHeadersからsessionを解決する
+      const ctx = extendWithSessionContext(undefined, request.headers);
+      const result = await validateOrigin(request, ctx);
       expect(result).toBe(true);
     });
   });
