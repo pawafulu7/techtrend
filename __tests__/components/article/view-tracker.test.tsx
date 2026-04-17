@@ -22,6 +22,7 @@ const API_URL = '/api/article-views';
 
 describe('ViewTracker', () => {
   let consoleErrorSpy: jest.SpyInstance;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     jest.useFakeTimers();
@@ -43,17 +44,14 @@ describe('ViewTracker', () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();
+    global.fetch = originalFetch;
   });
 
   it('records view after 1500ms when authenticated', async () => {
     render(<ViewTracker articleId={ARTICLE_ID} />);
 
-    act(() => {
-      jest.advanceTimersByTime(1500);
-    });
     await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
+      await jest.advanceTimersByTimeAsync(1500);
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
@@ -92,6 +90,7 @@ describe('ViewTracker', () => {
     });
 
     expect(global.fetch).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
   it('does not fetch when unmounted before 1500ms delay', () => {
@@ -123,12 +122,8 @@ describe('ViewTracker', () => {
     } as any);
     rerender(<ViewTracker articleId={ARTICLE_ID} />);
 
-    act(() => {
-      jest.advanceTimersByTime(1500);
-    });
     await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
+      await jest.advanceTimersByTimeAsync(1500);
     });
 
     expect(global.fetch).toHaveBeenCalledWith(API_URL, expect.any(Object));
