@@ -1,16 +1,19 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { authClient } from '@/lib/auth/auth-client';
 
 interface ViewTrackerProps {
   articleId: string;
 }
 
 export function ViewTracker({ articleId }: ViewTrackerProps) {
+  const { data: session } = authClient.useSession();
   const hasRecordedRef = useRef(false);
   const prevArticleIdRef = useRef(articleId);
 
   useEffect(() => {
+    if (!session?.user?.id) return;
     if (prevArticleIdRef.current !== articleId) {
       hasRecordedRef.current = false;
       prevArticleIdRef.current = articleId;
@@ -55,7 +58,7 @@ export function ViewTracker({ articleId }: ViewTrackerProps) {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [articleId]);
+  }, [articleId, session?.user?.id]);
 
   return null;
 }
