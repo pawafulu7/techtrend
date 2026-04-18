@@ -9,6 +9,7 @@ import { PrismaClient } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import pLimit from 'p-limit';
 import { logger } from '@/lib/logger';
+import { measureAsync, hrtimeDiffMs } from './tracing';
 import type {
   PersonalizedFilterOptions,
   ScoredArticle,
@@ -80,12 +81,183 @@ export class CategoryFilterService {
       'Starting personalized article filtering'
     );
 
-    try {
-      // Step 0: Get category centroids
-      const centroids = await getCategoryCentroids(this.db, categoryIds);
+    return measureAsync('personalization.filterArticles', async (span) => {
+      span.setAttributes({
+        categoryCount: categoryIds.length,
+        periodMonths,
+        limit,
+        offset,
+      });
 
-      if (centroids.length === 0) {
-        logger.warn({ categoryIds }, 'No centroids found for categories');
+      try {
+        // Step 0: Get category centroids
+        const {
+          centroids,
+          cacheHit: centroidsCacheHit,
+          fetchMs: centroidsFetchMs,
+          lockWaitMs: centroidsLockWaitMs,
+        } = await getCategoryCentroids(this.db, categoryIds);
+
+        span.setAttributes({
+          centroidsCacheHit,
+          centroidsFetchMs,
+          centroidsLockWaitMs,
+        });
+
+        if (centroids.length === 0) {
+          logger.warn({ categoryIds }, 'No centroids found for categories');
+          span.setAttributes({
+            fallback: true,
+            fallbackReason: 'no_centroids',
+          });
+          return this.getFallbackResults(
+            periodMonths,
+            limit,
+            offset,
+            startTime,
+            options.excludeSourceIds
+          );
+        }
+
+        const mode = centroids.length === 1 ? 'single' : 'multi-or';
+        span.setAttribute('mode', mode);
+
+        // Branch: single category vs multiple categories
+        let qualifiedArticles: ScoredArticleWithMeta[];
+        let candidateCount: number;
+        let additionalLogInfo: Record<string, unknown> = {};
+        let multiTimings: {
+          perCategoryMs: number[];
+          perCategoryResultCounts: number[];
+          multiSettleWaitMs: number;
+          multiMergeMs: number;
+        } | null = null;
+
+        if (centroids.length === 1) {
+          const result = await this.filterArticlesSingleCategory(
+            options,
+            centroids[0]
+          );
+          if (result.candidates.length === 0) {
+            logger.warn('No embedding candidates found');
+            span.setAttributes({
+              fallback: true,
+              fallbackReason: 'no_candidates_single',
+            });
+            return this.getFallbackResults(
+              periodMonths,
+              limit,
+              offset,
+              startTime,
+              options.excludeSourceIds
+            );
+          }
+          qualifiedArticles = result.articles;
+          candidateCount = result.candidates.length;
+        } else {
+          const result = await this.filterArticlesMultiCategory(
+            options,
+            centroids
+          );
+          if (result.mergedCount === 0) {
+            span.setAttributes({
+              fallback: true,
+              fallbackReason: 'no_candidates_multi',
+            });
+            return this.getFallbackResults(
+              periodMonths,
+              limit,
+              offset,
+              startTime,
+              options.excludeSourceIds
+            );
+          }
+          qualifiedArticles = result.articles;
+          candidateCount = result.mergedCount;
+          multiTimings = {
+            perCategoryMs: result.perCategoryMs,
+            perCategoryResultCounts: result.perCategoryResultCounts,
+            multiSettleWaitMs: result.multiSettleWaitMs,
+            multiMergeMs: result.multiMergeMs,
+          };
+          additionalLogInfo = {
+            candidatesPerCategory: result.perCategoryResultCounts,
+          };
+          span.setAttributes({
+            multiSettleWaitMs: result.multiSettleWaitMs,
+            multiMergeMs: result.multiMergeMs,
+          });
+        }
+
+        // Apply requested sort + pagination (measure score aggregation time)
+        const scoreAggStart = process.hrtime.bigint();
+        const sortedArticles = sortArticles(
+          qualifiedArticles,
+          sortBy,
+          sortOrder
+        );
+        const filtered = sortedArticles.slice(offset, offset + limit);
+        const scoreAggregationMs = hrtimeDiffMs(scoreAggStart);
+
+        span.setAttribute('scoreAggregationMs', scoreAggregationMs);
+
+        const totalMatched = qualifiedArticles.length;
+        const queryMs = Date.now() - startTime; // Preserved for backward compatibility
+
+        logger.info(
+          {
+            timing: {
+              centroids: centroidsFetchMs + centroidsLockWaitMs,
+              scoreAggregation: scoreAggregationMs,
+              ...(multiTimings
+                ? {
+                    multiSettleWait: multiTimings.multiSettleWaitMs,
+                    multiMerge: multiTimings.multiMergeMs,
+                    perCategoryMs: multiTimings.perCategoryMs,
+                    perCategoryResultCounts:
+                      multiTimings.perCategoryResultCounts,
+                  }
+                : {}),
+            },
+            categoryCount: categoryIds.length,
+            candidateCount,
+            queryMs,
+            mode,
+            ...additionalLogInfo,
+          },
+          'personalization.filter.timing'
+        );
+
+        logger.info(
+          {
+            categoryIds,
+            candidateCount,
+            filteredCount: filtered.length,
+            totalMatched,
+            queryMs,
+            mode,
+            ...additionalLogInfo,
+          },
+          'Personalized filtering completed'
+        );
+
+        return {
+          articles: filtered,
+          meta: {
+            filterMode: 'category',
+            appliedCategories: categoryIds,
+            periodMonths,
+            totalMatched,
+            queryMs,
+          },
+        };
+      } catch (error) {
+        const errName = error instanceof Error ? error.name : 'UnknownError';
+        span.setAttributes({
+          fallback: true,
+          fallbackReason: `error_${errName}`,
+        });
+        logger.error({ err: error, categoryIds }, 'Failed to filter articles');
         return this.getFallbackResults(
           periodMonths,
           limit,
@@ -94,95 +266,7 @@ export class CategoryFilterService {
           options.excludeSourceIds
         );
       }
-
-      // Branch: single category vs multiple categories
-      let qualifiedArticles: ScoredArticleWithMeta[];
-      let candidateCount: number;
-      let additionalLogInfo: Record<string, unknown> = {};
-
-      if (centroids.length === 1) {
-        const result = await this.filterArticlesSingleCategory(
-          options,
-          centroids[0]
-        );
-        if (result.candidates.length === 0) {
-          logger.warn('No embedding candidates found');
-          return this.getFallbackResults(
-            periodMonths,
-            limit,
-            offset,
-            startTime,
-            options.excludeSourceIds
-          );
-        }
-        qualifiedArticles = result.articles;
-        candidateCount = result.candidates.length;
-      } else {
-        const result = await this.filterArticlesMultiCategory(
-          options,
-          centroids
-        );
-        if (result.mergedCount === 0) {
-          return this.getFallbackResults(
-            periodMonths,
-            limit,
-            offset,
-            startTime,
-            options.excludeSourceIds
-          );
-        }
-        qualifiedArticles = result.articles;
-        candidateCount = result.mergedCount;
-        additionalLogInfo = {
-          candidatesPerCategory: result.candidatesPerCategory,
-        };
-      }
-
-      // Apply requested sort
-      const sortedArticles = sortArticles(qualifiedArticles, sortBy, sortOrder);
-
-      // Apply pagination
-      const filtered = sortedArticles.slice(offset, offset + limit);
-
-      const totalMatched = qualifiedArticles.length;
-      const queryMs = Date.now() - startTime;
-
-      logger.info(
-        {
-          categoryIds,
-          candidateCount,
-          filteredCount: filtered.length,
-          totalMatched,
-          queryMs,
-          mode: centroids.length === 1 ? 'single' : 'multi-or',
-          ...additionalLogInfo,
-        },
-        'Personalized filtering completed'
-      );
-
-      return {
-        articles: filtered,
-        meta: {
-          filterMode: 'category',
-          appliedCategories: categoryIds,
-          periodMonths,
-          totalMatched,
-          queryMs,
-        },
-      };
-    } catch (error) {
-      logger.error(
-        { err: error, categoryIds },
-        'Failed to filter articles'
-      );
-      return this.getFallbackResults(
-        periodMonths,
-        limit,
-        offset,
-        startTime,
-        options.excludeSourceIds
-      );
-    }
+    });
   }
 
   /**
@@ -267,7 +351,12 @@ export class CategoryFilterService {
   ): Promise<{
     articles: ScoredArticleWithMeta[];
     mergedCount: number;
+    /** @deprecated use perCategoryResultCounts */
     candidatesPerCategory: number[];
+    perCategoryResultCounts: number[];
+    perCategoryMs: number[];
+    multiSettleWaitMs: number;
+    multiMergeMs: number;
   }> {
     const { categoryIds, periodMonths, limit, offset = 0 } = options;
 
@@ -291,30 +380,40 @@ export class CategoryFilterService {
         ? pLimit(maxConcurrency)
         : null;
 
-    const searchPromises = centroids.map((c) => {
-      const search = () =>
-        getEmbeddingCandidates(
+    // Wrap each per-category search with hrtime measurement
+    const perCategoryStartTimes = centroids.map(() => process.hrtime.bigint());
+    const searchPromises = centroids.map((c, i) => {
+      const search = async () => {
+        const result = await getEmbeddingCandidates(
           this.db,
           c.centroid_embedding!,
           periodMonths,
           kPerCategory,
           options.excludeSourceIds
         );
+        return { result, elapsedMs: hrtimeDiffMs(perCategoryStartTimes[i]) };
+      };
       return concurrencyLimit ? concurrencyLimit(search) : search();
     });
+
+    const settleStart = process.hrtime.bigint();
     const settledResults = await Promise.allSettled(searchPromises);
+    const multiSettleWaitMs = hrtimeDiffMs(settleStart);
 
     const categoryResults: EmbeddingCandidate[][] = [];
+    const perCategoryMs: number[] = [];
     const failedCategories: number[] = [];
 
-    settledResults.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        categoryResults.push(result.value);
+    settledResults.forEach((settled, index) => {
+      if (settled.status === 'fulfilled') {
+        categoryResults.push(settled.value.result);
+        perCategoryMs.push(settled.value.elapsedMs);
       } else {
         failedCategories.push(index);
         categoryResults.push([]);
+        perCategoryMs.push(0);
         logger.warn(
-          { categoryIndex: index, err: result.reason },
+          { categoryIndex: index, err: settled.reason },
           'Category search failed, continuing with other categories'
         );
       }
@@ -331,6 +430,7 @@ export class CategoryFilterService {
     }
 
     // Merge results: keep max similarity per article
+    const mergeStart = process.hrtime.bigint();
     const mergedMap = new Map<string, EmbeddingCandidate>();
     for (const results of categoryResults) {
       for (const candidate of results) {
@@ -343,13 +443,22 @@ export class CategoryFilterService {
         }
       }
     }
+    const multiMergeMs = hrtimeDiffMs(mergeStart);
 
     const merged = Array.from(mergedMap.values());
-    const candidatesPerCategory = categoryResults.map((r) => r.length);
+    const perCategoryResultCounts = categoryResults.map((r) => r.length);
 
     if (merged.length === 0) {
       logger.warn('No candidates found in OR search');
-      return { articles: [], mergedCount: 0, candidatesPerCategory };
+      return {
+        articles: [],
+        mergedCount: 0,
+        candidatesPerCategory: perCategoryResultCounts,
+        perCategoryResultCounts,
+        perCategoryMs,
+        multiSettleWaitMs,
+        multiMergeMs,
+      };
     }
 
     const candidatesWithTags = await checkTagMatches(
@@ -366,7 +475,11 @@ export class CategoryFilterService {
     return {
       articles: qualifiedArticles,
       mergedCount: merged.length,
-      candidatesPerCategory,
+      candidatesPerCategory: perCategoryResultCounts,
+      perCategoryResultCounts,
+      perCategoryMs,
+      multiSettleWaitMs,
+      multiMergeMs,
     };
   }
 
