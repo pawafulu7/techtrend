@@ -19,7 +19,14 @@
 
 import { PrismaClient, Prisma } from '../../prisma/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  renameSync,
+  unlinkSync,
+} from 'node:fs';
 import { dirname } from 'node:path';
 
 type Env = 'local' | 'prod';
@@ -33,27 +40,69 @@ type Args = {
   fresh: boolean;
 };
 
-function parseArgs(argv: string[]): Args {
-  const get = (flag: string, def?: string) => {
-    const idx = argv.indexOf(flag);
-    return idx >= 0 ? argv[idx + 1] : def;
-  };
-  const env = (get('--env', 'local') as Env);
-  if (env !== 'local' && env !== 'prod') {
-    throw new Error(`--env must be "local" or "prod"`);
+/** pgvector HNSW ef_search valid range (1..1000 per pgvector docs). */
+const HNSW_EF_SEARCH_MIN = 40;
+const HNSW_EF_SEARCH_MAX = 1000;
+
+/** Article/cuid identifier shape: [a-z0-9]+ only. Guards VALUES clause interpolation. */
+const ID_PATTERN = /^[a-z0-9]+$/i;
+
+function parsePositiveInt(raw: string | undefined, flag: string, def: number): number {
+  if (raw === undefined) return def;
+  const v = parseInt(raw, 10);
+  if (!Number.isInteger(v) || v <= 0) {
+    throw new Error(`--${flag} must be a positive integer (got: ${raw})`);
   }
-  const topK = parseInt(get('--topk', '200') ?? '200', 10);
-  const periodMonths = parseInt(get('--period-months', '12') ?? '12', 10);
-  const categorySlug = get('--category-slug', undefined) ?? null;
-  const minSimilarity = parseFloat(get('--min-similarity', '0.55') ?? '0.55');
+  return v;
+}
+
+function parseFiniteFloat(
+  raw: string | undefined,
+  flag: string,
+  def: number,
+  min: number,
+  max: number
+): number {
+  if (raw === undefined) return def;
+  const v = parseFloat(raw);
+  if (!Number.isFinite(v) || v < min || v > max) {
+    throw new Error(
+      `--${flag} must be a finite number in [${min}, ${max}] (got: ${raw})`
+    );
+  }
+  return v;
+}
+
+function parseArgs(argv: string[]): Args {
+  const get = (flag: string) => {
+    const idx = argv.indexOf(flag);
+    return idx >= 0 ? argv[idx + 1] : undefined;
+  };
+  const env = (get('--env') ?? 'local') as Env;
+  if (env !== 'local' && env !== 'prod') {
+    throw new Error(`--env must be "local" or "prod" (got: ${env})`);
+  }
+  const topK = parsePositiveInt(get('--topk'), 'topk', 200);
+  const periodMonths = parsePositiveInt(
+    get('--period-months'),
+    'period-months',
+    12
+  );
+  const categorySlug = get('--category-slug') ?? null;
+  const minSimilarity = parseFiniteFloat(
+    get('--min-similarity'),
+    'min-similarity',
+    0.55,
+    0,
+    1
+  );
   const fresh = argv.includes('--fresh');
   return { env, topK, periodMonths, categorySlug, minSimilarity, fresh };
 }
 
 function resolveDatabaseUrl(env: Env): string {
-  const url = env === 'prod'
-    ? process.env.PROD_DATABASE_URL
-    : process.env.DATABASE_URL;
+  const url =
+    env === 'prod' ? process.env.PROD_DATABASE_URL : process.env.DATABASE_URL;
   if (!url) {
     throw new Error(
       env === 'prod'
@@ -68,15 +117,31 @@ function cachePath(env: Env, topK: number, categoryId: string): string {
   return `.workflow/tmp/stage1-${env}-topk${topK}-${categoryId}.json`;
 }
 
+/** Write JSON atomically (tmp file + rename). Prevents corrupted cache on crash. */
+function writeJsonAtomic(filepath: string, data: unknown): void {
+  const dir = dirname(filepath);
+  mkdirSync(dir, { recursive: true });
+  const tmp = `${filepath}.${process.pid}.tmp`;
+  try {
+    writeFileSync(tmp, JSON.stringify(data));
+    renameSync(tmp, filepath);
+  } catch (err) {
+    try {
+      unlinkSync(tmp);
+    } catch {
+      /* ignore cleanup failure */
+    }
+    throw err;
+  }
+}
+
 type Stage1Row = { articleId: string; sim_emb: number };
 
 async function pickCategory(
   prisma: PrismaClient,
   slug: string | null
 ): Promise<{ id: string; slug: string; centroid: string }> {
-  const slugFilter = slug
-    ? Prisma.sql`AND slug = ${slug}`
-    : Prisma.empty;
+  const slugFilter = slug ? Prisma.sql`AND slug = ${slug}` : Prisma.empty;
   const rows = await prisma.$queryRaw<
     Array<{ id: string; slug: string; centroid_embedding: string | null }>
   >`
@@ -107,13 +172,24 @@ async function runStage1(
   centroid: string,
   topK: number
 ): Promise<Stage1Row[]> {
-  return prisma.$queryRaw<Stage1Row[]>`
-    SELECT "articleId", 1 - (embedding <=> ${centroid}::vector) AS sim_emb
-    FROM "ArticleEmbedding"
-    WHERE "embeddingKey" = 'summary'::"EmbeddingKey"
-    ORDER BY embedding <=> ${centroid}::vector
-    LIMIT ${topK}
-  `;
+  // Mirror production behavior: raise hnsw.ef_search to match LIMIT so HNSW
+  // returns topK candidates instead of capping at the default (40).
+  // SET LOCAL only takes effect within a transaction; wrap both statements.
+  const efSearch = Math.min(
+    Math.max(Math.floor(topK), HNSW_EF_SEARCH_MIN),
+    HNSW_EF_SEARCH_MAX
+  );
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = '30s'`);
+    await tx.$executeRawUnsafe(`SET LOCAL hnsw.ef_search = ${efSearch}`);
+    return tx.$queryRaw<Stage1Row[]>`
+      SELECT "articleId", 1 - (embedding <=> ${centroid}::vector) AS sim_emb
+      FROM "ArticleEmbedding"
+      WHERE "embeddingKey" = 'summary'::"EmbeddingKey"
+      ORDER BY embedding <=> ${centroid}::vector
+      LIMIT ${topK}
+    `;
+  });
 }
 
 function buildStage2Sql(
@@ -121,6 +197,24 @@ function buildStage2Sql(
   periodMonths: number,
   minSimilarity: number
 ): { sql: string; cutoff: Date | null } {
+  // Validate every articleId before inlining into the VALUES clause.
+  // Prisma's tagged-template ($queryRaw) cannot parameterize an EXPLAIN query
+  // because EXPLAIN's output shape differs from the prepared-statement plan,
+  // so we keep $queryRawUnsafe but sanitize inputs strictly.
+  for (const r of stage1) {
+    if (!ID_PATTERN.test(r.articleId)) {
+      throw new Error(
+        `Invalid articleId in Stage1 cache: ${JSON.stringify(r.articleId)}`
+      );
+    }
+    if (!Number.isFinite(r.sim_emb)) {
+      throw new Error(`Invalid sim_emb in Stage1 cache: ${r.sim_emb}`);
+    }
+  }
+  if (!Number.isFinite(minSimilarity)) {
+    throw new Error(`minSimilarity must be finite, got: ${minSimilarity}`);
+  }
+
   const cutoff =
     periodMonths > 0
       ? new Date(Date.now() - periodMonths * 30 * 24 * 60 * 60 * 1000)
@@ -165,8 +259,13 @@ async function runExplain(
   prisma: PrismaClient,
   sql: string
 ): Promise<string[]> {
-  const rows = await prisma.$queryRawUnsafe<Array<Record<string, string>>>(sql);
-  return rows.map((r) => Object.values(r)[0]);
+  // Per-transaction statement_timeout via SET LOCAL so the limit applies
+  // even if the underlying connection is swapped by the pool.
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = '30s'`);
+    const rows = await tx.$queryRawUnsafe<Array<Record<string, string>>>(sql);
+    return rows.map((r) => Object.values(r)[0]);
+  });
 }
 
 async function main() {
@@ -179,14 +278,13 @@ async function main() {
   const startedAt = new Date().toISOString();
   console.log('='.repeat(80));
   console.log(`Issue #579 Stage2 EXPLAIN baseline`);
-  console.log(`env=${args.env} topK=${args.topK} periodMonths=${args.periodMonths} minSim=${args.minSimilarity}`);
+  console.log(
+    `env=${args.env} topK=${args.topK} periodMonths=${args.periodMonths} minSim=${args.minSimilarity}`
+  );
   console.log(`startedAt=${startedAt}`);
   console.log('='.repeat(80));
 
   try {
-    // Always guard against long-running queries (prod safety, dev sanity).
-    await prisma.$executeRawUnsafe(`SET statement_timeout = '30s'`);
-
     const category = await pickCategory(prisma, args.categorySlug);
     console.log(`[category] id=${category.id} slug=${category.slug}`);
 
@@ -200,9 +298,10 @@ async function main() {
       const t0 = process.hrtime.bigint();
       stage1 = await runStage1(prisma, category.centroid, args.topK);
       const ms = Number(process.hrtime.bigint() - t0) / 1_000_000;
-      mkdirSync(dirname(cache), { recursive: true });
-      writeFileSync(cache, JSON.stringify(stage1));
-      console.log(`[stage1] fresh run rows=${stage1.length} time=${ms.toFixed(1)}ms cached=${cache}`);
+      writeJsonAtomic(cache, stage1);
+      console.log(
+        `[stage1] fresh run rows=${stage1.length} time=${ms.toFixed(1)}ms cached=${cache}`
+      );
     }
 
     if (stage1.length === 0) {
@@ -210,8 +309,14 @@ async function main() {
       process.exit(1);
     }
 
-    const { sql, cutoff } = buildStage2Sql(stage1, args.periodMonths, args.minSimilarity);
-    console.log(`[stage2] cutoff=${cutoff?.toISOString() ?? 'none'} minSim=${args.minSimilarity}`);
+    const { sql, cutoff } = buildStage2Sql(
+      stage1,
+      args.periodMonths,
+      args.minSimilarity
+    );
+    console.log(
+      `[stage2] cutoff=${cutoff?.toISOString() ?? 'none'} minSim=${args.minSimilarity}`
+    );
     console.log(`[stage2] EXPLAIN length=${sql.length} chars`);
 
     // Run EXPLAIN three times and print all (caller selects median from logs).
