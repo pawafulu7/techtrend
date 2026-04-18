@@ -324,6 +324,23 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'Social post create/update/delete (20 per minute)',
     telemetryEvent: 'ratelimit.admin.social-post-write',
   },
+  'admin:social-post-generate-article': {
+    points: 5,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes:
+      'AI generation from specific article (5 per minute, AI cost control)',
+    telemetryEvent: 'ratelimit.admin.social-post-generate-article',
+  },
+  'admin:social-post-candidates': {
+    points: 30,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'Candidate article search for social posts (30 per minute)',
+    telemetryEvent: 'ratelimit.admin.social-post-candidates',
+  },
 
   'admin:ai-generate': {
     points: 5,

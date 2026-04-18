@@ -40,6 +40,21 @@ describe('Rate Limit Configuration', () => {
       expect(RATE_LIMIT_POLICIES['public:health']).toBeDefined();
     });
 
+    it('should have admin social-post policies including generate-article and candidates', () => {
+      const genArticle =
+        RATE_LIMIT_POLICIES['admin:social-post-generate-article'];
+      expect(genArticle).toBeDefined();
+      expect(genArticle.points).toBe(5);
+      expect(genArticle.duration).toBe(60);
+      expect(genArticle.keyStrategy).toBe('user');
+
+      const candidates = RATE_LIMIT_POLICIES['admin:social-post-candidates'];
+      expect(candidates).toBeDefined();
+      expect(candidates.points).toBe(30);
+      expect(candidates.duration).toBe(60);
+      expect(candidates.keyStrategy).toBe('user');
+    });
+
     it('should have default policy', () => {
       expect(RATE_LIMIT_POLICIES['default']).toBeDefined();
       expect(RATE_LIMIT_POLICIES['default'].points).toBe(100);
