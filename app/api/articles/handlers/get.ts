@@ -26,6 +26,7 @@ import type {
   PersonalizedSortBy,
 } from '@/lib/personalization/types';
 import logger from '@/lib/logger';
+import { measureAsync } from '@/lib/personalization/tracing';
 
 import {
   buildSelectFields,
@@ -344,8 +345,12 @@ async function executePersonalizedQuery(
     // Try cache first; skip caching if result is a fallback (appliedCategories empty)
     let cached: CachedPersonalizationResult | null = null;
     try {
-      cached =
-        await personalizationCache.get<CachedPersonalizationResult>(cacheKey);
+      cached = await measureAsync('personalization.cache_get', async (span) => {
+        const result =
+          await personalizationCache.get<CachedPersonalizationResult>(cacheKey);
+        span.setAttribute('cacheHit', result !== null);
+        return result;
+      });
     } catch (cacheError) {
       logger.warn(
         { err: cacheError },
@@ -391,13 +396,16 @@ async function executePersonalizedQuery(
     const personalizedArticles = await withDbTiming(
       metrics,
       () =>
-        prisma.article.findMany({
-          where: {
-            id: { in: personalizedIds },
-            isHidden: false,
-            summaryComputedAt: { not: null },
-          },
-          select: selectFields,
+        measureAsync('article.fetch_by_ids', async (span) => {
+          span.setAttribute('idCount', personalizedIds.length);
+          return prisma.article.findMany({
+            where: {
+              id: { in: personalizedIds },
+              isHidden: false,
+              summaryComputedAt: { not: null },
+            },
+            select: selectFields,
+          });
         }),
       'db_query'
     );

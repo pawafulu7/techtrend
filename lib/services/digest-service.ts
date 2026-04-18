@@ -8,6 +8,7 @@
 import { PrismaClient } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { measureAsync, hrtimeDiffMs } from '@/lib/personalization/tracing';
 import { RedisCache } from '@/lib/cache/redis-cache';
 import {
   CategoryFilterService,
@@ -150,7 +151,11 @@ export class DigestService {
     // 1. Check cache
     const cacheKey = `digest:${userId}:${period}`;
     try {
-      const cached = await this.cache.get<DigestResponse>(cacheKey);
+      const cached = await measureAsync('digest.cache_get', async (span) => {
+        const result = await this.cache.get<DigestResponse>(cacheKey);
+        span.setAttribute('cacheHit', result !== null);
+        return result;
+      });
       if (cached) {
         logger.info({ userId, period }, 'Digest cache hit');
         // Restore Date objects from JSON serialization
@@ -204,15 +209,25 @@ export class DigestService {
         where: { userId, scope: 'digest' },
         select: { categoryId: true },
       }),
-      this.filterService.getActiveCategories().catch((error) => {
-        logger.warn(
-          { err: error, userId },
-          'getActiveCategories failed, falling back to empty list'
-        );
-        return [] as Awaited<
-          ReturnType<CategoryFilterService['getActiveCategories']>
-        >;
-      }),
+      (async () => {
+        const t0 = process.hrtime.bigint();
+        try {
+          const result = await this.filterService.getActiveCategories();
+          logger.info(
+            { timing: { activeCategoriesFetchMs: hrtimeDiffMs(t0) } },
+            'getActiveCategories timing'
+          );
+          return result;
+        } catch (error) {
+          logger.warn(
+            { err: error, userId },
+            'getActiveCategories failed, falling back to empty list'
+          );
+          return [] as Awaited<
+            ReturnType<CategoryFilterService['getActiveCategories']>
+          >;
+        }
+      })(),
     ]);
     const categoryIds = preferences.map((p) => p.categoryId);
 
@@ -346,31 +361,36 @@ export class DigestService {
       const cutoff = getPeriodCutoff(period);
 
       // Filter for unread articles within period, with source enabled and content not null
-      const rows = await this.db.$queryRaw<RawArticleRow[]>`
-        SELECT
-          a.id,
-          a.title,
-          a.url,
-          a.summary,
-          a.thumbnail,
-          a."publishedAt",
-          a."qualityScore",
-          a."sourceId"
-        FROM "Article" a
-        JOIN "Source" s ON a."sourceId" = s.id AND s.enabled = true
-        WHERE a.id = ANY(${candidateIds})
-          AND a.content IS NOT NULL
-          AND a."isHidden" = false
-          AND a."publishedAt" >= ${cutoff}
-          AND NOT EXISTS (
-            SELECT 1 FROM "ArticleView" av
-            WHERE av."userId" = ${userId}
-              AND av."articleId" = a.id
-              AND av."isRead" = true
-          )
-        ORDER BY array_position(${candidateIds}, a.id)
-        LIMIT ${limit}
-      `;
+      const rows = await measureAsync('digest.post_filter', async (span) => {
+        span.setAttribute('articleIdCount', candidateIds.length);
+        const result = await this.db.$queryRaw<RawArticleRow[]>`
+          SELECT
+            a.id,
+            a.title,
+            a.url,
+            a.summary,
+            a.thumbnail,
+            a."publishedAt",
+            a."qualityScore",
+            a."sourceId"
+          FROM "Article" a
+          JOIN "Source" s ON a."sourceId" = s.id AND s.enabled = true
+          WHERE a.id = ANY(${candidateIds})
+            AND a.content IS NOT NULL
+            AND a."isHidden" = false
+            AND a."publishedAt" >= ${cutoff}
+            AND NOT EXISTS (
+              SELECT 1 FROM "ArticleView" av
+              WHERE av."userId" = ${userId}
+                AND av."articleId" = a.id
+                AND av."isRead" = true
+            )
+          ORDER BY array_position(${candidateIds}, a.id)
+          LIMIT ${limit}
+        `;
+        span.setAttribute('filteredCount', result.length);
+        return result;
+      });
 
       if (rows.length === 0) {
         return { articles: [], ok: !filterFellBack };
