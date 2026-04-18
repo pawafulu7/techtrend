@@ -164,19 +164,26 @@ export async function getEmbeddingCandidates(
 
   // Stage 1: Pure kNN query on partial HNSW index (no JOINs, no extra filters)
   // The partial index on embeddingKey = 'summary' enables HNSW usage here.
+  // hnsw.ef_search must be >= LIMIT or the HNSW search returns at most ef_search rows
+  // (default 40), causing topK to be silently capped regardless of the requested value.
   type Stage1Row = { articleId: string; sim_emb: number };
+  const efSearch = Math.max(Math.floor(effectiveLimit), 40);
   const stage1Results = await measureAsync(
     'personalization.stage1_knn',
     async (span) => {
-      const rows = await db.$queryRaw<Stage1Row[]>`
-        SELECT "articleId", 1 - (embedding <=> ${centroid}::vector) AS sim_emb
-        FROM "ArticleEmbedding"
-        WHERE "embeddingKey" = 'summary'::"EmbeddingKey"
-        ORDER BY embedding <=> ${centroid}::vector
-        LIMIT ${effectiveLimit}
-      `;
+      const rows = await db.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL hnsw.ef_search = ${efSearch}`);
+        return tx.$queryRaw<Stage1Row[]>`
+          SELECT "articleId", 1 - (embedding <=> ${centroid}::vector) AS sim_emb
+          FROM "ArticleEmbedding"
+          WHERE "embeddingKey" = 'summary'::"EmbeddingKey"
+          ORDER BY embedding <=> ${centroid}::vector
+          LIMIT ${effectiveLimit}
+        `;
+      });
       span.setAttributes({
         effectiveLimit,
+        efSearch,
         stage1ResultCount: rows.length,
       });
       return rows;
