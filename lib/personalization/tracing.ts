@@ -15,6 +15,7 @@
 
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import type { Span, AttributeValue } from '@opentelemetry/api';
+import { sanitizeError } from '@/lib/logger';
 
 export { Span };
 
@@ -45,9 +46,19 @@ export async function measureAsync<T>(
       return await fn(span);
     } catch (err) {
       span.recordException(err instanceof Error ? err : String(err));
+      // Sanitize the message (strips API keys / bearer tokens) before sending
+      // to the trace backend so secrets that leak into an error path don't end
+      // up in Grafana/Tempo.
+      const sanitized = sanitizeError(err);
+      const sanitizedMessage =
+        typeof sanitized === 'object' &&
+        sanitized !== null &&
+        'message' in sanitized
+          ? String((sanitized as { message: unknown }).message)
+          : String(err);
       span.setStatus({
         code: SpanStatusCode.ERROR,
-        message: err instanceof Error ? err.message : String(err),
+        message: sanitizedMessage,
       });
       throw err;
     } finally {

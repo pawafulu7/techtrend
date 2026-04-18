@@ -354,11 +354,11 @@ async function executePersonalizedQuery(
           span.setAttribute('cacheHit', result !== null);
           return result;
         } catch (err) {
+          // Defensive: RedisCache.get() currently swallows Redis errors and returns null,
+          // so this branch is rarely hit. Kept to distinguish future error paths from
+          // genuine cache misses. Message is omitted to avoid leaking secrets/keys
+          // into the trace backend; recordException captures the full error event.
           span.setAttribute('cacheError', true);
-          span.setAttribute(
-            'cacheErrorMessage',
-            err instanceof Error ? err.message : String(err)
-          );
           throw err;
         }
       });
