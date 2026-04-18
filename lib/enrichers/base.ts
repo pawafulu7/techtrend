@@ -142,12 +142,23 @@ export abstract class BaseContentEnricher implements IContentEnricher {
 
         if (response.status === 429) {
           // Rate limit: 短縮 (1.5秒)。呼び出し側の source 別 sleep で本質的な rate 制御を行う
+          // 接続プールの socket 保持を避けるため body を drain してから retry
+          try {
+            await response.body?.cancel();
+          } catch {
+            // body drain 失敗は retry 判定に影響させない
+          }
           await this.delay(1500, externalSignal);
           previousWas429 = true;
           continue;
         }
 
         if (!response.ok) {
+          try {
+            await response.body?.cancel();
+          } catch {
+            // body drain 失敗は元の HTTP error を優先
+          }
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 

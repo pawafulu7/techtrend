@@ -59,6 +59,13 @@ export class GenericContentEnricher extends BaseContentEnricher {
         });
 
         if (!response.ok) {
+          // 接続プールの socket 保持を避けるため body を drain してから retry/return
+          try {
+            await response.body?.cancel();
+          } catch {
+            // body drain 失敗は retry/failure 判定に影響させない
+          }
+
           if (response.status === 429) {
             // 429 時の sleep 短縮 (1.5秒)。呼び出し側の source 別 sleep で本質的な rate 制御
             await this.delay(1500, externalSignal);
