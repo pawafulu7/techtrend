@@ -7,6 +7,7 @@ import {
   isCSRFExemptPath,
   requiresCSRFProtection,
 } from '@/lib/middleware/csrf-protection';
+import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
 
 // Optional Basic Auth (enabled when env is set)
 function needsBasicAuth(): boolean {
@@ -89,8 +90,7 @@ export async function proxy(request: NextRequest) {
 
   if (isProtectedPath || isProtectedApiPath) {
     // セッションチェック（cookieベース）
-    const sessionCookie = request.cookies.get('authjs.session-token') || 
-                         request.cookies.get('__Secure-authjs.session-token');
+    const sessionCookie = request.cookies.get(AUTH_COOKIES.sessionToken);
 
     if (!sessionCookie) {
       // APIルートの場合は401を返す
