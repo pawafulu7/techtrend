@@ -22,9 +22,10 @@ export interface IContentEnricher {
   /**
    * URLから記事の本文とサムネイルを取得
    * @param url 記事のURL
+   * @param signal 外部abort signal (optional、呼び出し側でtimeout連携時に使用)
    * @returns エンリッチされたコンテンツ。取得失敗時はnull
    */
-  enrich(url: string): Promise<EnrichedContent | null>;
+  enrich(url: string, signal?: AbortSignal): Promise<EnrichedContent | null>;
 
   /**
    * このエンリッチャーが処理可能なURLかを判定
@@ -43,9 +44,12 @@ export abstract class BaseContentEnricher implements IContentEnricher {
   protected retryDelay = 1000; // 1秒
 
   // 既定実装: セレクタベースで本文抽出
-  async enrich(url: string): Promise<EnrichedContent | null> {
+  async enrich(
+    url: string,
+    signal?: AbortSignal
+  ): Promise<EnrichedContent | null> {
     try {
-      const html = await this.fetchWithRetry(url);
+      const html = await this.fetchWithRetry(url, signal);
       const $ = cheerio.load(html);
 
       // 不要要素を削除
@@ -100,21 +104,32 @@ export abstract class BaseContentEnricher implements IContentEnricher {
 
   /**
    * リトライ機能付きのfetch
+   * @param url 取得するURL
+   * @param externalSignal 外部abort signal (呼び出し側のtimeout等と連動)
    */
-  protected async fetchWithRetry(url: string): Promise<string> {
+  protected async fetchWithRetry(
+    url: string,
+    externalSignal?: AbortSignal
+  ): Promise<string> {
     let lastError: Error | null = null;
+    let previousWas429 = false;
 
     for (let attempt = 0; attempt < this.maxRetries; attempt++) {
       try {
-        if (attempt > 0) {
-          // リトライ時は指数バックオフ
-          await this.delay(this.retryDelay * Math.pow(2, attempt - 1));
+        // 直前が 429 の場合は loop 冒頭の exponential backoff を skip
+        // (429 path の sleep のみ適用し、実質 1.5 秒リトライを守るため)
+        if (attempt > 0 && !previousWas429) {
+          await this.delay(
+            Math.min(this.retryDelay * Math.pow(2, attempt - 1), 2000),
+            externalSignal
+          );
         }
+        previousWas429 = false;
 
-        // Timeout using AbortController (15 seconds)
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
-
+        // AbortSignal.timeout() は catch 経路で旧実装にあった
+        // setTimeout+clearTimeout の leak を回避する（ただし成功/外部 abort 時の
+        // timeout signal 自体は明示 dispose できない点に留意）
+        const signal = this.composeSignal(externalSignal, 15000);
         const response = await fetch(url, {
           headers: {
             'User-Agent':
@@ -122,33 +137,59 @@ export abstract class BaseContentEnricher implements IContentEnricher {
             Accept: 'text/html,application/xhtml+xml',
             'Accept-Language': 'ja,en;q=0.9',
           },
-          signal: controller.signal,
+          signal,
         });
 
-        clearTimeout(timeout);
-
         if (response.status === 429) {
-          // Rate limit エラー時は長めに待機
-          await this.delay(30000);
+          // Rate limit: 短縮 (1.5秒)。呼び出し側の source 別 sleep で本質的な rate 制御を行う
+          // 接続プールの socket 保持を避けるため body を drain してから retry
+          try {
+            await response.body?.cancel();
+          } catch {
+            // body drain 失敗は retry 判定に影響させない
+          }
+          await this.delay(1500, externalSignal);
+          previousWas429 = true;
           continue;
         }
 
         if (!response.ok) {
+          try {
+            await response.body?.cancel();
+          } catch {
+            // body drain 失敗は元の HTTP error を優先
+          }
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         const html = await response.text();
 
         // レート制限のための待機
-        await this.delay(this.rateLimit);
+        await this.delay(this.rateLimit, externalSignal);
 
         return html;
       } catch (_error) {
         lastError = _error as Error;
+        // 外部signalがabortされている場合は即時終了
+        if (externalSignal?.aborted) {
+          throw lastError;
+        }
       }
     }
 
     throw lastError || new Error('Failed to fetch content');
+  }
+
+  /**
+   * 外部signalとper-fetch timeoutを合成
+   */
+  protected composeSignal(
+    externalSignal: AbortSignal | undefined,
+    timeoutMs: number
+  ): AbortSignal {
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
+    if (!externalSignal) return timeoutSignal;
+    return AbortSignal.any([externalSignal, timeoutSignal]);
   }
 
   /**
@@ -194,10 +235,24 @@ export abstract class BaseContentEnricher implements IContentEnricher {
   }
 
   /**
-   * 遅延処理
+   * 遅延処理（abort signal 対応）
    */
-  protected delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  protected delay(ms: number, signal?: AbortSignal): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(signal.reason ?? new Error('Aborted'));
+        return;
+      }
+      const timer = setTimeout(() => {
+        if (onAbort) signal?.removeEventListener('abort', onAbort);
+        resolve();
+      }, ms);
+      const onAbort = () => {
+        clearTimeout(timer);
+        reject(signal?.reason ?? new Error('Aborted'));
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
   }
 
   /**

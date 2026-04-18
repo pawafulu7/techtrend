@@ -23,16 +23,27 @@ export class GenericContentEnricher extends BaseContentEnricher {
     return true;
   }
 
-  async enrich(url: string): Promise<EnrichmentResult | null> {
-    const maxRetries = 3;
+  async enrich(
+    url: string,
+    externalSignal?: AbortSignal
+  ): Promise<EnrichmentResult | null> {
+    const maxRetries = 2;
+    let previousWas429 = false;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        if (attempt > 1) {
-          const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
-          await new Promise((resolve) => setTimeout(resolve, waitTime));
+        // 直前が 429 の場合は loop 冒頭の backoff を skip (実質 1.5 秒リトライを守る)
+        if (attempt > 1 && !previousWas429) {
+          const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 2000);
+          await this.delay(waitTime, externalSignal);
+        }
+        previousWas429 = false;
+
+        if (externalSignal?.aborted) {
+          return null;
         }
 
+        const signal = this.composeSignal(externalSignal, 30000);
         const response = await fetch(url, {
           headers: {
             'User-Agent':
@@ -44,12 +55,21 @@ export class GenericContentEnricher extends BaseContentEnricher {
             DNT: '1',
           },
           redirect: 'follow',
-          signal: AbortSignal.timeout(30000),
+          signal,
         });
 
         if (!response.ok) {
+          // 接続プールの socket 保持を避けるため body を drain してから retry/return
+          try {
+            await response.body?.cancel();
+          } catch {
+            // body drain 失敗は retry/failure 判定に影響させない
+          }
+
           if (response.status === 429) {
-            await new Promise((resolve) => setTimeout(resolve, 10000));
+            // 429 時の sleep 短縮 (1.5秒)。呼び出し側の source 別 sleep で本質的な rate 制御
+            await this.delay(1500, externalSignal);
+            previousWas429 = true;
             continue;
           }
           if (attempt === maxRetries) {

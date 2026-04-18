@@ -213,6 +213,54 @@ describe('ContentEnricherFactory', () => {
     );
   });
 
+  describe('HatenaContentEnricher custom domain allowlist', () => {
+    it.each([
+      'https://tech.every.tv/article',
+      'https://caddi.tech/entry/123',
+      'https://tech.gunosy.io/entry/2024',
+      'https://mackerel.io/blog/entry',
+      'https://tech.askul.co.jp/article',
+      'https://blogs.networld.co.jp/entry',
+      'https://tech.nri-net.com/post',
+      'https://tech.talentx.co.jp/entry',
+      'https://blog.serverworks.co.jp/article',
+      'https://developer.so-tech.co.jp/entry',
+    ])('should return HatenaContentEnricher for custom domain %s', (url) => {
+      const enricher = factory.getEnricher(url);
+      expect(enricher?.constructor.name).toBe('HatenaContentEnricher');
+    });
+
+    // 専用 enricher 管轄ドメインは Hatena ではなく各専用 enricher が返ることを確認
+    // (HatenaContentEnricher は factory 内で後方に配置されているため、先行する専用 enricher が優先される)
+    it.each([
+      {
+        url: 'https://techblog.zozo.com/entry/test',
+        expected: 'ZOZOContentEnricher',
+      },
+      {
+        url: 'https://tech.pepabo.com/2024/01/test',
+        expected: 'PepaboContentEnricher',
+      },
+      {
+        url: 'https://developer.hatenastaff.com/entry',
+        expected: 'HatenaDeveloperContentEnricher',
+      },
+    ])(
+      'should prefer dedicated enricher over Hatena for $url',
+      ({ url, expected }) => {
+        const enricher = factory.getEnricher(url);
+        expect(enricher?.constructor.name).toBe(expected);
+      }
+    );
+
+    it('should NOT match unknown domain as Hatena', () => {
+      const enricher = factory.getEnricher(
+        'https://example-unknown.com/article'
+      );
+      expect(enricher?.constructor.name).toBe('GenericContentEnricher');
+    });
+  });
+
   describe('AnthropicNewsEnricher boundary', () => {
     it('should NOT match /newsroom path', () => {
       const enricher = factory.getEnricher(
