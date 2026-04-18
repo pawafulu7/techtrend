@@ -1,5 +1,6 @@
 import pino from 'pino';
 import crypto from 'crypto';
+import { trace } from '@opentelemetry/api';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
@@ -151,6 +152,14 @@ const logger = pino({
     level: (label) => {
       return { level: label.toUpperCase() };
     },
+  },
+
+  // Automatically inject traceId/spanId from active OTEL span into every log record.
+  // When a log is emitted outside an active span (e.g. batch scripts), the mixin
+  // returns {} and no traceId/spanId fields are added — this is the expected behaviour.
+  mixin: () => {
+    const ctx = trace.getActiveSpan()?.spanContext();
+    return ctx?.traceId ? { traceId: ctx.traceId, spanId: ctx.spanId } : {};
   },
 
   serializers: {
