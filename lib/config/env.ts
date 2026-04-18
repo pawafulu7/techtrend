@@ -190,6 +190,7 @@ const envSchema = z
     }, z.number().int().min(1).default(5)),
     POST_SAVE_ENRICH_TIMEOUT_MS: safeCoerceInt(10000),
     POST_SAVE_ENRICH_SLEEP_MS: safeCoerceInt(0),
+    HATENA_BLOG_DEV_ENRICH_SLEEP_MS: safeCoerceInt(2500),
     SKIP_POST_SAVE_ENRICHMENT: z.enum(['0', '1']).optional().default('0'),
 
     // Fetchers

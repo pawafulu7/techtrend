@@ -127,6 +127,19 @@ const debugLog = (message: string) => {
 
 const POST_SAVE_ENRICH_TIMEOUT_MS = env.POST_SAVE_ENRICH_TIMEOUT_MS;
 const POST_SAVE_ENRICH_SLEEP_MS = env.POST_SAVE_ENRICH_SLEEP_MS;
+const HATENA_BLOG_DEV_ENRICH_SLEEP_MS = env.HATENA_BLOG_DEV_ENRICH_SLEEP_MS;
+const HATENA_BLOG_DEV_SOURCE_ID = 'hatena_blog_dev';
+
+/**
+ * ソース別の enrichment 後 sleep 値を決定
+ * hatena_blog_dev は Hatena 独自ドメインでの 429 rate limit 回避のため長めに待つ
+ */
+function resolveEnrichSleepMs(sourceId: string): number {
+  if (sourceId === HATENA_BLOG_DEV_SOURCE_ID) {
+    return HATENA_BLOG_DEV_ENRICH_SLEEP_MS;
+  }
+  return POST_SAVE_ENRICH_SLEEP_MS;
+}
 
 interface ProcessSourceContext {
   source: Source;
@@ -144,15 +157,27 @@ interface ProcessSourceResult {
 }
 
 async function runWithTimeout<T>(
+  task: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string
+): Promise<T>;
+async function runWithTimeout<T>(
   task: () => Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string
+): Promise<T>;
+async function runWithTimeout<T>(
+  task: ((signal: AbortSignal) => Promise<T>) | (() => Promise<T>),
   timeoutMs: number,
   timeoutMessage: string
 ): Promise<T> {
   let timeoutId: NodeJS.Timeout | undefined;
+  const controller = new AbortController();
 
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
       console.error(`[TIMEOUT] ${timeoutMessage}`);
+      controller.abort(new Error(timeoutMessage));
       reject(new Error(timeoutMessage));
     }, timeoutMs);
   });
@@ -160,7 +185,9 @@ async function runWithTimeout<T>(
   try {
     // Call the task in a microtask so the timeout is armed even if the task body
     // does heavy synchronous work before its first await.
-    const taskPromise = Promise.resolve().then(task);
+    const taskPromise = Promise.resolve().then(() =>
+      (task as (signal: AbortSignal) => Promise<T>)(controller.signal)
+    );
     return await Promise.race([taskPromise, timeoutPromise]);
   } finally {
     if (timeoutId) {
@@ -361,7 +388,7 @@ async function processSource({
             try {
               debugLog(`   [INFO] エンリッチメント実行: ${article.title.substring(0, 40)}...`);
               const enrichedData = await runWithTimeout(
-                () => enricher.enrich(article.url),
+                (signal) => enricher.enrich(article.url, signal),
                 POST_SAVE_ENRICH_TIMEOUT_MS,
                 `Post-save enrichment timeout after ${POST_SAVE_ENRICH_TIMEOUT_MS}ms for ${sourceName}`
               );
@@ -430,8 +457,9 @@ async function processSource({
               console.error('   [WARN] エンリッチメントエラー:', enrichError instanceof Error ? enrichError.message : String(enrichError));
             }
 
-            if (POST_SAVE_ENRICH_SLEEP_MS > 0) {
-              await new Promise(resolve => setTimeout(resolve, POST_SAVE_ENRICH_SLEEP_MS));
+            const enrichSleepMs = resolveEnrichSleepMs(source.id);
+            if (enrichSleepMs > 0) {
+              await new Promise(resolve => setTimeout(resolve, enrichSleepMs));
             }
           }
         }
