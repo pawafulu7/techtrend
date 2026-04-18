@@ -14,6 +14,18 @@ export class RedisCache {
   getOrSetWithLock<T>(_key: string, fetcher: () => Promise<T>): Promise<T> {
     return fetcher();
   }
+  async getOrSetWithLockWithMeta<T>(
+    _key: string,
+    fetcher: () => Promise<T>
+  ): Promise<{
+    value: T;
+    cacheHit: boolean;
+    waitedMs: number;
+    timedOut: boolean;
+  }> {
+    const value = await fetcher();
+    return { value, cacheHit: false, waitedMs: 0, timedOut: false };
+  }
   invalidatePattern(_pattern: string): Promise<void> {
     return Promise.resolve();
   }

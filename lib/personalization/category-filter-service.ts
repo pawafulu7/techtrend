@@ -96,12 +96,14 @@ export class CategoryFilterService {
           cacheHit: centroidsCacheHit,
           fetchMs: centroidsFetchMs,
           lockWaitMs: centroidsLockWaitMs,
+          lockTimedOut: centroidsLockTimedOut,
         } = await getCategoryCentroids(this.db, categoryIds);
 
         span.setAttributes({
           centroidsCacheHit,
           centroidsFetchMs,
           centroidsLockWaitMs,
+          centroidsLockTimedOut,
         });
 
         if (centroids.length === 0) {
@@ -207,7 +209,9 @@ export class CategoryFilterService {
         logger.info(
           {
             timing: {
-              centroids: centroidsFetchMs + centroidsLockWaitMs,
+              // centroidsFetchMs already includes lockWaitMs (wall-clock); don't double count.
+              centroids: centroidsFetchMs,
+              centroidsLockWait: centroidsLockWaitMs,
               scoreAggregation: scoreAggregationMs,
               ...(multiTimings
                 ? {
@@ -380,10 +384,12 @@ export class CategoryFilterService {
         ? pLimit(maxConcurrency)
         : null;
 
-    // Wrap each per-category search with hrtime measurement
-    const perCategoryStartTimes = centroids.map(() => process.hrtime.bigint());
-    const searchPromises = centroids.map((c, i) => {
+    // Wrap each per-category search with hrtime measurement.
+    // Capture start time INSIDE the closure so pLimit queue-wait time is
+    // excluded from the measured per-category elapsed ms.
+    const searchPromises = centroids.map((c) => {
       const search = async () => {
+        const start = process.hrtime.bigint();
         const result = await getEmbeddingCandidates(
           this.db,
           c.centroid_embedding!,
@@ -391,7 +397,7 @@ export class CategoryFilterService {
           kPerCategory,
           options.excludeSourceIds
         );
-        return { result, elapsedMs: hrtimeDiffMs(perCategoryStartTimes[i]) };
+        return { result, elapsedMs: hrtimeDiffMs(start) };
       };
       return concurrencyLimit ? concurrencyLimit(search) : search();
     });

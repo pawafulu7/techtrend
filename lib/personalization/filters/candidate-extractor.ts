@@ -82,6 +82,7 @@ export type CategoryCentroidRow = {
  *   - cacheHit: true if served from Redis cache on the first lookup
  *   - fetchMs: Wall-clock ms from call start to resolution (includes lock wait)
  *   - lockWaitMs: Ms spent waiting in the Redis lock poll loop (0 if cache hit or lock acquired)
+ *   - lockTimedOut: true if the Redis lock wait reached maxWaitTime and fell back to direct fetch
  */
 export async function getCategoryCentroids(
   db: PrismaClient,
@@ -91,10 +92,11 @@ export async function getCategoryCentroids(
   cacheHit: boolean;
   fetchMs: number;
   lockWaitMs: number;
+  lockTimedOut: boolean;
 }> {
   const cacheKey = `centroids:${categoryIds.slice().sort().join(',')}`;
 
-  return measureAsync('personalization.centroids', async () => {
+  return measureAsync('personalization.centroids', async (span) => {
     const fetchStart = process.hrtime.bigint();
     const meta = await centroidCache.getOrSetWithLockWithMeta<
       CategoryCentroidRow[]
@@ -113,11 +115,19 @@ export async function getCategoryCentroids(
     );
     const fetchMs = hrtimeDiffMs(fetchStart);
 
+    span.setAttributes({
+      cacheHit: meta.cacheHit,
+      fetchMs,
+      lockWaitMs: meta.waitedMs,
+      lockTimedOut: meta.timedOut,
+    });
+
     return {
       centroids: meta.value,
       cacheHit: meta.cacheHit,
       fetchMs,
       lockWaitMs: meta.waitedMs,
+      lockTimedOut: meta.timedOut,
     };
   });
 }

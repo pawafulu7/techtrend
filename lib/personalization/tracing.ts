@@ -44,7 +44,7 @@ export async function measureAsync<T>(
     try {
       return await fn(span);
     } catch (err) {
-      span.recordException(err as Error);
+      span.recordException(err instanceof Error ? err : String(err));
       span.setStatus({ code: SpanStatusCode.ERROR });
       throw err;
     } finally {

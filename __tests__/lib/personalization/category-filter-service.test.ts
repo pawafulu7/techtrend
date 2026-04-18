@@ -45,13 +45,26 @@ jest.mock('@/lib/personalization/filters/candidate-extractor', () => {
     getCategoryCentroids: async (
       db: any,
       categoryIds: string[]
-    ): Promise<any[]> => {
-      return db.$queryRaw`
+    ): Promise<{
+      centroids: any[];
+      cacheHit: boolean;
+      fetchMs: number;
+      lockWaitMs: number;
+      lockTimedOut: boolean;
+    }> => {
+      const centroids = await db.$queryRaw`
         SELECT id, slug, "centroidEmbedding"::text as centroid_embedding
         FROM "InterestCategory"
         WHERE id = ANY(${categoryIds}::text[])
           AND "centroidEmbedding" IS NOT NULL
       `;
+      return {
+        centroids,
+        cacheHit: false,
+        fetchMs: 0,
+        lockWaitMs: 0,
+        lockTimedOut: false,
+      };
     },
     getEmbeddingCandidates: (...args: any[]) => {
       // If mockGetEmbeddingCandidates has an implementation, use it (for pLimit tests).
