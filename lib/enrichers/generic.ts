@@ -28,14 +28,16 @@ export class GenericContentEnricher extends BaseContentEnricher {
     externalSignal?: AbortSignal
   ): Promise<EnrichmentResult | null> {
     const maxRetries = 2;
+    let previousWas429 = false;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        if (attempt > 1) {
-          // retry 間は短縮 (最大2秒)
+        // 直前が 429 の場合は loop 冒頭の backoff を skip (実質 1.5 秒リトライを守る)
+        if (attempt > 1 && !previousWas429) {
           const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 2000);
           await this.delay(waitTime, externalSignal);
         }
+        previousWas429 = false;
 
         if (externalSignal?.aborted) {
           return null;
@@ -60,6 +62,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
           if (response.status === 429) {
             // 429 時の sleep 短縮 (1.5秒)。呼び出し側の source 別 sleep で本質的な rate 制御
             await this.delay(1500, externalSignal);
+            previousWas429 = true;
             continue;
           }
           if (attempt === maxRetries) {

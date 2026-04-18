@@ -112,20 +112,23 @@ export abstract class BaseContentEnricher implements IContentEnricher {
     externalSignal?: AbortSignal
   ): Promise<string> {
     let lastError: Error | null = null;
+    let previousWas429 = false;
 
     for (let attempt = 0; attempt < this.maxRetries; attempt++) {
       try {
-        if (attempt > 0) {
-          // リトライ時は指数バックオフ（最大2秒）
+        // 直前が 429 の場合は loop 冒頭の exponential backoff を skip
+        // (429 path の sleep のみ適用し、実質 1.5 秒リトライを守るため)
+        if (attempt > 0 && !previousWas429) {
           await this.delay(
             Math.min(this.retryDelay * Math.pow(2, attempt - 1), 2000),
             externalSignal
           );
         }
+        previousWas429 = false;
 
-        // AbortSignal.timeout() は自動クリーンアップされ、any() は listener を内部管理するため
-        // 旧実装の setTimeout + clearTimeout による timer leak バグ (catch パスでclearされない)
-        // を本構造で根本的に解消する
+        // AbortSignal.timeout() は catch 経路で旧実装にあった
+        // setTimeout+clearTimeout の leak を回避する（ただし成功/外部 abort 時の
+        // timeout signal 自体は明示 dispose できない点に留意）
         const signal = this.composeSignal(externalSignal, 15000);
         const response = await fetch(url, {
           headers: {
@@ -140,6 +143,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
         if (response.status === 429) {
           // Rate limit: 短縮 (1.5秒)。呼び出し側の source 別 sleep で本質的な rate 制御を行う
           await this.delay(1500, externalSignal);
+          previousWas429 = true;
           continue;
         }
 
