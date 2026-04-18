@@ -346,10 +346,21 @@ async function executePersonalizedQuery(
     let cached: CachedPersonalizationResult | null = null;
     try {
       cached = await measureAsync('personalization.cache_get', async (span) => {
-        const result =
-          await personalizationCache.get<CachedPersonalizationResult>(cacheKey);
-        span.setAttribute('cacheHit', result !== null);
-        return result;
+        try {
+          const result =
+            await personalizationCache.get<CachedPersonalizationResult>(
+              cacheKey
+            );
+          span.setAttribute('cacheHit', result !== null);
+          return result;
+        } catch (err) {
+          span.setAttribute('cacheError', true);
+          span.setAttribute(
+            'cacheErrorMessage',
+            err instanceof Error ? err.message : String(err)
+          );
+          throw err;
+        }
       });
     } catch (cacheError) {
       logger.warn(

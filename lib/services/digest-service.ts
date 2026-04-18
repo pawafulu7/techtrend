@@ -152,9 +152,18 @@ export class DigestService {
     const cacheKey = `digest:${userId}:${period}`;
     try {
       const cached = await measureAsync('digest.cache_get', async (span) => {
-        const result = await this.cache.get<DigestResponse>(cacheKey);
-        span.setAttribute('cacheHit', result !== null);
-        return result;
+        try {
+          const result = await this.cache.get<DigestResponse>(cacheKey);
+          span.setAttribute('cacheHit', result !== null);
+          return result;
+        } catch (err) {
+          span.setAttribute('cacheError', true);
+          span.setAttribute(
+            'cacheErrorMessage',
+            err instanceof Error ? err.message : String(err)
+          );
+          throw err;
+        }
       });
       if (cached) {
         logger.info({ userId, period }, 'Digest cache hit');
@@ -179,15 +188,7 @@ export class DigestService {
     });
 
     if (preferenceCount === 0) {
-      const allCategories = await this.filterService
-        .getActiveCategories()
-        .catch((error) => {
-          logger.warn(
-            { err: error, userId },
-            'getActiveCategories failed, falling back to empty list'
-          );
-          return [];
-        });
+      const allCategories = await this.getActiveCategoriesWithTiming(userId);
       const emptyResponse: DigestResponse = {
         period,
         sections: [
@@ -209,25 +210,7 @@ export class DigestService {
         where: { userId, scope: 'digest' },
         select: { categoryId: true },
       }),
-      (async () => {
-        const t0 = process.hrtime.bigint();
-        try {
-          const result = await this.filterService.getActiveCategories();
-          logger.info(
-            { timing: { activeCategoriesFetchMs: hrtimeDiffMs(t0) } },
-            'getActiveCategories timing'
-          );
-          return result;
-        } catch (error) {
-          logger.warn(
-            { err: error, userId },
-            'getActiveCategories failed, falling back to empty list'
-          );
-          return [] as Awaited<
-            ReturnType<CategoryFilterService['getActiveCategories']>
-          >;
-        }
-      })(),
+      this.getActiveCategoriesWithTiming(userId),
     ]);
     const categoryIds = preferences.map((p) => p.categoryId);
 
@@ -534,6 +517,32 @@ export class DigestService {
     } catch (error) {
       logger.error({ err: error, userId }, 'Failed to get missed articles');
       return { articles: [], ok: false };
+    }
+  }
+
+  /**
+   * Fetch all active categories with timing instrumentation and error fallback.
+   * Consolidated helper used in both the preference-empty path and the Promise.all path.
+   */
+  private async getActiveCategoriesWithTiming(
+    userId: string
+  ): Promise<
+    Awaited<ReturnType<CategoryFilterService['getActiveCategories']>>
+  > {
+    const t0 = process.hrtime.bigint();
+    try {
+      const result = await this.filterService.getActiveCategories();
+      logger.info(
+        { timing: { activeCategoriesFetchMs: hrtimeDiffMs(t0) } },
+        'getActiveCategories timing'
+      );
+      return result;
+    } catch (error) {
+      logger.warn(
+        { err: error, userId },
+        'getActiveCategories failed, falling back to empty list'
+      );
+      return [];
     }
   }
 

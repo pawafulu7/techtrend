@@ -382,8 +382,13 @@ export class RedisCache {
           { key: hashSensitiveValue(key), maxWaitTime },
           'Lock wait timeout, falling back to direct fetch'
         );
-        const value = await fetcher();
-        return { value, cacheHit: false, waitedMs, timedOut: true };
+        try {
+          fetcherExecuted = true;
+          const value = await fetcher();
+          return { value, cacheHit: false, waitedMs, timedOut: true };
+        } catch (fetchError) {
+          throw fetchError;
+        }
       }
     } catch (error) {
       // If fetcher already executed and threw, re-throw instead of calling fetcher again
@@ -395,8 +400,13 @@ export class RedisCache {
         { err: error, key: hashSensitiveValue(key) },
         'getOrSetWithLock error, falling back to direct fetch'
       );
-      const value = await fetcher();
-      return { value, cacheHit: false, waitedMs: 0, timedOut: false };
+      try {
+        fetcherExecuted = true;
+        const value = await fetcher();
+        return { value, cacheHit: false, waitedMs: 0, timedOut: false };
+      } catch (fetchError) {
+        throw fetchError;
+      }
     }
   }
 
