@@ -160,16 +160,6 @@ async function runWithTimeout<T>(
   task: (signal: AbortSignal) => Promise<T>,
   timeoutMs: number,
   timeoutMessage: string
-): Promise<T>;
-async function runWithTimeout<T>(
-  task: () => Promise<T>,
-  timeoutMs: number,
-  timeoutMessage: string
-): Promise<T>;
-async function runWithTimeout<T>(
-  task: ((signal: AbortSignal) => Promise<T>) | (() => Promise<T>),
-  timeoutMs: number,
-  timeoutMessage: string
 ): Promise<T> {
   let timeoutId: NodeJS.Timeout | undefined;
   const controller = new AbortController();
@@ -185,9 +175,7 @@ async function runWithTimeout<T>(
   try {
     // Call the task in a microtask so the timeout is armed even if the task body
     // does heavy synchronous work before its first await.
-    const taskPromise = Promise.resolve().then(() =>
-      (task as (signal: AbortSignal) => Promise<T>)(controller.signal)
-    );
+    const taskPromise = Promise.resolve().then(() => task(controller.signal));
     return await Promise.race([taskPromise, timeoutPromise]);
   } finally {
     if (timeoutId) {
@@ -241,6 +229,8 @@ async function processSource({
     const fetchTimeoutMs = sourceName === 'arXiv AI' ? ARXIV_TIMEOUT_MS : defaultTimeoutMs;
     const timeoutMessage = `Fetcher timeout after ${fetchTimeoutMs}ms for ${sourceName}`;
     const { articles, errors } = await runWithTimeout(
+      // fetcher.fetch() は signal を直接受け取らないが、runWithTimeout が timeout 時に
+      // Promise.race で reject するため後方互換で動作する
       () => fetcher.fetch(),
       fetchTimeoutMs,
       timeoutMessage
