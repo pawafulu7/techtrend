@@ -26,6 +26,14 @@ export const DEFAULT_MIN_SIMILARITY =
 /** Safety cap for threshold-based filtering to prevent excessive memory use */
 export const DEFAULT_THRESHOLD_RESULT_LIMIT = 5000;
 
+/**
+ * HNSW ef_search parameter bounds for pgvector.
+ * pgvector's documented valid range is 1..1000; values above 1000 may be
+ * rejected depending on the build. Clamp at 1000 to keep SET LOCAL safe.
+ */
+const HNSW_EF_SEARCH_MIN = 40;
+const HNSW_EF_SEARCH_MAX = 1000;
+
 // =============================================================================
 // Type Definitions for SQL Results
 // =============================================================================
@@ -164,19 +172,53 @@ export async function getEmbeddingCandidates(
 
   // Stage 1: Pure kNN query on partial HNSW index (no JOINs, no extra filters)
   // The partial index on embeddingKey = 'summary' enables HNSW usage here.
+  // hnsw.ef_search must be >= LIMIT or the HNSW search returns at most ef_search rows
+  // (default 40), causing topK to be silently capped regardless of the requested value.
   type Stage1Row = { articleId: string; sim_emb: number };
+  const efSearch = Math.min(
+    Math.max(Math.floor(effectiveLimit), HNSW_EF_SEARCH_MIN),
+    HNSW_EF_SEARCH_MAX
+  );
   const stage1Results = await measureAsync(
     'personalization.stage1_knn',
     async (span) => {
-      const rows = await db.$queryRaw<Stage1Row[]>`
-        SELECT "articleId", 1 - (embedding <=> ${centroid}::vector) AS sim_emb
-        FROM "ArticleEmbedding"
-        WHERE "embeddingKey" = 'summary'::"EmbeddingKey"
-        ORDER BY embedding <=> ${centroid}::vector
-        LIMIT ${effectiveLimit}
-      `;
+      let rows: Stage1Row[];
+      let efSearchApplied = true;
+      try {
+        rows = await db.$transaction(async (tx) => {
+          await tx.$executeRawUnsafe(`SET LOCAL hnsw.ef_search = ${efSearch}`);
+          return tx.$queryRaw<Stage1Row[]>`
+            SELECT "articleId", 1 - (embedding <=> ${centroid}::vector) AS sim_emb
+            FROM "ArticleEmbedding"
+            WHERE "embeddingKey" = 'summary'::"EmbeddingKey"
+            ORDER BY embedding <=> ${centroid}::vector
+            LIMIT ${effectiveLimit}
+          `;
+        });
+      } catch (err) {
+        // Fallback: ef_search SET may fail on some pgvector builds or if the
+        // connection rejects the parameter. Retry without SET LOCAL so the
+        // request still returns results, at the cost of reduced recall.
+        logger.warn(
+          {
+            err: err instanceof Error ? err.message : String(err),
+            efSearch,
+          },
+          'Stage1 SET LOCAL hnsw.ef_search failed; falling back to default ef_search'
+        );
+        efSearchApplied = false;
+        rows = await db.$queryRaw<Stage1Row[]>`
+          SELECT "articleId", 1 - (embedding <=> ${centroid}::vector) AS sim_emb
+          FROM "ArticleEmbedding"
+          WHERE "embeddingKey" = 'summary'::"EmbeddingKey"
+          ORDER BY embedding <=> ${centroid}::vector
+          LIMIT ${effectiveLimit}
+        `;
+      }
       span.setAttributes({
         effectiveLimit,
+        efSearch,
+        efSearchApplied,
         stage1ResultCount: rows.length,
       });
       return rows;

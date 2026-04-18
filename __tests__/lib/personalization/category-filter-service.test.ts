@@ -25,6 +25,7 @@ const mockPrisma = {
     count: jest.fn(),
   },
   $queryRaw: jest.fn(),
+  $executeRawUnsafe: jest.fn().mockResolvedValue(undefined),
   $transaction: jest.fn((fn: (tx: typeof mockPrisma) => Promise<any>) =>
     fn(mockPrisma)
   ),
