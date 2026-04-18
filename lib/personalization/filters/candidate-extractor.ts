@@ -8,6 +8,7 @@ import { PrismaClient, Prisma } from '@/lib/prisma-exports';
 import { DEFAULT_SCORE_PARAMETERS } from '../types';
 import { RedisCache } from '@/lib/cache/redis-cache';
 import { logger } from '@/lib/logger';
+import { measureAsync, hrtimeDiffMs } from '../tracing';
 
 /** Module-level singleton for centroid cache (TTL: 1 hour) */
 const centroidCache = new RedisCache({
@@ -75,26 +76,60 @@ export type CategoryCentroidRow = {
 
 /**
  * Get category centroids from database, with Redis cache (TTL: 1 hour).
+ *
+ * Returns metadata for observability in addition to the centroid rows:
+ *   - centroids: The centroid rows
+ *   - cacheHit: true if served from Redis cache on the first lookup
+ *   - fetchMs: Wall-clock ms from call start to resolution (includes lock wait)
+ *   - lockWaitMs: Ms spent waiting in the Redis lock poll loop (0 if cache hit or lock acquired)
+ *   - lockTimedOut: true if the Redis lock wait reached maxWaitTime and fell back to direct fetch
  */
 export async function getCategoryCentroids(
   db: PrismaClient,
   categoryIds: string[]
-): Promise<CategoryCentroidRow[]> {
+): Promise<{
+  centroids: CategoryCentroidRow[];
+  cacheHit: boolean;
+  fetchMs: number;
+  lockWaitMs: number;
+  lockTimedOut: boolean;
+}> {
   const cacheKey = `centroids:${categoryIds.slice().sort().join(',')}`;
 
-  return centroidCache.getOrSetWithLock<CategoryCentroidRow[]>(
-    cacheKey,
-    () =>
-      db.$queryRaw<CategoryCentroidRow[]>`
-        SELECT
-          id,
-          slug,
-          "centroidEmbedding"::text as centroid_embedding
-        FROM "InterestCategory"
-        WHERE id = ANY(${categoryIds}::text[])
-          AND "centroidEmbedding" IS NOT NULL
-      `
-  );
+  return measureAsync('personalization.centroids', async (span) => {
+    const fetchStart = process.hrtime.bigint();
+    const meta = await centroidCache.getOrSetWithLockWithMeta<
+      CategoryCentroidRow[]
+    >(
+      cacheKey,
+      () =>
+        db.$queryRaw<CategoryCentroidRow[]>`
+          SELECT
+            id,
+            slug,
+            "centroidEmbedding"::text as centroid_embedding
+          FROM "InterestCategory"
+          WHERE id = ANY(${categoryIds}::text[])
+            AND "centroidEmbedding" IS NOT NULL
+        `
+    );
+    const fetchMs = hrtimeDiffMs(fetchStart);
+
+    span.setAttributes({
+      cacheHit: meta.cacheHit,
+      fetchMs,
+      lockWaitMs: meta.waitedMs,
+      lockTimedOut: meta.timedOut,
+    });
+
+    return {
+      centroids: meta.value,
+      cacheHit: meta.cacheHit,
+      fetchMs,
+      lockWaitMs: meta.waitedMs,
+      lockTimedOut: meta.timedOut,
+    };
+  });
 }
 
 /**
@@ -130,13 +165,23 @@ export async function getEmbeddingCandidates(
   // Stage 1: Pure kNN query on partial HNSW index (no JOINs, no extra filters)
   // The partial index on embeddingKey = 'summary' enables HNSW usage here.
   type Stage1Row = { articleId: string; sim_emb: number };
-  const stage1Results = await db.$queryRaw<Stage1Row[]>`
-    SELECT "articleId", 1 - (embedding <=> ${centroid}::vector) AS sim_emb
-    FROM "ArticleEmbedding"
-    WHERE "embeddingKey" = 'summary'::"EmbeddingKey"
-    ORDER BY embedding <=> ${centroid}::vector
-    LIMIT ${effectiveLimit}
-  `;
+  const stage1Results = await measureAsync(
+    'personalization.stage1_knn',
+    async (span) => {
+      const rows = await db.$queryRaw<Stage1Row[]>`
+        SELECT "articleId", 1 - (embedding <=> ${centroid}::vector) AS sim_emb
+        FROM "ArticleEmbedding"
+        WHERE "embeddingKey" = 'summary'::"EmbeddingKey"
+        ORDER BY embedding <=> ${centroid}::vector
+        LIMIT ${effectiveLimit}
+      `;
+      span.setAttributes({
+        effectiveLimit,
+        stage1ResultCount: rows.length,
+      });
+      return rows;
+    }
+  );
 
   if (stage1Results.length === 0) {
     return [];
@@ -150,43 +195,51 @@ export async function getEmbeddingCandidates(
     ','
   );
 
-  const result = await db.$queryRaw<RawEmbeddingCandidate[]>`
-    SELECT
-      a.id,
-      a.title,
-      a.url,
-      a."publishedAt" as published_at,
-      a."createdAt" as created_at,
-      a."qualityScore" as quality_score,
-      a."bookmarks" as bookmarks,
-      a."userVotes" as user_votes,
-      a."sourceId" as source_id,
-      a.summary,
-      a.thumbnail as thumbnail_url,
-      s1.sim_emb
-    FROM (VALUES ${valuesClause}) AS s1("articleId", sim_emb)
-    INNER JOIN "Article" a ON a.id = s1."articleId"
-    WHERE a."summaryComputedAt" IS NOT NULL
-      AND a."isHidden" = false
-      ${periodFilter}
-      ${sourceExcludeFilter}
-      AND s1.sim_emb >= ${DEFAULT_MIN_SIMILARITY}
-  `;
+  const mapped = await measureAsync(
+    'personalization.stage2_fetch',
+    async (span) => {
+      const result = await db.$queryRaw<RawEmbeddingCandidate[]>`
+        SELECT
+          a.id,
+          a.title,
+          a.url,
+          a."publishedAt" as published_at,
+          a."createdAt" as created_at,
+          a."qualityScore" as quality_score,
+          a."bookmarks" as bookmarks,
+          a."userVotes" as user_votes,
+          a."sourceId" as source_id,
+          a.summary,
+          a.thumbnail as thumbnail_url,
+          s1.sim_emb
+        FROM (VALUES ${valuesClause}) AS s1("articleId", sim_emb)
+        INNER JOIN "Article" a ON a.id = s1."articleId"
+        WHERE a."summaryComputedAt" IS NOT NULL
+          AND a."isHidden" = false
+          ${periodFilter}
+          ${sourceExcludeFilter}
+          AND s1.sim_emb >= ${DEFAULT_MIN_SIMILARITY}
+      `;
 
-  const mapped = result.map((row) => ({
-    id: row.id,
-    title: row.title,
-    url: row.url,
-    publishedAt: new Date(row.published_at),
-    createdAt: new Date(row.created_at),
-    qualityScore: row.quality_score ?? 0,
-    bookmarks: row.bookmarks ?? 0,
-    userVotes: row.user_votes ?? 0,
-    sourceId: row.source_id,
-    summary: row.summary,
-    thumbnailUrl: row.thumbnail_url,
-    embeddingSimilarity: row.sim_emb,
-  }));
+      const rows = result.map((row) => ({
+        id: row.id,
+        title: row.title,
+        url: row.url,
+        publishedAt: new Date(row.published_at),
+        createdAt: new Date(row.created_at),
+        qualityScore: row.quality_score ?? 0,
+        bookmarks: row.bookmarks ?? 0,
+        userVotes: row.user_votes ?? 0,
+        sourceId: row.source_id,
+        summary: row.summary,
+        thumbnailUrl: row.thumbnail_url,
+        embeddingSimilarity: row.sim_emb,
+      }));
+
+      span.setAttribute('stage2ResultCount', rows.length);
+      return rows;
+    }
+  );
 
   // Monitor for potential recall issues after topK reduction
   if (mapped.length < 10 && effectiveLimit >= 50) {
@@ -211,20 +264,26 @@ export async function checkTagMatches(
     return [];
   }
 
-  const articleIds = candidates.map((c) => c.id);
+  return measureAsync('personalization.tag_match', async (span) => {
+    span.setAttribute('candidateCount', candidates.length);
 
-  const matchingArticles = await db.$queryRaw<{ article_id: string }[]>`
-    SELECT DISTINCT at."A" as article_id
-    FROM "_ArticleToTag" at
-    INNER JOIN "TagCategoryMapping" tcm ON at."B" = tcm."tagId"
-    WHERE at."A" = ANY(${articleIds}::text[])
-      AND tcm."categoryId" = ANY(${categoryIds}::text[])
-  `;
+    const articleIds = candidates.map((c) => c.id);
 
-  const matchingSet = new Set(matchingArticles.map((r) => r.article_id));
+    const matchingArticles = await db.$queryRaw<{ article_id: string }[]>`
+        SELECT DISTINCT at."A" as article_id
+        FROM "_ArticleToTag" at
+        INNER JOIN "TagCategoryMapping" tcm ON at."B" = tcm."tagId"
+        WHERE at."A" = ANY(${articleIds}::text[])
+          AND tcm."categoryId" = ANY(${categoryIds}::text[])
+      `;
 
-  return candidates.map((c) => ({
-    ...c,
-    hasTagMatch: matchingSet.has(c.id),
-  }));
+    const matchingSet = new Set(matchingArticles.map((r) => r.article_id));
+    const result = candidates.map((c) => ({
+      ...c,
+      hasTagMatch: matchingSet.has(c.id),
+    }));
+
+    span.setAttribute('matchedCount', matchingSet.size);
+    return result;
+  });
 }

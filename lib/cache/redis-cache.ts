@@ -274,22 +274,34 @@ export class RedisCache {
   }
 
   /**
-   * Helper method to handle cache with fallback and lock (stampede protection)
-   * Uses SETNX-based locking to prevent multiple concurrent fetches for the same key
+   * Helper method to handle cache with fallback and lock (stampede protection),
+   * returning observability metadata alongside the cached/fetched value.
+   *
+   * Returned metadata:
+   *   - value: The cached or freshly fetched value
+   *   - cacheHit: true if the value was served from cache on the first lookup
+   *   - waitedMs: Milliseconds spent waiting in the lock-poll loop (0 if lock was acquired immediately or cache hit)
+   *   - timedOut: true if the lock-wait loop reached maxWaitTime and fell back to a direct fetch
    */
-  async getOrSetWithLock<T>(
+  async getOrSetWithLockWithMeta<T>(
     key: string,
     fetcher: () => Promise<T>,
-    ttl?: number
-  ): Promise<T> {
+    options?: { ttl?: number }
+  ): Promise<{
+    value: T;
+    cacheHit: boolean;
+    waitedMs: number;
+    timedOut: boolean;
+  }> {
     const lockTTL = 30; // Lock TTL in seconds
     const maxWaitTime = 5000; // Max wait time in milliseconds
     const pollInterval = 100; // Poll interval in milliseconds
+    const ttl = options?.ttl;
 
     // Try to get from cache first
     const cached = await this.get<T>(key);
     if (cached !== null) {
-      return cached;
+      return { value: cached, cacheHit: true, waitedMs: 0, timedOut: false };
     }
 
     const lockKey = `${key}:lock`;
@@ -314,7 +326,12 @@ export class RedisCache {
           fetcherExecuted = true;
           const fresh = await fetcher();
           await this.set(key, fresh, ttl);
-          return fresh;
+          return {
+            value: fresh,
+            cacheHit: false,
+            waitedMs: 0,
+            timedOut: false,
+          };
         } catch (fetchError) {
           // Fetcher failed while holding lock - log and re-throw without calling fetcher again
           logger.warn(
@@ -339,23 +356,39 @@ export class RedisCache {
           }
         }
       } else {
-        // Lock not acquired - poll for cached value
+        // Lock not acquired - poll for cached value and measure wait time
+        const waitStart = process.hrtime.bigint();
         const startTime = Date.now();
         while (Date.now() - startTime < maxWaitTime) {
           await new Promise((resolve) => setTimeout(resolve, pollInterval));
 
           const newCached = await this.get<T>(key);
           if (newCached !== null) {
-            return newCached;
+            const waitedMs =
+              Number(process.hrtime.bigint() - waitStart) / 1_000_000;
+            return {
+              value: newCached,
+              cacheHit: false,
+              waitedMs,
+              timedOut: false,
+            };
           }
         }
 
         // Timeout - fallback to direct fetch (without caching to avoid race)
+        const waitedMs =
+          Number(process.hrtime.bigint() - waitStart) / 1_000_000;
         logger.warn(
           { key: hashSensitiveValue(key), maxWaitTime },
           'Lock wait timeout, falling back to direct fetch'
         );
-        return await fetcher();
+        try {
+          fetcherExecuted = true;
+          const value = await fetcher();
+          return { value, cacheHit: false, waitedMs, timedOut: true };
+        } catch (fetchError) {
+          throw fetchError;
+        }
       }
     } catch (error) {
       // If fetcher already executed and threw, re-throw instead of calling fetcher again
@@ -367,7 +400,30 @@ export class RedisCache {
         { err: error, key: hashSensitiveValue(key) },
         'getOrSetWithLock error, falling back to direct fetch'
       );
-      return await fetcher();
+      try {
+        fetcherExecuted = true;
+        const value = await fetcher();
+        return { value, cacheHit: false, waitedMs: 0, timedOut: false };
+      } catch (fetchError) {
+        throw fetchError;
+      }
     }
+  }
+
+  /**
+   * Helper method to handle cache with fallback and lock (stampede protection)
+   * Uses SETNX-based locking to prevent multiple concurrent fetches for the same key.
+   *
+   * For observability metadata (cacheHit / waitedMs / timedOut), use getOrSetWithLockWithMeta instead.
+   */
+  async getOrSetWithLock<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+    ttl?: number
+  ): Promise<T> {
+    const { value } = await this.getOrSetWithLockWithMeta<T>(key, fetcher, {
+      ttl,
+    });
+    return value;
   }
 }

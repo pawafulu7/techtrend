@@ -1,5 +1,6 @@
 import pino from 'pino';
 import crypto from 'crypto';
+import { trace, isSpanContextValid } from '@opentelemetry/api';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
@@ -151,6 +152,18 @@ const logger = pino({
     level: (label) => {
       return { level: label.toUpperCase() };
     },
+  },
+
+  // Automatically inject traceId/spanId from active OTEL span into every log record.
+  // Uses isSpanContextValid() to avoid emitting the all-zero NoopSpan context
+  // (32 '0' traceId) when OTEL SDK is not initialized (batch scripts, tests).
+  // NOTE: pino's default mixinMergeStrategy is Object.assign(mergedObject, mixin),
+  // so if a log call explicitly passes `traceId`/`spanId`, the mixin value wins.
+  mixin: () => {
+    const ctx = trace.getActiveSpan()?.spanContext();
+    return ctx && isSpanContextValid(ctx)
+      ? { traceId: ctx.traceId, spanId: ctx.spanId }
+      : {};
   },
 
   serializers: {
