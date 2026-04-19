@@ -105,6 +105,15 @@ describe('GET /api/admin/jobs/embedding-summary', () => {
       expect(withRateLimitCallOnLoad![0]).toBe('admin:read');
       expect(typeof withRateLimitCallOnLoad![1]).toBe('function');
     });
+
+    it('合成順が withAdminAuth(withRateLimit(...)) であること（逆順の回帰検知）', () => {
+      expect(mockWithRateLimit.mock.invocationCallOrder[0]).toBeLessThan(
+        mockWithAdminAuth.mock.invocationCallOrder[0]
+      );
+      expect(mockWithAdminAuth.mock.calls[0][0]).toBe(
+        mockWithRateLimit.mock.results[0].value
+      );
+    });
   });
 
   describe('Authorized requests', () => {
