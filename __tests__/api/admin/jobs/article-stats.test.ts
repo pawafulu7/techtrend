@@ -70,19 +70,21 @@ describe('GET /api/admin/jobs/article-stats', () => {
   let GET: any;
   let withAdminAuthCalledOnLoad = false;
   let withRateLimitCallOnLoad: any[] | null = null;
+  let withAdminAuthFirstArgOnLoad: any = null;
+  let withRateLimitResultOnLoad: any = null;
 
   beforeAll(async () => {
     mockWithAdminAuth.mockClear();
     mockWithRateLimit.mockClear();
-    const adminAuthCallsBefore = mockWithAdminAuth.mock.calls.length;
-    const rateLimitCallsBefore = mockWithRateLimit.mock.calls.length;
     const mod = await import('@/app/api/admin/jobs/article-stats/route');
     GET = mod.GET;
-    withAdminAuthCalledOnLoad =
-      mockWithAdminAuth.mock.calls.length > adminAuthCallsBefore;
-    if (mockWithRateLimit.mock.calls.length > rateLimitCallsBefore) {
-      withRateLimitCallOnLoad =
-        mockWithRateLimit.mock.calls[rateLimitCallsBefore];
+    if (mockWithAdminAuth.mock.calls.length > 0) {
+      withAdminAuthCalledOnLoad = true;
+      withAdminAuthFirstArgOnLoad = mockWithAdminAuth.mock.calls[0][0];
+    }
+    if (mockWithRateLimit.mock.calls.length > 0) {
+      withRateLimitCallOnLoad = mockWithRateLimit.mock.calls[0];
+      withRateLimitResultOnLoad = mockWithRateLimit.mock.results[0].value;
     }
   });
 
@@ -107,9 +109,8 @@ describe('GET /api/admin/jobs/article-stats', () => {
       // 正順では withRateLimit が先に評価され、その戻り値を withAdminAuth が受け取る。
       // 逆順 withRateLimit(withAdminAuth(handler)) では withAdminAuth が原 handler を直接受け取るため、
       // 下記の参照一致は成立しない。
-      expect(mockWithAdminAuth.mock.calls[0][0]).toBe(
-        mockWithRateLimit.mock.results[0].value
-      );
+      // (afterEach で jest.clearAllMocks されるため、module-load 時点で捕捉した値を参照)
+      expect(withAdminAuthFirstArgOnLoad).toBe(withRateLimitResultOnLoad);
     });
   });
 
