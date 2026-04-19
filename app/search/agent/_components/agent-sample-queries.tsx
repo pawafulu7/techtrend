@@ -36,41 +36,82 @@ const CATEGORY_ICON_MAP: Record<SampleQuery['category'], LucideIcon> = {
 // カテゴリ別カラー参照: CSS カスタムプロパティ経由でライト/ダーク両モード自動切替。
 // 値は lib/design-tokens.ts の lightCategoryColors / darkCategoryColors から
 // npm run generate:tokens で app/generated-tokens.css に反映される。
+//
+// hover variant はカテゴリ固有のブランド色を活用するため、汎用フィルタ
+// (group-hover:brightness-95) ではなく `--tt-color-category-{cat}-bg-hover` /
+// `--tt-color-category-{cat}-icon-hover` を静的クラスとして列挙する
+// （Tailwind JIT に静的に解決させるため category ごとのクラスを直書き）。
 const CATEGORY_CLASSES: Record<
   SampleQuery['category'],
-  { tileBg: string; iconColor: string }
+  {
+    tileBg: string;
+    tileBgGroupHover: string;
+    iconColor: string;
+    iconColorGroupHover: string;
+  }
 > = {
   infrastructure: {
     tileBg: 'bg-[var(--tt-color-category-infrastructure-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-infrastructure-bg-hover)]',
     iconColor: 'text-[var(--tt-color-category-infrastructure-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-infrastructure-icon-hover)]',
   },
   ai: {
     tileBg: 'bg-[var(--tt-color-category-ai-bg)]',
+    tileBgGroupHover: 'group-hover:bg-[var(--tt-color-category-ai-bg-hover)]',
     iconColor: 'text-[var(--tt-color-category-ai-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-ai-icon-hover)]',
   },
   frontend: {
     tileBg: 'bg-[var(--tt-color-category-frontend-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-frontend-bg-hover)]',
     iconColor: 'text-[var(--tt-color-category-frontend-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-frontend-icon-hover)]',
   },
   backend: {
     tileBg: 'bg-[var(--tt-color-category-backend-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-backend-bg-hover)]',
     iconColor: 'text-[var(--tt-color-category-backend-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-backend-icon-hover)]',
   },
   security: {
     tileBg: 'bg-[var(--tt-color-category-security-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-security-bg-hover)]',
     iconColor: 'text-[var(--tt-color-category-security-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-security-icon-hover)]',
   },
   devops: {
     tileBg: 'bg-[var(--tt-color-category-devops-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-devops-bg-hover)]',
     iconColor: 'text-[var(--tt-color-category-devops-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-devops-icon-hover)]',
   },
   database: {
     tileBg: 'bg-[var(--tt-color-category-database-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-database-bg-hover)]',
     iconColor: 'text-[var(--tt-color-category-database-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-database-icon-hover)]',
   },
   mobile: {
     tileBg: 'bg-[var(--tt-color-category-mobile-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-mobile-bg-hover)]',
     iconColor: 'text-[var(--tt-color-category-mobile-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-mobile-icon-hover)]',
   },
 };
 
@@ -122,9 +163,11 @@ function SidebarAccordion({
                 aria-controls={`category-queries-${category}`}
                 data-testid={`category-toggle-${category}`}
               >
-                <div className={`shrink-0 rounded-full p-2 ${classes.tileBg}`}>
+                <div
+                  className={`shrink-0 rounded-full p-2 transition-colors ${classes.tileBg} ${classes.tileBgGroupHover}`}
+                >
                   <IconComponent
-                    className={`h-4 w-4 ${classes.iconColor}`}
+                    className={`h-4 w-4 transition-colors ${classes.iconColor} ${classes.iconColorGroupHover}`}
                     aria-hidden="true"
                   />
                 </div>
@@ -253,10 +296,10 @@ export function AgentSampleQueries({
             >
               <div className="flex flex-col items-center gap-2 text-center">
                 <div
-                  className={`rounded-full p-3 transition-colors group-hover:brightness-95 ${classes.tileBg}`}
+                  className={`rounded-full p-3 transition-colors ${classes.tileBg} ${classes.tileBgGroupHover}`}
                 >
                   <IconComponent
-                    className={`h-5 w-5 transition-colors ${classes.iconColor}`}
+                    className={`h-5 w-5 transition-colors ${classes.iconColor} ${classes.iconColorGroupHover}`}
                     aria-hidden="true"
                   />
                 </div>

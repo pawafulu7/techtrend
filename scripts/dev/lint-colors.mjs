@@ -116,6 +116,14 @@ function isTooShallowDirectoryPattern(pattern) {
   return segments.length < 2;
 }
 
+// Reject globstar `**` patterns. matchPattern() does not support cross-segment
+// matching and a pattern like `app/**/*.tsx` would slip past the shallow /
+// dangerous checks while still silencing large swathes of the tree. Force
+// exact file paths or narrow trailing-slash directories instead.
+function isUnsupportedGlobPattern(pattern) {
+  return pattern.includes('**');
+}
+
 const ALLOWLIST_COMMENT_REGEX =
   /#\s*(TODO:\s*remove\s+after\s+PR-\d+\b|brand-only\b|permanent\b)/i;
 
@@ -149,6 +157,13 @@ async function readIgnoreFile() {
         );
         return;
       }
+    }
+
+    if (isUnsupportedGlobPattern(pattern)) {
+      errors.push(
+        `.lintcolorsignore:${lineNumber}: pattern "${pattern}" uses unsupported multi-segment glob "**". Use explicit file paths or a narrow trailing-slash directory.`,
+      );
+      return;
     }
 
     if (isTooShallowDirectoryPattern(pattern)) {
@@ -281,9 +296,45 @@ function stripComments(source) {
     '^',
   ]);
 
-  function canStartRegex(prevCh) {
-    if (prevCh === undefined) return true;
-    return PRECEDES_REGEX.has(prevCh);
+  // Keywords that, when they appear immediately before a `/`, force regex
+  // literal semantics (division is illegal right after these). Without this the
+  // single-char lookback treats `return /https?:\/\//` as division and lets the
+  // trailing `//` swallow the rest of the line as a comment.
+  const PRECEDES_REGEX_KEYWORDS = new Set([
+    'return',
+    'throw',
+    'case',
+    'delete',
+    'void',
+    'typeof',
+    'yield',
+    'await',
+    'new',
+    'in',
+    'of',
+    'instanceof',
+    'do',
+    'else',
+    'finally',
+  ]);
+
+  function previousSignificantToken(index) {
+    let prevIdx = index - 1;
+    while (prevIdx >= 0 && /\s/.test(source[prevIdx])) prevIdx--;
+    if (prevIdx < 0) return undefined;
+
+    const ch = source[prevIdx];
+    if (!/[A-Za-z0-9_$]/.test(ch)) return ch;
+
+    const endExclusive = prevIdx + 1;
+    while (prevIdx >= 0 && /[A-Za-z0-9_$]/.test(source[prevIdx])) prevIdx--;
+    return source.slice(prevIdx + 1, endExclusive);
+  }
+
+  function canStartRegexAfterToken(prevToken) {
+    if (prevToken === undefined) return true;
+    if (prevToken.length === 1) return PRECEDES_REGEX.has(prevToken);
+    return PRECEDES_REGEX_KEYWORDS.has(prevToken);
   }
 
   for (let i = 0; i < source.length; i++) {
@@ -339,12 +390,11 @@ function stripComments(source) {
       }
       if (ch === '/') {
         // Heuristic: is this the start of a regex literal? Look at the previous
-        // non-whitespace character. Division (`a / b`) only occurs after values,
-        // so regex literals follow punctuation or operators.
-        let prevIdx = i - 1;
-        while (prevIdx >= 0 && /\s/.test(source[prevIdx])) prevIdx--;
-        const prev = prevIdx >= 0 ? source[prevIdx] : undefined;
-        if (canStartRegex(prev)) {
+        // significant token (single punctuation char OR identifier word).
+        // Division (`a / b`) only occurs after values; regex literals follow
+        // punctuation operators or keywords like `return`, `throw`, `await`.
+        const prevToken = previousSignificantToken(i);
+        if (canStartRegexAfterToken(prevToken)) {
           inRegex = true;
           out.push(ch);
           continue;
@@ -431,6 +481,18 @@ async function runSelfCheck() {
       source: 'const url = "https://example.com"; const el = <div className="text-rose-600" />;',
       expectMatch: true,
     },
+    {
+      name: 'do not misread // in regex after return keyword (CodeRabbit T3)',
+      source:
+        'function hasUrl(v) { return /https?:\\/\\//.test(v); } const el = <div className="bg-red-500" />;',
+      expectMatch: true,
+    },
+    {
+      name: 'do not misread // in regex after throw keyword',
+      source:
+        'throw /invalid:\\/\\//; const el = <div className="text-rose-700" />;',
+      expectMatch: true,
+    },
   ];
 
   let failed = 0;
@@ -489,6 +551,18 @@ async function runSelfCheck() {
       comment: '# TODO: remove after PR-2',
       expectOk: true,
     },
+    {
+      name: 'reject globstar pattern app/**/*.tsx (CodeRabbit T2)',
+      pattern: 'app/**/*.tsx',
+      comment: '# brand-only: test',
+      expectOk: false,
+    },
+    {
+      name: 'reject globstar pattern components/**',
+      pattern: 'components/**',
+      comment: '# brand-only: test',
+      expectOk: false,
+    },
   ];
 
   for (const c of allowlistCases) {
@@ -498,14 +572,26 @@ async function runSelfCheck() {
     const comment = hashIndex === -1 ? '' : line.slice(hashIndex).trim();
     const isDangerous = DANGEROUS_ALLOWLIST_PATTERNS.some((p) => pattern === p);
     const isShallow = isTooShallowDirectoryPattern(pattern);
+    const isGlobstar = isUnsupportedGlobPattern(pattern);
     const hasComment = ALLOWLIST_COMMENT_REGEX.test(comment);
-    const ok = !isDangerous && !isShallow && hasComment;
+    const ok = !isDangerous && !isShallow && !isGlobstar && hasComment;
     if (ok !== c.expectOk) {
       failed++;
       console.error(`✗ ${c.name}: expected ok=${c.expectOk}, got ok=${ok}`);
     } else {
       console.log(`✓ ${c.name}`);
     }
+  }
+
+  // Validate the real `.lintcolorsignore` file in the repository root so that
+  // self-check protects the shipped config, not only fixtures (CodeRabbit T4).
+  const { errors: realFileErrors } = await readIgnoreFile();
+  if (realFileErrors.length > 0) {
+    failed += realFileErrors.length;
+    console.error('\n✗ real .lintcolorsignore validation failed:');
+    for (const err of realFileErrors) console.error(`  ${err}`);
+  } else {
+    console.log('✓ real .lintcolorsignore entries pass validation');
   }
 
   if (failed > 0) {

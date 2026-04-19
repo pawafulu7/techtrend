@@ -60,11 +60,15 @@ function toNestedColorVars(
   for (const [outerKey, inner] of Object.entries(obj).sort(([a], [b]) =>
     a.localeCompare(b),
   )) {
+    // Normalise the outer key too so that future camelCase additions (e.g.
+    // `inReview`) still yield kebab-cased CSS variables, matching the
+    // repository-wide `--tt-*` naming convention.
+    const kebabOuter = toKebabCase(outerKey);
     for (const [innerKey, value] of Object.entries(inner).sort(([a], [b]) =>
       a.localeCompare(b),
     )) {
       const kebabInner = toKebabCase(innerKey);
-      lines.push(`  --tt-${prefix}-${outerKey}-${kebabInner}: ${value};`);
+      lines.push(`  --tt-${prefix}-${kebabOuter}-${kebabInner}: ${value};`);
     }
   }
   return lines.join('\n');
