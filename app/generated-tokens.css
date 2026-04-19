@@ -66,6 +66,24 @@
   --tt-color-category-security-icon: #D97706;
   --tt-color-category-security-icon-hover: #B45309;
 
+  /* Status Colors - Light Mode (social-posts, diff-summary, metrics status UI) */
+  --tt-color-status-archived-icon-bg: #F3F4F6;
+  --tt-color-status-archived-text: #6B7280;
+  --tt-color-status-draft-icon-bg: #FEF3C7;
+  --tt-color-status-draft-text: #B45309;
+  --tt-color-status-failed-icon-bg: #FFE4E6;
+  --tt-color-status-failed-text: #BE123C;
+  --tt-color-status-neutral-icon-bg: #E2E8F0;
+  --tt-color-status-neutral-text: #0F172A;
+  --tt-color-status-posted-icon-bg: #D1FAE5;
+  --tt-color-status-posted-text: #047857;
+  --tt-color-status-posting-icon-bg: #FEF9C3;
+  --tt-color-status-posting-text: #A16207;
+  --tt-color-status-reviewed-icon-bg: #E0F2FE;
+  --tt-color-status-reviewed-text: #0369A1;
+  --tt-color-status-scheduled-icon-bg: #EDE9FE;
+  --tt-color-status-scheduled-text: #6D28D9;
+
   /* Typography */
   --tt-font-body: 'Inter', system-ui, sans-serif;
   --tt-font-heading: 'Space Grotesk', system-ui, sans-serif;
@@ -192,4 +210,22 @@
   --tt-color-category-security-bg-hover: #92400E;
   --tt-color-category-security-icon: #FBBF24;
   --tt-color-category-security-icon-hover: #FCD34D;
+
+  /* Status Colors - Dark Mode */
+  --tt-color-status-archived-icon-bg: #1F2937;
+  --tt-color-status-archived-text: #9CA3AF;
+  --tt-color-status-draft-icon-bg: rgba(217, 119, 6, 0.4);
+  --tt-color-status-draft-text: #FBBF24;
+  --tt-color-status-failed-icon-bg: rgba(225, 29, 72, 0.4);
+  --tt-color-status-failed-text: #FB7185;
+  --tt-color-status-neutral-icon-bg: #334155;
+  --tt-color-status-neutral-text: #F1F5F9;
+  --tt-color-status-posted-icon-bg: rgba(5, 150, 105, 0.4);
+  --tt-color-status-posted-text: #34D399;
+  --tt-color-status-posting-icon-bg: rgba(202, 138, 4, 0.4);
+  --tt-color-status-posting-text: #FACC15;
+  --tt-color-status-reviewed-icon-bg: rgba(2, 132, 199, 0.4);
+  --tt-color-status-reviewed-text: #38BDF8;
+  --tt-color-status-scheduled-icon-bg: rgba(124, 58, 237, 0.4);
+  --tt-color-status-scheduled-text: #A78BFA;
 }
