@@ -93,15 +93,28 @@ const COLOR_REGEX = new RegExp(
 
 const ALLOWLIST_PATH = path.join(ROOT, '.lintcolorsignore');
 // Reject patterns that would gag the detector across entire top-level areas.
-// The match is checked after trimming surrounding whitespace; substring match is intentional.
+// Includes both `app/**` globs AND `app/` directory-recursive forms; the latter
+// would otherwise silence everything under the scan roots (CX-W2 / DA-W2 fix).
 const DANGEROUS_ALLOWLIST_PATTERNS = [
   'app/**',
   'components/**',
   'lib/**',
+  'app/',
+  'components/',
+  'lib/',
   '**/*',
   '**',
   '*',
 ];
+
+// Reject any directory allowlist that only has a single top-level segment
+// (e.g. `foo/` would silence all of foo). Sub-directory allowlists like
+// `app/dashboard/legacy/` remain valid.
+function isTooShallowDirectoryPattern(pattern) {
+  if (!pattern.endsWith('/')) return false;
+  const segments = pattern.replace(/\/$/, '').split('/').filter(Boolean);
+  return segments.length < 2;
+}
 
 const ALLOWLIST_COMMENT_REGEX =
   /#\s*(TODO:\s*remove\s+after\s+PR-\d+\b|brand-only\b|permanent\b)/i;
@@ -136,6 +149,13 @@ async function readIgnoreFile() {
         );
         return;
       }
+    }
+
+    if (isTooShallowDirectoryPattern(pattern)) {
+      errors.push(
+        `.lintcolorsignore:${lineNumber}: directory pattern "${pattern}" is too shallow (single top-level segment). Add at least one sub-directory (e.g. "app/dashboard/legacy/").`,
+      );
+      return;
     }
 
     if (!ALLOWLIST_COMMENT_REGEX.test(comment)) {
@@ -222,9 +242,10 @@ async function walk(dir) {
 }
 
 // Strip comments to avoid false positives on color names that appear in prose.
-// Only targets // and slash-star comments; does not attempt to parse strings/regexps fully.
-// Inline // inside a JSX/TS string can cause slight over-stripping, which would err toward
-// false negatives (safer than false positives for a lint guard).
+// Tracks string/template/regex literal contexts so that tokens inside them are
+// not misinterpreted as comment delimiters. This is not a full JS parser, but it
+// handles the common cases that bite the color-family regex: `/…/` regex literals
+// starting with a forward slash and JSX/TS strings containing `//` URL fragments.
 function stripComments(source) {
   const out = [];
   let inBlock = false;
@@ -232,6 +253,39 @@ function stripComments(source) {
   let inSingle = false;
   let inDouble = false;
   let inTemplate = false;
+  let inRegex = false;
+  let regexCharClass = false;
+
+  const PRECEDES_REGEX = new Set([
+    '(',
+    ',',
+    '=',
+    ':',
+    '[',
+    '!',
+    '&',
+    '|',
+    '?',
+    '{',
+    '}',
+    ';',
+    '\n',
+    '\r',
+    '+',
+    '-',
+    '*',
+    '~',
+    '<',
+    '>',
+    '%',
+    '^',
+  ]);
+
+  function canStartRegex(prevCh) {
+    if (prevCh === undefined) return true;
+    return PRECEDES_REGEX.has(prevCh);
+  }
+
   for (let i = 0; i < source.length; i++) {
     const ch = source[i];
     const next = source[i + 1];
@@ -255,6 +309,20 @@ function stripComments(source) {
       }
       continue;
     }
+    if (inRegex) {
+      out.push(ch);
+      if (ch === '\\' && next !== undefined) {
+        out.push(next);
+        i++;
+        continue;
+      }
+      if (ch === '[') regexCharClass = true;
+      else if (ch === ']') regexCharClass = false;
+      else if (ch === '/' && !regexCharClass) {
+        inRegex = false;
+      }
+      continue;
+    }
 
     if (!inSingle && !inDouble && !inTemplate) {
       if (ch === '/' && next === '*') {
@@ -268,6 +336,19 @@ function stripComments(source) {
         out.push('  ');
         i++;
         continue;
+      }
+      if (ch === '/') {
+        // Heuristic: is this the start of a regex literal? Look at the previous
+        // non-whitespace character. Division (`a / b`) only occurs after values,
+        // so regex literals follow punctuation or operators.
+        let prevIdx = i - 1;
+        while (prevIdx >= 0 && /\s/.test(source[prevIdx])) prevIdx--;
+        const prev = prevIdx >= 0 ? source[prevIdx] : undefined;
+        if (canStartRegex(prev)) {
+          inRegex = true;
+          out.push(ch);
+          continue;
+        }
       }
     }
 
@@ -339,6 +420,17 @@ async function runSelfCheck() {
       source: 'const a = <div className="bg-(--tt-color-primary)/10" />;',
       expectMatch: false,
     },
+    {
+      name: 'do not misread // in regex literal as a line comment (CX-W1)',
+      source:
+        'const re = /https?:\\/\\//; const el = <div className="bg-red-500" />;',
+      expectMatch: true,
+    },
+    {
+      name: 'do not misread // inside a string literal',
+      source: 'const url = "https://example.com"; const el = <div className="text-rose-600" />;',
+      expectMatch: true,
+    },
   ];
 
   let failed = 0;
@@ -379,6 +471,24 @@ async function runSelfCheck() {
       comment: '# brand-only: test',
       expectOk: false,
     },
+    {
+      name: 'reject shallow directory allowlist app/ (CX-W2/DA-W2)',
+      pattern: 'app/',
+      comment: '# brand-only: test',
+      expectOk: false,
+    },
+    {
+      name: 'reject shallow directory allowlist components/',
+      pattern: 'components/',
+      comment: '# brand-only: test',
+      expectOk: false,
+    },
+    {
+      name: 'accept nested directory allowlist app/dashboard/legacy/',
+      pattern: 'app/dashboard/legacy/',
+      comment: '# TODO: remove after PR-2',
+      expectOk: true,
+    },
   ];
 
   for (const c of allowlistCases) {
@@ -387,8 +497,9 @@ async function runSelfCheck() {
     const pattern = (hashIndex === -1 ? line : line.slice(0, hashIndex)).trim();
     const comment = hashIndex === -1 ? '' : line.slice(hashIndex).trim();
     const isDangerous = DANGEROUS_ALLOWLIST_PATTERNS.some((p) => pattern === p);
+    const isShallow = isTooShallowDirectoryPattern(pattern);
     const hasComment = ALLOWLIST_COMMENT_REGEX.test(comment);
-    const ok = !isDangerous && hasComment;
+    const ok = !isDangerous && !isShallow && hasComment;
     if (ok !== c.expectOk) {
       failed++;
       console.error(`✗ ${c.name}: expected ok=${c.expectOk}, got ok=${ok}`);
