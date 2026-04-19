@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Cloud,
   Brain,
@@ -13,7 +13,6 @@ import {
   ChevronDown,
   type LucideIcon,
 } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import {
   SAMPLE_QUERIES,
@@ -21,7 +20,6 @@ import {
   CATEGORY_ORDER,
   type SampleQuery,
 } from '../_data/sample-queries';
-import { lightCategoryColors, darkCategoryColors } from '@/lib/design-tokens';
 
 // カテゴリアイコンマッピング
 const CATEGORY_ICON_MAP: Record<SampleQuery['category'], LucideIcon> = {
@@ -35,15 +33,86 @@ const CATEGORY_ICON_MAP: Record<SampleQuery['category'], LucideIcon> = {
   mobile: Smartphone,
 };
 
-// カテゴリ別カラー取得（ダークモード対応）
-const getCategoryColors = (
-  category: SampleQuery['category'],
-  isDark: boolean
-) => {
-  const colors = isDark
-    ? darkCategoryColors[category]
-    : lightCategoryColors[category];
-  return colors;
+// カテゴリ別カラー参照: CSS カスタムプロパティ経由でライト/ダーク両モード自動切替。
+// 値は lib/design-tokens.ts の lightCategoryColors / darkCategoryColors から
+// npm run generate:tokens で app/generated-tokens.css に反映される。
+//
+// hover variant はカテゴリ固有のブランド色を活用するため、汎用フィルタ
+// (group-hover:brightness-95) ではなく `--tt-color-category-{cat}-bg-hover` /
+// `--tt-color-category-{cat}-icon-hover` を静的クラスとして列挙する
+// （Tailwind JIT に静的に解決させるため category ごとのクラスを直書き）。
+const CATEGORY_CLASSES: Record<
+  SampleQuery['category'],
+  {
+    tileBg: string;
+    tileBgGroupHover: string;
+    iconColor: string;
+    iconColorGroupHover: string;
+  }
+> = {
+  infrastructure: {
+    tileBg: 'bg-[var(--tt-color-category-infrastructure-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-infrastructure-bg-hover)]',
+    iconColor: 'text-[var(--tt-color-category-infrastructure-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-infrastructure-icon-hover)]',
+  },
+  ai: {
+    tileBg: 'bg-[var(--tt-color-category-ai-bg)]',
+    tileBgGroupHover: 'group-hover:bg-[var(--tt-color-category-ai-bg-hover)]',
+    iconColor: 'text-[var(--tt-color-category-ai-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-ai-icon-hover)]',
+  },
+  frontend: {
+    tileBg: 'bg-[var(--tt-color-category-frontend-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-frontend-bg-hover)]',
+    iconColor: 'text-[var(--tt-color-category-frontend-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-frontend-icon-hover)]',
+  },
+  backend: {
+    tileBg: 'bg-[var(--tt-color-category-backend-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-backend-bg-hover)]',
+    iconColor: 'text-[var(--tt-color-category-backend-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-backend-icon-hover)]',
+  },
+  security: {
+    tileBg: 'bg-[var(--tt-color-category-security-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-security-bg-hover)]',
+    iconColor: 'text-[var(--tt-color-category-security-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-security-icon-hover)]',
+  },
+  devops: {
+    tileBg: 'bg-[var(--tt-color-category-devops-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-devops-bg-hover)]',
+    iconColor: 'text-[var(--tt-color-category-devops-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-devops-icon-hover)]',
+  },
+  database: {
+    tileBg: 'bg-[var(--tt-color-category-database-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-database-bg-hover)]',
+    iconColor: 'text-[var(--tt-color-category-database-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-database-icon-hover)]',
+  },
+  mobile: {
+    tileBg: 'bg-[var(--tt-color-category-mobile-bg)]',
+    tileBgGroupHover:
+      'group-hover:bg-[var(--tt-color-category-mobile-bg-hover)]',
+    iconColor: 'text-[var(--tt-color-category-mobile-icon)]',
+    iconColorGroupHover:
+      'group-hover:text-[var(--tt-color-category-mobile-icon-hover)]',
+  },
 };
 
 interface AgentSampleQueriesProps {
@@ -56,12 +125,10 @@ interface AgentSampleQueriesProps {
 function SidebarAccordion({
   className,
   groupedQueries,
-  effectiveIsDark,
   onSelectQuery,
 }: {
   className?: string;
   groupedQueries: Record<SampleQuery['category'], SampleQuery[]>;
-  effectiveIsDark: boolean;
   onSelectQuery: (query: string) => void;
 }) {
   const [expandedCategory, setExpandedCategory] = useState<
@@ -83,26 +150,24 @@ function SidebarAccordion({
           if (!categoryQueries?.length) return null;
 
           const IconComponent = CATEGORY_ICON_MAP[category];
-          const colors = getCategoryColors(category, effectiveIsDark);
+          const classes = CATEGORY_CLASSES[category];
           const isExpanded = expandedCategory === category;
 
           return (
             <div key={category} data-testid={`category-tile-${category}`}>
               <button
                 type="button"
-                className="group flex w-full items-start gap-3 rounded-lg border border-[var(--tt-color-border)] p-3 text-left transition-colors hover:border-[var(--tt-color-primary)] hover:bg-[var(--tt-color-surface-1)]"
+                className="group flex w-full items-start gap-3 rounded-lg border border-[var(--tt-color-border)] p-3 text-left transition-colors hover:border-[var(--tt-color-primary)] hover:bg-[var(--tt-color-surface-hover)]"
                 onClick={() => toggleCategory(category)}
                 aria-expanded={isExpanded}
                 aria-controls={`category-queries-${category}`}
                 data-testid={`category-toggle-${category}`}
               >
                 <div
-                  className="shrink-0 rounded-full p-2"
-                  style={{ backgroundColor: colors.bg }}
+                  className={`shrink-0 rounded-full p-2 transition-colors ${classes.tileBg} ${classes.tileBgGroupHover}`}
                 >
                   <IconComponent
-                    className="h-4 w-4"
-                    style={{ color: colors.icon }}
+                    className={`h-4 w-4 transition-colors ${classes.iconColor} ${classes.iconColorGroupHover}`}
                     aria-hidden="true"
                   />
                 </div>
@@ -132,7 +197,7 @@ function SidebarAccordion({
                     <li key={query.id}>
                       <button
                         type="button"
-                        className="w-full rounded-md px-3 py-2 text-left text-xs text-[var(--tt-color-text-muted)] transition-colors hover:bg-[var(--tt-color-surface-1)] hover:text-[var(--tt-color-text)]"
+                        className="w-full rounded-md px-3 py-2 text-left text-xs text-[var(--tt-color-text-muted)] transition-colors hover:bg-[var(--tt-color-surface-hover)] hover:text-[var(--tt-color-text)]"
                         onClick={() => onSelectQuery(query.text)}
                         data-testid={`category-query-${query.id}`}
                       >
@@ -155,19 +220,6 @@ export function AgentSampleQueries({
   queries,
   layout = 'grid',
 }: AgentSampleQueriesProps) {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
-
-  // Mounted state to avoid hydration mismatch with next-themes
-  // During SSR, resolvedTheme is undefined, so we default to light theme
-  // and only switch to actual theme after client hydration
-  const [mounted, setMounted] = useState(false);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: SSR-safe mount tracking
-  useEffect(() => setMounted(true), []);
-
-  // Use light theme colors during SSR/initial render to avoid hydration mismatch
-  const effectiveIsDark = mounted ? isDark : false;
-
   // 従来のqueries propsが渡された場合は既存の表示形式を維持
   if (queries && queries.length > 0) {
     return (
@@ -207,7 +259,6 @@ export function AgentSampleQueries({
       <SidebarAccordion
         className={className}
         groupedQueries={groupedQueries}
-        effectiveIsDark={effectiveIsDark}
         onSelectQuery={onSelectQuery}
       />
     );
@@ -224,8 +275,7 @@ export function AgentSampleQueries({
 
           const IconComponent = CATEGORY_ICON_MAP[category];
           const firstQuery = categoryQueries[0];
-
-          const colors = getCategoryColors(category, effectiveIsDark);
+          const classes = CATEGORY_CLASSES[category];
 
           return (
             <CardV2
@@ -246,12 +296,10 @@ export function AgentSampleQueries({
             >
               <div className="flex flex-col items-center gap-2 text-center">
                 <div
-                  className="rounded-full p-3 transition-colors group-hover:brightness-95"
-                  style={{ backgroundColor: colors.bg }}
+                  className={`rounded-full p-3 transition-colors ${classes.tileBg} ${classes.tileBgGroupHover}`}
                 >
                   <IconComponent
-                    className="h-5 w-5 transition-colors"
-                    style={{ color: colors.icon }}
+                    className={`h-5 w-5 transition-colors ${classes.iconColor} ${classes.iconColorGroupHover}`}
                     aria-hidden="true"
                   />
                 </div>

@@ -47,6 +47,34 @@ function toVars(
 }
 
 /**
+ * Convert a two-level nested color object (e.g. categoryColors.light) to CSS
+ * custom properties. Emits `--tt-{prefix}-{outer}-{inner-kebab}: value;` lines.
+ * Used for structured tokens that group related variants under a parent key
+ * (category.bg, category.bgHover, category.icon, category.iconHover, ...).
+ */
+function toNestedColorVars(
+  obj: Record<string, Record<string, string>>,
+  prefix: string,
+): string {
+  const lines: string[] = [];
+  for (const [outerKey, inner] of Object.entries(obj).sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    // Normalise the outer key too so that future camelCase additions (e.g.
+    // `inReview`) still yield kebab-cased CSS variables, matching the
+    // repository-wide `--tt-*` naming convention.
+    const kebabOuter = toKebabCase(outerKey);
+    for (const [innerKey, value] of Object.entries(inner).sort(([a], [b]) =>
+      a.localeCompare(b),
+    )) {
+      const kebabInner = toKebabCase(innerKey);
+      lines.push(`  --tt-${prefix}-${kebabOuter}-${kebabInner}: ${value};`);
+    }
+  }
+  return lines.join('\n');
+}
+
+/**
  * Convert nested typography object to CSS custom properties
  */
 function toTypographyVars(): string {
@@ -84,6 +112,12 @@ function buildCSS(): string {
     '  /* Colors - Light Mode */',
     toVars(designTokens.colors.light, 'color'),
     '',
+    '  /* Category Colors - Light Mode (AI search category tiles) */',
+    toNestedColorVars(designTokens.categoryColors.light, 'color-category'),
+    '',
+    '  /* Status Colors - Light Mode (social-posts, diff-summary, metrics status UI) */',
+    toNestedColorVars(designTokens.statusColors.light, 'color-status'),
+    '',
     '  /* Typography */',
     toTypographyVars(),
     '',
@@ -100,6 +134,12 @@ function buildCSS(): string {
     '.dark {',
     '  /* Colors - Dark Mode */',
     toVars(designTokens.colors.dark, 'color'),
+    '',
+    '  /* Category Colors - Dark Mode */',
+    toNestedColorVars(designTokens.categoryColors.dark, 'color-category'),
+    '',
+    '  /* Status Colors - Dark Mode */',
+    toNestedColorVars(designTokens.statusColors.dark, 'color-status'),
     '}',
     '',
   ];

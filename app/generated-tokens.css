@@ -32,6 +32,58 @@
   --tt-color-text-muted: #64748B;
   --tt-color-warning: #F97316;
 
+  /* Category Colors - Light Mode (AI search category tiles) */
+  --tt-color-category-ai-bg: #EDE9FE;
+  --tt-color-category-ai-bg-hover: #DDD6FE;
+  --tt-color-category-ai-icon: #7C3AED;
+  --tt-color-category-ai-icon-hover: #6D28D9;
+  --tt-color-category-backend-bg: #D1FAE5;
+  --tt-color-category-backend-bg-hover: #A7F3D0;
+  --tt-color-category-backend-icon: #059669;
+  --tt-color-category-backend-icon-hover: #047857;
+  --tt-color-category-database-bg: #E0E7FF;
+  --tt-color-category-database-bg-hover: #C7D2FE;
+  --tt-color-category-database-icon: #4F46E5;
+  --tt-color-category-database-icon-hover: #4338CA;
+  --tt-color-category-devops-bg: #FCE7F3;
+  --tt-color-category-devops-bg-hover: #FBCFE8;
+  --tt-color-category-devops-icon: #DB2777;
+  --tt-color-category-devops-icon-hover: #BE185D;
+  --tt-color-category-frontend-bg: #DBEAFE;
+  --tt-color-category-frontend-bg-hover: #BFDBFE;
+  --tt-color-category-frontend-icon: #2563EB;
+  --tt-color-category-frontend-icon-hover: #1D4ED8;
+  --tt-color-category-infrastructure-bg: #F1F5F9;
+  --tt-color-category-infrastructure-bg-hover: #E2E8F0;
+  --tt-color-category-infrastructure-icon: #475569;
+  --tt-color-category-infrastructure-icon-hover: #334155;
+  --tt-color-category-mobile-bg: #CCFBF1;
+  --tt-color-category-mobile-bg-hover: #99F6E4;
+  --tt-color-category-mobile-icon: #0D9488;
+  --tt-color-category-mobile-icon-hover: #0F766E;
+  --tt-color-category-security-bg: #FEF3C7;
+  --tt-color-category-security-bg-hover: #FDE68A;
+  --tt-color-category-security-icon: #D97706;
+  --tt-color-category-security-icon-hover: #B45309;
+
+  /* Status Colors - Light Mode (social-posts, diff-summary, metrics status UI) */
+  --tt-color-status-archived-icon-bg: #F3F4F6;
+  --tt-color-status-archived-text: #6B7280;
+  --tt-color-status-draft-icon-bg: #FEF3C7;
+  --tt-color-status-draft-text: #B45309;
+  --tt-color-status-failed-icon-bg: #FFE4E6;
+  --tt-color-status-failed-text: #BE123C;
+  --tt-color-status-neutral-icon-bg: #E2E8F0;
+  --tt-color-status-neutral-text: #0F172A;
+  --tt-color-status-posted-icon-bg: #D1FAE5;
+  --tt-color-status-posted-text: #047857;
+  --tt-color-status-posting-icon-bg: #FEF9C3;
+  --tt-color-status-posting-text: #A16207;
+  --tt-color-status-reviewed-icon-bg: #E0F2FE;
+  --tt-color-status-reviewed-text: #0369A1;
+  --tt-color-status-scheduled-icon-bg: #EDE9FE;
+  --tt-color-status-scheduled-text: #6D28D9;
+
   /* Typography */
   --tt-font-body: 'Inter', system-ui, sans-serif;
   --tt-font-heading: 'Space Grotesk', system-ui, sans-serif;
@@ -124,4 +176,56 @@
   --tt-color-text: #E5E7EB;
   --tt-color-text-muted: #94A3B8;
   --tt-color-warning: #F97316;
+
+  /* Category Colors - Dark Mode */
+  --tt-color-category-ai-bg: #2E1065;
+  --tt-color-category-ai-bg-hover: #4C1D95;
+  --tt-color-category-ai-icon: #A78BFA;
+  --tt-color-category-ai-icon-hover: #C4B5FD;
+  --tt-color-category-backend-bg: #064E3B;
+  --tt-color-category-backend-bg-hover: #065F46;
+  --tt-color-category-backend-icon: #34D399;
+  --tt-color-category-backend-icon-hover: #6EE7B7;
+  --tt-color-category-database-bg: #312E81;
+  --tt-color-category-database-bg-hover: #3730A3;
+  --tt-color-category-database-icon: #818CF8;
+  --tt-color-category-database-icon-hover: #A5B4FC;
+  --tt-color-category-devops-bg: #831843;
+  --tt-color-category-devops-bg-hover: #9D174D;
+  --tt-color-category-devops-icon: #F472B6;
+  --tt-color-category-devops-icon-hover: #F9A8D4;
+  --tt-color-category-frontend-bg: #1E3A5F;
+  --tt-color-category-frontend-bg-hover: #1E40AF;
+  --tt-color-category-frontend-icon: #60A5FA;
+  --tt-color-category-frontend-icon-hover: #93C5FD;
+  --tt-color-category-infrastructure-bg: #1E293B;
+  --tt-color-category-infrastructure-bg-hover: #334155;
+  --tt-color-category-infrastructure-icon: #94A3B8;
+  --tt-color-category-infrastructure-icon-hover: #CBD5E1;
+  --tt-color-category-mobile-bg: #134E4A;
+  --tt-color-category-mobile-bg-hover: #115E59;
+  --tt-color-category-mobile-icon: #2DD4BF;
+  --tt-color-category-mobile-icon-hover: #5EEAD4;
+  --tt-color-category-security-bg: #78350F;
+  --tt-color-category-security-bg-hover: #92400E;
+  --tt-color-category-security-icon: #FBBF24;
+  --tt-color-category-security-icon-hover: #FCD34D;
+
+  /* Status Colors - Dark Mode */
+  --tt-color-status-archived-icon-bg: #1F2937;
+  --tt-color-status-archived-text: #9CA3AF;
+  --tt-color-status-draft-icon-bg: rgba(217, 119, 6, 0.4);
+  --tt-color-status-draft-text: #FBBF24;
+  --tt-color-status-failed-icon-bg: rgba(225, 29, 72, 0.4);
+  --tt-color-status-failed-text: #FB7185;
+  --tt-color-status-neutral-icon-bg: #334155;
+  --tt-color-status-neutral-text: #F1F5F9;
+  --tt-color-status-posted-icon-bg: rgba(5, 150, 105, 0.4);
+  --tt-color-status-posted-text: #34D399;
+  --tt-color-status-posting-icon-bg: rgba(202, 138, 4, 0.4);
+  --tt-color-status-posting-text: #FACC15;
+  --tt-color-status-reviewed-icon-bg: rgba(2, 132, 199, 0.4);
+  --tt-color-status-reviewed-text: #38BDF8;
+  --tt-color-status-scheduled-icon-bg: rgba(124, 58, 237, 0.4);
+  --tt-color-status-scheduled-text: #A78BFA;
 }
