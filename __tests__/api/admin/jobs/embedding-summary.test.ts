@@ -3,12 +3,26 @@
  */
 
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/admin/jobs/embedding-summary/route';
-import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 
-// Mock dependencies
-jest.mock('@/lib/auth/get-session');
+jest.mock('@/lib/logger', () => ({
+  __esModule: true,
+  default: {
+    warn: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+  logger: {
+    warn: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 jest.mock('@/lib/prisma', () => ({
   prisma: {
     embeddingJob: {
@@ -18,7 +32,33 @@ jest.mock('@/lib/prisma', () => ({
   },
 }));
 
-const mockAuth = getSession as jest.MockedFunction<typeof getSession>;
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  // production 実装と同様、handler を呼び出す distinct な wrapper 関数を返す。
+  // raw handler をそのまま返すと「rate-limit wrapper を合成しない」回帰を検知できないため。
+  withRateLimit: jest.fn((_key: string, handler: any) => {
+    return (request: any, context: any) => handler(request, context);
+  }),
+}));
+
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: jest.fn((handler: any) => {
+    return (request: any, context: any) => {
+      return handler(request, {
+        ...context,
+        session: {
+          user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+        },
+      });
+    };
+  }),
+}));
+
+const mockWithRateLimit = withRateLimit as jest.MockedFunction<
+  typeof withRateLimit
+>;
+const mockWithAdminAuth = withAdminAuth as jest.MockedFunction<
+  typeof withAdminAuth
+>;
 const mockGroupBy = prisma.embeddingJob.groupBy as jest.Mock;
 const mockFindMany = prisma.embeddingJob.findMany as jest.Mock;
 
@@ -33,45 +73,62 @@ function createMockRequest(searchParams?: Record<string, string>): NextRequest {
 }
 
 describe('GET /api/admin/jobs/embedding-summary', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  let GET: any;
+  let withAdminAuthCalledOnLoad = false;
+  let withRateLimitCallOnLoad: any[] | null = null;
+  let withAdminAuthFirstArgOnLoad: any = null;
+  let withRateLimitResultOnLoad: any = null;
+  let withAdminAuthResultOnLoad: any = null;
+
+  beforeAll(async () => {
+    mockWithAdminAuth.mockClear();
+    mockWithRateLimit.mockClear();
+    const mod = await import('@/app/api/admin/jobs/embedding-summary/route');
+    GET = mod.GET;
+    if (mockWithAdminAuth.mock.calls.length > 0) {
+      withAdminAuthCalledOnLoad = true;
+      withAdminAuthFirstArgOnLoad = mockWithAdminAuth.mock.calls[0][0];
+      withAdminAuthResultOnLoad = mockWithAdminAuth.mock.results[0].value;
+    }
+    if (mockWithRateLimit.mock.calls.length > 0) {
+      withRateLimitCallOnLoad = mockWithRateLimit.mock.calls[0];
+      withRateLimitResultOnLoad = mockWithRateLimit.mock.results[0].value;
+    }
   });
 
-  describe('Authentication', () => {
-    it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
+  beforeEach(() => {
+    mockGroupBy.mockReset();
+    mockFindMany.mockReset();
+  });
 
-      const request = createMockRequest();
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Unauthorized. Authentication required.');
+  describe('Middleware wiring', () => {
+    it('GET ハンドラが withAdminAuth でラップされて export されている', () => {
+      expect(GET).toBeDefined();
+      expect(typeof GET).toBe('function');
+      expect(withAdminAuthCalledOnLoad).toBe(true);
     });
 
-    it('should return 403 if user is not admin', async () => {
-      mockAuth.mockResolvedValue({
-        user: { id: '1', email: 'user@example.com', role: 'user' },
-        session: { id: 's1', userId: '1', token: 'tok', expiresAt: new Date('2099-01-01') },
-      });
+    it('withRateLimit が "admin:read" キーで handler 関数を受けて呼ばれている', () => {
+      expect(withRateLimitCallOnLoad).not.toBeNull();
+      expect(withRateLimitCallOnLoad![0]).toBe('admin:read');
+      expect(typeof withRateLimitCallOnLoad![1]).toBe('function');
+    });
 
-      const request = createMockRequest();
-      const response = await GET(request);
-      const data = await response.json();
+    it('合成順が withAdminAuth(withRateLimit(...)) であること（逆順の回帰検知）', () => {
+      // 正順では withRateLimit が先に評価され、その戻り値を withAdminAuth が受け取る。
+      // 逆順 withRateLimit(withAdminAuth(handler)) では withAdminAuth が原 handler を直接受け取るため、
+      // 下記の参照一致は成立しない。
+      // (afterEach で jest.clearAllMocks されるため、module-load 時点で捕捉した値を参照)
+      expect(withAdminAuthFirstArgOnLoad).toBe(withRateLimitResultOnLoad);
+    });
 
-      expect(response.status).toBe(403);
-      expect(data.error).toBe('Forbidden. Admin access required.');
+    it('export された GET は withAdminAuth の戻り値そのものである', () => {
+      // withAdminAuth のラップをスキップして handler を直接 export する回帰を検知
+      expect(GET).toBe(withAdminAuthResultOnLoad);
     });
   });
 
   describe('Authorized requests', () => {
-    beforeEach(() => {
-      mockAuth.mockResolvedValue({
-        user: { id: '1', email: 'admin@example.com', role: 'admin' },
-        session: { id: 's1', userId: '1', token: 'tok', expiresAt: new Date('2099-01-01') },
-      });
-    });
-
     it('should return embedding job statistics', async () => {
       mockGroupBy.mockResolvedValue([
         { status: 'PENDING', _count: { status: 10 } },
@@ -80,9 +137,7 @@ describe('GET /api/admin/jobs/embedding-summary', () => {
         { status: 'FAILED', _count: { status: 5 } },
       ]);
 
-      // Stuck jobs query
       mockFindMany.mockResolvedValueOnce([]);
-      // High retry jobs query
       mockFindMany.mockResolvedValueOnce([]);
 
       const request = createMockRequest();
@@ -103,7 +158,7 @@ describe('GET /api/admin/jobs/embedding-summary', () => {
         { status: 'PROCESSING', _count: { status: 2 } },
       ]);
 
-      const oldDate = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+      const oldDate = new Date(Date.now() - 60 * 60 * 1000);
       mockFindMany.mockResolvedValueOnce([
         {
           id: 'job-1',
@@ -125,7 +180,7 @@ describe('GET /api/admin/jobs/embedding-summary', () => {
 
     it('should detect high retry jobs', async () => {
       mockGroupBy.mockResolvedValue([]);
-      mockFindMany.mockResolvedValueOnce([]); // Stuck jobs
+      mockFindMany.mockResolvedValueOnce([]);
       mockFindMany.mockResolvedValueOnce([
         {
           id: 'job-1',
@@ -167,13 +222,11 @@ describe('GET /api/admin/jobs/embedding-summary', () => {
       const request = createMockRequest({ stuckThreshold: '60' });
       await GET(request);
 
-      // Verify the findMany was called with correct cutoff time (60 minutes ago)
       expect(mockFindMany).toHaveBeenCalled();
       const stuckJobsCall = mockFindMany.mock.calls[0][0];
       expect(stuckJobsCall.where.status).toBe('PROCESSING');
       expect(stuckJobsCall.where.queuedAt.lt).toBeDefined();
 
-      // Verify the cutoff is approximately 60 minutes ago (within 1 minute tolerance)
       const cutoffTime = stuckJobsCall.where.queuedAt.lt.getTime();
       const expectedCutoff = Date.now() - 60 * 60 * 1000;
       expect(Math.abs(cutoffTime - expectedCutoff)).toBeLessThan(60 * 1000);

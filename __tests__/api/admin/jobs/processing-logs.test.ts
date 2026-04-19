@@ -3,12 +3,26 @@
  */
 
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/admin/jobs/processing-logs/route';
-import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 
-// Mock dependencies
-jest.mock('@/lib/auth/get-session');
+jest.mock('@/lib/logger', () => ({
+  __esModule: true,
+  default: {
+    warn: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+  logger: {
+    warn: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 jest.mock('@/lib/prisma', () => ({
   prisma: {
     processingLog: {
@@ -17,7 +31,33 @@ jest.mock('@/lib/prisma', () => ({
   },
 }));
 
-const mockAuth = getSession as jest.MockedFunction<typeof getSession>;
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  // production 実装と同様、handler を呼び出す distinct な wrapper 関数を返す。
+  // raw handler をそのまま返すと「rate-limit wrapper を合成しない」回帰を検知できないため。
+  withRateLimit: jest.fn((_key: string, handler: any) => {
+    return (request: any, context: any) => handler(request, context);
+  }),
+}));
+
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: jest.fn((handler: any) => {
+    return (request: any, context: any) => {
+      return handler(request, {
+        ...context,
+        session: {
+          user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+        },
+      });
+    };
+  }),
+}));
+
+const mockWithRateLimit = withRateLimit as jest.MockedFunction<
+  typeof withRateLimit
+>;
+const mockWithAdminAuth = withAdminAuth as jest.MockedFunction<
+  typeof withAdminAuth
+>;
 const mockFindMany = prisma.processingLog.findMany as jest.Mock;
 
 function createMockRequest(searchParams?: Record<string, string>): NextRequest {
@@ -31,45 +71,61 @@ function createMockRequest(searchParams?: Record<string, string>): NextRequest {
 }
 
 describe('GET /api/admin/jobs/processing-logs', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  let GET: any;
+  let withAdminAuthCalledOnLoad = false;
+  let withRateLimitCallOnLoad: any[] | null = null;
+  let withAdminAuthFirstArgOnLoad: any = null;
+  let withRateLimitResultOnLoad: any = null;
+  let withAdminAuthResultOnLoad: any = null;
+
+  beforeAll(async () => {
+    mockWithAdminAuth.mockClear();
+    mockWithRateLimit.mockClear();
+    const mod = await import('@/app/api/admin/jobs/processing-logs/route');
+    GET = mod.GET;
+    if (mockWithAdminAuth.mock.calls.length > 0) {
+      withAdminAuthCalledOnLoad = true;
+      withAdminAuthFirstArgOnLoad = mockWithAdminAuth.mock.calls[0][0];
+      withAdminAuthResultOnLoad = mockWithAdminAuth.mock.results[0].value;
+    }
+    if (mockWithRateLimit.mock.calls.length > 0) {
+      withRateLimitCallOnLoad = mockWithRateLimit.mock.calls[0];
+      withRateLimitResultOnLoad = mockWithRateLimit.mock.results[0].value;
+    }
   });
 
-  describe('Authentication', () => {
-    it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
+  beforeEach(() => {
+    mockFindMany.mockReset();
+  });
 
-      const request = createMockRequest();
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Unauthorized. Authentication required.');
+  describe('Middleware wiring', () => {
+    it('GET ハンドラが withAdminAuth でラップされて export されている', () => {
+      expect(GET).toBeDefined();
+      expect(typeof GET).toBe('function');
+      expect(withAdminAuthCalledOnLoad).toBe(true);
     });
 
-    it('should return 403 if user is not admin', async () => {
-      mockAuth.mockResolvedValue({
-        user: { id: '1', email: 'user@example.com', role: 'user' },
-        session: { id: 's1', userId: '1', token: 'tok', expiresAt: new Date('2099-01-01') },
-      });
+    it('withRateLimit が "admin:read" キーで handler 関数を受けて呼ばれている', () => {
+      expect(withRateLimitCallOnLoad).not.toBeNull();
+      expect(withRateLimitCallOnLoad![0]).toBe('admin:read');
+      expect(typeof withRateLimitCallOnLoad![1]).toBe('function');
+    });
 
-      const request = createMockRequest();
-      const response = await GET(request);
-      const data = await response.json();
+    it('合成順が withAdminAuth(withRateLimit(...)) であること（逆順の回帰検知）', () => {
+      // 正順では withRateLimit が先に評価され、その戻り値を withAdminAuth が受け取る。
+      // 逆順 withRateLimit(withAdminAuth(handler)) では withAdminAuth が原 handler を直接受け取るため、
+      // 下記の参照一致は成立しない。
+      // (afterEach で jest.clearAllMocks されるため、module-load 時点で捕捉した値を参照)
+      expect(withAdminAuthFirstArgOnLoad).toBe(withRateLimitResultOnLoad);
+    });
 
-      expect(response.status).toBe(403);
-      expect(data.error).toBe('Forbidden. Admin access required.');
+    it('export された GET は withAdminAuth の戻り値そのものである', () => {
+      // withAdminAuth のラップをスキップして handler を直接 export する回帰を検知
+      expect(GET).toBe(withAdminAuthResultOnLoad);
     });
   });
 
   describe('Authorized requests', () => {
-    beforeEach(() => {
-      mockAuth.mockResolvedValue({
-        user: { id: '1', email: 'admin@example.com', role: 'admin' },
-        session: { id: 's1', userId: '1', token: 'tok', expiresAt: new Date('2099-01-01') },
-      });
-    });
-
     it('should return processing logs with summary', async () => {
       const mockLogs = [
         {
@@ -169,12 +225,11 @@ describe('GET /api/admin/jobs/processing-logs', () => {
       const response = await GET(request);
       const data = await response.json();
 
-      // Top-level auth key should be removed
       expect(data.logs[0].metadata).not.toHaveProperty('auth');
-      // Nested API_KEY should be removed
       expect(data.logs[0].metadata.config).not.toHaveProperty('API_KEY');
-      // Non-sensitive fields should remain
-      expect(data.logs[0].metadata.config.endpoint).toBe('https://api.example.com');
+      expect(data.logs[0].metadata.config.endpoint).toBe(
+        'https://api.example.com'
+      );
       expect(data.logs[0].metadata.normalField).toBe('visible');
     });
 
@@ -200,7 +255,6 @@ describe('GET /api/admin/jobs/processing-logs', () => {
       const request = createMockRequest({ days: '-5', limit: '1000' });
       await GET(request);
 
-      // Invalid days (-5) should default to 7, limit (1000) should be capped at 500
       expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           take: 500,
