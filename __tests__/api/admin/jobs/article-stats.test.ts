@@ -32,7 +32,11 @@ jest.mock('@/lib/prisma', () => ({
 }));
 
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
-  withRateLimit: jest.fn((_key: string, handler: any) => handler),
+  // production 実装と同様、handler を呼び出す distinct な wrapper 関数を返す。
+  // raw handler をそのまま返すと「rate-limit wrapper を合成しない」回帰を検知できないため。
+  withRateLimit: jest.fn((_key: string, handler: any) => {
+    return (request: any, context: any) => handler(request, context);
+  }),
 }));
 
 jest.mock('@/lib/middleware/with-admin-auth', () => ({
@@ -72,6 +76,7 @@ describe('GET /api/admin/jobs/article-stats', () => {
   let withRateLimitCallOnLoad: any[] | null = null;
   let withAdminAuthFirstArgOnLoad: any = null;
   let withRateLimitResultOnLoad: any = null;
+  let withAdminAuthResultOnLoad: any = null;
 
   beforeAll(async () => {
     mockWithAdminAuth.mockClear();
@@ -81,6 +86,7 @@ describe('GET /api/admin/jobs/article-stats', () => {
     if (mockWithAdminAuth.mock.calls.length > 0) {
       withAdminAuthCalledOnLoad = true;
       withAdminAuthFirstArgOnLoad = mockWithAdminAuth.mock.calls[0][0];
+      withAdminAuthResultOnLoad = mockWithAdminAuth.mock.results[0].value;
     }
     if (mockWithRateLimit.mock.calls.length > 0) {
       withRateLimitCallOnLoad = mockWithRateLimit.mock.calls[0];
@@ -111,6 +117,11 @@ describe('GET /api/admin/jobs/article-stats', () => {
       // 下記の参照一致は成立しない。
       // (afterEach で jest.clearAllMocks されるため、module-load 時点で捕捉した値を参照)
       expect(withAdminAuthFirstArgOnLoad).toBe(withRateLimitResultOnLoad);
+    });
+
+    it('export された GET は withAdminAuth の戻り値そのものである', () => {
+      // withAdminAuth のラップをスキップして handler を直接 export する回帰を検知
+      expect(GET).toBe(withAdminAuthResultOnLoad);
     });
   });
 
