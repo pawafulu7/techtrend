@@ -4,6 +4,8 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 
 jest.mock('@/lib/logger', () => ({
   __esModule: true,
@@ -29,25 +31,29 @@ jest.mock('@/lib/prisma', () => ({
   },
 }));
 
-const mockWithRateLimit = jest.fn((_key: string, handler: any) => handler);
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
-  withRateLimit: (...args: any[]) => (mockWithRateLimit as any)(...args),
+  withRateLimit: jest.fn((_key: string, handler: any) => handler),
 }));
 
-const mockWithAdminAuth = jest.fn((handler: any) => {
-  return (request: any, context: any) => {
-    return handler(request, {
-      ...context,
-      session: {
-        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
-      },
-    });
-  };
-});
 jest.mock('@/lib/middleware/with-admin-auth', () => ({
-  withAdminAuth: (handler: any) => (mockWithAdminAuth as any)(handler),
+  withAdminAuth: jest.fn((handler: any) => {
+    return (request: any, context: any) => {
+      return handler(request, {
+        ...context,
+        session: {
+          user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+        },
+      });
+    };
+  }),
 }));
 
+const mockWithRateLimit = withRateLimit as jest.MockedFunction<
+  typeof withRateLimit
+>;
+const mockWithAdminAuth = withAdminAuth as jest.MockedFunction<
+  typeof withAdminAuth
+>;
 const mockFindMany = prisma.processingLog.findMany as jest.Mock;
 
 function createMockRequest(searchParams?: Record<string, string>): NextRequest {
@@ -66,6 +72,8 @@ describe('GET /api/admin/jobs/processing-logs', () => {
   let withRateLimitCallOnLoad: any[] | null = null;
 
   beforeAll(async () => {
+    mockWithAdminAuth.mockClear();
+    mockWithRateLimit.mockClear();
     const adminAuthCallsBefore = mockWithAdminAuth.mock.calls.length;
     const rateLimitCallsBefore = mockWithRateLimit.mock.calls.length;
     const mod = await import('@/app/api/admin/jobs/processing-logs/route');
