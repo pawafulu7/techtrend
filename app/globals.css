@@ -182,6 +182,12 @@ html.no-transitions *::after {
    * - --muted ≈ --tt-color-surface-muted (薄い背景)
    *
    * 新規コンポーネントでは --tt-color-* の使用を推奨します。
+   *
+   * カテゴリ系トークン (--tt-color-category-*):
+   * - AI検索のカテゴリタイルで使う 8 カテゴリ × {bg, bg-hover, icon, icon-hover} = 32 変数を
+   *   light/dark 両モードで定義。generated-tokens.css に自動出力される。
+   * - 利用例: `bg-[var(--tt-color-category-ai-bg)] text-[var(--tt-color-category-ai-icon)]`
+   * - 小さいテキストで WCAG AA 未達の組み合わせあり。テキスト用途はコントラスト確認必須。
    */
 }
 

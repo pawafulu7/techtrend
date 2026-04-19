@@ -298,9 +298,18 @@ export const radius: RadiusTokens = {
  * Category Colors - カテゴリ別カラートークン
  *
  * AI検索画面のカテゴリタイルで使用。各カテゴリを視覚的に差別化。
+ *
  * 注意: これらの色はアイコン・装飾用途を想定しており、
  * 小さいテキストのWCAG AA基準（4.5:1）を満たさない組み合わせが含まれます。
  * テキスト表示には別途コントラスト比を確認してください。
+ *
+ * 利用方法（推奨）:
+ * - scripts/dev/generate-css-tokens.ts が CSS 変数 `--tt-color-category-{category}-{variant}` を
+ *   app/generated-tokens.css に出力するため、コンポーネント側では CSS 変数参照
+ *   （例: `bg-[var(--tt-color-category-ai-bg)]`）を使うこと。CSS 変数経由なら
+ *   ライト/ダーク切替は .dark スコープで自動処理される。
+ * - 下記 lightCategoryColors / darkCategoryColors の TS 直参照は `@deprecated`。
+ *   MutationObserver 等で手動切替する既存コードがあれば CSS 変数経由に移行すること。
  */
 export type CategoryColorTokens = {
   bg: string;
@@ -320,6 +329,11 @@ export type CategoryColors = {
   mobile: CategoryColorTokens;
 };
 
+/**
+ * @deprecated TS 直参照は段階的廃止予定。新規コードでは CSS 変数
+ * `--tt-color-category-{category}-{variant}` を使用してください
+ * （例: `bg-[var(--tt-color-category-ai-bg)]`）。
+ */
 export const lightCategoryColors: CategoryColors = {
   infrastructure: {
     bg: '#F1F5F9', // slate-100
@@ -371,6 +385,11 @@ export const lightCategoryColors: CategoryColors = {
   },
 };
 
+/**
+ * @deprecated TS 直参照は段階的廃止予定。新規コードでは CSS 変数
+ * `--tt-color-category-{category}-{variant}` を使用してください
+ * （例: `bg-[var(--tt-color-category-ai-bg)]`）。
+ */
 export const darkCategoryColors: CategoryColors = {
   infrastructure: {
     bg: '#1E293B', // slate-800
