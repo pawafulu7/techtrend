@@ -104,9 +104,9 @@ describe('GET /api/admin/jobs/article-stats', () => {
     });
 
     it('合成順が withAdminAuth(withRateLimit(...)) であること（逆順の回帰検知）', () => {
-      expect(mockWithRateLimit.mock.invocationCallOrder[0]).toBeLessThan(
-        mockWithAdminAuth.mock.invocationCallOrder[0]
-      );
+      // 正順では withRateLimit が先に評価され、その戻り値を withAdminAuth が受け取る。
+      // 逆順 withRateLimit(withAdminAuth(handler)) では withAdminAuth が原 handler を直接受け取るため、
+      // 下記の参照一致は成立しない。
       expect(mockWithAdminAuth.mock.calls[0][0]).toBe(
         mockWithRateLimit.mock.results[0].value
       );
