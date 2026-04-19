@@ -5,11 +5,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSession } from '@/lib/auth/get-session';
-import {
-  validateUser,
-  createUserDeletedResponse,
-} from '@/lib/middleware/with-user-validation';
+import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import type {
@@ -38,31 +35,8 @@ function hasValidSummary(summary: string | null | undefined): boolean {
   return typeof summary === 'string' && summary.trim().length > 0;
 }
 
-export async function GET(request: NextRequest) {
+async function handler(request: NextRequest) {
   try {
-    // Authentication check
-    const session = await getSession();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Authentication required.' },
-        { status: 401 }
-      );
-    }
-
-    // User existence check (prevent deleted user access)
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
-
-    // Authorization check (admin only)
-    if (session.user.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden. Admin access required.' },
-        { status: 403 }
-      );
-    }
-
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
     const rawRange = searchParams.get('range');
@@ -198,3 +172,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withAdminAuth(withRateLimit('admin:read', handler));

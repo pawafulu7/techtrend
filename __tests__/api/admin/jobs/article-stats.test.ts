@@ -3,12 +3,24 @@
  */
 
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/admin/jobs/article-stats/route';
-import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 
-// Mock dependencies
-jest.mock('@/lib/auth/get-session');
+jest.mock('@/lib/logger', () => ({
+  __esModule: true,
+  default: {
+    warn: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+  logger: {
+    warn: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 jest.mock('@/lib/prisma', () => ({
   prisma: {
     article: {
@@ -17,7 +29,25 @@ jest.mock('@/lib/prisma', () => ({
   },
 }));
 
-const mockAuth = getSession as jest.MockedFunction<typeof getSession>;
+const mockWithRateLimit = jest.fn((_key: string, handler: any) => handler);
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: (...args: any[]) => (mockWithRateLimit as any)(...args),
+}));
+
+const mockWithAdminAuth = jest.fn((handler: any) => {
+  return (request: any, context: any) => {
+    return handler(request, {
+      ...context,
+      session: {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      },
+    });
+  };
+});
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: (handler: any) => (mockWithAdminAuth as any)(handler),
+}));
+
 const mockFindMany = prisma.article.findMany as jest.Mock;
 
 function createMockRequest(searchParams?: Record<string, string>): NextRequest {
@@ -31,45 +61,42 @@ function createMockRequest(searchParams?: Record<string, string>): NextRequest {
 }
 
 describe('GET /api/admin/jobs/article-stats', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  let GET: any;
+  let withAdminAuthCalledOnLoad = false;
+  let withRateLimitCallOnLoad: any[] | null = null;
+
+  beforeAll(async () => {
+    const adminAuthCallsBefore = mockWithAdminAuth.mock.calls.length;
+    const rateLimitCallsBefore = mockWithRateLimit.mock.calls.length;
+    const mod = await import('@/app/api/admin/jobs/article-stats/route');
+    GET = mod.GET;
+    withAdminAuthCalledOnLoad =
+      mockWithAdminAuth.mock.calls.length > adminAuthCallsBefore;
+    if (mockWithRateLimit.mock.calls.length > rateLimitCallsBefore) {
+      withRateLimitCallOnLoad =
+        mockWithRateLimit.mock.calls[rateLimitCallsBefore];
+    }
   });
 
-  describe('Authentication', () => {
-    it('should return 401 if not authenticated', async () => {
-      mockAuth.mockResolvedValue(null);
+  beforeEach(() => {
+    mockFindMany.mockReset();
+  });
 
-      const request = createMockRequest();
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Unauthorized. Authentication required.');
+  describe('Middleware wiring', () => {
+    it('GET ハンドラが withAdminAuth でラップされて export されている', () => {
+      expect(GET).toBeDefined();
+      expect(typeof GET).toBe('function');
+      expect(withAdminAuthCalledOnLoad).toBe(true);
     });
 
-    it('should return 403 if user is not admin', async () => {
-      mockAuth.mockResolvedValue({
-        user: { id: '1', email: 'user@example.com', role: 'user' },
-        session: { id: 's1', userId: '1', token: 'tok', expiresAt: new Date('2099-01-01') },
-      });
-
-      const request = createMockRequest();
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(403);
-      expect(data.error).toBe('Forbidden. Admin access required.');
+    it('withRateLimit が "admin:read" キーで handler 関数を受けて呼ばれている', () => {
+      expect(withRateLimitCallOnLoad).not.toBeNull();
+      expect(withRateLimitCallOnLoad![0]).toBe('admin:read');
+      expect(typeof withRateLimitCallOnLoad![1]).toBe('function');
     });
   });
 
   describe('Authorized requests', () => {
-    beforeEach(() => {
-      mockAuth.mockResolvedValue({
-        user: { id: '1', email: 'admin@example.com', role: 'admin' },
-        session: { id: 's1', userId: '1', token: 'tok', expiresAt: new Date('2099-01-01') },
-      });
-    });
-
     it('should return article statistics by source', async () => {
       const mockArticles = [
         {
