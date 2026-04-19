@@ -273,6 +273,7 @@ function stripComments(source) {
 
   const PRECEDES_REGEX = new Set([
     '(',
+    ')',
     ',',
     '=',
     ':',
@@ -304,6 +305,7 @@ function stripComments(source) {
     'return',
     'throw',
     'case',
+    'default',
     'delete',
     'void',
     'typeof',
@@ -318,23 +320,34 @@ function stripComments(source) {
     'finally',
   ]);
 
+  // Return the preceding identifier word OR single non-identifier char.
+  // Also returns the character immediately before the identifier start, so the
+  // caller can distinguish `.return` (member access) from bare `return`.
   function previousSignificantToken(index) {
     let prevIdx = index - 1;
     while (prevIdx >= 0 && /\s/.test(source[prevIdx])) prevIdx--;
-    if (prevIdx < 0) return undefined;
+    if (prevIdx < 0) return { token: undefined, beforeIdent: undefined };
 
     const ch = source[prevIdx];
-    if (!/[A-Za-z0-9_$]/.test(ch)) return ch;
+    if (!/[A-Za-z0-9_$]/.test(ch)) {
+      return { token: ch, beforeIdent: undefined };
+    }
 
     const endExclusive = prevIdx + 1;
     while (prevIdx >= 0 && /[A-Za-z0-9_$]/.test(source[prevIdx])) prevIdx--;
-    return source.slice(prevIdx + 1, endExclusive);
+    const token = source.slice(prevIdx + 1, endExclusive);
+    const beforeIdent = prevIdx >= 0 ? source[prevIdx] : undefined;
+    return { token, beforeIdent };
   }
 
-  function canStartRegexAfterToken(prevToken) {
-    if (prevToken === undefined) return true;
-    if (prevToken.length === 1) return PRECEDES_REGEX.has(prevToken);
-    return PRECEDES_REGEX_KEYWORDS.has(prevToken);
+  function canStartRegexAfterToken(prev) {
+    if (prev.token === undefined) return true;
+    if (prev.token.length === 1) return PRECEDES_REGEX.has(prev.token);
+    // Keyword tokens force regex semantics UNLESS the identifier is actually a
+    // property access (e.g. `obj.return / 2`, `obj?.of / total`). In those
+    // cases `return`/`of` are identifiers, not keywords, and `/` is division.
+    if (prev.beforeIdent === '.') return false;
+    return PRECEDES_REGEX_KEYWORDS.has(prev.token);
   }
 
   for (let i = 0; i < source.length; i++) {
@@ -393,8 +406,8 @@ function stripComments(source) {
         // significant token (single punctuation char OR identifier word).
         // Division (`a / b`) only occurs after values; regex literals follow
         // punctuation operators or keywords like `return`, `throw`, `await`.
-        const prevToken = previousSignificantToken(i);
-        if (canStartRegexAfterToken(prevToken)) {
+        const prev = previousSignificantToken(i);
+        if (canStartRegexAfterToken(prev)) {
           inRegex = true;
           out.push(ch);
           continue;
@@ -491,6 +504,23 @@ async function runSelfCheck() {
       name: 'do not misread // in regex after throw keyword',
       source:
         'throw /invalid:\\/\\//; const el = <div className="text-rose-700" />;',
+      expectMatch: true,
+    },
+    {
+      name: 'do not misread // in regex after if-paren (DA Warning)',
+      source:
+        'if (cond) /https?:\\/\\//.test(v); const el = <div className="bg-red-500" />;',
+      expectMatch: true,
+    },
+    {
+      name: 'do not misread // in regex after export default',
+      source:
+        'export default /https?:\\/\\//; const el = <div className="text-amber-600" />;',
+      expectMatch: true,
+    },
+    {
+      name: 'treat member access .return as division, not regex',
+      source: 'const r = obj.return / 2; const el = <div className="bg-red-500" />;',
       expectMatch: true,
     },
   ];
