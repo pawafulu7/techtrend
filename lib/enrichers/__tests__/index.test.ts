@@ -261,6 +261,34 @@ describe('ContentEnricherFactory', () => {
     });
   });
 
+  describe('getEnricher - sourceId-based dispatch', () => {
+    it('should return HatenaContentEnricher for allowlist-未登録独自ドメイン when sourceId=hatena_blog_dev', () => {
+      const enricher = factory.getEnricher(
+        'https://blog.g-gen.co.jp/entry/next-26-keynote-day-1',
+        'hatena_blog_dev'
+      );
+      expect(enricher?.constructor.name).toBe('HatenaContentEnricher');
+    });
+
+    it('should return GenericContentEnricher for allowlist-未登録独自ドメイン when sourceId is absent', () => {
+      // sourceId なしでは allowlist 未登録ドメインは Generic にフォールスルー（従来挙動）
+      const enricher = factory.getEnricher(
+        'https://blog.g-gen.co.jp/entry/next-26-keynote-day-1'
+      );
+      expect(enricher?.constructor.name).toBe('GenericContentEnricher');
+    });
+
+    it('should prefer dedicated enricher over Hatena even when sourceId=hatena_blog_dev', () => {
+      // sourceId='hatena_blog_dev' でも ZOZO 等の専用 enricher が先に評価される
+      // （実運用で hatena_blog_dev が ZOZO ドメインを収集することはないが、順序不変性の確認）
+      const enricher = factory.getEnricher(
+        'https://techblog.zozo.com/entry/test',
+        'hatena_blog_dev'
+      );
+      expect(enricher?.constructor.name).toBe('ZOZOContentEnricher');
+    });
+  });
+
   describe('AnthropicNewsEnricher boundary', () => {
     it('should NOT match /newsroom path', () => {
       const enricher = factory.getEnricher(

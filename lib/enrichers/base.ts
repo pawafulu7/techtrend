@@ -30,8 +30,9 @@ export interface IContentEnricher {
   /**
    * このエンリッチャーが処理可能なURLかを判定
    * @param url チェック対象のURL
+   * @param sourceId 記事のsourceId (optional)。collect-feeds経由でsourceIdベースdispatchするenricherが利用する
    */
-  canHandle(url: string): boolean;
+  canHandle(url: string, sourceId?: string): boolean;
 }
 
 /**
@@ -92,7 +93,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
     }
   }
 
-  abstract canHandle(url: string): boolean;
+  abstract canHandle(url: string, sourceId?: string): boolean;
 
   // 既定の抽出セレクタと最小長
   protected getContentSelectors(): string[] {

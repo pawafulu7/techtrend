@@ -98,6 +98,8 @@ import { createFetcher } from '@/lib/fetchers';
 
 // エンリッチャーをインポート
 import { ContentEnricherFactory } from '@/lib/enrichers';
+import { HATENA_BLOG_DEV_SOURCE_ID } from '@/lib/enrichers/hatena';
+import { logger } from '@/lib/logger';
 import { isHighQuality } from '@/lib/enrichers/strategies/quality';
 
 /**
@@ -128,7 +130,6 @@ const debugLog = (message: string) => {
 const POST_SAVE_ENRICH_TIMEOUT_MS = env.POST_SAVE_ENRICH_TIMEOUT_MS;
 const POST_SAVE_ENRICH_SLEEP_MS = env.POST_SAVE_ENRICH_SLEEP_MS;
 const HATENA_BLOG_DEV_ENRICH_SLEEP_MS = env.HATENA_BLOG_DEV_ENRICH_SLEEP_MS;
-const HATENA_BLOG_DEV_SOURCE_ID = 'hatena_blog_dev';
 
 /**
  * ソース別の enrichment 後 sleep 値を決定
@@ -373,10 +374,10 @@ async function processSource({
         });
 
         if (env.SKIP_POST_SAVE_ENRICHMENT !== '1') {
-          const enricher = enricherFactory.getEnricher(article.url);
+          const enricher = enricherFactory.getEnricher(article.url, source.id);
           if (enricher) {
             try {
-              debugLog(`   [INFO] エンリッチメント実行: ${article.title.substring(0, 40)}...`);
+              debugLog(`   [INFO] エンリッチメント実行: ${article.title.substring(0, 40)}... (enricher=${enricher.constructor.name})`);
               const enrichedData = await runWithTimeout(
                 (signal) => enricher.enrich(article.url, signal),
                 POST_SAVE_ENRICH_TIMEOUT_MS,
@@ -441,10 +442,52 @@ async function processSource({
                   console.error('   [WARN] エンリッチメント失敗: コンテンツもサムネイルもなし');
                 }
               } else {
+                // データなし失敗: 観測性のためログを構造化
+                logger.warn(
+                  {
+                    url: article.url,
+                    sourceId: source.id,
+                    sourceName,
+                    enricher: enricher.constructor.name,
+                    errorCode: 'NO_DATA',
+                  },
+                  '[Enrichment] failed: no data returned'
+                );
                 console.error('   [WARN] エンリッチメント失敗: データなし');
               }
             } catch (enrichError) {
-              console.error('   [WARN] エンリッチメントエラー:', enrichError instanceof Error ? enrichError.message : String(enrichError));
+              // エラー失敗: status/errorCode/errorMessage を構造化して記録
+              // 分類優先順位: HTTP_<status> > TIMEOUT > ABORTED > EXCEPTION
+              // HTTP を最優先にすることで "HTTP 504: Gateway Timeout" 等の
+              // HTTP ステータス情報を TIMEOUT に吸わせない（観測性確保）
+              const errorName = enrichError instanceof Error ? enrichError.name : '';
+              const errorMessage = enrichError instanceof Error ? enrichError.message : String(enrichError);
+              const statusMatch = /HTTP\s+(\d{3})/i.exec(errorMessage);
+              const isTimeout =
+                errorName === 'TimeoutError' ||
+                (!statusMatch && /\btimeout\b/i.test(errorMessage));
+              const isAborted = errorName === 'AbortError';
+              const errorCode = statusMatch
+                ? `HTTP_${statusMatch[1]}`
+                : isTimeout
+                  ? 'TIMEOUT'
+                  : isAborted
+                    ? 'ABORTED'
+                    : 'EXCEPTION';
+              logger.warn(
+                {
+                  url: article.url,
+                  sourceId: source.id,
+                  sourceName,
+                  enricher: enricher.constructor.name,
+                  errorCode,
+                  status: statusMatch ? Number(statusMatch[1]) : undefined,
+                  errorName,
+                  errorMessage,
+                },
+                '[Enrichment] failed: exception thrown'
+              );
+              console.error('   [WARN] エンリッチメントエラー:', errorMessage);
             }
 
             const enrichSleepMs = resolveEnrichSleepMs(source.id);
