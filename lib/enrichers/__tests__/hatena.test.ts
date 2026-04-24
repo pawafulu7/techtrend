@@ -59,10 +59,11 @@ describe('HatenaContentEnricher', () => {
       ).toBe(true);
     });
 
-    it('should match invalid URL when sourceId is hatena_blog_dev (sourceId優先)', () => {
-      // sourceId ベース判定は URL パースに依存しない
+    it('should NOT match invalid URL even when sourceId is hatena_blog_dev (fetcher契約違反時の最小防御)', () => {
+      // URL パース不可の場合は fetcher 側の異常として false を返し、
+      // Generic へのフォールスルーを維持する
       expect(enricher.canHandle('not-a-url', HATENA_BLOG_DEV_SOURCE_ID)).toBe(
-        true
+        false
       );
     });
 

@@ -457,16 +457,30 @@ async function processSource({
               }
             } catch (enrichError) {
               // エラー失敗: status/errorCode/errorMessage を構造化して記録
+              // errorCode は TIMEOUT / ABORTED / HTTP_<status> / EXCEPTION の順で分類
+              const errorName = enrichError instanceof Error ? enrichError.name : '';
               const errorMessage = enrichError instanceof Error ? enrichError.message : String(enrichError);
+              const isTimeout =
+                errorName === 'TimeoutError' ||
+                /timeout/i.test(errorMessage);
+              const isAborted = errorName === 'AbortError';
               const statusMatch = /HTTP\s+(\d{3})/i.exec(errorMessage);
+              const errorCode = isTimeout
+                ? 'TIMEOUT'
+                : isAborted
+                  ? 'ABORTED'
+                  : statusMatch
+                    ? `HTTP_${statusMatch[1]}`
+                    : 'EXCEPTION';
               logger.warn(
                 {
                   url: article.url,
                   sourceId: source.id,
                   sourceName,
                   enricher: enricher.constructor.name,
-                  errorCode: statusMatch ? `HTTP_${statusMatch[1]}` : 'EXCEPTION',
+                  errorCode,
                   status: statusMatch ? Number(statusMatch[1]) : undefined,
+                  errorName,
                   errorMessage,
                 },
                 '[Enrichment] failed: exception thrown'

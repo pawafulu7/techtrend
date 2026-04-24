@@ -115,6 +115,12 @@ export class ContentEnricherFactory {
       // YouTube サムネイル生成（HTTPリクエスト不要、HackerNewsEnricherより後に配置）
       // HNソース以外のYouTube URLはここでキャッチ
       new YouTubeEnricher(),
+      // 注意: HatenaContentEnricher は sourceId='hatena_blog_dev' 時に無条件 true を
+      // 返すため、Hatena 系の専用 enricher（HatenaDeveloperContentEnricher 等）は
+      // 必ずこれより前に登録すること。順序を崩すと sourceId='hatena_blog_dev' で
+      // 先行するはずの専用 enricher が Hatena に吸われて到達不能になる。
+      // 回帰テスト: lib/enrichers/__tests__/index.test.ts の
+      //   "should prefer dedicated enricher over Hatena even when sourceId=hatena_blog_dev"
       new HatenaContentEnricher(), // 汎用HTMLパーサー
       new GenericContentEnricher(), // 最後のフォールバック（すべてのURLに対応）
       // 将来的に他の企業のエンリッチャーを追加
