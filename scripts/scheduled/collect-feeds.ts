@@ -98,6 +98,7 @@ import { createFetcher } from '@/lib/fetchers';
 
 // エンリッチャーをインポート
 import { ContentEnricherFactory } from '@/lib/enrichers';
+import { HATENA_BLOG_DEV_SOURCE_ID } from '@/lib/enrichers/hatena';
 import { logger } from '@/lib/logger';
 import { isHighQuality } from '@/lib/enrichers/strategies/quality';
 
@@ -129,7 +130,6 @@ const debugLog = (message: string) => {
 const POST_SAVE_ENRICH_TIMEOUT_MS = env.POST_SAVE_ENRICH_TIMEOUT_MS;
 const POST_SAVE_ENRICH_SLEEP_MS = env.POST_SAVE_ENRICH_SLEEP_MS;
 const HATENA_BLOG_DEV_ENRICH_SLEEP_MS = env.HATENA_BLOG_DEV_ENRICH_SLEEP_MS;
-const HATENA_BLOG_DEV_SOURCE_ID = 'hatena_blog_dev';
 
 /**
  * ソース別の enrichment 後 sleep 値を決定
@@ -457,20 +457,22 @@ async function processSource({
               }
             } catch (enrichError) {
               // エラー失敗: status/errorCode/errorMessage を構造化して記録
-              // errorCode は TIMEOUT / ABORTED / HTTP_<status> / EXCEPTION の順で分類
+              // 分類優先順位: HTTP_<status> > TIMEOUT > ABORTED > EXCEPTION
+              // HTTP を最優先にすることで "HTTP 504: Gateway Timeout" 等の
+              // HTTP ステータス情報を TIMEOUT に吸わせない（観測性確保）
               const errorName = enrichError instanceof Error ? enrichError.name : '';
               const errorMessage = enrichError instanceof Error ? enrichError.message : String(enrichError);
+              const statusMatch = /HTTP\s+(\d{3})/i.exec(errorMessage);
               const isTimeout =
                 errorName === 'TimeoutError' ||
-                /timeout/i.test(errorMessage);
+                (!statusMatch && /\btimeout\b/i.test(errorMessage));
               const isAborted = errorName === 'AbortError';
-              const statusMatch = /HTTP\s+(\d{3})/i.exec(errorMessage);
-              const errorCode = isTimeout
-                ? 'TIMEOUT'
-                : isAborted
-                  ? 'ABORTED'
-                  : statusMatch
-                    ? `HTTP_${statusMatch[1]}`
+              const errorCode = statusMatch
+                ? `HTTP_${statusMatch[1]}`
+                : isTimeout
+                  ? 'TIMEOUT'
+                  : isAborted
+                    ? 'ABORTED'
                     : 'EXCEPTION';
               logger.warn(
                 {
