@@ -126,10 +126,11 @@ export class ContentEnricherFactory {
   /**
    * URLに対応するエンリッチャーを取得
    * @param url 処理対象のURL
+   * @param sourceId 記事のsourceId (optional)。sourceIdベースdispatchするenricher（HatenaContentEnricher等）で利用
    * @returns 対応するエンリッチャー、またはnull
    */
-  getEnricher(url: string): IContentEnricher | null {
-    return this.enrichers.find((e) => e.canHandle(url)) || null;
+  getEnricher(url: string, sourceId?: string): IContentEnricher | null {
+    return this.enrichers.find((e) => e.canHandle(url, sourceId)) || null;
   }
 
   /**
@@ -157,15 +158,17 @@ export class ContentEnricherFactory {
   /**
    * 各エンリッチャーを順番に試して最初の成功結果を返す
    * @param url 処理対象のURL
+   * @param sourceId 記事のsourceId (optional)
    * @returns エンリッチメント結果、またはnull
    */
   async trySequential(
-    url: string
+    url: string,
+    sourceId?: string
   ): Promise<import('./base').EnrichmentResult | null> {
     // すべてのエンリッチャーを順番に試す
     for (const enricher of this.enrichers) {
       try {
-        if (enricher.canHandle(url)) {
+        if (enricher.canHandle(url, sourceId)) {
           const result = await enricher.enrich(url);
           if (result && (result.content || result.thumbnail)) {
             // 有効な結果が得られたら即座に返す

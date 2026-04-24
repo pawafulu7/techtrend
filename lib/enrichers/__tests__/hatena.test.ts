@@ -1,4 +1,8 @@
-import { HatenaContentEnricher, HATENA_CUSTOM_DOMAINS } from '../hatena';
+import {
+  HatenaContentEnricher,
+  HATENA_CUSTOM_DOMAINS,
+  HATENA_BLOG_DEV_SOURCE_ID,
+} from '../hatena';
 
 describe('HatenaContentEnricher', () => {
   const enricher = new HatenaContentEnricher();
@@ -33,6 +37,59 @@ describe('HatenaContentEnricher', () => {
 
     it('should return false for invalid URL', () => {
       expect(enricher.canHandle('not-a-url')).toBe(false);
+    });
+  });
+
+  describe('canHandle - sourceId-based dispatch', () => {
+    it('should match any URL when sourceId is hatena_blog_dev (allowlist未登録の独自ドメイン)', () => {
+      expect(
+        enricher.canHandle(
+          'https://blog.g-gen.co.jp/entry/next-26-keynote-day-1',
+          HATENA_BLOG_DEV_SOURCE_ID
+        )
+      ).toBe(true);
+    });
+
+    it('should match any URL when sourceId is hatena_blog_dev (techblog系)', () => {
+      expect(
+        enricher.canHandle(
+          'https://techblog.ap-com.co.jp/entry/kiro-cli-2.0-release',
+          HATENA_BLOG_DEV_SOURCE_ID
+        )
+      ).toBe(true);
+    });
+
+    it('should match invalid URL when sourceId is hatena_blog_dev (sourceId優先)', () => {
+      // sourceId ベース判定は URL パースに依存しない
+      expect(enricher.canHandle('not-a-url', HATENA_BLOG_DEV_SOURCE_ID)).toBe(
+        true
+      );
+    });
+
+    it('should fall back to URL-based check when sourceId is different', () => {
+      expect(
+        enricher.canHandle(
+          'https://blog.g-gen.co.jp/entry/test',
+          'some_other_source_id'
+        )
+      ).toBe(false);
+    });
+
+    it('should fall back to URL-based check when sourceId is undefined', () => {
+      // 既存呼び出し（sourceId未指定）との後方互換
+      expect(
+        enricher.canHandle('https://example.hatenablog.com/entry/123')
+      ).toBe(true);
+      expect(enricher.canHandle('https://blog.g-gen.co.jp/entry/test')).toBe(
+        false
+      );
+    });
+  });
+
+  describe('HATENA_BLOG_DEV_SOURCE_ID', () => {
+    it('should be the expected constant value', () => {
+      // collect-feeds.ts から渡される source.id と一致する必要がある
+      expect(HATENA_BLOG_DEV_SOURCE_ID).toBe('hatena_blog_dev');
     });
   });
 

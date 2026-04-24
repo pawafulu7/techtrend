@@ -31,12 +31,26 @@ export const HATENA_CUSTOM_DOMAINS: readonly string[] = [
   'developer.so-tech.co.jp',
 ];
 
+/**
+ * hatena.blog/dev/entries 経由で収集される Source.id。
+ * この sourceId の記事は Hatena Blog ホストが保証されるため、
+ * URL の allowlist に関わらず HatenaContentEnricher で処理する。
+ */
+export const HATENA_BLOG_DEV_SOURCE_ID = 'hatena_blog_dev';
+
 export class HatenaContentEnricher extends BaseContentEnricher {
   /**
    * はてなブックマーク記事のURLかチェック
    * 注意: これは実際のコンテンツURLをチェック（はてなのURL自体ではない）
+   *
+   * sourceId='hatena_blog_dev' の場合は、ソースが Hatena Blog GraphQL API 経由で
+   * 収集した記事のため、独自ドメイン allowlist に関わらず常に処理対象とする。
    */
-  canHandle(url: string): boolean {
+  canHandle(url: string, sourceId?: string): boolean {
+    // sourceId ベース dispatch: hatena_blog_dev は全ドメインで Hatena enricher を使う
+    if (sourceId === HATENA_BLOG_DEV_SOURCE_ID) {
+      return true;
+    }
     try {
       const hostname = new URL(url).hostname;
       // Hatenaドメインのみを対象（完全一致またはサブドメイン）
