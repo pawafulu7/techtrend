@@ -2,7 +2,12 @@
 
 import { useQueries } from '@tanstack/react-query';
 import { useEffect, useRef, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, Hash, Calendar, Activity } from 'lucide-react';
@@ -195,7 +200,7 @@ export function TagStats() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <TrendingUp className="h-5 w-5 text-green-600" />
+              <TrendingUp className="h-5 w-5 text-[var(--tt-color-positive)]" />
               急成長タグ
             </CardTitle>
           </CardHeader>
@@ -212,7 +217,7 @@ export function TagStats() {
                     </span>
                     <Badge variant="outline">{tag.name}</Badge>
                   </div>
-                  <span className="text-sm font-medium text-green-600">
+                  <span className="text-sm font-medium text-[var(--tt-color-positive)]">
                     +{tag.growthRate}%
                   </span>
                 </div>

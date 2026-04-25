@@ -3,7 +3,12 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
@@ -14,6 +19,36 @@ interface Tag {
   name: string;
   count: number;
   trend: 'rising' | 'stable' | 'falling';
+}
+
+/**
+ * タグの色を計算する pure function。
+ * テスト容易性のため component 外に export し、minCount/maxCount を引数で受ける。
+ */
+export function getTagColor(
+  tag: Tag,
+  range: { minCount: number; maxCount: number }
+): string {
+  const baseClasses = 'transition-all duration-300 hover:scale-110';
+
+  if (tag.trend === 'rising') {
+    return cn(baseClasses, 'text-[var(--tt-color-positive)] hover:opacity-80');
+  } else if (tag.trend === 'falling') {
+    return cn(baseClasses, 'text-[var(--tt-color-negative)] hover:opacity-80');
+  }
+
+  // 使用頻度に基づいて色の濃さを変える
+  const { minCount, maxCount } = range;
+  const intensity =
+    maxCount === minCount
+      ? 0.5
+      : (tag.count - minCount) / (maxCount - minCount);
+  if (intensity > 0.7) {
+    return cn(baseClasses, 'text-primary hover:text-primary/80');
+  } else if (intensity > 0.4) {
+    return cn(baseClasses, 'text-primary/80 hover:text-primary/60');
+  }
+  return cn(baseClasses, 'text-primary/60 hover:text-primary/40');
 }
 
 // Pre-compute skeleton widths at module level to avoid Math.random() during render
@@ -86,29 +121,6 @@ export function TagCloud({
     return { minCount: min, maxCount: max, fontSizes: sizes };
   }, [tags]);
 
-  // タグの色を決定
-  const getTagColor = (tag: Tag) => {
-    const baseClasses = 'transition-all duration-300 hover:scale-110';
-
-    if (tag.trend === 'rising') {
-      return cn(baseClasses, 'text-green-600 hover:text-green-700');
-    } else if (tag.trend === 'falling') {
-      return cn(baseClasses, 'text-red-600 hover:text-red-700');
-    }
-
-    // 使用頻度に基づいて色の濃さを変える
-    const intensity =
-      maxCount === minCount
-        ? 0.5
-        : (tag.count - minCount) / (maxCount - minCount);
-    if (intensity > 0.7) {
-      return cn(baseClasses, 'text-primary hover:text-primary/80');
-    } else if (intensity > 0.4) {
-      return cn(baseClasses, 'text-primary/80 hover:text-primary/60');
-    }
-    return cn(baseClasses, 'text-primary/60 hover:text-primary/40');
-  };
-
   const handleTagClick = (tag: Tag) => {
     if (onTagClick) {
       onTagClick(tag.name);
@@ -121,9 +133,13 @@ export function TagCloud({
   const getTrendIcon = (trend: 'rising' | 'stable' | 'falling') => {
     switch (trend) {
       case 'rising':
-        return <TrendingUp className="ml-1 inline h-3 w-3 text-green-600" />;
+        return (
+          <TrendingUp className="ml-1 inline h-3 w-3 text-[var(--tt-color-positive)]" />
+        );
       case 'falling':
-        return <TrendingDown className="ml-1 inline h-3 w-3 text-red-600" />;
+        return (
+          <TrendingDown className="ml-1 inline h-3 w-3 text-[var(--tt-color-negative)]" />
+        );
       default:
         return null;
     }
@@ -208,7 +224,7 @@ export function TagCloud({
                   'inline-flex items-center rounded-full px-3 py-1',
                   'hover:bg-accent transition-all duration-200',
                   'focus:ring-primary focus:ring-2 focus:outline-none',
-                  getTagColor(tag)
+                  getTagColor(tag, { minCount, maxCount })
                 )}
                 style={{ fontSize: `${fontSizes[tag.id]}px` }}
                 title={`${tag.name} (${tag.count}件)`}
@@ -224,7 +240,7 @@ export function TagCloud({
           <div className="mt-4 border-t pt-4">
             <div className="text-muted-foreground flex items-center justify-center gap-4 text-xs">
               <span className="flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-green-600" />
+                <TrendingUp className="h-3 w-3 text-[var(--tt-color-positive)]" />
                 急上昇
               </span>
               <span className="flex items-center gap-1">
@@ -232,7 +248,7 @@ export function TagCloud({
                 安定
               </span>
               <span className="flex items-center gap-1">
-                <TrendingDown className="h-3 w-3 text-red-600" />
+                <TrendingDown className="h-3 w-3 text-[var(--tt-color-negative)]" />
                 下降
               </span>
             </div>
