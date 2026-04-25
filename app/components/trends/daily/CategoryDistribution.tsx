@@ -1,7 +1,12 @@
 'use client';
 
 import { Layers } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { cn } from '@/lib/utils';
 
 interface CategoryInfo {
@@ -22,31 +27,27 @@ interface CategoryDistributionProps {
 
 const CATEGORY_COLORS: Record<string, string> = {
   'AI/ML': 'from-violet-500 to-purple-600',
-  'Frontend': 'from-cyan-500 to-blue-600',
-  'Backend': 'from-emerald-500 to-green-600',
-  'DevOps': 'from-orange-500 to-red-600',
-  'Security': 'from-rose-500 to-pink-600',
-  'Database': 'from-amber-500 to-yellow-600',
-  'Mobile': 'from-indigo-500 to-blue-600',
+  Frontend: 'from-cyan-500 to-blue-600',
+  Backend: 'from-emerald-500 to-green-600',
+  DevOps: 'from-orange-500 to-red-600',
+  Security: 'from-rose-500 to-pink-600',
+  Database: 'from-amber-500 to-yellow-600',
+  Mobile: 'from-indigo-500 to-blue-600',
 };
 
-const CATEGORY_BG_COLORS: Record<string, string> = {
-  'AI/ML': 'bg-violet-500/10',
-  'Frontend': 'bg-cyan-500/10',
-  'Backend': 'bg-emerald-500/10',
-  'DevOps': 'bg-orange-500/10',
-  'Security': 'bg-rose-500/10',
-  'Database': 'bg-amber-500/10',
-  'Mobile': 'bg-indigo-500/10',
-};
+// Card 背景は category 識別を gradient (dot/progress bar) に委ねるため neutral surface に統一
+const CATEGORY_BG_CLASS = 'bg-[var(--tt-color-surface-muted)]';
 
-export function CategoryDistribution({ categories, loading = false }: CategoryDistributionProps) {
+export function CategoryDistribution({
+  categories,
+  loading = false,
+}: CategoryDistributionProps) {
   if (loading) {
     return (
       <Card className="border-0 shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" />
+            <Layers className="text-primary h-5 w-5" />
             カテゴリ
           </CardTitle>
         </CardHeader>
@@ -54,7 +55,7 @@ export function CategoryDistribution({ categories, loading = false }: CategoryDi
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="h-16 bg-muted rounded-lg" />
+                <div className="bg-muted h-16 rounded-lg" />
               </div>
             ))}
           </div>
@@ -67,52 +68,67 @@ export function CategoryDistribution({ categories, loading = false }: CategoryDi
     <Card className="border-0 shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Layers className="h-5 w-5 text-primary" />
+          <Layers className="text-primary h-5 w-5" />
           カテゴリ
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {categories.map((category, index) => {
-            const gradientClass = CATEGORY_COLORS[category.name] || 'from-gray-500 to-slate-600';
-            const bgClass = CATEGORY_BG_COLORS[category.name] || 'bg-gray-500/10';
+            const gradientClass =
+              CATEGORY_COLORS[category.name] || 'from-gray-500 to-slate-600';
+            const bgClass = CATEGORY_BG_CLASS;
             // パーセンテージをそのままバーの幅に使用（総記事数に対する割合）
             const widthPercent = category.percentage;
 
             return (
               <div
                 key={category.name}
-                className={cn("p-4 rounded-xl tt-cat-slide-in", bgClass)}
+                className={cn('tt-cat-slide-in rounded-xl p-4', bgClass)}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="mb-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className={cn("w-3 h-3 rounded-full bg-gradient-to-r", gradientClass)} />
-                    <span className="font-semibold text-sm">{category.name}</span>
+                    <div
+                      className={cn(
+                        'h-3 w-3 rounded-full bg-gradient-to-r',
+                        gradientClass
+                      )}
+                    />
+                    <span className="text-sm font-semibold">
+                      {category.name}
+                    </span>
                   </div>
                   <div className="text-right">
                     <span className="text-lg font-bold">{category.count}</span>
-                    <span className="text-xs text-muted-foreground ml-1">
+                    <span className="text-muted-foreground ml-1 text-xs">
                       ({category.percentage}%)
                     </span>
                   </div>
                 </div>
 
                 {/* Progress bar */}
-                <div className="h-2 bg-background/50 rounded-full overflow-hidden">
+                <div className="bg-background/50 h-2 overflow-hidden rounded-full">
                   <div
-                    className={cn("h-full rounded-full bg-gradient-to-r tt-cat-grow-width", gradientClass)}
-                    style={{
-                      '--target-width': `${widthPercent}%`,
-                      animationDelay: `${200 + index * 50}ms`
-                    } as React.CSSProperties}
+                    className={cn(
+                      'tt-cat-grow-width h-full rounded-full bg-gradient-to-r',
+                      gradientClass
+                    )}
+                    style={
+                      {
+                        '--target-width': `${widthPercent}%`,
+                        animationDelay: `${200 + index * 50}ms`,
+                      } as React.CSSProperties
+                    }
                   />
                 </div>
 
                 {/* Top article */}
                 {category.topArticle && (
-                  <p className="text-xs text-muted-foreground mt-2 truncate">
-                    Top: {category.topArticle.translatedTitle || category.topArticle.title}
+                  <p className="text-muted-foreground mt-2 truncate text-xs">
+                    Top:{' '}
+                    {category.topArticle.translatedTitle ||
+                      category.topArticle.title}
                   </p>
                 )}
               </div>
@@ -122,12 +138,22 @@ export function CategoryDistribution({ categories, loading = false }: CategoryDi
 
         <style jsx>{`
           @keyframes ttCatSlideIn {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
+            from {
+              opacity: 0;
+              transform: translateX(-20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0);
+            }
           }
           @keyframes ttCatGrowWidth {
-            from { width: 0; }
-            to { width: var(--target-width); }
+            from {
+              width: 0;
+            }
+            to {
+              width: var(--target-width);
+            }
           }
           .tt-cat-slide-in {
             animation: ttCatSlideIn 0.3s ease-out forwards;
