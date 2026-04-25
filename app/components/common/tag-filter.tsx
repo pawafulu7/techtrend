@@ -16,8 +16,15 @@ import { Tag as TagIcon, Search, X, ChevronRight, Loader2 } from 'lucide-react';
 //   DropdownMenuTrigger,
 // } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { TAG_CATEGORIES, getCategoryInfo } from '@/lib/constants/tag-categories';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  TAG_CATEGORIES,
+  getCategoryInfo,
+} from '@/lib/constants/tag-categories';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 
 interface TagFilterProps {
@@ -43,13 +50,13 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
   useEffect(() => {
     const tagParam = searchParams.get('tags');
     const modeParam = searchParams.get('tagMode') as 'OR' | 'AND' | null;
-    
+
     if (tagParam) {
       setSelectedTags(tagParam.split(','));
     } else {
       setSelectedTags([]);
     }
-    
+
     if (modeParam) {
       setFilterMode(modeParam);
     }
@@ -62,25 +69,26 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
         setSearchResults([]);
         return;
       }
-      
-      
+
       setIsSearching(true);
       try {
-        const response = await fetch(`/api/tags/search?q=${encodeURIComponent(debouncedSearchQuery)}`);
-        
+        const response = await fetch(
+          `/api/tags/search?q=${encodeURIComponent(debouncedSearchQuery)}`
+        );
+
         // レスポンスステータスをチェック
         if (!response.ok) {
           setSearchResults([]);
           return;
         }
-        
+
         // レスポンスボディが空でないことを確認
         const text = await response.text();
         if (!text) {
           setSearchResults([]);
           return;
         }
-        
+
         // JSONとしてパース
         let data;
         try {
@@ -89,7 +97,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
           setSearchResults([]);
           return;
         }
-        
+
         // データが配列かチェック
         if (Array.isArray(data)) {
           setSearchResults(data);
@@ -102,63 +110,66 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
         setIsSearching(false);
       }
     };
-    
+
     searchTags();
   }, [debouncedSearchQuery]);
 
   // 表示するタグ: 検索中は検索結果、それ以外は初期タグ
   const displayTags = searchQuery ? searchResults : initialTags;
-  
+
   // フィルタリングされたタグ（APIで検索済みなので、そのまま使用）
   const filteredTags = displayTags;
 
   // カテゴリー別にタグをグループ化
   const groupedTags = useMemo(() => {
     const groups: Record<string, typeof initialTags> = {
-      uncategorized: []
+      uncategorized: [],
     };
-    
+
     // カテゴリーごとの空配列を初期化
-    Object.keys(TAG_CATEGORIES).forEach(category => {
+    Object.keys(TAG_CATEGORIES).forEach((category) => {
       groups[category] = [];
     });
-    
+
     // タグをカテゴリー別に振り分け
-    filteredTags.forEach(tag => {
+    filteredTags.forEach((tag) => {
       // TAG_CATEGORIESに存在するカテゴリーかチェック
-      const category = tag.category && Object.keys(TAG_CATEGORIES).includes(tag.category) 
-        ? tag.category 
-        : 'uncategorized';
-      
+      const category =
+        tag.category && Object.keys(TAG_CATEGORIES).includes(tag.category)
+          ? tag.category
+          : 'uncategorized';
+
       if (!groups[category]) {
         groups[category] = [];
       }
       groups[category].push(tag);
     });
-    
+
     // 空のカテゴリーを削除
-    Object.keys(groups).forEach(key => {
+    Object.keys(groups).forEach((key) => {
       if (groups[key].length === 0) {
         delete groups[key];
       }
     });
-    
+
     return groups;
   }, [filteredTags]);
 
   // カテゴリーの開閉状態を管理
-  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(() => {
-    const initialState: Record<string, boolean> = {};
-    Object.keys(groupedTags).forEach(key => {
-      initialState[key] = true; // デフォルトで全て展開
-    });
-    return initialState;
-  });
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>(
+    () => {
+      const initialState: Record<string, boolean> = {};
+      Object.keys(groupedTags).forEach((key) => {
+        initialState[key] = true; // デフォルトで全て展開
+      });
+      return initialState;
+    }
+  );
 
   // タグ選択を更新
   const updateTags = (newTags: string[], mode: 'OR' | 'AND' = filterMode) => {
     const params = new URLSearchParams(searchParams.toString());
-    
+
     if (newTags.length > 0) {
       params.set('tags', newTags.join(','));
       params.set('tagMode', mode);
@@ -166,19 +177,19 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
       params.delete('tags');
       params.delete('tagMode');
     }
-    
+
     // ページ番号をリセット
     params.delete('page');
-    
+
     router.push(`/?${params.toString()}`);
   };
 
   // タグの選択/選択解除
   const toggleTag = (tagName: string) => {
     const newTags = selectedTags.includes(tagName)
-      ? selectedTags.filter(t => t !== tagName)
+      ? selectedTags.filter((t) => t !== tagName)
       : [...selectedTags, tagName];
-    
+
     updateTags(newTags);
   };
 
@@ -197,7 +208,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium flex items-center gap-2">
+        <h3 className="flex items-center gap-2 text-sm font-medium">
           <TagIcon className="h-4 w-4" />
           タグフィルター
         </h3>
@@ -208,7 +219,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
             onClick={clearAll}
             className="h-7 text-xs"
           >
-            <X className="h-3 w-3 mr-1" />
+            <X className="mr-1 h-3 w-3" />
             クリア
           </Button>
         )}
@@ -216,16 +227,16 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
 
       {/* 検索ボックス */}
       <div className="relative">
-        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
         <Input
           placeholder="タグを検索..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-8 pr-8 h-9"
+          className="h-9 pr-8 pl-8"
           data-testid="tag-search-input"
         />
         {isSearching && (
-          <Loader2 className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground animate-spin" />
+          <Loader2 className="text-muted-foreground absolute top-2.5 right-2 h-4 w-4 animate-spin" />
         )}
       </div>
 
@@ -233,12 +244,12 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
       {selectedTags.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">選択中:</span>
+            <span className="text-muted-foreground text-xs">選択中:</span>
             <Button
               variant="outline"
               size="sm"
               onClick={toggleMode}
-              className="h-6 text-xs px-2"
+              className="h-6 px-2 text-xs"
             >
               {filterMode === 'OR' ? 'いずれか' : 'すべて'}
             </Button>
@@ -252,7 +263,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
                 onClick={() => toggleTag(tag)}
               >
                 {tag}
-                <X className="h-3 w-3 ml-1" />
+                <X className="ml-1 h-3 w-3" />
               </Badge>
             ))}
           </div>
@@ -260,54 +271,65 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
       )}
 
       {/* カテゴリー別タグ一覧 */}
-      <div className="space-y-2 max-h-96 overflow-y-auto" data-testid="popular-tags">
+      <div
+        className="max-h-96 space-y-2 overflow-y-auto"
+        data-testid="popular-tags"
+      >
         {Object.entries(groupedTags).map(([categoryKey, categoryTags]) => {
-          const categoryInfo = categoryKey === 'uncategorized' 
-            ? { name: '未分類', color: 'text-gray-600 bg-gray-50 border-gray-200' }
-            : getCategoryInfo(categoryKey as keyof typeof TAG_CATEGORIES) || 
-              { name: '未分類', color: 'text-gray-600 bg-gray-50 border-gray-200' };
-          
+          const uncategorizedColor =
+            'text-[var(--tt-color-text-muted)] bg-[var(--tt-color-surface-muted)] border-[var(--tt-color-border)]';
+          const categoryInfo =
+            categoryKey === 'uncategorized'
+              ? { name: '未分類', color: uncategorizedColor }
+              : getCategoryInfo(categoryKey as keyof typeof TAG_CATEGORIES) || {
+                  name: '未分類',
+                  color: uncategorizedColor,
+                };
+
           return (
-            <Collapsible 
-              key={categoryKey} 
+            <Collapsible
+              key={categoryKey}
               open={openCategories[categoryKey] ?? true}
-              onOpenChange={(open) => setOpenCategories(prev => ({ ...prev, [categoryKey]: open }))}
+              onOpenChange={(open) =>
+                setOpenCategories((prev) => ({ ...prev, [categoryKey]: open }))
+              }
             >
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
+              <CollapsibleTrigger className="flex w-full items-center justify-between rounded p-2 transition-colors hover:bg-[var(--tt-color-surface-hover)]">
                 <div className="flex items-center gap-2">
-                  <ChevronRight 
+                  <ChevronRight
                     className={`h-4 w-4 transition-transform ${
                       openCategories[categoryKey] ? 'rotate-90' : ''
-                    }`} 
+                    }`}
                   />
-                  <span className="text-sm font-medium">{categoryInfo.name}</span>
+                  <span className="text-sm font-medium">
+                    {categoryInfo.name}
+                  </span>
                   <Badge variant="secondary" className="text-xs">
                     {categoryTags.length}
                   </Badge>
                 </div>
               </CollapsibleTrigger>
-              <CollapsibleContent className="pl-6 space-y-1">
+              <CollapsibleContent className="space-y-1 pl-6">
                 {categoryTags.map((tag) => {
                   const isSelected = selectedTags.includes(tag.name);
                   return (
                     <div
                       key={tag.id}
                       className={cn(
-                        "flex items-center justify-between p-2 rounded cursor-pointer transition-colors",
-                        isSelected 
-                          ? "bg-primary/10 hover:bg-primary/20" 
-                          : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                        'flex cursor-pointer items-center justify-between rounded p-2 transition-colors',
+                        isSelected
+                          ? 'bg-primary/10 hover:bg-primary/20'
+                          : 'hover:bg-[var(--tt-color-surface-hover)]'
                       )}
                       onClick={() => toggleTag(tag.name)}
                       data-testid={`tag-item-${tag.name}`}
                     >
-                      <span className={cn(
-                        "text-sm",
-                        isSelected && "font-medium"
-                      )}>
+                      <span
+                        className={cn('text-sm', isSelected && 'font-medium')}
+                      >
                         {tag.name}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-muted-foreground text-xs">
                         {tag.count}
                       </span>
                     </div>
