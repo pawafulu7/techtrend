@@ -99,12 +99,15 @@ export function SourceFilterPanel({
 }: SourceFilterPanelProps) {
   return (
     <div
-      className="rounded-lg border border-white/20 bg-white/80 p-3 shadow-sm backdrop-blur-sm dark:bg-gray-900/80"
+      className="rounded-lg border border-white/20 bg-[var(--tt-color-surface)]/80 p-3 shadow-sm backdrop-blur-sm"
       data-testid="source-filter"
     >
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-xs font-semibold">ソース</h3>
-        <span className="text-xs text-gray-500" data-testid="source-count">
+        <span
+          className="text-xs text-[var(--tt-color-text-muted)]"
+          data-testid="source-count"
+        >
           {selectedSources.length}/{sources.length}
         </span>
       </div>
@@ -140,7 +143,7 @@ export function SourceFilterPanel({
             variant="outline"
             size="sm"
             onClick={() => applyPreset('company')}
-            className="h-7 border-blue-200 text-xs transition-all hover:border-blue-400 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-950"
+            className="h-7 border-[var(--tt-color-info-border)] text-xs transition-all hover:border-[var(--tt-color-info-border)] hover:bg-[var(--tt-color-info-bg)]"
             data-testid="preset-company"
             type="button"
             title="日本企業の技術ブログのみ"
@@ -152,7 +155,7 @@ export function SourceFilterPanel({
             variant="outline"
             size="sm"
             onClick={() => applyPreset('ai-ml')}
-            className="h-7 border-purple-200 text-xs transition-all hover:border-purple-400 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-950"
+            className="h-7 border-[var(--tt-color-border)] text-xs transition-all hover:border-[var(--tt-color-border)] hover:bg-[var(--tt-color-surface-hover)]"
             data-testid="preset-ai-ml"
             type="button"
             title="AI・機械学習関連の情報のみ"
@@ -164,7 +167,7 @@ export function SourceFilterPanel({
             variant="outline"
             size="sm"
             onClick={() => applyPreset('foreign')}
-            className="h-7 border-green-200 text-xs transition-all hover:border-green-400 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950"
+            className="h-7 border-[var(--tt-color-positive-border)] text-xs transition-all hover:border-[var(--tt-color-positive-border)] hover:bg-[var(--tt-color-positive-bg)]"
             data-testid="preset-foreign"
             type="button"
             title="海外の技術情報サイトのみ"
@@ -176,7 +179,7 @@ export function SourceFilterPanel({
             variant="outline"
             size="sm"
             onClick={() => applyPreset('domestic-all')}
-            className="h-7 border-orange-200 text-xs transition-all hover:border-orange-400 hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-950"
+            className="h-7 border-[var(--tt-color-warning-border)] text-xs transition-all hover:border-[var(--tt-color-warning-border)] hover:bg-[var(--tt-color-warning-bg)]"
             data-testid="preset-domestic-all"
             type="button"
             title="日本の技術情報全般（情報サイト+企業ブログ）"
@@ -246,7 +249,7 @@ export function SourceFilterPanel({
                     type="button"
                     data-testid={`category-${category.id}-header`}
                   >
-                    <div className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <div className="flex items-center justify-between p-2 hover:bg-[var(--tt-color-surface-hover)]">
                       <div className="flex items-center gap-2">
                         {isExpanded ? (
                           <ChevronDown className="h-3 w-3" />
@@ -258,7 +261,7 @@ export function SourceFilterPanel({
                           {category.name}
                         </span>
                         <span
-                          className="text-xs text-gray-500"
+                          className="text-xs text-[var(--tt-color-text-muted)]"
                           data-testid={`category-${category.id}-count`}
                         >
                           ({categorySelectedCount}/{categorySources.length})
@@ -302,7 +305,7 @@ export function SourceFilterPanel({
                           <label
                             key={source.id}
                             htmlFor={`source-${source.id}`}
-                            className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-gray-50 dark:hover:bg-gray-800"
+                            className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-[var(--tt-color-surface-hover)]"
                             data-testid={`source-checkbox-${source.id}`}
                           >
                             <Checkbox

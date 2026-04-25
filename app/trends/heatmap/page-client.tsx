@@ -217,15 +217,15 @@ export function HeatmapPageClient() {
         <div className="flex items-center justify-center gap-4 text-xs">
           <span className="text-muted-foreground">シェア変化:</span>
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-sm bg-red-500" />
+            <div className="h-3 w-3 rounded-sm bg-[var(--tt-color-negative)]" />
             <span className="text-muted-foreground">シェア低下</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-sm bg-gray-500" />
+            <div className="h-3 w-3 rounded-sm bg-[var(--tt-color-surface-hover)]" />
             <span className="text-muted-foreground">横ばい</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-sm bg-green-500" />
+            <div className="h-3 w-3 rounded-sm bg-[var(--tt-color-positive)]" />
             <span className="text-muted-foreground">シェア上昇</span>
           </div>
         </div>

@@ -87,11 +87,13 @@ test.describe('無限スクロール機能', () => {
     }
     
     // 記事件数表示が存在する場合のみ確認（実装に依存）
-    const countElements = page.locator('.text-gray-600, .text-gray-500, [class*="text-gray"]');
-    if (await countElements.count() > 0) {
-      const countText = await countElements.first().textContent();
+    // PR #609 で text-gray-* を design token (text-muted-foreground) に置換したため、
+    // semantic な「件の記事」テキスト含有でフィルタする方式に変更。
+    const countElement = page.locator('text=/\\d+件の記事/').first();
+    if ((await countElement.count()) > 0) {
+      const countText = await countElement.textContent();
       if (countText) {
-        expect(countText).toMatch(/\d+/); // 数字が含まれることを確認
+        expect(countText).toMatch(/\d+/);
       }
     }
   });

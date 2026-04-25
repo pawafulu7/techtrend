@@ -9,7 +9,9 @@ describe('TranslationBadge', () => {
 
   it('has correct aria-label for accessibility', () => {
     render(<TranslationBadge />);
-    const badge = screen.getByLabelText('この記事は英語から自動翻訳されています');
+    const badge = screen.getByLabelText(
+      'この記事は英語から自動翻訳されています'
+    );
     expect(badge).toBeInTheDocument();
   });
 
@@ -30,21 +32,13 @@ describe('TranslationBadge', () => {
     expect(screen.getByTestId('test-badge')).toBeInTheDocument();
   });
 
-  it('has correct styling for light mode', () => {
+  it('has correct styling using info design tokens', () => {
     render(<TranslationBadge />);
     const badge = screen.getByText('自動翻訳');
-    // Check for blue color classes
-    expect(badge).toHaveClass('bg-blue-50');
-    expect(badge).toHaveClass('text-blue-700');
-    expect(badge).toHaveClass('border-blue-200');
-  });
-
-  it('has dark mode classes', () => {
-    render(<TranslationBadge />);
-    const badge = screen.getByText('自動翻訳');
-    // Check for dark mode classes
-    expect(badge).toHaveClass('dark:bg-blue-950');
-    expect(badge).toHaveClass('dark:text-blue-400');
-    expect(badge).toHaveClass('dark:border-blue-800');
+    // Issue #603: dark: prefix を持つ raw blue クラスから --tt-color-info-* に統合
+    // (CSS 変数が light/dark を自動切替)
+    expect(badge).toHaveClass('bg-[var(--tt-color-info-bg)]');
+    expect(badge).toHaveClass('text-[var(--tt-color-info)]');
+    expect(badge).toHaveClass('border-[var(--tt-color-info-border)]');
   });
 });

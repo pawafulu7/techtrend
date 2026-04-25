@@ -1,5 +1,11 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -10,7 +16,7 @@ import {
   Info,
   Zap,
   Database,
-  Activity
+  Activity,
 } from 'lucide-react';
 import type { OptimizationRecommendation } from '../types/dashboard';
 
@@ -23,37 +29,36 @@ export const OptimizationPanel: React.FC<{
   className?: string;
 }> = ({ recommendations, className = '' }) => {
   // 推奨事項を構造化データに変換
-  const structuredRecommendations: OptimizationRecommendation[] = recommendations.map(rec => {
-    if (typeof rec === 'string') {
-      // 文字列から推奨タイプと重要度を推測
-      let type: OptimizationRecommendation['type'] = 'performance';
-      let severity: OptimizationRecommendation['severity'] = 'medium';
+  const structuredRecommendations: OptimizationRecommendation[] =
+    recommendations.map((rec) => {
+      if (typeof rec === 'string') {
+        // 文字列から推奨タイプと重要度を推測
+        let type: OptimizationRecommendation['type'] = 'performance';
+        let severity: OptimizationRecommendation['severity'] = 'low';
 
-      if (rec.includes('キャッシュ') || rec.includes('cache')) {
-        type = 'cache';
-      } else if (rec.includes('バッチ') || rec.includes('batch')) {
-        type = 'batch';
-      } else if (rec.includes('メモリ') || rec.includes('memory')) {
-        type = 'memory';
+        if (rec.includes('キャッシュ') || rec.includes('cache')) {
+          type = 'cache';
+        } else if (rec.includes('バッチ') || rec.includes('batch')) {
+          type = 'batch';
+        } else if (rec.includes('メモリ') || rec.includes('memory')) {
+          type = 'memory';
+        }
+
+        if (rec.includes('警告') || rec.includes('critical')) {
+          severity = 'high';
+        } else if (rec.includes('注意') || rec.includes('warning')) {
+          severity = 'medium';
+        }
+
+        return {
+          type,
+          severity,
+          message: rec,
+          action: undefined,
+        };
       }
-
-      if (rec.includes('警告') || rec.includes('critical')) {
-        severity = 'high';
-      } else if (rec.includes('注意') || rec.includes('warning')) {
-        severity = 'medium';
-      } else {
-        severity = 'low';
-      }
-
-      return {
-        type,
-        severity,
-        message: rec,
-        action: undefined
-      };
-    }
-    return rec;
-  });
+      return rec;
+    });
 
   // 重要度でソート
   const sortedRecommendations = [...structuredRecommendations].sort((a, b) => {
@@ -77,17 +82,19 @@ export const OptimizationPanel: React.FC<{
   };
 
   // 重要度バッジの取得
-  const getSeverityBadge = (severity: OptimizationRecommendation['severity']) => {
+  const getSeverityBadge = (
+    severity: OptimizationRecommendation['severity']
+  ) => {
     const variants: Record<OptimizationRecommendation['severity'], string> = {
       high: 'destructive',
       medium: 'default',
-      low: 'secondary'
+      low: 'secondary',
     };
 
     const labels: Record<OptimizationRecommendation['severity'], string> = {
       high: '重要',
       medium: '推奨',
-      low: '改善案'
+      low: '改善案',
     };
 
     return (
@@ -107,9 +114,9 @@ export const OptimizationPanel: React.FC<{
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Alert className="bg-green-50 border-green-200">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-700">
+          <Alert className="border-[var(--tt-color-positive-border)] bg-[var(--tt-color-positive-bg)]">
+            <CheckCircle className="h-4 w-4 text-[var(--tt-color-positive)]" />
+            <AlertDescription className="text-[var(--tt-color-positive)]">
               現在、システムは最適な状態で稼働しています。
             </AlertDescription>
           </Alert>
@@ -125,15 +132,13 @@ export const OptimizationPanel: React.FC<{
           <Lightbulb className="h-5 w-5" />
           最適化推奨
         </CardTitle>
-        <CardDescription>
-          パフォーマンス向上のための推奨事項
-        </CardDescription>
+        <CardDescription>パフォーマンス向上のための推奨事項</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {sortedRecommendations.map((rec, index) => (
           <div
             key={index}
-            className="p-3 rounded-lg border bg-white hover:shadow-sm transition-shadow"
+            className="rounded-lg border bg-[var(--tt-color-surface)] p-3 transition-shadow hover:shadow-sm"
           >
             <div className="flex items-start gap-3">
               <div className="mt-0.5">{getTypeIcon(rec.type)}</div>
@@ -141,9 +146,11 @@ export const OptimizationPanel: React.FC<{
                 <div className="flex items-center gap-2">
                   {getSeverityBadge(rec.severity)}
                 </div>
-                <p className="text-sm text-gray-700">{rec.message}</p>
+                <p className="text-sm text-[var(--tt-color-text)]">
+                  {rec.message}
+                </p>
                 {rec.action && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="mt-1 text-xs text-[var(--tt-color-text-muted)]">
                     <strong>対応策:</strong> {rec.action}
                   </p>
                 )}
@@ -165,9 +172,9 @@ export const OptimizationScore: React.FC<{
   className?: string;
 }> = ({ score, className = '' }) => {
   const getScoreColor = () => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
+    if (score >= 80) return 'text-[var(--tt-color-positive)]';
+    if (score >= 60) return 'text-[var(--tt-color-warning)]';
+    return 'text-[var(--tt-color-negative)]';
   };
 
   const getScoreLabel = () => {
@@ -184,13 +191,11 @@ export const OptimizationScore: React.FC<{
       </CardHeader>
       <CardContent>
         <div className="text-center">
-          <div className={`text-4xl font-bold ${getScoreColor()}`}>
-            {score}
-          </div>
-          <div className="text-sm text-gray-600 mt-1">
+          <div className={`text-4xl font-bold ${getScoreColor()}`}>{score}</div>
+          <div className="mt-1 text-sm text-[var(--tt-color-text-muted)]">
             / 100
           </div>
-          <div className={`text-sm font-medium mt-2 ${getScoreColor()}`}>
+          <div className={`mt-2 text-sm font-medium ${getScoreColor()}`}>
             {getScoreLabel()}
           </div>
         </div>
@@ -210,17 +215,20 @@ export const InsightCard: React.FC<{
   type?: 'info' | 'success' | 'warning' | 'error';
 }> = ({ title, value, insight, type = 'info' }) => {
   const typeStyles = {
-    info: 'bg-blue-50 border-blue-200 text-blue-700',
-    success: 'bg-green-50 border-green-200 text-green-700',
-    warning: 'bg-yellow-50 border-yellow-200 text-yellow-700',
-    error: 'bg-red-50 border-red-200 text-red-700'
+    info: 'bg-[var(--tt-color-info-bg)] border-[var(--tt-color-info-border)] text-[var(--tt-color-info)]',
+    success:
+      'bg-[var(--tt-color-positive-bg)] border-[var(--tt-color-positive-border)] text-[var(--tt-color-positive)]',
+    warning:
+      'bg-[var(--tt-color-warning-bg)] border-[var(--tt-color-warning-border)] text-[var(--tt-color-warning)]',
+    error:
+      'bg-[var(--tt-color-negative-bg)] border-[var(--tt-color-negative-border)] text-[var(--tt-color-negative)]',
   };
 
   const typeIcons = {
     info: <Info className="h-4 w-4" />,
     success: <CheckCircle className="h-4 w-4" />,
     warning: <AlertTriangle className="h-4 w-4" />,
-    error: <AlertTriangle className="h-4 w-4" />
+    error: <AlertTriangle className="h-4 w-4" />,
   };
 
   return (
@@ -229,8 +237,8 @@ export const InsightCard: React.FC<{
         <div className="mt-0.5">{typeIcons[type]}</div>
         <div className="flex-1">
           <div className="font-medium">{title}</div>
-          <div className="text-2xl font-bold mt-1">{value}</div>
-          <div className="text-sm mt-2 opacity-90">{insight}</div>
+          <div className="mt-1 text-2xl font-bold">{value}</div>
+          <div className="mt-2 text-sm opacity-90">{insight}</div>
         </div>
       </div>
     </div>

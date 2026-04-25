@@ -61,11 +61,11 @@ export function SummaryCardsSection({
   // Show loading skeleton only during initial load (no data yet)
   if (loading && !processingLogs && !embeddingSummary && !articleStats) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <div
             key={i}
-            className="min-h-[120px] bg-muted animate-pulse rounded-lg"
+            className="bg-muted min-h-[120px] animate-pulse rounded-lg"
           />
         ))}
       </div>
@@ -75,11 +75,11 @@ export function SummaryCardsSection({
   // Show error state only if all data is missing and there's an error
   if (error && !processingLogs && !embeddingSummary && !articleStats) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <div
             key={i}
-            className="min-h-[120px] bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg flex items-center justify-center text-muted-foreground text-sm"
+            className="text-muted-foreground flex min-h-[120px] items-center justify-center rounded-lg border border-[var(--tt-color-negative-border)] bg-[var(--tt-color-negative-bg)] text-sm"
           >
             Failed to load
           </div>
@@ -89,13 +89,11 @@ export function SummaryCardsSection({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       {/* Processing Logs Success Rate */}
       <MetricsCard
         title="Process Success Rate"
-        value={
-          processingLogs?.summary?.successRate?.toFixed(1) ?? '-'
-        }
+        value={processingLogs?.summary?.successRate?.toFixed(1) ?? '-'}
         unit="%"
         description={`${processingLogs?.summary?.successCount ?? 0} / ${processingLogs?.summary?.total ?? 0} processes succeeded`}
         status={
@@ -108,9 +106,7 @@ export function SummaryCardsSection({
       {/* Embedding Completion Rate */}
       <MetricsCard
         title="Embedding Completion"
-        value={
-          embeddingSummary?.completionRate?.toFixed(1) ?? '-'
-        }
+        value={embeddingSummary?.completionRate?.toFixed(1) ?? '-'}
         unit="%"
         description={`${embeddingSummary?.statusCounts?.COMPLETED?.toLocaleString() ?? 0} completed jobs`}
         status={
@@ -146,9 +142,7 @@ export function SummaryCardsSection({
       {/* Article Summary Rate */}
       <MetricsCard
         title="Article Summary Rate"
-        value={
-          articleStats?.totals?.overallRate?.toFixed(1) ?? '-'
-        }
+        value={articleStats?.totals?.overallRate?.toFixed(1) ?? '-'}
         unit="%"
         description={`${articleStats?.totals?.summaries?.toLocaleString() ?? 0} / ${articleStats?.totals?.articles?.toLocaleString() ?? 0} articles have summaries`}
         status={

@@ -145,7 +145,7 @@ export function CompactCard({
         'group relative flex min-h-[140px] cursor-pointer flex-col gap-1 p-3',
         'focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
         isNew
-          ? 'border-t-2 border-t-green-500/60 dark:border-t-green-400/40'
+          ? 'border-t-2 border-t-[var(--tt-color-positive)]'
           : sourceColor?.borderLeft
       )}
     >
@@ -158,8 +158,8 @@ export function CompactCard({
             title="NEW"
             role="img"
           >
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--tt-color-positive)] opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--tt-color-positive)]" />
           </span>
         )}
         {!isRead && (

@@ -14,7 +14,7 @@ export function InfiniteScrollTrigger({
   onIntersect,
   hasNextPage,
   isFetchingNextPage,
-  className = ''
+  className = '',
 }: InfiniteScrollTriggerProps) {
   const triggerRef = useRef<HTMLDivElement>(null);
   const lastTriggerTimeRef = useRef<number>(0);
@@ -50,7 +50,7 @@ export function InfiniteScrollTrigger({
   // 次のページがない場合は何も表示しない
   if (!hasNextPage && !isFetchingNextPage) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="py-8 text-center text-[var(--tt-color-text-muted)]">
         すべての記事を読み込みました
       </div>
     );
@@ -59,18 +59,18 @@ export function InfiniteScrollTrigger({
   return (
     <div
       ref={triggerRef}
-      className={`flex justify-center items-center py-8 ${className}`}
+      className={`flex items-center justify-center py-8 ${className}`}
       data-testid="infinite-scroll-trigger"
     >
       {isFetchingNextPage ? (
         <div className="flex items-center gap-2">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="text-sm text-gray-600">記事を読み込み中...</span>
+          <span className="text-sm text-[var(--tt-color-text-muted)]">
+            記事を読み込み中...
+          </span>
         </div>
       ) : (
-        hasNextPage && (
-          <div className="h-10 w-full" aria-hidden="true" />
-        )
+        hasNextPage && <div className="h-10 w-full" aria-hidden="true" />
       )}
     </div>
   );

@@ -38,11 +38,11 @@ export function SocialPostsTable({
   return (
     <div className="space-y-4">
       {/* Desktop Table */}
-      <div className="hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:block dark:border-slate-700 dark:bg-slate-900">
+      <div className="hidden rounded-xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] shadow-sm lg:block">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50">
+              <tr className="border-b border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)]">
                 <th className="w-12 px-4 py-3 text-left">
                   <Checkbox
                     checked={allSelected}
@@ -50,32 +50,32 @@ export function SocialPostsTable({
                     aria-label="すべて選択"
                   />
                 </th>
-                <th className="min-w-[320px] px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-400">
+                <th className="min-w-[320px] px-4 py-3 text-left text-xs font-semibold tracking-wider text-[var(--tt-color-text-muted)] uppercase">
                   コンテンツ
                 </th>
-                <th className="w-24 px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-400">
+                <th className="w-24 px-4 py-3 text-left text-xs font-semibold tracking-wider text-[var(--tt-color-text-muted)] uppercase">
                   ステータス
                 </th>
-                <th className="w-20 px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-400">
+                <th className="w-20 px-4 py-3 text-left text-xs font-semibold tracking-wider text-[var(--tt-color-text-muted)] uppercase">
                   ソース
                 </th>
-                <th className="w-28 px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-400">
+                <th className="w-28 px-4 py-3 text-left text-xs font-semibold tracking-wider text-[var(--tt-color-text-muted)] uppercase">
                   作成日時
                 </th>
-                <th className="w-28 px-4 py-3 text-right text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-400">
+                <th className="w-28 px-4 py-3 text-right text-xs font-semibold tracking-wider text-[var(--tt-color-text-muted)] uppercase">
                   操作
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-[var(--tt-color-border)]">
               {posts.length === 0 ? (
                 <tr>
                   <td
                     colSpan={6}
-                    className="py-12 text-center text-slate-500 dark:text-slate-400"
+                    className="py-12 text-center text-[var(--tt-color-text-muted)]"
                   >
                     <div className="flex flex-col items-center gap-2">
-                      <EmptyIcon className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+                      <EmptyIcon className="h-10 w-10 text-[var(--tt-color-text-muted)]" />
                       <p>投稿がありません</p>
                     </div>
                   </td>
@@ -84,7 +84,7 @@ export function SocialPostsTable({
                 posts.map((post) => (
                   <tr
                     key={post.id}
-                    className="group transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
+                    className="group transition-colors hover:bg-[var(--tt-color-surface-muted)]"
                   >
                     <td className="px-4 py-3">
                       <Checkbox
@@ -95,7 +95,7 @@ export function SocialPostsTable({
                     </td>
                     <td className="px-4 py-3">
                       <div className="space-y-1.5">
-                        <p className="line-clamp-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                        <p className="line-clamp-2 text-sm leading-relaxed text-[var(--tt-color-text)]">
                           {post.content}
                         </p>
                         {post.hashtags.length > 0 && (
@@ -103,7 +103,7 @@ export function SocialPostsTable({
                             {post.hashtags.map((tag, index) => (
                               <span
                                 key={`${tag}-${index}`}
-                                className="rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                                className="rounded-md bg-[var(--tt-color-surface-muted)] px-1.5 py-0.5 text-xs text-[var(--tt-color-text-muted)]"
                               >
                                 {tag}
                               </span>
@@ -118,7 +118,7 @@ export function SocialPostsTable({
                     <td className="px-4 py-3">
                       <SourceLabel source={post.source} />
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
+                    <td className="px-4 py-3 text-sm text-[var(--tt-color-text-muted)]">
                       {formatDate(post.createdAt)}
                     </td>
                     <td className="px-4 py-3">
@@ -128,7 +128,7 @@ export function SocialPostsTable({
                           size="sm"
                           onClick={() => onCopy(post)}
                           title="コピー"
-                          className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                          className="h-8 w-8 p-0 text-[var(--tt-color-text-muted)] hover:text-[var(--tt-color-text)]"
                         >
                           <CopyIcon className="h-4 w-4" />
                         </Button>
@@ -137,7 +137,7 @@ export function SocialPostsTable({
                           size="sm"
                           onClick={() => onEdit(post.id)}
                           title="編集"
-                          className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                          className="h-8 w-8 p-0 text-[var(--tt-color-text-muted)] hover:text-[var(--tt-color-text)]"
                         >
                           <EditIcon className="h-4 w-4" />
                         </Button>
@@ -146,7 +146,7 @@ export function SocialPostsTable({
                           size="sm"
                           onClick={() => onDelete(post.id)}
                           title="削除"
-                          className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400"
+                          className="h-8 w-8 p-0 text-[var(--tt-color-text-muted)] hover:text-[var(--tt-color-negative)]"
                         >
                           <TrashIcon className="h-4 w-4" />
                         </Button>
@@ -163,9 +163,9 @@ export function SocialPostsTable({
       {/* Mobile Card List */}
       <div className="space-y-3 lg:hidden">
         {posts.length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900">
-            <EmptyIcon className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" />
-            <p className="mt-2 text-slate-500 dark:text-slate-400">
+          <div className="rounded-xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-8 text-center">
+            <EmptyIcon className="mx-auto h-10 w-10 text-[var(--tt-color-text-muted)]" />
+            <p className="mt-2 text-[var(--tt-color-text-muted)]">
               投稿がありません
             </p>
           </div>
@@ -178,7 +178,7 @@ export function SocialPostsTable({
                 onCheckedChange={onSelectAll}
                 aria-label="すべて選択"
               />
-              <span className="text-sm text-slate-600 dark:text-slate-400">
+              <span className="text-sm text-[var(--tt-color-text-muted)]">
                 すべて選択
               </span>
             </div>
@@ -186,7 +186,7 @@ export function SocialPostsTable({
             {posts.map((post) => (
               <div
                 key={post.id}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-900"
+                className="rounded-xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-sm transition-shadow hover:shadow-md"
               >
                 <div className="flex items-start gap-3">
                   <Checkbox
@@ -197,7 +197,7 @@ export function SocialPostsTable({
                   />
                   <div className="min-w-0 flex-1 space-y-3">
                     {/* Content */}
-                    <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                    <p className="text-sm leading-relaxed text-[var(--tt-color-text)]">
                       {post.content}
                     </p>
 
@@ -207,7 +207,7 @@ export function SocialPostsTable({
                         {post.hashtags.map((tag, index) => (
                           <span
                             key={`${tag}-${index}`}
-                            className="rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                            className="rounded-md bg-[var(--tt-color-surface-muted)] px-1.5 py-0.5 text-xs text-[var(--tt-color-text-muted)]"
                           >
                             {tag}
                           </span>
@@ -219,18 +219,18 @@ export function SocialPostsTable({
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge status={post.status} />
                       <SourceLabel source={post.source} />
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-[var(--tt-color-text-muted)]">
                         {formatDate(post.createdAt)}
                       </span>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
+                    <div className="flex gap-1 border-t border-[var(--tt-color-border)] pt-3">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onCopy(post)}
-                        className="h-8 flex-1 text-xs text-slate-600 dark:text-slate-400"
+                        className="h-8 flex-1 text-xs text-[var(--tt-color-text-muted)]"
                       >
                         <CopyIcon className="mr-1.5 h-3.5 w-3.5" />
                         コピー
@@ -239,7 +239,7 @@ export function SocialPostsTable({
                         variant="ghost"
                         size="sm"
                         onClick={() => onEdit(post.id)}
-                        className="h-8 flex-1 text-xs text-slate-600 dark:text-slate-400"
+                        className="h-8 flex-1 text-xs text-[var(--tt-color-text-muted)]"
                       >
                         <EditIcon className="mr-1.5 h-3.5 w-3.5" />
                         編集
@@ -248,7 +248,7 @@ export function SocialPostsTable({
                         variant="ghost"
                         size="sm"
                         onClick={() => onDelete(post.id)}
-                        className="h-8 flex-1 text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400"
+                        className="h-8 flex-1 text-xs text-[var(--tt-color-negative)]"
                       >
                         <TrashIcon className="mr-1.5 h-3.5 w-3.5" />
                         削除
@@ -265,9 +265,9 @@ export function SocialPostsTable({
       {/* Pagination */}
       {pagination.totalPages > 1 && (
         <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-[var(--tt-color-text-muted)]">
             全{pagination.total.toLocaleString()}件中{' '}
-            <span className="font-medium text-slate-700 dark:text-slate-300">
+            <span className="font-medium text-[var(--tt-color-text)]">
               {((pagination.page - 1) * 20 + 1).toLocaleString()}-
               {Math.min(
                 pagination.page * 20,
@@ -282,12 +282,12 @@ export function SocialPostsTable({
               size="sm"
               onClick={() => onPageChange(pagination.page - 1)}
               disabled={pagination.page <= 1}
-              className="border-slate-200 dark:border-slate-700"
+              className="border-[var(--tt-color-border)]"
             >
               <ChevronLeftIcon className="mr-1 h-4 w-4" />
               前へ
             </Button>
-            <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400">
+            <div className="flex items-center gap-1 text-sm text-[var(--tt-color-text-muted)]">
               <span className="font-medium">{pagination.page}</span>
               <span>/</span>
               <span>{pagination.totalPages}</span>
@@ -297,7 +297,7 @@ export function SocialPostsTable({
               size="sm"
               onClick={() => onPageChange(pagination.page + 1)}
               disabled={pagination.page >= pagination.totalPages}
-              className="border-slate-200 dark:border-slate-700"
+              className="border-[var(--tt-color-border)]"
             >
               次へ
               <ChevronRightIcon className="ml-1 h-4 w-4" />
@@ -318,32 +318,34 @@ function SourceLabel({ source }: { source: string }) {
     ARTICLE: {
       label: '記事',
       color:
-        'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400',
+        'bg-[var(--tt-color-status-reviewed-icon-bg)] text-[var(--tt-color-status-reviewed-text)]',
     },
     DAILY_TREND: {
       label: 'Daily',
-      color: 'bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-400',
+      color:
+        'bg-[var(--tt-color-status-posted-icon-bg)] text-[var(--tt-color-status-posted-text)]',
     },
     DIFF_SUMMARY: {
       label: 'Diff',
       color:
-        'bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400',
+        'bg-[var(--tt-color-status-scheduled-icon-bg)] text-[var(--tt-color-status-scheduled-text)]',
     },
     MANUAL: {
       label: '手動',
       color:
-        'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+        'bg-[var(--tt-color-status-neutral-icon-bg)] text-[var(--tt-color-status-neutral-text)]',
     },
     OPINION: {
       label: '意見',
       color:
-        'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400',
+        'bg-[var(--tt-color-status-draft-icon-bg)] text-[var(--tt-color-status-draft-text)]',
     },
   };
 
   const { label, color } = config[source] || {
     label: source,
-    color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+    color:
+      'bg-[var(--tt-color-status-neutral-icon-bg)] text-[var(--tt-color-status-neutral-text)]',
   };
 
   return (

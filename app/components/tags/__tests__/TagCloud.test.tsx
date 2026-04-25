@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createTestQueryClient } from '@/__tests__/test-utils';
-import { TagCloud } from '@/app/components/tags/TagCloud';
+import { TagCloud, getTagColor } from '@/app/components/tags/TagCloud';
 import { useRouter } from 'next/navigation';
 
 // Next.jsのモック
@@ -318,12 +318,75 @@ describe('TagCloud', () => {
         const reactTag = screen.getByText('React');
         const nextTag = screen.getByText('Next.js');
 
-        // Rising trend - green color
-        expect(reactTag).toHaveClass('text-green-600');
+        // Rising trend - positive token
+        expect(reactTag).toHaveClass('text-[var(--tt-color-positive)]');
 
-        // Falling trend - red color
-        expect(nextTag).toHaveClass('text-red-600');
+        // Falling trend - negative token
+        expect(nextTag).toHaveClass('text-[var(--tt-color-negative)]');
       });
+    });
+  });
+
+  describe('getTagColor (pure function)', () => {
+    const range = { minCount: 20, maxCount: 100 };
+
+    it('rising トレンドは positive トークンを返す', () => {
+      const tag = {
+        id: 'r',
+        name: 'React',
+        count: 100,
+        trend: 'rising' as const,
+      };
+      const classes = getTagColor(tag, range).split(' ');
+      expect(classes).toContain('text-[var(--tt-color-positive)]');
+    });
+
+    it('falling トレンドは negative トークンを返す', () => {
+      const tag = {
+        id: 'n',
+        name: 'Next.js',
+        count: 60,
+        trend: 'falling' as const,
+      };
+      const classes = getTagColor(tag, range).split(' ');
+      expect(classes).toContain('text-[var(--tt-color-negative)]');
+    });
+
+    it('stable トレンドは intensity に応じて primary 系を返す', () => {
+      const high = {
+        id: 'h',
+        name: 'High',
+        count: 100,
+        trend: 'stable' as const,
+      };
+      const mid = {
+        id: 'm',
+        name: 'Mid',
+        count: 60,
+        trend: 'stable' as const,
+      };
+      const low = {
+        id: 'l',
+        name: 'Low',
+        count: 20,
+        trend: 'stable' as const,
+      };
+      expect(getTagColor(high, range).split(' ')).toContain('text-primary');
+      expect(getTagColor(mid, range).split(' ')).toContain('text-primary/80');
+      expect(getTagColor(low, range).split(' ')).toContain('text-primary/60');
+    });
+
+    it('minCount === maxCount の場合は安全な intensity 0.5 として primary/80 を返す', () => {
+      const tag = {
+        id: 's',
+        name: 'Single',
+        count: 50,
+        trend: 'stable' as const,
+      };
+      const classes = getTagColor(tag, { minCount: 50, maxCount: 50 }).split(
+        ' '
+      );
+      expect(classes).toContain('text-primary/80');
     });
   });
 

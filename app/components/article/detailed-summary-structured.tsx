@@ -48,7 +48,7 @@ export function DetailedSummaryStructured({
 
   return (
     <section
-      className="text-foreground rounded-xl bg-slate-100/40 p-4 dark:bg-slate-900/30"
+      className="text-foreground rounded-xl bg-[var(--tt-color-surface-muted)] p-4"
       aria-label="詳細要約"
       data-testid="detailed-summary-container"
     >
@@ -65,7 +65,7 @@ export function DetailedSummaryStructured({
           return (
             <article
               key={index}
-              className="group min-h-[44px] space-y-2 rounded-lg border border-slate-200/60 bg-white p-4 shadow-sm transition-all duration-200 hover:border-slate-300 hover:shadow-md motion-safe:animate-[fadeInUp_0.4s_ease_forwards] motion-safe:opacity-0 dark:border-slate-700/60 dark:bg-slate-800 dark:hover:border-slate-600"
+              className="group min-h-[44px] space-y-2 rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-sm transition-all duration-200 hover:border-[var(--tt-color-border-hover)] hover:shadow-md motion-safe:animate-[fadeInUp_0.4s_ease_forwards] motion-safe:opacity-0"
               style={{
                 borderLeftWidth: '3px',
                 borderLeftColor: accentColor,
@@ -85,7 +85,7 @@ export function DetailedSummaryStructured({
                 </span>
               </h4>
 
-              <div className="space-y-1 font-[family-name:var(--tt-font-body)] text-sm leading-relaxed text-slate-700 dark:text-slate-200">
+              <div className="space-y-1 font-[family-name:var(--tt-font-body)] text-sm leading-relaxed text-[var(--tt-color-text)]">
                 {section.content.split('\n').map((line, lineIndex) => (
                   <p key={lineIndex}>{highlightContent(line)}</p>
                 ))}
@@ -114,12 +114,12 @@ function highlightContent(content: string): React.ReactNode {
     {
       regex: /効果は(.+?)である/g,
       style:
-        'font-semibold text-green-800 dark:text-green-500 underline decoration-dotted decoration-1',
+        'font-semibold text-[var(--tt-color-positive)] underline decoration-dotted decoration-1',
     },
     {
       regex: /注意点は(.+?)である/g,
       style:
-        'font-semibold text-orange-700 dark:text-orange-500 underline decoration-dashed decoration-1',
+        'font-semibold text-[var(--tt-color-warning)] underline decoration-dashed decoration-1',
     },
   ];
 

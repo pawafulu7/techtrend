@@ -32,7 +32,7 @@ export default function CategoryFilter() {
   const [isPending, startTransition] = useTransition();
   const [optimisticCategory, setOptimisticCategory] = useState<string>('all');
   const currentCategory = searchParams.get('category') || 'all';
-  
+
   // 楽観的更新のための値
   const displayCategory = isPending ? optimisticCategory : currentCategory;
 
@@ -57,20 +57,20 @@ export default function CategoryFilter() {
   const handleCategoryChange = (value: string) => {
     // 即座に楽観的更新
     setOptimisticCategory(value);
-    
+
     // ルーティングをトランジション内で実行
     startTransition(() => {
       const params = new URLSearchParams(searchParams);
-      
+
       if (value === 'all') {
         params.delete('category');
       } else {
         params.set('category', value);
       }
-      
+
       // Reset to page 1 when changing category
       params.delete('page');
-      
+
       router.push(`/?${params.toString()}`);
     });
   };
@@ -78,46 +78,47 @@ export default function CategoryFilter() {
   if (loading) {
     return (
       <div className="animate-pulse">
-        <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        <div className="h-10 rounded bg-[var(--tt-color-surface-hover)]"></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex items-center gap-2 text-sm">
         <Layers className="h-4 w-4" />
         <span>カテゴリ</span>
       </div>
-      
-      <Select value={displayCategory} onValueChange={handleCategoryChange} disabled={isPending}>
-        <SelectTrigger className={cn(
-          "w-full transition-all",
-          isPending && "opacity-70"
-        )}>
-          <div className="flex items-center justify-between w-full">
+
+      <Select
+        value={displayCategory}
+        onValueChange={handleCategoryChange}
+        disabled={isPending}
+      >
+        <SelectTrigger
+          className={cn('w-full transition-all', isPending && 'opacity-70')}
+        >
+          <div className="flex w-full items-center justify-between">
             <SelectValue placeholder="カテゴリを選択" />
-            {isPending && (
-              <Loader2 className="h-3 w-3 animate-spin ml-2" />
-            )}
+            {isPending && <Loader2 className="ml-2 h-3 w-3 animate-spin" />}
           </div>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">
-            <div className="flex items-center justify-between w-full">
+            <div className="flex w-full items-center justify-between">
               <span>すべて</span>
               <Badge variant="secondary" className="ml-2">
                 {categories.reduce((sum, cat) => sum + cat.count, 0)}
               </Badge>
             </div>
           </SelectItem>
-          
+
           {categories.map((category) => (
-            <SelectItem 
-              key={category.value || 'uncategorized'} 
+            <SelectItem
+              key={category.value || 'uncategorized'}
               value={category.value || 'uncategorized'}
             >
-              <div className="flex items-center justify-between w-full">
+              <div className="flex w-full items-center justify-between">
                 <span>{category.label}</span>
                 <Badge variant="secondary" className="ml-2">
                   {category.count}

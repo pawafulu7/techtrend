@@ -314,13 +314,13 @@ export function ArticleQAClient({
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="relative flex flex-1 flex-col rounded-[32px] border border-slate-100 bg-white px-4 py-6 shadow-[0_40px_90px_-60px_rgba(15,23,42,0.85)] sm:px-8 sm:py-8">
+      <div className="relative flex flex-1 flex-col rounded-[32px] border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] px-4 py-6 shadow-[0_40px_90px_-60px_rgba(15,23,42,0.85)] sm:px-8 sm:py-8">
         <DialogTitle className="sr-only">{dialogTitleText}</DialogTitle>
         {onClose && (
           <Button
             variant="outline"
             size="sm"
-            className="absolute top-4 right-4 rounded-full border-slate-100 text-slate-600 shadow-sm transition hover:shadow sm:top-6 sm:right-6"
+            className="absolute top-4 right-4 rounded-full border-[var(--tt-color-border)] text-[var(--tt-color-text-muted)] shadow-sm transition hover:shadow sm:top-6 sm:right-6"
             onClick={onClose}
             aria-label={
               locale === 'ja'
@@ -335,7 +335,7 @@ export function ArticleQAClient({
 
         <div className="flex flex-1 flex-col">
           <div className="mb-6 flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--tt-color-text-muted)]">
               <MessageSquare className="text-primary h-4 w-4" />
               {locale === 'ja' ? 'チャットタイムライン' : 'Conversation'}
             </div>
@@ -349,7 +349,7 @@ export function ArticleQAClient({
           <div className="relative flex flex-1 flex-col gap-6">
             <div className="flex flex-1 flex-col space-y-5 pr-1 pb-6">
               {chatHistory.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-slate-200/80 bg-slate-50/80 p-6 text-sm text-slate-500">
+                <div className="rounded-3xl border border-dashed border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] p-6 text-sm text-[var(--tt-color-text-muted)]">
                   {locale === 'ja'
                     ? '質問を入力すると、ここにチャット履歴が表示されます。'
                     : 'Start asking questions to build your chat history here.'}
@@ -377,23 +377,23 @@ export function ArticleQAClient({
                     <div key={exchange.id} className="space-y-3">
                       {/* User question bubble with User icon for color-blind accessibility */}
                       <div className="flex items-start justify-end gap-3">
-                        <div className="max-w-2xl rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-medium text-slate-900 shadow-sm">
+                        <div className="max-w-2xl rounded-3xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] px-5 py-3 text-sm font-medium text-[var(--tt-color-text)] shadow-sm">
                           {exchange.question}
                         </div>
                         <User
-                          className="mt-3 h-5 w-5 flex-shrink-0 text-slate-500"
+                          className="mt-3 h-5 w-5 flex-shrink-0 text-[var(--tt-color-text-muted)]"
                           aria-hidden="true"
                         />
                       </div>
 
                       {showLoading && (
-                        <div className="rounded-2xl border border-slate-100/80 bg-slate-50/80 p-4">
+                        <div className="rounded-2xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] p-4">
                           <AgentLoadingState />
                         </div>
                       )}
 
                       {exchange.error && (
-                        <div className="rounded-2xl border border-red-100 bg-red-50/80 p-4">
+                        <div className="rounded-2xl border border-[var(--tt-color-negative-border)] bg-[var(--tt-color-negative-bg)] p-4">
                           <AgentErrorDisplay
                             error={exchange.error}
                             onRetry={() => {
@@ -440,7 +440,7 @@ export function ArticleQAClient({
                 className="mb-4"
               >
                 {/* Separator for visual separation from answer */}
-                <div className="mb-4 border-t border-slate-200/40" />
+                <div className="mb-4 border-t border-[var(--tt-color-border)]" />
 
                 {sampleQueriesOpen ? (
                   <div
@@ -453,7 +453,7 @@ export function ArticleQAClient({
                   >
                     {/* Header with collapse button */}
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+                      <span className="text-xs font-medium tracking-wide text-[var(--tt-color-text-muted)] uppercase">
                         {locale === 'ja' ? '関連する質問' : 'Related questions'}
                       </span>
                       <button
@@ -461,7 +461,7 @@ export function ArticleQAClient({
                         onClick={() => setSampleQueriesOpen(false)}
                         aria-expanded={sampleQueriesOpen}
                         aria-controls="sample-queries-panel"
-                        className="focus-visible:ring-primary/30 rounded text-xs text-slate-400 transition hover:text-slate-600 focus-visible:ring-2 focus-visible:outline-none"
+                        className="focus-visible:ring-primary/30 rounded text-xs text-[var(--tt-color-text-muted)] transition hover:text-[var(--tt-color-text)] focus-visible:ring-2 focus-visible:outline-none"
                       >
                         {locale === 'ja' ? '閉じる' : 'Close'}
                       </button>
@@ -478,7 +478,7 @@ export function ArticleQAClient({
                               : `Insert sample: ${query.slice(0, 20)}...`
                           }
                           onClick={() => handlePrefillQuery(query)}
-                          className="group hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/30 inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border border-slate-200/60 bg-slate-50/80 px-2.5 py-1 text-xs text-slate-600 transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:flex-shrink"
+                          className="group hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/30 inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] px-2.5 py-1 text-xs text-[var(--tt-color-text-muted)] transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:flex-shrink"
                         >
                           <span className="bg-primary/10 text-primary inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold">
                             Q
@@ -507,8 +507,8 @@ export function ArticleQAClient({
                 )}
               </aside>
 
-              <div className="rounded-[28px] border border-slate-100/80 bg-white/90 p-4 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)] backdrop-blur-sm sm:p-6">
-                <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.3em] text-slate-500 uppercase">
+              <div className="rounded-[28px] border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)] backdrop-blur-sm sm:p-6">
+                <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.3em] text-[var(--tt-color-text-muted)] uppercase">
                   <MessageSquare className="text-primary h-4 w-4" />
                   {locale === 'ja' ? 'この記事に質問する' : 'Ask this article'}
                 </div>

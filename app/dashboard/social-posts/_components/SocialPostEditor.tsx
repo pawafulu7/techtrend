@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui-v2/button-v2';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -258,14 +263,14 @@ export function SocialPostEditor({ postId }: SocialPostEditorProps) {
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block truncate text-sm text-blue-600 hover:underline"
+                        className="block truncate text-sm text-[var(--tt-color-info)] hover:underline"
                       >
                         {url}
                       </a>
                     ))}
                   </div>
                 )}
-                <p className="text-blue-600">{hashtags}</p>
+                <p className="text-[var(--tt-color-info)]">{hashtags}</p>
               </div>
             </CardContent>
           </Card>
@@ -287,7 +292,7 @@ export function SocialPostEditor({ postId }: SocialPostEditorProps) {
                     <dd>
                       <Link
                         href={`/articles/${post.sourceIds[0]}`}
-                        className="text-blue-600 hover:underline"
+                        className="text-[var(--tt-color-info)] hover:underline"
                       >
                         詳細を見る
                       </Link>

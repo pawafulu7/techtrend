@@ -190,11 +190,11 @@ export function FavoriteButton({
         disabled={isToggling || isLoadingInitial || isPending}
         className={cn(
           'rounded-full p-1.5 transition-all duration-300',
-          'hover:bg-red-50 dark:hover:bg-red-950',
+          'hover:bg-[var(--tt-color-negative-bg)]',
           isAnimating && 'scale-110',
           isFavorited
-            ? 'text-red-500 hover:text-red-600'
-            : 'text-gray-500 hover:text-red-500',
+            ? 'text-[var(--tt-color-negative)] hover:text-[var(--tt-color-negative)]'
+            : 'text-[var(--tt-color-text-muted)] hover:text-[var(--tt-color-negative)]',
           isLoadingInitial && 'opacity-50',
           className
         )}
@@ -204,7 +204,7 @@ export function FavoriteButton({
         <Heart
           className={cn(
             'h-4 w-4 transition-colors',
-            isFavorited && 'fill-red-500',
+            isFavorited && 'fill-[var(--tt-color-negative)]',
             (isToggling || isLoadingInitial) && 'opacity-50'
           )}
         />
@@ -223,10 +223,10 @@ export function FavoriteButton({
         outline && 'group',
         isAnimating && 'scale-110',
         outline
-          ? 'hover:bg-transparent dark:hover:bg-transparent'
+          ? 'hover:bg-transparent'
           : isFavorited
-            ? 'bg-red-500 text-white hover:bg-red-600'
-            : 'hover:text-red-500',
+            ? 'bg-[var(--tt-color-negative)] text-white hover:bg-[var(--tt-color-negative)]'
+            : 'hover:text-[var(--tt-color-negative)]',
         isLoadingInitial && 'opacity-50',
         className
       )}
@@ -237,8 +237,8 @@ export function FavoriteButton({
           'h-4 w-4 transition-colors',
           outline
             ? isFavorited
-              ? 'fill-current text-red-500 group-hover:fill-none group-hover:text-slate-400'
-              : 'fill-none group-hover:fill-current group-hover:text-red-400'
+              ? 'fill-current text-[var(--tt-color-negative)] group-hover:fill-none group-hover:text-[var(--tt-color-text-muted)]'
+              : 'fill-none group-hover:fill-current group-hover:text-[var(--tt-color-negative)]'
             : isFavorited
               ? 'fill-white'
               : 'fill-none',

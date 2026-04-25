@@ -39,7 +39,7 @@ function TrendChangesBadges({
       {trendChanges.new.slice(0, 2).map((t) => (
         <Badge
           key={`new:${t.topic}`}
-          className="gap-1 border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+          className="gap-1 border-[var(--tt-color-positive-border)] bg-[var(--tt-color-positive-bg)] text-[var(--tt-color-positive)]"
         >
           <Plus className="h-3 w-3" />
           {t.topic}
@@ -48,7 +48,7 @@ function TrendChangesBadges({
       {trendChanges.rising.slice(0, 2).map((t) => (
         <Badge
           key={`rising:${t.topic}`}
-          className="gap-1 border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400"
+          className="gap-1 border-[var(--tt-color-info-border)] bg-[var(--tt-color-info-bg)] text-[var(--tt-color-info)]"
         >
           <ArrowUp className="h-3 w-3" />
           {t.topic} +{t.deltaCount}
@@ -57,7 +57,7 @@ function TrendChangesBadges({
       {trendChanges.falling.slice(0, 2).map((t) => (
         <Badge
           key={`falling:${t.topic}`}
-          className="gap-1 border-orange-500/20 bg-orange-500/10 text-orange-700 dark:text-orange-400"
+          className="gap-1 border-[var(--tt-color-warning-border)] bg-[var(--tt-color-warning-bg)] text-[var(--tt-color-warning)]"
         >
           <ArrowDown className="h-3 w-3" />
           {t.topic} {t.deltaCount}
@@ -120,7 +120,7 @@ export function StructuredAISummaryView({
               {summary.keyTopics.slice(0, 4).map((t) => (
                 <div
                   key={t.topic}
-                  className="bg-card hover:bg-accent/50 rounded-xl border border-l-4 border-l-emerald-500/40 p-3 transition-colors sm:p-4 dark:border-l-emerald-400/30"
+                  className="bg-card hover:bg-accent/50 rounded-xl border border-l-4 border-l-[var(--tt-color-positive)] p-3 transition-colors sm:p-4"
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                     <Badge
@@ -167,7 +167,7 @@ export function StructuredAISummaryView({
             >
               <AccordionItem
                 value="actions"
-                className="bg-card/50 rounded-xl border"
+                className="bg-card/50 rounded-xl border border-[var(--tt-color-border)]"
               >
                 <AccordionTrigger className="px-4 py-3 hover:no-underline">
                   <div className="flex items-center gap-2">
@@ -231,7 +231,7 @@ export function StructuredAISummaryView({
             {summary.keyTopics.slice(0, 3).map((t) => (
               <div
                 key={t.topic}
-                className="bg-background/50 rounded-lg border p-3"
+                className="bg-background/50 rounded-lg border border-[var(--tt-color-border)] p-3"
               >
                 <div className="flex items-start gap-2">
                   <Badge variant="secondary" className="shrink-0">

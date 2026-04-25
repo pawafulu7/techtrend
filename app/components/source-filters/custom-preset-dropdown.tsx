@@ -99,7 +99,7 @@ export function CustomPresetDropdown({
                   <span className="truncate">{preset.name}</span>
                   <button
                     type="button"
-                    className="text-muted-foreground ml-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-500 dark:hover:text-red-400 [div:hover>&]:opacity-100"
+                    className="text-muted-foreground ml-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:text-[var(--tt-color-negative)] [div:hover>&]:opacity-100"
                     onClick={(e) => handleDelete(e, preset.id)}
                     disabled={isDeleting}
                     aria-label={`${preset.name}を削除`}

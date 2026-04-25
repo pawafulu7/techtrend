@@ -109,12 +109,18 @@ export default function VerifyPage() {
   const getIcon = () => {
     switch (verificationState) {
       case 'verifying':
-        return <Loader2 className="h-12 w-12 animate-spin text-blue-500" />;
+        return (
+          <Loader2 className="h-12 w-12 animate-spin text-[var(--tt-color-info)]" />
+        );
       case 'success':
-        return <CheckCircle className="h-12 w-12 text-green-500" />;
+        return (
+          <CheckCircle className="h-12 w-12 text-[var(--tt-color-positive)]" />
+        );
       case 'expired':
       case 'error':
-        return <XCircle className="h-12 w-12 text-red-500" />;
+        return (
+          <XCircle className="h-12 w-12 text-[var(--tt-color-negative)]" />
+        );
     }
   };
 
@@ -142,9 +148,9 @@ export default function VerifyPage() {
         <CardContent className="space-y-4">
           {verificationState === 'success' && (
             <div className="space-y-4">
-              <Alert className="border-green-200 bg-green-50">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800">
+              <Alert className="border-[var(--tt-color-positive-border)] bg-[var(--tt-color-positive-bg)]">
+                <CheckCircle className="h-4 w-4 text-[var(--tt-color-positive)]" />
+                <AlertDescription className="text-[var(--tt-color-positive)]">
                   {isAutoLogin && !!session
                     ? '自動ログインしました。まもなくホームページへ移動します...'
                     : 'アカウントが有効化されました。ログインしてTechTrendをお楽しみください。'}
@@ -154,7 +160,7 @@ export default function VerifyPage() {
               {isAutoLogin && !!session ? (
                 <div className="space-y-4">
                   <div className="flex justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                    <Loader2 className="h-8 w-8 animate-spin text-[var(--tt-color-info)]" />
                   </div>
                   <p className="text-muted-foreground text-center text-sm">
                     リダイレクト中...
@@ -178,8 +184,8 @@ export default function VerifyPage() {
 
           {verificationState === 'expired' && (
             <div className="space-y-4">
-              <Alert className="border-yellow-200 bg-yellow-50">
-                <AlertDescription className="text-yellow-800">
+              <Alert className="border-[var(--tt-color-warning-border)] bg-[var(--tt-color-warning-bg)]">
+                <AlertDescription className="text-[var(--tt-color-warning)]">
                   認証リンクの有効期限は24時間です。新しい認証メールをリクエストしてください。
                 </AlertDescription>
               </Alert>

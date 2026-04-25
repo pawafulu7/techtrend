@@ -15,7 +15,12 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import type { TrendChartProps, TimeSeriesData } from '../types/dashboard';
 
 // カスタムツールチップ用のProps型
@@ -40,8 +45,8 @@ const TrendChartTooltip = React.memo(function TrendChartTooltip({
     const formattedValue = format ? format(value) : value.toFixed(1);
 
     return (
-      <div className="rounded-lg border bg-white p-3 shadow-lg">
-        <p className="text-xs text-gray-500">{label}</p>
+      <div className="rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-3 text-[var(--tt-color-text)] shadow-lg">
+        <p className="text-xs text-[var(--tt-color-text-muted)]">{label}</p>
         <p className="text-sm font-bold" style={{ color }}>
           {formattedValue}
         </p>

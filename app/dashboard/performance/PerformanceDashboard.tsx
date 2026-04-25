@@ -125,7 +125,7 @@ export default function PerformanceDashboard() {
     <div className="container mx-auto space-y-6 p-6">
       {/* 部分失敗警告 */}
       {error && (
-        <Alert className="border-red-200 bg-red-50">
+        <Alert className="border-[var(--tt-color-negative-border)] bg-[var(--tt-color-negative-bg)]">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             メトリクスの取得に失敗しました: {error.message}
@@ -137,12 +137,12 @@ export default function PerformanceDashboard() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">パフォーマンスダッシュボード</h1>
-          <p className="mt-1 text-gray-600">
+          <p className="mt-1 text-[var(--tt-color-text-muted)]">
             DBアクセス最適化Phase 3 - リアルタイムメトリクス
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-[var(--tt-color-text-muted)]">
             最終更新: {lastUpdated || 'N/A'}
           </span>
           <button
@@ -150,7 +150,7 @@ export default function PerformanceDashboard() {
             disabled={isRefreshing}
             aria-label="データを更新"
             title="データを更新"
-            className="rounded-lg bg-blue-500 p-2 text-white hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+            className="rounded-lg bg-[var(--tt-color-info)] p-2 text-white hover:bg-[var(--tt-color-info)] focus-visible:ring-2 focus-visible:ring-[var(--tt-color-info)] focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
           >
             <RefreshCw
               className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
@@ -176,10 +176,10 @@ export default function PerformanceDashboard() {
             <div
               className={`mt-1 text-sm ${
                 getStatus('cacheHitRate', cacheHitRate) === 'good'
-                  ? 'text-green-600'
+                  ? 'text-[var(--tt-color-positive)]'
                   : getStatus('cacheHitRate', cacheHitRate) === 'warning'
-                    ? 'text-yellow-600'
-                    : 'text-red-600'
+                    ? 'text-[var(--tt-color-warning)]'
+                    : 'text-[var(--tt-color-negative)]'
               }`}
             >
               {getStatus('cacheHitRate', cacheHitRate) === 'good'
@@ -206,10 +206,10 @@ export default function PerformanceDashboard() {
             <div
               className={`mt-1 text-sm ${
                 getStatus('latency', avgLatency) === 'good'
-                  ? 'text-green-600'
+                  ? 'text-[var(--tt-color-positive)]'
                   : getStatus('latency', avgLatency) === 'warning'
-                    ? 'text-yellow-600'
-                    : 'text-red-600'
+                    ? 'text-[var(--tt-color-warning)]'
+                    : 'text-[var(--tt-color-negative)]'
               }`}
             >
               {getStatus('latency', avgLatency) === 'good'
@@ -243,7 +243,9 @@ export default function PerformanceDashboard() {
                   : 0
               )}
             </div>
-            <div className="mt-1 text-sm text-gray-600">最適化中</div>
+            <div className="mt-1 text-sm text-[var(--tt-color-text-muted)]">
+              最適化中
+            </div>
           </CardContent>
         </Card>
 
@@ -261,7 +263,9 @@ export default function PerformanceDashboard() {
             </div>
             <div
               className={`mt-1 text-sm ${
-                metrics?.redis?.connected ? 'text-green-600' : 'text-red-600'
+                metrics?.redis?.connected
+                  ? 'text-[var(--tt-color-positive)]'
+                  : 'text-[var(--tt-color-negative)]'
               }`}
             >
               {metrics?.redis?.connected ? '接続中' : '切断'}
@@ -280,26 +284,34 @@ export default function PerformanceDashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-gray-600">L1 ヒット</span>
+              <span className="text-[var(--tt-color-text-muted)]">
+                L1 ヒット
+              </span>
               <span className="font-mono">
                 {metrics?.dataloaders?.favorite?.l1Hits || 0}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">L2 ヒット</span>
+              <span className="text-[var(--tt-color-text-muted)]">
+                L2 ヒット
+              </span>
               <span className="font-mono">
                 {metrics?.dataloaders?.favorite?.l2Hits || 0}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">DBクエリ</span>
+              <span className="text-[var(--tt-color-text-muted)]">
+                DBクエリ
+              </span>
               <span className="font-mono">
                 {metrics?.dataloaders?.favorite?.dbQueries || 0}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">ヒット率</span>
-              <span className="font-mono font-bold text-green-600">
+              <span className="text-[var(--tt-color-text-muted)]">
+                ヒット率
+              </span>
+              <span className="font-mono font-bold text-[var(--tt-color-positive)]">
                 {metrics?.dataloaders?.favorite?.hitRate || 'N/A'}
               </span>
             </div>
@@ -314,26 +326,34 @@ export default function PerformanceDashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-gray-600">L1 ヒット</span>
+              <span className="text-[var(--tt-color-text-muted)]">
+                L1 ヒット
+              </span>
               <span className="font-mono">
                 {metrics?.dataloaders?.view?.l1Hits || 0}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">L2 ヒット</span>
+              <span className="text-[var(--tt-color-text-muted)]">
+                L2 ヒット
+              </span>
               <span className="font-mono">
                 {metrics?.dataloaders?.view?.l2Hits || 0}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">DBクエリ</span>
+              <span className="text-[var(--tt-color-text-muted)]">
+                DBクエリ
+              </span>
               <span className="font-mono">
                 {metrics?.dataloaders?.view?.dbQueries || 0}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">ヒット率</span>
-              <span className="font-mono font-bold text-green-600">
+              <span className="text-[var(--tt-color-text-muted)]">
+                ヒット率
+              </span>
+              <span className="font-mono font-bold text-[var(--tt-color-positive)]">
                 {metrics?.dataloaders?.view?.hitRate || 'N/A'}
               </span>
             </div>
@@ -351,7 +371,7 @@ export default function PerformanceDashboard() {
             <ul className="space-y-2">
               {metrics.recommendations.map((rec, index) => (
                 <li key={index} className="flex items-start gap-2">
-                  <span className="text-yellow-500">•</span>
+                  <span className="text-[var(--tt-color-warning)]">•</span>
                   <span className="text-sm">{rec}</span>
                 </li>
               ))}

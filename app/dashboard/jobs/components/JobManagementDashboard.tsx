@@ -49,7 +49,7 @@ export default function JobManagementDashboard() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4 md:px-6 space-y-6">
+    <div className="container mx-auto space-y-6 px-4 py-6 md:px-6">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -94,20 +94,20 @@ export default function JobManagementDashboard() {
             disabled={loading}
             className="gap-2"
           >
-            <RefreshCw
-              className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`}
-            />
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
       </div>
 
       {/* Status Bar */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
           <span
-            className={`inline-block w-2 h-2 rounded-full ${
-              isActive ? 'bg-green-500' : 'bg-yellow-500'
+            className={`inline-block h-2 w-2 rounded-full ${
+              isActive
+                ? 'bg-[var(--tt-color-positive)]'
+                : 'bg-[var(--tt-color-warning)]'
             }`}
           />
           <span>
@@ -138,7 +138,7 @@ export default function JobManagementDashboard() {
       />
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Processing Logs */}
         <div className="lg:col-span-2">
           <ProcessingLogsTable

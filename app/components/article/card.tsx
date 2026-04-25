@@ -74,7 +74,7 @@ export function ArticleCard({
         'group relative flex h-auto cursor-pointer flex-col sm:min-h-[240px]',
         hasTopThumbnail ? 'gap-0 pb-4' : 'gap-1.5 px-4 pt-3 pb-4',
         isNew
-          ? 'border-t-2 border-t-green-500/60 dark:border-t-green-400/40'
+          ? 'border-t-2 border-t-[var(--tt-color-positive)]'
           : sourceColor?.borderLeft
       )}
     >
@@ -82,7 +82,7 @@ export function ArticleCard({
       {hasTopThumbnail && (
         <div
           className={cn(
-            'relative isolate w-full overflow-hidden rounded-t-lg bg-gray-100 dark:bg-gray-800',
+            'relative isolate w-full overflow-hidden rounded-t-lg bg-[var(--tt-color-surface-muted)]',
             'min-h-[160px]'
           )}
         >
@@ -122,8 +122,8 @@ export function ArticleCard({
               title="NEW"
               role="img"
             >
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--tt-color-positive)] opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--tt-color-positive)]" />
             </span>
           )}
           {!isRead && (

@@ -42,7 +42,6 @@ const customJestConfig = {
     '<rootDir>/components/article/__tests__/FavoriteButton.test.tsx',
     // window.location操作を含むテストはDOM環境では除外（jsdom制限）
     '<rootDir>/app/components/article/__tests__/ArticleCard.test.tsx',
-    '<rootDir>/app/components/article/__tests__/ArticleListItem.test.tsx',
     // Node環境専用テスト（.node.test.ts）をDOM環境では除外（CodexMCP推奨）
     '\\.node\\.test\\.(t|j)sx?$',
     // API/Server/Integration tests: Node環境専用のためDOM環境では除外

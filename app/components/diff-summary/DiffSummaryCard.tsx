@@ -1,6 +1,11 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import {
   ArrowDown,
@@ -26,37 +31,37 @@ const changeTypeConfig = {
   new: {
     icon: Sparkles,
     label: '新規',
-    color: 'text-green-600 dark:text-green-400',
-    bgColor: 'bg-green-50 dark:bg-green-900/20',
+    color: 'text-[var(--tt-color-positive)]',
+    bgColor: 'bg-[var(--tt-color-positive-bg)]',
     badgeVariant: 'default' as const,
   },
   trending: {
     icon: TrendingUp,
     label: '急上昇',
-    color: 'text-orange-600 dark:text-orange-400',
-    bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+    color: 'text-[var(--tt-color-warning)]',
+    bgColor: 'bg-[var(--tt-color-warning-bg)]',
     badgeVariant: 'secondary' as const,
   },
   updated: {
     icon: RefreshCw,
     label: '更新',
-    color: 'text-blue-600 dark:text-blue-400',
-    bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+    color: 'text-[var(--tt-color-info)]',
+    bgColor: 'bg-[var(--tt-color-info-bg)]',
     badgeVariant: 'outline' as const,
   },
   deprecated: {
     icon: ArrowDown,
     label: '減少',
-    color: 'text-gray-500 dark:text-gray-400',
-    bgColor: 'bg-gray-50 dark:bg-gray-800/50',
+    color: 'text-[var(--tt-color-text)]',
+    bgColor: 'bg-[var(--tt-color-surface-muted)]',
     badgeVariant: 'outline' as const,
   },
 };
 
 const significanceColor = {
-  high: 'border-l-red-500',
-  medium: 'border-l-yellow-500',
-  low: 'border-l-gray-300',
+  high: 'border-l-[var(--tt-color-negative)]',
+  medium: 'border-l-[var(--tt-color-warning)]',
+  low: 'border-l-[var(--tt-color-border)]',
 };
 
 export function DiffSummaryCard({

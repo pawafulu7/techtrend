@@ -42,14 +42,14 @@ export function ArticleListItem({
         }
       }}
       tabIndex={isSelected ? 0 : -1}
-      className={`mx-2 mb-2 cursor-pointer overflow-hidden rounded-xl ring-1 transition-all duration-150 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none motion-reduce:transition-none ${
+      className={`mx-2 mb-2 cursor-pointer overflow-hidden rounded-xl ring-1 transition-all duration-150 focus-visible:ring-2 focus-visible:ring-[var(--tt-color-info)] focus-visible:outline-none motion-reduce:transition-none ${
         isSelected
-          ? 'bg-lime-50/40 shadow-sm ring-lime-400 dark:bg-lime-900/10 dark:ring-lime-500'
-          : 'bg-white ring-slate-200 hover:shadow-sm hover:ring-slate-300 dark:bg-slate-800/50 dark:ring-slate-700 dark:hover:ring-slate-600'
+          ? 'bg-[var(--tt-color-positive-bg)] shadow-sm ring-[var(--tt-color-positive-border)]'
+          : 'bg-[var(--tt-color-surface)] ring-[var(--tt-color-border)] hover:shadow-sm hover:ring-[var(--tt-color-border-hover)]'
       }`}
     >
       <div
-        className="relative w-full overflow-hidden bg-slate-100 dark:bg-slate-800"
+        className="relative w-full overflow-hidden bg-[var(--tt-color-surface-muted)]"
         style={{ paddingBottom: '60%' }}
       >
         {showThumbnail ? (
@@ -63,17 +63,17 @@ export function ArticleListItem({
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Newspaper className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+            <Newspaper className="h-10 w-10 text-[var(--tt-color-text-muted)]" />
           </div>
         )}
       </div>
       <div className="px-3 py-2">
-        <h3 className="line-clamp-2 text-[13px] leading-snug font-medium text-slate-800 dark:text-slate-100">
+        <h3 className="line-clamp-2 text-[13px] leading-snug font-medium text-[var(--tt-color-text)]">
           {displayTitle}
         </h3>
-        <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+        <div className="mt-1 flex items-center gap-2 text-xs text-[var(--tt-color-text-muted)]">
           {article.source?.name && (
-            <span className="max-w-[160px] truncate font-medium text-lime-600 dark:text-lime-400">
+            <span className="max-w-[160px] truncate font-medium text-[var(--tt-color-positive)]">
               {article.source.name}
             </span>
           )}

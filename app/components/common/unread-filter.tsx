@@ -66,7 +66,7 @@ export function UnreadFilter() {
           className={cn(
             'relative gap-2',
             currentMode !== 'all' &&
-              'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950'
+              'border-[var(--tt-color-info-border)] bg-[var(--tt-color-info-bg)]'
           )}
         >
           {getIcon(currentMode)}

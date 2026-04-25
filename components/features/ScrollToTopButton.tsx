@@ -11,7 +11,7 @@ export function ScrollToTopButton() {
     const toggleVisibility = (event: Event) => {
       const target = event.target as HTMLElement;
       const scrollY = target.scrollTop;
-      
+
       // 300px以上スクロールしたらボタンを表示
       if (scrollY > 300) {
         setIsVisible(true);
@@ -23,18 +23,19 @@ export function ScrollToTopButton() {
     // スクロール可能な要素を定期的にチェック
     const setupScrollListener = () => {
       // IDで特定の要素を取得（より確実）
-      const scrollableElement = document.getElementById('main-scroll-container') || 
-                               document.querySelector('.overflow-y-auto');
+      const scrollableElement =
+        document.getElementById('main-scroll-container') ||
+        document.querySelector('.overflow-y-auto');
       if (scrollableElement) {
         // 既存のリスナーを削除
         scrollableElement.removeEventListener('scroll', toggleVisibility);
         // 新しいリスナーを追加
         scrollableElement.addEventListener('scroll', toggleVisibility);
-        
+
         // 初期状態のチェック
         const initialScrollY = scrollableElement.scrollTop;
         setIsVisible(initialScrollY > 300);
-        
+
         return true;
       }
       return false;
@@ -43,7 +44,7 @@ export function ScrollToTopButton() {
     // 初回セットアップ
     let intervalId: NodeJS.Timeout | null = null;
     let timeoutId: NodeJS.Timeout | null = null;
-    
+
     if (!setupScrollListener()) {
       // 要素が見つからない場合は少し待って再試行
       intervalId = setInterval(() => {
@@ -51,32 +52,33 @@ export function ScrollToTopButton() {
           if (intervalId) clearInterval(intervalId);
         }
       }, 500);
-      
+
       // 10秒後にはタイムアウト
       timeoutId = setTimeout(() => {
         if (intervalId) clearInterval(intervalId);
       }, 10000);
     }
-    
+
     // MutationObserverでDOM変更を監視（無限スクロール対応）
     const observer = new MutationObserver(() => {
       // DOM変更時にリスナーを再設定
       setupScrollListener();
     });
-    
+
     // body全体を監視（記事リストの追加を検知）
     observer.observe(document.body, {
       childList: true,
-      subtree: true
+      subtree: true,
     });
-    
+
     // クリーンアップ
     return () => {
       if (intervalId) clearInterval(intervalId);
       if (timeoutId) clearTimeout(timeoutId);
       observer.disconnect();
-      const scrollableElement = document.getElementById('main-scroll-container') || 
-                               document.querySelector('.overflow-y-auto');
+      const scrollableElement =
+        document.getElementById('main-scroll-container') ||
+        document.querySelector('.overflow-y-auto');
       if (scrollableElement) {
         scrollableElement.removeEventListener('scroll', toggleVisibility);
       }
@@ -86,12 +88,13 @@ export function ScrollToTopButton() {
   // トップへスクロール
   const scrollToTop = useCallback(() => {
     // IDで特定の要素を取得してスクロール
-    const scrollableElement = document.getElementById('main-scroll-container') || 
-                             document.querySelector('.overflow-y-auto');
+    const scrollableElement =
+      document.getElementById('main-scroll-container') ||
+      document.querySelector('.overflow-y-auto');
     if (scrollableElement) {
       scrollableElement.scrollTo({
         top: 0,
-        behavior: 'smooth'
+        behavior: 'smooth',
       });
     }
   }, []);
@@ -114,12 +117,13 @@ export function ScrollToTopButton() {
     const handleScrollRestored = (event: Event) => {
       const customEvent = event as CustomEvent;
       const { restored, cancelled } = customEvent.detail;
-      
+
       if (restored && !cancelled) {
         // 復元成功：少し遅延を入れてからチェック（スムーススクロール完了待ち）
         setTimeout(() => {
-          const scrollableElement = document.getElementById('main-scroll-container') || 
-                                   document.querySelector('.overflow-y-auto');
+          const scrollableElement =
+            document.getElementById('main-scroll-container') ||
+            document.querySelector('.overflow-y-auto');
           if (scrollableElement) {
             const currentScrollY = scrollableElement.scrollTop;
             setIsVisible(currentScrollY > 300);
@@ -129,20 +133,21 @@ export function ScrollToTopButton() {
         // 復元がキャンセルまたはスキップされた場合
         // スクロールリスナーを再設定して通常の動作を確保
         setTimeout(() => {
-          const scrollableElement = document.getElementById('main-scroll-container') || 
-                                   document.querySelector('.overflow-y-auto');
+          const scrollableElement =
+            document.getElementById('main-scroll-container') ||
+            document.querySelector('.overflow-y-auto');
           if (scrollableElement) {
             // 現在のスクロール位置をチェック
             const currentScrollY = scrollableElement.scrollTop;
             setIsVisible(currentScrollY > 300);
-            
+
             // スクロールイベントを手動で発火して状態を同期
             scrollableElement.dispatchEvent(new Event('scroll'));
           }
         }, 100); // 短い待機時間
       }
     };
-    
+
     window.addEventListener('scrollRestored', handleScrollRestored);
     return () => {
       window.removeEventListener('scrollRestored', handleScrollRestored);
@@ -153,24 +158,15 @@ export function ScrollToTopButton() {
   if (!isVisible) {
     return null;
   }
-  
+
   return (
     <button
       onClick={scrollToTop}
-      className={`
-        fixed bottom-24 right-6 z-50
-        bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600
-        text-white rounded-full p-3
-        shadow-lg hover:shadow-xl
-        transition-all duration-300 ease-in-out
-        transform hover:scale-110
-        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-        animate-fade-in
-      `}
+      className={`animate-fade-in fixed right-6 bottom-24 z-50 transform rounded-full bg-[var(--tt-color-info)] p-3 text-white shadow-lg transition-all duration-300 ease-in-out hover:scale-110 hover:opacity-90 hover:shadow-xl focus:ring-2 focus:ring-[var(--tt-color-info-border)] focus:ring-offset-2 focus:outline-none`}
       aria-label="ページトップへ戻る"
       title="ページトップへ戻る (Ctrl+Home)"
     >
-      <ChevronUp className="w-6 h-6" />
+      <ChevronUp className="h-6 w-6" />
     </button>
   );
 }

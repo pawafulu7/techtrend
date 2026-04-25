@@ -71,10 +71,13 @@ jobs:
       - name: Self-check lint:colors detector
         run: npm run lint:colors:self-check
 
-      # Note: `npm run lint:colors` is NOT yet wired into CI as a blocking step.
-      # It will be enabled as a blocking CI gate in PR2 (design token migration),
-      # once the existing 900+ hardcoded color hits are migrated to design tokens.
-      # Until then, developers are expected to run `npm run lint:colors` locally.
+      - name: Run lint:colors (blocking — design token migration complete)
+        run: npm run lint:colors
+
+      - name: Verify generated tokens are in sync
+        run: |
+          npm run generate:tokens
+          git diff --exit-code app/generated-tokens.css
 
       - name: Check for console statements
         env:

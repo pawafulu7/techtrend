@@ -163,7 +163,7 @@ export default async function Home({ searchParams }: PageProps) {
             {features.aiSearch && session?.user && (
               <Link
                 href="/search/agent"
-                className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-blue-600 transition-colors hover:bg-blue-50 lg:flex dark:text-blue-400 dark:hover:bg-blue-950"
+                className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-[var(--tt-color-info)] transition-colors hover:bg-[var(--tt-color-info-bg)] lg:flex"
                 title="AI検索"
               >
                 <Sparkles className="h-4 w-4 flex-shrink-0" />

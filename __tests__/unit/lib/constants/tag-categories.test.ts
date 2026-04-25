@@ -1,4 +1,9 @@
-import { getTagCategory, getCategoryInfo, getAllCategories, TAG_CATEGORIES } from '@/lib/constants/tag-categories';
+import {
+  getTagCategory,
+  getCategoryInfo,
+  getAllCategories,
+  TAG_CATEGORIES,
+} from '@/lib/constants/tag-categories';
 
 describe('Tag Categories', () => {
   describe('getTagCategory', () => {
@@ -62,13 +67,17 @@ describe('Tag Categories', () => {
       const frontend = getCategoryInfo('frontend');
       expect(frontend.name).toBe('フロントエンド');
       expect(frontend.description).toBe('UI/UX、クライアントサイド技術');
-      expect(frontend.color).toContain('blue');
+      expect(frontend.color).toContain('--tt-color-category-frontend-icon');
+      expect(frontend.color).toContain('--tt-color-category-frontend-bg');
+      expect(frontend.color).toContain('--tt-color-category-frontend-bg-hover');
       expect(frontend.tags).toContain('React');
 
       const backend = getCategoryInfo('backend');
       expect(backend.name).toBe('バックエンド');
       expect(backend.description).toBe('サーバーサイド、API開発');
-      expect(backend.color).toContain('green');
+      expect(backend.color).toContain('--tt-color-category-backend-icon');
+      expect(backend.color).toContain('--tt-color-category-backend-bg');
+      expect(backend.color).toContain('--tt-color-category-backend-bg-hover');
       expect(backend.tags).toContain('Node.js');
     });
   });
@@ -76,18 +85,18 @@ describe('Tag Categories', () => {
   describe('getAllCategories', () => {
     it('すべてのカテゴリーを取得する', () => {
       const categories = getAllCategories();
-      
+
       expect(categories).toHaveLength(6);
-      expect(categories.map(c => c.key)).toEqual([
+      expect(categories.map((c) => c.key)).toEqual([
         'frontend',
         'backend',
         'infrastructure',
         'database',
         'ai_ml',
-        'devops'
+        'devops',
       ]);
-      
-      categories.forEach(category => {
+
+      categories.forEach((category) => {
         expect(category).toHaveProperty('key');
         expect(category).toHaveProperty('name');
         expect(category).toHaveProperty('description');
@@ -100,7 +109,7 @@ describe('Tag Categories', () => {
 
   describe('TAG_CATEGORIES定数', () => {
     it('各カテゴリーが必要なプロパティを持つ', () => {
-      Object.values(TAG_CATEGORIES).forEach(category => {
+      Object.values(TAG_CATEGORIES).forEach((category) => {
         expect(category).toHaveProperty('name');
         expect(category).toHaveProperty('description');
         expect(category).toHaveProperty('color');
@@ -112,13 +121,13 @@ describe('Tag Categories', () => {
 
     it('タグの重複がない', () => {
       const allTags: string[] = [];
-      
-      Object.values(TAG_CATEGORIES).forEach(category => {
-        category.tags.forEach(tag => {
+
+      Object.values(TAG_CATEGORIES).forEach((category) => {
+        category.tags.forEach((tag) => {
           allTags.push(tag.toLowerCase());
         });
       });
-      
+
       const uniqueTags = new Set(allTags);
       expect(uniqueTags.size).toBe(allTags.length);
     });

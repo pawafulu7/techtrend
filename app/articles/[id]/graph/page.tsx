@@ -236,7 +236,7 @@ function GraphContainer() {
   );
 
   return (
-    <div className="relative h-screen w-full bg-slate-950">
+    <div className="relative h-screen w-full bg-[var(--tt-color-surface)]">
       <ForceGraph2D
         graphData={graphData}
         ref={handleGraphRef}
@@ -381,7 +381,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
         <Button
           variant="ghost"
           asChild
-          className="text-white hover:bg-slate-800"
+          className="text-white hover:bg-[var(--tt-color-surface-hover)]"
         >
           <Link
             href={`/articles/${articleId}`}
@@ -394,58 +394,70 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
       </div>
 
       {/* CodexMCP: Legend card (always visible) */}
-      <div className="absolute top-16 left-4 max-w-xs rounded-lg border border-slate-700 bg-slate-900/95 p-4 shadow-xl">
+      <div className="absolute top-16 left-4 max-w-xs rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 p-4 shadow-xl">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
           <Network className="h-4 w-4" />
           グラフの見方
         </h3>
-        <div className="space-y-2 text-xs text-slate-300">
+        <div className="space-y-2 text-xs text-[var(--tt-color-text)]">
           <div className="flex items-start gap-2">
-            <div className="mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 border-white bg-amber-400" />
+            <div className="mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 border-white bg-[var(--tt-color-warning-bg)]" />
             <div>
               <div className="font-medium text-white">
                 中心ノード（大・黄色・白枠）
               </div>
-              <div className="text-slate-400">現在の記事</div>
+              <div className="text-[var(--tt-color-text-muted)]">
+                現在の記事
+              </div>
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full bg-indigo-500" />
+            <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full bg-[var(--tt-color-info-bg)]" />
             <div>
               <div className="font-medium">関連記事（小・色付き）</div>
-              <div className="text-slate-400">色 = カテゴリ、大きさ = 品質</div>
+              <div className="text-[var(--tt-color-text-muted)]">
+                色 = カテゴリ、大きさ = 品質
+              </div>
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-indigo-300" />
+            <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-[var(--tt-color-info)]" />
             <div>
               <div className="font-medium">関連記事 第2層（小・暗め）</div>
-              <div className="text-slate-400">第1層記事に関連</div>
+              <div className="text-[var(--tt-color-text-muted)]">
+                第1層記事に関連
+              </div>
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <div className="mt-2 h-0.5 w-8 shrink-0 bg-slate-400" />
+            <div className="mt-2 h-0.5 w-8 shrink-0 bg-[var(--tt-color-text-muted)]" />
             <div>
               <div className="font-medium">線の太さ = 関連度</div>
-              <div className="text-slate-400">太いほど関連性が高い</div>
+              <div className="text-[var(--tt-color-text-muted)]">
+                太いほど関連性が高い
+              </div>
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full border-2 border-green-500 bg-indigo-500" />
+            <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full border-2 border-[var(--tt-color-positive-border)] bg-[var(--tt-color-info-bg)]" />
             <div>
               <div className="font-medium">枠線の色 = 配信日時</div>
-              <div className="text-slate-400">緑=1週間以内、黄=1ヶ月以内</div>
+              <div className="text-[var(--tt-color-text-muted)]">
+                緑=1週間以内、黄=1ヶ月以内
+              </div>
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full bg-red-500" />
+            <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full bg-[var(--tt-color-negative)]" />
             <div>
               <div className="font-medium">NEWバッジ（赤丸）</div>
-              <div className="text-slate-400">24時間以内に配信</div>
+              <div className="text-[var(--tt-color-text-muted)]">
+                24時間以内に配信
+              </div>
             </div>
           </div>
         </div>
-        <div className="mt-3 border-t border-slate-700 pt-3 text-xs text-slate-400">
+        <div className="mt-3 border-t border-[var(--tt-color-border)] pt-3 text-xs text-[var(--tt-color-text-muted)]">
           クリック: 記事を開く | ホバー: 詳細表示
         </div>
       </div>
@@ -454,7 +466,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
       <button
         data-testid="depth-toggle-button"
         onClick={() => setCurrentDepth((d) => (d === 1 ? 2 : 1))}
-        className="absolute top-4 left-1/2 -translate-x-1/2 transform rounded-lg border border-indigo-500 bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-xl transition-colors hover:bg-indigo-700"
+        className="absolute top-4 left-1/2 -translate-x-1/2 transform rounded-lg border border-[var(--tt-color-info-border)] bg-[var(--tt-color-info-bg)] px-4 py-2 text-sm font-medium text-white shadow-xl transition-colors hover:bg-[var(--tt-color-info)]"
       >
         {currentDepth === 1
           ? '関連をさらに表示（depth=2）'
@@ -462,9 +474,9 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
       </button>
 
       {/* Center article info */}
-      <div className="absolute top-4 right-4 max-w-sm rounded-lg border border-slate-700 bg-slate-900/95 p-4 shadow-xl">
+      <div className="absolute top-4 right-4 max-w-sm rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 p-4 shadow-xl">
         <div className="mb-2 flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full border-2 border-white bg-amber-400" />
+          <div className="h-3 w-3 rounded-full border-2 border-white bg-[var(--tt-color-warning-bg)]" />
           <h3 className="text-sm font-bold text-white">中心記事</h3>
         </div>
         {centerNode && (
@@ -472,15 +484,15 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
             <p className="text-sm font-medium text-white">
               {removeCenterPrefix(centerNode.label)}
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[var(--tt-color-text-muted)]">
               カテゴリ: {centerNode.category} | 品質:{' '}
               {Math.round(centerNode.val)}
             </p>
           </div>
         )}
-        <div className="mt-2 border-t border-slate-700 pt-2">
+        <div className="mt-2 border-t border-[var(--tt-color-border)] pt-2">
           <p
-            className="text-xs text-slate-300"
+            className="text-xs text-[var(--tt-color-text)]"
             data-testid="related-count"
             aria-live="polite"
           >
@@ -492,34 +504,42 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
       {/* Hovered node tooltip */}
       {hoveredNode &&
         hoveredNode.id !== graphData.metadata?.centerArticleId && (
-          <div className="absolute bottom-4 left-4 max-w-md rounded-lg border border-slate-700 bg-slate-900/95 p-4 shadow-xl">
+          <div className="absolute bottom-4 left-4 max-w-md rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 p-4 shadow-xl">
             <h4 className="mb-2 text-sm font-bold text-white">
               {hoveredNode.label}
             </h4>
             {hoveredNode.summary && (
-              <p className="mb-2 text-xs text-slate-300">
+              <p className="mb-2 text-xs text-[var(--tt-color-text)]">
                 {hoveredNode.summary.substring(0, 120)}...
               </p>
             )}
             <div className="space-y-1 text-xs">
               <div className="flex items-center gap-2">
-                <span className="text-slate-400">カテゴリ:</span>
+                <span className="text-[var(--tt-color-text-muted)]">
+                  カテゴリ:
+                </span>
                 <span className="text-white">{hoveredNode.category}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-slate-400">品質スコア:</span>
+                <span className="text-[var(--tt-color-text-muted)]">
+                  品質スコア:
+                </span>
                 <span className="text-white">
                   {Math.round(hoveredNode.val)}
                 </span>
               </div>
               {hoveredNode.primaryTag && (
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400">主要タグ:</span>
+                  <span className="text-[var(--tt-color-text-muted)]">
+                    主要タグ:
+                  </span>
                   <span className="text-white">{hoveredNode.primaryTag}</span>
                 </div>
               )}
             </div>
-            <p className="mt-2 text-xs text-slate-500">クリックで記事を開く</p>
+            <p className="mt-2 text-xs text-[var(--tt-color-text-muted)]">
+              クリックで記事を開く
+            </p>
           </div>
         )}
     </div>
@@ -528,7 +548,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
 
 function GraphSkeleton() {
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-slate-950">
+    <div className="flex h-screen w-full items-center justify-center bg-[var(--tt-color-surface)]">
       <div className="text-center">
         <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-white"></div>
         <p className="text-white">Loading relationship graph...</p>
@@ -541,12 +561,14 @@ function GraphError({ error }: { error: Error }) {
   console.error('[GraphError]', error);
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-slate-950">
+    <div className="flex h-screen w-full items-center justify-center bg-[var(--tt-color-surface)]">
       <div className="text-center">
-        <p className="mb-2 text-lg text-red-400">Failed to load graph</p>
+        <p className="mb-2 text-lg text-[var(--tt-color-negative)]">
+          Failed to load graph
+        </p>
         {process.env.NODE_ENV === 'development' && (
           <p
-            className="text-sm text-slate-400"
+            className="text-sm text-[var(--tt-color-text-muted)]"
             data-testid="graph-error-message"
           >
             {error.message}
