@@ -88,7 +88,8 @@ export class PublickeyFetcher extends BaseFetcher {
 
               const enricherFactory = new ContentEnricherFactory();
               const enrichedData = await enricherFactory.trySequential(
-                item.link
+                item.link,
+                this.source.id
               );
 
               // サムネイルはコンテンツ条件に関わらず独立して取得

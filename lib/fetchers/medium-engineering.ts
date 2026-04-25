@@ -126,7 +126,10 @@ export class MediumEngineeringFetcher extends BaseFetcher {
 
             // Medium記事のコンテンツエンリッチメント
             if (content && content.length < 2000) {
-              const enricher = enricherFactory.getEnricher(cleanUrl);
+              const enricher = enricherFactory.getEnricher(
+                cleanUrl,
+                this.source.id
+              );
               if (enricher) {
                 try {
                   const enrichedData = await enricher.enrich(cleanUrl);

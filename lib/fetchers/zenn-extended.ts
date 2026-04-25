@@ -119,7 +119,7 @@ export class ZennExtendedFetcher extends BaseFetcher {
 
     // エンリッチメント処理
     if (item.link && enricherFactory) {
-      const enricher = enricherFactory.getEnricher(item.link);
+      const enricher = enricherFactory.getEnricher(item.link, this.source.id);
       if (enricher) {
         try {
           const currentContent = article.content || '';
