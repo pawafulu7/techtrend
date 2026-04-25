@@ -8,7 +8,13 @@
  * 分類優先順位: HTTP_<status> > TIMEOUT > ABORTED > EXCEPTION
  * HTTP を最優先することで "HTTP 504: Gateway Timeout" 等の
  * HTTP ステータス情報を TIMEOUT に吸わせない（観測性確保）。
+ *
+ * セキュリティ: errorMessage は pino の `err` serializer (sanitizeError) を
+ * 経由しないため、API キー等を露出させないよう sanitizeErrorMessage で
+ * トークン除去を行う。
  */
+
+import { sanitizeErrorMessage } from '@/lib/logger';
 
 export type EnrichmentErrorCode =
   | `HTTP_${number}`
@@ -27,9 +33,12 @@ export function classifyEnrichmentError(
   error: unknown
 ): ClassifiedEnrichmentError {
   const errorName = error instanceof Error ? error.name : '';
-  const errorMessage = error instanceof Error ? error.message : String(error);
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  const errorMessage = sanitizeErrorMessage(rawMessage);
 
-  const statusMatch = /HTTP\s+(\d{3})/i.exec(errorMessage);
+  // statusMatch は HTTP ステータス検出のため raw 値を使用
+  // (sanitizer は HTTP <status> パターンを置換しない)
+  const statusMatch = /HTTP\s+(\d{3})/i.exec(rawMessage);
   const status = statusMatch ? Number(statusMatch[1]) : undefined;
 
   const isTimeout =

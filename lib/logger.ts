@@ -27,49 +27,32 @@ export function hashSensitiveValue(value: unknown): string {
 }
 
 /**
+ * Remove sensitive tokens (API keys, Bearer tokens) from a free-form string.
+ * Exposed so that構造化ログの error 派生フィールド (errorMessage 等) が
+ * pino の err シリアライザを経由しないケースでも sanitization を適用できる。
+ */
+export function sanitizeErrorMessage(message: string): string {
+  return (
+    message
+      // OpenAI API keys (pattern: sk-...)
+      .replace(/sk-[a-zA-Z0-9]{20,}/g, '[REDACTED:API_KEY]')
+      // Gemini API keys (pattern: AIza...)
+      .replace(/AIza[a-zA-Z0-9_\-]{35}/g, '[REDACTED:GEMINI_KEY]')
+      // Bearer tokens (including JWT with dots and padding)
+      .replace(/Bearer\s+[a-zA-Z0-9_.\-=]+/gi, 'Bearer [REDACTED]')
+  );
+}
+
+/**
  * Sanitize error objects to remove sensitive information
  * Handles API keys that may appear in error messages (not covered by redact)
  */
 export function sanitizeError(error: unknown): unknown {
   if (error instanceof Error) {
-    let sanitizedMessage = error.message;
-    let sanitizedStack = error.stack;
-
-    // Remove OpenAI API keys (pattern: sk-...)
-    sanitizedMessage = sanitizedMessage.replace(
-      /sk-[a-zA-Z0-9]{20,}/g,
-      '[REDACTED:API_KEY]'
-    );
-    if (sanitizedStack) {
-      sanitizedStack = sanitizedStack.replace(
-        /sk-[a-zA-Z0-9]{20,}/g,
-        '[REDACTED:API_KEY]'
-      );
-    }
-
-    // Remove Gemini API keys (pattern: AIza...)
-    sanitizedMessage = sanitizedMessage.replace(
-      /AIza[a-zA-Z0-9_\-]{35}/g,
-      '[REDACTED:GEMINI_KEY]'
-    );
-    if (sanitizedStack) {
-      sanitizedStack = sanitizedStack.replace(
-        /AIza[a-zA-Z0-9_\-]{35}/g,
-        '[REDACTED:GEMINI_KEY]'
-      );
-    }
-
-    // Remove Bearer tokens (including JWT with dots and padding)
-    sanitizedMessage = sanitizedMessage.replace(
-      /Bearer\s+[a-zA-Z0-9_.\-=]+/gi,
-      'Bearer [REDACTED]'
-    );
-    if (sanitizedStack) {
-      sanitizedStack = sanitizedStack.replace(
-        /Bearer\s+[a-zA-Z0-9_.\-=]+/gi,
-        'Bearer [REDACTED]'
-      );
-    }
+    const sanitizedMessage = sanitizeErrorMessage(error.message);
+    const sanitizedStack = error.stack
+      ? sanitizeErrorMessage(error.stack)
+      : undefined;
 
     return {
       name: error.name,

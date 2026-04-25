@@ -92,4 +92,41 @@ describe('classifyEnrichmentError', () => {
       expect(result.errorCode).toBe('EXCEPTION');
     });
   });
+
+  describe('機密情報のサニタイズ', () => {
+    it('should redact OpenAI API key in errorMessage', () => {
+      const result = classifyEnrichmentError(
+        new Error('API key sk-abcdefghij1234567890ABCDEFGHIJ is invalid')
+      );
+      expect(result.errorMessage).not.toContain('sk-abcdef');
+      expect(result.errorMessage).toContain('[REDACTED:API_KEY]');
+    });
+
+    it('should redact Gemini API key in errorMessage', () => {
+      const result = classifyEnrichmentError(
+        new Error('Auth failed for AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdef')
+      );
+      expect(result.errorMessage).not.toContain('AIzaSyA');
+      expect(result.errorMessage).toContain('[REDACTED:GEMINI_KEY]');
+    });
+
+    it('should redact Bearer token in errorMessage', () => {
+      const result = classifyEnrichmentError(
+        new Error('Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig')
+      );
+      expect(result.errorMessage).not.toContain('eyJhbGciOiJIUzI1NiJ9');
+      expect(result.errorMessage).toContain('Bearer [REDACTED]');
+    });
+
+    it('should preserve HTTP_<status> classification on sanitized message', () => {
+      const result = classifyEnrichmentError(
+        new Error(
+          'HTTP 401: Unauthorized for sk-abcdefghij1234567890ABCDEFGHIJ'
+        )
+      );
+      expect(result.errorCode).toBe('HTTP_401');
+      expect(result.status).toBe(401);
+      expect(result.errorMessage).toContain('[REDACTED:API_KEY]');
+    });
+  });
 });
