@@ -115,12 +115,11 @@ export function useScrollRestoration(
 
     // スクロール位置を復元
     // ローディングUIを表示
+    // pagesLoadedRef は line 44-46 の sync useEffect が pagesLoaded プロップ変化のたびに
+    // 最新値へ更新しているため、ここでの直接代入は冗長。ref 経由参照に統一する。
     setIsRestoring(true);
-    setCurrentPage(pagesLoaded);
+    setCurrentPage(pagesLoadedRef.current);
     setTargetPages(requiredPages);
-
-    // pagesLoadedRefを更新
-    pagesLoadedRef.current = pagesLoaded;
 
     // prefers-reduced-motionを尊重したスクロール動作を取得
     const getScrollBehavior = (): ScrollBehavior => {
@@ -375,8 +374,6 @@ export function useScrollRestoration(
     // deps に含めると復元中に effect cleanup が走り、setIsRestoring(false) を予約する
     // setTimeout (SCROLL_RESTORE_UI_DELAY) が clearTimeout され、オーバーレイが残り続ける
     // race condition が発生する。これらは ref 経由で最新値を参照するため deps に含めない。
-    // 初期値の pagesLoaded は effect 起動時のスナップショットで十分（その後は ref 経由で追従）。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReturningFromArticle, scrollContainerRef, setRestorationTimeout]);
 
   // スクロール位置を保存（互換性のため残す）
