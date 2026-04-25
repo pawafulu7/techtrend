@@ -329,7 +329,7 @@ describe('BaseContentEnricher', () => {
           url: testUrl,
           enricher: 'TestContentEnricher',
           err: expect.any(Error),
-          status: 'failed',
+          errorCode: expect.any(String),
         }),
         '[Enrichment] failed'
       );
@@ -363,6 +363,86 @@ describe('BaseContentEnricher', () => {
 
       expect(loggerSpy).toHaveBeenCalledTimes(1);
       expect(loggerSpy.mock.calls[0][1]).toBe('[Enrichment] failed');
+
+      loggerSpy.mockRestore();
+    });
+
+    it('should classify error and emit errorCode + errorName + errorMessage', async () => {
+      const loggerSpy = jest
+        .spyOn(logger, 'error')
+        .mockImplementation(() => {});
+      enricher.setShouldFail(true);
+
+      await enricher.enrich(testUrl);
+
+      expect(loggerSpy).toHaveBeenCalledTimes(1);
+      const logged = loggerSpy.mock.calls[0][0] as Record<string, unknown>;
+      expect(logged.errorCode).toBe('EXCEPTION');
+      expect(typeof logged.errorName).toBe('string');
+      expect(typeof logged.errorMessage).toBe('string');
+
+      loggerSpy.mockRestore();
+    });
+
+    it('should omit sourceId/sourceName when options is not provided', async () => {
+      const loggerSpy = jest
+        .spyOn(logger, 'error')
+        .mockImplementation(() => {});
+      enricher.setShouldFail(true);
+
+      await enricher.enrich(testUrl);
+
+      const logged = loggerSpy.mock.calls[0][0] as Record<string, unknown>;
+      expect(logged).not.toHaveProperty('sourceId');
+      expect(logged).not.toHaveProperty('sourceName');
+
+      loggerSpy.mockRestore();
+    });
+
+    it('should include sourceId/sourceName when options is provided', () => {
+      const loggerSpy = jest
+        .spyOn(logger, 'error')
+        .mockImplementation(() => {});
+
+      // protected メソッドを直接テストするため subclass 経由でアクセス
+      class ExposedEnricher extends TestContentEnricher {
+        public callLog(
+          url: string,
+          error: unknown,
+          options?: { sourceId?: string; sourceName?: string }
+        ): void {
+          this.logEnrichmentError(url, error, options);
+        }
+      }
+      const exposed = new ExposedEnricher();
+      exposed.callLog(testUrl, new Error('boom'), {
+        sourceId: 'src-123',
+        sourceName: 'TestSource',
+      });
+
+      const logged = loggerSpy.mock.calls[0][0] as Record<string, unknown>;
+      expect(logged.sourceId).toBe('src-123');
+      expect(logged.sourceName).toBe('TestSource');
+
+      loggerSpy.mockRestore();
+    });
+
+    it('should classify HTTP error message as HTTP_<status>', () => {
+      const loggerSpy = jest
+        .spyOn(logger, 'error')
+        .mockImplementation(() => {});
+
+      class ExposedEnricher extends TestContentEnricher {
+        public callLog(url: string, error: unknown): void {
+          this.logEnrichmentError(url, error);
+        }
+      }
+      const exposed = new ExposedEnricher();
+      exposed.callLog(testUrl, new Error('HTTP 503: Service Unavailable'));
+
+      const logged = loggerSpy.mock.calls[0][0] as Record<string, unknown>;
+      expect(logged.errorCode).toBe('HTTP_503');
+      expect(logged.status).toBe(503);
 
       loggerSpy.mockRestore();
     });
