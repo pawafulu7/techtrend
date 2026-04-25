@@ -172,7 +172,10 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
             // コンテンツエンリッチメント（2000文字未満の場合は常に試みる）
             let thumbnail: string | undefined;
             if (content && content.length < 2000) {
-              const enricher = enricherFactory.getEnricher(item.link);
+              const enricher = enricherFactory.getEnricher(
+                item.link,
+                this.source.id
+              );
               if (enricher) {
                 try {
                   const enrichedData = await enricher.enrich(item.link);

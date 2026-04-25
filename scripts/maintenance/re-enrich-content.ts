@@ -122,7 +122,7 @@ async function reEnrichContent() {
 
     try {
       // エンリッチャーを取得
-      const enricher = factory.getEnricher(article.url);
+      const enricher = factory.getEnricher(article.url, article.sourceId);
       
       if (!enricher) {
         console.error('  ⚠️ エンリッチャーが見つかりません - スキップ');

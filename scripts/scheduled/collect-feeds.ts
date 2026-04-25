@@ -98,6 +98,7 @@ import { createFetcher } from '@/lib/fetchers';
 
 // エンリッチャーをインポート
 import { ContentEnricherFactory } from '@/lib/enrichers';
+import { classifyEnrichmentError } from '@/lib/enrichers/error-classifier';
 import { HATENA_BLOG_DEV_SOURCE_ID } from '@/lib/enrichers/hatena';
 import { logger } from '@/lib/logger';
 import { isHighQuality } from '@/lib/enrichers/strategies/quality';
@@ -449,7 +450,7 @@ async function processSource({
                     sourceId: source.id,
                     sourceName,
                     enricher: enricher.constructor.name,
-                    errorCode: 'NO_DATA',
+                    errorCode: 'NO_DATA' as const,
                   },
                   '[Enrichment] failed: no data returned'
                 );
@@ -457,37 +458,23 @@ async function processSource({
               }
             } catch (enrichError) {
               // エラー失敗: status/errorCode/errorMessage を構造化して記録
-              // 分類優先順位: HTTP_<status> > TIMEOUT > ABORTED > EXCEPTION
-              // HTTP を最優先にすることで "HTTP 504: Gateway Timeout" 等の
-              // HTTP ステータス情報を TIMEOUT に吸わせない（観測性確保）
-              const errorName = enrichError instanceof Error ? enrichError.name : '';
-              const errorMessage = enrichError instanceof Error ? enrichError.message : String(enrichError);
-              const statusMatch = /HTTP\s+(\d{3})/i.exec(errorMessage);
-              const isTimeout =
-                errorName === 'TimeoutError' ||
-                (!statusMatch && /\btimeout\b/i.test(errorMessage));
-              const isAborted = errorName === 'AbortError';
-              const errorCode = statusMatch
-                ? `HTTP_${statusMatch[1]}`
-                : isTimeout
-                  ? 'TIMEOUT'
-                  : isAborted
-                    ? 'ABORTED'
-                    : 'EXCEPTION';
+              // 分類ロジックは lib/enrichers/error-classifier.ts に集約
+              // （BaseContentEnricher.logEnrichmentError と共有）
+              const classified = classifyEnrichmentError(enrichError);
               logger.warn(
                 {
                   url: article.url,
                   sourceId: source.id,
                   sourceName,
                   enricher: enricher.constructor.name,
-                  errorCode,
-                  status: statusMatch ? Number(statusMatch[1]) : undefined,
-                  errorName,
-                  errorMessage,
+                  errorCode: classified.errorCode,
+                  status: classified.status,
+                  errorName: classified.errorName,
+                  errorMessage: classified.errorMessage,
                 },
                 '[Enrichment] failed: exception thrown'
               );
-              console.error('   [WARN] エンリッチメントエラー:', errorMessage);
+              console.error('   [WARN] エンリッチメントエラー:', classified.errorMessage);
             }
 
             const enrichSleepMs = resolveEnrichSleepMs(source.id);

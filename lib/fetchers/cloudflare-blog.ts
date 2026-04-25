@@ -80,7 +80,10 @@ export class CloudflareBlogFetcher extends BaseFetcher {
 
           // コンテンツエンリッチメント（2000文字未満の場合のみ実行）
           if (content && content.length < 2000) {
-            const enricher = enricherFactory.getEnricher(item.link);
+            const enricher = enricherFactory.getEnricher(
+              item.link,
+              this.source.id
+            );
             if (enricher) {
               try {
                 const enrichedData = await enricher.enrich(item.link);

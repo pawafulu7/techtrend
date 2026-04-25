@@ -65,7 +65,7 @@ async function diagnoseContentEnrichment() {
       let enrichmentSuccess = false;
       let enrichmentError: string | undefined;
       
-      const enricher = enricherFactory.getEnricher(article.url);
+      const enricher = enricherFactory.getEnricher(article.url, article.sourceId);
       if (enricher) {
         try {
           console.error(`  Attempting enrichment...`);

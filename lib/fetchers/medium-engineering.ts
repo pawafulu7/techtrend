@@ -5,6 +5,7 @@ import Parser from 'rss-parser';
 import { parseRSSDate } from '@/lib/utils/date';
 import { extractContent } from '@/lib/utils/content/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
+import { classifyEnrichmentError } from '@/lib/enrichers/error-classifier';
 import { normalizeTagInput } from '@/lib/utils/tag/tag-normalizer';
 import logger from '@/lib/logger';
 
@@ -126,7 +127,10 @@ export class MediumEngineeringFetcher extends BaseFetcher {
 
             // Medium記事のコンテンツエンリッチメント
             if (content && content.length < 2000) {
-              const enricher = enricherFactory.getEnricher(cleanUrl);
+              const enricher = enricherFactory.getEnricher(
+                cleanUrl,
+                this.source.id
+              );
               if (enricher) {
                 try {
                   const enrichedData = await enricher.enrich(cleanUrl);
@@ -142,8 +146,21 @@ export class MediumEngineeringFetcher extends BaseFetcher {
                     }
                   }
                 } catch (_error) {
+                  const classified = classifyEnrichmentError(_error);
                   logger.error(
-                    { err: _error },
+                    {
+                      err:
+                        _error instanceof Error
+                          ? _error
+                          : new Error(String(_error)),
+                      url: cleanUrl,
+                      sourceId: this.source.id,
+                      sourceName: this.source.name,
+                      errorCode: classified.errorCode,
+                      status: classified.status,
+                      errorName: classified.errorName,
+                      errorMessage: classified.errorMessage,
+                    },
                     `[Medium Engineering] Enrichment failed for ${cleanUrl}`
                   );
                 }

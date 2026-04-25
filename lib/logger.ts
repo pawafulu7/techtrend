@@ -1,6 +1,14 @@
 import pino from 'pino';
 import crypto from 'crypto';
 import { trace, isSpanContextValid } from '@opentelemetry/api';
+import {
+  sanitizeError as sanitizeErrorImpl,
+  sanitizeErrorMessage as sanitizeErrorMessageImpl,
+} from '@/lib/utils/sanitize-error';
+
+// 後方互換のため既存 import path (`@/lib/logger`) からも公開する
+export { sanitizeErrorImpl as sanitizeError };
+export { sanitizeErrorMessageImpl as sanitizeErrorMessage };
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
@@ -24,65 +32,6 @@ export function hashSensitiveValue(value: unknown): string {
   // Hash for debuggability (same value = same hash prefix)
   const hash = crypto.createHash('sha256').update(str).digest('hex');
   return `[HASHED:${hash.slice(0, 8)}]`;
-}
-
-/**
- * Sanitize error objects to remove sensitive information
- * Handles API keys that may appear in error messages (not covered by redact)
- */
-export function sanitizeError(error: unknown): unknown {
-  if (error instanceof Error) {
-    let sanitizedMessage = error.message;
-    let sanitizedStack = error.stack;
-
-    // Remove OpenAI API keys (pattern: sk-...)
-    sanitizedMessage = sanitizedMessage.replace(
-      /sk-[a-zA-Z0-9]{20,}/g,
-      '[REDACTED:API_KEY]'
-    );
-    if (sanitizedStack) {
-      sanitizedStack = sanitizedStack.replace(
-        /sk-[a-zA-Z0-9]{20,}/g,
-        '[REDACTED:API_KEY]'
-      );
-    }
-
-    // Remove Gemini API keys (pattern: AIza...)
-    sanitizedMessage = sanitizedMessage.replace(
-      /AIza[a-zA-Z0-9_\-]{35}/g,
-      '[REDACTED:GEMINI_KEY]'
-    );
-    if (sanitizedStack) {
-      sanitizedStack = sanitizedStack.replace(
-        /AIza[a-zA-Z0-9_\-]{35}/g,
-        '[REDACTED:GEMINI_KEY]'
-      );
-    }
-
-    // Remove Bearer tokens (including JWT with dots and padding)
-    sanitizedMessage = sanitizedMessage.replace(
-      /Bearer\s+[a-zA-Z0-9_.\-=]+/gi,
-      'Bearer [REDACTED]'
-    );
-    if (sanitizedStack) {
-      sanitizedStack = sanitizedStack.replace(
-        /Bearer\s+[a-zA-Z0-9_.\-=]+/gi,
-        'Bearer [REDACTED]'
-      );
-    }
-
-    return {
-      name: error.name,
-      message: sanitizedMessage,
-      // Include stack trace only in development
-      ...(process.env.NODE_ENV === 'development' &&
-        sanitizedStack && {
-          stack: sanitizedStack,
-        }),
-    };
-  }
-
-  return error;
 }
 
 /**
@@ -169,7 +118,7 @@ const logger = pino({
   serializers: {
     // Custom error serializer with sanitization (handles API keys in messages)
     err: (err) => {
-      return sanitizeError(err);
+      return sanitizeErrorImpl(err);
     },
     request: (req) => ({
       method: req.method,

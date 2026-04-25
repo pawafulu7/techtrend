@@ -5,6 +5,7 @@
 
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
+import { classifyEnrichmentError } from './error-classifier';
 
 /**
  * エンリッチされたコンテンツのデータ構造
@@ -358,15 +359,34 @@ export abstract class BaseContentEnricher implements IContentEnricher {
   }
 
   /**
-   * Enrichment失敗時のエラーログ
+   * Enrichment失敗時のエラーログ（errorCode 分類付き構造化ログ）
+   *
+   * @param url 失敗対象のURL
+   * @param error スローされた例外
+   * @param options sourceId / sourceName を渡せば caller 側ログと同等の構造化情報になる。
+   *                BaseContentEnricher の既定実装は this.source.id を持たないため、
+   *                既定実装からの呼び出しでは省略され、5 個の継承勢（hatena-developer,
+   *                pepabo, recruit, sansan, zozo）からは sourceId なしでログが出力される。
    */
-  protected logEnrichmentError(url: string, error: unknown): void {
+  protected logEnrichmentError(
+    url: string,
+    error: unknown,
+    options?: { sourceId?: string; sourceName?: string }
+  ): void {
+    const classified = classifyEnrichmentError(error);
     logger.error(
       {
         url,
         enricher: this.constructor.name,
         err: error instanceof Error ? error : new Error(String(error)),
-        status: 'failed',
+        errorCode: classified.errorCode,
+        status: classified.status,
+        errorName: classified.errorName,
+        errorMessage: classified.errorMessage,
+        ...(options?.sourceId !== undefined && { sourceId: options.sourceId }),
+        ...(options?.sourceName !== undefined && {
+          sourceName: options.sourceName,
+        }),
       },
       '[Enrichment] failed'
     );

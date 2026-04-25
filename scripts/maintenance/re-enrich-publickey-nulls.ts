@@ -116,11 +116,12 @@ function parseArgs(): Options {
 async function enrichWithRetry(
   factory: ContentEnricherFactory,
   url: string,
+  sourceId: string,
   maxRetries: number = 3
 ): Promise<{ content?: string; thumbnail?: string } | null> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const enriched = await factory.trySequential(url);
+      const enriched = await factory.trySequential(url, sourceId);
       return enriched;
     } catch (error) {
       const isNetworkError = error instanceof Error &&
@@ -227,7 +228,7 @@ async function main() {
 
     try {
       // Enrichmentをリトライ付きで実行
-      const enriched = await enrichWithRetry(factory, article.url);
+      const enriched = await enrichWithRetry(factory, article.url, publickeySource.id);
 
       if (enriched?.content && enriched.content.length >= RSS_SUFFICIENT_LENGTH) {
         // UPDATE成功

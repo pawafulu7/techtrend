@@ -95,8 +95,9 @@ async function enrichExistingArticles(limit?: number, testMode: boolean = false)
       result.processed++;
 
       try {
-        // エンリッチャーを取得
-        const enricher = enricherFactory.getEnricher(article.url);
+        // エンリッチャーを取得（where で sourceId: source.id 絞り込み済みのため
+        // article.sourceId は select に含めず、ループ外の source.id を直接渡す）
+        const enricher = enricherFactory.getEnricher(article.url, source.id);
         
         if (!enricher) {
           console.error(`  ⚠️  エンリッチャーなし（スキップ）`);
