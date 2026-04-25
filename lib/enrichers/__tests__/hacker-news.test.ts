@@ -53,7 +53,7 @@ describe('HackerNewsEnricher - body drain on non-OK fetch (Issue #599)', () => {
 
   it('should still fall back to GenericEnricher when body.cancel rejects', async () => {
     const cancelMock = jest
-      .fn<Promise<void>, []>()
+      .fn<() => Promise<void>>()
       .mockRejectedValue(new Error('stream already consumed'));
 
     global.fetch = jest.fn(async () => ({
@@ -76,6 +76,7 @@ describe('HackerNewsEnricher - body drain on non-OK fetch (Issue #599)', () => {
   });
 
   it('should tolerate missing response.body (no throw, still fall back)', async () => {
+    const cancelSpy = jest.fn();
     global.fetch = jest.fn(async () => ({
       ok: false,
       status: 404,
@@ -89,6 +90,9 @@ describe('HackerNewsEnricher - body drain on non-OK fetch (Issue #599)', () => {
     const enricher = new HackerNewsEnricher();
     const result = await enricher.enrich(targetUrl);
 
+    // body が null のとき optional chaining で cancel が呼ばれないことを担保
+    // (将来 body && body.cancel() への書き換え等のリグレッションを検出)
+    expect(cancelSpy).not.toHaveBeenCalled();
     expect(genericEnrichSpy).toHaveBeenCalledTimes(1);
     expect(result).toBeNull();
   });
