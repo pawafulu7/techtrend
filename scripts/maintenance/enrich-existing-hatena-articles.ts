@@ -62,7 +62,8 @@ async function enrichExistingArticles(limit?: number, testMode: boolean = false)
         url: true,
         content: true,
         thumbnail: true,
-        createdAt: true
+        createdAt: true,
+        sourceId: true
       }
     });
 
@@ -96,7 +97,7 @@ async function enrichExistingArticles(limit?: number, testMode: boolean = false)
 
       try {
         // エンリッチャーを取得
-        const enricher = enricherFactory.getEnricher(article.url);
+        const enricher = enricherFactory.getEnricher(article.url, article.sourceId);
         
         if (!enricher) {
           console.error(`  ⚠️  エンリッチャーなし（スキップ）`);

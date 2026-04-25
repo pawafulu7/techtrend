@@ -155,7 +155,7 @@ async function main() {
       console.error(`  URL: ${article.url}`);
 
       // エンリッチャーを取得
-      const enricher = enricherFactory.getEnricher(article.url);
+      const enricher = enricherFactory.getEnricher(article.url, article.source.id);
       
       if (!enricher) {
         console.error(`  ⏭️  スキップ: 対応するEnricherがありません`);

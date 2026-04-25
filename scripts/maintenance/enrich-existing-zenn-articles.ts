@@ -103,7 +103,7 @@ async function enrichExistingZennArticles(limit?: number, testMode: boolean = fa
       console.error(`  現在のコンテンツ長: ${article.content?.length || 0}文字`);
       
       // エンリッチャーを取得
-      const enricher = enricherFactory.getEnricher(article.url);
+      const enricher = enricherFactory.getEnricher(article.url, source.id);
       
       if (!enricher) {
         console.error('  ⚠️ エンリッチャーが見つかりません');

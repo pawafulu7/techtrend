@@ -30,7 +30,7 @@ async function reEnrichArticles() {
     try {
       const article = await prisma.article.findUnique({
         where: { id: articleId },
-        select: { id: true, title: true, url: true, content: true }
+        select: { id: true, title: true, url: true, content: true, sourceId: true }
       });
 
       if (!article) {
@@ -42,7 +42,7 @@ async function reEnrichArticles() {
       console.log(`\n処理中: ${article.title}`);
       console.log(`  現在のコンテンツ長: ${article.content?.length || 0}文字`);
 
-      const enricher = enricherFactory.getEnricher(article.url);
+      const enricher = enricherFactory.getEnricher(article.url, article.sourceId);
       if (!enricher) {
         console.error(`  エンリッチャーが見つかりません`);
         failureCount++;
