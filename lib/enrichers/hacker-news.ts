@@ -60,6 +60,12 @@ export class HackerNewsEnricher extends BaseContentEnricher {
 
       // ステータスコードが200以外の場合はGenericEnricherにフォールバック
       if (!response.ok) {
+        // 接続プールの socket 保持を避けるため body を drain
+        try {
+          await response.body?.cancel();
+        } catch {
+          /* ignore: drain 失敗は fallback 判定に影響させない */
+        }
         logger.warn(
           { status: response.status, url },
           '[HackerNewsEnricher] HTTP error, falling back to GenericEnricher'
@@ -127,6 +133,12 @@ export class HackerNewsEnricher extends BaseContentEnricher {
                 thumbnail =
                   $repo('meta[property="og:image"]').attr('content') || '';
               } else {
+                // 接続プールの socket 保持を避けるため body を drain
+                try {
+                  await repoResponse.body?.cancel();
+                } catch {
+                  /* ignore */
+                }
                 logger.debug(
                   { status: repoResponse.status, repoRootUrl },
                   '[HackerNewsEnricher] Repo root fetch returned non-OK status'
@@ -230,7 +242,10 @@ export class HackerNewsEnricher extends BaseContentEnricher {
         thumbnail: thumbnail || undefined,
       };
     } catch (error) {
-      logger.error({ err: error, url }, '[HackerNewsEnricher] Error enriching URL');
+      logger.error(
+        { err: error, url },
+        '[HackerNewsEnricher] Error enriching URL'
+      );
 
       // フォールバック: GenericEnricherを試す
       try {
