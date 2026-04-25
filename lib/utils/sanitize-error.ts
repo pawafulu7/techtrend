@@ -12,8 +12,12 @@
 export function sanitizeErrorMessage(message: string): string {
   return (
     message
-      // OpenAI API keys (pattern: sk-...)
-      .replace(/sk-[a-zA-Z0-9]{20,}/g, '[REDACTED:API_KEY]')
+      // OpenAI API keys: legacy (sk-XXXX) と hyphenated (sk-proj-, sk-svcacct- 等)
+      // 例: sk-proj-abcdefghij1234567890ABCDEFGHIJ
+      .replace(
+        /sk-(?:[a-zA-Z0-9]+-){0,3}[a-zA-Z0-9]{20,}/g,
+        '[REDACTED:API_KEY]'
+      )
       // Gemini API keys (pattern: AIza...)
       .replace(/AIza[a-zA-Z0-9_\-]{35}/g, '[REDACTED:GEMINI_KEY]')
       // Bearer tokens (including JWT with dots and padding)

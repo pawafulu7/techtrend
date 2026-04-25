@@ -147,7 +147,9 @@ async function main() {
       console.error(`\nバッチ ${batchIndex + 1}/${batches.length} を処理中...`);
 
       for (const article of batch) {
-        const enricher = enricherFactory.getEnricher(article.url, article.sourceId);
+        // where で sourceId: corporateSource.id 絞り込み済みのため
+        // article.sourceId === corporateSource.id。意図を明示的に表すため直接渡す
+        const enricher = enricherFactory.getEnricher(article.url, corporateSource.id);
         
         if (!enricher) {
           console.error(`[SKIP] ${article.title} - エンリッチャー未対応`);

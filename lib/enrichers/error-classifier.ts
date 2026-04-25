@@ -20,6 +20,7 @@ export type EnrichmentErrorCode =
   | `HTTP_${number}`
   | 'TIMEOUT'
   | 'ABORTED'
+  | 'NO_DATA'
   | 'EXCEPTION';
 
 export interface ClassifiedEnrichmentError {
@@ -41,14 +42,16 @@ export function classifyEnrichmentError(
   const statusMatch = /HTTP\s+(\d{3})/i.exec(rawMessage);
   const status = statusMatch ? Number(statusMatch[1]) : undefined;
 
+  // undici 由来の HeadersTimeoutError / BodyTimeoutError / ConnectTimeoutError
+  // も TIMEOUT として分類する（fetchWithRetry が undici fetch を呼ぶため）
   const isTimeout =
-    errorName === 'TimeoutError' ||
+    /TimeoutError$/i.test(errorName) ||
     (!statusMatch && /\btimeout\b/i.test(errorMessage));
   const isAborted = errorName === 'AbortError';
 
   let errorCode: EnrichmentErrorCode;
-  if (statusMatch) {
-    errorCode = `HTTP_${statusMatch[1]}` as EnrichmentErrorCode;
+  if (status !== undefined) {
+    errorCode = `HTTP_${status}`;
   } else if (isTimeout) {
     errorCode = 'TIMEOUT';
   } else if (isAborted) {

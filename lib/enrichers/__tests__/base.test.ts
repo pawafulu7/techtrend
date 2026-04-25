@@ -315,6 +315,19 @@ describe('BaseContentEnricher', () => {
   });
 
   describe('logEnrichmentError', () => {
+    // ExposedEnricher: protected logEnrichmentError を直接呼び出すための subclass
+    // setShouldFail(true) は Error('Network error') を throw するため
+    // classifier の fallback で 'EXCEPTION' に分類される
+    class ExposedEnricher extends TestContentEnricher {
+      public callLog(
+        url: string,
+        error: unknown,
+        options?: { sourceId?: string; sourceName?: string }
+      ): void {
+        this.logEnrichmentError(url, error, options);
+      }
+    }
+
     it('should log error when enrichment fails', async () => {
       const loggerSpy = jest
         .spyOn(logger, 'error')
@@ -329,7 +342,7 @@ describe('BaseContentEnricher', () => {
           url: testUrl,
           enricher: 'TestContentEnricher',
           err: expect.any(Error),
-          errorCode: expect.any(String),
+          errorCode: 'EXCEPTION',
         }),
         '[Enrichment] failed'
       );
@@ -404,16 +417,6 @@ describe('BaseContentEnricher', () => {
         .spyOn(logger, 'error')
         .mockImplementation(() => {});
 
-      // protected メソッドを直接テストするため subclass 経由でアクセス
-      class ExposedEnricher extends TestContentEnricher {
-        public callLog(
-          url: string,
-          error: unknown,
-          options?: { sourceId?: string; sourceName?: string }
-        ): void {
-          this.logEnrichmentError(url, error, options);
-        }
-      }
       const exposed = new ExposedEnricher();
       exposed.callLog(testUrl, new Error('boom'), {
         sourceId: 'src-123',
@@ -432,11 +435,6 @@ describe('BaseContentEnricher', () => {
         .spyOn(logger, 'error')
         .mockImplementation(() => {});
 
-      class ExposedEnricher extends TestContentEnricher {
-        public callLog(url: string, error: unknown): void {
-          this.logEnrichmentError(url, error);
-        }
-      }
       const exposed = new ExposedEnricher();
       exposed.callLog(testUrl, new Error('HTTP 503: Service Unavailable'));
 

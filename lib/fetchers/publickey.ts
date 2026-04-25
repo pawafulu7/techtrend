@@ -5,6 +5,7 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import { ContentEnricherFactory } from '@/lib/enrichers';
+import { classifyEnrichmentError } from '@/lib/enrichers/error-classifier';
 import logger from '@/lib/logger';
 import { extractTagsFromCategories } from '@/lib/utils/tag/tag-extractor';
 
@@ -128,12 +129,18 @@ export class PublickeyFetcher extends BaseFetcher {
               }
               // else: RSS 100-199 chars, Enricher failed -> use RSS content (intentional)
             } catch (enrichError) {
+              const classified = classifyEnrichmentError(enrichError);
               logger.error(
                 {
                   err: enrichError,
                   url: item.link,
                   title: item.title,
                   rssContentLength,
+                  sourceId: this.source.id,
+                  errorCode: classified.errorCode,
+                  status: classified.status,
+                  errorName: classified.errorName,
+                  errorMessage: classified.errorMessage,
                 },
                 '[Publickey] Enrichment error'
               );

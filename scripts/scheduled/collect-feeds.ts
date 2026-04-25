@@ -450,7 +450,7 @@ async function processSource({
                     sourceId: source.id,
                     sourceName,
                     enricher: enricher.constructor.name,
-                    errorCode: 'NO_DATA',
+                    errorCode: 'NO_DATA' as const,
                   },
                   '[Enrichment] failed: no data returned'
                 );

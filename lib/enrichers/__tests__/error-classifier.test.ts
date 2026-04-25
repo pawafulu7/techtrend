@@ -43,6 +43,36 @@ describe('classifyEnrichmentError', () => {
       );
       expect(result.errorCode).toBe('TIMEOUT');
     });
+
+    it('should classify undici HeadersTimeoutError as TIMEOUT', () => {
+      const error = new Error('Headers timeout');
+      error.name = 'HeadersTimeoutError';
+      const result = classifyEnrichmentError(error);
+      expect(result.errorCode).toBe('TIMEOUT');
+      expect(result.errorName).toBe('HeadersTimeoutError');
+    });
+
+    it('should classify undici BodyTimeoutError as TIMEOUT', () => {
+      const error = new Error('Body timeout');
+      error.name = 'BodyTimeoutError';
+      const result = classifyEnrichmentError(error);
+      expect(result.errorCode).toBe('TIMEOUT');
+    });
+
+    it('should classify undici ConnectTimeoutError as TIMEOUT', () => {
+      const error = new Error('Connect timeout');
+      error.name = 'ConnectTimeoutError';
+      const result = classifyEnrichmentError(error);
+      expect(result.errorCode).toBe('TIMEOUT');
+    });
+
+    it('should NOT classify substring "timeoutid" (no word boundary) as TIMEOUT', () => {
+      // \btimeout\b は word boundary を要求するため "timeoutid" は match しない
+      const result = classifyEnrichmentError(
+        new Error('set timeoutid was cleared')
+      );
+      expect(result.errorCode).toBe('EXCEPTION');
+    });
   });
 
   describe('ABORTED 分類', () => {
@@ -99,6 +129,22 @@ describe('classifyEnrichmentError', () => {
         new Error('API key sk-abcdefghij1234567890ABCDEFGHIJ is invalid')
       );
       expect(result.errorMessage).not.toContain('sk-abcdef');
+      expect(result.errorMessage).toContain('[REDACTED:API_KEY]');
+    });
+
+    it('should redact hyphenated OpenAI project key (sk-proj-)', () => {
+      const result = classifyEnrichmentError(
+        new Error('Auth failed for sk-proj-abcdefghij1234567890ABCDEFGHIJ')
+      );
+      expect(result.errorMessage).not.toContain('sk-proj-abc');
+      expect(result.errorMessage).toContain('[REDACTED:API_KEY]');
+    });
+
+    it('should redact hyphenated OpenAI service-account key (sk-svcacct-)', () => {
+      const result = classifyEnrichmentError(
+        new Error('Auth failed for sk-svcacct-abcdefghij1234567890ABCDEFGHIJ')
+      );
+      expect(result.errorMessage).not.toContain('sk-svcacct-abc');
       expect(result.errorMessage).toContain('[REDACTED:API_KEY]');
     });
 
