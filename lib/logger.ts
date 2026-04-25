@@ -1,6 +1,14 @@
 import pino from 'pino';
 import crypto from 'crypto';
 import { trace, isSpanContextValid } from '@opentelemetry/api';
+import {
+  sanitizeError as sanitizeErrorImpl,
+  sanitizeErrorMessage as sanitizeErrorMessageImpl,
+} from '@/lib/utils/sanitize-error';
+
+// 後方互換のため既存 import path (`@/lib/logger`) からも公開する
+export { sanitizeErrorImpl as sanitizeError };
+export { sanitizeErrorMessageImpl as sanitizeErrorMessage };
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
@@ -24,48 +32,6 @@ export function hashSensitiveValue(value: unknown): string {
   // Hash for debuggability (same value = same hash prefix)
   const hash = crypto.createHash('sha256').update(str).digest('hex');
   return `[HASHED:${hash.slice(0, 8)}]`;
-}
-
-/**
- * Remove sensitive tokens (API keys, Bearer tokens) from a free-form string.
- * Exposed so that構造化ログの error 派生フィールド (errorMessage 等) が
- * pino の err シリアライザを経由しないケースでも sanitization を適用できる。
- */
-export function sanitizeErrorMessage(message: string): string {
-  return (
-    message
-      // OpenAI API keys (pattern: sk-...)
-      .replace(/sk-[a-zA-Z0-9]{20,}/g, '[REDACTED:API_KEY]')
-      // Gemini API keys (pattern: AIza...)
-      .replace(/AIza[a-zA-Z0-9_\-]{35}/g, '[REDACTED:GEMINI_KEY]')
-      // Bearer tokens (including JWT with dots and padding)
-      .replace(/Bearer\s+[a-zA-Z0-9_.\-=]+/gi, 'Bearer [REDACTED]')
-  );
-}
-
-/**
- * Sanitize error objects to remove sensitive information
- * Handles API keys that may appear in error messages (not covered by redact)
- */
-export function sanitizeError(error: unknown): unknown {
-  if (error instanceof Error) {
-    const sanitizedMessage = sanitizeErrorMessage(error.message);
-    const sanitizedStack = error.stack
-      ? sanitizeErrorMessage(error.stack)
-      : undefined;
-
-    return {
-      name: error.name,
-      message: sanitizedMessage,
-      // Include stack trace only in development
-      ...(process.env.NODE_ENV === 'development' &&
-        sanitizedStack && {
-          stack: sanitizedStack,
-        }),
-    };
-  }
-
-  return error;
 }
 
 /**
@@ -152,7 +118,7 @@ const logger = pino({
   serializers: {
     // Custom error serializer with sanitization (handles API keys in messages)
     err: (err) => {
-      return sanitizeError(err);
+      return sanitizeErrorImpl(err);
     },
     request: (req) => ({
       method: req.method,

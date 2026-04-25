@@ -14,7 +14,7 @@
  * トークン除去を行う。
  */
 
-import { sanitizeErrorMessage } from '@/lib/logger';
+import { sanitizeErrorMessage } from '@/lib/utils/sanitize-error';
 
 export type EnrichmentErrorCode =
   | `HTTP_${number}`
