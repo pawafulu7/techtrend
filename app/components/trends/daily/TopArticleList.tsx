@@ -1,7 +1,12 @@
 'use client';
 
 import { ExternalLink, Eye, Heart, Award, FileText } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import Link from 'next/link';
@@ -22,7 +27,10 @@ interface TopArticleListProps {
   loading?: boolean;
 }
 
-export function TopArticleList({ articles, loading = false }: TopArticleListProps) {
+export function TopArticleList({
+  articles,
+  loading = false,
+}: TopArticleListProps) {
   if (loading) {
     return (
       <Card className="border-0 shadow-lg">
@@ -36,7 +44,7 @@ export function TopArticleList({ articles, loading = false }: TopArticleListProp
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="h-20 bg-muted rounded-lg" />
+                <div className="bg-muted h-20 rounded-lg" />
               </div>
             ))}
           </div>
@@ -48,11 +56,11 @@ export function TopArticleList({ articles, loading = false }: TopArticleListProp
   const getRankStyle = (index: number) => {
     switch (index) {
       case 0:
-        return 'bg-gradient-to-r from-amber-400 to-amber-500 text-white';
+        return 'bg-amber-400 text-white';
       case 1:
-        return 'bg-gradient-to-r from-slate-300 to-slate-400 text-white';
+        return 'bg-slate-400 text-white';
       case 2:
-        return 'bg-gradient-to-r from-amber-600 to-amber-700 text-white';
+        return 'bg-amber-700 text-white';
       default:
         return 'bg-muted text-muted-foreground';
     }
@@ -74,24 +82,26 @@ export function TopArticleList({ articles, loading = false }: TopArticleListProp
               className="animate-fade-in-up"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <div className="group relative p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-all duration-200">
+              <div className="group bg-muted/30 hover:bg-muted/50 relative rounded-xl p-4 transition-all duration-200">
                 <div className="flex gap-4">
                   {/* Rank */}
-                  <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${getRankStyle(index)}`}>
+                  <div
+                    className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold ${getRankStyle(index)}`}
+                  >
                     {index + 1}
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-sm line-clamp-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="line-clamp-2 text-sm font-medium">
                       {article.translatedTitle || article.title}
                     </h3>
 
-                    <div className="flex items-center gap-4 mt-2">
+                    <div className="mt-2 flex items-center gap-4">
                       <Badge variant="outline" className="text-xs">
                         {article.sourceName}
                       </Badge>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <div className="text-muted-foreground flex items-center gap-3 text-xs">
                         <span className="flex items-center gap-1">
                           <Eye className="h-3 w-3" />
                           {article.viewCount}
@@ -104,17 +114,17 @@ export function TopArticleList({ articles, loading = false }: TopArticleListProp
                     </div>
 
                     {article.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
+                      <div className="mt-2 flex flex-wrap gap-1">
                         {article.tags.slice(0, 3).map((tag) => (
                           <span
                             key={tag}
-                            className="text-xs px-2 py-0.5 rounded-full bg-secondary/50 text-secondary-foreground"
+                            className="bg-secondary/50 text-secondary-foreground rounded-full px-2 py-0.5 text-xs"
                           >
                             {tag}
                           </span>
                         ))}
                         {article.tags.length > 3 && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-muted-foreground text-xs">
                             +{article.tags.length - 3}
                           </span>
                         )}
@@ -122,14 +132,16 @@ export function TopArticleList({ articles, loading = false }: TopArticleListProp
                     )}
 
                     {/* Action buttons */}
-                    <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/50">
+                    <div className="border-border/50 mt-3 flex items-center gap-2 border-t pt-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs gap-1.5"
+                        className="h-7 gap-1.5 text-xs"
                         asChild
                       >
-                        <Link href={`/articles/${article.id}?from=${encodeURIComponent('/trends/daily')}`}>
+                        <Link
+                          href={`/articles/${article.id}?from=${encodeURIComponent('/trends/daily')}`}
+                        >
                           <FileText className="h-3 w-3" />
                           要約
                         </Link>
@@ -137,10 +149,14 @@ export function TopArticleList({ articles, loading = false }: TopArticleListProp
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs gap-1.5"
+                        className="h-7 gap-1.5 text-xs"
                         asChild
                       >
-                        <Link href={article.url} target="_blank" rel="noopener noreferrer">
+                        <Link
+                          href={article.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           <ExternalLink className="h-3 w-3" />
                           元記事
                         </Link>
@@ -155,8 +171,14 @@ export function TopArticleList({ articles, loading = false }: TopArticleListProp
 
         <style jsx>{`
           @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
           }
           .animate-fade-in-up {
             animation: fadeInUp 0.3s ease-out forwards;

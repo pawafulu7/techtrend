@@ -12,7 +12,7 @@ const fetcher = async (url: string) => {
 interface StatusConfig {
   label: string;
   icon: React.ReactNode;
-  gradient: string;
+  bg: string;
   textColor: string;
   iconBg: string;
 }
@@ -21,64 +21,58 @@ const STATUS_CONFIG: Record<SocialPostStatus | 'total', StatusConfig> = {
   total: {
     label: '総数',
     icon: <StackIcon />,
-    gradient:
-      'from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900',
-    textColor: 'text-slate-900 dark:text-slate-100',
-    iconBg: 'bg-slate-200 dark:bg-slate-700',
+    bg: 'bg-[var(--tt-color-status-neutral-bg)]',
+    textColor: 'text-[var(--tt-color-status-neutral-text)]',
+    iconBg: 'bg-[var(--tt-color-status-neutral-icon-bg)]',
   },
   DRAFT: {
     label: '下書き',
     icon: <PencilIcon />,
-    gradient:
-      'from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30',
-    textColor: 'text-amber-700 dark:text-amber-400',
-    iconBg: 'bg-amber-100 dark:bg-amber-900/50',
+    bg: 'bg-[var(--tt-color-status-draft-bg)]',
+    textColor: 'text-[var(--tt-color-status-draft-text)]',
+    iconBg: 'bg-[var(--tt-color-status-draft-icon-bg)]',
   },
   REVIEWED: {
     label: 'レビュー済',
     icon: <CheckCircleIcon />,
-    gradient: 'from-sky-50 to-cyan-50 dark:from-sky-950/30 dark:to-cyan-950/30',
-    textColor: 'text-sky-700 dark:text-sky-400',
-    iconBg: 'bg-sky-100 dark:bg-sky-900/50',
+    bg: 'bg-[var(--tt-color-status-reviewed-bg)]',
+    textColor: 'text-[var(--tt-color-status-reviewed-text)]',
+    iconBg: 'bg-[var(--tt-color-status-reviewed-icon-bg)]',
   },
   SCHEDULED: {
     label: '予約済',
     icon: <ClockIcon />,
-    gradient:
-      'from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30',
-    textColor: 'text-violet-700 dark:text-violet-400',
-    iconBg: 'bg-violet-100 dark:bg-violet-900/50',
+    bg: 'bg-[var(--tt-color-status-scheduled-bg)]',
+    textColor: 'text-[var(--tt-color-status-scheduled-text)]',
+    iconBg: 'bg-[var(--tt-color-status-scheduled-icon-bg)]',
   },
   POSTING: {
     label: '投稿中',
     icon: <LoadingIcon />,
-    gradient:
-      'from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30',
-    textColor: 'text-yellow-700 dark:text-yellow-400',
-    iconBg: 'bg-yellow-100 dark:bg-yellow-900/50',
+    bg: 'bg-[var(--tt-color-status-posting-bg)]',
+    textColor: 'text-[var(--tt-color-status-posting-text)]',
+    iconBg: 'bg-[var(--tt-color-status-posting-icon-bg)]',
   },
   POSTED: {
     label: '投稿完了',
     icon: <CheckIcon />,
-    gradient:
-      'from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30',
-    textColor: 'text-emerald-700 dark:text-emerald-400',
-    iconBg: 'bg-emerald-100 dark:bg-emerald-900/50',
+    bg: 'bg-[var(--tt-color-status-posted-bg)]',
+    textColor: 'text-[var(--tt-color-status-posted-text)]',
+    iconBg: 'bg-[var(--tt-color-status-posted-icon-bg)]',
   },
   FAILED: {
     label: '失敗',
     icon: <AlertIcon />,
-    gradient: 'from-rose-50 to-red-50 dark:from-rose-950/30 dark:to-red-950/30',
-    textColor: 'text-rose-700 dark:text-rose-400',
-    iconBg: 'bg-rose-100 dark:bg-rose-900/50',
+    bg: 'bg-[var(--tt-color-status-failed-bg)]',
+    textColor: 'text-[var(--tt-color-status-failed-text)]',
+    iconBg: 'bg-[var(--tt-color-status-failed-icon-bg)]',
   },
   ARCHIVED: {
     label: 'アーカイブ',
     icon: <ArchiveIcon />,
-    gradient:
-      'from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30',
-    textColor: 'text-gray-500 dark:text-gray-400',
-    iconBg: 'bg-gray-100 dark:bg-gray-800',
+    bg: 'bg-[var(--tt-color-status-archived-bg)]',
+    textColor: 'text-[var(--tt-color-status-archived-text)]',
+    iconBg: 'bg-[var(--tt-color-status-archived-icon-bg)]',
   },
 };
 
@@ -93,8 +87,8 @@ export function StatusCounts() {
 
   if (error) {
     return (
-      <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 dark:border-rose-800 dark:bg-rose-950/30">
-        <p className="text-sm text-rose-700 dark:text-rose-400">
+      <div className="rounded-lg border border-[var(--tt-color-negative-border)] bg-[var(--tt-color-negative-bg)] p-4">
+        <p className="text-sm text-[var(--tt-color-negative)]">
           データの取得に失敗しました
         </p>
       </div>
@@ -107,13 +101,13 @@ export function StatusCounts() {
         {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="animate-pulse rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800"
+            className="animate-pulse rounded-xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] p-4"
           >
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-slate-200 dark:bg-slate-700" />
+              <div className="h-10 w-10 rounded-lg bg-[var(--tt-color-surface-hover)]" />
               <div className="space-y-2">
-                <div className="h-3 w-12 rounded bg-slate-200 dark:bg-slate-700" />
-                <div className="h-6 w-8 rounded bg-slate-200 dark:bg-slate-700" />
+                <div className="h-3 w-12 rounded bg-[var(--tt-color-surface-hover)]" />
+                <div className="h-6 w-8 rounded bg-[var(--tt-color-surface-hover)]" />
               </div>
             </div>
           </div>
@@ -138,7 +132,7 @@ export function StatusCounts() {
         return (
           <div
             key={status}
-            className={`group relative overflow-hidden rounded-xl border border-slate-200/60 bg-gradient-to-br ${config.gradient} p-4 transition-all duration-200 hover:border-slate-300 hover:shadow-md dark:border-slate-700/60 dark:hover:border-slate-600`}
+            className={`group relative overflow-hidden rounded-xl border border-[var(--tt-color-border)] ${config.bg} p-4 transition-all duration-200 hover:border-[var(--tt-color-border-hover)] hover:shadow-md`}
           >
             <div className="flex items-center gap-3">
               <div
@@ -147,7 +141,7 @@ export function StatusCounts() {
                 <span className={config.textColor}>{config.icon}</span>
               </div>
               <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">
+                <p className="truncate text-xs font-medium text-[var(--tt-color-text-muted)]">
                   {config.label}
                 </p>
                 <p

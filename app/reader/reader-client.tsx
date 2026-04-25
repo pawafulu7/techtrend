@@ -256,7 +256,7 @@ function ReaderClientInner({
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Left panel: Article list */}
         <div
-          className="w-[380px] shrink-0 overflow-y-auto border-r border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900/80 dark:to-slate-900"
+          className="w-[380px] shrink-0 overflow-y-auto border-r border-slate-200 bg-[var(--tt-color-surface-muted)] dark:border-slate-700"
           role="region"
           aria-label="記事リスト"
         >

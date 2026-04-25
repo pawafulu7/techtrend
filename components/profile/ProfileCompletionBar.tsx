@@ -38,18 +38,28 @@ export function ProfileCompletionBar({
       className={cn(
         'w-full rounded-xl p-4',
         isDark
-          ? 'bg-white/5 backdrop-blur-sm border border-white/10'
-          : 'bg-muted/30 border border-border/50',
+          ? 'border border-white/10 bg-white/5 backdrop-blur-sm'
+          : 'bg-muted/30 border-border/50 border',
         className
       )}
     >
       {/* Header with percentage and message */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           {isComplete ? (
-            <CheckCircle2 className={cn('w-4 h-4', isDark ? 'text-emerald-400' : 'text-emerald-500')} />
+            <CheckCircle2
+              className={cn(
+                'h-4 w-4',
+                isDark ? 'text-emerald-400' : 'text-emerald-500'
+              )}
+            />
           ) : (
-            <TrendingUp className={cn('w-4 h-4', isDark ? 'text-cyan-400' : 'text-cyan-600')} />
+            <TrendingUp
+              className={cn(
+                'h-4 w-4',
+                isDark ? 'text-cyan-400' : 'text-cyan-600'
+              )}
+            />
           )}
           <span
             className={cn(
@@ -62,7 +72,7 @@ export function ProfileCompletionBar({
         </div>
         <span
           className={cn(
-            'text-xs font-medium px-2 py-0.5 rounded-full',
+            'rounded-full px-2 py-0.5 text-xs font-medium',
             isComplete
               ? isDark
                 ? 'bg-emerald-500/20 text-emerald-300'
@@ -79,7 +89,7 @@ export function ProfileCompletionBar({
       {/* Progress bar with gradient */}
       <div
         className={cn(
-          'relative h-2 rounded-full overflow-hidden',
+          'relative h-2 overflow-hidden rounded-full',
           isDark ? 'bg-white/10' : 'bg-slate-200'
         )}
         role="progressbar"
@@ -92,15 +102,15 @@ export function ProfileCompletionBar({
           className={cn(
             'absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out',
             isComplete
-              ? 'bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400'
-              : 'bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500'
+              ? 'bg-[var(--tt-color-positive)]'
+              : 'bg-[var(--tt-color-info)]'
           )}
           style={{ width: `${percentage}%` }}
         />
         {/* Shimmer effect */}
         {!isComplete && percentage > 0 && (
           <div
-            className="absolute inset-y-0 left-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"
+            className="animate-shimmer absolute inset-y-0 left-0 bg-white/30"
             style={{ width: `${percentage}%` }}
           />
         )}
@@ -110,11 +120,16 @@ export function ProfileCompletionBar({
       {isLowCompletion && incompleteFields.length > 0 && (
         <p
           className={cn(
-            'text-xs mt-3',
+            'mt-3 text-xs',
             isDark ? 'text-slate-400' : 'text-muted-foreground'
           )}
         >
-          <span className={cn('font-medium', isDark ? 'text-cyan-400' : 'text-cyan-600')}>
+          <span
+            className={cn(
+              'font-medium',
+              isDark ? 'text-cyan-400' : 'text-cyan-600'
+            )}
+          >
             追加:
           </span>{' '}
           {incompleteFields.slice(0, 3).join(', ')}

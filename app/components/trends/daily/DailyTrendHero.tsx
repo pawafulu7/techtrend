@@ -161,7 +161,7 @@ export function DailyTrendHero({
   return (
     <section className="relative overflow-hidden">
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/80 via-transparent to-sky-50/50 dark:from-emerald-950/20 dark:to-sky-950/10" />
+      <div className="absolute inset-0 bg-[var(--tt-color-surface-muted)]" />
       <div className="absolute top-0 right-0 h-96 w-96 translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/[0.07] blur-3xl" />
       <div className="absolute bottom-0 left-0 h-64 w-64 -translate-x-1/2 translate-y-1/2 rounded-full bg-sky-500/[0.05] blur-3xl" />
 

@@ -72,11 +72,11 @@ export function DiffMainContent({
       {(grouped.new.length > 0 || grouped.trending.length > 0) && (
         <section>
           <div className="mb-4 flex items-center gap-2">
-            <div className="h-px flex-1 bg-gradient-to-r from-amber-300 via-orange-300 to-sky-300 dark:from-amber-700 dark:via-orange-700 dark:to-sky-700" />
+            <div className="h-px flex-1 bg-[var(--tt-color-border)]" />
             <h2 className="text-muted-foreground px-2 text-xs font-bold tracking-widest">
               今週の注目トピック
             </h2>
-            <div className="h-px flex-1 bg-gradient-to-l from-amber-300 via-orange-300 to-sky-300 dark:from-amber-700 dark:via-orange-700 dark:to-sky-700" />
+            <div className="h-px flex-1 bg-[var(--tt-color-border)]" />
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {grouped.new.slice(0, 8).map((change, i) => (

@@ -168,7 +168,7 @@ export function SocialPostsToolbar({
 
         <Button
           onClick={onGenerateClick}
-          className="bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-500/20 transition-all hover:from-sky-600 hover:to-indigo-700 hover:shadow-lg hover:shadow-sky-500/30"
+          className="bg-[var(--tt-color-info)] text-white shadow-md transition-all hover:opacity-90 hover:shadow-lg"
         >
           <PlusIcon className="mr-2 h-4 w-4" />
           投稿を生成

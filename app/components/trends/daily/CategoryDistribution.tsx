@@ -26,13 +26,13 @@ interface CategoryDistributionProps {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  'AI/ML': 'from-violet-500 to-purple-600',
-  Frontend: 'from-cyan-500 to-blue-600',
-  Backend: 'from-emerald-500 to-green-600',
-  DevOps: 'from-orange-500 to-red-600',
-  Security: 'from-rose-500 to-pink-600',
-  Database: 'from-amber-500 to-yellow-600',
-  Mobile: 'from-indigo-500 to-blue-600',
+  'AI/ML': 'bg-[var(--tt-color-category-ai-icon)]',
+  Frontend: 'bg-[var(--tt-color-category-frontend-icon)]',
+  Backend: 'bg-[var(--tt-color-category-backend-icon)]',
+  DevOps: 'bg-[var(--tt-color-category-devops-icon)]',
+  Security: 'bg-[var(--tt-color-category-security-icon)]',
+  Database: 'bg-[var(--tt-color-category-database-icon)]',
+  Mobile: 'bg-[var(--tt-color-category-mobile-icon)]',
 };
 
 // Card 背景は category 識別を gradient (dot/progress bar) に委ねるため neutral surface に統一
@@ -75,8 +75,9 @@ export function CategoryDistribution({
       <CardContent>
         <div className="space-y-4">
           {categories.map((category, index) => {
-            const gradientClass =
-              CATEGORY_COLORS[category.name] || 'from-gray-500 to-slate-600';
+            const colorClass =
+              CATEGORY_COLORS[category.name] ||
+              'bg-[var(--tt-color-text-muted)]';
             const bgClass = CATEGORY_BG_CLASS;
             // パーセンテージをそのままバーの幅に使用（総記事数に対する割合）
             const widthPercent = category.percentage;
@@ -89,12 +90,7 @@ export function CategoryDistribution({
               >
                 <div className="mb-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        'h-3 w-3 rounded-full bg-gradient-to-r',
-                        gradientClass
-                      )}
-                    />
+                    <div className={cn('h-3 w-3 rounded-full', colorClass)} />
                     <span className="text-sm font-semibold">
                       {category.name}
                     </span>
@@ -111,8 +107,8 @@ export function CategoryDistribution({
                 <div className="bg-background/50 h-2 overflow-hidden rounded-full">
                   <div
                     className={cn(
-                      'tt-cat-grow-width h-full rounded-full bg-gradient-to-r',
-                      gradientClass
+                      'tt-cat-grow-width h-full rounded-full',
+                      colorClass
                     )}
                     style={
                       {
