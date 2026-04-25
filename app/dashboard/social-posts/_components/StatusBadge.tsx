@@ -14,41 +14,45 @@ const STATUS_CONFIG: Record<
   DRAFT: {
     label: '下書き',
     colors:
-      'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+      'bg-[var(--tt-color-status-draft-icon-bg)] text-[var(--tt-color-status-draft-text)]',
   },
   REVIEWED: {
     label: 'レビュー済',
-    colors: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300',
+    colors:
+      'bg-[var(--tt-color-status-reviewed-icon-bg)] text-[var(--tt-color-status-reviewed-text)]',
   },
   SCHEDULED: {
     label: '予約済',
     colors:
-      'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300',
+      'bg-[var(--tt-color-status-scheduled-icon-bg)] text-[var(--tt-color-status-scheduled-text)]',
   },
   POSTING: {
     label: '投稿中',
     colors:
-      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+      'bg-[var(--tt-color-status-posting-icon-bg)] text-[var(--tt-color-status-posting-text)]',
   },
   POSTED: {
     label: '投稿完了',
     colors:
-      'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+      'bg-[var(--tt-color-status-posted-icon-bg)] text-[var(--tt-color-status-posted-text)]',
   },
   FAILED: {
     label: '失敗',
-    colors: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300',
+    colors:
+      'bg-[var(--tt-color-status-failed-icon-bg)] text-[var(--tt-color-status-failed-text)]',
   },
   ARCHIVED: {
     label: 'アーカイブ',
-    colors: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+    colors:
+      'bg-[var(--tt-color-status-archived-icon-bg)] text-[var(--tt-color-status-archived-text)]',
   },
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {
   const config = STATUS_CONFIG[status] || {
     label: status,
-    colors: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+    colors:
+      'bg-[var(--tt-color-status-neutral-icon-bg)] text-[var(--tt-color-status-neutral-text)]',
   };
 
   return (

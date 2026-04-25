@@ -67,7 +67,7 @@ export function SocialPostsToolbar({
   isProcessing = false,
 }: SocialPostsToolbarProps) {
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-900">
+    <div className="flex flex-col gap-4 rounded-xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
         <Select
@@ -79,7 +79,7 @@ export function SocialPostsToolbar({
             })
           }
         >
-          <SelectTrigger className="w-[160px] border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+          <SelectTrigger className="w-[160px] border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)]">
             <SelectValue placeholder="ステータス" />
           </SelectTrigger>
           <SelectContent>
@@ -100,7 +100,7 @@ export function SocialPostsToolbar({
             })
           }
         >
-          <SelectTrigger className="w-[160px] border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+          <SelectTrigger className="w-[160px] border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)]">
             <SelectValue placeholder="ソース" />
           </SelectTrigger>
           <SelectContent>
@@ -117,7 +117,7 @@ export function SocialPostsToolbar({
       <div className="flex flex-wrap items-center gap-2">
         {selectedCount > 0 && (
           <>
-            <span className="rounded-full bg-sky-100 px-3 py-1 text-sm font-medium text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+            <span className="rounded-full bg-[var(--tt-color-status-reviewed-icon-bg)] px-3 py-1 text-sm font-medium text-[var(--tt-color-status-reviewed-text)]">
               {selectedCount}件選択中
             </span>
             <DropdownMenu>
@@ -126,7 +126,7 @@ export function SocialPostsToolbar({
                   variant="outline"
                   size="sm"
                   disabled={isProcessing}
-                  className="border-slate-200 dark:border-slate-700"
+                  className="border-[var(--tt-color-border)]"
                 >
                   {isProcessing ? (
                     <>
@@ -145,18 +145,18 @@ export function SocialPostsToolbar({
                 <DropdownMenuItem
                   onClick={() => onBulkAction('changeStatus', 'REVIEWED')}
                 >
-                  <CheckCircleIcon className="mr-2 h-4 w-4 text-sky-600" />
+                  <CheckCircleIcon className="mr-2 h-4 w-4 text-[var(--tt-color-status-reviewed-text)]" />
                   レビュー済にする
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => onBulkAction('changeStatus', 'ARCHIVED')}
                 >
-                  <ArchiveIcon className="mr-2 h-4 w-4 text-slate-600" />
+                  <ArchiveIcon className="mr-2 h-4 w-4 text-[var(--tt-color-text-muted)]" />
                   アーカイブ
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => onBulkAction('delete')}
-                  className="text-rose-600 focus:text-rose-600"
+                  className="text-[var(--tt-color-negative)] focus:text-[var(--tt-color-negative)]"
                 >
                   <TrashIcon className="mr-2 h-4 w-4" />
                   削除

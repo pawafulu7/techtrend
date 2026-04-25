@@ -285,7 +285,7 @@ export function SocialPostsDashboard() {
   }, [queryClient]);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">
+    <div className="min-h-screen bg-[var(--tt-color-surface-muted)]">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6">
@@ -294,10 +294,10 @@ export function SocialPostsDashboard() {
               <XLogoIcon className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">
+              <h1 className="text-xl font-bold tracking-tight text-[var(--tt-color-text)] sm:text-2xl">
                 X投稿管理
               </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-[var(--tt-color-text-muted)]">
                 投稿コンテンツの生成・編集・管理
               </p>
             </div>
@@ -323,15 +323,15 @@ export function SocialPostsDashboard() {
 
         {/* Table */}
         {error ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-800 dark:bg-rose-950/30">
-            <p className="text-rose-700 dark:text-rose-400">
+          <div className="rounded-xl border border-[var(--tt-color-negative-border)] bg-[var(--tt-color-negative-bg)] p-8 text-center">
+            <p className="text-[var(--tt-color-negative)]">
               データの取得に失敗しました
             </p>
           </div>
         ) : isLoading ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
-            <LoadingSpinner className="mx-auto h-8 w-8 text-sky-500" />
-            <p className="mt-3 text-slate-500 dark:text-slate-400">
+          <div className="rounded-xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-12 text-center">
+            <LoadingSpinner className="mx-auto h-8 w-8 text-[var(--tt-color-info)]" />
+            <p className="mt-3 text-[var(--tt-color-text-muted)]">
               読み込み中...
             </p>
           </div>
