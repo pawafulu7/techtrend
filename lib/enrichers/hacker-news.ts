@@ -137,7 +137,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
                 try {
                   await repoResponse.body?.cancel();
                 } catch {
-                  /* ignore */
+                  /* ignore: drain 失敗は失敗判定に影響させない */
                 }
                 logger.debug(
                   { status: repoResponse.status, repoRootUrl },
