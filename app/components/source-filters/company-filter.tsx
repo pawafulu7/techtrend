@@ -54,13 +54,10 @@ export function CompanyFilter({
 
   // Filter selectedSourceIds to only company blog sources
   // Performance: Use Set for O(n+m) instead of O(n×m) with some()
-  const selectedCompanySourceIds = useMemo(
-    () => {
-      const sourceIdSet = new Set(sources.map((s) => s.id));
-      return selectedSourceIds.filter((id) => sourceIdSet.has(id));
-    },
-    [selectedSourceIds, sources]
-  );
+  const selectedCompanySourceIds = useMemo(() => {
+    const sourceIdSet = new Set(sources.map((s) => s.id));
+    return selectedSourceIds.filter((id) => sourceIdSet.has(id));
+  }, [selectedSourceIds, sources]);
 
   // Controlled or uncontrolled expansion
   const expanded = isExpanded ?? internalExpanded;
@@ -115,24 +112,24 @@ export function CompanyFilter({
 
   return (
     <>
-      <div className="border rounded-md" data-testid="company-filter">
+      <div className="rounded-md border" data-testid="company-filter">
         <button
           className="w-full text-left"
           onClick={toggleExpanded}
           type="button"
           data-testid="company-filter-trigger"
         >
-          <div className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800">
+          <div className="flex items-center justify-between p-2 hover:bg-[var(--tt-color-surface-hover)]">
             <div className="flex items-center gap-2">
               {expanded ? (
-                <ChevronDown className="w-3 h-3" />
+                <ChevronDown className="h-3 w-3" />
               ) : (
-                <ChevronRight className="w-3 h-3" />
+                <ChevronRight className="h-3 w-3" />
               )}
-              <Building2 className="w-3 h-3" />
+              <Building2 className="h-3 w-3" />
               <span className="text-xs font-medium">企業ブログ</span>
               <span
-                className="text-xs text-gray-500"
+                className="text-xs text-[var(--tt-color-text-muted)]"
                 data-testid="company-filter-count"
               >
                 ({selectedCount}/{totalCount})
@@ -161,24 +158,29 @@ export function CompanyFilter({
                     className={otherSources.length > 0 ? 'border-b' : ''}
                   >
                     <CollapsibleTrigger
-                      className="flex items-center gap-2 cursor-pointer font-medium w-full px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                      className="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm font-medium"
                       data-testid="developersio-group-trigger"
                     >
                       {developersioExpanded ? (
-                        <ChevronDown className="w-3 h-3" />
+                        <ChevronDown className="h-3 w-3" />
                       ) : (
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronRight className="h-3 w-3" />
                       )}
-                      <span className="text-xs flex-1">DevelopersIO</span>
-                      <span className="text-xs text-muted-foreground">
-                        ({developersioSelectedCount}/{developersioSources.length})
+                      <span className="flex-1 text-xs">DevelopersIO</span>
+                      <span className="text-muted-foreground text-xs">
+                        ({developersioSelectedCount}/
+                        {developersioSources.length})
                       </span>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       {developersioSources.map((source) => {
-                        const checked = selectedCompanySourceIds.includes(source.id);
+                        const checked = selectedCompanySourceIds.includes(
+                          source.id
+                        );
                         // Display tag name without "DevelopersIO " prefix
-                        const displayName = source.name.startsWith('DevelopersIO ')
+                        const displayName = source.name.startsWith(
+                          'DevelopersIO '
+                        )
                           ? source.name.slice('DevelopersIO '.length)
                           : source.name;
                         return (
@@ -187,7 +189,7 @@ export function CompanyFilter({
                             value={source.id}
                             onSelect={() => onSourceToggle(source.id)}
                             className={cn(
-                              'flex items-center gap-2 cursor-pointer pl-6',
+                              'flex cursor-pointer items-center gap-2 pl-6',
                               checked && 'bg-muted/40'
                             )}
                             data-testid={`company-item-${source.id}`}
@@ -198,7 +200,9 @@ export function CompanyFilter({
                               aria-label={`${source.name}を選択`}
                               onClick={(e) => e.stopPropagation()}
                             />
-                            <span className="text-xs flex-1">{displayName}</span>
+                            <span className="flex-1 text-xs">
+                              {displayName}
+                            </span>
                           </CommandItem>
                         );
                       })}
@@ -214,7 +218,7 @@ export function CompanyFilter({
                       value={source.id}
                       onSelect={() => onSourceToggle(source.id)}
                       className={cn(
-                        'flex items-center gap-2 cursor-pointer',
+                        'flex cursor-pointer items-center gap-2',
                         checked && 'bg-muted/40'
                       )}
                       data-testid={`company-item-${source.id}`}
@@ -225,7 +229,7 @@ export function CompanyFilter({
                         aria-label={`${source.name}を選択`}
                         onClick={(e) => e.stopPropagation()}
                       />
-                      <span className="text-xs flex-1">{source.name}</span>
+                      <span className="flex-1 text-xs">{source.name}</span>
                     </CommandItem>
                   );
                 })}
@@ -233,12 +237,12 @@ export function CompanyFilter({
             </Command>
 
             {/* Footer with selection count and modal trigger */}
-            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground px-1">
+            <div className="text-muted-foreground mt-2 flex items-center justify-between px-1 text-xs">
               <span>{selectedCount} 件選択中</span>
               <Button
                 variant="link"
                 size="sm"
-                className="px-0 h-auto"
+                className="h-auto px-0"
                 onClick={() => setDialogOpen(true)}
                 data-testid="company-filter-manage-all"
               >

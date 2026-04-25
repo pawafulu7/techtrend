@@ -38,13 +38,13 @@ export function DiffMainContent({
       {/* Stats Bar */}
       <div className="bg-background flex items-center justify-center gap-6 rounded-lg border px-4 py-3 shadow-sm">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-amber-500" />
+          <Sparkles className="h-4 w-4 text-[var(--tt-color-warning)]" />
           <span className="text-sm font-semibold">{grouped.new.length}</span>
           <span className="text-muted-foreground text-xs">新規</span>
         </div>
         <div className="bg-border h-4 w-px" />
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-sky-500" />
+          <TrendingUp className="h-4 w-4 text-[var(--tt-color-info)]" />
           <span className="text-sm font-semibold">
             {grouped.trending.length}
           </span>
@@ -52,7 +52,7 @@ export function DiffMainContent({
         </div>
         <div className="bg-border h-4 w-px" />
         <div className="flex items-center gap-2">
-          <Minus className="h-4 w-4 text-slate-400" />
+          <Minus className="h-4 w-4 text-[var(--tt-color-text-muted)]" />
           <span className="text-sm font-semibold">
             {grouped.updated.length}
           </span>
@@ -60,7 +60,7 @@ export function DiffMainContent({
         </div>
         <div className="bg-border h-4 w-px" />
         <div className="flex items-center gap-2">
-          <TrendingDown className="h-4 w-4 text-slate-300" />
+          <TrendingDown className="h-4 w-4 text-[var(--tt-color-text-muted)]" />
           <span className="text-sm font-semibold">
             {grouped.deprecated.length}
           </span>
@@ -109,7 +109,7 @@ export function DiffMainContent({
       {grouped.updated.length > 0 && (
         <section>
           <div className="mb-3 flex items-center gap-2">
-            <RefreshCw className="h-3.5 w-3.5 text-slate-400" />
+            <RefreshCw className="h-3.5 w-3.5 text-[var(--tt-color-text-muted)]" />
             <h2 className="text-muted-foreground text-xs font-medium tracking-wide">
               継続中のトピック ({grouped.updated.length})
             </h2>
@@ -135,7 +135,7 @@ export function DiffMainContent({
       {grouped.deprecated.length > 0 && (
         <section>
           <div className="mb-3 flex items-center gap-2">
-            <TrendingDown className="h-3.5 w-3.5 text-slate-300" />
+            <TrendingDown className="h-3.5 w-3.5 text-[var(--tt-color-text-muted)]" />
             <h2 className="text-muted-foreground/70 text-xs font-medium tracking-wide">
               下火のトピック ({grouped.deprecated.length})
             </h2>

@@ -18,14 +18,17 @@ interface MarkAllReadButtonProps {
   disabled?: boolean;
 }
 
-export function MarkAllReadButton({ 
-  unreadCount, 
+export function MarkAllReadButton({
+  unreadCount,
   onMarkAllRead,
-  disabled = false
+  disabled = false,
 }: MarkAllReadButtonProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
-  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
 
   // 通知を3秒後に自動的に消す
   useEffect(() => {
@@ -41,7 +44,7 @@ export function MarkAllReadButton({
     if (unreadCount === 0) {
       setNotification({
         message: '未読記事がありません',
-        type: 'error'
+        type: 'error',
       });
       return;
     }
@@ -55,7 +58,7 @@ export function MarkAllReadButton({
       const result = await onMarkAllRead();
       setNotification({
         message: `${result?.markedCount || unreadCount}件の記事を既読にしました`,
-        type: 'success'
+        type: 'success',
       });
       setShowConfirm(false);
     } catch (error) {
@@ -64,7 +67,7 @@ export function MarkAllReadButton({
       }
       setNotification({
         message: '一括既読処理に失敗しました',
-        type: 'error'
+        type: 'error',
       });
     } finally {
       setIsMarking(false);
@@ -75,11 +78,13 @@ export function MarkAllReadButton({
     <>
       {/* 通知メッセージ */}
       {notification && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-md shadow-lg ${
-          notification.type === 'success' 
-            ? 'bg-green-500 text-white' 
-            : 'bg-red-500 text-white'
-        }`}>
+        <div
+          className={`fixed top-4 right-4 z-50 rounded-md px-4 py-2 shadow-lg ${
+            notification.type === 'success'
+              ? 'bg-[var(--tt-color-positive)] text-white'
+              : 'bg-[var(--tt-color-negative)] text-white'
+          }`}
+        >
           {notification.message}
         </div>
       )}
@@ -89,13 +94,13 @@ export function MarkAllReadButton({
         size="sm"
         onClick={handleMarkAllRead}
         disabled={disabled || isMarking || unreadCount === 0}
-        className="flex items-center gap-2 relative"
+        className="relative flex items-center gap-2"
         title="全ての未読記事を既読にする"
       >
         <CheckCheck className="h-4 w-4" />
         <span className="hidden sm:inline">全て既読</span>
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--tt-color-info)] px-1 text-xs text-white">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -118,10 +123,7 @@ export function MarkAllReadButton({
             >
               キャンセル
             </Button>
-            <Button 
-              onClick={confirmMarkAllRead}
-              disabled={isMarking}
-            >
+            <Button onClick={confirmMarkAllRead} disabled={isMarking}>
               {isMarking ? '処理中...' : '既読にする'}
             </Button>
           </DialogFooter>

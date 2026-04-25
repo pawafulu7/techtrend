@@ -36,7 +36,7 @@ export function TopArticleList({
       <Card className="border-0 shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Award className="h-5 w-5 text-amber-500" />
+            <Award className="h-5 w-5 text-[var(--tt-color-warning)]" />
             注目記事
           </CardTitle>
         </CardHeader>
@@ -56,11 +56,11 @@ export function TopArticleList({
   const getRankStyle = (index: number) => {
     switch (index) {
       case 0:
-        return 'bg-amber-400 text-white';
+        return 'bg-[var(--tt-color-warning)] text-white';
       case 1:
-        return 'bg-slate-400 text-white';
+        return 'bg-[var(--tt-color-surface-hover)] text-white';
       case 2:
-        return 'bg-amber-700 text-white';
+        return 'bg-[var(--tt-color-warning)] text-white';
       default:
         return 'bg-muted text-muted-foreground';
     }
@@ -70,7 +70,7 @@ export function TopArticleList({
     <Card className="border-0 shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Award className="h-5 w-5 text-amber-500" />
+          <Award className="h-5 w-5 text-[var(--tt-color-warning)]" />
           注目記事
         </CardTitle>
       </CardHeader>

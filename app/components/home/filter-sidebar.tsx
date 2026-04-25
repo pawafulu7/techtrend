@@ -119,7 +119,7 @@ function FilterActiveIndicator() {
 
   return (
     <span
-      className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-blue-500"
+      className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[var(--tt-color-info)]"
       aria-hidden="true"
     />
   );

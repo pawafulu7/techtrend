@@ -33,7 +33,7 @@ export function ArticleQaAnswer({
 
   return (
     <article
-      className="article-qa-answer rounded-[24px] border border-slate-100 bg-white p-5 sm:p-6 shadow-sm border-l-4 border-l-primary/30"
+      className="article-qa-answer border-l-primary/30 rounded-[24px] border border-l-4 border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-5 shadow-sm sm:p-6"
       data-testid={testId}
       role="article"
       aria-label="AI回答"
@@ -44,13 +44,13 @@ export function ArticleQaAnswer({
           data-testid="qa-streaming-indicator"
           role="status"
           aria-live="polite"
-          className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-primary/5"
+          className="bg-primary/5 mb-4 flex items-center gap-3 rounded-lg p-3"
         >
           <div className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+            <span className="bg-primary absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"></span>
+            <span className="bg-primary relative inline-flex h-3 w-3 rounded-full"></span>
           </div>
-          <span className="text-sm text-primary/80 font-medium">
+          <span className="text-primary/80 text-sm font-medium">
             回答を生成中...
           </span>
         </div>
@@ -60,7 +60,7 @@ export function ArticleQaAnswer({
       {hasAnswer && (
         <div
           data-testid="qa-answer-markdown"
-          className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-headings:text-slate-800 prose-p:text-slate-700 prose-a:text-primary prose-strong:text-slate-800 prose-li:text-slate-700"
+          className="prose prose-sm prose-headings:font-semibold prose-headings:text-[var(--tt-color-text)] prose-p:text-[var(--tt-color-text)] prose-a:text-primary prose-strong:text-[var(--tt-color-text)] prose-li:text-[var(--tt-color-text)] max-w-none"
         >
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkBreaks]}
@@ -80,7 +80,7 @@ export function ArticleQaAnswer({
         <div
           data-testid="qa-empty-state"
           role="status"
-          className="text-center py-8 text-muted-foreground"
+          className="text-muted-foreground py-8 text-center"
         >
           <p>回答がありません</p>
         </div>

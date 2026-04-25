@@ -118,7 +118,7 @@ export function ArticleThumbnail({
 }) {
   return (
     <div
-      className={`relative aspect-video overflow-hidden bg-gray-100 ${className}`}
+      className={`relative aspect-video overflow-hidden bg-[var(--tt-color-surface-muted)] ${className}`}
     >
       <OptimizedImage
         src={src}

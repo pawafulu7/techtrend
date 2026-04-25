@@ -64,7 +64,9 @@ export function CommentForm({
       // フォーカスをテキストエリアに戻す
       textareaRef.current?.focus();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'コメントの投稿に失敗しました');
+      setError(
+        err instanceof Error ? err.message : 'コメントの投稿に失敗しました'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -102,7 +104,7 @@ export function CommentForm({
       </div>
 
       {error && (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-destructive text-sm" role="alert">
           {error}
         </p>
       )}
@@ -117,7 +119,7 @@ export function CommentForm({
               isOverLimit
                 ? 'text-destructive font-medium'
                 : isWarning
-                  ? 'text-amber-600 dark:text-amber-500'
+                  ? 'text-[var(--tt-color-warning)]'
                   : 'text-muted-foreground'
             )}
           >
@@ -127,7 +129,7 @@ export function CommentForm({
           {/* プライベート表示 */}
           <span
             id="comment-privacy-notice"
-            className="flex items-center gap-1 text-sm text-muted-foreground"
+            className="text-muted-foreground flex items-center gap-1 text-sm"
           >
             <Lock className="h-3.5 w-3.5" aria-hidden="true" />
             <span>自分のみ閲覧可</span>
@@ -142,7 +144,7 @@ export function CommentForm({
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
               投稿中
             </>
           ) : (
@@ -152,9 +154,7 @@ export function CommentForm({
       </div>
 
       {/* キーボードショートカットヒント */}
-      <p className="text-xs text-muted-foreground">
-        Ctrl+Enter で送信
-      </p>
+      <p className="text-muted-foreground text-xs">Ctrl+Enter で送信</p>
     </div>
   );
 }

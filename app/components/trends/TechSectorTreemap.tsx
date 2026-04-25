@@ -341,9 +341,9 @@ export function TechSectorTreemap({
                 className={cn(
                   'font-medium',
                   tooltip.data.changeRate > 0
-                    ? 'text-green-600 dark:text-green-400'
+                    ? 'text-[var(--tt-color-positive)]'
                     : tooltip.data.changeRate < 0
-                      ? 'text-red-600 dark:text-red-400'
+                      ? 'text-[var(--tt-color-negative)]'
                       : ''
                 )}
               >

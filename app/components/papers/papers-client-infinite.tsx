@@ -183,7 +183,7 @@ export function PapersClientInfinite({
 
   if (isError) {
     return (
-      <div className="py-8 text-center text-red-500">
+      <div className="py-8 text-center text-[var(--tt-color-negative)]">
         エラーが発生しました: {error?.message || 'Unknown error'}
       </div>
     );

@@ -188,7 +188,7 @@ export function CommentItem({
                 isOverLimit
                   ? 'text-destructive font-medium'
                   : isWarning
-                    ? 'text-amber-600 dark:text-amber-500'
+                    ? 'text-[var(--tt-color-warning)]'
                     : 'text-muted-foreground'
               )}
             >

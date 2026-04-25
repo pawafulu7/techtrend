@@ -36,14 +36,14 @@ function StatusBadge({ article }: { article: AdminArticleListItem }) {
   }
   if (!article.hasSummary) {
     return (
-      <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+      <Badge className="bg-[var(--tt-color-warning-bg)] text-[var(--tt-color-warning)]">
         要約なし
       </Badge>
     );
   }
   if (!article.hasContent) {
     return (
-      <Badge className="bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400">
+      <Badge className="bg-[var(--tt-color-surface-muted)] text-[var(--tt-color-text)]">
         本文なし
       </Badge>
     );

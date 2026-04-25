@@ -108,7 +108,7 @@ export function SearchBox() {
   return (
     <div className="flex flex-col" style={{ width: '24rem' }}>
       <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-500 dark:text-gray-400" />
+        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-[var(--tt-color-text-muted)]" />
         <Input
           type="text"
           placeholder="キーワードで記事を検索..."
@@ -122,7 +122,7 @@ export function SearchBox() {
           }}
           onCompositionStart={() => setIsComposing(true)}
           onCompositionEnd={() => setIsComposing(false)}
-          className="h-8 border border-gray-300 bg-white pr-9 pl-9 text-sm dark:border-gray-600 dark:bg-gray-900"
+          className="h-8 border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] pr-9 pl-9 text-sm"
           data-testid="search-box-input"
         />
         {query && (

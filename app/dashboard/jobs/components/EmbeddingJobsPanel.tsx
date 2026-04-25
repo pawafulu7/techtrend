@@ -1,6 +1,11 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -12,14 +17,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Clock,
-  CheckCircle2,
-  Loader2,
-  XCircle,
-  RefreshCw,
-} from 'lucide-react';
-import type { EmbeddingSummaryResponse, StuckJob, HighRetryJob } from '../types';
+import { Clock, CheckCircle2, Loader2, XCircle, RefreshCw } from 'lucide-react';
+import type {
+  EmbeddingSummaryResponse,
+  StuckJob,
+  HighRetryJob,
+} from '../types';
 
 interface EmbeddingJobsPanelProps {
   data: EmbeddingSummaryResponse | null;
@@ -41,11 +44,13 @@ function StatusCard({
   colorClass: string;
 }) {
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-lg ${colorClass}`}>
+    <div className={`flex items-center gap-3 rounded-lg p-3 ${colorClass}`}>
       {icon}
       <div>
         <p className="text-sm font-medium">{label}</p>
-        <p className="text-2xl font-bold tabular-nums">{count.toLocaleString()}</p>
+        <p className="text-2xl font-bold tabular-nums">
+          {count.toLocaleString()}
+        </p>
       </div>
     </div>
   );
@@ -65,7 +70,7 @@ function StuckJobsAlert({ jobs }: { jobs: StuckJob[] }) {
         <p className="mb-2 text-sm">
           The following jobs have been processing for longer than expected:
         </p>
-        <div className="rounded-md border border-destructive/20 overflow-hidden">
+        <div className="border-destructive/20 overflow-hidden rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -90,7 +95,7 @@ function StuckJobsAlert({ jobs }: { jobs: StuckJob[] }) {
           </Table>
         </div>
         {jobs.length > 5 && (
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="text-muted-foreground mt-2 text-xs">
             ...and {jobs.length - 5} more
           </p>
         )}
@@ -115,7 +120,7 @@ function HighRetryJobsWarning({ jobs }: { jobs: HighRetryJob[] }) {
         <p className="mb-2 text-sm">
           Jobs with multiple retry attempts that may need attention:
         </p>
-        <div className="rounded-md border overflow-hidden">
+        <div className="overflow-hidden rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -137,7 +142,7 @@ function HighRetryJobsWarning({ jobs }: { jobs: HighRetryJob[] }) {
                   <TableCell className="tabular-nums">
                     {job.retriesRemaining}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                  <TableCell className="text-muted-foreground max-w-[200px] truncate text-xs">
                     {job.error || '-'}
                   </TableCell>
                 </TableRow>
@@ -146,7 +151,7 @@ function HighRetryJobsWarning({ jobs }: { jobs: HighRetryJob[] }) {
           </Table>
         </div>
         {jobs.length > 5 && (
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="text-muted-foreground mt-2 text-xs">
             ...and {jobs.length - 5} more
           </p>
         )}
@@ -167,12 +172,12 @@ export function EmbeddingJobsPanel({ data, loading }: EmbeddingJobsPanelProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="h-4 bg-muted animate-pulse rounded" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-muted h-4 animate-pulse rounded" />
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {[...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="h-20 bg-muted animate-pulse rounded-lg"
+                  className="bg-muted h-20 animate-pulse rounded-lg"
                 />
               ))}
             </div>
@@ -197,7 +202,7 @@ export function EmbeddingJobsPanel({ data, loading }: EmbeddingJobsPanelProps) {
       <CardContent>
         {/* Completion Progress */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2 flex items-center justify-between">
             <span className="text-sm font-medium">Completion Rate</span>
             <span className="text-sm font-bold tabular-nums">
               {completionRate.toFixed(1)}%
@@ -207,30 +212,36 @@ export function EmbeddingJobsPanel({ data, loading }: EmbeddingJobsPanelProps) {
         </div>
 
         {/* Status Cards Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatusCard
             label="Pending"
             count={statusCounts.PENDING}
-            icon={<Clock className="h-5 w-5 text-muted-foreground" />}
+            icon={<Clock className="text-muted-foreground h-5 w-5" />}
             colorClass="bg-muted"
           />
           <StatusCard
             label="Processing"
             count={statusCounts.PROCESSING}
-            icon={<Loader2 className="h-5 w-5 text-blue-500 animate-spin" />}
-            colorClass="bg-blue-50 dark:bg-blue-950"
+            icon={
+              <Loader2 className="h-5 w-5 animate-spin text-[var(--tt-color-info)]" />
+            }
+            colorClass="bg-[var(--tt-color-info-bg)]"
           />
           <StatusCard
             label="Completed"
             count={statusCounts.COMPLETED}
-            icon={<CheckCircle2 className="h-5 w-5 text-[var(--tt-color-positive)]" />}
-            colorClass="bg-green-50 dark:bg-green-950"
+            icon={
+              <CheckCircle2 className="h-5 w-5 text-[var(--tt-color-positive)]" />
+            }
+            colorClass="bg-[var(--tt-color-positive-bg)]"
           />
           <StatusCard
             label="Failed"
             count={statusCounts.FAILED}
-            icon={<XCircle className="h-5 w-5 text-[var(--tt-color-negative)]" />}
-            colorClass="bg-red-50 dark:bg-red-950"
+            icon={
+              <XCircle className="h-5 w-5 text-[var(--tt-color-negative)]" />
+            }
+            colorClass="bg-[var(--tt-color-negative-bg)]"
           />
         </div>
 

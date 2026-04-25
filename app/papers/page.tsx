@@ -46,10 +46,10 @@ export default async function PapersPage({ searchParams }: PageProps) {
         {/* コンテンツエリア */}
         <main className="flex-1 lg:flex lg:flex-col">
           {/* ツールバー */}
-          <div className="flex-shrink-0 border-b border-gray-200 bg-gray-50/50 px-4 py-2 lg:px-6 dark:border-gray-700 dark:bg-gray-900/50">
+          <div className="flex-shrink-0 border-b border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] px-4 py-2 lg:px-6">
             <div className="flex items-center justify-between">
               <div className="flex flex-shrink-0 items-center gap-2">
-                <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
+                <div className="flex items-center gap-2 text-[var(--tt-color-info)]">
                   <FileText className="h-5 w-5" />
                   <span className="font-medium">{ARXIV_SOURCE_NAME}</span>
                 </div>

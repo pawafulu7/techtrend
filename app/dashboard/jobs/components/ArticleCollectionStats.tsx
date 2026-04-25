@@ -1,6 +1,11 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -39,7 +44,7 @@ function SourceStatsTable({ sources }: { sources: SourceStats[] }) {
             <TableRow>
               <TableCell
                 colSpan={3}
-                className="text-center text-muted-foreground py-8"
+                className="text-muted-foreground py-8 text-center"
               >
                 No source data available
               </TableCell>
@@ -54,7 +59,7 @@ function SourceStatsTable({ sources }: { sources: SourceStats[] }) {
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Progress value={source.percentage} className="h-2 w-20" />
-                    <span className="text-sm tabular-nums text-muted-foreground">
+                    <span className="text-muted-foreground text-sm tabular-nums">
                       {source.percentage}%
                     </span>
                   </div>
@@ -88,7 +93,7 @@ function DailyStatsTable({ dailyStats }: { dailyStats: DailyStats[] }) {
             <TableRow>
               <TableCell
                 colSpan={4}
-                className="text-center text-muted-foreground py-8"
+                className="text-muted-foreground py-8 text-center"
               >
                 No daily data available
               </TableCell>
@@ -105,10 +110,7 @@ function DailyStatsTable({ dailyStats }: { dailyStats: DailyStats[] }) {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Progress
-                      value={day.summaryRate}
-                      className="h-2 w-20"
-                    />
+                    <Progress value={day.summaryRate} className="h-2 w-20" />
                     <span
                       className={`text-sm tabular-nums ${
                         day.summaryRate >= 80
@@ -150,11 +152,11 @@ export function ArticleCollectionStats({
               {[...Array(3)].map((_, i) => (
                 <div
                   key={i}
-                  className="flex-1 h-20 bg-muted animate-pulse rounded-lg"
+                  className="bg-muted h-20 flex-1 animate-pulse rounded-lg"
                 />
               ))}
             </div>
-            <div className="h-[200px] bg-muted animate-pulse rounded-md" />
+            <div className="bg-muted h-[200px] animate-pulse rounded-md" />
           </div>
         </CardContent>
       </Card>
@@ -175,29 +177,29 @@ export function ArticleCollectionStats({
       </CardHeader>
       <CardContent>
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="flex items-center gap-3 p-4 rounded-lg bg-muted">
-            <FileText className="h-8 w-8 text-muted-foreground" />
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="bg-muted flex items-center gap-3 rounded-lg p-4">
+            <FileText className="text-muted-foreground h-8 w-8" />
             <div>
-              <p className="text-sm text-muted-foreground">Total Articles</p>
+              <p className="text-muted-foreground text-sm">Total Articles</p>
               <p className="text-2xl font-bold tabular-nums">
                 {totals.articles.toLocaleString()}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-950">
+          <div className="flex items-center gap-3 rounded-lg bg-[var(--tt-color-positive-bg)] p-4">
             <TrendingUp className="h-8 w-8 text-[var(--tt-color-positive)]" />
             <div>
-              <p className="text-sm text-muted-foreground">With Summaries</p>
+              <p className="text-muted-foreground text-sm">With Summaries</p>
               <p className="text-2xl font-bold tabular-nums">
                 {totals.summaries.toLocaleString()}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-950">
-            <Calendar className="h-8 w-8 text-blue-500" />
+          <div className="flex items-center gap-3 rounded-lg bg-[var(--tt-color-info-bg)] p-4">
+            <Calendar className="h-8 w-8 text-[var(--tt-color-info)]" />
             <div>
-              <p className="text-sm text-muted-foreground">Summary Rate</p>
+              <p className="text-muted-foreground text-sm">Summary Rate</p>
               <p className="text-2xl font-bold tabular-nums">
                 {totals.overallRate}%
               </p>

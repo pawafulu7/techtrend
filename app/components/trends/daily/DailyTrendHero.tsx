@@ -162,8 +162,20 @@ export function DailyTrendHero({
     <section className="relative overflow-hidden">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-[var(--tt-color-surface-muted)]" />
-      <div className="absolute top-0 right-0 h-96 w-96 translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/[0.07] blur-3xl" />
-      <div className="absolute bottom-0 left-0 h-64 w-64 -translate-x-1/2 translate-y-1/2 rounded-full bg-sky-500/[0.05] blur-3xl" />
+      <div
+        className="absolute top-0 right-0 h-96 w-96 translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+        style={{
+          background:
+            'color-mix(in srgb, var(--tt-color-positive-bg) 30%, transparent)',
+        }}
+      />
+      <div
+        className="absolute bottom-0 left-0 h-64 w-64 -translate-x-1/2 translate-y-1/2 rounded-full blur-3xl"
+        style={{
+          background:
+            'color-mix(in srgb, var(--tt-color-info-bg) 25%, transparent)',
+        }}
+      />
 
       <div className="relative container mx-auto px-4 py-6 sm:py-8">
         {/* Header with navigation - compact */}

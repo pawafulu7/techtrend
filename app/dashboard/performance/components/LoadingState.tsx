@@ -10,25 +10,25 @@ import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
  */
 export const LoadingState: React.FC = () => {
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto space-y-6 p-6">
       {/* ヘッダー */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <Skeleton className="h-8 w-64 mb-2" />
+          <Skeleton className="mb-2 h-8 w-64" />
           <Skeleton className="h-4 w-96" />
         </div>
         <Skeleton className="h-10 w-24" />
       </div>
 
       {/* メトリクスカードのスケルトン */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i}>
             <CardHeader>
               <Skeleton className="h-4 w-24" />
             </CardHeader>
             <CardContent>
-              <Skeleton className="h-8 w-32 mb-2" />
+              <Skeleton className="mb-2 h-8 w-32" />
               <Skeleton className="h-3 w-16" />
             </CardContent>
           </Card>
@@ -36,7 +36,7 @@ export const LoadingState: React.FC = () => {
       </div>
 
       {/* グラフのスケルトン */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {[...Array(2)].map((_, i) => (
           <Card key={i}>
             <CardHeader>
@@ -62,15 +62,17 @@ export const ErrorState: React.FC<{
 }> = ({ error, onRetry }) => {
   return (
     <div className="container mx-auto p-6">
-      <Alert className="bg-red-50 border-red-200">
-        <AlertCircle className="h-4 w-4 text-red-600" />
-        <AlertTitle className="text-red-800">エラーが発生しました</AlertTitle>
-        <AlertDescription className="text-red-700 mt-2">
+      <Alert className="border-[var(--tt-color-negative-border)] bg-[var(--tt-color-negative-bg)]">
+        <AlertCircle className="h-4 w-4 text-[var(--tt-color-negative)]" />
+        <AlertTitle className="text-[var(--tt-color-negative)]">
+          エラーが発生しました
+        </AlertTitle>
+        <AlertDescription className="mt-2 text-[var(--tt-color-negative)]">
           <p>{error}</p>
           {onRetry && (
             <button
               onClick={onRetry}
-              className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              className="mt-3 inline-flex items-center gap-2 rounded-md bg-[var(--tt-color-negative)] px-3 py-1.5 text-white transition-colors hover:bg-[var(--tt-color-negative)]"
             >
               <RefreshCw className="h-4 w-4" />
               再試行
@@ -91,19 +93,21 @@ export const EmptyState: React.FC<{
   description?: string;
 }> = ({
   title = 'データがありません',
-  description = 'メトリクスデータが取得できませんでした。しばらくしてからもう一度お試しください。'
+  description = 'メトリクスデータが取得できませんでした。しばらくしてからもう一度お試しください。',
 }) => {
   return (
     <div className="container mx-auto p-6">
-      <Card className="max-w-2xl mx-auto">
+      <Card className="mx-auto max-w-2xl">
         <CardContent className="py-12 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-              <AlertCircle className="h-6 w-6 text-gray-400" />
+          <div className="mb-4 flex justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--tt-color-surface-muted)]">
+              <AlertCircle className="h-6 w-6 text-[var(--tt-color-text-muted)]" />
             </div>
           </div>
-          <h3 className="text-lg font-semibold mb-2">{title}</h3>
-          <p className="text-gray-600 text-sm">{description}</p>
+          <h3 className="mb-2 text-lg font-semibold">{title}</h3>
+          <p className="text-sm text-[var(--tt-color-text-muted)]">
+            {description}
+          </p>
         </CardContent>
       </Card>
     </div>
@@ -121,19 +125,25 @@ export const InlineLoader: React.FC<{
   const sizeClasses = {
     sm: 'h-3 w-3',
     md: 'h-4 w-4',
-    lg: 'h-5 w-5'
+    lg: 'h-5 w-5',
   };
 
   const textSizeClasses = {
     sm: 'text-xs',
     md: 'text-sm',
-    lg: 'text-base'
+    lg: 'text-base',
   };
 
   return (
     <div className="inline-flex items-center gap-2">
-      <Loader2 className={`${sizeClasses[size]} animate-spin text-gray-500`} />
-      <span className={`${textSizeClasses[size]} text-gray-600`}>{text}</span>
+      <Loader2
+        className={`${sizeClasses[size]} animate-spin text-[var(--tt-color-text-muted)]`}
+      />
+      <span
+        className={`${textSizeClasses[size]} text-[var(--tt-color-text-muted)]`}
+      >
+        {text}
+      </span>
     </div>
   );
 };
@@ -147,7 +157,7 @@ export const UpdateIndicator: React.FC<{
   lastUpdated?: string;
 }> = ({ isUpdating, lastUpdated }) => {
   return (
-    <div className="flex items-center gap-2 text-sm text-gray-600">
+    <div className="flex items-center gap-2 text-sm text-[var(--tt-color-text-muted)]">
       {isUpdating ? (
         <>
           <Loader2 className="h-3 w-3 animate-spin" />

@@ -41,8 +41,8 @@ export function HotTopicChip({
         'group relative rounded-lg transition-all duration-200',
         'bg-background border shadow-sm',
         isNew
-          ? 'border-l-4 border-l-amber-500 hover:border-amber-300'
-          : 'border-l-4 border-l-sky-500 hover:border-sky-300',
+          ? 'border-l-4 border-l-[var(--tt-color-warning)] hover:border-[var(--tt-color-warning-border)]'
+          : 'border-l-4 border-l-[var(--tt-color-info)] hover:border-[var(--tt-color-info-border)]',
         'hover:-translate-y-0.5 hover:shadow-md'
       )}
       onMouseEnter={() => onMouseEnter(topicKey)}
@@ -53,16 +53,16 @@ export function HotTopicChip({
         <div className="mb-2 flex items-start justify-between gap-2">
           <div className="flex items-center gap-1.5 whitespace-nowrap">
             {isNew ? (
-              <Sparkles className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-400" />
+              <Sparkles className="h-4 w-4 shrink-0 text-[var(--tt-color-warning)]" />
             ) : (
-              <Zap className="h-4 w-4 shrink-0 text-sky-500 dark:text-sky-400" />
+              <Zap className="h-4 w-4 shrink-0 text-[var(--tt-color-info)]" />
             )}
             <span
               className={cn(
                 'text-xs font-bold',
                 isNew
-                  ? 'text-amber-600 dark:text-amber-400'
-                  : 'text-sky-600 dark:text-sky-400'
+                  ? 'text-[var(--tt-color-warning)]'
+                  : 'text-[var(--tt-color-info)]'
               )}
             >
               {isNew ? '新規' : '急上昇'}
@@ -111,8 +111,8 @@ export function HotTopicChip({
         className={cn(
           'absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100',
           isNew
-            ? 'text-amber-600 hover:bg-amber-100'
-            : 'text-sky-600 hover:bg-sky-100'
+            ? 'text-[var(--tt-color-warning)] hover:bg-[var(--tt-color-warning-bg)]'
+            : 'text-[var(--tt-color-info)] hover:bg-[var(--tt-color-info-bg)]'
         )}
       >
         <ArrowUpRight className="h-3.5 w-3.5" />

@@ -65,7 +65,7 @@ export function UserRoleDialog({ user, onClose }: Props) {
           </DialogDescription>
         </DialogHeader>
         {mutation.error && (
-          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <div className="rounded-md border border-[var(--tt-color-negative-border)] bg-[var(--tt-color-negative-bg)] p-3 text-sm text-[var(--tt-color-negative)]">
             {mutation.error.message}
           </div>
         )}

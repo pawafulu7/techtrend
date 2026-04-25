@@ -56,7 +56,7 @@ export function UsersTable() {
 
   if (error) {
     return (
-      <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
+      <div className="rounded-md border border-[var(--tt-color-negative-border)] bg-[var(--tt-color-negative-bg)] p-4 text-[var(--tt-color-negative)]">
         ユーザーの読み込みに失敗しました。再試行してください。
       </div>
     );
@@ -122,7 +122,7 @@ export function UsersTable() {
                   ) : (
                     <Badge
                       variant="outline"
-                      className="border-green-300 text-green-700"
+                      className="border-[var(--tt-color-positive-border)] text-[var(--tt-color-positive)]"
                     >
                       有効
                     </Badge>
@@ -146,7 +146,7 @@ export function UsersTable() {
                       size="sm"
                       onClick={() => setDisableDialogUser(user)}
                       disabled={!!user.deletedAt}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-[var(--tt-color-negative)] hover:text-[var(--tt-color-negative)]"
                     >
                       無効化
                     </Button>

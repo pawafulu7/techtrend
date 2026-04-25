@@ -9,13 +9,13 @@ interface HomeContentWrapperProps {
   className?: string;
 }
 
-export function HomeContentWrapper({ 
-  children, 
+export function HomeContentWrapper({
+  children,
   delay = 0,
-  className = ''
+  className = '',
 }: HomeContentWrapperProps) {
   const { ref, className: fadeInClass } = useFadeIn({ delay, enabled: true });
-  
+
   return (
     <div ref={ref} className={`${fadeInClass} ${className}`}>
       {children}
@@ -25,7 +25,7 @@ export function HomeContentWrapper({
 
 export function ToolbarWrapper({ children }: { children: ReactNode }) {
   const { ref, className } = useFadeIn({ delay: 0, enabled: true });
-  
+
   return (
     <div ref={ref} className={className}>
       {children}
@@ -35,9 +35,12 @@ export function ToolbarWrapper({ children }: { children: ReactNode }) {
 
 export function SidebarWrapper({ children }: { children: ReactNode }) {
   const { ref, className } = useFadeIn({ delay: 50, enabled: true });
-  
+
   return (
-    <aside ref={ref} className={`${className} hidden lg:block lg:w-64 lg:flex-shrink-0 lg:bg-gray-50 dark:lg:bg-gray-900/50 lg:border-r lg:border-gray-200 dark:lg:border-gray-700 lg:overflow-y-auto`}>
+    <aside
+      ref={ref}
+      className={`${className} hidden lg:block lg:w-64 lg:flex-shrink-0 lg:overflow-y-auto lg:border-r lg:border-[var(--tt-color-border)] lg:bg-[var(--tt-color-surface-muted)]`}
+    >
       {children}
     </aside>
   );
@@ -45,7 +48,7 @@ export function SidebarWrapper({ children }: { children: ReactNode }) {
 
 export function ArticleListWrapper({ children }: { children: ReactNode }) {
   const { ref, className } = useFadeIn({ delay: 100, enabled: true });
-  
+
   return (
     <div ref={ref} className={className}>
       {children}

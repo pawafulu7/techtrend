@@ -193,7 +193,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <CalendarIcon className="h-4 w-4 shrink-0 text-gray-500" />
+      <CalendarIcon className="h-4 w-4 shrink-0 text-[var(--tt-color-text-muted)]" />
       <div className="flex items-center gap-1">
         <Select
           value={currentPreset}

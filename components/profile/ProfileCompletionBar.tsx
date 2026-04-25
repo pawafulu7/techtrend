@@ -50,14 +50,18 @@ export function ProfileCompletionBar({
             <CheckCircle2
               className={cn(
                 'h-4 w-4',
-                isDark ? 'text-emerald-400' : 'text-emerald-500'
+                isDark
+                  ? 'text-[var(--tt-color-positive)]'
+                  : 'text-[var(--tt-color-positive)]'
               )}
             />
           ) : (
             <TrendingUp
               className={cn(
                 'h-4 w-4',
-                isDark ? 'text-cyan-400' : 'text-cyan-600'
+                isDark
+                  ? 'text-[var(--tt-color-info)]'
+                  : 'text-[var(--tt-color-info)]'
               )}
             />
           )}
@@ -74,12 +78,8 @@ export function ProfileCompletionBar({
           className={cn(
             'rounded-full px-2 py-0.5 text-xs font-medium',
             isComplete
-              ? isDark
-                ? 'bg-emerald-500/20 text-emerald-300'
-                : 'bg-emerald-100 text-emerald-700'
-              : isDark
-                ? 'bg-cyan-500/20 text-cyan-300'
-                : 'bg-cyan-100 text-cyan-700'
+              ? 'bg-[var(--tt-color-positive-bg)] text-[var(--tt-color-positive)]'
+              : 'bg-[var(--tt-color-info-bg)] text-[var(--tt-color-info)]'
           )}
         >
           {message}
@@ -90,7 +90,7 @@ export function ProfileCompletionBar({
       <div
         className={cn(
           'relative h-2 overflow-hidden rounded-full',
-          isDark ? 'bg-white/10' : 'bg-slate-200'
+          isDark ? 'bg-white/10' : 'bg-[var(--tt-color-surface-hover)]'
         )}
         role="progressbar"
         aria-label={`Profile completion: ${percentage}%`}
@@ -121,13 +121,17 @@ export function ProfileCompletionBar({
         <p
           className={cn(
             'mt-3 text-xs',
-            isDark ? 'text-slate-400' : 'text-muted-foreground'
+            isDark
+              ? 'text-[var(--tt-color-text-muted)]'
+              : 'text-muted-foreground'
           )}
         >
           <span
             className={cn(
               'font-medium',
-              isDark ? 'text-cyan-400' : 'text-cyan-600'
+              isDark
+                ? 'text-[var(--tt-color-info)]'
+                : 'text-[var(--tt-color-info)]'
             )}
           >
             追加:
