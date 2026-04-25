@@ -92,4 +92,41 @@ describe('HackerNewsEnricher - body drain on non-OK fetch (Issue #599)', () => {
     expect(genericEnrichSpy).toHaveBeenCalledTimes(1);
     expect(result).toBeNull();
   });
+
+  it('should drain body of repo root fetch when og:image fallback returns non-OK', async () => {
+    const blobUrl = 'https://github.com/foo/bar/blob/main/README.md';
+    const blobHtml = `
+      <html>
+        <head><meta name="description" content="ignored when readme present"></head>
+        <body>
+          <article itemprop="text" class="markdown-body">
+            ${'<p>Long enough README body content to bypass the short-content fallback path that triggers GenericEnricher again.</p>'.repeat(5)}
+          </article>
+        </body>
+      </html>
+    `;
+    const repoRootCancelMock = jest.fn(async () => {});
+
+    global.fetch = jest
+      .fn()
+      .mockImplementationOnce(async () => ({
+        ok: true,
+        status: 200,
+        text: async () => blobHtml,
+      }))
+      .mockImplementationOnce(async () => ({
+        ok: false,
+        status: 500,
+        body: { cancel: repoRootCancelMock },
+      })) as unknown as typeof global.fetch;
+
+    const enricher = new HackerNewsEnricher();
+    const result = await enricher.enrich(blobUrl);
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(repoRootCancelMock).toHaveBeenCalledTimes(1);
+    expect(result).not.toBeNull();
+    expect(result?.content).toContain('README body content');
+    expect(result?.thumbnail).toBeUndefined();
+  });
 });
