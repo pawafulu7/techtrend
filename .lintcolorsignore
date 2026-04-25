@@ -17,10 +17,3 @@
 
 # Source brand identity colors (Qiita green, Zenn blue, etc.). Intentional hex/class pairs.
 lib/utils/source/source-colors.ts # brand-only: source identity colors established by external brands
-
-# Tag category semantic colors. Pending PR-2 classification (category-like → CSS variable migration).
-lib/constants/tag-categories.ts # TODO: remove after PR-2 棚卸し完了後の CSS 変数化で解消
-
-# Tests that assert on raw Tailwind color classes. Replaced in PR-2 via color-mapping helper unit tests.
-app/components/tags/__tests__/TagCloud.test.tsx # TODO: remove after PR-2 テスト書き換え
-app/components/article/__tests__/ArticleListItem.test.tsx # TODO: remove after PR-2 整理
