@@ -44,7 +44,10 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
         // oEmbedにthumbnailがない場合はHTMLから取得
         if (!thumbnail) {
           try {
-            logger.debug({ url }, '[SpeakerDeckEnricher] oEmbed has no thumbnail, fetching from HTML');
+            logger.debug(
+              { url },
+              '[SpeakerDeckEnricher] oEmbed has no thumbnail, fetching from HTML'
+            );
             const html = await this.fetchWithRetry(url);
             thumbnail = this.extractThumbnail(html);
           } catch (htmlError) {
@@ -58,7 +61,12 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
 
         if (this.isContentSufficient(content, 50)) {
           logger.debug(
-            { url, contentLength: content.length, source: 'oembed', hasThumbnail: !!thumbnail },
+            {
+              url,
+              contentLength: content.length,
+              source: 'oembed',
+              hasThumbnail: !!thumbnail,
+            },
             '[SpeakerDeckEnricher] Enrichment succeeded via oEmbed'
           );
           return { content, thumbnail };
@@ -66,7 +74,10 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
       }
 
       // Strategy 2: Fallback to HTML scraping
-      logger.debug({ url }, '[SpeakerDeckEnricher] Falling back to HTML scraping');
+      logger.debug(
+        { url },
+        '[SpeakerDeckEnricher] Falling back to HTML scraping'
+      );
       const html = await this.fetchWithRetry(url);
       return this.extractFromHtml(html, url);
     } catch (error) {
@@ -91,6 +102,12 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
       });
 
       if (!response.ok) {
+        // 接続プールの socket 保持を避けるため body を drain
+        try {
+          await response.body?.cancel();
+        } catch {
+          /* ignore: drain 失敗は失敗判定に影響させない */
+        }
         logger.debug(
           { status: response.status, url },
           '[SpeakerDeckEnricher] oEmbed request failed'
@@ -102,7 +119,10 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
 
       // Validate required fields
       if (!data.title) {
-        logger.debug({ url }, '[SpeakerDeckEnricher] oEmbed response missing title');
+        logger.debug(
+          { url },
+          '[SpeakerDeckEnricher] oEmbed response missing title'
+        );
         return null;
       }
 
@@ -116,7 +136,10 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
     }
   }
 
-  private buildContentFromOEmbed(data: OEmbedResponse, originalUrl: string): string {
+  private buildContentFromOEmbed(
+    data: OEmbedResponse,
+    originalUrl: string
+  ): string {
     const parts: string[] = [];
 
     // Title (required)
@@ -179,7 +202,9 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
     }
 
     // Author from page content
-    const authorLink = $('.deck-author a, .speaker-name, [data-testid="author"]').first();
+    const authorLink = $(
+      '.deck-author a, .speaker-name, [data-testid="author"]'
+    ).first();
     if (authorLink.length) {
       const authorName = authorLink.text().trim();
       if (authorName) {
@@ -188,7 +213,9 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
     }
 
     // Deck description if available
-    const deckDescription = $('.deck-description, .presentation-description').text().trim();
+    const deckDescription = $('.deck-description, .presentation-description')
+      .text()
+      .trim();
     if (deckDescription && deckDescription.length > 20) {
       parts.push(deckDescription);
     }

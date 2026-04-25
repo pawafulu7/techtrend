@@ -6,46 +6,60 @@ import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 export class MediumEngineeringEnricher extends BaseContentEnricher {
   canHandle(url: string): boolean {
     // Medium系のURLを処理
-    return isUrlFromDomain(url, 'medium.com') ||
-           isUrlFromDomain(url, 'medium.engineering') ||
-           isUrlFromDomain(url, 'netflixtechblog.com') ||
-           isUrlFromDomain(url, 'engineering.atspotify.com') ||
-           isUrlFromDomain(url, 'eng.uber.com');
+    return (
+      isUrlFromDomain(url, 'medium.com') ||
+      isUrlFromDomain(url, 'medium.engineering') ||
+      isUrlFromDomain(url, 'netflixtechblog.com') ||
+      isUrlFromDomain(url, 'engineering.atspotify.com') ||
+      isUrlFromDomain(url, 'eng.uber.com')
+    );
   }
-  
+
   async enrich(url: string): Promise<EnrichmentResult | null> {
     try {
       const response = await fetch(url, {
         signal: AbortSignal.timeout(30000),
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; TechTrendBot/1.0; +https://techtrend.example.com/bot)'
-        }
+          'User-Agent':
+            'Mozilla/5.0 (compatible; TechTrendBot/1.0; +https://techtrend.example.com/bot)',
+        },
       });
-      
+
       if (!response.ok) {
-        logger.warn({ status: response.status, url }, '[MediumEngineeringEnricher] Failed to fetch URL');
+        // 接続プールの socket 保持を避けるため body を drain
+        try {
+          await response.body?.cancel();
+        } catch {
+          /* ignore: drain 失敗は失敗判定に影響させない */
+        }
+        logger.warn(
+          { status: response.status, url },
+          '[MediumEngineeringEnricher] Failed to fetch URL'
+        );
         return null;
       }
-      
+
       const html = await response.text();
       const $ = cheerio.load(html);
-      
+
       // Remove script and style elements
       $('script, style, noscript').remove();
-      
+
       let content = '';
       let thumbnail = '';
-      
+
       // Medium specific content extraction
       // 記事本文
       const article = $('article').first();
       if (article.length) {
         // Remove header and footer elements within article
         article.find('header, footer, nav').remove();
-        
+
         // Get paragraphs and headers
-        const sections = article.find('h1, h2, h3, h4, p, pre, blockquote, ul, ol');
-        
+        const sections = article.find(
+          'h1, h2, h3, h4, p, pre, blockquote, ul, ol'
+        );
+
         const contentParts: string[] = [];
         sections.each((i, elem) => {
           const text = $(elem).text().trim();
@@ -53,10 +67,10 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
             contentParts.push(text);
           }
         });
-        
+
         content = contentParts.join('\n\n');
       }
-      
+
       // Fallback to section.section-content
       if (!content) {
         const sectionContent = $('.section-content').first();
@@ -64,7 +78,7 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
           content = sectionContent.text().trim();
         }
       }
-      
+
       // Further fallback to main content
       if (!content) {
         const mainContent = $('main').first();
@@ -73,11 +87,13 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
           content = mainContent.text().trim();
         }
       }
-      
+
       // Get thumbnail from meta tags
-      thumbnail = $('meta[property="og:image"]').attr('content') || 
-                 $('meta[name="twitter:image"]').attr('content') || '';
-      
+      thumbnail =
+        $('meta[property="og:image"]').attr('content') ||
+        $('meta[name="twitter:image"]').attr('content') ||
+        '';
+
       // Medium specific image extraction
       if (!thumbnail) {
         const firstImage = article.find('img').first();
@@ -85,13 +101,13 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
           thumbnail = firstImage.attr('src') || '';
         }
       }
-      
+
       // Clean up content
       content = content
         .replace(/\s+/g, ' ')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
-      
+
       // Remove common Medium footer text
       const footerPhrases = [
         'Follow us on Twitter',
@@ -99,33 +115,39 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
         'If you enjoyed this article',
         'Thanks for reading',
         'Subscribe to get',
-        'Join our team'
+        'Join our team',
       ];
-      
+
       for (const phrase of footerPhrases) {
         const index = content.lastIndexOf(phrase);
-        if (index > content.length * 0.7) { // Only remove if in last 30% of content
+        if (index > content.length * 0.7) {
+          // Only remove if in last 30% of content
           content = content.substring(0, index).trim();
         }
       }
-      
+
       // Limit content length
       if (content.length > 50000) {
         content = content.substring(0, 50000) + '...';
       }
-      
+
       if (content.length < 100) {
-        logger.warn({ url, contentLength: content.length }, '[MediumEngineeringEnricher] Content too short');
+        logger.warn(
+          { url, contentLength: content.length },
+          '[MediumEngineeringEnricher] Content too short'
+        );
         return null;
       }
-      
+
       return {
         content,
-        thumbnail: thumbnail || undefined
+        thumbnail: thumbnail || undefined,
       };
-      
     } catch (_error) {
-      logger.error({ err: _error, url }, '[MediumEngineeringEnricher] Error enriching URL');
+      logger.error(
+        { err: _error, url },
+        '[MediumEngineeringEnricher] Error enriching URL'
+      );
       return null;
     }
   }
