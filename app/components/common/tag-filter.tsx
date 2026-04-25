@@ -281,10 +281,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
           const categoryInfo =
             categoryKey === 'uncategorized'
               ? { name: '未分類', color: uncategorizedColor }
-              : getCategoryInfo(categoryKey as keyof typeof TAG_CATEGORIES) || {
-                  name: '未分類',
-                  color: uncategorizedColor,
-                };
+              : getCategoryInfo(categoryKey as keyof typeof TAG_CATEGORIES)!;
 
           return (
             <Collapsible

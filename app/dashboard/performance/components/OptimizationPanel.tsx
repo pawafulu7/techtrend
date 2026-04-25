@@ -34,7 +34,7 @@ export const OptimizationPanel: React.FC<{
       if (typeof rec === 'string') {
         // 文字列から推奨タイプと重要度を推測
         let type: OptimizationRecommendation['type'] = 'performance';
-        let severity: OptimizationRecommendation['severity'] = 'medium';
+        let severity: OptimizationRecommendation['severity'] = 'low';
 
         if (rec.includes('キャッシュ') || rec.includes('cache')) {
           type = 'cache';
@@ -48,8 +48,6 @@ export const OptimizationPanel: React.FC<{
           severity = 'high';
         } else if (rec.includes('注意') || rec.includes('warning')) {
           severity = 'medium';
-        } else {
-          severity = 'low';
         }
 
         return {

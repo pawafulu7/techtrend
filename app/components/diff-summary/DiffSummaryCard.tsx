@@ -52,7 +52,7 @@ const changeTypeConfig = {
   deprecated: {
     icon: ArrowDown,
     label: '減少',
-    color: 'text-[var(--tt-color-text-muted)]',
+    color: 'text-[var(--tt-color-text)]',
     bgColor: 'bg-[var(--tt-color-surface-muted)]',
     badgeVariant: 'outline' as const,
   },

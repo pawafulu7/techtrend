@@ -8,7 +8,7 @@ export const ClientFilters = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="rounded-lg border border-white/20 bg-[var(--tt-color-surface)]/80 p-3 shadow-sm backdrop-blur-sm">
+      <div className="rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/80 p-3 shadow-sm backdrop-blur-sm">
         <div className="animate-pulse">
           <div className="mb-4 h-4 w-1/4 rounded bg-[var(--tt-color-surface-hover)]"></div>
           <div className="space-y-2">

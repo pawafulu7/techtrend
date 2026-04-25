@@ -61,22 +61,6 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
     return 'text-[var(--tt-color-text-muted)]';
   };
 
-  /**
-   * Get darker text color for trend value text
-   * Uses explicit mapping instead of fragile string replacement
-   */
-  const getTrendTextColor = () => {
-    if (trend === 'up')
-      return isIncreaseGood
-        ? 'text-[var(--tt-color-positive)]'
-        : 'text-[var(--tt-color-negative)]';
-    if (trend === 'down')
-      return isIncreaseGood
-        ? 'text-[var(--tt-color-negative)]'
-        : 'text-[var(--tt-color-positive)]';
-    return 'text-[var(--tt-color-text-muted)]';
-  };
-
   const getTrendIcon = () => {
     switch (trend) {
       case 'up':
@@ -169,7 +153,7 @@ export const MetricsCard: React.FC<MetricsCardProps> = ({
             {trendValue && (
               <div className="mt-1 flex items-center gap-1">
                 {getTrendIcon()}
-                <span className={`text-xs ${getTrendTextColor()}`}>
+                <span className={`text-xs ${getTrendColor()}`}>
                   {trendValue}
                 </span>
               </div>
@@ -188,7 +172,7 @@ export interface CompactMetricsCardProps {
   label: string;
   value: string | number;
   icon?: React.ReactNode;
-  color?: 'blue' | 'green' | 'yellow' | 'orange' | 'red' | 'gray';
+  color?: 'blue' | 'green' | 'warning' | 'red' | 'gray';
 }
 
 /**
@@ -205,9 +189,7 @@ export const CompactMetricsCard: React.FC<CompactMetricsCardProps> = ({
     blue: 'bg-[var(--tt-color-info-bg)] text-[var(--tt-color-info)] border-[var(--tt-color-info-border)]',
     green:
       'bg-[var(--tt-color-positive-bg)] text-[var(--tt-color-positive)] border-[var(--tt-color-positive-border)]',
-    yellow:
-      'bg-[var(--tt-color-warning-bg)] text-[var(--tt-color-warning)] border-[var(--tt-color-warning-border)]',
-    orange:
+    warning:
       'bg-[var(--tt-color-warning-bg)] text-[var(--tt-color-warning)] border-[var(--tt-color-warning-border)]',
     red: 'bg-[var(--tt-color-negative-bg)] text-[var(--tt-color-negative)] border-[var(--tt-color-negative-border)]',
     gray: 'bg-[var(--tt-color-surface-muted)] text-[var(--tt-color-text-muted)] border-[var(--tt-color-border)]',

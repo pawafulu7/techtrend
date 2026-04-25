@@ -67,13 +67,17 @@ describe('Tag Categories', () => {
       const frontend = getCategoryInfo('frontend');
       expect(frontend.name).toBe('フロントエンド');
       expect(frontend.description).toBe('UI/UX、クライアントサイド技術');
-      expect(frontend.color).toContain('--tt-color-category-frontend');
+      expect(frontend.color).toContain('--tt-color-category-frontend-icon');
+      expect(frontend.color).toContain('--tt-color-category-frontend-bg');
+      expect(frontend.color).toContain('--tt-color-category-frontend-bg-hover');
       expect(frontend.tags).toContain('React');
 
       const backend = getCategoryInfo('backend');
       expect(backend.name).toBe('バックエンド');
       expect(backend.description).toBe('サーバーサイド、API開発');
-      expect(backend.color).toContain('--tt-color-category-backend');
+      expect(backend.color).toContain('--tt-color-category-backend-icon');
+      expect(backend.color).toContain('--tt-color-category-backend-bg');
+      expect(backend.color).toContain('--tt-color-category-backend-bg-hover');
       expect(backend.tags).toContain('Node.js');
     });
   });

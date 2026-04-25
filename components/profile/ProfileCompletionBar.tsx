@@ -47,23 +47,9 @@ export function ProfileCompletionBar({
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           {isComplete ? (
-            <CheckCircle2
-              className={cn(
-                'h-4 w-4',
-                isDark
-                  ? 'text-[var(--tt-color-positive)]'
-                  : 'text-[var(--tt-color-positive)]'
-              )}
-            />
+            <CheckCircle2 className="h-4 w-4 text-[var(--tt-color-positive)]" />
           ) : (
-            <TrendingUp
-              className={cn(
-                'h-4 w-4',
-                isDark
-                  ? 'text-[var(--tt-color-info)]'
-                  : 'text-[var(--tt-color-info)]'
-              )}
-            />
+            <TrendingUp className="h-4 w-4 text-[var(--tt-color-info)]" />
           )}
           <span
             className={cn(
@@ -118,24 +104,8 @@ export function ProfileCompletionBar({
 
       {/* Incomplete fields hint for low completion */}
       {isLowCompletion && incompleteFields.length > 0 && (
-        <p
-          className={cn(
-            'mt-3 text-xs',
-            isDark
-              ? 'text-[var(--tt-color-text-muted)]'
-              : 'text-muted-foreground'
-          )}
-        >
-          <span
-            className={cn(
-              'font-medium',
-              isDark
-                ? 'text-[var(--tt-color-info)]'
-                : 'text-[var(--tt-color-info)]'
-            )}
-          >
-            追加:
-          </span>{' '}
+        <p className="text-muted-foreground mt-3 text-xs">
+          <span className="font-medium text-[var(--tt-color-info)]">追加:</span>{' '}
           {incompleteFields.slice(0, 3).join(', ')}
           {incompleteFields.length > 3 && ` +${incompleteFields.length - 3}`}
         </p>

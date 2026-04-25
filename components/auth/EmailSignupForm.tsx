@@ -203,7 +203,7 @@ export function EmailSignupForm() {
                         ? passwordStrength.strength === 5
                           ? 'bg-[var(--tt-color-positive)]'
                           : passwordStrength.strength >= 3
-                            ? 'bg-[var(--tt-color-warning-bg)]'
+                            ? 'bg-[var(--tt-color-warning)]'
                             : 'bg-[var(--tt-color-negative)]'
                         : 'bg-[var(--tt-color-surface-hover)]'
                     }`}

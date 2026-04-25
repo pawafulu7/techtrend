@@ -45,7 +45,7 @@ const CATEGORY_CONFIG: Record<
     label: 'その他',
     icon: MoreHorizontal,
     iconColor: 'text-[var(--tt-color-text-muted)]',
-    badgeBg: 'bg-[var(--tt-color-surface-hover)]',
+    badgeBg: 'bg-[var(--tt-color-surface-muted)]',
     badgeText: 'text-[var(--tt-color-text-muted)]',
   },
 };

@@ -464,9 +464,9 @@ export const categoryColors = {
  *   （計測結果: .workflow/docs/notes/issue584_color_classification.md）。
  * - `iconBg` variant: アイコン・装飾背景想定。小テキストとの組み合わせでは使用しないこと。
  *
- * 設計方針: gradient（`from-amber-50 to-orange-50` のような Tailwind 文字列）は CSS 変数化せず、
- * コンポーネント側で Tailwind クラスをそのまま保持する。CSS 変数経由で表現できない 2 色
- * 補間を扱うため。
+ * 設計方針: gradient（`from-amber-50 to-orange-50` のような Tailwind 文字列）は廃止し、
+ * `bg` トークンによる単色背景に統一した（PR #609 / Issue #603 PR2 で追加）。
+ * CSS 変数経由で参照できない 2 色補間は使用しない。
  *
  * 利用方法: `bg-[var(--tt-color-status-draft-icon-bg)]` / `text-[var(--tt-color-status-draft-text)]`
  * のように CSS 変数経由で参照すること。

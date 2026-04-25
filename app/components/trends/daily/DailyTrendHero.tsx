@@ -166,14 +166,14 @@ export function DailyTrendHero({
         className="absolute top-0 right-0 h-96 w-96 translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
         style={{
           background:
-            'color-mix(in srgb, var(--tt-color-positive-bg) 30%, transparent)',
+            'color-mix(in srgb, var(--tt-color-positive) 7%, transparent)',
         }}
       />
       <div
         className="absolute bottom-0 left-0 h-64 w-64 -translate-x-1/2 translate-y-1/2 rounded-full blur-3xl"
         style={{
           background:
-            'color-mix(in srgb, var(--tt-color-info-bg) 25%, transparent)',
+            'color-mix(in srgb, var(--tt-color-info) 5%, transparent)',
         }}
       />
 

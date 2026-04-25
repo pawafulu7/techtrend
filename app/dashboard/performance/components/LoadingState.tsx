@@ -72,7 +72,7 @@ export const ErrorState: React.FC<{
           {onRetry && (
             <button
               onClick={onRetry}
-              className="mt-3 inline-flex items-center gap-2 rounded-md bg-[var(--tt-color-negative)] px-3 py-1.5 text-white transition-colors hover:bg-[var(--tt-color-negative)]"
+              className="mt-3 inline-flex items-center gap-2 rounded-md bg-[var(--tt-color-negative)] px-3 py-1.5 text-white transition-opacity hover:opacity-90"
             >
               <RefreshCw className="h-4 w-4" />
               再試行

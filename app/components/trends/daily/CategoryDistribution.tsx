@@ -77,7 +77,7 @@ export function CategoryDistribution({
           {categories.map((category, index) => {
             const colorClass =
               CATEGORY_COLORS[category.name] ||
-              'bg-[var(--tt-color-text-muted)]';
+              'bg-[var(--tt-color-surface-hover)]';
             const bgClass = CATEGORY_BG_CLASS;
             // パーセンテージをそのままバーの幅に使用（総記事数に対する割合）
             const widthPercent = category.percentage;

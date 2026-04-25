@@ -146,7 +146,7 @@ export function UsersTable() {
                       size="sm"
                       onClick={() => setDisableDialogUser(user)}
                       disabled={!!user.deletedAt}
-                      className="text-[var(--tt-color-negative)] hover:text-[var(--tt-color-negative)]"
+                      className="text-[var(--tt-color-negative)] hover:opacity-80"
                     >
                       無効化
                     </Button>

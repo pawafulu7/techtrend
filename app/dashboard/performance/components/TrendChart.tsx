@@ -45,7 +45,7 @@ const TrendChartTooltip = React.memo(function TrendChartTooltip({
     const formattedValue = format ? format(value) : value.toFixed(1);
 
     return (
-      <div className="rounded-lg border bg-white p-3 shadow-lg">
+      <div className="rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-3 text-[var(--tt-color-text)] shadow-lg">
         <p className="text-xs text-[var(--tt-color-text-muted)]">{label}</p>
         <p className="text-sm font-bold" style={{ color }}>
           {formattedValue}

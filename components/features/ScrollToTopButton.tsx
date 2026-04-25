@@ -162,7 +162,7 @@ export function ScrollToTopButton() {
   return (
     <button
       onClick={scrollToTop}
-      className={`animate-fade-in fixed right-6 bottom-24 z-50 transform rounded-full bg-[var(--tt-color-info)] p-3 text-white shadow-lg transition-all duration-300 ease-in-out hover:scale-110 hover:bg-[var(--tt-color-info)] hover:opacity-90 hover:shadow-xl focus:ring-2 focus:ring-[var(--tt-color-info-border)] focus:ring-offset-2 focus:outline-none`}
+      className={`animate-fade-in fixed right-6 bottom-24 z-50 transform rounded-full bg-[var(--tt-color-info)] p-3 text-white shadow-lg transition-all duration-300 ease-in-out hover:scale-110 hover:opacity-90 hover:shadow-xl focus:ring-2 focus:ring-[var(--tt-color-info-border)] focus:ring-offset-2 focus:outline-none`}
       aria-label="ページトップへ戻る"
       title="ページトップへ戻る (Ctrl+Home)"
     >

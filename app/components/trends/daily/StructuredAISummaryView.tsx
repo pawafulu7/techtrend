@@ -167,7 +167,7 @@ export function StructuredAISummaryView({
             >
               <AccordionItem
                 value="actions"
-                className="bg-card/50 rounded-xl border"
+                className="bg-card/50 rounded-xl border border-[var(--tt-color-border)]"
               >
                 <AccordionTrigger className="px-4 py-3 hover:no-underline">
                   <div className="flex items-center gap-2">
@@ -231,7 +231,7 @@ export function StructuredAISummaryView({
             {summary.keyTopics.slice(0, 3).map((t) => (
               <div
                 key={t.topic}
-                className="bg-background/50 rounded-lg border p-3"
+                className="bg-background/50 rounded-lg border border-[var(--tt-color-border)] p-3"
               >
                 <div className="flex items-start gap-2">
                   <Badge variant="secondary" className="shrink-0">

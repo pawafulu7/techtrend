@@ -65,7 +65,7 @@ export function DetailedSummaryStructured({
           return (
             <article
               key={index}
-              className="group min-h-[44px] space-y-2 rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-sm transition-all duration-200 hover:border-[var(--tt-color-border)] hover:shadow-md motion-safe:animate-[fadeInUp_0.4s_ease_forwards] motion-safe:opacity-0"
+              className="group min-h-[44px] space-y-2 rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-sm transition-all duration-200 hover:border-[var(--tt-color-border-hover)] hover:shadow-md motion-safe:animate-[fadeInUp_0.4s_ease_forwards] motion-safe:opacity-0"
               style={{
                 borderLeftWidth: '3px',
                 borderLeftColor: accentColor,
