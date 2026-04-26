@@ -21,16 +21,22 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
       });
       // ページをリロードして新しい表示モードを適用
       window.location.reload();
-    } catch {
-    }
+    } catch {}
   };
 
   return (
     <TooltipProvider>
-      <div className="flex gap-1">
+      <div
+        className="flex gap-1"
+        data-testid="view-mode-toggle"
+        data-view-mode={currentMode}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              data-testid="view-mode-card"
+              aria-pressed={currentMode === 'card'}
+              aria-label="カード表示"
               variant={currentMode === 'card' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleModeChange('card')}
@@ -47,6 +53,9 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              data-testid="view-mode-compact"
+              aria-pressed={currentMode === 'compact'}
+              aria-label="コンパクト表示"
               variant={currentMode === 'compact' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleModeChange('compact')}
@@ -63,6 +72,9 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              data-testid="view-mode-list"
+              aria-pressed={currentMode === 'list'}
+              aria-label="リスト表示"
               variant={currentMode === 'list' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleModeChange('list')}
