@@ -124,16 +124,15 @@ test.describe('無限スクロール機能', () => {
     await page.waitForTimeout(1000);
     
     // エラーメッセージまたはリトライボタンが表示されることを確認
+    // Issue #611: class 依存セレクタを testid + ARIA + semantic text に置換
     const errorSelectors = [
-      '.text-red-500',
-      '.text-red-600',
-      '[class*="error"]',
       '[data-testid="error-message"]',
+      '[role="alert"]',
       'text=エラー',
       'text=失敗',
       'text=もう一度'
     ];
-    
+
     let errorFound = false;
     for (const selector of errorSelectors) {
       if (await page.locator(selector).count() > 0) {
@@ -141,7 +140,7 @@ test.describe('無限スクロール機能', () => {
         break;
       }
     }
-    
+
     // エラー処理が実装されていない場合はスキップ
     if (!errorFound) {
       console.log('Error handling not implemented yet');
