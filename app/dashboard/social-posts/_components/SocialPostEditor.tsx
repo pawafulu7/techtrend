@@ -22,8 +22,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StatusBadge } from './StatusBadge';
-import type { SocialPost, SocialPostStatus } from '@/lib/social-post';
-import { calculateEffectiveLength } from '@/lib/social-post';
+import type { SocialPost, SocialPostStatus } from '@/lib/social-post/types';
+import { calculateEffectiveLength } from '@/lib/social-post/social-post-validator';
 
 interface SocialPostEditorProps {
   postId: string;

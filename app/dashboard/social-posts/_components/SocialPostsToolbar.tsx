@@ -14,7 +14,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { SocialPostStatus, SocialPostSource } from '@/lib/social-post';
+import type {
+  SocialPostStatus,
+  SocialPostSource,
+} from '@/lib/social-post/types';
 
 interface FiltersState {
   status: SocialPostStatus | 'all';

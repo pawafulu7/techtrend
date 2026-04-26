@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui-v2/button-v2';
 import { Checkbox } from '@/components/ui/checkbox';
 import { StatusBadge } from './StatusBadge';
-import type { SocialPost } from '@/lib/social-post';
+import type { SocialPost } from '@/lib/social-post/types';
 
 interface SocialPostsTableProps {
   posts: SocialPost[];

@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import type { SocialPostStatus } from '@/lib/social-post';
+import type { SocialPostStatus } from '@/lib/social-post/types';
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
