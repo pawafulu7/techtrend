@@ -226,7 +226,8 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
         await page.waitForTimeout(500);
         
         // モバイルナビゲーションが表示されることを確認
-        const mobileNav = page.locator('nav[data-testid*="mobile"], [class*="mobile-nav"], [class*="drawer"]');
+        // Issue #611: class 依存セレクタを撤去。data-testid*= は別 issue で精密化予定
+        const mobileNav = page.locator('nav[data-testid*="mobile"], [data-testid="mobile-menu"]');
         expect(await mobileNav.count()).toBeGreaterThan(0);
       }
     });
@@ -298,10 +299,10 @@ test.describe('エラーハンドリング', () => {
     await page.goto('/');
     await page.waitForTimeout(1000);  // タイムアウトを短縮
     
-    // エラーメッセージが表示される（複数の可能なセレクタ）
-    const errorSelectors = ['.text-red-500', '.error-message', '[class*="error"]', '[class*="danger"]'];
+    // エラーメッセージが表示される（Issue #611: testid + ARIA + 既存命名 fallback）
+    const errorSelectors = ['[data-testid="error-message"]', '[role="alert"]', '.error-message'];
     let errorMessage = null;
-    
+
     for (const selector of errorSelectors) {
       const element = page.locator(selector);
       if (await element.count() > 0) {
@@ -309,12 +310,12 @@ test.describe('エラーハンドリング', () => {
         break;
       }
     }
-    
+
     if (errorMessage) {
       console.log('Error message found:', errorMessage);
     } else {
       // エラーメッセージが見つからない場合は、ローディング状態が続いていることを確認
-      const loading = page.locator('[class*="loading"], [class*="spinner"]');
+      const loading = page.locator('[data-testid="loading-spinner"]');
       if (await loading.count() === 0) {
         console.log('No error message or loading indicator found - error handling might be different');
       }
@@ -325,8 +326,8 @@ test.describe('エラーハンドリング', () => {
     await page.goto('/?search=xyzxyzxyzxyzxyz');
     await page.waitForTimeout(1000);  // タイムアウトを短縮
     
-    // 空の状態メッセージを探す
-    const emptySelectors = ['.text-gray-500', '.empty-state', '[class*="empty"]', '[class*="no-results"]'];
+    // 空の状態メッセージを探す（Issue #611: testid プライマリ + 既存命名 fallback）
+    const emptySelectors = ['[data-testid="empty-state"]', '[role="status"]', '.empty-state'];
     let emptyMessage = null;
     
     for (const selector of emptySelectors) {
