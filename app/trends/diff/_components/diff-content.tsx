@@ -15,7 +15,7 @@ import {
   getISOWeek,
   getPreviousISOWeek,
   getNextISOWeek,
-} from '@/lib/ai/diff-summary';
+} from '@/lib/ai/diff-summary/iso-week';
 import { DiffChange } from '@/lib/ai/extraction/extraction-schemas';
 import { DiffMainContent } from './diff-sections';
 import {

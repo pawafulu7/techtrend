@@ -1,3 +1,4 @@
+import 'server-only';
 import { PrismaClient } from '@/lib/prisma-exports';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { getPoolConfig } from '@/lib/database-config';
