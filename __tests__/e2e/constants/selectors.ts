@@ -61,7 +61,6 @@ export const SELECTORS = {
   // ===== 関連記事 =====
   RELATED_SECTION: '[data-testid="related-articles"]',
   RELATED_ARTICLE_LINK: '[data-testid="related-articles"] [data-testid="related-article-link"]',
-  RELATED_ARTICLES: 'article, [class*="card"]',
   
   // ===== 分析ページ =====
   ANALYTICS_CONTENT: '[class*="analytics"], [class*="stats"], [data-testid="analytics"]',
