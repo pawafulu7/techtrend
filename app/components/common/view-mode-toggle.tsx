@@ -21,7 +21,13 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
       });
       // ページをリロードして新しい表示モードを適用
       window.location.reload();
-    } catch {}
+    } catch (error) {
+      // POST 失敗時は reload せず、開発者が原因を追跡できるようログだけ残す
+      console.error(
+        `[ViewModeToggle] failed to update view mode (mode=${mode}):`,
+        error
+      );
+    }
   };
 
   return (

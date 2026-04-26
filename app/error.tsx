@@ -32,7 +32,6 @@ export default function Error({
         <div
           data-testid="error-message"
           role="alert"
-          aria-live="assertive"
           className="text-muted-foreground mb-6"
         >
           申し訳ございません。予期しないエラーが発生しました。再度お試しください。
