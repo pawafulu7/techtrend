@@ -27,6 +27,7 @@ export const SELECTORS = {
   LOADING_SPINNER: '[data-testid="loading-spinner"]',
   ERROR_MESSAGE: '[data-testid="error-message"], [role="alert"]',
   EMPTY_STATE: '[data-testid="empty-state"]',
+  SUCCESS_MESSAGE: '[data-testid="success-message"], [role="status"], [aria-live="polite"]',
 
   // ===== ナビゲーション =====
   NAV_MENU: 'nav[role="navigation"]',
@@ -41,6 +42,8 @@ export const SELECTORS = {
   ARTICLE_LINK: '[data-testid="article-card"] a',
   ARTICLE_TITLE: '[data-testid="article-title"]',
   ARTICLE_SUMMARY: '[data-testid="article-summary"]',
+  // ARTICLE_CONTENT は ARTICLE_CARD のエイリアス（記事カード全体を指す）。
+  // 記事本文専用の要素が必要になったら別 testid (例: article-card-content) を新設すること。
   ARTICLE_CONTENT: '[data-testid="article-card"]',
   ARTICLE_DATE: '[data-testid="article-date"]',
   ARTICLE_SOURCE: '[data-testid="article-source"]',
@@ -64,7 +67,7 @@ export const SELECTORS = {
   PREV_PAGE_BUTTON: '[data-testid="pagination-prev"]',
 
   // ===== お気に入り・リーディングリスト =====
-  // Issue #611 注: data-testid*= substring マッチは別 issue でフォローアップ予定
+  // Issue #611 注: data-testid*= substring マッチの精密化は Issue #619 で追跡
   FAVORITE_BUTTON: '[data-testid*="favorite"], button[aria-label*="お気に入り"], button[aria-label*="favorite"]',
   READING_LIST_BUTTON: '[data-testid="reading-list"], button[aria-label*="リーディングリスト"]',
 
@@ -74,7 +77,8 @@ export const SELECTORS = {
 
   // ===== 関連記事 =====
   RELATED_SECTION: '[data-testid="related-articles"]',
-  RELATED_ARTICLES: '[data-testid="article-card"]',
+  // RELATED_SECTION 配下の記事カードに限定（ホーム/一覧の記事カードと混ざらないようスコープを絞る）
+  RELATED_ARTICLES: '[data-testid="related-articles"] [data-testid="article-card"]',
 
   // ===== 分析ページ =====
   ANALYTICS_CONTENT: '[data-testid="analytics-content"]',

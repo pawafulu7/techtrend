@@ -110,10 +110,10 @@ export async function expectNoErrors(page: Page) {
 
 /**
  * ローディング状態が終了するまで待機
+ * Issue #611: 旧 [data-testid="loading"] から SELECTORS.LOADING_SPINNER (loading-spinner) に統一
  */
 export async function waitForLoadingComplete(page: Page) {
-  // ローディングインジケーターが消えるまで待機
-  const loading = page.locator('[data-testid="loading"]');
+  const loading = page.locator(SELECTORS.LOADING_SPINNER);
   await expect(loading).toBeHidden({ timeout: 10000 });
 }
 
@@ -233,15 +233,15 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
   await waitForLoadingToDisappear(page, timeout / 2);
   
   // 検索結果のテキストまたは記事カードが表示されるのを待つ
-  // Issue #611: class 依存セレクタを data-testid プライマリ化
+  // Issue #611: class 依存セレクタを data-testid プライマリ化、querySelector('p') を SELECTORS 化
   await page.waitForFunction(
-    () => {
+    (selectors) => {
       // ローディング状態でないことを確認
-      const loader = document.querySelector('[data-testid="loading-spinner"]');
+      const loader = document.querySelector(selectors.loadingSpinner);
       if (loader) return false;
 
-      // 検索結果のテキストまたは記事カードを確認
-      const resultText = document.querySelector('p');
+      // 検索結果のテキストまたは記事カードを確認（SEARCH_RESULT_TEXT を優先）
+      const resultText = document.querySelector(selectors.searchResultText);
       const hasResultText = resultText && (
         resultText.textContent?.includes('件') ||
         resultText.textContent?.includes('結果') ||
@@ -250,23 +250,30 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
       );
 
       // 記事カードの存在も確認
-      const articleCards = document.querySelectorAll('[data-testid="article-card"]');
+      const articleCards = document.querySelectorAll(selectors.articleCard);
 
       // いずれかの条件を満たせばOK
       return hasResultText || articleCards.length > 0;
     },
-    undefined,
+    {
+      loadingSpinner: SELECTORS.LOADING_SPINNER,
+      searchResultText: SELECTORS.SEARCH_RESULT_TEXT,
+      articleCard: SELECTORS.ARTICLE_CARD,
+    },
     { timeout }
   );
 
   // 検索結果の安定を確認（状態ベースの待機）
   await page.waitForFunction(
-    () => {
-      const articles = document.querySelectorAll('[data-testid="article-card"]');
-      const emptyState = document.querySelector('[data-testid="empty-state"]');
+    (selectors) => {
+      const articles = document.querySelectorAll(selectors.articleCard);
+      const emptyState = document.querySelector(selectors.emptyState);
       return articles.length > 0 || emptyState !== null;
     },
-    undefined,
+    {
+      articleCard: SELECTORS.ARTICLE_CARD,
+      emptyState: SELECTORS.EMPTY_STATE,
+    },
     { timeout: 2000 }
   );
 }

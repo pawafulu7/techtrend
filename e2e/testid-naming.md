@@ -4,9 +4,8 @@ Issue #611 で導入。E2E (`e2e/**`) は **`data-testid` プライマリ**で�
 
 ## 1. 表記
 
-- kebab-case
-- ASCII のみ（数字・ハイフンのみ）
-- 半角英小文字。`Button` `error_message` `errorMessage` 等は不可
+- kebab-case — 半角英小文字、数字、ハイフンのみを使用（例: `error-message`, `stat-card`）
+- 大文字 / アンダースコア / キャメルケースは不可（`Button`, `error_message`, `errorMessage` などは禁止）
 
 ## 2. 粒度サフィックス
 
@@ -37,6 +36,7 @@ Issue #611 で導入。E2E (`e2e/**`) は **`data-testid` プライマリ**で�
 | `error-message` | エラー表示要素 | エラーメッセージ。`role="alert"` 併用 |
 | `empty-state` | 空状態 wrapper | 検索 0 件・お気に入り 0 件など |
 | `loading-spinner` | ローディング表示 | スピナー / スケルトン |
+| `success-message` | 成功通知要素 | 成功メッセージ（toast / inline alert）。`role="status"` または `aria-live="polite"` 併用 |
 | `article-source` | ソースラベル | 記事のソース（Hatena Bookmark 等）。既存 testid 維持 |
 | `tag-item` | タグ要素 | 記事タグ・タグ一覧の各要素 |
 | `article-title` | 記事カード内タイトル | 記事カードの `<h2>` 等 |
@@ -74,6 +74,7 @@ a11y 観点で意味がある要素は ARIA role / live region を併用する�
 | `error-message` | `role="alert"` | 常時 |
 | `empty-state` | `role="status"` | **動的更新（フィルタ変更・検索後）で空になるケースのみ**。静的な初期表示は付与しない |
 | `loading-spinner` | `aria-label="読み込み中"` | スクリーンリーダー対応 |
+| `success-message` | `role="status"` または `aria-live="polite"` | 成功通知（保存完了・更新完了等） |
 
 ## 7. 同種要素が複数表示される場合
 

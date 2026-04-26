@@ -124,13 +124,13 @@ test.describe('無限スクロール機能', () => {
     await page.waitForTimeout(1000);
     
     // エラーメッセージまたはリトライボタンが表示されることを確認
-    // Issue #611: class 依存セレクタを testid + ARIA + semantic text に置換
+    // Issue #611 / PR #618 review: testid + ARIA を主とし、ページ全体への loose な
+    // text マッチは false-positive を生むため最小限の補助としてのみ残す。
+    // 未マッチ時は console.log での silent pass を避け testInfo.skip で明示的に飛ばす。
     const errorSelectors = [
       '[data-testid="error-message"]',
       '[role="alert"]',
-      'text=エラー',
-      'text=失敗',
-      'text=もう一度'
+      'text=もう一度',
     ];
 
     let errorFound = false;
@@ -141,10 +141,12 @@ test.describe('無限スクロール機能', () => {
       }
     }
 
-    // エラー処理が実装されていない場合はスキップ
+    // エラー処理が未実装の環境では silent pass を防ぐため skip
     if (!errorFound) {
-      console.log('Error handling not implemented yet');
+      testInfo.skip(true, 'Error UI not detected (error-message / role=alert / retry text none matched)');
+      return;
     }
+    expect(errorFound).toBe(true);
   });
 
   test('フィルター適用時も無限スクロールが動作する', async ({ page }, testInfo) => {

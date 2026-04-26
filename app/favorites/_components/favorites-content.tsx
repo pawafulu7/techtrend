@@ -237,14 +237,16 @@ export function FavoritesContent({
 
       {/* Error state */}
       {error && (
-        <div data-testid="error-message">
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" aria-hidden="true" />
-            <AlertDescription>
-              {error instanceof Error ? error.message : 'エラーが発生しました'}
-            </AlertDescription>
-          </Alert>
-        </div>
+        <Alert
+          variant="destructive"
+          className="mb-6"
+          data-testid="error-message"
+        >
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
+          <AlertDescription>
+            {error instanceof Error ? error.message : 'エラーが発生しました'}
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Empty state (no favorites at all) */}

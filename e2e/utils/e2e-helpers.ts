@@ -175,15 +175,28 @@ export async function waitForLoadingComplete(page: Page) {
 /**
  * データ読み込み完了を待つ
  * ローディング表示が消え、データ表示要素が現れるまで待機
+ *
+ * Issue #611: spinner が一度も表示されないケースで toBeHidden() が即 pass し、
+ * データ表示まで実質ノーチェックで進む問題を修正。
+ * waitForFunction で「データ要素出現」と「spinner が無い」を同時条件でレース。
  */
 export async function waitForDataLoad(page: Page, timeout = 10000) {
-  // Issue #611: LOADING_INDICATOR を LOADING_SPINNER に統合、データ要素を testid 化
-  const loadingIndicator = page.locator(SELECTORS.LOADING_SPINNER);
-  await expect(loadingIndicator).toBeHidden({ timeout });
-
-  // Wait for data content to appear
-  const dataContent = page.locator('[data-loaded="true"], [data-testid="article-card"]').first();
-  await expect(dataContent).toBeVisible({ timeout });
+  await page.waitForFunction(
+    (selectors) => {
+      const dataContent = document.querySelector(selectors.dataContent);
+      if (!dataContent) return false;
+      const loader = document.querySelector(selectors.loadingSpinner);
+      // spinner が存在しないか、存在しても非表示なら OK
+      if (!loader) return true;
+      const style = window.getComputedStyle(loader);
+      return style.display === 'none' || style.visibility === 'hidden';
+    },
+    {
+      dataContent: '[data-loaded="true"], [data-testid="article-card"]',
+      loadingSpinner: SELECTORS.LOADING_SPINNER,
+    },
+    { timeout }
+  );
 }
 
 /**
@@ -284,9 +297,9 @@ export async function waitForElementTextContent(
  * 汎用的なローディングインジケーターが非表示になるまで待機
  */
 export async function waitForLoadingToDisappear(page: Page, timeout = 10000) {
-  // SELECTORSから定義されたローディングインジケーターを使用
-  const loadingIndicator = page.locator(SELECTORS.LOADING_INDICATOR);
-  
+  // Issue #611: LOADING_INDICATOR は LOADING_SPINNER に統合済み
+  const loadingIndicator = page.locator(SELECTORS.LOADING_SPINNER);
+
   // すべてのローディングインジケーターが非表示になるまで待つ
   await expect(loadingIndicator).toBeHidden({ timeout });
 }
@@ -322,7 +335,7 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
       return hasResultText || articleCards.length > 0;
     },
     {
-      loadingIndicator: SELECTORS.LOADING_INDICATOR,
+      loadingIndicator: SELECTORS.LOADING_SPINNER,
       searchResultText: SELECTORS.SEARCH_RESULT_TEXT,
       articleCard: SELECTORS.ARTICLE_CARD
     },
@@ -518,8 +531,8 @@ export async function waitForSuccessMessage(
   timeout = 5000
 ): Promise<boolean> {
   try {
-    // Issue #611: class 依存セレクタを撤去し testid + ARIA に集約
-    const successLocator = page.locator('[data-testid="success-message"], [role="status"], [aria-live="polite"]').filter({ hasText: message });
+    // Issue #611: class 依存セレクタを撤去し SELECTORS.SUCCESS_MESSAGE に集約
+    const successLocator = page.locator(SELECTORS.SUCCESS_MESSAGE).filter({ hasText: message });
     await successLocator.waitFor({ state: 'visible', timeout });
     return true;
   } catch {

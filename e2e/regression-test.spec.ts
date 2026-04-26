@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { SELECTORS } from './constants/selectors';
 
 test.describe('回帰テスト - 既存機能の動作確認', () => {
   // このテストスイートは多数の機能を網羅的にテストするため、タイムアウトを3倍に延長
@@ -71,10 +72,13 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
         const filteredCount = await page.locator('[data-testid="article-card"]').count();
         expect(filteredCount).toBeLessThanOrEqual(initialCount);
         
-        // すべての記事がDev.toソースであることを確認
-        const sourceBadges = await page.locator('[data-testid="article-card"] .badge').allTextContents();
-        sourceBadges.forEach(badge => {
-          expect(badge).toContain('Dev.to');
+        // すべての記事が Dev.to ソースであることを確認
+        // Issue #611 / PR #618 review: `.badge` 生クラス依存を撤去し ARTICLE_SOURCE testid に置換
+        const sourceLabels = await page
+          .locator(`[data-testid="article-card"] ${SELECTORS.ARTICLE_SOURCE}`)
+          .allTextContents();
+        sourceLabels.forEach(label => {
+          expect(label).toContain('Dev.to');
         });
       }
     });
@@ -193,16 +197,22 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
       // 表示モード切り替えボタンを探す
       const viewToggle = page.locator('[data-testid="view-mode-toggle"]');
       if (await viewToggle.count() > 0) {
-        // 初期の表示モードを確認
-        const initialGridClass = await page.locator('.grid-cols-1').count();
-        
+        // Issue #611 / PR #618 review: Tailwind 生クラス `.grid-cols-1` 依存を撤去し
+        // aria-pressed / data-view-mode などの semantic 属性で view-mode 切替を判定する
+        const initialPressed = await viewToggle.getAttribute('aria-pressed');
+        const initialMode = await viewToggle.getAttribute('data-view-mode');
+
         // 表示モードを切り替え
         await viewToggle.click();
         await page.waitForTimeout(500);
-        
-        // 表示が変わったことを確認
-        const afterGridClass = await page.locator('.grid-cols-1').count();
-        expect(afterGridClass).not.toBe(initialGridClass);
+
+        // 表示が変わったことを確認（aria-pressed か data-view-mode のいずれかが変化）
+        const afterPressed = await viewToggle.getAttribute('aria-pressed');
+        const afterMode = await viewToggle.getAttribute('data-view-mode');
+        const changed =
+          (initialPressed !== null && afterPressed !== initialPressed) ||
+          (initialMode !== null && afterMode !== initialMode);
+        expect(changed).toBe(true);
       }
     });
   });
@@ -226,8 +236,8 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
         await page.waitForTimeout(500);
         
         // モバイルナビゲーションが表示されることを確認
-        // Issue #611: class 依存セレクタを撤去。data-testid*= は別 issue で精密化予定
-        const mobileNav = page.locator('nav[data-testid*="mobile"], [data-testid="mobile-menu"]');
+        // Issue #611: class 依存セレクタを撤去。data-testid*= は Issue #619 で追跡
+        const mobileNav = page.locator(`nav[data-testid*="mobile"], ${SELECTORS.MOBILE_MENU}`);
         expect(await mobileNav.count()).toBeGreaterThan(0);
       }
     });
@@ -299,8 +309,8 @@ test.describe('エラーハンドリング', () => {
     await page.goto('/');
     await page.waitForTimeout(1000);  // タイムアウトを短縮
     
-    // エラーメッセージが表示される（Issue #611: testid + ARIA + 既存命名 fallback）
-    const errorSelectors = ['[data-testid="error-message"]', '[role="alert"]', '.error-message'];
+    // エラーメッセージが表示される (Issue #611 / PR #618 review: SELECTORS 定数経由で集約)
+    const errorSelectors = [SELECTORS.ERROR_MESSAGE, '.error-message'];
     let errorMessage = null;
 
     for (const selector of errorSelectors) {
@@ -315,7 +325,7 @@ test.describe('エラーハンドリング', () => {
       console.log('Error message found:', errorMessage);
     } else {
       // エラーメッセージが見つからない場合は、ローディング状態が続いていることを確認
-      const loading = page.locator('[data-testid="loading-spinner"]');
+      const loading = page.locator(SELECTORS.LOADING_SPINNER);
       if (await loading.count() === 0) {
         console.log('No error message or loading indicator found - error handling might be different');
       }
@@ -326,8 +336,8 @@ test.describe('エラーハンドリング', () => {
     await page.goto('/?search=xyzxyzxyzxyzxyz');
     await page.waitForTimeout(1000);  // タイムアウトを短縮
     
-    // 空の状態メッセージを探す（Issue #611: testid プライマリ + 既存命名 fallback）
-    const emptySelectors = ['[data-testid="empty-state"]', '[role="status"]', '.empty-state'];
+    // 空の状態メッセージを探す (Issue #611 / PR #618 review: SELECTORS 定数経由で集約)
+    const emptySelectors = [SELECTORS.EMPTY_STATE, '[role="status"]', '.empty-state'];
     let emptyMessage = null;
     
     for (const selector of emptySelectors) {
