@@ -1,4 +1,4 @@
-import type { SocialPostStatus } from '@/lib/social-post';
+import type { SocialPostStatus } from '@/lib/social-post/types';
 
 interface StatusBadgeProps {
   status: SocialPostStatus;

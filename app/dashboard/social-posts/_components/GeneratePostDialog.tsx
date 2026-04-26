@@ -21,7 +21,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Search, FileText } from 'lucide-react';
-import { ARTICLE_CATEGORIES, type ArticleCategory } from '@/lib/social-post';
+import {
+  ARTICLE_CATEGORIES,
+  type ArticleCategory,
+} from '@/lib/social-post/social-post-validator';
 
 type GenerationType = 'article' | 'article_search' | 'article_id' | 'opinion';
 

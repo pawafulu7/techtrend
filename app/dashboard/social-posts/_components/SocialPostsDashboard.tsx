@@ -12,7 +12,7 @@ import type {
   SocialPostStatus,
   SocialPostSource,
   PaginatedResult,
-} from '@/lib/social-post';
+} from '@/lib/social-post/types';
 
 // =============================================================================
 // Types
