@@ -16,7 +16,7 @@ Issue #611 で導入。E2E (`e2e/**`) は **`data-testid` プライマリ**で�
 |-------------|------|-----|
 | `-content` | ページ全体・大きなセクションの wrapper | `analytics-content`, `search-results` |
 | `-card` | カード状の child 要素群（複数表示） | `article-card`, `stat-card` |
-| `-item` | リスト/集合の個別要素 | `tag-item`, `source-item` |
+| `-item` | リスト/集合の個別要素 | `tag-item` |
 | `-value` | 個別の数値・テキスト値 | `stats-value`, `pagination-current` |
 | `-label` | 短いラベル文字列要素（`-item` ほど構造を持たない） | `article-title`, `article-date` |
 | `-message` | ユーザー向けメッセージ | `error-message`, `empty-state-message` |
@@ -26,10 +26,9 @@ Issue #611 で導入。E2E (`e2e/**`) は **`data-testid` プライマリ**で�
 
 ## 3. ドメイン名 + サフィックス
 
-`<domain>-<suffix>` の組合せで命名する。`source` と `tag` のような同種カテゴリは同じサフィックスで揃える。
+`<domain>-<suffix>` の組合せで命名する。同種カテゴリ間ではできる限り同じサフィックスで揃える。
 
-✅ 推奨: `source-item` / `tag-item`（揃っている）
-❌ 非推奨: `source-label` / `tag-item`（不揃い）
+例外: 既存実装にすでに付与されている testid は破壊的リネームを避けるため維持する（例: `article-source` は `article-` prefix で記事関連を表現しており、4 箇所に既存付与あり）。
 
 ## 4. 主要 testid 一覧（Issue #611 で追加分）
 
@@ -38,7 +37,7 @@ Issue #611 で導入。E2E (`e2e/**`) は **`data-testid` プライマリ**で�
 | `error-message` | エラー表示要素 | エラーメッセージ。`role="alert"` 併用 |
 | `empty-state` | 空状態 wrapper | 検索 0 件・お気に入り 0 件など |
 | `loading-spinner` | ローディング表示 | スピナー / スケルトン |
-| `source-item` | ソースラベル | 記事のソース（Hatena Bookmark 等） |
+| `article-source` | ソースラベル | 記事のソース（Hatena Bookmark 等）。既存 testid 維持 |
 | `tag-item` | タグ要素 | 記事タグ・タグ一覧の各要素 |
 | `article-title` | 記事カード内タイトル | 記事カードの `<h2>` 等 |
 | `article-summary` | 記事カード内要約 | 記事カードの要約段落 |
