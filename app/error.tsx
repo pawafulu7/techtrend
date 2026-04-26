@@ -26,16 +26,17 @@ export default function Error({
             aria-hidden="true"
           />
         </div>
-        <h2
-          data-testid="error-message"
-          role="alert"
-          className="text-foreground mb-2 text-2xl font-semibold"
-        >
+        <h2 className="text-foreground mb-2 text-2xl font-semibold">
           エラーが発生しました
         </h2>
-        <p className="text-muted-foreground mb-6">
+        <div
+          data-testid="error-message"
+          role="alert"
+          aria-live="assertive"
+          className="text-muted-foreground mb-6"
+        >
           申し訳ございません。予期しないエラーが発生しました。再度お試しください。
-        </p>
+        </div>
         <div className="flex flex-col justify-center gap-3 sm:flex-row">
           <button
             onClick={reset}
