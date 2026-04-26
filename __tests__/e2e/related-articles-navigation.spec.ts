@@ -40,7 +40,7 @@ test.describe('関連記事のナビゲーション', () => {
     }
 
     // 関連記事のリンクを取得
-    const relatedLinks = relatedSection.locator('a[href^="/articles/"]');
+    const relatedLinks = page.locator(SELECTORS.RELATED_ARTICLE_LINK);
     const linkCount = await relatedLinks.count();
 
     if (linkCount === 0) {
@@ -77,7 +77,7 @@ test.describe('関連記事のナビゲーション', () => {
     }
 
     // 関連記事のリンクを取得
-    const relatedLinks = relatedSection.locator('a[href^="/articles/"]');
+    const relatedLinks = page.locator(SELECTORS.RELATED_ARTICLE_LINK);
     const linkCount = await relatedLinks.count();
 
     if (linkCount === 0) {
@@ -102,7 +102,7 @@ test.describe('関連記事のナビゲーション', () => {
     }
 
     // 関連記事のリンクを取得
-    const relatedLinks = relatedSection.locator('a[href^="/articles/"]');
+    const relatedLinks = page.locator(SELECTORS.RELATED_ARTICLE_LINK);
     const linkCount = await relatedLinks.count();
 
     if (linkCount === 0) {
@@ -135,7 +135,7 @@ test.describe('関連記事のナビゲーション', () => {
     }
 
     // 関連記事のリンクを取得
-    const relatedLinks = relatedSection.locator('a[href^="/articles/"]');
+    const relatedLinks = page.locator(SELECTORS.RELATED_ARTICLE_LINK);
     const linkCount = await relatedLinks.count();
 
     if (linkCount === 0) {
@@ -170,7 +170,7 @@ test.describe('関連記事のナビゲーション', () => {
     }
 
     // 関連記事のリンクを取得
-    const relatedLinks = relatedSection.locator('a[href^="/articles/"]');
+    const relatedLinks = page.locator(SELECTORS.RELATED_ARTICLE_LINK);
     const linkCount = await relatedLinks.count();
 
     if (linkCount === 0) {

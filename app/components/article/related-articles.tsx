@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { memo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Card,
@@ -26,7 +26,11 @@ import {
 
 // Extracted component to use hooks for each article item
 // Avoids Date.now() during render (React Compiler purity rule)
-function RelatedArticleItem({ article }: { article: RelatedArticle }) {
+const RelatedArticleItem = memo(function RelatedArticleItem({
+  article,
+}: {
+  article: RelatedArticle;
+}) {
   const [timeInfo, setTimeInfo] = useState<{
     hoursAgo: number;
     isNew: boolean;
@@ -55,6 +59,7 @@ function RelatedArticleItem({ article }: { article: RelatedArticle }) {
   return (
     <Link
       href={`/articles/${article.id}`}
+      data-testid="related-article-link"
       className="group block cursor-pointer rounded-lg bg-[var(--tt-color-surface-muted)] p-3 transition-colors hover:bg-[var(--tt-color-surface-hover)]"
     >
       <div className="space-y-1">
@@ -117,7 +122,7 @@ function RelatedArticleItem({ article }: { article: RelatedArticle }) {
       </div>
     </Link>
   );
-}
+});
 
 interface RelatedArticlesProps {
   articleId: string;
@@ -187,7 +192,10 @@ export function RelatedArticles({
   }
 
   return (
-    <Card className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
+    <Card
+      data-testid="related-articles"
+      className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]"
+    >
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
