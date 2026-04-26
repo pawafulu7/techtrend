@@ -109,6 +109,7 @@ export function ArticleCard({
             isRead && 'opacity-70'
           )}
           title={article.translatedTitle || article.title}
+          data-testid="article-title"
         >
           {article.translatedTitle || article.title}
         </h3>
@@ -153,7 +154,10 @@ export function ArticleCard({
               {article.companyName ?? article.source.name}
             </BadgeV2>
           )}
-          <span className="text-muted-foreground flex items-center gap-1">
+          <span
+            className="text-muted-foreground flex items-center gap-1"
+            data-testid="article-date"
+          >
             <Calendar className="h-3 w-3" aria-hidden="true" />
             <span className="sr-only">公開日:</span>
             <span>{formatDateWithTime(article.publishedAt)}</span>
@@ -164,13 +168,19 @@ export function ArticleCard({
         {showThumbnail ? (
           // Pattern with thumbnail: Summary only (thumbnail already rendered above)
           trimmedSummary ? (
-            <p className="text-foreground line-clamp-4 text-xs leading-relaxed">
+            <p
+              className="text-foreground line-clamp-4 text-xs leading-relaxed"
+              data-testid="article-summary"
+            >
               {trimmedSummary}
             </p>
           ) : null
         ) : trimmedSummary ? (
           // Pattern without thumbnail: full summary
-          <p className="text-foreground line-clamp-5 flex-1 text-xs leading-relaxed">
+          <p
+            className="text-foreground line-clamp-5 flex-1 text-xs leading-relaxed"
+            data-testid="article-summary"
+          >
             {trimmedSummary}
           </p>
         ) : null}

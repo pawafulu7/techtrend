@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { SELECTORS } from './constants/selectors';
 import { openFilterSidebar } from './helpers/wait-utils';
 
 test.describe('無限スクロール機能', () => {
@@ -124,16 +125,13 @@ test.describe('無限スクロール機能', () => {
     await page.waitForTimeout(1000);
     
     // エラーメッセージまたはリトライボタンが表示されることを確認
+    // PR #618 review: ハードコード testid を撤去し SELECTORS.ERROR_MESSAGE 経由に統一。
+    // 未マッチ時は console.log での silent pass を避け testInfo.skip で明示的に飛ばす。
     const errorSelectors = [
-      '.text-red-500',
-      '.text-red-600',
-      '[class*="error"]',
-      '[data-testid="error-message"]',
-      'text=エラー',
-      'text=失敗',
-      'text=もう一度'
+      SELECTORS.ERROR_MESSAGE,
+      'text=もう一度',
     ];
-    
+
     let errorFound = false;
     for (const selector of errorSelectors) {
       if (await page.locator(selector).count() > 0) {
@@ -141,11 +139,13 @@ test.describe('無限スクロール機能', () => {
         break;
       }
     }
-    
-    // エラー処理が実装されていない場合はスキップ
+
+    // エラー処理が未実装の環境では silent pass を防ぐため skip
     if (!errorFound) {
-      console.log('Error handling not implemented yet');
+      testInfo.skip(true, 'Error UI not detected (error-message / role=alert / retry text none matched)');
+      return;
     }
+    expect(errorFound).toBe(true);
   });
 
   test('フィルター適用時も無限スクロールが動作する', async ({ page }, testInfo) => {

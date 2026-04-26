@@ -1,4 +1,5 @@
-import { Page, expect } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { SELECTORS } from '../constants/selectors';
 
 /**
@@ -42,10 +43,27 @@ export async function waitForElement(page: Page, selector: string, timeout = 100
  * 記事カードが存在することを確認
  */
 export async function expectArticleCards(page: Page, minCount = 1) {
-  // 記事要素を探す（data-testidを最優先、ない場合は代替セレクタを使用）
-  const articles = page.locator('[data-testid="article-card"], article, [class*="article"], [class*="card"]');
+  // Issue #611: data-testid プライマリ化により class 依存セレクタを撤去
+  const articles = page.locator(SELECTORS.ARTICLE_CARD);
   const count = await articles.count();
   expect(count).toBeGreaterThanOrEqual(minCount);
+}
+
+/**
+ * Locator がヒットしていることをアサート
+ * Issue #611: count() === 0 でテストがサイレントに通過する no-op を防ぐ
+ *
+ * @param locator - 確認対象の Locator
+ * @param name - 失敗時のメッセージに含める識別名
+ * @param min - 期待する最小ヒット数（既定: 1）
+ */
+export async function assertLocatorFound(
+  locator: Locator,
+  name: string,
+  min = 1
+): Promise<void> {
+  const count = await locator.count();
+  expect(count, `${name} should match at least ${min} element(s) but matched ${count}`).toBeGreaterThanOrEqual(min);
 }
 
 /**
@@ -92,28 +110,18 @@ export async function expectNoErrors(page: Page) {
 
 /**
  * ローディング状態が終了するまで待機
+ * Issue #611: 旧 [data-testid="loading"] から SELECTORS.LOADING_SPINNER (loading-spinner) に統一
  */
 export async function waitForLoadingComplete(page: Page) {
-  // ローディングインジケーターが消えるまで待機
-  const loading = page.locator('[data-testid="loading"]');
+  const loading = page.locator(SELECTORS.LOADING_SPINNER);
   await expect(loading).toBeHidden({ timeout: 10000 });
 }
 
 /**
  * データ読み込み完了を待つ
- * ローディング表示が消え、データ表示要素が現れるまで待機
+ * 完全実装は e2e-helpers.ts に集約。ここは re-export のみ（二重実装解消）。
  */
-export async function waitForDataLoad(page: Page, timeout = 10000) {
-  await page.waitForFunction(
-    () => {
-      const loader = document.querySelector('.loading, .animate-spin, [class*="loader"]');
-      const hasData = document.querySelector('[data-loaded="true"], main [class*="card"], main article');
-      return !loader && hasData;
-    },
-    undefined,
-    { timeout }
-  );
-}
+export { waitForDataLoad } from './e2e-helpers';
 
 /**
  * APIレスポンスを待つ
@@ -193,11 +201,11 @@ export async function waitForElementTextContent(
 /**
  * ローディング表示が消えるまで待つ
  * 汎用的なローディングインジケーターが非表示になるまで待機
+ * Issue #611: LOADING_INDICATOR を LOADING_SPINNER 1 エントリに統合
  */
 export async function waitForLoadingToDisappear(page: Page, timeout = 10000) {
-  // SELECTORSから定義されたローディングインジケーターを使用
-  const loadingIndicator = page.locator(SELECTORS.LOADING_INDICATOR);
-  
+  const loadingIndicator = page.locator(SELECTORS.LOADING_SPINNER);
+
   // ローディングインジケーターが存在する場合、消えるまで待つ
   const count = await loadingIndicator.count();
   if (count > 0) {
@@ -214,38 +222,47 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
   await waitForLoadingToDisappear(page, timeout / 2);
   
   // 検索結果のテキストまたは記事カードが表示されるのを待つ
+  // Issue #611: class 依存セレクタを data-testid プライマリ化、querySelector('p') を SELECTORS 化
   await page.waitForFunction(
-    () => {
+    (selectors) => {
       // ローディング状態でないことを確認
-      const loader = document.querySelector('.animate-spin, [class*="loader"]');
+      const loader = document.querySelector(selectors.loadingSpinner);
       if (loader) return false;
-      
-      // 検索結果のテキストまたは記事カードを確認
-      const resultText = document.querySelector('p');
+
+      // 検索結果のテキストまたは記事カードを確認（SEARCH_RESULT_TEXT を優先）
+      const resultText = document.querySelector(selectors.searchResultText);
       const hasResultText = resultText && (
-        resultText.textContent?.includes('件') || 
+        resultText.textContent?.includes('件') ||
         resultText.textContent?.includes('結果') ||
         resultText.textContent?.includes('No results') ||
         resultText.textContent?.includes('記事が見つかりませんでした')
       );
-      
+
       // 記事カードの存在も確認
-      const articleCards = document.querySelectorAll('[data-testid="article-card"]');
-      
+      const articleCards = document.querySelectorAll(selectors.articleCard);
+
       // いずれかの条件を満たせばOK
       return hasResultText || articleCards.length > 0;
     },
-    undefined,
+    {
+      loadingSpinner: SELECTORS.LOADING_SPINNER,
+      searchResultText: SELECTORS.SEARCH_RESULT_TEXT,
+      articleCard: SELECTORS.ARTICLE_CARD,
+    },
     { timeout }
   );
-  
+
   // 検索結果の安定を確認（状態ベースの待機）
   await page.waitForFunction(
-    () => {
-      const articles = document.querySelectorAll('[data-testid="article-card"], article, [class*="article"]');
-      return articles.length > 0 || document.querySelector('p')?.textContent?.includes('記事が見つかりませんでした');
+    (selectors) => {
+      const articles = document.querySelectorAll(selectors.articleCard);
+      const emptyState = document.querySelector(selectors.emptyState);
+      return articles.length > 0 || emptyState !== null;
     },
-    undefined,
+    {
+      articleCard: SELECTORS.ARTICLE_CARD,
+      emptyState: SELECTORS.EMPTY_STATE,
+    },
     { timeout: 2000 }
   );
 }

@@ -107,6 +107,7 @@ export function CompactCard({
           tabIndex={0}
           role="button"
           className="max-w-[120px] cursor-pointer truncate text-xs"
+          data-testid="tag-item"
           onClick={(e) => {
             e.stopPropagation();
             handleTagNavigation(firstTag.name);
@@ -195,7 +196,11 @@ export function CompactCard({
 
       {/* Timestamps Row */}
       <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-[10px]">
-        <span className="flex items-center gap-0.5" title="Published date">
+        <span
+          className="flex items-center gap-0.5"
+          title="Published date"
+          data-testid="article-date"
+        >
           <Calendar className="h-3 w-3" aria-hidden="true" />
           <span>{formatDateWithTime(article.publishedAt)}</span>
         </span>
@@ -213,6 +218,7 @@ export function CompactCard({
           'font-heading text-foreground line-clamp-2 text-base leading-snug font-semibold',
           isRead && 'opacity-70'
         )}
+        data-testid="article-title"
       >
         {article.translatedTitle || article.title}
       </h3>

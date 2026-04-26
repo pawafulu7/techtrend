@@ -62,20 +62,23 @@ export function ArticleCardHeader({
             <BadgeV2
               variant="outline"
               className={cn(
-                "text-xs flex items-center gap-1.5",
+                'flex items-center gap-1.5 text-xs',
                 sourceColor.tag,
                 sourceColor.border,
                 sourceColor.hover
               )}
               data-testid="article-source"
             >
-              <span className={cn("w-2 h-2 rounded-full shrink-0", sourceColor.dot)} aria-hidden="true" />
+              <span
+                className={cn('h-2 w-2 shrink-0 rounded-full', sourceColor.dot)}
+                aria-hidden="true"
+              />
               {article.companyName ?? article.source.name}
             </BadgeV2>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
+        <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
+          <span data-testid="article-date" className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             <span>{formatDateWithTime(article.publishedAt)}</span>
           </span>
@@ -85,7 +88,12 @@ export function ArticleCardHeader({
           </span>
         </div>
       </div>
-      <ShareButton title={article.title} url={article.url} size="sm" variant="ghost" />
+      <ShareButton
+        title={article.title}
+        url={article.url}
+        size="sm"
+        variant="ghost"
+      />
     </div>
   );
 }

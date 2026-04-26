@@ -88,6 +88,7 @@ export function FavoriteArticleCard({
         {visibleTags.map((tag) => (
           <BadgeV2
             key={tag.id}
+            data-testid="tag-item"
             variant="outline"
             className="cursor-pointer text-xs"
             onClick={(e) => {
@@ -169,7 +170,7 @@ export function FavoriteArticleCard({
             {/* Published At - inline with badges */}
             <span className="text-muted-foreground flex items-center gap-1">
               <Calendar className="h-3 w-3" aria-hidden="true" />
-              <time dateTime={article.publishedAt}>
+              <time data-testid="article-date" dateTime={article.publishedAt}>
                 {formatDateWithTime(article.publishedAt)}
               </time>
             </span>
@@ -187,7 +188,10 @@ export function FavoriteArticleCard({
       </div>
 
       {/* Title */}
-      <h3 className="font-heading text-foreground line-clamp-2 text-lg leading-snug font-semibold sm:text-xl">
+      <h3
+        data-testid="article-title"
+        className="font-heading text-foreground line-clamp-2 text-lg leading-snug font-semibold sm:text-xl"
+      >
         <Link
           href={`/articles/${article.id}?from=${encodeURIComponent(from)}`}
           className="hover:text-primary transition-colors"
@@ -199,7 +203,10 @@ export function FavoriteArticleCard({
 
       {/* Summary */}
       {article.summary && (
-        <p className="text-foreground line-clamp-3 text-sm leading-relaxed">
+        <p
+          data-testid="article-summary"
+          className="text-foreground line-clamp-3 text-sm leading-relaxed"
+        >
           {article.summary}
         </p>
       )}
@@ -281,6 +288,7 @@ export function FavoriteCardSkeleton() {
 export function FavoriteSkeletonGrid() {
   return (
     <div
+      data-testid="loading-spinner"
       className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
       role="status"
       aria-live="polite"

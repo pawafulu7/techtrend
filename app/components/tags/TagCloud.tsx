@@ -211,7 +211,10 @@ export function TagCloud({
             </Button>
           </div>
         ) : tags.length === 0 ? (
-          <div className="text-muted-foreground py-8 text-center">
+          <div
+            data-testid="empty-state"
+            className="text-muted-foreground py-8 text-center"
+          >
             タグが見つかりませんでした
           </div>
         ) : (
@@ -219,6 +222,7 @@ export function TagCloud({
             {tags.map((tag) => (
               <button
                 key={tag.id}
+                data-testid="tag-item"
                 onClick={() => handleTagClick(tag)}
                 className={cn(
                   'inline-flex items-center rounded-full px-3 py-1',

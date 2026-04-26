@@ -160,8 +160,10 @@ export async function expectUrlPath(page: Page, expectedPath: string | RegExp) {
  * エラーメッセージが表示されていないことを確認
  */
 export async function expectNoErrors(page: Page) {
-  // Use only SELECTORS constants for consistency
-  const visibleErrors = page.locator(`${SELECTORS.ERROR_MESSAGE}:visible`);
+  // PR #618 review: SELECTORS.ERROR_MESSAGE はカンマ区切りのため `:visible` 疑似クラスは
+  // 最後のセレクタにしか適用されない。Locator.filter({ visible: true }) で各セレクタごとに
+  // visibility 判定する。
+  const visibleErrors = page.locator(SELECTORS.ERROR_MESSAGE).filter({ visible: true });
   await expect(visibleErrors).toHaveCount(0);
 }
 
@@ -175,15 +177,34 @@ export async function waitForLoadingComplete(page: Page) {
 /**
  * データ読み込み完了を待つ
  * ローディング表示が消え、データ表示要素が現れるまで待機
+ *
+ * Issue #611: spinner が一度も表示されないケースで toBeHidden() が即 pass し、
+ * データ表示まで実質ノーチェックで進む問題を修正。
+ * waitForFunction で「データ要素出現」と「spinner が無い」を同時条件でレース。
  */
 export async function waitForDataLoad(page: Page, timeout = 10000) {
-  // Wait for loading indicator to disappear (use common selector)
-  const loadingIndicator = page.locator(SELECTORS.LOADING_INDICATOR);
-  await expect(loadingIndicator).toBeHidden({ timeout });
-  
-  // Wait for data content to appear
-  const dataContent = page.locator('[data-loaded="true"], main [class*="card"], main article').first();
-  await expect(dataContent).toBeVisible({ timeout });
+  await page.waitForFunction(
+    (selectors) => {
+      const dataContent = document.querySelector(selectors.dataContent);
+      if (!dataContent) return false;
+      const loader = document.querySelector(selectors.loadingSpinner);
+      // spinner が存在しないか、存在しても非表示なら OK
+      if (!loader) return true;
+      // aria-hidden / opacity:0 / display:none / visibility:hidden のいずれかで非表示判定
+      if (loader.getAttribute('aria-hidden') === 'true') return true;
+      const style = window.getComputedStyle(loader);
+      return (
+        style.display === 'none' ||
+        style.visibility === 'hidden' ||
+        style.opacity === '0'
+      );
+    },
+    {
+      dataContent: '[data-loaded="true"], [data-testid="article-card"]',
+      loadingSpinner: SELECTORS.LOADING_SPINNER,
+    },
+    { timeout }
+  );
 }
 
 /**
@@ -284,9 +305,9 @@ export async function waitForElementTextContent(
  * 汎用的なローディングインジケーターが非表示になるまで待機
  */
 export async function waitForLoadingToDisappear(page: Page, timeout = 10000) {
-  // SELECTORSから定義されたローディングインジケーターを使用
-  const loadingIndicator = page.locator(SELECTORS.LOADING_INDICATOR);
-  
+  // Issue #611: LOADING_INDICATOR は LOADING_SPINNER に統合済み
+  const loadingIndicator = page.locator(SELECTORS.LOADING_SPINNER);
+
   // すべてのローディングインジケーターが非表示になるまで待つ
   await expect(loadingIndicator).toBeHidden({ timeout });
 }
@@ -322,7 +343,7 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
       return hasResultText || articleCards.length > 0;
     },
     {
-      loadingIndicator: SELECTORS.LOADING_INDICATOR,
+      loadingIndicator: SELECTORS.LOADING_SPINNER,
       searchResultText: SELECTORS.SEARCH_RESULT_TEXT,
       articleCard: SELECTORS.ARTICLE_CARD
     },
@@ -518,8 +539,8 @@ export async function waitForSuccessMessage(
   timeout = 5000
 ): Promise<boolean> {
   try {
-    // Prioritize common success message selectors over class-name dependency
-    const successLocator = page.locator('[role="status"], [data-testid="success-message"], [aria-live="polite"], [class*="success"]').filter({ hasText: message });
+    // Issue #611: class 依存セレクタを撤去し SELECTORS.SUCCESS_MESSAGE に集約
+    const successLocator = page.locator(SELECTORS.SUCCESS_MESSAGE).filter({ hasText: message });
     await successLocator.waitFor({ state: 'visible', timeout });
     return true;
   } catch {
@@ -615,8 +636,8 @@ export async function loginTestUser(
       
       const currentUrl = page.url();
       if (currentUrl.includes('/auth/login')) {
-        // エラーメッセージを確認
-        const errorMessage = await page.locator('p.text-destructive, .text-red-500, [role="alert"]').count();
+        // エラーメッセージを確認 (Issue #611: testid + role=alert に集約)
+        const errorMessage = await page.locator('[data-testid="error-message"], [role="alert"]').count();
         if (errorMessage > 0) {
           if (debug) console.log('Login error message detected');
           return false;

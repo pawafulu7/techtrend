@@ -140,7 +140,10 @@ export function ArticleList({
 
   if (articles.length === 0) {
     return (
-      <div className={cn('py-12 text-center', className)}>
+      <div
+        data-testid="empty-state"
+        className={cn('py-12 text-center', className)}
+      >
         <p className="text-muted-foreground">記事が見つかりませんでした</p>
       </div>
     );

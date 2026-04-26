@@ -1,19 +1,45 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { analyticsTracker, ReadingStats } from '@/lib/analytics/tracking';
-import { 
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, 
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
 } from 'recharts';
-import { 
-  BookOpen, Clock, TrendingUp, Target, Download, 
-  AlertCircle
+import {
+  BookOpen,
+  Clock,
+  TrendingUp,
+  Target,
+  Download,
+  AlertCircle,
 } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import {
+  format,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+} from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { AnalyticsSettings } from '@/app/components/analytics/AnalyticsSettings';
 
@@ -68,8 +94,8 @@ export default function AnalyticsContent() {
     const data = await analyticsTracker.exportData();
     if (!data) return;
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { 
-      type: 'application/json' 
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json',
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -80,35 +106,39 @@ export default function AnalyticsContent() {
   };
 
   // 統計の集計
-  const aggregatedStats = stats.reduce((acc, stat) => {
-    acc.totalArticles += stat.totalArticles;
-    acc.totalTime += stat.totalTime;
-    acc.completedArticles += stat.completedArticles;
-    
-    // タグ分布の集計
-    Object.entries(stat.tagDistribution).forEach(([tag, count]) => {
-      acc.tagDistribution[tag] = (acc.tagDistribution[tag] || 0) + count;
-    });
-    
-    // ソース分布の集計
-    Object.entries(stat.sourceDistribution).forEach(([source, count]) => {
-      acc.sourceDistribution[source] = (acc.sourceDistribution[source] || 0) + count;
-    });
-    
-    // 時間帯分布の集計
-    stat.hourlyDistribution.forEach((count, hour) => {
-      acc.hourlyDistribution[hour] += count;
-    });
+  const aggregatedStats = stats.reduce(
+    (acc, stat) => {
+      acc.totalArticles += stat.totalArticles;
+      acc.totalTime += stat.totalTime;
+      acc.completedArticles += stat.completedArticles;
 
-    return acc;
-  }, {
-    totalArticles: 0,
-    totalTime: 0,
-    completedArticles: 0,
-    tagDistribution: {} as Record<string, number>,
-    sourceDistribution: {} as Record<string, number>,
-    hourlyDistribution: new Array(24).fill(0)
-  });
+      // タグ分布の集計
+      Object.entries(stat.tagDistribution).forEach(([tag, count]) => {
+        acc.tagDistribution[tag] = (acc.tagDistribution[tag] || 0) + count;
+      });
+
+      // ソース分布の集計
+      Object.entries(stat.sourceDistribution).forEach(([source, count]) => {
+        acc.sourceDistribution[source] =
+          (acc.sourceDistribution[source] || 0) + count;
+      });
+
+      // 時間帯分布の集計
+      stat.hourlyDistribution.forEach((count, hour) => {
+        acc.hourlyDistribution[hour] += count;
+      });
+
+      return acc;
+    },
+    {
+      totalArticles: 0,
+      totalTime: 0,
+      completedArticles: 0,
+      tagDistribution: {} as Record<string, number>,
+      sourceDistribution: {} as Record<string, number>,
+      hourlyDistribution: new Array(24).fill(0),
+    }
+  );
 
   // グラフ用データの準備
   const tagData = Object.entries(aggregatedStats.tagDistribution)
@@ -116,25 +146,29 @@ export default function AnalyticsContent() {
     .slice(0, 10)
     .map(([name, value]) => ({ name, value }));
 
-  const sourceData = Object.entries(aggregatedStats.sourceDistribution)
-    .map(([name, value]) => ({ name, value }));
+  const sourceData = Object.entries(aggregatedStats.sourceDistribution).map(
+    ([name, value]) => ({ name, value })
+  );
 
   const hourlyData = aggregatedStats.hourlyDistribution.map((value, hour) => ({
     hour: `${hour}時`,
-    value
+    value,
   }));
 
-  const dailyData = stats.map(stat => ({
+  const dailyData = stats.map((stat) => ({
     date: format(new Date(stat.date), 'MM/dd', { locale: ja }),
     articles: stat.totalArticles,
-    time: stat.totalTime
+    time: stat.totalTime,
   }));
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div
+        data-testid="loading-spinner"
+        className="container mx-auto px-4 py-8"
+      >
+        <div className="flex h-64 items-center justify-center">
+          <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
         </div>
       </div>
     );
@@ -142,7 +176,7 @@ export default function AnalyticsContent() {
 
   if (!isEnabled) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <div className="container mx-auto max-w-2xl px-4 py-8">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -155,7 +189,7 @@ export default function AnalyticsContent() {
               読書分析機能を有効にすると、あなたの読書傾向を分析し、
               学習パターンを可視化できます。
             </p>
-            <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
+            <ul className="text-muted-foreground list-inside list-disc space-y-2 text-sm">
               <li>読書時間と記事数の追跡</li>
               <li>興味分野の可視化</li>
               <li>学習進捗の確認</li>
@@ -171,12 +205,15 @@ export default function AnalyticsContent() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+    <div
+      className="container mx-auto px-4 py-8"
+      data-testid="analytics-content"
+    >
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold">読書分析</h1>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportData}>
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             エクスポート
           </Button>
           <AnalyticsSettings />
@@ -184,74 +221,70 @@ export default function AnalyticsContent() {
       </div>
 
       {/* サマリーカード */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
-        <Card>
+      <div className="mb-6 grid gap-4 md:grid-cols-4">
+        <Card data-testid="stat-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              総読書数
-            </CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">総読書数</CardTitle>
+            <BookOpen className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{aggregatedStats.totalArticles}</div>
-            <p className="text-xs text-muted-foreground">
-              記事
-            </p>
+            <div className="text-2xl font-bold" data-testid="stats-value">
+              {aggregatedStats.totalArticles}
+            </div>
+            <p className="text-muted-foreground text-xs">記事</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="stat-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              読書時間
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">読書時間</CardTitle>
+            <Clock className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold" data-testid="stats-value">
               {Math.round(aggregatedStats.totalTime / 60)}
             </div>
-            <p className="text-xs text-muted-foreground">
-              時間
-            </p>
+            <p className="text-muted-foreground text-xs">時間</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="stat-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              完読率
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">完読率</CardTitle>
+            <TrendingUp className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold" data-testid="stats-value">
               {aggregatedStats.totalArticles > 0
-                ? Math.round((aggregatedStats.completedArticles / aggregatedStats.totalArticles) * 100)
-                : 0}%
+                ? Math.round(
+                    (aggregatedStats.completedArticles /
+                      aggregatedStats.totalArticles) *
+                      100
+                  )
+                : 0}
+              %
             </div>
-            <p className="text-xs text-muted-foreground">
-              {aggregatedStats.completedArticles} / {aggregatedStats.totalArticles} 記事
+            <p className="text-muted-foreground text-xs">
+              {aggregatedStats.completedArticles} /{' '}
+              {aggregatedStats.totalArticles} 記事
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="stat-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              平均読書時間
-            </CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">平均読書時間</CardTitle>
+            <Target className="text-muted-foreground h-4 w-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold" data-testid="stats-value">
               {aggregatedStats.totalArticles > 0
-                ? Math.round(aggregatedStats.totalTime / aggregatedStats.totalArticles)
+                ? Math.round(
+                    aggregatedStats.totalTime / aggregatedStats.totalArticles
+                  )
                 : 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              分/記事
-            </p>
+            <p className="text-muted-foreground text-xs">分/記事</p>
           </CardContent>
         </Card>
       </div>
@@ -265,7 +298,7 @@ export default function AnalyticsContent() {
             <TabsTrigger value="time">時間分析</TabsTrigger>
             <TabsTrigger value="sources">ソース分析</TabsTrigger>
           </TabsList>
-          
+
           <div className="flex gap-2">
             <Button
               variant={dateRange === 'week' ? 'default' : 'outline'}
@@ -289,7 +322,7 @@ export default function AnalyticsContent() {
             <CardHeader>
               <CardTitle>日別読書量</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent data-testid="chart-container">
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={dailyData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -323,7 +356,7 @@ export default function AnalyticsContent() {
             <CardHeader>
               <CardTitle>興味分野TOP10</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent data-testid="chart-container">
               <ResponsiveContainer width="100%" height={400}>
                 <BarChart data={tagData} layout="horizontal">
                   <CartesianGrid strokeDasharray="3 3" />
@@ -342,7 +375,7 @@ export default function AnalyticsContent() {
             <CardHeader>
               <CardTitle>時間帯別活動</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent data-testid="chart-container">
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={hourlyData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -361,7 +394,7 @@ export default function AnalyticsContent() {
             <CardHeader>
               <CardTitle>ソース別分布</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent data-testid="chart-container">
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -369,13 +402,18 @@ export default function AnalyticsContent() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                    label={({ name, percent }: any) =>
+                      `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                    }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
                   >
                     {sourceData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip />

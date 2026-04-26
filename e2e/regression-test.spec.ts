@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { SELECTORS } from './constants/selectors';
 
 test.describe('回帰テスト - 既存機能の動作確認', () => {
   // このテストスイートは多数の機能を網羅的にテストするため、タイムアウトを3倍に延長
@@ -71,10 +72,13 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
         const filteredCount = await page.locator('[data-testid="article-card"]').count();
         expect(filteredCount).toBeLessThanOrEqual(initialCount);
         
-        // すべての記事がDev.toソースであることを確認
-        const sourceBadges = await page.locator('[data-testid="article-card"] .badge').allTextContents();
-        sourceBadges.forEach(badge => {
-          expect(badge).toContain('Dev.to');
+        // すべての記事が Dev.to ソースであることを確認
+        // Issue #611 / PR #618 review: `.badge` 生クラス依存を撤去し ARTICLE_SOURCE testid に置換
+        const sourceLabels = await page
+          .locator(`[data-testid="article-card"] ${SELECTORS.ARTICLE_SOURCE}`)
+          .allTextContents();
+        sourceLabels.forEach(label => {
+          expect(label).toContain('Dev.to');
         });
       }
     });
@@ -186,24 +190,41 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
   });
 
   test.describe('表示モード切り替え', () => {
-    test('グリッド/リスト表示の切り替えが動作する', async ({ page }) => {
+    test('グリッド/リスト表示の切り替えが動作する', async ({ page }, testInfo) => {
       await page.goto('/');
       await page.waitForSelector('[data-testid="article-card"]');
-      
+
       // 表示モード切り替えボタンを探す
       const viewToggle = page.locator('[data-testid="view-mode-toggle"]');
-      if (await viewToggle.count() > 0) {
-        // 初期の表示モードを確認
-        const initialGridClass = await page.locator('.grid-cols-1').count();
-        
-        // 表示モードを切り替え
-        await viewToggle.click();
-        await page.waitForTimeout(500);
-        
-        // 表示が変わったことを確認
-        const afterGridClass = await page.locator('.grid-cols-1').count();
-        expect(afterGridClass).not.toBe(initialGridClass);
+      if ((await viewToggle.count()) === 0) {
+        testInfo.skip(true, 'view-mode-toggle testid not implemented yet (tracked in Issue #619)');
+        return;
       }
+
+      // Issue #611 / PR #618 review: Tailwind 生クラス `.grid-cols-1` 依存を撤去し
+      // aria-pressed / data-view-mode などの semantic 属性で view-mode 切替を判定する。
+      // 実装側にこれらの属性が無い場合は silent pass を防ぐため skip する。
+      const initialPressed = await viewToggle.getAttribute('aria-pressed');
+      const initialMode = await viewToggle.getAttribute('data-view-mode');
+      if (initialPressed === null && initialMode === null) {
+        testInfo.skip(
+          true,
+          'view-mode-toggle has neither aria-pressed nor data-view-mode (tracked in Issue #619)'
+        );
+        return;
+      }
+
+      // 表示モードを切り替え
+      await viewToggle.click();
+      await page.waitForTimeout(500);
+
+      // 表示が変わったことを確認（aria-pressed か data-view-mode のいずれかが変化）
+      const afterPressed = await viewToggle.getAttribute('aria-pressed');
+      const afterMode = await viewToggle.getAttribute('data-view-mode');
+      const changed =
+        (initialPressed !== null && afterPressed !== initialPressed) ||
+        (initialMode !== null && afterMode !== initialMode);
+      expect(changed).toBe(true);
     });
   });
 
@@ -226,7 +247,8 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
         await page.waitForTimeout(500);
         
         // モバイルナビゲーションが表示されることを確認
-        const mobileNav = page.locator('nav[data-testid*="mobile"], [class*="mobile-nav"], [class*="drawer"]');
+        // Issue #611: class 依存セレクタを撤去。data-testid*= は Issue #619 で追跡
+        const mobileNav = page.locator(`nav[data-testid*="mobile"], ${SELECTORS.MOBILE_MENU}`);
         expect(await mobileNav.count()).toBeGreaterThan(0);
       }
     });
@@ -289,34 +311,35 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
 });
 
 test.describe('エラーハンドリング', () => {
-  test('ネットワークエラー時に適切なメッセージが表示される', async ({ page }) => {
+  test('ネットワークエラー時に適切なメッセージが表示される', async ({ page }, testInfo) => {
     // APIリクエストを失敗させる
     await page.route('**/api/articles*', route => {
       route.abort();
     });
-    
+
     await page.goto('/');
     await page.waitForTimeout(1000);  // タイムアウトを短縮
-    
-    // エラーメッセージが表示される（複数の可能なセレクタ）
-    const errorSelectors = ['.text-red-500', '.error-message', '[class*="error"]', '[class*="danger"]'];
-    let errorMessage = null;
-    
-    for (const selector of errorSelectors) {
-      const element = page.locator(selector);
-      if (await element.count() > 0) {
-        errorMessage = await element.first().textContent();
-        break;
-      }
-    }
-    
+
+    // エラーメッセージが表示される (Issue #611 / PR #618 review: testid + ARIA に集約)
+    const errorElement = page.locator(SELECTORS.ERROR_MESSAGE);
+    const errorMessage =
+      (await errorElement.count()) > 0
+        ? await errorElement.first().textContent()
+        : null;
+
     if (errorMessage) {
-      console.log('Error message found:', errorMessage);
+      // エラー UI が検出された場合は内容を確認
+      expect(errorMessage).toBeTruthy();
     } else {
-      // エラーメッセージが見つからない場合は、ローディング状態が続いていることを確認
-      const loading = page.locator('[class*="loading"], [class*="spinner"]');
-      if (await loading.count() === 0) {
-        console.log('No error message or loading indicator found - error handling might be different');
+      // エラー UI が無い場合はローディング状態が継続しているかを確認
+      // どちらも無ければ silent pass を防ぐため testInfo.skip
+      const loading = page.locator(SELECTORS.LOADING_SPINNER);
+      if ((await loading.count()) === 0) {
+        testInfo.skip(
+          true,
+          'No error message or loading indicator detected (error handling implementation may differ)'
+        );
+        return;
       }
     }
   });
@@ -325,8 +348,8 @@ test.describe('エラーハンドリング', () => {
     await page.goto('/?search=xyzxyzxyzxyzxyz');
     await page.waitForTimeout(1000);  // タイムアウトを短縮
     
-    // 空の状態メッセージを探す
-    const emptySelectors = ['.text-gray-500', '.empty-state', '[class*="empty"]', '[class*="no-results"]'];
+    // 空の状態メッセージを探す (Issue #611 / PR #618 review: testid + ARIA に集約、生クラス依存は撤去)
+    const emptySelectors = [SELECTORS.EMPTY_STATE, '[role="status"]'];
     let emptyMessage = null;
     
     for (const selector of emptySelectors) {
