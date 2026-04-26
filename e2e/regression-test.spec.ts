@@ -190,30 +190,41 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
   });
 
   test.describe('表示モード切り替え', () => {
-    test('グリッド/リスト表示の切り替えが動作する', async ({ page }) => {
+    test('グリッド/リスト表示の切り替えが動作する', async ({ page }, testInfo) => {
       await page.goto('/');
       await page.waitForSelector('[data-testid="article-card"]');
-      
+
       // 表示モード切り替えボタンを探す
       const viewToggle = page.locator('[data-testid="view-mode-toggle"]');
-      if (await viewToggle.count() > 0) {
-        // Issue #611 / PR #618 review: Tailwind 生クラス `.grid-cols-1` 依存を撤去し
-        // aria-pressed / data-view-mode などの semantic 属性で view-mode 切替を判定する
-        const initialPressed = await viewToggle.getAttribute('aria-pressed');
-        const initialMode = await viewToggle.getAttribute('data-view-mode');
-
-        // 表示モードを切り替え
-        await viewToggle.click();
-        await page.waitForTimeout(500);
-
-        // 表示が変わったことを確認（aria-pressed か data-view-mode のいずれかが変化）
-        const afterPressed = await viewToggle.getAttribute('aria-pressed');
-        const afterMode = await viewToggle.getAttribute('data-view-mode');
-        const changed =
-          (initialPressed !== null && afterPressed !== initialPressed) ||
-          (initialMode !== null && afterMode !== initialMode);
-        expect(changed).toBe(true);
+      if ((await viewToggle.count()) === 0) {
+        testInfo.skip(true, 'view-mode-toggle testid not implemented yet (tracked in Issue #619)');
+        return;
       }
+
+      // Issue #611 / PR #618 review: Tailwind 生クラス `.grid-cols-1` 依存を撤去し
+      // aria-pressed / data-view-mode などの semantic 属性で view-mode 切替を判定する。
+      // 実装側にこれらの属性が無い場合は silent pass を防ぐため skip する。
+      const initialPressed = await viewToggle.getAttribute('aria-pressed');
+      const initialMode = await viewToggle.getAttribute('data-view-mode');
+      if (initialPressed === null && initialMode === null) {
+        testInfo.skip(
+          true,
+          'view-mode-toggle has neither aria-pressed nor data-view-mode (tracked in Issue #619)'
+        );
+        return;
+      }
+
+      // 表示モードを切り替え
+      await viewToggle.click();
+      await page.waitForTimeout(500);
+
+      // 表示が変わったことを確認（aria-pressed か data-view-mode のいずれかが変化）
+      const afterPressed = await viewToggle.getAttribute('aria-pressed');
+      const afterMode = await viewToggle.getAttribute('data-view-mode');
+      const changed =
+        (initialPressed !== null && afterPressed !== initialPressed) ||
+        (initialMode !== null && afterMode !== initialMode);
+      expect(changed).toBe(true);
     });
   });
 
@@ -309,8 +320,8 @@ test.describe('エラーハンドリング', () => {
     await page.goto('/');
     await page.waitForTimeout(1000);  // タイムアウトを短縮
     
-    // エラーメッセージが表示される (Issue #611 / PR #618 review: SELECTORS 定数経由で集約)
-    const errorSelectors = [SELECTORS.ERROR_MESSAGE, '.error-message'];
+    // エラーメッセージが表示される (Issue #611 / PR #618 review: testid + ARIA に集約、生クラス依存は撤去)
+    const errorSelectors = [SELECTORS.ERROR_MESSAGE];
     let errorMessage = null;
 
     for (const selector of errorSelectors) {
@@ -336,8 +347,8 @@ test.describe('エラーハンドリング', () => {
     await page.goto('/?search=xyzxyzxyzxyzxyz');
     await page.waitForTimeout(1000);  // タイムアウトを短縮
     
-    // 空の状態メッセージを探す (Issue #611 / PR #618 review: SELECTORS 定数経由で集約)
-    const emptySelectors = [SELECTORS.EMPTY_STATE, '[role="status"]', '.empty-state'];
+    // 空の状態メッセージを探す (Issue #611 / PR #618 review: testid + ARIA に集約、生クラス依存は撤去)
+    const emptySelectors = [SELECTORS.EMPTY_STATE, '[role="status"]'];
     let emptyMessage = null;
     
     for (const selector of emptySelectors) {

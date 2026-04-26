@@ -188,8 +188,14 @@ export async function waitForDataLoad(page: Page, timeout = 10000) {
       const loader = document.querySelector(selectors.loadingSpinner);
       // spinner が存在しないか、存在しても非表示なら OK
       if (!loader) return true;
+      // aria-hidden / opacity:0 / display:none / visibility:hidden のいずれかで非表示判定
+      if (loader.getAttribute('aria-hidden') === 'true') return true;
       const style = window.getComputedStyle(loader);
-      return style.display === 'none' || style.visibility === 'hidden';
+      return (
+        style.display === 'none' ||
+        style.visibility === 'hidden' ||
+        style.opacity === '0'
+      );
     },
     {
       dataContent: '[data-loaded="true"], [data-testid="article-card"]',

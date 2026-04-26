@@ -76,9 +76,13 @@ export const SELECTORS = {
   EXTERNAL_LINK: 'a[rel*="noopener"], a[rel*="external"]',
 
   // ===== 関連記事 =====
+  // Issue #619 で実装側 (related-articles.tsx) への data-testid="related-articles" 付与と
+  // ナビゲーションテストとの整合確認を追跡。それまで RELATED_SECTION は空振りで spec が skip 扱い。
   RELATED_SECTION: '[data-testid="related-articles"]',
-  // RELATED_SECTION 配下の記事カードに限定（ホーム/一覧の記事カードと混ざらないようスコープを絞る）
-  RELATED_ARTICLES: '[data-testid="related-articles"] [data-testid="article-card"]',
+  // 詳細ページでは [data-testid="article-card"] は関連記事のみに出現するため単独セレクタで識別可能。
+  // RELATED_SECTION wrapper 付与後は '[data-testid="related-articles"] [data-testid="article-card"]'
+  // に絞り込む方が望ましい (Issue #619)。
+  RELATED_ARTICLES: '[data-testid="article-card"]',
 
   // ===== 分析ページ =====
   ANALYTICS_CONTENT: '[data-testid="analytics-content"]',
