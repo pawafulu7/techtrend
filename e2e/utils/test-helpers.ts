@@ -1,4 +1,5 @@
-import { Page, expect } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { SELECTORS } from '../constants/selectors';
 
 /**
@@ -57,7 +58,7 @@ export async function expectArticleCards(page: Page, minCount = 1) {
  * @param min - 期待する最小ヒット数（既定: 1）
  */
 export async function assertLocatorFound(
-  locator: ReturnType<Page['locator']>,
+  locator: Locator,
   name: string,
   min = 1
 ): Promise<void> {
