@@ -13,6 +13,22 @@
 import { getISOWeek as getDateFnsISOWeek, getISOWeekYear } from 'date-fns';
 
 /**
+ * Parse and validate an ISO week string (e.g. "2026-W04").
+ * Throws on malformed input or out-of-range week numbers (must be 1..53).
+ */
+function parseISOWeek(isoWeek: string): { year: number; week: number } {
+  const match = isoWeek.match(/^(\d{4})-W(\d{2})$/);
+  if (!match) throw new Error(`Invalid ISO week format: ${isoWeek}`);
+
+  const year = parseInt(match[1], 10);
+  const week = parseInt(match[2], 10);
+  if (week < 1 || week > 53) {
+    throw new Error(`Invalid ISO week number: ${isoWeek}`);
+  }
+  return { year, week };
+}
+
+/**
  * ISO week format helper
  * Uses date-fns for accurate DST handling
  */
@@ -26,11 +42,7 @@ export function getISOWeek(date: Date): string {
  * Get the previous ISO week
  */
 export function getPreviousISOWeek(isoWeek: string): string {
-  const match = isoWeek.match(/^(\d{4})-W(\d{2})$/);
-  if (!match) throw new Error(`Invalid ISO week format: ${isoWeek}`);
-
-  const year = parseInt(match[1]);
-  const week = parseInt(match[2]);
+  const { year, week } = parseISOWeek(isoWeek);
 
   if (week === 1) {
     // Go to last week of previous year (52 or 53)
@@ -47,11 +59,7 @@ export function getPreviousISOWeek(isoWeek: string): string {
  * Get the next ISO week
  */
 export function getNextISOWeek(isoWeek: string): string {
-  const match = isoWeek.match(/^(\d{4})-W(\d{2})$/);
-  if (!match) throw new Error(`Invalid ISO week format: ${isoWeek}`);
-
-  const year = parseInt(match[1]);
-  const week = parseInt(match[2]);
+  const { year, week } = parseISOWeek(isoWeek);
 
   // Check if this year has 53 weeks by checking if Dec 28 is in week 53
   const dec28 = new Date(year, 11, 28);
@@ -65,30 +73,31 @@ export function getNextISOWeek(isoWeek: string): string {
 }
 
 /**
- * Get date range for an ISO week
+ * Get date range for an ISO week (UTC boundaries).
+ *
+ * Returns start/end as exact UTC midnight / 23:59:59.999 boundaries so that
+ * Prisma queries comparing UTC-stored timestamps don't drift across server
+ * timezones.
  */
 export function getWeekDateRange(isoWeek: string): { start: Date; end: Date } {
-  const match = isoWeek.match(/^(\d{4})-W(\d{2})$/);
-  if (!match) throw new Error(`Invalid ISO week format: ${isoWeek}`);
+  const { year, week } = parseISOWeek(isoWeek);
 
-  const year = parseInt(match[1]);
-  const week = parseInt(match[2]);
-
-  // Find the first Thursday of the year
-  const jan4 = new Date(year, 0, 4);
-  const dayOfWeek = jan4.getDay() || 7;
+  // Find the first Monday of the ISO year using UTC math
+  // (Jan 4 is always in ISO week 1 by definition)
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const dayOfWeek = jan4.getUTCDay() || 7;
   const firstMonday = new Date(jan4);
-  firstMonday.setDate(jan4.getDate() - dayOfWeek + 1);
+  firstMonday.setUTCDate(jan4.getUTCDate() - dayOfWeek + 1);
 
   // Monday of the target week
   const start = new Date(firstMonday);
-  start.setDate(firstMonday.getDate() + (week - 1) * 7);
-  start.setHours(0, 0, 0, 0);
+  start.setUTCDate(firstMonday.getUTCDate() + (week - 1) * 7);
+  start.setUTCHours(0, 0, 0, 0);
 
   // Sunday of the target week
   const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
+  end.setUTCDate(start.getUTCDate() + 6);
+  end.setUTCHours(23, 59, 59, 999);
 
   return { start, end };
 }

@@ -30,6 +30,7 @@ import {
   getWeekDateRange,
 } from './iso-week';
 
+/** @deprecated Re-exported for backward compatibility. Import directly from './iso-week'. */
 export { getISOWeek, getPreviousISOWeek, getNextISOWeek, getWeekDateRange };
 
 export interface DiffSummaryServiceOptions {
