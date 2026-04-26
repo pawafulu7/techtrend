@@ -9,6 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { toast } from '@/hooks/use-toast';
 
 export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
   const handleModeChange = async (mode: ViewModeToggleProps['currentMode']) => {
@@ -30,6 +31,12 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
         `[ViewModeToggle] failed to update view mode (mode=${mode}):`,
         error
       );
+      // ユーザーにも失敗を通知 (silent failure 回避)
+      toast({
+        title: '表示モード変更に失敗しました',
+        description: '時間をおいて再度お試しください。',
+        variant: 'destructive',
+      });
     }
   };
 
