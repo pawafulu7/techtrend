@@ -119,8 +119,7 @@ export async function waitForLoadingComplete(page: Page) {
 
 /**
  * データ読み込み完了を待つ
- * PR #618 review: aria-hidden / opacity:0 で残置する spinner も非表示として扱う
- * 完全実装は e2e-helpers.ts 版に集約し、ここでは re-export して二重実装を解消
+ * 完全実装は e2e-helpers.ts に集約。ここは re-export のみ（二重実装解消）。
  */
 export { waitForDataLoad } from './e2e-helpers';
 

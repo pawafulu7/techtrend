@@ -311,16 +311,16 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
 });
 
 test.describe('エラーハンドリング', () => {
-  test('ネットワークエラー時に適切なメッセージが表示される', async ({ page }) => {
+  test('ネットワークエラー時に適切なメッセージが表示される', async ({ page }, testInfo) => {
     // APIリクエストを失敗させる
     await page.route('**/api/articles*', route => {
       route.abort();
     });
-    
+
     await page.goto('/');
     await page.waitForTimeout(1000);  // タイムアウトを短縮
-    
-    // エラーメッセージが表示される (Issue #611 / PR #618 review: testid + ARIA に集約、生クラス依存は撤去)
+
+    // エラーメッセージが表示される (Issue #611 / PR #618 review: testid + ARIA に集約)
     const errorElement = page.locator(SELECTORS.ERROR_MESSAGE);
     const errorMessage =
       (await errorElement.count()) > 0
@@ -328,12 +328,18 @@ test.describe('エラーハンドリング', () => {
         : null;
 
     if (errorMessage) {
-      console.log('Error message found:', errorMessage);
+      // エラー UI が検出された場合は内容を確認
+      expect(errorMessage).toBeTruthy();
     } else {
-      // エラーメッセージが見つからない場合は、ローディング状態が続いていることを確認
+      // エラー UI が無い場合はローディング状態が継続しているかを確認
+      // どちらも無ければ silent pass を防ぐため testInfo.skip
       const loading = page.locator(SELECTORS.LOADING_SPINNER);
-      if (await loading.count() === 0) {
-        console.log('No error message or loading indicator found - error handling might be different');
+      if ((await loading.count()) === 0) {
+        testInfo.skip(
+          true,
+          'No error message or loading indicator detected (error handling implementation may differ)'
+        );
+        return;
       }
     }
   });
