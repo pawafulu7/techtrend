@@ -9,28 +9,50 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { toast } from '@/hooks/use-toast';
 
 export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
   const handleModeChange = async (mode: ViewModeToggleProps['currentMode']) => {
     // サーバーに送信してCookieを更新
     try {
-      await fetch('/api/view-mode', {
+      const response = await fetch('/api/view-mode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode }),
       });
+      if (!response.ok) {
+        throw new Error(`View mode update failed: HTTP ${response.status}`);
+      }
       // ページをリロードして新しい表示モードを適用
       window.location.reload();
-    } catch {
+    } catch (error) {
+      // POST 失敗時は reload せず、開発者が原因を追跡できるようログだけ残す
+      console.error(
+        `[ViewModeToggle] failed to update view mode (mode=${mode}):`,
+        error
+      );
+      // ユーザーにも失敗を通知 (silent failure 回避)
+      toast({
+        title: '表示モード変更に失敗しました',
+        description: '時間をおいて再度お試しください。',
+        variant: 'destructive',
+      });
     }
   };
 
   return (
     <TooltipProvider>
-      <div className="flex gap-1">
+      <div
+        className="flex gap-1"
+        data-testid="view-mode-toggle"
+        data-view-mode={currentMode}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              data-testid="view-mode-card"
+              aria-pressed={currentMode === 'card'}
+              aria-label="カード表示"
               variant={currentMode === 'card' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleModeChange('card')}
@@ -47,6 +69,9 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              data-testid="view-mode-compact"
+              aria-pressed={currentMode === 'compact'}
+              aria-label="コンパクト表示"
               variant={currentMode === 'compact' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleModeChange('compact')}
@@ -63,6 +88,9 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              data-testid="view-mode-list"
+              aria-pressed={currentMode === 'list'}
+              aria-label="リスト表示"
               variant={currentMode === 'list' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleModeChange('list')}

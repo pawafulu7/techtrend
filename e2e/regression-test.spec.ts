@@ -190,41 +190,40 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
   });
 
   test.describe('表示モード切り替え', () => {
-    test('グリッド/リスト表示の切り替えが動作する', async ({ page }, testInfo) => {
+    test('グリッド/リスト表示の切り替えが動作する', async ({ page }) => {
       await page.goto('/');
       await page.waitForSelector('[data-testid="article-card"]');
 
-      // 表示モード切り替えボタンを探す
+      // wrapper に付与された data-view-mode で現在のモードを取得し、
+      // aria-pressed は各 Button の状態として個別に検証する (Issue #619 PR-A)。
       const viewToggle = page.locator('[data-testid="view-mode-toggle"]');
-      if ((await viewToggle.count()) === 0) {
-        testInfo.skip(true, 'view-mode-toggle testid not implemented yet (tracked in Issue #619)');
-        return;
-      }
+      await expect(viewToggle).toBeVisible();
 
-      // Issue #611 / PR #618 review: Tailwind 生クラス `.grid-cols-1` 依存を撤去し
-      // aria-pressed / data-view-mode などの semantic 属性で view-mode 切替を判定する。
-      // 実装側にこれらの属性が無い場合は silent pass を防ぐため skip する。
-      const initialPressed = await viewToggle.getAttribute('aria-pressed');
       const initialMode = await viewToggle.getAttribute('data-view-mode');
-      if (initialPressed === null && initialMode === null) {
-        testInfo.skip(
-          true,
-          'view-mode-toggle has neither aria-pressed nor data-view-mode (tracked in Issue #619)'
-        );
-        return;
-      }
+      expect(initialMode).not.toBeNull();
 
-      // 表示モードを切り替え
-      await viewToggle.click();
-      await page.waitForTimeout(500);
+      // 現在のモードと異なるモードを選択 (card/compact/list の中から)
+      const allModes = ['card', 'compact', 'list'] as const;
+      const targetMode = allModes.find((m) => m !== initialMode) ?? 'list';
+      const targetButton = viewToggle.locator(`[data-testid="view-mode-${targetMode}"]`);
 
-      // 表示が変わったことを確認（aria-pressed か data-view-mode のいずれかが変化）
-      const afterPressed = await viewToggle.getAttribute('aria-pressed');
-      const afterMode = await viewToggle.getAttribute('data-view-mode');
-      const changed =
-        (initialPressed !== null && afterPressed !== initialPressed) ||
-        (initialMode !== null && afterMode !== initialMode);
-      expect(changed).toBe(true);
+      // 現状の aria-pressed: 初期モードのボタンは true, 他は false
+      const initialButton = viewToggle.locator(`[data-testid="view-mode-${initialMode}"]`);
+      await expect(initialButton).toHaveAttribute('aria-pressed', 'true');
+      await expect(targetButton).toHaveAttribute('aria-pressed', 'false');
+
+      // ボタン click で表示モード切替 (内部で window.location.reload() が呼ばれる)
+      await targetButton.click();
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForSelector('[data-testid="view-mode-toggle"]');
+
+      // wrapper の data-view-mode が targetMode に変化していること
+      const reloadedToggle = page.locator('[data-testid="view-mode-toggle"]');
+      await expect(reloadedToggle).toHaveAttribute('data-view-mode', targetMode);
+
+      // クリックしたボタンの aria-pressed が true になっていること
+      const reloadedTargetButton = reloadedToggle.locator(`[data-testid="view-mode-${targetMode}"]`);
+      await expect(reloadedTargetButton).toHaveAttribute('aria-pressed', 'true');
     });
   });
 
