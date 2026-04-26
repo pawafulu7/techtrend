@@ -1,20 +1,33 @@
 /**
  * E2Eテスト用セレクター定数
- * 
+ *
  * 命名規則:
  * - 大文字のスネークケースを使用
  * - カテゴリーごとにグループ化
- * - 可能な限り data-testid を優先
+ * - **data-testid プライマリ**（Issue #611 で class 依存セレクタを全廃）
+ *
+ * testid 命名規則の詳細は `e2e/testid-naming.md` を参照。
+ *
+ * Fallback として使用してよいもの:
+ * - ARIA role / live region (`role="alert"`, `role="status"`)
+ * - Semantic HTML タグ (`time`, `nav` 等)
+ * - 安定した URL prefix (`a[href*="..."]`)
+ * - 安定した属性 (`select[name="..."]`, `input[type="..."]`)
+ *
+ * 使用禁止:
+ * - Tailwind utility class 直接指定 (`.text-red-500` 等)
+ * - class substring セレクタ (`[class*="..."]`)
  */
 
 export const SELECTORS = {
   // ===== 共通要素 =====
   MAIN_CONTENT: 'main',
   BODY: 'body',
-  LOADING_INDICATOR: 'main .animate-spin, main [class*="loader"]',
-  LOADING_SPINNER: '[class*="loading"], [class*="spinner"]',
-  ERROR_MESSAGE: '[class*="error"], [class*="404"], [class*="not-found"]',
-  
+  // Loading: Issue #611 で LOADING_INDICATOR と LOADING_SPINNER を 1 エントリに統合
+  LOADING_SPINNER: '[data-testid="loading-spinner"]',
+  ERROR_MESSAGE: '[data-testid="error-message"], [role="alert"]',
+  EMPTY_STATE: '[data-testid="empty-state"]',
+
   // ===== ナビゲーション =====
   NAV_MENU: 'nav[role="navigation"]',
   THEME_TOGGLE: '[data-testid="theme-toggle-button"]',
@@ -22,26 +35,26 @@ export const SELECTORS = {
   THEME_OPTION_LIGHT: '[data-testid="theme-option-light"]',
   THEME_OPTION_DARK: '[data-testid="theme-option-dark"]',
   THEME_OPTION_SYSTEM: '[data-testid="theme-option-system"]',
-  
+
   // ===== 記事カード =====
-  ARTICLE_CARD: 'article, [class*="article"], [class*="card"]',
-  ARTICLE_LINK: 'article a, [class*="article"] a, [class*="card"] a',
-  ARTICLE_TITLE: 'h1, h2, h3, [class*="title"]',
-  ARTICLE_SUMMARY: 'p.text-sm, [class*="summary"]',
-  ARTICLE_CONTENT: 'article, [class*="content"], [class*="body"]',
-  ARTICLE_DATE: 'time, [class*="date"], [class*="published"]',
-  ARTICLE_SOURCE: '[class*="source"], [data-testid="source"]',
-  ARTICLE_TAGS: '[class*="tag"], [data-testid="tag"]',
-  
+  ARTICLE_CARD: '[data-testid="article-card"]',
+  ARTICLE_LINK: '[data-testid="article-card"] a',
+  ARTICLE_TITLE: '[data-testid="article-title"]',
+  ARTICLE_SUMMARY: '[data-testid="article-summary"]',
+  ARTICLE_CONTENT: '[data-testid="article-card"]',
+  ARTICLE_DATE: '[data-testid="article-date"]',
+  ARTICLE_SOURCE: '[data-testid="article-source"]',
+  ARTICLE_TAGS: '[data-testid="tag-item"]',
+
   // ===== 検索 =====
   SEARCH_INPUT: '[data-testid="search-box-input"]',
   SEARCH_RESULTS: '[data-testid="search-results"]',
-  SEARCH_RESULT_COUNT: '[data-testid="search-result-count"], div:has-text("件の記事"), .search-count, .result-count',
-  SEARCH_RESULT_TEXT: '[data-testid="search-result-text"], .search-result-text, main p',  // より具体的なセレクタ
-  SOURCE_FILTER: 'select[name*="source"], select[data-testid="source-filter"], [data-testid="source-dropdown"]',
-  DATE_FILTER: 'select[name*="date"], input[type="date"], [data-testid="date-filter"]',
-  SORT_SELECT: 'select[name*="sort"], select[data-testid="sort"], [data-testid="sort-dropdown"]',
-  
+  SEARCH_RESULT_COUNT: '[data-testid="search-result-count"]',
+  SEARCH_RESULT_TEXT: '[data-testid="search-result-text"]',
+  SOURCE_FILTER: '[data-testid="source-filter"], [data-testid="source-dropdown"], select[name="source"]',
+  DATE_FILTER: '[data-testid="date-filter"], input[type="date"]',
+  SORT_SELECT: '[data-testid="sort-dropdown"], [data-testid="sort"], select[name="sort"]',
+
   // ===== ページネーション =====
   PAGINATION: '[data-testid="pagination-container"]',
   PAGINATION_PREV: '[data-testid="pagination-prev"]',
@@ -49,36 +62,36 @@ export const SELECTORS = {
   PAGINATION_CURRENT: '[data-testid="pagination-current"]',
   NEXT_PAGE_BUTTON: '[data-testid="pagination-next"]',
   PREV_PAGE_BUTTON: '[data-testid="pagination-prev"]',
-  
+
   // ===== お気に入り・リーディングリスト =====
+  // Issue #611 注: data-testid*= substring マッチは別 issue でフォローアップ予定
   FAVORITE_BUTTON: '[data-testid*="favorite"], button[aria-label*="お気に入り"], button[aria-label*="favorite"]',
   READING_LIST_BUTTON: '[data-testid="reading-list"], button[aria-label*="リーディングリスト"]',
-  
+
   // ===== 外部リンク =====
-  SOURCE_LINK: 'a[href*="http"], a[target="_blank"], [data-testid="source-link"]',
+  SOURCE_LINK: '[data-testid="source-link"], a[target="_blank"]',
   EXTERNAL_LINK: 'a[rel*="noopener"], a[rel*="external"]',
-  
+
   // ===== 関連記事 =====
-  RELATED_SECTION: 'section:has-text("関連"), section:has-text("Related"), [data-testid="related-articles"]',
-  RELATED_ARTICLES: 'article, [class*="card"]',
-  
+  RELATED_SECTION: '[data-testid="related-articles"]',
+  RELATED_ARTICLES: '[data-testid="article-card"]',
+
   // ===== 分析ページ =====
-  ANALYTICS_CONTENT: '[class*="analytics"], [class*="stats"], [data-testid="analytics"]',
-  STATS_CARDS: '[class*="stat"], [class*="metric"], [data-testid="stat-card"]',
-  STATS_VALUE: '[class*="value"], [class*="number"], span',
-  CHART_CONTAINER: '[class*="chart"], canvas, svg',
-  PERIOD_FILTER: 'select[name*="period"], select[name*="range"], [data-testid="period-filter"]',
-  
+  ANALYTICS_CONTENT: '[data-testid="analytics-content"]',
+  STATS_CARDS: '[data-testid="stat-card"]',
+  STATS_VALUE: '[data-testid="stats-value"]',
+  CHART_CONTAINER: '[data-testid="chart-container"]',
+  PERIOD_FILTER: '[data-testid="period-filter"], select[name="period"], select[name="range"]',
+
   // ===== タグ関連 =====
-  TAG_CLOUD: '[class*="tag-cloud"], [data-testid="tag-cloud"]',
-  TAG_ITEM: '[class*="tag"], a[href*="tag"], [data-testid="tag"]',
-  
+  TAG_CLOUD: '[data-testid="tag-cloud"]',
+  TAG_ITEM: '[data-testid="tag-item"]',
+
   // ===== エクスポート =====
   EXPORT_BUTTON: 'button:has-text("エクスポート"), button:has-text("Export"), button:has-text("ダウンロード")',
-  
+
   // ===== レスポンシブ =====
   MOBILE_MENU: '[data-testid="mobile-menu"], button[aria-label*="メニュー"]',
-  MOBILE_VIEWPORT: '[class*="mobile"], [class*="sm:"]',
 } as const;
 
 // セレクタータイプの定義
