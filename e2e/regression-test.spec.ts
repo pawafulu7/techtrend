@@ -321,16 +321,11 @@ test.describe('エラーハンドリング', () => {
     await page.waitForTimeout(1000);  // タイムアウトを短縮
     
     // エラーメッセージが表示される (Issue #611 / PR #618 review: testid + ARIA に集約、生クラス依存は撤去)
-    const errorSelectors = [SELECTORS.ERROR_MESSAGE];
-    let errorMessage = null;
-
-    for (const selector of errorSelectors) {
-      const element = page.locator(selector);
-      if (await element.count() > 0) {
-        errorMessage = await element.first().textContent();
-        break;
-      }
-    }
+    const errorElement = page.locator(SELECTORS.ERROR_MESSAGE);
+    const errorMessage =
+      (await errorElement.count()) > 0
+        ? await errorElement.first().textContent()
+        : null;
 
     if (errorMessage) {
       console.log('Error message found:', errorMessage);

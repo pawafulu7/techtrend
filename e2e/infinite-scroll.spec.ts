@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { SELECTORS } from './constants/selectors';
 import { openFilterSidebar } from './helpers/wait-utils';
 
 test.describe('無限スクロール機能', () => {
@@ -124,12 +125,10 @@ test.describe('無限スクロール機能', () => {
     await page.waitForTimeout(1000);
     
     // エラーメッセージまたはリトライボタンが表示されることを確認
-    // Issue #611 / PR #618 review: testid + ARIA を主とし、ページ全体への loose な
-    // text マッチは false-positive を生むため最小限の補助としてのみ残す。
+    // PR #618 review: ハードコード testid を撤去し SELECTORS.ERROR_MESSAGE 経由に統一。
     // 未マッチ時は console.log での silent pass を避け testInfo.skip で明示的に飛ばす。
     const errorSelectors = [
-      '[data-testid="error-message"]',
-      '[role="alert"]',
+      SELECTORS.ERROR_MESSAGE,
       'text=もう一度',
     ];
 

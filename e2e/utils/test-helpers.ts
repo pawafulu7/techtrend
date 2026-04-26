@@ -119,20 +119,10 @@ export async function waitForLoadingComplete(page: Page) {
 
 /**
  * データ読み込み完了を待つ
- * ローディング表示が消え、データ表示要素が現れるまで待機
- * Issue #611: class 依存を data-testid プライマリ化
+ * PR #618 review: aria-hidden / opacity:0 で残置する spinner も非表示として扱う
+ * 完全実装は e2e-helpers.ts 版に集約し、ここでは re-export して二重実装を解消
  */
-export async function waitForDataLoad(page: Page, timeout = 10000) {
-  await page.waitForFunction(
-    () => {
-      const loader = document.querySelector('[data-testid="loading-spinner"]');
-      const hasData = document.querySelector('[data-loaded="true"], [data-testid="article-card"]');
-      return !loader && hasData;
-    },
-    undefined,
-    { timeout }
-  );
-}
+export { waitForDataLoad } from './e2e-helpers';
 
 /**
  * APIレスポンスを待つ

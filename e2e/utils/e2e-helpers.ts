@@ -160,8 +160,10 @@ export async function expectUrlPath(page: Page, expectedPath: string | RegExp) {
  * エラーメッセージが表示されていないことを確認
  */
 export async function expectNoErrors(page: Page) {
-  // Use only SELECTORS constants for consistency
-  const visibleErrors = page.locator(`${SELECTORS.ERROR_MESSAGE}:visible`);
+  // PR #618 review: SELECTORS.ERROR_MESSAGE はカンマ区切りのため `:visible` 疑似クラスは
+  // 最後のセレクタにしか適用されない。Locator.filter({ visible: true }) で各セレクタごとに
+  // visibility 判定する。
+  const visibleErrors = page.locator(SELECTORS.ERROR_MESSAGE).filter({ visible: true });
   await expect(visibleErrors).toHaveCount(0);
 }
 
