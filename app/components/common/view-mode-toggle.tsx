@@ -14,11 +14,14 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
   const handleModeChange = async (mode: ViewModeToggleProps['currentMode']) => {
     // サーバーに送信してCookieを更新
     try {
-      await fetch('/api/view-mode', {
+      const response = await fetch('/api/view-mode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode }),
       });
+      if (!response.ok) {
+        throw new Error(`View mode update failed: HTTP ${response.status}`);
+      }
       // ページをリロードして新しい表示モードを適用
       window.location.reload();
     } catch (error) {
