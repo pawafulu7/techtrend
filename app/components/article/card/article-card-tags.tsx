@@ -28,8 +28,9 @@ export function ArticleCardTags({
       {visibleTags.map((tag) => (
         <BadgeV2
           key={tag.id}
+          data-testid="tag-item"
           variant="outline"
-          className="text-xs cursor-pointer"
+          className="cursor-pointer text-xs"
           onClick={(e) => {
             e.stopPropagation();
             if (onTagClick) {
@@ -43,7 +44,7 @@ export function ArticleCardTags({
         </BadgeV2>
       ))}
       {remainingCount > 0 && (
-        <span className="text-xs text-muted-foreground">+{remainingCount}</span>
+        <span className="text-muted-foreground text-xs">+{remainingCount}</span>
       )}
     </div>
   );

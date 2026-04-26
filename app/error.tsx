@@ -26,7 +26,11 @@ export default function Error({
             aria-hidden="true"
           />
         </div>
-        <h2 className="text-foreground mb-2 text-2xl font-semibold">
+        <h2
+          data-testid="error-message"
+          role="alert"
+          className="text-foreground mb-2 text-2xl font-semibold"
+        >
           エラーが発生しました
         </h2>
         <p className="text-muted-foreground mb-6">

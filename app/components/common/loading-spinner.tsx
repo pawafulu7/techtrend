@@ -12,6 +12,7 @@ export function LoadingSpinner({
 }: LoadingSpinnerProps) {
   return (
     <div
+      data-testid="loading-spinner"
       role="status"
       aria-live="polite"
       className={cn(

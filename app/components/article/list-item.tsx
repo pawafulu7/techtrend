@@ -103,6 +103,7 @@ export function ArticleListItem({
               </BadgeV2>
             )}
             <h3
+              data-testid="article-title"
               className="text-foreground line-clamp-1 text-sm font-medium group-hover:text-(--tt-color-primary)"
               title={article.translatedTitle || article.title}
             >
@@ -110,7 +111,10 @@ export function ArticleListItem({
             </h3>
           </div>
           {article.summary && (
-            <p className="text-muted-foreground mt-0.5 line-clamp-1 text-xs">
+            <p
+              data-testid="article-summary"
+              className="text-muted-foreground mt-0.5 line-clamp-1 text-xs"
+            >
               {article.summary}
             </p>
           )}
@@ -127,6 +131,7 @@ export function ArticleListItem({
               >
                 <button
                   type="button"
+                  data-testid="tag-item"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (onTagClick) {

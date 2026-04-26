@@ -73,7 +73,11 @@ export function StatsClient() {
 
   if (isError) {
     return (
-      <div className="text-destructive py-8 text-center">
+      <div
+        data-testid="error-message"
+        role="alert"
+        className="text-destructive py-8 text-center"
+      >
         エラーが発生しました:{' '}
         {error instanceof Error ? error.message : 'An error occurred'}
       </div>

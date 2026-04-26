@@ -39,6 +39,7 @@ export function PopularTags({ tags, currentTag }: PopularTagsProps) {
               {tags.map((tag) => (
                 <Badge
                   key={tag.id}
+                  data-testid="tag-item"
                   variant={currentTag === tag.name ? 'default' : 'secondary'}
                   className={cn(
                     'cursor-pointer whitespace-nowrap transition-all',

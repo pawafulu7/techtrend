@@ -11,7 +11,10 @@ interface TagCloudProps {
 export function TagCloud({ tags }: TagCloudProps) {
   if (tags.length === 0) {
     return (
-      <div className="bg-background rounded-lg border p-4 shadow-sm">
+      <div
+        data-testid="empty-state"
+        className="bg-background rounded-lg border p-4 shadow-sm"
+      >
         <div className="mb-3 flex items-center gap-2">
           <Tag className="h-4 w-4 text-(--tt-color-info)" />
           <h3 className="text-sm font-semibold">人気タグ</h3>
@@ -45,7 +48,12 @@ export function TagCloud({ tags }: TagCloudProps) {
       </div>
       <div className="flex flex-wrap gap-2">
         {tags.map((tag) => (
-          <BadgeV2 key={tag.id} variant={getTagVariant(tag.count)} asChild>
+          <BadgeV2
+            key={tag.id}
+            data-testid="tag-item"
+            variant={getTagVariant(tag.count)}
+            asChild
+          >
             <Link href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}>
               {tag.name}
               <span className="ml-1 opacity-70">{tag.count}</span>
