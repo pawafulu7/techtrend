@@ -59,8 +59,8 @@ export const SELECTORS = {
   EXTERNAL_LINK: 'a[rel*="noopener"], a[rel*="external"]',
   
   // ===== 関連記事 =====
-  RELATED_SECTION: 'section:has-text("関連"), section:has-text("Related"), [data-testid="related-articles"]',
-  RELATED_ARTICLES: 'article, [class*="card"]',
+  RELATED_SECTION: '[data-testid="related-articles"]',
+  RELATED_ARTICLE_LINK: '[data-testid="related-articles"] [data-testid="related-article-link"]',
   
   // ===== 分析ページ =====
   ANALYTICS_CONTENT: '[class*="analytics"], [class*="stats"], [data-testid="analytics"]',
