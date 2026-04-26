@@ -177,12 +177,12 @@ export async function waitForLoadingComplete(page: Page) {
  * ローディング表示が消え、データ表示要素が現れるまで待機
  */
 export async function waitForDataLoad(page: Page, timeout = 10000) {
-  // Wait for loading indicator to disappear (use common selector)
-  const loadingIndicator = page.locator(SELECTORS.LOADING_INDICATOR);
+  // Issue #611: LOADING_INDICATOR を LOADING_SPINNER に統合、データ要素を testid 化
+  const loadingIndicator = page.locator(SELECTORS.LOADING_SPINNER);
   await expect(loadingIndicator).toBeHidden({ timeout });
-  
+
   // Wait for data content to appear
-  const dataContent = page.locator('[data-loaded="true"], main [class*="card"], main article').first();
+  const dataContent = page.locator('[data-loaded="true"], [data-testid="article-card"]').first();
   await expect(dataContent).toBeVisible({ timeout });
 }
 
@@ -518,8 +518,8 @@ export async function waitForSuccessMessage(
   timeout = 5000
 ): Promise<boolean> {
   try {
-    // Prioritize common success message selectors over class-name dependency
-    const successLocator = page.locator('[role="status"], [data-testid="success-message"], [aria-live="polite"], [class*="success"]').filter({ hasText: message });
+    // Issue #611: class 依存セレクタを撤去し testid + ARIA に集約
+    const successLocator = page.locator('[data-testid="success-message"], [role="status"], [aria-live="polite"]').filter({ hasText: message });
     await successLocator.waitFor({ state: 'visible', timeout });
     return true;
   } catch {
@@ -615,8 +615,8 @@ export async function loginTestUser(
       
       const currentUrl = page.url();
       if (currentUrl.includes('/auth/login')) {
-        // エラーメッセージを確認
-        const errorMessage = await page.locator('p.text-destructive, .text-red-500, [role="alert"]').count();
+        // エラーメッセージを確認 (Issue #611: testid + role=alert に集約)
+        const errorMessage = await page.locator('[data-testid="error-message"], [role="alert"]').count();
         if (errorMessage > 0) {
           if (debug) console.log('Login error message detected');
           return false;
