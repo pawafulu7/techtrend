@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { SELECTORS } from './constants/selectors';
 import { MOBILE_VIEWPORT } from './constants/viewports';
+import { assertLocatorFound } from './utils/test-helpers';
 
 test.describe('回帰テスト - 既存機能の動作確認', () => {
   // このテストスイートは多数の機能を網羅的にテストするため、タイムアウトを3倍に延長
@@ -22,9 +23,9 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
       const firstCard = page.locator('[data-testid="article-card"]').first();
       
       // タイトルまたはサムネイルが存在（サムネイル時はタイトル非表示）
-      const hasTitle = await firstCard.locator('h3').count() > 0;
-      const hasThumbnail = await firstCard.locator('img').count() > 0;
-      expect(hasTitle || hasThumbnail).toBeTruthy();
+      // Issue #619 PR-D: count()>0 OR 検証を assertLocatorFound に意味同値置換
+      // (Playwright の `,` セパレータは OR 解釈で、両セレクタの和集合を返す)
+      await assertLocatorFound(firstCard.locator('h3, img'), 'firstCard heading or thumbnail');
       
       // ソース名が存在する場合チェック（showSource prop次第でオプショナル）
       const sourceCount = await firstCard.locator('[data-testid="article-source"]').count();
