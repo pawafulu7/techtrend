@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { waitForSourceFilter, getTimeout, waitForUrlParam } from '../../e2e/helpers/wait-utils';
 import { isCI } from '../../e2e/helpers/env';
+import { MOBILE_VIEWPORT } from '../../e2e/constants/viewports';
 
 test.describe('ソースカテゴリフィルター機能', () => {
   test.beforeEach(async ({ page }) => {
@@ -247,7 +248,8 @@ test.describe('ソースカテゴリフィルター機能', () => {
 
     // まず初期状態を全選択にする（テスト環境での一貫性のため）
     // sticky filter 内のボタンは auto-scroll-into-view が効かないことがあるため明示的にスクロール
-    const selectAllButton = page.locator('[data-testid="select-all-button"]:visible');
+    // :visible が複数マッチしたときの scrollIntoViewIfNeeded エラー回避のため .first()
+    const selectAllButton = page.locator('[data-testid="select-all-button"]:visible').first();
     await selectAllButton.scrollIntoViewIfNeeded();
     await selectAllButton.click();
     await page.waitForTimeout(1000); // 状態更新を待つ（500ms→1000msに増加）
@@ -320,7 +322,7 @@ test.describe('ソースカテゴリフィルター機能', () => {
   });
 
   test('モバイル表示でもカテゴリフィルターが動作する', async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 667 });
+    await page.setViewportSize(MOBILE_VIEWPORT);
 
     // モバイルのフィルタートリガー（data-testidで一意特定）
     const mobileFilterButton = page.getByTestId('mobile-filter-trigger');

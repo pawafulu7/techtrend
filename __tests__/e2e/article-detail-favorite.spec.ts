@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { SELECTORS } from './constants/selectors';
 import { waitForPageLoad } from './utils/e2e-helpers';
+import { MOBILE_VIEWPORT } from '../../e2e/constants/viewports';
 
 // Phase 3: CI最適化 - 長時間テストにマーク
 test.describe('Article Detail Favorite Button', () => {
@@ -76,7 +77,7 @@ test.describe('Article Detail Favorite Button', () => {
 
   test('should maintain responsive layout on mobile', async ({ page }) => {
     // モバイルビューポートに設定
-    await page.setViewportSize({ width: 375, height: 667 });
+    await page.setViewportSize(MOBILE_VIEWPORT);
     
     // お気に入りボタンが表示されることを確認（data-testidを使用）
     const favoriteButton = page.locator('[data-testid="favorite-button"]');

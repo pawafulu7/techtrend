@@ -8,6 +8,7 @@ import {
   waitForFilterApplication,
   openFilterSidebar
 } from '../../e2e/helpers/wait-utils';
+import { LAPTOP_VIEWPORT } from '../../e2e/constants/viewports';
 
 // CI環境の検出
 const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());
@@ -19,7 +20,7 @@ test.describe('フィルター条件の永続化', () => {
     // Clear cookies before each test
     await page.context().clearCookies();
     // デスクトップビューで開く（サイドバーが表示されるように）
-    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.setViewportSize(LAPTOP_VIEWPORT);
     await page.goto('/');
     await waitForPageLoad(page);
   });
