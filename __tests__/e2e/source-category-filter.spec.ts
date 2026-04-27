@@ -246,7 +246,10 @@ test.describe('ソースカテゴリフィルター機能', () => {
     const sourceCount = page.locator('[data-testid="filter-area"]:visible').getByTestId('source-count');
 
     // まず初期状態を全選択にする（テスト環境での一貫性のため）
-    await page.locator('[data-testid="select-all-button"]:visible').click();
+    // sticky filter 内のボタンは auto-scroll-into-view が効かないことがあるため明示的にスクロール
+    const selectAllButton = page.locator('[data-testid="select-all-button"]:visible');
+    await selectAllButton.scrollIntoViewIfNeeded();
+    await selectAllButton.click();
     await page.waitForTimeout(1000); // 状態更新を待つ（500ms→1000msに増加）
 
     // 初期の合計値 Y を取得

@@ -117,10 +117,11 @@ test.describe('関連記事のナビゲーション', () => {
       firstRelatedLink.click({ button: 'middle' })
     ]);
 
-    await waitForPageLoad(newPage, { waitForNetworkIdle: false });
+    // 新タブの URL 確定を明示的に待つ (toHaveURL の "navigation to finish" 待機は新タブで flaky)
+    await newPage.waitForURL(/\/articles\/[^/]+$/, { timeout: 30000, waitUntil: 'domcontentloaded' });
 
-    // 新しいタブで詳細要約ページが開いたことを確認
-    await expect(newPage).toHaveURL(/\/articles\/[^/]+$/);
+    // 新しいタブで詳細要約ページが開いたことを確認 (waitForURL 後の URL 文字列を直接照合)
+    expect(newPage.url()).toMatch(/\/articles\/[^/]+$/);
 
     await newPage.close();
   });
@@ -152,10 +153,11 @@ test.describe('関連記事のナビゲーション', () => {
       })
     ]);
 
-    await waitForPageLoad(newPage, { waitForNetworkIdle: false });
+    // 新タブの URL 確定を明示的に待つ (toHaveURL の "navigation to finish" 待機は新タブで flaky)
+    await newPage.waitForURL(/\/articles\/[^/]+$/, { timeout: 30000, waitUntil: 'domcontentloaded' });
 
-    // 新しいタブで詳細要約ページが開いたことを確認
-    await expect(newPage).toHaveURL(/\/articles\/[^/]+$/);
+    // 新しいタブで詳細要約ページが開いたことを確認 (waitForURL 後の URL 文字列を直接照合)
+    expect(newPage.url()).toMatch(/\/articles\/[^/]+$/);
 
     await newPage.close();
   });
