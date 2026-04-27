@@ -67,8 +67,8 @@ export const SELECTORS = {
   PREV_PAGE_BUTTON: '[data-testid="pagination-prev"]',
 
   // ===== お気に入り・リーディングリスト =====
-  // Issue #611 注: data-testid*= substring マッチの精密化は Issue #619 で追跡
-  FAVORITE_BUTTON: '[data-testid*="favorite"], button[aria-label*="お気に入り"], button[aria-label*="favorite"]',
+  FAVORITE_BUTTON: '[data-testid="favorite-button"]',
+  FAVORITE_ARTICLE_CARD: '[data-testid="favorite-article-card"]',
   READING_LIST_BUTTON: '[data-testid="reading-list"], button[aria-label*="リーディングリスト"]',
 
   // ===== 外部リンク =====

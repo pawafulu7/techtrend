@@ -32,8 +32,8 @@ test.describe('タグフィルター機能', () => {
     });
 
     // TypeScriptタグを選択（存在する場合）
-    // ドロップダウン内のタグアイテムを正確に選択
-    const typeScriptOption = page.locator('[data-testid="tag-dropdown"]').locator('[data-testid*="tag-item"]').filter({ hasText: 'TypeScript' }).first();
+    // ドロップダウン内のタグアイテムを exact testid で選択
+    const typeScriptOption = page.locator('[data-testid="tag-dropdown"]').locator('[data-testid="tag-item-TypeScript"]').first();
     if (await typeScriptOption.count() > 0) {
       const tagName = 'TypeScript';
 
@@ -61,9 +61,9 @@ test.describe('タグフィルター機能', () => {
     });
 
     // 複数タグを選択
-    // ドロップダウン内のタグアイテムを正確に選択
-    const reactTag = page.locator('[data-testid="tag-dropdown"]').locator('[data-testid*="tag-item"]').filter({ hasText: 'React' }).first();
-    const typeScriptTag = page.locator('[data-testid="tag-dropdown"]').locator('[data-testid*="tag-item"]').filter({ hasText: 'TypeScript' }).first();
+    // ドロップダウン内のタグアイテムを exact testid で選択
+    const reactTag = page.locator('[data-testid="tag-dropdown"]').locator('[data-testid="tag-item-React"]').first();
+    const typeScriptTag = page.locator('[data-testid="tag-dropdown"]').locator('[data-testid="tag-item-TypeScript"]').first();
 
     if ((await reactTag.count() > 0) && (await typeScriptTag.count() > 0)) {
       await reactTag.click();

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { waitForArticles, getTimeout, isRunningInCI, openFilterSidebar } from './helpers/wait-utils';
+import { MOBILE_VIEWPORT } from './constants/viewports';
 
 const isCI = isRunningInCI();
 
@@ -178,7 +179,7 @@ test.describe('Source Filter Cookie', () => {
 
   test('should work on mobile view', async ({ page }) => {
     // Set mobile viewport
-    await page.setViewportSize({ width: 375, height: 667 });
+    await page.setViewportSize(MOBILE_VIEWPORT);
 
     await page.goto('/');
     await waitForArticles(page, { timeout: getTimeout('medium'), allowEmpty: true });
