@@ -50,8 +50,9 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
   };
 
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1" data-testid="sort-buttons">
       <Button
+        data-testid="sort-by-publishedAt"
         variant={
           sortBy !== 'bookmarks' &&
           sortBy !== 'qualityScore' &&
@@ -66,6 +67,7 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
         公開順
       </Button>
       <Button
+        data-testid="sort-by-createdAt"
         variant={sortBy === 'createdAt' ? 'default' : 'outline'}
         size="sm"
         className="h-6 px-2 text-xs sm:h-7"
@@ -74,6 +76,7 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
         取込順
       </Button>
       <Button
+        data-testid="sort-by-qualityScore"
         variant={sortBy === 'qualityScore' ? 'default' : 'outline'}
         size="sm"
         className="h-6 px-2 text-xs sm:h-7"
@@ -82,6 +85,7 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
         品質
       </Button>
       <Button
+        data-testid="sort-by-bookmarks"
         variant={sortBy === 'bookmarks' ? 'default' : 'outline'}
         size="sm"
         className="h-6 px-2 text-xs sm:h-7"

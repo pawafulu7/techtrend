@@ -14,6 +14,7 @@ import {
   waitForPageLoad,
   waitForLoadingToDisappear,
 } from '../utils/e2e-helpers';
+import { MOBILE_VIEWPORT } from '../../../e2e/constants/viewports';
 
 /**
  * 記事詳細ページに遷移するヘルパー関数
@@ -257,7 +258,7 @@ test.describe('コメント機能', () => {
   test.describe('レスポンシブ対応', () => {
     test('モバイルビューでコメント投稿が動作する', async ({ page }) => {
       // モバイルビューポートを設定
-      await page.setViewportSize({ width: 375, height: 667 });
+      await page.setViewportSize(MOBILE_VIEWPORT);
 
       // テストユーザーでログイン
       const loginSuccess = await loginTestUser(page);

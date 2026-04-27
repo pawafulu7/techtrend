@@ -1,6 +1,67 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { SELECTORS } from './constants/selectors';
 import { waitForPageLoad } from './utils/e2e-helpers';
+
+const ARTICLE_DETAIL_URL_PATTERN = /\/articles\/[^/]+$/;
+
+// 正規表現メタ文字をエスケープする (`.` `+` `(` 等が含まれる href の誤マッチ対策)
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// 新タブの navigation 完了を明示的に待つヘルパー
+// (toHaveURL の "navigation to finish" 待機は新タブで flaky なため、
+// waitForURL + waitUntil:'domcontentloaded' で URL 確定を待ち、
+// 同期 toMatch でセーフティネットを張る)
+async function assertNewTabNavigatedToArticle(newPage: Page) {
+  await newPage.waitForURL(ARTICLE_DETAIL_URL_PATTERN, {
+    timeout: 30000,
+    waitUntil: 'domcontentloaded',
+  });
+  expect(newPage.url()).toMatch(ARTICLE_DETAIL_URL_PATTERN);
+}
+
+// 指定 href への navigation 完了を待つヘルパー。
+// targetHref を未エスケープのまま正規表現に埋めるとメタ文字で誤マッチを起こすため、
+// escapeRegExp + 先頭のホスト境界アンカー + 末尾の query/hash/EOS で安全に待機する。
+async function waitForNavigationToHref(page: Page, href: string) {
+  const pattern = new RegExp(
+    `(?:^|//[^/]+)${escapeRegExp(href)}(?:\\?|#|$)`
+  );
+  await page.waitForURL(pattern, {
+    timeout: 30000,
+    waitUntil: 'domcontentloaded',
+  });
+}
+
+// related-articles API は自記事を含むことがあり、`relatedLinks.first()` が
+// 現在表示中の記事と同一になると click 後 URL が変わらず flaky 化する。
+// 現在 URL と異なる pathname を持つ link を返すヘルパー (href は並列取得で時間短縮)。
+async function pickRelatedLinkDifferentFromCurrent(page: Page) {
+  const currentPath = new URL(page.url()).pathname;
+  const relatedLinks = page.locator(SELECTORS.RELATED_ARTICLE_LINK);
+  const count = await relatedLinks.count();
+  const hrefs = await Promise.all(
+    Array.from({ length: count }, (_, i) =>
+      relatedLinks.nth(i).getAttribute('href')
+    )
+  );
+  for (let i = 0; i < count; i++) {
+    const href = hrefs[i];
+    if (!href) continue;
+    // 相対 / 絶対 URL の両方を扱える URL コンストラクタで pathname を抽出
+    let hrefPath: string;
+    try {
+      hrefPath = new URL(href, page.url()).pathname;
+    } catch {
+      continue;
+    }
+    if (hrefPath !== currentPath) {
+      return relatedLinks.nth(i);
+    }
+  }
+  return null;
+}
 
 test.describe('関連記事のナビゲーション', () => {
   test.slow();
@@ -47,17 +108,27 @@ test.describe('関連記事のナビゲーション', () => {
       test.skip('関連記事のリンクが見つかりません');
     }
 
-    const firstRelatedLink = relatedLinks.first();
+    // 自記事と同じ href を避けて選ぶ (related-articles API が自記事を含む可能性)
+    const targetLink = await pickRelatedLinkDifferentFromCurrent(page);
+    if (!targetLink) {
+      test.skip('現在記事と異なる関連記事リンクが見つかりません');
+      return;
+    }
+    const targetHref = await targetLink.getAttribute('href');
+    expect(targetHref).not.toBeNull();
 
     // クリック前のURLを記録
     const beforeUrl = page.url();
 
-    // 関連記事をクリック
-    await firstRelatedLink.click();
+    // 関連記事をクリック (target href への navigation 完了まで明示的に待つ)
+    // beforeUrl も ARTICLE_DETAIL_URL_PATTERN に一致するため、汎用 pattern では
+    // click 前の URL で waitForURL が即 return してしまう。target href 専用で待つ。
+    await targetLink.click();
+    await waitForNavigationToHref(page, targetHref!);
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // 詳細要約ページに遷移したことを確認
-    await expect(page).toHaveURL(/\/articles\/[^/]+$/);
+    expect(page.url()).toMatch(ARTICLE_DETAIL_URL_PATTERN);
 
     // URLが変わったことを確認
     expect(page.url()).not.toBe(beforeUrl);
@@ -117,10 +188,7 @@ test.describe('関連記事のナビゲーション', () => {
       firstRelatedLink.click({ button: 'middle' })
     ]);
 
-    await waitForPageLoad(newPage, { waitForNetworkIdle: false });
-
-    // 新しいタブで詳細要約ページが開いたことを確認
-    await expect(newPage).toHaveURL(/\/articles\/[^/]+$/);
+    await assertNewTabNavigatedToArticle(newPage);
 
     await newPage.close();
   });
@@ -152,10 +220,7 @@ test.describe('関連記事のナビゲーション', () => {
       })
     ]);
 
-    await waitForPageLoad(newPage, { waitForNetworkIdle: false });
-
-    // 新しいタブで詳細要約ページが開いたことを確認
-    await expect(newPage).toHaveURL(/\/articles\/[^/]+$/);
+    await assertNewTabNavigatedToArticle(newPage);
 
     await newPage.close();
   });
@@ -177,17 +242,25 @@ test.describe('関連記事のナビゲーション', () => {
       test.skip('関連記事のリンクが見つかりません');
     }
 
-    const firstRelatedLink = relatedLinks.first();
+    // 自記事と同じ href を避ける
+    const targetLink = await pickRelatedLinkDifferentFromCurrent(page);
+    if (!targetLink) {
+      test.skip('現在記事と異なる関連記事リンクが見つかりません');
+      return;
+    }
+    const targetHref = await targetLink.getAttribute('href');
+    expect(targetHref).not.toBeNull();
 
     // リンクにフォーカス
-    await firstRelatedLink.focus();
+    await targetLink.focus();
 
-    // Enterキーを押す
+    // Enterキーを押す (target href への navigation 完了まで明示的に待つ)
     await page.keyboard.press('Enter');
+    await waitForNavigationToHref(page, targetHref!);
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // 詳細要約ページに遷移したことを確認
-    await expect(page).toHaveURL(/\/articles\/[^/]+$/);
+    expect(page.url()).toMatch(ARTICLE_DETAIL_URL_PATTERN);
 
     // 記事タイトルが表示されることを確認
     const title = page.locator('h1').first();

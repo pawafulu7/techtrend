@@ -9,6 +9,7 @@ import {
   _waitForDataLoad,
 } from '../utils/e2e-helpers';
 import { _SELECTORS } from '../constants/selectors';
+import { MOBILE_VIEWPORT, LAPTOP_VIEWPORT } from '../../../e2e/constants/viewports';
 
 test.describe('分析ページ', () => {
   test.beforeEach(async ({ page }) => {
@@ -301,8 +302,8 @@ test.describe('分析ページ', () => {
   });
 
   test('レスポンシブレイアウト', async ({ page }) => {
-    // デスクトップビューでの表示を確認
-    await page.setViewportSize({ width: 1280, height: 720 });
+    // ラップトップビュー (LAPTOP_VIEWPORT: 1280x720) での表示を確認
+    await page.setViewportSize(LAPTOP_VIEWPORT);
     await page.reload();
     await waitForPageLoad(page);
     
@@ -311,7 +312,7 @@ test.describe('分析ページ', () => {
     const _desktopChartCount = await desktopCharts.count();
     
     // モバイルビューに変更
-    await page.setViewportSize({ width: 375, height: 667 });
+    await page.setViewportSize(MOBILE_VIEWPORT);
     await page.reload();
     await waitForPageLoad(page);
     

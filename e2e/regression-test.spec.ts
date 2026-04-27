@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { SELECTORS } from './constants/selectors';
+import { MOBILE_VIEWPORT } from './constants/viewports';
 
 test.describe('回帰テスト - 既存機能の動作確認', () => {
   // このテストスイートは多数の機能を網羅的にテストするため、タイムアウトを3倍に延長
@@ -132,7 +133,7 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
       await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
       
       // ソートボタンを探す（複数の可能なセレクタを試す）
-      const sortButton = page.locator('button:has-text("公開順"), a:has-text("公開順"), [data-testid*="sort"]:has-text("公開順")');
+      const sortButton = page.locator('[data-testid="sort-by-publishedAt"]');
       if (await sortButton.count() > 0) {
         await sortButton.first().click();
         await page.waitForTimeout(1000);
@@ -153,7 +154,7 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
       await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
       
       // ソートボタンを探す
-      const sortButton = page.locator('button:has-text("品質"), a:has-text("品質"), [data-testid*="sort"]:has-text("品質")');
+      const sortButton = page.locator('[data-testid="sort-by-qualityScore"]');
       if (await sortButton.count() > 0) {
         await sortButton.first().click();
         await page.waitForTimeout(1000);
@@ -230,7 +231,7 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
   test.describe('モバイル対応', () => {
     test('モバイルビューでハンバーガーメニューが表示される', async ({ page }) => {
       // モバイルビューポートに設定
-      await page.setViewportSize({ width: 375, height: 667 });
+      await page.setViewportSize(MOBILE_VIEWPORT);
       
       await page.goto('/');
       await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
@@ -246,8 +247,7 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
         await page.waitForTimeout(500);
         
         // モバイルナビゲーションが表示されることを確認
-        // Issue #611: class 依存セレクタを撤去。data-testid*= は Issue #619 で追跡
-        const mobileNav = page.locator(`nav[data-testid*="mobile"], ${SELECTORS.MOBILE_MENU}`);
+        const mobileNav = page.locator(`nav[data-testid="mobile-nav"], ${SELECTORS.MOBILE_MENU}`);
         expect(await mobileNav.count()).toBeGreaterThan(0);
       }
     });

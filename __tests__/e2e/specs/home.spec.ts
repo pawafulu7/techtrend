@@ -8,6 +8,7 @@ import {
   expectNoErrors,
 } from '../utils/e2e-helpers';
 import { getTimeout, waitForUrlParam } from '../../../e2e/helpers/wait-utils';
+import { MOBILE_VIEWPORT, LAPTOP_VIEWPORT } from '../../../e2e/constants/viewports';
 import { SELECTORS } from '../constants/selectors';
 
 // CI環境の検出
@@ -140,7 +141,7 @@ test.describe('ホームページ', () => {
 
   test('レスポンシブデザインが機能する', async ({ page }) => {
     // モバイルビューポートに変更
-    await page.setViewportSize({ width: 375, height: 667 });
+    await page.setViewportSize(MOBILE_VIEWPORT);
     
     // ページをリロード
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -152,8 +153,8 @@ test.describe('ホームページ', () => {
     const mobileArticles = await page.locator(articleSelector).count();
     expect(mobileArticles).toBeGreaterThan(0);
     
-    // デスクトップビューポートに戻す
-    await page.setViewportSize({ width: 1280, height: 720 });
+    // ラップトップビューポート (LAPTOP_VIEWPORT: 1280x720) に戻す
+    await page.setViewportSize(LAPTOP_VIEWPORT);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForPageLoad(page, { timeout: 30000, waitForNetworkIdle: true });
     

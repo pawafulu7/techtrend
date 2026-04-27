@@ -189,11 +189,14 @@ export async function openFilterSidebar(page: Page) {
       const toggleButton = page.getByRole('button', {
         name: /フィルターを開く/,
       });
-      if (await toggleButton.isVisible().catch(() => false)) {
+      // isVisible() → click() 間のレイアウト/アニメーション差で flaky 化するため
+      // waitFor で stability を確認した上で click する
+      try {
+        await toggleButton.waitFor({ state: 'visible', timeout: 5000 });
         await toggleButton.click();
         // transition完了を待つ
         await page.waitForTimeout(350);
-      } else {
+      } catch {
         console.warn('[openFilterSidebar] Filter toggle button not found on desktop viewport');
       }
     }

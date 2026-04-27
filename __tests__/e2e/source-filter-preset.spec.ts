@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { waitForPageLoad, waitForArticles, openFilterSidebar } from '../../e2e/helpers/wait-utils';
+import { LAPTOP_VIEWPORT } from '../../e2e/constants/viewports';
 import { getSourceIdsForPreset } from '../../lib/constants/source-presets';
 
 test.describe('ソースフィルタープリセット機能', () => {
   test.beforeEach(async ({ page }) => {
     await page.context().clearCookies();
-    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.setViewportSize(LAPTOP_VIEWPORT);
     await page.goto('/');
     await waitForPageLoad(page);
     // サイドバーを開く（プリセットボタンはサイドバー内にある）
