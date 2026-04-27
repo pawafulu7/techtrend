@@ -153,7 +153,7 @@ test.describe('ホームページ', () => {
     const mobileArticles = await page.locator(articleSelector).count();
     expect(mobileArticles).toBeGreaterThan(0);
     
-    // デスクトップビューポートに戻す
+    // ラップトップビューポート (LAPTOP_VIEWPORT: 1280x720) に戻す
     await page.setViewportSize(LAPTOP_VIEWPORT);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForPageLoad(page, { timeout: 30000, waitForNetworkIdle: true });

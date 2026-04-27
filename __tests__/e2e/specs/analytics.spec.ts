@@ -302,7 +302,7 @@ test.describe('分析ページ', () => {
   });
 
   test('レスポンシブレイアウト', async ({ page }) => {
-    // デスクトップビューでの表示を確認
+    // ラップトップビュー (LAPTOP_VIEWPORT: 1280x720) での表示を確認
     await page.setViewportSize(LAPTOP_VIEWPORT);
     await page.reload();
     await waitForPageLoad(page);

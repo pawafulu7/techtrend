@@ -19,7 +19,7 @@ test.describe('フィルター条件の永続化', () => {
   test.beforeEach(async ({ page }) => {
     // Clear cookies before each test
     await page.context().clearCookies();
-    // デスクトップビューで開く（サイドバーが表示されるように）
+    // ラップトップビュー (LAPTOP_VIEWPORT: 1280x720) で開く（サイドバーが表示されるように）
     await page.setViewportSize(LAPTOP_VIEWPORT);
     await page.goto('/');
     await waitForPageLoad(page);
