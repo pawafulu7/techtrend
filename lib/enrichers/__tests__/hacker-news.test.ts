@@ -46,7 +46,7 @@ describe('HackerNewsEnricher - body drain on non-OK fetch (Issue #599)', () => {
 
     expect(cancelMock).toHaveBeenCalledTimes(1);
     expect(genericEnrichSpy).toHaveBeenCalledTimes(1);
-    expect(genericEnrichSpy).toHaveBeenCalledWith(targetUrl);
+    expect(genericEnrichSpy).toHaveBeenCalledWith(targetUrl, undefined);
     expect(callOrder).toEqual(['cancel', 'generic.enrich']);
     expect(result).toEqual({ content: 'fallback content', thumbnail: null });
   });
@@ -71,7 +71,7 @@ describe('HackerNewsEnricher - body drain on non-OK fetch (Issue #599)', () => {
 
     expect(cancelMock).toHaveBeenCalledTimes(1);
     expect(genericEnrichSpy).toHaveBeenCalledTimes(1);
-    expect(genericEnrichSpy).toHaveBeenCalledWith(targetUrl);
+    expect(genericEnrichSpy).toHaveBeenCalledWith(targetUrl, undefined);
     expect(result).toEqual({ content: 'fallback content', thumbnail: null });
   });
 
@@ -94,6 +94,106 @@ describe('HackerNewsEnricher - body drain on non-OK fetch (Issue #599)', () => {
     // (将来 body && body.cancel() への書き換え等のリグレッションを検出)
     expect(cancelSpy).not.toHaveBeenCalled();
     expect(genericEnrichSpy).toHaveBeenCalledTimes(1);
+    expect(result).toBeNull();
+  });
+
+  it('should propagate externalSignal to fetch and to GenericEnricher fallback (Issue #608)', async () => {
+    const controller = new AbortController();
+    const signalsSeen: (AbortSignal | undefined)[] = [];
+
+    global.fetch = jest.fn(async (_url, init?: RequestInit) => {
+      signalsSeen.push(init?.signal ?? undefined);
+      return {
+        ok: false,
+        status: 500,
+        body: { cancel: async () => {} },
+      };
+    }) as unknown as typeof global.fetch;
+
+    const genericEnrichSpy = jest
+      .spyOn(GenericContentEnricher.prototype, 'enrich')
+      .mockResolvedValue({ content: 'fallback', thumbnail: null });
+
+    const enricher = new HackerNewsEnricher();
+    await enricher.enrich(targetUrl, controller.signal);
+
+    // fetch には composed signal が渡されること（externalSignal が AbortSignal.any で合成される）
+    expect(signalsSeen.length).toBe(1);
+    expect(signalsSeen[0]).toBeInstanceOf(AbortSignal);
+    // generic フォールバックには externalSignal がそのまま渡されること
+    expect(genericEnrichSpy).toHaveBeenCalledWith(targetUrl, controller.signal);
+  });
+
+  it('should propagate externalSignal to repo OGP fallback fetch (Issue #608)', async () => {
+    const blobUrl = 'https://github.com/foo/bar/blob/main/README.md';
+    const blobHtml = `
+      <html>
+        <body>
+          <article itemprop="text" class="markdown-body">
+            ${'<p>Long enough README body content to bypass the short-content fallback path that triggers GenericEnricher again.</p>'.repeat(5)}
+          </article>
+        </body>
+      </html>
+    `;
+    const controller = new AbortController();
+    const fetchCallSignals: (AbortSignal | undefined)[] = [];
+
+    global.fetch = jest
+      .fn()
+      .mockImplementationOnce(async (_url, init?: RequestInit) => {
+        fetchCallSignals.push(init?.signal ?? undefined);
+        return {
+          ok: true,
+          status: 200,
+          text: async () => blobHtml,
+        };
+      })
+      .mockImplementationOnce(async (_url, init?: RequestInit) => {
+        fetchCallSignals.push(init?.signal ?? undefined);
+        return {
+          ok: false,
+          status: 500,
+          body: { cancel: async () => {} },
+        };
+      }) as unknown as typeof global.fetch;
+
+    const enricher = new HackerNewsEnricher();
+    await enricher.enrich(blobUrl, controller.signal);
+
+    // 主経路 fetch + repo OGP fallback fetch 両方に signal が合成されて渡されること
+    expect(fetchCallSignals.length).toBe(2);
+    expect(fetchCallSignals[0]).toBeInstanceOf(AbortSignal);
+    expect(fetchCallSignals[1]).toBeInstanceOf(AbortSignal);
+  });
+
+  it('should abort fetch immediately when externalSignal is already aborted (Issue #608)', async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    let fetchCalled = false;
+    global.fetch = jest.fn(async (_url, init?: RequestInit) => {
+      fetchCalled = true;
+      // composed signal は既に aborted 状態であるべき
+      expect(init?.signal?.aborted).toBe(true);
+      throw new DOMException('aborted', 'AbortError');
+    }) as unknown as typeof global.fetch;
+
+    const genericEnrichSpy = jest
+      .spyOn(GenericContentEnricher.prototype, 'enrich')
+      .mockResolvedValue(null);
+
+    const enricher = new HackerNewsEnricher();
+    const result = await enricher.enrich(
+      'https://github.com/foo/bar',
+      controller.signal
+    );
+
+    expect(fetchCalled).toBe(true);
+    // catch 経路で fallback が呼ばれるが abort 済 signal が伝わる
+    expect(genericEnrichSpy).toHaveBeenCalledWith(
+      'https://github.com/foo/bar',
+      controller.signal
+    );
     expect(result).toBeNull();
   });
 
