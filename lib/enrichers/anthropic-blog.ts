@@ -15,7 +15,8 @@ export class ClaudeBlogEnricher extends BaseContentEnricher {
    * Claude Blogの記事を詳細に取得してエンリッチ
    */
   async enrich(
-    url: string
+    url: string,
+    externalSignal?: AbortSignal
   ): Promise<{ content: string | null; thumbnail?: string | null } | null> {
     try {
       const response = await fetch(url, {
@@ -25,6 +26,7 @@ export class ClaudeBlogEnricher extends BaseContentEnricher {
           Accept: 'text/html,application/xhtml+xml',
           'Accept-Language': 'en-US,en;q=0.9',
         },
+        signal: this.composeSignal(externalSignal, 30000),
       });
 
       if (!response.ok) {
