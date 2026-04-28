@@ -4,8 +4,6 @@ import { anthropicNewsConfig } from '@/lib/config/anthropic-news';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
 
-const ENRICHER_TIMEOUT = 15000; // 15 seconds
-
 export class AnthropicNewsEnricher extends BaseContentEnricher {
   /**
    * Anthropic News (anthropic.com/news) の記事URLかどうかを判定
@@ -27,14 +25,12 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
    * Anthropic Newsの記事を詳細に取得してエンリッチ
    */
   async enrich(
-    url: string
+    url: string,
+    externalSignal?: AbortSignal
   ): Promise<{ content: string | null; thumbnail?: string | null } | null> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), ENRICHER_TIMEOUT);
-
     try {
       const response = await fetch(url, {
-        signal: controller.signal,
+        signal: this.composeSignal(externalSignal, 30000),
         headers: {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -160,8 +156,6 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
         '[Anthropic News Enricher] Error enriching URL'
       );
       return null;
-    } finally {
-      clearTimeout(timeoutId);
     }
   }
 
