@@ -13,6 +13,21 @@ describe('SpeakerDeckEnricher - signal propagation (Issue #608)', () => {
   const targetUrl = 'https://speakerdeck.com/example/talk';
   let originalFetch: typeof global.fetch;
 
+  const buildOEmbedPayload = () => ({
+    type: 'rich',
+    version: '1.0',
+    title: 'Test Talk',
+    author_name: 'Speaker',
+    author_url: 'https://speakerdeck.com/example',
+    provider_name: 'Speaker Deck',
+    provider_url: 'https://speakerdeck.com',
+    html: '<iframe></iframe>',
+    width: 800,
+    height: 600,
+    ratio: 1.33,
+    thumbnail_url: 'https://speakerd.s3.amazonaws.com/test.jpg',
+  });
+
   beforeEach(() => {
     originalFetch = global.fetch;
   });
@@ -31,20 +46,7 @@ describe('SpeakerDeckEnricher - signal propagation (Issue #608)', () => {
       return {
         ok: true,
         status: 200,
-        json: async () => ({
-          type: 'rich',
-          version: '1.0',
-          title: 'Test Talk',
-          author_name: 'Speaker',
-          author_url: 'https://speakerdeck.com/example',
-          provider_name: 'Speaker Deck',
-          provider_url: 'https://speakerdeck.com',
-          html: '<iframe></iframe>',
-          width: 800,
-          height: 600,
-          ratio: 1.33,
-          thumbnail_url: 'https://speakerd.s3.amazonaws.com/test.jpg',
-        }),
+        json: async () => buildOEmbedPayload(),
       };
     }) as unknown as typeof global.fetch;
 
@@ -84,20 +86,7 @@ describe('SpeakerDeckEnricher - signal propagation (Issue #608)', () => {
       return {
         ok: true,
         status: 200,
-        json: async () => ({
-          type: 'rich',
-          version: '1.0',
-          title: 'Test Talk',
-          author_name: 'Speaker',
-          author_url: 'https://speakerdeck.com/example',
-          provider_name: 'Speaker Deck',
-          provider_url: 'https://speakerdeck.com',
-          html: '<iframe></iframe>',
-          width: 800,
-          height: 600,
-          ratio: 1.33,
-          thumbnail_url: 'https://speakerd.s3.amazonaws.com/test.jpg',
-        }),
+        json: async () => buildOEmbedPayload(),
       };
     }) as unknown as typeof global.fetch;
 

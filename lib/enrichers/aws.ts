@@ -139,8 +139,13 @@ export class AWSEnricher extends BaseContentEnricher {
       };
     } catch (error) {
       if (error instanceof Error) {
-        if (/TimeoutError$/i.test(error.name) || error.name === 'AbortError') {
+        if (/TimeoutError$/i.test(error.name)) {
           logger.error({ url }, '[AWS Enricher] Request timeout');
+        } else if (error.name === 'AbortError') {
+          // 呼び出し元 (collect-feeds.ts の runWithTimeout 等) からのキャンセル
+          // 操作は実エラーではないため warn で記録し、運用ログでタイムアウトと
+          // 区別できるようにする
+          logger.warn({ url }, '[AWS Enricher] Request aborted');
         } else {
           logger.error(
             { err: error, url },
