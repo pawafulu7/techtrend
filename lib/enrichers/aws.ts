@@ -139,7 +139,7 @@ export class AWSEnricher extends BaseContentEnricher {
       };
     } catch (error) {
       if (error instanceof Error) {
-        if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+        if (/TimeoutError$/i.test(error.name) || error.name === 'AbortError') {
           logger.error({ url }, '[AWS Enricher] Request timeout');
         } else {
           logger.error(

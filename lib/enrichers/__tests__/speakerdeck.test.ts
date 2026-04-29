@@ -68,6 +68,10 @@ describe('SpeakerDeckEnricher - signal propagation (Issue #608)', () => {
     const enricher = new SpeakerDeckEnricher();
     const result = await enricher.enrich(targetUrl, controller.signal);
 
+    // oEmbed fetch + fetchWithRetry (HTML fallback) の両方が試行されることを確認
+    // (fetchWithRetry は base.ts で maxRetries=3 だが、abort 済 signal の場合は
+    //  externalSignal?.aborted ガードで即時 throw されるため 1 回で終了する)
+    expect(global.fetch).toHaveBeenCalledTimes(2);
     // oEmbed が失敗 → HTML scraping fallback も abort 済 signal で失敗 → null
     expect(result).toBeNull();
   });
