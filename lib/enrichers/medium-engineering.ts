@@ -15,10 +15,13 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
     );
   }
 
-  async enrich(url: string): Promise<EnrichmentResult | null> {
+  async enrich(
+    url: string,
+    externalSignal?: AbortSignal
+  ): Promise<EnrichmentResult | null> {
     try {
       const response = await fetch(url, {
-        signal: AbortSignal.timeout(30000),
+        signal: this.composeSignal(externalSignal, 30000),
         headers: {
           'User-Agent':
             'Mozilla/5.0 (compatible; TechTrendBot/1.0; +https://techtrend.example.com/bot)',

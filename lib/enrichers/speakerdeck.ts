@@ -32,10 +32,13 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
     return isUrlFromDomain(url, 'speakerdeck.com');
   }
 
-  async enrich(url: string): Promise<EnrichedContent | null> {
+  async enrich(
+    url: string,
+    externalSignal?: AbortSignal
+  ): Promise<EnrichedContent | null> {
     try {
       // Strategy 1: Try oEmbed API first (most reliable for content)
-      const oEmbedData = await this.fetchOEmbed(url);
+      const oEmbedData = await this.fetchOEmbed(url, externalSignal);
 
       if (oEmbedData) {
         const content = this.buildContentFromOEmbed(oEmbedData, url);
@@ -48,7 +51,7 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
               { url },
               '[SpeakerDeckEnricher] oEmbed has no thumbnail, fetching from HTML'
             );
-            const html = await this.fetchWithRetry(url);
+            const html = await this.fetchWithRetry(url, externalSignal);
             thumbnail = this.extractThumbnail(html);
           } catch (htmlError) {
             logger.debug(
@@ -78,7 +81,7 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
         { url },
         '[SpeakerDeckEnricher] Falling back to HTML scraping'
       );
-      const html = await this.fetchWithRetry(url);
+      const html = await this.fetchWithRetry(url, externalSignal);
       return this.extractFromHtml(html, url);
     } catch (error) {
       logger.error(
@@ -89,7 +92,10 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
     }
   }
 
-  private async fetchOEmbed(url: string): Promise<OEmbedResponse | null> {
+  private async fetchOEmbed(
+    url: string,
+    externalSignal?: AbortSignal
+  ): Promise<OEmbedResponse | null> {
     try {
       const oEmbedUrl = `${this.oEmbedEndpoint}?url=${encodeURIComponent(url)}`;
 
@@ -98,7 +104,7 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
           Accept: 'application/json',
           'User-Agent': 'TechTrend/1.0 ContentEnricher',
         },
-        signal: AbortSignal.timeout(10000),
+        signal: this.composeSignal(externalSignal, 30000),
       });
 
       if (!response.ok) {

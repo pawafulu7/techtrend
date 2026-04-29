@@ -165,17 +165,19 @@ export class ContentEnricherFactory {
    * 各エンリッチャーを順番に試して最初の成功結果を返す
    * @param url 処理対象のURL
    * @param sourceId 記事のsourceId (optional)
+   * @param externalSignal 外部abort signal (optional、呼び出し側でtimeout連携時に使用)
    * @returns エンリッチメント結果、またはnull
    */
   async trySequential(
     url: string,
-    sourceId?: string
+    sourceId?: string,
+    externalSignal?: AbortSignal
   ): Promise<import('./base').EnrichmentResult | null> {
     // すべてのエンリッチャーを順番に試す
     for (const enricher of this.enrichers) {
       try {
         if (enricher.canHandle(url, sourceId)) {
-          const result = await enricher.enrich(url);
+          const result = await enricher.enrich(url, externalSignal);
           if (result && (result.content || result.thumbnail)) {
             // 有効な結果が得られたら即座に返す
             return result;

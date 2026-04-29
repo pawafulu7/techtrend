@@ -27,7 +27,8 @@ export class AWSEnricher extends BaseContentEnricher {
    * AWSブログの記事を詳細に取得してエンリッチ
    */
   async enrich(
-    url: string
+    url: string,
+    externalSignal?: AbortSignal
   ): Promise<{ content: string | null; thumbnail?: string | null } | null> {
     try {
       const response = await fetch(url, {
@@ -36,7 +37,7 @@ export class AWSEnricher extends BaseContentEnricher {
           Accept: 'text/html,application/xhtml+xml',
           'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',
         },
-        signal: AbortSignal.timeout(15000),
+        signal: this.composeSignal(externalSignal, 30000),
       });
 
       if (!response.ok) {
@@ -138,11 +139,13 @@ export class AWSEnricher extends BaseContentEnricher {
       };
     } catch (error) {
       if (error instanceof Error) {
-        if (error.name === 'TimeoutError' || error.name === 'AbortError') {
-          logger.error(
-            { url },
-            '[AWS Enricher] Request timeout after 15 seconds'
-          );
+        if (/TimeoutError$/i.test(error.name)) {
+          logger.error({ url }, '[AWS Enricher] Request timeout');
+        } else if (error.name === 'AbortError') {
+          // 呼び出し元 (collect-feeds.ts の runWithTimeout 等) からのキャンセル
+          // 操作は実エラーではないため warn で記録し、運用ログでタイムアウトと
+          // 区別できるようにする
+          logger.warn({ url }, '[AWS Enricher] Request aborted');
         } else {
           logger.error(
             { err: error, url },

@@ -50,12 +50,14 @@ export class HackerNewsEnricher extends BaseContentEnricher {
     }
   }
 
-  async enrich(url: string): Promise<EnrichmentResult | null> {
+  async enrich(
+    url: string,
+    externalSignal?: AbortSignal
+  ): Promise<EnrichmentResult | null> {
     try {
-      // 30秒タイムアウトを設定
       const response = await fetch(url, {
         headers: HackerNewsEnricher.DEFAULT_HEADERS,
-        signal: AbortSignal.timeout(30000), // 30秒タイムアウト
+        signal: this.composeSignal(externalSignal, 30000),
       });
 
       // ステータスコードが200以外の場合はGenericEnricherにフォールバック
@@ -70,7 +72,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
           { status: response.status, url },
           '[HackerNewsEnricher] HTTP error, falling back to GenericEnricher'
         );
-        return await this.genericEnricher.enrich(url);
+        return await this.genericEnricher.enrich(url, externalSignal);
       }
 
       const html = await response.text();
@@ -125,7 +127,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
             try {
               const repoResponse = await fetch(repoRootUrl, {
                 headers: HackerNewsEnricher.DEFAULT_HEADERS,
-                signal: AbortSignal.timeout(5000), // 5秒タイムアウト
+                signal: this.composeSignal(externalSignal, 5000),
               });
               if (repoResponse.ok) {
                 const repoHtml = await repoResponse.text();
@@ -225,7 +227,10 @@ export class HackerNewsEnricher extends BaseContentEnricher {
           '[HackerNewsEnricher] Content too short, falling back to GenericEnricher'
         );
         try {
-          const genericResult = await this.genericEnricher.enrich(url);
+          const genericResult = await this.genericEnricher.enrich(
+            url,
+            externalSignal
+          );
           if (genericResult) return genericResult;
         } catch (fallbackError) {
           logger.debug(
@@ -249,7 +254,10 @@ export class HackerNewsEnricher extends BaseContentEnricher {
 
       // フォールバック: GenericEnricherを試す
       try {
-        const genericResult = await this.genericEnricher.enrich(url);
+        const genericResult = await this.genericEnricher.enrich(
+          url,
+          externalSignal
+        );
         if (genericResult) {
           return genericResult;
         }
