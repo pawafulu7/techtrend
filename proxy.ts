@@ -43,7 +43,9 @@ function checkBasicAuth(request: NextRequest): boolean {
 
 // メンテナンスモードの除外パス判定
 // メンテ中でも通常応答するパス: API・管理者ログイン・メンテ画面自身・静的アセット。
-// （静的アセットは matcher で概ね除外されるが、念のためここでも弾く）
+// - /api/* は一括除外。バッチ収集・ヘルスチェック・認証 API を動かし続けるため。
+//   保護 API（protectedApiPaths）はメンテ画面ではなく従来どおり 401 を返す（意図的）。
+// - 静的アセットは matcher で概ね除外されるが、念のためここでも弾く。
 function isMaintenanceExempt(pathname: string): boolean {
   return (
     pathname.startsWith('/api/') ||
@@ -110,10 +112,11 @@ export async function proxy(request: NextRequest) {
     };
 
     try {
-      const [{ auth }, { getUserAuthData }] = await Promise.all([
-        import('@/lib/auth/auth'),
-        import('@/lib/auth/user-auth-cache'),
-      ]);
+      const [{ auth }, { getUserAuthData, isAdminAuthData }] =
+        await Promise.all([
+          import('@/lib/auth/auth'),
+          import('@/lib/auth/user-auth-cache'),
+        ]);
 
       const session = await auth.api.getSession({ headers: request.headers });
 
@@ -122,8 +125,7 @@ export async function proxy(request: NextRequest) {
         // session.user.role はログイン時スナップショットで降格が反映されないため、
         // 既存 admin-check と同様 DB（Redis キャッシュ付き）の role を参照する。
         const authData = await getUserAuthData(session.user.id);
-        isAdmin =
-          !!authData && !authData.deletedAt && authData.role === 'admin';
+        isAdmin = isAdminAuthData(authData);
       }
 
       if (!isAdmin) {

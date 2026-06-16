@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
-import { getUserAuthData } from '@/lib/auth/user-auth-cache';
+import { getUserAuthData, isAdminAuthData } from '@/lib/auth/user-auth-cache';
 
 /**
  * Server-side admin check for page protection
@@ -18,7 +18,7 @@ export async function requireAdmin() {
 
   const authData = await getUserAuthData(session.user.id);
 
-  if (!authData || authData.deletedAt || authData.role !== 'admin') {
+  if (!isAdminAuthData(authData)) {
     redirect('/');
   }
 
@@ -34,7 +34,7 @@ export async function isAdmin(): Promise<boolean> {
   if (!session?.user?.id) return false;
 
   const authData = await getUserAuthData(session.user.id);
-  return !!authData && !authData.deletedAt && authData.role === 'admin';
+  return isAdminAuthData(authData);
 }
 
 /**

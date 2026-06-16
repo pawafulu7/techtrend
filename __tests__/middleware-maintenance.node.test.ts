@@ -19,7 +19,11 @@ jest.mock('@/lib/auth/auth', () => ({
   },
 }));
 
-jest.mock('@/lib/auth/user-auth-cache');
+// getUserAuthData だけをモックし、純粋関数 isAdminAuthData は実物を使う
+jest.mock('@/lib/auth/user-auth-cache', () => ({
+  ...jest.requireActual('@/lib/auth/user-auth-cache'),
+  getUserAuthData: jest.fn(),
+}));
 
 jest.mock('@/lib/logger', () => ({
   __esModule: true,
