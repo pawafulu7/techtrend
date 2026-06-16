@@ -41,6 +41,19 @@ function checkBasicAuth(request: NextRequest): boolean {
   }
 }
 
+// メンテナンスモードの除外パス判定
+// メンテ中でも通常応答するパス: API・管理者ログイン・メンテ画面自身・静的アセット。
+// （静的アセットは matcher で概ね除外されるが、念のためここでも弾く）
+function isMaintenanceExempt(pathname: string): boolean {
+  return (
+    pathname.startsWith('/api/') ||
+    pathname === '/auth/login' ||
+    pathname === '/maintenance' ||
+    pathname.startsWith('/_next/') ||
+    pathname === '/favicon.ico'
+  );
+}
+
 // 認証が必要なパスのリスト
 const protectedPaths = [
   '/profile',
@@ -78,7 +91,51 @@ export async function proxy(request: NextRequest) {
       });
     }
   }
-  
+
+  // Maintenance Mode: 管理者以外をメンテナンス画面（HTTP 503）に切り替える。
+  // OFF（未設定 or 'true' 以外）のときは getSession を呼ばず既存フローを維持する。
+  // proxy は Node.js ランタイム固定のため、ここで動的 import する auth/getUserAuthData
+  // （Prisma/Redis/pino 依存）は問題なく動作する。
+  if (
+    process.env.MAINTENANCE_MODE?.trim() === 'true' &&
+    !isMaintenanceExempt(pathname)
+  ) {
+    const respondMaintenance = async () => {
+      const { createMaintenanceResponse } = await import(
+        '@/lib/maintenance/maintenance-response'
+      );
+      const maintenanceRes = createMaintenanceResponse();
+      setSecurityHeaders(maintenanceRes, request);
+      return maintenanceRes;
+    };
+
+    try {
+      const [{ auth }, { getUserAuthData }] = await Promise.all([
+        import('@/lib/auth/auth'),
+        import('@/lib/auth/user-auth-cache'),
+      ]);
+
+      const session = await auth.api.getSession({ headers: request.headers });
+
+      let isAdmin = false;
+      if (session?.user?.id) {
+        // session.user.role はログイン時スナップショットで降格が反映されないため、
+        // 既存 admin-check と同様 DB（Redis キャッシュ付き）の role を参照する。
+        const authData = await getUserAuthData(session.user.id);
+        isAdmin =
+          !!authData && !authData.deletedAt && authData.role === 'admin';
+      }
+
+      if (!isAdmin) {
+        return await respondMaintenance();
+      }
+    } catch {
+      // フェイルセーフ: session/DB 取得失敗時は 500 ではなくメンテ画面（503）に倒す。
+      // （getUserAuthData は Redis 失敗は握るが DB query 例外は握らないため、ここで捕捉する）
+      return await respondMaintenance();
+    }
+  }
+
   // 保護されたパスかチェック
   const isProtectedPath = protectedPaths.some(path => 
     pathname.startsWith(path)
