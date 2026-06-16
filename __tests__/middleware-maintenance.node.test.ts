@@ -38,14 +38,22 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server';
 import { proxy } from '../proxy';
 import { getUserAuthData } from '@/lib/auth/user-auth-cache';
+import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
 
 const mockGetUserAuthData = getUserAuthData as jest.MockedFunction<
   typeof getUserAuthData
 >;
 
-describe('proxy - maintenance mode', () => {
-  const originalNodeEnv = process.env.NODE_ENV;
+/** ログイン済みリクエスト（セッション Cookie 付き）を作る。
+ *  proxy はメンテ判定で Cookie の有無を先にチェックするため、
+ *  getSession 経路を通すケースでは Cookie が必須。 */
+function loggedInRequest(url: string): NextRequest {
+  const request = new NextRequest(new URL(url));
+  request.cookies.set(AUTH_COOKIES.sessionToken, 'dummy-session-token');
+  return request;
+}
 
+describe('proxy - maintenance mode', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.MAINTENANCE_MODE = 'true';
@@ -54,7 +62,6 @@ describe('proxy - maintenance mode', () => {
   });
 
   afterEach(() => {
-    process.env.NODE_ENV = originalNodeEnv;
     delete process.env.MAINTENANCE_MODE;
   });
 
@@ -90,8 +97,7 @@ describe('proxy - maintenance mode', () => {
   });
 
   describe('非管理者（メンテ画面に切り替え）', () => {
-    it('未ログインユーザーは 503 + Retry-After', async () => {
-      mockGetSession.mockResolvedValue(null);
+    it('未ログイン（Cookie 無し）は getSession を呼ばず 503 + Retry-After', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
       const response = await proxy(request);
 
@@ -101,6 +107,8 @@ describe('proxy - maintenance mode', () => {
       // 本文がメンテ画面であること
       const body = await response.text();
       expect(body).toContain('メンテナンス中');
+      // Cookie 先行チェックで早期 return するため認証経路は走らない
+      expect(mockGetSession).not.toHaveBeenCalled();
       expect(mockGetUserAuthData).not.toHaveBeenCalled();
     });
 
@@ -108,8 +116,7 @@ describe('proxy - maintenance mode', () => {
       mockGetSession.mockResolvedValue({ user: { id: 'u1' } });
       mockGetUserAuthData.mockResolvedValue({ role: 'user', deletedAt: null });
 
-      const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await proxy(request);
+      const response = await proxy(loggedInRequest('http://localhost:3000/'));
 
       expect(response.status).toBe(503);
       expect(mockGetUserAuthData).toHaveBeenCalledWith('u1');
@@ -122,14 +129,20 @@ describe('proxy - maintenance mode', () => {
         deletedAt: '2026-01-01T00:00:00.000Z',
       });
 
-      const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await proxy(request);
+      const response = await proxy(loggedInRequest('http://localhost:3000/'));
 
       expect(response.status).toBe(503);
     });
 
-    it('503 レスポンスにもセキュリティヘッダが適用される', async () => {
+    it('Cookie はあるが session が無効（null）なら 503', async () => {
       mockGetSession.mockResolvedValue(null);
+      const response = await proxy(loggedInRequest('http://localhost:3000/'));
+
+      expect(response.status).toBe(503);
+      expect(mockGetSession).toHaveBeenCalled();
+    });
+
+    it('503 レスポンスにもセキュリティヘッダが適用される', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
       const response = await proxy(request);
 
@@ -144,8 +157,7 @@ describe('proxy - maintenance mode', () => {
       mockGetSession.mockResolvedValue({ user: { id: 'admin-1' } });
       mockGetUserAuthData.mockResolvedValue({ role: 'admin', deletedAt: null });
 
-      const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await proxy(request);
+      const response = await proxy(loggedInRequest('http://localhost:3000/'));
 
       expect(response.status).not.toBe(503);
       expect(response.headers.get('Content-Security-Policy')).toBeDefined();
@@ -187,8 +199,7 @@ describe('proxy - maintenance mode', () => {
   describe('フェイルセーフ', () => {
     it('getSession が throw しても 503 に倒す（500 にしない）', async () => {
       mockGetSession.mockRejectedValue(new Error('DB connection failed'));
-      const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await proxy(request);
+      const response = await proxy(loggedInRequest('http://localhost:3000/'));
 
       expect(response.status).toBe(503);
     });
@@ -197,8 +208,7 @@ describe('proxy - maintenance mode', () => {
       mockGetSession.mockResolvedValue({ user: { id: 'u1' } });
       mockGetUserAuthData.mockRejectedValue(new Error('prisma error'));
 
-      const request = new NextRequest(new URL('http://localhost:3000/'));
-      const response = await proxy(request);
+      const response = await proxy(loggedInRequest('http://localhost:3000/'));
 
       expect(response.status).toBe(503);
     });
