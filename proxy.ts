@@ -41,6 +41,25 @@ function checkBasicAuth(request: NextRequest): boolean {
   }
 }
 
+// メンテナンスモードの除外パス判定
+// メンテ中でも通常応答するパス: API・管理者ログイン・メンテ画面自身・静的アセット。
+// - /api/* は一括除外。バッチ収集・ヘルスチェック・認証 API を動かし続けるため。
+//   保護 API（protectedApiPaths）はメンテ画面ではなく従来どおり 401 を返す（意図的）。
+// - /auth/login のみ除外（管理者ログイン導線）。/auth/signup・/auth/verify はメンテ中
+//   封鎖する仕様（新規登録・メール認証を止める）。verify のメールリンクを通したくなった
+//   場合はここに /auth/verify を追加すること。
+// - 静的アセットは matcher で概ね除外されるが、念のためここでも弾く。
+function isMaintenanceExempt(pathname: string): boolean {
+  return (
+    pathname.startsWith('/api/') ||
+    pathname === '/auth/login' ||
+    pathname.startsWith('/auth/login/') ||
+    pathname === '/maintenance' ||
+    pathname.startsWith('/_next/') ||
+    pathname === '/favicon.ico'
+  );
+}
+
 // 認証が必要なパスのリスト
 const protectedPaths = [
   '/profile',
@@ -78,7 +97,66 @@ export async function proxy(request: NextRequest) {
       });
     }
   }
-  
+
+  // Maintenance Mode: 管理者以外をメンテナンス画面（HTTP 503）に切り替える。
+  // OFF（未設定 or 'true' 以外）のときは getSession を呼ばず既存フローを維持する。
+  // proxy は Node.js ランタイム固定のため、ここで動的 import する auth/getUserAuthData
+  // （Prisma/Redis/pino 依存）は問題なく動作する。
+  if (
+    // env.ts の booleanEnum と同じく trim + lowercase で判定する（'TRUE' 等も許容）
+    process.env.MAINTENANCE_MODE?.trim().toLowerCase() === 'true' &&
+    !isMaintenanceExempt(pathname)
+  ) {
+    const respondMaintenance = async () => {
+      try {
+        const { createMaintenanceResponse } = await import(
+          '@/lib/maintenance/maintenance-response'
+        );
+        const maintenanceRes = createMaintenanceResponse();
+        setSecurityHeaders(maintenanceRes, request);
+        return maintenanceRes;
+      } catch {
+        // 最終フォールバック: メンテ画面モジュールの取得すら失敗しても 503 を返す。
+        return new NextResponse('Service Unavailable', {
+          status: 503,
+          headers: { 'Retry-After': '3600' },
+        });
+      }
+    };
+
+    // セッション Cookie が無ければ未認証＝非管理者確定。getSession/DB を呼ばず即 503 に倒す
+    // （メンテ中の未認証アクセスで毎回 DB セッション検索が走るのを防ぐ）。
+    if (!request.cookies.get(AUTH_COOKIES.sessionToken)) {
+      return await respondMaintenance();
+    }
+
+    try {
+      const [{ auth }, { getUserAuthData, isAdminAuthData }] =
+        await Promise.all([
+          import('@/lib/auth/auth'),
+          import('@/lib/auth/user-auth-cache'),
+        ]);
+
+      const session = await auth.api.getSession({ headers: request.headers });
+
+      let isAdmin = false;
+      if (session?.user?.id) {
+        // session.user.role はログイン時スナップショットで降格が反映されないため、
+        // 既存 admin-check と同様 DB（Redis キャッシュ付き）の role を参照する。
+        const authData = await getUserAuthData(session.user.id);
+        isAdmin = isAdminAuthData(authData);
+      }
+
+      if (!isAdmin) {
+        return await respondMaintenance();
+      }
+    } catch {
+      // フェイルセーフ: session/DB 取得失敗時は 500 ではなくメンテ画面（503）に倒す。
+      // （getUserAuthData は Redis 失敗は握るが DB query 例外は握らないため、ここで捕捉する）
+      return await respondMaintenance();
+    }
+  }
+
   // 保護されたパスかチェック
   const isProtectedPath = protectedPaths.some(path => 
     pathname.startsWith(path)

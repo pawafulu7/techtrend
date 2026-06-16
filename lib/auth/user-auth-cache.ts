@@ -28,6 +28,17 @@ export interface UserAuthData {
   deletedAt: string | null;
 }
 
+/**
+ * Determine whether the given auth data represents an active admin.
+ *
+ * Pure helper shared by Server Component checks (admin-check.ts) and the
+ * proxy maintenance gate, so the admin criteria (not deleted + role==='admin')
+ * live in one place.
+ */
+export function isAdminAuthData(authData: UserAuthData | null): boolean {
+  return !!authData && !authData.deletedAt && authData.role === 'admin';
+}
+
 /** Cache TTL in seconds (2 minutes as recommended by CodexMCP) */
 const CACHE_TTL = 120;
 
@@ -76,7 +87,10 @@ export async function getUserAuthData(
     }
   } catch (error) {
     // Log but don't fail - cache is optional optimization
-    logger.warn({ err: error, userId }, 'Redis cache read failed for user auth');
+    logger.warn(
+      { err: error, userId },
+      'Redis cache read failed for user auth'
+    );
   }
 
   // Cache miss - fetch from database
@@ -101,7 +115,10 @@ export async function getUserAuthData(
     await redisService.setJSON(cacheKey, data, CACHE_TTL);
     logger.debug({ userId, ttl: CACHE_TTL }, 'User auth data cached');
   } catch (error) {
-    logger.warn({ err: error, userId }, 'Redis cache write failed for user auth');
+    logger.warn(
+      { err: error, userId },
+      'Redis cache write failed for user auth'
+    );
   }
 
   return data;

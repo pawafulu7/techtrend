@@ -37,7 +37,7 @@ const safeCoerceNumber = (def: number) =>
     return Number.isFinite(n) ? n : undefined;
   }, z.number().default(def));
 const booleanEnum = z.preprocess(
-  (v) => (typeof v === 'string' ? v.toLowerCase() : v),
+  (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v),
   z.enum(['true', 'false'])
 );
 
@@ -95,6 +95,9 @@ const envSchema = z
     ENABLE_AUTH: booleanEnum.optional().default('true'),
     ENABLE_ANALYTICS: booleanEnum.optional().default('false'),
     AGENT_STREAMING_ENABLED: booleanEnum.optional().default('false'),
+
+    // Maintenance Mode (管理者以外をメンテナンス画面に切り替え。proxy.ts で参照)
+    MAINTENANCE_MODE: booleanEnum.optional().default('false'),
 
     // Quality Control
     QUALITY_CHECK_ENABLED: booleanEnum.optional().default('true'),
@@ -406,6 +409,10 @@ export const features = {
   isRagEnabled: () => env.RAG_ENABLED === 'true' && !!env.OPENAI_API_KEY,
   isRateLimitingEnabled: () =>
     !!(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN),
+  // NOTE: proxy.ts は env.ts を import できない（pino 依存）ため、proxy 側では
+  // process.env.MAINTENANCE_MODE?.trim() === 'true' を直接参照する。
+  // このヘルパは env.ts を import 可能なアプリ他所からの参照用（型定義・一貫性目的）。
+  isMaintenanceMode: () => env.MAINTENANCE_MODE === 'true',
 };
 
 /**
