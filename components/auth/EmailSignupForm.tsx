@@ -68,6 +68,7 @@ export function EmailSignupForm() {
     watch,
   } = useForm<EmailSignupFormData>();
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form requires reading watch() return value outside hook scope
   const password = watch('password');
   const passwordStrength = password ? checkPasswordStrength(password) : null;
 

@@ -37,6 +37,8 @@ export function ArticleList({
 
   // initialArticlesの変更を反映
   useEffect(() => {
+    // 楽観的更新でローカル管理しているarticlesをサーバーの最新データにリセットする
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setArticles(initialArticles);
   }, [initialArticles]);
 

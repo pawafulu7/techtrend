@@ -55,6 +55,8 @@ export function FavoriteButton({
     if (!fetchInitialStatus) return;
     if (isPending) return;
     if (onToggleFavorite) return;
+    // ISRページ向けのAPI fetch結果でお気に入り状態を初期化する必要がある
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoadingInitial(true);
 
     // If not authenticated, no need to fetch
@@ -105,6 +107,8 @@ export function FavoriteButton({
   useEffect(() => {
     if (onToggleFavorite) return;
     if (fetchInitialStatus) return;
+    // 非ISRページで親から渡されるinitialFavoritedをuncontrolled stateに同期する
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUncontrolledFavorited(initialFavorited);
   }, [initialFavorited, fetchInitialStatus, onToggleFavorite]);
 

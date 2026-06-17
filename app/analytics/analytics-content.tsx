@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -52,24 +52,13 @@ export default function AnalyticsContent() {
   const [dateRange, setDateRange] = useState<'week' | 'month'>('week');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    checkAnalyticsStatus();
-  }, []);
-
-  useEffect(() => {
-    if (isEnabled) {
-      loadStats();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEnabled, dateRange]);
-
-  const checkAnalyticsStatus = () => {
+  const checkAnalyticsStatus = useCallback(() => {
     const enabled = localStorage.getItem('analytics-enabled') === 'true';
     setIsEnabled(enabled);
     setLoading(false);
-  };
+  }, []);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     const now = new Date();
     let from: Date, to: Date;
 
@@ -83,7 +72,19 @@ export default function AnalyticsContent() {
 
     const data = await analyticsTracker.getStats({ from, to });
     setStats(data || []);
-  };
+  }, [dateRange]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async callback updates state on mount
+    checkAnalyticsStatus();
+  }, [checkAnalyticsStatus]);
+
+  useEffect(() => {
+    if (isEnabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- async callback updates state on dateRange change
+      loadStats();
+    }
+  }, [isEnabled, dateRange, loadStats]);
 
   const enableAnalytics = async () => {
     await analyticsTracker.enable();

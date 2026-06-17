@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { TrendingUp, Sparkles, BarChart3, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
@@ -36,9 +36,42 @@ export function TrendsContent({
 
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 
+  const fetchTrendAnalysis = useCallback(
+    async (days: number, signal?: AbortSignal) => {
+      try {
+        setLoadingAnalysis(true);
+        const response = await fetch(`/api/trends/analysis?days=${days}`, {
+          cache: 'no-store',
+          signal,
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (data.error) {
+          setTrendAnalysis(null);
+        } else {
+          setTrendAnalysis(data);
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError')
+          return;
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Failed to fetch trend analysis:', error);
+        }
+        setTrendAnalysis(null);
+      } finally {
+        if (!signal?.aborted) {
+          setLoadingAnalysis(false);
+        }
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     // 初回レンダリング時（selectedDays===7）はサーバー取得済みデータを使用
     if (selectedDays === 7) {
+      // initialAnalysis（SSR取得済み）を selectedDays 変化に応じてリセットする
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTrendAnalysis(initialAnalysis);
       return;
     }
@@ -52,34 +85,7 @@ export function TrendsContent({
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [selectedDays, initialAnalysis]);
-
-  const fetchTrendAnalysis = async (days: number, signal?: AbortSignal) => {
-    try {
-      setLoadingAnalysis(true);
-      const response = await fetch(`/api/trends/analysis?days=${days}`, {
-        cache: 'no-store',
-        signal,
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      if (data.error) {
-        setTrendAnalysis(null);
-      } else {
-        setTrendAnalysis(data);
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return;
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Failed to fetch trend analysis:', error);
-      }
-      setTrendAnalysis(null);
-    } finally {
-      if (!signal?.aborted) {
-        setLoadingAnalysis(false);
-      }
-    }
-  };
+  }, [selectedDays, initialAnalysis, fetchTrendAnalysis]);
 
   const chartData = useMemo(
     () => ({

@@ -61,7 +61,8 @@ export default function VerifyPage() {
   };
 
   useEffect(() => {
-    // URLパラメータから成功・エラー状態を判定
+    // URLパラメータから成功・エラー状態を判定（searchParamsを読み取って画面状態を初期化する唯一のタイミング）
+    /* eslint-disable react-hooks/set-state-in-effect */
     const success = searchParams.get('success');
     const error = searchParams.get('error');
     const email = searchParams.get('email');
@@ -91,6 +92,7 @@ export default function VerifyPage() {
       setVerificationState('success');
       setMessage('確認メールを送信しました。メールをご確認ください。');
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 

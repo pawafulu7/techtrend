@@ -28,7 +28,6 @@ export function SearchBox() {
       isInternalUpdate.current = false;
       return;
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: sync from URL params
     setQuery(newSearch || '');
   }, [searchParams]);
 

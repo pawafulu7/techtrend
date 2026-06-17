@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Select,
@@ -36,11 +36,7 @@ export default function CategoryFilter() {
   // 楽観的更新のための値
   const displayCategory = isPending ? optimisticCategory : currentCategory;
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await fetch('/api/articles/categories');
       if (response.ok) {
@@ -52,7 +48,12 @@ export default function CategoryFilter() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async callback updates state on mount
+    fetchCategories();
+  }, [fetchCategories]);
 
   const handleCategoryChange = (value: string) => {
     // 即座に楽観的更新

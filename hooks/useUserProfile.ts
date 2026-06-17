@@ -22,6 +22,8 @@ export function useUserProfile(options?: UseUserProfileOptions) {
 
   useEffect(() => {
     if (!enabled) {
+      // enabled=false 時はフェッチをスキップしてローディング状態を解除する
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(false);
       return;
     }

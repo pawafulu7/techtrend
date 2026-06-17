@@ -137,6 +137,8 @@ export function HistoryContent() {
 
   useEffect(() => {
     const abortController = new AbortController();
+    // マウント時にAbortControllerを渡してフェッチを開始する（setState を含む非同期処理のトリガー）
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchHistory(abortController.signal);
     return () => abortController.abort();
   }, [fetchHistory]);
@@ -145,6 +147,8 @@ export function HistoryContent() {
   useEffect(() => {
     if (justCleared && views.length === 0) {
       emptyStateRef.current?.focus();
+      // フォーカス完了後に justCleared フラグをリセットする（副作用完了の通知）
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setJustCleared(false);
     }
   }, [justCleared, views.length]);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   groupSourcesByCategory,
   SourceCategory,
@@ -184,6 +184,8 @@ export function useSourceFilter({
 
     const validIds = new Set(sources.map((s) => s.id));
 
+    // URLパラメータ（searchParams）の変化を selectedSources state に同期する
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (sourcesParam === 'none') {
       setSelectedSources([]);
     } else if (sourcesParam === 'all') {
@@ -212,19 +214,12 @@ export function useSourceFilter({
         setSelectedSources(sources.map((s) => s.id));
       }
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
     // URLパラメータがない場合は既存のstateを維持（cookie由来の初期値を保持）
   }, [searchParams, sources]);
 
-  // アンマウント時に保留中のCookie更新をflush
-  useEffect(() => {
-    return () => {
-      flushCookieUpdate();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Cookie更新を実行するヘルパー関数
-  const performCookieUpdate = (sourceIds: string[]) => {
+  const performCookieUpdate = useCallback((sourceIds: string[]) => {
     fetch('/api/source-filter', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -250,16 +245,23 @@ export function useSourceFilter({
         });
       }
     });
-  };
+  }, []);
 
   // 保留中のCookie更新を即座に実行（flush）
-  const flushCookieUpdate = () => {
+  const flushCookieUpdate = useCallback(() => {
     if (cookieUpdateTimeoutRef.current) {
       clearTimeout(cookieUpdateTimeoutRef.current);
       cookieUpdateTimeoutRef.current = null;
       performCookieUpdate(lastQueuedSourcesRef.current);
     }
-  };
+  }, [performCookieUpdate]);
+
+  // アンマウント時に保留中のCookie更新をflush
+  useEffect(() => {
+    return () => {
+      flushCookieUpdate();
+    };
+  }, [flushCookieUpdate]);
 
   const applySourceFilter = (sourceIds: string[]) => {
     // 即座に状態を更新（UIの反応性を保つ）
