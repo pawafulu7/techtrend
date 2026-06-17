@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -52,57 +52,77 @@ export default function AnalyticsContent() {
   const [dateRange, setDateRange] = useState<'week' | 'month'>('week');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    checkAnalyticsStatus();
-  }, []);
-
-  useEffect(() => {
-    if (isEnabled) {
-      loadStats();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEnabled, dateRange]);
-
-  const checkAnalyticsStatus = () => {
+  const checkAnalyticsStatus = useCallback(() => {
     const enabled = localStorage.getItem('analytics-enabled') === 'true';
     setIsEnabled(enabled);
     setLoading(false);
-  };
+  }, []);
 
-  const loadStats = async () => {
-    const now = new Date();
-    let from: Date, to: Date;
+  const loadStats = useCallback(async () => {
+    try {
+      const now = new Date();
+      let from: Date, to: Date;
 
-    if (dateRange === 'week') {
-      from = startOfWeek(now, { locale: ja });
-      to = endOfWeek(now, { locale: ja });
-    } else {
-      from = startOfMonth(now);
-      to = endOfMonth(now);
+      if (dateRange === 'week') {
+        from = startOfWeek(now, { locale: ja });
+        to = endOfWeek(now, { locale: ja });
+      } else {
+        from = startOfMonth(now);
+        to = endOfMonth(now);
+      }
+
+      const data = await analyticsTracker.getStats({ from, to });
+      setStats(data || []);
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to load analytics stats:', error);
+      }
+      setStats([]);
     }
+  }, [dateRange]);
 
-    const data = await analyticsTracker.getStats({ from, to });
-    setStats(data || []);
-  };
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async callback updates state on mount
+    checkAnalyticsStatus();
+  }, [checkAnalyticsStatus]);
+
+  useEffect(() => {
+    if (isEnabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- async callback updates state on dateRange change
+      loadStats();
+    }
+  }, [isEnabled, dateRange, loadStats]);
 
   const enableAnalytics = async () => {
-    await analyticsTracker.enable();
-    setIsEnabled(true);
+    try {
+      await analyticsTracker.enable();
+      setIsEnabled(true);
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to enable analytics:', error);
+      }
+    }
   };
 
   const exportData = async () => {
-    const data = await analyticsTracker.exportData();
-    if (!data) return;
+    try {
+      const data = await analyticsTracker.exportData();
+      if (!data) return;
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `techtrend-analytics-${format(new Date(), 'yyyy-MM-dd')}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `techtrend-analytics-${format(new Date(), 'yyyy-MM-dd')}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to export analytics data:', error);
+      }
+    }
   };
 
   // 統計の集計

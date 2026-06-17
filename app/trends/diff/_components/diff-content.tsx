@@ -81,6 +81,8 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
         )
       );
       if (allArticleIds.length > 0) {
+        // マウント時に initialData から関連記事IDを収集してタイトルをフェッチする
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchArticleTitles([...new Set(allArticleIds)] as string[]);
       }
     }
@@ -101,6 +103,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
         if (result.data?.length === 0 && !result.isFallback && !isRetry) {
           const prevWeek = getPreviousISOWeek(week);
           if (prevWeek < week) {
+            // eslint-disable-next-line react-hooks/immutability
             return fetchData(prevWeek, true, week);
           }
         }

@@ -26,6 +26,7 @@ export function PasswordChangeForm() {
     reset,
   } = useForm<PasswordFormData>();
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form requires reading watch() return value outside hook scope
   const newPassword = watch('newPassword');
 
   const onSubmit = async (data: PasswordFormData) => {
@@ -58,7 +59,10 @@ export function PasswordChangeForm() {
       toast({
         variant: 'destructive',
         title: 'エラー',
-        description: error instanceof Error ? error.message : 'パスワードの変更に失敗しました',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'パスワードの変更に失敗しました',
       });
     } finally {
       setIsLoading(false);
@@ -80,7 +84,9 @@ export function PasswordChangeForm() {
           placeholder="現在のパスワード"
         />
         {errors.currentPassword && (
-          <p className="text-sm text-destructive">{errors.currentPassword.message}</p>
+          <p className="text-destructive text-sm">
+            {errors.currentPassword.message}
+          </p>
         )}
       </div>
 
@@ -109,9 +115,11 @@ export function PasswordChangeForm() {
           placeholder="新しいパスワード（8文字以上）"
         />
         {errors.newPassword && (
-          <p className="text-sm text-destructive">{errors.newPassword.message}</p>
+          <p className="text-destructive text-sm">
+            {errors.newPassword.message}
+          </p>
         )}
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           8文字以上で、大文字、小文字、数字を含めてください
         </p>
       </div>
@@ -131,7 +139,9 @@ export function PasswordChangeForm() {
           placeholder="新しいパスワード（確認）"
         />
         {errors.confirmPassword && (
-          <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+          <p className="text-destructive text-sm">
+            {errors.confirmPassword.message}
+          </p>
         )}
       </div>
 

@@ -173,12 +173,15 @@ export function GeneratePostDialog({
   // ダイアログを閉じる時にリセット
   useEffect(() => {
     if (!open) {
+      // ダイアログが閉じられたタイミングで全フォーム状態をリセットする
+      /* eslint-disable react-hooks/set-state-in-effect */
       setSearchCategory('all');
       setSearchKeyword('');
       setCandidates([]);
       setSelectedArticle(null);
       setArticleIdInput('');
       setError(null);
+      /* eslint-enable react-hooks/set-state-in-effect */
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }

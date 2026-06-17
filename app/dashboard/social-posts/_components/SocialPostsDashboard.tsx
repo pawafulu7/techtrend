@@ -97,6 +97,8 @@ export function SocialPostsDashboard() {
   // Sync filters with URL changes (browser back/forward, external links)
   useEffect(() => {
     const parsed = parseFilters(new URLSearchParams(searchParams.toString()));
+    // URLパラメータの変化（ブラウザ前後ナビ・外部リンク）を filters state に同期する
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFilters(parsed);
   }, [searchParams, parseFilters]);
 
@@ -161,12 +163,11 @@ export function SocialPostsDashboard() {
   // Selection handlers
   const handleSelectAll = useCallback(() => {
     if (!data?.items) return;
-    if (selectedIds.size === data.items.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(data.items.map((p) => p.id)));
-    }
-  }, [data?.items, selectedIds.size]);
+    const items = data.items;
+    setSelectedIds((prev) =>
+      prev.size === items.length ? new Set() : new Set(items.map((p) => p.id))
+    );
+  }, [data]);
 
   const handleSelectOne = useCallback((id: string) => {
     setSelectedIds((prev) => {

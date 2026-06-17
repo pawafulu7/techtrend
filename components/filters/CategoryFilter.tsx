@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Select,
@@ -36,23 +36,30 @@ export default function CategoryFilter() {
   // 楽観的更新のための値
   const displayCategory = isPending ? optimisticCategory : currentCategory;
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch('/api/articles/categories');
+      const response = await fetch('/api/articles/categories', { signal });
       if (response.ok) {
         const data: CategoryStats = await response.json();
-        setCategories(data.categories);
+        if (!signal?.aborted) {
+          setCategories(data.categories);
+        }
       }
     } catch (_error) {
-      // エラーは無視（UIは空のカテゴリリストを表示）
+      // エラーは無視（UIは空のカテゴリリストを表示。AbortError も同様に握りつぶす）
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async callback updates state on mount
+    fetchCategories(controller.signal);
+    return () => controller.abort();
+  }, [fetchCategories]);
 
   const handleCategoryChange = (value: string) => {
     // 即座に楽観的更新

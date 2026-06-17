@@ -67,10 +67,13 @@ export function SocialPostEditor({ postId }: SocialPostEditorProps) {
   // Initialize form when data loads or postId changes
   useEffect(() => {
     if (post && initializedPostId !== postId) {
+      // APIから取得したpostデータでフォーム初期値を設定する（postId切り替え時の再初期化含む）
+      /* eslint-disable react-hooks/set-state-in-effect */
       setContent(post.content);
       setHashtags(post.hashtags.join(' '));
       setStatus(post.status);
       setInitializedPostId(postId);
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [post, postId, initializedPostId]);
 

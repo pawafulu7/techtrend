@@ -29,6 +29,7 @@ export function SignupForm() {
     formState: { errors },
   } = useForm<SignupFormData>();
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form requires reading watch() return value outside hook scope
   const password = watch('password');
 
   const onSubmit = async (data: SignupFormData) => {

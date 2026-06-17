@@ -111,6 +111,8 @@ export function FavoriteFeedContent() {
 
   useEffect(() => {
     if (!favoritesLoading) {
+      // favoritesLoading 完了後に記事フェッチを開始する（setState を含む非同期処理のトリガー）
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadArticles();
     }
   }, [favoritesLoading, loadArticles]);

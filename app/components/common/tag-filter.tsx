@@ -51,6 +51,8 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
     const tagParam = searchParams.get('tags');
     const modeParam = searchParams.get('tagMode') as 'OR' | 'AND' | null;
 
+    // URLパラメータの変化（ブラウザ前後ナビ含む）を selectedTags/filterMode に同期する
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (tagParam) {
       setSelectedTags(tagParam.split(','));
     } else {
@@ -60,6 +62,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
     if (modeParam) {
       setFilterMode(modeParam);
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [searchParams]);
 
   // 検索API呼び出し

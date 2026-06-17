@@ -66,6 +66,8 @@ export function ArticlesFilters({
   // inputValueは意図的に依存配列から除外（含めるとinput→state→effectの無限ループ）
   useEffect(() => {
     if (query !== inputValue) {
+      // 親から渡された query が変わった時（クリア等）のみ inputValue を外部同期する
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInputValue(query);
     }
     // 親からの外部更新時に重複送信しないよう同期
