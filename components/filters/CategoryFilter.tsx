@@ -36,23 +36,29 @@ export default function CategoryFilter() {
   // 楽観的更新のための値
   const displayCategory = isPending ? optimisticCategory : currentCategory;
 
-  const fetchCategories = useCallback(async () => {
+  const fetchCategories = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch('/api/articles/categories');
+      const response = await fetch('/api/articles/categories', { signal });
       if (response.ok) {
         const data: CategoryStats = await response.json();
-        setCategories(data.categories);
+        if (!signal?.aborted) {
+          setCategories(data.categories);
+        }
       }
     } catch (_error) {
-      // エラーは無視（UIは空のカテゴリリストを表示）
+      // エラーは無視（UIは空のカテゴリリストを表示。AbortError も同様に握りつぶす）
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- async callback updates state on mount
-    fetchCategories();
+    fetchCategories(controller.signal);
+    return () => controller.abort();
   }, [fetchCategories]);
 
   const handleCategoryChange = (value: string) => {

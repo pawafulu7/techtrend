@@ -70,8 +70,11 @@ export function TrendsContent({
   useEffect(() => {
     // 初回レンダリング時（selectedDays===7）はサーバー取得済みデータを使用
     if (selectedDays === 7) {
-      // initialAnalysis（SSR取得済み）を selectedDays 変化に応じてリセットする
+      // 30日→7日切替時、進行中の fetch を abort した直後は finally が
+      // signal.aborted 経由でローディング解除をスキップするため、ここで明示的に false に戻す。
+      // 続けて initialAnalysis（SSR 取得済み）を selectedDays 変化に応じてリセットする。
       // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoadingAnalysis(false);
       setTrendAnalysis(initialAnalysis);
       return;
     }
