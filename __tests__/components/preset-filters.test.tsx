@@ -23,9 +23,11 @@ describe('PresetFilters', () => {
 
     // Query by accessible name rather than role; @radix-ui/react-toggle-group's
     // root role differs across versions (group ↔ radiogroup), but aria-label is stable.
-    expect(
-      screen.getByLabelText('クイックフィルタープリセット')
-    ).toBeInTheDocument();
+    const group = screen.getByLabelText('クイックフィルタープリセット');
+    expect(group).toBeInTheDocument();
+    // Still assert the root keeps a grouping role so we catch accessibility regressions
+    // (e.g. radix dropping the role entirely) — accept either group or radiogroup.
+    expect(['group', 'radiogroup']).toContain(group.getAttribute('role'));
 
     presets.forEach((preset) => {
       expect(

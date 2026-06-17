@@ -26,7 +26,11 @@ describe('PeriodSelector', () => {
     // The ToggleGroup container exposes aria-label="対象期間". The underlying ARIA
     // role differs across @radix-ui/react-toggle-group versions (group ↔ radiogroup),
     // so query by accessible name instead of hard-coding the role.
-    expect(screen.getByLabelText('対象期間')).toBeInTheDocument();
+    const group = screen.getByLabelText('対象期間');
+    expect(group).toBeInTheDocument();
+    // Still assert the root keeps a grouping role so we catch accessibility regressions
+    // (e.g. radix dropping the role entirely) — accept either group or radiogroup.
+    expect(['group', 'radiogroup']).toContain(group.getAttribute('role'));
     expect(screen.getByTestId('period-3')).toBeInTheDocument();
     expect(screen.getByTestId('period-6')).toBeInTheDocument();
     expect(screen.getByTestId('period-12')).toBeInTheDocument();
