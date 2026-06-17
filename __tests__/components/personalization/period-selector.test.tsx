@@ -23,8 +23,10 @@ describe('PeriodSelector', () => {
   it('renders all period options', () => {
     render(<PeriodSelector {...defaultProps} />);
 
-    // shadcn/ui ToggleGroup uses role="group" instead of radiogroup
-    expect(screen.getByRole('group', { name: '対象期間' })).toBeInTheDocument();
+    // The ToggleGroup container exposes aria-label="対象期間". The underlying ARIA
+    // role differs across @radix-ui/react-toggle-group versions (group ↔ radiogroup),
+    // so query by accessible name instead of hard-coding the role.
+    expect(screen.getByLabelText('対象期間')).toBeInTheDocument();
     expect(screen.getByTestId('period-3')).toBeInTheDocument();
     expect(screen.getByTestId('period-6')).toBeInTheDocument();
     expect(screen.getByTestId('period-12')).toBeInTheDocument();
@@ -51,7 +53,9 @@ describe('PeriodSelector', () => {
   it('displays correct helper text for months', () => {
     render(<PeriodSelector {...defaultProps} value={6} />);
 
-    expect(screen.getByText('過去6ヶ月の記事を対象にします')).toBeInTheDocument();
+    expect(
+      screen.getByText('過去6ヶ月の記事を対象にします')
+    ).toBeInTheDocument();
   });
 
   it('displays correct helper text for all time', () => {

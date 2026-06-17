@@ -1,7 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import { PresetFilters, presets } from '@/app/components/popular/preset-filters';
+import {
+  PresetFilters,
+  presets,
+} from '@/app/components/popular/preset-filters';
 
 describe('PresetFilters', () => {
   const mockOnPresetChange = jest.fn();
@@ -18,10 +21,16 @@ describe('PresetFilters', () => {
   it('renders all preset options', () => {
     render(<PresetFilters {...defaultProps} />);
 
-    expect(screen.getByRole('group', { name: 'クイックフィルタープリセット' })).toBeInTheDocument();
+    // Query by accessible name rather than role; @radix-ui/react-toggle-group's
+    // root role differs across versions (group ↔ radiogroup), but aria-label is stable.
+    expect(
+      screen.getByLabelText('クイックフィルタープリセット')
+    ).toBeInTheDocument();
 
     presets.forEach((preset) => {
-      expect(screen.getByRole('radio', { name: preset.label })).toBeInTheDocument();
+      expect(
+        screen.getByRole('radio', { name: preset.label })
+      ).toBeInTheDocument();
     });
   });
 
@@ -75,7 +84,7 @@ describe('PresetFilters', () => {
   it('applies custom className', () => {
     render(<PresetFilters {...defaultProps} className="custom-filters" />);
 
-    const group = screen.getByRole('group', { name: 'クイックフィルタープリセット' });
+    const group = screen.getByLabelText('クイックフィルタープリセット');
     expect(group).toHaveClass('custom-filters');
   });
 
