@@ -388,12 +388,22 @@ async function processSource({
           // まとめて更新（sourceId移管 / フィード本文由来の補完のみ。
           // エンリッチャーによる自己修復は上の updateMany(CAS) で処理済み）
           if (Object.keys(updates).length > 0) {
-            await prisma.article.update({
-              where: { id: existing.id },
+            // content を含む更新は、並行実行中の他ソースが既に本文を確定させて
+            // いないことを CAS で確認してから反映する（existing.contentLength は
+            // バッチ先頭の一括取得時点のスナップショットで古い可能性があるため。
+            // enricher 自己修復経路と同一の保護方式）
+            const casWhere = 'content' in updates
+              ? { id: existing.id, OR: [{ contentLength: null }, { contentLength: 0 }] }
+              : { id: existing.id };
+            const { count: plainUpdateCount } = await prisma.article.updateMany({
+              where: casWhere,
               data: updates,
             });
+            if (plainUpdateCount === 0 && 'content' in updates) {
+              debugLog(`   既存記事の更新スキップ（並行更新で本文既存）: ${article.title.substring(0, 50)}...`);
+            }
             // 自己修復（updateMany）側で計上済みの記事は二重計上しない
-            if (!selfHealedViaEnricher) {
+            if (!selfHealedViaEnricher && plainUpdateCount > 0) {
               updatedCount++;
             }
             if (updates.sourceId) {
@@ -633,11 +643,19 @@ async function processSource({
             }
 
             if (Object.keys(updates).length > 0) {
-              await prisma.article.update({
-                where: { id: latestExisting.id },
+              // メイン分岐と同様、content を含む更新は CAS で並行上書きを防ぐ
+              const casWhere = 'content' in updates
+                ? { id: latestExisting.id, OR: [{ contentLength: null }, { contentLength: 0 }] }
+                : { id: latestExisting.id };
+              const { count: recoveryUpdateCount } = await prisma.article.updateMany({
+                where: casWhere,
                 data: updates,
               });
-              updatedCount++;
+              if (recoveryUpdateCount > 0) {
+                updatedCount++;
+              } else {
+                debugLog(`   P2002リカバリ更新スキップ（並行更新で本文既存）: ${article.title.substring(0, 50)}...`);
+              }
             } else {
               duplicateCount++;
             }
