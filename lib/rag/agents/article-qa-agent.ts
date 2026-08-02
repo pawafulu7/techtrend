@@ -148,7 +148,8 @@ export const articleQaAgent = new Agent({
   // Average path: 8-12 steps, max 40 for complex questions
   stopWhen: stepCountIs(40),
 
-  system: ARTICLE_QA_SYSTEM_PROMPT,
+  // AI SDK v7 で system は instructions に改名された
+  instructions: ARTICLE_QA_SYSTEM_PROMPT,
 
   tools: {
     'article-context': articleContextTool,

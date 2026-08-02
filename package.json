@@ -128,7 +128,7 @@
     "worker:embedding:dry": "dotenv -e .env -- tsx scripts/dev/run-embedding-worker.ts --dry-run"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.52",
+    "@ai-sdk/openai": "^4.0.27",
     "@better-auth/prisma-adapter": "^1.6.11",
     "@dqbd/tiktoken": "^1.0.22",
     "@google/generative-ai": "^0.24.1",
@@ -163,7 +163,7 @@
     "@tanstack/react-query-devtools": "^5.87.4",
     "@vercel/otel": "^2.0.1",
     "@xyflow/react": "^12.10.0",
-    "ai": "^5.0.76",
+    "ai": "^7.0.48",
     "async-mutex": "^0.5.0",
     "axios": "^1.16.0",
     "bcryptjs": "^3.0.2",
@@ -282,7 +282,7 @@
       "zod": "$zod"
     },
     "hono": "4.12.27",
-    "@hono/node-server": "2.0.5",
+    "@hono/node-server": "2.0.10",
     "follow-redirects": "1.16.0",
     "postcss": "8.5.18",
     "uuid": "^14.0.0",
@@ -294,7 +294,7 @@
     "fast-uri": "3.1.4",
     "ip-address": "10.1.1",
     "sharp": "0.35.0",
-    "brace-expansion@1": "1.1.16",
-    "brace-expansion@5": "5.0.7"
+    "brace-expansion@1": "1.1.17",
+    "brace-expansion@5": "5.0.8"
   }
 }
