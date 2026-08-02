@@ -167,7 +167,7 @@
     "async-mutex": "^0.5.0",
     "axios": "^1.16.0",
     "bcryptjs": "^3.0.2",
-    "better-auth": "^1.6.11",
+    "better-auth": "^1.6.22",
     "cheerio": "^1.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -184,11 +184,11 @@
     "ioredis": "^5.7.0",
     "jsdom": "^27.0.0",
     "lucide-react": "^0.525.0",
-    "next": "^16.2.6",
+    "next": "^16.2.11",
     "next-themes": "^0.4.6",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^8.0.5",
+    "nodemailer": "^9.0.1",
     "openai": "^4.77.3",
     "p-limit": "^7.2.0",
     "pino": "^9.9.5",
@@ -262,7 +262,7 @@
     "whatwg-fetch": "^3.6.20"
   },
   "overrides": {
-    "js-yaml": "4.2.0",
+    "js-yaml": "4.3.0",
     "glob": "11.1.0",
     "test-exclude": {
       "glob": "7.2.3"
@@ -276,22 +276,25 @@
     "@prisma/config": {
       "effect": "3.20.0"
     },
-    "nodemailer": "^8.0.5",
+    "nodemailer": "^9.0.1",
     "defu": "6.1.6",
     "better-call": {
       "zod": "$zod"
     },
-    "hono": "4.12.25",
-    "@hono/node-server": "1.19.13",
+    "hono": "4.12.27",
+    "@hono/node-server": "2.0.5",
     "follow-redirects": "1.16.0",
-    "postcss": "8.5.10",
+    "postcss": "8.5.18",
     "uuid": "^14.0.0",
     "esbuild": "0.28.1",
     "ws": "8.21.0",
     "tmp": "0.2.7",
     "qs": "6.15.2",
     "kysely": "0.28.17",
-    "fast-uri": "3.1.2",
-    "ip-address": "10.1.1"
+    "fast-uri": "3.1.4",
+    "ip-address": "10.1.1",
+    "sharp": "0.35.0",
+    "brace-expansion@1": "1.1.16",
+    "brace-expansion@5": "5.0.7"
   }
 }
