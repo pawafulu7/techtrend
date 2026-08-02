@@ -465,6 +465,23 @@ export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
     tagPrefix: 'BusinessInsider',
     categoryFilter: ['Tech', 'AI'],
   },
+  // Japanese Tech Media (Batch 1, Issue #628)
+  'JSer.info': {
+    feedUrl: 'https://jser.info/rss/',
+    tagPrefix: 'jser',
+  },
+  CodeZine: {
+    feedUrl: 'https://codezine.jp/rss/new/20/index.xml',
+    tagPrefix: 'codezine',
+  },
+  'gihyo.jp': {
+    feedUrl: 'https://gihyo.jp/feed/rss2',
+    tagPrefix: 'gihyo',
+  },
+  'Findy Engineer Lab': {
+    feedUrl: 'https://engineer-lab.findy-code.io/feed',
+    tagPrefix: 'findy-engineer-lab',
+  },
 };
 
 /**

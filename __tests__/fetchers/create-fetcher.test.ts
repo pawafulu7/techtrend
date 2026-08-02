@@ -75,6 +75,10 @@ describe('createFetcher - Japanese Corporate Tech Blogs', () => {
       ['ITmedia Security', 'itmedia_security'],
       ['ITmedia AI+', 'itmedia_aiplus'],
       ['@IT', 'atit'],
+      ['JSer.info', 'jser_info'],
+      ['CodeZine', 'codezine'],
+      ['gihyo.jp', 'gihyo_jp'],
+      ['Findy Engineer Lab', 'findy_engineer_lab'],
     ])('should create GenericForeignRssFetcher for "%s"', (name, id) => {
       const source = createMockSource(name, id);
       const fetcher = createFetcher(source);

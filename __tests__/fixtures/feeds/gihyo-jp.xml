@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<rss version="2.0">
+<channel>
+<title>gihyo.jp</title>
+<link>https://gihyo.jp</link>
+<description><![CDATA[gihyo.jpは、技術評論社が運営しているWebメディアです。エンジニアやデザイナー向けの記事のほか、ビジネスシーンを含めITを活用している人向けの記事を掲載しています。]]></description>
+<lastBuildDate>Sun, 02 Aug 2026 16:04:00 +0900</lastBuildDate>
+<item>
+<title>ターミナル内で動くブラウザー「terminal-browser」が登場 ——エージェントからも操作可能、現在Apple Silicon Macのみ対応</title>
+<link>https://gihyo.jp/article/2026/07/terminal-browser?utm_source=feed</link>
+<pubDate>Fri, 31 Jul 2026 19:16:00 +0900</pubDate>
+<description><![CDATA[開発者のRob Pruzan氏は2026年7月30日、既存のターミナル内でChromiumベースのブラウザーを表示・操作できる「terminal-browser」をXで紹介した。]]></description>
+<guid isPermaLink="true">https://gihyo.jp/article/2026/07/terminal-browser</guid>
+</item>
+<item>
+<title>Google、ロボット向け次世代物理AI「Gemini Robotics 2」をリリース ―人型ロボットが高度な全身制御、繊細な器用さ、複数ロボットによる共同作業を実現</title>
+<link>https://gihyo.jp/article/2026/07/gemini-robotics-2?utm_source=feed</link>
+<pubDate>Fri, 31 Jul 2026 16:43:00 +0900</pubDate>
+<description><![CDATA[Googleは2026年7月30日、人型ロボットをより高度に制御し、幅広い複雑なタスクを完了できるようになる次世代の物理AIモデル「Gemini Robotics 2」ファミリーをリリースした。]]></description>
+<guid isPermaLink="true">https://gihyo.jp/article/2026/07/gemini-robotics-2</guid>
+</item>
+</channel>
+</rss>
