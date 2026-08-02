@@ -280,26 +280,45 @@ async function processSource({
         const existing = existingArticleMap.get(article.url);
 
         if (existing) {
-          const updates: Prisma.ArticleUpdateInput = {};
+          // 記事単位の更新フラグ。sourceId移管・content補完CASの成功・
+          // 自己修復の成功のいずれかがあれば true にし、末尾で一度だけ計上する
+          let articleUpdated = false;
 
           // はてぶ経由 → 企業ブログの場合、sourceIdを更新
+          // （content補完のCASとは独立させ、無条件で適用する）
           if (existing.sourceId === HATENA_SOURCE_ID && source.id !== HATENA_SOURCE_ID) {
-            updates.sourceId = source.id;
+            await prisma.article.update({
+              where: { id: existing.id },
+              data: { sourceId: source.id },
+            });
             console.error(`   [INFO] sourceId更新: ${source.name} <- Hatena`);
+            articleUpdated = true;
           }
-
-          // エンリッチャーによる自己修復が成功したか（成功時は updateMany で反映済みのため、
-          // 下の update 呼び出し・duplicateCount への計上から除外する）
-          let selfHealedViaEnricher = false;
 
           // content=null/empty の場合は更新を許可（全ソース共通の自己修復メカニズム）
           if (!existing.contentLength || existing.contentLength === 0) {
             if (article.content && article.content.length > 0) {
-              Object.assign(updates, {
-                content: article.content,
-                thumbnail: article.thumbnail ?? existing.thumbnail,
-                contentUpdatedAt: new Date(),
+              // フィード本文由来の補完。並行実行中の他ソースが既に本文を確定させて
+              // いないことを CAS で確認してから反映する（existing.contentLength は
+              // バッチ先頭の一括取得時点のスナップショットで古い可能性があるため。
+              // enricher 自己修復経路と同一の保護方式）
+              const { count: contentUpdateCount } = await prisma.article.updateMany({
+                where: {
+                  id: existing.id,
+                  OR: [{ contentLength: null }, { contentLength: 0 }],
+                },
+                data: {
+                  content: article.content,
+                  thumbnail: article.thumbnail ?? existing.thumbnail,
+                  contentUpdatedAt: new Date(),
+                },
               });
+              if (contentUpdateCount > 0) {
+                articleUpdated = true;
+                debugLog(`   既存記事を更新（content補完）: ${article.title.substring(0, 50)}...`);
+              } else {
+                debugLog(`   既存記事の更新スキップ（並行更新で本文既存）: ${article.title.substring(0, 50)}...`);
+              }
             } else if (env.SKIP_POST_SAVE_ENRICHMENT !== '1' && !isEnrichmentSkipped(sourceName)) {
               // ignoreFeedContent ソース等でフィード本文が空のまま保存された既存記事を
               // エンリッチャーで自己修復する（skipEnrichment ソースは上書き禁止ポリシーを維持）
@@ -337,6 +356,13 @@ async function processSource({
                         enricherUpdates.summaryError = null;
                       }
 
+                      // 本文が変わったため古い要約を無効化し、generateSummaries の
+                      // 再生成対象（summary null/空）に載せる
+                      // （enrich-thin-content.ts の本文回復時と同じ流儀）
+                      enricherUpdates.summary = null;
+                      enricherUpdates.detailedSummary = null;
+                      enricherUpdates.summaryVersion = 0;
+
                       // 並列実行中の他ソースが先に本文を書き込んでいた場合に上書きしないよう、
                       // contentLength が null/0 のままであることを条件に更新する（CAS）
                       const { count } = await prisma.article.updateMany({
@@ -348,8 +374,7 @@ async function processSource({
                       });
 
                       if (count > 0) {
-                        selfHealedViaEnricher = true;
-                        updatedCount++;
+                        articleUpdated = true;
                         result.newArticleIds.push(existing.id);
                         debugLog(`   既存記事を自己修復（エンリッチャー）: ${article.title.substring(0, 50)}...`);
                       } else {
@@ -385,33 +410,11 @@ async function processSource({
             }
           }
 
-          // まとめて更新（sourceId移管 / フィード本文由来の補完のみ。
-          // エンリッチャーによる自己修復は上の updateMany(CAS) で処理済み）
-          if (Object.keys(updates).length > 0) {
-            // content を含む更新は、並行実行中の他ソースが既に本文を確定させて
-            // いないことを CAS で確認してから反映する（existing.contentLength は
-            // バッチ先頭の一括取得時点のスナップショットで古い可能性があるため。
-            // enricher 自己修復経路と同一の保護方式）
-            const casWhere = 'content' in updates
-              ? { id: existing.id, OR: [{ contentLength: null }, { contentLength: 0 }] }
-              : { id: existing.id };
-            const { count: plainUpdateCount } = await prisma.article.updateMany({
-              where: casWhere,
-              data: updates,
-            });
-            if (plainUpdateCount === 0 && 'content' in updates) {
-              debugLog(`   既存記事の更新スキップ（並行更新で本文既存）: ${article.title.substring(0, 50)}...`);
-            }
-            // 自己修復（updateMany）側で計上済みの記事は二重計上しない
-            if (!selfHealedViaEnricher && plainUpdateCount > 0) {
-              updatedCount++;
-            }
-            if (updates.sourceId) {
-              debugLog(`   既存記事を更新（sourceId + content）: ${article.title.substring(0, 50)}...`);
-            } else {
-              debugLog(`   既存記事を更新（content補完）: ${article.title.substring(0, 50)}...`);
-            }
-          } else if (!selfHealedViaEnricher) {
+          // カウンタは記事単位で一度だけ計上する（sourceId移管・content補完CASの成功・
+          // 自己修復の成功のいずれかがあれば updated、それ以外は duplicate）
+          if (articleUpdated) {
+            updatedCount++;
+          } else {
             duplicateCount++;
           }
           continue;
@@ -626,36 +629,42 @@ async function processSource({
           });
 
           if (latestExisting) {
-            const updates: Prisma.ArticleUpdateInput = {};
+            // メイン分岐と同様、記事単位のフラグで一度だけ計上する
+            let articleUpdated = false;
 
             if (latestExisting.sourceId === HATENA_SOURCE_ID && source.id !== HATENA_SOURCE_ID) {
-              updates.sourceId = source.id;
+              // sourceId移管はcontent補完のCASとは独立させ、無条件で適用する
+              await prisma.article.update({
+                where: { id: latestExisting.id },
+                data: { sourceId: source.id },
+              });
               console.error(`   [INFO] sourceId更新: ${source.name} <- Hatena`);
+              articleUpdated = true;
             }
 
             if ((!latestExisting.contentLength || latestExisting.contentLength === 0) &&
                 article.content && article.content.length > 0) {
-              Object.assign(updates, {
-                content: article.content,
-                thumbnail: article.thumbnail ?? latestExisting.thumbnail,
-                contentUpdatedAt: new Date(),
-              });
-            }
-
-            if (Object.keys(updates).length > 0) {
               // メイン分岐と同様、content を含む更新は CAS で並行上書きを防ぐ
-              const casWhere = 'content' in updates
-                ? { id: latestExisting.id, OR: [{ contentLength: null }, { contentLength: 0 }] }
-                : { id: latestExisting.id };
               const { count: recoveryUpdateCount } = await prisma.article.updateMany({
-                where: casWhere,
-                data: updates,
+                where: {
+                  id: latestExisting.id,
+                  OR: [{ contentLength: null }, { contentLength: 0 }],
+                },
+                data: {
+                  content: article.content,
+                  thumbnail: article.thumbnail ?? latestExisting.thumbnail,
+                  contentUpdatedAt: new Date(),
+                },
               });
               if (recoveryUpdateCount > 0) {
-                updatedCount++;
+                articleUpdated = true;
               } else {
                 debugLog(`   P2002リカバリ更新スキップ（並行更新で本文既存）: ${article.title.substring(0, 50)}...`);
               }
+            }
+
+            if (articleUpdated) {
+              updatedCount++;
             } else {
               duplicateCount++;
             }
