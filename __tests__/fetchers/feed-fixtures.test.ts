@@ -13,11 +13,14 @@ import Parser from 'rss-parser';
  * fixture採取日: 2026-08-02
  */
 
-const FIXTURES: Array<[string, string]> = [
-  ['JSer.info', 'jser-info.xml'],
-  ['CodeZine', 'codezine.xml'],
-  ['gihyo.jp', 'gihyo-jp.xml'],
-  ['Findy Engineer Lab', 'findy-engineer-lab.xml'],
+// expectContent=false: CodeZine は item の description を空で配信する
+// （2026-08-02 実フィードで確認、20件中全件空）。本文は保存後に
+// GenericContentEnricher が補完するため、フィード段階では空を許容する。
+const FIXTURES: Array<[string, string, { expectContent: boolean }]> = [
+  ['JSer.info', 'jser-info.xml', { expectContent: true }],
+  ['CodeZine', 'codezine.xml', { expectContent: false }],
+  ['gihyo.jp', 'gihyo-jp.xml', { expectContent: true }],
+  ['Findy Engineer Lab', 'findy-engineer-lab.xml', { expectContent: true }],
 ];
 
 describe('Batch 1 フィード fixture パース検証', () => {
@@ -25,7 +28,7 @@ describe('Batch 1 フィード fixture パース検証', () => {
 
   it.each(FIXTURES)(
     '%s: 必須フィールドが取得できる',
-    async (_name, file) => {
+    async (_name, file, opts) => {
       const xml = fs.readFileSync(
         path.join(__dirname, '../fixtures/feeds', file),
         'utf-8'
@@ -48,14 +51,17 @@ describe('Batch 1 フィード fixture パース検証', () => {
         );
 
         // content系 5段階フォールバックのいずれかが存在すること
-        const record = item as Record<string, unknown>;
-        const content =
-          record['content:encoded'] ||
-          item.content ||
-          item.contentSnippet ||
-          record['description'] ||
-          item.summary;
-        expect(content).toBeTruthy();
+        // （expectContent=false のソースは空配信のためスキップ）
+        if (opts.expectContent) {
+          const record = item as Record<string, unknown>;
+          const content =
+            record['content:encoded'] ||
+            item.content ||
+            item.contentSnippet ||
+            record['description'] ||
+            item.summary;
+          expect(content).toBeTruthy();
+        }
       }
     }
   );
