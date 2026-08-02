@@ -309,7 +309,9 @@ async function processSource({
                 },
                 data: {
                   content: article.content,
-                  thumbnail: article.thumbnail ?? existing.thumbnail,
+                  thumbnail: isValidThumbnailUrl(article.thumbnail)
+                    ? article.thumbnail
+                    : existing.thumbnail,
                   contentUpdatedAt: new Date(),
                 },
               });
@@ -655,7 +657,9 @@ async function processSource({
                 },
                 data: {
                   content: article.content,
-                  thumbnail: article.thumbnail ?? latestExisting.thumbnail,
+                  thumbnail: isValidThumbnailUrl(article.thumbnail)
+                    ? article.thumbnail
+                    : latestExisting.thumbnail,
                   contentUpdatedAt: new Date(),
                 },
               });
