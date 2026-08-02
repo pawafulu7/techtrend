@@ -1,0 +1,600 @@
+diff --git a/.dockerignore b/.dockerignore
+index ba708db7..bdc8724e 100644
+--- a/.dockerignore
++++ b/.dockerignore
+@@ -125,6 +125,10 @@ desktop.ini
+ 
+ # CI/CD
+ .github
++# スケジューラ整合性テスト (scheduler-yaml-consistency.test.ts) がCIイメージ内で
++# 読み取るため、この2ファイルのみビルドコンテキストに含める (Issue #628)
++!.github/workflows/scheduler-rss-hourly.yml
++!.github/workflows/scheduler-scraping.yml
+ .gitlab-ci.yml
+ .travis.yml
+ 
+diff --git a/.github/workflows/scheduler-rss-hourly.yml b/.github/workflows/scheduler-rss-hourly.yml
+index a53f610a..3431d500 100644
+--- a/.github/workflows/scheduler-rss-hourly.yml
++++ b/.github/workflows/scheduler-rss-hourly.yml
+@@ -99,7 +99,11 @@ jobs:
+             "ITmedia Security" \
+             "ITmedia AI+" \
+             "@IT" \
+-            "Business Insider"
++            "Business Insider" \
++            "JSer.info" \
++            "CodeZine" \
++            "gihyo.jp" \
++            "Findy Engineer Lab"
+           # 要約生成はcollect-feeds.ts内で実行済み
+           # 品質スコアと難易度計算は1日1回に移動 (scheduler-daily-quality.yml)
+       - name: Notify failure to Slack
+diff --git a/__tests__/fetchers/create-fetcher.test.ts b/__tests__/fetchers/create-fetcher.test.ts
+index 77b43734..18ac2a81 100644
+--- a/__tests__/fetchers/create-fetcher.test.ts
++++ b/__tests__/fetchers/create-fetcher.test.ts
+@@ -75,6 +75,10 @@ describe('createFetcher - Japanese Corporate Tech Blogs', () => {
+       ['ITmedia Security', 'itmedia_security'],
+       ['ITmedia AI+', 'itmedia_aiplus'],
+       ['@IT', 'atit'],
++      ['JSer.info', 'jser_info'],
++      ['CodeZine', 'codezine'],
++      ['gihyo.jp', 'gihyo_jp'],
++      ['Findy Engineer Lab', 'findy_engineer_lab'],
+     ])('should create GenericForeignRssFetcher for "%s"', (name, id) => {
+       const source = createMockSource(name, id);
+       const fetcher = createFetcher(source);
+diff --git a/__tests__/fetchers/feed-fixtures.test.ts b/__tests__/fetchers/feed-fixtures.test.ts
+new file mode 100644
+index 00000000..3af77c23
+--- /dev/null
++++ b/__tests__/fetchers/feed-fixtures.test.ts
+@@ -0,0 +1,68 @@
++import fs from 'fs';
++import path from 'path';
++import Parser from 'rss-parser';
++
++/**
++ * Batch 1 フィード fixture パーステスト（Issue #628）
++ *
++ * 実フィードから採取した最小化XMLサンプルを rss-parser にかけ、
++ * GenericForeignRssFetcher が依存するフィールド
++ * （title / 絶対link / isoDate|pubDate / content系フォールバック）が
++ * 取得できることを検証する。rss-parser 更新時の回帰検出器。
++ *
++ * fixture採取日: 2026-08-02
++ */
++
++// expectContent=false: CodeZine は item の description を空で配信する
++// （2026-08-02 実フィードで確認、20件中全件空）。本文は保存後に
++// GenericContentEnricher が補完するため、フィード段階では空を許容する。
++const FIXTURES: Array<[string, string, { expectContent: boolean }]> = [
++  ['JSer.info', 'jser-info.xml', { expectContent: true }],
++  ['CodeZine', 'codezine.xml', { expectContent: false }],
++  ['gihyo.jp', 'gihyo-jp.xml', { expectContent: true }],
++  ['Findy Engineer Lab', 'findy-engineer-lab.xml', { expectContent: true }],
++];
++
++describe('Batch 1 フィード fixture パース検証', () => {
++  const parser = new Parser();
++
++  it.each(FIXTURES)(
++    '%s: 必須フィールドが取得できる',
++    async (_name, file, opts) => {
++      const xml = fs.readFileSync(
++        path.join(__dirname, '../fixtures/feeds', file),
++        'utf-8'
++      );
++      const feed = await parser.parseString(xml);
++      expect(feed.items.length).toBeGreaterThanOrEqual(1);
++
++      for (const item of feed.items) {
++        // GenericForeignRssFetcher の必須フィールド（title / link）
++        expect(item.title).toBeTruthy();
++        // 文字化け（UTF-8デコード失敗時の置換文字）がないこと
++        expect(item.title).not.toContain('�');
++        expect(item.link).toMatch(/^https?:\/\//);
++
++        // 日付: isoDate 優先、pubDate フォールバック（欠落時は現在時刻になる仕様）
++        const dateSource = item.isoDate || item.pubDate;
++        expect(dateSource).toBeTruthy();
++        expect(Number.isNaN(new Date(dateSource as string).getTime())).toBe(
++          false
++        );
++
++        // content系 5段階フォールバックのいずれかが存在すること
++        // （expectContent=false のソースは空配信のためスキップ）
++        if (opts.expectContent) {
++          const record = item as Record<string, unknown>;
++          const content =
++            record['content:encoded'] ||
++            item.content ||
++            item.contentSnippet ||
++            record['description'] ||
++            item.summary;
++          expect(content).toBeTruthy();
++        }
++      }
++    }
++  );
++});
+diff --git a/__tests__/fetchers/scheduler-yaml-consistency.test.ts b/__tests__/fetchers/scheduler-yaml-consistency.test.ts
+new file mode 100644
+index 00000000..1ea0b8a4
+--- /dev/null
++++ b/__tests__/fetchers/scheduler-yaml-consistency.test.ts
+@@ -0,0 +1,90 @@
++import fs from 'fs';
++import path from 'path';
++import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/generic-foreign-rss';
++
++/**
++ * スケジューラ整合性テスト（Issue #628 / #407型事故の再発防止）
++ *
++ * FOREIGN_SOURCE_CONFIGS に定義されたソース名が、実際に収集を起動する
++ * 2系統のスケジューラ（GHAワークフローのCLI引数 / ローカルscheduler.tsの配列）に
++ * 完全一致で存在することを検証する。
++ *
++ * collect-feeds.ts は `WHERE id IN (...) OR name IN (...)` の完全一致で
++ * ソースを絞り込むため、includes() の部分一致では「CLI引数として渡される」
++ * ことを保証できない（コメント中の文字列や別名の部分一致を誤検知する）。
++ */
++
++const ROOT = process.cwd();
++
++/** YAMLの run ブロックから、行単位の引用済みCLI引数（`"名前" \` 形式）を抽出する */
++function extractYamlCliArgs(yamlPath: string): string[] {
++  const text = fs.readFileSync(yamlPath, 'utf-8');
++  const args: string[] = [];
++  for (const line of text.split('\n')) {
++    // 例: `            "はてなブックマーク" \` / 最終行はバックスラッシュなし
++    const m = line.match(/^\s+"([^"]+)"\s*\\?\s*$/);
++    if (m) args.push(m[1]);
++  }
++  return args;
++}
++
++/** scheduler.ts から指定した配列定数の文字列要素を抽出する */
++function extractSchedulerArraySources(varName: string): string[] {
++  const text = fs.readFileSync(
++    path.join(ROOT, 'scripts/scheduled/scheduler.ts'),
++    'utf-8'
++  );
++  const block = text.match(
++    new RegExp(`const ${varName}\\s*=\\s*\\[([\\s\\S]*?)\\];`)
++  );
++  if (!block) {
++    throw new Error(`${varName} array not found in scheduler.ts`);
++  }
++  return [...block[1].matchAll(/'([^']+)'|"([^"]+)"/g)].map(
++    (m) => m[1] ?? m[2]
++  );
++}
++
++/**
++ * 収集経路に載らないことが確認済みの正当な除外リスト（理由必須）。
++ * 安易な追加は #407 型事故（実装済みだが収集されない）の温床になる。
++ */
++const EXCLUDED_KEYS: Record<string, string> = {};
++
++describe('スケジューラ整合性: FOREIGN_SOURCE_CONFIGS ⇔ 収集起動リスト', () => {
++  const ghaArgs = new Set([
++    ...extractYamlCliArgs(
++      path.join(ROOT, '.github/workflows/scheduler-rss-hourly.yml')
++    ),
++    ...extractYamlCliArgs(
++      path.join(ROOT, '.github/workflows/scheduler-scraping.yml')
++    ),
++  ]);
++  const localSources = new Set([
++    ...extractSchedulerArraySources('RSS_SOURCES'),
++    ...extractSchedulerArraySources('SCRAPING_SOURCES'),
++  ]);
++  const keys = Object.keys(FOREIGN_SOURCE_CONFIGS).filter(
++    (k) => !(k in EXCLUDED_KEYS)
++  );
++
++  it('抽出ロジックが機能している（空リストによる偽陰性の防止）', () => {
++    expect(ghaArgs.size).toBeGreaterThan(0);
++    expect(localSources.size).toBeGreaterThan(0);
++    expect(keys.length).toBeGreaterThan(0);
++  });
++
++  it.each(keys)(
++    '"%s" が GHA ワークフローの CLI 引数に完全一致で存在する',
++    (key) => {
++      expect(ghaArgs.has(key)).toBe(true);
++    }
++  );
++
++  it.each(keys)(
++    '"%s" がローカルスケジューラ (scheduler.ts) のソース配列に存在する',
++    (key) => {
++      expect(localSources.has(key)).toBe(true);
++    }
++  );
++});
+diff --git a/__tests__/fixtures/feeds/codezine.xml b/__tests__/fixtures/feeds/codezine.xml
+new file mode 100644
+index 00000000..5b9e2336
+--- /dev/null
++++ b/__tests__/fixtures/feeds/codezine.xml
+@@ -0,0 +1,30 @@
++<?xml version="1.0" encoding="utf-8" ?>
++<rss version="2.0">
++<channel>
++<title>CodeZine:新着一覧</title>
++<link>https://codezine.jp/</link>
++<copyright>Copyright 2007-2018 CodeZine, Shoeisha Co., Ltd. All rights reserved.</copyright>
++<language>ja-jp</language>
++<pubDate>Sun, 02 Aug 2026 16:08:21 +0900</pubDate>
++<description>プログラミングに役立つソースコードが満載な開発者のための実装系Webマガジン</description>
++<image>
++<url>https://codezine.jp/lib/img/cmn/cmn-header-logo.png</url>
++<title>CodeZine</title>
++<link>https://codezine.jp/</link>
++</image>
++<item>
++<title>Chrome 152ベータ版公開、CPU Performance APIやCSS新機能など多数追加</title>
++<link>https://codezine.jp/article/detail/29198</link>
++<guid isPermaLink="true">https://codezine.jp/article/detail/29198</guid>
++<pubDate>Sun, 02 Aug 2026 15:00:00 +0900</pubDate>
++<description></description>
++</item>
++<item>
++<title>AWS Lambda、LMIキャパシティープロバイダーのログ自動発行を開始</title>
++<link>https://codezine.jp/article/detail/29197</link>
++<guid isPermaLink="true">https://codezine.jp/article/detail/29197</guid>
++<pubDate>Sun, 02 Aug 2026 12:00:00 +0900</pubDate>
++<description></description>
++</item>
++</channel>
++</rss>
+diff --git a/__tests__/fixtures/feeds/findy-engineer-lab.xml b/__tests__/fixtures/feeds/findy-engineer-lab.xml
+new file mode 100644
+index 00000000..e538956e
+--- /dev/null
++++ b/__tests__/fixtures/feeds/findy-engineer-lab.xml
+@@ -0,0 +1,53 @@
++<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="ja">
++  <title>Findy Engineer Lab</title>
++  
++  <subtitle>技術と人のストーリーをつむぐ - Findy Engineer Lab</subtitle>
++  
++  <link href="https://findy-code.io/engineer-lab/"/>
++  <updated>2026-01-08T08:30:00+09:00</updated>
++  <author>
++    <name>findy-lab</name>
++  </author>
++  <generator uri="https://blog.hatena.ne.jp/" version="7902413ec290a7d354087aa928d131">Hatena::Blog</generator>
++  <id>hatenablog://blog/26006613440875573</id>
++
++  
++    
++    
++    <entry>
++        <title>全員が「正しい」と言うアイデアはあえて避ける。自らを信じ、尖った仮説を――Optuna開発者の「世界的OSS」を生み出す思考法</title>
++        <link href="https://findy-code.io/engineer-lab/iwiwi?utm_source=feed"/>
++        <id>hatenablog://entry/17179246901340810569</id>
++        <published>2026-01-08T08:30:00+09:00</published>
++        <updated>2026-01-08T08:30:01+09:00</updated>        <summary type="html">「ハイパーパラメータ最適化」の領域において、今やデファクトスタンダードの地位を確立しているOSS「Optuna」。生みの親は、現在Sakana AIで活躍する秋葉拓哉さんです。なぜ、一人のエンジニアが生み出したツールが、世界の景色を変えることができたのでしょうか。本記事では、開発の裏側にあった思考を探ります。</summary>
++        <content type="html">「ハイパーパラメータ最適化」の領域において、今やデファクトスタンダードの地位を確立しているOSS「Optuna」。生みの親は、現在Sakana AIで活躍する秋葉拓哉さんです。なぜ、一人のエンジニアが生み出したツールが、世界の景色を変えることができたのでしょうか。本記事では、開発の裏側にあった思考を探ります。</content>        
++        <category term="わたしの選択" label="わたしの選択" />
++        
++        <category term="OSS" label="OSS" />
++        
++        <category term="キャリア" label="キャリア" />
++        
++        <link rel="enclosure" href="https://cdn.image.st-hatena.com/image/scale/57d754d3fddcfbbc9a052e4bd94513f810ff8cd0/backend=imagemagick;version=1;width=1300/https%3A%2F%2Fcdn-ak.f.st-hatena.com%2Fimages%2Ffotolife%2Ff%2Ffindy-lab%2F20260105%2F20260105154017.jpg" type="image/jpeg" length="0" />
++
++        <author>
++            <name>findy-lab</name>
++        </author>
++    </entry>
++<entry>
++        <title>「あなたのキャリアのなかで、特に印象に残るPull Requestは何ですか？」著名エンジニアの方々に聞いた【第四弾】</title>
++        <link href="https://findy-code.io/engineer-lab/pullrequest-memory04?utm_source=feed"/>
++        <id>hatenablog://entry/17179246901313912355</id>
++        <published>2025-11-20T08:30:00+09:00</published>
++        <updated>2025-11-20T08:30:01+09:00</updated>        <summary type="html">著名エンジニアによる思い出深いPull Requestのエピソードを紹介。OSS活動への情熱と経験がにじみ出るストーリーをお届けします。</summary>
++        <content type="html">著名エンジニアによる思い出深いPull Requestのエピソードを紹介。OSS活動への情熱と経験がにじみ出るストーリーをお届けします。</content>        
++        <category term="思い出のPull Request" label="思い出のPull Request" />
++        
++        <category term="技術・スキル" label="技術・スキル" />
++        
++        <link rel="enclosure" href="https://cdn.image.st-hatena.com/image/scale/d31f46d5dc9e318436c18aa2c886d21ae642fa47/backend=imagemagick;version=1;width=1300/https%3A%2F%2Fcdn-ak.f.st-hatena.com%2Fimages%2Ffotolife%2Ff%2Ffindy-lab%2F20251107%2F20251107163609.jpg" type="image/jpeg" length="0" />
++
++        <author>
++            <name>findy-lab</name>
++        </author>
++    </entry>
++</feed>
+diff --git a/__tests__/fixtures/feeds/gihyo-jp.xml b/__tests__/fixtures/feeds/gihyo-jp.xml
+new file mode 100644
+index 00000000..452347f6
+--- /dev/null
++++ b/__tests__/fixtures/feeds/gihyo-jp.xml
+@@ -0,0 +1,23 @@
++<?xml version="1.0" encoding="utf-8" ?>
++<rss version="2.0">
++<channel>
++<title>gihyo.jp</title>
++<link>https://gihyo.jp</link>
++<description><![CDATA[gihyo.jpは、技術評論社が運営しているWebメディアです。エンジニアやデザイナー向けの記事のほか、ビジネスシーンを含めITを活用している人向けの記事を掲載しています。]]></description>
++<lastBuildDate>Sun, 02 Aug 2026 16:04:00 +0900</lastBuildDate>
++<item>
++<title>ターミナル内で動くブラウザー「terminal-browser」が登場 ——エージェントからも操作可能、現在Apple Silicon Macのみ対応</title>
++<link>https://gihyo.jp/article/2026/07/terminal-browser?utm_source=feed</link>
++<pubDate>Fri, 31 Jul 2026 19:16:00 +0900</pubDate>
++<description><![CDATA[開発者のRob Pruzan氏は2026年7月30日、既存のターミナル内でChromiumベースのブラウザーを表示・操作できる「terminal-browser」をXで紹介した。]]></description>
++<guid isPermaLink="true">https://gihyo.jp/article/2026/07/terminal-browser</guid>
++</item>
++<item>
++<title>Google、ロボット向け次世代物理AI「Gemini Robotics 2」をリリース ―人型ロボットが高度な全身制御、繊細な器用さ、複数ロボットによる共同作業を実現</title>
++<link>https://gihyo.jp/article/2026/07/gemini-robotics-2?utm_source=feed</link>
++<pubDate>Fri, 31 Jul 2026 16:43:00 +0900</pubDate>
++<description><![CDATA[Googleは2026年7月30日、人型ロボットをより高度に制御し、幅広い複雑なタスクを完了できるようになる次世代の物理AIモデル「Gemini Robotics 2」ファミリーをリリースした。]]></description>
++<guid isPermaLink="true">https://gihyo.jp/article/2026/07/gemini-robotics-2</guid>
++</item>
++</channel>
++</rss>
+diff --git a/__tests__/fixtures/feeds/jser-info.xml b/__tests__/fixtures/feeds/jser-info.xml
+new file mode 100644
+index 00000000..34e9ab59
+--- /dev/null
++++ b/__tests__/fixtures/feeds/jser-info.xml
+@@ -0,0 +1,68 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
++  <channel>
++    <title>JSer.info</title>
++    <description>JavaScriptの最新情報を紹介する週刊ブログ</description>
++    <link>https://jser.info/</link>
++    <atom:link href="https://jser.info/feed.xml" rel="self" type="application/rss+xml" />
++    <pubDate>Mon, 20 Jul 2026 16:43:33 +0900</pubDate>
++    <lastBuildDate>Mon, 20 Jul 2026 16:43:33 +0900</lastBuildDate>
++    <generator>Jekyll v3.9.0</generator>
++    
++      <item>
++        <title>2026-07-17のJS: TypeScript 7.0、npm 12、Next.jsのセキュリティリリース方針</title>
++        <description>&lt;p&gt;JSer.info #776 - TypeScript 7.0がリリースされました。&lt;/p&gt;
++
++&lt;ul&gt;
++&lt;li&gt;&lt;a href=&quot;https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/&quot;&gt;Announcing TypeScript 7.0 - TypeScript&lt;/a&gt;&lt;/li&gt;
++&lt;/ul&gt;
++
++&lt;p&gt;Goへ移植されたネイティブ版の&lt;code&gt;tsc&lt;/code</description>
++        <pubDate>Fri, 17 Jul 2026 00:07:18 +0900</pubDate>
++        <link>https://jser.info/2026/07/17/typescript-7.0-npm-12-next.js/</link>
++        <guid isPermaLink="true">https://jser.info/2026/07/17/typescript-7.0-npm-12-next.js/</guid>
++        
++        <category>TypeScript</category>
++        
++        <category>nodejs</category>
++        
++        <category>npm</category>
++        
++        <category>Next.js</category>
++        
++        <category>security</category>
++        
++        
++        <category>JSer</category>
++        
++      </item>
++<item>
++        <title>2026-07-05のJS: Deno 2.9、Vite 8.1、ES2026</title>
++        <description>&lt;p&gt;JSer.info #775 - Deno 2.9がリリースされました。&lt;/p&gt;
++
++&lt;ul&gt;
++&lt;li&gt;&lt;a href=&quot;https://deno.com/blog/v2.9&quot;&gt;Deno 2.9 | Deno&lt;/a&gt;&lt;/li&gt;
++&lt;/ul&gt;
++
++&lt;p&gt;実験的な機能として、Web技術を使ったデスクトップアプリを作成する&lt;code&gt;deno desktop&lt;/code&gt;が追加されています。&lt;br&gt;
++&lt;code&gt;deno in</description>
++        <pubDate>Sun, 05 Jul 2026 12:58:38 +0900</pubDate>
++        <link>https://jser.info/2026/07/05/deno-2.9-vite-8.1-es2026/</link>
++        <guid isPermaLink="true">https://jser.info/2026/07/05/deno-2.9-vite-8.1-es2026/</guid>
++        
++        <category>Tools</category>
++        
++        <category>pnpm</category>
++        
++        <category>Rust</category>
++        
++        <category>React</category>
++        
++        <category>TypeScript</category>
++        
++        
++        <category>JSer</category>
++        
++      </item>
++</channel>
++</rss>
+diff --git a/lib/constants/source-categories.ts b/lib/constants/source-categories.ts
+index d36afbbb..1d44a19e 100644
+--- a/lib/constants/source-categories.ts
++++ b/lib/constants/source-categories.ts
+@@ -114,6 +114,11 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
+       'atit', // @IT
+       'forbes_japan_ai', // Forbes Japan AI
+       'ledge_ai', // Ledge.ai
++      // Batch 1 (Issue #628)
++      'jser_info', // JSer.info
++      'codezine', // CodeZine
++      'gihyo_jp', // gihyo.jp
++      'findy_engineer_lab', // Findy Engineer Lab
+     ],
+   },
+   company: {
+diff --git a/lib/fetchers/generic-foreign-rss.ts b/lib/fetchers/generic-foreign-rss.ts
+index 54ca7cf6..d107eda1 100644
+--- a/lib/fetchers/generic-foreign-rss.ts
++++ b/lib/fetchers/generic-foreign-rss.ts
+@@ -465,6 +465,23 @@ export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
+     tagPrefix: 'BusinessInsider',
+     categoryFilter: ['Tech', 'AI'],
+   },
++  // Japanese Tech Media (Batch 1, Issue #628)
++  'JSer.info': {
++    feedUrl: 'https://jser.info/rss/',
++    tagPrefix: 'jser',
++  },
++  CodeZine: {
++    feedUrl: 'https://codezine.jp/rss/new/20/index.xml',
++    tagPrefix: 'codezine',
++  },
++  'gihyo.jp': {
++    feedUrl: 'https://gihyo.jp/feed/rss2',
++    tagPrefix: 'gihyo',
++  },
++  'Findy Engineer Lab': {
++    feedUrl: 'https://engineer-lab.findy-code.io/feed',
++    tagPrefix: 'findy-engineer-lab',
++  },
+ };
+ 
+ /**
+diff --git a/lib/fetchers/index.ts b/lib/fetchers/index.ts
+index d8992bb0..e5aa09fa 100644
+--- a/lib/fetchers/index.ts
++++ b/lib/fetchers/index.ts
+@@ -197,7 +197,12 @@ export function createFetcher(source: Source): BaseFetcher {
+     // Japanese Tech Media
+     case 'ITmedia Security':
+     case 'ITmedia AI+':
+-    case '@IT': {
++    case '@IT':
++    // Japanese Tech Media (Batch 1, Issue #628)
++    case 'JSer.info':
++    case 'CodeZine':
++    case 'gihyo.jp':
++    case 'Findy Engineer Lab': {
+       const foreignConfig = getForeignSourceConfig(source.name);
+       if (!foreignConfig) {
+         throw new Error(`Invalid foreign source name: ${source.name}`);
+diff --git a/scripts/maintenance/add-batch1-sources.ts b/scripts/maintenance/add-batch1-sources.ts
+new file mode 100644
+index 00000000..b43ff6cd
+--- /dev/null
++++ b/scripts/maintenance/add-batch1-sources.ts
+@@ -0,0 +1,101 @@
++/**
++ * Batch 1 国内メディア4ソースをDBに登録するスクリプト (Issue #628)
++ *
++ * 対象: JSer.info / CodeZine / gihyo.jp / Findy Engineer Lab
++ *
++ * 使用方法:
++ *   npx tsx scripts/maintenance/add-batch1-sources.ts
++ *
++ * 本番実行時は事前に4つの id / name の既存行有無を SELECT で確認すること
++ * （plan_20260802_160815_batch1_sources.md「本番反映手順」参照）。
++ */
++
++import { createPrismaClient } from '@/lib/prisma/create-client';
++import { sourceCache } from '@/lib/cache/source-cache';
++
++const prisma = createPrismaClient();
++
++const BATCH1_SOURCES = [
++  {
++    id: 'jser_info',
++    name: 'JSer.info',
++    url: 'https://jser.info',
++    type: 'RSS',
++    enabled: true,
++  },
++  {
++    id: 'codezine',
++    name: 'CodeZine',
++    url: 'https://codezine.jp',
++    type: 'RSS',
++    enabled: true,
++  },
++  {
++    id: 'gihyo_jp',
++    name: 'gihyo.jp',
++    url: 'https://gihyo.jp',
++    type: 'RSS',
++    enabled: true,
++  },
++  {
++    id: 'findy_engineer_lab',
++    name: 'Findy Engineer Lab',
++    url: 'https://engineer-lab.findy-code.io',
++    type: 'RSS',
++    enabled: true,
++  },
++];
++
++async function main() {
++  console.log('=== Batch 1 国内メディア4ソース登録 (Issue #628) ===\n');
++
++  const { createFetcher } = await import('@/lib/fetchers/index');
++
++  // 4件を単一トランザクションで登録（1件でも失敗したら全件ロールバックし、
++  // 部分登録状態を作らない）
++  const results = await prisma.$transaction(async (tx) => {
++    const upserted = [];
++    for (const source of BATCH1_SOURCES) {
++      const row = await tx.source.upsert({
++        where: { id: source.id },
++        // 既存行の enabled は上書きしない（enabled=false による緊急停止を
++        // スクリプト再実行で黙って解除してしまわないため。create 時のみ true）
++        update: {
++          name: source.name,
++          url: source.url,
++          type: source.type,
++        },
++        create: source,
++      });
++      // createFetcher 失敗（設定辞書・switch 文との名前不一致）時は
++      // 例外送出でトランザクション全体をロールバック
++      createFetcher(row);
++      upserted.push(row);
++    }
++    return upserted;
++  });
++
++  for (const row of results) {
++    const isNew = row.createdAt.getTime() === row.updatedAt.getTime();
++    console.log(
++      `[${isNew ? 'ADDED' : 'UPDATED'}] ${row.name} (id=${row.id}, enabled=${row.enabled})`
++    );
++  }
++  console.log('[OK] createFetcher() name match verified for all sources');
++
++  // キャッシュ無効化はコミット後に実行（CLAUDE.md ソース追加時ルール）
++  await sourceCache.invalidate();
++  console.log('[OK] Source cache invalidated');
++
++  console.log('\n=== 完了 ===');
++}
++
++main()
++  .catch((error) => {
++    console.error('エラーが発生しました:', error);
++    process.exitCode = 1;
++  })
++  .finally(async () => {
++    await prisma.$disconnect();
++    process.exit(process.exitCode ?? 0);
++  });
+diff --git a/scripts/scheduled/scheduler.ts b/scripts/scheduled/scheduler.ts
+index 202a4547..a4299c9f 100644
+--- a/scripts/scheduled/scheduler.ts
++++ b/scripts/scheduled/scheduler.ts
+@@ -279,6 +279,11 @@ const RSS_SOURCES = [
+   '@IT',
+   // Business Media
+   'Business Insider',
++  // 国内技術メディア（Batch 1, Issue #628）
++  'JSer.info',
++  'CodeZine',
++  'gihyo.jp',
++  'Findy Engineer Lab',
+ ];
+ 
+ // スクレイピング系ソース（12時間ごとに更新）

@@ -46,7 +46,13 @@ function extractYamlCliArgs(yamlPath: string): string[] {
   return args;
 }
 
-/** scheduler.ts から指定した配列定数の文字列要素を抽出する */
+/**
+ * scheduler.ts から指定した配列定数の文字列要素を抽出する。
+ *
+ * 行コメントを除去してから抽出する。除去しないと
+ * `// 'arXiv AI' は収集停止中` のようなコメントアウト済みソース名を
+ * 有効な要素として拾い、収集停止したソースでもテストが通ってしまう。
+ */
 function extractSchedulerArraySources(varName: string): string[] {
   const text = fs.readFileSync(
     path.join(ROOT, 'scripts/scheduled/scheduler.ts'),
@@ -58,7 +64,11 @@ function extractSchedulerArraySources(varName: string): string[] {
   if (!block) {
     throw new Error(`${varName} array not found in scheduler.ts`);
   }
-  return [...block[1].matchAll(/'([^']+)'|"([^"]+)"/g)].map(
+  const withoutComments = block[1]
+    .split('\n')
+    .map((line) => line.replace(/\/\/.*$/, ''))
+    .join('\n');
+  return [...withoutComments.matchAll(/'([^']+)'|"([^"]+)"/g)].map(
     (m) => m[1] ?? m[2]
   );
 }

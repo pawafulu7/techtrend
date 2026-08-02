@@ -41,6 +41,14 @@ export interface ForeignSourceConfig {
   // オプション: ソース固有のタグプレフィックス
   tagPrefix?: string;
   categoryFilter?: string[];
+  /**
+   * 記事URLをトラッキングパラメータ除去後の正規化URLで保存する。
+   *
+   * フィードが `?utm_source=feed` 等を付与するソース向け。既存レコードが
+   * 生URLで保存されている既存ソースに後から有効化すると、同一記事が別URLで
+   * 重複作成されるため、レコードを持たない新規ソースでのみ有効化すること。
+   */
+  useNormalizedUrl?: boolean;
 }
 
 export class GenericForeignRssFetcher extends BaseFetcher {
@@ -129,7 +137,10 @@ export class GenericForeignRssFetcher extends BaseFetcher {
 
           const article: CreateArticleInput = {
             title: this.sanitizeText(item.title),
-            url: item.link, // 元URLを保存（エンリッチメントで正しくアクセスするため）
+            // 既定は元URL（エンリッチメントで正しくアクセスするため）。
+            // useNormalizedUrl 有効時はトラッキングパラメータ除去後のURLで保存し、
+            // 他ソース経由で収集済みの同一記事と重複しないようにする
+            url: this.config.useNormalizedUrl ? normalizedUrl : item.link,
             content: this.extractContent(item),
             publishedAt: this.extractPublishDate(item),
             sourceId: this.source.id,
@@ -466,21 +477,28 @@ export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
     categoryFilter: ['Tech', 'AI'],
   },
   // Japanese Tech Media (Batch 1, Issue #628)
+  // 4ソースとも新規のため useNormalizedUrl を有効化する。gihyo.jp / Findy は
+  // フィードが ?utm_source=feed を付与しており、既にはてなブックマーク経由で
+  // 収集済みの同一記事（正規URL）と重複するため
   'JSer.info': {
     feedUrl: 'https://jser.info/rss/',
     tagPrefix: 'jser',
+    useNormalizedUrl: true,
   },
   CodeZine: {
     feedUrl: 'https://codezine.jp/rss/new/20/index.xml',
     tagPrefix: 'codezine',
+    useNormalizedUrl: true,
   },
   'gihyo.jp': {
     feedUrl: 'https://gihyo.jp/feed/rss2',
     tagPrefix: 'gihyo',
+    useNormalizedUrl: true,
   },
   'Findy Engineer Lab': {
     feedUrl: 'https://engineer-lab.findy-code.io/feed',
     tagPrefix: 'findy-engineer-lab',
+    useNormalizedUrl: true,
   },
 };
 
