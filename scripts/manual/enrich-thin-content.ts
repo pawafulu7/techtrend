@@ -215,6 +215,9 @@ async function main() {
               updateData.summaryVersion = 0;
               console.error(`    - 要約: リセット（再生成が必要）`);
             }
+            // 本文回復時は skipReason（CONTENT_FETCH_FAILED 等）をクリアし、
+            // scripts:summarize（skipReason: null 対象）で要約再生成されるようにする
+            updateData.skipReason = null;
           }
           
           if (hasNewThumbnail) {
