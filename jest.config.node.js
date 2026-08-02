@@ -80,6 +80,11 @@ const esmAllowList = [
   'jsdom',
   'parse5',
   'uuid',
+  // AI SDK v7 系は ESM のみ配信のため Jest の変換対象に含める
+  'ai',
+  '@ai-sdk',
+  // @ai-sdk/provider-utils が依存（ESM のみ）
+  '@workflow',
 ];
 const esmPattern = esmAllowList.join('|');
 

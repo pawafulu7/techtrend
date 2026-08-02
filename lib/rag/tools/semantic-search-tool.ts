@@ -43,7 +43,9 @@ function getSearchService(): VectorSearchService {
  * Handles cases where publishedAt might be Date (from Prisma) or string (from mocks/raw queries)
  */
 function toIsoDate(input: Date | string): string {
-  return input instanceof Date ? input.toISOString() : new Date(input).toISOString();
+  return input instanceof Date
+    ? input.toISOString()
+    : new Date(input).toISOString();
 }
 
 /**
@@ -68,12 +70,14 @@ const toolOutputSchema = z.object({
   originalQuery: z.string(),
   expandedQuery: z.string(),
   expansionMethod: z.enum(['none', 'dictionary', 'ai']),
-  fallbackMetadata: z.object({
-    phase: z.union([z.literal(1), z.null()]),
-    finalThreshold: z.number(),
-    attemptCount: z.number(),
-    usedFallback: z.boolean(),
-  }).optional(),
+  fallbackMetadata: z
+    .object({
+      phase: z.union([z.literal(1), z.null()]),
+      finalThreshold: z.number(),
+      attemptCount: z.number(),
+      usedFallback: z.boolean(),
+    })
+    .optional(),
 });
 
 /**
@@ -81,6 +85,76 @@ const toolOutputSchema = z.object({
  *
  * Enables agents to search for technical articles using semantic similarity.
  */
+const semanticSearchInputSchema = z.object({
+  query: z
+    .string()
+    .min(1, 'Query cannot be empty')
+    .max(200, 'Query too long for tool (max 200 characters)') // Stricter than API limit (500)
+    .describe('Search query text'),
+
+  topK: z
+    .number()
+    .int()
+    .min(1, 'topK must be at least 1')
+    .max(20, 'topK cannot exceed 20') // Agent limit: 20 (stricter than API limit: 100)
+    .default(10)
+    .describe('Number of results to return (1-20, default: 10)'),
+
+  similarityThreshold: z
+    .number()
+    .min(0, 'Similarity threshold must be between 0 and 1')
+    .max(1, 'Similarity threshold must be between 0 and 1')
+    .default(0.55)
+    .describe('Minimum similarity score (0-1, default: 0.55)'),
+
+  enableFallback: z
+    .boolean()
+    .default(true)
+    .describe('Enable automatic threshold fallback to improve recall'),
+
+  filters: z
+    .object({
+      sources: z
+        .array(z.string())
+        .max(10, 'Too many source filters (max 10 for agents)') // Clamped to 10 (API allows 50)
+        .optional(),
+      tags: z
+        .array(z.string())
+        .max(10, 'Too many tag filters (max 10 for agents)') // Clamped to 10 (API allows 20)
+        .optional(),
+      dateRange: z
+        .object({
+          from: z
+            .string()
+            .datetime()
+            .optional()
+            .describe('ISO 8601 start date (UTC)'),
+          to: z
+            .string()
+            .datetime()
+            .optional()
+            .describe('ISO 8601 end date (UTC)'),
+        })
+        .optional()
+        .describe(
+          'Date range filter for temporal queries (e.g., "latest", "last week")'
+        ),
+      recencyBoost: z
+        .number()
+        .min(0, 'recencyBoost must be between 0 and 1')
+        .max(1, 'recencyBoost must be between 0 and 1')
+        .default(0)
+        .describe(
+          'Recency weight (0=disabled, 0.3-0.4=balanced, 1=max recency)'
+        ),
+    })
+    .optional()
+    .describe('Optional filters for sources, tags, and date range'),
+});
+
+type SemanticSearchInput = z.infer<typeof semanticSearchInputSchema>;
+type SemanticSearchOutput = z.infer<typeof toolOutputSchema>;
+
 export const semanticSearchTool = tool({
   description: `
 Search for technical articles using semantic similarity with optional date filtering and recency boost.
@@ -120,64 +194,21 @@ DO NOT use this tool for:
 The tool returns articles ranked by semantic similarity (0-1 scale, higher is better), optionally boosted by recency.
   `.trim(),
 
-  inputSchema: z.object({
-    query: z
-      .string()
-      .min(1, 'Query cannot be empty')
-      .max(200, 'Query too long for tool (max 200 characters)') // Stricter than API limit (500)
-      .describe('Search query text'),
-
-    topK: z
-      .number()
-      .int()
-      .min(1, 'topK must be at least 1')
-      .max(20, 'topK cannot exceed 20') // Agent limit: 20 (stricter than API limit: 100)
-      .default(10)
-      .describe('Number of results to return (1-20, default: 10)'),
-
-    similarityThreshold: z
-      .number()
-      .min(0, 'Similarity threshold must be between 0 and 1')
-      .max(1, 'Similarity threshold must be between 0 and 1')
-      .default(0.55)
-      .describe('Minimum similarity score (0-1, default: 0.55)'),
-
-    enableFallback: z
-      .boolean()
-      .default(true)
-      .describe('Enable automatic threshold fallback to improve recall'),
-
-    filters: z
-      .object({
-        sources: z
-          .array(z.string())
-          .max(10, 'Too many source filters (max 10 for agents)') // Clamped to 10 (API allows 50)
-          .optional(),
-        tags: z
-          .array(z.string())
-          .max(10, 'Too many tag filters (max 10 for agents)') // Clamped to 10 (API allows 20)
-          .optional(),
-        dateRange: z
-          .object({
-            from: z.string().datetime().optional().describe('ISO 8601 start date (UTC)'),
-            to: z.string().datetime().optional().describe('ISO 8601 end date (UTC)'),
-          })
-          .optional()
-          .describe('Date range filter for temporal queries (e.g., "latest", "last week")'),
-        recencyBoost: z
-          .number()
-          .min(0, 'recencyBoost must be between 0 and 1')
-          .max(1, 'recencyBoost must be between 0 and 1')
-          .default(0)
-          .describe('Recency weight (0=disabled, 0.3-0.4=balanced, 1=max recency)'),
-      })
-      .optional()
-      .describe('Optional filters for sources, tags, and date range'),
-  }),
+  // AI SDK v7 の tool() は INPUT を execute の引数形状から推論する。
+  // filters が optional なため、型注釈なしの分割代入だと「filters 必須」の
+  // 候補が作られ strictFunctionTypes 下で代入不可になる（推論が never に落ちる）。
+  // スキーマを切り出して z.infer で注釈することで INPUT を確定させる。
+  inputSchema: semanticSearchInputSchema,
 
   outputSchema: toolOutputSchema,
 
-  execute: async ({ query, topK, similarityThreshold, enableFallback, filters }) => {
+  execute: async ({
+    query,
+    topK,
+    similarityThreshold,
+    enableFallback,
+    filters,
+  }: SemanticSearchInput): Promise<SemanticSearchOutput> => {
     const startTime = Date.now();
     try {
       logger.debug(
@@ -187,7 +218,10 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
           similarityThreshold,
           enableFallback,
           hasFilters: !!filters,
-          hasDateFilter: !!(filters?.dateRange && (filters.dateRange.from || filters.dateRange.to)),
+          hasDateFilter: !!(
+            filters?.dateRange &&
+            (filters.dateRange.from || filters.dateRange.to)
+          ),
           dateRangeFrom: filters?.dateRange?.from,
           dateRangeTo: filters?.dateRange?.to,
           recencyBoost: filters?.recencyBoost ?? 0,
@@ -197,24 +231,33 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
 
       const searchService = getSearchService();
 
-      const { results, metadata } = await searchService.searchWithFallback(query, {
-        topK,
-        similarityThreshold,
-        enableFallback,
-        sourceIds: filters?.sources,
-        tags: filters?.tags,
-        dateRange: filters?.dateRange,
-        recencyBoost: filters?.recencyBoost,
-        embeddingKey: 'summary',
-      });
+      const { results, metadata } = await searchService.searchWithFallback(
+        query,
+        {
+          topK,
+          similarityThreshold,
+          enableFallback,
+          sourceIds: filters?.sources,
+          tags: filters?.tags,
+          dateRange: filters?.dateRange,
+          recencyBoost: filters?.recencyBoost,
+          embeddingKey: 'summary',
+        }
+      );
 
-      const expansion = { method: 'none' as const, expandedQuery: query, latencyMs: 0 };
+      const expansion = {
+        method: 'none' as const,
+        expandedQuery: query,
+        latencyMs: 0,
+      };
       const originalQuery = query;
 
       const elapsedMs = Date.now() - startTime;
       const avgSimilarity =
         results.length > 0
-          ? (results.reduce((sum, r) => sum + r.similarity, 0) / results.length).toFixed(4)
+          ? (
+              results.reduce((sum, r) => sum + r.similarity, 0) / results.length
+            ).toFixed(4)
           : 0;
 
       logger.info(
@@ -222,14 +265,22 @@ The tool returns articles ranked by semantic similarity (0-1 scale, higher is be
           query: query.substring(0, 50),
           resultCount: results.length,
           threshold: similarityThreshold,
-          hasDateFilter: !!(filters?.dateRange && (filters.dateRange.from || filters.dateRange.to)),
+          hasDateFilter: !!(
+            filters?.dateRange &&
+            (filters.dateRange.from || filters.dateRange.to)
+          ),
           dateRangeFrom: filters?.dateRange?.from,
           dateRangeTo: filters?.dateRange?.to,
           recencyBoost: filters?.recencyBoost ?? 0,
           avgSimilarity,
           elapsedMs,
           isLowRecall: results.length < 3,
-          likelyConstraint: results.length < 3 && filters?.dateRange ? 'temporal' : results.length < 3 ? 'threshold' : 'none',
+          likelyConstraint:
+            results.length < 3 && filters?.dateRange
+              ? 'temporal'
+              : results.length < 3
+                ? 'threshold'
+                : 'none',
         },
         'Tool: semantic-article-search completed'
       );

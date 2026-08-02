@@ -244,9 +244,7 @@ export async function handleBatchRequest(
       ],
       abortSignal: agentAbortSignal,
     };
-    const result = await modeContext.agent.generate(
-      generateOptions as Parameters<typeof modeContext.agent.generate>[0]
-    );
+    const result = await modeContext.agent.generate(generateOptions);
 
     const allToolCalls =
       result.steps?.flatMap((step) => step.toolCalls ?? []) ?? [];

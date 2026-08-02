@@ -257,9 +257,7 @@ async function createStreamingResponse(
           ],
           abortSignal: agentAbortSignal,
         };
-        const streamResult = await modeContext.agent.stream(
-          streamOptions as Parameters<typeof modeContext.agent.stream>[0]
-        );
+        const streamResult = await modeContext.agent.stream(streamOptions);
 
         if (qaContextPayload) {
           controller.enqueue(

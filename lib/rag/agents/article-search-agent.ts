@@ -32,7 +32,8 @@ export const articleSearchAgent = new Agent({
   // Max: Phase 1 (6 thresholds) + Phase 2 (3 temporal levels x 6 thresholds) + response steps
   stopWhen: stepCountIs(32),
 
-  system: `
+  // AI SDK v7 で system は instructions に改名された
+  instructions: `
 You are a technical article search assistant for TechTrend, a platform for discovering technical articles.
 
 CRITICAL INSTRUCTION: You MUST ALWAYS provide a text response to the user after calling tools. Never return only tool results without explaining them in natural language.

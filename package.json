@@ -128,7 +128,7 @@
     "worker:embedding:dry": "dotenv -e .env -- tsx scripts/dev/run-embedding-worker.ts --dry-run"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.52",
+    "@ai-sdk/openai": "^4.0.27",
     "@better-auth/prisma-adapter": "^1.6.11",
     "@dqbd/tiktoken": "^1.0.22",
     "@google/generative-ai": "^0.24.1",
@@ -163,7 +163,7 @@
     "@tanstack/react-query-devtools": "^5.87.4",
     "@vercel/otel": "^2.0.1",
     "@xyflow/react": "^12.10.0",
-    "ai": "^5.0.76",
+    "ai": "^7.0.48",
     "async-mutex": "^0.5.0",
     "axios": "^1.16.0",
     "bcryptjs": "^3.0.2",
