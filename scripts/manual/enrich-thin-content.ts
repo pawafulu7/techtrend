@@ -219,7 +219,10 @@ async function main() {
             // QUALITY_FAILED）と summaryError をクリアし、scripts:summarize
             // （skipReason: null 対象）で要約再生成されるようにする。
             // PDF / SLIDE は本文の有無と無関係の恒久理由のためクリアしない
+            // collect-feeds.ts の品質基準（250文字以上）と揃え、わずかな伸びでの
+            // クリアを防ぐ
             if (
+              enrichedData.content.length >= 250 &&
               article.skipReason &&
               article.skipReason !== 'PDF' &&
               article.skipReason !== 'SLIDE'

@@ -275,13 +275,39 @@ async function processSource({
           }
 
           // content=null/empty の場合は更新を許可（全ソース共通の自己修復メカニズム）
-          if ((!existing.contentLength || existing.contentLength === 0) &&
-              article.content && article.content.length > 0) {
-            Object.assign(updates, {
-              content: article.content,
-              thumbnail: article.thumbnail ?? existing.thumbnail,
-              contentUpdatedAt: new Date(),
-            });
+          if (!existing.contentLength || existing.contentLength === 0) {
+            if (article.content && article.content.length > 0) {
+              Object.assign(updates, {
+                content: article.content,
+                thumbnail: article.thumbnail ?? existing.thumbnail,
+                contentUpdatedAt: new Date(),
+              });
+            } else if (env.SKIP_POST_SAVE_ENRICHMENT !== '1' && !isEnrichmentSkipped(sourceName)) {
+              // ignoreFeedContent ソース等でフィード本文が空のまま保存された既存記事を
+              // エンリッチャーで自己修復する（skipEnrichment ソースは上書き禁止ポリシーを維持）
+              const enricher = enricherFactory.getEnricher(article.url, source.id);
+              if (enricher) {
+                try {
+                  const enrichedData = await runWithTimeout(
+                    (signal) => enricher.enrich(article.url, signal),
+                    POST_SAVE_ENRICH_TIMEOUT_MS,
+                    `Post-save enrichment timeout after ${POST_SAVE_ENRICH_TIMEOUT_MS}ms for ${sourceName}`
+                  );
+                  if (enrichedData?.content && enrichedData.content.length > 0) {
+                    Object.assign(updates, {
+                      content: enrichedData.content,
+                      thumbnail: isValidThumbnailUrl(enrichedData.thumbnail)
+                        ? enrichedData.thumbnail
+                        : existing.thumbnail,
+                      contentUpdatedAt: new Date(),
+                    });
+                  }
+                } catch (enrichError) {
+                  const classified = classifyEnrichmentError(enrichError);
+                  console.error(`   [WARN] 既存記事の空本文エンリッチメント失敗: ${classified.errorMessage}`);
+                }
+              }
+            }
           }
 
           // まとめて更新
