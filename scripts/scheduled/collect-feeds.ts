@@ -102,6 +102,7 @@ import { classifyEnrichmentError } from '@/lib/enrichers/error-classifier';
 import { HATENA_BLOG_DEV_SOURCE_ID } from '@/lib/enrichers/hatena';
 import { logger } from '@/lib/logger';
 import { isHighQuality } from '@/lib/enrichers/strategies/quality';
+import { isEnrichmentSkipped } from '@/lib/fetchers/generic-foreign-rss';
 
 /**
  * Local ArticleInfo for collect-feeds internal use.
@@ -374,7 +375,7 @@ async function processSource({
           sourceName: sourceName
         });
 
-        if (env.SKIP_POST_SAVE_ENRICHMENT !== '1') {
+        if (env.SKIP_POST_SAVE_ENRICHMENT !== '1' && !isEnrichmentSkipped(sourceName)) {
           const enricher = enricherFactory.getEnricher(article.url, source.id);
           if (enricher) {
             try {

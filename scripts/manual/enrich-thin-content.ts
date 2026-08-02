@@ -14,6 +14,7 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
+import { isEnrichmentSkipped } from '../../lib/fetchers/generic-foreign-rss';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -144,6 +145,7 @@ async function main() {
     let failCount = 0;
     let skipCount = 0;
     let thumbnailCount = 0;
+    let skipEnrichmentCount = 0;
 
     for (let i = 0; i < thinArticles.length; i++) {
       const article = thinArticles[i];
@@ -153,6 +155,13 @@ async function main() {
       console.error(`  ソース: ${article.source.name}`);
       console.error(`  現在のコンテンツ: ${article.content?.length || 0}文字`);
       console.error(`  URL: ${article.url}`);
+
+      // skipEnrichment 対象ソース（enricher による本文上書きを行わない）は除外
+      if (isEnrichmentSkipped(article.source.name)) {
+        console.error(`  ⏭️  スキップ: ソース設定により本文上書き対象外`);
+        skipEnrichmentCount++;
+        continue;
+      }
 
       // エンリッチャーを取得
       const enricher = enricherFactory.getEnricher(article.url, article.source.id);
@@ -238,6 +247,7 @@ async function main() {
     console.error(`✅ 成功: ${successCount}件`);
     console.error(`❌ 失敗: ${failCount}件`);
     console.error(`⏭️  スキップ: ${skipCount}件`);
+    console.error(`⏭️  スキップ（対象外ソース）: ${skipEnrichmentCount}件`);
     console.error(`🖼️  サムネイル取得: ${thumbnailCount}件`);
     console.error(`📊 合計: ${thinArticles.length}件`);
 

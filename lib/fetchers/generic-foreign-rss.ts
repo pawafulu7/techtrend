@@ -49,6 +49,21 @@ export interface ForeignSourceConfig {
    * 重複作成されるため、レコードを持たない新規ソースでのみ有効化すること。
    */
   useNormalizedUrl?: boolean;
+  /**
+   * フィードの description/content をコンテンツ抽出時に無視し、常に空文字を返す。
+   *
+   * description がコメントリンク等のノイズのみのソース向け。空文字を返すことで
+   * 保存時 content が空となり、保存後エンリッチメントが記事本文を取得する
+   * （エンリッチメント経路に本文取得を委ねる）。
+   */
+  ignoreFeedContent?: boolean;
+  /**
+   * enricher による本文上書きを行わないソース。
+   *
+   * リバーページ等、記事単位の本文が取得できず、enricher による抽出結果が
+   * ノイズ（広告含む）になるソース向け。`isEnrichmentSkipped()` で参照する。
+   */
+  skipEnrichment?: boolean;
 }
 
 export class GenericForeignRssFetcher extends BaseFetcher {
@@ -275,6 +290,11 @@ export class GenericForeignRssFetcher extends BaseFetcher {
    * RSS項目からコンテンツを抽出
    */
   private extractContent(item: RSSItem): string {
+    // ignoreFeedContent 有効時はフィード本文を採用せず、保存後エンリッチメントに委ねる
+    if (this.config.ignoreFeedContent) {
+      return '';
+    }
+
     // 優先順位: content:encoded > content > description > summary
     const content =
       item['content:encoded'] ||
@@ -509,4 +529,13 @@ export function getForeignSourceConfig(
   sourceName: string
 ): ForeignSourceConfig | undefined {
   return FOREIGN_SOURCE_CONFIGS[sourceName];
+}
+
+/**
+ * 指定ソースが enricher による本文上書きをスキップする対象かどうかを判定する
+ * （純粋関数）。collect-feeds.ts / enrich-thin-content.ts 等、enricher で
+ * 記事本文を上書きする全経路から参照すること。
+ */
+export function isEnrichmentSkipped(sourceName: string): boolean {
+  return FOREIGN_SOURCE_CONFIGS[sourceName]?.skipEnrichment === true;
 }
