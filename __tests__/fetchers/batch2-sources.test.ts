@@ -129,7 +129,8 @@ describe('GenericForeignRssFetcher: Techmeme設定 (useNormalizedUrl)', () => {
 
     expect(result.errors).toHaveLength(0);
     expect(result.articles).toHaveLength(1);
-    expect(result.articles[0].url).toBe('https://www.techmeme.com/260802/p6');
+    // normalizeUrl はフラグメント除去に加えて www. も除去する
+    expect(result.articles[0].url).toBe('https://techmeme.com/260802/p6');
   });
 
   it('アイテムごとに正規化URLが一意になる（別アンカー付きlinkは別URLとして保存される）', async () => {
@@ -166,8 +167,8 @@ describe('GenericForeignRssFetcher: Techmeme設定 (useNormalizedUrl)', () => {
     const urls = result.articles.map((a) => a.url);
     expect(new Set(urls).size).toBe(2);
     expect(urls).toEqual([
-      'https://www.techmeme.com/260802/p6',
-      'https://www.techmeme.com/260802/p7',
+      'https://techmeme.com/260802/p6',
+      'https://techmeme.com/260802/p7',
     ]);
   });
 });
