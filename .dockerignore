@@ -125,6 +125,10 @@ desktop.ini
 
 # CI/CD
 .github
+# スケジューラ整合性テスト (scheduler-yaml-consistency.test.ts) がCIイメージ内で
+# 読み取るため、この2ファイルのみビルドコンテキストに含める (Issue #628)
+!.github/workflows/scheduler-rss-hourly.yml
+!.github/workflows/scheduler-scraping.yml
 .gitlab-ci.yml
 .travis.yml
 

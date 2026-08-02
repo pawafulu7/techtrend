@@ -197,7 +197,12 @@ export function createFetcher(source: Source): BaseFetcher {
     // Japanese Tech Media
     case 'ITmedia Security':
     case 'ITmedia AI+':
-    case '@IT': {
+    case '@IT':
+    // Japanese Tech Media (Batch 1, Issue #628)
+    case 'JSer.info':
+    case 'CodeZine':
+    case 'gihyo.jp':
+    case 'Findy Engineer Lab': {
       const foreignConfig = getForeignSourceConfig(source.name);
       if (!foreignConfig) {
         throw new Error(`Invalid foreign source name: ${source.name}`);

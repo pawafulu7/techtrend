@@ -279,6 +279,11 @@ const RSS_SOURCES = [
   '@IT',
   // Business Media
   'Business Insider',
+  // 国内技術メディア（Batch 1, Issue #628）
+  'JSer.info',
+  'CodeZine',
+  'gihyo.jp',
+  'Findy Engineer Lab',
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）

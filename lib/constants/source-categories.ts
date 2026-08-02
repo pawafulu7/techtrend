@@ -114,6 +114,11 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'atit', // @IT
       'forbes_japan_ai', // Forbes Japan AI
       'ledge_ai', // Ledge.ai
+      // Batch 1 (Issue #628)
+      'jser_info', // JSer.info
+      'codezine', // CodeZine
+      'gihyo_jp', // gihyo.jp
+      'findy_engineer_lab', // Findy Engineer Lab
     ],
   },
   company: {

@@ -1,5 +1,6 @@
 import { Source } from '@/lib/prisma-exports';
 import { createFetcher } from '../../lib/fetchers/index';
+import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/generic-foreign-rss';
 
 // Mock rss-parser to prevent actual network calls
 jest.mock('rss-parser', () => {
@@ -75,6 +76,10 @@ describe('createFetcher - Japanese Corporate Tech Blogs', () => {
       ['ITmedia Security', 'itmedia_security'],
       ['ITmedia AI+', 'itmedia_aiplus'],
       ['@IT', 'atit'],
+      ['JSer.info', 'jser_info'],
+      ['CodeZine', 'codezine'],
+      ['gihyo.jp', 'gihyo_jp'],
+      ['Findy Engineer Lab', 'findy_engineer_lab'],
     ])('should create GenericForeignRssFetcher for "%s"', (name, id) => {
       const source = createMockSource(name, id);
       const fetcher = createFetcher(source);
@@ -82,6 +87,20 @@ describe('createFetcher - Japanese Corporate Tech Blogs', () => {
       expect(fetcher).toBeDefined();
       expect(fetcher.constructor.name).toBe('GenericForeignRssFetcher');
     });
+  });
+
+  describe('FOREIGN_SOURCE_CONFIGS consistency', () => {
+    // 設定辞書にエントリを足しても createFetcher の switch case を足し忘れると
+    // 実行時に "Unsupported source" で収集が止まる。全キーを走査して検出する
+    it.each(Object.keys(FOREIGN_SOURCE_CONFIGS))(
+      'every config key is creatable via createFetcher: "%s"',
+      (name) => {
+        const source = createMockSource(name, `consistency_${name}`);
+        const fetcher = createFetcher(source);
+
+        expect(fetcher.constructor.name).toBe('GenericForeignRssFetcher');
+      }
+    );
   });
 
   describe('Error handling', () => {

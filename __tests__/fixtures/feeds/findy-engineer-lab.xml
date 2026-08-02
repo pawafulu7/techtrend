@@ -1,0 +1,53 @@
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="ja">
+  <title>Findy Engineer Lab</title>
+  
+  <subtitle>技術と人のストーリーをつむぐ - Findy Engineer Lab</subtitle>
+  
+  <link href="https://findy-code.io/engineer-lab/"/>
+  <updated>2026-01-08T08:30:00+09:00</updated>
+  <author>
+    <name>findy-lab</name>
+  </author>
+  <generator uri="https://blog.hatena.ne.jp/" version="7902413ec290a7d354087aa928d131">Hatena::Blog</generator>
+  <id>hatenablog://blog/26006613440875573</id>
+
+  
+    
+    
+    <entry>
+        <title>全員が「正しい」と言うアイデアはあえて避ける。自らを信じ、尖った仮説を――Optuna開発者の「世界的OSS」を生み出す思考法</title>
+        <link href="https://findy-code.io/engineer-lab/iwiwi?utm_source=feed"/>
+        <id>hatenablog://entry/17179246901340810569</id>
+        <published>2026-01-08T08:30:00+09:00</published>
+        <updated>2026-01-08T08:30:01+09:00</updated>        <summary type="html">「ハイパーパラメータ最適化」の領域において、今やデファクトスタンダードの地位を確立しているOSS「Optuna」。生みの親は、現在Sakana AIで活躍する秋葉拓哉さんです。なぜ、一人のエンジニアが生み出したツールが、世界の景色を変えることができたのでしょうか。本記事では、開発の裏側にあった思考を探ります。</summary>
+        <content type="html">「ハイパーパラメータ最適化」の領域において、今やデファクトスタンダードの地位を確立しているOSS「Optuna」。生みの親は、現在Sakana AIで活躍する秋葉拓哉さんです。なぜ、一人のエンジニアが生み出したツールが、世界の景色を変えることができたのでしょうか。本記事では、開発の裏側にあった思考を探ります。</content>        
+        <category term="わたしの選択" label="わたしの選択" />
+        
+        <category term="OSS" label="OSS" />
+        
+        <category term="キャリア" label="キャリア" />
+        
+        <link rel="enclosure" href="https://cdn.image.st-hatena.com/image/scale/57d754d3fddcfbbc9a052e4bd94513f810ff8cd0/backend=imagemagick;version=1;width=1300/https%3A%2F%2Fcdn-ak.f.st-hatena.com%2Fimages%2Ffotolife%2Ff%2Ffindy-lab%2F20260105%2F20260105154017.jpg" type="image/jpeg" length="0" />
+
+        <author>
+            <name>findy-lab</name>
+        </author>
+    </entry>
+<entry>
+        <title>「あなたのキャリアのなかで、特に印象に残るPull Requestは何ですか？」著名エンジニアの方々に聞いた【第四弾】</title>
+        <link href="https://findy-code.io/engineer-lab/pullrequest-memory04?utm_source=feed"/>
+        <id>hatenablog://entry/17179246901313912355</id>
+        <published>2025-11-20T08:30:00+09:00</published>
+        <updated>2025-11-20T08:30:01+09:00</updated>        <summary type="html">著名エンジニアによる思い出深いPull Requestのエピソードを紹介。OSS活動への情熱と経験がにじみ出るストーリーをお届けします。</summary>
+        <content type="html">著名エンジニアによる思い出深いPull Requestのエピソードを紹介。OSS活動への情熱と経験がにじみ出るストーリーをお届けします。</content>        
+        <category term="思い出のPull Request" label="思い出のPull Request" />
+        
+        <category term="技術・スキル" label="技術・スキル" />
+        
+        <link rel="enclosure" href="https://cdn.image.st-hatena.com/image/scale/d31f46d5dc9e318436c18aa2c886d21ae642fa47/backend=imagemagick;version=1;width=1300/https%3A%2F%2Fcdn-ak.f.st-hatena.com%2Fimages%2Ffotolife%2Ff%2Ffindy-lab%2F20251107%2F20251107163609.jpg" type="image/jpeg" length="0" />
+
+        <author>
+            <name>findy-lab</name>
+        </author>
+    </entry>
+</feed>
