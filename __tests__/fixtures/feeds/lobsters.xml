@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+<title>Lobsters</title>
+<link>https://lobste.rs/</link>
+<description>Lobsters: Technology-centric community</description>
+<item>
+<title>Some article title</title>
+<link>https://www.example.com/blog/Some-Article/</link>
+<guid isPermaLink="true">https://lobste.rs/s/abc123/some_article_title</guid>
+<pubDate>Sun, 02 Aug 2026 10:00:00 +0000</pubDate>
+<description>&lt;p&gt;&lt;a href="https://lobste.rs/s/abc123/some_article_title"&gt;Comments&lt;/a&gt;&lt;/p&gt;</description>
+</item>
+</channel>
+</rss>
