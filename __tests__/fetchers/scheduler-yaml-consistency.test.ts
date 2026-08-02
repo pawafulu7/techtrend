@@ -16,14 +16,32 @@ import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/generic-foreign-rss';
 
 const ROOT = process.cwd();
 
-/** YAMLの run ブロックから、行単位の引用済みCLI引数（`"名前" \` 形式）を抽出する */
+/**
+ * YAML から collect-feeds.ts に渡される引用済みCLI引数を抽出する。
+ *
+ * 2種類の記法に対応する:
+ *   - 1行1引数 + 行末バックスラッシュ継続（scheduler-rss-hourly.yml）
+ *   - 1行にスペース区切りで複数引数（scheduler-scraping.yml）
+ *
+ * collect-feeds.ts の起動行から継続行までに限定して抽出するため、
+ * 環境変数値・cron 式・コメント中の引用文字列を誤って拾わない。
+ */
 function extractYamlCliArgs(yamlPath: string): string[] {
-  const text = fs.readFileSync(yamlPath, 'utf-8');
+  const lines = fs.readFileSync(yamlPath, 'utf-8').split('\n');
   const args: string[] = [];
-  for (const line of text.split('\n')) {
-    // 例: `            "はてなブックマーク" \` / 最終行はバックスラッシュなし
-    const m = line.match(/^\s+"([^"]+)"\s*\\?\s*$/);
-    if (m) args.push(m[1]);
+  let inCommand = false;
+
+  for (const line of lines) {
+    if (!inCommand && line.includes('collect-feeds.ts')) {
+      inCommand = true;
+    }
+    if (!inCommand) continue;
+
+    for (const m of line.matchAll(/"([^"]+)"/g)) {
+      args.push(m[1]);
+    }
+    // 行末のバックスラッシュが無ければコマンド終端
+    if (!/\\\s*$/.test(line)) break;
   }
   return args;
 }
@@ -51,15 +69,16 @@ function extractSchedulerArraySources(varName: string): string[] {
  */
 const EXCLUDED_KEYS: Record<string, string> = {};
 
+const GHA_WORKFLOWS = [
+  '.github/workflows/scheduler-rss-hourly.yml',
+  '.github/workflows/scheduler-scraping.yml',
+];
+
 describe('スケジューラ整合性: FOREIGN_SOURCE_CONFIGS ⇔ 収集起動リスト', () => {
-  const ghaArgs = new Set([
-    ...extractYamlCliArgs(
-      path.join(ROOT, '.github/workflows/scheduler-rss-hourly.yml')
-    ),
-    ...extractYamlCliArgs(
-      path.join(ROOT, '.github/workflows/scheduler-scraping.yml')
-    ),
-  ]);
+  const argsByWorkflow = GHA_WORKFLOWS.map(
+    (rel) => [rel, extractYamlCliArgs(path.join(ROOT, rel))] as const
+  );
+  const ghaArgs = new Set(argsByWorkflow.flatMap(([, args]) => args));
   const localSources = new Set([
     ...extractSchedulerArraySources('RSS_SOURCES'),
     ...extractSchedulerArraySources('SCRAPING_SOURCES'),
@@ -68,8 +87,14 @@ describe('スケジューラ整合性: FOREIGN_SOURCE_CONFIGS ⇔ 収集起動�
     (k) => !(k in EXCLUDED_KEYS)
   );
 
+  // 抽出が空配列を返すと「全キーが存在しない」ではなく比較自体が無意味になるため、
+  // ワークフローごとに個別に抽出成功を確認する（合算での確認では
+  // 片方の記法に非対応でも気付けない）
+  it.each(argsByWorkflow)('%s から CLI 引数を抽出できる', (_rel, args) => {
+    expect(args.length).toBeGreaterThan(0);
+  });
+
   it('抽出ロジックが機能している（空リストによる偽陰性の防止）', () => {
-    expect(ghaArgs.size).toBeGreaterThan(0);
     expect(localSources.size).toBeGreaterThan(0);
     expect(keys.length).toBeGreaterThan(0);
   });
