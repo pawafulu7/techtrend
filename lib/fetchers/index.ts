@@ -202,7 +202,10 @@ export function createFetcher(source: Source): BaseFetcher {
     case 'JSer.info':
     case 'CodeZine':
     case 'gihyo.jp':
-    case 'Findy Engineer Lab': {
+    case 'Findy Engineer Lab':
+    // Foreign Aggregators (Batch 2, Issue #628)
+    case 'Lobsters':
+    case 'Techmeme': {
       const foreignConfig = getForeignSourceConfig(source.name);
       if (!foreignConfig) {
         throw new Error(`Invalid foreign source name: ${source.name}`);

@@ -520,6 +520,26 @@ export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
     tagPrefix: 'findy-engineer-lab',
     useNormalizedUrl: true,
   },
+  // Foreign Aggregators (Batch 2, Issue #628)
+  // Lobsters: item link が外部記事URL（Hacker News と同型のアグリゲータ）。
+  // HN が生URL保存のため useNormalizedUrl は有効化しない（正規化すると HN 既存記事
+  // とのURL照合が崩れて重複作成される。plan_20260802_221749 §4.2 参照）。
+  // description は Comments リンクのみのため ignoreFeedContent で本文を
+  // エンリッチメントに委ねる
+  Lobsters: {
+    feedUrl: 'https://lobste.rs/rss',
+    tagPrefix: 'lobsters',
+    ignoreFeedContent: true,
+  },
+  // Techmeme: item link が自サイトのリバーページ・パーマリンク（#アンカー付き）。
+  // enricher はリバーページ全体（広告含む）を抽出してしまうため skipEnrichment で
+  // description 由来の見出し本文を維持する
+  Techmeme: {
+    feedUrl: 'https://www.techmeme.com/feed.xml',
+    tagPrefix: 'techmeme',
+    useNormalizedUrl: true,
+    skipEnrichment: true,
+  },
 };
 
 /**
