@@ -198,3 +198,4 @@ dump.rdb
 .docker-ci-build-timestamp
 .last-verify-timestamp
 .codex
+.cross-review-diff.patch
