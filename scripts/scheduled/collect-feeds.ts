@@ -344,24 +344,24 @@ async function processSource({
                       };
 
                       // 本文回復時は本文起因の skipReason / summaryError をクリアし、
-                      // 要約再生成対象にする。PDF / SLIDE は本文の有無と無関係の
-                      // 恒久理由のためクリアしない（enrich-thin-content.ts の同型ロジックを踏襲）。
+                      // 古い要約も無効化して generateSummaries の再生成対象に載せる。
+                      // PDF / SLIDE は本文の有無と無関係の恒久理由のため、クリア・
+                      // 要約リセットとも行わない（ID 指定の generateSummaries は
+                      // skipReason: null を要求しないため、リセットすると恒久スキップ
+                      // 記事が生成経路に入ってしまう）。
                       // skipReason が null で summaryError だけ残るケース（一時的な要約失敗）
                       // もクリア対象にするため truthy 判定はしない
-                      if (
+                      const isSummaryEligible =
                         existing.skipReason !== 'PDF' &&
-                        existing.skipReason !== 'SLIDE'
-                      ) {
+                        existing.skipReason !== 'SLIDE';
+                      if (isSummaryEligible) {
                         enricherUpdates.skipReason = null;
                         enricherUpdates.summaryError = null;
+                        // enrich-thin-content.ts の本文回復時と同じ流儀
+                        enricherUpdates.summary = null;
+                        enricherUpdates.detailedSummary = null;
+                        enricherUpdates.summaryVersion = 0;
                       }
-
-                      // 本文が変わったため古い要約を無効化し、generateSummaries の
-                      // 再生成対象（summary null/空）に載せる
-                      // （enrich-thin-content.ts の本文回復時と同じ流儀）
-                      enricherUpdates.summary = null;
-                      enricherUpdates.detailedSummary = null;
-                      enricherUpdates.summaryVersion = 0;
 
                       // 並列実行中の他ソースが先に本文を書き込んでいた場合に上書きしないよう、
                       // contentLength が null/0 のままであることを条件に更新する（CAS）
@@ -375,7 +375,10 @@ async function processSource({
 
                       if (count > 0) {
                         articleUpdated = true;
-                        result.newArticleIds.push(existing.id);
+                        // PDF / SLIDE（恒久スキップ）は要約生成キューに入れない
+                        if (isSummaryEligible) {
+                          result.newArticleIds.push(existing.id);
+                        }
                         debugLog(`   既存記事を自己修復（エンリッチャー）: ${article.title.substring(0, 50)}...`);
                       } else {
                         debugLog(`   既存記事の自己修復スキップ（並行更新で本文既存）: ${article.title.substring(0, 50)}...`);
