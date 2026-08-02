@@ -219,14 +219,15 @@ async function main() {
             // 本文回復時は本文起因の skipReason（THIN_CONTENT / CONTENT_FETCH_FAILED /
             // QUALITY_FAILED）と summaryError をクリアし、scripts:summarize
             // （skipReason: null 対象）で要約再生成されるようにする。
-            // PDF / SLIDE は本文の有無と無関係の恒久理由のためクリアしない
+            // PDF / SLIDE は本文の有無と無関係の恒久理由のためクリアしない。
+            // skipReason が null で summaryError だけ残るケース（一時的な要約失敗）
+            // もクリア対象にするため truthy 判定はしない。
             // collect-feeds.ts の受入基準と同一（500文字以上は無条件、
             // 250-499文字は isHighQuality 必須）にし、わずかな伸びでの
             // クリアを防ぐ
             if (
               (enrichedData.content.length >= 500 ||
                 (enrichedData.content.length >= 250 && isHighQuality(enrichedData.content))) &&
-              article.skipReason &&
               article.skipReason !== 'PDF' &&
               article.skipReason !== 'SLIDE'
             ) {

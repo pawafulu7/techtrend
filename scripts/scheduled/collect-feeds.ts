@@ -326,9 +326,10 @@ async function processSource({
 
                       // 本文回復時は本文起因の skipReason / summaryError をクリアし、
                       // 要約再生成対象にする。PDF / SLIDE は本文の有無と無関係の
-                      // 恒久理由のためクリアしない（enrich-thin-content.ts の同型ロジックを踏襲）
+                      // 恒久理由のためクリアしない（enrich-thin-content.ts の同型ロジックを踏襲）。
+                      // skipReason が null で summaryError だけ残るケース（一時的な要約失敗）
+                      // もクリア対象にするため truthy 判定はしない
                       if (
-                        existing.skipReason &&
                         existing.skipReason !== 'PDF' &&
                         existing.skipReason !== 'SLIDE'
                       ) {
@@ -359,6 +360,19 @@ async function processSource({
                     }
                   } catch (enrichError) {
                     const classified = classifyEnrichmentError(enrichError);
+                    logger.warn(
+                      {
+                        url: article.url,
+                        sourceId: source.id,
+                        sourceName,
+                        enricher: enricher.constructor.name,
+                        errorCode: classified.errorCode,
+                        status: classified.status,
+                        errorName: classified.errorName,
+                        errorMessage: classified.errorMessage,
+                      },
+                      '[Enrichment] self-heal failed: exception thrown'
+                    );
                     console.error(`   [WARN] 既存記事の空本文エンリッチメント失敗: ${classified.errorMessage}`);
                   }
 
@@ -378,7 +392,10 @@ async function processSource({
               where: { id: existing.id },
               data: updates,
             });
-            updatedCount++;
+            // 自己修復（updateMany）側で計上済みの記事は二重計上しない
+            if (!selfHealedViaEnricher) {
+              updatedCount++;
+            }
             if (updates.sourceId) {
               debugLog(`   既存記事を更新（sourceId + content）: ${article.title.substring(0, 50)}...`);
             } else {
@@ -727,7 +744,9 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     const duration = Math.round((Date.now() - startTime) / 1000);
     console.error(`\n📊 収集完了: 新規${totalNewArticles}件, 更新${totalUpdated}件, 重複${totalDuplicates}件 (${duration}秒)`);
 
-    if (totalNewArticles > 0) {
+    // 自己修復のみ成功した実行（totalNewArticles === 0）でも要約生成・
+    // キャッシュ無効化を起動するため、newArticleIds の件数で判定する
+    if (newArticleIds.length > 0) {
       console.error('[INFO] キャッシュを無効化中...');
       try {
         await cacheInvalidator.onBulkImport();
