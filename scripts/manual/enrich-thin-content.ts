@@ -15,6 +15,7 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
 import { isEnrichmentSkipped } from '../../lib/fetchers/generic-foreign-rss';
+import { isHighQuality } from '../../lib/enrichers/strategies/quality';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -219,10 +220,12 @@ async function main() {
             // QUALITY_FAILED）と summaryError をクリアし、scripts:summarize
             // （skipReason: null 対象）で要約再生成されるようにする。
             // PDF / SLIDE は本文の有無と無関係の恒久理由のためクリアしない
-            // collect-feeds.ts の品質基準（250文字以上）と揃え、わずかな伸びでの
+            // collect-feeds.ts の受入基準と同一（500文字以上は無条件、
+            // 250-499文字は isHighQuality 必須）にし、わずかな伸びでの
             // クリアを防ぐ
             if (
-              enrichedData.content.length >= 250 &&
+              (enrichedData.content.length >= 500 ||
+                (enrichedData.content.length >= 250 && isHighQuality(enrichedData.content))) &&
               article.skipReason &&
               article.skipReason !== 'PDF' &&
               article.skipReason !== 'SLIDE'
