@@ -6,6 +6,7 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { GoogleAIEnricher } from '../../lib/enrichers/google-ai';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
+import { isEnrichmentSkipped } from '../../lib/fetchers/generic-foreign-rss';
 
 const prisma = createPrismaClient();
 const enricher = new GoogleAIEnricher();
@@ -34,7 +35,15 @@ async function enrichSingleArticle(articleId: string) {
     
     // エンリッチメント実行
     console.error('\n=== エンリッチメント実行 ===');
-    
+
+    // skipEnrichment 対象ソース（enricher による本文上書きを行わない）は中断
+    if (isEnrichmentSkipped(article.source.name)) {
+      console.error(
+        `中断: ソース「${article.source.name}」は設定（skipEnrichment）により本文上書き対象外です`
+      );
+      return;
+    }
+
     if (!enricher.canHandle(article.url)) {
       console.error('警告: URLがエンリッチャーの対象外ですが、強制実行を試みます');
     }

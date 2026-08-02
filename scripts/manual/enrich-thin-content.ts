@@ -215,9 +215,18 @@ async function main() {
               updateData.summaryVersion = 0;
               console.error(`    - 要約: リセット（再生成が必要）`);
             }
-            // 本文回復時は skipReason（CONTENT_FETCH_FAILED 等）をクリアし、
-            // scripts:summarize（skipReason: null 対象）で要約再生成されるようにする
-            updateData.skipReason = null;
+            // 本文回復時は本文起因の skipReason（THIN_CONTENT / CONTENT_FETCH_FAILED /
+            // QUALITY_FAILED）と summaryError をクリアし、scripts:summarize
+            // （skipReason: null 対象）で要約再生成されるようにする。
+            // PDF / SLIDE は本文の有無と無関係の恒久理由のためクリアしない
+            if (
+              article.skipReason &&
+              article.skipReason !== 'PDF' &&
+              article.skipReason !== 'SLIDE'
+            ) {
+              updateData.skipReason = null;
+              updateData.summaryError = null;
+            }
           }
           
           if (hasNewThumbnail) {
