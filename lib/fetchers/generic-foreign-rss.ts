@@ -64,6 +64,20 @@ export interface ForeignSourceConfig {
    * ノイズ（広告含む）になるソース向け。`isEnrichmentSkipped()` で参照する。
    */
   skipEnrichment?: boolean;
+  /**
+   * 記事URLのパス前方一致で item を絞り込む。
+   *
+   * 1つのフィードにブログ記事と別種のエントリ（製品チェンジログ等）が混在し、
+   * かつ category による判別ができないソース向け。
+   *
+   * 設定値は先頭スラッシュを含むパス prefix（例: `/blog/`）。解決後 pathname に
+   * 対する `startsWith` 判定のため、`/blog/` は `/blogger` に一致せず、
+   * 末尾スラッシュなしの `/blog` 単体も除外する。
+   *
+   * `categoryFilter` と異なり `slice()` の**前**に全 item へ適用する
+   * （フィード先頭が対象外パスで占められるソースで取りこぼさないため）。
+   */
+  urlPathFilter?: string;
 }
 
 export class GenericForeignRssFetcher extends BaseFetcher {
@@ -107,8 +121,37 @@ export class GenericForeignRssFetcher extends BaseFetcher {
 
       const feed = await this.parser.parseURL(this.config.feedUrl);
 
+      const allItems = feed.items || [];
+
+      // URLパスフィルタリング（設定がある場合のみ）
+      // categoryFilter と異なり slice() の前に全 item へ適用する。slice 後だと、
+      // フィード先頭が対象外パスで占められるソース（例: Vercel は /changelog/ が
+      // 支配的）で対象記事をほとんど取得できない
+      let pathFilteredItems = allItems;
+      if (this.config.urlPathFilter) {
+        pathFilteredItems = allItems.filter((item) =>
+          this.matchesUrlPathFilter(item.link)
+        );
+        logger.info(
+          {
+            source: this.source.name,
+            // フィード肥大化の追跡用にフィルタ前の全item数も記録する
+            totalItems: allItems.length,
+            after: pathFilteredItems.length,
+            filter: this.config.urlPathFilter,
+          },
+          'URLパスフィルタ適用'
+        );
+        if (pathFilteredItems.length === 0) {
+          logger.warn(
+            { source: this.source.name, filter: this.config.urlPathFilter },
+            'URLパスフィルタ後の記事が0件'
+          );
+        }
+      }
+
       // 最新30件まで処理
-      const items = feed.items?.slice(0, 30) || [];
+      const items = pathFilteredItems.slice(0, 30);
 
       // カテゴリフィルタリング（設定がある場合のみ）
       let filteredItems = items;
@@ -255,6 +298,33 @@ export class GenericForeignRssFetcher extends BaseFetcher {
       )
       .map((term) => term.trim())
       .filter((term) => term.length > 0);
+  }
+
+  /**
+   * URLパスフィルタに一致するかチェック
+   *
+   * - 相対URL（Atom の `<link href="/blog/post">`）は feedUrl 基準で解決する。
+   *   rss-parser は Atom の href を相対のまま返すため、絶対URL前提で判定すると
+   *   有効な相対 link を不正URLとして落としてしまう。`xml:base` は考慮しない
+   * - http / https 以外のスキーム（data:, ftp: 等）は対象外とする
+   * - 判定は解決後 pathname の前方一致。文字列 includes ではないため
+   *   `/changelog/blog-post` のような別パスの誤マッチは起きない
+   */
+  private matchesUrlPathFilter(link: string | undefined): boolean {
+    const pathPrefix = this.config.urlPathFilter;
+    if (!pathPrefix) return true;
+    if (!link) return false;
+
+    try {
+      const resolved = new URL(link, this.config.feedUrl);
+      if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') {
+        return false;
+      }
+      return resolved.pathname.startsWith(pathPrefix);
+    } catch {
+      // 解決不能なURLは後段へ流さない
+      return false;
+    }
   }
 
   /**
