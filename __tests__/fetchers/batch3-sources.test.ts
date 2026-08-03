@@ -16,6 +16,7 @@ import {
   FOREIGN_SOURCE_CONFIGS,
 } from '@/lib/fetchers/generic-foreign-rss';
 import { SOURCE_CATEGORIES } from '@/lib/constants/source-categories';
+import { BATCH3_SOURCES } from '@/scripts/maintenance/add-batch3-sources';
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 
@@ -105,6 +106,27 @@ describe('Batch 3: 設定辞書とカテゴリ定義の整合', () => {
       expect(SOURCE_CATEGORIES.foreign.sourceIds).toContain(id);
     }
   );
+
+  // 登録スクリプトの定義（DBに書き込まれる name / id）が設定辞書・カテゴリ定義と
+  // ずれると、収集されない（name不一致）またはUIに出ない（id不一致）状態になる。
+  // 登録スクリプトは手動実行のため CI では走らず、この検証が唯一の恒久検出器
+  describe('登録スクリプト BATCH3_SOURCES との整合', () => {
+    it('登録スクリプトの対象が Batch 3 の5ソースと一致する', () => {
+      const scriptNames = BATCH3_SOURCES.map((s) => s.name).sort();
+      expect(scriptNames).toEqual(Object.keys(BATCH3_SOURCE_IDS).sort());
+    });
+
+    it.each(BATCH3_SOURCES)(
+      '$name: name が設定辞書キー、id が foreign カテゴリと一致する',
+      ({ name, id, type, enabled }) => {
+        expect(FOREIGN_SOURCE_CONFIGS[name]).toBeDefined();
+        expect(SOURCE_CATEGORIES.foreign.sourceIds).toContain(id);
+        expect(BATCH3_SOURCE_IDS[name]).toBe(id);
+        expect(type).toBe('RSS');
+        expect(enabled).toBe(true);
+      }
+    );
+  });
 });
 
 describe('Vercel Blog: urlPathFilter による /blog/ 絞り込み', () => {
