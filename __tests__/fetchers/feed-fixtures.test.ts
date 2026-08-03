@@ -66,3 +66,64 @@ describe('Batch 1 フィード fixture パース検証', () => {
     }
   );
 });
+
+/**
+ * Batch 2 フィード fixture パーステスト（Issue #628, Lobsters / Techmeme）
+ *
+ * Lobsters / Techmeme は description の中身に強く依存する品質対処
+ * （ignoreFeedContent / skipEnrichment, plan_20260802_221749 §4.1）を
+ * 実施しているため、rss-parser が description をどう解釈するかという
+ * 「事実」自体を固定し、rss-parser 更新時の前提崩れを検知する。
+ *
+ * fixture採取日: 2026-08-02
+ */
+describe('Batch 2 フィード fixture パース検証', () => {
+  const parser = new Parser();
+
+  it('Lobsters: descriptionがCommentsリンクのみで、content/contentSnippetへ変換される', async () => {
+    const xml = fs.readFileSync(
+      path.join(__dirname, '../fixtures/feeds/lobsters.xml'),
+      'utf-8'
+    );
+    const feed = await parser.parseString(xml);
+    expect(feed.items.length).toBe(1);
+
+    const item = feed.items[0];
+    expect(item.title).toBe('Some article title');
+    // Lobsters の link は外部記事の生URL（www・末尾スラッシュ付きのまま）
+    expect(item.link).toBe('https://www.example.com/blog/Some-Article/');
+
+    // description はHTMLのまま content に、タグ除去済みテキストが
+    // contentSnippet に入る（rss-parser の仕様）。
+    // ignoreFeedContent はこの「Commentsのみ」という中身を前提に空文字化する。
+    expect(item.content).toBe(
+      '<p><a href="https://lobste.rs/s/abc123/some_article_title">Comments</a></p>'
+    );
+    expect(item.contentSnippet).toBe('Comments');
+  });
+
+  it('Techmeme: CDATA descriptionのIMG/Aタグ、アンカー付きlinkが期待通りに解釈される', async () => {
+    const xml = fs.readFileSync(
+      path.join(__dirname, '../fixtures/feeds/techmeme.xml'),
+      'utf-8'
+    );
+    const feed = await parser.parseString(xml);
+    expect(feed.items.length).toBe(1);
+
+    const item = feed.items[0];
+    expect(item.title).toBe('Some Headline About AI');
+    // Techmeme の link は自サイトのリバーページ・パーマリンク（#アンカー付き）
+    expect(item.link).toBe('https://www.techmeme.com/260802/p6#a260802p6');
+
+    // content にはIMG/Aタグを含むHTMLがそのまま残る
+    expect(item.content).toContain('<img src="https://example.com/thumb.jpg"');
+    expect(item.content).toContain('<a href="https://example.com/story-page">');
+
+    // contentSnippet はタグ除去済みの見出しテキスト（skipEnrichment時の本文の元になる）
+    expect(item.contentSnippet).toContain(
+      'Company announces new AI product with expanded capabilities'
+    );
+    expect(item.contentSnippet).not.toContain('<img');
+    expect(item.contentSnippet).not.toContain('<a href');
+  });
+});

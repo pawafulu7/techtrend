@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+<title>Techmeme</title>
+<link>https://www.techmeme.com/</link>
+<description>Tech Meta-News, Aggregated</description>
+<item>
+<title>Some Headline About AI</title>
+<link>https://www.techmeme.com/260802/p6#a260802p6</link>
+<guid isPermaLink="false">https://www.techmeme.com/260802/p6#a260802p6</guid>
+<pubDate>Sun, 02 Aug 2026 09:00:00 +0000</pubDate>
+<description><![CDATA[<img src="https://example.com/thumb.jpg" border="0" /> <a href="https://example.com/story-page">Company announces new AI product with expanded capabilities</a> (<a href="https://twitter.com/someone">Some Person / Twitter</a>)]]></description>
+</item>
+</channel>
+</rss>

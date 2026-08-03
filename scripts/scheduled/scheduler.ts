@@ -284,6 +284,9 @@ const RSS_SOURCES = [
   'CodeZine',
   'gihyo.jp',
   'Findy Engineer Lab',
+  // 海外アグリゲータ（Batch 2, Issue #628）
+  'Lobsters',
+  'Techmeme',
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）

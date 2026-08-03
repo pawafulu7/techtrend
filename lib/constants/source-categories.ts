@@ -96,6 +96,9 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'rust_blog', // Rust Blog
       // Phase 3: Business Media
       'business_insider', // Business Insider
+      // Batch 2 (Issue #628): 海外アグリゲータ
+      'lobsters', // Lobsters
+      'techmeme', // Techmeme
     ],
   },
   domestic: {

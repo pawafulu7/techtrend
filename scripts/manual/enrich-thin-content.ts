@@ -14,6 +14,8 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
+import { isEnrichmentSkipped } from '../../lib/fetchers/generic-foreign-rss';
+import { isHighQuality } from '../../lib/enrichers/strategies/quality';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -144,6 +146,7 @@ async function main() {
     let failCount = 0;
     let skipCount = 0;
     let thumbnailCount = 0;
+    let skipEnrichmentCount = 0;
 
     for (let i = 0; i < thinArticles.length; i++) {
       const article = thinArticles[i];
@@ -153,6 +156,13 @@ async function main() {
       console.error(`  ソース: ${article.source.name}`);
       console.error(`  現在のコンテンツ: ${article.content?.length || 0}文字`);
       console.error(`  URL: ${article.url}`);
+
+      // skipEnrichment 対象ソース（enricher による本文上書きを行わない）は除外
+      if (isEnrichmentSkipped(article.source.name)) {
+        console.error(`  ⏭️  スキップ: ソース設定により本文上書き対象外`);
+        skipEnrichmentCount++;
+        continue;
+      }
 
       // エンリッチャーを取得
       const enricher = enricherFactory.getEnricher(article.url, article.source.id);
@@ -206,6 +216,24 @@ async function main() {
               updateData.summaryVersion = 0;
               console.error(`    - 要約: リセット（再生成が必要）`);
             }
+            // 本文回復時は本文起因の skipReason（THIN_CONTENT / CONTENT_FETCH_FAILED /
+            // QUALITY_FAILED）と summaryError をクリアし、scripts:summarize
+            // （skipReason: null 対象）で要約再生成されるようにする。
+            // PDF / SLIDE は本文の有無と無関係の恒久理由のためクリアしない。
+            // skipReason が null で summaryError だけ残るケース（一時的な要約失敗）
+            // もクリア対象にするため truthy 判定はしない。
+            // collect-feeds.ts の受入基準と同一（500文字以上は無条件、
+            // 250-499文字は isHighQuality 必須）にし、わずかな伸びでの
+            // クリアを防ぐ
+            if (
+              (enrichedData.content.length >= 500 ||
+                (enrichedData.content.length >= 250 && isHighQuality(enrichedData.content))) &&
+              article.skipReason !== 'PDF' &&
+              article.skipReason !== 'SLIDE'
+            ) {
+              updateData.skipReason = null;
+              updateData.summaryError = null;
+            }
           }
           
           if (hasNewThumbnail) {
@@ -238,6 +266,7 @@ async function main() {
     console.error(`✅ 成功: ${successCount}件`);
     console.error(`❌ 失敗: ${failCount}件`);
     console.error(`⏭️  スキップ: ${skipCount}件`);
+    console.error(`⏭️  スキップ（対象外ソース）: ${skipEnrichmentCount}件`);
     console.error(`🖼️  サムネイル取得: ${thumbnailCount}件`);
     console.error(`📊 合計: ${thinArticles.length}件`);
 

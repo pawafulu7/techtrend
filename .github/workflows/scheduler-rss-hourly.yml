@@ -103,7 +103,9 @@ jobs:
             "JSer.info" \
             "CodeZine" \
             "gihyo.jp" \
-            "Findy Engineer Lab"
+            "Findy Engineer Lab" \
+            "Lobsters" \
+            "Techmeme"
           # 要約生成はcollect-feeds.ts内で実行済み
           # 品質スコアと難易度計算は1日1回に移動 (scheduler-daily-quality.yml)
       - name: Notify failure to Slack
