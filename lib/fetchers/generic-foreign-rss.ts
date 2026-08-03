@@ -64,6 +64,20 @@ export interface ForeignSourceConfig {
    * ノイズ（広告含む）になるソース向け。`isEnrichmentSkipped()` で参照する。
    */
   skipEnrichment?: boolean;
+  /**
+   * 記事URLのパス前方一致で item を絞り込む。
+   *
+   * 1つのフィードにブログ記事と別種のエントリ（製品チェンジログ等）が混在し、
+   * かつ category による判別ができないソース向け。
+   *
+   * 設定値は先頭スラッシュを含むパス prefix（例: `/blog/`）。解決後 pathname に
+   * 対する `startsWith` 判定のため、`/blog/` は `/blogger` に一致せず、
+   * 末尾スラッシュなしの `/blog` 単体も除外する。
+   *
+   * `categoryFilter` と異なり `slice()` の**前**に全 item へ適用する
+   * （フィード先頭が対象外パスで占められるソースで取りこぼさないため）。
+   */
+  urlPathFilter?: string;
 }
 
 export class GenericForeignRssFetcher extends BaseFetcher {
@@ -77,6 +91,11 @@ export class GenericForeignRssFetcher extends BaseFetcher {
 
   constructor(source: Source, config: ForeignSourceConfig) {
     super(source);
+    if (config.urlPathFilter && config.categoryFilter?.length) {
+      throw new Error(
+        `${source.name}: urlPathFilter と categoryFilter は併用できません`
+      );
+    }
     const parserOptions: Parser.ParserOptions<
       Record<string, unknown>,
       Record<string, unknown>
@@ -107,8 +126,37 @@ export class GenericForeignRssFetcher extends BaseFetcher {
 
       const feed = await this.parser.parseURL(this.config.feedUrl);
 
+      const allItems = feed.items || [];
+
+      // URLパスフィルタリング（設定がある場合のみ）
+      // categoryFilter と異なり slice() の前に全 item へ適用する。slice 後だと、
+      // フィード先頭が対象外パスで占められるソース（例: Vercel は /changelog/ が
+      // 支配的）で対象記事をほとんど取得できない
+      let pathFilteredItems = allItems;
+      if (this.config.urlPathFilter) {
+        pathFilteredItems = allItems.filter((item) =>
+          this.matchesUrlPathFilter(item.link)
+        );
+        logger.info(
+          {
+            source: this.source.name,
+            // フィード肥大化の追跡用にフィルタ前の全item数も記録する
+            totalItems: allItems.length,
+            after: pathFilteredItems.length,
+            filter: this.config.urlPathFilter,
+          },
+          'URLパスフィルタ適用'
+        );
+        if (pathFilteredItems.length === 0) {
+          logger.warn(
+            { source: this.source.name, filter: this.config.urlPathFilter },
+            'URLパスフィルタ後の記事が0件'
+          );
+        }
+      }
+
       // 最新30件まで処理
-      const items = feed.items?.slice(0, 30) || [];
+      const items = pathFilteredItems.slice(0, 30);
 
       // カテゴリフィルタリング（設定がある場合のみ）
       let filteredItems = items;
@@ -138,8 +186,11 @@ export class GenericForeignRssFetcher extends BaseFetcher {
         if (!item.link || !item.title) continue;
 
         try {
+          // 相対 link は絶対URLへ解決してから保存する（詳細は resolveItemLink）
+          const itemUrl = this.resolveItemLink(item.link);
+
           // URLを正規化
-          const normalizedUrl = normalizeUrl(item.link);
+          const normalizedUrl = normalizeUrl(itemUrl);
 
           // 重複チェック（同一バッチ内）
           if (this.isDuplicateInBatch(normalizedUrl, item.title)) {
@@ -155,7 +206,7 @@ export class GenericForeignRssFetcher extends BaseFetcher {
             // 既定は元URL（エンリッチメントで正しくアクセスするため）。
             // useNormalizedUrl 有効時はトラッキングパラメータ除去後のURLで保存し、
             // 他ソース経由で収集済みの同一記事と重複しないようにする
-            url: this.config.useNormalizedUrl ? normalizedUrl : item.link,
+            url: this.config.useNormalizedUrl ? normalizedUrl : itemUrl,
             content: this.extractContent(item),
             publishedAt: this.extractPublishDate(item),
             sourceId: this.source.id,
@@ -255,6 +306,62 @@ export class GenericForeignRssFetcher extends BaseFetcher {
       )
       .map((term) => term.trim())
       .filter((term) => term.length > 0);
+  }
+
+  /**
+   * link を feedUrl 基準で URL オブジェクトへ解決する共通ヘルパー
+   * 解決できない場合は null を返す
+   */
+  private tryResolveUrl(link: string): URL | null {
+    try {
+      return new URL(link, this.config.feedUrl);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * item の link を保存用の絶対URLへ解決する
+   *
+   * rss-parser は Atom の `<link href="/blog/post">` を相対URLのまま返す。
+   * 相対URLをそのまま保存すると、URLの一意制約がサイトを跨いで衝突し、
+   * エンリッチメントの fetch も記事カードの外部リンクも機能しないため、
+   * feedUrl を基準に解決する（`xml:base` は考慮しない）。
+   *
+   * 既に絶対URLの場合は URL コンストラクタを通さず元の文字列を返す。
+   * 通すとパーセントエンコーディング等が正規化され、既存レコードとの
+   * 完全一致照合が崩れて重複作成につながるため。
+   */
+  private resolveItemLink(link: string): string {
+    try {
+      new URL(link);
+      return link;
+    } catch {
+      return this.tryResolveUrl(link)?.href ?? link;
+    }
+  }
+
+  /**
+   * URLパスフィルタに一致するかチェック
+   *
+   * - 相対URLは feedUrl 基準で解決してから判定する（絶対URL前提で判定すると
+   *   有効な相対 link を不正URLとして落としてしまう）
+   * - http / https 以外のスキーム（data:, ftp: 等）は対象外とする
+   * - 判定は解決後 pathname の前方一致。文字列 includes ではないため
+   *   `/changelog/blog-post` のような別パスの誤マッチは起きない
+   */
+  private matchesUrlPathFilter(link: string | undefined): boolean {
+    const pathPrefix = this.config.urlPathFilter;
+    if (!pathPrefix) return true;
+    if (!link) return false;
+
+    // 解決不能なURLは後段へ流さない
+    const resolved = this.tryResolveUrl(link);
+    if (!resolved) return false;
+    if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') {
+      return false;
+    }
+    return resolved.pathname.startsWith(pathPrefix);
   }
 
   /**
@@ -539,6 +646,45 @@ export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
     tagPrefix: 'techmeme',
     useNormalizedUrl: true,
     skipEnrichment: true,
+  },
+  // Foreign Company / Product Blogs (Batch 3, Issue #628)
+  // useNormalizedUrl は「新規ソースなら常に有効化」ではなく、既存レコードの
+  // 保存URL形式に合わせる（重複判定は保存URL文字列の完全一致のため）。
+  // 既存が末尾スラッシュ付きの生URLで保存されているソースで有効化すると、
+  // normalizeUrl() の末尾スラッシュ除去により照合が崩れて重複作成される
+  //
+  // Vercel: フィード（/atom）に blog と changelog が混在し Atom category も
+  // 持たないため、categoryFilter ではなく urlPathFilter で /blog/ に絞る
+  'Vercel Blog': {
+    feedUrl: 'https://vercel.com/atom',
+    tagPrefix: 'vercel',
+    useNormalizedUrl: true,
+    urlPathFilter: '/blog/',
+  },
+  // TypeScript: Hacker News / はてなブックマーク経由の既存記事が
+  // 末尾スラッシュ付きの生URLで保存済みのため useNormalizedUrl は有効化しない
+  'TypeScript Blog': {
+    feedUrl: 'https://devblogs.microsoft.com/typescript/feed/',
+    tagPrefix: 'typescript',
+  },
+  // VS Code: Atom category term が blog / release に分かれる。リリースノートは
+  // 本文がリンクのみで記事性が薄いため blog のみ収集する
+  'VS Code Blog': {
+    feedUrl: 'https://code.visualstudio.com/feed.xml',
+    tagPrefix: 'vscode',
+    useNormalizedUrl: true,
+    categoryFilter: ['blog'],
+  },
+  'Dropbox Tech': {
+    feedUrl: 'https://dropbox.tech/feed',
+    tagPrefix: 'dropbox',
+    useNormalizedUrl: true,
+  },
+  // Fly.io: Hacker News 経由の既存記事が末尾スラッシュ付きの生URLで保存済みの
+  // ため useNormalizedUrl は有効化しない（TypeScript Blog と同じ理由）
+  'Fly.io Blog': {
+    feedUrl: 'https://fly.io/blog/feed.xml',
+    tagPrefix: 'flyio',
   },
 };
 

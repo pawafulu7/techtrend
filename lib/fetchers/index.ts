@@ -205,7 +205,13 @@ export function createFetcher(source: Source): BaseFetcher {
     case 'Findy Engineer Lab':
     // Foreign Aggregators (Batch 2, Issue #628)
     case 'Lobsters':
-    case 'Techmeme': {
+    case 'Techmeme':
+    // Foreign Company / Product Blogs (Batch 3, Issue #628)
+    case 'Vercel Blog':
+    case 'TypeScript Blog':
+    case 'VS Code Blog':
+    case 'Dropbox Tech':
+    case 'Fly.io Blog': {
       const foreignConfig = getForeignSourceConfig(source.name);
       if (!foreignConfig) {
         throw new Error(`Invalid foreign source name: ${source.name}`);

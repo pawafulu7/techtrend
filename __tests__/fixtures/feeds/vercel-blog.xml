@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+  <feed xmlns="http://www.w3.org/2005/Atom">
+    <title>Vercel News</title>
+    <subtitle>Blog</subtitle>
+    <link href="https://vercel.com/atom" rel="self" type="application/rss+xml"/>
+    <link href="https://vercel.com/" />
+    <updated>2026-07-31T17:00:00.000Z</updated>
+    <id>https://vercel.com/</id>
+    <entry>
+      <id>https://vercel.com/changelog/example-changelog-entry</id>
+      <title>Example changelog entry</title>
+      <link href="https://vercel.com/changelog/example-changelog-entry"/>
+      <updated>2026-07-31T17:00:00.000Z</updated>
+      <content type="xhtml">
+        <div xmlns="http://www.w3.org/1999/xhtml">
+          <p>Product update description for the changelog entry.</p><h2>Scopes</h2><p>Additional changelog detail.</p>
+        </div>
+      </content>
+      <author>
+        <name>Vercel</name>
+      </author>
+    </entry>
+    <entry>
+      <id>https://vercel.com/blog/example-blog-post</id>
+      <title>Example blog post</title>
+      <link href="https://vercel.com/blog/example-blog-post"/>
+      <updated>2026-07-30T12:00:00.000Z</updated>
+      <content type="xhtml">
+        <div xmlns="http://www.w3.org/1999/xhtml">
+          <p>Blog article body describing an engineering topic in detail.</p>
+        </div>
+      </content>
+      <author>
+        <name>Vercel</name>
+      </author>
+    </entry>
+    <entry>
+      <id>https://vercel.com/kb/bulletin/example-bulletin</id>
+      <title>Example knowledge base bulletin</title>
+      <link href="https://vercel.com/kb/bulletin/example-bulletin"/>
+      <updated>2026-07-29T09:00:00.000Z</updated>
+      <content type="xhtml">
+        <div xmlns="http://www.w3.org/1999/xhtml">
+          <p>Knowledge base bulletin body.</p>
+        </div>
+      </content>
+      <author>
+        <name>Vercel</name>
+      </author>
+    </entry>
+  </feed>

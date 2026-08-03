@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:atom="http://www.w3.org/2005/Atom"
+     xmlns:media="http://search.yahoo.com/mrss/">
+    <channel>
+         <title> Dropbox Tech Blog </title>
+        <atom:link  href="https://dropbox.tech/feed" rel="self" type="application/rss+xml" />
+        <link>https://dropbox.tech</link>
+        <description>Dropbox engineering blog</description>
+        <item>
+            <title>How our universal content processing platform evolved for AI and beyond</title>
+            <link>https://dropbox.tech/infrastructure/example-content-processing-platform</link>
+            <dc:creator>
+                Example Author
+            </dc:creator>
+            <category>Dash</category>
+            <category>architecture</category>
+            <category>AI</category>
+            <description><![CDATA[The content processing platform has been iteratively improving content transformation in our products for roughly a decade.]]></description>
+            <guid>https://dropbox.tech/infrastructure/example-content-processing-platform</guid>
+            <pubDate>Mon, 20 Jul 2026 08:00:00 -0700</pubDate>
+            <content:encoded><![CDATA[<p>Our products transform a lot of content behind the scenes. Open a presentation deck on your phone, and it is rendered into a crisp preview you can quickly browse.</p>
+<p>Finalize an agreement, and it is flattened into a PDF. Upload a video, and it is transcoded into a lightweight version that streams instantly.</p>
+]]></content:encoded>
+        </item>
+    </channel>
+</rss>

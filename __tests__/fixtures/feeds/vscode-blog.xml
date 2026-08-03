@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title type="text" xml:lang="en">Visual Studio Code - Code Editing. Redefined.</title>
+  <link type="application/atom+xml" href="https://code.visualstudio.com/feed.xml" rel="self"/>
+  <link type="text/html" href="https://code.visualstudio.com/" rel="alternate"/>
+  <updated>2026-07-29T17:00:00.000Z</updated>
+  <id>https://code.visualstudio.com/</id>
+  <entry>
+    <title>Visual Studio Code 1.131</title>
+    <link href="https://code.visualstudio.com/updates/v1_131"/>
+    <link rel="related" href="https://code.visualstudio.com/assets/updates/1_131/release-highlights.webp"/>
+    <updated>2026-07-29T17:00:00.000Z</updated>
+    <id>https://code.visualstudio.com/updates/v1_131</id>
+    <category term="release" />
+    <content type="html">
+      &lt;p&gt;Learn what's new in Visual Studio Code 1.131&lt;/p&gt;
+      &lt;p&gt;&lt;a href="https://code.visualstudio.com/updates/v1_131"&gt;Read the full article&lt;/a&gt;&lt;/p&gt;
+    </content>
+    <author>
+        <name>Visual Studio Code Team</name>
+        <uri>https://code.visualstudio.com/branding/code-stable.png</uri>
+    </author>
+  </entry>
+  <entry>
+    <title>Example engineering blog post</title>
+    <link href="https://code.visualstudio.com/blogs/2026/07/29/example-post"/>
+    <link rel="related" href="https://code.visualstudio.com/assets/blogs/2026/07/29/hero.png"/>
+    <updated>2026-07-29T10:00:00.000Z</updated>
+    <id>https://code.visualstudio.com/blogs/2026/07/29/example-post</id>
+    <category term="blog" />
+    <content type="html">
+      &lt;p&gt;Early results from an experiment with real developer workflows.&lt;/p&gt;
+      &lt;p&gt;&lt;a href="https://code.visualstudio.com/blogs/2026/07/29/example-post"&gt;Read the full article&lt;/a&gt;&lt;/p&gt;
+    </content>
+    <author>
+        <name>Visual Studio Code Team</name>
+        <uri>https://code.visualstudio.com/branding/code-stable.png</uri>
+    </author>
+  </entry>
+</feed>

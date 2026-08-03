@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	>
+<channel>
+	<title>TypeScript</title>
+	<atom:link href="https://devblogs.microsoft.com/typescript/feed/" rel="self" type="application/rss+xml" />
+	<link>https://devblogs.microsoft.com/typescript/</link>
+	<description>The official blog of the TypeScript team</description>
+	<item>
+		<title>Announcing TypeScript 7.0</title>
+		<link>https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/</link>
+		<comments>https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#comments</comments>
+		<dc:creator><![CDATA[Example Author]]></dc:creator>
+		<pubDate>Wed, 08 Jul 2026 15:58:29 +0000</pubDate>
+		<category><![CDATA[TypeScript]]></category>
+		<guid isPermaLink="false">https://devblogs.microsoft.com/typescript/?p=5246</guid>
+		<description><![CDATA[<p>Today we are proud to announce the availability of TypeScript 7, a native port of TypeScript. [&#8230;]</p>
+<p>The post <a href="https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/">Announcing TypeScript 7.0</a> appeared first on <a href="https://devblogs.microsoft.com/typescript">TypeScript</a>.</p>
+]]></description>
+		<content:encoded><![CDATA[<p>Today we are proud to announce the availability of TypeScript 7, a native port of TypeScript. By bringing strong type-checking and rich tooling to the world of JavaScript, TypeScript made it possible to build non-trivial high-quality apps across platforms.</p>
+<p>Last year, our team unveiled the next step in scaling: making every part of the compiler faster.</p>
+]]></content:encoded>
+	</item>
+</channel>
+</rss>
