@@ -287,6 +287,12 @@ const RSS_SOURCES = [
   // 海外アグリゲータ（Batch 2, Issue #628）
   'Lobsters',
   'Techmeme',
+  // 海外企業・プロダクトブログ（Batch 3, Issue #628）
+  'Vercel Blog',
+  'TypeScript Blog',
+  'VS Code Blog',
+  'Dropbox Tech',
+  'Fly.io Blog',
 ];
 
 // スクレイピング系ソース（12時間ごとに更新）

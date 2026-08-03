@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+  <title>The Fly Blog</title>
+  <subtitle>News, tips, and tricks from the team at Fly</subtitle>
+  <id>https://fly.io/blog/</id>
+  <link href="https://fly.io/blog/"/>
+  <link href="https://fly.io/blog/" rel="self"/>
+  <updated>2026-07-24T00:00:00+00:00</updated>
+  <author>
+    <name>Fly</name>
+  </author>
+  <entry>
+    <title>Example Blog Post Title</title>
+    <link rel="alternate" href="https://fly.io/blog/example-blog-post/"/>
+    <id>https://fly.io/blog/example-blog-post/</id>
+    <published>2026-07-24T00:00:00+00:00</published>
+    <updated>2026-07-30T15:47:48+00:00</updated>
+    <media:thumbnail url="https://fly.io/blog/example-blog-post/assets/cover.webp"/>
+    <content type="html">&lt;div class="lead"&gt;&lt;p&gt;We are a public cloud platform. This is a post about our company, the future, and computers for agents.&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;This is a complicated post, so here is a longer body paragraph describing the technical background in more detail.&lt;/p&gt;
+</content>
+  </entry>
+</feed>

@@ -610,6 +610,45 @@ export const FOREIGN_SOURCE_CONFIGS: Record<string, ForeignSourceConfig> = {
     useNormalizedUrl: true,
     skipEnrichment: true,
   },
+  // Foreign Company / Product Blogs (Batch 3, Issue #628)
+  // useNormalizedUrl は「新規ソースなら常に有効化」ではなく、既存レコードの
+  // 保存URL形式に合わせる（重複判定は保存URL文字列の完全一致のため）。
+  // 既存が末尾スラッシュ付きの生URLで保存されているソースで有効化すると、
+  // normalizeUrl() の末尾スラッシュ除去により照合が崩れて重複作成される
+  //
+  // Vercel: フィード（/atom）に blog と changelog が混在し Atom category も
+  // 持たないため、categoryFilter ではなく urlPathFilter で /blog/ に絞る
+  'Vercel Blog': {
+    feedUrl: 'https://vercel.com/atom',
+    tagPrefix: 'vercel',
+    useNormalizedUrl: true,
+    urlPathFilter: '/blog/',
+  },
+  // TypeScript: Hacker News / はてなブックマーク経由の既存記事が
+  // 末尾スラッシュ付きの生URLで保存済みのため useNormalizedUrl は有効化しない
+  'TypeScript Blog': {
+    feedUrl: 'https://devblogs.microsoft.com/typescript/feed/',
+    tagPrefix: 'typescript',
+  },
+  // VS Code: Atom category term が blog / release に分かれる。リリースノートは
+  // 本文がリンクのみで記事性が薄いため blog のみ収集する
+  'VS Code Blog': {
+    feedUrl: 'https://code.visualstudio.com/feed.xml',
+    tagPrefix: 'vscode',
+    useNormalizedUrl: true,
+    categoryFilter: ['blog'],
+  },
+  'Dropbox Tech': {
+    feedUrl: 'https://dropbox.tech/feed',
+    tagPrefix: 'dropbox',
+    useNormalizedUrl: true,
+  },
+  // Fly.io: Hacker News 経由の既存記事が末尾スラッシュ付きの生URLで保存済みの
+  // ため useNormalizedUrl は有効化しない（TypeScript Blog と同じ理由）
+  'Fly.io Blog': {
+    feedUrl: 'https://fly.io/blog/feed.xml',
+    tagPrefix: 'flyio',
+  },
 };
 
 /**

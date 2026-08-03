@@ -99,6 +99,12 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       // Batch 2 (Issue #628): 海外アグリゲータ
       'lobsters', // Lobsters
       'techmeme', // Techmeme
+      // Batch 3 (Issue #628): 海外企業・プロダクトブログ
+      'vercel_blog', // Vercel Blog
+      'typescript_blog', // TypeScript Blog
+      'vscode_blog', // VS Code Blog
+      'dropbox_tech', // Dropbox Tech
+      'flyio_blog', // Fly.io Blog
     ],
   },
   domestic: {
