@@ -19,8 +19,11 @@ import {
   ForeignSourceConfig,
   FOREIGN_SOURCE_CONFIGS,
 } from '@/lib/fetchers/generic-foreign-rss';
-import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import {
+  createMockSource as createMockSourceBase,
+  mockFeed as mockFeedBase,
+} from '../helpers/generic-foreign-rss-mocks';
 
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
@@ -49,15 +52,12 @@ const BASE_CONFIG: ForeignSourceConfig = {
   tagPrefix: 'example',
 };
 
-const createMockSource = (): Source => ({
-  id: 'url_path_filter_test',
-  name: 'URL Path Filter Test',
-  url: 'https://example.com',
-  type: 'RSS',
-  enabled: true,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-});
+const createMockSource = () =>
+  createMockSourceBase({
+    id: 'url_path_filter_test',
+    name: 'URL Path Filter Test',
+    url: 'https://example.com',
+  });
 
 interface MockItem {
   title: string;
@@ -66,12 +66,7 @@ interface MockItem {
   content?: string;
 }
 
-const mockFeed = (items: MockItem[]) => {
-  const mockParseURL = jest.fn().mockResolvedValue({ items });
-  MockedParser.mockImplementation(
-    () => ({ parseURL: mockParseURL }) as unknown as Parser
-  );
-};
+const mockFeed = (items: MockItem[]) => mockFeedBase(MockedParser, items);
 
 const fetchWith = async (config: ForeignSourceConfig) => {
   const fetcher = new GenericForeignRssFetcher(createMockSource(), config);
@@ -377,5 +372,36 @@ describe('urlPathFilter と categoryFilter の併用', () => {
       .map(([name]) => name);
 
     expect(bothConfigured).toEqual([]);
+  });
+
+  it('urlPathFilterとcategoryFilterを同時に設定するとコンストラクタがthrowする', () => {
+    expect(
+      () =>
+        new GenericForeignRssFetcher(createMockSource(), {
+          ...BASE_CONFIG,
+          urlPathFilter: '/blog/',
+          categoryFilter: ['blog'],
+        })
+    ).toThrow('urlPathFilter と categoryFilter は併用できません');
+  });
+
+  it('urlPathFilterのみ設定してもthrowしない', () => {
+    expect(
+      () =>
+        new GenericForeignRssFetcher(createMockSource(), {
+          ...BASE_CONFIG,
+          urlPathFilter: '/blog/',
+        })
+    ).not.toThrow();
+  });
+
+  it('categoryFilterのみ設定してもthrowしない', () => {
+    expect(
+      () =>
+        new GenericForeignRssFetcher(createMockSource(), {
+          ...BASE_CONFIG,
+          categoryFilter: ['blog'],
+        })
+    ).not.toThrow();
   });
 });

@@ -91,6 +91,11 @@ export class GenericForeignRssFetcher extends BaseFetcher {
 
   constructor(source: Source, config: ForeignSourceConfig) {
     super(source);
+    if (config.urlPathFilter && config.categoryFilter?.length) {
+      throw new Error(
+        `${source.name}: urlPathFilter と categoryFilter は併用できません`
+      );
+    }
     const parserOptions: Parser.ParserOptions<
       Record<string, unknown>,
       Record<string, unknown>
@@ -304,6 +309,18 @@ export class GenericForeignRssFetcher extends BaseFetcher {
   }
 
   /**
+   * link を feedUrl 基準で URL オブジェクトへ解決する共通ヘルパー
+   * 解決できない場合は null を返す
+   */
+  private tryResolveUrl(link: string): URL | null {
+    try {
+      return new URL(link, this.config.feedUrl);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * item の link を保存用の絶対URLへ解決する
    *
    * rss-parser は Atom の `<link href="/blog/post">` を相対URLのまま返す。
@@ -320,11 +337,7 @@ export class GenericForeignRssFetcher extends BaseFetcher {
       new URL(link);
       return link;
     } catch {
-      try {
-        return new URL(link, this.config.feedUrl).href;
-      } catch {
-        return link;
-      }
+      return this.tryResolveUrl(link)?.href ?? link;
     }
   }
 
@@ -342,16 +355,13 @@ export class GenericForeignRssFetcher extends BaseFetcher {
     if (!pathPrefix) return true;
     if (!link) return false;
 
-    try {
-      const resolved = new URL(link, this.config.feedUrl);
-      if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') {
-        return false;
-      }
-      return resolved.pathname.startsWith(pathPrefix);
-    } catch {
-      // 解決不能なURLは後段へ流さない
+    // 解決不能なURLは後段へ流さない
+    const resolved = this.tryResolveUrl(link);
+    if (!resolved) return false;
+    if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') {
       return false;
     }
+    return resolved.pathname.startsWith(pathPrefix);
   }
 
   /**

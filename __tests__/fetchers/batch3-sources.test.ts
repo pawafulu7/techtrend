@@ -17,8 +17,11 @@ import {
 } from '@/lib/fetchers/generic-foreign-rss';
 import { SOURCE_CATEGORIES } from '@/lib/constants/source-categories';
 import { BATCH3_SOURCES } from '@/scripts/maintenance/add-batch3-sources';
-import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import {
+  createMockSource as createMockSourceBase,
+  mockFeed as mockFeedBase,
+} from '../helpers/generic-foreign-rss-mocks';
 
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
@@ -49,15 +52,8 @@ const BATCH3_SOURCE_IDS: Record<string, string> = {
   'Fly.io Blog': 'flyio_blog',
 };
 
-const createMockSource = (name: string): Source => ({
-  id: BATCH3_SOURCE_IDS[name],
-  name,
-  url: 'https://example.com',
-  type: 'RSS',
-  enabled: true,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-});
+const createMockSource = (name: string) =>
+  createMockSourceBase({ id: BATCH3_SOURCE_IDS[name], name });
 
 interface MockItem {
   title: string;
@@ -70,12 +66,7 @@ interface MockItem {
   categories?: string[];
 }
 
-const mockFeed = (items: MockItem[]) => {
-  const mockParseURL = jest.fn().mockResolvedValue({ items });
-  MockedParser.mockImplementation(
-    () => ({ parseURL: mockParseURL }) as unknown as Parser
-  );
-};
+const mockFeed = (items: MockItem[]) => mockFeedBase(MockedParser, items);
 
 const fetchSource = async (name: string) => {
   const config = FOREIGN_SOURCE_CONFIGS[name];
