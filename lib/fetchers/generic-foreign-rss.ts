@@ -181,8 +181,11 @@ export class GenericForeignRssFetcher extends BaseFetcher {
         if (!item.link || !item.title) continue;
 
         try {
+          // 相対 link は絶対URLへ解決してから保存する（詳細は resolveItemLink）
+          const itemUrl = this.resolveItemLink(item.link);
+
           // URLを正規化
-          const normalizedUrl = normalizeUrl(item.link);
+          const normalizedUrl = normalizeUrl(itemUrl);
 
           // 重複チェック（同一バッチ内）
           if (this.isDuplicateInBatch(normalizedUrl, item.title)) {
@@ -198,7 +201,7 @@ export class GenericForeignRssFetcher extends BaseFetcher {
             // 既定は元URL（エンリッチメントで正しくアクセスするため）。
             // useNormalizedUrl 有効時はトラッキングパラメータ除去後のURLで保存し、
             // 他ソース経由で収集済みの同一記事と重複しないようにする
-            url: this.config.useNormalizedUrl ? normalizedUrl : item.link,
+            url: this.config.useNormalizedUrl ? normalizedUrl : itemUrl,
             content: this.extractContent(item),
             publishedAt: this.extractPublishDate(item),
             sourceId: this.source.id,
@@ -301,11 +304,35 @@ export class GenericForeignRssFetcher extends BaseFetcher {
   }
 
   /**
+   * item の link を保存用の絶対URLへ解決する
+   *
+   * rss-parser は Atom の `<link href="/blog/post">` を相対URLのまま返す。
+   * 相対URLをそのまま保存すると、URLの一意制約がサイトを跨いで衝突し、
+   * エンリッチメントの fetch も記事カードの外部リンクも機能しないため、
+   * feedUrl を基準に解決する（`xml:base` は考慮しない）。
+   *
+   * 既に絶対URLの場合は URL コンストラクタを通さず元の文字列を返す。
+   * 通すとパーセントエンコーディング等が正規化され、既存レコードとの
+   * 完全一致照合が崩れて重複作成につながるため。
+   */
+  private resolveItemLink(link: string): string {
+    try {
+      new URL(link);
+      return link;
+    } catch {
+      try {
+        return new URL(link, this.config.feedUrl).href;
+      } catch {
+        return link;
+      }
+    }
+  }
+
+  /**
    * URLパスフィルタに一致するかチェック
    *
-   * - 相対URL（Atom の `<link href="/blog/post">`）は feedUrl 基準で解決する。
-   *   rss-parser は Atom の href を相対のまま返すため、絶対URL前提で判定すると
-   *   有効な相対 link を不正URLとして落としてしまう。`xml:base` は考慮しない
+   * - 相対URLは feedUrl 基準で解決してから判定する（絶対URL前提で判定すると
+   *   有効な相対 link を不正URLとして落としてしまう）
    * - http / https 以外のスキーム（data:, ftp: 等）は対象外とする
    * - 判定は解決後 pathname の前方一致。文字列 includes ではないため
    *   `/changelog/blog-post` のような別パスの誤マッチは起きない

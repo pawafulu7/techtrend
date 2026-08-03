@@ -17,6 +17,7 @@
 import {
   GenericForeignRssFetcher,
   ForeignSourceConfig,
+  FOREIGN_SOURCE_CONFIGS,
 } from '@/lib/fetchers/generic-foreign-rss';
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
@@ -165,8 +166,10 @@ describe('urlPathFilter: URL解決とスキーム制限', () => {
     const result = await fetchWith({ ...BASE_CONFIG, urlPathFilter: '/blog/' });
 
     expect(result.articles).toHaveLength(1);
-    // 保存URLは既存挙動どおり item.link をそのまま使う（解決結果で上書きしない）
-    expect(result.articles[0].url).toBe('/blog/relative-post');
+    // 保存URLも feedUrl 基準で解決した絶対URLにする。相対URLのまま保存すると
+    // URL一意制約がサイトを跨いで衝突し、エンリッチメントの fetch も
+    // 記事カードの外部リンクも機能しない
+    expect(result.articles[0].url).toBe('https://example.com/blog/relative-post');
   });
 
   it('相対linkが対象外パスなら除外される', async () => {
@@ -334,5 +337,45 @@ describe('urlPathFilter: 未設定時の従来挙動', () => {
     const result = await fetchWith(BASE_CONFIG);
 
     expect(result.articles).toHaveLength(1);
+    // urlPathFilter の有無にかかわらず、相対linkは絶対URLへ解決して保存する
+    expect(result.articles[0].url).toBe('https://example.com/changelog/relative');
+  });
+
+  it('絶対URLは URL コンストラクタを通さずそのまま保存される', async () => {
+    // パーセントエンコーディング等の正規化で既存レコードとの完全一致照合が
+    // 崩れると重複作成につながるため、絶対URLは書き換えない
+    const rawUrl = 'https://example.com/blog/Some-Article/';
+    mockFeed([
+      {
+        title: 'Absolute entry',
+        link: rawUrl,
+        isoDate: '2026-08-01T00:00:00.000Z',
+        content: 'body',
+      },
+    ]);
+
+    const result = await fetchWith(BASE_CONFIG);
+
+    expect(result.articles[0].url).toBe(rawUrl);
+  });
+});
+
+describe('urlPathFilter と categoryFilter の併用', () => {
+  // urlPathFilter は slice(0, 30) の前、categoryFilter は後に適用される。
+  // 併用すると「パス一致の先頭30件が全てカテゴリ不一致なら、31件目以降に
+  // 該当記事があっても0件」という直感に反する挙動になる。
+  // categoryFilter の適用位置は既存ソースの収集量を変えるため動かせないので、
+  // 併用設定が生まれないことを機械的に検出する
+  it('両オプションを同時に設定しているソースが存在しない', () => {
+    const bothConfigured = Object.entries(FOREIGN_SOURCE_CONFIGS)
+      .filter(
+        ([, config]) =>
+          config.urlPathFilter &&
+          config.categoryFilter &&
+          config.categoryFilter.length > 0
+      )
+      .map(([name]) => name);
+
+    expect(bothConfigured).toEqual([]);
   });
 });

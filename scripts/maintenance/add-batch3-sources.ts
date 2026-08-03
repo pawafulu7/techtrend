@@ -10,6 +10,8 @@
  * （plan_20260803_111504_issue628_batch3_sources.md「本番反映」参照）。
  */
 
+import path from 'path';
+
 /**
  * 登録対象のソース定義。
  *
@@ -114,8 +116,10 @@ async function main() {
 }
 
 // スクリプトとして直接実行された場合のみ main() を走らせる
-// （テストから BATCH3_SOURCES を import しても DB 接続が発生しないようにする）
-if (process.argv[1]?.includes('add-batch3-sources')) {
+// （テストから BATCH3_SOURCES を import しても DB 接続が発生しないようにする）。
+// 部分一致だと `verify-add-batch3-sources.ts` のような別スクリプトからの
+// import でも DB 更新が走るため、ファイル名の完全一致で判定する
+if (path.basename(process.argv[1] ?? '') === 'add-batch3-sources.ts') {
   main()
     .catch((error) => {
       console.error('エラーが発生しました:', error);
