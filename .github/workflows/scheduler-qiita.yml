@@ -19,7 +19,6 @@ concurrency:
 jobs:
   qiita-popular:
     if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
-    environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
