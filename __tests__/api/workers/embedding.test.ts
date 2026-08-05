@@ -7,6 +7,14 @@ jest.mock('@/app/api/workers/embedding/with-embedding-worker-auth', () => ({
   withEmbeddingWorkerAuth: (handler: any) => handler,
 }));
 
+// route.ts は withEmbeddingWorkerAuth の内側に withRateLimit を挟む構成のため、
+// 上記のパススルーモックだけでは実レートリミッタ（Redis 依存）が走ってしまう。
+// ハンドラのテストはレート制限の検証が目的ではないのでパススルーにする
+// （__tests__/api/admin/articles-actions.test.ts と同じ方針）。
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: (_key: string, handler: any) => handler,
+}));
+
 // Ensure Next.js server APIs are mocked in Jest (Node env)
 jest.mock('next/server');
 // Unmock Prisma client to use real implementation (overrides jest.setup.node.js global mock)
