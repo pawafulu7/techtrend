@@ -63,7 +63,7 @@ function toValidationError(zodError: z.ZodError): ValidationError {
   return new ValidationError(
     'Invalid request body',
     field || undefined,
-    zodError.flatten() as unknown as Record<string, unknown>
+    zodError.flatten()
   );
 }
 

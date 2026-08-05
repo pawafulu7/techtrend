@@ -251,8 +251,18 @@ describe('POST /api/articles (middleware mocked)', () => {
   });
 });
 
-describe('POST /api/articles (real CSRF middleware)', () => {
-  it('Origin/Refererなしの未認証リクエストは403を返すこと（withCSRFProtectionがwithAdminAuthより先にチェックするため、401ではなく403になる）', async () => {
+describe('withCSRFProtection の単体挙動（POST /api/articles の最外層）', () => {
+  // 注意: このテストは withCSRFProtection を**単体で**検証するものであり、
+  // route.ts の実際の合成チェーン（withCSRFProtection > withRateLimit >
+  // withAdminAuth）を実行しているわけではない。ファイル冒頭でミドルウェアを
+  // パススルーにモックしているため、実チェーンはこのファイルでは検証できない。
+  // 合成順そのものは app/api/admin/articles/[id]/route.ts:221 と同一パターンで
+  // あることをコードレビューで担保している。
+  //
+  // ここで確認したいのは「POST /api/articles の最外層が CSRF であるため、
+  // 未認証リクエストは 401 ではなく 403 で拒否される」という**到達順の帰結**で、
+  // テストを書く側が 401 を期待して混乱しないための回帰的なドキュメントを兼ねる。
+  it('Origin/Refererなしの未認証リクエストは403を返すこと（401ではない）', async () => {
     // jest.mock('@/lib/middleware/csrf-protection', ...) をこのテストだけバイパスし、
     // 実際の CSRF 検証ロジックを通す。
     // 前例: __tests__/api/workers/embedding.test.ts 末尾の withEmbeddingWorkerAuth テスト。
