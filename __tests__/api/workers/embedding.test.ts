@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import type { Article, PrismaClient } from '@/lib/prisma-exports';
 
-// Mock withCronOrAdminAuth to pass through with CRON_SECRET
-jest.mock('@/lib/middleware/with-cron-or-admin-auth', () => ({
-  withCronOrAdminAuth: (handler: any) => handler,
+// Mock withEmbeddingWorkerAuth to pass through (auth middleware is tested separately below)
+jest.mock('@/app/api/workers/embedding/with-embedding-worker-auth', () => ({
+  withEmbeddingWorkerAuth: (handler: any) => handler,
 }));
 
 // Ensure Next.js server APIs are mocked in Jest (Node env)
@@ -203,5 +203,85 @@ describeIf('GET /api/workers/embedding', () => {
     expect(response.status).toBe(200);
     // Should complete without errors
     expect(data.status).toMatch(/completed|idle/);
+  });
+});
+
+// withEmbeddingWorkerAuth is mocked as a pass-through above for the handler
+// tests. Here we bypass that mock via jest.requireActual to verify the real
+// authentication logic (Bearer-only, no admin session).
+describe('withEmbeddingWorkerAuth', () => {
+  // '@/app/api/workers/embedding/with-embedding-worker-auth' is mocked as a
+  // pass-through above; jest.requireActual bypasses that mock here so we
+  // exercise the real authentication logic. 'next/server' is left as the
+  // manually-mocked module (__mocks__/next/server.ts) for consistency with
+  // the rest of this test file — do NOT requireActual it here.
+  const { withEmbeddingWorkerAuth: realWithEmbeddingWorkerAuth } =
+    jest.requireActual('@/app/api/workers/embedding/with-embedding-worker-auth');
+  const { resetEnvCache } = jest.requireActual('@/lib/config/env');
+
+  const mockHandler = jest.fn().mockImplementation(async () => {
+    return NextResponse.json({ success: true });
+  });
+
+  beforeEach(() => {
+    mockHandler.mockClear();
+    delete process.env.CRON_SECRET;
+    delete process.env.CRON_TOKEN;
+    resetEnvCache();
+  });
+
+  afterEach(() => {
+    delete process.env.CRON_SECRET;
+    delete process.env.CRON_TOKEN;
+    resetEnvCache();
+  });
+
+  it('should return 200 with a valid Bearer token', async () => {
+    process.env.CRON_SECRET = 'valid-embedding-secret';
+    resetEnvCache();
+
+    const handler = realWithEmbeddingWorkerAuth(mockHandler);
+    const request = new NextRequest('http://localhost:3000/api/workers/embedding', {
+      headers: { Authorization: 'Bearer valid-embedding-secret' },
+    });
+
+    const response = await handler(request);
+
+    expect(response.status).toBe(200);
+    expect(mockHandler).toHaveBeenCalled();
+  });
+
+  it('should return 401 without a Bearer token', async () => {
+    process.env.CRON_SECRET = 'valid-embedding-secret';
+    resetEnvCache();
+
+    const handler = realWithEmbeddingWorkerAuth(mockHandler);
+    const request = new NextRequest('http://localhost:3000/api/workers/embedding');
+
+    const response = await handler(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+    expect(mockHandler).not.toHaveBeenCalled();
+  });
+
+  it('should return 401 for admin-session-equivalent requests (no Authorization header)', async () => {
+    process.env.CRON_SECRET = 'valid-embedding-secret';
+    resetEnvCache();
+
+    const handler = realWithEmbeddingWorkerAuth(mockHandler);
+    // Simulates an admin session cookie request: no Authorization header,
+    // just a Cookie header (session auth is intentionally not supported here).
+    const request = new NextRequest('http://localhost:3000/api/workers/embedding', {
+      headers: { Cookie: 'better-auth.session_token=fake-admin-session' },
+    });
+
+    const response = await handler(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+    expect(mockHandler).not.toHaveBeenCalled();
   });
 });

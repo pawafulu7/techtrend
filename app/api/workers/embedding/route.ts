@@ -1,19 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EmbeddingWorker } from '@/lib/workers/embedding-worker';
 import { logger } from '@/lib/logger';
-import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
+import { withEmbeddingWorkerAuth } from './with-embedding-worker-auth';
+import { env } from '@/lib/config/env';
 
 /**
  * Embedding Worker API Route
  *
- * Triggered by Vercel Cron every 5 minutes.
  * Processes pending embedding jobs in batches.
  *
- * Security: Requires CRON_SECRET Bearer token or admin auth (via withCronOrAdminAuth)
+ * 注: 現時点でこの HTTP エンドポイントの既知の呼び出し元は存在しない。
+ * 定期実行は .github/workflows/scheduler-embedding-worker.yml が
+ * scripts/dev/run-embedding-worker.ts を直接実行しており、HTTP を経由しない
+ * （vercel.json に crons 定義はない）。
+ *
+ * Security: Requires CRON_TOKEN/CRON_SECRET Bearer token のみ（admin session は不可）。
+ * GET は CSRF 保護対象外のため admin session Cookie を許可しない（withEmbeddingWorkerAuth）。
+ * 本番環境では skip_embedding クエリパラメータを無効化し、常に埋め込み生成を実行する。
  */
 async function embeddingHandler(request: NextRequest) {
   const skipEmbedding =
-    request.nextUrl.searchParams.get('skip_embedding') === 'true';
+    env.NODE_ENV === 'production'
+      ? false
+      : request.nextUrl.searchParams.get('skip_embedding') === 'true';
 
   const worker = new EmbeddingWorker({
     batchSize: 300, // Reduced for Vercel 10s timeout
@@ -39,4 +48,4 @@ async function embeddingHandler(request: NextRequest) {
   });
 }
 
-export const GET = withCronOrAdminAuth(embeddingHandler);
+export const GET = withEmbeddingWorkerAuth(embeddingHandler);
