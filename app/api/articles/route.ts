@@ -10,6 +10,9 @@
 
 import { NextRequest } from 'next/server';
 import { handleGet, handlePost } from './handlers';
+import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 
 /**
  * GET /api/articles
@@ -44,6 +47,9 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/articles
  *
+ * Authorization: admin session required (withAdminAuth). Non-admin and
+ * unauthenticated requests are rejected before reaching the handler.
+ *
  * Request Body:
  * - title: Article title (required)
  * - url: Article URL (required, unique)
@@ -54,6 +60,6 @@ export async function GET(request: NextRequest) {
  * - publishedAt: Publication date (default: now)
  * - tagNames: Array of tag names
  */
-export async function POST(request: NextRequest) {
-  return handlePost(request);
-}
+export const POST = withCSRFProtection(
+  withRateLimit('admin:write', withAdminAuth(handlePost))
+);
