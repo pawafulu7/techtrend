@@ -31,6 +31,7 @@ concurrency:
 jobs:
   generate-trend-report:
     if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
+    environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
