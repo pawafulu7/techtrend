@@ -360,6 +360,15 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     telemetryEvent: 'ratelimit.cron.collect',
   },
 
+  'cron:embedding-worker': {
+    points: 10,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'ip',
+    notes: 'Embedding worker cron endpoint (internal use)',
+    telemetryEvent: 'ratelimit.cron.embedding-worker',
+  },
+
   // Default Catch-All - No block
   default: {
     points: 100,

@@ -234,6 +234,52 @@ describe('POST /api/articles (middleware mocked)', () => {
     expect(mockPrisma.article.create).not.toHaveBeenCalled();
   });
 
+  it('publishedAtが暦上存在しない日付(2026-02-30)の場合400を返すこと', async () => {
+    // new Date('2026-02-30') はNaNにならず2026-03-02に正規化されてしまうため、
+    // 暦日として存在しない日付を明示的に拒否できているかを確認する回帰テスト。
+    const payload = { ...validPayload(), publishedAt: '2026-02-30' };
+    const request = buildRequest(payload);
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.success).toBe(false);
+    expect(mockPrisma.article.create).not.toHaveBeenCalled();
+  });
+
+  it('publishedAtが閏年でない年の2/29(2025-02-29)の場合400を返すこと', async () => {
+    const payload = { ...validPayload(), publishedAt: '2025-02-29' };
+    const request = buildRequest(payload);
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.success).toBe(false);
+    expect(mockPrisma.article.create).not.toHaveBeenCalled();
+  });
+
+  it('publishedAtが正常な日付(2026-08-05)の場合201を返すこと', async () => {
+    const payload = { ...validPayload(), publishedAt: '2026-08-05' };
+    const request = buildRequest(payload);
+    const response = await POST(request);
+
+    expect(response.status).toBe(201);
+    const data = await response.json();
+    expect(data.success).toBe(true);
+    expect(mockPrisma.article.create).toHaveBeenCalled();
+  });
+
+  it('publishedAtが時刻付きISO8601(2026-08-05T12:34:56Z)の場合201を返すこと', async () => {
+    const payload = { ...validPayload(), publishedAt: '2026-08-05T12:34:56Z' };
+    const request = buildRequest(payload);
+    const response = await POST(request);
+
+    expect(response.status).toBe(201);
+    const data = await response.json();
+    expect(data.success).toBe(true);
+    expect(mockPrisma.article.create).toHaveBeenCalled();
+  });
+
   it('urlが重複している場合409を返すこと', async () => {
     // DuplicateError は lib/errors/index.ts で statusCode: 409 (DUPLICATE_ERROR) として定義されている
     mockPrisma.article.findUnique.mockResolvedValue({

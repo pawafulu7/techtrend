@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { EmbeddingWorker } from '@/lib/workers/embedding-worker';
 import { logger } from '@/lib/logger';
 import { withEmbeddingWorkerAuth } from './with-embedding-worker-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { env } from '@/lib/config/env';
 
 /**
@@ -48,4 +49,9 @@ async function embeddingHandler(request: NextRequest) {
   });
 }
 
-export const GET = withEmbeddingWorkerAuth(embeddingHandler);
+const rateLimitedEmbeddingHandler = withRateLimit(
+  'cron:embedding-worker',
+  embeddingHandler
+);
+
+export const GET = withEmbeddingWorkerAuth(rateLimitedEmbeddingHandler);

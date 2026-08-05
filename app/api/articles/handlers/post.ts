@@ -36,6 +36,33 @@ const httpUrlSchema = z
     }
   }, 'URL must use http or https protocol');
 
+/**
+ * `new Date('2026-02-30')` does not become NaN — the JS Date constructor
+ * normalizes calendar-invalid dates by rolling them over (e.g. into
+ * 2026-03-02). This validator rejects such calendar-invalid input by
+ * re-checking that the parsed year/month/day round-trip back to the values
+ * that were parsed out of the original string.
+ */
+function isValidPublishedAt(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T|$)/.exec(value);
+  const parsed = new Date(value);
+
+  if (!match || Number.isNaN(parsed.getTime())) {
+    return false;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const calendarDate = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    calendarDate.getUTCFullYear() === year &&
+    calendarDate.getUTCMonth() === month - 1 &&
+    calendarDate.getUTCDate() === day
+  );
+}
+
 const createArticleSchema = z.object({
   title: z.string().min(1).max(500),
   url: httpUrlSchema,
@@ -45,7 +72,7 @@ const createArticleSchema = z.object({
   thumbnail: httpUrlSchema.optional(),
   publishedAt: z
     .string()
-    .refine((value) => !Number.isNaN(new Date(value).getTime()), {
+    .refine(isValidPublishedAt, {
       message: 'Invalid publishedAt date format',
     })
     .optional(),
@@ -136,7 +163,8 @@ export async function handlePost(request: NextRequest): Promise<NextResponse> {
     // Normalize and validate tags
     const normalizedTags = normalizeTagInput(tagNames);
 
-    // Resolve publishedAt (Zod already validated the string is a parseable date)
+    // Resolve publishedAt (Zod already validated the string is both a
+    // parseable date and a calendar-valid one, e.g. rejects 2026-02-30)
     const parsedPublishedAt = publishedAt ? new Date(publishedAt) : new Date();
 
     // Create article with tags

@@ -236,19 +236,39 @@ describe('withEmbeddingWorkerAuth', () => {
     resetEnvCache();
   });
 
-  it('should return 200 with a valid Bearer token', async () => {
-    process.env.CRON_SECRET = 'valid-embedding-secret';
+  it.each(['CRON_SECRET', 'CRON_TOKEN'] as const)(
+    'should return 200 with a valid Bearer token (%s)',
+    async (envVar) => {
+      process.env[envVar] = 'valid-embedding-secret';
+      resetEnvCache();
+
+      const handler = realWithEmbeddingWorkerAuth(mockHandler);
+      const request = new NextRequest('http://localhost:3000/api/workers/embedding', {
+        headers: { Authorization: 'Bearer valid-embedding-secret' },
+      });
+
+      const response = await handler(request);
+
+      expect(response.status).toBe(200);
+      expect(mockHandler).toHaveBeenCalled();
+    }
+  );
+
+  it('should return 401 (fail-closed) with a Bearer token when neither CRON_SECRET nor CRON_TOKEN is set', async () => {
+    // Both env vars are deleted in beforeEach; do not set either here.
     resetEnvCache();
 
     const handler = realWithEmbeddingWorkerAuth(mockHandler);
     const request = new NextRequest('http://localhost:3000/api/workers/embedding', {
-      headers: { Authorization: 'Bearer valid-embedding-secret' },
+      headers: { Authorization: 'Bearer some-token' },
     });
 
     const response = await handler(request);
+    const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(mockHandler).toHaveBeenCalled();
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+    expect(mockHandler).not.toHaveBeenCalled();
   });
 
   it('should return 401 without a Bearer token', async () => {
