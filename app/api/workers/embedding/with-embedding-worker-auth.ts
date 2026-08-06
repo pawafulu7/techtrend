@@ -12,9 +12,21 @@ import { env } from '@/lib/config/env';
  * そのため admin session 認証は許可せず、Authorization: Bearer による
  * Cron Secret 認証のみを受理する。?token= クエリパラメータの後方互換も
  * 設けない（embedding エンドポイントに既存の利用者がいないため）。
+ *
+ * CRON_TOKEN / CRON_SECRET の扱い:
+ * `CRON_TOKEN || CRON_SECRET` は「両方が同時に有効な独立した資格情報」では
+ * なく、CRON_TOKEN を新名称・CRON_SECRET を旧名称とする**リネーム移行の
+ * フォールバック**である（lib/middleware/with-cron-or-admin-auth.ts の
+ * 「CRON_TOKEN/CRON_SECRET両対応（後方互換性）」と同じ契約）。
+ * したがって両方が設定されている場合は CRON_TOKEN が優先され、CRON_SECRET の
+ * 値では認証できない。これは意図した挙動であり、移行完了後に旧シークレットが
+ * 有効なまま残らないようにするための設計。
+ * 同じロジックを with-cron-or-admin-auth.ts:38 と
+ * app/api/feeds/collect/with-feed-collect-auth.ts:18,61 も採用している。
  */
 export function withEmbeddingWorkerAuth(handler: Handler): Handler {
   return async (request: NextRequest, context?: any) => {
+    // 上記 docblock 参照: フォールバックであって「両方有効」ではない
     const cronSecret = env.CRON_TOKEN || env.CRON_SECRET;
     if (cronSecret) {
       const authHeader = request.headers.get('authorization');
