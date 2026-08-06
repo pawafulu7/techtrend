@@ -1,10 +1,71 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import type { Article, PrismaClient } from '@/lib/prisma-exports';
 
-// Mock withCronOrAdminAuth to pass through with CRON_SECRET
-jest.mock('@/lib/middleware/with-cron-or-admin-auth', () => ({
-  withCronOrAdminAuth: (handler: any) => handler,
+// 配線テスト（末尾の describe）用の記録。
+//
+// jest.setup.node.js の afterEach で jest.clearAllMocks() が呼ばれるため、
+// jest.fn の呼び出し履歴（toHaveBeenCalledWith 等）は最初のテストの後に消える。
+// さらに、babel-plugin-jest-hoist は jest.mock(...) 呼び出しをファイル内の
+// すべての宣言（このファイル内の `import` を含む）より前に巻き上げる。
+// そのため、下の `import { GET } from '.../route'` は実行時には
+// モジュール先頭に移動しており、通常の module scope の const/let 変数を
+// mock ファクトリから参照すると TDZ (Cannot access before initialization) で
+// 落ちる（globalThis はモジュール読み込みより前から存在するため安全）。
+// __tests__/api/articles/route-extended.test.ts の __mockCacheInstance と
+// 同じ回避パターン。
+declare global {
+  // eslint-disable-next-line no-var -- globalThis 経由の型拡張には var が必須
+  var __embeddingMockWiring:
+    | {
+        rateLimitKey?: string;
+        rateLimitArg?: unknown;
+        rateLimitResult?: unknown;
+        authArg?: unknown;
+        authResult?: unknown;
+      }
+    | undefined;
+}
+
+function getMockWiring() {
+  globalThis.__embeddingMockWiring ??= {};
+  return globalThis.__embeddingMockWiring;
+}
+
+// Mock withEmbeddingWorkerAuth to pass through (auth middleware is tested separately below).
+//
+// 重要: 素の handler をそのまま返す identity モックにしてはいけない。
+// identity だと withRateLimit の戻り値も withEmbeddingWorkerAuth の戻り値も
+// すべて embeddingHandler と同一参照になり、末尾の配線テストで合成順を
+// 入れ替えても toBe が成立してしまう（何も検証しない vacuous なテストになる）。
+// そのため呼び出しを委譲する別関数でラップし、参照を区別可能にする。
+jest.mock('@/app/api/workers/embedding/with-embedding-worker-auth', () => ({
+  withEmbeddingWorkerAuth: jest.fn((handler: any) => {
+    const wrapped = (request: any, context?: any) => handler(request, context);
+    const wiring = getMockWiring();
+    wiring.authArg = handler;
+    wiring.authResult = wrapped;
+    return wrapped;
+  }),
+}));
+
+// route.ts は withEmbeddingWorkerAuth の内側に withRateLimit を挟む構成のため、
+// 上記のパススルーモックだけでは実レートリミッタ（Redis 依存）が走ってしまう。
+// ハンドラのテストはレート制限の検証が目的ではないのでパススルーにする
+// （__tests__/api/admin/articles-actions.test.ts と同じ方針）。
+// ただしパススルーのままだと「レート制限が外れた」「設定キーを間違えた」変更を
+// 検出できないため、呼び出し内容を getMockWiring() に記録して末尾の配線テストで検証する。
+// 上の withEmbeddingWorkerAuth と同じ理由で、戻り値は identity ではなく
+// 委譲用のラッパーにする（参照の同一性で合成順を検証するため）。
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: jest.fn((key: string, handler: any) => {
+    const wrapped = (request: any, context?: any) => handler(request, context);
+    const wiring = getMockWiring();
+    wiring.rateLimitKey = key;
+    wiring.rateLimitArg = handler;
+    wiring.rateLimitResult = wrapped;
+    return wrapped;
+  }),
 }));
 
 // Ensure Next.js server APIs are mocked in Jest (Node env)
@@ -203,5 +264,160 @@ describeIf('GET /api/workers/embedding', () => {
     expect(response.status).toBe(200);
     // Should complete without errors
     expect(data.status).toMatch(/completed|idle/);
+  });
+});
+
+// withEmbeddingWorkerAuth is mocked as a pass-through above for the handler
+// tests. Here we bypass that mock via jest.requireActual to verify the real
+// authentication logic (Bearer-only, no admin session).
+describe('withEmbeddingWorkerAuth', () => {
+  // '@/app/api/workers/embedding/with-embedding-worker-auth' is mocked as a
+  // pass-through above; jest.requireActual bypasses that mock here so we
+  // exercise the real authentication logic. 'next/server' is left as the
+  // manually-mocked module (__mocks__/next/server.ts) for consistency with
+  // the rest of this test file — do NOT requireActual it here.
+  const { withEmbeddingWorkerAuth: realWithEmbeddingWorkerAuth } =
+    jest.requireActual('@/app/api/workers/embedding/with-embedding-worker-auth');
+  const { resetEnvCache } = jest.requireActual('@/lib/config/env');
+
+  const mockHandler = jest.fn().mockImplementation(async () => {
+    return NextResponse.json({ success: true });
+  });
+
+  beforeEach(() => {
+    mockHandler.mockClear();
+    delete process.env.CRON_SECRET;
+    delete process.env.CRON_TOKEN;
+    resetEnvCache();
+  });
+
+  afterEach(() => {
+    delete process.env.CRON_SECRET;
+    delete process.env.CRON_TOKEN;
+    resetEnvCache();
+  });
+
+  it.each(['CRON_SECRET', 'CRON_TOKEN'] as const)(
+    'should return 200 with a valid Bearer token (%s)',
+    async (envVar) => {
+      process.env[envVar] = 'valid-embedding-secret';
+      resetEnvCache();
+
+      const handler = realWithEmbeddingWorkerAuth(mockHandler);
+      const request = new NextRequest('http://localhost:3000/api/workers/embedding', {
+        headers: { Authorization: 'Bearer valid-embedding-secret' },
+      });
+
+      const response = await handler(request);
+
+      expect(response.status).toBe(200);
+      expect(mockHandler).toHaveBeenCalled();
+    }
+  );
+
+  it('should return 401 (fail-closed) with a Bearer token when neither CRON_SECRET nor CRON_TOKEN is set', async () => {
+    // Both env vars are deleted in beforeEach; do not set either here.
+    resetEnvCache();
+
+    const handler = realWithEmbeddingWorkerAuth(mockHandler);
+    const request = new NextRequest('http://localhost:3000/api/workers/embedding', {
+      headers: { Authorization: 'Bearer some-token' },
+    });
+
+    const response = await handler(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+    expect(mockHandler).not.toHaveBeenCalled();
+  });
+
+  it('should return 401 without a Bearer token', async () => {
+    process.env.CRON_SECRET = 'valid-embedding-secret';
+    resetEnvCache();
+
+    const handler = realWithEmbeddingWorkerAuth(mockHandler);
+    const request = new NextRequest('http://localhost:3000/api/workers/embedding');
+
+    const response = await handler(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+    expect(mockHandler).not.toHaveBeenCalled();
+  });
+
+  it('should return 401 for admin-session-equivalent requests (no Authorization header)', async () => {
+    process.env.CRON_SECRET = 'valid-embedding-secret';
+    resetEnvCache();
+
+    const handler = realWithEmbeddingWorkerAuth(mockHandler);
+    // Simulates an admin session cookie request: no Authorization header,
+    // just a Cookie header (session auth is intentionally not supported here).
+    const request = new NextRequest('http://localhost:3000/api/workers/embedding', {
+      headers: { Cookie: 'better-auth.session_token=fake-admin-session' },
+    });
+
+    const response = await handler(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.error).toBe('Unauthorized');
+    expect(mockHandler).not.toHaveBeenCalled();
+  });
+});
+
+// route.ts のミドルウェア配線そのものを検証する。
+// 上の2つのモックはパススルーなので、これがないと「withRateLimit が外れた」
+// 「設定キーを間違えた」「合成順が入れ替わった」変更をテストが素通りさせてしまう。
+//
+// withRateLimit / withEmbeddingWorkerAuth は route.ts のトップレベルで
+// 呼ばれる（module load 時）が、jest.setup.node.js の afterEach で
+// jest.clearAllMocks() が呼ばれるため jest.fn の呼び出し履歴は最初のテストの
+// 後に消える。そのためモックファクトリ内で getMockWiring() (globalThis 経由)
+// に退避した値を検証する。
+// DB を使わないため describeIf ではなく通常の describe に置く。
+// skip_embedding クエリパラメータの Zod 検証（.coderabbit.yaml の path instructions で
+// app/api/**/*.ts は zod schema による入力検証が必須と定められている）。
+// DB を使わない（400 は worker 実行前に返る）ため通常の describe に置く。
+describe('GET /api/workers/embedding のクエリ検証', () => {
+  it.each([
+    ['1', 'http://localhost:3000/api/workers/embedding?skip_embedding=1'],
+    ['TRUE', 'http://localhost:3000/api/workers/embedding?skip_embedding=TRUE'],
+    ['空文字', 'http://localhost:3000/api/workers/embedding?skip_embedding='],
+    [
+      '重複指定',
+      'http://localhost:3000/api/workers/embedding?skip_embedding=true&skip_embedding=false',
+    ],
+  ])('skip_embedding が %s の場合は400を返すこと', async (_label, url) => {
+    const response = await GET(new NextRequest(url));
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toBe('Invalid query parameters');
+  });
+});
+
+describe('GET /api/workers/embedding のミドルウェア配線', () => {
+  it('専用の cron:embedding-worker ポリシーでレート制限されること', () => {
+    const wiring = getMockWiring();
+
+    expect(wiring.rateLimitKey).toBe('cron:embedding-worker');
+    expect(typeof wiring.rateLimitArg).toBe('function');
+  });
+
+  it('レート制限されたハンドラが withEmbeddingWorkerAuth で包まれていること（認証が外側）', () => {
+    const wiring = getMockWiring();
+
+    // withRateLimit の戻り値がそのまま withEmbeddingWorkerAuth に渡されている
+    // = レート制限が内側。合成順が入れ替わると authArg は素の embeddingHandler に
+    // なり、rateLimitResult（ラッパー）とは別参照になるため不一致で落ちる。
+    expect(wiring.authArg).toBe(wiring.rateLimitResult);
+
+    // export された GET が最外層（認証）の戻り値であること
+    expect(GET).toBe(wiring.authResult);
+
+    // レート制限が丸ごと外された場合の検出（authArg が素のハンドラになる）
+    expect(wiring.authArg).not.toBe(wiring.rateLimitArg);
   });
 });

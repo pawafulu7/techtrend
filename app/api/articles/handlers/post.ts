@@ -6,34 +6,129 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import type { ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
-import { ValidationError, DuplicateError, formatErrorResponse } from '@/lib/errors';
+import {
+  ValidationError,
+  DuplicateError,
+  formatErrorResponse,
+} from '@/lib/errors';
 import { CacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { normalizeTagInput } from '@/lib/utils/tag/tag-normalizer';
+import { env } from '@/lib/config/env';
 import logger from '@/lib/logger';
 
 // Initialize cache invalidator
 const cacheInvalidator = new CacheInvalidator();
+
+const httpUrlSchema = z
+  .string()
+  .url()
+  .max(2048)
+  .refine((value) => {
+    try {
+      const protocol = new URL(value).protocol;
+      return protocol === 'http:' || protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }, 'URL must use http or https protocol');
+
+/**
+ * `new Date('2026-02-30')` does not become NaN — the JS Date constructor
+ * normalizes calendar-invalid dates by rolling them over (e.g. into
+ * 2026-03-02). This validator rejects such calendar-invalid input by
+ * re-checking that the parsed year/month/day round-trip back to the values
+ * that were parsed out of the original string.
+ */
+function isValidPublishedAt(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T|$)/.exec(value);
+  const parsed = new Date(value);
+
+  if (!match || Number.isNaN(parsed.getTime())) {
+    return false;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const calendarDate = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    calendarDate.getUTCFullYear() === year &&
+    calendarDate.getUTCMonth() === month - 1 &&
+    calendarDate.getUTCDate() === day
+  );
+}
+
+const createArticleSchema = z.object({
+  title: z.string().min(1).max(500),
+  url: httpUrlSchema,
+  sourceId: z.string().min(1),
+  summary: z.string().max(10000).optional(),
+  content: z.string().max(500000).optional(),
+  thumbnail: httpUrlSchema.optional(),
+  publishedAt: z
+    .string()
+    .refine(isValidPublishedAt, {
+      message: 'Invalid publishedAt date format',
+    })
+    .optional(),
+  tagNames: z.array(z.string().max(30)).max(20).optional().default([]),
+});
+
+/**
+ * Convert a Zod validation error into the project's ValidationError shape.
+ * `field` carries the first offending path; `details` carries the full
+ * flattened error so multi-field violations aren't silently dropped.
+ */
+function toValidationError(zodError: z.ZodError): ValidationError {
+  const firstIssue = zodError.issues[0];
+  const field = firstIssue ? firstIssue.path.join('.') : undefined;
+  return new ValidationError(
+    'Invalid request body',
+    field || undefined,
+    zodError.flatten()
+  );
+}
 
 /**
  * Main POST handler for creating articles
  */
 export async function handlePost(request: NextRequest): Promise<NextResponse> {
   try {
-    const body = await request.json();
-    const { title, url, summary, thumbnail, content, publishedAt, sourceId, tagNames = [] } = body;
-
-    // Validate required fields
-    if (!title || !url || !sourceId) {
-      const validationError = new ValidationError(
-        'Missing required fields: title, url, and sourceId are required',
-        'requiredFields'
-      );
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      const validationError = new ValidationError('Invalid JSON body', 'body');
       const errorResponse = formatErrorResponse(validationError);
-      return NextResponse.json(errorResponse, { status: validationError.statusCode });
+      return NextResponse.json(errorResponse, {
+        status: validationError.statusCode,
+      });
     }
+
+    const parseResult = createArticleSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      const validationError = toValidationError(parseResult.error);
+      const errorResponse = formatErrorResponse(validationError);
+      return NextResponse.json(errorResponse, {
+        status: validationError.statusCode,
+      });
+    }
+
+    const {
+      title,
+      url,
+      summary,
+      thumbnail,
+      content,
+      publishedAt,
+      sourceId,
+      tagNames,
+    } = parseResult.data;
 
     // Verify sourceId exists
     const sourceExists = await prisma.source.findUnique({
@@ -47,7 +142,9 @@ export async function handlePost(request: NextRequest): Promise<NextResponse> {
         'sourceId'
       );
       const errorResponse = formatErrorResponse(validationError);
-      return NextResponse.json(errorResponse, { status: validationError.statusCode });
+      return NextResponse.json(errorResponse, {
+        status: validationError.statusCode,
+      });
     }
 
     // Check if article already exists
@@ -58,19 +155,17 @@ export async function handlePost(request: NextRequest): Promise<NextResponse> {
     if (existing) {
       const duplicateError = new DuplicateError('Article', 'url', url);
       const errorResponse = formatErrorResponse(duplicateError);
-      return NextResponse.json(errorResponse, { status: duplicateError.statusCode });
+      return NextResponse.json(errorResponse, {
+        status: duplicateError.statusCode,
+      });
     }
 
     // Normalize and validate tags
     const normalizedTags = normalizeTagInput(tagNames);
 
-    // Validate publishedAt
+    // Resolve publishedAt (Zod already validated the string is both a
+    // parseable date and a calendar-valid one, e.g. rejects 2026-02-30)
     const parsedPublishedAt = publishedAt ? new Date(publishedAt) : new Date();
-    if (Number.isNaN(parsedPublishedAt.getTime())) {
-      const validationError = new ValidationError('Invalid publishedAt date format', 'publishedAt');
-      const errorResponse = formatErrorResponse(validationError);
-      return NextResponse.json(errorResponse, { status: validationError.statusCode });
-    }
 
     // Create article with tags
     const article = await prisma.article.create({
@@ -107,12 +202,16 @@ export async function handlePost(request: NextRequest): Promise<NextResponse> {
     );
   } catch (error) {
     logger.error({ err: error }, 'Error creating article');
-    const isProduction = process.env.NODE_ENV === 'production';
+    const isProduction = env.NODE_ENV === 'production';
     return NextResponse.json(
       {
         success: false,
         error: 'Failed to create article',
-        details: isProduction ? undefined : (error instanceof Error ? error.message : undefined),
+        details: isProduction
+          ? undefined
+          : error instanceof Error
+            ? error.message
+            : undefined,
       } as ApiResponse<never>,
       { status: 500 }
     );
