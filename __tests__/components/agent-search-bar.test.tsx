@@ -2,20 +2,28 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
 import type { SearchHistoryItem } from '@/lib/hooks/useSearchHistory';
 
+// 固定基準時刻。fixture と mockGetRelativeTime の双方をこの値基準に揃え、実時計への依存を排除する。
+// Date.now() 基準だとモジュール評価時刻(T0)と描画時刻(T1)の差に結果が左右され、
+// T1 < T0（システム時刻の巻き戻り）で2件目まで '1分前' と判定されて
+// getByText('1分前') が複数マッチし確率的に失敗していた（Issue #638）。
+const FIXED_NOW = 1_700_000_000_000; // 2023-11-14T22:13:20.000Z
+
 const mockHistoryItems: SearchHistoryItem[] = [
-  { query: 'query 1', timestamp: Date.now() - 60000 },
-  { query: 'query 2', timestamp: Date.now() - 3600000 },
+  { query: 'query 1', timestamp: FIXED_NOW - 60000 },
+  { query: 'query 2', timestamp: FIXED_NOW - 3600000 },
 ];
 
 const mockSaveToHistory = jest.fn();
-const mockGetSearchHistory = jest.fn(() => mockHistoryItems.map(item => item.query));
+const mockGetSearchHistory = jest.fn(() =>
+  mockHistoryItems.map((item) => item.query)
+);
 const mockGetSearchHistoryWithTimestamp = jest.fn(() => mockHistoryItems);
 const mockRemoveFromHistory = jest.fn((timestamp: number) => {
-  return mockHistoryItems.filter(item => item.timestamp !== timestamp);
+  return mockHistoryItems.filter((item) => item.timestamp !== timestamp);
 });
 const mockClearHistory = jest.fn();
 const mockGetRelativeTime = jest.fn((timestamp: number) => {
-  const diff = Date.now() - timestamp;
+  const diff = FIXED_NOW - timestamp;
   if (diff < 3600000) return '1分前';
   return '1時間前';
 });
@@ -50,7 +58,12 @@ describe('AgentSearchBar', () => {
   });
 
   test('renders with custom helper text when provided', () => {
-    render(<AgentSearchBar onSearch={mockOnSearch} helperText="カスタムヘルパーテキスト" />);
+    render(
+      <AgentSearchBar
+        onSearch={mockOnSearch}
+        helperText="カスタムヘルパーテキスト"
+      />
+    );
     expect(screen.getByText('カスタムヘルパーテキスト')).toBeInTheDocument();
   });
 
@@ -137,7 +150,9 @@ describe('AgentSearchBar', () => {
   });
 
   test('renders initial query', () => {
-    render(<AgentSearchBar onSearch={mockOnSearch} initialQuery="initial test" />);
+    render(
+      <AgentSearchBar onSearch={mockOnSearch} initialQuery="initial test" />
+    );
 
     const input = screen.getByLabelText('AI検索クエリ入力') as HTMLInputElement;
     expect(input.value).toBe('initial test');
@@ -174,7 +189,12 @@ describe('AgentSearchBar', () => {
   describe('AgentSearchBar - Prefill', () => {
     test('should call onPrefillQuery callback on mount with prefill handler', () => {
       const mockOnPrefillQuery = jest.fn();
-      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockOnPrefillQuery} />);
+      render(
+        <AgentSearchBar
+          onSearch={mockOnSearch}
+          onPrefillQuery={mockOnPrefillQuery}
+        />
+      );
 
       expect(mockOnPrefillQuery).toHaveBeenCalledTimes(1);
       expect(typeof mockOnPrefillQuery.mock.calls[0][0]).toBe('function');
@@ -182,13 +202,22 @@ describe('AgentSearchBar', () => {
 
     test('should prefill query when callback is invoked', () => {
       let prefillHandler: ((query: string) => void) | null = null;
-      const mockOnPrefillQuery = jest.fn((callback: (query: string) => void) => {
-        prefillHandler = callback;
-      });
+      const mockOnPrefillQuery = jest.fn(
+        (callback: (query: string) => void) => {
+          prefillHandler = callback;
+        }
+      );
 
-      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockOnPrefillQuery} />);
+      render(
+        <AgentSearchBar
+          onSearch={mockOnSearch}
+          onPrefillQuery={mockOnPrefillQuery}
+        />
+      );
 
-      const input = screen.getByLabelText('AI検索クエリ入力') as HTMLInputElement;
+      const input = screen.getByLabelText(
+        'AI検索クエリ入力'
+      ) as HTMLInputElement;
       expect(input.value).toBe('');
 
       act(() => {
@@ -201,11 +230,18 @@ describe('AgentSearchBar', () => {
 
     test('should allow manual edit after prefill', () => {
       let prefillHandler: ((query: string) => void) | null = null;
-      const mockOnPrefillQuery = jest.fn((callback: (query: string) => void) => {
-        prefillHandler = callback;
-      });
+      const mockOnPrefillQuery = jest.fn(
+        (callback: (query: string) => void) => {
+          prefillHandler = callback;
+        }
+      );
 
-      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockOnPrefillQuery} />);
+      render(
+        <AgentSearchBar
+          onSearch={mockOnSearch}
+          onPrefillQuery={mockOnPrefillQuery}
+        />
+      );
 
       const input = screen.getByLabelText('AI検索クエリ入力');
 
@@ -223,11 +259,18 @@ describe('AgentSearchBar', () => {
 
     test('should reuse applyQueryFromExternal for both history and prefill', () => {
       let prefillHandler: ((query: string) => void) | null = null;
-      const mockOnPrefillQuery = jest.fn((callback: (query: string) => void) => {
-        prefillHandler = callback;
-      });
+      const mockOnPrefillQuery = jest.fn(
+        (callback: (query: string) => void) => {
+          prefillHandler = callback;
+        }
+      );
 
-      render(<AgentSearchBar onSearch={mockOnSearch} onPrefillQuery={mockOnPrefillQuery} />);
+      render(
+        <AgentSearchBar
+          onSearch={mockOnSearch}
+          onPrefillQuery={mockOnPrefillQuery}
+        />
+      );
 
       const input = screen.getByLabelText('AI検索クエリ入力');
 
@@ -276,8 +319,12 @@ describe('AgentSearchBar', () => {
     );
 
     expect(screen.getByText('記事Q&A')).toBeInTheDocument();
-    expect(screen.getByText('記事の内容に関する質問を入力')).toBeInTheDocument();
-    expect(screen.queryByText(/キーボードショートカット/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText('記事の内容に関する質問を入力')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/キーボードショートカット/)
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText('記事QA質問入力')).toBeInTheDocument();
   });
 
@@ -304,7 +351,12 @@ describe('AgentSearchBar', () => {
 
     test('calls onHistoryCleared callback when history is cleared', () => {
       const mockOnHistoryCleared = jest.fn();
-      render(<AgentSearchBar onSearch={mockOnSearch} onHistoryCleared={mockOnHistoryCleared} />);
+      render(
+        <AgentSearchBar
+          onSearch={mockOnSearch}
+          onHistoryCleared={mockOnHistoryCleared}
+        />
+      );
       const input = screen.getByLabelText('AI検索クエリ入力');
       fireEvent.focus(input);
 
@@ -315,7 +367,9 @@ describe('AgentSearchBar', () => {
     });
 
     test('displays relative timestamps when showHistoryTimestamp=true', () => {
-      render(<AgentSearchBar onSearch={mockOnSearch} showHistoryTimestamp={true} />);
+      render(
+        <AgentSearchBar onSearch={mockOnSearch} showHistoryTimestamp={true} />
+      );
       const input = screen.getByLabelText('AI検索クエリ入力');
       fireEvent.focus(input);
 
@@ -325,7 +379,9 @@ describe('AgentSearchBar', () => {
     });
 
     test('hides timestamps when showHistoryTimestamp=false', () => {
-      render(<AgentSearchBar onSearch={mockOnSearch} showHistoryTimestamp={false} />);
+      render(
+        <AgentSearchBar onSearch={mockOnSearch} showHistoryTimestamp={false} />
+      );
       const input = screen.getByLabelText('AI検索クエリ入力');
       fireEvent.focus(input);
 
@@ -342,14 +398,18 @@ describe('AgentSearchBar', () => {
       fireEvent.focus(input);
 
       // Suggestions should be visible
-      expect(screen.getByTestId('search-history-suggestions')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('search-history-suggestions')
+      ).toBeInTheDocument();
 
       // Clear history
       const clearButton = screen.getByTestId('clear-history-button');
       fireEvent.click(clearButton);
 
       // After clicking clear, the dropdown should hide since items are now empty
-      expect(screen.queryByTestId('search-history-suggestions')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('search-history-suggestions')
+      ).not.toBeInTheDocument();
     });
 
     test('displays individual remove buttons for each history item', () => {
@@ -359,7 +419,10 @@ describe('AgentSearchBar', () => {
 
       const removeButtons = screen.getAllByTestId('remove-history-item-button');
       expect(removeButtons).toHaveLength(2);
-      expect(removeButtons[0]).toHaveAttribute('aria-label', 'この検索履歴を削除');
+      expect(removeButtons[0]).toHaveAttribute(
+        'aria-label',
+        'この検索履歴を削除'
+      );
     });
 
     test('calls removeFromHistory when individual remove button is clicked', () => {
@@ -371,12 +434,16 @@ describe('AgentSearchBar', () => {
       fireEvent.click(removeButtons[0]);
 
       expect(mockRemoveFromHistory).toHaveBeenCalledTimes(1);
-      expect(mockRemoveFromHistory).toHaveBeenCalledWith(mockHistoryItems[0].timestamp);
+      expect(mockRemoveFromHistory).toHaveBeenCalledWith(
+        mockHistoryItems[0].timestamp
+      );
     });
 
     test('does not trigger query prefill when clicking remove button', () => {
       render(<AgentSearchBar onSearch={mockOnSearch} />);
-      const input = screen.getByLabelText('AI検索クエリ入力') as HTMLInputElement;
+      const input = screen.getByLabelText(
+        'AI検索クエリ入力'
+      ) as HTMLInputElement;
       fireEvent.focus(input);
 
       const removeButtons = screen.getAllByTestId('remove-history-item-button');
