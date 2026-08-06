@@ -2,20 +2,38 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/glo
 import { NextRequest, NextResponse } from 'next/server';
 import type { Article, PrismaClient } from '@/lib/prisma-exports';
 
-// 配線テスト（末尾の describe）用の記録。jest.setup.node.js が全テストの
-// beforeEach で jest.clearAllMocks() を呼ぶため、jest.fn の呼び出し履歴には
-// module load 時（下の import { GET }）の記録が残らない。素の配列に退避する。
-// 変数名の mock プレフィックスは jest.mock ファクトリからの参照に必須。
-const mockWiring: {
-  rateLimitKey?: string;
-  rateLimitedHandler?: unknown;
-  authArg?: unknown;
-} = {};
+// 配線テスト（末尾の describe）用の記録。
+//
+// jest.setup.node.js の afterEach で jest.clearAllMocks() が呼ばれるため、
+// jest.fn の呼び出し履歴（toHaveBeenCalledWith 等）は最初のテストの後に消える。
+// さらに、babel-plugin-jest-hoist は jest.mock(...) 呼び出しをファイル内の
+// すべての宣言（このファイル内の `import` を含む）より前に巻き上げる。
+// そのため、下の `import { GET } from '.../route'` は実行時には
+// モジュール先頭に移動しており、通常の module scope の const/let 変数を
+// mock ファクトリから参照すると TDZ (Cannot access before initialization) で
+// 落ちる（globalThis はモジュール読み込みより前から存在するため安全）。
+// __tests__/api/articles/route-extended.test.ts の __mockCacheInstance と
+// 同じ回避パターン。
+declare global {
+  // eslint-disable-next-line no-var -- globalThis 経由の型拡張には var が必須
+  var __embeddingMockWiring:
+    | {
+        rateLimitKey?: string;
+        rateLimitedHandler?: unknown;
+        authArg?: unknown;
+      }
+    | undefined;
+}
+
+function getMockWiring() {
+  globalThis.__embeddingMockWiring ??= {};
+  return globalThis.__embeddingMockWiring;
+}
 
 // Mock withEmbeddingWorkerAuth to pass through (auth middleware is tested separately below).
 jest.mock('@/app/api/workers/embedding/with-embedding-worker-auth', () => ({
   withEmbeddingWorkerAuth: jest.fn((handler: any) => {
-    mockWiring.authArg = handler;
+    getMockWiring().authArg = handler;
     return handler;
   }),
 }));
@@ -25,11 +43,12 @@ jest.mock('@/app/api/workers/embedding/with-embedding-worker-auth', () => ({
 // ハンドラのテストはレート制限の検証が目的ではないのでパススルーにする
 // （__tests__/api/admin/articles-actions.test.ts と同じ方針）。
 // ただしパススルーのままだと「レート制限が外れた」「設定キーを間違えた」変更を
-// 検出できないため、呼び出し内容を mockWiring に記録して末尾の配線テストで検証する。
+// 検出できないため、呼び出し内容を getMockWiring() に記録して末尾の配線テストで検証する。
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
   withRateLimit: jest.fn((key: string, handler: any) => {
-    mockWiring.rateLimitKey = key;
-    mockWiring.rateLimitedHandler = handler;
+    const wiring = getMockWiring();
+    wiring.rateLimitKey = key;
+    wiring.rateLimitedHandler = handler;
     return handler;
   }),
 }));
@@ -338,9 +357,10 @@ describe('withEmbeddingWorkerAuth', () => {
 // 「設定キーを間違えた」「合成順が入れ替わった」変更をテストが素通りさせてしまう。
 //
 // withRateLimit / withEmbeddingWorkerAuth は route.ts のトップレベルで
-// 呼ばれる（module load 時）が、jest.setup.node.js:133 が全テストの beforeEach で
-// jest.clearAllMocks() を呼ぶため jest.fn の呼び出し履歴は参照できない。
-// そのためモックファクトリ内で mockWiring に退避した値を検証する。
+// 呼ばれる（module load 時）が、jest.setup.node.js の afterEach で
+// jest.clearAllMocks() が呼ばれるため jest.fn の呼び出し履歴は最初のテストの
+// 後に消える。そのためモックファクトリ内で getMockWiring() (globalThis 経由)
+// に退避した値を検証する。
 // DB を使わないため describeIf ではなく通常の describe に置く。
 // skip_embedding クエリパラメータの Zod 検証（.coderabbit.yaml の path instructions で
 // app/api/**/*.ts は zod schema による入力検証が必須と定められている）。
@@ -365,14 +385,16 @@ describe('GET /api/workers/embedding のクエリ検証', () => {
 
 describe('GET /api/workers/embedding のミドルウェア配線', () => {
   it('専用の cron:embedding-worker ポリシーでレート制限されること', () => {
-    expect(mockWiring.rateLimitKey).toBe('cron:embedding-worker');
-    expect(typeof mockWiring.rateLimitedHandler).toBe('function');
+    const wiring = getMockWiring();
+    expect(wiring.rateLimitKey).toBe('cron:embedding-worker');
+    expect(typeof wiring.rateLimitedHandler).toBe('function');
   });
 
   it('レート制限されたハンドラが withEmbeddingWorkerAuth で包まれていること（認証が外側）', () => {
     // withRateLimit が受け取った素のハンドラではなく、その戻り値が
     // withEmbeddingWorkerAuth に渡されていること = 認証が外側であること
-    expect(mockWiring.authArg).toBe(mockWiring.rateLimitedHandler);
-    expect(GET).toBe(mockWiring.authArg);
+    const wiring = getMockWiring();
+    expect(wiring.authArg).toBe(wiring.rateLimitedHandler);
+    expect(GET).toBe(wiring.authArg);
   });
 });
