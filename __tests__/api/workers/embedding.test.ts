@@ -2,10 +2,22 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/glo
 import { NextRequest, NextResponse } from 'next/server';
 import type { Article, PrismaClient } from '@/lib/prisma-exports';
 
+// 配線テスト（末尾の describe）用の記録。jest.setup.node.js が全テストの
+// beforeEach で jest.clearAllMocks() を呼ぶため、jest.fn の呼び出し履歴には
+// module load 時（下の import { GET }）の記録が残らない。素の配列に退避する。
+// 変数名の mock プレフィックスは jest.mock ファクトリからの参照に必須。
+const mockWiring: {
+  rateLimitKey?: string;
+  rateLimitedHandler?: unknown;
+  authArg?: unknown;
+} = {};
+
 // Mock withEmbeddingWorkerAuth to pass through (auth middleware is tested separately below).
-// jest.fn でラップしているのは配線テスト（末尾の describe）で呼び出し引数を検証するため。
 jest.mock('@/app/api/workers/embedding/with-embedding-worker-auth', () => ({
-  withEmbeddingWorkerAuth: jest.fn((handler: any) => handler),
+  withEmbeddingWorkerAuth: jest.fn((handler: any) => {
+    mockWiring.authArg = handler;
+    return handler;
+  }),
 }));
 
 // route.ts は withEmbeddingWorkerAuth の内側に withRateLimit を挟む構成のため、
@@ -13,9 +25,13 @@ jest.mock('@/app/api/workers/embedding/with-embedding-worker-auth', () => ({
 // ハンドラのテストはレート制限の検証が目的ではないのでパススルーにする
 // （__tests__/api/admin/articles-actions.test.ts と同じ方針）。
 // ただしパススルーのままだと「レート制限が外れた」「設定キーを間違えた」変更を
-// 検出できないため、jest.fn でラップして末尾の配線テストで引数を検証する。
+// 検出できないため、呼び出し内容を mockWiring に記録して末尾の配線テストで検証する。
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
-  withRateLimit: jest.fn((_key: string, handler: any) => handler),
+  withRateLimit: jest.fn((key: string, handler: any) => {
+    mockWiring.rateLimitKey = key;
+    mockWiring.rateLimitedHandler = handler;
+    return handler;
+  }),
 }));
 
 // Ensure Next.js server APIs are mocked in Jest (Node env)
@@ -322,28 +338,41 @@ describe('withEmbeddingWorkerAuth', () => {
 // 「設定キーを間違えた」「合成順が入れ替わった」変更をテストが素通りさせてしまう。
 //
 // withRateLimit / withEmbeddingWorkerAuth は route.ts のトップレベルで
-// 呼ばれる（module load 時）ため、`import { GET }` の時点で記録済み。
-// このファイルには clearAllMocks / resetMocks がないので記録は保持される。
+// 呼ばれる（module load 時）が、jest.setup.node.js:133 が全テストの beforeEach で
+// jest.clearAllMocks() を呼ぶため jest.fn の呼び出し履歴は参照できない。
+// そのためモックファクトリ内で mockWiring に退避した値を検証する。
 // DB を使わないため describeIf ではなく通常の describe に置く。
-describe('GET /api/workers/embedding のミドルウェア配線', () => {
-  const { withRateLimit } = jest.requireMock(
-    '@/lib/middleware/with-rate-limit'
-  ) as { withRateLimit: jest.Mock };
-  const { withEmbeddingWorkerAuth } = jest.requireMock(
-    '@/app/api/workers/embedding/with-embedding-worker-auth'
-  ) as { withEmbeddingWorkerAuth: jest.Mock };
+// skip_embedding クエリパラメータの Zod 検証（.coderabbit.yaml の path instructions で
+// app/api/**/*.ts は zod schema による入力検証が必須と定められている）。
+// DB を使わない（400 は worker 実行前に返る）ため通常の describe に置く。
+describe('GET /api/workers/embedding のクエリ検証', () => {
+  it.each([
+    ['1', 'http://localhost:3000/api/workers/embedding?skip_embedding=1'],
+    ['TRUE', 'http://localhost:3000/api/workers/embedding?skip_embedding=TRUE'],
+    ['空文字', 'http://localhost:3000/api/workers/embedding?skip_embedding='],
+    [
+      '重複指定',
+      'http://localhost:3000/api/workers/embedding?skip_embedding=true&skip_embedding=false',
+    ],
+  ])('skip_embedding が %s の場合は400を返すこと', async (_label, url) => {
+    const response = await GET(new NextRequest(url));
 
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toBe('Invalid query parameters');
+  });
+});
+
+describe('GET /api/workers/embedding のミドルウェア配線', () => {
   it('専用の cron:embedding-worker ポリシーでレート制限されること', () => {
-    expect(withRateLimit).toHaveBeenCalledWith(
-      'cron:embedding-worker',
-      expect.any(Function)
-    );
+    expect(mockWiring.rateLimitKey).toBe('cron:embedding-worker');
+    expect(typeof mockWiring.rateLimitedHandler).toBe('function');
   });
 
   it('レート制限されたハンドラが withEmbeddingWorkerAuth で包まれていること（認証が外側）', () => {
-    const rateLimitedHandler = withRateLimit.mock.results[0].value;
-
-    expect(withEmbeddingWorkerAuth).toHaveBeenCalledWith(rateLimitedHandler);
-    expect(GET).toBe(withEmbeddingWorkerAuth.mock.results[0].value);
+    // withRateLimit が受け取った素のハンドラではなく、その戻り値が
+    // withEmbeddingWorkerAuth に渡されていること = 認証が外側であること
+    expect(mockWiring.authArg).toBe(mockWiring.rateLimitedHandler);
+    expect(GET).toBe(mockWiring.authArg);
   });
 });

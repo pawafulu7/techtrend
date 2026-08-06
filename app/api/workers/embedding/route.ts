@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { EmbeddingWorker } from '@/lib/workers/embedding-worker';
 import { logger } from '@/lib/logger';
 import { withEmbeddingWorkerAuth } from './with-embedding-worker-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { env } from '@/lib/config/env';
+
+/**
+ * クエリパラメータの検証スキーマ。
+ *
+ * `searchParams.getAll()` の結果を受けるため配列で受ける。`.max(1)` により
+ * `?skip_embedding=true&skip_embedding=false` のような重複指定を弾き、
+ * `z.enum` により `1` / `TRUE` / 空文字などの表記ゆれも弾く。
+ */
+const embeddingQuerySchema = z.object({
+  skip_embedding: z.array(z.enum(['true', 'false'])).max(1),
+});
 
 /**
  * Embedding Worker API Route
@@ -20,10 +32,23 @@ import { env } from '@/lib/config/env';
  * 本番環境では skip_embedding クエリパラメータを無効化し、常に埋め込み生成を実行する。
  */
 async function embeddingHandler(request: NextRequest) {
+  const query = embeddingQuerySchema.safeParse({
+    skip_embedding: request.nextUrl.searchParams.getAll('skip_embedding'),
+  });
+
+  if (!query.success) {
+    return NextResponse.json(
+      {
+        error: 'Invalid query parameters',
+        details: query.error.flatten(),
+      },
+      { status: 400 }
+    );
+  }
+
+  // 本番では検証を通った値であっても常に無効化する
   const skipEmbedding =
-    env.NODE_ENV === 'production'
-      ? false
-      : request.nextUrl.searchParams.get('skip_embedding') === 'true';
+    env.NODE_ENV !== 'production' && query.data.skip_embedding[0] === 'true';
 
   const worker = new EmbeddingWorker({
     batchSize: 300, // Reduced for Vercel 10s timeout
