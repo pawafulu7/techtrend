@@ -158,8 +158,10 @@ jobs:
           NODE_ENV: test
           CI: 'true'
         run: |
-          # Node環境テスト（カバレッジ付き）
+          # Node環境テスト（カバレッジ付き）。DB共有テストは除外され、次のステップで直列実行する
           npm run test:coverage
+          # DB共有テスト（実PostgreSQLのEmbeddingJobテーブルを排他利用するため --runInBand）
+          npm run test:coverage:serial
           # DOM環境テスト（Reactコンポーネント）
           npm run test:dom
 
