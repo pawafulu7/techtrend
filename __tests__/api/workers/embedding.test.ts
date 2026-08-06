@@ -19,8 +19,10 @@ declare global {
   var __embeddingMockWiring:
     | {
         rateLimitKey?: string;
-        rateLimitedHandler?: unknown;
+        rateLimitArg?: unknown;
+        rateLimitResult?: unknown;
         authArg?: unknown;
+        authResult?: unknown;
       }
     | undefined;
 }
@@ -31,10 +33,19 @@ function getMockWiring() {
 }
 
 // Mock withEmbeddingWorkerAuth to pass through (auth middleware is tested separately below).
+//
+// 重要: 素の handler をそのまま返す identity モックにしてはいけない。
+// identity だと withRateLimit の戻り値も withEmbeddingWorkerAuth の戻り値も
+// すべて embeddingHandler と同一参照になり、末尾の配線テストで合成順を
+// 入れ替えても toBe が成立してしまう（何も検証しない vacuous なテストになる）。
+// そのため呼び出しを委譲する別関数でラップし、参照を区別可能にする。
 jest.mock('@/app/api/workers/embedding/with-embedding-worker-auth', () => ({
   withEmbeddingWorkerAuth: jest.fn((handler: any) => {
-    getMockWiring().authArg = handler;
-    return handler;
+    const wrapped = (request: any, context?: any) => handler(request, context);
+    const wiring = getMockWiring();
+    wiring.authArg = handler;
+    wiring.authResult = wrapped;
+    return wrapped;
   }),
 }));
 
@@ -44,12 +55,16 @@ jest.mock('@/app/api/workers/embedding/with-embedding-worker-auth', () => ({
 // （__tests__/api/admin/articles-actions.test.ts と同じ方針）。
 // ただしパススルーのままだと「レート制限が外れた」「設定キーを間違えた」変更を
 // 検出できないため、呼び出し内容を getMockWiring() に記録して末尾の配線テストで検証する。
+// 上の withEmbeddingWorkerAuth と同じ理由で、戻り値は identity ではなく
+// 委譲用のラッパーにする（参照の同一性で合成順を検証するため）。
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
   withRateLimit: jest.fn((key: string, handler: any) => {
+    const wrapped = (request: any, context?: any) => handler(request, context);
     const wiring = getMockWiring();
     wiring.rateLimitKey = key;
-    wiring.rateLimitedHandler = handler;
-    return handler;
+    wiring.rateLimitArg = handler;
+    wiring.rateLimitResult = wrapped;
+    return wrapped;
   }),
 }));
 
@@ -386,15 +401,23 @@ describe('GET /api/workers/embedding のクエリ検証', () => {
 describe('GET /api/workers/embedding のミドルウェア配線', () => {
   it('専用の cron:embedding-worker ポリシーでレート制限されること', () => {
     const wiring = getMockWiring();
+
     expect(wiring.rateLimitKey).toBe('cron:embedding-worker');
-    expect(typeof wiring.rateLimitedHandler).toBe('function');
+    expect(typeof wiring.rateLimitArg).toBe('function');
   });
 
   it('レート制限されたハンドラが withEmbeddingWorkerAuth で包まれていること（認証が外側）', () => {
-    // withRateLimit が受け取った素のハンドラではなく、その戻り値が
-    // withEmbeddingWorkerAuth に渡されていること = 認証が外側であること
     const wiring = getMockWiring();
-    expect(wiring.authArg).toBe(wiring.rateLimitedHandler);
-    expect(GET).toBe(wiring.authArg);
+
+    // withRateLimit の戻り値がそのまま withEmbeddingWorkerAuth に渡されている
+    // = レート制限が内側。合成順が入れ替わると authArg は素の embeddingHandler に
+    // なり、rateLimitResult（ラッパー）とは別参照になるため不一致で落ちる。
+    expect(wiring.authArg).toBe(wiring.rateLimitResult);
+
+    // export された GET が最外層（認証）の戻り値であること
+    expect(GET).toBe(wiring.authResult);
+
+    // レート制限が丸ごと外された場合の検出（authArg が素のハンドラになる）
+    expect(wiring.authArg).not.toBe(wiring.rateLimitArg);
   });
 });
