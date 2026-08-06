@@ -30,11 +30,7 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
 
       if (!response.ok) {
         // 接続プールの socket 保持を避けるため body を drain
-        try {
-          await response.body?.cancel();
-        } catch {
-          /* ignore: drain 失敗は失敗判定に影響させない */
-        }
+        await this.safeReleaseBody(response);
         logger.warn(
           { status: response.status, url },
           '[MediumEngineeringEnricher] Failed to fetch URL'

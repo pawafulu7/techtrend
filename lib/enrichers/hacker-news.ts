@@ -63,11 +63,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
       // ステータスコードが200以外の場合はGenericEnricherにフォールバック
       if (!response.ok) {
         // 接続プールの socket 保持を避けるため body を drain
-        try {
-          await response.body?.cancel();
-        } catch {
-          /* ignore: drain 失敗は fallback 判定に影響させない */
-        }
+        await this.safeReleaseBody(response);
         logger.warn(
           { status: response.status, url },
           '[HackerNewsEnricher] HTTP error, falling back to GenericEnricher'
@@ -136,11 +132,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
                   $repo('meta[property="og:image"]').attr('content') || '';
               } else {
                 // 接続プールの socket 保持を避けるため body を drain
-                try {
-                  await repoResponse.body?.cancel();
-                } catch {
-                  /* ignore: drain 失敗は失敗判定に影響させない */
-                }
+                await this.safeReleaseBody(repoResponse);
                 logger.debug(
                   { status: repoResponse.status, repoRootUrl },
                   '[HackerNewsEnricher] Repo root fetch returned non-OK status'

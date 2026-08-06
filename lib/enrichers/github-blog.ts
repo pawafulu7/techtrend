@@ -33,11 +33,7 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
 
       if (!response.ok) {
         // 接続プールの socket 保持を避けるため body を drain
-        try {
-          await response.body?.cancel();
-        } catch {
-          /* ignore: drain 失敗は失敗判定に影響させない */
-        }
+        await this.safeReleaseBody(response);
         logger.error(
           { status: response.status, url },
           '[GitHub Blog Enricher] Failed to fetch'
