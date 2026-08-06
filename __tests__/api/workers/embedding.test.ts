@@ -2,17 +2,20 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/glo
 import { NextRequest, NextResponse } from 'next/server';
 import type { Article, PrismaClient } from '@/lib/prisma-exports';
 
-// Mock withEmbeddingWorkerAuth to pass through (auth middleware is tested separately below)
+// Mock withEmbeddingWorkerAuth to pass through (auth middleware is tested separately below).
+// jest.fn でラップしているのは配線テスト（末尾の describe）で呼び出し引数を検証するため。
 jest.mock('@/app/api/workers/embedding/with-embedding-worker-auth', () => ({
-  withEmbeddingWorkerAuth: (handler: any) => handler,
+  withEmbeddingWorkerAuth: jest.fn((handler: any) => handler),
 }));
 
 // route.ts は withEmbeddingWorkerAuth の内側に withRateLimit を挟む構成のため、
 // 上記のパススルーモックだけでは実レートリミッタ（Redis 依存）が走ってしまう。
 // ハンドラのテストはレート制限の検証が目的ではないのでパススルーにする
 // （__tests__/api/admin/articles-actions.test.ts と同じ方針）。
+// ただしパススルーのままだと「レート制限が外れた」「設定キーを間違えた」変更を
+// 検出できないため、jest.fn でラップして末尾の配線テストで引数を検証する。
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
-  withRateLimit: (_key: string, handler: any) => handler,
+  withRateLimit: jest.fn((_key: string, handler: any) => handler),
 }));
 
 // Ensure Next.js server APIs are mocked in Jest (Node env)
@@ -311,5 +314,36 @@ describe('withEmbeddingWorkerAuth', () => {
     expect(response.status).toBe(401);
     expect(data.error).toBe('Unauthorized');
     expect(mockHandler).not.toHaveBeenCalled();
+  });
+});
+
+// route.ts のミドルウェア配線そのものを検証する。
+// 上の2つのモックはパススルーなので、これがないと「withRateLimit が外れた」
+// 「設定キーを間違えた」「合成順が入れ替わった」変更をテストが素通りさせてしまう。
+//
+// withRateLimit / withEmbeddingWorkerAuth は route.ts のトップレベルで
+// 呼ばれる（module load 時）ため、`import { GET }` の時点で記録済み。
+// このファイルには clearAllMocks / resetMocks がないので記録は保持される。
+// DB を使わないため describeIf ではなく通常の describe に置く。
+describe('GET /api/workers/embedding のミドルウェア配線', () => {
+  const { withRateLimit } = jest.requireMock(
+    '@/lib/middleware/with-rate-limit'
+  ) as { withRateLimit: jest.Mock };
+  const { withEmbeddingWorkerAuth } = jest.requireMock(
+    '@/app/api/workers/embedding/with-embedding-worker-auth'
+  ) as { withEmbeddingWorkerAuth: jest.Mock };
+
+  it('専用の cron:embedding-worker ポリシーでレート制限されること', () => {
+    expect(withRateLimit).toHaveBeenCalledWith(
+      'cron:embedding-worker',
+      expect.any(Function)
+    );
+  });
+
+  it('レート制限されたハンドラが withEmbeddingWorkerAuth で包まれていること（認証が外側）', () => {
+    const rateLimitedHandler = withRateLimit.mock.results[0].value;
+
+    expect(withEmbeddingWorkerAuth).toHaveBeenCalledWith(rateLimitedHandler);
+    expect(GET).toBe(withEmbeddingWorkerAuth.mock.results[0].value);
   });
 });
