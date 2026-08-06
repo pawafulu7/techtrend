@@ -158,8 +158,10 @@ jobs:
           NODE_ENV: test
           CI: 'true'
         run: |
-          # Node環境テスト（カバレッジ付き）
+          # Node環境テスト（カバレッジ付き）。DB共有テストは除外され、次のステップで直列実行する
           npm run test:coverage
+          # DB共有テスト（実PostgreSQLのEmbeddingJobテーブルを排他利用するため --runInBand）
+          npm run test:coverage:serial
           # DOM環境テスト（Reactコンポーネント）
           npm run test:dom
 
@@ -170,6 +172,16 @@ jobs:
             echo "❌ Coverage file not found! test:coverage may have failed."
             exit 1
           fi
+          # 直列テスト（test:coverage:serial）の成果物が生成されたことも確認する。
+          # 閾値判定は並列側のカバレッジのみで行い、直列側は Codecov の unittests-serial
+          # フラグで追跡する（両者は別ディレクトリに出力され、同一ファイルを重複計上せずに
+          # 合算するには lcov のマージが必要なため、判定には合算しない）。
+          if [ ! -f coverage-serial/coverage-summary.json ]; then
+            echo "❌ Serial coverage file not found! test:coverage:serial may have failed."
+            exit 1
+          fi
+          SERIAL_COVERAGE=$(jq -r '.total.statements.pct' coverage-serial/coverage-summary.json)
+          echo "ℹ️ Serial test coverage (reference only, not part of the threshold): $SERIAL_COVERAGE%"
           COVERAGE=$(jq -r '.total.statements.pct' coverage/coverage-summary.json)
           echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
           # Use awk for float comparison instead of bc
@@ -187,6 +199,13 @@ jobs:
           flags: unittests
           name: codecov-umbrella
 
+      - name: Upload serial coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage-serial/lcov.info
+          flags: unittests-serial
+          name: codecov-serial
+
       - name: Publish Unit Test Report
         uses: ctrf-io/github-test-reporter@v1
         with:
@@ -199,6 +218,25 @@ jobs:
           exit-on-fail: false
           upload-artifact: true
           artifact-name: 'ctrf-unit-report'
+          fetch-previous-results: true
+          previous-results-max: 10
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: always()
+        continue-on-error: true
+
+      - name: Publish Serial Unit Test Report
+        uses: ctrf-io/github-test-reporter@v1
+        with:
+          report-path: './ctrf/jest-node-serial-ctrf-report.json'
+          summary-report: true
+          flaky-report: true
+          flaky-rate-report: true
+          title: 'Serial Unit Tests'
+          annotate: true
+          exit-on-fail: false
+          upload-artifact: true
+          artifact-name: 'ctrf-serial-unit-report'
           fetch-previous-results: true
           previous-results-max: 10
         env:
