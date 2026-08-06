@@ -264,7 +264,7 @@
     "whatwg-fetch": "^3.6.20"
   },
   "overrides": {
-    "js-yaml": "4.3.0",
+    "js-yaml": "4.3.1",
     "glob": "11.1.0",
     "test-exclude": {
       "glob": "7.2.3"
