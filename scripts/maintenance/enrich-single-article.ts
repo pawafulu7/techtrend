@@ -98,6 +98,11 @@ async function enrichSingleArticle(articleId: string) {
         where: { id: articleId, updatedAt: article.updatedAt },
         data: {
           content: enrichedData.content,
+          // 本文を更新する他の全経路（collect-feeds.ts、re-enrich-*.ts）と同様に
+          // contentUpdatedAt を進める。manage-quality-scores.ts は contentUpdatedAt の
+          // 差分で品質スコア再計算の対象を抽出するため、更新しないと本文が変わったのに
+          // 品質スコアが古いまま残る。
+          contentUpdatedAt: new Date(),
           ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail }),
           ...(isSummaryEligible && {
             summary: null,

@@ -246,7 +246,21 @@ async function main() {
           
           if (hasNewContent) {
             updateData.content = enrichedData.content;
-            if (!options.skipSummary) {
+            // 本文を更新する他の全経路（collect-feeds.ts の5箇所、
+            // re-enrich-moneyforward-articles.ts、re-enrich-publickey-nulls.ts）と同様に
+            // contentUpdatedAt を進める。manage-quality-scores.ts は
+            // contentUpdatedAt の差分で品質スコア再計算の対象を抽出するため
+            // （scripts/scheduled/manage-quality-scores.ts:117-122）、更新しないと
+            // 本文が変わったのに品質スコアが古いまま残る。
+            updateData.contentUpdatedAt = new Date();
+            // PDF / SLIDE は本文の有無と無関係な恒久スキップ理由のため、要約リセットも
+            // 行わない。リセットすると要約が消えたまま、恒久スキップにより再生成もされず
+            // 復旧しなくなる（collect-feeds.ts の自己修復パス・enrich-single-article.ts と
+            // 同じ扱い）。
+            const isSummaryEligible =
+              article.skipReason !== 'PDF' && article.skipReason !== 'SLIDE';
+
+            if (!options.skipSummary && isSummaryEligible) {
               // 要約をリセット（再生成が必要）
               updateData.summary = null;
               updateData.detailedSummary = null;
@@ -264,10 +278,9 @@ async function main() {
             // 250-499文字は isHighQuality 必須）にし、わずかな伸びでの
             // クリアを防ぐ
             if (
+              isSummaryEligible &&
               (enrichedData.content.length >= 500 ||
-                (enrichedData.content.length >= 250 && isHighQuality(enrichedData.content))) &&
-              article.skipReason !== 'PDF' &&
-              article.skipReason !== 'SLIDE'
+                (enrichedData.content.length >= 250 && isHighQuality(enrichedData.content)))
             ) {
               updateData.skipReason = null;
               updateData.summaryError = null;
