@@ -270,23 +270,33 @@ async function main() {
             updateData.thumbnail = enrichedData.thumbnail;
           }
 
-          // CAS: 記事読み込み時に観測した contentLength と現在値が一致する場合のみ更新する。
+          // CAS: 記事読み込み時に観測した updatedAt と現在値が一致する場合のみ更新する。
           // hourly の collect-feeds.ts 等、他プロセスがこの間により良い本文を書き込んで
           // いた場合に、古いスナップショット基準で上書きしないための保護（Issue #629 項目6）。
-          // 本スクリプトは薄い本文（1〜499文字）も対象にするため、null/0判定ではなく
-          // 読み込み時点の contentLength との厳密一致を条件にする（collect-feeds.ts の
-          // 自己修復パスは対象が空本文のみのため null/0 判定で足りるが、本スクリプトは
-          // 「1〜499文字→さらに別プロセスが伸長」というケースも検出する必要があるため）。
+          //
+          // CAS トークンに contentLength ではなく updatedAt を使う理由:
+          // contentLength は CHAR_LENGTH(content) の派生値のため、(a) 同じ文字数の別本文に
+          // 差し替えられた場合（ABA問題）と (b) 本文以外だけが更新された場合を検出できない。
+          // 本スクリプトの updateData は thumbnail も含みうるうえ、collect-feeds.ts には
+          // サムネイルのみを更新する経路が実在するため (b) は現実に起こりうる。
+          // updatedAt は @updatedAt により任意の更新で必ず変化するので、「読み込み後に
+          // 誰かが何かを書いた」ことを漏れなく検出できる。
+          //
+          // トレードオフ: 逆に本文と無関係な更新でも CAS が失敗する。特に品質スコア再計算
+          // （manage-quality-scores.ts / quality-score-batch.ts）は raw SQL で
+          // `"updatedAt" = NOW()` を明示セットするため、qualityScore しか変えていなくても
+          // ここで敗北する。本スクリプトは長時間ループするため割り込みを受けやすいが、
+          // 安全側に倒れるだけで取りこぼしは起きず、再実行で回収できるため許容する。
           const { count } = await prisma.article.updateMany({
             where: {
               id: article.id,
-              contentLength: article.contentLength,
+              updatedAt: article.updatedAt,
             },
             data: updateData,
           });
 
           if (count === 0) {
-            console.error(`  ⏭️  スキップ（CAS敗北）: 他プロセスが本文を更新済みのためスキップしました`);
+            console.error(`  ⏭️  スキップ（CAS敗北）: 読み込み後に他プロセスがこの記事を更新したためスキップしました`);
             concurrentUpdateSkipCount++;
           } else {
             console.error(`  💾 データベース更新完了`);
@@ -314,6 +324,9 @@ async function main() {
     console.error(`⏭️  スキップ: ${skipCount}件`);
     console.error(`⏭️  スキップ（対象外ソース）: ${skipEnrichmentCount}件`);
     console.error(`⏭️  スキップ（並行更新でCAS敗北）: ${concurrentUpdateSkipCount}件`);
+    if (concurrentUpdateSkipCount > 0) {
+      console.error('   ※ 本文更新のほか、品質スコア再計算など本文と無関係な更新でも発生します。再実行で回収できます');
+    }
     console.error(`🖼️  サムネイル取得: ${thumbnailCount}件`);
     console.error(`📊 合計: ${thinArticles.length}件`);
 
