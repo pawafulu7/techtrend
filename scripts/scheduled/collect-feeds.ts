@@ -170,6 +170,18 @@ interface ProcessSourceResult {
   updated: number;
   newArticleIds: string[];
   articles: ArticleInfo[];
+  /**
+   * フィードから取得できた生アイテム数（フェッチャーが返した articles 件数）。
+   * 全フェッチャー共有の戻り値型に依存するため、既存フェッチャー全ての変更を
+   * 避けるべくオプショナルとする（Issue #636: 収集失敗・0件の可視化）。
+   */
+  fetchedItemCount?: number;
+  /**
+   * フェッチャー内部（FetchResult.errors）で発生したエラー件数。
+   * フェッチャーは取得・パースエラーを例外にせず errors 配列へ積むだけのため、
+   * ここを経由しないと呼び出し元からは失敗の存在自体が見えない。
+   */
+  fetchErrorCount?: number;
 }
 
 async function runWithTimeout<T>(
@@ -260,6 +272,8 @@ async function processSource({
     }
 
     fetchedArticlesCount = articles?.length ?? 0;
+    result.fetchedItemCount = fetchedArticlesCount;
+    result.fetchErrorCount = errors.length;
 
     if (!articles || articles.length === 0) {
       const duration = Math.round((Date.now() - startTime) / 1000);
@@ -708,6 +722,18 @@ async function processSource({
   }
 }
 
+/**
+ * ソース名一覧をログ出力用に整形する。
+ * 件数が多い場合はログの肥大化を避けるため先頭 maxDisplay 件のみ表示し、
+ * 残数を付記する（Issue #636）。
+ */
+function formatSourceNameSummary(names: string[], maxDisplay = 20): string {
+  if (names.length === 0) return 'なし';
+  const shown = names.slice(0, maxDisplay).join(', ');
+  const suffix = names.length > maxDisplay ? ` 他${names.length - maxDisplay}件` : '';
+  return `${shown}${suffix} (計${names.length}件)`;
+}
+
 async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
   console.error('[INFO] フィード収集を開始します...');
   console.error(`   SKIP_POST_SAVE_ENRICHMENT: ${env.SKIP_POST_SAVE_ENRICHMENT}`);
@@ -762,21 +788,40 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     let totalUpdated = 0;
     const newArticleIds: string[] = [];
     const allArticles: ArticleInfo[] = [];
+    // Issue #636: ソース単位の失敗・0件収集を可視化するための観測用リスト
+    const rejectedSourceNames: string[] = [];
+    const fetchErrorSourceSummaries: string[] = [];
+    const zeroFetchedSourceNames: string[] = [];
 
-    settledResults.forEach(result => {
+    settledResults.forEach((result, index) => {
+      const sourceName = sources[index]?.name ?? '(unknown)';
       if (result.status === 'fulfilled') {
         totalNewArticles += result.value.newArticles;
         totalDuplicates += result.value.duplicates;
         totalUpdated += result.value.updated;
         newArticleIds.push(...result.value.newArticleIds);
         allArticles.push(...result.value.articles);
+
+        if (result.value.fetchErrorCount && result.value.fetchErrorCount > 0) {
+          fetchErrorSourceSummaries.push(`${sourceName}(${result.value.fetchErrorCount}件)`);
+        }
+        // フィードからアイテムを1件も取得できなかったソース。
+        // 「新規0件」はフィードに新着がないだけで正常だが、「フィードのアイテム自体が0件」は
+        // フィードURL変更・パース失敗・フィルタ設定ドリフトのいずれかを示す異常シグナル。
+        if (result.value.fetchedItemCount === 0) {
+          zeroFetchedSourceNames.push(sourceName);
+        }
       } else {
-        console.error('[WARN] ソース処理で未処理の例外が発生しました:', result.reason);
+        console.error(`[WARN] ソース処理で未処理の例外が発生しました (${sourceName}):`, result.reason);
+        rejectedSourceNames.push(sourceName);
       }
     });
 
     const duration = Math.round((Date.now() - startTime) / 1000);
     console.error(`\n📊 収集完了: 新規${totalNewArticles}件, 更新${totalUpdated}件, 重複${totalDuplicates}件 (${duration}秒)`);
+    console.error(`   未処理例外ソース: ${formatSourceNameSummary(rejectedSourceNames)}`);
+    console.error(`   フェッチエラーソース: ${formatSourceNameSummary(fetchErrorSourceSummaries)}`);
+    console.error(`   フィード0件ソース(要調査): ${formatSourceNameSummary(zeroFetchedSourceNames)}`);
 
     // 自己修復のみ成功した実行（totalNewArticles === 0）でも要約生成・
     // キャッシュ無効化を起動するため、newArticleIds の件数で判定する
