@@ -30,6 +30,15 @@ interface Options {
   skipSummary: boolean;
 }
 
+/**
+ * CAS（Compare-And-Swap）更新の最大試行回数。
+ *
+ * updatedAt を CAS トークンに使うため、本文と無関係な更新（品質スコア再計算など）
+ * でも敗北しうる。1回で諦めると取りこぼしが増えるので、記事を再取得して数回まで
+ * 再試行する。
+ */
+const MAX_CAS_ATTEMPTS = 3;
+
 interface ThinContentCandidateArticle {
   content: string | null;
   thumbnail: string | null;
@@ -285,22 +294,61 @@ async function main() {
           // トレードオフ: 逆に本文と無関係な更新でも CAS が失敗する。特に品質スコア再計算
           // （manage-quality-scores.ts / quality-score-batch.ts）は raw SQL で
           // `"updatedAt" = NOW()` を明示セットするため、qualityScore しか変えていなくても
-          // ここで敗北する。本スクリプトは長時間ループするため割り込みを受けやすいが、
-          // 安全側に倒れるだけで取りこぼしは起きず、再実行で回収できるため許容する。
-          const { count } = await prisma.article.updateMany({
-            where: {
-              id: article.id,
-              updatedAt: article.updatedAt,
-            },
-            data: updateData,
-          });
+          // ここで敗北する。この誤失敗による取りこぼしを避けるため、敗北時は記事を
+          // 再取得して上限付きで再試行する。
+          //
+          // 再試行時に enrich をやり直さないのは意図的。再取得後に
+          // isThinContentCandidate で「まだ薄いまま」であることを確認しており、
+          // その場合エンリッチ結果は依然として有効なため、外部への再フェッチは
+          // レート制限とレイテンシのコストに見合わない。逆に他プロセスが十分な本文を
+          // 書き込んでいた場合は候補判定で弾かれ、こちらの結果で上書きすることはない。
+          let casUpdated = false;
+          let supersededByOtherProcess = false;
+          let casTargetUpdatedAt: Date = article.updatedAt;
 
-          if (count === 0) {
-            console.error(`  ⏭️  スキップ（CAS敗北）: 読み込み後に他プロセスがこの記事を更新したためスキップしました`);
-            concurrentUpdateSkipCount++;
-          } else {
+          for (let attempt = 1; attempt <= MAX_CAS_ATTEMPTS; attempt++) {
+            const { count } = await prisma.article.updateMany({
+              where: {
+                id: article.id,
+                updatedAt: casTargetUpdatedAt,
+              },
+              data: updateData,
+            });
+
+            if (count > 0) {
+              casUpdated = true;
+              break;
+            }
+
+            if (attempt === MAX_CAS_ATTEMPTS) break;
+
+            await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+
+            const fresh = await prisma.article.findUnique({
+              where: { id: article.id },
+              include: { source: true },
+            });
+
+            if (!fresh || !isThinContentCandidate(fresh)) {
+              // 他プロセスが十分な本文を書き込んだ（または記事が消えた）ため、
+              // こちらの結果を書く必要がなくなった
+              supersededByOtherProcess = true;
+              break;
+            }
+
+            casTargetUpdatedAt = fresh.updatedAt;
+            console.error(`  🔁 CAS敗北（${attempt}/${MAX_CAS_ATTEMPTS}回目）: 記事を再取得して再試行します`);
+          }
+
+          if (casUpdated) {
             console.error(`  💾 データベース更新完了`);
             successCount++;
+          } else if (supersededByOtherProcess) {
+            console.error(`  ⏭️  スキップ: 他プロセスが先に本文を補完したか記事が削除されたため、この記事は対象外になりました`);
+            skipCount++;
+          } else {
+            console.error(`  ⏭️  スキップ（CAS敗北）: ${MAX_CAS_ATTEMPTS}回試行しましたが、他プロセスの更新と競合し続けたためスキップしました`);
+            concurrentUpdateSkipCount++;
           }
         } else {
           successCount++;

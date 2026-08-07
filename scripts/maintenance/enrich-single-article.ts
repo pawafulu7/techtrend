@@ -70,11 +70,28 @@ async function enrichSingleArticle(articleId: string) {
       // （manage-quality-scores.ts / quality-score-batch.ts）は raw SQL で
       // `"updatedAt" = NOW()` を明示セットするため、qualityScore しか変えていなくても
       // ここで敗北する。安全側に倒れるだけで取りこぼしは起きないため許容する。
+      // 本文を差し替えると、既存の summary / detailedSummary は古い本文に基づく内容に
+      // なる。直後に要約を再生成するが、生成に失敗した場合や本文が短くて生成をスキップ
+      // した場合に「新本文 + 旧要約」が残らないよう、本文更新と同一の CAS 更新で
+      // 要約をリセットしておく（collect-feeds.ts の自己修復パスと同じ流儀）。
+      // リセットしておけば、このスクリプトでの再生成に失敗しても定期の要約生成ジョブが
+      // 再生成対象として拾える。
+      // PDF / SLIDE は本文の有無と無関係な恒久スキップ理由のため対象外にする。
+      const isSummaryEligible =
+        article.skipReason !== 'PDF' && article.skipReason !== 'SLIDE';
+
       const { count } = await prisma.article.updateMany({
         where: { id: articleId, updatedAt: article.updatedAt },
         data: {
           content: enrichedData.content,
-          ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
+          ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail }),
+          ...(isSummaryEligible && {
+            skipReason: null,
+            summaryError: null,
+            summary: null,
+            detailedSummary: null,
+            summaryVersion: 0
+          })
         }
       });
 
@@ -91,7 +108,9 @@ async function enrichSingleArticle(articleId: string) {
       console.error('\n=== 要約再生成 ===');
       
       if (enrichedData.content.length < 100) {
-        console.error('⚠️ コンテンツが不十分のため要約再生成をスキップ');
+        // 本文更新時に要約はリセット済みのため、「新本文 + 旧要約」は残らない。
+        // 本文が十分に伸びた時点で定期の要約生成ジョブが生成する。
+        console.error('⚠️ コンテンツが不十分のため要約再生成をスキップ（既存要約はリセット済み）');
         return;
       }
       
@@ -122,10 +141,10 @@ async function enrichSingleArticle(articleId: string) {
         });
 
         if (summaryUpdateCount === 0) {
-          // ここで summary をリセットしないのは意図的。本文を書き換えた側
-          // （collect-feeds.ts の自己修復パス）が summary / detailedSummary /
-          // summaryVersion のリセットまで責務として持つため、こちらでリセットすると
-          // 相手が既に生成した正しい要約を消しかねない。
+          // 本文はこちらが書いたものではなくなっているため、生成結果は破棄する。
+          // summary は本文更新時に既にリセット済みであり、本文を書き換えた側
+          // （collect-feeds.ts の自己修復パス）も同様にリセットするため、
+          // 「新本文 + 旧要約」の状態は残らない。定期の要約生成ジョブが再生成する。
           console.error('⏭️  要約更新スキップ（CAS敗北）: 要約生成中に他プロセスが本文を更新したため、生成結果は保存しませんでした');
           return;
         }
