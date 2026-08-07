@@ -2,6 +2,7 @@ import { BaseContentEnricher, EnrichmentResult } from './base';
 import * as cheerio from 'cheerio';
 import type { CheerioAPI } from 'cheerio';
 import logger from '@/lib/logger';
+import { assertPublicHttpUrl } from '@/lib/utils/url/ssrf-guard';
 import {
   extractWithReadability,
   extractFromJsonLd,
@@ -27,6 +28,19 @@ export class GenericContentEnricher extends BaseContentEnricher {
     url: string,
     externalSignal?: AbortSignal
   ): Promise<EnrichmentResult | null> {
+    // SSRF ガード: DNS解決を含む検証。拒否時はリトライしても無駄なので、
+    // retry ループに入る前に即座に null を返す（enrich() は既存契約上 throw
+    // しないため、base.ts の fetchWithRetry とは異なりここで catch して吸収する）
+    try {
+      await assertPublicHttpUrl(url, { enricher: this.constructor.name });
+    } catch (error) {
+      logger.error(
+        { err: error, url },
+        '[GenericEnricher] URL rejected by SSRF guard'
+      );
+      return null;
+    }
+
     const maxRetries = 2;
     let previousWas429 = false;
 
