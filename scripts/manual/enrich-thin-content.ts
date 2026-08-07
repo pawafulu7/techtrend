@@ -329,22 +329,50 @@ async function main() {
               include: { source: true },
             });
 
-            if (!fresh || !isThinContentCandidate(fresh)) {
-              // 他プロセスが十分な本文を書き込んだ（または記事が消えた）ため、
-              // こちらの結果を書く必要がなくなった
+            // 再試行は「updatedAt 以外は何も変わっていない」場合に限る。
+            //
+            // isThinContentCandidate() だけでは不十分。本文が 1〜499 文字なら候補判定は
+            // true を返すため、他プロセスが「新しいが短い本文」を書いた場合や
+            // サムネイルだけを更新した場合でも再試行が通ってしまい、読み込み時点の
+            // スナップショットから作った updateData でそれらを上書きしてしまう。
+            // それは本スクリプトが CAS を導入した目的そのものに反する。
+            //
+            // updateData が触るフィールド（content / thumbnail / skipReason /
+            // summaryError）と、候補判定に使うフィールド（content / thumbnail /
+            // source）のいずれかが変化していたら、他プロセスが意味のある更新を
+            // 行ったとみなして再試行せず終了する。逆に updatedAt だけが動いている
+            // ケース（品質スコア再計算など本文と無関係な更新）は再試行で回収する。
+            const enrichmentInputChanged =
+              !fresh ||
+              fresh.content !== article.content ||
+              fresh.thumbnail !== article.thumbnail ||
+              fresh.skipReason !== article.skipReason ||
+              fresh.sourceId !== article.sourceId;
+
+            if (enrichmentInputChanged) {
+              supersededByOtherProcess = true;
+              break;
+            }
+
+            // ここに到達する時点で content / thumbnail / source は不変のため候補判定の
+            // 結果も変わらないはずだが、判定ロジックの前提が崩れた場合の保険として残す。
+            if (!isThinContentCandidate(fresh)) {
               supersededByOtherProcess = true;
               break;
             }
 
             casTargetUpdatedAt = fresh.updatedAt;
-            console.error(`  🔁 CAS敗北（${attempt}/${MAX_CAS_ATTEMPTS}回目）: 記事を再取得して再試行します`);
+            console.error(
+              `  🔁 CAS敗北（${attempt}/${MAX_CAS_ATTEMPTS}回目）: ` +
+              `本文・サムネイル・スキップ状態は不変のため再試行します`
+            );
           }
 
           if (casUpdated) {
             console.error(`  💾 データベース更新完了`);
             successCount++;
           } else if (supersededByOtherProcess) {
-            console.error(`  ⏭️  スキップ: 他プロセスが先に本文を補完したか記事が削除されたため、この記事は対象外になりました`);
+            console.error(`  ⏭️  スキップ: 読み込み後に他プロセスが本文・サムネイル等を更新した（または記事が削除された）ため、今回の取得結果は反映しません`);
             skipCount++;
           } else {
             console.error(`  ⏭️  スキップ（CAS敗北）: ${MAX_CAS_ATTEMPTS}回試行しましたが、他プロセスの更新と競合し続けたためスキップしました`);
