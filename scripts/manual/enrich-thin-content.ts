@@ -30,6 +30,41 @@ interface Options {
   skipSummary: boolean;
 }
 
+interface ThinContentCandidateArticle {
+  content: string | null;
+  thumbnail: string | null;
+  source: { name: string };
+}
+
+/**
+ * 薄いコンテンツ（本文が空、または500文字未満）の記事のうち、
+ * エンリッチメント処理の対象とすべきものを判定する。
+ *
+ * - 本文が完全に空（null または空文字）の記事は、サムネイルの有無に関わらず対象に含める。
+ *   GenericContentEnricherは本文抽出に失敗してもサムネイルのみ返すことがあり、
+ *   collect-feeds.ts はサムネイルのみでも記事を保存する。従来ロジックは
+ *   「サムネイルあり = 処理済み」とみなして除外していたため、
+ *   「本文なし・サムネイルあり」の記事が恒久的に回復対象から漏れていた（Issue #629 項目5）。
+ * - 本文はあるが500文字未満の記事は、既にサムネイルを取得済み（Speaker Deck除く）であれば
+ *   ContentEnricherによる処理済みとみなし、従来通り除外する。
+ */
+export function isThinContentCandidate(article: ThinContentCandidateArticle): boolean {
+  const content = article.content;
+
+  if (!content) {
+    // 本文が完全に空: サムネイル有無に関わらず対象
+    return true;
+  }
+
+  if (content.length >= 500) {
+    return false;
+  }
+
+  // 本文はあるが薄い（1〜499文字）: サムネイル取得済みなら処理済みとみなす
+  const hasEnrichedThumbnail = Boolean(article.thumbnail) && article.source.name !== 'Speaker Deck';
+  return !hasEnrichedThumbnail;
+}
+
 function parseArgs(): Options {
   const args = process.argv.slice(2);
   const options: Options = {
@@ -114,13 +149,7 @@ async function main() {
     });
 
     // 500文字未満の記事を抽出（既に処理済みの記事は除外）
-    let thinArticles = allThinArticles.filter(article => {
-      // コンテンツが空または500文字未満
-      const isThin = !article.content || article.content.length < 500;
-      // サムネイルが既に存在する場合は処理済みとみなす（ContentEnricherで取得済み）
-      const hasEnrichedThumbnail = article.thumbnail && article.source.name !== 'Speaker Deck';
-      return isThin && !hasEnrichedThumbnail;
-    });
+    let thinArticles = allThinArticles.filter(isThinContentCandidate);
 
     // skipを適用
     if (options.skip && options.skip > 0) {
@@ -147,6 +176,7 @@ async function main() {
     let skipCount = 0;
     let thumbnailCount = 0;
     let skipEnrichmentCount = 0;
+    let concurrentUpdateSkipCount = 0;
 
     for (let i = 0; i < thinArticles.length; i++) {
       const article = thinArticles[i];
@@ -240,15 +270,31 @@ async function main() {
             updateData.thumbnail = enrichedData.thumbnail;
           }
 
-          await prisma.article.update({
-            where: { id: article.id },
+          // CAS: 記事読み込み時に観測した contentLength と現在値が一致する場合のみ更新する。
+          // hourly の collect-feeds.ts 等、他プロセスがこの間により良い本文を書き込んで
+          // いた場合に、古いスナップショット基準で上書きしないための保護（Issue #629 項目6）。
+          // 本スクリプトは薄い本文（1〜499文字）も対象にするため、null/0判定ではなく
+          // 読み込み時点の contentLength との厳密一致を条件にする（collect-feeds.ts の
+          // 自己修復パスは対象が空本文のみのため null/0 判定で足りるが、本スクリプトは
+          // 「1〜499文字→さらに別プロセスが伸長」というケースも検出する必要があるため）。
+          const { count } = await prisma.article.updateMany({
+            where: {
+              id: article.id,
+              contentLength: article.contentLength,
+            },
             data: updateData,
           });
-          
-          console.error(`  💾 データベース更新完了`);
+
+          if (count === 0) {
+            console.error(`  ⏭️  スキップ（CAS敗北）: 他プロセスが本文を更新済みのためスキップしました`);
+            concurrentUpdateSkipCount++;
+          } else {
+            console.error(`  💾 データベース更新完了`);
+            successCount++;
+          }
+        } else {
+          successCount++;
         }
-        
-        successCount++;
 
         // レート制限対策
         await new Promise(resolve => setTimeout(resolve, 1500));
@@ -267,6 +313,7 @@ async function main() {
     console.error(`❌ 失敗: ${failCount}件`);
     console.error(`⏭️  スキップ: ${skipCount}件`);
     console.error(`⏭️  スキップ（対象外ソース）: ${skipEnrichmentCount}件`);
+    console.error(`⏭️  スキップ（並行更新でCAS敗北）: ${concurrentUpdateSkipCount}件`);
     console.error(`🖼️  サムネイル取得: ${thumbnailCount}件`);
     console.error(`📊 合計: ${thinArticles.length}件`);
 
@@ -286,4 +333,6 @@ async function main() {
   }
 }
 
-main().catch(console.error);
+if (require.main === module) {
+  main().catch(console.error);
+}

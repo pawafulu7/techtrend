@@ -53,18 +53,27 @@ async function enrichSingleArticle(articleId: string) {
     if (enrichedData && enrichedData.content) {
       const newLength = enrichedData.content.length;
       console.error(`✅ エンリッチメント成功: ${newLength}文字`);
-      
-      // データベース更新
-      await prisma.article.update({
-        where: { id: articleId },
+
+      // CAS: 記事取得時に観測した contentLength と現在値が一致する場合のみ更新する。
+      // enrich() のネットワークI/O中に他プロセス（例: hourly の collect-feeds.ts）が
+      // 先に本文を更新している可能性があるため、古いスナップショット基準で
+      // 上書きしないための保護（Issue #629 項目6、collect-feeds.ts の自己修復パスと同一方針）。
+      const { count } = await prisma.article.updateMany({
+        where: { id: articleId, contentLength: article.contentLength },
         data: {
           content: enrichedData.content,
           ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
         }
       });
-      
+
+      if (count === 0) {
+        console.error('⏭️  更新スキップ（CAS敗北）: 記事取得後、他プロセスが既に本文を更新済みのため、今回の取得結果は反映しませんでした');
+        console.error('必要であれば記事の最新状態を確認のうえ再実行してください');
+        return;
+      }
+
       console.error('データベース更新完了');
-      
+
       // 要約再生成
       console.error('\n=== 要約再生成 ===');
       
