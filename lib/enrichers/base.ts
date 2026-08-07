@@ -6,6 +6,7 @@
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
 import { classifyEnrichmentError } from './error-classifier';
+import { assertPublicHttpUrl } from '@/lib/utils/url/ssrf-guard';
 
 /**
  * エンリッチされたコンテンツのデータ構造
@@ -113,6 +114,11 @@ export abstract class BaseContentEnricher implements IContentEnricher {
     url: string,
     externalSignal?: AbortSignal
   ): Promise<string> {
+    // SSRF ガード: DNS解決を含む検証。拒否時はリトライしても無駄なので、
+    // retry ループに入る前に即座に throw する（呼び出し元 enrich() の catch が
+    // logEnrichmentError で記録し null を返す、既存のエラーハンドリングに乗る）
+    await assertPublicHttpUrl(url, { enricher: this.constructor.name });
+
     let lastError: Error | null = null;
     let previousWas429 = false;
 

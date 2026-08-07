@@ -1,8 +1,17 @@
 /**
  * URL Validator Utility
  *
- * Provides secure URL validation functions to prevent SSRF and open redirect vulnerabilities.
- * Uses URL API for robust domain validation instead of string matching.
+ * Provides string-based URL parsing/validation helpers (domain matching, scheme
+ * checks, format checks). Uses the URL API for robust parsing instead of ad-hoc
+ * string matching, which prevents path-based domain spoofing (e.g. distinguishing
+ * `evil.com/github.com` from an actual `github.com` URL).
+ *
+ * IMPORTANT: These functions do NOT perform DNS resolution and therefore do NOT
+ * prevent SSRF on their own — an attacker-controlled domain can still resolve to
+ * an internal IP (e.g. 10.0.0.5, 169.254.169.254) and pass every check here.
+ * For SSRF-safe validation before making an outbound request, use
+ * `assertPublicHttpUrl` from `./ssrf-guard`, which resolves DNS and checks the
+ * resolved IPs against private/loopback/link-local ranges.
  *
  * @module url-validator
  */
@@ -17,16 +26,21 @@
  * @param expectedDomain - The expected domain (e.g., 'github.com')
  * @returns True if the URL belongs to the expected domain
  */
-export function isUrlFromDomain(urlString: string, expectedDomain: string): boolean {
+export function isUrlFromDomain(
+  urlString: string,
+  expectedDomain: string
+): boolean {
   try {
     const url = new URL(urlString);
     const hostname = url.hostname.toLowerCase();
     const expected = expectedDomain.toLowerCase();
 
     // Check for exact match or with www prefix or as subdomain
-    return hostname === expected ||
-           hostname === `www.${expected}` ||
-           hostname.endsWith(`.${expected}`);
+    return (
+      hostname === expected ||
+      hostname === `www.${expected}` ||
+      hostname.endsWith(`.${expected}`)
+    );
   } catch {
     // Invalid URL
     return false;

@@ -1,5 +1,8 @@
+import dns from 'dns';
 import { BaseContentEnricher } from '../base';
 import logger from '@/lib/logger';
+
+const mockLookup = dns.promises.lookup as jest.Mock;
 
 // NOTE: fetchの「グローバルモック」は行わない。必要なテスト（例: リトライ）ではケース単位で局所的にstubする。
 
@@ -443,6 +446,96 @@ describe('BaseContentEnricher', () => {
       expect(logged.status).toBe(503);
 
       loggerSpy.mockRestore();
+    });
+  });
+
+  describe('fetchWithRetry - SSRF guard integration (Issue #633)', () => {
+    // TestContentEnricher は fetchWithRetry を override して base.ts の実装を
+    // 迂回するため、ここでは override しない別サブクラスで実装を直接検証する。
+    class RealFetchEnricher extends BaseContentEnricher {
+      canHandle(): boolean {
+        return true;
+      }
+      // protected -> public に公開してテストから直接呼べるようにする
+      public callFetchWithRetry(url: string, signal?: AbortSignal) {
+        return this.fetchWithRetry(url, signal);
+      }
+      // rateLimit(1500ms)分の実待機でテストが遅くならないようにモック
+      protected delay(): Promise<void> {
+        return Promise.resolve();
+      }
+    }
+
+    let originalFetch: typeof global.fetch;
+
+    beforeEach(() => {
+      originalFetch = global.fetch;
+      mockLookup.mockReset();
+      mockLookup.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
+    });
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+      jest.restoreAllMocks();
+    });
+
+    it('プライベートIPに解決されるURLはリトライせず即座にthrowする', async () => {
+      mockLookup.mockResolvedValue([{ address: '10.0.0.5', family: 4 }]);
+      const fetchSpy = jest.fn();
+      global.fetch = fetchSpy as unknown as typeof global.fetch;
+
+      const enricher = new RealFetchEnricher();
+      await expect(
+        enricher.callFetchWithRetry('https://attacker-controlled.example/')
+      ).rejects.toThrow();
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      // maxRetries=3 だが、SSRFガードで即座にthrowするためDNS lookupは1回のみ
+      expect(mockLookup).toHaveBeenCalledTimes(1);
+    });
+
+    it('enrich() 経由でも拒否時はnullを返し、logEnrichmentErrorで記録される', async () => {
+      mockLookup.mockResolvedValue([{ address: '169.254.169.254', family: 4 }]);
+      const fetchSpy = jest.fn();
+      global.fetch = fetchSpy as unknown as typeof global.fetch;
+      const loggerSpy = jest
+        .spyOn(logger, 'error')
+        .mockImplementation(() => {});
+
+      const enricher = new RealFetchEnricher();
+      const result = await enricher.enrich(
+        'https://attacker-controlled.example/'
+      );
+
+      expect(result).toBeNull();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://attacker-controlled.example/',
+          enricher: 'RealFetchEnricher',
+        }),
+        '[Enrichment] failed'
+      );
+
+      loggerSpy.mockRestore();
+    });
+
+    it('公開IPに解決されるURLは通常通りfetchされる', async () => {
+      mockLookup.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
+      const fetchSpy = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        text: async () => '<html><body>ok</body></html>',
+        body: { cancel: jest.fn() },
+      });
+      global.fetch = fetchSpy as unknown as typeof global.fetch;
+
+      const enricher = new RealFetchEnricher();
+      const html = await enricher.callFetchWithRetry('https://public.example/');
+
+      expect(html).toBe('<html><body>ok</body></html>');
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
   });
 });

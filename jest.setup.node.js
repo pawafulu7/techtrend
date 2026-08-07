@@ -48,6 +48,26 @@ jest.mock('@/lib/auth/get-session', () => ({
   getRequiredSession: jest.fn().mockRejectedValue(new Error('Unauthorized')),
 }));
 
+// DNS解決のモック（Issue #633 SSRF guard: lib/utils/url/ssrf-guard.ts が
+// dns.promises.lookup を使用する）。多数の enricher テストが実在ドメイン
+// （zenn.dev, speakerdeck.com 等）に対して global.fetch のみをモックしており、
+// 実 DNS 解決に依存すると CI で不安定になる（ネットワーク遮断環境で全滅もありうる）。
+// デフォルトでは安全な公開IP（RFC 5737 TEST-NET-3、実在しないが SSRF guard の
+// 拒否レンジには該当しない）を返す。SSRF guard 自体の拒否ケースを検証するテストは
+// (dns.promises.lookup as jest.Mock).mockResolvedValueOnce(...) 等で個別に上書きする。
+jest.mock('dns', () => {
+  const actual = jest.requireActual('dns');
+  return {
+    ...actual,
+    promises: {
+      ...actual.promises,
+      lookup: jest
+        .fn()
+        .mockResolvedValue([{ address: '203.0.113.10', family: 4 }]),
+    },
+  };
+});
+
 // テスト環境のDI初期化
 beforeAll(() => {
   initializeTestDI();
