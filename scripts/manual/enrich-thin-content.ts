@@ -337,11 +337,20 @@ async function main() {
             // スナップショットから作った updateData でそれらを上書きしてしまう。
             // それは本スクリプトが CAS を導入した目的そのものに反する。
             //
-            // updateData が触るフィールド（content / thumbnail / skipReason /
-            // summaryError）と、候補判定に使うフィールド（content / thumbnail /
-            // source）のいずれかが変化していたら、他プロセスが意味のある更新を
-            // 行ったとみなして再試行せず終了する。逆に updatedAt だけが動いている
-            // ケース（品質スコア再計算など本文と無関係な更新）は再試行で回収する。
+            // 読み込み時点と比べて content / thumbnail / skipReason / sourceId の
+            // いずれかが変化していたら、他プロセスが意味のある更新を行ったとみなして
+            // 再試行せず終了する。逆に updatedAt だけが動いているケース
+            // （品質スコア再計算など本文と無関係な更新）は再試行で回収する。
+            //
+            // summary / detailedSummary / summaryVersion / summaryError を比較対象に
+            // 含めないのは、これらが「新しい本文が確定したら旧要約は無効」という理由で
+            // 無条件にリセットする値であり、他プロセスの現在値を見て判断する余地が
+            // ないため。実際の書き込みは updatedAt の CAS が最終的に守る。
+            //
+            // source は name ではなく sourceId で比較している。sourceId が同じまま
+            // Source.name だけがリネームされた場合はここを通過するが、直後の
+            // isThinContentCandidate() が最新の source.name を見るため
+            // （Speaker Deck 例外の判定に影響する変化なら）そちらで検出される。
             const enrichmentInputChanged =
               !fresh ||
               fresh.content !== article.content ||
