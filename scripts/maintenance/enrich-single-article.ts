@@ -7,6 +7,7 @@ import { createPrismaClient } from '@/lib/prisma/create-client';
 import { GoogleAIEnricher } from '../../lib/enrichers/google-ai';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { isEnrichmentSkipped } from '../../lib/fetchers/generic-foreign-rss';
+import { isHighQuality } from '../../lib/enrichers/strategies/quality';
 
 const prisma = createPrismaClient();
 const enricher = new GoogleAIEnricher();
@@ -53,23 +54,84 @@ async function enrichSingleArticle(articleId: string) {
     if (enrichedData && enrichedData.content) {
       const newLength = enrichedData.content.length;
       console.error(`✅ エンリッチメント成功: ${newLength}文字`);
-      
-      // データベース更新
-      await prisma.article.update({
-        where: { id: articleId },
+
+      // CAS: 記事取得時に観測した updatedAt と現在値が一致する場合のみ更新する。
+      // enrich() のネットワークI/O中に他プロセス（例: hourly の collect-feeds.ts）が
+      // 先に本文を更新している可能性があるため、古いスナップショット基準で
+      // 上書きしないための保護（Issue #629 項目6）。
+      //
+      // CAS トークンに contentLength ではなく updatedAt を使う理由:
+      // contentLength は CHAR_LENGTH(content) の派生値のため、(a) 同じ文字数の別本文に
+      // 差し替えられた場合（ABA問題）と (b) 本文以外（thumbnail 等）だけが更新された
+      // 場合を検出できない。collect-feeds.ts にはサムネイルのみを更新する経路が実在するため
+      // (b) は現実に起こりうる。updatedAt は @updatedAt により任意の更新で必ず変化するので、
+      // 「取得後に誰かが何かを書いた」ことを漏れなく検出できる。
+      //
+      // トレードオフ: 逆に本文と無関係な更新でも CAS が失敗する。特に品質スコア再計算
+      // （manage-quality-scores.ts / quality-score-batch.ts）は raw SQL で
+      // `"updatedAt" = NOW()` を明示セットするため、qualityScore しか変えていなくても
+      // ここで敗北する。安全側に倒れるだけで取りこぼしは起きないため許容する。
+      // 本文を差し替えると、既存の summary / detailedSummary は古い本文に基づく内容に
+      // なる。直後に要約を再生成するが、生成に失敗した場合や本文が短くて生成をスキップ
+      // した場合に「新本文 + 旧要約」が残らないよう、本文更新と同一の CAS 更新で
+      // 要約をリセットしておく（collect-feeds.ts の自己修復パスと同じ流儀）。
+      // リセットしておけば、このスクリプトでの再生成に失敗しても定期の要約生成ジョブが
+      // 再生成対象として拾える。
+      // PDF / SLIDE は本文の有無と無関係な恒久スキップ理由のため対象外にする。
+      const isSummaryEligible =
+        article.skipReason !== 'PDF' && article.skipReason !== 'SLIDE';
+
+      // skipReason / summaryError のクリアは、collect-feeds.ts / enrich-thin-content.ts
+      // と同一の受入基準（500文字以上は無条件、250-499文字は isHighQuality 必須）を
+      // 満たす場合に限る。GoogleAIEnricher は300文字未満でも本文を返しうるため、
+      // 基準なしでクリアすると、要約生成の対象になったものの本文が短すぎて
+      // THIN_CONTENT が再設定される、という無駄な往復が発生する。
+      //
+      // 一方、summary / detailedSummary / summaryVersion のリセットは基準に関わらず
+      // 行う。本文が差し替わった時点で旧本文由来の要約は無効であり、残すと
+      // 「新本文 + 旧要約」の不整合になるため。
+      const meetsSummaryQualityBar =
+        enrichedData.content.length >= 500 ||
+        (enrichedData.content.length >= 250 && isHighQuality(enrichedData.content));
+
+      const { count } = await prisma.article.updateMany({
+        where: { id: articleId, updatedAt: article.updatedAt },
         data: {
           content: enrichedData.content,
-          ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
+          // 本文を更新する他の全経路（collect-feeds.ts、re-enrich-*.ts）と同様に
+          // contentUpdatedAt を進める。manage-quality-scores.ts は contentUpdatedAt の
+          // 差分で品質スコア再計算の対象を抽出するため、更新しないと本文が変わったのに
+          // 品質スコアが古いまま残る。
+          contentUpdatedAt: new Date(),
+          ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail }),
+          ...(isSummaryEligible && {
+            summary: null,
+            detailedSummary: null,
+            summaryVersion: 0
+          }),
+          ...(isSummaryEligible && meetsSummaryQualityBar && {
+            skipReason: null,
+            summaryError: null
+          })
         }
       });
-      
+
+      if (count === 0) {
+        console.error('⏭️  更新スキップ（CAS敗北）: 記事取得後に他プロセスがこの記事を更新したため、今回の取得結果は反映しませんでした');
+        console.error('   （本文が更新された場合のほか、品質スコア再計算など本文と無関係な更新でも発生します）');
+        console.error('必要であれば記事の最新状態を確認のうえ再実行してください');
+        return;
+      }
+
       console.error('データベース更新完了');
-      
+
       // 要約再生成
       console.error('\n=== 要約再生成 ===');
       
       if (enrichedData.content.length < 100) {
-        console.error('⚠️ コンテンツが不十分のため要約再生成をスキップ');
+        // 本文更新時に要約はリセット済みのため、「新本文 + 旧要約」は残らない。
+        // 本文が十分に伸びた時点で定期の要約生成ジョブが生成する。
+        console.error('⚠️ コンテンツが不十分のため要約再生成をスキップ（既存要約はリセット済み）');
         return;
       }
       
@@ -84,8 +146,13 @@ async function enrichSingleArticle(articleId: string) {
       );
       
       if (result) {
-        await prisma.article.update({
-          where: { id: articleId },
+        // CAS: 要約は enrichedData.content から生成されたものなので、その本文が
+        // まだ記事に残っている場合のみ保存する。要約生成（LLM呼び出し）の間に
+        // 他プロセスが本文を差し替えていた場合、新しい本文に古い要約が結び付くのを防ぐ。
+        // 直前の本文更新で updatedAt は変化済みのため、ここでは自分が書いた本文自体を
+        // CAS トークンとして使う（更新後の updatedAt を取り直す必要がない）。
+        const { count: summaryUpdateCount } = await prisma.article.updateMany({
+          where: { id: articleId, content: enrichedData.content },
           data: {
             summary: result.summary,
             detailedSummary: result.detailedSummary,
@@ -93,7 +160,16 @@ async function enrichSingleArticle(articleId: string) {
             articleType: 'unified'
           }
         });
-        
+
+        if (summaryUpdateCount === 0) {
+          // 本文はこちらが書いたものではなくなっているため、生成結果は破棄する。
+          // summary は本文更新時に既にリセット済みであり、本文を書き換えた側
+          // （collect-feeds.ts の自己修復パス）も同様にリセットするため、
+          // 「新本文 + 旧要約」の状態は残らない。定期の要約生成ジョブが再生成する。
+          console.error('⏭️  要約更新スキップ（CAS敗北）: 要約生成中に他プロセスが本文を更新したため、生成結果は保存しませんでした');
+          return;
+        }
+
         console.error('✅ 要約再生成成功');
         console.error(`  一覧要約: ${result.summary.length}文字`);
         console.error(`  詳細要約: ${result.detailedSummary.length}文字`);
@@ -125,8 +201,11 @@ async function enrichSingleArticle(articleId: string) {
         );
         
         if (result) {
-          await prisma.article.update({
-            where: { id: articleId },
+          // CAS: 要約は取得時点の article.content から生成したものなので、その本文が
+          // まだ残っている場合のみ保存する。要約生成（LLM呼び出し）中に他プロセスが
+          // 本文を更新していた場合、新しい本文に古い要約が結び付くのを防ぐ。
+          const { count: summaryUpdateCount } = await prisma.article.updateMany({
+            where: { id: articleId, content: article.content },
             data: {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
@@ -134,7 +213,12 @@ async function enrichSingleArticle(articleId: string) {
               articleType: 'unified'
             }
           });
-          
+
+          if (summaryUpdateCount === 0) {
+            console.error('⏭️  要約更新スキップ（CAS敗北）: 要約生成中に他プロセスが本文を更新したため、生成結果は保存しませんでした');
+            return;
+          }
+
           console.error('✅ 要約再生成成功（既存コンテンツ使用）');
           console.error(`  詳細要約: ${result.detailedSummary.length}文字`);
         }
