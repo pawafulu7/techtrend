@@ -7,6 +7,7 @@ import { createPrismaClient } from '@/lib/prisma/create-client';
 import { GoogleAIEnricher } from '../../lib/enrichers/google-ai';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { isEnrichmentSkipped } from '../../lib/fetchers/generic-foreign-rss';
+import { isHighQuality } from '../../lib/enrichers/strategies/quality';
 
 const prisma = createPrismaClient();
 const enricher = new GoogleAIEnricher();
@@ -80,17 +81,32 @@ async function enrichSingleArticle(articleId: string) {
       const isSummaryEligible =
         article.skipReason !== 'PDF' && article.skipReason !== 'SLIDE';
 
+      // skipReason / summaryError のクリアは、collect-feeds.ts / enrich-thin-content.ts
+      // と同一の受入基準（500文字以上は無条件、250-499文字は isHighQuality 必須）を
+      // 満たす場合に限る。GoogleAIEnricher は300文字未満でも本文を返しうるため、
+      // 基準なしでクリアすると、要約生成の対象になったものの本文が短すぎて
+      // THIN_CONTENT が再設定される、という無駄な往復が発生する。
+      //
+      // 一方、summary / detailedSummary / summaryVersion のリセットは基準に関わらず
+      // 行う。本文が差し替わった時点で旧本文由来の要約は無効であり、残すと
+      // 「新本文 + 旧要約」の不整合になるため。
+      const meetsSummaryQualityBar =
+        enrichedData.content.length >= 500 ||
+        (enrichedData.content.length >= 250 && isHighQuality(enrichedData.content));
+
       const { count } = await prisma.article.updateMany({
         where: { id: articleId, updatedAt: article.updatedAt },
         data: {
           content: enrichedData.content,
           ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail }),
           ...(isSummaryEligible && {
-            skipReason: null,
-            summaryError: null,
             summary: null,
             detailedSummary: null,
             summaryVersion: 0
+          }),
+          ...(isSummaryEligible && meetsSummaryQualityBar && {
+            skipReason: null,
+            summaryError: null
           })
         }
       });

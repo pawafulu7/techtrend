@@ -238,7 +238,6 @@ async function main() {
         }
         if (hasNewThumbnail) {
           console.error(`    - サムネイル: 取得成功`);
-          thumbnailCount++;
         }
 
         if (!options.dryRun) {
@@ -380,6 +379,10 @@ async function main() {
           if (casUpdated) {
             console.error(`  💾 データベース更新完了`);
             successCount++;
+            // CAS 敗北時はサムネイルも保存されないため、加算は更新成功後に行う
+            if (hasNewThumbnail) {
+              thumbnailCount++;
+            }
           } else if (supersededByOtherProcess) {
             console.error(`  ⏭️  スキップ: 読み込み後に他プロセスが本文・サムネイル等を更新した（または記事が削除された）ため、今回の取得結果は反映しません`);
             skipCount++;
@@ -388,7 +391,11 @@ async function main() {
             concurrentUpdateSkipCount++;
           }
         } else {
+          // ドライラン: DB は更新しないが、取得できた件数として計上する
           successCount++;
+          if (hasNewThumbnail) {
+            thumbnailCount++;
+          }
         }
 
         // レート制限対策
