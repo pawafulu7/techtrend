@@ -7,9 +7,13 @@ describe('middleware - security headers', () => {
   afterEach(() => {
     process.env.NODE_ENV = originalEnv;
     delete process.env.BASIC_AUTH_ENABLED;
+    delete process.env.BASIC_AUTH_USER;
     delete process.env.BASIC_AUTH_PASS;
+    delete process.env.BASIC_PASSWORD;
+    delete process.env.BASIC_AUTH_GATE_SECRET;
     delete process.env.CRON_TOKEN;
     delete process.env.CRON_SECRET;
+    delete process.env.MAINTENANCE_MODE;
   });
 
   describe('Security headers設定', () => {
@@ -131,6 +135,7 @@ describe('middleware - security headers', () => {
     it('should maintain Basic Auth when enabled', async () => {
       process.env.BASIC_AUTH_ENABLED = 'true';
       process.env.BASIC_AUTH_PASS = 'secret';
+      process.env.BASIC_AUTH_GATE_SECRET = 'f'.repeat(64);
 
       const request = new NextRequest(new URL('http://localhost:3000/'));
       const response = await proxy(request);
@@ -142,6 +147,7 @@ describe('middleware - security headers', () => {
     it('should allow cron requests with valid CRON_SECRET without Basic Auth', async () => {
       process.env.BASIC_AUTH_ENABLED = 'true';
       process.env.BASIC_AUTH_PASS = 'secret';
+      process.env.BASIC_AUTH_GATE_SECRET = 'f'.repeat(64);
       process.env.CRON_TOKEN = 'test-cron-secret';
 
       const request = new NextRequest(new URL('http://localhost:3000/'));
@@ -177,6 +183,221 @@ describe('middleware - security headers', () => {
       // Verify both headers are set
       expect(response.headers.get('content-security-policy')).toBeDefined();
       expect(response.headers.get('x-theme')).toBeDefined();
+    });
+  });
+
+  describe('Basic 認証ゲート（署名付き Cookie）', () => {
+    const GATE_SECRET = 'f'.repeat(64);
+    const USER = 'user';
+    const PASS = 'secret';
+
+    const basicHeader = (user = USER, pass = PASS): string =>
+      `Basic ${Buffer.from(`${user}:${pass}`, 'utf8').toString('base64')}`;
+
+    const enableBasicAuth = (): void => {
+      process.env.BASIC_AUTH_ENABLED = 'true';
+      process.env.BASIC_AUTH_USER = USER;
+      process.env.BASIC_AUTH_PASS = PASS;
+      process.env.BASIC_AUTH_GATE_SECRET = GATE_SECRET;
+    };
+
+    /** レスポンスの Set-Cookie から `name=value` の部分だけを取り出す */
+    const gateCookiePair = (response: Response): string | null => {
+      const setCookie = response.headers.get('set-cookie');
+      return setCookie ? setCookie.split(';')[0] : null;
+    };
+
+    const requestWith = (
+      path: string,
+      headers: Record<string, string> = {},
+      origin = 'http://localhost:3000'
+    ): NextRequest =>
+      new NextRequest(new URL(`${origin}${path}`), { headers });
+
+    it('M1: 認証情報なしなら charset 付き challenge と no-store を返し Cookie は発行しない', async () => {
+      enableBasicAuth();
+
+      const response = await proxy(requestWith('/'));
+
+      expect(response.status).toBe(401);
+      expect(response.headers.get('WWW-Authenticate')).toBe(
+        'Basic realm="Protected", charset="UTF-8"'
+      );
+      expect(response.headers.get('Cache-Control')).toBe('no-store');
+      expect(response.headers.get('set-cookie')).toBeNull();
+      expect(response.headers.get('Content-Security-Policy')).toBeTruthy();
+    });
+
+    it('M2: Basic 認証成功でゲート Cookie を発行する', async () => {
+      enableBasicAuth();
+
+      const response = await proxy(
+        requestWith('/', { authorization: basicHeader() })
+      );
+
+      expect(response.status).not.toBe(401);
+      const setCookie = response.headers.get('set-cookie');
+      expect(setCookie).toContain('tt_gate=');
+      expect(setCookie).toContain('HttpOnly');
+      expect(setCookie).toContain('SameSite=Lax');
+      expect(setCookie).toContain('Path=/');
+      expect(setCookie).toContain('Max-Age=604800');
+      expect(setCookie).not.toContain('Domain');
+      // Set-Cookie を含む応答は共有キャッシュに載せない
+      expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    });
+
+    it('M3: 有効なゲート Cookie だけで通り、Cookie は再発行されない', async () => {
+      enableBasicAuth();
+      const issued = await proxy(
+        requestWith('/', { authorization: basicHeader() })
+      );
+      const cookie = gateCookiePair(issued);
+      expect(cookie).toBeTruthy();
+
+      const response = await proxy(requestWith('/', { cookie: cookie! }));
+
+      expect(response.status).not.toBe(401);
+      expect(response.headers.get('set-cookie')).toBeNull();
+    });
+
+    it('M4: 改ざんしたゲート Cookie だけなら 401', async () => {
+      enableBasicAuth();
+
+      const response = await proxy(
+        requestWith('/', { cookie: 'tt_gate=v1.9999999999.tampered' })
+      );
+
+      expect(response.status).toBe(401);
+    });
+
+    it('M5: 改ざん Cookie でも正しい Basic があれば通り Cookie を上書きする', async () => {
+      enableBasicAuth();
+
+      const response = await proxy(
+        requestWith('/', {
+          cookie: 'tt_gate=v1.9999999999.tampered',
+          authorization: basicHeader(),
+        })
+      );
+
+      expect(response.status).not.toBe(401);
+      expect(response.headers.get('set-cookie')).toContain('tt_gate=');
+    });
+
+    it('M6: cron Bearer ではゲート Cookie を発行しない', async () => {
+      enableBasicAuth();
+      process.env.CRON_TOKEN = 'test-cron-secret';
+
+      const response = await proxy(
+        requestWith('/', { authorization: 'Bearer test-cron-secret' })
+      );
+
+      expect(response.status).not.toBe(401);
+      expect(response.headers.get('set-cookie')).toBeNull();
+    });
+
+    it('M7: メンテナンス 503 の経路でもゲート Cookie を発行する', async () => {
+      enableBasicAuth();
+      process.env.MAINTENANCE_MODE = 'true';
+
+      const response = await proxy(
+        requestWith('/', { authorization: basicHeader() })
+      );
+
+      expect(response.status).toBe(503);
+      expect(response.headers.get('set-cookie')).toContain('tt_gate=');
+    });
+
+    it('M8: ログインリダイレクトの経路でもゲート Cookie を発行する', async () => {
+      enableBasicAuth();
+
+      const response = await proxy(
+        requestWith('/profile', { authorization: basicHeader() })
+      );
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toContain('/auth/login');
+      expect(response.headers.get('set-cookie')).toContain('tt_gate=');
+    });
+
+    it('M9: 保護 API の 401 ではセキュリティヘッダが付き Cookie は発行しない', async () => {
+      enableBasicAuth();
+
+      const response = await proxy(
+        requestWith('/api/favorites', { authorization: basicHeader() })
+      );
+
+      expect(response.status).toBe(401);
+      expect(response.headers.get('Content-Security-Policy')).toBeTruthy();
+      // /api/* は公開キャッシュヘッダを返す経路があるため Cookie を載せない
+      expect(response.headers.get('set-cookie')).toBeNull();
+    });
+
+    it('M10: /api/* にはゲート Cookie を発行しない', async () => {
+      enableBasicAuth();
+
+      const response = await proxy(
+        requestWith('/api/stats', { authorization: basicHeader() })
+      );
+
+      expect(response.status).not.toBe(401);
+      expect(response.headers.get('set-cookie')).toBeNull();
+    });
+
+    it('M11: 有効化されているのにパスワードが未設定なら 503（fail-closed）', async () => {
+      process.env.BASIC_AUTH_ENABLED = 'true';
+      process.env.BASIC_AUTH_GATE_SECRET = GATE_SECRET;
+
+      const response = await proxy(requestWith('/'));
+
+      expect(response.status).toBe(503);
+      expect(response.headers.get('set-cookie')).toBeNull();
+      expect(response.headers.get('Cache-Control')).toBe('no-store');
+    });
+
+    it('M12: 署名鍵が未設定なら 503（fail-closed）', async () => {
+      process.env.BASIC_AUTH_ENABLED = 'true';
+      process.env.BASIC_AUTH_PASS = PASS;
+
+      const response = await proxy(requestWith('/'));
+
+      expect(response.status).toBe(503);
+    });
+
+    it('M13: Basic 認証 OFF ならゲート Cookie を一切発行しない', async () => {
+      const response = await proxy(requestWith('/'));
+
+      expect(response.status).not.toBe(401);
+      expect(response.headers.get('set-cookie')).toBeNull();
+    });
+
+    it('M14: production かつ HTTPS では __Host- prefix と Secure が付く', async () => {
+      process.env.NODE_ENV = 'production';
+      enableBasicAuth();
+
+      const response = await proxy(
+        requestWith('/', { authorization: basicHeader() }, 'https://example.com')
+      );
+
+      const setCookie = response.headers.get('set-cookie');
+      expect(setCookie).toContain('__Host-tt_gate=');
+      expect(setCookie).toContain('Secure');
+      expect(setCookie).toContain('Path=/');
+      expect(setCookie).not.toContain('Domain');
+    });
+
+    it('M15: development かつ HTTP では prefix も Secure も付かない', async () => {
+      enableBasicAuth();
+
+      const response = await proxy(
+        requestWith('/', { authorization: basicHeader() })
+      );
+
+      const setCookie = response.headers.get('set-cookie');
+      expect(setCookie).toContain('tt_gate=');
+      expect(setCookie).not.toContain('__Host-');
+      expect(setCookie).not.toContain('Secure');
     });
   });
 });
