@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { compareSecrets } from '@/lib/utils/compare-secrets';
+import {
+  BASIC_AUTH_CHALLENGE,
+  buildGateSetCookie,
+  evaluateGate,
+} from '@/lib/auth/basic-auth-gate';
 import { getThemeFromCookie } from '@/lib/cookies/theme-cookie';
 import { setSecurityHeaders } from '@/config/security-headers';
 import {
@@ -8,38 +12,6 @@ import {
   requiresCSRFProtection,
 } from '@/lib/middleware/csrf-protection';
 import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
-
-// Optional Basic Auth (enabled when env is set)
-function needsBasicAuth(): boolean {
-  const enabled = process.env.BASIC_AUTH_ENABLED === 'true';
-  const hasCreds = !!(process.env.BASIC_AUTH_PASS || process.env.BASIC_PASSWORD);
-  return enabled && hasCreds;
-}
-
-function checkBasicAuth(request: NextRequest): boolean {
-  // Allow cron requests with valid CRON_SECRET Bearer token
-  const cronSecret = process.env.CRON_TOKEN || process.env.CRON_SECRET;
-  if (cronSecret) {
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring('Bearer '.length) : undefined;
-    if (token && compareSecrets(token, cronSecret)) return true;
-  }
-
-  const user = process.env.BASIC_AUTH_USER || 'user';
-  const pass = process.env.BASIC_AUTH_PASS || process.env.BASIC_PASSWORD || '';
-
-  const header = request.headers.get('authorization');
-  if (!header || !header.startsWith('Basic ')) return false;
-
-  try {
-    const base64 = header.split(' ')[1] || '';
-    const decoded = atob(base64);
-    const [u, p] = decoded.split(':');
-    return u === user && p === pass;
-  } catch {
-    return false;
-  }
-}
 
 // メンテナンスモードの除外パス判定
 // メンテ中でも通常応答するパス: API・管理者ログイン・メンテ画面自身・静的アセット。
@@ -87,16 +59,47 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Site-wide Basic Auth
-  if (needsBasicAuth()) {
-    const ok = checkBasicAuth(request);
-    if (!ok) {
-      return new NextResponse('Unauthorized', {
-        status: 401,
-        headers: { 'WWW-Authenticate': 'Basic realm="Protected"' },
-      });
-    }
+  // Site-wide Basic Auth（認証済み状態は署名付きゲート Cookie で保持する）
+  const gate = evaluateGate(request);
+
+  if (gate.kind === 'misconfigured') {
+    // fail-closed: BASIC_AUTH_ENABLED=true なのに資格情報 or 署名鍵が欠けている設定ミス。
+    // 認証を黙って無効化してサイトが全公開になるより、明示的に止める方が安全。
+    const misconfiguredRes = new NextResponse('Service Unavailable', {
+      status: 503,
+      headers: { 'Cache-Control': 'no-store' },
+    });
+    setSecurityHeaders(misconfiguredRes, request);
+    return misconfiguredRes;
   }
+
+  if (gate.kind === 'fail') {
+    const challengeRes = new NextResponse('Unauthorized', {
+      status: 401,
+      headers: {
+        'WWW-Authenticate': BASIC_AUTH_CHALLENGE,
+        'Cache-Control': 'no-store',
+      },
+    });
+    setSecurityHeaders(challengeRes, request);
+    return challengeRes;
+  }
+
+  // ゲート通過後の全 return をここに通す。
+  // Cookie を最後の NextResponse.next() にだけ付けると、初回アクセスがメンテナンス 503 や
+  // ログインリダイレクトに落ちた場合に発行されず、再入力の症状がそのまま残る。
+  const finalize = <T extends NextResponse>(response: T): T => {
+    if (gate.kind === 'basic' && !pathname.startsWith('/api/')) {
+      response.headers.append('Set-Cookie', buildGateSetCookie(request));
+      // Set-Cookie を含む応答が共有キャッシュに載らないようにする
+      // （app/api/stats 等が public, s-maxage と CDN-Cache-Control を返すため、
+      //   API を除外したうえでさらに二重に防ぐ）
+      response.headers.set('Cache-Control', 'private, no-store');
+      response.headers.delete('CDN-Cache-Control');
+    }
+    setSecurityHeaders(response, request);
+    return response;
+  };
 
   // Maintenance Mode: 管理者以外をメンテナンス画面（HTTP 503）に切り替える。
   // OFF（未設定 or 'true' 以外）のときは getSession を呼ばず既存フローを維持する。
@@ -127,7 +130,7 @@ export async function proxy(request: NextRequest) {
     // セッション Cookie が無ければ未認証＝非管理者確定。getSession/DB を呼ばず即 503 に倒す
     // （メンテ中の未認証アクセスで毎回 DB セッション検索が走るのを防ぐ）。
     if (!request.cookies.get(AUTH_COOKIES.sessionToken)) {
-      return await respondMaintenance();
+      return finalize(await respondMaintenance());
     }
 
     try {
@@ -148,12 +151,12 @@ export async function proxy(request: NextRequest) {
       }
 
       if (!isAdmin) {
-        return await respondMaintenance();
+        return finalize(await respondMaintenance());
       }
     } catch {
       // フェイルセーフ: session/DB 取得失敗時は 500 ではなくメンテ画面（503）に倒す。
       // （getUserAuthData は Redis 失敗は握るが DB query 例外は握らないため、ここで捕捉する）
-      return await respondMaintenance();
+      return finalize(await respondMaintenance());
     }
   }
 
@@ -173,23 +176,19 @@ export async function proxy(request: NextRequest) {
     if (!sessionCookie) {
       // APIルートの場合は401を返す
       if (isProtectedApiPath) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
+        return finalize(
+          NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         );
       }
 
       // ページの場合はログインページにリダイレクト
       const url = new URL('/auth/login', request.url);
       url.searchParams.set('callbackUrl', pathname);
-      return NextResponse.redirect(url);
+      return finalize(NextResponse.redirect(url));
     }
   }
 
   const response = NextResponse.next();
-
-  // セキュリティヘッダ設定（Phase 2: 並行運用検証）
-  setSecurityHeaders(response, request);
 
   // テーマCookieの処理
   const theme = getThemeFromCookie(request);
@@ -197,7 +196,8 @@ export async function proxy(request: NextRequest) {
   // レスポンスヘッダーにテーマ情報を追加（デバッグ用）
   response.headers.set('x-theme', theme);
 
-  return response;
+  // セキュリティヘッダ設定とゲート Cookie 発行は finalize がまとめて行う
+  return finalize(response);
 }
 
 export const config = {
