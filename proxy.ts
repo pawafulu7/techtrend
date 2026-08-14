@@ -3,6 +3,7 @@ import {
   BASIC_AUTH_CHALLENGE,
   buildGateSetCookie,
   evaluateGate,
+  type GateEnv,
 } from '@/lib/auth/basic-auth-gate';
 import { getThemeFromCookie } from '@/lib/cookies/theme-cookie';
 import { setSecurityHeaders } from '@/config/security-headers';
@@ -12,6 +13,23 @@ import {
   requiresCSRFProtection,
 } from '@/lib/middleware/csrf-protection';
 import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
+
+// Basic 認証ゲートの設定値。lib/ 配下は process.env の直接参照を ESLint で禁止しており、
+// env.ts はモジュールロード時に一度だけ parse するため、ここ（proxy.ts）で都度読んで渡す。
+function readGateEnv(): GateEnv {
+  return {
+    enabled: process.env.BASIC_AUTH_ENABLED,
+    user: process.env.BASIC_AUTH_USER,
+    pass: process.env.BASIC_AUTH_PASS,
+    legacyPass: process.env.BASIC_PASSWORD,
+    gateSecret: process.env.BASIC_AUTH_GATE_SECRET,
+    cronSecret: process.env.CRON_TOKEN || process.env.CRON_SECRET,
+  };
+}
+
+// 設定不備は全リクエストが 503 になる重大事象なので必ず気づけるようにする。
+// ただしリクエスト毎に出すとログが溢れるため、プロセスにつき一度だけ出力する。
+let gateMisconfigurationLogged = false;
 
 // メンテナンスモードの除外パス判定
 // メンテ中でも通常応答するパス: API・管理者ログイン・メンテ画面自身・静的アセット。
@@ -49,22 +67,21 @@ const protectedApiPaths = [
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // CSRF Protection for API routes
-  if (pathname.startsWith('/api/')) {
-    if (requiresCSRFProtection(request.method) && !isCSRFExemptPath(pathname)) {
-      const csrfResponse = await csrfProtection(request);
-      if (csrfResponse) {
-        return csrfResponse;
-      }
-    }
-  }
-
   // Site-wide Basic Auth（認証済み状態は署名付きゲート Cookie で保持する）
-  const gate = evaluateGate(request);
+  // サイト全体のゲートなので CSRF より外側で評価する。未認証リクエストのために
+  // CSRF 側のセッション照会（DB アクセス）を走らせないためでもある。
+  const gateEnv = readGateEnv();
+  const gate = evaluateGate(request, gateEnv);
 
   if (gate.kind === 'misconfigured') {
-    // fail-closed: BASIC_AUTH_ENABLED=true なのに資格情報 or 署名鍵が欠けている設定ミス。
+    // fail-closed: Basic 認証が有効なのに設定が不完全。
     // 認証を黙って無効化してサイトが全公開になるより、明示的に止める方が安全。
+    if (!gateMisconfigurationLogged) {
+      gateMisconfigurationLogged = true;
+      console.error(
+        `[proxy] Basic 認証が有効ですが設定が不完全なため全リクエストを 503 にしています: ${gate.reason}`
+      );
+    }
     const misconfiguredRes = new NextResponse('Service Unavailable', {
       status: 503,
       headers: { 'Cache-Control': 'no-store' },
@@ -90,7 +107,7 @@ export async function proxy(request: NextRequest) {
   // ログインリダイレクトに落ちた場合に発行されず、再入力の症状がそのまま残る。
   const finalize = <T extends NextResponse>(response: T): T => {
     if (gate.kind === 'basic' && !pathname.startsWith('/api/')) {
-      response.headers.append('Set-Cookie', buildGateSetCookie(request));
+      response.headers.append('Set-Cookie', buildGateSetCookie(request, gateEnv));
       // Set-Cookie を含む応答が共有キャッシュに載らないようにする
       // （app/api/stats 等が public, s-maxage と CDN-Cache-Control を返すため、
       //   API を除外したうえでさらに二重に防ぐ）
@@ -100,6 +117,16 @@ export async function proxy(request: NextRequest) {
     setSecurityHeaders(response, request);
     return response;
   };
+
+  // CSRF Protection for API routes
+  if (pathname.startsWith('/api/')) {
+    if (requiresCSRFProtection(request.method) && !isCSRFExemptPath(pathname)) {
+      const csrfResponse = await csrfProtection(request);
+      if (csrfResponse) {
+        return finalize(csrfResponse);
+      }
+    }
+  }
 
   // Maintenance Mode: 管理者以外をメンテナンス画面（HTTP 503）に切り替える。
   // OFF（未設定 or 'true' 以外）のときは getSession を呼ばず既存フローを維持する。

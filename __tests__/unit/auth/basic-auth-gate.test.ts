@@ -4,11 +4,24 @@ import {
   buildGateSetCookie,
   evaluateGate,
   gateCookieName,
+  type GateEnv,
 } from '@/lib/auth/basic-auth-gate';
 
 const SECRET = 'f'.repeat(64);
 const USER = 'tester';
 const PASS = 'correct-horse';
+
+function gateEnv(overrides: Partial<GateEnv> = {}): GateEnv {
+  return {
+    enabled: 'true',
+    user: USER,
+    pass: PASS,
+    legacyPass: undefined,
+    gateSecret: SECRET,
+    cronSecret: undefined,
+    ...overrides,
+  };
+}
 
 function basicHeader(user: string, pass: string, scheme = 'Basic'): string {
   return `${scheme} ${Buffer.from(`${user}:${pass}`, 'utf8').toString('base64')}`;
@@ -23,8 +36,8 @@ function makeRequest(
 }
 
 /** buildGateSetCookie が返す Set-Cookie 文字列から Cookie の値だけを取り出す */
-function issueCookieValue(request = makeRequest()): string {
-  const setCookie = buildGateSetCookie(request);
+function issueCookieValue(env: GateEnv = gateEnv()): string {
+  const setCookie = buildGateSetCookie(makeRequest(), env);
   const nameValue = setCookie.split(';')[0];
   return nameValue.slice(nameValue.indexOf('=') + 1);
 }
@@ -40,37 +53,27 @@ function requestWithCookie(value: string, authorization?: string): NextRequest {
 describe('basic-auth-gate', () => {
   const originalNodeEnv = process.env.NODE_ENV;
 
-  beforeEach(() => {
-    process.env.BASIC_AUTH_ENABLED = 'true';
-    process.env.BASIC_AUTH_USER = USER;
-    process.env.BASIC_AUTH_PASS = PASS;
-    process.env.BASIC_AUTH_GATE_SECRET = SECRET;
-  });
-
   afterEach(() => {
     jest.restoreAllMocks();
     process.env.NODE_ENV = originalNodeEnv;
-    delete process.env.BASIC_AUTH_ENABLED;
-    delete process.env.BASIC_AUTH_USER;
-    delete process.env.BASIC_AUTH_PASS;
-    delete process.env.BASIC_PASSWORD;
-    delete process.env.BASIC_AUTH_GATE_SECRET;
-    delete process.env.CRON_TOKEN;
-    delete process.env.CRON_SECRET;
   });
 
   describe('ゲート Cookie の署名と検証', () => {
     it('U1: 署名した Cookie は検証を通る', () => {
-      const outcome = evaluateGate(requestWithCookie(issueCookieValue()));
+      const outcome = evaluateGate(
+        requestWithCookie(issueCookieValue()),
+        gateEnv()
+      );
       expect(outcome.kind).toBe('cookie');
     });
 
     it('U2: 署名を改ざんした Cookie は拒否される', () => {
-      const value = issueCookieValue();
-      const parts = value.split('.');
+      const parts = issueCookieValue().split('.');
       parts[2] = `${parts[2].slice(0, -1)}${parts[2].endsWith('A') ? 'B' : 'A'}`;
 
-      expect(evaluateGate(requestWithCookie(parts.join('.'))).kind).toBe('fail');
+      expect(
+        evaluateGate(requestWithCookie(parts.join('.')), gateEnv()).kind
+      ).toBe('fail');
     });
 
     it('U3: 有効期限を過ぎた Cookie は拒否される', () => {
@@ -78,41 +81,54 @@ describe('basic-auth-gate', () => {
       jest.spyOn(Date, 'now').mockReturnValue(issuedAt);
       const value = issueCookieValue();
 
-      // 発行直後は通る
-      expect(evaluateGate(requestWithCookie(value)).kind).toBe('cookie');
+      expect(evaluateGate(requestWithCookie(value), gateEnv()).kind).toBe(
+        'cookie'
+      );
 
       // TTL は 7 日。8 日後には失効している
-      jest.spyOn(Date, 'now').mockReturnValue(issuedAt + 8 * 24 * 60 * 60 * 1000);
-      expect(evaluateGate(requestWithCookie(value)).kind).toBe('fail');
+      jest
+        .spyOn(Date, 'now')
+        .mockReturnValue(issuedAt + 8 * 24 * 60 * 60 * 1000);
+      expect(evaluateGate(requestWithCookie(value), gateEnv()).kind).toBe(
+        'fail'
+      );
     });
 
     it('U4: フォーマットバージョンが異なる Cookie は拒否される', () => {
-      const value = issueCookieValue();
-      const parts = value.split('.');
+      const parts = issueCookieValue().split('.');
       parts[0] = 'v0';
 
-      expect(evaluateGate(requestWithCookie(parts.join('.'))).kind).toBe('fail');
+      expect(
+        evaluateGate(requestWithCookie(parts.join('.')), gateEnv()).kind
+      ).toBe('fail');
     });
 
     it('U5: パスワード変更後は既存 Cookie が失効する', () => {
       const value = issueCookieValue();
-      process.env.BASIC_AUTH_PASS = 'rotated-password';
 
-      expect(evaluateGate(requestWithCookie(value)).kind).toBe('fail');
+      expect(
+        evaluateGate(requestWithCookie(value), gateEnv({ pass: 'rotated' })).kind
+      ).toBe('fail');
     });
 
     it('U6: ユーザー名変更後は既存 Cookie が失効する', () => {
       const value = issueCookieValue();
-      process.env.BASIC_AUTH_USER = 'someone-else';
 
-      expect(evaluateGate(requestWithCookie(value)).kind).toBe('fail');
+      expect(
+        evaluateGate(requestWithCookie(value), gateEnv({ user: 'someone-else' }))
+          .kind
+      ).toBe('fail');
     });
 
     it('U7: 署名鍵のローテーション後は既存 Cookie が失効する', () => {
       const value = issueCookieValue();
-      process.env.BASIC_AUTH_GATE_SECRET = '0'.repeat(64);
 
-      expect(evaluateGate(requestWithCookie(value)).kind).toBe('fail');
+      expect(
+        evaluateGate(
+          requestWithCookie(value),
+          gateEnv({ gateSecret: '0'.repeat(64) })
+        ).kind
+      ).toBe('fail');
     });
 
     it('U8: 有効期限が壊れた Cookie は例外を投げずに拒否される', () => {
@@ -128,31 +144,41 @@ describe('basic-auth-gate', () => {
       ];
 
       for (const value of malformed) {
-        expect(() => evaluateGate(requestWithCookie(value))).not.toThrow();
-        expect(evaluateGate(requestWithCookie(value)).kind).toBe('fail');
+        expect(() =>
+          evaluateGate(requestWithCookie(value), gateEnv())
+        ).not.toThrow();
+        expect(evaluateGate(requestWithCookie(value), gateEnv()).kind).toBe(
+          'fail'
+        );
       }
     });
   });
 
   describe('Basic ヘッダのパース', () => {
     it('U9: 非 ASCII のパスワードで認証できる', () => {
-      process.env.BASIC_AUTH_PASS = 'パスワード🔐';
-      const headers = { authorization: basicHeader(USER, 'パスワード🔐') };
+      const pass = 'パスワード🔐';
+      const headers = { authorization: basicHeader(USER, pass) };
 
-      expect(evaluateGate(makeRequest({ headers })).kind).toBe('basic');
+      expect(
+        evaluateGate(makeRequest({ headers }), gateEnv({ pass })).kind
+      ).toBe('basic');
     });
 
     it('U10: コロンを含むパスワードで認証できる', () => {
-      process.env.BASIC_AUTH_PASS = 'a:b:c';
-      const headers = { authorization: basicHeader(USER, 'a:b:c') };
+      const pass = 'a:b:c';
+      const headers = { authorization: basicHeader(USER, pass) };
 
-      expect(evaluateGate(makeRequest({ headers })).kind).toBe('basic');
+      expect(
+        evaluateGate(makeRequest({ headers }), gateEnv({ pass })).kind
+      ).toBe('basic');
     });
 
     it('U11: スキーム名は大文字小文字を区別しない', () => {
       for (const scheme of ['Basic', 'basic', 'BASIC', 'BaSiC']) {
         const headers = { authorization: basicHeader(USER, PASS, scheme) };
-        expect(evaluateGate(makeRequest({ headers })).kind).toBe('basic');
+        expect(evaluateGate(makeRequest({ headers }), gateEnv()).kind).toBe(
+          'basic'
+        );
       }
     });
 
@@ -163,75 +189,132 @@ describe('basic-auth-gate', () => {
         `Basic ${Buffer.from('no-colon-here', 'utf8').toString('base64')}`,
         `Basic ${Buffer.from(`${USER}:${PASS}`, 'utf8').toString('base64')} extra`,
         'Basic dXNlcjpwYX!!', // 長さは 4 の倍数だが Base64 の文字種ではない
-        'Basic dXNlcjpwYXNz=', // padding 位置が不正（長さが 4 の倍数でない）
+        'Basic dXNlcjpwYXNz=', // 長さが 4 の倍数でない
         'Bearer something',
       ];
 
       for (const authorization of invalid) {
-        expect(evaluateGate(makeRequest({ headers: { authorization } })).kind).toBe(
-          'fail'
-        );
+        expect(
+          evaluateGate(makeRequest({ headers: { authorization } }), gateEnv())
+            .kind
+        ).toBe('fail');
       }
     });
 
     it('U13: 不正な UTF-8 バイト列は拒否される', () => {
       const token = Buffer.from([0x75, 0x3a, 0xff, 0xfe]).toString('base64');
+      const headers = { authorization: `Basic ${token}` };
 
-      expect(
-        evaluateGate(makeRequest({ headers: { authorization: `Basic ${token}` } }))
-          .kind
-      ).toBe('fail');
+      expect(evaluateGate(makeRequest({ headers }), gateEnv()).kind).toBe(
+        'fail'
+      );
     });
 
     it('U14: 制御文字を含む資格情報は拒否される', () => {
-      const passWithControlChar = `pa${String.fromCharCode(0x01)}ss`;
-      process.env.BASIC_AUTH_PASS = passWithControlChar;
-      const headers = { authorization: basicHeader(USER, passWithControlChar) };
+      // 設定値と入力値は一致しているが、制御文字を含むためパース段階で拒否される
+      const pass = `pa${String.fromCharCode(0x01)}ss`;
+      const headers = { authorization: basicHeader(USER, pass) };
 
-      expect(evaluateGate(makeRequest({ headers })).kind).toBe('fail');
+      expect(
+        evaluateGate(makeRequest({ headers }), gateEnv({ pass })).kind
+      ).toBe('fail');
+    });
+
+    it('U20: 設定値が NFD でも NFC で送られた資格情報と一致する', () => {
+      // NFD の「パ」（ハ + 半濁点）。RFC 7617 は charset="UTF-8" 時に NFC を期待する
+      const nfdPass = String.fromCharCode(0x30cf, 0x309a);
+      const nfcPass = nfdPass.normalize('NFC');
+      expect(nfdPass).not.toBe(nfcPass);
+
+      const headers = { authorization: basicHeader(USER, nfcPass) };
+
+      expect(
+        evaluateGate(makeRequest({ headers }), gateEnv({ pass: nfdPass })).kind
+      ).toBe('basic');
     });
 
     it('パスワードが違えば拒否される', () => {
       const headers = { authorization: basicHeader(USER, 'wrong') };
-      expect(evaluateGate(makeRequest({ headers })).kind).toBe('fail');
+      expect(evaluateGate(makeRequest({ headers }), gateEnv()).kind).toBe(
+        'fail'
+      );
     });
 
     it('ユーザー名が違えば拒否される', () => {
       const headers = { authorization: basicHeader('wrong', PASS) };
-      expect(evaluateGate(makeRequest({ headers })).kind).toBe('fail');
+      expect(evaluateGate(makeRequest({ headers }), gateEnv()).kind).toBe(
+        'fail'
+      );
+    });
+  });
+
+  describe('BASIC_AUTH_ENABLED の解釈', () => {
+    it('U21: 表記揺れでも有効と判定する', () => {
+      for (const enabled of ['true', 'TRUE', ' true ', 'True']) {
+        expect(evaluateGate(makeRequest(), gateEnv({ enabled })).kind).toBe(
+          'fail'
+        );
+      }
+    });
+
+    it('U22: 未設定・空文字・false は無効と判定する', () => {
+      for (const enabled of [undefined, '', '  ', 'false', 'FALSE']) {
+        expect(evaluateGate(makeRequest(), gateEnv({ enabled })).kind).toBe(
+          'disabled'
+        );
+      }
+    });
+
+    it('U23: true/false 以外の値は設定ミスとして fail-closed にする', () => {
+      for (const enabled of ['ture', '1', 'yes', 'on']) {
+        expect(evaluateGate(makeRequest(), gateEnv({ enabled })).kind).toBe(
+          'misconfigured'
+        );
+      }
     });
   });
 
   describe('設定不備（fail-closed）', () => {
     it('U15: 有効化されているのにパスワードが未設定なら misconfigured', () => {
-      delete process.env.BASIC_AUTH_PASS;
+      const outcome = evaluateGate(
+        makeRequest(),
+        gateEnv({ pass: undefined, legacyPass: undefined })
+      );
 
-      expect(evaluateGate(makeRequest()).kind).toBe('misconfigured');
+      expect(outcome.kind).toBe('misconfigured');
+      expect(outcome.kind === 'misconfigured' && outcome.reason).toContain(
+        'BASIC_AUTH_PASS'
+      );
     });
 
     it('U16: 署名鍵が未設定または短すぎれば misconfigured', () => {
-      delete process.env.BASIC_AUTH_GATE_SECRET;
-      expect(evaluateGate(makeRequest()).kind).toBe('misconfigured');
+      const missing = evaluateGate(
+        makeRequest(),
+        gateEnv({ gateSecret: undefined })
+      );
+      expect(missing.kind).toBe('misconfigured');
+      expect(missing.kind === 'misconfigured' && missing.reason).toContain(
+        'BASIC_AUTH_GATE_SECRET'
+      );
 
-      process.env.BASIC_AUTH_GATE_SECRET = 'a'.repeat(31);
-      expect(evaluateGate(makeRequest()).kind).toBe('misconfigured');
+      expect(
+        evaluateGate(makeRequest(), gateEnv({ gateSecret: 'a'.repeat(31) })).kind
+      ).toBe('misconfigured');
 
-      process.env.BASIC_AUTH_GATE_SECRET = 'a'.repeat(32);
-      expect(evaluateGate(makeRequest()).kind).toBe('fail');
-    });
-
-    it('BASIC_AUTH_ENABLED が未設定ならゲートは無効', () => {
-      delete process.env.BASIC_AUTH_ENABLED;
-
-      expect(evaluateGate(makeRequest()).kind).toBe('disabled');
+      expect(
+        evaluateGate(makeRequest(), gateEnv({ gateSecret: 'a'.repeat(32) })).kind
+      ).toBe('fail');
     });
 
     it('BASIC_PASSWORD（旧名）でも設定済みとみなす', () => {
-      delete process.env.BASIC_AUTH_PASS;
-      process.env.BASIC_PASSWORD = PASS;
       const headers = { authorization: basicHeader(USER, PASS) };
 
-      expect(evaluateGate(makeRequest({ headers })).kind).toBe('basic');
+      expect(
+        evaluateGate(
+          makeRequest({ headers }),
+          gateEnv({ pass: undefined, legacyPass: PASS })
+        ).kind
+      ).toBe('basic');
     });
   });
 
@@ -242,49 +325,52 @@ describe('basic-auth-gate', () => {
         basicHeader(USER, PASS)
       );
 
-      expect(evaluateGate(request).kind).toBe('basic');
+      expect(evaluateGate(request, gateEnv()).kind).toBe('basic');
     });
 
     it('U18: 旧パスワード由来の Cookie でも新しい Basic があれば basic として通る', () => {
       const staleCookie = issueCookieValue();
-      process.env.BASIC_AUTH_PASS = 'rotated-password';
+      const rotated = gateEnv({ pass: 'rotated-password' });
       const request = requestWithCookie(
         staleCookie,
         basicHeader(USER, 'rotated-password')
       );
 
-      expect(evaluateGate(request).kind).toBe('basic');
+      expect(evaluateGate(request, rotated).kind).toBe('basic');
     });
   });
 
   describe('cron Bearer', () => {
     it('U19: 資格情報が欠落していても cron は通る', () => {
-      delete process.env.BASIC_AUTH_PASS;
-      delete process.env.BASIC_AUTH_GATE_SECRET;
-      process.env.CRON_TOKEN = 'cron-token-value';
       const headers = { authorization: 'Bearer cron-token-value' };
+      const env = gateEnv({
+        pass: undefined,
+        legacyPass: undefined,
+        gateSecret: undefined,
+        cronSecret: 'cron-token-value',
+      });
 
-      expect(evaluateGate(makeRequest({ headers })).kind).toBe('cron');
+      expect(evaluateGate(makeRequest({ headers }), env).kind).toBe('cron');
     });
 
-    it('CRON_SECRET（旧名）でも通る', () => {
-      process.env.CRON_SECRET = 'legacy-cron-secret';
+    it('スキーム名は大文字小文字を区別しない', () => {
       const headers = { authorization: 'bearer legacy-cron-secret' };
+      const env = gateEnv({ cronSecret: 'legacy-cron-secret' });
 
-      expect(evaluateGate(makeRequest({ headers })).kind).toBe('cron');
+      expect(evaluateGate(makeRequest({ headers }), env).kind).toBe('cron');
     });
 
     it('トークンが違えば cron として扱わない', () => {
-      process.env.CRON_TOKEN = 'cron-token-value';
       const headers = { authorization: 'Bearer wrong-token' };
+      const env = gateEnv({ cronSecret: 'cron-token-value' });
 
-      expect(evaluateGate(makeRequest({ headers })).kind).toBe('fail');
+      expect(evaluateGate(makeRequest({ headers }), env).kind).toBe('fail');
     });
   });
 
   describe('Cookie 属性', () => {
     it('development / HTTP では prefix なし・Secure なし', () => {
-      const setCookie = buildGateSetCookie(makeRequest());
+      const setCookie = buildGateSetCookie(makeRequest(), gateEnv());
 
       expect(setCookie).toContain('tt_gate=');
       expect(setCookie).not.toContain('__Host-');
@@ -298,7 +384,8 @@ describe('basic-auth-gate', () => {
 
     it('HTTPS なら Secure が付く', () => {
       const setCookie = buildGateSetCookie(
-        makeRequest({ url: 'https://example.com/' })
+        makeRequest({ url: 'https://example.com/' }),
+        gateEnv()
       );
 
       expect(setCookie).toContain('Secure');
@@ -307,7 +394,8 @@ describe('basic-auth-gate', () => {
     it('production では __Host- prefix が付く', () => {
       process.env.NODE_ENV = 'production';
       const setCookie = buildGateSetCookie(
-        makeRequest({ url: 'https://example.com/' })
+        makeRequest({ url: 'https://example.com/' }),
+        gateEnv()
       );
 
       expect(gateCookieName()).toBe('__Host-tt_gate');
@@ -319,6 +407,8 @@ describe('basic-auth-gate', () => {
   });
 
   it('challenge は RFC 7617 の charset を通知する', () => {
-    expect(BASIC_AUTH_CHALLENGE).toBe('Basic realm="Protected", charset="UTF-8"');
+    expect(BASIC_AUTH_CHALLENGE).toBe(
+      'Basic realm="Protected", charset="UTF-8"'
+    );
   });
 });

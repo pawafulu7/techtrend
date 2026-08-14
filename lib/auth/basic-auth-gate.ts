@@ -10,9 +10,9 @@ import { compareSecrets } from '@/lib/utils/compare-secrets';
  * 再表示される事象が発生）。そこで認証成功時に HMAC 署名付き Cookie を発行し、以降は
  * Cookie で通すことでブラウザ実装差への依存をなくす。
  *
- * 設定値は proxy.ts と同様に process.env から都度読む。lib/config/env.ts はモジュール
- * ロード時に一度だけ parse するため、テストが実行時に process.env を書き換える方式と
- * 両立しない。
+ * 環境変数はこのモジュールでは読まず、呼び出し元（proxy.ts）が GateEnv として渡す。
+ * lib/config/env.ts はモジュールロード時に一度だけ parse するためテストの実行時書き換えと
+ * 両立せず、かつ lib/ 配下は process.env の直接参照を ESLint で禁止しているため。
  */
 
 /** Cookie フォーマットのバージョン。値の意味を変えたらインクリメントして旧 Cookie を一括失効させる */
@@ -28,13 +28,29 @@ const MIN_GATE_SECRET_LENGTH = 32;
 /** RFC 7617: charset を通知しないと非 ASCII 資格情報の相互運用性が保証されない */
 export const BASIC_AUTH_CHALLENGE = 'Basic realm="Protected", charset="UTF-8"';
 
+/** 呼び出し元が読み出して渡す環境変数の生値 */
+export interface GateEnv {
+  /** BASIC_AUTH_ENABLED */
+  enabled: string | undefined;
+  /** BASIC_AUTH_USER */
+  user: string | undefined;
+  /** BASIC_AUTH_PASS */
+  pass: string | undefined;
+  /** BASIC_PASSWORD（旧名） */
+  legacyPass: string | undefined;
+  /** BASIC_AUTH_GATE_SECRET */
+  gateSecret: string | undefined;
+  /** CRON_TOKEN または CRON_SECRET */
+  cronSecret: string | undefined;
+}
+
 export type GateOutcome =
   /** Basic 認証 OFF。ゲートは何もしない */
   | { kind: 'disabled' }
   /** cron Bearer 一致。通すが Cookie は発行しない */
   | { kind: 'cron' }
-  /** 有効化されているのに資格情報 or 署名鍵が欠落。fail-closed で 503 */
-  | { kind: 'misconfigured' }
+  /** 有効化されているのに設定が不完全。fail-closed で 503 */
+  | { kind: 'misconfigured'; reason: string }
   /** 有効なゲート Cookie。通すが Cookie は再発行しない */
   | { kind: 'cookie' }
   /** Basic 認証成功。通してゲート Cookie を発行（＝旧 Cookie を上書き）する */
@@ -42,24 +58,47 @@ export type GateOutcome =
   /** 401 challenge を返す */
   | { kind: 'fail' };
 
-interface GateConfig {
+interface ResolvedConfig {
   user: string;
   pass: string;
   secret: string;
 }
 
-function readConfig(): GateConfig {
+/**
+ * RFC 7617 は charset="UTF-8" を通知した場合に NFC を期待する。設定値と受信値の双方を
+ * NFC に揃えないと、見た目が同じ資格情報でも合成形/分解形の違いで認証に失敗する。
+ */
+function resolveConfig(gateEnv: GateEnv): ResolvedConfig {
   return {
-    user: process.env.BASIC_AUTH_USER || 'user',
-    pass: process.env.BASIC_AUTH_PASS || process.env.BASIC_PASSWORD || '',
-    secret: process.env.BASIC_AUTH_GATE_SECRET || '',
+    user: (gateEnv.user || 'user').normalize('NFC'),
+    pass: (gateEnv.pass || gateEnv.legacyPass || '').normalize('NFC'),
+    secret: gateEnv.gateSecret || '',
   };
 }
 
-function isConfigured(config: GateConfig): boolean {
-  return (
-    config.pass.length > 0 && config.secret.length >= MIN_GATE_SECRET_LENGTH
-  );
+type EnabledState = 'on' | 'off' | 'invalid';
+
+/**
+ * env.ts の booleanEnum と同じく trim + lowercase で判定する。
+ * 'TRUE' や ' true ' を OFF と誤判定してサイトが全公開になるのを防ぐ。
+ * true/false 以外の値は設定ミスとして fail-closed 側に倒す。
+ */
+function readEnabledState(raw: string | undefined): EnabledState {
+  if (raw === undefined) return 'off';
+
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === '' || normalized === 'false') return 'off';
+  if (normalized === 'true') return 'on';
+  return 'invalid';
+}
+
+function missingSettings(config: ResolvedConfig): string[] {
+  const missing: string[] = [];
+  if (config.pass.length === 0) missing.push('BASIC_AUTH_PASS');
+  if (config.secret.length < MIN_GATE_SECRET_LENGTH) {
+    missing.push(`BASIC_AUTH_GATE_SECRET (${MIN_GATE_SECRET_LENGTH}文字以上)`);
+  }
+  return missing;
 }
 
 /**
@@ -78,13 +117,13 @@ export function gateCookieName(): string {
  *
  * user の長さを前置して user="a:b", pass="c" と user="a", pass="b:c" を区別する。
  */
-function credentialFingerprint(config: GateConfig): string {
+function credentialFingerprint(config: ResolvedConfig): string {
   return createHash('sha256')
     .update(`${config.user.length}:${config.user}:${config.pass}`, 'utf8')
     .digest('hex');
 }
 
-function sign(exp: number, config: GateConfig): string {
+function sign(exp: number, config: ResolvedConfig): string {
   const message = `${GATE_COOKIE_VERSION}.${exp}.${credentialFingerprint(config)}`;
   return createHmac('sha256', config.secret)
     .update(message, 'utf8')
@@ -93,7 +132,7 @@ function sign(exp: number, config: GateConfig): string {
 
 function verifyGateCookie(
   value: string | undefined,
-  config: GateConfig
+  config: ResolvedConfig
 ): boolean {
   if (!value) return false;
 
@@ -125,8 +164,11 @@ function isSecureRequest(request: NextRequest): boolean {
  * cookies API が実装されておらず、テストが実行時エラーになるため。
  * 自前でシリアライズすることで __Host- prefix の要件（Domain を出力しない）も確実に守れる。
  */
-export function buildGateSetCookie(request: NextRequest): string {
-  const config = readConfig();
+export function buildGateSetCookie(
+  request: NextRequest,
+  gateEnv: GateEnv
+): string {
+  const config = resolveConfig(gateEnv);
   const exp = Math.floor(Date.now() / 1000) + GATE_TTL_SEC;
   const value = `${GATE_COOKIE_VERSION}.${exp}.${sign(exp, config)}`;
 
@@ -150,7 +192,6 @@ export function buildGateSetCookie(request: NextRequest): string {
 /** 標準 Base64（padding 込み）のみを許容する */
 const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
 
-// eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F]/;
 
 /**
@@ -184,6 +225,7 @@ interface BasicCredentials {
  * - スキーム名は case-insensitive
  * - token は単一（余分なトークンがあれば不正）
  * - 最初の ':' より後ろが全て password。user-id に ':' は含められない
+ * - charset="UTF-8" を通知しているため NFC に正規化する
  */
 function parseBasicHeader(header: string | null): BasicCredentials | null {
   if (!header) return null;
@@ -200,15 +242,16 @@ function parseBasicHeader(header: string | null): BasicCredentials | null {
   const user = decoded.slice(0, separator);
   const pass = decoded.slice(separator + 1);
 
-  if (CONTROL_CHAR_PATTERN.test(user) || CONTROL_CHAR_PATTERN.test(pass))
+  if (CONTROL_CHAR_PATTERN.test(user) || CONTROL_CHAR_PATTERN.test(pass)) {
     return null;
+  }
 
-  return { user, pass };
+  return { user: user.normalize('NFC'), pass: pass.normalize('NFC') };
 }
 
 function matchesBasicCredentials(
   header: string | null,
-  config: GateConfig
+  config: ResolvedConfig
 ): boolean {
   const parsed = parseBasicHeader(header);
   if (!parsed) return false;
@@ -219,8 +262,10 @@ function matchesBasicCredentials(
   return userMatches && passMatches;
 }
 
-function matchesCronBearer(header: string | null): boolean {
-  const cronSecret = process.env.CRON_TOKEN || process.env.CRON_SECRET;
+function matchesCronBearer(
+  header: string | null,
+  cronSecret: string | undefined
+): boolean {
   if (!cronSecret) return false;
 
   const match = /^Bearer[ \t]+([^ \t]+)[ \t]*$/i.exec(header ?? '');
@@ -234,7 +279,7 @@ function matchesCronBearer(header: string | null): boolean {
  *
  * 1. Basic 認証 OFF → disabled
  * 2. cron Bearer → cron（設定不備チェックより前。ゲートの設定ミスでバッチを止めないため）
- * 3. 資格情報 or 署名鍵の欠落 → misconfigured（fail-closed）
+ * 3. 設定が不完全 → misconfigured（fail-closed）
  * 4. 有効なゲート Cookie → cookie
  * 5. 正しい Basic ヘッダ → basic
  * 6. → fail
@@ -242,15 +287,32 @@ function matchesCronBearer(header: string | null): boolean {
  * 4 が失敗しても打ち切らずに 5 へ進むのが重要。ここで終端すると、不正・失効した Cookie を
  * 持つ利用者が正しい資格情報を入力しても Cookie を上書きできず 401 ループに陥る。
  */
-export function evaluateGate(request: NextRequest): GateOutcome {
-  if (process.env.BASIC_AUTH_ENABLED !== 'true') return { kind: 'disabled' };
+export function evaluateGate(
+  request: NextRequest,
+  gateEnv: GateEnv
+): GateOutcome {
+  const enabled = readEnabledState(gateEnv.enabled);
+  if (enabled === 'off') return { kind: 'disabled' };
 
   const authHeader = request.headers.get('authorization');
+  if (matchesCronBearer(authHeader, gateEnv.cronSecret))
+    return { kind: 'cron' };
 
-  if (matchesCronBearer(authHeader)) return { kind: 'cron' };
+  if (enabled === 'invalid') {
+    return {
+      kind: 'misconfigured',
+      reason: 'BASIC_AUTH_ENABLED には true または false のみ指定できます',
+    };
+  }
 
-  const config = readConfig();
-  if (!isConfigured(config)) return { kind: 'misconfigured' };
+  const config = resolveConfig(gateEnv);
+  const missing = missingSettings(config);
+  if (missing.length > 0) {
+    return {
+      kind: 'misconfigured',
+      reason: `未設定または不正な環境変数: ${missing.join(', ')}`,
+    };
+  }
 
   if (verifyGateCookie(request.cookies.get(gateCookieName())?.value, config)) {
     return { kind: 'cookie' };
