@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-query';
 import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
 import { FilterSidebarToggle } from '@/app/components/home/filter-sidebar';
+import { MobileSearchToggle } from '@/app/components/common/mobile-search-toggle';
 import { SearchBox } from '@/app/components/common/search-box';
 import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { SortButtons } from '@/app/components/common/sort-buttons';
@@ -248,7 +249,10 @@ function ReaderClientInner({
       {/* Toolbar */}
       <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-[var(--tt-color-border)] px-4 py-2">
         <FilterSidebarToggle />
-        <SearchBox />
+        <MobileSearchToggle />
+        <div className="hidden lg:block">
+          <SearchBox />
+        </div>
         <TagFilterDropdown tags={tags} />
         <SortButtons />
       </div>

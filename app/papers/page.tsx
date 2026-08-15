@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { FileText } from 'lucide-react';
+import { MobileSearchToggle } from '@/app/components/common/mobile-search-toggle';
 import { SearchBox } from '@/app/components/common/search-box';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { SortButtons } from '@/app/components/common/sort-buttons';
@@ -55,7 +56,8 @@ export default async function PapersPage({ searchParams }: PageProps) {
                 </div>
               </div>
 
-              <div className="ml-4 flex items-center gap-2">
+              <div className="ml-4 flex flex-wrap items-center gap-2">
+                <MobileSearchToggle />
                 <div className="hidden lg:block">
                   <SearchBox />
                 </div>

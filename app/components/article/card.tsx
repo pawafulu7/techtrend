@@ -186,8 +186,17 @@ export function ArticleCard({
         ) : null}
       </div>
 
-      {/* Action buttons - visible on hover (desktop) or always visible (touch devices) */}
-      <div className="pointer-events-auto absolute right-2 bottom-2 flex items-center gap-1 opacity-100 transition-opacity duration-200 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100">
+      {/*
+        Action buttons: single element, layout switches at sm breakpoint.
+        - <sm (mobile): normal-flow footer row below the summary, always visible -> never overlaps content.
+        - >=sm (desktop): absolute overlay bottom-right, revealed on hover OR keyboard focus (group-focus-within).
+      */}
+      <div
+        className={cn(
+          'pointer-events-auto static mt-1 flex min-h-[44px] items-center justify-end gap-1 opacity-100 transition-opacity duration-200 sm:pointer-events-none sm:absolute sm:right-2 sm:bottom-2 sm:mt-0 sm:px-0 sm:opacity-0 sm:group-focus-within:pointer-events-auto sm:group-focus-within:opacity-100 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100',
+          hasTopThumbnail && 'px-4'
+        )}
+      >
         {votes > 0 && (
           <BadgeV2
             variant="secondary"

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
+import { MobileSearchToggle } from '@/app/components/common/mobile-search-toggle';
 import { SearchBox } from '@/app/components/common/search-box';
 import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
@@ -157,6 +158,7 @@ export default async function Home({ searchParams }: PageProps) {
               initialSourceIds={initialSourceIds}
               initialIsAuthenticated={!!session?.user}
             />
+            <MobileSearchToggle />
             <div className="hidden lg:block">
               <SearchBox />
             </div>
