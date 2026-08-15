@@ -94,7 +94,7 @@ export function MarkAllReadButton({
         size="sm"
         onClick={handleMarkAllRead}
         disabled={disabled || isMarking || unreadCount === 0}
-        className="relative flex items-center gap-2"
+        className="relative items-center gap-2"
         title="全ての未読記事を既読にする"
       >
         <CheckCheck className="h-4 w-4" />

@@ -311,7 +311,7 @@ export function ArticleDetailDialog({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex items-center gap-1"
+                      className="items-center gap-1"
                     >
                       {isContentOpen ? '折りたたむ' : '本文を表示'}
                       <ChevronDown

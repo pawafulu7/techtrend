@@ -3,7 +3,12 @@
 import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -342,7 +347,7 @@ export function PopularArticles({
                     variant="ghost"
                     size="sm"
                     asChild
-                    className="flex h-11 w-11 items-center justify-center p-0"
+                    className="h-11 w-11 items-center justify-center p-0"
                   >
                     <a
                       href={article.url}
