@@ -191,7 +191,14 @@ export function FavoriteButton({
         const response = await fetch(`/api/favorites/${articleId}`, {
           method: newState ? 'POST' : 'DELETE',
         });
-        if (response.ok) {
+        // 409 = 既に登録済み / 404 = 既に未登録。どちらもサーバーの状態は
+        // newState と一致しているので、成功と同じ扱いにする（ロールバックすると
+        // 実状態と UI が食い違う）
+        const alreadyInDesiredState =
+          (newState && response.status === 409) ||
+          (!newState && response.status === 404);
+
+        if (response.ok || alreadyInDesiredState) {
           // API成功時にイベント発火（React Queryキャッシュ同期用）
           window.dispatchEvent(
             new CustomEvent('article-favorite-changed', {
@@ -203,7 +210,9 @@ export function FavoriteButton({
             })
           );
         } else {
-          throw new Error('Failed to toggle favorite');
+          throw new Error(
+            `Failed to toggle favorite (HTTP ${response.status})`
+          );
         }
       } catch (error) {
         // HTTP エラーとネットワーク例外の双方でロールバックする（旧実装は
@@ -244,6 +253,7 @@ export function FavoriteButton({
         data-testid="favorite-button"
       >
         <Heart
+          aria-hidden="true"
           className={cn(
             'h-4 w-4 transition-colors',
             isFavorited && 'fill-[var(--tt-color-negative)]',
@@ -273,8 +283,14 @@ export function FavoriteButton({
         className
       )}
       data-testid="favorite-button"
+      // showText が false のときはハートアイコンだけになり、支援技術に
+      // 目的が伝わらない（axe の button-name 違反）。compact モードと同じく
+      // 常にアクセシブル名を持たせる
+      aria-label={isFavorited ? 'お気に入りから削除' : 'お気に入りに追加'}
+      aria-pressed={isFavorited}
     >
       <Heart
+        aria-hidden="true"
         className={cn(
           'h-4 w-4 transition-colors',
           outline
