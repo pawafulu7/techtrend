@@ -156,6 +156,10 @@ describe('middleware - security headers', () => {
 
       expect(response.status).not.toBe(401);
       expect(response.headers.get('Content-Security-Policy')).toBeDefined();
+      // not.toBe(401) だけでは設定不備の 503 も成功として通ってしまうため、
+      // ゲートを通過したときだけ finalize が付与するヘッダで確認する。
+      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vary')).toContain('Authorization');
     });
 
     // ゲートと API 側でシークレットの選択規則が一致していることを固定する。
@@ -174,6 +178,8 @@ describe('middleware - security headers', () => {
       const response = await proxy(request);
 
       expect(response.status).not.toBe(401);
+      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vary')).toContain('Authorization');
     });
 
     it('should accept a lowercase bearer scheme for cron requests', async () => {
@@ -187,6 +193,8 @@ describe('middleware - security headers', () => {
       const response = await proxy(request);
 
       expect(response.status).not.toBe(401);
+      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vary')).toContain('Authorization');
     });
 
     it('should redirect to login for protected paths without session', async () => {

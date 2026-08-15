@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { type Handler } from '@/lib/middleware/with-cron-or-admin-auth';
 import { extractBearerToken } from '@/lib/auth/authorization-header';
 import { compareSecrets } from '@/lib/utils/compare-secrets';
+import { resolveCronSecret } from '@/lib/auth/cron-secret';
 import { env } from '@/lib/config/env';
 
 /**
@@ -29,7 +30,7 @@ import { env } from '@/lib/config/env';
 export function withEmbeddingWorkerAuth(handler: Handler): Handler {
   return async (request: NextRequest, context?: any) => {
     // 上記 docblock 参照: フォールバックであって「両方有効」ではない
-    const cronSecret = env.CRON_TOKEN || env.CRON_SECRET;
+    const cronSecret = resolveCronSecret(env.CRON_TOKEN, env.CRON_SECRET);
     if (cronSecret) {
       const bearer = extractBearerToken(request.headers.get('authorization'));
       if (bearer && compareSecrets(bearer, cronSecret)) {

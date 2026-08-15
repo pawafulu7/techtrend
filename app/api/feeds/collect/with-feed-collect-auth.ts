@@ -5,6 +5,7 @@ import {
 } from '@/lib/middleware/with-cron-or-admin-auth';
 import { extractBearerToken } from '@/lib/auth/authorization-header';
 import { compareSecrets } from '@/lib/utils/compare-secrets';
+import { resolveCronSecret } from '@/lib/auth/cron-secret';
 import logger from '@/lib/logger';
 import { env } from '@/lib/config/env';
 
@@ -16,7 +17,7 @@ function checkTokenParam(
   const tokenParam = request.nextUrl.searchParams.get('token');
   if (!tokenParam) return null;
 
-  const cronSecret = env.CRON_TOKEN || env.CRON_SECRET || '';
+  const cronSecret = resolveCronSecret(env.CRON_TOKEN, env.CRON_SECRET) ?? '';
   if (!cronSecret || !compareSecrets(tokenParam, cronSecret)) {
     // ?token= が存在して無効な場合は即401（フォールスルーしない）
     return Promise.resolve(
@@ -59,7 +60,7 @@ export function withFeedCollectTokenAuth(handler: Handler): Handler {
     if (tokenResult) return tokenResult;
 
     // Bearer token チェック（admin session は許可しない）
-    const cronSecret = env.CRON_TOKEN || env.CRON_SECRET;
+    const cronSecret = resolveCronSecret(env.CRON_TOKEN, env.CRON_SECRET);
     if (cronSecret) {
       const bearer = extractBearerToken(request.headers.get('authorization'));
       if (bearer && compareSecrets(bearer, cronSecret)) {
