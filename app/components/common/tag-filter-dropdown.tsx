@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { TagFilter } from './tag-filter';
 import { cn } from '@/lib/utils';
+import { clearTransientFilterParams } from '@/lib/utils/url/filter-params';
 
 interface TagFilterDropdownProps {
   tags: Array<{
@@ -101,8 +102,7 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
                   const params = new URLSearchParams(searchParams.toString());
                   params.delete('tags');
                   params.delete('tagMode');
-                  params.delete('page');
-                  params.delete('article'); // フィルタ変更時は選択中記事（reader用）をクリアする
+                  clearTransientFilterParams(params);
                   const qs = params.toString();
                   router.replace(qs ? `${pathname}?${qs}` : pathname);
                 }}

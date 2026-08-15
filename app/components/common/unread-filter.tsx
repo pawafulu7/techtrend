@@ -10,6 +10,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import {
+  buildFilterUrl,
+  clearTransientFilterParams,
+} from '@/lib/utils/url/filter-params';
 
 type ReadFilterMode = 'all' | 'unread' | 'read';
 
@@ -30,12 +34,11 @@ export function UnreadFilter() {
       params.set('readFilter', mode);
     }
 
-    // ページをリセット
-    params.delete('page');
+    // ページと /reader の選択中記事をリセット
+    clearTransientFilterParams(params);
 
     // 現在のパスを維持する（他の一覧画面から使われても離脱しないように）
-    const qs = params.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname);
+    router.push(buildFilterUrl(pathname, params));
   };
 
   const getIcon = (mode: ReadFilterMode) => {

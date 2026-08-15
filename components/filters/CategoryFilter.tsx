@@ -12,6 +12,10 @@ import {
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { Layers, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  buildFilterUrl,
+  clearTransientFilterParams,
+} from '@/lib/utils/url/filter-params';
 
 interface Category {
   value: string | null;
@@ -76,12 +80,11 @@ export default function CategoryFilter() {
         params.set('category', value);
       }
 
-      // Reset to page 1 when changing category
-      params.delete('page');
+      // Reset to page 1 when changing category (+ /reader の選択中記事を解除)
+      clearTransientFilterParams(params);
 
       // パスを固定すると /reader でカテゴリを選んだ瞬間にホームへ離脱する
-      const qs = params.toString();
-      router.push(qs ? `${pathname}?${qs}` : pathname);
+      router.push(buildFilterUrl(pathname, params));
     });
   };
 

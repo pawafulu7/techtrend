@@ -20,6 +20,10 @@ import {
 } from '@/components/ui/select';
 import { useMediaQuery } from '@/app/hooks/use-media-query';
 import { DATE_RANGE_OPTIONS, getDateRangeLabel } from '@/app/lib/date-utils';
+import {
+  buildFilterUrl,
+  clearTransientFilterParams,
+} from '@/lib/utils/url/filter-params';
 
 interface DateRangeFilterProps {
   className?: string;
@@ -110,7 +114,8 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     params.delete('dateRange');
     params.delete('dateFrom');
     params.delete('dateTo');
-    params.delete('page');
+    // ページと /reader の選択中記事をリセット
+    clearTransientFilterParams(params);
 
     // Set new params
     for (const [key, value] of Object.entries(updates)) {
@@ -119,10 +124,8 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
       }
     }
 
-    const queryString = params.toString();
     // パスを固定すると /reader で日付を選んだ瞬間にホームへ離脱する
-    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
-    router.push(newUrl);
+    router.push(buildFilterUrl(pathname, params));
   }
 
   async function saveFilterPreference(prefs: {

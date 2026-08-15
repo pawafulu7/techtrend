@@ -98,6 +98,7 @@ export function ReaderClient({ tags }: ReaderClientProps) {
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
     const dateRange = searchParams.get('dateRange');
+    const category = searchParams.get('category');
 
     if (sortBy) params.sortBy = sortBy;
     if (sortOrder) params.sortOrder = sortOrder;
@@ -109,6 +110,9 @@ export function ReaderClient({ tags }: ReaderClientProps) {
     if (dateFrom) params.dateFrom = dateFrom;
     if (dateTo) params.dateTo = dateTo;
     if (dateRange) params.dateRange = dateRange;
+    // category を拾わないと、フィルタパネルでカテゴリを選んでも URL だけ変わって
+    // 一覧が変化しない（API 側は category を受け付ける）
+    if (category) params.category = category;
 
     return params;
   }, [searchParams]);

@@ -31,8 +31,10 @@ const DEFAULT_PREFERENCES: UserCategoryPreferences = {
 // =============================================================================
 
 export const PERSONALIZATION_QUERY_KEYS = {
-  preferences: (scope: PreferenceScope = 'home') =>
-    ['personalization-preferences', scope] as const,
+  // userId をキーに含める: 含めないとセッション失効や同一 SPA 内でのユーザー
+  // 切り替え後に、前のユーザーの設定がキャッシュから返ってしまう
+  preferences: (scope: PreferenceScope = 'home', userId?: string | null) =>
+    ['personalization-preferences', scope, userId ?? 'anonymous'] as const,
   categories: ['interest-categories'] as const,
 };
 
@@ -151,7 +153,7 @@ export function useUserPreferences(scope: PreferenceScope = 'home') {
     authClient.useSession();
 
   return useQuery({
-    queryKey: PERSONALIZATION_QUERY_KEYS.preferences(scope),
+    queryKey: PERSONALIZATION_QUERY_KEYS.preferences(scope, session?.user?.id),
     queryFn: () => fetchPreferences(scope),
     // 未認証では 401 が確定しているため呼ばない（ゲストのホーム表示で毎回
     // /api/user/preferences/categories が 401 を返していた）。
@@ -170,6 +172,7 @@ export function useUserPreferences(scope: PreferenceScope = 'home') {
  * Hook for updating user's category preferences
  */
 export function useUpdatePreferences(scope: PreferenceScope = 'home') {
+  const { data: session } = authClient.useSession();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -182,7 +185,7 @@ export function useUpdatePreferences(scope: PreferenceScope = 'home') {
 
       // Update cache after successful mutation
       queryClient.setQueryData<UserCategoryPreferences>(
-        PERSONALIZATION_QUERY_KEYS.preferences(scope),
+        PERSONALIZATION_QUERY_KEYS.preferences(scope, session?.user?.id),
         (old) => ({
           ...old,
           selectedCategories,

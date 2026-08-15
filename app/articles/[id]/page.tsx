@@ -32,7 +32,8 @@ interface PageProps {
     id: string;
   }>;
   searchParams: Promise<{
-    from?: string;
+    // Next.js は同名パラメータが複数あると配列を渡す（?from=/a&from=/b）
+    from?: string | string[];
   }>;
 }
 
@@ -55,20 +56,29 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   const [{ id }, { from }] = await Promise.all([params, searchParams]);
 
   // セキュリティ: fromパラメータの検証
-  const getReturnUrl = (fromParam: string | undefined): string => {
-    if (!fromParam) return '/';
+  const getReturnUrl = (fromParam: string | string[] | undefined): string => {
+    // 同名パラメータが複数ある場合 Next.js は配列を渡す。文字列以外は破棄する
+    if (typeof fromParam !== 'string' || !fromParam) return '/';
 
     // 特定のキーワードから適切なURLへマッピング
     if (fromParam === 'digest') return '/digest';
 
     // searchParams は Next.js が既に 1 回 decode 済み。
     // ここで再度 decodeURIComponent すると `search=C%2B%2B` が `search=C++` になり、
-    // 戻り先で URLSearchParams が `+` を空白と解釈してフィルタ条件が壊れる
-    // 相対パスのみ許可（`//` はプロトコル相対 URL なので外部遷移になり得る）
-    if (fromParam.startsWith('/') && !fromParam.startsWith('//')) {
-      return fromParam;
+    // 戻り先で URLSearchParams が `+` を空白と解釈してフィルタ条件が壊れる。
+    //
+    // 検証は文字列の前方一致ではなく URL パーサに任せる。`startsWith('/') &&
+    // !startsWith('//')` だけでは `/\evil.example` を通してしまい、WHATWG URL の
+    // 正規化でバックスラッシュが `/` 扱いになる結果 https://evil.example/ への
+    // オープンリダイレクトになる。同一オリジンに解決されたものだけを許可する。
+    try {
+      const base = 'http://internal.invalid';
+      const resolved = new URL(fromParam, base);
+      if (resolved.origin !== base) return '/';
+      return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+    } catch {
+      return '/';
     }
-    return '/';
   };
 
   const returnUrl = getReturnUrl(from);

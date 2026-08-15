@@ -183,6 +183,8 @@ export function TagCloud({
               size="sm"
               onClick={() => refetch()}
               disabled={isFetching}
+              aria-label="タグクラウドを再取得"
+              title="再取得"
             >
               <RefreshCw
                 className={cn('h-4 w-4', isFetching && 'animate-spin')}

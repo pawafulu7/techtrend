@@ -49,7 +49,8 @@ export default async function PapersPage({ searchParams }: PageProps) {
         <section aria-label="論文一覧" className="flex-1 lg:flex lg:flex-col">
           {/* ツールバー */}
           <div className="flex-shrink-0 border-b border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] px-4 py-2 lg:px-6">
-            <div className="flex items-center justify-between">
+            {/* 検索パネル展開時に全幅の行として折り返せるよう flex-wrap にする */}
+            <div className="flex flex-wrap items-center justify-between gap-y-2">
               <div className="flex flex-shrink-0 items-center gap-2">
                 <div className="flex items-center gap-2 text-[var(--tt-color-info)]">
                   <FileText className="h-5 w-5" />

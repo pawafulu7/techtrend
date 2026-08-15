@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,9 @@ export function FavoriteButton({
   const [isLoadingInitial, setIsLoadingInitial] = useState(
     fetchInitialStatus && !isControlled
   );
+  // 初期 GET の世代。トグルや他インスタンスからの同期が入った後に古い GET が
+  // 返ってきても、その結果で状態を巻き戻さないための番兵
+  const stateGenerationRef = useRef(0);
 
   const isFavorited = isControlled ? initialFavorited : uncontrolledFavorited;
 
@@ -66,6 +69,7 @@ export function FavoriteButton({
     }
 
     const abortController = new AbortController();
+    const generationAtRequest = stateGenerationRef.current;
 
     const fetchStatus = async () => {
       try {
@@ -76,7 +80,10 @@ export function FavoriteButton({
         });
         if (response.ok) {
           const data = await response.json();
-          setUncontrolledFavorited(data.isFavorited);
+          // GET 発行後にトグル or 同期イベントが起きていたら、その結果を優先する
+          if (generationAtRequest === stateGenerationRef.current) {
+            setUncontrolledFavorited(data.isFavorited);
+          }
         }
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
@@ -124,6 +131,7 @@ export function FavoriteButton({
         event as CustomEvent<{ articleId: string; isFavorited: boolean }>
       ).detail;
       if (!detail || detail.articleId !== articleId) return;
+      stateGenerationRef.current += 1;
       setUncontrolledFavorited(detail.isFavorited);
     };
 
@@ -173,6 +181,7 @@ export function FavoriteButton({
       // スタンドアロン使用の場合は直接APIを呼び出す
       // 楽観的更新
       const newState = !isFavorited;
+      stateGenerationRef.current += 1;
       setUncontrolledFavorited(newState);
 
       try {

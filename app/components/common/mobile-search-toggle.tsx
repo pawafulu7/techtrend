@@ -42,7 +42,9 @@ export function MobileSearchToggle() {
         <div
           id={panelId}
           ref={panelRef}
-          className="w-full lg:hidden"
+          // basis-full: 親が flex-wrap のとき自分だけで 1 行を占有し、
+          // 右カラム内の狭い領域に閉じ込められないようにする
+          className="w-full basis-full lg:hidden"
           data-testid="mobile-search-panel"
         >
           <SearchBox fullWidth />

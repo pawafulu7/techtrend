@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui-v2/button-v2';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { clearTransientFilterParams } from '@/lib/utils/url/filter-params';
 
 interface SortButtonsProps {
   initialSortBy?: string;
@@ -34,8 +35,8 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
 
     const params = new URLSearchParams(searchParams.toString());
     params.set('sortBy', newSortBy);
-    params.delete('page'); // Reset to first page
-    params.delete('article'); // フィルタ変更時は選択中記事（reader用）をクリアする
+    // ページと /reader の選択中記事をリセット
+    clearTransientFilterParams(params);
 
     // 現在のパスを維持してURLパラメータを更新
     router.push(`${pathname}?${params.toString()}`);

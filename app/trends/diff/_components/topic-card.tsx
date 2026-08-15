@@ -128,6 +128,7 @@ export function HotTopicChip({
       {/* Quick action */}
       <Link
         href={`/?tags=${encodeURIComponent(change.topic)}&tagMode=OR`}
+        aria-label={`${change.topic} の記事を一覧で見る`}
         className={cn(
           // focus-visible を足さないとキーボード到達時に不可視のままになる
           'absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100',

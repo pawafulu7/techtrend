@@ -26,6 +26,10 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import {
+  buildFilterUrl,
+  clearTransientFilterParams,
+} from '@/lib/utils/url/filter-params';
 
 interface TagFilterProps {
   tags: Array<{
@@ -182,12 +186,11 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
       params.delete('tagMode');
     }
 
-    // ページ番号をリセット
-    params.delete('page');
+    // ページ番号と /reader の選択中記事をリセット
+    clearTransientFilterParams(params);
 
     // パスを固定すると /reader や /papers でタグを選んだ瞬間にホームへ離脱する
-    const qs = params.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname);
+    router.push(buildFilterUrl(pathname, params));
   };
 
   // タグの選択/選択解除

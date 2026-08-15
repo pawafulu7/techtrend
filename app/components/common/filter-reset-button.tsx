@@ -25,22 +25,22 @@ export function FilterResetButton() {
     // 2 本の DELETE は独立しているため、片方だけ成功する部分失敗があり得る。
     // その場合でも一部の Cookie は既に消えているので、成否にかかわらず
     // UI とサーバー状態を再同期する（旧実装は throw して再同期を飛ばしていた）
-    let failed = false;
-    try {
-      const responses = await Promise.all([
-        fetch('/api/filter-preferences', { method: 'DELETE' }),
-        fetch('/api/source-filter', { method: 'DELETE' }),
-      ]);
-      failed = responses.some((r) => !r.ok);
-      if (failed) {
-        console.error(
-          '[FilterResetButton] filter reset API returned non-OK:',
-          responses.map((r) => r.status)
-        );
-      }
-    } catch (err) {
-      console.error('Filter reset failed:', err);
-      failed = true;
+    // Promise.all は片方が reject した時点で先へ進んでしまい、もう一方の DELETE が
+    // 完了する前に再同期してしまう。allSettled で両方の決着を待つ
+    const results = await Promise.allSettled([
+      fetch('/api/filter-preferences', { method: 'DELETE' }),
+      fetch('/api/source-filter', { method: 'DELETE' }),
+    ]);
+    const failed = results.some(
+      (r) => r.status === 'rejected' || !r.value.ok
+    );
+    if (failed) {
+      console.error(
+        '[FilterResetButton] filter reset did not fully succeed:',
+        results.map((r) =>
+          r.status === 'rejected' ? `rejected: ${r.reason}` : r.value.status
+        )
+      );
     }
 
     // Clear view mode cookie (if exists) — API の成否に依存しない
