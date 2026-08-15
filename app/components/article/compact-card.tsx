@@ -1,6 +1,8 @@
 'use client';
 
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useMemo } from 'react';
+import Link from 'next/link';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Calendar, Download, Clock, ExternalLink } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
@@ -45,7 +47,8 @@ export function CompactCard({
   onTagClick,
 }: ArticleCardProps & { isRead?: boolean }) {
   const isRead = useReadStatus(article.id, initialIsRead);
-  const router = useRouter();
+  const router = useRouter(); // タグ遷移で使用
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   // Note: Use hook to avoid Date.now() during render (React Compiler purity rule)
@@ -57,31 +60,15 @@ export function CompactCard({
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
   const readingTime = getReadingTime(contentLength);
 
-  const navigateToArticle = () => {
-    if (onArticleClick) {
-      onArticleClick(article.id);
-    }
+  // 戻り先は「このカードが置かれている一覧」（`/` 固定だと /papers 等から
+  // 開いた記事の戻るがホームへ飛ぶ）
+  const articleHref = useMemo(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('returning', '1');
-    const returnUrl = `/?${params.toString()}`;
-    const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
-    router.push(articleUrl);
-  };
-
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Ignore clicks on buttons or interactive elements
-    if ((e.target as HTMLElement).closest('button, [role="button"]')) {
-      return;
-    }
-    navigateToArticle();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      navigateToArticle();
-    }
-  };
+    const query = params.toString();
+    const returnUrl = query ? `${pathname}?${query}` : pathname;
+    return `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
+  }, [article.id, pathname, searchParams]);
 
   const handleTagNavigation = (tagName: string) => {
     if (onTagClick) {
@@ -101,7 +88,7 @@ export function CompactCard({
     const remainingCount = article.tags.length - 1;
 
     return (
-      <div className="flex min-w-0 items-center gap-1">
+      <div className="relative z-10 flex min-w-0 items-center gap-1">
         <BadgeV2
           variant="outline"
           tabIndex={0}
@@ -134,17 +121,13 @@ export function CompactCard({
   return (
     <CardV2
       variant="hover"
-      tabIndex={0}
-      role="article"
-      aria-labelledby={`compact-title-${article.id}`}
       id={`article-${article.id}`}
       data-testid="compact-card"
       data-article-id={article.id}
-      onClick={handleCardClick}
-      onKeyDown={handleKeyDown}
       className={cn(
         'group relative flex min-h-[140px] cursor-pointer flex-col gap-1 p-3',
-        'focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+        // フォーカスリングはタイトル Link を包むコンテナ側で表現する
+        'focus-within:ring-2 focus-within:ring-(--tt-color-primary) focus-within:ring-offset-2',
         isNew
           ? 'border-t-2 border-t-[var(--tt-color-positive)]'
           : sourceColor?.borderLeft
@@ -220,14 +203,23 @@ export function CompactCard({
         )}
         data-testid="article-title"
       >
-        {article.translatedTitle || article.title}
+        <Link
+          href={articleHref}
+          prefetch={false}
+          onClick={() => onArticleClick?.(article.id)}
+          className="after:absolute after:inset-0 after:content-[''] focus:outline-none"
+          data-testid="article-title-link"
+        >
+          {article.translatedTitle || article.title}
+        </Link>
       </h3>
 
       {/* Tags */}
       {renderTags()}
 
       {/* Footer: ArticleCardと同じ構造 - 左=FavoriteButton、右=読了時間+元記事ボタン */}
-      <div className="mt-auto flex items-center justify-between pt-1">
+      {/* 擬似要素のクリック領域より上に載せる（付け漏れるとボタン操作が記事遷移に化ける） */}
+      <div className="relative z-10 mt-auto flex items-center justify-between pt-1">
         <FavoriteButton
           articleId={article.id}
           isFavorited={isFavorited}

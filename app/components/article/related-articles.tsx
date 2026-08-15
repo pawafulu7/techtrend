@@ -213,7 +213,7 @@ export function RelatedArticles({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="scrollbar-thin max-h-[600px] space-y-2 overflow-y-auto">
+      <CardContent className="max-h-[600px] scrollbar-thin space-y-2 overflow-y-auto">
         {displayArticles.map((article) => (
           <RelatedArticleItem key={article.id} article={article} />
         ))}
@@ -221,7 +221,7 @@ export function RelatedArticles({
         {hasMore && (
           <Button
             variant="ghost"
-            className="mt-2 flex w-full items-center gap-2"
+            className="mt-2 w-full items-center gap-2"
             onClick={() => setExpanded(!expanded)}
           >
             {expanded ? (

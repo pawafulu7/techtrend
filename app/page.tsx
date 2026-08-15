@@ -1,15 +1,13 @@
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
-import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
+import { MobileSearchToggle } from '@/app/components/common/mobile-search-toggle';
 import { SearchBox } from '@/app/components/common/search-box';
 import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { SortButtons } from '@/app/components/common/sort-buttons';
 import { getSession } from '@/lib/auth/get-session';
-import { features } from '@/config/features';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { PersonalizationToggle } from '@/app/components/personalization';
@@ -157,19 +155,14 @@ export default async function Home({ searchParams }: PageProps) {
               initialSourceIds={initialSourceIds}
               initialIsAuthenticated={!!session?.user}
             />
+            <MobileSearchToggle />
             <div className="hidden lg:block">
               <SearchBox />
             </div>
-            {features.aiSearch && session?.user && (
-              <Link
-                href="/search/agent"
-                className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap text-[var(--tt-color-info)] transition-colors hover:bg-[var(--tt-color-info-bg)] lg:flex"
-                title="AI検索"
-              >
-                <Sparkles className="h-4 w-4 flex-shrink-0" />
-                <span>AI検索</span>
-              </Link>
-            )}
+            {/* AI 検索リンクはヘッダーの primaryNav へ移設した（Issue #585）。
+                ここに残すとホーム上で同じリンクが 2 つ並び、支援技術にも
+                重複して読み上げられるため削除。デスクトップ限定だった導線も
+                ヘッダー経由で全ページ・全幅から到達できるようになっている */}
             <div className="hidden lg:block">
               <TagFilterDropdown tags={tags} />
             </div>
@@ -196,7 +189,8 @@ export default async function Home({ searchParams }: PageProps) {
             <FilterSidebarOverlay />
 
             {/* Article list - 常にフルワイド */}
-            <main className="flex h-full flex-col">
+            {/* RootLayout が <main> を持つため section にする（ランドマーク重複の解消） */}
+            <section aria-label="記事一覧" className="flex h-full flex-col">
               <Suspense
                 fallback={
                   <LoadingSpinner message="記事を読み込んでいます..." />
@@ -213,7 +207,7 @@ export default async function Home({ searchParams }: PageProps) {
                   excludeSources={ARXIV_SOURCE_ID}
                 />
               </Suspense>
-            </main>
+            </section>
           </div>
         </div>
       </div>

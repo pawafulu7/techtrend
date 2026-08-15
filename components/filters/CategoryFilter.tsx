@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useTransition, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Select,
   SelectContent,
@@ -12,6 +12,10 @@ import {
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { Layers, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  buildFilterUrl,
+  clearTransientFilterParams,
+} from '@/lib/utils/url/filter-params';
 
 interface Category {
   value: string | null;
@@ -26,6 +30,7 @@ interface CategoryStats {
 
 export default function CategoryFilter() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,10 +80,11 @@ export default function CategoryFilter() {
         params.set('category', value);
       }
 
-      // Reset to page 1 when changing category
-      params.delete('page');
+      // Reset to page 1 when changing category (+ /reader の選択中記事を解除)
+      clearTransientFilterParams(params);
 
-      router.push(`/?${params.toString()}`);
+      // パスを固定すると /reader でカテゴリを選んだ瞬間にホームへ離脱する
+      router.push(buildFilterUrl(pathname, params));
     });
   };
 

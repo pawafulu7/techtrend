@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Clock, TrendingUp, ExternalLink, Eye } from 'lucide-react';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
@@ -21,7 +22,8 @@ export function ArticleListItem({
   onToggleFavorite,
 }: ArticleListItemProps) {
   const isRead = useReadStatus(article.id, initialIsRead);
-  const router = useRouter();
+  const router = useRouter(); // タグ遷移で使用
+  const pathname = usePathname();
 
   // Note: Date.now() called in useEffect to avoid purity violations during render
   const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;
@@ -37,52 +39,31 @@ export function ArticleListItem({
   const searchParams = useSearchParams();
   const sourceColor = getSourceColor(article.source?.name || 'Unknown');
 
-  const handleClick = useCallback(
-    (_e: React.MouseEvent | React.KeyboardEvent) => {
-      if (onArticleClick) {
-        onArticleClick(article.id);
-      }
-
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('returning', '1');
-
-      const returnUrl = `/?${params.toString()}`;
-      const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
-
-      router.push(articleUrl);
-    },
-    [article.id, onArticleClick, searchParams, router]
-  );
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.target !== e.currentTarget) return;
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleClick(e);
-      }
-    },
-    [handleClick]
-  );
+  // 戻り先は「このカードが置かれている一覧」（`/` 固定だと /papers 等から
+  // 開いた記事の戻るがホームへ飛ぶ）
+  const articleHref = useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('returning', '1');
+    const query = params.toString();
+    const returnUrl = query ? `${pathname}?${query}` : pathname;
+    return `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
+  }, [article.id, pathname, searchParams]);
 
   return (
     <div
       id={`article-${article.id}`}
       data-article-id={article.id}
-      role="link"
-      tabIndex={0}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      aria-label={article.translatedTitle || article.title}
       className={cn(
-        'group flex cursor-pointer items-center justify-between gap-4 rounded-lg p-3',
+        // href を持たない role="link" は SR にリンク先を伝えられないため撤去し、
+        // タイトルを実リンクにする card-with-link へ移行。relative は擬似要素の基準
+        'group relative flex cursor-pointer items-center justify-between gap-4 rounded-lg p-3',
         'bg-(--tt-color-surface)',
         'transition-all duration-200',
         'hover:bg-(--tt-color-surface-hover)',
         'border border-(--tt-color-border)',
         'hover:border-(--tt-color-border-hover)',
         'hover:shadow-sm',
-        'focus-visible:ring-2 focus-visible:ring-(--tt-color-primary) focus-visible:outline-none',
+        'focus-within:ring-2 focus-within:ring-(--tt-color-primary)',
         sourceColor.hover
       )}
     >
@@ -107,7 +88,15 @@ export function ArticleListItem({
               className="text-foreground line-clamp-1 text-sm font-medium group-hover:text-(--tt-color-primary)"
               title={article.translatedTitle || article.title}
             >
-              {article.translatedTitle || article.title}
+              <Link
+                href={articleHref}
+                prefetch={false}
+                onClick={() => onArticleClick?.(article.id)}
+                className="after:absolute after:inset-0 after:content-[''] focus:outline-none"
+                data-testid="article-title-link"
+              >
+                {article.translatedTitle || article.title}
+              </Link>
             </h3>
           </div>
           {article.summary && (
@@ -121,7 +110,7 @@ export function ArticleListItem({
         </div>
 
         {article.tags && article.tags.length > 0 && (
-          <div className="mt-1 hidden flex-wrap gap-1 sm:flex">
+          <div className="relative z-10 mt-1 hidden flex-wrap gap-1 sm:flex">
             {article.tags.slice(0, 3).map((tag) => (
               <BadgeV2
                 key={tag.id}
@@ -164,11 +153,13 @@ export function ArticleListItem({
         <div className="text-muted-foreground flex flex-col gap-0.5 text-xs">
           <div className="hidden flex-col gap-0.5 sm:flex">
             <span className="flex items-center gap-1">
-              <span>📅</span>
+              <span aria-hidden="true">📅</span>
+              <span className="sr-only">公開日:</span>
               <span>{formatDateWithTime(article.publishedAt)}</span>
             </span>
             <span className="flex items-center gap-1">
-              <span>📥</span>
+              <span aria-hidden="true">📥</span>
+              <span className="sr-only">収集日:</span>
               <span>{formatDateWithTime(article.createdAt)}</span>
             </span>
           </div>
@@ -180,7 +171,8 @@ export function ArticleListItem({
           </span>
         </div>
 
-        <div className="hidden items-center gap-1 group-focus-within:flex group-hover:flex">
+        {/* 擬似要素のクリック領域より上に載せる（付け漏れると操作が記事遷移に化ける） */}
+        <div className="relative z-10 hidden items-center gap-1 group-focus-within:flex group-hover:flex">
           <FavoriteButton
             articleId={article.id}
             compact

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,9 @@ export function FavoriteButton({
   const [isLoadingInitial, setIsLoadingInitial] = useState(
     fetchInitialStatus && !isControlled
   );
+  // 初期 GET の世代。トグルや他インスタンスからの同期が入った後に古い GET が
+  // 返ってきても、その結果で状態を巻き戻さないための番兵
+  const stateGenerationRef = useRef(0);
 
   const isFavorited = isControlled ? initialFavorited : uncontrolledFavorited;
 
@@ -66,6 +69,7 @@ export function FavoriteButton({
     }
 
     const abortController = new AbortController();
+    const generationAtRequest = stateGenerationRef.current;
 
     const fetchStatus = async () => {
       try {
@@ -76,7 +80,10 @@ export function FavoriteButton({
         });
         if (response.ok) {
           const data = await response.json();
-          setUncontrolledFavorited(data.isFavorited);
+          // GET 発行後にトグル or 同期イベントが起きていたら、その結果を優先する
+          if (generationAtRequest === stateGenerationRef.current) {
+            setUncontrolledFavorited(data.isFavorited);
+          }
         }
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
@@ -111,6 +118,30 @@ export function FavoriteButton({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setUncontrolledFavorited(initialFavorited);
   }, [initialFavorited, fetchInitialStatus, onToggleFavorite]);
+
+  // 同じ記事が 1 画面に複数並ぶケース（例: /sources/[id] の「最新記事」と
+  // 「人気記事TOP5」）で、片方をトグルしてももう片方の表示が変わらない問題を防ぐ。
+  // トグル成功時に発火する article-favorite-changed を購読して状態を揃える。
+  // controlled モードは親が state を持つため対象外。
+  useEffect(() => {
+    if (onToggleFavorite) return;
+
+    const handleFavoriteChanged = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ articleId: string; isFavorited: boolean }>
+      ).detail;
+      if (!detail || detail.articleId !== articleId) return;
+      stateGenerationRef.current += 1;
+      setUncontrolledFavorited(detail.isFavorited);
+    };
+
+    window.addEventListener('article-favorite-changed', handleFavoriteChanged);
+    return () =>
+      window.removeEventListener(
+        'article-favorite-changed',
+        handleFavoriteChanged
+      );
+  }, [articleId, onToggleFavorite]);
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -150,13 +181,24 @@ export function FavoriteButton({
       // スタンドアロン使用の場合は直接APIを呼び出す
       // 楽観的更新
       const newState = !isFavorited;
+      // この楽観更新の世代を控える。失敗時のロールバックは「まだ自分が最新」の
+      // ときだけ行う。別ボタンの成功イベントで既に更新済みなら巻き戻さない
+      const optimisticGeneration = stateGenerationRef.current + 1;
+      stateGenerationRef.current = optimisticGeneration;
       setUncontrolledFavorited(newState);
 
       try {
         const response = await fetch(`/api/favorites/${articleId}`, {
           method: newState ? 'POST' : 'DELETE',
         });
-        if (response.ok) {
+        // 409 = 既に登録済み / 404 = 既に未登録。どちらもサーバーの状態は
+        // newState と一致しているので、成功と同じ扱いにする（ロールバックすると
+        // 実状態と UI が食い違う）
+        const alreadyInDesiredState =
+          (newState && response.status === 409) ||
+          (!newState && response.status === 404);
+
+        if (response.ok || alreadyInDesiredState) {
           // API成功時にイベント発火（React Queryキャッシュ同期用）
           window.dispatchEvent(
             new CustomEvent('article-favorite-changed', {
@@ -168,11 +210,16 @@ export function FavoriteButton({
             })
           );
         } else {
-          // エラー時は元に戻す
-          setUncontrolledFavorited(!newState);
-          throw new Error('Failed to toggle favorite');
+          throw new Error(
+            `Failed to toggle favorite (HTTP ${response.status})`
+          );
         }
       } catch (error) {
+        // HTTP エラーとネットワーク例外の双方でロールバックする（旧実装は
+        // 例外時に楽観更新が残っていた）。ただし自分の更新が最新のときだけ
+        if (stateGenerationRef.current === optimisticGeneration) {
+          setUncontrolledFavorited(!newState);
+        }
         console.error('Failed to toggle favorite:', error);
         toast({
           title: 'エラー',
@@ -206,6 +253,7 @@ export function FavoriteButton({
         data-testid="favorite-button"
       >
         <Heart
+          aria-hidden="true"
           className={cn(
             'h-4 w-4 transition-colors',
             isFavorited && 'fill-[var(--tt-color-negative)]',
@@ -235,8 +283,14 @@ export function FavoriteButton({
         className
       )}
       data-testid="favorite-button"
+      // showText が false のときはハートアイコンだけになり、支援技術に
+      // 目的が伝わらない（axe の button-name 違反）。compact モードと同じく
+      // 常にアクセシブル名を持たせる
+      aria-label={isFavorited ? 'お気に入りから削除' : 'お気に入りに追加'}
+      aria-pressed={isFavorited}
     >
       <Heart
+        aria-hidden="true"
         className={cn(
           'h-4 w-4 transition-colors',
           outline

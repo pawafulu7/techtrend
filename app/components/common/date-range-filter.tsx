@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui-v2/button-v2';
@@ -20,6 +20,10 @@ import {
 } from '@/components/ui/select';
 import { useMediaQuery } from '@/app/hooks/use-media-query';
 import { DATE_RANGE_OPTIONS, getDateRangeLabel } from '@/app/lib/date-utils';
+import {
+  buildFilterUrl,
+  clearTransientFilterParams,
+} from '@/lib/utils/url/filter-params';
 
 interface DateRangeFilterProps {
   className?: string;
@@ -60,6 +64,7 @@ function getDateBounds() {
 
 export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -109,7 +114,8 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     params.delete('dateRange');
     params.delete('dateFrom');
     params.delete('dateTo');
-    params.delete('page');
+    // ページと /reader の選択中記事をリセット
+    clearTransientFilterParams(params);
 
     // Set new params
     for (const [key, value] of Object.entries(updates)) {
@@ -118,9 +124,8 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
       }
     }
 
-    const queryString = params.toString();
-    const newUrl = queryString ? `/?${queryString}` : '/';
-    router.push(newUrl);
+    // パスを固定すると /reader で日付を選んだ瞬間にホームへ離脱する
+    router.push(buildFilterUrl(pathname, params));
   }
 
   async function saveFilterPreference(prefs: {

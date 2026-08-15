@@ -166,7 +166,10 @@ describe('TagCloud', () => {
       });
 
       // リフレッシュボタンをクリック
-      const refreshButton = screen.getByRole('button', { name: '' }); // RefreshCw icon
+      // アイコンのみのボタンには aria-label を付与済み（axe の button-name 対策）
+      const refreshButton = screen.getByRole('button', {
+        name: 'タグクラウドを再取得',
+      });
       await user.click(refreshButton);
 
       await waitFor(() => {
@@ -466,7 +469,10 @@ describe('TagCloud', () => {
       );
 
       // 初期ローディング中
-      const refreshButton = screen.getByRole('button', { name: '' }); // RefreshCw icon
+      // アイコンのみのボタンには aria-label を付与済み（axe の button-name 対策）
+      const refreshButton = screen.getByRole('button', {
+        name: 'タグクラウドを再取得',
+      });
       expect(refreshButton).toBeDisabled();
 
       // ローディング完了後

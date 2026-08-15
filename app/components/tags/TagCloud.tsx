@@ -51,10 +51,14 @@ export function getTagColor(
   return cn(baseClasses, 'text-primary/60 hover:text-primary/40');
 }
 
-// Pre-compute skeleton widths at module level to avoid Math.random() during render
-const SKELETON_WIDTHS = Array.from({ length: 20 }, () =>
-  Math.floor(Math.random() * 100 + 50)
-);
+// スケルトンの幅は固定値。モジュールレベルでも Math.random() を使うと
+// サーバーとクライアントで別の値になり hydration mismatch を起こすため
+// （タグクラウド表示時に毎回 React の hydration エラーが出ていた）。
+// 見た目のばらつきだけが目的なので、決め打ちの並びで十分。
+const SKELETON_WIDTHS = [
+  118, 72, 145, 96, 61, 132, 84, 108, 57, 121, 90, 149, 66, 103, 137, 78, 112,
+  54, 126, 88,
+];
 
 interface TagCloudProps {
   className?: string;
@@ -179,6 +183,8 @@ export function TagCloud({
               size="sm"
               onClick={() => refetch()}
               disabled={isFetching}
+              aria-label="タグクラウドを再取得"
+              title="再取得"
             >
               <RefreshCw
                 className={cn('h-4 w-4', isFetching && 'animate-spin')}

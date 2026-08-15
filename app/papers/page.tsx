@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import { FileText } from 'lucide-react';
+import { MobileSearchToggle } from '@/app/components/common/mobile-search-toggle';
 import { SearchBox } from '@/app/components/common/search-box';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { SortButtons } from '@/app/components/common/sort-buttons';
@@ -44,10 +45,12 @@ export default async function PapersPage({ searchParams }: PageProps) {
       {/* メインエリア - サイドバーなし */}
       <div className="flex-1 lg:flex lg:overflow-hidden">
         {/* コンテンツエリア */}
-        <main className="flex-1 lg:flex lg:flex-col">
+        {/* RootLayout が <main> を持つため section にする（ランドマーク重複の解消） */}
+        <section aria-label="論文一覧" className="flex-1 lg:flex lg:flex-col">
           {/* ツールバー */}
           <div className="flex-shrink-0 border-b border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] px-4 py-2 lg:px-6">
-            <div className="flex items-center justify-between">
+            {/* 検索パネル展開時に全幅の行として折り返せるよう flex-wrap にする */}
+            <div className="flex flex-wrap items-center justify-between gap-y-2">
               <div className="flex flex-shrink-0 items-center gap-2">
                 <div className="flex items-center gap-2 text-[var(--tt-color-info)]">
                   <FileText className="h-5 w-5" />
@@ -55,7 +58,8 @@ export default async function PapersPage({ searchParams }: PageProps) {
                 </div>
               </div>
 
-              <div className="ml-4 flex items-center gap-2">
+              <div className="flex w-full basis-full flex-wrap items-center gap-2 lg:ml-4 lg:w-auto lg:basis-auto">
+                <MobileSearchToggle />
                 <div className="hidden lg:block">
                   <SearchBox />
                 </div>
@@ -78,7 +82,7 @@ export default async function PapersPage({ searchParams }: PageProps) {
               initialSortBy={initialSortBy}
             />
           </Suspense>
-        </main>
+        </section>
       </div>
     </div>
   );

@@ -13,6 +13,8 @@ import {
   BookOpen,
   Newspaper,
   FileText,
+  Sparkles,
+  UserPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { useState } from 'react';
@@ -22,14 +24,19 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { cn } from '@/lib/utils';
 import { NavDropdown } from '@/app/components/layout/nav-dropdown';
+import { authClient } from '@/lib/auth/auth-client';
+import { features } from '@/config/features';
+
+const MOBILE_NAV_ID = 'mobile-nav-panel';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { data: session, isPending } = authClient.useSession();
 
   // ナビゲーション項目の定義
   // prefetch: false は認証必須ページに設定（Server Component auth() redirect がprefetch時に走るのを防止）
-  const primaryNav = [
+  const primaryNavBase = [
     { href: '/', label: 'ホーム', icon: Home },
     { href: '/reader', label: 'リーダー', icon: BookOpen },
     {
@@ -39,8 +46,24 @@ export function Header() {
       prefetch: false as const,
     },
     { href: '/popular', label: '人気', icon: TrendingUp },
+  ];
+
+  // Issue #585: AI検索はフラグ有効 + 認証済みユーザーのみ表示（isPending中はチラつき防止のため非表示）
+  const showAiSearch = features.aiSearch && !isPending && !!session?.user;
+  const aiSearchNavItem = {
+    href: '/search/agent',
+    label: 'AI検索',
+    icon: Sparkles,
+    prefetch: false as const,
+  };
+
+  const primaryNav = [
+    ...primaryNavBase,
+    ...(showAiSearch ? [aiSearchNavItem] : []),
     { href: '/trends', label: 'トレンド', icon: BarChart3 },
   ];
+
+  const showSignupLink = !isPending && !session;
 
   const secondaryNav = [
     { href: '/history', label: '閲覧履歴', icon: LineChart },
@@ -54,21 +77,21 @@ export function Header() {
 
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
-      <div className="w-full px-6">
-        <div className="flex h-10 items-center justify-between">
+      <div className="w-full px-4 lg:px-6">
+        <div className="flex h-12 items-center justify-between lg:h-10">
           {/* Logo and Site Name */}
           <Link
             href="/"
-            className="flex items-center space-x-2"
+            className="flex min-w-0 items-center space-x-2"
             data-testid="header-logo"
           >
-            <Rss className="text-primary h-5 w-5" />
-            <span className="text-lg font-bold">{SITE_NAME}</span>
+            <Rss className="text-primary h-5 w-5 shrink-0" />
+            <span className="truncate text-lg font-bold">{SITE_NAME}</span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav
-            className="hidden items-center space-x-3 md:flex"
+            className="hidden items-center space-x-3 lg:flex"
             data-testid="desktop-nav"
           >
             {/* 主要ナビゲーション */}
@@ -84,7 +107,7 @@ export function Header() {
                   aria-current={isActive ? 'page' : undefined}
                   data-testid={`nav-link-${item.label.toLowerCase()}`}
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-all duration-200',
+                    'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all duration-200',
                     'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
                     isActive
                       ? 'bg-primary text-primary-foreground shadow-sm'
@@ -102,19 +125,25 @@ export function Header() {
           </nav>
 
           {/* Desktop Actions */}
-          <div className="hidden items-center space-x-4 md:flex">
+          <div className="hidden items-center space-x-4 lg:flex">
             <ThemeToggle />
             <UserMenu />
           </div>
 
           {/* Mobile Actions */}
-          <div className="flex items-center gap-2 md:hidden">
+          <div className="flex items-center gap-2 lg:hidden">
             <ThemeToggle />
-            <UserMenu />
+            <UserMenu compact />
             <Button
               variant="ghost"
               size="sm"
+              className="h-11 w-11"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={
+                mobileMenuOpen ? 'メニューを閉じる' : 'メニューを開く'
+              }
+              aria-expanded={mobileMenuOpen}
+              aria-controls={MOBILE_NAV_ID}
               data-testid="mobile-menu-toggle"
             >
               {mobileMenuOpen ? (
@@ -128,7 +157,11 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <nav className="border-t py-4 md:hidden" data-testid="mobile-nav">
+          <nav
+            id={MOBILE_NAV_ID}
+            className="border-t py-4 lg:hidden"
+            data-testid="mobile-nav"
+          >
             <div className="flex flex-col space-y-2">
               {/* 主要ナビゲーション */}
               {primaryNav.map((item) => {
@@ -187,6 +220,25 @@ export function Header() {
                   </Link>
                 );
               })}
+
+              {showSignupLink && (
+                <>
+                  <div className="bg-border my-2 h-px" />
+                  <Link
+                    href="/auth/signup"
+                    data-testid="mobile-nav-link-signup"
+                    className={cn(
+                      'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                      'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
+                      'hover:bg-secondary/50'
+                    )}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    <span>新規登録</span>
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         )}

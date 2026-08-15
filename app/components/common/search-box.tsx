@@ -6,8 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui-v2/button-v2';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDebounce } from '@/hooks/use-debounce';
+import { cn } from '@/lib/utils';
 
-export function SearchBox() {
+interface SearchBoxProps {
+  /** trueの場合、親要素の幅いっぱいに広がる（モバイル検索パネル用） */
+  fullWidth?: boolean;
+}
+
+export function SearchBox({ fullWidth = false }: SearchBoxProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -44,6 +50,8 @@ export function SearchBox() {
         params.delete('search');
         params.delete('page');
       }
+      // フィルタ変更時は選択中記事（reader用）をクリアする
+      params.delete('article');
 
       // 現在のパスを維持してURLパラメータを更新
       const nextUrl = params.toString()
@@ -85,6 +93,8 @@ export function SearchBox() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('search');
     params.delete('page');
+    // フィルタ変更時は選択中記事（reader用）をクリアする
+    params.delete('article');
 
     // 現在のパスを維持してURLパラメータを更新
     const nextUrl = params.toString()
@@ -105,7 +115,9 @@ export function SearchBox() {
   };
 
   return (
-    <div className="flex flex-col" style={{ width: '24rem' }}>
+    <div
+      className={cn('flex flex-col', fullWidth ? 'w-full' : 'w-96 max-w-full')}
+    >
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-[var(--tt-color-text-muted)]" />
         <Input
@@ -131,6 +143,7 @@ export function SearchBox() {
             onClick={handleClear}
             className="absolute top-1/2 right-1 h-6 w-6 -translate-y-1/2 transform p-0"
             data-testid="search-clear"
+            aria-label="検索をクリア"
           >
             <X className="h-3 w-3" />
           </Button>

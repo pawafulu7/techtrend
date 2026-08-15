@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Sparkles, Zap, ArrowUpRight, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ArticleInfo, ChangeWithCategory } from './diff-utils';
@@ -34,6 +34,17 @@ export function HotTopicChip({
     [articles, change.relatedArticleIds]
   );
   const isHovered = hoveredTopic === topicKey;
+  // hover だけが展開手段だと、キーボード利用者とタッチ端末から関連記事に到達できない。
+  // 明示的な開閉ボタンを併設し、hover はマウス利用者向けの補助として残す。
+  const [isExpanded, setIsExpanded] = useState(false);
+  // hover で開いたパネルをボタンで閉じられるようにする。ポインタが乗っている間は
+  // isHovered が true のままなので、この「今回の hover では閉じた」フラグがないと
+  // ボタンを押しても閉じられず aria-expanded も true のままになる
+  const [hoverDismissed, setHoverDismissed] = useState(false);
+  const relatedPanelId = useId();
+  const showRelated =
+    relatedArticles.length > 0 &&
+    (isExpanded || (isHovered && !hoverDismissed));
 
   return (
     <div
@@ -45,7 +56,10 @@ export function HotTopicChip({
           : 'border-l-4 border-l-[var(--tt-color-info)] hover:border-[var(--tt-color-info-border)]',
         'hover:-translate-y-0.5 hover:shadow-md'
       )}
-      onMouseEnter={() => onMouseEnter(topicKey)}
+      onMouseEnter={() => {
+        setHoverDismissed(false);
+        onMouseEnter(topicKey);
+      }}
       onMouseLeave={onMouseLeave}
     >
       <div className="p-4">
@@ -88,9 +102,32 @@ export function HotTopicChip({
           {change.description}
         </p>
 
-        {/* Related articles on hover */}
-        {isHovered && relatedArticles.length > 0 && (
-          <div className="animate-in fade-in mt-2 space-y-1 border-t border-current/10 pt-2 duration-150">
+        {/* Related articles: hover か開閉ボタンで展開 */}
+        {relatedArticles.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              if (showRelated) {
+                setIsExpanded(false);
+                setHoverDismissed(true);
+                return;
+              }
+              setHoverDismissed(false);
+              setIsExpanded(true);
+            }}
+            aria-expanded={showRelated}
+            aria-controls={relatedPanelId}
+            data-testid="topic-related-toggle"
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-primary mt-2 inline-flex items-center gap-1 rounded text-xs underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+          >
+            関連記事 {relatedArticles.length} 件
+          </button>
+        )}
+        {showRelated && (
+          <div
+            id={relatedPanelId}
+            className="animate-in fade-in mt-2 space-y-1 border-t border-current/10 pt-2 duration-150"
+          >
             {relatedArticles.map((article) => (
               <Link
                 key={article.id}
@@ -108,8 +145,10 @@ export function HotTopicChip({
       {/* Quick action */}
       <Link
         href={`/?tags=${encodeURIComponent(change.topic)}&tagMode=OR`}
+        aria-label={`${change.topic} の記事を一覧で見る`}
         className={cn(
-          'absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100',
+          // focus-visible を足さないとキーボード到達時に不可視のままになる
+          'absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100',
           isNew
             ? 'text-[var(--tt-color-warning)] hover:bg-[var(--tt-color-warning-bg)]'
             : 'text-[var(--tt-color-info)] hover:bg-[var(--tt-color-info-bg)]'

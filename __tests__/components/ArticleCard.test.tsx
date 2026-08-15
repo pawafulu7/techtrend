@@ -159,24 +159,28 @@ describe('ArticleCard', () => {
       <ArticleCard article={mockArticle} onArticleClick={handleClick} />
     );
 
-    const card = screen.getByTestId('article-card');
-    await user.click(card);
+    // card-with-link: タイトルが実リンク。onArticleClick は副作用フックであり
+    // ナビゲーションの代替ではない（遷移は <a href> としてブラウザが担う）
+    const link = screen.getByTestId('article-title-link');
+    await user.click(link);
 
-    // onArticleClickが呼ばれる（スクロール位置保存等の副作用用）
     expect(handleClick).toHaveBeenCalled();
-    // ナビゲーションも発生する（onArticleClickは副作用フックであり、ナビゲーション代替ではない）
-    expect(mockRouter.push).toHaveBeenCalled();
+    expect(link.getAttribute('href')).toContain('/articles/');
   });
 
-  it('navigates to article detail page when clicked without onArticleClick', async () => {
-    const user = userEvent.setup();
+  it('links to the article detail page, carrying the current list as the return target', () => {
     renderWithProviders(<ArticleCard article={mockArticle} />);
 
-    const card = screen.getByTestId('article-card');
-    await user.click(card);
+    const link = screen.getByTestId('article-title-link');
+    const href = link.getAttribute('href') as string;
 
-    // onArticleClick未指定時はデフォルトのナビゲーションが発生する
-    expect(mockRouter.push).toHaveBeenCalled();
+    expect(link.tagName).toBe('A');
+    expect(href).toContain(`/articles/${mockArticle.id}`);
+    // 戻り先は現在の一覧（`/` 固定ではない）
+    const from = decodeURIComponent(
+      new URL(`http://localhost${href}`).searchParams.get('from') as string
+    );
+    expect(from).toContain('returning=1');
   });
 
   it('displays favorite button', () => {
@@ -391,8 +395,11 @@ describe('ArticleCard', () => {
 
     const titleElement = screen.getByText(/This is an extremely long title/i);
     expect(titleElement).toBeInTheDocument();
-    // タイトルは適切にレンダリングされている
-    expect(titleElement).toHaveClass('font-semibold');
+    // テキストはタイトルリンク内にあり、省略スタイルは見出し側が持つ
+    expect(screen.getByTestId('article-title')).toHaveClass(
+      'font-semibold',
+      'line-clamp-2'
+    );
   });
 
   it('correctly handles missing optional fields', () => {

@@ -29,7 +29,7 @@ export function NavDropdown({ items }: NavDropdownProps) {
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-all duration-200',
+          'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all duration-200',
           'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
           hasActiveItem
             ? 'bg-primary text-primary-foreground shadow-sm'

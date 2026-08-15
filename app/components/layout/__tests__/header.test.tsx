@@ -15,6 +15,17 @@ jest.mock('@/lib/constants', () => ({
   SITE_NAME: 'TechTrend',
 }));
 
+// better-auth の client は ESM のため、Jest では実体を読み込ませずモックする
+// （Issue #585 で Header が AI 検索リンクの表示判定に useSession を使うようになった）
+jest.mock('@/lib/auth/auth-client', () => ({
+  authClient: {
+    useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
+    signIn: { email: jest.fn(), social: jest.fn() },
+    signOut: jest.fn(),
+    signUp: { email: jest.fn() },
+  },
+}));
+
 // コンポーネントのモック
 jest.mock('@/components/theme-toggle', () => ({
   ThemeToggle: () => <button data-testid="theme-toggle">Theme Toggle</button>,
@@ -222,23 +233,25 @@ describe('Header', () => {
     });
   });
 
+  // ヘッダーのデスクトップ切替は lg。ツールバー（検索・タグ等）が lg 基準のため、
+  // md にすると 768〜1023px でナビだけデスクトップ表示になりヘッダーが溢れる
   describe('レスポンシブ表示', () => {
-    it('デスクトップナビはmd以上で表示される', () => {
+    it('デスクトップナビはlg以上で表示される', () => {
       render(<Header />);
 
       const desktopNav = screen.getByTestId('desktop-nav');
-      expect(desktopNav).toHaveClass('hidden md:flex');
+      expect(desktopNav).toHaveClass('hidden lg:flex');
     });
 
-    it('モバイルメニューボタンはmd未満で表示される', () => {
+    it('モバイルメニューボタンはlg未満で表示される', () => {
       render(<Header />);
 
       const mobileMenuToggle =
         screen.getByTestId('mobile-menu-toggle').parentElement;
-      expect(mobileMenuToggle).toHaveClass('md:hidden');
+      expect(mobileMenuToggle).toHaveClass('lg:hidden');
     });
 
-    it('モバイルナビはmd未満でのみ表示される', async () => {
+    it('モバイルナビはlg未満でのみ表示される', async () => {
       const user = userEvent.setup();
       render(<Header />);
 
@@ -246,7 +259,7 @@ describe('Header', () => {
       await user.click(toggleButton);
 
       const mobileNav = screen.getByTestId('mobile-nav');
-      expect(mobileNav).toHaveClass('md:hidden');
+      expect(mobileNav).toHaveClass('lg:hidden');
     });
   });
 

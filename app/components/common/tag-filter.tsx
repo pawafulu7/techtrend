@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,10 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import {
+  buildFilterUrl,
+  clearTransientFilterParams,
+} from '@/lib/utils/url/filter-params';
 
 interface TagFilterProps {
   tags: Array<{
@@ -38,6 +42,7 @@ interface TagFilterProps {
 
 export function TagFilter({ tags: initialTags }: TagFilterProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -181,10 +186,11 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
       params.delete('tagMode');
     }
 
-    // ページ番号をリセット
-    params.delete('page');
+    // ページ番号と /reader の選択中記事をリセット
+    clearTransientFilterParams(params);
 
-    router.push(`/?${params.toString()}`);
+    // パスを固定すると /reader や /papers でタグを選んだ瞬間にホームへ離脱する
+    router.push(buildFilterUrl(pathname, params));
   };
 
   // タグの選択/選択解除

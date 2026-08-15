@@ -2,6 +2,7 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { Slot } from 'radix-ui';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const PRIMARY_STYLE =
   'bg-(--tt-color-primary) text-(--tt-color-on-primary) hover:bg-(--tt-color-primary-hover) shadow-sm hover:shadow-md';
@@ -105,11 +106,13 @@ function ButtonV2({
   const Comp = asChild ? Slot.Root : 'button';
   const resolvedSize = iconOnly ? (ICON_SIZE_MAP[size!] ?? 'icon') : size;
 
-  const buttonClassName = buttonV2Variants({
-    variant,
-    size: resolvedSize,
-    className,
-  });
+  // cn() = twMerge(clsx()): caller className must win over cva base classes.
+  // Passing className into cva would only concatenate, letting base `inline-flex`
+  // survive a caller's `hidden` (see plan FD-0 / investigate G-2).
+  const buttonClassName = cn(
+    buttonV2Variants({ variant, size: resolvedSize }),
+    className
+  );
 
   const disabledProps = asChild
     ? {
@@ -138,9 +141,7 @@ function ButtonV2({
       'data-disabled': 'true',
       'aria-disabled': true,
       tabIndex: -1,
-      className: [buttonClassName, children.props.className]
-        .filter(Boolean)
-        .join(' '),
+      className: cn(buttonClassName, children.props.className),
       onClick: (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();

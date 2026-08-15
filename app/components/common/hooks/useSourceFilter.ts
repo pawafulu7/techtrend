@@ -14,6 +14,10 @@ import { useCompanyFilter } from '@/lib/hooks/use-company-filter';
 import type { CompanySource } from '@/lib/providers/company-source';
 import type { GroupedSources } from '@/lib/types/source-grouping';
 import { getPrimaryCategoryByGroupId } from '@/lib/compatibility/category-group-mapping';
+import {
+  buildFilterUrl,
+  clearTransientFilterParams,
+} from '@/lib/utils/url/filter-params';
 
 interface UseSourceFilterParams {
   sources: Array<{ id: string; name: string }>;
@@ -276,7 +280,8 @@ export function useSourceFilter({
     // Remove old params
     params.delete('sourceId');
     params.delete('sources');
-    params.delete('page'); // ページパラメータも削除
+    // ページと /reader の選択中記事をリセット
+    clearTransientFilterParams(params);
 
     if (sourceIds.length === 0) {
       // 明示的に「何も選択しない」状態を示す
@@ -289,13 +294,8 @@ export function useSourceFilter({
       params.set('sources', sourceIds.join(','));
     }
 
-    // URLを構築（パラメータがない場合は "/" のみ）
-    const newURL = params.toString()
-      ? `${pathname}?${params.toString()}`
-      : pathname;
-
     // URL更新（Next.jsが自動的に競合を制御）
-    router.push(newURL);
+    router.push(buildFilterUrl(pathname, params));
 
     // Cookie更新は150msデバウンス
     lastQueuedSourcesRef.current = sourceIds;

@@ -19,7 +19,7 @@ export function ThemeToggle() {
       <Button
         variant="ghost"
         size="icon"
-        className="h-9 w-9"
+        className="h-11 w-11 lg:h-9 lg:w-9"
         aria-label="テーマ切り替え"
         disabled
         aria-busy="true"
@@ -35,7 +35,7 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
-      className="h-9 w-9"
+      className="h-11 w-11 lg:h-9 lg:w-9"
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
       aria-label={
         theme === 'dark' ? 'ライトモードに切り替え' : 'ダークモードに切り替え'

@@ -84,7 +84,7 @@ export function ShareButton({ url, title, className }: ShareButtonProps) {
       disabled={isSharing}
       aria-label="記事を共有"
       className={cn(
-        'flex h-11 w-11 items-center justify-center p-0',
+        'h-11 w-11 items-center justify-center p-0',
         'focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2',
         className
       )}
