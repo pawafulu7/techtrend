@@ -206,7 +206,7 @@ Navigate directly to: `https://your-domain.com/search/agent`
 - **Bundle Size**: 51.9 kB (First Load: 162 kB)
 
 ### Security
-- **Authentication**: Auth.js v5 session-based
+- **Authentication**: Better Auth session-based
 - **Rate Limiting**: Redis-backed, 5 req/min per user
 - **Input Validation**: Query length limits, XSS prevention
 - **Output Sanitization**: Markdown rendering with safe protocols only
