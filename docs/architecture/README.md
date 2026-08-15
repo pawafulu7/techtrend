@@ -11,7 +11,7 @@
 | 図 | ファイル | 何が分かるか | 見るとよい場面 |
 |----|---------|------------|--------------|
 | 01 | [システム全体構成](./01-system-overview.md) | 本番の構成要素（Vercel / GitHub Actions / DB / Redis / 外部 API）と、ローカル開発・CI 環境 | 全体像を掴む / 新しい外部連携を足す前 |
-| 02 | [バッチ・データパイプライン](./02-batch-pipeline.md) | 記事が収集されてから要約・タグ・embedding・トレンドになるまでの流れと、12 本の定期実行 | バッチを追加・変更する前 / データが更新されない原因を追う時 |
+| 02 | [バッチ・データパイプライン](./02-batch-pipeline.md) | 記事が収集されてから要約・タグ・embedding・トレンドになるまでの流れ（主経路 / 派生バッチ）と、12 本の定期実行 | バッチを追加・変更する前 / データが更新されない原因を追う時 |
 | 03 | [リクエスト・キャッシュ・認証フロー](./03-request-flow.md) | `proxy.ts` の分岐、認証の経路別の違い、キャッシュの 3 経路 | API/ページを追加する前 / キャッシュや認証の挙動を調べる時 |
 | 04 | [データモデル概要](./04-data-model.md) | 主要テーブルの関係（コア記事系 / ユーザー・パーソナライズ系）と AI 派生テーブル一覧 | スキーマを変更する前 / クエリを書く時 |
 
@@ -67,5 +67,6 @@ npx -y @mermaid-js/mermaid-cli -i docs/architecture/01-system-overview.md -o /tm
 
 - 個別のソース定義（76 件）→ `Source` テーブルと `lib/fetchers/`
 - 全 31 model の詳細 → `prisma/schema.prisma`
-- テストの構成（`__tests__/` 471 ファイル + `e2e/`）→ [CLAUDE_WORKFLOWS.md](../../CLAUDE_WORKFLOWS.md)
-- 各機能の実装詳細 → [CLAUDE_ARCHITECTURE.md](../../CLAUDE_ARCHITECTURE.md)
+- テストの構成（`__tests__/` 471 ファイル + `e2e/`）→ `jest.config.*.js` と `playwright.config.ts`
+- 各機能の実装詳細 → 各ディレクトリの実装。ローカルには補足の `CLAUDE_ARCHITECTURE.md` があるが、
+  `CLAUDE*` は `.gitignore` で除外されているためリポジトリには含まれない
