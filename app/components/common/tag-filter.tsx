@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,7 @@ interface TagFilterProps {
 
 export function TagFilter({ tags: initialTags }: TagFilterProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -184,7 +185,9 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
     // ページ番号をリセット
     params.delete('page');
 
-    router.push(`/?${params.toString()}`);
+    // パスを固定すると /reader や /papers でタグを選んだ瞬間にホームへ離脱する
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
   };
 
   // タグの選択/選択解除

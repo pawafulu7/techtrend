@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui-v2/button-v2';
@@ -60,6 +60,7 @@ function getDateBounds() {
 
 export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -119,7 +120,8 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
     }
 
     const queryString = params.toString();
-    const newUrl = queryString ? `/?${queryString}` : '/';
+    // パスを固定すると /reader で日付を選んだ瞬間にホームへ離脱する
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
     router.push(newUrl);
   }
 

@@ -8,13 +8,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 type ReadFilterMode = 'all' | 'unread' | 'read';
 
 export function UnreadFilter() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentMode =
     (searchParams.get('readFilter') as ReadFilterMode) || 'all';
@@ -32,7 +33,9 @@ export function UnreadFilter() {
     // ページをリセット
     params.delete('page');
 
-    router.push(`/?${params.toString()}`);
+    // 現在のパスを維持する（他の一覧画面から使われても離脱しないように）
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
   };
 
   const getIcon = (mode: ReadFilterMode) => {
