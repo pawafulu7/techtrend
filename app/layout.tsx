@@ -144,6 +144,14 @@ export default async function RootLayout({
       {/* 重要: overflow-hiddenは追加しないこと。トップページ以外でスクロール不可になる */}
       <body className="flex h-full flex-col overflow-hidden antialiased">
         <NoTransitions />
+        {/* キーボード利用者がヘッダーのナビ全体を Tab で通過せずに本文へ移動できるようにする */}
+        <a
+          href="#main-content"
+          data-testid="skip-to-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-100 focus:rounded-md focus:bg-(--tt-color-primary) focus:px-4 focus:py-2 focus:text-(--tt-color-on-primary) focus:shadow-lg focus:ring-2 focus:ring-(--tt-color-primary) focus:ring-offset-2 focus:outline-none"
+        >
+          本文へスキップ
+        </a>
         <AuthProvider>
           <ThemeProvider
             attribute="class"
@@ -154,7 +162,14 @@ export default async function RootLayout({
             <QueryProvider>
               {/* <OnboardingProvider> */}
               <Header />
-              <main className="flex-1 overflow-y-auto">{children}</main>
+              {/* tabIndex={-1}: スキップリンクの遷移先として確実にフォーカスを受け取るため */}
+              <main
+                id="main-content"
+                tabIndex={-1}
+                className="flex-1 overflow-y-auto focus:outline-none"
+              >
+                {children}
+              </main>
               <ScrollToTopButton />
               <ToastProvider />
               <WebVitalsReporter />

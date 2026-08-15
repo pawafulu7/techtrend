@@ -8,6 +8,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { authClient } from '@/lib/auth/auth-client';
 import type {
   UserCategoryPreferences,
   UpdateCategoryPreferencesRequest,
@@ -146,9 +147,19 @@ export function useInterestCategories() {
  * Hook for fetching user's category preferences
  */
 export function useUserPreferences(scope: PreferenceScope = 'home') {
+  const { data: session, isPending: isSessionPending } =
+    authClient.useSession();
+
   return useQuery({
     queryKey: PERSONALIZATION_QUERY_KEYS.preferences(scope),
     queryFn: () => fetchPreferences(scope),
+    // 未認証では 401 が確定しているため呼ばない（ゲストのホーム表示で毎回
+    // /api/user/preferences/categories が 401 を返していた）。
+    // セッション判定中も待ってから有効化する。
+    // NOTE: React Query v5 の isLoading は `isPending && isFetching` なので、
+    // enabled: false のとき isLoading は false になる。呼び出し側の
+    // `enabled: !isLoadingPreferences`（home-client-infinite）は止まらない。
+    enabled: !isSessionPending && !!session?.user,
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 30, // 30 minutes
     retry: false, // fail gracefully for guest users or temporary API issues
@@ -208,9 +219,16 @@ export function useUpdatePreferences(scope: PreferenceScope = 'home') {
  * Combined hook for personalization preferences management
  */
 export function usePersonalizationPreferences(scope: PreferenceScope = 'home') {
+  const { isPending: isSessionPending } = authClient.useSession();
   const categoriesQuery = useInterestCategories();
   const preferencesQuery = useUserPreferences(scope);
   const updateMutation = useUpdatePreferences(scope);
+
+  // セッション判定中は preferences クエリが enabled: false のため isLoading が
+  // false になる。そのまま公開すると認証済みユーザーで記事クエリが先に走り、
+  // 直後に設定が解決して再フェッチ（＝空状態のフラッシュ、Issue #569 の再発）に
+  // なるため、セッション判定中もローディング扱いにする。
+  const isLoadingPreferences = isSessionPending || preferencesQuery.isLoading;
 
   const categories = categoriesQuery.data ?? EMPTY_CATEGORIES;
   const preferences = preferencesQuery.data ?? DEFAULT_PREFERENCES;
@@ -235,8 +253,8 @@ export function usePersonalizationPreferences(scope: PreferenceScope = 'home') {
 
     // Loading states
     isLoadingCategories: categoriesQuery.isLoading,
-    isLoadingPreferences: preferencesQuery.isLoading,
-    isLoading: categoriesQuery.isLoading || preferencesQuery.isLoading,
+    isLoadingPreferences,
+    isLoading: categoriesQuery.isLoading || isLoadingPreferences,
 
     // Error states
     categoriesError: categoriesQuery.error,

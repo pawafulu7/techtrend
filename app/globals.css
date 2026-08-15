@@ -454,8 +454,32 @@ html.no-transitions *::after {
   }
 }
 
-/* Reduced motion support */
+/* Reduced motion support
+ *
+ * 個別クラスの列挙をやめ、全体を抑制してローディング表示だけを例外にする方式。
+ * 列挙方式は独自アニメーション（.chat-message-bubble / .chat-button-pulse /
+ * .animate-fade-in や Tailwind の animate-ping / animate-pulse、Radix の
+ * data-[state] アニメ）が増えるたびに漏れ、実質メンテ不能だったため。
+ */
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* 進行中であることを伝える表示は動きを残す（止めると停止と区別できない） */
+  .animate-spin,
+  [data-loading='true'] .animate-spin,
+  .animate-pulse-loading {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  /* 入場アニメーションは最終状態で固定する（途中で止まって不可視になるのを防ぐ） */
   .fade-in-content,
   .animate-in,
   .animate-shimmer,

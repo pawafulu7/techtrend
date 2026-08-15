@@ -16,6 +16,21 @@ import {
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
+// better-auth の client は ESM のため Jest では実体を読み込ませない。
+// 既定は「認証済み」。未認証の挙動を見るテストだけ個別に上書きする。
+const mockUseSession = jest.fn(() => ({
+  data: { user: { id: 'user-1' } },
+  isPending: false,
+}));
+jest.mock('@/lib/auth/auth-client', () => ({
+  authClient: {
+    useSession: () => mockUseSession(),
+    signIn: { email: jest.fn(), social: jest.fn() },
+    signOut: jest.fn(),
+    signUp: { email: jest.fn() },
+  },
+}));
+
 // Test wrapper with React Query
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -35,6 +50,7 @@ function createWrapper() {
 describe('useInterestCategories', () => {
   beforeEach(() => {
     mockFetch.mockClear();
+    mockUseSession.mockClear();
   });
 
   it('should fetch categories successfully', async () => {
@@ -99,6 +115,7 @@ describe('useInterestCategories', () => {
 describe('useUserPreferences', () => {
   beforeEach(() => {
     mockFetch.mockClear();
+    mockUseSession.mockClear();
   });
 
   it('should fetch user preferences successfully', async () => {
@@ -126,7 +143,39 @@ describe('useUserPreferences', () => {
     expect(mockFetch).toHaveBeenCalledWith('/api/user/preferences/categories?scope=home');
   });
 
-  it('should return default preferences when not authenticated', async () => {
+  it('should not call the API when unauthenticated', async () => {
+    // 未認証では 401 が確定しているためリクエスト自体を送らない
+    mockUseSession.mockReturnValueOnce({ data: null, isPending: false });
+
+    const { result } = renderHook(() => useUserPreferences(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.fetchStatus).toBe('idle');
+    });
+
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(result.current.data).toBeUndefined();
+    // enabled: false のとき isLoading は false（呼び出し側の記事クエリを止めない）
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it('should not call the API while the session is still pending', async () => {
+    mockUseSession.mockReturnValueOnce({ data: null, isPending: true });
+
+    const { result } = renderHook(() => useUserPreferences(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.fetchStatus).toBe('idle');
+    });
+
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('should return default preferences when the API returns 401 (expired session)', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 401,
@@ -152,6 +201,7 @@ describe('useUserPreferences', () => {
 describe('useUpdatePreferences', () => {
   beforeEach(() => {
     mockFetch.mockClear();
+    mockUseSession.mockClear();
   });
 
   it('should update preferences successfully', async () => {
@@ -219,6 +269,7 @@ describe('useUpdatePreferences', () => {
 describe('usePersonalizationPreferences', () => {
   beforeEach(() => {
     mockFetch.mockClear();
+    mockUseSession.mockClear();
   });
 
   it('should combine categories and preferences', async () => {

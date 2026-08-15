@@ -55,7 +55,7 @@ export function ArticleQADialog({
         </DialogHeader>
         <div
           ref={scrollContainerRef}
-          className="max-h-[92vh] overflow-y-auto overscroll-contain rounded-[40px] bg-white/70 p-3 sm:p-6"
+          className="max-h-[92vh] overflow-y-auto overscroll-contain rounded-[40px] bg-(--tt-color-surface)/85 p-3 backdrop-blur-sm sm:p-6"
         >
           <ArticleQAClient
             articleId={articleId}
