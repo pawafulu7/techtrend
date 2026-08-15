@@ -34,15 +34,17 @@ export function DiffMainContent({
   onHoverLeave,
 }: DiffMainContentProps) {
   return (
-    <main className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
-      {/* Stats Bar */}
-      <div className="bg-background flex items-center justify-center gap-6 rounded-lg border px-4 py-3 shadow-sm">
+    // RootLayout（app/layout.tsx）が既に <main> を持つため、ここは div。
+    // ページに <main> が 2 つあるとランドマークナビゲーションが破綻する
+    <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
+      {/* Stats Bar: モバイルは 2 列グリッド（横一列だと 375px で溢れて「下火」が切れる） */}
+      <div className="bg-background grid grid-cols-2 gap-3 rounded-lg border px-4 py-3 shadow-sm sm:flex sm:items-center sm:justify-center sm:gap-6">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-[var(--tt-color-warning)]" />
           <span className="text-sm font-semibold">{grouped.new.length}</span>
           <span className="text-muted-foreground text-xs">新規</span>
         </div>
-        <div className="bg-border h-4 w-px" />
+        <div className="bg-border hidden h-4 w-px sm:block" />
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-[var(--tt-color-info)]" />
           <span className="text-sm font-semibold">
@@ -50,7 +52,7 @@ export function DiffMainContent({
           </span>
           <span className="text-muted-foreground text-xs">急上昇</span>
         </div>
-        <div className="bg-border h-4 w-px" />
+        <div className="bg-border hidden h-4 w-px sm:block" />
         <div className="flex items-center gap-2">
           <Minus className="h-4 w-4 text-[var(--tt-color-text-muted)]" />
           <span className="text-sm font-semibold">
@@ -58,7 +60,7 @@ export function DiffMainContent({
           </span>
           <span className="text-muted-foreground text-xs">継続</span>
         </div>
-        <div className="bg-border h-4 w-px" />
+        <div className="bg-border hidden h-4 w-px sm:block" />
         <div className="flex items-center gap-2">
           <TrendingDown className="h-4 w-4 text-[var(--tt-color-text-muted)]" />
           <span className="text-sm font-semibold">
@@ -179,6 +181,6 @@ export function DiffMainContent({
           </div>
         </section>
       )}
-    </main>
+    </div>
   );
 }
