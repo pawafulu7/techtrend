@@ -27,7 +27,12 @@ import {
   LineChart,
 } from 'lucide-react';
 
-export function UserMenu() {
+interface UserMenuProps {
+  /** true の場合、未認証時は「ログイン」ボタンのみ表示する（モバイルヘッダー等の省スペース用途） */
+  compact?: boolean;
+}
+
+export function UserMenu({ compact = false }: UserMenuProps = {}) {
   const { data: session, isPending } = authClient.useSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -52,6 +57,16 @@ export function UserMenu() {
   }
 
   if (!session) {
+    if (compact) {
+      return (
+        <div className="flex items-center">
+          <Button variant="ghost" asChild>
+            <Link href="/auth/login">ログイン</Link>
+          </Button>
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center gap-2">
         <Button variant="ghost" asChild>
