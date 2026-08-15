@@ -45,7 +45,8 @@ export default async function PapersPage({ searchParams }: PageProps) {
       {/* メインエリア - サイドバーなし */}
       <div className="flex-1 lg:flex lg:overflow-hidden">
         {/* コンテンツエリア */}
-        <main className="flex-1 lg:flex lg:flex-col">
+        {/* RootLayout が <main> を持つため section にする（ランドマーク重複の解消） */}
+        <section aria-label="論文一覧" className="flex-1 lg:flex lg:flex-col">
           {/* ツールバー */}
           <div className="flex-shrink-0 border-b border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] px-4 py-2 lg:px-6">
             <div className="flex items-center justify-between">
@@ -80,7 +81,7 @@ export default async function PapersPage({ searchParams }: PageProps) {
               initialSortBy={initialSortBy}
             />
           </Suspense>
-        </main>
+        </section>
       </div>
     </div>
   );

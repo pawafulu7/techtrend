@@ -312,7 +312,12 @@ export function FavoriteFeedContent() {
 
           <div className="space-y-4">
             {sortedArticles.map((article) => (
-              <ArticleCard key={article.id} article={article} />
+              <ArticleCard
+                key={article.id}
+                article={article}
+                // この画面は API がお気に入り状態を返さないため、カード側で取得する
+                fetchInitialStatus
+              />
             ))}
           </div>
 

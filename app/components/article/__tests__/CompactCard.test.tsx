@@ -9,6 +9,7 @@ import { createMockArticleWithRelations } from '@/test/utils/mock-factories';
 // Next.jsのモック
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
+  usePathname: jest.fn(() => '/'),
   useSearchParams: jest.fn(),
 }));
 
@@ -194,30 +195,26 @@ describe('CompactCard', () => {
     it('既読記事ではタイトルの透明度が変わる', () => {
       render(<CompactCard article={mockArticle} isRead={true} />);
 
-      const title = screen.getByText('Test Article Title');
+      const title = screen.getByTestId('article-title');
       expect(title).toHaveClass('opacity-70');
     });
 
     it('未読記事ではタイトルの透明度は変わらない', () => {
       render(<CompactCard article={mockArticle} isRead={false} />);
 
-      const title = screen.getByText('Test Article Title');
+      const title = screen.getByTestId('article-title');
       expect(title).not.toHaveClass('opacity-70');
     });
   });
 
   describe('インタラクション', () => {
-    it('カードクリック時に記事詳細ページにナビゲートする', async () => {
-      const user = userEvent.setup();
-
+    // card-with-link: div+onClick ではなくタイトルが実リンク。遷移はブラウザが担う
+    it('タイトルが記事詳細への実リンクになっている', () => {
       render(<CompactCard article={mockArticle} />);
 
-      const card = screen.getByTestId('compact-card');
-      await user.click(card);
-
-      expect(mockRouter.push).toHaveBeenCalledWith(
-        expect.stringContaining('/articles/1')
-      );
+      const link = screen.getByTestId('article-title-link');
+      expect(link.tagName).toBe('A');
+      expect(link.getAttribute('href')).toContain('/articles/1');
     });
 
     it('onArticleClickコールバックが提供されている場合実行する', async () => {
@@ -228,38 +225,20 @@ describe('CompactCard', () => {
         <CompactCard article={mockArticle} onArticleClick={handleClick} />
       );
 
-      const card = screen.getByTestId('compact-card');
-      await user.click(card);
+      await user.click(screen.getByTestId('article-title-link'));
 
       expect(handleClick).toHaveBeenCalledWith(mockArticle.id);
     });
 
-    it('キーボード操作（Enter）で記事詳細にナビゲートする', async () => {
-      const user = userEvent.setup();
-
+    it('タイトルリンクがキーボードでフォーカスできる', () => {
       render(<CompactCard article={mockArticle} />);
 
-      const card = screen.getByTestId('compact-card');
-      card.focus();
-      await user.keyboard('{Enter}');
+      const link = screen.getByTestId('article-title-link');
+      link.focus();
 
-      expect(mockRouter.push).toHaveBeenCalledWith(
-        expect.stringContaining('/articles/1')
-      );
-    });
-
-    it('キーボード操作（Space）で記事詳細にナビゲートする', async () => {
-      const user = userEvent.setup();
-
-      render(<CompactCard article={mockArticle} />);
-
-      const card = screen.getByTestId('compact-card');
-      card.focus();
-      await user.keyboard(' ');
-
-      expect(mockRouter.push).toHaveBeenCalledWith(
-        expect.stringContaining('/articles/1')
-      );
+      expect(link).toHaveFocus();
+      // ネイティブ <a href> なので Enter での遷移はブラウザが担保する
+      expect(link).toHaveAttribute('href');
     });
 
     it('タグクリック時にタグフィルターページに遷移する', async () => {
@@ -346,17 +325,18 @@ describe('CompactCard', () => {
       const searchParams = new URLSearchParams('tags=React&sortBy=publishedAt');
       (useSearchParams as jest.Mock).mockReturnValue(searchParams);
 
-      const user = userEvent.setup();
-
       render(<CompactCard article={mockArticle} />);
 
-      const card = screen.getByTestId('compact-card');
-      await user.click(card);
+      const href = screen
+        .getByTestId('article-title-link')
+        .getAttribute('href') as string;
 
-      // URLにfromパラメータが含まれる
-      expect(mockRouter.push).toHaveBeenCalledWith(
-        expect.stringContaining('from=')
+      expect(href).toContain('from=');
+      const from = decodeURIComponent(
+        new URL(`http://localhost${href}`).searchParams.get('from') as string
       );
+      expect(from).toContain('tags=React');
+      expect(from).toContain('returning=1');
     });
   });
 
@@ -368,25 +348,22 @@ describe('CompactCard', () => {
       expect(screen.getByTestId('favorite-button')).toBeInTheDocument();
     });
 
-    it('適切なrole属性を持つ', () => {
+    // href を持たない role/tabIndex ではなく、タイトルを実リンクにして
+    // スクリーンリーダーにリンク先を伝える（card-with-link）
+    it('タイトルがリンクとして公開されている', () => {
       render(<CompactCard article={mockArticle} />);
 
-      const card = screen.getByTestId('compact-card');
-      expect(card).toHaveAttribute('role', 'article');
+      expect(
+        screen.getByRole('link', { name: mockArticle.title })
+      ).toBeInTheDocument();
     });
 
-    it('適切なaria-labelledby属性を持つ', () => {
+    it('タイトルリンクがフォーカス可能である', () => {
       render(<CompactCard article={mockArticle} />);
 
-      const card = screen.getByTestId('compact-card');
-      expect(card).toHaveAttribute('aria-labelledby', 'compact-title-1');
-    });
-
-    it('カードがフォーカス可能である', () => {
-      render(<CompactCard article={mockArticle} />);
-
-      const card = screen.getByTestId('compact-card');
-      expect(card).toHaveAttribute('tabIndex', '0');
+      const link = screen.getByTestId('article-title-link');
+      link.focus();
+      expect(link).toHaveFocus();
     });
 
     it('タグがキーボードで操作可能である', () => {

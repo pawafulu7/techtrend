@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Calendar, ExternalLink } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
@@ -21,10 +22,11 @@ export function ArticleCard({
   isRead: initialIsRead = false,
   isFavorited,
   onToggleFavorite,
+  fetchInitialStatus = false,
   showSource = true,
 }: ArticleCardProps & { isRead?: boolean }) {
   const isRead = useReadStatus(article.id, initialIsRead);
-  const router = useRouter();
+  const pathname = usePathname();
 
   // T1: Thumbnail display with validation and error fallback
   const [thumbnailError, setThumbnailError] = useState(false);
@@ -39,24 +41,15 @@ export function ArticleCard({
     ? getSourceColor(article.source.name)
     : null;
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    if (
-      e.defaultPrevented ||
-      (e.target as HTMLElement).closest('button, a, [role="button"]')
-    ) {
-      return;
-    }
-    if (onArticleClick) {
-      onArticleClick(article.id);
-    }
-
+  // 戻り先は「このカードが置かれている一覧」。`/` 固定にすると /papers や
+  // /favorites/feed から開いた記事の「記事一覧に戻る」がホームへ飛んでしまう
+  const articleHref = useMemo(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('returning', '1');
-
-    const returnUrl = `/?${params.toString()}`;
-    const articleUrl = `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
-    router.push(articleUrl);
-  };
+    const query = params.toString();
+    const returnUrl = query ? `${pathname}?${query}` : pathname;
+    return `/articles/${article.id}?from=${encodeURIComponent(returnUrl)}`;
+  }, [article.id, pathname, searchParams]);
 
   const votes = article.userVotes || 0;
 
@@ -69,9 +62,11 @@ export function ArticleCard({
       id={`article-${article.id}`}
       data-testid="article-card"
       data-article-id={article.id}
-      onClick={handleCardClick}
       className={cn(
         'group relative flex h-auto cursor-pointer flex-col sm:min-h-[240px]',
+        // タイトル Link の擬似要素がカード全面を覆うため、フォーカスリングは
+        // コンテナ側で表現する（キーボード操作でどのカードにいるか分かるように）
+        'focus-within:ring-(--tt-color-primary) focus-within:ring-2 focus-within:ring-offset-2',
         hasTopThumbnail ? 'gap-0 pb-4' : 'gap-1.5 px-4 pt-3 pb-4',
         isNew
           ? 'border-t-2 border-t-[var(--tt-color-positive)]'
@@ -111,7 +106,17 @@ export function ArticleCard({
           title={article.translatedTitle || article.title}
           data-testid="article-title"
         >
-          {article.translatedTitle || article.title}
+          {/* card-with-link: タイトルが実リンクで、擬似要素がカード全面の
+              クリック領域になる。div+onClick と違いキーボードで開ける */}
+          <Link
+            href={articleHref}
+            prefetch={false}
+            onClick={() => onArticleClick?.(article.id)}
+            className="after:absolute after:inset-0 after:content-[''] focus:outline-none"
+            data-testid="article-title-link"
+          >
+            {article.translatedTitle || article.title}
+          </Link>
         </h3>
 
         {/* Sub-line: badges + relative time */}
@@ -193,7 +198,7 @@ export function ArticleCard({
       */}
       <div
         className={cn(
-          'pointer-events-auto static mt-1 flex min-h-[44px] items-center justify-end gap-1 opacity-100 transition-opacity duration-200 sm:pointer-events-none sm:absolute sm:right-2 sm:bottom-2 sm:mt-0 sm:px-0 sm:opacity-0 sm:group-focus-within:pointer-events-auto sm:group-focus-within:opacity-100 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100',
+          'pointer-events-auto relative z-10 mt-1 flex min-h-[44px] items-center justify-end gap-1 opacity-100 transition-opacity duration-200 sm:pointer-events-none sm:absolute sm:right-2 sm:bottom-2 sm:mt-0 sm:px-0 sm:opacity-0 sm:group-focus-within:pointer-events-auto sm:group-focus-within:opacity-100 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100',
           hasTopThumbnail && 'px-4'
         )}
       >
@@ -211,6 +216,7 @@ export function ArticleCard({
           className="bg-background/30 h-9 min-h-[44px] w-9 min-w-[44px]"
           isFavorited={isFavorited}
           onToggleFavorite={onToggleFavorite}
+          fetchInitialStatus={fetchInitialStatus}
         />
         <ButtonV2
           variant="ghost"

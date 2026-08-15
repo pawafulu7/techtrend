@@ -198,7 +198,8 @@ export default async function Home({ searchParams }: PageProps) {
             <FilterSidebarOverlay />
 
             {/* Article list - 常にフルワイド */}
-            <main className="flex h-full flex-col">
+            {/* RootLayout が <main> を持つため section にする（ランドマーク重複の解消） */}
+            <section aria-label="記事一覧" className="flex h-full flex-col">
               <Suspense
                 fallback={
                   <LoadingSpinner message="記事を読み込んでいます..." />
@@ -215,7 +216,7 @@ export default async function Home({ searchParams }: PageProps) {
                   excludeSources={ARXIV_SOURCE_ID}
                 />
               </Suspense>
-            </main>
+            </section>
           </div>
         </div>
       </div>

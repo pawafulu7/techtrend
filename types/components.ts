@@ -17,6 +17,12 @@ export interface ArticleCardProps {
   onArticleClick?: (articleId?: string) => void;
   isFavorited?: boolean;
   onToggleFavorite?: () => void;
+  /**
+   * お気に入り状態を各カードが自分で API から取得する（ISR / Server Component の
+   * ページ用）。isFavorited を渡せない画面で未指定のままだと常に「未登録」表示に
+   * なるため、そうした画面ではこれを true にする。
+   */
+  fetchInitialStatus?: boolean;
 }
 
 // 記事リスト

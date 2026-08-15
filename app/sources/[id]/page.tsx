@@ -242,7 +242,12 @@ export default async function SourceDetailPage({
                 </Card>
               ) : (
                 recentArticles.map((article) => (
-                  <ArticleCard key={article.id} article={article} />
+                  <ArticleCard
+                    key={article.id}
+                    article={article}
+                    // Server Component からは状態を渡せないためカード側で取得する
+                    fetchInitialStatus
+                  />
                 ))
               )}
             </div>
@@ -262,7 +267,7 @@ export default async function SourceDetailPage({
                       {index + 1}
                     </div>
                     <div className="flex-1">
-                      <ArticleCard article={article} />
+                      <ArticleCard article={article} fetchInitialStatus />
                     </div>
                   </div>
                 ))}
