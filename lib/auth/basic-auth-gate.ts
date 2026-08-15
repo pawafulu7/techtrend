@@ -1,5 +1,10 @@
 import { createHash, createHmac } from 'crypto';
 import type { NextRequest } from 'next/server';
+import {
+  CONTROL_CHAR_PATTERN,
+  extractBasicToken,
+  extractBearerToken,
+} from '@/lib/auth/authorization-header';
 import { compareSecrets } from '@/lib/utils/compare-secrets';
 
 /**
@@ -191,8 +196,6 @@ export function buildGateSetCookie(
 /** 標準 Base64（padding 込み）のみを許容する */
 const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
 
-const CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F]/;
-
 /**
  * Base64 をバイト列として厳密にデコードし、UTF-8 として解釈する。
  *
@@ -219,36 +222,13 @@ interface BasicCredentials {
   pass: string;
 }
 
-const BASIC_SCHEME_PATTERN = /^Basic[ \t]+([^ \t]+)[ \t]*$/i;
-const BEARER_SCHEME_PATTERN = /^Bearer[ \t]+([^ \t]+)[ \t]*$/i;
-
-/**
- * Authorization ヘッダから token を取り出す共通パーサー。
- * Basic / Bearer で同じ形式・同じ検証（scheme は RFC 7235 上 case-insensitive、
- * token は単一、制御文字を含まない）を適用するために 1 箇所に集約している。
- */
-function extractAuthToken(
-  header: string | null,
-  schemePattern: RegExp
-): string | null {
-  if (!header) return null;
-
-  const match = schemePattern.exec(header);
-  if (!match) return null;
-
-  const token = match[1];
-  if (CONTROL_CHAR_PATTERN.test(token)) return null;
-
-  return token;
-}
-
 /**
  * RFC 7617 に従って Authorization: Basic をパースする。
  * - 最初の ':' より後ろが全て password。user-id に ':' は含められない
  * - charset="UTF-8" を通知しているため NFC に正規化する
  */
 function parseBasicHeader(header: string | null): BasicCredentials | null {
-  const token = extractAuthToken(header, BASIC_SCHEME_PATTERN);
+  const token = extractBasicToken(header);
   if (token === null) return null;
 
   const decoded = decodeBase64Strict(token);
@@ -286,7 +266,7 @@ function matchesCronBearer(
 ): boolean {
   if (!cronSecret) return false;
 
-  const token = extractAuthToken(header, BEARER_SCHEME_PATTERN);
+  const token = extractBearerToken(header);
   if (token === null) return false;
 
   return compareSecrets(token, cronSecret);
