@@ -3,6 +3,7 @@ import {
   withCronOrAdminAuth,
   type Handler,
 } from '@/lib/middleware/with-cron-or-admin-auth';
+import { extractBearerToken } from '@/lib/auth/authorization-header';
 import { compareSecrets } from '@/lib/utils/compare-secrets';
 import logger from '@/lib/logger';
 import { env } from '@/lib/config/env';
@@ -60,10 +61,7 @@ export function withFeedCollectTokenAuth(handler: Handler): Handler {
     // Bearer token チェック（admin session は許可しない）
     const cronSecret = env.CRON_TOKEN || env.CRON_SECRET;
     if (cronSecret) {
-      const authHeader = request.headers.get('authorization');
-      const bearer = authHeader?.startsWith('Bearer ')
-        ? authHeader.substring('Bearer '.length)
-        : undefined;
+      const bearer = extractBearerToken(request.headers.get('authorization'));
       if (bearer && compareSecrets(bearer, cronSecret)) {
         return handler(request, context);
       }

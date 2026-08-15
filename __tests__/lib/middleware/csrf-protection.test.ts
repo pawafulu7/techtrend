@@ -382,6 +382,56 @@ describe('csrf-protection', () => {
     });
   });
 
+  // issue #647 項目3: Bearer のスキーム判定を hasBearerScheme（case-insensitive）へ
+  // 置き換えたことで、CSRF 免除の入口が広がっていないことを固定する。
+  //
+  // この分岐の認可の実体は Cookie セッション（auth.api.getSession）であり、
+  // Authorization ヘッダの値そのものはセッションを確立しない。lib/auth/auth.ts の
+  // plugins に Better Auth の bearer プラグインを追加すると、この前提が崩れる。
+  describe('Bearer スキーム判定の受理範囲（issue #647）', () => {
+    const buildRequest = (authorization: string) =>
+      new NextRequest(new URL('http://localhost:3000/api/test'), {
+        method: 'POST',
+        headers: { origin: 'http://evil.com', authorization },
+      });
+
+    it.each([
+      ['小文字スキーム', 'bearer some-token'],
+      ['大文字スキーム', 'BEARER some-token'],
+      ['タブ区切り', 'Bearer\tsome-token'],
+    ])(
+      '%s でもセッションがなければ拒否する（スキーム緩和で免除が広がらない）',
+      async (_label, authorization) => {
+        getAuthApiGetSession().mockResolvedValue(null);
+
+        const request = buildRequest(authorization);
+        const ctx = extendWithSessionContext(undefined, request.headers);
+
+        await expect(validateOrigin(request, ctx)).resolves.toBe(false);
+      }
+    );
+
+    it('小文字スキームでも有効なセッションがあれば通す（判定が case-insensitive になっている）', async () => {
+      getAuthApiGetSession().mockResolvedValue({ user: { id: 'user-1' } });
+
+      const request = buildRequest('bearer some-token');
+      const ctx = extendWithSessionContext(undefined, request.headers);
+
+      await expect(validateOrigin(request, ctx)).resolves.toBe(true);
+    });
+
+    it('proxy 経路（context なし）ではセッションを解決できないため拒否する', async () => {
+      // proxy.ts は csrfProtection(request) を context なしで呼ぶため、
+      // resolveSession は常に null を返す。Bearer の形式に関わらず通らない。
+      getAuthApiGetSession().mockResolvedValue({ user: { id: 'user-1' } });
+
+      const request = buildRequest('Bearer some-token');
+
+      await expect(validateOrigin(request)).resolves.toBe(false);
+      expect(getAuthApiGetSession()).not.toHaveBeenCalled();
+    });
+  });
+
   describe('constants', () => {
     it('should have expected exempt paths', () => {
       expect(CSRF_EXEMPT_PATHS).toContain('/api/auth');
