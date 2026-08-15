@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { compareSecrets } from '@/lib/utils/compare-secrets';
+import {
+  BASIC_AUTH_CHALLENGE,
+  buildGateSetCookie,
+  evaluateGate,
+  type GateEnv,
+} from '@/lib/auth/basic-auth-gate';
 import { getThemeFromCookie } from '@/lib/cookies/theme-cookie';
 import { setSecurityHeaders } from '@/config/security-headers';
 import {
@@ -9,37 +14,23 @@ import {
 } from '@/lib/middleware/csrf-protection';
 import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
 
-// Optional Basic Auth (enabled when env is set)
-function needsBasicAuth(): boolean {
-  const enabled = process.env.BASIC_AUTH_ENABLED === 'true';
-  const hasCreds = !!(process.env.BASIC_AUTH_PASS || process.env.BASIC_PASSWORD);
-  return enabled && hasCreds;
+// Basic 認証ゲートの設定値。lib/ 配下は process.env の直接参照を ESLint で禁止しており、
+// env.ts はモジュールロード時に一度だけ parse するため、ここ（proxy.ts）で都度読んで渡す。
+function readGateEnv(): GateEnv {
+  return {
+    enabled: process.env.BASIC_AUTH_ENABLED,
+    user: process.env.BASIC_AUTH_USER,
+    pass: process.env.BASIC_AUTH_PASS,
+    legacyPass: process.env.BASIC_PASSWORD,
+    gateSecret: process.env.BASIC_AUTH_GATE_SECRET,
+    cronSecret: process.env.CRON_TOKEN || process.env.CRON_SECRET,
+    isProduction: process.env.NODE_ENV === 'production',
+  };
 }
 
-function checkBasicAuth(request: NextRequest): boolean {
-  // Allow cron requests with valid CRON_SECRET Bearer token
-  const cronSecret = process.env.CRON_TOKEN || process.env.CRON_SECRET;
-  if (cronSecret) {
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.substring('Bearer '.length) : undefined;
-    if (token && compareSecrets(token, cronSecret)) return true;
-  }
-
-  const user = process.env.BASIC_AUTH_USER || 'user';
-  const pass = process.env.BASIC_AUTH_PASS || process.env.BASIC_PASSWORD || '';
-
-  const header = request.headers.get('authorization');
-  if (!header || !header.startsWith('Basic ')) return false;
-
-  try {
-    const base64 = header.split(' ')[1] || '';
-    const decoded = atob(base64);
-    const [u, p] = decoded.split(':');
-    return u === user && p === pass;
-  } catch {
-    return false;
-  }
-}
+// 設定不備は全リクエストが 503 になる重大事象なので必ず気づけるようにする。
+// ただしリクエスト毎に出すとログが溢れるため、プロセスにつき一度だけ出力する。
+let gateMisconfigurationLogged = false;
 
 // メンテナンスモードの除外パス判定
 // メンテ中でも通常応答するパス: API・管理者ログイン・メンテ画面自身・静的アセット。
@@ -77,24 +68,89 @@ const protectedApiPaths = [
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  // Site-wide Basic Auth（認証済み状態は署名付きゲート Cookie で保持する）
+  // サイト全体のゲートなので CSRF より外側で評価する。未認証リクエストのために
+  // CSRF 側のセッション照会（DB アクセス）を走らせないためでもある。
+  const gateEnv = readGateEnv();
+  const gate = evaluateGate(request, gateEnv);
+
+  if (gate.kind === 'misconfigured') {
+    // fail-closed: Basic 認証が有効なのに設定が不完全。
+    // 認証を黙って無効化してサイトが全公開になるより、明示的に止める方が安全。
+    if (!gateMisconfigurationLogged) {
+      gateMisconfigurationLogged = true;
+      console.error(
+        `[proxy] Basic 認証が有効ですが設定が不完全なため全リクエストを 503 にしています: ${gate.reason}`
+      );
+    }
+    const misconfiguredRes = new NextResponse('Service Unavailable', {
+      status: 503,
+      headers: { 'Cache-Control': 'no-store' },
+    });
+    setSecurityHeaders(misconfiguredRes, request);
+    return misconfiguredRes;
+  }
+
+  if (gate.kind === 'fail') {
+    const challengeRes = new NextResponse('Unauthorized', {
+      status: 401,
+      headers: {
+        'WWW-Authenticate': BASIC_AUTH_CHALLENGE,
+        'Cache-Control': 'no-store',
+      },
+    });
+    setSecurityHeaders(challengeRes, request);
+    return challengeRes;
+  }
+
+  // ゲート通過後の全 return をここに通す。
+  // Cookie を最後の NextResponse.next() にだけ付けると、初回アクセスがメンテナンス 503 や
+  // ログインリダイレクトに落ちた場合に発行されず、再入力の症状がそのまま残る。
+  const finalize = <T extends NextResponse>(response: T): T => {
+    // ゲートを通過した応答は共有キャッシュに載せない。
+    // basic だけでなく cookie（2 回目以降）と cron も対象にする必要がある。
+    // また /api/ も除外できない: app/api/stats 等が public, s-maxage と
+    // CDN-Cache-Control を返しており、これは「ゲート済みコンテンツを下流 CDN が
+    // 共有キャッシュしてよい」という宣言になってしまうため。
+    const passedGate =
+      gate.kind === 'basic' || gate.kind === 'cookie' || gate.kind === 'cron';
+
+    if (passedGate) {
+      // Cookie はドキュメント遷移でのみ発行する。API 応答（beacon 含む）には載せない。
+      if (gate.kind === 'basic' && !pathname.startsWith('/api/')) {
+        response.headers.append(
+          'Set-Cookie',
+          buildGateSetCookie(request, gateEnv)
+        );
+      }
+
+      response.headers.set('Cache-Control', 'private, no-store');
+      // 下流 CDN 向けの指定も明示的に打ち消す（delete だけでは後段が再設定しうる）
+      response.headers.set('CDN-Cache-Control', 'no-store');
+
+      // 既存の Vary を保持したうえで認証に影響するヘッダを追加する
+      const vary = new Set(
+        (response.headers.get('Vary') ?? '')
+          .split(',')
+          .map(value => value.trim())
+          .filter(Boolean)
+      );
+      vary.add('Cookie');
+      vary.add('Authorization');
+      response.headers.set('Vary', [...vary].join(', '));
+    }
+
+    setSecurityHeaders(response, request);
+    return response;
+  };
+
   // CSRF Protection for API routes
   if (pathname.startsWith('/api/')) {
     if (requiresCSRFProtection(request.method) && !isCSRFExemptPath(pathname)) {
       const csrfResponse = await csrfProtection(request);
       if (csrfResponse) {
-        return csrfResponse;
+        return finalize(csrfResponse);
       }
-    }
-  }
-
-  // Site-wide Basic Auth
-  if (needsBasicAuth()) {
-    const ok = checkBasicAuth(request);
-    if (!ok) {
-      return new NextResponse('Unauthorized', {
-        status: 401,
-        headers: { 'WWW-Authenticate': 'Basic realm="Protected"' },
-      });
     }
   }
 
@@ -112,9 +168,8 @@ export async function proxy(request: NextRequest) {
         const { createMaintenanceResponse } = await import(
           '@/lib/maintenance/maintenance-response'
         );
-        const maintenanceRes = createMaintenanceResponse();
-        setSecurityHeaders(maintenanceRes, request);
-        return maintenanceRes;
+        // セキュリティヘッダは呼び出し元の finalize が一括で適用する
+        return createMaintenanceResponse();
       } catch {
         // 最終フォールバック: メンテ画面モジュールの取得すら失敗しても 503 を返す。
         return new NextResponse('Service Unavailable', {
@@ -127,7 +182,7 @@ export async function proxy(request: NextRequest) {
     // セッション Cookie が無ければ未認証＝非管理者確定。getSession/DB を呼ばず即 503 に倒す
     // （メンテ中の未認証アクセスで毎回 DB セッション検索が走るのを防ぐ）。
     if (!request.cookies.get(AUTH_COOKIES.sessionToken)) {
-      return await respondMaintenance();
+      return finalize(await respondMaintenance());
     }
 
     try {
@@ -148,12 +203,12 @@ export async function proxy(request: NextRequest) {
       }
 
       if (!isAdmin) {
-        return await respondMaintenance();
+        return finalize(await respondMaintenance());
       }
     } catch {
       // フェイルセーフ: session/DB 取得失敗時は 500 ではなくメンテ画面（503）に倒す。
       // （getUserAuthData は Redis 失敗は握るが DB query 例外は握らないため、ここで捕捉する）
-      return await respondMaintenance();
+      return finalize(await respondMaintenance());
     }
   }
 
@@ -173,23 +228,19 @@ export async function proxy(request: NextRequest) {
     if (!sessionCookie) {
       // APIルートの場合は401を返す
       if (isProtectedApiPath) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
+        return finalize(
+          NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         );
       }
 
       // ページの場合はログインページにリダイレクト
       const url = new URL('/auth/login', request.url);
       url.searchParams.set('callbackUrl', pathname);
-      return NextResponse.redirect(url);
+      return finalize(NextResponse.redirect(url));
     }
   }
 
   const response = NextResponse.next();
-
-  // セキュリティヘッダ設定（Phase 2: 並行運用検証）
-  setSecurityHeaders(response, request);
 
   // テーマCookieの処理
   const theme = getThemeFromCookie(request);
@@ -197,7 +248,8 @@ export async function proxy(request: NextRequest) {
   // レスポンスヘッダーにテーマ情報を追加（デバッグ用）
   response.headers.set('x-theme', theme);
 
-  return response;
+  // セキュリティヘッダ設定とゲート Cookie 発行は finalize がまとめて行う
+  return finalize(response);
 }
 
 export const config = {
