@@ -20,23 +20,22 @@ flowchart TD
     Maint -->|"無効 or 管理者 or 除外パス"| Protected{"保護パス?<br/>/profile /favorites<br/>/history /digest<br/>/api/favorites"}
 
     Protected -->|"Cookie 無し"| Redirect["ログインへ<br/>redirect / 401"]
-    Protected -->|"Cookie 存在<br/>(検証はしない)"| Finalize["finalize()<br/>setSecurityHeaders + x-theme"]
+    Protected -->|"Cookie 存在<br/>(検証はしない)"| Finalize["finalize()<br/>setSecurityHeaders"]
 
     Finalize -.->|"basic/cookie/cron<br/>通過時のみ"| GateHeaders["private, no-store<br/>CDN-Cache-Control<br/>Vary 追加"]
 
     Finalize --> RouteType{"ルート種別"}
-    RouteType --> RSC["RSC page"]
+    RouteType -->|"通常通過時のみ x-theme 付与"| RSC["RSC page"]
     RouteType --> ApiRoute["API route"]
 
     RSC --> PublicPage["公開ページ<br/>セッション不要"]
     RSC --> ProtectedPage["保護ページ<br/>getSession()"]
     RSC --> AdminPage["管理者ページ<br/>requireAdmin()<br/>DB-backed role"]
+    RSC --> ArticleDetail["記事詳細ページ<br/>ArticleDetailCache (Redis)<br/>→Prisma + ISR revalidate=60"]
 
-    ApiRoute --> ApiWrap["withAdminAuth /<br/>withUserValidation /<br/>withRateLimit /<br/>withCSRFProtection"]
-
-    ApiWrap --> ArticleList["記事一覧<br/>用途別Redis→miss→Prisma<br/>→DataLoaderでユーザー情報付与"]
+    ApiRoute -->|"変更系・管理者用"| ApiWrap["withAdminAuth /<br/>withUserValidation /<br/>withRateLimit /<br/>withCSRFProtection"]
+    ApiRoute -->|"公開 GET は<br/>ラッパーなしも多い"| ArticleList["記事一覧<br/>用途別Redis→miss→Prisma<br/>→DataLoaderでユーザー情報付与"]
     ApiWrap --> FavHistory["お気に入り・既読<br/>DataLoader→Redis→Prisma"]
-    ApiWrap --> ArticleDetail["記事詳細<br/>ArticleDetailCache(Redis)<br/>→Prisma + ISR revalidate=60"]
 ```
 
 ### 読み方
@@ -44,8 +43,11 @@ flowchart TD
 - `proxy.ts` は全リクエスト共通の直列パイプラインではなく、**4 つの独立した条件分岐**です。各ゲートは有効化条件が異なり、無効時はスキップされます（Basic gate は `BASIC_AUTH_ENABLED` 時のみ、CSRF は `/api/*` の変更系メソッドのみ、メンテナンスは `MAINTENANCE_MODE` 時のみ、保護パスガードは対象パスのみ）。
 - `finalize()` が付与する `Cache-Control: private, no-store` / `CDN-Cache-Control` / `Vary` 追加は、**Basic gate を通過したリクエスト（`gate.kind === 'basic' | 'cookie' | 'cron'`）のときだけ**実行されます。Basic 認証が無効な環境ではこれらのヘッダーは付与されません（`proxy.ts:120-146`）。
 - 保護パスガード（`/profile` `/favorites` `/history` `/digest` `/api/favorites`）は**セッション Cookie の存在確認のみ**で、セッションの有効性やロールは検証していません。実際の検証は RSC 側の `getSession()` / `requireAdmin()` や API 側のラッパーで行われます。
-- `setSecurityHeaders()` は `finalize()` 経由ですべての応答（503/401/リダイレクト含む）に適用されます。テーマ Cookie は `x-theme` ヘッダーとして応答に反映されます。
+- `setSecurityHeaders()` は `finalize()` 経由ですべての応答（503/401/リダイレクト含む）に適用されます。一方 `x-theme` ヘッダーは `finalize()` では付与されず、**ゲートに引っかからず通常通過したリクエストのときだけ**設定されます（`proxy.ts:254`）。CSRF エラー・メンテナンス 503・ログインリダイレクトには付きません。
 - キャッシュは「記事一覧」「お気に入り・既読」「記事詳細」の 3 経路があり、`LayeredCache` の L1/L2/L3 は段階的フォールバック層ではなく、**すべて Redis を使う用途別キャッシュ**（L1 公開記事リスト / L2 ユーザー系 / L3 検索）です。
+- **記事詳細の Redis キャッシュと ISR は RSC ページ側の仕組み**です（`app/articles/[id]/page.tsx:45` が `articleDetailCache.getArticleWithRelations()` を呼び、`:50` で `revalidate = 60` を宣言）。API 側で同じキャッシュを使うのは関連記事・関係グラフなど別ルートです。
+- **すべての API がラッパーを通るわけではありません。** 例えば `app/api/articles/[id]/route.ts` の GET は素の `export async function GET` で、`withAdminAuth` + `withRateLimit` が付くのは同ファイルの PATCH / DELETE です。認証・レート制限の有無はルートごとに確認が必要です。
+- DataLoader は 2 つとも**バッチ化**が主目的ですが、リクエスト内メモ化の扱いは異なります。favorite loader は DataLoader のキャッシュを有効にし（`lib/dataloader/favorite-loader.ts:221`）、view loader は `cache: false` で無効にしています（`lib/dataloader/article-view-loader.ts:135`）。
 
 ## 記事一覧取得のシーケンス
 
@@ -63,7 +65,7 @@ sequenceDiagram
     A->>DB: executeStandardQuery()<br/>(count + findMany)
     DB-->>A: 記事一覧
     A->>L1: キャッシュへ書き戻し
-    A->>DL: fetchUserSpecificData()<br/>(favorite/view をリクエスト内メモ化)
+    A->>DL: fetchUserSpecificData()<br/>(favorite/view をバッチ取得)
     DL-->>A: ユーザー固有情報
     A-->>C: 記事一覧 + ユーザー情報オーバーレイ
 ```
@@ -87,7 +89,8 @@ sequenceDiagram
 | `LayeredCache`（L1/L2/L3 = 用途別 Redis） | `lib/cache/layered-cache.ts:37-71` |
 | 記事一覧キャッシュ呼び出し | `app/api/articles/handlers/get.ts:541-543`（`cache.getArticles(params, () => executeStandardQuery(...))`） |
 | ユーザー情報オーバーレイ（DataLoader） | `app/api/articles/handlers/get.ts:558-565`（`fetchUserSpecificData`） |
-| DataLoader ファクトリ・記事ローダー | `lib/dataloader/index.ts:10-19`、`lib/dataloader/article-loader.ts:9-45` |
+| DataLoader ファクトリ | `lib/dataloader/index.ts:10-19`（`createLoaders()`） |
+| ユーザー情報の DataLoader（オーバーレイで使うのはこの 2 つ） | `lib/dataloader/favorite-loader.ts:221`（`cache: true`）、`lib/dataloader/article-view-loader.ts:135`（`cache: false`）。呼び出しは `app/api/articles/lib/user-data.ts:36-49` |
 | 記事詳細キャッシュ | `lib/cache/article-detail-cache.ts:10-18` |
 | 記事詳細ページの ISR | `app/articles/[id]/page.tsx:50`（`export const revalidate = 60`） |
 

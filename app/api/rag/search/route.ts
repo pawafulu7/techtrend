@@ -25,7 +25,7 @@ import { env } from '@/lib/config/env';
  *
  * Security layers:
  * 1. Authentication (Better Auth) - REQUIRED
- * 2. Rate limiting (Upstash Redis) - 10 req/min/user
+ * 2. Rate limiting (Redis via ioredis) - 10 req/min/user
  * 3. Input validation (Zod) - searchRequestSchema
  * 4. SQL injection prevention (Prisma.sql)
  *

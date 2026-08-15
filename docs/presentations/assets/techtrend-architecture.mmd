@@ -23,7 +23,7 @@ flowchart LR
     end
 
     subgraph data["データ層"]
-        pg[("PostgreSQL 17 + pgvector<br/>Prisma 7")]
+        pg[("PostgreSQL + pgvector<br/>Prisma 7")]
         redis[("Redis<br/>cache + rate limit")]
     end
 
@@ -34,9 +34,9 @@ flowchart LR
     oauth(("Google / GitHub<br/>OAuth"))
     newrelic(("New Relic"))
 
-    gha_sched --> src_rss
-    gha_sched --> src_scrape
-    gha_sched --> src_api
+    src_rss --> gha_sched
+    src_scrape --> gha_sched
+    src_api --> gha_sched
     gha_sched --> pg
     gha_sched --> gemini
     gha_sched --> openai

@@ -7,6 +7,12 @@ DBアクセス最適化Phase 3.3の実装において、データの一貫性と
 
 ## 2. キャッシュレイヤー構成
 
+> **注意: 「L1/L2」という呼び方が 2 つある。**
+> この節の L1/L2 は「リクエスト内メモリ → Redis → DB」という**段階的フォールバックの階層**を指す。
+> 一方、`lib/cache/layered-cache.ts` の `LayeredCache` が持つ L1/L2/L3 は階層ではなく
+> **用途別の Redis キャッシュ**（L1 公開記事リスト / L2 ユーザー系 / L3 検索）で、意味が異なる。
+> 経路ごとの実際の流れは [docs/architecture/03-request-flow.md](./architecture/03-request-flow.md) を参照。
+
 ### 2.1 階層構造
 
 ```

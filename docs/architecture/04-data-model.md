@@ -79,7 +79,7 @@ erDiagram
 - **ArticleEmbedding**: 記事の embedding（title/summary/content 単位、`EmbeddingKey` で区別）。`embedding` は pgvector の `vector(1536)` 型
 - **ArticleChunk**: 記事本文をチャンク分割した embedding 用テーブル。スキーマ上は `Article` と 1:多の関係を持つが、**現行の embedding パイプラインは書き込まない**（注記参照）
 - **EmbeddingJob**: embedding 生成の実行キュー。1 記事につき最大 1 ジョブ（`articleId` が unique）
-- **CodeTip**: 記事から抽出したコード断片。`Article` への実 `@relation`（`sourceArticleId`、cascade）を持つため本図に配置（計画上は独立系テーブル表に予定していたが、schema.prisma 確認により本図へ変更。詳細は末尾の報告を参照）。なお `lib/ai/extraction/extraction-schemas.ts` に抽出用スキーマはあるが、[未確認] DB への `create`/`upsert` 呼び出しはリポジトリ内で確認できず、現時点で実データを持たない可能性がある
+- **CodeTip**: 記事から抽出したコード断片。`Article` への実 `@relation`（`sourceArticleId`、cascade）を持つため本図に配置。なお `lib/ai/extraction/extraction-schemas.ts` に抽出用スキーマはあるが、[未確認] DB への `create`/`upsert` 呼び出しはリポジトリ内で確認できず、現時点で実データを持たない可能性がある
 - **ProcessingLog**: バッチの最終実行時刻・処理件数を記録する独立テーブル。**Prisma の `@relation` を一切持たない**ため図中では関係線なしの単独ボックスとして表示。`processName`（一意キー）でバッチ側が論理的に参照する
 
 ---
@@ -196,7 +196,7 @@ erDiagram
 | `ChangelogProject` → `ChangelogVersion` → `ChangelogEntry` | OSS/製品の変更履歴収集（親: プロジェクト、子: バージョン、孫: 変更点） | `scripts/scheduled/collect-changelog.ts`（`scheduler-changelog`、日次） | 3 モデルは互いに `@relation` を持つ独立系。`ChangelogProject 1 - N ChangelogVersion 1 - N ChangelogEntry`（いずれも `onDelete: Cascade`）。`Article`/`User` への関係はない |
 | `UserDeletionLog` | ユーザー退会・削除の監査ログ | `lib/auth/utils.ts`、`app/api/admin/users/[id]/route.ts`（自己退会・管理者削除時） | `@relation` なし。`userId`/`email` は削除後も残すためスナップショット的に保持（論理参照） |
 | `Verification` | Better Auth のメール確認トークン管理 | Better Auth ライブラリ内部（`lib/auth/auth.ts` の `emailVerification` 設定経由）。アプリコードから直接書き込まない | `@relation` なし |
-| `SourceTag` / `SourceTagAssignment` | ソースへのタグ付け（`Tag`/`InterestCategory` の記事タグとは別系統） | [未確認] `SourceTagAssignment` は `Source`/`SourceTag` への `@relation` を持つが、現行の書き込み箇所（管理画面 API 等）はリポジトリ内で確認できず | `SourceTagAssignment` は `Source`（04-A）と `SourceTag` の双方に `@relation`（`onDelete: Cascade`）を持つ。ただし `Article`/`User` へは繋がらないため図には含めていない |
+| `SourceTag` / `SourceTagAssignment` | ソースへのタグ付け（`Tag`/`InterestCategory` の記事タグとは別系統） | 初期移行スクリプト `scripts/migrate/phase2-data-migration.ts:185`（`tx.sourceTagAssignment.createMany()`）。定常バッチ・API からの書き込みは確認できず、[推測] 移行時に投入したきりとみられる | `SourceTagAssignment` は `Source`（04-A）と `SourceTag` の双方に `@relation`（`onDelete: Cascade`）を持つ。ただし `Article`/`User` へは繋がらないため図には含めていない |
 
 ---
 
