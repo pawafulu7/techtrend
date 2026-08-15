@@ -690,8 +690,8 @@ describe('Environment Configuration - CRON_TOKEN / CRON_SECRET の形式検証',
       ['英数字', 'abc123'],
       ['記号を含む', 'a-b_c.d~e'],
       ['16進文字列（openssl rand -hex 32 相当）', 'a'.repeat(64)],
-      ['非 ASCII', 'トークン'],
-      ['NBSP を含む（共有パーサーも token として受理するため）', 'a\u00a0b'],
+      ['base64url 相当', 'aB3-_x.~+/='],
+      ['可視 ASCII の両端', '!~'],
     ])('CRON_TOKEN: %s は受理される', (_label, value) => {
       process.env.CRON_TOKEN = value;
       resetEnvCache();
@@ -713,6 +713,11 @@ describe('Environment Configuration - CRON_TOKEN / CRON_SECRET の形式検証',
       ['タブを含む', 'a\tb'],
       ['改行を含む（コピペ事故の典型）', 'abc\n'],
       ['制御文字を含む', 'abc\u0001'],
+      ['DEL を含む', 'abc\u007F'],
+      // 以下は「設定はできるが Authorization ヘッダとして送出できない／
+      // 途中で壊れる」値。cross-review で検出した実際の欠陥に対応する。
+      ['非 ASCII（ByteString に変換できず送出不可）', 'トークン'],
+      ['NBSP を含む（obs-text であり proxy/CDN での扱いが保証されない）', 'a\u00a0b'],
     ])('CRON_TOKEN: %s は検証エラーになる', (_label, value) => {
       process.env.CRON_TOKEN = value;
       resetEnvCache();
@@ -744,6 +749,26 @@ describe('Environment Configuration - CRON_TOKEN / CRON_SECRET の形式検証',
       resetEnvCache();
       expect(() => getEnv()).not.toThrow();
       expect(getEnv().CRON_TOKEN).toBeUndefined();
+    });
+  });
+
+  describe('受理された値は Authorization ヘッダとして送出できる', () => {
+    // 検証の目的は「設定はできるが認証には使えない値」を弾くこと。
+    // HTTP ヘッダ値は ByteString のため U+00FF を超える文字は載せられない。
+    it('受理される値は Headers に設定でき、値が保持される', () => {
+      const value = 'a'.repeat(64);
+      process.env.CRON_TOKEN = value;
+      resetEnvCache();
+
+      expect(getEnv().CRON_TOKEN).toBe(value);
+      const headers = new Headers({ authorization: `Bearer ${value}` });
+      expect(headers.get('authorization')).toBe(`Bearer ${value}`);
+    });
+
+    it('拒否される非 ASCII 値は Headers に設定しようとすると TypeError になる', () => {
+      expect(
+        () => new Headers({ authorization: 'Bearer トークン' })
+      ).toThrow(TypeError);
     });
   });
 });

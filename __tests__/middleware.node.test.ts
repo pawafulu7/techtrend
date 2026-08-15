@@ -158,6 +158,37 @@ describe('middleware - security headers', () => {
       expect(response.headers.get('Content-Security-Policy')).toBeDefined();
     });
 
+    // ゲートと API 側でシークレットの選択規則が一致していることを固定する。
+    // proxy.ts が生の process.env を使っていた頃は、空白のみの CRON_TOKEN を
+    // truthy として選び、API 側（sanitizeEnv 済み）が CRON_SECRET を選ぶという
+    // 不一致があった。ゲートだけが 401 を返す原因になる。
+    it('should fall back to CRON_SECRET when CRON_TOKEN is whitespace-only', async () => {
+      process.env.BASIC_AUTH_ENABLED = 'true';
+      process.env.BASIC_AUTH_PASS = 'secret';
+      process.env.BASIC_AUTH_GATE_SECRET = 'f'.repeat(64);
+      process.env.CRON_TOKEN = '   ';
+      process.env.CRON_SECRET = 'valid-cron-secret';
+
+      const request = new NextRequest(new URL('http://localhost:3000/'));
+      request.headers.set('authorization', 'Bearer valid-cron-secret');
+      const response = await proxy(request);
+
+      expect(response.status).not.toBe(401);
+    });
+
+    it('should accept a lowercase bearer scheme for cron requests', async () => {
+      process.env.BASIC_AUTH_ENABLED = 'true';
+      process.env.BASIC_AUTH_PASS = 'secret';
+      process.env.BASIC_AUTH_GATE_SECRET = 'f'.repeat(64);
+      process.env.CRON_TOKEN = 'test-cron-secret';
+
+      const request = new NextRequest(new URL('http://localhost:3000/'));
+      request.headers.set('authorization', 'bearer test-cron-secret');
+      const response = await proxy(request);
+
+      expect(response.status).not.toBe(401);
+    });
+
     it('should redirect to login for protected paths without session', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/profile'));
       const response = await proxy(request);

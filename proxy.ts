@@ -16,6 +16,19 @@ import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
 
 // Basic 認証ゲートの設定値。lib/ 配下は process.env の直接参照を ESLint で禁止しており、
 // env.ts はモジュールロード時に一度だけ parse するため、ここ（proxy.ts）で都度読んで渡す。
+
+/**
+ * 空白のみの値を未設定として扱う。lib/config/env.ts の sanitizeEnv() と同じ規則。
+ *
+ * API 側は sanitize 済みの env.CRON_TOKEN || env.CRON_SECRET でシークレットを選ぶ。
+ * ここで生の process.env を使うと、例えば CRON_TOKEN='   ' / CRON_SECRET='valid' の
+ * 構成でゲートだけが空白文字列を選び、API が受理するリクエストをゲートが 401 にする。
+ * シークレットの選択規則を API 側と一致させるための正規化。
+ */
+function readOptionalEnv(value: string | undefined): string | undefined {
+  return value !== undefined && value.trim() === '' ? undefined : value;
+}
+
 function readGateEnv(): GateEnv {
   return {
     enabled: process.env.BASIC_AUTH_ENABLED,
@@ -23,7 +36,9 @@ function readGateEnv(): GateEnv {
     pass: process.env.BASIC_AUTH_PASS,
     legacyPass: process.env.BASIC_PASSWORD,
     gateSecret: process.env.BASIC_AUTH_GATE_SECRET,
-    cronSecret: process.env.CRON_TOKEN || process.env.CRON_SECRET,
+    cronSecret:
+      readOptionalEnv(process.env.CRON_TOKEN) ??
+      readOptionalEnv(process.env.CRON_SECRET),
     isProduction: process.env.NODE_ENV === 'production',
   };
 }

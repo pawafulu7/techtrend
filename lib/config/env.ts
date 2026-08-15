@@ -44,10 +44,19 @@ const booleanEnum = z.preprocess(
 /**
  * Authorization: Bearer のトークンとして送出されるシークレット用のスキーマ。
  *
- * lib/auth/authorization-header.ts の受理規則と 1 対 1 で対応させる。
- * 同モジュールは token を `[^ \t]+` で切り出し、制御文字を含む場合は拒否するため、
- * 空白・タブ・制御文字を含む値は「設定はできるが認証には使えない」状態になる。
- * これを起動時に検出して fail-closed にする。
+ * 「設定はできるが認証には使えない」値を起動時に弾くのが目的なので、
+ * 実際に Authorization ヘッダへ載せて往復できる文字だけを許可する。
+ * 可視 ASCII（U+0021-U+007E）に限定しており、以下をすべて拒否する。
+ *
+ * - 空白・タブ: lib/auth/authorization-header.ts が token を `[^ \t]+` で
+ *   切り出すため、含まれていると設定値どおりに復元できない
+ * - 制御文字・DEL: 同モジュールが明示的に拒否する。CR/LF はヘッダ分割の温床でもある
+ * - U+00FF を超える文字: HTTP ヘッダ値は ByteString であり、そもそも送出できない
+ *   （`new Headers({ authorization: 'Bearer トークン' })` は TypeError になる）
+ *
+ * U+0080-U+00FF は Headers には載るが RFC 9110 で obs-text として非推奨であり、
+ * 途中の proxy / CDN での取り扱いが保証されないため許可しない。
+ * `openssl rand -hex 32` 等の一般的な生成手段はいずれもこの範囲に収まる。
  *
  * 注: 空白のみ・空文字列の値は sanitizeEnv() が先に undefined へ変換するため
  * ここには到達しない（＝未設定として扱われ、エラーにはならない）。
@@ -56,8 +65,8 @@ const bearerSecret = (name: string) =>
   z
     .string()
     .regex(
-      /^[^ \t\u0000-\u001F\u007F]+$/,
-      `${name} に空白文字・タブ・制御文字を含めることはできません`
+      /^[\u0021-\u007E]+$/,
+      `${name} には可視 ASCII 文字（U+0021-U+007E）のみ使用できます。空白・制御文字・非 ASCII 文字は Authorization ヘッダとして送出できないか、トークンとして復元できません`
     )
     .optional();
 
