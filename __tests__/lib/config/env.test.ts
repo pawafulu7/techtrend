@@ -765,10 +765,12 @@ describe('Environment Configuration - CRON_TOKEN / CRON_SECRET の形式検証',
       expect(headers.get('authorization')).toBe(`Bearer ${value}`);
     });
 
-    it('拒否される非 ASCII 値は Headers に設定しようとすると TypeError になる', () => {
-      expect(
-        () => new Headers({ authorization: 'Bearer トークン' })
-      ).toThrow(TypeError);
+    it('拒否される非 ASCII 値は Headers に設定できない', () => {
+      // TypeError のコンストラクタ同一性は jest の realm 差で一致しないため
+      // メッセージで検証する（ByteString 変換に失敗することが確認できればよい）。
+      expect(() => new Headers({ authorization: 'Bearer トークン' })).toThrow(
+        /ByteString/
+      );
     });
   });
 });
