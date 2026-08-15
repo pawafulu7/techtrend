@@ -245,7 +245,7 @@ describe('middleware - security headers', () => {
       expect(setCookie).not.toContain('Domain');
       // Set-Cookie を含む応答は共有キャッシュに載せない
       expect(response.headers.get('Cache-Control')).toBe('private, no-store');
-      expect(response.headers.get('CDN-Cache-Control')).toBeNull();
+      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
       expect(response.headers.get('Vary')).toContain('Cookie');
       expect(response.headers.get('Vary')).toContain('Authorization');
     });
@@ -264,7 +264,7 @@ describe('middleware - security headers', () => {
       expect(response.headers.get('set-cookie')).toBeNull();
       // Cookie 通過時もゲート配下のページなので共有キャッシュに載せない
       expect(response.headers.get('Cache-Control')).toBe('private, no-store');
-      expect(response.headers.get('CDN-Cache-Control')).toBeNull();
+      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
       expect(response.headers.get('Vary')).toContain('Cookie');
     });
 
@@ -302,6 +302,9 @@ describe('middleware - security headers', () => {
 
       expect(response.status).not.toBe(401);
       expect(response.headers.get('set-cookie')).toBeNull();
+      // cron でも任意パスを通過できるため、キャッシュ抑止の対象に含める
+      expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
     });
 
     it('M7: メンテナンス 503 の経路でもゲート Cookie を発行する', async () => {
@@ -314,8 +317,8 @@ describe('middleware - security headers', () => {
 
       expect(response.status).toBe(503);
       expect(response.headers.get('set-cookie')).toContain('tt_gate=');
-      // Cookie を含む応答は共有キャッシュ用ヘッダを持たない
-      expect(response.headers.get('CDN-Cache-Control')).toBeNull();
+      // Cookie を含む応答は共有キャッシュに載せない
+      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
       expect(response.headers.get('Content-Security-Policy')).toBeTruthy();
     });
 
@@ -329,8 +332,8 @@ describe('middleware - security headers', () => {
       expect(response.status).toBe(307);
       expect(response.headers.get('location')).toContain('/auth/login');
       expect(response.headers.get('set-cookie')).toContain('tt_gate=');
-      // Cookie を含む応答は共有キャッシュ用ヘッダを持たない
-      expect(response.headers.get('CDN-Cache-Control')).toBeNull();
+      // Cookie を含む応答は共有キャッシュに載せない
+      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
     });
 
     it('M9: 保護 API の 401 ではセキュリティヘッダが付き Cookie は発行しない', async () => {
@@ -342,11 +345,12 @@ describe('middleware - security headers', () => {
 
       expect(response.status).toBe(401);
       expect(response.headers.get('Content-Security-Policy')).toBeTruthy();
-      // /api/* は公開キャッシュヘッダを返す経路があるため Cookie を載せない
+      // /api/* に Cookie は載せないが、キャッシュ抑止は適用する
       expect(response.headers.get('set-cookie')).toBeNull();
+      expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     });
 
-    it('M10: /api/* にはゲート Cookie を発行しない', async () => {
+    it('M10: /api/* には Cookie を発行しないがキャッシュは抑止する', async () => {
       enableBasicAuth();
 
       const response = await proxy(
@@ -355,6 +359,10 @@ describe('middleware - security headers', () => {
 
       expect(response.status).not.toBe(401);
       expect(response.headers.get('set-cookie')).toBeNull();
+      // ゲート済みの API 応答が下流 CDN に共有キャッシュされるのを防ぐ
+      expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vary')).toContain('Authorization');
     });
 
     it('M11: 有効化されているのにパスワードが未設定なら 503（fail-closed）', async () => {
@@ -384,6 +392,7 @@ describe('middleware - security headers', () => {
       expect(response.headers.get('set-cookie')).toBeNull();
       // ゲート OFF のときはキャッシュ制御に手を加えない（既存挙動の維持）
       expect(response.headers.get('Cache-Control')).toBeNull();
+      expect(response.headers.get('CDN-Cache-Control')).toBeNull();
       expect(response.headers.get('Vary')).toBeNull();
     });
 

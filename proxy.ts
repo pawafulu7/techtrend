@@ -107,16 +107,17 @@ export async function proxy(request: NextRequest) {
   // Cookie を最後の NextResponse.next() にだけ付けると、初回アクセスがメンテナンス 503 や
   // ログインリダイレクトに落ちた場合に発行されず、再入力の症状がそのまま残る。
   const finalize = <T extends NextResponse>(response: T): T => {
-    // ゲート配下のページ応答は共有キャッシュに載せない。
-    // Cookie 発行時（basic）だけでなく Cookie 通過時（cookie）も対象にしないと、
-    // 2 回目以降のリクエストがキャッシュ制御なしで通ってしまう。
-    // /api/ は app/api/stats 等が public, s-maxage と CDN-Cache-Control を返すため除外する。
-    const isGatedPage =
-      !pathname.startsWith('/api/') &&
-      (gate.kind === 'basic' || gate.kind === 'cookie');
+    // ゲートを通過した応答は共有キャッシュに載せない。
+    // basic だけでなく cookie（2 回目以降）と cron も対象にする必要がある。
+    // また /api/ も除外できない: app/api/stats 等が public, s-maxage と
+    // CDN-Cache-Control を返しており、これは「ゲート済みコンテンツを下流 CDN が
+    // 共有キャッシュしてよい」という宣言になってしまうため。
+    const passedGate =
+      gate.kind === 'basic' || gate.kind === 'cookie' || gate.kind === 'cron';
 
-    if (isGatedPage) {
-      if (gate.kind === 'basic') {
+    if (passedGate) {
+      // Cookie はドキュメント遷移でのみ発行する。API 応答（beacon 含む）には載せない。
+      if (gate.kind === 'basic' && !pathname.startsWith('/api/')) {
         response.headers.append(
           'Set-Cookie',
           buildGateSetCookie(request, gateEnv)
@@ -124,7 +125,8 @@ export async function proxy(request: NextRequest) {
       }
 
       response.headers.set('Cache-Control', 'private, no-store');
-      response.headers.delete('CDN-Cache-Control');
+      // 下流 CDN 向けの指定も明示的に打ち消す（delete だけでは後段が再設定しうる）
+      response.headers.set('CDN-Cache-Control', 'no-store');
 
       // 既存の Vary を保持したうえで認証に影響するヘッダを追加する
       const vary = new Set(
