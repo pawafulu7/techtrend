@@ -42,6 +42,8 @@ export interface GateEnv {
   gateSecret: string | undefined;
   /** CRON_TOKEN または CRON_SECRET */
   cronSecret: string | undefined;
+  /** NODE_ENV === 'production'。Cookie の prefix と Secure 属性の判定に使う */
+  isProduction: boolean;
 }
 
 export type GateOutcome =
@@ -102,11 +104,11 @@ function missingSettings(config: ResolvedConfig): string[] {
 }
 
 /**
- * Cookie 名は関数内で都度決定する。モジュールロード時に確定させると
+ * Cookie 名は呼び出し時に決定する。モジュールロード時に確定させると
  * production 属性（__Host- prefix）をテストで検証できなくなる。
  */
-export function gateCookieName(): string {
-  return process.env.NODE_ENV === 'production'
+export function gateCookieName(isProduction: boolean): string {
+  return isProduction
     ? `__Host-${GATE_COOKIE_BASE_NAME}`
     : GATE_COOKIE_BASE_NAME;
 }
@@ -150,11 +152,8 @@ function verifyGateCookie(
   return compareSecrets(signature, sign(exp, config));
 }
 
-function isSecureRequest(request: NextRequest): boolean {
-  return (
-    process.env.NODE_ENV === 'production' ||
-    request.nextUrl.protocol === 'https:'
-  );
+function isSecureRequest(request: NextRequest, isProduction: boolean): boolean {
+  return isProduction || request.nextUrl.protocol === 'https:';
 }
 
 /**
@@ -173,7 +172,7 @@ export function buildGateSetCookie(
   const value = `${GATE_COOKIE_VERSION}.${exp}.${sign(exp, config)}`;
 
   const attributes = [
-    `${gateCookieName()}=${value}`,
+    `${gateCookieName(gateEnv.isProduction)}=${value}`,
     'Path=/',
     `Max-Age=${GATE_TTL_SEC}`,
     'HttpOnly',
@@ -181,7 +180,7 @@ export function buildGateSetCookie(
   ];
 
   // __Host- prefix は Secure を要求する。ローカルの http 開発を壊さないため条件付きにする。
-  if (isSecureRequest(request)) {
+  if (isSecureRequest(request, gateEnv.isProduction)) {
     attributes.push('Secure');
   }
 
@@ -220,20 +219,39 @@ interface BasicCredentials {
   pass: string;
 }
 
+const BASIC_SCHEME_PATTERN = /^Basic[ \t]+([^ \t]+)[ \t]*$/i;
+const BEARER_SCHEME_PATTERN = /^Bearer[ \t]+([^ \t]+)[ \t]*$/i;
+
+/**
+ * Authorization ヘッダから token を取り出す共通パーサー。
+ * Basic / Bearer で同じ形式・同じ検証（scheme は RFC 7235 上 case-insensitive、
+ * token は単一、制御文字を含まない）を適用するために 1 箇所に集約している。
+ */
+function extractAuthToken(
+  header: string | null,
+  schemePattern: RegExp
+): string | null {
+  if (!header) return null;
+
+  const match = schemePattern.exec(header);
+  if (!match) return null;
+
+  const token = match[1];
+  if (CONTROL_CHAR_PATTERN.test(token)) return null;
+
+  return token;
+}
+
 /**
  * RFC 7617 に従って Authorization: Basic をパースする。
- * - スキーム名は case-insensitive
- * - token は単一（余分なトークンがあれば不正）
  * - 最初の ':' より後ろが全て password。user-id に ':' は含められない
  * - charset="UTF-8" を通知しているため NFC に正規化する
  */
 function parseBasicHeader(header: string | null): BasicCredentials | null {
-  if (!header) return null;
+  const token = extractAuthToken(header, BASIC_SCHEME_PATTERN);
+  if (token === null) return null;
 
-  const match = /^Basic[ \t]+([^ \t]+)[ \t]*$/i.exec(header);
-  if (!match) return null;
-
-  const decoded = decodeBase64Strict(match[1]);
+  const decoded = decodeBase64Strict(token);
   if (decoded === null) return null;
 
   const separator = decoded.indexOf(':');
@@ -268,10 +286,10 @@ function matchesCronBearer(
 ): boolean {
   if (!cronSecret) return false;
 
-  const match = /^Bearer[ \t]+([^ \t]+)[ \t]*$/i.exec(header ?? '');
-  if (!match) return false;
+  const token = extractAuthToken(header, BEARER_SCHEME_PATTERN);
+  if (token === null) return false;
 
-  return compareSecrets(match[1], cronSecret);
+  return compareSecrets(token, cronSecret);
 }
 
 /**
@@ -314,7 +332,10 @@ export function evaluateGate(
     };
   }
 
-  if (verifyGateCookie(request.cookies.get(gateCookieName())?.value, config)) {
+  const cookieValue = request.cookies.get(
+    gateCookieName(gateEnv.isProduction)
+  )?.value;
+  if (verifyGateCookie(cookieValue, config)) {
     return { kind: 'cookie' };
   }
 

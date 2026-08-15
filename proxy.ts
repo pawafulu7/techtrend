@@ -24,6 +24,7 @@ function readGateEnv(): GateEnv {
     legacyPass: process.env.BASIC_PASSWORD,
     gateSecret: process.env.BASIC_AUTH_GATE_SECRET,
     cronSecret: process.env.CRON_TOKEN || process.env.CRON_SECRET,
+    isProduction: process.env.NODE_ENV === 'production',
   };
 }
 
@@ -106,14 +107,37 @@ export async function proxy(request: NextRequest) {
   // Cookie を最後の NextResponse.next() にだけ付けると、初回アクセスがメンテナンス 503 や
   // ログインリダイレクトに落ちた場合に発行されず、再入力の症状がそのまま残る。
   const finalize = <T extends NextResponse>(response: T): T => {
-    if (gate.kind === 'basic' && !pathname.startsWith('/api/')) {
-      response.headers.append('Set-Cookie', buildGateSetCookie(request, gateEnv));
-      // Set-Cookie を含む応答が共有キャッシュに載らないようにする
-      // （app/api/stats 等が public, s-maxage と CDN-Cache-Control を返すため、
-      //   API を除外したうえでさらに二重に防ぐ）
+    // ゲート配下のページ応答は共有キャッシュに載せない。
+    // Cookie 発行時（basic）だけでなく Cookie 通過時（cookie）も対象にしないと、
+    // 2 回目以降のリクエストがキャッシュ制御なしで通ってしまう。
+    // /api/ は app/api/stats 等が public, s-maxage と CDN-Cache-Control を返すため除外する。
+    const isGatedPage =
+      !pathname.startsWith('/api/') &&
+      (gate.kind === 'basic' || gate.kind === 'cookie');
+
+    if (isGatedPage) {
+      if (gate.kind === 'basic') {
+        response.headers.append(
+          'Set-Cookie',
+          buildGateSetCookie(request, gateEnv)
+        );
+      }
+
       response.headers.set('Cache-Control', 'private, no-store');
       response.headers.delete('CDN-Cache-Control');
+
+      // 既存の Vary を保持したうえで認証に影響するヘッダを追加する
+      const vary = new Set(
+        (response.headers.get('Vary') ?? '')
+          .split(',')
+          .map(value => value.trim())
+          .filter(Boolean)
+      );
+      vary.add('Cookie');
+      vary.add('Authorization');
+      response.headers.set('Vary', [...vary].join(', '));
     }
+
     setSecurityHeaders(response, request);
     return response;
   };
@@ -142,9 +166,8 @@ export async function proxy(request: NextRequest) {
         const { createMaintenanceResponse } = await import(
           '@/lib/maintenance/maintenance-response'
         );
-        const maintenanceRes = createMaintenanceResponse();
-        setSecurityHeaders(maintenanceRes, request);
-        return maintenanceRes;
+        // セキュリティヘッダは呼び出し元の finalize が一括で適用する
+        return createMaintenanceResponse();
       } catch {
         // 最終フォールバック: メンテ画面モジュールの取得すら失敗しても 503 を返す。
         return new NextResponse('Service Unavailable', {

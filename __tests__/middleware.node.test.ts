@@ -245,6 +245,9 @@ describe('middleware - security headers', () => {
       expect(setCookie).not.toContain('Domain');
       // Set-Cookie を含む応答は共有キャッシュに載せない
       expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+      expect(response.headers.get('CDN-Cache-Control')).toBeNull();
+      expect(response.headers.get('Vary')).toContain('Cookie');
+      expect(response.headers.get('Vary')).toContain('Authorization');
     });
 
     it('M3: 有効なゲート Cookie だけで通り、Cookie は再発行されない', async () => {
@@ -259,6 +262,10 @@ describe('middleware - security headers', () => {
 
       expect(response.status).not.toBe(401);
       expect(response.headers.get('set-cookie')).toBeNull();
+      // Cookie 通過時もゲート配下のページなので共有キャッシュに載せない
+      expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+      expect(response.headers.get('CDN-Cache-Control')).toBeNull();
+      expect(response.headers.get('Vary')).toContain('Cookie');
     });
 
     it('M4: 改ざんしたゲート Cookie だけなら 401', async () => {
@@ -307,6 +314,9 @@ describe('middleware - security headers', () => {
 
       expect(response.status).toBe(503);
       expect(response.headers.get('set-cookie')).toContain('tt_gate=');
+      // Cookie を含む応答は共有キャッシュ用ヘッダを持たない
+      expect(response.headers.get('CDN-Cache-Control')).toBeNull();
+      expect(response.headers.get('Content-Security-Policy')).toBeTruthy();
     });
 
     it('M8: ログインリダイレクトの経路でもゲート Cookie を発行する', async () => {
@@ -319,6 +329,8 @@ describe('middleware - security headers', () => {
       expect(response.status).toBe(307);
       expect(response.headers.get('location')).toContain('/auth/login');
       expect(response.headers.get('set-cookie')).toContain('tt_gate=');
+      // Cookie を含む応答は共有キャッシュ用ヘッダを持たない
+      expect(response.headers.get('CDN-Cache-Control')).toBeNull();
     });
 
     it('M9: 保護 API の 401 ではセキュリティヘッダが付き Cookie は発行しない', async () => {
@@ -370,6 +382,9 @@ describe('middleware - security headers', () => {
 
       expect(response.status).not.toBe(401);
       expect(response.headers.get('set-cookie')).toBeNull();
+      // ゲート OFF のときはキャッシュ制御に手を加えない（既存挙動の維持）
+      expect(response.headers.get('Cache-Control')).toBeNull();
+      expect(response.headers.get('Vary')).toBeNull();
     });
 
     it('M14: production かつ HTTPS では __Host- prefix と Secure が付く', async () => {

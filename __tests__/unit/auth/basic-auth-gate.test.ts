@@ -19,6 +19,7 @@ function gateEnv(overrides: Partial<GateEnv> = {}): GateEnv {
     legacyPass: undefined,
     gateSecret: SECRET,
     cronSecret: undefined,
+    isProduction: false,
     ...overrides,
   };
 }
@@ -44,18 +45,15 @@ function issueCookieValue(env: GateEnv = gateEnv()): string {
 
 function requestWithCookie(value: string, authorization?: string): NextRequest {
   const headers: Record<string, string> = {
-    cookie: `${gateCookieName()}=${value}`,
+    cookie: `${gateCookieName(false)}=${value}`,
   };
   if (authorization) headers.authorization = authorization;
   return makeRequest({ headers });
 }
 
 describe('basic-auth-gate', () => {
-  const originalNodeEnv = process.env.NODE_ENV;
-
   afterEach(() => {
     jest.restoreAllMocks();
-    process.env.NODE_ENV = originalNodeEnv;
   });
 
   describe('ゲート Cookie の署名と検証', () => {
@@ -131,19 +129,26 @@ describe('basic-auth-gate', () => {
       ).toBe('fail');
     });
 
-    it('U8: 有効期限が壊れた Cookie は例外を投げずに拒否される', () => {
-      const signature = issueCookieValue().split('.')[2];
-      const malformed = [
-        `v1..${signature}`,
-        `v1.abc.${signature}`,
-        `v1.-1.${signature}`,
-        `v1.99999999999999999999.${signature}`,
-        `v1.${Math.floor(Date.now() / 1000) + 100}.${signature}.extra`,
-        'v1',
-        '',
+    const malformedCookieCases: Array<[string, (signature: string) => string]> =
+      [
+        ['exp が空文字', signature => `v1..${signature}`],
+        ['exp が非数字', signature => `v1.abc.${signature}`],
+        ['exp が負値', signature => `v1.-1.${signature}`],
+        ['exp が安全な整数の範囲外', signature => `v1.99999999999999999999.${signature}`],
+        [
+          '区切りが多い',
+          signature =>
+            `v1.${Math.floor(Date.now() / 1000) + 100}.${signature}.extra`,
+        ],
+        ['要素が足りない', () => 'v1'],
+        ['空文字', () => ''],
       ];
 
-      for (const value of malformed) {
+    it.each(malformedCookieCases)(
+      'U8: 壊れた Cookie は例外を投げずに拒否される (%s)',
+      (_label, build) => {
+        const value = build(issueCookieValue().split('.')[2]);
+
         expect(() =>
           evaluateGate(requestWithCookie(value), gateEnv())
         ).not.toThrow();
@@ -151,7 +156,7 @@ describe('basic-auth-gate', () => {
           'fail'
         );
       }
-    });
+    );
   });
 
   describe('Basic ヘッダのパース', () => {
@@ -173,32 +178,28 @@ describe('basic-auth-gate', () => {
       ).toBe('basic');
     });
 
-    it('U11: スキーム名は大文字小文字を区別しない', () => {
-      for (const scheme of ['Basic', 'basic', 'BASIC', 'BaSiC']) {
+    it.each(['Basic', 'basic', 'BASIC', 'BaSiC'])(
+      'U11: スキーム名は大文字小文字を区別しない (%s)',
+      scheme => {
         const headers = { authorization: basicHeader(USER, PASS, scheme) };
         expect(evaluateGate(makeRequest({ headers }), gateEnv()).kind).toBe(
           'basic'
         );
       }
-    });
+    );
 
-    it('U12: 不正な Authorization ヘッダは拒否される', () => {
-      const invalid = [
-        'Basic',
-        'Basic ',
-        `Basic ${Buffer.from('no-colon-here', 'utf8').toString('base64')}`,
-        `Basic ${Buffer.from(`${USER}:${PASS}`, 'utf8').toString('base64')} extra`,
-        'Basic dXNlcjpwYX!!', // 長さは 4 の倍数だが Base64 の文字種ではない
-        'Basic dXNlcjpwYXNz=', // 長さが 4 の倍数でない
-        'Bearer something',
-      ];
-
-      for (const authorization of invalid) {
-        expect(
-          evaluateGate(makeRequest({ headers: { authorization } }), gateEnv())
-            .kind
-        ).toBe('fail');
-      }
+    it.each([
+      'Basic',
+      'Basic ',
+      `Basic ${Buffer.from('no-colon-here', 'utf8').toString('base64')}`,
+      `Basic ${Buffer.from(`${USER}:${PASS}`, 'utf8').toString('base64')} extra`,
+      'Basic dXNlcjpwYX!!', // 長さは 4 の倍数だが Base64 の文字種ではない
+      'Basic dXNlcjpwYXNz=', // 長さが 4 の倍数でない
+      'Bearer something',
+    ])('U12: 不正な Authorization ヘッダは拒否される (%s)', authorization => {
+      expect(
+        evaluateGate(makeRequest({ headers: { authorization } }), gateEnv()).kind
+      ).toBe('fail');
     });
 
     it('U13: 不正な UTF-8 バイト列は拒否される', () => {
@@ -233,6 +234,17 @@ describe('basic-auth-gate', () => {
       ).toBe('basic');
     });
 
+    it('U24: 設定値が NFC でも NFD で送られた資格情報と一致する', () => {
+      // U20 の逆方向。両側を正規化している契約を固定する
+      const nfdPass = String.fromCharCode(0x30cf, 0x309a);
+      const nfcPass = nfdPass.normalize('NFC');
+      const headers = { authorization: basicHeader(USER, nfdPass) };
+
+      expect(
+        evaluateGate(makeRequest({ headers }), gateEnv({ pass: nfcPass })).kind
+      ).toBe('basic');
+    });
+
     it('パスワードが違えば拒否される', () => {
       const headers = { authorization: basicHeader(USER, 'wrong') };
       expect(evaluateGate(makeRequest({ headers }), gateEnv()).kind).toBe(
@@ -249,29 +261,32 @@ describe('basic-auth-gate', () => {
   });
 
   describe('BASIC_AUTH_ENABLED の解釈', () => {
-    it('U21: 表記揺れでも有効と判定する', () => {
-      for (const enabled of ['true', 'TRUE', ' true ', 'True']) {
+    it.each(['true', 'TRUE', ' true ', 'True'])(
+      'U21: 表記揺れでも有効と判定する (%s)',
+      enabled => {
         expect(evaluateGate(makeRequest(), gateEnv({ enabled })).kind).toBe(
           'fail'
         );
       }
-    });
+    );
 
-    it('U22: 未設定・空文字・false は無効と判定する', () => {
-      for (const enabled of [undefined, '', '  ', 'false', 'FALSE']) {
+    it.each([undefined, '', '  ', 'false', 'FALSE'])(
+      'U22: 未設定・空文字・false は無効と判定する (%s)',
+      enabled => {
         expect(evaluateGate(makeRequest(), gateEnv({ enabled })).kind).toBe(
           'disabled'
         );
       }
-    });
+    );
 
-    it('U23: true/false 以外の値は設定ミスとして fail-closed にする', () => {
-      for (const enabled of ['ture', '1', 'yes', 'on']) {
+    it.each(['ture', '1', 'yes', 'on'])(
+      'U23: true/false 以外の値は設定ミスとして fail-closed にする (%s)',
+      enabled => {
         expect(evaluateGate(makeRequest(), gateEnv({ enabled })).kind).toBe(
           'misconfigured'
         );
       }
-    });
+    );
   });
 
   describe('設定不備（fail-closed）', () => {
@@ -382,6 +397,15 @@ describe('basic-auth-gate', () => {
       expect(setCookie).not.toContain('Domain');
     });
 
+    it('production なら HTTP でも Secure が付く', () => {
+      const setCookie = buildGateSetCookie(
+        makeRequest(),
+        gateEnv({ isProduction: true })
+      );
+
+      expect(setCookie).toContain('Secure');
+    });
+
     it('HTTPS なら Secure が付く', () => {
       const setCookie = buildGateSetCookie(
         makeRequest({ url: 'https://example.com/' }),
@@ -392,13 +416,12 @@ describe('basic-auth-gate', () => {
     });
 
     it('production では __Host- prefix が付く', () => {
-      process.env.NODE_ENV = 'production';
       const setCookie = buildGateSetCookie(
         makeRequest({ url: 'https://example.com/' }),
-        gateEnv()
+        gateEnv({ isProduction: true })
       );
 
-      expect(gateCookieName()).toBe('__Host-tt_gate');
+      expect(gateCookieName(true)).toBe('__Host-tt_gate');
       expect(setCookie).toContain('__Host-tt_gate=');
       expect(setCookie).toContain('Secure');
       expect(setCookie).toContain('Path=/');
