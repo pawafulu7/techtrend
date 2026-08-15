@@ -75,6 +75,49 @@ describe('withCronOrAdminAuth', () => {
       expect(getAuthApiGetSession()).not.toHaveBeenCalled();
     });
 
+    // Basic 認証ゲート（lib/auth/basic-auth-gate.ts）と同じ受理判定になることを固定する。
+    // ゲートは通るが API 側で 401 になる、という不整合が issue #647 項目3 の原因だった。
+    it.each([
+      ['小文字スキーム', 'bearer valid-secret-token-12345'],
+      ['大文字スキーム', 'BEARER valid-secret-token-12345'],
+      ['タブ区切り', 'Bearer\tvalid-secret-token-12345'],
+      ['複数空白区切り', 'Bearer   valid-secret-token-12345'],
+      ['末尾に空白', 'Bearer valid-secret-token-12345  '],
+    ])(
+      'should authenticate with %s (ゲートと同一の受理判定)',
+      async (_label, authorization) => {
+        process.env.CRON_SECRET = 'valid-secret-token-12345';
+        resetEnvCache();
+
+        const handler = withCronOrAdminAuth(mockHandler);
+        const request = new NextRequest('http://localhost/api/test', {
+          method: 'POST',
+          headers: { Authorization: authorization },
+        });
+
+        const response = await handler(request);
+
+        expect(response.status).toBe(200);
+        expect(mockHandler).toHaveBeenCalled();
+      }
+    );
+
+    it('should reject a Bearer header carrying multiple tokens', async () => {
+      process.env.CRON_SECRET = 'valid-secret-token-12345';
+      resetEnvCache();
+
+      const handler = withCronOrAdminAuth(mockHandler);
+      const request = new NextRequest('http://localhost/api/test', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer valid-secret-token-12345 extra' },
+      });
+
+      const response = await handler(request);
+
+      expect(response.status).toBe(401);
+      expect(mockHandler).not.toHaveBeenCalled();
+    });
+
     it('should authenticate with valid Bearer token (CRON_TOKEN)', async () => {
       process.env.CRON_TOKEN = 'valid-cron-token-67890';
       resetEnvCache();

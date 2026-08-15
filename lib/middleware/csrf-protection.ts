@@ -10,6 +10,7 @@ import {
   extendWithSessionContext,
   type SessionContext,
 } from './session-context';
+import { hasBearerScheme } from '@/lib/auth/authorization-header';
 import { env } from '@/lib/config/env';
 
 /**
@@ -192,9 +193,13 @@ export async function validateOrigin(
   }
 
   // 3. Authorization header or no Origin/Referer (server-to-server)
-  // Both cases require valid Auth.js session validation
+  // Both cases require valid Auth.js session validation.
+  //
+  // Bearer の判定は lib/auth/authorization-header.ts に集約している。
+  // ここで見たいのは「スキームが Bearer か」だけで token の妥当性は問わないため、
+  // token を取り出す extractBearerToken ではなく述語 hasBearerScheme を使う。
   const authHeader = request.headers.get('authorization');
-  if (authHeader?.startsWith('Bearer ') || (!origin && !referer)) {
+  if (hasBearerScheme(authHeader) || (!origin && !referer)) {
     try {
       // Use resolveSession to reuse session from context if available
       const session = await resolveSession(context);

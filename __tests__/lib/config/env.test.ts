@@ -662,3 +662,122 @@ describe('Environment Configuration - Config Helpers', () => {
     expect(config.app.url()).toBe('https://example.com');
   });
 });
+
+describe('Environment Configuration - CRON_TOKEN / CRON_SECRET の形式検証', () => {
+  // 受理範囲は lib/auth/cron-secret.ts の CRON_SECRET_PATTERN（可視 ASCII）と共有する。
+  // ここを緩めると「設定はできるが認証には使えない」シークレットが本番に入り、
+  // cron 認証がサイレントに壊れる。
+  //
+  // 注: lib/auth/authorization-header.ts のトークン抽出規則とは一致しない。
+  // パーサーはワイヤから届いた値の受理規則で非 ASCII も通すが、こちらは
+  // 「設定してよい値」のポリシーであり、HTTP ヘッダとして送出できない値を弾くぶん厳しい。
+  let originalEnv: NodeJS.ProcessEnv;
+
+  beforeAll(() => {
+    originalEnv = { ...process.env };
+  });
+
+  beforeEach(() => {
+    resetEnvCache();
+    process.env = { ...originalEnv };
+    delete process.env.CRON_TOKEN;
+    delete process.env.CRON_SECRET;
+  });
+
+  afterAll(() => {
+    resetEnvCache();
+    process.env = originalEnv;
+  });
+
+  describe('受理される値', () => {
+    it.each([
+      ['英数字', 'abc123'],
+      ['記号を含む', 'a-b_c.d~e'],
+      ['16進文字列（openssl rand -hex 32 相当）', 'a'.repeat(64)],
+      ['base64url 相当', 'aB3-_x.~+/='],
+      ['可視 ASCII の両端', '!~'],
+    ])('CRON_TOKEN: %s は受理される', (_label, value) => {
+      process.env.CRON_TOKEN = value;
+      resetEnvCache();
+      expect(getEnv().CRON_TOKEN).toBe(value);
+    });
+
+    it('CRON_SECRET も同じ規則で受理される', () => {
+      process.env.CRON_SECRET = 'valid-secret-value';
+      resetEnvCache();
+      expect(getEnv().CRON_SECRET).toBe('valid-secret-value');
+    });
+  });
+
+  describe('拒否される値', () => {
+    it.each([
+      ['内部に空白', 'a b'],
+      ['末尾に空白', 'abc '],
+      ['先頭に空白', ' abc'],
+      ['タブを含む', 'a\tb'],
+      ['改行を含む（コピペ事故の典型）', 'abc\n'],
+      ['制御文字を含む', 'abc\u0001'],
+      ['DEL を含む', 'abc\u007F'],
+      // 以下は「設定はできるが Authorization ヘッダとして送出できない／
+      // 途中で壊れる」値。cross-review で検出した実際の欠陥に対応する。
+      ['非 ASCII（ByteString に変換できず送出不可）', 'トークン'],
+      [
+        'NBSP を含む（obs-text であり proxy/CDN での扱いが保証されない）',
+        'a\u00a0b',
+      ],
+    ])('CRON_TOKEN: %s は検証エラーになる', (_label, value) => {
+      process.env.CRON_TOKEN = value;
+      resetEnvCache();
+      expect(() => getEnv()).toThrow(/CRON_TOKEN/);
+    });
+
+    it('CRON_SECRET も同じ規則で拒否される', () => {
+      process.env.CRON_SECRET = 'a b';
+      resetEnvCache();
+      expect(() => getEnv()).toThrow(/CRON_SECRET/);
+    });
+  });
+
+  describe('sanitizeEnv による前処理（空白のみは未設定扱い）', () => {
+    // sanitizeEnv() が空白のみの文字列を undefined へ変換するため regex に到達しない。
+    // 「空白を含む値はエラー」と単純化すると誤りになるので、この挙動を固定しておく。
+    it.each([
+      ['空文字列', ''],
+      ['空白のみ', '   '],
+      ['タブのみ', '\t'],
+    ])('CRON_TOKEN: %s はエラーにならず undefined になる', (_label, value) => {
+      process.env.CRON_TOKEN = value;
+      resetEnvCache();
+      expect(() => getEnv()).not.toThrow();
+      expect(getEnv().CRON_TOKEN).toBeUndefined();
+    });
+
+    it('未設定でもエラーにならない', () => {
+      resetEnvCache();
+      expect(() => getEnv()).not.toThrow();
+      expect(getEnv().CRON_TOKEN).toBeUndefined();
+    });
+  });
+
+  describe('受理された値は Authorization ヘッダとして送出できる', () => {
+    // 検証の目的は「設定はできるが認証には使えない値」を弾くこと。
+    // HTTP ヘッダ値は ByteString のため U+00FF を超える文字は載せられない。
+    it('受理される値は Headers に設定でき、値が保持される', () => {
+      const value = 'a'.repeat(64);
+      process.env.CRON_TOKEN = value;
+      resetEnvCache();
+
+      expect(getEnv().CRON_TOKEN).toBe(value);
+      const headers = new Headers({ authorization: `Bearer ${value}` });
+      expect(headers.get('authorization')).toBe(`Bearer ${value}`);
+    });
+
+    it('拒否される非 ASCII 値は Headers に設定できない', () => {
+      // TypeError のコンストラクタ同一性は jest の realm 差で一致しないため
+      // メッセージで検証する（ByteString 変換に失敗することが確認できればよい）。
+      expect(() => new Headers({ authorization: 'Bearer トークン' })).toThrow(
+        /ByteString/
+      );
+    });
+  });
+});

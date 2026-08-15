@@ -13,9 +13,11 @@ import {
   requiresCSRFProtection,
 } from '@/lib/middleware/csrf-protection';
 import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
+import { resolveCronSecret } from '@/lib/auth/cron-secret';
 
 // Basic 認証ゲートの設定値。lib/ 配下は process.env の直接参照を ESLint で禁止しており、
 // env.ts はモジュールロード時に一度だけ parse するため、ここ（proxy.ts）で都度読んで渡す。
+
 function readGateEnv(): GateEnv {
   return {
     enabled: process.env.BASIC_AUTH_ENABLED,
@@ -23,7 +25,10 @@ function readGateEnv(): GateEnv {
     pass: process.env.BASIC_AUTH_PASS,
     legacyPass: process.env.BASIC_PASSWORD,
     gateSecret: process.env.BASIC_AUTH_GATE_SECRET,
-    cronSecret: process.env.CRON_TOKEN || process.env.CRON_SECRET,
+    cronSecret: resolveCronSecret(
+      process.env.CRON_TOKEN,
+      process.env.CRON_SECRET
+    ),
     isProduction: process.env.NODE_ENV === 'production',
   };
 }

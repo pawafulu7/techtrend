@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { CRON_SECRET_PATTERN } from '@/lib/auth/cron-secret';
 import logger from '@/lib/logger';
 
 // Preprocess all env vars: empty/whitespace-only strings → undefined
@@ -40,6 +41,39 @@ const booleanEnum = z.preprocess(
   (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v),
   z.enum(['true', 'false'])
 );
+
+/**
+ * Authorization: Bearer のトークンとして送出されるシークレット用のスキーマ。
+ *
+ * 「設定はできるが認証には使えない」値を起動時に弾くのが目的なので、
+ * 実際に Authorization ヘッダへ載せて往復できる文字だけを許可する。
+ * 可視 ASCII（U+0021-U+007E）に限定しており、以下をすべて拒否する。
+ *
+ * - 空白・タブ: lib/auth/authorization-header.ts が token を `[^ \t]+` で
+ *   切り出すため、含まれていると設定値どおりに復元できない
+ * - 制御文字・DEL: 同モジュールが明示的に拒否する。CR/LF はヘッダ分割の温床でもある
+ * - U+00FF を超える文字: HTTP ヘッダ値は ByteString であり、そもそも送出できない
+ *   （`new Headers({ authorization: 'Bearer トークン' })` は TypeError になる）
+ *
+ * U+0080-U+00FF は Headers には載るが RFC 9110 で obs-text として非推奨であり、
+ * 途中の proxy / CDN での取り扱いが保証されないため許可しない。
+ * `openssl rand -hex 32` 等の一般的な生成手段はいずれもこの範囲に収まる。
+ *
+ * 注: 空白のみ・空文字列の値は sanitizeEnv() が先に undefined へ変換するため
+ * ここには到達しない（＝未設定として扱われ、エラーにはならない）。
+ *
+ * 判定パターンは lib/auth/cron-secret.ts の CRON_SECRET_PATTERN を共有する。
+ * 認証時にシークレットを選択する resolveCronSecret と規則がずれると、
+ * 「env は通すが認証は通らない」状態が再発するため。
+ */
+const bearerSecret = (name: string) =>
+  z
+    .string()
+    .regex(
+      CRON_SECRET_PATTERN,
+      `${name} には可視 ASCII 文字（U+0021-U+007E）のみ使用できます。空白・制御文字・非 ASCII 文字は Authorization ヘッダとして送出できないか、トークンとして復元できません`
+    )
+    .optional();
 
 // Environment variable schema
 const envSchema = z
@@ -237,8 +271,8 @@ const envSchema = z
     // Security / Middleware
     CURSOR_SECRET: z.string().optional(),
     ALLOW_INSECURE_CURSOR_SECRET: booleanEnum.optional().default('false'),
-    CRON_SECRET: z.string().optional(),
-    CRON_TOKEN: z.string().optional(),
+    CRON_SECRET: bearerSecret('CRON_SECRET'),
+    CRON_TOKEN: bearerSecret('CRON_TOKEN'),
     CSRF_TRUSTED_ORIGINS: z.string().optional(),
     RATE_LIMIT_OVERRIDES: z.string().optional(),
 

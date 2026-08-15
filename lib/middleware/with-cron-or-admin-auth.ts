@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth/auth';
+import { extractBearerToken } from '@/lib/auth/authorization-header';
 import { compareSecrets } from '@/lib/utils/compare-secrets';
 import { getUserAuthData } from '@/lib/auth/user-auth-cache';
+import { resolveCronSecret } from '@/lib/auth/cron-secret';
 import logger from '@/lib/logger';
 import { env } from '@/lib/config/env';
 
@@ -35,12 +37,9 @@ export type Handler = (
 export function withCronOrAdminAuth(handler: Handler): Handler {
   return async (request: NextRequest, context?: any) => {
     // 1. Cron Secret認証（Bearer）
-    const cronSecret = env.CRON_TOKEN || env.CRON_SECRET;
+    const cronSecret = resolveCronSecret(env.CRON_TOKEN, env.CRON_SECRET);
     if (cronSecret) {
-      const authHeader = request.headers.get('authorization');
-      const token = authHeader?.startsWith('Bearer ')
-        ? authHeader.substring('Bearer '.length)
-        : undefined;
+      const token = extractBearerToken(request.headers.get('authorization'));
 
       if (token && compareSecrets(token, cronSecret)) {
         // Cron実行時はレート制限なしで直接実行
