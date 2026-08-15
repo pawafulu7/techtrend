@@ -181,7 +181,10 @@ export function FavoriteButton({
       // スタンドアロン使用の場合は直接APIを呼び出す
       // 楽観的更新
       const newState = !isFavorited;
-      stateGenerationRef.current += 1;
+      // この楽観更新の世代を控える。失敗時のロールバックは「まだ自分が最新」の
+      // ときだけ行う。別ボタンの成功イベントで既に更新済みなら巻き戻さない
+      const optimisticGeneration = stateGenerationRef.current + 1;
+      stateGenerationRef.current = optimisticGeneration;
       setUncontrolledFavorited(newState);
 
       try {
@@ -200,11 +203,14 @@ export function FavoriteButton({
             })
           );
         } else {
-          // エラー時は元に戻す
-          setUncontrolledFavorited(!newState);
           throw new Error('Failed to toggle favorite');
         }
       } catch (error) {
+        // HTTP エラーとネットワーク例外の双方でロールバックする（旧実装は
+        // 例外時に楽観更新が残っていた）。ただし自分の更新が最新のときだけ
+        if (stateGenerationRef.current === optimisticGeneration) {
+          setUncontrolledFavorited(!newState);
+        }
         console.error('Failed to toggle favorite:', error);
         toast({
           title: 'エラー',

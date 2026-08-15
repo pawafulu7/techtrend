@@ -58,7 +58,7 @@ export default async function PapersPage({ searchParams }: PageProps) {
                 </div>
               </div>
 
-              <div className="ml-4 flex flex-wrap items-center gap-2">
+              <div className="flex w-full basis-full flex-wrap items-center gap-2 lg:ml-4 lg:w-auto lg:basis-auto">
                 <MobileSearchToggle />
                 <div className="hidden lg:block">
                   <SearchBox />

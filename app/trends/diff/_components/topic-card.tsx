@@ -37,8 +37,14 @@ export function HotTopicChip({
   // hover だけが展開手段だと、キーボード利用者とタッチ端末から関連記事に到達できない。
   // 明示的な開閉ボタンを併設し、hover はマウス利用者向けの補助として残す。
   const [isExpanded, setIsExpanded] = useState(false);
+  // hover で開いたパネルをボタンで閉じられるようにする。ポインタが乗っている間は
+  // isHovered が true のままなので、この「今回の hover では閉じた」フラグがないと
+  // ボタンを押しても閉じられず aria-expanded も true のままになる
+  const [hoverDismissed, setHoverDismissed] = useState(false);
   const relatedPanelId = useId();
-  const showRelated = (isHovered || isExpanded) && relatedArticles.length > 0;
+  const showRelated =
+    relatedArticles.length > 0 &&
+    (isExpanded || (isHovered && !hoverDismissed));
 
   return (
     <div
@@ -50,7 +56,10 @@ export function HotTopicChip({
           : 'border-l-4 border-l-[var(--tt-color-info)] hover:border-[var(--tt-color-info-border)]',
         'hover:-translate-y-0.5 hover:shadow-md'
       )}
-      onMouseEnter={() => onMouseEnter(topicKey)}
+      onMouseEnter={() => {
+        setHoverDismissed(false);
+        onMouseEnter(topicKey);
+      }}
       onMouseLeave={onMouseLeave}
     >
       <div className="p-4">
@@ -97,7 +106,15 @@ export function HotTopicChip({
         {relatedArticles.length > 0 && (
           <button
             type="button"
-            onClick={() => setIsExpanded((prev) => !prev)}
+            onClick={() => {
+              if (showRelated) {
+                setIsExpanded(false);
+                setHoverDismissed(true);
+                return;
+              }
+              setHoverDismissed(false);
+              setIsExpanded(true);
+            }}
             aria-expanded={showRelated}
             aria-controls={relatedPanelId}
             data-testid="topic-related-toggle"

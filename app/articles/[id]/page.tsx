@@ -236,7 +236,13 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                 </div>
               </CardHeader>
 
-              <CardContent className="!-mt-4 space-y-4">
+              {/* data-testid: E2E から本文コンテナを安定して掴めるようにする。
+                  class 名や関連記事の有無に依存するセレクタは seed データ次第で
+                  空振りするため（__tests__/e2e/specs/article-detail.spec.ts） */}
+              <CardContent
+                className="!-mt-4 space-y-4"
+                data-testid="article-content"
+              >
                 {/* Translation notice for translated articles */}
                 {article.translatedTitle && (
                   <div

@@ -34,7 +34,10 @@ test.describe('記事詳細ページ', () => {
       expect(titleText).toBeTruthy();
       
       // 記事本文が表示されることを確認
-      const articleContent = page.locator('article, [class*="content"], [class*="body"]').first();
+      // data-testid を使う: `article` / `[class*="content"]` などのセレクタは
+      // 関連記事の有無（seed データ）や Tailwind のクラス名に依存し、
+      // 環境によって空振りするため
+      const articleContent = page.getByTestId('article-content');
       await expect(articleContent).toBeVisible();
     }
   });

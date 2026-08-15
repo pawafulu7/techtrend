@@ -166,7 +166,7 @@ export default async function RootLayout({
               <main
                 id="main-content"
                 tabIndex={-1}
-                className="flex-1 overflow-y-auto focus:outline-none"
+                className="flex-1 overflow-y-auto"
               >
                 {children}
               </main>
