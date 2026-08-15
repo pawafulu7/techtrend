@@ -50,6 +50,8 @@ export function SearchBox({ fullWidth = false }: SearchBoxProps = {}) {
         params.delete('search');
         params.delete('page');
       }
+      // フィルタ変更時は選択中記事（reader用）をクリアする
+      params.delete('article');
 
       // 現在のパスを維持してURLパラメータを更新
       const nextUrl = params.toString()
@@ -91,6 +93,8 @@ export function SearchBox({ fullWidth = false }: SearchBoxProps = {}) {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('search');
     params.delete('page');
+    // フィルタ変更時は選択中記事（reader用）をクリアする
+    params.delete('article');
 
     // 現在のパスを維持してURLパラメータを更新
     const nextUrl = params.toString()

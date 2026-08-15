@@ -102,6 +102,7 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
                   params.delete('tags');
                   params.delete('tagMode');
                   params.delete('page');
+                  params.delete('article'); // フィルタ変更時は選択中記事（reader用）をクリアする
                   const qs = params.toString();
                   router.replace(qs ? `${pathname}?${qs}` : pathname);
                 }}

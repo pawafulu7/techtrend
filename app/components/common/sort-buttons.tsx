@@ -35,6 +35,7 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
     const params = new URLSearchParams(searchParams.toString());
     params.set('sortBy', newSortBy);
     params.delete('page'); // Reset to first page
+    params.delete('article'); // フィルタ変更時は選択中記事（reader用）をクリアする
 
     // 現在のパスを維持してURLパラメータを更新
     router.push(`${pathname}?${params.toString()}`);
