@@ -36,8 +36,8 @@ import { handleBatchRequest } from './batch-handler';
  * Natural language interface for semantic article search using AI agent.
  *
  * Security layers:
- * 1. Authentication (Auth.js v5) - REQUIRED
- * 2. Rate limiting (Upstash Redis) - 5 req/min/user (stricter for cost control)
+ * 1. Authentication (Better Auth) - REQUIRED
+ * 2. Rate limiting (Redis via ioredis) - 5 req/min/user (stricter for cost control)
  * 3. Input validation (Zod + prompt injection detection)
  * 4. Agent guardrails (system prompt with strict rules)
  * 5. Fallback mechanism (direct vector search on agent failure)

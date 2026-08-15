@@ -64,7 +64,7 @@ description: 個人開発TechTrendの最新状況をLT向けに共有する資�
 # システム全体構成図
 
 ```mermaid
-%% docs/presentations/assets/techtrend-architecture.mmd から抜粋
+%% 2025-10 時点の構成図（現行図は docs/architecture/01-system-overview.md）
 flowchart LR
     subgraph Sources["情報ソース"]
         RSS["RSSフィード<br/>（AI/LLM・企業ブログ・技術メディア）"]

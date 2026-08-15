@@ -78,8 +78,11 @@ backups/
 *.backup
 
 # documentation files
-docs/
+# NOTE: `docs/` ではなく `docs/*` にすること。ディレクトリ自体を除外すると
+# git がその中に降りないため、後続の `!docs/xxx/` が一切効かなくなる。
+docs/*
 !docs/operations/
+!docs/architecture/
 
 # data and reports
 data/

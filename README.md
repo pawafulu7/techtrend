@@ -8,12 +8,18 @@
 
 ## 技術スタック
 
-- **Frontend**: Next.js 15, React 18, TypeScript
-- **Backend**: Next.js API Routes, Prisma
-- **Database**: PostgreSQL
-- **AI**: Google Gemini API
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript
+- **Backend**: Next.js API Routes, Prisma 7
+- **Database**: PostgreSQL (pgvector)
+- **Auth**: Better Auth
+- **AI**: Google Gemini API（要約）, OpenAI Embeddings（RAG検索）
 - **Styling**: Tailwind CSS
 - **Cache**: Redis
+
+## アーキテクチャ図
+
+システム構成・バッチパイプライン・リクエストフロー・データモデルの図は
+[docs/architecture/](./docs/architecture/README.md) にまとめています。
 
 ## 環境変数設定
 
@@ -24,7 +30,7 @@
 cp .env.example .env
 
 # 2. 必須項目を設定
-# - NEXTAUTH_SECRET（32文字以上のランダム文字列）
+# - AUTH_SECRET（32文字以上のランダム文字列）
 # - DATABASE_URL（PostgreSQL接続URL）
 # - GEMINI_API_KEY（AI要約生成用）
 ```
@@ -33,8 +39,8 @@ cp .env.example .env
 
 | 変数名 | 説明 | 生成方法 | セキュリティ |
 |--------|------|---------|-------------|
-| `NEXTAUTH_SECRET` | NextAuth認証シークレット | `openssl rand -base64 32` | 🔴 必須・最小32文字 |
-| `DATABASE_URL` | PostgreSQL接続URL | Vercel/Supabaseから取得 | 🔴 必須 |
+| `AUTH_SECRET` | 認証シークレット（`NEXTAUTH_SECRET` は互換フォールバック） | `openssl rand -base64 32` | 🔴 必須・最小32文字 |
+| `DATABASE_URL` | PostgreSQL接続URL | 利用中のマネージドDBの管理画面から取得 | 🔴 必須 |
 | `GEMINI_API_KEY` | Google Gemini APIキー | [AI Studio](https://ai.google.dev/) | 🔴 要約生成に必須 |
 | `CURSOR_SECRET` | ページネーション暗号化キー | `openssl rand -hex 32` | 🔴 本番環境で必須 |
 

@@ -1,55 +1,57 @@
+%% 正本は docs/architecture/01-system-overview.md の「01-A 本番構成」。
+%% このファイルはその複製で、自動同期はされない。01-A を更新したらここも同期すること。
+%% 2026-08-15 時点のコードをもとに作成。
 flowchart LR
-    subgraph Sources["情報ソース"]
-        RSS["RSSフィード<br/>（AI/LLM・企業ブログ・技術メディア）"]
-        Scrape["スクレイピング対象<br/>（Speaker Deck ・ Docswell）"]
-        API["API提供ソース"]
+    browser["ブラウザ"]
+
+    subgraph src["情報ソース"]
+        src_rss["RSS フィード"]
+        src_scrape["スクレイピング"]
+        src_api["API 提供ソース<br/>Qiita 等"]
     end
 
-    subgraph Scheduler["取得・処理スケジューラ"]
-        Cron["ローカル cron ・ PM2 Scheduler"]
-        GitHubActions["GitHub Actions Workflows<br/>（RSS毎時 ・ スクレイピング12h ・ 品質日次）"]
+    subgraph gha["GitHub Actions"]
+        gha_sched["スケジューラ<br/>12 本"]
+        gha_ci["CI<br/>ci.yml / CodeQL / AI regression / Lighthouse / tag-quality"]
     end
 
-    subgraph Pipeline["収集・要約パイプライン"]
-        Fetchers["Fetchers 41種<br/>（Node.js ・ TypeScript）"]
-        Enrichers["Enrichers<br/>（本文取得 ・ サムネ ・ メタデータ）"]
-        Summarizer["AI Summary Service<br/>Transport → Adapter → Service<br/>QualityChecker ・ PostProcessor"]
+    subgraph vercel["Vercel: Next.js 16.2 App Router"]
+        proxy["proxy.ts<br/>Basic gate / CSRF / maintenance"]
+        pages["RSC Pages"]
+        api_routes["API Routes<br/>74"]
+        better_auth["Better Auth"]
     end
 
-    subgraph Persistence["データレイヤ"]
-        Postgres["PostgreSQL<br/>Prisma ORM"]
-        Redis["Redis<br/>L1/L2キャッシュ"]
-        ProcessingLog["ProcessingLog ・ 差分タイムスタンプ"]
+    subgraph data["データ層"]
+        pg[("PostgreSQL + pgvector<br/>Prisma 7")]
+        redis[("Redis<br/>cache + rate limit")]
     end
 
-    subgraph Application["アプリケーション"]
-        NextAPI["Next.js 15 App Router<br/>API Routes ・ Auth.js"]
-        Client["React 19 UI<br/>Tailwind + shadcn/ui"]
-        Metrics["ダッシュボード ・ トレンド ・ お気に入り"]
-    end
+    gemini(("Gemini"))
+    openai(("OpenAI<br/>embeddings"))
+    mail(("Resend / SMTP"))
+    slack(("Slack Webhook"))
+    oauth(("Google / GitHub<br/>OAuth"))
+    newrelic(("New Relic"))
 
-    subgraph Observability["監視・運用"]
-        OTel["OpenTelemetry Collectors"]
-        Grafana["Grafana + Loki + Tempo"]
-        NewRelic["New Relic APM"]
-        CI["Dockerベース CI ・ Tests"]
-    end
+    src_rss --> gha_sched
+    src_scrape --> gha_sched
+    src_api --> gha_sched
+    gha_sched --> pg
+    gha_sched --> gemini
+    gha_sched --> openai
+    gha_sched -.-> slack
 
-    Sources -->|記事情報| Fetchers
-    Scheduler -->|収集トリガー| Fetchers
-    Fetchers --> Enrichers --> Summarizer
-    Summarizer -->|要約・品質| Postgres
-    Enrichers -->|本文/サムネ| Postgres
-    Postgres -->|キャッシュ投入| Redis
-    ProcessingLog --> Scheduler
-    Postgres --> NextAPI --> Client
-    Redis --> NextAPI
-    NextAPI --> Metrics
-    Summarizer -->|Gemini API| ExternalAI(("Google Gemini 2.5 Flash"))
-    ExternalAI -. テレメトリ .-> OTel
-
-    Fetchers -. ログ .-> OTel
-    Postgres --> CI
-    Scheduler --> CI
-    OTel --> Grafana
-    OTel --> NewRelic
+    browser --> proxy
+    proxy --> pages
+    proxy --> api_routes
+    pages --> better_auth
+    api_routes --> better_auth
+    better_auth --> oauth
+    better_auth --> pg
+    pages --> pg
+    pages --> redis
+    api_routes --> pg
+    api_routes --> redis
+    api_routes --> mail
+    vercel -.-> newrelic
