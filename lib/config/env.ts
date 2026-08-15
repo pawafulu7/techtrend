@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { CRON_SECRET_PATTERN } from '@/lib/auth/cron-secret';
 import logger from '@/lib/logger';
 
 // Preprocess all env vars: empty/whitespace-only strings → undefined
@@ -60,12 +61,16 @@ const booleanEnum = z.preprocess(
  *
  * 注: 空白のみ・空文字列の値は sanitizeEnv() が先に undefined へ変換するため
  * ここには到達しない（＝未設定として扱われ、エラーにはならない）。
+ *
+ * 判定パターンは lib/auth/cron-secret.ts の CRON_SECRET_PATTERN を共有する。
+ * 認証時にシークレットを選択する resolveCronSecret と規則がずれると、
+ * 「env は通すが認証は通らない」状態が再発するため。
  */
 const bearerSecret = (name: string) =>
   z
     .string()
     .regex(
-      /^[\u0021-\u007E]+$/,
+      CRON_SECRET_PATTERN,
       `${name} には可視 ASCII 文字（U+0021-U+007E）のみ使用できます。空白・制御文字・非 ASCII 文字は Authorization ヘッダとして送出できないか、トークンとして復元できません`
     )
     .optional();

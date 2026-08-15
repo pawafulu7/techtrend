@@ -664,9 +664,13 @@ describe('Environment Configuration - Config Helpers', () => {
 });
 
 describe('Environment Configuration - CRON_TOKEN / CRON_SECRET の形式検証', () => {
-  // lib/auth/authorization-header.ts の受理規則（token は [^ \t]+、制御文字は拒否）と
-  // 1 対 1 で対応することを固定する。ここを緩めると「設定はできるが認証には使えない」
-  // シークレットが本番に入り、cron 認証がサイレントに壊れる。
+  // 受理範囲は lib/auth/cron-secret.ts の CRON_SECRET_PATTERN（可視 ASCII）と共有する。
+  // ここを緩めると「設定はできるが認証には使えない」シークレットが本番に入り、
+  // cron 認証がサイレントに壊れる。
+  //
+  // 注: lib/auth/authorization-header.ts のトークン抽出規則とは一致しない。
+  // パーサーはワイヤから届いた値の受理規則で非 ASCII も通すが、こちらは
+  // 「設定してよい値」のポリシーであり、HTTP ヘッダとして送出できない値を弾くぶん厳しい。
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeAll(() => {
@@ -717,7 +721,10 @@ describe('Environment Configuration - CRON_TOKEN / CRON_SECRET の形式検証',
       // 以下は「設定はできるが Authorization ヘッダとして送出できない／
       // 途中で壊れる」値。cross-review で検出した実際の欠陥に対応する。
       ['非 ASCII（ByteString に変換できず送出不可）', 'トークン'],
-      ['NBSP を含む（obs-text であり proxy/CDN での扱いが保証されない）', 'a\u00a0b'],
+      [
+        'NBSP を含む（obs-text であり proxy/CDN での扱いが保証されない）',
+        'a\u00a0b',
+      ],
     ])('CRON_TOKEN: %s は検証エラーになる', (_label, value) => {
       process.env.CRON_TOKEN = value;
       resetEnvCache();
