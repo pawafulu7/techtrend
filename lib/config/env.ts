@@ -41,6 +41,26 @@ const booleanEnum = z.preprocess(
   z.enum(['true', 'false'])
 );
 
+/**
+ * Authorization: Bearer のトークンとして送出されるシークレット用のスキーマ。
+ *
+ * lib/auth/authorization-header.ts の受理規則と 1 対 1 で対応させる。
+ * 同モジュールは token を `[^ \t]+` で切り出し、制御文字を含む場合は拒否するため、
+ * 空白・タブ・制御文字を含む値は「設定はできるが認証には使えない」状態になる。
+ * これを起動時に検出して fail-closed にする。
+ *
+ * 注: 空白のみ・空文字列の値は sanitizeEnv() が先に undefined へ変換するため
+ * ここには到達しない（＝未設定として扱われ、エラーにはならない）。
+ */
+const bearerSecret = (name: string) =>
+  z
+    .string()
+    .regex(
+      /^[^ \t\u0000-\u001F\u007F]+$/,
+      `${name} に空白文字・タブ・制御文字を含めることはできません`
+    )
+    .optional();
+
 // Environment variable schema
 const envSchema = z
   .object({
@@ -237,8 +257,8 @@ const envSchema = z
     // Security / Middleware
     CURSOR_SECRET: z.string().optional(),
     ALLOW_INSECURE_CURSOR_SECRET: booleanEnum.optional().default('false'),
-    CRON_SECRET: z.string().optional(),
-    CRON_TOKEN: z.string().optional(),
+    CRON_SECRET: bearerSecret('CRON_SECRET'),
+    CRON_TOKEN: bearerSecret('CRON_TOKEN'),
     CSRF_TRUSTED_ORIGINS: z.string().optional(),
     RATE_LIMIT_OVERRIDES: z.string().optional(),
 
