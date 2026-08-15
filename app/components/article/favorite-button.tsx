@@ -112,6 +112,29 @@ export function FavoriteButton({
     setUncontrolledFavorited(initialFavorited);
   }, [initialFavorited, fetchInitialStatus, onToggleFavorite]);
 
+  // 同じ記事が 1 画面に複数並ぶケース（例: /sources/[id] の「最新記事」と
+  // 「人気記事TOP5」）で、片方をトグルしてももう片方の表示が変わらない問題を防ぐ。
+  // トグル成功時に発火する article-favorite-changed を購読して状態を揃える。
+  // controlled モードは親が state を持つため対象外。
+  useEffect(() => {
+    if (onToggleFavorite) return;
+
+    const handleFavoriteChanged = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ articleId: string; isFavorited: boolean }>
+      ).detail;
+      if (!detail || detail.articleId !== articleId) return;
+      setUncontrolledFavorited(detail.isFavorited);
+    };
+
+    window.addEventListener('article-favorite-changed', handleFavoriteChanged);
+    return () =>
+      window.removeEventListener(
+        'article-favorite-changed',
+        handleFavoriteChanged
+      );
+  }, [articleId, onToggleFavorite]);
+
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();

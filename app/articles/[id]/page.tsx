@@ -61,16 +61,14 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
     // 特定のキーワードから適切なURLへマッピング
     if (fromParam === 'digest') return '/digest';
 
-    try {
-      const decodedUrl = decodeURIComponent(fromParam);
-      // 相対パスまたは同一オリジンのみ許可
-      if (decodedUrl.startsWith('/') && !decodedUrl.startsWith('//')) {
-        return decodedUrl;
-      }
-      return '/';
-    } catch {
-      return '/';
+    // searchParams は Next.js が既に 1 回 decode 済み。
+    // ここで再度 decodeURIComponent すると `search=C%2B%2B` が `search=C++` になり、
+    // 戻り先で URLSearchParams が `+` を空白と解釈してフィルタ条件が壊れる
+    // 相対パスのみ許可（`//` はプロトコル相対 URL なので外部遷移になり得る）
+    if (fromParam.startsWith('/') && !fromParam.startsWith('//')) {
+      return fromParam;
     }
+    return '/';
   };
 
   const returnUrl = getReturnUrl(from);

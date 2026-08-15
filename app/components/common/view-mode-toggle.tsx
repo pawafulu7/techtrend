@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Grid3x3, Grid2x2, List } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
 import type { ViewModeToggleProps } from '@/types/components';
@@ -12,8 +14,17 @@ import {
 import { toast } from '@/hooks/use-toast';
 
 export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
+  const router = useRouter();
+  const [isUpdating, setIsUpdating] = useState(false);
+  // 連打時に古い応答で状態が巻き戻らないよう、最新リクエストだけを採用する
+  const requestSeqRef = useRef(0);
+
   const handleModeChange = async (mode: ViewModeToggleProps['currentMode']) => {
-    // サーバーに送信してCookieを更新
+    if (isUpdating) return;
+
+    const seq = ++requestSeqRef.current;
+    setIsUpdating(true);
+
     try {
       const response = await fetch('/api/view-mode', {
         method: 'POST',
@@ -23,10 +34,13 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
       if (!response.ok) {
         throw new Error(`View mode update failed: HTTP ${response.status}`);
       }
-      // ページをリロードして新しい表示モードを適用
-      window.location.reload();
+      if (seq !== requestSeqRef.current) return;
+      // Server Component を再取得して Cookie の表示モードを反映する。
+      // フルリロードと違い、読み込み済みの記事とスクロール位置は保持される
+      router.refresh();
     } catch (error) {
-      // POST 失敗時は reload せず、開発者が原因を追跡できるようログだけ残す
+      if (seq !== requestSeqRef.current) return;
+      // POST 失敗時は再取得せず、開発者が原因を追跡できるようログだけ残す
       console.error(
         `[ViewModeToggle] failed to update view mode (mode=${mode}):`,
         error
@@ -37,6 +51,8 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
         description: '時間をおいて再度お試しください。',
         variant: 'destructive',
       });
+    } finally {
+      if (seq === requestSeqRef.current) setIsUpdating(false);
     }
   };
 
@@ -56,6 +72,7 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
               variant={currentMode === 'card' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleModeChange('card')}
+              disabled={isUpdating}
               className="h-7 w-7 p-0"
             >
               <Grid3x3 className="h-4 w-4" />
@@ -75,6 +92,7 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
               variant={currentMode === 'compact' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleModeChange('compact')}
+              disabled={isUpdating}
               className="h-7 w-7 p-0"
             >
               <Grid2x2 className="h-4 w-4" />
@@ -94,6 +112,7 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
               variant={currentMode === 'list' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleModeChange('list')}
+              disabled={isUpdating}
               className="h-7 w-7 p-0"
             >
               <List className="h-4 w-4" />

@@ -11,6 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { toast } from '@/hooks/use-toast';
 
 export function FilterResetButton() {
   const router = useRouter();
@@ -18,29 +19,47 @@ export function FilterResetButton() {
   const [isResetting, setIsResetting] = useState(false);
 
   const handleReset = async () => {
+    if (isResetting) return;
     setIsResetting(true);
 
+    // 2 本の DELETE は独立しているため、片方だけ成功する部分失敗があり得る。
+    // その場合でも一部の Cookie は既に消えているので、成否にかかわらず
+    // UI とサーバー状態を再同期する（旧実装は throw して再同期を飛ばしていた）
+    let failed = false;
     try {
-      // Clear all filter-related cookies (parallel)
       const responses = await Promise.all([
         fetch('/api/filter-preferences', { method: 'DELETE' }),
         fetch('/api/source-filter', { method: 'DELETE' }),
       ]);
-      if (responses.some((r) => !r.ok)) {
-        throw new Error('Filter reset API failed');
+      failed = responses.some((r) => !r.ok);
+      if (failed) {
+        console.error(
+          '[FilterResetButton] filter reset API returned non-OK:',
+          responses.map((r) => r.status)
+        );
       }
-
-      // Clear view mode cookie (if exists)
-      document.cookie =
-        'article-view-mode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-
-      await queryClient.invalidateQueries();
-      router.replace('/');
     } catch (err) {
       console.error('Filter reset failed:', err);
-      alert('フィルターのリセットに失敗しました');
+      failed = true;
+    }
+
+    // Clear view mode cookie (if exists) — API の成否に依存しない
+    document.cookie =
+      'article-view-mode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
+    try {
+      await queryClient.invalidateQueries();
+      router.replace('/');
     } finally {
       setIsResetting(false);
+    }
+
+    if (failed) {
+      toast({
+        title: 'フィルターのリセットに一部失敗しました',
+        description: '残った条件がある場合は時間をおいて再度お試しください。',
+        variant: 'destructive',
+      });
     }
   };
 
