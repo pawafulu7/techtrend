@@ -4,6 +4,7 @@ import fetch from 'node-fetch';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { getOrCreateTags } from '@/lib/services/tag-service';
 import { env } from '@/lib/config/env';
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 
 type ArticleWithSourceAndTags = Article & {
   source: Source;
@@ -22,8 +23,8 @@ async function generateTags(title: string, content: string): Promise<string[]> {
     throw new Error('GEMINI_API_KEY is not set');
   }
 
-  const model = env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  // モデルID・ベースURLは共通ヘルパーから解決する（直書きしない）
+  const apiUrl = buildGeminiEndpoint(apiKey);
 
   const prompt = `以下の技術記事から適切なタグを生成してください。
 

@@ -35,7 +35,12 @@ export interface ExtractionConfig<T> {
   schema: z.ZodType<T, z.ZodTypeDef, any>;
   promptVersion: string;
   buildPrompt: (input: unknown) => string;
-  parseResponse: (text: string) => T;
+  /**
+   * LLM 応答をパースする。
+   * `input` を受け取れるのは、コード側で算出済みの値（分類結果など）を
+   * 応答に対して強制し直すため。プロンプトでの指示だけでは保証にならない。
+   */
+  parseResponse: (text: string, input: unknown) => T;
 }
 
 const DEFAULT_OPTIONS: Required<ExtractionOptions> = {
@@ -84,7 +89,7 @@ export class LLMExtractionPipeline {
         rawResponse = await this.callAPI(prompt, opts);
 
         // Parse the response
-        const parsed = config.parseResponse(rawResponse);
+        const parsed = config.parseResponse(rawResponse, input);
 
         // Validate with Zod schema
         const validated = config.schema.parse(parsed);

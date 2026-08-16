@@ -26,10 +26,14 @@ export class GeminiClient {
   private genAI: GoogleGenerativeAI;
   private model: GenerativeModel;
 
-  constructor(apiKey: string) {
+  /** 実際に使用しているモデルID（レポートやログで参照する） */
+  readonly modelId: string;
+
+  constructor(apiKey: string, modelId: string = GEMINI_API.MODEL) {
     this.genAI = new GoogleGenerativeAI(apiKey);
+    this.modelId = modelId;
     this.model = this.genAI.getGenerativeModel({
-      model: GEMINI_API.MODEL,
+      model: modelId,
     });
   }
 

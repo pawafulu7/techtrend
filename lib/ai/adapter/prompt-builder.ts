@@ -1,4 +1,10 @@
 import { SummaryProviderInput } from './summary-provider.interface';
+import {
+  SUMMARY_LENGTH_HINT,
+  THIN_SUMMARY_LENGTH_HINT,
+  THIN_CONTENT_MAX_LENGTH,
+  getItemCountRule,
+} from '../constants';
 
 const SYSTEM_INSTRUCTIONS = `
 あなたは技術記事の要約を生成する専門AIです。以下のルールを厳守してください：
@@ -9,7 +15,7 @@ const SYSTEM_INSTRUCTIONS = `
 - tagsは技術用語の正式名称（英語可）を使用してください
 
 【一覧要約ルール（summaryフィールド）】
-- 150-250文字で記事の核心を端的に表現する
+- ${SUMMARY_LENGTH_HINT}で記事の核心を端的に表現する
 - 技術的価値を明確に示す
 - 技術用語は略称を活用（JavaScript→JS、TypeScript→TS等）
 - 必ず完結した文で終了（体言止めは避ける）
@@ -64,6 +70,59 @@ AI/LLM関連:
 const METADATA_WARNING =
   'IMPORTANT: The above metadata is for your reference only. Never include it in your output.';
 
+/**
+ * 詳細要約の長さ指示（コンテンツ長の帯ごと）
+ *
+ * 項目数は constants.ts の ITEM_COUNT_RULES が持つため、ここには含めない。
+ * minLength は ITEM_COUNT_RULES と同じ境界値に揃えること。
+ */
+interface DetailLengthBand {
+  minLength: number;
+  label: string;
+  contentHint: string;
+  totalChars: number;
+  priorityHint: string;
+}
+
+const DETAIL_LENGTH_BANDS: DetailLengthBand[] = [
+  {
+    minLength: 10000,
+    label: '（非常に長い）',
+    contentHint:
+      '具体的な詳細（バージョン、数値、日付、コマンド等）を含め120-180文字。',
+    totalChars: 1500,
+    priorityHint: '項目数を優先し、1項目あたりの長さは抑えてください。',
+  },
+  {
+    minLength: 5000,
+    label: '（長い）',
+    contentHint: '具体的な詳細を含め120-200文字。',
+    totalChars: 1200,
+    priorityHint: '合計文字数を優先してください。',
+  },
+  {
+    minLength: 3000,
+    label: '',
+    contentHint: '150-200文字。',
+    totalChars: 1000,
+    priorityHint: '合計文字数を優先してください。',
+  },
+  {
+    minLength: 1000,
+    label: '',
+    contentHint: '130-175文字。',
+    totalChars: 700,
+    priorityHint: '合計文字数を優先してください。',
+  },
+  {
+    minLength: 400,
+    label: '（短い）',
+    contentHint: '80-200文字。',
+    totalChars: 600,
+    priorityHint: '合計文字数を優先してください。',
+  },
+];
+
 export class PromptBuilder {
   buildPrompt(input: SummaryProviderInput): string {
     const maxContentLength = 150000;
@@ -95,70 +154,33 @@ export class PromptBuilder {
     contentLength: number,
     policy: 'short' | 'medium' | 'long'
   ): string {
-    if (contentLength < 400) {
+    if (contentLength < THIN_CONTENT_MAX_LENGTH) {
+      // 短記事は品質チェック側の上限も下がるため、一覧要約の長さ指示を上書きする。
+      // 上書きしないと SYSTEM_INSTRUCTIONS の通常レンジ（100-180文字）に従った出力が
+      // 検証層（上限100文字）で減点される。
       return `
 
 記事は${contentLength}文字（非常に短い）です。
 detailedSummaryItemsは空配列[]にしてください。
 summaryフィールドの作成のみに集中してください。
+この記事のsummaryは${THIN_SUMMARY_LENGTH_HINT}にしてください（上記の通常レンジより優先）。
 ${METADATA_WARNING}`;
     }
 
-    const policyMultiplier =
-      policy === 'long' ? 1.2 : policy === 'short' ? 0.8 : 1.0;
+    // 項目数は constants.ts の ITEM_COUNT_RULES を唯一の出典とする。
+    // quality-checker.ts も同じ関数を参照するため、ここで独自に再計算しない。
+    const { recommendedItems } = getItemCountRule(contentLength, policy);
+    const band = DETAIL_LENGTH_BANDS.find(
+      (b) => contentLength >= b.minLength
+    ) as DetailLengthBand;
 
-    if (contentLength >= 10000) {
-      const minItems = Math.max(7, Math.floor(7 * policyMultiplier));
-      const maxItems = Math.max(minItems, Math.floor(9 * policyMultiplier));
-      return `
+    return `
 
-記事は${contentLength}文字（非常に長い）です。
-detailedSummaryItems: ${minItems}-${maxItems}項目。
-各項目のcontent: 具体的な詳細（バージョン、数値、日付、コマンド等）を含め120-180文字。
-detailedSummaryItems全体の合計は1500文字以内。項目数を優先し、1項目あたりの長さは抑えてください。
+記事は${contentLength}文字${band.label}です。
+detailedSummaryItems: ${recommendedItems}項目。
+各項目のcontent: ${band.contentHint}
+detailedSummaryItems全体の合計は${band.totalChars}文字以内。${band.priorityHint}
 ${METADATA_WARNING}`;
-    } else if (contentLength >= 5000) {
-      const minItems = Math.max(5, Math.floor(5 * policyMultiplier));
-      const maxItems = Math.max(minItems, Math.floor(7 * policyMultiplier));
-      return `
-
-記事は${contentLength}文字（長い）です。
-detailedSummaryItems: ${minItems}-${maxItems}項目。
-各項目のcontent: 具体的な詳細を含め120-200文字。
-detailedSummaryItems全体の合計は1200文字以内。合計文字数を優先してください。
-${METADATA_WARNING}`;
-    } else if (contentLength >= 3000) {
-      const minItems = Math.max(4, Math.floor(4 * policyMultiplier));
-      const maxItems = Math.max(minItems, Math.floor(5 * policyMultiplier));
-      return `
-
-記事は${contentLength}文字です。
-detailedSummaryItems: ${minItems}-${maxItems}項目。
-各項目のcontent: 150-200文字。
-detailedSummaryItems全体の合計は1000文字以内。合計文字数を優先してください。
-${METADATA_WARNING}`;
-    } else if (contentLength >= 1000) {
-      const minItems = Math.max(3, Math.floor(3 * policyMultiplier));
-      const maxItems = Math.max(minItems, Math.floor(4 * policyMultiplier));
-      return `
-
-記事は${contentLength}文字です。
-detailedSummaryItems: ${minItems}-${maxItems}項目。
-各項目のcontent: 130-175文字。
-detailedSummaryItems全体の合計は700文字以内。合計文字数を優先してください。
-${METADATA_WARNING}`;
-    } else {
-      // 400-999 characters
-      const minItems = Math.max(2, Math.floor(2 * policyMultiplier));
-      const maxItems = Math.max(minItems, Math.floor(3 * policyMultiplier));
-      return `
-
-記事は${contentLength}文字（短い）です。
-detailedSummaryItems: ${minItems}-${maxItems}項目。
-各項目のcontent: 80-200文字。
-detailedSummaryItems全体の合計は600文字以内。合計文字数を優先してください。
-${METADATA_WARNING}`;
-    }
   }
 
   private buildToneGuidance(tone?: 'formal' | 'casual'): string {

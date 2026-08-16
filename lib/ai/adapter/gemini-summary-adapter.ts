@@ -9,7 +9,7 @@ import {
   TransportRequest,
 } from '../transport/gemini-transport.interface';
 import { PromptBuilder } from './prompt-builder';
-import { INSTRUCTION_PATTERNS } from '../constants';
+import { INSTRUCTION_PATTERNS, SUMMARY_LENGTH_HINT } from '../constants';
 
 type GenerationConfig = {
   temperature: number;
@@ -25,8 +25,9 @@ const SUMMARY_JSON_SCHEMA = {
   properties: {
     summary: {
       type: 'STRING',
-      description:
-        '記事の一行要約。150-250文字で必ず日本語で記述すること。「この記事は」「本記事は」等の自己言及表現は禁止',
+      // 長さはプロンプトと同じ SUMMARY_LENGTH_HINT を使う。
+      // ここに別の数値を書くと、同一リクエスト内でモデルに矛盾した指示が渡る。
+      description: `記事の一行要約。${SUMMARY_LENGTH_HINT}で必ず日本語で記述すること。「この記事は」「本記事は」等の自己言及表現は禁止`,
     },
     detailedSummaryItems: {
       type: 'ARRAY',

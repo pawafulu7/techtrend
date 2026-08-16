@@ -5,6 +5,7 @@
  */
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
+import { getGeminiModel } from '@/scripts/lib/gemini-endpoint';
 import { LocalLLMClient } from '../../lib/ai/local-llm';
 import { GeminiClient } from '../../lib/ai/gemini';
 import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
@@ -41,7 +42,8 @@ async function generateWithGemini(title: string, content: string) {
   if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
   
   const startTime = Date.now();
-  const client = new GeminiClient(apiKey);
+  // レポート表示と実際の呼び出しで同じモデルを使う
+  const client = new GeminiClient(apiKey, getGeminiModel());
   const result = await client.generateDetailedSummary(title, content);
   const processingTime = Date.now() - startTime;
   
@@ -287,11 +289,11 @@ function generateMarkdownReport(
   return `# LLM品質比較レポート (${now})
 
 ## 概要
-Gemini 1.5 Flash vs LocalLLM (GPT-OSS 20B) の品質比較結果
+Gemini (${getGeminiModel()}) vs LocalLLM (GPT-OSS 20B) の品質比較結果
 
 ## テスト環境
 - **記事数**: ${results.length}件
-- **Geminiモデル**: gemini-1.5-flash
+- **Geminiモデル**: ${getGeminiModel()}
 - **LocalLLMモデル**: openai/gpt-oss-20b
 - **フォーマット**: 統一フォーマット（Version 5）
 

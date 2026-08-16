@@ -4,6 +4,8 @@
  * parseUnifiedResponse（生成時）とfix-summary-format.ts（修正時）で共有
  */
 
+import type { DetailPolicy } from './adapter/summary-provider.interface';
+
 // プロンプト行を検出する正規表現パターン
 export const INSTRUCTION_PATTERNS = [
   // 既存パターン
@@ -121,6 +123,52 @@ export const CONTAMINATION_SEARCH_TERMS = [
 ];
 
 /**
+ * 一覧要約(summary)の長さ規定（通常コンテンツ向け）
+ *
+ * この定数がプロンプトと品質チェックの唯一の出典。
+ * プロンプト側（prompt-builder.ts / article-type-prompts.ts）と
+ * 検証側（service/quality-checker.ts）は必ずここを参照すること。
+ *
+ * 値は quality-checker.ts が従来運用していた非 thin-content 判定に一致させている。
+ * 短記事（thin content）の判定値は contentAnalysis 側の推奨値を優先するため、
+ * ここには含めない。
+ */
+export const SUMMARY_LENGTH = {
+  /** これを下回ると major 扱い */
+  absoluteMin: 50,
+  /** 理想帯の下限 */
+  idealMin: 100,
+  /** 理想帯の上限 */
+  idealMax: 180,
+  /** これを超えると減点対象 */
+  hardMax: 200,
+} as const;
+
+/** プロンプトに埋め込む推奨レンジ表記 */
+export const SUMMARY_LENGTH_HINT = `${SUMMARY_LENGTH.idealMin}-${SUMMARY_LENGTH.idealMax}文字（${SUMMARY_LENGTH.hardMax}文字を超えないこと）`;
+
+/**
+ * 短記事（thin content）の一覧要約の長さ規定
+ *
+ * 通常コンテンツより短くする。contentAnalysis が推奨値を持つ場合はそちらが優先されるが、
+ * 推奨値が無い場合のフォールバックと、プロンプト側の指示文はこの値を使う。
+ * 通常用の SUMMARY_LENGTH をそのまま短記事に適用すると、
+ * 「プロンプトは100-180文字を要求、検証層は上限100文字」という衝突が起きる。
+ */
+export const THIN_SUMMARY_LENGTH = {
+  absoluteMin: 40,
+  idealMin: 60,
+  idealMax: 100,
+  hardMax: 100,
+} as const;
+
+/** 短記事向けの推奨レンジ表記 */
+export const THIN_SUMMARY_LENGTH_HINT = `${THIN_SUMMARY_LENGTH.idealMin}-${THIN_SUMMARY_LENGTH.idealMax}文字`;
+
+/** 短記事とみなすコンテンツ長の上限（プロンプト側の分岐と揃える） */
+export const THIN_CONTENT_MAX_LENGTH = 400;
+
+/**
  * コンテンツ長に基づく項目数ルール
  * prompt-builder.ts と quality-checker.ts で共有
  * 変更時は両ファイルの整合性を保つこと
@@ -142,14 +190,44 @@ export const ITEM_COUNT_RULES: ItemCountRule[] = [
   { minLength: 0, minItems: 0, maxItems: 0, recommendedItems: '0' }, // 短文は箇条書き不要
 ];
 
+/** 詳細度ポリシーごとの項目数倍率 */
+const DETAIL_POLICY_MULTIPLIER: Record<DetailPolicy, number> = {
+  short: 0.8,
+  medium: 1.0,
+  long: 1.2,
+};
+
 /**
  * コンテンツ長から適用されるルールを取得
+ *
+ * `policy` はプロンプト側と検証側で必ず同じ値を渡すこと。
+ * 片側だけが倍率を適用すると「プロンプトが要求した項目数を
+ * 検証側が範囲外と判定する」不整合が発生する。
+ * 現状 detailPolicy は 'medium'（倍率1.0）固定なので既定値も 'medium'。
+ * 設定可能にする際は quality-checker 側にも同じ policy を渡すこと。
  */
-export function getItemCountRule(contentLength: number): ItemCountRule {
-  for (const rule of ITEM_COUNT_RULES) {
-    if (contentLength >= rule.minLength) {
-      return rule;
-    }
+export function getItemCountRule(
+  contentLength: number,
+  policy: DetailPolicy = 'medium'
+): ItemCountRule {
+  const base =
+    ITEM_COUNT_RULES.find((rule) => contentLength >= rule.minLength) ??
+    ITEM_COUNT_RULES[ITEM_COUNT_RULES.length - 1];
+
+  const multiplier = DETAIL_POLICY_MULTIPLIER[policy];
+  if (multiplier === 1.0 || base.maxItems === 0) {
+    return base;
   }
-  return ITEM_COUNT_RULES[ITEM_COUNT_RULES.length - 1];
+
+  const minItems = Math.max(
+    base.minItems,
+    Math.floor(base.minItems * multiplier)
+  );
+  const maxItems = Math.max(minItems, Math.floor(base.maxItems * multiplier));
+  return {
+    minLength: base.minLength,
+    minItems,
+    maxItems,
+    recommendedItems: `${minItems}-${maxItems}`,
+  };
 }

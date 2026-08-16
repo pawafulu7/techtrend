@@ -1,3 +1,4 @@
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { generateUnifiedPrompt } from '@/lib/utils/article/article-type-prompts';
 import { UnifiedSummaryService } from '@/lib/ai/unified-summary-service';
@@ -37,7 +38,7 @@ async function regenerateTwoArticles() {
 
     console.error('  APIリクエスト送信中...');
     
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const apiUrl = buildGeminiEndpoint(apiKey);
     
     try {
       const response = await fetch(apiUrl, {

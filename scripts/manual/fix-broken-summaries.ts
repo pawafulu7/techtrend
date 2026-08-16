@@ -1,4 +1,5 @@
 #!/usr/bin/env npx tsx
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 /**
  * 壊れた要約を修正するスクリプト
  */
@@ -49,7 +50,7 @@ async function fixBrokenSummaries() {
         article.content || ''
       );
 
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const apiUrl = buildGeminiEndpoint(apiKey);
       
       const response = await fetch(apiUrl, {
         method: 'POST',

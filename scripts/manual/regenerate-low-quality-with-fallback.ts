@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 /**
  * 低品質な要約を段階的な品質基準で再生成するスクリプト
  * 
@@ -80,7 +81,7 @@ async function generateSummaryAndTags(title: string, content: string, attemptNum
     throw new Error('GEMINI_API_KEY is not set');
   }
 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const apiUrl = buildGeminiEndpoint(apiKey);
   
   // プロンプトを強化（品質重視）
   const enhancedPrompt = `

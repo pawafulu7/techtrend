@@ -1,3 +1,4 @@
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
@@ -10,7 +11,7 @@ async function generateUnifiedSummary(title: string, content: string) {
   if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
 
   const prompt = generateUnifiedPrompt(title, content.substring(0, 5000));
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const apiUrl = buildGeminiEndpoint(apiKey);
   
   const response = await fetch(apiUrl, {
     method: 'POST',

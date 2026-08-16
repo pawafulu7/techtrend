@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 /**
  * 要約生成に失敗した記事を修正するスクリプト
  */
@@ -28,7 +29,7 @@ async function generateUnifiedSummary(title: string, content: string): Promise<S
   }
 
   const prompt = generateUnifiedPrompt(title, processedContent);
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const apiUrl = buildGeminiEndpoint(apiKey);
   
   const response = await fetch(apiUrl, {
     method: 'POST',

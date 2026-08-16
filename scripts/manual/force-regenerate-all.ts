@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 /**
  * 全記事の要約を強制的に再生成するスクリプト
  * 品質に関わらず、全ての記事を対象に新しい要約を生成します
@@ -75,7 +76,7 @@ async function generateImprovedSummary(title: string, content: string): Promise<
 コンテンツが短い場合でも、タイトルと利用可能な情報から推測して、必ず上記の形式を満たす要約を生成してください。
 `;
 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const apiUrl = buildGeminiEndpoint(apiKey);
   
   const response = await fetch(apiUrl, {
     method: 'POST',

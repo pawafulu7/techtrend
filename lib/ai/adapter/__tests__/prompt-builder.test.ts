@@ -1,5 +1,7 @@
 import { PromptBuilder } from '../prompt-builder';
 import { SummaryProviderInput } from '../summary-provider.interface';
+import { SUMMARY_LENGTH, getItemCountRule } from '../../constants';
+import { SummaryQualityChecker } from '../../service/quality-checker';
 
 describe('PromptBuilder', () => {
   let builder: PromptBuilder;
@@ -446,6 +448,53 @@ describe('PromptBuilder', () => {
       expect(prompt).toContain('5000文字（長い）');
       // long policy on 5000-9999: min=max(5,floor(5*1.2))=6, max=max(6,floor(7*1.2))=8
       expect(prompt).toContain('detailedSummaryItems: 6-8項目');
+    });
+  });
+
+  /**
+   * プロンプトの指示と品質チェックの閾値がずれると、
+   * 「指示に忠実な出力ほど減点される」状態になる。
+   * 過去に 150-250文字 と指示しながら上限200文字で減点していた実績があるため、
+   * 両者が同一の定数から導出されていることをテストで固定する。
+   */
+  describe('指示と品質チェックの整合性', () => {
+    const input = (content: string): SummaryProviderInput => ({
+      title: 'T',
+      content,
+      constraints: { maxHeadlineChars: 200, detailPolicy: 'medium' },
+      requestId: 'consistency',
+    });
+
+    it('一覧要約の指示レンジが品質チェックの理想帯と一致する', () => {
+      const prompt = new PromptBuilder().buildPrompt(input('x'.repeat(5000)));
+      expect(prompt).toContain(
+        `${SUMMARY_LENGTH.idealMin}-${SUMMARY_LENGTH.idealMax}文字`
+      );
+      expect(prompt).toContain(`${SUMMARY_LENGTH.hardMax}文字を超えないこと`);
+    });
+
+    it('指示レンジ上限ちょうどの要約が品質チェックで減点されない', () => {
+      const checker = new SummaryQualityChecker();
+      const summary = 'あ'.repeat(SUMMARY_LENGTH.idealMax);
+      // contentLength 5000 の詳細要約は 600-1200文字が想定範囲
+      const result = checker.checkQuality(summary, 'い'.repeat(800), {
+        totalLength: 5000,
+        contentLength: 5000,
+      } as never);
+
+      expect(result.issues.filter((i) => i.type === 'length')).toEqual([]);
+    });
+
+    it('プロンプトの項目数指示が quality-checker と同じルールから導出される', () => {
+      for (const contentLength of [500, 1500, 3500, 6000, 12000]) {
+        const prompt = new PromptBuilder().buildPrompt(
+          input('x'.repeat(contentLength))
+        );
+        const rule = getItemCountRule(contentLength, 'medium');
+        expect(prompt).toContain(
+          `detailedSummaryItems: ${rule.recommendedItems}項目`
+        );
+      }
     });
   });
 });

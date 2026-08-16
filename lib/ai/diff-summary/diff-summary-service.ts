@@ -13,6 +13,7 @@ import {
   getLLMExtractionPipeline,
 } from '../extraction/llm-extraction-pipeline';
 import { BatchExecutor, BatchJob } from '../extraction/batch-executor';
+import { GENERIC_TOPICS, normalizeTopic } from '../extraction/topic-classifier';
 import {
   diffSummaryConfig,
   DiffSummaryInput,
@@ -47,37 +48,15 @@ interface CategoryDiffResult {
 }
 
 /**
- * Generic topics to filter out (too broad for meaningful search)
- */
-const GENERIC_TOPICS = new Set([
-  'ai',
-  'llm',
-  'ml',
-  '機械学習',
-  'deep learning',
-  'プログラミング',
-  '開発',
-  'エンジニアリング',
-  '技術',
-  'web',
-  'api',
-  'データ',
-  'クラウド',
-  'ソフトウェア',
-  'software',
-  'programming',
-  'development',
-  'technology',
-  'data',
-  'cloud',
-]);
-
-/**
  * Filter out generic topics from diff summary output
+ *
+ * 除外リストは topic-classifier.ts と共有する。
+ * 二重管理すると「分類器は通すが後段が落とす」トピックが生まれ、
+ * changes からは消えるのに summary / keyTakeaways では言及され続ける。
  */
 function filterGenericTopics(data: DiffSummaryOutput): DiffSummaryOutput {
   const filteredChanges = data.changes.filter(
-    (change) => !GENERIC_TOPICS.has(change.topic.toLowerCase())
+    (change) => !GENERIC_TOPICS.has(normalizeTopic(change.topic))
   );
 
   return {

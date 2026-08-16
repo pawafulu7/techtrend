@@ -1,3 +1,4 @@
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { Article, Source, Tag } from '@/lib/prisma-exports';
 import { GeminiClient } from '../../lib/ai/gemini';
@@ -71,7 +72,7 @@ async function generateWithGemini(title: string, content: string): Promise<{
 
   const articleType = detectArticleType(title, content);
   const prompt = generatePromptForArticleType(articleType, title, content);
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const apiUrl = buildGeminiEndpoint(apiKey);
 
   const response = await fetch(apiUrl, {
     method: 'POST',

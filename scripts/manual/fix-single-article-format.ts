@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import fetch from 'node-fetch';
 
@@ -36,7 +37,7 @@ async function fixArticleFormat() {
       throw new Error('GEMINI_API_KEY is not set');
     }
     
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const apiUrl = buildGeminiEndpoint(apiKey);
     
     // 正しい形式のプロンプト
     const prompt = `以下の技術記事の要約を作成してください。
