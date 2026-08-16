@@ -11,10 +11,48 @@ import { z } from 'zod';
 // Diff Summary Schema (Feature 4)
 // =============================================================================
 
+/**
+ * description に含めてはいけない汎用表現
+ *
+ * diff-summary-prompt.ts の「使用しない語」と同期すること。
+ * プロンプトの散文ではなくスキーマで機械的に弾き、
+ * llm-extraction-pipeline の既存リトライ（最大3回）で再生成させる。
+ */
+export const DIFF_DESCRIPTION_BANNED_TERMS = [
+  '見出し',
+  '記事が',
+  '記事に',
+  '記事は',
+  '記事を',
+  '関心',
+  '注目',
+  '話題',
+  '言及',
+  '示唆',
+  // 活用形は明示列挙する。'見られ' の部分一致にすると
+  // 「改善が見られない」のような正当な表現まで弾いてリトライを枯渇させる。
+  '見られる',
+  '見られた',
+] as const;
+
+/** プロンプトに埋め込む禁止語の表示文字列（スキーマと必ず同期する） */
+export const DIFF_DESCRIPTION_BANNED_TERMS_HINT =
+  DIFF_DESCRIPTION_BANNED_TERMS.join(' / ');
+
+// 注: 「〜に関する」「〜について」で始めない、という書き出しの規則は
+// 機械判定が誤検知しやすい（リトライを空振りさせる）ため、
+// プロンプト側の指示に留めてスキーマでは強制しない。
+
 export const DiffChangeSchema = z.object({
   type: z.enum(['new', 'updated', 'deprecated', 'trending']),
   topic: z.string().min(1),
-  description: z.string().min(30),
+  description: z
+    .string()
+    .min(30)
+    .refine(
+      (s) => !DIFF_DESCRIPTION_BANNED_TERMS.some((term) => s.includes(term)),
+      { message: 'description に汎用表現（禁止語）が含まれています' }
+    ),
   significance: z.enum(['high', 'medium', 'low']),
   relatedArticleIds: z.array(z.string()).optional(),
 });

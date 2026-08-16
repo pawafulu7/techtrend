@@ -1,4 +1,5 @@
 #!/usr/bin/env npx tsx
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 /**
  * 特定の2記事の要約を統一フォーマットで再生成
  * 共通処理（generateUnifiedPrompt, UnifiedSummaryService）を使用
@@ -60,7 +61,7 @@ async function regenerateTwoArticles() {
 
       console.error('  🔄 Gemini APIリクエスト送信中...');
       
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const apiUrl = buildGeminiEndpoint(apiKey);
       
       const response = await fetch(apiUrl, {
         method: 'POST',

@@ -1,4 +1,7 @@
-import { SummaryProvider } from '../adapter/summary-provider.interface';
+import {
+  SummaryProvider,
+  type DetailPolicy,
+} from '../adapter/summary-provider.interface';
 import { QualityChecker } from './quality-checker.interface';
 import { PostProcessor } from './post-processor.interface';
 import {
@@ -11,6 +14,7 @@ import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { logger } from '@/lib/logger';
 
 import { SUMMARY_VERSION } from '@/types/article';
+import { THIN_CONTENT_MAX_LENGTH } from '../constants';
 
 export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
   constructor(
@@ -33,6 +37,10 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
     let attempt = 0;
     let lastError: Error | null = null;
 
+    // プロンプト生成と品質検証で同じ policy を使う。
+    // 片方だけに渡すと、指示した項目数を検証側が範囲外と判定する。
+    const detailPolicy: DetailPolicy = 'medium';
+
     while (attempt < this.config.maxRetries) {
       const requestId = `${Date.now()}-${attempt}`;
       try {
@@ -42,7 +50,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
           articleType: params.articleType,
           constraints: {
             maxHeadlineChars: 200,
-            detailPolicy: 'medium',
+            detailPolicy,
           },
           requestId,
         });
@@ -60,13 +68,14 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
         const contentAnalysis = {
           totalLength: contentLength,
           contentLength,
-          isThinContent: contentLength < 400,
+          isThinContent: contentLength < THIN_CONTENT_MAX_LENGTH,
         };
 
         const qualityResult = this.qualityChecker.checkQuality(
           summary,
           detailedSummary,
-          contentAnalysis
+          contentAnalysis,
+          detailPolicy
         );
 
         const threshold =

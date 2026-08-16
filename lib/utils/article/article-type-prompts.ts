@@ -4,6 +4,13 @@
  */
 
 import { ArticleType } from './article-type-detector';
+import {
+  SUMMARY_LENGTH,
+  SUMMARY_LENGTH_HINT,
+  THIN_SUMMARY_LENGTH_HINT,
+  getItemCountRule,
+  getDetailLengthBand,
+} from '@/lib/ai/constants';
 export type { ArticleType } from './article-type-detector';
 
 /**
@@ -17,7 +24,7 @@ export const IMPROVED_UNIFIED_PROMPT = `
 技術記事を分析して、以下の形式で要約を作成してください。
 
 【最重要ルール - 文字数制限】
-1. 要約は最大200文字以内（超過厳禁）
+1. 要約は${SUMMARY_LENGTH.hardMax}文字以内（超過厳禁）
 2. 詳細要約は最大1000文字以内
 3. 内容の薄い記事は無理に長くせず、適切な長さで簡潔に
 4. 箇条書きには句点（。）を付けない
@@ -52,13 +59,13 @@ const FLEXIBLE_UNIFIED_PROMPT = `
 技術記事を分析して、以下の形式で要約を作成してください。
 
 【最重要ルール】
-1. 要約は最大200文字以内（超過厳禁）
+1. 要約は${SUMMARY_LENGTH.hardMax}文字以内（超過厳禁）
 2. 詳細要約は記事の内容量に応じた自然な長さで
 3. 無理に内容を膨らませない - 実際の記事内容を忠実に反映
 4. 箇条書きには句点（。）を付けない
 
 要約:
-【条件】150-250文字程度。内容に応じて適切な長さで自然に終わらせる。
+【条件】${SUMMARY_LENGTH_HINT}。内容に応じて適切な長さで自然に終わらせる。
 【書き方】
 - 記事の核心的な内容を端的に表現
 - 技術的価値を明確に示す
@@ -67,27 +74,10 @@ const FLEXIBLE_UNIFIED_PROMPT = `
 【文末】必ず完結した文で終了（体言止めは避ける）
 
 詳細要約:
-【重要：以下の文字数を必ず守ること】
-- 5000文字以上の記事：必ず800文字以上1500文字以内で作成
-- 3000-5000文字の記事：必ず600文字以上1000文字以内で作成
-- 1000-3000文字の記事：必ず400文字以上700文字以内で作成
-- 1000文字未満の記事：必ず300文字以上500文字以内で作成
-
 【形式】記事の内容に最も適した項目を箇条書きで作成
-【項目数の必須要件】
-- 5000文字以上の記事：最低5個、推奨6-7個
-- 3000-5000文字の記事：最低4個、推奨5個
-- 1000-3000文字の記事：最低3個、推奨4個
-- 1000文字未満の記事：最低3個
-
 【各項目の必須要件】
 ・記事タイプに応じて最適な項目名を自由に設定
 ・各項目は「・項目名：」の後に必ず詳細な説明を記載
-・各項目の文字数要件：
-  - 5000文字以上の記事：各項目150-200文字
-  - 3000-5000文字の記事：各項目130-180文字
-  - 1000-3000文字の記事：各項目120-150文字
-  - 1000文字未満：各項目100-120文字
 ・具体例、数値、日付、技術名、製品名、機能名、コマンド例などを省略せず明記
 ・記事の重要な技術的詳細、実装方法、設定内容を具体的に説明
 ・記事に書かれていない内容は追加しない
@@ -112,7 +102,37 @@ const FLEXIBLE_UNIFIED_PROMPT = `
 /**
  * 統一プロンプト（改善版を使用）
  */
-export const UNIFIED_PROMPT = FLEXIBLE_UNIFIED_PROMPT;;
+export const UNIFIED_PROMPT = FLEXIBLE_UNIFIED_PROMPT;
+
+
+/**
+ * コンテンツ長に応じた項目数・詳細要約長の指示を生成する
+ *
+ * 数値は constants.ts の ITEM_COUNT_RULES / DETAIL_LENGTH_BANDS が唯一の出典。
+ * ここや各プロンプト定数に固定テーブルを置くと、prompt-builder.ts や
+ * quality-checker.ts と食い違い「指示どおりの出力が減点される」状態になる。
+ */
+function buildLengthRequirement(contentLength: number): string {
+  const band = getDetailLengthBand(contentLength);
+  if (!band) {
+    // 短記事は検証層の上限も下がるため、一覧要約の長さ指示も上書きする。
+    // 上書きしないとベースプロンプトの通常レンジに従った出力が
+    // thin-content 判定で減点される。
+    return (
+      `\n\n【要件】この記事は${contentLength}文字（非常に短い）です。` +
+      `\n一覧要約は${THIN_SUMMARY_LENGTH_HINT}にしてください（上記の通常レンジより優先）。` +
+      `\n詳細要約は無理に項目を作らず、記事にある事実だけを簡潔にまとめてください。`
+    );
+  }
+  const { recommendedItems } = getItemCountRule(contentLength);
+  return (
+    `\n\n【要件】この記事は${contentLength}文字${band.label}です。` +
+    `\n詳細要約は${band.totalMin}文字以上${band.totalMax}文字以内で作成してください。` +
+    `\n項目は${recommendedItems}個。各項目は${band.itemContentHint}` +
+    `\n${band.priorityHint}` +
+    `\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。`
+  );
+}
 
 /**
  * 統一プロンプト生成関数
@@ -126,23 +146,18 @@ export function generateUnifiedPrompt(title: string, content: string): string {
   // 日本語: 1文字 ≈ 0.3-0.5トークン → 200,000文字相当
   // 英語/コード混在でも安全なように150,000文字を上限とする
   const maxContentLength = 150000;
-  const truncatedContent = content.length > maxContentLength 
-    ? content.substring(0, maxContentLength) + '\n\n...[文字数制限により以下省略]'
-    : content;
-  
-  // 文字数に応じた項目数の指示を追加
+  const truncatedContent =
+    content.length > maxContentLength
+      ? content.substring(0, maxContentLength) +
+        '\n\n...[文字数制限により以下省略]'
+      : content;
+
+  // 項目数・詳細要約の長さは constants.ts を唯一の出典とする。
+  // 旧実装はここにも固定テーブルを持っており、prompt-builder.ts /
+  // quality-checker.ts / ENHANCED_UNIFIED_PROMPT と数値が食い違っていた。
   const contentLength = content.length;
-  let itemCountInstruction = '';
-  if (contentLength >= 5000) {
-    itemCountInstruction = '\n\n【必須要件】この記事は' + contentLength + '文字の長文記事です。\n詳細要約は必ず800文字以上1500文字以内で作成してください。\n最低5個以上の項目（推奨6-7個）を作成し、各項目は必ず150文字以上の詳細な説明にしてください。\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。';
-  } else if (contentLength >= 3000) {
-    itemCountInstruction = '\n\n【必須要件】この記事は' + contentLength + '文字です。\n詳細要約は必ず600文字以上1000文字以内で作成してください。\n最低4個以上の項目（推奨5個）を作成し、各項目は必ず150文字以上の詳細な説明にしてください。';
-  } else if (contentLength >= 1000) {
-    itemCountInstruction = '\n\n【必須要件】この記事は' + contentLength + '文字です。\n詳細要約は必ず400文字以上700文字以内で作成してください。\n最低3個以上の項目（推奨4個）を作成し、各項目は必ず130文字以上にしてください。';
-  } else {
-    itemCountInstruction = '\n\n【必須要件】この記事は' + contentLength + '文字の短い記事です。\n詳細要約は必ず300文字以上500文字以内で作成してください。\n最低3個の項目を作成し、各項目は100文字以上にしてください。';
-  }
-  
+  const itemCountInstruction = buildLengthRequirement(contentLength);
+
   return `${UNIFIED_PROMPT}${itemCountInstruction}
 
 タイトル: ${title}
@@ -157,13 +172,13 @@ export const ENHANCED_UNIFIED_PROMPT = `
 技術記事を分析して、以下の形式で要約を作成してください。
 
 【最重要ルール】
-1. 要約は最大200文字以内（超過厳禁）
+1. 要約は${SUMMARY_LENGTH.hardMax}文字以内（超過厳禁）
 2. 詳細要約は記事の内容量に応じた自然な長さで
 3. 無理に内容を膨らませない - 実際の記事内容を忠実に反映
 4. 箇条書きには句点（。）を付けない
 
 要約:
-【条件】150-250文字程度。内容に応じて適切な長さで自然に終わらせる。
+【条件】${SUMMARY_LENGTH_HINT}。内容に応じて適切な長さで自然に終わらせる。
 【書き方】
 - 記事の核心的な内容を端的に表現
 - 技術的価値を明確に示す
@@ -172,27 +187,10 @@ export const ENHANCED_UNIFIED_PROMPT = `
 【文末】必ず完結した文で終了（体言止めは避ける）
 
 詳細要約:
-【重要：以下の文字数を必ず守ること】
-- 5000文字以上の記事：必ず800文字以上1500文字以内で作成
-- 3000-5000文字の記事：必ず600文字以上1000文字以内で作成
-- 1000-3000文字の記事：必ず400文字以上700文字以内で作成
-- 1000文字未満の記事：必ず300文字以上500文字以内で作成
-
 【形式】記事の内容に最も適した項目を箇条書きで作成
-【項目数の必須要件】
-- 5000文字以上の記事：最低5個、推奨6-7個
-- 3000-5000文字の記事：最低4個、推奨5個
-- 1000-3000文字の記事：最低3個、推奨4個
-- 1000文字未満の記事：最低3個
-
 【各項目の必須要件】
 ・記事タイプに応じて最適な項目名を自由に設定
 ・各項目は「・項目名：」の後に必ず詳細な説明を記載
-・各項目の文字数要件：
-  - 5000文字以上の記事：各項目150-200文字
-  - 3000-5000文字の記事：各項目130-180文字
-  - 1000-3000文字の記事：各項目120-150文字
-  - 1000文字未満：各項目100-120文字
 ・具体例、数値、日付、技術名、製品名、機能名、コマンド例などを省略せず明記
 ・記事の重要な技術的詳細、実装方法、設定内容を具体的に説明
 ・記事に書かれていない内容は追加しない
@@ -266,28 +264,26 @@ AI/LLM関連:
 /**
  * 改善版プロンプト生成関数（カテゴリとタグ正規化対応）
  */
-export function generateEnhancedUnifiedPrompt(title: string, content: string): string {
+export function generateEnhancedUnifiedPrompt(
+  title: string,
+  content: string
+): string {
   // 既存のgenerateUnifiedPromptと同じコンテンツ処理
   const maxContentLength = 150000;
-  const truncatedContent = content.length > maxContentLength 
-    ? content.substring(0, maxContentLength) + '\n\n...[文字数制限により以下省略]'
-    : content;
-  
-  // 文字数に応じた項目数の指示
-  const contentLength = content.length;
-  let itemCountInstruction = '';
-  if (contentLength >= 10000) {
-    itemCountInstruction = '\n\n【最重要要件】この記事は' + contentLength + '文字の特大長文記事です。\n詳細要約は必ず1200文字以上1500文字以内で作成し、条件を外れた場合は生成失敗とみなします。\n最低7個以上の項目（推奨8-9個）を必ず作成し、各項目は必ず170文字以上200文字以内の詳細な説明にしてください。\n項目数が6個以下、または文字数要件を満たさない項目が含まれる場合はペナルティとして出力全体を無効化し、直ちに再生成してください。\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。';
-  } else if (contentLength >= 5000) {
-    itemCountInstruction = '\n\n【必須要件】この記事は' + contentLength + '文字の長文記事です。\n詳細要約は必ず900文字以上1500文字以内で作成し、条件を外れた場合は生成失敗とみなします。\n最低5個以上の項目（推奨6-7個）を必ず作成し、各項目は必ず150文字以上200文字以内の詳細な説明にしてください。\n項目数が5個未満、または150文字未満の項目が含まれる場合はペナルティとして出力全体を無効化し、再生成してください。\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。';
-  } else if (contentLength >= 3000) {
-    itemCountInstruction = '\n\n【必須要件】この記事は' + contentLength + '文字です。\n詳細要約は必ず600文字以上1000文字以内で作成してください。\n最低4個以上の項目（推奨5個）を作成し、各項目は必ず150文字以上の詳細な説明にしてください。';
-  } else if (contentLength >= 1000) {
-    itemCountInstruction = '\n\n【必須要件】この記事は' + contentLength + '文字です。\n詳細要約は必ず400文字以上700文字以内で作成してください。\n最低3個以上の項目（推奨4個）を作成し、各項目は必ず130文字以上にしてください。';
-  } else {
-    itemCountInstruction = '\n\n【必須要件】この記事は' + contentLength + '文字の短い記事です。\n詳細要約は必ず300文字以上500文字以内で作成してください。\n最低3個の項目を作成し、各項目は100文字以上にしてください。';
-  }
-  
+  const truncatedContent =
+    content.length > maxContentLength
+      ? content.substring(0, maxContentLength) +
+        '\n\n...[文字数制限により以下省略]'
+      : content;
+
+  // 項目数・詳細要約の長さは constants.ts を唯一の出典とする。
+  // 旧実装はここに第4の指示テーブルを持っており、prompt-builder.ts とも
+  // quality-checker.ts とも数値が異なっていた（例: 5000文字以上で
+  // 「1500文字以内」と指示しながら検証層は1200文字超を減点していた）。
+  // また「ペナルティとして出力全体を無効化し、直ちに再生成してください」は
+  // モデルが実行できない指示なので削除した。
+  const itemCountInstruction = buildLengthRequirement(content.length);
+
   return `${ENHANCED_UNIFIED_PROMPT}${itemCountInstruction}
 
 タイトル: ${title}
@@ -306,7 +302,7 @@ export interface ArticleTypePrompt {
  * 記事タイプ別のプロンプトテンプレート
  */
 export const ARTICLE_TYPE_PROMPTS: Record<ArticleType, ArticleTypePrompt> = {
-  'release': {
+  release: {
     type: 'release',
     systemPrompt: '新機能リリース記事として分析してください。',
     analysisPoints: [
@@ -314,7 +310,7 @@ export const ARTICLE_TYPE_PROMPTS: Record<ArticleType, ArticleTypePrompt> = {
       'リリースの背景や開発の動機',
       '具体的な利用方法やセットアップ手順',
       '想定される利用シーンとターゲットユーザー',
-      '料金体系、利用可能地域、制約事項'
+      '料金体系、利用可能地域、制約事項',
     ],
     outputFormat: `詳細要約:
 以下の要素を箇条書きで記載（各項目は「・」で開始）：
@@ -322,7 +318,7 @@ export const ARTICLE_TYPE_PROMPTS: Record<ArticleType, ArticleTypePrompt> = {
 ・主な機能・特徴（箇条書きで3-5個の主要機能）
 ・利用方法・手順（具体的なセットアップや使用開始方法）
 ・対象ユーザー・ユースケース（誰にとって有用か、どのような場面で使うか）
-・料金・制約事項（コスト、利用制限、前提条件など）`
+・料金・制約事項（コスト、利用制限、前提条件など）`,
   },
 
   'problem-solving': {
@@ -333,7 +329,7 @@ export const ARTICLE_TYPE_PROMPTS: Record<ArticleType, ArticleTypePrompt> = {
       '解決しようとしている問題や課題',
       '提示されている解決策やアプローチ',
       '実装の具体例やコードの有無',
-      '期待される効果と注意点'
+      '期待される効果と注意点',
     ],
     outputFormat: `詳細要約:
 以下の要素を技術的に詳しく箇条書きで記載（各項目は「・」で開始）：
@@ -342,10 +338,10 @@ export const ARTICLE_TYPE_PROMPTS: Record<ArticleType, ArticleTypePrompt> = {
 ・提示されている解決策の技術的アプローチ（アルゴリズム、設計パターン等）
 ・実装方法の詳細（具体的なコード例、設定方法、手順）
 ・期待される効果と性能改善の指標（数値があれば含める）
-・実装時の注意点、制約事項、必要な環境`
+・実装時の注意点、制約事項、必要な環境`,
   },
 
-  'tutorial': {
+  tutorial: {
     type: 'tutorial',
     systemPrompt: 'チュートリアル記事として分析してください。',
     analysisPoints: [
@@ -353,7 +349,7 @@ export const ARTICLE_TYPE_PROMPTS: Record<ArticleType, ArticleTypePrompt> = {
       '必要な前提知識と環境',
       '具体的な実装手順',
       'サンプルコードやデモ',
-      '次のステップや発展的な内容'
+      '次のステップや発展的な内容',
     ],
     outputFormat: `詳細要約:
 以下の要素を学習者向けに箇条書きで記載（各項目は「・」で開始）：
@@ -361,7 +357,7 @@ export const ARTICLE_TYPE_PROMPTS: Record<ArticleType, ArticleTypePrompt> = {
 ・前提知識・環境（必要なスキル、ツール、セットアップ）
 ・実装手順（ステップバイステップの具体的な手順）
 ・コード例・デモ（主要なコードスニペットや実行例）
-・次のステップ（学習後の発展的な内容や関連トピック）`
+・次のステップ（学習後の発展的な内容や関連トピック）`,
   },
 
   'tech-intro': {
@@ -372,7 +368,7 @@ export const ARTICLE_TYPE_PROMPTS: Record<ArticleType, ArticleTypePrompt> = {
       '主要な特徴と機能',
       '実際の利用シーンや適用例',
       'メリットとデメリット',
-      '類似技術との比較や代替案'
+      '類似技術との比較や代替案',
     ],
     outputFormat: `詳細要約:
 以下の要素を技術概要として箇条書きで記載（各項目は「・」で開始）：
@@ -380,10 +376,10 @@ export const ARTICLE_TYPE_PROMPTS: Record<ArticleType, ArticleTypePrompt> = {
 ・主な特徴（他と差別化される主要な機能や特性）
 ・利用シーン（実際にどのような場面で使われるか、具体例）
 ・メリット・デメリット（利点と欠点、トレードオフ）
-・関連技術・代替案（類似技術との比較、選択基準）`
+・関連技術・代替案（類似技術との比較、選択基準）`,
   },
 
-  'implementation': {
+  implementation: {
     type: 'implementation',
     systemPrompt: '実装レポート記事として分析してください。',
     analysisPoints: [
@@ -391,7 +387,7 @@ export const ARTICLE_TYPE_PROMPTS: Record<ArticleType, ArticleTypePrompt> = {
       '使用した技術スタック',
       '実装上の工夫や特徴',
       '直面した課題と解決方法',
-      '学びや今後の改善点'
+      '学びや今後の改善点',
     ],
     outputFormat: `詳細要約:
 以下の要素をプロジェクト報告として箇条書きで記載（各項目は「・」で開始）：
@@ -399,8 +395,8 @@ export const ARTICLE_TYPE_PROMPTS: Record<ArticleType, ArticleTypePrompt> = {
 ・使用技術・ツール（技術スタック、フレームワーク、ライブラリ）
 ・工夫点・特徴（独自の実装、アーキテクチャの決定、UI/UXの工夫）
 ・課題・改善点（直面した問題、現在の制限、将来の改善案）
-・学び・感想（プロジェクトを通じて得た知見、振り返り）`
-  }
+・学び・感想（プロジェクトを通じて得た知見、振り返り）`,
+  },
 };
 
 /**
@@ -416,7 +412,7 @@ export function generatePromptForArticleType(
   content: string
 ): string {
   const promptTemplate = ARTICLE_TYPE_PROMPTS[type];
-  
+
   return `以下の技術記事を詳細に分析してください。
 ${promptTemplate.systemPrompt}
 
@@ -458,13 +454,16 @@ JavaScript, React, フロントエンド, 状態管理`;
  * @returns セクション定義
  */
 export function getArticleTypeSections(type: ArticleType) {
-  const sections: Record<ArticleType, Array<{ key: string; title: string; icon: string }>> = {
-    'release': [
+  const sections: Record<
+    ArticleType,
+    Array<{ key: string; title: string; icon: string }>
+  > = {
+    release: [
       { key: 'overview', title: '新機能の概要', icon: '🚀' },
       { key: 'features', title: '主な機能・特徴', icon: '✨' },
       { key: 'usage', title: '利用方法・手順', icon: '📖' },
       { key: 'usecase', title: '対象ユーザー・ユースケース', icon: '👥' },
-      { key: 'limitations', title: '料金・制約事項', icon: '⚠️' }
+      { key: 'limitations', title: '料金・制約事項', icon: '⚠️' },
     ],
     'problem-solving': [
       { key: 'background', title: '技術的背景', icon: '📋' },
@@ -472,31 +471,31 @@ export function getArticleTypeSections(type: ArticleType) {
       { key: 'solution', title: '解決策', icon: '💡' },
       { key: 'implementation', title: '実装方法', icon: '🔧' },
       { key: 'effects', title: '期待される効果', icon: '📈' },
-      { key: 'cautions', title: '注意点', icon: '⚠️' }
+      { key: 'cautions', title: '注意点', icon: '⚠️' },
     ],
-    'tutorial': [
+    tutorial: [
       { key: 'goal', title: '学習内容・ゴール', icon: '🎯' },
       { key: 'prerequisites', title: '前提知識・環境', icon: '📚' },
       { key: 'steps', title: '実装手順', icon: '📝' },
       { key: 'examples', title: 'コード例・デモ', icon: '💻' },
-      { key: 'next', title: '次のステップ', icon: '➡️' }
+      { key: 'next', title: '次のステップ', icon: '➡️' },
     ],
     'tech-intro': [
       { key: 'overview', title: '技術概要', icon: '🔍' },
       { key: 'features', title: '主な特徴', icon: '⭐' },
       { key: 'usecases', title: '利用シーン', icon: '🎯' },
       { key: 'comparison', title: 'メリット・デメリット', icon: '⚖️' },
-      { key: 'alternatives', title: '関連技術・代替案', icon: '🔄' }
+      { key: 'alternatives', title: '関連技術・代替案', icon: '🔄' },
     ],
-    'implementation': [
+    implementation: [
       { key: 'what', title: '作ったもの', icon: '🛠️' },
       { key: 'tech', title: '使用技術・ツール', icon: '⚡' },
       { key: 'features', title: '工夫点・特徴', icon: '✨' },
       { key: 'challenges', title: '課題・改善点', icon: '🔧' },
-      { key: 'learnings', title: '学び・感想', icon: '💭' }
-    ]
+      { key: 'learnings', title: '学び・感想', icon: '💭' },
+    ],
   };
-  
+
   return sections[type];
 }
 
@@ -510,6 +509,6 @@ export function getUnifiedSections() {
     { key: 'problem', title: '課題・問題点', icon: '❓' },
     { key: 'solution', title: '解決策・アプローチ', icon: '💡' },
     { key: 'implementation', title: '実装詳細', icon: '🔧' },
-    { key: 'effects', title: '期待効果・メリット', icon: '📈' }
+    { key: 'effects', title: '期待効果・メリット', icon: '📈' },
   ];
 }

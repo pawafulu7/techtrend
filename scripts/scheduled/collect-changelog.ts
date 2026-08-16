@@ -3,11 +3,13 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { parseChangelog } from '../../lib/changelog/parser';
 import { RedisCache } from '../../lib/cache';
 import { env } from '@/lib/config/env';
+import { getGeminiModel } from '@/scripts/lib/gemini-endpoint';
 
 const FETCH_TIMEOUT_MS = 30_000;
 const GEMINI_TIMEOUT_MS = 60_000;
 const USER_AGENT = 'TechTrend-ChangelogCollector/1.0';
-const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+// モデルIDは直書きせず共通ヘルパーから解決する（GEMINI_MODEL の上書きも効く）
+const GEMINI_MODEL = getGeminiModel();
 const TRANSLATION_BATCH_SIZE = 30;
 
 const PROJECTS = [

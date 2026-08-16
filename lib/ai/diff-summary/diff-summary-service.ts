@@ -14,6 +14,11 @@ import {
 } from '../extraction/llm-extraction-pipeline';
 import { BatchExecutor, BatchJob } from '../extraction/batch-executor';
 import {
+  GENERIC_TOPICS,
+  normalizeTopic,
+  reconcileTopics,
+} from '../extraction/topic-classifier';
+import {
   diffSummaryConfig,
   DiffSummaryInput,
   TopicData,
@@ -47,37 +52,15 @@ interface CategoryDiffResult {
 }
 
 /**
- * Generic topics to filter out (too broad for meaningful search)
- */
-const GENERIC_TOPICS = new Set([
-  'ai',
-  'llm',
-  'ml',
-  '機械学習',
-  'deep learning',
-  'プログラミング',
-  '開発',
-  'エンジニアリング',
-  '技術',
-  'web',
-  'api',
-  'データ',
-  'クラウド',
-  'ソフトウェア',
-  'software',
-  'programming',
-  'development',
-  'technology',
-  'data',
-  'cloud',
-]);
-
-/**
  * Filter out generic topics from diff summary output
+ *
+ * 除外リストは topic-classifier.ts と共有する。
+ * 二重管理すると「分類器は通すが後段が落とす」トピックが生まれ、
+ * changes からは消えるのに summary / keyTakeaways では言及され続ける。
  */
 function filterGenericTopics(data: DiffSummaryOutput): DiffSummaryOutput {
   const filteredChanges = data.changes.filter(
-    (change) => !GENERIC_TOPICS.has(change.topic.toLowerCase())
+    (change) => !GENERIC_TOPICS.has(normalizeTopic(change.topic))
   );
 
   return {
@@ -127,10 +110,14 @@ export class DiffSummaryService {
 
     try {
       // Get topic data for both periods
-      const [currentTopics, baselineTopics] = await Promise.all([
+      const [currentAll, baselineAll] = await Promise.all([
         this.getTopicsForPeriod(categorySlug, current),
         this.getTopicsForPeriod(categorySlug, baseline),
       ]);
+
+      // 片方の期間だけ上位N件から漏れたトピックを 0 件と誤認しないよう突き合わせる
+      const { current: currentTopics, baseline: baselineTopics } =
+        reconcileTopics(currentAll, baselineAll);
 
       // Skip if no data in either period
       if (currentTopics.length === 0 && baselineTopics.length === 0) {
@@ -313,11 +300,14 @@ export class DiffSummaryService {
 
     for (const article of articles) {
       const tags = article.tags || [];
-      for (const tag of tags) {
-        // Tag is a relation object with id, name, category fields
-        const normalizedTag = tag.name.toLowerCase().trim();
-        if (!normalizedTag) continue;
+      // 同義語は集計前に正規化してまとめる。
+      // 例えば同じ記事に "js" と "JavaScript" が付いている場合、
+      // 正規化せずに数えると同一トピックの件数を二重計上してしまう。
+      const normalizedTags = new Set(
+        tags.map((tag) => normalizeTopic(tag.name)).filter(Boolean)
+      );
 
+      for (const normalizedTag of normalizedTags) {
         const existing = topicMap.get(normalizedTag);
         if (existing) {
           existing.count++;
@@ -334,17 +324,14 @@ export class DiffSummaryService {
     }
 
     // Convert to TopicData array, sorted by count
-    const topics: TopicData[] = Array.from(topicMap.entries())
+    return Array.from(topicMap.entries())
       .map(([topic, data]) => ({
         topic,
         count: data.count,
         articleIds: data.articleIds.slice(0, 10), // Limit to 10 article IDs
         headlines: data.headlines.slice(0, 5), // Limit to 5 headlines
       }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 30); // Limit to top 30 topics
-
-    return topics;
+      .sort((a, b) => b.count - a.count);
   }
 
   /**

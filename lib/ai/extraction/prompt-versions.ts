@@ -33,8 +33,14 @@ interface PromptVersionInfo {
  */
 export const PROMPT_VERSION_INFO: Record<PromptType, PromptVersionInfo> = {
   'diff-summary': {
-    current: '1.7',
+    current: '1.8',
     history: [
+      {
+        version: '1.8',
+        date: '2026-08-16',
+        description:
+          'Move threshold/type classification and generic-topic exclusion out of the prompt into topic-classifier.ts; enforce banned description terms via Zod instead of prose self-check',
+      },
       {
         version: '1.7',
         date: '2026-01-05',

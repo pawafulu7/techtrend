@@ -1,4 +1,5 @@
 #!/usr/bin/env npx tsx
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 /**
  * Speaker Deck記事の要約再生成スクリプト
  * 薄いコンテンツ用の新しいプロンプトで要約を再生成
@@ -42,7 +43,7 @@ async function generateSummaryWithGemini(
     throw new Error('GEMINI_API_KEY is not set');
   }
 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const apiUrl = buildGeminiEndpoint(apiKey);
   
   // 薄いコンテンツ用のプロンプトを生成
   const prompt = generateUnifiedPrompt(title, content, sourceName);

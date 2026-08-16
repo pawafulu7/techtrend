@@ -1,3 +1,4 @@
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import fetch from 'node-fetch';
@@ -33,7 +34,7 @@ async function debug() {
   console.error(prompt.substring(0, 500) + '...');
   
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    buildGeminiEndpoint(apiKey),
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

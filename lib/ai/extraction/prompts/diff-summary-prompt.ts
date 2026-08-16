@@ -9,9 +9,11 @@ import { ExtractionConfig } from '../llm-extraction-pipeline';
 import {
   DiffSummaryOutput,
   DiffSummaryOutputSchema,
+  DIFF_DESCRIPTION_BANNED_TERMS_HINT,
   parseJSONFromLLM,
 } from '../extraction-schemas';
 import { getPromptVersion } from '../prompt-versions';
+import { classifyTopics, normalizeTopic } from '../topic-classifier';
 
 /**
  * Input structure for diff summary extraction
@@ -70,70 +72,48 @@ function validateDiffSummaryInput(input: unknown): DiffSummaryInput {
 function buildDiffSummaryPrompt(input: unknown): string {
   const data = validateDiffSummaryInput(input);
 
-  return `あなたは技術トレンドアナリストです。2つの期間のトピック変化を分析してください。
+  const { classified, updateCandidates, unchanged } = classifyTopics(
+    data.currentTopics,
+    data.baselineTopics
+  );
+
+  return `あなたは技術トレンドアナリストです。2つの期間のトピック変化を説明してください。
 
 ## 入力データ
 カテゴリ: ${data.category} (${data.categoryName})
 現在期間: ${data.currentPeriod}
 基準期間: ${data.baselinePeriod}
 
-### 現在期間のトピック (${data.currentPeriod}):
-${JSON.stringify(data.currentTopics, null, 2)}
+## 分類済みトピック
+閾値判定・汎用トピックの除外・type の決定は算出済みです。
+**type を再判定しないでください。** 下記の値をそのまま使ってください。
 
-### 基準期間のトピック (${data.baselinePeriod}):
-${JSON.stringify(data.baselineTopics, null, 2)}
+${JSON.stringify(classified, null, 2)}
 
-## 分類ルール（厳守）
-以下のルールに従って、トピックを分類してください：
+## 更新候補（あなたが判断する部分）
+両期間に十分な件数があるトピックです。
+見出しを読み、記事の焦点が変化していれば type="updated" として changes に含めてください。
+変化していなければ changes に入れず、unchanged に残してください。
 
-### 最低閾値（重要）
-**1〜2件程度の微小な変化は無視してください。** 以下の閾値を満たさないトピックは報告対象外です：
-- **new**: 現在期間で最低3件以上
-- **deprecated**: 基準期間で最低3件以上あったものが消滅/激減
-- **trending**: 変化量が最低3件以上（例: 2→5件は対象、2→3件は対象外）
+${JSON.stringify(updateCandidates, null, 2)}
 
-### 分類タイプ
-1. **new（新規）**: 現在期間にのみ存在（基準期間には存在しない）かつ3件以上
-   - 例: 基準期間=0件、現在期間=5件 → new
-   - 例: 基準期間=0件、現在期間=2件 → 対象外（閾値未満）
-2. **deprecated（減少）**: 基準期間に3件以上あり、現在期間で消滅または大幅減少（50%以下）
-   - 例: 基準期間=10件、現在期間=0件 → deprecated
-   - 例: 基準期間=10件、現在期間=4件 → deprecated（60%減少）
-   - 例: 基準期間=2件、現在期間=0件 → 対象外（閾値未満）
-3. **trending（急上昇）**: 両期間に存在し、大幅増加（50%以上増加 かつ +3件以上）
-   - 例: 基準期間=4件、現在期間=8件 → trending（100%増加、+4件）
-   - 例: 基準期間=2件、現在期間=5件 → trending（+3件）
-   - 例: 基準期間=2件、現在期間=3件 → 対象外（+1件は閾値未満）
-4. **updated（更新）**: 両期間に存在し、記事の焦点が変化（見出しから判断）、ただし両期間で3件以上
+## 変化なしと判定済みのトピック
+${JSON.stringify(unchanged)}
 
-**重要**: 記事数が減少している場合は絶対に「trending」にしないでください。減少は「deprecated」です。
-
-## トピック照合ルール
-- トピック名は正規化（大文字小文字、余分なスペースを無視）
-- 明確な同義語はマージ（例: "React.js" = "React"）
-
-## 除外すべきトピック（重要）
-以下のような**汎用的すぎるトピック**は報告対象外です。検索で大量にヒットして意味がないためです：
-- 単独の「ai」「llm」「機械学習」「deep learning」「ml」
-- 単独の「プログラミング」「開発」「エンジニアリング」「技術」
-- 単独の「web」「api」「データ」「クラウド」
-- その他、具体性に欠ける1〜2単語のメタタグ
-
-**良いトピック例**: 「Claude Code」「React Server Components」「Kubernetes Operator」「RAG」「LoRA」
-**悪いトピック例**: 「ai」「llm」「機械学習」「プログラミング」「web開発」
+## あなたの仕事
+1. classified の各トピックに description と significance を付ける
+2. updateCandidates から updated を選び、同様に description と significance を付ける
+3. カテゴリ全体の summary と keyTakeaways を書く
 
 ## 重要: descriptionの書き方（厳守）
 
 ### フォーマット（この形式で書くこと）
 「[数値変化]。[技術的な意義や実用面での影響を1文で]」
 
-### 絶対禁止ワード（これらを含むdescriptionは不合格）
-以下の表現は**絶対に使用禁止**です。1つでも含まれていたら書き直してください：
-- 「見出し」という単語自体を禁止
-- 「記事が」「記事に」「記事は」「記事を」という表現を禁止
-- 「関心」「注目」「話題」という単語自体を禁止
-- 「言及」「示唆」「見られる」「見られた」を禁止
-- 「〜に関する」「〜について」で始まる説明を禁止
+### 使用しない語
+次の語を含む description はスキーマ検証で弾かれます（自動で再生成されます）:
+${DIFF_DESCRIPTION_BANNED_TERMS_HINT}
+また「〜に関する」「〜について」で始めないこと。
 
 ### 書き方のコツ
 記事やトレンドを説明するのではなく、**技術自体の進歩や変化**を説明してください。
@@ -147,11 +127,6 @@ ${JSON.stringify(data.baselineTopics, null, 2)}
 - "8→2件に減少。GraphQL移行が一巡し成熟期へ"
 - "0→8件。LoRAでLLMの低コストファインチューニングが可能になり、個人開発の敷居が下がった"
 - "5→18件。マルチモーダルLLMが画像理解タスクで実用精度に到達"
-
-### 悪い例（禁止パターンを含む）
-- ❌ "0→12件。〜に関する見出しが多く、関心が高い" ← 禁止ワード
-- ❌ "新規登場で7件。〜への注目度が高い" ← 禁止ワード
-- ❌ "0→4件。〜に関する記事が投稿されている" ← 禁止ワード
 
 ## 出力要件
 以下のスキーマに一致する有効なJSONオブジェクトのみを出力してください：
@@ -206,14 +181,75 @@ ${JSON.stringify(data.baselineTopics, null, 2)}
 - 提供されたデータのみを使用。外部知識は使用しないこと。
 - 有効なJSONのみを出力。マークダウンや説明は不要。
 - 全ての説明文・要約・要点は日本語で記述すること。
-- 開発者に関連する技術的に重要な変化に焦点を当てること。`;
+- 開発者に関連する技術的に重要な変化に焦点を当てること。
+- changes の type と topic は分類済みの値をそのまま使うこと。件数の再計算は不要。
+- unchanged には「変化なしと判定済みのトピック」に、updated にしなかった更新候補を足したものを入れること。`;
 }
 
 /**
  * Parse the LLM response into DiffSummaryOutput
  */
-function parseDiffSummaryResponse(text: string): DiffSummaryOutput {
-  return parseJSONFromLLM<DiffSummaryOutput>(text);
+function parseDiffSummaryResponse(
+  text: string,
+  input: unknown
+): DiffSummaryOutput {
+  const raw = parseJSONFromLLM<DiffSummaryOutput>(text);
+  const data = validateDiffSummaryInput(input);
+  const { classified, updateCandidates, unchanged } = classifyTopics(
+    data.currentTopics,
+    data.baselineTopics
+  );
+
+  // LLM が書いた description / significance だけを採用し、
+  // topic と type はコード側の分類で上書きする。
+  // プロンプトで「再判定しないこと」と指示しても保証にはならないため、
+  // ここで機械的に突き合わせる。
+  const byTopic = new Map(
+    raw.changes?.map((c) => [normalizeTopic(c.topic), c]) ?? []
+  );
+
+  const changes: DiffSummaryOutput['changes'] = [];
+
+  for (const t of classified) {
+    const written = byTopic.get(normalizeTopic(t.topic));
+    if (!written) {
+      // LLM が落としたトピックは description を書けないので採用しない。
+      // 件数の事実は unchanged 側には入れず、欠落として扱う。
+      continue;
+    }
+    changes.push({
+      ...written,
+      topic: t.topic,
+      type: t.type,
+    });
+  }
+
+  // updated は候補集合の中からのみ許可する
+  // （分類にも候補にも無いトピックを LLM が足していた場合は、
+  //   どちらのループにも入らないため自動的に捨てられる）
+  const acceptedUpdates = new Set<string>();
+  for (const c of updateCandidates) {
+    const key = normalizeTopic(c.topic);
+    const written = byTopic.get(key);
+    if (written && written.type === 'updated') {
+      changes.push({ ...written, topic: c.topic, type: 'updated' });
+      acceptedUpdates.add(key);
+    }
+  }
+
+  // updated にならなかった候補は unchanged に回す
+  const unchangedTopics = [
+    ...unchanged,
+    ...updateCandidates
+      .filter((c) => !acceptedUpdates.has(normalizeTopic(c.topic)))
+      .map((c) => c.topic),
+  ];
+
+  return {
+    ...raw,
+    changes,
+    unchanged: unchangedTopics,
+  };
 }
 
 /**

@@ -184,6 +184,7 @@ const envSchema = z
 
     // LLM Configuration
     GEMINI_MODEL: z.string().optional(),
+    GEMINI_BASE_URL: optionalUrl,
     AGENT_MODEL: z.string().optional(),
     LOG_LLM_RAW_RESPONSE: booleanEnum.optional().default('false'),
     USE_LOCAL_LLM_FALLBACK: booleanEnum.optional().default('false'),

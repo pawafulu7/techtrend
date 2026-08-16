@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 /**
  * 40点未満の低品質要約を全て再生成するスクリプト
  * コンテンツが貧弱な記事でも可能な限り改善を試みる
@@ -85,7 +86,7 @@ async function generateImprovedSummary(title: string, content: string): Promise<
 コンテンツが短い場合でも、タイトルと利用可能な情報から推測して、必ず上記の形式を満たす要約を生成してください。
 `;
 
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const apiUrl = buildGeminiEndpoint(apiKey);
   
   const response = await fetch(apiUrl, {
     method: 'POST',

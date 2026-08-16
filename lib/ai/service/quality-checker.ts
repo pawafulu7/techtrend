@@ -5,7 +5,14 @@ import {
   ContentAnalysis,
   SpeculativeExpressionResult,
 } from './quality-checker.interface';
-import { getItemCountRule } from '../constants';
+import {
+  SUMMARY_LENGTH,
+  THIN_SUMMARY_LENGTH,
+  getItemCountRule,
+  getDetailLengthBand,
+  THIN_CONTENT_MAX_LENGTH,
+} from '../constants';
+import type { DetailPolicy } from '../adapter/summary-provider.interface';
 import { config } from '@/lib/config/env';
 
 const SPECULATIVE_PATTERNS = [
@@ -34,7 +41,8 @@ export class SummaryQualityChecker implements QualityChecker {
   checkQuality(
     summary: string,
     detailedSummary: string,
-    contentAnalysis?: ContentAnalysis
+    contentAnalysis?: ContentAnalysis,
+    detailPolicy: DetailPolicy = 'medium'
   ): QualityCheckResult {
     const issues: QualityIssue[] = [];
     let score = 100;
@@ -44,17 +52,33 @@ export class SummaryQualityChecker implements QualityChecker {
     // contentLengthが提供されているかどうか（0は未提供を意味する）
     const hasContentLength = contentLength > 0;
     // 短文判定: contentLengthが提供されている場合のみ短文とみなす（未提供時は通常コンテンツ扱い）
-    const isShortContent = hasContentLength && contentLength < 400;
+    const isShortContent =
+      hasContentLength && contentLength < THIN_CONTENT_MAX_LENGTH;
 
-    const absoluteMinSummaryLength = contentAnalysis?.isThinContent ? 40 : 50;
+    // 通常コンテンツの閾値は constants.ts の SUMMARY_LENGTH を唯一の出典とする。
+    // プロンプト側（prompt-builder.ts / article-type-prompts.ts）も同じ定数を参照する。
+    const absoluteMinSummaryLength = contentAnalysis?.isThinContent
+      ? THIN_SUMMARY_LENGTH.absoluteMin
+      : SUMMARY_LENGTH.absoluteMin;
     const minSummaryLength = contentAnalysis?.isThinContent
-      ? contentAnalysis.recommendedMinLength || 60
-      : 50;
+      ? contentAnalysis.recommendedMinLength || THIN_SUMMARY_LENGTH.idealMin
+      : SUMMARY_LENGTH.absoluteMin;
     const maxSummaryLength = contentAnalysis?.isThinContent
-      ? contentAnalysis.recommendedMaxLength || 100
-      : 200;
-    const idealMinSummaryLength = contentAnalysis?.isThinContent ? 60 : 100;
-    const idealMaxSummaryLength = contentAnalysis?.isThinContent ? 100 : 180;
+      ? contentAnalysis.recommendedMaxLength || THIN_SUMMARY_LENGTH.hardMax
+      : SUMMARY_LENGTH.hardMax;
+    // 減点しきい値には penaltyMin を使う。
+    // プロンプトの目標帯(targetMin=150)を減点の下限に流用すると、
+    // 目標をわずかに下回っただけの出力まで一律で減点される。
+    const penaltyMinSummaryLength = contentAnalysis?.isThinContent
+      ? THIN_SUMMARY_LENGTH.idealMin
+      : SUMMARY_LENGTH.penaltyMin;
+    // メッセージ表示用の目標帯（減点判定には使わない）
+    const targetMinSummaryLength = contentAnalysis?.isThinContent
+      ? THIN_SUMMARY_LENGTH.idealMin
+      : SUMMARY_LENGTH.targetMin;
+    const targetMaxSummaryLength = contentAnalysis?.isThinContent
+      ? THIN_SUMMARY_LENGTH.idealMax
+      : SUMMARY_LENGTH.targetMax;
 
     const summaryLength = summary.length;
     if (summaryLength < absoluteMinSummaryLength) {
@@ -71,11 +95,11 @@ export class SummaryQualityChecker implements QualityChecker {
         message: `一覧要約が短め: ${summaryLength}文字（推奨${minSummaryLength}文字以上）`,
       });
       score -= 5;
-    } else if (summaryLength < idealMinSummaryLength) {
+    } else if (summaryLength < penaltyMinSummaryLength) {
       issues.push({
         type: 'length',
         severity: 'minor',
-        message: `一覧要約が短め: ${summaryLength}文字（理想は${idealMinSummaryLength}-${idealMaxSummaryLength}文字）`,
+        message: `一覧要約が短め: ${summaryLength}文字（目標は${targetMinSummaryLength}-${targetMaxSummaryLength}文字）`,
       });
       score -= 5;
     } else if (summaryLength > maxSummaryLength) {
@@ -98,22 +122,14 @@ export class SummaryQualityChecker implements QualityChecker {
       idealMinDetailedLength = 80;
       maxDetailedLength = 200;
     } else {
-      if (contentLength >= 10000) {
-        minDetailedLength = 900;
-        idealMinDetailedLength = 1000;
-        maxDetailedLength = 1500;
-      } else if (contentLength >= 5000) {
-        minDetailedLength = 600;
-        idealMinDetailedLength = 700;
-        maxDetailedLength = 1200;
-      } else if (contentLength >= 3000) {
-        minDetailedLength = 600;
-        idealMinDetailedLength = 600;
-        maxDetailedLength = 1000;
-      } else if (contentLength >= 1000) {
-        minDetailedLength = 400;
-        idealMinDetailedLength = 400;
-        maxDetailedLength = 700;
+      // 詳細要約の長さは constants.ts の DETAIL_LENGTH_BANDS を唯一の出典とする。
+      // プロンプト側（prompt-builder.ts / article-type-prompts.ts）も同じ帯域を
+      // 参照するため、独自の閾値をここに持たない。
+      const band = getDetailLengthBand(contentLength);
+      if (band) {
+        minDetailedLength = band.totalMin;
+        idealMinDetailedLength = band.totalMin;
+        maxDetailedLength = band.totalMax;
       }
     }
 
@@ -193,7 +209,9 @@ export class SummaryQualityChecker implements QualityChecker {
     const itemCount = bulletCount;
 
     // 共通定数から項目数ルールを取得（prompt-builder.tsと同期）
-    const itemCountRule = getItemCountRule(contentLength);
+    // プロンプト生成時と同じ policy を渡す。既定の 'medium' のままだと
+    // 'long' で指示した項目数を範囲外と判定してしまう。
+    const itemCountRule = getItemCountRule(contentLength, detailPolicy);
     const minItems = itemCountRule.minItems;
     const maxItems = itemCountRule.maxItems;
     const recommendedItems = itemCountRule.recommendedItems;
@@ -206,14 +224,10 @@ export class SummaryQualityChecker implements QualityChecker {
           message: `項目数不足: ${itemCount}個（最低${minItems}個必要、推奨${recommendedItems}個）`,
         });
         score -= 30;
-      } else if (contentLength >= 10000 && itemCount < 8) {
-        issues.push({
-          type: 'itemCount',
-          severity: 'minor',
-          message: `項目数が推奨値未満: ${itemCount}個（推奨${recommendedItems}個）`,
-        });
-        score -= 10;
       }
+      // 旧実装は contentLength >= 10000 のとき itemCount < 8 を minor 減点していたが、
+      // 共通ルールの推奨下限は 7 のため、プロンプト指示どおりの7項目が減点されていた。
+      // 不足判定は上の minItems 判定に一本化する。
     }
 
     // 項目数上限チェック（contentLength提供時のみ、短文以外）
@@ -240,7 +254,9 @@ export class SummaryQualityChecker implements QualityChecker {
           message: '詳細要約に箇条書き（・）が含まれていない',
         });
         score -= 15;
-      } else if (bulletCount < 3 && contentLength < 3000) {
+      } else if (bulletCount < minItems && contentLength < 3000) {
+        // 旧実装は固定値 3 と比較していたため、共通ルールが 2-3 項目を推奨する
+        // 400-999文字の記事で、指示どおりの2項目が減点されていた。
         issues.push({
           type: 'format',
           severity: 'minor',

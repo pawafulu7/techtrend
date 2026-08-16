@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { GEMINI_API } from '../constants';
+import { getGeminiModel } from '@/lib/config/gemini';
 import { ExternalAPIError } from '../errors';
 import { cleanSummary as cleanSummaryUtil } from '../utils/summary/summary-cleaner';
 import {
@@ -26,10 +27,16 @@ export class GeminiClient {
   private genAI: GoogleGenerativeAI;
   private model: GenerativeModel;
 
-  constructor(apiKey: string) {
+  /** 実際に使用しているモデルID（レポートやログで参照する） */
+  readonly modelId: string;
+
+  // 既定値は共有設定から解決する。GEMINI_API.MODEL（固定値）を既定にすると、
+  // GEMINI_MODEL を設定したときに他経路と別のモデルを使ってしまう。
+  constructor(apiKey: string, modelId: string = getGeminiModel()) {
     this.genAI = new GoogleGenerativeAI(apiKey);
+    this.modelId = modelId;
     this.model = this.genAI.getGenerativeModel({
-      model: GEMINI_API.MODEL,
+      model: modelId,
     });
   }
 

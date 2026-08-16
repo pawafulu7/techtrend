@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { checkContentQuality, fixSummary } from '@/lib/utils/content/content-quality-checker';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
@@ -57,7 +58,7 @@ async function regenerateSingleArticle(articleId: string) {
       throw new Error('GEMINI_API_KEY is not set');
     }
     
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const apiUrl = buildGeminiEndpoint(apiKey);
     
     // Speaker Deck用の特別なプロンプト
     let prompt: string;
