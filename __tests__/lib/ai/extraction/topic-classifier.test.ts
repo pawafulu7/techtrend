@@ -289,3 +289,54 @@ describe('reconcileTopics', () => {
     );
   });
 });
+
+describe('同一期間内の同義語集約（後勝ちで捨てない）', () => {
+  it('同じ期間の js と JavaScript は件数が合算される', () => {
+    // 合算しないと片方(3件)だけが残り、閾値・trending 判定が狂う
+    const result = classifyTopics(
+      [topic('js', 3), topic('JavaScript', 5)],
+      []
+    );
+    expect(result.classified).toHaveLength(1);
+    expect(result.classified[0].currentCount).toBe(8);
+    expect(result.classified[0].type).toBe('new');
+  });
+
+  it('合算により閾値未満だったトピックが報告対象になる', () => {
+    // js=2, JavaScript=2 は単独では MIN_TOPIC_COUNT(3) 未満だが合算すると4件
+    const result = classifyTopics(
+      [topic('js', 2), topic('JavaScript', 2)],
+      []
+    );
+    expect(result.classified).toHaveLength(1);
+    expect(result.classified[0].currentCount).toBe(4);
+  });
+
+  it('合算時に記事IDと見出しが結合される', () => {
+    const result = classifyTopics(
+      [topic('js', 3), topic('JavaScript', 5)],
+      []
+    );
+    const t = result.classified[0];
+    expect(t.currentHeadlines).toHaveLength(8);
+    expect(t.articleIds).toHaveLength(8);
+  });
+
+  it('reconcileTopics でも同一期間の同義語が合算される', () => {
+    const { current } = reconcileTopics(
+      [topic('js', 3), topic('JavaScript', 5)],
+      [],
+      30
+    );
+    expect(current).toHaveLength(1);
+    expect(current[0].count).toBe(8);
+  });
+
+  it('合算後の表示名は件数の多い側を採用する', () => {
+    const result = classifyTopics(
+      [topic('js', 2), topic('JavaScript', 9)],
+      []
+    );
+    expect(result.classified[0].topic).toBe('JavaScript');
+  });
+});

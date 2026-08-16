@@ -107,6 +107,44 @@ export function normalizeTopic(topic: string): string {
   return normalizeTag(collapsed).toLowerCase();
 }
 
+/**
+ * 同一期間内で正規化キーが衝突したトピックを合算する
+ *
+ * normalizeTopic は同義語をマージするため、同じ期間に "js" と "JavaScript" が
+ * 並ぶと同一キーになる。Map への単純代入だと後勝ちで片方の count / articleIds /
+ * headlines が消え、閾値判定・trending・deprecated が誤る。
+ */
+export function mergeTopicData(
+  existing: TopicData | undefined,
+  incoming: TopicData
+): TopicData {
+  if (!existing) {
+    return {
+      ...incoming,
+      articleIds: [...incoming.articleIds],
+      headlines: [...incoming.headlines],
+    };
+  }
+
+  return {
+    // 表示名は件数の多い側を採用する（同数なら先勝ち）
+    topic: incoming.count > existing.count ? incoming.topic : existing.topic,
+    count: existing.count + incoming.count,
+    articleIds: [...new Set([...existing.articleIds, ...incoming.articleIds])],
+    headlines: [...new Set([...existing.headlines, ...incoming.headlines])],
+  };
+}
+
+/** 正規化キーごとに合算した Map を作る */
+function groupByNormalizedTopic(topics: TopicData[]): Map<string, TopicData> {
+  const map = new Map<string, TopicData>();
+  for (const t of topics) {
+    const key = normalizeTopic(t.topic);
+    map.set(key, mergeTopicData(map.get(key), t));
+  }
+  return map;
+}
+
 /** 各期間から比較対象に載せる上限件数 */
 export const TOPIC_TOP_N = 30;
 
@@ -126,13 +164,20 @@ export function reconcileTopics(
   baselineAll: TopicData[],
   topN: number = TOPIC_TOP_N
 ): { current: TopicData[]; baseline: TopicData[] } {
-  const keyOf = (t: TopicData) => normalizeTopic(t.topic);
-  const currentByKey = new Map(currentAll.map((t) => [keyOf(t), t]));
-  const baselineByKey = new Map(baselineAll.map((t) => [keyOf(t), t]));
+  // 同一期間内の同義語は合算する（後勝ちで捨てない）
+  const currentByKey = groupByNormalizedTopic(currentAll);
+  const baselineByKey = groupByNormalizedTopic(baselineAll);
+
+  // 上位N件の判定も合算後の件数で行う（合算前の順位では取りこぼす）
+  const topKeys = (byKey: Map<string, TopicData>) =>
+    [...byKey.entries()]
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, topN)
+      .map(([key]) => key);
 
   const keys = new Set<string>([
-    ...currentAll.slice(0, topN).map(keyOf),
-    ...baselineAll.slice(0, topN).map(keyOf),
+    ...topKeys(currentByKey),
+    ...topKeys(baselineByKey),
   ]);
 
   const current: TopicData[] = [];
@@ -147,6 +192,7 @@ export function reconcileTopics(
 
   return { current, baseline };
 }
+
 
 interface Merged {
   display: string;
@@ -164,14 +210,15 @@ export function classifyTopics(
   currentTopics: TopicData[],
   baselineTopics: TopicData[]
 ): ClassificationResult {
-  const merged = new Map<string, Merged>();
+  // 同一期間内で正規化キーが衝突するトピックは合算してから突き合わせる
+  const baselineByKey = groupByNormalizedTopic(baselineTopics);
+  const currentByKey = groupByNormalizedTopic(currentTopics);
 
-  for (const t of baselineTopics) {
-    const key = normalizeTopic(t.topic);
+  const merged = new Map<string, Merged>();
+  for (const [key, t] of baselineByKey) {
     merged.set(key, { display: t.topic, baseline: t });
   }
-  for (const t of currentTopics) {
-    const key = normalizeTopic(t.topic);
+  for (const [key, t] of currentByKey) {
     const entry = merged.get(key);
     if (entry) {
       entry.current = t;

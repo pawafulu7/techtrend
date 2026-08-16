@@ -9,7 +9,9 @@ import {
   SUMMARY_LENGTH,
   THIN_SUMMARY_LENGTH,
   getItemCountRule,
+  getDetailLengthBand,
 } from '../constants';
+import type { DetailPolicy } from '../adapter/summary-provider.interface';
 import { config } from '@/lib/config/env';
 
 const SPECULATIVE_PATTERNS = [
@@ -38,7 +40,8 @@ export class SummaryQualityChecker implements QualityChecker {
   checkQuality(
     summary: string,
     detailedSummary: string,
-    contentAnalysis?: ContentAnalysis
+    contentAnalysis?: ContentAnalysis,
+    detailPolicy: DetailPolicy = 'medium'
   ): QualityCheckResult {
     const issues: QualityIssue[] = [];
     let score = 100;
@@ -117,22 +120,14 @@ export class SummaryQualityChecker implements QualityChecker {
       idealMinDetailedLength = 80;
       maxDetailedLength = 200;
     } else {
-      if (contentLength >= 10000) {
-        minDetailedLength = 900;
-        idealMinDetailedLength = 1000;
-        maxDetailedLength = 1500;
-      } else if (contentLength >= 5000) {
-        minDetailedLength = 600;
-        idealMinDetailedLength = 700;
-        maxDetailedLength = 1200;
-      } else if (contentLength >= 3000) {
-        minDetailedLength = 600;
-        idealMinDetailedLength = 600;
-        maxDetailedLength = 1000;
-      } else if (contentLength >= 1000) {
-        minDetailedLength = 400;
-        idealMinDetailedLength = 400;
-        maxDetailedLength = 700;
+      // 詳細要約の長さは constants.ts の DETAIL_LENGTH_BANDS を唯一の出典とする。
+      // プロンプト側（prompt-builder.ts / article-type-prompts.ts）も同じ帯域を
+      // 参照するため、独自の閾値をここに持たない。
+      const band = getDetailLengthBand(contentLength);
+      if (band) {
+        minDetailedLength = band.totalMin;
+        idealMinDetailedLength = band.totalMin;
+        maxDetailedLength = band.totalMax;
       }
     }
 
@@ -212,7 +207,9 @@ export class SummaryQualityChecker implements QualityChecker {
     const itemCount = bulletCount;
 
     // 共通定数から項目数ルールを取得（prompt-builder.tsと同期）
-    const itemCountRule = getItemCountRule(contentLength);
+    // プロンプト生成時と同じ policy を渡す。既定の 'medium' のままだと
+    // 'long' で指示した項目数を範囲外と判定してしまう。
+    const itemCountRule = getItemCountRule(contentLength, detailPolicy);
     const minItems = itemCountRule.minItems;
     const maxItems = itemCountRule.maxItems;
     const recommendedItems = itemCountRule.recommendedItems;

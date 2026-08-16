@@ -69,7 +69,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test', 'article']);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -94,11 +96,16 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       expect(mockSummaryProvider.summarize).toHaveBeenCalledTimes(1);
-      expect(mockPostProcessor.cleanupSummary).toHaveBeenCalledWith('Test Summary\n\n');
+      expect(mockPostProcessor.cleanupSummary).toHaveBeenCalledWith(
+        'Test Summary\n\n'
+      );
       expect(mockPostProcessor.cleanupDetailedSummary).toHaveBeenCalledWith(
         '・Item 1\n・Item 2\n・Item 3'
       );
-      expect(mockPostProcessor.formatTags).toHaveBeenCalledWith(['test', 'article']);
+      expect(mockPostProcessor.formatTags).toHaveBeenCalledWith([
+        'test',
+        'article',
+      ]);
       expect(mockQualityChecker.checkQuality).toHaveBeenCalledWith(
         'Test Summary',
         '・Item 1\n・Item 2\n・Item 3',
@@ -106,7 +113,10 @@ describe('UnifiedSummaryServiceImpl', () => {
           contentLength: expect.any(Number),
           totalLength: expect.any(Number),
           isThinContent: expect.any(Boolean),
-        })
+        }),
+        // プロンプト生成と同じ detailPolicy を検証層にも渡すこと。
+        // 渡さないと 'long' で指示した項目数が範囲外と判定される。
+        'medium'
       );
     });
 
@@ -186,7 +196,11 @@ describe('UnifiedSummaryServiceImpl', () => {
         isValid: false,
         issues: [
           { type: 'length', severity: 'critical', message: 'Too short' },
-          { type: 'itemCount', severity: 'critical', message: 'Insufficient items' },
+          {
+            type: 'itemCount',
+            severity: 'critical',
+            message: 'Insufficient items',
+          },
         ],
         requiresRegeneration: true,
         score: 30,
@@ -217,7 +231,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Good Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test']);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -229,7 +245,9 @@ describe('UnifiedSummaryServiceImpl', () => {
         itemCountValid: true,
       });
 
-      await expect(service.generateSummary(params)).rejects.toThrow('Quality too low: 85 < 90');
+      await expect(service.generateSummary(params)).rejects.toThrow(
+        'Quality too low: 85 < 90'
+      );
 
       expect(mockSummaryProvider.summarize).toHaveBeenCalledTimes(3);
     });
@@ -251,7 +269,9 @@ describe('UnifiedSummaryServiceImpl', () => {
         });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Recovered Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test']);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -275,7 +295,9 @@ describe('UnifiedSummaryServiceImpl', () => {
         content: 'This is a test article content.',
       };
 
-      mockSummaryProvider.summarize.mockRejectedValue(new Error('Persistent API Error'));
+      mockSummaryProvider.summarize.mockRejectedValue(
+        new Error('Persistent API Error')
+      );
 
       await expect(service.generateSummary(params)).rejects.toThrow(
         'Failed to generate quality summary after 3 attempts: Persistent API Error'
@@ -299,7 +321,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test']);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -339,7 +363,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue([]);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -370,7 +396,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue([]);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -410,7 +438,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       );
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test']);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -457,7 +487,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test']);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -469,7 +501,9 @@ describe('UnifiedSummaryServiceImpl', () => {
         itemCountValid: true,
       });
 
-      mockTitleTranslator.translateTitle.mockResolvedValue('翻訳されたタイトル');
+      mockTitleTranslator.translateTitle.mockResolvedValue(
+        '翻訳されたタイトル'
+      );
 
       const result = await service.generateSummary(params);
 
@@ -509,7 +543,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test']);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -521,7 +557,9 @@ describe('UnifiedSummaryServiceImpl', () => {
         itemCountValid: true,
       });
 
-      mockTitleTranslator.translateTitle.mockRejectedValue(new Error('Translation API Error'));
+      mockTitleTranslator.translateTitle.mockRejectedValue(
+        new Error('Translation API Error')
+      );
 
       const result = await service.generateSummary(params);
 
@@ -545,7 +583,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test']);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -591,7 +631,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test']);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -653,7 +695,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test']);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -704,7 +748,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test']);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -755,7 +801,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test']);
 
       mockQualityChecker.checkQuality.mockReturnValue({
@@ -814,7 +862,9 @@ describe('UnifiedSummaryServiceImpl', () => {
       });
 
       mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
-      mockPostProcessor.cleanupDetailedSummary.mockReturnValue('・Item 1\n・Item 2\n・Item 3');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
       mockPostProcessor.formatTags.mockReturnValue(['test']);
 
       mockQualityChecker.checkQuality.mockReturnValue({

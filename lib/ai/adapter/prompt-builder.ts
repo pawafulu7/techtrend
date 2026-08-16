@@ -126,7 +126,7 @@ ${METADATA_WARNING}`;
 記事は${contentLength}文字${band.label}です。
 detailedSummaryItems: ${recommendedItems}項目。
 各項目のcontent: ${band.itemContentHint}
-detailedSummaryItems全体の合計は${band.totalMax}文字以内。${band.priorityHint}
+detailedSummaryItems全体の合計は${band.totalMin}文字以上${band.totalMax}文字以内。${band.priorityHint}
 ${METADATA_WARNING}`;
   }
 

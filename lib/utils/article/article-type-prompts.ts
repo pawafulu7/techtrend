@@ -73,27 +73,10 @@ const FLEXIBLE_UNIFIED_PROMPT = `
 【文末】必ず完結した文で終了（体言止めは避ける）
 
 詳細要約:
-【重要：以下の文字数を必ず守ること】
-- 5000文字以上の記事：必ず800文字以上1500文字以内で作成
-- 3000-5000文字の記事：必ず600文字以上1000文字以内で作成
-- 1000-3000文字の記事：必ず400文字以上700文字以内で作成
-- 1000文字未満の記事：必ず300文字以上500文字以内で作成
-
 【形式】記事の内容に最も適した項目を箇条書きで作成
-【項目数の必須要件】
-- 5000文字以上の記事：最低5個、推奨6-7個
-- 3000-5000文字の記事：最低4個、推奨5個
-- 1000-3000文字の記事：最低3個、推奨4個
-- 1000文字未満の記事：最低3個
-
 【各項目の必須要件】
 ・記事タイプに応じて最適な項目名を自由に設定
 ・各項目は「・項目名：」の後に必ず詳細な説明を記載
-・各項目の文字数要件：
-  - 5000文字以上の記事：各項目150-200文字
-  - 3000-5000文字の記事：各項目130-180文字
-  - 1000-3000文字の記事：各項目120-150文字
-  - 1000文字未満：各項目100-120文字
 ・具体例、数値、日付、技術名、製品名、機能名、コマンド例などを省略せず明記
 ・記事の重要な技術的詳細、実装方法、設定内容を具体的に説明
 ・記事に書かれていない内容は追加しない
@@ -120,6 +103,32 @@ const FLEXIBLE_UNIFIED_PROMPT = `
  */
 export const UNIFIED_PROMPT = FLEXIBLE_UNIFIED_PROMPT;
 
+
+/**
+ * コンテンツ長に応じた項目数・詳細要約長の指示を生成する
+ *
+ * 数値は constants.ts の ITEM_COUNT_RULES / DETAIL_LENGTH_BANDS が唯一の出典。
+ * ここや各プロンプト定数に固定テーブルを置くと、prompt-builder.ts や
+ * quality-checker.ts と食い違い「指示どおりの出力が減点される」状態になる。
+ */
+function buildLengthRequirement(contentLength: number): string {
+  const band = getDetailLengthBand(contentLength);
+  if (!band) {
+    return (
+      `\n\n【要件】この記事は${contentLength}文字（非常に短い）です。` +
+      `\n詳細要約は無理に項目を作らず、記事にある事実だけを簡潔にまとめてください。`
+    );
+  }
+  const { recommendedItems } = getItemCountRule(contentLength);
+  return (
+    `\n\n【要件】この記事は${contentLength}文字${band.label}です。` +
+    `\n詳細要約は${band.totalMin}文字以上${band.totalMax}文字以内で作成してください。` +
+    `\n項目は${recommendedItems}個。各項目は${band.itemContentHint}` +
+    `\n${band.priorityHint}` +
+    `\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。`
+  );
+}
+
 /**
  * 統一プロンプト生成関数
  * @param title 記事タイトル
@@ -138,30 +147,11 @@ export function generateUnifiedPrompt(title: string, content: string): string {
         '\n\n...[文字数制限により以下省略]'
       : content;
 
-  // 文字数に応じた項目数の指示を追加
+  // 項目数・詳細要約の長さは constants.ts を唯一の出典とする。
+  // 旧実装はここにも固定テーブルを持っており、prompt-builder.ts /
+  // quality-checker.ts / ENHANCED_UNIFIED_PROMPT と数値が食い違っていた。
   const contentLength = content.length;
-  let itemCountInstruction = '';
-  if (contentLength >= 5000) {
-    itemCountInstruction =
-      '\n\n【必須要件】この記事は' +
-      contentLength +
-      '文字の長文記事です。\n詳細要約は必ず800文字以上1500文字以内で作成してください。\n最低5個以上の項目（推奨6-7個）を作成し、各項目は必ず150文字以上の詳細な説明にしてください。\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。';
-  } else if (contentLength >= 3000) {
-    itemCountInstruction =
-      '\n\n【必須要件】この記事は' +
-      contentLength +
-      '文字です。\n詳細要約は必ず600文字以上1000文字以内で作成してください。\n最低4個以上の項目（推奨5個）を作成し、各項目は必ず150文字以上の詳細な説明にしてください。';
-  } else if (contentLength >= 1000) {
-    itemCountInstruction =
-      '\n\n【必須要件】この記事は' +
-      contentLength +
-      '文字です。\n詳細要約は必ず400文字以上700文字以内で作成してください。\n最低3個以上の項目（推奨4個）を作成し、各項目は必ず130文字以上にしてください。';
-  } else {
-    itemCountInstruction =
-      '\n\n【必須要件】この記事は' +
-      contentLength +
-      '文字の短い記事です。\n詳細要約は必ず300文字以上500文字以内で作成してください。\n最低3個の項目を作成し、各項目は100文字以上にしてください。';
-  }
+  const itemCountInstruction = buildLengthRequirement(contentLength);
 
   return `${UNIFIED_PROMPT}${itemCountInstruction}
 
@@ -192,27 +182,10 @@ export const ENHANCED_UNIFIED_PROMPT = `
 【文末】必ず完結した文で終了（体言止めは避ける）
 
 詳細要約:
-【重要：以下の文字数を必ず守ること】
-- 5000文字以上の記事：必ず800文字以上1500文字以内で作成
-- 3000-5000文字の記事：必ず600文字以上1000文字以内で作成
-- 1000-3000文字の記事：必ず400文字以上700文字以内で作成
-- 1000文字未満の記事：必ず300文字以上500文字以内で作成
-
 【形式】記事の内容に最も適した項目を箇条書きで作成
-【項目数の必須要件】
-- 5000文字以上の記事：最低5個、推奨6-7個
-- 3000-5000文字の記事：最低4個、推奨5個
-- 1000-3000文字の記事：最低3個、推奨4個
-- 1000文字未満の記事：最低3個
-
 【各項目の必須要件】
 ・記事タイプに応じて最適な項目名を自由に設定
 ・各項目は「・項目名：」の後に必ず詳細な説明を記載
-・各項目の文字数要件：
-  - 5000文字以上の記事：各項目150-200文字
-  - 3000-5000文字の記事：各項目130-180文字
-  - 1000-3000文字の記事：各項目120-150文字
-  - 1000文字未満：各項目100-120文字
 ・具体例、数値、日付、技術名、製品名、機能名、コマンド例などを省略せず明記
 ・記事の重要な技術的詳細、実装方法、設定内容を具体的に説明
 ・記事に書かれていない内容は追加しない
@@ -304,18 +277,7 @@ export function generateEnhancedUnifiedPrompt(
   // 「1500文字以内」と指示しながら検証層は1200文字超を減点していた）。
   // また「ペナルティとして出力全体を無効化し、直ちに再生成してください」は
   // モデルが実行できない指示なので削除した。
-  const contentLength = content.length;
-  const rule = getItemCountRule(contentLength);
-  const band = getDetailLengthBand(contentLength);
-
-  const itemCountInstruction = band
-    ? `\n\n【要件】この記事は${contentLength}文字${band.label}です。` +
-      `\n詳細要約は${band.totalMin}文字以上${band.totalMax}文字以内で作成してください。` +
-      `\n項目は${rule.recommendedItems}個。各項目のcontentは${band.itemContentHint}` +
-      `\n${band.priorityHint}` +
-      `\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。`
-    : `\n\n【要件】この記事は${contentLength}文字（非常に短い）です。` +
-      `\n詳細要約は無理に項目を作らず、記事にある事実だけを簡潔にまとめてください。`;
+  const itemCountInstruction = buildLengthRequirement(content.length);
 
   return `${ENHANCED_UNIFIED_PROMPT}${itemCountInstruction}
 

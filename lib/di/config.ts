@@ -77,6 +77,7 @@ export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
     gemini: {
       apiKey: env.GEMINI_API_KEY || defaultConfig.gemini.apiKey,
       model: env.GEMINI_MODEL || defaultConfig.gemini.model,
+      baseUrl: env.GEMINI_BASE_URL || defaultConfig.gemini.baseUrl,
     } as any,
     quality: {
       threshold: parseInt(

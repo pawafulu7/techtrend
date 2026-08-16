@@ -511,18 +511,6 @@ describe('PromptBuilder', () => {
       expect(result.issues.some((i) => i.type === 'length')).toBe(true);
     });
 
-    it('詳細要約の合計上限指示が品質チェックの上限と一致する', () => {
-      for (const contentLength of [1500, 3500, 6000, 12000]) {
-        const prompt = new PromptBuilder().buildPrompt(
-          input('x'.repeat(contentLength))
-        );
-        const band = getDetailLengthBand(contentLength);
-        expect(prompt).toContain(
-          `detailedSummaryItems全体の合計は${band?.totalMax}文字以内`
-        );
-      }
-    });
-
     it('目標帯の上限ちょうどの要約は減点されない', () => {
       const checker = new SummaryQualityChecker();
       const summary = 'あ'.repeat(SUMMARY_LENGTH.targetMax);
@@ -533,6 +521,52 @@ describe('PromptBuilder', () => {
       } as never);
 
       expect(result.issues.filter((i) => i.type === 'length')).toEqual([]);
+    });
+
+    it('各帯域で totalMin は減点されず totalMax 超過は減点される', () => {
+      const checker = new SummaryQualityChecker();
+      const summary = 'あ'.repeat(SUMMARY_LENGTH.targetMin);
+      for (const contentLength of [500, 1500, 3500, 6000, 12000]) {
+        const band = getDetailLengthBand(contentLength);
+        const analysis = {
+          totalLength: contentLength,
+          contentLength,
+        } as never;
+
+        const atMin = checker.checkQuality(
+          summary,
+          'い'.repeat(band!.totalMin),
+          analysis
+        );
+        expect(
+          atMin.issues.filter(
+            (i) => i.type === 'length' && i.message.includes('詳細要約')
+          )
+        ).toEqual([]);
+
+        const overMax = checker.checkQuality(
+          summary,
+          'い'.repeat(band!.totalMax + 1),
+          analysis
+        );
+        expect(
+          overMax.issues.some(
+            (i) => i.type === 'length' && i.message.includes('詳細要約が長すぎる')
+          )
+        ).toBe(true);
+      }
+    });
+
+    it('プロンプトの詳細要約長の指示が quality-checker の帯域と一致する', () => {
+      for (const contentLength of [500, 1500, 3500, 6000, 12000]) {
+        const prompt = new PromptBuilder().buildPrompt(
+          input('x'.repeat(contentLength))
+        );
+        const band = getDetailLengthBand(contentLength);
+        expect(prompt).toContain(
+          `detailedSummaryItems全体の合計は${band?.totalMin}文字以上${band?.totalMax}文字以内`
+        );
+      }
     });
 
     it('プロンプトの項目数指示が quality-checker と同じルールから導出される', () => {
