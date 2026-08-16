@@ -64,7 +64,7 @@ export class SummaryQualityChecker implements QualityChecker {
     // 減点しきい値には penaltyMin を使う。
     // プロンプトの目標帯(targetMin=150)を減点の下限に流用すると、
     // 目標をわずかに下回っただけの出力まで一律で減点される。
-    const idealMinSummaryLength = contentAnalysis?.isThinContent
+    const penaltyMinSummaryLength = contentAnalysis?.isThinContent
       ? THIN_SUMMARY_LENGTH.idealMin
       : SUMMARY_LENGTH.penaltyMin;
     // メッセージ表示用の目標帯（減点判定には使わない）
@@ -90,7 +90,7 @@ export class SummaryQualityChecker implements QualityChecker {
         message: `一覧要約が短め: ${summaryLength}文字（推奨${minSummaryLength}文字以上）`,
       });
       score -= 5;
-    } else if (summaryLength < idealMinSummaryLength) {
+    } else if (summaryLength < penaltyMinSummaryLength) {
       issues.push({
         type: 'length',
         severity: 'minor',
