@@ -469,22 +469,46 @@ describe('PromptBuilder', () => {
       requestId: 'consistency',
     });
 
-    it('一覧要約の指示レンジが品質チェックの理想帯と一致する', () => {
+    it('プロンプトが提示する目標帯が SUMMARY_LENGTH の target と一致する', () => {
       const prompt = new PromptBuilder().buildPrompt(input('x'.repeat(5000)));
       expect(prompt).toContain(
-        `${SUMMARY_LENGTH.idealMin}-${SUMMARY_LENGTH.idealMax}文字`
+        `${SUMMARY_LENGTH.targetMin}-${SUMMARY_LENGTH.targetMax}文字`
       );
     });
 
-    it('指示レンジ下限ちょうどの要約も品質チェックで減点されない', () => {
+    it('目標帯の下限ちょうどの要約は減点されない', () => {
       const checker = new SummaryQualityChecker();
-      const summary = 'あ'.repeat(SUMMARY_LENGTH.idealMin);
+      const summary = 'あ'.repeat(SUMMARY_LENGTH.targetMin);
       const result = checker.checkQuality(summary, 'い'.repeat(800), {
         totalLength: 5000,
         contentLength: 5000,
       } as never);
 
       expect(result.issues.filter((i) => i.type === 'length')).toEqual([]);
+    });
+
+    it('目標帯を下回っても減点しきい値(penaltyMin)以上なら減点されない', () => {
+      // 目標帯(150-250)を減点しきい値に流用すると、ここが減点されてしまう。
+      // 減点は明確な外れ値だけに限定する。
+      const checker = new SummaryQualityChecker();
+      const summary = 'あ'.repeat(SUMMARY_LENGTH.penaltyMin + 10);
+      const result = checker.checkQuality(summary, 'い'.repeat(800), {
+        totalLength: 5000,
+        contentLength: 5000,
+      } as never);
+
+      expect(result.issues.filter((i) => i.type === 'length')).toEqual([]);
+    });
+
+    it('減点しきい値を下回る要約は減点される', () => {
+      const checker = new SummaryQualityChecker();
+      const summary = 'あ'.repeat(SUMMARY_LENGTH.penaltyMin - 1);
+      const result = checker.checkQuality(summary, 'い'.repeat(800), {
+        totalLength: 5000,
+        contentLength: 5000,
+      } as never);
+
+      expect(result.issues.some((i) => i.type === 'length')).toBe(true);
     });
 
     it('詳細要約の合計上限指示が品質チェックの上限と一致する', () => {
@@ -499,9 +523,9 @@ describe('PromptBuilder', () => {
       }
     });
 
-    it('指示レンジ上限ちょうどの要約が品質チェックで減点されない', () => {
+    it('目標帯の上限ちょうどの要約は減点されない', () => {
       const checker = new SummaryQualityChecker();
-      const summary = 'あ'.repeat(SUMMARY_LENGTH.idealMax);
+      const summary = 'あ'.repeat(SUMMARY_LENGTH.targetMax);
       // contentLength 5000 の詳細要約は 600-1200文字が想定範囲
       const result = checker.checkQuality(summary, 'い'.repeat(800), {
         totalLength: 5000,

@@ -129,23 +129,29 @@ export const CONTAMINATION_SEARCH_TERMS = [
  * プロンプト側（prompt-builder.ts / article-type-prompts.ts）と
  * 検証側（service/quality-checker.ts）は必ずここを参照すること。
  *
- * 値は quality-checker.ts が従来運用していた非 thin-content 判定に一致させている。
+ * 「プロンプトで提示する目標帯」と「減点しきい値」は別物として分けている。
+ * 目標帯(target*)を減点しきい値に流用すると、目標をわずかに外れただけの出力が
+ * 一律で減点される。減点は明確な外れ値だけに限定し、
+ * 目標帯は指示としてのみ使う。
+ *
  * 短記事（thin content）の判定値は contentAnalysis 側の推奨値を優先するため、
- * ここには含めない。
+ * ここには含めない（THIN_SUMMARY_LENGTH を参照）。
  */
 export const SUMMARY_LENGTH = {
-  /** これを下回ると major 扱い */
+  /** これを下回ると major 減点 */
   absoluteMin: 50,
-  /** 理想帯の下限（これを下回ると minor 減点） */
-  idealMin: 150,
-  /** 理想帯の上限（表示用。減点判定は hardMax） */
-  idealMax: 250,
-  /** これを超えると minor 減点 */
+  /** これを下回ると minor 減点（減点の下限しきい値） */
+  penaltyMin: 100,
+  /** プロンプトで提示する目標帯の下限（減点しきい値ではない） */
+  targetMin: 150,
+  /** プロンプトで提示する目標帯の上限 */
+  targetMax: 250,
+  /** これを超えると minor 減点（減点の上限しきい値） */
   hardMax: 250,
 } as const;
 
-/** プロンプトに埋め込む推奨レンジ表記 */
-export const SUMMARY_LENGTH_HINT = `${SUMMARY_LENGTH.idealMin}-${SUMMARY_LENGTH.idealMax}文字`;
+/** プロンプトに埋め込む推奨レンジ表記（目標帯） */
+export const SUMMARY_LENGTH_HINT = `${SUMMARY_LENGTH.targetMin}-${SUMMARY_LENGTH.targetMax}文字`;
 
 /**
  * 短記事（thin content）の一覧要約の長さ規定

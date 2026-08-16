@@ -61,12 +61,19 @@ export class SummaryQualityChecker implements QualityChecker {
     const maxSummaryLength = contentAnalysis?.isThinContent
       ? contentAnalysis.recommendedMaxLength || THIN_SUMMARY_LENGTH.hardMax
       : SUMMARY_LENGTH.hardMax;
+    // 減点しきい値には penaltyMin を使う。
+    // プロンプトの目標帯(targetMin=150)を減点の下限に流用すると、
+    // 目標をわずかに下回っただけの出力まで一律で減点される。
     const idealMinSummaryLength = contentAnalysis?.isThinContent
       ? THIN_SUMMARY_LENGTH.idealMin
-      : SUMMARY_LENGTH.idealMin;
-    const idealMaxSummaryLength = contentAnalysis?.isThinContent
+      : SUMMARY_LENGTH.penaltyMin;
+    // メッセージ表示用の目標帯（減点判定には使わない）
+    const targetMinSummaryLength = contentAnalysis?.isThinContent
+      ? THIN_SUMMARY_LENGTH.idealMin
+      : SUMMARY_LENGTH.targetMin;
+    const targetMaxSummaryLength = contentAnalysis?.isThinContent
       ? THIN_SUMMARY_LENGTH.idealMax
-      : SUMMARY_LENGTH.idealMax;
+      : SUMMARY_LENGTH.targetMax;
 
     const summaryLength = summary.length;
     if (summaryLength < absoluteMinSummaryLength) {
@@ -87,7 +94,7 @@ export class SummaryQualityChecker implements QualityChecker {
       issues.push({
         type: 'length',
         severity: 'minor',
-        message: `一覧要約が短め: ${summaryLength}文字（理想は${idealMinSummaryLength}-${idealMaxSummaryLength}文字）`,
+        message: `一覧要約が短め: ${summaryLength}文字（目標は${targetMinSummaryLength}-${targetMaxSummaryLength}文字）`,
       });
       score -= 5;
     } else if (summaryLength > maxSummaryLength) {
