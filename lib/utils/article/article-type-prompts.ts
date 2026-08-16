@@ -7,6 +7,7 @@ import { ArticleType } from './article-type-detector';
 import {
   SUMMARY_LENGTH,
   SUMMARY_LENGTH_HINT,
+  THIN_SUMMARY_LENGTH_HINT,
   getItemCountRule,
   getDetailLengthBand,
 } from '@/lib/ai/constants';
@@ -114,8 +115,12 @@ export const UNIFIED_PROMPT = FLEXIBLE_UNIFIED_PROMPT;
 function buildLengthRequirement(contentLength: number): string {
   const band = getDetailLengthBand(contentLength);
   if (!band) {
+    // 短記事は検証層の上限も下がるため、一覧要約の長さ指示も上書きする。
+    // 上書きしないとベースプロンプトの通常レンジに従った出力が
+    // thin-content 判定で減点される。
     return (
       `\n\n【要件】この記事は${contentLength}文字（非常に短い）です。` +
+      `\n一覧要約は${THIN_SUMMARY_LENGTH_HINT}にしてください（上記の通常レンジより優先）。` +
       `\n詳細要約は無理に項目を作らず、記事にある事実だけを簡潔にまとめてください。`
     );
   }

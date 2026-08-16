@@ -14,6 +14,7 @@ import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { logger } from '@/lib/logger';
 
 import { SUMMARY_VERSION } from '@/types/article';
+import { THIN_CONTENT_MAX_LENGTH } from '../constants';
 
 export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
   constructor(
@@ -67,7 +68,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
         const contentAnalysis = {
           totalLength: contentLength,
           contentLength,
-          isThinContent: contentLength < 400,
+          isThinContent: contentLength < THIN_CONTENT_MAX_LENGTH,
         };
 
         const qualityResult = this.qualityChecker.checkQuality(

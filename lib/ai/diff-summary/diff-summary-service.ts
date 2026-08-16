@@ -300,11 +300,14 @@ export class DiffSummaryService {
 
     for (const article of articles) {
       const tags = article.tags || [];
-      for (const tag of tags) {
-        // Tag is a relation object with id, name, category fields
-        const normalizedTag = tag.name.toLowerCase().trim();
-        if (!normalizedTag) continue;
+      // 同義語は集計前に正規化してまとめる。
+      // 例えば同じ記事に "js" と "JavaScript" が付いている場合、
+      // 正規化せずに数えると同一トピックの件数を二重計上してしまう。
+      const normalizedTags = new Set(
+        tags.map((tag) => normalizeTopic(tag.name)).filter(Boolean)
+      );
 
+      for (const normalizedTag of normalizedTags) {
         const existing = topicMap.get(normalizedTag);
         if (existing) {
           existing.count++;

@@ -12,9 +12,18 @@
 
 import { defaultConfig, loadConfig, type AppConfig } from '@/lib/di/config';
 
+// GeminiClient はコンストラクタ既定引数でこの関数を呼ぶため、
+// 記事収集などで多数インスタンス化されると解決処理と警告が繰り返される。
+// 解決結果は 1 プロセス 1 回に固定する。
+let cached: AppConfig['gemini'] | null = null;
+
 function resolveGeminiConfig(): AppConfig['gemini'] {
+  if (cached) {
+    return cached;
+  }
   try {
-    return loadConfig().gemini;
+    cached = loadConfig().gemini;
+    return cached;
   } catch (error) {
     // env 検証は Gemini と無関係な変数でも失敗しうるため、
     // 素の tsx 実行などでスクリプトごと落とさないよう既定値で継続する。
@@ -30,8 +39,14 @@ function resolveGeminiConfig(): AppConfig['gemini'] {
         `[gemini-config] 環境変数による上書きは適用されません。` +
         `既定モデル ${defaultConfig.gemini.model} で継続します。`
     );
-    return defaultConfig.gemini;
+    cached = defaultConfig.gemini;
+    return cached;
   }
+}
+
+/** テスト用: キャッシュを破棄する */
+export function resetGeminiConfigCache(): void {
+  cached = null;
 }
 
 /** 設定から解決した Gemini モデルID */

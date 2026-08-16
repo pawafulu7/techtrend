@@ -9,7 +9,7 @@ import {
   TransportRequest,
 } from '../transport/gemini-transport.interface';
 import { PromptBuilder } from './prompt-builder';
-import { INSTRUCTION_PATTERNS, SUMMARY_LENGTH_HINT } from '../constants';
+import { INSTRUCTION_PATTERNS } from '../constants';
 
 type GenerationConfig = {
   temperature: number;
@@ -25,9 +25,13 @@ const SUMMARY_JSON_SCHEMA = {
   properties: {
     summary: {
       type: 'STRING',
-      // 長さはプロンプトと同じ SUMMARY_LENGTH_HINT を使う。
-      // ここに別の数値を書くと、同一リクエスト内でモデルに矛盾した指示が渡る。
-      description: `記事の一行要約。${SUMMARY_LENGTH_HINT}で必ず日本語で記述すること。「この記事は」「本記事は」等の自己言及表現は禁止`,
+      // 長さの指示はここに書かない。
+      // スキーマはリクエストごとに固定だが、必要な長さはコンテンツ長で変わる
+      // （通常記事と thin content で別レンジ）。ここに数値を書くと、
+      // 同一リクエスト内でプロンプトと矛盾した指示がモデルへ渡る。
+      // 長さの唯一の出典は PromptBuilder が組み立てる本文側の指示。
+      description:
+        '記事の一行要約。必ず日本語で記述すること。「この記事は」「本記事は」等の自己言及表現は禁止',
     },
     detailedSummaryItems: {
       type: 'ARRAY',
@@ -42,8 +46,8 @@ const SUMMARY_JSON_SCHEMA = {
           },
           content: {
             type: 'STRING',
-            description:
-              '具体的な情報を含む詳細内容（120-200文字）。必ず日本語で記述',
+            // 文字数はコンテンツ長の帯域ごとに異なるため本文側の指示に委ねる
+            description: '具体的な情報を含む詳細内容。必ず日本語で記述',
           },
         },
         required: ['title', 'content'],

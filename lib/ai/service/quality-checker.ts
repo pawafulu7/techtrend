@@ -10,6 +10,7 @@ import {
   THIN_SUMMARY_LENGTH,
   getItemCountRule,
   getDetailLengthBand,
+  THIN_CONTENT_MAX_LENGTH,
 } from '../constants';
 import type { DetailPolicy } from '../adapter/summary-provider.interface';
 import { config } from '@/lib/config/env';
@@ -51,7 +52,8 @@ export class SummaryQualityChecker implements QualityChecker {
     // contentLengthが提供されているかどうか（0は未提供を意味する）
     const hasContentLength = contentLength > 0;
     // 短文判定: contentLengthが提供されている場合のみ短文とみなす（未提供時は通常コンテンツ扱い）
-    const isShortContent = hasContentLength && contentLength < 400;
+    const isShortContent =
+      hasContentLength && contentLength < THIN_CONTENT_MAX_LENGTH;
 
     // 通常コンテンツの閾値は constants.ts の SUMMARY_LENGTH を唯一の出典とする。
     // プロンプト側（prompt-builder.ts / article-type-prompts.ts）も同じ定数を参照する。
