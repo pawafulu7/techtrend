@@ -136,16 +136,16 @@ export const CONTAMINATION_SEARCH_TERMS = [
 export const SUMMARY_LENGTH = {
   /** これを下回ると major 扱い */
   absoluteMin: 50,
-  /** 理想帯の下限 */
-  idealMin: 100,
-  /** 理想帯の上限 */
-  idealMax: 180,
-  /** これを超えると減点対象 */
-  hardMax: 200,
+  /** 理想帯の下限（これを下回ると minor 減点） */
+  idealMin: 150,
+  /** 理想帯の上限（表示用。減点判定は hardMax） */
+  idealMax: 250,
+  /** これを超えると minor 減点 */
+  hardMax: 250,
 } as const;
 
 /** プロンプトに埋め込む推奨レンジ表記 */
-export const SUMMARY_LENGTH_HINT = `${SUMMARY_LENGTH.idealMin}-${SUMMARY_LENGTH.idealMax}文字（${SUMMARY_LENGTH.hardMax}文字を超えないこと）`;
+export const SUMMARY_LENGTH_HINT = `${SUMMARY_LENGTH.idealMin}-${SUMMARY_LENGTH.idealMax}文字`;
 
 /**
  * 短記事（thin content）の一覧要約の長さ規定
@@ -189,6 +189,83 @@ export const ITEM_COUNT_RULES: ItemCountRule[] = [
   { minLength: 400, minItems: 2, maxItems: 3, recommendedItems: '2-3' },
   { minLength: 0, minItems: 0, maxItems: 0, recommendedItems: '0' }, // 短文は箇条書き不要
 ];
+
+/**
+ * 詳細要約の長さ規定（コンテンツ長の帯ごと）
+ *
+ * プロンプト側（prompt-builder.ts / article-type-prompts.ts）と
+ * 検証側（service/quality-checker.ts）の唯一の出典。
+ * totalMin / totalMax は quality-checker の詳細要約判定と一致させること。
+ * ここを二重管理すると「プロンプトは1500文字まで許可、検証層は1200文字で減点」
+ * のような、指示に従うほど減点される状態が生まれる。
+ * minLength は ITEM_COUNT_RULES と同じ境界値に揃えること。
+ */
+export interface DetailLengthBand {
+  minLength: number;
+  /** 記事長の呼び方（「（非常に長い）」等） */
+  label: string;
+  /** 各項目の長さ指示（末尾の句点を含む） */
+  itemContentHint: string;
+  /** 詳細要約全体の下限 */
+  totalMin: number;
+  /** 詳細要約全体の上限 */
+  totalMax: number;
+  /** 項目数と文字数のどちらを優先するかの指示 */
+  priorityHint: string;
+}
+
+export const DETAIL_LENGTH_BANDS: DetailLengthBand[] = [
+  {
+    minLength: 10000,
+    label: '（非常に長い）',
+    itemContentHint:
+      '具体的な詳細（バージョン、数値、日付、コマンド等）を含め120-180文字。',
+    totalMin: 900,
+    totalMax: 1500,
+    priorityHint: '項目数を優先し、1項目あたりの長さは抑えてください。',
+  },
+  {
+    minLength: 5000,
+    label: '（長い）',
+    itemContentHint: '具体的な詳細を含め120-200文字。',
+    totalMin: 600,
+    totalMax: 1200,
+    priorityHint: '合計文字数を優先してください。',
+  },
+  {
+    minLength: 3000,
+    label: '',
+    itemContentHint: '150-200文字。',
+    totalMin: 600,
+    totalMax: 1000,
+    priorityHint: '合計文字数を優先してください。',
+  },
+  {
+    minLength: 1000,
+    label: '',
+    itemContentHint: '130-175文字。',
+    totalMin: 400,
+    totalMax: 700,
+    priorityHint: '合計文字数を優先してください。',
+  },
+  {
+    minLength: 400,
+    label: '（短い）',
+    itemContentHint: '80-200文字。',
+    totalMin: 80,
+    totalMax: 600,
+    priorityHint: '合計文字数を優先してください。',
+  },
+];
+
+/** コンテンツ長から詳細要約の長さ帯を取得（400文字未満は箇条書き不要なので null） */
+export function getDetailLengthBand(
+  contentLength: number
+): DetailLengthBand | null {
+  return (
+    DETAIL_LENGTH_BANDS.find((band) => contentLength >= band.minLength) ?? null
+  );
+}
 
 /** 詳細度ポリシーごとの項目数倍率 */
 const DETAIL_POLICY_MULTIPLIER: Record<DetailPolicy, number> = {

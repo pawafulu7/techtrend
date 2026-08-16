@@ -4,6 +4,8 @@ import {
   THIN_SUMMARY_LENGTH_HINT,
   THIN_CONTENT_MAX_LENGTH,
   getItemCountRule,
+  getDetailLengthBand,
+  type DetailLengthBand,
 } from '../constants';
 
 const SYSTEM_INSTRUCTIONS = `
@@ -70,59 +72,6 @@ AI/LLM関連:
 const METADATA_WARNING =
   'IMPORTANT: The above metadata is for your reference only. Never include it in your output.';
 
-/**
- * 詳細要約の長さ指示（コンテンツ長の帯ごと）
- *
- * 項目数は constants.ts の ITEM_COUNT_RULES が持つため、ここには含めない。
- * minLength は ITEM_COUNT_RULES と同じ境界値に揃えること。
- */
-interface DetailLengthBand {
-  minLength: number;
-  label: string;
-  contentHint: string;
-  totalChars: number;
-  priorityHint: string;
-}
-
-const DETAIL_LENGTH_BANDS: DetailLengthBand[] = [
-  {
-    minLength: 10000,
-    label: '（非常に長い）',
-    contentHint:
-      '具体的な詳細（バージョン、数値、日付、コマンド等）を含め120-180文字。',
-    totalChars: 1500,
-    priorityHint: '項目数を優先し、1項目あたりの長さは抑えてください。',
-  },
-  {
-    minLength: 5000,
-    label: '（長い）',
-    contentHint: '具体的な詳細を含め120-200文字。',
-    totalChars: 1200,
-    priorityHint: '合計文字数を優先してください。',
-  },
-  {
-    minLength: 3000,
-    label: '',
-    contentHint: '150-200文字。',
-    totalChars: 1000,
-    priorityHint: '合計文字数を優先してください。',
-  },
-  {
-    minLength: 1000,
-    label: '',
-    contentHint: '130-175文字。',
-    totalChars: 700,
-    priorityHint: '合計文字数を優先してください。',
-  },
-  {
-    minLength: 400,
-    label: '（短い）',
-    contentHint: '80-200文字。',
-    totalChars: 600,
-    priorityHint: '合計文字数を優先してください。',
-  },
-];
-
 export class PromptBuilder {
   buildPrompt(input: SummaryProviderInput): string {
     const maxContentLength = 150000;
@@ -156,8 +105,8 @@ export class PromptBuilder {
   ): string {
     if (contentLength < THIN_CONTENT_MAX_LENGTH) {
       // 短記事は品質チェック側の上限も下がるため、一覧要約の長さ指示を上書きする。
-      // 上書きしないと SYSTEM_INSTRUCTIONS の通常レンジ（100-180文字）に従った出力が
-      // 検証層（上限100文字）で減点される。
+      // 上書きしないと SYSTEM_INSTRUCTIONS の通常レンジに従った出力が
+      // 検証層の thin-content 判定で減点される。
       return `
 
 記事は${contentLength}文字（非常に短い）です。
@@ -170,16 +119,14 @@ ${METADATA_WARNING}`;
     // 項目数は constants.ts の ITEM_COUNT_RULES を唯一の出典とする。
     // quality-checker.ts も同じ関数を参照するため、ここで独自に再計算しない。
     const { recommendedItems } = getItemCountRule(contentLength, policy);
-    const band = DETAIL_LENGTH_BANDS.find(
-      (b) => contentLength >= b.minLength
-    ) as DetailLengthBand;
+    const band = getDetailLengthBand(contentLength) as DetailLengthBand;
 
     return `
 
 記事は${contentLength}文字${band.label}です。
 detailedSummaryItems: ${recommendedItems}項目。
-各項目のcontent: ${band.contentHint}
-detailedSummaryItems全体の合計は${band.totalChars}文字以内。${band.priorityHint}
+各項目のcontent: ${band.itemContentHint}
+detailedSummaryItems全体の合計は${band.totalMax}文字以内。${band.priorityHint}
 ${METADATA_WARNING}`;
   }
 

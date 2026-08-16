@@ -4,7 +4,12 @@
  */
 
 import { ArticleType } from './article-type-detector';
-import { SUMMARY_LENGTH_HINT } from '@/lib/ai/constants';
+import {
+  SUMMARY_LENGTH,
+  SUMMARY_LENGTH_HINT,
+  getItemCountRule,
+  getDetailLengthBand,
+} from '@/lib/ai/constants';
 export type { ArticleType } from './article-type-detector';
 
 /**
@@ -18,7 +23,7 @@ export const IMPROVED_UNIFIED_PROMPT = `
 技術記事を分析して、以下の形式で要約を作成してください。
 
 【最重要ルール - 文字数制限】
-1. 要約は最大200文字以内（超過厳禁）
+1. 要約は${SUMMARY_LENGTH.hardMax}文字以内（超過厳禁）
 2. 詳細要約は最大1000文字以内
 3. 内容の薄い記事は無理に長くせず、適切な長さで簡潔に
 4. 箇条書きには句点（。）を付けない
@@ -53,7 +58,7 @@ const FLEXIBLE_UNIFIED_PROMPT = `
 技術記事を分析して、以下の形式で要約を作成してください。
 
 【最重要ルール】
-1. 要約は最大200文字以内（超過厳禁）
+1. 要約は${SUMMARY_LENGTH.hardMax}文字以内（超過厳禁）
 2. 詳細要約は記事の内容量に応じた自然な長さで
 3. 無理に内容を膨らませない - 実際の記事内容を忠実に反映
 4. 箇条書きには句点（。）を付けない
@@ -172,7 +177,7 @@ export const ENHANCED_UNIFIED_PROMPT = `
 技術記事を分析して、以下の形式で要約を作成してください。
 
 【最重要ルール】
-1. 要約は最大200文字以内（超過厳禁）
+1. 要約は${SUMMARY_LENGTH.hardMax}文字以内（超過厳禁）
 2. 詳細要約は記事の内容量に応じた自然な長さで
 3. 無理に内容を膨らませない - 実際の記事内容を忠実に反映
 4. 箇条書きには句点（。）を付けない
@@ -293,35 +298,24 @@ export function generateEnhancedUnifiedPrompt(
         '\n\n...[文字数制限により以下省略]'
       : content;
 
-  // 文字数に応じた項目数の指示
+  // 項目数・詳細要約の長さは constants.ts を唯一の出典とする。
+  // 旧実装はここに第4の指示テーブルを持っており、prompt-builder.ts とも
+  // quality-checker.ts とも数値が異なっていた（例: 5000文字以上で
+  // 「1500文字以内」と指示しながら検証層は1200文字超を減点していた）。
+  // また「ペナルティとして出力全体を無効化し、直ちに再生成してください」は
+  // モデルが実行できない指示なので削除した。
   const contentLength = content.length;
-  let itemCountInstruction = '';
-  if (contentLength >= 10000) {
-    itemCountInstruction =
-      '\n\n【最重要要件】この記事は' +
-      contentLength +
-      '文字の特大長文記事です。\n詳細要約は必ず1200文字以上1500文字以内で作成し、条件を外れた場合は生成失敗とみなします。\n最低7個以上の項目（推奨8-9個）を必ず作成し、各項目は必ず170文字以上200文字以内の詳細な説明にしてください。\n項目数が6個以下、または文字数要件を満たさない項目が含まれる場合はペナルティとして出力全体を無効化し、直ちに再生成してください。\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。';
-  } else if (contentLength >= 5000) {
-    itemCountInstruction =
-      '\n\n【必須要件】この記事は' +
-      contentLength +
-      '文字の長文記事です。\n詳細要約は必ず900文字以上1500文字以内で作成し、条件を外れた場合は生成失敗とみなします。\n最低5個以上の項目（推奨6-7個）を必ず作成し、各項目は必ず150文字以上200文字以内の詳細な説明にしてください。\n項目数が5個未満、または150文字未満の項目が含まれる場合はペナルティとして出力全体を無効化し、再生成してください。\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。';
-  } else if (contentLength >= 3000) {
-    itemCountInstruction =
-      '\n\n【必須要件】この記事は' +
-      contentLength +
-      '文字です。\n詳細要約は必ず600文字以上1000文字以内で作成してください。\n最低4個以上の項目（推奨5個）を作成し、各項目は必ず150文字以上の詳細な説明にしてください。';
-  } else if (contentLength >= 1000) {
-    itemCountInstruction =
-      '\n\n【必須要件】この記事は' +
-      contentLength +
-      '文字です。\n詳細要約は必ず400文字以上700文字以内で作成してください。\n最低3個以上の項目（推奨4個）を作成し、各項目は必ず130文字以上にしてください。';
-  } else {
-    itemCountInstruction =
-      '\n\n【必須要件】この記事は' +
-      contentLength +
-      '文字の短い記事です。\n詳細要約は必ず300文字以上500文字以内で作成してください。\n最低3個の項目を作成し、各項目は100文字以上にしてください。';
-  }
+  const rule = getItemCountRule(contentLength);
+  const band = getDetailLengthBand(contentLength);
+
+  const itemCountInstruction = band
+    ? `\n\n【要件】この記事は${contentLength}文字${band.label}です。` +
+      `\n詳細要約は${band.totalMin}文字以上${band.totalMax}文字以内で作成してください。` +
+      `\n項目は${rule.recommendedItems}個。各項目のcontentは${band.itemContentHint}` +
+      `\n${band.priorityHint}` +
+      `\n重要な数値、日付、技術名、機能名を省略せず、具体的に記載してください。`
+    : `\n\n【要件】この記事は${contentLength}文字（非常に短い）です。` +
+      `\n詳細要約は無理に項目を作らず、記事にある事実だけを簡潔にまとめてください。`;
 
   return `${ENHANCED_UNIFIED_PROMPT}${itemCountInstruction}
 

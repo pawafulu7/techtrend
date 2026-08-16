@@ -1,6 +1,7 @@
 import {
   classifyTopics,
   normalizeTopic,
+  reconcileTopics,
   GENERIC_TOPICS,
 } from '@/lib/ai/extraction/topic-classifier';
 import type { TopicData } from '@/lib/ai/extraction/prompts/diff-summary-prompt';
@@ -236,5 +237,55 @@ describe('classifyTopics', () => {
       expect(t.baselineHeadlines).toHaveLength(10);
       expect(t.currentHeadlines).toEqual([]);
     });
+  });
+});
+
+describe('reconcileTopics', () => {
+  it('片方の期間で上位N件から漏れただけのトピックを0件扱いしない', () => {
+    // 現在期間: X は3位。基準期間: X は topN の外（4位）だが実データは存在する
+    const current = [topic('A', 10), topic('B', 9), topic('X', 8)];
+    const baseline = [
+      topic('A', 10),
+      topic('B', 9),
+      topic('C', 8),
+      topic('X', 7),
+    ];
+
+    const { baseline: reconciled } = reconcileTopics(current, baseline, 3);
+    const x = reconciled.find((t) => t.topic === 'X');
+    expect(x).toBeDefined();
+    expect(x?.count).toBe(7);
+  });
+
+  it('打ち切りを補正すると誤った new / deprecated が発生しない', () => {
+    const current = [topic('A', 10), topic('B', 9), topic('X', 8)];
+    const baseline = [
+      topic('A', 10),
+      topic('B', 9),
+      topic('C', 8),
+      topic('X', 7),
+    ];
+
+    const naive = classifyTopics(current, baseline.slice(0, 3));
+    expect(naive.classified.find((c) => c.topic === 'X')?.type).toBe('new');
+
+    const { current: c2, baseline: b2 } = reconcileTopics(current, baseline, 3);
+    const fixed = classifyTopics(c2, b2);
+    expect(fixed.classified.find((c) => c.topic === 'X')).toBeUndefined();
+  });
+
+  it('実際に0件の期間は「存在しない」まま扱う', () => {
+    const current = [topic('NEW', 5)];
+    const baseline = [topic('OLD', 5)];
+
+    const { current: c, baseline: b } = reconcileTopics(current, baseline, 30);
+    expect(c.map((t) => t.topic)).toEqual(['NEW']);
+    expect(b.map((t) => t.topic)).toEqual(['OLD']);
+
+    const result = classifyTopics(c, b);
+    expect(result.classified.find((x) => x.topic === 'NEW')?.type).toBe('new');
+    expect(result.classified.find((x) => x.topic === 'OLD')?.type).toBe(
+      'deprecated'
+    );
   });
 });

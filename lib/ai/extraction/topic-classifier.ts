@@ -107,6 +107,47 @@ export function normalizeTopic(topic: string): string {
   return normalizeTag(collapsed).toLowerCase();
 }
 
+/** 各期間から比較対象に載せる上限件数 */
+export const TOPIC_TOP_N = 30;
+
+/**
+ * 両期間のトピックを突き合わせて、比較に渡す集合を決める
+ *
+ * 各期間を独立に上位N件で打ち切ると、順位がN+1位へ落ちただけのトピックが
+ * 「0件」に見えて deprecated に、逆にN+1位からN位へ入っただけが new になる。
+ * どちらかの期間で上位N件に入ったトピックを和集合として残し、
+ * 相手側の期間にも上位N件の外にある実データを添えて返す。
+ *
+ * @param currentAll 現在期間の全トピック（件数降順）
+ * @param baselineAll 基準期間の全トピック（件数降順）
+ */
+export function reconcileTopics(
+  currentAll: TopicData[],
+  baselineAll: TopicData[],
+  topN: number = TOPIC_TOP_N
+): { current: TopicData[]; baseline: TopicData[] } {
+  const keyOf = (t: TopicData) => normalizeTopic(t.topic);
+  const currentByKey = new Map(currentAll.map((t) => [keyOf(t), t]));
+  const baselineByKey = new Map(baselineAll.map((t) => [keyOf(t), t]));
+
+  const keys = new Set<string>([
+    ...currentAll.slice(0, topN).map(keyOf),
+    ...baselineAll.slice(0, topN).map(keyOf),
+  ]);
+
+  const current: TopicData[] = [];
+  const baseline: TopicData[] = [];
+  for (const key of keys) {
+    // 実際に0件の期間だけを「存在しない」として扱う
+    const c = currentByKey.get(key);
+    const b = baselineByKey.get(key);
+    if (c) current.push(c);
+    if (b) baseline.push(b);
+  }
+
+  return { current, baseline };
+}
+
 interface Merged {
   display: string;
   baseline?: TopicData;

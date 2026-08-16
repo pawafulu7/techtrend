@@ -1,6 +1,10 @@
 import { PromptBuilder } from '../prompt-builder';
 import { SummaryProviderInput } from '../summary-provider.interface';
-import { SUMMARY_LENGTH, getItemCountRule } from '../../constants';
+import {
+  SUMMARY_LENGTH,
+  getItemCountRule,
+  getDetailLengthBand,
+} from '../../constants';
 import { SummaryQualityChecker } from '../../service/quality-checker';
 
 describe('PromptBuilder', () => {
@@ -470,7 +474,29 @@ describe('PromptBuilder', () => {
       expect(prompt).toContain(
         `${SUMMARY_LENGTH.idealMin}-${SUMMARY_LENGTH.idealMax}文字`
       );
-      expect(prompt).toContain(`${SUMMARY_LENGTH.hardMax}文字を超えないこと`);
+    });
+
+    it('指示レンジ下限ちょうどの要約も品質チェックで減点されない', () => {
+      const checker = new SummaryQualityChecker();
+      const summary = 'あ'.repeat(SUMMARY_LENGTH.idealMin);
+      const result = checker.checkQuality(summary, 'い'.repeat(800), {
+        totalLength: 5000,
+        contentLength: 5000,
+      } as never);
+
+      expect(result.issues.filter((i) => i.type === 'length')).toEqual([]);
+    });
+
+    it('詳細要約の合計上限指示が品質チェックの上限と一致する', () => {
+      for (const contentLength of [1500, 3500, 6000, 12000]) {
+        const prompt = new PromptBuilder().buildPrompt(
+          input('x'.repeat(contentLength))
+        );
+        const band = getDetailLengthBand(contentLength);
+        expect(prompt).toContain(
+          `detailedSummaryItems全体の合計は${band?.totalMax}文字以内`
+        );
+      }
     });
 
     it('指示レンジ上限ちょうどの要約が品質チェックで減点されない', () => {

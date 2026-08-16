@@ -13,7 +13,11 @@ import {
   getLLMExtractionPipeline,
 } from '../extraction/llm-extraction-pipeline';
 import { BatchExecutor, BatchJob } from '../extraction/batch-executor';
-import { GENERIC_TOPICS, normalizeTopic } from '../extraction/topic-classifier';
+import {
+  GENERIC_TOPICS,
+  normalizeTopic,
+  reconcileTopics,
+} from '../extraction/topic-classifier';
 import {
   diffSummaryConfig,
   DiffSummaryInput,
@@ -106,10 +110,14 @@ export class DiffSummaryService {
 
     try {
       // Get topic data for both periods
-      const [currentTopics, baselineTopics] = await Promise.all([
+      const [currentAll, baselineAll] = await Promise.all([
         this.getTopicsForPeriod(categorySlug, current),
         this.getTopicsForPeriod(categorySlug, baseline),
       ]);
+
+      // 片方の期間だけ上位N件から漏れたトピックを 0 件と誤認しないよう突き合わせる
+      const { current: currentTopics, baseline: baselineTopics } =
+        reconcileTopics(currentAll, baselineAll);
 
       // Skip if no data in either period
       if (currentTopics.length === 0 && baselineTopics.length === 0) {
@@ -313,17 +321,14 @@ export class DiffSummaryService {
     }
 
     // Convert to TopicData array, sorted by count
-    const topics: TopicData[] = Array.from(topicMap.entries())
+    return Array.from(topicMap.entries())
       .map(([topic, data]) => ({
         topic,
         count: data.count,
         articleIds: data.articleIds.slice(0, 10), // Limit to 10 article IDs
         headlines: data.headlines.slice(0, 5), // Limit to 5 headlines
       }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 30); // Limit to top 30 topics
-
-    return topics;
+      .sort((a, b) => b.count - a.count);
   }
 
   /**
