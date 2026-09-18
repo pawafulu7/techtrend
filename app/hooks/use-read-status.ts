@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -85,7 +85,40 @@ function loadFromLocalStorage(storageUserId?: string): Set<string> {
 export function useReadStatus(articleIds?: string[]) {
   const { data: session, isPending } = authClient.useSession();
   const userId = session?.user?.id;
-  const storageUserId = isPending ? undefined : (userId ?? 'guest');
+
+  // better-auth のセッション取得は初回解決後にも isPending を true へ戻しうる
+  // （タブ復帰時の再検証など）。その揺れをそのまま enabled に流すと false→true の
+  // 再遷移で TanStack Query の shouldFetchOptionally 経路が走り、タブ復帰ごとに
+  // 既読状態が再取得される。そこで「一度 false になったら以降 false 固定」の
+  // ラッチを掛ける（lib/hooks/use-personalization-preferences.ts と同じ形）。
+  const [hasSessionResolved, setHasSessionResolved] = useState(false);
+  if (!isPending && !hasSessionResolved) {
+    setHasSessionResolved(true);
+  }
+  const isSessionPendingLatched = isPending && !hasSessionResolved;
+
+  // storageUserId は localStorage のバケット選択に使うと同時に、undefined が
+  // 「identity 未確定」を表す意図的な sentinel になっている（saveToLocalStorage /
+  // updateStoredReadIds の早期 return の根拠）。単純に `userId ?? 'guest'` には
+  // できない: ログイン済みユーザーの identity 未確定な窓で mutation が起きると
+  // 既読が guest バケットへ書かれてしまう（identity 汚染）。
+  // そのため last-known-value ラッチで 3 分岐にする。
+  //   ① identity が一度も確定していない → undefined 据え置き（sentinel 維持＝書き込み抑止）
+  //   ② isPending による一時的な不明期間 → 直前に確定した値を保持（queryKey を揺らさない）
+  //   ③ 実際の identity 変化（guest→user、A→B） → 即時反映
+  const resolvedStorageUserId = isPending ? undefined : (userId ?? 'guest');
+  const [lastResolvedStorageUserId, setLastResolvedStorageUserId] = useState<
+    string | undefined
+  >(undefined);
+  if (
+    resolvedStorageUserId !== undefined &&
+    resolvedStorageUserId !== lastResolvedStorageUserId
+  ) {
+    setLastResolvedStorageUserId(resolvedStorageUserId);
+  }
+  // ③ は resolvedStorageUserId を優先するため同一 render 内で即時反映される
+  const storageUserId = resolvedStorageUserId ?? lastResolvedStorageUserId;
+
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => {
     const normalizedArticleIds = articleIds ? [...articleIds].sort() : [];
@@ -145,13 +178,17 @@ export function useReadStatus(articleIds?: string[]) {
         unreadCount: data.unreadCount ?? 0,
       };
     },
-    enabled: !isPending,
+    enabled: !isSessionPendingLatched,
     // localStorageから初期値を設定（ゲスト時は旧キーからマイグレーション）
     initialData: () => {
-      if (isPending) {
+      // identity 未確定（storageUserId が sentinel の undefined）の間は
+      // どのバケットも読まない。isPending ではなく sentinel で判定するのは、
+      // 一時的な isPending 中は storageUserId が確定値にラッチされており
+      // そのバケットを読んで良いため
+      if (storageUserId === undefined) {
         return { readArticleIds: new Set<string>(), unreadCount: 0 };
       }
-      if (!userId) {
+      if (storageUserId === 'guest') {
         migrateGuestStorageKey();
       }
       return {
@@ -159,7 +196,16 @@ export function useReadStatus(articleIds?: string[]) {
         unreadCount: 0,
       };
     },
-    refetchOnMount: 'always',
+    // 【削除・変更禁止】initialData を渡すと query-core は dataUpdatedAt を
+    // `hasData ? initialDataUpdatedAt ?? Date.now() : 0` で決めるため、未指定だと
+    // 「現在時刻」扱いになり staleTime: 5分 の下で常に fresh 判定になる。
+    // その状態では refetchOnMount: 'always'（isStale 判定を飛ばす唯一の経路）を
+    // 外した瞬間にこのクエリがサーバーへ到達しなくなり、unreadCount が initialData の
+    // 0 で固定される＝一括既読ボタンが常時 disabled・未読バッジも出なくなる。
+    // 0 は nullish ではないのでそのまま保持され、「初期値は既に stale」を意味する。
+    initialDataUpdatedAt: 0,
+    staleTime: 5 * 60 * 1000, // 5分（グローバル既定と同値。意図を明示して固定する）
+    refetchOnMount: true,
   });
 
   const readArticleIds = useMemo(

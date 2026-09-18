@@ -185,18 +185,15 @@ export function useInfiniteArticles(
 
       // Debug log removed
 
-      // 既読フィルターが有効な場合のみ再取得
-      if (normalizedFilters.readFilter) {
-        queryClient.invalidateQueries({
-          queryKey: ['infinite-articles', filterKey],
-          refetchType: 'active',
-        });
-      }
-
-      // 既読状態のキャッシュも無効化
-      queryClient.invalidateQueries({ queryKey: ['read-status'] });
+      // 注: invalidate（readFilter 付きクエリの再取得・['read-status'] の無効化）は
+      // app/providers/query-provider.tsx の同名ハンドラに一本化した。invalidateQueries は
+      // cancelRefetch が既定 true のため、二重リスナーだと 2 つ目の invalidate が
+      // 進行中の N ページ取得を中断して 1 ページ目から再開させていた。
+      // provider 側を残したのは、そちらが ['digest'] の無効化も行っており
+      // フック側に統一すると digest 同期が消えるため。
+      // ここは setQueryData による楽観更新のみを担当する。
     },
-    [normalizedFilters.readFilter, filterKey, queryClient]
+    [queryClient]
   );
 
   // お気に入り変更ハンドラ（React Queryキャッシュ同期用）
@@ -233,13 +230,10 @@ export function useInfiniteArticles(
     [queryClient]
   );
 
-  // 一括既読ハンドラ（invalidateQueriesで再取得）
-  const handleBulkRead = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: ['infinite-articles'],
-      refetchType: 'active',
-    });
-  }, [queryClient]);
+  // 注: 'articles-bulk-read' のリスナーはここに置かない。
+  // app/providers/query-provider.tsx の handleBulkRead に一本化してある
+  // （二重 invalidate による N ページ取得の中断・再開を避けるため。provider 側は
+  //  ['infinite-articles'] に加えて ['read-status'] / ['digest'] も無効化する）。
 
   // 既読状態が変更されたときに記事リストを再取得
   useEffect(() => {
@@ -270,15 +264,6 @@ export function useInfiniteArticles(
       );
     };
   }, [handleFavoriteChanged]);
-
-  // 一括既読イベントをリッスン
-  useEffect(() => {
-    window.addEventListener('articles-bulk-read', handleBulkRead);
-
-    return () => {
-      window.removeEventListener('articles-bulk-read', handleBulkRead);
-    };
-  }, [handleBulkRead]);
 
   // 注: bfcache復元（pageshow）での一覧再取得は行わない。
   // 一覧の内容はcronでしか変わらず取り直す価値がない一方、既読・お気に入りといった
