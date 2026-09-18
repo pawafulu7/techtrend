@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
@@ -23,15 +24,21 @@ export function ArticleCount({
     isLoading: isLoadingPreferences,
   } = usePersonalizationPreferences();
 
-  const {
-    data: count,
-    isLoading: isFetchingCount,
-    isError,
-  } = useQuery<number>({
+  // `returning` は記事詳細から戻ったことを示すだけの一時パラメータで、件数の
+  // 絞り込み条件ではない。queryKey にも API パラメータにも含めない（含めると
+  // 記事詳細から戻るたびに別 queryKey になり /api/articles が再取得される）。
+  // app/hooks/use-infinite-articles.ts の normalizedFilters と同じ扱い。
+  const articleSearchParams = useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('returning');
+    return params.toString();
+  }, [searchParams]);
+
+  const { data: count, isError } = useQuery<number>({
     queryKey: [
       'article-count',
       {
-        searchParams: searchParams.toString(),
+        searchParams: articleSearchParams,
         filterEnabled,
         selectedCategories,
         periodMonths,
@@ -40,7 +47,7 @@ export function ArticleCount({
       },
     ],
     queryFn: async () => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(articleSearchParams);
 
       // Add base filters
       params.set('excludeUnprocessed', 'true');
@@ -107,14 +114,18 @@ export function ArticleCount({
     enabled: !isLoadingPreferences,
   });
 
-  if (isFetchingCount || count === undefined || isLoadingPreferences) {
+  // エラー判定を先に行う。エラー時は count が undefined のままなので、
+  // count === undefined を先に置くとスケルトンが永久に表示される。
+  if (isError) {
+    return null;
+  }
+
+  // データ（count）がある間はスケルトンに差し替えない。再取得中やセッション
+  // 判定中に差し替えると home と同型の破壊的ガードになる。
+  if (count === undefined) {
     return (
       <div className="h-5 w-20 animate-pulse rounded bg-(--tt-color-surface-muted)" />
     );
-  }
-
-  if (isError) {
-    return null;
   }
 
   return (

@@ -71,11 +71,17 @@ export function useInfiniteArticles(
     return () => clearInterval(intervalId);
   }, []);
 
-  // フィルタを正規化（undefined値を削除、キーをソート）
+  // フィルタを正規化（undefined値とreturningを削除、キーをソート）
+  // returning は「記事詳細から戻ってきた」ことを示すUI用フラグで取得結果には影響しない。
+  // queryKey / APIクエリに混ざると戻る度に別クエリ扱いとなり1ページ目から取り直しになるため、
+  // 呼び出し側の漏れを防ぐ意味でもここを単一の除外点とする
   const normalizedFilters = useMemo(() => {
     return Object.keys(filters)
       .sort()
       .reduce((acc, key) => {
+        if (key === 'returning') {
+          return acc;
+        }
         if (filters[key] !== undefined && filters[key] !== '') {
           acc[key] = filters[key]!;
         }
@@ -179,18 +185,15 @@ export function useInfiniteArticles(
 
       // Debug log removed
 
-      // 既読フィルターが有効な場合のみ再取得
-      if (normalizedFilters.readFilter) {
-        queryClient.invalidateQueries({
-          queryKey: ['infinite-articles', filterKey],
-          refetchType: 'active',
-        });
-      }
-
-      // 既読状態のキャッシュも無効化
-      queryClient.invalidateQueries({ queryKey: ['read-status'] });
+      // 注: invalidate（readFilter 付きクエリの再取得・['read-status'] の無効化）は
+      // app/providers/query-provider.tsx の同名ハンドラに一本化した。invalidateQueries は
+      // cancelRefetch が既定 true のため、二重リスナーだと 2 つ目の invalidate が
+      // 進行中の N ページ取得を中断して 1 ページ目から再開させていた。
+      // provider 側を残したのは、そちらが ['digest'] の無効化も行っており
+      // フック側に統一すると digest 同期が消えるため。
+      // ここは setQueryData による楽観更新のみを担当する。
     },
-    [normalizedFilters.readFilter, filterKey, queryClient]
+    [queryClient]
   );
 
   // お気に入り変更ハンドラ（React Queryキャッシュ同期用）
@@ -227,13 +230,10 @@ export function useInfiniteArticles(
     [queryClient]
   );
 
-  // 一括既読ハンドラ（invalidateQueriesで再取得）
-  const handleBulkRead = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: ['infinite-articles'],
-      refetchType: 'active',
-    });
-  }, [queryClient]);
+  // 注: 'articles-bulk-read' のリスナーはここに置かない。
+  // app/providers/query-provider.tsx の handleBulkRead に一本化してある
+  // （二重 invalidate による N ページ取得の中断・再開を避けるため。provider 側は
+  //  ['infinite-articles'] に加えて ['read-status'] / ['digest'] も無効化する）。
 
   // 既読状態が変更されたときに記事リストを再取得
   useEffect(() => {
@@ -265,32 +265,19 @@ export function useInfiniteArticles(
     };
   }, [handleFavoriteChanged]);
 
-  // 一括既読イベントをリッスン
-  useEffect(() => {
-    window.addEventListener('articles-bulk-read', handleBulkRead);
-
-    return () => {
-      window.removeEventListener('articles-bulk-read', handleBulkRead);
-    };
-  }, [handleBulkRead]);
-
-  // bfcache復元時にキャッシュを無効化して再取得
-  useEffect(() => {
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        // bfcacheから復元された場合、既読状態が変わっている可能性があるので再取得
-        // 現在のフィルターのクエリのみ無効化（他のフィルター設定は保持）
-        queryClient.invalidateQueries({
-          queryKey: ['infinite-articles', filterKey],
-          refetchType: 'active',
-        });
-      }
-    };
-
-    window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
-  }, [queryClient, filterKey]);
-
+  // 注: bfcache復元（pageshow）での一覧再取得は行わない。
+  // 一覧の内容はcronでしか変わらず、取り直す価値がないため。
+  //
+  // 既知の制約: 一覧カードの既読バッジは item.isRead prop 由来
+  // （app/components/article/hooks/use-read-status.ts が導出する）で、その item は
+  // この ['infinite-articles'] キャッシュそのものである。
+  // app/hooks/use-read-status.ts の ['read-status'] は mark-all-read-wrapper.tsx
+  // からしか参照されておらず、カードの表示には関与しない。
+  // したがって bfcache 復元後、別タブ等で変わった既読状態はカードのバッジに
+  // 反映されず復元前のまま残りうる。
+  // 受容する理由: bfcache 復元の発火経路自体が極小である。SPA 内遷移では
+  // pageshow(persisted) が発火せず、BASIC 認証ゲート環境では no-store により
+  // そもそも bfcache の対象外になる。
   const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
     queryFn: async ({ pageParam, signal }) => {
@@ -389,10 +376,21 @@ export function useInfiniteArticles(
       return page < totalPages ? page + 1 : undefined;
     },
     initialPageParam: 1,
-    staleTime: normalizedFilters.returning ? 0 : 1000 * 60 * 5, // 記事詳細から戻った時のみ即座に再取得、通常は5分間キャッシュ（1分→5分に延長）
+    // staleTime は 5 分だが、現状これを消費する経路は 1 本も残っていない。
+    // mount / focus / reconnect / interval がすべて無効なので、stale になっても
+    // 再取得のきっかけが無く実質デッド設定である（一覧は cron でしか変わらない、
+    // という判断に基づく意図的なトレードオフ）。手動更新 UI（次 PR）が入ると
+    // この設定が初めて意味を持つ。
+    staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 30, // 30分間メモリに保持（データ転送削減、10分→30分に延長）
     refetchOnWindowFocus: false, // 通常はfalse（パフォーマンスのため）
-    refetchOnMount: normalizedFilters.returning ? 'always' : false, // 記事詳細から戻った時のみ再取得
+    refetchOnMount: false, // マウント時の再取得はしない（一覧はcronでしか更新されない）
+    // 未設定だと networkMode !== 'always' により既定 true になり、online イベント
+    // （スリープ復帰・WiFi 再接続）で読み込み済みの全ページが 1 ページ目から
+    // 取り直される。ページを蓄積する infinite query 固有の問題なので、グローバル
+    // 既定ではなくここで個別に無効化する（グローバルに置くと、fetch 失敗後の
+    // クエリがネットワーク復帰で自動復帰しなくなる副作用が全クエリに及ぶ）。
+    refetchOnReconnect: false,
     // 重複リクエスト防止のための設定
     refetchInterval: false, // 自動リフェッチを無効化
     retry: 1, // リトライ回数を制限

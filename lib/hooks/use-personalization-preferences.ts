@@ -9,6 +9,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth/auth-client';
+import { useIsSessionPendingLatched } from '@/lib/auth/use-session-resolved';
 import type {
   UserCategoryPreferences,
   UpdateCategoryPreferencesRequest,
@@ -222,7 +223,6 @@ export function useUpdatePreferences(scope: PreferenceScope = 'home') {
  * Combined hook for personalization preferences management
  */
 export function usePersonalizationPreferences(scope: PreferenceScope = 'home') {
-  const { isPending: isSessionPending } = authClient.useSession();
   const categoriesQuery = useInterestCategories();
   const preferencesQuery = useUserPreferences(scope);
   const updateMutation = useUpdatePreferences(scope);
@@ -231,7 +231,24 @@ export function usePersonalizationPreferences(scope: PreferenceScope = 'home') {
   // false になる。そのまま公開すると認証済みユーザーで記事クエリが先に走り、
   // 直後に設定が解決して再フェッチ（＝空状態のフラッシュ、Issue #569 の再発）に
   // なるため、セッション判定中もローディング扱いにする。
-  const isLoadingPreferences = isSessionPending || preferencesQuery.isLoading;
+  //
+  // ただし better-auth のセッション取得は初回解決後にも isPending を true へ
+  // 戻しうる（タブ復帰時の再検証など）。その揺れをそのまま公開すると記事クエリの
+  // enabled が false→true に再遷移し、読み込み済み全ページの再取得と一覧 DOM の
+  // 破棄（スクロール位置喪失）を招く。そこで isSessionPending の項だけ「一度
+  // false になったら以降 false 固定」のラッチを掛ける。
+  // preferencesQuery.isLoading はラッチしない: principal が変わったときは新しい
+  // 設定の解決を待たなければ Issue #569 が別条件で再発するため。
+  //
+  // ラッチはモジュールスコープの共有状態（lib/auth/use-session-resolved.ts）。
+  // フックインスタンス単位で持つと、記事詳細 → ホームのような再マウント経路で
+  // 新インスタンスが「未解決」から始まりラッチが効かない。ラッチしているのは
+  // isSessionPending の項だけで、これはセッション全体のグローバルな事実であり
+  // scope 固有ではない（scope 固有なのは preferencesQuery.isLoading の側）。
+  const isSessionPendingLatched = useIsSessionPendingLatched();
+
+  const isLoadingPreferences =
+    isSessionPendingLatched || preferencesQuery.isLoading;
 
   const categories = categoriesQuery.data ?? EMPTY_CATEGORIES;
   const preferences = preferencesQuery.data ?? DEFAULT_PREFERENCES;

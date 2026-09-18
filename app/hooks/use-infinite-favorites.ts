@@ -70,20 +70,15 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     []
   );
 
-  // bfcache復元時にキャッシュを無効化して再取得
-  useEffect(() => {
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        queryClient.invalidateQueries({
-          queryKey: ['infinite-favorites'],
-          refetchType: 'active',
-        });
-      }
-    };
-
-    window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
-  }, [queryClient]);
+  // 注: bfcache 復元（pageshow）での再取得は行わない。
+  // app/hooks/use-infinite-articles.ts と同じ判断。invalidateQueries の
+  // refetchType: 'active' は読み込み済みの全ページを 1 ページ目から取り直すため、
+  // /favorites に戻るたびに本 PR が直している「復帰で一覧の内容とスクロール位置が
+  // 失われる」症状をそのまま再現していた。
+  // 鮮度は再マウント経路で担保される（下の refetchOnMount は既定 true のまま）。
+  // 受容する理由: bfcache 復元の発火経路自体が極小である。SPA 内遷移では
+  // pageshow(persisted) が発火せず、BASIC 認証ゲート環境では no-store により
+  // そもそも bfcache の対象外になる。
 
   // Shared cache update logic for favorite removal
   const updateCacheOnRemove = useCallback(
@@ -220,6 +215,17 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     staleTime: 1000 * 60 * 5, // 5分間キャッシュ
     gcTime: 1000 * 60 * 30, // 30分間メモリに保持
     refetchOnWindowFocus: false,
+    // 未設定だと networkMode !== 'always' により既定 true になり、online イベント
+    // （スリープ復帰・WiFi 再接続）で読み込み済みの全ページが 1 ページ目から
+    // 取り直される。ページを蓄積する infinite query 固有の問題なので、グローバル
+    // 既定ではなくここで個別に無効化する（グローバルに置くと、fetch 失敗後の
+    // クエリがネットワーク復帰で自動復帰しなくなる副作用が全クエリに及ぶ）。
+    refetchOnReconnect: false,
+    // refetchOnMount は既定（true）のまま。お気に入り一覧はマウント時に取り直す
+    // 必要がある。このフックの利用者は /favorites のみ
+    // （app/favorites/_components/favorites-content.tsx）で、未マウント中に他画面で
+    // 起きたお気に入りの追加・削除を上の window イベントリスナーで拾えないため、
+    // false にするとキャッシュが最大 gcTime ぶん古いまま表示される。
     retry: 1,
     retryDelay: 1000,
   });
