@@ -220,6 +220,7 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     staleTime: 1000 * 60 * 5, // 5分間キャッシュ
     gcTime: 1000 * 60 * 30, // 30分間メモリに保持
     refetchOnWindowFocus: false,
+    refetchOnMount: false, // マウント毎の再取得はしない（変更はイベント/pageshowで反映）
     retry: 1,
     retryDelay: 1000,
   });

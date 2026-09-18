@@ -71,11 +71,17 @@ export function useInfiniteArticles(
     return () => clearInterval(intervalId);
   }, []);
 
-  // フィルタを正規化（undefined値を削除、キーをソート）
+  // フィルタを正規化（undefined値とreturningを削除、キーをソート）
+  // returning は「記事詳細から戻ってきた」ことを示すUI用フラグで取得結果には影響しない。
+  // queryKey / APIクエリに混ざると戻る度に別クエリ扱いとなり1ページ目から取り直しになるため、
+  // 呼び出し側の漏れを防ぐ意味でもここを単一の除外点とする
   const normalizedFilters = useMemo(() => {
     return Object.keys(filters)
       .sort()
       .reduce((acc, key) => {
+        if (key === 'returning') {
+          return acc;
+        }
         if (filters[key] !== undefined && filters[key] !== '') {
           acc[key] = filters[key]!;
         }
@@ -274,23 +280,9 @@ export function useInfiniteArticles(
     };
   }, [handleBulkRead]);
 
-  // bfcache復元時にキャッシュを無効化して再取得
-  useEffect(() => {
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        // bfcacheから復元された場合、既読状態が変わっている可能性があるので再取得
-        // 現在のフィルターのクエリのみ無効化（他のフィルター設定は保持）
-        queryClient.invalidateQueries({
-          queryKey: ['infinite-articles', filterKey],
-          refetchType: 'active',
-        });
-      }
-    };
-
-    window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
-  }, [queryClient, filterKey]);
-
+  // 注: bfcache復元（pageshow）での一覧再取得は行わない。
+  // 一覧の内容はcronでしか変わらず取り直す価値がない一方、既読・お気に入りといった
+  // ユーザーデータはそれぞれのフックのpageshowハンドラが復元を担当する
   const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
     queryFn: async ({ pageParam, signal }) => {
@@ -389,10 +381,10 @@ export function useInfiniteArticles(
       return page < totalPages ? page + 1 : undefined;
     },
     initialPageParam: 1,
-    staleTime: normalizedFilters.returning ? 0 : 1000 * 60 * 5, // 記事詳細から戻った時のみ即座に再取得、通常は5分間キャッシュ（1分→5分に延長）
+    staleTime: 1000 * 60 * 5, // 5分間キャッシュ（1分→5分に延長）
     gcTime: 1000 * 60 * 30, // 30分間メモリに保持（データ転送削減、10分→30分に延長）
     refetchOnWindowFocus: false, // 通常はfalse（パフォーマンスのため）
-    refetchOnMount: normalizedFilters.returning ? 'always' : false, // 記事詳細から戻った時のみ再取得
+    refetchOnMount: false, // マウント時の再取得はしない（一覧はcronでしか更新されない）
     // 重複リクエスト防止のための設定
     refetchInterval: false, // 自動リフェッチを無効化
     retry: 1, // リトライ回数を制限

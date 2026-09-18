@@ -191,10 +191,8 @@ export function HomeClientInfinite({
     }
     // URLパラメータなし＆Cookie値なしの場合はsourcesを設定しない（全選択）
 
-    // 記事詳細から戻ってきた場合のフラグを追加
-    if (isReturningFromArticle) {
-      params.returning = 'true';
-    }
+    // 注: returningはスクロール位置復元のトリガーとしてのみ使い、
+    // フィルターには含めない（queryKeyが変わり1ページ目から取り直しになるため）
 
     // 処理中記事を除外するフラグを追加
     if (excludeUnprocessed) {
@@ -219,7 +217,6 @@ export function HomeClientInfinite({
   }, [
     searchParams,
     initialSortBy,
-    isReturningFromArticle,
     excludeUnprocessed,
     isPersonalized,
     hasPreferences,
