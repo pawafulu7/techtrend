@@ -234,7 +234,7 @@ export function HomeClientInfinite({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    isLoading,
+    isPending,
     isError,
     refetch,
   } = useInfiniteArticles(
@@ -358,7 +358,10 @@ export function HomeClientInfinite({
           />
         )}
 
-        {(isLoading || isLoadingPreferences) && !isCategoryChanging ? (
+        {/* isPending は data === undefined と厳密に等価（v5 の isLoading は
+            isPending && isFetching）。データが無いときだけスピナーを出すため、
+            再取得中やセッション判定中に一覧 DOM を破棄しない。 */}
+        {isPending && !isCategoryChanging ? (
           <LoadingSpinner message="記事を読み込んでいます..." />
         ) : allArticles.length > 0 ? (
           <div className="relative">
@@ -406,7 +409,7 @@ export function HomeClientInfinite({
               )
             )}
           </div>
-        ) : isLoading ? (
+        ) : isPending ? (
           <LoadingSpinner message="記事を読み込んでいます..." />
         ) : (
           <div className="flex min-h-[400px] items-center justify-center px-4">

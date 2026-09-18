@@ -23,11 +23,7 @@ export function ArticleCount({
     isLoading: isLoadingPreferences,
   } = usePersonalizationPreferences();
 
-  const {
-    data: count,
-    isLoading: isFetchingCount,
-    isError,
-  } = useQuery<number>({
+  const { data: count, isError } = useQuery<number>({
     queryKey: [
       'article-count',
       {
@@ -107,7 +103,9 @@ export function ArticleCount({
     enabled: !isLoadingPreferences,
   });
 
-  if (isFetchingCount || count === undefined || isLoadingPreferences) {
+  // データ（count）がある間はスケルトンに差し替えない。再取得中やセッション
+  // 判定中に差し替えると home と同型の破壊的ガードになる。
+  if (count === undefined) {
     return (
       <div className="h-5 w-20 animate-pulse rounded bg-(--tt-color-surface-muted)" />
     );
