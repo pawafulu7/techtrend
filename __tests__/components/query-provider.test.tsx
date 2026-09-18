@@ -261,9 +261,12 @@ describe('QueryProvider の principal 変化検知', () => {
     ]);
   });
 
-  it('401 由来の data: null ではキャッシュを破棄しない（ただしサニタイズはする）', () => {
-    // 401 は「別ユーザーが現れた」ことを意味しない。
-    // 一時的な認証エラーでキャッシュ全体を失わせないためのガード。
+  it('401 由来の data: null でも infinite-articles は破棄せず、中身がユーザー固有のキャッシュは破棄する', () => {
+    // 401 は「別ユーザーが現れた」ことを意味しないが、認証が壊れている以上
+    // 前ユーザーのお気に入り・ダイジェスト・件数を出し続けてよい理由も無い。
+    // 401 を特別扱いして破棄をスキップすると、401 解消後（200+null）は
+    // prevPrincipal === null の早期 return に落ちてスキップ分が永久に実行されない。
+    // 一方 infinite-articles は記事本体が公開データなので破棄せずフィールド剥がしのみ。
     mockUseSession.mockReturnValue(signedInAs('userA'));
     const { rerender } = renderProvider();
 
@@ -274,13 +277,14 @@ describe('QueryProvider の principal 変化検知', () => {
       </QueryProvider>
     );
 
-    expect(removedQueryKeys()).toEqual([]);
+    expect(removedQueryKeys()).not.toContain('infinite-articles');
+    expect(removedQueryKeys()).toEqual(SIGNED_OUT_REMOVED_KEYS);
   });
 
   it('401 でも infinite-articles の isRead / isFavorited は剥がす', () => {
     // 401 で早期 return してサニタイズまで飛ばすと、session.data が null の
     // 画面（＝ゲスト表示）に前ユーザーの既読・お気に入りが残ったままになる。
-    // キャッシュ全体を破棄しないことと、ユーザー固有フィールドを剥がすことは両立する。
+    // キャッシュ本体を残すことと、ユーザー固有フィールドを剥がすことは両立する。
     mockUseSession.mockReturnValue(signedInAs('userA'));
     const { rerender } = renderProvider();
 
@@ -313,11 +317,62 @@ describe('QueryProvider の principal 変化検知', () => {
         };
       }>;
     };
+    // キャッシュ本体は残り、ユーザー固有フィールドだけが剥がれていること
+    expect(after).toBeDefined();
     expect(after.pages[0].data.items).toEqual([
       { id: 'article-1', isRead: false, isFavorited: false },
     ]);
-    // 401 では removeQueries は一切走らない（表示中の件数・ダイジェストを失わせない）
-    expect(removedQueryKeys()).toEqual([]);
+  });
+
+  it('401 → 真のゲスト（200+null）の連鎖でもユーザー固有キャッシュが破棄される', () => {
+    // 401 で破棄をスキップする実装だと、lastPrincipalRef が null になった後の
+    // 200+null は prevPrincipal === null の早期 return に落ち、スキップした
+    // 破棄が二度と実行されない（前ユーザーのダイジェスト・件数が残り続ける）。
+    mockUseSession.mockReturnValue(signedInAs('userA'));
+    const { rerender } = renderProvider();
+
+    const rerenderProvider = () =>
+      rerender(
+        <QueryProvider>
+          <ClientProbe onReady={captureClient} />
+        </QueryProvider>
+      );
+
+    mockUseSession.mockReturnValue(SESSION_UNAUTHORIZED);
+    rerenderProvider();
+
+    mockUseSession.mockReturnValue(SESSION_SIGNED_OUT);
+    rerenderProvider();
+
+    // 401 の時点と 200+null の時点のどちらで破棄されたかは問わない。
+    // 「連鎖を抜けた時点で 3 キーが破棄されている」ことだけを固定する。
+    for (const key of SIGNED_OUT_REMOVED_KEYS) {
+      expect(removedQueryKeys()).toContain(key);
+    }
+    expect(removedQueryKeys()).not.toContain('infinite-articles');
+  });
+
+  it('連続した 401（X → 401 → 401）でもユーザー固有キャッシュが破棄される', () => {
+    // 401 が解消せず続く場合も、前ユーザーのお気に入り・ダイジェスト・件数を
+    // 出し続けてはならない。
+    mockUseSession.mockReturnValue(signedInAs('userA'));
+    const { rerender } = renderProvider();
+
+    const rerenderProvider = () =>
+      rerender(
+        <QueryProvider>
+          <ClientProbe onReady={captureClient} />
+        </QueryProvider>
+      );
+
+    mockUseSession.mockReturnValue(SESSION_UNAUTHORIZED);
+    rerenderProvider();
+    rerenderProvider();
+
+    for (const key of SIGNED_OUT_REMOVED_KEYS) {
+      expect(removedQueryKeys()).toContain(key);
+    }
+    expect(removedQueryKeys()).not.toContain('infinite-articles');
   });
 
   it('解決済みゲスト → ユーザーではユーザー依存キャッシュを破棄する', () => {

@@ -90,22 +90,28 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
   );
   const lastFavoriteUpdateRef = useRef<Map<string, number>>(new Map());
 
-  const {
-    data: session,
-    isPending: isSessionPending,
-    error: sessionError,
-  } = authClient.useSession();
+  const { data: session, isPending: isSessionPending } =
+    authClient.useSession();
   const currentUserId = session?.user?.id;
+  // 401 か 200+null かでは分岐しない（sessionError を見ない）。
+  //
   // better-auth は 401 のときだけ session.data を null にする
   // （node_modules/better-auth/dist/client/session-atom.mjs:90-92 の
   //  `data: isUnauthorized ? null : latest.data`）。
-  // ただしセッション失効は 401 にならない。get-session ハンドラは失効を検知すると
-  // Cookie を消して `ctx.json(null)` = HTTP 200 + null を返す
+  // ただし通常のセッション失効は 401 にならない。get-session ハンドラは失効を
+  // 検知すると Cookie を消して `ctx.json(null)` = HTTP 200 + null を返す
   // （node_modules/better-auth/dist/api/routes/session.mjs:182-191）。
-  // つまり「失効 → userId が undefined」は sessionError なしで起きるため、
-  // この 401 ガードだけでは失効時のキャッシュ破棄を防げない。破棄条件そのものを
-  // 「別の非 null principal が現れたときだけ」に狭めることで対処している（下記）。
-  const isSessionUnauthorized = sessionError?.status === 401;
+  // つまり 401 が出るのは「本当に認証が壊れている」場合に限られる。
+  //
+  // かつて 401 を「一時的なので破棄しない」と特別扱いしていたが、破棄をスキップ
+  // したまま lastPrincipalRef を null にすると、401 が解消して真のゲスト
+  // （200+null）になっても prevPrincipal === null の早期 return に落ちるため、
+  // スキップした破棄が二度と実行されない。401 が続く場合も同様で、前ユーザーの
+  // ダイジェスト・件数がゲスト画面に残り続ける。
+  // 401 ガードの本来の目的は「記事一覧（infinite-articles）を失わせないこと」
+  // だが、infinite-articles は元々 SIGNED_OUT_REMOVED_QUERY_KEY_PREFIXES に
+  // 含まれずサニタイズのみなので、3 キーを破棄してもその目的は達成される。
+  // よって「X → null」は 401 でも 200+null でも同一に扱う。
   // principal を 3 状態で管理する。
   //   undefined = まだ一度もセッションを観測していない（初回解決前）
   //   null      = 解決済みのゲスト（サインアウト済み・未ログイン）
@@ -126,13 +132,20 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
   //   未観測 → X / 未観測 → ゲスト        → 何もしない（初回解決。比較対象が無い）
   //   X → X                               → 何もしない（変化なし）
   //   ゲスト → ゲスト                     → 何もしない（変化なし）
-  //   X → null（失効・サインアウト）      → 一覧はユーザー固有フィールドのみ剥がす、
+  //   X → null（失効・サインアウト・401） → 一覧はユーザー固有フィールドのみ剥がす、
   //                                          お気に入り・ダイジェスト・件数は破棄
-  //   X → null（401）                     → 一覧のユーザー固有フィールドのみ剥がす
-  //                                          （キャッシュ全体は破棄しない）
   //   ゲスト → Y                          → 破棄する（ゲスト用キャッシュの再利用を防ぐ）
   //   X → Y（両方非 null、X ≠ Y）         → 破棄する
   //   X → null → X（同一ユーザーの再ログイン）→ 破棄する（剥がし済みの false を捨てる）
+  //
+  // トレードオフ: 一時的な 401 が回復して同一ユーザー X に戻る経路
+  // （X → null(401) → X）では、prev(null) !== next(X) により infinite-articles まで
+  // 破棄され、1 ページ目からの再取得とスクロール位置の喪失が起きる。これは本 PR の
+  // 目的（強制再取得の除去）と衝突するが、401 の時点で isRead / isFavorited を
+  // false へ剥がしている以上、X 本人のデータを取り直さなければ「自分の既読が消えた
+  // まま」になるため、再取得する方が正しい。上記のとおり 401 は通常の失効では発生
+  // せず（失効は 200+null）本当に認証が壊れている場合に限られるので、この経路の
+  // 発生頻度自体が極小である。よって受容する。
   useEffect(() => {
     // isPending 中は identity が不定。前回値の更新も判定も行わない
     if (isSessionPending) return;
@@ -165,8 +178,8 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
     // （タイトル・要約・並び）は公開データなので残り、読み込み済みページと
     // スクロール位置は保たれる。
     // 中身自体がユーザー固有なキャッシュ（お気に入り・ダイジェスト・件数）は
-    // そのまま破棄する。ただし 401 は「一時的な認証エラー」であって別ユーザーの
-    // 出現ではないため、キャッシュ全体の破棄は行わずフィールド剥がしだけに留める。
+    // そのまま破棄する。401 でもここは同じで、条件分岐は設けない（理由は
+    // isSessionUnauthorized を廃止した経緯として上部に記載）。
     //
     // 前回値は null（解決済みゲスト）に更新する。更新しないと同一ユーザーの
     // 再ログイン（X → null → X）が「変化なし」と判定され、ここで false に
@@ -197,12 +210,8 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         }
       );
 
-      // 401 ではキャッシュ全体を破棄しない（一時的な認証エラーで表示中の
-      // お気に入り・ダイジェスト・件数まで失わせないため）。
-      if (!isSessionUnauthorized) {
-        for (const queryKey of SIGNED_OUT_REMOVED_QUERY_KEY_PREFIXES) {
-          queryClient.removeQueries({ queryKey });
-        }
+      for (const queryKey of SIGNED_OUT_REMOVED_QUERY_KEY_PREFIXES) {
+        queryClient.removeQueries({ queryKey });
       }
       lastPrincipalRef.current = null;
       return;
@@ -217,7 +226,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       }
     }
     lastPrincipalRef.current = nextPrincipal;
-  }, [isSessionPending, isSessionUnauthorized, currentUserId, queryClient]);
+  }, [isSessionPending, currentUserId, queryClient]);
 
   // Global listener for cross-screen cache sync
   useEffect(() => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 
 /**
@@ -57,10 +57,21 @@ export function useIsSessionPendingLatched(): boolean {
   const [resolved, setResolved] = useState(readLatch);
 
   if (!isPending && !resolved) {
-    markResolved();
-    // 同一コンポーネントに対するレンダー中の setState（React が許可する形）
+    // 同一コンポーネントに対するレンダー中の setState（React が許可する形）。
+    // ローカル state の収束はレンダー中に行ってよい（React が破棄したレンダーの
+    // setState も一緒に破棄されるため、外部から観測できる副作用にならない）。
     setResolved(true);
   }
+
+  // モジュールスコープのラッチ書き込みだけはコミット後に行う。レンダー中に
+  // 書くと、Concurrent / StrictMode で破棄されるレンダーからも共有フラグが
+  // 立ってしまう（実際にはコミットされていない解決を「解決済み」として
+  // 他コンポーネントの初期値に漏らす）。
+  useEffect(() => {
+    if (!isPending) {
+      markResolved();
+    }
+  }, [isPending]);
 
   return isPending && !resolved;
 }

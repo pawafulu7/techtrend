@@ -129,4 +129,30 @@ describe('useInfiniteFavorites', () => {
     expect(query).toBeDefined();
     expect(query.options.refetchOnReconnect).toBe(false);
   });
+
+  it('bfcache 復元（pageshow persisted）で再取得しない', async () => {
+    // かつて pageshow(persisted) で invalidateQueries({ refetchType: 'active' })
+    // していたため、/favorites に戻るたびに読み込み済みの全ページが 1 ページ目から
+    // 取り直され、一覧の内容とスクロール位置が失われていた。
+    // use-infinite-articles.ts と同じ判断で、この経路は持たない。
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useInfiniteFavorites(), {
+      wrapper: createWrapper(queryClient),
+    });
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(favoritesUrls()).toHaveLength(1);
+
+    act(() => {
+      const event = new Event('pageshow') as PageTransitionEvent;
+      Object.defineProperty(event, 'persisted', { value: true });
+      window.dispatchEvent(event);
+    });
+    await flush();
+
+    // 再取得が起きていないこと、stale 化もされていないこと
+    expect(favoritesUrls()).toHaveLength(1);
+    expect(favoritesQuery(queryClient).state.isInvalidated).toBe(false);
+  });
 });

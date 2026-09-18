@@ -70,20 +70,15 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     []
   );
 
-  // bfcache復元時にキャッシュを無効化して再取得
-  useEffect(() => {
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        queryClient.invalidateQueries({
-          queryKey: ['infinite-favorites'],
-          refetchType: 'active',
-        });
-      }
-    };
-
-    window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
-  }, [queryClient]);
+  // 注: bfcache 復元（pageshow）での再取得は行わない。
+  // app/hooks/use-infinite-articles.ts と同じ判断。invalidateQueries の
+  // refetchType: 'active' は読み込み済みの全ページを 1 ページ目から取り直すため、
+  // /favorites に戻るたびに本 PR が直している「復帰で一覧の内容とスクロール位置が
+  // 失われる」症状をそのまま再現していた。
+  // 鮮度は再マウント経路で担保される（下の refetchOnMount は既定 true のまま）。
+  // 受容する理由: bfcache 復元の発火経路自体が極小である。SPA 内遷移では
+  // pageshow(persisted) が発火せず、BASIC 認証ゲート環境では no-store により
+  // そもそも bfcache の対象外になる。
 
   // Shared cache update logic for favorite removal
   const updateCacheOnRemove = useCallback(
