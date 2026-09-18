@@ -103,16 +103,18 @@ export function ArticleCount({
     enabled: !isLoadingPreferences,
   });
 
+  // エラー判定を先に行う。エラー時は count が undefined のままなので、
+  // count === undefined を先に置くとスケルトンが永久に表示される。
+  if (isError) {
+    return null;
+  }
+
   // データ（count）がある間はスケルトンに差し替えない。再取得中やセッション
   // 判定中に差し替えると home と同型の破壊的ガードになる。
   if (count === undefined) {
     return (
       <div className="h-5 w-20 animate-pulse rounded bg-(--tt-color-surface-muted)" />
     );
-  }
-
-  if (isError) {
-    return null;
   }
 
   return (

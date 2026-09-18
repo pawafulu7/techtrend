@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
+import { useIsSessionPendingLatched } from '@/lib/auth/use-session-resolved';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const STORAGE_KEY_PREFIX = 'techtrend-read-articles';
@@ -90,12 +91,11 @@ export function useReadStatus(articleIds?: string[]) {
   // （タブ復帰時の再検証など）。その揺れをそのまま enabled に流すと false→true の
   // 再遷移で TanStack Query の shouldFetchOptionally 経路が走り、タブ復帰ごとに
   // 既読状態が再取得される。そこで「一度 false になったら以降 false 固定」の
-  // ラッチを掛ける（lib/hooks/use-personalization-preferences.ts と同じ形）。
-  const [hasSessionResolved, setHasSessionResolved] = useState(false);
-  if (!isPending && !hasSessionResolved) {
-    setHasSessionResolved(true);
-  }
-  const isSessionPendingLatched = isPending && !hasSessionResolved;
+  // ラッチを掛ける。
+  // ラッチはモジュールスコープの共有状態（lib/auth/use-session-resolved.ts）で、
+  // lib/hooks/use-personalization-preferences.ts と同じ実体を使う。インスタンス
+  // 単位だと記事詳細 → ホームのような再マウント経路でラッチが効かない。
+  const isSessionPendingLatched = useIsSessionPendingLatched();
 
   // storageUserId は localStorage のバケット選択に使うと同時に、undefined が
   // 「identity 未確定」を表す意図的な sentinel になっている（saveToLocalStorage /

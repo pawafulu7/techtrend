@@ -46,10 +46,24 @@ type InfiniteArticlesData = InfiniteData<ArticlesResponse, number>;
 // related-articles / interest-categories はユーザー非依存の公開データなので対象外。
 // digest は queryKey が ['digest', period] で principal を含まないがパーソナライズ
 // 由来のユーザー固有データなので含める。
+// article-count も queryKey が searchParams と設定値のみで principal を含まず、
+// readFilter 付きの件数などはユーザー依存なので含める。
 const USER_SCOPED_QUERY_KEY_PREFIXES = [
   ['infinite-articles'],
   ['infinite-favorites'],
   ['digest'],
+  ['article-count'],
+] as const;
+
+// サインアウト・セッション失効（X → null）で破棄するキャッシュ。
+// 中身そのものがユーザー固有なので、ゲストに見せて良いものが 1 つも残らない。
+// 表示中でなければ実害は無く、表示中ならサインアウトしたのだから消えるのが正しい。
+// ['infinite-articles'] はここに含めない（記事本体は公開データで、読み込み済み
+// ページとスクロール位置を捨てないため。ユーザー固有フィールドだけを剥がす）。
+const SIGNED_OUT_REMOVED_QUERY_KEY_PREFIXES = [
+  ['infinite-favorites'],
+  ['digest'],
+  ['article-count'],
 ] as const;
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
@@ -62,12 +76,14 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
             gcTime: 10 * 60 * 1000, // 10分（旧 cacheTime）
             retry: 1,
             refetchOnWindowFocus: false,
-            // 未設定だと networkMode !== 'always' により既定 true になり、online
-            // イベント（スリープ復帰・WiFi 再接続）で infinite query の読み込み済み
-            // 全ページが 1 ページ目から取り直される。ログイン状態に依存しない
-            // 唯一の強制再取得経路なのでグローバルに無効化する。
-            // app/dashboard/** は refetchInterval を明示指定しており影響を受けない。
-            refetchOnReconnect: false,
+            // refetchOnReconnect はここ（グローバル既定）では設定しない。
+            // 「online イベントで読み込み済み全ページが 1 ページ目から取り直される」
+            // 問題が起きるのはページを蓄積する infinite query だけなので、
+            // app/hooks/use-infinite-articles.ts と app/hooks/use-infinite-favorites.ts
+            // の 2 フックに個別指定している。
+            // グローバルに false にすると、fetch 開始後に失敗したクエリ（retry: 1
+            // 到達後の isError）がネットワーク復帰でも自動復帰しなくなり、
+            // ホームが全画面エラーカードのまま「再試行」を押すまで戻らない。
           },
         },
       })
@@ -104,7 +120,8 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
   //   isPending 中                        → 破棄しない（identity 不定・前回値も更新しない）
   //   未解決 → X                          → 破棄しない（初回解決。比較対象が無い）
   //   X → X                               → 破棄しない（変化なし）
-  //   X → null（失効・サインアウト）      → 破棄しない
+  //   X → null（失効・サインアウト）      → 一覧はユーザー固有フィールドのみ剥がす、
+  //                                          お気に入り・ダイジェスト・件数は破棄
   //   null → Y（最後の非 null が X ≠ Y）  → 破棄する
   //   null → Y（最後の非 null が Y）      → 破棄しない（同一ユーザーの再ログイン）
   //   X → Y（両方非 null、X ≠ Y）         → 破棄する
@@ -120,20 +137,59 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 
     const nextPrincipal = currentUserId ?? null;
 
-    // X → null（セッション失効・サインアウト）では破棄しない。
-    // 新しい principal が現れていないので privacy リスクは無い。逆にここで破棄すると
-    // 読み込み済みの一覧・お気に入り・ダイジェストを全て捨てることになり、この PR で
-    // 直している「タブ復帰で内容が失われる」症状を別経路で再現してしまう。
-    // better-auth は失効時に 200 + null を返す（上記 session.mjs:182-191）ため、
-    // この経路はタブ復帰のたびに現実的に発生する。
-    // 前回値も更新しないので、次に非 null principal が現れたときに「前ユーザーとの
-    // 差」で判定できる。
+    // X → null（セッション失効・サインアウト）。
     //
-    // 残る既知の妥協: サインアウト後・別ユーザーログイン前の窓では、別タブに前
-    // ユーザーのお気に入り／既読表示が残る（gcTime 以内）。これは「古い UI が残る」
-    // 問題であり、別ユーザーに前ユーザーのデータが見えるという漏洩ではない。次に
-    // 別 principal が現れた時点で破棄されるためリスクは受容する。
-    if (nextPrincipal === null) return;
+    // ここで ['infinite-articles'] を removeQueries してはならない。better-auth は
+    // 失効時に 200 + null を返す（上記 session.mjs:182-191）ため、この経路はタブ
+    // 復帰のたびに現実的に発生する。破棄すると読み込み済みの一覧を毎回捨てることに
+    // なり、この PR で直している「タブ復帰で内容が失われる」症状を別経路で再現する。
+    //
+    // 一方で「ゲストには見えないから安全」は成立しない。['infinite-articles',
+    // filterKey] の filterKey に userId は含まれず、ホームは includeUserData: true
+    // で取得するため、キャッシュ内の item は isRead / isFavorited を内包している。
+    // パーソナライズ未使用のユーザーなら filterKey がゲストと完全に一致するので、
+    // サインアウト直後のゲスト表示に前ユーザーの既読・お気に入りがそのまま出る
+    // （共有端末では「別人が見る」に該当する）。
+    //
+    // そこで「キャッシュは消さずにユーザー固有フィールドだけを剥がす」。記事本体
+    // （タイトル・要約・並び）は公開データなので残り、読み込み済みページと
+    // スクロール位置は保たれる。
+    // 中身自体がユーザー固有なキャッシュ（お気に入り・ダイジェスト・件数）は
+    // そのまま破棄する。
+    //
+    // 前回値（lastPrincipalRef）は更新しない。次に非 null principal が現れたときに
+    // 「前ユーザーとの差」で判定するため。
+    if (nextPrincipal === null) {
+      // 一度も認証されていない（ゲストのまま）なら剥がすものが無い
+      if (lastPrincipalRef.current === null) return;
+
+      queryClient.setQueriesData<InfiniteArticlesData>(
+        { queryKey: ['infinite-articles'], exact: false },
+        (oldData) => {
+          if (!oldData?.pages) return oldData;
+          let changed = false;
+          const pages = oldData.pages.map((page) => {
+            if (!page?.data?.items) return page;
+            let pageChanged = false;
+            const items = page.data.items.map((item) => {
+              if (!item.isRead && !item.isFavorited) return item;
+              pageChanged = true;
+              changed = true;
+              return { ...item, isRead: false, isFavorited: false };
+            });
+            return pageChanged
+              ? { ...page, data: { ...page.data, items } }
+              : page;
+          });
+          return changed ? { ...oldData, pages } : oldData;
+        }
+      );
+
+      for (const queryKey of SIGNED_OUT_REMOVED_QUERY_KEY_PREFIXES) {
+        queryClient.removeQueries({ queryKey });
+      }
+      return;
+    }
 
     const prevPrincipal = lastPrincipalRef.current;
     lastPrincipalRef.current = nextPrincipal;
@@ -190,18 +246,26 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         }
       );
 
-      // ここで invalidateQueries は行わない。
-      // ['infinite-articles'] は直前の setQueriesData による楽観更新で完結して
-      // おり完全に冗長だった。invalidateQueries の refetchType 既定は 'active' の
-      // ため、お気に入りを 1 クリックするだけで表示中の全ページが再取得され、
-      // 記事の並びが変わっていた。
-      // ['infinite-favorites'] も無条件 invalidate をやめ、
-      // app/hooks/use-infinite-favorites.ts の「削除ならキャッシュ更新／追加なら
-      // invalidate」という条件分岐に委ねる（無条件 invalidate はその分岐を
-      // 無効化していた）。
+      // ['infinite-articles'] に対しては invalidateQueries を行わない。
+      // 直前の setQueriesData による楽観更新で完結しており完全に冗長だった。
+      // invalidateQueries の refetchType 既定は 'active' のため、お気に入りを
+      // 1 クリックするだけで表示中の全ページが再取得され、記事の並びが変わっていた。
       // app/components/article/favorite-button.tsx は成功時のみ event を
       // dispatch し、失敗時は自前でロールバックするため、楽観更新がサーバー状態と
       // 乖離する経路は作られない。
+      //
+      // 一方 ['infinite-favorites'] は stale マークだけ行う。お気に入り一覧の
+      // クエリは /favorites がマウントされている間しか存在せず、未マウント中の
+      // 変更は app/hooks/use-infinite-favorites.ts のリスナーでは拾えないため、
+      // ここで stale 化しておかないとキャッシュが最大 gcTime ぶん古いまま残る。
+      // refetchType: 'none' にすることで「表示中の一覧が勝手に取り直される」のは
+      // 避けつつ（表示中の更新は use-infinite-favorites.ts 側の
+      // 「削除ならキャッシュ更新／追加なら invalidate」の分岐が担当する）、
+      // 次回マウント時の refetchOnMount で最新が取得される。
+      queryClient.invalidateQueries({
+        queryKey: ['infinite-favorites'],
+        refetchType: 'none',
+      });
     };
 
     window.addEventListener('article-favorite-changed', handleFavoriteChanged);

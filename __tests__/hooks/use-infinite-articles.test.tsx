@@ -144,4 +144,25 @@ describe('useInfiniteArticles', () => {
     expect(articleListUrls()).toHaveLength(1);
     expect(result.current.isFetching).toBe(false);
   });
+
+  it('refetchOnReconnect をフック側で false 指定している（online イベントで全ページが取り直される回帰を防ぐ）', async () => {
+    // 未設定だと networkMode !== 'always' により既定 true になり、スリープ復帰や
+    // WiFi 再接続で読み込み済み全ページが 1 ページ目から取り直される。
+    // グローバル既定ではなくフック側で指定するのは、グローバルに置くと fetch 失敗後の
+    // クエリがネットワーク復帰で自動復帰しなくなる副作用が全クエリに及ぶため。
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(
+      () => useInfiniteArticles({ sourceId: 'source-1' }),
+      { wrapper: createWrapper(queryClient) }
+    );
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    const [query] = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ['infinite-articles'] });
+    expect(query).toBeDefined();
+    expect(query.options.refetchOnReconnect).toBe(false);
+  });
 });

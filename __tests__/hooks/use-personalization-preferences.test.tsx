@@ -11,6 +11,7 @@ import {
   useUpdatePreferences,
   usePersonalizationPreferences,
 } from '@/lib/hooks/use-personalization-preferences';
+import { resetSessionResolvedLatchForTests } from '@/lib/auth/use-session-resolved';
 
 // Mock fetch globally
 const mockFetch = jest.fn();
@@ -30,6 +31,12 @@ jest.mock('@/lib/auth/auth-client', () => ({
     signUp: { email: jest.fn() },
   },
 }));
+
+// セッション解決ラッチはモジュールスコープの共有状態なので、テスト間で漏れないよう
+// 各テストの前に必ず戻す
+beforeEach(() => {
+  resetSessionResolvedLatchForTests();
+});
 
 // Test wrapper with React Query
 function createWrapper() {
@@ -578,6 +585,62 @@ describe('usePersonalizationPreferences のローディング判定ラッチ', (
     });
     expect(result.current.isLoadingPreferences).toBe(false);
     expect(result.current.selectedCategories).toEqual(['cat-1']);
+  });
+
+  it('セッション解決後に新しくマウントしたインスタンスは、isPending が true でも isLoadingPreferences が false のまま（記事詳細 → ホームの再マウントで全ページ再取得される回帰を防ぐ）', async () => {
+    // ラッチをフックインスタンス単位で持つと、新インスタンスは必ず未解決から
+    // 始まるため再マウント経路でラッチが効かない。記事詳細からホームへ戻った
+    // ときに better-auth の online / broadcast 由来の session fetch が in-flight
+    // だと、enabled が false→true に再遷移して読み込み済み全ページが再取得される。
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url === CATEGORIES_URL) {
+        return {
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ categories: [] }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            selectedCategories: ['cat-1'],
+            filterEnabled: true,
+            periodMonths: 12,
+          }),
+      };
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    // 1 つ目のインスタンス（ホーム）でセッションが解決する
+    const first = renderHook(() => usePersonalizationPreferences(), {
+      wrapper,
+    });
+    await waitFor(() => {
+      expect(first.result.current.isLoadingPreferences).toBe(false);
+    });
+    // 記事詳細へ遷移してホームがアンマウントされる
+    first.unmount();
+
+    // ホームへ戻る瞬間に session fetch が in-flight（isPending: true）
+    mockUseSession.mockImplementation(() => sessionOf('user-1', true));
+    const second = renderHook(() => usePersonalizationPreferences(), {
+      wrapper,
+    });
+
+    // 初回レンダーから false であること（true から始まると enabled が振れる）
+    expect(second.result.current.isLoadingPreferences).toBe(false);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(second.result.current.isLoadingPreferences).toBe(false);
   });
 
   it('principal が変わって preferences 取得中になったら isLoadingPreferences が true になる（preferencesQuery.isLoading をラッチしないことの保証 / Issue #569 の別条件再発防止）', async () => {

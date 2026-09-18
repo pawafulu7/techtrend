@@ -14,6 +14,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode } from 'react';
 import { useReadStatus } from '@/app/hooks/use-read-status';
+import { resetSessionResolvedLatchForTests } from '@/lib/auth/use-session-resolved';
 
 const READ_STATUS_URL = '/api/articles/read-status';
 const STORAGE_KEY_PREFIX = 'techtrend-read-articles';
@@ -83,6 +84,9 @@ function mockServerReadStatus(readArticleIds: string[], unreadCount: number) {
 
 describe('useReadStatus', () => {
   beforeEach(() => {
+    // セッション解決ラッチはモジュールスコープの共有状態なので、テスト間で漏れない
+    // よう毎回戻す（lib/auth/use-session-resolved.ts）
+    resetSessionResolvedLatchForTests();
     // jest.setup.dom.js の clearAllMocks は実装を消さないため、実装もここで固定する
     mockFetch.mockReset();
     mockUseSession.mockReset();

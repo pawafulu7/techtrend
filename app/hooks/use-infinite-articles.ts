@@ -266,8 +266,18 @@ export function useInfiniteArticles(
   }, [handleFavoriteChanged]);
 
   // 注: bfcache復元（pageshow）での一覧再取得は行わない。
-  // 一覧の内容はcronでしか変わらず取り直す価値がない一方、既読・お気に入りといった
-  // ユーザーデータはそれぞれのフックのpageshowハンドラが復元を担当する
+  // 一覧の内容はcronでしか変わらず、取り直す価値がないため。
+  //
+  // 既知の制約: 一覧カードの既読バッジは item.isRead prop 由来
+  // （app/components/article/hooks/use-read-status.ts が導出する）で、その item は
+  // この ['infinite-articles'] キャッシュそのものである。
+  // app/hooks/use-read-status.ts の ['read-status'] は mark-all-read-wrapper.tsx
+  // からしか参照されておらず、カードの表示には関与しない。
+  // したがって bfcache 復元後、別タブ等で変わった既読状態はカードのバッジに
+  // 反映されず復元前のまま残りうる。
+  // 受容する理由: bfcache 復元の発火経路自体が極小である。SPA 内遷移では
+  // pageshow(persisted) が発火せず、BASIC 認証ゲート環境では no-store により
+  // そもそも bfcache の対象外になる。
   const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
     queryFn: async ({ pageParam, signal }) => {
@@ -366,10 +376,21 @@ export function useInfiniteArticles(
       return page < totalPages ? page + 1 : undefined;
     },
     initialPageParam: 1,
-    staleTime: 1000 * 60 * 5, // 5分間キャッシュ（1分→5分に延長）
+    // staleTime は 5 分だが、現状これを消費する経路は 1 本も残っていない。
+    // mount / focus / reconnect / interval がすべて無効なので、stale になっても
+    // 再取得のきっかけが無く実質デッド設定である（一覧は cron でしか変わらない、
+    // という判断に基づく意図的なトレードオフ）。手動更新 UI（次 PR）が入ると
+    // この設定が初めて意味を持つ。
+    staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 30, // 30分間メモリに保持（データ転送削減、10分→30分に延長）
     refetchOnWindowFocus: false, // 通常はfalse（パフォーマンスのため）
     refetchOnMount: false, // マウント時の再取得はしない（一覧はcronでしか更新されない）
+    // 未設定だと networkMode !== 'always' により既定 true になり、online イベント
+    // （スリープ復帰・WiFi 再接続）で読み込み済みの全ページが 1 ページ目から
+    // 取り直される。ページを蓄積する infinite query 固有の問題なので、グローバル
+    // 既定ではなくここで個別に無効化する（グローバルに置くと、fetch 失敗後の
+    // クエリがネットワーク復帰で自動復帰しなくなる副作用が全クエリに及ぶ）。
+    refetchOnReconnect: false,
     // 重複リクエスト防止のための設定
     refetchInterval: false, // 自動リフェッチを無効化
     retry: 1, // リトライ回数を制限

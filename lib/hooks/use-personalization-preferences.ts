@@ -7,9 +7,9 @@
 
 'use client';
 
-import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth/auth-client';
+import { useIsSessionPendingLatched } from '@/lib/auth/use-session-resolved';
 import type {
   UserCategoryPreferences,
   UpdateCategoryPreferencesRequest,
@@ -223,7 +223,6 @@ export function useUpdatePreferences(scope: PreferenceScope = 'home') {
  * Combined hook for personalization preferences management
  */
 export function usePersonalizationPreferences(scope: PreferenceScope = 'home') {
-  const { isPending: isSessionPending } = authClient.useSession();
   const categoriesQuery = useInterestCategories();
   const preferencesQuery = useUserPreferences(scope);
   const updateMutation = useUpdatePreferences(scope);
@@ -240,12 +239,13 @@ export function usePersonalizationPreferences(scope: PreferenceScope = 'home') {
   // false になったら以降 false 固定」のラッチを掛ける。
   // preferencesQuery.isLoading はラッチしない: principal が変わったときは新しい
   // 設定の解決を待たなければ Issue #569 が別条件で再発するため。
-  // ラッチはフックインスタンス単位（scope ごとに独立）で保持する。
-  const [hasSessionResolved, setHasSessionResolved] = useState(false);
-  if (!isSessionPending && !hasSessionResolved) {
-    setHasSessionResolved(true);
-  }
-  const isSessionPendingLatched = isSessionPending && !hasSessionResolved;
+  //
+  // ラッチはモジュールスコープの共有状態（lib/auth/use-session-resolved.ts）。
+  // フックインスタンス単位で持つと、記事詳細 → ホームのような再マウント経路で
+  // 新インスタンスが「未解決」から始まりラッチが効かない。ラッチしているのは
+  // isSessionPending の項だけで、これはセッション全体のグローバルな事実であり
+  // scope 固有ではない（scope 固有なのは preferencesQuery.isLoading の側）。
+  const isSessionPendingLatched = useIsSessionPendingLatched();
 
   const isLoadingPreferences =
     isSessionPendingLatched || preferencesQuery.isLoading;

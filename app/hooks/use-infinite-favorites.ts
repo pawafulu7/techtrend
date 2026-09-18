@@ -220,7 +220,17 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     staleTime: 1000 * 60 * 5, // 5分間キャッシュ
     gcTime: 1000 * 60 * 30, // 30分間メモリに保持
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // マウント毎の再取得はしない（変更はイベント/pageshowで反映）
+    // 未設定だと networkMode !== 'always' により既定 true になり、online イベント
+    // （スリープ復帰・WiFi 再接続）で読み込み済みの全ページが 1 ページ目から
+    // 取り直される。ページを蓄積する infinite query 固有の問題なので、グローバル
+    // 既定ではなくここで個別に無効化する（グローバルに置くと、fetch 失敗後の
+    // クエリがネットワーク復帰で自動復帰しなくなる副作用が全クエリに及ぶ）。
+    refetchOnReconnect: false,
+    // refetchOnMount は既定（true）のまま。お気に入り一覧はマウント時に取り直す
+    // 必要がある。このフックの利用者は /favorites のみ
+    // （app/favorites/_components/favorites-content.tsx）で、未マウント中に他画面で
+    // 起きたお気に入りの追加・削除を上の window イベントリスナーで拾えないため、
+    // false にするとキャッシュが最大 gcTime ぶん古いまま表示される。
     retry: 1,
     retryDelay: 1000,
   });

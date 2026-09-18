@@ -36,9 +36,19 @@ type MockPreferences = {
   isLoadingPreferences: boolean;
 };
 
-const mockUseInfiniteArticles = jest.fn<MockInfiniteArticles, []>();
+type InfiniteArticlesOptions = { enabled?: boolean } | undefined;
+
+const mockUseInfiniteArticles = jest.fn<
+  MockInfiniteArticles,
+  [Record<string, unknown>, InfiniteArticlesOptions]
+>();
+// 第 2 引数（options）まで通す。ここで引数を捨てると、コンポーネントが渡している
+// `{ enabled: !isLoadingPreferences }` が一切検証されなくなる。
 jest.mock('@/app/hooks/use-infinite-articles', () => ({
-  useInfiniteArticles: () => mockUseInfiniteArticles(),
+  useInfiniteArticles: (
+    filters: Record<string, unknown>,
+    options: InfiniteArticlesOptions
+  ) => mockUseInfiniteArticles(filters, options),
 }));
 
 const mockUsePersonalizationPreferences = jest.fn<MockPreferences, []>();
@@ -125,6 +135,12 @@ function renderHome() {
   );
 }
 
+/** useInfiniteArticles に最後に渡された options（第 2 引数） */
+function lastInfiniteArticlesOptions(): InfiniteArticlesOptions {
+  const calls = mockUseInfiniteArticles.mock.calls;
+  return calls[calls.length - 1]?.[1];
+}
+
 describe('HomeClientInfinite の非破壊ローディング', () => {
   beforeEach(() => {
     mockUseInfiniteArticles.mockReturnValue(loadedArticles());
@@ -164,5 +180,36 @@ describe('HomeClientInfinite の非破壊ローディング', () => {
       screen.queryByText('記事が見つかりませんでした')
     ).not.toBeInTheDocument();
     expect(screen.queryByTestId('article-list')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * 記事クエリの enabled は `!isLoadingPreferences` で決まる。この配線が外れる
+ * （第 2 引数を渡し忘れる・条件を変える）と、enabled の true→false→true 再遷移で
+ * TanStack Query の shouldFetchOptionally 経路が走り、読み込み済み全ページの
+ * 再取得が復活する。
+ *
+ * なお「isLoadingPreferences が一度 false になったら true へ戻らない」ラッチ側の
+ * 保証は __tests__/hooks/use-personalization-preferences.test.tsx が固定している
+ * （このファイルでは usePersonalizationPreferences をモックしているため、
+ *   ここで検証できるのは配線だけ）。2 つ合わせて「enabled が振れない」が担保される。
+ */
+describe('HomeClientInfinite の記事クエリ enabled 配線', () => {
+  beforeEach(() => {
+    mockUseInfiniteArticles.mockReturnValue(loadedArticles());
+  });
+
+  it('isLoadingPreferences をそのまま反転して enabled に渡している', () => {
+    mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
+    const { rerender } = renderHome();
+
+    expect(lastInfiniteArticlesOptions()).toEqual({ enabled: true });
+
+    mockUsePersonalizationPreferences.mockReturnValue(preferences(true));
+    rerender(
+      <HomeClientInfinite viewMode="card" sources={SOURCES} tags={TAGS} />
+    );
+
+    expect(lastInfiniteArticlesOptions()).toEqual({ enabled: false });
   });
 });
