@@ -261,7 +261,7 @@ describe('QueryProvider の principal 変化検知', () => {
     ]);
   });
 
-  it('401 由来の data: null では破棄しない', () => {
+  it('401 由来の data: null ではキャッシュを破棄しない（ただしサニタイズはする）', () => {
     // 401 は「別ユーザーが現れた」ことを意味しない。
     // 一時的な認証エラーでキャッシュ全体を失わせないためのガード。
     mockUseSession.mockReturnValue(signedInAs('userA'));
@@ -275,6 +275,117 @@ describe('QueryProvider の principal 変化検知', () => {
     );
 
     expect(removedQueryKeys()).toEqual([]);
+  });
+
+  it('401 でも infinite-articles の isRead / isFavorited は剥がす', () => {
+    // 401 で早期 return してサニタイズまで飛ばすと、session.data が null の
+    // 画面（＝ゲスト表示）に前ユーザーの既読・お気に入りが残ったままになる。
+    // キャッシュ全体を破棄しないことと、ユーザー固有フィールドを剥がすことは両立する。
+    mockUseSession.mockReturnValue(signedInAs('userA'));
+    const { rerender } = renderProvider();
+
+    const client = capturedClient;
+    expect(client).not.toBeNull();
+
+    const queryKey = ['infinite-articles', '{"sortBy":"publishedAt"}'];
+    client!.setQueryData(queryKey, {
+      pages: [
+        {
+          data: {
+            items: [{ id: 'article-1', isRead: true, isFavorited: true }],
+          },
+        },
+      ],
+      pageParams: [1],
+    });
+
+    mockUseSession.mockReturnValue(SESSION_UNAUTHORIZED);
+    rerender(
+      <QueryProvider>
+        <ClientProbe onReady={captureClient} />
+      </QueryProvider>
+    );
+
+    const after = client!.getQueryData(queryKey) as {
+      pages: Array<{
+        data: {
+          items: Array<{ id: string; isRead: boolean; isFavorited: boolean }>;
+        };
+      }>;
+    };
+    expect(after.pages[0].data.items).toEqual([
+      { id: 'article-1', isRead: false, isFavorited: false },
+    ]);
+    // 401 では removeQueries は一切走らない（表示中の件数・ダイジェストを失わせない）
+    expect(removedQueryKeys()).toEqual([]);
+  });
+
+  it('解決済みゲスト → ユーザーではユーザー依存キャッシュを破棄する', () => {
+    // 「未観測」と「解決済みゲスト」を同じ null で表すと、この遷移が初回解決と
+    // 区別できず破棄を取りこぼす。ホームの queryKey に userId は含まれず
+    // refetchOnMount: false なので、取りこぼすとゲスト時の全 false な
+    // isRead / isFavorited がログイン後もそのまま再利用される。
+    mockUseSession.mockReturnValue(SESSION_SIGNED_OUT);
+    const { rerender } = renderProvider();
+
+    // 初回解決（未観測 → ゲスト）では何もしない
+    expect(removedQueryKeys()).toEqual([]);
+
+    mockUseSession.mockReturnValue(signedInAs('userA'));
+    rerender(
+      <QueryProvider>
+        <ClientProbe onReady={captureClient} />
+      </QueryProvider>
+    );
+
+    expect(removedQueryKeys()).toEqual(USER_SCOPED_KEYS);
+  });
+
+  it('セッションの初回解決（未観測 → ゲスト）では何もしない', () => {
+    // ゲストのまま開いただけでサニタイズや破棄が走らないこと。
+    mockUseSession.mockReturnValue(SESSION_PENDING);
+    const { rerender } = renderProvider();
+
+    mockUseSession.mockReturnValue(SESSION_SIGNED_OUT);
+    rerender(
+      <QueryProvider>
+        <ClientProbe onReady={captureClient} />
+      </QueryProvider>
+    );
+
+    expect(removedQueryKeys()).toEqual([]);
+    // ゲスト → ゲストの再レンダリングでも何も起きない
+    rerender(
+      <QueryProvider>
+        <ClientProbe onReady={captureClient} />
+      </QueryProvider>
+    );
+    expect(removedQueryKeys()).toEqual([]);
+  });
+
+  it('同一ユーザーの再ログイン（X → 未認証 → X）でも破棄する', () => {
+    // X → null でサニタイズ済みの isRead / isFavorited は false に潰れている。
+    // 前回値を X のまま据え置くと再ログインが「変化なし」と判定され、
+    // その false が残り続ける（refetchOnMount: false なので自然回復しない）。
+    mockUseSession.mockReturnValue(signedInAs('userA'));
+    const { rerender } = renderProvider();
+
+    const rerenderProvider = () =>
+      rerender(
+        <QueryProvider>
+          <ClientProbe onReady={captureClient} />
+        </QueryProvider>
+      );
+
+    mockUseSession.mockReturnValue(SESSION_SIGNED_OUT);
+    rerenderProvider();
+    expect(removedQueryKeys()).toEqual(SIGNED_OUT_REMOVED_KEYS);
+    removeQueriesSpy.mockClear();
+
+    mockUseSession.mockReturnValue(signedInAs('userA'));
+    rerenderProvider();
+
+    expect(removedQueryKeys()).toEqual(USER_SCOPED_KEYS);
   });
 
   it('サインアウトを挟んだ別ユーザーのログイン（X → 未認証 → Y）では破棄する', () => {

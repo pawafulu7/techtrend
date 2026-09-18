@@ -106,38 +106,48 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
   // この 401 ガードだけでは失効時のキャッシュ破棄を防げない。破棄条件そのものを
   // 「別の非 null principal が現れたときだけ」に狭めることで対処している（下記）。
   const isSessionUnauthorized = sessionError?.status === 401;
-  // 「最後に確定した非 null の principal」のみを記録する。
-  // null = まだ非 null principal を観測していない、string = 確定ユーザー ID。
-  // isPending 中・401 由来の値・null への遷移では上書きしない。null を前回値として
-  // 記録しないのが要点で、サインアウト → 別ユーザーログインの経路でも
-  // 「前ユーザー X」と「新ユーザー Y」を直接比較できる。
-  const lastPrincipalRef = useRef<string | null>(null);
+  // principal を 3 状態で管理する。
+  //   undefined = まだ一度もセッションを観測していない（初回解決前）
+  //   null      = 解決済みのゲスト（サインアウト済み・未ログイン）
+  //   string    = 解決済みの確定ユーザー ID
+  // 「未観測」と「ゲスト」を同じ null で表すと、ゲスト → ユーザーの遷移が
+  // 「初回解決」と区別できず破棄を取りこぼす。ホームの ['infinite-articles',
+  // filterKey] は filterKey に userId を含まず refetchOnMount: false なので、
+  // 取りこぼすとゲスト時の全 false な isRead / isFavorited がログイン後も
+  // 再利用され、自然回復しない。
+  // isPending 中は更新しない（identity が不定なため）。
+  const lastPrincipalRef = useRef<string | null | undefined>(undefined);
 
   // 別の principal が現れたらユーザー依存キャッシュを破棄する（別ユーザーに前
   // ユーザーのデータが見えるのを防ぐ）。
   //
   // 遷移ごとの挙動:
-  //   isPending 中                        → 破棄しない（identity 不定・前回値も更新しない）
-  //   未解決 → X                          → 破棄しない（初回解決。比較対象が無い）
-  //   X → X                               → 破棄しない（変化なし）
+  //   isPending 中                        → 何もしない（identity 不定・前回値も更新しない）
+  //   未観測 → X / 未観測 → ゲスト        → 何もしない（初回解決。比較対象が無い）
+  //   X → X                               → 何もしない（変化なし）
+  //   ゲスト → ゲスト                     → 何もしない（変化なし）
   //   X → null（失効・サインアウト）      → 一覧はユーザー固有フィールドのみ剥がす、
   //                                          お気に入り・ダイジェスト・件数は破棄
-  //   null → Y（最後の非 null が X ≠ Y）  → 破棄する
-  //   null → Y（最後の非 null が Y）      → 破棄しない（同一ユーザーの再ログイン）
+  //   X → null（401）                     → 一覧のユーザー固有フィールドのみ剥がす
+  //                                          （キャッシュ全体は破棄しない）
+  //   ゲスト → Y                          → 破棄する（ゲスト用キャッシュの再利用を防ぐ）
   //   X → Y（両方非 null、X ≠ Y）         → 破棄する
-  //   401 由来の data: null               → 破棄しない
+  //   X → null → X（同一ユーザーの再ログイン）→ 破棄する（剥がし済みの false を捨てる）
   useEffect(() => {
     // isPending 中は identity が不定。前回値の更新も判定も行わない
     if (isSessionPending) return;
 
-    // 401 由来の data: null は principal 変化として扱わない。
-    // 下の「null への遷移では破棄しない」で実質カバーされるが、401 を principal の
-    // 変化として扱わないという意図を明示するために残す。
-    if (isSessionUnauthorized) return;
-
     const nextPrincipal = currentUserId ?? null;
+    const prevPrincipal = lastPrincipalRef.current;
 
-    // X → null（セッション失効・サインアウト）。
+    // 初回解決（未観測 → 確定）: 比較対象が無い。ここで破棄すると全画面が
+    // 毎ロード 1 回リセットされる
+    if (prevPrincipal === undefined) {
+      lastPrincipalRef.current = nextPrincipal;
+      return;
+    }
+
+    // X → null（セッション失効・サインアウト・401）。
     //
     // ここで ['infinite-articles'] を removeQueries してはならない。better-auth は
     // 失効時に 200 + null を返す（上記 session.mjs:182-191）ため、この経路はタブ
@@ -155,13 +165,15 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
     // （タイトル・要約・並び）は公開データなので残り、読み込み済みページと
     // スクロール位置は保たれる。
     // 中身自体がユーザー固有なキャッシュ（お気に入り・ダイジェスト・件数）は
-    // そのまま破棄する。
+    // そのまま破棄する。ただし 401 は「一時的な認証エラー」であって別ユーザーの
+    // 出現ではないため、キャッシュ全体の破棄は行わずフィールド剥がしだけに留める。
     //
-    // 前回値（lastPrincipalRef）は更新しない。次に非 null principal が現れたときに
-    // 「前ユーザーとの差」で判定するため。
+    // 前回値は null（解決済みゲスト）に更新する。更新しないと同一ユーザーの
+    // 再ログイン（X → null → X）が「変化なし」と判定され、ここで false に
+    // 剥がしたままのキャッシュが再利用されてしまう。
     if (nextPrincipal === null) {
-      // 一度も認証されていない（ゲストのまま）なら剥がすものが無い
-      if (lastPrincipalRef.current === null) return;
+      // すでに解決済みゲストなら剥がすものが無い
+      if (prevPrincipal === null) return;
 
       queryClient.setQueriesData<InfiniteArticlesData>(
         { queryKey: ['infinite-articles'], exact: false },
@@ -185,26 +197,26 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         }
       );
 
-      for (const queryKey of SIGNED_OUT_REMOVED_QUERY_KEY_PREFIXES) {
-        queryClient.removeQueries({ queryKey });
+      // 401 ではキャッシュ全体を破棄しない（一時的な認証エラーで表示中の
+      // お気に入り・ダイジェスト・件数まで失わせないため）。
+      if (!isSessionUnauthorized) {
+        for (const queryKey of SIGNED_OUT_REMOVED_QUERY_KEY_PREFIXES) {
+          queryClient.removeQueries({ queryKey });
+        }
       }
+      lastPrincipalRef.current = null;
       return;
     }
 
-    const prevPrincipal = lastPrincipalRef.current;
-    lastPrincipalRef.current = nextPrincipal;
-
-    // 初回解決（未観測 → 確定 ID）: 比較対象が無い。ここで破棄すると全画面が
-    // 毎ロード 1 回リセットされる
-    if (prevPrincipal === null) return;
-    // 同一ユーザー（X → X、および null を挟んだ同一ユーザーの再ログイン）
-    if (prevPrincipal === nextPrincipal) return;
-
-    // ここに到達するのは prevPrincipal・nextPrincipal がどちらも確定 ID で、かつ
-    // 異なる場合のみ（X → Y、または X → null → Y）。別ユーザーが現れた。
-    for (const queryKey of USER_SCOPED_QUERY_KEY_PREFIXES) {
-      queryClient.removeQueries({ queryKey });
+    // ここに到達するのは prevPrincipal が解決済み（null または確定 ID）で、
+    // nextPrincipal が確定 ID の場合。異なるなら別 principal が現れたので破棄する
+    // （X → Y、X → null → Y、ゲスト → Y、X → null → X の再ログインを含む）。
+    if (prevPrincipal !== nextPrincipal) {
+      for (const queryKey of USER_SCOPED_QUERY_KEY_PREFIXES) {
+        queryClient.removeQueries({ queryKey });
+      }
     }
+    lastPrincipalRef.current = nextPrincipal;
   }, [isSessionPending, isSessionUnauthorized, currentUserId, queryClient]);
 
   // Global listener for cross-screen cache sync

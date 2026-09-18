@@ -30,10 +30,11 @@ jest.mock('@/lib/hooks/use-personalization-preferences', () => ({
   usePersonalizationPreferences: () => mockUsePersonalizationPreferences(),
 }));
 
+let mockSearchParams = new URLSearchParams();
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
   usePathname: () => '/',
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams,
 }));
 
 function preferences(isLoading: boolean): MockPreferences {
@@ -92,6 +93,7 @@ describe('ArticleCount の非破壊ローディング', () => {
     mockFetch = jest.fn();
     global.fetch = mockFetch as unknown as typeof fetch;
     mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
+    mockSearchParams = new URLSearchParams();
   });
 
   it('件数が表示済みなら、再取得中でもスケルトンに差し替えない', async () => {
@@ -163,5 +165,68 @@ describe('ArticleCount の非破壊ローディング', () => {
       await deferred.promise;
     });
     expect(await screen.findByText('7件の記事')).toBeInTheDocument();
+  });
+});
+
+/**
+ * `returning` は記事詳細から戻ったことを示すだけの一時パラメータで、件数の
+ * 絞り込み条件ではない。queryKey に混ぜると記事詳細から戻るたびに別 queryKey に
+ * なり /api/articles が再取得される（use-infinite-articles.ts の
+ * normalizedFilters では除外済みだが、この件数クエリで横展開が漏れていた）。
+ */
+describe('ArticleCount の returning 除外', () => {
+  beforeEach(() => {
+    mockFetch = jest.fn();
+    global.fetch = mockFetch as unknown as typeof fetch;
+    mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
+    mockSearchParams = new URLSearchParams();
+  });
+
+  it('returning が付いても queryKey が変わらず再取得が起きない', async () => {
+    const queryClient = createClient();
+    mockSearchParams = new URLSearchParams('sources=src-1');
+    mockFetch.mockResolvedValue(countResponse(1234));
+
+    const { rerenderCount } = renderCount(queryClient);
+    expect(await screen.findByText('1,234件の記事')).toBeInTheDocument();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    const keysBefore = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ['article-count'] })
+      .map((query) => JSON.stringify(query.queryKey));
+    expect(keysBefore).toHaveLength(1);
+
+    // 記事詳細から戻ってきた状態
+    mockSearchParams = new URLSearchParams('sources=src-1&returning=1');
+    rerenderCount();
+
+    await waitFor(() => {
+      expect(screen.getByText('1,234件の記事')).toBeInTheDocument();
+    });
+
+    // queryKey が増えていない＝同一クエリのまま
+    const keysAfter = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ['article-count'] })
+      .map((query) => JSON.stringify(query.queryKey));
+    expect(keysAfter).toEqual(keysBefore);
+    // 再取得も起きていない
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('returning を API のリクエストパラメータに含めない', async () => {
+    const queryClient = createClient();
+    mockSearchParams = new URLSearchParams('sources=src-1&returning=1');
+    mockFetch.mockResolvedValue(countResponse(42));
+
+    renderCount(queryClient);
+    expect(await screen.findByText('42件の記事')).toBeInTheDocument();
+
+    const requestedUrl = mockFetch.mock.calls[0][0] as string;
+    const requestedParams = new URLSearchParams(requestedUrl.split('?')[1]);
+    expect(requestedParams.has('returning')).toBe(false);
+    // 他の絞り込み条件は落としていないこと
+    expect(requestedParams.get('sources')).toBe('src-1');
   });
 });
