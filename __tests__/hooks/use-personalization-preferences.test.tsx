@@ -2,7 +2,7 @@
  * usePersonalizationPreferences Hook Tests
  */
 
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode } from 'react';
 import {
@@ -504,5 +504,156 @@ describe('Scope separation', () => {
     expect(infiniteArticlesCalls).toHaveLength(0);
 
     invalidateSpy.mockRestore();
+  });
+});
+
+/**
+ * isLoadingPreferences は 2 つの項の OR で構成されており、ラッチの掛け方を
+ * 間違えると症状が正反対の 2 種類の回帰になる。
+ *  - isSessionPending をラッチしない → タブ復帰ごとに記事クエリの enabled が
+ *    false→true へ再遷移し、読み込み済み全ページの再取得とスクロール位置喪失
+ *  - preferencesQuery.isLoading までラッチする → principal 変更時に設定の解決を
+ *    待たずに記事クエリが走り、Issue #569（空状態のフラッシュ）が別条件で再発
+ * 両方向を固定する。
+ */
+describe('usePersonalizationPreferences のローディング判定ラッチ', () => {
+  const sessionOf = (userId: string, isPending = false) => ({
+    data: { user: { id: userId } },
+    isPending,
+  });
+
+  const CATEGORIES_URL = '/api/interest-categories';
+  const PREFERENCES_URL = '/api/user/preferences/categories';
+
+  beforeEach(() => {
+    mockFetch.mockReset();
+    mockUseSession.mockImplementation(() => sessionOf('user-1'));
+  });
+
+  afterEach(() => {
+    // 既定（認証済み・解決済み）へ戻し、後続テストへ状態を漏らさない
+    mockUseSession.mockImplementation(() => sessionOf('user-1'));
+  });
+
+  it('セッション解決後に isPending が true へ戻っても isLoadingPreferences は false のまま（タブ復帰で全ページ再取得される回帰を防ぐ）', async () => {
+    // better-auth はタブ復帰時の再検証で isPending を true へ戻す。その揺れを
+    // そのまま公開すると呼び出し側（home-client-infinite の enabled)が
+    // false→true に再遷移し、一覧 DOM の破棄とスクロール位置喪失を招く。
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url === CATEGORIES_URL) {
+        return {
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ categories: [] }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            selectedCategories: ['cat-1'],
+            filterEnabled: true,
+            periodMonths: 12,
+          }),
+      };
+    });
+
+    const { result, rerender } = renderHook(
+      () => usePersonalizationPreferences(),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoadingPreferences).toBe(false);
+    });
+
+    // 再検証で isPending が true へ戻る
+    mockUseSession.mockImplementation(() => sessionOf('user-1', true));
+    rerender();
+
+    expect(result.current.isLoadingPreferences).toBe(false);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(result.current.isLoadingPreferences).toBe(false);
+    expect(result.current.selectedCategories).toEqual(['cat-1']);
+  });
+
+  it('principal が変わって preferences 取得中になったら isLoadingPreferences が true になる（preferencesQuery.isLoading をラッチしないことの保証 / Issue #569 の別条件再発防止）', async () => {
+    // ラッチは isSessionPending の項だけに掛かっていなければならない。
+    // preferencesQuery.isLoading までラッチすると、ユーザー切り替え後に
+    // 前ユーザーの設定で記事クエリが走り、直後に再フェッチ（空状態のフラッシュ）になる。
+    let releaseSecondPreferences: (() => void) | undefined;
+    let preferenceCallCount = 0;
+
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url === CATEGORIES_URL) {
+        return {
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ categories: [] }),
+        };
+      }
+      if (url.startsWith(PREFERENCES_URL)) {
+        preferenceCallCount += 1;
+        if (preferenceCallCount === 1) {
+          return {
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
+                selectedCategories: ['cat-1'],
+                filterEnabled: true,
+                periodMonths: 12,
+              }),
+          };
+        }
+        // 2 人目の設定取得は明示的に解放するまで pending のままにし、
+        // 「取得中」の窓を確実に観測できるようにする
+        return new Promise((resolve) => {
+          releaseSecondPreferences = () =>
+            resolve({
+              ok: true,
+              status: 200,
+              json: () =>
+                Promise.resolve({
+                  selectedCategories: ['cat-9'],
+                  filterEnabled: true,
+                  periodMonths: 12,
+                }),
+            });
+        });
+      }
+      return { ok: true, status: 200, json: () => Promise.resolve({}) };
+    });
+
+    const { result, rerender } = renderHook(
+      () => usePersonalizationPreferences(),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoadingPreferences).toBe(false);
+    });
+    expect(result.current.selectedCategories).toEqual(['cat-1']);
+
+    // principal 変更（queryKey の userId が変わり、新しい設定の取得が始まる）
+    mockUseSession.mockImplementation(() => sessionOf('user-2'));
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.isLoadingPreferences).toBe(true);
+    });
+
+    await act(async () => {
+      releaseSecondPreferences?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoadingPreferences).toBe(false);
+    });
+    expect(result.current.selectedCategories).toEqual(['cat-9']);
   });
 });
