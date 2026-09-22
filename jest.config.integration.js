@@ -49,6 +49,16 @@ const esmAllowList = [
   '@ai-sdk',
   // @ai-sdk/provider-utils が依存（ESM のみ）
   '@workflow',
+  // sanitize-html@2.17.7 が htmlparser2@12 系（ESM のみ）をネスト依存させるため Jest の変換対象に含める
+  'sanitize-html',
+  'htmlparser2',
+  'entities',
+  'domelementtype',
+  'domutils',
+  'domhandler',
+  'dom-serializer',
+  // @faker-js/faker@10 系は ESM のみ配信のため Jest の変換対象に含める
+  '@faker-js/faker',
 ];
 const esmPattern = esmAllowList.join('|');
 
