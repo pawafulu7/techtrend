@@ -186,11 +186,11 @@
     "ioredis": "^5.7.0",
     "jsdom": "^27.0.0",
     "lucide-react": "^0.525.0",
-    "next": "^16.2.11",
+    "next": "^16.3.3",
     "next-themes": "^0.4.6",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^9.0.1",
+    "nodemailer": "^9.1.1",
     "openai": "^4.77.3",
     "p-limit": "^7.2.0",
     "pino": "^9.9.5",
@@ -208,7 +208,7 @@
     "remark-gfm": "^4.0.1",
     "resend": "^6.0.3",
     "rss-parser": "^3.13.0",
-    "sanitize-html": "^2.17.0",
+    "sanitize-html": "^2.17.7",
     "tailwind-merge": "^3.3.1",
     "unist-util-visit": "^5.0.0",
     "uuid": "^14.0.0",
@@ -217,7 +217,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.0",
-    "@faker-js/faker": "^9.9.0",
+    "@faker-js/faker": "^10.5.0",
     "@lhci/cli": "^0.15.1",
     "@mswjs/data": "^0.16.2",
     "@next/bundle-analyzer": "^16.2.6",
@@ -264,7 +264,7 @@
     "whatwg-fetch": "^3.6.20"
   },
   "overrides": {
-    "js-yaml": "4.3.1",
+    "js-yaml": "4.3.2",
     "glob": "11.1.0",
     "test-exclude": {
       "glob": "7.2.3"
@@ -276,14 +276,18 @@
     "minimatch@9": "9.0.7",
     "minimatch@10": "10.2.3",
     "@prisma/config": {
-      "effect": "3.20.0"
+      "effect": "3.20.0",
+      "deepmerge-ts": "8.0.2"
     },
-    "nodemailer": "^9.0.1",
+    "@prisma/dev": {
+      "valibot": "1.5.0"
+    },
+    "nodemailer": "^9.1.1",
     "defu": "6.1.6",
     "better-call": {
       "zod": "$zod"
     },
-    "hono": "4.12.34",
+    "hono": "4.13.5",
     "@hono/node-server": "2.0.10",
     "follow-redirects": "1.16.0",
     "postcss": "8.5.23",
@@ -294,9 +298,12 @@
     "tmp": "0.2.7",
     "qs": "6.15.2",
     "kysely": "0.28.17",
-    "fast-uri": "3.1.5",
+    "fast-uri": "3.1.6",
     "ip-address": "10.3.1",
-    "sharp": "0.35.0",
+    "sharp": "0.35.4",
+    "baseline-browser-mapping": "2.11.0",
+    "browserslist": "4.28.7",
+    "mysql2": "3.24.4",
     "brace-expansion@1": "1.1.18",
     "brace-expansion@5": "5.0.9"
   }
