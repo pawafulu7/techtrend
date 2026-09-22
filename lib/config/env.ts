@@ -185,6 +185,13 @@ const envSchema = z
     // LLM Configuration
     GEMINI_MODEL: z.string().optional(),
     GEMINI_BASE_URL: optionalUrl,
+    // 要約生成のみに適用するGemini service tier（Translator等には影響しない）
+    GEMINI_SUMMARY_SERVICE_TIER: z
+      .enum(['standard', 'flex'])
+      .optional()
+      .default('standard'),
+    // Flex tier用の短縮タイムアウト（ベストエフォート特性上、公式目安の15分を待たず早期にStandardへフォールバックする）
+    GEMINI_SUMMARY_FLEX_TIMEOUT_MS: safeCoerceInt(180000),
     AGENT_MODEL: z.string().optional(),
     LOG_LLM_RAW_RESPONSE: booleanEnum.optional().default('false'),
     USE_LOCAL_LLM_FALLBACK: booleanEnum.optional().default('false'),
@@ -218,7 +225,10 @@ const envSchema = z
 
     // Summary / Batch Processing
     SUMMARY_CONCURRENCY: safeCoerceInt(3),
-    SUMMARY_TIMEOUT: safeCoerceInt(90000),
+    // Flexタイムアウト(既定180000ms) + Standardフォールバック(既定60000ms) + マージンを包含する値。
+    // Flex tier有効時にフォールバック完了前に外側タイムアウトで打ち切られないようにするため、
+    // 90秒から300秒(5分)へ引き上げ。Standard専用運用時も安全マージンとして問題ない
+    SUMMARY_TIMEOUT: safeCoerceInt(300000),
     SUMMARY_REQUEST_DELAY: safeCoerceInt(500),
     MIN_CONTENT_LENGTH: safeCoerceInt(100),
     MIN_PROCESSED_FOR_FAILURE: z.preprocess((v) => {

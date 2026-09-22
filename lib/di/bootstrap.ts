@@ -22,23 +22,38 @@ export type AppDependencies = {
 
 let appDependencies: AppDependencies | null = null;
 
-export function buildAppDependencies(configOverrides?: DeepPartial<AppConfig>): AppDependencies {
+export function buildAppDependencies(
+  configOverrides?: DeepPartial<AppConfig>
+): AppDependencies {
   const config = loadConfig(configOverrides);
 
   const transport = new GeminiTransportImpl(
     config.gemini.apiKey,
     config.gemini.baseUrl,
     config.gemini.maxRetries,
-    config.gemini.circuitBreakerThreshold
+    config.gemini.circuitBreakerThreshold,
+    config.gemini.summaryFlexTimeoutMs
   );
 
   const promptBuilder = new PromptBuilder();
-  const adapter = new GeminiSummaryAdapter(transport, promptBuilder, config.gemini.model, {
-    temperature: config.regression.enabled ? config.regression.temperature : config.gemini.temperature,
-    topP: config.regression.enabled ? config.regression.topP : config.gemini.topP,
-    topK: config.regression.enabled ? config.regression.topK : config.gemini.topK,
-    maxOutputTokens: config.gemini.maxOutputTokens,
-  });
+  const adapter = new GeminiSummaryAdapter(
+    transport,
+    promptBuilder,
+    config.gemini.model,
+    {
+      temperature: config.regression.enabled
+        ? config.regression.temperature
+        : config.gemini.temperature,
+      topP: config.regression.enabled
+        ? config.regression.topP
+        : config.gemini.topP,
+      topK: config.regression.enabled
+        ? config.regression.topK
+        : config.gemini.topK,
+      maxOutputTokens: config.gemini.maxOutputTokens,
+    },
+    config.gemini.summaryServiceTier
+  );
 
   const translator = new GeminiTitleTranslator(transport, {
     enabled: config.translation.enabled,
@@ -94,11 +109,7 @@ export function buildTestDependencies(mocks: {
   const promptBuilder = new PromptBuilder();
   const adapter =
     mocks.adapter ||
-    new GeminiSummaryAdapter(
-      transport,
-      promptBuilder,
-      config.gemini.model
-    );
+    new GeminiSummaryAdapter(transport, promptBuilder, config.gemini.model);
 
   const translator = new GeminiTitleTranslator(transport, {
     enabled: config.translation.enabled,

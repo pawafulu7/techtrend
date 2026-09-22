@@ -1,52 +1,125 @@
 import { logger } from '@/lib/logger';
 import {
+  GeminiServiceTier,
   GeminiTransport,
   TransportRequest,
   TransportResult,
 } from './gemini-transport.interface';
 
+type CircuitBreakerState = {
+  consecutiveErrors: number;
+  circuitOpen: boolean;
+  circuitOpenUntil: number;
+};
+
+function createCircuitBreakerState(): CircuitBreakerState {
+  return { consecutiveErrors: 0, circuitOpen: false, circuitOpenUntil: 0 };
+}
+
 export class GeminiTransportImpl implements GeminiTransport {
-  private consecutiveErrors = 0;
-  private circuitOpen = false;
-  private circuitOpenUntil: number = 0;
+  // tier別にcircuit breaker状態を分離管理する。
+  // Flex tierのbest-effort起因の一時失敗が、無関係なStandard呼び出し(Translator等)や
+  // Flex失敗後のStandardフォールバック自体まで巻き込んでcircuitを開かないようにするため
+  private readonly circuitBreakers = new Map<
+    GeminiServiceTier,
+    CircuitBreakerState
+  >([
+    ['standard', createCircuitBreakerState()],
+    ['flex', createCircuitBreakerState()],
+  ]);
 
   constructor(
     private readonly apiKey: string,
     private readonly baseUrl: string = 'https://generativelanguage.googleapis.com',
     private readonly maxRetries: number = 3,
-    private readonly circuitBreakerThreshold: number = 5
+    private readonly circuitBreakerThreshold: number = 5,
+    // Flex tier用の短縮タイムアウト。公式目安の1-15分を律儀に待たず、
+    // 早期にStandardへフォールバックするための値（GHAスケジューラのバッチ時間予算を守るため）
+    private readonly flexTimeoutMs: number = 180000
   ) {}
 
   async invoke(opts: TransportRequest): Promise<TransportResult> {
-    if (this.circuitOpen && Date.now() < this.circuitOpenUntil) {
-      logger.warn('Circuit breaker is open');
+    if (opts.serviceTier === 'flex') {
+      return this.invokeWithFallback(opts);
+    }
+    return this.invokeTier('standard', opts);
+  }
+
+  /**
+   * Flex tierを試行し、非'ok'で終わった場合はStandard tierへ1回フォールバックする。
+   * リクエストボディへの`service_tier`注入もここで行う（Adapter層はserviceTierを渡すのみ）。
+   */
+  private async invokeWithFallback(
+    opts: TransportRequest
+  ): Promise<TransportResult> {
+    const flexOpts: TransportRequest = {
+      ...opts,
+      body: { ...opts.body, service_tier: 'flex' },
+      timeoutMs: this.flexTimeoutMs,
+    };
+
+    const flexResult = await this.invokeTier('flex', flexOpts);
+    if (flexResult.status === 'ok') {
+      return {
+        ...flexResult,
+        serviceTierUsed: 'flex',
+        fellBackToStandard: false,
+      };
+    }
+
+    logger.warn(
+      { requestId: opts.requestId, flexStatus: flexResult.status },
+      'Flex tier failed, falling back to standard tier'
+    );
+
+    const standardResult = await this.invokeTier('standard', opts);
+    return {
+      ...standardResult,
+      serviceTierUsed: 'standard',
+      fellBackToStandard: true,
+    };
+  }
+
+  /** 指定tierのcircuit breakerチェック・呼び出し・状態更新を行う（従来のinvoke()相当） */
+  private async invokeTier(
+    tier: GeminiServiceTier,
+    opts: TransportRequest
+  ): Promise<TransportResult> {
+    const breaker = this.circuitBreakers.get(tier)!;
+
+    if (breaker.circuitOpen && Date.now() < breaker.circuitOpenUntil) {
+      logger.warn({ tier }, 'Circuit breaker is open');
       return {
         status: 'fatal_error',
-        error: new Error('Circuit breaker is open'),
+        error: new Error(`Circuit breaker is open (tier: ${tier})`),
         latencyMs: 0,
         headers: {},
       };
     }
 
-    logger.debug({ requestId: opts.requestId }, 'Transport request start');
+    logger.debug(
+      { requestId: opts.requestId, tier },
+      'Transport request start'
+    );
 
     const result = await this.invokeWithRetry(opts);
 
     if (result.status === 'ok') {
-      this.consecutiveErrors = 0;
-      this.circuitOpen = false;
+      breaker.consecutiveErrors = 0;
+      breaker.circuitOpen = false;
     } else {
-      this.consecutiveErrors++;
-      if (this.consecutiveErrors >= this.circuitBreakerThreshold) {
-        this.circuitOpen = true;
-        this.circuitOpenUntil = Date.now() + 60000;
-        logger.warn('Circuit breaker opened');
+      breaker.consecutiveErrors++;
+      if (breaker.consecutiveErrors >= this.circuitBreakerThreshold) {
+        breaker.circuitOpen = true;
+        breaker.circuitOpenUntil = Date.now() + 60000;
+        logger.warn({ tier }, 'Circuit breaker opened');
       }
     }
 
     logger.debug(
       {
         requestId: opts.requestId,
+        tier,
         status: result.status,
         latencyMs: result.latencyMs,
       },
