@@ -38,6 +38,10 @@ jobs:
           COLLECT_FEEDS_CONCURRENCY: '7'
           SLACK_NOTIFICATION_ENABLED: ${{ secrets.SLACK_NOTIFICATION_ENABLED }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # Gemini Flex tier段階導入用(未設定時は空文字列→sanitizeEnvでundefined扱い→コード側デフォルトが適用される)
+          GEMINI_SUMMARY_SERVICE_TIER: ${{ vars.GEMINI_SUMMARY_SERVICE_TIER }}
+          GEMINI_SUMMARY_FLEX_TIMEOUT_MS: ${{ vars.GEMINI_SUMMARY_FLEX_TIMEOUT_MS }}
+          SUMMARY_TIMEOUT: ${{ vars.SUMMARY_TIMEOUT }}
         run: |
           npx tsx scripts/scheduled/collect-feeds.ts \
             "はてなブックマーク" \

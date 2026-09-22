@@ -5,6 +5,7 @@ import {
   SummaryProviderOutput,
 } from './summary-provider.interface';
 import {
+  GeminiServiceTier,
   GeminiTransport,
   TransportRequest,
 } from '../transport/gemini-transport.interface';
@@ -106,7 +107,9 @@ export class GeminiSummaryAdapter implements SummaryProvider {
     private readonly transport: GeminiTransport,
     private readonly promptBuilder: PromptBuilder,
     private readonly model: string = 'gemini-2.5-flash-lite',
-    generationOverrides?: Partial<GenerationConfig>
+    generationOverrides?: Partial<GenerationConfig>,
+    // 要約生成のみに適用するGemini service tier。Standard tierの場合はundefinedと同義
+    private readonly serviceTier: GeminiServiceTier = 'standard'
   ) {
     this.generationConfig = {
       temperature: 0.3,
@@ -142,6 +145,7 @@ export class GeminiSummaryAdapter implements SummaryProvider {
       },
       requestId: input.requestId,
       timeoutMs: 60000,
+      serviceTier: this.serviceTier,
     };
 
     logger.debug(

@@ -15,6 +15,10 @@ export type AppConfig = {
     topK: number;
     maxRetries: number;
     circuitBreakerThreshold: number;
+    /** 要約生成のみに適用するGemini service tier。Translator等には影響しない */
+    summaryServiceTier: 'standard' | 'flex';
+    /** Flex tier用の短縮タイムアウト(ms) */
+    summaryFlexTimeoutMs: number;
   };
   quality: {
     threshold: number;
@@ -46,6 +50,8 @@ export const defaultConfig: AppConfig = {
     topK: 40,
     maxRetries: 3,
     circuitBreakerThreshold: 5,
+    summaryServiceTier: 'standard',
+    summaryFlexTimeoutMs: 180000,
   },
   quality: {
     threshold: 70,
@@ -78,6 +84,8 @@ export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
       apiKey: env.GEMINI_API_KEY || defaultConfig.gemini.apiKey,
       model: env.GEMINI_MODEL || defaultConfig.gemini.model,
       baseUrl: env.GEMINI_BASE_URL || defaultConfig.gemini.baseUrl,
+      summaryServiceTier: env.GEMINI_SUMMARY_SERVICE_TIER,
+      summaryFlexTimeoutMs: env.GEMINI_SUMMARY_FLEX_TIMEOUT_MS,
     } as any,
     quality: {
       threshold: parseInt(
