@@ -35,7 +35,11 @@ export class GeminiTransportImpl implements GeminiTransport {
     private readonly circuitBreakerThreshold: number = 5,
     // Flex tier用の短縮タイムアウト。公式目安の1-15分を律儀に待たず、
     // 早期にStandardへフォールバックするための値（GHAスケジューラのバッチ時間予算を守るため）
-    private readonly flexTimeoutMs: number = 180000
+    private readonly flexTimeoutMs: number = 180000,
+    // Flex tier用の縮小リトライ回数。maxRetriesをそのまま使うと
+    // (maxRetries+1)回 × flexTimeoutMsの積算でフォールバックが大幅に遅れ、
+    // 「早期に見切る」という設計意図が崩れるため、Flex試行のみ小さい値に絞る
+    private readonly flexMaxRetries: number = 1
   ) {}
 
   async invoke(opts: TransportRequest): Promise<TransportResult> {
@@ -58,8 +62,20 @@ export class GeminiTransportImpl implements GeminiTransport {
       timeoutMs: this.flexTimeoutMs,
     };
 
-    const flexResult = await this.invokeTier('flex', flexOpts);
+    const flexResult = await this.invokeTier(
+      'flex',
+      flexOpts,
+      this.flexMaxRetries
+    );
     if (flexResult.status === 'ok') {
+      logger.info(
+        {
+          requestId: opts.requestId,
+          serviceTierUsed: 'flex',
+          fellBackToStandard: false,
+        },
+        'Summary generation tier result'
+      );
       return {
         ...flexResult,
         serviceTierUsed: 'flex',
@@ -73,6 +89,27 @@ export class GeminiTransportImpl implements GeminiTransport {
     );
 
     const standardResult = await this.invokeTier('standard', opts);
+
+    if (standardResult.status !== 'ok') {
+      logger.error(
+        {
+          requestId: opts.requestId,
+          flexStatus: flexResult.status,
+          standardStatus: standardResult.status,
+        },
+        'Both flex and standard-tier fallback failed'
+      );
+    } else {
+      logger.info(
+        {
+          requestId: opts.requestId,
+          serviceTierUsed: 'standard',
+          fellBackToStandard: true,
+        },
+        'Summary generation tier result'
+      );
+    }
+
     return {
       ...standardResult,
       serviceTierUsed: 'standard',
@@ -83,7 +120,8 @@ export class GeminiTransportImpl implements GeminiTransport {
   /** 指定tierのcircuit breakerチェック・呼び出し・状態更新を行う（従来のinvoke()相当） */
   private async invokeTier(
     tier: GeminiServiceTier,
-    opts: TransportRequest
+    opts: TransportRequest,
+    maxRetriesOverride?: number
   ): Promise<TransportResult> {
     const breaker = this.circuitBreakers.get(tier)!;
 
@@ -102,7 +140,7 @@ export class GeminiTransportImpl implements GeminiTransport {
       'Transport request start'
     );
 
-    const result = await this.invokeWithRetry(opts);
+    const result = await this.invokeWithRetry(opts, maxRetriesOverride);
 
     if (result.status === 'ok') {
       breaker.consecutiveErrors = 0;
@@ -130,18 +168,20 @@ export class GeminiTransportImpl implements GeminiTransport {
   }
 
   private async invokeWithRetry(
-    opts: TransportRequest
+    opts: TransportRequest,
+    maxRetriesOverride?: number
   ): Promise<TransportResult> {
     let lastResult: TransportResult | null = null;
+    const maxRetries = maxRetriesOverride ?? this.maxRetries;
 
-    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       lastResult = await this.invokeCore(opts);
 
       if (lastResult.status === 'ok') {
         return lastResult;
       }
 
-      if (lastResult.status === 'fatal_error' || attempt === this.maxRetries) {
+      if (lastResult.status === 'fatal_error' || attempt === maxRetries) {
         break;
       }
 

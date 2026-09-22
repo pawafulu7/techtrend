@@ -563,6 +563,51 @@ describe('GeminiTransportImpl', () => {
       expect(fallbackBody).not.toHaveProperty('service_tier');
     }, 15000);
 
+    it('should bound flex attempts by flexMaxRetries independently of the standard-tier maxRetries', async () => {
+      // maxRetriesは5(標準用に大きい値)だが、flexMaxRetriesは既定の1(2試行)のまま。
+      // FlexフェーズがmaxRetriesに引きずられて何度もリトライしないことを検証する
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 503,
+          text: async () => 'capacity exceeded',
+          headers: new Map(),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 503,
+          text: async () => 'capacity exceeded',
+          headers: new Map(),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({ result: 'standard-success' }),
+          headers: new Map(),
+        });
+
+      const flexTransport = new GeminiTransportImpl(
+        'test-api-key',
+        undefined,
+        5,
+        100,
+        60000
+      );
+
+      const result = await flexTransport.invoke({
+        model: 'gemini-2.5-flash-lite',
+        body: { contents: [] },
+        requestId: 'flex-bounded-retry',
+        serviceTier: 'flex',
+      });
+
+      expect(result.status).toBe('ok');
+      expect(result.serviceTierUsed).toBe('standard');
+      // flex(2試行) + standardフォールバック(1試行) = 3回でfetchが呼ばれるはず。
+      // maxRetries=5が誤ってflexに適用されていれば6回以上呼ばれてしまう
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+    }, 15000);
+
     it('should return the standard-tier failure result when both flex and the fallback fail', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: false,
@@ -617,7 +662,8 @@ describe('GeminiTransportImpl', () => {
         undefined,
         0,
         1,
-        60000
+        60000,
+        0
       );
 
       const firstResult = await flexTransport.invoke({

@@ -225,10 +225,11 @@ const envSchema = z
 
     // Summary / Batch Processing
     SUMMARY_CONCURRENCY: safeCoerceInt(3),
-    // Flexタイムアウト(既定180000ms) + Standardフォールバック(既定60000ms) + マージンを包含する値。
-    // Flex tier有効時にフォールバック完了前に外側タイムアウトで打ち切られないようにするため、
-    // 90秒から300秒(5分)へ引き上げ。Standard専用運用時も安全マージンとして問題ない
-    SUMMARY_TIMEOUT: safeCoerceInt(300000),
+    // Flex試行の最悪ケース((flexMaxRetries+1)回×flexTimeoutMs、既定 2×180000ms≈362000ms)
+    // + Standardフォールバックの最悪ケース((maxRetries+1)回×60000ms+バックオフ、既定約247000ms)
+    // + マージンを包含する値。Flex tier有効時にフォールバック完了前に外側タイムアウトで
+    // 打ち切られないよう、90秒から660秒(11分)へ引き上げ。Standard専用運用時も安全マージンとして問題ない
+    SUMMARY_TIMEOUT: safeCoerceInt(660000),
     SUMMARY_REQUEST_DELAY: safeCoerceInt(500),
     MIN_CONTENT_LENGTH: safeCoerceInt(100),
     MIN_PROCESSED_FOR_FAILURE: z.preprocess((v) => {
