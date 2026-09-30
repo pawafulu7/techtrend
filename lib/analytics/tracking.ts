@@ -26,7 +26,6 @@ export interface ReadingEvent {
   articleTitle: string;
   tags: string[];
   source: string;
-  difficulty?: string;
   timestamp: Date;
   duration: number; // 秒
   completed: boolean;
@@ -41,7 +40,6 @@ export interface ReadingStats {
   completedArticles: number;
   tagDistribution: Record<string, number>;
   sourceDistribution: Record<string, number>;
-  difficultyDistribution: Record<string, number>;
   hourlyDistribution: number[]; // 24時間分
 }
 
@@ -118,7 +116,6 @@ class AnalyticsTracker {
     title: string;
     tags: string[];
     source: string;
-    difficulty?: string;
   }) {
     if (!this.isEnabled) return;
 
@@ -152,7 +149,6 @@ class AnalyticsTracker {
       articleTitle: session.articleData.title,
       tags: session.articleData.tags,
       source: session.articleData.source,
-      difficulty: session.articleData.difficulty,
       timestamp: new Date(),
       duration,
       completed: completed || session.maxScrollDepth > 80,
@@ -241,7 +237,6 @@ class AnalyticsTracker {
         completedArticles: 0,
         tagDistribution: {},
         sourceDistribution: {},
-        difficultyDistribution: {},
         hourlyDistribution: new Array(24).fill(0)
       };
     }
@@ -259,12 +254,6 @@ class AnalyticsTracker {
     // ソース分布
     stats.sourceDistribution[event.source] = 
       (stats.sourceDistribution[event.source] || 0) + 1;
-
-    // 難易度分布
-    if (event.difficulty) {
-      stats.difficultyDistribution[event.difficulty] = 
-        (stats.difficultyDistribution[event.difficulty] || 0) + 1;
-    }
 
     // 時間帯分布
     const hour = new Date(event.timestamp).getHours();
@@ -378,7 +367,6 @@ interface SessionData {
     title: string;
     tags: string[];
     source: string;
-    difficulty?: string;
   };
   startTime: number;
   scrollEvents: Array<{

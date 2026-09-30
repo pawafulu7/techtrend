@@ -8,7 +8,6 @@ interface ArticleTrackerProps {
   title: string;
   serializedTagNames: string;
   sourceName: string;
-  difficulty: string | null;
 }
 
 export function ArticleTracker({
@@ -16,7 +15,6 @@ export function ArticleTracker({
   title,
   serializedTagNames,
   sourceName,
-  difficulty,
 }: ArticleTrackerProps) {
   const hasStartedRef = useRef(false);
   const articleIdRef = useRef(articleId);
@@ -35,7 +33,6 @@ export function ArticleTracker({
         title,
         tags: tagNames,
         source: sourceName,
-        difficulty: difficulty || undefined,
       });
       hasStartedRef.current = true;
     }
@@ -53,7 +50,6 @@ export function ArticleTracker({
           title,
           tags: tagNames,
           source: sourceName,
-          difficulty: difficulty || undefined,
         });
         hasStartedRef.current = true;
       }
@@ -70,7 +66,7 @@ export function ArticleTracker({
         hasStartedRef.current = false;
       }
     };
-  }, [articleId, title, serializedTagNames, sourceName, difficulty]);
+  }, [articleId, title, serializedTagNames, sourceName]);
 
   return null;
 }
