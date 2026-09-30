@@ -6,9 +6,6 @@
 // 記事タイプの定義
 export type ArticleType = 'unified' | 'legacy' | 'presentation' | 'news' | 'blog' | null;
 
-// 難易度レベル
-export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced' | null;
-
 // 記事ソースタイプ
 export type SourceType = 'rss' | 'api' | 'scraping';
 
@@ -94,7 +91,6 @@ export interface ArticleFilterOptions {
   publishedAfter?: Date;
   publishedBefore?: Date;
   articleTypes?: ArticleType[];
-  difficulties?: DifficultyLevel[];
   searchQuery?: string;
 }
 
@@ -180,15 +176,6 @@ export function getArticleTypeDisplay(type: ArticleType): string {
     case 'news': return 'ニュース';
     case 'blog': return 'ブログ';
     default: return '未分類';
-  }
-}
-
-export function getDifficultyDisplay(difficulty: DifficultyLevel): string {
-  switch (difficulty) {
-    case 'beginner': return '初級';
-    case 'intermediate': return '中級';
-    case 'advanced': return '上級';
-    default: return '未設定';
   }
 }
 
