@@ -57,8 +57,9 @@ describe('GET /api/articles/search/advanced', () => {
 
     const findManyWhere = prismaMock.article.findMany.mock.calls[0][0].where;
     const countWhere = prismaMock.article.count.mock.calls[0][0].where;
-    expect(findManyWhere).not.toHaveProperty('difficulty');
-    expect(countWhere).not.toHaveProperty('difficulty');
+    // AND / OR の入れ子に紛れ込んでも検出できるよう、where 全体を文字列で調べる
+    expect(JSON.stringify(findManyWhere)).not.toContain('"difficulty"');
+    expect(JSON.stringify(countWhere)).not.toContain('"difficulty"');
   });
 
   it('difficulty パラメータの有無で where 条件と結果が変わらない', async () => {

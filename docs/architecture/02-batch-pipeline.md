@@ -114,7 +114,7 @@ flowchart LR
 |----------|-----------|-----|--------------------------------|----------------|
 | `scheduler-rss-hourly` | `0 * * * *` | 毎時00分 | `collect-feeds.ts`（RSS 系ソース 70+ 件指定。他と同じく内部で `generateSummaries` を実行） | `Article`（新規保存 + 要約）, `EmbeddingJob`（enqueue） |
 | `scheduler-scraping` | `30 15 * * *`, `30 3 * * *` | 00:30, 12:30 | `collect-feeds.ts`（スクレイピング系）→ `manage-summaries.ts generate` → `manage-quality-scores.ts calculate` | `Article`（保存・要約・品質スコア）, `EmbeddingJob` |
-| `scheduler-qiita` | `5 20 * * *`, `5 8 * * *` | 05:05, 17:05 | `collect-feeds.ts`（Qiita Popular）→ 同上 3 本（同順） | `Article`, `EmbeddingJob` |
+| `scheduler-qiita` | `5 20 * * *`, `5 8 * * *` | 05:05, 17:05 | `collect-feeds.ts`（Qiita Popular）→ 同上 2 本（同順） | `Article`, `EmbeddingJob` |
 | `scheduler-tags` | `30 23 * * *`, `30 11 * * *` | 08:30, 20:30 | `generate-tags.ts` | `Tag`, `_ArticleToTag` |
 | `scheduler-daily-quality` | `0 2 * * *` | 11:00 | `manage-quality-scores.ts calculate` | `Article`（qualityScore と qualityScoreComputedAt） |
 | `scheduler-quality-auto` | `30 6 * * *` | 15:30 | `quality-check.ts --days 7 --auto-regenerate` → `auto-regenerate-low-quality.ts --threshold 70 --limit 10` | `Article`（品質フラグ・再生成後の要約/スコア） |
