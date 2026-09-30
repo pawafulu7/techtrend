@@ -38,7 +38,6 @@ export interface SearchParams extends PaginationParams {
   endDate?: string;
   minQuality?: number;
   maxQuality?: number;
-  difficulty?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
