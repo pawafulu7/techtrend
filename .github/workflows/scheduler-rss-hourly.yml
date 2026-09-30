@@ -116,7 +116,7 @@ jobs:
             "Dropbox Tech" \
             "Fly.io Blog"
           # 要約生成はcollect-feeds.ts内で実行済み
-          # 品質スコアと難易度計算は1日1回に移動 (scheduler-daily-quality.yml)
+          # 品質スコア計算は1日1回に移動 (scheduler-daily-quality.yml)
       - name: Notify failure to Slack
         if: failure()
         env:

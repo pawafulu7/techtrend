@@ -1,7 +1,7 @@
 /**
  * N+1 最適化 統合テスト
  *
- * 6つの最適化スクリプト（H1/H2/H3/H4/M8/N2）の
+ * 最適化スクリプト（H1/H2/H4/M8/N2。H3 の難易度計算は廃止）の
  * SQL正確性・冪等性・エッジケースを Docker Postgres に対して検証する。
  *
  * 実行方法 (Docker Postgres 使用):
@@ -200,9 +200,9 @@ describe('N+1 最適化 統合テスト', () => {
   });
 
   // =========================================================================
-  // H2/H3/H4: バルク UPDATE パターン
+  // H2/H4: バルク UPDATE パターン
   // =========================================================================
-  describe('H2/H3/H4: バルク UPDATE — qualityScore / difficulty / updatedAt', () => {
+  describe('H2/H4: バルク UPDATE — qualityScore / updatedAt', () => {
     let source: { id: string };
     const articleIds: string[] = [];
 
@@ -284,35 +284,6 @@ describe('N+1 最適化 統合テスト', () => {
       for (const row of after) {
         const prev = beforeMap.get(row.id)!;
         expect(row.updatedAt.getTime()).toBeGreaterThan(prev.getTime());
-      }
-    });
-
-    it('difficulty を一括更新できる', async () => {
-      const difficulties = ['beginner', 'intermediate', 'advanced'];
-      const tuples = articleIds.map((id, idx) => ({
-        id,
-        difficulty: difficulties[idx % 3],
-      }));
-
-      const values = Prisma.join(
-        tuples.map((t) => Prisma.sql`(${t.id}, ${t.difficulty})`),
-        ', ',
-      );
-
-      await prisma.$executeRaw`
-        UPDATE "Article"
-        SET "difficulty" = v.difficulty::text
-        FROM (VALUES ${values}) AS v(id, difficulty)
-        WHERE "Article".id = v.id::text
-      `;
-
-      const updated = await prisma.article.findMany({
-        where: { id: { in: articleIds } },
-        orderBy: { title: 'asc' },
-      });
-
-      for (let i = 0; i < updated.length; i++) {
-        expect(updated[i].difficulty).toBe(tuples[i].difficulty);
       }
     });
 

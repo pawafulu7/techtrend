@@ -51,7 +51,7 @@ describe('差分処理の動作確認', () => {
     await prisma.processingLog.deleteMany({
       where: {
         processName: {
-          in: ['test-summary', 'test-quality', 'test-difficulty']
+          in: ['test-summary', 'test-quality']
         }
       }
     });
@@ -144,13 +144,6 @@ describe('差分処理の動作確認', () => {
   describe.skip('品質スコアの差分処理', () => {
     it('スコアが0の記事を処理対象とする', async () => {
       // qualityScoreフィールドが現在のスキーマに存在しないためスキップ
-    });
-  });
-
-  // 難易度テストは現在のスキーマに含まれていないためスキップ
-  describe.skip('難易度の差分処理', () => {
-    it('難易度未設定の記事を処理対象とする', async () => {
-      // difficultyフィールドが現在のスキーマに存在しないためスキップ
     });
   });
 
