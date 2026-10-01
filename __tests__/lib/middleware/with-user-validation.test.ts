@@ -20,9 +20,21 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
+jest.mock('@/lib/middleware/session-context', () => ({
+  resolveSessionFromRequest: jest.fn(),
+}));
+
 // インポート（モック設定後）
-import { validateUser, createUserDeletedResponse } from '@/lib/middleware/with-user-validation';
+import { NextRequest } from 'next/server';
+import {
+  validateUser,
+  createUserDeletedResponse,
+  withUserValidation,
+} from '@/lib/middleware/with-user-validation';
 import { prisma } from '@/lib/database';
+import { prisma as appPrisma } from '@/lib/prisma';
+import { resolveSessionFromRequest } from '@/lib/middleware/session-context';
+import { logger } from '@/lib/logger';
 
 const mockPrismaUser = prisma.user as jest.Mocked<typeof prisma.user>;
 
@@ -79,6 +91,74 @@ describe('with-user-validation middleware', () => {
       const result = await validateUser({ user: { id: 'valid-user-id' } });
 
       expect(result).toEqual({ id: 'valid-user-id', deletedAt: null });
+    });
+  });
+
+  describe('withUserValidation', () => {
+    const mockResolveSession = resolveSessionFromRequest as jest.Mock;
+    const mockFindUnique = (appPrisma as any).user.findUnique as jest.Mock;
+
+    function makeRequest() {
+      return new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+      });
+    }
+
+    it('passes the validated user to the handler', async () => {
+      mockResolveSession.mockResolvedValue({ user: { id: 'user-1' } });
+      mockFindUnique.mockResolvedValue({ id: 'user-1', deletedAt: null });
+      const handler = jest.fn().mockResolvedValue(new Response(null, { status: 204 }));
+
+      const response = await withUserValidation(handler)(makeRequest(), {});
+
+      expect(response.status).toBe(204);
+      expect(handler).toHaveBeenCalledWith(
+        expect.any(NextRequest),
+        expect.objectContaining({
+          validatedUser: { id: 'user-1', deletedAt: null },
+        })
+      );
+    });
+
+    it('returns JSON 500 when resolving the session throws', async () => {
+      mockResolveSession.mockRejectedValue(new Error('session store down'));
+      const handler = jest.fn();
+
+      const response = await withUserValidation(handler)(makeRequest(), {});
+
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ error: 'Internal server error' });
+      expect(handler).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        // err キーは logger のシリアライザ（sanitizeError）を通る
+        expect.objectContaining({
+          err: expect.any(Error),
+          path: '/api/user/password',
+          method: 'POST',
+        }),
+        'User validation failed'
+      );
+    });
+
+    it('returns JSON 500 when looking up the user throws', async () => {
+      mockResolveSession.mockResolvedValue({ user: { id: 'user-1' } });
+      mockFindUnique.mockRejectedValue(new Error('db down'));
+      const handler = jest.fn();
+
+      const response = await withUserValidation(handler)(makeRequest(), {});
+
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ error: 'Internal server error' });
+      expect(handler).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        // err キーは logger のシリアライザ（sanitizeError）を通る
+        expect.objectContaining({
+          err: expect.any(Error),
+          path: '/api/user/password',
+          method: 'POST',
+        }),
+        'User validation failed'
+      );
     });
   });
 

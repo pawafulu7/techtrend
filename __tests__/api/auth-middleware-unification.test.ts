@@ -35,8 +35,8 @@ jest.mock('@/lib/auth/utils', () => ({
   changePassword: jest.fn(),
 }));
 
-// agent-search はレート制限を handler の中で行う。既定は実物に委ね、
-// 「検証済みユーザーの ID が handler に届く」ことの確認でだけ差し替える
+// agent-search はレート制限を handler の中で行う（withRateLimit を使わない）。
+// handler に届いたかどうかと、レート制限のキーに使われたユーザー ID をこれで確かめる
 const mockCheckRateLimit = jest.fn();
 jest.mock('@/lib/rate-limiter', () => {
   const actual = jest.requireActual('@/lib/rate-limiter');
@@ -45,6 +45,17 @@ jest.mock('@/lib/rate-limiter', () => {
     checkRateLimit: (...args: unknown[]) => mockCheckRateLimit(...args),
   };
 });
+
+// agent-search の後段（SSE / batch）。検証済みユーザーの ID が渡ることだけを確かめる
+const mockHandleStreamingRequest = jest.fn();
+const mockHandleBatchRequest = jest.fn();
+jest.mock('@/app/api/rag/agent-search/streaming-handler', () => ({
+  handleStreamingRequest: (...args: unknown[]) =>
+    mockHandleStreamingRequest(...args),
+}));
+jest.mock('@/app/api/rag/agent-search/batch-handler', () => ({
+  handleBatchRequest: (...args: unknown[]) => mockHandleBatchRequest(...args),
+}));
 
 const mockSocialPostService = {
   list: jest.fn(),
@@ -135,6 +146,7 @@ import * as password from '@/app/api/user/password/route';
 import * as agentSearch from '@/app/api/rag/agent-search/route';
 import { changePassword } from '@/lib/auth/utils';
 import { RateLimitError } from '@/lib/rate-limiter';
+import { features } from '@/lib/config/env';
 
 type RouteHandler = (request: NextRequest, context?: unknown) => Promise<Response>;
 
@@ -255,13 +267,9 @@ describe('Auth middleware unification (issues #659, #662)', () => {
     setFindUnique(null);
     mockFavoriteCache.getBatch.mockReset();
     mockFavoriteCache.setBatch.mockReset();
-    const { checkRateLimit: actualCheckRateLimit } = jest.requireActual(
-      '@/lib/rate-limiter'
-    ) as typeof import('@/lib/rate-limiter');
     mockCheckRateLimit.mockReset();
-    mockCheckRateLimit.mockImplementation((...args: unknown[]) =>
-      (actualCheckRateLimit as (...a: unknown[]) => unknown)(...args)
-    );
+    mockHandleStreamingRequest.mockReset();
+    mockHandleBatchRequest.mockReset();
   });
 
   it('covers 20 methods (13 admin + 7 user), 12 of them writes', () => {
@@ -287,6 +295,7 @@ describe('Auth middleware unification (issues #659, #662)', () => {
         }
         expectSocialPostServiceNotCalled();
         expect(changePassword).not.toHaveBeenCalled();
+        // agent-search の handler に届いていない（他の行では呼ばれない経路）
         expect(mockCheckRateLimit).not.toHaveBeenCalled();
       }
     );
@@ -311,6 +320,7 @@ describe('Auth middleware unification (issues #659, #662)', () => {
         expect(body.requiresLogout).toBe(true);
         expectSocialPostServiceNotCalled();
         expect(changePassword).not.toHaveBeenCalled();
+        // agent-search の handler に届いていない（他の行では呼ばれない経路）
         expect(mockCheckRateLimit).not.toHaveBeenCalled();
       }
     );
@@ -345,6 +355,26 @@ describe('Auth middleware unification (issues #659, #662)', () => {
         expect(response.status).toBe(403);
         expect(body.error).toBe('CSRF validation failed');
         expectSocialPostServiceNotCalled();
+        expect(changePassword).not.toHaveBeenCalled();
+        // agent-search の handler に届いていない（他の行では呼ばれない経路）
+        expect(mockCheckRateLimit).not.toHaveBeenCalled();
+      }
+    );
+  });
+
+  describe('user validation failures (DB errors)', () => {
+    const USER_ROWS = ROWS.filter((row) => row.kind === 'user');
+
+    it.each(USER_ROWS.map((row) => [row.label, row] as const))(
+      '%s returns JSON 500 when the user lookup throws',
+      async (_label, row) => {
+        prismaMock.user.findUnique.mockRejectedValue(new Error('db down'));
+
+        const response = await row.handler(makeRequest(row), makeContext());
+        const body = await response.json();
+
+        expect(response.status).toBe(500);
+        expect(body).toEqual({ error: 'Internal server error' });
         expect(changePassword).not.toHaveBeenCalled();
         expect(mockCheckRateLimit).not.toHaveBeenCalled();
       }
@@ -461,6 +491,47 @@ describe('Auth middleware unification (issues #659, #662)', () => {
         expect.anything()
       );
     });
+
+    it.each([
+      ['streaming', true],
+      ['batch', false],
+    ] as const)(
+      'POST /api/rag/agent-search passes the validated user id to the %s handler',
+      async (_mode, streaming) => {
+        const streamingSpy = jest
+          .spyOn(features, 'isAgentStreamingEnabled')
+          .mockReturnValue(streaming);
+        mockCheckRateLimit.mockResolvedValue({
+          limit: 5,
+          remaining: 4,
+          reset: new Date(Date.now() + 60_000),
+        });
+        const downstream = streaming
+          ? mockHandleStreamingRequest
+          : mockHandleBatchRequest;
+        downstream.mockResolvedValue(new Response(null, { status: 200 }));
+
+        try {
+          const response = await agentSearch.POST(
+            makeRequest(
+              { method: 'POST', path: '/api/rag/agent-search' },
+              SAME_ORIGIN_HEADERS,
+              { query: 'react hooks', agentType: 'article-search' }
+            ),
+            makeContext()
+          );
+
+          expect(response.status).toBe(200);
+          expect(downstream).toHaveBeenCalledTimes(1);
+          expect(downstream.mock.calls[0][1]).toBe(USER_ID);
+          expect(
+            (streaming ? mockHandleBatchRequest : mockHandleStreamingRequest)
+          ).not.toHaveBeenCalled();
+        } finally {
+          streamingSpy.mockRestore();
+        }
+      }
+    );
 
     it('GET /api/user/profile returns the profile of the validated user', async () => {
       const response = await profile.GET(
