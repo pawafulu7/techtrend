@@ -78,11 +78,19 @@ jest.mock('@/app/components/common/optimized-image', () => ({
 
 // ArticleCardコンポーネントのモック
 jest.mock('@/app/components/article/card', () => ({
-  ArticleCard: ({ article, onArticleClick, isRead }: any) => (
+  ArticleCard: ({ article, onArticleClick, isRead, onToggleFavorite }: any) => (
     <article data-testid="article-card" onClick={() => onArticleClick?.()}>
       <h3>{article.title}</h3>
       <p>{article.summary}</p>
       {!isRead && <span>未読</span>}
+      <button
+        type="button"
+        data-testid={`toggle-favorite-${article.id}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleFavorite?.();
+        }}
+      />
     </article>
   ),
 }));
@@ -316,6 +324,35 @@ describe('ArticleList', () => {
       );
 
       addEventListenerSpy.mockRestore();
+    });
+
+    // issue #653: 一覧画面のお気に入り状態のキャッシュはユーザーごと。別ユーザーの
+    // トグル完了で書き換えないよう、同期イベントにトグルしたユーザーを載せる
+    it('dispatches article-favorite-changed with the user who toggled', async () => {
+      const { authClient } = jest.requireMock('@/lib/auth/auth-client');
+      authClient.useSession.mockReturnValue({
+        data: { user: { id: 'user-1' } },
+        isPending: false,
+      });
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 });
+      const events: CustomEvent[] = [];
+      const listener = (e: Event) => events.push(e as CustomEvent);
+      window.addEventListener('article-favorite-changed', listener);
+
+      try {
+        renderWithProviders(<ArticleList articles={mockArticles} />);
+        await userEvent.click(screen.getByTestId('toggle-favorite-2'));
+
+        await waitFor(() => expect(events).toHaveLength(1));
+        expect(events[0].detail).toMatchObject({
+          articleId: '2',
+          isFavorited: true,
+          userId: 'user-1',
+        });
+      } finally {
+        window.removeEventListener('article-favorite-changed', listener);
+        authClient.useSession.mockReturnValue({ data: null, isPending: false });
+      }
     });
 
     it('removes event listener on unmount', () => {

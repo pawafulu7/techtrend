@@ -22,6 +22,7 @@ import {
 } from '@/app/components/article/favorite-card';
 import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
 import { useQueryClient } from '@tanstack/react-query';
+import { authClient } from '@/lib/auth/auth-client';
 import type { SortOption } from '../_types';
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
@@ -41,6 +42,10 @@ export function FavoritesContent({
 }: FavoritesContentProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  // トグル同期イベントに載せる（app/hooks/use-favorite-statuses.ts が、別ユーザーの
+  // トグル完了でユーザーごとのキャッシュを書き換えないため）
+  const { data: session } = authClient.useSession();
+  const userId = session?.user?.id;
   const emptyStateRef = useRef<HTMLDivElement>(null);
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
@@ -149,7 +154,12 @@ export function FavoritesContent({
         // Dispatch event for cross-screen cache sync
         window.dispatchEvent(
           new CustomEvent('article-favorite-changed', {
-            detail: { articleId, isFavorited: false, timestamp: Date.now() },
+            detail: {
+              articleId,
+              isFavorited: false,
+              timestamp: Date.now(),
+              userId,
+            },
           })
         );
       } catch {
@@ -157,7 +167,7 @@ export function FavoritesContent({
         queryClient.invalidateQueries({ queryKey: ['infinite-favorites'] });
       }
     },
-    [removeFavoriteFromCache, queryClient]
+    [removeFavoriteFromCache, queryClient, userId]
   );
 
   // Focus on empty state after all items removed

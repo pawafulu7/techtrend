@@ -156,20 +156,22 @@ export function useFavoriteStatuses(articleIds: readonly string[]): {
  * ままになるので取り直す。イベントはトグルの API 成功後に届くため、取り直せば
  * トグル後の状態が返る。
  *
- * @param userId トグルしたユーザー。指定があれば、そのユーザーのクエリだけを対象に
- *   する（ログアウト → 別ユーザーでログインした後に、前のユーザーのトグル完了が
- *   届いても書き換えない）
+ * @param userId トグルしたユーザー。そのユーザーのクエリだけを対象にする
+ *   （ログアウト → 別ユーザーでログインした後に、前のユーザーのトグル完了が届いても
+ *   書き換えない）。不明なら何もしない（画面を開き直したときの取り直しに任せる）
  */
 export async function syncFavoriteStatusesCache(
   queryClient: QueryClient,
   articleId: string,
   isFavorited: boolean,
-  userId?: string
+  userId: string | undefined
 ): Promise<void> {
+  if (!userId) return;
+
   // queryKey の形は favoriteStatusesQueryKey と同じ [prefix, userId, sortedUniqueIds]
   const isTarget = (query: Query) => {
     const [, queryUserId, ids] = query.queryKey;
-    if (userId !== undefined && queryUserId !== userId) return false;
+    if (queryUserId !== userId) return false;
     return Array.isArray(ids) && ids.includes(articleId);
   };
   const filters = {

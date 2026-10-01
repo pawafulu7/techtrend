@@ -65,14 +65,20 @@ function requestedIds(callIndex: number): string[] {
     .articleIds;
 }
 
+// 既定はログイン中のユーザー（user-1）のトグル。null で userId なしのイベント
 function dispatchFavoriteChanged(
   articleId: string,
   isFavorited: boolean,
-  userId?: string
+  userId: string | null = 'user-1'
 ) {
   window.dispatchEvent(
     new CustomEvent('article-favorite-changed', {
-      detail: { articleId, isFavorited, timestamp: Date.now(), userId },
+      detail: {
+        articleId,
+        isFavorited,
+        timestamp: Date.now(),
+        ...(userId === null ? {} : { userId }),
+      },
     })
   );
 }
@@ -331,7 +337,7 @@ describe('useFavoriteStatuses', () => {
     ).toBe(updatedAtBefore);
   });
 
-  it('別のユーザーのトグル完了は反映しない（ログアウト → 別ユーザーでログインした後）', async () => {
+  it('別のユーザーや誰のものか分からないトグル完了は反映しない（ログアウト → 別ユーザーでログインした後）', async () => {
     fetchMock.mockImplementation(respondWith(['a']));
 
     const { result } = renderHook(() => useFavoriteStatuses(['a']), {
@@ -341,6 +347,8 @@ describe('useFavoriteStatuses', () => {
 
     await act(async () => {
       dispatchFavoriteChanged('a', false, 'previous-user');
+      // 誰のトグルか分からないイベントも、ユーザーごとのキャッシュには反映しない
+      dispatchFavoriteChanged('a', false, null);
     });
     // 同期処理は cancelQueries を待ってから書き換えるので、マクロタスク 1 回分
     // 待ってから「書き換わっていない」ことを確かめる
