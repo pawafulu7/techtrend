@@ -131,5 +131,8 @@ async function generateOpinionHandler(
 }
 
 export const POST = withCSRFProtection(
-  withRateLimit('admin:social-post-generate', withAdminAuth(generateOpinionHandler))
+  withRateLimit(
+    'admin:social-post-generate',
+    withAdminAuth(generateOpinionHandler)
+  )
 );
