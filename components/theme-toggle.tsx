@@ -14,6 +14,10 @@ export function ThemeToggle() {
     setMounted(true);
   }, []);
 
+  // disabled 属性は使わない。ブラウザが hydration 前に disabled を外すと
+  // （フォーム状態の復元・拡張機能など）サーバー HTML と食い違うため、
+  // data-disabled（ButtonV2 で disabled と同じスタイル）と aria-disabled で表す。
+  // onClick を渡さないので、マウント前は押しても何も起きない。
   if (!mounted) {
     return (
       <Button
@@ -21,7 +25,9 @@ export function ThemeToggle() {
         size="icon"
         className="h-11 w-11 lg:h-9 lg:w-9"
         aria-label="テーマ切り替え"
-        disabled
+        aria-disabled="true"
+        data-disabled="true"
+        tabIndex={-1}
         aria-busy="true"
         data-state="pre-mount"
         data-testid="theme-toggle-button"

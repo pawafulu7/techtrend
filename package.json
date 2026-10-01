@@ -167,7 +167,7 @@
     "@xyflow/react": "^12.10.0",
     "ai": "^7.0.48",
     "async-mutex": "^0.5.0",
-    "axios": "^1.16.0",
+    "axios": "^1.20.0",
     "bcryptjs": "^3.0.2",
     "better-auth": "^1.6.22",
     "cheerio": "^1.1.2",
@@ -186,11 +186,11 @@
     "ioredis": "^5.7.0",
     "jsdom": "^27.0.0",
     "lucide-react": "^0.525.0",
-    "next": "^16.3.3",
+    "next": "^16.3.8",
     "next-themes": "^0.4.6",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^9.1.1",
+    "nodemailer": "^10.0.13",
     "openai": "^4.77.3",
     "p-limit": "^7.2.0",
     "pino": "^9.9.5",
@@ -259,7 +259,7 @@
     "tsx": "^4.20.5",
     "tw-animate-css": "^1.3.8",
     "typescript": "^5.8.3",
-    "undici": "^7.29.0",
+    "undici": "^7.30.0",
     "web-streams-polyfill": "^4.2.0",
     "whatwg-fetch": "^3.6.20"
   },
@@ -282,7 +282,7 @@
     "@prisma/dev": {
       "valibot": "1.5.0"
     },
-    "nodemailer": "^9.1.1",
+    "nodemailer": "^10.0.13",
     "defu": "6.1.6",
     "better-call": {
       "zod": "$zod"
@@ -298,7 +298,7 @@
     "tmp": "0.2.7",
     "qs": "6.15.2",
     "kysely": "0.28.17",
-    "fast-uri": "3.1.6",
+    "fast-uri": "3.1.8",
     "ip-address": "10.3.1",
     "sharp": "0.35.4",
     "baseline-browser-mapping": "2.11.0",

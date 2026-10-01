@@ -260,24 +260,6 @@ export function PopularArticles({
                     {article.translatedTitle && (
                       <TranslationBadge className="text-xs" />
                     )}
-                    {article.difficulty && (
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'text-xs',
-                          article.difficulty === 'beginner' &&
-                            'border-(--tt-color-positive)',
-                          article.difficulty === 'intermediate' &&
-                            'border-(--tt-color-info)',
-                          article.difficulty === 'advanced' &&
-                            'border-(--tt-color-warning)'
-                        )}
-                      >
-                        {article.difficulty === 'beginner' && '初級'}
-                        {article.difficulty === 'intermediate' && '中級'}
-                        {article.difficulty === 'advanced' && '上級'}
-                      </Badge>
-                    )}
                   </div>
 
                   <div className="mt-2 flex items-center gap-4">

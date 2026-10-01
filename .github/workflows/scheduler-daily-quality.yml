@@ -28,15 +28,14 @@ jobs:
         uses: ./.github/actions/scheduler-setup
         with:
           database_url: ${{ secrets.DATABASE_URL }}
-      - name: Calculate quality scores and difficulty levels
+      - name: Calculate quality scores
         env:
           NODE_ENV: production
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
         run: |
-          echo "品質スコアと難易度レベルの計算を開始します (1日1回実行)"
+          echo "品質スコアの計算を開始します (1日1回実行)"
           npx tsx scripts/scheduled/manage-quality-scores.ts calculate
-          npx tsx scripts/scheduled/calculate-difficulty-levels.ts
           echo "品質チェック完了"
       - name: Notify failure to Slack
         if: failure()

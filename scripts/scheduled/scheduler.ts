@@ -383,13 +383,6 @@ async function executeUpdatePipeline(
       5 * 60 * 1000
     );
     
-    // 5. 難易度レベル判定
-    await runCommandWithTimeout(
-      '難易度レベル判定',
-      'npx tsx scripts/scheduled/calculate-difficulty-levels.ts',
-      5 * 60 * 1000
-    );
-    
     
     const endTime = new Date();
     const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);

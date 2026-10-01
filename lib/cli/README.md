@@ -62,9 +62,6 @@ npx techtrend quality recalculate --force
 # 記事検索
 npx techtrend article search "React"
 
-# 難易度判定
-npx techtrend article difficulty
-
 # 低品質記事のクリーンアップ
 npx techtrend article cleanup --dry-run
 ```

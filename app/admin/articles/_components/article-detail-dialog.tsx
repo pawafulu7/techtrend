@@ -337,7 +337,6 @@ export function ArticleDetailDialog({
             <section className="space-y-2">
               <SectionTitle>メタデータ</SectionTitle>
               <InfoRow label="ブックマーク数">{article.bookmarks}</InfoRow>
-              <InfoRow label="難易度">{article.difficulty ?? '-'}</InfoRow>
               <InfoRow label="記事タイプ">{article.articleType ?? '-'}</InfoRow>
               <InfoRow label="本文文字数">
                 {article.contentLength?.toLocaleString() ?? '-'}

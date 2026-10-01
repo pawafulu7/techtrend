@@ -12,7 +12,6 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get('q') || '';
     const tags = searchParams.getAll('tags');
     const sources = searchParams.getAll('sources');
-    const difficulty = searchParams.getAll('difficulty');
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
     const sortBy = searchParams.get('sortBy') || 'relevance';
@@ -138,13 +137,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 難易度フィルター
-    if (difficulty.length > 0) {
-      whereConditions.difficulty = {
-        in: difficulty,
-      };
-    }
-
     // 期間フィルター
     if (dateFrom || dateTo) {
       const from = dateFrom ? new Date(dateFrom) : undefined;
@@ -216,6 +208,7 @@ export async function GET(request: NextRequest) {
     const facets = {
       tags: [],
       sources: [],
+      // 難易度機能は廃止済み。レスポンスの形を保つため空配列を返す
       difficulty: [],
     };
 

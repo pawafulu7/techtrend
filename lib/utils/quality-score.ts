@@ -84,68 +84,6 @@ export function calculateQualityScore(article: ArticleWithDetails): number {
   return Math.max(0, Math.min(100, score));
 }
 
-// 記事の難易度を判定
-export function determineDifficulty(article: ArticleWithDetails): 'beginner' | 'intermediate' | 'advanced' {
-  const tagNames = article.tags.map(t => t.name.toLowerCase());
-  const title = article.title.toLowerCase();
-  const content = (article.content || article.summary || '').toLowerCase();
-  
-  // 上級者向けのキーワード
-  const advancedKeywords = [
-    'アーキテクチャ', 'architecture', 'パフォーマンス最適化', 'performance optimization',
-    'スケーラビリティ', 'scalability', '分散システム', 'distributed',
-    'アルゴリズム', 'algorithm', '機械学習', 'machine learning', 'deep learning',
-    'コンパイラ', 'compiler', 'カーネル', 'kernel', 'low-level',
-    '設計パターン', 'design pattern', 'マイクロサービス', 'microservices',
-    'kubernetes', 'k8s', 'terraform', 'インフラ', 'infrastructure as code'
-  ];
-  
-  // 初級者向けのキーワード
-  const beginnerKeywords = [
-    '入門', 'getting started', '初心者', 'beginner', 'tutorial',
-    '基本', 'basic', '基礎', 'fundamental', 'はじめて', 'first time',
-    'hello world', 'インストール', 'install', 'セットアップ', 'setup',
-    '環境構築', '導入', 'introduction', '使い方', 'how to use'
-  ];
-  
-  // コンテンツの複雑さをチェック
-  let complexityScore = 0;
-  
-  // 上級キーワードのカウント
-  advancedKeywords.forEach(keyword => {
-    if (title.includes(keyword) || content.includes(keyword)) {
-      complexityScore += 2;
-    }
-    if (tagNames.some(tag => tag.includes(keyword))) {
-      complexityScore += 1;
-    }
-  });
-  
-  // 初級キーワードのカウント
-  beginnerKeywords.forEach(keyword => {
-    if (title.includes(keyword) || content.includes(keyword)) {
-      complexityScore -= 2;
-    }
-    if (tagNames.some(tag => tag.includes(keyword))) {
-      complexityScore -= 1;
-    }
-  });
-  
-  // コードブロックの有無と複雑さ
-  const codeBlocks = (content.match(/```/g) || []).length / 2;
-  if (codeBlocks > 5) complexityScore += 2;
-  else if (codeBlocks > 2) complexityScore += 1;
-  
-  // 記事の長さ
-  if (content.length > 5000) complexityScore += 1;
-  if (content.length < 1000) complexityScore -= 1;
-  
-  // 難易度の判定
-  if (complexityScore >= 4) return 'advanced';
-  if (complexityScore <= -3) return 'beginner';
-  return 'intermediate';
-}
-
 // カテゴリー別の品質チェック
 export function checkCategoryQuality(article: ArticleWithDetails): {
   category: string | null;

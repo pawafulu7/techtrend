@@ -97,7 +97,6 @@ export interface FilterOptions {
   endDate?: Date;
   minQuality?: number;
   maxQuality?: number;
-  difficulty?: string;
   sortBy?: SortOption;
   sortOrder?: 'asc' | 'desc';
 }

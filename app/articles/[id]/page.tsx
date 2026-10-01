@@ -9,7 +9,6 @@ import {
   Clock,
   Download,
   ExternalLink,
-  GraduationCap,
   MessageSquare,
 } from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
@@ -132,7 +131,6 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
           title={article.title}
           serializedTagNames={article.tags.map((t) => t.name).join(',')}
           sourceName={article.source.name}
-          difficulty={article.difficulty}
         />
         <ViewTracker articleId={article.id} />
         <ReadTracker articleId={article.id} />
@@ -186,23 +184,6 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                           <span>{formatDateWithTime(article.createdAt)}</span>
                         </span>
                       </div>
-                      {article.difficulty && (
-                        <BadgeV2
-                          variant={
-                            article.difficulty === 'beginner'
-                              ? 'positive'
-                              : article.difficulty === 'intermediate'
-                                ? 'info'
-                                : 'secondary'
-                          }
-                          className="text-xs font-medium"
-                        >
-                          <GraduationCap className="mr-1 h-3 w-3" />
-                          {article.difficulty === 'beginner' && '初級'}
-                          {article.difficulty === 'intermediate' && '中級'}
-                          {article.difficulty === 'advanced' && '上級'}
-                        </BadgeV2>
-                      )}
                     </div>
                     <FavoriteButton
                       articleId={article.id}
