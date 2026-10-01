@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSession } from '@/lib/auth/get-session';
 import { createFavoriteLoader } from '@/lib/dataloader/favorite-loader';
 import { favoriteCache } from '@/lib/cache/favorites-cache';
 import { parseBoolean } from '@/lib/utils/env-parser';
 import logger from '@/lib/logger';
 import {
-  validateUser,
-  createUserDeletedResponse,
+  withUserValidation,
+  type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
@@ -32,21 +31,14 @@ const dataLoaderCache = new WeakMap<
  * Body: { articleIds: string[], useDataLoader?: boolean }
  * Response: { favorites: { [articleId: string]: boolean } }
  */
-async function postHandler(request: NextRequest) {
+async function postHandler(
+  request: NextRequest,
+  context: WithUserValidationContext
+) {
   const startTime = Date.now();
+  const userId = context.validatedUser.id;
 
   try {
-    const session = await getSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
-
     // JSONパースエラーを適切にハンドリング
     let body: unknown;
     try {
@@ -65,8 +57,6 @@ async function postHandler(request: NextRequest) {
       );
     }
     const { articleIds, useDataLoader } = parsed.data;
-
-    const userId = session.user.id;
 
     // DataLoader方式とキャッシュ方式を環境変数で切り替え可能にする
     // 環境変数の解析を堅牢化（デフォルトはfalseで安全側に）
@@ -198,5 +188,5 @@ async function postHandler(request: NextRequest) {
 }
 
 export const POST = withCSRFProtection(
-  withRateLimit('read:favorite:batch', postHandler)
+  withRateLimit('read:favorite:batch', withUserValidation(postHandler))
 );

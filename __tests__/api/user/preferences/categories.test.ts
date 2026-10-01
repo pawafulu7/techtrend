@@ -10,8 +10,6 @@ jest.mock('@/lib/middleware/csrf-protection', () => ({
 }));
 jest.mock('@/lib/middleware/with-user-validation', () => ({
   withUserValidation: jest.fn((handler: Function) => handler),
-  validateUser: jest.fn(),
-  createUserDeletedResponse: jest.fn(),
 }));
 
 const getMiddlewareMocks = () => {
@@ -21,13 +19,11 @@ const getMiddlewareMocks = () => {
   const { withCSRFProtection } = jest.requireMock('@/lib/middleware/csrf-protection') as {
     withCSRFProtection: jest.MockedFunction<(handler: Function) => Function>;
   };
-  const { withUserValidation, validateUser, createUserDeletedResponse } =
+  const { withUserValidation } =
     jest.requireMock('@/lib/middleware/with-user-validation') as {
       withUserValidation: jest.MockedFunction<(handler: Function) => Function>;
-      validateUser: jest.Mock;
-      createUserDeletedResponse: jest.Mock;
     };
-  return { withRateLimit, withCSRFProtection, withUserValidation, validateUser, createUserDeletedResponse };
+  return { withRateLimit, withCSRFProtection, withUserValidation };
 };
 
 import { GET, POST } from '@/app/api/user/preferences/categories/route';
@@ -45,12 +41,6 @@ const middlewareCompositionSnapshot = (() => {
     csrfProtectionCalled: withCSRFProtection.mock.calls.length > 0,
   };
 })();
-
-// Mock auth
-const mockGetSession = jest.fn();
-jest.mock('@/lib/auth/get-session', () => ({
-  getSession: () => mockGetSession(),
-}));
 
 const prismaMock = prisma as jest.Mocked<typeof prisma>;
 const { resetPrismaMock } = require('@/lib/prisma') as {
@@ -78,11 +68,15 @@ describe('User Category Preferences API', () => {
   beforeEach(() => {
     resetPrismaMock();
     jest.clearAllMocks();
-    // Default: validateUser returns a valid user (used by GET handler)
-    getMiddlewareMocks().validateUser.mockResolvedValue({ id: 'user-1', deletedAt: null });
   });
 
   describe('GET /api/user/preferences/categories', () => {
+    // withUserValidation is a pass-through mock; inject the context it would provide.
+    const getContext = {
+      session: { user: { id: 'user-1' } },
+      validatedUser: { id: 'user-1', deletedAt: null },
+    };
+
     const createGetRequest = (params?: Record<string, string>) => {
       const url = new URL('http://localhost/api/user/preferences/categories');
       if (params) {
@@ -93,24 +87,13 @@ describe('User Category Preferences API', () => {
       return new NextRequest(url.toString());
     };
 
-    it('should return 401 when not authenticated', async () => {
-      mockGetSession.mockResolvedValue(null);
-
-      const response = await GET(createGetRequest());
-      const data = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Authentication required');
-    });
-
     it('should return user preferences', async () => {
-      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
         { categoryId: 'cat-2' },
       ]);
 
-      const response = await GET(createGetRequest());
+      const response = await GET(createGetRequest(), getContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -120,10 +103,9 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return empty preferences for new users', async () => {
-      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([]);
 
-      const response = await GET(createGetRequest());
+      const response = await GET(createGetRequest(), getContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -132,12 +114,11 @@ describe('User Category Preferences API', () => {
     });
 
     it('should handle database errors', async () => {
-      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
       prismaMock.userCategoryPreference.findMany.mockRejectedValue(
         new Error('Database error')
       );
 
-      const response = await GET(createGetRequest());
+      const response = await GET(createGetRequest(), getContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(500);
@@ -145,12 +126,11 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return home preferences when scope=home', async () => {
-      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
       ]);
 
-      const response = await GET(createGetRequest({ scope: 'home' }));
+      const response = await GET(createGetRequest({ scope: 'home' }), getContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -164,12 +144,11 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return digest preferences when scope=digest', async () => {
-      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-3' },
       ]);
 
-      const response = await GET(createGetRequest({ scope: 'digest' }));
+      const response = await GET(createGetRequest({ scope: 'digest' }), getContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -183,10 +162,9 @@ describe('User Category Preferences API', () => {
     });
 
     it('should default to home scope when scope is not specified', async () => {
-      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([]);
 
-      const response = await GET(createGetRequest());
+      const response = await GET(createGetRequest(), getContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -199,9 +177,8 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return 400 for invalid scope value', async () => {
-      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
 
-      const response = await GET(createGetRequest({ scope: 'invalid' }));
+      const response = await GET(createGetRequest({ scope: 'invalid' }), getContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -209,9 +186,8 @@ describe('User Category Preferences API', () => {
     });
 
     it('should return 400 for empty string scope', async () => {
-      mockGetSession.mockResolvedValue({ user: { id: 'user-1' }, session: { id: 's1', userId: 'user-1', token: 't1', expiresAt: new Date() } });
 
-      const response = await GET(createGetRequest({ scope: '' }));
+      const response = await GET(createGetRequest({ scope: '' }), getContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);

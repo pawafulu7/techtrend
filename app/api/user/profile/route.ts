@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CREDENTIAL_PROVIDER_ID } from '@/lib/auth/auth';
-import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
-import { createUserDeletedResponse } from '@/lib/middleware/with-user-validation';
+import {
+  createUserDeletedResponse,
+  withUserValidation,
+  type WithUserValidationContext,
+} from '@/lib/middleware/with-user-validation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(_request: NextRequest) {
+async function getHandler(
+  _request: NextRequest,
+  context: WithUserValidationContext
+) {
   try {
-    // 1. セッション確認
-    const session = await getSession();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 2. ユーザー情報取得（必要なフィールドのみ選択）
+    // 認証と退会済みユーザーの拒否は withUserValidation が行う
+    // ユーザー情報取得（必要なフィールドのみ選択）
     const user = await prisma.user.findUnique({
       where: {
-        id: session.user.id,
+        id: context.validatedUser.id,
       },
       select: {
         id: true,
@@ -38,12 +38,12 @@ export async function GET(_request: NextRequest) {
       },
     });
 
-    // User not found or has been deleted
+    // withUserValidation の確認後に退会された場合への備え
     if (!user || user.deletedAt) {
       return createUserDeletedResponse();
     }
 
-    // 3. レスポンス構造の作成
+    // レスポンス構造の作成
     const credentialAccount = user.accounts.find(
       (a) => a.providerId === CREDENTIAL_PROVIDER_ID
     );
@@ -66,3 +66,5 @@ export async function GET(_request: NextRequest) {
     );
   }
 }
+
+export const GET = withUserValidation(getHandler);

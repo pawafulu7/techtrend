@@ -8,7 +8,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
 import type {
@@ -18,8 +17,6 @@ import type {
   PeriodPreset,
 } from '@/lib/personalization/types';
 import {
-  validateUser,
-  createUserDeletedResponse,
   withUserValidation,
   type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
@@ -82,26 +79,12 @@ interface ErrorResponse {
  *
  * Returns empty array with default settings if user has no preferences set.
  */
-export async function GET(
-  request: NextRequest
+async function getHandler(
+  request: NextRequest,
+  context: WithUserValidationContext
 ): Promise<NextResponse<PreferencesResponse | ErrorResponse>> {
   try {
-    const session = await getSession();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse() as NextResponse<ErrorResponse>;
-    }
-
-    const userId = session.user.id;
+    const userId = context.validatedUser.id;
 
     // Parse and validate scope query parameter
     const scopeParam = request.nextUrl.searchParams.get('scope');
@@ -359,6 +342,8 @@ async function postHandler(
     );
   }
 }
+
+export const GET = withUserValidation(getHandler);
 
 export const POST = withCSRFProtection(
   withRateLimit('write:preferences', withUserValidation(postHandler))

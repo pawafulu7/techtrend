@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth/get-session';
 import { prisma } from '@/lib/prisma';
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { searchRequestSchema } from '@/lib/rag/schemas';
@@ -13,8 +12,8 @@ import { ZodError } from 'zod';
 import { APIError } from 'openai/error';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import {
-  validateUser,
-  createUserDeletedResponse,
+  withUserValidation,
+  type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
 import { env } from '@/lib/config/env';
 
@@ -73,26 +72,14 @@ export const __resetSearchServiceForTest = (): void => {
   searchService = null;
 };
 
-async function postHandler(request: NextRequest) {
-  let session: Awaited<ReturnType<typeof getSession>> = null;
+async function postHandler(
+  request: NextRequest,
+  context: WithUserValidationContext
+) {
+  // Layer 1: Authentication and deleted-user check are done by withUserValidation
+  const userId = context.validatedUser.id;
+
   try {
-    // Layer 1: Authentication check (REQUIRED)
-    session = await getSession();
-
-    if (!session?.user) {
-      logger.warn(
-        {
-          ip: request.headers.get('x-forwarded-for') || 'unknown',
-        },
-        'Unauthorized RAG search attempt'
-      );
-
-      return NextResponse.json(
-        { error: 'Unauthorized - Authentication required' },
-        { status: 401 }
-      );
-    }
-
     // Layer 2: Rate limiting (REQUIRED)
     let rateLimitInfo:
       | { limit: number; remaining: number; reset: Date }
@@ -100,14 +87,14 @@ async function postHandler(request: NextRequest) {
 
     try {
       rateLimitInfo = await checkRateLimit(
-        `rag:search:${session.user.id}`,
+        `rag:search:${userId}`,
         ragSearchRateLimit
       );
     } catch (error) {
       if (error instanceof RateLimitError) {
         logger.warn(
           {
-            userId: session.user.id,
+            userId,
             limit: error.limit,
             remaining: error.remaining,
           },
@@ -139,12 +126,6 @@ async function postHandler(request: NextRequest) {
       throw error;
     }
 
-    // Layer 2.5: User validation (check if user is deleted)
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
-
     // Layer 3: Input validation (Zod)
     let body;
     try {
@@ -153,7 +134,7 @@ async function postHandler(request: NextRequest) {
       // Handle malformed JSON
       logger.warn(
         {
-          userId: session.user.id,
+          userId,
           error: error instanceof Error ? error.message : 'Unknown error',
         },
         'Malformed JSON in RAG search request'
@@ -172,7 +153,7 @@ async function postHandler(request: NextRequest) {
 
     logger.info(
       {
-        userId: session.user.id,
+        userId,
         queryLength: validatedRequest.query.length,
         topK: validatedRequest.topK,
         embeddingKey: validatedRequest.embeddingKey,
@@ -218,7 +199,7 @@ async function postHandler(request: NextRequest) {
     if (error instanceof RagSearchNotConfiguredError) {
       logger.warn(
         {
-          userId: session?.user?.id,
+          userId,
         },
         'RAG search requested without OpenAI API key'
       );
@@ -237,7 +218,7 @@ async function postHandler(request: NextRequest) {
     if (error instanceof ZodError) {
       logger.warn(
         {
-          userId: session?.user?.id,
+          userId,
           issues: error.issues,
         },
         'Invalid RAG search request'
@@ -279,7 +260,7 @@ async function postHandler(request: NextRequest) {
         logger.error(
           {
             error: sanitizeError(error),
-            userId: session?.user?.id,
+            userId,
           },
           'OpenAI API error'
         );
@@ -299,7 +280,7 @@ async function postHandler(request: NextRequest) {
         logger.error(
           {
             error: sanitizeError(error),
-            userId: session?.user?.id,
+            userId,
           },
           'OpenAI client error'
         );
@@ -325,7 +306,7 @@ async function postHandler(request: NextRequest) {
       logger.error(
         {
           error: sanitizeError(error),
-          userId: session?.user?.id,
+          userId,
         },
         'Database connection error'
       );
@@ -344,7 +325,7 @@ async function postHandler(request: NextRequest) {
     logger.error(
       {
         error: sanitizeError(error),
-        userId: session?.user?.id,
+        userId,
       },
       'RAG search API error'
     );
@@ -362,4 +343,4 @@ async function postHandler(request: NextRequest) {
   }
 }
 
-export const POST = withCSRFProtection(postHandler);
+export const POST = withCSRFProtection(withUserValidation(postHandler));
