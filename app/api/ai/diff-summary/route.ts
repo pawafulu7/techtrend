@@ -22,6 +22,7 @@ import logger from '@/lib/logger';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { DiffChange } from '@/lib/ai/extraction/extraction-schemas';
+import { publicCacheHeaders } from '@/lib/api/cache-headers';
 
 // Cache instance (lazy initialized)
 let cache: RedisCache | null = null;
@@ -94,7 +95,7 @@ async function getDiffSummaryHandler(request: NextRequest) {
         return NextResponse.json(cached, {
           headers: {
             'X-Cache': 'HIT',
-            'Cache-Control': 'public, max-age=300',
+            ...publicCacheHeaders({ cacheControl: 'public, max-age=300' }),
           },
         });
       }
@@ -188,9 +189,11 @@ async function getDiffSummaryHandler(request: NextRequest) {
     return NextResponse.json(response, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': isFallback
-          ? 'public, max-age=60'
-          : 'public, max-age=300',
+        ...publicCacheHeaders({
+          cacheControl: isFallback
+            ? 'public, max-age=60'
+            : 'public, max-age=300',
+        }),
       },
     });
   } catch (error) {

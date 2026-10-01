@@ -99,6 +99,17 @@ function readEnabledState(raw: string | undefined): EnabledState {
   return 'invalid';
 }
 
+/**
+ * Basic 認証ゲートが有効になりうるか（route がキャッシュヘッダを決めるために使う）
+ *
+ * evaluateGate と同じ規則で判定する。true/false 以外の不正な値はゲートが
+ * misconfigured（503）として扱うが、ここでは「有効」側に倒す。公開キャッシュを
+ * 許すのは、ゲートが確実に OFF のときだけにするため。
+ */
+export function isGateEnabled(raw: string | undefined): boolean {
+  return readEnabledState(raw) !== 'off';
+}
+
 function missingSettings(config: ResolvedConfig): string[] {
   const missing: string[] = [];
   if (config.pass.length === 0) missing.push('BASIC_AUTH_PASS');

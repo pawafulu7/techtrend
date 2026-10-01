@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { categoryFilterService } from '@/lib/personalization/category-filter-service';
 import { logger, sanitizeError } from '@/lib/logger';
 import type { InterestCategoryWithCount } from '@/lib/personalization/types';
+import { publicCacheHeaders } from '@/lib/api/cache-headers';
 
 // =============================================================================
 // Response Types
@@ -51,9 +52,9 @@ export async function GET(): Promise<NextResponse<CategoriesResponse | ErrorResp
     };
 
     return NextResponse.json(response, {
-      headers: {
-        'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
-      },
+      headers: publicCacheHeaders({
+        cacheControl: 'public, max-age=300, stale-while-revalidate=60',
+      }),
     });
   } catch (error) {
     logger.error(

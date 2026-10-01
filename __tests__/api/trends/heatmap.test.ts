@@ -30,6 +30,7 @@ jest.mock('@/lib/logger', () => ({
 
 import { GET } from '@/app/api/trends/heatmap/route';
 import { prisma } from '@/lib/database';
+import { resetEnvCache } from '@/lib/config/env';
 import { NextRequest } from 'next/server';
 
 const prismaMock = prisma as any;
@@ -96,6 +97,31 @@ describe('/api/trends/heatmap', () => {
     expect(response.headers.get('Cache-Control')).toBe(
       'public, s-maxage=300, stale-while-revalidate=600'
     );
+  });
+
+  it('returns private, no-store when the Basic auth gate is on (issue #647)', async () => {
+    const original = process.env.BASIC_AUTH_ENABLED;
+    process.env.BASIC_AUTH_ENABLED = 'true';
+    resetEnvCache();
+
+    try {
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce([{ category: 'ai_ml', count: BigInt(1) }])
+        .mockResolvedValueOnce([{ category: 'ai_ml', count: BigInt(1) }]);
+
+      const response = await GET(createRequest({ period: 'week' }));
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+    } finally {
+      if (original === undefined) {
+        delete process.env.BASIC_AUTH_ENABLED;
+      } else {
+        process.env.BASIC_AUTH_ENABLED = original;
+      }
+      resetEnvCache();
+    }
   });
 
   it('validates invalid period parameter (400)', async () => {

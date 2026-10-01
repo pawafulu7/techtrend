@@ -6,6 +6,7 @@ import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
+import { publicCacheHeaders } from '@/lib/api/cache-headers';
 
 // JST offset constant (+9 hours in milliseconds)
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -220,7 +221,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(cached, {
           headers: {
             'X-Cache': 'HIT',
-            'Cache-Control': 'public, max-age=300',
+            ...publicCacheHeaders({ cacheControl: 'public, max-age=300' }),
           },
         });
       }
@@ -302,7 +303,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(fallbackResponse, {
         headers: {
           'X-Cache': 'MISS',
-          'Cache-Control': 'public, max-age=60', // フォールバックは短めのTTL
+          // フォールバックは短めのTTL
+          ...publicCacheHeaders({ cacheControl: 'public, max-age=60' }),
         },
       });
     }
@@ -347,7 +349,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': 'public, max-age=300',
+        ...publicCacheHeaders({ cacheControl: 'public, max-age=300' }),
       },
     });
   } catch (error) {

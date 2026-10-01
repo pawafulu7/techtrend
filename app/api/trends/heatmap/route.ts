@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { trendsCache } from '@/lib/cache/trends-cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
+import { applyPublicCacheHeaders } from '@/lib/api/cache-headers';
 
 type Period = 'day' | 'week' | 'month';
 
@@ -144,10 +145,9 @@ async function handler(request: NextRequest) {
     });
 
     const response = NextResponse.json(heatmapData);
-    response.headers.set(
-      'Cache-Control',
-      'public, s-maxage=300, stale-while-revalidate=600'
-    );
+    applyPublicCacheHeaders(response.headers, {
+      cacheControl: 'public, s-maxage=300, stale-while-revalidate=600',
+    });
 
     return response;
   } catch (error) {

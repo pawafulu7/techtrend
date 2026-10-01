@@ -4,6 +4,7 @@ import { Prisma } from '@/lib/prisma-exports';
 import { trendsCache } from '@/lib/cache/trends-cache';
 import { parseIntParam, VALIDATION_RANGES } from '@/lib/utils/validation';
 import logger from '@/lib/logger';
+import { applyPublicCacheHeaders } from '@/lib/api/cache-headers';
 
 export async function GET(request: NextRequest) {
   try {
@@ -184,10 +185,9 @@ export async function GET(request: NextRequest) {
     });
 
     // キャッシュヘッダーも維持（ブラウザキャッシュ用）
-    response.headers.set(
-      'Cache-Control',
-      'public, s-maxage=300, stale-while-revalidate=600'
-    );
+    applyPublicCacheHeaders(response.headers, {
+      cacheControl: 'public, s-maxage=300, stale-while-revalidate=600',
+    });
 
     return response;
   } catch (error) {
