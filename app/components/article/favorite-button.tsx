@@ -299,7 +299,11 @@ export function FavoriteButton({
             ? 'bg-[var(--tt-color-negative)] text-white hover:bg-[var(--tt-color-negative)]'
             : 'hover:text-[var(--tt-color-negative)]',
         isLoadingInitial && 'opacity-50',
-        className
+        className,
+        // 呼び出し元の className が背景を指定していても（ArticleCard の
+        // bg-background/30 など）、登録済みの赤背景を優先する。上書きされると
+        // 白いハートが白い背景に乗って見えなくなる
+        !outline && isFavorited && 'bg-[var(--tt-color-negative)]'
       )}
       data-testid="favorite-button"
       // showText が false のときはハートアイコンだけになり、支援技術に

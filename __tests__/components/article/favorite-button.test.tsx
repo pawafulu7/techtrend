@@ -296,4 +296,31 @@ describe('FavoriteButton の状態遷移（uncontrolled）', () => {
 
     window.removeEventListener('article-favorite-changed', listener);
   });
+
+  // ArticleCard は背景 bg-background/30 を className で渡す。登録済みの赤背景が
+  // それに上書きされると、白いハートが白い背景に乗って見えなくなっていた
+  it('呼び出し元が背景を指定しても、登録済みの赤背景を優先する', () => {
+    const { rerender } = render(
+      <FavoriteButton
+        articleId={ARTICLE_ID}
+        className="bg-background/30"
+        isFavorited
+      />
+    );
+    const favorited = screen.getByRole('button', { name: REMOVE_LABEL });
+    expect(favorited).toHaveClass('bg-[var(--tt-color-negative)]');
+    expect(favorited).not.toHaveClass('bg-background/30');
+
+    // 未登録の見た目（呼び出し元の背景）は変えない
+    rerender(
+      <FavoriteButton
+        articleId={ARTICLE_ID}
+        className="bg-background/30"
+        isFavorited={false}
+      />
+    );
+    const unfavorited = screen.getByRole('button', { name: ADD_LABEL });
+    expect(unfavorited).toHaveClass('bg-background/30');
+    expect(unfavorited).not.toHaveClass('bg-[var(--tt-color-negative)]');
+  });
 });
