@@ -30,6 +30,15 @@ const GATE_TTL_SEC = 60 * 60 * 24 * 7;
 /** 署名鍵の最低長。Cookie を入手した攻撃者によるオフライン総当たりを非現実的にするため */
 const MIN_GATE_SECRET_LENGTH = 32;
 
+/**
+ * ゲートを通過した応答に付けるキャッシュヘッダ（共有キャッシュに載せない）
+ *
+ * proxy.ts の finalize と lib/api/cache-headers.ts で共有する。proxy.ts は env.ts を
+ * import できない（pino などを読み込むため）ので、ここに置く。
+ */
+export const GATED_CACHE_CONTROL = 'private, no-store';
+export const GATED_CDN_CACHE_CONTROL = 'no-store';
+
 /** RFC 7617: charset を通知しないと非 ASCII 資格情報の相互運用性が保証されない */
 export const BASIC_AUTH_CHALLENGE = 'Basic realm="Protected", charset="UTF-8"';
 

@@ -65,6 +65,7 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 import { GET } from '@/app/api/ai/diff-summary/route';
+import { resetEnvCache } from '@/lib/config/env';
 import { prisma } from '@/lib/prisma';
 import { RedisCache } from '@/lib/cache';
 import { NextRequest } from 'next/server';
@@ -242,4 +243,41 @@ describe('/api/ai/diff-summary GET fallback logic', () => {
     expect(response.headers.get('X-Cache')).toBe('MISS');
     expect(response.headers.get('Cache-Control')).toBe('public, max-age=60');
   });
+});
+
+describe('/api/ai/diff-summary cache headers (issue #647)', () => {
+  const original = process.env.BASIC_AUTH_ENABLED;
+
+  afterEach(() => {
+    if (original === undefined) {
+      delete process.env.BASIC_AUTH_ENABLED;
+    } else {
+      process.env.BASIC_AUTH_ENABLED = original;
+    }
+    resetEnvCache();
+    mockCacheGet.mockResolvedValue(null);
+  });
+
+  it.each([
+    [undefined, 'public, max-age=300', null],
+    ['true', 'private, no-store', 'no-store'],
+  ] as const)(
+    'returns the expected headers on a cache hit (BASIC_AUTH_ENABLED=%p)',
+    async (gate, cacheControl, cdnCacheControl) => {
+      if (gate === undefined) {
+        delete process.env.BASIC_AUTH_ENABLED;
+      } else {
+        process.env.BASIC_AUTH_ENABLED = gate;
+      }
+      resetEnvCache();
+      mockCacheGet.mockResolvedValue({ data: [], week: '2026-W08' });
+
+      const response = await GET(createRequest({ week: '2026-W08' }));
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('X-Cache')).toBe('HIT');
+      expect(response.headers.get('Cache-Control')).toBe(cacheControl);
+      expect(response.headers.get('CDN-Cache-Control')).toBe(cdnCacheControl);
+    }
+  );
 });
