@@ -18,7 +18,7 @@ flowchart LR
 
     subgraph gha["GitHub Actions"]
         gha_sched["スケジューラ<br/>12 本"]
-        gha_ci["CI<br/>ci.yml / CodeQL / AI regression / Lighthouse / tag-quality"]
+        gha_ci["CI<br/>ci.yml / CodeQL / AI regression / tag-quality"]
     end
 
     subgraph vercel["Vercel: Next.js 16.2 App Router"]
@@ -70,7 +70,7 @@ flowchart LR
 | ブラウザ | エンドユーザーのクライアント | - |
 | RSS フィード / スクレイピング / API 提供ソース | `Source` テーブル（2026-08-15 時点の dev DB で 76 件・全件 enabled）+ `lib/fetchers/` 各 fetcher | - |
 | GitHub Actions スケジューラ 12 本 | `.github/workflows/scheduler-*.yml`（`npx tsx scripts/...` を本番 DB に対して直接実行、失敗時 Slack 通知） | `DATABASE_URL`, `SLACK_WEBHOOK_URL`, `GEMINI_API_KEY`, `OPENAI_API_KEY` |
-| GitHub Actions CI | `ci.yml` / `codeql.yml` / `ai-regression-test.yml` / `lighthouse-ci.yml` / `tag-quality-check.yml` | - |
+| GitHub Actions CI | `ci.yml` / `codeql.yml` / `ai-regression-test.yml` / `tag-quality-check.yml` | - |
 | proxy.ts | Next.js middleware（Basic 認証ゲート / CSRF / メンテナンスモード / 保護パスのセッションゲート） | `MAINTENANCE_MODE`, 署名 Cookie 用シークレット |
 | RSC Pages | `app/` 配下の公開・認証必須・管理者ページ | - |
 | API Routes | `app/api/` 配下 74 件の `route.ts` | - |
