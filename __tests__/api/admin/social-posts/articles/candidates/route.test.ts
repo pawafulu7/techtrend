@@ -1,25 +1,22 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { NextRequest } from 'next/server';
 
-// Mock auth
-const mockGetSession = jest.fn();
-jest.mock('@/lib/auth/get-session', () => ({
-  getSession: mockGetSession,
+// Middleware is passthrough here: authentication / composition are covered by
+// __tests__/api/auth-middleware-unification.test.ts and
+// __tests__/api/auth-middleware-composition.test.ts.
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: jest.fn((_key: string, handler: any) => handler),
 }));
 
-// Mock rate limiter
-jest.mock('@/lib/rate-limiter', () => {
-  const actual = jest.requireActual('@/lib/rate-limiter');
-  return {
-    ...actual,
-    checkRateLimit: jest
-      .fn()
-      .mockResolvedValue({ limit: 30, remaining: 29, reset: new Date() }),
-    createRateLimiterFromConfig: jest.fn().mockReturnValue({
-      consume: jest.fn().mockResolvedValue({}),
-    }),
-  };
-});
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: jest.fn((handler: any) => {
+    return (request: any, context: any) =>
+      handler(request, {
+        session: { user: { id: 'admin-user' } },
+        ...context,
+      });
+  }),
+}));
 
 // Mock SocialPostSelector
 const mockSearchCandidateArticles = jest.fn();
@@ -71,40 +68,7 @@ describe('GET /api/admin/social-posts/articles/candidates', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetSession.mockResolvedValue({
-      user: { id: 'admin-user', role: 'admin' },
-      session: { id: 's1', userId: 'admin-user', token: 't1', expiresAt: new Date() },
-    });
     mockSearchCandidateArticles.mockResolvedValue(mockArticles);
-  });
-
-  it('should return 401 when not authenticated', async () => {
-    mockGetSession.mockResolvedValue(null);
-
-    const request = new NextRequest(
-      'http://localhost:3000/api/admin/social-posts/articles/candidates'
-    );
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(data.error).toBe('Unauthorized. Authentication required.');
-  });
-
-  it('should return 403 when user is not admin', async () => {
-    mockGetSession.mockResolvedValue({
-      user: { id: 'regular-user', role: 'user' },
-      session: { id: 's2', userId: 'regular-user', token: 't2', expiresAt: new Date() },
-    });
-
-    const request = new NextRequest(
-      'http://localhost:3000/api/admin/social-posts/articles/candidates'
-    );
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(403);
-    expect(data.error).toBe('Forbidden. Admin access required.');
   });
 
   it('should return candidate articles without filters', async () => {

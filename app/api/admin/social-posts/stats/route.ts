@@ -5,30 +5,14 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
+import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { getSocialPostService } from '@/lib/social-post';
 
 /**
  * GET - ステータス別件数取得
  */
-export async function GET() {
-  const session = await getSession();
-
-  if (!session?.user) {
-    return NextResponse.json(
-      { error: 'Unauthorized. Authentication required.' },
-      { status: 401 }
-    );
-  }
-
-  if (session.user.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Forbidden. Admin access required.' },
-      { status: 403 }
-    );
-  }
-
+async function handler() {
   try {
     const service = getSocialPostService();
     const counts = await service.getStatusCounts();
@@ -47,3 +31,5 @@ export async function GET() {
     );
   }
 }
+
+export const GET = withAdminAuth(handler);
