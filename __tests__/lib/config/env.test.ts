@@ -762,14 +762,24 @@ describe('Environment Configuration - CRON_TOKEN / CRON_SECRET の形式検証',
   describe('空白のみの CRON_TOKEN の起動時警告（issue #650）', () => {
     // 空白のみは未設定扱いになり、cron 認証は黙って CRON_SECRET へフォールバックする。
     // シークレット注入の失敗（ローテーション失敗）に気づけるよう、起動時に結果を警告する
+    // 検知したいのは本番のローテーション失敗なので production でだけ出す
     let warnSpy: jest.SpyInstance;
 
+    // resetEnvCache() は NODE_ENV=test のときしか効かないので、production に
+    // 切り替える前と、test に戻した後でキャッシュを捨てる
     beforeEach(() => {
       warnSpy = jest.spyOn(logger, 'warn').mockImplementation();
+      process.env.NODE_ENV = 'test';
+      resetEnvCache();
+      process.env.NODE_ENV = 'production';
+      process.env.AUTH_SECRET =
+        'test-secret-key-for-testing-purposes-only-32chars';
     });
 
     afterEach(() => {
       warnSpy.mockRestore();
+      process.env.NODE_ENV = 'test';
+      resetEnvCache();
     });
 
     const cronWarnings = () =>
@@ -842,6 +852,25 @@ describe('Environment Configuration - CRON_TOKEN / CRON_SECRET の形式検証',
 
       getEnv();
 
+      expect(cronWarnings()).toEqual([]);
+    });
+
+    it('production 以外では警告しない（.env.example は CRON_TOKEN= を空で配っている）', () => {
+      process.env.NODE_ENV = 'development';
+      process.env.CRON_TOKEN = '';
+      resetEnvCache();
+
+      getEnv();
+
+      expect(cronWarnings()).toEqual([]);
+    });
+
+    it('CRON_SECRET が形式不正なら、フォールバックするとは伝えず検証エラーにする', () => {
+      process.env.CRON_TOKEN = ' ';
+      process.env.CRON_SECRET = 'invalid secret';
+      resetEnvCache();
+
+      expect(() => getEnv()).toThrow('Environment validation failed');
       expect(cronWarnings()).toEqual([]);
     });
 
