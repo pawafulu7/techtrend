@@ -5,7 +5,10 @@ import {
 } from 'rate-limiter-flexible';
 import { getRedisClient } from '@/lib/redis/client';
 import { logger } from '@/lib/logger';
-import { getRateLimitConfig } from '@/lib/config/rate-limits';
+import {
+  getRateLimitConfig,
+  type RateLimitPolicyKey,
+} from '@/lib/config/rate-limits';
 import { env } from '@/lib/config/env';
 
 /**
@@ -101,7 +104,7 @@ function createRateLimiter(
  * ```
  */
 export function createRateLimiterFromConfig(
-  configKey: string
+  configKey: RateLimitPolicyKey
 ): RateLimiterAbstract {
   if (limiterCache.has(configKey)) {
     return limiterCache.get(configKey)!;

@@ -36,7 +36,7 @@ export type RateLimitConfig = z.input<typeof RateLimitConfigSchemaInternal>;
  * - 'ip': Client IP address
  * - 'anonymous': Single global key (for health checks)
  */
-export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
+export const RATE_LIMIT_POLICIES = {
   // Authentication (High Security) - 60s block for brute-force prevention
   'auth:register': {
     points: 5,
@@ -262,6 +262,22 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'Tag cloud data',
     telemetryEvent: 'ratelimit.read.tags-cloud',
   },
+  'read:favorite:batch': {
+    points: 60,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'user',
+    notes: 'Favorite status batch lookup for article lists (login required)',
+    telemetryEvent: 'ratelimit.read.favorite-batch',
+  },
+  'read:changelog': {
+    points: 60,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'ip',
+    notes: 'Public changelog (cached)',
+    telemetryEvent: 'ratelimit.read.changelog',
+  },
 
   // Public Endpoints (High Tolerance) - No block
   'public:stats': {
@@ -378,7 +394,27 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
     notes: 'Global default for unspecified endpoints',
     telemetryEvent: 'ratelimit.default',
   },
-};
+} satisfies Record<string, RateLimitConfig>;
+
+/**
+ * 定義済みのポリシーキー
+ *
+ * withRateLimit と createRateLimiterFromConfig の引数をこの型にすることで、未定義のキーを渡すと型チェックで
+ * 失敗する（未定義のキーは実行時に黙って default へフォールバックするため）。
+ * 回帰の検知は lib/config/rate-limits.type-test.ts が担う。
+ */
+export type RateLimitPolicyKey = keyof typeof RATE_LIMIT_POLICIES;
+
+/**
+ * 任意の文字列キーで引くための表
+ *
+ * RATE_LIMIT_OVERRIDES やテストは定義外のキーも渡すため、getRateLimitConfig は
+ * string を受け付ける。
+ */
+const POLICIES_BY_KEY: Record<string, RateLimitConfig> = RATE_LIMIT_POLICIES;
+
+/** default へのフォールバックを警告済みのキー（キーごとに 1 回だけ警告する） */
+const warnedUnknownKeys = new Set<string>();
 
 /**
  * Get rate limit config by key
@@ -392,7 +428,16 @@ export const RATE_LIMIT_POLICIES: Record<string, RateLimitConfig> = {
  * @returns Validated rate limit configuration
  */
 export function getRateLimitConfig(key: string): RateLimitConfig {
-  const config = RATE_LIMIT_POLICIES[key] || RATE_LIMIT_POLICIES['default'];
+  // hasOwn で判定する（'toString' などのプロトタイプのプロパティを拾わないため）
+  const isDefined = Object.hasOwn(POLICIES_BY_KEY, key);
+  if (!isDefined && !warnedUnknownKeys.has(key)) {
+    warnedUnknownKeys.add(key);
+    logger.warn(
+      { key },
+      'Undefined rate limit policy key, using the default policy as the base (RATE_LIMIT_OVERRIDES still applies)'
+    );
+  }
+  const config = isDefined ? POLICIES_BY_KEY[key] : RATE_LIMIT_POLICIES.default;
 
   // Apply environment overrides with validation
   const overrides = env.RATE_LIMIT_OVERRIDES;

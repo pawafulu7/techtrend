@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, RateLimitError } from '@/lib/rate-limiter';
-import { getRateLimitConfig } from '@/lib/config/rate-limits';
+import {
+  getRateLimitConfig,
+  type RateLimitPolicyKey,
+} from '@/lib/config/rate-limits';
 import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
 import { trace } from '@opentelemetry/api';
 import { resolveSessionFromRequest } from './session-context';
@@ -56,7 +59,7 @@ interface WithRateLimitOptions {
  * );
  */
 export function withRateLimit(
-  configKey: string,
+  configKey: RateLimitPolicyKey,
   handler: RouteHandler,
   options?: WithRateLimitOptions
 ): RouteHandler {
