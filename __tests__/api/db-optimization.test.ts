@@ -1,7 +1,6 @@
 // Mock dependencies
 jest.mock('@/lib/prisma');
 jest.mock('@/lib/auth/get-session');
-jest.mock('@/lib/cache/favorites-cache');
 
 import { NextRequest } from 'next/server';
 import { GET as articlesGET } from '@/app/api/articles/route';

@@ -112,17 +112,6 @@ jest.mock('@/lib/dataloader/article-view-loader', () => ({
   getViewLoaderStats: () => null,
 }));
 
-const mockFavoriteCache = {
-  getBatch: jest.fn(),
-  setBatch: jest.fn(),
-};
-// Delegate lazily: route modules are imported (hoisted) before this const is initialized
-jest.mock('@/lib/cache/favorites-cache', () => ({
-  favoriteCache: {
-    getBatch: (...args: unknown[]) => mockFavoriteCache.getBatch(...args),
-    setBatch: (...args: unknown[]) => mockFavoriteCache.setBatch(...args),
-  },
-}));
 
 import { auth } from '@/lib/auth/auth';
 import { getUserAuthData } from '@/lib/auth/user-auth-cache';
@@ -265,8 +254,6 @@ describe('Auth middleware unification (issues #659, #662)', () => {
     mockGetUserAuthData.mockReset();
     mockGetUserAuthData.mockResolvedValue({ role: 'admin', deletedAt: null });
     setFindUnique(null);
-    mockFavoriteCache.getBatch.mockReset();
-    mockFavoriteCache.setBatch.mockReset();
     mockCheckRateLimit.mockReset();
     mockHandleStreamingRequest.mockReset();
     mockHandleBatchRequest.mockReset();
@@ -421,7 +408,6 @@ describe('Auth middleware unification (issues #659, #662)', () => {
     });
 
     it('POST /api/favorites/batch queries favorites of the validated user', async () => {
-      mockFavoriteCache.getBatch.mockResolvedValue(null);
       prismaMock.favorite.findMany.mockResolvedValue([{ articleId: 'a1' }]);
 
       const response = await favoritesBatch.POST(
@@ -441,10 +427,6 @@ describe('Auth middleware unification (issues #659, #662)', () => {
           where: expect.objectContaining({ userId: USER_ID }),
         })
       );
-      expect(mockFavoriteCache.setBatch).toHaveBeenCalledWith(USER_ID, {
-        a1: true,
-        a2: false,
-      });
     });
 
     it('POST /api/user/password changes the password of the validated user', async () => {

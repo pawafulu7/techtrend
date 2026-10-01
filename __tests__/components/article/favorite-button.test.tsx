@@ -250,4 +250,50 @@ describe('FavoriteButton の状態遷移（uncontrolled）', () => {
     });
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  // 一覧画面ではバッチ取得の失敗で fetchInitialStatus が後から true になる
+  it('fetchInitialStatus が false → true に変わったレンダーから取得中の表示にする', () => {
+    (global.fetch as jest.Mock).mockReturnValue(new Promise(() => {}));
+    const { rerender } = render(<FavoriteButton articleId={ARTICLE_ID} />);
+    expect(screen.getByRole('button', { name: ADD_LABEL })).toBeEnabled();
+
+    rerender(<FavoriteButton articleId={ARTICLE_ID} fetchInitialStatus />);
+
+    expect(screen.getByRole('button', { name: ADD_LABEL })).toBeDisabled();
+  });
+
+  it('個別取得の途中で fetchInitialStatus が false に戻っても取得中のまま固まらない', async () => {
+    // 個別 GET は返らないまま
+    (global.fetch as jest.Mock).mockReturnValue(new Promise(() => {}));
+    const { rerender } = render(
+      <FavoriteButton articleId={ARTICLE_ID} fetchInitialStatus />
+    );
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: ADD_LABEL })).toBeDisabled();
+
+    // バッチ取得が成功に戻った
+    rerender(<FavoriteButton articleId={ARTICLE_ID} isFavorited />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: REMOVE_LABEL })
+      ).toBeEnabled();
+    });
+  });
+
+  it('トグル成功のイベントにトグルしたユーザーを含める', async () => {
+    const user = userEvent.setup();
+    const events: CustomEvent[] = [];
+    const listener = (e: Event) => events.push(e as CustomEvent);
+    window.addEventListener('article-favorite-changed', listener);
+
+    mockFetchOnce({ ok: true, status: 200 });
+    render(<FavoriteButton articleId={ARTICLE_ID} />);
+    await user.click(screen.getByRole('button', { name: ADD_LABEL }));
+
+    await waitFor(() => expect(events).toHaveLength(1));
+    expect(events[0].detail).toMatchObject({ userId: 'user-1' });
+
+    window.removeEventListener('article-favorite-changed', listener);
+  });
 });

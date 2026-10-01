@@ -4,7 +4,6 @@ import {
   QueryClient,
   QueryClientProvider,
   InfiniteData,
-  type Query,
 } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 
@@ -20,13 +19,15 @@ import { authClient } from '@/lib/auth/auth-client';
 import type { ArticleWithUserData } from '@/types/models';
 import {
   FAVORITE_STATUSES_QUERY_KEY,
-  type FavoriteStatuses,
+  syncFavoriteStatusesCache,
 } from '@/app/hooks/use-favorite-statuses';
 
 interface FavoriteChangedDetail {
   articleId: string;
   isFavorited: boolean;
   timestamp: number;
+  /** トグルしたユーザー（FavoriteButton が付ける。他の発火元は付けない） */
+  userId?: string;
 }
 
 interface ReadStatusChangedDetail {
@@ -239,59 +240,6 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 
   // Global listener for cross-screen cache sync
   useEffect(() => {
-    // 一覧画面のバッチ取得（app/hooks/use-favorite-statuses.ts）のキャッシュを
-    // トグル結果に合わせる。書き換えないと、カードが再マウントされたときに
-    // トグル前の状態が表示される。
-    // 取得中のバッチはトグル前のサーバー状態を返しうるので、先に取り消す
-    // （取り消さないと、遅れて届いた応答で表示が巻き戻る）。取り消しは状態を
-    // 取得前に戻す処理が非同期に走るため、書き換えは取り消しの完了を待ってから行う。
-    const syncFavoriteStatuses = async (
-      articleId: string,
-      isFavorited: boolean
-    ) => {
-      // queryKey は [...FAVORITE_STATUSES_QUERY_KEY, userId, sortedUniqueIds]。
-      // トグルした記事を含むバッチだけを対象にする
-      const includesArticle = (query: Query) => {
-        const ids = query.queryKey[2];
-        return Array.isArray(ids) && ids.includes(articleId);
-      };
-
-      // 初回取得の途中で取り消したクエリはデータが無いまま止まるので、後で取り直す。
-      // イベントはトグルの API 成功後に届くため、取り直せばトグル後の状態が返る
-      const interruptedFirstFetches = new Set(
-        queryClient
-          .getQueryCache()
-          .findAll({
-            queryKey: FAVORITE_STATUSES_QUERY_KEY,
-            fetchStatus: 'fetching',
-            predicate: includesArticle,
-          })
-          .filter((query) => query.state.data === undefined)
-          .map((query) => query.queryHash)
-      );
-
-      await queryClient.cancelQueries({
-        queryKey: FAVORITE_STATUSES_QUERY_KEY,
-        predicate: includesArticle,
-      });
-
-      queryClient.setQueriesData<FavoriteStatuses>(
-        { queryKey: FAVORITE_STATUSES_QUERY_KEY },
-        (oldData) =>
-          oldData && Object.hasOwn(oldData, articleId)
-            ? { ...oldData, [articleId]: isFavorited }
-            : oldData
-      );
-
-      if (interruptedFirstFetches.size > 0) {
-        await queryClient.refetchQueries({
-          queryKey: FAVORITE_STATUSES_QUERY_KEY,
-          type: 'active',
-          predicate: (query) => interruptedFirstFetches.has(query.queryHash),
-        });
-      }
-    };
-
     const handleFavoriteChanged = (event: Event) => {
       const customEvent = event as CustomEvent<FavoriteChangedDetail>;
       const detail = customEvent.detail;
@@ -350,7 +298,13 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         refetchType: 'none',
       });
 
-      void syncFavoriteStatuses(articleId, isFavorited);
+      // 一覧画面のバッチ取得のキャッシュもトグル結果に合わせる
+      void syncFavoriteStatusesCache(
+        queryClient,
+        articleId,
+        isFavorited,
+        detail.userId
+      );
     };
 
     window.addEventListener('article-favorite-changed', handleFavoriteChanged);

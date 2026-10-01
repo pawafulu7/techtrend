@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createFavoriteLoader } from '@/lib/dataloader/favorite-loader';
-import { favoriteCache } from '@/lib/cache/favorites-cache';
 import { parseBoolean } from '@/lib/utils/env-parser';
 import logger from '@/lib/logger';
 import {
@@ -113,33 +112,11 @@ async function postHandler(
       return response;
     }
 
-    // 既存のキャッシュ方式（フォールバック）
-    const cachedFavorites = await favoriteCache.getBatch(userId, articleIds);
-
-    if (cachedFavorites) {
-      const responseTime = Date.now() - startTime;
-      const response = NextResponse.json({ favorites: cachedFavorites });
-      response.headers.set('X-Response-Time', `${responseTime}ms`);
-      response.headers.set('X-Query-Strategy', 'cache');
-
-      logger.debug(
-        {
-          userId,
-          count: articleIds.length,
-          responseTime,
-        },
-        'Favorites batch cache hit'
-      );
-
-      return response;
-    }
-
-    // キャッシュミスの場合、DBから取得（既存の処理）
-    logger.debug(
-      { userId, count: articleIds.length },
-      'Favorites batch cache miss, fetching from DB'
-    );
-
+    // DB から直接引く。Redis のユーザー単位キャッシュは使わない（issue #653）。
+    // 「DB を読む → キャッシュに書く」の間にトグル（DB 更新 → キャッシュ更新）が
+    // 割り込むと、トグル前の状態がキャッシュに残り、最大 TTL のあいだ誤答する。
+    // (userId, articleId) の一意インデックスで最大 100 件を引くだけなので、
+    // キャッシュで省ける負荷はほとんど無い
     const { prisma } = await import('@/lib/prisma');
     const favorites = await prisma.favorite.findMany({
       where: {
@@ -160,9 +137,6 @@ async function postHandler(
     for (const articleId of articleIds) {
       favoritesMap[articleId] = favoriteArticleIds.has(articleId);
     }
-
-    // キャッシュに保存
-    await favoriteCache.setBatch(userId, favoritesMap);
 
     const responseTime = Date.now() - startTime;
     const response = NextResponse.json({ favorites: favoritesMap });

@@ -39,7 +39,10 @@ export interface HistoryArticleCardProps {
   onArticleClick?: (articleId: string) => void;
   onTagClick?: (tagName: string) => void;
   from?: string;
-  /** お気に入り状態（一覧画面のバッチ取得の結果） */
+  /**
+   * お気に入り状態（一覧画面のバッチ取得の結果）。未指定なら「未登録」と表示する。
+   * 状態を渡せない画面では fetchInitialStatus を true にしてカード側で取得する
+   */
   isFavorited?: boolean;
   /** isFavorited を取得中。FavoriteButton を取得中の表示・無効化にする */
   isFavoriteLoading?: boolean;

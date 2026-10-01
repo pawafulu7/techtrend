@@ -1,7 +1,11 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { QueryProvider } from '@/app/providers/query-provider';
-import { useFavoriteStatuses } from '@/app/hooks/use-favorite-statuses';
+import {
+  FAVORITE_STATUSES_QUERY_KEY,
+  useFavoriteStatuses,
+} from '@/app/hooks/use-favorite-statuses';
 
 /**
  * 一覧画面のお気に入り状態のバッチ取得（issue #653）
@@ -61,10 +65,14 @@ function requestedIds(callIndex: number): string[] {
     .articleIds;
 }
 
-function dispatchFavoriteChanged(articleId: string, isFavorited: boolean) {
+function dispatchFavoriteChanged(
+  articleId: string,
+  isFavorited: boolean,
+  userId?: string
+) {
   window.dispatchEvent(
     new CustomEvent('article-favorite-changed', {
-      detail: { articleId, isFavorited, timestamp: Date.now() },
+      detail: { articleId, isFavorited, timestamp: Date.now(), userId },
     })
   );
 }
@@ -136,7 +144,7 @@ describe('useFavoriteStatuses', () => {
     expect(result.current.statuses).toEqual({});
   });
 
-  it('セッション確定前は取得せず、確定したら取得する', async () => {
+  it('セッション確定前は取得せず取得中の表示にし、確定したら取得する', async () => {
     mockUseSession.mockReturnValue({ data: null, isPending: true });
     fetchMock.mockImplementation(respondWith(['a']));
 
@@ -148,6 +156,8 @@ describe('useFavoriteStatuses', () => {
       await Promise.resolve();
     });
     expect(fetchMock).not.toHaveBeenCalled();
+    // 旧実装（カードの個別取得）と同じく、確定前から取得中の表示にする
+    expect(result.current.isLoading).toBe(true);
 
     mockUseSession.mockReturnValue({
       data: { user: { id: 'user-1' } },
@@ -177,12 +187,24 @@ describe('useFavoriteStatuses', () => {
       wrapper,
     });
 
-    // QueryProvider の既定は retry: 1（1 秒後に 1 回だけ再試行する）
+    // 5xx は 1 秒後に 1 回だけ再試行する
     await waitFor(() => expect(result.current.isError).toBe(true), {
       timeout: 4000,
     });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.current.statuses).toEqual({});
     expect(result.current.isLoading).toBe(false);
+  });
+
+  it('4xx は再試行せずにすぐ isError にする', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: 'x' }, 403));
+
+    const { result } = renderHook(() => useFavoriteStatuses(['a']), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('応答に要求した ID が欠けていたら isError にする（未取得を「未登録」と見せない）', async () => {
@@ -276,5 +298,60 @@ describe('useFavoriteStatuses', () => {
 
     await waitFor(() => expect(result.current.statuses).toEqual({ a: true }));
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('トグルした記事を含まないクエリは書き換えない（最新扱いにしない）', async () => {
+    fetchMock.mockImplementation(respondWith(['a']));
+
+    const { result } = renderHook(
+      () => ({
+        withA: useFavoriteStatuses(['a']),
+        withoutA: useFavoriteStatuses(['b']),
+        client: useQueryClient(),
+      }),
+      { wrapper }
+    );
+    await waitFor(() => {
+      expect(result.current.withA.statuses).toEqual({ a: true });
+      expect(result.current.withoutA.statuses).toEqual({ b: false });
+    });
+    const keyWithoutA = [...FAVORITE_STATUSES_QUERY_KEY, 'user-1', ['b']];
+    const updatedAtBefore =
+      result.current.client.getQueryState(keyWithoutA)?.dataUpdatedAt;
+
+    await act(async () => {
+      dispatchFavoriteChanged('a', false);
+    });
+
+    await waitFor(() =>
+      expect(result.current.withA.statuses).toEqual({ a: false })
+    );
+    expect(
+      result.current.client.getQueryState(keyWithoutA)?.dataUpdatedAt
+    ).toBe(updatedAtBefore);
+  });
+
+  it('別のユーザーのトグル完了は反映しない（ログアウト → 別ユーザーでログインした後）', async () => {
+    fetchMock.mockImplementation(respondWith(['a']));
+
+    const { result } = renderHook(() => useFavoriteStatuses(['a']), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.statuses).toEqual({ a: true }));
+
+    await act(async () => {
+      dispatchFavoriteChanged('a', false, 'previous-user');
+    });
+    // 同期処理は cancelQueries を待ってから書き換えるので、マクロタスク 1 回分
+    // 待ってから「書き換わっていない」ことを確かめる
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(result.current.statuses).toEqual({ a: true });
+
+    await act(async () => {
+      dispatchFavoriteChanged('a', false, 'user-1');
+    });
+    await waitFor(() => expect(result.current.statuses).toEqual({ a: false }));
   });
 });
