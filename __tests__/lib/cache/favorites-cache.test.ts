@@ -102,6 +102,49 @@ describe('FavoritesCache', () => {
 
       expect(result).toBeNull();
     });
+
+    // issue #653: キャッシュは画面ごとの ID 集合をマージしたもの。未収録の ID を
+    // false として返すと、お気に入り済みの記事を「未登録」と誤答する
+    it('should return null when some requested articles are not cached', async () => {
+      const userId = 'user1';
+      await favoritesCache.setBatch(userId, { article1: true });
+
+      const result = await favoritesCache.getBatch(userId, [
+        'article1',
+        'article-not-cached',
+      ]);
+
+      expect(result).toBeNull();
+    });
+
+    it('should hit after the missing articles are merged by setBatch', async () => {
+      const userId = 'user1';
+      await favoritesCache.setBatch(userId, { article1: true });
+      await favoritesCache.setBatch(userId, {
+        article1: true,
+        article2: true,
+        article3: false,
+      });
+
+      const result = await favoritesCache.getBatch(userId, [
+        'article2',
+        'article3',
+      ]);
+
+      expect(result).toEqual({ article2: true, article3: false });
+    });
+
+    it('should not treat inherited object keys as cached articles', async () => {
+      const userId = 'user1';
+      await favoritesCache.setBatch(userId, { article1: true });
+
+      const result = await favoritesCache.getBatch(userId, [
+        'article1',
+        'toString',
+      ]);
+
+      expect(result).toBeNull();
+    });
   });
 
   describe('setBatch', () => {

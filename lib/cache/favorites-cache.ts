@@ -19,6 +19,12 @@ export class FavoritesCache {
 
   /**
    * ユーザーのお気に入り状態を一括取得
+   *
+   * 要求した ID がすべてキャッシュに収録されているときだけ結果を返す。
+   * キャッシュは画面ごとに違う ID 集合の setBatch をマージしたものなので、
+   * 未収録の ID を false として返すと、お気に入り済みの記事を「未登録」と
+   * 誤答する。1 件でも未収録なら null（キャッシュミス）にし、呼び出し元に
+   * DB から引かせる（取得結果は setBatch で既存のキャッシュにマージされる）。
    */
   async getBatch(
     userId: string,
@@ -30,11 +36,14 @@ export class FavoritesCache {
       // キャッシュから取得
       const cached = await this.cache.get<{ [key: string]: boolean }>(cacheKey);
 
-      if (cached) {
+      if (
+        cached &&
+        articleIds.every((articleId) => Object.hasOwn(cached, articleId))
+      ) {
         // リクエストされた記事IDのみを返す
         const result: { [key: string]: boolean } = {};
         for (const articleId of articleIds) {
-          result[articleId] = cached[articleId] || false;
+          result[articleId] = cached[articleId] === true;
         }
 
         logger.debug(
@@ -44,10 +53,16 @@ export class FavoritesCache {
         return result;
       }
 
-      logger.debug({ userId, hit: false }, 'Favorites cache miss');
+      logger.debug(
+        { userId, hit: false, partial: Boolean(cached) },
+        'Favorites cache miss'
+      );
       return null;
     } catch (error) {
-      logger.error({ err: error, userId }, 'Failed to get favorites from cache');
+      logger.error(
+        { err: error, userId },
+        'Failed to get favorites from cache'
+      );
       return null;
     }
   }
