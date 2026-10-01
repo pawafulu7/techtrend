@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveSession } from '@/lib/middleware/session-context';
-import type { SessionContext } from '@/lib/middleware/session-context';
-import type { BetterAuthSession } from '@/lib/auth/auth';
 import {
   checkRateLimit,
   ragAgentSearchRateLimit,
@@ -14,8 +11,8 @@ import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { ZodError } from 'zod';
 import { features } from '@/lib/config/env';
 import {
-  validateUser,
-  createUserDeletedResponse,
+  withUserValidation,
+  type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import {
@@ -36,7 +33,7 @@ import { handleBatchRequest } from './batch-handler';
  * Natural language interface for semantic article search using AI agent.
  *
  * Security layers:
- * 1. Authentication (Better Auth) - REQUIRED
+ * 1. Authentication + deleted-user check (withUserValidation) - REQUIRED
  * 2. Rate limiting (Redis via ioredis) - 5 req/min/user (stricter for cost control)
  * 3. Input validation (Zod + prompt injection detection)
  * 4. Agent guardrails (system prompt with strict rules)
@@ -57,42 +54,16 @@ export const runtime = 'nodejs'; // Required for Prisma
 
 const tracer = trace.getTracer('rag-agent');
 
-async function postHandler(request: NextRequest, context?: SessionContext) {
+async function postHandler(
+  request: NextRequest,
+  context: WithUserValidationContext
+) {
+  // Layer 1: Authentication and deleted-user check are done by withUserValidation
+  const userId = context.validatedUser.id;
+
   return tracer.startActiveSpan('rag.agent-search', async (span) => {
-    let session: BetterAuthSession | null = null;
     try {
-      session = await resolveSession(context);
-      // Layer 1: Authentication
-      if (!session?.user) {
-        span.setAttribute('auth.status', 'unauthorized');
-
-        // Mask IP for PII minimization (GDPR compliance)
-        const rawIp = request.headers.get('x-forwarded-for') || 'unknown';
-        const maskedIp = rawIp.includes(':')
-          ? rawIp.split(':').slice(0, 4).join(':') + ':*' // IPv6: keep first 4 segments
-          : rawIp.split(',')[0].trim().split('.').slice(0, 3).join('.') + '.x'; // IPv4: mask last octet
-
-        logger.warn(
-          {
-            ip: maskedIp,
-          },
-          'Unauthorized agent search attempt'
-        );
-
-        return NextResponse.json(
-          { error: 'Unauthorized - Authentication required' },
-          { status: 401 }
-        );
-      }
-
-      span.setAttribute('auth.userId', session.user.id ?? '');
-
-      // Layer 1.5: User validation (check if user is deleted)
-      const validatedUser = await validateUser(session);
-      if (!validatedUser) {
-        span.setAttribute('auth.status', 'user_deleted');
-        return createUserDeletedResponse();
-      }
+      span.setAttribute('auth.userId', userId);
 
       // Layer 2: Pre-parse agentType for rate limiting
       let body;
@@ -104,7 +75,7 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
         span.setAttribute('validation.malformedJson', true);
         logger.warn(
           {
-            userId: session.user.id,
+            userId,
             error: error instanceof Error ? error.message : 'Unknown',
           },
           'Malformed JSON in agent search request'
@@ -135,7 +106,7 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
         agentType === 'article-qa'
           ? articleQaRateLimit
           : ragAgentSearchRateLimit;
-      const rateKey = `rag:agent:${agentType}:${session.user.id}`;
+      const rateKey = `rag:agent:${agentType}:${userId}`;
       let rateLimitInfo: RateLimitInfo | undefined;
 
       try {
@@ -147,7 +118,7 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
           span.setAttribute('rateLimit.exceeded', true);
           logger.warn(
             {
-              userId: session.user.id,
+              userId,
               agentType,
               limit: error.limit,
             },
@@ -189,7 +160,7 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
         span.setAttribute('security.promptInjection', true);
         logger.warn(
           {
-            userId: session.user.id,
+            userId,
             queryPreview: validatedRequest.query.substring(0, 50),
           },
           'Prompt injection detected'
@@ -208,7 +179,7 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
 
       logger.info(
         {
-          userId: session.user.id,
+          userId,
           queryPreview: validatedRequest.query.substring(0, 50),
         },
         'Agent search request'
@@ -218,7 +189,7 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
       if (features.isAgentStreamingEnabled()) {
         return await handleStreamingRequest(
           validatedRequest,
-          session,
+          userId,
           span,
           request,
           rateLimitInfo
@@ -226,7 +197,7 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
       } else {
         return await handleBatchRequest(
           validatedRequest,
-          session,
+          userId,
           span,
           request,
           rateLimitInfo
@@ -241,7 +212,7 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
       if (error instanceof ArticleNotFoundError) {
         logger.warn(
           {
-            userId: session?.user?.id,
+            userId,
             articleId: error.articleId,
           },
           'Article not found'
@@ -260,7 +231,7 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
       if (error instanceof ModeContextError) {
         logger.warn(
           {
-            userId: session?.user?.id,
+            userId,
             error: error.message,
           },
           'Mode context resolution failed'
@@ -279,7 +250,7 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
       if (error instanceof ZodError) {
         logger.warn(
           {
-            userId: session?.user?.id,
+            userId,
             errors: error.errors,
           },
           'Invalid agent search request'
@@ -314,7 +285,7 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
       logger.error(
         {
           error: sanitizeError(error),
-          userId: session?.user?.id,
+          userId,
         },
         'Agent search API error'
       );
@@ -335,4 +306,4 @@ async function postHandler(request: NextRequest, context?: SessionContext) {
   });
 }
 
-export const POST = withCSRFProtection(postHandler);
+export const POST = withCSRFProtection(withUserValidation(postHandler));

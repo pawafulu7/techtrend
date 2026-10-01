@@ -71,7 +71,12 @@ export interface WithUserValidationContext {
 export function withUserValidation(handler: RouteHandler): RouteHandler {
   return async (request: NextRequest, context?: SessionContext) => {
     // Get session - reuse from context if available (auth() call optimization)
-    const session = await resolveSessionFromRequest(context, request.headers);
+    let session: Awaited<ReturnType<typeof resolveSessionFromRequest>>;
+    try {
+      session = await resolveSessionFromRequest(context, request.headers);
+    } catch (error) {
+      return createValidationErrorResponse(request, error);
+    }
 
     // Check if user is authenticated
     if (!session?.user?.id) {
@@ -86,10 +91,15 @@ export function withUserValidation(handler: RouteHandler): RouteHandler {
     }
 
     // Validate user exists in database and is not deleted
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, deletedAt: true },
-    });
+    let user: ValidatedUser | null;
+    try {
+      user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { id: true, deletedAt: true },
+      });
+    } catch (error) {
+      return createValidationErrorResponse(request, error);
+    }
 
     // User not found or has been deleted
     if (!user || user.deletedAt) {
@@ -124,6 +134,28 @@ export function withUserValidation(handler: RouteHandler): RouteHandler {
 
     return handler(request, enhancedContext);
   };
+}
+
+/**
+ * 認証・ユーザー照会そのものが失敗したとき（DB 障害など）の応答
+ *
+ * handler の外で起きる例外なので、handler 側の try/catch には届かない。
+ * ここで捕まえないと Next.js 既定の 500（本文なし）になり、レスポンスを JSON として
+ * 読むクライアント（例: PasswordChangeForm）がエラーを表示できない。
+ */
+function createValidationErrorResponse(
+  request: NextRequest,
+  error: unknown
+): NextResponse {
+  logger.error(
+    {
+      err: error,
+      path: request.nextUrl.pathname,
+      method: request.method,
+    },
+    'User validation failed'
+  );
+  return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
 }
 
 /**

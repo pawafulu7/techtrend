@@ -6,7 +6,6 @@ import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
 import { resolveCaches, safeReadCache, safeWriteCache } from './cache-helpers';
 import { SpanStatusCode, Span } from '@opentelemetry/api';
-import type { BetterAuthSession } from '@/lib/auth/auth';
 
 import type { RateLimitInfo, ValidatedRequest, ModeContext } from './schemas';
 import { AGENT_TIMEOUT_MS } from '@/lib/rag/agent-timeouts';
@@ -34,7 +33,7 @@ import { executeDirectSearch } from './direct-search-handler';
  */
 export async function handleBatchRequest(
   validatedRequest: ValidatedRequest,
-  session: BetterAuthSession,
+  userId: string,
   span: Span,
   request: NextRequest,
   rateLimitInfo?: RateLimitInfo
@@ -122,7 +121,7 @@ export async function handleBatchRequest(
   }
 
   const cacheLogBase = {
-    userId: session.user.id,
+    userId,
     queryPreview: validatedRequest.query.substring(0, 50),
     mode: modeContext.agentType,
   };
@@ -179,7 +178,7 @@ export async function handleBatchRequest(
               { text: directResult.response, toolCalls: directResult.toolCalls }
             ),
           {
-            userId: session.user.id,
+            userId,
             queryPreview: validatedRequest.query.substring(0, 50),
             mode: modeContext.agentType,
           }
@@ -213,7 +212,7 @@ export async function handleBatchRequest(
       logger.warn(
         {
           error: sanitizeError(error),
-          userId: session.user.id,
+          userId,
           queryPreview: validatedRequest.query.substring(0, 50),
           mode: modeContext.agentType,
         },
@@ -297,7 +296,7 @@ export async function handleBatchRequest(
 
     logger.info(
       {
-        userId: session.user.id,
+        userId,
         queryPreview: validatedRequest.query.substring(0, 50),
         toolCalls: toolCalls.length,
         promptTokens: usage?.promptTokens,
@@ -311,7 +310,7 @@ export async function handleBatchRequest(
     if (request.signal.aborted) {
       span.setAttribute('agent.clientDisconnected', true);
       logger.info(
-        { userId: session.user.id },
+        { userId },
         'Client disconnected, skipping fallback'
       );
       return attachRateLimitHeaders(
@@ -327,7 +326,7 @@ export async function handleBatchRequest(
     logger.warn(
       {
         error: sanitizeError(agentError),
-        userId: session.user.id,
+        userId,
         queryPreview: validatedRequest.query.substring(0, 50),
         mode: modeContext.agentType,
       },
@@ -382,7 +381,7 @@ export async function handleBatchRequest(
         }
       },
       {
-        userId: session.user.id,
+        userId,
         queryPreview: validatedRequest.query.substring(0, 50),
         mode: modeContext.agentType,
       }

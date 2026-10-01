@@ -5,7 +5,6 @@ import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
 import { trace, context, SpanStatusCode, Span } from '@opentelemetry/api';
-import type { BetterAuthSession } from '@/lib/auth/auth';
 
 import type { RateLimitInfo, ValidatedRequest, ModeContext } from './schemas';
 import { AGENT_TIMEOUT_MS } from '@/lib/rag/agent-timeouts';
@@ -38,7 +37,7 @@ const tracer = trace.getTracer('rag-agent');
  */
 export async function handleStreamingRequest(
   validatedRequest: ValidatedRequest,
-  session: BetterAuthSession,
+  userId: string,
   parentSpan: Span,
   request: NextRequest,
   rateLimitInfo?: RateLimitInfo
@@ -120,7 +119,7 @@ export async function handleStreamingRequest(
     parentSpan.setAttribute('streaming.cached', true);
 
     const logBase = {
-      userId: session.user!.id,
+      userId,
       queryPreview: validatedRequest.query.substring(0, 50),
       mode: modeContext.agentType,
     };
@@ -153,7 +152,7 @@ export async function handleStreamingRequest(
   if (!modeContext.isArticleQa) {
     return createDirectSearchSSEResponse(
       validatedRequest,
-      session,
+      userId,
       parentSpan,
       request,
       modeContext,
@@ -165,7 +164,7 @@ export async function handleStreamingRequest(
   // Start streaming (implementation in createStreamingResponse)
   return createStreamingResponse(
     validatedRequest,
-    session,
+    userId,
     parentSpan,
     request,
     modeContext,
@@ -181,7 +180,7 @@ export async function handleStreamingRequest(
  */
 async function createStreamingResponse(
   validatedRequest: ValidatedRequest,
-  session: BetterAuthSession,
+  userId: string,
   parentSpan: Span,
   request: NextRequest,
   modeContext: ModeContext,
@@ -381,7 +380,7 @@ async function createStreamingResponse(
                 logger.error(
                   {
                     error: sanitizeError(fallbackError),
-                    userId: session.user!.id,
+                    userId,
                   },
                   'Fallback failed for empty text'
                 );
@@ -418,7 +417,7 @@ async function createStreamingResponse(
                 }
               },
               {
-                userId: session.user!.id,
+                userId,
                 queryPreview: validatedRequest.query.substring(0, 50),
                 mode: modeContext.agentType,
               }
@@ -451,7 +450,7 @@ async function createStreamingResponse(
 
             logger.info(
               {
-                userId: session.user!.id,
+                userId,
                 queryPreview: validatedRequest.query.substring(0, 50),
                 toolCalls: toolCalls.length,
                 textLength: fullText.length,
@@ -481,7 +480,7 @@ async function createStreamingResponse(
         logger.warn(
           {
             error: sanitizeError(agentError),
-            userId: session.user!.id,
+            userId,
             queryPreview: validatedRequest.query.substring(0, 50),
           },
           'Agent streaming failed, using fallback'
@@ -640,7 +639,7 @@ async function createStreamingResponse(
  */
 async function createDirectSearchSSEResponse(
   validatedRequest: ValidatedRequest,
-  session: BetterAuthSession,
+  userId: string,
   parentSpan: Span,
   request: NextRequest,
   modeContext: ModeContext,
@@ -706,7 +705,7 @@ async function createDirectSearchSSEResponse(
                 }
               ),
             {
-              userId: session.user!.id,
+              userId,
               queryPreview: validatedRequest.query.substring(0, 50),
               mode: modeContext.agentType,
             }
@@ -738,7 +737,7 @@ async function createDirectSearchSSEResponse(
 
         logger.info(
           {
-            userId: session.user!.id,
+            userId,
             queryPreview: validatedRequest.query.substring(0, 50),
             resultCount: (directResult.toolCalls[0]?.output as any)?.count ?? 0,
           },
@@ -762,7 +761,7 @@ async function createDirectSearchSSEResponse(
         logger.warn(
           {
             error: sanitizeError(error),
-            userId: session.user!.id,
+            userId,
             queryPreview: validatedRequest.query.substring(0, 50),
           },
           'Direct search streaming failed'
