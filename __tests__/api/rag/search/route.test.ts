@@ -17,19 +17,23 @@ import { RateLimitError } from '@/lib/rate-limiter';
 import { resetEnvCache } from '@/lib/config/env';
 
 // Mock dependencies
-jest.mock('@/lib/auth/get-session', () => ({
-  getSession: jest.fn(),
-}));
-
 // Mock CSRF protection (pass-through in tests)
 jest.mock('@/lib/middleware/csrf-protection', () => ({
   withCSRFProtection: jest.fn((handler: any) => handler),
 }));
 
-// Mock user validation
+// Mock user validation (pass-through that injects a validated user).
+// Authentication and deleted-user rejection are covered by
+// __tests__/api/auth-middleware-unification.test.ts.
 jest.mock('@/lib/middleware/with-user-validation', () => ({
-  validateUser: jest.fn().mockResolvedValue({ id: 'test-user-1', deletedAt: null }),
-  createUserDeletedResponse: jest.fn(),
+  withUserValidation: jest.fn((handler: any) => {
+    return (request: any, context: any) =>
+      handler(request, {
+        session: { user: { id: 'test-user-1', email: 'test@example.com' } },
+        validatedUser: { id: 'test-user-1', deletedAt: null },
+        ...context,
+      });
+  }),
 }));
 
 jest.mock('@/lib/rate-limiter', () => {
@@ -73,7 +77,6 @@ function makeRequest(body: any): NextRequest {
 }
 
 describe('POST /api/rag/search', () => {
-  let mockGetSession: jest.Mock;
   let mockCheckRateLimit: jest.Mock;
 
   beforeEach(() => {
@@ -83,14 +86,7 @@ describe('POST /api/rag/search', () => {
     const { __resetSearchServiceForTest } = require('@/app/api/rag/search/route');
     __resetSearchServiceForTest();
 
-    mockGetSession = require('@/lib/auth/get-session').getSession;
     mockCheckRateLimit = require('@/lib/rate-limiter').checkRateLimit;
-
-    // Default: authenticated session
-    mockGetSession.mockResolvedValue({
-      user: { id: 'test-user-1', email: 'test@example.com' },
-      session: { id: 's1', userId: 'test-user-1', token: 't1', expiresAt: new Date() },
-    });
 
     // Default: rate limit OK with info
     mockCheckRateLimit.mockResolvedValue({
@@ -101,50 +97,7 @@ describe('POST /api/rag/search', () => {
   });
 
   describe('Layer 1: Authentication', () => {
-    it('should reject unauthenticated requests (401)', async () => {
-      mockGetSession.mockResolvedValueOnce(null);
-
-      const request = makeRequest({
-        query: 'test query',
-        topK: 5,
-        similarityThreshold: 0.5,
-      });
-
-      const response = await POST(request);
-
-      expect(response.status).toBe(401);
-
-      const body = await response.json();
-      expect(body.error).toBe('Unauthorized - Authentication required');
-    });
-
-    it('should return 401 when authenticated user is deleted', async () => {
-      const { validateUser } = require('@/lib/middleware/with-user-validation');
-      const { createUserDeletedResponse } = require('@/lib/middleware/with-user-validation');
-      (validateUser as jest.Mock).mockResolvedValueOnce(null);
-      (createUserDeletedResponse as jest.Mock).mockReturnValueOnce(
-        new Response(JSON.stringify({ error: 'User account has been deleted', code: 'USER_DELETED', requiresLogout: true, message: 'Your account has been deleted' }), { status: 401, headers: { 'Content-Type': 'application/json' } })
-      );
-
-      const request = makeRequest({
-        query: 'test query',
-        topK: 5,
-        similarityThreshold: 0.5,
-      });
-
-      const response = await POST(request);
-      const body = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(body.code).toBe('USER_DELETED');
-    });
-
     it('should accept authenticated requests', async () => {
-      mockGetSession.mockResolvedValueOnce({
-        user: { id: 'test-user-1', email: 'test@example.com' },
-        session: { id: 's1', userId: 'test-user-1', token: 't1', expiresAt: new Date() },
-      });
-
       const request = makeRequest({
         query: 'test query',
         topK: 5,

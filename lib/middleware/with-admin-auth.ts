@@ -9,6 +9,20 @@ type Handler = (
 ) => Promise<Response> | Response;
 
 /**
+ * Context passed to handlers wrapped by withAdminAuth.
+ * session.user.id is guaranteed to belong to a non-deleted admin.
+ */
+export interface WithAdminAuthContext {
+  session: {
+    user: {
+      id: string;
+      email?: string | null;
+      name?: string | null;
+    };
+  };
+}
+
+/**
  * Admin authentication middleware
  *
  * Uses DB-backed role verification via getUserAuthData() instead of JWT role.

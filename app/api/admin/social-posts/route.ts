@@ -6,9 +6,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import {
+  withAdminAuth,
+  type WithAdminAuthContext,
+} from '@/lib/middleware/with-admin-auth';
 import {
   getSocialPostService,
   SocialPostFiltersSchema,
@@ -19,23 +23,7 @@ import {
 /**
  * GET - 一覧取得
  */
-export async function GET(request: NextRequest) {
-  const session = await getSession();
-
-  if (!session?.user) {
-    return NextResponse.json(
-      { error: 'Unauthorized. Authentication required.' },
-      { status: 401 }
-    );
-  }
-
-  if (session.user.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Forbidden. Admin access required.' },
-      { status: 403 }
-    );
-  }
-
+async function listHandler(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
 
@@ -80,22 +68,11 @@ export async function GET(request: NextRequest) {
  *
  * レート制限: 20回/分 (admin:social-post-write)
  */
-async function createHandler(request: NextRequest) {
-  const session = await getSession();
-
-  if (!session?.user) {
-    return NextResponse.json(
-      { error: 'Unauthorized. Authentication required.' },
-      { status: 401 }
-    );
-  }
-
-  if (session.user.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Forbidden. Admin access required.' },
-      { status: 403 }
-    );
-  }
+async function createHandler(
+  request: NextRequest,
+  context: WithAdminAuthContext
+) {
+  const { session } = context;
 
   try {
     let body;
@@ -147,4 +124,8 @@ async function createHandler(request: NextRequest) {
   }
 }
 
-export const POST = withRateLimit('admin:social-post-write', createHandler);
+export const GET = withAdminAuth(listHandler);
+
+export const POST = withCSRFProtection(
+  withRateLimit('admin:social-post-write', withAdminAuth(createHandler))
+);

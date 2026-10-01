@@ -1,24 +1,24 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { NextRequest } from 'next/server';
 
-// Mock auth
-jest.mock('@/lib/auth/get-session', () => ({
-  getSession: jest.fn(),
+// Middleware is passthrough here: authentication / CSRF / composition are
+// covered by __tests__/api/auth-middleware-unification.test.ts and
+// __tests__/api/auth-middleware-composition.test.ts.
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: jest.fn((_key: string, handler: any) => handler),
 }));
 
-// Mock rate limiter
-jest.mock('@/lib/rate-limiter', () => {
-  const actual = jest.requireActual('@/lib/rate-limiter');
-  return {
-    ...actual,
-    checkRateLimit: jest
-      .fn()
-      .mockResolvedValue({ limit: 20, remaining: 19, reset: new Date() }),
-    createRateLimiterFromConfig: jest.fn().mockReturnValue({
-      consume: jest.fn().mockResolvedValue({}),
-    }),
-  };
-});
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: jest.fn((handler: any) => {
+    return (request: any, context: any) =>
+      handler(request, {
+        session: {
+          user: { id: 'admin-1', email: 'admin@example.com' },
+        },
+        ...context,
+      });
+  }),
+}));
 
 // Mock social post service
 const mockService = {
@@ -31,6 +31,7 @@ const mockService = {
   bulkAction: jest.fn(),
   generate: jest.fn(),
   generateScheduledPosts: jest.fn(),
+  generateOpinionPosts: jest.fn(),
   getStatusCounts: jest.fn(),
 };
 
@@ -89,22 +90,6 @@ jest.mock('@/lib/middleware/csrf-protection', () => ({
   withCSRFProtection: jest.fn((handler: any) => handler),
 }));
 
-// Mock user validation
-jest.mock('@/lib/middleware/with-user-validation', () => ({
-  validateUser: jest.fn().mockResolvedValue({ id: 'admin-1', deletedAt: null }),
-  createUserDeletedResponse: jest.fn().mockImplementation(() =>
-    new Response(
-      JSON.stringify({
-        error: 'Session invalid',
-        code: 'USER_DELETED',
-        message: 'Your session is no longer valid. Please sign in again.',
-        requiresLogout: true,
-      }),
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
-    )
-  ),
-}));
-
 // Mock logger
 const mockLogger = {
   info: jest.fn(),
@@ -120,19 +105,10 @@ const { GET, POST } = require('@/app/api/admin/social-posts/route');
 const { GET: GET_BY_ID, PATCH, DELETE } = require('@/app/api/admin/social-posts/[id]/route');
 const { POST: GENERATE } = require('@/app/api/admin/social-posts/generate/route');
 const { POST: BULK } = require('@/app/api/admin/social-posts/bulk/route');
+const { POST: GENERATE_OPINION } = require('@/app/api/admin/social-posts/generate-opinion/route');
 const { GET: GET_STATS } = require('@/app/api/admin/social-posts/stats/route');
 
 describe('Social Posts API', () => {
-  const adminSession = {
-    user: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-    session: { id: 's1', userId: 'admin-1', token: 't1', expiresAt: new Date() },
-  };
-
-  const userSession = {
-    user: { id: 'user-1', email: 'user@example.com', role: 'user' },
-    session: { id: 's2', userId: 'user-1', token: 't2', expiresAt: new Date() },
-  };
-
   const mockPost = {
     id: 'post-1',
     content: 'Test post',
@@ -148,33 +124,7 @@ describe('Social Posts API', () => {
   });
 
   describe('GET /api/admin/social-posts', () => {
-    it('should return 401 when not authenticated', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(null);
-
-      const request = new NextRequest('http://localhost:3000/api/admin/social-posts');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(data.error).toContain('Unauthorized');
-    });
-
-    it('should return 403 when user is not admin', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(userSession);
-
-      const request = new NextRequest('http://localhost:3000/api/admin/social-posts');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(403);
-      expect(data.error).toContain('Forbidden');
-    });
-
     it('should return posts list for admin', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.list.mockResolvedValue({
         items: [mockPost],
         total: 1,
@@ -195,8 +145,6 @@ describe('Social Posts API', () => {
 
   describe('POST /api/admin/social-posts', () => {
     it('should create a new post for admin', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.create.mockResolvedValue(mockPost);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts', {
@@ -218,8 +166,6 @@ describe('Social Posts API', () => {
     });
 
     it('should return 409 for duplicate content', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.create.mockRejectedValue(new DuplicateContentError());
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts', {
@@ -243,8 +189,6 @@ describe('Social Posts API', () => {
 
   describe('GET /api/admin/social-posts/[id]', () => {
     it('should return post details for admin', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.getById.mockResolvedValue(mockPost);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/post-1');
@@ -256,8 +200,6 @@ describe('Social Posts API', () => {
     });
 
     it('should return 404 for non-existent post', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.getById.mockResolvedValue(null);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/non-existent');
@@ -271,8 +213,6 @@ describe('Social Posts API', () => {
 
   describe('PATCH /api/admin/social-posts/[id]', () => {
     it('should update post for admin', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.update.mockResolvedValue({ ...mockPost, content: 'Updated content' });
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/post-1', {
@@ -289,8 +229,6 @@ describe('Social Posts API', () => {
     });
 
     it('should return 404 when updating non-existent post', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.update.mockRejectedValue(new NotFoundError('SocialPost', 'non-existent'));
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/non-existent', {
@@ -309,8 +247,6 @@ describe('Social Posts API', () => {
 
   describe('DELETE /api/admin/social-posts/[id]', () => {
     it('should delete post for admin', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.delete.mockResolvedValue(undefined);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/post-1', {
@@ -323,8 +259,6 @@ describe('Social Posts API', () => {
     });
 
     it('should return 404 when deleting non-existent post', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.delete.mockRejectedValue(new NotFoundError('SocialPost', 'non-existent'));
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/non-existent', {
@@ -341,8 +275,6 @@ describe('Social Posts API', () => {
 
   describe('POST /api/admin/social-posts/generate', () => {
     it('should auto-generate posts for admin', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.generateScheduledPosts.mockResolvedValue([mockPost]);
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/generate', {
@@ -361,8 +293,6 @@ describe('Social Posts API', () => {
     });
 
     it('should return 404 when no articles available', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.generateScheduledPosts.mockRejectedValue(new NotFoundError('Article', 'none'));
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/generate', {
@@ -381,8 +311,6 @@ describe('Social Posts API', () => {
 
   describe('POST /api/admin/social-posts/bulk', () => {
     it('should execute bulk delete for admin', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.bulkAction.mockResolvedValue({ success: 2, failed: 0 });
 
       const request = new NextRequest('http://localhost:3000/api/admin/social-posts/bulk', {
@@ -404,8 +332,6 @@ describe('Social Posts API', () => {
     });
 
     it('should return 400 for changeStatus without status', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
 
       // Override mock for this test
       const { SocialPostBulkSchema } = require('@/lib/social-post');
@@ -431,10 +357,44 @@ describe('Social Posts API', () => {
     });
   });
 
+  describe('POST /api/admin/social-posts/generate-opinion', () => {
+    it('should generate opinion posts with the admin user id', async () => {
+      mockService.generateOpinionPosts.mockResolvedValue([mockPost]);
+
+      const request = new NextRequest('http://localhost:3000/api/admin/social-posts/generate-opinion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: 2 }),
+      });
+
+      const response = await GENERATE_OPINION(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.count).toBe(1);
+      expect(mockService.generateOpinionPosts).toHaveBeenCalledWith(2, 'admin-1');
+    });
+
+    it('should return 400 when prompt injection is detected', async () => {
+      mockService.generateOpinionPosts.mockRejectedValue(new PromptInjectionError('injection'));
+
+      const request = new NextRequest('http://localhost:3000/api/admin/social-posts/generate-opinion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+
+      const response = await GENERATE_OPINION(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Content validation failed');
+    });
+  });
+
   describe('GET /api/admin/social-posts/stats', () => {
     it('should return status counts for admin', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(adminSession);
       mockService.getStatusCounts.mockResolvedValue({
         DRAFT: 5,
         REVIEWED: 3,
@@ -451,17 +411,6 @@ describe('Social Posts API', () => {
       expect(data.total).toBe(18);
     });
 
-    it('should return 403 when user is not admin', async () => {
-      const { getSession } = require('@/lib/auth/get-session');
-      (getSession as jest.Mock).mockResolvedValue(userSession);
-
-      const request = new NextRequest('http://localhost:3000/api/admin/social-posts/stats');
-      const response = await GET_STATS(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(403);
-      expect(data.error).toContain('Forbidden');
-    });
   });
 
 });

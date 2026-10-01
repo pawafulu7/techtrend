@@ -1,25 +1,22 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { NextRequest } from 'next/server';
 
-// Mock auth
-const mockGetSession = jest.fn();
-jest.mock('@/lib/auth/get-session', () => ({
-  getSession: mockGetSession,
+// Middleware is passthrough here: authentication / CSRF / composition are
+// covered by __tests__/api/auth-middleware-unification.test.ts and
+// __tests__/api/auth-middleware-composition.test.ts.
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: jest.fn((_key: string, handler: any) => handler),
 }));
 
-// Mock rate limiter
-jest.mock('@/lib/rate-limiter', () => {
-  const actual = jest.requireActual('@/lib/rate-limiter');
-  return {
-    ...actual,
-    checkRateLimit: jest
-      .fn()
-      .mockResolvedValue({ limit: 10, remaining: 9, reset: new Date() }),
-    createRateLimiterFromConfig: jest.fn().mockReturnValue({
-      consume: jest.fn().mockResolvedValue({}),
-    }),
-  };
-});
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: jest.fn((handler: any) => {
+    return (request: any, context: any) =>
+      handler(request, {
+        session: { user: { id: 'admin-user' } },
+        ...context,
+      });
+  }),
+}));
 
 // Mock service
 const mockGenerate = jest.fn();
@@ -36,24 +33,6 @@ jest.mock('@/lib/social-post', () => {
 // Mock CSRF protection (pass-through in tests)
 jest.mock('@/lib/middleware/csrf-protection', () => ({
   withCSRFProtection: jest.fn((handler: any) => handler),
-}));
-
-// Mock user validation
-jest.mock('@/lib/middleware/with-user-validation', () => ({
-  validateUser: jest.fn().mockImplementation(async (session) =>
-    session?.user?.id ? { id: session.user.id, deletedAt: null } : null
-  ),
-  createUserDeletedResponse: jest.fn().mockImplementation(() =>
-    new Response(
-      JSON.stringify({
-        error: 'Session invalid',
-        code: 'USER_DELETED',
-        message: 'Your session is no longer valid. Please sign in again.',
-        requiresLogout: true,
-      }),
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
-    )
-  ),
 }));
 
 // Mock logger
@@ -80,51 +59,10 @@ describe('POST /api/admin/social-posts/generate-from-article', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetSession.mockResolvedValue({
-      user: { id: 'admin-user', role: 'admin' },
-      session: { id: 's1', userId: 'admin-user', token: 't1', expiresAt: new Date() },
-    });
     mockGenerate.mockResolvedValue({
       succeeded: [mockPost],
       failed: [],
     });
-  });
-
-  it('should return 401 when not authenticated', async () => {
-    mockGetSession.mockResolvedValue(null);
-
-    const request = new NextRequest(
-      'http://localhost:3000/api/admin/social-posts/generate-from-article',
-      {
-        method: 'POST',
-        body: JSON.stringify({ articleId: 'article-1' }),
-      }
-    );
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(data.error).toBe('Unauthorized. Authentication required.');
-  });
-
-  it('should return 403 when user is not admin', async () => {
-    mockGetSession.mockResolvedValue({
-      user: { id: 'regular-user', role: 'user' },
-      session: { id: 's2', userId: 'regular-user', token: 't2', expiresAt: new Date() },
-    });
-
-    const request = new NextRequest(
-      'http://localhost:3000/api/admin/social-posts/generate-from-article',
-      {
-        method: 'POST',
-        body: JSON.stringify({ articleId: 'article-1' }),
-      }
-    );
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(403);
-    expect(data.error).toBe('Forbidden. Admin access required.');
   });
 
   it('should return 400 for missing articleId', async () => {
@@ -231,29 +169,6 @@ describe('POST /api/admin/social-posts/generate-from-article', () => {
 
     expect(response.status).toBe(400);
     expect(data.error).toBe('Invalid JSON in request body');
-  });
-
-  it('should return 401 when authenticated user has been deleted', async () => {
-    const {
-      validateUser,
-      createUserDeletedResponse,
-    } = require('@/lib/middleware/with-user-validation');
-
-    (validateUser as jest.Mock).mockResolvedValueOnce(null);
-
-    const request = new NextRequest(
-      'http://localhost:3000/api/admin/social-posts/generate-from-article',
-      {
-        method: 'POST',
-        body: JSON.stringify({ articleId: 'article-1' }),
-      }
-    );
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(data.code).toBe('USER_DELETED');
-    expect(createUserDeletedResponse).toHaveBeenCalled();
   });
 
 });

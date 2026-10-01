@@ -6,14 +6,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSession } from '@/lib/auth/get-session';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import {
-  validateUser,
-  createUserDeletedResponse,
-} from '@/lib/middleware/with-user-validation';
+  withAdminAuth,
+  type WithAdminAuthContext,
+} from '@/lib/middleware/with-admin-auth';
 import {
   getSocialPostService,
   NotFoundError,
@@ -37,27 +36,11 @@ const OpinionGenerateSchema = z.object({
  *
  * レート制限: 5回/分 (admin:social-post-generate)
  */
-async function generateOpinionHandler(request: NextRequest) {
-  const session = await getSession();
-
-  if (!session?.user) {
-    return NextResponse.json(
-      { error: 'Unauthorized. Authentication required.' },
-      { status: 401 }
-    );
-  }
-
-  const validatedUser = await validateUser(session);
-  if (!validatedUser) {
-    return createUserDeletedResponse();
-  }
-
-  if (session.user.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Forbidden. Admin access required.' },
-      { status: 403 }
-    );
-  }
+async function generateOpinionHandler(
+  request: NextRequest,
+  context: WithAdminAuthContext
+) {
+  const { session } = context;
 
   try {
     // JSONパース（空ボディは許容）
@@ -148,5 +131,8 @@ async function generateOpinionHandler(request: NextRequest) {
 }
 
 export const POST = withCSRFProtection(
-  withRateLimit('admin:social-post-generate', generateOpinionHandler)
+  withRateLimit(
+    'admin:social-post-generate',
+    withAdminAuth(generateOpinionHandler)
+  )
 );
