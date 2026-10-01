@@ -287,6 +287,11 @@ const envSchema = z
     CRON_TOKEN: bearerSecret('CRON_TOKEN'),
     CSRF_TRUSTED_ORIGINS: z.string().optional(),
     RATE_LIMIT_OVERRIDES: z.string().optional(),
+    // Basic 認証ゲートの有効/無効。ゲート本体（proxy.ts）は生の process.env を読む。
+    // ここでは route がキャッシュヘッダを決めるためにだけ読む。
+    // booleanEnum にしないのは、不正な値で起動ごと失敗させないため（ゲートは
+    // 不正な値を設定不備として 503 にする。判定は isGateEnabled に揃える）
+    BASIC_AUTH_ENABLED: z.string().optional(),
 
     // Translation / Tech Terms
     ENABLE_TITLE_TRANSLATION: booleanEnum.optional().default('true'),

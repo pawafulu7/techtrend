@@ -3,6 +3,8 @@ import {
   BASIC_AUTH_CHALLENGE,
   buildGateSetCookie,
   evaluateGate,
+  GATED_CACHE_CONTROL,
+  GATED_CDN_CACHE_CONTROL,
   type GateEnv,
 } from '@/lib/auth/basic-auth-gate';
 import { getThemeFromCookie } from '@/lib/cookies/theme-cookie';
@@ -114,9 +116,14 @@ export async function proxy(request: NextRequest) {
   const finalize = <T extends NextResponse>(response: T): T => {
     // ゲートを通過した応答は共有キャッシュに載せない。
     // basic だけでなく cookie（2 回目以降）と cron も対象にする必要がある。
-    // また /api/ も除外できない: app/api/stats 等が public, s-maxage と
-    // CDN-Cache-Control を返しており、これは「ゲート済みコンテンツを下流 CDN が
-    // 共有キャッシュしてよい」という宣言になってしまうため。
+    // また /api/ も除外できない: ゲート済みコンテンツを下流 CDN が共有キャッシュ
+    // してはいけないため。
+    //
+    // ただし、ここで設定したヘッダは Route Handler が自分で設定したヘッダに負ける
+    // （2026-10-01 に本番で実測。/api/stats の CDN-Cache-Control: max-age=600 が残り、
+    // Vercel のエッジにキャッシュされていた）。そのため公開キャッシュヘッダを返す
+    // route は lib/api/cache-headers.ts 経由で、ゲート有効時に自分で private, no-store
+    // にする（issue #647）。ここはページ（ISR を含む）と、route が何も設定しない応答の担当。
     const passedGate =
       gate.kind === 'basic' || gate.kind === 'cookie' || gate.kind === 'cron';
 
@@ -129,9 +136,13 @@ export async function proxy(request: NextRequest) {
         );
       }
 
-      response.headers.set('Cache-Control', 'private, no-store');
+      response.headers.set('Cache-Control', GATED_CACHE_CONTROL);
       // 下流 CDN 向けの指定も明示的に打ち消す（delete だけでは後段が再設定しうる）
-      response.headers.set('CDN-Cache-Control', 'no-store');
+      response.headers.set('CDN-Cache-Control', GATED_CDN_CACHE_CONTROL);
+      // Vercel のエッジ向けの最優先の指定。Route Handler はこのヘッダを付けないので
+      // ここで付けた値が残る。route が lib/api/cache-headers.ts を使い忘れて
+      // CDN-Cache-Control を自分で付けても、エッジには載らない（多層防御）
+      response.headers.set('Vercel-CDN-Cache-Control', GATED_CDN_CACHE_CONTROL);
 
       // 既存の Vary を保持したうえで認証に影響するヘッダを追加する
       const vary = new Set(

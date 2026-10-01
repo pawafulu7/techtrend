@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { RedisCache } from '@/lib/cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
+import { applyPublicCacheHeaders } from '@/lib/api/cache-headers';
 
 // Optimized cache configuration: 5-minute TTL for stats
 const statsCache = new RedisCache({
@@ -55,11 +56,10 @@ async function statsHandler() {
       });
 
       // Add cache headers for browser caching and performance metrics
-      response.headers.set(
-        'Cache-Control',
-        'public, s-maxage=300, stale-while-revalidate=600'
-      );
-      response.headers.set('CDN-Cache-Control', 'max-age=600');
+      applyPublicCacheHeaders(response.headers, {
+        cacheControl: 'public, s-maxage=300, stale-while-revalidate=600',
+        cdnCacheControl: 'max-age=600',
+      });
       response.headers.set('Vary', 'Accept-Encoding');
       response.headers.set('X-Cache-Status', 'HIT');
       response.headers.set('X-Response-Time', `${responseTime}ms`);
@@ -222,11 +222,10 @@ async function statsHandler() {
     });
 
     // Add cache headers for browser caching and performance metrics
-    response.headers.set(
-      'Cache-Control',
-      'public, s-maxage=300, stale-while-revalidate=600'
-    );
-    response.headers.set('CDN-Cache-Control', 'max-age=600');
+    applyPublicCacheHeaders(response.headers, {
+      cacheControl: 'public, s-maxage=300, stale-while-revalidate=600',
+      cdnCacheControl: 'max-age=600',
+    });
     response.headers.set('Vary', 'Accept-Encoding');
     response.headers.set('X-Cache-Status', 'MISS');
     response.headers.set('X-Response-Time', `${responseTime}ms`);

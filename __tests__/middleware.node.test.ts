@@ -159,6 +159,7 @@ describe('middleware - security headers', () => {
       // not.toBe(401) だけでは設定不備の 503 も成功として通ってしまうため、
       // ゲートを通過したときだけ finalize が付与するヘッダで確認する。
       expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
       expect(response.headers.get('Vary')).toContain('Authorization');
     });
 
@@ -179,6 +180,7 @@ describe('middleware - security headers', () => {
 
       expect(response.status).not.toBe(401);
       expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
       expect(response.headers.get('Vary')).toContain('Authorization');
     });
 
@@ -194,6 +196,7 @@ describe('middleware - security headers', () => {
 
       expect(response.status).not.toBe(401);
       expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
       expect(response.headers.get('Vary')).toContain('Authorization');
     });
 
@@ -285,6 +288,7 @@ describe('middleware - security headers', () => {
       // Set-Cookie を含む応答は共有キャッシュに載せない
       expect(response.headers.get('Cache-Control')).toBe('private, no-store');
       expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
       expect(response.headers.get('Vary')).toContain('Cookie');
       expect(response.headers.get('Vary')).toContain('Authorization');
     });
@@ -304,6 +308,7 @@ describe('middleware - security headers', () => {
       // Cookie 通過時もゲート配下のページなので共有キャッシュに載せない
       expect(response.headers.get('Cache-Control')).toBe('private, no-store');
       expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
       expect(response.headers.get('Vary')).toContain('Cookie');
     });
 
@@ -344,6 +349,7 @@ describe('middleware - security headers', () => {
       // cron でも任意パスを通過できるため、キャッシュ抑止の対象に含める
       expect(response.headers.get('Cache-Control')).toBe('private, no-store');
       expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
     });
 
     it('M7: メンテナンス 503 の経路でもゲート Cookie を発行する', async () => {
@@ -358,6 +364,7 @@ describe('middleware - security headers', () => {
       expect(response.headers.get('set-cookie')).toContain('tt_gate=');
       // Cookie を含む応答は共有キャッシュに載せない
       expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
       expect(response.headers.get('Content-Security-Policy')).toBeTruthy();
     });
 
@@ -373,6 +380,7 @@ describe('middleware - security headers', () => {
       expect(response.headers.get('set-cookie')).toContain('tt_gate=');
       // Cookie を含む応答は共有キャッシュに載せない
       expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
     });
 
     it('M9: 保護 API の 401 ではセキュリティヘッダが付き Cookie は発行しない', async () => {
@@ -401,6 +409,7 @@ describe('middleware - security headers', () => {
       // ゲート済みの API 応答が下流 CDN に共有キャッシュされるのを防ぐ
       expect(response.headers.get('Cache-Control')).toBe('private, no-store');
       expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
       expect(response.headers.get('Vary')).toContain('Authorization');
     });
 
@@ -432,6 +441,7 @@ describe('middleware - security headers', () => {
       // ゲート OFF のときはキャッシュ制御に手を加えない（既存挙動の維持）
       expect(response.headers.get('Cache-Control')).toBeNull();
       expect(response.headers.get('CDN-Cache-Control')).toBeNull();
+      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBeNull();
       expect(response.headers.get('Vary')).toBeNull();
     });
 

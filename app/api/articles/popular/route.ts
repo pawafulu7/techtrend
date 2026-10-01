@@ -3,6 +3,7 @@ import { z, ZodError } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { popularCache, type PopularPeriod } from '@/lib/cache/popular-cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { publicCacheHeaders } from '@/lib/api/cache-headers';
 
 const boolParam = (defaultVal: 'true' | 'false' = 'false') =>
   z
@@ -351,9 +352,9 @@ async function getPopularArticles(request: NextRequest) {
     );
 
     return NextResponse.json(result, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
-      },
+      headers: publicCacheHeaders({
+        cacheControl: 'public, s-maxage=300, stale-while-revalidate=60',
+      }),
     });
   } catch (error) {
     if (error instanceof ZodError) {

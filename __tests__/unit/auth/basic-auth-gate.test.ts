@@ -5,6 +5,7 @@ import {
   evaluateGate,
   gateCookieName,
   type GateEnv,
+  isGateEnabled,
 } from '@/lib/auth/basic-auth-gate';
 
 const SECRET = 'f'.repeat(64);
@@ -434,4 +435,21 @@ describe('basic-auth-gate', () => {
       'Basic realm="Protected", charset="UTF-8"'
     );
   });
+});
+
+describe('isGateEnabled (issue #647)', () => {
+  it.each([[undefined], [''], ['false'], [' FALSE ']])(
+    'returns false only when the gate is definitely off (%p)',
+    (raw) => {
+      expect(isGateEnabled(raw)).toBe(false);
+    }
+  );
+
+  // 不正な値は evaluateGate が misconfigured（503）にする。公開キャッシュを許さないよう有効側に倒す
+  it.each([['true'], [' TRUE '], ['yes'], ['1']])(
+    'returns true when the gate is on or misconfigured (%p)',
+    (raw) => {
+      expect(isGateEnabled(raw)).toBe(true);
+    }
+  );
 });

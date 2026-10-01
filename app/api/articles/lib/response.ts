@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { MetricsCollector } from '@/lib/metrics/performance';
 import type { ArticleQueryResult } from './types';
+import { applyPublicCacheHeaders } from '@/lib/api/cache-headers';
 
 /**
  * Transform article items to include contentLength instead of full content
@@ -108,11 +109,10 @@ export function createGetResponse(
     // Public responses can be cached
     // s-maxageとCDN max-ageを整合させる（300秒）
     // stale-while-revalidateはバックグラウンド再検証用に60秒
-    response.headers.set(
-      'Cache-Control',
-      'public, s-maxage=300, stale-while-revalidate=60'
-    );
-    response.headers.set('CDN-Cache-Control', 'max-age=300');
+    applyPublicCacheHeaders(response.headers, {
+      cacheControl: 'public, s-maxage=300, stale-while-revalidate=60',
+      cdnCacheControl: 'max-age=300',
+    });
   }
 
   // Always set Vary header for proper cache key generation
