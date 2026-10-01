@@ -759,6 +759,103 @@ describe('Environment Configuration - CRON_TOKEN / CRON_SECRET の形式検証',
     });
   });
 
+  describe('空白のみの CRON_TOKEN の起動時警告（issue #650）', () => {
+    // 空白のみは未設定扱いになり、cron 認証は黙って CRON_SECRET へフォールバックする。
+    // シークレット注入の失敗（ローテーション失敗）に気づけるよう、起動時に結果を警告する
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(logger, 'warn').mockImplementation();
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    const cronWarnings = () =>
+      warnSpy.mock.calls
+        .map(([message]) => String(message))
+        .filter((message) => message.includes('CRON_TOKEN'));
+
+    it.each([
+      ['空文字列', ''],
+      ['空白のみ', '   '],
+      ['タブのみ', '\t'],
+    ])(
+      'CRON_TOKEN が %s で CRON_SECRET があれば、フォールバックを警告する',
+      (_label, value) => {
+        process.env.CRON_TOKEN = value;
+        process.env.CRON_SECRET = 'legacy-secret-value';
+        resetEnvCache();
+
+        getEnv();
+
+        expect(cronWarnings()).toEqual([
+          'CRON_TOKEN is set but blank: falling back to CRON_SECRET for cron authentication',
+        ]);
+      }
+    );
+
+    it('CRON_SECRET も無ければ、cron 認証が無効になることを警告する', () => {
+      process.env.CRON_TOKEN = '  ';
+      resetEnvCache();
+
+      getEnv();
+
+      expect(cronWarnings()).toEqual([
+        'CRON_TOKEN is set but blank, and CRON_SECRET is not set: cron authentication is disabled',
+      ]);
+    });
+
+    it('CRON_SECRET が空白のみなら、未設定として扱う', () => {
+      process.env.CRON_TOKEN = '';
+      process.env.CRON_SECRET = '   ';
+      resetEnvCache();
+
+      getEnv();
+
+      expect(cronWarnings()).toEqual([
+        'CRON_TOKEN is set but blank, and CRON_SECRET is not set: cron authentication is disabled',
+      ]);
+    });
+
+    it('警告に値や長さを含めない', () => {
+      process.env.CRON_TOKEN = '      ';
+      process.env.CRON_SECRET = 'legacy-secret-value';
+      resetEnvCache();
+
+      getEnv();
+
+      for (const message of cronWarnings()) {
+        expect(message).not.toContain('legacy-secret-value');
+        expect(message).not.toMatch(/\d/);
+      }
+    });
+
+    it.each([
+      ['未定義', undefined],
+      ['通常の値', 'a'.repeat(32)],
+    ])('CRON_TOKEN が %s なら警告しない', (_label, value) => {
+      if (value !== undefined) process.env.CRON_TOKEN = value;
+      process.env.CRON_SECRET = 'legacy-secret-value';
+      resetEnvCache();
+
+      getEnv();
+
+      expect(cronWarnings()).toEqual([]);
+    });
+
+    it('getEnv() のキャッシュが効いている間は 1 回だけ警告する', () => {
+      process.env.CRON_TOKEN = ' ';
+      resetEnvCache();
+
+      getEnv();
+      getEnv();
+
+      expect(cronWarnings()).toHaveLength(1);
+    });
+  });
+
   describe('受理された値は Authorization ヘッダとして送出できる', () => {
     // 検証の目的は「設定はできるが認証には使えない値」を弾くこと。
     // HTTP ヘッダ値は ByteString のため U+00FF を超える文字は載せられない。

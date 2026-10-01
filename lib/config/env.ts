@@ -370,12 +370,35 @@ function isAuthSecretOnlyError(error: z.ZodError): boolean {
 }
 
 /**
+ * CRON_TOKEN が定義されているのに空白のみなら警告する（issue #650）
+ *
+ * sanitizeEnv() は空白のみを未設定に変換し、cron 認証（lib/auth/cron-secret.ts）は
+ * 同じ規則で CRON_SECRET へ黙ってフォールバックする。シークレット注入の失敗
+ * （テンプレート展開ミス等）で CRON_TOKEN が空白になったローテーション失敗を
+ * 検知できるよう、ここで結果を知らせる。sanitize 後の値では「未定義」と区別
+ * できないため、生の値で判定する。値や長さはログに出さない。
+ * getEnv() はキャッシュされるので、プロセスにつき 1 回（コールドスタートごと）出る。
+ */
+function warnIfCronTokenBlank(
+  rawCronToken: string | undefined,
+  sanitizedCronSecret: string | undefined
+): void {
+  if (rawCronToken === undefined || rawCronToken.trim() !== '') return;
+  logger.warn(
+    sanitizedCronSecret === undefined
+      ? 'CRON_TOKEN is set but blank, and CRON_SECRET is not set: cron authentication is disabled'
+      : 'CRON_TOKEN is set but blank: falling back to CRON_SECRET for cron authentication'
+  );
+}
+
+/**
  * Get validated environment variables
  * Throws on first access if validation fails
  */
 export function getEnv(): Env {
   if (_env === null) {
     const sanitized = sanitizeEnv(process.env);
+    warnIfCronTokenBlank(process.env.CRON_TOKEN, sanitized.CRON_SECRET);
     const parsed = envSchema.safeParse(sanitized);
 
     if (parsed.success) {

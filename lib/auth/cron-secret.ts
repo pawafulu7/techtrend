@@ -47,9 +47,11 @@ export const CRON_SECRET_PATTERN = /^[!-~]+$/;
  * truthy として選ぶと、API が受理するリクエストをゲートが 401 にする。
  *
  * トレードオフ: シークレット注入の失敗（テンプレート展開ミス等）で CRON_TOKEN が
- * 空白のみになった場合、警告なく CRON_SECRET へフォールバックするため
- * ローテーション失敗に気づけない。それでも sanitizeEnv と規則を揃えることを
- * 優先している。ここだけ規則を変えると上記の不整合が再発するため。
+ * 空白のみになった場合、ここでは黙って CRON_SECRET へフォールバックする。
+ * それでも sanitizeEnv と規則を揃えることを優先している。ここだけ規則を変えると
+ * 上記の不整合が再発するため。ローテーション失敗の検知は、lib/config/env.ts の
+ * getEnv() が起動時に出す警告（warnIfCronTokenBlank）が担う。この関数は
+ * リクエストごとに呼ばれるため、ここではログを出さない。
  */
 function normalize(value: string | undefined): string | undefined {
   return value !== undefined && value.trim() === '' ? undefined : value;
