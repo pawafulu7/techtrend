@@ -9,6 +9,7 @@ import { Button } from '@/components/ui-v2/button-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { HistoryArticleCard } from '@/app/components/article/history-card';
 import { useGroupedHistory } from '@/app/hooks/use-grouped-history';
+import { useFavoriteStatuses } from '@/app/hooks/use-favorite-statuses';
 import { getDateGroupHeadingId } from '@/lib/utils/date-grouping';
 import { ArticleViewsResponseSchema } from '@/lib/schemas/article-views';
 import type { HistoryViewItem } from '@/lib/types/history';
@@ -77,6 +78,13 @@ export function HistoryContent() {
   );
 
   const groupedHistory = useGroupedHistory(views);
+  // 履歴は最大 100 件。お気に入り状態は一覧分をまとめて取得し、失敗したら
+  // カード側の個別取得に戻す
+  const {
+    statuses: favoriteStatuses,
+    isLoading: isFavoriteStatusLoading,
+    isError: isFavoriteStatusError,
+  } = useFavoriteStatuses(views.map((view) => view.article.id));
 
   const fetchHistory = useCallback(
     async (signal?: AbortSignal) => {
@@ -288,6 +296,9 @@ export function HistoryContent() {
                     article={item.article}
                     viewedAt={item.viewedAt}
                     onTagClick={handleTagClick}
+                    isFavorited={favoriteStatuses[item.article.id] ?? false}
+                    isFavoriteLoading={isFavoriteStatusLoading}
+                    fetchInitialStatus={isFavoriteStatusError}
                   />
                 ))}
               </div>

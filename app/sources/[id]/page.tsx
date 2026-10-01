@@ -4,11 +4,10 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
-import { ArticleCard } from '@/app/components/article/card';
+import { SourceArticleSections } from './_components/source-article-sections';
 import {
   ArrowLeft,
   ExternalLink,
-  TrendingUp,
   Calendar,
   Tag,
   BarChart,
@@ -227,53 +226,10 @@ export default async function SourceDetailPage({
             </CardContent>
           </Card>
 
-          {/* 最新記事 */}
-          <div>
-            <h2 className="mb-4 flex items-center gap-2 text-xl font-bold">
-              <Calendar className="h-5 w-5" />
-              最新記事
-            </h2>
-            <div className="space-y-4">
-              {recentArticles.length === 0 ? (
-                <Card>
-                  <CardContent className="text-muted-foreground py-8 text-center">
-                    記事がありません
-                  </CardContent>
-                </Card>
-              ) : (
-                recentArticles.map((article) => (
-                  <ArticleCard
-                    key={article.id}
-                    article={article}
-                    // Server Component からは状態を渡せないためカード側で取得する
-                    fetchInitialStatus
-                  />
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* 人気記事 */}
-          {topArticles.length > 0 && (
-            <div>
-              <h2 className="mb-4 flex items-center gap-2 text-xl font-bold">
-                <TrendingUp className="h-5 w-5" />
-                人気記事TOP5
-              </h2>
-              <div className="space-y-4">
-                {topArticles.map((article, index) => (
-                  <div key={article.id} className="flex items-start gap-3">
-                    <div className="bg-primary/10 text-primary flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <ArticleCard article={article} fetchInitialStatus />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <SourceArticleSections
+            recentArticles={recentArticles}
+            topArticles={topArticles}
+          />
         </div>
 
         {/* サイドバー */}

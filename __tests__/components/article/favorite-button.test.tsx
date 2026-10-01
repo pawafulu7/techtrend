@@ -230,4 +230,24 @@ describe('FavoriteButton の状態遷移（uncontrolled）', () => {
     expect(mockPush).toHaveBeenCalled();
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  // issue #653: 一覧画面のバッチ取得中は、取得前の false を「未登録」として
+  // 操作させない（取得中にトグルすると、取得結果と逆の操作になりうる）
+  it('isStatusLoading の間は無効化し、取得結果が渡ると反映して操作できる', async () => {
+    const { rerender } = render(
+      <FavoriteButton articleId={ARTICLE_ID} isStatusLoading />
+    );
+    expect(screen.getByRole('button', { name: ADD_LABEL })).toBeDisabled();
+
+    rerender(
+      <FavoriteButton articleId={ARTICLE_ID} isFavorited isStatusLoading={false} />
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: REMOVE_LABEL })
+      ).toBeEnabled();
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 });

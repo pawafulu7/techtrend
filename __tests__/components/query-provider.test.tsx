@@ -60,6 +60,8 @@ const USER_SCOPED_KEYS = [
   // article-count は queryKey に principal を含まないため、ユーザー切替時に
   // 前ユーザーの件数（readFilter 付きなど）が残らないよう破棄対象に含める。
   'article-count',
+  // 一覧画面のお気に入り状態のバッチ取得（issue #653）
+  'favorite-statuses',
 ];
 
 // サインアウト（X → null）で破棄されるキャッシュ。infinite-articles は含まない
@@ -68,6 +70,7 @@ const SIGNED_OUT_REMOVED_KEYS = [
   'infinite-favorites',
   'digest',
   'article-count',
+  'favorite-statuses',
 ];
 
 let removeQueriesSpy: jest.SpyInstance;

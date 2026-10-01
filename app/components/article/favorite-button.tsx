@@ -21,6 +21,12 @@ interface FavoriteButtonProps {
   onToggleFavorite?: () => void | Promise<void>;
   /** If true, fetch initial favorite status from API on mount (for ISR pages) */
   fetchInitialStatus?: boolean;
+  /**
+   * 親が状態を取得中（一覧画面のバッチ取得。app/hooks/use-favorite-statuses.ts）。
+   * true の間は fetchInitialStatus の取得中と同じ表示・無効化にする。取得前の
+   * isFavorited（false）を「未登録」として見せたり、その状態からトグルさせないため
+   */
+  isStatusLoading?: boolean;
 }
 
 export function FavoriteButton({
@@ -33,6 +39,7 @@ export function FavoriteButton({
   isFavorited: initialFavorited = false,
   onToggleFavorite,
   fetchInitialStatus = false,
+  isStatusLoading = false,
 }: FavoriteButtonProps) {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
@@ -44,9 +51,10 @@ export function FavoriteButton({
   const [uncontrolledFavorited, setUncontrolledFavorited] =
     useState(initialFavorited);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isLoadingInitial, setIsLoadingInitial] = useState(
+  const [isFetchingInitial, setIsFetchingInitial] = useState(
     fetchInitialStatus && !isControlled
   );
+  const isLoadingInitial = isFetchingInitial || isStatusLoading;
   // 初期 GET の世代。トグルや他インスタンスからの同期が入った後に古い GET が
   // 返ってきても、その結果で状態を巻き戻さないための番兵
   const stateGenerationRef = useRef(0);
@@ -60,11 +68,11 @@ export function FavoriteButton({
     if (onToggleFavorite) return;
     // ISRページ向けのAPI fetch結果でお気に入り状態を初期化する必要がある
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsLoadingInitial(true);
+    setIsFetchingInitial(true);
 
     // If not authenticated, no need to fetch
     if (!session?.user?.id) {
-      setIsLoadingInitial(false);
+      setIsFetchingInitial(false);
       return;
     }
 
@@ -92,7 +100,7 @@ export function FavoriteButton({
         console.error('Failed to fetch favorite status:', error);
       } finally {
         if (!abortController.signal.aborted) {
-          setIsLoadingInitial(false);
+          setIsFetchingInitial(false);
         }
       }
     };

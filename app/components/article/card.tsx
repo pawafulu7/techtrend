@@ -23,6 +23,7 @@ export function ArticleCard({
   isFavorited,
   onToggleFavorite,
   fetchInitialStatus = false,
+  isFavoriteLoading = false,
   showSource = true,
 }: ArticleCardProps & { isRead?: boolean }) {
   const isRead = useReadStatus(article.id, initialIsRead);
@@ -217,6 +218,7 @@ export function ArticleCard({
           isFavorited={isFavorited}
           onToggleFavorite={onToggleFavorite}
           fetchInitialStatus={fetchInitialStatus}
+          isStatusLoading={isFavoriteLoading}
         />
         <ButtonV2
           variant="ghost"
