@@ -63,7 +63,7 @@ export interface WithUserValidationContext {
  * ```typescript
  * // Combine with rate limiting
  * export const POST = withRateLimit(
- *   'favorites:create',
+ *   'write:favorite',
  *   withUserValidation(postHandler)
  * );
  * ```

@@ -5,6 +5,7 @@ import {
   RateLimitConfigSchema,
 } from '@/lib/config/rate-limits';
 import { resetEnvCache } from '@/lib/config/env';
+import { logger } from '@/lib/logger';
 
 describe('Rate Limit Configuration', () => {
   describe('RATE_LIMIT_POLICIES', () => {
@@ -103,6 +104,47 @@ describe('Rate Limit Configuration', () => {
       expect(config.points).toBe(5);
       expect(config.duration).toBe(60);
       expect(config.keyStrategy).toBe('ip');
+    });
+
+    it('should define the keys used by favorites/batch and changelog (issue #663)', () => {
+      expect(getRateLimitConfig('read:favorite:batch')).toMatchObject({
+        points: 60,
+        duration: 60,
+        blockDuration: 0,
+        keyStrategy: 'user',
+      });
+      expect(getRateLimitConfig('read:changelog')).toMatchObject({
+        points: 60,
+        duration: 60,
+        blockDuration: 0,
+        keyStrategy: 'ip',
+      });
+    });
+
+    it('should warn only once per unknown key when falling back to default', () => {
+      const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+      try {
+        getRateLimitConfig('unknown:warn-once');
+        getRateLimitConfig('unknown:warn-once');
+        getRateLimitConfig('unknown:warn-once-other');
+
+        const fallbackWarnings = warnSpy.mock.calls.filter(
+          ([, message]) =>
+            message ===
+            'Undefined rate limit policy key, falling back to default'
+        );
+        expect(fallbackWarnings).toEqual([
+          [{ key: 'unknown:warn-once' }, expect.any(String)],
+          [{ key: 'unknown:warn-once-other' }, expect.any(String)],
+        ]);
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('should not resolve prototype properties as policies', () => {
+      const config = getRateLimitConfig('toString');
+      expect(config).toEqual(RATE_LIMIT_POLICIES.default);
     });
 
     it('should fallback to default for unknown keys', () => {
