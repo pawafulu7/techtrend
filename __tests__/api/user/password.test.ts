@@ -29,10 +29,19 @@ jest.mock('@/lib/rate-limiter', () => {
 
 // Import POST after mocks are set up
 const { POST } = require('@/app/api/user/password/route');
+const { prisma } = require('@/lib/prisma');
+
+// withUserValidation が引く DB のユーザー。既定では、問い合わせた ID の未退会ユーザーを返す
+function setUserRecord(deletedAt: Date | null) {
+  (prisma.user.findUnique as jest.Mock).mockImplementation(
+    async (args: { where: { id: string } }) => ({ id: args.where.id, deletedAt })
+  );
+}
 
 describe('/api/user/password', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    setUserRecord(null);
   });
 
   describe('POST', () => {
@@ -40,10 +49,12 @@ describe('/api/user/password', () => {
       const { auth } = require('@/lib/auth/auth');
       (auth.api.getSession as jest.Mock).mockResolvedValue(null);
 
+      // 同一オリジンのリクエスト（route 単体の CSRF 保護を通過させ、認証の判定を見る）
       const request = new NextRequest('http://localhost:3000/api/user/password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'sec-fetch-site': 'same-origin',
         },
         body: JSON.stringify({
           currentPassword: 'oldPassword123',
@@ -57,6 +68,69 @@ describe('/api/user/password', () => {
 
       expect(response.status).toBe(401);
       expect(data.error).toBe('Unauthorized');
+      expect(data.code).toBe('NOT_AUTHENTICATED');
+      const { changePassword } = require('@/lib/auth/utils');
+      expect(changePassword).not.toHaveBeenCalled();
+    });
+
+    it('should return 401 USER_DELETED when the user has been deleted', async () => {
+      const { auth } = require('@/lib/auth/auth');
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
+      });
+      setUserRecord(new Date('2026-09-30T00:00:00.000Z'));
+
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'sec-fetch-site': 'same-origin',
+        },
+        body: JSON.stringify({
+          currentPassword: 'oldPassword123',
+          newPassword: 'NewPassword123',
+          confirmPassword: 'NewPassword123',
+        }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(data.code).toBe('USER_DELETED');
+      const { changePassword } = require('@/lib/auth/utils');
+      expect(changePassword).not.toHaveBeenCalled();
+    });
+
+    it('should return 403 for a cross-origin request even with a valid session', async () => {
+      const { auth } = require('@/lib/auth/auth');
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
+      });
+
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          origin: 'https://evil.example',
+          'sec-fetch-site': 'cross-site',
+        },
+        body: JSON.stringify({
+          currentPassword: 'oldPassword123',
+          newPassword: 'NewPassword123',
+          confirmPassword: 'NewPassword123',
+        }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(data.error).toBe('CSRF validation failed');
+      const { changePassword } = require('@/lib/auth/utils');
+      expect(changePassword).not.toHaveBeenCalled();
     });
 
     it('should return 400 when passwords do not match', async () => {

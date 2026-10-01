@@ -1,8 +1,9 @@
 /**
- * Auth middleware composition test (issue #659)
+ * Auth middleware composition test (issues #659, #662)
  *
  * Verifies the exact wrapper tree of every HTTP method exported by the routes
- * that moved from in-handler getSession() to withAdminAuth / withUserValidation.
+ * that moved from in-handler authentication (getSession() / validateUser()) to
+ * withAdminAuth / withUserValidation.
  *
  * Each middleware mock returns a marker node instead of a function, so the
  * export of a route module is the whole composition tree. Asserting the tree
@@ -136,6 +137,17 @@ const ROUTES: Array<{
     modulePath: '@/app/api/user/profile/route',
     methods: { GET: userValidation(HANDLER) },
   },
+  // issue #662
+  {
+    modulePath: '@/app/api/user/password/route',
+    methods: {
+      POST: csrf(rateLimit('write:password', userValidation(HANDLER))),
+    },
+  },
+  {
+    modulePath: '@/app/api/rag/agent-search/route',
+    methods: { POST: csrf(userValidation(HANDLER)) },
+  },
 ];
 
 const ROWS = ROUTES.flatMap((route) =>
@@ -145,10 +157,10 @@ const ROWS = ROUTES.flatMap((route) =>
   )
 );
 
-describe('Auth middleware composition (issue #659)', () => {
-  it('covers all 18 HTTP methods of the 14 routes', () => {
-    expect(ROUTES).toHaveLength(14);
-    expect(ROWS).toHaveLength(18);
+describe('Auth middleware composition (issues #659, #662)', () => {
+  it('covers all 20 HTTP methods of the 16 routes', () => {
+    expect(ROUTES).toHaveLength(16);
+    expect(ROWS).toHaveLength(20);
   });
 
   it.each(ROUTES.map((route) => [route.modulePath, route] as const))(

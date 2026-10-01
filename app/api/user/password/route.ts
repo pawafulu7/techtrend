@@ -3,9 +3,10 @@ import { changePassword } from '@/lib/auth/utils';
 import { z } from 'zod';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import {
-  validateUser,
-  createUserDeletedResponse,
+  withUserValidation,
+  type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
 
 // パスワード変更リクエストのスキーマ
@@ -21,24 +22,14 @@ const changePasswordSchema = z.object({
   path: ['confirmPassword'],
 });
 
-async function changePasswordHandler(request: NextRequest, context?: { session?: any }) {
+async function changePasswordHandler(
+  request: NextRequest,
+  context: WithUserValidationContext
+) {
+  // 認証と退会済みユーザーの確認は withUserValidation が行う
+  const userId = context.validatedUser.id;
+
   try {
-    // セッション確認（contextから取得、二重auth()呼び出しを回避）
-    const session = context?.session;
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Validate user exists and is not deleted
-    const validatedUser = await validateUser(session);
-    if (!validatedUser) {
-      return createUserDeletedResponse();
-    }
-
     // リクエストボディの取得と検証
     const body = await request.json();
     
@@ -60,7 +51,7 @@ async function changePasswordHandler(request: NextRequest, context?: { session?:
     // パスワード変更処理
     try {
       await changePassword(
-        session.user.id,
+        userId,
         currentPassword,
         newPassword
       );
@@ -100,4 +91,6 @@ async function changePasswordHandler(request: NextRequest, context?: { session?:
   }
 }
 
-export const POST = withRateLimit('write:password', changePasswordHandler);
+export const POST = withCSRFProtection(
+  withRateLimit('write:password', withUserValidation(changePasswordHandler))
+);
