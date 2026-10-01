@@ -130,8 +130,8 @@ describe('Rate Limit Configuration', () => {
 
         const fallbackWarnings = warnSpy.mock.calls.filter(
           ([, message]) =>
-            message ===
-            'Undefined rate limit policy key, falling back to default'
+            typeof message === 'string' &&
+            message.startsWith('Undefined rate limit policy key')
         );
         expect(fallbackWarnings).toEqual([
           [{ key: 'unknown:warn-once' }, expect.any(String)],

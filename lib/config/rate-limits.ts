@@ -399,7 +399,7 @@ export const RATE_LIMIT_POLICIES = {
 /**
  * 定義済みのポリシーキー
  *
- * withRateLimit の引数をこの型にすることで、未定義のキーを渡すと型チェックで
+ * withRateLimit と createRateLimiterFromConfig の引数をこの型にすることで、未定義のキーを渡すと型チェックで
  * 失敗する（未定義のキーは実行時に黙って default へフォールバックするため）。
  * 回帰の検知は lib/config/rate-limits.type-test.ts が担う。
  */
@@ -434,7 +434,7 @@ export function getRateLimitConfig(key: string): RateLimitConfig {
     warnedUnknownKeys.add(key);
     logger.warn(
       { key },
-      'Undefined rate limit policy key, falling back to default'
+      'Undefined rate limit policy key, using the default policy as the base (RATE_LIMIT_OVERRIDES still applies)'
     );
   }
   const config = isDefined ? POLICIES_BY_KEY[key] : RATE_LIMIT_POLICIES.default;

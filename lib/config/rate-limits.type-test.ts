@@ -8,6 +8,7 @@
  * 「未使用の @ts-expect-error」として型チェックが失敗する。
  */
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
 
 const handler = () => new Response(null);
 
@@ -17,4 +18,7 @@ export function rateLimitPolicyKeyTypeTest(): void {
 
   // @ts-expect-error 未定義のキーは型エラーになる
   withRateLimit('read:nonexistent', handler);
+
+  // @ts-expect-error リミッターの直接生成でも未定義のキーは型エラーになる
+  createRateLimiterFromConfig('read:nonexistent');
 }

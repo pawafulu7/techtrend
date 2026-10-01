@@ -30,6 +30,7 @@ const customJestConfig = {
     '!**/*.config.{js,ts}',
     '!**/node_modules/**',
     '!**/__tests__/**',
+    '!**/*.type-test.ts', // 型チェック専用（実行しない）
   ],
 };
 
