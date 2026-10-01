@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createFavoriteLoader } from '@/lib/dataloader/favorite-loader';
-import { favoriteCache } from '@/lib/cache/favorites-cache';
-import { parseBoolean } from '@/lib/utils/env-parser';
 import logger from '@/lib/logger';
 import {
   withUserValidation,
@@ -10,25 +7,15 @@ import {
 } from '@/lib/middleware/with-user-validation';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
-import { env } from '@/lib/config/env';
 
 const batchFavoritesSchema = z.object({
   articleIds: z.array(z.string().trim().min(1)).min(1).max(100),
-  useDataLoader: z.boolean().optional().default(false),
 });
 
-// DataLoaderインスタンスキャッシュ
-// リクエストスコープでDataLoaderを再利用
-const dataLoaderCache = new WeakMap<
-  any,
-  ReturnType<typeof createFavoriteLoader>
->();
-
 /**
- * お気に入り状態を一括取得するAPI
- * DataLoaderパターンを使用してN+1問題を解決
+ * お気に入り状態を一括取得するAPI（一覧画面の app/hooks/use-favorite-statuses.ts が使う）
  * POST /api/favorites/batch
- * Body: { articleIds: string[], useDataLoader?: boolean }
+ * Body: { articleIds: string[] }
  * Response: { favorites: { [articleId: string]: boolean } }
  */
 async function postHandler(
@@ -56,90 +43,13 @@ async function postHandler(
         { status: 400 }
       );
     }
-    const { articleIds, useDataLoader } = parsed.data;
+    const { articleIds } = parsed.data;
 
-    // DataLoader方式とキャッシュ方式を環境変数で切り替え可能にする
-    // 環境変数の解析を堅牢化（デフォルトはfalseで安全側に）
-    const shouldUseDataLoader =
-      useDataLoader && parseBoolean(env.USE_DATALOADER, false);
-
-    if (shouldUseDataLoader) {
-      // DataLoaderインスタンスをキャッシュから取得または作成
-      let loader = dataLoaderCache.get(request);
-      if (!loader) {
-        loader = createFavoriteLoader(userId);
-        dataLoaderCache.set(request, loader);
-      }
-      const favoriteStatuses = await loader.loadMany(articleIds);
-
-      // DataLoader結果を既存APIレスポンス形式に変換（型チェック強化）
-      const favoritesMap: Record<string, boolean> = {};
-      favoriteStatuses.forEach((status, index) => {
-        const id = articleIds[index];
-        if (status instanceof Error) {
-          favoritesMap[id] = false;
-          return;
-        }
-        // DataLoaderの戻り値の型を安全にチェック
-        if (
-          typeof status === 'object' &&
-          status !== null &&
-          'isFavorited' in status
-        ) {
-          const statusObj = status as { isFavorited: boolean };
-          favoritesMap[id] = Boolean(statusObj.isFavorited);
-        } else if (typeof status === 'boolean') {
-          favoritesMap[id] = status;
-        } else {
-          favoritesMap[id] = false;
-        }
-      });
-
-      const responseTime = Date.now() - startTime;
-      const response = NextResponse.json({ favorites: favoritesMap });
-      response.headers.set('X-Response-Time', `${responseTime}ms`);
-      response.headers.set('X-Query-Strategy', 'dataloader');
-
-      logger.info(
-        {
-          userId,
-          count: articleIds.length,
-          responseTime,
-          strategy: 'dataloader',
-        },
-        'Favorites batch fetched via DataLoader'
-      );
-
-      return response;
-    }
-
-    // 既存のキャッシュ方式（フォールバック）
-    const cachedFavorites = await favoriteCache.getBatch(userId, articleIds);
-
-    if (cachedFavorites) {
-      const responseTime = Date.now() - startTime;
-      const response = NextResponse.json({ favorites: cachedFavorites });
-      response.headers.set('X-Response-Time', `${responseTime}ms`);
-      response.headers.set('X-Query-Strategy', 'cache');
-
-      logger.debug(
-        {
-          userId,
-          count: articleIds.length,
-          responseTime,
-        },
-        'Favorites batch cache hit'
-      );
-
-      return response;
-    }
-
-    // キャッシュミスの場合、DBから取得（既存の処理）
-    logger.debug(
-      { userId, count: articleIds.length },
-      'Favorites batch cache miss, fetching from DB'
-    );
-
+    // DB から直接引く。Redis などのキャッシュは使わない（issue #653）。
+    // 「DB を読む → キャッシュに書く」の間にトグル（DB 更新 → キャッシュ更新）が
+    // 割り込むと、トグル前の状態がキャッシュに残り、最大 TTL のあいだ誤答する。
+    // (userId, articleId) の一意インデックスで最大 100 件を引くだけなので、
+    // キャッシュで省ける負荷はほとんど無い
     const { prisma } = await import('@/lib/prisma');
     const favorites = await prisma.favorite.findMany({
       where: {
@@ -160,9 +70,6 @@ async function postHandler(
     for (const articleId of articleIds) {
       favoritesMap[articleId] = favoriteArticleIds.has(articleId);
     }
-
-    // キャッシュに保存
-    await favoriteCache.setBatch(userId, favoritesMap);
 
     const responseTime = Date.now() - startTime;
     const response = NextResponse.json({ favorites: favoritesMap });

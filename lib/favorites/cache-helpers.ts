@@ -6,7 +6,6 @@
  */
 
 import { NextResponse } from 'next/server';
-import { favoriteCache } from '@/lib/cache/favorites-cache';
 import { updateFavoriteCache } from '@/lib/dataloader/favorite-loader';
 import logger from '@/lib/logger';
 
@@ -26,7 +25,6 @@ export async function updateFavoriteCacheBestEffort(
   favoritedAt?: Date
 ): Promise<void> {
   try {
-    await favoriteCache.updateSingle(userId, articleId, isFavorited);
     await updateFavoriteCache(userId, articleId, isFavorited, favoritedAt);
   } catch (error) {
     logger.warn(

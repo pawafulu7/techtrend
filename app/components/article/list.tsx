@@ -83,6 +83,7 @@ export function ArticleList({
                 articleId,
                 isFavorited: !currentlyFavorited,
                 timestamp: Date.now(),
+                userId: session.user.id,
               },
             })
           );

@@ -23,6 +23,11 @@ export interface ArticleCardProps {
    * なるため、そうした画面ではこれを true にする。
    */
   fetchInitialStatus?: boolean;
+  /**
+   * 親が isFavorited を取得中（一覧画面のバッチ取得）。FavoriteButton を
+   * 取得中の表示・無効化にする
+   */
+  isFavoriteLoading?: boolean;
 }
 
 // 記事リスト

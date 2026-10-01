@@ -230,4 +230,97 @@ describe('FavoriteButton の状態遷移（uncontrolled）', () => {
     expect(mockPush).toHaveBeenCalled();
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  // issue #653: 一覧画面のバッチ取得中は、取得前の false を「未登録」として
+  // 操作させない（取得中にトグルすると、取得結果と逆の操作になりうる）
+  it('isStatusLoading の間は無効化し、取得結果が渡ると反映して操作できる', async () => {
+    const { rerender } = render(
+      <FavoriteButton articleId={ARTICLE_ID} isStatusLoading />
+    );
+    expect(screen.getByRole('button', { name: ADD_LABEL })).toBeDisabled();
+
+    rerender(
+      <FavoriteButton articleId={ARTICLE_ID} isFavorited isStatusLoading={false} />
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: REMOVE_LABEL })
+      ).toBeEnabled();
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  // 一覧画面ではバッチ取得の失敗で fetchInitialStatus が後から true になる
+  it('fetchInitialStatus が false → true に変わったレンダーから取得中の表示にする', () => {
+    (global.fetch as jest.Mock).mockReturnValue(new Promise(() => {}));
+    const { rerender } = render(<FavoriteButton articleId={ARTICLE_ID} />);
+    expect(screen.getByRole('button', { name: ADD_LABEL })).toBeEnabled();
+
+    rerender(<FavoriteButton articleId={ARTICLE_ID} fetchInitialStatus />);
+
+    expect(screen.getByRole('button', { name: ADD_LABEL })).toBeDisabled();
+  });
+
+  it('個別取得の途中で fetchInitialStatus が false に戻っても取得中のまま固まらない', async () => {
+    // 個別 GET は返らないまま
+    (global.fetch as jest.Mock).mockReturnValue(new Promise(() => {}));
+    const { rerender } = render(
+      <FavoriteButton articleId={ARTICLE_ID} fetchInitialStatus />
+    );
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('button', { name: ADD_LABEL })).toBeDisabled();
+
+    // バッチ取得が成功に戻った
+    rerender(<FavoriteButton articleId={ARTICLE_ID} isFavorited />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: REMOVE_LABEL })
+      ).toBeEnabled();
+    });
+  });
+
+  it('トグル成功のイベントにトグルしたユーザーを含める', async () => {
+    const user = userEvent.setup();
+    const events: CustomEvent[] = [];
+    const listener = (e: Event) => events.push(e as CustomEvent);
+    window.addEventListener('article-favorite-changed', listener);
+
+    mockFetchOnce({ ok: true, status: 200 });
+    render(<FavoriteButton articleId={ARTICLE_ID} />);
+    await user.click(screen.getByRole('button', { name: ADD_LABEL }));
+
+    await waitFor(() => expect(events).toHaveLength(1));
+    expect(events[0].detail).toMatchObject({ userId: 'user-1' });
+
+    window.removeEventListener('article-favorite-changed', listener);
+  });
+
+  // ArticleCard は背景 bg-background/30 を className で渡す。登録済みの赤背景が
+  // それに上書きされると、白いハートが白い背景に乗って見えなくなっていた
+  it('呼び出し元が背景を指定しても、登録済みの赤背景を優先する', () => {
+    const { rerender } = render(
+      <FavoriteButton
+        articleId={ARTICLE_ID}
+        className="bg-background/30"
+        isFavorited
+      />
+    );
+    const favorited = screen.getByRole('button', { name: REMOVE_LABEL });
+    expect(favorited).toHaveClass('bg-[var(--tt-color-negative)]');
+    expect(favorited).not.toHaveClass('bg-background/30');
+
+    // 未登録の見た目（呼び出し元の背景）は変えない
+    rerender(
+      <FavoriteButton
+        articleId={ARTICLE_ID}
+        className="bg-background/30"
+        isFavorited={false}
+      />
+    );
+    const unfavorited = screen.getByRole('button', { name: ADD_LABEL });
+    expect(unfavorited).toHaveClass('bg-background/30');
+    expect(unfavorited).not.toHaveClass('bg-[var(--tt-color-negative)]');
+  });
 });

@@ -17,11 +17,17 @@ const ReactQueryDevtools = dynamic(
 import { useEffect, useState, useRef } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import type { ArticleWithUserData } from '@/types/models';
+import {
+  FAVORITE_STATUSES_QUERY_KEY,
+  syncFavoriteStatusesCache,
+} from '@/app/hooks/use-favorite-statuses';
 
 interface FavoriteChangedDetail {
   articleId: string;
   isFavorited: boolean;
   timestamp: number;
+  /** トグルしたユーザー（FavoriteButton が付ける。他の発火元は付けない） */
+  userId?: string;
 }
 
 interface ReadStatusChangedDetail {
@@ -48,11 +54,14 @@ type InfiniteArticlesData = InfiniteData<ArticlesResponse, number>;
 // 由来のユーザー固有データなので含める。
 // article-count も queryKey が searchParams と設定値のみで principal を含まず、
 // readFilter 付きの件数などはユーザー依存なので含める。
+// favorite-statuses は queryKey に userId を含むが、中身がユーザー固有なので
+// 前のユーザーの分をメモリに残さないよう破棄する。
 const USER_SCOPED_QUERY_KEY_PREFIXES = [
   ['infinite-articles'],
   ['infinite-favorites'],
   ['digest'],
   ['article-count'],
+  FAVORITE_STATUSES_QUERY_KEY,
 ] as const;
 
 // サインアウト・セッション失効（X → null）で破棄するキャッシュ。
@@ -64,6 +73,7 @@ const SIGNED_OUT_REMOVED_QUERY_KEY_PREFIXES = [
   ['infinite-favorites'],
   ['digest'],
   ['article-count'],
+  FAVORITE_STATUSES_QUERY_KEY,
 ] as const;
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
@@ -287,6 +297,14 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         queryKey: ['infinite-favorites'],
         refetchType: 'none',
       });
+
+      // 一覧画面のバッチ取得のキャッシュもトグル結果に合わせる
+      void syncFavoriteStatusesCache(
+        queryClient,
+        articleId,
+        isFavorited,
+        detail.userId
+      );
     };
 
     window.addEventListener('article-favorite-changed', handleFavoriteChanged);

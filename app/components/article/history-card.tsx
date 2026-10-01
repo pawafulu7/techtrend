@@ -39,6 +39,15 @@ export interface HistoryArticleCardProps {
   onArticleClick?: (articleId: string) => void;
   onTagClick?: (tagName: string) => void;
   from?: string;
+  /**
+   * お気に入り状態（一覧画面のバッチ取得の結果）。未指定なら「未登録」と表示する。
+   * 状態を渡せない画面では fetchInitialStatus を true にしてカード側で取得する
+   */
+  isFavorited?: boolean;
+  /** isFavorited を取得中。FavoriteButton を取得中の表示・無効化にする */
+  isFavoriteLoading?: boolean;
+  /** バッチ取得に失敗したとき、カード側で個別に取得する */
+  fetchInitialStatus?: boolean;
 }
 
 export function HistoryArticleCard({
@@ -47,6 +56,9 @@ export function HistoryArticleCard({
   onArticleClick,
   onTagClick,
   from = '/history',
+  isFavorited = false,
+  isFavoriteLoading = false,
+  fetchInitialStatus = false,
 }: HistoryArticleCardProps) {
   const router = useRouter();
   const sourceColor = getSourceColor(article.source.name);
@@ -213,7 +225,9 @@ export function HistoryArticleCard({
         <FavoriteButton
           articleId={String(article.id)}
           className="h-11 min-h-[44px] min-w-[44px] px-4"
-          fetchInitialStatus
+          isFavorited={isFavorited}
+          isStatusLoading={isFavoriteLoading}
+          fetchInitialStatus={fetchInitialStatus}
         />
         <div className="flex items-center gap-3">
           {readingTime && (

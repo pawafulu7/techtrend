@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useFavoriteSources } from '@/lib/favorites/hooks';
+import { useFavoriteStatuses } from '@/app/hooks/use-favorite-statuses';
 import Link from 'next/link';
 import type { ArticleWithRelations } from '@/types/models';
 import {
@@ -142,6 +143,12 @@ export function FavoriteFeedContent() {
     }
     return sorted;
   }, [articles, sortBy]);
+
+  const {
+    statuses: favoriteStatuses,
+    isLoading: isFavoriteStatusLoading,
+    isError: isFavoriteStatusError,
+  } = useFavoriteStatuses(articles.map((article) => article.id));
 
   const articleCount = sortedArticles.length;
   const folderCount = useMemo(
@@ -315,8 +322,11 @@ export function FavoriteFeedContent() {
               <ArticleCard
                 key={article.id}
                 article={article}
-                // この画面は API がお気に入り状態を返さないため、カード側で取得する
-                fetchInitialStatus
+                // この画面は API がお気に入り状態を返さないため、一覧分をまとめて
+                // 取得する。失敗したらカード側の個別取得に戻す
+                isFavorited={favoriteStatuses[article.id] ?? false}
+                isFavoriteLoading={isFavoriteStatusLoading}
+                fetchInitialStatus={isFavoriteStatusError}
               />
             ))}
           </div>

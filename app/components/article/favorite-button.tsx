@@ -21,6 +21,12 @@ interface FavoriteButtonProps {
   onToggleFavorite?: () => void | Promise<void>;
   /** If true, fetch initial favorite status from API on mount (for ISR pages) */
   fetchInitialStatus?: boolean;
+  /**
+   * 親が状態を取得中（一覧画面のバッチ取得。app/hooks/use-favorite-statuses.ts）。
+   * true の間は fetchInitialStatus の取得中と同じ表示・無効化にする。取得前の
+   * isFavorited（false）を「未登録」として見せたり、その状態からトグルさせないため
+   */
+  isStatusLoading?: boolean;
 }
 
 export function FavoriteButton({
@@ -33,6 +39,7 @@ export function FavoriteButton({
   isFavorited: initialFavorited = false,
   onToggleFavorite,
   fetchInitialStatus = false,
+  isStatusLoading = false,
 }: FavoriteButtonProps) {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
@@ -44,9 +51,20 @@ export function FavoriteButton({
   const [uncontrolledFavorited, setUncontrolledFavorited] =
     useState(initialFavorited);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isLoadingInitial, setIsLoadingInitial] = useState(
+  const [isFetchingInitial, setIsFetchingInitial] = useState(
     fetchInitialStatus && !isControlled
   );
+  // 一覧画面ではバッチ取得の失敗で fetchInitialStatus が後から変わる。effect を
+  // 待つと、false → true の直後の 1 フレームは取得前の状態のまま操作でき、
+  // true → false では取り消した GET の finally が走らず取得中のまま固まる。
+  // そのため変化したレンダーの中で取得中フラグを合わせる（React が許可する形）
+  const [prevFetchInitialStatus, setPrevFetchInitialStatus] =
+    useState(fetchInitialStatus);
+  if (prevFetchInitialStatus !== fetchInitialStatus) {
+    setPrevFetchInitialStatus(fetchInitialStatus);
+    setIsFetchingInitial(fetchInitialStatus && !isControlled);
+  }
+  const isLoadingInitial = isFetchingInitial || isStatusLoading;
   // 初期 GET の世代。トグルや他インスタンスからの同期が入った後に古い GET が
   // 返ってきても、その結果で状態を巻き戻さないための番兵
   const stateGenerationRef = useRef(0);
@@ -60,11 +78,11 @@ export function FavoriteButton({
     if (onToggleFavorite) return;
     // ISRページ向けのAPI fetch結果でお気に入り状態を初期化する必要がある
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsLoadingInitial(true);
+    setIsFetchingInitial(true);
 
     // If not authenticated, no need to fetch
     if (!session?.user?.id) {
-      setIsLoadingInitial(false);
+      setIsFetchingInitial(false);
       return;
     }
 
@@ -92,7 +110,7 @@ export function FavoriteButton({
         console.error('Failed to fetch favorite status:', error);
       } finally {
         if (!abortController.signal.aborted) {
-          setIsLoadingInitial(false);
+          setIsFetchingInitial(false);
         }
       }
     };
@@ -206,6 +224,7 @@ export function FavoriteButton({
                 articleId,
                 isFavorited: newState,
                 timestamp: Date.now(),
+                userId: session.user.id,
               },
             })
           );
@@ -280,7 +299,11 @@ export function FavoriteButton({
             ? 'bg-[var(--tt-color-negative)] text-white hover:bg-[var(--tt-color-negative)]'
             : 'hover:text-[var(--tt-color-negative)]',
         isLoadingInitial && 'opacity-50',
-        className
+        className,
+        // 呼び出し元の className が背景を指定していても（ArticleCard の
+        // bg-background/30 など）、登録済みの赤背景を優先する。上書きされると
+        // 白いハートが白い背景に乗って見えなくなる
+        !outline && isFavorited && 'bg-[var(--tt-color-negative)]'
       )}
       data-testid="favorite-button"
       // showText が false のときはハートアイコンだけになり、支援技術に
