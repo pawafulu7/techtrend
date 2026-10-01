@@ -370,6 +370,34 @@ function isAuthSecretOnlyError(error: z.ZodError): boolean {
 }
 
 /**
+ * CRON_TOKEN が定義されているのに空白のみなら警告する（issue #650）
+ *
+ * sanitizeEnv() は空白のみを未設定に変換し、cron 認証（lib/auth/cron-secret.ts）は
+ * 同じ規則で CRON_SECRET へ黙ってフォールバックする。シークレット注入の失敗
+ * （テンプレート展開ミス等）で CRON_TOKEN が空白になったローテーション失敗を
+ * 検知できるよう、ここで結果を知らせる。sanitize 後の値では「未定義」と区別
+ * できないため、生の値で判定する。値や長さはログに出さない。
+ *
+ * - 検証に成功した後に、検証済みの CRON_SECRET で結果を決める（形式不正なら検証が
+ *   先に失敗するので「フォールバックする」と誤って伝えない）。_env を確定する時だけ
+ *   呼ぶので、プロセスにつき 1 回（コールドスタートごと）出る
+ * - production だけで出す。.env.example は CRON_TOKEN= を空で配っており、開発環境では
+ *   意図した未設定で毎回警告が出てしまう。検知したいのは本番のローテーション失敗
+ */
+function warnIfCronTokenBlank(
+  rawCronToken: string | undefined,
+  validated: Env
+): void {
+  if (validated.NODE_ENV !== 'production') return;
+  if (rawCronToken === undefined || rawCronToken.trim() !== '') return;
+  logger.warn(
+    validated.CRON_SECRET === undefined
+      ? 'CRON_TOKEN is set but blank, and CRON_SECRET is not set: cron authentication is disabled'
+      : 'CRON_TOKEN is set but blank: falling back to CRON_SECRET for cron authentication'
+  );
+}
+
+/**
  * Get validated environment variables
  * Throws on first access if validation fails
  */
@@ -380,6 +408,7 @@ export function getEnv(): Env {
 
     if (parsed.success) {
       _env = parsed.data;
+      warnIfCronTokenBlank(process.env.CRON_TOKEN, _env);
       return _env;
     }
 
@@ -422,6 +451,7 @@ Please check your .env file and ensure all required variables are set correctly.
 
       if (retryParsed.success) {
         _env = retryParsed.data;
+        warnIfCronTokenBlank(process.env.CRON_TOKEN, _env);
         return _env;
       }
 
