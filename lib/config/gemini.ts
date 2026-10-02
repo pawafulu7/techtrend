@@ -11,6 +11,7 @@
  */
 
 import { defaultConfig, loadConfig, type AppConfig } from '@/lib/di/config';
+import { GEMINI_API } from '@/lib/constants';
 
 // GeminiClient はコンストラクタ既定引数でこの関数を呼ぶため、
 // 記事収集などで多数インスタンス化されると解決処理と警告が繰り返される。
@@ -54,8 +55,36 @@ export function getGeminiModel(): string {
   return resolveGeminiConfig().model;
 }
 
-/** 設定から解決した generateContent エンドポイント */
+/**
+ * トレンドレポート用のモデルID。
+ * 要約とは別のモデル（GEMINI_API.TREND_MODEL）を使い、GEMINI_MODEL では上書きしない
+ */
+export function getGeminiTrendModel(): string {
+  return GEMINI_API.TREND_MODEL;
+}
+
+/** 設定から解決した API の base URL（GEMINI_BASE_URL、未設定なら公式のエンドポイント） */
+export function getGeminiBaseUrl(): string {
+  return resolveGeminiConfig().baseUrl;
+}
+
+/**
+ * @google/generative-ai の getGenerativeModel に渡すリクエストオプション。
+ * SDK は既定で公式のエンドポイントを使うので、base URL を明示して揃える
+ */
+export function getGeminiRequestOptions(): { baseUrl: string } {
+  return { baseUrl: getGeminiBaseUrl() };
+}
+
+/**
+ * generateContent の URL（API キーなし。キーは x-goog-api-key ヘッダで渡す経路用）。
+ * model を省略すると設定のモデルを使う
+ */
+export function buildGeminiModelUrl(model: string = getGeminiModel()): string {
+  return `${getGeminiBaseUrl()}/v1beta/models/${model}:generateContent`;
+}
+
+/** 設定から解決した generateContent エンドポイント（API キーをクエリに含める） */
 export function buildGeminiEndpoint(apiKey: string): string {
-  const { baseUrl, model } = resolveGeminiConfig();
-  return `${baseUrl}/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  return `${buildGeminiModelUrl()}?key=${apiKey}`;
 }

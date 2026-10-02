@@ -7,4 +7,8 @@
  * 必ずこのヘルパー経由でエンドポイントを組み立てること。
  */
 
-export { getGeminiModel, buildGeminiEndpoint } from '@/lib/config/gemini';
+export {
+  getGeminiModel,
+  buildGeminiEndpoint,
+  getGeminiRequestOptions,
+} from '@/lib/config/gemini';
