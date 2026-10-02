@@ -5,6 +5,7 @@
  * Uses structured JSON input/output for reliable parsing.
  */
 
+import { logger } from '@/lib/logger';
 import { ExtractionConfig } from '../llm-extraction-pipeline';
 import {
   DiffSummaryOutput,
@@ -209,12 +210,14 @@ function parseDiffSummaryResponse(
   );
 
   const changes: DiffSummaryOutput['changes'] = [];
+  const droppedTopics: string[] = [];
 
   for (const t of classified) {
     const written = byTopic.get(normalizeTopic(t.topic));
     if (!written) {
       // LLM が落としたトピックは description を書けないので採用しない。
       // 件数の事実は unchanged 側には入れず、欠落として扱う。
+      droppedTopics.push(t.topic);
       continue;
     }
     changes.push({
@@ -222,6 +225,28 @@ function parseDiffSummaryResponse(
       topic: t.topic,
       type: t.type,
     });
+  }
+
+  // 欠落の判定は changes の件数ではなく分類済みトピックの採用件数で行う。
+  // changes には後段で updated も積まれるため、分類済みを全部落として
+  // updated だけ返した応答を changes の件数では見逃す。
+  // 全件の欠落は応答として使えないので例外にし、パイプラインの再試行に乗せる。
+  // 一部の欠落は残りの分析に価値があるので採用し、記録だけ残す。
+  if (droppedTopics.length > 0) {
+    if (droppedTopics.length === classified.length) {
+      throw new Error(
+        `LLM response omitted all ${classified.length} classified topics`
+      );
+    }
+    logger.warn(
+      {
+        category: data.category,
+        droppedCount: droppedTopics.length,
+        classifiedCount: classified.length,
+        droppedTopics,
+      },
+      'LLM omitted classified topics from diff summary'
+    );
   }
 
   // updated は候補集合の中からのみ許可する
