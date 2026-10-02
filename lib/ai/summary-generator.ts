@@ -65,8 +65,9 @@ export function postProcessSummary(
     processed = processed.replace(pattern, '');
   }
   
-  // 文字数が超過している場合は調整
-  if (processed.length > maxLength) {
+  // 文字数が超過している場合は調整（後で句点を足す分も含めて maxLength 以内にする）
+  const limitBeforePeriod = processed.endsWith('。') ? maxLength : maxLength - 1;
+  if (processed.length > limitBeforePeriod) {
     // 最後の句点までで切る
     const sentences = processed.split('。');
     let result = '';

@@ -46,6 +46,7 @@ import { UnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 import { GeminiClient } from '@/lib/ai/gemini';
 import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-generator';
 import { GEMINI_API } from '@/lib/constants';
+import { loadConfig } from '@/lib/di/config';
 
 const DEFAULT_BASE_URL = 'https://generativelanguage.googleapis.com';
 const PROXY_BASE_URL = 'https://gemini-proxy.example.test';
@@ -200,6 +201,13 @@ describe('GEMINI_BASE_URL の末尾のスラッシュ', () => {
     resetGeminiConfigCache();
   });
 
+  it('設定の読み込み時に除く（DI の主経路も同じ値を使う）', () => {
+    process.env = { ...originalEnv, GEMINI_BASE_URL: `${PROXY_BASE_URL}/` };
+    resetEnvCache();
+
+    expect(loadConfig().gemini.baseUrl).toBe(PROXY_BASE_URL);
+  });
+
   it('末尾のスラッシュを除いてパスをつなぐ', () => {
     process.env = { ...originalEnv, GEMINI_BASE_URL: `${PROXY_BASE_URL}/` };
     resetEnvCache();
@@ -208,6 +216,32 @@ describe('GEMINI_BASE_URL の末尾のスラッシュ', () => {
     expect(getGeminiBaseUrl()).toBe(PROXY_BASE_URL);
     expect(buildGeminiModelUrl('m1')).toBe(
       `${PROXY_BASE_URL}/v1beta/models/m1:generateContent`
+    );
+  });
+});
+
+describe('GeminiClient.generateSummaryWithTags の出力トークン', () => {
+  const originalEnv = process.env;
+
+  afterEach(() => {
+    process.env = originalEnv;
+    resetEnvCache();
+    resetGeminiConfigCache();
+  });
+
+  it('要約（150-250 字）とタグが収まる上限を使う', async () => {
+    process.env = { ...originalEnv, GEMINI_API_KEY: 'test-api-key' };
+    resetEnvCache();
+    resetGeminiConfigCache();
+    const generateContent = jest.fn().mockResolvedValue({
+      response: { text: () => `要約: ${'あ'.repeat(199)}。\nタグ: React, TypeScript` },
+    });
+    mockGetGenerativeModel.mockReturnValue({ generateContent });
+
+    await new GeminiClient('test-api-key').generateSummaryWithTags('t', 'c', 0);
+
+    expect(generateContent.mock.calls[0][0].generationConfig.maxOutputTokens).toBe(
+      GEMINI_API.DETAILED_MAX_TOKENS
     );
   });
 });

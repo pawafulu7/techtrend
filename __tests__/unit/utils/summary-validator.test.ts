@@ -402,6 +402,12 @@ describe('summary-validator', () => {
       expect(fixed).toBe(sentence.repeat(2)); // 200 字（250 字以内の文まで）
     });
 
+    it('句点のない 250 字の要約は、句点を足しても 250 字を超えない', () => {
+      const fixed = autoFixSummary('あ'.repeat(250));
+      expect(fixed.length).toBeLessThanOrEqual(250);
+      expect(fixed.endsWith('。')).toBe(true);
+    });
+
     it('should remove prefix patterns', () => {
       const summary = 'この記事では、Reactについて解説しています';
       

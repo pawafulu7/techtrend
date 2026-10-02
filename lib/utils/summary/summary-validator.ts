@@ -358,8 +358,9 @@ export function autoFixSummary(
   // 4. 複数の空白を1つに
   fixed = fixed.replace(/\s+/g, ' ').trim();
 
-  // 5. 文字数が超過している場合は調整
-  if (fixed.length > maxLength) {
+  // 5. 文字数が超過している場合は調整（後で句点を足す分も含めて maxLength 以内にする）
+  const limitBeforePeriod = fixed.endsWith('。') ? maxLength : maxLength - 1;
+  if (fixed.length > limitBeforePeriod) {
     // 句点で区切って調整
     const sentences = fixed.split('。');
     let result = '';

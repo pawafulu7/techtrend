@@ -95,7 +95,8 @@ export class GeminiClient {
         {
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
-            maxOutputTokens: GEMINI_API.MAX_TOKENS,
+            // 要約（150-250 字）とタグを一度に出すので、MAX_TOKENS（200）では途中で切れうる
+            maxOutputTokens: GEMINI_API.DETAILED_MAX_TOKENS,
             temperature: GEMINI_API.TEMPERATURE,
           },
         },

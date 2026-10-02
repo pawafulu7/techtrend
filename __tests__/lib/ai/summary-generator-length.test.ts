@@ -16,4 +16,10 @@ describe('postProcessSummary の既定の上限', () => {
   it(`${SUMMARY_LENGTH.hardMax} 字を超える要約は文の区切りで切り詰める`, () => {
     expect(postProcessSummary(sentence.repeat(3))).toBe(sentence.repeat(2));
   });
+
+  it('句点のない上限ちょうどの要約は、句点を足しても上限を超えない', () => {
+    const result = postProcessSummary('あ'.repeat(SUMMARY_LENGTH.hardMax));
+    expect(result.length).toBeLessThanOrEqual(SUMMARY_LENGTH.hardMax);
+    expect(result.endsWith('。')).toBe(true);
+  });
 });
