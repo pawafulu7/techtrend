@@ -101,22 +101,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // タグ名は大文字小文字を区別せずに照合する（タグの同一性のキーは lower(name)。#672）
+    const tagNameIn = (names: string[]): Prisma.TagWhereInput => ({
+      OR: names.map((name) => ({
+        name: { equals: name, mode: 'insensitive' as const },
+      })),
+    });
+
     // タグフィルター（包含）
     if (tags.length > 0) {
-      whereConditions.tags = {
-        some: {
-          name: {
-            in: tags,
-          },
-        },
-      };
+      whereConditions.tags = { some: tagNameIn(tags) };
     }
 
     // タグフィルター（除外） - AND配列で統一的に結合
     if (excludeTags.length > 0) {
       if (!Array.isArray(whereConditions.AND)) whereConditions.AND = [];
       (whereConditions.AND as Prisma.ArticleWhereInput[]).push({
-        NOT: { tags: { some: { name: { in: excludeTags } } } },
+        NOT: { tags: { some: tagNameIn(excludeTags) } },
       });
     }
 

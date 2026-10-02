@@ -78,6 +78,21 @@ describe('GET /api/articles/search/advanced', () => {
     );
   });
 
+  it('タグの包含・除外は大文字小文字を区別せずに照合する（#672）', async () => {
+    await GET(request('?tags=mcp&tags=Rust&excludeTags=GO'));
+
+    const where = prismaMock.article.findMany.mock.calls[0][0].where;
+    const insensitive = (name: string) => ({
+      name: { equals: name, mode: 'insensitive' },
+    });
+    expect(where.tags).toEqual({
+      some: { OR: [insensitive('mcp'), insensitive('Rust')] },
+    });
+    expect(where.AND).toContainEqual({
+      NOT: { tags: { some: { OR: [insensitive('GO')] } } },
+    });
+  });
+
   it('facets.difficulty はレスポンスの形を保つため空配列で返す', async () => {
     const res = await GET(request('?difficulty=advanced'));
     const body = await res.json();

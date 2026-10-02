@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
             FROM "Tag" t
             JOIN "_ArticleToTag" at ON t.id = at."B"
             JOIN "Article" a ON at."A" = a.id
-            WHERE t.name = ${tagName}
+            WHERE lower(t.name) = lower(${tagName})
               AND a."publishedAt" >= ${startDate.toISOString()}::timestamp
               AND a."isHidden" = false
             GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD')
@@ -66,8 +66,8 @@ export async function GET(request: NextRequest) {
             JOIN "Article" a ON at1."A" = a.id
             JOIN "_ArticleToTag" at2 ON a.id = at2."A"
             JOIN "Tag" t2 ON at2."B" = t2.id
-            WHERE t1.name = ${tagName}
-              AND t2.name <> ${tagName}
+            WHERE lower(t1.name) = lower(${tagName})
+              AND lower(t2.name) <> lower(${tagName})
               AND a."publishedAt" >= ${startDate.toISOString()}::timestamp
               AND a."isHidden" = false
             GROUP BY t2.name

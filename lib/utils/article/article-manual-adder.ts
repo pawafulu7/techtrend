@@ -15,6 +15,7 @@ import {
 import { WebFetcher } from '../web-fetcher';
 import * as cheerio from 'cheerio';
 import { logger } from '@/lib/logger';
+import { resolveTags } from '@/lib/services/tag-service';
 
 let prisma: PrismaClient = defaultPrisma;
 
@@ -52,30 +53,13 @@ export interface AddArticleResult {
 async function upsertTagsBatch(tagNames: string[]): Promise<{ id: string }[]> {
   if (!tagNames.length) return [];
 
-  // 1) Fetch existing tags once
-  const existing = await prisma.tag.findMany({
-    where: { name: { in: tagNames } },
-    select: { id: true, name: true },
-  });
+  // 大文字小文字だけが違う既存のタグがあればそれを使い、無いものだけ作る（#672）
+  const tags = await resolveTags(
+    tagNames.map((name) => ({ name })),
+    prisma
+  );
 
-  const existingNames = new Set(existing.map((t) => t.name));
-  const toCreate = tagNames.filter((name) => !existingNames.has(name));
-
-  // 2) Insert missing tags in bulk (duplicates ignored if concurrent insert)
-  if (toCreate.length) {
-    await prisma.tag.createMany({
-      data: toCreate.map((name) => ({ name })),
-      skipDuplicates: true,
-    });
-  }
-
-  // 3) Return all IDs for the requested names
-  const allTags = await prisma.tag.findMany({
-    where: { name: { in: tagNames } },
-    select: { id: true },
-  });
-
-  return allTags.map((t) => ({ id: t.id }));
+  return tags.map((t) => ({ id: t.id }));
 }
 
 /**
@@ -152,10 +136,7 @@ async function fetchBasicMetadata(url: string) {
 
     return { title, thumbnail, description, content: description, keywords };
   } catch (error) {
-    logger.warn(
-      { err: error },
-      'Failed to fetch basic metadata'
-    );
+    logger.warn({ err: error }, 'Failed to fetch basic metadata');
     return {
       title: 'Untitled Article',
       thumbnail: null,
@@ -415,10 +396,7 @@ export async function addArticleManually(
       message: '記事を正常に追加しました',
     };
   } catch (error) {
-    logger.error(
-      { err: error },
-      'Failed to add article manually'
-    );
+    logger.error({ err: error }, 'Failed to add article manually');
     return {
       success: false,
       error:

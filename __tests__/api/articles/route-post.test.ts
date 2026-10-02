@@ -23,8 +23,8 @@ jest.mock('@/lib/logger', () => ({
 
 // ---- Prisma モック (@/lib/prisma) ----
 // handlers/post.ts は @/lib/database ではなく @/lib/prisma から prisma を import している
-jest.mock('@/lib/prisma', () => ({
-  prisma: {
+jest.mock('@/lib/prisma', () => {
+  const prisma: Record<string, unknown> = {
     source: {
       findUnique: jest.fn(),
     },
@@ -32,7 +32,17 @@ jest.mock('@/lib/prisma', () => ({
       findUnique: jest.fn(),
       create: jest.fn(),
     },
-  },
+  };
+  // 記事の作成とタグの解決は 1 つのトランザクションで行う。テストでは同じモックを tx として渡す
+  prisma.$transaction = jest.fn(async (fn: (tx: unknown) => unknown) => fn(prisma));
+  return { prisma };
+});
+
+// ---- タグの解決（lower(name) をキーにした探索・作成。実 DB の結合テストで確かめる）----
+jest.mock('@/lib/services/tag-service', () => ({
+  resolveTags: jest.fn(async (tags: Array<{ name: string }>) =>
+    tags.map((tag, i) => ({ id: `tag-${i}`, name: tag.name, category: null }))
+  ),
 }));
 
 // ---- キャッシュモック ----
@@ -125,6 +135,29 @@ describe('POST /api/articles (middleware mocked)', () => {
           title: 'Valid Article Title',
           url: 'https://example.com/article',
           sourceId: 'source-1',
+        }),
+      })
+    );
+  });
+
+  it('タグは resolveTags で解決し、ID で記事に繋ぐこと（同じトランザクションの中で）', async () => {
+    const { resolveTags } = jest.requireMock('@/lib/services/tag-service') as {
+      resolveTags: jest.Mock;
+    };
+    const request = buildRequest({ ...validPayload(), tagNames: ['MCP', 'Rust'] });
+    const response = await POST(request);
+
+    expect(response.status).toBe(201);
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    // tx として $transaction のコールバックに渡されたクライアントで呼ばれていること
+    expect(resolveTags).toHaveBeenCalledWith(
+      [{ name: 'MCP' }, { name: 'Rust' }],
+      mockPrisma
+    );
+    expect(mockPrisma.article.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tags: { connect: [{ id: 'tag-0' }, { id: 'tag-1' }] },
         }),
       })
     );

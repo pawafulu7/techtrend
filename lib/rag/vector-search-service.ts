@@ -623,7 +623,8 @@ export class VectorSearchService {
               SELECT 1 FROM "_ArticleToTag" at
               INNER JOIN "Tag" t ON t.id = at."B"
               WHERE at."A" = a.id
-              AND t.name = ANY(${tags})
+              -- タグ名は大文字小文字を区別せずに照合する（タグの同一性のキーは lower(name)。#672）
+              AND lower(t.name) IN (SELECT lower(x) FROM unnest(${tags}::text[]) AS x)
             )
           `
         : Prisma.empty;

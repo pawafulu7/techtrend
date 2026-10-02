@@ -26,6 +26,13 @@ jest.mock('@/lib/middleware/csrf-protection', () => ({
   withCSRFProtection: jest.fn((handler: any) => handler),
 }));
 
+// タグの解決（lower(name) をキーにした探索・作成。実 DB の結合テストで確かめる）
+jest.mock('@/lib/services/tag-service', () => ({
+  resolveTags: jest.fn(async (tags: Array<{ name: string }>) =>
+    tags.map((tag, i) => ({ id: `tag-${i}`, name: tag.name, category: null }))
+  ),
+}));
+
 jest.mock('@/lib/logger', () => ({
   __esModule: true,
   default: { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn() },
@@ -50,6 +57,10 @@ describe('/api/articles/[id]', () => {
       update: jest.fn(),
       delete: jest.fn(),
     };
+    // 記事の更新とタグの解決は 1 つのトランザクションで行う。同じモックを tx として渡す
+    prismaMock.$transaction = jest.fn(
+      async (fn: (tx: unknown) => unknown) => fn(prismaMock)
+    );
     
     // キャッシュ無効化モック設定
     cacheInvalidatorMock.onArticleUpdated = jest.fn().mockResolvedValue(undefined);
@@ -229,15 +240,20 @@ describe('/api/articles/[id]', () => {
       expect(data.success).toBe(true);
       expect(data.data.tags).toHaveLength(2);
 
+      // タグは resolveTags で解決し（大文字小文字だけが違う既存のタグを使う）、
+      // 同じトランザクションのクライアントで ID に置き換える
+      const { resolveTags } = jest.requireMock('@/lib/services/tag-service') as {
+        resolveTags: jest.Mock;
+      };
+      expect(resolveTags).toHaveBeenCalledWith(
+        [{ name: 'Vue.js' }, { name: 'Nuxt.js' }],
+        prismaMock
+      );
       expect(prismaMock.article.update).toHaveBeenCalledWith({
         where: { id: VALID_ARTICLE_ID },
         data: {
           tags: {
-            set: [],
-            connectOrCreate: [
-              { where: { name: 'Vue.js' }, create: { name: 'Vue.js' } },
-              { where: { name: 'Nuxt.js' }, create: { name: 'Nuxt.js' } },
-            ],
+            set: [{ id: 'tag-0' }, { id: 'tag-1' }],
           },
         },
         include: {

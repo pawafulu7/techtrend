@@ -88,11 +88,14 @@ function mapPeriodToPopular(period: Period): PopularPeriod {
 }
 
 // カテゴリからタグIDを取得
+// タグ名は大文字小文字を区別せずに照合する（タグの同一性のキーは lower(name)。#672）
 async function getTagIdFromCategory(
   category: string
 ): Promise<string | undefined> {
   const tag = await prisma.tag.findFirst({
-    where: { name: category },
+    where: { name: { equals: category, mode: 'insensitive' } },
+    orderBy: { name: 'asc' },
+    select: { id: true },
   });
   return tag?.id;
 }
@@ -152,7 +155,9 @@ async function getPopularArticles(request: NextRequest) {
         if (category) {
           if (resolvedTagId) {
             categoryFilter = {
-              tags: { some: { name: category } },
+              tags: {
+                some: { name: { equals: category, mode: 'insensitive' } },
+              },
             };
           } else {
             categoryFilter = {

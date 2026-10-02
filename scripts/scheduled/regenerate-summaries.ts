@@ -4,6 +4,7 @@ import { validateSummary, validateDetailedSummary } from '../../lib/utils/summar
 import { postProcessSummaries } from '../../lib/utils/summary/summary-post-processor';
 import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
 import { env } from '@/lib/config/env';
+import { resolveTags } from '@/lib/services/tag-service';
 
 interface RegenerationOptions {
   articleIds?: string[];
@@ -140,30 +141,23 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
       
       // タグの更新（必要に応じて）
       if (result.tags.length > 0) {
-        // 既存タグとの差分を確認
-        const existingTagNames = article.tags.map(t => t.name);
-        const newTagNames = result.tags.filter(t => !existingTagNames.includes(t));
-        
-        if (newTagNames.length > 0) {
-          console.error(`  新しいタグ: ${newTagNames.join(', ')}`);
-          
-          // 新しいタグを作成・接続
-          for (const tagName of newTagNames) {
-            const tag = await prisma.tag.upsert({
-              where: { name: tagName },
-              update: {},
-              create: { name: tagName }
-            });
-            
-            await prisma.article.update({
-              where: { id: article.id },
-              data: {
-                tags: {
-                  connect: { id: tag.id }
-                }
+        // 大文字小文字だけが違う既存のタグがあればそれを使う（#672）。
+        // 既存タグとの差分は ID で比べる（表記の違いで同じタグを別物と見ないため）
+        const tags = await resolveTags(result.tags.map(name => ({ name })));
+        const existingTagIds = new Set(article.tags.map(t => t.id));
+        const newTags = tags.filter(tag => !existingTagIds.has(tag.id));
+
+        if (newTags.length > 0) {
+          console.error(`  新しいタグ: ${newTags.map(tag => tag.name).join(', ')}`);
+
+          await prisma.article.update({
+            where: { id: article.id },
+            data: {
+              tags: {
+                connect: newTags.map(tag => ({ id: tag.id }))
               }
-            });
-          }
+            }
+          });
         }
       }
 

@@ -13,6 +13,7 @@ import { SUMMARY_VERSION } from '@/types/article';
 import type { ArticleWithSource } from '@/types/models';
 import type { SummaryGenerationOptions, SummaryAndTags } from './types';
 import { env } from '@/lib/config/env';
+import { resolveTags } from '@/lib/services/tag-service';
 
 /**
  * Concurrency limit for parallel summary generation.
@@ -210,25 +211,25 @@ export async function updateArticleTags(
 ): Promise<void> {
   if (tagNames.length === 0) return;
 
-  // 現在のタグ名を取得
+  // 大文字小文字だけが違う既存のタグがあればそれを使う（#672）
+  const tags = await resolveTags(
+    tagNames.map((name) => ({ name })),
+    prisma
+  );
+
+  // 現在のタグとは ID で比べる（表記の違いで同じタグを別物と見ないため）
   const current = await prisma.article.findUniqueOrThrow({
     where: { id: articleId },
-    select: { tags: { select: { name: true } } },
+    select: { tags: { select: { id: true } } },
   });
+  const currentTagIds = new Set(current.tags.map((t) => t.id));
+  const newTags = tags.filter((tag) => !currentTagIds.has(tag.id));
 
-  const currentTagNames = new Set(current.tags.map((t) => t.name));
-  const newTagNames = tagNames.filter((name) => !currentTagNames.has(name));
-
-  if (newTagNames.length > 0) {
+  if (newTags.length > 0) {
     await prisma.article.update({
       where: { id: articleId },
       data: {
-        tags: {
-          connectOrCreate: newTagNames.map((name) => ({
-            where: { name },
-            create: { name },
-          })),
-        },
+        tags: { connect: newTags.map((tag) => ({ id: tag.id })) },
       },
     });
   }
