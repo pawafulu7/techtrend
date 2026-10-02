@@ -175,6 +175,47 @@ export const THIN_SUMMARY_LENGTH_HINT = `${THIN_SUMMARY_LENGTH.idealMin}-${THIN_
 export const THIN_CONTENT_MAX_LENGTH = 400;
 
 /**
+ * 保存済みの一覧要約を採点するときの長さ帯
+ *
+ * 記事スコア（quality-score.ts）と定期の品質チェック（quality-scorer.ts）が使う。
+ * min〜max が目標帯、penaltyMin・absoluteMin は検証側（service/quality-checker.ts）の
+ * 減点しきい値と同じ値。
+ */
+export interface SummaryLengthBand {
+  min: number;
+  max: number;
+  penaltyMin: number;
+  absoluteMin: number;
+}
+
+/**
+ * 本文の長さから一覧要約の長さ帯を返す。
+ * 短記事の判定は検証側と同じく、本文の長さが分かる（1 以上）ときだけ行う。
+ */
+export function getSummaryLengthBand(
+  contentLength: number | null | undefined
+): SummaryLengthBand {
+  const isThin =
+    contentLength != null &&
+    contentLength > 0 &&
+    contentLength < THIN_CONTENT_MAX_LENGTH;
+  if (isThin) {
+    return {
+      min: THIN_SUMMARY_LENGTH.idealMin,
+      max: THIN_SUMMARY_LENGTH.hardMax,
+      penaltyMin: THIN_SUMMARY_LENGTH.idealMin,
+      absoluteMin: THIN_SUMMARY_LENGTH.absoluteMin,
+    };
+  }
+  return {
+    min: SUMMARY_LENGTH.targetMin,
+    max: SUMMARY_LENGTH.hardMax,
+    penaltyMin: SUMMARY_LENGTH.penaltyMin,
+    absoluteMin: SUMMARY_LENGTH.absoluteMin,
+  };
+}
+
+/**
  * コンテンツ長に基づく項目数ルール
  * prompt-builder.ts と quality-checker.ts で共有
  * 変更時は両ファイルの整合性を保つこと

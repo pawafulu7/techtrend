@@ -3,6 +3,7 @@
  * 要約の完成度を0-100点で評価
  */
 
+import { getSummaryLengthBand } from '@/lib/ai/constants';
 
 /**
  * スコアリング基準の重み付け
@@ -37,7 +38,8 @@ export interface QualityScore {
 export function calculateSummaryScore(
   summary: string,
   options?: {
-    targetLength?: number;
+    /** 一覧要約の長さ帯。省略時は通常記事の帯（150-250 字） */
+    lengthBand?: { min: number; max: number };
     isDetailed?: boolean;
     tags?: string[];
   }
@@ -52,7 +54,7 @@ export function calculateSummaryScore(
   };
 
   // デフォルトオプション
-  const targetLength = options?.targetLength || 120;
+  const lengthBand = options?.lengthBand ?? getSummaryLengthBand(null);
   const isDetailed = options?.isDetailed || false;
   const tags = options?.tags || [];
 
@@ -60,7 +62,7 @@ export function calculateSummaryScore(
   breakdown.completeness = evaluateCompleteness(summary, issues);
 
   // 2. 長さの適切性評価（25点）
-  breakdown.length = evaluateLength(summary, targetLength, isDetailed, issues);
+  breakdown.length = evaluateLength(summary, lengthBand, isDetailed, issues);
 
   // 3. 構造評価（20点）
   breakdown.structure = evaluateStructure(summary, isDetailed, issues);
@@ -132,7 +134,7 @@ function evaluateCompleteness(summary: string, issues: string[]): number {
  */
 function evaluateLength(
   summary: string,
-  targetLength: number,
+  lengthBand: { min: number; max: number },
   isDetailed: boolean,
   issues: string[]
 ): number {
@@ -151,16 +153,18 @@ function evaluateLength(
       score -= 10;
     }
   } else {
-    // 通常要約の場合
-    const deviation = Math.abs(length - targetLength);
-    const deviationRate = deviation / targetLength;
+    // 通常要約の場合: 帯の中は減点なし。帯の外は、近い方の端から外れた割合で減点する
+    const { min, max } = lengthBand;
+    const deviationRate =
+      length < min ? (min - length) / min : length > max ? (length - max) / max : 0;
+    const bandLabel = `${min}-${max}文字`;
 
     if (deviationRate > 0.5) {
       score -= 40;
-      issues.push(`目標長さ（${targetLength}文字）から50%以上乖離`);
+      issues.push(`目標帯（${bandLabel}）から50%以上乖離`);
     } else if (deviationRate > 0.3) {
       score -= 20;
-      issues.push(`目標長さ（${targetLength}文字）から30%以上乖離`);
+      issues.push(`目標帯（${bandLabel}）から30%以上乖離`);
     } else if (deviationRate > 0.2) {
       score -= 10;
     }
@@ -304,6 +308,7 @@ export function calculateAverageScore(
     summary: string;
     tags?: string[];
     isDetailed?: boolean;
+    lengthBand?: { min: number; max: number };
   }>
 ): {
   averageScore: number;
@@ -319,6 +324,7 @@ export function calculateAverageScore(
     calculateSummaryScore(item.summary, {
       isDetailed: item.isDetailed,
       tags: item.tags,
+      lengthBand: item.lengthBand,
     })
   );
 

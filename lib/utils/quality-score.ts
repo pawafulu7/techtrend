@@ -1,4 +1,24 @@
 import type { ArticleWithDetails } from '@/types/models';
+import { getSummaryLengthBand } from '@/lib/ai/constants';
+
+/**
+ * 記事スコアのうち一覧要約の長さの点（0-20）。
+ * 帯は要約生成のプロンプト・検証と同じ定数（SUMMARY_LENGTH・THIN_SUMMARY_LENGTH）から導く。
+ * 既存記事への差分適用の SQL（scripts/db/apply-summary-points-delta.sql）も同じ帯で書いているので、
+ * 帯を変えるときはそちらも揃える。
+ */
+export function calculateSummaryLengthPoints(
+  summary: string | null | undefined,
+  contentLength: number | null | undefined
+): number {
+  if (!summary) return 0;
+  const length = summary.length;
+  const band = getSummaryLengthBand(contentLength);
+  if (length >= band.min && length <= band.max) return 20;
+  if (length > band.max || length >= band.penaltyMin) return 15;
+  if (length >= band.absoluteMin) return 10;
+  return 5;
+}
 
 export function calculateQualityScore(article: ArticleWithDetails): number {
   let score = 0;
@@ -15,12 +35,7 @@ export function calculateQualityScore(article: ArticleWithDetails): number {
   else if (techTagCount >= 1) score += 10;
 
   // 2. 要約の充実度（最大20点）
-  if (article.summary) {
-    const summaryLength = article.summary.length;
-    if (summaryLength >= 60 && summaryLength <= 120) score += 20;
-    else if (summaryLength >= 40) score += 15;
-    else if (summaryLength >= 20) score += 10;
-  }
+  score += calculateSummaryLengthPoints(article.summary, article.contentLength);
 
   // 3. ソースの信頼性（最大20点）
   const sourceScores: Record<string, number> = {

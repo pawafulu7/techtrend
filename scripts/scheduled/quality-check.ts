@@ -7,6 +7,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { calculateSummaryScore, calculateAverageScore, needsRegeneration } from '@/lib/utils/quality-scorer';
+import { getSummaryLengthBand } from '@/lib/ai/constants';
 import { parseArgs } from 'util';
 import type { ArticleWhereClause } from '../../types/database';
 
@@ -145,8 +146,9 @@ async function checkQuality(options: QualityCheckOptions) {
     if (!article.summary) continue;
 
     const tags = article.tags.map((t: any) => t.name);
+    // 長さは要約生成と同じ帯で判定する（短記事は短い帯）
     const score = calculateSummaryScore(article.summary, {
-      targetLength: 120,
+      lengthBand: getSummaryLengthBand(article.contentLength),
       isDetailed: false,
       tags,
     });
@@ -190,6 +192,8 @@ async function checkQuality(options: QualityCheckOptions) {
       summary: a.summary!,
       tags: a.tags.map((t: any) => t.name),
       isDetailed: false,
+      // 記事ごとの判定と同じ帯で集計する
+      lengthBand: getSummaryLengthBand(a.contentLength),
     }));
 
   const stats = calculateAverageScore(summariesForAverage);
