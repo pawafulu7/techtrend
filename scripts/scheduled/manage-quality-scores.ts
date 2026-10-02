@@ -79,13 +79,11 @@ function printHelp() {
 
 共通オプション:
   -s, --source <source>  特定のソースのみ処理
+  -d, --dry-run         DB を更新せずに、変わる件数と例を表示
   -h, --help            ヘルプを表示
 
 calculateオプション:
   -b, --batch <size>    バッチサイズ (デフォルト: 100)
-
-fix-zeroオプション:
-  -d, --dry-run         実行せずに対象を表示
 
 recalculateオプション:
   -f, --force           強制的に再計算
@@ -142,6 +140,8 @@ async function calculateAllQualityScores(options: Options) {
 
     let processedCount = 0;
     const batchSize = options.batch || 100;
+    // --dry-run で集計する、スコアが変わる記事
+    const dryRunChanges: { title: string; before: number; after: number }[] = [];
 
     // バッチ処理で更新
     for (let i = 0; i < articles.length; i += batchSize) {
@@ -157,13 +157,16 @@ async function calculateAllQualityScores(options: Options) {
         // 無駄なUPDATEを避けてupdatedAt汚染を抑制
         if (article.qualityScore !== finalScore || !article.qualityScoreComputedAt) {
           tuples.push({ id: article.id, score: finalScore, computedAt: checkpoint });
+          if (options.dryRun) {
+            dryRunChanges.push({ title: article.title, before: article.qualityScore, after: finalScore });
+          }
         }
 
         processedCount++;
       }
 
-      // バルクUPDATE（タプルが存在する場合のみ）
-      if (tuples.length > 0) {
+      // バルクUPDATE（タプルが存在する場合のみ。--dry-run では更新しない）
+      if (tuples.length > 0 && !options.dryRun) {
         // 1000件超はチャンク分割
         const chunkSize = 1000;
         const failedChunks: number[] = [];
@@ -191,6 +194,12 @@ async function calculateAllQualityScores(options: Options) {
       }
 
       console.error(`✓ 処理済み: ${processedCount}/${articles.length}件`);
+    }
+
+    if (options.dryRun) {
+      // 処理状態も保存しない（保存すると次回の差分処理で対象から外れるため）
+      reportDryRun(dryRunChanges, processedCount);
+      return;
     }
 
     // スコア分布を表示
@@ -270,6 +279,21 @@ async function calculateAllQualityScores(options: Options) {
     console.error('❌ エラーが発生しました:', error);
     throw error;
   }
+}
+
+function reportDryRun(
+  changes: { title: string; before: number; after: number }[],
+  processedCount: number
+) {
+  const raised = changes.filter(c => c.after > c.before).length;
+  const lowered = changes.filter(c => c.after < c.before).length;
+  console.error('\n【ドライラン - DB は更新していません】');
+  console.error(`計算した記事: ${processedCount}件`);
+  console.error(`更新される記事: ${changes.length}件（上がる ${raised}件 / 下がる ${lowered}件 / 値は同じで採点日時だけ付く ${changes.length - raised - lowered}件）`);
+  changes.slice(0, 10).forEach((c, index) => {
+    console.error(`${index + 1}. ${c.title.substring(0, 50)}... ${c.before} -> ${c.after}`);
+  });
+  console.error('\n💡 実際に更新する場合は --dry-run オプションを外してください');
 }
 
 // fix-zeroコマンドの実装（fix-quality-scores.tsから移植）
@@ -390,6 +414,13 @@ async function recalculateScores(options: Options) {
     return;
   }
 
+  if (options.dryRun) {
+    // --dry-run ではリセットせず、全記事を計算したときに変わる件数だけを表示する
+    console.error('💡 実際の recalculate は全記事を 0 点にしてから採点し直すので、全記事が更新される。以下は今の値と比べた件数');
+    await calculateAllQualityScores(options);
+    return;
+  }
+
   try {
     // まず、すべての品質スコアをリセット
     console.error('🔄 品質スコアをリセット中...');
@@ -464,4 +495,4 @@ if (require.main === module) {
 }
 
 // エクスポート（scheduler-v2.tsから呼び出せるように）
-export { calculateAllQualityScores };
+export { calculateAllQualityScores, recalculateScores };

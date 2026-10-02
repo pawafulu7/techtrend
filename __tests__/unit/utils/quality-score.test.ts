@@ -2,14 +2,18 @@
  * Quality Score計算ロジックのユニットテスト
  */
 
-import { calculateQualityScore } from '@/lib/utils/quality-score';
+import {
+  calculateQualityScore,
+  calculateSummaryLengthPoints,
+} from '@/lib/utils/quality-score';
 
 describe('Quality Score Calculation', () => {
   const baseArticle = {
     id: 'test-id',
     title: 'Test Article',
     url: 'https://test.com',
-    summary: 'This is a test summary with reasonable length to get good score.',
+    // 一覧要約の目標帯（150-250 字）に入る長さ。要約点は 20 点
+    summary: 'A'.repeat(200),
     publishedAt: new Date(),
     sourceId: 'test-source',
     source: {
@@ -90,11 +94,20 @@ describe('Quality Score Calculation', () => {
     it('should give full points for optimal summary length', () => {
       const article = {
         ...baseArticle,
-        summary: 'A'.repeat(80), // 80 characters - optimal length
+        summary: 'A'.repeat(200), // 目標帯（150-250 字）の中
       };
       
       const score = calculateQualityScore(article);
-      expect(score).toBeGreaterThanOrEqual(45); // Better summary score
+      // Summary(20) + Source(15) + Freshness(15) = 50
+      expect(score).toBe(50);
+    });
+
+    it('短記事（本文 400 字未満）は 60-100 字の要約で満点になる', () => {
+      const summary = 'A'.repeat(80);
+      // Summary(20) + Source(15) + Freshness(15) = 50
+      expect(calculateQualityScore({ ...baseArticle, summary, contentLength: 300 })).toBe(50);
+      // 通常記事では 80 字は帯の下で 10 点
+      expect(calculateQualityScore({ ...baseArticle, summary, contentLength: 5000 })).toBe(40);
     });
 
     it('should give no points for missing summary', () => {
@@ -270,6 +283,45 @@ describe('Quality Score Calculation', () => {
       
       const score = calculateQualityScore(terribleArticle);
       expect(score).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('calculateSummaryLengthPoints（issue #655: 要約生成と同じ帯）', () => {
+    it.each([
+      [null, 0],
+      ['', 0],
+      ['A'.repeat(49), 5],
+      ['A'.repeat(50), 10],
+      ['A'.repeat(99), 10],
+      ['A'.repeat(100), 15],
+      ['A'.repeat(149), 15],
+      ['A'.repeat(150), 20],
+      ['A'.repeat(250), 20],
+      ['A'.repeat(251), 15],
+    ])('通常記事: %#（%s）→ %i 点', (summary, expected) => {
+      expect(calculateSummaryLengthPoints(summary, 5000)).toBe(expected);
+    });
+
+    it.each([
+      [39, 5],
+      [40, 10],
+      [59, 10],
+      [60, 20],
+      [100, 20],
+      [101, 15],
+    ])('短記事: 要約 %i 字 → %i 点', (length, expected) => {
+      expect(calculateSummaryLengthPoints('A'.repeat(length), 300)).toBe(expected);
+    });
+
+    it.each([
+      [null, 10],
+      [undefined, 10],
+      [0, 10],
+      [1, 20],
+      [399, 20],
+      [400, 10],
+    ])('本文の長さ %s で帯を選ぶ（要約 80 字）→ %i 点', (contentLength, expected) => {
+      expect(calculateSummaryLengthPoints('A'.repeat(80), contentLength)).toBe(expected);
     });
   });
 });

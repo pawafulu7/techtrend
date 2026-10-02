@@ -3,6 +3,7 @@ import {
   calculateAverageScore,
   needsRegeneration,
 } from '@/lib/utils/quality-scorer';
+import { getSummaryLengthBand } from '@/lib/ai/constants';
 
 describe('quality-scorer', () => {
   describe('calculateSummaryScore', () => {
@@ -11,7 +12,6 @@ describe('quality-scorer', () => {
       const tags = ['React', 'JavaScript', 'Hook'];
       
       const result = calculateSummaryScore(summary, {
-        targetLength: 120,
         isDetailed: false,
         tags,
       });
@@ -50,7 +50,6 @@ describe('quality-scorer', () => {
 ・よくある間違いとその対処法`;
       
       const result = calculateSummaryScore(summary, {
-        targetLength: 200,
         isDetailed: true,
       });
 
@@ -76,7 +75,7 @@ describe('quality-scorer', () => {
       
       const result = calculateSummaryScore(summary);
 
-      // length: 9文字 → 120文字から大幅に乖離 = 60点
+      // length: 9文字 → 目標帯（150-250文字）から大幅に乖離 = 60点
       expect(result.breakdown.length).toBeLessThan(70);
       expect(result.issues).toContainEqual(
         expect.stringContaining('短すぎ')
@@ -87,10 +86,10 @@ describe('quality-scorer', () => {
       const summary = 'x'.repeat(300);
       
       const result = calculateSummaryScore(summary, {
-        targetLength: 120,
+        lengthBand: { min: 60, max: 100 },
       });
 
-      // length: 300文字 → 120文字から50%以上乖離 = 60点
+      // length: 300文字 → 目標帯（60-100文字）から50%以上乖離 = 60点
       expect(result.breakdown.length).toBeLessThan(70);
       expect(result.issues).toContainEqual(
         expect.stringContaining('乖離')
@@ -122,6 +121,68 @@ describe('quality-scorer', () => {
   });
 
   // Note: evaluate* functions are internal and tested through calculateSummaryScore
+
+  describe('一覧要約の長さ（issue #655: 目標帯で判定する）', () => {
+    // 句点で終わる任意の長さの要約
+    const summaryOf = (length: number) => 'あ'.repeat(length - 1) + '。';
+
+    it.each([
+      [150, 100],
+      [200, 100],
+      [250, 100],
+      [300, 100], // 上端から 20% ちょうどは減点なし
+      [301, 90],
+      [120, 100], // 下端から 20% ちょうどは減点なし
+      [119, 90],
+      [104, 80], // 30% を超える
+      [75, 80], // 50% ちょうどは 30% 以上の扱い
+      [74, 60],
+    ])('既定の帯（150-250 字）: %i 字 → %i 点', (length, expected) => {
+      expect(calculateSummaryScore(summaryOf(length)).breakdown.length).toBe(expected);
+    });
+
+    it('帯の外の指摘に帯を書く', () => {
+      expect(calculateSummaryScore(summaryOf(74)).issues).toContain(
+        '目標帯（150-250文字）から50%以上乖離'
+      );
+      expect(calculateSummaryScore(summaryOf(100)).issues).toContain(
+        '目標帯（150-250文字）から30%以上乖離'
+      );
+    });
+
+    it('渡した帯で判定する（短記事の 60-100 字）', () => {
+      const band = { min: 60, max: 100 };
+      expect(calculateSummaryScore(summaryOf(80), { lengthBand: band }).breakdown.length).toBe(100);
+      expect(calculateSummaryScore(summaryOf(80)).breakdown.length).toBe(80);
+    });
+  });
+
+  describe('calculateAverageScore の長さ帯', () => {
+    it('要約ごとの帯で採点して集計する（個別の判定と揃える）', () => {
+      const summary = 'あ'.repeat(79) + '。';
+      const withThinBand = calculateAverageScore([
+        { summary, lengthBand: { min: 60, max: 100 } },
+      ]);
+      expect(withThinBand.averageScore).toBe(
+        calculateSummaryScore(summary, { lengthBand: { min: 60, max: 100 } }).totalScore
+      );
+      expect(withThinBand.averageScore).toBeGreaterThan(
+        calculateAverageScore([{ summary }]).averageScore
+      );
+    });
+  });
+
+  describe('getSummaryLengthBand', () => {
+    it.each([
+      [null, 150, 250],
+      [0, 150, 250],
+      [1, 60, 100],
+      [399, 60, 100],
+      [400, 150, 250],
+    ])('本文 %s 字 → %i-%i 字', (contentLength, min, max) => {
+      expect(getSummaryLengthBand(contentLength)).toMatchObject({ min, max });
+    });
+  });
 
   // Note: generateRecommendation is internal and tested through calculateSummaryScore
 

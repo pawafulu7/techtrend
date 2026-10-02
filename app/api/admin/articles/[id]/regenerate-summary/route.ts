@@ -16,6 +16,7 @@ import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { normalizeArticleCategory } from '@/lib/utils/article/article-category-normalizer';
 import { getTagIdsForConnect } from '@/lib/services/tag-service';
+import { calculateArticleQualityScore } from '@/lib/utils/quality-score';
 import logger from '@/lib/logger';
 import { serializeArticleDetail } from '@/app/api/admin/articles/[id]/route';
 
@@ -82,16 +83,14 @@ async function handler(
           : [];
 
       // DB 更新
-      return tx.article.update({
+      const regenerated = await tx.article.update({
         where: { id },
         data: {
           summary: result.summary,
           detailedSummary: result.detailedSummary,
           articleType: 'unified',
           summaryVersion: result.summaryVersion,
-          qualityScore: result.qualityScore,
           summaryComputedAt: now,
-          qualityScoreComputedAt: now,
           summaryError: null,
           skipReason: null,
           ...(result.translatedTitle && {
@@ -101,6 +100,17 @@ async function handler(
           ...(tagConnections.length > 0 && {
             tags: { connect: tagConnections },
           }),
+        },
+        include: { source: true, tags: true },
+      });
+
+      // qualityScore 列は記事スコア（定期採点と同じ式）。新しい要約とタグで採点する。
+      // サービスの result.qualityScore は要約の品質スコアで別の指標なので保存しない
+      return tx.article.update({
+        where: { id },
+        data: {
+          qualityScore: calculateArticleQualityScore(regenerated),
+          qualityScoreComputedAt: now,
         },
         include: {
           source: { select: { id: true, name: true } },
@@ -121,7 +131,7 @@ async function handler(
     }
 
     logger.info(
-      { articleId: id, qualityScore: result.qualityScore },
+      { articleId: id, summaryQualityScore: result.qualityScore },
       '[AdminRegenerateSummaryAPI] Summary regenerated successfully'
     );
 

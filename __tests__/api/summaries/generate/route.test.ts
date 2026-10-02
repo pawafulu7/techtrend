@@ -38,6 +38,13 @@ jest.mock('@/lib/logger', () => {
 });
 
 jest.mock('@/lib/di/bootstrap');
+
+// qualityScore 列には記事スコアを保存する（issue #655）。式は quality-score のテストで検証する
+const mockCalculateArticleQualityScore = jest.fn().mockReturnValue(66);
+jest.mock('@/lib/utils/quality-score', () => ({
+  calculateArticleQualityScore: (...args: unknown[]) =>
+    mockCalculateArticleQualityScore(...args),
+}));
 jest.mock('@/lib/database', () => ({
   prisma: {
     article: {
@@ -112,7 +119,8 @@ describe('/api/summaries/generate', () => {
       { id: 'tag-1' },
       { id: 'tag-2' },
     ]);
-    (prisma.article.update as jest.Mock).mockResolvedValue({});
+    const updatedArticle = { id: 'test-1', summary: 'Test summary content', tags: [], source: { name: 'S' } };
+    (prisma.article.update as jest.Mock).mockResolvedValue(updatedArticle);
 
     const request = new NextRequest('http://localhost/api/summaries/generate', { method: 'POST' });
     const response = await POST(request);
@@ -120,21 +128,34 @@ describe('/api/summaries/generate', () => {
 
     expect(json.success).toBe(true);
     expect(json.data.generated).toBe(1);
-    expect(prisma.article.update).toHaveBeenCalledWith({
+    const updateCalls = (prisma.article.update as jest.Mock).mock.calls;
+    expect(updateCalls).toHaveLength(2);
+    expect(updateCalls[0][0]).toEqual({
       where: { id: 'test-1' },
       data: expect.objectContaining({
         summary: 'Test summary content',
         detailedSummary: expect.any(String),
         articleType: 'unified',
         summaryVersion: 8,
-        qualityScore: 85,
         summaryComputedAt: expect.any(Date),
-        qualityScoreComputedAt: expect.any(Date),
         translatedTitle: 'テスト記事',
         category: expect.any(String),
         tags: { connect: expect.any(Array) }
-      })
+      }),
+      include: { source: true, tags: true },
     });
+    // 要約の品質スコア（result.qualityScore）は保存しない
+    expect(updateCalls[0][0].data).not.toHaveProperty('qualityScore');
+
+    // 新しい要約とタグを反映した記事で記事スコアを計算して保存する
+    expect(mockCalculateArticleQualityScore).toHaveBeenCalledWith(updatedArticle);
+    expect(updateCalls[1][0]).toEqual({
+      where: { id: 'test-1' },
+      data: { qualityScore: 66, qualityScoreComputedAt: expect.any(Date) },
+    });
+    expect(updateCalls[1][0].data.qualityScoreComputedAt).toBe(
+      updateCalls[0][0].data.summaryComputedAt
+    );
   });
 
   it('should deduplicate tags within result and existing tags', async () => {

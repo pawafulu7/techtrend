@@ -8,44 +8,12 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { Prisma, ProcessingStatus } from '@/lib/prisma-exports';
 import logger from '@/lib/logger';
+import { calculateArticleQualityScore } from '../../lib/utils/quality-score';
 
 const prisma = createPrismaClient();
 
 const PROCESS_NAME = 'quality_score_batch';
 const BATCH_SIZE = 100;
-
-/**
- * 品質スコアを計算する（既存ロジック）
- */
-function calculateQualityScore(article: any): number {
-  let score = 50; // ベーススコア
-
-  // 要約の品質
-  if (article.summary) {
-    const summaryLength = article.summary.length;
-    if (summaryLength > 100 && summaryLength < 500) {
-      score += 10;
-    }
-  }
-
-  // 詳細要約の存在
-  if (article.detailedSummary) {
-    score += 15;
-  }
-
-  // タグの数
-  const tagCount = article.tags?.length || 0;
-  if (tagCount >= 3 && tagCount <= 10) {
-    score += 10;
-  }
-
-  // コンテンツの存在
-  if (article.content && article.content.length > 1000) {
-    score += 15;
-  }
-
-  return Math.min(100, Math.max(0, score));
-}
 
 /**
  * 差分処理によるバッチ実行
@@ -84,6 +52,7 @@ async function processBatch() {
         ]
       },
       include: {
+        source: true,
         tags: true
       },
       take: BATCH_SIZE,
@@ -102,7 +71,8 @@ async function processBatch() {
     const tuples: Array<{ id: string; score: number; computedAt: Date }> = [];
 
     for (const article of articlesToProcess) {
-      const newScore = calculateQualityScore(article);
+      // 定期採点（manage-quality-scores.ts）と同じ記事スコアを保存する
+      const newScore = calculateArticleQualityScore(article);
       tuples.push({ id: article.id, score: newScore, computedAt });
     }
 
@@ -223,4 +193,4 @@ if (require.main === module) {
     });
 }
 
-export { processBatch, calculateQualityScore };
+export { processBatch };
