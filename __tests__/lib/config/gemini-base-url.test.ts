@@ -190,3 +190,24 @@ describe('GEMINI_MODEL', () => {
     );
   });
 });
+
+describe('GEMINI_BASE_URL の末尾のスラッシュ', () => {
+  const originalEnv = process.env;
+
+  afterEach(() => {
+    process.env = originalEnv;
+    resetEnvCache();
+    resetGeminiConfigCache();
+  });
+
+  it('末尾のスラッシュを除いてパスをつなぐ', () => {
+    process.env = { ...originalEnv, GEMINI_BASE_URL: `${PROXY_BASE_URL}/` };
+    resetEnvCache();
+    resetGeminiConfigCache();
+
+    expect(getGeminiBaseUrl()).toBe(PROXY_BASE_URL);
+    expect(buildGeminiModelUrl('m1')).toBe(
+      `${PROXY_BASE_URL}/v1beta/models/m1:generateContent`
+    );
+  });
+});

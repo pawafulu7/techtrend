@@ -63,9 +63,12 @@ export function getGeminiTrendModel(): string {
   return GEMINI_API.TREND_MODEL;
 }
 
-/** 設定から解決した API の base URL（GEMINI_BASE_URL、未設定なら公式のエンドポイント） */
+/**
+ * 設定から解決した API の base URL（GEMINI_BASE_URL、未設定なら公式のエンドポイント）。
+ * 末尾のスラッシュは除く（パスをつなげたときに // にならないように）
+ */
 export function getGeminiBaseUrl(): string {
-  return resolveGeminiConfig().baseUrl;
+  return resolveGeminiConfig().baseUrl.replace(/\/+$/, '');
 }
 
 /**
