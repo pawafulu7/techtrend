@@ -4,8 +4,7 @@ import { getSummaryLengthBand } from '@/lib/ai/constants';
 /**
  * 記事スコアのうち一覧要約の長さの点（0-20）。
  * 帯は要約生成のプロンプト・検証と同じ定数（SUMMARY_LENGTH・THIN_SUMMARY_LENGTH）から導く。
- * 既存記事への差分適用の SQL（scripts/db/apply-summary-points-delta.sql）も同じ帯で書いているので、
- * 帯を変えるときはそちらも揃える。
+ * 帯を変えても採点済みの記事は再計算されない（定期採点は本文が変わった記事だけを採点し直す）。
  */
 export function calculateSummaryLengthPoints(
   summary: string | null | undefined,
