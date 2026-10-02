@@ -24,12 +24,13 @@ test.describe('auth の組み込みエンドポイントの閉鎖（#666）', ()
     });
   }
 
-  test('有効なエンドポイントは 404 にならない（対照）', async ({ request }) => {
+  test('有効なエンドポイントは未ログインで 401 になる（対照）', async ({ request }) => {
     const response = await request.post('/api/auth/update-user', {
       data: { name: 'x' },
     });
 
-    expect(response.status()).not.toBe(404);
+    // 経路が生きていて、better-auth の認証で止まることを確かめる
+    expect(response.status()).toBe(401);
   });
 
   test('/api/auth/set-password は HTTP に出ていない（serverOnly）', async ({ request }) => {

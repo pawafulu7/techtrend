@@ -261,6 +261,45 @@ describe('/api/user/password', () => {
       );
     });
 
+    it.each([
+      ['Session is no longer valid', 401, 'Unauthorized'],
+      [
+        'Password was changed concurrently',
+        409,
+        'Password was changed by another request',
+      ],
+    ])(
+      'should map "%s" from changePassword to %i',
+      async (message, status, error) => {
+        const { auth } = require('@/lib/auth/auth');
+        const { changePassword } = require('@/lib/auth/utils');
+
+        (auth.api.getSession as jest.Mock).mockResolvedValue({
+          user: { id: 'user123', email: 'test@example.com' },
+          session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
+        });
+        (changePassword as jest.Mock).mockRejectedValue(new Error(message));
+
+        const request = new NextRequest('http://localhost:3000/api/user/password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            currentPassword: 'oldPassword123',
+            newPassword: 'NewPassword123',
+            confirmPassword: 'NewPassword123',
+          }),
+        });
+
+        const response = await POST(request);
+        const data = await response.json();
+
+        expect(response.status).toBe(status);
+        expect(data.error).toBe(error);
+      }
+    );
+
     it('should return 401 without changing the password when the session has no token', async () => {
       const { auth } = require('@/lib/auth/auth');
       const { changePassword } = require('@/lib/auth/utils');

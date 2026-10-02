@@ -97,6 +97,22 @@ async function changePasswordHandler(
             { status: 400 }
           );
         }
+        if (error.message === 'Session is no longer valid') {
+          return NextResponse.json(
+            {
+              error: 'Unauthorized',
+              code: 'NOT_AUTHENTICATED',
+              message: 'Authentication required',
+            },
+            { status: 401 }
+          );
+        }
+        if (error.message === 'Password was changed concurrently') {
+          return NextResponse.json(
+            { error: 'Password was changed by another request' },
+            { status: 409 }
+          );
+        }
         if (error.message === 'User not found') {
           return NextResponse.json(
             { error: 'User not found' },

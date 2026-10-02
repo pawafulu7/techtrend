@@ -62,6 +62,14 @@ describe('auth config invariants (#666)', () => {
     ).toBe(true);
   });
 
+  it('uses only the admin plugin', () => {
+    // プラグイン（emailOTP・phoneNumber など）を足すと、セッションを失効させない
+    // パスワードの変更・リセットの経路が増えることがある。足すときに、その経路を
+    // disabledPaths や失効の設定で塞いだかを見直させるため、一覧を固定する
+    const ids = (options.plugins ?? []).map((plugin) => plugin.id);
+    expect(ids).toEqual(['admin']);
+  });
+
   it('disables the built-in endpoints that change the password without revoking sessions', () => {
     expect(options.disabledPaths).toEqual(
       expect.arrayContaining(['/change-password', '/admin/set-user-password'])

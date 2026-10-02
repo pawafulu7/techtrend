@@ -101,6 +101,35 @@ describe('changePassword (integration, #666)', () => {
     }
   });
 
+  it('rolls back the password update when the current session was revoked meanwhile', async () => {
+    const before = await storedHash();
+    // 認証の後に、別の要求で操作中のセッションが失効した状態
+    await prisma.session.delete({ where: { token: TOKENS[0] } });
+
+    await expect(
+      changePassword(userId, OLD_PASSWORD, NEW_PASSWORD, TOKENS[0])
+    ).rejects.toThrow('Session is no longer valid');
+
+    // パスワードの更新はセッションの確認より前に実行されているので、ハッシュが
+    // 元のままならトランザクションが取り消されたことになる
+    expect(await storedHash()).toBe(before);
+    expect(await sessionTokens()).toEqual([TOKENS[1], TOKENS[2]].sort());
+  });
+
+  it('rejects an expired current session', async () => {
+    const before = await storedHash();
+    await prisma.session.update({
+      where: { token: TOKENS[0] },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+
+    await expect(
+      changePassword(userId, OLD_PASSWORD, NEW_PASSWORD, TOKENS[0])
+    ).rejects.toThrow('Session is no longer valid');
+
+    expect(await storedHash()).toBe(before);
+  });
+
   it('keeps all sessions and the hash when the current password is wrong', async () => {
     const before = await storedHash();
 

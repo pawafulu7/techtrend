@@ -104,7 +104,19 @@ describe('Auth Utils', () => {
       (baVerifyPassword as jest.Mock).mockResolvedValue(true);
       (baHashPassword as jest.Mock).mockResolvedValue('scrypt:new');
       (prisma.account.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+      // 操作中のセッションの確認（SELECT ... FOR UPDATE）
+      (prisma.$queryRaw as jest.Mock).mockResolvedValue([{ id: 'session-1' }]);
       (prisma.session.deleteMany as jest.Mock).mockResolvedValue({ count: 2 });
+    });
+
+    it('fails without revoking when the current session is no longer valid', async () => {
+      (prisma.$queryRaw as jest.Mock).mockResolvedValue([]);
+
+      await expect(
+        changePassword('user-1', 'OldPass1', 'NewPass1', 'current-token')
+      ).rejects.toThrow('Session is no longer valid');
+
+      expect(prisma.session.deleteMany).not.toHaveBeenCalled();
     });
 
     it('updates the hash and revokes only the other sessions in one transaction', async () => {

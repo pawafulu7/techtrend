@@ -161,6 +161,20 @@ export async function changePassword(
       throw new Error('Password was changed concurrently');
     }
 
+    // 操作中のセッションがまだ有効であることを、行をロックして確かめる。認証の後に
+    // 別の要求で失効していたら、パスワードの更新ごと取り消す（失効したセッションで
+    // 変更を確定させず、変更直後にログアウト状態になるのも防ぐ）
+    const current = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "Session"
+      WHERE token = ${currentSessionToken}
+        AND "userId" = ${userId}
+        AND "expiresAt" > now()
+      FOR UPDATE
+    `;
+    if (current.length !== 1) {
+      throw new Error('Session is no longer valid');
+    }
+
     const revoked = await tx.session.deleteMany({
       where: { userId, token: { not: currentSessionToken } },
     });
