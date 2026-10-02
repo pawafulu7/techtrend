@@ -10,17 +10,26 @@ import {
 } from '@/lib/middleware/with-user-validation';
 
 // パスワード変更リクエストのスキーマ
-const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(72, 'Password must be at most 72 characters for bcrypt compatibility')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one uppercase letter, one lowercase letter, and one number'),
-  confirmPassword: z.string().min(1, 'Password confirmation is required'),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'],
-});
+const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .max(
+        72,
+        'Password must be at most 72 characters for bcrypt compatibility'
+      )
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+      ),
+    confirmPassword: z.string().min(1, 'Password confirmation is required'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
 
 async function changePasswordHandler(
   request: NextRequest,
@@ -28,19 +37,33 @@ async function changePasswordHandler(
 ) {
   // 認証と退会済みユーザーの確認は withUserValidation が行う
   const userId = context.validatedUser.id;
+  // 操作中のセッションを残し、他のセッションを失効させるために使う。
+  // Cookie の値（"token.署名" の形）ではなく、getSession が返す生のトークンを使うこと。
+  // Cookie の値で比べると一致する行が無く、操作中のセッションも消える
+  const currentSessionToken = context.session.session?.token;
+  if (!currentSessionToken) {
+    return NextResponse.json(
+      {
+        error: 'Unauthorized',
+        code: 'NOT_AUTHENTICATED',
+        message: 'Authentication required',
+      },
+      { status: 401 }
+    );
+  }
 
   try {
     // リクエストボディの取得と検証
     const body = await request.json();
-    
+
     const validationResult = changePasswordSchema.safeParse(body);
-    
+
     if (!validationResult.success) {
       const errors = validationResult.error.flatten();
       return NextResponse.json(
-        { 
+        {
           error: 'Validation failed',
-          details: errors.fieldErrors 
+          details: errors.fieldErrors,
         },
         { status: 400 }
       );
@@ -50,16 +73,18 @@ async function changePasswordHandler(
 
     // パスワード変更処理
     try {
-      await changePassword(
+      const revokedSessions = await changePassword(
         userId,
         currentPassword,
-        newPassword
+        newPassword,
+        currentSessionToken
       );
+      logger.info({ userId, revokedSessions }, 'Password changed');
 
       return NextResponse.json(
-        { 
+        {
           success: true,
-          message: 'Password changed successfully' 
+          message: 'Password changed successfully',
         },
         { status: 200 }
       );
@@ -79,7 +104,7 @@ async function changePasswordHandler(
           );
         }
       }
-      
+
       throw error; // その他のエラーは再スロー
     }
   } catch (error) {

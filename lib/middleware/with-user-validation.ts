@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import type { BetterAuthSession } from '@/lib/auth/auth';
 import {
   resolveSessionFromRequest,
   type SessionContext,
@@ -31,6 +32,11 @@ export interface WithUserValidationContext {
       email?: string | null;
       name?: string | null;
     };
+    /**
+     * auth.api.getSession が返すセッション。token は DB の Session.token と同じ生の値
+     * （Cookie の値は "token.署名" の形で、これとは一致しない）
+     */
+    session?: Pick<BetterAuthSession['session'], 'token'>;
   };
   validatedUser: ValidatedUser;
 }

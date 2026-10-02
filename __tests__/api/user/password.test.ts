@@ -228,7 +228,46 @@ describe('/api/user/password', () => {
         session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
       
-      (changePassword as jest.Mock).mockResolvedValue(true);
+      (changePassword as jest.Mock).mockResolvedValue(2);
+
+      // Cookie の値（"token.署名"）は getSession の token と違う。route は Cookie ではなく
+      // getSession の token を渡す必要がある（Cookie の値だと操作中のセッションも消える）
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          cookie: 'better-auth.session_token=t1.signature%3D',
+        },
+        body: JSON.stringify({
+          currentPassword: 'oldPassword123',
+          newPassword: 'NewPassword123',
+          confirmPassword: 'NewPassword123',
+        }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.message).toBe('Password changed successfully');
+      // 失効させた件数は応答に出さない
+      expect(data).not.toHaveProperty('revokedSessions');
+      expect(changePassword).toHaveBeenCalledWith(
+        'user123',
+        'oldPassword123',
+        'NewPassword123',
+        't1'
+      );
+    });
+
+    it('should return 401 without changing the password when the session has no token', async () => {
+      const { auth } = require('@/lib/auth/auth');
+      const { changePassword } = require('@/lib/auth/utils');
+
+      (auth.api.getSession as jest.Mock).mockResolvedValue({
+        user: { id: 'user123', email: 'test@example.com' },
+      });
 
       const request = new NextRequest('http://localhost:3000/api/user/password', {
         method: 'POST',
@@ -245,14 +284,9 @@ describe('/api/user/password', () => {
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(200);
-      expect(data.success).toBe(true);
-      expect(data.message).toBe('Password changed successfully');
-      expect(changePassword).toHaveBeenCalledWith(
-        'user123',
-        'oldPassword123',
-        'NewPassword123'
-      );
+      expect(response.status).toBe(401);
+      expect(data.code).toBe('NOT_AUTHENTICATED');
+      expect(changePassword).not.toHaveBeenCalled();
     });
 
     it('should return 404 when user is not found', async () => {

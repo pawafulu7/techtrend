@@ -8,7 +8,12 @@ jest.mock('@better-auth/utils/password', () => ({
 }));
 
 import { prisma } from '@/lib/prisma';
-import { hashPassword, verifyPassword, createUser } from '../utils';
+import {
+  hashPassword,
+  verifyPassword,
+  createUser,
+  changePassword,
+} from '../utils';
 import {
   hashPassword as baHashPassword,
   verifyPassword as baVerifyPassword,
@@ -79,6 +84,85 @@ describe('Auth Utils', () => {
       await expect(verifyPassword(password, hashedPassword)).rejects.toThrow(
         'Comparison failed'
       );
+    });
+  });
+
+  describe('changePassword', () => {
+    const account = {
+      id: 'account-1',
+      userId: 'user-1',
+      providerId: 'credential',
+      password: 'scrypt:old',
+    };
+
+    beforeEach(() => {
+      // beforeEach の resetAllMocks が既定の実装を消すので、ここで設定し直す
+      (prisma.$transaction as jest.Mock).mockImplementation(
+        async (fn: (tx: typeof prisma) => unknown) => fn(prisma)
+      );
+      (prisma.account.findFirst as jest.Mock).mockResolvedValue(account);
+      (baVerifyPassword as jest.Mock).mockResolvedValue(true);
+      (baHashPassword as jest.Mock).mockResolvedValue('scrypt:new');
+      (prisma.account.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+      (prisma.session.deleteMany as jest.Mock).mockResolvedValue({ count: 2 });
+    });
+
+    it('updates the hash and revokes only the other sessions in one transaction', async () => {
+      const revoked = await changePassword(
+        'user-1',
+        'OldPass1',
+        'NewPass1',
+        'current-token'
+      );
+
+      expect(revoked).toBe(2);
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(prisma.account.updateMany).toHaveBeenCalledWith({
+        where: { id: 'account-1', password: 'scrypt:old' },
+        data: { password: 'scrypt:new' },
+      });
+      expect(prisma.session.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', token: { not: 'current-token' } },
+      });
+    });
+
+    it('throws without touching the DB when the session token is empty', async () => {
+      await expect(
+        changePassword('user-1', 'OldPass1', 'NewPass1', '')
+      ).rejects.toThrow('Session token is required');
+
+      expect(prisma.account.findFirst).not.toHaveBeenCalled();
+      expect(prisma.account.updateMany).not.toHaveBeenCalled();
+      expect(prisma.session.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('does not update or revoke when the current password is wrong', async () => {
+      (baVerifyPassword as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        changePassword('user-1', 'WrongPass1', 'NewPass1', 'current-token')
+      ).rejects.toThrow('Invalid current password');
+
+      expect(prisma.account.updateMany).not.toHaveBeenCalled();
+      expect(prisma.session.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('fails without revoking when the password was changed concurrently', async () => {
+      (prisma.account.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
+
+      await expect(
+        changePassword('user-1', 'OldPass1', 'NewPass1', 'current-token')
+      ).rejects.toThrow('Password was changed concurrently');
+
+      expect(prisma.session.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('throws User not found when there is no credential account', async () => {
+      (prisma.account.findFirst as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        changePassword('user-1', 'OldPass1', 'NewPass1', 'current-token')
+      ).rejects.toThrow('User not found');
     });
   });
 

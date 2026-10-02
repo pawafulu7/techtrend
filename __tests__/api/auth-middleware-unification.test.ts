@@ -430,7 +430,7 @@ describe('Auth middleware unification (issues #659, #662)', () => {
     });
 
     it('POST /api/user/password changes the password of the validated user', async () => {
-      (changePassword as jest.Mock).mockResolvedValue(true);
+      (changePassword as jest.Mock).mockResolvedValue(0);
 
       const response = await password.POST(
         makeRequest(
@@ -449,7 +449,8 @@ describe('Auth middleware unification (issues #659, #662)', () => {
       expect(changePassword).toHaveBeenCalledWith(
         USER_ID,
         'oldPassword123',
-        'NewPassword123'
+        'NewPassword123',
+        't1'
       );
     });
 

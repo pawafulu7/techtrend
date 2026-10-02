@@ -153,6 +153,11 @@ export const auth = betterAuth({
     updateAge: 24 * 60 * 60, // 1 day in seconds
   },
 
+  // パスワードを変えても他のセッションを失効させない組み込みのエンドポイントを閉じる。
+  // パスワード変更は独自 API（/api/user/password）で行い、そちらが他のセッションを
+  // 失効させる（#666）。disabledPaths は HTTP の要求にだけ効き、auth.api.* には効かない
+  disabledPaths: ['/change-password', '/admin/set-user-password'],
+
   plugins: [
     admin({
       defaultRole: 'user',
@@ -220,4 +225,4 @@ export type BetterAuthSession = NonNullable<
   Awaited<ReturnType<typeof auth.api.getSession>>
 >;
 
-export const CREDENTIAL_PROVIDER_ID = 'credential' as const;
+export { CREDENTIAL_PROVIDER_ID } from './constants';

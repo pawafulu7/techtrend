@@ -5,7 +5,7 @@ import {
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { invalidateUserAuthCache } from './user-auth-cache';
-import { CREDENTIAL_PROVIDER_ID } from './auth';
+import { CREDENTIAL_PROVIDER_ID } from './constants';
 
 /**
  * Hash a password using Better Auth's scrypt implementation
@@ -114,13 +114,26 @@ export async function updateUserProfile(
 }
 
 /**
- * Change user password
+ * Change user password and revoke the user's other sessions
+ *
+ * パスワードの更新と、操作中以外のセッションの削除を 1 つのトランザクションで行う。
+ * currentSessionToken は better-auth の getSession が返す session.token（DB の
+ * Session.token と同じ生の値）。Cookie の値（"token.署名" の形）を渡すと一致する行が
+ * 無く、操作中のセッションも消える。
+ *
+ * @returns 失効させたセッションの件数
  */
 export async function changePassword(
   userId: string,
   currentPassword: string,
-  newPassword: string
-) {
+  newPassword: string,
+  currentSessionToken: string
+): Promise<number> {
+  // 空文字のまま token: { not: '' } で消すと、操作中のセッションも含めて全部消えるため
+  if (!currentSessionToken) {
+    throw new Error('Session token is required');
+  }
+
   const account = await prisma.account.findFirst({
     where: { userId, providerId: CREDENTIAL_PROVIDER_ID },
   });
@@ -135,13 +148,24 @@ export async function changePassword(
   }
 
   const hashedPassword = await hashPassword(newPassword);
+  const verifiedHash = account.password;
 
-  await prisma.account.update({
-    where: { id: account.id },
-    data: { password: hashedPassword },
+  return prisma.$transaction(async (tx) => {
+    // 検証したハッシュのままのときだけ更新する。同時に 2 つの変更が走ったとき、
+    // 先に確定した変更を後の変更が黙って上書きしないため
+    const updated = await tx.account.updateMany({
+      where: { id: account.id, password: verifiedHash },
+      data: { password: hashedPassword },
+    });
+    if (updated.count !== 1) {
+      throw new Error('Password was changed concurrently');
+    }
+
+    const revoked = await tx.session.deleteMany({
+      where: { userId, token: { not: currentSessionToken } },
+    });
+    return revoked.count;
   });
-
-  return true;
 }
 
 /**
