@@ -1,4 +1,5 @@
 import { DiffChange } from '@/lib/ai/extraction/extraction-schemas';
+import { topicSearchTags } from '@/lib/ai/extraction/topic-classifier';
 
 export interface ArticleInfo {
   id: string;
@@ -32,6 +33,11 @@ export interface DiffSummaryResponse {
 
 export interface ChangeWithCategory extends DiffChange {
   category: string;
+}
+
+/** トピックの記事一覧へのリンク（併合した別名のタグも OR で検索する） */
+export function topicSearchHref(topic: string): string {
+  return `/?tags=${encodeURIComponent(topicSearchTags(topic).join(','))}&tagMode=OR`;
 }
 
 export function formatWeekDisplay(week: string): string {

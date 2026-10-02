@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { RefreshCw, ArrowUpRight } from 'lucide-react';
-import { ChangeWithCategory } from './diff-utils';
+import { ChangeWithCategory, topicSearchHref } from './diff-utils';
 
 export function UpdatedRow({ change }: { change: ChangeWithCategory }) {
   return (
     <Link
-      href={`/?tags=${encodeURIComponent(change.topic)}&tagMode=OR`}
+      href={topicSearchHref(change.topic)}
       className="hover:bg-muted/50 group flex items-center gap-3 rounded px-3 py-2 transition-colors"
     >
       <RefreshCw className="h-4 w-4 shrink-0 text-[var(--tt-color-text-muted)]" />
@@ -25,7 +25,7 @@ export function UpdatedRow({ change }: { change: ChangeWithCategory }) {
 
 export function DeprecatedBadge({ change }: { change: ChangeWithCategory }) {
   return (
-    <Link href={`/?tags=${encodeURIComponent(change.topic)}&tagMode=OR`}>
+    <Link href={topicSearchHref(change.topic)}>
       <Badge
         variant="outline"
         className="border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] px-3 py-1 text-sm font-medium text-[var(--tt-color-text)] transition-colors hover:border-[var(--tt-color-border)] hover:bg-[var(--tt-color-surface-hover)]"

@@ -5,7 +5,9 @@ import {
   reconcileTopics,
   GENERIC_TOPICS,
   TOPIC_UNMERGED_ALIASES,
+  topicSearchTags,
 } from '@/lib/ai/extraction/topic-classifier';
+import { topicSearchHref } from '@/app/trends/diff/_components/diff-utils';
 import { TAG_NORMALIZATION_MAP } from '@/lib/utils/tag/tag-normalizer';
 import type { TopicData } from '@/lib/ai/extraction/prompts/diff-summary-prompt';
 
@@ -446,5 +448,32 @@ describe('範囲が変わる別名は併合しない（issue #655 項目 5）', 
 
   it('除外していない同義語（rails → Ruby on Rails）は従来どおり併合する', () => {
     expect(normalizeTopic('rails')).toBe(normalizeTopic('Ruby on Rails'));
+  });
+});
+
+describe('記事一覧のリンクで検索するタグ（issue #655 項目 5）', () => {
+  it('正式名と、併合した別名を返す', () => {
+    expect(topicSearchTags('JavaScript')).toEqual(['JavaScript', 'js']);
+    expect(topicSearchTags('機械学習')).toEqual(['機械学習', 'ml', 'machinelearning']);
+    // 保存済みの小文字の表示名からも同じ結果になる
+    expect(topicSearchTags('javascript')).toEqual(['JavaScript', 'js']);
+  });
+
+  it('併合しない別名は含めない', () => {
+    expect(topicSearchTags('Spring Boot')).toEqual(['Spring Boot']);
+    expect(topicSearchTags('Next.js')).toEqual(['Next.js', 'nextjs']);
+    expect(topicSearchTags('Node.js')).toEqual(['Node.js', 'nodejs']);
+    expect(topicSearchTags('Spring')).toEqual(['Spring']);
+  });
+
+  it('マップに無いトピックはその名前だけ', () => {
+    expect(topicSearchTags('Claude Code')).toEqual(['Claude Code']);
+  });
+
+  it('トレンド画面のリンクは OR 検索のタグにすべて入れる', () => {
+    const href = topicSearchHref('JavaScript');
+    const params = new URLSearchParams(href.slice(href.indexOf('?')));
+    expect(params.get('tags')?.split(',')).toEqual(['JavaScript', 'js']);
+    expect(params.get('tagMode')).toBe('OR');
   });
 });

@@ -70,12 +70,17 @@ function filterGenericTopics(data: DiffSummaryOutput): DiffSummaryOutput {
   };
 }
 
-/** 記事数の最も多い表示名を返す（同数なら先に現れた方） */
+/**
+ * 記事数の最も多い表示名を返す
+ *
+ * 同数なら文字コード順で先の表記にする（DB の返す順で週ごとに表示名が揺れないように。
+ * 大文字は小文字より前なので "Claude Code" と "Claude code" なら前者）
+ */
 function mostFrequentName(names: Map<string, number>): string {
   let best = '';
   let bestCount = 0;
   for (const [name, count] of names) {
-    if (count > bestCount) {
+    if (count > bestCount || (count === bestCount && name < best)) {
       best = name;
       bestCount = count;
     }
@@ -325,9 +330,11 @@ export class DiffSummaryService {
       // 正規化せずに数えると同一トピックの件数を二重計上してしまう。
       const namesByKey = new Map<string, string>();
       for (const tag of tags) {
-        const key = normalizeTopic(tag.name);
+        // キーは正式名の小文字（normalizeTopic と同じ）
+        const name = canonicalTopicName(tag.name);
+        const key = name.toLowerCase();
         if (key && !namesByKey.has(key)) {
-          namesByKey.set(key, canonicalTopicName(tag.name));
+          namesByKey.set(key, name);
         }
       }
 

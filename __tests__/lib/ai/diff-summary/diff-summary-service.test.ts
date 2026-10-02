@@ -173,6 +173,31 @@ describe('Diff Summary Service', () => {
       expect(topics.map((t) => t.topic)).not.toContain('javascript');
     });
 
+    it('表記の記事数が同じなら、DB の返す順によらず同じ表示名', async () => {
+      const tie = async (order: string[]) => {
+        const prisma = {
+          article: {
+            findMany: jest.fn().mockResolvedValue(
+              order.map((name, i) => ({ id: `t${i}`, title: name, tags: [{ name }] }))
+            ),
+          },
+        };
+        const service = new DiffSummaryService({
+          pipeline: {} as unknown as LLMExtractionPipeline,
+          prisma: prisma as never,
+        });
+        const topics = await (
+          service as unknown as {
+            getTopicsForPeriod: (s: string, w: string) => Promise<Array<{ topic: string }>>;
+          }
+        ).getTopicsForPeriod('foreign', '2026-W39');
+        return topics.map((t) => t.topic);
+      };
+
+      expect(await tie(['Claude code', 'Claude Code'])).toEqual(['Claude Code']);
+      expect(await tie(['Claude Code', 'Claude code'])).toEqual(['Claude Code']);
+    });
+
     it('Spring と Spring Boot は別トピック', async () => {
       const topics = await collect();
       const names = topics.map((t) => t.topic);

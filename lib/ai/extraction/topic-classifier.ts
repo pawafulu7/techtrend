@@ -128,6 +128,25 @@ export function canonicalTopicName(topic: string): string {
 }
 
 /**
+ * トピックの記事を探すときに検索するタグ名（正式名と、併合した別名）
+ *
+ * 件数は別名のタグ（"ML" など）の記事も合算しているが、タグ検索は大文字小文字を
+ * 無視した完全一致で同義語を展開しない。正式名だけでリンクすると別名だけが付いた
+ * 記事が一覧から欠けるため、併合した別名も OR 検索に含める。
+ */
+export function topicSearchTags(topic: string): string[] {
+  const canonical = canonicalTopicName(topic);
+  const key = canonical.toLowerCase();
+  const aliases = Object.keys(TAG_NORMALIZATION_MAP).filter(
+    (alias) =>
+      alias !== key &&
+      !TOPIC_UNMERGED_ALIASES.has(alias) &&
+      TAG_NORMALIZATION_MAP[alias].toLowerCase() === key
+  );
+  return [canonical, ...aliases];
+}
+
+/**
  * トピック名の正規化（照合キーの生成）
  *
  * 正式名（canonicalTopicName）を小文字にしたものをキーにする。
@@ -163,8 +182,10 @@ export function mergeTopicData(
   }
 
   return {
-    // 表示名は正式名にする。マップに無い表記ゆれ（大文字小文字の違い）は
-    // 件数の多い側を採用する（同数なら先勝ち）
+    // 表示名は正式名にする。マップに無い表記ゆれ（大文字小文字の違い）は、
+    // 合算済みの側と新しく来た側のうち件数の多い方を採る（同数なら合算済みの側）。
+    // 表記ごとの最多ではないが、本番の入力は期間集計（getTopicsForPeriod）で
+    // キーごとに 1 件にまとまっており、ここで表記ゆれが衝突することはない
     topic: canonicalTopicName(
       incoming.count > existing.count ? incoming.topic : existing.topic
     ),
