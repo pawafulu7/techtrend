@@ -16,6 +16,7 @@ import { Article, Source } from '@/lib/prisma-exports';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
+import { calculateArticleQualityScore } from '../../lib/utils/quality-score';
 import { extractSkipReason, getSkipReasonLabel } from '../../lib/utils/skip-reason-extractor';
 
 const prisma = createPrismaClient();
@@ -301,16 +302,15 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                   : [];
 
                 // 記事の本文・version・タグを一括更新
-                await tx.article.update({
+                const now = new Date();
+                const updated = await tx.article.update({
                   where: { id: article.id },
                   data: {
                     summary: generated.summary,
                     detailedSummary: generated.detailedSummary,
                     articleType: generated.articleType,
                     summaryVersion: generated.summaryVersion,
-                    summaryComputedAt: new Date(),
-                    qualityScore: newQualityCheck.score,
-                    qualityScoreComputedAt: new Date(),
+                    summaryComputedAt: now,
                     skipReason: stillTooShort ? 'QUALITY_FAILED' : null,
                     summaryError: stillTooShort ? '再生成後も文字数不足（<100文字）' : null,
                     ...(tags.length > 0 && {
@@ -318,6 +318,17 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                         set: tags.map(t => ({ id: t.id }))
                       }
                     })
+                  },
+                  include: { source: true, tags: true }
+                });
+
+                // qualityScore 列は記事スコア（定期採点と同じ式）。要約の品質スコア
+                // （newQualityCheck.score）は別の指標なので保存しない
+                await tx.article.update({
+                  where: { id: article.id },
+                  data: {
+                    qualityScore: calculateArticleQualityScore(updated),
+                    qualityScoreComputedAt: now,
                   }
                 });
               });

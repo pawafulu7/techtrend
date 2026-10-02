@@ -55,7 +55,8 @@ async function voteHandler(
 
       await prisma.article.update({
         where: { id },
-        data: { qualityScore: newScore },
+        // 採点日時も付ける（定期採点と同じく、どの式で採点したかを日時で区別できるようにする）
+        data: { qualityScore: newScore, qualityScoreComputedAt: new Date() },
       });
     }
 

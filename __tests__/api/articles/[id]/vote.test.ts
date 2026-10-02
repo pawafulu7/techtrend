@@ -53,7 +53,7 @@ describe('POST /api/articles/[id]/vote', () => {
     );
     expect(mockPrisma.article.update).toHaveBeenLastCalledWith({
       where: { id: 'art1' },
-      data: { qualityScore: 77 },
+      data: { qualityScore: 77, qualityScoreComputedAt: expect.any(Date) },
     });
   });
 });

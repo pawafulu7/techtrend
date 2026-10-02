@@ -416,6 +416,7 @@ async function recalculateScores(options: Options) {
 
   if (options.dryRun) {
     // --dry-run ではリセットせず、全記事を計算したときに変わる件数だけを表示する
+    console.error('💡 実際の recalculate は全記事を 0 点にしてから採点し直すので、全記事が更新される。以下は今の値と比べた件数');
     await calculateAllQualityScores(options);
     return;
   }
@@ -494,4 +495,4 @@ if (require.main === module) {
 }
 
 // エクスポート（scheduler-v2.tsから呼び出せるように）
-export { calculateAllQualityScores };
+export { calculateAllQualityScores, recalculateScores };

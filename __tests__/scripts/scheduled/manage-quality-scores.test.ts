@@ -17,11 +17,14 @@ jest.mock('@/scripts/utils/processing-status', () => ({
 }));
 
 import { prisma } from '@/lib/prisma';
-import { calculateAllQualityScores } from '@/scripts/scheduled/manage-quality-scores';
+import {
+  calculateAllQualityScores,
+  recalculateScores,
+} from '@/scripts/scheduled/manage-quality-scores';
 
 // @/lib/prisma は jest.config の moduleNameMapper で共有の prismaMock に置き換わる
 const mockPrisma = prisma as unknown as {
-  article: { findMany: jest.Mock };
+  article: { findMany: jest.Mock; updateMany: jest.Mock };
   $executeRaw: jest.Mock;
   $queryRaw: jest.Mock;
 };
@@ -84,5 +87,14 @@ describe('manage-quality-scores calculate', () => {
     expect(flattened).toContain('a3');
     expect(flattened).not.toContain('a2');
     expect(mockSaveProcessingStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('recalculate --force --dry-run は全記事を 0 点にリセットしない', async () => {
+    await recalculateScores({ command: 'recalculate', force: true, dryRun: true });
+
+    // リセットすると全記事が今の新鮮さで採点し直され、古い記事が一斉に下がる
+    expect(mockPrisma.article.updateMany).not.toHaveBeenCalled();
+    expect(mockPrisma.$executeRaw).not.toHaveBeenCalled();
+    expect(mockSaveProcessingStatus).not.toHaveBeenCalled();
   });
 });
