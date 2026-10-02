@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
+import { getAppDependencies } from '@/lib/di/bootstrap';
+import { validateArticleContent } from '@/lib/services/summary/summary-orchestrator';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import { getTagIdsForConnect } from '@/lib/services/tag-service';
@@ -28,38 +29,39 @@ async function generateTagsHandler(_request: NextRequest) {
     let generated = 0;
     let errors = 0;
 
-    // 統一サービスを使用
-    const service = getUnifiedSummaryService();
+    // 定期実行と同じ DI の要約サービスを使用
+    const { service } = getAppDependencies();
 
     for (const article of articlesWithoutTags) {
       try {
-        // コンテンツが空の場合はスキップ
-        if (!article.content || article.content.trim() === '') {
+        // 本文が無い・短すぎる記事はスキップ（定期実行の要約生成と同じ基準）
+        const validation = validateArticleContent(article);
+        if (!validation.valid) {
           continue;
         }
 
-        // 統一フォーマットで要約とタグを生成（タグのみ使用）
-        const result = await service.generate(
-          article.title,
-          article.content,
-          undefined,
-          undefined,
-          article.id // Schedule embedding job
-        );
+        // 要約とタグを生成（タグのみ使用）
+        const result = await service.generateSummary({
+          title: article.title,
+          content: validation.content!,
+          qualityThreshold: 40,
+          articleId: article.id, // Schedule embedding job
+        });
 
-        // タグは既に正規化済み
-        const normalizedTags = result.tags;
+        const tagNames = result.tags ?? [];
 
-        if (normalizedTags.length === 0) {
+        if (tagNames.length === 0) {
           continue;
         }
 
         // タグ作成と記事更新をatomicに実行
         const didUpdate = await prisma.$transaction(async (tx) => {
           // Safe tag creation using upsert pattern (prevents race condition duplicates)
+          // 要約サービスはタグを trim・重複除去するだけで正規化しない。
+          // 定期実行（auto-regenerate.ts）と同じく既定の正規化を通す
           const tagConnections = await getTagIdsForConnect(
-            normalizedTags,
-            { normalize: false }, // Already normalized by service
+            tagNames,
+            undefined,
             tx
           );
 

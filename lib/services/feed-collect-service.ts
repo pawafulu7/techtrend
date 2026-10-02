@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { createFetcher } from '@/lib/fetchers';
-import { ArticleSummarizer } from '@/lib/ai';
+import { getAppDependencies } from '@/lib/di/bootstrap';
+import { validateArticleContent } from '@/lib/services/summary/summary-orchestrator';
 import { normalizeTagInput } from '@/lib/utils/tag/tag-normalizer';
 import type { CollectResult } from '@/types/api';
 import logger from '@/lib/logger';
@@ -17,9 +18,10 @@ export async function collectFeeds(): Promise<{
     where: { enabled: true },
   });
 
-  // Initialize AI summarizer
-  const apiKey = env.GEMINI_API_KEY;
-  const summarizer = apiKey ? new ArticleSummarizer(apiKey) : null;
+  // 要約は定期実行と同じ DI の要約サービスで生成する
+  const summaryService = env.GEMINI_API_KEY
+    ? getAppDependencies().service
+    : null;
 
   for (const source of sources) {
     const collectResult: CollectResult = {
@@ -91,21 +93,24 @@ export async function collectFeeds(): Promise<{
 
           collectResult.newArticles++;
 
-          // Generate AI summary with unified format if not present and summarizer available
-          if (!article.summary && article.content && summarizer) {
+          // Generate AI summary if not present and the summary service is available.
+          // 本文の基準（空・短すぎる）は定期実行の要約生成と同じものを使う
+          const validation = validateArticleContent(article);
+          if (!article.summary && validation.valid && summaryService) {
             try {
-              const summaryResult = await summarizer.summarizeUnified(
-                article.id,
-                article.title,
-                article.content
-              );
+              const summaryResult = await summaryService.generateSummary({
+                title: article.title,
+                content: validation.content!,
+                qualityThreshold: 40,
+                articleId: article.id,
+              });
 
               await prisma.article.update({
                 where: { id: article.id },
                 data: {
                   summary: summaryResult.summary,
                   detailedSummary: summaryResult.detailedSummary,
-                  articleType: summaryResult.articleType,
+                  articleType: 'unified',
                   summaryVersion: summaryResult.summaryVersion,
                 },
               });

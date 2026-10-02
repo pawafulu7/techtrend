@@ -5,10 +5,10 @@
 
 import { prisma } from '@/lib/prisma';
 import { SUMMARY_VERSION } from '@/types/article';
-import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
+import { getAppDependencies } from '@/lib/di/bootstrap';
+import { validateArticleContent } from '@/lib/services/summary/summary-orchestrator';
 import { calculateQualityScore } from '../../lib/utils/quality-score';
 import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
-const summaryService = new UnifiedSummaryService();
 
 interface AutoRegenerateOptions {
   threshold?: number;           // 品質スコア閾値（デフォルト: 70）
@@ -27,7 +27,7 @@ interface RegenerationResult {
   error?: string;
 }
 
-async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
+export async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
   const {
     threshold = 70,
     limit = 10,
@@ -93,72 +93,71 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
         process.stdout.write(`処理中: ${i + 1}/${articles.length}\r`);
       }
 
+      // 本文が無い・短すぎる記事は生成しない（定期実行の要約生成と同じ基準）。
+      // 以前は本文が無いと URL を本文として渡していた
+      const validation = validateArticleContent(article);
+      if (!validation.valid) {
+        failed++;
+        results.push({
+          articleId: article.id,
+          title: article.title,
+          oldScore: article.qualityScore || 0,
+          newScore: null,
+          success: false,
+          error: `要約生成をスキップ: ${validation.reason}`,
+        });
+
+        if (verbose) {
+          console.log(`  ⏭️ スキップ: ${validation.reason}`);
+        }
+        continue;
+      }
+
       try {
-        // 要約再生成
-        const result = await summaryService.generate(
-          article.title,
-          article.content || article.url,
-          {},
-          {},
-          article.id
-        );
+        // 要約再生成（失敗時は例外になり、下の catch で失敗として数える）
+        const { service } = getAppDependencies();
+        const result = await service.generateSummary({
+          title: article.title,
+          content: validation.content!,
+          qualityThreshold: 40,
+          articleId: article.id,
+        });
 
-        if (result) {
-          // データベース更新
-          await prisma.article.update({
-            where: { id: article.id },
-            data: {
-              summary: result.summary,
-              detailedSummary: result.detailedSummary,
-              translatedTitle: result.translatedTitle,
-              summaryVersion: SUMMARY_VERSION.CURRENT,
-              articleType: 'unified',
-            },
-          });
+        // 新しい品質スコアを計算（sourceを含む完全なarticleオブジェクトを渡す）。
+        // 保存するのは記事スコア（calculateQualityScore）で、result.qualityScore
+        // （要約の品質スコア）ではない。この経路は記事スコア < threshold で対象を選ぶため
+        const updatedArticle = {
+          ...article,
+          summary: result.summary,
+          detailedSummary: result.detailedSummary || '',
+        };
+        const newScoreValue = calculateQualityScore(updatedArticle as any);
 
-          // 新しい品質スコアを計算（sourceを含む完全なarticleオブジェクトを渡す）
-          const updatedArticle = {
-            ...article,
+        await prisma.article.update({
+          where: { id: article.id },
+          data: {
             summary: result.summary,
-            detailedSummary: result.detailedSummary || '',
-          };
-          const newScoreValue = calculateQualityScore(updatedArticle as any);
+            detailedSummary: result.detailedSummary,
+            translatedTitle: result.translatedTitle,
+            summaryVersion: result.summaryVersion,
+            articleType: 'unified',
+            qualityScore: newScoreValue,
+            qualityScoreComputedAt: new Date(),
+          },
+        });
 
-          // 品質スコアをデータベースに保存
-          await prisma.article.update({
-            where: { id: article.id },
-            data: {
-              qualityScore: newScoreValue,
-            },
-          });
+        results.push({
+          articleId: article.id,
+          title: article.title,
+          oldScore: article.qualityScore || 0,
+          newScore: newScoreValue,
+          success: true,
+        });
 
-          results.push({
-            articleId: article.id,
-            title: article.title,
-            oldScore: article.qualityScore || 0,
-            newScore: newScoreValue,
-            success: true,
-          });
+        succeeded++;
 
-          succeeded++;
-
-          if (verbose) {
-            console.log(`  ✅ 成功: 新スコア ${newScoreValue}点 (${newScoreValue - (article.qualityScore || 0) > 0 ? '+' : ''}${newScoreValue - (article.qualityScore || 0)}点)`);
-          }
-        } else {
-          failed++;
-          results.push({
-            articleId: article.id,
-            title: article.title,
-            oldScore: article.qualityScore || 0,
-            newScore: null,
-            success: false,
-            error: '要約生成失敗',
-          });
-
-          if (verbose) {
-            console.log('  ❌ 要約生成失敗');
-          }
+        if (verbose) {
+          console.log(`  ✅ 成功: 新スコア ${newScoreValue}点 (${newScoreValue - (article.qualityScore || 0) > 0 ? '+' : ''}${newScoreValue - (article.qualityScore || 0)}点)`);
         }
 
         // Rate limit対策
