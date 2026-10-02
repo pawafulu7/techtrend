@@ -3,6 +3,7 @@
  */
 
 import { ArticleType } from '../article/article-type-detector';
+import { SUMMARY_LENGTH } from '../../ai/constants';
 
 /**
  * 要約が適切な形式かどうかを検証
@@ -37,17 +38,17 @@ export function validateSummary(summary: string): {
     }
   }
 
-  // 最小文字数チェック（Phase 3: 90文字に変更）
-  if (summary.length < 90) {
+  // 文字数は要約生成のプロンプト・検証と同じ定数（SUMMARY_LENGTH）で判定する。
+  // 下限は検証側（service/quality-checker.ts）が減点を始める penaltyMin
+  if (summary.length < SUMMARY_LENGTH.penaltyMin) {
     errors.push(
-      `要約が短すぎます（${summary.length}文字）。最低90文字必要です`
+      `要約が短すぎます（${summary.length}文字）。最低${SUMMARY_LENGTH.penaltyMin}文字必要です`
     );
   }
 
-  // 最大文字数チェック（Phase 3: 130文字に変更）
-  if (summary.length > 130) {
+  if (summary.length > SUMMARY_LENGTH.hardMax) {
     errors.push(
-      `要約が長すぎます（${summary.length}文字）。最大130文字までです`
+      `要約が長すぎます（${summary.length}文字）。最大${SUMMARY_LENGTH.hardMax}文字までです`
     );
   }
 
@@ -311,12 +312,12 @@ export function validateByArticleType(
 /**
  * Phase 3: 要約の自動修正機能
  * @param summary 修正する要約
- * @param maxLength 最大文字数（デフォルト: 130）
+ * @param maxLength 最大文字数（デフォルト: 要約生成と同じ上限 SUMMARY_LENGTH.hardMax）
  * @returns 修正された要約
  */
 export function autoFixSummary(
   summary: string,
-  maxLength: number = 130
+  maxLength: number = SUMMARY_LENGTH.hardMax
 ): string {
   let fixed = summary.trim();
 

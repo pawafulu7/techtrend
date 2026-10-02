@@ -10,7 +10,7 @@ import {
 describe('summary-validator', () => {
   describe('validateSummary', () => {
     it('should validate correct summary', () => {
-      const summary = 'ReactのuseStateフックを使った状態管理について詳しく解説しています。初心者にも分かりやすく、実践的なコード例を交えながら説明されており、実務でも活用できる内容となっています。';
+      const summary = 'ReactのuseStateフックを使った状態管理について詳しく解説しています。初心者にも分かりやすく、実践的なコード例を交えながら説明されており、実務でも活用できる内容となっています。対象読者は業務でReactを使う中級者である。';
       
       const result = validateSummary(summary);
 
@@ -58,7 +58,7 @@ describe('summary-validator', () => {
     });
 
     it('should reject too short summary', () => {
-      const summary = 'これは短い要約です。'; // Less than 90 characters
+      const summary = 'これは短い要約です。'; // Less than 100 characters (SUMMARY_LENGTH.penaltyMin)
       
       const result = validateSummary(summary);
 
@@ -66,11 +66,11 @@ describe('summary-validator', () => {
       expect(result.errors).toContainEqual(
         expect.stringContaining('要約が短すぎます')
       );
-      expect(result.errors[0]).toMatch(/最低90文字必要/);
+      expect(result.errors[0]).toMatch(/最低100文字必要/);
     });
 
     it('should reject too long summary', () => {
-      const summary = 'x'.repeat(131) + '。'; // More than 130 characters
+      const summary = 'x'.repeat(250) + '。'; // More than 250 characters (SUMMARY_LENGTH.hardMax)
       
       const result = validateSummary(summary);
 
@@ -78,7 +78,21 @@ describe('summary-validator', () => {
       expect(result.errors).toContainEqual(
         expect.stringContaining('要約が長すぎます')
       );
-      expect(result.errors[0]).toMatch(/最大130文字まで/);
+      expect(result.errors[0]).toMatch(/最大250文字まで/);
+    });
+
+    // 要約生成と同じ帯（SUMMARY_LENGTH）で判定する（issue #655）
+    it.each([
+      [99, false],
+      [100, true],
+      [250, true],
+      [251, false],
+    ])('文字数 %i の要約 → 長さのエラーなし: %s', (length, ok) => {
+      const summary = 'あ'.repeat(length - 1) + '。';
+      const lengthErrors = validateSummary(summary).errors.filter(
+        (e) => e.includes('短すぎます') || e.includes('長すぎます')
+      );
+      expect(lengthErrors.length === 0).toBe(ok);
     });
 
     it('should require period at the end', () => {
@@ -381,6 +395,13 @@ describe('summary-validator', () => {
       expect(fixed).toBe('');
     });
 
+    it('既定の上限は要約生成と同じ 250 字（issue #655）', () => {
+      const sentence = 'あ'.repeat(99) + '。';
+      const fixed = autoFixSummary(sentence.repeat(3)); // 300 字
+
+      expect(fixed).toBe(sentence.repeat(2)); // 200 字（250 字以内の文まで）
+    });
+
     it('should remove prefix patterns', () => {
       const summary = 'この記事では、Reactについて解説しています';
       
@@ -395,7 +416,7 @@ describe('summary-validator', () => {
 
   describe('validateByArticleType', () => {
     it('should validate implementation type correctly', () => {
-      const summary = 'ReactとTypeScriptを使用してTodoアプリを開発しました。状態管理にはReduxを採用し、UIコンポーネントはMaterial-UIで実装しています。パフォーマンスも最適化済みです。';
+      const summary = 'ReactとTypeScriptを使用してTodoアプリを開発しました。状態管理にはReduxを採用し、UIコンポーネントはMaterial-UIで実装しています。パフォーマンスも最適化済みです。対象読者は業務でReactを使う中級者である。';
       
       const result = validateByArticleType(summary, 'implementation');
 
@@ -405,7 +426,7 @@ describe('summary-validator', () => {
     });
 
     it('should validate tutorial type correctly', () => {
-      const summary = 'ReactのuseStateフックの使い方について、ステップバイステップで解説します。初心者向けに基本的な手順から応用的な使い方まで、実践的なチュートリアルとして詳しく説明しています。';
+      const summary = 'ReactのuseStateフックの使い方について、ステップバイステップで解説します。初心者向けに基本的な手順から応用的な使い方まで、実践的なチュートリアルとして詳しく説明しています。対象読者は業務でReactを使う中級者である。';
       
       const result = validateByArticleType(summary, 'tutorial');
 
@@ -415,7 +436,7 @@ describe('summary-validator', () => {
     });
 
     it('should validate problem-solving type correctly', () => {
-      const summary = 'Reactアプリケーションのパフォーマンス問題を解決する方法を紹介します。レンダリング最適化とメモ化による改善手法で、大幅な性能向上を実現しました。実測値も大きく改善されています。';
+      const summary = 'Reactアプリケーションのパフォーマンス問題を解決する方法を紹介します。レンダリング最適化とメモ化による改善手法で、大幅な性能向上を実現しました。実測値も大きく改善されています。対象読者は業務でReactを使う中級者である。';
       
       const result = validateByArticleType(summary, 'problem-solving');
 
@@ -425,7 +446,7 @@ describe('summary-validator', () => {
     });
 
     it('should validate tech-intro type correctly', () => {
-      const summary = 'Next.js 14の新機能について紹介します。App Routerの特徴やServer Componentsの利点など、主要なメリットを解説しています。パフォーマンスの向上も期待できます。';
+      const summary = 'Next.js 14の新機能について紹介します。App Routerの特徴やServer Componentsの利点など、主要なメリットを解説しています。パフォーマンスの向上も期待できます。対象読者は業務でReactを使う中級者である。';
       
       const result = validateByArticleType(summary, 'tech-intro');
 
@@ -435,7 +456,7 @@ describe('summary-validator', () => {
     });
 
     it('should validate release type correctly', () => {
-      const summary = 'React 19がリリースされました。新機能として並行レンダリングの改善とサーバーコンポーネントの強化が含まれ、パフォーマンスが大幅に向上しています。開発体験も大きく改善されています。';
+      const summary = 'React 19がリリースされました。新機能として並行レンダリングの改善とサーバーコンポーネントの強化が含まれ、パフォーマンスが大幅に向上しています。開発体験も大きく改善されています。対象読者は業務でReactを使う中級者である。';
       
       const result = validateByArticleType(summary, 'release');
 
@@ -445,7 +466,7 @@ describe('summary-validator', () => {
     });
 
     it('should add warnings for missing keywords in implementation type', () => {
-      const summary = 'ReactのuseStateフックを使った状態管理について詳しく解説しています。初心者にも分かりやすく、実践的なコード例を交えながら説明されており、実務でも活用できる内容となっています。';
+      const summary = 'ReactのuseStateフックを使った状態管理について詳しく解説しています。初心者にも分かりやすく、実践的なコード例を交えながら説明されており、実務でも活用できる内容となっています。対象読者は業務でReactを使う中級者である。';
       
       const result = validateByArticleType(summary, 'implementation');
 
@@ -454,7 +475,7 @@ describe('summary-validator', () => {
     });
 
     it('should add warnings for missing keywords in tutorial type', () => {
-      const summary = 'ReactのuseStateフックを使った状態管理について詳しく説明しています。初心者にも分かりやすく、実践的なコード例を交えながら紹介されており、実務でも活用できる内容となっています。';
+      const summary = 'ReactのuseStateフックを使った状態管理について詳しく説明しています。初心者にも分かりやすく、実践的なコード例を交えながら紹介されており、実務でも活用できる内容となっています。対象読者は業務でReactを使う中級者である。';
       
       const result = validateByArticleType(summary, 'tutorial');
 
