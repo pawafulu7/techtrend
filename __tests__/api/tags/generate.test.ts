@@ -5,6 +5,14 @@
 const mockGenerateSummary = jest.fn();
 const mockGetTagIdsForConnect = jest.fn();
 
+const mockOnArticleUpdated = jest.fn();
+
+jest.mock('@/lib/cache/cache-invalidator', () => ({
+  cacheInvalidator: {
+    onArticleUpdated: (...args: unknown[]) => mockOnArticleUpdated(...args),
+  },
+}));
+
 jest.mock('@/lib/di/bootstrap', () => ({
   getAppDependencies: () => ({
     service: { generateSummary: mockGenerateSummary },
@@ -106,6 +114,7 @@ describe('POST /api/tags/generate', () => {
       where: { id: 'art-1' },
       data: { tags: { connect: [{ id: 'tag-1' }] } },
     });
+    expect(mockOnArticleUpdated).toHaveBeenCalledWith('art-1');
     expect(body.data).toEqual({ generated: 1, errors: 0, total: 1 });
   });
 

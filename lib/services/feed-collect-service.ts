@@ -5,6 +5,7 @@ import { validateArticleContent } from '@/lib/services/summary/summary-orchestra
 import { normalizeTagInput } from '@/lib/utils/tag/tag-normalizer';
 import type { CollectResult } from '@/types/api';
 import logger from '@/lib/logger';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { env } from '@/lib/config/env';
 
 export async function collectFeeds(): Promise<{
@@ -119,6 +120,19 @@ export async function collectFeeds(): Promise<{
                   summaryComputedAt: new Date(),
                 },
               });
+
+              // 作成から要約保存までの間に要約なしでキャッシュされた記事を消す
+              try {
+                await cacheInvalidator.onArticleUpdated(article.id, {
+                  summary: summaryResult.summary,
+                  detailedSummary: summaryResult.detailedSummary,
+                });
+              } catch (cacheError) {
+                logger.warn(
+                  { articleId: article.id, err: cacheError },
+                  'Cache invalidation failed, continuing'
+                );
+              }
             } catch (error) {
               logger.error(
                 { articleId: article.id, err: error },
@@ -139,7 +153,10 @@ export async function collectFeeds(): Promise<{
         }
       }
     } catch (error) {
-      logger.error({ source: source.name, err: error }, 'Failed to collect source');
+      logger.error(
+        { source: source.name, err: error },
+        'Failed to collect source'
+      );
       collectResult.success = false;
       collectResult.error = `Source error: ${error instanceof Error ? error.message : String(error)}`;
     }

@@ -252,8 +252,10 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
 
     console.log(`\n完了時刻: ${new Date().toLocaleString('ja-JP')}`);
 
+    // 1 件も再生成できずに失敗だけがあった回は失敗として返す
+    // （レート制限やサーキットブレーカーで全件が落ちたことを終了コードで知らせるため）
     return {
-      success: true,
+      success: !(succeeded === 0 && failed > 0),
       totalProcessed: articles.length,
       succeeded,
       failed,

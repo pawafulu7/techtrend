@@ -4,6 +4,14 @@
 
 const mockGenerateSummary = jest.fn();
 
+const mockOnArticleUpdated = jest.fn();
+
+jest.mock('@/lib/cache/cache-invalidator', () => ({
+  cacheInvalidator: {
+    onArticleUpdated: (...args: unknown[]) => mockOnArticleUpdated(...args),
+  },
+}));
+
 jest.mock('@/lib/di/bootstrap', () => ({
   getAppDependencies: () => ({
     service: { generateSummary: mockGenerateSummary },
@@ -123,6 +131,10 @@ describe('collectFeeds の要約生成', () => {
         summaryVersion: 9,
         summaryComputedAt: expect.any(Date),
       },
+    });
+    expect(mockOnArticleUpdated).toHaveBeenCalledWith('art-1', {
+      summary: '一覧要約',
+      detailedSummary: '・詳細1\n・詳細2',
     });
   });
 

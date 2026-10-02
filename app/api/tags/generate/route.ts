@@ -7,6 +7,7 @@ import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import { getTagIdsForConnect } from '@/lib/services/tag-service';
 import logger from '@/lib/logger';
 import { env } from '@/lib/config/env';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 
 async function generateTagsHandler(_request: NextRequest) {
   // DI の要約サービスはキーが無くても組み立てられ、記事ごとに失敗するだけになる。
@@ -92,7 +93,18 @@ async function generateTagsHandler(_request: NextRequest) {
           }
           return false;
         });
-        if (didUpdate) generated++;
+        if (didUpdate) {
+          generated++;
+          // 記事詳細・一覧のキャッシュはタグを含むので、接続後に無効化する
+          try {
+            await cacheInvalidator.onArticleUpdated(article.id);
+          } catch (cacheError) {
+            logger.warn(
+              { err: cacheError, articleId: article.id },
+              '[TagGenerateAPI] Cache invalidation failed, continuing'
+            );
+          }
+        }
       } catch (error) {
         logger.error(
           { err: error, articleId: article.id },

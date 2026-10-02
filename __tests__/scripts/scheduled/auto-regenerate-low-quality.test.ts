@@ -184,7 +184,8 @@ describe('autoRegenerateLowQuality', () => {
     const result = await autoRegenerateLowQuality({ limit: 1 });
 
     expect(mockPrisma.article.update).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ succeeded: 0, failed: 1 });
+    // 1 件も再生成できなかった回は失敗として返す（CLI の終了コードに反映される）
+    expect(result).toMatchObject({ success: false, succeeded: 0, failed: 1 });
     expect(result.results[0].error).toContain('Failed to generate quality summary');
     expect(mockRateLimitDelay).not.toHaveBeenCalledWith(60000);
   });
@@ -220,6 +221,21 @@ describe('autoRegenerateLowQuality', () => {
       process.env.GEMINI_API_KEY = 'test-key';
       resetEnvCache();
     }
+  });
+
+  it('一部でも再生成できた回は成功として返す', async () => {
+    mockPrisma.article.findMany.mockResolvedValue([
+      lowQualityArticle(longContent, 'art-1'),
+      lowQualityArticle(longContent, 'art-2'),
+    ]);
+    mockGenerateSummary
+      .mockRejectedValueOnce(new Error('Quality too low'))
+      .mockResolvedValueOnce(serviceResult);
+    mockCalculateArticleQualityScore.mockReturnValue(72);
+
+    const result = await autoRegenerateLowQuality({ limit: 2 });
+
+    expect(result).toMatchObject({ success: true, succeeded: 1, failed: 1 });
   });
 
   it('関数自体は共有の prisma クライアントを切断しない', async () => {
