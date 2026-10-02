@@ -103,15 +103,19 @@ async function cleanTags() {
     for (const mapping of tagMappings) {
       try {
         const result = await prisma.$transaction(async (tx) => {
+          // 行をロックする。統合の間に、消すタグへ別の要求が記事を繋ぐと、その
+          // リンクがタグの削除で黙って消えるため（ロック中の接続は待たされ、
+          // タグが消えていれば外部キーのエラーとして表に出る）
           const group = await tx.$queryRaw<
-            Array<{ id: string; name: string; isToKey: boolean }>
+            Array<{ id: string; name: string; category: string | null }>
           >`
-            SELECT id, name, lower(name) = lower(${mapping.to}) AS "isToKey"
+            SELECT id, name, category
             FROM "Tag"
             WHERE lower(name) IN (lower(${mapping.from}), lower(${mapping.to}))
             ORDER BY (name = ${mapping.to}) DESC,
                      (lower(name) = lower(${mapping.to})) DESC,
                      name COLLATE "C"
+            FOR UPDATE
           `;
           if (group.length === 0) return null;
 
@@ -132,6 +136,18 @@ async function cleanTags() {
           for (const source of group.slice(1)) {
             mergedArticles += await mergeTagInto(tx, source.id, target.id);
           }
+
+          // 統合先に category が無ければ、消したタグの値を（並び順で最初のものを）引き継ぐ
+          const inherited = group
+            .slice(1)
+            .find((tag) => tag.category)?.category;
+          if (!target.category && inherited) {
+            await tx.tag.update({
+              where: { id: target.id },
+              data: { category: inherited },
+            });
+          }
+
           return { renamed, merged: group.length - 1, mergedArticles };
         });
 

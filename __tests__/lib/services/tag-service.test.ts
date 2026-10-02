@@ -156,6 +156,23 @@ describe('TagService', () => {
       );
     });
 
+    it('creates missing tags with the given transaction client, not the global one', async () => {
+      const tx = {
+        $queryRaw: jest
+          .fn()
+          .mockResolvedValueOnce([missing(1, 'Go')])
+          .mockResolvedValueOnce([found(1, 'Go')]),
+        tag: { createMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      };
+
+      await resolveTags([{ name: 'Go' }], tx as never);
+
+      expect(tx.tag.createMany).toHaveBeenCalledTimes(1);
+      expect(tx.$queryRaw).toHaveBeenCalledTimes(2);
+      expect(prismaMock.tag.createMany).not.toHaveBeenCalled();
+      expect(prismaMock.$queryRaw).not.toHaveBeenCalled();
+    });
+
     it('uses the given transaction client', async () => {
       const tx = {
         $queryRaw: jest.fn().mockResolvedValue([found(1, 'Go')]),

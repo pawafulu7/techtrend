@@ -45,6 +45,7 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { NextRequest } from 'next/server';
 
 const prismaMock = prisma as any;
+let txMock: { article: { update: jest.Mock } };
 const cacheInvalidatorMock = cacheInvalidator as jest.Mocked<typeof cacheInvalidator>;
 
 describe('/api/articles/[id]', () => {
@@ -57,9 +58,15 @@ describe('/api/articles/[id]', () => {
       update: jest.fn(),
       delete: jest.fn(),
     };
-    // 記事の更新とタグの解決は 1 つのトランザクションで行う。同じモックを tx として渡す
+    // 記事の更新とタグの解決は 1 つのトランザクションで行う。外側の prisma と取り違えたら
+    // 分かるよう、tx には別のモックを渡す（tx.article.update は外側の update に委ねる）
+    txMock = {
+      article: {
+        update: jest.fn((...args: unknown[]) => prismaMock.article.update(...args)),
+      },
+    };
     prismaMock.$transaction = jest.fn(
-      async (fn: (tx: unknown) => unknown) => fn(prismaMock)
+      async (fn: (tx: unknown) => unknown) => fn(txMock)
     );
     
     // キャッシュ無効化モック設定
@@ -247,8 +254,9 @@ describe('/api/articles/[id]', () => {
       };
       expect(resolveTags).toHaveBeenCalledWith(
         [{ name: 'Vue.js' }, { name: 'Nuxt.js' }],
-        prismaMock
+        txMock
       );
+      expect(txMock.article.update).toHaveBeenCalledTimes(1);
       expect(prismaMock.article.update).toHaveBeenCalledWith({
         where: { id: VALID_ARTICLE_ID },
         data: {

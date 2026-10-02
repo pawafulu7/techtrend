@@ -11,6 +11,7 @@ import {
   type DiffSummary,
   ArticleCategory,
 } from '@/lib/prisma-exports';
+import { findTagIdsByNames } from '@/lib/services/tag-service';
 import type { OpinionForPrompt } from './types';
 import {
   type ArticleCandidatesSearchInput,
@@ -519,7 +520,14 @@ export class SocialPostSelector {
   ): Promise<{ title: string; summary: string; publishedAt: Date }[]> {
     if (tags.length === 0) return [];
 
-    const tagNames = tags.map((t) => t.name);
+    // タグ名は大文字小文字を区別せずに照合する（タグの同一性のキーは lower(name)。#672）。
+    // lower() で ID を引いてから ID で絞る（Prisma の insensitive は ILIKE になり、
+    // タグ名の _ や % がワイルドカードとして効くため）
+    const tagIds = await findTagIdsByNames(
+      tags.map((t) => t.name),
+      this.prisma
+    );
+    if (tagIds.length === 0) return [];
 
     // 7日以上前の記事から検索（最近の記事との比較のため）
     const sevenDaysAgo = new Date();
@@ -530,11 +538,7 @@ export class SocialPostSelector {
         id: { not: articleId },
         summary: { not: null },
         createdAt: { lt: sevenDaysAgo },
-        tags: {
-          some: {
-            name: { in: tagNames },
-          },
-        },
+        tags: { some: { id: { in: tagIds } } },
       },
       orderBy: { createdAt: 'desc' },
       take: limit,

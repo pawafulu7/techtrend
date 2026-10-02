@@ -82,7 +82,7 @@ function makeArticle(id = 'article-1'): ArticleWithSource {
 function makePrismaMock(existingTags: string[] = []) {
   const articleUpdate = jest.fn().mockResolvedValue({});
   const articleFindUniqueOrThrow = jest.fn().mockResolvedValue({
-    tags: existingTags.map((name) => ({ id: `tag:${name.toLowerCase()}` })),
+    tags: existingTags.map((name) => ({ id: `tag:${name.toLowerCase()}`, name })),
   });
   const txClient = {
     article: { update: articleUpdate, findUniqueOrThrow: articleFindUniqueOrThrow },
@@ -159,10 +159,21 @@ describe('batch-processor', () => {
         expect(result.success).toBe(true);
         expect(result.articleId).toBe('article-with-tags');
 
+        // タグの解決は要約の保存と同じトランザクション（tx）で行う
+        const { resolveTags } = jest.requireMock('@/lib/services/tag-service') as {
+          resolveTags: jest.Mock;
+        };
+        const [resolvedNames, resolvedClient] = resolveTags.mock.lastCall!;
+        expect(resolvedNames).toEqual([{ name: 'TypeScript' }, { name: 'React' }]);
+        // 外側の prisma（$transaction を持つ）ではなく、コールバックに渡された tx
+        expect(resolvedClient).not.toBe(prisma);
+        expect(resolvedClient).not.toHaveProperty('$transaction');
+        expect(resolvedClient).toHaveProperty('article');
+
         // findUniqueOrThrow で現在のタグを ID で読み取り
         expect(articleFindUniqueOrThrow).toHaveBeenCalledWith({
           where: { id: 'article-with-tags' },
-          select: { tags: { select: { id: true } } },
+          select: { tags: { select: { id: true, name: true } } },
         });
 
         // 1回目: summary更新, 2回目: tags更新（connectのみ、setなし）
@@ -215,6 +226,33 @@ describe('batch-processor', () => {
             },
           },
         });
+      });
+
+      it('should not attach a duplicate tag with another id but the same key', async () => {
+        // 統合前の重複: 記事には MCP（tag:mcp）、DB には別 ID の Mcp もある
+        const { resolveTags } = jest.requireMock('@/lib/services/tag-service') as {
+          resolveTags: jest.Mock;
+        };
+        resolveTags.mockResolvedValueOnce([
+          { id: 'tag:other-mcp', name: 'Mcp', category: null },
+        ]);
+        const { prisma, articleUpdate } = makePrismaMock(['MCP']);
+
+        const result = await processArticleWithTimeout(
+          makeArticle('article-dup-key'),
+          '記事の本文',
+          jest.fn().mockResolvedValue({
+            summary: 'テスト要約。',
+            detailedSummary: '・テスト詳細',
+            translatedTitle: undefined,
+            tags: ['Mcp'],
+          }),
+          prisma
+        );
+
+        expect(result.success).toBe(true);
+        // summary更新の1回だけ（同じキーのタグは付けない）
+        expect(articleUpdate).toHaveBeenCalledTimes(1);
       });
 
       it('should not attach a differently-cased name of an attached tag again', async () => {

@@ -6,7 +6,11 @@
  * 実行: npm run test:integration:docker
  */
 import { prisma } from '@/lib/prisma';
-import { resolveTags, getOrCreateTags } from '@/lib/services/tag-service';
+import {
+  resolveTags,
+  getOrCreateTags,
+  findTagIdsByNames,
+} from '@/lib/services/tag-service';
 
 // 他のデータと衝突しないよう、テストごとに固有の接頭辞を付ける
 const P = `it672x${Date.now()}`;
@@ -55,10 +59,11 @@ describe('resolveTags (integration, #672)', () => {
       ],
     });
 
-    const [exact] = await resolveTags([{ name: `${P}LLaMA` }]);
+    // "Llama" は C 照合順では 2 番目（"LLaMA" < "Llama"）。完全一致の優先が無いと -b が返る
+    const [exact] = await resolveTags([{ name: `${P}Llama` }]);
     const [other] = await resolveTags([{ name: `${P}LLAMA` }]);
 
-    expect(exact.id).toBe(`${P}-b`);
+    expect(exact.id).toBe(`${P}-a`);
     // 完全一致が無ければ name の C 照合順で最初（大文字が先: "LLaMA" < "Llama"）
     expect(other.id).toBe(`${P}-b`);
   });
@@ -76,6 +81,20 @@ describe('resolveTags (integration, #672)', () => {
     const [tag] = await resolveTags([{ name: `${P}Kotlin`, category: 'language' }]);
 
     expect(tag.category).toBe('language');
+  });
+
+  it('findTagIdsByNames matches by lower(name) and treats _ and % literally', async () => {
+    await prisma.tag.createMany({
+      data: [
+        { id: `${P}-u`, name: `${P}Claude_Code` },
+        { id: `${P}-s`, name: `${P}Claude Code` },
+        { id: `${P}-m`, name: `${P}MCP` },
+      ],
+    });
+
+    expect(await findTagIdsByNames([`${P}claude_code`])).toEqual([`${P}-u`]);
+    expect(await findTagIdsByNames([`${P}mcp`, `${P}Rust`])).toEqual([`${P}-m`]);
+    expect(await findTagIdsByNames(['%'])).toEqual([]);
   });
 
   it('works inside an interactive transaction', async () => {

@@ -34,7 +34,7 @@ export interface ResolveTagsOptions {
 type TagClient = PrismaClient | Prisma.TransactionClient;
 
 interface ResolvedRow {
-  ord: bigint | number;
+  ord: bigint;
   input: string;
   id: string | null;
   name: string | null;
@@ -140,6 +140,28 @@ export async function resolveTags(
       category: resolved.category,
     };
   });
+}
+
+/**
+ * タグ名のキー（lower(name)）に当たるタグの ID をすべて返す（作らない）。
+ *
+ * 読み出しでタグ名を大文字小文字を区別せずに照合するときに使う。Prisma の
+ * `mode: 'insensitive'` は ILIKE になり、名前の `_` や `%` がワイルドカードとして
+ * 効くため（例: "Claude_Code" が "Claude Code" にも当たる）、照合は lower() で行う。
+ * 既存の重複（同じキーのタグが複数）がある間は、その全部の ID を返す。
+ */
+export async function findTagIdsByNames(
+  names: string[],
+  client: TagClient = prisma
+): Promise<string[]> {
+  const trimmed = names.map((name) => name.trim()).filter(Boolean);
+  if (trimmed.length === 0) return [];
+  const rows = await client.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "Tag"
+    WHERE lower(name) IN (SELECT lower(x) FROM unnest(${trimmed}::text[]) AS x)
+    ORDER BY name COLLATE "C"
+  `;
+  return rows.map((row) => row.id);
 }
 
 /**

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { popularCache, type PopularPeriod } from '@/lib/cache/popular-cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { publicCacheHeaders } from '@/lib/api/cache-headers';
+import { findTagIdsByNames } from '@/lib/services/tag-service';
 
 const boolParam = (defaultVal: 'true' | 'false' = 'false') =>
   z
@@ -87,19 +88,6 @@ function mapPeriodToPopular(period: Period): PopularPeriod {
   }
 }
 
-// カテゴリからタグIDを取得
-// タグ名は大文字小文字を区別せずに照合する（タグの同一性のキーは lower(name)。#672）
-async function getTagIdFromCategory(
-  category: string
-): Promise<string | undefined> {
-  const tag = await prisma.tag.findFirst({
-    where: { name: { equals: category, mode: 'insensitive' } },
-    orderBy: { name: 'asc' },
-    select: { id: true },
-  });
-  return tag?.id;
-}
-
 async function getPopularArticles(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -116,10 +104,12 @@ async function getPopularArticles(request: NextRequest) {
     // PopularCacheを使用
     const popularPeriod = mapPeriodToPopular(period);
 
-    // カテゴリのタグIDを事前に取得（キャッシュキー生成とタグ/ソース判定に使用）
-    const resolvedTagId = category
-      ? await getTagIdFromCategory(category)
-      : undefined;
+    // カテゴリのタグIDを事前に取得（キャッシュキー生成とタグ/ソース判定に使用）。
+    // タグ名は大文字小文字を区別せずに照合する（タグの同一性のキーは lower(name)。#672）。
+    // lower() で ID を引く（Prisma の insensitive は ILIKE になり、_ や % が
+    // ワイルドカードとして効くため）。同じキーの重複タグがある間は全部の ID を使う
+    const categoryTagIds = category ? await findTagIdsByNames([category]) : [];
+    const resolvedTagId = categoryTagIds[0];
     // ソースIDはフィルタに不要。キャッシュキーにはカテゴリ名を使用
     const sourceCacheKey =
       category && !resolvedTagId
@@ -155,9 +145,7 @@ async function getPopularArticles(request: NextRequest) {
         if (category) {
           if (resolvedTagId) {
             categoryFilter = {
-              tags: {
-                some: { name: { equals: category, mode: 'insensitive' } },
-              },
+              tags: { some: { id: { in: categoryTagIds } } },
             };
           } else {
             categoryFilter = {

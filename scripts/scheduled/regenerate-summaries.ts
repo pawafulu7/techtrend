@@ -142,10 +142,15 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
       // タグの更新（必要に応じて）
       if (result.tags.length > 0) {
         // 大文字小文字だけが違う既存のタグがあればそれを使う（#672）。
-        // 既存タグとの差分は ID で比べる（表記の違いで同じタグを別物と見ないため）
+        // 既存タグとの差分は ID と表記の小文字で比べる（表記違いの重複タグが別の ID で
+        // 残っている間に、同じタグを二重に付けないため）
         const tags = await resolveTags(result.tags.map(name => ({ name })));
         const existingTagIds = new Set(article.tags.map(t => t.id));
-        const newTags = tags.filter(tag => !existingTagIds.has(tag.id));
+        const existingTagKeys = new Set(article.tags.map(t => t.name.toLowerCase()));
+        const newTags = tags.filter(
+          tag =>
+            !existingTagIds.has(tag.id) && !existingTagKeys.has(tag.name.toLowerCase())
+        );
 
         if (newTags.length > 0) {
           console.error(`  新しいタグ: ${newTags.map(tag => tag.name).join(', ')}`);

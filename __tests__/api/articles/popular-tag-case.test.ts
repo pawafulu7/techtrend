@@ -1,5 +1,6 @@
 /**
- * /api/articles/popular?category= のタグ照合が大文字小文字を区別しないこと（#672）
+ * /api/articles/popular?category= のタグ照合（#672）
+ * lower(name) で引いたタグの ID で絞ること。Prisma の insensitive（ILIKE）は使わない
  */
 jest.mock('@/lib/cache/popular-cache', () => ({
   popularCache: {
@@ -17,46 +18,44 @@ import { prisma } from '@/lib/prisma';
 import { GET } from '@/app/api/articles/popular/route';
 
 const prismaMock = prisma as unknown as {
-  tag: { findFirst: jest.Mock };
+  $queryRaw: jest.Mock;
   article: { findMany: jest.Mock };
 };
 
+function whereOf(): Record<string, unknown> {
+  return prismaMock.article.findMany.mock.calls[0][0].where;
+}
+
 describe('GET /api/articles/popular (category = tag)', () => {
   beforeEach(() => {
-    prismaMock.tag.findFirst.mockReset();
+    prismaMock.$queryRaw.mockReset();
     prismaMock.article.findMany.mockReset();
     prismaMock.article.findMany.mockResolvedValue([]);
   });
 
-  it('resolves the tag and filters articles by the tag name case-insensitively', async () => {
-    prismaMock.tag.findFirst.mockResolvedValue({ id: 'tag-mcp' });
+  it('filters by the IDs of all tags with the same key', async () => {
+    // 統合前の重複（MCP と Mcp）があれば両方の ID を使う
+    prismaMock.$queryRaw.mockResolvedValueOnce([{ id: 'tag-MCP' }, { id: 'tag-Mcp' }]);
 
     const response = await GET(
       new NextRequest('http://localhost:3000/api/articles/popular?category=mcp')
     );
 
     expect(response.status).toBe(200);
-    expect(prismaMock.tag.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { name: { equals: 'mcp', mode: 'insensitive' } },
-      })
+    expect(prismaMock.$queryRaw.mock.calls[0]).toContainEqual(['mcp']);
+    expect(JSON.stringify(whereOf())).toContain(
+      JSON.stringify({ tags: { some: { id: { in: ['tag-MCP', 'tag-Mcp'] } } } }).slice(1, -1)
     );
-    const where = prismaMock.article.findMany.mock.calls[0][0].where;
-    expect(JSON.stringify(where)).toContain(
-      JSON.stringify({
-        tags: { some: { name: { equals: 'mcp', mode: 'insensitive' } } },
-      }).slice(1, -1)
-    );
+    expect(JSON.stringify(whereOf())).not.toContain('insensitive');
   });
 
   it('falls back to the source name when no tag matches', async () => {
-    prismaMock.tag.findFirst.mockResolvedValue(null);
+    prismaMock.$queryRaw.mockResolvedValueOnce([]);
 
     await GET(
       new NextRequest('http://localhost:3000/api/articles/popular?category=Qiita')
     );
 
-    const where = prismaMock.article.findMany.mock.calls[0][0].where;
-    expect(JSON.stringify(where)).toContain('"source":{"name":"Qiita"}');
+    expect(JSON.stringify(whereOf())).toContain('"source":{"name":"Qiita"}');
   });
 });

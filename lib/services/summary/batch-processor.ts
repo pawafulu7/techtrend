@@ -217,13 +217,18 @@ export async function updateArticleTags(
     prisma
   );
 
-  // 現在のタグとは ID で比べる（表記の違いで同じタグを別物と見ないため）
+  // 現在のタグとは ID と表記の小文字で比べる。表記違いの重複タグが別の ID で
+  // 残っている間（既存の重複を統合するまで）に、同じタグを二重に付けないため
   const current = await prisma.article.findUniqueOrThrow({
     where: { id: articleId },
-    select: { tags: { select: { id: true } } },
+    select: { tags: { select: { id: true, name: true } } },
   });
   const currentTagIds = new Set(current.tags.map((t) => t.id));
-  const newTags = tags.filter((tag) => !currentTagIds.has(tag.id));
+  const currentTagKeys = new Set(current.tags.map((t) => t.name.toLowerCase()));
+  const newTags = tags.filter(
+    (tag) =>
+      !currentTagIds.has(tag.id) && !currentTagKeys.has(tag.name.toLowerCase())
+  );
 
   if (newTags.length > 0) {
     await prisma.article.update({

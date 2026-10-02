@@ -78,19 +78,35 @@ describe('GET /api/articles/search/advanced', () => {
     );
   });
 
-  it('タグの包含・除外は大文字小文字を区別せずに照合する（#672）', async () => {
+  it('タグの包含・除外は lower(name) で引いたタグの ID で絞る（#672）', async () => {
+    // findTagIdsByNames の SQL（lower() での照合）は結合テストで確かめる
+    prismaMock.$queryRaw
+      .mockResolvedValueOnce([{ id: 'tag-mcp' }, { id: 'tag-rust' }])
+      .mockResolvedValueOnce([{ id: 'tag-go' }]);
+
     await GET(request('?tags=mcp&tags=Rust&excludeTags=GO'));
 
+    const [includeCall, excludeCall] = prismaMock.$queryRaw.mock.calls;
+    expect(includeCall).toContainEqual(['mcp', 'Rust']);
+    expect(excludeCall).toContainEqual(['GO']);
     const where = prismaMock.article.findMany.mock.calls[0][0].where;
-    const insensitive = (name: string) => ({
-      name: { equals: name, mode: 'insensitive' },
-    });
     expect(where.tags).toEqual({
-      some: { OR: [insensitive('mcp'), insensitive('Rust')] },
+      some: { id: { in: ['tag-mcp', 'tag-rust'] } },
     });
     expect(where.AND).toContainEqual({
-      NOT: { tags: { some: { OR: [insensitive('GO')] } } },
+      NOT: { tags: { some: { id: { in: ['tag-go'] } } } },
     });
+    // ILIKE（_ や % がワイルドカードになる）を使っていない
+    expect(JSON.stringify(where)).not.toContain('insensitive');
+  });
+
+  it('包含のタグが見つからなければ 0 件になる条件にする', async () => {
+    prismaMock.$queryRaw.mockResolvedValueOnce([]);
+
+    await GET(request('?tags=no-such-tag'));
+
+    const where = prismaMock.article.findMany.mock.calls[0][0].where;
+    expect(where.tags).toEqual({ some: { id: { in: [] } } });
   });
 
   it('facets.difficulty はレスポンスの形を保つため空配列で返す', async () => {

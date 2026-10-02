@@ -23,8 +23,8 @@ jest.mock('@/lib/logger', () => ({
 
 // ---- Prisma モック (@/lib/prisma) ----
 // handlers/post.ts は @/lib/database ではなく @/lib/prisma から prisma を import している
-jest.mock('@/lib/prisma', () => {
-  const prisma: Record<string, unknown> = {
+jest.mock('@/lib/prisma', () => ({
+  prisma: {
     source: {
       findUnique: jest.fn(),
     },
@@ -32,11 +32,8 @@ jest.mock('@/lib/prisma', () => {
       findUnique: jest.fn(),
       create: jest.fn(),
     },
-  };
-  // 記事の作成とタグの解決は 1 つのトランザクションで行う。テストでは同じモックを tx として渡す
-  prisma.$transaction = jest.fn(async (fn: (tx: unknown) => unknown) => fn(prisma));
-  return { prisma };
-});
+  },
+}));
 
 // ---- タグの解決（lower(name) をキーにした探索・作成。実 DB の結合テストで確かめる）----
 jest.mock('@/lib/services/tag-service', () => ({
@@ -79,6 +76,7 @@ import { POST } from '@/app/api/articles/route';
 import { prisma } from '@/lib/prisma';
 
 const mockPrisma = prisma as any;
+let txMock: { article: { create: jest.Mock } };
 
 const VALID_SOURCE = { id: 'source-1' };
 
@@ -102,6 +100,18 @@ function buildRequest(body: unknown) {
 describe('POST /api/articles (middleware mocked)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // 記事の作成とタグの解決は 1 つのトランザクションで行う。外側の prisma と取り違えたら
+    // 分かるよう、tx には別のモックを渡す（tx.article.create は外側の create に委ねる）。
+    // jest.setup.node.js の beforeEach が共有の $transaction を戻すので、ここで毎回設定する
+    txMock = {
+      article: {
+        create: jest.fn((...args: unknown[]) => mockPrisma.article.create(...args)),
+      },
+    };
+    mockPrisma.$transaction = jest.fn(
+      async (fn: (client: unknown) => unknown) => fn(txMock)
+    );
 
     mockPrisma.source.findUnique.mockResolvedValue(VALID_SOURCE);
     mockPrisma.article.findUnique.mockResolvedValue(null); // 重複なし
@@ -149,11 +159,12 @@ describe('POST /api/articles (middleware mocked)', () => {
 
     expect(response.status).toBe(201);
     expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
-    // tx として $transaction のコールバックに渡されたクライアントで呼ばれていること
+    // $transaction のコールバックに渡された tx で、タグの解決と記事の作成をしていること
     expect(resolveTags).toHaveBeenCalledWith(
       [{ name: 'MCP' }, { name: 'Rust' }],
-      mockPrisma
+      txMock
     );
+    expect(txMock.article.create).toHaveBeenCalledTimes(1);
     expect(mockPrisma.article.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
