@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { logger } from '@/lib/logger';
 import { BatchExecutor, BatchJob } from './batch-executor';
 import { env } from '@/lib/config/env';
+import { buildGeminiModelUrl, getGeminiModel } from '@/lib/config/gemini';
 
 // Types
 export interface ExtractionOptions {
@@ -63,9 +64,10 @@ export class LLMExtractionPipeline {
     if (!this.apiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
-    this.modelVersion = model || env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+    // モデルと base URL は共有設定（GEMINI_MODEL・GEMINI_BASE_URL）から解決する
+    this.modelVersion = model || getGeminiModel();
     // API key is passed via x-goog-api-key header for security (not in URL)
-    this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelVersion}:generateContent`;
+    this.apiUrl = buildGeminiModelUrl(this.modelVersion);
   }
 
   /**

@@ -83,7 +83,8 @@ export function loadConfig(overrides?: DeepPartial<AppConfig>): AppConfig {
     gemini: {
       apiKey: env.GEMINI_API_KEY || defaultConfig.gemini.apiKey,
       model: env.GEMINI_MODEL || defaultConfig.gemini.model,
-      baseUrl: env.GEMINI_BASE_URL || defaultConfig.gemini.baseUrl,
+      // 末尾のスラッシュは除く（パスをつなげたときに // にならないように。全経路がこの値を使う）
+      baseUrl: (env.GEMINI_BASE_URL || defaultConfig.gemini.baseUrl).replace(/\/+$/, ''),
       summaryServiceTier: env.GEMINI_SUMMARY_SERVICE_TIER,
       summaryFlexTimeoutMs: env.GEMINI_SUMMARY_FLEX_TIMEOUT_MS,
     } as any,

@@ -1,7 +1,10 @@
 import { PrismaClient, TrendPeriodType, Prisma } from '@/lib/prisma-exports';
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import logger from '@/lib/logger';
-import { GEMINI_API } from '@/lib/constants';
+import {
+  getGeminiRequestOptions,
+  getGeminiTrendModel,
+} from '@/lib/config/gemini';
 import type {
   TopArticleInfo,
   CategoryInfo,
@@ -33,9 +36,11 @@ export class TrendReportGenerator {
     const apiKey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
     if (apiKey) {
       this.genAI = new GoogleGenerativeAI(apiKey);
-      this.model = this.genAI.getGenerativeModel({
-        model: GEMINI_API.TREND_MODEL,
-      });
+      // モデルは要約と別（GEMINI_MODEL では変わらない）。base URL は共有設定に揃える
+      this.model = this.genAI.getGenerativeModel(
+        { model: getGeminiTrendModel() },
+        getGeminiRequestOptions()
+      );
     }
   }
 
@@ -130,7 +135,7 @@ export class TrendReportGenerator {
           );
           aiSummary = aiSummaryResult.content;
           aiSummaryFormat = aiSummaryResult.format;
-          aiModel = GEMINI_API.TREND_MODEL;
+          aiModel = getGeminiTrendModel();
           generatedAt = new Date();
         } catch (error) {
           logger.error({ err: error }, 'Failed to generate AI summary');

@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { GEMINI_API } from '../constants';
-import { getGeminiModel } from '@/lib/config/gemini';
+import { getGeminiModel, getGeminiRequestOptions } from '@/lib/config/gemini';
+import { SUMMARY_LENGTH, SUMMARY_LENGTH_HINT } from './constants';
 import { ExternalAPIError } from '../errors';
 import { cleanSummary as cleanSummaryUtil } from '../utils/summary/summary-cleaner';
 import {
@@ -35,9 +36,11 @@ export class GeminiClient {
   constructor(apiKey: string, modelId: string = getGeminiModel()) {
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.modelId = modelId;
-    this.model = this.genAI.getGenerativeModel({
-      model: modelId,
-    });
+    // SDK は既定で公式のエンドポイントを使うので、base URL を共有設定（GEMINI_BASE_URL）に揃える
+    this.model = this.genAI.getGenerativeModel(
+      { model: modelId },
+      getGeminiRequestOptions()
+    );
   }
 
   async generateSummary(title: string, content: string): Promise<string> {
@@ -63,7 +66,7 @@ export class GeminiClient {
       summary = this.cleanSummary(summary);
 
       // 後処理（文字数調整、前置き文言除去）
-      summary = postProcessSummary(summary, 130);
+      summary = postProcessSummary(summary, SUMMARY_LENGTH.hardMax);
 
       // 品質検証
       const validation = validateSummaryQuality(summary, 'normal');
@@ -92,7 +95,8 @@ export class GeminiClient {
         {
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
-            maxOutputTokens: GEMINI_API.MAX_TOKENS,
+            // 要約（150-250 字）とタグを一度に出すので、MAX_TOKENS（200）では途中で切れうる
+            maxOutputTokens: GEMINI_API.DETAILED_MAX_TOKENS,
             temperature: GEMINI_API.TEMPERATURE,
           },
         },
@@ -147,7 +151,10 @@ export class GeminiClient {
       const parsedResult = this.parseDetailedSummary(text);
 
       // 通常要約の後処理
-      parsedResult.summary = postProcessSummary(parsedResult.summary, 130);
+      parsedResult.summary = postProcessSummary(
+        parsedResult.summary,
+        SUMMARY_LENGTH.hardMax
+      );
 
       // 品質検証
       const summaryValidation = validateSummaryQuality(
@@ -173,33 +180,6 @@ export class GeminiClient {
         error
       );
     }
-  }
-
-  private createSummaryPrompt(title: string, content: string): string {
-    // Limit content length to avoid token limits
-    const truncatedContent = content.substring(0, 2000);
-
-    // 統一プロンプトの簡易版（通常要約のみ）
-    return `以下の技術記事を日本語で要約してください。
-
-タイトル: ${title}
-内容: ${truncatedContent}
-
-重要な指示:
-1. 100-120文字で要約（厳守：最大130文字まで）
-2. 著者の自己紹介や前置きは除外
-3. 記事が提供する価値や解決する問題を明確に含める
-4. 具体的な技術名、数値、手法を含める
-5. 必ず完全な文で終わる（「。」で終了）
-6. 簡潔に、一文または二文で表現
-
-絶対に守るべきルール:
-- 「本記事は」「この記事では」「〜について解説」などの前置き文言を使わない
-- 要約は記事の内容そのものから直接始める
-- 「要約:」「要約：」などのラベルを付けない
-- 要約内容のみを出力
-
-要約:`;
   }
 
   private cleanSummary(summary: string): string {
@@ -228,7 +208,7 @@ export class GeminiClient {
 【回答形式】
 以下の形式で回答してください。「要約:」や「タグ:」などのラベルを含めて出力してください。
 
-要約: [80-120文字の日本語で、以下の要素を含めて簡潔にまとめる]
+要約: [${SUMMARY_LENGTH_HINT}の日本語で、以下の要素を含めて簡潔にまとめる]
 - 何について説明しているか（主題）
 - どのような問題を解決するか、または何を実現するか
 - 重要な技術やツールがあれば言及

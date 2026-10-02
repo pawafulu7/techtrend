@@ -142,68 +142,6 @@ export function cleanDetailedSummary(detailedSummary: string, options: CleanupOp
 }
 
 /**
- * 要約の品質をチェック
- */
-export function checkSummaryQuality(summary: string): {
-  isValid: boolean;
-  issues: string[];
-} {
-  const issues: string[] = [];
-  
-  if (!summary || summary.trim() === '') {
-    issues.push('要約なし');
-    return { isValid: false, issues };
-  }
-  
-  const s = summary.trim();
-  
-  // 長さチェック
-  if (s.length < 20) {
-    issues.push('短すぎ（<20文字）');
-  } else if (s.length < 60) {
-    issues.push('やや短い（<60文字）');
-  }
-  
-  if (s.length > 150) {
-    issues.push('長すぎ（>150文字）');
-  } else if (s.length > 130) {
-    issues.push('やや長い（>130文字）');
-  }
-  
-  // 日本語チェック
-  const japaneseChars = (s.match(/[ぁ-んァ-ヶー一-龠々]/g) || []).length;
-  const japaneseRatio = s.length > 0 ? japaneseChars / s.length : 0;
-  if (japaneseRatio < 0.3) {
-    issues.push('英語混在（日本語<30%）');
-  }
-  
-  // 一般的表現チェック
-  if (s.includes('解説') || s.includes('紹介') || s.includes('説明')) {
-    issues.push('一般的表現');
-  }
-  
-  // 記事言及チェック
-  if (s.includes('する記事') || s.includes('した記事') || s.includes('です。')) {
-    issues.push('記事言及');
-  }
-  
-  // プレフィックスチェック
-  if (s.match(/^[\s]*要約[:：]/i) || s.match(/^\*\*要約/i)) {
-    issues.push('プレフィックスあり');
-  }
-  
-  // Markdown記法チェック
-  if (s.includes('**') || s.includes('##') || s.includes('```')) {
-    issues.push('Markdown記法');
-  }
-  
-  return {
-    isValid: issues.length === 0,
-    issues
-  };
-}
-
-/**
  * 詳細要約の品質をチェック
  */
 export function checkDetailedSummaryQuality(detailedSummary: string): {

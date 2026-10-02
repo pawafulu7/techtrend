@@ -20,6 +20,7 @@ import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { logger } from '@/lib/logger';
 import { env } from '@/lib/config/env';
+import { buildGeminiEndpoint } from '@/lib/config/gemini';
 
 export interface UnifiedSummaryResult extends ParsedSummaryResult {
   articleType: 'unified';
@@ -56,8 +57,8 @@ export class UnifiedSummaryService {
     if (!this.apiKey) {
       throw new Error('GEMINI_API_KEY is not set');
     }
-    const model = env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
-    this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
+    // モデルと base URL は共有設定（GEMINI_MODEL・GEMINI_BASE_URL）から解決する
+    this.apiUrl = buildGeminiEndpoint(this.apiKey);
     this.embeddingScheduler = new EmbeddingScheduler();
   }
 

@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { parseChangelog } from '../../lib/changelog/parser';
 import { RedisCache } from '../../lib/cache';
 import { env } from '@/lib/config/env';
-import { getGeminiModel } from '@/scripts/lib/gemini-endpoint';
+import { getGeminiModel, getGeminiRequestOptions } from '@/scripts/lib/gemini-endpoint';
 
 const FETCH_TIMEOUT_MS = 30_000;
 const GEMINI_TIMEOUT_MS = 60_000;
@@ -59,7 +59,7 @@ async function translateEntries(
   apiKey: string
 ): Promise<Map<string, TranslatedEntry>> {
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL }, getGeminiRequestOptions());
   const translations = new Map<string, TranslatedEntry>();
 
   // Process in batches

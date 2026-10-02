@@ -14,6 +14,7 @@ import {
   QualityCheckResult
 } from '../utils/summary/summary-quality-checker';
 import { generateSummaryAndTags as geminiGenerateSummary } from './gemini-handler';
+import { SUMMARY_LENGTH } from './constants';
 
 /**
  * 通常要約用のプロンプトを生成（統一プロンプトを使用）
@@ -42,10 +43,13 @@ export function createDetailedSummaryPrompt(title: string, content: string): str
 /**
  * 要約の後処理（文字数調整、前置き文言除去など）
  * @param summary 生成された要約
- * @param maxLength 最大文字数
+ * @param maxLength 最大文字数（既定は要約生成と同じ上限 SUMMARY_LENGTH.hardMax）
  * @returns 処理後の要約
  */
-export function postProcessSummary(summary: string, maxLength: number = 130): string {
+export function postProcessSummary(
+  summary: string,
+  maxLength: number = SUMMARY_LENGTH.hardMax
+): string {
   let processed = summary.trim();
   
   // 前置き文言の除去
@@ -61,8 +65,9 @@ export function postProcessSummary(summary: string, maxLength: number = 130): st
     processed = processed.replace(pattern, '');
   }
   
-  // 文字数が超過している場合は調整
-  if (processed.length > maxLength) {
+  // 文字数が超過している場合は調整（後で句点を足す分も含めて maxLength 以内にする）
+  const limitBeforePeriod = processed.endsWith('。') ? maxLength : maxLength - 1;
+  if (processed.length > limitBeforePeriod) {
     // 最後の句点までで切る
     const sentences = processed.split('。');
     let result = '';
