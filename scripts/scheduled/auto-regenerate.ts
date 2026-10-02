@@ -7,6 +7,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { calculateSummaryScore, needsRegeneration } from '@/lib/utils/quality-scorer';
+import { getSummaryLengthBand } from '@/lib/ai/constants';
 import { optimizeContentForSummary } from '@/lib/utils/content/content-extractor';
 
 import { getAppDependencies } from '@/lib/di/bootstrap';
@@ -58,6 +59,7 @@ async function detectLowQualityArticles(): Promise<Array<{
   id: string;
   title: string;
   content: string | null;
+  contentLength: number | null;
   summary: string;
   score: number;
   issues: string[];
@@ -91,7 +93,11 @@ async function detectLowQualityArticles(): Promise<Array<{
     if (!article.summary) continue;
 
     const tags = article.tags.map((t: any) => t.name);
-    const score = calculateSummaryScore(article.summary, { tags });
+    // 長さは要約生成と同じ帯で判定する（短記事は短い帯）
+    const score = calculateSummaryScore(article.summary, {
+      tags,
+      lengthBand: getSummaryLengthBand(article.contentLength),
+    });
 
     // 再生成が必要な記事を選別
     if (needsRegeneration(score) || score.totalScore < 60) {
@@ -99,6 +105,7 @@ async function detectLowQualityArticles(): Promise<Array<{
         id: article.id,
         title: article.title,
         content: article.content,
+        contentLength: article.contentLength,
         summary: article.summary,
         score: score.totalScore,
         issues: score.issues,
@@ -119,6 +126,7 @@ async function regenerateArticles(articles: Array<{
   id: string;
   title: string;
   content: string | null;
+  contentLength: number | null;
   summary: string;
   score: number;
   issues: string[];
@@ -168,7 +176,11 @@ async function regenerateArticles(articles: Array<{
       const { summary, tags } = result;
 
       // 新しい要約のスコアを計算
-      const newScore = calculateSummaryScore(summary, { tags });
+      // 旧スコアと同じ帯で比べる
+      const newScore = calculateSummaryScore(summary, {
+        tags,
+        lengthBand: getSummaryLengthBand(article.contentLength),
+      });
       console.error(`  新スコア: ${newScore.totalScore}点`);
 
       // 改善された場合のみ更新
