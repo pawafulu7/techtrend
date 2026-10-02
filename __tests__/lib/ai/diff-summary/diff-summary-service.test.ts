@@ -133,4 +133,51 @@ describe('Diff Summary Service', () => {
       expect(service).toBeDefined();
     });
   });
+
+  describe('期間のトピック集計（issue #655 項目 5）', () => {
+    const articles = [
+      { id: 'a1', title: 'T1', tags: [{ name: 'js' }, { name: 'JavaScript' }] },
+      { id: 'a2', title: 'T2', tags: [{ name: 'JavaScript' }] },
+      { id: 'a3', title: 'T3', tags: [{ name: 'Spring' }] },
+      { id: 'a4', title: 'T4', tags: [{ name: 'Spring Boot' }] },
+      { id: 'a5', title: 'T5', tags: [{ name: 'claude code' }] },
+      { id: 'a6', title: 'T6', tags: [{ name: 'Claude Code' }] },
+      { id: 'a7', title: 'T7', tags: [{ name: 'Claude Code' }] },
+    ];
+
+    const collect = async () => {
+      const prisma = { article: { findMany: jest.fn().mockResolvedValue(articles) } };
+      const service = new DiffSummaryService({
+        pipeline: {} as unknown as LLMExtractionPipeline,
+        prisma: prisma as never,
+      });
+      return (
+        service as unknown as {
+          getTopicsForPeriod: (
+            slug: string,
+            week: string
+          ) => Promise<Array<{ topic: string; count: number; articleIds: string[] }>>;
+        }
+      ).getTopicsForPeriod('foreign', '2026-W39');
+    };
+
+    it('トピック名は小文字のキーではなく正式名で、同義語は記事単位で数える', async () => {
+      const topics = await collect();
+      const byTopic = Object.fromEntries(topics.map((t) => [t.topic, t]));
+
+      // a1 の js と JavaScript は 1 記事として数える
+      expect(byTopic['JavaScript'].count).toBe(2);
+      expect(byTopic['JavaScript'].articleIds).toEqual(['a1', 'a2']);
+      // マップに無い大文字小文字の違いは記事数の多い表記
+      expect(byTopic['Claude Code'].count).toBe(3);
+      expect(topics.map((t) => t.topic)).not.toContain('javascript');
+    });
+
+    it('Spring と Spring Boot は別トピック', async () => {
+      const topics = await collect();
+      const names = topics.map((t) => t.topic);
+      expect(names).toContain('Spring');
+      expect(names).toContain('Spring Boot');
+    });
+  });
 });
