@@ -1,6 +1,6 @@
 import { Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
-import { calculateQualityScore, checkCategoryQuality } from '@/lib/utils/quality-score';
+import { calculateArticleQualityScore } from '@/lib/utils/quality-score';
 import { getLastProcessedTime, saveProcessingStatus } from '../utils/processing-status';
 
 interface Options {
@@ -152,9 +152,7 @@ async function calculateAllQualityScores(options: Options) {
       const tuples: UpdateTuple[] = [];
 
       for (const article of batch) {
-        const baseScore = calculateQualityScore(article);
-        const { qualityBonus } = checkCategoryQuality(article);
-        const finalScore = Math.min(100, baseScore + qualityBonus);
+        const finalScore = calculateArticleQualityScore(article);
 
         // 無駄なUPDATEを避けてupdatedAt汚染を抑制
         if (article.qualityScore !== finalScore || !article.qualityScoreComputedAt) {

@@ -32,6 +32,7 @@ jest.mock('@/lib/logger', () => ({
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { POST } from '@/app/api/tags/generate/route';
+import { resetEnvCache } from '@/lib/config/env';
 
 // @/lib/prisma は jest.config の moduleNameMapper で共有の prismaMock に置き換わる
 const mockPrisma = prisma as unknown as {
@@ -48,6 +49,22 @@ function request() {
 }
 
 describe('POST /api/tags/generate', () => {
+  const originalApiKey = process.env.GEMINI_API_KEY;
+
+  beforeAll(() => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    resetEnvCache();
+  });
+
+  afterAll(() => {
+    if (originalApiKey === undefined) {
+      delete process.env.GEMINI_API_KEY;
+    } else {
+      process.env.GEMINI_API_KEY = originalApiKey;
+    }
+    resetEnvCache();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetTagIdsForConnect.mockResolvedValue([{ id: 'tag-1' }]);
@@ -57,7 +74,7 @@ describe('POST /api/tags/generate', () => {
     );
   });
 
-  it('DI の要約サービスで生成し、タグを既定の正規化つきで接続する', async () => {
+  it('DI の要約サービスで生成し、タグを getTagIdsForConnect の既定オプション（normalize: true）で接続する', async () => {
     mockPrisma.article.findMany.mockResolvedValue([
       { id: 'art-1', title: 'タイトル', content: longContent, tags: [] },
     ]);
@@ -90,6 +107,33 @@ describe('POST /api/tags/generate', () => {
       data: { tags: { connect: [{ id: 'tag-1' }] } },
     });
     expect(body.data).toEqual({ generated: 1, errors: 0, total: 1 });
+  });
+
+  it('本文の短い記事を取得時に除外し、使うフィールドだけを取得する', async () => {
+    mockPrisma.article.findMany.mockResolvedValue([]);
+
+    await POST(request());
+
+    expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tags: { none: {} }, contentLength: { gte: 100 } },
+        select: { id: true, title: true, content: true },
+      })
+    );
+  });
+
+  it('GEMINI_API_KEY が無ければ 503 を返し、記事を取得しない', async () => {
+    process.env.GEMINI_API_KEY = '';
+    resetEnvCache();
+    try {
+      const res = await POST(request());
+
+      expect(res.status).toBe(503);
+      expect(mockPrisma.article.findMany).not.toHaveBeenCalled();
+    } finally {
+      process.env.GEMINI_API_KEY = 'test-key';
+      resetEnvCache();
+    }
   });
 
   it('本文が最小長に満たない記事は生成せずにスキップする', async () => {

@@ -6,19 +6,32 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import { getTagIdsForConnect } from '@/lib/services/tag-service';
 import logger from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 async function generateTagsHandler(_request: NextRequest) {
+  // DI の要約サービスはキーが無くても組み立てられ、記事ごとに失敗するだけになる。
+  // 設定不備を 200 で隠さないよう、先に止める（feeds/collect と同じ判定）
+  if (!env.GEMINI_API_KEY) {
+    return NextResponse.json(
+      { success: false, error: 'Tag generation is not configured' },
+      { status: 503 }
+    );
+  }
+
   try {
-    // タグがない記事を取得（最大10件）
+    // タグがない記事を取得（最大10件）。本文が短すぎる記事は生成しないので、
+    // 先に除外しないと毎回同じ記事が枠を占める
     const articlesWithoutTags = await prisma.article.findMany({
       where: {
         tags: {
           none: {},
         },
+        contentLength: { gte: Math.max(env.MIN_CONTENT_LENGTH, 1) },
       },
-      include: {
-        source: true,
-        tags: true,
+      select: {
+        id: true,
+        title: true,
+        content: true,
       },
       orderBy: {
         publishedAt: 'desc',
@@ -43,7 +56,7 @@ async function generateTagsHandler(_request: NextRequest) {
         // 要約とタグを生成（タグのみ使用）
         const result = await service.generateSummary({
           title: article.title,
-          content: validation.content!,
+          content: validation.content,
           qualityThreshold: 40,
           articleId: article.id, // Schedule embedding job
         });

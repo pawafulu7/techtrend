@@ -5,9 +5,11 @@
 
 import { prisma } from '@/lib/prisma';
 import { SUMMARY_VERSION } from '@/types/article';
+import { env } from '@/lib/config/env';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { validateArticleContent } from '@/lib/services/summary/summary-orchestrator';
-import { calculateQualityScore } from '../../lib/utils/quality-score';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { calculateArticleQualityScore } from '../../lib/utils/quality-score';
 import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
 
 interface AutoRegenerateOptions {
@@ -27,7 +29,19 @@ interface RegenerationResult {
   error?: string;
 }
 
-export async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
+/**
+ * レート制限で失敗したかどうか。サービスは最後の試行の例外を
+ * 「Failed to generate quality summary after N attempts: Retryable error during
+ * summarization: HTTP 429: ...」の形で包む。429 が続くとトランスポートの
+ * サーキットブレーカーが開き、以降は 429 を含まない
+ * 「Circuit breaker is open」で即座に失敗するので、これも待機の対象にする
+ */
+function isRateLimitedError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /HTTP 429|Circuit breaker is open/.test(error.message);
+}
+
+async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
   const {
     threshold = 70,
     limit = 10,
@@ -43,6 +57,21 @@ export async function autoRegenerateLowQuality(options: AutoRegenerateOptions = 
   console.log(`エンリッチメント済み優先: ${priorityEnriched}`);
   console.log(`ドライラン: ${dryRun}`);
   console.log('');
+
+  // DI の要約サービスはキーが無くても組み立てられ、記事ごとに失敗するだけになる。
+  // 設定不備を記事単位の失敗に紛れさせないよう、先に止める
+  if (!env.GEMINI_API_KEY) {
+    const error = 'GEMINI_API_KEY is not set';
+    console.error(error);
+    return {
+      success: false,
+      totalProcessed: 0,
+      succeeded: 0,
+      failed: 0,
+      results: [],
+      error,
+    };
+  }
 
   try {
     // 低品質記事を取得
@@ -94,7 +123,8 @@ export async function autoRegenerateLowQuality(options: AutoRegenerateOptions = 
       }
 
       // 本文が無い・短すぎる記事は生成しない（定期実行の要約生成と同じ基準）。
-      // 以前は本文が無いと URL を本文として渡していた
+      // 以前は本文が無いと URL を本文として渡していた。
+      // 取得時に contentLength で除外しているので、ここに来るのは空白だけの本文など
       const validation = validateArticleContent(article);
       if (!validation.valid) {
         failed++;
@@ -118,21 +148,25 @@ export async function autoRegenerateLowQuality(options: AutoRegenerateOptions = 
         const { service } = getAppDependencies();
         const result = await service.generateSummary({
           title: article.title,
-          content: validation.content!,
+          content: validation.content,
           qualityThreshold: 40,
           articleId: article.id,
         });
 
-        // 新しい品質スコアを計算（sourceを含む完全なarticleオブジェクトを渡す）。
-        // 保存するのは記事スコア（calculateQualityScore）で、result.qualityScore
-        // （要約の品質スコア）ではない。この経路は記事スコア < threshold で対象を選ぶため
+        // 新しい記事スコアを計算（sourceを含む完全なarticleオブジェクトを渡す）。
+        // 保存するのは定期採点（manage-quality-scores.ts）と同じ記事スコアで、
+        // result.qualityScore（要約の品質スコア）ではない。この経路は記事スコア
+        // < threshold で対象を選ぶため。qualityScoreComputedAt も付けるので、
+        // 定期採点と違う式で保存すると後から補正されない
         const updatedArticle = {
           ...article,
           summary: result.summary,
           detailedSummary: result.detailedSummary || '',
         };
-        const newScoreValue = calculateQualityScore(updatedArticle as any);
+        const newScoreValue = calculateArticleQualityScore(updatedArticle);
 
+        // 定期実行（summary-orchestrator）の再生成と同じ状態フィールドを更新する
+        const now = new Date();
         await prisma.article.update({
           where: { id: article.id },
           data: {
@@ -141,10 +175,24 @@ export async function autoRegenerateLowQuality(options: AutoRegenerateOptions = 
             translatedTitle: result.translatedTitle,
             summaryVersion: result.summaryVersion,
             articleType: 'unified',
+            summaryComputedAt: now,
+            summaryError: null,
+            skipReason: null,
             qualityScore: newScoreValue,
-            qualityScoreComputedAt: new Date(),
+            qualityScoreComputedAt: now,
           },
         });
+
+        try {
+          await cacheInvalidator.onArticleUpdated(article.id, {
+            summary: result.summary,
+            detailedSummary: result.detailedSummary,
+          });
+        } catch (cacheError) {
+          console.error(
+            `  ⚠️ キャッシュ無効化に失敗（続行）: ${cacheError instanceof Error ? cacheError.message : String(cacheError)}`
+          );
+        }
 
         results.push({
           articleId: article.id,
@@ -179,7 +227,7 @@ export async function autoRegenerateLowQuality(options: AutoRegenerateOptions = 
         }
 
         // Rate limitエラーの場合は長めに待機
-        if (error instanceof Error && error.message.includes('429')) {
+        if (isRateLimitedError(error)) {
           console.log('\nRate limit検出。60秒待機...');
           await rateLimitDelay(60000);
         }
@@ -222,8 +270,6 @@ export async function autoRegenerateLowQuality(options: AutoRegenerateOptions = 
       results: [],
       error: error instanceof Error ? error.message : String(error),
     };
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -234,6 +280,11 @@ async function getLowQualityArticles(
 ) {
   let articles = await prisma.article.findMany({
     where: {
+      // 本文が短すぎる記事は要約を生成しないので、取得時に除外する。
+      // 除外しないと記事スコアの低い順で毎回同じ記事が枠を占め、何も再生成されない
+      // （開発 DB では下位 20 件がすべて 100 字未満だった）。
+      // contentLength は CHAR_LENGTH(content) を保つ DB トリガーの列
+      contentLength: { gte: Math.max(env.MIN_CONTENT_LENGTH, 1) },
       AND: [
         // 品質スコアが閾値未満（デフォルト0も含む）
         {
@@ -271,10 +322,10 @@ async function getLowQualityArticles(
       // 両方同じエンリッチメント状態なら品質スコア順
       return (a.qualityScore || 0) - (b.qualityScore || 0);
     });
-    
-    // limit件に制限
-    articles = articles.slice(0, limit);
   }
+
+  // limit件に制限（エンリッチメント優先を無効にしたときも limit を超えないように）
+  articles = articles.slice(0, limit);
 
   return articles;
 }
@@ -330,11 +381,13 @@ if (require.main === module) {
   }
 
   autoRegenerateLowQuality(options)
-    .then((result) => {
+    .then(async (result) => {
+      await prisma.$disconnect();
       process.exit(result.success ? 0 : 1);
     })
-    .catch((error) => {
+    .catch(async (error) => {
       console.error(error);
+      await prisma.$disconnect();
       process.exit(1);
     });
 }

@@ -93,7 +93,7 @@ describe('collectFeeds の要約生成', () => {
     jest.clearAllMocks();
   });
 
-  it('DI の要約サービスで生成し、今と同じ 4 フィールドを保存する', async () => {
+  it('DI の要約サービスで生成し、定期実行と同じく翻訳タイトルと生成時刻も保存する', async () => {
     setupFetchedArticle(longContent);
     mockGenerateSummary.mockResolvedValue({
       summary: '一覧要約',
@@ -118,8 +118,10 @@ describe('collectFeeds の要約生成', () => {
       data: {
         summary: '一覧要約',
         detailedSummary: '・詳細1\n・詳細2',
+        translatedTitle: '翻訳タイトル',
         articleType: 'unified',
         summaryVersion: 9,
+        summaryComputedAt: expect.any(Date),
       },
     });
   });

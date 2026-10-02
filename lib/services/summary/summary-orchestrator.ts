@@ -26,12 +26,13 @@ const MIN_CONTENT_LENGTH = env.MIN_CONTENT_LENGTH;
 /**
  * Content validation result for article processing.
  */
-interface ContentValidationResult {
-  valid: boolean;
-  content?: string;
-  reason?: string;
-  reasonCode?: 'NO_CONTENT' | 'THIN_CONTENT';
-}
+type ContentValidationResult =
+  | { valid: true; content: string }
+  | {
+      valid: false;
+      reason: string;
+      reasonCode: 'NO_CONTENT' | 'THIN_CONTENT';
+    };
 
 /**
  * Validate article content for summary generation.

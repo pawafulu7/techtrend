@@ -100,18 +100,23 @@ export async function collectFeeds(): Promise<{
             try {
               const summaryResult = await summaryService.generateSummary({
                 title: article.title,
-                content: validation.content!,
+                content: validation.content,
                 qualityThreshold: 40,
                 articleId: article.id,
               });
 
               await prisma.article.update({
                 where: { id: article.id },
+                // 定期実行（summary-orchestrator）と同じく翻訳タイトルと生成時刻も保存する。
+                // summary が入った記事は定期実行の対象（summary が空）から外れるため、
+                // ここで保存しないと後から埋まらない
                 data: {
                   summary: summaryResult.summary,
                   detailedSummary: summaryResult.detailedSummary,
+                  translatedTitle: summaryResult.translatedTitle,
                   articleType: 'unified',
                   summaryVersion: summaryResult.summaryVersion,
+                  summaryComputedAt: new Date(),
                 },
               });
             } catch (error) {
