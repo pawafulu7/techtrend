@@ -84,6 +84,17 @@ export function calculateQualityScore(article: ArticleWithDetails): number {
   return Math.max(0, Math.min(100, score));
 }
 
+/**
+ * qualityScore 列に保存する記事スコア（基本点＋カテゴリーの加点、0-100）。
+ * 定期採点（manage-quality-scores.ts）と低品質記事の再生成で同じ値を保存するため、
+ * 計算をここに 1 か所にまとめる。
+ */
+export function calculateArticleQualityScore(article: ArticleWithDetails): number {
+  const baseScore = calculateQualityScore(article);
+  const { qualityBonus } = checkCategoryQuality(article);
+  return Math.min(100, baseScore + qualityBonus);
+}
+
 // カテゴリー別の品質チェック
 export function checkCategoryQuality(article: ArticleWithDetails): {
   category: string | null;

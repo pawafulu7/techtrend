@@ -1,6 +1,11 @@
 /**
- * 統一要約生成サービス
- * 全ての要約生成処理で使用する統一インターフェース
+ * 旧・統一要約生成サービス
+ *
+ * 本番の要約生成経路（定期実行・feeds/collect・低品質の再生成・タグ生成・
+ * 管理画面の再生成）では使わない。本番は DI の新サービス
+ * （`getAppDependencies().service`、lib/ai/service/unified-summary-service.ts）を使う。
+ * scripts/manual/・scripts/maintenance/ の手動スクリプトが参照しているため残している。
+ * 新しいコードからは import しないこと。
  */
 
 import fetch from 'node-fetch';

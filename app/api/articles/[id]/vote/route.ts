@@ -48,9 +48,10 @@ async function voteHandler(
     });
 
     if (articleWithDetails) {
-      const { calculateQualityScore } =
+      // 定期採点（manage-quality-scores.ts）と同じ記事スコアを保存する
+      const { calculateArticleQualityScore } =
         await import('@/lib/utils/quality-score');
-      const newScore = calculateQualityScore(articleWithDetails);
+      const newScore = calculateArticleQualityScore(articleWithDetails);
 
       await prisma.article.update({
         where: { id },

@@ -1,9 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import { createFetcher } from '@/lib/fetchers';
-import { ArticleSummarizer } from '@/lib/ai';
+import { getAppDependencies } from '@/lib/di/bootstrap';
+import { validateArticleContent } from '@/lib/services/summary/summary-orchestrator';
 import { normalizeTagInput } from '@/lib/utils/tag/tag-normalizer';
 import type { CollectResult } from '@/types/api';
 import logger from '@/lib/logger';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { env } from '@/lib/config/env';
 
 export async function collectFeeds(): Promise<{
@@ -17,9 +19,10 @@ export async function collectFeeds(): Promise<{
     where: { enabled: true },
   });
 
-  // Initialize AI summarizer
-  const apiKey = env.GEMINI_API_KEY;
-  const summarizer = apiKey ? new ArticleSummarizer(apiKey) : null;
+  // 要約は定期実行と同じ DI の要約サービスで生成する
+  const summaryService = env.GEMINI_API_KEY
+    ? getAppDependencies().service
+    : null;
 
   for (const source of sources) {
     const collectResult: CollectResult = {
@@ -91,24 +94,45 @@ export async function collectFeeds(): Promise<{
 
           collectResult.newArticles++;
 
-          // Generate AI summary with unified format if not present and summarizer available
-          if (!article.summary && article.content && summarizer) {
+          // Generate AI summary if not present and the summary service is available.
+          // 本文の基準（空・短すぎる）は定期実行の要約生成と同じものを使う
+          const validation = validateArticleContent(article);
+          if (!article.summary && validation.valid && summaryService) {
             try {
-              const summaryResult = await summarizer.summarizeUnified(
-                article.id,
-                article.title,
-                article.content
-              );
+              const summaryResult = await summaryService.generateSummary({
+                title: article.title,
+                content: validation.content,
+                qualityThreshold: 40,
+                articleId: article.id,
+              });
 
               await prisma.article.update({
                 where: { id: article.id },
+                // 定期実行（summary-orchestrator）と同じく翻訳タイトルと生成時刻も保存する。
+                // summary が入った記事は定期実行の対象（summary が空）から外れるため、
+                // ここで保存しないと後から埋まらない
                 data: {
                   summary: summaryResult.summary,
                   detailedSummary: summaryResult.detailedSummary,
-                  articleType: summaryResult.articleType,
+                  translatedTitle: summaryResult.translatedTitle,
+                  articleType: 'unified',
                   summaryVersion: summaryResult.summaryVersion,
+                  summaryComputedAt: new Date(),
                 },
               });
+
+              // 作成から要約保存までの間に要約なしでキャッシュされた記事を消す
+              try {
+                await cacheInvalidator.onArticleUpdated(article.id, {
+                  summary: summaryResult.summary,
+                  detailedSummary: summaryResult.detailedSummary,
+                });
+              } catch (cacheError) {
+                logger.warn(
+                  { articleId: article.id, err: cacheError },
+                  'Cache invalidation failed, continuing'
+                );
+              }
             } catch (error) {
               logger.error(
                 { articleId: article.id, err: error },
@@ -129,7 +153,10 @@ export async function collectFeeds(): Promise<{
         }
       }
     } catch (error) {
-      logger.error({ source: source.name, err: error }, 'Failed to collect source');
+      logger.error(
+        { source: source.name, err: error },
+        'Failed to collect source'
+      );
       collectResult.success = false;
       collectResult.error = `Source error: ${error instanceof Error ? error.message : String(error)}`;
     }
