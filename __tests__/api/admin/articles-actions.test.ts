@@ -97,6 +97,13 @@ jest.mock('@/lib/utils/article/article-category-normalizer', () => ({
   normalizeArticleCategory: jest.fn((c: string) => c),
 }));
 
+// ---- 記事スコアのモック（式は quality-score のテストで検証する） ----
+const mockCalculateArticleQualityScore = jest.fn().mockReturnValue(66);
+jest.mock('@/lib/utils/quality-score', () => ({
+  calculateArticleQualityScore: (...args: unknown[]) =>
+    mockCalculateArticleQualityScore(...args),
+}));
+
 // ---- インポート（モック定義後） ----
 import { prisma } from '@/lib/prisma';
 import { prisma as prismaFromDatabase } from '@/lib/database';
@@ -403,13 +410,15 @@ describe('POST /api/admin/articles/[id]/regenerate-summary', () => {
     };
     mockGetAppDependencies.mockReturnValue({ service: mockService } as any);
 
-    (mockPrisma.article.update as jest.Mock).mockResolvedValue({
+    const regeneratedArticle = {
       ...mockArticleDetail,
       summary: mockSummaryResult.summary,
       detailedSummary: mockSummaryResult.detailedSummary,
       summaryVersion: 9,
-      qualityScore: 90,
-    });
+    };
+    (mockPrisma.article.update as jest.Mock)
+      .mockResolvedValueOnce(regeneratedArticle)
+      .mockResolvedValueOnce({ ...regeneratedArticle, qualityScore: 66 });
 
     const request = new NextRequest(
       `http://localhost/api/admin/articles/${VALID_ID}/regenerate-summary`,
@@ -427,6 +436,22 @@ describe('POST /api/admin/articles/[id]/regenerate-summary', () => {
         content: mockArticleDetail.content,
       })
     );
+
+    // qualityScore 列には要約の品質スコア（90）ではなく記事スコアを保存する（issue #655）
+    const updateCalls = (mockPrisma.article.update as jest.Mock).mock.calls;
+    expect(updateCalls).toHaveLength(2);
+    expect(updateCalls[0][0].data).not.toHaveProperty('qualityScore');
+    expect(updateCalls[0][0].include).toEqual({ source: true, tags: true });
+    expect(mockCalculateArticleQualityScore).toHaveBeenCalledWith(regeneratedArticle);
+    expect(updateCalls[1][0]).toEqual({
+      where: { id: VALID_ID },
+      data: { qualityScore: 66, qualityScoreComputedAt: expect.any(Date) },
+      include: {
+        source: { select: { id: true, name: true } },
+        tags: { select: { id: true, name: true } },
+      },
+    });
+    expect(data.qualityScore).toBe(66);
   });
 
 });

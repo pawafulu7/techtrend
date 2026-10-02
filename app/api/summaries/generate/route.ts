@@ -5,6 +5,7 @@ import { normalizeArticleCategory } from '@/lib/utils/article/article-category-n
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import { getTagIdsForConnect } from '@/lib/services/tag-service';
+import { calculateArticleQualityScore } from '@/lib/utils/quality-score';
 
 async function generateSummariesHandler(_request: NextRequest) {
   try {
@@ -78,16 +79,14 @@ async function generateSummariesHandler(_request: NextRequest) {
               : [];
 
           // 記事を更新
-          await tx.article.update({
+          const updated = await tx.article.update({
             where: { id: article.id },
             data: {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
               articleType: 'unified',
               summaryVersion: result.summaryVersion,
-              qualityScore: result.qualityScore,
               summaryComputedAt: now,
-              qualityScoreComputedAt: now,
               ...(result.translatedTitle && {
                 translatedTitle: result.translatedTitle,
               }),
@@ -95,6 +94,17 @@ async function generateSummariesHandler(_request: NextRequest) {
               ...(tagConnections.length > 0 && {
                 tags: { connect: tagConnections },
               }),
+            },
+            include: { source: true, tags: true },
+          });
+
+          // qualityScore 列は記事スコア（定期採点と同じ式）。新しい要約とタグで採点する。
+          // サービスの result.qualityScore は要約の品質スコアで別の指標なので保存しない
+          await tx.article.update({
+            where: { id: article.id },
+            data: {
+              qualityScore: calculateArticleQualityScore(updated),
+              qualityScoreComputedAt: now,
             },
           });
         });
