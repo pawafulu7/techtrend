@@ -1,9 +1,14 @@
 import {
+  canonicalTopicName,
   classifyTopics,
   normalizeTopic,
   reconcileTopics,
   GENERIC_TOPICS,
+  TOPIC_UNMERGED_ALIASES,
+  topicSearchTags,
 } from '@/lib/ai/extraction/topic-classifier';
+import { topicSearchHref } from '@/app/trends/diff/_components/diff-utils';
+import { TAG_NORMALIZATION_MAP } from '@/lib/utils/tag/tag-normalizer';
 import type { TopicData } from '@/lib/ai/extraction/prompts/diff-summary-prompt';
 
 /** テスト用トピック生成ヘルパー */
@@ -64,7 +69,8 @@ describe('classifyTopics', () => {
 
     it('境界値: ちょうど半減は deprecated', () => {
       const result = classifyTopics([topic('Vue', 5)], [topic('Vue', 10)]);
-      expect(typeOf(result, 'Vue')).toBe('deprecated');
+      // 表示名は正式名（vue → Vue.js）
+      expect(typeOf(result, 'Vue.js')).toBe('deprecated');
     });
   });
 
@@ -111,7 +117,8 @@ describe('classifyTopics', () => {
         []
       );
       expect(result.classified.map((c) => c.topic)).toEqual(['Claude Code']);
-      expect(result.excluded).toEqual(expect.arrayContaining(['ai', 'llm']));
+      // 表示名は正式名（ai → AI）
+      expect(result.excluded).toEqual(expect.arrayContaining(['AI', 'llm']));
     });
 
     it('複合語は除外しない', () => {
@@ -133,7 +140,8 @@ describe('classifyTopics', () => {
         [topic('react server components', 3)]
       );
       expect(result.classified).toHaveLength(1);
-      expect(typeOf(result, 'React  Server   Components')).toBe('trending');
+      // 表示名は余分な空白を詰めた表記
+      expect(typeOf(result, 'React Server Components')).toBe('trending');
     });
 
     it('表示名は現在期間のものを優先する', () => {
@@ -338,5 +346,134 @@ describe('同一期間内の同義語集約（後勝ちで捨てない）', () =
       []
     );
     expect(result.classified[0].topic).toBe('JavaScript');
+  });
+});
+
+describe('表示名は正式名にする（issue #655 項目 5）', () => {
+  it('canonicalTopicName は同義語を正式名にし、マップに無い表記はそのまま返す', () => {
+    expect(canonicalTopicName('js')).toBe('JavaScript');
+    expect(canonicalTopicName('  vuejs ')).toBe('Vue.js');
+    // normalizeTag と違い先頭を大文字にしない
+    expect(canonicalTopicName('iOS')).toBe('iOS');
+    expect(canonicalTopicName('  React   Native ')).toBe('React Native');
+  });
+
+  it('プロトタイプのプロパティ名で例外にならない', () => {
+    expect(canonicalTopicName('constructor')).toBe('constructor');
+    expect(normalizeTopic('toString')).toBe('tostring');
+  });
+
+  it('同じ期間の js（多い）と JavaScript を合算すると表示名は JavaScript', () => {
+    const result = classifyTopics(
+      [topic('js', 9), topic('JavaScript', 2)],
+      []
+    );
+    expect(result.classified).toHaveLength(1);
+    expect(result.classified[0].topic).toBe('JavaScript');
+    expect(result.classified[0].currentCount).toBe(11);
+  });
+
+  it('後から来た別名の方が多くても表示名は JavaScript', () => {
+    const result = classifyTopics(
+      [topic('JavaScript', 2), topic('js', 9)],
+      []
+    );
+    expect(result.classified[0].topic).toBe('JavaScript');
+  });
+
+  it('別名だけのトピックも表示名は正式名', () => {
+    const result = classifyTopics([topic('js', 5)], []);
+    expect(result.classified[0].topic).toBe('JavaScript');
+
+    const { current } = reconcileTopics([topic('js', 9), topic('JavaScript', 2)], [], 30);
+    expect(current.map((t) => t.topic)).toEqual(['JavaScript']);
+  });
+
+  it('期間をまたいでも表示名は正式名（基準期間 JavaScript・現在期間 js）', () => {
+    const result = classifyTopics([topic('js', 9)], [topic('JavaScript', 3)]);
+    expect(result.classified).toHaveLength(1);
+    expect(result.classified[0].topic).toBe('JavaScript');
+  });
+
+  it('マップに無い大文字小文字の違いは件数の多い表記を採る', () => {
+    const result = classifyTopics(
+      [topic('claude code', 2), topic('Claude Code', 5)],
+      []
+    );
+    expect(result.classified[0].topic).toBe('Claude Code');
+  });
+});
+
+describe('範囲が変わる別名は併合しない（issue #655 項目 5）', () => {
+  it('同じ期間の Spring と Spring Boot は別トピック（classifyTopics）', () => {
+    const result = classifyTopics(
+      [topic('Spring', 4), topic('Spring Boot', 5)],
+      []
+    );
+    expect(result.classified.map((c) => [c.topic, c.currentCount])).toEqual([
+      ['Spring', 4],
+      ['Spring Boot', 5],
+    ]);
+  });
+
+  it('別の期間の Spring と Spring Boot は別トピック（classifyTopics）', () => {
+    // 併合すると件数が同じで「変化なし」になり、増減を取り違える
+    const result = classifyTopics([topic('Spring Boot', 5)], [topic('spring', 5)]);
+    expect(typeOf(result, 'Spring Boot')).toBe('new');
+    expect(typeOf(result, 'spring')).toBe('deprecated');
+    expect(result.updateCandidates).toHaveLength(0);
+  });
+
+  it('同じ期間・別の期間の Spring と Spring Boot は別トピック（reconcileTopics）', () => {
+    const same = reconcileTopics([topic('Spring', 4), topic('Spring Boot', 5)], [], 30);
+    expect(same.current.map((t) => [t.topic, t.count])).toEqual([
+      ['Spring Boot', 5],
+      ['Spring', 4],
+    ]);
+
+    const across = reconcileTopics([topic('Spring Boot', 5)], [topic('spring', 5)], 30);
+    expect(across.current.map((t) => t.topic)).toEqual(['Spring Boot']);
+    expect(across.baseline.map((t) => t.topic)).toEqual(['spring']);
+  });
+
+  it.each([...TOPIC_UNMERGED_ALIASES])(
+    '%s は TAG_NORMALIZATION_MAP の正式名と別キーで、表記もそのまま',
+    (alias) => {
+      const target = TAG_NORMALIZATION_MAP[alias];
+      expect(target).toBeDefined();
+      expect(normalizeTopic(alias)).not.toBe(normalizeTopic(target));
+      expect(canonicalTopicName(alias)).toBe(alias);
+    }
+  );
+
+  it('除外していない同義語（rails → Ruby on Rails）は従来どおり併合する', () => {
+    expect(normalizeTopic('rails')).toBe(normalizeTopic('Ruby on Rails'));
+  });
+});
+
+describe('記事一覧のリンクで検索するタグ（issue #655 項目 5）', () => {
+  it('正式名と、併合した別名を返す', () => {
+    expect(topicSearchTags('JavaScript')).toEqual(['JavaScript', 'js']);
+    expect(topicSearchTags('機械学習')).toEqual(['機械学習', 'ml', 'machinelearning']);
+    // 保存済みの小文字の表示名からも同じ結果になる
+    expect(topicSearchTags('javascript')).toEqual(['JavaScript', 'js']);
+  });
+
+  it('併合しない別名は含めない', () => {
+    expect(topicSearchTags('Spring Boot')).toEqual(['Spring Boot']);
+    expect(topicSearchTags('Next.js')).toEqual(['Next.js', 'nextjs']);
+    expect(topicSearchTags('Node.js')).toEqual(['Node.js', 'nodejs']);
+    expect(topicSearchTags('Spring')).toEqual(['Spring']);
+  });
+
+  it('マップに無いトピックはその名前だけ', () => {
+    expect(topicSearchTags('Claude Code')).toEqual(['Claude Code']);
+  });
+
+  it('トレンド画面のリンクは OR 検索のタグにすべて入れる', () => {
+    const href = topicSearchHref('JavaScript');
+    const params = new URLSearchParams(href.slice(href.indexOf('?')));
+    expect(params.get('tags')?.split(',')).toEqual(['JavaScript', 'js']);
+    expect(params.get('tagMode')).toBe('OR');
   });
 });

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useId, useMemo, useState } from 'react';
 import { Sparkles, Zap, ArrowUpRight, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ArticleInfo, ChangeWithCategory } from './diff-utils';
+import { ArticleInfo, ChangeWithCategory, topicSearchHref } from './diff-utils';
 
 interface HotTopicChipProps {
   change: ChangeWithCategory;
@@ -89,7 +89,7 @@ export function HotTopicChip({
 
         {/* Topic name */}
         <Link
-          href={`/?tags=${encodeURIComponent(change.topic)}&tagMode=OR`}
+          href={topicSearchHref(change.topic)}
           className="group/link block"
         >
           <h3 className="text-foreground text-lg leading-snug font-semibold decoration-1 underline-offset-2 group-hover/link:underline">
@@ -144,7 +144,7 @@ export function HotTopicChip({
 
       {/* Quick action */}
       <Link
-        href={`/?tags=${encodeURIComponent(change.topic)}&tagMode=OR`}
+        href={topicSearchHref(change.topic)}
         aria-label={`${change.topic} の記事を一覧で見る`}
         className={cn(
           // focus-visible を足さないとキーボード到達時に不可視のままになる

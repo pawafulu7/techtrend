@@ -7,6 +7,11 @@ import {
 
 describe('tag-normalizer', () => {
   describe('normalizeTag', () => {
+    it('プロトタイプのプロパティ名をマップの値として扱わない', () => {
+      expect(normalizeTag('constructor')).toBe('Constructor');
+      expect(normalizeTag('toString')).toBe('ToString');
+    });
+
     it('小文字のタグを正規化する', () => {
       expect(normalizeTag('javascript')).toBe('JavaScript');
       expect(normalizeTag('typescript')).toBe('TypeScript');

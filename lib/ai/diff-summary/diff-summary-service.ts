@@ -15,6 +15,7 @@ import {
 import { BatchExecutor, BatchJob } from '../extraction/batch-executor';
 import {
   GENERIC_TOPICS,
+  canonicalTopicName,
   normalizeTopic,
   reconcileTopics,
 } from '../extraction/topic-classifier';
@@ -67,6 +68,24 @@ function filterGenericTopics(data: DiffSummaryOutput): DiffSummaryOutput {
     ...data,
     changes: filteredChanges,
   };
+}
+
+/**
+ * 記事数の最も多い表示名を返す
+ *
+ * 同数なら文字コード順で先の表記にする（DB の返す順で週ごとに表示名が揺れないように。
+ * 大文字は小文字より前なので "Claude Code" と "Claude code" なら前者）
+ */
+function mostFrequentName(names: Map<string, number>): string {
+  let best = '';
+  let bestCount = 0;
+  for (const [name, count] of names) {
+    if (count > bestCount || (count === bestCount && name < best)) {
+      best = name;
+      bestCount = count;
+    }
+  }
+  return best;
 }
 
 /**
@@ -295,7 +314,13 @@ export class DiffSummaryService {
     // Aggregate topics from tags
     const topicMap = new Map<
       string,
-      { count: number; articleIds: string[]; headlines: string[] }
+      {
+        // 表示名の候補と記事数（マップに無い大文字小文字違いは多い方を採る）
+        names: Map<string, number>;
+        count: number;
+        articleIds: string[];
+        headlines: string[];
+      }
     >();
 
     for (const article of articles) {
@@ -303,18 +328,26 @@ export class DiffSummaryService {
       // 同義語は集計前に正規化してまとめる。
       // 例えば同じ記事に "js" と "JavaScript" が付いている場合、
       // 正規化せずに数えると同一トピックの件数を二重計上してしまう。
-      const normalizedTags = new Set(
-        tags.map((tag) => normalizeTopic(tag.name)).filter(Boolean)
-      );
+      const namesByKey = new Map<string, string>();
+      for (const tag of tags) {
+        // キーは正式名の小文字（normalizeTopic と同じ）
+        const name = canonicalTopicName(tag.name);
+        const key = name.toLowerCase();
+        if (key && !namesByKey.has(key)) {
+          namesByKey.set(key, name);
+        }
+      }
 
-      for (const normalizedTag of normalizedTags) {
-        const existing = topicMap.get(normalizedTag);
+      for (const [key, name] of namesByKey) {
+        const existing = topicMap.get(key);
         if (existing) {
           existing.count++;
           existing.articleIds.push(article.id);
           existing.headlines.push(article.title);
+          existing.names.set(name, (existing.names.get(name) ?? 0) + 1);
         } else {
-          topicMap.set(normalizedTag, {
+          topicMap.set(key, {
+            names: new Map([[name, 1]]),
             count: 1,
             articleIds: [article.id],
             headlines: [article.title],
@@ -324,9 +357,11 @@ export class DiffSummaryService {
     }
 
     // Convert to TopicData array, sorted by count
-    return Array.from(topicMap.entries())
-      .map(([topic, data]) => ({
-        topic,
+    // topic は正規化キー（小文字）ではなく正式名にする。
+    // トレンド画面はこの名前を表示し、タグ検索のリンクにも使う。
+    return Array.from(topicMap.values())
+      .map((data) => ({
+        topic: mostFrequentName(data.names),
         count: data.count,
         articleIds: data.articleIds.slice(0, 10), // Limit to 10 article IDs
         headlines: data.headlines.slice(0, 5), // Limit to 5 headlines

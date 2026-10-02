@@ -1,4 +1,9 @@
 import { DiffChange } from '@/lib/ai/extraction/extraction-schemas';
+import {
+  canonicalTopicName,
+  normalizeTopic,
+  topicSearchTags,
+} from '@/lib/ai/extraction/topic-classifier';
 
 export interface ArticleInfo {
   id: string;
@@ -34,6 +39,11 @@ export interface ChangeWithCategory extends DiffChange {
   category: string;
 }
 
+/** トピックの記事一覧へのリンク（併合した別名のタグも OR で検索する） */
+export function topicSearchHref(topic: string): string {
+  return `/?tags=${encodeURIComponent(topicSearchTags(topic).join(','))}&tagMode=OR`;
+}
+
 export function formatWeekDisplay(week: string): string {
   const match = week.match(/^(\d{4})-W(\d{2})$/);
   return match ? `${match[1]}年 第${parseInt(match[2], 10)}週` : week;
@@ -62,41 +72,23 @@ export function getGroupedChanges(
     deprecated: 3,
   };
 
-  const normalizeTopicKey = (topic: string): string => {
-    const modifiers = [
-      'code',
-      'sdk',
-      'cli',
-      'api',
-      'framework',
-      'library',
-      'tool',
-      'tools',
-      'client',
-      'server',
-    ];
-    let normalized = topic.toLowerCase().trim().replace(/\s+/g, ' ');
-    for (const mod of modifiers) {
-      normalized = normalized.replace(new RegExp(`\\b${mod}\\b`, 'g'), '');
-    }
-    return normalized.replace(/\s+/g, ' ').trim();
-  };
-
   const groupedByKey = new Map<
     string,
     { changes: ChangeWithCategory[]; displayTopic: string }
   >();
 
+  // カテゴリをまたぐ統合も分析と同じ照合キーで行う。
+  // "code" や "api" などの語を取り除いてまとめると、Claude と Claude Code、
+  // REST と REST API のような範囲の違うトピックが 1 枚になり、片方の変化が消える
   for (const change of allChanges) {
-    const key = normalizeTopicKey(change.topic);
+    const key = normalizeTopic(change.topic);
     if (!groupedByKey.has(key)) {
-      groupedByKey.set(key, { changes: [], displayTopic: change.topic });
+      groupedByKey.set(key, {
+        changes: [],
+        displayTopic: canonicalTopicName(change.topic),
+      });
     }
-    const group = groupedByKey.get(key)!;
-    group.changes.push(change);
-    if (change.topic.length < group.displayTopic.length) {
-      group.displayTopic = change.topic;
-    }
+    groupedByKey.get(key)!.changes.push(change);
   }
 
   const mergedChanges: ChangeWithCategory[] = [];

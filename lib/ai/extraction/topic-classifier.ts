@@ -8,7 +8,7 @@
  * および「両期間に存在し焦点が変化したか」= updated の見極め）だけ。
  */
 
-import { normalizeTag } from '@/lib/utils/tag/tag-normalizer';
+import { TAG_NORMALIZATION_MAP } from '@/lib/utils/tag/tag-normalizer';
 import type { TopicData } from './prompts/diff-summary-prompt';
 
 /** 報告対象とする最低件数 */
@@ -89,10 +89,68 @@ export interface ClassificationResult {
 }
 
 /**
+ * 分析では併合しない TAG_NORMALIZATION_MAP の別名
+ *
+ * 表示用のマップには、別名と正式名で対象の範囲が変わる対応が混じっている。
+ * 分析でこれらを併合すると、別の対象の件数が合算されて増減を取り違える。
+ * 開発 DB のタグで確かめた例:
+ * - spring → Spring Boot: "Spring" は Spring Framework 全般（季節の春の記事もある）
+ * - rest → REST API: "REST" は設計様式そのもの（gRPC との比較、設計論）
+ * - next → Next.js: "NeXT" は Jobs の NeXT 社の記事
+ * - node → Node.js: "Node" / "NODE" は Kubernetes のノードや Neural ODE の記事
+ * 他の対応は略称・綴り・訳語の違いで、同じ対象を指す。
+ */
+export const TOPIC_UNMERGED_ALIASES: ReadonlySet<string> = new Set([
+  'spring',
+  'rest',
+  'next',
+  'node',
+]);
+
+/**
+ * 分析に使うトピックの正式名（表示名）
+ *
+ * 余分な空白を詰め、TAG_NORMALIZATION_MAP に同義語があれば正式名にする。
+ * TOPIC_UNMERGED_ALIASES の別名とマップに無いトピックは、元の表記のまま返す
+ * （normalizeTag は先頭を大文字にするため "iOS" が "IOS" になる）。
+ * トレンド画面はこの名前でタグ検索のリンクを作るので、別名（"js" など）を残さない。
+ */
+export function canonicalTopicName(topic: string): string {
+  const collapsed = topic.trim().replace(/\s+/g, ' ');
+  const lower = collapsed.toLowerCase();
+  if (TOPIC_UNMERGED_ALIASES.has(lower)) {
+    return collapsed;
+  }
+  // hasOwn で引く（"constructor" などのプロトタイプのプロパティを拾わないため）
+  return Object.hasOwn(TAG_NORMALIZATION_MAP, lower)
+    ? TAG_NORMALIZATION_MAP[lower]
+    : collapsed;
+}
+
+/**
+ * トピックの記事を探すときに検索するタグ名（正式名と、併合した別名）
+ *
+ * 件数は別名のタグ（"ML" など）の記事も合算しているが、タグ検索は大文字小文字を
+ * 無視した完全一致で同義語を展開しない。正式名だけでリンクすると別名だけが付いた
+ * 記事が一覧から欠けるため、併合した別名も OR 検索に含める。
+ */
+export function topicSearchTags(topic: string): string[] {
+  const canonical = canonicalTopicName(topic);
+  const key = canonical.toLowerCase();
+  const aliases = Object.keys(TAG_NORMALIZATION_MAP).filter(
+    (alias) =>
+      alias !== key &&
+      !TOPIC_UNMERGED_ALIASES.has(alias) &&
+      TAG_NORMALIZATION_MAP[alias].toLowerCase() === key
+  );
+  return [canonical, ...aliases];
+}
+
+/**
  * トピック名の正規化（照合キーの生成）
  *
- * 大文字小文字と余分な空白を無視したうえで、プロジェクト共通の
- * TAG_NORMALIZATION_MAP による同義語マージを適用する。
+ * 正式名（canonicalTopicName）を小文字にしたものをキーにする。
+ * 大文字小文字・余分な空白と、TAG_NORMALIZATION_MAP の同義語を無視する。
  * これがないと "js" と "JavaScript" が別トピックになり、
  * 同一技術が deprecated と new に二重計上される。
  *
@@ -100,11 +158,7 @@ export interface ClassificationResult {
  * 依然として別キーになる。解消するにはマップ側への追加が必要。
  */
 export function normalizeTopic(topic: string): string {
-  const collapsed = topic.trim().replace(/\s+/g, ' ');
-  if (!collapsed) {
-    return '';
-  }
-  return normalizeTag(collapsed).toLowerCase();
+  return canonicalTopicName(topic).toLowerCase();
 }
 
 /**
@@ -121,14 +175,20 @@ export function mergeTopicData(
   if (!existing) {
     return {
       ...incoming,
+      topic: canonicalTopicName(incoming.topic),
       articleIds: [...incoming.articleIds],
       headlines: [...incoming.headlines],
     };
   }
 
   return {
-    // 表示名は件数の多い側を採用する（同数なら先勝ち）
-    topic: incoming.count > existing.count ? incoming.topic : existing.topic,
+    // 表示名は正式名にする。マップに無い表記ゆれ（大文字小文字の違い）は、
+    // 合算済みの側と新しく来た側のうち件数の多い方を採る（同数なら合算済みの側）。
+    // 表記ごとの最多ではないが、本番の入力は期間集計（getTopicsForPeriod）で
+    // キーごとに 1 件にまとまっており、ここで表記ゆれが衝突することはない
+    topic: canonicalTopicName(
+      incoming.count > existing.count ? incoming.topic : existing.topic
+    ),
     count: existing.count + incoming.count,
     articleIds: [...new Set([...existing.articleIds, ...incoming.articleIds])],
     headlines: [...new Set([...existing.headlines, ...incoming.headlines])],

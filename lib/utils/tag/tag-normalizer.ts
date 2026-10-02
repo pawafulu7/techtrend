@@ -104,7 +104,8 @@ export function normalizeTag(tag: string): string {
   const lowerTag = trimmedTag.toLowerCase();
   
   // マップに存在する場合は正規化されたタグを返す
-  if (TAG_NORMALIZATION_MAP[lowerTag]) {
+  // hasOwn で引く（"constructor" などのプロトタイプのプロパティを拾わないため）
+  if (Object.hasOwn(TAG_NORMALIZATION_MAP, lowerTag)) {
     return TAG_NORMALIZATION_MAP[lowerTag];
   }
   
