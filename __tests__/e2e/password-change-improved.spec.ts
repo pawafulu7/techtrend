@@ -468,38 +468,8 @@ test.describe.serial('Password Change Feature - Improved', () => {
     // ページが読み込まれるまで待機
     await page.waitForSelector('h1:has-text("プロフィール設定")', { timeout: 10000 });
     
-    // アカウントタブを直接クリック（既にプロフィールページにいるため）
-    let accountTabOpened = false;
-    const accountTabSelectors = [
-      'button[value="account"]',
-      '[role="tab"][value="account"]',
-      'button[role="tab"][value="account"]',
-      'button:has-text("アカウント")',
-      '[role="tab"]:has-text("アカウント")',
-      '[data-testid="account-tab"]'
-    ];
-    
-    for (const selector of accountTabSelectors) {
-      try {
-        const tab = page.locator(selector).first();
-        if (await tab.count() > 0) {
-          await tab.scrollIntoViewIfNeeded();
-          await tab.waitFor({ state: 'visible', timeout: 2000 });
-          await tab.click();
-          await page.waitForSelector('[role="tabpanel"][data-state="active"]', { timeout: 3000 });
-          accountTabOpened = true;
-          break;
-        }
-      } catch {
-        continue;
-      }
-    }
-    
-    if (!accountTabOpened) {
-      throw new Error('Could not open account tab');
-    }
-    // タブの内容が表示されるまで待機
-    await page.waitForSelector(':has-text("パスワード変更")', { state: 'visible', timeout: 5000 });
+    // パスワード変更フォームはプロフィール画面の右列に直接置かれている（タブは無い）
+    await page.waitForSelector('input[name="currentPassword"]', { state: 'visible', timeout: 10000 });
     
     // 正しいパスワード情報を入力
     await fillPasswordChangeForm(page, {

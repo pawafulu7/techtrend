@@ -42,7 +42,7 @@
     "test:node:serial": "cross-env JEST_SERIAL_DB=1 jest -c jest.config.node.js --runInBand --testPathPatterns '(__tests__/api/workers/embedding|__tests__/unit/services/embedding-scheduler)\\.test\\.ts$'",
     "test:dom": "jest -c jest.config.dom.js",
     "test:integration": "jest --config ./jest.config.integration.js",
-    "test:integration:docker": "docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test && DATABASE_URL=postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test npm run test:integration; TEST_EXIT=$?; docker compose -f docker-compose.test.yml down; exit $TEST_EXIT",
+    "test:integration:docker": "docker compose -f docker-compose.test.yml up -d --wait postgres-test redis-test && DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres_test_password}@localhost:5434/techtrend_test npm run test:integration; TEST_EXIT=$?; docker compose -f docker-compose.test.yml down; exit $TEST_EXIT",
     "test:watch": "jest --watch -c jest.config.node.js",
     "test:coverage": "jest --coverage --config ./jest.config.node.js",
     "test:coverage:serial": "cross-env JEST_SERIAL_DB=1 jest --coverage --coverageDirectory coverage-serial --config ./jest.config.node.js --runInBand --testPathPatterns '(__tests__/api/workers/embedding|__tests__/unit/services/embedding-scheduler)\\.test\\.ts$'",

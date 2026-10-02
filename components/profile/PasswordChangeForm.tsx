@@ -50,7 +50,8 @@ export function PasswordChangeForm() {
       // Success toast
       toast({
         title: '✓ 変更完了',
-        description: 'パスワードを変更しました',
+        description:
+          'パスワードを変更しました。他の端末のセッションは無効になりました',
       });
 
       // フォームをリセット
