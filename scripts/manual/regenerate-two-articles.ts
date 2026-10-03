@@ -91,14 +91,17 @@ async function regenerateTwoArticles() {
           prisma
         );
 
-        await prisma.article.update({
-          where: { id: articleId },
-          data: {
-            tags: {
-              set: tagRecords.map(tag => ({ id: tag.id }))
+        // 使えるタグが無ければ（空白だけの名前など）今のタグを残す
+        if (tagRecords.length > 0) {
+          await prisma.article.update({
+            where: { id: articleId },
+            data: {
+              tags: {
+                set: tagRecords.map(tag => ({ id: tag.id }))
+              }
             }
-          }
-        });
+          });
+        }
       }
 
       console.error('  ✅ 更新完了');

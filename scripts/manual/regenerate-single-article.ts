@@ -205,15 +205,18 @@ ${content.substring(0, 8000)}
       );
       
       // 記事にタグを関連付ける
-      await prisma.article.update({
-        where: { id: articleId },
-        data: {
-          tags: {
-            set: [],  // 既存のタグをクリア
-            connect: tagRecords.map(tag => ({ id: tag.id }))
+      // 使えるタグが無ければ（空白だけの名前など）今のタグを残す
+      if (tagRecords.length > 0) {
+        await prisma.article.update({
+          where: { id: articleId },
+          data: {
+            tags: {
+              set: [],  // 既存のタグをクリア
+              connect: tagRecords.map(tag => ({ id: tag.id }))
+            }
           }
-        }
-      });
+        });
+      }
     }
     
     // キャッシュ無効化
