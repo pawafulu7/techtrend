@@ -7,10 +7,13 @@ export type Theme = 'light' | 'dark' | 'system';
 
 /**
  * Get theme from cookie
+ *
+ * 値は検証してから返す。proxy はこの値を x-theme ヘッダに入れるので、Cookie に %00 や %0A
+ * （Next の Cookie パーサが NUL・改行に戻す）があるとヘッダの値として不正になり、
+ * 全リクエストが 500 になっていた（issue #687 のレビューで発見）
  */
 export function getThemeFromCookie(request: NextRequest): Theme {
-  const theme = request.cookies.get(THEME_COOKIE_NAME)?.value as Theme;
-  return theme || 'system';
+  return parseThemeFromCookie(request.cookies.get(THEME_COOKIE_NAME)?.value);
 }
 
 /**
@@ -30,7 +33,10 @@ export function setThemeCookie(response: NextResponse, theme: Theme): void {
 /**
  * Get the actual theme based on system preference
  */
-export function resolveTheme(theme: Theme, prefersDark: boolean): 'light' | 'dark' {
+export function resolveTheme(
+  theme: Theme,
+  prefersDark: boolean
+): 'light' | 'dark' {
   if (theme === 'system') {
     return prefersDark ? 'dark' : 'light';
   }
@@ -41,7 +47,11 @@ export function resolveTheme(theme: Theme, prefersDark: boolean): 'light' | 'dar
  * Parse theme from cookie value with validation
  */
 export function parseThemeFromCookie(cookieValue: string | undefined): Theme {
-  if (cookieValue === 'light' || cookieValue === 'dark' || cookieValue === 'system') {
+  if (
+    cookieValue === 'light' ||
+    cookieValue === 'dark' ||
+    cookieValue === 'system'
+  ) {
     return cookieValue;
   }
   return 'system';

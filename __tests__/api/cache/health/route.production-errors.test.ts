@@ -6,16 +6,14 @@
  * 本物の lib/redis/client.ts を読む。そのため、route と同じ実ファイルを相対パスで差し替える。
  * テストごとに jest.doMock で差し替え、route を読み込み直す。
  */
-import type { NextResponse } from 'next/server';
+type HealthGet = (typeof import('@/app/api/cache/health/route'))['GET'];
 
-type HealthGet = () => Promise<NextResponse>;
-
-const loadGet = (options: {
+const loadGet = async (options: {
   ping?: () => Promise<string>;
   getStats?: () => unknown;
-}): HealthGet => {
+}): Promise<HealthGet> => {
   let get: HealthGet | undefined;
-  jest.isolateModules(() => {
+  await jest.isolateModulesAsync(async () => {
     jest.doMock('../../../../lib/redis/client', () => ({
       getRedisClient: () => ({
         ping: options.ping ?? (() => Promise.resolve('PONG')),
@@ -35,8 +33,7 @@ const loadGet = (options: {
           })),
       },
     }));
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    get = require('@/app/api/cache/health/route').GET;
+    get = (await import('@/app/api/cache/health/route')).GET;
   });
   if (!get) throw new Error('failed to load route');
   return get;
@@ -55,7 +52,7 @@ describe('/api/cache/health のエラー文言（issue #687）', () => {
     const ping = jest
       .fn()
       .mockRejectedValue(new Error('connect ECONNREFUSED 10.0.0.5:6379'));
-    const GET = loadGet({ ping });
+    const GET = await loadGet({ ping });
 
     const data = await (await GET()).json();
 
@@ -71,7 +68,7 @@ describe('/api/cache/health のエラー文言（issue #687）', () => {
     const getStats = jest.fn(() => {
       throw new Error('stats failed at 10.0.0.5');
     });
-    const GET = loadGet({ getStats });
+    const GET = await loadGet({ getStats });
 
     const response = await GET();
     const data = await response.json();
@@ -88,7 +85,7 @@ describe('/api/cache/health のエラー文言（issue #687）', () => {
     const ping = jest
       .fn()
       .mockRejectedValue(new Error('connect ECONNREFUSED 10.0.0.5:6379'));
-    const GET = loadGet({ ping });
+    const GET = await loadGet({ ping });
 
     const data = await (await GET()).json();
 

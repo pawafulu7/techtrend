@@ -505,6 +505,16 @@ describe('middleware - security headers', () => {
       await expect(response.text()).resolves.toBe('Bad Request');
     });
 
+    it('CSRF の判定より前に拒否する（Origin の無い POST でも 403 ではなく 400）', async () => {
+      const response = await proxy(
+        new NextRequest(new URL('http://localhost:3000/api/comments?x=%00'), {
+          method: 'POST',
+        })
+      );
+
+      expect(response.status).toBe(400);
+    });
+
     it('%2500（"%00" という文字列）は NUL ではないので通す', async () => {
       const response = await proxy(
         new NextRequest(
@@ -533,7 +543,8 @@ describe('middleware - security headers', () => {
 
   // issue #687: /api/ は拡張子の除外から外し、拡張子付きのパスでも proxy を通す
   describe('matcher', () => {
-    // Next は matcher の文字列を先頭と末尾を固定した正規表現として扱う
+    // Next の matcher の扱い（path-to-regexp を通し、末尾に .json・.rsc などを足す）の近似。
+    // 実際の Next での挙動は開発サーバーへの curl で確かめた（issue #687 の実装レポート）
     const matcher = new RegExp(`^${config.matcher[0]}$`);
 
     it.each([
@@ -548,6 +559,8 @@ describe('middleware - security headers', () => {
 
     it.each([
       ['/foo.png'],
+      // ページは拡張子付きなら今までどおり除外する（/api/ だけを外した）
+      ['/articles/abc.png'],
       ['/images/logo.svg'],
       ['/fonts/a.woff2'],
       ['/_next/static/chunks/main.js'],

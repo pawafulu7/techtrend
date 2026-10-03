@@ -157,8 +157,9 @@ export async function proxy(request: NextRequest) {
 
   // NUL バイト（%00）を含むリクエストは 400 にする（issue #687）。
   // PostgreSQL の text は NUL を受け付けず、クエリやパスの値が DB に届くと 500 になる。
-  // Next は proxy に渡す URL のクエリを URLSearchParams で組み直すので、NUL は %00 として
-  // 届き、%2500（"%00" という文字列）は %2500 のまま届く。正当な URL に %00 は現れない。
+  // Next は proxy に渡す URL のクエリを URLSearchParams で組み直す（skipProxyUrlNormalize が
+  // 無効のとき。有効でも生の URL がそのまま届くので同じ）。NUL は %00 として届き、
+  // %2500（"%00" という文字列）は %2500 のまま届く。正当な URL に %00 は現れない。
   // ログは出さない（クエリは検索語などの利用者の入力のため）。
   if (request.url.includes('%00')) {
     const badRequest = pathname.startsWith('/api/')

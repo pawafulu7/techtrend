@@ -339,11 +339,17 @@ describe('Error Classes', () => {
       });
 
       it('本番以外では 5xx の AppError の文言を返す（開発時の調査用）', () => {
-        const error = new DatabaseError('Connection failed', 'connect');
+        const originalEnv = process.env.NODE_ENV;
+        process.env.NODE_ENV = 'development';
+        try {
+          const error = new DatabaseError('Connection failed', 'connect');
 
-        expect(formatErrorResponse(error).error.message).toBe(
-          'Connection failed'
-        );
+          expect(formatErrorResponse(error).error.message).toBe(
+            'Connection failed'
+          );
+        } finally {
+          process.env.NODE_ENV = originalEnv;
+        }
       });
     });
   });
