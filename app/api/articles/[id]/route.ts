@@ -5,6 +5,7 @@ import { Prisma } from '@/lib/prisma-exports';
 import type { ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { resolveTags } from '@/lib/services/tag-service';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
@@ -132,23 +133,26 @@ async function patchHandler(request: NextRequest, context: any) {
     if (thumbnail !== undefined) updateData.thumbnail = thumbnail;
     if (content !== undefined) updateData.content = content;
 
-    if (tagNames !== undefined && Array.isArray(tagNames)) {
-      updateData.tags = {
-        set: [], // Clear existing tags
-        connectOrCreate: tagNames.map((name: string) => ({
-          where: { name },
-          create: { name },
-        })),
-      };
-    }
+    // タグは大文字小文字だけが違う既存のタグを使う（#672）。記事の更新と同じ
+    // トランザクションに入れ、更新に失敗したとき（存在しない ID など）使われないタグを残さない
+    const article = await prisma.$transaction(async (tx) => {
+      if (tagNames !== undefined && Array.isArray(tagNames)) {
+        const tags = await resolveTags(
+          tagNames.map((name: string) => ({ name })),
+          tx
+        );
+        // 既存のタグを外して、指定のタグに置き換える
+        updateData.tags = { set: tags.map((tag) => ({ id: tag.id })) };
+      }
 
-    const article = await prisma.article.update({
-      where: { id },
-      data: updateData,
-      include: {
-        source: true,
-        tags: true,
-      },
+      return tx.article.update({
+        where: { id },
+        data: updateData,
+        include: {
+          source: true,
+          tags: true,
+        },
+      });
     });
 
     // キャッシュを無効化

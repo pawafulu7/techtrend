@@ -18,6 +18,13 @@ jest.mock('@/lib/di/bootstrap', () => ({
   }),
 }));
 
+// タグの解決（lower(name) をキーにした探索・作成。実 DB の結合テストで確かめる）
+jest.mock('@/lib/services/tag-service', () => ({
+  resolveTags: jest.fn(async (tags: Array<{ name: string }>) =>
+    tags.map((tag) => ({ id: `tag:${tag.name}`, name: tag.name, category: null }))
+  ),
+}));
+
 jest.mock('@/lib/fetchers', () => ({
   createFetcher: jest.fn(),
 }));
@@ -52,7 +59,7 @@ const mockPrisma = prisma as unknown as {
 
 const longContent = '本文'.repeat(200); // 400 字
 
-function setupFetchedArticle(content: string | null) {
+function setupFetchedArticle(content: string | null, tagNames: string[] = []) {
   mockPrisma.source.findMany.mockResolvedValue([
     { id: 'src-1', name: 'Source', enabled: true },
   ]);
@@ -65,7 +72,7 @@ function setupFetchedArticle(content: string | null) {
           content,
           publishedAt: new Date('2026-10-01'),
           sourceId: 'src-1',
-          tagNames: [],
+          tagNames,
         },
       ],
       errors: [],
@@ -161,5 +168,54 @@ describe('collectFeeds の要約生成', () => {
       expect.objectContaining({ articleId: 'art-1' }),
       'Failed to generate AI summary for article'
     );
+  });
+
+  describe('タグ付きの記事の作成（#672）', () => {
+    type Tx = { article: { create: jest.Mock } };
+    let tx: Tx;
+
+    beforeEach(() => {
+      // 外側の prisma と取り違えたら分かるよう、tx には別のモックを渡す
+      tx = { article: { create: jest.fn() } };
+      (prisma as unknown as { $transaction: jest.Mock }).$transaction = jest.fn(
+        async (fn: (client: Tx) => unknown) => fn(tx)
+      );
+    });
+
+    it('resolves tags and creates the article with their IDs in one transaction', async () => {
+      setupFetchedArticle('短い', ['MCP', 'Rust']);
+      tx.article.create.mockResolvedValue({
+        id: 'art-1',
+        title: '記事タイトル',
+        summary: null,
+        content: '短い',
+      });
+      const { resolveTags } = jest.requireMock('@/lib/services/tag-service') as {
+        resolveTags: jest.Mock;
+      };
+
+      const result = await collectFeeds();
+
+      expect(resolveTags).toHaveBeenCalledWith([{ name: 'MCP' }, { name: 'Rust' }], tx);
+      expect(tx.article.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            tags: { connect: [{ id: 'tag:MCP' }, { id: 'tag:Rust' }] },
+          }),
+        })
+      );
+      expect(mockPrisma.article.create).not.toHaveBeenCalled();
+      expect(result.summary.totalCreated).toBe(1);
+    });
+
+    it('does not count the article when its creation fails inside the transaction', async () => {
+      setupFetchedArticle('短い', ['MCP']);
+      tx.article.create.mockRejectedValue(new Error('Unique constraint failed on url'));
+
+      const result = await collectFeeds();
+
+      expect(result.summary.totalCreated).toBe(0);
+      expect(result.summary.totalErrors).toBe(1);
+    });
   });
 });

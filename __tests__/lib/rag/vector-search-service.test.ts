@@ -22,7 +22,11 @@ const toNumber = (value: unknown): number | undefined => {
     return Number(value);
   }
 
-  if (value && typeof value === 'object' && typeof (value as { toNumber?: () => number }).toNumber === 'function') {
+  if (
+    value &&
+    typeof value === 'object' &&
+    typeof (value as { toNumber?: () => number }).toNumber === 'function'
+  ) {
     return (value as { toNumber: () => number }).toNumber();
   }
 
@@ -45,7 +49,8 @@ const extractThresholdParam = (captured: unknown): number | undefined => {
         continue;
       }
 
-      const previous = typeof rawStrings[index - 1] === 'string' ? rawStrings[index - 1] : '';
+      const previous =
+        typeof rawStrings[index - 1] === 'string' ? rawStrings[index - 1] : '';
       const isThresholdSegment =
         segment.includes('::vector) >=') ||
         previous.includes('(e.embedding <=>') ||
@@ -234,6 +239,23 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
     });
   });
 
+  describe('Tag filter', () => {
+    it('matches tag names case-insensitively (#672)', async () => {
+      await service.search('React hooks', {
+        topK: 10,
+        embeddingKey: 'summary',
+        tags: ['mcp'],
+      });
+
+      // 入れ子の Prisma.sql も含めて SQL の文字列部分を集めて調べる
+      const sqlText = JSON.stringify(capturedSQL);
+      expect(sqlText).toContain(
+        'lower(t.name) IN (SELECT lower(x) FROM unnest('
+      );
+      expect(sqlText).not.toContain('AND t.name = ANY(');
+    });
+  });
+
   describe('Edge cases', () => {
     it('should handle empty query', async () => {
       await service.search('', {
@@ -275,7 +297,8 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
     it('should return an empty array from searchByArticleId when embedding service is missing', async () => {
       const serviceWithoutEmbedding = new VectorSearchService(mockPrisma, null);
 
-      const results = await serviceWithoutEmbedding.searchByArticleId('article-1');
+      const results =
+        await serviceWithoutEmbedding.searchByArticleId('article-1');
 
       expect(results).toEqual([]);
     });
@@ -307,7 +330,9 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
         },
       ];
 
-      mockPrisma.$queryRaw.mockResolvedValueOnce([{ embedding: mockEmbedding }]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([
+        { embedding: mockEmbedding },
+      ]);
       mockPrisma.$queryRaw.mockResolvedValueOnce(mockResults);
 
       const results = await service.searchByArticleId('article-1', {
@@ -323,7 +348,9 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
     it('should return empty array if no embedding found', async () => {
       mockPrisma.$queryRaw.mockResolvedValueOnce([]);
 
-      const results = await service.searchByArticleId('article-without-embedding');
+      const results = await service.searchByArticleId(
+        'article-without-embedding'
+      );
 
       expect(results).toEqual([]);
       expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);

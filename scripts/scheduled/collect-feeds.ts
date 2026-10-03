@@ -91,6 +91,7 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { adjustTimezoneForArticle } from '@/lib/utils/date';
 import { CategoryClassifier } from '@/lib/services/category-classifier';
 import { normalizeTag } from '@/lib/utils/tag/tag-normalizer';
+import { resolveTags } from '@/lib/services/tag-service';
 import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
 
 // フェッチャーファクトリ（createFetcherですべてのソースを統一的に処理）
@@ -464,17 +465,10 @@ async function processSource({
           )].filter(name => name.length > 0);
 
           if (normalizedTagNames.length > 0) {
-            // Create missing tags with skipDuplicates to handle race conditions
-            await prisma.tag.createMany({
-              data: normalizedTagNames.map(name => ({ name })),
-              skipDuplicates: true
-            });
-
-            // Fetch all tags (existing + newly created)
-            const existingTags = await prisma.tag.findMany({
-              where: { name: { in: normalizedTagNames } },
-              select: { id: true, name: true }
-            });
+            // 大文字小文字だけが違う既存のタグがあればそれを使い、無いものだけ作る（#672）
+            const existingTags = await resolveTags(
+              normalizedTagNames.map(name => ({ name }))
+            );
 
             for (const tag of existingTags) {
               tagConnections.push({ id: tag.id });

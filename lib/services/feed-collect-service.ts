@@ -3,6 +3,7 @@ import { createFetcher } from '@/lib/fetchers';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { validateArticleContent } from '@/lib/services/summary/summary-orchestrator';
 import { normalizeTagInput } from '@/lib/utils/tag/tag-normalizer';
+import { resolveTags } from '@/lib/services/tag-service';
 import type { CollectResult } from '@/types/api';
 import logger from '@/lib/logger';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
@@ -74,22 +75,25 @@ export async function collectFeeds(): Promise<{
           const normalizedTags = normalizeTagInput(tagNames);
 
           // Create article
-          const article = await prisma.article.create({
-            data: {
-              title: articleData.title,
-              url: articleData.url,
-              summary: articleData.summary,
-              thumbnail: articleData.thumbnail,
-              content: articleData.content,
-              publishedAt: articleData.publishedAt,
-              sourceId: articleData.sourceId,
-              tags: {
-                connectOrCreate: normalizedTags.map((name) => ({
-                  where: { name },
-                  create: { name },
-                })),
+          // タグは大文字小文字だけが違う既存のタグを使う（#672）。記事の作成と同じ
+          // トランザクションに入れ、作成に失敗したとき使われないタグを残さない
+          const article = await prisma.$transaction(async (tx) => {
+            const tags = await resolveTags(
+              normalizedTags.map((name) => ({ name })),
+              tx
+            );
+            return tx.article.create({
+              data: {
+                title: articleData.title,
+                url: articleData.url,
+                summary: articleData.summary,
+                thumbnail: articleData.thumbnail,
+                content: articleData.content,
+                publishedAt: articleData.publishedAt,
+                sourceId: articleData.sourceId,
+                tags: { connect: tags.map((tag) => ({ id: tag.id })) },
               },
-            },
+            });
           });
 
           collectResult.newArticles++;

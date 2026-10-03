@@ -1,4 +1,56 @@
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@/lib/prisma-exports';
+
+/**
+ * タグの統合のトランザクションの待ち時間と制限時間。
+ * Prisma の既定（maxWait 2 秒、timeout 5 秒）では、記事数の多いタグの統合や、
+ * FOR UPDATE でのロック待ちで時間切れになり、統合が毎回取り消されるため。
+ */
+const MERGE_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 120_000 };
+
+/**
+ * fromTag の記事と TagCategoryMapping を toTag へ移し、fromTag を消す。
+ * @returns 移した記事の件数（toTag に既に付いていた記事は数えない）
+ */
+async function mergeTagInto(
+  tx: Prisma.TransactionClient,
+  fromTagId: string,
+  toTagId: string
+): Promise<number> {
+  // 1. 記事のリンクを付け替える（toTag が既に付いている記事は除く）
+  const moved = await tx.$executeRaw`
+    UPDATE "_ArticleToTag"
+    SET "B" = ${toTagId}
+    WHERE "B" = ${fromTagId}
+    AND "A" NOT IN (
+      SELECT "A" FROM "_ArticleToTag" WHERE "B" = ${toTagId}
+    )
+  `;
+
+  // 2. 残ったリンク（toTag が既に付いていた記事）を消す
+  await tx.$executeRaw`
+    DELETE FROM "_ArticleToTag" WHERE "B" = ${fromTagId}
+  `;
+
+  // 3. TagCategoryMapping を toTag へ移す
+  await tx.$executeRaw`
+    INSERT INTO "TagCategoryMapping" (id, "tagId", "categoryId", "createdAt")
+    SELECT gen_random_uuid()::text, ${toTagId}::text, "categoryId", NOW()
+    FROM "TagCategoryMapping"
+    WHERE "tagId" = ${fromTagId}::text
+    AND "categoryId" NOT IN (
+      SELECT "categoryId" FROM "TagCategoryMapping" WHERE "tagId" = ${toTagId}::text
+    )
+    ON CONFLICT DO NOTHING
+  `;
+
+  // 4. fromTag を消す（自分の TagCategoryMapping は CASCADE で消える）
+  await tx.$executeRaw`
+    DELETE FROM "Tag" WHERE id = ${fromTagId}
+  `;
+
+  return moved;
+}
 
 async function cleanTags() {
   console.error('🧹 タグのクリーンアップを開始します...\n');
@@ -49,100 +101,81 @@ async function cleanTags() {
       { from: 'git', to: 'Git' },
     ];
 
-    // Phase 1: Bulk tag lookup — fetch all from/to names in one query
-    const allNames = Array.from(
-      new Set(tagMappings.flatMap((m) => [m.from, m.to]))
-    );
-    const fetchedTags = await prisma.tag.findMany({
-      where: { name: { in: allNames } },
-      include: {
-        _count: { select: { articles: true } },
-      },
-    });
-
-    // Build a mutable Map<name, Tag> for quick lookup
-    const tagMap = new Map(fetchedTags.map((t) => [t.name, t]));
-
-    // Phase 2: Per-mapping processing with $transaction
-    const mappingErrors: Array<{ from: string; to: string; error: unknown }> = [];
+    // from・to のキー（lower(name)）に当たるタグをまとめて、to の表記のタグ 1 つに寄せる。
+    // 名前の完全一致で引くと、大文字小文字だけが違うタグ（#672）を見落とし、
+    // lower(name) の一意制約がある DB では rename が衝突するため
+    const mappingErrors: Array<{ from: string; to: string; error: unknown }> =
+      [];
 
     for (const mapping of tagMappings) {
       try {
-        const fromTag = tagMap.get(mapping.from);
+        const result = await prisma.$transaction(async (tx) => {
+          // 行をロックする。統合の間に、消すタグへ別の要求が記事を繋ぐと、その
+          // リンクがタグの削除で黙って消えるため（ロック中の接続は待たされ、
+          // タグが消えていれば外部キーのエラーとして表に出る）
+          const group = await tx.$queryRaw<
+            Array<{ id: string; name: string; category: string | null }>
+          >`
+            SELECT id, name, category
+            FROM "Tag"
+            WHERE lower(name) IN (lower(${mapping.from}), lower(${mapping.to}))
+            ORDER BY (name = ${mapping.to}) DESC,
+                     (lower(name) = lower(${mapping.to})) DESC,
+                     name COLLATE "C"
+            FOR UPDATE
+          `;
+          if (group.length === 0) return null;
 
-        if (!fromTag) {
-          continue;
-        }
-
-        const toTag = tagMap.get(mapping.to);
-
-        if (!toTag) {
-          // Case A: toTag does NOT exist → simple rename
-          await prisma.$transaction(async (tx) => {
+          // 先頭が統合先: to と完全一致 → to のキー → from のキーの順（ORDER BY のとおり）
+          const target = group[0];
+          let renamed = false;
+          if (target.name !== mapping.to) {
+            // 統合先は to のキーか、to のキーのタグが無いときの from のタグなので、
+            // to に改名してもキーは衝突しない
             await tx.tag.update({
-              where: { id: fromTag.id },
+              where: { id: target.id },
               data: { name: mapping.to },
             });
-          });
+            renamed = true;
+          }
 
-          // Update the Map to reflect the rename
-          tagMap.set(mapping.to, { ...fromTag, name: mapping.to });
-          tagMap.delete(mapping.from);
+          let mergedArticles = 0;
+          for (const source of group.slice(1)) {
+            mergedArticles += await mergeTagInto(tx, source.id, target.id);
+          }
 
-          console.error(`✓ "${mapping.from}" → "${mapping.to}" に更新 (${fromTag._count.articles}記事)`);
-        } else {
-          // Case B: toTag exists → remap articles + migrate related data + delete fromTag
-          const fromTagId = fromTag.id;
-          const toTagId = toTag.id;
-          const articleCount = fromTag._count.articles;
+          // 統合先に category が無ければ、消したタグの値を（並び順で最初のものを）引き継ぐ
+          const inherited = group
+            .slice(1)
+            .find((tag) => tag.category)?.category;
+          if (!target.category && inherited) {
+            await tx.tag.update({
+              where: { id: target.id },
+              data: { category: inherited },
+            });
+          }
 
-          await prisma.$transaction(async (tx) => {
-            // 1. Remap articles: move fromTag links to toTag, skipping duplicates
-            await tx.$executeRaw`
-              UPDATE "_ArticleToTag"
-              SET "B" = ${toTagId}
-              WHERE "B" = ${fromTagId}
-              AND "A" NOT IN (
-                SELECT "A" FROM "_ArticleToTag" WHERE "B" = ${toTagId}
-              )
-            `;
+          return { renamed, merged: group.length - 1, mergedArticles };
+        }, MERGE_TRANSACTION_OPTIONS);
 
-            // 2. Clean orphan links (articles that already had toTag)
-            await tx.$executeRaw`
-              DELETE FROM "_ArticleToTag" WHERE "B" = ${fromTagId}
-            `;
-
-            // 3. Migrate TagCategoryMapping: move fromTag's category mappings to toTag
-            await tx.$executeRaw`
-              INSERT INTO "TagCategoryMapping" (id, "tagId", "categoryId", "createdAt")
-              SELECT gen_random_uuid()::text, ${toTagId}::text, "categoryId", NOW()
-              FROM "TagCategoryMapping"
-              WHERE "tagId" = ${fromTagId}::text
-              AND "categoryId" NOT IN (
-                SELECT "categoryId" FROM "TagCategoryMapping" WHERE "tagId" = ${toTagId}::text
-              )
-              ON CONFLICT DO NOTHING
-            `;
-
-            // 4. Delete fromTag (cascades TagCategoryMapping for fromTag)
-            await tx.$executeRaw`
-              DELETE FROM "Tag" WHERE id = ${fromTagId}
-            `;
-          });
-
-          // Update the Map: fromTag is gone
-          tagMap.delete(mapping.from);
-
-          console.error(`✓ "${mapping.from}" の記事を "${mapping.to}" に統合 (${articleCount}記事)`);
+        if (result && (result.renamed || result.merged > 0)) {
+          console.error(
+            `✓ "${mapping.from}" → "${mapping.to}": ${result.renamed ? '改名し、' : ''}${result.merged}件のタグを統合 (${result.mergedArticles}記事)`
+          );
         }
       } catch (err) {
-        console.error(`❌ "${mapping.from}" → "${mapping.to}" の処理に失敗:`, err);
+        console.error(
+          `❌ "${mapping.from}" → "${mapping.to}" の処理に失敗:`,
+          err
+        );
         mappingErrors.push({ from: mapping.from, to: mapping.to, error: err });
       }
     }
 
     if (mappingErrors.length > 0) {
-      throw new Error(`タグ正規化で ${mappingErrors.length} 件のマッピングが失敗: ${mappingErrors.map(e => `${e.from}->${e.to}`).join(', ')}`);
+      throw new Error(
+        `タグ正規化で ${mappingErrors.length} 件のマッピングが失敗: ${mappingErrors.map((e) => `${e.from}->${e.to}`).join(', ')}`
+      );
     }
 
     // 3. 統計情報を表示
@@ -152,17 +185,21 @@ async function cleanTags() {
     const articlesWithTags = await prisma.article.count({
       where: {
         tags: {
-          some: {}
-        }
-      }
+          some: {},
+        },
+      },
     });
 
     console.error(`- 総タグ数: ${totalTags}`);
-    const taggedPercent = totalArticles > 0 ? ((articlesWithTags / totalArticles) * 100).toFixed(1) : '0.0';
-    console.error(`- タグ付き記事: ${articlesWithTags}/${totalArticles} (${taggedPercent}%)`);
+    const taggedPercent =
+      totalArticles > 0
+        ? ((articlesWithTags / totalArticles) * 100).toFixed(1)
+        : '0.0';
+    console.error(
+      `- タグ付き記事: ${articlesWithTags}/${totalArticles} (${taggedPercent}%)`
+    );
 
     console.error('\n✅ タグのクリーンアップが完了しました');
-
   } catch (error) {
     console.error('❌ エラーが発生しました:', error);
     throw error;

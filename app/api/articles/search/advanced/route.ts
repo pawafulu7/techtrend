@@ -3,6 +3,7 @@ import { Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import { createDateRange } from '@/lib/types/prisma-helpers';
 import logger from '@/lib/logger';
+import { findTagIdsByNames } from '@/lib/services/tag-service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -101,23 +102,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // タグフィルター（包含）
+    // タグ名は大文字小文字を区別せずに照合する（タグの同一性のキーは lower(name)。#672）。
+    // lower() で ID を引いてから ID で絞る（Prisma の insensitive は ILIKE になり、
+    // タグ名の _ や % がワイルドカードとして効くため）
+    // タグフィルター（包含）。当たるタグが無ければ 0 件になる
     if (tags.length > 0) {
-      whereConditions.tags = {
-        some: {
-          name: {
-            in: tags,
-          },
-        },
-      };
+      const tagIds = await findTagIdsByNames(tags);
+      whereConditions.tags = { some: { id: { in: tagIds } } };
     }
 
     // タグフィルター（除外） - AND配列で統一的に結合
     if (excludeTags.length > 0) {
-      if (!Array.isArray(whereConditions.AND)) whereConditions.AND = [];
-      (whereConditions.AND as Prisma.ArticleWhereInput[]).push({
-        NOT: { tags: { some: { name: { in: excludeTags } } } },
-      });
+      const excludeTagIds = await findTagIdsByNames(excludeTags);
+      if (excludeTagIds.length > 0) {
+        if (!Array.isArray(whereConditions.AND)) whereConditions.AND = [];
+        (whereConditions.AND as Prisma.ArticleWhereInput[]).push({
+          NOT: { tags: { some: { id: { in: excludeTagIds } } } },
+        });
+      }
     }
 
     // ソースフィルター（包含）

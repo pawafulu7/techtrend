@@ -13,6 +13,7 @@ import { SUMMARY_VERSION } from '@/types/article';
 import type { ArticleWithSource } from '@/types/models';
 import type { SummaryGenerationOptions, SummaryAndTags } from './types';
 import { env } from '@/lib/config/env';
+import { resolveTags } from '@/lib/services/tag-service';
 
 /**
  * Concurrency limit for parallel summary generation.
@@ -210,25 +211,30 @@ export async function updateArticleTags(
 ): Promise<void> {
   if (tagNames.length === 0) return;
 
-  // 現在のタグ名を取得
+  // 大文字小文字だけが違う既存のタグがあればそれを使う（#672）
+  const tags = await resolveTags(
+    tagNames.map((name) => ({ name })),
+    prisma
+  );
+
+  // 現在のタグとは ID と表記の小文字で比べる。表記違いの重複タグが別の ID で
+  // 残っている間（既存の重複を統合するまで）に、同じタグを二重に付けないため
   const current = await prisma.article.findUniqueOrThrow({
     where: { id: articleId },
-    select: { tags: { select: { name: true } } },
+    select: { tags: { select: { id: true, name: true } } },
   });
+  const currentTagIds = new Set(current.tags.map((t) => t.id));
+  const currentTagKeys = new Set(current.tags.map((t) => t.name.toLowerCase()));
+  const newTags = tags.filter(
+    (tag) =>
+      !currentTagIds.has(tag.id) && !currentTagKeys.has(tag.name.toLowerCase())
+  );
 
-  const currentTagNames = new Set(current.tags.map((t) => t.name));
-  const newTagNames = tagNames.filter((name) => !currentTagNames.has(name));
-
-  if (newTagNames.length > 0) {
+  if (newTags.length > 0) {
     await prisma.article.update({
       where: { id: articleId },
       data: {
-        tags: {
-          connectOrCreate: newTagNames.map((name) => ({
-            where: { name },
-            create: { name },
-          })),
-        },
+        tags: { connect: newTags.map((tag) => ({ id: tag.id })) },
       },
     });
   }

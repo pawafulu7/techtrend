@@ -282,4 +282,33 @@ describe('SocialPostSelector', () => {
       expect(result[0].source).toHaveProperty('name');
     });
   });
+
+  describe('getHistoricalArticlesByTags', () => {
+    it('filters by the IDs of tags with the same key (#672)', async () => {
+      prismaMock.$queryRaw.mockResolvedValue([{ id: 'tag-mcp' }, { id: 'tag-rust' }]);
+      prismaMock.article.findMany.mockResolvedValue([]);
+
+      await selector.getHistoricalArticlesByTags('article-1', [
+        { name: 'MCP' },
+        { name: 'Rust' },
+      ]);
+
+      expect(prismaMock.$queryRaw.mock.calls[0]).toContainEqual(['MCP', 'Rust']);
+      const where = prismaMock.article.findMany.mock.calls[0][0]?.where;
+      expect(where?.tags).toEqual({
+        some: { id: { in: ['tag-mcp', 'tag-rust'] } },
+      });
+    });
+
+    it('returns an empty list without querying articles when no tag matches', async () => {
+      prismaMock.$queryRaw.mockResolvedValue([]);
+
+      const result = await selector.getHistoricalArticlesByTags('article-1', [
+        { name: 'NoSuchTag' },
+      ]);
+
+      expect(result).toEqual([]);
+      expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -17,6 +17,7 @@ import {
 } from '@/lib/errors';
 import { CacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { normalizeTagInput } from '@/lib/utils/tag/tag-normalizer';
+import { resolveTags } from '@/lib/services/tag-service';
 import { env } from '@/lib/config/env';
 import logger from '@/lib/logger';
 
@@ -168,26 +169,29 @@ export async function handlePost(request: NextRequest): Promise<NextResponse> {
     const parsedPublishedAt = publishedAt ? new Date(publishedAt) : new Date();
 
     // Create article with tags
-    const article = await prisma.article.create({
-      data: {
-        title,
-        url,
-        summary,
-        thumbnail,
-        content,
-        publishedAt: parsedPublishedAt,
-        sourceId,
-        tags: {
-          connectOrCreate: normalizedTags.map((name: string) => ({
-            where: { name },
-            create: { name },
-          })),
+    // タグは大文字小文字だけが違う既存のタグを使う（#672）。記事の作成と同じ
+    // トランザクションに入れ、作成に失敗したとき使われないタグを残さない
+    const article = await prisma.$transaction(async (tx) => {
+      const tags = await resolveTags(
+        normalizedTags.map((name: string) => ({ name })),
+        tx
+      );
+      return tx.article.create({
+        data: {
+          title,
+          url,
+          summary,
+          thumbnail,
+          content,
+          publishedAt: parsedPublishedAt,
+          sourceId,
+          tags: { connect: tags.map((tag) => ({ id: tag.id })) },
         },
-      },
-      include: {
-        source: true,
-        tags: true,
-      },
+        include: {
+          source: true,
+          tags: true,
+        },
+      });
     });
 
     // Invalidate articles cache when new article is created
