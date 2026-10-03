@@ -108,6 +108,16 @@ describeIf('tag-article-counts（テスト DB）', () => {
     await createArticle(enabled, daysAgo(45), ['y']);
     await createArticle(disabled, daysAgo(2), ['z']);
 
+    // 期間ありの上位の選定: Q は期間内に有効 1 件、全期間では無効 5 件を含む。P は有効 2 件
+    await createTag('p', `rankp-${suffix}-p`);
+    await createTag('q', `rankp-${suffix}-q`);
+    await createArticle(enabled, daysAgo(2), ['p']);
+    await createArticle(enabled, daysAgo(3), ['p']);
+    await createArticle(enabled, daysAgo(2), ['q']);
+    for (let i = 0; i < 5; i++) {
+      await createArticle(disabled, daysAgo(100), ['q']);
+    }
+
     // LIKE のワイルドカードのエスケープ
     await createTag('pct', `like-${suffix}-a%b`);
     await createTag('any', `like-${suffix}-aXb`);
@@ -184,6 +194,19 @@ describeIf('tag-article-counts（テスト DB）', () => {
       // X の期間内の記事は無効なソースだけなので出ない
       expect(top.map((t) => [t.id, t.count, t.periodCount])).toEqual([
         [tagIds.y, 2, 1],
+      ]);
+    });
+
+    it('activeSince: 上位の選定に使う全期間の件数からも、無効なソースの記事を除く', async () => {
+      const top = await findTopTags(prisma, {
+        limit: 1,
+        nameContains: `rankp-${suffix}`,
+        activeSince: daysAgo(30),
+      });
+
+      // 無効なソースの記事も数えると Q（6 件）が上位になる
+      expect(top.map((t) => [t.id, t.count, t.periodCount])).toEqual([
+        [tagIds.p, 2, 2],
       ]);
     });
 
