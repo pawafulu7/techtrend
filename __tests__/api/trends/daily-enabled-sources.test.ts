@@ -205,6 +205,34 @@ describe('日次トレンドの表示から無効化したソースの記事を�
     expect(mockCacheSet).not.toHaveBeenCalled();
   });
 
+  it('フォールバック（最新のレポート）でも、引き直しに失敗したら no-store で返す', async () => {
+    mockGetTrendReport.mockResolvedValueOnce(null);
+    mockGetLatestReport.mockResolvedValueOnce(createReport());
+    prismaMock.article.findMany.mockRejectedValueOnce(new Error('db down'));
+
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/trends/daily?date=2026-10-01')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.isFallback).toBe(true);
+    expect(body.data.topArticles).toEqual([]);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+  });
+
+  it('フォールバックで確かめられた応答は、短い公開キャッシュのまま', async () => {
+    mockGetTrendReport.mockResolvedValueOnce(null);
+    mockGetLatestReport.mockResolvedValueOnce(createReport());
+
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/trends/daily?date=2026-10-01')
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toContain('max-age=60');
+  });
+
   it('確かめられた応答はキャッシュする', async () => {
     await GET(
       new NextRequest('http://localhost:3000/api/trends/daily?date=2026-09-30')

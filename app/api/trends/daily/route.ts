@@ -8,6 +8,7 @@ import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
 import { publicCacheHeaders } from '@/lib/api/cache-headers';
 import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
+import { withVerifiedCategoryTopArticles } from '@/lib/services/trend-report/verify-daily-articles';
 
 // JST offset constant (+9 hours in milliseconds)
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -32,25 +33,6 @@ const getCache = () => {
   }
   return cache;
 };
-
-/**
- * カテゴリの代表記事のうち、引き直した記事（`verifiedIds`）に無いものを外す（issue #688）。
- * 非表示・無効化したソース・削除済みの記事の題名を、保存済みのレポートから出さないため
- */
-function withVerifiedCategoryTopArticles(
-  categories: unknown,
-  verifiedIds: ReadonlySet<string>
-): unknown {
-  if (!Array.isArray(categories)) return categories;
-  return categories.map((category) => {
-    const topArticle = (category as { topArticle?: { id?: unknown } | null })
-      ?.topArticle;
-    if (!topArticle) return category;
-    return typeof topArticle.id === 'string' && verifiedIds.has(topArticle.id)
-      ? category
-      : { ...(category as Record<string, unknown>), topArticle: null };
-  });
-}
 
 /**
  * レポートデータにthumbnail情報をenrichする
@@ -334,6 +316,7 @@ export async function GET(request: NextRequest) {
       const {
         enrichedData: enrichedFallbackData,
         evidenceArticles: fallbackEvidenceArticles,
+        verified: fallbackVerified,
       } = await enrichReportWithThumbnails({
         ...latestReport,
         periodStart: latestReport.periodStart.toISOString(),
@@ -361,12 +344,15 @@ export async function GET(request: NextRequest) {
       // フォールバックレスポンスはリクエスト日付のキーではキャッシュしない
       // （実際の日付のキーは通常フローでキャッシュ済みのはず）
 
+      // 記事を確かめられなかった応答は、ブラウザや CDN にも残さない（issue #688）
       return NextResponse.json(fallbackResponse, {
-        headers: {
-          'X-Cache': 'MISS',
-          // フォールバックは短めのTTL
-          ...publicCacheHeaders({ cacheControl: 'public, max-age=60' }),
-        },
+        headers: fallbackVerified
+          ? {
+              'X-Cache': 'MISS',
+              // フォールバックは短めのTTL
+              ...publicCacheHeaders({ cacheControl: 'public, max-age=60' }),
+            }
+          : { 'X-Cache': 'MISS', 'Cache-Control': 'no-store' },
       });
     }
 
