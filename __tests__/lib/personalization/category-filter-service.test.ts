@@ -81,6 +81,24 @@ jest.mock('@/lib/personalization/filters/candidate-extractor', () => {
   };
 });
 
+// Stage 1 は既定で iterative 経路（pgvector 0.8 以上）。版の判定の $queryRaw で呼び出しの位置がずれないよう差し替える
+const mockSupportsIterativeScan = jest.fn();
+jest.mock('@/lib/personalization/filters/pgvector-capabilities', () => ({
+  supportsIterativeScan: (...args: unknown[]) =>
+    mockSupportsIterativeScan(...args),
+}));
+
+/**
+ * $queryRaw の呼び出しに渡った値。タグ付きテンプレートは 2 番目以降の引数、
+ * Prisma.Sql を 1 つ渡した呼び出し（Stage 1）はその values
+ */
+function queryValues(call: unknown[]): unknown[] {
+  const first = call[0] as { values?: unknown[] } | undefined;
+  return first && !Array.isArray(first) && Array.isArray(first.values)
+    ? first.values
+    : call.slice(1);
+}
+
 // Mock logger
 jest.mock('@/lib/logger', () => ({
   logger: {
@@ -98,6 +116,7 @@ describe('CategoryFilterService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // mockResolvedValue (non-Once) persists through clearAllMocks — reset individually
+    mockSupportsIterativeScan.mockReset().mockResolvedValue(true);
     mockPrisma.article.findMany.mockReset().mockResolvedValue([]);
     mockPrisma.article.count.mockReset().mockResolvedValue(0);
     service = new CategoryFilterService(mockPrisma as any);
@@ -1043,7 +1062,7 @@ describe('CategoryFilterService', () => {
       // template literal は $queryRaw(strings, ...values) 形式で呼ばれる
       const embeddingCandidateCallArgs = mockPrisma.$queryRaw.mock.calls[1];
       // template literalの値 (strings以外の引数) を取得
-      const templateValues = embeddingCandidateCallArgs.slice(1);
+      const templateValues = queryValues(embeddingCandidateCallArgs);
 
       // topK=50 が effectiveLimit として LIMIT 句に渡されていることを確認
       // 値は numbers として渡される
@@ -1071,7 +1090,7 @@ describe('CategoryFilterService', () => {
 
       // Stage 1 呼び出し (index=1) に LIMIT 値が入る
       const embeddingCandidateCallArgs = mockPrisma.$queryRaw.mock.calls[1];
-      const templateValues = embeddingCandidateCallArgs.slice(1);
+      const templateValues = queryValues(embeddingCandidateCallArgs);
 
       // DEFAULT_TOP_K_CANDIDATES=200 が LIMIT 句に渡される
       expect(templateValues).toContain(200);
@@ -1104,7 +1123,7 @@ describe('CategoryFilterService', () => {
       // それぞれ kPerCategory=30 が LIMIT として渡されることを確認
       for (const callIndex of [1, 2, 3]) {
         const callArgs = mockPrisma.$queryRaw.mock.calls[callIndex];
-        const templateValues = callArgs.slice(1);
+        const templateValues = queryValues(callArgs);
         expect(templateValues).toContain(30);
       }
     });
@@ -1136,7 +1155,7 @@ describe('CategoryFilterService', () => {
       // 最低30が保証される
       for (const callIndex of [1, 2, 3]) {
         const callArgs = mockPrisma.$queryRaw.mock.calls[callIndex];
-        const templateValues = callArgs.slice(1);
+        const templateValues = queryValues(callArgs);
         expect(templateValues).toContain(30);
       }
     });
@@ -1295,7 +1314,7 @@ describe('CategoryFilterService', () => {
           offset,
         });
         // Stage 1 は calls[1], calls[2]
-        return [1, 2].map((i) => mockPrisma.$queryRaw.mock.calls[i].slice(1));
+        return [1, 2].map((i) => queryValues(mockPrisma.$queryRaw.mock.calls[i]));
       };
 
       for (const values of [
@@ -1533,6 +1552,176 @@ describe('CategoryFilterService', () => {
 
       // 失敗がwarnとして記録される
       expect(logger.warn).toHaveBeenCalled();
+    });
+  });
+
+  // ===========================================================================
+  // Stage 1 の失敗（#686: 旧経路への引き直しをやめ、失敗を「候補なし」と区別する）
+  // ===========================================================================
+
+  describe('filterArticles - Stage 1 の失敗', () => {
+    const centroids2 = [
+      { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0]' },
+      { id: 'cat-2', slug: 'backend', centroid_embedding: '[0,0.5,0.5]' },
+    ];
+
+    afterEach(() => {
+      mockGetEmbeddingCandidates.mockReset();
+    });
+
+    const runMulti = async (
+      outcomes: Record<string, 'FAIL' | 'EMPTY'>
+    ) => {
+      mockGetEmbeddingCandidates.mockImplementation(
+        async (_db: unknown, centroid: string) => {
+          if (outcomes[centroid] === 'FAIL') throw new Error('DB error');
+          return [];
+        }
+      );
+      mockPrisma.$queryRaw.mockResolvedValueOnce(centroids2); // getCategoryCentroids
+      return service.filterArticles({
+        categoryIds: ['cat-1', 'cat-2'],
+        periodMonths: 3,
+        limit: 10,
+        allCandidates: true,
+      });
+    };
+
+    it('複数カテゴリが全部失敗したら error を出してフォールバックする', async () => {
+      const { logger } = jest.requireMock('@/lib/logger');
+
+      const result = await runMulti({
+        '[0.5,0.5,0]': 'FAIL',
+        '[0,0.5,0.5]': 'FAIL',
+      });
+
+      expect(result.articles).toEqual([]);
+      expect(result.meta.appliedCategories).toEqual([]);
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ failedCount: 2, totalCategories: 2 }),
+        'Category searches failed and no candidates were found'
+      );
+    });
+
+    it('一部が失敗して残りも 0 件なら、候補なしではなく失敗として error を出す', async () => {
+      const { logger } = jest.requireMock('@/lib/logger');
+
+      await runMulti({ '[0.5,0.5,0]': 'FAIL', '[0,0.5,0.5]': 'EMPTY' });
+
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ failedCount: 1, totalCategories: 2 }),
+        'Category searches failed and no candidates were found'
+      );
+    });
+
+    it('失敗が無く候補が 0 件なら error を出さない', async () => {
+      const { logger } = jest.requireMock('@/lib/logger');
+
+      const result = await runMulti({
+        '[0.5,0.5,0]': 'EMPTY',
+        '[0,0.5,0.5]': 'EMPTY',
+      });
+
+      expect(result.meta.appliedCategories).toEqual([]);
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it('単一カテゴリの Stage 1 が失敗したら、設定なしで引き直さずにフォールバックする', async () => {
+      const { logger } = jest.requireMock('@/lib/logger');
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce([centroids2[0]]) // getCategoryCentroids
+        .mockRejectedValueOnce(new Error('stage1 failed')); // Stage 1
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 3,
+        limit: 10,
+        allCandidates: true,
+      });
+
+      expect(result.articles).toEqual([]);
+      expect(result.meta.appliedCategories).toEqual([]);
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+      // centroids と Stage 1 の 2 回だけ（引き直しの kNN は無い）
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(2);
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ categoryIds: ['cat-1'] }),
+        'Failed to filter articles'
+      );
+    });
+  });
+
+  // ===========================================================================
+  // Stage 1 への条件の受け渡し（#686）
+  // ===========================================================================
+
+  describe('filterArticles - Stage 1 への条件の受け渡し', () => {
+    const centroid = {
+      id: 'cat-1',
+      slug: 'frontend',
+      centroid_embedding: '[0.5,0.5,0]',
+    };
+    const stage1Rows = [
+      { articleId: 'art-1', sim_emb: 0.9 },
+      { articleId: 'art-2', sim_emb: 0.8 },
+    ];
+
+    const runSingle = async (options: {
+      periodMonths: number;
+      excludeSourceIds?: string[];
+    }) => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce([centroid]) // getCategoryCentroids
+        .mockResolvedValueOnce(stage1Rows) // Stage 1
+        .mockResolvedValueOnce([]); // Stage 2
+      await service.filterArticles({
+        categoryIds: ['cat-1'],
+        limit: 10,
+        allCandidates: true,
+        ...options,
+      });
+      return queryValues(mockPrisma.$queryRaw.mock.calls[1]);
+    };
+
+    it('期間があれば Stage 1 に下限の日時を渡し、期間 0 なら渡さない', async () => {
+      const withPeriod = await runSingle({ periodMonths: 3 });
+      expect(withPeriod.some((v) => v instanceof Date)).toBe(true);
+
+      mockPrisma.$queryRaw.mockReset();
+      const withoutPeriod = await runSingle({ periodMonths: 0 });
+      expect(withoutPeriod.some((v) => v instanceof Date)).toBe(false);
+    });
+
+    it('除外ソースを Stage 1 に渡す', async () => {
+      const values = await runSingle({
+        periodMonths: 3,
+        excludeSourceIds: ['src-1'],
+      });
+      expect(values).toContainEqual(['src-1']);
+    });
+
+    it('iterative 経路で Stage 1 が LIMIT 未満なら warn を出す', async () => {
+      const { logger } = jest.requireMock('@/lib/logger');
+
+      await runSingle({ periodMonths: 3 });
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ stage1ResultCount: 2, effectiveLimit: 200 }),
+        'Stage1 iterative scan returned fewer rows than the limit'
+      );
+    });
+
+    it('legacy 経路では Stage 1 に期間を渡さず、件数不足の warn も出さない', async () => {
+      const { logger } = jest.requireMock('@/lib/logger');
+      mockSupportsIterativeScan.mockResolvedValue(false);
+
+      const values = await runSingle({ periodMonths: 3 });
+
+      expect(values.some((v) => v instanceof Date)).toBe(false);
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        expect.anything(),
+        'Stage1 iterative scan returned fewer rows than the limit'
+      );
     });
   });
 });

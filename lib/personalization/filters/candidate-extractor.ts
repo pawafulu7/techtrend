@@ -9,6 +9,7 @@ import { DEFAULT_SCORE_PARAMETERS } from '../types';
 import { RedisCache } from '@/lib/cache/redis-cache';
 import { logger } from '@/lib/logger';
 import { measureAsync, hrtimeDiffMs } from '../tracing';
+import { runStage1Knn } from './stage1-knn';
 
 /** Module-level singleton for centroid cache (TTL: 1 hour) */
 const centroidCache = new RedisCache({
@@ -25,14 +26,6 @@ export const DEFAULT_MIN_SIMILARITY =
 
 /** Safety cap for threshold-based filtering to prevent excessive memory use */
 export const DEFAULT_THRESHOLD_RESULT_LIMIT = 5000;
-
-/**
- * HNSW ef_search parameter bounds for pgvector.
- * pgvector's documented valid range is 1..1000; values above 1000 may be
- * rejected depending on the build. Clamp at 1000 to keep SET LOCAL safe.
- */
-const HNSW_EF_SEARCH_MIN = 40;
-const HNSW_EF_SEARCH_MAX = 1000;
 
 // =============================================================================
 // Type Definitions for SQL Results
@@ -180,57 +173,35 @@ export async function getEmbeddingCandidates(
   // Apply guard rail: limit topK to safety cap
   const effectiveLimit = Math.min(topK, DEFAULT_THRESHOLD_RESULT_LIMIT);
 
-  // Stage 1: Pure kNN query on partial HNSW index (no JOINs, no extra filters)
-  // The partial index on embeddingKey = 'summary' enables HNSW usage here.
-  // hnsw.ef_search must be >= LIMIT or the HNSW search returns at most ef_search rows
-  // (default 40), causing topK to be silently capped regardless of the requested value.
-  type Stage1Row = { articleId: string; sim_emb: number };
-  const efSearch = Math.min(
-    Math.max(Math.floor(effectiveLimit), HNSW_EF_SEARCH_MIN),
-    HNSW_EF_SEARCH_MAX
-  );
+  // Stage 1: HNSW の kNN（期間などの条件をどこで掛けるかは stage1-knn.ts の経路による）
   const stage1Results = await measureAsync(
     'personalization.stage1_knn',
     async (span) => {
-      let rows: Stage1Row[];
-      let efSearchApplied = true;
-      try {
-        rows = await db.$transaction(async (tx) => {
-          await tx.$executeRawUnsafe(`SET LOCAL hnsw.ef_search = ${efSearch}`);
-          return tx.$queryRaw<Stage1Row[]>`
-            SELECT "articleId", 1 - (embedding <=> ${centroid}::vector) AS sim_emb
-            FROM "ArticleEmbedding"
-            WHERE "embeddingKey" = 'summary'::"EmbeddingKey"
-            ORDER BY embedding <=> ${centroid}::vector
-            LIMIT ${effectiveLimit}
-          `;
-        });
-      } catch (err) {
-        // Fallback: ef_search SET may fail on some pgvector builds or if the
-        // connection rejects the parameter. Retry without SET LOCAL so the
-        // request still returns results, at the cost of reduced recall.
-        logger.warn(
-          {
-            err: err instanceof Error ? err.message : String(err),
-            efSearch,
-          },
-          'Stage1 SET LOCAL hnsw.ef_search failed; falling back to default ef_search'
-        );
-        efSearchApplied = false;
-        rows = await db.$queryRaw<Stage1Row[]>`
-          SELECT "articleId", 1 - (embedding <=> ${centroid}::vector) AS sim_emb
-          FROM "ArticleEmbedding"
-          WHERE "embeddingKey" = 'summary'::"EmbeddingKey"
-          ORDER BY embedding <=> ${centroid}::vector
-          LIMIT ${effectiveLimit}
-        `;
-      }
+      const { rows, plan } = await runStage1Knn(db, {
+        centroid,
+        limit: effectiveLimit,
+        cutoffDate,
+        excludeSourceIds,
+      });
       span.setAttributes({
+        stage1Mode: plan.mode,
         effectiveLimit,
-        efSearch,
-        efSearchApplied,
+        efSearch: plan.efSearch,
+        periodApplied: plan.periodApplied,
         stage1ResultCount: rows.length,
       });
+      // LIMIT 未満なのは、条件に合う行がそれだけしかないか、iterative scan が走査の上限
+      // （hnsw.max_scan_tuples・メモリ）で止まったとき。後者なら一致率も落ちている恐れがある
+      if (plan.mode === 'iterative' && rows.length < effectiveLimit) {
+        logger.warn(
+          {
+            stage1ResultCount: rows.length,
+            effectiveLimit,
+            periodApplied: plan.periodApplied,
+          },
+          'Stage1 iterative scan returned fewer rows than the limit'
+        );
+      }
       return rows;
     }
   );
@@ -239,7 +210,9 @@ export async function getEmbeddingCandidates(
     return [];
   }
 
-  // Stage 2: Data fetch + filtering using Stage 1 results via VALUES clause
+  // Stage 2: Data fetch + filtering using Stage 1 results via VALUES clause.
+  // iterative 経路では期間・非表示・要約済み・除外ソースを Stage 1 でも掛けているが、legacy 経路と同じ意味を保ち、
+  // Stage 1 と Stage 2 の間に非表示になった記事も除けるよう、ここでも掛ける
   const valuesClause = Prisma.join(
     stage1Results.map(
       (r) => Prisma.sql`(${r.articleId}::text, ${r.sim_emb}::float8)`

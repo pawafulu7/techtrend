@@ -60,9 +60,10 @@ export const MULTI_CATEGORY_MIN_K_PER_CATEGORY = 50;
  *   カテゴリ数で割る（下限 50）。最大は 2 カテゴリの 100。
  *   ページ（limit・offset）に依存させないのは、ページを進めるたびに母集団が変わって
  *   ページ間で記事が重複・欠落し、total も変わってしまうため。
- *   上限を 100 前後に抑えるのは、Stage 1 の kNN が HNSW を使い続ける範囲に収めるため
+ *   上限を 100 前後に抑えたのは、Stage 1 の kNN が HNSW を使い続ける範囲に収めるためだった
  *   （開発 DB では k が約 160 までは HNSW、約 170〜350 はプランナーが Parallel Seq Scan を
- *   選んで 250ms 以上かかった）
+ *   選んで 250ms 以上かかった）。Issue #686 で Stage 1 の計画を HNSW に固定したので、
+ *   この理由はもう当たらない。上限を変えると推薦の中身が変わるので、値は据え置いている
  */
 export function getMultiCategoryKPerCategory(
   centroidCount: number,
@@ -186,10 +187,27 @@ export class CategoryFilterService {
             centroids
           );
           if (result.mergedCount === 0) {
-            span.setAttributes({
-              fallback: true,
-              fallbackReason: 'no_candidates_multi',
-            });
+            if (result.failedCount > 0) {
+              // 検索の失敗（全カテゴリ、または一部が失敗して残りも 0 件）を「候補なし」と区別する
+              logger.error(
+                {
+                  categoryIds,
+                  failedCount: result.failedCount,
+                  totalCategories: centroids.length,
+                },
+                'Category searches failed and no candidates were found'
+              );
+              span.setAttributes({
+                fallback: true,
+                fallbackReason: 'category_search_failed',
+                failedCount: result.failedCount,
+              });
+            } else {
+              span.setAttributes({
+                fallback: true,
+                fallbackReason: 'no_candidates_multi',
+              });
+            }
             return this.getFallbackResults(options, startTime);
           }
           qualifiedArticles = result.articles;
