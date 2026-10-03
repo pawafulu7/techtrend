@@ -46,6 +46,7 @@ jest.mock('@/lib/utils/article/article-category-normalizer', () => ({
 }));
 
 import {
+  normalizeSearchForCacheKey,
   normalizeSourcesForCacheKey,
   buildWhereClause,
 } from '@/app/api/articles/list/query-helpers';
@@ -231,5 +232,33 @@ describe('query-helpers', () => {
         ])
       );
     });
+  });
+});
+
+describe('normalizeSearchForCacheKey', () => {
+  it('splits and sorts keywords into a JSON array', () => {
+    expect(normalizeSearchForCacheKey(' React\u3000Hooks  AI ')).toBe(
+      'v2:["AI","Hooks","React"]'
+    );
+    expect(normalizeSearchForCacheKey(null)).toBe('none');
+    expect(normalizeSearchForCacheKey('   ')).toBe('none');
+  });
+
+  it('keeps keyword boundaries and does not collide with "none" (#684)', () => {
+    // 区切り文字で連結すると "a,b c" と "a b,c" が同じキーになっていた
+    expect(normalizeSearchForCacheKey('a,b c')).not.toBe(
+      normalizeSearchForCacheKey('a b,c')
+    );
+    expect(normalizeSearchForCacheKey('none')).not.toBe(
+      normalizeSearchForCacheKey(null)
+    );
+  });
+
+  it('uses only the keywords used in the query (first 10) (#684)', () => {
+    const eleven = Array.from({ length: 11 }, (_, i) => `w${i}`).join(' ');
+    const ten = Array.from({ length: 10 }, (_, i) => `w${i}`).join(' ');
+    expect(normalizeSearchForCacheKey(eleven)).toBe(
+      normalizeSearchForCacheKey(ten)
+    );
   });
 });

@@ -120,7 +120,9 @@ async function postHandler(
         const duplicate = await tx.userSourcePreset.findFirst({
           where: {
             userId,
-            name: { equals: name, mode: 'insensitive' },
+            // equals + insensitive は ILIKE になり _ や % がワイルドカードとして効く。in + insensitive は
+            // lower(name) IN (lower($1)) になり、一意制約 (userId, lower(name)) と同じ比較になる
+            name: { in: [name], mode: 'insensitive' },
           },
         });
         if (duplicate) {

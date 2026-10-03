@@ -272,6 +272,35 @@ describe('GET /api/admin/articles', () => {
     );
   });
 
+  it('検索クエリの LIKE のワイルドカードをエスケープする（#684）', async () => {
+    (mockPrisma.article.findMany as jest.Mock).mockResolvedValue([]);
+    (mockPrisma.article.count as jest.Mock).mockResolvedValue(0);
+    (mockPrisma.source.findMany as jest.Mock).mockResolvedValue([]);
+
+    await GET(createRequest({ query: '100%_' }), {});
+
+    expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            {
+              OR: [
+                { title: { contains: '100\\%\\_', mode: 'insensitive' } },
+                {
+                  translatedTitle: {
+                    contains: '100\\%\\_',
+                    mode: 'insensitive',
+                  },
+                },
+                { summary: { contains: '100\\%\\_', mode: 'insensitive' } },
+              ],
+            },
+          ]),
+        }),
+      })
+    );
+  });
+
   it('不正なクエリパラメータで 400 を返す', async () => {
     const response = await GET(createRequest({ page: '0' }), {});
     const data = await response.json();

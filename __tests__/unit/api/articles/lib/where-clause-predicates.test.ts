@@ -16,8 +16,12 @@ import {
   MAX_TAG_FILTER_COUNT,
   MAX_TAG_NAME_LENGTH,
   parseTagList,
+  pushSearchFilter,
+  capSearchKeywords,
   pushTagFilter,
   resolveTagIdGroups,
+  splitSearchKeywords,
+  validateSearchQuery,
   validateTagFilter,
 } from '@/app/api/articles/lib/where-clause-predicates';
 
@@ -139,5 +143,125 @@ describe('validateTagFilter', () => {
   it('rejects a tags string that is too long before splitting', () => {
     const commas = ','.repeat(MAX_TAG_FILTER_COUNT * (MAX_TAG_NAME_LENGTH + 1) + 1);
     expect(validateTagFilter(null, commas)).toMatch(/^tags must be at most \d+ characters$/);
+  });
+});
+
+describe('pushSearchFilter', () => {
+  function apply(search: string | null | undefined) {
+    const andConditions: Prisma.ArticleWhereInput[] = [];
+    pushSearchFilter(andConditions, search);
+    return andConditions;
+  }
+
+  it('adds one condition per keyword on title and summary', () => {
+    expect(apply('React  Hooks')).toEqual([
+      {
+        OR: [
+          { title: { contains: 'React', mode: 'insensitive' } },
+          { summary: { contains: 'React', mode: 'insensitive' } },
+        ],
+      },
+      {
+        OR: [
+          { title: { contains: 'Hooks', mode: 'insensitive' } },
+          { summary: { contains: 'Hooks', mode: 'insensitive' } },
+        ],
+      },
+    ]);
+  });
+
+  it('escapes LIKE wildcards so that _ and % match literally (#684)', () => {
+    expect(apply('100% a_b C:\\')).toEqual([
+      {
+        OR: [
+          { title: { contains: '100\\%', mode: 'insensitive' } },
+          { summary: { contains: '100\\%', mode: 'insensitive' } },
+        ],
+      },
+      {
+        OR: [
+          { title: { contains: 'a\\_b', mode: 'insensitive' } },
+          { summary: { contains: 'a\\_b', mode: 'insensitive' } },
+        ],
+      },
+      {
+        OR: [
+          { title: { contains: 'C:\\\\', mode: 'insensitive' } },
+          { summary: { contains: 'C:\\\\', mode: 'insensitive' } },
+        ],
+      },
+    ]);
+  });
+
+  it('adds nothing for empty or blank search', () => {
+    expect(apply(undefined)).toEqual([]);
+    expect(apply('   ')).toEqual([]);
+  });
+});
+
+describe('validateSearchQuery', () => {
+  it('accepts empty or missing search', () => {
+    expect(validateSearchQuery(undefined)).toBeNull();
+    expect(validateSearchQuery(null)).toBeNull();
+    expect(validateSearchQuery('')).toBeNull();
+  });
+
+  it('accepts up to 200 characters and 10 keywords', () => {
+    expect(validateSearchQuery('a'.repeat(200))).toBeNull();
+    const tenWords = Array.from({ length: 10 }, (_, i) => `w${i}`).join(' ');
+    expect(validateSearchQuery(tenWords)).toBeNull();
+  });
+
+  it('rejects more than 200 characters (#684)', () => {
+    expect(validateSearchQuery('a'.repeat(201))).toMatch(/200 characters/);
+  });
+
+  it('measures the length after trimming, in code points', () => {
+    expect(validateSearchQuery(`  ${'a'.repeat(200)}  `)).toBeNull();
+    // 絵文字は UTF-16 では 2 単位だが 1 文字として数える
+    expect(validateSearchQuery('😀'.repeat(200))).toBeNull();
+  });
+
+  it('counts keywords split by ASCII and full-width spaces (#684)', () => {
+    const elevenWords = Array.from({ length: 11 }, (_, i) => `w${i}`);
+    expect(validateSearchQuery(elevenWords.join(' '))).toMatch(/10 keywords/);
+    expect(validateSearchQuery(elevenWords.join('\u3000'))).toMatch(
+      /10 keywords/
+    );
+    // 連続する空白は 1 つの区切りとして数える
+    expect(validateSearchQuery(elevenWords.slice(0, 10).join('   '))).toBeNull();
+  });
+});
+
+describe('splitSearchKeywords', () => {
+  it('splits by ASCII and full-width whitespace, including tabs', () => {
+    expect(splitSearchKeywords(' a\tb\u3000c  d\n')).toEqual(['a', 'b', 'c', 'd']);
+    expect(splitSearchKeywords(undefined)).toEqual([]);
+    expect(splitSearchKeywords(' \t ')).toEqual([]);
+  });
+});
+
+describe('capSearchKeywords', () => {
+  it('keeps only the first 10 keywords (#684)', () => {
+    const words = Array.from({ length: 12 }, (_, i) => `w${i}`);
+    expect(capSearchKeywords(words.join(' '))).toEqual(words.slice(0, 10));
+  });
+
+  it('keeps only the first 200 characters after trimming (#684)', () => {
+    expect(capSearchKeywords(`  ${'a'.repeat(250)}`)).toEqual(['a'.repeat(200)]);
+    // 200 文字目で語が切れても、その語は途中まで使う
+    expect(capSearchKeywords(`${'a'.repeat(198)} bcd`)).toEqual([
+      'a'.repeat(198),
+      'b',
+    ]);
+  });
+
+  it('drops duplicate keywords before taking the first 10 (#684)', () => {
+    const words = [...Array(10).fill('a'), 'b'];
+    expect(capSearchKeywords(words.join(' '))).toEqual(['a', 'b']);
+  });
+
+  it('does not split a surrogate pair at the limit', () => {
+    expect(capSearchKeywords('😀'.repeat(201))).toEqual(['😀'.repeat(200)]);
   });
 });

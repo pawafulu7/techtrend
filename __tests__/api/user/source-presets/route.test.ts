@@ -177,6 +177,27 @@ describe('/api/user/source-presets', () => {
       expect(response.status).toBe(409);
     });
 
+    it('名前の重複判定は lower(name) の比較で、_ や % をワイルドカードにしない（#684）', async () => {
+      prismaMock.userSourcePreset.count.mockResolvedValue(1);
+      prismaMock.source.findMany.mockResolvedValue([{ id: 'source-1' }]);
+      prismaMock.userSourcePreset.findFirst.mockResolvedValue(mockPreset);
+
+      const POST = await getPostHandler();
+      const request = createPostRequest({
+        name: 'a_b%',
+        sourceIds: ['source-1'],
+      });
+      await POST(request, {} as any);
+
+      expect(prismaMock.userSourcePreset.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            name: { in: ['a_b%'], mode: 'insensitive' },
+          }),
+        })
+      );
+    });
+
     it('無効なsourceIdsで400を返す', async () => {
       prismaMock.userSourcePreset.count.mockResolvedValue(0);
       prismaMock.source.findMany.mockResolvedValue([]); // no valid sources

@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { RedisCache } from './index';
 import { CACHE_TTL } from './constants';
-import { Tag } from '@/lib/prisma-exports';
 import type { TagWithCount } from '@/types/models';
 
 export class TagCache {
@@ -54,25 +53,6 @@ export class TagCache {
   }
 
   /**
-   * タグ名でタグを検索
-   */
-  async findTagsByName(searchTerm: string): Promise<Tag[]> {
-    const cacheKey = `search:${searchTerm.toLowerCase()}`;
-
-    return this.cache.getOrSet(cacheKey, async () => {
-      return prisma.tag.findMany({
-        where: {
-          name: {
-            contains: searchTerm,
-            mode: 'insensitive',
-          },
-        },
-        orderBy: { name: 'asc' },
-      });
-    });
-  }
-
-  /**
    * 単一のタグを取得
    */
   async getTag(id: string): Promise<TagWithCount | null> {
@@ -97,7 +77,7 @@ export class TagCache {
 
   /**
    * 特定のタグのキャッシュをターゲット無効化
-   * 該当タグの個別キー、集約キー（all-tags, popular-tags）、検索キャッシュを削除する。
+   * 該当タグの個別キー、集約キー（all-tags, popular-tags）を削除する。
    * 無関係なキャッシュは保持される。エラー時は全キャッシュ無効化にフォールバック。
    */
   async invalidateTag(tagId: string): Promise<void> {
@@ -109,8 +89,6 @@ export class TagCache {
         this.cache.delete('all-tags').catch(() => {}),
         // Popular tags (various limits)
         this.cache.invalidatePattern('popular-tags:*'),
-        // Search results (may contain this tag)
-        this.cache.invalidatePattern('search:*'),
       ]);
     } catch (_error) {
       // Fallback to full invalidation on any error

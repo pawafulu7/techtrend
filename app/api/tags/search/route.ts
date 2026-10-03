@@ -1,12 +1,19 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
+import { escapeLikePattern } from '@/lib/utils/like-pattern';
+import { MAX_SEARCH_QUERY_LENGTH } from '@/lib/constants/search-query';
 
 async function handler(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get('q') || '';
+    // 前後の空白を除き、先頭 MAX_SEARCH_QUERY_LENGTH 文字（コードポイント単位）に切り詰める。
+    // 画面の検索欄には上限がないので、400 にせず切り詰める（#684）
+    const query = Array.from((searchParams.get('q') ?? '').trim())
+      .slice(0, MAX_SEARCH_QUERY_LENGTH)
+      .join('')
+      .trimEnd();
 
     // 空クエリの場合は人気順で返す
     if (!query) {
@@ -17,7 +24,7 @@ async function handler(request: NextRequest) {
         take: 50,
       });
 
-      return Response.json(
+      return NextResponse.json(
         tags.map((tag) => ({
           id: tag.id,
           name: tag.name,
@@ -31,7 +38,13 @@ async function handler(request: NextRequest) {
     const tags = await prisma.tag.findMany({
       where: {
         AND: [
-          { name: { contains: query, mode: 'insensitive' } }, // PostgreSQLでILIKE演算子を使用
+          // ILIKE になるので、_ や % が検索語に入ってもワイルドカードにならないようにエスケープする
+          {
+            name: {
+              contains: escapeLikePattern(query),
+              mode: 'insensitive',
+            },
+          },
           { articles: { some: {} } }, // 記事があるタグのみ
         ],
       },
@@ -47,10 +60,13 @@ async function handler(request: NextRequest) {
       category: tag.category,
     }));
 
-    return Response.json(result);
+    return NextResponse.json(result);
   } catch (error) {
     logger.error({ error }, 'Tags search failed');
-    return Response.json({ error: 'Failed to search tags' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to search tags' },
+      { status: 500 }
+    );
   }
 }
 

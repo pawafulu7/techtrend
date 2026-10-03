@@ -3,7 +3,12 @@ import { Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import { createDateRange } from '@/lib/types/prisma-helpers';
 import logger from '@/lib/logger';
+import { escapeLikePattern } from '@/lib/utils/like-pattern';
 import { findTagIdsByNames } from '@/lib/services/tag-service';
+import {
+  splitSearchKeywords,
+  validateSearchQuery,
+} from '@/app/api/articles/lib/where-clause-predicates';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,6 +16,11 @@ export async function GET(request: NextRequest) {
 
     // 基本パラメータ
     const query = searchParams.get('q') || '';
+    // 検索語の長さと語数を検証する（語ごとに ILIKE の条件が増えるため、条件を作る前に）
+    const queryError = validateSearchQuery(query);
+    if (queryError) {
+      return NextResponse.json({ error: queryError }, { status: 400 });
+    }
     const tags = searchParams.getAll('tags');
     const sources = searchParams.getAll('sources');
     const dateFrom = searchParams.get('dateFrom');
@@ -48,10 +58,11 @@ export async function GET(request: NextRequest) {
     };
 
     // テキスト検索（iLIKE）
-    const trimmedQuery = query.trim();
-    if (trimmedQuery) {
+    // 語の区切り方は検証（validateSearchQuery）と同じにする。半角スペースだけで区切ると、
+    // タブや全角スペースだけの語が検証では数えられずに上限をすり抜ける
+    const queryParts = splitSearchKeywords(query);
+    if (queryParts.length > 0) {
       // 除外キーワードの処理
-      const queryParts = trimmedQuery.split(' ').filter(Boolean);
       const includeTerms: string[] = [];
       const excludeTerms: string[] = [];
 
@@ -64,16 +75,48 @@ export async function GET(request: NextRequest) {
         }
       });
 
+      // 1 語がタイトル/翻訳タイトル/要約のいずれかに含まれる条件。
+      // contains は ILIKE になるので、_ や % がワイルドカードにならないようにエスケープする
+      const matchTerm = (term: string): Prisma.ArticleWhereInput[] => {
+        const pattern = escapeLikePattern(term);
+        return [
+          { title: { contains: pattern, mode: 'insensitive' } },
+          { translatedTitle: { contains: pattern, mode: 'insensitive' } },
+          { summary: { contains: pattern, mode: 'insensitive' } },
+        ];
+      };
+
+      // 1 語がタイトル/翻訳タイトル/要約のどれにも含まれない条件。
+      // NOT (a OR b OR c) は、translatedTitle や summary が NULL だと NULL になって
+      // 記事ごと落ちる（除外語を 1 つ付けただけで約半数が消えていた）。NULL の列は
+      // 「含まない」として扱う
+      const excludeTerm = (term: string): Prisma.ArticleWhereInput[] => {
+        const pattern = escapeLikePattern(term);
+        return [
+          { NOT: { title: { contains: pattern, mode: 'insensitive' } } },
+          {
+            OR: [
+              { translatedTitle: null },
+              {
+                NOT: {
+                  translatedTitle: { contains: pattern, mode: 'insensitive' },
+                },
+              },
+            ],
+          },
+          {
+            OR: [
+              { summary: null },
+              { NOT: { summary: { contains: pattern, mode: 'insensitive' } } },
+            ],
+          },
+        ];
+      };
+
       // 各検索語はAND（全てを含む）、各語はタイトル/翻訳タイトル/要約のいずれかにマッチ
       if (includeTerms.length > 0) {
         const termConditions = includeTerms.map((term) => ({
-          OR: [
-            { title: { contains: term, mode: 'insensitive' as const } },
-            {
-              translatedTitle: { contains: term, mode: 'insensitive' as const },
-            },
-            { summary: { contains: term, mode: 'insensitive' as const } },
-          ],
+          OR: matchTerm(term),
         }));
         whereConditions.AND = [
           ...(Array.isArray(whereConditions.AND) ? whereConditions.AND : []),
@@ -84,20 +127,9 @@ export async function GET(request: NextRequest) {
       if (excludeTerms.length > 0) {
         if (!Array.isArray(whereConditions.AND)) whereConditions.AND = [];
         for (const term of excludeTerms) {
-          (whereConditions.AND as Prisma.ArticleWhereInput[]).push({
-            NOT: {
-              OR: [
-                { title: { contains: term, mode: 'insensitive' as const } },
-                {
-                  translatedTitle: {
-                    contains: term,
-                    mode: 'insensitive' as const,
-                  },
-                },
-                { summary: { contains: term, mode: 'insensitive' as const } },
-              ],
-            },
-          });
+          (whereConditions.AND as Prisma.ArticleWhereInput[]).push(
+            ...excludeTerm(term)
+          );
         }
       }
     }

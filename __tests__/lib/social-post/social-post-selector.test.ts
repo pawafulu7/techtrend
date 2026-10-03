@@ -122,6 +122,22 @@ describe('SocialPostSelector', () => {
       );
     });
 
+    it('escapes LIKE wildcards in the keyword (#684)', async () => {
+      (prismaMock.socialPost.findMany as jest.Mock).mockResolvedValue([]);
+      (prismaMock.article.findMany as jest.Mock).mockResolvedValue([]);
+
+      await selector.searchCandidateArticles({ keyword: '100%_', limit: 10 });
+
+      const { where } = (prismaMock.article.findMany as jest.Mock).mock
+        .calls[0][0];
+      expect(where.AND[1].OR).toEqual([
+        { title: { contains: '100\\%\\_', mode: 'insensitive' } },
+        { translatedTitle: { contains: '100\\%\\_', mode: 'insensitive' } },
+        { summary: { contains: '100\\%\\_', mode: 'insensitive' } },
+        { detailedSummary: { contains: '100\\%\\_', mode: 'insensitive' } },
+      ]);
+    });
+
     it('should return articles matching both category and keyword', async () => {
       (prismaMock.socialPost.findMany as jest.Mock).mockResolvedValue([]);
       (prismaMock.article.findMany as jest.Mock).mockResolvedValue([

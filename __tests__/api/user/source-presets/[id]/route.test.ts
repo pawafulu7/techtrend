@@ -146,6 +146,24 @@ describe('/api/user/source-presets/[id]', () => {
       expect(response.status).toBe(409);
     });
 
+    it('名前の重複判定は lower(name) の比較で、_ や % をワイルドカードにしない（#684）', async () => {
+      prismaMock.userSourcePreset.findFirst
+        .mockResolvedValueOnce(mockPreset) // existing preset
+        .mockResolvedValueOnce({ ...mockPreset, id: 'preset-2' }); // duplicate
+
+      const PUT = await getPutHandler();
+      const request = createPutRequest('preset-1', { name: 'a_b%' });
+      await PUT(request, createRouteContext('preset-1') as any);
+
+      expect(prismaMock.userSourcePreset.findFirst).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            name: { in: ['a_b%'], mode: 'insensitive' },
+          }),
+        })
+      );
+    });
+
     it('P2002競合で409を返す', async () => {
       prismaMock.userSourcePreset.findFirst
         .mockResolvedValueOnce(mockPreset)

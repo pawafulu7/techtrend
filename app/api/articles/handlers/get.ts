@@ -46,7 +46,10 @@ import {
   type PaginationParams,
   type PersonalizationParams,
 } from '../lib';
-import { validateTagFilter } from '../lib/where-clause-predicates';
+import {
+  searchCacheKey,
+  validateTagFilter,
+} from '../lib/where-clause-predicates';
 
 // Initialize Layered cache system for articles
 const cache = new LayeredCache();
@@ -88,7 +91,11 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
   const sourceId = searchParams.get('sourceId') ?? undefined;
   const tag = searchParams.get('tag') ?? undefined;
   const tags = searchParams.get('tags') ?? undefined;
-  const tagMode = (searchParams.get('tagMode') || 'OR').toUpperCase();
+  // AND 以外は OR にそろえる（任意の値ごとに別のキャッシュキーができるのを防ぐ）
+  const tagMode =
+    (searchParams.get('tagMode') || 'OR').toUpperCase() === 'AND'
+      ? 'AND'
+      : 'OR';
   const search = searchParams.get('search') ?? undefined;
   const dateRange = searchParams.get('dateRange') ?? undefined;
   const dateFrom = searchParams.get('dateFrom') ?? undefined;
@@ -125,15 +132,9 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
       ? parsedPeriodMonths
       : 0;
 
-  // Normalize search keywords for consistent cache key
-  const normalizedSearch = search
-    ? search
-        .trim()
-        .split(/[\s\u3000]+/)
-        .filter((k) => k.length > 0)
-        .sort()
-        .join(',')
-    : 'none';
+  // Normalize search keywords for consistent cache key（searchCacheKey の説明を参照）。
+  // LayeredCache はキーを空白で区切り直すが、このキーは空白を含まないので 1 語のまま扱われる
+  const normalizedSearch = searchCacheKey(search);
 
   // Normalize sources for cache key (trim first, then filter empty, then lowercase)
   const normalizedSources = sources

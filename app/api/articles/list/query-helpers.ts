@@ -24,6 +24,7 @@ import {
   pushReadFilter,
   pushTagFilter,
   pushSearchFilter,
+  searchCacheKey,
 } from '@/app/api/articles/lib/where-clause-predicates';
 
 import { countCache } from './cache-config';
@@ -280,14 +281,7 @@ function applyDateRangeFilter(
  * Normalize search string for cache key consistency
  */
 export function normalizeSearchForCacheKey(search: string | null): string {
-  return search
-    ? search
-        .trim()
-        .split(/[\s\u3000]+/)
-        .filter((k) => k.length > 0)
-        .sort()
-        .join(',')
-    : 'none';
+  return searchCacheKey(search);
 }
 
 /**

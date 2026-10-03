@@ -370,6 +370,29 @@ describe('/api/articles - Extended Tests', () => {
       expect(prismaMock.article.findMany).not.toHaveBeenCalled();
     });
 
+    it.each([
+      ['201 文字の検索語は先頭 200 文字', 'a'.repeat(201), ['a'.repeat(200)]],
+      [
+        '11 語の検索語は先頭 10 語',
+        Array.from({ length: 11 }, (_, i) => `w${i}`).join(' '),
+        Array.from({ length: 10 }, (_, i) => `w${i}`),
+      ],
+    ])('%sに切り詰めて検索する（#684）', async (_label, search, expected) => {
+      prismaMock.article.findMany.mockResolvedValue([]);
+      prismaMock.article.count.mockResolvedValue(0);
+      const request = new NextRequest(
+        `http://localhost/api/articles?search=${encodeURIComponent(search)}`
+      );
+      const response = await GET(request);
+
+      expect(response.status).toBe(200);
+      const { where } = prismaMock.article.findMany.mock.calls[0][0];
+      const keywords = (where.AND as any[])
+        .filter((c) => c.OR?.[0]?.title?.contains !== undefined)
+        .map((c) => c.OR[0].title.contains);
+      expect(keywords).toEqual(expected);
+    });
+
     it('空白を含むタグリストを正しく処理', async () => {
       prismaMock.article.findMany.mockResolvedValue([]);
       prismaMock.article.count.mockResolvedValue(0);

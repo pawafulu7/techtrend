@@ -22,6 +22,13 @@ jest.mock('@/lib/auth/get-session', () => ({
   getSession: jest.fn().mockResolvedValue(null),
 }));
 
+// タグ名をそのまま 1 件の ID に解決する（tagMode の解釈だけを確かめるため）
+jest.mock('@/lib/services/tag-service', () => ({
+  findTagIdGroupsByNames: jest.fn((names: string[]) =>
+    Promise.resolve(names.map((name) => [`id-${name}`]))
+  ),
+}));
+
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/articles/list/route';
 import { prisma } from '@/lib/prisma';
@@ -204,6 +211,66 @@ describe('/api/articles/list', () => {
     expect(mockPrisma.article.findMany).not.toHaveBeenCalled();
   });
 
+  it('searches with only the first 10 keywords (#684)', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+    const search = Array.from({ length: 11 }, (_, i) => `w${i}`).join('%20');
+
+    const response = await GET(
+      new NextRequest(`http://localhost:3000/api/articles/list?search=${search}`)
+    );
+
+    expect(response.status).toBe(200);
+    const { where } = (mockPrisma.article.findMany as jest.Mock).mock
+      .calls[0][0];
+    const keywords = (where.AND as any[])
+      .filter((c) => c.OR?.[0]?.title?.contains !== undefined)
+      .map((c) => c.OR[0].title.contains);
+    expect(keywords).toEqual(Array.from({ length: 10 }, (_, i) => `w${i}`));
+  });
+
+  it('puts the normalized search into cursors, regardless of keyword order (#684)', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(2);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue(mockArticles);
+    const { getCursorManager } = jest.requireActual(
+      '@/lib/pagination/cursor-manager'
+    );
+    const { normalizeSearchForCacheKey } = jest.requireActual(
+      '@/app/api/articles/list/query-helpers'
+    );
+
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/articles/list?search=foo%20bar')
+    );
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    const pageInfo = json.data?.pageInfo ?? json.pageInfo;
+    const payload = getCursorManager().decodeCursor(pageInfo.endCursor);
+    // キャッシュキーと同じ値なので、語の順番だけが違う検索とキャッシュを共有しても
+    // カーソルの検証が食い違わない
+    expect(payload.filters.search).toBe(normalizeSearchForCacheKey('bar foo'));
+  });
+
+  it('keeps search null in cursors when there is no search (#684)', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(2);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue(mockArticles);
+    const { getCursorManager } = jest.requireActual(
+      '@/lib/pagination/cursor-manager'
+    );
+
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/articles/list')
+    );
+
+    const json = await response.json();
+    const pageInfo = json.data?.pageInfo ?? json.pageInfo;
+    const payload = getCursorManager().decodeCursor(pageInfo.endCursor);
+    // 検索なしのキャッシュキーは #684 の前後で同じなので、キャッシュ済みのカーソル
+    // （search: null）と食い違わないよう null のままにする
+    expect(payload.filters.search).toBeNull();
+  });
+
   it('should handle NaN limit parameter gracefully', async () => {
     mockPrisma.article.count = jest.fn().mockResolvedValue(0);
     mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
@@ -258,6 +325,69 @@ describe('/api/articles/list', () => {
       })
     );
   });
+
+  it('treats sortOrder case-insensitively (#684)', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/articles/list?sortOrder=ASC')
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [{ publishedAt: 'asc' }, { id: 'asc' }],
+      })
+    );
+  });
+
+  it.each(['AND', 'and', 'And'])(
+    'treats tagMode=%s as AND (#684)',
+    async (tagMode) => {
+      mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+      mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+
+      const response = await GET(
+        new NextRequest(
+          `http://localhost:3000/api/articles/list?tags=AI,LLM&tagMode=${tagMode}`
+        )
+      );
+
+      expect(response.status).toBe(200);
+      const { where } = (mockPrisma.article.findMany as jest.Mock).mock
+        .calls[0][0];
+      // AND は組ごとに条件を足し、tags の OR 条件は付けない
+      expect(where.tags).toBeUndefined();
+      expect(where.AND).toEqual(
+        expect.arrayContaining([
+          { tags: { some: { id: { in: ['id-AI'] } } } },
+          { tags: { some: { id: { in: ['id-LLM'] } } } },
+        ])
+      );
+    }
+  );
+
+  it.each(['OR', 'or', 'xyz'])(
+    'treats tagMode=%s as OR (#684)',
+    async (tagMode) => {
+      mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+      mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+
+      const response = await GET(
+        new NextRequest(
+          `http://localhost:3000/api/articles/list?tags=AI,LLM&tagMode=${tagMode}`
+        )
+      );
+
+      expect(response.status).toBe(200);
+      const { where } = (mockPrisma.article.findMany as jest.Mock).mock
+        .calls[0][0];
+      expect(where.tags).toEqual({
+        some: { id: { in: ['id-AI', 'id-LLM'] } },
+      });
+    }
+  );
 
   it('should handle articles from specific sources correctly', async () => {
     // Arrange - Speaker Deckの記事をテスト

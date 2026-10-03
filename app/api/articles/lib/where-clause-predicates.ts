@@ -26,11 +26,16 @@ import {
   getDateFieldForSort,
 } from '@/app/lib/date-utils';
 import logger from '@/lib/logger';
+import { escapeLikePattern } from '@/lib/utils/like-pattern';
 import { findTagIdGroupsByNames } from '@/lib/services/tag-service';
 import {
   MAX_TAG_FILTER_COUNT,
   MAX_TAG_NAME_LENGTH,
 } from '@/lib/constants/tag-filter';
+import {
+  MAX_SEARCH_KEYWORDS,
+  MAX_SEARCH_QUERY_LENGTH,
+} from '@/lib/constants/search-query';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -193,6 +198,81 @@ export function validateTagFilter(
 }
 
 /**
+ * 検索語を語に分ける。前後の空白を除き、半角・全角の空白（タブ・改行を含む）で区切る。
+ * 検証・検索条件・キャッシュキーで同じ区切り方を使うこと（ずれると語数の上限を
+ * すり抜けられたり、別の条件が同じキャッシュキーになったりする）。
+ */
+export function splitSearchKeywords(
+  search: string | null | undefined
+): string[] {
+  if (!search) return [];
+  return search
+    .trim()
+    .split(/[\s\u3000]+/)
+    .filter((k) => k.length > 0);
+}
+
+/**
+ * 記事一覧の検索語を上限内に切り詰めて語に分ける（#684）。前後の空白を除いた先頭
+ * MAX_SEARCH_QUERY_LENGTH 文字（コードポイント単位）の中の、先頭 MAX_SEARCH_KEYWORDS 語を返す。
+ * 語ごとに ILIKE の条件が増えるので、レート制限のない一覧 API で重いクエリを組み立てさせない。
+ * 画面の検索欄には上限がないので、400 にせず切り詰める（超えた分の語は使わない）。
+ */
+export function capSearchKeywords(search: string | null | undefined): string[] {
+  if (!search) return [];
+  const head = Array.from(search.trim())
+    .slice(0, MAX_SEARCH_QUERY_LENGTH)
+    .join('');
+  // 条件はすべて AND なので、重複した語は結果を変えない。枠を使わないよう先に除く
+  return [...new Set(splitSearchKeywords(head))].slice(0, MAX_SEARCH_KEYWORDS);
+}
+
+/**
+ * 検索語のキャッシュキー（#684）。検索条件と同じ capSearchKeywords の語を並べ替え、
+ * JSON の配列にする。区切り文字での連結だと "a,b c" と "a b,c" や、検索語 "none" と
+ * 「検索なし」（'none'）が同じキーになる。v2: は #684 より前の形式（語を ',' で連結）の
+ * キャッシュと一致させないための印
+ */
+export function searchCacheKey(search: string | null | undefined): string {
+  const keywords = capSearchKeywords(search);
+  return keywords.length > 0
+    ? `v2:${JSON.stringify([...keywords].sort())}`
+    : 'none';
+}
+
+/**
+ * 検索語（詳細検索の `q`）の長さと語数を検証する（#684）。問題があればエラーメッセージを、
+ * 無ければ null を返す。画面から呼ばれない API で使い、超えたら 400 にする。
+ * 長さは前後の空白を除いたコードポイントの数、語は splitSearchKeywords で数える。
+ */
+const searchQuerySchema = z
+  .string()
+  .nullish()
+  .superRefine((search, ctx) => {
+    if (!search) return;
+    if (Array.from(search.trim()).length > MAX_SEARCH_QUERY_LENGTH) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `search must be at most ${MAX_SEARCH_QUERY_LENGTH} characters`,
+      });
+    }
+    if (splitSearchKeywords(search).length > MAX_SEARCH_KEYWORDS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `search must contain at most ${MAX_SEARCH_KEYWORDS} keywords`,
+      });
+    }
+  });
+
+export function validateSearchQuery(
+  search: string | null | undefined
+): string | null {
+  const result = searchQuerySchema.safeParse(search);
+  if (result.success) return null;
+  return result.error.issues.map((issue) => issue.message).join('; ');
+}
+
+/**
  * 絞り込むタグ名を、名前ごとのタグ ID の組にする（#681）。
  *
  * タグ名は lower(name) で照合する。Prisma の `mode: 'insensitive'` は ILIKE になり、
@@ -262,21 +342,20 @@ export function pushSearchFilter(
   andConditions: ArticleWhereInput[],
   search: string | null | undefined
 ): void {
-  if (!search) return;
-
-  const keywords = search
-    .trim()
-    .split(/[\s\u3000]+/)
-    .filter((k) => k.length > 0);
-
+  // 上限内に切り詰める（キャッシュキーも capSearchKeywords で作るので条件と一致する）
+  const keywords = capSearchKeywords(search);
   if (keywords.length === 0) return;
 
-  const keywordConditions: ArticleWhereInput[] = keywords.map((keyword) => ({
-    OR: [
-      { title: { contains: keyword, mode: 'insensitive' as const } },
-      { summary: { contains: keyword, mode: 'insensitive' as const } },
-    ],
-  }));
+  // contains は ILIKE になるので、_ や % がワイルドカードにならないようにエスケープする
+  const keywordConditions: ArticleWhereInput[] = keywords.map((keyword) => {
+    const pattern = escapeLikePattern(keyword);
+    return {
+      OR: [
+        { title: { contains: pattern, mode: 'insensitive' as const } },
+        { summary: { contains: pattern, mode: 'insensitive' as const } },
+      ],
+    };
+  });
 
   andConditions.push(...keywordConditions);
 }

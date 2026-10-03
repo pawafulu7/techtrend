@@ -65,12 +65,6 @@ describe('TagCache', () => {
       );
     });
 
-    it('should invalidate search pattern', async () => {
-      await tagCache.invalidateTag('tag-1');
-
-      expect(cacheStub.invalidatePattern).toHaveBeenCalledWith('search:*');
-    });
-
     it('should NOT invalidate unrelated tag keys', async () => {
       // Pre-populate another tag in the store
       const store = new Map<string, unknown>();
@@ -105,8 +99,7 @@ describe('TagCache', () => {
       // must reject to trigger the outer catch, then succeed for the fallback
       cacheStub.delete.mockRejectedValue(new Error('Redis error'));
       cacheStub.invalidatePattern
-        .mockRejectedValueOnce(new Error('Redis error'))
-        .mockRejectedValueOnce(new Error('Redis error'))
+        .mockRejectedValueOnce(new Error('Redis error')) // popular-tags:*
         .mockResolvedValueOnce(undefined); // fallback invalidate('*') succeeds
 
       await tagCache.invalidateTag('tag-1');

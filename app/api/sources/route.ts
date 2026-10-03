@@ -12,6 +12,7 @@ import {
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { env } from '@/lib/config/env';
+import { escapeLikePattern } from '@/lib/utils/like-pattern';
 
 const sourcesQuerySchema = z.object({
   search: z
@@ -158,7 +159,7 @@ async function handler(request: NextRequest) {
             }),
             ...(search && {
               name: {
-                contains: search,
+                contains: escapeLikePattern(search),
                 mode: 'insensitive',
               },
             }),
@@ -187,7 +188,7 @@ async function handler(request: NextRequest) {
           LEFT JOIN "Article" a ON s.id = a."sourceId"
           WHERE s.enabled = true
           ${ids ? Prisma.sql`AND s.id IN (${Prisma.join(ids.split(',').map((s) => s.trim()))})` : Prisma.empty}
-          ${search ? Prisma.sql`AND s.name ILIKE ${`%${search}%`}` : Prisma.empty}
+          ${search ? Prisma.sql`AND s.name ILIKE ${`%${escapeLikePattern(search)}%`}` : Prisma.empty}
           GROUP BY s.id
         `,
       ]);
@@ -277,7 +278,7 @@ async function handler(request: NextRequest) {
         }),
         ...(search && {
           name: {
-            contains: search,
+            contains: escapeLikePattern(search),
             mode: 'insensitive',
           },
         }),
