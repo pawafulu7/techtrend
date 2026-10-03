@@ -13,20 +13,14 @@ import {
   LayeredCache,
   type ArticleQueryParams,
 } from '@/lib/cache/layered-cache';
-import { RedisCache } from '@/lib/cache/redis-cache';
 import { getSession } from '@/lib/auth/get-session';
 import {
   MetricsCollector,
   withDbTiming,
   withCacheTiming,
 } from '@/lib/metrics/performance';
-import { categoryFilterService } from '@/lib/personalization/category-filter-service';
-import type {
-  PersonalizedFilterOptions,
-  PersonalizedSortBy,
-} from '@/lib/personalization/types';
+import { getPeriodCutoffDate } from '@/lib/personalization/category-filter-service';
 import logger from '@/lib/logger';
-import { measureAsync } from '@/lib/personalization/tracing';
 
 import {
   buildSelectFields,
@@ -50,13 +44,13 @@ import {
   searchCacheKey,
   validateTagFilter,
 } from '../lib/where-clause-predicates';
+import { executePersonalizedQuery } from './personalized-query';
+
+/** パーソナライズの期間（periodMonths）の上限（100 年） */
+const MAX_PERIOD_MONTHS = 1200;
 
 // Initialize Layered cache system for articles
 const cache = new LayeredCache();
-const personalizationCache = new RedisCache({
-  ttl: 300,
-  namespace: 'personalization',
-});
 
 /**
  * Parse query parameters from request
@@ -127,9 +121,11 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
     : [];
   const periodMonthsParam = searchParams.get('periodMonths');
   const parsedPeriodMonths = Number.parseInt(periodMonthsParam ?? '0', 10);
+  // 上限は 100 年。期間の下限の日時が PostgreSQL の扱える範囲を外れると、推薦から
+  // 切り替えた通常検索が 500 になるため（画面の選択肢は 0・3・6・12 か月）
   const periodMonths =
     Number.isFinite(parsedPeriodMonths) && parsedPeriodMonths >= 0
-      ? parsedPeriodMonths
+      ? Math.min(parsedPeriodMonths, MAX_PERIOD_MONTHS)
       : 0;
 
   // Normalize search keywords for consistent cache key（searchCacheKey の説明を参照）。
@@ -189,6 +185,15 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
 }
 
 /**
+ * 通常検索の並べ替えの列。Article に finalScore 列はない（推薦のスコア）ので公開日で並べる
+ */
+function standardSortBy(
+  sortBy: PaginationParams['sortBy']
+): Exclude<PaginationParams['sortBy'], 'finalScore'> {
+  return sortBy === 'finalScore' ? 'publishedAt' : sortBy;
+}
+
+/**
  * Build cache parameters from parsed query params
  */
 function buildCacheParams(
@@ -202,7 +207,7 @@ function buildCacheParams(
   return {
     page: pagination.page,
     limit: pagination.limit,
-    sortBy: pagination.sortBy,
+    sortBy: standardSortBy(pagination.sortBy),
     sortOrder: pagination.sortOrder,
     sources: normalizedSources,
     sourceId: filters.sourceId?.toLowerCase(),
@@ -229,15 +234,20 @@ function buildCacheParams(
 
 /**
  * Execute standard article query with caching
+ *
+ * @param publishedAfter - パーソナライズから切り替えたときの期間の下限（`periodMonths`）。
+ *   件数キャッシュのキーに期間が入らないので、指定時は件数キャッシュを通さずに数える
  */
 async function executeStandardQuery(
   params: ParsedQueryParams,
   userId: string | undefined,
   hasUserScopedQuery: boolean,
-  metrics: MetricsCollector
+  metrics: MetricsCollector,
+  publishedAfter?: Date | null
 ): Promise<ArticleQueryResult> {
   const { pagination, filters, display } = params;
-  const { page, limit, sortBy, sortOrder } = pagination;
+  const { page, limit, sortOrder } = pagination;
+  const sortBy = standardSortBy(pagination.sortBy);
 
   // Early return for explicit 'none' filter
   if (filters.sources === 'none') {
@@ -245,13 +255,16 @@ async function executeStandardQuery(
   }
 
   // Build where clause
-  const { where, emptyResult } = await buildWhereClause(
+  const { where: filterWhere, emptyResult } = await buildWhereClause(
     filters,
     display,
     userId,
     metrics,
     sortBy
   );
+  const where = publishedAfter
+    ? { AND: [filterWhere, { publishedAt: { gte: publishedAfter } }] }
+    : filterWhere;
 
   if (emptyResult) {
     return createEmptyResponse(page, limit);
@@ -268,7 +281,7 @@ async function executeStandardQuery(
     metrics,
     () =>
       Promise.all([
-        hasUserScopedQuery
+        hasUserScopedQuery || publishedAfter
           ? prisma.article.count({ where })
           : cache
               .getArticleCount(toArticleQueryParams(cacheParams), async () => {
@@ -294,170 +307,6 @@ async function executeStandardQuery(
     limit,
     totalPages: Math.ceil(total / limit),
   };
-}
-
-/**
- * Execute personalized article query
- */
-async function executePersonalizedQuery(
-  params: ParsedQueryParams,
-  metrics: MetricsCollector
-): Promise<ArticleQueryResult | null> {
-  const { pagination, display, personalization, filters } = params;
-  const { page, limit, sortBy, sortOrder } = pagination;
-  const { categoryIds, periodMonths } = personalization;
-
-  try {
-    const personalizationOptions: PersonalizedFilterOptions = {
-      categoryIds,
-      periodMonths,
-      limit,
-      offset: (page - 1) * limit,
-      sortBy: sortBy as PersonalizedSortBy,
-      sortOrder,
-      excludeSourceIds: filters.excludeSources
-        ? filters.excludeSources
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : undefined,
-    };
-
-    // Build cache key from personalization-specific parameters only
-    const sortedCategoryIds = personalizationOptions.categoryIds
-      .slice()
-      .sort()
-      .join(',');
-    const excludeKey =
-      personalizationOptions.excludeSourceIds?.slice().sort().join(',') ||
-      'none';
-    const cacheKey = `ids:${sortedCategoryIds}:p${personalizationOptions.periodMonths}:${personalizationOptions.sortBy}:${personalizationOptions.sortOrder}:page${page}:lim${limit}:excl${excludeKey}`;
-
-    type CachedPersonalizationResult = {
-      articles: Array<{
-        articleId: string;
-        embeddingSimilarity: number;
-        tagBoost: number;
-        recencyDecay: number;
-        finalScore: number;
-      }>;
-      meta: { totalMatched: number; queryMs?: number };
-    };
-
-    // Try cache first; skip caching if result is a fallback (appliedCategories empty)
-    let cached: CachedPersonalizationResult | null = null;
-    try {
-      cached = await measureAsync('personalization.cache_get', async (span) => {
-        try {
-          const result =
-            await personalizationCache.get<CachedPersonalizationResult>(
-              cacheKey
-            );
-          span.setAttribute('cacheHit', result !== null);
-          return result;
-        } catch (err) {
-          // Defensive: RedisCache.get() currently swallows Redis errors and returns null,
-          // so this branch is rarely hit. Kept to distinguish future error paths from
-          // genuine cache misses. Message is omitted to avoid leaking secrets/keys
-          // into the trace backend; recordException captures the full error event.
-          span.setAttribute('cacheError', true);
-          throw err;
-        }
-      });
-    } catch (cacheError) {
-      logger.warn(
-        { err: cacheError },
-        'Personalization cache get failed, proceeding without cache'
-      );
-    }
-    let scoredArticles: CachedPersonalizationResult['articles'];
-    let personalizationMeta: CachedPersonalizationResult['meta'];
-
-    if (cached) {
-      scoredArticles = cached.articles;
-      personalizationMeta = cached.meta;
-    } else {
-      const result = await categoryFilterService.filterArticles(
-        personalizationOptions
-      );
-      scoredArticles = result.articles;
-      personalizationMeta = {
-        totalMatched: result.meta?.totalMatched ?? 0,
-        queryMs: result.meta?.queryMs,
-      };
-      // Only cache real personalization results (appliedCategories is empty for fallback)
-      if ((result.meta?.appliedCategories?.length ?? 0) > 0) {
-        try {
-          await personalizationCache.set(cacheKey, {
-            articles: scoredArticles,
-            meta: personalizationMeta,
-          });
-        } catch (cacheError) {
-          logger.warn({ err: cacheError }, 'Personalization cache set failed');
-        }
-      }
-    }
-
-    const personalizedIds = scoredArticles.map((article) => article.articleId);
-
-    if (personalizedIds.length === 0) {
-      return null; // Fall back to standard query
-    }
-
-    const selectFields = buildSelectFields(display);
-
-    const personalizedArticles = await withDbTiming(
-      metrics,
-      () =>
-        measureAsync('article.fetch_by_ids', async (span) => {
-          span.setAttribute('idCount', personalizedIds.length);
-          return prisma.article.findMany({
-            where: {
-              id: { in: personalizedIds },
-              isHidden: false,
-              summaryComputedAt: { not: null },
-            },
-            select: selectFields,
-          });
-        }),
-      'db_query'
-    );
-
-    // Preserve personalization ranking order
-    const personalizedArticlesById = new Map(
-      personalizedArticles
-        .filter((article) => !!article?.id)
-        .map((article) => [article.id, article])
-    );
-
-    const orderedItems = personalizedIds
-      .map((id) => personalizedArticlesById.get(id))
-      .filter((article): article is (typeof personalizedArticles)[number] =>
-        Boolean(article)
-      );
-
-    // Post-filter (isHidden, summaryComputedAt) may exclude some cached IDs
-    const filteredOutCount = personalizedIds.length - orderedItems.length;
-    const adjustedTotal = Math.max(
-      0,
-      (personalizationMeta?.totalMatched ?? personalizedIds.length) -
-        filteredOutCount
-    );
-
-    return {
-      items: orderedItems as ArticleWithRelations[],
-      total: adjustedTotal,
-      page,
-      limit,
-      totalPages: Math.ceil(adjustedTotal / limit),
-    };
-  } catch (error) {
-    logger.error(
-      { err: error },
-      'Personalized filtering failed, falling back to standard query'
-    );
-    return null;
-  }
 }
 
 /**
@@ -524,12 +373,13 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
       if (personalizedResult) {
         baseResult = personalizedResult;
       } else {
-        // Fall back to standard query
+        // Fall back to standard query（推薦の期間 periodMonths は保つ）
         baseResult = await executeStandardQuery(
           params,
           userId,
           hasUserScopedQuery,
-          metrics
+          metrics,
+          getPeriodCutoffDate(personalization.periodMonths)
         );
       }
     } else {
