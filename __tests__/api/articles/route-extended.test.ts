@@ -640,6 +640,8 @@ describe('/api/articles - Extended Tests', () => {
         expect.objectContaining({
           where: {
             AND: [
+              // 無効化したソースの記事を除く（issue #688）
+              { source: { is: { enabled: true } } },
               {
                 AND: [
                   { content: { not: null } },
@@ -647,8 +649,7 @@ describe('/api/articles - Extended Tests', () => {
                 ]
               }
             ],
-            isHidden: false,
-            source: { enabled: true }
+            isHidden: false
           }
         })
       );

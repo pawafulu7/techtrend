@@ -1,4 +1,5 @@
 import { PrismaClient, Prisma } from '@/lib/prisma-exports';
+import { enabledSourceSql } from '@/lib/database/enabled-source-filter';
 import { EmbeddingService } from './embedding-service';
 import { logger } from '@/lib/logger';
 import { searchOptionsSchema, SearchOptionsInput } from './schemas';
@@ -685,6 +686,7 @@ export class VectorSearchService {
         ${embeddingKeyFilter}
         AND 1 - (e.embedding <=> ${vectorString}::vector) >= ${similarityThreshold}
         AND a."isHidden" = false
+        AND ${enabledSourceSql()}
         ${sourceFilter}
         ${tagFilter}
         ${dateFilter}

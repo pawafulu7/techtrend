@@ -7,6 +7,7 @@
 
 import { ArticleCategory } from '@/lib/prisma-exports';
 import { sourceCache } from '@/lib/cache/source-cache';
+import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import { MetricsCollector, withCacheTiming } from '@/lib/metrics/performance';
 import logger from '@/lib/logger';
 import {
@@ -117,8 +118,8 @@ export class ArticleWhereClauseBuilder {
     this.metrics = metrics;
     // Always exclude hidden articles from public-facing APIs
     this.where.isHidden = false;
-    // Initialize AND array so predicate functions can safely push into it
-    this.where.AND = [];
+    // Always filter to enabled sources only（呼び出し順に依存しないよう、ここで入れる。issue #688）
+    this.where.AND = [enabledSourceWhere()];
   }
 
   /**
@@ -176,9 +177,6 @@ export class ArticleWhereClauseBuilder {
     sources: string | undefined,
     sourceId: string | undefined
   ): Promise<{ builder: ArticleWhereClauseBuilder; emptyResult: boolean }> {
-    // Always filter to enabled sources only (disabled sources should never appear in public API)
-    this.where.source = { enabled: true };
-
     if (sources) {
       // Normalize sources for case-insensitive comparison
       const normalized = sources.trim().toLowerCase();
@@ -190,7 +188,7 @@ export class ArticleWhereClauseBuilder {
 
       // 'all' means no source filtering - return all enabled sources
       if (normalized === 'all') {
-        // enabled filter already applied at method start
+        // enabled filter already applied in the constructor
         return { builder: this, emptyResult: false };
       }
 

@@ -17,6 +17,7 @@ import {
   getDateFieldForSort,
 } from '@/app/lib/date-utils';
 import { prisma } from '@/lib/prisma';
+import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import logger from '@/lib/logger';
 import {
   pushLowQualityFilter,
@@ -129,8 +130,8 @@ export function buildWhereClause(params: WhereClauseParams): ArticleWhereInput {
   // Apply source filter
   applySourceFilter(where, params.sources, params.sourceId);
 
-  // Always filter to enabled sources only
-  where.source = { enabled: true };
+  // Always filter to enabled sources only（issue #688）
+  pushToAND(where, enabledSourceWhere());
 
   // Apply exclude sources filter
   applyExcludeSourcesFilter(where, params.excludeSources);

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@/lib/prisma-exports';
+import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,15 +26,17 @@ export async function GET(request: NextRequest) {
     const sourceIdArray = sourceIds.split(',');
     const skip = (page - 1) * limit;
 
-    // お気に入りソースからの記事を取得
+    // お気に入りソースからの記事を取得。無効化したソースの記事は除く（issue #688）
+    const where: Prisma.ArticleWhereInput = {
+      isHidden: false,
+      sourceId: {
+        in: sourceIdArray,
+      },
+      AND: [enabledSourceWhere()],
+    };
     const [articles, totalCount] = await Promise.all([
       prisma.article.findMany({
-        where: {
-          isHidden: false,
-          sourceId: {
-            in: sourceIdArray,
-          },
-        },
+        where,
         include: {
           source: true,
           tags: true,
@@ -43,14 +47,7 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
       }),
-      prisma.article.count({
-        where: {
-          isHidden: false,
-          sourceId: {
-            in: sourceIdArray,
-          },
-        },
-      }),
+      prisma.article.count({ where }),
     ]);
 
     // ArticleWithRelations形式に変換

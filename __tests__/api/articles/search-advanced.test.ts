@@ -52,6 +52,17 @@ describe('GET /api/articles/search/advanced', () => {
     prismaMock.article.findMany.mockResolvedValue(ARTICLES);
   });
 
+  // issue #688: 無効化したソースの記事を除く。ソースの指定（where.source）とぶつからないこと
+  it('無効化したソースの記事を除き、ソースの指定も残す', async () => {
+    await GET(request('?q=react&sources=Zenn'));
+
+    for (const mock of [prismaMock.article.findMany, prismaMock.article.count]) {
+      const where = mock.mock.calls[0][0].where;
+      expect(where.AND).toContainEqual({ source: { is: { enabled: true } } });
+      expect(where.source).toEqual({ is: { name: { in: ['Zenn'] } } });
+    }
+  });
+
   it('difficulty パラメータを渡しても where 条件に difficulty を含めない', async () => {
     await GET(request('?q=react&difficulty=beginner&difficulty=advanced'));
 
@@ -134,6 +145,8 @@ describe('GET /api/articles/search/advanced', () => {
     // NOT (a OR b OR c) は NULL の列で NULL になり記事ごと落ちるので、列ごとに
     // 「NULL か、含まない」にする
     expect(where.AND).toEqual([
+      // 無効化したソースの記事を除く（issue #688）
+      { source: { is: { enabled: true } } },
       { NOT: { title: { contains: 'foo', mode: 'insensitive' } } },
       {
         OR: [
@@ -171,7 +184,9 @@ describe('GET /api/articles/search/advanced', () => {
     await GET(request(`?q=${encodeURIComponent('foo\tbar\u3000baz')}`));
 
     const where = prismaMock.article.findMany.mock.calls[0][0].where;
-    expect((where.AND as any[]).map((c) => c.OR[0].title.contains)).toEqual([
+    // 先頭は無効化したソースを除く条件（issue #688）。その後ろに語ごとの条件が並ぶ
+    expect(where.AND[0]).toEqual({ source: { is: { enabled: true } } });
+    expect((where.AND as any[]).slice(1).map((c) => c.OR[0].title.contains)).toEqual([
       'foo',
       'bar',
       'baz',

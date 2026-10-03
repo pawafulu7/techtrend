@@ -1,5 +1,9 @@
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { PrismaClient } from '@/lib/prisma-exports';
+import {
+  ENABLED_SOURCE_SQL,
+  sqlFragmentsOf,
+} from '../../helpers/sql-fragments';
 
 // Mock dependencies
 jest.mock('@/lib/rag/embedding-service');
@@ -128,6 +132,8 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
+    // 前のテストで取り込んだ SQL を読まないようにする
+    capturedSQL = undefined;
 
     // Create mock Prisma client
     mockPrisma = {
@@ -146,6 +152,22 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
 
     // Create service instance
     service = new VectorSearchService(mockPrisma, mockEmbeddingService as any);
+  });
+
+  // issue #688: 無効化したソースの記事を除く。関連記事・関係グラフ・RAG 検索・エージェント検索が
+  // このクエリを通る
+  describe('Disabled sources', () => {
+    it('excludes articles from disabled sources', async () => {
+      await service.search('React hooks', {
+        topK: 10,
+        embeddingKey: 'summary',
+      });
+
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+      expect(sqlFragmentsOf(capturedSQL, { afterAnd: true })).toContainEqual(
+        expect.stringContaining(`a."sourceId" ${ENABLED_SOURCE_SQL}`)
+      );
+    });
   });
 
   describe('Dynamic threshold selection', () => {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import { popularCache, type PopularPeriod } from '@/lib/cache/popular-cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { publicCacheHeaders } from '@/lib/api/cache-headers';
@@ -222,6 +223,8 @@ async function getPopularArticles(request: NextRequest) {
           where: {
             AND: [
               { isHidden: false },
+              // 無効化したソースの記事を除く（issue #688）
+              enabledSourceWhere(),
               dateFilter,
               categoryFilter,
               qualityScoreFilter,

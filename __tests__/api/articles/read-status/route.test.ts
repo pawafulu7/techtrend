@@ -12,6 +12,10 @@ import { prisma } from '@/lib/database';
 import { getSession } from '@/lib/auth/get-session';
 import { getRedisService } from '@/lib/redis/factory';
 import { NextRequest } from 'next/server';
+import {
+  ENABLED_SOURCE_SQL,
+  sqlFragmentsOf,
+} from '../../../helpers/sql-fragments';
 
 const prismaMock = prisma as any;
 const authMock = getSession as jest.MockedFunction<typeof getSession>;
@@ -22,7 +26,12 @@ const mockSessionData = {
     email: 'test@example.com',
     name: 'Test User',
   },
-  session: { id: 's1', userId: 'test-user-id', token: 'tok', expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+  session: {
+    id: 's1',
+    userId: 'test-user-id',
+    token: 'tok',
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  },
 };
 
 // モック関数のヘルパー
@@ -43,12 +52,14 @@ describe('/api/articles/read-status', () => {
     resetMockSession();
 
     // $transactionのモック設定
-    prismaMock.$transaction = jest.fn().mockImplementation(async (operations) => {
-      if (typeof operations === 'function') {
-        return operations(prismaMock);
-      }
-      return Promise.all(operations);
-    });
+    prismaMock.$transaction = jest
+      .fn()
+      .mockImplementation(async (operations) => {
+        if (typeof operations === 'function') {
+          return operations(prismaMock);
+        }
+        return Promise.all(operations);
+      });
 
     // デフォルトのPrismaモック設定
     prismaMock.article = {
@@ -65,7 +76,9 @@ describe('/api/articles/read-status', () => {
 
     // withUserValidation用のユーザー存在確認モック
     prismaMock.user = {
-      findUnique: jest.fn().mockResolvedValue({ id: 'test-user-id', deletedAt: null }),
+      findUnique: jest
+        .fn()
+        .mockResolvedValue({ id: 'test-user-id', deletedAt: null }),
     };
 
     // Redisサービスのモック設定
@@ -80,16 +93,18 @@ describe('/api/articles/read-status', () => {
         { articleId: 'article2' },
         { articleId: 'article3' },
       ];
-      
+
       prismaMock.article.count.mockResolvedValue(5); // 未読数
       prismaMock.articleView.findMany.mockResolvedValue(mockReadArticles);
 
-      const request = new NextRequest('http://localhost/api/articles/read-status');
+      const request = new NextRequest(
+        'http://localhost/api/articles/read-status'
+      );
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.readArticleIds).toEqual(['article1', 'article2', 'article3']);
       expect(data.unreadCount).toBe(5);
 
@@ -102,6 +117,12 @@ describe('/api/articles/read-status', () => {
           articleId: true,
         },
       });
+
+      // 未読数は無効化したソースの記事を除く（issue #688。PUT の一括既読と同じ範囲）
+      const unreadWhere = prismaMock.article.count.mock.calls[0][0].where;
+      expect(unreadWhere.AND).toContainEqual({
+        source: { is: { enabled: true } },
+      });
     });
 
     it('特定の記事IDの既読状態を返す', async () => {
@@ -109,7 +130,7 @@ describe('/api/articles/read-status', () => {
         { articleId: 'article1' },
         { articleId: 'article3' },
       ];
-      
+
       prismaMock.article.count.mockResolvedValue(10);
       prismaMock.articleView.findMany.mockResolvedValue(mockReadArticles);
 
@@ -120,7 +141,7 @@ describe('/api/articles/read-status', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.readArticleIds).toEqual(['article1', 'article3']);
       expect(data.unreadCount).toBe(10);
 
@@ -139,7 +160,9 @@ describe('/api/articles/read-status', () => {
     it('未認証の場合401を返す', async () => {
       setUnauthenticated();
 
-      const request = new NextRequest('http://localhost/api/articles/read-status');
+      const request = new NextRequest(
+        'http://localhost/api/articles/read-status'
+      );
       const response = await GET(request);
 
       expect(response.status).toBe(401);
@@ -154,12 +177,14 @@ describe('/api/articles/read-status', () => {
       prismaMock.article.count.mockResolvedValue(15);
       prismaMock.articleView.findMany.mockResolvedValue([]);
 
-      const request = new NextRequest('http://localhost/api/articles/read-status');
+      const request = new NextRequest(
+        'http://localhost/api/articles/read-status'
+      );
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.readArticleIds).toEqual([]);
       expect(data.unreadCount).toBe(15);
     });
@@ -178,16 +203,19 @@ describe('/api/articles/read-status', () => {
     it('記事を既読にマークする（新規作成）', async () => {
       prismaMock.articleView.upsert.mockResolvedValue(mockArticleView);
 
-      const request = new NextRequest('http://localhost/api/articles/read-status', {
-        method: 'POST',
-        body: JSON.stringify({ articleId: 'article1' }),
-      });
+      const request = new NextRequest(
+        'http://localhost/api/articles/read-status',
+        {
+          method: 'POST',
+          body: JSON.stringify({ articleId: 'article1' }),
+        }
+      );
 
       const response = await POST(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.success).toBe(true);
       expect(data.articleView.isRead).toBe(true);
 
@@ -212,10 +240,13 @@ describe('/api/articles/read-status', () => {
     });
 
     it('articleIdが無い場合400を返す', async () => {
-      const request = new NextRequest('http://localhost/api/articles/read-status', {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
+      const request = new NextRequest(
+        'http://localhost/api/articles/read-status',
+        {
+          method: 'POST',
+          body: JSON.stringify({}),
+        }
+      );
 
       const response = await POST(request);
 
@@ -228,11 +259,14 @@ describe('/api/articles/read-status', () => {
     it('未認証の場合401を返す', async () => {
       setUnauthenticated();
 
-      const request = new NextRequest('http://localhost/api/articles/read-status', {
-        method: 'POST',
-        headers: { 'Origin': 'http://localhost' },
-        body: JSON.stringify({ articleId: 'article1' }),
-      });
+      const request = new NextRequest(
+        'http://localhost/api/articles/read-status',
+        {
+          method: 'POST',
+          headers: { Origin: 'http://localhost' },
+          body: JSON.stringify({ articleId: 'article1' }),
+        }
+      );
 
       const response = await POST(request);
 
@@ -247,23 +281,30 @@ describe('/api/articles/read-status', () => {
     it('全未読記事を一括既読にマークする', async () => {
       prismaMock.$executeRaw.mockResolvedValue(100); // 100件処理
 
-      const request = new NextRequest('http://localhost/api/articles/read-status', {
-        method: 'PUT',
-        headers: { 'Origin': 'http://localhost' },
-      });
+      const request = new NextRequest(
+        'http://localhost/api/articles/read-status',
+        {
+          method: 'PUT',
+          headers: { Origin: 'http://localhost' },
+        }
+      );
 
       const response = await PUT(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.success).toBe(true);
       expect(data.markedCount).toBe(100);
       expect(data.remainingUnreadCount).toBe(0);
 
       // SQL実行を確認
       expect(prismaMock.$executeRaw).toHaveBeenCalled();
-      
+      // 無効化したソースの記事は既読にしない（issue #688。GET の未読数と同じ範囲）
+      expect(
+        sqlFragmentsOf(prismaMock.$executeRaw.mock.calls[0], { afterAnd: true })
+      ).toContainEqual(expect.stringContaining(ENABLED_SOURCE_SQL));
+
       // Redisキャッシュクリアの呼び出しを確認
       // モックではRedisサービスが存在し、clearPatternが呼ばれる
     });
@@ -271,10 +312,13 @@ describe('/api/articles/read-status', () => {
     it('未認証の場合401を返す', async () => {
       setUnauthenticated();
 
-      const request = new NextRequest('http://localhost/api/articles/read-status', {
-        method: 'PUT',
-        headers: { 'Origin': 'http://localhost' },
-      });
+      const request = new NextRequest(
+        'http://localhost/api/articles/read-status',
+        {
+          method: 'PUT',
+          headers: { Origin: 'http://localhost' },
+        }
+      );
 
       const response = await PUT(request);
 
@@ -290,16 +334,19 @@ describe('/api/articles/read-status', () => {
       // モックはRedisサービスが存在することを前提にしているが、
       // 実際のコードではRedisエラーをcatchして処理を続行する
 
-      const request = new NextRequest('http://localhost/api/articles/read-status', {
-        method: 'PUT',
-        headers: { 'Origin': 'http://localhost' },
-      });
+      const request = new NextRequest(
+        'http://localhost/api/articles/read-status',
+        {
+          method: 'PUT',
+          headers: { Origin: 'http://localhost' },
+        }
+      );
 
       const response = await PUT(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.success).toBe(true);
       expect(data.markedCount).toBe(50);
     });
@@ -308,16 +355,19 @@ describe('/api/articles/read-status', () => {
       // Redisサービスの有無に関わらず処理が正常に完了することを確認
       prismaMock.$executeRaw.mockResolvedValue(30);
 
-      const request = new NextRequest('http://localhost/api/articles/read-status', {
-        method: 'PUT',
-        headers: { 'Origin': 'http://localhost' },
-      });
+      const request = new NextRequest(
+        'http://localhost/api/articles/read-status',
+        {
+          method: 'PUT',
+          headers: { Origin: 'http://localhost' },
+        }
+      );
 
       const response = await PUT(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.success).toBe(true);
       expect(data.markedCount).toBe(30);
     });
@@ -334,7 +384,7 @@ describe('/api/articles/read-status', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.success).toBe(true);
 
       expect(prismaMock.articleView.updateMany).toHaveBeenCalledWith({
@@ -350,7 +400,9 @@ describe('/api/articles/read-status', () => {
     });
 
     it('articleIdが無い場合400を返す', async () => {
-      const request = new NextRequest('http://localhost/api/articles/read-status');
+      const request = new NextRequest(
+        'http://localhost/api/articles/read-status'
+      );
       const response = await DELETE(request);
 
       expect(response.status).toBe(400);
@@ -383,7 +435,7 @@ describe('/api/articles/read-status', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.success).toBe(true);
     });
   });
