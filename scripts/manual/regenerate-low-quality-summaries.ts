@@ -17,6 +17,7 @@ import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-che
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { calculateArticleQualityScore } from '../../lib/utils/quality-score';
+import { resolveTags } from '@/lib/services/tag-service';
 import { extractSkipReason, getSkipReasonLabel } from '../../lib/utils/skip-reason-extractor';
 
 const prisma = createPrismaClient();
@@ -292,12 +293,11 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
             if (!isDryRun) {
               // データベース更新（記事とタグを同一トランザクションで更新）
               await prisma.$transaction(async (tx) => {
-                // タグのupsert
+                // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
                 const tags = generated.tags.length > 0
-                  ? await Promise.all(
-                      generated.tags.map((name) =>
-                        tx.tag.upsert({ where: { name }, update: {}, create: { name } })
-                      )
+                  ? await resolveTags(
+                      generated.tags.map((name) => ({ name })),
+                      tx
                     )
                   : [];
 

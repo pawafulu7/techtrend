@@ -11,6 +11,7 @@ import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prom
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { getUnifiedSummaryService } from '../../lib/ai/unified-summary-service';
+import { resolveTags } from '@/lib/services/tag-service';
 import fetch from 'node-fetch';
 
 const prisma = createPrismaClient();
@@ -219,33 +220,21 @@ async function main() {
               }
             });
 
-            // タグの更新
+            // タグを置き換える。大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）。
+            // タグの解決と置き換えを 1 つのトランザクションにし、途中で失敗してもタグを外したまま残さない
             if (result.tags.length > 0) {
-              // 既存のタグ関連付けを削除
-              await prisma.article.update({
-                where: { id: article.id },
-                data: {
-                  tags: {
-                    set: []
-                  }
-                }
-              });
-
-              // 新しいタグを関連付け
-              for (const tagName of result.tags) {
-                const tag = await prisma.tag.upsert({
-                  where: { name: tagName },
-                  update: {},
-                  create: { name: tagName }
-                });
-                
-                await prisma.article.update({
+              await prisma.$transaction(async (tx) => {
+                const tags = await resolveTags(
+                  result.tags.map((name) => ({ name })),
+                  tx
+                );
+                await tx.article.update({
                   where: { id: article.id },
                   data: {
-                    tags: { connect: { id: tag.id } }
+                    tags: { set: tags.map((tag) => ({ id: tag.id })) }
                   }
                 });
-              }
+              });
             }
           }
 

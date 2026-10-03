@@ -56,7 +56,7 @@ describe('resolveTags (integration, #672)', () => {
 
     await expect(
       prisma.tag.create({ data: { id: `${P}-b`, name: `${P}LLaMA` } })
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ code: 'P2002' });
     expect(await tagsWithKey(`${P}llama`)).toEqual([
       { id: `${P}-a`, name: `${P}Llama` },
     ]);
@@ -79,8 +79,16 @@ describe('resolveTags (integration, #672)', () => {
     });
     await createdSignal;
     const second = resolveTags([{ name: `${P}ZIG` }]);
-    // 2 本目がインデックスの待ちに入るまでの時間を置いてから 1 本目をコミットする
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // 2 本目がインデックスのロック待ちに入ったのを見てから 1 本目をコミットする
+    // （インデックスが無ければ待ちに入らないので、上限まで待ってから進む）
+    for (let i = 0; i < 50; i++) {
+      const [{ waiting }] = await prisma.$queryRaw<{ waiting: number }[]>`
+        SELECT count(*)::int AS waiting FROM pg_stat_activity
+        WHERE datname = current_database() AND wait_event_type = 'Lock'
+      `;
+      if (waiting > 0) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
     release();
 
     const [a, [b]] = await Promise.all([first, second]);
