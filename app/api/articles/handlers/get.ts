@@ -46,6 +46,9 @@ import {
 } from '../lib/where-clause-predicates';
 import { executePersonalizedQuery } from './personalized-query';
 
+/** パーソナライズの期間（periodMonths）の上限（100 年） */
+const MAX_PERIOD_MONTHS = 1200;
+
 // Initialize Layered cache system for articles
 const cache = new LayeredCache();
 
@@ -118,9 +121,11 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
     : [];
   const periodMonthsParam = searchParams.get('periodMonths');
   const parsedPeriodMonths = Number.parseInt(periodMonthsParam ?? '0', 10);
+  // 上限は 100 年。期間の下限の日時が PostgreSQL の扱える範囲を外れると、推薦から
+  // 切り替えた通常検索が 500 になるため（画面の選択肢は 0・3・6・12 か月）
   const periodMonths =
     Number.isFinite(parsedPeriodMonths) && parsedPeriodMonths >= 0
-      ? parsedPeriodMonths
+      ? Math.min(parsedPeriodMonths, MAX_PERIOD_MONTHS)
       : 0;
 
   // Normalize search keywords for consistent cache key（searchCacheKey の説明を参照）。

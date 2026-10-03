@@ -203,6 +203,26 @@ describe('/api/articles - パーソナライズ経路', () => {
     });
   });
 
+  it('periodMonths は 1200（100 年）までに切り詰め、期間の下限を DB の扱える日時にする', async () => {
+    mockFilterArticles.mockResolvedValue(fallbackResult);
+    prismaMock.article.count.mockResolvedValue(0);
+    prismaMock.article.findMany.mockResolvedValue([]);
+
+    const before = Date.now();
+    const response = await get('categoryIds=cat-1&periodMonths=900000');
+
+    expect(response.status).toBe(200);
+    expect(mockFilterArticles).toHaveBeenCalledWith(
+      expect.objectContaining({ periodMonths: 1200 })
+    );
+    const gte: Date =
+      prismaMock.article.findMany.mock.calls[0][0].where.AND[1].publishedAt.gte;
+    expect(before - gte.getTime()).toBeGreaterThanOrEqual(
+      36000 * DAY_MS - 1000
+    );
+    expect(before - gte.getTime()).toBeLessThanOrEqual(36000 * DAY_MS + 1000);
+  });
+
   it('推薦が例外で失敗しても、期間なし（periodMonths=0）なら件数キャッシュを使う通常検索になる', async () => {
     mockFilterArticles.mockRejectedValue(new Error('boom'));
     prismaMock.article.count.mockResolvedValue(1);
