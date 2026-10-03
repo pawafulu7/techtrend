@@ -35,14 +35,18 @@ async function collectHandler(request: NextRequest) {
     >);
   } catch (error) {
     logger.error(
-      { path: request.nextUrl.pathname, method: request.method, error },
+      { path: request.nextUrl.pathname, method: request.method, err: error },
       'Failed to collect feeds'
     );
     return NextResponse.json(
       {
         success: false,
         error: 'Failed to collect feeds',
-        details: error instanceof Error ? error.message : undefined,
+        // 例外の文言は本番では返さない（issue #687）。原因は上のログで追う
+        details:
+          process.env.NODE_ENV !== 'production' && error instanceof Error
+            ? error.message
+            : undefined,
       } as ApiResponse<never>,
       { status: 500 }
     );

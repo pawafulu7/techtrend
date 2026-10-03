@@ -478,15 +478,13 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
-    logger.error({ error }, 'Error fetching lightweight articles');
+    logger.error({ err: error }, 'Error fetching lightweight articles');
 
-    const dbError =
-      error instanceof Error
-        ? new DatabaseError(
-            `Failed to fetch lightweight articles: ${error.message}`,
-            'select'
-          )
-        : new DatabaseError('Failed to fetch lightweight articles', 'select');
+    // 元の例外の文言は応答に入れない（DB のエラー文が漏れるため。issue #687）。原因は上のログで追う
+    const dbError = new DatabaseError(
+      'Failed to fetch lightweight articles',
+      'select'
+    );
 
     const errorResponse = formatErrorResponse(dbError);
     return NextResponse.json(errorResponse, { status: dbError.statusCode });

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { proxy } from '../proxy';
+import { config, proxy } from '../proxy';
 
 describe('middleware - security headers', () => {
   const originalEnv = process.env.NODE_ENV;
@@ -471,6 +471,103 @@ describe('middleware - security headers', () => {
       expect(setCookie).toContain('tt_gate=');
       expect(setCookie).not.toContain('__Host-');
       expect(setCookie).not.toContain('Secure');
+    });
+  });
+
+  // issue #687: NUL バイトは PostgreSQL の text に入らず、DB に届くと 500 になる
+  describe('NUL バイト（%00）の拒否', () => {
+    it.each([
+      ['/api/articles?search=a%00b'],
+      ['/api/articles/list?tag=a%00b'],
+      ['/api/articles/abc%00def'],
+      ['/api/articles/abc%00.png'],
+    ])('API の %s は JSON の 400 と no-store を返す', async (path) => {
+      const response = await proxy(
+        new NextRequest(new URL(`http://localhost:3000${path}`))
+      );
+
+      expect(response.status).toBe(400);
+      expect(response.headers.get('Cache-Control')).toBe('no-store');
+      expect(response.headers.get('Content-Security-Policy')).toBeTruthy();
+      await expect(response.json()).resolves.toEqual({
+        success: false,
+        error: { code: 'INVALID_REQUEST', message: 'Invalid request' },
+      });
+    });
+
+    it('ページの %00 はテキストの 400 を返す', async () => {
+      const response = await proxy(
+        new NextRequest(new URL('http://localhost:3000/articles/abc%00'))
+      );
+
+      expect(response.status).toBe(400);
+      expect(response.headers.get('Cache-Control')).toBe('no-store');
+      await expect(response.text()).resolves.toBe('Bad Request');
+    });
+
+    it('CSRF の判定より前に拒否する（Origin の無い POST でも 403 ではなく 400）', async () => {
+      const response = await proxy(
+        new NextRequest(new URL('http://localhost:3000/api/comments?x=%00'), {
+          method: 'POST',
+        })
+      );
+
+      expect(response.status).toBe(400);
+    });
+
+    it('%2500（"%00" という文字列）は NUL ではないので通す', async () => {
+      const response = await proxy(
+        new NextRequest(
+          new URL('http://localhost:3000/api/articles?search=%2500')
+        )
+      );
+
+      expect(response.status).not.toBe(400);
+    });
+
+    it('ゲートを通っていないリクエストは、NUL を含んでもゲートの 401 を返す', async () => {
+      process.env.BASIC_AUTH_ENABLED = 'true';
+      process.env.BASIC_AUTH_USER = 'user';
+      process.env.BASIC_AUTH_PASS = 'secret';
+      process.env.BASIC_AUTH_GATE_SECRET = 'f'.repeat(64);
+
+      const response = await proxy(
+        new NextRequest(
+          new URL('http://localhost:3000/api/articles?search=a%00b')
+        )
+      );
+
+      expect(response.status).toBe(401);
+    });
+  });
+
+  // issue #687: /api/ は拡張子の除外から外し、拡張子付きのパスでも proxy を通す
+  describe('matcher', () => {
+    // Next の matcher の扱い（path-to-regexp を通し、末尾に .json・.rsc などを足す）の近似。
+    // 実際の Next での挙動は開発サーバーへの curl で確かめた（issue #687 の実装レポート）
+    const matcher = new RegExp(`^${config.matcher[0]}$`);
+
+    it.each([
+      ['/api/articles/abc.png'],
+      ['/api/articles/abc%00.png'],
+      ['/api/articles'],
+      ['/articles/abc'],
+      ['/'],
+    ])('%s は proxy を通る', (path) => {
+      expect(matcher.test(path)).toBe(true);
+    });
+
+    it.each([
+      ['/foo.png'],
+      // ページは拡張子付きなら今までどおり除外する（/api/ だけを外した）
+      ['/articles/abc.png'],
+      ['/images/logo.svg'],
+      ['/fonts/a.woff2'],
+      ['/_next/static/chunks/main.js'],
+      ['/_next/image'],
+      ['/favicon.ico'],
+    ])('%s は proxy を通らない（静的ファイル）', (path) => {
+      expect(matcher.test(path)).toBe(false);
     });
   });
 });

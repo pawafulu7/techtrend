@@ -59,12 +59,7 @@ function isMaintenanceExempt(pathname: string): boolean {
 }
 
 // 認証が必要なパスのリスト
-const protectedPaths = [
-  '/profile',
-  '/favorites',
-  '/history',
-  '/digest',
-];
+const protectedPaths = ['/profile', '/favorites', '/history', '/digest'];
 
 // 認証が必要なAPIパス
 const protectedApiPaths = [
@@ -148,7 +143,7 @@ export async function proxy(request: NextRequest) {
       const vary = new Set(
         (response.headers.get('Vary') ?? '')
           .split(',')
-          .map(value => value.trim())
+          .map((value) => value.trim())
           .filter(Boolean)
       );
       vary.add('Cookie');
@@ -159,6 +154,27 @@ export async function proxy(request: NextRequest) {
     setSecurityHeaders(response, request);
     return response;
   };
+
+  // NUL バイト（%00）を含むリクエストは 400 にする（issue #687）。
+  // PostgreSQL の text は NUL を受け付けず、クエリやパスの値が DB に届くと 500 になる。
+  // Next は proxy に渡す URL のクエリを URLSearchParams で組み直す（skipProxyUrlNormalize が
+  // 無効のとき。有効でも生の URL がそのまま届くので同じ）。NUL は %00 として届き、
+  // %2500（"%00" という文字列）は %2500 のまま届く。正当な URL に %00 は現れない。
+  // ログは出さない（クエリは検索語などの利用者の入力のため）。
+  if (request.url.includes('%00')) {
+    const badRequest = pathname.startsWith('/api/')
+      ? NextResponse.json(
+          {
+            success: false,
+            error: { code: 'INVALID_REQUEST', message: 'Invalid request' },
+          },
+          { status: 400 }
+        )
+      : new NextResponse('Bad Request', { status: 400 });
+    // ゲートが無効なときは finalize が Cache-Control を付けないので、ここで付ける
+    badRequest.headers.set('Cache-Control', 'no-store');
+    return finalize(badRequest);
+  }
 
   // CSRF Protection for API routes
   if (pathname.startsWith('/api/')) {
@@ -181,9 +197,8 @@ export async function proxy(request: NextRequest) {
   ) {
     const respondMaintenance = async () => {
       try {
-        const { createMaintenanceResponse } = await import(
-          '@/lib/maintenance/maintenance-response'
-        );
+        const { createMaintenanceResponse } =
+          await import('@/lib/maintenance/maintenance-response');
         // セキュリティヘッダは呼び出し元の finalize が一括で適用する
         return createMaintenanceResponse();
       } catch {
@@ -229,11 +244,11 @@ export async function proxy(request: NextRequest) {
   }
 
   // 保護されたパスかチェック
-  const isProtectedPath = protectedPaths.some(path => 
+  const isProtectedPath = protectedPaths.some((path) =>
     pathname.startsWith(path)
   );
-  
-  const isProtectedApiPath = protectedApiPaths.some(path => 
+
+  const isProtectedApiPath = protectedApiPaths.some((path) =>
     pathname.startsWith(path)
   );
 
@@ -270,7 +285,9 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all routes except static files, fonts, and Next.js internals
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)',
+    // Match all routes except static files, fonts, and Next.js internals.
+    // /api/ は拡張子の除外から外す。外さないと /api/articles/abc.png のような動的 route の
+    // パスが proxy（ゲート・CSRF・NUL の拒否・セキュリティヘッダ）を通らない（issue #687）
+    '/((?!_next/static|_next/image|favicon.ico|(?!api/).*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)',
   ],
 };

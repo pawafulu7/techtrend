@@ -444,13 +444,8 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
     });
   } catch (error) {
     logger.error({ err: error }, 'Error fetching articles');
-    const dbError =
-      error instanceof Error
-        ? new DatabaseError(
-            `Failed to fetch articles: ${error.message}`,
-            'select'
-          )
-        : new DatabaseError('Failed to fetch articles', 'select');
+    // 元の例外の文言は応答に入れない（DB のエラー文が漏れるため。issue #687）。原因は上のログで追う
+    const dbError = new DatabaseError('Failed to fetch articles', 'select');
 
     const errorResponse = formatErrorResponse(dbError);
     return NextResponse.json(errorResponse, { status: dbError.statusCode });

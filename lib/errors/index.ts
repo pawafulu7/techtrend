@@ -23,7 +23,7 @@ export class AppError extends Error {
 
     // Errorクラスを継承する際の対応
     Object.setPrototypeOf(this, AppError.prototype);
-    
+
     // スタックトレースからコンストラクタを除外
     Error.captureStackTrace(this, this.constructor);
   }
@@ -36,11 +36,15 @@ export class ValidationError extends AppError {
   public readonly field?: string;
   public readonly details?: Record<string, unknown>;
 
-  constructor(message: string, field?: string, details?: Record<string, unknown>) {
+  constructor(
+    message: string,
+    field?: string,
+    details?: Record<string, unknown>
+  ) {
     super(message, 'VALIDATION_ERROR', 400);
     this.field = field;
     this.details = details;
-    
+
     // Errorクラスを継承する際の対応
     Object.setPrototypeOf(this, ValidationError.prototype);
   }
@@ -73,7 +77,7 @@ export class NotFoundError extends AppError {
   public readonly resource: string;
 
   constructor(resource: string, id?: string) {
-    const message = id 
+    const message = id
       ? `${resource} with id '${id}' not found`
       : `${resource} not found`;
     super(message, 'NOT_FOUND', 404);
@@ -183,6 +187,17 @@ export interface ErrorResponse {
  */
 export function formatErrorResponse(error: Error | AppError): ErrorResponse {
   if (isAppError(error)) {
+    // 5xx の文言は内部の失敗の説明（DB・上流 API のエラー文を含みうる）なので、本番では返さない
+    // （issue #687）。4xx の文言はクライアント向けに書かれているのでそのまま返す
+    if (error.statusCode >= 500 && process.env.NODE_ENV === 'production') {
+      return {
+        success: false,
+        error: {
+          code: error.code,
+          message: 'An unexpected error occurred',
+        },
+      };
+    }
     return {
       success: false,
       error: {
@@ -199,9 +214,10 @@ export function formatErrorResponse(error: Error | AppError): ErrorResponse {
     success: false,
     error: {
       code: 'INTERNAL_ERROR',
-      message: process.env.NODE_ENV === 'production' 
-        ? 'An unexpected error occurred' 
-        : error.message,
+      message:
+        process.env.NODE_ENV === 'production'
+          ? 'An unexpected error occurred'
+          : error.message,
     },
   };
 }

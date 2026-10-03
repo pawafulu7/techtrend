@@ -375,6 +375,24 @@ describe('/api/articles', () => {
       expect(data.error).toBeDefined();
     });
 
+    // issue #687: DB のエラー文（NUL バイトの 22021 や Prisma の呼び出し情報）を応答に入れない
+    it('DB のエラー文を応答に含めない', async () => {
+      prismaMock.article.findMany.mockRejectedValue(
+        new Error('Invalid `prisma.$queryRaw()` invocation: Raw query failed. Code: `22021`')
+      );
+
+      const request = createMockNextRequest('http://localhost:3000/api/articles');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.error).toEqual({
+        code: 'DATABASE_ERROR',
+        message: 'Failed to fetch articles',
+      });
+      expect(JSON.stringify(data)).not.toContain('22021');
+    });
+
     it('validates limit parameter', async () => {
       prismaMock.article.findMany.mockResolvedValue([]);
       prismaMock.article.count.mockResolvedValue(0);
