@@ -26,6 +26,7 @@ import {
   getDateFieldForSort,
 } from '@/app/lib/date-utils';
 import logger from '@/lib/logger';
+import { escapeLikePattern } from '@/lib/utils/like-pattern';
 import { findTagIdGroupsByNames } from '@/lib/services/tag-service';
 import {
   MAX_TAG_FILTER_COUNT,
@@ -271,12 +272,16 @@ export function pushSearchFilter(
 
   if (keywords.length === 0) return;
 
-  const keywordConditions: ArticleWhereInput[] = keywords.map((keyword) => ({
-    OR: [
-      { title: { contains: keyword, mode: 'insensitive' as const } },
-      { summary: { contains: keyword, mode: 'insensitive' as const } },
-    ],
-  }));
+  // contains は ILIKE になるので、_ や % がワイルドカードにならないようにエスケープする
+  const keywordConditions: ArticleWhereInput[] = keywords.map((keyword) => {
+    const pattern = escapeLikePattern(keyword);
+    return {
+      OR: [
+        { title: { contains: pattern, mode: 'insensitive' as const } },
+        { summary: { contains: pattern, mode: 'insensitive' as const } },
+      ],
+    };
+  });
 
   andConditions.push(...keywordConditions);
 }

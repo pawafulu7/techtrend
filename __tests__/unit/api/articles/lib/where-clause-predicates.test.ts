@@ -16,6 +16,7 @@ import {
   MAX_TAG_FILTER_COUNT,
   MAX_TAG_NAME_LENGTH,
   parseTagList,
+  pushSearchFilter,
   pushTagFilter,
   resolveTagIdGroups,
   validateTagFilter,
@@ -139,5 +140,58 @@ describe('validateTagFilter', () => {
   it('rejects a tags string that is too long before splitting', () => {
     const commas = ','.repeat(MAX_TAG_FILTER_COUNT * (MAX_TAG_NAME_LENGTH + 1) + 1);
     expect(validateTagFilter(null, commas)).toMatch(/^tags must be at most \d+ characters$/);
+  });
+});
+
+describe('pushSearchFilter', () => {
+  function apply(search: string | null | undefined) {
+    const andConditions: Prisma.ArticleWhereInput[] = [];
+    pushSearchFilter(andConditions, search);
+    return andConditions;
+  }
+
+  it('adds one condition per keyword on title and summary', () => {
+    expect(apply('React  Hooks')).toEqual([
+      {
+        OR: [
+          { title: { contains: 'React', mode: 'insensitive' } },
+          { summary: { contains: 'React', mode: 'insensitive' } },
+        ],
+      },
+      {
+        OR: [
+          { title: { contains: 'Hooks', mode: 'insensitive' } },
+          { summary: { contains: 'Hooks', mode: 'insensitive' } },
+        ],
+      },
+    ]);
+  });
+
+  it('escapes LIKE wildcards so that _ and % match literally (#684)', () => {
+    expect(apply('100% a_b C:\\')).toEqual([
+      {
+        OR: [
+          { title: { contains: '100\\%', mode: 'insensitive' } },
+          { summary: { contains: '100\\%', mode: 'insensitive' } },
+        ],
+      },
+      {
+        OR: [
+          { title: { contains: 'a\\_b', mode: 'insensitive' } },
+          { summary: { contains: 'a\\_b', mode: 'insensitive' } },
+        ],
+      },
+      {
+        OR: [
+          { title: { contains: 'C:\\\\', mode: 'insensitive' } },
+          { summary: { contains: 'C:\\\\', mode: 'insensitive' } },
+        ],
+      },
+    ]);
+  });
+
+  it('adds nothing for empty or blank search', () => {
+    expect(apply(undefined)).toEqual([]);
+    expect(apply('   ')).toEqual([]);
   });
 });

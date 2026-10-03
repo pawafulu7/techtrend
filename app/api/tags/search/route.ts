@@ -1,7 +1,8 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
+import { escapeLikePattern } from '@/lib/utils/like-pattern';
 
 async function handler(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ async function handler(request: NextRequest) {
         take: 50,
       });
 
-      return Response.json(
+      return NextResponse.json(
         tags.map((tag) => ({
           id: tag.id,
           name: tag.name,
@@ -31,7 +32,13 @@ async function handler(request: NextRequest) {
     const tags = await prisma.tag.findMany({
       where: {
         AND: [
-          { name: { contains: query, mode: 'insensitive' } }, // PostgreSQLでILIKE演算子を使用
+          // ILIKE になるので、_ や % が検索語に入ってもワイルドカードにならないようにエスケープする
+          {
+            name: {
+              contains: escapeLikePattern(query),
+              mode: 'insensitive',
+            },
+          },
           { articles: { some: {} } }, // 記事があるタグのみ
         ],
       },
@@ -47,10 +54,13 @@ async function handler(request: NextRequest) {
       category: tag.category,
     }));
 
-    return Response.json(result);
+    return NextResponse.json(result);
   } catch (error) {
     logger.error({ error }, 'Tags search failed');
-    return Response.json({ error: 'Failed to search tags' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to search tags' },
+      { status: 500 }
+    );
   }
 }
 

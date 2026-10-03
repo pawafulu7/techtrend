@@ -17,6 +17,7 @@ import {
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 import logger from '@/lib/logger';
+import { escapeLikePattern } from '@/lib/utils/like-pattern';
 
 // =============================================================================
 // Types
@@ -88,7 +89,8 @@ async function putHandler(request: NextRequest, context: RouteContext) {
       const duplicate = await prisma.userSourcePreset.findFirst({
         where: {
           userId,
-          name: { equals: name, mode: 'insensitive' },
+          // equals + insensitive は ILIKE になるので、_ や % を文字どおりに比べるためにエスケープする
+          name: { equals: escapeLikePattern(name), mode: 'insensitive' },
           id: { not: presetId },
         },
       });

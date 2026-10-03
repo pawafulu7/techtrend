@@ -13,6 +13,7 @@ import {
 } from '@/lib/prisma-exports';
 import { findTagIdsByNames } from '@/lib/services/tag-service';
 import type { OpinionForPrompt } from './types';
+import { escapeLikePattern } from '@/lib/utils/like-pattern';
 import {
   type ArticleCandidatesSearchInput,
   ARTICLE_CATEGORIES,
@@ -317,15 +318,17 @@ export class SocialPostSelector {
     // キーワードフィルター（タイトル・翻訳タイトル・要約・詳細要約を検索）
     let where: object = baseConditions;
     if (keyword) {
+      // contains は ILIKE になるので、_ や % がワイルドカードにならないようにエスケープする
+      const pattern = escapeLikePattern(keyword);
       where = {
         AND: [
           baseConditions,
           {
             OR: [
-              { title: { contains: keyword, mode: 'insensitive' } },
-              { translatedTitle: { contains: keyword, mode: 'insensitive' } },
-              { summary: { contains: keyword, mode: 'insensitive' } },
-              { detailedSummary: { contains: keyword, mode: 'insensitive' } },
+              { title: { contains: pattern, mode: 'insensitive' } },
+              { translatedTitle: { contains: pattern, mode: 'insensitive' } },
+              { summary: { contains: pattern, mode: 'insensitive' } },
+              { detailedSummary: { contains: pattern, mode: 'insensitive' } },
             ],
           },
         ],

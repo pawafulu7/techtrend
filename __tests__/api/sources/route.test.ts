@@ -236,6 +236,36 @@ describe('/api/sources', () => {
       );
     });
 
+    it('IDs 指定時の検索語は LIKE のワイルドカードをエスケープして渡す（#684）', async () => {
+      prismaMock.source.findMany.mockResolvedValue([]);
+
+      const request = new NextRequest(
+        new URL('http://localhost/api/sources?ids=qiita&search=a_b%25')
+      );
+      const response = await GET(request);
+
+      expect(response.status).toBe(200);
+      expect(prismaMock.source.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            name: { contains: 'a\\_b\\%', mode: 'insensitive' },
+          }),
+        })
+      );
+    });
+
+    it('キャッシュ経由の検索は _ を文字どおりに照合する（エスケープ済みの値を渡さない）', async () => {
+      const request = new NextRequest(
+        new URL('http://localhost/api/sources?search=_')
+      );
+      const response = await GET(request);
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      // ソース名に _ を含むものはない
+      expect(data.sources).toHaveLength(0);
+    });
+
     it('複数のフィルタを組み合わせる', async () => {
       const request = new NextRequest(new URL('http://localhost/api/sources?category=tech_blog&search=qi&sortBy=name&order=asc'));
       const response = await GET(request);

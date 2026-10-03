@@ -3,6 +3,7 @@ import { Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import { createDateRange } from '@/lib/types/prisma-helpers';
 import logger from '@/lib/logger';
+import { escapeLikePattern } from '@/lib/utils/like-pattern';
 import { findTagIdsByNames } from '@/lib/services/tag-service';
 
 export async function GET(request: NextRequest) {
@@ -64,16 +65,21 @@ export async function GET(request: NextRequest) {
         }
       });
 
+      // 1 語がタイトル/翻訳タイトル/要約のいずれかに含まれる条件。
+      // contains は ILIKE になるので、_ や % がワイルドカードにならないようにエスケープする
+      const matchTerm = (term: string): Prisma.ArticleWhereInput[] => {
+        const pattern = escapeLikePattern(term);
+        return [
+          { title: { contains: pattern, mode: 'insensitive' } },
+          { translatedTitle: { contains: pattern, mode: 'insensitive' } },
+          { summary: { contains: pattern, mode: 'insensitive' } },
+        ];
+      };
+
       // 各検索語はAND（全てを含む）、各語はタイトル/翻訳タイトル/要約のいずれかにマッチ
       if (includeTerms.length > 0) {
         const termConditions = includeTerms.map((term) => ({
-          OR: [
-            { title: { contains: term, mode: 'insensitive' as const } },
-            {
-              translatedTitle: { contains: term, mode: 'insensitive' as const },
-            },
-            { summary: { contains: term, mode: 'insensitive' as const } },
-          ],
+          OR: matchTerm(term),
         }));
         whereConditions.AND = [
           ...(Array.isArray(whereConditions.AND) ? whereConditions.AND : []),
@@ -85,18 +91,7 @@ export async function GET(request: NextRequest) {
         if (!Array.isArray(whereConditions.AND)) whereConditions.AND = [];
         for (const term of excludeTerms) {
           (whereConditions.AND as Prisma.ArticleWhereInput[]).push({
-            NOT: {
-              OR: [
-                { title: { contains: term, mode: 'insensitive' as const } },
-                {
-                  translatedTitle: {
-                    contains: term,
-                    mode: 'insensitive' as const,
-                  },
-                },
-                { summary: { contains: term, mode: 'insensitive' as const } },
-              ],
-            },
+            NOT: { OR: matchTerm(term) },
           });
         }
       }

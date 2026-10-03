@@ -109,6 +109,34 @@ describe('GET /api/articles/search/advanced', () => {
     expect(where.tags).toEqual({ some: { id: { in: [] } } });
   });
 
+  it('含む語・除く語の LIKE のワイルドカードをエスケープする（#684）', async () => {
+    await GET(request('?q=a_b%20-100%25'));
+
+    const where = prismaMock.article.findMany.mock.calls[0][0].where;
+    expect(where.AND).toEqual(
+      expect.arrayContaining([
+        {
+          OR: [
+            { title: { contains: 'a\\_b', mode: 'insensitive' } },
+            { translatedTitle: { contains: 'a\\_b', mode: 'insensitive' } },
+            { summary: { contains: 'a\\_b', mode: 'insensitive' } },
+          ],
+        },
+        {
+          NOT: {
+            OR: [
+              { title: { contains: '100\\%', mode: 'insensitive' } },
+              {
+                translatedTitle: { contains: '100\\%', mode: 'insensitive' },
+              },
+              { summary: { contains: '100\\%', mode: 'insensitive' } },
+            ],
+          },
+        },
+      ])
+    );
+  });
+
   it('facets.difficulty はレスポンスの形を保つため空配列で返す', async () => {
     const res = await GET(request('?difficulty=advanced'));
     const body = await res.json();
