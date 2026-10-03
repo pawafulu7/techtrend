@@ -2,6 +2,13 @@ import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@/lib/prisma-exports';
 
 /**
+ * タグの統合のトランザクションの待ち時間と制限時間。
+ * Prisma の既定（maxWait 2 秒、timeout 5 秒）では、記事数の多いタグの統合や、
+ * FOR UPDATE でのロック待ちで時間切れになり、統合が毎回取り消されるため。
+ */
+const MERGE_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 120_000 };
+
+/**
  * fromTag の記事と TagCategoryMapping を toTag へ移し、fromTag を消す。
  * @returns 移した記事の件数（toTag に既に付いていた記事は数えない）
  */
@@ -149,7 +156,7 @@ async function cleanTags() {
           }
 
           return { renamed, merged: group.length - 1, mergedArticles };
-        });
+        }, MERGE_TRANSACTION_OPTIONS);
 
         if (result && (result.renamed || result.merged > 0)) {
           console.error(

@@ -135,6 +135,19 @@ describe('TagService', () => {
       expect(tags.map((t) => t.name)).toEqual(['zod', 'Rust', 'Astro']);
     });
 
+    it('takes the category of a differently-cased input, keeping the first spelling', async () => {
+      prismaMock.$queryRaw
+        .mockResolvedValueOnce([missing(1, 'Go')])
+        .mockResolvedValueOnce([found(1, 'Go')]);
+
+      await resolveTags([{ name: 'Go' }, { name: 'GO', category: 'language' }]);
+
+      expect(prismaMock.tag.createMany).toHaveBeenCalledWith({
+        data: [{ name: 'Go', category: 'language' }],
+        skipDuplicates: true,
+      });
+    });
+
     it('returns the row created concurrently under another spelling', async () => {
       prismaMock.$queryRaw
         .mockResolvedValueOnce([missing(1, 'Mcp')])

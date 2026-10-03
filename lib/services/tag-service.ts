@@ -99,12 +99,18 @@ export async function resolveTags(
   client: TagClient = prisma,
   options: ResolveTagsOptions = {}
 ): Promise<Tag[]> {
-  const categoryByName = new Map<string, string | undefined>();
+  // 新しく作るタグの category は、大文字小文字だけが違う入力も含めて、最初に
+  // category が付いていた入力から取る（表記は最初の入力のものを使う）。キーは照合では
+  // なく category の補完にしか使わないので、JS の toLowerCase() の近似で足りる
+  const categoryByKey = new Map<string, string>();
   const names: string[] = [];
   for (const tag of tags) {
     const name = tag.name?.trim();
     if (!name) continue;
-    if (!categoryByName.has(name)) categoryByName.set(name, tag.category);
+    const key = name.toLowerCase();
+    if (tag.category && !categoryByKey.has(key)) {
+      categoryByKey.set(key, tag.category);
+    }
     names.push(name);
   }
   if (names.length === 0) return [];
@@ -118,7 +124,7 @@ export async function resolveTags(
     const data = missing
       .map((row) => ({
         name: row.input,
-        category: categoryByName.get(row.input) ?? null,
+        category: categoryByKey.get(row.input.toLowerCase()) ?? null,
       }))
       .sort((a, b) => compareKey(a.name, b.name));
     await client.tag.createMany({ data, skipDuplicates: true });

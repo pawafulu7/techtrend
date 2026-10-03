@@ -83,6 +83,16 @@ describe('resolveTags (integration, #672)', () => {
     expect(tag.category).toBe('language');
   });
 
+  it('takes the category of a differently-cased input for a new tag', async () => {
+    const [tag] = await resolveTags([
+      { name: `${P}Swift` },
+      { name: `${P}SWIFT`, category: 'language' },
+    ]);
+
+    expect(tag.name).toBe(`${P}Swift`);
+    expect(tag.category).toBe('language');
+  });
+
   it('findTagIdsByNames matches by lower(name) and treats _ and % literally', async () => {
     await prisma.tag.createMany({
       data: [
