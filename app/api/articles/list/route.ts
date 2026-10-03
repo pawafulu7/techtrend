@@ -60,10 +60,11 @@ export async function GET(request: NextRequest) {
     const finalSortBy = (LIST_SORT_FIELDS as readonly string[]).includes(sortBy)
       ? (sortBy as (typeof LIST_SORT_FIELDS)[number])
       : ('publishedAt' as const);
-    const rawSortOrder = searchParams.get('sortOrder') || 'desc';
-    const sortOrder: 'asc' | 'desc' = ['asc', 'desc'].includes(rawSortOrder)
-      ? (rawSortOrder as 'asc' | 'desc')
-      : 'desc';
+    // 大文字小文字を区別しない（/api/articles と同じ解釈。ASC を降順にしないため）
+    const rawSortOrder = (
+      searchParams.get('sortOrder') || 'desc'
+    ).toLowerCase();
+    const sortOrder: 'asc' | 'desc' = rawSortOrder === 'asc' ? 'asc' : 'desc';
 
     // Determine pagination mode
     let useCursor = !!(cursor || after || before);
@@ -74,7 +75,12 @@ export async function GET(request: NextRequest) {
     const sourceId = searchParams.get('sourceId');
     const tag = searchParams.get('tag');
     const tags = searchParams.get('tags');
-    const tagMode = searchParams.get('tagMode') || 'OR';
+    // 大文字小文字を区別せず、AND 以外は OR にそろえる（/api/articles と同じ解釈。
+    // 任意の値ごとに別のキャッシュキーができるのも防ぐ）
+    const tagMode =
+      (searchParams.get('tagMode') || 'OR').toUpperCase() === 'AND'
+        ? 'AND'
+        : 'OR';
     const search = searchParams.get('search');
     const dateRange = searchParams.get('dateRange');
     const dateFrom = searchParams.get('dateFrom');

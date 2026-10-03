@@ -22,6 +22,13 @@ jest.mock('@/lib/auth/get-session', () => ({
   getSession: jest.fn().mockResolvedValue(null),
 }));
 
+// タグ名をそのまま 1 件の ID に解決する（tagMode の解釈だけを確かめるため）
+jest.mock('@/lib/services/tag-service', () => ({
+  findTagIdGroupsByNames: jest.fn((names: string[]) =>
+    Promise.resolve(names.map((name) => [`id-${name}`]))
+  ),
+}));
+
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/articles/list/route';
 import { prisma } from '@/lib/prisma';
@@ -258,6 +265,69 @@ describe('/api/articles/list', () => {
       })
     );
   });
+
+  it('treats sortOrder case-insensitively (#684)', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/articles/list?sortOrder=ASC')
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [{ publishedAt: 'asc' }, { id: 'asc' }],
+      })
+    );
+  });
+
+  it.each(['AND', 'and', 'And'])(
+    'treats tagMode=%s as AND (#684)',
+    async (tagMode) => {
+      mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+      mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+
+      const response = await GET(
+        new NextRequest(
+          `http://localhost:3000/api/articles/list?tags=AI,LLM&tagMode=${tagMode}`
+        )
+      );
+
+      expect(response.status).toBe(200);
+      const { where } = (mockPrisma.article.findMany as jest.Mock).mock
+        .calls[0][0];
+      // AND は組ごとに条件を足し、tags の OR 条件は付けない
+      expect(where.tags).toBeUndefined();
+      expect(where.AND).toEqual(
+        expect.arrayContaining([
+          { tags: { some: { id: { in: ['id-AI'] } } } },
+          { tags: { some: { id: { in: ['id-LLM'] } } } },
+        ])
+      );
+    }
+  );
+
+  it.each(['OR', 'or', 'xyz'])(
+    'treats tagMode=%s as OR (#684)',
+    async (tagMode) => {
+      mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+      mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+
+      const response = await GET(
+        new NextRequest(
+          `http://localhost:3000/api/articles/list?tags=AI,LLM&tagMode=${tagMode}`
+        )
+      );
+
+      expect(response.status).toBe(200);
+      const { where } = (mockPrisma.article.findMany as jest.Mock).mock
+        .calls[0][0];
+      expect(where.tags).toEqual({
+        some: { id: { in: ['id-AI', 'id-LLM'] } },
+      });
+    }
+  );
 
   it('should handle articles from specific sources correctly', async () => {
     // Arrange - Speaker Deckの記事をテスト
