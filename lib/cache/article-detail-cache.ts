@@ -1,6 +1,7 @@
 import { RedisCache } from './redis-cache';
 import { CACHE_TTL } from './constants';
 import { prisma } from '@/lib/prisma';
+import { enabledSourceSql } from '@/lib/database/enabled-source-filter';
 import type { Prisma } from '@/lib/prisma-exports';
 import { revalidatePath } from 'next/cache';
 
@@ -173,6 +174,7 @@ export class ArticleDetailCache {
         WHERE at."B" = ANY(${tagIds}::text[])
           AND a.id != ${articleId}
           AND a."isHidden" = false
+          AND ${enabledSourceSql()}
           AND a."qualityScore" >= 30
         GROUP BY a.id, a.title, a."translatedTitle", a.summary, a.url, a."publishedAt", a."sourceId", s.name, a."qualityScore", a.difficulty
         HAVING COUNT(DISTINCT at."B") > 0

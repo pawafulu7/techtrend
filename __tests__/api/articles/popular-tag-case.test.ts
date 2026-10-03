@@ -33,6 +33,16 @@ describe('GET /api/articles/popular (category = tag)', () => {
     prismaMock.article.findMany.mockResolvedValue([]);
   });
 
+  // issue #688: 無効化したソースの記事を除く
+  it('excludes articles from disabled sources', async () => {
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/articles/popular')
+    );
+
+    expect(response.status).toBe(200);
+    expect(whereOf().AND).toContainEqual({ source: { is: { enabled: true } } });
+  });
+
   it('filters by the IDs of all tags with the same key', async () => {
     // 統合前の重複（MCP と Mcp）があれば両方の ID を使う
     prismaMock.$queryRaw.mockResolvedValueOnce([{ id: 'tag-MCP' }, { id: 'tag-Mcp' }]);

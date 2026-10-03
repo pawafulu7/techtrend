@@ -165,8 +165,9 @@ describe('query-helpers', () => {
       const where = buildWhereClause(params);
 
       // "all" の場合はsourceIdフィルタを設定しない
-      // ただし source: { enabled: true } は設定される
+      // ただし無効化したソースを除く条件は AND に入る（issue #688）
       expect(where.sourceId).toBeUndefined();
+      expect(where.AND).toContainEqual({ source: { is: { enabled: true } } });
     });
 
     it('should not set sourceId filter when sources and sourceId are both null', () => {
@@ -188,11 +189,12 @@ describe('query-helpers', () => {
       expect(where.sourceId).toEqual({ in: ['id1', 'id2', 'id3'] });
     });
 
-    it('should always set source.enabled=true filter', () => {
+    it('should always exclude articles from disabled sources', () => {
       const params = makeDefaultParams();
       const where = buildWhereClause(params);
 
-      expect(where.source).toEqual({ enabled: true });
+      // ソースの指定（sourceId）とぶつからないよう AND に入れる（issue #688）
+      expect(where.AND).toContainEqual({ source: { is: { enabled: true } } });
     });
 
     it('does not filter by tag when no tag IDs are given', () => {

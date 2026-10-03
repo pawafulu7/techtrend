@@ -179,10 +179,11 @@ describe('executePersonalizedQuery', () => {
     expect(filterWhere).toMatchObject({
       isHidden: false,
       summaryComputedAt: { not: null },
-      source: { enabled: true },
       // タグに合う候補だけを推薦順で渡す
       id: { in: ['a1', 'a2', 'a3', 'a5'] },
     });
+    // 無効化したソースの記事を除く（issue #688）
+    expect(filterWhere.AND).toContainEqual({ source: { is: { enabled: true } } });
     // タグは記事の EXISTS ではなく結合テーブルの直接の問い合わせで絞る
     expect(filterWhere).not.toHaveProperty('tags');
     const [sql] = prismaMock.$queryRaw.mock.calls[0];

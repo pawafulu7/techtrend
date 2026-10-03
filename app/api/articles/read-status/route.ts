@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import {
+  enabledSourceSql,
+  enabledSourceWhere,
+} from '@/lib/database/enabled-source-filter';
 import { getRedisService } from '@/lib/redis/factory';
 import logger from '@/lib/logger';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
@@ -17,6 +21,17 @@ import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 import { digestService } from '@/lib/services/digest-service';
 
 // GET: 記事の既読状態を取得
+/**
+ * 未読数（GET）と一括既読（PUT）の対象の範囲。PUT は remainingUnreadCount: 0 を返すので、
+ * 両者は同じ範囲（過去 90 日・無効化したソースの記事を除く。issue #688）でなければならない。
+ * 無効の間に一括既読したソースを後で有効に戻すと、その記事は未読として出る（受け入れる）
+ */
+function unreadScopeStart(): Date {
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  return ninetyDaysAgo;
+}
+
 async function getHandler(
   req: NextRequest,
   context: WithUserValidationContext
@@ -27,12 +42,10 @@ async function getHandler(
     const { searchParams } = new URL(req.url);
     const articleIds = searchParams.get('articleIds')?.split(',') || [];
 
-    // 未読カウント条件（90日以内の記事のみ対象）
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-
+    // 未読カウント条件（unreadScopeStart の説明を参照）
     const unreadWhere = {
-      publishedAt: { gte: ninetyDaysAgo },
+      publishedAt: { gte: unreadScopeStart() },
+      AND: [enabledSourceWhere()],
       OR: [
         {
           articleViews: {
@@ -174,9 +187,8 @@ async function putHandler(
   try {
     // SQL直接実行による高速化
     // gen_random_uuid()はPostgreSQL 13以降で使用可能
-    // GETハンドラと同じ90日基準を使用（アプリ時間で統一）
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    // GETハンドラと同じ範囲を使用（unreadScopeStart の説明を参照。アプリ時間で統一）
+    const ninetyDaysAgo = unreadScopeStart();
 
     const result = await prisma.$executeRaw`
       INSERT INTO "ArticleView" ("id", "userId", "articleId", "isRead", "readAt", "viewedAt")
@@ -189,6 +201,7 @@ async function putHandler(
         NULL
       FROM "Article" a
       WHERE a."publishedAt" >= ${ninetyDaysAgo}
+        AND ${enabledSourceSql()}
         AND NOT EXISTS (
           SELECT 1 FROM "ArticleView" av
           WHERE av."userId" = ${validatedUser.id}

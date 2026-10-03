@@ -102,6 +102,10 @@ describe('/api/articles/read-status', () => {
           articleId: true,
         },
       });
+
+      // 未読数は無効化したソースの記事を除く（issue #688。PUT の一括既読と同じ範囲）
+      const unreadWhere = prismaMock.article.count.mock.calls[0][0].where;
+      expect(unreadWhere.AND).toContainEqual({ source: { is: { enabled: true } } });
     });
 
     it('特定の記事IDの既読状態を返す', async () => {
@@ -263,6 +267,17 @@ describe('/api/articles/read-status', () => {
 
       // SQL実行を確認
       expect(prismaMock.$executeRaw).toHaveBeenCalled();
+      // 無効化したソースの記事は既読にしない（issue #688。GET の未読数と同じ範囲）
+      const sqlFragments = prismaMock.$executeRaw.mock.calls[0]
+        .slice(1)
+        .filter(
+          (value: unknown): value is { sql: string } =>
+            typeof (value as { sql?: unknown } | null)?.sql === 'string'
+        )
+        .map((value: { sql: string }) => value.sql);
+      expect(sqlFragments).toContainEqual(
+        expect.stringContaining('IN (SELECT id FROM "Source" WHERE enabled = true)')
+      );
       
       // Redisキャッシュクリアの呼び出しを確認
       // モックではRedisサービスが存在し、clearPatternが呼ばれる

@@ -148,6 +148,25 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
     service = new VectorSearchService(mockPrisma, mockEmbeddingService as any);
   });
 
+  // issue #688: 無効化したソースの記事を除く。関連記事・関係グラフ・RAG 検索・エージェント検索が
+  // このクエリを通る
+  describe('Disabled sources', () => {
+    it('excludes articles from disabled sources', async () => {
+      await service.search('React hooks', { topK: 10, embeddingKey: 'summary' });
+
+      const sqlFragments = (capturedSQL as unknown[])
+        .slice(1)
+        .filter(
+          (value): value is { sql: string } =>
+            typeof (value as { sql?: unknown } | null)?.sql === 'string'
+        )
+        .map((value) => value.sql);
+      expect(sqlFragments).toContainEqual(
+        expect.stringContaining('a."sourceId" IN (SELECT id FROM "Source" WHERE enabled = true)')
+      );
+    });
+  });
+
   describe('Dynamic threshold selection', () => {
     it('should use dynamic threshold 0.5 for short query "CTO" when no explicit threshold provided', async () => {
       await service.search('CTO', {

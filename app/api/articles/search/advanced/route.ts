@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
+import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import { createDateRange } from '@/lib/types/prisma-helpers';
 import logger from '@/lib/logger';
 import { escapeLikePattern } from '@/lib/utils/like-pattern';
@@ -55,6 +56,9 @@ export async function GET(request: NextRequest) {
     // WHERE条件の構築
     const whereConditions: Prisma.ArticleWhereInput = {
       isHidden: false,
+      // 無効化したソースの記事を除く（issue #688）。ソースの指定は下で whereConditions.source に
+      // 入るので、ぶつからないよう AND の配列に入れる
+      AND: [enabledSourceWhere()],
     };
 
     // テキスト検索（iLIKE）
