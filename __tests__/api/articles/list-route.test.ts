@@ -109,6 +109,27 @@ describe('/api/articles/list', () => {
     expect(data.data.items[1].source.name).toBe('Docswell');
   });
 
+  // issue #687: DB のエラー文（NUL バイトの 22021 や Prisma の呼び出し情報）を応答に入れない
+  it('DB のエラー文を応答に含めない', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(1);
+    mockPrisma.article.findMany = jest
+      .fn()
+      .mockRejectedValue(
+        new Error('Invalid `prisma.$queryRaw()` invocation: Raw query failed. Code: `22021`')
+      );
+
+    const request = new NextRequest('http://localhost:3000/api/articles/list');
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toEqual({
+      code: 'DATABASE_ERROR',
+      message: 'Failed to fetch lightweight articles',
+    });
+    expect(JSON.stringify(data)).not.toContain('22021');
+  });
+
   it('should have correct source object structure', async () => {
     // Arrange
     mockPrisma.article.count = jest.fn().mockResolvedValue(1);
