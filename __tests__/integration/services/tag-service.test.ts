@@ -71,28 +71,35 @@ describe('resolveTags (integration, #672)', () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => (release = resolve));
 
-    const first = prisma.$transaction(async (tx) => {
-      const [tag] = await resolveTags([{ name: `${P}Zig` }], tx);
-      created();
-      await gate;
-      return tag;
-    });
+    // 待ちの上限（3 秒）より長い timeout にし、待っている間に 1 本目が切れないようにする
+    const first = prisma.$transaction(
+      async (tx) => {
+        const [tag] = await resolveTags([{ name: `${P}Zig` }], tx);
+        created();
+        await gate;
+        return tag;
+      },
+      { timeout: 10_000 }
+    );
     await createdSignal;
     const second = resolveTags([{ name: `${P}ZIG` }]);
     // 2 本目がインデックスのロック待ちに入ったのを見てから 1 本目をコミットする
     // （インデックスが無ければ待ちに入らないので、上限まで待ってから進む）
-    for (let i = 0; i < 50; i++) {
-      const [{ waiting }] = await prisma.$queryRaw<{ waiting: number }[]>`
-        SELECT count(*)::int AS waiting FROM pg_stat_activity
-        WHERE datname = current_database()
-          AND pid <> pg_backend_pid()
-          AND wait_event_type = 'Lock'
-          AND query LIKE 'INSERT INTO %"Tag"%'
-      `;
-      if (waiting > 0) break;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    try {
+      for (let i = 0; i < 30; i++) {
+        const [{ waiting }] = await prisma.$queryRaw<{ waiting: number }[]>`
+          SELECT count(*)::int AS waiting FROM pg_stat_activity
+          WHERE datname = current_database()
+            AND pid <> pg_backend_pid()
+            AND wait_event_type = 'Lock'
+            AND query LIKE 'INSERT INTO %"Tag"%'
+        `;
+        if (waiting > 0) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    } finally {
+      release();
     }
-    release();
 
     const [a, [b]] = await Promise.all([first, second]);
 
