@@ -229,6 +229,29 @@ describe('/api/articles/list', () => {
     expect(keywords).toEqual(Array.from({ length: 10 }, (_, i) => `w${i}`));
   });
 
+  it('puts the normalized search into cursors, regardless of keyword order (#684)', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(2);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue(mockArticles);
+    const { getCursorManager } = jest.requireActual(
+      '@/lib/pagination/cursor-manager'
+    );
+    const { normalizeSearchForCacheKey } = jest.requireActual(
+      '@/app/api/articles/list/query-helpers'
+    );
+
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/articles/list?search=foo%20bar')
+    );
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    const pageInfo = json.data?.pageInfo ?? json.pageInfo;
+    const payload = getCursorManager().decodeCursor(pageInfo.endCursor);
+    // キャッシュキーと同じ値なので、語の順番だけが違う検索とキャッシュを共有しても
+    // カーソルの検証が食い違わない
+    expect(payload.filters.search).toBe(normalizeSearchForCacheKey('bar foo'));
+  });
+
   it('should handle NaN limit parameter gracefully', async () => {
     mockPrisma.article.count = jest.fn().mockResolvedValue(0);
     mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);

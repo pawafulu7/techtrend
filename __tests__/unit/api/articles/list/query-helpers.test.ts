@@ -238,7 +238,7 @@ describe('query-helpers', () => {
 describe('normalizeSearchForCacheKey', () => {
   it('splits and sorts keywords into a JSON array', () => {
     expect(normalizeSearchForCacheKey(' React\u3000Hooks  AI ')).toBe(
-      '["AI","Hooks","React"]'
+      'v2:["AI","Hooks","React"]'
     );
     expect(normalizeSearchForCacheKey(null)).toBe('none');
     expect(normalizeSearchForCacheKey('   ')).toBe('none');

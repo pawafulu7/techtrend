@@ -12,7 +12,8 @@ async function handler(request: NextRequest) {
     // 画面の検索欄には上限がないので、400 にせず切り詰める（#684）
     const query = Array.from((searchParams.get('q') ?? '').trim())
       .slice(0, MAX_SEARCH_QUERY_LENGTH)
-      .join('');
+      .join('')
+      .trimEnd();
 
     // 空クエリの場合は人気順で返す
     if (!query) {

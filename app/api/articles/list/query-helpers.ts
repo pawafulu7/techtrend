@@ -19,12 +19,12 @@ import {
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import {
-  capSearchKeywords,
   pushLowQualityFilter,
   pushProcessedFilter,
   pushReadFilter,
   pushTagFilter,
   pushSearchFilter,
+  searchCacheKey,
 } from '@/app/api/articles/lib/where-clause-predicates';
 
 import { countCache } from './cache-config';
@@ -281,12 +281,7 @@ function applyDateRangeFilter(
  * Normalize search string for cache key consistency
  */
 export function normalizeSearchForCacheKey(search: string | null): string {
-  // 検索条件と同じ（上限内に切り詰めた）語を並べ替え、JSON の配列にする。
-  // 区切り文字での連結だと "a,b c" と "a b,c" や、検索語 "none" と「検索なし」が
-  // 同じキーになる。#684 で形式を変えたので、ワイルドカードとして照合していた頃の
-  // キャッシュも当たらない
-  const keywords = capSearchKeywords(search);
-  return keywords.length > 0 ? JSON.stringify([...keywords].sort()) : 'none';
+  return searchCacheKey(search);
 }
 
 /**

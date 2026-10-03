@@ -256,6 +256,11 @@ describe('capSearchKeywords', () => {
     ]);
   });
 
+  it('drops duplicate keywords before taking the first 10 (#684)', () => {
+    const words = [...Array(10).fill('a'), 'b'];
+    expect(capSearchKeywords(words.join(' '))).toEqual(['a', 'b']);
+  });
+
   it('does not split a surrogate pair at the limit', () => {
     expect(capSearchKeywords('😀'.repeat(201))).toEqual(['😀'.repeat(200)]);
   });

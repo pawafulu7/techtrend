@@ -60,6 +60,21 @@ describe('GET /api/tags/search', () => {
     );
   });
 
+  it('切り詰めた位置の直前が空白なら、その空白も除く', async () => {
+    await GET(request(`?q=${'a'.repeat(199)}%20b`));
+
+    expect(prismaMock.tag.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [
+            { name: { contains: 'a'.repeat(199), mode: 'insensitive' } },
+            { articles: { some: {} } },
+          ],
+        },
+      })
+    );
+  });
+
   it('検索語の前後の空白を除いて検索する', async () => {
     await GET(request('?q=%20%20React%20'));
 

@@ -178,7 +178,8 @@ export async function GET(request: NextRequest) {
               tags,
               tag,
               tagMode,
-              search,
+              // カーソルの検索語も、キャッシュキー・検索条件と同じ正規化済みの値にする
+              search: normalizedSearch,
               dateRange,
               dateFrom,
               dateTo,
@@ -387,7 +388,8 @@ export async function GET(request: NextRequest) {
         tags,
         tag,
         tagMode,
-        search,
+        // カーソルの検索語も、キャッシュキー・検索条件と同じ正規化済みの値にする
+        search: normalizedSearch,
         dateRange,
         dateFrom,
         dateTo,

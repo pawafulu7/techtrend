@@ -223,7 +223,21 @@ export function capSearchKeywords(search: string | null | undefined): string[] {
   const head = Array.from(search.trim())
     .slice(0, MAX_SEARCH_QUERY_LENGTH)
     .join('');
-  return splitSearchKeywords(head).slice(0, MAX_SEARCH_KEYWORDS);
+  // 条件はすべて AND なので、重複した語は結果を変えない。枠を使わないよう先に除く
+  return [...new Set(splitSearchKeywords(head))].slice(0, MAX_SEARCH_KEYWORDS);
+}
+
+/**
+ * 検索語のキャッシュキー（#684）。検索条件と同じ capSearchKeywords の語を並べ替え、
+ * JSON の配列にする。区切り文字での連結だと "a,b c" と "a b,c" や、検索語 "none" と
+ * 「検索なし」（'none'）が同じキーになる。v2: は #684 より前の形式（語を ',' で連結）の
+ * キャッシュと一致させないための印
+ */
+export function searchCacheKey(search: string | null | undefined): string {
+  const keywords = capSearchKeywords(search);
+  return keywords.length > 0
+    ? `v2:${JSON.stringify([...keywords].sort())}`
+    : 'none';
 }
 
 /**
@@ -231,17 +245,31 @@ export function capSearchKeywords(search: string | null | undefined): string[] {
  * 無ければ null を返す。画面から呼ばれない API で使い、超えたら 400 にする。
  * 長さは前後の空白を除いたコードポイントの数、語は splitSearchKeywords で数える。
  */
+const searchQuerySchema = z
+  .string()
+  .nullish()
+  .superRefine((search, ctx) => {
+    if (!search) return;
+    if (Array.from(search.trim()).length > MAX_SEARCH_QUERY_LENGTH) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `search must be at most ${MAX_SEARCH_QUERY_LENGTH} characters`,
+      });
+    }
+    if (splitSearchKeywords(search).length > MAX_SEARCH_KEYWORDS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `search must contain at most ${MAX_SEARCH_KEYWORDS} keywords`,
+      });
+    }
+  });
+
 export function validateSearchQuery(
   search: string | null | undefined
 ): string | null {
-  if (!search) return null;
-  if (Array.from(search.trim()).length > MAX_SEARCH_QUERY_LENGTH) {
-    return `search must be at most ${MAX_SEARCH_QUERY_LENGTH} characters`;
-  }
-  if (splitSearchKeywords(search).length > MAX_SEARCH_KEYWORDS) {
-    return `search must contain at most ${MAX_SEARCH_KEYWORDS} keywords`;
-  }
-  return null;
+  const result = searchQuerySchema.safeParse(search);
+  if (result.success) return null;
+  return result.error.issues.map((issue) => issue.message).join('; ');
 }
 
 /**

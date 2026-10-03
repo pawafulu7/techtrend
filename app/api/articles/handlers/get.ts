@@ -47,7 +47,7 @@ import {
   type PersonalizationParams,
 } from '../lib';
 import {
-  capSearchKeywords,
+  searchCacheKey,
   validateTagFilter,
 } from '../lib/where-clause-predicates';
 
@@ -132,17 +132,9 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
       ? parsedPeriodMonths
       : 0;
 
-  // Normalize search keywords for consistent cache key.
-  // 検索条件と同じ（上限内に切り詰めた）語を並べ替え、JSON の配列にする。
-  // 区切り文字での連結だと "a,b c" と "a b,c" や、検索語 "none" と「検索なし」が
-  // 同じキーになる。#684 で形式を変えたので、ワイルドカードとして照合していた頃の
-  // キャッシュも当たらない（LayeredCache は空白で区切り直すが、JSON の配列は空白を
-  // 含まないので 1 語のまま扱われる）
-  const searchKeywords = capSearchKeywords(search);
-  const normalizedSearch =
-    searchKeywords.length > 0
-      ? JSON.stringify([...searchKeywords].sort())
-      : 'none';
+  // Normalize search keywords for consistent cache key（searchCacheKey の説明を参照）。
+  // LayeredCache はキーを空白で区切り直すが、このキーは空白を含まないので 1 語のまま扱われる
+  const normalizedSearch = searchCacheKey(search);
 
   // Normalize sources for cache key (trim first, then filter empty, then lowercase)
   const normalizedSources = sources
