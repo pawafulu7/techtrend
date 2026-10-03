@@ -178,25 +178,8 @@ describe('N+1 最適化 統合テスト', () => {
       await prisma.tag.deleteMany({ where: { name: uniqueName } });
     });
 
-    it('COLLATE "C" が大文字小文字を区別すること', async () => {
-      const lower = `${TEST_PREFIX}case_a`;
-      const upper = `${TEST_PREFIX}CASE_A`;
-      await createTestTag(lower);
-      await createTestTag(upper);
-
-      const rows = await prisma.$queryRaw<{ name: string; ids: string[] }[]>`
-        SELECT name COLLATE "C" as name, json_agg(id ORDER BY id ASC) as ids
-        FROM "Tag"
-        WHERE name IN (${lower}, ${upper})
-        GROUP BY name COLLATE "C"
-        HAVING COUNT(*) > 1
-      `;
-
-      // 大文字小文字が違うので重複グループなし
-      expect(rows).toHaveLength(0);
-
-      await prisma.tag.deleteMany({ where: { name: { in: [lower, upper] } } });
-    });
+    // 大文字小文字だけが違うタグの区別は確かめない。Tag は lower(name) の一意インデックス
+    // （#672）でそうしたタグを持てない
   });
 
   // =========================================================================

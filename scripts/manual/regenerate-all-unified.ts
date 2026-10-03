@@ -11,6 +11,7 @@ import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prom
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { getUnifiedSummaryService } from '../../lib/ai/unified-summary-service';
+import { resolveTags } from '@/lib/services/tag-service';
 import fetch from 'node-fetch';
 
 const prisma = createPrismaClient();
@@ -208,45 +209,30 @@ async function main() {
         
         if (shouldUpdate) {
           if (!isDryRun) {
-            // データベース更新
-            await prisma.article.update({
-              where: { id: article.id },
-              data: {
-                summary: result.summary,
-                detailedSummary: result.detailedSummary,
-                articleType: 'unified',
-                summaryVersion: getUnifiedSummaryService().getSummaryVersion()
-              }
-            });
-
-            // タグの更新
-            if (result.tags.length > 0) {
-              // 既存のタグ関連付けを削除
-              await prisma.article.update({
+            // 要約とタグを 1 つのトランザクションで更新する。タグで失敗したときに要約と
+            // summaryVersion だけが進み、再実行の対象から外れるのを防ぐ。
+            // タグは大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）。
+            // 生成されたタグが無ければ、今のタグを残す
+            await prisma.$transaction(async (tx) => {
+              const tags = result.tags.length > 0
+                ? await resolveTags(
+                    result.tags.map((name) => ({ name })),
+                    tx
+                  )
+                : [];
+              await tx.article.update({
                 where: { id: article.id },
                 data: {
-                  tags: {
-                    set: []
-                  }
+                  summary: result.summary,
+                  detailedSummary: result.detailedSummary,
+                  articleType: 'unified',
+                  summaryVersion: getUnifiedSummaryService().getSummaryVersion(),
+                  ...(result.tags.length > 0 && {
+                    tags: { set: tags.map((tag) => ({ id: tag.id })) }
+                  })
                 }
               });
-
-              // 新しいタグを関連付け
-              for (const tagName of result.tags) {
-                const tag = await prisma.tag.upsert({
-                  where: { name: tagName },
-                  update: {},
-                  create: { name: tagName }
-                });
-                
-                await prisma.article.update({
-                  where: { id: article.id },
-                  data: {
-                    tags: { connect: { id: tag.id } }
-                  }
-                });
-              }
-            }
+            });
           }
 
           const improvement = newScore - currentScore;
