@@ -6,6 +6,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/lib/prisma-exports';
 import type { ArticleWithRelations } from '@/types/models';
 import { RedisCache } from '@/lib/cache/redis-cache';
 import { MetricsCollector, withDbTiming } from '@/lib/metrics/performance';
@@ -77,19 +78,24 @@ export function buildPersonalizedCacheKey(
  * 表示条件は今までの推薦経路と同じ（非表示を除く・要約の計算済み）で、
  * `withSourceFilter` が有効なソースだけに絞る。
  * `emptyResult` が true なら、条件に合う記事はない（`sources=none` か、指定したソースが解決できない）
+ *
+ * タグは where に入れず、`tagIdGroups` を返して `filterIdsByTags` で絞る（理由はその説明を参照）
  */
 async function buildPersonalizedWhere(
   filters: FilterParams,
   sortBy: string,
   metrics: MetricsCollector
-): Promise<{ where: ArticleWhereInput; emptyResult: boolean }> {
+): Promise<{
+  where: ArticleWhereInput;
+  tagIdGroups: string[][];
+  emptyResult: boolean;
+}> {
   const builder = new ArticleWhereClauseBuilder(metrics);
   const tagIdGroups = await resolveTagIdGroups(filters.tag, filters.tags);
 
   builder
     .withProcessedFilter(true)
     .withLowQualityFilter(filters.excludeLowQuality === true)
-    .withTagFilter(tagIdGroups, filters.tagMode)
     .withCategoryFilter(filters.category)
     .withSearchFilter(filters.search)
     .withDateRangeFilter({
@@ -104,11 +110,51 @@ async function buildPersonalizedWhere(
     filters.sourceId
   );
   if (emptyResult) {
-    return { where: builder.build(), emptyResult };
+    return { where: builder.build(), tagIdGroups, emptyResult };
   }
   await builder.withExcludeSources(filters.excludeSources);
 
-  return { where: builder.build(), emptyResult: false };
+  return { where: builder.build(), tagIdGroups, emptyResult: false };
+}
+
+/**
+ * 推薦候補のうち、選んだタグを持つ記事の ID を推薦順のまま返す。
+ * 判定は `pushTagFilter` と同じ（OR はどれかの組のタグを 1 つ持つ、AND はすべての組から 1 つずつ持つ。
+ * 名前が解決できず空になった組は、OR では何にも合わず、AND では全体が 0 件になる）。
+ *
+ * タグの条件を記事の EXISTS（`tags: { some }`）で掛けると、人気のタグ（AI・LLM など）を OR で
+ * 複数選んだときに、プランナーがタグのリンクを全件（約 8 万行）読んでから候補の ID と突き合わせる
+ * 計画を選び、開発 DB で約 8 秒かかった。候補の ID から結合テーブルを主キー（A, B）で直接引けば、
+ * 候補数（最大で数百件）の範囲を読むだけで済む（約 1.5ms）
+ */
+async function filterIdsByTags(
+  ids: string[],
+  tagIdGroups: string[][],
+  tagMode: string | undefined
+): Promise<string[]> {
+  const tagIds = [...new Set(tagIdGroups.flat())];
+  if (tagIds.length === 0) return [];
+
+  const links = await prisma.$queryRaw<Array<{ A: string; B: string }>>(
+    Prisma.sql`
+      SELECT "A", "B" FROM "_ArticleToTag"
+      WHERE "A" = ANY(${ids}::text[]) AND "B" = ANY(${tagIds}::text[])
+    `
+  );
+  const tagsByArticle = new Map<string, Set<string>>();
+  for (const { A, B } of links) {
+    const tags = tagsByArticle.get(A) ?? new Set<string>();
+    tags.add(B);
+    tagsByArticle.set(A, tags);
+  }
+
+  return ids.filter((id) => {
+    const tags = tagsByArticle.get(id);
+    if (!tags) return false;
+    return tagMode === 'AND'
+      ? tagIdGroups.every((group) => group.some((tagId) => tags.has(tagId)))
+      : true;
+  });
 }
 
 /**
@@ -175,11 +221,11 @@ export async function executePersonalizedQuery(
   const { page, limit, sortBy, sortOrder } = pagination;
 
   try {
-    const { where: filterWhere, emptyResult } = await buildPersonalizedWhere(
-      filters,
-      sortBy,
-      metrics
-    );
+    const {
+      where: filterWhere,
+      tagIdGroups,
+      emptyResult,
+    } = await buildPersonalizedWhere(filters, sortBy, metrics);
     if (emptyResult) {
       return createEmptyResponse(page, limit);
     }
@@ -203,20 +249,30 @@ export async function executePersonalizedQuery(
     }
 
     // 全候補のうち条件に合う ID を引き、推薦順に並べてから total を数えてページを切る
-    const matched = await withDbTiming(
+    const orderedIds = await withDbTiming(
       metrics,
       () =>
         measureAsync('article.filter_personalized_ids', async (span) => {
           span.setAttribute('idCount', personalizedIds.length);
-          return prisma.article.findMany({
-            where: { ...filterWhere, id: { in: personalizedIds } },
+          const tagMatchedIds =
+            tagIdGroups.length > 0
+              ? await filterIdsByTags(
+                  personalizedIds,
+                  tagIdGroups,
+                  filters.tagMode
+                )
+              : personalizedIds;
+          if (tagMatchedIds.length === 0) return [];
+
+          const matched = await prisma.article.findMany({
+            where: { ...filterWhere, id: { in: tagMatchedIds } },
             select: { id: true },
           });
+          const matchedIds = new Set(matched.map((article) => article.id));
+          return tagMatchedIds.filter((id) => matchedIds.has(id));
         }),
       'db_query'
     );
-    const matchedIds = new Set(matched.map((article) => article.id));
-    const orderedIds = personalizedIds.filter((id) => matchedIds.has(id));
     const total = orderedIds.length;
     const totalPages = Math.ceil(total / limit);
 
@@ -227,6 +283,7 @@ export async function executePersonalizedQuery(
     }
 
     // 2 回の読み取りの間に条件外になった記事を返さないよう、ページの取得にも同じ条件を掛ける
+    // （タグは除く。EXISTS で掛けると上の遅い計画になりうるうえ、タグの付け替えはまれなため）
     const pageArticles = await withDbTiming(
       metrics,
       () =>

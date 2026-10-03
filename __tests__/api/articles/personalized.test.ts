@@ -106,8 +106,13 @@ describe('/api/articles - パーソナライズ経路', () => {
 
   it('タグを選ぶと、推薦候補のうちタグに合う記事だけを推薦順で返す', async () => {
     mockFilterArticles.mockResolvedValue(realResult(['a1', 'a2', 'a3']));
+    // a2 はタグを持たない（結合テーブルの直接の問い合わせ）
+    prismaMock.$queryRaw = jest.fn().mockResolvedValue([
+      { A: 'a1', B: 'tag-react' },
+      { A: 'a3', B: 'tag-react' },
+    ]);
     prismaMock.article.findMany
-      .mockResolvedValueOnce([{ id: 'a3' }, { id: 'a1' }]) // ID の絞り込み（a2 はタグに合わない）
+      .mockResolvedValueOnce([{ id: 'a3' }, { id: 'a1' }]) // ID の絞り込み
       .mockResolvedValueOnce([
         { id: 'a3', title: 'A3' },
         { id: 'a1', title: 'A1' },
@@ -126,8 +131,7 @@ describe('/api/articles - パーソナライズ経路', () => {
       expect.objectContaining({ allCandidates: true })
     );
     expect(prismaMock.article.findMany.mock.calls[0][0].where).toMatchObject({
-      tags: { some: { id: { in: ['tag-react'] } } },
-      id: { in: ['a1', 'a2', 'a3'] },
+      id: { in: ['a1', 'a3'] },
     });
     // 通常検索には切り替えていない
     expect(prismaMock.article.count).not.toHaveBeenCalled();

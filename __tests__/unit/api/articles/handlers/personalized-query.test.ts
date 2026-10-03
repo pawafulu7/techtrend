@@ -9,11 +9,14 @@ jest.mock('@/lib/personalization/category-filter-service', () => ({
   },
 }));
 
-// タグ名は lower(name) で ID にしてから絞る（#681）。テストでは名前の小文字から ID を作る
+// タグ名は lower(name) で ID にしてから絞る（#681）。テストでは名前の小文字から ID を作り、
+// unknown で始まる名前は解決できない（空の組）とする
 jest.mock('@/lib/services/tag-service', () => ({
   ...jest.requireActual('@/lib/services/tag-service'),
   findTagIdGroupsByNames: async (names: string[]) =>
-    names.map((name) => [`tag-${name.toLowerCase()}`]),
+    names.map((name) =>
+      name.startsWith('unknown') ? [] : [`tag-${name.toLowerCase()}`]
+    ),
 }));
 
 jest.mock('@/lib/metrics/performance', () => ({
@@ -125,14 +128,25 @@ describe('executePersonalizedQuery', () => {
       .spyOn(personalizationCache, 'set')
       .mockResolvedValue(undefined);
     prismaMock.article.findMany = jest.fn();
+    prismaMock.$queryRaw = jest.fn().mockResolvedValue([]);
   });
+
+  /** 結合テーブルの直接の問い合わせ（filterIdsByTags）が返すリンク */
+  const mockTagLinks = (links: Array<[string, string]>) =>
+    prismaMock.$queryRaw.mockResolvedValue(links.map(([A, B]) => ({ A, B })));
 
   it('全候補に表示条件と絞り込みを掛け、推薦順のまま total を数えてページを切る', async () => {
     mockFilterArticles.mockResolvedValue(
       realResult(['a1', 'a2', 'a3', 'a4', 'a5'])
     );
-    // a2・a4 は絞り込みに合わない
-    mockArticleQueries(['a1', 'a3', 'a5']);
+    // a4 はタグがなく、a2 は検索語に合わない
+    mockTagLinks([
+      ['a1', 'tag-react'],
+      ['a2', 'tag-react'],
+      ['a3', 'tag-react'],
+      ['a5', 'tag-react'],
+    ]);
+    mockArticleQueries(['a1', 'a3', 'a4', 'a5']);
 
     const result = await executePersonalizedQuery(
       buildParams({ filters: { tags: 'React', search: 'hooks' } }),
@@ -162,15 +176,103 @@ describe('executePersonalizedQuery', () => {
       isHidden: false,
       summaryComputedAt: { not: null },
       source: { enabled: true },
-      tags: { some: { id: { in: ['tag-react'] } } },
-      id: { in: ['a1', 'a2', 'a3', 'a4', 'a5'] },
+      // タグに合う候補だけを推薦順で渡す
+      id: { in: ['a1', 'a2', 'a3', 'a5'] },
     });
+    // タグは記事の EXISTS ではなく結合テーブルの直接の問い合わせで絞る
+    expect(filterWhere).not.toHaveProperty('tags');
+    const [sql] = prismaMock.$queryRaw.mock.calls[0];
+    expect(sql.values).toEqual([['a1', 'a2', 'a3', 'a4', 'a5'], ['tag-react']]);
     expect(JSON.stringify(filterWhere.AND)).toContain('hooks');
     expect(filterCall[0].select).toEqual({ id: true });
 
     // ページの記事取得にも同じ条件を掛ける
     const pageWhere = pageCall[0].where;
     expect(pageWhere).toEqual({ ...filterWhere, id: { in: ['a1', 'a3'] } });
+  });
+
+  it('tagMode=AND はすべてのタグを持つ候補だけを残す', async () => {
+    mockFilterArticles.mockResolvedValue(realResult(['a1', 'a2', 'a3']));
+    mockTagLinks([
+      ['a1', 'tag-react'],
+      ['a1', 'tag-typescript'],
+      ['a2', 'tag-react'],
+      ['a3', 'tag-typescript'],
+    ]);
+    mockArticleQueries(['a1', 'a2', 'a3']);
+
+    const result = await executePersonalizedQuery(
+      buildParams({ filters: { tags: 'React,TypeScript', tagMode: 'AND' } }),
+      metrics
+    );
+
+    expect(result?.items.map((a) => a.id)).toEqual(['a1']);
+    expect(result?.total).toBe(1);
+  });
+
+  it('tagMode=OR はどれかのタグを持つ候補を残す', async () => {
+    mockFilterArticles.mockResolvedValue(realResult(['a1', 'a2', 'a3', 'a4']));
+    mockTagLinks([
+      ['a1', 'tag-react'],
+      ['a3', 'tag-typescript'],
+    ]);
+    mockArticleQueries(['a1', 'a2', 'a3', 'a4']);
+
+    const result = await executePersonalizedQuery(
+      buildParams({ filters: { tags: 'React,TypeScript' } }),
+      metrics
+    );
+
+    expect(result?.items.map((a) => a.id)).toEqual(['a1', 'a3']);
+    expect(result?.total).toBe(2);
+  });
+
+  it('タグを持つ候補がなければ、記事を引かずに total=0 を返す', async () => {
+    mockFilterArticles.mockResolvedValue(realResult(['a1', 'a2']));
+    mockTagLinks([]);
+
+    const result = await executePersonalizedQuery(
+      buildParams({ filters: { tags: 'React' } }),
+      metrics
+    );
+
+    expect(result).toMatchObject({ items: [], total: 0, totalPages: 0 });
+    expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+  });
+
+  it('どのタグ名も解決できなければ、結合テーブルも記事も引かずに total=0 を返す', async () => {
+    mockFilterArticles.mockResolvedValue(realResult(['a1', 'a2']));
+
+    const result = await executePersonalizedQuery(
+      buildParams({ filters: { tags: 'unknown-tag' } }),
+      metrics
+    );
+
+    expect(result).toMatchObject({ items: [], total: 0, totalPages: 0 });
+    expect(prismaMock.$queryRaw).not.toHaveBeenCalled();
+    expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+  });
+
+  it('tagMode=AND で 1 つでも解決できないタグがあれば total=0', async () => {
+    mockFilterArticles.mockResolvedValue(realResult(['a1']));
+    mockTagLinks([['a1', 'tag-react']]);
+    mockArticleQueries(['a1']);
+
+    const result = await executePersonalizedQuery(
+      buildParams({ filters: { tags: 'React,unknown-tag', tagMode: 'AND' } }),
+      metrics
+    );
+
+    expect(result).toMatchObject({ items: [], total: 0 });
+  });
+
+  it('タグを選ばなければ結合テーブルを引かない', async () => {
+    mockFilterArticles.mockResolvedValue(realResult(['a1']));
+    mockArticleQueries(['a1']);
+
+    await executePersonalizedQuery(buildParams(), metrics);
+
+    expect(prismaMock.$queryRaw).not.toHaveBeenCalled();
   });
 
   it('2 ページ目は絞り込み後の順位で続きを返す', async () => {
@@ -214,7 +316,7 @@ describe('executePersonalizedQuery', () => {
     mockArticleQueries([]);
 
     const result = await executePersonalizedQuery(
-      buildParams({ filters: { tags: 'nothing' } }),
+      buildParams({ filters: { search: 'nothing' } }),
       metrics
     );
 
