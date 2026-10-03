@@ -34,8 +34,8 @@ const FORBIDDEN_NODES = new Set([
 ]);
 /** API の期間は整数の月数（UI は 0・3・6・12）。1・2 か月は選択率が低く計画が変わりやすい */
 const PERIOD_MONTHS = [0, 1, 2, 3, 6, 12];
-/** 記事一覧（単一 200、複数 100〜50）、ダイジェスト（単一 300） */
-const LIMITS = [50, 100, 200, 300];
+/** 記事一覧（単一 200、複数 100〜50）、ダイジェスト（単一 300、複数の下限 30） */
+const LIMITS = [30, 50, 100, 200, 300];
 
 type PlanNode = {
   'Node Type': string;
@@ -145,7 +145,13 @@ async function main(): Promise<void> {
                 Prisma.sql`EXPLAIN (FORMAT JSON) ${plan.query}`
               );
             });
-            const nodes = collectNodes(result[0]['QUERY PLAN'][0].Plan);
+            const root = result[0]?.['QUERY PLAN']?.[0]?.Plan;
+            if (!root) {
+              throw new Error(
+                `Unexpected EXPLAIN result for ${mode} ${slug} period=${periodMonths}m k=${limit}: ${JSON.stringify(result).slice(0, 200)}`
+              );
+            }
+            const nodes = collectNodes(root);
             const reason = judgePlan(nodes);
             checked++;
             const label = `${mode} ${slug} period=${periodMonths}m k=${limit}`;

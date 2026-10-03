@@ -72,7 +72,10 @@ async function detectIterativeScanSupport(db: PrismaClient): Promise<boolean> {
   return supported;
 }
 
-/** 判定の結果。版はデプロイ中に変わらない前提で、プロセスの間保持する（拡張を上げたら再デプロイで反映） */
+/**
+ * 判定の結果。版はデプロイ中に変わらない前提で、プロセスの間保持する（拡張を上げたら再デプロイで反映）。
+ * プロセス内で 1 つの DB を使う前提で、渡された db は区別しない（最初に判定した db の結果を使う）
+ */
 let cachedSupport: Promise<boolean> | null = null;
 
 /**

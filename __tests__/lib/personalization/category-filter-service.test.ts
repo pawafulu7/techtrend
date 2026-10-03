@@ -1650,4 +1650,78 @@ describe('CategoryFilterService', () => {
       );
     });
   });
+
+  // ===========================================================================
+  // Stage 1 への条件の受け渡し（#686）
+  // ===========================================================================
+
+  describe('filterArticles - Stage 1 への条件の受け渡し', () => {
+    const centroid = {
+      id: 'cat-1',
+      slug: 'frontend',
+      centroid_embedding: '[0.5,0.5,0]',
+    };
+    const stage1Rows = [
+      { articleId: 'art-1', sim_emb: 0.9 },
+      { articleId: 'art-2', sim_emb: 0.8 },
+    ];
+
+    const runSingle = async (options: {
+      periodMonths: number;
+      excludeSourceIds?: string[];
+    }) => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce([centroid]) // getCategoryCentroids
+        .mockResolvedValueOnce(stage1Rows) // Stage 1
+        .mockResolvedValueOnce([]); // Stage 2
+      await service.filterArticles({
+        categoryIds: ['cat-1'],
+        limit: 10,
+        allCandidates: true,
+        ...options,
+      });
+      return queryValues(mockPrisma.$queryRaw.mock.calls[1]);
+    };
+
+    it('期間があれば Stage 1 に下限の日時を渡し、期間 0 なら渡さない', async () => {
+      const withPeriod = await runSingle({ periodMonths: 3 });
+      expect(withPeriod.some((v) => v instanceof Date)).toBe(true);
+
+      mockPrisma.$queryRaw.mockReset();
+      const withoutPeriod = await runSingle({ periodMonths: 0 });
+      expect(withoutPeriod.some((v) => v instanceof Date)).toBe(false);
+    });
+
+    it('除外ソースを Stage 1 に渡す', async () => {
+      const values = await runSingle({
+        periodMonths: 3,
+        excludeSourceIds: ['src-1'],
+      });
+      expect(values).toContainEqual(['src-1']);
+    });
+
+    it('iterative 経路で Stage 1 が LIMIT 未満なら warn を出す', async () => {
+      const { logger } = jest.requireMock('@/lib/logger');
+
+      await runSingle({ periodMonths: 3 });
+
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ stage1ResultCount: 2, effectiveLimit: 200 }),
+        'Stage1 iterative scan returned fewer rows than the limit'
+      );
+    });
+
+    it('legacy 経路では Stage 1 に期間を渡さず、件数不足の warn も出さない', async () => {
+      const { logger } = jest.requireMock('@/lib/logger');
+      mockSupportsIterativeScan.mockResolvedValue(false);
+
+      const values = await runSingle({ periodMonths: 3 });
+
+      expect(values.some((v) => v instanceof Date)).toBe(false);
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        expect.anything(),
+        'Stage1 iterative scan returned fewer rows than the limit'
+      );
+    });
+  });
 });

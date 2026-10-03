@@ -1,8 +1,8 @@
 /**
  * Stage 1: 関心カテゴリの重心に近い記事の kNN（pgvector の HNSW）
  *
- * - iterative 経路（pgvector 0.8.0 以上）: Article と結合し、期間・非表示・要約済みの条件を
- *   Stage 1 で掛ける。HNSW の iterative scan で、条件に合う行を LIMIT 件まで読み進める
+ * - iterative 経路（pgvector 0.8.0 以上）: Article と結合し、期間・非表示・要約済み・除外ソースの
+ *   条件を Stage 1 で掛ける。HNSW の iterative scan で、条件に合う行を LIMIT 件まで読み進める
  * - legacy 経路（0.8 未満）: 期間を見ない全体の kNN（期間は Stage 2 で掛ける）
  *
  * どちらも、プランナーが HNSW 以外を選ばないよう seq・bitmap・sort の計画を止める。
@@ -18,7 +18,8 @@ import { supportsIterativeScan } from './pgvector-capabilities';
  * iterative 経路の hnsw.ef_search（精度のための定数で、k からは計算しない。iterative scan は
  * 足りなければ読み進むので LIMIT 以上にする必要はない）。開発 DB の全期間・公開日順の 1 ページ目
  * （20 件）の厳密解との一致は、ef=40 で平均 18.4・最低 16、ef=400 で平均 19.7・最低 19。
- * 3 か月の Stage 1 は約 14ms → 24ms。title を含む全体の HNSW を削除し sort の計画を止めた後は、
+ * 3 か月の Stage 1（warm の中央値）は ef=40 で 27〜37ms、ef=400 で 27〜44ms。
+ * title を含む全体の HNSW を削除し sort の計画を止めた後は、
  * ef=400 でも全期間・全 k で部分 HNSW の計画になる（scripts/perf/check-stage1-plan.ts で確認）
  */
 export const STAGE1_ITERATIVE_EF_SEARCH = 400;
@@ -57,14 +58,24 @@ export function getLegacyEfSearch(limit: number): number {
   );
 }
 
-function buildSettingsSql(settings: Array<[string, string]>): string {
+/** Stage 1 で掛ける設定の名前（値は定数か整数に丸めた値だけを渡す） */
+type Stage1SettingName =
+  | 'hnsw.ef_search'
+  | 'hnsw.iterative_scan'
+  | 'hnsw.scan_mem_multiplier'
+  | 'enable_seqscan'
+  | 'enable_bitmapscan'
+  | 'enable_sort';
+type Stage1Setting = readonly [Stage1SettingName, string];
+
+function buildSettingsSql(settings: readonly Stage1Setting[]): string {
   const calls = settings.map(
     ([name, value]) => `set_config('${name}', '${value}', true)`
   );
   return `SELECT ${calls.join(', ')}`;
 }
 
-const PLANNER_PINNING: Array<[string, string]> = [
+const PLANNER_PINNING: readonly Stage1Setting[] = [
   ['enable_seqscan', 'off'],
   ['enable_bitmapscan', 'off'],
   ['enable_sort', 'off'],
@@ -78,13 +89,19 @@ export function buildStage1Plan(params: {
   centroid: string;
   limit: number;
   cutoffDate: Date | null;
+  /** iterative 経路だけで使う（legacy 経路は Stage 2 で除く） */
+  excludeSourceIds?: string[];
 }): Stage1Plan {
-  const { mode, centroid, limit, cutoffDate } = params;
+  const { mode, centroid, limit, cutoffDate, excludeSourceIds } = params;
 
   if (mode === 'iterative') {
     const periodFilter = cutoffDate
       ? Prisma.sql`AND a."publishedAt" >= ${cutoffDate}`
       : Prisma.empty;
+    const sourceExcludeFilter =
+      excludeSourceIds && excludeSourceIds.length > 0
+        ? Prisma.sql`AND a."sourceId" != ALL(${excludeSourceIds}::text[])`
+        : Prisma.empty;
     return {
       mode,
       efSearch: STAGE1_ITERATIVE_EF_SEARCH,
@@ -103,6 +120,7 @@ export function buildStage1Plan(params: {
           AND a."isHidden" = false
           AND a."summaryComputedAt" IS NOT NULL
           ${periodFilter}
+          ${sourceExcludeFilter}
         ORDER BY e.embedding <=> ${centroid}::vector
         LIMIT ${limit}
       `,
@@ -134,7 +152,12 @@ export function buildStage1Plan(params: {
  */
 export async function runStage1Knn(
   db: PrismaClient,
-  params: { centroid: string; limit: number; cutoffDate: Date | null }
+  params: {
+    centroid: string;
+    limit: number;
+    cutoffDate: Date | null;
+    excludeSourceIds?: string[];
+  }
 ): Promise<{ rows: Stage1Row[]; plan: Stage1Plan }> {
   const mode: Stage1Mode = (await supportsIterativeScan(db))
     ? 'iterative'

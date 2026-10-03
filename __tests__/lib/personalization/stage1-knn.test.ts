@@ -75,6 +75,29 @@ describe('stage1-knn', () => {
       expect(plan.periodApplied).toBe(false);
     });
 
+    it('除外ソースがあれば Stage 1 で除き、無ければ条件を入れない', () => {
+      const withExclude = buildStage1Plan({
+        mode: 'iterative',
+        centroid,
+        limit: 200,
+        cutoffDate,
+        excludeSourceIds: ['src-1'],
+      });
+      const without = buildStage1Plan({
+        mode: 'iterative',
+        centroid,
+        limit: 200,
+        cutoffDate,
+        excludeSourceIds: [],
+      });
+
+      expect(sqlText(withExclude.query)).toContain('a."sourceId" != ALL(');
+      expect(withExclude.query.values).toEqual(
+        expect.arrayContaining([['src-1']])
+      );
+      expect(sqlText(without.query)).not.toContain('"sourceId"');
+    });
+
     it('iterative scan と計画の固定をトランザクションに閉じた設定で掛け、ef_search は k によらず定数', () => {
       const small = buildStage1Plan({
         mode: 'iterative',

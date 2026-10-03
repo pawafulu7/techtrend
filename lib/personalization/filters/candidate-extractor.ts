@@ -181,6 +181,7 @@ export async function getEmbeddingCandidates(
         centroid,
         limit: effectiveLimit,
         cutoffDate,
+        excludeSourceIds,
       });
       span.setAttributes({
         stage1Mode: plan.mode,
@@ -210,7 +211,7 @@ export async function getEmbeddingCandidates(
   }
 
   // Stage 2: Data fetch + filtering using Stage 1 results via VALUES clause.
-  // iterative 経路では期間・非表示・要約済みを Stage 1 でも掛けているが、legacy 経路と同じ意味を保ち、
+  // iterative 経路では期間・非表示・要約済み・除外ソースを Stage 1 でも掛けているが、legacy 経路と同じ意味を保ち、
   // Stage 1 と Stage 2 の間に非表示になった記事も除けるよう、ここでも掛ける
   const valuesClause = Prisma.join(
     stage1Results.map(
