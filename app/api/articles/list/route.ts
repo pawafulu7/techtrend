@@ -9,6 +9,7 @@ import { getCursorManager } from '@/lib/pagination/cursor-manager';
 
 import type { LightweightArticle } from './types';
 import { cache } from './cache-config';
+import { resolveTagIdGroups } from '@/app/api/articles/lib/where-clause-predicates';
 import {
   buildWhereClause,
   normalizeSearchForCacheKey,
@@ -254,8 +255,10 @@ export async function GET(request: NextRequest) {
     } else {
       cacheStatus = cachedResult ? 'STALE' : 'MISS';
 
-      // Build where clause
+      // Build where clause（タグ名は lower(name) で ID にしてから絞る。#681）
+      const tagIdGroups = await resolveTagIdGroups(tag, tags);
       const where = buildWhereClause({
+        tagIdGroups,
         sources,
         sourceId,
         excludeSources,

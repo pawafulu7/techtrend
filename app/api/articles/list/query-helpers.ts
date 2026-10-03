@@ -64,6 +64,8 @@ export interface ListFilterParams {
 
 /** Parameters parsed from search params for WHERE clause building */
 export interface WhereClauseParams extends ListFilterParams {
+  /** 名前ごとのタグ ID の組（resolveTagIdGroups(tag, tags) の戻り値）。空なら絞り込まない */
+  tagIdGroups: string[][];
   sources: string | null;
   sourceId: string | null;
   excludeSources: string | null;
@@ -139,8 +141,7 @@ export function buildWhereClause(params: WhereClauseParams): ArticleWhereInput {
   pushTagFilter(
     where,
     where.AND as ArticleWhereInput[],
-    params.tag,
-    params.tags,
+    params.tagIdGroups,
     params.tagMode
   );
 

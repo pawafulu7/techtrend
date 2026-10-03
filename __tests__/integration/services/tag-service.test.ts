@@ -10,6 +10,7 @@ import {
   resolveTags,
   getOrCreateTags,
   findTagIdsByNames,
+  findTagIdGroupsByNames,
 } from '@/lib/services/tag-service';
 
 // 他のデータと衝突しないよう、テストごとに固有の接頭辞を付ける
@@ -144,6 +145,26 @@ describe('resolveTags (integration, #672)', () => {
     expect(await findTagIdsByNames([`${P}claude_code`])).toEqual([`${P}-u`]);
     expect(await findTagIdsByNames([`${P}mcp`, `${P}Rust`])).toEqual([`${P}-m`]);
     expect(await findTagIdsByNames(['%'])).toEqual([]);
+  });
+
+  it('findTagIdGroupsByNames returns IDs per input name, matching by lower(name) literally', async () => {
+    await prisma.tag.createMany({
+      data: [
+        { id: `${P}-u`, name: `${P}Claude_Code` },
+        { id: `${P}-s`, name: `${P}Claude Code` },
+        { id: `${P}-m`, name: `${P}MCP` },
+      ],
+    });
+
+    expect(
+      await findTagIdGroupsByNames([
+        `${P}mcp`,
+        `${P}claude_code`,
+        `${P}Missing`,
+        '%',
+        ' ',
+      ])
+    ).toEqual([[`${P}-m`], [`${P}-u`], [], [], []]);
   });
 
   it('works inside an interactive transaction', async () => {

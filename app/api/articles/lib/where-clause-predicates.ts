@@ -25,6 +25,7 @@ import {
   getDateFieldForSort,
 } from '@/app/lib/date-utils';
 import logger from '@/lib/logger';
+import { findTagIdGroupsByNames } from '@/lib/services/tag-service';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -120,71 +121,69 @@ export function pushReadFilter(
 // ---------------------------------------------------------------------------
 
 /**
+ * `tag` / `tags` クエリから、絞り込むタグ名の一覧を作る。
+ * `tag`（1 つ）が優先。`tags` はカンマ区切りで、空の要素は捨てる。
+ */
+export function parseTagList(
+  tag: string | null | undefined,
+  tags: string | null | undefined
+): string[] {
+  if (tag) return [tag];
+  if (!tags) return [];
+  return tags
+    .split(',')
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+}
+
+/**
+ * 絞り込むタグ名を、名前ごとのタグ ID の組にする（#681）。
+ *
+ * タグ名は lower(name) で照合する。Prisma の `mode: 'insensitive'` は ILIKE になり、
+ * 名前の `_` と `%` がワイルドカードとして効くため（例: "Claude_Code" が
+ * "Claude Code" にも当たる）使わない。どのタグにも当たらない名前は空の組になる。
+ * タグの絞り込みが無ければ空の配列を返す。
+ */
+export async function resolveTagIdGroups(
+  tag: string | null | undefined,
+  tags: string | null | undefined
+): Promise<string[][]> {
+  const tagList = parseTagList(tag, tags);
+  if (tagList.length === 0) return [];
+  return findTagIdGroupsByNames(tagList);
+}
+
+/**
  * Push tag filter conditions into the AND conditions array or directly onto
  * the where object for OR-mode tag matching.
  *
- * Supports:
- * - Single tag via `tag` param (backward-compatible, treated as OR mode)
- * - Multiple tags via `tags` param (comma-separated)
  * - `tagMode` 'AND': articles must have ALL specified tags
  * - `tagMode` other (default): articles must have ANY specified tag (OR)
  *
- * All tag comparisons are case-insensitive.
+ * 名前に当たるタグが無い組は `id: { in: [] }` になり、その条件は何にも当たらない
+ * （OR ではすべての組が空のとき、AND では 1 つでも空のとき、結果が 0 件になる）。
  *
  * @param where - The top-level WHERE object (used for OR-mode tags assignment)
  * @param andConditions - AND conditions array (used for AND-mode tag conditions)
- * @param tag - Single tag name, or null/undefined
- * @param tags - Comma-separated tag names, or null/undefined
+ * @param tagIdGroups - 名前ごとのタグ ID の組（resolveTagIdGroups の戻り値）。空なら絞り込まない
  * @param tagMode - 'AND' for all-tags matching, anything else for any-tag matching
  */
 export function pushTagFilter(
   where: ArticleWhereInput,
   andConditions: ArticleWhereInput[],
-  tag: string | null | undefined,
-  tags: string | null | undefined,
+  tagIdGroups: string[][],
   tagMode: string | null | undefined
 ): void {
-  // Build unified tag list: `tag` takes precedence for backward compatibility
-  const tagList = tag
-    ? [tag]
-    : tags
-      ? tags
-          .split(',')
-          .map((t) => t.trim())
-          .filter((t) => t.length > 0)
-      : [];
-
-  if (tagList.length === 0) return;
+  if (tagIdGroups.length === 0) return;
 
   if (tagMode === 'AND') {
-    // AND search: articles must have all specified tags
-    const tagConditions: ArticleWhereInput[] = tagList.map((tagName) => ({
-      tags: {
-        some: {
-          name: { equals: tagName, mode: 'insensitive' as const },
-        },
-      },
-    }));
-    andConditions.push(...tagConditions);
+    andConditions.push(
+      ...tagIdGroups.map((ids) => ({ tags: { some: { id: { in: ids } } } }))
+    );
   } else {
-    // OR search: articles with any of the specified tags
-    if (tagList.length === 1) {
-      // Single tag: direct match (backward-compatible structure)
-      where.tags = {
-        some: {
-          name: { equals: tagList[0], mode: 'insensitive' as const },
-        },
-      };
-    } else {
-      // Multiple tags: OR condition
-      where.tags = {
-        some: {
-          OR: tagList.map((tagName) => ({
-            name: { equals: tagName, mode: 'insensitive' as const },
-          })),
-        },
-      };
-    }
+    where.tags = {
+      some: { id: { in: [...new Set(tagIdGroups.flat())] } },
+    };
   }
 }
 
