@@ -46,6 +46,7 @@ import {
   type PaginationParams,
   type PersonalizationParams,
 } from '../lib';
+import { validateTagFilter } from '../lib/where-clause-predicates';
 
 // Initialize Layered cache system for articles
 const cache = new LayeredCache();
@@ -469,6 +470,15 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
     const params = parseQueryParams(request);
     const { pagination, filters, display, personalization } = params;
     const { page, limit } = pagination;
+
+    // タグの数と長さを検証する（キャッシュキーを作る前・タグを解決する前）
+    const tagFilterError = validateTagFilter(filters.tag, filters.tags);
+    if (tagFilterError) {
+      return NextResponse.json(
+        { success: false, error: tagFilterError },
+        { status: 400 }
+      );
+    }
 
     // Check if user session is required
     const requiresUserSession =

@@ -13,9 +13,12 @@ jest.mock('@/lib/services/tag-service', () => ({
 }));
 
 import {
+  MAX_TAG_FILTER_COUNT,
+  MAX_TAG_NAME_LENGTH,
   parseTagList,
   pushTagFilter,
   resolveTagIdGroups,
+  validateTagFilter,
 } from '@/app/api/articles/lib/where-clause-predicates';
 
 describe('parseTagList', () => {
@@ -94,6 +97,31 @@ describe('pushTagFilter', () => {
     const { where, andConditions } = apply([['a']], 'OR');
     expect(JSON.stringify({ where, andConditions })).not.toContain(
       'insensitive'
+    );
+  });
+});
+
+describe('validateTagFilter', () => {
+  const many = (n: number) => Array.from({ length: n }, (_, i) => `t${i}`).join(',');
+
+  it('accepts no filter and filters within the limits', () => {
+    expect(validateTagFilter(null, null)).toBeNull();
+    expect(validateTagFilter('a'.repeat(MAX_TAG_NAME_LENGTH), null)).toBeNull();
+    // 空の要素は数えない
+    expect(validateTagFilter(null, `${many(MAX_TAG_FILTER_COUNT)},,`)).toBeNull();
+  });
+
+  it('rejects too many tags', () => {
+    expect(validateTagFilter(null, many(MAX_TAG_FILTER_COUNT + 1))).toMatch(
+      /at most 20 items/
+    );
+  });
+
+  it('rejects a too long tag in tag or tags', () => {
+    const long = 'a'.repeat(MAX_TAG_NAME_LENGTH + 1);
+    expect(validateTagFilter(long, null)).toMatch(/at most 300 characters/);
+    expect(validateTagFilter(null, `React,${long}`)).toMatch(
+      /at most 300 characters/
     );
   });
 });

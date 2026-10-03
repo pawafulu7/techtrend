@@ -361,6 +361,15 @@ describe('/api/articles - Extended Tests', () => {
       );
     });
 
+    it('21 個以上のタグは 400 を返し、クエリしない（#681）', async () => {
+      const tags = Array.from({ length: 21 }, (_, i) => `t${i}`).join(',');
+      const request = new NextRequest(`http://localhost/api/articles?tags=${tags}`);
+      const response = await GET(request);
+
+      expect(response.status).toBe(400);
+      expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+    });
+
     it('空白を含むタグリストを正しく処理', async () => {
       prismaMock.article.findMany.mockResolvedValue([]);
       prismaMock.article.count.mockResolvedValue(0);

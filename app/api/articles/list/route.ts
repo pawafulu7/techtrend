@@ -9,7 +9,10 @@ import { getCursorManager } from '@/lib/pagination/cursor-manager';
 
 import type { LightweightArticle } from './types';
 import { cache } from './cache-config';
-import { resolveTagIdGroups } from '@/app/api/articles/lib/where-clause-predicates';
+import {
+  resolveTagIdGroups,
+  validateTagFilter,
+} from '@/app/api/articles/lib/where-clause-predicates';
 import {
   buildWhereClause,
   normalizeSearchForCacheKey,
@@ -85,6 +88,18 @@ export async function GET(request: NextRequest) {
     const bypassFavoriteL1 = Boolean(request.cookies.get('tt_fav_bust')?.value);
     const excludeLowQuality = searchParams.get('excludeLowQuality') === 'true';
     const excludeSources = searchParams.get('excludeSources');
+
+    // タグの数と長さを検証する（キャッシュキーを作る前・タグを解決する前）
+    const tagFilterError = validateTagFilter(tag, tags);
+    if (tagFilterError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'INVALID_TAG_FILTER', message: tagFilterError },
+        },
+        { status: 400 }
+      );
+    }
 
     // Generate cache key
     const normalizedSearch = normalizeSearchForCacheKey(search);

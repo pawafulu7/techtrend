@@ -18,6 +18,7 @@
  *   normalizeArticleCategory() — different validation approaches.
  */
 
+import { z } from 'zod';
 import { SkipReason, type Prisma } from '@/lib/prisma-exports';
 import {
   getDateRangeFilter,
@@ -134,6 +135,53 @@ export function parseTagList(
     .split(',')
     .map((t) => t.trim())
     .filter((t) => t.length > 0);
+}
+
+/** 絞り込みに使えるタグ名の長さの上限（既存のタグ名は最長 283 文字） */
+export const MAX_TAG_NAME_LENGTH = 300;
+/** 一度に絞り込めるタグの数の上限。AND では名前ごとに条件が増えるため */
+export const MAX_TAG_FILTER_COUNT = 20;
+
+const tagFilterSchema = z
+  .object({
+    tag: z.string().max(MAX_TAG_NAME_LENGTH).nullish(),
+    tags: z.string().nullish(),
+  })
+  .superRefine(({ tags }, ctx) => {
+    const tagList = parseTagList(null, tags);
+    if (tagList.length > MAX_TAG_FILTER_COUNT) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['tags'],
+        message: `tags must contain at most ${MAX_TAG_FILTER_COUNT} items`,
+      });
+    }
+    if (tagList.some((name) => name.length > MAX_TAG_NAME_LENGTH)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['tags'],
+        message: `each tag must be at most ${MAX_TAG_NAME_LENGTH} characters`,
+      });
+    }
+  });
+
+/**
+ * `tag` / `tags` クエリを検証する。問題があればエラーメッセージを、無ければ null を返す。
+ * キャッシュキーを作る前・タグを解決する前に呼ぶ。
+ */
+export function validateTagFilter(
+  tag: string | null | undefined,
+  tags: string | null | undefined
+): string | null {
+  const result = tagFilterSchema.safeParse({ tag, tags });
+  if (result.success) return null;
+  return result.error.issues
+    .map((issue) =>
+      issue.code === 'too_big'
+        ? `tag must be at most ${MAX_TAG_NAME_LENGTH} characters`
+        : issue.message
+    )
+    .join('; ');
 }
 
 /**
