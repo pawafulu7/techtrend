@@ -36,6 +36,8 @@ import {
 } from './filters/score-aggregator';
 import type { ScoredArticleWithMeta } from './filters/score-aggregator';
 
+export { getPeriodCutoffDate } from './filters/candidate-extractor';
+
 // Re-export pure functions and types for backward compatibility
 export {
   calculateRecencyDecay,
@@ -155,6 +157,7 @@ export class CategoryFilterService {
         let qualifiedArticles: ScoredArticleWithMeta[];
         let candidateCount: number;
         let additionalLogInfo: Record<string, unknown> = {};
+        let partialFailure = false;
         let multiTimings: {
           perCategoryMs: number[];
           perCategoryResultCounts: number[];
@@ -191,6 +194,7 @@ export class CategoryFilterService {
           }
           qualifiedArticles = result.articles;
           candidateCount = result.mergedCount;
+          partialFailure = result.failedCount > 0;
           multiTimings = {
             perCategoryMs: result.perCategoryMs,
             perCategoryResultCounts: result.perCategoryResultCounts,
@@ -270,6 +274,7 @@ export class CategoryFilterService {
             periodMonths,
             totalMatched,
             queryMs,
+            ...(partialFailure ? { partialFailure } : {}),
           },
         };
       } catch (error) {
@@ -366,6 +371,8 @@ export class CategoryFilterService {
   ): Promise<{
     articles: ScoredArticleWithMeta[];
     mergedCount: number;
+    /** 検索に失敗したカテゴリの数（残りのカテゴリの候補だけで続行する） */
+    failedCount: number;
     /** @deprecated use perCategoryResultCounts */
     candidatesPerCategory: number[];
     perCategoryResultCounts: number[];
@@ -467,6 +474,7 @@ export class CategoryFilterService {
       return {
         articles: [],
         mergedCount: 0,
+        failedCount: failedCategories.length,
         candidatesPerCategory: perCategoryResultCounts,
         perCategoryResultCounts,
         perCategoryMs,
@@ -489,6 +497,7 @@ export class CategoryFilterService {
     return {
       articles: qualifiedArticles,
       mergedCount: merged.length,
+      failedCount: failedCategories.length,
       candidatesPerCategory: perCategoryResultCounts,
       perCategoryResultCounts,
       perCategoryMs,

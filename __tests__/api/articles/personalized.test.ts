@@ -39,6 +39,7 @@ jest.mock('@/lib/metrics/performance', () => ({
 
 const mockFilterArticles = jest.fn();
 jest.mock('@/lib/personalization/category-filter-service', () => ({
+  ...jest.requireActual('@/lib/personalization/category-filter-service'),
   categoryFilterService: {
     filterArticles: (...args: unknown[]) => mockFilterArticles(...args),
   },
@@ -46,7 +47,7 @@ jest.mock('@/lib/personalization/category-filter-service', () => ({
 
 import { GET } from '@/app/api/articles/route';
 import { personalizationCache } from '@/app/api/articles/handlers/personalized-query';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth/get-session';
 import { NextRequest } from 'next/server';
 
@@ -88,6 +89,10 @@ const get = (query: string) =>
   GET(new NextRequest(`http://localhost/api/articles?${query}`));
 
 describe('/api/articles - パーソナライズ経路', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     authMock.mockResolvedValue(null);
@@ -98,6 +103,7 @@ describe('/api/articles - パーソナライズ経路', () => {
       async (_params: unknown, fetcher: () => Promise<{ total: number }>) =>
         fetcher()
     );
+    prismaMock.$queryRaw = jest.fn().mockResolvedValue([]);
     prismaMock.article = {
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),

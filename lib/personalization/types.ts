@@ -131,6 +131,11 @@ export interface PersonalizedFilterMeta {
   periodMonths: number;
   totalMatched: number;
   queryMs: number;
+  /**
+   * 複数カテゴリの検索の一部が失敗し、残りのカテゴリの候補だけで並べたとき true。
+   * 一時的な失敗の結果を順位としてキャッシュしないために使う
+   */
+  partialFailure?: boolean;
 }
 
 export type PersonalizedSortBy =

@@ -19,7 +19,7 @@ import {
   withDbTiming,
   withCacheTiming,
 } from '@/lib/metrics/performance';
-import { getPeriodCutoffDate } from '@/lib/personalization/filters/candidate-extractor';
+import { getPeriodCutoffDate } from '@/lib/personalization/category-filter-service';
 import logger from '@/lib/logger';
 
 import {
@@ -180,6 +180,15 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
 }
 
 /**
+ * 通常検索の並べ替えの列。Article に finalScore 列はない（推薦のスコア）ので公開日で並べる
+ */
+function standardSortBy(
+  sortBy: PaginationParams['sortBy']
+): Exclude<PaginationParams['sortBy'], 'finalScore'> {
+  return sortBy === 'finalScore' ? 'publishedAt' : sortBy;
+}
+
+/**
  * Build cache parameters from parsed query params
  */
 function buildCacheParams(
@@ -193,7 +202,7 @@ function buildCacheParams(
   return {
     page: pagination.page,
     limit: pagination.limit,
-    sortBy: pagination.sortBy,
+    sortBy: standardSortBy(pagination.sortBy),
     sortOrder: pagination.sortOrder,
     sources: normalizedSources,
     sourceId: filters.sourceId?.toLowerCase(),
@@ -233,9 +242,7 @@ async function executeStandardQuery(
 ): Promise<ArticleQueryResult> {
   const { pagination, filters, display } = params;
   const { page, limit, sortOrder } = pagination;
-  // Article に finalScore 列はない（推薦のスコア）。通常検索では公開日で並べる
-  const sortBy =
-    pagination.sortBy === 'finalScore' ? 'publishedAt' : pagination.sortBy;
+  const sortBy = standardSortBy(pagination.sortBy);
 
   // Early return for explicit 'none' filter
   if (filters.sources === 'none') {

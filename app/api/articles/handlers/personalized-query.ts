@@ -11,10 +11,7 @@ import type { ArticleWithRelations } from '@/types/models';
 import { RedisCache } from '@/lib/cache/redis-cache';
 import { MetricsCollector, withDbTiming } from '@/lib/metrics/performance';
 import { categoryFilterService } from '@/lib/personalization/category-filter-service';
-import type {
-  PersonalizedFilterOptions,
-  PersonalizedSortBy,
-} from '@/lib/personalization/types';
+import type { PersonalizedFilterOptions } from '@/lib/personalization/types';
 import logger from '@/lib/logger';
 import { measureAsync } from '@/lib/personalization/tracing';
 
@@ -26,6 +23,7 @@ import {
   type ArticleWhereInput,
   type FilterParams,
   type ParsedQueryParams,
+  type ValidSortField,
 } from '../lib';
 import { resolveTagIdGroups } from '../lib/where-clause-predicates';
 
@@ -42,26 +40,18 @@ function uniqueSorted(values: string[]): string[] {
   return [...new Set(values)].sort();
 }
 
-function splitList(value: string | undefined): string[] {
-  return value
-    ? value
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : [];
-}
-
 /**
  * 推薦キャッシュのキー。ページ・件数は含めず、全候補の順位を 1 エントリで持つ。
  *
  * - 接頭辞は `ids:` で始める（重心の再計算スクリプトが `ids:*` を無効化するため）。
  *   `v2:` は旧形式（ページ単位の `ids:<カテゴリ ID>:...`）と衝突させないため
  * - 可変部分は JSON にして、区切り文字を含む値どうしが同じキーにならないようにする
+ * - 除外ソース（excludeSources）は候補の抽出に使わないので、キーにも入れない
  */
 export function buildPersonalizedCacheKey(
   options: Pick<
     PersonalizedFilterOptions,
-    'categoryIds' | 'periodMonths' | 'sortBy' | 'sortOrder' | 'excludeSourceIds'
+    'categoryIds' | 'periodMonths' | 'sortBy' | 'sortOrder'
   >
 ): string {
   return `ids:v2:${JSON.stringify([
@@ -69,21 +59,21 @@ export function buildPersonalizedCacheKey(
     options.periodMonths,
     options.sortBy,
     options.sortOrder,
-    uniqueSorted(options.excludeSourceIds ?? []),
   ])}`;
 }
 
 /**
  * 推薦候補に掛ける条件（表示条件＋ユーザーが選んだ絞り込み）を組み立てる。
  * 表示条件は今までの推薦経路と同じ（非表示を除く・要約の計算済み）で、
- * `withSourceFilter` が有効なソースだけに絞る。
+ * `withSourceFilter` が有効なソースだけに絞る。本文が空の記事の除外（`withContentFilter`）と
+ * `excludeUnprocessed` は、推薦経路の表示条件を変えない方針（#684 のユーザーの決定）なので掛けない。
  * `emptyResult` が true なら、条件に合う記事はない（`sources=none` か、指定したソースが解決できない）
  *
  * タグは where に入れず、`tagIdGroups` を返して `filterIdsByTags` で絞る（理由はその説明を参照）
  */
 async function buildPersonalizedWhere(
   filters: FilterParams,
-  sortBy: string,
+  sortBy: ValidSortField,
   metrics: MetricsCollector
 ): Promise<{
   where: ArticleWhereInput;
@@ -91,7 +81,19 @@ async function buildPersonalizedWhere(
   emptyResult: boolean;
 }> {
   const builder = new ArticleWhereClauseBuilder(metrics);
+  // 結果が必ず空になる条件は、タグの解決より前に判定して問い合わせを省く
+  const { emptyResult } = await builder.withSourceFilter(
+    filters.sources,
+    filters.sourceId
+  );
+  if (emptyResult) {
+    return { where: builder.build(), tagIdGroups: [], emptyResult };
+  }
+
   const tagIdGroups = await resolveTagIdGroups(filters.tag, filters.tags);
+  if (tagIdGroups.length > 0 && !canMatchTags(tagIdGroups, filters.tagMode)) {
+    return { where: builder.build(), tagIdGroups, emptyResult: true };
+  }
 
   builder
     .withProcessedFilter(true)
@@ -104,17 +106,22 @@ async function buildPersonalizedWhere(
       dateTo: filters.dateTo,
       sortBy,
     });
-
-  const { emptyResult } = await builder.withSourceFilter(
-    filters.sources,
-    filters.sourceId
-  );
-  if (emptyResult) {
-    return { where: builder.build(), tagIdGroups, emptyResult };
-  }
   await builder.withExcludeSources(filters.excludeSources);
 
   return { where: builder.build(), tagIdGroups, emptyResult: false };
+}
+
+/**
+ * 名前を解決したタグの組で、合う記事がありうるか（`pushTagFilter` と同じ判定）。
+ * OR はすべての組が空、AND は 1 つでも空の組があると、どの記事にも合わない
+ */
+function canMatchTags(
+  tagIdGroups: string[][],
+  tagMode: string | undefined
+): boolean {
+  return tagMode === 'AND'
+    ? tagIdGroups.every((group) => group.length > 0)
+    : tagIdGroups.some((group) => group.length > 0);
 }
 
 /**
@@ -189,7 +196,11 @@ async function getPersonalizedIds(
       'Personalization cache get failed, proceeding without cache'
     );
   }
-  if (cached && Array.isArray(cached.ids)) {
+  if (
+    cached &&
+    Array.isArray(cached.ids) &&
+    cached.ids.every((id) => typeof id === 'string')
+  ) {
     return cached.ids;
   }
 
@@ -199,10 +210,13 @@ async function getPersonalizedIds(
   }
 
   const ids = result.articles.map((article) => article.articleId);
-  try {
-    await personalizationCache.set(cacheKey, { ids });
-  } catch (cacheError) {
-    logger.warn({ err: cacheError }, 'Personalization cache set failed');
+  // 一部のカテゴリの検索が失敗した結果は、欠けた順位を有効期間中の全ページに残さないようキャッシュしない
+  if (!result.meta.partialFailure) {
+    try {
+      await personalizationCache.set(cacheKey, { ids });
+    } catch (cacheError) {
+      logger.warn({ err: cacheError }, 'Personalization cache set failed');
+    }
   }
   return ids;
 }
@@ -230,17 +244,16 @@ export async function executePersonalizedQuery(
       return createEmptyResponse(page, limit);
     }
 
-    const excludeSourceIds = splitList(filters.excludeSources);
+    // 除外ソースは推薦候補の抽出には渡さず、後段の条件（withExcludeSources）だけで除く。
+    // 抽出で除くと、候補がすべて除外ソースのときに「推薦できなかった」と判定されて
+    // 通常検索に切り替わり、推薦候補にない記事が出てしまう（Stage 2 は Stage 1 の結果を
+    // 絞るだけなので、後段で除いても残る候補は同じ）
     const personalizedIds = await getPersonalizedIds({
       categoryIds: uniqueSorted(personalization.categoryIds),
       periodMonths: personalization.periodMonths,
       limit,
-      sortBy: sortBy as PersonalizedSortBy,
+      sortBy,
       sortOrder,
-      excludeSourceIds:
-        excludeSourceIds.length > 0
-          ? uniqueSorted(excludeSourceIds)
-          : undefined,
       allCandidates: true,
     });
 
@@ -283,14 +296,19 @@ export async function executePersonalizedQuery(
     }
 
     // 2 回の読み取りの間に条件外になった記事を返さないよう、ページの取得にも同じ条件を掛ける
-    // （タグは除く。EXISTS で掛けると上の遅い計画になりうるうえ、タグの付け替えはまれなため）
+    // （タグも EXISTS ではなく結合テーブルで判定し直す）
     const pageArticles = await withDbTiming(
       metrics,
       () =>
         measureAsync('article.fetch_by_ids', async (span) => {
           span.setAttribute('idCount', pageIds.length);
+          const pageMatchedIds =
+            tagIdGroups.length > 0
+              ? await filterIdsByTags(pageIds, tagIdGroups, filters.tagMode)
+              : pageIds;
+          if (pageMatchedIds.length === 0) return [];
           return prisma.article.findMany({
-            where: { ...filterWhere, id: { in: pageIds } },
+            where: { ...filterWhere, id: { in: pageMatchedIds } },
             select: buildSelectFields(display),
           });
         }),

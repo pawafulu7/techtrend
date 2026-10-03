@@ -1212,6 +1212,7 @@ describe('CategoryFilterService', () => {
         'art-3',
       ]);
       expect(result.meta.totalMatched).toBe(3);
+      expect(result.meta).not.toHaveProperty('partialFailure');
     });
 
     it('フォールバック時は最新記事を引かずに空の候補を返す', async () => {
@@ -1496,6 +1497,8 @@ describe('CategoryFilterService', () => {
       expect(articleIds).toContain('art-1');
       expect(articleIds).toContain('art-3');
       expect(articleIds).not.toContain('art-2');
+      // 一部の失敗を呼び出し側に伝える（順位をキャッシュさせないため）
+      expect(result.meta.partialFailure).toBe(true);
 
       // 失敗がwarnとして記録される
       expect(logger.warn).toHaveBeenCalled();

@@ -116,6 +116,10 @@ function mockArticleQueries(matchingIds: string[]) {
 describe('executePersonalizedQuery', () => {
   const metrics = new MetricsCollector();
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   let mockCacheGet: jest.SpyInstance;
   let mockCacheSet: jest.SpyInstance;
 
@@ -240,7 +244,7 @@ describe('executePersonalizedQuery', () => {
     expect(prismaMock.article.findMany).not.toHaveBeenCalled();
   });
 
-  it('どのタグ名も解決できなければ、結合テーブルも記事も引かずに total=0 を返す', async () => {
+  it('どのタグ名も解決できなければ、推薦も結合テーブルも記事も引かずに total=0 を返す', async () => {
     mockFilterArticles.mockResolvedValue(realResult(['a1', 'a2']));
 
     const result = await executePersonalizedQuery(
@@ -249,6 +253,7 @@ describe('executePersonalizedQuery', () => {
     );
 
     expect(result).toMatchObject({ items: [], total: 0, totalPages: 0 });
+    expect(mockFilterArticles).not.toHaveBeenCalled();
     expect(prismaMock.$queryRaw).not.toHaveBeenCalled();
     expect(prismaMock.article.findMany).not.toHaveBeenCalled();
   });
@@ -264,6 +269,97 @@ describe('executePersonalizedQuery', () => {
     );
 
     expect(result).toMatchObject({ items: [], total: 0 });
+    expect(mockFilterArticles).not.toHaveBeenCalled();
+  });
+
+  it('tagMode=OR は解決できたタグだけで絞る', async () => {
+    mockFilterArticles.mockResolvedValue(realResult(['a1', 'a2']));
+    mockTagLinks([['a2', 'tag-react']]);
+    mockArticleQueries(['a1', 'a2']);
+
+    const result = await executePersonalizedQuery(
+      buildParams({ filters: { tags: 'unknown-tag,React' } }),
+      metrics
+    );
+
+    expect(result?.items.map((a) => a.id)).toEqual(['a2']);
+  });
+
+  it('ID を絞った後にタグが外れた記事は、ページの取得で除く', async () => {
+    mockFilterArticles.mockResolvedValue(realResult(['a1', 'a2']));
+    prismaMock.$queryRaw
+      .mockResolvedValueOnce([
+        { A: 'a1', B: 'tag-react' },
+        { A: 'a2', B: 'tag-react' },
+      ])
+      // ページの取得の直前に a1 のタグが外れた
+      .mockResolvedValueOnce([{ A: 'a2', B: 'tag-react' }]);
+    mockArticleQueries(['a1', 'a2']);
+
+    const result = await executePersonalizedQuery(
+      buildParams({ filters: { tags: 'React' } }),
+      metrics
+    );
+
+    expect(result?.items.map((a) => a.id)).toEqual(['a2']);
+    expect(prismaMock.$queryRaw.mock.calls[1][0].values[0]).toEqual([
+      'a1',
+      'a2',
+    ]);
+  });
+
+  it('カテゴリ・期間・低品質の除外・ソースの指定も条件に入る', async () => {
+    mockFilterArticles.mockResolvedValue(realResult(['a1']));
+    mockArticleQueries(['a1']);
+
+    await executePersonalizedQuery(
+      buildParams({
+        filters: {
+          category: 'frontend',
+          dateRange: 'week',
+          excludeLowQuality: true,
+          sourceId: 'src-zenn',
+        },
+      }),
+      metrics
+    );
+
+    const where = prismaMock.article.findMany.mock.calls[0][0].where;
+    expect(where).toMatchObject({
+      category: 'frontend',
+      sourceId: 'src-zenn',
+      publishedAt: { gte: expect.any(Date), lte: expect.any(Date) },
+    });
+    // 低品質の除外は AND に積まれる
+    expect(JSON.stringify(where.AND)).toContain('qualityScore');
+  });
+
+  it('キャッシュの値が壊れていれば使わずに推薦を計算し直す', async () => {
+    mockCacheGet.mockResolvedValue({ ids: [1, 2] });
+    mockFilterArticles.mockResolvedValue(realResult(['a1']));
+    mockArticleQueries(['a1']);
+
+    const result = await executePersonalizedQuery(buildParams(), metrics);
+
+    expect(mockFilterArticles).toHaveBeenCalled();
+    expect(result?.items.map((a) => a.id)).toEqual(['a1']);
+  });
+
+  it('除外ソースは推薦候補の抽出に渡さず、後段の条件で除く', async () => {
+    mockFilterArticles.mockResolvedValue(realResult(['a1']));
+    mockArticleQueries(['a1']);
+
+    await executePersonalizedQuery(
+      buildParams({ filters: { excludeSources: 'src-arxiv' } }),
+      metrics
+    );
+
+    expect(mockFilterArticles.mock.calls[0][0]).not.toHaveProperty(
+      'excludeSourceIds'
+    );
+    expect(prismaMock.article.findMany.mock.calls[0][0].where).toMatchObject({
+      sourceId: { notIn: ['src-arxiv'] },
+    });
   });
 
   it('タグを選ばなければ結合テーブルを引かない', async () => {
@@ -359,6 +455,20 @@ describe('executePersonalizedQuery', () => {
     expect(prismaMock.article.findMany).not.toHaveBeenCalled();
   });
 
+  it('一部のカテゴリの検索が失敗した結果は使うが、キャッシュしない', async () => {
+    const partial = realResult(['a1']);
+    mockFilterArticles.mockResolvedValue({
+      ...partial,
+      meta: { ...partial.meta, partialFailure: true },
+    });
+    mockArticleQueries(['a1']);
+
+    const result = await executePersonalizedQuery(buildParams(), metrics);
+
+    expect(result?.items.map((a) => a.id)).toEqual(['a1']);
+    expect(mockCacheSet).not.toHaveBeenCalled();
+  });
+
   it('全候補の ID が空なら null を返す', async () => {
     mockFilterArticles.mockResolvedValue(realResult([]));
 
@@ -417,20 +527,18 @@ describe('buildPersonalizedCacheKey', () => {
     periodMonths: 6,
     sortBy: 'finalScore' as const,
     sortOrder: 'desc' as const,
-    excludeSourceIds: ['src-2', 'src-1'],
   };
 
-  it('categoryIds・excludeSourceIds の順序と重複に依存しない', () => {
+  it('categoryIds の順序と重複に依存しない', () => {
     expect(buildPersonalizedCacheKey(base)).toBe(
       buildPersonalizedCacheKey({
         ...base,
         categoryIds: ['cat-a', 'cat-b', 'cat-a'],
-        excludeSourceIds: ['src-1', 'src-2', 'src-2'],
       })
     );
   });
 
-  it('期間・並べ替え・除外ソースが違えば別のキーになる', () => {
+  it('期間・並べ替えが違えば別のキーになる', () => {
     const key = buildPersonalizedCacheKey(base);
     expect(buildPersonalizedCacheKey({ ...base, periodMonths: 3 })).not.toBe(
       key
@@ -439,7 +547,7 @@ describe('buildPersonalizedCacheKey', () => {
       key
     );
     expect(
-      buildPersonalizedCacheKey({ ...base, excludeSourceIds: undefined })
+      buildPersonalizedCacheKey({ ...base, sortBy: 'publishedAt' })
     ).not.toBe(key);
   });
 
