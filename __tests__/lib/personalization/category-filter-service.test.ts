@@ -7,6 +7,8 @@ import {
   calculateRecencyDecay,
   calculateFinalScore,
   computeWeightedCentroid,
+  getMultiCategoryKPerCategory,
+  MULTI_CATEGORY_MIN_K_PER_CATEGORY,
 } from '@/lib/personalization/category-filter-service';
 import { DEFAULT_SCORE_PARAMETERS } from '@/lib/personalization/types';
 
@@ -1135,6 +1137,140 @@ describe('CategoryFilterService', () => {
         const callArgs = mockPrisma.$queryRaw.mock.calls[callIndex];
         const templateValues = callArgs.slice(1);
         expect(templateValues).toContain(30);
+      }
+    });
+  });
+
+  // ===========================================================================
+  // 複数カテゴリの候補数・allCandidates オプション（#684）
+  // ===========================================================================
+
+  describe('getMultiCategoryKPerCategory', () => {
+    it('topK 未指定時は、どのカテゴリ数でも 50 以上 100 以下', () => {
+      for (let count = 2; count <= 20; count++) {
+        const k = getMultiCategoryKPerCategory(count);
+        expect(k).toBeGreaterThanOrEqual(MULTI_CATEGORY_MIN_K_PER_CATEGORY);
+        expect(k).toBeLessThanOrEqual(100);
+      }
+      expect(getMultiCategoryKPerCategory(2)).toBe(100);
+      expect(getMultiCategoryKPerCategory(3)).toBe(67);
+      expect(getMultiCategoryKPerCategory(7)).toBe(50);
+    });
+
+    it('topK 指定時（ダイジェスト）は総予算をカテゴリ数で割る（下限 30）', () => {
+      expect(getMultiCategoryKPerCategory(3, 90)).toBe(30);
+      expect(getMultiCategoryKPerCategory(2, 200)).toBe(100);
+      expect(getMultiCategoryKPerCategory(3, 10)).toBe(30);
+    });
+  });
+
+  describe('filterArticles - allCandidates option', () => {
+    const mockCentroid = [
+      { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0]' },
+    ];
+    const mockMultiCentroids = [
+      { id: 'cat-1', slug: 'frontend', centroid_embedding: '[0.5,0.5,0]' },
+      { id: 'cat-2', slug: 'backend', centroid_embedding: '[0,0.5,0.5]' },
+    ];
+    const candidates = ['art-1', 'art-2', 'art-3'].map((id, i) => ({
+      id,
+      title: id,
+      url: `https://example.com/${id}`,
+      published_at: new Date(),
+      created_at: new Date(),
+      quality_score: 0.8,
+      bookmarks: 0,
+      user_votes: 0,
+      source_id: 'src-1',
+      summary: id,
+      thumbnail_url: null,
+      sim_emb: 0.9 - i * 0.1,
+    }));
+    const stage1 = candidates.map((c) => ({
+      articleId: c.id,
+      sim_emb: c.sim_emb,
+    }));
+
+    it('limit・offset でページを切らずに、並べ替えた全候補を返す', async () => {
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce(mockCentroid)
+        .mockResolvedValueOnce(stage1)
+        .mockResolvedValueOnce(candidates)
+        .mockResolvedValueOnce([]);
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 1,
+        offset: 1,
+        allCandidates: true,
+      });
+
+      expect(result.articles.map((a) => a.articleId)).toEqual([
+        'art-1',
+        'art-2',
+        'art-3',
+      ]);
+      expect(result.meta.totalMatched).toBe(3);
+    });
+
+    it('フォールバック時は最新記事を引かずに空の候補を返す', async () => {
+      mockPrisma.$queryRaw.mockResolvedValueOnce([]); // No centroids
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+        allCandidates: true,
+      });
+
+      expect(result.articles).toEqual([]);
+      expect(result.meta.appliedCategories).toEqual([]);
+      expect(mockPrisma.article.count).not.toHaveBeenCalled();
+      expect(mockPrisma.article.findMany).not.toHaveBeenCalled();
+    });
+
+    it('例外時も最新記事を引かずに空の候補を返す', async () => {
+      mockPrisma.$queryRaw.mockRejectedValueOnce(new Error('Database error'));
+
+      const result = await service.filterArticles({
+        categoryIds: ['cat-1'],
+        periodMonths: 12,
+        limit: 10,
+        allCandidates: true,
+      });
+
+      expect(result.articles).toEqual([]);
+      expect(result.meta.appliedCategories).toEqual([]);
+      expect(mockPrisma.article.count).not.toHaveBeenCalled();
+      expect(mockPrisma.article.findMany).not.toHaveBeenCalled();
+    });
+
+    it('複数カテゴリの候補数はページ（offset）に依存しない', async () => {
+      const limitsFor = async (offset: number) => {
+        mockPrisma.$queryRaw.mockReset();
+        mockPrisma.$queryRaw
+          .mockResolvedValueOnce(mockMultiCentroids)
+          .mockResolvedValueOnce(stage1)
+          .mockResolvedValueOnce(stage1)
+          .mockResolvedValueOnce(candidates)
+          .mockResolvedValueOnce(candidates)
+          .mockResolvedValueOnce([]);
+        await service.filterArticles({
+          categoryIds: ['cat-1', 'cat-2'],
+          periodMonths: 12,
+          limit: 20,
+          offset,
+        });
+        // Stage 1 は calls[1], calls[2]
+        return [1, 2].map((i) => mockPrisma.$queryRaw.mock.calls[i].slice(1));
+      };
+
+      for (const values of [
+        ...(await limitsFor(0)),
+        ...(await limitsFor(1000)),
+      ]) {
+        expect(values).toContain(100);
       }
     });
   });

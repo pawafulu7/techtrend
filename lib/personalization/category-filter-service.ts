@@ -19,6 +19,7 @@ import { DEFAULT_SCORE_PARAMETERS } from './types';
 import {
   getCategoryCentroids,
   getEmbeddingCandidates,
+  getPeriodCutoffDate,
   checkTagMatches,
   DEFAULT_TOP_K_CANDIDATES,
   DEFAULT_MIN_SIMILARITY,
@@ -41,6 +42,38 @@ export {
   calculateFinalScore,
   computeWeightedCentroid,
 } from './filters/score-aggregator';
+
+// =============================================================================
+// Candidate Budget
+// =============================================================================
+
+/** 複数カテゴリで topK 未指定のときの、カテゴリあたりの候補数の下限 */
+export const MULTI_CATEGORY_MIN_K_PER_CATEGORY = 50;
+
+/**
+ * 複数カテゴリの検索で、カテゴリあたりに引く候補数を返す。
+ *
+ * - topK 指定時（ダイジェスト）: topK を総予算としてカテゴリ数で割る（下限 30）
+ * - topK 未指定時（記事一覧）: 単一カテゴリの候補数（DEFAULT_TOP_K_CANDIDATES = 200）を
+ *   カテゴリ数で割る（下限 50）。最大は 2 カテゴリの 100。
+ *   ページ（limit・offset）に依存させないのは、ページを進めるたびに母集団が変わって
+ *   ページ間で記事が重複・欠落し、total も変わってしまうため。
+ *   上限を 100 前後に抑えるのは、Stage 1 の kNN が HNSW を使い続ける範囲に収めるため
+ *   （開発 DB では k が約 160 までは HNSW、約 170〜350 はプランナーが Parallel Seq Scan を
+ *   選んで 250ms 以上かかった）
+ */
+export function getMultiCategoryKPerCategory(
+  centroidCount: number,
+  topK?: number
+): number {
+  if (topK) {
+    return Math.max(30, Math.floor(topK / centroidCount));
+  }
+  return Math.max(
+    MULTI_CATEGORY_MIN_K_PER_CATEGORY,
+    Math.ceil(DEFAULT_TOP_K_CANDIDATES / centroidCount)
+  );
+}
 
 // =============================================================================
 // Category Filter Service
@@ -112,13 +145,7 @@ export class CategoryFilterService {
             fallback: true,
             fallbackReason: 'no_centroids',
           });
-          return this.getFallbackResults(
-            periodMonths,
-            limit,
-            offset,
-            startTime,
-            options.excludeSourceIds
-          );
+          return this.getFallbackResults(options, startTime);
         }
 
         const mode = centroids.length === 1 ? 'single' : 'multi-or';
@@ -146,13 +173,7 @@ export class CategoryFilterService {
               fallback: true,
               fallbackReason: 'no_candidates_single',
             });
-            return this.getFallbackResults(
-              periodMonths,
-              limit,
-              offset,
-              startTime,
-              options.excludeSourceIds
-            );
+            return this.getFallbackResults(options, startTime);
           }
           qualifiedArticles = result.articles;
           candidateCount = result.candidates.length;
@@ -166,13 +187,7 @@ export class CategoryFilterService {
               fallback: true,
               fallbackReason: 'no_candidates_multi',
             });
-            return this.getFallbackResults(
-              periodMonths,
-              limit,
-              offset,
-              startTime,
-              options.excludeSourceIds
-            );
+            return this.getFallbackResults(options, startTime);
           }
           qualifiedArticles = result.articles;
           candidateCount = result.mergedCount;
@@ -198,7 +213,9 @@ export class CategoryFilterService {
           sortBy,
           sortOrder
         );
-        const filtered = sortedArticles.slice(offset, offset + limit);
+        const filtered = options.allCandidates
+          ? sortedArticles
+          : sortedArticles.slice(offset, offset + limit);
         const scoreAggregationMs = hrtimeDiffMs(scoreAggStart);
 
         span.setAttribute('scoreAggregationMs', scoreAggregationMs);
@@ -262,13 +279,7 @@ export class CategoryFilterService {
           fallbackReason: `error_${errName}`,
         });
         logger.error({ err: error, categoryIds }, 'Failed to filter articles');
-        return this.getFallbackResults(
-          periodMonths,
-          limit,
-          offset,
-          startTime,
-          options.excludeSourceIds
-        );
+        return this.getFallbackResults(options, startTime);
       }
     });
   }
@@ -362,15 +373,12 @@ export class CategoryFilterService {
     multiSettleWaitMs: number;
     multiMergeMs: number;
   }> {
-    const { categoryIds, periodMonths, limit, offset = 0 } = options;
+    const { categoryIds, periodMonths } = options;
 
-    // If topK is specified, treat it as total budget and derive perCategory from it
-    const kPerCategory = options.topK
-      ? Math.max(30, Math.floor(options.topK / centroids.length))
-      : Math.max(
-          50,
-          Math.min(500, Math.ceil((limit + offset) / centroids.length) * 3)
-        );
+    const kPerCategory = getMultiCategoryKPerCategory(
+      centroids.length,
+      options.topK
+    );
 
     logger.info(
       { categoryIds, kPerCategory, centroidCount: centroids.length },
@@ -497,26 +505,39 @@ export class CategoryFilterService {
    * Return fallback results when filtering fails or no candidates found.
    */
   private async getFallbackResults(
-    periodMonths: number,
-    limit: number,
-    offset: number,
-    startTime: number,
-    excludeSourceIds?: string[]
+    options: PersonalizedFilterOptions,
+    startTime: number
   ): Promise<{ articles: ScoredArticle[]; meta: PersonalizedFilterMeta }> {
+    const {
+      periodMonths,
+      limit,
+      offset = 0,
+      excludeSourceIds,
+      allCandidates,
+    } = options;
+
+    if (allCandidates) {
+      // 呼び出し側が通常検索に切り替えるので、最新記事の count・findMany は引かない
+      logger.info('Using fallback: no personalized candidates');
+      return {
+        articles: [],
+        meta: {
+          filterMode: 'category',
+          appliedCategories: [],
+          periodMonths,
+          totalMatched: 0,
+          queryMs: Date.now() - startTime,
+        },
+      };
+    }
+
     logger.info('Using fallback: recent articles by published date');
 
+    const cutoffDate = getPeriodCutoffDate(periodMonths);
     const whereFilter = {
       isHidden: false,
       summaryComputedAt: { not: null },
-      ...(periodMonths > 0
-        ? {
-            publishedAt: {
-              gte: new Date(
-                Date.now() - periodMonths * 30 * 24 * 60 * 60 * 1000
-              ),
-            },
-          }
-        : {}),
+      ...(cutoffDate ? { publishedAt: { gte: cutoffDate } } : {}),
       ...(excludeSourceIds && excludeSourceIds.length > 0
         ? { sourceId: { notIn: excludeSourceIds } }
         : {}),

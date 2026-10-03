@@ -141,6 +141,19 @@ export async function getCategoryCentroids(
 }
 
 /**
+ * パーソナライズの期間（月数）の下限の日時。0 以下は期間なしで null を返す。
+ * 1 か月は 30 日として数える（推薦の候補抽出・フォールバック・通常検索への切り替えで同じ境界にする）
+ */
+export function getPeriodCutoffDate(
+  periodMonths: number,
+  now: number = Date.now()
+): Date | null {
+  return periodMonths > 0
+    ? new Date(now - periodMonths * 30 * 24 * 60 * 60 * 1000)
+    : null;
+}
+
+/**
  * Get embedding candidates using threshold-based similarity search.
  * Returns all articles that meet the similarity threshold up to a safety cap
  * to avoid unbounded memory usage.
@@ -153,10 +166,7 @@ export async function getEmbeddingCandidates(
   excludeSourceIds?: string[]
 ): Promise<EmbeddingCandidate[]> {
   // Build period filter using calculated date parameter
-  const cutoffDate =
-    periodMonths > 0
-      ? new Date(Date.now() - periodMonths * 30 * 24 * 60 * 60 * 1000)
-      : null;
+  const cutoffDate = getPeriodCutoffDate(periodMonths);
   const periodFilter = cutoffDate
     ? Prisma.sql`AND a."publishedAt" >= ${cutoffDate}`
     : Prisma.empty;

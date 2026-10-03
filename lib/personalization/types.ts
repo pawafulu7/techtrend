@@ -103,6 +103,12 @@ export interface PersonalizedFilterOptions {
   excludeSourceIds?: string[];
   topK?: number;
   maxConcurrency?: number;
+  /**
+   * true のとき、limit・offset でページを切らずに、並べ替えた全候補を返す。
+   * フォールバック（重心なし・候補なし・例外）では DB を引かずに空の候補と
+   * `appliedCategories: []` を返す（呼び出し側が通常検索に切り替えるため）
+   */
+  allCandidates?: boolean;
 }
 
 /**
