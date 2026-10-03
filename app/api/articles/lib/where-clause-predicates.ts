@@ -197,29 +197,51 @@ export function validateTagFilter(
   return result.error.issues.map((issue) => issue.message).join('; ');
 }
 
-const searchQuerySchema = z
-  .string()
-  .max(MAX_SEARCH_QUERY_LENGTH, {
-    message: `search must be at most ${MAX_SEARCH_QUERY_LENGTH} characters`,
-  })
-  .refine(
-    (search) =>
-      search.split(/[\s\u3000]+/).filter((k) => k.length > 0).length <=
-      MAX_SEARCH_KEYWORDS,
-    { message: `search must contain at most ${MAX_SEARCH_KEYWORDS} keywords` }
-  )
-  .nullish();
+/**
+ * 検索語を語に分ける。前後の空白を除き、半角・全角の空白（タブ・改行を含む）で区切る。
+ * 検証・検索条件・キャッシュキーで同じ区切り方を使うこと（ずれると語数の上限を
+ * すり抜けられたり、別の条件が同じキャッシュキーになったりする）。
+ */
+export function splitSearchKeywords(
+  search: string | null | undefined
+): string[] {
+  if (!search) return [];
+  return search
+    .trim()
+    .split(/[\s\u3000]+/)
+    .filter((k) => k.length > 0);
+}
 
 /**
- * 検索語（`search`・`q`）の長さと語数を検証する（#684）。問題があればエラーメッセージを、
- * 無ければ null を返す。語ごとに ILIKE の条件が増えるので、検索条件を作る前に呼ぶ。
+ * 記事一覧の検索語を上限内に切り詰めて語に分ける（#684）。前後の空白を除いた先頭
+ * MAX_SEARCH_QUERY_LENGTH 文字（コードポイント単位）の中の、先頭 MAX_SEARCH_KEYWORDS 語を返す。
+ * 語ごとに ILIKE の条件が増えるので、レート制限のない一覧 API で重いクエリを組み立てさせない。
+ * 画面の検索欄には上限がないので、400 にせず切り詰める（超えた分の語は使わない）。
+ */
+export function capSearchKeywords(search: string | null | undefined): string[] {
+  if (!search) return [];
+  const head = Array.from(search.trim())
+    .slice(0, MAX_SEARCH_QUERY_LENGTH)
+    .join('');
+  return splitSearchKeywords(head).slice(0, MAX_SEARCH_KEYWORDS);
+}
+
+/**
+ * 検索語（詳細検索の `q`）の長さと語数を検証する（#684）。問題があればエラーメッセージを、
+ * 無ければ null を返す。画面から呼ばれない API で使い、超えたら 400 にする。
+ * 長さは前後の空白を除いたコードポイントの数、語は splitSearchKeywords で数える。
  */
 export function validateSearchQuery(
   search: string | null | undefined
 ): string | null {
-  const result = searchQuerySchema.safeParse(search);
-  if (result.success) return null;
-  return result.error.issues.map((issue) => issue.message).join('; ');
+  if (!search) return null;
+  if (Array.from(search.trim()).length > MAX_SEARCH_QUERY_LENGTH) {
+    return `search must be at most ${MAX_SEARCH_QUERY_LENGTH} characters`;
+  }
+  if (splitSearchKeywords(search).length > MAX_SEARCH_KEYWORDS) {
+    return `search must contain at most ${MAX_SEARCH_KEYWORDS} keywords`;
+  }
+  return null;
 }
 
 /**
@@ -292,13 +314,8 @@ export function pushSearchFilter(
   andConditions: ArticleWhereInput[],
   search: string | null | undefined
 ): void {
-  if (!search) return;
-
-  const keywords = search
-    .trim()
-    .split(/[\s\u3000]+/)
-    .filter((k) => k.length > 0);
-
+  // 上限内に切り詰める（キャッシュキーも capSearchKeywords で作るので条件と一致する）
+  const keywords = capSearchKeywords(search);
   if (keywords.length === 0) return;
 
   // contains は ILIKE になるので、_ や % がワイルドカードにならないようにエスケープする

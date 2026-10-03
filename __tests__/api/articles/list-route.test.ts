@@ -211,7 +211,7 @@ describe('/api/articles/list', () => {
     expect(mockPrisma.article.findMany).not.toHaveBeenCalled();
   });
 
-  it('rejects a search with more than 10 keywords with 400 before querying (#684)', async () => {
+  it('searches with only the first 10 keywords (#684)', async () => {
     mockPrisma.article.count = jest.fn().mockResolvedValue(0);
     mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
     const search = Array.from({ length: 11 }, (_, i) => `w${i}`).join('%20');
@@ -220,10 +220,13 @@ describe('/api/articles/list', () => {
       new NextRequest(`http://localhost:3000/api/articles/list?search=${search}`)
     );
 
-    expect(response.status).toBe(400);
-    const json = await response.json();
-    expect(json.error.code).toBe('INVALID_SEARCH');
-    expect(mockPrisma.article.findMany).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    const { where } = (mockPrisma.article.findMany as jest.Mock).mock
+      .calls[0][0];
+    const keywords = (where.AND as any[])
+      .filter((c) => c.OR?.[0]?.title?.contains !== undefined)
+      .map((c) => c.OR[0].title.contains);
+    expect(keywords).toEqual(Array.from({ length: 10 }, (_, i) => `w${i}`));
   });
 
   it('should handle NaN limit parameter gracefully', async () => {

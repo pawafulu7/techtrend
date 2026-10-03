@@ -44,11 +44,20 @@ describe('GET /api/tags/search', () => {
     ]);
   });
 
-  it('201 文字の検索語は 400 を返し、クエリしない（#684）', async () => {
+  it('201 文字の検索語は先頭 200 文字に切り詰めて検索する（#684）', async () => {
     const response = await GET(request(`?q=${'a'.repeat(201)}`));
 
-    expect(response.status).toBe(400);
-    expect(prismaMock.tag.findMany).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(prismaMock.tag.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [
+            { name: { contains: 'a'.repeat(200), mode: 'insensitive' } },
+            { articles: { some: {} } },
+          ],
+        },
+      })
+    );
   });
 
   it('検索語の前後の空白を除いて検索する', async () => {

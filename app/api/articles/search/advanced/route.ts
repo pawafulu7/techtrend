@@ -5,7 +5,10 @@ import { createDateRange } from '@/lib/types/prisma-helpers';
 import logger from '@/lib/logger';
 import { escapeLikePattern } from '@/lib/utils/like-pattern';
 import { findTagIdsByNames } from '@/lib/services/tag-service';
-import { validateSearchQuery } from '@/app/api/articles/lib/where-clause-predicates';
+import {
+  splitSearchKeywords,
+  validateSearchQuery,
+} from '@/app/api/articles/lib/where-clause-predicates';
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,10 +58,11 @@ export async function GET(request: NextRequest) {
     };
 
     // テキスト検索（iLIKE）
-    const trimmedQuery = query.trim();
-    if (trimmedQuery) {
+    // 語の区切り方は検証（validateSearchQuery）と同じにする。半角スペースだけで区切ると、
+    // タブや全角スペースだけの語が検証では数えられずに上限をすり抜ける
+    const queryParts = splitSearchKeywords(query);
+    if (queryParts.length > 0) {
       // 除外キーワードの処理
-      const queryParts = trimmedQuery.split(' ').filter(Boolean);
       const includeTerms: string[] = [];
       const excludeTerms: string[] = [];
 

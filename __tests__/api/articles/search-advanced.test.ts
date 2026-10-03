@@ -152,11 +152,30 @@ describe('GET /api/articles/search/advanced', () => {
     ]);
   });
 
-  it('201 文字の検索語は 400 を返し、クエリしない（#684）', async () => {
-    const response = await GET(request(`?q=${'a'.repeat(201)}`));
+  it.each([
+    ['201 文字', 'a'.repeat(201)],
+    ['11 語', Array.from({ length: 11 }, (_, i) => `w${i}`).join(' ')],
+    // タブだけの語を半角スペースで挟んでも、語数の上限をすり抜けられない
+    [
+      'タブで区切った 11 語',
+      Array.from({ length: 11 }, (_, i) => `w${i}`).join(' \t '),
+    ],
+  ])('%sの検索語は 400 を返し、クエリしない（#684）', async (_label, q) => {
+    const response = await GET(request(`?q=${encodeURIComponent(q)}`));
 
     expect(response.status).toBe(400);
     expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+  });
+
+  it('タブや全角スペースも語の区切りとして扱う（#684）', async () => {
+    await GET(request(`?q=${encodeURIComponent('foo\tbar\u3000baz')}`));
+
+    const where = prismaMock.article.findMany.mock.calls[0][0].where;
+    expect((where.AND as any[]).map((c) => c.OR[0].title.contains)).toEqual([
+      'foo',
+      'bar',
+      'baz',
+    ]);
   });
 
   it('facets.difficulty はレスポンスの形を保つため空配列で返す', async () => {

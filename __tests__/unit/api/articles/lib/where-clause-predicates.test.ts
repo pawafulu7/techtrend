@@ -17,8 +17,10 @@ import {
   MAX_TAG_NAME_LENGTH,
   parseTagList,
   pushSearchFilter,
+  capSearchKeywords,
   pushTagFilter,
   resolveTagIdGroups,
+  splitSearchKeywords,
   validateSearchQuery,
   validateTagFilter,
 } from '@/app/api/articles/lib/where-clause-predicates';
@@ -214,6 +216,12 @@ describe('validateSearchQuery', () => {
     expect(validateSearchQuery('a'.repeat(201))).toMatch(/200 characters/);
   });
 
+  it('measures the length after trimming, in code points', () => {
+    expect(validateSearchQuery(`  ${'a'.repeat(200)}  `)).toBeNull();
+    // 絵文字は UTF-16 では 2 単位だが 1 文字として数える
+    expect(validateSearchQuery('😀'.repeat(200))).toBeNull();
+  });
+
   it('counts keywords split by ASCII and full-width spaces (#684)', () => {
     const elevenWords = Array.from({ length: 11 }, (_, i) => `w${i}`);
     expect(validateSearchQuery(elevenWords.join(' '))).toMatch(/10 keywords/);
@@ -222,5 +230,33 @@ describe('validateSearchQuery', () => {
     );
     // 連続する空白は 1 つの区切りとして数える
     expect(validateSearchQuery(elevenWords.slice(0, 10).join('   '))).toBeNull();
+  });
+});
+
+describe('splitSearchKeywords', () => {
+  it('splits by ASCII and full-width whitespace, including tabs', () => {
+    expect(splitSearchKeywords(' a\tb\u3000c  d\n')).toEqual(['a', 'b', 'c', 'd']);
+    expect(splitSearchKeywords(undefined)).toEqual([]);
+    expect(splitSearchKeywords(' \t ')).toEqual([]);
+  });
+});
+
+describe('capSearchKeywords', () => {
+  it('keeps only the first 10 keywords (#684)', () => {
+    const words = Array.from({ length: 12 }, (_, i) => `w${i}`);
+    expect(capSearchKeywords(words.join(' '))).toEqual(words.slice(0, 10));
+  });
+
+  it('keeps only the first 200 characters after trimming (#684)', () => {
+    expect(capSearchKeywords(`  ${'a'.repeat(250)}`)).toEqual(['a'.repeat(200)]);
+    // 200 文字目で語が切れても、その語は途中まで使う
+    expect(capSearchKeywords(`${'a'.repeat(198)} bcd`)).toEqual([
+      'a'.repeat(198),
+      'b',
+    ]);
+  });
+
+  it('does not split a surrogate pair at the limit', () => {
+    expect(capSearchKeywords('😀'.repeat(201))).toEqual(['😀'.repeat(200)]);
   });
 });

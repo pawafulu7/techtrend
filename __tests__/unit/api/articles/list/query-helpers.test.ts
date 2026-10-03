@@ -236,15 +236,29 @@ describe('query-helpers', () => {
 });
 
 describe('normalizeSearchForCacheKey', () => {
-  it('splits, sorts and joins keywords', () => {
+  it('splits and sorts keywords into a JSON array', () => {
     expect(normalizeSearchForCacheKey(' React\u3000Hooks  AI ')).toBe(
-      'AI,Hooks,React'
+      '["AI","Hooks","React"]'
     );
     expect(normalizeSearchForCacheKey(null)).toBe('none');
+    expect(normalizeSearchForCacheKey('   ')).toBe('none');
   });
 
-  it('uses LIKE-escaped keywords so that wildcard searches get new keys (#684)', () => {
-    // #684 以前はワイルドカードとして照合していたので、同じキーを使うと古い結果が返る
-    expect(normalizeSearchForCacheKey('100% a_b')).toBe('100\\%,a\\_b');
+  it('keeps keyword boundaries and does not collide with "none" (#684)', () => {
+    // 区切り文字で連結すると "a,b c" と "a b,c" が同じキーになっていた
+    expect(normalizeSearchForCacheKey('a,b c')).not.toBe(
+      normalizeSearchForCacheKey('a b,c')
+    );
+    expect(normalizeSearchForCacheKey('none')).not.toBe(
+      normalizeSearchForCacheKey(null)
+    );
+  });
+
+  it('uses only the keywords used in the query (first 10) (#684)', () => {
+    const eleven = Array.from({ length: 11 }, (_, i) => `w${i}`).join(' ');
+    const ten = Array.from({ length: 10 }, (_, i) => `w${i}`).join(' ');
+    expect(normalizeSearchForCacheKey(eleven)).toBe(
+      normalizeSearchForCacheKey(ten)
+    );
   });
 });

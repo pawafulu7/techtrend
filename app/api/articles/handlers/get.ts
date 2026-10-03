@@ -27,7 +27,6 @@ import type {
 } from '@/lib/personalization/types';
 import logger from '@/lib/logger';
 import { measureAsync } from '@/lib/personalization/tracing';
-import { escapeLikePattern } from '@/lib/utils/like-pattern';
 
 import {
   buildSelectFields,
@@ -48,7 +47,7 @@ import {
   type PersonalizationParams,
 } from '../lib';
 import {
-  validateSearchQuery,
+  capSearchKeywords,
   validateTagFilter,
 } from '../lib/where-clause-predicates';
 
@@ -134,17 +133,16 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
       : 0;
 
   // Normalize search keywords for consistent cache key.
-  // キーは LIKE のエスケープ後の値で作る。_ や % を含む検索のキーだけが #684 以前と
-  // 変わり、ワイルドカードとして照合していた頃のキャッシュを返さない
-  const normalizedSearch = search
-    ? search
-        .trim()
-        .split(/[\s\u3000]+/)
-        .filter((k) => k.length > 0)
-        .map(escapeLikePattern)
-        .sort()
-        .join(',')
-    : 'none';
+  // 検索条件と同じ（上限内に切り詰めた）語を並べ替え、JSON の配列にする。
+  // 区切り文字での連結だと "a,b c" と "a b,c" や、検索語 "none" と「検索なし」が
+  // 同じキーになる。#684 で形式を変えたので、ワイルドカードとして照合していた頃の
+  // キャッシュも当たらない（LayeredCache は空白で区切り直すが、JSON の配列は空白を
+  // 含まないので 1 語のまま扱われる）
+  const searchKeywords = capSearchKeywords(search);
+  const normalizedSearch =
+    searchKeywords.length > 0
+      ? JSON.stringify([...searchKeywords].sort())
+      : 'none';
 
   // Normalize sources for cache key (trim first, then filter empty, then lowercase)
   const normalizedSources = sources
@@ -487,15 +485,6 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
     if (tagFilterError) {
       return NextResponse.json(
         { success: false, error: tagFilterError },
-        { status: 400 }
-      );
-    }
-
-    // 検索語の長さと語数を検証する（キャッシュキーを作る前・検索条件を作る前）
-    const searchError = validateSearchQuery(filters.search);
-    if (searchError) {
-      return NextResponse.json(
-        { success: false, error: searchError },
         { status: 400 }
       );
     }

@@ -18,8 +18,8 @@ import {
 } from '@/app/lib/date-utils';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
-import { escapeLikePattern } from '@/lib/utils/like-pattern';
 import {
+  capSearchKeywords,
   pushLowQualityFilter,
   pushProcessedFilter,
   pushReadFilter,
@@ -281,17 +281,12 @@ function applyDateRangeFilter(
  * Normalize search string for cache key consistency
  */
 export function normalizeSearchForCacheKey(search: string | null): string {
-  // キーは LIKE のエスケープ後の値で作る。_ や % を含む検索のキーだけが #684 以前と
-  // 変わり、ワイルドカードとして照合していた頃のキャッシュを返さない
-  return search
-    ? search
-        .trim()
-        .split(/[\s\u3000]+/)
-        .filter((k) => k.length > 0)
-        .map(escapeLikePattern)
-        .sort()
-        .join(',')
-    : 'none';
+  // 検索条件と同じ（上限内に切り詰めた）語を並べ替え、JSON の配列にする。
+  // 区切り文字での連結だと "a,b c" と "a b,c" や、検索語 "none" と「検索なし」が
+  // 同じキーになる。#684 で形式を変えたので、ワイルドカードとして照合していた頃の
+  // キャッシュも当たらない
+  const keywords = capSearchKeywords(search);
+  return keywords.length > 0 ? JSON.stringify([...keywords].sort()) : 'none';
 }
 
 /**
