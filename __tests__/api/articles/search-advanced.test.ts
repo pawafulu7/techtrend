@@ -122,19 +122,34 @@ describe('GET /api/articles/search/advanced', () => {
             { summary: { contains: 'a\\_b', mode: 'insensitive' } },
           ],
         },
-        {
-          NOT: {
-            OR: [
-              { title: { contains: '100\\%', mode: 'insensitive' } },
-              {
-                translatedTitle: { contains: '100\\%', mode: 'insensitive' },
-              },
-              { summary: { contains: '100\\%', mode: 'insensitive' } },
-            ],
-          },
-        },
+        { NOT: { title: { contains: '100\\%', mode: 'insensitive' } } },
       ])
     );
+  });
+
+  it('除外語は translatedTitle・summary が NULL の記事を落とさない（#684）', async () => {
+    await GET(request('?q=-foo'));
+
+    const where = prismaMock.article.findMany.mock.calls[0][0].where;
+    // NOT (a OR b OR c) は NULL の列で NULL になり記事ごと落ちるので、列ごとに
+    // 「NULL か、含まない」にする
+    expect(where.AND).toEqual([
+      { NOT: { title: { contains: 'foo', mode: 'insensitive' } } },
+      {
+        OR: [
+          { translatedTitle: null },
+          {
+            NOT: { translatedTitle: { contains: 'foo', mode: 'insensitive' } },
+          },
+        ],
+      },
+      {
+        OR: [
+          { summary: null },
+          { NOT: { summary: { contains: 'foo', mode: 'insensitive' } } },
+        ],
+      },
+    ]);
   });
 
   it('facets.difficulty はレスポンスの形を保つため空配列で返す', async () => {

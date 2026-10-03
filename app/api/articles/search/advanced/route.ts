@@ -76,6 +76,33 @@ export async function GET(request: NextRequest) {
         ];
       };
 
+      // 1 語がタイトル/翻訳タイトル/要約のどれにも含まれない条件。
+      // NOT (a OR b OR c) は、translatedTitle や summary が NULL だと NULL になって
+      // 記事ごと落ちる（除外語を 1 つ付けただけで約半数が消えていた）。NULL の列は
+      // 「含まない」として扱う
+      const excludeTerm = (term: string): Prisma.ArticleWhereInput[] => {
+        const pattern = escapeLikePattern(term);
+        return [
+          { NOT: { title: { contains: pattern, mode: 'insensitive' } } },
+          {
+            OR: [
+              { translatedTitle: null },
+              {
+                NOT: {
+                  translatedTitle: { contains: pattern, mode: 'insensitive' },
+                },
+              },
+            ],
+          },
+          {
+            OR: [
+              { summary: null },
+              { NOT: { summary: { contains: pattern, mode: 'insensitive' } } },
+            ],
+          },
+        ];
+      };
+
       // 各検索語はAND（全てを含む）、各語はタイトル/翻訳タイトル/要約のいずれかにマッチ
       if (includeTerms.length > 0) {
         const termConditions = includeTerms.map((term) => ({
@@ -90,9 +117,9 @@ export async function GET(request: NextRequest) {
       if (excludeTerms.length > 0) {
         if (!Array.isArray(whereConditions.AND)) whereConditions.AND = [];
         for (const term of excludeTerms) {
-          (whereConditions.AND as Prisma.ArticleWhereInput[]).push({
-            NOT: { OR: matchTerm(term) },
-          });
+          (whereConditions.AND as Prisma.ArticleWhereInput[]).push(
+            ...excludeTerm(term)
+          );
         }
       }
     }
