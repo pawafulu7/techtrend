@@ -6,6 +6,7 @@ import {
   resetDiffSummaryService,
 } from '@/lib/ai/diff-summary/diff-summary-service';
 import { LLMExtractionPipeline } from '@/lib/ai/extraction/llm-extraction-pipeline';
+import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 
 // Mock dependencies
 jest.mock('@/lib/ai/extraction/llm-extraction-pipeline', () => ({
@@ -145,8 +146,11 @@ describe('Diff Summary Service', () => {
       { id: 'a7', title: 'T7', tags: [{ name: 'Claude Code' }] },
     ];
 
+    const findMany = jest.fn();
     const collect = async () => {
-      const prisma = { article: { findMany: jest.fn().mockResolvedValue(articles) } };
+      findMany.mockReset();
+      findMany.mockResolvedValue(articles);
+      const prisma = { article: { findMany } };
       const service = new DiffSummaryService({
         pipeline: {} as unknown as LLMExtractionPipeline,
         prisma: prisma as never,
@@ -160,6 +164,18 @@ describe('Diff Summary Service', () => {
         }
       ).getTopicsForPeriod('foreign', '2026-W39');
     };
+
+    it('無効化したソースの記事を材料にしない（issue #688）', async () => {
+      await collect();
+
+      expect(findMany).toHaveBeenCalledTimes(1);
+      expect(findMany.mock.calls[0][0].where).toEqual(
+        expect.objectContaining({
+          sourceId: { in: expect.any(Array) },
+          AND: [enabledSourceWhere()],
+        })
+      );
+    });
 
     it('トピック名は小文字のキーではなく正式名で、同義語は記事単位で数える', async () => {
       const topics = await collect();

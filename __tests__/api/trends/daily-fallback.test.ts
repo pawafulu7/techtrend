@@ -275,7 +275,12 @@ describe('/api/trends/daily - thumbnail enrichment', () => {
 
     expect(prisma.article.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: { in: expect.arrayContaining(['art-1', 'art-external', 'art-2']) }, isHidden: false },
+        // 無効化したソースの記事は除く（issue #688）
+        where: {
+          id: { in: expect.arrayContaining(['art-1', 'art-external', 'art-2']) },
+          isHidden: false,
+          AND: [{ source: { is: { enabled: true } } }],
+        },
       })
     );
 

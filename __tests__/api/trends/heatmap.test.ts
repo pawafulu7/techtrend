@@ -32,6 +32,7 @@ import { GET } from '@/app/api/trends/heatmap/route';
 import { prisma } from '@/lib/database';
 import { resetEnvCache } from '@/lib/config/env';
 import { NextRequest } from 'next/server';
+import { ENABLED_SOURCE_SQL, sqlFragmentsOf } from '../../helpers/sql-fragments';
 
 const prismaMock = prisma as any;
 
@@ -194,4 +195,21 @@ describe('/api/trends/heatmap', () => {
     expect(data.categories).toHaveLength(1);
     expect(data.categories[0].category).toBe('ai_ml');
   });
+
+  it.each(['day', 'week', 'month'])(
+    '無効化したソースの記事を数えない（period=%s、今期・前期とも。issue #688）',
+    async (period) => {
+      prismaMock.$queryRaw.mockResolvedValue([]);
+
+      const response = await GET(createRequest({ period }));
+
+      expect(response.status).toBe(200);
+      expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+      for (const call of prismaMock.$queryRaw.mock.calls) {
+        expect(sqlFragmentsOf(call, { afterAnd: true })).toEqual([
+          `"sourceId" ${ENABLED_SOURCE_SQL}`,
+        ]);
+      }
+    }
+  );
 });

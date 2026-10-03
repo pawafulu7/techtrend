@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseIntParam, VALIDATION_RANGES } from '@/lib/utils/validation';
 import logger from '@/lib/logger';
+import { enabledSourceSql } from '@/lib/database/enabled-source-filter';
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
     // 最近の記事で初めて使用されたタグを取得（NOT EXISTSで古い記事に出現するタグを除外）
     // 注: Prismaではタグの作成日時を追跡していないため、
     // 最近の記事のみで使用されたタグを新規タグとみなす
+    // 無効化したソースの記事は、内側（過去の出現）でも外側でも数えない（issue #688）
     const sinceIso = since.toISOString();
     const rawTags = await prisma.$queryRaw<
       Array<{ id: string; name: string; article_count: bigint }>
@@ -39,6 +41,7 @@ export async function GET(request: NextRequest) {
       JOIN "_ArticleToTag" at ON t.id = at."B"
       JOIN "Article" a ON at."A" = a.id
       WHERE a."publishedAt" >= ${sinceIso}::timestamptz
+        AND ${enabledSourceSql()}
         AND t.name <> ''
         AND t.name IS NOT NULL
         AND NOT EXISTS (
@@ -47,6 +50,7 @@ export async function GET(request: NextRequest) {
           JOIN "Article" a2 ON at2."A" = a2.id
           WHERE at2."B" = t.id
             AND a2."publishedAt" < ${sinceIso}::timestamptz
+            AND ${enabledSourceSql('a2."sourceId"')}
         )
       GROUP BY t.id, t.name
       ORDER BY article_count DESC

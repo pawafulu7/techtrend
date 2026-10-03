@@ -5,6 +5,7 @@ import { trendsCache } from '@/lib/cache/trends-cache';
 import { parseIntParam, VALIDATION_RANGES } from '@/lib/utils/validation';
 import logger from '@/lib/logger';
 import { applyPublicCacheHeaders } from '@/lib/api/cache-headers';
+import { enabledSourceSql } from '@/lib/database/enabled-source-filter';
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,7 +32,8 @@ export async function GET(request: NextRequest) {
       tag: tagName || undefined,
     });
 
-    // キャッシュから取得またはDBから取得してキャッシュに保存
+    // キャッシュから取得またはDBから取得してキャッシュに保存。
+    // 集計は無効化したソースの記事を数えない（issue #688）
     const analysisData = await trendsCache.getOrSet(cacheKey, async () => {
       const now = new Date();
       const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
@@ -50,6 +52,7 @@ export async function GET(request: NextRequest) {
             WHERE lower(t.name) = lower(${tagName})
               AND a."publishedAt" >= ${startDate.toISOString()}::timestamp
               AND a."isHidden" = false
+              AND ${enabledSourceSql()}
             GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD')
             ORDER BY date ASC
           `;
@@ -70,6 +73,7 @@ export async function GET(request: NextRequest) {
               AND lower(t2.name) <> lower(${tagName})
               AND a."publishedAt" >= ${startDate.toISOString()}::timestamp
               AND a."isHidden" = false
+              AND ${enabledSourceSql()}
             GROUP BY t2.name
             ORDER BY count DESC
             LIMIT 10
@@ -104,6 +108,7 @@ export async function GET(request: NextRequest) {
             JOIN "Article" a ON at."A" = a.id
             WHERE a."publishedAt" >= ${startDate.toISOString()}::timestamp
               AND a."isHidden" = false
+              AND ${enabledSourceSql()}
             GROUP BY t.name
             ORDER BY total_count DESC
             LIMIT 10
@@ -127,6 +132,7 @@ export async function GET(request: NextRequest) {
               JOIN "Article" a ON at."A" = a.id
               WHERE a."publishedAt" >= ${startDate.toISOString()}::timestamp
                 AND a."isHidden" = false
+                AND ${enabledSourceSql()}
                 AND t.name IN (${Prisma.join(tagNames)})
               GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), t.name
               ORDER BY date ASC, count DESC

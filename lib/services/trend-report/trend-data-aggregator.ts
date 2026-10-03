@@ -6,9 +6,11 @@ import type {
   TagInfo,
 } from './types';
 import { CATEGORY_TAGS, JST_OFFSET_MS } from './types';
+import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 
 /**
  * Fetch articles within the given date range.
+ * 無効化したソースの記事は、レポートの集計に入れない（issue #688）
  */
 export async function fetchArticles(
   prisma: PrismaClient,
@@ -21,6 +23,7 @@ export async function fetchArticles(
         gte: start,
         lt: end,
       },
+      AND: [enabledSourceWhere()],
     },
     include: {
       tags: true,

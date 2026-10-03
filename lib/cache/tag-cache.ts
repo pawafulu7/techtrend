@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { RedisCache } from './index';
 import { CACHE_TTL } from './constants';
 import type { TagWithCount } from '@/types/models';
+import { findTopTags } from '@/lib/database/tag-article-counts';
 
 export class TagCache {
   private cache: RedisCache;
@@ -30,25 +31,18 @@ export class TagCache {
   }
 
   /**
-   * 人気タグを取得（記事数上位）
+   * 人気タグを取得（記事数上位）。記事数は無効化したソースの記事を数えない（issue #688）
    */
   async getPopularTags(limit = 20): Promise<TagWithCount[]> {
     return this.cache.getOrSetWithLock(`popular-tags:${limit}`, async () => {
-      const tags = await prisma.tag.findMany({
-        include: {
-          _count: {
-            select: { articles: true },
-          },
-        },
-        orderBy: {
-          articles: {
-            _count: 'desc',
-          },
-        },
-        take: limit,
-      });
+      const tags = await findTopTags(prisma, { limit });
 
-      return tags;
+      return tags.map((tag) => ({
+        id: tag.id,
+        name: tag.name,
+        category: tag.category,
+        _count: { articles: tag.count },
+      }));
     });
   }
 

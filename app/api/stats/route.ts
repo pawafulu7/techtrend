@@ -4,6 +4,11 @@ import { RedisCache } from '@/lib/cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
 import { applyPublicCacheHeaders } from '@/lib/api/cache-headers';
+import {
+  enabledSourceSql,
+  enabledSourceWhere,
+} from '@/lib/database/enabled-source-filter';
+import { findTopTags } from '@/lib/database/tag-article-counts';
 
 // Optimized cache configuration: 5-minute TTL for stats
 const statsCache = new RedisCache({
@@ -77,6 +82,7 @@ async function statsHandler() {
     }
 
     // If not in cache, fetch from database
+    // 件数・日別・人気タグは、無効化したソースの記事を数えない（issue #688）
     const stats = await (async () => {
       // 記事の統計情報を取得
       const [
@@ -88,7 +94,7 @@ async function statsHandler() {
         popularTags,
       ] = await Promise.all([
         // 総記事数
-        prisma.article.count(),
+        prisma.article.count({ where: { AND: [enabledSourceWhere()] } }),
 
         // 過去7日間の記事数
         prisma.article.count({
@@ -96,6 +102,7 @@ async function statsHandler() {
             publishedAt: {
               gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
             },
+            AND: [enabledSourceWhere()],
           },
         }),
 
@@ -105,6 +112,7 @@ async function statsHandler() {
             publishedAt: {
               gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
             },
+            AND: [enabledSourceWhere()],
           },
         }),
 
@@ -132,24 +140,13 @@ async function statsHandler() {
         FROM "Article" a
         JOIN "Source" s ON a."sourceId" = s.id
         WHERE a."publishedAt" >= NOW() - INTERVAL '30 days'
+          AND ${enabledSourceSql()}
         GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), s.name
         ORDER BY date DESC, count DESC
       `,
 
         // 人気タグTOP10
-        prisma.tag.findMany({
-          include: {
-            _count: {
-              select: { articles: true },
-            },
-          },
-          orderBy: {
-            articles: {
-              _count: 'desc',
-            },
-          },
-          take: 10,
-        }),
+        findTopTags(prisma, { limit: 10 }),
       ]);
 
       // レスポンスデータを整形
@@ -195,7 +192,7 @@ async function statsHandler() {
         tags: popularTags.map((tag) => ({
           id: tag.id,
           name: tag.name,
-          count: tag._count.articles,
+          count: tag.count,
         })),
       };
 

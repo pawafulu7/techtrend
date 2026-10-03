@@ -4,8 +4,17 @@
 
 import { createRedisCacheMock } from '../../../helpers/cache-mock-helpers';
 
-// モックの設定
-jest.mock('@/lib/database');
+// 件数の集計（有効なソースの記事だけを数える生 SQL）は tag-article-counts のテスト DB のテストで確かめる。
+// ここでは route がそれをどう呼び、応答をどう組み立てるかを見る
+const mockFindTopTags = jest.fn();
+// 第 1 引数の prisma は jest-mock-extended の Proxy で、expect.anything() が使えないので、条件（第 2 引数）だけを見る
+const lastOptions = () => mockFindTopTags.mock.calls.at(-1)?.[1];
+const mockCountTagArticlesInRange = jest.fn();
+jest.mock('@/lib/database/tag-article-counts', () => ({
+  findTopTags: (...args: unknown[]) => mockFindTopTags(...args),
+  countTagArticlesInRange: (...args: unknown[]) =>
+    mockCountTagArticlesInRange(...args),
+}));
 
 // モックインスタンスを保持する変数
 let mockCacheInstance: ReturnType<typeof createRedisCacheMock>;
@@ -21,13 +30,27 @@ jest.mock('@/lib/cache', () => ({
 }));
 
 import { GET } from '@/app/api/tags/cloud/route';
-import { prisma } from '@/lib/database';
-import { RedisCache } from '@/lib/cache';
 import { NextRequest } from 'next/server';
 
-// モックの型定義
-const prismaMock = prisma as any;
-const RedisCacheMock = RedisCache as jest.MockedClass<typeof RedisCache>;
+/** findTopTags の戻り値の形。期間ありのときは periodCount に期間内の件数が入る */
+const asTopTags = (
+  tags: { id: string; name: string; _count: { articles: number } }[],
+  withPeriod = true
+) =>
+  tags.map((tag) => ({
+    id: tag.id,
+    name: tag.name,
+    category: null,
+    // 全期間の件数（上位の選定に使う）。期間内の件数と区別できるように 1000 を足す
+    count: tag._count.articles + 1000,
+    ...(withPeriod ? { periodCount: tag._count.articles } : {}),
+  }));
+
+/** countTagArticlesInRange の戻り値の形 */
+const asRangeCounts = (tags: { id: string; _count: { articles: number } }[]) =>
+  new Map(tags.map((tag) => [tag.id, tag._count.articles]));
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 describe('/api/tags/cloud', () => {
   const mockTags = [
@@ -104,26 +127,27 @@ describe('/api/tags/cloud', () => {
       return `${base}:${period}:${limit}`;
     });
     
-    // Prismaモックの設定
-    prismaMock.tag = {
-      findMany: jest.fn()
-    };
+    mockFindTopTags.mockReset();
+    mockCountTagArticlesInRange.mockReset();
+    mockCountTagArticlesInRange.mockResolvedValue(new Map());
   });
 
   describe('GET', () => {
     it('デフォルトパラメータでタグクラウドを取得する', async () => {
-      prismaMock.tag.findMany
-        .mockResolvedValueOnce(mockTags)  // 現在期間のタグ
-        .mockResolvedValueOnce(mockPreviousTags);  // 前期間のタグ
+      mockFindTopTags.mockResolvedValueOnce(asTopTags(mockTags));
+      mockCountTagArticlesInRange.mockResolvedValueOnce(
+        asRangeCounts(mockPreviousTags)
+      );
 
       const request = new NextRequest(new URL('http://localhost/api/tags/cloud'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.tags).toHaveLength(5);
       expect(data.period).toBe('30d');
+      // count は期間内の件数（periodCount）
       expect(data.tags[0]).toEqual({
         id: 'tag1',
         name: 'TypeScript',
@@ -131,7 +155,7 @@ describe('/api/tags/cloud', () => {
         trend: 'rising',  // 20 → 25 で上昇
         growthRate: 25     // (25-20)/20 * 100 = 25%
       });
-      
+
       expect(mockCacheInstance.set).toHaveBeenCalledWith(
         'tagcloud:30d:50',
         expect.objectContaining({
@@ -141,71 +165,95 @@ describe('/api/tags/cloud', () => {
       );
     });
 
-    it('7日間のタグクラウドを取得する', async () => {
-      prismaMock.tag.findMany
-        .mockResolvedValueOnce(mockTags.slice(0, 3))
-        .mockResolvedValueOnce([]);
+    it('7日間のタグクラウドを取得する（期間と前期間の範囲を渡す）', async () => {
+      mockFindTopTags.mockResolvedValueOnce(asTopTags(mockTags.slice(0, 3)));
 
+      const before = Date.now();
       const request = new NextRequest(new URL('http://localhost/api/tags/cloud?period=7d&limit=10'));
       const response = await GET(request);
+      const after = Date.now();
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.period).toBe('7d');
       expect(data.tags).toHaveLength(3);
-      
-      // 7日間の期間フィルタが適用されているか確認
-      expect(prismaMock.tag.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            articles: expect.objectContaining({
-              some: expect.objectContaining({
-                publishedAt: expect.objectContaining({
-                  gte: expect.any(Date)
-                })
-              })
-            })
-          }),
-          take: 10
-        })
-      );
+
+      // 上位の選定: limit と、7 日前からの期間
+      expect(mockFindTopTags).toHaveBeenCalledTimes(1);
+      const [, options] = mockFindTopTags.mock.calls[0];
+      expect(options.limit).toBe(10);
+      expect(options.activeSince.getTime()).toBeGreaterThanOrEqual(before - 7 * DAY_MS);
+      expect(options.activeSince.getTime()).toBeLessThanOrEqual(after - 7 * DAY_MS);
+
+      // 前期間: 選んだタグについて [14 日前, 7 日前)
+      expect(mockCountTagArticlesInRange).toHaveBeenCalledTimes(1);
+      const [, ids, range] = mockCountTagArticlesInRange.mock.calls[0];
+      expect(ids).toEqual(['tag1', 'tag2', 'tag3']);
+      expect(range.to.getTime() - range.from.getTime()).toBeGreaterThanOrEqual(7 * DAY_MS - 60 * 60 * 1000);
+      expect(range.to.getTime() - range.from.getTime()).toBeLessThanOrEqual(7 * DAY_MS + 60 * 60 * 1000);
+      expect(range.to.getTime()).toBeLessThanOrEqual(after - 7 * DAY_MS + 60 * 60 * 1000);
     });
 
     it('365日間のタグクラウドを取得する', async () => {
-      prismaMock.tag.findMany
-        .mockResolvedValueOnce(mockTags)
-        .mockResolvedValueOnce(mockPreviousTags);
+      mockFindTopTags.mockResolvedValueOnce(asTopTags(mockTags));
+      mockCountTagArticlesInRange.mockResolvedValueOnce(
+        asRangeCounts(mockPreviousTags)
+      );
 
       const request = new NextRequest(new URL('http://localhost/api/tags/cloud?period=365d'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.period).toBe('365d');
     });
 
-    it('全期間のタグクラウドを取得する', async () => {
-      prismaMock.tag.findMany.mockResolvedValueOnce(mockTags);
+    it('全期間のタグクラウドを取得する（count は全期間の件数）', async () => {
+      mockFindTopTags.mockResolvedValueOnce(asTopTags(mockTags, false));
 
       const request = new NextRequest(new URL('http://localhost/api/tags/cloud?period=all'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.period).toBe('all');
       expect(data.tags).toHaveLength(5);
-      
+      expect(data.tags[0].count).toBe(1025);
+
+      // 期間を付けずに上位を選ぶ
+      expect(lastOptions()).toEqual({
+        limit: 50,
+        activeSince: undefined,
+      });
+
       // 全期間の場合はトレンドはすべてstable、growthRateは0
       data.tags.forEach((tag: any) => {
         expect(tag.trend).toBe('stable');
         expect(tag.growthRate).toBe(0);
       });
-      
+
       // 前期間のデータは取得されない
-      expect(prismaMock.tag.findMany).toHaveBeenCalledTimes(1);
+      expect(mockCountTagArticlesInRange).not.toHaveBeenCalled();
+    });
+
+    it('期間内の件数で並べ直す（上位の選定は全期間の件数）', async () => {
+      mockFindTopTags.mockResolvedValueOnce([
+        { id: 'a', name: 'A', category: null, count: 100, periodCount: 1 },
+        { id: 'b', name: 'B', category: null, count: 50, periodCount: 5 },
+      ]);
+
+      const response = await GET(
+        new NextRequest(new URL('http://localhost/api/tags/cloud?period=30d'))
+      );
+      const data = await response.json();
+
+      expect(data.tags.map((t: any) => [t.id, t.count])).toEqual([
+        ['b', 5],
+        ['a', 1],
+      ]);
     });
 
     it('キャッシュからタグクラウドを返す', async () => {
@@ -219,7 +267,7 @@ describe('/api/tags/cloud', () => {
         })),
         period: '30d'
       };
-      
+
       mockCacheInstance.get.mockResolvedValue(cachedData);
 
       const request = new NextRequest(new URL('http://localhost/api/tags/cloud'));
@@ -227,9 +275,9 @@ describe('/api/tags/cloud', () => {
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data).toEqual(cachedData);
-      expect(prismaMock.tag.findMany).not.toHaveBeenCalled();
+      expect(mockFindTopTags).not.toHaveBeenCalled();
       expect(mockCacheInstance.get).toHaveBeenCalledWith('tagcloud:30d:50');
     });
 
@@ -239,23 +287,22 @@ describe('/api/tags/cloud', () => {
         { id: 'tag2', name: 'Stable', _count: { articles: 11 } },    // 10 → 11 (変化小)
         { id: 'tag3', name: 'Falling', _count: { articles: 5 } },    // 10 → 5 (半減)
       ];
-      
+
       const previousTags = [
         { id: 'tag1', _count: { articles: 10 } },
         { id: 'tag2', _count: { articles: 10 } },
         { id: 'tag3', _count: { articles: 10 } },
       ];
 
-      prismaMock.tag.findMany
-        .mockResolvedValueOnce(currentTags)
-        .mockResolvedValueOnce(previousTags);
+      mockFindTopTags.mockResolvedValueOnce(asTopTags(currentTags));
+      mockCountTagArticlesInRange.mockResolvedValueOnce(asRangeCounts(previousTags));
 
       const request = new NextRequest(new URL('http://localhost/api/tags/cloud?period=30d'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.tags[0].trend).toBe('rising');       // 3倍なので上昇
       expect(data.tags[0].growthRate).toBe(200);      // (30-10)/10 * 100 = 200%
       expect(data.tags[1].trend).toBe('stable');       // 1.1倍なので安定
@@ -265,23 +312,17 @@ describe('/api/tags/cloud', () => {
     });
 
     it('カスタムリミットを適用する', async () => {
-      prismaMock.tag.findMany
-        .mockResolvedValueOnce(mockTags.slice(0, 2))
-        .mockResolvedValueOnce([]);
+      mockFindTopTags.mockResolvedValueOnce(asTopTags(mockTags.slice(0, 2)));
 
       const request = new NextRequest(new URL('http://localhost/api/tags/cloud?limit=2'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.tags).toHaveLength(2);
-      
-      expect(prismaMock.tag.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          take: 2
-        })
-      );
+
+      expect(lastOptions()).toEqual(expect.objectContaining({ limit: 2 }));
     });
 
     it('無効なperiodパラメータの場合400を返す', async () => {
@@ -294,18 +335,18 @@ describe('/api/tags/cloud', () => {
       expect(data).toEqual({
         error: 'Invalid period. Use: 7d, 30d, 365d, or all'
       });
-      expect(prismaMock.tag.findMany).not.toHaveBeenCalled();
+      expect(mockFindTopTags).not.toHaveBeenCalled();
     });
 
     it('データベースエラーの場合500を返す', async () => {
-      prismaMock.tag.findMany.mockRejectedValue(new Error('Database error'));
+      mockFindTopTags.mockRejectedValue(new Error('Database error'));
 
       const request = new NextRequest(new URL('http://localhost/api/tags/cloud'));
       const response = await GET(request);
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      
+
       expect(data).toEqual({
         error: 'Internal server error'
       });
@@ -313,30 +354,27 @@ describe('/api/tags/cloud', () => {
 
     it('キャッシュエラーでも処理を続行する', async () => {
       mockCacheInstance.get.mockRejectedValue(new Error('Cache error'));
-      prismaMock.tag.findMany
-        .mockResolvedValueOnce(mockTags)
-        .mockResolvedValueOnce([]);
+      mockFindTopTags.mockResolvedValueOnce(asTopTags(mockTags));
 
       const request = new NextRequest(new URL('http://localhost/api/tags/cloud'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       expect(data.tags).toHaveLength(5);
     });
 
     it('前期間のタグが存在しない場合でも正常に処理する', async () => {
-      prismaMock.tag.findMany
-        .mockResolvedValueOnce(mockTags)
-        .mockResolvedValueOnce([]);  // 前期間のタグなし
+      mockFindTopTags.mockResolvedValueOnce(asTopTags(mockTags));
+      mockCountTagArticlesInRange.mockResolvedValueOnce(new Map());  // 前期間のタグなし
 
       const request = new NextRequest(new URL('http://localhost/api/tags/cloud?period=7d'));
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const data = await response.json();
-      
+
       // 前期間のデータがなく今期間に記事があるので、risingとして扱われる
       data.tags.forEach((tag: any) => {
         expect(tag.trend).toBe('rising');

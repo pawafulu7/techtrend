@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { keywordsCache } from '@/lib/cache/keywords-cache';
+import { enabledSourceSql } from '@/lib/database/enabled-source-filter';
 
 export async function GET() {
   try {
     // キャッシュキーを生成（キーワード分析用の固定キー）
     const cacheKey = 'keywords:trending';
 
-    // キャッシュから取得またはDBから取得してキャッシュに保存
+    // キャッシュから取得またはDBから取得してキャッシュに保存。
+    // 集計は無効化したソースの記事を数えない。新規タグの判定（NOT EXISTS）の内側も同じ（issue #688）
     const keywordsData = await keywordsCache.getOrSet(cacheKey, async () => {
       const now = new Date();
       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -26,6 +28,7 @@ export async function GET() {
       JOIN "Article" a ON at."A" = a.id
       WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamptz
         AND a."isHidden" = false
+        AND ${enabledSourceSql()}
         AND t.name <> ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
@@ -42,6 +45,7 @@ export async function GET() {
       WHERE a."publishedAt" >= ${oneWeekAgo.toISOString()}::timestamptz
         AND a."publishedAt" < ${oneDayAgo.toISOString()}::timestamptz
         AND a."isHidden" = false
+        AND ${enabledSourceSql()}
         AND t.name <> ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
@@ -57,6 +61,7 @@ export async function GET() {
       JOIN "Article" a ON at."A" = a.id
       WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamptz
         AND a."isHidden" = false
+        AND ${enabledSourceSql()}
         AND t.name <> ''
         AND t.name IS NOT NULL
         AND NOT EXISTS (
@@ -66,6 +71,7 @@ export async function GET() {
           WHERE at2."B" = t.id
             AND a2."publishedAt" < ${oneDayAgo.toISOString()}::timestamptz
             AND a2."isHidden" = false
+            AND ${enabledSourceSql('a2."sourceId"')}
         )
       GROUP BY t.id, t.name
       ORDER BY count DESC

@@ -7,6 +7,7 @@ import logger from '@/lib/logger';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
 import { publicCacheHeaders } from '@/lib/api/cache-headers';
+import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 
 // JST offset constant (+9 hours in milliseconds)
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -109,7 +110,12 @@ async function enrichReportWithThumbnails(
   }> = [];
   try {
     articles = await prisma.article.findMany({
-      where: { id: { in: Array.from(allArticleIds) }, isHidden: false },
+      // 無効化したソースの記事は出さない（issue #688）。保存済みのレポートは作り直さず、表示の時点で除く
+      where: {
+        id: { in: Array.from(allArticleIds) },
+        isHidden: false,
+        AND: [enabledSourceWhere()],
+      },
       select: {
         id: true,
         title: true,
@@ -134,18 +140,21 @@ async function enrichReportWithThumbnails(
     articles.map((a) => [a.id, { ...a, sourceName: a.source.name }])
   );
 
-  // Enrich topArticles with thumbnails and strip detailedSummary (AI input only)
-  const enrichedTopArticles = topArticles.map((article) => {
-    const { detailedSummary: _ignored, ...rest } = article as Record<
-      string,
-      unknown
-    >;
-    if (rest.thumbnail !== undefined) {
-      return rest;
-    }
-    const dbArticle = articleMap.get(rest.id as string);
-    return { ...rest, thumbnail: dbArticle?.thumbnail ?? null };
-  });
+  // Enrich topArticles with thumbnails and strip detailedSummary (AI input only).
+  // 引き直した記事に無い ID（非表示・無効化したソース・削除済み）は落とす
+  const enrichedTopArticles = topArticles
+    .filter((article) => articleMap.has(article.id))
+    .map((article) => {
+      const { detailedSummary: _ignored, ...rest } = article as Record<
+        string,
+        unknown
+      >;
+      if (rest.thumbnail !== undefined) {
+        return rest;
+      }
+      const dbArticle = articleMap.get(rest.id as string);
+      return { ...rest, thumbnail: dbArticle?.thumbnail ?? null };
+    });
 
   // Build evidenceArticles map (all fetched articles, for FE to look up by ID)
   const evidenceArticles: EvidenceArticleMap = {};
