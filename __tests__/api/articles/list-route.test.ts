@@ -252,6 +252,25 @@ describe('/api/articles/list', () => {
     expect(payload.filters.search).toBe(normalizeSearchForCacheKey('bar foo'));
   });
 
+  it('keeps search null in cursors when there is no search (#684)', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(2);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue(mockArticles);
+    const { getCursorManager } = jest.requireActual(
+      '@/lib/pagination/cursor-manager'
+    );
+
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/articles/list')
+    );
+
+    const json = await response.json();
+    const pageInfo = json.data?.pageInfo ?? json.pageInfo;
+    const payload = getCursorManager().decodeCursor(pageInfo.endCursor);
+    // 検索なしのキャッシュキーは #684 の前後で同じなので、キャッシュ済みのカーソル
+    // （search: null）と食い違わないよう null のままにする
+    expect(payload.filters.search).toBeNull();
+  });
+
   it('should handle NaN limit parameter gracefully', async () => {
     mockPrisma.article.count = jest.fn().mockResolvedValue(0);
     mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);

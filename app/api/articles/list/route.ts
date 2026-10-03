@@ -109,6 +109,11 @@ export async function GET(request: NextRequest) {
 
     // Generate cache key
     const normalizedSearch = normalizeSearchForCacheKey(search);
+    // カーソルの検索語は、キャッシュキー・検索条件と同じ正規化済みの値にする（語の順番だけが
+    // 違う検索がキャッシュを共有しても検証が食い違わないように）。検索なしは以前と同じ null
+    // にする（検索なしのキャッシュキーは #684 の前後で変わらず、キャッシュ済みのカーソルが
+    // null を持つため）
+    const cursorSearch = normalizedSearch === 'none' ? null : normalizedSearch;
     const normalizedSources = normalizeSourcesForCacheKey(sources, sourceId);
 
     const needsAuth =
@@ -178,8 +183,7 @@ export async function GET(request: NextRequest) {
               tags,
               tag,
               tagMode,
-              // カーソルの検索語も、キャッシュキー・検索条件と同じ正規化済みの値にする
-              search: normalizedSearch,
+              search: cursorSearch,
               dateRange,
               dateFrom,
               dateTo,
@@ -388,8 +392,7 @@ export async function GET(request: NextRequest) {
         tags,
         tag,
         tagMode,
-        // カーソルの検索語も、キャッシュキー・検索条件と同じ正規化済みの値にする
-        search: normalizedSearch,
+        search: cursorSearch,
         dateRange,
         dateFrom,
         dateTo,
