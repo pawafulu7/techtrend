@@ -15,11 +15,13 @@ import { PrismaClient, Prisma } from '@/lib/prisma-exports';
 import { supportsIterativeScan } from './pgvector-capabilities';
 
 /**
- * iterative 経路の hnsw.ef_search。iterative scan は足りなければ読み進むので LIMIT 以上にする
- * 必要はない。上げても一致率はほとんど上がらず（開発 DB で 95.9% → ef=300 で約 97%）、
- * ef 300〜400 でプランナーの見積もりが揺れて別の計画に変わるため、既定の 40 に固定する
+ * iterative 経路の hnsw.ef_search（精度のための定数で、k からは計算しない。iterative scan は
+ * 足りなければ読み進むので LIMIT 以上にする必要はない）。開発 DB の全期間・公開日順の 1 ページ目
+ * （20 件）の厳密解との一致は、ef=40 で平均 18.4・最低 16、ef=400 で平均 19.7・最低 19。
+ * 3 か月の Stage 1 は約 14ms → 24ms。title を含む全体の HNSW を削除し sort の計画を止めた後は、
+ * ef=400 でも全期間・全 k で部分 HNSW の計画になる（scripts/perf/check-stage1-plan.ts で確認）
  */
-export const STAGE1_ITERATIVE_EF_SEARCH = 40;
+export const STAGE1_ITERATIVE_EF_SEARCH = 400;
 
 /**
  * iterative scan のメモリ上限（work_mem × この倍率）。上限に当たると件数は LIMIT のまま
