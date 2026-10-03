@@ -47,7 +47,10 @@ import {
   type PaginationParams,
   type PersonalizationParams,
 } from '../lib';
-import { validateTagFilter } from '../lib/where-clause-predicates';
+import {
+  validateSearchQuery,
+  validateTagFilter,
+} from '../lib/where-clause-predicates';
 
 // Initialize Layered cache system for articles
 const cache = new LayeredCache();
@@ -484,6 +487,15 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
     if (tagFilterError) {
       return NextResponse.json(
         { success: false, error: tagFilterError },
+        { status: 400 }
+      );
+    }
+
+    // 検索語の長さと語数を検証する（キャッシュキーを作る前・検索条件を作る前）
+    const searchError = validateSearchQuery(filters.search);
+    if (searchError) {
+      return NextResponse.json(
+        { success: false, error: searchError },
         { status: 400 }
       );
     }

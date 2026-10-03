@@ -19,6 +19,7 @@ import {
   pushSearchFilter,
   pushTagFilter,
   resolveTagIdGroups,
+  validateSearchQuery,
   validateTagFilter,
 } from '@/app/api/articles/lib/where-clause-predicates';
 
@@ -193,5 +194,33 @@ describe('pushSearchFilter', () => {
   it('adds nothing for empty or blank search', () => {
     expect(apply(undefined)).toEqual([]);
     expect(apply('   ')).toEqual([]);
+  });
+});
+
+describe('validateSearchQuery', () => {
+  it('accepts empty or missing search', () => {
+    expect(validateSearchQuery(undefined)).toBeNull();
+    expect(validateSearchQuery(null)).toBeNull();
+    expect(validateSearchQuery('')).toBeNull();
+  });
+
+  it('accepts up to 200 characters and 10 keywords', () => {
+    expect(validateSearchQuery('a'.repeat(200))).toBeNull();
+    const tenWords = Array.from({ length: 10 }, (_, i) => `w${i}`).join(' ');
+    expect(validateSearchQuery(tenWords)).toBeNull();
+  });
+
+  it('rejects more than 200 characters (#684)', () => {
+    expect(validateSearchQuery('a'.repeat(201))).toMatch(/200 characters/);
+  });
+
+  it('counts keywords split by ASCII and full-width spaces (#684)', () => {
+    const elevenWords = Array.from({ length: 11 }, (_, i) => `w${i}`);
+    expect(validateSearchQuery(elevenWords.join(' '))).toMatch(/10 keywords/);
+    expect(validateSearchQuery(elevenWords.join('\u3000'))).toMatch(
+      /10 keywords/
+    );
+    // 連続する空白は 1 つの区切りとして数える
+    expect(validateSearchQuery(elevenWords.slice(0, 10).join('   '))).toBeNull();
   });
 });

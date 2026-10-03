@@ -5,6 +5,7 @@ import { createDateRange } from '@/lib/types/prisma-helpers';
 import logger from '@/lib/logger';
 import { escapeLikePattern } from '@/lib/utils/like-pattern';
 import { findTagIdsByNames } from '@/lib/services/tag-service';
+import { validateSearchQuery } from '@/app/api/articles/lib/where-clause-predicates';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,6 +13,11 @@ export async function GET(request: NextRequest) {
 
     // 基本パラメータ
     const query = searchParams.get('q') || '';
+    // 検索語の長さと語数を検証する（語ごとに ILIKE の条件が増えるため、条件を作る前に）
+    const queryError = validateSearchQuery(query);
+    if (queryError) {
+      return NextResponse.json({ error: queryError }, { status: 400 });
+    }
     const tags = searchParams.getAll('tags');
     const sources = searchParams.getAll('sources');
     const dateFrom = searchParams.get('dateFrom');

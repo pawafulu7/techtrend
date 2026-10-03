@@ -21,7 +21,7 @@ describe('GET /api/tags/search', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     prismaMock.tag.findMany.mockResolvedValue([
-      { id: 't1', name: 'a_b', category: null, _count: { articles: 3 } },
+      { id: 't1', name: 'a_b%', category: null, _count: { articles: 3 } },
     ]);
   });
 
@@ -40,8 +40,30 @@ describe('GET /api/tags/search', () => {
       })
     );
     expect(await response.json()).toEqual([
-      { id: 't1', name: 'a_b', count: 3, category: null },
+      { id: 't1', name: 'a_b%', count: 3, category: null },
     ]);
+  });
+
+  it('201 文字の検索語は 400 を返し、クエリしない（#684）', async () => {
+    const response = await GET(request(`?q=${'a'.repeat(201)}`));
+
+    expect(response.status).toBe(400);
+    expect(prismaMock.tag.findMany).not.toHaveBeenCalled();
+  });
+
+  it('検索語の前後の空白を除いて検索する', async () => {
+    await GET(request('?q=%20%20React%20'));
+
+    expect(prismaMock.tag.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [
+            { name: { contains: 'React', mode: 'insensitive' } },
+            { articles: { some: {} } },
+          ],
+        },
+      })
+    );
   });
 
   it('検索語がなければ名前の条件を付けずに人気順で返す', async () => {

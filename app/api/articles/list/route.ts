@@ -11,6 +11,7 @@ import type { LightweightArticle } from './types';
 import { cache } from './cache-config';
 import {
   resolveTagIdGroups,
+  validateSearchQuery,
   validateTagFilter,
 } from '@/app/api/articles/lib/where-clause-predicates';
 import {
@@ -102,6 +103,18 @@ export async function GET(request: NextRequest) {
         {
           success: false,
           error: { code: 'INVALID_TAG_FILTER', message: tagFilterError },
+        },
+        { status: 400 }
+      );
+    }
+
+    // 検索語の長さと語数を検証する（キャッシュキーを作る前・検索条件を作る前）
+    const searchError = validateSearchQuery(search);
+    if (searchError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'INVALID_SEARCH', message: searchError },
         },
         { status: 400 }
       );

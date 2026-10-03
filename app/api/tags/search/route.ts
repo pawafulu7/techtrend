@@ -3,11 +3,23 @@ import { prisma } from '@/lib/prisma';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
 import { escapeLikePattern } from '@/lib/utils/like-pattern';
+import { z } from 'zod';
+import { MAX_SEARCH_QUERY_LENGTH } from '@/lib/constants/search-query';
+
+const querySchema = z.string().trim().max(MAX_SEARCH_QUERY_LENGTH);
 
 async function handler(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get('q') || '';
+    // 長さを検証してから検索する（前後の空白は除く）
+    const parsed = querySchema.safeParse(searchParams.get('q') ?? '');
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: `q must be at most ${MAX_SEARCH_QUERY_LENGTH} characters` },
+        { status: 400 }
+      );
+    }
+    const query = parsed.data;
 
     // 空クエリの場合は人気順で返す
     if (!query) {

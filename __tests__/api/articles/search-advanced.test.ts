@@ -152,6 +152,13 @@ describe('GET /api/articles/search/advanced', () => {
     ]);
   });
 
+  it('201 文字の検索語は 400 を返し、クエリしない（#684）', async () => {
+    const response = await GET(request(`?q=${'a'.repeat(201)}`));
+
+    expect(response.status).toBe(400);
+    expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+  });
+
   it('facets.difficulty はレスポンスの形を保つため空配列で返す', async () => {
     const res = await GET(request('?difficulty=advanced'));
     const body = await res.json();

@@ -32,6 +32,10 @@ import {
   MAX_TAG_FILTER_COUNT,
   MAX_TAG_NAME_LENGTH,
 } from '@/lib/constants/tag-filter';
+import {
+  MAX_SEARCH_KEYWORDS,
+  MAX_SEARCH_QUERY_LENGTH,
+} from '@/lib/constants/search-query';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -189,6 +193,31 @@ export function validateTagFilter(
     tag,
     tags: tag ? undefined : tags,
   });
+  if (result.success) return null;
+  return result.error.issues.map((issue) => issue.message).join('; ');
+}
+
+const searchQuerySchema = z
+  .string()
+  .max(MAX_SEARCH_QUERY_LENGTH, {
+    message: `search must be at most ${MAX_SEARCH_QUERY_LENGTH} characters`,
+  })
+  .refine(
+    (search) =>
+      search.split(/[\s\u3000]+/).filter((k) => k.length > 0).length <=
+      MAX_SEARCH_KEYWORDS,
+    { message: `search must contain at most ${MAX_SEARCH_KEYWORDS} keywords` }
+  )
+  .nullish();
+
+/**
+ * 検索語（`search`・`q`）の長さと語数を検証する（#684）。問題があればエラーメッセージを、
+ * 無ければ null を返す。語ごとに ILIKE の条件が増えるので、検索条件を作る前に呼ぶ。
+ */
+export function validateSearchQuery(
+  search: string | null | undefined
+): string | null {
+  const result = searchQuerySchema.safeParse(search);
   if (result.success) return null;
   return result.error.issues.map((issue) => issue.message).join('; ');
 }

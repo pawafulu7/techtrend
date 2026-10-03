@@ -211,6 +211,21 @@ describe('/api/articles/list', () => {
     expect(mockPrisma.article.findMany).not.toHaveBeenCalled();
   });
 
+  it('rejects a search with more than 10 keywords with 400 before querying (#684)', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+    const search = Array.from({ length: 11 }, (_, i) => `w${i}`).join('%20');
+
+    const response = await GET(
+      new NextRequest(`http://localhost:3000/api/articles/list?search=${search}`)
+    );
+
+    expect(response.status).toBe(400);
+    const json = await response.json();
+    expect(json.error.code).toBe('INVALID_SEARCH');
+    expect(mockPrisma.article.findMany).not.toHaveBeenCalled();
+  });
+
   it('should handle NaN limit parameter gracefully', async () => {
     mockPrisma.article.count = jest.fn().mockResolvedValue(0);
     mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
