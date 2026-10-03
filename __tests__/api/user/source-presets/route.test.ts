@@ -177,7 +177,7 @@ describe('/api/user/source-presets', () => {
       expect(response.status).toBe(409);
     });
 
-    it('名前の重複判定で LIKE のワイルドカードをエスケープする（#684）', async () => {
+    it('名前の重複判定は lower(name) の比較で、_ や % をワイルドカードにしない（#684）', async () => {
       prismaMock.userSourcePreset.count.mockResolvedValue(1);
       prismaMock.source.findMany.mockResolvedValue([{ id: 'source-1' }]);
       prismaMock.userSourcePreset.findFirst.mockResolvedValue(mockPreset);
@@ -192,7 +192,7 @@ describe('/api/user/source-presets', () => {
       expect(prismaMock.userSourcePreset.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            name: { equals: 'a\\_b\\%', mode: 'insensitive' },
+            name: { in: ['a_b%'], mode: 'insensitive' },
           }),
         })
       );

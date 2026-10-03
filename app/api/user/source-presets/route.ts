@@ -17,7 +17,6 @@ import {
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 import logger from '@/lib/logger';
-import { escapeLikePattern } from '@/lib/utils/like-pattern';
 
 // =============================================================================
 // Constants
@@ -121,8 +120,9 @@ async function postHandler(
         const duplicate = await tx.userSourcePreset.findFirst({
           where: {
             userId,
-            // equals + insensitive は ILIKE になるので、_ や % を文字どおりに比べるためにエスケープする
-            name: { equals: escapeLikePattern(name), mode: 'insensitive' },
+            // equals + insensitive は ILIKE になり _ や % がワイルドカードとして効く。in + insensitive は
+            // lower(name) IN (lower($1)) になり、一意制約 (userId, lower(name)) と同じ比較になる
+            name: { in: [name], mode: 'insensitive' },
           },
         });
         if (duplicate) {

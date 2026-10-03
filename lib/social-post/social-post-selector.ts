@@ -5,6 +5,7 @@
  */
 
 import {
+  type Prisma,
   type PrismaClient,
   type Article,
   type TrendReport,
@@ -316,7 +317,7 @@ export class SocialPostSelector {
     }
 
     // キーワードフィルター（タイトル・翻訳タイトル・要約・詳細要約を検索）
-    let where: object = baseConditions;
+    let where: Prisma.ArticleWhereInput = baseConditions;
     if (keyword) {
       // contains は ILIKE になるので、_ や % がワイルドカードにならないようにエスケープする
       const pattern = escapeLikePattern(keyword);

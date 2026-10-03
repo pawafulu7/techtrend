@@ -46,6 +46,7 @@ jest.mock('@/lib/utils/article/article-category-normalizer', () => ({
 }));
 
 import {
+  normalizeSearchForCacheKey,
   normalizeSourcesForCacheKey,
   buildWhereClause,
 } from '@/app/api/articles/list/query-helpers';
@@ -231,5 +232,19 @@ describe('query-helpers', () => {
         ])
       );
     });
+  });
+});
+
+describe('normalizeSearchForCacheKey', () => {
+  it('splits, sorts and joins keywords', () => {
+    expect(normalizeSearchForCacheKey(' React\u3000Hooks  AI ')).toBe(
+      'AI,Hooks,React'
+    );
+    expect(normalizeSearchForCacheKey(null)).toBe('none');
+  });
+
+  it('uses LIKE-escaped keywords so that wildcard searches get new keys (#684)', () => {
+    // #684 以前はワイルドカードとして照合していたので、同じキーを使うと古い結果が返る
+    expect(normalizeSearchForCacheKey('100% a_b')).toBe('100\\%,a\\_b');
   });
 });

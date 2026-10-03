@@ -27,6 +27,7 @@ import type {
 } from '@/lib/personalization/types';
 import logger from '@/lib/logger';
 import { measureAsync } from '@/lib/personalization/tracing';
+import { escapeLikePattern } from '@/lib/utils/like-pattern';
 
 import {
   buildSelectFields,
@@ -88,7 +89,11 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
   const sourceId = searchParams.get('sourceId') ?? undefined;
   const tag = searchParams.get('tag') ?? undefined;
   const tags = searchParams.get('tags') ?? undefined;
-  const tagMode = (searchParams.get('tagMode') || 'OR').toUpperCase();
+  // AND 以外は OR にそろえる（任意の値ごとに別のキャッシュキーができるのを防ぐ）
+  const tagMode =
+    (searchParams.get('tagMode') || 'OR').toUpperCase() === 'AND'
+      ? 'AND'
+      : 'OR';
   const search = searchParams.get('search') ?? undefined;
   const dateRange = searchParams.get('dateRange') ?? undefined;
   const dateFrom = searchParams.get('dateFrom') ?? undefined;
@@ -125,12 +130,15 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
       ? parsedPeriodMonths
       : 0;
 
-  // Normalize search keywords for consistent cache key
+  // Normalize search keywords for consistent cache key.
+  // キーは LIKE のエスケープ後の値で作る。_ や % を含む検索のキーだけが #684 以前と
+  // 変わり、ワイルドカードとして照合していた頃のキャッシュを返さない
   const normalizedSearch = search
     ? search
         .trim()
         .split(/[\s\u3000]+/)
         .filter((k) => k.length > 0)
+        .map(escapeLikePattern)
         .sort()
         .join(',')
     : 'none';

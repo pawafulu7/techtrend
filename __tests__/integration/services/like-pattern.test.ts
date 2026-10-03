@@ -59,14 +59,18 @@ describe('escapeLikePattern (integration, #684)', () => {
     ]);
   });
 
-  it('equals + insensitive でも、エスケープすると大文字小文字だけを無視して比べる', async () => {
+  it('equals + insensitive もエスケープしないので、_ が任意の 1 文字に当たる', async () => {
     const tags = await prisma.tag.findMany({
-      where: {
-        name: {
-          equals: escapeLikePattern(`${P}A_B`),
-          mode: 'insensitive',
-        },
-      },
+      where: { name: { equals: `${P}A_B`, mode: 'insensitive' } },
+      select: { name: true },
+      orderBy: { name: 'asc' },
+    });
+    expect(tags.map((t) => t.name)).toEqual([`${P}a_b`, `${P}axb`]);
+  });
+
+  it('in + insensitive は lower() の比較で、_ を文字どおりに扱う（ソースプリセットの重複判定）', async () => {
+    const tags = await prisma.tag.findMany({
+      where: { name: { in: [`${P}A_B`], mode: 'insensitive' } },
       select: { name: true },
     });
     expect(tags.map((t) => t.name)).toEqual([`${P}a_b`]);

@@ -18,6 +18,7 @@ import {
 } from '@/app/lib/date-utils';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
+import { escapeLikePattern } from '@/lib/utils/like-pattern';
 import {
   pushLowQualityFilter,
   pushProcessedFilter,
@@ -280,11 +281,14 @@ function applyDateRangeFilter(
  * Normalize search string for cache key consistency
  */
 export function normalizeSearchForCacheKey(search: string | null): string {
+  // キーは LIKE のエスケープ後の値で作る。_ や % を含む検索のキーだけが #684 以前と
+  // 変わり、ワイルドカードとして照合していた頃のキャッシュを返さない
   return search
     ? search
         .trim()
         .split(/[\s\u3000]+/)
         .filter((k) => k.length > 0)
+        .map(escapeLikePattern)
         .sort()
         .join(',')
     : 'none';
