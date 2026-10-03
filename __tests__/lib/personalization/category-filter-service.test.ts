@@ -11,6 +11,7 @@ import {
   MULTI_CATEGORY_MIN_K_PER_CATEGORY,
 } from '@/lib/personalization/category-filter-service';
 import { DEFAULT_SCORE_PARAMETERS } from '@/lib/personalization/types';
+import { sortArticles } from '@/lib/personalization/filters/score-aggregator';
 
 // Mock Prisma
 const mockPrisma = {
@@ -1144,6 +1145,36 @@ describe('CategoryFilterService', () => {
   // ===========================================================================
   // 複数カテゴリの候補数・allCandidates オプション（#684）
   // ===========================================================================
+
+  describe('sortArticles', () => {
+    const article = (articleId: string, finalScore: number) => ({
+      articleId,
+      embeddingSimilarity: 0.9,
+      tagBoost: 0,
+      recencyDecay: 0,
+      finalScore,
+      publishedAt: new Date('2026-01-01'),
+      createdAt: new Date('2026-01-01'),
+      qualityScore: 0,
+      bookmarks: 0,
+      userVotes: 0,
+    });
+
+    it.each(['finalScore', 'publishedAt'] as const)(
+      '%s が同点でも、入力の順序にかかわらず記事 ID で同じ順序になる',
+      (sortBy) => {
+        const items = [article('b', 0.5), article('c', 0.5), article('a', 0.5)];
+        const forward = sortArticles(items, sortBy, 'desc').map(
+          (a) => a.articleId
+        );
+        const backward = sortArticles([...items].reverse(), sortBy, 'desc').map(
+          (a) => a.articleId
+        );
+        expect(forward).toEqual(['a', 'b', 'c']);
+        expect(backward).toEqual(forward);
+      }
+    );
+  });
 
   describe('getMultiCategoryKPerCategory', () => {
     it('topK 未指定時は、どのカテゴリ数でも 50 以上 100 以下', () => {

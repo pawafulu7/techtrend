@@ -186,11 +186,16 @@ export function sortArticles(
 ): ScoredArticleWithMeta[] {
   const direction = sortOrder === 'asc' ? 1 : -1;
 
+  // 最後は記事 ID で決着させる。同点の順序が入力順に依存すると、並行して計算した順位が
+  // 食い違い、全候補の順位でページを切ったときにページ間で重複・欠落しうるため
+  const byId = (a: ScoredArticleWithMeta, b: ScoredArticleWithMeta): number =>
+    a.articleId < b.articleId ? -1 : a.articleId > b.articleId ? 1 : 0;
+
   // Secondary sort by finalScore for tie-breaking to ensure stable ordering
   const tieBreaker = (
     a: ScoredArticleWithMeta,
     b: ScoredArticleWithMeta
-  ): number => b.finalScore - a.finalScore; // Always descending for tie-break
+  ): number => b.finalScore - a.finalScore || byId(a, b); // Always descending for tie-break
 
   const compare = (
     a: ScoredArticleWithMeta,
@@ -216,7 +221,8 @@ export function sortArticles(
         return primary !== 0 ? primary : tieBreaker(a, b);
       case 'finalScore':
       default:
-        return (a.finalScore - b.finalScore) * direction;
+        primary = (a.finalScore - b.finalScore) * direction;
+        return primary !== 0 ? primary : byId(a, b);
     }
   };
 

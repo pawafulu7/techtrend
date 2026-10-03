@@ -143,6 +143,17 @@ describe('/api/articles - パーソナライズ経路', () => {
     expect(prismaMock.article.count).not.toHaveBeenCalled();
   });
 
+  it('候補を得た後の絞り込みが失敗したら 500 を返し、推薦候補外の記事を返さない', async () => {
+    mockFilterArticles.mockResolvedValue(realResult(['a1']));
+    prismaMock.$queryRaw.mockRejectedValue(new Error('db down'));
+
+    const response = await get('categoryIds=cat-1&tags=React');
+
+    expect(response.status).toBe(500);
+    expect(prismaMock.article.count).not.toHaveBeenCalled();
+    expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+  });
+
   it('sources=none は total=0 を返し、通常検索に切り替えない', async () => {
     const response = await get('categoryIds=cat-1&sources=none');
 

@@ -224,7 +224,8 @@ async function getPersonalizedIds(
 /**
  * パーソナライズした記事一覧を返す。
  *
- * - null: 通常検索に切り替える（推薦のフォールバック・全候補が空・例外）
+ * - null: 通常検索に切り替える（推薦のフォールバック・全候補が空・順位の取得の例外）
+ * - 例外: 候補を得た後の絞り込み・記事の取得の失敗（呼び出し元で 500 にする）
  * - 空の結果: 候補はあるが絞り込みに合う記事がない、指定したソースが解決できない、最終ページを超えた
  */
 export async function executePersonalizedQuery(
@@ -234,21 +235,25 @@ export async function executePersonalizedQuery(
   const { pagination, display, personalization, filters } = params;
   const { page, limit, sortBy, sortOrder } = pagination;
 
-  try {
-    const {
-      where: filterWhere,
-      tagIdGroups,
-      emptyResult,
-    } = await buildPersonalizedWhere(filters, sortBy, metrics);
-    if (emptyResult) {
-      return createEmptyResponse(page, limit);
-    }
+  const {
+    where: filterWhere,
+    tagIdGroups,
+    emptyResult,
+  } = await buildPersonalizedWhere(filters, sortBy, metrics);
+  if (emptyResult) {
+    return createEmptyResponse(page, limit);
+  }
 
-    // 除外ソースは推薦候補の抽出には渡さず、後段の条件（withExcludeSources）だけで除く。
-    // 抽出で除くと、候補がすべて除外ソースのときに「推薦できなかった」と判定されて
-    // 通常検索に切り替わり、推薦候補にない記事が出てしまう（Stage 2 は Stage 1 の結果を
-    // 絞るだけなので、後段で除いても残る候補は同じ）
-    const personalizedIds = await getPersonalizedIds({
+  // 除外ソースは推薦候補の抽出には渡さず、後段の条件（withExcludeSources）だけで除く。
+  // 抽出で除くと、候補がすべて除外ソースのときに「推薦できなかった」と判定されて
+  // 通常検索に切り替わり、推薦候補にない記事が出てしまう（Stage 2 は Stage 1 の結果を
+  // 絞るだけなので、後段で除いても残る候補は同じ）
+  //
+  // 通常検索に切り替えるのは推薦（順位の取得）が失敗したときだけ。候補を得た後の絞り込みや
+  // 記事の取得の例外は呼び出し元に投げる（切り替えると推薦候補にない記事を返してしまうため）
+  let personalizedIds: string[] | null;
+  try {
+    personalizedIds = await getPersonalizedIds({
       categoryIds: uniqueSorted(personalization.categoryIds),
       periodMonths: personalization.periodMonths,
       limit,
@@ -256,81 +261,6 @@ export async function executePersonalizedQuery(
       sortOrder,
       allCandidates: true,
     });
-
-    if (!personalizedIds || personalizedIds.length === 0) {
-      return null; // Fall back to standard query
-    }
-
-    // 全候補のうち条件に合う ID を引き、推薦順に並べてから total を数えてページを切る
-    const orderedIds = await withDbTiming(
-      metrics,
-      () =>
-        measureAsync('article.filter_personalized_ids', async (span) => {
-          span.setAttribute('idCount', personalizedIds.length);
-          const tagMatchedIds =
-            tagIdGroups.length > 0
-              ? await filterIdsByTags(
-                  personalizedIds,
-                  tagIdGroups,
-                  filters.tagMode
-                )
-              : personalizedIds;
-          if (tagMatchedIds.length === 0) return [];
-
-          const matched = await prisma.article.findMany({
-            where: { ...filterWhere, id: { in: tagMatchedIds } },
-            select: { id: true },
-          });
-          const matchedIds = new Set(matched.map((article) => article.id));
-          return tagMatchedIds.filter((id) => matchedIds.has(id));
-        }),
-      'db_query'
-    );
-    const total = orderedIds.length;
-    const totalPages = Math.ceil(total / limit);
-
-    const offset = (page - 1) * limit;
-    const pageIds = orderedIds.slice(offset, offset + limit);
-    if (pageIds.length === 0) {
-      return { items: [], total, page, limit, totalPages };
-    }
-
-    // 2 回の読み取りの間に条件外になった記事を返さないよう、ページの取得にも同じ条件を掛ける
-    // （タグも EXISTS ではなく結合テーブルで判定し直す）
-    const pageArticles = await withDbTiming(
-      metrics,
-      () =>
-        measureAsync('article.fetch_by_ids', async (span) => {
-          span.setAttribute('idCount', pageIds.length);
-          const pageMatchedIds =
-            tagIdGroups.length > 0
-              ? await filterIdsByTags(pageIds, tagIdGroups, filters.tagMode)
-              : pageIds;
-          if (pageMatchedIds.length === 0) return [];
-          return prisma.article.findMany({
-            where: { ...filterWhere, id: { in: pageMatchedIds } },
-            select: buildSelectFields(display),
-          });
-        }),
-      'db_query'
-    );
-
-    const articlesById = new Map(
-      pageArticles.map((article) => [article.id, article])
-    );
-    const items = pageIds
-      .map((id) => articlesById.get(id))
-      .filter((article): article is (typeof pageArticles)[number] =>
-        Boolean(article)
-      );
-
-    return {
-      items: items as ArticleWithRelations[],
-      total,
-      page,
-      limit,
-      totalPages,
-    };
   } catch (error) {
     logger.error(
       { err: error },
@@ -338,4 +268,79 @@ export async function executePersonalizedQuery(
     );
     return null;
   }
+
+  if (!personalizedIds || personalizedIds.length === 0) {
+    return null; // Fall back to standard query
+  }
+
+  // 全候補のうち条件に合う ID を引き、推薦順に並べてから total を数えてページを切る
+  const orderedIds = await withDbTiming(
+    metrics,
+    () =>
+      measureAsync('article.filter_personalized_ids', async (span) => {
+        span.setAttribute('idCount', personalizedIds.length);
+        const tagMatchedIds =
+          tagIdGroups.length > 0
+            ? await filterIdsByTags(
+                personalizedIds,
+                tagIdGroups,
+                filters.tagMode
+              )
+            : personalizedIds;
+        if (tagMatchedIds.length === 0) return [];
+
+        const matched = await prisma.article.findMany({
+          where: { ...filterWhere, id: { in: tagMatchedIds } },
+          select: { id: true },
+        });
+        const matchedIds = new Set(matched.map((article) => article.id));
+        return tagMatchedIds.filter((id) => matchedIds.has(id));
+      }),
+    'db_query'
+  );
+  const total = orderedIds.length;
+  const totalPages = Math.ceil(total / limit);
+
+  const offset = (page - 1) * limit;
+  const pageIds = orderedIds.slice(offset, offset + limit);
+  if (pageIds.length === 0) {
+    return { items: [], total, page, limit, totalPages };
+  }
+
+  // 2 回の読み取りの間に条件外になった記事を返さないよう、ページの取得にも同じ条件を掛ける
+  // （タグも EXISTS ではなく結合テーブルで判定し直す）
+  const pageArticles = await withDbTiming(
+    metrics,
+    () =>
+      measureAsync('article.fetch_by_ids', async (span) => {
+        span.setAttribute('idCount', pageIds.length);
+        const pageMatchedIds =
+          tagIdGroups.length > 0
+            ? await filterIdsByTags(pageIds, tagIdGroups, filters.tagMode)
+            : pageIds;
+        if (pageMatchedIds.length === 0) return [];
+        return prisma.article.findMany({
+          where: { ...filterWhere, id: { in: pageMatchedIds } },
+          select: buildSelectFields(display),
+        });
+      }),
+    'db_query'
+  );
+
+  const articlesById = new Map(
+    pageArticles.map((article) => [article.id, article])
+  );
+  const items = pageIds
+    .map((id) => articlesById.get(id))
+    .filter((article): article is (typeof pageArticles)[number] =>
+      Boolean(article)
+    );
+
+  return {
+    items: items as ArticleWithRelations[],
+    total,
+    page,
+    limit,
+    totalPages,
+  };
 }

@@ -478,12 +478,24 @@ describe('executePersonalizedQuery', () => {
     expect(prismaMock.article.findMany).not.toHaveBeenCalled();
   });
 
-  it('例外が起きたら null を返す', async () => {
+  it('順位の取得で例外が起きたら null を返す', async () => {
     mockFilterArticles.mockRejectedValue(new Error('boom'));
 
     const result = await executePersonalizedQuery(buildParams(), metrics);
 
     expect(result).toBeNull();
+  });
+
+  it('候補を得た後の絞り込みの例外は投げる（通常検索に切り替えない）', async () => {
+    mockFilterArticles.mockResolvedValue(realResult(['a1']));
+    prismaMock.$queryRaw.mockRejectedValue(new Error('db down'));
+
+    await expect(
+      executePersonalizedQuery(
+        buildParams({ filters: { tags: 'React' } }),
+        metrics
+      )
+    ).rejects.toThrow('db down');
   });
 
   it('全候補の ID を ids:v2: のキーでキャッシュし、ページが違っても同じキーを使う', async () => {
