@@ -9,6 +9,10 @@ import { createRedisCacheMock } from '../../../helpers/cache-mock-helpers';
 const mockFindTopTags = jest.fn();
 // 第 1 引数の prisma は jest-mock-extended の Proxy で、expect.anything() が使えないので、条件（第 2 引数）だけを見る
 const lastOptions = () => mockFindTopTags.mock.calls.at(-1)?.[1];
+const lastClient = () => mockFindTopTags.mock.calls.at(-1)?.[0];
+// lib/prisma は jest.setup.node.js がモックした PrismaClient（= prismaMock）を返す
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { prismaMock: sharedPrismaMock } = require('../../../../test/utils/prisma-mock');
 const mockCountTagArticlesInRange = jest.fn();
 jest.mock('@/lib/database/tag-article-counts', () => ({
   findTopTags: (...args: unknown[]) => mockFindTopTags(...args),
@@ -224,6 +228,7 @@ describe('/api/tags/cloud', () => {
       expect(data.tags[0].count).toBe(1025);
 
       // 期間を付けずに上位を選ぶ
+      expect(lastClient()).toBe(sharedPrismaMock);
       expect(lastOptions()).toEqual({
         limit: 50,
         activeSince: undefined,

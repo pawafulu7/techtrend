@@ -2,11 +2,12 @@
  * タグごとの記事数を、有効なソースの記事だけで数える（issue #688）。
  *
  * Prisma の `orderBy: { articles: { _count: 'desc' } }` には where を付けられないので、
- * `_count` の select に条件を入れても並び順と上位 N 件は直らない。上位の選定はここの生 SQL で行い、
- * 返った ID で Tag を引く。
+ * `_count` の select に条件を入れても並び順と上位 N 件は直らない。上位の選定はここの生 SQL で行う。
  *
- * 全期間の件数は「全件数 − 無効なソースの記事の件数」の形で数える。Article を結んで数える形より
- * 速いため（設計レビューの実測で、上位 50 件が結ぶ形 190ms・この形 106〜111ms）。
+ * 全期間の件数は「全件数 − 無効なソースの記事の件数」の形で数える。無効なソースの記事が少ないうちは
+ * Article を結んで数える形より速いため（開発 DB の全期間の上位 50 件で、この形 116ms・結ぶ形 154〜180ms）。
+ * 大きなソースを無効にすると逆転する（全記事の 20% を無効にした模擬で、この形 256ms・結ぶ形 140〜169ms。
+ * それでも Prisma の `_count` の形の約 353ms より速い）。無効な記事が増えたら、結ぶ形への切り替えを検討する。
  * 今までの Prisma の `_count` と同じく、非表示（`isHidden`）の記事も数える。
  */
 import type { PrismaClient } from '@/lib/prisma-exports';
@@ -15,10 +16,11 @@ import { escapeLikePattern } from '@/lib/utils/like-pattern';
 import { disabledSourceSql, enabledSourceSql } from './enabled-source-filter';
 
 type RawQueryClient = Pick<PrismaClient, '$queryRaw'>;
-type TagQueryClient = Pick<PrismaClient, '$queryRaw' | 'tag'>;
 
-export interface TopTagCount {
+export interface TopTag {
   id: string;
+  name: string;
+  category: string | null;
   /** 全期間の記事数（有効なソースの記事だけ） */
   count: number;
   /** `activeSince` 以降の記事数（有効なソースの記事だけ）。`activeSince` を渡したときだけ入る */
@@ -33,18 +35,34 @@ export interface TopTagsOptions {
   activeSince?: Date;
 }
 
-async function findTopTagCounts(
+/**
+ * 全期間の記事数（有効なソースの記事だけ）の多い順に、上位 `limit` 件のタグを返す。
+ * 記事が 0 件のタグは返さない。同数のときは ID の順（今までの Prisma の並びは、同数の順が決まっていなかった）。
+ * `activeSince` を渡すと、その日時以降に有効なソースの記事があるタグだけに絞ったうえで、全期間の件数で上位を選ぶ
+ */
+export async function findTopTags(
   db: RawQueryClient,
   { limit, nameContains, activeSince }: TopTagsOptions
-): Promise<TopTagCount[]> {
+): Promise<TopTag[]> {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error(`limit must be a positive integer: ${limit}`);
+  }
   const nameCondition =
     nameContains !== undefined
       ? Prisma.sql`AND t.name ILIKE ${`%${escapeLikePattern(nameContains)}%`}`
       : Prisma.empty;
 
   if (activeSince) {
+    // tag_totals は period_counts で絞らない。絞ると period_counts の行ごとに索引を引く
+    // Nested Loop になり、365 日で約 2 倍遅くなる（後ろの JOIN で同じ行に絞られる）
     const rows = await db.$queryRaw<
-      { id: string; count: number; period_count: number }[]
+      {
+        id: string;
+        name: string;
+        category: string | null;
+        count: number;
+        period_count: number;
+      }[]
     >`
       WITH period_counts AS (
         SELECT at."B" AS tag_id, COUNT(*) AS period_count
@@ -57,7 +75,6 @@ async function findTopTagCounts(
       tag_totals AS (
         SELECT at."B" AS tag_id, COUNT(*) AS total
         FROM "_ArticleToTag" at
-        WHERE at."B" IN (SELECT tag_id FROM period_counts)
         GROUP BY at."B"
       ),
       disabled_counts AS (
@@ -70,6 +87,8 @@ async function findTopTagCounts(
       )
       SELECT
         t.id,
+        t.name,
+        t.category,
         (tt.total - COALESCE(dc.disabled, 0))::int AS count,
         pc.period_count::int AS period_count
       FROM period_counts pc
@@ -82,12 +101,16 @@ async function findTopTagCounts(
     `;
     return rows.map((row) => ({
       id: row.id,
+      name: row.name,
+      category: row.category,
       count: Number(row.count),
       periodCount: Number(row.period_count),
     }));
   }
 
-  const rows = await db.$queryRaw<{ id: string; count: number }[]>`
+  const rows = await db.$queryRaw<
+    { id: string; name: string; category: string | null; count: number }[]
+  >`
     WITH tag_totals AS (
       SELECT at."B" AS tag_id, COUNT(*) AS total
       FROM "_ArticleToTag" at
@@ -100,7 +123,7 @@ async function findTopTagCounts(
       WHERE ${disabledSourceSql()}
       GROUP BY at."B"
     )
-    SELECT t.id, (tt.total - COALESCE(dc.disabled, 0))::int AS count
+    SELECT t.id, t.name, t.category, (tt.total - COALESCE(dc.disabled, 0))::int AS count
     FROM tag_totals tt
     JOIN "Tag" t ON t.id = tt.tag_id
     LEFT JOIN disabled_counts dc ON dc.tag_id = tt.tag_id
@@ -108,37 +131,12 @@ async function findTopTagCounts(
     ORDER BY count DESC, t.id ASC
     LIMIT ${limit}
   `;
-  return rows.map((row) => ({ id: row.id, count: Number(row.count) }));
-}
-
-export interface TopTag extends TopTagCount {
-  name: string;
-  category: string | null;
-}
-
-/**
- * 全期間の記事数（有効なソースの記事だけ）の多い順に、上位 `limit` 件のタグを返す。
- * 記事が 0 件のタグは返さない。同数のときは ID の順（今までの Prisma の並びは、同数の順が決まっていなかった）。
- * `activeSince` を渡すと、その日時以降に有効なソースの記事があるタグだけに絞ったうえで、全期間の件数で上位を選ぶ
- */
-export async function findTopTags(
-  db: TagQueryClient,
-  options: TopTagsOptions
-): Promise<TopTag[]> {
-  const counts = await findTopTagCounts(db, options);
-  if (counts.length === 0) return [];
-
-  const tags = await db.tag.findMany({
-    where: { id: { in: counts.map((c) => c.id) } },
-    select: { id: true, name: true, category: true },
-  });
-  const tagById = new Map(tags.map((tag) => [tag.id, tag]));
-
-  // 2 つのクエリの間に消えたタグは落とす
-  return counts.flatMap((c) => {
-    const tag = tagById.get(c.id);
-    return tag ? [{ ...c, name: tag.name, category: tag.category }] : [];
-  });
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    count: Number(row.count),
+  }));
 }
 
 /**

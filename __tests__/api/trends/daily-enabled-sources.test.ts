@@ -16,10 +16,11 @@ jest.mock('@/lib/services/trend-report/trend-report-generator', () => ({
   })),
 }));
 
+const mockCacheSet = jest.fn().mockResolvedValue(undefined);
 jest.mock('@/lib/cache', () => ({
   RedisCache: jest.fn().mockImplementation(() => ({
     get: jest.fn().mockResolvedValue(null),
-    set: jest.fn().mockResolvedValue(undefined),
+    set: mockCacheSet,
     generateCacheKey: jest.fn(
       (prefix: string, opts: { params: { date: string } }) =>
         `${prefix}:${opts.params.date}`
@@ -187,5 +188,29 @@ describe('日次トレンドの表示から無効化したソースの記事を�
       body.data.categories.map((c: { topArticle: unknown }) => c.topArticle)
     ).toEqual([null, null, null]);
     expect(body.evidenceArticles).toEqual({});
+    // 一時的な失敗の応答は残さない
+    expect(mockCacheSet).not.toHaveBeenCalled();
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+  });
+
+  it('fetchInitialDailyData: 引き直しに失敗したら出さず、キャッシュにも残さない', async () => {
+    prismaMock.article.findMany.mockRejectedValueOnce(new Error('db down'));
+
+    const result = await fetchInitialDailyData();
+
+    expect(result.success).toBe(true);
+    expect(
+      (result.data as unknown as { topArticles: unknown[] }).topArticles
+    ).toEqual([]);
+    expect(mockCacheSet).not.toHaveBeenCalled();
+  });
+
+  it('確かめられた応答はキャッシュする', async () => {
+    await GET(
+      new NextRequest('http://localhost:3000/api/trends/daily?date=2026-09-30')
+    );
+    await fetchInitialDailyData();
+
+    expect(mockCacheSet).toHaveBeenCalledTimes(2);
   });
 });

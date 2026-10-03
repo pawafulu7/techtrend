@@ -118,6 +118,12 @@ describeIf('tag-article-counts（テスト DB）', () => {
       await createArticle(disabled, daysAgo(100), ['q']);
     }
 
+    // 同数のときの並び
+    await createTag('t1', `tie-${suffix}-1`);
+    await createTag('t2', `tie-${suffix}-2`);
+    await createTag('t3', `tie-${suffix}-3`);
+    await createArticle(enabled, daysAgo(2), ['t1', 't2', 't3']);
+
     // LIKE のワイルドカードのエスケープ
     await createTag('pct', `like-${suffix}-a%b`);
     await createTag('any', `like-${suffix}-aXb`);
@@ -210,6 +216,17 @@ describeIf('tag-article-counts（テスト DB）', () => {
       ]);
     });
 
+    it('同数のときは ID の順に並べる', async () => {
+      const top = await findTopTags(prisma, {
+        limit: 10,
+        nameContains: `tie-${suffix}`,
+      });
+
+      expect(top.map((t) => t.id)).toEqual(
+        [tagIds.t1, tagIds.t2, tagIds.t3].sort()
+      );
+    });
+
     it('名前の % や _ はワイルドカードにならない', async () => {
       const top = await findTopTags(prisma, {
         limit: 10,
@@ -217,6 +234,25 @@ describeIf('tag-article-counts（テスト DB）', () => {
       });
 
       expect(top.map((t) => t.id)).toEqual([tagIds.pct]);
+    });
+
+    it('名前の _ もワイルドカードにならない', async () => {
+      // エスケープしないと _ が任意の 1 文字になり、aXb に一致する
+      const top = await findTopTags(prisma, {
+        limit: 10,
+        nameContains: `like-${suffix}-a_b`,
+      });
+
+      expect(top).toEqual([]);
+    });
+
+    it('limit が正の整数でなければ DB に問い合わせずに例外にする', async () => {
+      await expect(findTopTags(prisma, { limit: 0 })).rejects.toThrow(
+        'limit must be a positive integer'
+      );
+      await expect(findTopTags(prisma, { limit: 1.5 })).rejects.toThrow(
+        'limit must be a positive integer'
+      );
     });
 
     it('対照: 全ソース有効なら、今までの Prisma の集計と同じ順位・件数（全期間）', async () => {

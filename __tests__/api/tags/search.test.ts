@@ -8,6 +8,12 @@ import { NextRequest } from 'next/server';
 const mockFindTopTags = jest.fn();
 // 第 1 引数の prisma は jest-mock-extended の Proxy で、expect.anything() が使えないので、条件（第 2 引数）だけを見る
 const lastOptions = () => mockFindTopTags.mock.calls.at(-1)?.[1];
+const lastClient = () => mockFindTopTags.mock.calls.at(-1)?.[0];
+// lib/prisma は jest.setup.node.js がモックした PrismaClient（= prismaMock）を返す
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const {
+  prismaMock: sharedPrismaMock,
+} = require('../../../test/utils/prisma-mock');
 jest.mock('@/lib/database/tag-article-counts', () => ({
   findTopTags: (...args: unknown[]) => mockFindTopTags(...args),
 }));
@@ -34,6 +40,7 @@ describe('GET /api/tags/search', () => {
 
     expect(response.status).toBe(200);
     // エスケープは findTopTags が行う（#684）
+    expect(lastClient()).toBe(sharedPrismaMock);
     expect(lastOptions()).toEqual({
       limit: 100,
       nameContains: 'a_b%',

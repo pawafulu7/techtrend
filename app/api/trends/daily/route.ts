@@ -62,6 +62,8 @@ async function enrichReportWithThumbnails(
 ): Promise<{
   enrichedData: Record<string, unknown>;
   evidenceArticles: EvidenceArticleMap;
+  /** 記事を引き直して確かめられたか。false の応答はキャッシュしない（一時的な失敗を残さないため） */
+  verified: boolean;
 }> {
   const topArticlesRaw = reportData.topArticles;
   const topArticles: Array<{ id: string; thumbnail?: string | null }> =
@@ -127,7 +129,7 @@ async function enrichReportWithThumbnails(
       string,
       unknown
     > & { detailedSummary?: unknown };
-    return { enrichedData: clean, evidenceArticles: {} };
+    return { enrichedData: clean, evidenceArticles: {}, verified: true };
   }
 
   // Fetch article data from DB (sourceName is via source relation)
@@ -174,6 +176,7 @@ async function enrichReportWithThumbnails(
         ),
       },
       evidenceArticles: {},
+      verified: false,
     };
   }
 
@@ -225,6 +228,7 @@ async function enrichReportWithThumbnails(
   return {
     enrichedData,
     evidenceArticles,
+    verified: true,
   };
 }
 
@@ -373,14 +377,13 @@ export async function GET(request: NextRequest) {
     );
 
     // Enrich with thumbnails
-    const { enrichedData, evidenceArticles } = await enrichReportWithThumbnails(
-      {
+    const { enrichedData, evidenceArticles, verified } =
+      await enrichReportWithThumbnails({
         ...report,
         periodStart: report.periodStart.toISOString(),
         periodEnd: report.periodEnd.toISOString(),
         generatedAt: report.generatedAt?.toISOString(),
-      }
-    );
+      });
 
     const response = {
       success: true,
@@ -395,6 +398,13 @@ export async function GET(request: NextRequest) {
           : null,
       },
     };
+
+    // 記事を確かめられなかった応答は、キャッシュに残さない（issue #688）
+    if (!verified) {
+      return NextResponse.json(response, {
+        headers: { 'X-Cache': 'MISS', 'Cache-Control': 'no-store' },
+      });
+    }
 
     // キャッシュ保存
     try {
