@@ -131,6 +131,9 @@ describe('validateTagFilter', () => {
     expect(
       validateTagFilter('React', many(MAX_TAG_FILTER_COUNT + 1))
     ).toBeNull();
+    // 分割前の長さの上限も、使わない tags には掛けない
+    const commas = ','.repeat(MAX_TAG_FILTER_COUNT * (MAX_TAG_NAME_LENGTH + 1) + 1);
+    expect(validateTagFilter('React', commas)).toBeNull();
   });
 
   it('rejects a tags string that is too long before splitting', () => {

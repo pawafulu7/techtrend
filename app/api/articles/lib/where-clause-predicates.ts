@@ -183,7 +183,11 @@ export function validateTagFilter(
   tag: string | null | undefined,
   tags: string | null | undefined
 ): string | null {
-  const result = tagFilterSchema.safeParse({ tag, tags });
+  // 実際に使う方（tag が優先）だけを検証する。tag があれば tags は使わない
+  const result = tagFilterSchema.safeParse({
+    tag,
+    tags: tag ? undefined : tags,
+  });
   if (result.success) return null;
   return result.error.issues.map((issue) => issue.message).join('; ');
 }
