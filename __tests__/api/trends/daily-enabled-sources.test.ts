@@ -59,6 +59,21 @@ function createReport() {
       },
       { id: 'enabled-2', title: 'E2' },
     ],
+    categories: [
+      {
+        name: 'Frontend',
+        count: 2,
+        percentage: 50,
+        topArticle: { id: 'enabled-2', title: 'E2', translatedTitle: null },
+      },
+      {
+        name: 'Backend',
+        count: 1,
+        percentage: 50,
+        topArticle: { id: 'disabled-2', title: 'D2', translatedTitle: null },
+      },
+      { name: 'Other', count: 0, percentage: 0, topArticle: null },
+    ],
     aiSummary: JSON.stringify({
       keyTopics: [{ evidenceArticleIds: ['enabled-1', 'disabled-1'] }],
     }),
@@ -87,7 +102,7 @@ const expectEnabledSourceQuery = () => {
   expect(prismaMock.article.findMany).toHaveBeenCalledTimes(1);
   const { where } = prismaMock.article.findMany.mock.calls[0][0];
   expect(where).toEqual({
-    id: { in: ['enabled-1', 'disabled-1', 'enabled-2'] },
+    id: { in: ['enabled-1', 'disabled-1', 'enabled-2', 'disabled-2'] },
     isHidden: false,
     AND: [enabledSourceWhere()],
   });
@@ -125,6 +140,12 @@ describe('日次トレンドの表示から無効化したソースの記事を�
       'enabled-1',
       'enabled-2',
     ]);
+    // カテゴリの代表記事も、引き直した記事に無いものは外す
+    expect(
+      body.data.categories.map(
+        (c: { topArticle: { id: string } | null }) => c.topArticle?.id ?? null
+      )
+    ).toEqual(['enabled-2', null, null]);
   });
 
   it('fetchInitialDailyData: 同じく落とす', async () => {
@@ -136,13 +157,23 @@ describe('日次トレンドの表示から無効化したソースの記事を�
       result.data as unknown as { topArticles: { id: string }[] }
     ).topArticles;
     expect(topArticles.map((a) => a.id)).toEqual(['enabled-1', 'enabled-2']);
+    const categories = (
+      result.data as unknown as {
+        categories: { topArticle: { id: string } | null }[];
+      }
+    ).categories;
+    expect(categories.map((c) => c.topArticle?.id ?? null)).toEqual([
+      'enabled-2',
+      null,
+      null,
+    ]);
     expect(Object.keys(result.evidenceArticles ?? {}).sort()).toEqual([
       'enabled-1',
       'enabled-2',
     ]);
   });
 
-  it('記事の引き直しに失敗したら、topArticles は落とさずに返す（今までどおり）', async () => {
+  it('記事の引き直しに失敗したら、確かめられなかった記事は出さない', async () => {
     prismaMock.article.findMany.mockRejectedValueOnce(new Error('db down'));
 
     const response = await GET(
@@ -151,7 +182,10 @@ describe('日次トレンドの表示から無効化したソースの記事を�
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.data.topArticles).toHaveLength(3);
+    expect(body.data.topArticles).toEqual([]);
+    expect(
+      body.data.categories.map((c: { topArticle: unknown }) => c.topArticle)
+    ).toEqual([null, null, null]);
     expect(body.evidenceArticles).toEqual({});
   });
 });

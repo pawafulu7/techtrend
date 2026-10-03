@@ -34,6 +34,25 @@ const getCache = () => {
 };
 
 /**
+ * カテゴリの代表記事のうち、引き直した記事（`verifiedIds`）に無いものを外す（issue #688）。
+ * 非表示・無効化したソース・削除済みの記事の題名を、保存済みのレポートから出さないため
+ */
+function withVerifiedCategoryTopArticles(
+  categories: unknown,
+  verifiedIds: ReadonlySet<string>
+): unknown {
+  if (!Array.isArray(categories)) return categories;
+  return categories.map((category) => {
+    const topArticle = (category as { topArticle?: { id?: unknown } | null })
+      ?.topArticle;
+    if (!topArticle) return category;
+    return typeof topArticle.id === 'string' && verifiedIds.has(topArticle.id)
+      ? category
+      : { ...(category as Record<string, unknown>), topArticle: null };
+  });
+}
+
+/**
  * レポートデータにthumbnail情報をenrichする
  * - topArticlesにthumbnailを追加（既存レポートのJSON列にthumbnailがない場合）
  * - aiSummaryのevidenceArticleIds/articleIdsから参照される記事情報をevidenceArticlesとして提供
@@ -92,6 +111,17 @@ async function enrichReportWithThumbnails(
     }
   }
 
+  // カテゴリの代表記事も、表示してよいかを引き直して確かめる
+  if (Array.isArray(reportData.categories)) {
+    for (const category of reportData.categories) {
+      const id = (category as { topArticle?: { id?: unknown } | null })
+        ?.topArticle?.id;
+      if (typeof id === 'string') {
+        allArticleIds.add(id);
+      }
+    }
+  }
+
   if (allArticleIds.size === 0) {
     const { detailedSummary: _ds, ...clean } = reportData as Record<
       string,
@@ -133,7 +163,18 @@ async function enrichReportWithThumbnails(
       string,
       unknown
     > & { detailedSummary?: unknown };
-    return { enrichedData: clean, evidenceArticles: {} };
+    // 確かめられなかった記事は出さない（無効化したソースの記事が混ざりうるため。issue #688）
+    return {
+      enrichedData: {
+        ...clean,
+        topArticles: [],
+        categories: withVerifiedCategoryTopArticles(
+          clean.categories,
+          new Set()
+        ),
+      },
+      evidenceArticles: {},
+    };
   }
 
   const articleMap = new Map(
@@ -172,7 +213,14 @@ async function enrichReportWithThumbnails(
     string,
     unknown
   > & { detailedSummary?: unknown };
-  const enrichedData = { ...cleanReportData, topArticles: enrichedTopArticles };
+  const enrichedData = {
+    ...cleanReportData,
+    topArticles: enrichedTopArticles,
+    categories: withVerifiedCategoryTopArticles(
+      cleanReportData.categories,
+      new Set(articleMap.keys())
+    ),
+  };
 
   return {
     enrichedData,
