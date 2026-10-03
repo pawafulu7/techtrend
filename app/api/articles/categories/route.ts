@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { CategoryClassifier } from '@/lib/services/category-classifier';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger';
+import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 
 // Initialize Redis cache with 1 hour TTL for category stats
 const cache = new RedisCache({
@@ -27,10 +28,10 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    // Get category counts
+    // Get category counts（無効化したソースの記事は数えない。issue #688）
     const categoryStats = await prisma.article.groupBy({
       by: ['category'],
-      where: { isHidden: false },
+      where: { isHidden: false, AND: [enabledSourceWhere()] },
       _count: {
         _all: true,
       },

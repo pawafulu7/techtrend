@@ -4,6 +4,8 @@ import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-g
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
+import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
+import { withVerifiedCategoryTopArticles } from '@/lib/services/trend-report/verify-daily-articles';
 import {
   JST_OFFSET_MS,
   TrendReportData,
@@ -55,6 +57,8 @@ async function enrichReportWithThumbnails(
 ): Promise<{
   enrichedData: Record<string, unknown>;
   evidenceArticles: EvidenceArticleMap;
+  /** 記事を引き直して確かめられたか。false の応答はキャッシュしない（一時的な失敗を残さないため） */
+  verified: boolean;
 }> {
   const topArticlesRaw = reportData.topArticles;
   const topArticles: Array<{ id: string; thumbnail?: string | null }> =
@@ -99,12 +103,23 @@ async function enrichReportWithThumbnails(
     }
   }
 
+  // カテゴリの代表記事も、表示してよいかを引き直して確かめる
+  if (Array.isArray(reportData.categories)) {
+    for (const category of reportData.categories) {
+      const id = (category as { topArticle?: { id?: unknown } | null })
+        ?.topArticle?.id;
+      if (typeof id === 'string') {
+        allArticleIds.add(id);
+      }
+    }
+  }
+
   if (allArticleIds.size === 0) {
     const { detailedSummary: _ds, ...clean } = reportData as Record<
       string,
       unknown
     > & { detailedSummary?: unknown };
-    return { enrichedData: clean, evidenceArticles: {} };
+    return { enrichedData: clean, evidenceArticles: {}, verified: true };
   }
 
   let articles: Array<{
@@ -116,7 +131,12 @@ async function enrichReportWithThumbnails(
   }> = [];
   try {
     articles = await prisma.article.findMany({
-      where: { id: { in: Array.from(allArticleIds) }, isHidden: false },
+      // 無効化したソースの記事は出さない（issue #688）。保存済みのレポートは作り直さず、表示の時点で除く
+      where: {
+        id: { in: Array.from(allArticleIds) },
+        isHidden: false,
+        AND: [enabledSourceWhere()],
+      },
       select: {
         id: true,
         title: true,
@@ -134,24 +154,39 @@ async function enrichReportWithThumbnails(
       string,
       unknown
     > & { detailedSummary?: unknown };
-    return { enrichedData: clean, evidenceArticles: {} };
+    // 確かめられなかった記事は出さない（無効化したソースの記事が混ざりうるため。issue #688）
+    return {
+      enrichedData: {
+        ...clean,
+        topArticles: [],
+        categories: withVerifiedCategoryTopArticles(
+          clean.categories,
+          new Set()
+        ),
+      },
+      evidenceArticles: {},
+      verified: false,
+    };
   }
 
   const articleMap = new Map(
     articles.map((a) => [a.id, { ...a, sourceName: a.source.name }])
   );
 
-  const enrichedTopArticles = topArticles.map((article) => {
-    const { detailedSummary: _ignored, ...rest } = article as Record<
-      string,
-      unknown
-    >;
-    if (rest.thumbnail !== undefined) {
-      return rest;
-    }
-    const dbArticle = articleMap.get(rest.id as string);
-    return { ...rest, thumbnail: dbArticle?.thumbnail ?? null };
-  });
+  // 引き直した記事に無い ID（非表示・無効化したソース・削除済み）は落とす
+  const enrichedTopArticles = topArticles
+    .filter((article) => articleMap.has(article.id))
+    .map((article) => {
+      const { detailedSummary: _ignored, ...rest } = article as Record<
+        string,
+        unknown
+      >;
+      if (rest.thumbnail !== undefined) {
+        return rest;
+      }
+      const dbArticle = articleMap.get(rest.id as string);
+      return { ...rest, thumbnail: dbArticle?.thumbnail ?? null };
+    });
 
   const evidenceArticles: EvidenceArticleMap = {};
   for (const [id, article] of articleMap) {
@@ -167,11 +202,19 @@ async function enrichReportWithThumbnails(
     string,
     unknown
   > & { detailedSummary?: unknown };
-  const enrichedData = { ...cleanReportData, topArticles: enrichedTopArticles };
+  const enrichedData = {
+    ...cleanReportData,
+    topArticles: enrichedTopArticles,
+    categories: withVerifiedCategoryTopArticles(
+      cleanReportData.categories,
+      new Set(articleMap.keys())
+    ),
+  };
 
   return {
     enrichedData,
     evidenceArticles,
+    verified: true,
   };
 }
 
@@ -271,14 +314,13 @@ export async function fetchInitialDailyData(): Promise<DailyTrendResponse> {
       report.periodStart
     );
 
-    const { enrichedData, evidenceArticles } = await enrichReportWithThumbnails(
-      {
+    const { enrichedData, evidenceArticles, verified } =
+      await enrichReportWithThumbnails({
         ...report,
         periodStart: report.periodStart.toISOString(),
         periodEnd: report.periodEnd.toISOString(),
         generatedAt: report.generatedAt?.toISOString(),
-      }
-    );
+      });
 
     const response: DailyTrendResponse = {
       success: true,
@@ -294,10 +336,13 @@ export async function fetchInitialDailyData(): Promise<DailyTrendResponse> {
       },
     };
 
-    try {
-      await cacheInstance.set(cacheKey, response);
-    } catch (cacheError) {
-      logger.warn({ err: cacheError }, 'Cache write error');
+    // 記事を確かめられなかった応答は、キャッシュに残さない（issue #688）
+    if (verified) {
+      try {
+        await cacheInstance.set(cacheKey, response);
+      } catch (cacheError) {
+        logger.warn({ err: cacheError }, 'Cache write error');
+      }
     }
 
     return response;

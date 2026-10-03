@@ -3,6 +3,10 @@ import { prisma } from '@/lib/prisma';
 import { RedisCache } from '@/lib/cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
+import {
+  countTagArticlesInRange,
+  findTopTags,
+} from '@/lib/database/tag-article-counts';
 
 // タグクラウド用のキャッシュを遅延初期化
 let tagCloudCache: RedisCache | null = null;
@@ -68,46 +72,20 @@ async function tagCloudHandler(request: NextRequest) {
       ? new Date(Date.now() - days * 24 * 60 * 60 * 1000)
       : null;
 
-    // タグの使用回数を取得
-    const tags = await prisma.tag.findMany({
-      where: since
-        ? {
-            articles: {
-              some: {
-                publishedAt: {
-                  gte: since,
-                },
-              },
-            },
-          }
-        : undefined,
-      select: {
-        id: true,
-        name: true,
-        _count: {
-          select: {
-            articles: {
-              where: since
-                ? {
-                    publishedAt: {
-                      gte: since,
-                    },
-                  }
-                : undefined,
-            },
-          },
-        },
-      },
-      orderBy: {
-        articles: {
-          _count: 'desc',
-        },
-      },
-      take: limit,
+    // タグの使用回数を取得。全期間の件数で上位を選んでから、期間内の件数で並べ直す。
+    // 全期間・期間内・前期間の件数は、どれも無効化したソースの記事を数えない（issue #688）
+    const topTags = await findTopTags(prisma, {
+      limit,
+      activeSince: since ?? undefined,
     });
+    const tags = topTags.map((tag) => ({
+      id: tag.id,
+      name: tag.name,
+      count: since ? (tag.periodCount ?? 0) : tag.count,
+    }));
 
     // トレンド計算のために前期間のデータも取得
-    let previousPeriodCounts: Record<string, number> = {};
+    let previousPeriodCounts = new Map<string, number>();
     if (period !== 'all') {
       const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 365;
       const previousStart = new Date();
@@ -115,51 +93,18 @@ async function tagCloudHandler(request: NextRequest) {
       const previousEnd = new Date();
       previousEnd.setDate(previousEnd.getDate() - periodDays);
 
-      const previousTags = await prisma.tag.findMany({
-        where: {
-          id: {
-            in: tags.map((t) => t.id),
-          },
-          articles: {
-            some: {
-              publishedAt: {
-                gte: previousStart,
-                lt: previousEnd,
-              },
-            },
-          },
-        },
-        select: {
-          id: true,
-          _count: {
-            select: {
-              articles: {
-                where: {
-                  publishedAt: {
-                    gte: previousStart,
-                    lt: previousEnd,
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-
-      previousPeriodCounts = previousTags.reduce(
-        (acc, tag) => {
-          acc[tag.id] = tag._count.articles;
-          return acc;
-        },
-        {} as Record<string, number>
+      previousPeriodCounts = await countTagArticlesInRange(
+        prisma,
+        tags.map((t) => t.id),
+        { from: previousStart, to: previousEnd }
       );
     }
 
     // レスポンスの構築
     const tagCloudData = tags
       .map((tag) => {
-        const currentCount = tag._count.articles;
-        const previousCount = previousPeriodCounts[tag.id] || 0;
+        const currentCount = tag.count;
+        const previousCount = previousPeriodCounts.get(tag.id) ?? 0;
 
         let trend: 'rising' | 'stable' | 'falling' = 'stable';
         let growthRate = 0;

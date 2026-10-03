@@ -36,6 +36,7 @@ jest.mock('@/lib/logger', () => ({
 
 import { GET } from '@/app/api/trends/keywords/route';
 import { prisma } from '@/lib/database';
+import { ENABLED_SOURCE_SQL, sqlFragmentsOf } from '../../helpers/sql-fragments';
 
 const prismaMock = prisma as any;
 
@@ -286,5 +287,24 @@ describe('/api/trends/keywords', () => {
     // newTags
     expect(data.newTags).toHaveLength(1);
     expect(data.newTags[0]).toEqual({ id: 'tag-2', name: 'BrandNew', count: 2 });
+  });
+
+  it('無効化したソースの記事を数えない。新規タグの判定の内側も同じ（issue #688）', async () => {
+    prismaMock.$queryRaw.mockResolvedValue([]);
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    const [recent, weekly, newTags] = prismaMock.$queryRaw.mock.calls;
+    expect(sqlFragmentsOf(recent, { afterAnd: true })).toEqual([
+      `a."sourceId" ${ENABLED_SOURCE_SQL}`,
+    ]);
+    expect(sqlFragmentsOf(weekly, { afterAnd: true })).toEqual([
+      `a."sourceId" ${ENABLED_SOURCE_SQL}`,
+    ]);
+    expect(sqlFragmentsOf(newTags, { afterAnd: true })).toEqual([
+      `a."sourceId" ${ENABLED_SOURCE_SQL}`,
+      `a2."sourceId" ${ENABLED_SOURCE_SQL}`,
+    ]);
   });
 });

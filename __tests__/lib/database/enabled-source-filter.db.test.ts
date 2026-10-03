@@ -11,6 +11,7 @@ import type { PrismaClient } from '@/lib/prisma-exports';
 import { Prisma } from '@/lib/prisma-exports';
 import {
   type ArticleSourceIdColumn,
+  disabledSourceSql,
   enabledSourceSql,
   enabledSourceWhere,
 } from '@/lib/database/enabled-source-filter';
@@ -48,6 +49,9 @@ describe('enabled-source-filter（DB を使わない検査）', () => {
     expect(() => enabledSourceSql('toString' as ArticleSourceIdColumn)).toThrow(
       'Unsupported sourceId column'
     );
+    expect(() =>
+      disabledSourceSql('s.id; DROP TABLE x' as ArticleSourceIdColumn)
+    ).toThrow('Unsupported sourceId column');
   });
 });
 
@@ -154,5 +158,25 @@ describeIf('enabled-source-filter（テスト DB）', () => {
     `);
 
     expect(rows.map((r) => r.id)).toEqual([enabledArticleId]);
+  });
+
+  it('生 SQL（別名 a2）: 無効なソースの記事を除く', async () => {
+    const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      SELECT a2.id FROM "Article" a2
+      WHERE a2."sourceId" = ANY(${ownSourceIds()}::text[])
+        AND ${enabledSourceSql('a2."sourceId"')}
+    `);
+
+    expect(rows.map((r) => r.id)).toEqual([enabledArticleId]);
+  });
+
+  it('disabledSourceSql: 無効なソースの記事だけを返す（enabledSourceSql の補集合）', async () => {
+    const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      SELECT a.id FROM "Article" a
+      WHERE a."sourceId" = ANY(${ownSourceIds()}::text[])
+        AND ${disabledSourceSql()}
+    `);
+
+    expect(rows.map((r) => r.id)).toEqual([disabledArticleId]);
   });
 });

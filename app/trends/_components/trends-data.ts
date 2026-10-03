@@ -3,6 +3,10 @@ import { Prisma } from '@/lib/prisma-exports';
 import { keywordsCache } from '@/lib/cache/keywords-cache';
 import { trendsCache } from '@/lib/cache/trends-cache';
 import { RedisCache } from '@/lib/cache';
+import {
+  enabledSourceSql,
+  enabledSourceWhere,
+} from '@/lib/database/enabled-source-filter';
 
 // 読み取り専用: キャッシュへの書き込みは /api/stats ルートが担当
 const statsCache = new RedisCache({
@@ -83,6 +87,7 @@ export async function fetchKeywordsData(): Promise<{
           JOIN "Article" a ON at."A" = a.id
           WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamptz
             AND a."isHidden" = false
+            AND ${enabledSourceSql()}
             AND t.name <> ''
             AND t.name IS NOT NULL
           GROUP BY t.id, t.name
@@ -99,6 +104,7 @@ export async function fetchKeywordsData(): Promise<{
           WHERE a."publishedAt" >= ${oneWeekAgo.toISOString()}::timestamptz
             AND a."publishedAt" < ${oneDayAgo.toISOString()}::timestamptz
             AND a."isHidden" = false
+            AND ${enabledSourceSql()}
             AND t.name <> ''
             AND t.name IS NOT NULL
           GROUP BY t.id, t.name
@@ -114,6 +120,7 @@ export async function fetchKeywordsData(): Promise<{
           JOIN "Article" a ON at."A" = a.id
           WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamptz
             AND a."isHidden" = false
+            AND ${enabledSourceSql()}
             AND t.name <> ''
             AND t.name IS NOT NULL
             AND NOT EXISTS (
@@ -123,6 +130,7 @@ export async function fetchKeywordsData(): Promise<{
               WHERE at2."B" = t.id
                 AND a2."publishedAt" < ${oneDayAgo.toISOString()}::timestamptz
                 AND a2."isHidden" = false
+                AND ${enabledSourceSql('a2."sourceId"')}
             )
           GROUP BY t.id, t.name
           ORDER BY count DESC
@@ -198,6 +206,7 @@ export async function fetchAnalysisData(
       JOIN "Article" a ON at."A" = a.id
       WHERE a."publishedAt" >= ${startDate.toISOString()}::timestamp
         AND a."isHidden" = false
+        AND ${enabledSourceSql()}
       GROUP BY t.name
       ORDER BY total_count DESC
       LIMIT 10
@@ -219,6 +228,7 @@ export async function fetchAnalysisData(
         JOIN "Article" a ON at."A" = a.id
         WHERE a."publishedAt" >= ${startDate.toISOString()}::timestamp
           AND a."isHidden" = false
+          AND ${enabledSourceSql()}
           AND t.name IN (${Prisma.join(tagNames)})
         GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), t.name
         ORDER BY date ASC, count DESC
@@ -288,7 +298,8 @@ export async function fetchSourceData(): Promise<SourceDataItem[]> {
       ? cachedStats.sources
       : await (async () => {
           const [totalArticles, sourceStats] = await Promise.all([
-            prisma.article.count(),
+            // 構成比の分母も、有効なソースの記事だけで数える（issue #688）
+            prisma.article.count({ where: { AND: [enabledSourceWhere()] } }),
             prisma.source.findMany({
               where: { enabled: true },
               include: { _count: { select: { articles: true } } },

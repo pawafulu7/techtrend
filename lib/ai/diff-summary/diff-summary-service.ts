@@ -8,6 +8,7 @@
 import { PrismaClient, BatchStatus } from '@/lib/prisma-exports';
 import { logger } from '@/lib/logger';
 import { prisma as defaultPrisma } from '@/lib/prisma';
+import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import {
   LLMExtractionPipeline,
   getLLMExtractionPipeline,
@@ -295,7 +296,8 @@ export class DiffSummaryService {
 
     if (!category) return [];
 
-    // Get articles from this category's sources within the date range
+    // Get articles from this category's sources within the date range.
+    // 無効化したソースの記事は要約の材料にしない（issue #688）
     const articles = await this.prisma.article.findMany({
       where: {
         sourceId: { in: category.sourceIds },
@@ -303,6 +305,7 @@ export class DiffSummaryService {
           gte: start,
           lte: end,
         },
+        AND: [enabledSourceWhere()],
       },
       select: {
         id: true,

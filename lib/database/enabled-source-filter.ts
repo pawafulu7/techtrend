@@ -9,6 +9,7 @@
  * - 生 SQL は `enabledSourceSql()` を WHERE に足す。JOIN ではなく IN の形にしているのは、既存の
  *   SQL の別名（`s` など）とぶつからず、GROUP BY も変えずに済むため。開発 DB の EXPLAIN では、
  *   JOIN・EXISTS・IN は同じ計画になる（Source は 76 行で一意キー）
+ * - `disabledSourceSql()` はその補集合。全件数から無効分を引く集計（`tag-article-counts.ts`）で使う
  */
 import { Prisma } from '@/lib/prisma-exports';
 
@@ -19,6 +20,7 @@ import { Prisma } from '@/lib/prisma-exports';
  */
 const SOURCE_ID_COLUMNS = {
   'a."sourceId"': Prisma.raw('a."sourceId"'),
+  'a2."sourceId"': Prisma.raw('a2."sourceId"'),
   '"sourceId"': Prisma.raw('"sourceId"'),
 } as const;
 
@@ -29,15 +31,31 @@ export function enabledSourceWhere(): Prisma.ArticleWhereInput {
   return { source: { is: { enabled: true } } };
 }
 
-/** 生 SQL 用。`column` は記事の `sourceId` 列（既定は別名 `a` の付いた形） */
-export function enabledSourceSql(
-  column: ArticleSourceIdColumn = 'a."sourceId"'
-): Prisma.Sql {
+function sourceIdColumnSql(column: ArticleSourceIdColumn): Prisma.Sql {
   const columnSql = Object.hasOwn(SOURCE_ID_COLUMNS, column)
     ? SOURCE_ID_COLUMNS[column]
     : undefined;
   if (!columnSql) {
     throw new Error(`Unsupported sourceId column: ${String(column)}`);
   }
-  return Prisma.sql`${columnSql} IN (SELECT id FROM "Source" WHERE enabled = true)`;
+  return columnSql;
+}
+
+/** 生 SQL 用。`column` は記事の `sourceId` 列（既定は別名 `a` の付いた形） */
+export function enabledSourceSql(
+  column: ArticleSourceIdColumn = 'a."sourceId"'
+): Prisma.Sql {
+  return Prisma.sql`${sourceIdColumnSql(column)} IN (SELECT id FROM "Source" WHERE enabled = true)`;
+}
+
+/**
+ * 生 SQL 用。`enabledSourceSql()` の補集合（無効なソースの記事）。
+ * `Article.sourceId` は NOT NULL の外部キーなので、どの記事もちょうど一方に入る。
+ * NOT IN ではなくこの形にしているのは、無効なソースが少ないときに `sourceId` の索引で
+ * 該当する記事だけを引けるため
+ */
+export function disabledSourceSql(
+  column: ArticleSourceIdColumn = 'a."sourceId"'
+): Prisma.Sql {
+  return Prisma.sql`${sourceIdColumnSql(column)} IN (SELECT id FROM "Source" WHERE enabled = false)`;
 }

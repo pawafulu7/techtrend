@@ -1,5 +1,12 @@
 import { TagCache } from '@/lib/cache/tag-cache';
 
+const mockFindTopTags = jest.fn();
+// 第 1 引数の prisma は jest-mock-extended の Proxy で、expect.anything() が使えないので、条件（第 2 引数）だけを見る
+const lastOptions = () => mockFindTopTags.mock.calls.at(-1)?.[1];
+jest.mock('@/lib/database/tag-article-counts', () => ({
+  findTopTags: (...args: unknown[]) => mockFindTopTags(...args),
+}));
+
 jest.mock('@/lib/logger');
 
 const createCacheStub = () => {
@@ -42,6 +49,32 @@ describe('TagCache', () => {
     tagCache = new TagCache();
     cacheStub = createCacheStub();
     (tagCache as any).cache = cacheStub;
+  });
+
+  describe('getPopularTags', () => {
+    it('有効なソースの記事数の上位を、TagWithCount の形で返す（issue #688）', async () => {
+      mockFindTopTags.mockResolvedValueOnce([
+        { id: 't1', name: 'React', category: 'frontend', count: 7 },
+      ]);
+
+      const tags = await tagCache.getPopularTags(20);
+
+      expect(lastOptions()).toEqual({
+        limit: 20,
+      });
+      expect(cacheStub.getOrSetWithLock).toHaveBeenCalledWith(
+        'popular-tags:20',
+        expect.any(Function)
+      );
+      expect(tags).toEqual([
+        {
+          id: 't1',
+          name: 'React',
+          category: 'frontend',
+          _count: { articles: 7 },
+        },
+      ]);
+    });
   });
 
   describe('invalidateTag', () => {
