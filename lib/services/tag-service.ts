@@ -171,6 +171,32 @@ export async function findTagIdsByNames(
 }
 
 /**
+ * 入力したタグ名ごとに、キー（lower(name)）に当たるタグの ID の組を返す（作らない）。
+ *
+ * 戻り値は入力と同じ長さ・同じ順で、どのタグにも当たらない名前は空の組になる。
+ * 「すべてのタグを持つ記事」のように、名前ごとに条件を分ける絞り込みで使う。
+ */
+export async function findTagIdGroupsByNames(
+  names: string[],
+  client: TagClient = prisma
+): Promise<string[][]> {
+  const trimmed = names.map((name) => name.trim());
+  const groups: string[][] = trimmed.map(() => []);
+  if (!trimmed.some(Boolean)) return groups;
+  const rows = await client.$queryRaw<{ ord: bigint; id: string }[]>`
+    SELECT u.ord, t.id
+    FROM unnest(${trimmed}::text[]) WITH ORDINALITY AS u(name, ord)
+    JOIN "Tag" t ON lower(t.name) = lower(u.name)
+    WHERE u.name <> ''
+    ORDER BY u.ord, t.name COLLATE "C"
+  `;
+  for (const row of rows) {
+    groups[Number(row.ord) - 1].push(row.id);
+  }
+  return groups;
+}
+
+/**
  * Get or create tags safely.
  * 大文字小文字だけが違う既存のタグがあれば、そのタグを返す。
  *

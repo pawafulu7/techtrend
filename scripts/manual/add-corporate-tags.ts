@@ -11,6 +11,7 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { resolveTags } from '@/lib/services/tag-service';
 
 const prisma = createPrismaClient();
 
@@ -141,15 +142,12 @@ async function main() {
       // トランザクションで一括更新
       await prisma.$transaction(async (tx) => {
         for (const update of updates) {
-          // タグが存在しない場合は作成
-          const tag = await tx.tag.upsert({
-            where: { name: update.companyName },
-            update: {},
-            create: { 
-              name: update.companyName,
-              category: 'corporate'  // 企業カテゴリーとして設定
-            },
-          });
+          // タグが存在しない場合は作成（企業カテゴリーとして設定）。
+          // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+          const [tag] = await resolveTags(
+            [{ name: update.companyName, category: 'corporate' }],
+            tx
+          );
 
           // 記事にタグを関連付け
           await tx.article.update({

@@ -9,6 +9,12 @@ declare global {
 }
 
 // モックの設定
+// タグ名は lower(name) で ID にしてから絞る（#681）。テストでは名前の小文字から ID を作る
+jest.mock('@/lib/services/tag-service', () => ({
+  ...jest.requireActual('@/lib/services/tag-service'),
+  findTagIdGroupsByNames: async (names: string[]) =>
+    names.map((name) => [`tag-${name.toLowerCase()}`]),
+}));
 jest.mock('@/lib/database');
 jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/cache/cache-invalidator');
@@ -304,14 +310,14 @@ describe('/api/articles - Extended Tests', () => {
               {
                 tags: {
                   some: {
-                    name: { equals: 'React', mode: 'insensitive' }
+                    id: { in: ['tag-react'] }
                   }
                 }
               },
               {
                 tags: {
                   some: {
-                    name: { equals: 'TypeScript', mode: 'insensitive' }
+                    id: { in: ['tag-typescript'] }
                   }
                 }
               }
@@ -347,15 +353,21 @@ describe('/api/articles - Extended Tests', () => {
             ]),
             tags: {
               some: {
-                OR: [
-                  { name: { equals: 'React', mode: 'insensitive' } },
-                  { name: { equals: 'Vue', mode: 'insensitive' } }
-                ]
+                id: { in: ['tag-react', 'tag-vue'] }
               }
             }
           })
         })
       );
+    });
+
+    it('51 個以上のタグは 400 を返し、クエリしない（#681）', async () => {
+      const tags = Array.from({ length: 51 }, (_, i) => `t${i}`).join(',');
+      const request = new NextRequest(`http://localhost/api/articles?tags=${tags}`);
+      const response = await GET(request);
+
+      expect(response.status).toBe(400);
+      expect(prismaMock.article.findMany).not.toHaveBeenCalled();
     });
 
     it('空白を含むタグリストを正しく処理', async () => {
@@ -381,14 +393,14 @@ describe('/api/articles - Extended Tests', () => {
               {
                 tags: {
                   some: {
-                    name: { equals: 'React', mode: 'insensitive' }
+                    id: { in: ['tag-react'] }
                   }
                 }
               },
               {
                 tags: {
                   some: {
-                    name: { equals: 'Vue', mode: 'insensitive' }
+                    id: { in: ['tag-vue'] }
                   }
                 }
               }

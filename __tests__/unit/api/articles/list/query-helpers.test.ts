@@ -60,6 +60,7 @@ function makeDefaultParams(overrides: Partial<WhereClauseParams> = {}): WhereCla
     tag: null,
     tags: null,
     tagMode: 'OR',
+    tagIdGroups: [],
     search: null,
     dateRange: null,
     dateFrom: null,
@@ -191,6 +192,44 @@ describe('query-helpers', () => {
       const where = buildWhereClause(params);
 
       expect(where.source).toEqual({ enabled: true });
+    });
+
+    it('does not filter by tag when no tag IDs are given', () => {
+      const where = buildWhereClause(makeDefaultParams({ tag: 'React' }));
+
+      // タグ名は route が resolveTagIdGroups で ID にして渡す。名前だけでは絞らない
+      expect(where.tags).toBeUndefined();
+    });
+
+    it('filters by any of the resolved tag IDs in OR mode', () => {
+      const where = buildWhereClause(
+        makeDefaultParams({
+          tags: 'React,Vue',
+          tagIdGroups: [['tag-react'], ['tag-vue']],
+        })
+      );
+
+      expect(where.tags).toEqual({
+        some: { id: { in: ['tag-react', 'tag-vue'] } },
+      });
+    });
+
+    it('requires every resolved tag in AND mode', () => {
+      const where = buildWhereClause(
+        makeDefaultParams({
+          tags: 'React,Vue',
+          tagMode: 'AND',
+          tagIdGroups: [['tag-react'], ['tag-vue']],
+        })
+      );
+
+      expect(where.tags).toBeUndefined();
+      expect(where.AND).toEqual(
+        expect.arrayContaining([
+          { tags: { some: { id: { in: ['tag-react'] } } } },
+          { tags: { some: { id: { in: ['tag-vue'] } } } },
+        ])
+      );
     });
   });
 });

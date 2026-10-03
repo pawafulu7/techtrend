@@ -13,6 +13,7 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
+import { resolveTags } from '@/lib/services/tag-service';
 
 const prisma = createPrismaClient();
 
@@ -104,15 +105,10 @@ async function generateSummariesForArticles(
 
         // タグの処理
         if (summaryResult.tags && summaryResult.tags.length > 0) {
-          // タグを作成または取得
-          const tagRecords = await Promise.all(
-            summaryResult.tags.map(async (tagName) => {
-              return prisma.tag.upsert({
-                where: { name: tagName },
-                update: {},
-                create: { name: tagName },
-              });
-            })
+          // タグを作成または取得。大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+          const tagRecords = await resolveTags(
+            summaryResult.tags.map((name) => ({ name })),
+            prisma
           );
 
           // 記事にタグを関連付ける

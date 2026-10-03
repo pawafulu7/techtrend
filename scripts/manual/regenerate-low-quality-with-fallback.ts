@@ -20,6 +20,7 @@ import {
 import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import fetch from 'node-fetch';
+import { resolveTags } from '@/lib/services/tag-service';
 
 const prisma = createPrismaClient();
 
@@ -361,22 +362,19 @@ async function regenerateSummariesWithFallback(lowQualityArticles: LowQualityArt
         
         // タグの更新
         if (bestResult.tags.length > 0) {
-          for (const tagName of bestResult.tags) {
-            const tag = await prisma.tag.upsert({
-              where: { name: tagName },
-              update: {},
-              create: { name: tagName }
-            });
-            
-            await prisma.article.update({
-              where: { id: article.id },
-              data: {
-                tags: {
-                  connect: { id: tag.id }
-                }
+          // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+          const tags = await resolveTags(
+            bestResult.tags.map((name) => ({ name })),
+            prisma
+          );
+          await prisma.article.update({
+            where: { id: article.id },
+            data: {
+              tags: {
+                connect: tags.map((tag) => ({ id: tag.id }))
               }
-            });
-          }
+            }
+          });
         }
         
         if (bestScore >= 50) {

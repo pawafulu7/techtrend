@@ -1,6 +1,7 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { AIService } from '@/lib/ai/ai-service';
+import { resolveTags } from '@/lib/services/tag-service';
 
 const prisma = createPrismaClient();
 
@@ -71,19 +72,26 @@ async function reEnrichArticles() {
             enrichedData.content
           );
 
-          await prisma.article.update({
-            where: { id: article.id },
-            data: {
-              summary: summaryResult.summary,
-              detailedSummary: summaryResult.detailedSummary,
-              tags: {
-                set: [],
-                connectOrCreate: summaryResult.tags.map(tagName => ({
-                  where: { name: tagName },
-                  create: { name: tagName }
-                }))
+          // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）。
+          // タグの解決と記事の更新を 1 つのトランザクションにし、記事の更新に失敗したとき
+          // 使われないタグを残さない。使えるタグが無ければ今のタグを残す
+          await prisma.$transaction(async (tx) => {
+            const tags = await resolveTags(
+              summaryResult.tags.map((name) => ({ name })),
+              tx
+            );
+            await tx.article.update({
+              where: { id: article.id },
+              data: {
+                summary: summaryResult.summary,
+                detailedSummary: summaryResult.detailedSummary,
+                ...(tags.length > 0 && {
+                  tags: {
+                    set: tags.map((tag) => ({ id: tag.id }))
+                  }
+                })
               }
-            }
+            });
           });
 
           console.log(`  ✅ 詳細要約再生成成功: ${summaryResult.detailedSummary.length}文字`);

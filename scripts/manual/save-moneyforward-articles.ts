@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import Parser from 'rss-parser';
+import { resolveTags } from '@/lib/services/tag-service';
 
 async function saveMoneyForwardArticles() {
   const prisma = createPrismaClient();
@@ -63,14 +64,10 @@ async function saveMoneyForwardArticles() {
         
         // タグを作成
         const tagNames = ['マネーフォワード', '企業テックブログ'];
-        const tags = await Promise.all(
-          tagNames.map(async (tagName) => {
-            return prisma.tag.upsert({
-              where: { name: tagName },
-              update: {},
-              create: { name: tagName }
-            });
-          })
+        // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+        const tags = await resolveTags(
+          tagNames.map((name) => ({ name })),
+          prisma
         );
         
         // 記事を保存（RSSフィードのコンテンツのみ使用）

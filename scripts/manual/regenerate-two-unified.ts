@@ -8,6 +8,7 @@ import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { generateUnifiedPrompt } from '@/lib/utils/article/article-type-prompts';
 import { UnifiedSummaryService } from '@/lib/ai/unified-summary-service';
+import { resolveTags } from '@/lib/services/tag-service';
 
 const prisma = createPrismaClient();
 
@@ -115,24 +116,23 @@ async function regenerateTwoArticles() {
 
       // タグの更新
       if (result.tags && result.tags.length > 0) {
-        const tagRecords = await Promise.all(
-          result.tags.map(async (tagName) => {
-            return await prisma.tag.upsert({
-              where: { name: tagName },
-              update: {},
-              create: { name: tagName }
-            });
-          })
+        // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+        const tagRecords = await resolveTags(
+          result.tags.map((name) => ({ name })),
+          prisma
         );
 
-        await prisma.article.update({
-          where: { id: articleId },
-          data: {
-            tags: {
-              set: tagRecords.map(tag => ({ id: tag.id }))
+        // 使えるタグが無ければ（空白だけの名前など）今のタグを残す
+        if (tagRecords.length > 0) {
+          await prisma.article.update({
+            where: { id: articleId },
+            data: {
+              tags: {
+                set: tagRecords.map(tag => ({ id: tag.id }))
+              }
             }
-          }
-        });
+          });
+        }
         console.error(`  🏷️  タグ更新完了`);
       }
 

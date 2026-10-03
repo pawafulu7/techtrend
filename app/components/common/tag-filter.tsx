@@ -26,6 +26,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { MAX_TAG_FILTER_COUNT } from '@/lib/constants/tag-filter';
 import {
   buildFilterUrl,
   clearTransientFilterParams,
@@ -195,7 +196,10 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
 
   // タグの選択/選択解除
   const toggleTag = (tagName: string) => {
-    const newTags = selectedTags.includes(tagName)
+    const isSelected = selectedTags.includes(tagName);
+    // API が受け付ける数を超えて選ばない（超えると一覧の取得が 400 になる）
+    if (!isSelected && selectedTags.length >= MAX_TAG_FILTER_COUNT) return;
+    const newTags = isSelected
       ? selectedTags.filter((t) => t !== tagName)
       : [...selectedTags, tagName];
 

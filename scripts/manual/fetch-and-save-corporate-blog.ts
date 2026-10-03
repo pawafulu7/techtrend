@@ -2,6 +2,7 @@
 import { CorporateTechBlogFetcher } from '../../lib/fetchers/corporate-tech-blog';
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { Source } from '@/lib/prisma-exports';
+import { resolveTags } from '@/lib/services/tag-service';
 
 async function fetchAndSaveCorporateBlog() {
   const prisma = createPrismaClient();
@@ -68,15 +69,10 @@ async function fetchAndSaveCorporateBlog() {
           continue;
         }
         
-        // タグを作成または取得
-        const tags = await Promise.all(
-          article.tagNames.map(async (tagName: string) => {
-            return prisma.tag.upsert({
-              where: { name: tagName },
-              update: {},
-              create: { name: tagName }
-            });
-          })
+        // タグを作成または取得。大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+        const tags = await resolveTags(
+          article.tagNames.map((name: string) => ({ name })),
+          prisma
         );
         
         // 記事を保存

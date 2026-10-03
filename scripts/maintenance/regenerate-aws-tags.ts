@@ -1,6 +1,7 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { Article, Tag } from '@/lib/prisma-exports';
 import { logger } from '@/lib/cli/utils/logger';
+import { resolveTags } from '@/lib/services/tag-service';
 
 const prisma = createPrismaClient();
 
@@ -191,16 +192,10 @@ async function regenerateAwsTags(): Promise<RegenerateResult> {
           // 既存のタグと新しいタグをマージ
           const allTagNames = [...new Set([...existingTagNames, ...newTags])];
           
-          // タグレコードを作成または取得
-          const tagRecords = await Promise.all(
-            allTagNames.map(async (tagName) => {
-              const tag = await prisma.tag.upsert({
-                where: { name: tagName },
-                update: {},
-                create: { name: tagName }
-              });
-              return tag;
-            })
+          // タグレコードを作成または取得。大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+          const tagRecords = await resolveTags(
+            allTagNames.map((name) => ({ name })),
+            prisma
           );
           
           // 記事のタグを更新

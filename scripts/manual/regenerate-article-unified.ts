@@ -2,6 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { resolveTags } from '@/lib/services/tag-service';
 
 async function regenerateArticleUnified(articleId: string) {
   console.log('='.repeat(60));
@@ -73,25 +74,24 @@ ${result.detailedSummary}`);
       console.log('');
       console.log(`タグ: ${result.tags.join(', ')}`);
 
-      const tagRecords = await Promise.all(
-        result.tags.map(async (tagName) => {
-          return await prisma.tag.upsert({
-            where: { name: tagName },
-            create: { name: tagName },
-            update: {},
-          });
-        })
+      // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+      const tagRecords = await resolveTags(
+        result.tags.map((name) => ({ name })),
+        prisma
       );
 
-      await prisma.article.update({
-        where: { id: articleId },
-        data: {
-          tags: {
-            set: [],
-            connect: tagRecords.map((tag) => ({ id: tag.id })),
+      // 使えるタグが無ければ（空白だけの名前など）今のタグを残す
+      if (tagRecords.length > 0) {
+        await prisma.article.update({
+          where: { id: articleId },
+          data: {
+            tags: {
+              set: [],
+              connect: tagRecords.map((tag) => ({ id: tag.id })),
+            },
           },
-        },
-      });
+        });
+      }
 
       console.log('タグを更新しました');
     }

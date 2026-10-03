@@ -189,6 +189,21 @@ describe('/api/articles/list', () => {
     );
   });
 
+  it('rejects more than 50 tags with 400 before querying (#681)', async () => {
+    mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+    mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+    const tags = Array.from({ length: 51 }, (_, i) => `t${i}`).join(',');
+
+    const response = await GET(
+      new NextRequest(`http://localhost:3000/api/articles/list?tags=${tags}`)
+    );
+
+    expect(response.status).toBe(400);
+    const json = await response.json();
+    expect(json.error.code).toBe('INVALID_TAG_FILTER');
+    expect(mockPrisma.article.findMany).not.toHaveBeenCalled();
+  });
+
   it('should handle NaN limit parameter gracefully', async () => {
     mockPrisma.article.count = jest.fn().mockResolvedValue(0);
     mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);

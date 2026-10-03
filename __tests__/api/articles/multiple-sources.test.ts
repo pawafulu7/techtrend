@@ -4,6 +4,12 @@ import { prisma } from '@/lib/database';
 import { getRedisClient } from '@/lib/redis/client';
 
 // Mock dependencies
+// タグ名は lower(name) で ID にしてから絞る（#681）。テストでは名前の小文字から ID を作る
+jest.mock('@/lib/services/tag-service', () => ({
+  ...jest.requireActual('@/lib/services/tag-service'),
+  findTagIdGroupsByNames: async (names: string[]) =>
+    names.map((name) => [`tag-${name.toLowerCase()}`]),
+}));
 jest.mock('@/lib/database');
 jest.mock('@/lib/redis/client');
 jest.mock('@/lib/cache/cache-invalidator');
@@ -219,7 +225,7 @@ describe('Multiple Sources Filter API', () => {
             },
             tags: {
               some: {
-                name: { equals: 'React', mode: 'insensitive' },
+                id: { in: ['tag-react'] },
               },
             },
           }),

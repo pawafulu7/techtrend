@@ -21,6 +21,7 @@ import {
   pushProcessedFilter,
   pushReadFilter,
   pushTagFilter,
+  resolveTagIdGroups,
   pushSearchFilter,
   pushDateRangeFilter,
 } from './where-clause-predicates';
@@ -305,18 +306,13 @@ export class ArticleWhereClauseBuilder {
 
   /**
    * Filter by tags (supports single tag, multiple tags with OR/AND modes)
-   * Uses case-insensitive matching for consistency with /api/articles/list
+   * タグ名は resolveTagIdGroups で lower(name) から ID にしてから渡す（/api/articles/list と同じ）
    */
-  withTagFilter(
-    tag: string | undefined,
-    tags: string | undefined,
-    tagMode: string | undefined
-  ): this {
+  withTagFilter(tagIdGroups: string[][], tagMode: string | undefined): this {
     pushTagFilter(
       this.where,
       this.where.AND as ArticleWhereInput[],
-      tag,
-      tags,
+      tagIdGroups,
       tagMode
     );
     return this;
@@ -391,6 +387,7 @@ export async function buildWhereClause(
   sortBy?: string
 ): Promise<{ where: ArticleWhereInput; emptyResult: boolean }> {
   const builder = new ArticleWhereClauseBuilder(metrics);
+  const tagIdGroups = await resolveTagIdGroups(filters.tag, filters.tags);
 
   // Apply filters in order
   // excludeLowQuality defaults to false (new articles have qualityScore=0)
@@ -401,7 +398,7 @@ export async function buildWhereClause(
     .withProcessedFilter(display.excludeUnprocessed)
     .withLowQualityFilter(excludeLowQuality)
     .withReadFilter(filters.readFilter, userId)
-    .withTagFilter(filters.tag, filters.tags, filters.tagMode)
+    .withTagFilter(tagIdGroups, filters.tagMode)
     .withCategoryFilter(filters.category)
     .withSearchFilter(filters.search)
     .withDateRangeFilter({
