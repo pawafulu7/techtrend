@@ -7,34 +7,84 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import type { PrismaClient } from '@/lib/prisma-exports';
-
-// jest.setup.node.js の Prisma のモックを外す（__tests__/api/workers/embedding.test.ts と同じ）
-jest.mock('@/lib/prisma-exports', () =>
-  jest.requireActual('@/lib/prisma-exports')
-);
-
+// jest.setup.node.js のモックは PrismaClient だけを差し替え、Prisma（sql・raw）は本物のまま
 import { Prisma } from '@/lib/prisma-exports';
 import {
+  type ArticleSourceIdColumn,
   enabledSourceSql,
   enabledSourceWhere,
 } from '@/lib/database/enabled-source-filter';
 
+// 実 DB の PrismaClient は jest.requireActual で取る（__tests__/api/workers/embedding.test.ts と同じ）
 const { PrismaClient: RealPrismaClient } = jest.requireActual(
   '@/lib/prisma-exports'
 );
 const { PrismaPg } = jest.requireActual('@prisma/adapter-pg');
 const DB_URL = process.env.DATABASE_URL;
-const isSafeTestDb =
-  !!DB_URL && /(localhost|127\.0\.0\.1|test|_test)/i.test(DB_URL);
-const describeIf = isSafeTestDb ? describe : describe.skip;
+
+// 書き込むので、DB 名が _test で終わるときだけ走らせる（開発 DB に行を残さないため）
+const isTestDatabase = (url: string | undefined): boolean => {
+  if (!url) return false;
+  try {
+    return /_test$/.test(new URL(url).pathname.replace(/^\//, ''));
+  } catch {
+    return false;
+  }
+};
+const describeIf = isTestDatabase(DB_URL) ? describe : describe.skip;
+
+describe('enabled-source-filter（DB を使わない検査）', () => {
+  it('enabledSourceWhere は呼ぶたびに新しいオブジェクトを返す', () => {
+    const first = enabledSourceWhere();
+    (first.source as { is: { enabled: boolean } }).is.enabled = false;
+
+    expect(enabledSourceWhere()).toEqual({ source: { is: { enabled: true } } });
+  });
+
+  it('enabledSourceSql は表に無い列名を実行時にも拒否する', () => {
+    expect(() =>
+      enabledSourceSql('s.id; DROP TABLE x' as ArticleSourceIdColumn)
+    ).toThrow('Unsupported sourceId column');
+    expect(() => enabledSourceSql('toString' as ArticleSourceIdColumn)).toThrow(
+      'Unsupported sourceId column'
+    );
+  });
+});
 
 describeIf('enabled-source-filter（テスト DB）', () => {
   let prisma: PrismaClient;
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  // beforeAll が途中で失敗しても、作れた行だけを afterAll で消すために記録する
+  const createdSourceIds: string[] = [];
   let enabledSourceId: string;
   let disabledSourceId: string;
   let enabledArticleId: string;
   let disabledArticleId: string;
+
+  const createSource = async (label: string, enabled: boolean) => {
+    const source = await prisma.source.create({
+      data: {
+        name: `${label} Source ${suffix}`,
+        url: `https://example.com/${label}-${suffix}`,
+        type: 'RSS',
+        enabled,
+      },
+    });
+    createdSourceIds.push(source.id);
+    return source.id;
+  };
+
+  const createArticle = async (label: string, sourceId: string) =>
+    (
+      await prisma.article.create({
+        data: {
+          title: `${label} source article`,
+          url: `https://example.com/${label}-article-${suffix}`,
+          sourceId,
+          publishedAt: new Date(),
+        },
+      })
+    ).id;
 
   beforeAll(async () => {
     prisma = new RealPrismaClient({
@@ -42,57 +92,22 @@ describeIf('enabled-source-filter（テスト DB）', () => {
     });
     await prisma.$connect();
 
-    const [enabledSource, disabledSource] = await Promise.all([
-      prisma.source.create({
-        data: {
-          name: `Enabled Source ${suffix}`,
-          url: `https://example.com/enabled-${suffix}`,
-          type: 'RSS',
-          enabled: true,
-        },
-      }),
-      prisma.source.create({
-        data: {
-          name: `Disabled Source ${suffix}`,
-          url: `https://example.com/disabled-${suffix}`,
-          type: 'RSS',
-          enabled: false,
-        },
-      }),
-    ]);
-    enabledSourceId = enabledSource.id;
-    disabledSourceId = disabledSource.id;
-
-    const [enabledArticle, disabledArticle] = await Promise.all([
-      prisma.article.create({
-        data: {
-          title: 'enabled source article',
-          url: `https://example.com/enabled-article-${suffix}`,
-          sourceId: enabledSourceId,
-          publishedAt: new Date(),
-        },
-      }),
-      prisma.article.create({
-        data: {
-          title: 'disabled source article',
-          url: `https://example.com/disabled-article-${suffix}`,
-          sourceId: disabledSourceId,
-          publishedAt: new Date(),
-        },
-      }),
-    ]);
-    enabledArticleId = enabledArticle.id;
-    disabledArticleId = disabledArticle.id;
+    enabledSourceId = await createSource('enabled', true);
+    disabledSourceId = await createSource('disabled', false);
+    enabledArticleId = await createArticle('enabled', enabledSourceId);
+    disabledArticleId = await createArticle('disabled', disabledSourceId);
   });
 
   afterAll(async () => {
     if (!prisma) return;
-    await prisma.article.deleteMany({
-      where: { sourceId: { in: [enabledSourceId, disabledSourceId] } },
-    });
-    await prisma.source.deleteMany({
-      where: { id: { in: [enabledSourceId, disabledSourceId] } },
-    });
+    if (createdSourceIds.length > 0) {
+      await prisma.article.deleteMany({
+        where: { sourceId: { in: createdSourceIds } },
+      });
+      await prisma.source.deleteMany({
+        where: { id: { in: createdSourceIds } },
+      });
+    }
     await prisma.$disconnect();
   });
 
@@ -110,7 +125,7 @@ describeIf('enabled-source-filter（テスト DB）', () => {
     expect(articles.map((a) => a.id)).toEqual([enabledArticleId]);
   });
 
-  it('Prisma の where: 条件が無ければ両方とも返る（検体の対照）', async () => {
+  it('Prisma の where: 条件が無ければ両方とも返る（対照）', async () => {
     const articles = await prisma.article.findMany({
       where: { sourceId: { in: ownSourceIds() } },
       select: { id: true },
@@ -139,12 +154,5 @@ describeIf('enabled-source-filter（テスト DB）', () => {
     `);
 
     expect(rows.map((r) => r.id)).toEqual([enabledArticleId]);
-  });
-
-  it('enabledSourceWhere は呼ぶたびに新しいオブジェクトを返す', () => {
-    const first = enabledSourceWhere();
-    (first.source as { is: { enabled: boolean } }).is.enabled = false;
-
-    expect(enabledSourceWhere()).toEqual({ source: { is: { enabled: true } } });
   });
 });

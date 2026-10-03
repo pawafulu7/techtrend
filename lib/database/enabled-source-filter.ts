@@ -12,8 +12,17 @@
  */
 import { Prisma } from '@/lib/prisma-exports';
 
-/** 記事の `sourceId` 列の参照。生 SQL の別名に合わせて選ぶ（任意の文字列は受け付けない） */
-export type ArticleSourceIdColumn = 'a."sourceId"' | '"sourceId"';
+/**
+ * 記事の `sourceId` 列の参照。生 SQL の別名に合わせて選ぶ。
+ * 型だけでなく実行時も、この表に無い値は受け付けない（キャストや型チェック外の呼び出しで、
+ * 任意の文字列が Prisma.raw に入らないようにするため）
+ */
+const SOURCE_ID_COLUMNS = {
+  'a."sourceId"': Prisma.raw('a."sourceId"'),
+  '"sourceId"': Prisma.raw('"sourceId"'),
+} as const;
+
+export type ArticleSourceIdColumn = keyof typeof SOURCE_ID_COLUMNS;
 
 /** Prisma の `ArticleWhereInput` 用。AND の配列の要素として使う */
 export function enabledSourceWhere(): Prisma.ArticleWhereInput {
@@ -24,5 +33,11 @@ export function enabledSourceWhere(): Prisma.ArticleWhereInput {
 export function enabledSourceSql(
   column: ArticleSourceIdColumn = 'a."sourceId"'
 ): Prisma.Sql {
-  return Prisma.sql`${Prisma.raw(column)} IN (SELECT id FROM "Source" WHERE enabled = true)`;
+  const columnSql = Object.hasOwn(SOURCE_ID_COLUMNS, column)
+    ? SOURCE_ID_COLUMNS[column]
+    : undefined;
+  if (!columnSql) {
+    throw new Error(`Unsupported sourceId column: ${String(column)}`);
+  }
+  return Prisma.sql`${columnSql} IN (SELECT id FROM "Source" WHERE enabled = true)`;
 }

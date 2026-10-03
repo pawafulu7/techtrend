@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@/lib/prisma-exports';
 import {
   enabledSourceSql,
   enabledSourceWhere,
@@ -43,7 +44,7 @@ async function getHandler(
     const articleIds = searchParams.get('articleIds')?.split(',') || [];
 
     // 未読カウント条件（unreadScopeStart の説明を参照）
-    const unreadWhere = {
+    const unreadWhere: Prisma.ArticleWhereInput = {
       publishedAt: { gte: unreadScopeStart() },
       AND: [enabledSourceWhere()],
       OR: [

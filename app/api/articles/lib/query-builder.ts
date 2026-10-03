@@ -188,7 +188,7 @@ export class ArticleWhereClauseBuilder {
 
       // 'all' means no source filtering - return all enabled sources
       if (normalized === 'all') {
-        // enabled filter already applied at method start
+        // enabled filter already applied in the constructor
         return { builder: this, emptyResult: false };
       }
 

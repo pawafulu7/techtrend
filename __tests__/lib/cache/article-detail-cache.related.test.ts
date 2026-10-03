@@ -16,6 +16,7 @@ jest.mock('../../../lib/cache/redis-cache', () => ({
 jest.mock('next/cache', () => ({ revalidatePath: jest.fn() }));
 
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
+import { ENABLED_SOURCE_SQL, sqlFragmentsOf } from '../../helpers/sql-fragments';
 
 // lib/prisma は jest.setup.node.js がモックした PrismaClient（= prismaMock）を返す
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -32,17 +33,10 @@ describe('articleDetailCache.getRelatedArticles', () => {
 
     // DB に問い合わせたことを確かめる（届かないと条件の検査が素通りする）
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(1);
-    const sqlFragments = (prismaMock.$queryRaw.mock.calls[0] as unknown[])
-      .slice(1)
-      .filter(
-        (value): value is { sql: string } =>
-          typeof (value as { sql?: unknown } | null)?.sql === 'string'
-      )
-      .map((value) => value.sql);
-    expect(sqlFragments).toContainEqual(
-      expect.stringContaining(
-        'a."sourceId" IN (SELECT id FROM "Source" WHERE enabled = true)'
-      )
+    expect(
+      sqlFragmentsOf(prismaMock.$queryRaw.mock.calls[0], { afterAnd: true })
+    ).toContainEqual(
+      expect.stringContaining(`a."sourceId" ${ENABLED_SOURCE_SQL}`)
     );
   });
 });

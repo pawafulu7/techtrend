@@ -1,5 +1,9 @@
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { PrismaClient } from '@/lib/prisma-exports';
+import {
+  ENABLED_SOURCE_SQL,
+  sqlFragmentsOf,
+} from '../../helpers/sql-fragments';
 
 // Mock dependencies
 jest.mock('@/lib/rag/embedding-service');
@@ -128,6 +132,8 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
+    // 前のテストで取り込んだ SQL を読まないようにする
+    capturedSQL = undefined;
 
     // Create mock Prisma client
     mockPrisma = {
@@ -152,17 +158,14 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
   // このクエリを通る
   describe('Disabled sources', () => {
     it('excludes articles from disabled sources', async () => {
-      await service.search('React hooks', { topK: 10, embeddingKey: 'summary' });
+      await service.search('React hooks', {
+        topK: 10,
+        embeddingKey: 'summary',
+      });
 
-      const sqlFragments = (capturedSQL as unknown[])
-        .slice(1)
-        .filter(
-          (value): value is { sql: string } =>
-            typeof (value as { sql?: unknown } | null)?.sql === 'string'
-        )
-        .map((value) => value.sql);
-      expect(sqlFragments).toContainEqual(
-        expect.stringContaining('a."sourceId" IN (SELECT id FROM "Source" WHERE enabled = true)')
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+      expect(sqlFragmentsOf(capturedSQL, { afterAnd: true })).toContainEqual(
+        expect.stringContaining(`a."sourceId" ${ENABLED_SOURCE_SQL}`)
       );
     });
   });
