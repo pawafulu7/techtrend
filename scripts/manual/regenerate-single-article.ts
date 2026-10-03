@@ -4,6 +4,7 @@ import { createPrismaClient } from '@/lib/prisma/create-client';
 import { checkContentQuality, fixSummary } from '@/lib/utils/content/content-quality-checker';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import fetch from 'node-fetch';
+import { resolveTags } from '@/lib/services/tag-service';
 
 const prisma = createPrismaClient();
 
@@ -197,20 +198,10 @@ ${content.substring(0, 8000)}
       console.error(`\n📌 タグ: ${result.tags.join(', ')}`);
       
       // タグをデータベースに追加
-      const tagRecords = await Promise.all(
-        result.tags.map(async (tagName: string) => {
-          const existingTag = await prisma.tag.findUnique({
-            where: { name: tagName }
-          });
-          
-          if (existingTag) {
-            return existingTag;
-          }
-          
-          return await prisma.tag.create({
-            data: { name: tagName }
-          });
-        })
+      // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+      const tagRecords = await resolveTags(
+        result.tags.map((name: string) => ({ name })),
+        prisma
       );
       
       // 記事にタグを関連付ける

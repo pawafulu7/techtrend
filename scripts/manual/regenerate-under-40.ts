@@ -10,6 +10,7 @@ import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prom
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import fetch from 'node-fetch';
+import { resolveTags } from '@/lib/services/tag-service';
 
 const prisma = createPrismaClient();
 
@@ -244,20 +245,17 @@ async function main() {
 
             // タグの更新
             if (result.tags.length > 0) {
-              for (const tagName of result.tags) {
-                const tag = await prisma.tag.upsert({
-                  where: { name: tagName },
-                  update: {},
-                  create: { name: tagName }
-                });
-                
-                await prisma.article.update({
-                  where: { id: article.id },
-                  data: {
-                    tags: { connect: { id: tag.id } }
-                  }
-                });
-              }
+              // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+              const tags = await resolveTags(
+                result.tags.map((name) => ({ name })),
+                prisma
+              );
+              await prisma.article.update({
+                where: { id: article.id },
+                data: {
+                  tags: { connect: tags.map((tag) => ({ id: tag.id })) }
+                }
+              });
             }
           }
 

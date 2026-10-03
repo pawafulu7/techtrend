@@ -1,6 +1,7 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { AIService } from '@/lib/ai/ai-service';
+import { resolveTags } from '@/lib/services/tag-service';
 
 const prisma = createPrismaClient();
 
@@ -71,17 +72,18 @@ async function reEnrichArticles() {
             enrichedData.content
           );
 
+          // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+          const tags = await resolveTags(
+            summaryResult.tags.map((name) => ({ name })),
+            prisma
+          );
           await prisma.article.update({
             where: { id: article.id },
             data: {
               summary: summaryResult.summary,
               detailedSummary: summaryResult.detailedSummary,
               tags: {
-                set: [],
-                connectOrCreate: summaryResult.tags.map(tagName => ({
-                  where: { name: tagName },
-                  create: { name: tagName }
-                }))
+                set: tags.map((tag) => ({ id: tag.id }))
               }
             }
           });

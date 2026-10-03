@@ -2,6 +2,7 @@ import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { generateUnifiedPrompt } from '@/lib/utils/article/article-type-prompts';
 import { UnifiedSummaryService } from '@/lib/ai/unified-summary-service';
+import { resolveTags } from '@/lib/services/tag-service';
 
 const prisma = createPrismaClient();
 
@@ -84,14 +85,10 @@ async function regenerateTwoArticles() {
 
       // タグの更新
       if (result.tags && result.tags.length > 0) {
-        const tagRecords = await Promise.all(
-          result.tags.map(async (tagName) => {
-            return await prisma.tag.upsert({
-              where: { name: tagName },
-              update: {},
-              create: { name: tagName }
-            });
-          })
+        // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+        const tagRecords = await resolveTags(
+          result.tags.map((name) => ({ name })),
+          prisma
         );
 
         await prisma.article.update({
