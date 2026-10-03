@@ -209,33 +209,30 @@ async function main() {
         
         if (shouldUpdate) {
           if (!isDryRun) {
-            // データベース更新
-            await prisma.article.update({
-              where: { id: article.id },
-              data: {
-                summary: result.summary,
-                detailedSummary: result.detailedSummary,
-                articleType: 'unified',
-                summaryVersion: getUnifiedSummaryService().getSummaryVersion()
-              }
-            });
-
-            // タグを置き換える。大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）。
-            // タグの解決と置き換えを 1 つのトランザクションにし、途中で失敗してもタグを外したまま残さない
-            if (result.tags.length > 0) {
-              await prisma.$transaction(async (tx) => {
-                const tags = await resolveTags(
-                  result.tags.map((name) => ({ name })),
-                  tx
-                );
-                await tx.article.update({
-                  where: { id: article.id },
-                  data: {
+            // 要約とタグを 1 つのトランザクションで更新する。タグで失敗したときに要約と
+            // summaryVersion だけが進み、再実行の対象から外れるのを防ぐ。
+            // タグは大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）。
+            // 生成されたタグが無ければ、今のタグを残す
+            await prisma.$transaction(async (tx) => {
+              const tags = result.tags.length > 0
+                ? await resolveTags(
+                    result.tags.map((name) => ({ name })),
+                    tx
+                  )
+                : [];
+              await tx.article.update({
+                where: { id: article.id },
+                data: {
+                  summary: result.summary,
+                  detailedSummary: result.detailedSummary,
+                  articleType: 'unified',
+                  summaryVersion: getUnifiedSummaryService().getSummaryVersion(),
+                  ...(result.tags.length > 0 && {
                     tags: { set: tags.map((tag) => ({ id: tag.id })) }
-                  }
-                });
+                  })
+                }
               });
-            }
+            });
           }
 
           const improvement = newScore - currentScore;

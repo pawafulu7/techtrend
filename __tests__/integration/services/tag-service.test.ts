@@ -84,7 +84,10 @@ describe('resolveTags (integration, #672)', () => {
     for (let i = 0; i < 50; i++) {
       const [{ waiting }] = await prisma.$queryRaw<{ waiting: number }[]>`
         SELECT count(*)::int AS waiting FROM pg_stat_activity
-        WHERE datname = current_database() AND wait_event_type = 'Lock'
+        WHERE datname = current_database()
+          AND pid <> pg_backend_pid()
+          AND wait_event_type = 'Lock'
+          AND query LIKE 'INSERT INTO %"Tag"%'
       `;
       if (waiting > 0) break;
       await new Promise((resolve) => setTimeout(resolve, 100));
