@@ -51,21 +51,42 @@ describe('resolveTags (integration, #672)', () => {
     expect(await tagsWithKey(`${P}llama`)).toHaveLength(1);
   });
 
-  it('prefers the exact spelling when several existing tags share the key', async () => {
-    await prisma.tag.createMany({
-      data: [
-        { id: `${P}-a`, name: `${P}Llama` },
-        { id: `${P}-b`, name: `${P}LLaMA` },
-      ],
+  it('rejects a second tag that differs only in case (lower(name) unique index)', async () => {
+    await prisma.tag.create({ data: { id: `${P}-a`, name: `${P}Llama` } });
+
+    await expect(
+      prisma.tag.create({ data: { id: `${P}-b`, name: `${P}LLaMA` } })
+    ).rejects.toThrow();
+    expect(await tagsWithKey(`${P}llama`)).toEqual([
+      { id: `${P}-a`, name: `${P}Llama` },
+    ]);
+  });
+
+  it('returns the same tag when differently-cased names are resolved concurrently', async () => {
+    // 1 本目のトランザクションでタグを作ったまま開いておき、その間に別の接続で
+    // 違う表記を解決する。2 本目の INSERT は一意インデックスで 1 本目のコミットを待ち、
+    // 衝突を捨てて、引き直しで 1 本目のタグを返す（インデックスが無いと別のタグができる）
+    let created!: () => void;
+    const createdSignal = new Promise<void>((resolve) => (created = resolve));
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+
+    const first = prisma.$transaction(async (tx) => {
+      const [tag] = await resolveTags([{ name: `${P}Zig` }], tx);
+      created();
+      await gate;
+      return tag;
     });
+    await createdSignal;
+    const second = resolveTags([{ name: `${P}ZIG` }]);
+    // 2 本目がインデックスの待ちに入るまでの時間を置いてから 1 本目をコミットする
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    release();
 
-    // "Llama" は C 照合順では 2 番目（"LLaMA" < "Llama"）。完全一致の優先が無いと -b が返る
-    const [exact] = await resolveTags([{ name: `${P}Llama` }]);
-    const [other] = await resolveTags([{ name: `${P}LLAMA` }]);
+    const [a, [b]] = await Promise.all([first, second]);
 
-    expect(exact.id).toBe(`${P}-a`);
-    // 完全一致が無ければ name の C 照合順で最初（大文字が先: "LLaMA" < "Llama"）
-    expect(other.id).toBe(`${P}-b`);
+    expect(b.id).toBe(a.id);
+    expect(await tagsWithKey(`${P}zig`)).toHaveLength(1);
   });
 
   it('applies maxTags after removing differently-cased duplicates', async () => {
