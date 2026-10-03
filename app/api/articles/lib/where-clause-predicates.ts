@@ -27,6 +27,10 @@ import {
 } from '@/app/lib/date-utils';
 import logger from '@/lib/logger';
 import { findTagIdGroupsByNames } from '@/lib/services/tag-service';
+import {
+  MAX_TAG_FILTER_COUNT,
+  MAX_TAG_NAME_LENGTH,
+} from '@/lib/constants/tag-filter';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
@@ -137,18 +141,24 @@ export function parseTagList(
     .filter((t) => t.length > 0);
 }
 
-/** 絞り込みに使えるタグ名の長さの上限（既存のタグ名は最長 283 文字） */
-export const MAX_TAG_NAME_LENGTH = 300;
-/** 一度に絞り込めるタグの数の上限。AND では名前ごとに条件が増えるため */
-export const MAX_TAG_FILTER_COUNT = 20;
+export { MAX_TAG_FILTER_COUNT, MAX_TAG_NAME_LENGTH };
+
+/** 分割する前の `tags` の長さの上限 */
+const MAX_TAGS_PARAM_LENGTH = MAX_TAG_FILTER_COUNT * (MAX_TAG_NAME_LENGTH + 1);
 
 const tagFilterSchema = z
   .object({
-    tag: z.string().max(MAX_TAG_NAME_LENGTH).nullish(),
-    tags: z.string().nullish(),
+    tag: z.string().nullish(),
+    tags: z
+      .string()
+      .max(MAX_TAGS_PARAM_LENGTH, {
+        message: `tags must be at most ${MAX_TAGS_PARAM_LENGTH} characters`,
+      })
+      .nullish(),
   })
-  .superRefine(({ tags }, ctx) => {
-    const tagList = parseTagList(null, tags);
+  .superRefine(({ tag, tags }, ctx) => {
+    // 実際に使う方（tag が優先）だけを数える
+    const tagList = parseTagList(tag, tags);
     if (tagList.length > MAX_TAG_FILTER_COUNT) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -159,7 +169,7 @@ const tagFilterSchema = z
     if (tagList.some((name) => name.length > MAX_TAG_NAME_LENGTH)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['tags'],
+        path: [tag ? 'tag' : 'tags'],
         message: `each tag must be at most ${MAX_TAG_NAME_LENGTH} characters`,
       });
     }
@@ -175,13 +185,7 @@ export function validateTagFilter(
 ): string | null {
   const result = tagFilterSchema.safeParse({ tag, tags });
   if (result.success) return null;
-  return result.error.issues
-    .map((issue) =>
-      issue.code === 'too_big'
-        ? `tag must be at most ${MAX_TAG_NAME_LENGTH} characters`
-        : issue.message
-    )
-    .join('; ');
+  return result.error.issues.map((issue) => issue.message).join('; ');
 }
 
 /**

@@ -361,8 +361,8 @@ describe('/api/articles - Extended Tests', () => {
       );
     });
 
-    it('21 個以上のタグは 400 を返し、クエリしない（#681）', async () => {
-      const tags = Array.from({ length: 21 }, (_, i) => `t${i}`).join(',');
+    it('51 個以上のタグは 400 を返し、クエリしない（#681）', async () => {
+      const tags = Array.from({ length: 51 }, (_, i) => `t${i}`).join(',');
       const request = new NextRequest(`http://localhost/api/articles?tags=${tags}`);
       const response = await GET(request);
 

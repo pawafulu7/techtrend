@@ -189,10 +189,10 @@ describe('/api/articles/list', () => {
     );
   });
 
-  it('rejects more than 20 tags with 400 before querying (#681)', async () => {
+  it('rejects more than 50 tags with 400 before querying (#681)', async () => {
     mockPrisma.article.count = jest.fn().mockResolvedValue(0);
     mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
-    const tags = Array.from({ length: 21 }, (_, i) => `t${i}`).join(',');
+    const tags = Array.from({ length: 51 }, (_, i) => `t${i}`).join(',');
 
     const response = await GET(
       new NextRequest(`http://localhost:3000/api/articles/list?tags=${tags}`)
