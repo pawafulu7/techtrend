@@ -22,7 +22,10 @@ export class TrendsCache extends RedisCache {
   generateTrendsKey(params: { days?: number; tag?: string }): string {
     const { days = 30, tag = '' } = params;
     // Version the unified payload; distinguish the actual tag "all" from no tag filter.
-    return `analysis:v2:days_${days}:tag_${tag ? `name_${encodeURIComponent(tag)}` : 'all'}`;
+    const tagPart = tag
+      ? `name_${crypto.createHash('sha256').update(tag).digest('hex')}`
+      : 'all';
+    return `analysis:v2:days_${days}:tag_${tagPart}`;
   }
 
   /**
