@@ -30,7 +30,11 @@ import { TrendIndicator } from './trend-indicator';
 import { TranslationBadge } from '@/components/ui/translation-badge';
 import { ScoreTooltip } from './score-tooltip';
 import { ShareButton } from './share-button';
-import { type PeriodType, type MetricType } from './preset-filters';
+import {
+  isMetricType,
+  type PeriodType,
+  type MetricType,
+} from './preset-filters';
 import { PopularStatsBar } from './popular-stats-bar';
 
 interface RankedArticle extends ArticleWithRelations {
@@ -61,13 +65,9 @@ export function PopularArticles({
   const period = compact
     ? initialPeriod
     : ((searchParams.get('period') || initialPeriod) as PeriodType);
-  const metric = compact
-    ? initialMetric
-    : ['bookmarks', 'quality', 'combined'].includes(
-          searchParams.get('metric') || ''
-        )
-      ? (searchParams.get('metric') as MetricType)
-      : initialMetric;
+  const metricParam = searchParams.get('metric');
+  const metric =
+    !compact && isMetricType(metricParam) ? metricParam : initialMetric;
 
   const {
     data,

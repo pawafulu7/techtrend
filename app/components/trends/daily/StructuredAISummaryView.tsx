@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { sanitizeTrendAiText } from '@/lib/utils/trend-ai-text';
 
 import {
@@ -76,11 +77,11 @@ interface StructuredAISummaryViewProps {
 }
 
 export function StructuredAISummaryView({
-  summary,
+  summary: rawSummary,
   topArticlesById,
   evidenceArticles,
 }: StructuredAISummaryViewProps) {
-  summary = sanitizeTrendAiText(summary);
+  const summary = useMemo(() => sanitizeTrendAiText(rawSummary), [rawSummary]);
   if (summary.version === 'trend_ai_summary_v2') {
     return (
       <div className="flex-1 space-y-4">

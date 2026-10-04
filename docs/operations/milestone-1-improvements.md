@@ -56,3 +56,11 @@ Docker 本番ビルド、TypeScript、変更コードの ESLint、git diff の�
 関連 Node/API/実 DB テスト77件、Reactコンポーネントテスト105件、タグサービス結合テスト10件が成功。
 Chromium / Firefox の E2E は計10件成功し、内部スラッグ・provider ID・本文の参照 ID が表示されないこと、旧投票 URL の表示、新着タグの同一期間での一致、並列アクセスを検証した。
 E2E はテスト専用 DB に fixture を作成し、終了時に削除・元のレポートを復元する。既存の開発サーバーを変更せず、Docker 内の本番ビルドのアプリで検証した。
+
+## CodeRabbit レビュー後の追加確認
+
+Prisma 7.8.0 で `PRISMA_MIGRATION_ENGINE_SKIP_TRANSACTIONS` が未設定であることを確認し、空の検証専用 DB に全54マイグレーションを適用した。適用は成功し、Tag の UNIQUE 索引2本が残った。検証専用 DB は終了後に削除した。この環境では同設定の追加は不要だったため、マイグレーションと適用経路は変更していない。
+
+GitHub Actions の E2E は Redis サービスを起動していたが、テスト用の `REDIS_URL` がなく fixture のキャッシュ削除で失敗していた。E2E ジョブに `redis://localhost:6379` を設定し、アプリとテストが同じ Redis を使うようにした。
+
+レビュー修正後の Docker 本番ビルド、TypeScript、ESLint は成功。関連 Node/API/実 DB テスト30件、Reactテスト16件、Chromium / Firefox の E2E 10件が成功した。E2E は `NODE_ENV=production` と実 Redis で実行した。

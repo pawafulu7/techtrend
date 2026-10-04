@@ -14,7 +14,6 @@ const PROVIDER_LABELS: Record<string, string> = {
   github: 'GitHub',
   email: 'メールリンク',
   [CREDENTIAL_PROVIDER_ID]: 'メール/パスワード',
-  credentials: 'メール/パスワード',
 };
 
 function getAuthMethodLabel(

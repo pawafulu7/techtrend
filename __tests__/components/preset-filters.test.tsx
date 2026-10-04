@@ -4,9 +4,16 @@ import '@testing-library/jest-dom';
 import {
   PresetFilters,
   presets,
+  isMetricType,
 } from '@/app/components/popular/preset-filters';
 
 describe('PresetFilters', () => {
+  it('URL の指標を検証し、撤去済みの投票と不正な値を拒否する', () => {
+    for (const value of ['combined', 'quality', 'bookmarks'])
+      expect(isMetricType(value)).toBe(true);
+    for (const value of ['votes', '', 'constructor', null])
+      expect(isMetricType(value)).toBe(false);
+  });
   const mockOnPresetChange = jest.fn();
 
   const defaultProps = {

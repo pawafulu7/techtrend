@@ -67,12 +67,14 @@ export function expandTagSearchNames(names: string[]): string[] {
   );
 }
 
+/** 表示用の別名を前方一致で検索し、対応する正式名を返す。 */
 export function findTagNamesByAlias(query: string): string[] {
-  if (!query.trim()) return [];
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return [];
   return Object.entries(TAG_LABELS)
     .filter(([, label]) =>
       label.aliases.some((alias) =>
-        alias.toLowerCase().includes(query.toLowerCase())
+        alias.toLowerCase().startsWith(normalizedQuery)
       )
     )
     .map(([canonical]) => canonical);

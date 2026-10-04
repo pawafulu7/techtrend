@@ -8,6 +8,26 @@ import {
 } from '@/lib/services/trend-report/trend-ai-validators';
 
 describe('デイリーレポートの内部参照', () => {
+  it.each([
+    ['【A7、A8】', ''],
+    ['（A7，A8)', ''],
+    ['(A7・A8）', ''],
+    ['[ A7, A8、A9，A10・A11 ]', ''],
+    ['Foo (A7) bar', 'Foo bar'],
+    ['発表\n (A7) 続き', '発表\n 続き'],
+    ['AWS（東京）', 'AWS（東京）'],
+    ['製品（AB7）', '製品（AB7）'],
+    ['説明[A7 spec]', '説明[A7 spec]'],
+    ['説明(A7; A8)', '説明(A7; A8)'],
+  ])('本文 %s の参照表記を処理し、参照以外と改行を保つ', (text, expected) => {
+    const cleaned = sanitizeTrendAiText({
+      core: text,
+      evidenceArticleIds: ['A7'],
+    });
+    expect(cleaned.core).toBe(expected);
+    expect(cleaned.evidenceArticleIds).toEqual(['A7']);
+  });
+
   it('本文から参照表記だけを除き、製品名や通常の括弧は保持する', () => {
     expect(
       stripInternalArticleRefs(

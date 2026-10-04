@@ -223,15 +223,19 @@ test.describe('マイルストーン1: 表示と集計の回帰検査', () => {
   test('新着タグ API の 10 並列・20 リクエストはすべて成功する', async ({
     request,
   }) => {
+    const TOTAL_REQUESTS = 20;
+    const CONCURRENCY = 10;
     let next = 0;
     const statuses: number[] = [];
     await Promise.all(
-      Array.from({ length: 10 }, async () => {
-        while (next++ < 20)
+      Array.from({ length: CONCURRENCY }, async () => {
+        while (next < TOTAL_REQUESTS) {
+          next += 1;
           statuses.push((await request.get('/api/tags/new?days=7')).status());
+        }
       })
     );
-    expect(statuses).toHaveLength(20);
+    expect(statuses).toHaveLength(TOTAL_REQUESTS);
     expect(statuses.every((status) => status === 200)).toBe(true);
     const tags = await request
       .get('/api/tags/new?days=1')

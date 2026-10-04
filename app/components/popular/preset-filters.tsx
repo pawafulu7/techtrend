@@ -4,7 +4,13 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 
 type PeriodType = 'today' | 'week' | 'month' | 'all';
-type MetricType = 'bookmarks' | 'quality' | 'combined';
+export const POPULAR_METRICS = ['bookmarks', 'quality', 'combined'] as const;
+type MetricType = (typeof POPULAR_METRICS)[number];
+
+/** URL で指定された指標が現在の人気ランキングで利用できるかを判定する。 */
+export function isMetricType(value: string | null): value is MetricType {
+  return POPULAR_METRICS.some((metric) => metric === value);
+}
 
 export const DEFAULT_PERIOD: PeriodType = 'week';
 export const DEFAULT_METRIC: MetricType = 'combined';
