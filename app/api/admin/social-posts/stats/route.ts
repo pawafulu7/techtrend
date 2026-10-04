@@ -24,7 +24,7 @@ async function handler() {
       },
     });
   } catch (error) {
-    logger.error({ error }, '[SocialPostsAPI] Failed to get status counts');
+    logger.error({ err: error }, '[SocialPostsAPI] Failed to get status counts');
     return NextResponse.json(
       { error: 'Failed to fetch status counts' },
       { status: 500 }

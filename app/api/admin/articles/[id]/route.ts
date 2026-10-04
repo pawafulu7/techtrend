@@ -127,7 +127,7 @@ async function getHandler(
       },
     });
   } catch (error) {
-    logger.error({ error }, '[AdminArticleDetailAPI] Failed to fetch article');
+    logger.error({ err: error }, '[AdminArticleDetailAPI] Failed to fetch article');
     return NextResponse.json(
       { error: 'Failed to fetch article' },
       { status: 500 }
@@ -184,7 +184,7 @@ async function patchHandler(
       await trendsCache.invalidatePattern('*');
     } catch (cacheError) {
       logger.error(
-        { articleId: id, error: cacheError },
+        { articleId: id, err: cacheError },
         '[AdminArticleDetailAPI] Cache invalidation failed (DB update succeeded)'
       );
     }
@@ -209,7 +209,7 @@ async function patchHandler(
         { status: 404 }
       );
     }
-    logger.error({ error }, '[AdminArticleDetailAPI] Failed to update article');
+    logger.error({ err: error }, '[AdminArticleDetailAPI] Failed to update article');
     return NextResponse.json(
       { error: 'Failed to update article' },
       { status: 500 }

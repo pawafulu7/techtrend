@@ -59,7 +59,7 @@ async function getHandler(
 
     return NextResponse.json(userProfile);
   } catch (error) {
-    logger.error({ error }, 'Error fetching user profile');
+    logger.error({ err: error }, 'Error fetching user profile');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -108,7 +108,7 @@ export function serializeWithDepthImpl(
           logger.warn(
             {
               articleId: input.id,
-              error: error instanceof Error ? error.message : String(error),
+              err: error,
             },
             'Skipping invalid layer-1 node in depth serialization'
           );
@@ -130,7 +130,7 @@ export function serializeWithDepthImpl(
               logger.warn(
                 {
                   articleId: input.id,
-                  error: error instanceof Error ? error.message : String(error),
+                  err: error,
                 },
                 'Skipping invalid layer-2 node in depth serialization'
               );
@@ -251,7 +251,7 @@ export function serializeWithDepthImpl(
     logger.error(
       {
         centerArticleId: centerArticle.id,
-        error: error instanceof Error ? error.message : String(error),
+        err: error,
       },
       'Failed to serialize graph data with depth (Phase 3)'
     );

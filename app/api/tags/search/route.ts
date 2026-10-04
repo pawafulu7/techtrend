@@ -31,7 +31,7 @@ async function handler(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    logger.error({ error }, 'Tags search failed');
+    logger.error({ err: error }, 'Tags search failed');
     return NextResponse.json(
       { error: 'Failed to search tags' },
       { status: 500 }

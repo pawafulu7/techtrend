@@ -87,7 +87,7 @@ async function getHandler(
       unreadCount,
     });
   } catch (error) {
-    logger.error({ error }, 'Error fetching read status');
+    logger.error({ err: error }, 'Error fetching read status');
     return NextResponse.json(
       { error: 'Failed to fetch read status' },
       { status: 500 }
@@ -149,7 +149,7 @@ async function postHandler(
       await invalidateViewCache(validatedUser.id, articleId);
     } catch (cacheError) {
       logger.warn(
-        { error: cacheError, userId: validatedUser.id, articleId },
+        { err: cacheError, userId: validatedUser.id, articleId },
         'Failed to invalidate view cache'
       );
     }
@@ -157,7 +157,7 @@ async function postHandler(
     // Also invalidate digest cache (fire-and-forget)
     digestService.invalidateUserCache(validatedUser.id).catch((error) => {
       logger.warn(
-        { error, userId: validatedUser.id },
+        { err: error, userId: validatedUser.id },
         'Failed to invalidate digest cache'
       );
     });
@@ -170,7 +170,7 @@ async function postHandler(
       return prismaErrorResponse;
     }
 
-    logger.error({ error }, 'Error marking article as read');
+    logger.error({ err: error }, 'Error marking article as read');
     return NextResponse.json(
       { error: 'Failed to mark article as read' },
       { status: 500 }
@@ -225,7 +225,7 @@ async function putHandler(
         await redisService.clearPattern(`unread:${validatedUser.id}*`);
         await redisService.clearPattern(`read:${validatedUser.id}*`);
       } catch (redisError) {
-        logger.error({ error: redisError }, 'Redis cache clear error');
+        logger.error({ err: redisError }, 'Redis cache clear error');
         // Redisエラーは無視して処理を続行
       }
     }
@@ -235,7 +235,7 @@ async function putHandler(
       await invalidateUserViewCache(validatedUser.id);
     } catch (cacheError) {
       logger.warn(
-        { error: cacheError, userId: validatedUser.id },
+        { err: cacheError, userId: validatedUser.id },
         'Failed to invalidate user view cache'
       );
     }
@@ -243,7 +243,7 @@ async function putHandler(
     // Also invalidate digest cache (fire-and-forget)
     digestService.invalidateUserCache(validatedUser.id).catch((error) => {
       logger.warn(
-        { error, userId: validatedUser.id },
+        { err: error, userId: validatedUser.id },
         'Failed to invalidate digest cache'
       );
     });
@@ -260,7 +260,7 @@ async function putHandler(
       return prismaErrorResponse;
     }
 
-    logger.error({ error }, 'Error marking all articles as read');
+    logger.error({ err: error }, 'Error marking all articles as read');
     return NextResponse.json(
       { error: 'Failed to mark all articles as read' },
       { status: 500 }
@@ -310,7 +310,7 @@ async function deleteHandler(
       await invalidateViewCache(validatedUser.id, articleId);
     } catch (cacheError) {
       logger.warn(
-        { error: cacheError, userId: validatedUser.id, articleId },
+        { err: cacheError, userId: validatedUser.id, articleId },
         'Failed to invalidate view cache'
       );
     }
@@ -318,7 +318,7 @@ async function deleteHandler(
     // Also invalidate digest cache (fire-and-forget)
     digestService.invalidateUserCache(validatedUser.id).catch((error) => {
       logger.warn(
-        { error, userId: validatedUser.id },
+        { err: error, userId: validatedUser.id },
         'Failed to invalidate digest cache'
       );
     });
@@ -331,7 +331,7 @@ async function deleteHandler(
       return prismaErrorResponse;
     }
 
-    logger.error({ error }, 'Error marking article as unread');
+    logger.error({ err: error }, 'Error marking article as unread');
     return NextResponse.json(
       { error: 'Failed to mark article as unread' },
       { status: 500 }

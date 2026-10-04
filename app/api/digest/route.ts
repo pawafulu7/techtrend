@@ -64,7 +64,7 @@ async function getHandler(
     return NextResponse.json(digest);
   } catch (error) {
     logger.error(
-      { error: sanitizeError(error), userId: validatedUser.id },
+      { err: sanitizeError(error), userId: validatedUser.id },
       'Digest API error'
     );
     return NextResponse.json(

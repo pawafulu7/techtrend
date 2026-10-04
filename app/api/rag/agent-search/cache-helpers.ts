@@ -34,7 +34,7 @@ export async function safeReadCache<T>(
     return await readFn();
   } catch (cacheError) {
     logger.warn(
-      { error: sanitizeError(cacheError), mode },
+      { err: sanitizeError(cacheError), mode },
       'Cache read failed, treating as miss'
     );
     return null;
@@ -53,7 +53,7 @@ export async function safeWriteCache(
     await writeFn();
   } catch (cacheError) {
     logger.warn(
-      { error: sanitizeError(cacheError), ...context },
+      { err: sanitizeError(cacheError), ...context },
       'Failed to cache response'
     );
   }

@@ -58,7 +58,7 @@ export async function GET(): Promise<NextResponse<CategoriesResponse | ErrorResp
     });
   } catch (error) {
     logger.error(
-      { error: sanitizeError(error) },
+      { err: sanitizeError(error) },
       'Failed to get interest categories'
     );
 

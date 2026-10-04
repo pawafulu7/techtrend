@@ -185,7 +185,7 @@ export function selectTopLayer2(
   } catch (error) {
     logger.error(
       {
-        error: error instanceof Error ? error.message : String(error),
+        err: error,
       },
       'Failed to select top layer-2 candidates'
     );

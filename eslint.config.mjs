@@ -3,6 +3,12 @@ import nextVitals from 'eslint-config-next/core-web-vitals'
 import nextTs from 'eslint-config-next/typescript'
 import eslintConfigPrettier from 'eslint-config-prettier'
 
+// Keep this restriction in each no-restricted-syntax override: ESLint replaces rule arrays.
+const loggerErrorKeyRestriction = {
+  selector: "CallExpression[callee.object.name='logger']:matches([callee.property.name=/^(trace|debug|info|warn|error|fatal)$/], [callee.computed=true]) > ObjectExpression.arguments:first-child > Property:matches([key.name='error'], [key.value='error'])",
+  message: "Log exceptions with `{ err: error }` to preserve and sanitize their message. Use `errorMessage` for string diagnostics.",
+}
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -17,6 +23,7 @@ const eslintConfig = defineConfig([
         caughtErrorsIgnorePattern: '^_'
       }],
       'no-console': 'off',
+      'no-restricted-syntax': ['error', loggerErrorKeyRestriction],
       'prefer-const': 'warn',
       'no-var': 'warn',
       'react-hooks/rules-of-hooks': 'error',
@@ -58,6 +65,7 @@ const eslintConfig = defineConfig([
     ],
     rules: {
       'no-restricted-syntax': ['error',
+        loggerErrorKeyRestriction,
         {
           selector: "MemberExpression[object.object.name='process'][object.property.name='env'][property.name!='NODE_ENV']",
           message: "Use `env` from `@/lib/config/env` instead of direct `process.env` access."
@@ -77,6 +85,7 @@ const eslintConfig = defineConfig([
     ],
     rules: {
       'no-restricted-syntax': ['error',
+        loggerErrorKeyRestriction,
         {
           selector: "MemberExpression[object.object.name='process'][object.property.name='env'][property.name!='NODE_ENV'][property.name!='JEST_WORKER_ID'][property.name!=/^NEXT_PUBLIC_/]",
           message: "Use `env` from `@/lib/config/env` instead of direct `process.env` access. (NEXT_PUBLIC_*, NODE_ENV, JEST_WORKER_ID are exempt)"

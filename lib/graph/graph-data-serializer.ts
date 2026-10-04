@@ -81,7 +81,7 @@ export class GraphDataSerializer {
             logger.warn(
               {
                 articleId: article.id,
-                error: error instanceof Error ? error.message : String(error),
+                err: error,
               },
               'Skipping invalid node in graph serialization'
             );
@@ -148,7 +148,7 @@ export class GraphDataSerializer {
       logger.error(
         {
           centerArticleId: centerArticle.id,
-          error: error instanceof Error ? error.message : String(error),
+          err: error,
         },
         'Failed to serialize graph data'
       );
@@ -221,7 +221,7 @@ export class GraphDataSerializer {
             logger.warn(
               {
                 articleId: input.id,
-                error: error instanceof Error ? error.message : String(error),
+                err: error,
               },
               'Skipping invalid node in graph serialization'
             );
@@ -291,7 +291,7 @@ export class GraphDataSerializer {
       logger.error(
         {
           centerArticleId: centerArticle.id,
-          error: error instanceof Error ? error.message : String(error),
+          err: error,
         },
         'Failed to serialize graph data (embedding)'
       );

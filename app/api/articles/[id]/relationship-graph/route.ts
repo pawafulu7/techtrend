@@ -348,7 +348,7 @@ export async function GET(
       span.end();
 
       logger.error({
-        error: sanitizeError(error),
+        err: sanitizeError(error),
       }, 'Relationship graph generation failed');
 
       return NextResponse.json(

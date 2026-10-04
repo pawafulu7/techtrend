@@ -133,7 +133,7 @@ async function getHandler(
     return NextResponse.json(response);
   } catch (error) {
     logger.error(
-      { error: sanitizeError(error) },
+      { err: sanitizeError(error) },
       'Failed to get user category preferences'
     );
 
@@ -294,7 +294,7 @@ async function postHandler(
     // Invalidate digest cache only when digest scope changes (fire-and-forget)
     if (scope === 'digest') {
       digestService.invalidateUserCache(userId).catch((error) => {
-        logger.warn({ error, userId }, 'Failed to invalidate digest cache');
+        logger.warn({ err: error, userId }, 'Failed to invalidate digest cache');
       });
     }
 
@@ -332,7 +332,7 @@ async function postHandler(
     }
 
     logger.error(
-      { error: sanitizeError(error) },
+      { err: sanitizeError(error) },
       'Failed to save user category preferences'
     );
 

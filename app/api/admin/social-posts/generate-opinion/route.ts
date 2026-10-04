@@ -120,7 +120,7 @@ async function generateOpinionHandler(
     }
 
     logger.error(
-      { error },
+      { err: error },
       '[SocialPostsAPI] Failed to generate opinion posts'
     );
     return NextResponse.json(

@@ -50,7 +50,7 @@ export class IoRedisClient implements IRedisClient {
     this.client.on('error', (err) => {
       logger.warn(
         {
-          error: err,
+          err: err,
           redis: {
             hasUrl: Boolean(url),
             useTLS: Boolean(url?.startsWith('rediss://')),

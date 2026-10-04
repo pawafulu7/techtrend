@@ -294,7 +294,7 @@ export async function deleteUserAccountWithAudit(
     await invalidateUserAuthCache(userId);
   } catch (error) {
     logger.warn(
-      { userId, error },
+      { userId, err: error },
       'Auth cache invalidation failed after deletion'
     );
   }
@@ -305,14 +305,14 @@ export async function deleteUserAccountWithAudit(
     await prisma.session.deleteMany({ where: { userId } });
   } catch (firstError) {
     logger.warn(
-      { userId, error: firstError },
+      { userId, err: firstError },
       'Session revocation failed, retrying'
     );
     try {
       await prisma.session.deleteMany({ where: { userId } });
     } catch (retryError) {
       logger.error(
-        { userId, error: retryError },
+        { userId, err: retryError },
         'Session revocation failed after retry — sessions may remain active'
       );
     }

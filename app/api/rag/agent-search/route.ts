@@ -76,7 +76,7 @@ async function postHandler(
         logger.warn(
           {
             userId,
-            error: error instanceof Error ? error.message : 'Unknown',
+            err: error,
           },
           'Malformed JSON in agent search request'
         );
@@ -232,7 +232,7 @@ async function postHandler(
         logger.warn(
           {
             userId,
-            error: error.message,
+            err: error,
           },
           'Mode context resolution failed'
         );
@@ -284,7 +284,7 @@ async function postHandler(
       // Other unexpected errors
       logger.error(
         {
-          error: sanitizeError(error),
+          err: sanitizeError(error),
           userId,
         },
         'Agent search API error'

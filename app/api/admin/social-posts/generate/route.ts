@@ -99,7 +99,7 @@ async function generateHandler(
       );
     }
 
-    logger.error({ error }, '[SocialPostsAPI] Failed to generate posts');
+    logger.error({ err: error }, '[SocialPostsAPI] Failed to generate posts');
     return NextResponse.json(
       { error: 'Failed to generate social posts' },
       { status: 500 }

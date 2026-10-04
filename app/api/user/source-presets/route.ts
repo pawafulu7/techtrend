@@ -65,7 +65,7 @@ async function getHandler(
     const prismaResponse = handlePrismaError(error);
     if (prismaResponse) return prismaResponse;
 
-    logger.error({ error }, 'Failed to fetch source presets');
+    logger.error({ err: error }, 'Failed to fetch source presets');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -168,7 +168,7 @@ async function postHandler(
     const prismaResponse = handlePrismaError(error);
     if (prismaResponse) return prismaResponse;
 
-    logger.error({ error }, 'Failed to create source preset');
+    logger.error({ err: error }, 'Failed to create source preset');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

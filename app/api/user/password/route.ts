@@ -124,7 +124,7 @@ async function changePasswordHandler(
       throw error; // その他のエラーは再スロー
     }
   } catch (error) {
-    logger.error({ error }, 'Password change error');
+    logger.error({ err: error }, 'Password change error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

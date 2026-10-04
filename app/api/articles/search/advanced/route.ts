@@ -261,7 +261,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error({ error }, 'Advanced search failed');
+    logger.error({ err: error }, 'Advanced search failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -55,7 +55,7 @@ async function listHandler(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error({ error }, '[SocialPostsAPI] Failed to list posts');
+    logger.error({ err: error }, '[SocialPostsAPI] Failed to list posts');
     return NextResponse.json(
       { error: 'Failed to fetch social posts' },
       { status: 500 }
@@ -116,7 +116,7 @@ async function createHandler(
       );
     }
 
-    logger.error({ error }, '[SocialPostsAPI] Failed to create post');
+    logger.error({ err: error }, '[SocialPostsAPI] Failed to create post');
     return NextResponse.json(
       { error: 'Failed to create social post' },
       { status: 500 }

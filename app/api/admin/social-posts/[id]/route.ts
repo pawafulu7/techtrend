@@ -55,7 +55,7 @@ async function getHandler(
       },
     });
   } catch (error) {
-    logger.error({ error }, '[SocialPostsAPI] Failed to get post');
+    logger.error({ err: error }, '[SocialPostsAPI] Failed to get post');
     return NextResponse.json(
       { error: 'Failed to fetch social post' },
       { status: 500 }
@@ -135,7 +135,7 @@ async function updateHandler(
       );
     }
 
-    logger.error({ error }, '[SocialPostsAPI] Failed to update post');
+    logger.error({ err: error }, '[SocialPostsAPI] Failed to update post');
     return NextResponse.json(
       { error: 'Failed to update social post' },
       { status: 500 }
@@ -179,7 +179,7 @@ async function deleteHandler(
       );
     }
 
-    logger.error({ error }, '[SocialPostsAPI] Failed to delete post');
+    logger.error({ err: error }, '[SocialPostsAPI] Failed to delete post');
     return NextResponse.json(
       { error: 'Failed to delete social post' },
       { status: 500 }

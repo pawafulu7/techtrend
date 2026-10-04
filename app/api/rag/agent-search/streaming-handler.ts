@@ -379,7 +379,7 @@ async function createStreamingResponse(
                 streamSpan.recordException(fallbackError as Error);
                 logger.error(
                   {
-                    error: sanitizeError(fallbackError),
+                    err: sanitizeError(fallbackError),
                     userId,
                   },
                   'Fallback failed for empty text'
@@ -479,7 +479,7 @@ async function createStreamingResponse(
 
         logger.warn(
           {
-            error: sanitizeError(agentError),
+            err: sanitizeError(agentError),
             userId,
             queryPreview: validatedRequest.query.substring(0, 50),
           },
@@ -760,7 +760,7 @@ async function createDirectSearchSSEResponse(
 
         logger.warn(
           {
-            error: sanitizeError(error),
+            err: sanitizeError(error),
             userId,
             queryPreview: validatedRequest.query.substring(0, 50),
           },
