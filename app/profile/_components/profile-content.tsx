@@ -4,9 +4,12 @@ import { ProfileForm } from '@/components/profile/ProfileForm';
 import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import { DeleteAccountDialog } from '@/components/profile/DeleteAccountDialog';
 import { CardV2 } from '@/components/ui-v2/card-v2';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, User, UserCog, AlertTriangle } from 'lucide-react';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import { ErrorState } from '@/components/ui-v2/error-state';
+import { User, UserCog, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui-v2/button-v2';
+import { UserProfileFetchError, useUserProfile } from '@/hooks/useUserProfile';
+import { loginWithCallback } from '@/lib/routes/auth';
 import { CREDENTIAL_PROVIDER_ID } from '@/lib/auth/constants';
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -35,6 +38,7 @@ export function ProfileContent() {
     data: userProfile,
     loading: profileLoading,
     error: profileError,
+    refetch: refetchProfile,
   } = useUserProfile({ enabled: true });
 
   if (profileLoading) {
@@ -83,12 +87,28 @@ export function ProfileContent() {
             プロフィール設定
           </h1>
         </header>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" aria-hidden="true" />
-          <AlertDescription>
-            プロフィール情報の取得に失敗しました: {profileError.message}
-          </AlertDescription>
-        </Alert>
+        {/* 生の error.message は出さない（issue #701） */}
+        <CardV2>
+          {profileError instanceof UserProfileFetchError &&
+          profileError.status === 401 ? (
+            <ErrorState
+              size="block"
+              title="ログインの有効期限が切れました"
+              description="プロフィールを表示するには、もう一度ログインしてください。"
+            >
+              <Button asChild className="mt-6 min-h-[44px]">
+                <Link href={loginWithCallback('/profile')}>ログインする</Link>
+              </Button>
+            </ErrorState>
+          ) : (
+            <ErrorState
+              size="block"
+              title="プロフィール情報を読み込めませんでした"
+              description="時間をおいて再試行してください。"
+              onRetry={refetchProfile}
+            />
+          )}
+        </CardV2>
       </div>
     );
   }

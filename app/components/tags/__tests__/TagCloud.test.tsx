@@ -187,8 +187,12 @@ describe('TagCloud', () => {
       await renderTagCloud();
 
       await waitFor(() => {
-        expect(screen.getByText('Failed to load tags')).toBeInTheDocument();
+        expect(
+          screen.getByText('タグを読み込めませんでした')
+        ).toBeInTheDocument();
       });
+      // 生のエラー文言は出さない（issue #701）
+      expect(screen.queryByText('Failed to load tags')).not.toBeInTheDocument();
 
       // 再試行ボタンが表示される
       expect(
@@ -196,7 +200,7 @@ describe('TagCloud', () => {
       ).toBeInTheDocument();
     });
 
-    it('ネットワークエラー時にエラーメッセージを表示する', async () => {
+    it('ネットワークエラー時も生の文言ではなく利用者向けの文言を表示する', async () => {
       (global.fetch as jest.Mock).mockRejectedValueOnce(
         new Error('Network error')
       );
@@ -204,8 +208,11 @@ describe('TagCloud', () => {
       await renderTagCloud();
 
       await waitFor(() => {
-        expect(screen.getByText('Network error')).toBeInTheDocument();
+        expect(
+          screen.getByText('タグを読み込めませんでした')
+        ).toBeInTheDocument();
       });
+      expect(screen.queryByText('Network error')).not.toBeInTheDocument();
     });
 
     it('再試行ボタンでデータを再取得する', async () => {
@@ -219,7 +226,9 @@ describe('TagCloud', () => {
       await renderTagCloud();
 
       await waitFor(() => {
-        expect(screen.getByText('Network error')).toBeInTheDocument();
+        expect(
+          screen.getByText('タグを読み込めませんでした')
+        ).toBeInTheDocument();
       });
 
       // 2回目は成功

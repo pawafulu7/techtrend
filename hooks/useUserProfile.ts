@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export interface UserProfile {
   id: string;
@@ -10,6 +10,14 @@ export interface UserProfile {
   providers: string[];
 }
 
+/** 画面で文言を選べるよう、HTTP ステータスを持たせる（issue #701） */
+export class UserProfileFetchError extends Error {
+  constructor(readonly status: number) {
+    super(`Failed to fetch user profile: ${status}`);
+    this.name = 'UserProfileFetchError';
+  }
+}
+
 interface UseUserProfileOptions {
   enabled?: boolean;
 }
@@ -19,6 +27,9 @@ export function useUserProfile(options?: UseUserProfileOptions) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const enabled = options?.enabled ?? true;
+  // 再試行のたびに増やして取得し直す（issue #701）
+  const [reloadKey, setReloadKey] = useState(0);
+  const refetch = useCallback(() => setReloadKey((key) => key + 1), []);
 
   useEffect(() => {
     if (!enabled) {
@@ -28,31 +39,38 @@ export function useUserProfile(options?: UseUserProfileOptions) {
       return;
     }
 
+    // 再試行やアンマウントの後に届いた古い応答で状態を書き換えない
+    let cancelled = false;
+
     const fetchUserProfile = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        const response = await fetch('/api/user/profile', { cache: 'no-store' });
-        
+
+        const response = await fetch('/api/user/profile', {
+          cache: 'no-store',
+        });
+
         if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error('認証が必要です');
-          }
-          throw new Error('プロフィール情報の取得に失敗しました');
+          throw new UserProfileFetchError(response.status);
         }
-        
+
         const profileData = (await response.json()) as UserProfile;
+        if (cancelled) return;
         setData(profileData);
       } catch (err) {
+        if (cancelled) return;
         setError(err instanceof Error ? err : new Error('Unknown error'));
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchUserProfile();
-  }, [enabled]);
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, reloadKey]);
 
-  return { data, loading, error };
+  return { data, loading, error, refetch };
 }

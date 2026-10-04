@@ -3,12 +3,14 @@
 import { useState, useMemo } from 'react';
 import { Newspaper, Settings, CheckCircle, Loader2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import Link from 'next/link';
 import { Button } from '@/components/ui-v2/button-v2';
+import { ErrorState } from '@/components/ui-v2/error-state';
 import { DigestSection } from './digest-section';
 import { CategoryPreferenceDialog } from '@/app/components/personalization/category-preference-dialog';
 import { useUpdatePreferences } from '@/lib/hooks/use-personalization-preferences';
-import { useDigest } from '@/lib/hooks/use-digest';
+import { DigestFetchError, useDigest } from '@/lib/hooks/use-digest';
+import { loginWithCallback } from '@/lib/routes/auth';
 import type { DigestPeriod } from '@/lib/services/digest-service';
 import type { PeriodPreset } from '@/lib/personalization/types';
 
@@ -16,7 +18,15 @@ export function DigestClient() {
   const [period, setPeriod] = useState<DigestPeriod>('daily');
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: digest, isLoading, error } = useDigest(period);
+  const {
+    data: digest,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useDigest(period);
+  const isUnauthorized =
+    error instanceof DigestFetchError && error.status === 401;
 
   const { mutateAsync: updatePreferencesAsync, isPending: isUpdating } =
     useUpdatePreferences('digest');
@@ -78,11 +88,37 @@ export function DigestClient() {
         </TabsList>
       </Tabs>
 
-      {/* Error State */}
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertDescription>{error.message}</AlertDescription>
-        </Alert>
+      {/* Error State: 生の error.message は出さない（issue #701） */}
+      {error && isUnauthorized && (
+        <ErrorState
+          size="block"
+          title="ログインの有効期限が切れました"
+          description="ダイジェストを表示するには、もう一度ログインしてください。"
+        >
+          <Button asChild className="mt-6 min-h-[44px]">
+            <Link href={loginWithCallback('/digest')}>ログインする</Link>
+          </Button>
+        </ErrorState>
+      )}
+      {error && !isUnauthorized && !digest && (
+        <ErrorState
+          size="block"
+          title="ダイジェストを読み込めませんでした"
+          description="時間をおいて再試行してください。"
+          onRetry={() => refetch()}
+          retrying={isFetching}
+        />
+      )}
+      {/* 再取得に失敗したが前回の内容がある: 古いデータとして表示を続ける。
+          401 のときは前回の内容も隠し、ログインの案内だけを出す */}
+      {error && !isUnauthorized && digest && (
+        <ErrorState
+          title="最新のダイジェストを読み込めませんでした"
+          description="前回読み込んだ内容を表示しています。"
+          onRetry={() => refetch()}
+          retrying={isFetching}
+          className="mb-6 rounded-lg border"
+        />
       )}
 
       {/* Loading State */}
@@ -117,7 +153,7 @@ export function DigestClient() {
       )}
 
       {/* No Preferences State */}
-      {!isLoading && digest && !digest.hasPreferences && (
+      {!isLoading && !isUnauthorized && digest && !digest.hasPreferences && (
         <div className="flex flex-col items-center justify-center py-16">
           <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
             <Settings
@@ -138,7 +174,7 @@ export function DigestClient() {
       )}
 
       {/* All Read State */}
-      {!isLoading && allEmpty && (
+      {!isLoading && !isUnauthorized && allEmpty && (
         <div className="flex flex-col items-center justify-center py-16">
           <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
             <CheckCircle className="text-primary h-8 w-8" aria-hidden="true" />
@@ -154,7 +190,7 @@ export function DigestClient() {
       )}
 
       {/* Digest Sections */}
-      {!isLoading && digest?.hasPreferences && !allEmpty && (
+      {!isLoading && !isUnauthorized && digest?.hasPreferences && !allEmpty && (
         <div className="space-y-8">
           {digest.sections.map((section) => (
             <DigestSection key={section.type} section={section} />

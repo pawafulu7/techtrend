@@ -24,6 +24,16 @@ import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
 import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth/auth-client';
 import type { SortOption } from '../_types';
+import { toast } from '@/hooks/use-toast';
+
+// 解除に失敗して一覧に戻すときは、黙って戻さずに通知する（issue #701）
+function notifyRemoveFailed() {
+  toast({
+    title: 'エラー',
+    description: 'お気に入りの解除に失敗しました。もう一度お試しください。',
+    variant: 'destructive',
+  });
+}
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'favoritedAt-desc', label: '保存日（新しい順）' },
@@ -145,9 +155,11 @@ export function FavoritesContent({
           method: 'DELETE',
         });
 
-        if (!response.ok) {
+        // 404 = 既に未登録。サーバーの状態は解除済みなので成功と同じ扱いにする
+        if (!response.ok && response.status !== 404) {
           // Non-OK response: invalidate query to restore from server
           queryClient.invalidateQueries({ queryKey: ['infinite-favorites'] });
+          notifyRemoveFailed();
           return;
         }
 
@@ -165,6 +177,7 @@ export function FavoritesContent({
       } catch {
         // Network error: invalidate query to restore from server
         queryClient.invalidateQueries({ queryKey: ['infinite-favorites'] });
+        notifyRemoveFailed();
       }
     },
     [removeFavoriteFromCache, queryClient, userId]

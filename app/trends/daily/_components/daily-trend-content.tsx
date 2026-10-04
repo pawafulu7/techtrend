@@ -17,6 +17,17 @@ function formatDateJP(dateStr: string): string {
   return `${Number(m)}月${Number(d)}日`;
 }
 
+const NOT_FOUND_MESSAGE = 'この日のトレンドレポートはまだ生成されていません';
+const FETCH_FAILED_MESSAGE = 'データの取得に失敗しました';
+
+// サーバーの error は英語の内部向け文言（daily-data.ts）。そのまま画面に出さない（issue #701）
+function toUserMessage(response: DailyTrendResponse): string | null {
+  if (response.success) return null;
+  return response.error === 'No report found for this date'
+    ? NOT_FOUND_MESSAGE
+    : FETCH_FAILED_MESSAGE;
+}
+
 interface DailyTrendContentProps {
   initialData: DailyTrendResponse;
 }
@@ -26,9 +37,7 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
     initialData.data ?? null
   );
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(
-    initialData.success ? null : (initialData.error ?? null)
-  );
+  const [error, setError] = useState<string | null>(toUserMessage(initialData));
   const [latestAvailableDate, setLatestAvailableDate] = useState<string | null>(
     initialData.latestAvailableDate ?? null
   );
@@ -70,9 +79,9 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
       if (!response.ok) {
         if (response.status === 404) {
           setLatestAvailableDate(data.latestAvailableDate ?? null);
-          setError('この日のトレンドレポートはまだ生成されていません');
+          setError(NOT_FOUND_MESSAGE);
         } else {
-          setError('データの取得に失敗しました');
+          setError(FETCH_FAILED_MESSAGE);
         }
         setReport(null);
         setNavigation({ prevDate: null, nextDate: null });
@@ -98,7 +107,7 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
           setFallbackInfo(null);
         }
       } else {
-        setError(data.error ?? 'データの取得に失敗しました');
+        setError(toUserMessage(data) ?? FETCH_FAILED_MESSAGE);
       }
     } catch (_err) {
       setError('ネットワークエラーが発生しました');

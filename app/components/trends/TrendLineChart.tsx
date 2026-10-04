@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { useChartColors } from './useChartColors';
+import { ErrorState } from '@/components/ui-v2/error-state';
 
 interface TrendLineChartProps {
   data: Array<{
@@ -21,12 +22,17 @@ interface TrendLineChartProps {
   }>;
   tags: string[];
   loading?: boolean;
+  /** 取得に失敗した。空（データがありません）とは別に表示する */
+  error?: boolean;
+  onRetry?: () => void;
 }
 
 export function TrendLineChart({
   data,
   tags,
   loading = false,
+  error = false,
+  onRetry,
 }: TrendLineChartProps) {
   const colors = useChartColors();
 
@@ -38,6 +44,23 @@ export function TrendLineChart({
           <h3 className="text-sm font-semibold">タグトレンドの推移</h3>
         </div>
         <div className="h-[300px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-background rounded-lg border p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-(--tt-color-secondary)" />
+          <h3 className="text-sm font-semibold">タグトレンドの推移</h3>
+        </div>
+        <ErrorState
+          title="タグトレンドの推移を読み込めませんでした"
+          description="時間をおいて再試行してください。"
+          onRetry={onRetry}
+          className="h-[300px]"
+        />
       </div>
     );
   }

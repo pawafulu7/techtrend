@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui-v2/badge-v2';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, Hash, Calendar, Activity } from 'lucide-react';
 import logger from '@/lib/logger.client';
+import { ErrorState } from '@/components/ui-v2/error-state';
 
 interface TagCloudItem {
   id?: string;
@@ -22,10 +23,12 @@ interface TagCloudItem {
   growthRate?: number;
 }
 
+// null は取得に失敗した値。0 件と区別して「—」で表す（issue #701）
 interface TagStat {
-  totalTags: number;
-  activeTags: number; // 過去30日間に使用されたタグ
-  newTags: number; // 過去7日間に初めて使用されたタグ
+  totalTags: number | null;
+  activeTags: number | null; // 過去30日間に使用されたタグ
+  newTags: number | null; // 過去7日間に初めて使用されたタグ
+  growthRatePercent: number | null;
   topGrowthTags: Array<{
     name: string;
     growthRate: number;
@@ -51,6 +54,29 @@ async function fetchTagsNew() {
   return res.json();
 }
 
+function StatNumber({
+  value,
+  unit = '',
+}: {
+  value: number | null;
+  unit?: string;
+}) {
+  if (value === null) {
+    return (
+      <p className="text-muted-foreground text-2xl font-bold">
+        <span aria-hidden="true">—</span>
+        <span className="sr-only">取得できませんでした</span>
+      </p>
+    );
+  }
+  return (
+    <p className="text-2xl font-bold">
+      {value}
+      {unit}
+    </p>
+  );
+}
+
 export function TagStats() {
   const results = useQueries({
     queries: [
@@ -64,7 +90,13 @@ export function TagStats() {
   });
 
   const [totalResult, activeResult, newResult] = results;
-  const loading = results.some((r) => r.isPending);
+  // データが無く、一度でも失敗したクエリは「取得できない値」。React Query は data が無い
+  // クエリを再取得すると isError を落として pending に戻すため、isError だけで判定すると
+  // 再試行中に 0 件やスケルトンへ戻ってしまう（issue #701）
+  const isUnavailable = (r: (typeof results)[number]) =>
+    r.data === undefined && (r.isError || r.errorUpdateCount > 0);
+  // スケルトンは初回の取得中だけ。再試行中は取得済みの値を残す
+  const loading = results.some((r) => r.isPending && r.errorUpdateCount === 0);
 
   // エラーは各クエリの初回発生時のみログ出力（レンダリング毎の重複出力を防ぐ）
   const totalIsError = results[0].isError;
@@ -83,33 +115,42 @@ export function TagStats() {
     });
   }, [totalIsError, activeIsError, newIsError]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const totalUnavailable = isUnavailable(totalResult);
+  const activeUnavailable = isUnavailable(activeResult);
+  const newUnavailable = isUnavailable(newResult);
+  const hasError = totalUnavailable || activeUnavailable || newUnavailable;
+  const retrying = results.some((r) => isUnavailable(r) && r.isFetching);
+  const retryFailed = () => {
+    results.forEach((r) => {
+      if (isUnavailable(r) && !r.isFetching) void r.refetch();
+    });
+  };
+
   const totalData = useMemo(
-    () =>
-      totalResult.isError ? { total: 0 } : (totalResult.data ?? { total: 0 }),
-    [totalResult.isError, totalResult.data]
+    () => (totalUnavailable ? null : (totalResult.data ?? { total: 0 })),
+    [totalUnavailable, totalResult.data]
   );
   const activeData = useMemo(
-    () =>
-      activeResult.isError ? { tags: [] } : (activeResult.data ?? { tags: [] }),
-    [activeResult.isError, activeResult.data]
+    () => (activeUnavailable ? null : (activeResult.data ?? { tags: [] })),
+    [activeUnavailable, activeResult.data]
   );
   const newData = useMemo(
-    () => (newResult.isError ? { count: 0 } : (newResult.data ?? { count: 0 })),
-    [newResult.isError, newResult.data]
+    () => (newUnavailable ? null : (newResult.data ?? { count: 0 })),
+    [newUnavailable, newResult.data]
   );
 
   // NOTE: /api/tags/cloud?limit=1000 の上限に制約されるため、
   // アクティブタグ数は最大1000件までの近似値。
   // /api/tags/stats は totalTags のみを返すため、activeTags の正確なカウントには
   // サーバー側でのカウントAPIの追加が必要（現状はAPIが提供していない）。
-  const activeTags = useMemo(
-    () => (Array.isArray(activeData.tags) ? activeData.tags.length : 0),
-    [activeData.tags]
-  );
+  const activeTags = useMemo(() => {
+    if (activeData === null) return null;
+    return Array.isArray(activeData.tags) ? activeData.tags.length : 0;
+  }, [activeData]);
 
   // 成長率の高いタグ（APIから返されるgrowthRateを使用）
   const growthTags = useMemo(() => {
-    const tags = Array.isArray(activeData.tags) ? activeData.tags : [];
+    const tags = Array.isArray(activeData?.tags) ? activeData.tags : [];
     return tags
       .filter((tag: TagCloudItem) => tag.trend === 'rising')
       .sort(
@@ -121,17 +162,23 @@ export function TagStats() {
         name: tag.name,
         growthRate: tag.growthRate || 0,
       }));
-  }, [activeData.tags]);
+  }, [activeData]);
 
-  const stats: TagStat = useMemo(
-    () => ({
-      totalTags: totalData.total || 0,
+  const stats: TagStat = useMemo(() => {
+    const newTags = newData === null ? null : newData.count || 0;
+    return {
+      totalTags: totalData === null ? null : totalData.total || 0,
       activeTags,
-      newTags: newData.count || 0,
+      newTags,
+      growthRatePercent:
+        activeTags === null || newTags === null
+          ? null
+          : activeTags > 0
+            ? Math.round((newTags / activeTags) * 100)
+            : 0,
       topGrowthTags: growthTags,
-    }),
-    [totalData.total, activeTags, newData.count, growthTags]
-  );
+    };
+  }, [totalData, activeTags, newData, growthTags]);
 
   if (loading) {
     return (
@@ -162,7 +209,7 @@ export function TagStats() {
                 <Hash className="mr-1 h-4 w-4" />
                 総タグ数
               </div>
-              <p className="text-2xl font-bold">{stats.totalTags}</p>
+              <StatNumber value={stats.totalTags} />
             </div>
 
             <div className="space-y-1">
@@ -170,7 +217,7 @@ export function TagStats() {
                 <Activity className="mr-1 h-4 w-4" />
                 アクティブ
               </div>
-              <p className="text-2xl font-bold">{stats.activeTags}</p>
+              <StatNumber value={stats.activeTags} />
             </div>
 
             <div className="space-y-1">
@@ -178,7 +225,7 @@ export function TagStats() {
                 <Calendar className="mr-1 h-4 w-4" />
                 新規（週間）
               </div>
-              <p className="text-2xl font-bold">{stats.newTags}</p>
+              <StatNumber value={stats.newTags} />
             </div>
 
             <div className="space-y-1">
@@ -186,14 +233,18 @@ export function TagStats() {
                 <TrendingUp className="mr-1 h-4 w-4" />
                 成長率
               </div>
-              <p className="text-2xl font-bold">
-                {stats.activeTags > 0
-                  ? Math.round((stats.newTags / stats.activeTags) * 100)
-                  : 0}
-                %
-              </p>
+              <StatNumber value={stats.growthRatePercent} unit="%" />
             </div>
           </div>
+          {hasError && (
+            <ErrorState
+              title="一部の統計を読み込めませんでした"
+              description="「—」の項目は取得できていません。時間をおいて再試行してください。"
+              onRetry={retryFailed}
+              retrying={retrying}
+              className="border-t pt-4 pb-0"
+            />
+          )}
         </CardContent>
       </Card>
 

@@ -12,6 +12,7 @@ import {
 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui-v2/error-state';
 import { TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -77,7 +78,7 @@ export function TagCloud({
   const router = useRouter();
   const [period, setPeriod] = useState(initialPeriod);
 
-  const { data, isPending, isError, error, refetch, isFetching } = useQuery({
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ['tag-cloud', { period, limit }],
     queryFn: async () => {
       const response = await fetch(
@@ -92,11 +93,6 @@ export function TagCloud({
 
   const loading = isPending; // 初回ロードのみスケルトン表示（バックグラウンド再取得では表示しない）
   const tags: Tag[] = useMemo(() => data?.tags ?? [], [data?.tags]);
-  const errorMessage = isError
-    ? error instanceof Error
-      ? error.message
-      : 'エラーが発生しました'
-    : null;
 
   // フォントサイズの計算
   const { minCount, maxCount, fontSizes } = useMemo(() => {
@@ -205,18 +201,14 @@ export function TagCloud({
               />
             ))}
           </div>
-        ) : errorMessage ? (
-          <div className="text-muted-foreground py-8 text-center">
-            <p>{errorMessage}</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              className="mt-4"
-            >
-              再試行
-            </Button>
-          </div>
+        ) : isError ? (
+          <ErrorState
+            title="タグを読み込めませんでした"
+            description="時間をおいて再試行してください。"
+            onRetry={() => refetch()}
+            retrying={isFetching}
+            className="py-8"
+          />
         ) : tags.length === 0 ? (
           <div
             data-testid="empty-state"
@@ -247,7 +239,7 @@ export function TagCloud({
           </div>
         )}
 
-        {!loading && !errorMessage && tags.length > 0 && (
+        {!loading && !isError && tags.length > 0 && (
           <div className="mt-4 border-t pt-4">
             <div className="text-muted-foreground flex items-center justify-center gap-4 text-xs">
               <span className="flex items-center gap-1">
