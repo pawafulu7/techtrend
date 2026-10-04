@@ -1,0 +1,116 @@
+[
+  {
+    "kind": "index",
+    "name": "Session_token_key",
+    "details": {
+      "keys": ["token"],
+      "ready": true,
+      "table": "Session",
+      "valid": true,
+      "method": "btree",
+      "unique": true,
+      "options": [],
+      "primary": false,
+      "keyCount": 1,
+      "opclasses": ["pg_catalog.text_ops"],
+      "predicate": null,
+      "definition": "CREATE UNIQUE INDEX \"Session_token_key\" ON public.\"Session\" USING btree (token)",
+      "columnCount": 1
+    }
+  },
+  {
+    "kind": "index",
+    "name": "Tag_name_key",
+    "details": {
+      "keys": ["name"],
+      "ready": true,
+      "table": "Tag",
+      "valid": true,
+      "method": "btree",
+      "unique": true,
+      "options": [],
+      "primary": false,
+      "keyCount": 1,
+      "opclasses": ["pg_catalog.text_ops"],
+      "predicate": null,
+      "definition": "CREATE UNIQUE INDEX \"Tag_name_key\" ON public.\"Tag\" USING btree (name)",
+      "columnCount": 1
+    }
+  },
+  {
+    "kind": "index",
+    "name": "Tag_name_lower_key",
+    "details": {
+      "keys": ["lower(name)"],
+      "ready": true,
+      "table": "Tag",
+      "valid": true,
+      "method": "btree",
+      "unique": true,
+      "options": [],
+      "primary": false,
+      "keyCount": 1,
+      "opclasses": ["pg_catalog.text_ops"],
+      "predicate": null,
+      "definition": "CREATE UNIQUE INDEX \"Tag_name_lower_key\" ON public.\"Tag\" USING btree (lower(name))",
+      "columnCount": 1
+    }
+  },
+  {
+    "kind": "index",
+    "name": "idx_article_chunk_embedding_hnsw_cosine",
+    "details": {
+      "keys": ["embedding"],
+      "ready": true,
+      "table": "ArticleChunk",
+      "valid": true,
+      "method": "hnsw",
+      "unique": false,
+      "options": ["ef_construction=64", "m=16"],
+      "primary": false,
+      "keyCount": 1,
+      "opclasses": ["public.vector_cosine_ops"],
+      "predicate": null,
+      "definition": "CREATE INDEX idx_article_chunk_embedding_hnsw_cosine ON public.\"ArticleChunk\" USING hnsw (embedding vector_cosine_ops) WITH (m='16', ef_construction='64')",
+      "columnCount": 1
+    }
+  },
+  {
+    "kind": "index",
+    "name": "idx_article_embedding_hnsw_summary",
+    "details": {
+      "keys": ["embedding"],
+      "ready": true,
+      "table": "ArticleEmbedding",
+      "valid": true,
+      "method": "hnsw",
+      "unique": false,
+      "options": ["ef_construction=64", "m=16"],
+      "primary": false,
+      "keyCount": 1,
+      "opclasses": ["public.vector_cosine_ops"],
+      "predicate": "(\"embeddingKey\" = 'summary'::\"EmbeddingKey\")",
+      "definition": "CREATE INDEX idx_article_embedding_hnsw_summary ON public.\"ArticleEmbedding\" USING hnsw (embedding vector_cosine_ops) WITH (m='16', ef_construction='64') WHERE (\"embeddingKey\" = 'summary'::\"EmbeddingKey\")",
+      "columnCount": 1
+    }
+  },
+  {
+    "kind": "index",
+    "name": "uq_user_source_preset_name",
+    "details": {
+      "keys": ["\"userId\"", "lower((name)::text)"],
+      "ready": true,
+      "table": "UserSourcePreset",
+      "valid": true,
+      "method": "btree",
+      "unique": true,
+      "options": [],
+      "primary": false,
+      "keyCount": 2,
+      "opclasses": ["pg_catalog.text_ops", "pg_catalog.text_ops"],
+      "predicate": null,
+      "definition": "CREATE UNIQUE INDEX uq_user_source_preset_name ON public.\"UserSourcePreset\" USING btree (\"userId\", lower((name)::text))",
+      "columnCount": 2
+    }
+  }
+]

@@ -151,6 +151,12 @@ jobs:
           npx prisma migrate deploy
           npx tsx prisma/seed-test.ts
 
+      - name: Verify schema integrity
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test
+          NODE_ENV: test
+        run: npm run db:check-schema
+
       - name: Create CTRF output directory
         run: mkdir -p ctrf
 
