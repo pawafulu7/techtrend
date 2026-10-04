@@ -174,6 +174,7 @@ export function toArticleQueryParams(
   cacheParams: ArticleCacheParams
 ): ArticleQueryParams {
   return {
+    sortBy: cacheParams.sortBy,
     sources: cacheParams.sources,
     sourceId: cacheParams.sourceId,
     excludeSources: cacheParams.excludeSources,
@@ -187,5 +188,8 @@ export function toArticleQueryParams(
     readFilter: cacheParams.readFilter,
     userId: cacheParams.userId,
     category: cacheParams.category,
+    includeEmptyContent: cacheParams.includeEmptyContent,
+    excludeUnprocessed: cacheParams.excludeUnprocessed,
+    excludeLowQuality: cacheParams.excludeLowQuality,
   };
 }

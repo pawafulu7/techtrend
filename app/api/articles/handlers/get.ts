@@ -273,7 +273,7 @@ async function executeStandardQuery(
   // Build select fields
   const selectFields = buildSelectFields(display);
 
-  // Build cache params for count caching (exclude sort/page in cache key)
+  // Build cache params for count caching (sortBy affects date filters)
   const cacheParams = buildCacheParams(params, userId, hasUserScopedQuery);
 
   // Execute count (via cache when possible) and findMany in parallel
