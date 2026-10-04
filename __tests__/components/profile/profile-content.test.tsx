@@ -69,4 +69,29 @@ describe('ProfileContent: 取得の失敗（issue #701）', () => {
       screen.queryByRole('button', { name: '再試行' })
     ).not.toBeInTheDocument();
   });
+
+  it('失敗後の再試行中も、スケルトンに戻さず失敗表示を残す', async () => {
+    let resolveRetry: (value: unknown) => void = () => {};
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 500 })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRetry = resolve;
+          })
+      );
+
+    render(<ProfileContent />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: '再試行' })
+    );
+
+    expect(
+      await screen.findByRole('button', { name: '再試行中…' })
+    ).toBeDisabled();
+
+    resolveRetry({ ok: true, json: async () => profile });
+    expect(await screen.findByTestId('profile-form')).toBeInTheDocument();
+  });
 });

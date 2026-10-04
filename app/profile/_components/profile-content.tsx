@@ -41,7 +41,8 @@ export function ProfileContent() {
     refetch: refetchProfile,
   } = useUserProfile({ enabled: true });
 
-  if (profileLoading) {
+  // 失敗後の再試行中はスケルトンに戻さず、失敗表示（再試行中…）を残す
+  if (profileLoading && !profileError) {
     return (
       <div>
         <div className="flex flex-wrap items-center gap-2 pb-3">
@@ -106,6 +107,7 @@ export function ProfileContent() {
               title="プロフィール情報を読み込めませんでした"
               description="時間をおいて再試行してください。"
               onRetry={refetchProfile}
+              retrying={profileLoading}
             />
           )}
         </CardV2>

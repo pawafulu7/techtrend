@@ -78,20 +78,27 @@ export function TagCloud({
   const router = useRouter();
   const [period, setPeriod] = useState(initialPeriod);
 
-  const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ['tag-cloud', { period, limit }],
-    queryFn: async () => {
-      const response = await fetch(
-        `/api/tags/cloud?period=${period}&limit=${limit}`
-      );
-      if (!response.ok) {
-        throw new Error('Failed to load tags');
-      }
-      return response.json();
-    },
-  });
+  const { data, isPending, isError, refetch, isFetching, errorUpdateCount } =
+    useQuery({
+      queryKey: ['tag-cloud', { period, limit }],
+      queryFn: async () => {
+        const response = await fetch(
+          `/api/tags/cloud?period=${period}&limit=${limit}`
+        );
+        if (!response.ok) {
+          throw new Error('Failed to load tags');
+        }
+        return response.json();
+      },
+    });
 
-  const loading = isPending; // 初回ロードのみスケルトン表示（バックグラウンド再取得では表示しない）
+  // React Query は data の無いクエリを再取得すると pending に戻す。初回の取得中だけスケルトンにし、
+  // 失敗後の再試行中は失敗表示（再試行中…）を残す（issue #701）
+  const loading = isPending && errorUpdateCount === 0;
+  const failedWithoutData =
+    data === undefined && (isError || errorUpdateCount > 0);
+  // 取得済みの内容がある状態で再取得に失敗した: 内容を残して古いことを示す
+  const staleAfterError = isError && data !== undefined;
   const tags: Tag[] = useMemo(() => data?.tags ?? [], [data?.tags]);
 
   // フォントサイズの計算
@@ -201,7 +208,7 @@ export function TagCloud({
               />
             ))}
           </div>
-        ) : isError ? (
+        ) : failedWithoutData ? (
           <ErrorState
             title="タグを読み込めませんでした"
             description="時間をおいて再試行してください。"
@@ -209,37 +216,50 @@ export function TagCloud({
             retrying={isFetching}
             className="py-8"
           />
-        ) : tags.length === 0 ? (
-          <div
-            data-testid="empty-state"
-            className="text-muted-foreground py-8 text-center"
-          >
-            タグが見つかりませんでした
-          </div>
         ) : (
-          <div className="flex min-h-[200px] flex-wrap items-center justify-center gap-2">
-            {tags.map((tag) => (
-              <button
-                key={tag.id}
-                data-testid="tag-item"
-                onClick={() => handleTagClick(tag)}
-                className={cn(
-                  'inline-flex items-center rounded-full px-3 py-1',
-                  'hover:bg-accent transition-all duration-200',
-                  'focus:ring-primary focus:ring-2 focus:outline-none',
-                  getTagColor(tag, { minCount, maxCount })
-                )}
-                style={{ fontSize: `${fontSizes[tag.id]}px` }}
-                title={`${getTagDisplayName(tag.name)} (${tag.count}件)`}
+          <>
+            {staleAfterError && (
+              <ErrorState
+                title="最新のタグを読み込めませんでした"
+                description="前回読み込んだ内容を表示しています。"
+                onRetry={() => refetch()}
+                retrying={isFetching}
+                className="mb-4 rounded-lg border"
+              />
+            )}
+            {tags.length === 0 ? (
+              <div
+                data-testid="empty-state"
+                className="text-muted-foreground py-8 text-center"
               >
-                {getTagDisplayName(tag.name)}
-                {period !== 'all' && getTrendIcon(tag.trend)}
-              </button>
-            ))}
-          </div>
+                タグが見つかりませんでした
+              </div>
+            ) : (
+              <div className="flex min-h-[200px] flex-wrap items-center justify-center gap-2">
+                {tags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    data-testid="tag-item"
+                    onClick={() => handleTagClick(tag)}
+                    className={cn(
+                      'inline-flex items-center rounded-full px-3 py-1',
+                      'hover:bg-accent transition-all duration-200',
+                      'focus:ring-primary focus:ring-2 focus:outline-none',
+                      getTagColor(tag, { minCount, maxCount })
+                    )}
+                    style={{ fontSize: `${fontSizes[tag.id]}px` }}
+                    title={`${getTagDisplayName(tag.name)} (${tag.count}件)`}
+                  >
+                    {getTagDisplayName(tag.name)}
+                    {period !== 'all' && getTrendIcon(tag.trend)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        {!loading && !isError && tags.length > 0 && (
+        {!loading && !failedWithoutData && tags.length > 0 && (
           <div className="mt-4 border-t pt-4">
             <div className="text-muted-foreground flex items-center justify-center gap-4 text-xs">
               <span className="flex items-center gap-1">

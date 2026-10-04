@@ -24,9 +24,15 @@ export function DigestClient() {
     error,
     refetch,
     isFetching,
+    errorUpdateCount,
   } = useDigest(period);
   const isUnauthorized =
     error instanceof DigestFetchError && error.status === 401;
+  // React Query は data の無いクエリを再取得すると pending に戻す。読み込み中の表示は初回だけにし、
+  // 失敗後の再試行中は失敗表示（再試行中…）を残す（issue #701）
+  const showInitialLoading = isLoading && errorUpdateCount === 0;
+  const failedWithoutData =
+    !digest && !isUnauthorized && (!!error || errorUpdateCount > 0);
 
   const { mutateAsync: updatePreferencesAsync, isPending: isUpdating } =
     useUpdatePreferences('digest');
@@ -67,7 +73,7 @@ export function DigestClient() {
       <header className="flex flex-wrap items-center gap-3 pb-4">
         <Newspaper className="text-primary h-5 w-5" aria-hidden="true" />
         <h1 className="text-foreground text-lg font-semibold">ダイジェスト</h1>
-        {digest?.hasPreferences && (
+        {digest?.hasPreferences && !isUnauthorized && (
           <Button
             variant="ghost"
             size="sm"
@@ -100,7 +106,7 @@ export function DigestClient() {
           </Button>
         </ErrorState>
       )}
-      {error && !isUnauthorized && !digest && (
+      {failedWithoutData && (
         <ErrorState
           size="block"
           title="ダイジェストを読み込めませんでした"
@@ -122,7 +128,7 @@ export function DigestClient() {
       )}
 
       {/* Loading State */}
-      {isLoading && (
+      {showInitialLoading && (
         <div className="flex items-center justify-center py-24">
           <div className="flex flex-col items-center space-y-4">
             <div className="relative">
@@ -199,17 +205,20 @@ export function DigestClient() {
       )}
 
       {/* Category Preference Dialog */}
-      <CategoryPreferenceDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        categories={categories}
-        selectedCategories={selectedCategories}
-        selectedPeriod={12} // Digest uses fixed 12-month period; replace with user preference when period selector is enabled
-        onSave={handleSavePreferences}
-        isLoading={isLoading}
-        isSaving={isUpdating}
-        showPeriodSelector={false}
-      />
+      {/* 401 のときはログインの案内だけを出すので、カテゴリ設定も開かせない */}
+      {!isUnauthorized && (
+        <CategoryPreferenceDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          categories={categories}
+          selectedCategories={selectedCategories}
+          selectedPeriod={12} // Digest uses fixed 12-month period; replace with user preference when period selector is enabled
+          onSave={handleSavePreferences}
+          isLoading={isLoading}
+          isSaving={isUpdating}
+          showPeriodSelector={false}
+        />
+      )}
     </div>
   );
 }

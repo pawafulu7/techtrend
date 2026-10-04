@@ -383,8 +383,12 @@ describe('ArticleList', () => {
         const listener = (e: Event) => events.push(e);
         window.addEventListener('article-favorite-changed', listener);
 
+        const articles = mockArticles.map((a) =>
+          a.id === '2' ? { ...a, isFavorited: false } : a
+        );
+
         try {
-          renderWithProviders(<ArticleList articles={mockArticles} />);
+          renderWithProviders(<ArticleList articles={articles} />);
           await userEvent.click(screen.getByTestId('toggle-favorite-2'));
 
           await waitFor(() =>
@@ -398,6 +402,13 @@ describe('ArticleList', () => {
           );
           expect(mockToast).toHaveBeenCalledTimes(1);
           expect(events).toHaveLength(0);
+
+          // 表示が未登録に戻っているので、もう一度押すと再び登録（POST）になる
+          await userEvent.click(screen.getByTestId('toggle-favorite-2'));
+          await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+          expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/favorites/2', {
+            method: 'POST',
+          });
         } finally {
           window.removeEventListener('article-favorite-changed', listener);
           consoleSpy.mockRestore();

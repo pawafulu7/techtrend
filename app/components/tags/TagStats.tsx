@@ -115,14 +115,22 @@ export function TagStats() {
     });
   }, [totalIsError, activeIsError, newIsError]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 取得済みの値がある状態で再取得に失敗した: 値は残すが、古いことを示して再試行させる
+  const isStale = (r: (typeof results)[number]) =>
+    r.isError && r.data !== undefined;
+  const needsRetry = (r: (typeof results)[number]) =>
+    isUnavailable(r) || isStale(r);
+
   const totalUnavailable = isUnavailable(totalResult);
   const activeUnavailable = isUnavailable(activeResult);
   const newUnavailable = isUnavailable(newResult);
-  const hasError = totalUnavailable || activeUnavailable || newUnavailable;
-  const retrying = results.some((r) => isUnavailable(r) && r.isFetching);
+  const anyUnavailable =
+    totalUnavailable || activeUnavailable || newUnavailable;
+  const hasError = results.some(needsRetry);
+  const retrying = results.some((r) => needsRetry(r) && r.isFetching);
   const retryFailed = () => {
     results.forEach((r) => {
-      if (isUnavailable(r) && !r.isFetching) void r.refetch();
+      if (needsRetry(r) && !r.isFetching) void r.refetch();
     });
   };
 
@@ -238,8 +246,16 @@ export function TagStats() {
           </div>
           {hasError && (
             <ErrorState
-              title="一部の統計を読み込めませんでした"
-              description="「—」の項目は取得できていません。時間をおいて再試行してください。"
+              title={
+                anyUnavailable
+                  ? '一部の統計を読み込めませんでした'
+                  : '最新の統計を読み込めませんでした'
+              }
+              description={
+                anyUnavailable
+                  ? '「—」の項目は取得できていません。時間をおいて再試行してください。'
+                  : '前回読み込んだ値を表示しています。時間をおいて再試行してください。'
+              }
               onRetry={retryFailed}
               retrying={retrying}
               className="border-t pt-4 pb-0"

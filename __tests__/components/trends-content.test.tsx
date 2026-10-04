@@ -214,4 +214,67 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(screen.getByText('React')).toBeInTheDocument();
   });
+
+  it('7日表示中に router.refresh で新しい分析が届いたら反映する', () => {
+    const { rerender } = render(
+      <TrendsContent
+        initialKeywords={null}
+        initialNewTags={[]}
+        initialAnalysis={null}
+        initialSourceData={[]}
+      />
+    );
+    expect(
+      screen.getByText('人気タグを読み込めませんでした')
+    ).toBeInTheDocument();
+
+    rerender(
+      <TrendsContent
+        initialKeywords={[]}
+        initialNewTags={[]}
+        initialAnalysis={analysisWithTag}
+        initialSourceData={[]}
+      />
+    );
+
+    expect(screen.getByText('React')).toBeInTheDocument();
+    expect(
+      screen.queryByText('人気タグを読み込めませんでした')
+    ).not.toBeInTheDocument();
+  });
+
+  it('分析の再試行中も、スケルトンに戻さず失敗表示を残す', async () => {
+    let resolveRetry: (value: unknown) => void = () => {};
+    global.fetch = jest.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRetry = resolve;
+        })
+    );
+
+    render(
+      <TrendsContent
+        initialKeywords={[]}
+        initialNewTags={[]}
+        initialAnalysis={null}
+        initialSourceData={[]}
+      />
+    );
+    const topTags = screen.getByText('人気タグ TOP10').closest('div.border');
+    await userEvent.click(
+      within(topTags as HTMLElement).getByRole('button', { name: '再試行' })
+    );
+
+    expect(
+      within(topTags as HTMLElement).getByRole('button', { name: '再試行中…' })
+    ).toBeDisabled();
+    expect(
+      screen.getByText('タグトレンドの推移を読み込めませんでした')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      resolveRetry({ ok: true, json: async () => analysisWithTag });
+    });
+    expect(await screen.findByText('React')).toBeInTheDocument();
+  });
 });

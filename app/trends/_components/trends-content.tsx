@@ -50,13 +50,20 @@ export function TrendsContent({
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   // 期間の切り替えと再試行の取得を1本にまとめ、古い応答で上書きしないようにする
   const analysisControllerRef = useRef<AbortController | null>(null);
-  // 他セクションの再試行（router.refresh）でも initialAnalysis の参照が変わる。effect の
-  // 依存に入れると、クライアントで取り直した分析をサーバーの値で上書きしてしまうため、
-  // 7日に戻したときだけ ref から読む。分析の失敗は分析自身の再試行で取り直す
+  // 他セクションの再試行（router.refresh）でも initialAnalysis の参照が変わる。期間切り替えの
+  // effect の依存に入れると、14日・30日表示中の分析を取り直してしまうため、ref から読む
   const initialAnalysisRef = useRef(initialAnalysis);
   useEffect(() => {
     initialAnalysisRef.current = initialAnalysis;
-  }, [initialAnalysis]);
+    // 7日表示中に router.refresh で新しい分析が届いたら反映する。null（サーバーではまだ失敗）の
+    // ときは、クライアントで取り直した分析を失敗で上書きしない
+    if (selectedDays === 7 && initialAnalysis !== null) {
+      analysisControllerRef.current?.abort();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoadingAnalysis(false);
+      setTrendAnalysis(initialAnalysis);
+    }
+  }, [initialAnalysis, selectedDays]);
 
   // サーバーで取得したセクション（急上昇・新着タグ・ソース分布）の再試行
   const router = useRouter();
@@ -127,8 +134,9 @@ export function TrendsContent({
     };
   }, [selectedDays, startAnalysisFetch]);
 
-  // trendAnalysis が null になるのは取得に失敗したときだけ（成功して該当なしなら topTags が空）
-  const analysisFailed = !loadingAnalysis && trendAnalysis === null;
+  // trendAnalysis が null になるのは取得に失敗したときだけ（成功して該当なしなら topTags が空）。
+  // 失敗後の再試行中もスケルトンに戻さず、失敗表示（再試行中…）を残す
+  const analysisFailed = trendAnalysis === null;
   const retryAnalysis = useCallback(() => {
     startAnalysisFetch(selectedDays);
   }, [startAnalysisFetch, selectedDays]);
@@ -265,9 +273,10 @@ export function TrendsContent({
           <TrendLineChart
             data={chartData.timeline}
             tags={chartData.topTags}
-            loading={loadingAnalysis}
+            loading={loadingAnalysis && !analysisFailed}
             error={analysisFailed}
             onRetry={retryAnalysis}
+            retrying={loadingAnalysis}
           />
 
           <div className="grid gap-6 lg:grid-cols-2">
@@ -277,7 +286,7 @@ export function TrendsContent({
                 <BarChart3 className="h-4 w-4 text-(--tt-color-info)" />
                 <h3 className="text-sm font-semibold">人気タグ TOP10</h3>
               </div>
-              {loadingAnalysis ? (
+              {loadingAnalysis && !analysisFailed ? (
                 <div className="space-y-2">
                   {[...Array(10)].map((_, i) => (
                     <div
@@ -291,6 +300,7 @@ export function TrendsContent({
                   title="人気タグを読み込めませんでした"
                   description={RETRY_DESCRIPTION}
                   onRetry={retryAnalysis}
+                  retrying={loadingAnalysis}
                 />
               ) : trendAnalysis?.topTags && trendAnalysis.topTags.length > 0 ? (
                 <div className="space-y-1">

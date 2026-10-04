@@ -23,27 +23,41 @@ jest.mock('@/lib/auth/auth-client', () => ({
   },
 }));
 
+const FAVORITE = {
+  id: 'a1',
+  title: 'Article 1',
+  summary: '',
+  publishedAt: '2026-10-01T00:00:00.000Z',
+  favoritedAt: '2026-10-02T00:00:00.000Z',
+  tags: [],
+};
+
+// 楽観的に一覧から消し、invalidateQueries で取り直すと戻る、というキャッシュの動きを状態で再現する
 const mockRemoveFavoriteFromCache = jest.fn();
+let mockFavorites: (typeof FAVORITE)[] = [];
+let mockSetFavorites: (next: (typeof FAVORITE)[]) => void = () => {};
 jest.mock('@/app/hooks/use-infinite-favorites', () => ({
-  useInfiniteFavorites: () => ({
-    allFavorites: [
-      {
-        id: 'a1',
-        title: 'Article 1',
-        summary: '',
-        publishedAt: '2026-10-01T00:00:00.000Z',
-        favoritedAt: '2026-10-02T00:00:00.000Z',
-        tags: [],
+  useInfiniteFavorites: () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { useState } = require('react');
+    const [favorites, setFavorites] = useState(mockFavorites);
+    mockSetFavorites = setFavorites;
+    return {
+      allFavorites: favorites,
+      totalCount: 1,
+      isLoading: false,
+      isFetchingNextPage: false,
+      hasNextPage: false,
+      fetchNextPage: jest.fn(),
+      error: null,
+      removeFavoriteFromCache: (id: string) => {
+        mockRemoveFavoriteFromCache(id);
+        setFavorites((prev: (typeof FAVORITE)[]) =>
+          prev.filter((a) => a.id !== id)
+        );
       },
-    ],
-    totalCount: 1,
-    isLoading: false,
-    isFetchingNextPage: false,
-    hasNextPage: false,
-    fetchNextPage: jest.fn(),
-    error: null,
-    removeFavoriteFromCache: mockRemoveFavoriteFromCache,
-  }),
+    };
+  },
 }));
 
 jest.mock('@/app/components/article/favorite-card', () => ({
@@ -66,8 +80,14 @@ jest.mock('@/app/components/common/infinite-scroll-trigger', () => ({
 }));
 
 function renderFavorites() {
+  mockFavorites = [FAVORITE];
   const queryClient = new QueryClient();
-  const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+  // サーバーから取り直すと、解除できなかった記事が一覧に戻る
+  const invalidateSpy = jest
+    .spyOn(queryClient, 'invalidateQueries')
+    .mockImplementation(async () => {
+      mockSetFavorites([FAVORITE]);
+    });
   render(
     <QueryClientProvider client={queryClient}>
       <FavoritesContent initialQuery="" initialSort="favoritedAt-desc" />
@@ -99,6 +119,13 @@ describe('FavoritesContent: 解除の失敗（issue #701）', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '解除 a1' }));
 
+    // 失敗して取り直した後は、一覧に戻っている
+    expect(mockRemoveFavoriteFromCache).toHaveBeenCalledWith('a1');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: '解除 a1' })
+      ).toBeInTheDocument()
+    );
     await waitFor(() =>
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -124,6 +151,10 @@ describe('FavoritesContent: 解除の失敗（issue #701）', () => {
       await userEvent.click(screen.getByRole('button', { name: '解除 a1' }));
 
       await waitFor(() => expect(events).toHaveLength(1));
+      // 成功と同じ扱いなので、一覧から消えたまま
+      expect(
+        screen.queryByRole('button', { name: '解除 a1' })
+      ).not.toBeInTheDocument();
       expect(mockToast).not.toHaveBeenCalled();
       expect(invalidateSpy).not.toHaveBeenCalled();
     } finally {

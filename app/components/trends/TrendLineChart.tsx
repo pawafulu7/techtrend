@@ -25,6 +25,7 @@ interface TrendLineChartProps {
   /** 取得に失敗した。空（データがありません）とは別に表示する */
   error?: boolean;
   onRetry?: () => void;
+  retrying?: boolean;
 }
 
 export function TrendLineChart({
@@ -33,6 +34,7 @@ export function TrendLineChart({
   loading = false,
   error = false,
   onRetry,
+  retrying = false,
 }: TrendLineChartProps) {
   const colors = useChartColors();
 
@@ -59,6 +61,7 @@ export function TrendLineChart({
           title="タグトレンドの推移を読み込めませんでした"
           description="時間をおいて再試行してください。"
           onRetry={onRetry}
+          retrying={retrying}
           className="h-[300px]"
         />
       </div>

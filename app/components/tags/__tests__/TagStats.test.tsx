@@ -2,7 +2,7 @@
  * タグ統計: 取得に失敗した項目を 0 件と表示せず、失敗と再試行を出す（issue #701）
  */
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -36,11 +36,12 @@ function renderTagStats() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
+  render(
     <QueryClientProvider client={queryClient}>
       <TagStats />
     </QueryClientProvider>
   );
+  return { queryClient };
 }
 
 const cloudBody = {
@@ -156,5 +157,29 @@ describe('TagStats', () => {
 
     resolveRetry({ ok: true, status: 200, json: async () => ({ total: 120 }) });
     expect(await screen.findByText('120')).toBeInTheDocument();
+  });
+
+  it('取得済みの値がある状態で再取得に失敗したら、値を残して古いことを示す', async () => {
+    let statsCalls = 0;
+    mockFetch({
+      stats: () => {
+        statsCalls += 1;
+        return statsCalls === 1 ? ok({ total: 120 })() : fail()();
+      },
+      cloud: ok(cloudBody),
+      newTags: ok({ count: 1 }),
+    });
+
+    const { queryClient } = renderTagStats();
+    expect(await screen.findByText('120')).toBeInTheDocument();
+
+    await act(() => queryClient.refetchQueries({ queryKey: ['tag-stats'] }));
+
+    expect(
+      await screen.findByText('最新の統計を読み込めませんでした')
+    ).toBeInTheDocument();
+    expect(screen.getByText('120')).toBeInTheDocument();
+    expect(screen.queryByText('取得できませんでした')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '再試行' })).toBeInTheDocument();
   });
 });

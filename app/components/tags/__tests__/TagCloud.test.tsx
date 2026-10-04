@@ -540,4 +540,48 @@ describe('TagCloud', () => {
       expect(card).toBeInTheDocument();
     });
   });
+
+  describe('取得の失敗の状態（issue #701）', () => {
+    it('失敗後の再試行中も、スケルトンに戻さず失敗表示を残す', async () => {
+      const user = userEvent.setup();
+      let resolveRetry: (value: unknown) => void = () => {};
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce({ ok: false })
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveRetry = resolve;
+            })
+        );
+
+      await renderTagCloud();
+      await user.click(await screen.findByRole('button', { name: '再試行' }));
+
+      expect(
+        await screen.findByRole('button', { name: '再試行中…' })
+      ).toBeDisabled();
+      expect(
+        screen.getByText('タグを読み込めませんでした')
+      ).toBeInTheDocument();
+
+      resolveRetry({ ok: true, json: async () => ({ tags: mockTags }) });
+      expect(await screen.findByText('React')).toBeInTheDocument();
+    });
+
+    it('取得済みのタグがある状態で再取得に失敗したら、タグを残して古いことを示す', async () => {
+      const user = userEvent.setup();
+      await renderTagCloud();
+      expect(await screen.findByText('React')).toBeInTheDocument();
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false });
+      await user.click(
+        screen.getByRole('button', { name: 'タグクラウドを再取得' })
+      );
+
+      expect(
+        await screen.findByText('最新のタグを読み込めませんでした')
+      ).toBeInTheDocument();
+      expect(screen.getByText('React')).toBeInTheDocument();
+    });
+  });
 });

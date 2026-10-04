@@ -121,5 +121,34 @@ describe('DigestClient: 取得の失敗（issue #701）', () => {
       await screen.findByText('ログインの有効期限が切れました')
     ).toBeInTheDocument();
     expect(screen.queryByTestId('digest-section')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'カテゴリ設定' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('失敗後の再試行中も、読み込み中の表示に戻さず失敗表示を残す', async () => {
+    let resolveRetry: (value: unknown) => void = () => {};
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 500 })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRetry = resolve;
+          })
+      );
+
+    renderDigest();
+    await userEvent.click(
+      await screen.findByRole('button', { name: '再試行' })
+    );
+
+    expect(
+      await screen.findByRole('button', { name: '再試行中…' })
+    ).toBeDisabled();
+    expect(screen.queryByText('読み込み中')).not.toBeInTheDocument();
+
+    resolveRetry({ ok: true, json: async () => digestBody });
+    expect(await screen.findByTestId('digest-section')).toBeInTheDocument();
   });
 });

@@ -45,8 +45,7 @@ export function useUserProfile(options?: UseUserProfileOptions) {
     const fetchUserProfile = async () => {
       try {
         setLoading(true);
-        setError(null);
-
+        // 失敗後の再試行中も失敗表示（再試行中…）を残すため、error は成功したときに消す
         const response = await fetch('/api/user/profile', {
           cache: 'no-store',
         });
@@ -58,6 +57,7 @@ export function useUserProfile(options?: UseUserProfileOptions) {
         const profileData = (await response.json()) as UserProfile;
         if (cancelled) return;
         setData(profileData);
+        setError(null);
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err : new Error('Unknown error'));
