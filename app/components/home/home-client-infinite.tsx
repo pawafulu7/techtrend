@@ -34,7 +34,7 @@ interface HomeClientInfiniteProps {
   initialSortBy?: string;
   initialSourceIds?: string[];
   excludeSources?: string; // 除外するソースID（カンマ区切り）
-  /** 一覧のスクロール領域の先頭に出す内容（ホームの「今日の要点」。issue #721） */
+  /** 一覧のスクロール領域の先頭に出す内容（ホームのデイリーレポートの要点。issue #721） */
   header?: ReactNode;
 }
 

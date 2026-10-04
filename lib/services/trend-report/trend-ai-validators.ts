@@ -13,6 +13,12 @@ export const hasQuantChangeWord = (value: string): boolean =>
   /(増加|減少|急増|急減|増えた|減った|拡大|縮小)/.test(value);
 
 /**
+ * 読む時点で意味が変わる言葉（レポートは対象期間の後に読まれるため使わせない。issue #721）
+ */
+export const hasRelativeTimeWord = (value: string): boolean =>
+  /(今日|本日|昨日|今週|今月)/.test(value);
+
+/**
  * Validate a parsed v2 summary object against schema and content rules.
  * Returns an array of error messages (empty if valid).
  */
@@ -27,6 +33,12 @@ export function validateV2Content(obj: unknown): string[] {
     errors.push('core must not paraphrase stats');
   if (hasQuantChangeWord(parsed.data.core))
     errors.push('core must not contain quantitative change words');
+  if (hasRelativeTimeWord(parsed.data.core))
+    errors.push('core must not contain relative time words (今日/本日 etc.)');
+  if (parsed.data.overview && hasRelativeTimeWord(parsed.data.overview))
+    errors.push(
+      'overview must not contain relative time words (今日/本日 etc.)'
+    );
   for (const t of parsed.data.keyTopics) {
     if (
       hasStatParaphrase(t.whatHappened) ||
@@ -40,6 +52,14 @@ export function validateV2Content(obj: unknown): string[] {
     ) {
       errors.push(
         `keyTopics("${t.topic}") must not contain quantitative change words`
+      );
+    }
+    if (
+      hasRelativeTimeWord(t.whatHappened) ||
+      hasRelativeTimeWord(t.whyItMatters)
+    ) {
+      errors.push(
+        `keyTopics("${t.topic}") must not contain relative time words (今日/本日 etc.)`
       );
     }
   }

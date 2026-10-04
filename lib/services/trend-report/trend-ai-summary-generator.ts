@@ -16,7 +16,7 @@ import {
   calculateTags,
 } from './trend-data-aggregator';
 import {
-  PERIOD_LABELS,
+  formatPeriodLabel,
   BASIS_LABELS,
   buildStructuredPrompt,
   buildRepairPrompt,
@@ -66,6 +66,8 @@ export async function generateAISummary(
     const content = await generateAISummaryLegacyPlainText(
       model,
       periodType,
+      periodStart,
+      periodEnd,
       topArticles
     );
     return { content, format: 'text' };
@@ -88,7 +90,7 @@ async function buildStructuredInput(
   categories: CategoryInfo[],
   tags: TagInfo[]
 ): Promise<Record<string, unknown>> {
-  const periodLabel = PERIOD_LABELS[periodType];
+  const periodLabel = formatPeriodLabel(periodType, periodStart, periodEnd);
 
   const input: Record<string, unknown> = {
     periodLabel,
@@ -232,7 +234,7 @@ async function generateAISummaryStructured(
   categories: CategoryInfo[],
   tags: TagInfo[]
 ): Promise<string> {
-  const periodLabel = PERIOD_LABELS[periodType];
+  const periodLabel = formatPeriodLabel(periodType, periodStart, periodEnd);
   const input = await buildStructuredInput(
     prisma,
     periodType,
@@ -294,7 +296,7 @@ async function generateAISummaryStructured(
 
   // Attempt 2: repair (temperature=0.0)
   const { json: json2, errors: errors2 } = await runAttempt(
-    buildRepairPrompt(errors1, rawText1, refMapInfo),
+    buildRepairPrompt(errors1, rawText1, refMapInfo, periodLabel),
     0.0
   );
   if (errors2.length === 0) {
@@ -320,7 +322,7 @@ async function generateAISummaryStructured(
     `Retry generation failed (${errors3.join(' / ')}), attempting final repair`
   );
   const { json: json4, errors: errors4 } = await runAttempt(
-    buildRepairPrompt(errors3, rawText3, refMapInfo),
+    buildRepairPrompt(errors3, rawText3, refMapInfo, periodLabel),
     0.0
   );
   if (errors4.length > 0) {
@@ -336,9 +338,11 @@ async function generateAISummaryStructured(
 async function generateAISummaryLegacyPlainText(
   model: GenerativeModel,
   periodType: TrendPeriodType,
+  periodStart: Date,
+  periodEnd: Date,
   topArticles: TopArticleInfo[]
 ): Promise<string> {
-  const periodLabel = PERIOD_LABELS[periodType];
+  const periodLabel = formatPeriodLabel(periodType, periodStart, periodEnd);
   const prompt = buildLegacyPrompt(periodLabel, topArticles);
 
   const result = await model.generateContent(

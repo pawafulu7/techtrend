@@ -1,15 +1,55 @@
 import { TrendPeriodType } from '@/lib/prisma-exports';
 
-import type { TopArticleInfo } from './types';
+import { JST_OFFSET_MS, type TopArticleInfo } from './types';
+
+/** UTC の Date を JST の { year, month, day } にする */
+function toJSTParts(date: Date): { year: number; month: number; day: number } {
+  const jst = new Date(date.getTime() + JST_OFFSET_MS);
+  return {
+    year: jst.getUTCFullYear(),
+    month: jst.getUTCMonth() + 1,
+    day: jst.getUTCDate(),
+  };
+}
 
 /**
- * Period type to Japanese label mapping.
+ * レポートの対象期間を日付で表す（例: 2026年10月4日 / 2026年9月28日〜10月4日の週 / 2026年9月）。
+ * レポートは対象期間の後に読まれるため、「本日」「今週」のような読む時点で意味が変わる言葉にしない（issue #721）。
+ * periodEnd は対象期間の翌日の JST 0時（排他的）。
  */
-export const PERIOD_LABELS: Record<TrendPeriodType, string> = {
-  [TrendPeriodType.DAILY]: '本日',
-  [TrendPeriodType.WEEKLY]: '今週',
-  [TrendPeriodType.MONTHLY]: '今月',
-};
+export function formatPeriodLabel(
+  periodType: TrendPeriodType,
+  periodStart: Date,
+  periodEnd: Date
+): string {
+  const start = toJSTParts(periodStart);
+  switch (periodType) {
+    case TrendPeriodType.DAILY:
+      return `${start.year}年${start.month}月${start.day}日`;
+    case TrendPeriodType.WEEKLY: {
+      const last = toJSTParts(new Date(periodEnd.getTime() - 1));
+      const lastLabel =
+        last.year === start.year
+          ? `${last.month}月${last.day}日`
+          : `${last.year}年${last.month}月${last.day}日`;
+      return `${start.year}年${start.month}月${start.day}日〜${lastLabel}の週`;
+    }
+    case TrendPeriodType.MONTHLY:
+      return `${start.year}年${start.month}月`;
+    default: {
+      const unknownType: never = periodType;
+      throw new Error(`Unknown trend period type: ${String(unknownType)}`);
+    }
+  }
+}
+
+/**
+ * 読む時点で意味が変わる言葉を使わせない規則。期間は日付の値そのもので示す
+ * （入力には比較元の basis.periodLabel「前日」もあり、キー名で示すと取り違えるため）
+ */
+function relativeTimeRule(periodLabel: string): string {
+  return `「今日」「本日」「昨日」「今週」「今月」など、読む時点で意味が変わる言葉を使わない（レポートは対象期間の後に読まれる）。対象期間を指すときは「${periodLabel}」と書く`;
+}
 
 /**
  * Period type to comparison basis label mapping.
@@ -47,6 +87,7 @@ export function buildStructuredPrompt(
 - coreに「減少」「増加」「急増」等の量的変化の語を使わない
 
 ## 出力ルール
+- 対象期間は${periodLabel}。${relativeTimeRule(periodLabel)}
 - 返答はJSONオブジェクトのみ（前後に文章・コードブロック・Markdownを付けない）
 - versionは必ず "trend_ai_summary_v2"
 - 指定キー以外を出力しない（追加キー禁止）
@@ -59,7 +100,7 @@ export function buildStructuredPrompt(
 - evidenceArticleIds / articleIds には入力JSONの topArticles[].ref 値（A1〜A10）を使うこと（架空IDや実IDではなく、必ずref値を使用）
 {
   "version": "trend_ai_summary_v2",
-  "core": "今日の核心を固有名詞で1文（例: Gemini 2.0発表でマルチモーダルAI開発が加速）。量的変化（増減）は書かない。",
+  "core": "対象期間の核心を固有名詞で1文（例: Gemini 2.0発表でマルチモーダルAI開発が加速）。量的変化（増減）と「今日」「本日」などの時点の言葉は書かない。",
   "overview": "テック系ブログのリード文調で書く（250-350文字）。NG表現:「浮上しています」「求められています」「集約されています」「不可欠です」「注目を集めています」。OK表現:「〜が中心で」「〜を後押し」「〜が広がっています」「〜してみてください」「〜しましょう」。具体的なプロダクト名を挙げながら話題を自然につなぎ、「まずは〜から試してみてください」「〜で一歩リードしましょう」のような呼びかけで締める。例: '3月1日のAI話題は、Claudeのメモリー機能やプラグイン進化が中心で、業務自動化の可能性を広げています。...AIの波に乗り遅れず、さらなる活用で競争力を強化しましょう。'",
   "keyTopics": [
     {
@@ -126,7 +167,8 @@ ${JSON.stringify(input)}`;
 export function buildRepairPrompt(
   errors: string[],
   rawText: string,
-  refMapInfo: string
+  refMapInfo: string,
+  periodLabel: string
 ): string {
   return `次のモデル出力を、必ず指定のJSONスキーマ（trend_ai_summary_v2）に厳密準拠するJSONオブジェクトへ修正してください。
 返答はJSONのみ。追加の文章、コードブロック、コメント禁止。
@@ -135,6 +177,7 @@ versionは必ず "trend_ai_summary_v2"。
 文章フィールドでは統計の言い換え（"件" "%""割合""占める" 等）をしない（数値はdeltaCountに入れる）。
 core/keyTopicsのwhatHappened/whyItMattersでは「増加」「減少」「急増」「急減」「増えた」「減った」「拡大」「縮小」の語を使わない。
 core/keyTopics/trendChanges/actionsで同じ事象を同じ切り口で繰り返さない。
+対象期間は${periodLabel}。${relativeTimeRule(periodLabel)}。
 evidenceArticleIds / articleIds には参照キー（A1〜A10）を使うこと。
 
 参照キーと実IDの対応: ${refMapInfo}
@@ -177,6 +220,7 @@ export function buildLegacyPrompt(
 ## 絶対禁止
 - 「X件あるから注目」「Y%を占める」のような統計の言い換え
 - 「注目を集めています」「トレンドです」のような空虚な表現
+- ${relativeTimeRule(periodLabel)}
 
 ## 入力データ
 - 期間: ${periodLabel}

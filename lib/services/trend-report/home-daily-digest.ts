@@ -122,7 +122,7 @@ export function buildHomeDailyDigest(
 }
 
 /**
- * ホームの「今日の要点」（issue #721）。最新のデイリーレポートの core・keyTopics を使い、
+ * ホームのデイリーレポートの要点（issue #721）。最新のデイリーレポートの core・keyTopics を使い、
  * ホーム用に AI 生成は増やさない。失敗しても投げずに status: 'error' を返す（ホームの描画を止めないため）
  */
 export async function getHomeDailyDigest(

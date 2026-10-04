@@ -37,14 +37,23 @@ function Shell({
   );
 }
 
-function Heading({ children }: { children?: React.ReactNode }) {
+/** レポートの対象日が分からない状態（無い・読み込み失敗）の見出し */
+const GENERIC_TITLE = 'デイリーレポートの要点';
+
+function Heading({
+  title,
+  children,
+}: {
+  title: string;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
       <h2
         id={HEADING_ID}
         className="text-sm font-semibold text-(--tt-color-text)"
       >
-        今日の要点
+        {title}
       </h2>
       {children}
     </div>
@@ -96,7 +105,8 @@ interface HomeDailyDigestProps {
 }
 
 /**
- * ホームの記事一覧の上に出す「今日の要点」（issue #721）。
+ * ホームの記事一覧の上に出すデイリーレポートの要点（issue #721）。
+ * 見出しはレポートの対象日にする。出すのは前日以前の記事のまとめで、「今日」ではないため。
  * デイリーレポートの中心テーマ（core）と注目トピックを出し、本体へ案内する。
  * レポートが未生成・古い・要点の生成に失敗・読み込み失敗を、それぞれ区別して出す。
  */
@@ -104,10 +114,10 @@ export function HomeDailyDigest({ digest }: HomeDailyDigestProps) {
   if (digest.status === 'error') {
     return (
       <Shell tone="neutral">
-        <Heading />
+        <Heading title={GENERIC_TITLE} />
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
           <p className="text-sm text-(--tt-color-text-muted)">
-            今日の要点を読み込めませんでした。
+            デイリーレポートの要点を読み込めませんでした。
           </p>
           <HomeDailyDigestReload />
         </div>
@@ -118,7 +128,7 @@ export function HomeDailyDigest({ digest }: HomeDailyDigestProps) {
   if (digest.status === 'none') {
     return (
       <Shell tone="neutral">
-        <Heading />
+        <Heading title={GENERIC_TITLE} />
         <p className="mt-1 text-sm text-(--tt-color-text-muted)">
           デイリーレポートはまだありません。
         </p>
@@ -138,8 +148,8 @@ export function HomeDailyDigest({ digest }: HomeDailyDigestProps) {
 
   return (
     <Shell tone={isStale || !summary ? 'warning' : 'primary'}>
-      <Heading>
-        <DataFreshness at={generatedAt} period={formatDateJP(reportDate)} />
+      <Heading title={`${formatDateJP(reportDate)}の要点`}>
+        <DataFreshness at={generatedAt} />
       </Heading>
 
       {freshness === 'pending' && (

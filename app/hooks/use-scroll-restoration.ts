@@ -144,7 +144,7 @@ export function useScrollRestoration(
         if (!el) return false;
         // コンテナがスクロール領域の場合は、コンテナの内容の先頭からの位置に合わせる。
         // offsetTop は最も近い positioned 祖先（一覧を包む relative 要素）が基準で、
-        // 一覧の上にある「今日の要点」（issue #721）の高さぶん手前にずれるため使わない
+        // 一覧の上にあるデイリーレポートの要点（issue #721）の高さぶん手前にずれるため使わない
         if (mainContainer) {
           const elementTop =
             el.getBoundingClientRect().top -

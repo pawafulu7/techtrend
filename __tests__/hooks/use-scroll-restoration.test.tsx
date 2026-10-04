@@ -158,7 +158,7 @@ describe('useScrollRestoration', () => {
     });
 
     it('スクロール領域の内容の先頭から測った記事の位置に戻す（一覧の上の要素の高さを含める）', async () => {
-      // 一覧の上に「今日の要点」がある状態: 記事の offsetTop（一覧を包む要素が基準）は
+      // 一覧の上にデイリーレポートの要点がある状態: 記事の offsetTop（一覧を包む要素が基準）は
       // 0 のままだが、スクロール領域から見た記事の上端は 500px 下にある
       const container = document.createElement('div');
       container.id = 'main-scroll-container';

@@ -308,7 +308,7 @@ describe('HomeClientInfinite の手動更新', () => {
 });
 
 describe('HomeClientInfinite の header（issue #721）', () => {
-  const HEADER = <div data-testid="list-header">今日の要点</div>;
+  const HEADER = <div data-testid="list-header">10月4日の要点</div>;
 
   beforeEach(() => {
     mockUsePersonalizationPreferences.mockReturnValue(preferences(false));

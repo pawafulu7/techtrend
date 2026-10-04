@@ -6,7 +6,7 @@ import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { cn } from '@/lib/utils';
 
-/** 「今日の要点」の読み込み失敗から、サーバーの描画をやり直す（一覧の状態は保つ） */
+/** デイリーレポートの要点の読み込み失敗から、サーバーの描画をやり直す（一覧の状態は保つ） */
 export function HomeDailyDigestReload() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();

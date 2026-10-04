@@ -33,9 +33,11 @@ function ready(
 }
 
 describe('HomeDailyDigest（issue #721）', () => {
-  it('core・注目トピック・レポートの日付・デイリーレポートへのリンクを出す', () => {
+  it('見出しはレポートの対象日にし、core・注目トピック・集計時刻・リンクを出す', () => {
     render(<HomeDailyDigest digest={ready()} />);
-    const section = screen.getByRole('region', { name: '今日の要点' });
+    // 出すのは前日以前の記事のまとめなので、「今日」と書かない
+    const section = screen.getByRole('region', { name: '10月4日の要点' });
+    expect(section).not.toHaveTextContent('今日');
 
     expect(section).toHaveTextContent(SUMMARY.core);
     const topics = within(
@@ -46,7 +48,7 @@ describe('HomeDailyDigest（issue #721）', () => {
     expect(topics[0]).toHaveTextContent('運用の負担が減る');
 
     expect(screen.getByTestId('data-freshness')).toHaveTextContent(
-      '10月4日の記事を 10月5日 14:35 に集計'
+      '10月5日 14:35 に集計'
     );
     expect(
       screen.getByRole('link', { name: 'デイリーレポートを読む' })
@@ -63,9 +65,9 @@ describe('HomeDailyDigest（issue #721）', () => {
     expect(screen.getByTestId('home-daily-digest-note')).toHaveTextContent(
       '10月4日のレポートはまだできていないため、10月3日のレポートを出しています。'
     );
-    expect(screen.getByTestId('data-freshness')).toHaveTextContent(
-      '10月3日の記事を'
-    );
+    expect(
+      screen.getByRole('region', { name: '10月3日の要点' })
+    ).toBeInTheDocument();
     expect(screen.getByText(SUMMARY.core)).toBeInTheDocument();
   });
 
@@ -91,7 +93,9 @@ describe('HomeDailyDigest（issue #721）', () => {
       screen.getByText(/このレポートは要点を生成できませんでした/)
     ).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: '注目トピック' })).toBeNull();
-    expect(screen.getByTestId('data-freshness')).toHaveTextContent('10月4日');
+    expect(
+      screen.getByRole('region', { name: '10月4日の要点' })
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'デイリーレポートを読む' })
     ).toBeInTheDocument();
@@ -118,12 +122,16 @@ describe('HomeDailyDigest（issue #721）', () => {
       screen.getByText(/デイリーレポートはまだありません/)
     ).toBeInTheDocument();
     expect(screen.queryByTestId('data-freshness')).toBeNull();
+    // 対象日が無いので、日付の代わりにレポートの名前を見出しにする
+    expect(
+      screen.getByRole('region', { name: 'デイリーレポートの要点' })
+    ).toBeInTheDocument();
   });
 
   it('読み込みに失敗したら、失敗を示して再読み込みできる', () => {
     render(<HomeDailyDigest digest={{ status: 'error' }} />);
     expect(
-      screen.getByText('今日の要点を読み込めませんでした。')
+      screen.getByText('デイリーレポートの要点を読み込めませんでした。')
     ).toBeInTheDocument();
     screen.getByRole('button', { name: '再読み込み' }).click();
     expect(mockRefresh).toHaveBeenCalledTimes(1);
