@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { useRouter } from 'next/navigation';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 
@@ -40,7 +41,7 @@ export function ArticleCardTags({
             }
           }}
         >
-          {tag.name}
+          {getTagDisplayName(tag.name)}
         </BadgeV2>
       ))}
       {remainingCount > 0 && (

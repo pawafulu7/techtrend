@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -16,7 +17,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   TrendingUp,
   Bookmark,
-  ThumbsUp,
   Star,
   Calendar,
   ExternalLink,
@@ -63,7 +63,11 @@ export function PopularArticles({
     : ((searchParams.get('period') || initialPeriod) as PeriodType);
   const metric = compact
     ? initialMetric
-    : ((searchParams.get('metric') || initialMetric) as MetricType);
+    : ['bookmarks', 'quality', 'combined'].includes(
+          searchParams.get('metric') || ''
+        )
+      ? (searchParams.get('metric') as MetricType)
+      : initialMetric;
 
   const {
     data,
@@ -99,8 +103,6 @@ export function PopularArticles({
     switch (metricType) {
       case 'bookmarks':
         return <Bookmark className="h-4 w-4" />;
-      case 'votes':
-        return <ThumbsUp className="h-4 w-4" />;
       case 'quality':
         return <Star className="h-4 w-4" />;
       default:
@@ -191,19 +193,21 @@ export function PopularArticles({
         <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-primary)/30 to-transparent" />
       </div>
 
+      <p className="text-muted-foreground text-xs">
+        元サイトの反応数は、はてなブックマークの保存数、Dev.to
+        のリアクション数、Hacker News
+        のスコアなどです。指標の意味はソースごとに異なります。
+        総合スコアは反応数40%、品質40%、新しさ20%で計算します。
+      </p>
       <Tabs value={metric} onValueChange={handleMetricChange}>
-        <TabsList className="mb-4 grid w-full grid-cols-4">
+        <TabsList className="mb-4 grid w-full grid-cols-3">
           <TabsTrigger value="combined">
             <TrendingUp className="mr-1 h-4 w-4" />
             総合
           </TabsTrigger>
           <TabsTrigger value="bookmarks">
             <Bookmark className="mr-1 h-4 w-4" />
-            保存
-          </TabsTrigger>
-          <TabsTrigger value="votes">
-            <ThumbsUp className="mr-1 h-4 w-4" />
-            投票
+            元サイトの反応
           </TabsTrigger>
           <TabsTrigger value="quality">
             <Star className="mr-1 h-4 w-4" />
@@ -266,7 +270,6 @@ export function PopularArticles({
                     <ScoreTooltip
                       score={article.score}
                       bookmarks={article.bookmarks}
-                      votes={article.userVotes || 0}
                       qualityScore={article.qualityScore}
                     >
                       <span className="flex items-center gap-1 text-sm">
@@ -278,13 +281,12 @@ export function PopularArticles({
                     </ScoreTooltip>
 
                     <div className="text-muted-foreground flex items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1">
+                      <span
+                        className="flex items-center gap-1"
+                        title="元サイトの反応数"
+                      >
                         <Bookmark className="h-3 w-3" />
                         {article.bookmarks}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <ThumbsUp className="h-3 w-3" />
-                        {article.userVotes || 0}
                       </span>
                       <span className="flex items-center gap-1">
                         <Star className="h-3 w-3" />
@@ -301,7 +303,7 @@ export function PopularArticles({
                           variant="outline"
                           className="text-xs"
                         >
-                          {tag.name}
+                          {getTagDisplayName(tag.name)}
                         </Badge>
                       ))}
                       {article.tags.length > 3 && (

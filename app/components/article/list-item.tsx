@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
@@ -133,7 +134,7 @@ export function ArticleListItem({
                   }}
                   onKeyDown={(e) => e.stopPropagation()}
                 >
-                  {tag.name}
+                  {getTagDisplayName(tag.name)}
                 </button>
               </BadgeV2>
             ))}

@@ -141,14 +141,14 @@ export function ProfileForm() {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="twitter">Twitter</Label>
+          <Label htmlFor="twitter">X（Twitter）</Label>
           <Input
             id="twitter"
             placeholder="@username"
             {...register('twitter', {
               pattern: {
                 value: /^@?[A-Za-z0-9_]{1,15}$/,
-                message: '有効なTwitterユーザー名を入力してください',
+                message: '有効なX（Twitter）ユーザー名を入力してください',
               },
             })}
             disabled={isLoading}

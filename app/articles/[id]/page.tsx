@@ -1,3 +1,4 @@
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
@@ -208,7 +209,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                           <Link
                             href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}
                           >
-                            {tag.name}
+                            {getTagDisplayName(tag.name)}
                           </Link>
                         </BadgeV2>
                       ))}

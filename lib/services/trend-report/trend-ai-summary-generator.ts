@@ -1,3 +1,4 @@
+import { sanitizeTrendAiText } from '@/lib/utils/trend-ai-text';
 import { PrismaClient, TrendPeriodType } from '@/lib/prisma-exports';
 import type { GenerativeModel } from '@google/generative-ai';
 import logger from '@/lib/logger';
@@ -269,7 +270,7 @@ async function generateAISummaryStructured(
 
   const runAttempt = async (promptText: string, temperature: number) => {
     const rawText = await generateOnce(promptText, temperature);
-    const json = extractFirstJsonObject(rawText);
+    const json = sanitizeTrendAiText(extractFirstJsonObject(rawText));
     if (json && typeof json === 'object') {
       resolveRefKeysToIds(json as Record<string, unknown>, refMap, fallbackId);
     }

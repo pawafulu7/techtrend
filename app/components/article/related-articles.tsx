@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { memo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -109,7 +110,7 @@ const RelatedArticleItem = memo(function RelatedArticleItem({
                 variant="outline"
                 className="h-4 px-1.5 py-0 text-xs"
               >
-                {tag.name}
+                {getTagDisplayName(tag.name)}
               </BadgeV2>
             ))}
             {article.tags.length > 3 && (

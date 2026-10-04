@@ -1,5 +1,7 @@
 'use client';
 
+import { sanitizeTrendAiText } from '@/lib/utils/trend-ai-text';
+
 import {
   TrendingUp,
   CheckCircle2,
@@ -78,6 +80,7 @@ export function StructuredAISummaryView({
   topArticlesById,
   evidenceArticles,
 }: StructuredAISummaryViewProps) {
+  summary = sanitizeTrendAiText(summary);
   if (summary.version === 'trend_ai_summary_v2') {
     return (
       <div className="flex-1 space-y-4">

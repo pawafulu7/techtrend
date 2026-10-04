@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
+import { articleAggregationWhere } from '@/lib/database/article-aggregation-filter';
 import { popularCache, type PopularPeriod } from '@/lib/cache/popular-cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { publicCacheHeaders } from '@/lib/api/cache-headers';
@@ -15,9 +15,7 @@ const boolParam = (defaultVal: 'true' | 'false' = 'false') =>
 
 const querySchema = z.object({
   period: z.enum(['today', 'week', 'month', 'all']).default('week'),
-  metric: z
-    .enum(['bookmarks', 'votes', 'quality', 'combined'])
-    .default('combined'),
+  metric: z.enum(['bookmarks', 'quality', 'combined']).default('combined'),
   category: z.string().trim().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   includeEmptyContent: boolParam(),
@@ -121,23 +119,23 @@ async function getPopularArticles(request: NextRequest) {
       popularPeriod,
       async () => {
         // 期間フィルター
-        let dateFilter = {};
+        let from: Date | undefined;
         const now = new Date();
         switch (period) {
           case 'today':
             const todayStart = new Date(now);
             todayStart.setHours(0, 0, 0, 0);
-            dateFilter = { publishedAt: { gte: todayStart } };
+            from = todayStart;
             break;
           case 'week':
             const weekAgo = new Date(now);
             weekAgo.setDate(weekAgo.getDate() - 7);
-            dateFilter = { publishedAt: { gte: weekAgo } };
+            from = weekAgo;
             break;
           case 'month':
             const monthAgo = new Date(now);
             monthAgo.setMonth(monthAgo.getMonth() - 1);
-            dateFilter = { publishedAt: { gte: monthAgo } };
+            from = monthAgo;
             break;
         }
 
@@ -199,11 +197,6 @@ async function getPopularArticles(request: NextRequest) {
             { publishedAt: 'desc' },
             { id: 'desc' },
           ],
-          votes: [
-            { userVotes: 'desc' },
-            { publishedAt: 'desc' },
-            { id: 'desc' },
-          ],
           quality: [
             { qualityScore: 'desc' },
             { publishedAt: 'desc' },
@@ -222,10 +215,7 @@ async function getPopularArticles(request: NextRequest) {
         const articles = await prisma.article.findMany({
           where: {
             AND: [
-              { isHidden: false },
-              // 無効化したソースの記事を除く（issue #688）
-              enabledSourceWhere(),
-              dateFilter,
+              articleAggregationWhere({ from, to: now }),
               categoryFilter,
               qualityScoreFilter,
               contentFilter,
@@ -253,17 +243,13 @@ async function getPopularArticles(request: NextRequest) {
             case 'bookmarks':
               score = article.bookmarks ?? 0;
               break;
-            case 'votes':
-              score = article.userVotes || 0;
-              break;
             case 'quality':
               score = article.qualityScore ?? 0;
               break;
             case 'combined':
               // 総合スコア計算
-              const bookmarkWeight = 0.3;
-              const voteWeight = 0.2;
-              const qualityWeight = 0.3;
+              const bookmarkWeight = 0.4;
+              const qualityWeight = 0.4;
               const recencyWeight = 0.2;
 
               const ageInDays =
@@ -273,7 +259,6 @@ async function getPopularArticles(request: NextRequest) {
 
               score =
                 (article.bookmarks ?? 0) * bookmarkWeight +
-                (article.userVotes || 0) * voteWeight +
                 (article.qualityScore ?? 0) * qualityWeight +
                 recencyScore * 100 * recencyWeight;
               break;

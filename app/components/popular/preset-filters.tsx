@@ -4,21 +4,40 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 
 type PeriodType = 'today' | 'week' | 'month' | 'all';
-type MetricType = 'bookmarks' | 'votes' | 'quality' | 'combined';
+type MetricType = 'bookmarks' | 'quality' | 'combined';
 
 export const DEFAULT_PERIOD: PeriodType = 'week';
 export const DEFAULT_METRIC: MetricType = 'combined';
 
 interface PresetFiltersProps {
   selectedPreset: string | null;
-  onPresetChange: (preset: string | null, period: PeriodType, metric: MetricType) => void;
+  onPresetChange: (
+    preset: string | null,
+    period: PeriodType,
+    metric: MetricType
+  ) => void;
   className?: string;
 }
 
 const presets = [
-  { id: 'hot', label: 'トレンド', period: 'today' as PeriodType, metric: 'combined' as MetricType },
-  { id: 'quality', label: '高品質', period: 'week' as PeriodType, metric: 'quality' as MetricType },
-  { id: 'popular', label: '人気', period: 'month' as PeriodType, metric: 'bookmarks' as MetricType },
+  {
+    id: 'hot',
+    label: 'トレンド',
+    period: 'today' as PeriodType,
+    metric: 'combined' as MetricType,
+  },
+  {
+    id: 'quality',
+    label: '高品質',
+    period: 'week' as PeriodType,
+    metric: 'quality' as MetricType,
+  },
+  {
+    id: 'popular',
+    label: '人気',
+    period: 'month' as PeriodType,
+    metric: 'bookmarks' as MetricType,
+  },
 ] as const;
 
 export function PresetFilters({
@@ -53,12 +72,12 @@ export function PresetFilters({
           value={preset.id}
           aria-label={preset.label}
           className={cn(
-            'rounded-full px-4 min-h-[44px]',
+            'min-h-[44px] rounded-full px-4',
             'text-sm font-medium',
             'transition-all duration-200',
             'data-[state=on]:bg-primary data-[state=on]:text-primary-foreground',
             'hover:bg-accent hover:text-accent-foreground',
-            'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+            'focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2',
             'motion-reduce:transition-none'
           )}
         >

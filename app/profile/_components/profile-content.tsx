@@ -7,11 +7,13 @@ import { CardV2 } from '@/components/ui-v2/card-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, User, UserCog, AlertTriangle } from 'lucide-react';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { CREDENTIAL_PROVIDER_ID } from '@/lib/auth/constants';
 
 const PROVIDER_LABELS: Record<string, string> = {
   google: 'Google',
   github: 'GitHub',
   email: 'メールリンク',
+  [CREDENTIAL_PROVIDER_ID]: 'メール/パスワード',
   credentials: 'メール/パスワード',
 };
 
@@ -20,13 +22,13 @@ function getAuthMethodLabel(
   hasPassword?: boolean
 ): string {
   if (!providers || providers.length === 0) {
-    return hasPassword ? PROVIDER_LABELS.credentials : 'なし';
+    return hasPassword ? PROVIDER_LABELS[CREDENTIAL_PROVIDER_ID] : 'なし';
   }
-  const providerLabels = providers.map((p) => PROVIDER_LABELS[p] || p);
-  if (hasPassword && !providers.includes('credentials')) {
-    providerLabels.push(PROVIDER_LABELS.credentials);
+  const providerLabels = providers.map((p) => PROVIDER_LABELS[p] || 'その他');
+  if (hasPassword) {
+    providerLabels.push(PROVIDER_LABELS[CREDENTIAL_PROVIDER_ID]);
   }
-  return providerLabels.join(', ');
+  return Array.from(new Set(providerLabels)).join(', ');
 }
 
 export function ProfileContent() {

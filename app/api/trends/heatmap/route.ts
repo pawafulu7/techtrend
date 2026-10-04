@@ -5,6 +5,7 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
 import { applyPublicCacheHeaders } from '@/lib/api/cache-headers';
 import { enabledSourceSql } from '@/lib/database/enabled-source-filter';
+import { getArticleCategoryLabel } from '@/lib/constants/tag-categories';
 
 type Period = 'day' | 'week' | 'month';
 
@@ -88,7 +89,7 @@ async function handler(request: NextRequest) {
     }
 
     const period = periodParam as Period;
-    const cacheKey = `heatmap:v3:${period}`;
+    const cacheKey = `heatmap:v4:${period}`;
 
     const heatmapData = await trendsCache.getOrSet(cacheKey, async () => {
       const queries = buildQueries(period);
@@ -135,7 +136,7 @@ async function handler(request: NextRequest) {
 
           return {
             category: row.category!,
-            label: row.category!,
+            label: getArticleCategoryLabel(row.category!),
             count,
             share: Math.round(currentShare * 10) / 10,
             previousShare: Math.round(previousShare * 10) / 10,

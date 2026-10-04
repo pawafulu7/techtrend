@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { useState, useEffect, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui-v2/badge-v2';
@@ -275,7 +276,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
                 className="cursor-pointer"
                 onClick={() => toggleTag(tag)}
               >
-                {tag}
+                {getTagDisplayName(tag)}
                 <X className="ml-1 h-3 w-3" />
               </Badge>
             ))}
@@ -337,7 +338,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
                       <span
                         className={cn('text-sm', isSelected && 'font-medium')}
                       >
-                        {tag.name}
+                        {getTagDisplayName(tag.name)}
                       </span>
                       <span className="text-muted-foreground text-xs">
                         {tag.count}

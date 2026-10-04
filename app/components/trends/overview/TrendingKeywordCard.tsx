@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import Link from 'next/link';
 import { TrendingUp, ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -57,7 +58,7 @@ export function TrendingKeywordCard({ keyword }: { keyword: TrendingKeyword }) {
 
           {/* Keyword name */}
           <h3 className="text-foreground text-base leading-snug font-semibold decoration-1 underline-offset-2 group-hover:underline">
-            {keyword.name}
+            {getTagDisplayName(keyword.name)}
           </h3>
 
           {/* Count */}

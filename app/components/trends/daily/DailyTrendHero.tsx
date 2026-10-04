@@ -1,5 +1,7 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
+import { stripInternalArticleRefs } from '@/lib/utils/trend-ai-text';
 import { useMemo } from 'react';
 import {
   Sparkles,
@@ -44,7 +46,7 @@ type LegacyAISummary = {
 };
 
 function parseLegacyAISummary(text: string): LegacyAISummary | null {
-  const normalized = text.replace(/\r\n/g, '\n').trim();
+  const normalized = stripInternalArticleRefs(text.replace(/\r\n/g, '\n'));
   if (!normalized) return null;
 
   const topicsSectionMatch = normalized.match(
@@ -258,7 +260,7 @@ export function DailyTrendHero({
                   'bg-primary/50 text-primary-foreground hover:bg-primary/40'
               )}
             >
-              {tag.name}
+              {getTagDisplayName(tag.name)}
               <span className="ml-1 opacity-70">({tag.count})</span>
             </Badge>
           ))}

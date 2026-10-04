@@ -32,7 +32,10 @@ import { GET } from '@/app/api/trends/heatmap/route';
 import { prisma } from '@/lib/database';
 import { resetEnvCache } from '@/lib/config/env';
 import { NextRequest } from 'next/server';
-import { ENABLED_SOURCE_SQL, sqlFragmentsOf } from '../../helpers/sql-fragments';
+import {
+  ENABLED_SOURCE_SQL,
+  sqlFragmentsOf,
+} from '../../helpers/sql-fragments';
 
 const prismaMock = prisma as any;
 
@@ -73,10 +76,9 @@ describe('/api/trends/heatmap', () => {
     expect(data.categories).toHaveLength(2);
 
     // ai_ml: share 60% (was 50%) → changeRate = +10.0
-    const aiCategory = data.categories.find(
-      (c: any) => c.category === 'ai_ml'
-    );
+    const aiCategory = data.categories.find((c: any) => c.category === 'ai_ml');
     expect(aiCategory).toBeDefined();
+    expect(aiCategory.label).toBe('AI/機械学習');
     expect(aiCategory.count).toBe(60);
     expect(aiCategory.share).toBe(60);
     expect(aiCategory.changeRate).toBe(10);
@@ -86,6 +88,7 @@ describe('/api/trends/heatmap', () => {
       (c: any) => c.category === 'frontend'
     );
     expect(feCategory).toBeDefined();
+    expect(feCategory.label).toBe('フロントエンド');
     expect(feCategory.count).toBe(40);
     expect(feCategory.share).toBe(40);
     expect(feCategory.changeRate).toBe(-10);
@@ -212,4 +215,20 @@ describe('/api/trends/heatmap', () => {
       }
     }
   );
+  it('タグ分類にない記事分類も表示名を返し、未知の値は内部スラッグを出さない', async () => {
+    prismaMock.$queryRaw
+      .mockResolvedValueOnce([
+        { category: 'security', count: BigInt(3) },
+        { category: 'mobile', count: BigInt(2) },
+        { category: 'future_category', count: BigInt(1) },
+      ])
+      .mockResolvedValueOnce([]);
+    const response = await GET(createRequest());
+    const data = await response.json();
+    expect(data.categories.map((c: { label: string }) => c.label)).toEqual([
+      'セキュリティ',
+      'モバイル',
+      'その他',
+    ]);
+  });
 });

@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import {
   ExternalLink,
   Newspaper,
@@ -238,7 +239,7 @@ export function ReaderArticleDetail({
                     key={tag.id}
                     className="rounded-full bg-[var(--tt-color-surface-muted)] px-2 py-0.5 text-[11px] text-[var(--tt-color-text-muted)]"
                   >
-                    #{tag.name}
+                    #{getTagDisplayName(tag.name)}
                   </span>
                 ))}
               </div>

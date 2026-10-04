@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -237,9 +238,9 @@ export function TagCloud({
                   getTagColor(tag, { minCount, maxCount })
                 )}
                 style={{ fontSize: `${fontSizes[tag.id]}px` }}
-                title={`${tag.name} (${tag.count}件)`}
+                title={`${getTagDisplayName(tag.name)} (${tag.count}件)`}
               >
-                {tag.name}
+                {getTagDisplayName(tag.name)}
                 {period !== 'all' && getTrendIcon(tag.trend)}
               </button>
             ))}

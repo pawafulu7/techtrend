@@ -42,15 +42,15 @@ describe('PopularCache', () => {
     });
 
     it('metric を含めたキーを生成する', () => {
-      expect(cache.generateKey('weekly', { metric: 'votes' })).toBe(
-        'articles:weekly:metric:votes'
+      expect(cache.generateKey('weekly', { metric: 'quality' })).toBe(
+        'articles:weekly:metric:quality'
       );
     });
 
     it('異なる metric で異なるキーを生成する', () => {
-      const votesKey = cache.generateKey('weekly', {
+      const qualityKey = cache.generateKey('weekly', {
         limit: 20,
-        metric: 'votes',
+        metric: 'quality',
       });
       const bookmarksKey = cache.generateKey('weekly', {
         limit: 20,
@@ -61,8 +61,8 @@ describe('PopularCache', () => {
         metric: 'combined',
       });
 
-      expect(votesKey).not.toBe(bookmarksKey);
-      expect(votesKey).not.toBe(combinedKey);
+      expect(qualityKey).not.toBe(bookmarksKey);
+      expect(qualityKey).not.toBe(combinedKey);
       expect(bookmarksKey).not.toBe(combinedKey);
     });
 

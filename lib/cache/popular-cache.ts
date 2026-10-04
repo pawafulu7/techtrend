@@ -25,7 +25,7 @@ export class PopularCache {
         period as PopularPeriod,
         new RedisCache({
           ttl,
-          namespace: '@techtrend/cache:popular',
+          namespace: '@techtrend/cache:popular:v2',
         })
       );
     });
