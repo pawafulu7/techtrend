@@ -5,8 +5,12 @@
  */
 jest.mock('@/lib/cache', () => ({
   RedisCache: jest.fn().mockImplementation(() => ({
-    get: jest.fn().mockResolvedValue(null),
-    set: jest.fn().mockResolvedValue(undefined),
+    getOrSetWithLockWithMeta: jest.fn(
+      async (_key: string, fetcher: () => Promise<unknown>) => ({
+        value: await fetcher(),
+        cacheHit: false,
+      })
+    ),
   })),
 }));
 jest.mock('@/lib/middleware/with-rate-limit', () => ({

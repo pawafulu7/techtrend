@@ -13,12 +13,22 @@ export interface SourceDataItem {
 }
 
 export async function fetchKeywordsData() {
-  const { trending, newTags } = await getTrendingKeywords();
-  return { trending, newTags };
+  try {
+    const { trending, newTags } = await getTrendingKeywords();
+    return { trending, newTags };
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to fetch trending keywords (SC)');
+    throw error;
+  }
 }
 
 export async function fetchAnalysisData(days: number) {
-  return getTrendAnalysis(days);
+  try {
+    return await getTrendAnalysis(days);
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to fetch trend analysis (SC)');
+    throw error;
+  }
 }
 
 export async function fetchSourceData(): Promise<SourceDataItem[]> {

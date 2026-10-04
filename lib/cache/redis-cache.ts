@@ -279,7 +279,7 @@ export class RedisCache {
    *
    * Returned metadata:
    *   - value: The cached or freshly fetched value
-   *   - cacheHit: true if the value was served from cache on the first lookup
+   *   - cacheHit: direct hit on the first lookup or post-lock recheck; contended waits are reported separately
    *   - waitedMs: Milliseconds spent waiting in the lock-poll loop (0 if lock was acquired immediately or cache hit)
    *   - timedOut: true if the lock-wait loop reached maxWaitTime and fell back to a direct fetch
    */

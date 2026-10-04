@@ -173,6 +173,27 @@ it('search keys use trimmed/truncated q, while distinct queries stay separate', 
   expect(db.$queryRaw).toHaveBeenCalledTimes(2);
 });
 
+it.each([
+  ['analysis', () => fetchAnalysisData(7), 1],
+  ['keywords', () => fetchKeywordsData(), 3],
+  ['stats', () => fetchSourceData(), 2],
+] as const)(
+  'ten concurrent %s loads execute one aggregate',
+  async (_name, load, expectedRawQueries) => {
+    const values = await Promise.all(Array.from({ length: 10 }, () => load()));
+    expect(
+      values.every(
+        (value) => JSON.stringify(value) === JSON.stringify(values[0])
+      )
+    ).toBe(true);
+    expect(db.$queryRaw).toHaveBeenCalledTimes(expectedRawQueries);
+    if (_name === 'stats') {
+      expect(db.article.count).toHaveBeenCalledTimes(3);
+      expect(db.source.findMany).toHaveBeenCalledTimes(1);
+    }
+  }
+);
+
 it('late lock acquisition rechecks a value filled by the previous owner', async () => {
   const cache = new RedisCache({ namespace: 'race-test' });
   redis.set.mockImplementationOnce(async () => {

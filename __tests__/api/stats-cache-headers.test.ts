@@ -9,8 +9,8 @@ const mockStatsCacheGet = jest.fn();
 
 jest.mock('@/lib/cache', () => ({
   RedisCache: jest.fn().mockImplementation(() => ({
-    get: (...args: unknown[]) => mockStatsCacheGet(...args),
-    set: jest.fn(),
+    getOrSetWithLockWithMeta: (...args: unknown[]) =>
+      mockStatsCacheGet(...args),
   })),
 }));
 
@@ -42,7 +42,10 @@ describe('/api/stats cache headers (issue #647)', () => {
 
   beforeEach(() => {
     mockStatsCacheGet.mockReset();
-    mockStatsCacheGet.mockResolvedValue(CACHED_STATS);
+    mockStatsCacheGet.mockResolvedValue({
+      value: CACHED_STATS,
+      cacheHit: true,
+    });
   });
 
   afterEach(() => {
