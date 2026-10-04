@@ -51,6 +51,7 @@
     "test:react": "jest -c jest.config.dom.js",
     "test:changed": "jest -o -c jest.config.node.js",
     "test:coverage:ci": "jest --coverage --ci --maxWorkers=2 -c jest.config.node.js",
+    "db:check-schema": "tsx scripts/db/check-schema.ts",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate",

@@ -43,12 +43,12 @@ Tag の `Tag_name_idx` / `idx_tag_name` を削除し、`Tag_name_key` と `Tag_n
 開発 DB で `pg_index` の定義を比較した結果、Article と Tag の重複した通常索引は0組。Tag の名前に対する UNIQUE 索引は2本残っている。
 `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script --exit-code` に Article / Tag の差分はない。
 
-ただし、DB 全体の diff は終了コード2となり、以下の既存差分が残る。#720 の「DB 全体の差分なし」は未達成として扱う。
+ただし、DB 全体の diff は終了コード2となり、以下の既存差分が残っていたため、初回PRでは #720 の「DB 全体の差分なし」を未達成として扱った。追加対応の二段階検証は末尾と schema-integrity.md を参照する。
 これらは今回の索引修正の対象外で、検索用 ANN 索引の削除などを含むため、diff の SQL をそのまま適用しない。
 
 - `idx_article_chunk_embedding_hnsw_cosine` と `idx_session_token` が schema に表現されていない。
 - `SocialPost.updatedAt` と `UserSourcePreset.sourceIds` の DEFAULT が schema と異なる。
-- `uq_user_source_preset_name` が DB に存在しない。
+- `uq_user_source_preset_name` は `(userId, lower(name))` の関数式 UNIQUE として DB に存在する。通常の `@@unique([userId, name])` という schema 宣言とは異なるため、Prisma が CREATE 差分を出す（初回記録の「DB に存在しない」は誤り）。
 
 ## 検証結果
 
@@ -64,3 +64,9 @@ Prisma 7.8.0 で `PRISMA_MIGRATION_ENGINE_SKIP_TRANSACTIONS` が未設定であ�
 GitHub Actions の E2E は Redis サービスを起動していたが、テスト用の `REDIS_URL` がなく fixture のキャッシュ削除で失敗していた。E2E ジョブに `redis://localhost:6379` を設定し、アプリとテストが同じ Redis を使うようにした。
 
 レビュー修正後の Docker 本番ビルド、TypeScript、ESLint は成功。関連 Node/API/実 DB テスト30件、Reactテスト16件、Chromium / Firefox の E2E 10件が成功した。E2E は `NODE_ENV=production` と実 Redis で実行した。
+
+## #720 の追加対応
+
+#720 の残る条件は、SQL 管理索引を維持した二段階の検証としてユーザーに確認済み。
+`db:check-schema` で migration-backed diff の終了コード0、Prisma管理対象の差分なし、SQL管理対象の物理定義と一意性を確認する。素の `--to-schema` に残る HNSW の DROP 差分を実行して消すことはしない。
+検証方法と残る表現制約は [schema-integrity.md](./schema-integrity.md) を参照する。
