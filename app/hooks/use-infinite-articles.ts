@@ -1,6 +1,7 @@
 import {
   useInfiniteQuery,
   useQueryClient,
+  replaceEqualDeep,
   InfiniteData,
 } from '@tanstack/react-query';
 import { ArticleWithUserData } from '@/types/models';
@@ -40,6 +41,8 @@ interface ArticlesResponse {
   };
   /** 画面がこのページを取得した時刻（ms）。取得時刻の表示に使う（issue #707） */
   fetchedAt?: number;
+  /** このページの要求を送った時刻（ms）。これより後に成功したお気に入りの変更は応答に入っていない */
+  requestedAt?: number;
 }
 
 type InfiniteArticlesData = InfiniteData<ArticlesResponse, number>;
@@ -51,8 +54,11 @@ export function useInfiniteArticles(
   const queryClient = useQueryClient();
   const prevFilterKeyRef = useRef<string>('');
   const totalCountRef = useRef<number | undefined>(undefined);
-  // Track last update timestamp per article to handle race conditions
-  const lastFavoriteUpdateRef = useRef<Map<string, number>>(new Map());
+  // Track last favorite update per article to handle race conditions
+  // （時刻は古いイベントの無視に、値は取り直しの応答より新しい変更の反映に使う）
+  const lastFavoriteUpdateRef = useRef<
+    Map<string, { timestamp: number; isFavorited: boolean }>
+  >(new Map());
 
   // Memory cleanup for lastFavoriteUpdateRef (remove entries older than 1 hour)
   useEffect(() => {
@@ -62,7 +68,7 @@ export function useInfiniteArticles(
     const cleanup = () => {
       const now = Date.now();
       const map = lastFavoriteUpdateRef.current;
-      for (const [articleId, timestamp] of map.entries()) {
+      for (const [articleId, { timestamp }] of map.entries()) {
         if (now - timestamp > MAX_AGE) {
           map.delete(articleId);
         }
@@ -205,9 +211,10 @@ export function useInfiniteArticles(
       const { articleId, isFavorited, timestamp } = customEvent.detail;
 
       // Race condition prevention: ignore older events
-      const lastUpdate = lastFavoriteUpdateRef.current.get(articleId) || 0;
+      const lastUpdate =
+        lastFavoriteUpdateRef.current.get(articleId)?.timestamp || 0;
       if (timestamp < lastUpdate) return;
-      lastFavoriteUpdateRef.current.set(articleId, timestamp);
+      lastFavoriteUpdateRef.current.set(articleId, { timestamp, isFavorited });
 
       // Update all infinite-articles caches using setQueriesData
       queryClient.setQueriesData<InfiniteArticlesData>(
@@ -280,8 +287,54 @@ export function useInfiniteArticles(
   // 受容する理由: bfcache 復元の発火経路自体が極小である。SPA 内遷移では
   // pageshow(persisted) が発火せず、BASIC 認証ゲート環境では no-store により
   // そもそも bfcache の対象外になる。
+  // 全ページの取り直し（手動更新など）は、全ページを取り終えてからキャッシュを置き換える。
+  // その途中で成功したお気に入りの変更は、先に取ったページの応答に入っておらず、
+  // 置き換えで巻き戻る。要求を送った後に成功した変更を重ねてからキャッシュに書く（issue #707）。
+  // select ではなく structuralSharing で行うのは、select の結果はキャッシュに残らず、
+  // 一覧を再マウントすると巻き戻った値が出るため
+  const applyNewerFavorites = useCallback(
+    (data: InfiniteData<ArticlesResponse>): InfiniteData<ArticlesResponse> => {
+      const updates = lastFavoriteUpdateRef.current;
+      if (updates.size === 0) return data;
+      let changed = false;
+      const pages = data.pages.map((page) => {
+        const { requestedAt } = page;
+        if (requestedAt === undefined) return page;
+        let pageChanged = false;
+        const items = page.data.items.map((item) => {
+          const update = updates.get(item.id);
+          if (
+            !update ||
+            update.timestamp <= requestedAt ||
+            item.isFavorited === update.isFavorited
+          ) {
+            return item;
+          }
+          pageChanged = true;
+          return { ...item, isFavorited: update.isFavorited };
+        });
+        if (!pageChanged) return page;
+        changed = true;
+        return { ...page, data: { ...page.data, items } };
+      });
+      return changed ? { ...data, pages } : data;
+    },
+    []
+  );
+  const shareWithNewerFavorites = useCallback(
+    (oldData: unknown, newData: unknown) => {
+      const data = newData as InfiniteData<ArticlesResponse> | undefined;
+      return replaceEqualDeep(
+        oldData,
+        data?.pages ? applyNewerFavorites(data) : newData
+      );
+    },
+    [applyNewerFavorites]
+  );
+
   const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey: ['infinite-articles', filterKey],
+    structuralSharing: shareWithNewerFavorites,
     queryFn: async ({ pageParam, signal }) => {
       const currentPage = (pageParam as number) || 1;
       // 毎回新しいURLSearchParamsを作成
@@ -340,6 +393,7 @@ export function useInfiniteArticles(
 
       // Debug log removed
 
+      const requestedAt = Date.now();
       const response = await fetch(`${endpoint}?${searchParams.toString()}`, {
         signal,
       });
@@ -373,7 +427,7 @@ export function useInfiniteArticles(
 
       // dataUpdatedAt はお気に入りの反映（setQueryData）でも進むため、取得時刻は
       // ページ自体に持たせる
-      return { ...data, fetchedAt: Date.now() };
+      return { ...data, fetchedAt: Date.now(), requestedAt };
     },
     getNextPageParam: (lastPage) => {
       const { page, totalPages } = lastPage.data;

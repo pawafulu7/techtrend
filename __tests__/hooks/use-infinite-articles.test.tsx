@@ -165,4 +165,117 @@ describe('useInfiniteArticles', () => {
     expect(query).toBeDefined();
     expect(query.options.refetchOnReconnect).toBe(false);
   });
+
+  /**
+   * 全ページの取り直し（ホームの手動更新。issue #707）は、全ページを取り終えてから
+   * キャッシュを置き換える。取り直しの途中で成功したお気に入りの変更は、先に取った
+   * ページの応答に入っておらず、置き換えで巻き戻っていた。
+   */
+  describe('取り直しの途中で成功したお気に入りの変更', () => {
+    function pageWith(isFavorited: boolean) {
+      return {
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            data: {
+              items: [{ id: 'article-a', title: 'A', isFavorited }],
+              total: 1,
+              page: 1,
+              totalPages: 1,
+              limit: 20,
+            },
+          }),
+      };
+    }
+
+    type HookResult = { current: ReturnType<typeof useInfiniteArticles> };
+
+    function isFavorited(result: HookResult) {
+      return result.current.data?.pages[0].data.items[0].isFavorited;
+    }
+
+    // TanStack Query は読まれたプロパティの変更でしか再描画を通知しない
+    // （query-core の queryObserver.ts の trackedProps）。data を先に読んでおく
+    async function waitForInitialPage(result: HookResult) {
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+        expect(isFavorited(result)).toBe(false);
+      });
+    }
+
+    function dispatchFavorite(isFavorited: boolean, timestamp: number) {
+      act(() => {
+        window.dispatchEvent(
+          new CustomEvent('article-favorite-changed', {
+            detail: { articleId: 'article-a', isFavorited, timestamp },
+          })
+        );
+      });
+    }
+
+    async function refetchWithDelayedResponse(
+      result: HookResult,
+      duringRefetch: () => void
+    ) {
+      let respond: (value: unknown) => void = () => {};
+      mockFetch.mockImplementationOnce(
+        () => new Promise((resolve) => (respond = resolve))
+      );
+      let refetching: Promise<unknown> = Promise.resolve();
+      act(() => {
+        refetching = result.current.refetch();
+      });
+      // 要求を送った後に、お気に入りの変更が成功する
+      await waitFor(() => expect(articleListUrls()).toHaveLength(2));
+      duringRefetch();
+      // 応答は変更前の状態（未登録）
+      await act(async () => {
+        respond(pageWith(false));
+        await refetching;
+      });
+      await flush();
+    }
+
+    it('要求を送った後に成功した変更は、取り直しの応答で巻き戻らない', async () => {
+      mockFetch.mockResolvedValue(pageWith(false));
+      const queryClient = createTestQueryClient();
+      const { result, unmount } = renderHook(() => useInfiniteArticles({}), {
+        wrapper: createWrapper(queryClient),
+      });
+      await waitForInitialPage(result);
+
+      await refetchWithDelayedResponse(result, () =>
+        dispatchFavorite(true, Date.now() + 1)
+      );
+
+      expect(isFavorited(result)).toBe(true);
+
+      // キャッシュにも残る（一覧を再マウントしても巻き戻らない）
+      unmount();
+      const remounted = renderHook(() => useInfiniteArticles({}), {
+        wrapper: createWrapper(queryClient),
+      });
+      expect(isFavorited(remounted.result)).toBe(true);
+    });
+
+    it('要求を送る前の変更は、応答（サーバーの状態）を優先する', async () => {
+      mockFetch.mockResolvedValue(pageWith(false));
+      const queryClient = createTestQueryClient();
+      const { result, unmount } = renderHook(() => useInfiniteArticles({}), {
+        wrapper: createWrapper(queryClient),
+      });
+      await waitForInitialPage(result);
+
+      // 要求を送る前に成功した変更（その後、別の画面で取り消されたなど）。
+      // 応答はその後のサーバーの状態なので、応答を優先する
+      dispatchFavorite(true, Date.now());
+      // 通知は setTimeout(0) を経て届く（query-core の notifyManager）
+      await waitFor(() => expect(isFavorited(result)).toBe(true));
+      await refetchWithDelayedResponse(result, () => {});
+
+      expect(isFavorited(result)).toBe(false);
+      unmount();
+    });
+  });
 });
