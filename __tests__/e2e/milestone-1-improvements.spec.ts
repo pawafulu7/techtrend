@@ -184,11 +184,19 @@ test.describe('マイルストーン1: 表示と集計の回帰検査', () => {
   }, info) => {
     await page.goto('/trends/daily');
     await expect(page.getByText('検証用の発表', { exact: true })).toBeVisible();
+    // The app scrolls inside <main>; reveal the report before taking the screenshot.
+    await page
+      .getByText('検証用の発表', { exact: true })
+      .scrollIntoViewIfNeeded();
+    await expect(
+      page.getByText('検証用の発表', { exact: true })
+    ).toBeInViewport();
     await expect(page.locator('body')).not.toContainText(/[（(\[]A\d+[）)\]]/);
     await expect(page.getByText('関連記事 1件', { exact: true })).toBeVisible();
     await page.screenshot({
       path: info.outputPath('daily.png'),
       fullPage: true,
+      animations: 'disabled',
     });
   });
 
