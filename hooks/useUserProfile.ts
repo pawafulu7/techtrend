@@ -39,8 +39,9 @@ export function useUserProfile(options?: UseUserProfileOptions) {
       return;
     }
 
-    // 再試行やアンマウントの後に届いた古い応答で状態を書き換えない
+    // 再試行やアンマウントの後は取得を止め、古い応答で状態を書き換えない
     let cancelled = false;
+    const controller = new AbortController();
 
     const fetchUserProfile = async () => {
       try {
@@ -48,6 +49,7 @@ export function useUserProfile(options?: UseUserProfileOptions) {
         // 失敗後の再試行中も失敗表示（再試行中…）を残すため、error は成功したときに消す
         const response = await fetch('/api/user/profile', {
           cache: 'no-store',
+          signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -66,9 +68,10 @@ export function useUserProfile(options?: UseUserProfileOptions) {
       }
     };
 
-    fetchUserProfile();
+    void fetchUserProfile();
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [enabled, reloadKey]);
 

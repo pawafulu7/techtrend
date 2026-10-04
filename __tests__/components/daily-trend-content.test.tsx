@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { DailyTrendContent } from '@/app/trends/daily/_components/daily-trend-content';
 
@@ -42,5 +43,33 @@ describe('DailyTrendContent: 取得の失敗の文言（issue #701）', () => {
     expect(
       screen.queryByText('No report found for this date')
     ).not.toBeInTheDocument();
+  });
+
+  it('再試行の応答が JSON にならない 500 でも、ネットワークエラーではなく取得の失敗として出す', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.reject(new SyntaxError('Unexpected token <')),
+    });
+
+    try {
+      render(
+        <DailyTrendContent
+          initialData={{ success: false, error: 'Internal server error' }}
+        />
+      );
+      await userEvent.click(screen.getByRole('button', { name: /再試行/ }));
+
+      expect(
+        await screen.findByText('データの取得に失敗しました')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('ネットワークエラーが発生しました')
+      ).not.toBeInTheDocument();
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    } finally {
+      global.fetch = originalFetch;
+    }
   });
 });

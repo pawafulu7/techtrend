@@ -48,22 +48,32 @@ export function TrendsContent({
   const [selectedDays, setSelectedDays] = useState(7);
 
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  // 分析の取得に失敗した期間。失敗表示はその期間を表示しているときだけ出す（別の期間を
+  // 読み込んでいる間に、前の期間の失敗を見せないため）
+  const [failedDays, setFailedDays] = useState<number | null>(
+    initialAnalysis === null ? 7 : null
+  );
   // 期間の切り替えと再試行の取得を1本にまとめ、古い応答で上書きしないようにする
   const analysisControllerRef = useRef<AbortController | null>(null);
-  // 他セクションの再試行（router.refresh）でも initialAnalysis の参照が変わる。期間切り替えの
-  // effect の依存に入れると、14日・30日表示中の分析を取り直してしまうため、ref から読む
-  const initialAnalysisRef = useRef(initialAnalysis);
+  // 最後に成功した7日の分析（サーバー描画か、クライアントでの取り直し）。7日に戻したときに
+  // これを使い、取り直して成功した分析をサーバーの失敗（null）で捨てない
+  const sevenDayAnalysisRef = useRef(initialAnalysis);
+  const selectedDaysRef = useRef(selectedDays);
   useEffect(() => {
-    initialAnalysisRef.current = initialAnalysis;
-    // 7日表示中に router.refresh で新しい分析が届いたら反映する。null（サーバーではまだ失敗）の
-    // ときは、クライアントで取り直した分析を失敗で上書きしない
-    if (selectedDays === 7 && initialAnalysis !== null) {
+    selectedDaysRef.current = selectedDays;
+  }, [selectedDays]);
+  // 他セクションの再試行（router.refresh）でも initialAnalysis が届き直す。期間切り替えの
+  // effect とは分け、新しい分析が届いたときだけ反映する（14日・30日表示中は取り直さない）
+  useEffect(() => {
+    if (initialAnalysis === null) return;
+    sevenDayAnalysisRef.current = initialAnalysis;
+    if (selectedDaysRef.current === 7) {
       analysisControllerRef.current?.abort();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoadingAnalysis(false);
+      setFailedDays(null);
       setTrendAnalysis(initialAnalysis);
     }
-  }, [initialAnalysis, selectedDays]);
+  }, [initialAnalysis]);
 
   // サーバーで取得したセクション（急上昇・新着タグ・ソース分布）の再試行
   const router = useRouter();
@@ -82,7 +92,11 @@ export function TrendsContent({
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        if (data.error) throw new Error(String(data.error));
+        if (!data || data.error || !Array.isArray(data.topTags)) {
+          throw new Error('Invalid trend analysis response');
+        }
+        if (days === 7) sevenDayAnalysisRef.current = data;
+        setFailedDays(null);
         setTrendAnalysis(data);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError')
@@ -90,6 +104,7 @@ export function TrendsContent({
         if (process.env.NODE_ENV !== 'production') {
           console.error('Failed to fetch trend analysis:', error);
         }
+        setFailedDays(days);
         setTrendAnalysis(null);
       } finally {
         if (!signal?.aborted) {
@@ -116,14 +131,18 @@ export function TrendsContent({
       analysisControllerRef.current?.abort();
       // 30日→7日切替時、進行中の fetch を abort した直後は finally が
       // signal.aborted 経由でローディング解除をスキップするため、ここで明示的に false に戻す。
-      // 続けて initialAnalysis（SSR 取得済み）を selectedDays 変化に応じてリセットする。
+      // 続けて最後に成功した7日の分析に戻す（無ければ失敗のまま）。
+      const sevenDay = sevenDayAnalysisRef.current;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoadingAnalysis(false);
-      setTrendAnalysis(initialAnalysisRef.current);
+      setFailedDays(sevenDay === null ? 7 : null);
+      setTrendAnalysis(sevenDay);
       // 7日表示中に始めた分析の再試行を、離脱時に止める
       return () => analysisControllerRef.current?.abort();
     }
 
+    // デバウンス中から読み込み中にする（前の期間の内容や失敗を見せない）
+    setLoadingAnalysis(true);
     const timeoutId = setTimeout(() => {
       startAnalysisFetch(selectedDays);
     }, 300);
@@ -134,9 +153,8 @@ export function TrendsContent({
     };
   }, [selectedDays, startAnalysisFetch]);
 
-  // trendAnalysis が null になるのは取得に失敗したときだけ（成功して該当なしなら topTags が空）。
-  // 失敗後の再試行中もスケルトンに戻さず、失敗表示（再試行中…）を残す
-  const analysisFailed = trendAnalysis === null;
+  // 表示中の期間で失敗している。失敗後の再試行中もスケルトンに戻さず、失敗表示（再試行中…）を残す
+  const analysisFailed = trendAnalysis === null && failedDays === selectedDays;
   const retryAnalysis = useCallback(() => {
     startAnalysisFetch(selectedDays);
   }, [startAnalysisFetch, selectedDays]);

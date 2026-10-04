@@ -66,7 +66,7 @@ describe('DigestClient: 取得の失敗（issue #701）', () => {
     await userEvent.click(screen.getByRole('button', { name: '再試行' }));
 
     expect(await screen.findByTestId('digest-section')).toBeInTheDocument();
-    expect(screen.queryByTestId('error-state')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('error-message')).not.toBeInTheDocument();
   });
 
   it('401 のときは再試行ではなくログインへの導線を出す', async () => {
@@ -150,5 +150,58 @@ describe('DigestClient: 取得の失敗（issue #701）', () => {
 
     resolveRetry({ ok: true, json: async () => digestBody });
     expect(await screen.findByTestId('digest-section')).toBeInTheDocument();
+  });
+
+  it('401 の後にタブを切り替えて戻っても取り直さず、ログインの案内のまま', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401 });
+
+    renderDigest();
+    expect(
+      await screen.findByText('ログインの有効期限が切れました')
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('tab', { name: '今週' }));
+    expect(
+      await screen.findByText('ログインの有効期限が切れました')
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: '今日' }));
+
+    expect(
+      await screen.findByText('ログインの有効期限が切れました')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('ダイジェストを読み込めませんでした')
+    ).not.toBeInTheDocument();
+    // 今日・今週それぞれ1回だけ（今日に戻ったときに取り直さない）
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('401 の後でも、画面を開き直したら取り直す（ログインし直した後に案内を残さない）', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 401 })
+      .mockResolvedValueOnce({ ok: true, json: async () => digestBody });
+    // メール・パスワードでのログインはクライアント遷移なので、401 のキャッシュが残る
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const view = render(
+      <QueryClientProvider client={queryClient}>
+        <DigestClient />
+      </QueryClientProvider>
+    );
+    expect(
+      await screen.findByText('ログインの有効期限が切れました')
+    ).toBeInTheDocument();
+    view.unmount();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DigestClient />
+      </QueryClientProvider>
+    );
+
+    expect(await screen.findByTestId('digest-section')).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });

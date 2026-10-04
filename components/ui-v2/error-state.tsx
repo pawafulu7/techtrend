@@ -36,9 +36,9 @@ export function ErrorState({
 
   return (
     <div
-      // 1画面に複数並びうる compact は割り込みで読み上げない status にする
-      role={isBlock ? 'alert' : 'status'}
-      data-testid="error-state"
+      // E2E の規約（e2e/testid-naming.md）: エラー表示は error-message と role="alert"
+      role="alert"
+      data-testid="error-message"
       className={cn(
         'flex flex-col items-center justify-center text-center',
         isBlock ? 'px-4 py-12' : 'px-4 py-6',

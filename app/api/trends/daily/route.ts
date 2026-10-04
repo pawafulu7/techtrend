@@ -9,6 +9,7 @@ import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
 import { publicCacheHeaders } from '@/lib/api/cache-headers';
 import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import { withVerifiedCategoryTopArticles } from '@/lib/services/trend-report/verify-daily-articles';
+import { DAILY_REPORT_NOT_FOUND_ERROR } from '@/lib/constants/daily-trend';
 
 // JST offset constant (+9 hours in milliseconds)
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -296,7 +297,7 @@ export async function GET(request: NextRequest) {
         // レポートが一切存在しない場合は404
         return NextResponse.json(
           {
-            error: 'No report found for this date',
+            error: DAILY_REPORT_NOT_FOUND_ERROR,
             requestedDate: dateKey,
             latestAvailableDate: null,
           },

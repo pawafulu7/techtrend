@@ -37,6 +37,13 @@ const analysisWithTag: TrendAnalysis = {
   topTags: [{ name: 'React', totalCount: 12 }],
 };
 
+// 30日の応答は別のタグにして、7日のデータと取り違えたら分かるようにする
+const analysis30: TrendAnalysis = {
+  ...emptyAnalysis,
+  period: { from: '2026-09-04', to: '2026-10-04', days: 30 },
+  topTags: [{ name: 'Go', totalCount: 30 }],
+};
+
 function getSection(heading: string): HTMLElement {
   const section = screen
     .getByRole('heading', { name: heading })
@@ -106,7 +113,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       screen.getByText('急上昇キーワードはありません')
     ).toBeInTheDocument();
     expect(screen.getByText('新着タグはありません')).toBeInTheDocument();
-    expect(screen.queryByTestId('error-state')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('error-message')).not.toBeInTheDocument();
     expect(screen.queryByText('取得できませんでした')).not.toBeInTheDocument();
   });
 
@@ -184,7 +191,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
   it('他セクションの再試行で props が作り直されても、表示中の分析を取り直さない', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => analysisWithTag,
+      json: async () => analysis30,
     });
 
     const { rerender } = render(
@@ -212,7 +219,9 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     await act(() => new Promise((resolve) => setTimeout(resolve, 400)));
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('React')).toBeInTheDocument();
+    // 30日の分析のまま（7日のサーバーの値で上書きしない）
+    expect(screen.getByText('Go')).toBeInTheDocument();
+    expect(screen.queryByText('React')).not.toBeInTheDocument();
   });
 
   it('7日表示中に router.refresh で新しい分析が届いたら反映する', () => {
@@ -276,5 +285,77 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       resolveRetry({ ok: true, json: async () => analysisWithTag });
     });
     expect(await screen.findByText('React')).toBeInTheDocument();
+  });
+
+  it('7日で取り直して成功した分析は、30日に切り替えて7日に戻しても残る', async () => {
+    global.fetch = jest.fn().mockImplementation((url: string) =>
+      Promise.resolve({
+        ok: true,
+        json: async () =>
+          url.includes('days=30') ? analysis30 : analysisWithTag,
+      })
+    );
+
+    render(
+      <TrendsContent
+        initialKeywords={[]}
+        initialNewTags={[]}
+        initialAnalysis={null}
+        initialSourceData={[]}
+      />
+    );
+    const topTags = screen.getByText('人気タグ TOP10').closest('div.border');
+    await userEvent.click(
+      within(topTags as HTMLElement).getByRole('button', { name: '再試行' })
+    );
+    await waitFor(() => expect(screen.getByText('React')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole('button', { name: '30日間' }));
+    await waitFor(() => expect(screen.getByText('Go')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('button', { name: '7日間' }));
+
+    expect(screen.getByText('React')).toBeInTheDocument();
+    expect(
+      screen.queryByText('人気タグを読み込めませんでした')
+    ).not.toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('失敗した期間から切り替えたら、読み込み中は前の期間の失敗を出さない', async () => {
+    let resolve30: (value: unknown) => void = () => {};
+    global.fetch = jest.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolve30 = resolve;
+        })
+    );
+
+    render(
+      <TrendsContent
+        initialKeywords={[]}
+        initialNewTags={[]}
+        initialAnalysis={null}
+        initialSourceData={[]}
+      />
+    );
+    expect(
+      screen.getByText('人気タグを読み込めませんでした')
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '30日間' }));
+
+    // デバウンス中も取得中も、7日の失敗や「再試行中…」ではなくスケルトン
+    expect(
+      screen.queryByText('人気タグを読み込めませんでした')
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    expect(
+      screen.queryByRole('button', { name: '再試行中…' })
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolve30({ ok: true, json: async () => analysis30 });
+    });
+    expect(await screen.findByText('Go')).toBeInTheDocument();
   });
 });

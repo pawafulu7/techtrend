@@ -98,22 +98,18 @@ export function TagStats() {
   // スケルトンは初回の取得中だけ。再試行中は取得済みの値を残す
   const loading = results.some((r) => r.isPending && r.errorUpdateCount === 0);
 
-  // エラーは各クエリの初回発生時のみログ出力（レンダリング毎の重複出力を防ぐ）
-  const totalIsError = results[0].isError;
-  const activeIsError = results[1].isError;
-  const newIsError = results[2].isError;
-  const loggedErrorRef = useRef<boolean[]>([false, false, false]);
+  // エラーは失敗が起きるたびに1回だけログに出す（再描画や、再試行中に isError が
+  // 外れて戻ることで重複して出さない）。errorUpdateCount は失敗のたびに増える
+  const errorCounts = results.map((r) => r.errorUpdateCount).join(',');
+  const loggedErrorCountRef = useRef<number[]>([0, 0, 0]);
   useEffect(() => {
     results.forEach((r, i) => {
-      if (r.isError && !loggedErrorRef.current[i]) {
+      if (r.errorUpdateCount > loggedErrorCountRef.current[i]) {
         logger.error({ err: r.error }, 'Failed to load tag stats');
-        loggedErrorRef.current[i] = true;
-      }
-      if (!r.isError) {
-        loggedErrorRef.current[i] = false;
+        loggedErrorCountRef.current[i] = r.errorUpdateCount;
       }
     });
-  }, [totalIsError, activeIsError, newIsError]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [errorCounts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 取得済みの値がある状態で再取得に失敗した: 値は残すが、古いことを示して再試行させる
   const isStale = (r: (typeof results)[number]) =>

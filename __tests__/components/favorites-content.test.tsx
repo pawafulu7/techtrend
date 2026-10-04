@@ -36,12 +36,31 @@ const FAVORITE = {
 const mockRemoveFavoriteFromCache = jest.fn();
 let mockFavorites: (typeof FAVORITE)[] = [];
 let mockSetFavorites: (next: (typeof FAVORITE)[]) => void = () => {};
+// 一覧そのものの取得に失敗した状態（data が無く、error がある）
+let mockListError: Error | null = null;
+const mockRefetch = jest.fn();
 jest.mock('@/app/hooks/use-infinite-favorites', () => ({
   useInfiniteFavorites: () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { useState } = require('react');
     const [favorites, setFavorites] = useState(mockFavorites);
     mockSetFavorites = setFavorites;
+    if (mockListError) {
+      return {
+        allFavorites: [],
+        totalCount: 0,
+        isLoading: false,
+        isFetchingNextPage: false,
+        hasNextPage: false,
+        fetchNextPage: jest.fn(),
+        error: mockListError,
+        data: undefined,
+        refetch: mockRefetch,
+        isFetching: false,
+        errorUpdateCount: 1,
+        removeFavoriteFromCache: jest.fn(),
+      };
+    }
     return {
       allFavorites: favorites,
       totalCount: 1,
@@ -50,6 +69,10 @@ jest.mock('@/app/hooks/use-infinite-favorites', () => ({
       hasNextPage: false,
       fetchNextPage: jest.fn(),
       error: null,
+      data: { pages: [] },
+      refetch: mockRefetch,
+      isFetching: false,
+      errorUpdateCount: 0,
       removeFavoriteFromCache: (id: string) => {
         mockRemoveFavoriteFromCache(id);
         setFavorites((prev: (typeof FAVORITE)[]) =>
@@ -105,6 +128,7 @@ describe('FavoritesContent: 解除の失敗（issue #701）', () => {
 
   afterEach(() => {
     global.fetch = originalFetch;
+    mockListError = null;
   });
 
   it.each([
@@ -160,5 +184,26 @@ describe('FavoritesContent: 解除の失敗（issue #701）', () => {
     } finally {
       window.removeEventListener('article-favorite-changed', listener);
     }
+  });
+
+  it('一覧の取得に失敗したら、生の文言・「0件」・空状態ではなく失敗と再試行を出す', async () => {
+    mockListError = new Error(
+      'Failed to fetch favorites: 500 Internal Server Error'
+    );
+    renderFavorites();
+
+    expect(
+      screen.getByText('お気に入りを読み込めませんでした')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Failed to fetch favorites/)
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('(0件)')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('お気に入り記事がありません')
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '再試行' }));
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
   });
 });

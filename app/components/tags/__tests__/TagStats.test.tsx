@@ -69,7 +69,7 @@ describe('TagStats', () => {
     expect(await screen.findByText('120')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('50%')).toBeInTheDocument();
-    expect(screen.queryByTestId('error-state')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('error-message')).not.toBeInTheDocument();
   });
 
   it('失敗した項目は「—」にして失敗と再試行を出し、再試行で失敗した取得だけをやり直す', async () => {
@@ -96,7 +96,7 @@ describe('TagStats', () => {
 
     expect(await screen.findByText('120')).toBeInTheDocument();
     await waitFor(() =>
-      expect(screen.queryByTestId('error-state')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('error-message')).not.toBeInTheDocument()
     );
     const urls = (global.fetch as jest.Mock).mock.calls.map((c) => c[0]);
     expect(

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type {
   DigestResponse,
@@ -25,12 +26,27 @@ async function fetchDigest(
   return res.json();
 }
 
+// 401 で失敗したクエリは、取り直してもログインし直すまで同じ結果になる。さらに data の無い
+// クエリを取り直すと error が消えるため、その間ログインの案内が一般の失敗表示に変わってしまう。
+// そこで 401 の後は、期間タブの切り替え（キーの変更）・再マウント・再接続で自動的に取り直さない
+// （issue #701）。React Query がこれらの経路で共通に見るのは enabled だけ（refetchOnMount は
+// data の無いクエリには効かない）。手動の refetch() は enabled を見ない
+type DigestQuery = { state: { error: unknown; errorUpdatedAt: number } };
+const isUnauthorizedQuery = (query: DigestQuery) =>
+  query.state.error instanceof DigestFetchError &&
+  query.state.error.status === 401;
+
 export function useDigest(period: DigestPeriod) {
+  // 止めるのは、この画面を開いてから起きた 401 だけ。メール・パスワードでログインし直すと
+  // クライアント遷移で前の 401 がキャッシュに残るため、それで止めると案内が消えなくなる
+  const [mountedAt] = useState(() => Date.now());
   return useQuery({
     queryKey: ['digest', period],
     queryFn: ({ signal }) => fetchDigest(period, signal),
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 30, // 30 minutes
     retry: false,
+    enabled: (query) =>
+      !(isUnauthorizedQuery(query) && query.state.errorUpdatedAt >= mountedAt),
   });
 }

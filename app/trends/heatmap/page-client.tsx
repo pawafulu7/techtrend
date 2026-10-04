@@ -93,7 +93,10 @@ export function HeatmapPageClient() {
     },
   });
 
-  const error = heatmapQueryError ? heatmapQueryError.message : null;
+  // 生の error.message（「HTTP 500」や API の英語の文言）は画面に出さない（issue #701）
+  const error = heatmapQueryError
+    ? 'セクターマップを読み込めませんでした。時間をおいて再試行してください。'
+    : null;
 
   // Fetch drilldown articles
   const {

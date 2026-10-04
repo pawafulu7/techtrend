@@ -11,6 +11,7 @@ import { RefreshCw, AlertCircle, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
 import type { TrendReportData, DailyTrendResponse } from './daily-data';
+import { DAILY_REPORT_NOT_FOUND_ERROR } from '@/lib/constants/daily-trend';
 
 function formatDateJP(dateStr: string): string {
   const [, m, d] = dateStr.split('-');
@@ -23,7 +24,7 @@ const FETCH_FAILED_MESSAGE = 'データの取得に失敗しました';
 // サーバーの error は英語の内部向け文言（daily-data.ts）。そのまま画面に出さない（issue #701）
 function toUserMessage(response: DailyTrendResponse): string | null {
   if (response.success) return null;
-  return response.error === 'No report found for this date'
+  return response.error === DAILY_REPORT_NOT_FOUND_ERROR
     ? NOT_FOUND_MESSAGE
     : FETCH_FAILED_MESSAGE;
 }
@@ -74,7 +75,10 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
         ? `/api/trends/daily?date=${dateStr}`
         : '/api/trends/daily';
       const response = await fetch(url);
-      const data: DailyTrendResponse = await response.json();
+      // 500 の HTML などで JSON にならない応答を「ネットワークエラー」と取り違えない
+      const data: DailyTrendResponse = await response
+        .json()
+        .catch(() => ({ success: false }));
 
       if (!response.ok) {
         if (response.status === 404) {

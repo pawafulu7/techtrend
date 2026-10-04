@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Heart, AlertCircle, Search, ArrowUpDown } from 'lucide-react';
+import { Heart, Search, ArrowUpDown } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { Button } from '@/components/ui-v2/button-v2';
@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   FavoriteArticleCard,
   FavoriteSkeletonGrid,
@@ -24,6 +23,7 @@ import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
 import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth/auth-client';
 import type { SortOption } from '../_types';
+import { ErrorState } from '@/components/ui-v2/error-state';
 import { toast } from '@/hooks/use-toast';
 
 // 解除に失敗して一覧に戻すときは、黙って戻さずに通知する（issue #701）
@@ -70,7 +70,17 @@ export function FavoritesContent({
     fetchNextPage,
     error,
     removeFavoriteFromCache,
+    data,
+    refetch,
+    isFetching,
+    errorUpdateCount,
   } = useInfiniteFavorites({ limit: 20, includeRelations: true });
+  // 取得に失敗して一覧が無い: 「0件」や空状態ではなく失敗と再試行を出す（issue #701）。
+  // React Query は data の無いクエリを再取得すると pending に戻すので、失敗後の再試行中も失敗表示を残す
+  const failedWithoutData =
+    data === undefined && (!!error || errorUpdateCount > 0);
+  // 取得済みの一覧がある状態で再取得・続きの取得に失敗した: 一覧を残して古いことを示す
+  const staleAfterError = !!error && data !== undefined;
 
   // Filter and sort favorites
   const filteredFavorites = useMemo(() => {
@@ -191,7 +201,7 @@ export function FavoritesContent({
   }, [isLoading, error, allFavorites.length]);
 
   // Loading state
-  if (isLoading && allFavorites.length === 0) {
+  if (isLoading && allFavorites.length === 0 && errorUpdateCount === 0) {
     return (
       <div className="px-4 py-3 lg:px-6">
         {/* Toolbar skeleton */}
@@ -214,13 +224,15 @@ export function FavoritesContent({
       <header className="flex flex-wrap items-center gap-2 pb-3">
         <Heart className="text-primary h-5 w-5" aria-hidden="true" />
         <h1 className="text-foreground text-lg font-semibold">お気に入り</h1>
-        <span
-          className="text-muted-foreground text-sm"
-          role="status"
-          aria-live="polite"
-        >
-          ({Math.max(0, totalCount)}件)
-        </span>
+        {!failedWithoutData && (
+          <span
+            className="text-muted-foreground text-sm"
+            role="status"
+            aria-live="polite"
+          >
+            ({Math.max(0, totalCount)}件)
+          </span>
+        )}
         <div className="flex-1" />
         <div className="relative">
           <Search
@@ -258,22 +270,30 @@ export function FavoritesContent({
         </Select>
       </header>
 
-      {/* Error state */}
-      {error && (
-        <Alert
-          variant="destructive"
-          className="mb-6"
-          data-testid="error-message"
-        >
-          <AlertCircle className="h-4 w-4" aria-hidden="true" />
-          <AlertDescription>
-            {error instanceof Error ? error.message : 'エラーが発生しました'}
-          </AlertDescription>
-        </Alert>
+      {/* Error state: 生の error.message は出さない（issue #701） */}
+      {failedWithoutData && (
+        <CardV2 className="mx-auto max-w-md">
+          <ErrorState
+            size="block"
+            title="お気に入りを読み込めませんでした"
+            description="時間をおいて再試行してください。"
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
+        </CardV2>
+      )}
+      {staleAfterError && (
+        <ErrorState
+          title="最新のお気に入りを読み込めませんでした"
+          description="前回読み込んだ内容を表示しています。"
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+          className="mb-6 rounded-lg border"
+        />
       )}
 
       {/* Empty state (no favorites at all) */}
-      {allFavorites.length === 0 && !isLoading ? (
+      {failedWithoutData ? null : allFavorites.length === 0 && !isLoading ? (
         <CardV2
           ref={emptyStateRef}
           tabIndex={-1}

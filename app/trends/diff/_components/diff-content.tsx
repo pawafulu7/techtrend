@@ -241,7 +241,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
         </div>
       )}
 
-      {/* Loading state */}
+      {/* Loading state。取得に失敗したときは上に失敗を出し、空状態（データがありません）は出さない（issue #701） */}
       {loading ? (
         <div className="container mx-auto max-w-6xl px-4 py-8">
           <div className="animate-pulse space-y-6">
@@ -262,7 +262,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
           onHoverEnter={setHoveredTopic}
           onHoverLeave={() => setHoveredTopic(null)}
         />
-      ) : (
+      ) : error ? null : (
         <div className="container mx-auto max-w-6xl px-4 py-16 text-center">
           <div className="bg-muted mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full">
             <Minus className="text-muted-foreground h-8 w-8" />
