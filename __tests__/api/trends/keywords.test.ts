@@ -13,7 +13,9 @@
 
 jest.mock('@/lib/cache/keywords-cache', () => ({
   keywordsCache: {
-    getOrSet: jest.fn((_key: string, fn: () => Promise<unknown>) => fn()),
+    getOrSetWithLock: jest.fn((_key: string, fn: () => Promise<unknown>) =>
+      fn()
+    ),
     getStats: jest.fn(() => ({ hits: 0, misses: 1, size: 0 })),
   },
 }));

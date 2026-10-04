@@ -22,6 +22,16 @@ jest.mock('@/lib/middleware/with-rate-limit', () => ({
   withRateLimit: (_key: unknown, fn: unknown) => fn,
 }));
 
+jest.mock('@/lib/cache', () => ({
+  RedisCache: jest
+    .fn()
+    .mockImplementation(() => ({
+      getOrSetWithLock: jest.fn((_key: string, fn: () => Promise<unknown>) =>
+        fn()
+      ),
+    })),
+}));
+
 import { GET } from '@/app/api/tags/search/route';
 
 function request(query: string) {

@@ -323,6 +323,16 @@ export class RedisCache {
       if (acquired === 'OK') {
         // Lock acquired - fetch data and cache it
         try {
+          // A previous owner can fill the cache between our initial GET and SET NX.
+          const filled = await this.get<T>(key);
+          if (filled !== null) {
+            return {
+              value: filled,
+              cacheHit: true,
+              waitedMs: 0,
+              timedOut: false,
+            };
+          }
           fetcherExecuted = true;
           const fresh = await fetcher();
           await this.set(key, fresh, ttl);
