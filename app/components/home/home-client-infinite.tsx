@@ -278,6 +278,11 @@ export function HomeClientInfinite({
     articleIds,
     listKey: JSON.stringify(filters),
   });
+  // 手動更新の間は次ページを読まない（fetchNextPage は進行中の取り直しを取り消すため）。
+  // hasNextPage は変えない（変えると「すべての記事を読み込みました」と出てしまう）
+  const loadNextPage = useCallback(() => {
+    if (!isRefreshing) void fetchNextPage();
+  }, [isRefreshing, fetchNextPage]);
 
   // スクロール位置復元フックを使用（記事詳細から戻った時のみ有効）
   const { isRestoring, currentPage, targetPages, cancelRestoration } =
@@ -404,12 +409,11 @@ export function HomeClientInfinite({
               </div>
             )}
 
-            {/* Infinite Scrollトリガー。手動更新の間は次ページを読まない
-                （fetchNextPage は進行中の取り直しを取り消すため） */}
+            {/* Infinite Scrollトリガー */}
             {enableInfiniteScroll ? (
               <InfiniteScrollTrigger
-                onIntersect={fetchNextPage}
-                hasNextPage={(hasNextPage && !isRefreshing) || false}
+                onIntersect={loadNextPage}
+                hasNextPage={hasNextPage || false}
                 isFetchingNextPage={isFetchingNextPage}
               />
             ) : (
@@ -456,7 +460,7 @@ export function HomeClientInfinite({
         <HomeListStatusBar
           fetchedAt={fetchedAt}
           isRefreshing={isRefreshing}
-          refreshDisabled={isFetchingNextPage}
+          refreshDisabled={isFetchingNextPage || isRestoring}
           refreshFailed={isRefetchError}
           onRefresh={() => void handleRefresh()}
           totalCount={totalCount}

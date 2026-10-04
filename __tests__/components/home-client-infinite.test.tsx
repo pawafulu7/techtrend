@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import type { Source, Tag } from '@/lib/prisma-exports';
 
@@ -231,12 +231,15 @@ describe('HomeClientInfinite の手動更新', () => {
   // 2026-10-04 13:58 UTC = 22:58 JST
   const FETCHED_AT = Date.UTC(2026, 9, 4, 13, 58);
   function pageWith(items: MockArticle[], fetchedAt: number) {
+    const data = {
+      pages: [{ data: { items, total: items.length }, fetchedAt }],
+      pageParams: [1],
+    };
     return {
       ...loadedArticles(),
-      data: {
-        pages: [{ data: { items, total: items.length }, fetchedAt }],
-        pageParams: [1],
-      },
+      data,
+      // 本物の refetch と同じく結果を返す（新しい一覧は来ない）
+      refetch: jest.fn().mockResolvedValue({ isError: false, data }),
     };
   }
 
@@ -244,7 +247,7 @@ describe('HomeClientInfinite の手動更新', () => {
     mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
   });
 
-  it('一覧を取得した時刻と更新ボタンを出し、押すと取り直す', () => {
+  it('一覧を取得した時刻と更新ボタンを出し、押すと取り直す', async () => {
     const state = pageWith(ARTICLES, FETCHED_AT);
     mockUseInfiniteArticles.mockReturnValue(state);
     renderHome();
@@ -258,6 +261,11 @@ describe('HomeClientInfinite の手動更新', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '最新に更新' }));
     expect(state.refetch).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: '最新に更新' })
+      ).not.toBeDisabled()
+    );
   });
 
   // 位置を保つ処理そのものは __tests__/hooks/use-refresh-keeping-position.test.tsx が

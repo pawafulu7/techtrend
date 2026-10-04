@@ -9,7 +9,7 @@ interface HomeListStatusBarProps {
   /** 一覧の先頭ページを取得した時刻 */
   fetchedAt: number | undefined;
   isRefreshing: boolean;
-  /** 次ページの読み込み中など、更新を受け付けない（取り直しが読み込みを取り消すため） */
+  /** 次ページの読み込み中・スクロール位置の復元中は更新を受け付けない（取り直しと読み込みが互いを取り消すため） */
   refreshDisabled?: boolean;
   /** 手動更新（取り直し）に失敗した */
   refreshFailed: boolean;

@@ -33,10 +33,20 @@ function articleElements(container: HTMLElement) {
 function rendersList(elements: HTMLElement[], articleIds: string[]) {
   return (
     elements.length === articleIds.length &&
-    elements[0]?.dataset.articleId === articleIds[0] &&
-    elements[elements.length - 1]?.dataset.articleId ===
-      articleIds[articleIds.length - 1]
+    elements.every((el, i) => el.dataset.articleId === articleIds[i])
   );
+}
+
+/** 表示領域の上端にかかっている最初の記事とその位置 */
+function findTopArticle(container: HTMLElement) {
+  const containerTop = container.getBoundingClientRect().top;
+  for (const el of articleElements(container)) {
+    const rect = el.getBoundingClientRect();
+    if (rect.bottom > containerTop && el.dataset.articleId) {
+      return { articleId: el.dataset.articleId, top: rect.top };
+    }
+  }
+  return null;
 }
 
 /**
@@ -44,6 +54,7 @@ function rendersList(elements: HTMLElement[], articleIds: string[]) {
  * 読んでいた記事が画面上の同じ位置に来るようにスクロールを合わせる。
  *
  * 基準は、更新前に表示領域の上端にかかっていた最初の記事（`data-article-id`）。
+ * 更新中に利用者がスクロールしたら、その位置で基準を取り直す。
  *
  * 新しい一覧が DOM に出るタイミングは2段階で遅れる。TanStack Query は refetch の
  * Promise を解決した後に（setTimeout 0 のバッチで）データを届け、ArticleList は
@@ -68,7 +79,8 @@ export function useRefreshKeepingPosition({
 }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const anchorRef = useRef<RefreshAnchor | null>(null);
-  const stopWatchingRef = useRef<(() => void) | null>(null);
+  // 基準を捨てるときに止める監視（スクロール・DOM の変化・時間切れ）
+  const cleanupsRef = useRef<Array<() => void>>([]);
   // DOM の監視（MutationObserver）の中から最新の一覧を読むため
   const articleIdsRef = useRef(articleIds);
   useLayoutEffect(() => {
@@ -76,8 +88,8 @@ export function useRefreshKeepingPosition({
   }, [articleIds]);
 
   const releaseAnchor = useCallback(() => {
-    stopWatchingRef.current?.();
-    stopWatchingRef.current = null;
+    cleanupsRef.current.forEach((cleanup) => cleanup());
+    cleanupsRef.current = [];
     anchorRef.current = null;
     const container = containerRef.current;
     if (container) container.style.overflowAnchor = '';
@@ -89,24 +101,24 @@ export function useRefreshKeepingPosition({
     if (isRefreshing) return;
     releaseAnchor();
     const container = containerRef.current;
-    if (container) {
-      const containerTop = container.getBoundingClientRect().top;
-      for (const el of articleElements(container)) {
-        const rect = el.getBoundingClientRect();
-        if (rect.bottom > containerTop && el.dataset.articleId) {
-          anchorRef.current = {
-            listKey,
-            articleId: el.dataset.articleId,
-            top: rect.top,
-            fetchedAt,
-          };
-          // ブラウザのスクロールアンカリングと二重に補正しない
-          container.style.overflowAnchor = 'none';
-          break;
-        }
-      }
+    const top = container && findTopArticle(container);
+    const anchor: RefreshAnchor | null = top
+      ? { listKey, fetchedAt, ...top }
+      : null;
+    if (container && anchor) {
+      anchorRef.current = anchor;
+      // ブラウザのスクロールアンカリングと二重に補正しない
+      container.style.overflowAnchor = 'none';
+      // 更新中に利用者が読み進めたら、その位置を保つ（補正で巻き戻さない）
+      const onScroll = () => {
+        const next = findTopArticle(container);
+        if (next) Object.assign(anchor, next);
+      };
+      container.addEventListener('scroll', onScroll, { passive: true });
+      cleanupsRef.current.push(() =>
+        container.removeEventListener('scroll', onScroll)
+      );
     }
-    const anchor = anchorRef.current;
     setIsRefreshing(true);
     try {
       const result = await refetch();
@@ -152,16 +164,15 @@ export function useRefreshKeepingPosition({
     };
 
     if (tryRestore()) return;
-    stopWatchingRef.current?.();
     const observer = new MutationObserver(() => {
       tryRestore();
     });
     observer.observe(container, { childList: true, subtree: true });
     const timeoutId = setTimeout(releaseAnchor, RESTORE_TIMEOUT_MS);
-    stopWatchingRef.current = () => {
+    cleanupsRef.current.push(() => {
       observer.disconnect();
       clearTimeout(timeoutId);
-    };
+    });
     // 監視は effect の再実行では止めない。止めるのは位置を戻したとき・時間切れ・
     // 次の更新の開始・アンマウント（いずれも releaseAnchor）
   }, [fetchedAt, listKey, containerRef, releaseAnchor]);

@@ -64,7 +64,13 @@ function DelayedList({ ids }: { ids: string[] }) {
   );
 }
 
-const server = { ids: [] as string[], fail: false, clock: 0 };
+const server = {
+  ids: [] as string[],
+  fail: false,
+  clock: 0,
+  // 設定すると、応答をこの Promise の解決まで止める
+  gate: null as Promise<void> | null,
+};
 
 function Harness() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -72,6 +78,7 @@ function Harness() {
     queryKey: ['refresh-keeping-position'],
     initialPageParam: 1,
     queryFn: async () => {
+      if (server.gate) await server.gate;
       if (server.fail) throw new Error('fetch failed');
       server.clock += 1;
       return { ids: [...server.ids], fetchedAt: server.clock };
@@ -122,6 +129,7 @@ describe('useRefreshKeepingPosition（issue #707）', () => {
     server.ids = OLD_IDS;
     server.fail = false;
     server.clock = 0;
+    server.gate = null;
     restoreLayout = mockLayout();
   });
 
@@ -155,6 +163,42 @@ describe('useRefreshKeepingPosition（issue #707）', () => {
         .getBoundingClientRect().top
     ).toBe(-50);
     expect(container.style.overflowAnchor).toBe('');
+  });
+
+  it('更新中に読み進めたら、その位置を保つ（更新前の位置へ巻き戻さない）', async () => {
+    renderHarness();
+    await waitFor(() =>
+      expect(screen.getByTestId('state')).toHaveTextContent('idle:1')
+    );
+    const container = document.getElementById('container')!;
+    container.scrollTop = 550;
+
+    let openGate: () => void = () => {};
+    server.gate = new Promise<void>((resolve) => {
+      openGate = resolve;
+    });
+    server.ids = ['n1', 'n2', 'n3', ...OLD_IDS];
+    fireEvent.click(screen.getByRole('button', { name: '更新' }));
+
+    // 応答を待つ間に 200px 読み進め、a7 が上端から 50px はみ出した位置になる
+    container.scrollTop = 750;
+    fireEvent.scroll(container);
+    openGate();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('state')).toHaveTextContent('idle:2')
+    );
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-article-id="n1"]')
+      ).toBeInTheDocument()
+    );
+    expect(container.scrollTop).toBe(1050);
+    expect(
+      container
+        .querySelector<HTMLElement>('[data-article-id="a7"]')!
+        .getBoundingClientRect().top
+    ).toBe(-50);
   });
 
   it('取り直しに失敗したら、位置を動かさずに基準を捨てる', async () => {
