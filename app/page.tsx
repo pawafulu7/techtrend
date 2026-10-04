@@ -9,6 +9,8 @@ import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { SortButtons } from '@/app/components/common/sort-buttons';
 import { getSession } from '@/lib/auth/get-session';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
+import { HomeDailyDigest } from '@/app/components/home/home-daily-digest';
+import { getHomeDailyDigest } from '@/lib/services/trend-report/home-daily-digest';
 import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { PersonalizationToggle } from '@/app/components/personalization';
 import {
@@ -69,13 +71,15 @@ async function getPopularTags() {
 export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
 
-  // Parallel execution of cookies, sources/groups, tags, session
-  const [cookieStore, sourceData, tags, session] = await Promise.all([
-    cookies(),
-    getSources(),
-    getPopularTags(),
-    getSession(),
-  ]);
+  // Parallel execution of cookies, sources/groups, tags, session, daily digest
+  const [cookieStore, sourceData, tags, session, dailyDigest] =
+    await Promise.all([
+      cookies(),
+      getSources(),
+      getPopularTags(),
+      getSession(),
+      getHomeDailyDigest(),
+    ]);
 
   const { sources, groupedSources } = sourceData;
 
@@ -205,6 +209,7 @@ export default async function Home({ searchParams }: PageProps) {
                   initialSortBy={initialSortBy}
                   initialSourceIds={initialSourceIds}
                   excludeSources={ARXIV_SOURCE_ID}
+                  header={<HomeDailyDigest digest={dailyDigest} />}
                 />
               </Suspense>
             </section>

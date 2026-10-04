@@ -142,9 +142,15 @@ export function useScrollRestoration(
             `[data-article-id="${id}"]`
           ) as HTMLElement | null);
         if (!el) return false;
-        // コンテナがスクロール領域の場合はoffsetTopを使う
+        // コンテナがスクロール領域の場合は、コンテナの内容の先頭からの位置に合わせる。
+        // offsetTop は最も近い positioned 祖先（一覧を包む relative 要素）が基準で、
+        // 一覧の上にある「今日の要点」（issue #721）の高さぶん手前にずれるため使わない
         if (mainContainer) {
-          const target = Math.max(el.offsetTop - HEADER_OFFSET_PX, 0);
+          const elementTop =
+            el.getBoundingClientRect().top -
+            mainContainer.getBoundingClientRect().top +
+            mainContainer.scrollTop;
+          const target = Math.max(elementTop - HEADER_OFFSET_PX, 0);
           const containerElement = mainContainer as unknown;
           if (
             containerElement &&

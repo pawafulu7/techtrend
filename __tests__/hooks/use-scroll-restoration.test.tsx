@@ -152,4 +152,50 @@ describe('useScrollRestoration', () => {
       });
     });
   });
+  describe('記事の位置への復元（issue #721）', () => {
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    it('スクロール領域の内容の先頭から測った記事の位置に戻す（一覧の上の要素の高さを含める）', async () => {
+      // 一覧の上に「今日の要点」がある状態: 記事の offsetTop（一覧を包む要素が基準）は
+      // 0 のままだが、スクロール領域から見た記事の上端は 500px 下にある
+      const container = document.createElement('div');
+      container.id = 'main-scroll-container';
+      const containerScrollTo = jest.fn();
+      container.scrollTo =
+        containerScrollTo as unknown as typeof container.scrollTo;
+      container.getBoundingClientRect = () => ({ top: 100 }) as DOMRect;
+      const article = document.createElement('div');
+      article.id = 'article-a1';
+      article.getBoundingClientRect = () => ({ top: 600 }) as DOMRect;
+      container.appendChild(article);
+      document.body.appendChild(container);
+      seedSessionStorage();
+
+      renderHook(() =>
+        useScrollRestoration(
+          20,
+          1,
+          {},
+          jest.fn(),
+          false,
+          false,
+          undefined,
+          true
+        )
+      );
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(
+          TIME_UNTIL_RESTORE + SCROLL_RESTORE_UI_DELAY + 50
+        );
+      });
+
+      // 600 - 100 + scrollTop(0) - HEADER_OFFSET_PX(8)
+      expect(containerScrollTo).toHaveBeenCalledWith(
+        expect.objectContaining({ top: 492 })
+      );
+    });
+  });
 });

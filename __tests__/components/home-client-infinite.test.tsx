@@ -306,3 +306,50 @@ describe('HomeClientInfinite の手動更新', () => {
     expect(screen.getByText('エラーが発生しました')).toBeInTheDocument();
   });
 });
+
+describe('HomeClientInfinite の header（issue #721）', () => {
+  const HEADER = <div data-testid="list-header">今日の要点</div>;
+
+  beforeEach(() => {
+    mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
+  });
+
+  it('一覧のスクロール領域の先頭、記事一覧より上に出す', () => {
+    mockUseInfiniteArticles.mockReturnValue(loadedArticles());
+    render(
+      <HomeClientInfinite
+        viewMode="card"
+        sources={SOURCES}
+        tags={TAGS}
+        header={HEADER}
+      />
+    );
+
+    const header = screen.getByTestId('list-header');
+    const container = document.getElementById('main-scroll-container');
+    expect(container).toContainElement(header);
+    expect(
+      header.compareDocumentPosition(screen.getByTestId('article-list')) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('初回の取得に失敗しても header は出す', () => {
+    mockUseInfiniteArticles.mockReturnValue({
+      ...noArticlesYet(),
+      isPending: false,
+      isError: true,
+    });
+    render(
+      <HomeClientInfinite
+        viewMode="card"
+        sources={SOURCES}
+        tags={TAGS}
+        header={HEADER}
+      />
+    );
+
+    expect(screen.getByTestId('list-header')).toBeInTheDocument();
+    expect(screen.getByText('エラーが発生しました')).toBeInTheDocument();
+  });
+});

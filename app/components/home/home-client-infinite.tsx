@@ -1,6 +1,13 @@
 'use client';
 
-import { useMemo, useCallback, useRef, useState, useEffect } from 'react';
+import {
+  useMemo,
+  useCallback,
+  useRef,
+  useState,
+  useEffect,
+  type ReactNode,
+} from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
 import { LoadingSpinner } from '@/app/components/common/loading-spinner';
@@ -27,6 +34,8 @@ interface HomeClientInfiniteProps {
   initialSortBy?: string;
   initialSourceIds?: string[];
   excludeSources?: string; // 除外するソースID（カンマ区切り）
+  /** 一覧のスクロール領域の先頭に出す内容（ホームの「今日の要点」。issue #721） */
+  header?: ReactNode;
 }
 
 export function HomeClientInfinite({
@@ -37,6 +46,7 @@ export function HomeClientInfinite({
   initialSortBy,
   initialSourceIds: _initialSourceIds,
   excludeSources,
+  header,
 }: HomeClientInfiniteProps) {
   const searchParams = useSearchParams();
   const scrollContainerRef = useRef<HTMLDivElement>(null); // 参照は保持するが使用しない
@@ -334,30 +344,33 @@ export function HomeClientInfinite({
   // 更新（取り直し）の失敗では一覧を残し、失敗を下の行に出す
   if (isError && !isRefetchError) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center px-4">
-        <CardV2 className="mx-auto max-w-md">
-          <div className="flex flex-col items-center justify-center px-4 py-12">
-            <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-              <AlertTriangle
-                className="text-muted-foreground h-8 w-8"
-                aria-hidden="true"
-              />
+      <div className="flex-1 overflow-y-auto px-4 py-4 lg:px-6">
+        {header}
+        <div className="flex min-h-[400px] items-center justify-center px-4">
+          <CardV2 className="mx-auto max-w-md">
+            <div className="flex flex-col items-center justify-center px-4 py-12">
+              <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+                <AlertTriangle
+                  className="text-muted-foreground h-8 w-8"
+                  aria-hidden="true"
+                />
+              </div>
+              <p className="text-foreground mb-2 text-lg font-medium">
+                エラーが発生しました
+              </p>
+              <p className="text-muted-foreground mb-6 text-center text-sm">
+                記事の読み込みに失敗しました。しばらく経ってから再試行してください。
+              </p>
+              <Button
+                onClick={() => refetch()}
+                variant="outline"
+                className="min-h-[44px] min-w-[44px]"
+              >
+                再試行
+              </Button>
             </div>
-            <p className="text-foreground mb-2 text-lg font-medium">
-              エラーが発生しました
-            </p>
-            <p className="text-muted-foreground mb-6 text-center text-sm">
-              記事の読み込みに失敗しました。しばらく経ってから再試行してください。
-            </p>
-            <Button
-              onClick={() => refetch()}
-              variant="outline"
-              className="min-h-[44px] min-w-[44px]"
-            >
-              再試行
-            </Button>
-          </div>
-        </CardV2>
+          </CardV2>
+        </div>
       </div>
     );
   }
@@ -370,6 +383,8 @@ export function HomeClientInfinite({
         id="main-scroll-container"
         className="relative flex-1 overflow-y-auto px-4 py-4 lg:px-6"
       >
+        {header}
+
         {/* スクロール位置復元中のローディング表示 */}
         {isRestoring && (
           <ScrollRestorationLoading
