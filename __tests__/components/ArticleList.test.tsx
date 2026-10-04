@@ -41,6 +41,11 @@ jest.mock('@/lib/auth/auth-client', () => ({
   signUp: jest.fn(),
 }));
 
+const mockToast = jest.fn();
+jest.mock('@/hooks/use-toast', () => ({
+  toast: (...args: unknown[]) => mockToast(...args),
+}));
+
 jest.mock('@/app/hooks/use-read-status', () => ({
   useReadStatus: jest.fn(),
 }));
@@ -354,6 +359,109 @@ describe('ArticleList', () => {
         authClient.useSession.mockReturnValue({ data: null, isPending: false });
       }
     });
+
+    // issue #701: 失敗して表示を戻すときは、黙って戻さずに通知する
+    it.each([
+      [
+        'API が失敗を返したとき',
+        () => Promise.resolve({ ok: false, status: 500 }),
+      ],
+      ['通信に失敗したとき', () => Promise.reject(new Error('Network error'))],
+    ])(
+      'reverts the favorite and shows a toast %s',
+      async (_label, fetchImpl) => {
+        const { authClient } = jest.requireMock('@/lib/auth/auth-client');
+        authClient.useSession.mockReturnValue({
+          data: { user: { id: 'user-1' } },
+          isPending: false,
+        });
+        const consoleSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation(() => {});
+        global.fetch = jest.fn().mockImplementation(fetchImpl);
+        const events: Event[] = [];
+        const listener = (e: Event) => events.push(e);
+        window.addEventListener('article-favorite-changed', listener);
+
+        const articles = mockArticles.map((a) =>
+          a.id === '2' ? { ...a, isFavorited: false } : a
+        );
+
+        try {
+          renderWithProviders(<ArticleList articles={articles} />);
+          await userEvent.click(screen.getByTestId('toggle-favorite-2'));
+
+          await waitFor(() =>
+            expect(mockToast).toHaveBeenCalledWith(
+              expect.objectContaining({
+                variant: 'destructive',
+                description:
+                  'お気に入りの更新に失敗しました。もう一度お試しください。',
+              })
+            )
+          );
+          expect(mockToast).toHaveBeenCalledTimes(1);
+          expect(events).toHaveLength(0);
+
+          // 表示が未登録に戻っているので、もう一度押すと再び登録（POST）になる
+          await userEvent.click(screen.getByTestId('toggle-favorite-2'));
+          await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+          expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/favorites/2', {
+            method: 'POST',
+          });
+        } finally {
+          window.removeEventListener('article-favorite-changed', listener);
+          consoleSpy.mockRestore();
+          authClient.useSession.mockReturnValue({
+            data: null,
+            isPending: false,
+          });
+        }
+      }
+    );
+
+    // 409 = 既に登録済み / 404 = 既に未登録。サーバーは望む状態なので成功と同じ扱い
+    it.each([
+      ['登録で 409', false, 409, true],
+      ['解除で 404', true, 404, false],
+    ])(
+      'treats %s as already in the desired state',
+      async (_label, initiallyFavorited, status, expected) => {
+        const { authClient } = jest.requireMock('@/lib/auth/auth-client');
+        authClient.useSession.mockReturnValue({
+          data: { user: { id: 'user-1' } },
+          isPending: false,
+        });
+        global.fetch = jest.fn().mockResolvedValue({ ok: false, status });
+        const events: CustomEvent[] = [];
+        const listener = (e: Event) => events.push(e as CustomEvent);
+        window.addEventListener('article-favorite-changed', listener);
+        const articles = mockArticles.map((a) =>
+          a.id === '2' ? { ...a, isFavorited: initiallyFavorited } : a
+        );
+
+        try {
+          renderWithProviders(<ArticleList articles={articles} />);
+          await userEvent.click(screen.getByTestId('toggle-favorite-2'));
+
+          await waitFor(() => expect(events).toHaveLength(1));
+          expect(events[0].detail).toMatchObject({
+            articleId: '2',
+            isFavorited: expected,
+          });
+          expect(global.fetch).toHaveBeenCalledWith('/api/favorites/2', {
+            method: initiallyFavorited ? 'DELETE' : 'POST',
+          });
+          expect(mockToast).not.toHaveBeenCalled();
+        } finally {
+          window.removeEventListener('article-favorite-changed', listener);
+          authClient.useSession.mockReturnValue({
+            data: null,
+            isPending: false,
+          });
+        }
+      }
+    );
 
     it('removes event listener on unmount', () => {
       const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');

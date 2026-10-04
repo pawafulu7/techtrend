@@ -1,7 +1,7 @@
 'use client';
 
 import { getTagDisplayName } from '@/lib/constants/tag-labels';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
@@ -71,9 +71,11 @@ export function HeatmapPageClient() {
 
   // Fetch heatmap data
   const {
-    data: heatmapData = [],
-    isLoading: loading,
+    data: heatmapQueryData,
+    isLoading: heatmapLoading,
+    isFetching: heatmapFetching,
     error: heatmapQueryError,
+    errorUpdateCount: heatmapErrorCount,
     refetch: refetchHeatmap,
   } = useQuery<CategoryData[]>({
     queryKey: ['heatmap', { period }],
@@ -93,7 +95,18 @@ export function HeatmapPageClient() {
     },
   });
 
-  const error = heatmapQueryError ? heatmapQueryError.message : null;
+  const heatmapData = useMemo(() => heatmapQueryData ?? [], [heatmapQueryData]);
+  // 取得に失敗してデータが無い: 「データがありません」ではなく失敗を出す。React Query は data の
+  // 無いクエリを再取得すると pending に戻すので、失敗後の再試行中も失敗表示を残す（issue #701）
+  const heatmapFailedWithoutData =
+    heatmapQueryData === undefined &&
+    (!!heatmapQueryError || heatmapErrorCount > 0);
+  const loading = heatmapLoading && heatmapErrorCount === 0;
+  // 生の error.message（「HTTP 500」や API の英語の文言）は画面に出さない
+  const error =
+    heatmapFailedWithoutData || heatmapQueryError
+      ? 'セクターマップを読み込めませんでした。時間をおいて再試行してください。'
+      : null;
 
   // Fetch drilldown articles
   const {
@@ -197,21 +210,29 @@ export function HeatmapPageClient() {
               variant="outline"
               size="sm"
               onClick={() => void refetchHeatmap()}
+              disabled={heatmapFetching}
               className="shrink-0 gap-2"
             >
-              <RefreshCw className="h-4 w-4" />
-              再試行
+              <RefreshCw
+                className={cn(
+                  'h-4 w-4',
+                  heatmapFetching && 'motion-safe:animate-spin'
+                )}
+              />
+              {heatmapFetching ? '再試行中…' : '再試行'}
             </Button>
           </AlertDescription>
         </Alert>
       )}
 
       {/* Treemap */}
-      <TechSectorTreemap
-        data={heatmapData}
-        onCategoryClick={handleCategoryClick}
-        loading={loading}
-      />
+      {!heatmapFailedWithoutData && (
+        <TechSectorTreemap
+          data={heatmapData}
+          onCategoryClick={handleCategoryClick}
+          loading={loading}
+        />
+      )}
 
       {/* Legend */}
       {!loading && heatmapData.length > 0 && (

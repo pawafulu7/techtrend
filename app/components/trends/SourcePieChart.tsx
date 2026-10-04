@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { PieChartIcon } from 'lucide-react';
 import { useChartColors } from './useChartColors';
+import { ErrorState } from '@/components/ui-v2/error-state';
 
 interface SourceData {
   name: string;
@@ -20,8 +21,11 @@ interface SourceData {
 }
 
 interface SourcePieChartProps {
-  data: SourceData[];
+  /** null は取得の失敗。空配列（データがありません）とは別に表示する */
+  data: SourceData[] | null;
   loading?: boolean;
+  onRetry?: () => void;
+  retrying?: boolean;
 }
 
 // Rechartsのlabelプロパティ用の型定義（Rechartsの内部型に準拠）
@@ -106,7 +110,12 @@ const renderCustomizedLabel = (props: LabelRenderProps): React.ReactNode => {
   );
 };
 
-export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
+export function SourcePieChart({
+  data,
+  loading = false,
+  onRetry,
+  retrying = false,
+}: SourcePieChartProps) {
   const colors = useChartColors();
 
   if (loading) {
@@ -121,7 +130,25 @@ export function SourcePieChart({ data, loading = false }: SourcePieChartProps) {
     );
   }
 
-  if (!data || data.length === 0) {
+  if (data === null) {
+    return (
+      <div className="bg-background rounded-lg border p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
+          <h3 className="text-sm font-semibold">ソース別記事分布</h3>
+        </div>
+        <ErrorState
+          title="ソース別記事分布を読み込めませんでした"
+          description="時間をおいて再試行してください。"
+          onRetry={onRetry}
+          retrying={retrying}
+          className="h-[300px]"
+        />
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
     return (
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">

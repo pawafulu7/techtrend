@@ -7,6 +7,8 @@ import type { ArticleListProps } from '@/types/components';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import { cn } from '@/lib/utils';
+// useToast は全トーストの状態を購読して一覧全体を再描画させるため、関数だけを使う
+import { toast } from '@/hooks/use-toast';
 
 // 既読状態変更イベントの型定義
 interface ArticleReadStatusChangedDetail {
@@ -54,12 +56,19 @@ export function ArticleList({
       if (!article) return;
       const currentlyFavorited = article.isFavorited ?? false;
 
+      // 失敗したら表示を戻し、戻した理由を通知する（黙って戻すと、押せなかったように見えるため。issue #701）
       const revertFavorite = () => {
         setArticles((prev) =>
           prev.map((a) =>
             a.id === articleId ? { ...a, isFavorited: currentlyFavorited } : a
           )
         );
+        toast({
+          title: 'エラー',
+          description:
+            'お気に入りの更新に失敗しました。もう一度お試しください。',
+          variant: 'destructive',
+        });
       };
 
       // 楽観的更新 - ローカル状態を即座に更新
@@ -75,7 +84,13 @@ export function ArticleList({
           method: currentlyFavorited ? 'DELETE' : 'POST',
         });
 
-        if (response.ok) {
+        // 409 = 既に登録済み / 404 = 既に未登録。サーバーの状態は望む状態と一致して
+        // いるので成功と同じ扱いにする（favorite-button.tsx と同じ判定）
+        const alreadyInDesiredState =
+          (!currentlyFavorited && response.status === 409) ||
+          (currentlyFavorited && response.status === 404);
+
+        if (response.ok || alreadyInDesiredState) {
           // API成功時にイベント発火（React Queryキャッシュ同期用）
           window.dispatchEvent(
             new CustomEvent('article-favorite-changed', {

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-generator';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger';
+import { DAILY_REPORT_NOT_FOUND_ERROR } from '@/lib/constants/daily-trend';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
 import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import { withVerifiedCategoryTopArticles } from '@/lib/services/trend-report/verify-daily-articles';
@@ -269,7 +270,7 @@ export async function fetchInitialDailyData(): Promise<DailyTrendResponse> {
       if (!latestReport) {
         return {
           success: false,
-          error: 'No report found for this date',
+          error: DAILY_REPORT_NOT_FOUND_ERROR,
           latestAvailableDate: null,
         };
       }

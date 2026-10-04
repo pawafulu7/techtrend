@@ -5,6 +5,7 @@ import { Prisma } from '@/lib/prisma-exports';
 import { keywordsCache } from '@/lib/cache/keywords-cache';
 import { trendsCache } from '@/lib/cache/trends-cache';
 import { RedisCache } from '@/lib/cache';
+import logger from '@/lib/logger';
 import {
   enabledSourceSql,
   enabledSourceWhere,
@@ -146,14 +147,14 @@ export async function fetchKeywordsData(): Promise<{
         count: tag.count,
       })),
     };
-  } catch {
-    return { trending: [], newTags: [] };
+  } catch (error) {
+    // 失敗を空の一覧に変えると「急上昇なし」と区別できないため、呼び出し側へ返す（issue #701）
+    logger.error({ err: error }, 'Failed to fetch trending keywords (SC)');
+    throw error;
   }
 }
 
-export async function fetchAnalysisData(
-  days: number
-): Promise<TrendAnalysis | null> {
+export async function fetchAnalysisData(days: number): Promise<TrendAnalysis> {
   try {
     const cacheKey = trendsCache.generateTrendsKey({ days });
 
@@ -247,8 +248,9 @@ export async function fetchAnalysisData(
         days,
       },
     };
-  } catch {
-    return null;
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to fetch trend analysis (SC)');
+    throw error;
   }
 }
 
@@ -320,7 +322,8 @@ export async function fetchSourceData(): Promise<SourceDataItem[]> {
     }
 
     return sourceData;
-  } catch {
-    return [];
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to fetch source distribution (SC)');
+    throw error;
   }
 }

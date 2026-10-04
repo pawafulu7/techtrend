@@ -1,28 +1,40 @@
 'use client';
 
 import { getTagDisplayName } from '@/lib/constants/tag-labels';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+  useTransition,
+} from 'react';
+import { useRouter } from 'next/navigation';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { TrendingUp, Sparkles, BarChart3, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
+import { ErrorState } from '@/components/ui-v2/error-state';
 import Link from 'next/link';
 import { TrendLineChart, SourcePieChart } from '@/app/components/trends';
 import { TrendingKeywordCard } from '@/app/components/trends/overview/TrendingKeywordCard';
 import { TrendStatsBar } from '@/app/components/trends/overview/TrendStatsBar';
 import { TrendNavigationCards } from '@/app/components/trends/overview/TrendNavigationCards';
-import {
+import type {
   TrendingKeyword,
   NewTag,
   TrendAnalysis,
   SourceDataItem,
 } from './trends-data';
 
+// null はサーバーでの取得の失敗。空配列（該当なし）とは別に表示する（issue #701）
 interface TrendsContentProps {
-  initialKeywords: TrendingKeyword[];
-  initialNewTags: NewTag[];
+  initialKeywords: TrendingKeyword[] | null;
+  initialNewTags: NewTag[] | null;
   initialAnalysis: TrendAnalysis | null;
-  initialSourceData: SourceDataItem[];
+  initialSourceData: SourceDataItem[] | null;
 }
+
+const RETRY_DESCRIPTION = '時間をおいて再試行してください。';
 
 export function TrendsContent({
   initialKeywords,
@@ -36,6 +48,39 @@ export function TrendsContent({
   const [selectedDays, setSelectedDays] = useState(7);
 
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  // 分析の取得に失敗した期間。失敗表示はその期間を表示しているときだけ出す（別の期間を
+  // 読み込んでいる間に、前の期間の失敗を見せないため）
+  const [failedDays, setFailedDays] = useState<number | null>(
+    initialAnalysis === null ? 7 : null
+  );
+  // 期間の切り替えと再試行の取得を1本にまとめ、古い応答で上書きしないようにする
+  const analysisControllerRef = useRef<AbortController | null>(null);
+  // 最後に成功した7日の分析（サーバー描画か、クライアントでの取り直し）。7日に戻したときに
+  // これを使い、取り直して成功した分析をサーバーの失敗（null）で捨てない
+  const sevenDayAnalysisRef = useRef(initialAnalysis);
+  const selectedDaysRef = useRef(selectedDays);
+  useEffect(() => {
+    selectedDaysRef.current = selectedDays;
+  }, [selectedDays]);
+  // 他セクションの再試行（router.refresh）でも initialAnalysis が届き直す。期間切り替えの
+  // effect とは分け、新しい分析が届いたときだけ反映する（14日・30日表示中は取り直さない）
+  useEffect(() => {
+    if (initialAnalysis === null) return;
+    sevenDayAnalysisRef.current = initialAnalysis;
+    if (selectedDaysRef.current === 7) {
+      analysisControllerRef.current?.abort();
+      setLoadingAnalysis(false);
+      setFailedDays(null);
+      setTrendAnalysis(initialAnalysis);
+    }
+  }, [initialAnalysis]);
+
+  // サーバーで取得したセクション（急上昇・新着タグ・ソース分布）の再試行
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
+  const refreshServerData = useCallback(() => {
+    startRefresh(() => router.refresh());
+  }, [router]);
 
   const fetchTrendAnalysis = useCallback(
     async (days: number, signal?: AbortSignal) => {
@@ -47,17 +92,21 @@ export function TrendsContent({
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        if (data.error) {
-          setTrendAnalysis(null);
-        } else {
-          setTrendAnalysis(data);
+        // JSON を読む間に期間が切り替わっていたら、古い期間の応答で上書きしない
+        if (signal?.aborted) return;
+        if (!data || data.error || !Array.isArray(data.topTags)) {
+          throw new Error('Invalid trend analysis response');
         }
+        if (days === 7) sevenDayAnalysisRef.current = data;
+        setFailedDays(null);
+        setTrendAnalysis(data);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError')
           return;
         if (process.env.NODE_ENV !== 'production') {
           console.error('Failed to fetch trend analysis:', error);
         }
+        setFailedDays(days);
         setTrendAnalysis(null);
       } finally {
         if (!signal?.aborted) {
@@ -68,28 +117,49 @@ export function TrendsContent({
     []
   );
 
+  const startAnalysisFetch = useCallback(
+    (days: number) => {
+      analysisControllerRef.current?.abort();
+      const controller = new AbortController();
+      analysisControllerRef.current = controller;
+      void fetchTrendAnalysis(days, controller.signal);
+    },
+    [fetchTrendAnalysis]
+  );
+
   useEffect(() => {
     // 初回レンダリング時（selectedDays===7）はサーバー取得済みデータを使用
     if (selectedDays === 7) {
+      analysisControllerRef.current?.abort();
       // 30日→7日切替時、進行中の fetch を abort した直後は finally が
       // signal.aborted 経由でローディング解除をスキップするため、ここで明示的に false に戻す。
-      // 続けて initialAnalysis（SSR 取得済み）を selectedDays 変化に応じてリセットする。
+      // 続けて最後に成功した7日の分析に戻す（無ければ失敗のまま）。
+      const sevenDay = sevenDayAnalysisRef.current;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoadingAnalysis(false);
-      setTrendAnalysis(initialAnalysis);
-      return;
+      setFailedDays(sevenDay === null ? 7 : null);
+      setTrendAnalysis(sevenDay);
+      // 7日表示中に始めた分析の再試行を、離脱時に止める
+      return () => analysisControllerRef.current?.abort();
     }
 
-    const controller = new AbortController();
+    // デバウンス中から読み込み中にする（前の期間の内容や失敗を見せない）
+    setLoadingAnalysis(true);
     const timeoutId = setTimeout(() => {
-      fetchTrendAnalysis(selectedDays, controller.signal);
+      startAnalysisFetch(selectedDays);
     }, 300);
 
     return () => {
       clearTimeout(timeoutId);
-      controller.abort();
+      analysisControllerRef.current?.abort();
     };
-  }, [selectedDays, initialAnalysis, fetchTrendAnalysis]);
+  }, [selectedDays, startAnalysisFetch]);
+
+  // 表示中の期間で失敗している。失敗後の再試行中もスケルトンに戻さず、失敗表示（再試行中…）を残す
+  const analysisFailed = trendAnalysis === null && failedDays === selectedDays;
+  const retryAnalysis = useCallback(() => {
+    startAnalysisFetch(selectedDays);
+  }, [startAnalysisFetch, selectedDays]);
 
   const chartData = useMemo(
     () => ({
@@ -105,9 +175,11 @@ export function TrendsContent({
 
       {/* Stats Bar */}
       <TrendStatsBar
-        trendingCount={initialKeywords.length}
-        newTagCount={initialNewTags.length}
-        topTagCount={trendAnalysis?.topTags?.length ?? 0}
+        trendingCount={initialKeywords?.length ?? null}
+        newTagCount={initialNewTags?.length ?? null}
+        topTagCount={
+          trendAnalysis ? (trendAnalysis.topTags?.length ?? 0) : null
+        }
         loading={false}
       />
 
@@ -122,7 +194,15 @@ export function TrendsContent({
           <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-secondary)/50 to-transparent" />
         </div>
 
-        {initialKeywords.length > 0 ? (
+        {initialKeywords === null ? (
+          <ErrorState
+            title="急上昇キーワードを読み込めませんでした"
+            description={RETRY_DESCRIPTION}
+            onRetry={refreshServerData}
+            retrying={isRefreshing}
+            className="rounded-lg border"
+          />
+        ) : initialKeywords.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {initialKeywords.slice(0, 8).map((keyword) => (
               <TrendingKeywordCard key={keyword.id} keyword={keyword} />
@@ -140,11 +220,19 @@ export function TrendsContent({
         <div className="mb-3 flex items-center gap-2">
           <Sparkles className="h-3.5 w-3.5 text-(--tt-color-positive)" />
           <h2 className="text-muted-foreground text-xs font-medium tracking-wide">
-            新着タグ{` (${initialNewTags.length})`}
+            新着タグ{initialNewTags ? ` (${initialNewTags.length})` : ''}
           </h2>
         </div>
 
-        {initialNewTags.length > 0 ? (
+        {initialNewTags === null ? (
+          <ErrorState
+            title="新着タグを読み込めませんでした"
+            description={RETRY_DESCRIPTION}
+            onRetry={refreshServerData}
+            retrying={isRefreshing}
+            className="rounded-lg border"
+          />
+        ) : initialNewTags.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {initialNewTags.map((tag) => (
               <BadgeV2 key={tag.id} variant="positive" asChild>
@@ -205,7 +293,10 @@ export function TrendsContent({
           <TrendLineChart
             data={chartData.timeline}
             tags={chartData.topTags}
-            loading={loadingAnalysis}
+            loading={loadingAnalysis && !analysisFailed}
+            error={analysisFailed}
+            onRetry={retryAnalysis}
+            retrying={loadingAnalysis}
           />
 
           <div className="grid gap-6 lg:grid-cols-2">
@@ -215,7 +306,7 @@ export function TrendsContent({
                 <BarChart3 className="h-4 w-4 text-(--tt-color-info)" />
                 <h3 className="text-sm font-semibold">人気タグ TOP10</h3>
               </div>
-              {loadingAnalysis ? (
+              {loadingAnalysis && !analysisFailed ? (
                 <div className="space-y-2">
                   {[...Array(10)].map((_, i) => (
                     <div
@@ -224,6 +315,13 @@ export function TrendsContent({
                     />
                   ))}
                 </div>
+              ) : analysisFailed ? (
+                <ErrorState
+                  title="人気タグを読み込めませんでした"
+                  description={RETRY_DESCRIPTION}
+                  onRetry={retryAnalysis}
+                  retrying={loadingAnalysis}
+                />
               ) : trendAnalysis?.topTags && trendAnalysis.topTags.length > 0 ? (
                 <div className="space-y-1">
                   {trendAnalysis.topTags.slice(0, 10).map((tag, index) => (
@@ -253,7 +351,12 @@ export function TrendsContent({
             </div>
 
             {/* Source Pie Chart */}
-            <SourcePieChart data={initialSourceData} loading={false} />
+            <SourcePieChart
+              data={initialSourceData}
+              loading={false}
+              onRetry={refreshServerData}
+              retrying={isRefreshing}
+            />
           </div>
         </div>
       </section>

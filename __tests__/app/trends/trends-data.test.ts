@@ -87,3 +87,30 @@ describe('trends-data: 無効化したソースの記事を数えない（issue 
     expect(data).toEqual([{ name: 'S1', value: 4, percentage: 40 }]);
   });
 });
+
+// 失敗を空の一覧や null に変えると、画面で「該当なし」と区別できない（issue #701）
+describe('trends-data: 取得の失敗を空として返さない（issue #701）', () => {
+  const dbError = new Error('connection refused');
+
+  beforeEach(() => {
+    prismaMock.$queryRaw.mockReset();
+    prismaMock.$queryRaw.mockRejectedValue(dbError);
+  });
+
+  it('fetchKeywordsData は失敗を投げ直す', async () => {
+    await expect(fetchKeywordsData()).rejects.toThrow('connection refused');
+  });
+
+  it('fetchAnalysisData は失敗を投げ直す', async () => {
+    await expect(fetchAnalysisData(7)).rejects.toThrow('connection refused');
+  });
+
+  it('fetchSourceData は失敗を投げ直す', async () => {
+    prismaMock.article.count.mockReset();
+    prismaMock.article.count.mockRejectedValue(dbError);
+    prismaMock.source.findMany.mockReset();
+    prismaMock.source.findMany.mockResolvedValue([]);
+
+    await expect(fetchSourceData()).rejects.toThrow('connection refused');
+  });
+});
