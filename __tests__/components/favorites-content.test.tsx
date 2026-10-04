@@ -38,6 +38,9 @@ let mockFavorites: (typeof FAVORITE)[] = [];
 let mockSetFavorites: (next: (typeof FAVORITE)[]) => void = () => {};
 // 一覧そのものの取得に失敗した状態（data が無く、error がある）
 let mockListError: Error | null = null;
+// 一覧の取得結果を部分的に差し替える（再試行中・取得済みの一覧がある状態の失敗など）
+let mockOverrides: Record<string, unknown> = {};
+const mockFetchNextPage = jest.fn();
 const mockRefetch = jest.fn();
 jest.mock('@/app/hooks/use-infinite-favorites', () => ({
   useInfiniteFavorites: () => {
@@ -59,6 +62,7 @@ jest.mock('@/app/hooks/use-infinite-favorites', () => ({
         isFetching: false,
         errorUpdateCount: 1,
         removeFavoriteFromCache: jest.fn(),
+        ...mockOverrides,
       };
     }
     return {
@@ -67,7 +71,7 @@ jest.mock('@/app/hooks/use-infinite-favorites', () => ({
       isLoading: false,
       isFetchingNextPage: false,
       hasNextPage: false,
-      fetchNextPage: jest.fn(),
+      fetchNextPage: mockFetchNextPage,
       error: null,
       data: { pages: [] },
       refetch: mockRefetch,
@@ -79,6 +83,7 @@ jest.mock('@/app/hooks/use-infinite-favorites', () => ({
           prev.filter((a) => a.id !== id)
         );
       },
+      ...mockOverrides,
     };
   },
 }));
@@ -129,6 +134,7 @@ describe('FavoritesContent: 解除の失敗（issue #701）', () => {
   afterEach(() => {
     global.fetch = originalFetch;
     mockListError = null;
+    mockOverrides = {};
   });
 
   it.each([
@@ -205,5 +211,50 @@ describe('FavoritesContent: 解除の失敗（issue #701）', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '再試行' }));
     expect(mockRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('一覧の取得の失敗後に再試行している間は、スケルトンではなく失敗表示と「再試行中…」を出す', () => {
+    mockListError = new Error('failed');
+    mockOverrides = {
+      isLoading: true,
+      error: null,
+      isFetching: true,
+      errorUpdateCount: 1,
+    };
+    renderFavorites();
+
+    expect(
+      screen.getByText('お気に入りを読み込めませんでした')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '再試行中…' })).toBeDisabled();
+  });
+
+  it('取得済みの一覧がある状態で再取得に失敗したら、一覧を残して古いことを示す', () => {
+    mockOverrides = { error: new Error('failed'), errorUpdateCount: 1 };
+    renderFavorites();
+
+    expect(
+      screen.getByText('最新のお気に入りを読み込めませんでした')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '解除 a1' })).toBeInTheDocument();
+  });
+
+  it('続きのページの取得に失敗したら、下端に出して続きだけを再試行する', async () => {
+    mockOverrides = {
+      error: new Error('failed'),
+      errorUpdateCount: 1,
+      isFetchNextPageError: true,
+      hasNextPage: true,
+    };
+    renderFavorites();
+
+    expect(screen.getByText('続きを読み込めませんでした')).toBeInTheDocument();
+    expect(
+      screen.queryByText('最新のお気に入りを読み込めませんでした')
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '再試行' }));
+    expect(mockFetchNextPage).toHaveBeenCalledTimes(1);
+    expect(mockRefetch).not.toHaveBeenCalled();
   });
 });

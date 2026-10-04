@@ -200,6 +200,11 @@ describe('DigestClient: 取得の失敗（issue #701）', () => {
         <DigestClient />
       </QueryClientProvider>
     );
+    // 取り直しの間は読み込み中。前の 401 を「失敗後の再試行」と取り違えない
+    expect(
+      screen.queryByText('ダイジェストを読み込めませんでした')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('読み込み中')).toBeInTheDocument();
 
     expect(await screen.findByTestId('digest-section')).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(2);

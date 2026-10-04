@@ -94,4 +94,20 @@ describe('ProfileContent: 取得の失敗（issue #701）', () => {
     resolveRetry({ ok: true, json: async () => profile });
     expect(await screen.findByTestId('profile-form')).toBeInTheDocument();
   });
+
+  it('アンマウントしたら、進行中の取得を中断する', () => {
+    let receivedSignal: AbortSignal | undefined;
+    global.fetch = jest
+      .fn()
+      .mockImplementation((_url: string, init?: RequestInit) => {
+        receivedSignal = init?.signal ?? undefined;
+        return new Promise(() => {});
+      });
+
+    const { unmount } = render(<ProfileContent />);
+    expect(receivedSignal?.aborted).toBe(false);
+    unmount();
+
+    expect(receivedSignal?.aborted).toBe(true);
+  });
 });

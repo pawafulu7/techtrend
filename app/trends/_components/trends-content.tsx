@@ -92,6 +92,8 @@ export function TrendsContent({
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
+        // JSON を読む間に期間が切り替わっていたら、古い期間の応答で上書きしない
+        if (signal?.aborted) return;
         if (!data || data.error || !Array.isArray(data.topTags)) {
           throw new Error('Invalid trend analysis response');
         }

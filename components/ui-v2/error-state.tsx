@@ -36,46 +36,51 @@ export function ErrorState({
 
   return (
     <div
-      // E2E の規約（e2e/testid-naming.md）: エラー表示は error-message と role="alert"
-      role="alert"
-      data-testid="error-message"
       className={cn(
         'flex flex-col items-center justify-center text-center',
         isBlock ? 'px-4 py-12' : 'px-4 py-6',
         className
       )}
     >
-      {isBlock ? (
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-(--tt-color-negative-bg)">
+      {/* E2E の規約（e2e/testid-naming.md）: エラー表示は error-message と role="alert"。
+          live region は文言だけにし、再試行ボタンの「再試行中…」への変化で読み上げ直させない */}
+      <div
+        role="alert"
+        data-testid="error-message"
+        className="flex flex-col items-center"
+      >
+        {isBlock ? (
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-(--tt-color-negative-bg)">
+            <AlertTriangle
+              className="h-7 w-7 text-(--tt-color-negative)"
+              aria-hidden="true"
+            />
+          </div>
+        ) : (
           <AlertTriangle
-            className="h-7 w-7 text-(--tt-color-negative)"
+            className="mb-2 h-5 w-5 text-(--tt-color-negative)"
             aria-hidden="true"
           />
-        </div>
-      ) : (
-        <AlertTriangle
-          className="mb-2 h-5 w-5 text-(--tt-color-negative)"
-          aria-hidden="true"
-        />
-      )}
-      <p
-        className={cn(
-          'text-(--tt-color-text)',
-          isBlock ? 'mb-2 text-base font-medium' : 'text-sm font-medium'
         )}
-      >
-        {title}
-      </p>
-      {description && (
         <p
           className={cn(
-            'max-w-md text-(--tt-color-text-muted)',
-            isBlock ? 'text-sm' : 'mt-1 text-xs'
+            'text-(--tt-color-text)',
+            isBlock ? 'mb-2 text-base font-medium' : 'text-sm font-medium'
           )}
         >
-          {description}
+          {title}
         </p>
-      )}
+        {description && (
+          <p
+            className={cn(
+              'max-w-md text-(--tt-color-text-muted)',
+              isBlock ? 'text-sm' : 'mt-1 text-xs'
+            )}
+          >
+            {description}
+          </p>
+        )}
+      </div>
       {onRetry && (
         <Button
           variant="outline"

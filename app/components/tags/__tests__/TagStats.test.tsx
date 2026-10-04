@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TagStats } from '../TagStats';
+import logger from '@/lib/logger.client';
 
 jest.mock('@/lib/logger.client', () => ({
   __esModule: true,
@@ -181,5 +182,25 @@ describe('TagStats', () => {
     expect(screen.getByText('120')).toBeInTheDocument();
     expect(screen.queryByText('取得できませんでした')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '再試行' })).toBeInTheDocument();
+  });
+
+  it('失敗のたびに1回だけログを出す（再描画や再試行中に重複して出さない）', async () => {
+    mockFetch({
+      stats: fail(),
+      cloud: ok(cloudBody),
+      newTags: ok({ count: 1 }),
+    });
+    jest.mocked(logger.error).mockClear();
+
+    renderTagStats();
+    await userEvent.click(
+      await screen.findByRole('button', { name: '再試行' })
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '再試行' })).toBeEnabled()
+    );
+
+    // 初回と再試行の2回の失敗で、2回だけ
+    await waitFor(() => expect(logger.error).toHaveBeenCalledTimes(2));
   });
 });

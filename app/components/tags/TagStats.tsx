@@ -104,10 +104,11 @@ export function TagStats() {
   const loggedErrorCountRef = useRef<number[]>([0, 0, 0]);
   useEffect(() => {
     results.forEach((r, i) => {
-      if (r.errorUpdateCount > loggedErrorCountRef.current[i]) {
+      // 回復済みのクエリを再マウントしたとき（errorUpdateCount はキャッシュに残る）に出さない
+      if (r.isError && r.errorUpdateCount > loggedErrorCountRef.current[i]) {
         logger.error({ err: r.error }, 'Failed to load tag stats');
-        loggedErrorCountRef.current[i] = r.errorUpdateCount;
       }
+      loggedErrorCountRef.current[i] = r.errorUpdateCount;
     });
   }, [errorCounts]); // eslint-disable-line react-hooks/exhaustive-deps
 

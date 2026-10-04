@@ -40,7 +40,7 @@ export function useDigest(period: DigestPeriod) {
   // 止めるのは、この画面を開いてから起きた 401 だけ。メール・パスワードでログインし直すと
   // クライアント遷移で前の 401 がキャッシュに残るため、それで止めると案内が消えなくなる
   const [mountedAt] = useState(() => Date.now());
-  return useQuery({
+  const query = useQuery({
     queryKey: ['digest', period],
     queryFn: ({ signal }) => fetchDigest(period, signal),
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -49,4 +49,8 @@ export function useDigest(period: DigestPeriod) {
     enabled: (query) =>
       !(isUnauthorizedQuery(query) && query.state.errorUpdatedAt >= mountedAt),
   });
+  // この画面を開いてから失敗したか。errorUpdateCount はキャッシュに残るので、開き直した直後の
+  // 取り直し（ログインし直した後など）を「失敗後の再試行」と取り違えないよう時刻で判断する
+  const hasFailedSinceMount = query.errorUpdatedAt >= mountedAt;
+  return { ...query, hasFailedSinceMount };
 }

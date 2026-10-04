@@ -344,10 +344,12 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '30日間' }));
 
-    // デバウンス中も取得中も、7日の失敗や「再試行中…」ではなくスケルトン
+    // デバウンス中も取得中も、7日の失敗や「再試行中…」、空表示ではなくスケルトン
     expect(
       screen.queryByText('人気タグを読み込めませんでした')
     ).not.toBeInTheDocument();
+    // 「データがありません」はソース分布（空配列 = 該当なし）の1箇所だけ
+    expect(screen.getAllByText('データがありません')).toHaveLength(1);
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
     expect(
       screen.queryByRole('button', { name: '再試行中…' })
@@ -357,5 +359,43 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       resolve30({ ok: true, json: async () => analysis30 });
     });
     expect(await screen.findByText('Go')).toBeInTheDocument();
+  });
+
+  it('router.refresh でサーバーの分析がまだ失敗（null）でも、取り直した分析を残す', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => analysisWithTag,
+    });
+
+    const { rerender } = render(
+      <TrendsContent
+        initialKeywords={null}
+        initialNewTags={[]}
+        initialAnalysis={null}
+        initialSourceData={[]}
+      />
+    );
+    const topTags = screen.getByText('人気タグ TOP10').closest('div.border');
+    await userEvent.click(
+      within(topTags as HTMLElement).getByRole('button', { name: '再試行' })
+    );
+    await waitFor(() => expect(screen.getByText('React')).toBeInTheDocument());
+
+    rerender(
+      <TrendsContent
+        initialKeywords={[]}
+        initialNewTags={[]}
+        initialAnalysis={null}
+        initialSourceData={[]}
+      />
+    );
+    // 期間を往復しても、最後に成功した7日の分析に戻る
+    await userEvent.click(screen.getByRole('button', { name: '30日間' }));
+    await userEvent.click(screen.getByRole('button', { name: '7日間' }));
+
+    expect(screen.getByText('React')).toBeInTheDocument();
+    expect(
+      screen.queryByText('人気タグを読み込めませんでした')
+    ).not.toBeInTheDocument();
   });
 });

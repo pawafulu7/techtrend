@@ -74,13 +74,16 @@ export function FavoritesContent({
     refetch,
     isFetching,
     errorUpdateCount,
+    isFetchNextPageError,
   } = useInfiniteFavorites({ limit: 20, includeRelations: true });
   // 取得に失敗して一覧が無い: 「0件」や空状態ではなく失敗と再試行を出す（issue #701）。
   // React Query は data の無いクエリを再取得すると pending に戻すので、失敗後の再試行中も失敗表示を残す
   const failedWithoutData =
     data === undefined && (!!error || errorUpdateCount > 0);
-  // 取得済みの一覧がある状態で再取得・続きの取得に失敗した: 一覧を残して古いことを示す
-  const staleAfterError = !!error && data !== undefined;
+  // 取得済みの一覧がある状態で再取得に失敗した: 一覧を残して古いことを示す。続きのページの
+  // 取得の失敗は一覧の下端に出し、全ページを取り直さず続きだけを再試行する（スクロール位置を失わないため）
+  const staleAfterError =
+    !!error && data !== undefined && !isFetchNextPageError;
 
   // Filter and sort favorites
   const filteredFavorites = useMemo(() => {
@@ -376,11 +379,21 @@ export function FavoritesContent({
           </section>
 
           {/* Load more trigger */}
-          <InfiniteScrollTrigger
-            onIntersect={fetchNextPage}
-            hasNextPage={hasNextPage ?? false}
-            isFetchingNextPage={isFetchingNextPage}
-          />
+          {isFetchNextPageError ? (
+            <ErrorState
+              title="続きを読み込めませんでした"
+              description="時間をおいて再試行してください。"
+              onRetry={() => void fetchNextPage()}
+              retrying={isFetchingNextPage}
+              className="mt-4"
+            />
+          ) : (
+            <InfiniteScrollTrigger
+              onIntersect={fetchNextPage}
+              hasNextPage={hasNextPage ?? false}
+              isFetchingNextPage={isFetchingNextPage}
+            />
+          )}
         </div>
       )}
     </div>
