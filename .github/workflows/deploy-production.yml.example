@@ -2,7 +2,7 @@
 # 
 # To enable automatic migration deployment:
 # 1. Rename this file to deploy-production.yml (remove .example)
-# 2. Add PRODUCTION_DATABASE_URL to GitHub Secrets
+# 2. Add PROD_DATABASE_URL to GitHub Secrets
 # 3. Uncomment and customize the workflow below
 # 4. Test thoroughly in a staging environment first
 
@@ -67,7 +67,7 @@ jobs:
       # Check current status before applying
       - name: Check migration status
         env:
-          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: |
           echo "Current migration status:"
           npx prisma migrate status
@@ -76,7 +76,7 @@ jobs:
       - name: Deploy migrations
         id: deploy
         env:
-          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: |
           echo "Applying migrations to production..."
           npx prisma migrate deploy
@@ -85,7 +85,7 @@ jobs:
       - name: Verify deployment
         if: success()
         env:
-          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: |
           echo "Verifying migration deployment..."
           npx prisma migrate status

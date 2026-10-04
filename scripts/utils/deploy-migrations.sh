@@ -2,7 +2,7 @@
 
 # Production Migration Deployment Script
 # Usage: npm run migrate:production
-# Requires: PRODUCTION_DATABASE_URL environment variable
+# Requires: PROD_DATABASE_URL (environment variable, .env.local or .env)
 
 # Color definitions
 RED='\033[0;31m'
@@ -17,27 +17,21 @@ echo -e "${BLUE}   TechTrend Production Migration Tool  ${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo
 
-# Check if PRODUCTION_DATABASE_URL is set
-if [ -z "$PRODUCTION_DATABASE_URL" ]; then
-    echo -e "${RED}Error: PRODUCTION_DATABASE_URL environment variable is not set${NC}"
-    echo
-    echo "Please set it using one of these methods:"
-    echo "1. Export it: export PRODUCTION_DATABASE_URL='your-database-url'"
-    echo "2. Create .env.production file with PRODUCTION_DATABASE_URL"
-    echo "3. Pass it directly: PRODUCTION_DATABASE_URL='url' npm run migrate:production"
-    exit 1
-fi
+# Load PROD_DATABASE_URL (environment variable > .env.local > .env)
+# shellcheck source=scripts/db/prod-db-env.sh
+source "$(dirname "$0")/../db/prod-db-env.sh"
+load_prod_database_url || exit 1
 
 # Function to check migration status
 check_status() {
     echo -e "${YELLOW}Checking migration status...${NC}"
-    DATABASE_URL="$PRODUCTION_DATABASE_URL" npx prisma migrate status
+    DATABASE_URL="$PROD_DATABASE_URL" npx prisma migrate status
     return $?
 }
 
 # Function to count pending migrations
 count_pending() {
-    local output=$(DATABASE_URL="$PRODUCTION_DATABASE_URL" npx prisma migrate status 2>&1)
+    local output=$(DATABASE_URL="$PROD_DATABASE_URL" npx prisma migrate status 2>&1)
     local pending=$(echo "$output" | grep -c "Following migrations have not yet been applied")
     if [ $pending -gt 0 ]; then
         echo "$output" | grep -A 100 "Following migrations have not yet been applied" | grep -E "^[0-9]" | wc -l
@@ -91,7 +85,7 @@ echo "============================"
 echo -e "${YELLOW}Executing: npx prisma migrate deploy${NC}"
 echo
 
-DATABASE_URL="$PRODUCTION_DATABASE_URL" npx prisma migrate deploy
+DATABASE_URL="$PROD_DATABASE_URL" npx prisma migrate deploy
 DEPLOY_RESULT=$?
 
 if [ $DEPLOY_RESULT -eq 0 ]; then
