@@ -146,7 +146,7 @@ export class ArxivAIFetcher extends BaseFetcher {
         } else {
           failureCount++;
           logger.warn(
-            { error: result.reason },
+            { err: result.reason },
             'arXiv AI: エンリッチメント失敗'
           );
         }

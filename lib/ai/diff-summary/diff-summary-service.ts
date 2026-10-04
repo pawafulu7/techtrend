@@ -198,7 +198,7 @@ export class DiffSummaryService {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       logger.error(
-        { categorySlug, error: errorMessage },
+        { categorySlug, err: error },
         'Failed to generate diff summary'
       );
 

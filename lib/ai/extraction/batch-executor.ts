@@ -109,7 +109,7 @@ export class BatchExecutor {
             };
 
             logger.warn(
-              { jobId: job.id, error: batchResult.error },
+              { jobId: job.id, err: error },
               'Batch job failed'
             );
 

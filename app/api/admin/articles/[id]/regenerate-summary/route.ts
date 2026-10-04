@@ -125,7 +125,7 @@ async function handler(
       await articleDetailCache.invalidateArticle(id);
     } catch (cacheError) {
       logger.error(
-        { error: cacheError, articleId: id },
+        { err: cacheError, articleId: id },
         '[AdminRegenerateSummaryAPI] Cache invalidation failed'
       );
     }
@@ -150,7 +150,7 @@ async function handler(
     });
 
     logger.error(
-      { error, articleId: id },
+      { err: error, articleId: id },
       '[AdminRegenerateSummaryAPI] Failed to regenerate summary'
     );
     return NextResponse.json(

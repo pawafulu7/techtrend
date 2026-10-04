@@ -64,7 +64,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 201 }
     );
   } catch (error) {
-    logger.error({ error }, 'Failed to process baseline measurement');
+    logger.error({ err: error }, 'Failed to process baseline measurement');
     return NextResponse.json(
       { error: 'Failed to process measurement' },
       { status: 500 }

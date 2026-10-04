@@ -211,7 +211,7 @@ export async function handleBatchRequest(
       span.recordException(error as Error);
       logger.warn(
         {
-          error: sanitizeError(error),
+          err: sanitizeError(error),
           userId,
           queryPreview: validatedRequest.query.substring(0, 50),
           mode: modeContext.agentType,
@@ -325,7 +325,7 @@ export async function handleBatchRequest(
 
     logger.warn(
       {
-        error: sanitizeError(agentError),
+        err: sanitizeError(agentError),
         userId,
         queryPreview: validatedRequest.query.substring(0, 50),
         mode: modeContext.agentType,

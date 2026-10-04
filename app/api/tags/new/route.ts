@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       tags,
     });
   } catch (error) {
-    logger.error({ error }, 'Tags new GET failed');
+    logger.error({ err: error }, 'Tags new GET failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

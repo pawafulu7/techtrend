@@ -93,7 +93,7 @@ export const auth = betterAuth({
           });
         } catch (error) {
           logger.error(
-            { error },
+            { err: error },
             'Failed to send verification email via nodemailer'
           );
           throw error;
@@ -111,7 +111,7 @@ export const auth = betterAuth({
           });
         } catch (error) {
           logger.error(
-            { error },
+            { err: error },
             'Failed to send verification email via resend'
           );
           throw error;
@@ -123,7 +123,7 @@ export const auth = betterAuth({
         return;
       }
       const error = new Error('No email provider configured');
-      logger.error({ error }, 'No email provider configured');
+      logger.error({ err: error }, 'No email provider configured');
       throw error;
     },
   },

@@ -199,14 +199,14 @@ async function handler(request: NextRequest, context: any) {
         await prisma.session.deleteMany({ where: { userId: targetUserId } });
       } catch (firstError) {
         logger.warn(
-          { targetUserId, error: firstError },
+          { targetUserId, err: firstError },
           'Session revocation failed, retrying'
         );
         try {
           await prisma.session.deleteMany({ where: { userId: targetUserId } });
         } catch (retryError) {
           logger.error(
-            { targetUserId, error: retryError },
+            { targetUserId, err: retryError },
             'Session revocation failed after retry — sessions may remain active'
           );
         }

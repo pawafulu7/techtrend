@@ -185,7 +185,7 @@ async function handler(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error({ error }, '[ProcessingLogsAPI] Failed to fetch logs');
+    logger.error({ err: error }, '[ProcessingLogsAPI] Failed to fetch logs');
     return NextResponse.json(
       { error: 'Failed to fetch processing logs' },
       { status: 500 }

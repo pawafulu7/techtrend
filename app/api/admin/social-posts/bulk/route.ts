@@ -90,7 +90,7 @@ async function bulkHandler(
       total: ids.length,
     });
   } catch (error) {
-    logger.error({ error }, '[SocialPostsAPI] Failed to execute bulk action');
+    logger.error({ err: error }, '[SocialPostsAPI] Failed to execute bulk action');
     return NextResponse.json(
       { error: 'Failed to execute bulk action' },
       { status: 500 }

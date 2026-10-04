@@ -197,7 +197,7 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
-    logger.error({ error }, 'Trend analysis error');
+    logger.error({ err: error }, 'Trend analysis error');
     return NextResponse.json(
       { error: 'Failed to fetch trend analysis' },
       { status: 500 }

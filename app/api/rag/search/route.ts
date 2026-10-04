@@ -135,7 +135,7 @@ async function postHandler(
       logger.warn(
         {
           userId,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          err: error,
         },
         'Malformed JSON in RAG search request'
       );
@@ -259,7 +259,7 @@ async function postHandler(
         // OpenAI server errors
         logger.error(
           {
-            error: sanitizeError(error),
+            err: sanitizeError(error),
             userId,
           },
           'OpenAI API error'
@@ -279,7 +279,7 @@ async function postHandler(
         // OpenAI 4xx client errors
         logger.error(
           {
-            error: sanitizeError(error),
+            err: sanitizeError(error),
             userId,
           },
           'OpenAI client error'
@@ -305,7 +305,7 @@ async function postHandler(
     ) {
       logger.error(
         {
-          error: sanitizeError(error),
+          err: sanitizeError(error),
           userId,
         },
         'Database connection error'
@@ -324,7 +324,7 @@ async function postHandler(
     // Other unexpected errors
     logger.error(
       {
-        error: sanitizeError(error),
+        err: sanitizeError(error),
         userId,
       },
       'RAG search API error'

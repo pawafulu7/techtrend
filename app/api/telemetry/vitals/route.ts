@@ -70,7 +70,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Return 204 No Content for successful telemetry
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    logger.error({ error }, 'Failed to process Web Vitals metric');
+    logger.error({ err: error }, 'Failed to process Web Vitals metric');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

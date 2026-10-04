@@ -81,7 +81,7 @@ async function postHandler(
     const responseTime = Date.now() - startTime;
     logger.error(
       {
-        error,
+        err: error,
         responseTime,
       },
       'Failed to get batch favorites'

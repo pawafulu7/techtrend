@@ -95,7 +95,7 @@ async function getHandler(
       },
     });
   } catch (error) {
-    logger.error({ error }, 'Favorites GET failed');
+    logger.error({ err: error }, 'Favorites GET failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -188,7 +188,7 @@ async function postHandler(
       return prismaErrorResponse;
     }
 
-    logger.error({ error }, 'Favorites POST failed');
+    logger.error({ err: error }, 'Favorites POST failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -254,7 +254,7 @@ async function deleteHandler(
       return prismaErrorResponse;
     }
 
-    logger.error({ error }, 'Favorites DELETE failed');
+    logger.error({ err: error }, 'Favorites DELETE failed');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

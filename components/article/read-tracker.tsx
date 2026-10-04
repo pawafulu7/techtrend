@@ -138,7 +138,7 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') return;
         logger.error(
-          { error, articleId, retryCount: retryCount.current },
+          { err: error, articleId, retryCount: retryCount.current },
           'Error marking article as read'
         );
 

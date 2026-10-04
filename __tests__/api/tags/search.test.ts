@@ -2,6 +2,7 @@
  * @jest-environment node
  */
 import { NextRequest } from 'next/server';
+import logger from '@/lib/logger';
 
 // 件数の集計（有効なソースの記事だけを数える生 SQL）と LIKE のエスケープは
 // tag-article-counts のテスト DB のテストで確かめる。ここでは route が渡す条件を見る
@@ -88,11 +89,17 @@ describe('GET /api/tags/search', () => {
   });
 
   it('集計に失敗したら 500 を返す', async () => {
-    mockFindTopTags.mockRejectedValueOnce(new Error('db down'));
+    const error = new Error('db down');
+    mockFindTopTags.mockRejectedValueOnce(error);
+    const logError = jest.spyOn(logger, 'error');
+    try {
+      const response = await GET(request('?q=react'));
 
-    const response = await GET(request('?q=react'));
-
-    expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({ error: 'Failed to search tags' });
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ error: 'Failed to search tags' });
+      expect(logError).toHaveBeenCalledWith({ err: error }, 'Tags search failed');
+    } finally {
+      logError.mockRestore();
+    }
   });
 });

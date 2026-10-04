@@ -99,7 +99,7 @@ async function enrichReportWithThumbnails(
         }
       }
     } catch (e) {
-      logger.debug({ error: e }, 'Failed to parse aiSummary');
+      logger.debug({ err: e }, 'Failed to parse aiSummary');
     }
   }
 

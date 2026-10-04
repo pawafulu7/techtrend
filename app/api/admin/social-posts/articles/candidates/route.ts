@@ -77,7 +77,7 @@ async function candidatesHandler(
     });
   } catch (error) {
     logger.error(
-      { error },
+      { err: error },
       '[SocialPostsAPI] Failed to search candidate articles'
     );
     return NextResponse.json(

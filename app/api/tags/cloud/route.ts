@@ -54,7 +54,7 @@ async function tagCloudHandler(request: NextRequest) {
     } catch (cacheError) {
       // キャッシュエラーは無視して処理を続行
       logger.warn(
-        { error: cacheError },
+        { err: cacheError },
         'Cache error, continuing without cache'
       );
     }
@@ -147,14 +147,14 @@ async function tagCloudHandler(request: NextRequest) {
     } catch (cacheError) {
       // キャッシュ保存エラーは無視
       logger.warn(
-        { error: cacheError },
+        { err: cacheError },
         'Cache set error, continuing without caching'
       );
     }
 
     return NextResponse.json(response);
   } catch (error) {
-    logger.error({ error }, 'API Error in /api/tags/cloud');
+    logger.error({ err: error }, 'API Error in /api/tags/cloud');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

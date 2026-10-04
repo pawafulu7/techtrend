@@ -128,7 +128,7 @@ async function handler(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error({ error }, '[EmbeddingSummaryAPI] Failed to fetch summary');
+    logger.error({ err: error }, '[EmbeddingSummaryAPI] Failed to fetch summary');
     return NextResponse.json(
       { error: 'Failed to fetch embedding summary' },
       { status: 500 }

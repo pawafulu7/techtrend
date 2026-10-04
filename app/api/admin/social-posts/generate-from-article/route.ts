@@ -123,7 +123,7 @@ async function generateFromArticleHandler(
     }
 
     logger.error(
-      { error },
+      { err: error },
       '[SocialPostsAPI] Failed to generate post from article'
     );
     return NextResponse.json(

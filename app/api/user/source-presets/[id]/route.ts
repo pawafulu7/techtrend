@@ -147,7 +147,7 @@ async function putHandler(request: NextRequest, context: RouteContext) {
     const prismaResponse = handlePrismaError(error);
     if (prismaResponse) return prismaResponse;
 
-    logger.error({ error }, 'Failed to update source preset');
+    logger.error({ err: error }, 'Failed to update source preset');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -177,7 +177,7 @@ async function deleteHandler(_request: NextRequest, context: RouteContext) {
     const prismaResponse = handlePrismaError(error);
     if (prismaResponse) return prismaResponse;
 
-    logger.error({ error }, 'Failed to delete source preset');
+    logger.error({ err: error }, 'Failed to delete source preset');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -73,7 +73,7 @@ export function TagStats() {
   useEffect(() => {
     results.forEach((r, i) => {
       if (r.isError && !loggedErrorRef.current[i]) {
-        logger.error({ error: r.error }, 'Failed to load tag stats');
+        logger.error({ err: r.error }, 'Failed to load tag stats');
         loggedErrorRef.current[i] = true;
       }
       if (!r.isError) {

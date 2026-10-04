@@ -19,6 +19,7 @@
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --fix --ext .ts,.tsx",
+    "test:lint-rules": "node --test __tests__/eslint/*.test.mjs",
     "lint:colors": "node scripts/dev/lint-colors.mjs",
     "lint:colors:self-check": "node scripts/dev/lint-colors.mjs --self-check",
     "docker:lint:ci": "docker compose -f docker-compose.test.yml run --rm node-ci npm run lint",

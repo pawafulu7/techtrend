@@ -101,7 +101,7 @@ export async function GET(
             {
               articleId,
               algorithm: query.algorithm,
-              error: sanitizeError(error),
+              err: sanitizeError(error),
             },
             'Embedding search failed for related articles'
           );
@@ -220,7 +220,7 @@ export async function GET(
   } catch (error) {
     logger.error(
       {
-        error: sanitizeError(error),
+        err: sanitizeError(error),
       },
       'Failed to fetch related articles'
     );

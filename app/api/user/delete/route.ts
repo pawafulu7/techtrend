@@ -135,7 +135,7 @@ async function deleteAccountHandler(
       { status: 200 }
     );
   } catch (error) {
-    logger.error({ error }, 'Error deleting user account');
+    logger.error({ err: error }, 'Error deleting user account');
 
     // Handle specific errors
     if (error instanceof Error) {

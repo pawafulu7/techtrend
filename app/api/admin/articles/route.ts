@@ -208,7 +208,7 @@ async function handler(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error({ error }, '[AdminArticlesAPI] Failed to fetch articles');
+    logger.error({ err: error }, '[AdminArticlesAPI] Failed to fetch articles');
     return NextResponse.json(
       { error: 'Failed to fetch articles' },
       { status: 500 }

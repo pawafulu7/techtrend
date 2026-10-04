@@ -171,7 +171,7 @@ async function handler(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     logger.error(
-      { error, route: '/api/changelog' },
+      { err: error, route: '/api/changelog' },
       'API error in /api/changelog'
     );
     return handleApiError(error, '/api/changelog');

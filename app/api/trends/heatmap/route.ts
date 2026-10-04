@@ -159,7 +159,7 @@ async function handler(request: NextRequest) {
 
     return response;
   } catch (error) {
-    logger.error({ error }, 'Heatmap API error');
+    logger.error({ err: error }, 'Heatmap API error');
     return NextResponse.json(
       { error: 'Failed to fetch heatmap data' },
       { status: 500 }

@@ -165,7 +165,7 @@ async function handler(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error({ error }, '[ArticleStatsAPI] Failed to fetch stats');
+    logger.error({ err: error }, '[ArticleStatsAPI] Failed to fetch stats');
     return NextResponse.json(
       { error: 'Failed to fetch article stats' },
       { status: 500 }

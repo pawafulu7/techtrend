@@ -68,6 +68,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint -- --max-warnings 15
 
+      - name: Test ESLint restrictions
+        run: npm run test:lint-rules
+
       - name: Self-check lint:colors detector
         run: npm run lint:colors:self-check
 

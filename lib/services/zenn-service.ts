@@ -251,7 +251,7 @@ export class ZennService {
           logger[logLevel]({
             slug,
             status,
-            error: error.message,
+            err: error,
             attempt,
             duration_ms: error.duration,
           }, 'Non-retryable error fetching Zenn article');
@@ -262,7 +262,7 @@ export class ZennService {
         logger.warn({
           slug,
           status,
-          error: error.message,
+          err: error,
           attempt,
           max_retries: this.MAX_RETRIES,
           will_retry: attempt < this.MAX_RETRIES,

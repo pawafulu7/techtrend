@@ -386,7 +386,7 @@ export async function withRetry<T>(
           attempt: attempt + 1,
           maxRetries: maxRetries + 1,
           failureType,
-          error: lastError.message,
+          err: lastError,
         },
         'Operation failed'
       );

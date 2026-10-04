@@ -138,7 +138,7 @@ export default async function SourceDetailPage({
   try {
     data = await getSourceDetail(id);
   } catch (error) {
-    logger.error({ sourceId: id, error }, 'Failed to load source detail');
+    logger.error({ sourceId: id, err: error }, 'Failed to load source detail');
     notFound();
   }
 
