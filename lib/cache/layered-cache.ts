@@ -28,6 +28,7 @@ export interface ArticleQueryParams {
   includeRelations?: boolean;
   includeEmptyContent?: boolean;
   excludeUnprocessed?: boolean;
+  excludeLowQuality?: boolean;
   lightweight?: boolean;
   fields?: string;
   includeUserData?: boolean;
@@ -206,28 +207,45 @@ export class LayeredCache {
     return { key: '', layer: 'none' };
   }
 
+  /** 件数と記事一覧に共通する絞り込み条件 */
+  private getFilterKeyParams(params: ArticleQueryParams) {
+    return {
+      category: params.category || 'all',
+      sources: params.sources || 'all',
+      sourceId: params.sourceId || 'none',
+      excludeSources: params.excludeSources || 'none',
+      tag: params.tag || 'none',
+      tags: params.tags || 'none',
+      tagMode: params.tagMode || 'OR',
+      dateRange: params.dateRange || 'all',
+      dateFrom: params.dateFrom || 'none',
+      dateTo: params.dateTo || 'none',
+      includeEmptyContent: params.includeEmptyContent ?? false,
+      excludeUnprocessed: params.excludeUnprocessed ?? false,
+      excludeLowQuality: params.excludeLowQuality ?? false,
+    };
+  }
+
+  /** buildSelectFields が取得列を変える指定（件数には影響しない） */
+  private getSelectKeyParams(params: ArticleQueryParams) {
+    return {
+      lightweight: params.lightweight ?? false,
+      fields: params.fields || '',
+      includeRelations: params.includeRelations ?? false,
+    };
+  }
+
   /**
-   * 基本クエリ用のキーを生成（簡素化）
+   * 基本クエリ用のキーを生成
    */
   private generateBasicKey(params: ArticleQueryParams): string {
-    // 基本的なパラメータのみを使用（sources/sourceId/tag/tagsを追加）
     const basicParams = {
+      ...this.getFilterKeyParams(params),
+      ...this.getSelectKeyParams(params),
       page: params.page || 1,
       limit: params.limit || 20,
       sortBy: params.sortBy || 'publishedAt',
       sortOrder: params.sortOrder || 'desc',
-      category: params.category || 'all',
-      sources: params.sources || 'all', // sourcesパラメータを追加
-      sourceId: params.sourceId || 'none', // sourceIdパラメータを追加（後方互換性）
-      excludeSources: params.excludeSources || 'none', // 除外ソース
-      tag: params.tag || 'none', // 単一タグパラメータを追加
-      tags: params.tags || 'none', // 複数タグパラメータを追加
-      tagMode: params.tagMode || 'OR', // タグモードを追加
-      dateRange: params.dateRange || 'all', // dateRangeも追加
-      dateFrom: params.dateFrom || 'none', // カスタム日付範囲（開始）
-      dateTo: params.dateTo || 'none', // カスタム日付範囲（終了）
-      includeEmptyContent: params.includeEmptyContent || false, // includeEmptyContentも追加
-      excludeUnprocessed: params.excludeUnprocessed || false, // excludeUnprocessedも追加
     };
 
     // パラメータをソートして一貫性を保つ
@@ -241,7 +259,7 @@ export class LayeredCache {
 
   /**
    * 件数キャッシュ用のキーを生成
-   * sortBy, sortOrder, page, limit を除外してソート順に依存しないキーを生成
+   * sortOrder, page, limit と取得列の指定を除外。日付条件に影響する sortBy は含める
    */
   private generateCountKey(params: ArticleQueryParams): string {
     // 検索キーワードを正規化（スペース区切りでソート）- generateSearchKey と同一ロジック
@@ -257,20 +275,9 @@ export class LayeredCache {
     // 件数に影響するパラメータのみを使用（ページネーションは除外）
     // sortByは日付フィルタのフィールド選択に影響するため含める
     const countParams = {
-      category: params.category || 'all',
-      sources: params.sources || 'all',
-      sourceId: params.sourceId || 'none',
-      excludeSources: params.excludeSources || 'none', // 除外ソース
-      tag: params.tag || 'none',
-      tags: params.tags || 'none',
-      tagMode: params.tagMode || 'OR',
+      ...this.getFilterKeyParams(params),
       search: normalizedSearch || 'none',
-      dateRange: params.dateRange || 'all',
-      dateFrom: params.dateFrom || 'none',
-      dateTo: params.dateTo || 'none',
       sortBy: params.sortBy || 'publishedAt',
-      includeEmptyContent: params.includeEmptyContent || false,
-      excludeUnprocessed: params.excludeUnprocessed || false,
     };
 
     const sortedParams = Object.entries(countParams)
@@ -302,23 +309,14 @@ export class LayeredCache {
    */
   private generateUserKey(params: ArticleQueryParams): string {
     const userParams = {
+      ...this.getFilterKeyParams(params),
+      ...this.getSelectKeyParams(params),
       userId: params.userId,
       readFilter: params.readFilter || 'all',
       page: params.page || 1,
       limit: params.limit || 20,
       sortBy: params.sortBy || 'publishedAt',
       sortOrder: params.sortOrder || 'desc',
-      sources: params.sources || 'all', // sourcesパラメータを追加
-      sourceId: params.sourceId || 'none', // sourceIdパラメータを追加（後方互換性）
-      excludeSources: params.excludeSources || 'none', // 除外ソース
-      category: params.category || 'all', // categoryも追加
-      dateRange: params.dateRange || 'all', // dateRangeも追加
-      dateFrom: params.dateFrom || 'none',
-      dateTo: params.dateTo || 'none',
-      tag: params.tag || 'none', // tagも追加
-      tags: params.tags || 'none', // tagsも追加
-      tagMode: params.tagMode || 'OR', // tagModeも追加
-      excludeUnprocessed: params.excludeUnprocessed || false, // excludeUnprocessedも追加
     };
 
     const sortedParams = Object.entries(userParams)
@@ -344,22 +342,13 @@ export class LayeredCache {
       : '';
 
     const searchParams = {
+      ...this.getFilterKeyParams(params),
+      ...this.getSelectKeyParams(params),
       search: normalizedSearch,
       page: params.page || 1,
       limit: params.limit || 20,
       sortBy: params.sortBy || 'publishedAt',
       sortOrder: params.sortOrder || 'desc',
-      category: params.category || 'all',
-      sources: params.sources || 'all', // sourcesパラメータを追加
-      sourceId: params.sourceId || 'none', // sourceIdパラメータを追加（後方互換性）
-      excludeSources: params.excludeSources || 'none', // 除外ソース
-      dateRange: params.dateRange || 'all', // dateRangeも追加
-      dateFrom: params.dateFrom || 'none',
-      dateTo: params.dateTo || 'none',
-      tag: params.tag || 'none', // tagも追加
-      tags: params.tags || 'none', // tagsも追加
-      tagMode: params.tagMode || 'OR', // tagModeも追加
-      excludeUnprocessed: params.excludeUnprocessed || false, // excludeUnprocessedも追加
     };
 
     const sortedParams = Object.entries(searchParams)
