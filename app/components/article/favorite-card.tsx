@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ExternalLink, Calendar, Clock, Heart } from 'lucide-react';
@@ -102,7 +103,7 @@ export function FavoriteArticleCard({
               }
             }}
           >
-            {tag.name}
+            {getTagDisplayName(tag.name)}
           </BadgeV2>
         ))}
         {remainingCount > 0 && (

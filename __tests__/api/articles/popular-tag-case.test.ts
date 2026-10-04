@@ -40,12 +40,22 @@ describe('GET /api/articles/popular (category = tag)', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(whereOf().AND).toContainEqual({ source: { is: { enabled: true } } });
+    expect(whereOf().AND).toContainEqual(
+      expect.objectContaining({
+        AND: expect.arrayContaining([
+          { isHidden: false },
+          { source: { is: { enabled: true } } },
+        ]),
+      })
+    );
   });
 
   it('filters by the IDs of all tags with the same key', async () => {
     // 統合前の重複（MCP と Mcp）があれば両方の ID を使う
-    prismaMock.$queryRaw.mockResolvedValueOnce([{ id: 'tag-MCP' }, { id: 'tag-Mcp' }]);
+    prismaMock.$queryRaw.mockResolvedValueOnce([
+      { id: 'tag-MCP' },
+      { id: 'tag-Mcp' },
+    ]);
 
     const response = await GET(
       new NextRequest('http://localhost:3000/api/articles/popular?category=mcp')
@@ -54,7 +64,9 @@ describe('GET /api/articles/popular (category = tag)', () => {
     expect(response.status).toBe(200);
     expect(prismaMock.$queryRaw.mock.calls[0]).toContainEqual(['mcp']);
     expect(JSON.stringify(whereOf())).toContain(
-      JSON.stringify({ tags: { some: { id: { in: ['tag-MCP', 'tag-Mcp'] } } } }).slice(1, -1)
+      JSON.stringify({
+        tags: { some: { id: { in: ['tag-MCP', 'tag-Mcp'] } } },
+      }).slice(1, -1)
     );
     expect(JSON.stringify(whereOf())).not.toContain('insensitive');
   });
@@ -63,9 +75,46 @@ describe('GET /api/articles/popular (category = tag)', () => {
     prismaMock.$queryRaw.mockResolvedValueOnce([]);
 
     await GET(
-      new NextRequest('http://localhost:3000/api/articles/popular?category=Qiita')
+      new NextRequest(
+        'http://localhost:3000/api/articles/popular?category=Qiita'
+      )
     );
 
     expect(JSON.stringify(whereOf())).toContain('"source":{"name":"Qiita"}');
+  });
+  it('rejects the removed votes metric', async () => {
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/articles/popular?metric=votes')
+    );
+    expect(response.status).toBe(400);
+    expect(prismaMock.article.findMany).not.toHaveBeenCalled();
+  });
+
+  it('combined ranking ignores user votes', async () => {
+    const publishedAt = new Date();
+    prismaMock.article.findMany.mockResolvedValue([
+      {
+        id: 'no-votes',
+        publishedAt,
+        bookmarks: 10,
+        qualityScore: 50,
+        userVotes: 0,
+      },
+      {
+        id: 'many-votes',
+        publishedAt,
+        bookmarks: 10,
+        qualityScore: 50,
+        userVotes: 100000,
+      },
+    ]);
+    const response = await GET(
+      new NextRequest(
+        'http://localhost:3000/api/articles/popular?metric=combined'
+      )
+    );
+    const data = await response.json();
+    expect(data.articles[0].score).toBe(data.articles[1].score);
+    expect(data.articles[0].score).toBeCloseTo(44, 1);
   });
 });

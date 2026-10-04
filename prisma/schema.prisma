@@ -123,7 +123,6 @@ model Tag {
   articles         Article[]            @relation("ArticleToTag")
   categoryMappings TagCategoryMapping[]
 
-  @@index([name], map: "idx_tag_name")
 }
 
 model User {

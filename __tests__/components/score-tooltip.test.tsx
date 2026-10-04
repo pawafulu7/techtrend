@@ -10,7 +10,6 @@ describe('ScoreTooltip', () => {
   const defaultProps = {
     score: 1234,
     bookmarks: 567,
-    votes: 89,
     qualityScore: 95.5,
   };
 
@@ -52,7 +51,7 @@ describe('ScoreTooltip', () => {
 describe('ScoreTooltip formatValue behavior', () => {
   it('handles valid numbers', () => {
     const { container } = render(
-      <ScoreTooltip score={1234} bookmarks={567} votes={89} qualityScore={95.5}>
+      <ScoreTooltip score={1234} bookmarks={567} qualityScore={95.5}>
         <span>Test</span>
       </ScoreTooltip>
     );
@@ -63,7 +62,7 @@ describe('ScoreTooltip formatValue behavior', () => {
 
   it('handles zero values', () => {
     const { container } = render(
-      <ScoreTooltip score={0} bookmarks={0} votes={0} qualityScore={0}>
+      <ScoreTooltip score={0} bookmarks={0} qualityScore={0}>
         <span>Test</span>
       </ScoreTooltip>
     );
@@ -73,7 +72,7 @@ describe('ScoreTooltip formatValue behavior', () => {
 
   it('handles NaN values without crashing', () => {
     const { container } = render(
-      <ScoreTooltip score={NaN} bookmarks={NaN} votes={NaN} qualityScore={NaN}>
+      <ScoreTooltip score={NaN} bookmarks={NaN} qualityScore={NaN}>
         <span>Test</span>
       </ScoreTooltip>
     );

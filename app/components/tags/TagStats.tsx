@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { useQueries } from '@tanstack/react-query';
 import { useEffect, useRef, useMemo } from 'react';
 import {
@@ -215,7 +216,9 @@ export function TagStats() {
                     <span className="text-muted-foreground text-sm font-medium">
                       #{index + 1}
                     </span>
-                    <Badge variant="outline">{tag.name}</Badge>
+                    <Badge variant="outline">
+                      {getTagDisplayName(tag.name)}
+                    </Badge>
                   </div>
                   <span className="text-sm font-medium text-[var(--tt-color-positive)]">
                     +{tag.growthRate}%

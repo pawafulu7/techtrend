@@ -61,6 +61,7 @@ services:
     tty: true
 
   postgres:
+    shm_size: "1g"
     extends:
       file: docker-compose.dev.yml
       service: postgres

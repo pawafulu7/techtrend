@@ -48,12 +48,14 @@ describe('trends-data: 無効化したソースの記事を数えない（issue 
 
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(3);
     const [recent, weekly, newTags] = prismaMock.$queryRaw.mock.calls;
-    expect(sqlFragmentsOf(recent, { afterAnd: true })).toEqual([ENABLED]);
-    expect(sqlFragmentsOf(weekly, { afterAnd: true })).toEqual([ENABLED]);
-    expect(sqlFragmentsOf(newTags, { afterAnd: true })).toEqual([
-      ENABLED,
-      `a2."sourceId" ${ENABLED_SOURCE_SQL}`,
-    ]);
+    for (const call of [recent, weekly, newTags]) {
+      const sql = sqlFragmentsOf(call).join(' ');
+      expect(sql).toContain(ENABLED);
+      expect(sql).toContain('a."isHidden" = false');
+    }
+    const newSql = sqlFragmentsOf(newTags).join(' ');
+    expect(newSql).toContain(`a2."sourceId" ${ENABLED_SOURCE_SQL}`);
+    expect(newSql).toContain('a2."isHidden" = false');
   });
 
   it('fetchAnalysisData: 上位タグとその時系列', async () => {

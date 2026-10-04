@@ -1,3 +1,5 @@
+import { articleAggregationSql } from '@/lib/database/article-aggregation-filter';
+import { findNewTags } from '@/lib/database/new-tags';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@/lib/prisma-exports';
 import { keywordsCache } from '@/lib/cache/keywords-cache';
@@ -54,7 +56,7 @@ export async function fetchKeywordsData(): Promise<{
   newTags: NewTag[];
 }> {
   try {
-    const cacheKey = 'keywords:trending';
+    const cacheKey = 'keywords:trending:v2';
 
     // キャッシュ読み取りのみ。書き込みは /api/trends/keywords ルートが担当。
     // APIルートは { trending, newTags, period } を書き込むため、
@@ -85,9 +87,7 @@ export async function fetchKeywordsData(): Promise<{
           FROM "Tag" t
           JOIN "_ArticleToTag" at ON t.id = at."B"
           JOIN "Article" a ON at."A" = a.id
-          WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamptz
-            AND a."isHidden" = false
-            AND ${enabledSourceSql()}
+          WHERE ${articleAggregationSql('a', { from: oneDayAgo, to: now })}
             AND t.name <> ''
             AND t.name IS NOT NULL
           GROUP BY t.id, t.name
@@ -101,41 +101,13 @@ export async function fetchKeywordsData(): Promise<{
           FROM "Tag" t
           JOIN "_ArticleToTag" at ON t.id = at."B"
           JOIN "Article" a ON at."A" = a.id
-          WHERE a."publishedAt" >= ${oneWeekAgo.toISOString()}::timestamptz
-            AND a."publishedAt" < ${oneDayAgo.toISOString()}::timestamptz
-            AND a."isHidden" = false
-            AND ${enabledSourceSql()}
+          WHERE ${articleAggregationSql('a', { from: oneWeekAgo, to: oneDayAgo })}
             AND t.name <> ''
             AND t.name IS NOT NULL
           GROUP BY t.id, t.name
         `,
 
-      prisma.$queryRaw<{ id: string; name: string; count: bigint }[]>`
-          SELECT DISTINCT
-            t.id,
-            t.name,
-            COUNT(DISTINCT a.id) as count
-          FROM "Tag" t
-          JOIN "_ArticleToTag" at ON t.id = at."B"
-          JOIN "Article" a ON at."A" = a.id
-          WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamptz
-            AND a."isHidden" = false
-            AND ${enabledSourceSql()}
-            AND t.name <> ''
-            AND t.name IS NOT NULL
-            AND NOT EXISTS (
-              SELECT 1
-              FROM "_ArticleToTag" at2
-              JOIN "Article" a2 ON at2."A" = a2.id
-              WHERE at2."B" = t.id
-                AND a2."publishedAt" < ${oneDayAgo.toISOString()}::timestamptz
-                AND a2."isHidden" = false
-                AND ${enabledSourceSql('a2."sourceId"')}
-            )
-          GROUP BY t.id, t.name
-          ORDER BY count DESC
-          LIMIT 10
-        `,
+      findNewTags(prisma, { from: oneDayAgo, to: now, limit: 10 }),
     ]);
 
     const weeklyTagMap = new Map(
@@ -171,7 +143,7 @@ export async function fetchKeywordsData(): Promise<{
       newTags: newTagsRaw.map((tag) => ({
         id: tag.id,
         name: tag.name,
-        count: Number(tag.count),
+        count: tag.count,
       })),
     };
   } catch {

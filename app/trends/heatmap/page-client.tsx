@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -312,7 +313,7 @@ export function HeatmapPageClient() {
                               key={t.name}
                               className="bg-muted rounded px-1.5 py-0.5 text-[10px]"
                             >
-                              {t.name}
+                              {getTagDisplayName(t.name)}
                             </span>
                           ))}
                         </div>

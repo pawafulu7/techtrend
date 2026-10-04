@@ -46,7 +46,9 @@ export function PopularStatsBar({
         <span className="text-sm font-semibold">
           {totalBookmarks.toLocaleString()}
         </span>
-        <span className="text-muted-foreground text-xs">総ブックマーク</span>
+        <span className="text-muted-foreground text-xs">
+          元サイトの反応数（合計）
+        </span>
       </div>
     </div>
   );

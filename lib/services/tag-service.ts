@@ -7,6 +7,7 @@
 
 import { Prisma, PrismaClient, Tag } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
+import { expandTagSearchNames } from '@/lib/constants/tag-labels';
 import { TagNormalizer } from './tag-normalizer';
 
 export interface TagServiceOptions {
@@ -160,7 +161,9 @@ export async function findTagIdsByNames(
   names: string[],
   client: TagClient = prisma
 ): Promise<string[]> {
-  const trimmed = names.map((name) => name.trim()).filter(Boolean);
+  const trimmed = expandTagSearchNames(
+    names.map((name) => name.trim()).filter(Boolean)
+  );
   if (trimmed.length === 0) return [];
   const rows = await client.$queryRaw<{ id: string }[]>`
     SELECT id FROM "Tag"
@@ -183,12 +186,18 @@ export async function findTagIdGroupsByNames(
   const trimmed = names.map((name) => name.trim());
   const groups: string[][] = trimmed.map(() => []);
   if (!trimmed.some(Boolean)) return groups;
+  const expanded = trimmed.flatMap((name, index) =>
+    expandTagSearchNames([name]).map((alias) => ({
+      name: alias,
+      ord: index + 1,
+    }))
+  );
   const rows = await client.$queryRaw<{ ord: bigint; id: string }[]>`
-    SELECT u.ord, t.id
-    FROM unnest(${trimmed}::text[]) WITH ORDINALITY AS u(name, ord)
+    SELECT DISTINCT u.ord, t.id, t.name COLLATE "C" AS sort_name
+    FROM unnest(${expanded.map((item) => item.name)}::text[], ${expanded.map((item) => item.ord)}::bigint[]) AS u(name, ord)
     JOIN "Tag" t ON lower(t.name) = lower(u.name)
     WHERE u.name <> ''
-    ORDER BY u.ord, t.name COLLATE "C"
+    ORDER BY u.ord, sort_name
   `;
   for (const row of rows) {
     groups[Number(row.ord) - 1].push(row.id);

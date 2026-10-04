@@ -97,9 +97,20 @@ describe('GET /api/tags/search', () => {
 
       expect(response.status).toBe(500);
       expect(await response.json()).toEqual({ error: 'Failed to search tags' });
-      expect(logError).toHaveBeenCalledWith({ err: error }, 'Tags search failed');
+      expect(logError).toHaveBeenCalledWith(
+        { err: error },
+        'Tags search failed'
+      );
     } finally {
       logError.mockRestore();
     }
+  });
+  it('日本語の別名でも正式名のタグを検索する', async () => {
+    await GET(request(`?q=${encodeURIComponent('サイバーセキュリティ')}`));
+    expect(lastOptions()).toEqual({
+      limit: 100,
+      nameContains: 'サイバーセキュリティ',
+      canonicalNames: ['Cybersecurity'],
+    });
   });
 });

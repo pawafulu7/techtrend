@@ -296,6 +296,25 @@ export const TAG_CATEGORIES = {
 
 export type TagCategory = keyof typeof TAG_CATEGORIES;
 
+/** ArticleCategory はタグ分類より広いので、記事専用の分類にも表示名を付ける。 */
+export function getArticleCategoryLabel(category: string): string {
+  if (Object.hasOwn(TAG_CATEGORIES, category)) {
+    return TAG_CATEGORIES[category as TagCategory].name;
+  }
+  const articleLabels: Record<string, string> = {
+    security: 'セキュリティ',
+    mobile: 'モバイル',
+    web3: 'Web3',
+    design: 'デザイン',
+    testing: 'テスト',
+    performance: 'パフォーマンス',
+    architecture: 'アーキテクチャ',
+  };
+  return Object.hasOwn(articleLabels, category)
+    ? articleLabels[category]
+    : 'その他';
+}
+
 // タグからカテゴリーを判定する関数
 export function getTagCategory(tagName: string): TagCategory | null {
   const normalizedTag = tagName.toLowerCase();

@@ -31,6 +31,8 @@ export interface TopTagsOptions {
   limit: number;
   /** 名前の部分一致（大文字小文字を区別しない）。LIKE のワイルドカードはここでエスケープする */
   nameContains?: string;
+  /** 表示用の別名に一致した正式名。部分一致検索の条件に OR で足す */
+  canonicalNames?: string[];
   /** この日時以降に有効なソースの記事があるタグだけに絞り、その期間の件数も返す */
   activeSince?: Date;
 }
@@ -42,14 +44,15 @@ export interface TopTagsOptions {
  */
 export async function findTopTags(
   db: RawQueryClient,
-  { limit, nameContains, activeSince }: TopTagsOptions
+  { limit, nameContains, canonicalNames = [], activeSince }: TopTagsOptions
 ): Promise<TopTag[]> {
   if (!Number.isInteger(limit) || limit < 1) {
     throw new Error(`limit must be a positive integer: ${limit}`);
   }
   const nameCondition =
     nameContains !== undefined
-      ? Prisma.sql`AND t.name ILIKE ${`%${escapeLikePattern(nameContains)}%`}`
+      ? Prisma.sql`AND (t.name ILIKE ${`%${escapeLikePattern(nameContains)}%`}
+          ${canonicalNames.length ? Prisma.sql`OR lower(t.name) IN (SELECT lower(x) FROM unnest(${canonicalNames}::text[]) AS x)` : Prisma.empty})`
       : Prisma.empty;
 
   if (activeSince) {

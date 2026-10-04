@@ -36,7 +36,10 @@ jest.mock('@/lib/logger', () => ({
 
 import { GET } from '@/app/api/trends/keywords/route';
 import { prisma } from '@/lib/database';
-import { ENABLED_SOURCE_SQL, sqlFragmentsOf } from '../../helpers/sql-fragments';
+import {
+  ENABLED_SOURCE_SQL,
+  sqlFragmentsOf,
+} from '../../helpers/sql-fragments';
 
 const prismaMock = prisma as any;
 
@@ -261,9 +264,7 @@ describe('/api/trends/keywords', () => {
     const weeklyTags = [
       { id: 'tag-1', name: 'Next.js', weekly_count: BigInt(6) },
     ];
-    const newTags = [
-      { id: 'tag-2', name: 'BrandNew', count: BigInt(2) },
-    ];
+    const newTags = [{ id: 'tag-2', name: 'BrandNew', count: BigInt(2) }];
 
     prismaMock.$queryRaw
       .mockResolvedValueOnce(recentTags)
@@ -286,7 +287,11 @@ describe('/api/trends/keywords', () => {
     expect(new Date(data.period.to).getTime()).not.toBeNaN();
     // newTags
     expect(data.newTags).toHaveLength(1);
-    expect(data.newTags[0]).toEqual({ id: 'tag-2', name: 'BrandNew', count: 2 });
+    expect(data.newTags[0]).toEqual({
+      id: 'tag-2',
+      name: 'BrandNew',
+      count: 2,
+    });
   });
 
   it('無効化したソースの記事を数えない。新規タグの判定の内側も同じ（issue #688）', async () => {
@@ -296,15 +301,13 @@ describe('/api/trends/keywords', () => {
 
     expect(response.status).toBe(200);
     const [recent, weekly, newTags] = prismaMock.$queryRaw.mock.calls;
-    expect(sqlFragmentsOf(recent, { afterAnd: true })).toEqual([
-      `a."sourceId" ${ENABLED_SOURCE_SQL}`,
-    ]);
-    expect(sqlFragmentsOf(weekly, { afterAnd: true })).toEqual([
-      `a."sourceId" ${ENABLED_SOURCE_SQL}`,
-    ]);
-    expect(sqlFragmentsOf(newTags, { afterAnd: true })).toEqual([
-      `a."sourceId" ${ENABLED_SOURCE_SQL}`,
-      `a2."sourceId" ${ENABLED_SOURCE_SQL}`,
-    ]);
+    for (const call of [recent, weekly, newTags]) {
+      const sql = sqlFragmentsOf(call).join(' ');
+      expect(sql).toContain(`a."sourceId" ${ENABLED_SOURCE_SQL}`);
+      expect(sql).toContain('a."isHidden" = false');
+    }
+    const newSql = sqlFragmentsOf(newTags).join(' ');
+    expect(newSql).toContain(`a2."sourceId" ${ENABLED_SOURCE_SQL}`);
+    expect(newSql).toContain('a2."isHidden" = false');
   });
 });

@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { TrendingUp, Sparkles, BarChart3, ArrowUpRight } from 'lucide-react';
@@ -148,7 +149,7 @@ export function TrendsContent({
             {initialNewTags.map((tag) => (
               <BadgeV2 key={tag.id} variant="positive" asChild>
                 <Link href={`/?tags=${encodeURIComponent(tag.name)}`}>
-                  {tag.name}
+                  {getTagDisplayName(tag.name)}
                   <span className="ml-1 opacity-70">{tag.count}</span>
                 </Link>
               </BadgeV2>
@@ -235,7 +236,7 @@ export function TrendsContent({
                         {index + 1}
                       </span>
                       <span className="flex-1 truncate text-sm font-medium">
-                        {tag.name}
+                        {getTagDisplayName(tag.name)}
                       </span>
                       <span className="text-muted-foreground text-xs">
                         {tag.totalCount}件

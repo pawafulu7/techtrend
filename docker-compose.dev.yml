@@ -11,6 +11,7 @@ services:
       dockerfile: Dockerfile.postgres-pgvector
     image: techtrend-postgres-pgvector:latest
     container_name: techtrend-postgres
+    shm_size: "1g"
     environment:
       POSTGRES_DB: techtrend_dev
       POSTGRES_USER: postgres

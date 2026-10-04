@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils';
 interface ScoreTooltipProps {
   score: number;
   bookmarks: number;
-  votes: number;
   qualityScore: number;
   children: React.ReactNode;
   className?: string;
@@ -27,7 +26,6 @@ function formatValue(value: number | undefined | null): string {
 export function ScoreTooltip({
   score,
   bookmarks,
-  votes,
   qualityScore,
   children,
   className,
@@ -68,15 +66,9 @@ export function ScoreTooltip({
                 </td>
               </tr>
               <tr>
-                <td className="text-foreground py-1.5">ブックマーク</td>
+                <td className="text-foreground py-1.5">元サイトの反応数</td>
                 <td className="text-foreground py-1.5 text-right font-semibold tabular-nums">
                   {formatValue(bookmarks)}
-                </td>
-              </tr>
-              <tr>
-                <td className="text-foreground py-1.5">投票</td>
-                <td className="text-foreground py-1.5 text-right font-semibold tabular-nums">
-                  {formatValue(votes)}
                 </td>
               </tr>
               <tr>

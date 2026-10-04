@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { TrendingUp, Tag as TagIcon } from 'lucide-react';
@@ -51,7 +52,7 @@ export function PopularTags({ tags, currentTag }: PopularTagsProps) {
                   onClick={() => handleTagClick(tag.name)}
                 >
                   <TagIcon className="mr-1 h-3 w-3" />
-                  {tag.name}
+                  {getTagDisplayName(tag.name)}
                   <span className="ml-1 text-xs opacity-70">({tag.count})</span>
                 </Badge>
               ))}

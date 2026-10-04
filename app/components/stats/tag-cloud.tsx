@@ -1,5 +1,6 @@
 'use client';
 
+import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { Tag } from 'lucide-react';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import Link from 'next/link';
@@ -55,7 +56,7 @@ export function TagCloud({ tags }: TagCloudProps) {
             asChild
           >
             <Link href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}>
-              {tag.name}
+              {getTagDisplayName(tag.name)}
               <span className="ml-1 opacity-70">{tag.count}</span>
             </Link>
           </BadgeV2>

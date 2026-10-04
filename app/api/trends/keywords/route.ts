@@ -1,12 +1,13 @@
+import { articleAggregationSql } from '@/lib/database/article-aggregation-filter';
+import { findNewTags } from '@/lib/database/new-tags';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { keywordsCache } from '@/lib/cache/keywords-cache';
-import { enabledSourceSql } from '@/lib/database/enabled-source-filter';
 
 export async function GET() {
   try {
     // キャッシュキーを生成（キーワード分析用の固定キー）
-    const cacheKey = 'keywords:trending';
+    const cacheKey = 'keywords:trending:v2';
 
     // キャッシュから取得またはDBから取得してキャッシュに保存。
     // 集計は無効化したソースの記事を数えない。新規タグの判定（NOT EXISTS）の内側も同じ（issue #688）
@@ -26,9 +27,7 @@ export async function GET() {
       FROM "Tag" t
       JOIN "_ArticleToTag" at ON t.id = at."B"
       JOIN "Article" a ON at."A" = a.id
-      WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamptz
-        AND a."isHidden" = false
-        AND ${enabledSourceSql()}
+      WHERE ${articleAggregationSql('a', { from: oneDayAgo, to: now })}
         AND t.name <> ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
@@ -42,41 +41,13 @@ export async function GET() {
       FROM "Tag" t
       JOIN "_ArticleToTag" at ON t.id = at."B"
       JOIN "Article" a ON at."A" = a.id
-      WHERE a."publishedAt" >= ${oneWeekAgo.toISOString()}::timestamptz
-        AND a."publishedAt" < ${oneDayAgo.toISOString()}::timestamptz
-        AND a."isHidden" = false
-        AND ${enabledSourceSql()}
+      WHERE ${articleAggregationSql('a', { from: oneWeekAgo, to: oneDayAgo })}
         AND t.name <> ''
         AND t.name IS NOT NULL
       GROUP BY t.id, t.name
     `,
         // 新規タグ（過去24時間に初めて使われたタグ）
-        prisma.$queryRaw<{ id: string; name: string; count: bigint }[]>`
-      SELECT DISTINCT
-        t.id,
-        t.name,
-        COUNT(DISTINCT a.id) as count
-      FROM "Tag" t
-      JOIN "_ArticleToTag" at ON t.id = at."B"
-      JOIN "Article" a ON at."A" = a.id
-      WHERE a."publishedAt" >= ${oneDayAgo.toISOString()}::timestamptz
-        AND a."isHidden" = false
-        AND ${enabledSourceSql()}
-        AND t.name <> ''
-        AND t.name IS NOT NULL
-        AND NOT EXISTS (
-          SELECT 1
-          FROM "_ArticleToTag" at2
-          JOIN "Article" a2 ON at2."A" = a2.id
-          WHERE at2."B" = t.id
-            AND a2."publishedAt" < ${oneDayAgo.toISOString()}::timestamptz
-            AND a2."isHidden" = false
-            AND ${enabledSourceSql('a2."sourceId"')}
-        )
-      GROUP BY t.id, t.name
-      ORDER BY count DESC
-      LIMIT 10
-    `,
+        findNewTags(prisma, { from: oneDayAgo, to: now, limit: 10 }),
       ]);
 
       // 週間平均と比較して急上昇を検出
@@ -117,7 +88,7 @@ export async function GET() {
         newTags: newTags.map((tag) => ({
           id: tag.id,
           name: tag.name,
-          count: Number(tag.count),
+          count: tag.count,
         })),
         period: {
           from: oneDayAgo.toISOString(),

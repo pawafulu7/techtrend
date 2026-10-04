@@ -23,6 +23,7 @@ services:
       dockerfile: Dockerfile.postgres-pgvector
     image: techtrend-postgres-pgvector:latest
     container_name: techtrend-postgres-test
+    shm_size: "1g"
     environment:
       POSTGRES_DB: techtrend_test
       POSTGRES_USER: postgres
