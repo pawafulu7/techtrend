@@ -4,7 +4,9 @@
 jest.mock('@/lib/cache/trends-cache', () => ({
   trendsCache: {
     generateTrendsKey: jest.fn(() => 'trends:test'),
-    getOrSet: jest.fn((_key: string, fn: () => Promise<unknown>) => fn()),
+    getOrSetWithLock: jest.fn((_key: string, fn: () => Promise<unknown>) =>
+      fn()
+    ),
     getStats: jest.fn(() => ({ hits: 0, misses: 1 })),
   },
 }));
@@ -12,7 +14,10 @@ jest.mock('@/lib/cache/trends-cache', () => ({
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { GET } from '@/app/api/trends/analysis/route';
-import { ENABLED_SOURCE_SQL, sqlFragmentsOf } from '../../helpers/sql-fragments';
+import {
+  ENABLED_SOURCE_SQL,
+  sqlFragmentsOf,
+} from '../../helpers/sql-fragments';
 
 const prismaMock = prisma as unknown as { $queryRaw: jest.Mock };
 
@@ -29,7 +34,9 @@ describe('GET /api/trends/analysis (tag)', () => {
 
   it('matches the tag and excludes it from related tags by lower(name)', async () => {
     const response = await GET(
-      new NextRequest('http://localhost:3000/api/trends/analysis?tag=mcp&days=7')
+      new NextRequest(
+        'http://localhost:3000/api/trends/analysis?tag=mcp&days=7'
+      )
     );
 
     expect(response.status).toBe(200);
@@ -52,7 +59,9 @@ describe('GET /api/trends/analysis: 無効化したソースの記事を数え�
 
   it('タグ指定: 時系列と関連タグの両方', async () => {
     await GET(
-      new NextRequest('http://localhost:3000/api/trends/analysis?tag=mcp&days=7')
+      new NextRequest(
+        'http://localhost:3000/api/trends/analysis?tag=mcp&days=7'
+      )
     );
 
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
@@ -66,7 +75,9 @@ describe('GET /api/trends/analysis: 無効化したソースの記事を数え�
       { name: 'React', total_count: BigInt(3) },
     ]);
 
-    await GET(new NextRequest('http://localhost:3000/api/trends/analysis?days=30'));
+    await GET(
+      new NextRequest('http://localhost:3000/api/trends/analysis?days=30')
+    );
 
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     for (const call of prismaMock.$queryRaw.mock.calls) {

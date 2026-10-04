@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { tagCache } from '@/lib/cache/tag-cache';
 import { parseIntParam, VALIDATION_RANGES } from '@/lib/utils/validation';
 import logger from '@/lib/logger';
-import { findNewTags } from '@/lib/database/new-tags';
-import { daysAgo } from '@/lib/database/article-aggregation-filter';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,16 +21,7 @@ export async function GET(request: NextRequest) {
 
     const days = daysParam.value;
 
-    const now = new Date();
-    const rows = await findNewTags(prisma, {
-      from: daysAgo(days, now),
-      to: now,
-    });
-    const tags = rows.map((tag) => ({
-      id: tag.id,
-      name: tag.name,
-      articleCount: tag.count,
-    }));
+    const tags = await tagCache.getNewTags(days);
 
     return NextResponse.json({
       count: tags.length,

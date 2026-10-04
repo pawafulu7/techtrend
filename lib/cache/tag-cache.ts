@@ -3,6 +3,10 @@ import { RedisCache } from './index';
 import { CACHE_TTL } from './constants';
 import type { TagWithCount } from '@/types/models';
 import { findTopTags } from '@/lib/database/tag-article-counts';
+import { findNewTags } from '@/lib/database/new-tags';
+import { daysAgo } from '@/lib/database/article-aggregation-filter';
+import { findTagNamesByAlias } from '@/lib/constants/tag-labels';
+import { createHash } from 'crypto';
 
 export class TagCache {
   private cache: RedisCache;
@@ -62,6 +66,53 @@ export class TagCache {
     });
   }
 
+  async getNewTags(days: number) {
+    return this.cache.getOrSetWithLock(
+      `new-tags:days:${days}`,
+      async () => {
+        const now = new Date();
+        const rows = await findNewTags(prisma, {
+          from: daysAgo(days, now),
+          to: now,
+        });
+        return rows.map((tag) => ({
+          id: tag.id,
+          name: tag.name,
+          articleCount: tag.count,
+        }));
+      },
+      CACHE_TTL.SHORT
+    );
+  }
+
+  async searchTags(query: string) {
+    // The route trims/truncates q before it reaches here; hash it to keep Redis keys bounded.
+    const key = createHash('sha256').update(query).digest('hex');
+    return this.cache.getOrSetWithLock(
+      `search:${key}`,
+      async () => {
+        const canonicalNames = findTagNamesByAlias(query);
+        const tags = await findTopTags(
+          prisma,
+          query
+            ? {
+                limit: 100,
+                nameContains: query,
+                ...(canonicalNames.length ? { canonicalNames } : {}),
+              }
+            : { limit: 50 }
+        );
+        return tags.map((tag) => ({
+          id: tag.id,
+          name: tag.name,
+          count: tag.count,
+          category: tag.category,
+        }));
+      },
+      CACHE_TTL.SHORT
+    );
+  }
+
   /**
    * キャッシュを無効化
    */
@@ -83,6 +134,8 @@ export class TagCache {
         this.cache.delete('all-tags').catch(() => {}),
         // Popular tags (various limits)
         this.cache.invalidatePattern('popular-tags:*'),
+        this.cache.invalidatePattern('new-tags:*'),
+        this.cache.invalidatePattern('search:*'),
       ]);
     } catch (_error) {
       // Fallback to full invalidation on any error

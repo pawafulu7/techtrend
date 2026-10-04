@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { tagCache } from '@/lib/cache/tag-cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
-import { findTopTags } from '@/lib/database/tag-article-counts';
 import { MAX_SEARCH_QUERY_LENGTH } from '@/lib/constants/search-query';
-import { findTagNamesByAlias } from '@/lib/constants/tag-labels';
 
 async function handler(request: NextRequest) {
   try {
@@ -19,21 +17,7 @@ async function handler(request: NextRequest) {
     // 記事数の多い順。記事数は無効化したソースの記事を数えず、記事が 0 件のタグは返さない（issue #688）。
     // 空クエリは人気順の上位 50 件、検索は名前の部分一致で最大 100 件。
     // 部分一致は ILIKE で、_ や % が検索語に入ってもワイルドカードにならないように findTopTags がエスケープする
-    const canonicalNames = findTagNamesByAlias(query);
-    const tags = query
-      ? await findTopTags(prisma, {
-          limit: 100,
-          nameContains: query,
-          ...(canonicalNames.length ? { canonicalNames } : {}),
-        })
-      : await findTopTags(prisma, { limit: 50 });
-
-    const result = tags.map((tag) => ({
-      id: tag.id,
-      name: tag.name,
-      count: tag.count,
-      category: tag.category,
-    }));
+    const result = await tagCache.searchTags(query);
 
     return NextResponse.json(result);
   } catch (error) {

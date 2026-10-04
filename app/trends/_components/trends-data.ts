@@ -1,50 +1,10 @@
-import { articleAggregationSql } from '@/lib/database/article-aggregation-filter';
-import { findNewTags } from '@/lib/database/new-tags';
-import { prisma } from '@/lib/prisma';
-import { Prisma } from '@/lib/prisma-exports';
-import { keywordsCache } from '@/lib/cache/keywords-cache';
-import { trendsCache } from '@/lib/cache/trends-cache';
-import { RedisCache } from '@/lib/cache';
+import { getTrendAnalysis } from '@/lib/services/trend-analysis';
+import { getTrendingKeywords } from '@/lib/services/trending-keywords';
+import { getDashboardStats } from '@/lib/services/dashboard-stats';
 import logger from '@/lib/logger';
-import {
-  enabledSourceSql,
-  enabledSourceWhere,
-} from '@/lib/database/enabled-source-filter';
 
-// 読み取り専用: キャッシュへの書き込みは /api/stats ルートが担当
-const statsCache = new RedisCache({
-  ttl: 300,
-  namespace: '@techtrend/cache:stats:v2',
-});
-
-export interface TrendingKeyword {
-  id: string;
-  name: string;
-  recentCount: number;
-  weeklyAverage: number;
-  growthRate: number;
-  isTrending: boolean;
-}
-
-export interface NewTag {
-  id: string;
-  name: string;
-  count: number;
-}
-
-export interface TrendAnalysis {
-  topTags: { name: string; totalCount: number }[];
-  timeline: Array<{
-    date: string;
-    [key: string]: string | number;
-  }>;
-  period: {
-    from: string;
-    to: string;
-    days: number;
-  };
-}
-
+export type { TrendingKeyword, NewTag } from '@/lib/services/trending-keywords';
+export type { TrendAnalysis } from '@/lib/services/trend-analysis';
 export interface SourceDataItem {
   name: string;
   value: number;
@@ -52,202 +12,19 @@ export interface SourceDataItem {
   [key: string]: string | number | undefined;
 }
 
-export async function fetchKeywordsData(): Promise<{
-  trending: TrendingKeyword[];
-  newTags: NewTag[];
-}> {
+export async function fetchKeywordsData() {
   try {
-    const cacheKey = 'keywords:trending:v2';
-
-    // キャッシュ読み取りのみ。書き込みは /api/trends/keywords ルートが担当。
-    // APIルートは { trending, newTags, period } を書き込むため、
-    // SC側が { trending, newTags } のみを書き込むとpayload不一致が発生する。
-    type KeywordsPayload = {
-      trending: TrendingKeyword[];
-      newTags: NewTag[];
-    };
-    const cached = await keywordsCache.get<KeywordsPayload>(cacheKey);
-    if (cached) {
-      return {
-        trending: cached.trending || [],
-        newTags: cached.newTags || [],
-      };
-    }
-
-    // キャッシュミス時はDBから直接フェッチ（キャッシュへの書き込みなし）
-    const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    const [recentTags, weeklyTags, newTagsRaw] = await Promise.all([
-      prisma.$queryRaw<{ id: string; name: string; recent_count: bigint }[]>`
-          SELECT
-            t.id,
-            t.name,
-            COUNT(DISTINCT a.id) as recent_count
-          FROM "Tag" t
-          JOIN "_ArticleToTag" at ON t.id = at."B"
-          JOIN "Article" a ON at."A" = a.id
-          WHERE ${articleAggregationSql('a', { from: oneDayAgo, to: now })}
-            AND t.name <> ''
-            AND t.name IS NOT NULL
-          GROUP BY t.id, t.name
-        `,
-
-      prisma.$queryRaw<{ id: string; name: string; weekly_count: bigint }[]>`
-          SELECT
-            t.id,
-            t.name,
-            COUNT(DISTINCT a.id) as weekly_count
-          FROM "Tag" t
-          JOIN "_ArticleToTag" at ON t.id = at."B"
-          JOIN "Article" a ON at."A" = a.id
-          WHERE ${articleAggregationSql('a', { from: oneWeekAgo, to: oneDayAgo })}
-            AND t.name <> ''
-            AND t.name IS NOT NULL
-          GROUP BY t.id, t.name
-        `,
-
-      findNewTags(prisma, { from: oneDayAgo, to: now, limit: 10 }),
-    ]);
-
-    const weeklyTagMap = new Map(
-      weeklyTags.map((tag) => [tag.id, Number(tag.weekly_count) / 6])
-    );
-
-    const trendingKeywords = recentTags
-      .map((tag) => {
-        const recentCount = Number(tag.recent_count);
-        const weeklyAverage = weeklyTagMap.get(tag.id) || 0;
-        const effectiveAverage = Math.max(weeklyAverage, 1.0);
-        const rawGrowthRate =
-          ((recentCount - effectiveAverage) / effectiveAverage) * 100;
-        const growthRate = Math.min(Math.round(rawGrowthRate), 999);
-
-        return {
-          id: tag.id,
-          name: tag.name,
-          recentCount,
-          weeklyAverage: Math.round(weeklyAverage * 10) / 10,
-          growthRate,
-          isTrending: growthRate > 50 && recentCount >= 2,
-        };
-      })
-      .filter((tag) => tag.isTrending || tag.recentCount >= 3)
-      .sort(
-        (a, b) => b.growthRate - a.growthRate || b.recentCount - a.recentCount
-      )
-      .slice(0, 20);
-
-    return {
-      trending: trendingKeywords,
-      newTags: newTagsRaw.map((tag) => ({
-        id: tag.id,
-        name: tag.name,
-        count: tag.count,
-      })),
-    };
+    const { trending, newTags } = await getTrendingKeywords();
+    return { trending, newTags };
   } catch (error) {
-    // 失敗を空の一覧に変えると「急上昇なし」と区別できないため、呼び出し側へ返す（issue #701）
     logger.error({ err: error }, 'Failed to fetch trending keywords (SC)');
     throw error;
   }
 }
 
-export async function fetchAnalysisData(days: number): Promise<TrendAnalysis> {
+export async function fetchAnalysisData(days: number) {
   try {
-    const cacheKey = trendsCache.generateTrendsKey({ days });
-
-    // キャッシュ読み取りのみ。書き込みは /api/trends/analysis ルートが担当。
-    const cached = await trendsCache.get<TrendAnalysis>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    // キャッシュミス時はDBから直接フェッチ（キャッシュへの書き込みなし）
-    const now = new Date();
-    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-
-    const topTags = await prisma.$queryRaw<
-      { name: string; total_count: bigint }[]
-    >`
-      SELECT
-        t.name,
-        COUNT(DISTINCT a.id) as total_count
-      FROM "Tag" t
-      JOIN "_ArticleToTag" at ON t.id = at."B"
-      JOIN "Article" a ON at."A" = a.id
-      WHERE a."publishedAt" >= ${startDate.toISOString()}::timestamp
-        AND a."isHidden" = false
-        AND ${enabledSourceSql()}
-      GROUP BY t.name
-      ORDER BY total_count DESC
-      LIMIT 10
-    `;
-
-    let timelineData: { date: string; tag_name: string; count: bigint }[] = [];
-
-    if (topTags.length > 0) {
-      const tagNames = topTags.map((t) => t.name);
-      timelineData = await prisma.$queryRaw<
-        { date: string; tag_name: string; count: bigint }[]
-      >`
-        SELECT
-          TO_CHAR(a."publishedAt", 'YYYY-MM-DD') as date,
-          t.name as tag_name,
-          COUNT(DISTINCT a.id) as count
-        FROM "Tag" t
-        JOIN "_ArticleToTag" at ON t.id = at."B"
-        JOIN "Article" a ON at."A" = a.id
-        WHERE a."publishedAt" >= ${startDate.toISOString()}::timestamp
-          AND a."isHidden" = false
-          AND ${enabledSourceSql()}
-          AND t.name IN (${Prisma.join(tagNames)})
-        GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), t.name
-        ORDER BY date ASC, count DESC
-      `;
-    }
-
-    const timelineByDate = timelineData.reduce(
-      (acc, item) => {
-        const date = item.date;
-        if (!acc[date]) acc[date] = {};
-        acc[date][item.tag_name] = Number(item.count);
-        return acc;
-      },
-      {} as Record<string, Record<string, number>>
-    );
-
-    const dates: string[] = [];
-    const current = new Date(startDate);
-    while (current <= now) {
-      dates.push(current.toISOString().split('T')[0]);
-      current.setDate(current.getDate() + 1);
-    }
-    const tagNames = topTags.map((t) => t.name);
-
-    const completeTimeline = dates.map((date) => {
-      const dayData: { date: string; [key: string]: string | number } = {
-        date,
-      };
-      tagNames.forEach((tag) => {
-        dayData[tag] = timelineByDate[date]?.[tag] || 0;
-      });
-      return dayData;
-    });
-
-    return {
-      topTags: topTags.map((t) => ({
-        name: t.name,
-        totalCount: Number(t.total_count),
-      })),
-      timeline: completeTimeline,
-      period: {
-        from: startDate.toISOString(),
-        to: now.toISOString(),
-        days,
-      },
-    };
+    return await getTrendAnalysis(days);
   } catch (error) {
     logger.error({ err: error }, 'Failed to fetch trend analysis (SC)');
     throw error;
@@ -256,45 +33,9 @@ export async function fetchAnalysisData(days: number): Promise<TrendAnalysis> {
 
 export async function fetchSourceData(): Promise<SourceDataItem[]> {
   try {
-    const cacheKey = 'stats:dashboard:v2';
-
-    type StatsPayload = {
-      sources: {
-        id: string;
-        name: string;
-        count: number;
-        percentage: number;
-      }[];
-    };
-
-    const cachedStats = await statsCache.get<StatsPayload>(cacheKey);
-    const sourcesRaw = cachedStats
-      ? cachedStats.sources
-      : await (async () => {
-          const [totalArticles, sourceStats] = await Promise.all([
-            // 構成比の分母も、有効なソースの記事だけで数える（issue #688）
-            prisma.article.count({ where: { AND: [enabledSourceWhere()] } }),
-            prisma.source.findMany({
-              where: { enabled: true },
-              include: { _count: { select: { articles: true } } },
-              orderBy: { articles: { _count: 'desc' } },
-            }),
-          ]);
-
-          const sources = sourceStats.map((source) => ({
-            id: source.id,
-            name: source.name,
-            count: source._count.articles,
-            percentage:
-              totalArticles > 0
-                ? Math.round((source._count.articles / totalArticles) * 1000) /
-                  10
-                : 0,
-          }));
-
-          return sources;
-        })();
-
+    const {
+      value: { sources: sourcesRaw },
+    } = await getDashboardStats();
     const topSources = sourcesRaw.slice(0, 6);
     const otherSources = sourcesRaw.slice(6);
 

@@ -6,17 +6,28 @@
  * DB から直接引く経路も route と同じ条件にそろえる。
  */
 jest.mock('@/lib/cache/keywords-cache', () => ({
-  keywordsCache: { get: jest.fn().mockResolvedValue(null) },
+  keywordsCache: {
+    getOrSetWithLock: jest.fn((_key: string, fn: () => Promise<unknown>) =>
+      fn()
+    ),
+  },
 }));
 jest.mock('@/lib/cache/trends-cache', () => ({
   trendsCache: {
-    get: jest.fn().mockResolvedValue(null),
+    getOrSetWithLock: jest.fn((_key: string, fn: () => Promise<unknown>) =>
+      fn()
+    ),
     generateTrendsKey: jest.fn(() => 'trends:test'),
   },
 }));
 jest.mock('@/lib/cache', () => ({
   RedisCache: jest.fn().mockImplementation(() => ({
-    get: jest.fn().mockResolvedValue(null),
+    getOrSetWithLockWithMeta: jest.fn(
+      async (_key: string, fn: () => Promise<unknown>) => ({
+        value: await fn(),
+        cacheHit: false,
+      })
+    ),
   })),
 }));
 

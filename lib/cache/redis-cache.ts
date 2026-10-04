@@ -279,7 +279,7 @@ export class RedisCache {
    *
    * Returned metadata:
    *   - value: The cached or freshly fetched value
-   *   - cacheHit: true if the value was served from cache on the first lookup
+   *   - cacheHit: direct hit on the first lookup or post-lock recheck; contended waits are reported separately
    *   - waitedMs: Milliseconds spent waiting in the lock-poll loop (0 if lock was acquired immediately or cache hit)
    *   - timedOut: true if the lock-wait loop reached maxWaitTime and fell back to a direct fetch
    */
@@ -323,6 +323,16 @@ export class RedisCache {
       if (acquired === 'OK') {
         // Lock acquired - fetch data and cache it
         try {
+          // A previous owner can fill the cache between our initial GET and SET NX.
+          const filled = await this.get<T>(key);
+          if (filled !== null) {
+            return {
+              value: filled,
+              cacheHit: true,
+              waitedMs: 0,
+              timedOut: false,
+            };
+          }
           fetcherExecuted = true;
           const fresh = await fetcher();
           await this.set(key, fresh, ttl);
