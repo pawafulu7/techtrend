@@ -36,6 +36,7 @@ import {
   type MetricType,
 } from './preset-filters';
 import { PopularStatsBar } from './popular-stats-bar';
+import { DataFreshness } from '@/app/components/common/data-freshness';
 
 interface RankedArticle extends ArticleWithRelations {
   rank: number;
@@ -43,6 +44,20 @@ interface RankedArticle extends ArticleWithRelations {
   score: number;
   trend: 'up' | 'down' | 'stable' | 'new';
 }
+
+interface PopularResponse {
+  articles: RankedArticle[];
+  /** ランキングを集計した時刻 */
+  timestamp?: string;
+}
+
+// 集計期間の表示名（API の期間の決め方は app/api/articles/popular/route.ts）
+const PERIOD_LABELS: Record<PeriodType, string> = {
+  today: '今日',
+  week: '直近7日',
+  month: '直近1か月',
+  all: '全期間',
+};
 
 interface PopularArticlesProps {
   initialPeriod?: PeriodType;
@@ -73,7 +88,7 @@ export function PopularArticles({
     data,
     isLoading: loading,
     isError,
-  } = useQuery<RankedArticle[]>({
+  } = useQuery<PopularResponse>({
     queryKey: ['popular-articles', { period, metric, limit }],
     queryFn: async () => {
       const response = await fetch(
@@ -83,11 +98,14 @@ export function PopularArticles({
         throw new Error('Failed to load popular articles');
       }
       const json = await response.json();
-      return json.articles as RankedArticle[];
+      return {
+        articles: json.articles as RankedArticle[],
+        timestamp: json.timestamp as string | undefined,
+      };
     },
   });
 
-  const articles = useMemo(() => data ?? [], [data]);
+  const articles = useMemo(() => data?.articles ?? [], [data]);
 
   const handleMetricChange = useCallback(
     (value: string) => {
@@ -192,6 +210,13 @@ export function PopularArticles({
         </h2>
         <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-primary)/30 to-transparent" />
       </div>
+      {!loading && (
+        <DataFreshness
+          at={data?.timestamp}
+          period={PERIOD_LABELS[period] ?? PERIOD_LABELS.week}
+          className="-mt-2 text-center"
+        />
+      )}
 
       <p className="text-muted-foreground text-xs">
         元サイトの反応数は、はてなブックマークの保存数、Dev.to

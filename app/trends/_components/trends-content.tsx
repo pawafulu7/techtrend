@@ -19,6 +19,7 @@ import { TrendLineChart, SourcePieChart } from '@/app/components/trends';
 import { TrendingKeywordCard } from '@/app/components/trends/overview/TrendingKeywordCard';
 import { TrendStatsBar } from '@/app/components/trends/overview/TrendStatsBar';
 import { TrendNavigationCards } from '@/app/components/trends/overview/TrendNavigationCards';
+import { DataFreshness } from '@/app/components/common/data-freshness';
 import type {
   TrendingKeyword,
   NewTag,
@@ -30,8 +31,12 @@ import type {
 interface TrendsContentProps {
   initialKeywords: TrendingKeyword[] | null;
   initialNewTags: NewTag[] | null;
+  /** 急上昇キーワード・新着タグの集計時刻（issue #707） */
+  keywordsAggregatedAt?: string | null;
   initialAnalysis: TrendAnalysis | null;
   initialSourceData: SourceDataItem[] | null;
+  /** ソース別記事分布の集計時刻 */
+  sourceAggregatedAt?: string | null;
 }
 
 const RETRY_DESCRIPTION = '時間をおいて再試行してください。';
@@ -39,8 +44,10 @@ const RETRY_DESCRIPTION = '時間をおいて再試行してください。';
 export function TrendsContent({
   initialKeywords,
   initialNewTags,
+  keywordsAggregatedAt,
   initialAnalysis,
   initialSourceData,
+  sourceAggregatedAt,
 }: TrendsContentProps) {
   const [trendAnalysis, setTrendAnalysis] = useState<TrendAnalysis | null>(
     initialAnalysis
@@ -193,6 +200,13 @@ export function TrendsContent({
           </h2>
           <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-secondary)/50 to-transparent" />
         </div>
+        {initialKeywords !== null && (
+          <DataFreshness
+            at={keywordsAggregatedAt}
+            period="直近24時間"
+            className="-mt-2 mb-4 text-center"
+          />
+        )}
 
         {initialKeywords === null ? (
           <ErrorState
@@ -287,6 +301,13 @@ export function TrendsContent({
             ))}
           </div>
         </div>
+        {trendAnalysis && !loadingAnalysis && (
+          <DataFreshness
+            at={trendAnalysis.period?.to}
+            period={`直近${trendAnalysis.period?.days ?? selectedDays}日`}
+            className="-mt-2 mb-4"
+          />
+        )}
 
         <div className="space-y-6">
           {/* Trend Line Chart */}
@@ -353,6 +374,13 @@ export function TrendsContent({
             {/* Source Pie Chart */}
             <SourcePieChart
               data={initialSourceData}
+              note={
+                <DataFreshness
+                  at={sourceAggregatedAt}
+                  period="全期間"
+                  className="-mt-2 mb-2"
+                />
+              }
               loading={false}
               onRetry={refreshServerData}
               retrying={isRefreshing}

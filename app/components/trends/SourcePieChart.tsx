@@ -26,6 +26,8 @@ interface SourcePieChartProps {
   loading?: boolean;
   onRetry?: () => void;
   retrying?: boolean;
+  /** 見出しの下に出す注記（集計期間と集計時刻など） */
+  note?: React.ReactNode;
 }
 
 // Rechartsのlabelプロパティ用の型定義（Rechartsの内部型に準拠）
@@ -115,6 +117,7 @@ export function SourcePieChart({
   loading = false,
   onRetry,
   retrying = false,
+  note,
 }: SourcePieChartProps) {
   const colors = useChartColors();
 
@@ -168,6 +171,7 @@ export function SourcePieChart({
         <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
         <h3 className="text-sm font-semibold">ソース別記事分布</h3>
       </div>
+      {note}
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           <Pie

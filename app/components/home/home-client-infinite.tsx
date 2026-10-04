@@ -7,15 +7,18 @@ import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
+import { useRefreshKeepingPosition } from '@/app/hooks/use-refresh-keeping-position';
 import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
 import { buildScrollStorageKey } from '@/lib/utils/scroll';
 import { PAGINATION, SCROLL } from '@/lib/constants/index';
 import type { Source, Tag } from '@/lib/prisma-exports';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
-import { AlertTriangle, Loader2, Search } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, Search } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import type { ViewMode } from '@/types/components';
+import { DataFreshness } from '@/app/components/common/data-freshness';
+import { cn } from '@/lib/utils';
 
 interface HomeClientInfiniteProps {
   viewMode: ViewMode;
@@ -233,6 +236,7 @@ export function HomeClientInfinite({
     isFetchingNextPage,
     isPending,
     isError,
+    isRefetchError,
     refetch,
   } = useInfiniteArticles(
     {
@@ -259,6 +263,15 @@ export function HomeClientInfinite({
 
   // 合計記事数
   const totalCount = data?.pages[0]?.data.total || 0;
+  // 一覧の先頭ページを取得した時刻（新着の有無はここで決まる）
+  const fetchedAt = data?.pages[0]?.fetchedAt;
+
+  // 手動更新（issue #707）。読んでいる位置を保ったまま最新の一覧に取り直す
+  const { isRefreshing, refresh: handleRefresh } = useRefreshKeepingPosition({
+    containerRef: scrollContainerRef,
+    refetch,
+    fetchedAt,
+  });
 
   // スクロール位置復元フックを使用（記事詳細から戻った時のみ有効）
   const { isRestoring, currentPage, targetPages, cancelRestoration } =
@@ -307,7 +320,8 @@ export function HomeClientInfinite({
     [allArticles]
   );
 
-  if (isError) {
+  // 更新（取り直し）の失敗では一覧を残し、失敗を下の行に出す
+  if (isError && !isRefetchError) {
     return (
       <div className="flex min-h-[400px] items-center justify-center px-4">
         <CardV2 className="mx-auto max-w-md">
@@ -430,10 +444,41 @@ export function HomeClientInfinite({
         )}
       </div>
 
-      {/* 記事件数表示 */}
-      {totalCount > 0 && (
-        <div className="text-muted-foreground px-4 pb-2 text-right text-sm lg:px-6">
-          {totalCount}件の記事 ({allArticles.length}件表示中)
+      {/* 一覧の取得時刻・手動更新・記事件数 */}
+      {data && (
+        <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 pb-2 text-sm lg:px-6">
+          <div className="flex items-center gap-1">
+            <DataFreshness at={fetchedAt} kind="fetched" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="text-muted-foreground h-8 px-2 text-xs"
+            >
+              <RefreshCw
+                className={cn(
+                  'h-3.5 w-3.5',
+                  isRefreshing && 'animate-spin motion-reduce:animate-none'
+                )}
+                aria-hidden="true"
+              />
+              {isRefreshing ? '更新中…' : '最新に更新'}
+            </Button>
+            <span
+              role="status"
+              className="text-xs text-[var(--tt-color-negative)]"
+            >
+              {isRefetchError && !isRefreshing
+                ? '最新の一覧を取得できませんでした。'
+                : ''}
+            </span>
+          </div>
+          {totalCount > 0 && (
+            <span>
+              {totalCount}件の記事 ({allArticles.length}件表示中)
+            </span>
+          )}
         </div>
       )}
     </>

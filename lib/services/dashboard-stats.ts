@@ -79,6 +79,8 @@ async function loadDashboardStats() {
 
   // レスポンスデータを整形
   const formattedStats = {
+    // 集計した時刻。画面に集計時刻として出す（issue #707）
+    generatedAt: new Date().toISOString(),
     overview: {
       total: totalArticles,
       last7Days: articlesLast7Days,

@@ -38,6 +38,8 @@ interface ArticlesResponse {
     totalPages: number;
     limit: number;
   };
+  /** 画面がこのページを取得した時刻（ms）。取得時刻の表示に使う（issue #707） */
+  fetchedAt?: number;
 }
 
 type InfiniteArticlesData = InfiniteData<ArticlesResponse, number>;
@@ -369,18 +371,19 @@ export function useInfiniteArticles(
         totalCountRef.current = data.data.total;
       }
 
-      return data;
+      // dataUpdatedAt はお気に入りの反映（setQueryData）でも進むため、取得時刻は
+      // ページ自体に持たせる
+      return { ...data, fetchedAt: Date.now() };
     },
     getNextPageParam: (lastPage) => {
       const { page, totalPages } = lastPage.data;
       return page < totalPages ? page + 1 : undefined;
     },
     initialPageParam: 1,
-    // staleTime は 5 分だが、現状これを消費する経路は 1 本も残っていない。
-    // mount / focus / reconnect / interval がすべて無効なので、stale になっても
-    // 再取得のきっかけが無く実質デッド設定である（一覧は cron でしか変わらない、
-    // という判断に基づく意図的なトレードオフ）。手動更新 UI（次 PR）が入ると
-    // この設定が初めて意味を持つ。
+    // mount / focus / reconnect / interval の自動再取得はすべて無効にしている
+    // （一覧は cron でしか変わらない、という判断に基づく意図的なトレードオフ）。
+    // 新着はホームの手動更新（refetch。読み込み済みの全ページを取り直す）で取り込む
+    // （issue #707）。
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 30, // 30分間メモリに保持（データ転送削減、10分→30分に延長）
     refetchOnWindowFocus: false, // 通常はfalse（パフォーマンスのため）
