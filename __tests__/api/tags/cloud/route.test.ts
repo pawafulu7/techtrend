@@ -161,10 +161,11 @@ describe('/api/tags/cloud', () => {
       });
 
       expect(mockCacheInstance.set).toHaveBeenCalledWith(
-        'tagcloud:30d:50',
+        'tagcloud:v2:30d:50',
         expect.objectContaining({
           tags: expect.any(Array),
-          period: '30d'
+          period: '30d',
+          generatedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
         })
       );
     });
@@ -283,7 +284,7 @@ describe('/api/tags/cloud', () => {
 
       expect(data).toEqual(cachedData);
       expect(mockFindTopTags).not.toHaveBeenCalled();
-      expect(mockCacheInstance.get).toHaveBeenCalledWith('tagcloud:30d:50');
+      expect(mockCacheInstance.get).toHaveBeenCalledWith('tagcloud:v2:30d:50');
     });
 
     it('トレンドを正しく計算する', async () => {

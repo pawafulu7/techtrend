@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import type { Source, Tag } from '@/lib/prisma-exports';
 
@@ -15,7 +15,10 @@ import type { Source, Tag } from '@/lib/prisma-exports';
  */
 
 type MockArticle = { id: string; title: string };
-type MockPage = { data: { items: MockArticle[]; total: number } };
+type MockPage = {
+  data: { items: MockArticle[]; total: number };
+  fetchedAt?: number;
+};
 type MockInfiniteArticles = {
   data?: { pages: MockPage[]; pageParams: number[] };
   fetchNextPage: jest.Mock;
@@ -26,6 +29,7 @@ type MockInfiniteArticles = {
   // 「isLoadingPreferences を見ていないこと」だけをテストの対象にできる。
   isLoading: boolean;
   isError: boolean;
+  isRefetchError?: boolean;
   refetch: jest.Mock;
 };
 type MockPreferences = {
@@ -68,7 +72,12 @@ jest.mock('@/app/hooks/use-scroll-restoration', () => ({
 
 jest.mock('@/app/components/article/list', () => ({
   ArticleList: ({ articles }: { articles: MockArticle[] }) => (
-    <div data-testid="article-list">{`${articles.length} articles`}</div>
+    <div data-testid="article-list">
+      {`${articles.length} articles`}
+      {articles.map((a) => (
+        <div key={a.id} data-article-id={a.id} />
+      ))}
+    </div>
   ),
 }));
 
@@ -211,5 +220,89 @@ describe('HomeClientInfinite の記事クエリ enabled 配線', () => {
     );
 
     expect(lastInfiniteArticlesOptions()).toEqual({ enabled: false });
+  });
+});
+
+/**
+ * 手動更新（issue #707）。自動の再取得は無効なので、新着はこのボタンで取り込む。
+ * 読み込み済みの全ページを取り直し、読んでいた記事を画面上の同じ位置に保つ。
+ */
+describe('HomeClientInfinite の手動更新', () => {
+  // 2026-10-04 13:58 UTC = 22:58 JST
+  const FETCHED_AT = Date.UTC(2026, 9, 4, 13, 58);
+  function pageWith(items: MockArticle[], fetchedAt: number) {
+    const data = {
+      pages: [{ data: { items, total: items.length }, fetchedAt }],
+      pageParams: [1],
+    };
+    return {
+      ...loadedArticles(),
+      data,
+      // 本物の refetch と同じく結果を返す（新しい一覧は来ない）
+      refetch: jest.fn().mockResolvedValue({ isError: false, data }),
+    };
+  }
+
+  beforeEach(() => {
+    mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
+  });
+
+  it('一覧を取得した時刻と更新ボタンを出し、押すと取り直す', async () => {
+    const state = pageWith(ARTICLES, FETCHED_AT);
+    mockUseInfiniteArticles.mockReturnValue(state);
+    renderHome();
+
+    const freshness = screen.getByTestId('data-freshness');
+    expect(freshness).toHaveTextContent('10月4日 22:58 に取得');
+    expect(freshness.querySelector('time')).toHaveAttribute(
+      'dateTime',
+      '2026-10-04T13:58:00.000Z'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '最新に更新' }));
+    expect(state.refetch).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: '最新に更新' })
+      ).not.toBeDisabled()
+    );
+  });
+
+  // 位置を保つ処理そのものは __tests__/hooks/use-refresh-keeping-position.test.tsx が
+  // 本物の TanStack Query で確かめる
+  it('次ページの読み込み中は更新を押せない（取り直しが読み込みを取り消すため）', () => {
+    mockUseInfiniteArticles.mockReturnValue({
+      ...pageWith(ARTICLES, FETCHED_AT),
+      isFetchingNextPage: true,
+    });
+    renderHome();
+
+    expect(screen.getByRole('button', { name: '最新に更新' })).toBeDisabled();
+  });
+
+  it('取り直しに失敗しても一覧を残し、失敗を知らせる', () => {
+    mockUseInfiniteArticles.mockReturnValue({
+      ...pageWith(ARTICLES, FETCHED_AT),
+      isError: true,
+      isRefetchError: true,
+    });
+    renderHome();
+
+    expect(screen.getByTestId('article-list')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '最新の一覧を取得できませんでした。'
+    );
+    expect(screen.queryByText('エラーが発生しました')).not.toBeInTheDocument();
+  });
+
+  it('初回の取得の失敗は従来どおりエラー画面を出す', () => {
+    mockUseInfiniteArticles.mockReturnValue({
+      ...noArticlesYet(),
+      isPending: false,
+      isError: true,
+    });
+    renderHome();
+
+    expect(screen.getByText('エラーが発生しました')).toBeInTheDocument();
   });
 });

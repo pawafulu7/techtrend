@@ -14,8 +14,9 @@ export interface SourceDataItem {
 
 export async function fetchKeywordsData() {
   try {
-    const { trending, newTags } = await getTrendingKeywords();
-    return { trending, newTags };
+    const { trending, newTags, period } = await getTrendingKeywords();
+    // 集計の終点（= 集計した時刻）。画面に集計時刻として出す（issue #707）
+    return { trending, newTags, aggregatedAt: period?.to ?? null };
   } catch (error) {
     logger.error({ err: error }, 'Failed to fetch trending keywords (SC)');
     throw error;
@@ -31,10 +32,16 @@ export async function fetchAnalysisData(days: number) {
   }
 }
 
-export async function fetchSourceData(): Promise<SourceDataItem[]> {
+export interface SourceDistribution {
+  items: SourceDataItem[];
+  /** 集計した時刻。この項目が入る前のキャッシュでは null */
+  aggregatedAt: string | null;
+}
+
+export async function fetchSourceData(): Promise<SourceDistribution> {
   try {
     const {
-      value: { sources: sourcesRaw },
+      value: { sources: sourcesRaw, generatedAt },
     } = await getDashboardStats();
     const topSources = sourcesRaw.slice(0, 6);
     const otherSources = sourcesRaw.slice(6);
@@ -62,7 +69,7 @@ export async function fetchSourceData(): Promise<SourceDataItem[]> {
       });
     }
 
-    return sourceData;
+    return { items: sourceData, aggregatedAt: generatedAt ?? null };
   } catch (error) {
     logger.error({ err: error }, 'Failed to fetch source distribution (SC)');
     throw error;

@@ -95,7 +95,9 @@ describe('trends-data: 無効化したソースの記事を数えない（issue 
     expect(prismaMock.article.count).toHaveBeenCalledWith({
       where: { AND: [enabledSourceWhere()] },
     });
-    expect(data).toEqual([{ name: 'S1', value: 4, percentage: 40 }]);
+    expect(data.items).toEqual([{ name: 'S1', value: 4, percentage: 40 }]);
+    // 集計時刻を画面に出す（issue #707）
+    expect(data.aggregatedAt).toEqual(expect.any(String));
   });
 });
 

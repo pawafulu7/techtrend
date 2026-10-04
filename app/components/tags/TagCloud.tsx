@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DataFreshness } from '@/app/components/common/data-freshness';
 
 interface Tag {
   id: string;
@@ -62,6 +63,19 @@ const SKELETON_WIDTHS = [
   54, 126, 88,
 ];
 
+const PERIOD_LABELS = {
+  '7d': '直近7日',
+  '30d': '直近30日',
+  all: '全期間',
+} as const;
+
+interface TagCloudResponse {
+  tags: Tag[];
+  period: string;
+  /** 集計した時刻（この項目を足す前のキャッシュには無い） */
+  generatedAt?: string;
+}
+
 interface TagCloudProps {
   className?: string;
   limit?: number;
@@ -81,7 +95,7 @@ export function TagCloud({
   const { data, isPending, isError, refetch, isFetching, errorUpdateCount } =
     useQuery({
       queryKey: ['tag-cloud', { period, limit }],
-      queryFn: async () => {
+      queryFn: async (): Promise<TagCloudResponse> => {
         const response = await fetch(
           `/api/tags/cloud?period=${period}&limit=${limit}`
         );
@@ -196,6 +210,9 @@ export function TagCloud({
             </Button>
           </div>
         </div>
+        {data && (
+          <DataFreshness at={data.generatedAt} period={PERIOD_LABELS[period]} />
+        )}
       </CardHeader>
       <CardContent>
         {loading ? (

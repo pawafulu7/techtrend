@@ -7,6 +7,7 @@ import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
+import { useRefreshKeepingPosition } from '@/app/hooks/use-refresh-keeping-position';
 import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
 import { buildScrollStorageKey } from '@/lib/utils/scroll';
 import { PAGINATION, SCROLL } from '@/lib/constants/index';
@@ -16,6 +17,7 @@ import { ScrollRestorationLoading } from '@/app/components/common/scroll-restora
 import { AlertTriangle, Loader2, Search } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import type { ViewMode } from '@/types/components';
+import { HomeListStatusBar } from '@/app/components/home/home-list-status-bar';
 
 interface HomeClientInfiniteProps {
   viewMode: ViewMode;
@@ -233,6 +235,7 @@ export function HomeClientInfinite({
     isFetchingNextPage,
     isPending,
     isError,
+    isRefetchError,
     refetch,
   } = useInfiniteArticles(
     {
@@ -257,8 +260,29 @@ export function HomeClientInfinite({
     return uniqueArticles;
   }, [data]);
 
+  const articleIds = useMemo(
+    () => allArticles.map((article) => article.id),
+    [allArticles]
+  );
+
   // 合計記事数
   const totalCount = data?.pages[0]?.data.total || 0;
+  // 一覧の先頭ページを取得した時刻（新着の有無はここで決まる）
+  const fetchedAt = data?.pages[0]?.fetchedAt;
+
+  // 手動更新（issue #707）。読んでいる位置を保ったまま最新の一覧に取り直す
+  const { isRefreshing, refresh: handleRefresh } = useRefreshKeepingPosition({
+    containerRef: scrollContainerRef,
+    refetch,
+    fetchedAt,
+    articleIds,
+    listKey: JSON.stringify(filters),
+  });
+  // 手動更新の間は次ページを読まない（fetchNextPage は進行中の取り直しを取り消すため）。
+  // hasNextPage は変えない（変えると「すべての記事を読み込みました」と出てしまう）
+  const loadNextPage = useCallback(() => {
+    if (!isRefreshing) void fetchNextPage();
+  }, [isRefreshing, fetchNextPage]);
 
   // スクロール位置復元フックを使用（記事詳細から戻った時のみ有効）
   const { isRestoring, currentPage, targetPages, cancelRestoration } =
@@ -307,7 +331,8 @@ export function HomeClientInfinite({
     [allArticles]
   );
 
-  if (isError) {
+  // 更新（取り直し）の失敗では一覧を残し、失敗を下の行に出す
+  if (isError && !isRefetchError) {
     return (
       <div className="flex min-h-[400px] items-center justify-center px-4">
         <CardV2 className="mx-auto max-w-md">
@@ -387,7 +412,7 @@ export function HomeClientInfinite({
             {/* Infinite Scrollトリガー */}
             {enableInfiniteScroll ? (
               <InfiniteScrollTrigger
-                onIntersect={fetchNextPage}
+                onIntersect={loadNextPage}
                 hasNextPage={hasNextPage || false}
                 isFetchingNextPage={isFetchingNextPage}
               />
@@ -396,7 +421,7 @@ export function HomeClientInfinite({
                 <div className="flex justify-center py-8">
                   <Button
                     onClick={() => fetchNextPage()}
-                    disabled={isFetchingNextPage}
+                    disabled={isFetchingNextPage || isRefreshing}
                     variant="outline"
                     data-testid="load-more-button"
                   >
@@ -430,11 +455,17 @@ export function HomeClientInfinite({
         )}
       </div>
 
-      {/* 記事件数表示 */}
-      {totalCount > 0 && (
-        <div className="text-muted-foreground px-4 pb-2 text-right text-sm lg:px-6">
-          {totalCount}件の記事 ({allArticles.length}件表示中)
-        </div>
+      {/* 一覧の取得時刻・手動更新・記事件数 */}
+      {data && (
+        <HomeListStatusBar
+          fetchedAt={fetchedAt}
+          isRefreshing={isRefreshing}
+          refreshDisabled={isFetchingNextPage || isRestoring}
+          refreshFailed={isRefetchError}
+          onRefresh={() => void handleRefresh()}
+          totalCount={totalCount}
+          shownCount={allArticles.length}
+        />
       )}
     </>
   );

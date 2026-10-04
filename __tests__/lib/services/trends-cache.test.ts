@@ -96,6 +96,8 @@ it('page fills the complete keywords payload, including period, for the API', as
   expect(result.newTags).toEqual(page.newTags);
   expect(result.period.from).toEqual(expect.any(String));
   expect(result.period.to).toEqual(expect.any(String));
+  // 画面の集計時刻は API と同じ集計の終点
+  expect(page.aggregatedAt).toBe(result.period.to);
   expect(db.$queryRaw).toHaveBeenCalledTimes(3);
 });
 
@@ -117,7 +119,7 @@ it('page and API share the complete 7-day analysis, with zero-filled dates', asy
 });
 
 it('source distribution fills full stats instead of poisoning the API with a partial payload', async () => {
-  expect(await fetchSourceData()).toEqual([
+  expect((await fetchSourceData()).items).toEqual([
     { name: 'S1', value: 20, percentage: 100 },
   ]);
   const result = await statsGet(new NextRequest('http://localhost/api/stats'));
@@ -208,9 +210,13 @@ it('late lock acquisition rechecks a value filled by the previous owner', async 
 it('all shared loaders and tag endpoints still return data with Redis unavailable', async () => {
   redis.get.mockRejectedValue(new Error('Redis unavailable'));
   redis.set.mockRejectedValue(new Error('Redis unavailable'));
-  expect(await fetchKeywordsData()).toEqual({ trending: [], newTags: [] });
+  expect(await fetchKeywordsData()).toEqual({
+    trending: [],
+    newTags: [],
+    aggregatedAt: expect.any(String),
+  });
   expect((await fetchAnalysisData(7)).period.days).toBe(7);
-  expect(await fetchSourceData()).toHaveLength(1);
+  expect((await fetchSourceData()).items).toHaveLength(1);
   expect(
     (await newTagsGet(new NextRequest('http://localhost/api/tags/new'))).status
   ).toBe(200);

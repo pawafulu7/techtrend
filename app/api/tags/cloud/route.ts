@@ -41,7 +41,8 @@ async function tagCloudHandler(request: NextRequest) {
 
     // キャッシュキーを生成
     const cache = getTagCloudCache();
-    const cacheKey = cache.generateCacheKey('tagcloud', {
+    // v2: 応答に集計時刻（generatedAt）を足した。古い形の応答をキャッシュから返さない
+    const cacheKey = cache.generateCacheKey('tagcloud:v2', {
       params: { period, limit },
     });
 
@@ -139,6 +140,8 @@ async function tagCloudHandler(request: NextRequest) {
     const response = {
       tags: tagCloudData,
       period,
+      // 集計した時刻。画面に集計時刻として出す（issue #707）
+      generatedAt: new Date().toISOString(),
     };
 
     // キャッシュに保存

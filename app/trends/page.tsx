@@ -21,13 +21,16 @@ export default async function TrendsPage() {
       fetchSourceData(),
     ]);
   const keywordsData = valueOrNull(keywordsResult);
+  const sourceData = valueOrNull(sourceResult);
 
   return (
     <TrendsContent
       initialKeywords={keywordsData?.trending ?? null}
       initialNewTags={keywordsData?.newTags ?? null}
+      keywordsAggregatedAt={keywordsData?.aggregatedAt ?? null}
       initialAnalysis={valueOrNull(analysisResult)}
-      initialSourceData={valueOrNull(sourceResult)}
+      initialSourceData={sourceData?.items ?? null}
+      sourceAggregatedAt={sourceData?.aggregatedAt ?? null}
     />
   );
 }
