@@ -13,24 +13,9 @@ EXCLUDE_TABLES=(
   '"UserCategoryPreference"' '"Comment"' '"UserSourcePreset"'
 )
 
-# .env.local -> .env の順で PROD_DATABASE_URL を読み込む
-PROD_DATABASE_URL=""
-for envfile in "$ROOT_DIR/.env.local" "$ROOT_DIR/.env"; do
-  if [ -f "$envfile" ]; then
-    db_line=$(grep -E '^[[:space:]]*PROD_DATABASE_URL[[:space:]]*=' "$envfile" | tail -n1 || true)
-    if [ -n "$db_line" ]; then
-      db_url="${db_line#*=}"
-      # 先頭末尾の空白を除去
-      db_url="$(echo -n "$db_url" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
-      # 行末コメント（スペース+#）を除去（URL内の#は保持）
-      db_url="$(echo -n "$db_url" | sed -E 's/[[:space:]]+#.*$//')"
-      # 囲みのダブルクオートを除去
-      db_url="$(echo -n "$db_url" | sed -E 's/^"|"$//g')"
-      PROD_DATABASE_URL="$db_url"
-      break
-    fi
-  fi
-done
+# 環境変数 -> .env.local -> .env の順で PROD_DATABASE_URL を読み込む
+# shellcheck source=scripts/db/prod-db-env.sh
+source "$ROOT_DIR/scripts/db/prod-db-env.sh"
 
 # 前提条件チェック
 if ! command -v docker >/dev/null 2>&1; then
@@ -38,10 +23,7 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-if [ -z "$PROD_DATABASE_URL" ]; then
-  echo "[sync] ERROR: PROD_DATABASE_URL が設定されていません。.env.local または .env に設定してください。"
-  exit 1
-fi
+load_prod_database_url || exit 1
 
 if ! docker ps --format '{{.Names}}' | grep -q '^techtrend-postgres$'; then
   echo "[sync] ERROR: techtrend-postgres コンテナが起動していません。"

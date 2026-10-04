@@ -13,6 +13,9 @@
  *                                          [--period-months 12] [--category-slug <slug>]
  *                                          [--min-similarity 0.55] [--fresh]
  *
+ *   --env prod は PROD_DATABASE_URL を使う。scripts/db/with-prod-db.sh 経由で実行する:
+ *   bash scripts/db/with-prod-db.sh npx tsx scripts/perf/explain-stage2.ts --env prod
+ *
  * Cache: Stage1 output is cached at .workflow/tmp/stage1-<env>-topk<N>-<categoryId>.json
  * so Before/After Stage2 EXPLAIN share identical VALUES inputs.
  */
@@ -106,7 +109,7 @@ function resolveDatabaseUrl(env: Env): string {
   if (!url) {
     throw new Error(
       env === 'prod'
-        ? 'PROD_DATABASE_URL not set. source .env.local first.'
+        ? 'PROD_DATABASE_URL not set. Run via scripts/db/with-prod-db.sh.'
         : 'DATABASE_URL not set.'
     );
   }
