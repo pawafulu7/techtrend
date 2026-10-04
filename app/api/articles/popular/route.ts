@@ -252,8 +252,10 @@ async function getPopularArticles(request: NextRequest) {
               const qualityWeight = 0.4;
               const recencyWeight = 0.2;
 
+              // 経過日数は全記事で同じ基準時刻から測る（記事ごとに Date.now() を呼ぶと、
+              // 同じ公開時刻の記事でもミリ秒の差でスコアがずれる）
               const ageInDays =
-                (Date.now() - article.publishedAt.getTime()) /
+                (now.getTime() - article.publishedAt.getTime()) /
                 (1000 * 60 * 60 * 24);
               const recencyScore = Math.exp(-ageInDays / 7);
 
