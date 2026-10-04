@@ -117,4 +117,34 @@ describe('GET /api/articles/popular (category = tag)', () => {
     expect(data.articles[0].score).toBe(data.articles[1].score);
     expect(data.articles[0].score).toBeCloseTo(44, 1);
   });
+
+  // 経過日数を記事ごとに Date.now() で測ると、計算の間に時刻が進んだだけで同じ公開時刻の
+  // 記事のスコアがずれる（CI でまれに落ちていた）。呼ぶたびに 1ms 進めて確実に再現する
+  it('combined score uses one reference time for all articles', async () => {
+    const publishedAt = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    let fakeNow = Date.now();
+    const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => fakeNow++);
+    prismaMock.article.findMany.mockResolvedValue(
+      ['a', 'b', 'c'].map((id) => ({
+        id,
+        publishedAt,
+        bookmarks: 10,
+        qualityScore: 50,
+        userVotes: 0,
+      }))
+    );
+
+    try {
+      const response = await GET(
+        new NextRequest(
+          'http://localhost:3000/api/articles/popular?metric=combined'
+        )
+      );
+      const data = await response.json();
+      const scores = data.articles.map((a: { score: number }) => a.score);
+      expect(new Set(scores).size).toBe(1);
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
 });
