@@ -100,7 +100,8 @@ export function PopularArticles({
       const json = await response.json();
       return {
         articles: json.articles as RankedArticle[],
-        timestamp: json.timestamp as string | undefined,
+        timestamp:
+          typeof json.timestamp === 'string' ? json.timestamp : undefined,
       };
     },
   });

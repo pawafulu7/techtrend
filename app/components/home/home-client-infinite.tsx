@@ -14,11 +14,10 @@ import { PAGINATION, SCROLL } from '@/lib/constants/index';
 import type { Source, Tag } from '@/lib/prisma-exports';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
-import { AlertTriangle, Loader2, RefreshCw, Search } from 'lucide-react';
+import { AlertTriangle, Loader2, Search } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import type { ViewMode } from '@/types/components';
-import { DataFreshness } from '@/app/components/common/data-freshness';
-import { cn } from '@/lib/utils';
+import { HomeListStatusBar } from '@/app/components/home/home-list-status-bar';
 
 interface HomeClientInfiniteProps {
   viewMode: ViewMode;
@@ -261,6 +260,11 @@ export function HomeClientInfinite({
     return uniqueArticles;
   }, [data]);
 
+  const articleIds = useMemo(
+    () => allArticles.map((article) => article.id),
+    [allArticles]
+  );
+
   // 合計記事数
   const totalCount = data?.pages[0]?.data.total || 0;
   // 一覧の先頭ページを取得した時刻（新着の有無はここで決まる）
@@ -271,6 +275,8 @@ export function HomeClientInfinite({
     containerRef: scrollContainerRef,
     refetch,
     fetchedAt,
+    articleIds,
+    listKey: JSON.stringify(filters),
   });
 
   // スクロール位置復元フックを使用（記事詳細から戻った時のみ有効）
@@ -398,11 +404,12 @@ export function HomeClientInfinite({
               </div>
             )}
 
-            {/* Infinite Scrollトリガー */}
+            {/* Infinite Scrollトリガー。手動更新の間は次ページを読まない
+                （fetchNextPage は進行中の取り直しを取り消すため） */}
             {enableInfiniteScroll ? (
               <InfiniteScrollTrigger
                 onIntersect={fetchNextPage}
-                hasNextPage={hasNextPage || false}
+                hasNextPage={(hasNextPage && !isRefreshing) || false}
                 isFetchingNextPage={isFetchingNextPage}
               />
             ) : (
@@ -410,7 +417,7 @@ export function HomeClientInfinite({
                 <div className="flex justify-center py-8">
                   <Button
                     onClick={() => fetchNextPage()}
-                    disabled={isFetchingNextPage}
+                    disabled={isFetchingNextPage || isRefreshing}
                     variant="outline"
                     data-testid="load-more-button"
                   >
@@ -446,40 +453,15 @@ export function HomeClientInfinite({
 
       {/* 一覧の取得時刻・手動更新・記事件数 */}
       {data && (
-        <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 pb-2 text-sm lg:px-6">
-          <div className="flex items-center gap-1">
-            <DataFreshness at={fetchedAt} kind="fetched" />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="text-muted-foreground h-8 px-2 text-xs"
-            >
-              <RefreshCw
-                className={cn(
-                  'h-3.5 w-3.5',
-                  isRefreshing && 'animate-spin motion-reduce:animate-none'
-                )}
-                aria-hidden="true"
-              />
-              {isRefreshing ? '更新中…' : '最新に更新'}
-            </Button>
-            <span
-              role="status"
-              className="text-xs text-[var(--tt-color-negative)]"
-            >
-              {isRefetchError && !isRefreshing
-                ? '最新の一覧を取得できませんでした。'
-                : ''}
-            </span>
-          </div>
-          {totalCount > 0 && (
-            <span>
-              {totalCount}件の記事 ({allArticles.length}件表示中)
-            </span>
-          )}
-        </div>
+        <HomeListStatusBar
+          fetchedAt={fetchedAt}
+          isRefreshing={isRefreshing}
+          refreshDisabled={isFetchingNextPage}
+          refreshFailed={isRefetchError}
+          onRefresh={() => void handleRefresh()}
+          totalCount={totalCount}
+          shownCount={allArticles.length}
+        />
       )}
     </>
   );

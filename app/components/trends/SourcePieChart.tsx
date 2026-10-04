@@ -158,6 +158,7 @@ export function SourcePieChart({
           <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
           <h3 className="text-sm font-semibold">ソース別記事分布</h3>
         </div>
+        {note}
         <div className="text-muted-foreground flex h-[300px] items-center justify-center">
           データがありません
         </div>

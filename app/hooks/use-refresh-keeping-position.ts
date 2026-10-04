@@ -1,21 +1,42 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
   type RefObject,
 } from 'react';
 
+/** refetch の結果のうち、新しい一覧が届いたかの判定に使う部分 */
+interface RefetchResult {
+  isError: boolean;
+  data?: { pages: Array<{ fetchedAt?: number }> };
+}
+
 interface RefreshAnchor {
+  listKey: string;
   articleId: string;
   top: number;
   fetchedAt: number | undefined;
 }
 
-function findArticle(container: HTMLElement, articleId: string) {
+// 新しい一覧が DOM に出るのを待つ上限。超えたら位置を合わせずに諦める
+const RESTORE_TIMEOUT_MS = 3000;
+
+function articleElements(container: HTMLElement) {
   return Array.from(
     container.querySelectorAll<HTMLElement>('[data-article-id]')
-  ).find((item) => item.dataset.articleId === articleId);
+  );
+}
+
+/** DOM の記事の並びが、新しい一覧を描画し終えた状態か */
+function rendersList(elements: HTMLElement[], articleIds: string[]) {
+  return (
+    elements.length === articleIds.length &&
+    elements[0]?.dataset.articleId === articleIds[0] &&
+    elements[elements.length - 1]?.dataset.articleId ===
+      articleIds[articleIds.length - 1]
+  );
 }
 
 /**
@@ -23,38 +44,58 @@ function findArticle(container: HTMLElement, articleId: string) {
  * 読んでいた記事が画面上の同じ位置に来るようにスクロールを合わせる。
  *
  * 基準は、更新前に表示領域の上端にかかっていた最初の記事（`data-article-id`）。
- * 新しい一覧（fetchedAt が変わった描画）の直後、描画前に位置を戻す。
+ *
+ * 新しい一覧が DOM に出るタイミングは2段階で遅れる。TanStack Query は refetch の
+ * Promise を解決した後に（setTimeout 0 のバッチで）データを届け、ArticleList は
+ * 受け取った記事を useEffect で内部 state に移してから描画する。そのため、DOM の記事の
+ * 並びが新しい一覧と一致した時点（MutationObserver の通知は描画前に来る）で位置を戻す。
  */
 export function useRefreshKeepingPosition({
   containerRef,
   refetch,
   fetchedAt,
+  articleIds,
+  listKey,
 }: {
   containerRef: RefObject<HTMLElement | null>;
-  refetch: () => Promise<unknown>;
+  refetch: () => Promise<RefetchResult>;
   /** 一覧の先頭ページを取得した時刻。変わったら新しい一覧が届いたとみなす */
   fetchedAt: number | undefined;
+  /** 描画される記事の ID（一覧の順） */
+  articleIds: string[];
+  /** 一覧の識別子（絞り込み条件）。更新中に別の一覧へ切り替わったら位置を合わせない */
+  listKey: string;
 }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const anchorRef = useRef<RefreshAnchor | null>(null);
+  const stopWatchingRef = useRef<(() => void) | null>(null);
+  // DOM の監視（MutationObserver）の中から最新の一覧を読むため
+  const articleIdsRef = useRef(articleIds);
+  useLayoutEffect(() => {
+    articleIdsRef.current = articleIds;
+  }, [articleIds]);
 
   const releaseAnchor = useCallback(() => {
+    stopWatchingRef.current?.();
+    stopWatchingRef.current = null;
     anchorRef.current = null;
     const container = containerRef.current;
     if (container) container.style.overflowAnchor = '';
   }, [containerRef]);
 
+  useEffect(() => releaseAnchor, [releaseAnchor]);
+
   const refresh = useCallback(async () => {
     if (isRefreshing) return;
+    releaseAnchor();
     const container = containerRef.current;
     if (container) {
       const containerTop = container.getBoundingClientRect().top;
-      const items =
-        container.querySelectorAll<HTMLElement>('[data-article-id]');
-      for (const el of items) {
+      for (const el of articleElements(container)) {
         const rect = el.getBoundingClientRect();
         if (rect.bottom > containerTop && el.dataset.articleId) {
           anchorRef.current = {
+            listKey,
             articleId: el.dataset.articleId,
             top: rect.top,
             fetchedAt,
@@ -65,26 +106,65 @@ export function useRefreshKeepingPosition({
         }
       }
     }
+    const anchor = anchorRef.current;
     setIsRefreshing(true);
     try {
-      await refetch();
+      const result = await refetch();
+      // 失敗や取り消しで新しい一覧が届かないときは、基準を残さない。
+      // 届くときは、新しい一覧の描画で位置を戻してから基準を捨てる
+      const nextFetchedAt = result.data?.pages[0]?.fetchedAt;
+      if (
+        anchor &&
+        anchorRef.current === anchor &&
+        (result.isError || nextFetchedAt === anchor.fetchedAt)
+      ) {
+        releaseAnchor();
+      }
+    } catch (error) {
+      if (anchor && anchorRef.current === anchor) releaseAnchor();
+      throw error;
     } finally {
       setIsRefreshing(false);
-      // 失敗などで新しい一覧が届かなかったとき、基準を残さない
-      if (anchorRef.current) releaseAnchor();
     }
-  }, [isRefreshing, containerRef, refetch, fetchedAt, releaseAnchor]);
+  }, [isRefreshing, containerRef, refetch, fetchedAt, listKey, releaseAnchor]);
 
   useLayoutEffect(() => {
     const anchor = anchorRef.current;
-    if (!anchor || fetchedAt === anchor.fetchedAt) return;
     const container = containerRef.current;
-    const el = container && findArticle(container, anchor.articleId);
-    if (container && el) {
-      container.scrollTop += el.getBoundingClientRect().top - anchor.top;
+    if (!anchor || !container) return;
+    if (listKey !== anchor.listKey) {
+      releaseAnchor();
+      return;
     }
-    releaseAnchor();
-  }, [fetchedAt, containerRef, releaseAnchor]);
+    if (fetchedAt === anchor.fetchedAt) return;
+
+    const tryRestore = () => {
+      const elements = articleElements(container);
+      if (!rendersList(elements, articleIdsRef.current)) return false;
+      const el = elements.find(
+        (item) => item.dataset.articleId === anchor.articleId
+      );
+      if (el) {
+        container.scrollTop += el.getBoundingClientRect().top - anchor.top;
+      }
+      releaseAnchor();
+      return true;
+    };
+
+    if (tryRestore()) return;
+    stopWatchingRef.current?.();
+    const observer = new MutationObserver(() => {
+      tryRestore();
+    });
+    observer.observe(container, { childList: true, subtree: true });
+    const timeoutId = setTimeout(releaseAnchor, RESTORE_TIMEOUT_MS);
+    stopWatchingRef.current = () => {
+      observer.disconnect();
+      clearTimeout(timeoutId);
+    };
+    // 監視は effect の再実行では止めない。止めるのは位置を戻したとき・時間切れ・
+    // 次の更新の開始・アンマウント（いずれも releaseAnchor）
+  }, [fetchedAt, listKey, containerRef, releaseAnchor]);
 
   return { isRefreshing, refresh };
 }

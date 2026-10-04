@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import type { Source, Tag } from '@/lib/prisma-exports';
 
@@ -230,9 +230,6 @@ describe('HomeClientInfinite の記事クエリ enabled 配線', () => {
 describe('HomeClientInfinite の手動更新', () => {
   // 2026-10-04 13:58 UTC = 22:58 JST
   const FETCHED_AT = Date.UTC(2026, 9, 4, 13, 58);
-  const rects = new Map<string, { top: number; bottom: number }>();
-  let originalRect: typeof HTMLElement.prototype.getBoundingClientRect;
-
   function pageWith(items: MockArticle[], fetchedAt: number) {
     return {
       ...loadedArticles(),
@@ -245,26 +242,6 @@ describe('HomeClientInfinite の手動更新', () => {
 
   beforeEach(() => {
     mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
-    rects.clear();
-    originalRect = HTMLElement.prototype.getBoundingClientRect;
-    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
-      const key = this.dataset.articleId ?? this.id;
-      const r = rects.get(key) ?? { top: 0, bottom: 0 };
-      return {
-        ...r,
-        left: 0,
-        right: 0,
-        width: 0,
-        height: r.bottom - r.top,
-        x: 0,
-        y: r.top,
-        toJSON: () => r,
-      } as DOMRect;
-    };
-  });
-
-  afterEach(() => {
-    HTMLElement.prototype.getBoundingClientRect = originalRect;
   });
 
   it('一覧を取得した時刻と更新ボタンを出し、押すと取り直す', () => {
@@ -283,45 +260,16 @@ describe('HomeClientInfinite の手動更新', () => {
     expect(state.refetch).toHaveBeenCalledTimes(1);
   });
 
-  it('新着が上に入っても、読んでいた記事を画面上の同じ位置に保つ', async () => {
-    const before = pageWith(ARTICLES, FETCHED_AT);
-    let resolveRefetch: () => void = () => {};
-    before.refetch.mockReturnValue(
-      new Promise<void>((resolve) => {
-        resolveRefetch = resolve;
-      })
-    );
-    mockUseInfiniteArticles.mockReturnValue(before);
-    const { rerender } = renderHome();
+  // 位置を保つ処理そのものは __tests__/hooks/use-refresh-keeping-position.test.tsx が
+  // 本物の TanStack Query で確かめる
+  it('次ページの読み込み中は更新を押せない（取り直しが読み込みを取り消すため）', () => {
+    mockUseInfiniteArticles.mockReturnValue({
+      ...pageWith(ARTICLES, FETCHED_AT),
+      isFetchingNextPage: true,
+    });
+    renderHome();
 
-    const container = document.getElementById('main-scroll-container')!;
-    container.scrollTop = 1000;
-    // article-1 は上に流れて見えない。article-2 が上端から 50px にある
-    rects.set('main-scroll-container', { top: 0, bottom: 800 });
-    rects.set('article-1', { top: -200, bottom: -10 });
-    rects.set('article-2', { top: 50, bottom: 300 });
-
-    fireEvent.click(screen.getByRole('button', { name: '最新に更新' }));
-
-    // 新着 2 件が上に入り、article-2 が 300px 下に押し下げられた
-    rects.set('article-2', { top: 350, bottom: 600 });
-    mockUseInfiniteArticles.mockReturnValue(
-      pageWith(
-        [
-          { id: 'new-1', title: '新着1' },
-          { id: 'new-2', title: '新着2' },
-          ...ARTICLES,
-        ],
-        FETCHED_AT + 60_000
-      )
-    );
-    rerender(
-      <HomeClientInfinite viewMode="card" sources={SOURCES} tags={TAGS} />
-    );
-
-    expect(container.scrollTop).toBe(1300);
-    await act(async () => resolveRefetch());
-    expect(container.style.overflowAnchor).toBe('');
+    expect(screen.getByRole('button', { name: '最新に更新' })).toBeDisabled();
   });
 
   it('取り直しに失敗しても一覧を残し、失敗を知らせる', () => {

@@ -69,6 +69,13 @@ const PERIOD_LABELS = {
   all: '全期間',
 } as const;
 
+interface TagCloudResponse {
+  tags: Tag[];
+  period: string;
+  /** 集計した時刻（この項目を足す前のキャッシュには無い） */
+  generatedAt?: string;
+}
+
 interface TagCloudProps {
   className?: string;
   limit?: number;
@@ -88,7 +95,7 @@ export function TagCloud({
   const { data, isPending, isError, refetch, isFetching, errorUpdateCount } =
     useQuery({
       queryKey: ['tag-cloud', { period, limit }],
-      queryFn: async () => {
+      queryFn: async (): Promise<TagCloudResponse> => {
         const response = await fetch(
           `/api/tags/cloud?period=${period}&limit=${limit}`
         );
