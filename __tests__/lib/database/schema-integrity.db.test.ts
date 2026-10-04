@@ -152,4 +152,27 @@ describeDb('schema integrity and functional UNIQUE (real test DB)', () => {
       mockMissPrecheck = false;
     }
   });
+  it('finds equivalent expression-index duplicates regardless of original SQL positions', async () => {
+    const name = `schema_dup_${suffix.replace(/[^a-z0-9]/gi, '')}`;
+    await expect(
+      mockDb.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(
+          `CREATE INDEX "${name}" ON "public"."Tag" ( lower ( "name" ) )`
+        );
+        const rows =
+          await tx.$queryRawUnsafe<{ table_name: string; names: string[] }[]>(
+            DUPLICATE_INDEX_SQL
+          );
+        expect(rows).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              table_name: 'Tag',
+              names: expect.arrayContaining([name, 'Tag_name_lower_key']),
+            }),
+          ])
+        );
+        throw new Error('rollback duplicate-index fixture');
+      })
+    ).rejects.toThrow('rollback duplicate-index fixture');
+  });
 });

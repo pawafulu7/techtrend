@@ -5,6 +5,35 @@ export interface SchemaArtifact {
   details: Record<string, unknown>;
 }
 
+/** Cleanup is authorized only by successful creation; preserve both check and cleanup failures. */
+export async function withOwnedShadow<T>(
+  create: () => Promise<unknown>,
+  check: () => Promise<T>,
+  cleanup: () => Promise<unknown>
+): Promise<T> {
+  await create(); // A failure here must not remove an existing database.
+  let failed = false;
+  let failure: unknown;
+  try {
+    return await check();
+  } catch (error) {
+    failed = true;
+    failure = error;
+    throw error;
+  } finally {
+    try {
+      await cleanup();
+    } catch (error) {
+      if (failed)
+        throw new AggregateError(
+          [failure, error],
+          'Schema check and owned shadow cleanup failed'
+        );
+      throw error;
+    }
+  }
+}
+
 /** Compare physical definitions, including invalid/disabled objects, without printing their contents. */
 export function compareArtifacts(
   expected: SchemaArtifact[],

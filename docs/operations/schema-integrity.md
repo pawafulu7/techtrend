@@ -47,7 +47,7 @@ ON "public"."Session"("token");
 
 checker は `techtrend_schema_check_<16桁のランダム値>_test` を新規作成し、その実行で作成に成功した DB だけを finally で削除する。
 任意の既存 shadow DB は受け付けない。専用の `prisma/schema-check.config.ts` と子プロセス内だけの環境変数を使用し、通常の `prisma.config.ts` や `.env` は変更しない。
-SIGINT/SIGTERM は子プロセスを中断して後片付けに進む。SIGKILL やホスト停止では一時 DB が残る場合がある。自動で他の実行の DB を削除しない。
+SIGINT/SIGTERM/SIGHUP は子プロセスを中断して後片付けに進む。SIGKILL やホスト停止では一時 DB が残る場合がある。自動で他の実行の DB を削除しない。
 
 残った名前の読み取り例:
 
@@ -57,3 +57,12 @@ WHERE datname LIKE 'techtrend_schema_check_%_test';
 ```
 
 CI の Test Suite ジョブでは、test DB の migration 適用後に同じコマンドを実行する。これは migration replay・schema・catalog の回帰検証であり、CI の成功だけで開発・本番 DB の検証済みとは扱わない。
+
+## 検証範囲と環境
+
+ホスト名ガードはポートフォワード先の実体を確認するものではない。接続先が実際のローカルコンテナまたは検証用サーバーであることを運用で確認する。
+物理比較は記載した索引・CHECK・トリガー・通常関数/procedure・拡張・viewに限定し、RLS、GRANT、COMMENT、sequence設定、FKのvalidated/deferrableは比較しない。通常のFK/列の構造はPrisma diffで検証する。
+vector等の拡張versionが新規shadowと異なれば失敗する。対象DBの更新は自動で行わず、互換性を確認してから適切なmigration/運用手順で更新する。
+Prismaのshadow replay後に定義が残る挙動は7.8.0の実行で確認済み。将来の挙動が変われば失敗側に倒れる。
+索引表記のfixtureは2026-10-04に開発PG17から取得したカタログ値であり、行データは含まない。実物との対応は実DBテストでも確認する。
+専用configはcheckerの子プロセスから使う。環境変数を手動設定して直接呼び出す操作は、他の実行のshadowをresetしうるためサポートしない。

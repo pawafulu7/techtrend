@@ -55,6 +55,6 @@ export const DUPLICATE_INDEX_SQL = `
   JOIN pg_class c ON c.oid = i.indexrelid
   WHERE n.nspname = 'public' AND t.relname IN ('Article', 'Tag', 'Session')
   GROUP BY t.relname, c.relam, i.indkey, i.indclass, i.indcollation, i.indoption,
-    i.indexprs::text, i.indpred::text
+    pg_get_expr(i.indexprs, i.indrelid), pg_get_expr(i.indpred, i.indrelid)
   HAVING COUNT(*) > 1
 `;

@@ -6,6 +6,7 @@ import {
   isExpectedPrismaDiff,
   requiredIndexErrors,
   validateCheckTarget,
+  withOwnedShadow,
   type SchemaArtifact,
 } from '@/lib/database/schema-integrity';
 
@@ -151,7 +152,7 @@ describe('schema integrity: fail-closed drift checks', () => {
       )
     ).toEqual([]);
   });
-  it('validates real PostgreSQL index representations and rejects changes to nested definitions', () => {
+  it('validates captured PostgreSQL 17 index representations and rejects changes to nested definitions', () => {
     const rows = actualIndexes as SchemaArtifact[];
     expect(requiredIndexErrors(rows)).toEqual([]);
     for (const patch of [
@@ -189,5 +190,55 @@ describe('schema integrity: fail-closed drift checks', () => {
     expect(requiredIndexErrors(changed)).toContain(
       'Invalid required index:idx_article_embedding_hnsw_summary'
     );
+  });
+  it('does not check or clean up after creation fails', async () => {
+    const check = jest.fn();
+    const cleanup = jest.fn();
+    await expect(
+      withOwnedShadow(
+        async () => {
+          throw new Error('create failed');
+        },
+        check,
+        cleanup
+      )
+    ).rejects.toThrow('create failed');
+    expect(check).not.toHaveBeenCalled();
+    expect(cleanup).not.toHaveBeenCalled();
+  });
+  it('cleans up after success, status failure, or interruption', async () => {
+    for (const failure of [
+      undefined,
+      new Error('status failed'),
+      new Error('interrupted'),
+    ]) {
+      const cleanup = jest.fn().mockResolvedValue(undefined);
+      const run = withOwnedShadow(
+        async () => undefined,
+        async () => {
+          if (failure) throw failure;
+          return 'ok';
+        },
+        cleanup
+      );
+      if (failure) await expect(run).rejects.toBe(failure);
+      else await expect(run).resolves.toBe('ok');
+      expect(cleanup).toHaveBeenCalledTimes(1);
+    }
+  });
+  it('preserves the original failure when cleanup fails too', async () => {
+    const checkError = new Error('drift');
+    const cleanupError = new Error('cleanup');
+    await expect(
+      withOwnedShadow(
+        async () => undefined,
+        async () => {
+          throw checkError;
+        },
+        async () => {
+          throw cleanupError;
+        }
+      )
+    ).rejects.toMatchObject({ errors: [checkError, cleanupError] });
   });
 });
