@@ -3,6 +3,7 @@
 import { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
+import { groupArticlesByStory } from '@/app/components/article/story-grouping';
 import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
@@ -260,8 +261,10 @@ export function HomeClientInfinite({
     return uniqueArticles;
   }, [data]);
 
+  // 一覧に描画する記事の ID（同じストーリーの記事は代表だけ。issue #723）。
+  // 手動更新の位置合わせは、DOM の記事の並びとこの並びが一致するのを待つ
   const articleIds = useMemo(
-    () => allArticles.map((article) => article.id),
+    () => groupArticlesByStory(allArticles).map((group) => group.article.id),
     [allArticles]
   );
 

@@ -141,7 +141,10 @@ describe('ArticleList の同じストーリーのまとめ（issue #723）', () 
 
     await userEvent.click(screen.getByTestId('story-members-toggle'));
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/stories/rep');
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/stories/rep',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
     const rows = await screen.findAllByTestId('story-member');
     expect(rows.map((r) => r.getAttribute('data-story-member-id'))).toEqual([
       'm1',
@@ -190,5 +193,79 @@ describe('ArticleList の同じストーリーのまとめ（issue #723）', () 
       ).toBeInTheDocument()
     );
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+  it('閉じて開き直すと取り直す（既読・お気に入りを開いた時点の状態にする）', async () => {
+    const response = (isFavorited: boolean) => ({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          storyId: 'rep',
+          total: 2,
+          items: [
+            {
+              id: 'm1',
+              title: 'Sonnet 5.5 launches',
+              translatedTitle: null,
+              publishedAt: '2026-09-28T09:00:00.000Z',
+              source: { id: 's1', name: 'The New Stack' },
+              isFavorited,
+              isRead: true,
+            },
+          ],
+        },
+      }),
+    });
+    fetchMock
+      .mockResolvedValueOnce(response(false))
+      .mockResolvedValueOnce(response(true));
+    renderList(true);
+    const toggle = screen.getByTestId('story-members-toggle');
+
+    await userEvent.click(toggle);
+    expect(await screen.findByTestId('favorite-m1')).toHaveAttribute(
+      'data-favorited',
+      'false'
+    );
+    await userEvent.click(toggle);
+    expect(screen.queryByTestId('story-members-list')).toBeNull();
+    await userEvent.click(toggle);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('favorite-m1')).toHaveAttribute(
+        'data-favorited',
+        'true'
+      )
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('取得の上限を超えた分は、表示していない件数を出す', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          storyId: 'rep',
+          total: 105,
+          items: [
+            {
+              id: 'm1',
+              title: 'Sonnet 5.5 launches',
+              translatedTitle: null,
+              publishedAt: '2026-09-28T09:00:00.000Z',
+              source: { id: 's1', name: 'The New Stack' },
+            },
+          ],
+        },
+      }),
+    });
+    renderList(true);
+
+    await userEvent.click(screen.getByTestId('story-members-toggle'));
+
+    expect(
+      await screen.findByText('残りの 104 件は表示していません')
+    ).toBeInTheDocument();
   });
 });

@@ -5,11 +5,12 @@
  * 後のページにある）読み込み済みの中から同じ規則（日本語を優先し、品質スコアの高いもの）で選ぶ。
  * 並びは、そのストーリーの記事が一覧で最初に出た位置にする。
  */
+import {
+  pickStoryRepresentative,
+  type StoryRepresentativeCandidate,
+} from '@/lib/utils/story-representative';
 
-export interface StoryGroupable {
-  id: string;
-  title: string;
-  qualityScore?: number | null;
+export interface StoryGroupable extends StoryRepresentativeCandidate {
   storyId?: string | null;
   storySize?: number | null;
 }
@@ -23,23 +24,13 @@ export interface StoryGroup<T extends StoryGroupable> {
   storySize: number;
 }
 
-// lib/services/story-clustering.ts の isJapaneseTitle と同じ判定
-const JAPANESE_PATTERN =
-  /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
-
 function pickRepresentative<T extends StoryGroupable>(
   storyId: string,
   members: T[]
 ): T {
-  const designated = members.find((m) => m.id === storyId);
-  if (designated) return designated;
-  return members.reduce((best, m) => {
-    const ja =
-      Number(JAPANESE_PATTERN.test(m.title)) -
-      Number(JAPANESE_PATTERN.test(best.title));
-    if (ja !== 0) return ja > 0 ? m : best;
-    return (m.qualityScore ?? 0) > (best.qualityScore ?? 0) ? m : best;
-  });
+  return (
+    members.find((m) => m.id === storyId) ?? pickStoryRepresentative(members)
+  );
 }
 
 export function groupArticlesByStory<T extends StoryGroupable>(

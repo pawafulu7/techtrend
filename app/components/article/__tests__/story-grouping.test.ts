@@ -8,8 +8,9 @@ const a = (
   title: string,
   storyId: string | null = null,
   storySize: number | null = null,
-  qualityScore = 50
-) => ({ id, title, storyId, storySize, qualityScore });
+  qualityScore = 50,
+  publishedAt = '2026-09-28T00:00:00.000Z'
+) => ({ id, title, storyId, storySize, qualityScore, publishedAt });
 
 describe('groupArticlesByStory', () => {
   it('同じストーリーの記事を1つにし、最初に出た位置に代表の記事を置く', () => {
@@ -38,6 +39,14 @@ describe('groupArticlesByStory', () => {
     expect(groups).toHaveLength(1);
     expect(groups[0].article.id).toBe('ja-high');
     expect(groups[0].storySize).toBe(4);
+  });
+
+  it('同点なら、読み込んだ順に関係なくバッチと同じ規則（公開の早い記事）で選ぶ', () => {
+    const late = a('late', '発表', 'rep', 2, 50, '2026-09-29T00:00:00.000Z');
+    const early = a('early', '発表', 'rep', 2, 50, '2026-09-28T00:00:00.000Z');
+
+    expect(groupArticlesByStory([late, early])[0].article.id).toBe('early');
+    expect(groupArticlesByStory([early, late])[0].article.id).toBe('early');
   });
 
   it('storySize が 2 未満の記事はまとめない', () => {

@@ -43,6 +43,8 @@ const rows = [
 describe('GET /api/stories/[id]', () => {
   beforeEach(() => {
     prismaMock.article.findMany.mockReset();
+    prismaMock.article.count.mockReset();
+    prismaMock.article.count.mockResolvedValue(2);
     mockLoadUserDataMaps.mockReset();
   });
 
@@ -55,6 +57,7 @@ describe('GET /api/stories/[id]', () => {
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
     const body = await response.json();
     expect(body.data.storyId).toBe('a2');
+    expect(body.data.total).toBe(2);
     expect(body.data.items.map((a: { id: string }) => a.id)).toEqual([
       'a1',
       'a2',
@@ -67,7 +70,8 @@ describe('GET /api/stories/[id]', () => {
     expect(args.where).toMatchObject({ storyId: 'a2', isHidden: false });
     expect(args.where.AND).toEqual([{ source: { is: { enabled: true } } }]);
     expect(args.orderBy).toEqual([{ publishedAt: 'asc' }, { id: 'asc' }]);
-    expect(args.take).toBe(50);
+    expect(args.take).toBe(100);
+    expect(prismaMock.article.count.mock.calls[0][0].where).toEqual(args.where);
   });
 
   it('ログイン中はお気に入りと既読の状態を付ける', async () => {
@@ -80,12 +84,34 @@ describe('GET /api/stories/[id]', () => {
     const response = await call('a2', { user: { id: 'u1' } });
     const body = await response.json();
 
-    expect(mockLoadUserDataMaps).toHaveBeenCalledWith(['a1', 'a2'], 'u1', false);
+    expect(mockLoadUserDataMaps).toHaveBeenCalledWith(
+      ['a1', 'a2'],
+      'u1',
+      false
+    );
     expect(body.meta.userDataIncluded).toBe(true);
     expect(body.data.items).toEqual([
       expect.objectContaining({ id: 'a1', isFavorited: true, isRead: false }),
       expect.objectContaining({ id: 'a2', isFavorited: false, isRead: true }),
     ]);
+  });
+
+  it('お気に入りを切り替えた直後（tt_fav_bust）は L1 キャッシュを飛ばす', async () => {
+    prismaMock.article.findMany.mockResolvedValue(rows);
+    mockLoadUserDataMaps.mockResolvedValue({
+      favoritesMap: new Map(),
+      readStatusMap: new Map(),
+    });
+    const request = new NextRequest('http://localhost:3000/api/stories/a2', {
+      headers: { cookie: 'tt_fav_bust=1' },
+    });
+
+    await (GET as (req: NextRequest, ctx: unknown) => Promise<Response>)(
+      request,
+      { params: Promise.resolve({ id: 'a2' }), session: { user: { id: 'u1' } } }
+    );
+
+    expect(mockLoadUserDataMaps).toHaveBeenCalledWith(['a1', 'a2'], 'u1', true);
   });
 
   it.each(['bad-id', 'a'.repeat(51), 'id%27%20OR%201%3D1'])(
@@ -94,6 +120,7 @@ describe('GET /api/stories/[id]', () => {
       const response = await call(id);
 
       expect(response.status).toBe(400);
+      expect((await response.json()).error.code).toBe('VALIDATION_ERROR');
       expect(prismaMock.article.findMany).not.toHaveBeenCalled();
     }
   );

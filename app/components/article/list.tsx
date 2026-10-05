@@ -187,7 +187,8 @@ export function ArticleList({
   ) =>
     group.storyId ? (
       <div
-        key={group.article.id}
+        // 代表が後のページで届いて入れ替わっても、開いた状態を保つ
+        key={`story-${group.storyId}`}
         className="flex flex-col [&>*:first-child]:rounded-b-none"
         data-testid="story-group"
         data-story-id={group.storyId}
