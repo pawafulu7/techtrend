@@ -74,6 +74,8 @@ model Article {
   skipReason             SkipReason? // スキップ理由（NULL = 正常生成）
   isHidden               Boolean     @default(false)
   summaryError           String? // エラーメッセージ（NULL = エラーなし）
+  storyId                String? // 同じ出来事をまとめたストーリーの代表記事ID（NULL = まとめていない）。scripts/scheduled/assign-stories.ts が設定
+  storySize              Int? // 同じストーリーの記事数（2以上。storyId が NULL なら NULL）
   source                 Source             @relation(fields: [sourceId], references: [id])
   articleViews           ArticleView[]
   favorites              Favorite[]
@@ -98,6 +100,7 @@ model Article {
   @@index([isHidden], map: "idx_article_is_hidden")
   @@index([userVotes(sort: Desc)], map: "idx_article_user_votes")
   @@index([category], map: "idx_article_category")
+  @@index([storyId], map: "idx_article_story_id")
 }
 
 model Source {

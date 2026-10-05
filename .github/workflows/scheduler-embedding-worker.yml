@@ -38,6 +38,14 @@ jobs:
           EMBEDDING_WORKER_TIMEOUT_MS: 300000  # 5 minutes (GitHub Actions has 10 min limit)
           EMBEDDING_WORKER_BATCH_SIZE: 500     # Increased from 300 for better throughput
         run: npx tsx scripts/dev/run-embedding-worker.ts
+      # 埋め込みの生成の後に、同じ出来事の記事をストーリーにまとめ直す（issue #723）。
+      # ワーカーが時間切れで失敗しても、既にある埋め込みでまとめる
+      - name: Assign stories
+        if: ${{ !cancelled() }}
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx tsx scripts/scheduled/assign-stories.ts
       - name: Notify failure to Slack
         if: failure()
         env:

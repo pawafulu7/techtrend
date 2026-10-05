@@ -3,8 +3,18 @@
 import { ArticleCard } from './card';
 import { ArticleListItem } from './list-item';
 import { CompactCard } from './compact-card';
+import { StoryMembers } from './story-members';
+import { groupArticlesByStory, type StoryGroup } from './story-grouping';
 import type { ArticleListProps } from '@/types/components';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import type { ArticleWithUserData } from '@/types/models';
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+  type ReactNode,
+} from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import { cn } from '@/lib/utils';
 // useToast は全トーストの状態を購読して一覧全体を再描画させるため、関数だけを使う
@@ -24,6 +34,7 @@ export function ArticleList({
   viewMode = 'card',
   onArticleClick,
   className,
+  groupStories = false,
 }: ArticleListProps) {
   // 認証状態を取得（お気に入り切り替え用）
   const { data: session } = authClient.useSession();
@@ -156,6 +167,43 @@ export function ArticleList({
     };
   }, []);
 
+  // 同じストーリーの記事を1枚にまとめる（issue #723。ホームの一覧だけ）
+  const groups = useMemo<StoryGroup<ArticleWithUserData>[]>(
+    () =>
+      groupStories
+        ? groupArticlesByStory(articles)
+        : articles.map((article) => ({
+            article,
+            storyId: null,
+            storySize: 1,
+          })),
+    [articles, groupStories]
+  );
+
+  // まとめた記事は、代表の下に「ほか N 件」を付ける。カードの下端と帯をつなげる
+  const withStory = (
+    group: StoryGroup<ArticleWithUserData>,
+    item: ReactNode
+  ) =>
+    group.storyId ? (
+      <div
+        key={group.article.id}
+        className="flex flex-col [&>*:first-child]:rounded-b-none"
+        data-testid="story-group"
+        data-story-id={group.storyId}
+      >
+        {item}
+        <StoryMembers
+          storyId={group.storyId}
+          storySize={group.storySize}
+          shownArticleId={group.article.id}
+          onArticleClick={onArticleClick}
+        />
+      </div>
+    ) : (
+      item
+    );
+
   if (articles.length === 0) {
     return (
       <div
@@ -171,18 +219,21 @@ export function ArticleList({
   if (viewMode === 'list') {
     return (
       <div className={cn('space-y-2', className)} data-testid="article-list">
-        {articles.map((article, index) => (
-          <ArticleListItem
-            key={article.id}
-            article={article}
-            articleIndex={index}
-            totalArticleCount={articles.length}
-            onArticleClick={onArticleClick}
-            isRead={article.isRead ?? true}
-            isFavorited={article.isFavorited ?? false}
-            onToggleFavorite={() => handleToggleFavorite(article.id)}
-          />
-        ))}
+        {groups.map((group, index) =>
+          withStory(
+            group,
+            <ArticleListItem
+              key={group.article.id}
+              article={group.article}
+              articleIndex={index}
+              totalArticleCount={groups.length}
+              onArticleClick={onArticleClick}
+              isRead={group.article.isRead ?? true}
+              isFavorited={group.article.isFavorited ?? false}
+              onToggleFavorite={() => handleToggleFavorite(group.article.id)}
+            />
+          )
+        )}
       </div>
     );
   }
@@ -191,16 +242,19 @@ export function ArticleList({
   if (viewMode === 'compact') {
     return (
       <div className={cn(GRID_CLASS, className)} data-testid="article-list">
-        {articles.map((article) => (
-          <CompactCard
-            key={article.id}
-            article={article}
-            onArticleClick={onArticleClick}
-            isRead={article.isRead ?? true}
-            isFavorited={article.isFavorited ?? false}
-            onToggleFavorite={() => handleToggleFavorite(article.id)}
-          />
-        ))}
+        {groups.map((group) =>
+          withStory(
+            group,
+            <CompactCard
+              key={group.article.id}
+              article={group.article}
+              onArticleClick={onArticleClick}
+              isRead={group.article.isRead ?? true}
+              isFavorited={group.article.isFavorited ?? false}
+              onToggleFavorite={() => handleToggleFavorite(group.article.id)}
+            />
+          )
+        )}
       </div>
     );
   }
@@ -208,16 +262,19 @@ export function ArticleList({
   // カード形式の場合
   return (
     <div className={cn(GRID_CLASS, className)} data-testid="article-list">
-      {articles.map((article) => (
-        <ArticleCard
-          key={article.id}
-          article={article}
-          onArticleClick={onArticleClick}
-          isRead={article.isRead ?? true}
-          isFavorited={article.isFavorited ?? false}
-          onToggleFavorite={() => handleToggleFavorite(article.id)}
-        />
-      ))}
+      {groups.map((group) =>
+        withStory(
+          group,
+          <ArticleCard
+            key={group.article.id}
+            article={group.article}
+            onArticleClick={onArticleClick}
+            isRead={group.article.isRead ?? true}
+            isFavorited={group.article.isFavorited ?? false}
+            onToggleFavorite={() => handleToggleFavorite(group.article.id)}
+          />
+        )
+      )}
     </div>
   );
 }

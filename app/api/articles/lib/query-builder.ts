@@ -43,6 +43,9 @@ export function buildSelectFields(options: DisplayOptions): ArticleSelect {
       thumbnail: true,
       publishedAt: true,
       sourceId: true,
+      // ホームの一覧で同じストーリーの記事をまとめるため（issue #723）
+      storyId: true,
+      storySize: true,
     };
   }
 
@@ -79,6 +82,9 @@ export function buildSelectFields(options: DisplayOptions): ArticleSelect {
       articleType: true,
       category: true,
       contentLength: true, // Pre-calculated by DB trigger
+      // ホームの一覧で同じストーリーの記事をまとめるため（issue #723）
+      storyId: true,
+      storySize: true,
     };
   }
 

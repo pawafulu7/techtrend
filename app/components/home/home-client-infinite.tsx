@@ -391,6 +391,7 @@ export function HomeClientInfinite({
               articles={allArticles}
               viewMode={viewMode}
               onArticleClick={handleArticleClick}
+              groupStories
               currentFilters={filters}
               className={
                 isCategoryChanging
