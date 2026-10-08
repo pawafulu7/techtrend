@@ -36,6 +36,7 @@ const defaultParams: ArticleCacheParams = {
   includeEmptyContent: false,
   excludeUnprocessed: false,
   excludeLowQuality: false,
+  includeOffTopic: false,
   lightweight: false,
   includeUserData: false,
 };
@@ -194,6 +195,7 @@ describe('LayeredCache cache key generation', () => {
     ['includeEmptyContent', {}, { includeEmptyContent: true }],
     ['excludeUnprocessed', {}, { excludeUnprocessed: true }],
     ['excludeLowQuality', {}, { excludeLowQuality: true }],
+    ['includeOffTopic', {}, { includeOffTopic: true }],
   ];
 
   async function actualWhere(params: ArticleCacheParams) {

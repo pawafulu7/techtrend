@@ -29,6 +29,7 @@ export interface ArticleQueryParams {
   includeEmptyContent?: boolean;
   excludeUnprocessed?: boolean;
   excludeLowQuality?: boolean;
+  includeOffTopic?: boolean;
   lightweight?: boolean;
   fields?: string;
   includeUserData?: boolean;
@@ -223,6 +224,7 @@ export class LayeredCache {
       includeEmptyContent: params.includeEmptyContent ?? false,
       excludeUnprocessed: params.excludeUnprocessed ?? false,
       excludeLowQuality: params.excludeLowQuality ?? false,
+      includeOffTopic: params.includeOffTopic ?? false,
     };
   }
 

@@ -19,6 +19,7 @@ import {
 } from './types';
 import {
   pushLowQualityFilter,
+  pushOffTopicFilter,
   pushProcessedFilter,
   pushReadFilter,
   pushTagFilter,
@@ -162,6 +163,14 @@ export class ArticleWhereClauseBuilder {
       this.where.AND as ArticleWhereInput[],
       excludeLowQuality
     );
+    return this;
+  }
+
+  /**
+   * Exclude articles not aimed at engineers unless requested (issue #722)
+   */
+  withOffTopicFilter(includeOffTopic: boolean): this {
+    pushOffTopicFilter(this.where.AND as ArticleWhereInput[], includeOffTopic);
     return this;
   }
 
@@ -401,6 +410,7 @@ export async function buildWhereClause(
     .withContentFilter(display.includeEmptyContent)
     .withProcessedFilter(display.excludeUnprocessed)
     .withLowQualityFilter(excludeLowQuality)
+    .withOffTopicFilter(filters.includeOffTopic === true)
     .withReadFilter(filters.readFilter, userId)
     .withTagFilter(tagIdGroups, filters.tagMode)
     .withCategoryFilter(filters.category)

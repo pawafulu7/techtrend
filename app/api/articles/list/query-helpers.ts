@@ -21,6 +21,7 @@ import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import logger from '@/lib/logger';
 import {
   pushLowQualityFilter,
+  pushOffTopicFilter,
   pushProcessedFilter,
   pushReadFilter,
   pushTagFilter,
@@ -61,6 +62,8 @@ export interface ListFilterParams {
   category: string | null;
   excludeUnprocessed: boolean;
   excludeLowQuality: boolean;
+  /** 技術者向けでない記事も含める（既定は外す。issue #722） */
+  includeOffTopic: boolean;
   finalSortBy: ListSortField;
 }
 
@@ -123,6 +126,9 @@ export function buildWhereClause(params: WhereClauseParams): ArticleWhereInput {
     where.AND as ArticleWhereInput[],
     params.excludeLowQuality
   );
+
+  // Exclude articles not aimed at engineers unless requested (issue #722)
+  pushOffTopicFilter(where.AND as ArticleWhereInput[], params.includeOffTopic);
 
   // Apply read filter if user is authenticated
   pushReadFilter(where, params.readFilter, params.userId);
@@ -359,6 +365,7 @@ export async function fetchTotalCount(params: CountParams): Promise<number> {
       userId: isUserScopedCount ? (params.userId ?? 'anonymous') : 'n/a',
       excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
       excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
+      includeOffTopic: params.includeOffTopic ? 'true' : 'false',
     },
   });
 

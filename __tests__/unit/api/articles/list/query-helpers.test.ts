@@ -71,6 +71,7 @@ function makeDefaultParams(overrides: Partial<WhereClauseParams> = {}): WhereCla
     category: null,
     excludeUnprocessed: false,
     excludeLowQuality: false,
+    includeOffTopic: false,
     finalSortBy: 'publishedAt',
     ...overrides,
   };
@@ -121,6 +122,18 @@ describe('query-helpers', () => {
   });
 
   describe('buildWhereClause', () => {
+    it('技術者向けでない記事を既定で外す（issue #722）', () => {
+      const where = buildWhereClause(makeDefaultParams());
+      expect(where.AND).toContainEqual({ isOffTopic: false });
+    });
+
+    it('includeOffTopic が true なら技術者向けでない記事も含める', () => {
+      const where = buildWhereClause(
+        makeDefaultParams({ includeOffTopic: true })
+      );
+      expect(where.AND).not.toContainEqual({ isOffTopic: false });
+    });
+
     it('should trim spaces from source IDs in sources parameter', () => {
       const params = makeDefaultParams({
         sources: ' id1 , id2 ',

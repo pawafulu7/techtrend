@@ -50,6 +50,8 @@ export interface FilterParams {
   category?: string;
   readFilter?: string;
   excludeLowQuality?: boolean;
+  /** 技術者向けでない記事も含める（既定は外す。issue #722） */
+  includeOffTopic?: boolean;
 }
 
 /**
@@ -109,6 +111,7 @@ export interface ArticleCacheParams {
   includeEmptyContent: boolean;
   excludeUnprocessed: boolean;
   excludeLowQuality: boolean;
+  includeOffTopic: boolean;
   lightweight: boolean;
   fields?: string;
   includeUserData: boolean;
@@ -191,5 +194,6 @@ export function toArticleQueryParams(
     includeEmptyContent: cacheParams.includeEmptyContent,
     excludeUnprocessed: cacheParams.excludeUnprocessed,
     excludeLowQuality: cacheParams.excludeLowQuality,
+    includeOffTopic: cacheParams.includeOffTopic,
   };
 }

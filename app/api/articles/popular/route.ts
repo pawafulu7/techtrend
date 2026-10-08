@@ -21,6 +21,8 @@ const querySchema = z.object({
   includeEmptyContent: boolParam(),
   excludeUnprocessed: boolParam(),
   excludeLowQuality: boolParam(),
+  // 技術者向けでない記事は既定で外す（issue #722）
+  includeOffTopic: boolParam(),
 });
 
 type ParsedQuery = z.infer<typeof querySchema>;
@@ -98,6 +100,7 @@ async function getPopularArticles(request: NextRequest) {
       includeEmptyContent,
       excludeUnprocessed,
       excludeLowQuality,
+      includeOffTopic,
     } = querySchema.parse(Object.fromEntries(searchParams));
 
     // PopularCacheを使用
@@ -186,6 +189,8 @@ async function getPopularArticles(request: NextRequest) {
           ? { qualityScore: { gte: 30 } }
           : {};
 
+        const offTopicFilter = includeOffTopic ? {} : { isOffTopic: false };
+
         // metric別のDB側orderByとtakeを決定
         // 単一フィールドmetricはDB側ソートで正確な結果が得られるためtake: limitで十分
         // combinedは複合スコア計算が必要なため多めに取得
@@ -221,6 +226,7 @@ async function getPopularArticles(request: NextRequest) {
               contentFilter,
               processedFilter,
               skipReasonFilter,
+              offTopicFilter,
             ].filter((f) => Object.keys(f).length > 0), // Remove empty filters
           },
           omit: {
@@ -287,6 +293,7 @@ async function getPopularArticles(request: NextRequest) {
             includeEmptyContent,
             excludeUnprocessed,
             excludeLowQuality,
+            includeOffTopic,
           }
         )}`;
         const previousRankings = getTrendCache(rankCacheKey);
@@ -331,6 +338,7 @@ async function getPopularArticles(request: NextRequest) {
         includeEmptyContent,
         excludeUnprocessed,
         excludeLowQuality,
+        includeOffTopic,
       }
     );
 

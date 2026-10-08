@@ -99,6 +99,8 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
   // Low quality article filter - default false (new articles have qualityScore=0)
   const excludeLowQualityParam = searchParams.get('excludeLowQuality');
   const excludeLowQuality = excludeLowQualityParam === 'true';
+  // 技術者向けでない記事は既定で外す（issue #722）
+  const includeOffTopic = searchParams.get('includeOffTopic') === 'true';
   // Exclude specific sources (e.g., arXiv papers from home page)
   const excludeSources = searchParams.get('excludeSources') ?? undefined;
 
@@ -163,6 +165,7 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
     readFilter,
     category,
     excludeLowQuality,
+    includeOffTopic,
   };
   const display: DisplayOptions = {
     includeRelations,
@@ -226,6 +229,7 @@ function buildCacheParams(
     includeEmptyContent: display.includeEmptyContent,
     excludeUnprocessed: display.excludeUnprocessed,
     excludeLowQuality: filters.excludeLowQuality !== false,
+    includeOffTopic: filters.includeOffTopic === true,
     lightweight: display.lightweight,
     fields: display.fields,
     includeUserData: false,

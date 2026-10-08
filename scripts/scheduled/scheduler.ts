@@ -402,6 +402,7 @@ console.error(`[INFO] 現在時刻: ${new Date().toLocaleString('ja-JP')}`);
 console.error('[INFO] 更新スケジュール:');
 console.error('   - RSS系: 毎時0分');
 console.error('   - Embeddingリカバリ: 毎時15分');
+console.error('   - 技術者向けでない記事の判定: 毎時40分');
 console.error('   - ストーリーのまとめ直し: 毎時45分');
 console.error('   - スクレイピング系: 0:30・12:30');
 console.error('   - Qiita Popular: 5:05・17:05');
@@ -416,6 +417,7 @@ let scrapingJobRunning = false;
 let qiitaJobRunning = false;
 let embeddingRecoveryRunning = false;
 let storyAssignmentRunning = false;
+let offTopicClassificationRunning = false;
 let trendReportJobRunning = false;
 
 // EmbeddingScheduler instance for auto-recovery
@@ -499,6 +501,30 @@ cron.schedule('45 * * * *', async () => {
     );
   } finally {
     storyAssignmentRunning = false;
+  }
+});
+
+// 技術者向けでない記事を判定する（毎時40分。issue #722）
+// RSS更新（毎時0分）で要約が作られた後に、未判定の直近7日の記事を判定する
+cron.schedule('40 * * * *', async () => {
+  if (offTopicClassificationRunning) {
+    console.error('[WARN] Off-topic classification job already running, skipping');
+    return;
+  }
+  offTopicClassificationRunning = true;
+  try {
+    await runCommandWithTimeout(
+      '技術者向けでない記事の判定',
+      'npx tsx scripts/scheduled/classify-off-topic.ts',
+      10 * 60 * 1000
+    );
+  } catch (error) {
+    console.error(
+      '[ERROR] 技術者向けでない記事の判定が失敗しました:',
+      error instanceof Error ? error.message : String(error)
+    );
+  } finally {
+    offTopicClassificationRunning = false;
   }
 });
 

@@ -76,6 +76,8 @@ model Article {
   summaryError           String? // エラーメッセージ（NULL = エラーなし）
   storyId                String? // 同じ出来事をまとめたストーリーの代表記事ID（NULL = まとめていない）。scripts/scheduled/assign-stories.ts が設定
   storySize              Int? // 同じストーリーの記事数（2以上。storyId が NULL なら NULL）
+  isOffTopic             Boolean            @default(false) // 技術者向けでない記事（一般の経済・政治・事件など）。一覧の既定の表示から外す。scripts/scheduled/classify-off-topic.ts が設定
+  offTopicCheckedAt      DateTime?          @db.Timestamptz(6) // isOffTopic を判定した時刻（NULL = 未判定）
   source                 Source             @relation(fields: [sourceId], references: [id])
   articleViews           ArticleView[]
   favorites              Favorite[]

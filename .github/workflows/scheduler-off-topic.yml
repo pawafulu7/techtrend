@@ -1,0 +1,50 @@
+name: Scheduler - Off-topic Classification
+
+# 技術者向けでない記事（一般の経済・政治・事件など）を判定し、一覧の既定の表示から外す（issue #722）。
+# 要約の生成（RSS は毎時0分に開始）の後に、未判定の直近7日の記事を判定する
+on:
+  schedule:
+    - cron: '40 * * * *' # Every hour at :40 (UTC)
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'YES' to confirm manual execution"
+        required: true
+        type: string
+        default: "NO"
+
+concurrency:
+  group: techtrend-scheduler-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  classify-off-topic:
+    if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scheduler setup
+        uses: ./.github/actions/scheduler-setup
+        with:
+          database_url: ${{ secrets.DATABASE_URL }}
+          skip_migrate: 'true'
+      - name: Classify off-topic articles
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: npx tsx scripts/scheduled/classify-off-topic.ts
+      - name: Notify failure to Slack
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+              -H 'Content-type: application/json' \
+              -d "{\"text\":\"[TechTrend] ${{ github.workflow }} failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+          fi

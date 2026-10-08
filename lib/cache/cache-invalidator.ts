@@ -223,6 +223,14 @@ export class CacheInvalidator {
   }
 
   /**
+   * 技術者向けでない記事の判定（Article.isOffTopic）が変わったときに、
+   * 既定の表示から外す一覧（記事一覧・検索・人気）のキャッシュを捨てる（issue #722）
+   */
+  async onOffTopicUpdated(): Promise<void> {
+    await Promise.all([this.onStoriesUpdated(), popularCache.invalidateAll()]);
+  }
+
+  /**
    * Refresh stale cache periodically
    * Updates daily popular article caches
    */
