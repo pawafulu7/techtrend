@@ -224,10 +224,15 @@ export class CacheInvalidator {
 
   /**
    * 技術者向けでない記事の判定（Article.isOffTopic）が変わったときに、
-   * 既定の表示から外す一覧（記事一覧・検索・人気）のキャッシュを捨てる（issue #722）
+   * 既定の表示から外す一覧（記事一覧・検索・人気）と件数のキャッシュを捨てる（issue #722）。
+   * 件数を残すと、一覧の total が古いまま一覧のキャッシュに入り直す
    */
   async onOffTopicUpdated(): Promise<void> {
-    await Promise.all([this.onStoriesUpdated(), popularCache.invalidateAll()]);
+    await Promise.all([
+      this.onStoriesUpdated(),
+      this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.ARTICLES_COUNT)),
+      popularCache.invalidateAll(),
+    ]);
   }
 
   /**

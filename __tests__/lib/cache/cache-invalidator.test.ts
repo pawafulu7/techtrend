@@ -118,6 +118,26 @@ describe('CacheInvalidator', () => {
     cacheInvalidator = new CacheInvalidator(mockRedisService);
   });
 
+  describe('onOffTopicUpdated', () => {
+    it('一覧・検索・件数・人気のキャッシュを捨てる（issue #722）', async () => {
+      await cacheInvalidator.onOffTopicUpdated();
+
+      for (const namespace of [
+        CACHE_NAMESPACES.L1_PUBLIC,
+        CACHE_NAMESPACES.L2_USER,
+        CACHE_NAMESPACES.L3_SEARCH,
+        CACHE_NAMESPACES.ARTICLES_LIGHTWEIGHT,
+        CACHE_NAMESPACES.ARTICLES_API,
+        CACHE_NAMESPACES.ARTICLES_COUNT,
+      ]) {
+        expect(mockRedisService.clearPattern).toHaveBeenCalledWith(
+          createCachePattern(namespace)
+        );
+      }
+      expect(mockPopularCacheInvalidateAll).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('onBulkImport', () => {
     it('should invalidate LayeredCache L1 PUBLIC namespace', async () => {
       await cacheInvalidator.onBulkImport();

@@ -7,7 +7,7 @@
  *
  * 使い方:
  *   npx tsx scripts/scheduled/classify-off-topic.ts             # 書き込む
- *   npx tsx scripts/scheduled/classify-off-topic.ts --dry-run   # 書き込まず、全記事の判定を表示する
+ *   npx tsx scripts/scheduled/classify-off-topic.ts --dry-run   # 書き込まず、全記事の判定をログに出す
  *   --days=30          # 判定する期間（日。既定 7）
  *   --limit=2000       # 1回で判定する記事数の上限（既定 500）
  *   --recheck          # 判定済みの記事も判定し直す
@@ -16,7 +16,10 @@
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import { getLLMExtractionPipeline } from '@/lib/ai/extraction';
-import { classifyOffTopicArticles } from '@/lib/services/off-topic-classifier';
+import {
+  classifyOffTopicArticles,
+  OFF_TOPIC_BATCH_SIZE,
+} from '@/lib/services/off-topic-classifier';
 
 const CACHE_INVALIDATION_TIMEOUT_MS = 30_000;
 
@@ -55,14 +58,23 @@ async function main(): Promise<void> {
 
   if (dryRun) {
     for (const a of result.articles) {
-      console.error(
-        `[${a.isOffTopic ? 'off-topic' : 'keep'}] ${a.sourceName} | ${a.translatedTitle ?? a.title} | ${a.topic} | ${a.evidence}`
+      logger.info(
+        {
+          articleId: a.id,
+          isOffTopic: a.isOffTopic,
+          topic: a.topic,
+          evidence: a.evidence,
+          source: a.sourceName,
+          title: a.translatedTitle ?? a.title,
+        },
+        'Off-topic verdict'
       );
     }
   }
 
   // 一覧のキャッシュは既定で isOffTopic の記事を外すので、変わったら捨てる。
-  // 捨てられなくても書き込みは済んでいるので失敗にはしない（キャッシュは 30 分で切れる）
+  // 捨てられなくても書き込みは済んでいるので失敗にはしない（一覧は TTL の 30〜60 分、
+  // 人気は期間ごとに最長 24 時間、古い表示が残る）
   if (!dryRun && result.changed > 0) {
     try {
       // 読み込んだだけで Redis につなぐので、要るときだけ読み込む
@@ -85,21 +97,27 @@ async function main(): Promise<void> {
     }
   }
 
-  logger.info(
-    {
-      candidates: result.candidates,
-      classified: result.classified,
-      offTopic: result.offTopic,
-      changed: result.changed,
-      failedBatches: result.failedBatches,
-      dryRun,
-      elapsedMs: Date.now() - startTime,
-    },
-    'Off-topic classification completed'
-  );
+  const summary = {
+    candidates: result.candidates,
+    classified: result.classified,
+    offTopic: result.offTopic,
+    changed: result.changed,
+    failedBatches: result.failedBatches,
+    unknownLabels: result.unknownLabels,
+    skippedStale: result.skippedStale,
+    dryRun,
+    elapsedMs: Date.now() - startTime,
+  };
+  // 失敗したバッチや未知のラベルは、API の不調やプロンプトの劣化の兆候なので警告にする
+  if (result.failedBatches > 0 || result.unknownLabels > 0) {
+    logger.warn(summary, 'Off-topic classification completed with problems');
+  } else {
+    logger.info(summary, 'Off-topic classification completed');
+  }
 
-  // すべてのバッチが失敗したときは、API の不調などを知らせるため失敗にする
-  if (result.candidates > 0 && result.classified === 0) {
+  // すべてのバッチが失敗したときは、API や DB の不調などを知らせるため失敗にする
+  const batches = Math.ceil(result.candidates / OFF_TOPIC_BATCH_SIZE);
+  if (batches > 0 && result.failedBatches === batches) {
     throw new Error('All off-topic classification batches failed');
   }
 }

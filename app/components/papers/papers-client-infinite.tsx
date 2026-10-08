@@ -88,6 +88,10 @@ export function PapersClientInfinite({
     // ソースIDを固定（arXiv論文のみ）
     params.sourceId = sourceId;
 
+    // 論文は技術者向けでない記事の判定（issue #722）で外さない。医療・科学の AI 論文が
+    // 外れても、この画面には切り替えが無く見る手段がなくなるため
+    params.includeOffTopic = 'true';
+
     // URLパラメータにsortByがない場合、initialSortByを使用
     if (!params.sortBy && initialSortBy) {
       params.sortBy = initialSortBy;

@@ -1,4 +1,5 @@
 import { RedisCache } from '@/lib/cache';
+import { CACHE_NAMESPACES } from '@/lib/cache/constants';
 
 // Initialize Redis cache with 30 minutes TTL for lightweight articles
 export const cache = new RedisCache({
@@ -9,5 +10,5 @@ export const cache = new RedisCache({
 // Total count cache (5 min TTL)
 export const countCache = new RedisCache({
   ttl: 300, // 5 min
-  namespace: '@techtrend/cache:api:count',
+  namespace: CACHE_NAMESPACES.ARTICLES_COUNT,
 });

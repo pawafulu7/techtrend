@@ -2,19 +2,27 @@
  * @jest-environment node
  */
 import {
-  buildOffTopicPrompt,
   classifyOffTopicArticles,
+  OFF_TOPIC_BATCH_SIZE,
+  type OffTopicExtractor,
+} from '@/lib/services/off-topic-classifier';
+import {
+  buildOffTopicPrompt,
   isOffTopicLabel,
   parseOffTopicVerdicts,
-  OFF_TOPIC_BATCH_SIZE,
   TOPIC_POLICY,
-  type OffTopicExtractor,
   type OffTopicInput,
-} from '@/lib/services/off-topic-classifier';
-import type { PrismaClient } from '@/lib/prisma-exports';
+} from '@/lib/services/off-topic-prompt';
+import type { Prisma, PrismaClient } from '@/lib/prisma-exports';
 import type { ExtractionConfig } from '@/lib/ai/extraction';
 
+jest.mock('@/lib/logger', () => ({
+  __esModule: true,
+  default: { warn: jest.fn(), info: jest.fn(), error: jest.fn() },
+}));
+
 const NOW = new Date('2026-09-30T00:00:00Z');
+const SUMMARY_FIELD_REF = { name: 'summaryComputedAt' };
 
 const input = (id: string, overrides: Partial<OffTopicInput> = {}) => ({
   id,
@@ -25,23 +33,61 @@ const input = (id: string, overrides: Partial<OffTopicInput> = {}) => ({
   ...overrides,
 });
 
-const dbRow = (id: string, isOffTopic = false) => {
+const dbRow = (id: string) => {
   const { sourceName, ...rest } = input(id);
-  return { ...rest, isOffTopic, source: { name: sourceName } };
+  return { ...rest, source: { name: sourceName } };
 };
 
-function makePrisma(rows: ReturnType<typeof dbRow>[]) {
-  const findMany = jest.fn().mockResolvedValue(rows);
-  const updateMany = jest.fn((args: unknown) => args);
-  const $transaction = jest.fn().mockResolvedValue([]);
-  const prisma = {
-    article: { findMany, updateMany },
-    $transaction,
-  } as unknown as PrismaClient;
-  return { prisma, findMany, updateMany, $transaction };
+interface StoredRow {
+  isOffTopic: boolean;
+  summary: string | null;
 }
 
-/** バッチごとに decide の応答を parseResponse に通して返す extractor（null なら失敗を返す） */
+/**
+ * DB の代わり。findMany は候補の行を返し、$transaction の中の SELECT ... FOR UPDATE は
+ * stored の値を返す。UPDATE は生の SQL の値（[checkedAt, ids, offs]）を記録する
+ */
+function makePrisma(
+  rows: ReturnType<typeof dbRow>[],
+  stored: Record<string, Partial<StoredRow>> = {},
+  options: { failWriteOnCall?: number } = {}
+) {
+  const findMany = jest.fn().mockResolvedValue(rows);
+  const updates: unknown[][] = [];
+  let writeCalls = 0;
+  const tx = {
+    $queryRaw: jest.fn(async (sql: Prisma.Sql) => {
+      const ids = sql.values[0] as string[];
+      return ids.map((id) => ({
+        id,
+        isOffTopic: false,
+        summary: `Summary ${id}`,
+        ...stored[id],
+      }));
+    }),
+    $executeRaw: jest.fn(async (sql: Prisma.Sql) => {
+      updates.push(sql.values);
+      return (sql.values[1] as string[]).length;
+    }),
+  };
+  const $transaction = jest.fn(async (fn: (t: typeof tx) => unknown) => {
+    writeCalls++;
+    if (writeCalls === options.failWriteOnCall) {
+      throw new Error('deadlock detected');
+    }
+    return fn(tx);
+  });
+  const prisma = {
+    article: { findMany, fields: { summaryComputedAt: SUMMARY_FIELD_REF } },
+    $transaction,
+  } as unknown as PrismaClient;
+  return { prisma, findMany, $transaction, tx, updates };
+}
+
+/**
+ * バッチごとに decide の応答を、パイプラインと同じく parseResponse と schema に通して返す
+ * extractor（null なら失敗を返す）
+ */
 function makeExtractor(
   decide: (batchIndex: number, count: number) => string | null
 ): OffTopicExtractor & { extract: jest.Mock } {
@@ -62,7 +108,7 @@ function makeExtractor(
         }
         return {
           success: true,
-          data: config.parseResponse(text, inputValue),
+          data: config.schema.parse(config.parseResponse(text, inputValue)),
           modelVersion: 'test',
           promptVersion: config.promptVersion,
         };
@@ -159,6 +205,21 @@ describe('parseOffTopicVerdicts', () => {
     ]);
   });
 
+  it('正しい JSON は直さずに読む（1 行に複数の要素、evidence が topic より前でもよい）', () => {
+    const text =
+      '[{"i":1,"evidence":"OSS の資金","topic":"tech_community"},{"i":2,"topic":"finance","evidence":"IPO"}\n]';
+    expect(parseOffTopicVerdicts(text, 2)).toEqual([
+      { i: 1, topic: 'tech_community', evidence: 'OSS の資金' },
+      { i: 2, topic: 'finance', evidence: 'IPO' },
+    ]);
+  });
+
+  it('ラベルの表記揺れは小文字にそろえ、evidence が無くても読む', () => {
+    expect(parseOffTopicVerdicts('[{"i":1,"topic":" Finance "}]', 1)).toEqual([
+      { i: 1, topic: 'finance', evidence: '' },
+    ]);
+  });
+
   it('番号の欠け・重複・範囲外は例外にする（パイプラインが再試行する）', () => {
     expect(() => parseOffTopicVerdicts(verdictJson(1), 2)).toThrow(
       'Expected 2 verdicts'
@@ -182,42 +243,36 @@ describe('parseOffTopicVerdicts', () => {
 });
 
 describe('classifyOffTopicArticles', () => {
-  it('未判定の直近の記事を判定し、技術以外と技術の記事をそれぞれ書き込む', async () => {
-    const { prisma, findMany, updateMany, $transaction } = makePrisma([
-      dbRow('a'),
-      dbRow('b'),
-      dbRow('c', true),
-    ]);
-    const extractor = makeExtractor((_, count) => verdictJson(count, [2]));
+  it('未判定か、判定の後に要約を作り直した直近の記事を対象にする', async () => {
+    const { prisma, findMany } = makePrisma([]);
+    await classifyOffTopicArticles(
+      prisma,
+      makeExtractor(() => '[]'),
+      {
+        now: NOW,
+        days: 7,
+      }
+    );
 
-    const result = await classifyOffTopicArticles(prisma, extractor, {
-      now: NOW,
-      days: 7,
-    });
-
-    const where = findMany.mock.calls[0][0].where;
-    expect(where).toMatchObject({
+    const from = new Date('2026-09-23T00:00:00Z');
+    expect(findMany.mock.calls[0][0].where).toEqual({
       isHidden: false,
-      summary: { not: null },
-      offTopicCheckedAt: null,
-      publishedAt: { gte: new Date('2026-09-23T00:00:00Z'), lt: NOW },
-    });
-    expect(result).toMatchObject({
-      candidates: 3,
-      classified: 3,
-      offTopic: 1,
-      // b は false → true、c は true → false に変わる
-      changed: 2,
-      failedBatches: 0,
-    });
-    expect($transaction).toHaveBeenCalledTimes(1);
-    expect(updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ['b'] } },
-      data: { isOffTopic: true, offTopicCheckedAt: expect.any(Date) },
-    });
-    expect(updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ['a', 'c'] } },
-      data: { isOffTopic: false, offTopicCheckedAt: expect.any(Date) },
+      AND: [
+        { summary: { not: null } },
+        { summary: { not: '' } },
+        {
+          OR: [
+            { publishedAt: { gte: from, lt: NOW } },
+            { createdAt: { gte: from, lt: NOW } },
+          ],
+        },
+        {
+          OR: [
+            { offTopicCheckedAt: null },
+            { offTopicCheckedAt: { lt: SUMMARY_FIELD_REF } },
+          ],
+        },
+      ],
     });
   });
 
@@ -231,20 +286,70 @@ describe('classifyOffTopicArticles', () => {
         recheck: true,
       }
     );
-    expect(findMany.mock.calls[0][0].where).not.toHaveProperty(
-      'offTopicCheckedAt'
+    const conditions = findMany.mock.calls[0][0].where.AND;
+    expect(JSON.stringify(conditions)).not.toContain('offTopicCheckedAt');
+  });
+
+  it('判定を 1 本の UPDATE で書き、ロックした時点の値と比べて changed を数える', async () => {
+    const { prisma, tx, updates } = makePrisma(
+      [dbRow('b'), dbRow('a'), dbRow('c')],
+      { c: { isOffTopic: true } }
     );
+    const extractor = makeExtractor((_, count) => verdictJson(count, [1]));
+
+    const result = await classifyOffTopicArticles(prisma, extractor, {
+      now: NOW,
+    });
+
+    // 行は id の順にロックする
+    expect(tx.$queryRaw.mock.calls[0][0].values).toEqual([['a', 'b', 'c']]);
+    expect(updates).toEqual([
+      [expect.any(Date), ['b', 'a', 'c'], [true, false, false]],
+    ]);
+    expect(result).toMatchObject({
+      candidates: 3,
+      classified: 3,
+      offTopic: 1,
+      // b は false → true、c は true → false に変わる
+      changed: 2,
+      failedBatches: 0,
+      skippedStale: 0,
+      unknownLabels: 0,
+    });
+  });
+
+  it('判定の間に要約が変わった記事は書かない', async () => {
+    const { prisma, updates } = makePrisma([dbRow('a'), dbRow('b')], {
+      b: { summary: '作り直した要約' },
+    });
+    const result = await classifyOffTopicArticles(
+      prisma,
+      makeExtractor((_, count) => verdictJson(count, [2])),
+      { now: NOW }
+    );
+    expect(updates).toEqual([[expect.any(Date), ['a'], [false]]]);
+    expect(result).toMatchObject({ skippedStale: 1, changed: 0 });
+  });
+
+  it('未知のラベルは残す側にして数える', async () => {
+    const { prisma, updates } = makePrisma([dbRow('a')]);
+    const result = await classifyOffTopicArticles(
+      prisma,
+      makeExtractor(() => '[{"i":1,"topic":"hardware","evidence":"e"}]'),
+      { now: NOW }
+    );
+    expect(updates).toEqual([[expect.any(Date), ['a'], [false]]]);
+    expect(result.unknownLabels).toBe(1);
   });
 
   it('dryRun では書き込まず、判定結果だけを返す', async () => {
-    const { prisma, $transaction, updateMany } = makePrisma([dbRow('a')]);
+    const { prisma, $transaction } = makePrisma([dbRow('a')]);
     const result = await classifyOffTopicArticles(
       prisma,
       makeExtractor((_, count) => verdictJson(count, [1])),
       { now: NOW, dryRun: true }
     );
     expect($transaction).not.toHaveBeenCalled();
-    expect(updateMany).not.toHaveBeenCalled();
     expect(result.articles).toEqual([
       expect.objectContaining({
         id: 'a',
@@ -259,7 +364,7 @@ describe('classifyOffTopicArticles', () => {
     const rows = Array.from({ length: OFF_TOPIC_BATCH_SIZE + 1 }, (_, k) =>
       dbRow(`id${k}`)
     );
-    const { prisma, $transaction, updateMany } = makePrisma(rows);
+    const { prisma, updates } = makePrisma(rows);
     const extractor = makeExtractor((batch, count) =>
       batch === 0 ? null : verdictJson(count, [1])
     );
@@ -273,12 +378,24 @@ describe('classifyOffTopicArticles', () => {
       candidates: OFF_TOPIC_BATCH_SIZE + 1,
       classified: 1,
       offTopic: 1,
+      changed: 1,
       failedBatches: 1,
     });
-    expect($transaction).toHaveBeenCalledTimes(1);
-    expect(updateMany).toHaveBeenCalledWith({
-      where: { id: { in: [`id${OFF_TOPIC_BATCH_SIZE}`] } },
-      data: { isOffTopic: true, offTopicCheckedAt: expect.any(Date) },
-    });
+    expect(updates).toEqual([
+      [expect.any(Date), [`id${OFF_TOPIC_BATCH_SIZE}`], [true]],
+    ]);
+  });
+
+  it('書き込みに失敗しても例外で抜けず、それまでの changed を返す', async () => {
+    const rows = Array.from({ length: OFF_TOPIC_BATCH_SIZE + 1 }, (_, k) =>
+      dbRow(`id${k}`)
+    );
+    const { prisma } = makePrisma(rows, {}, { failWriteOnCall: 2 });
+    const result = await classifyOffTopicArticles(
+      prisma,
+      makeExtractor((_, count) => verdictJson(count, [1])),
+      { now: NOW }
+    );
+    expect(result).toMatchObject({ changed: 1, failedBatches: 1 });
   });
 });

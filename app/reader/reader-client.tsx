@@ -99,6 +99,7 @@ export function ReaderClient({ tags }: ReaderClientProps) {
     const dateTo = searchParams.get('dateTo');
     const dateRange = searchParams.get('dateRange');
     const category = searchParams.get('category');
+    const includeOffTopic = searchParams.get('includeOffTopic');
 
     if (sortBy) params.sortBy = sortBy;
     if (sortOrder) params.sortOrder = sortOrder;
@@ -113,6 +114,8 @@ export function ReaderClient({ tags }: ReaderClientProps) {
     // category を拾わないと、フィルタパネルでカテゴリを選んでも URL だけ変わって
     // 一覧が変化しない（API 側は category を受け付ける）
     if (category) params.category = category;
+    // 技術者向けでない記事を含める指定（issue #722）。ホームから URL ごと引き継ぐ
+    if (includeOffTopic === 'true') params.includeOffTopic = includeOffTopic;
 
     return params;
   }, [searchParams]);
