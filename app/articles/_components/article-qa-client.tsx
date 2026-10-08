@@ -497,7 +497,7 @@ export function ArticleQAClient({
                     onClick={() => setSampleQueriesOpen(true)}
                     aria-expanded={sampleQueriesOpen}
                     aria-controls="sample-queries-panel"
-                    className="border-primary/30 text-primary hover:bg-primary/5 focus-visible:ring-primary/30 inline-flex items-center gap-1.5 rounded-full border bg-white px-3 py-1.5 text-xs font-medium shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                    className="border-primary/30 text-primary hover:bg-primary/5 focus-visible:ring-primary/30 bg-background inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                   >
                     <Sparkles className="h-3.5 w-3.5" />
                     {locale === 'ja'

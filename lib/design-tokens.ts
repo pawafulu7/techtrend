@@ -6,15 +6,16 @@
  * consistently across all components.
  *
  * Auto-generated CSS variables via `npm run generate:tokens`
+ * （app/generated-tokens.css。shadcn/ui の変数と Tailwind の @theme もここから出力する）
  */
 
 export type ColorModeTokens = {
+  background: string;
   primary: string;
   primaryHover: string;
-  primaryAccent: string;
+  primaryBg: string;
+  primaryBorder: string;
   onPrimary: string;
-  secondary: string;
-  secondaryHover: string;
   surface: string;
   surfaceMuted: string;
   surfaceHover: string;
@@ -25,21 +26,27 @@ export type ColorModeTokens = {
   positive: string;
   positiveBg: string;
   positiveBorder: string;
+  onPositive: string;
   warning: string;
   warningBg: string;
   warningBorder: string;
+  onWarning: string;
   negative: string;
   negativeBg: string;
   negativeBorder: string;
+  onNegative: string;
   info: string;
   infoBg: string;
   infoBorder: string;
+  onInfo: string;
   rankGold: string;
   rankSilver: string;
   rankBronze: string;
+  onRank: string;
 };
 
 export type ShadowTokens = {
+  xs: string;
   sm: string;
   md: string;
   lg: string;
@@ -117,85 +124,173 @@ export type RadiusTokens = {
 };
 
 /**
+ * 色の元になるパレット（Tailwind の同名パレットと同じ値）
+ *
+ * ニュートラルは slate の1系統だけを使う（ライト・ダークとも）。
+ * ブランド色は緑1色。橙などの第2のアクセント色は置かない。
+ */
+const slate = {
+  50: '#F8FAFC',
+  100: '#F1F5F9',
+  200: '#E2E8F0',
+  300: '#CBD5E1',
+  400: '#94A3B8',
+  500: '#64748B',
+  700: '#334155',
+  800: '#1E293B',
+  900: '#0F172A',
+  950: '#020617',
+} as const;
+
+const white = '#FFFFFF';
+
+/** `#RRGGBB` を指定の不透明度の rgba() にする（淡い塗り・枠線を基準色から作るため） */
+function withAlpha(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
+/**
  * Color Palette - Light Mode
  *
- * WCAG AA Compliance:
- * - primary (#16A34A) on background: 4.6:1 (AA)
- * - text (#0B1221) on background: 15.8:1 (AAA)
+ * 塗り（primary・状態色・順位色）には on* の文字色を載せる。どの組み合わせも
+ * WCAG AA（4.5:1）を満たすことを __tests__/lib/design-tokens/contrast.test.ts で計算している。
+ * 状態色（positive / warning / negative / info）は状態を伝える表示だけに使い、装飾や操作ボタンには primary を使う。
  */
+// primary・positive・warning は Tailwind の 700 と 800 の間の色。700 番では、淡い塗り（10%）を
+// slate-100 に重ねた上の文字が 4.5:1 に届かないため、届く範囲で最も明るい色にしている
+const lightPrimary = '#157439'; // green-700〜800（白文字 5.9:1）
+const lightPositive = '#157439';
+const lightWarning = '#B43C0E'; // orange-700〜800（白文字 5.8:1）
+const lightNegative = '#B91C1C'; // red-700
+const lightInfo = '#1D4ED8'; // blue-700
+
 export const lightColors: ColorModeTokens = {
-  primary: '#16A34A', // Green (AA-compliant: 4.6:1)
-  primaryHover: '#15803D', // Darker green
-  primaryAccent: '#22C55E', // Lighter green (for badges/icons/large text)
-  onPrimary: '#FFFFFF', // White text on primary buttons
-  secondary: '#F97316', // Orange
-  secondaryHover: '#EA580C', // Darker orange
-  surface: '#FFFFFF', // Card background
-  surfaceMuted: '#F8FAFC', // Off-white background
-  surfaceHover: '#F1F5F9', // Card hover state
-  text: '#0F172A', // Dark slate (high contrast)
-  textMuted: '#64748B', // Muted gray for secondary text
-  border: '#E5E7EB', // Light gray border
-  borderHover: '#D1D5DB', // Darker border on hover
-  positive: '#22C55E', // Green (success)
-  positiveBg: 'rgba(34, 197, 94, 0.1)', // Green with 10% alpha (badge bg)
-  positiveBorder: 'rgba(34, 197, 94, 0.3)', // Green with 30% alpha (badge border)
-  warning: '#F97316', // Orange (warning)
-  warningBg: 'rgba(249, 115, 22, 0.1)', // Orange with 10% alpha (badge bg)
-  warningBorder: 'rgba(249, 115, 22, 0.3)', // Orange with 30% alpha (badge border)
-  negative: '#EF4444', // Red (error)
-  negativeBg: 'rgba(239, 68, 68, 0.1)', // Red with 10% alpha (badge bg)
-  negativeBorder: 'rgba(239, 68, 68, 0.3)', // Red with 30% alpha (badge border)
-  info: '#3B82F6', // Blue (info)
-  infoBg: 'rgba(59, 130, 246, 0.1)', // Blue with 10% alpha (badge bg)
-  infoBorder: 'rgba(59, 130, 246, 0.3)', // Blue with 30% alpha (badge border)
-  rankGold: '#B45309', // Amber-800 (AA-compliant: 5.0:1 on white)
-  rankSilver: '#64748B', // Slate-500 (AA-compliant: 4.76:1 on white)
-  rankBronze: '#C2410C', // Orange-800 (AA-compliant: 5.0:1 on white)
+  background: white, // ページの背景
+  primary: lightPrimary,
+  primaryHover: '#166534', // green-800
+  primaryBg: withAlpha(lightPrimary, 0.1), // 淡い塗り（未読などのバッジ）
+  primaryBorder: withAlpha(lightPrimary, 0.3),
+  onPrimary: white,
+  surface: white, // カードの背景
+  surfaceMuted: slate[50], // カード内の一段沈んだ面
+  surfaceHover: slate[100], // ホバー・muted の面
+  text: slate[900],
+  // slate-500 だと slate-100（muted・ホバー面）の上で 4.34:1 になるため、600 側へ少し寄せている
+  textMuted: '#617087',
+  border: slate[200],
+  borderHover: slate[300],
+  positive: lightPositive,
+  positiveBg: withAlpha(lightPositive, 0.1),
+  positiveBorder: withAlpha(lightPositive, 0.3),
+  onPositive: white,
+  warning: lightWarning,
+  warningBg: withAlpha(lightWarning, 0.1),
+  warningBorder: withAlpha(lightWarning, 0.3),
+  onWarning: white,
+  negative: lightNegative,
+  negativeBg: withAlpha(lightNegative, 0.1),
+  negativeBorder: withAlpha(lightNegative, 0.3),
+  onNegative: white,
+  info: lightInfo,
+  infoBg: withAlpha(lightInfo, 0.1),
+  infoBorder: withAlpha(lightInfo, 0.3),
+  onInfo: white,
+  rankGold: '#B45309', // amber-700
+  rankSilver: slate[500],
+  rankBronze: '#C2410C', // orange-700
+  onRank: white,
 };
 
 /**
  * Color Palette - Dark Mode
  *
- * WCAG AA Compliance:
- * - primary (#22C55E) on background: 4.8:1 (AA)
- * - text (#E5E7EB) on background: 14.2:1 (AAA)
+ * 塗りは明るい色（400〜500番台）にし、上には暗い文字（slate-950）を載せる。
  */
+const darkPrimary = '#22C55E'; // green-500
+const darkPositive = '#22C55E'; // green-500
+const darkWarning = '#FB923C'; // orange-400
+const darkNegative = '#F87171'; // red-400
+const darkInfo = '#60A5FA'; // blue-400
+
 export const darkColors: ColorModeTokens = {
-  primary: '#22C55E', // Brighter green in dark mode
-  primaryHover: '#16A34A', // Darker green
-  primaryAccent: '#4ADE80', // Lighter accent
-  onPrimary: '#000000', // Black text on primary buttons in dark mode
-  secondary: '#F97316', // Orange
-  secondaryHover: '#EA580C', // Darker orange
-  surface: '#111827', // Card background
-  surfaceMuted: '#0B1220', // Deep blue-black background
-  surfaceHover: '#1F2937', // Card hover state
-  text: '#E5E7EB', // Light gray (high contrast)
-  textMuted: '#94A3B8', // Muted gray
-  border: '#1F2937', // Dark gray border
-  borderHover: '#374151', // Lighter border on hover
-  positive: '#22C55E', // Green
-  positiveBg: 'rgba(34, 197, 94, 0.15)', // Green with 15% alpha (badge bg in dark mode)
-  positiveBorder: 'rgba(34, 197, 94, 0.4)', // Green with 40% alpha (badge border)
-  warning: '#F97316', // Orange
-  warningBg: 'rgba(249, 115, 22, 0.15)', // Orange with 15% alpha (badge bg in dark mode)
-  warningBorder: 'rgba(249, 115, 22, 0.4)', // Orange with 40% alpha (badge border)
-  negative: '#EF4444', // Red
-  negativeBg: 'rgba(239, 68, 68, 0.15)', // Red with 15% alpha (badge bg)
-  negativeBorder: 'rgba(239, 68, 68, 0.4)', // Red with 40% alpha (badge border)
-  info: '#3B82F6', // Blue
-  infoBg: 'rgba(59, 130, 246, 0.15)', // Blue with 15% alpha (badge bg)
-  infoBorder: 'rgba(59, 130, 246, 0.4)', // Blue with 40% alpha (badge border)
-  rankGold: '#D97706', // Amber-700 (AA-compliant: 5.57:1 on dark bg)
-  rankSilver: '#94A3B8', // Slate-400 (AA-compliant: 6.92:1 on dark bg)
-  rankBronze: '#EA580C', // Orange-700 (AA-compliant: 4.98:1 on dark bg)
+  background: slate[950],
+  primary: darkPrimary,
+  primaryHover: '#16A34A', // green-600
+  primaryBg: withAlpha(darkPrimary, 0.1),
+  primaryBorder: withAlpha(darkPrimary, 0.4),
+  onPrimary: slate[950],
+  surface: slate[900],
+  surfaceMuted: slate[950],
+  surfaceHover: slate[800],
+  text: slate[200],
+  textMuted: slate[400],
+  border: slate[800],
+  borderHover: slate[700],
+  positive: darkPositive,
+  positiveBg: withAlpha(darkPositive, 0.1),
+  positiveBorder: withAlpha(darkPositive, 0.4),
+  onPositive: slate[950],
+  warning: darkWarning,
+  warningBg: withAlpha(darkWarning, 0.1),
+  warningBorder: withAlpha(darkWarning, 0.4),
+  onWarning: slate[950],
+  negative: darkNegative,
+  negativeBg: withAlpha(darkNegative, 0.1),
+  negativeBorder: withAlpha(darkNegative, 0.4),
+  onNegative: slate[950],
+  info: darkInfo,
+  infoBg: withAlpha(darkInfo, 0.1),
+  infoBorder: withAlpha(darkInfo, 0.4),
+  onInfo: slate[950],
+  rankGold: '#D97706', // amber-600
+  rankSilver: slate[400],
+  rankBronze: '#EA580C', // orange-600
+  onRank: slate[950],
 };
 
 export const colors = {
   light: lightColors,
   dark: darkColors,
 } as const;
+
+/**
+ * shadcn/ui の CSS 変数（`--background` `--primary` など）と TT トークンの対応
+ *
+ * shadcn の変数は値を持たず、すべて TT トークンから作る。globals.css が読み込む
+ * generated-tokens.css と、layout.tsx の Critical CSS はどちらもこの関数の出力を使う。
+ */
+export function shadcnColorVars(c: ColorModeTokens) {
+  return {
+    background: c.background,
+    foreground: c.text,
+    card: c.surface,
+    'card-foreground': c.text,
+    popover: c.surface,
+    'popover-foreground': c.text,
+    primary: c.primary,
+    'primary-foreground': c.onPrimary,
+    secondary: c.surfaceHover,
+    'secondary-foreground': c.text,
+    muted: c.surfaceHover,
+    'muted-foreground': c.textMuted,
+    accent: c.surfaceHover,
+    'accent-foreground': c.text,
+    destructive: c.negative,
+    'destructive-foreground': c.onNegative,
+    border: c.border,
+    input: c.border,
+    ring: c.primary,
+    sidebar: c.surfaceMuted,
+    'sidebar-foreground': c.text,
+    'sidebar-primary': c.primary,
+    'sidebar-primary-foreground': c.onPrimary,
+    'sidebar-accent': c.surfaceHover,
+    'sidebar-accent-foreground': c.text,
+    'sidebar-border': c.border,
+    'sidebar-ring': c.primary,
+  };
+}
 
 /**
  * Typography Tokens
@@ -242,17 +337,23 @@ export const typography: TypographyTokens = {
 /**
  * Shadow Tokens
  *
- * Soft shadows for modern, layered UI feel
+ * 影は1つのスケールだけを使う。shadowScale は Tailwind の @theme にも出力し、
+ * `shadow-sm` などのユーティリティと `--tt-shadow-*` が同じ値になるようにする。
+ * カード用の別名（cardRest / cardHover）もスケールの段を指す。
  */
-export const shadows: ShadowTokens = {
-  sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+export const shadowScale = {
+  xs: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+  sm: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
   md: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
   lg: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
   xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
   '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
-  cardRest: '0 2px 8px -2px rgb(0 0 0 / 0.08)',
-  cardHover:
-    '0 8px 16px -4px rgb(0 0 0 / 0.12), 0 4px 8px -2px rgb(0 0 0 / 0.08)',
+} as const;
+
+export const shadows: ShadowTokens = {
+  ...shadowScale,
+  cardRest: shadowScale.sm,
+  cardHover: shadowScale.md,
   cardFocus: '0 0 0 2px var(--tt-color-primary)',
   inner: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)',
 };
@@ -282,7 +383,7 @@ export const spacing: SpacingTokens = {
 /**
  * Border Radius Tokens
  *
- * Modern, rounded corners for softer UI feel
+ * Tailwind の `rounded-sm`〜`rounded-3xl` もこの値を参照する（generated-tokens.css の @theme）
  */
 export const radius: RadiusTokens = {
   none: '0',
@@ -526,9 +627,9 @@ export const lightStatusColors: StatusColors = {
     bg: '#FFF1F2', // rose-50, card background
   },
   archived: {
-    text: '#6B7280', // gray-500, AA on white 4.83:1
-    iconBg: '#F3F4F6', // gray-100, decorative
-    bg: '#F9FAFB', // gray-50, card background
+    text: slate[500], // AA on white 4.76:1
+    iconBg: slate[100], // decorative
+    bg: slate[50], // card background
   },
 };
 
@@ -569,9 +670,9 @@ export const darkStatusColors: StatusColors = {
     bg: 'rgba(76, 5, 25, 0.3)', // rose-950 @ 30%, card background
   },
   archived: {
-    text: '#9CA3AF', // gray-400
-    iconBg: '#1F2937', // gray-800
-    bg: 'rgba(17, 24, 39, 0.3)', // gray-900 @ 30%, card background
+    text: slate[400],
+    iconBg: slate[800],
+    bg: withAlpha(slate[900], 0.3), // card background
   },
 };
 
@@ -580,10 +681,48 @@ export const statusColors = {
   dark: darkStatusColors,
 } as const;
 
+/**
+ * Chart Colors - チャートの系列色
+ *
+ * 系列（タグ・ソースなど）を見分けるための色。状態色（positive / warning など）とは別に持ち、
+ * 状態色の調整がチャートに波及しないようにする。塗りに文字を載せるときは
+ * lib/utils/design-tokens/contrast.ts の readableTextColor で文字色を選ぶ。
+ */
+/** チャートの塗りに載せる文字の候補（readableTextColor で塗りごとに選ぶ） */
+export const chartLabelTextColors = [white, slate[950]] as const;
+
+export const chartColors = {
+  light: [
+    '#2563EB', // blue-600
+    '#059669', // emerald-600
+    '#EA580C', // orange-600
+    '#DC2626', // red-600
+    '#7C3AED', // violet-600
+    '#DB2777', // pink-600
+    '#0891B2', // cyan-600
+    '#D97706', // amber-600
+    '#4F46E5', // indigo-600
+    '#0D9488', // teal-600
+  ],
+  dark: [
+    '#60A5FA', // blue-400
+    '#34D399', // emerald-400
+    '#FB923C', // orange-400
+    '#F87171', // red-400
+    '#A78BFA', // violet-400
+    '#F472B6', // pink-400
+    '#22D3EE', // cyan-400
+    '#FBBF24', // amber-400
+    '#818CF8', // indigo-400
+    '#2DD4BF', // teal-400
+  ],
+} as const satisfies Record<'light' | 'dark', readonly string[]>;
+
 export const designTokens = {
   colors,
   categoryColors,
   statusColors,
+  chartColors,
   typography,
   shadows,
   spacing,

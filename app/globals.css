@@ -65,188 +65,14 @@ html.no-transitions *::after {
   animation: none !important;
 }
 
+/*
+ * 色・角丸・影の値は lib/design-tokens.ts が正本。shadcn/ui の変数（--background など）、
+ * TT トークン（--tt-*）、Tailwind の @theme 対応付けはすべて generated-tokens.css に生成される
+ * （npm run generate:tokens）。ここでは値を定義しない。
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-}
-
-:root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-
-  /* UI改善: アクセントカラー */
-  --accent-primary: oklch(0.72 0.12 250);
-  --accent-primary-hover: oklch(0.68 0.14 250);
-  --accent-secondary: oklch(0.85 0.06 200);
-
-  /* UI改善: グラデーション */
-  --gradient-subtle: linear-gradient(135deg, 
-    oklch(0.98 0.02 200 / 0.8) 0%,
-    oklch(0.95 0.03 250 / 0.5) 100%);
-  --gradient-accent: linear-gradient(135deg,
-    oklch(0.93 0.04 250 / 0.3) 0%,
-    oklch(0.90 0.05 200 / 0.2) 100%);
-
-  /* UI改善: 改善されたシャドウ */
-  --shadow-sm: 0 2px 4px oklch(0.7 0.02 250 / 0.08),
-               0 1px 2px oklch(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px oklch(0.7 0.02 250 / 0.10),
-               0 2px 4px oklch(0 0 0 / 0.06);
-  --shadow-lg: 0 10px 25px oklch(0.7 0.03 250 / 0.15),
-               0 5px 10px oklch(0 0 0 / 0.08);
-
-  /* UI改善: 背景テクスチャ */
-  --texture-opacity: 0.02;
-
-  /*
-   * TTトークン連携ガイドライン
-   * =============================
-   * このファイルのoklch変数はshadcn/uiのデフォルト変数です。
-   * TechTrend独自のデザイントークン（--tt-color-*）は
-   * generated-tokens.css で定義されています。
-   *
-   * 使い分け:
-   * - oklch変数 (--primary, --card等): Tailwindのalpha展開に対応
-   *   例: bg-primary/10, text-muted-foreground/50
-   * - TTトークン (--tt-color-*): 明示的な色指定、ブランドカラー
-   *   例: bg-[var(--tt-color-primary)], text-[var(--tt-color-positive)]
-   *
-   * セマンティック対応:
-   * - --card ≈ --tt-color-surface (カード背景)
-   * - --border ≈ --tt-color-border (ボーダー)
-   * - --muted ≈ --tt-color-surface-muted (薄い背景)
-   *
-   * 新規コンポーネントでは --tt-color-* の使用を推奨します。
-   *
-   * カテゴリ系トークン (--tt-color-category-*):
-   * - AI検索のカテゴリタイルで使う 8 カテゴリ × {bg, bg-hover, icon, icon-hover} = 32 変数を
-   *   light/dark 両モードで定義。generated-tokens.css に自動出力される。
-   * - 利用例: `bg-[var(--tt-color-category-ai-bg)] text-[var(--tt-color-category-ai-icon)]`
-   * - 小さいテキストで WCAG AA 未達の組み合わせあり。テキスト用途はコントラスト確認必須。
-   */
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 15%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-
-  /* UI改善: ダークモード用アクセントカラー */
-  --accent-primary: oklch(0.65 0.15 250);
-  --accent-primary-hover: oklch(0.70 0.18 250);
-  --accent-secondary: oklch(0.35 0.08 200);
-
-  /* UI改善: ダークモード用グラデーション */
-  --gradient-subtle: linear-gradient(135deg,
-    oklch(0.18 0.005 200 / 0.3) 0%,
-    oklch(0.20 0.01 250 / 0.2) 100%);
-  --gradient-accent: linear-gradient(135deg,
-    oklch(0.25 0.02 250 / 0.15) 0%,
-    oklch(0.27 0.03 200 / 0.1) 100%);
-
-  /* UI改善: ダークモード用シャドウ */
-  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.10),
-               0 1px 3px oklch(0 0 0 / 0.15);
-  --shadow-md: 0 2px 4px oklch(0 0 0 / 0.12),
-               0 4px 12px oklch(0 0 0 / 0.20);
-  --shadow-lg: 0 4px 8px oklch(0 0 0 / 0.15),
-               0 8px 24px oklch(0 0 0 / 0.25);
-
-  /* UI改善: 背景テクスチャ */
-  --texture-opacity: 0.01;
 }
 
 @layer base {
@@ -267,33 +93,6 @@ html.no-transitions *::after {
   code, pre {
     font-family: var(--font-jetbrains-mono), 'Courier New', monospace;
   }
-
-  /* Background gradient */
-  body::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-      135deg,
-      oklch(0.97 0.01 145) 0%,
-      oklch(0.96 0.015 150) 50%,
-      oklch(0.95 0.02 155) 100%
-    );
-    pointer-events: none;
-    z-index: -1;
-    will-change: auto;
-  }
-  .dark body::before {
-    background: linear-gradient(
-      135deg,
-      oklch(0.15 0.01 145 / 0.3) 0%,
-      oklch(0.17 0.015 150 / 0.4) 50%,
-      oklch(0.19 0.02 155 / 0.5) 100%
-    );
-  }
 }
 
 @layer components {
@@ -308,25 +107,6 @@ html.no-transitions *::after {
   .card-hover:focus-visible {
     outline: 2px solid var(--tt-color-primary);
     outline-offset: 2px;
-  }
-
-  /* Text Gradient */
-  .text-gradient {
-    background: linear-gradient(to right, var(--tt-color-primary), var(--tt-color-secondary));
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  /* Glassmorphic Effect */
-  .glassmorphic {
-    backdrop-filter: blur(12px);
-    background-color: rgb(255 255 255 / 0.8);
-    border: 1px solid rgb(255 255 255 / 0.2);
-  }
-  .dark .glassmorphic {
-    background-color: rgb(17 24 39 / 0.8);
-    border-color: rgb(31 41 55 / 0.2);
   }
 
   /* Badge Pill */

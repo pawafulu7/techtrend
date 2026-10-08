@@ -23,12 +23,12 @@ const buttonV2Variants = cva(
         default: PRIMARY_STYLE,
         primary: PRIMARY_STYLE,
         secondary:
-          'bg-(--tt-color-secondary) text-white hover:bg-(--tt-color-secondary-hover) shadow-sm hover:shadow-md',
+          'bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-xs',
         ghost: 'hover:bg-(--tt-color-surface-hover) text-(--tt-color-text)',
         outline:
           'border border-(--tt-color-border) bg-transparent hover:bg-(--tt-color-surface-hover) hover:border-(--tt-color-border-hover) text-(--tt-color-text)',
         destructive:
-          'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40',
+          'bg-destructive text-tt-on-negative hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40',
         link: 'text-(--tt-color-primary) underline-offset-4 hover:underline',
       },
       size: {

@@ -38,7 +38,7 @@ export function ReaderArticleList({
         <button
           type="button"
           onClick={onRetry}
-          className="text-primary hover:text-primary/80 cursor-pointer text-sm"
+          className="text-primary hover:text-tt-primary-hover cursor-pointer text-sm"
         >
           再読み込み
         </button>

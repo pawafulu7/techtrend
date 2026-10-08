@@ -296,13 +296,13 @@ export function FavoriteButton({
         outline
           ? 'hover:bg-transparent'
           : isFavorited
-            ? 'bg-[var(--tt-color-negative)] text-white hover:bg-[var(--tt-color-negative)]'
+            ? 'bg-tt-negative text-tt-on-negative hover:bg-tt-negative'
             : 'hover:text-[var(--tt-color-negative)]',
         isLoadingInitial && 'opacity-50',
         className,
         // 呼び出し元の className が背景を指定していても（ArticleCard の
         // bg-background/30 など）、登録済みの赤背景を優先する。上書きされると
-        // 白いハートが白い背景に乗って見えなくなる
+        // on-negative 色のハートが明るい背景に乗って見えなくなる
         !outline && isFavorited && 'bg-[var(--tt-color-negative)]'
       )}
       data-testid="favorite-button"
@@ -321,7 +321,7 @@ export function FavoriteButton({
               ? 'fill-current text-[var(--tt-color-negative)] group-hover:fill-none group-hover:text-[var(--tt-color-text-muted)]'
               : 'fill-none group-hover:fill-current group-hover:text-[var(--tt-color-negative)]'
             : isFavorited
-              ? 'fill-white'
+              ? 'fill-tt-on-negative'
               : 'fill-none',
           showText && 'mr-2',
           (isToggling || isLoadingInitial) && 'opacity-50'

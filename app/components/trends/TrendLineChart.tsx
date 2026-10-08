@@ -42,7 +42,7 @@ export function TrendLineChart({
     return (
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-(--tt-color-secondary)" />
+          <TrendingUp className="text-tt-primary h-4 w-4" />
           <h3 className="text-sm font-semibold">タグトレンドの推移</h3>
         </div>
         <div className="h-[300px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
@@ -54,7 +54,7 @@ export function TrendLineChart({
     return (
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-(--tt-color-secondary)" />
+          <TrendingUp className="text-tt-primary h-4 w-4" />
           <h3 className="text-sm font-semibold">タグトレンドの推移</h3>
         </div>
         <ErrorState
@@ -72,7 +72,7 @@ export function TrendLineChart({
     return (
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-(--tt-color-secondary)" />
+          <TrendingUp className="text-tt-primary h-4 w-4" />
           <h3 className="text-sm font-semibold">タグトレンドの推移</h3>
         </div>
         <div className="text-muted-foreground flex h-[300px] items-center justify-center">
@@ -85,7 +85,7 @@ export function TrendLineChart({
   return (
     <div className="bg-background rounded-lg border p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
-        <TrendingUp className="h-4 w-4 text-(--tt-color-secondary)" />
+        <TrendingUp className="text-tt-primary h-4 w-4" />
         <h3 className="text-sm font-semibold">タグトレンドの推移</h3>
       </div>
       <ResponsiveContainer width="100%" height={300}>

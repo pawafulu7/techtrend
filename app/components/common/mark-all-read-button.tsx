@@ -81,8 +81,8 @@ export function MarkAllReadButton({
         <div
           className={`fixed top-4 right-4 z-50 rounded-md px-4 py-2 shadow-lg ${
             notification.type === 'success'
-              ? 'bg-[var(--tt-color-positive)] text-white'
-              : 'bg-[var(--tt-color-negative)] text-white'
+              ? 'bg-tt-positive text-tt-on-positive'
+              : 'bg-tt-negative text-tt-on-negative'
           }`}
         >
           {notification.message}
@@ -100,7 +100,7 @@ export function MarkAllReadButton({
         <CheckCheck className="h-4 w-4" />
         <span className="hidden sm:inline">全て既読</span>
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--tt-color-info)] px-1 text-xs text-white">
+          <span className="bg-tt-primary text-tt-on-primary absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}

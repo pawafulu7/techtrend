@@ -1,35 +1,18 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import { chartColors } from '@/lib/design-tokens';
 
-const FALLBACK_COLORS = [
-  '#3B82F6',
-  '#22C55E',
-  '#F97316',
-  '#EF4444',
-  '#16A34A',
-  '#8b5cf6',
-  '#ec4899',
-  '#06b6d4',
-  '#d97706',
-  '#6366f1',
-];
+// 系列の色は lib/design-tokens.ts の chartColors（--tt-color-chart-N）。状態色とは別に持つ
+const CSS_VARS = chartColors.light.map((_, i) => `--tt-color-chart-${i + 1}`);
 
-const CSS_VARS = [
-  '--tt-color-info',
-  '--tt-color-positive',
-  '--tt-color-secondary',
-  '--tt-color-negative',
-  '--tt-color-primary',
-];
-
-const EXTRA_COLORS = ['#8b5cf6', '#ec4899', '#06b6d4', '#d97706', '#6366f1'];
+const FALLBACK_COLORS: string[] = [...chartColors.light];
 
 function resolveColors(): string[] {
   const style = getComputedStyle(document.documentElement);
   const resolved = CSS_VARS.map((v) => style.getPropertyValue(v).trim());
   if (resolved.every((c) => c)) {
-    return [...resolved, ...EXTRA_COLORS];
+    return resolved;
   }
   return FALLBACK_COLORS;
 }

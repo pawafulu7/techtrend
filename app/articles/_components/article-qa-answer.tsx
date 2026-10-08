@@ -50,7 +50,7 @@ export function ArticleQaAnswer({
             <span className="bg-primary absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"></span>
             <span className="bg-primary relative inline-flex h-3 w-3 rounded-full"></span>
           </div>
-          <span className="text-primary/80 text-sm font-medium">
+          <span className="text-primary text-sm font-medium">
             回答を生成中...
           </span>
         </div>

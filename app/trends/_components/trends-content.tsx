@@ -193,12 +193,12 @@ export function TrendsContent({
       {/* Trending Keywords Section */}
       <section>
         <div className="mb-4 flex items-center gap-2">
-          <div className="h-px flex-1 bg-gradient-to-r from-(--tt-color-secondary)/50 to-transparent" />
+          <div className="from-tt-primary/50 h-px flex-1 bg-gradient-to-r to-transparent" />
           <h2 className="text-muted-foreground flex items-center gap-1.5 px-2 text-xs font-bold tracking-widest">
             <TrendingUp className="h-3.5 w-3.5" />
             急上昇キーワード
           </h2>
-          <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-secondary)/50 to-transparent" />
+          <div className="from-tt-primary/50 h-px flex-1 bg-gradient-to-l to-transparent" />
         </div>
         {initialKeywords !== null && (
           <DataFreshness
@@ -252,7 +252,7 @@ export function TrendsContent({
               <BadgeV2 key={tag.id} variant="positive" asChild>
                 <Link href={`/?tags=${encodeURIComponent(tag.name)}`}>
                   {getTagDisplayName(tag.name)}
-                  <span className="ml-1 opacity-70">{tag.count}</span>
+                  <span className="ml-1">{tag.count}</span>
                 </Link>
               </BadgeV2>
             ))}

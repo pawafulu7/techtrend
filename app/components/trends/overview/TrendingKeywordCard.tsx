@@ -13,12 +13,9 @@ interface TrendingKeyword {
 }
 
 function getGrowthLabel(rate: number) {
-  if (rate >= 100)
-    return { label: '急上昇', className: 'text-(--tt-color-secondary)' };
-  if (rate >= 50)
-    return { label: '上昇', className: 'text-(--tt-color-secondary)' };
-  if (rate >= 20)
-    return { label: '微増', className: 'text-(--tt-color-positive)' };
+  if (rate >= 100) return { label: '急上昇', className: 'text-tt-primary' };
+  if (rate >= 50) return { label: '上昇', className: 'text-tt-primary' };
+  if (rate >= 20) return { label: '微増', className: 'text-foreground' };
   if (rate >= 0) return { label: '横ばい', className: 'text-muted-foreground' };
   return { label: '減少', className: 'text-muted-foreground' };
 }
@@ -35,7 +32,7 @@ export function TrendingKeywordCard({ keyword }: { keyword: TrendingKeyword }) {
         className={cn(
           'relative rounded-lg border shadow-sm transition-all duration-200',
           'bg-background',
-          'border-l-4 border-l-(--tt-color-secondary)',
+          'border-l-tt-primary border-l-4',
           'hover:-translate-y-0.5 hover:shadow-md'
         )}
       >
@@ -68,7 +65,7 @@ export function TrendingKeywordCard({ keyword }: { keyword: TrendingKeyword }) {
         </div>
 
         {/* Hover action */}
-        <div className="absolute top-2 right-2 rounded p-1 text-(--tt-color-secondary) opacity-0 transition-opacity group-hover:opacity-100 hover:bg-(--tt-color-secondary)/10">
+        <div className="text-tt-primary hover:bg-tt-primary/10 absolute top-2 right-2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100">
           <ArrowUpRight className="h-3.5 w-3.5" />
         </div>
       </div>

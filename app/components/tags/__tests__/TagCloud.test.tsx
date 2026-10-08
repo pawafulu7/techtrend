@@ -384,11 +384,13 @@ describe('TagCloud', () => {
         trend: 'stable' as const,
       };
       expect(getTagColor(high, range).split(' ')).toContain('text-primary');
-      expect(getTagColor(mid, range).split(' ')).toContain('text-primary/80');
-      expect(getTagColor(low, range).split(' ')).toContain('text-primary/60');
+      expect(getTagColor(mid, range).split(' ')).toContain('text-foreground');
+      expect(getTagColor(low, range).split(' ')).toContain(
+        'text-muted-foreground'
+      );
     });
 
-    it('minCount === maxCount の場合は安全な intensity 0.5 として primary/80 を返す', () => {
+    it('minCount === maxCount の場合は安全な intensity 0.5 として中間の text-foreground を返す', () => {
       const tag = {
         id: 's',
         name: 'Single',
@@ -398,7 +400,7 @@ describe('TagCloud', () => {
       const classes = getTagColor(tag, { minCount: 50, maxCount: 50 }).split(
         ' '
       );
-      expect(classes).toContain('text-primary/80');
+      expect(classes).toContain('text-foreground');
     });
   });
 

@@ -150,7 +150,7 @@ export default function PerformanceDashboard() {
             disabled={isRefreshing}
             aria-label="データを更新"
             title="データを更新"
-            className="rounded-lg bg-[var(--tt-color-info)] p-2 text-white hover:bg-[var(--tt-color-info)] focus-visible:ring-2 focus-visible:ring-[var(--tt-color-info)] focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
+            className="bg-tt-primary text-tt-on-primary hover:bg-tt-primary-hover focus-visible:ring-tt-primary rounded-lg p-2 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50"
           >
             <RefreshCw
               className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}

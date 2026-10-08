@@ -11,6 +11,8 @@ import {
 } from 'recharts';
 import { PieChartIcon } from 'lucide-react';
 import { useChartColors } from './useChartColors';
+import { chartLabelTextColors } from '@/lib/design-tokens';
+import { readableTextColor } from '@/lib/utils/design-tokens/contrast';
 import { ErrorState } from '@/components/ui-v2/error-state';
 
 interface SourceData {
@@ -38,6 +40,7 @@ interface LabelRenderProps {
   innerRadius?: number;
   outerRadius?: number;
   percent?: number;
+  index?: number;
 }
 
 // CustomTooltip用のPayload型
@@ -72,8 +75,11 @@ const SourcePieChartTooltip = React.memo(function SourcePieChartTooltip({
 });
 
 // カスタムラベルレンダリング関数（トップレベルに移動）
-const renderCustomizedLabel = (props: LabelRenderProps): React.ReactNode => {
-  const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
+const renderCustomizedLabel = (
+  props: LabelRenderProps,
+  colors: readonly string[]
+): React.ReactNode => {
+  const { cx, cy, midAngle, innerRadius, outerRadius, percent, index } = props;
   // 必須プロパティが存在しない場合は早期リターン
   if (
     cx == null ||
@@ -101,7 +107,11 @@ const renderCustomizedLabel = (props: LabelRenderProps): React.ReactNode => {
     <text
       x={x}
       y={y}
-      fill="white"
+      // 割合ラベルは系列の塗りの上に載るため、塗りごとに読みやすい方の文字色を選ぶ
+      fill={readableTextColor(
+        colors[(index ?? 0) % colors.length],
+        chartLabelTextColors
+      )}
       textAnchor={x > numCx ? 'start' : 'end'}
       dominantBaseline="central"
       fontSize="12"
@@ -180,7 +190,9 @@ export function SourcePieChart({
             cx="50%"
             cy="40%"
             labelLine={false}
-            label={renderCustomizedLabel}
+            label={(props: LabelRenderProps) =>
+              renderCustomizedLabel(props, colors)
+            }
             outerRadius={70}
             fill="#8884d8"
             dataKey="value"

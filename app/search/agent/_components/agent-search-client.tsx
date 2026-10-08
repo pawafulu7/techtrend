@@ -170,7 +170,7 @@ export function AgentSearchClient() {
           {showResult && (
             <a
               href="#agent-result"
-              className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-20 focus:rounded focus:bg-[var(--tt-color-primary)] focus:px-4 focus:py-2 focus:text-white"
+              className="focus:bg-tt-primary focus:text-tt-on-primary sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-20 focus:rounded focus:px-4 focus:py-2"
               onClick={(e) => {
                 e.preventDefault();
                 resultRef.current?.focus();

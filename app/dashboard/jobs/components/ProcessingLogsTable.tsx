@@ -39,24 +39,21 @@ function getStatusBadge(status: ProcessingLogEntry['status']) {
     case 'success':
       return {
         variant: 'default' as const,
-        className:
-          'bg-[var(--tt-color-positive)] hover:bg-[var(--tt-color-positive)]',
+        className: 'bg-tt-positive text-tt-on-positive hover:bg-tt-positive',
         icon: <CheckCircle className="mr-1 h-3 w-3" />,
         label: 'Success',
       };
     case 'failed':
       return {
         variant: 'destructive' as const,
-        className:
-          'bg-[var(--tt-color-negative)] hover:bg-[var(--tt-color-negative)]',
+        className: 'bg-tt-negative text-tt-on-negative hover:bg-tt-negative',
         icon: <XCircle className="mr-1 h-3 w-3" />,
         label: 'Failed',
       };
     case 'partial':
       return {
-        variant: 'secondary' as const,
-        className:
-          'bg-[var(--tt-color-warning)] hover:bg-[var(--tt-color-warning)] text-white',
+        variant: 'default' as const,
+        className: 'bg-tt-warning text-tt-on-warning hover:bg-tt-warning',
         icon: <AlertTriangle className="mr-1 h-3 w-3" />,
         label: 'Partial',
       };
@@ -191,7 +188,7 @@ export function ProcessingLogsTable({
             </Badge>
             <Badge
               variant="default"
-              className="bg-[var(--tt-color-positive)] tabular-nums"
+              className="bg-tt-positive text-tt-on-positive tabular-nums"
             >
               {data.summary.successRate.toFixed(1)}% success
             </Badge>

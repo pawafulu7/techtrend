@@ -13,6 +13,7 @@ The TechTrend Design System provides a consistent, accessible, and modern UI fou
 ## Design Tokens
 
 All design tokens are defined in `lib/design-tokens.ts` and auto-generated to CSS custom properties in `app/generated-tokens.css`.
+The same file also defines the shadcn/ui variables (`--background`, `--primary`, ...) and the Tailwind `@theme` mapping, so `bg-tt-primary` / `text-tt-text-muted` and `bg-primary` / `text-muted-foreground` share one source. The critical CSS in `app/layout.tsx` is built from the same tokens (`lib/utils/design-tokens/build-css.ts`).
 
 ### Usage
 
@@ -20,42 +21,32 @@ All design tokens are defined in `lib/design-tokens.ts` and auto-generated to CS
 import { designTokens } from '@/lib/design-tokens';
 
 // Access tokens
-const primaryColor = designTokens.colors.light.primary; // #16A34A
+const primaryColor = designTokens.colors.light.primary; // #157439
 const headingFont = designTokens.typography.family.heading; // Space Grotesk
 const cardShadow = designTokens.shadows.cardRest;
 ```
 
 ### Color Palette
 
+One brand color (green) and one neutral scale (slate) in both modes. State colors (positive / warning / negative / info) are for state messages only; actions and decoration use primary. Every fill has an `on*` text color, and each combination meets WCAG AA (checked by `__tests__/lib/design-tokens/contrast.test.ts`).
+
 #### Light Mode
-- **Primary**: `#16A34A` (green, AA-compliant 4.6:1 contrast)
-- **Secondary**: `#F97316` (orange)
-- **Background**: `#F8FAFC` (off-white)
-- **Surface**: `#FFFFFF` (card background)
-- **Text**: `#0F172A` (dark slate, 15.8:1 contrast)
+- **Primary**: `#157439` (green; white text 5.9:1)
+- **Background / Surface**: `#FFFFFF`
+- **Text**: `#0F172A` (slate-900)
 
 #### Dark Mode
-- **Primary**: `#22C55E` (brighter green)
-- **Secondary**: `#F97316` (orange)
-- **Background**: `#0B1220` (deep blue-black)
-- **Surface**: `#111827` (card background)
-- **Text**: `#E5E7EB` (light gray, 14.2:1 contrast)
+- **Primary**: `#22C55E` (green; `#020617` text 8.9:1)
+- **Background**: `#020617` (slate-950)
+- **Surface**: `#0F172A` (slate-900)
+- **Text**: `#E2E8F0` (slate-200)
 
-#### CSS Variables
+#### Usage in components
 
-```css
-/* Light mode (default) */
---tt-color-primary: #16A34A;
---tt-color-on-primary: #FFFFFF;
---tt-color-surface: #FFFFFF;
---tt-color-text: #0F172A;
-
-/* Dark mode (.dark class) */
-.dark {
-  --tt-color-primary: #22C55E;
-  --tt-color-surface: #111827;
-  --tt-color-text: #E5E7EB;
-}
+```tsx
+<span className="bg-tt-primary text-tt-on-primary" />          // solid fill
+<span className="bg-tt-primary-bg text-tt-primary" />          // tinted badge
+<span className="bg-tt-negative text-tt-on-negative" />        // state fill
 ```
 
 ### Typography
@@ -74,8 +65,8 @@ const cardShadow = designTokens.shadows.cardRest;
 
 ### Shadows
 
-- **cardRest**: `0 2px 8px -2px rgb(0 0 0 / 0.08)` (soft shadow for cards)
-- **cardHover**: `0 8px 16px -4px rgb(0 0 0 / 0.12)` (elevated shadow on hover)
+- One scale (`xs` ... `2xl`), emitted to Tailwind's `@theme` so `shadow-sm` etc. use the same values
+- **cardRest** = `sm`, **cardHover** = `md`
 
 ## Component Primitives
 
@@ -110,7 +101,7 @@ Pill-shaped badge component with semantic variants.
 #### Variants
 - **default**: Gray badge for neutral information
 - **primary**: Green badge for primary actions/states
-- **secondary**: Orange badge for secondary actions/states
+- **secondary**: Tinted green badge (unread, scores)
 - **outline**: Bordered transparent badge
 
 #### Usage
@@ -127,9 +118,9 @@ import { BadgeV2 } from '@/components/ui-v2';
 Enhanced button component with loading states and icon support.
 
 #### Variants
-- **default**: Standard button with border
+- **default**: Primary-colored button (alias of primary)
 - **primary**: Primary action button (green)
-- **secondary**: Secondary action button (orange)
+- **secondary**: Neutral secondary button
 - **ghost**: Transparent button with hover background
 - **outline**: Bordered transparent button
 
@@ -158,21 +149,14 @@ import { ButtonV2 } from '@/components/ui-v2';
 ### .card-hover
 Card hover effect with lift and shadow transition.
 
-### .text-gradient
-Gradient text effect from primary to secondary color.
-
-### .glassmorphic
-Glassmorphism effect with backdrop blur.
-
 ### .animate-stagger
 Staggered fade-in animation with delays (0.1s - 0.5s).
 
 ## Accessibility
 
 ### WCAG AA Compliance
-- Light mode text: 15.8:1 (AAA)
-- Dark mode text: 14.2:1 (AAA)
-- Primary color: 4.6:1 (AA)
+- Brand / state fills and their `on*` text, and brand / state colors as text, meet AA (4.5:1) in both modes
+- Computed per token pair in `__tests__/lib/design-tokens/contrast.test.ts`
 
 ### Keyboard Navigation
 - Focus-visible rings on all interactive elements

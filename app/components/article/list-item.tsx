@@ -145,7 +145,7 @@ export function ArticleListItem({
       {/* Right: meta info and actions */}
       <div className="flex flex-shrink-0 items-center gap-2">
         <BadgeV2
-          variant="secondary"
+          variant="default"
           className={cn('text-xs font-medium', sourceColor.tag)}
         >
           {article.source?.name || 'Unknown'}

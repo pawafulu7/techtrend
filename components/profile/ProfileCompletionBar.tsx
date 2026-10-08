@@ -49,7 +49,7 @@ export function ProfileCompletionBar({
           {isComplete ? (
             <CheckCircle2 className="h-4 w-4 text-[var(--tt-color-positive)]" />
           ) : (
-            <TrendingUp className="h-4 w-4 text-[var(--tt-color-info)]" />
+            <TrendingUp className="text-tt-primary h-4 w-4" />
           )}
           <span
             className={cn(
@@ -65,7 +65,7 @@ export function ProfileCompletionBar({
             'rounded-full px-2 py-0.5 text-xs font-medium',
             isComplete
               ? 'bg-[var(--tt-color-positive-bg)] text-[var(--tt-color-positive)]'
-              : 'bg-[var(--tt-color-info-bg)] text-[var(--tt-color-info)]'
+              : 'bg-tt-primary-bg text-tt-primary'
           )}
         >
           {message}
@@ -87,9 +87,7 @@ export function ProfileCompletionBar({
         <div
           className={cn(
             'absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out',
-            isComplete
-              ? 'bg-[var(--tt-color-positive)]'
-              : 'bg-[var(--tt-color-info)]'
+            isComplete ? 'bg-[var(--tt-color-positive)]' : 'bg-tt-primary'
           )}
           style={{ width: `${percentage}%` }}
         />

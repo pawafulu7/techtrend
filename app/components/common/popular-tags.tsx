@@ -53,7 +53,7 @@ export function PopularTags({ tags, currentTag }: PopularTagsProps) {
                 >
                   <TagIcon className="mr-1 h-3 w-3" />
                   {getTagDisplayName(tag.name)}
-                  <span className="ml-1 text-xs opacity-70">({tag.count})</span>
+                  <span className="ml-1 text-xs">({tag.count})</span>
                 </Badge>
               ))}
             </div>

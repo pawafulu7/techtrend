@@ -236,10 +236,6 @@ export function AnswerContent({
           data-testid="agent-answer-cards"
         >
           {displayItems.map((item, i) => {
-            const accentColor =
-              i % 2 === 0
-                ? 'var(--tt-color-primary)'
-                : 'var(--tt-color-secondary)';
             const displayTitle =
               item.meta?.translatedTitle?.trim() ||
               item.meta?.title ||
@@ -254,7 +250,7 @@ export function AnswerContent({
                 className="group relative flex min-h-[140px] flex-col space-y-2 rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-sm transition-all duration-200 hover:border-[var(--tt-color-primary)]/40 hover:shadow-md motion-safe:animate-[fadeInUp_0.4s_ease_forwards] motion-safe:opacity-0"
                 style={{
                   borderLeftWidth: '3px',
-                  borderLeftColor: accentColor,
+                  borderLeftColor: 'var(--tt-color-primary)',
                   animationDelay: `${i * 60}ms`,
                 }}
                 data-testid="agent-article-card"
@@ -285,10 +281,7 @@ export function AnswerContent({
                     className="bg-muted/60 group-hover:bg-muted flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-lg transition-colors duration-200"
                     aria-hidden="true"
                   >
-                    <FileText
-                      className="h-4 w-4"
-                      style={{ color: accentColor }}
-                    />
+                    <FileText className="text-tt-primary h-4 w-4" />
                   </span>
                   <span className="line-clamp-2 flex-1" title={displayTitle}>
                     {displayTitle}
@@ -376,7 +369,7 @@ export function AnswerContent({
                           asChild
                           size="sm"
                           data-copy-exclude
-                          className="bg-primary/15 text-primary hover:bg-primary/25 ml-2 inline-flex h-7 items-center rounded-full transition-colors"
+                          className="bg-tt-primary-bg text-tt-primary hover:bg-tt-primary hover:text-tt-on-primary ml-2 inline-flex h-7 items-center rounded-full transition-colors"
                           title={
                             article.translatedTitle?.trim()
                               ? article.translatedTitle
