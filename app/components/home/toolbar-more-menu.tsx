@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { UnreadFilterWithData } from '@/app/components/common/unread-filter-with-data';
+import { OffTopicToggle } from '@/app/components/common/off-topic-toggle';
 import { MarkAllReadWrapper } from '@/app/components/common/mark-all-read-wrapper';
 import { FilterResetButton } from '@/app/components/common/filter-reset-button';
 
@@ -42,6 +43,7 @@ export function ToolbarMoreMenu() {
         <PopoverContent align="end" className="w-auto min-w-[140px] p-2">
           <div className="flex flex-col gap-2">
             <UnreadFilterWithData />
+            <OffTopicToggle />
             <MarkAllReadWrapper />
             <FilterResetButton />
           </div>

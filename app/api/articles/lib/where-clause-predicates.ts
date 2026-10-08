@@ -74,6 +74,22 @@ export function pushLowQualityFilter(
 }
 
 // ---------------------------------------------------------------------------
+// pushOffTopicFilter
+// ---------------------------------------------------------------------------
+
+/**
+ * 技術者向けでない記事（Article.isOffTopic）を既定で外す（issue #722）。
+ * `includeOffTopic` が true のときだけ含める。未判定の記事は isOffTopic=false なので残る。
+ */
+export function pushOffTopicFilter(
+  andConditions: ArticleWhereInput[],
+  includeOffTopic: boolean
+): void {
+  if (includeOffTopic) return;
+  andConditions.push({ isOffTopic: false });
+}
+
+// ---------------------------------------------------------------------------
 // pushProcessedFilter
 // ---------------------------------------------------------------------------
 

@@ -28,6 +28,10 @@ import type { ArticleWithRelations } from '@/types/models';
 import { RankBadge } from './rank-badge';
 import { TrendIndicator } from './trend-indicator';
 import { TranslationBadge } from '@/components/ui/translation-badge';
+import {
+  OffTopicToggle,
+  INCLUDE_OFF_TOPIC_PARAM,
+} from '@/app/components/common/off-topic-toggle';
 import { ScoreTooltip } from './score-tooltip';
 import { ShareButton } from './share-button';
 import {
@@ -83,16 +87,20 @@ export function PopularArticles({
   const metricParam = searchParams.get('metric');
   const metric =
     !compact && isMetricType(metricParam) ? metricParam : initialMetric;
+  // 技術者向けでない記事は既定で外す（issue #722）。切り替えは全画面表示のときだけ
+  const includeOffTopic =
+    !compact && searchParams.get(INCLUDE_OFF_TOPIC_PARAM) === 'true';
 
   const {
     data,
     isLoading: loading,
     isError,
   } = useQuery<PopularResponse>({
-    queryKey: ['popular-articles', { period, metric, limit }],
+    queryKey: ['popular-articles', { period, metric, limit, includeOffTopic }],
     queryFn: async () => {
       const response = await fetch(
-        `/api/articles/popular?period=${period}&metric=${metric}&limit=${limit}`
+        `/api/articles/popular?period=${period}&metric=${metric}&limit=${limit}` +
+          (includeOffTopic ? '&includeOffTopic=true' : '')
       );
       if (!response.ok) {
         throw new Error('Failed to load popular articles');
@@ -225,6 +233,9 @@ export function PopularArticles({
         のスコアなどです。指標の意味はソースごとに異なります。
         総合スコアは反応数40%、品質40%、新しさ20%で計算します。
       </p>
+      <div className="flex justify-end">
+        <OffTopicToggle />
+      </div>
       <Tabs value={metric} onValueChange={handleMetricChange}>
         <TabsList className="mb-4 grid w-full grid-cols-3">
           <TabsTrigger value="combined">

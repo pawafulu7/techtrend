@@ -78,6 +78,15 @@ describe('PopularCache', () => {
       );
     });
 
+    it('技術者向けでない記事を含めるときは別のキーにする（issue #722）', () => {
+      expect(cache.generateKey('weekly', { includeOffTopic: true })).toBe(
+        'articles:weekly:offTopic:1'
+      );
+      expect(cache.generateKey('weekly', { includeOffTopic: false })).toBe(
+        'articles:weekly'
+      );
+    });
+
     it('フィルタフラグが false の場合はキーに含めない', () => {
       const key = cache.generateKey('weekly', {
         includeEmptyContent: false,

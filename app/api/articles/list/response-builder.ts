@@ -117,6 +117,7 @@ interface BasePaginationParams {
   excludeSources: string;
   excludeUnprocessed: boolean;
   excludeLowQuality: boolean;
+  includeOffTopic: boolean;
 }
 
 /** Parameters for building cursor pagination result */
@@ -139,6 +140,7 @@ export interface FilterContext {
   excludeSources: string;
   excludeUnprocessed: 'true' | 'false';
   excludeLowQuality: 'true' | 'false';
+  includeOffTopic: 'true' | 'false';
 }
 
 /** Input parameters for buildFilterContext */
@@ -156,6 +158,7 @@ export interface FilterContextInput {
   excludeSources: string;
   excludeUnprocessed: boolean;
   excludeLowQuality: boolean;
+  includeOffTopic: boolean;
 }
 
 /**
@@ -176,6 +179,7 @@ export function buildFilterContext(params: FilterContextInput): FilterContext {
     excludeSources: params.excludeSources,
     excludeUnprocessed: params.excludeUnprocessed ? 'true' : 'false',
     excludeLowQuality: params.excludeLowQuality ? 'true' : 'false',
+    includeOffTopic: params.includeOffTopic ? 'true' : 'false',
   };
 }
 

@@ -93,6 +93,7 @@ export async function GET(request: NextRequest) {
     const totalParam = searchParams.get('total'); // Quick Win 2: Skip COUNT on page >1
     const bypassFavoriteL1 = Boolean(request.cookies.get('tt_fav_bust')?.value);
     const excludeLowQuality = searchParams.get('excludeLowQuality') === 'true';
+    const includeOffTopic = searchParams.get('includeOffTopic') === 'true';
     const excludeSources = searchParams.get('excludeSources');
 
     // タグの数と長さを検証する（キャッシュキーを作る前・タグを解決する前）
@@ -192,6 +193,7 @@ export async function GET(request: NextRequest) {
               excludeSources: normalizedExcludeSources,
               excludeUnprocessed,
               excludeLowQuality,
+              includeOffTopic,
             })
           )
         ) {
@@ -229,6 +231,7 @@ export async function GET(request: NextRequest) {
         category: category || 'all',
         excludeUnprocessed: excludeUnprocessed ? 'true' : 'false',
         excludeLowQuality: excludeLowQuality ? 'true' : 'false',
+        includeOffTopic: includeOffTopic ? 'true' : 'false',
         // Note: includeUserData removed from cache key - user data is merged after cache fetch
       },
     });
@@ -300,6 +303,7 @@ export async function GET(request: NextRequest) {
         category,
         excludeUnprocessed,
         excludeLowQuality,
+        includeOffTopic,
         finalSortBy,
       });
 
@@ -328,6 +332,7 @@ export async function GET(request: NextRequest) {
         totalParam,
         excludeUnprocessed,
         excludeLowQuality,
+        includeOffTopic,
       });
 
       // Get articles - Optimized query with minimal source relation
@@ -405,6 +410,7 @@ export async function GET(request: NextRequest) {
         excludeSources: normalizedExcludeSources,
         excludeUnprocessed,
         excludeLowQuality,
+        includeOffTopic,
       };
 
       if (useCursor && cursorPayload) {

@@ -48,6 +48,8 @@ interface MockArticle {
   summaryError: string | null;
   storyId: string | null;
   storySize: number | null;
+  isOffTopic: boolean;
+  offTopicCheckedAt: Date | null;
   isHidden: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -162,6 +164,8 @@ export function createMockArticle(overrides?: Partial<MockArticle>): MockArticle
     summaryError: null,
     storyId: null,
     storySize: null,
+    isOffTopic: false,
+    offTopicCheckedAt: null,
     isHidden: false,
     createdAt: now,
     updatedAt: now,
@@ -345,6 +349,8 @@ export function mockArticle(overrides: Partial<MockArticle> = {}): MockArticle {
     summaryError: null,
     storyId: null,
     storySize: null,
+    isOffTopic: false,
+    offTopicCheckedAt: null,
     isHidden: false,
     createdAt: now,
     updatedAt: now,

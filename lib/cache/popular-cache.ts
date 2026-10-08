@@ -11,6 +11,7 @@ export interface PopularCacheOptions {
   includeEmptyContent?: boolean;
   excludeUnprocessed?: boolean;
   excludeLowQuality?: boolean;
+  includeOffTopic?: boolean;
 }
 
 export class PopularCache {
@@ -63,6 +64,10 @@ export class PopularCache {
 
     if (options?.excludeLowQuality) {
       parts.push('exLowQuality:1');
+    }
+
+    if (options?.includeOffTopic) {
+      parts.push('offTopic:1');
     }
 
     return parts.join(':');

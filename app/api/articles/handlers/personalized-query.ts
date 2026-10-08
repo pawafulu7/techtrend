@@ -98,6 +98,7 @@ async function buildPersonalizedWhere(
   builder
     .withProcessedFilter(true)
     .withLowQualityFilter(filters.excludeLowQuality === true)
+    .withOffTopicFilter(filters.includeOffTopic === true)
     .withCategoryFilter(filters.category)
     .withSearchFilter(filters.search)
     .withDateRangeFilter({
