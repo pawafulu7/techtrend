@@ -402,6 +402,7 @@ console.error(`[INFO] 現在時刻: ${new Date().toLocaleString('ja-JP')}`);
 console.error('[INFO] 更新スケジュール:');
 console.error('   - RSS系: 毎時0分');
 console.error('   - Embeddingリカバリ: 毎時15分');
+console.error('   - ストーリーのまとめ直し: 毎時45分');
 console.error('   - スクレイピング系: 0:30・12:30');
 console.error('   - Qiita Popular: 5:05・17:05');
 console.error('   - 要約生成: 毎日10:30（午前）');
@@ -414,6 +415,7 @@ let rssJobRunning = false;
 let scrapingJobRunning = false;
 let qiitaJobRunning = false;
 let embeddingRecoveryRunning = false;
+let storyAssignmentRunning = false;
 let trendReportJobRunning = false;
 
 // EmbeddingScheduler instance for auto-recovery
@@ -473,6 +475,30 @@ cron.schedule('15 * * * *', async () => {
     );
   } finally {
     embeddingRecoveryRunning = false;
+  }
+});
+
+// 同じ出来事の記事をストーリーにまとめ直す（毎時45分。issue #723）
+// RSS更新（毎時0分）の後、埋め込みが作られてから実行する
+cron.schedule('45 * * * *', async () => {
+  if (storyAssignmentRunning) {
+    console.error('[WARN] Story assignment job already running, skipping');
+    return;
+  }
+  storyAssignmentRunning = true;
+  try {
+    await runCommandWithTimeout(
+      'ストーリーのまとめ直し',
+      'npx tsx scripts/scheduled/assign-stories.ts',
+      5 * 60 * 1000
+    );
+  } catch (error) {
+    console.error(
+      '[ERROR] ストーリーのまとめ直しが失敗しました:',
+      error instanceof Error ? error.message : String(error)
+    );
+  } finally {
+    storyAssignmentRunning = false;
   }
 });
 
@@ -667,6 +693,7 @@ cron.schedule('30 14 * * *', async () => {
     console.error('[INFO] 次回の更新:');
     console.error('   - RSS系: 毎時0分');
     console.error('   - Embeddingリカバリ: 毎時15分');
+console.error('   - ストーリーのまとめ直し: 毎時45分');
     console.error('   - スクレイピング系: 0:30・12:30');
     console.error('   - Qiita Popular: 5:05・17:05');
     console.error('   - Daily Trend生成: 毎日14:30（JST）');

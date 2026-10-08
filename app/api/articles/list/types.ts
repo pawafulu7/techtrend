@@ -24,6 +24,9 @@ export interface LightweightArticle {
   updatedAt: Date | string;
   // Content length for reading time calculation (content itself excluded for performance)
   contentLength?: number | null;
+  // 同じ出来事をまとめたストーリー（issue #723）。storyId は代表の記事の ID
+  storyId?: string | null;
+  storySize?: number | null;
   // User-specific data (when includeUserData=true)
   isFavorited?: boolean;
   isRead?: boolean;

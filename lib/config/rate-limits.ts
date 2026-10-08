@@ -262,6 +262,14 @@ export const RATE_LIMIT_POLICIES = {
     notes: 'Tag cloud data',
     telemetryEvent: 'ratelimit.read.tags-cloud',
   },
+  'read:stories': {
+    points: 60,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'ip',
+    notes: 'Articles in the same story (expanded from the home list)',
+    telemetryEvent: 'ratelimit.read.stories',
+  },
   'read:favorite:batch': {
     points: 60,
     duration: 60,

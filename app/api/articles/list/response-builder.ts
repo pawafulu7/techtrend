@@ -288,7 +288,7 @@ export function buildOffsetResult(
  * Load favorite and read status maps for a list of article IDs.
  * Returns empty maps if loaders are not available (unauthenticated or missing userId).
  */
-async function loadUserDataMaps(
+export async function loadUserDataMaps(
   articleIds: string[],
   userId: string,
   bypassFavoriteL1: boolean

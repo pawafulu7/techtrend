@@ -359,6 +359,9 @@ export async function GET(request: NextRequest) {
           createdAt: true,
           updatedAt: true,
           contentLength: true, // Pre-calculated by DB trigger
+          // ホームの一覧で同じストーリーの記事をまとめるため（issue #723）
+          storyId: true,
+          storySize: true,
           tags: { select: { name: true } },
         },
         orderBy: [

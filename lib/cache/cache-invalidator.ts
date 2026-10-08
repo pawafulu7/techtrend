@@ -209,6 +209,20 @@ export class CacheInvalidator {
   }
 
   /**
+   * ストーリー（同じ出来事の記事のまとまり。issue #723）を書き直した後に、
+   * storyId・storySize を含む記事一覧のキャッシュを捨てる
+   */
+  async onStoriesUpdated(): Promise<void> {
+    await Promise.all([
+      this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.L1_PUBLIC)),
+      this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.L2_USER)),
+      this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.L3_SEARCH)),
+      this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.ARTICLES_LIGHTWEIGHT)),
+      this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.ARTICLES_API)),
+    ]);
+  }
+
+  /**
    * Refresh stale cache periodically
    * Updates daily popular article caches
    */

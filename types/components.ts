@@ -41,6 +41,8 @@ export interface ArticleListProps {
   onArticleClick?: (articleId?: string) => void;
   currentFilters?: Record<string, string>;
   className?: string;
+  /** 同じストーリーの記事を1枚にまとめる（issue #723。ホームの一覧で使う） */
+  groupStories?: boolean;
 }
 
 // 記事リストアイテム（リスト形式用）
