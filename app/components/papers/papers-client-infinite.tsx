@@ -189,50 +189,53 @@ export function PapersClientInfinite({
     <div
       ref={scrollContainerRef}
       id="papers-scroll-container"
-      className="relative flex-1 overflow-y-auto px-4 py-4 lg:px-6"
+      className="relative flex-1 overflow-y-auto py-4"
     >
-      {/* スクロール位置復元中のローディング表示 */}
-      {isRestoring && (
-        <ScrollRestorationLoading
-          currentPage={currentPage}
-          targetPages={targetPages}
-          onCancel={cancelRestoration}
-          itemsPerPage={PAGINATION.ITEMS_PER_PAGE}
-        />
-      )}
-
-      {isLoading ? (
-        <LoadingSpinner message="論文を読み込んでいます..." />
-      ) : allArticles.length > 0 ? (
-        <div className="relative">
-          <ArticleList
-            articles={allArticles}
-            viewMode={viewMode}
-            onArticleClick={handleArticleClick}
-            currentFilters={filters}
-            // arXiv の論文はほぼ画像が無いので、高さを揃えるための空の枠を並べない
-            thumbnailPlaceholder={false}
+      {/* スクロール領域は全幅のまま、中身を見出しと同じ 7xl にそろえる（Issue #700） */}
+      <div className="mx-auto w-full max-w-7xl px-4">
+        {/* スクロール位置復元中のローディング表示 */}
+        {isRestoring && (
+          <ScrollRestorationLoading
+            currentPage={currentPage}
+            targetPages={targetPages}
+            onCancel={cancelRestoration}
+            itemsPerPage={PAGINATION.ITEMS_PER_PAGE}
           />
+        )}
 
-          {/* Infinite Scrollトリガー */}
-          <InfiniteScrollTrigger
-            onIntersect={fetchNextPage}
-            hasNextPage={hasNextPage || false}
-            isFetchingNextPage={isFetchingNextPage}
-          />
-        </div>
-      ) : (
-        <div className="text-muted-foreground py-12 text-center">
-          論文が見つかりませんでした
-        </div>
-      )}
+        {isLoading ? (
+          <LoadingSpinner message="論文を読み込んでいます..." />
+        ) : allArticles.length > 0 ? (
+          <div className="relative">
+            <ArticleList
+              articles={allArticles}
+              viewMode={viewMode}
+              onArticleClick={handleArticleClick}
+              currentFilters={filters}
+              // arXiv の論文はほぼ画像が無いので、高さを揃えるための空の枠を並べない
+              thumbnailPlaceholder={false}
+            />
 
-      {/* ページネーションフォールバック */}
-      {!hasNextPage && allArticles.length > 0 && (
-        <div className="text-muted-foreground py-8 text-center text-sm">
-          すべての論文を表示しました
-        </div>
-      )}
+            {/* Infinite Scrollトリガー */}
+            <InfiniteScrollTrigger
+              onIntersect={fetchNextPage}
+              hasNextPage={hasNextPage || false}
+              isFetchingNextPage={isFetchingNextPage}
+            />
+          </div>
+        ) : (
+          <div className="text-muted-foreground py-12 text-center">
+            論文が見つかりませんでした
+          </div>
+        )}
+
+        {/* ページネーションフォールバック */}
+        {!hasNextPage && allArticles.length > 0 && (
+          <div className="text-muted-foreground py-8 text-center text-sm">
+            すべての論文を表示しました
+          </div>
+        )}
+      </div>
     </div>
   );
 }

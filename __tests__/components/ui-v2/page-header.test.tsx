@@ -51,7 +51,15 @@ describe('PageHeader', () => {
     const { container } = render(
       <PageHeader icon={Heart} title="お気に入り" variant="compact" />
     );
-    expect(container.firstChild).toHaveClass('p-3');
+    expect(container.firstChild).toHaveClass('pb-2');
+    expect(container.firstChild).not.toHaveClass('pb-4');
+  });
+
+  it('keeps the h1 size the same in both variants', () => {
+    const { rerender } = render(<PageHeader icon={Heart} title="お気に入り" />);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('text-h1');
+    rerender(<PageHeader icon={Heart} title="お気に入り" variant="compact" />);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('text-h1');
   });
 
   it('hides icon from screen readers', () => {

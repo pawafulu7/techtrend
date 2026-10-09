@@ -382,8 +382,8 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
         height={typeof window !== 'undefined' ? window.innerHeight : 1080}
       />
 
-      {/* Back button */}
-      <div className="absolute top-4 left-4">
+      {/* Back button と見出し。全画面のキャンバスなので、h1 は戻るボタンと同じ行に置く（Issue #700） */}
+      <div className="absolute top-4 left-4 flex items-center gap-3">
         <Button variant="ghost" asChild>
           <Link
             href={`/articles/${articleId}`}
@@ -393,6 +393,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
             記事詳細に戻る
           </Link>
         </Button>
+        <h1 className="font-heading text-foreground text-h1">関連記事グラフ</h1>
       </div>
 
       {/* CodexMCP: Legend card (always visible) */}
@@ -558,6 +559,10 @@ function GraphSkeleton() {
   return (
     <div className="dark flex h-screen w-full items-center justify-center bg-[var(--tt-color-surface)] scheme-dark">
       <div className="text-center">
+        {/* 読み込み中・失敗時も h1 を1つ置く（Issue #700） */}
+        <h1 className="font-heading text-foreground text-h1 mb-4">
+          関連記事グラフ
+        </h1>
         <div className="border-tt-text mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2"></div>
         <p className="text-tt-text">Loading relationship graph...</p>
       </div>
@@ -571,6 +576,9 @@ function GraphError({ error }: { error: Error }) {
   return (
     <div className="dark flex h-screen w-full items-center justify-center bg-[var(--tt-color-surface)] scheme-dark">
       <div className="text-center">
+        <h1 className="font-heading text-foreground text-h1 mb-4">
+          関連記事グラフ
+        </h1>
         <p className="mb-2 text-lg text-[var(--tt-color-negative)]">
           Failed to load graph
         </p>

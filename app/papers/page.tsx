@@ -13,6 +13,7 @@ import {
   ARXIV_SOURCE_NAME,
 } from '@/lib/constants/source-categories';
 import { PapersClientInfinite } from '@/app/components/papers/papers-client-infinite';
+import { PageHeader } from '@/components/ui-v2/page-header';
 
 interface PageProps {
   searchParams: Promise<{
@@ -42,48 +43,41 @@ export default async function PapersPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* メインエリア - サイドバーなし */}
-      <div className="flex-1 lg:flex lg:overflow-hidden">
-        {/* コンテンツエリア */}
-        {/* RootLayout が <main> を持つため section にする（ランドマーク重複の解消） */}
-        <section aria-label="論文一覧" className="flex-1 lg:flex lg:flex-col">
-          {/* ツールバー */}
-          <div className="flex-shrink-0 border-b border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] px-4 py-2 lg:px-6">
-            {/* 検索パネル展開時に全幅の行として折り返せるよう flex-wrap にする */}
-            <div className="flex flex-wrap items-center justify-between gap-y-2">
-              <div className="flex flex-shrink-0 items-center gap-2">
-                <div className="flex items-center gap-2 text-[var(--tt-color-info)]">
-                  <FileText className="h-5 w-5" />
-                  <span className="font-medium">{ARXIV_SOURCE_NAME}</span>
-                </div>
-              </div>
-
-              <div className="flex w-full basis-full flex-wrap items-center gap-2 lg:ml-4 lg:w-auto lg:basis-auto">
-                <MobileSearchToggle />
-                <div className="hidden lg:block">
-                  <SearchBox />
-                </div>
-                <div className="bg-border h-5 w-px" />
-                <ViewModeToggle currentMode={viewMode} />
-                <div className="bg-border h-5 w-px" />
-                <SortButtons initialSortBy={initialSortBy} />
-              </div>
+      {/* RootLayout が <main> を持つため section にする（ランドマーク重複の解消） */}
+      <section aria-label="論文一覧" className="flex min-h-0 flex-1 flex-col">
+        {/* 見出しとツールバー。ホームと同じく幅は 7xl にそろえる（Issue #700） */}
+        <div className="mx-auto w-full max-w-7xl flex-shrink-0 px-4 pt-3">
+          <PageHeader
+            icon={FileText}
+            title="論文"
+            description={`出典: ${ARXIV_SOURCE_NAME}`}
+            variant="compact"
+          />
+          {/* 検索パネル展開時に全幅の行として折り返せるよう flex-wrap にする */}
+          <div className="flex flex-wrap items-center gap-2 pb-2">
+            <MobileSearchToggle />
+            <div className="hidden lg:block">
+              <SearchBox />
             </div>
+            <div className="bg-border h-5 w-px" />
+            <ViewModeToggle currentMode={viewMode} />
+            <div className="bg-border h-5 w-px" />
+            <SortButtons initialSortBy={initialSortBy} />
           </div>
+        </div>
 
-          {/* 論文リスト */}
-          <Suspense
-            fallback={<LoadingSpinner message="論文を読み込んでいます..." />}
-          >
-            <PapersClientInfinite
-              key={`papers-${params.search || ''}-${params.tag || ''}`}
-              viewMode={viewMode}
-              sourceId={ARXIV_SOURCE_ID}
-              initialSortBy={initialSortBy}
-            />
-          </Suspense>
-        </section>
-      </div>
+        {/* 論文リスト */}
+        <Suspense
+          fallback={<LoadingSpinner message="論文を読み込んでいます..." />}
+        >
+          <PapersClientInfinite
+            key={`papers-${params.search || ''}-${params.tag || ''}`}
+            viewMode={viewMode}
+            sourceId={ARXIV_SOURCE_ID}
+            initialSortBy={initialSortBy}
+          />
+        </Suspense>
+      </section>
     </div>
   );
 }

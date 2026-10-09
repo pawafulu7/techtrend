@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, AlertCircle, History, Trash2 } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
+import { PageHeader } from '@/components/ui-v2/page-header';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { HistoryArticleCard } from '@/app/components/article/history-card';
@@ -192,49 +193,40 @@ export function HistoryContent() {
   // Loading state (hasFetchedを追加してクライアントナビゲーション時も確実にスケルトン表示)
   if (loading || !hasFetched) {
     return (
-      <div className="px-4 py-3 lg:px-6">
-        {/* Header skeleton (toolbar style) */}
-        <div className="flex flex-wrap items-center gap-2 pb-3">
-          <div className="bg-muted h-5 w-5 animate-pulse rounded" />
-          <div className="bg-muted h-5 w-24 animate-pulse rounded" />
-          <div className="bg-muted h-5 w-16 animate-pulse rounded" />
-          <div className="flex-1" />
-          <div className="bg-muted h-9 w-28 animate-pulse rounded" />
-        </div>
+      <div className="mx-auto w-full max-w-7xl px-4 py-3">
+        {/* 見出しは読み込み中も出す（h1 を常に1つ置く。Issue #700） */}
+        <PageHeader
+          icon={History}
+          title="閲覧履歴"
+          actions={<div className="bg-muted h-9 w-28 animate-pulse rounded" />}
+        />
         <HistorySkeletonGrid />
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-3 lg:px-6">
-      {/* Toolbar header */}
-      <header className="flex flex-wrap items-center gap-2 pb-3">
-        <History className="text-primary h-5 w-5" aria-hidden="true" />
-        <h1 className="text-foreground text-h1">閲覧履歴</h1>
-        <span
-          className="text-muted-foreground text-sm"
-          role="status"
-          aria-live="polite"
-          aria-label={`閲覧履歴 ${views.length}件`}
-        >
-          ({views.length}件)
-        </span>
-        <div className="flex-1" />
-        {views.length > 0 && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={clearHistory}
-            disabled={clearing}
-            className="min-h-[44px] gap-2"
-            aria-label="閲覧履歴をすべてクリア"
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-            {clearing ? 'クリア中...' : '履歴をクリア'}
-          </Button>
-        )}
-      </header>
+    <div className="mx-auto w-full max-w-7xl px-4 py-3">
+      <PageHeader
+        icon={History}
+        title="閲覧履歴"
+        count={{ value: views.length, label: `${views.length}件` }}
+        actions={
+          views.length > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={clearHistory}
+              disabled={clearing}
+              className="min-h-[44px] gap-2"
+              aria-label="閲覧履歴をすべてクリア"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              {clearing ? 'クリア中...' : '履歴をクリア'}
+            </Button>
+          )
+        }
+      />
 
       {/* Error state */}
       {error && (

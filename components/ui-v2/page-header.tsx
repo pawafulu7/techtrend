@@ -8,17 +8,22 @@ export interface PageHeaderProps extends React.HTMLAttributes<HTMLElement> {
   /** ページタイトル（h1として表示） */
   title: string;
   /** 説明文（オプション） */
-  description?: string;
+  description?: React.ReactNode;
   /** 件数表示（オプション、aria-live対応） */
   count?: { value: number; label: string };
   /** 右側のアクションエリア（ボタン等） */
   actions?: React.ReactNode;
-  /** スタイルバリアント */
+  /** 下の余白の大きさ。compact は一覧のツールバーの直前など、詰めたいときに使う */
   variant?: 'default' | 'compact';
   /** セマンティック要素の選択 */
   as?: 'header' | 'div';
 }
 
+/**
+ * ページの見出し行（h1）。一覧型・分析型の画面で使う（Issue #700）。
+ * 枠や塗りのアイコン箱は付けず、アイコン・h1・件数・アクションを1行に並べる。
+ * 縦の領域を食わないことと、画面ごとに h1 の大きさがばらつかないことを優先している。
+ */
 const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
   (
     {
@@ -37,64 +42,42 @@ const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
     return (
       <Component
         ref={ref as React.Ref<never>}
+        data-slot="page-header"
         className={cn(
-          'rounded-lg shadow-sm transition-colors',
-          // 全体のborderをTTトークンで指定
-          'border border-(--tt-color-border)',
-          // 左アクセント色（primary color）
-          'border-l-primary border-l-4',
-          'bg-(--tt-color-surface)',
-          variant === 'default' && 'min-h-[4.5rem] p-4 sm:p-6',
-          variant === 'compact' && 'min-h-[3.5rem] p-3',
+          'flex flex-wrap items-start gap-x-4 gap-y-2',
+          variant === 'default' && 'pb-4',
+          variant === 'compact' && 'pb-2',
           className
         )}
         {...props}
       >
-        <div
-          className={cn(
-            'flex items-start gap-3',
-            variant === 'compact' && 'items-center gap-2'
-          )}
-        >
-          <div
-            className={cn(
-              'flex shrink-0 items-center justify-center rounded-xl',
-              'bg-primary text-primary-foreground shadow-md',
-              variant === 'default' && 'h-12 w-12',
-              variant === 'compact' && 'h-10 w-10'
+        {/* basis を auto（内容の幅）にする。flex-1（basis 0）だと折り返しの判定で見出しの幅が 0 と
+            みなされ、狭い画面でアクションが同じ行に残って見出しを1文字ずつに押しつぶす */}
+        <div className="min-w-0 flex-auto">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-primary flex shrink-0" aria-hidden="true">
+              <Icon className="h-5 w-5" />
+            </span>
+            <h1 className="font-heading text-foreground text-h1">{title}</h1>
+            {count && (
+              <span
+                className="text-sm text-(--tt-color-text-muted)"
+                role="status"
+                aria-live="polite"
+              >
+                ({count.label})
+              </span>
             )}
-            aria-hidden="true"
-          >
-            <Icon
-              className={cn(
-                variant === 'default' && 'h-6 w-6',
-                variant === 'compact' && 'h-5 w-5'
-              )}
-            />
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-heading text-foreground text-h1">{title}</h1>
-              {count && (
-                <span
-                  className="text-sm text-(--tt-color-text-muted)"
-                  role="status"
-                  aria-live="polite"
-                >
-                  ({count.label})
-                </span>
-              )}
+          {description && (
+            <div className="text-muted-foreground mt-0.5 text-sm">
+              {description}
             </div>
-            {description && (
-              <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
-                {description}
-              </p>
-            )}
-          </div>
-          {actions && (
-            <div className="flex shrink-0 items-center gap-2">{actions}</div>
           )}
         </div>
+        {actions && (
+          <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        )}
       </Component>
     );
   }

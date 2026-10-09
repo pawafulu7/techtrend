@@ -31,7 +31,7 @@ export function HomeListStatusBar({
   shownCount,
 }: HomeListStatusBarProps) {
   return (
-    <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 pb-2 text-sm lg:px-6">
+    <div className="text-muted-foreground mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 pb-2 text-sm">
       <div className="flex items-center gap-1">
         <DataFreshness at={fetchedAt} kind="fetched" />
         <Button

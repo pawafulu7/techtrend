@@ -15,7 +15,9 @@ Some **bold** text and a [link](https://example.com).`;
         />
       );
 
-      expect(screen.getByRole('heading', { level: 1, name: 'Heading' })).toBeInTheDocument();
+      // 「#」は h2 にする（記事詳細の h1 は記事タイトルだけ。Issue #700）
+      expect(screen.getByRole('heading', { level: 2, name: 'Heading' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
       expect(screen.getByText('bold')).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'link' })).toBeInTheDocument();
     });

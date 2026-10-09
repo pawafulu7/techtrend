@@ -3,9 +3,11 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PageHeader } from '@/components/ui-v2/page-header';
 import {
   ChevronLeft,
   ChevronRight,
+  GitCompare,
   AlertCircle,
   Info,
   RefreshCw,
@@ -160,52 +162,54 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
 
   return (
     <div>
-      {/* Header */}
-      <header className="bg-background/80 sticky top-0 z-10 border-b backdrop-blur-sm">
-        <div className="container mx-auto max-w-6xl px-4">
-          <div className="flex min-h-14 items-center justify-between py-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handlePreviousWeek}
-              disabled={loading}
-              className="gap-1 text-xs"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">前週</span>
-            </Button>
-
-            <div className="text-center">
-              <h1 className="text-h1 tracking-tight">週間トピック変化</h1>
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-muted-foreground text-xs">
-                  {formatWeekDisplay(displayWeek)}
-                </span>
+      {/* 見出しと週の移動。読み進めても週を切り替えられるよう上に固定する。幅はサブナビと同じ 7xl（Issue #700） */}
+      <div className="bg-background/80 sticky top-0 z-10 border-b backdrop-blur-sm">
+        <div className="mx-auto w-full max-w-7xl px-4 py-3">
+          <PageHeader
+            icon={GitCompare}
+            title="週間トピック変化"
+            className="pb-0"
+            description={
+              <span className="flex items-center gap-2">
+                {formatWeekDisplay(displayWeek)}
                 {displayWeek === currentWeek && (
                   <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-[10px] font-medium">
                     今週
                   </span>
                 )}
-              </div>
-            </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleNextWeek}
-              disabled={loading || !canGoNext}
-              className="gap-1 text-xs"
-            >
-              <span className="hidden sm:inline">次週</span>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+              </span>
+            }
+            actions={
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePreviousWeek}
+                  disabled={loading}
+                  className="gap-1"
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                  前週
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextWeek}
+                  disabled={loading || !canGoNext}
+                  className="gap-1"
+                >
+                  次週
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </>
+            }
+          />
         </div>
-      </header>
+      </div>
 
       {/* Error state */}
       {error && !loading && (
-        <div className="container mx-auto max-w-6xl px-4 py-4">
+        <div className="mx-auto w-full max-w-7xl px-4 py-4">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between">
@@ -226,7 +230,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
 
       {/* Fallback info banner */}
       {isFallback && fallbackRequestedWeek && (
-        <div className="container mx-auto max-w-6xl px-4 pt-4">
+        <div className="mx-auto w-full max-w-7xl px-4 pt-4">
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
@@ -241,7 +245,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
 
       {/* Loading state。取得に失敗したときは上に失敗を出し、空状態（データがありません）は出さない（issue #701） */}
       {loading ? (
-        <div className="container mx-auto max-w-6xl px-4 py-8">
+        <div className="mx-auto w-full max-w-7xl px-4 py-8">
           <div className="animate-pulse space-y-6">
             <div className="bg-muted h-16 rounded-lg" />
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -261,7 +265,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
           onHoverLeave={() => setHoveredTopic(null)}
         />
       ) : error ? null : (
-        <div className="container mx-auto max-w-6xl px-4 py-16 text-center">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 text-center">
           <div className="bg-muted mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full">
             <Minus className="text-muted-foreground h-8 w-8" />
           </div>

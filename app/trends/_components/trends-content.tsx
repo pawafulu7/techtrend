@@ -14,6 +14,7 @@ import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { TrendingUp, Sparkles, BarChart3, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ErrorState } from '@/components/ui-v2/error-state';
+import { PageHeader } from '@/components/ui-v2/page-header';
 import Link from 'next/link';
 import { TrendLineChart, SourcePieChart } from '@/app/components/trends';
 import { TrendingKeywordCard } from '@/app/components/trends/overview/TrendingKeywordCard';
@@ -177,8 +178,9 @@ export function TrendsContent({
   );
 
   return (
-    <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
-      <h1 className="sr-only">トレンド概要</h1>
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6">
+      {/* 間隔は親の space-y-8 が持つので、見出しの下の余白は消す */}
+      <PageHeader icon={BarChart3} title="トレンド概要" className="pb-0" />
 
       {/* Stats Bar */}
       <TrendStatsBar

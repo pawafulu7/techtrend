@@ -224,12 +224,13 @@ export function ReaderArticleDetail({
             </div>
 
             {/* Title */}
-            <h1
+            {/* ページの h1 はツールバーの「リーダー」。記事タイトルは見た目を保ったまま h2 にする（Issue #700） */}
+            <h2
               className="text-h1 mt-5 tracking-tight text-[var(--tt-color-text)]"
               aria-live="polite"
             >
               {displayTitle}
-            </h1>
+            </h2>
 
             {/* Tags */}
             {article.tags && article.tags.length > 0 && (

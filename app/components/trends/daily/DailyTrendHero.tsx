@@ -3,17 +3,9 @@
 import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { stripInternalArticleRefs } from '@/lib/utils/trend-ai-text';
 import { useMemo } from 'react';
-import {
-  Sparkles,
-  Calendar,
-  TrendingUp,
-  FileText,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+import { Sparkles, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui-v2/card-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
-import { Button } from '@/components/ui-v2/button-v2';
 import { cn } from '@/lib/utils';
 import {
   parseTrendAiSummary,
@@ -25,17 +17,10 @@ import { StructuredAISummaryView } from './StructuredAISummaryView';
 interface DailyTrendHeroProps {
   aiSummary?: string;
   articleCount: number;
-  periodStart: string;
   generatedAt?: string;
   topTags?: { name: string; count: number }[];
   topArticles?: TopArticleInfo[];
   evidenceArticles?: EvidenceArticleMap;
-  navigation?: {
-    prevDate: string | null;
-    nextDate: string | null;
-  };
-  onPrevDay?: () => void;
-  onNextDay?: () => void;
 }
 
 const EMPTY_TOP_ARTICLES: TopArticleInfo[] = [];
@@ -114,30 +99,12 @@ function LegacyAISummaryView({ summary }: { summary: LegacyAISummary }) {
 export function DailyTrendHero({
   aiSummary,
   articleCount,
-  periodStart,
   generatedAt,
   topTags = [],
   topArticles,
-  navigation,
-  onPrevDay,
-  onNextDay,
   evidenceArticles = {},
 }: DailyTrendHeroProps) {
   const safeTopArticles = topArticles ?? EMPTY_TOP_ARTICLES;
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) {
-      return '日付不明';
-    }
-    return date.toLocaleDateString('ja-JP', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short',
-      timeZone: 'Asia/Tokyo',
-    });
-  };
-
   const formatDateTime = (dateStr: string) => {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return '日時不明';
@@ -179,62 +146,9 @@ export function DailyTrendHero({
         }}
       />
 
-      <div className="relative container mx-auto px-4 py-6 sm:py-8">
-        {/* Header with navigation - compact */}
-        <div className="animate-fade-in mb-4">
-          <div className="flex items-center justify-between">
-            {/* Left: Previous day button */}
-            <div className="w-24 sm:w-28">
-              {navigation?.prevDate && onPrevDay && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onPrevDay}
-                  className="gap-1"
-                  aria-label="前日のトレンドを表示"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="hidden sm:inline" aria-hidden="true">
-                    前日
-                  </span>
-                </Button>
-              )}
-            </div>
-
-            {/* Center: Title and date */}
-            <div className="flex items-center gap-3">
-              <div className="bg-primary/10 rounded-xl p-2">
-                <TrendingUp className="text-primary h-5 w-5" />
-              </div>
-              <div className="text-center sm:text-left">
-                <h1 className="text-h1 tracking-tight">Daily Trend</h1>
-                <p className="text-muted-foreground flex items-center justify-center gap-2 text-sm sm:justify-start">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {formatDate(periodStart)}
-                </p>
-              </div>
-            </div>
-
-            {/* Right: Next day button */}
-            <div className="flex w-24 justify-end sm:w-28">
-              {navigation?.nextDate && onNextDay && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onNextDay}
-                  className="gap-1"
-                  aria-label="翌日のトレンドを表示"
-                >
-                  <span className="hidden sm:inline" aria-hidden="true">
-                    翌日
-                  </span>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-
+      <div className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:py-8">
+        {/* Issue #700: 見出し・日付・前日／翌日の移動は、読み込み中も出せるよう
+            daily-trend-content の PageHeader が持つ */}
         {/* Stats Bar - Compact */}
         <div className="animate-fade-in mb-4 flex flex-wrap items-center gap-3">
           <Badge

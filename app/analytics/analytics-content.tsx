@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
+import { PageHeader } from '@/components/ui-v2/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { analyticsTracker, ReadingStats } from '@/lib/analytics/tracking';
 import {
@@ -32,6 +33,7 @@ import {
   Target,
   Download,
   AlertCircle,
+  LineChart as LineChartIcon,
 } from 'lucide-react';
 import {
   format,
@@ -185,8 +187,10 @@ export default function AnalyticsContent() {
     return (
       <div
         data-testid="loading-spinner"
-        className="container mx-auto px-4 py-8"
+        className="mx-auto w-full max-w-7xl px-4 pt-3 pb-6"
       >
+        {/* 見出しは読み込み中も出す（h1 を常に1つ置く。Issue #700） */}
+        <PageHeader icon={LineChartIcon} title="読書分析" className="pb-6" />
         <div className="flex h-64 items-center justify-center">
           <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
         </div>
@@ -196,8 +200,9 @@ export default function AnalyticsContent() {
 
   if (!isEnabled) {
     return (
-      <div className="container mx-auto max-w-2xl px-4 py-8">
-        <Card>
+      <div className="mx-auto w-full max-w-7xl px-4 pt-3 pb-6">
+        <PageHeader icon={LineChartIcon} title="読書分析" className="pb-6" />
+        <Card className="mx-auto max-w-2xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5" />
@@ -226,19 +231,23 @@ export default function AnalyticsContent() {
 
   return (
     <div
-      className="container mx-auto px-4 py-8"
+      className="mx-auto w-full max-w-7xl px-4 pt-3 pb-6"
       data-testid="analytics-content"
     >
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-h1">読書分析</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportData}>
-            <Download className="mr-2 h-4 w-4" />
-            エクスポート
-          </Button>
-          <AnalyticsSettings />
-        </div>
-      </div>
+      <PageHeader
+        icon={LineChartIcon}
+        title="読書分析"
+        className="pb-6"
+        actions={
+          <>
+            <Button variant="outline" onClick={exportData}>
+              <Download className="mr-2 h-4 w-4" />
+              エクスポート
+            </Button>
+            <AnalyticsSettings />
+          </>
+        }
+      />
 
       {/* サマリーカード */}
       <div className="mb-6 grid gap-4 md:grid-cols-4">

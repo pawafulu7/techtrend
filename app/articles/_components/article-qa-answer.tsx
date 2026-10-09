@@ -68,6 +68,8 @@ export function ArticleQaAnswer({
               a: ({ node: _node, ...props }) => (
                 <a {...props} target="_blank" rel="noopener noreferrer" />
               ),
+              // 回答の Markdown の「#」は h2 にする。記事詳細の h1 は記事タイトルだけにする（Issue #700）
+              h1: ({ node: _node, ...props }) => <h2 {...props} />,
             }}
           >
             {answer}

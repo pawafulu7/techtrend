@@ -330,6 +330,8 @@ export function AnswerContent({
                 a: ({ node: _node, ...props }) => (
                   <a {...props} target="_blank" rel="noopener noreferrer" />
                 ),
+                // 回答の Markdown の「#」は h2 にする。ページの h1 は画面の見出しだけにする（Issue #700）
+                h1: ({ node: _node, ...props }) => <h2 {...props} />,
                 ol: (props) => (
                   <OlComponent {...props} hasEmbeddedIds={hasEmbeddedIds} />
                 ),

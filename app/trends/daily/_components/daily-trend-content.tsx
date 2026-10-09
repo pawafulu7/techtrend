@@ -7,8 +7,16 @@ import {
   CategoryDistribution,
 } from '@/app/components/trends/daily';
 import { Button } from '@/components/ui-v2/button-v2';
-import { RefreshCw, AlertCircle, Info } from 'lucide-react';
+import {
+  RefreshCw,
+  AlertCircle,
+  Info,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PageHeader } from '@/components/ui-v2/page-header';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
 import type { TrendReportData, DailyTrendResponse } from './daily-data';
 import { DAILY_REPORT_NOT_FOUND_ERROR } from '@/lib/constants/daily-trend';
@@ -16,6 +24,18 @@ import { DAILY_REPORT_NOT_FOUND_ERROR } from '@/lib/constants/daily-trend';
 function formatDateJP(dateStr: string): string {
   const [, m, d] = dateStr.split('-');
   return `${Number(m)}月${Number(d)}日`;
+}
+
+function formatReportDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '日付不明';
+  return date.toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    timeZone: 'Asia/Tokyo',
+  });
 }
 
 const NOT_FOUND_MESSAGE = 'この日のトレンドレポートはまだ生成されていません';
@@ -145,9 +165,54 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
 
   return (
     <div>
+      {/* 見出しは読み込み中・エラー時も出す（h1 を常に1つ置く。Issue #700） */}
+      <div className="mx-auto w-full max-w-7xl px-4 pt-6">
+        <PageHeader
+          icon={Calendar}
+          title="デイリートレンド"
+          className="pb-0"
+          description={
+            report ? formatReportDate(String(report.periodStart)) : undefined
+          }
+          actions={
+            // 読み込み中もボタンを出したまま押せなくする（見出し行の高さとフォーカスを保つ）
+            report && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToPreviousDay}
+                  disabled={loading || !navigation.prevDate}
+                  className="gap-1"
+                  aria-label="前日のトレンドを表示"
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                  <span className="hidden sm:inline" aria-hidden="true">
+                    前日
+                  </span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToNextDay}
+                  disabled={loading || !navigation.nextDate}
+                  className="gap-1"
+                  aria-label="翌日のトレンドを表示"
+                >
+                  <span className="hidden sm:inline" aria-hidden="true">
+                    翌日
+                  </span>
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </>
+            )
+          }
+        />
+      </div>
+
       {/* Error state */}
       {error && (
-        <div className="container mx-auto px-4 py-8">
+        <div className="mx-auto w-full max-w-7xl px-4 py-8">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -180,7 +245,7 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
 
       {/* Main content */}
       {loading ? (
-        <div className="container mx-auto px-4 py-12">
+        <div className="mx-auto w-full max-w-7xl px-4 py-12">
           <div className="animate-pulse space-y-8">
             <div className="bg-muted h-64 rounded-xl" />
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -193,7 +258,7 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
         <>
           {/* Fallback info banner */}
           {isFallback && fallbackInfo && (
-            <div className="container mx-auto px-4 pt-4">
+            <div className="mx-auto w-full max-w-7xl px-4 pt-4">
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
@@ -206,24 +271,20 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
             </div>
           )}
 
-          {/* Hero section with AI summary and navigation */}
+          {/* Hero section with AI summary */}
           <DailyTrendHero
             aiSummary={report.aiSummary}
             articleCount={report.articleCount}
-            periodStart={String(report.periodStart)}
             generatedAt={
               report.generatedAt ? String(report.generatedAt) : undefined
             }
             topTags={report.tags}
             topArticles={report.topArticles}
-            navigation={navigation}
-            onPrevDay={goToPreviousDay}
-            onNextDay={goToNextDay}
             evidenceArticles={evidenceArticles}
           />
 
           {/* Content sections */}
-          <div className="container mx-auto px-4 py-8">
+          <div className="mx-auto w-full max-w-7xl px-4 py-8">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
               {/* Top articles - 7 columns */}
               <div className="lg:col-span-7">

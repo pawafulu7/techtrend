@@ -1,20 +1,26 @@
 import { Card, CardContent, CardHeader } from '@/components/ui-v2/card-v2';
+import { LineChart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/ui-v2/page-header';
 
 export function AnalyticsSkeleton() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* ヘッダー */}
-      <div className="flex justify-between items-center mb-6">
-        <Skeleton className="h-9 w-32" />
-        <div className="flex gap-2">
-          <Skeleton className="h-10 w-32" />
-          <Skeleton className="h-10 w-10" />
-        </div>
-      </div>
+    <div className="mx-auto w-full max-w-7xl px-4 pt-3 pb-6">
+      {/* 見出しは読み込み中も出す（h1 を常に1つ置く。Issue #700） */}
+      <PageHeader
+        icon={LineChart}
+        title="読書分析"
+        className="pb-6"
+        actions={
+          <>
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-10" />
+          </>
+        }
+      />
 
       {/* サマリーカード */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
+      <div className="mb-6 grid gap-4 md:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -22,7 +28,7 @@ export function AnalyticsSkeleton() {
               <Skeleton className="h-4 w-4" />
             </CardHeader>
             <CardContent>
-              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="mb-1 h-8 w-16" />
               <Skeleton className="h-3 w-12" />
             </CardContent>
           </Card>
