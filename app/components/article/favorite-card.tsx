@@ -131,7 +131,7 @@ export function FavoriteArticleCard({
     >
       {/* Header: Source + Favorited At Badge + Published At */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {/* Source */}
             <SourceLabel name={article.companyName ?? article.source.name} />

@@ -24,7 +24,8 @@ export function ArticleListItem({
   onSelect,
 }: ArticleListItemProps) {
   const [erroredThumbnail, setErroredThumbnail] = useState<string | null>(null);
-  const thumbnailError = erroredThumbnail === article.thumbnail;
+  const thumbnailError =
+    erroredThumbnail !== null && erroredThumbnail === article.thumbnail;
   const displayTitle = article.translatedTitle || article.title;
   const thumbnailSrc =
     hasValidThumbnail(article.thumbnail) && !thumbnailError

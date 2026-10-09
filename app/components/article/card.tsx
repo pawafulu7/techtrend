@@ -53,7 +53,8 @@ export function ArticleCard({
   // T1: Thumbnail display with validation and error fallback
   // 失敗した URL を覚える。真偽値だと、再取得で同じカードに別の画像が届いても出せない
   const [erroredThumbnail, setErroredThumbnail] = useState<string | null>(null);
-  const thumbnailError = erroredThumbnail === article.thumbnail;
+  const thumbnailError =
+    erroredThumbnail !== null && erroredThumbnail === article.thumbnail;
   const thumbnailSrc =
     hasValidThumbnail(article.thumbnail) && !thumbnailError
       ? article.thumbnail

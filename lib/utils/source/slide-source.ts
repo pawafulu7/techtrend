@@ -1,4 +1,5 @@
-// サムネイルがスライドの1枚目になるソース。切り抜くと文字が欠けるので、一覧・詳細とも全体を収めて表示する
+// サムネイルがスライドの1枚目になるソース。切り抜くと文字が欠けるので、全体を収めて表示する。
+// 一覧のカードは記事 URL のホストでも判定する（isSlideArticle）。詳細ページはソース名だけで判定する
 const SLIDE_SOURCE_NAMES = new Set(['Speaker Deck', 'Docswell']);
 const SLIDE_HOSTS = new Set(['speakerdeck.com', 'docswell.com']);
 
