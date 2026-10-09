@@ -202,30 +202,30 @@ test.describe('テーマ切り替え機能', () => {
   });
 
   test('ダークモードでテキストが読みやすい', async ({ page }) => {
-    // ダークモードに設定
-    await page.evaluate(() => {
-      document.documentElement.classList.add('dark');
+    // ダークモードに設定（ページ読み込み前に設定）。beforeEach の初期化スクリプトが読み込みのたびに
+    // localStorage を消すので、evaluate で設定すると reload で消えてライトモードのまま検査してしまう
+    await page.addInitScript(() => {
       localStorage.setItem('theme', 'dark');
     });
     await page.reload();
     await waitForPageLoad(page);
-    
+    await expect(page.locator('html')).toHaveClass(/dark/, { timeout: 5000 });
+
     // 記事カードの要約テキストを確認
     const summaryText = page.locator(SELECTORS.ARTICLE_SUMMARY).first();
-    if (await summaryText.isVisible()) {
-      const textColor = await summaryText.evaluate(el => 
-        window.getComputedStyle(el).color
-      );
-      
-      // RGB値を解析
-      const rgbMatch = textColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-      if (rgbMatch) {
-        const [_, r, g, b] = rgbMatch.map(Number);
-        // ダークモードでは明るめのグレー（最低でもRGB各値が100以上）
-        expect(r).toBeGreaterThan(100);
-        expect(g).toBeGreaterThan(100);
-        expect(b).toBeGreaterThan(100);
-      }
+    await expect(summaryText).toBeVisible();
+    const textColor = await summaryText.evaluate(el =>
+      window.getComputedStyle(el).color
+    );
+
+    // RGB値を解析
+    const rgbMatch = textColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (rgbMatch) {
+      const [_, r, g, b] = rgbMatch.map(Number);
+      // ダークモードでは明るめのグレー（最低でもRGB各値が100以上）
+      expect(r).toBeGreaterThan(100);
+      expect(g).toBeGreaterThan(100);
+      expect(b).toBeGreaterThan(100);
     }
     
     // メインコンテンツの背景とテキストのコントラストを確認（最初の要素を使用）
