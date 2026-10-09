@@ -1,6 +1,7 @@
 'use client';
 
 import ReactMarkdown from 'react-markdown';
+import { shiftedMarkdownHeadings } from '@/app/components/common/markdown-headings';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 
@@ -60,16 +61,16 @@ export function ArticleQaAnswer({
       {hasAnswer && (
         <div
           data-testid="qa-answer-markdown"
-          className="prose prose-sm prose-h1:text-h1 prose-h2:text-h2 prose-h3:text-h3 prose-headings:font-semibold prose-headings:text-[var(--tt-color-text)] prose-p:text-[var(--tt-color-text)] prose-a:text-primary prose-strong:text-[var(--tt-color-text)] prose-li:text-[var(--tt-color-text)] max-w-none"
+          className="prose prose-sm prose-h2:text-h2 prose-h3:text-h3 prose-headings:font-semibold prose-headings:text-[var(--tt-color-text)] prose-p:text-[var(--tt-color-text)] prose-a:text-primary prose-strong:text-[var(--tt-color-text)] prose-li:text-[var(--tt-color-text)] max-w-none"
         >
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkBreaks]}
             components={{
+              // 回答の見出しは1段ずつ下げる。記事詳細の h1 は記事タイトルだけにする（Issue #700）
+              ...shiftedMarkdownHeadings,
               a: ({ node: _node, ...props }) => (
                 <a {...props} target="_blank" rel="noopener noreferrer" />
               ),
-              // 回答の Markdown の「#」は h2 にする。記事詳細の h1 は記事タイトルだけにする（Issue #700）
-              h1: ({ node: _node, ...props }) => <h2 {...props} />,
             }}
           >
             {answer}

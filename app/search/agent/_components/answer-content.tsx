@@ -3,6 +3,7 @@
 import React, { useMemo, useDeferredValue } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
+import { shiftedMarkdownHeadings } from '@/app/components/common/markdown-headings';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkExtractArticleId from './remark-extract-article-id';
@@ -320,18 +321,18 @@ export function AnswerContent({
 
       {!showEmptyState && !useCardDisplay && (
         <div
-          className="prose prose-sm prose-h1:text-h1 prose-h2:text-h2 prose-h3:text-h3 dark:prose-invert mb-4 w-full max-w-none md:max-w-4xl xl:max-w-5xl"
+          className="prose prose-sm prose-h2:text-h2 prose-h3:text-h3 dark:prose-invert mb-4 w-full max-w-none md:max-w-4xl xl:max-w-5xl"
           data-testid="agent-answer-markdown"
         >
           <ListDepthContext.Provider value={0}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
               components={{
+                // 回答の見出しは1段ずつ下げる。ページの h1 は画面の見出しだけにする（Issue #700）
+                ...shiftedMarkdownHeadings,
                 a: ({ node: _node, ...props }) => (
                   <a {...props} target="_blank" rel="noopener noreferrer" />
                 ),
-                // 回答の Markdown の「#」は h2 にする。ページの h1 は画面の見出しだけにする（Issue #700）
-                h1: ({ node: _node, ...props }) => <h2 {...props} />,
                 ol: (props) => (
                   <OlComponent {...props} hasEmbeddedIds={hasEmbeddedIds} />
                 ),

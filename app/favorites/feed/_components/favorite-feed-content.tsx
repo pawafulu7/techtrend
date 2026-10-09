@@ -203,10 +203,16 @@ export function FavoriteFeedContent() {
       <PageHeader
         icon={Newspaper}
         title="お気に入りフィード"
-        count={{
-          value: articleCount,
-          label: `${folderCount}ソースから${articleCount}件`,
-        }}
+        // 件数は読み上げの対象（live region）なので、読み込み中・失敗時は出さない。
+        // フォルダーを切り替えた直後は、新しいソース数と前の記事数が組み合わさるため
+        count={
+          loading || fetchError
+            ? undefined
+            : {
+                value: articleCount,
+                label: `${folderCount}ソースから${articleCount}件`,
+              }
+        }
         actions={
           <>
             <Select

@@ -383,8 +383,8 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
         height={typeof window !== 'undefined' ? window.innerHeight : 1080}
       />
 
-      {/* Back button と見出し。全画面のキャンバスなので、h1 は戻るボタンと同じ行に置く（Issue #700） */}
-      <div className="absolute top-4 left-4 flex items-center gap-3">
+      {/* Back button と見出し。h1 は戻るボタンの下に置く。同じ行だと幅 1000px 未満で中央の深さ切り替えと重なる（Issue #700） */}
+      <div className="absolute top-4 left-4 flex flex-col items-start gap-1">
         <Button variant="ghost" asChild>
           <Link
             href={`/articles/${articleId}`}
@@ -398,7 +398,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
       </div>
 
       {/* CodexMCP: Legend card (always visible) */}
-      <div className="absolute top-16 left-4 max-w-xs rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 p-4 shadow-xl">
+      <div className="absolute top-28 left-4 max-w-xs rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 p-4 shadow-xl">
         <h3 className="text-tt-text text-h3 mb-3 flex items-center gap-2">
           <Network className="h-4 w-4" />
           グラフの見方

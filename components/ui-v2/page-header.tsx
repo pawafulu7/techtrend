@@ -64,6 +64,7 @@ const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
                 className="text-sm text-(--tt-color-text-muted)"
                 role="status"
                 aria-live="polite"
+                aria-label={`${title} ${count.label}`}
               >
                 ({count.label})
               </span>

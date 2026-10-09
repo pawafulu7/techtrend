@@ -175,7 +175,7 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
             report ? formatReportDate(String(report.periodStart)) : undefined
           }
           actions={
-            // 読み込み中もボタンを出したまま押せなくする（見出し行の高さとフォーカスを保つ）
+            // 読み込み中もボタンを出したまま押せなくする（見出し行の高さを保つ）
             report && (
               <>
                 <Button

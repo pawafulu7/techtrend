@@ -80,7 +80,7 @@ test.describe('AI Agent Search E2E', () => {
     await ctaLink.click();
     await expect(page).toHaveURL('/search/agent');
 
-    // Verify page loaded correctly (PageHeader was removed, verify search input instead)
+    // Verify page loaded correctly (verify the search input)
     const input = page.getByRole('textbox', { name: 'AI検索クエリ入力' });
     await expect(input).toBeVisible({ timeout: 10000 });
   });

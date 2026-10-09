@@ -55,6 +55,24 @@ describe('PageHeader', () => {
     expect(container.firstChild).not.toHaveClass('pb-4');
   });
 
+  it('does not render 0 for falsy description and actions', () => {
+    const { container } = render(
+      <PageHeader icon={Heart} title="お気に入り" description={0} actions={0} />
+    );
+    expect(container).not.toHaveTextContent('0');
+  });
+
+  it('names the count with the title for screen readers', () => {
+    render(
+      <PageHeader
+        icon={Heart}
+        title="閲覧履歴"
+        count={{ value: 3, label: '3件' }}
+      />
+    );
+    expect(screen.getByRole('status')).toHaveAccessibleName('閲覧履歴 3件');
+  });
+
   it('keeps the h1 size the same in both variants', () => {
     const { rerender } = render(<PageHeader icon={Heart} title="お気に入り" />);
     expect(screen.getByRole('heading', { level: 1 })).toHaveClass('text-h1');
