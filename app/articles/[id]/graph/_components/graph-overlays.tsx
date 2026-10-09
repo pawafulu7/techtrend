@@ -42,6 +42,7 @@ export function GraphOverlays({
 }: GraphOverlaysProps) {
   // 凡例は狭い画面では閉じておき、キャンバスの面積を残す
   const isDesktop = useMediaQuery('(min-width: 1024px)');
+  const legendIsOpen = legendOpen ?? isDesktop;
 
   return (
     <>
@@ -109,11 +110,31 @@ export function GraphOverlays({
 
         {/* Legend。lg 以上では見出しの下に開いて置く */}
         <details
-          open={legendOpen ?? isDesktop}
-          onToggle={(e) => onLegendToggle(e.currentTarget.open)}
+          open={legendIsOpen}
+          // クリック以外で DOM の開閉が変わったとき（ページ内検索での自動展開など）は state を合わせる。
+          // open をプログラムで変えたときにも発火するが、そのときは DOM と state が一致しているので何もしない
+          onToggle={(e) => {
+            if (e.currentTarget.open !== legendIsOpen) {
+              onLegendToggle(e.currentTarget.open);
+            }
+          }}
           className={`${PANEL} group pointer-events-auto w-full max-w-xs p-4 lg:absolute lg:top-24 lg:left-0`}
         >
-          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          <summary
+            className="cursor-pointer list-none [&::-webkit-details-marker]:hidden"
+            // ユーザーの開閉はクリックの時点で state に記録し、既定の開閉は止める。toggle イベントは
+            // 遅れて届くので、その間に画面幅が変わってもユーザーの操作を取りこぼさない。Enter・Space でも click が届く
+            onClick={(e) => {
+              const details = e.currentTarget
+                .parentElement as HTMLDetailsElement;
+              // 外部の開閉（ページ内検索など）がまだ state に届いていなければ、既定の開閉に任せる。
+              // 届いていれば既定の開閉は止め、state で開閉する（React の更新と二重に開閉しないため）
+              if (details.open === legendIsOpen) {
+                e.preventDefault();
+              }
+              onLegendToggle(!details.open);
+            }}
+          >
             <h2 className="text-tt-text text-h3 flex items-center gap-2">
               <Network className="h-4 w-4" aria-hidden="true" />
               グラフの見方
