@@ -45,8 +45,8 @@ export default async function PapersPage({ searchParams }: PageProps) {
     <div className="flex h-full flex-col overflow-hidden">
       {/* RootLayout が <main> を持つため section にする（ランドマーク重複の解消） */}
       <section aria-label="論文一覧" className="flex min-h-0 flex-1 flex-col">
-        {/* 見出しとツールバー。ホームと同じく幅は 7xl にそろえる（Issue #700） */}
-        <div className="mx-auto w-full max-w-7xl flex-shrink-0 px-4 pt-3">
+        {/* 見出しとツールバー。ホームと同じく全幅で、左右の余白は論文一覧と同じ（Issue #700） */}
+        <div className="flex-shrink-0 px-4 pt-3 lg:px-6">
           <PageHeader
             icon={FileText}
             title="論文"

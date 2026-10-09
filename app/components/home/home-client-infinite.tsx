@@ -371,98 +371,92 @@ export function HomeClientInfinite({
       <div
         ref={scrollContainerRef}
         id="main-scroll-container"
-        className="relative flex-1 overflow-y-auto py-4"
+        className="relative flex-1 overflow-y-auto px-4 py-4 lg:px-6"
       >
-        {/* スクロール領域は全幅のまま、中身を見出しと同じ 7xl にそろえる（Issue #700） */}
-        <div className="mx-auto w-full max-w-7xl px-4">
-          {/* スクロール位置復元中のローディング表示 */}
-          {isRestoring && (
-            <ScrollRestorationLoading
-              currentPage={currentPage}
-              targetPages={targetPages}
-              onCancel={cancelRestoration}
-              itemsPerPage={PAGINATION.ITEMS_PER_PAGE}
-            />
-          )}
+        {/* スクロール位置復元中のローディング表示 */}
+        {isRestoring && (
+          <ScrollRestorationLoading
+            currentPage={currentPage}
+            targetPages={targetPages}
+            onCancel={cancelRestoration}
+            itemsPerPage={PAGINATION.ITEMS_PER_PAGE}
+          />
+        )}
 
-          {/* isPending は data === undefined と厳密に等価（v5 の isLoading は
+        {/* isPending は data === undefined と厳密に等価（v5 の isLoading は
             isPending && isFetching）。データが無いときだけスピナーを出すため、
             再取得中やセッション判定中に一覧 DOM を破棄しない。 */}
-          {isPending && !isCategoryChanging ? (
-            <LoadingSpinner message="記事を読み込んでいます..." />
-          ) : allArticles.length > 0 ? (
-            <div className="relative">
-              <ArticleList
-                articles={allArticles}
-                viewMode={viewMode}
-                onArticleClick={handleArticleClick}
-                groupStories
-                currentFilters={filters}
-                className={
-                  isCategoryChanging
-                    ? 'pointer-events-none opacity-40'
-                    : undefined
-                }
+        {isPending && !isCategoryChanging ? (
+          <LoadingSpinner message="記事を読み込んでいます..." />
+        ) : allArticles.length > 0 ? (
+          <div className="relative">
+            <ArticleList
+              articles={allArticles}
+              viewMode={viewMode}
+              onArticleClick={handleArticleClick}
+              groupStories
+              currentFilters={filters}
+              className={
+                isCategoryChanging
+                  ? 'pointer-events-none opacity-40'
+                  : undefined
+              }
+            />
+            {isCategoryChanging && (
+              <div
+                className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center"
+                role="status"
+                aria-live="polite"
+              >
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                <span className="sr-only">カテゴリを変更中...</span>
+              </div>
+            )}
+
+            {/* Infinite Scrollトリガー */}
+            {enableInfiniteScroll ? (
+              <InfiniteScrollTrigger
+                onIntersect={loadNextPage}
+                hasNextPage={hasNextPage || false}
+                isFetchingNextPage={isFetchingNextPage}
               />
-              {isCategoryChanging && (
-                <div
-                  className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <Loader2
-                    className="h-4 w-4 animate-spin"
+            ) : (
+              hasNextPage && (
+                <div className="flex justify-center py-8">
+                  <Button
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage || isRefreshing}
+                    variant="outline"
+                    data-testid="load-more-button"
+                  >
+                    {isFetchingNextPage ? '読み込み中...' : 'さらに読み込む'}
+                  </Button>
+                </div>
+              )
+            )}
+          </div>
+        ) : isPending ? (
+          <LoadingSpinner message="記事を読み込んでいます..." />
+        ) : (
+          <div className="flex min-h-[400px] items-center justify-center px-4">
+            <CardV2 className="mx-auto max-w-md">
+              <div className="flex flex-col items-center justify-center px-4 py-12">
+                <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+                  <Search
+                    className="text-muted-foreground h-8 w-8"
                     aria-hidden="true"
                   />
-                  <span className="sr-only">カテゴリを変更中...</span>
                 </div>
-              )}
-
-              {/* Infinite Scrollトリガー */}
-              {enableInfiniteScroll ? (
-                <InfiniteScrollTrigger
-                  onIntersect={loadNextPage}
-                  hasNextPage={hasNextPage || false}
-                  isFetchingNextPage={isFetchingNextPage}
-                />
-              ) : (
-                hasNextPage && (
-                  <div className="flex justify-center py-8">
-                    <Button
-                      onClick={() => fetchNextPage()}
-                      disabled={isFetchingNextPage || isRefreshing}
-                      variant="outline"
-                      data-testid="load-more-button"
-                    >
-                      {isFetchingNextPage ? '読み込み中...' : 'さらに読み込む'}
-                    </Button>
-                  </div>
-                )
-              )}
-            </div>
-          ) : isPending ? (
-            <LoadingSpinner message="記事を読み込んでいます..." />
-          ) : (
-            <div className="flex min-h-[400px] items-center justify-center px-4">
-              <CardV2 className="mx-auto max-w-md">
-                <div className="flex flex-col items-center justify-center px-4 py-12">
-                  <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-                    <Search
-                      className="text-muted-foreground h-8 w-8"
-                      aria-hidden="true"
-                    />
-                  </div>
-                  <p className="text-foreground mb-2 text-lg font-medium">
-                    記事が見つかりませんでした
-                  </p>
-                  <p className="text-muted-foreground mb-6 text-center text-sm">
-                    フィルター条件を変更するか、別のカテゴリをお試しください。
-                  </p>
-                </div>
-              </CardV2>
-            </div>
-          )}
-        </div>
+                <p className="text-foreground mb-2 text-lg font-medium">
+                  記事が見つかりませんでした
+                </p>
+                <p className="text-muted-foreground mb-6 text-center text-sm">
+                  フィルター条件を変更するか、別のカテゴリをお試しください。
+                </p>
+              </div>
+            </CardV2>
+          </div>
+        )}
       </div>
 
       {/* 一覧の取得時刻・手動更新・記事件数 */}

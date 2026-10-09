@@ -147,8 +147,8 @@ export default async function Home({ searchParams }: PageProps) {
       <div className="flex h-full flex-col overflow-hidden">
         {/* Gradient background layer */}
         <div className="from-background to-muted/20 flex flex-1 flex-col overflow-hidden bg-gradient-to-b">
-          {/* 見出しとツールバー。幅は一覧型の画面と同じ 7xl にそろえる（Issue #700） */}
-          <div className="mx-auto w-full max-w-7xl flex-shrink-0 px-4 pt-3">
+          {/* 見出しとツールバー。全幅で、左右の余白は記事一覧と同じ（Issue #700） */}
+          <div className="flex-shrink-0 px-4 pt-3 lg:px-6">
             <PageHeader icon={HomeIcon} title="記事一覧" variant="compact" />
             <div className="flex flex-wrap items-center gap-2 pb-2">
               <FilterSidebarToggle />
@@ -179,7 +179,7 @@ export default async function Home({ searchParams }: PageProps) {
             </div>
           </div>
 
-          {/* Content area - スクロール領域は全幅（スクロールバーを画面の端に置く）、中身は 7xl */}
+          {/* Content area - フルワイド + オーバーレイフィルター */}
           <div className="relative min-h-0 flex-1 overflow-hidden">
             {/* Overlay filter panel */}
             <FilterSidebarPanel>
@@ -193,7 +193,7 @@ export default async function Home({ searchParams }: PageProps) {
             </FilterSidebarPanel>
             <FilterSidebarOverlay />
 
-            {/* Article list */}
+            {/* Article list - 常にフルワイド */}
             {/* RootLayout が <main> を持つため section にする（ランドマーク重複の解消） */}
             <section aria-label="記事一覧" className="flex h-full flex-col">
               <Suspense

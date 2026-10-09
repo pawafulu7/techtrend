@@ -2,25 +2,27 @@ import { test, expect, type Page } from '@playwright/test';
 import { loginTestUser } from './utils/e2e-helpers';
 
 /**
- * 一般利用者向けの画面は h1 をちょうど1つ持ち、一覧型・分析型は PageHeader を
- * max-w-7xl の幅に置く（Issue #700）。
+ * 一般利用者向けの画面は h1 をちょうど1つ持ち、一覧型・分析型は PageHeader を使う（Issue #700）。
+ * 幅は、もともと全幅だった一覧（ホーム・論文・お気に入り・フィード・履歴・ダイジェスト）は全幅、
+ * それ以外の一覧型・分析型は max-w-7xl。
  * 管理画面（/dashboard・/sources・/stats）は対象外。
  */
 
+const VIEWPORT_WIDTH = 1440;
 const MAX_WIDTH_7XL = '1280px';
 // max-w-7xl（1280px）から左右の px-4（16px ずつ）を引いた、PageHeader の幅
 const PAGE_HEADER_WIDTH_7XL = 1280 - 16 * 2;
 // 6xl（1152px）以下や全幅と取り違えないための下限。スクロールバーの幅の分だけ余裕を持たせる
-const PAGE_HEADER_MIN_WIDTH = 1200;
+const PAGE_HEADER_MIN_WIDTH_7XL = 1200;
+// 全幅の画面の PageHeader の幅の下限（左右の lg:px-6 とスクロールバーの分を引く）
+const PAGE_HEADER_MIN_WIDTH_FULL = VIEWPORT_WIDTH - 24 * 2 - 20;
 
 interface HeadingCase {
   path: string;
   /** h1 の文言。記事タイトルのように中身がデータで変わるものは省く */
   h1?: string;
-  /** 一覧型・分析型は PageHeader を 7xl の幅に置く */
-  pageHeader7xl?: boolean;
-  /** PageHeader と別の要素に置いた本文（スクロール領域の中身など）。これも 7xl にそろう */
-  content?: string;
+  /** 一覧型・分析型は PageHeader を使う。幅は 7xl か全幅 */
+  pageHeader?: '7xl' | 'full';
   /** サブナビ。左端が PageHeader とそろう */
   subNav?: string;
 }
@@ -28,47 +30,37 @@ interface HeadingCase {
 const TREND_SUB_NAV = 'nav[aria-label="トレンドナビゲーション"]';
 
 const PUBLIC_PAGES: HeadingCase[] = [
-  {
-    path: '/',
-    h1: '記事一覧',
-    pageHeader7xl: true,
-    content: '#main-scroll-container > div',
-  },
-  {
-    path: '/papers',
-    h1: '論文',
-    pageHeader7xl: true,
-    content: '#papers-scroll-container > div',
-  },
+  { path: '/', h1: '記事一覧', pageHeader: 'full' },
+  { path: '/papers', h1: '論文', pageHeader: 'full' },
   {
     path: '/popular',
     h1: '人気記事ランキング',
-    pageHeader7xl: true,
+    pageHeader: '7xl',
     subNav: 'nav[aria-label="ランキング期間"]',
   },
-  { path: '/tags', h1: 'タグ分析', pageHeader7xl: true },
+  { path: '/tags', h1: 'タグ分析', pageHeader: '7xl' },
   {
     path: '/trends',
     h1: 'トレンド概要',
-    pageHeader7xl: true,
+    pageHeader: '7xl',
     subNav: TREND_SUB_NAV,
   },
   {
     path: '/trends/daily',
     h1: 'デイリートレンド',
-    pageHeader7xl: true,
+    pageHeader: '7xl',
     subNav: TREND_SUB_NAV,
   },
   {
     path: '/trends/diff',
     h1: '週間トピック変化',
-    pageHeader7xl: true,
+    pageHeader: '7xl',
     subNav: TREND_SUB_NAV,
   },
   {
     path: '/trends/heatmap',
     h1: 'テックセクターマップ',
-    pageHeader7xl: true,
+    pageHeader: '7xl',
     subNav: TREND_SUB_NAV,
   },
   // h1 はプロジェクト名（データで変わる）
@@ -80,11 +72,11 @@ const PUBLIC_PAGES: HeadingCase[] = [
 ];
 
 const AUTHENTICATED_PAGES: HeadingCase[] = [
-  { path: '/digest', h1: 'ダイジェスト', pageHeader7xl: true },
-  { path: '/favorites', h1: 'お気に入り', pageHeader7xl: true },
-  { path: '/favorites/feed', h1: 'お気に入りフィード', pageHeader7xl: true },
-  { path: '/history', h1: '閲覧履歴', pageHeader7xl: true },
-  { path: '/analytics', h1: '読書分析', pageHeader7xl: true },
+  { path: '/digest', h1: 'ダイジェスト', pageHeader: 'full' },
+  { path: '/favorites', h1: 'お気に入り', pageHeader: 'full' },
+  { path: '/favorites/feed', h1: 'お気に入りフィード', pageHeader: 'full' },
+  { path: '/history', h1: '閲覧履歴', pageHeader: 'full' },
+  { path: '/analytics', h1: '読書分析', pageHeader: '7xl' },
   { path: '/search/agent', h1: 'AI検索' },
   { path: '/reader', h1: 'リーダー' },
   { path: '/profile', h1: 'プロフィール設定' },
@@ -106,7 +98,7 @@ async function boxOf(page: Page, selector: string, label: string) {
 
 async function expectHeadings(
   page: Page,
-  { path, h1, pageHeader7xl, content, subNav }: HeadingCase
+  { path, h1, pageHeader, subNav }: HeadingCase
 ) {
   // リダイレクトされていない（callbackUrl に同じパスが入るので、URL 全体の部分一致では見分けられない）
   expect(
@@ -132,38 +124,40 @@ async function expectHeadings(
     await expect(headings).toHaveText(h1);
   }
 
-  if (!pageHeader7xl) return;
+  if (!pageHeader) return;
 
-  const pageHeader = page.locator('[data-slot="page-header"]');
-  await expect(pageHeader, `${path} は PageHeader を使う`).toHaveCount(1);
+  const header = page.locator('[data-slot="page-header"]');
+  await expect(header, `${path} は PageHeader を使う`).toHaveCount(1);
   await expect(
-    pageHeader.locator('h1'),
+    header.locator('h1'),
     `${path} の h1 は PageHeader の中`
   ).toHaveCount(1);
   const headerBox = await boxOf(page, '[data-slot="page-header"]', path);
-  expect(
-    headerBox.width,
-    `${path} の PageHeader の幅は 7xl`
-  ).toBeLessThanOrEqual(PAGE_HEADER_WIDTH_7XL + 1);
-  expect(
-    headerBox.width,
-    `${path} の PageHeader の幅は 7xl`
-  ).toBeGreaterThanOrEqual(PAGE_HEADER_MIN_WIDTH);
-
-  // PageHeader を包む要素（本文も同じ要素に入る画面が多い）の上限が 7xl
-  const wrapperMaxWidth = await pageHeader.evaluate(
+  // PageHeader を包む要素（本文も同じ要素に入る画面が多い）の幅の上限
+  const wrapperMaxWidth = await header.evaluate(
     (el) => getComputedStyle(el.parentElement as HTMLElement).maxWidth
   );
-  expect(wrapperMaxWidth, `${path} の PageHeader を包む要素は 7xl`).toBe(
-    MAX_WIDTH_7XL
-  );
 
-  if (content) {
-    const contentMaxWidth = await page
-      .locator(content)
-      .first()
-      .evaluate((el) => getComputedStyle(el).maxWidth);
-    expect(contentMaxWidth, `${path} の本文は 7xl`).toBe(MAX_WIDTH_7XL);
+  if (pageHeader === '7xl') {
+    expect(
+      headerBox.width,
+      `${path} の PageHeader の幅は 7xl`
+    ).toBeLessThanOrEqual(PAGE_HEADER_WIDTH_7XL + 1);
+    expect(
+      headerBox.width,
+      `${path} の PageHeader の幅は 7xl`
+    ).toBeGreaterThanOrEqual(PAGE_HEADER_MIN_WIDTH_7XL);
+    expect(wrapperMaxWidth, `${path} の PageHeader を包む要素は 7xl`).toBe(
+      MAX_WIDTH_7XL
+    );
+  } else {
+    expect(
+      headerBox.width,
+      `${path} の PageHeader は全幅`
+    ).toBeGreaterThanOrEqual(PAGE_HEADER_MIN_WIDTH_FULL);
+    expect(wrapperMaxWidth, `${path} の PageHeader を包む要素は全幅`).toBe(
+      'none'
+    );
   }
 
   if (subNav) {
@@ -176,7 +170,7 @@ async function expectHeadings(
 }
 
 test.describe('画面の見出し（Issue #700）', () => {
-  test.use({ viewport: { width: 1440, height: 900 } });
+  test.use({ viewport: { width: VIEWPORT_WIDTH, height: 900 } });
 
   test.describe('ログイン不要の画面', () => {
     for (const pageCase of PUBLIC_PAGES) {

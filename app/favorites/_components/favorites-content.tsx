@@ -207,7 +207,7 @@ export function FavoritesContent({
   // Loading state
   if (isLoading && allFavorites.length === 0 && errorUpdateCount === 0) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 py-3">
+      <div className="px-4 py-3 lg:px-6">
         {/* 見出しは読み込み中も出す（h1 を常に1つ置く。Issue #700） */}
         <PageHeader
           icon={Heart}
@@ -225,7 +225,7 @@ export function FavoritesContent({
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-3">
+    <div className="px-4 py-3 lg:px-6">
       <PageHeader
         icon={Heart}
         title="お気に入り"

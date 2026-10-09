@@ -162,7 +162,7 @@ export function FavoriteFeedContent() {
 
   if (favoritesLoading) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 py-3">
+      <div className="px-4 py-3 lg:px-6">
         {/* お気に入りへの戻り導線は見出し行の上に置き、見出し行の形を他の画面とそろえる（Issue #700） */}
         <Link
           href="/favorites"
@@ -194,7 +194,7 @@ export function FavoriteFeedContent() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-3">
+    <div className="px-4 py-3 lg:px-6">
       {/* お気に入りへの戻り導線は見出し行の上に置き、見出し行の形を他の画面とそろえる（Issue #700） */}
       <Link
         href="/favorites"

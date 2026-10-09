@@ -193,7 +193,7 @@ export function HistoryContent() {
   // Loading state (hasFetchedを追加してクライアントナビゲーション時も確実にスケルトン表示)
   if (loading || !hasFetched) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 py-3">
+      <div className="px-4 py-3 lg:px-6">
         {/* 見出しは読み込み中も出す（h1 を常に1つ置く。Issue #700） */}
         <PageHeader
           icon={History}
@@ -206,7 +206,7 @@ export function HistoryContent() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-3">
+    <div className="px-4 py-3 lg:px-6">
       <PageHeader
         icon={History}
         title="閲覧履歴"

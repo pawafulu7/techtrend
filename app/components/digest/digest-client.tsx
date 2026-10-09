@@ -69,7 +69,7 @@ export function DigestClient() {
     digest.sections.every((s) => s.articles.length === 0);
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-3">
+    <div className="px-4 py-3 lg:px-6">
       <PageHeader
         icon={Newspaper}
         title="ダイジェスト"
