@@ -559,9 +559,10 @@ describe('TagCloud', () => {
       await renderTagCloud();
       await user.click(await screen.findByRole('button', { name: '再試行' }));
 
+      // 再試行中は aria-disabled で押せない状態にする（disabled だとフォーカスが外れるため。Issue #700）
       expect(
         await screen.findByRole('button', { name: '再試行中…' })
-      ).toBeDisabled();
+      ).toHaveAttribute('aria-disabled', 'true');
       expect(
         screen.getByText('タグを読み込めませんでした')
       ).toBeInTheDocument();

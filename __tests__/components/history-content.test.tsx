@@ -84,4 +84,40 @@ describe('HistoryContent: 取得の失敗', () => {
     ).not.toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
+
+  it('再試行中も失敗の表示とボタンを残し、押せない状態にする（フォーカスを失わない）', async () => {
+    let resolveRetry: (value: unknown) => void = () => {};
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({}),
+      })
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRetry = resolve;
+        })
+      );
+
+    render(<HistoryContent />);
+
+    const retryButton = await screen.findByRole('button', { name: /再試行/ });
+    retryButton.focus();
+    await userEvent.click(retryButton);
+
+    const retrying = await screen.findByRole('button', { name: /再試行中/ });
+    expect(retrying).toHaveAttribute('aria-disabled', 'true');
+    expect(retrying).toHaveFocus();
+    expect(
+      screen.getByText('閲覧履歴を読み込めませんでした')
+    ).toBeInTheDocument();
+
+    resolveRetry({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ views: [] }),
+    });
+    expect(await screen.findByText('閲覧履歴がありません')).toBeInTheDocument();
+  });
 });

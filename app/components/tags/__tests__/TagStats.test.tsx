@@ -150,9 +150,10 @@ describe('TagStats', () => {
     );
 
     // スケルトンに戻らず、取得済みの「アクティブ: 2」と失敗中の「—」を出したまま
+    // 再試行中は aria-disabled で押せない状態にする（disabled だとフォーカスが外れるため。Issue #700）
     expect(
       await screen.findByRole('button', { name: '再試行中…' })
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getAllByText('取得できませんでした')).toHaveLength(1);
 

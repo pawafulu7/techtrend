@@ -124,6 +124,13 @@ function GraphContainer() {
 
   // Fetch graph data
   const [graphData, setGraphData] = useState<GraphData | null>(null);
+  // キャンバスの大きさを画面の回転・リサイズに追従させる
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1920,
+    height: typeof window !== 'undefined' ? window.innerHeight : 1080,
+  }));
+  // 凡例の開閉。深さの切り替えでオーバーレイが作り直されても保つ（未操作なら画面幅で決める）
+  const [legendOpen, setLegendOpen] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
@@ -138,6 +145,13 @@ function GraphContainer() {
   const handleGraphRef = useCallback((instance: ForceGraphRef | null) => {
     graphRef.current = instance;
     setGraphInstance(instance);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () =>
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
@@ -381,8 +395,8 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
         cooldownTicks={400}
         d3AlphaDecay={0.008}
         d3VelocityDecay={0.35}
-        width={typeof window !== 'undefined' ? window.innerWidth : 1920}
-        height={typeof window !== 'undefined' ? window.innerHeight : 1080}
+        width={viewport.width}
+        height={viewport.height}
       />
 
       <GraphOverlays
@@ -393,6 +407,8 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
         relatedCount={graphData.nodes.length - 1}
         hoveredNode={hoveredNode}
         centerArticleId={graphData.metadata?.centerArticleId}
+        legendOpen={legendOpen}
+        onLegendToggle={setLegendOpen}
       />
     </div>
   );

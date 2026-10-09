@@ -91,8 +91,8 @@ export function HistoryContent() {
   const fetchHistory = useCallback(
     async (signal?: AbortSignal) => {
       try {
+        // エラーは成功したときに消す。再試行中も失敗の表示と再試行ボタン（再試行中…）を残すため
         setLoading(true);
-        setError(null);
         const params = new URLSearchParams();
 
         // モバイルの場合は軽量モードを使用
@@ -132,6 +132,7 @@ export function HistoryContent() {
         );
         setViews(historyItems);
         setHasFetched(true);
+        setError(null);
       } catch (err) {
         // AbortErrorは無視（コンポーネントアンマウント時）
         if (err instanceof Error && err.name === 'AbortError') {

@@ -226,7 +226,11 @@ describe('FavoritesContent: 解除の失敗（issue #701）', () => {
     expect(
       screen.getByText('お気に入りを読み込めませんでした')
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '再試行中…' })).toBeDisabled();
+    // 再試行中は aria-disabled で押せない状態にする（disabled だとフォーカスが外れるため。Issue #700）
+    expect(screen.getByRole('button', { name: '再試行中…' })).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
   });
 
   it('取得済みの一覧がある状態で再取得に失敗したら、一覧を残して古いことを示す', () => {

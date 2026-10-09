@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Network, ArrowLeft } from 'lucide-react';
+import { Network, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { useMediaQuery } from '@/app/hooks/use-media-query';
 import type { GraphNode } from '@/lib/types/graph';
@@ -19,6 +19,9 @@ interface GraphOverlaysProps {
   relatedCount: number;
   hoveredNode: GraphNode | null;
   centerArticleId?: string;
+  /** 凡例の開閉（null は未操作。そのときは lg 以上で開く） */
+  legendOpen: boolean | null;
+  onLegendToggle: (open: boolean) => void;
 }
 
 /**
@@ -34,6 +37,8 @@ export function GraphOverlays({
   relatedCount,
   hoveredNode,
   centerArticleId,
+  legendOpen,
+  onLegendToggle,
 }: GraphOverlaysProps) {
   // 凡例は狭い画面では閉じておき、キャンバスの面積を残す
   const isDesktop = useMediaQuery('(min-width: 1024px)');
@@ -71,7 +76,7 @@ export function GraphOverlays({
 
         {/* Center article info */}
         <div
-          className={`${PANEL} pointer-events-auto w-full max-w-sm p-4 lg:absolute lg:top-0 lg:right-0`}
+          className={`${PANEL} pointer-events-none w-full max-w-sm p-4 lg:pointer-events-auto lg:absolute lg:top-0 lg:right-0`}
         >
           <div className="mb-2 flex items-center gap-2">
             <div
@@ -104,13 +109,19 @@ export function GraphOverlays({
 
         {/* Legend。lg 以上では見出しの下に開いて置く */}
         <details
-          open={isDesktop}
+          open={legendOpen ?? isDesktop}
+          onToggle={(e) => onLegendToggle(e.currentTarget.open)}
           className={`${PANEL} group pointer-events-auto w-full max-w-xs p-4 lg:absolute lg:top-24 lg:left-0`}
         >
           <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
             <h2 className="text-tt-text text-h3 flex items-center gap-2">
               <Network className="h-4 w-4" aria-hidden="true" />
               グラフの見方
+              {/* 開け閉めできることを見た目でも示す */}
+              <ChevronDown
+                className="ml-auto h-4 w-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+                aria-hidden="true"
+              />
             </h2>
           </summary>
           <div className="mt-3 space-y-2 text-xs text-[var(--tt-color-text)]">
