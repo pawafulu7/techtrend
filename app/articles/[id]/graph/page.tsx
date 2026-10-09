@@ -102,7 +102,8 @@ const getFreshnessBorder = (
 // Note: Using 'any' type due to complex FCwithRef type from library
 const ForceGraph2D = dynamic<any>(() => import('react-force-graph-2d'), {
   ssr: false,
-  loading: () => <GraphSkeleton />,
+  // GraphContainer の中で読み込むので、見出し（h1）は GraphContainer 側にある。ここでは出さない
+  loading: () => <GraphSkeleton withHeading={false} />,
 });
 
 export default function ArticleRelationshipGraphPage() {
@@ -555,14 +556,20 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
   );
 }
 
-function GraphSkeleton() {
+/** 読み込み中・失敗時も h1 を1つ置く（Issue #700） */
+function GraphHeading() {
+  return (
+    <h1 className="font-heading text-foreground text-h1 mb-4">
+      関連記事グラフ
+    </h1>
+  );
+}
+
+function GraphSkeleton({ withHeading = true }: { withHeading?: boolean }) {
   return (
     <div className="dark flex h-screen w-full items-center justify-center bg-[var(--tt-color-surface)] scheme-dark">
       <div className="text-center">
-        {/* 読み込み中・失敗時も h1 を1つ置く（Issue #700） */}
-        <h1 className="font-heading text-foreground text-h1 mb-4">
-          関連記事グラフ
-        </h1>
+        {withHeading && <GraphHeading />}
         <div className="border-tt-text mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2"></div>
         <p className="text-tt-text">Loading relationship graph...</p>
       </div>
@@ -576,9 +583,7 @@ function GraphError({ error }: { error: Error }) {
   return (
     <div className="dark flex h-screen w-full items-center justify-center bg-[var(--tt-color-surface)] scheme-dark">
       <div className="text-center">
-        <h1 className="font-heading text-foreground text-h1 mb-4">
-          関連記事グラフ
-        </h1>
+        <GraphHeading />
         <p className="mb-2 text-lg text-[var(--tt-color-negative)]">
           Failed to load graph
         </p>

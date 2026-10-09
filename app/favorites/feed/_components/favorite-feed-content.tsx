@@ -160,18 +160,22 @@ export function FavoriteFeedContent() {
     [selectedFolder, favorites, getFavoritesByFolder]
   );
 
+  // お気に入りへの戻り導線は見出し行の上に置き、見出し行の形を他の画面とそろえる（Issue #700）
+  const backLink = (
+    <Link
+      href="/favorites"
+      className="text-muted-foreground hover:text-foreground mb-1 inline-flex items-center gap-1 rounded-md text-sm"
+      aria-label="お気に入りに戻る"
+    >
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+      お気に入り
+    </Link>
+  );
+
   if (favoritesLoading) {
     return (
       <div className="px-4 py-3 lg:px-6">
-        {/* お気に入りへの戻り導線は見出し行の上に置き、見出し行の形を他の画面とそろえる（Issue #700） */}
-        <Link
-          href="/favorites"
-          className="text-muted-foreground hover:text-foreground mb-1 inline-flex items-center gap-1 rounded-md text-sm"
-          aria-label="お気に入りに戻る"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          お気に入り
-        </Link>
+        {backLink}
         <PageHeader
           icon={Newspaper}
           title="お気に入りフィード"
@@ -195,15 +199,7 @@ export function FavoriteFeedContent() {
 
   return (
     <div className="px-4 py-3 lg:px-6">
-      {/* お気に入りへの戻り導線は見出し行の上に置き、見出し行の形を他の画面とそろえる（Issue #700） */}
-      <Link
-        href="/favorites"
-        className="text-muted-foreground hover:text-foreground mb-1 inline-flex items-center gap-1 rounded-md text-sm"
-        aria-label="お気に入りに戻る"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        お気に入り
-      </Link>
+      {backLink}
       <PageHeader
         icon={Newspaper}
         title="お気に入りフィード"

@@ -69,15 +69,16 @@ const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
               </span>
             )}
           </div>
-          {description && (
+          {/* && だと 0 を渡されたときに 0 が描画されるので三項演算子にする */}
+          {description ? (
             <div className="text-muted-foreground mt-0.5 text-sm">
               {description}
             </div>
-          )}
+          ) : null}
         </div>
-        {actions && (
+        {actions ? (
           <div className="flex flex-wrap items-center gap-2">{actions}</div>
-        )}
+        ) : null}
       </Component>
     );
   }

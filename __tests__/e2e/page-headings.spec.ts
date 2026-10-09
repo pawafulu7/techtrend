@@ -182,10 +182,12 @@ test.describe('画面の見出し（Issue #700）', () => {
 
     test('記事詳細と関連グラフは h1 を1つ持つ', async ({ page }) => {
       await openPage(page, '/');
-      const href = await page
-        .locator('a[href^="/articles/"]')
-        .first()
-        .getAttribute('href');
+      // 記事のリンクはクライアント側で後から描画されるので、表示されるまで待ってから読む
+      const link = page.locator('a[href^="/articles/"]').first();
+      await expect(link, 'ホームに記事へのリンクがある').toBeVisible({
+        timeout: 15000,
+      });
+      const href = await link.getAttribute('href');
       if (!href) throw new Error('ホームに記事へのリンクがない');
       const articlePath = new URL(href, 'http://localhost').pathname;
 

@@ -164,7 +164,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
     <div>
       {/* 見出しと週の移動。読み進めても週を切り替えられるよう上に固定する。幅はサブナビと同じ 7xl（Issue #700） */}
       <div className="bg-background/80 sticky top-0 z-10 border-b backdrop-blur-sm">
-        <div className="mx-auto w-full max-w-7xl px-4 py-3">
+        <div className="mx-auto w-full max-w-7xl px-4 py-2 sm:py-3">
           <PageHeader
             icon={GitCompare}
             title="週間トピック変化"
@@ -187,9 +187,13 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
                   onClick={handlePreviousWeek}
                   disabled={loading}
                   className="gap-1"
+                  aria-label="前週"
                 >
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                  前週
+                  {/* 固定ヘッダーの高さを抑えるため、狭い画面では文字を隠す */}
+                  <span className="hidden sm:inline" aria-hidden="true">
+                    前週
+                  </span>
                 </Button>
                 <Button
                   variant="outline"
@@ -197,8 +201,11 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
                   onClick={handleNextWeek}
                   disabled={loading || !canGoNext}
                   className="gap-1"
+                  aria-label="次週"
                 >
-                  次週
+                  <span className="hidden sm:inline" aria-hidden="true">
+                    次週
+                  </span>
                   <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </>
