@@ -7,7 +7,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { DailyTrendContent } from '@/app/trends/daily/_components/daily-trend-content';
-import type { TrendReportData } from '@/lib/services/trend-report/types';
+import type { SerializedTrendReport } from '@/app/trends/daily/_components/daily-data';
 
 jest.mock('@/app/components/trends/daily', () => ({
   DailyTrendHero: () => null,
@@ -77,12 +77,11 @@ describe('DailyTrendContent: 取得の失敗の文言（issue #701）', () => {
 });
 
 describe('DailyTrendContent: 見出しと前日／翌日の移動（Issue #700）', () => {
-  // サーバーからは日時が ISO 文字列で届く（daily-data.ts が toISOString() で渡す）。型は Date のまま
-  const iso = (value: string) => value as unknown as Date;
-  const report: TrendReportData = {
+  // サーバーからは日時が ISO 文字列で届く（daily-data.ts が toISOString() で渡す）
+  const report: SerializedTrendReport = {
     periodType: 'DAILY',
-    periodStart: iso('2026-09-28T15:00:00.000Z'), // JST 2026-09-29
-    periodEnd: iso('2026-09-29T15:00:00.000Z'),
+    periodStart: '2026-09-28T15:00:00.000Z', // JST 2026-09-29
+    periodEnd: '2026-09-29T15:00:00.000Z',
     articleCount: 10,
     topArticles: [],
     categories: [],
@@ -156,7 +155,7 @@ describe('DailyTrendContent: 見出しと前日／翌日の移動（Issue #700�
             success: true,
             data: {
               ...report,
-              periodStart: iso('2026-09-27T15:00:00.000Z'),
+              periodStart: '2026-09-27T15:00:00.000Z',
             },
             navigation: { prevDate: null, nextDate: '2026-09-29' },
           }),

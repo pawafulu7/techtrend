@@ -84,7 +84,8 @@ export function ChangelogContent() {
     return <ChangelogSkeleton />;
   }
 
-  if (error) {
+  // 取得が止まって（オフラインなど）データも失敗も無いときも、同じ失敗の表示にする（h1 を消さない）
+  if (error || !data) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         {/* 失敗時も h1 を1つ置く（Issue #700） */}
@@ -100,8 +101,6 @@ export function ChangelogContent() {
       </div>
     );
   }
-
-  if (!data) return null;
 
   const currentVersion =
     version || (data.versions.length > 0 ? data.versions[0].version : '');

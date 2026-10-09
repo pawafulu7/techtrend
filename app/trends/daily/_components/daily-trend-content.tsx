@@ -18,7 +18,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PageHeader } from '@/components/ui-v2/page-header';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
-import type { TrendReportData, DailyTrendResponse } from './daily-data';
+import type { SerializedTrendReport, DailyTrendResponse } from './daily-data';
 import { DAILY_REPORT_NOT_FOUND_ERROR } from '@/lib/constants/daily-trend';
 
 function formatDateJP(dateStr: string): string {
@@ -54,7 +54,7 @@ interface DailyTrendContentProps {
 }
 
 export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
-  const [report, setReport] = useState<TrendReportData | null>(
+  const [report, setReport] = useState<SerializedTrendReport | null>(
     initialData.data ?? null
   );
   const [loading, setLoading] = useState(false);
@@ -172,7 +172,7 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
           title="デイリートレンド"
           className="pb-0"
           description={
-            report ? formatReportDate(String(report.periodStart)) : undefined
+            report ? formatReportDate(report.periodStart) : undefined
           }
           actions={
             // 読み込み中もボタンを出したまま押せなくする（見出し行の高さを保つ）
@@ -275,9 +275,7 @@ export function DailyTrendContent({ initialData }: DailyTrendContentProps) {
           <DailyTrendHero
             aiSummary={report.aiSummary}
             articleCount={report.articleCount}
-            generatedAt={
-              report.generatedAt ? String(report.generatedAt) : undefined
-            }
+            generatedAt={report.generatedAt}
             topTags={report.tags}
             topArticles={report.topArticles}
             evidenceArticles={evidenceArticles}
