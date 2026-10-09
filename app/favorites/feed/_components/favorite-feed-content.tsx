@@ -46,6 +46,8 @@ export function FavoriteFeedContent() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
+  // 表示中の記事を取得したときのフォルダー。見出しの件数（読み上げの対象）を、表示中の記事とそろえるため
+  const [articlesFolder, setArticlesFolder] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortByOption>('recent');
   const [refreshing, setRefreshing] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -68,6 +70,8 @@ export function FavoriteFeedContent() {
 
       if (sourceIds.length === 0) {
         setArticles([]);
+        setArticlesFolder(selectedFolder);
+        setFetchError(null);
         setTotalPages(1);
         return;
       }
@@ -95,6 +99,7 @@ export function FavoriteFeedContent() {
       if (controller.signal.aborted) return;
 
       setArticles(data.articles);
+      setArticlesFolder(selectedFolder);
       setTotalPages(data.pagination.totalPages);
       setFetchError(null);
     } catch (error) {
@@ -152,12 +157,13 @@ export function FavoriteFeedContent() {
   } = useFavoriteStatuses(articles.map((article) => article.id));
 
   const articleCount = sortedArticles.length;
+  // フォルダーを切り替えた直後も、表示中の記事のフォルダーで数える（新しいソース数と前の記事数を組み合わせない）
   const folderCount = useMemo(
     () =>
-      selectedFolder === 'all'
+      articlesFolder === 'all'
         ? favorites.length
-        : getFavoritesByFolder(selectedFolder).length,
-    [selectedFolder, favorites, getFavoritesByFolder]
+        : getFavoritesByFolder(articlesFolder).length,
+    [articlesFolder, favorites, getFavoritesByFolder]
   );
 
   // お気に入りへの戻り導線は見出し行の上に置き、見出し行の形を他の画面とそろえる（Issue #700）
@@ -203,16 +209,10 @@ export function FavoriteFeedContent() {
       <PageHeader
         icon={Newspaper}
         title="お気に入りフィード"
-        // 件数は読み上げの対象（live region）なので、読み込み中・失敗時は出さない。
-        // フォルダーを切り替えた直後は、新しいソース数と前の記事数が組み合わさるため
-        count={
-          loading || fetchError
-            ? undefined
-            : {
-                value: articleCount,
-                label: `${folderCount}ソースから${articleCount}件`,
-              }
-        }
+        count={{
+          value: articleCount,
+          label: `${folderCount}ソースから${articleCount}件`,
+        }}
         actions={
           <>
             <Select

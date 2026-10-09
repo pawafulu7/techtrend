@@ -70,7 +70,7 @@ describe('PageHeader', () => {
         count={{ value: 3, label: '3件' }}
       />
     );
-    expect(screen.getByRole('status')).toHaveAccessibleName('閲覧履歴 3件');
+    expect(screen.getByRole('status')).toHaveTextContent('閲覧履歴 (3件)');
   });
 
   it('keeps the h1 size the same in both variants', () => {

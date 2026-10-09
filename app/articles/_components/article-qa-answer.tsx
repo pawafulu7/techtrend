@@ -66,7 +66,7 @@ export function ArticleQaAnswer({
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkBreaks]}
             components={{
-              // 回答の見出しは1段ずつ下げる。記事詳細の h1 は記事タイトルだけにする（Issue #700）
+              // 回答の「#」は h2 にする。記事詳細の h1 は記事タイトルだけにする（Issue #700）
               ...shiftedMarkdownHeadings,
               a: ({ node: _node, ...props }) => (
                 <a {...props} target="_blank" rel="noopener noreferrer" />

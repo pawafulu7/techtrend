@@ -64,9 +64,9 @@ const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
                 className="text-sm text-(--tt-color-text-muted)"
                 role="status"
                 aria-live="polite"
-                aria-label={`${title} ${count.label}`}
               >
-                ({count.label})
+                {/* 件数が変わったときの読み上げに見出し名を含める（role=status は aria-atomic） */}
+                <span className="sr-only">{title} </span>({count.label})
               </span>
             )}
           </div>

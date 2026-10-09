@@ -328,7 +328,7 @@ export function AnswerContent({
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
               components={{
-                // 回答の見出しは1段ずつ下げる。ページの h1 は画面の見出しだけにする（Issue #700）
+                // 回答の「#」は h2 にする。ページの h1 は画面の見出しだけにする（Issue #700）
                 ...shiftedMarkdownHeadings,
                 a: ({ node: _node, ...props }) => (
                   <a {...props} target="_blank" rel="noopener noreferrer" />

@@ -22,7 +22,7 @@ Some **bold** text and a [link](https://example.com).`;
       expect(screen.getByRole('link', { name: 'link' })).toBeInTheDocument();
     });
 
-    it('見出しを1段ずつ下げ、親子関係を保つ（Issue #700）', () => {
+    it('「#」だけを h2 にし、「##」以降の見出しは変えない（Issue #700）', () => {
       const markdown = `# Parent
 
 ## Child
@@ -31,9 +31,10 @@ Some **bold** text and a [link](https://example.com).`;
 
       render(<ArticleQaAnswer answer={markdown} isStreaming={false} />);
 
+      expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
       expect(screen.getByRole('heading', { level: 2, name: 'Parent' })).toBeInTheDocument();
-      expect(screen.getByRole('heading', { level: 3, name: 'Child' })).toBeInTheDocument();
-      expect(screen.getByRole('heading', { level: 4, name: 'Grandchild' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 2, name: 'Child' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 3, name: 'Grandchild' })).toBeInTheDocument();
     });
 
     it('should render external links with target="_blank" and rel="noopener noreferrer"', () => {

@@ -193,6 +193,13 @@ test.describe('画面の見出し（Issue #700）', () => {
 
       await openPage(page, articlePath);
       await expectHeadings(page, { path: articlePath });
+      // エラー画面（app/error.tsx）や 404 の h1 でも上の確認は通るので、記事のタイトルであることを見る
+      await expect(page.locator('h1')).not.toHaveText(
+        /^(エラーが発生しました|404)$/
+      );
+      await expect(
+        page.getByRole('link', { name: /元記事を読む/ }).first()
+      ).toBeVisible();
 
       await openPage(page, `${articlePath}/graph`);
       await expectHeadings(page, {
