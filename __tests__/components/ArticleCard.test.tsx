@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ArticleCard } from '@/app/components/article/card';
@@ -669,6 +669,35 @@ describe('ArticleCard', () => {
       expect(actions).toHaveClass('sm:[@media(hover:hover)]:absolute');
       expect(actions).toHaveClass('sm:[@media(hover:hover)]:opacity-0');
       expect(actions).not.toHaveClass('[@media(hover:hover)]:opacity-0');
+    });
+
+    it('shows a new thumbnail after the previous one failed to load', () => {
+      const article = createMockArticleWithRelations({
+        article: {
+          title: 'Swap',
+          thumbnail: 'https://example.com/broken.jpg',
+        },
+        source: createMockSource({ name: 'Qiita' }),
+      });
+
+      const { rerender } = renderWithProviders(
+        <ArticleCard article={article} />
+      );
+      fireEvent.error(screen.getByRole('img', { name: 'Swap' }));
+      expect(screen.queryByRole('img', { name: 'Swap' })).toBeNull();
+
+      // 再取得で同じカードに別の画像が届いたら、失敗の状態を引きずらずに出す
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <ArticleCard
+            article={{ ...article, thumbnail: 'https://example.com/ok.jpg' }}
+          />
+        </QueryClientProvider>
+      );
+      expect(screen.getByRole('img', { name: 'Swap' })).toHaveAttribute(
+        'src',
+        'https://example.com/ok.jpg'
+      );
     });
 
     it('shows title alongside thumbnail', () => {

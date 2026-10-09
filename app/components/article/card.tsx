@@ -44,7 +44,9 @@ export function ArticleCard({
   const pathname = usePathname();
 
   // T1: Thumbnail display with validation and error fallback
-  const [thumbnailError, setThumbnailError] = useState(false);
+  // 失敗した URL を覚える。真偽値だと、再取得で同じカードに別の画像が届いても出せない
+  const [erroredThumbnail, setErroredThumbnail] = useState<string | null>(null);
+  const thumbnailError = erroredThumbnail === article.thumbnail;
   const thumbnailSrc =
     hasValidThumbnail(article.thumbnail) && !thumbnailError
       ? article.thumbnail
@@ -100,7 +102,7 @@ export function ArticleCard({
                 : 'object-cover @xl:object-contain'
             }
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            onError={() => setThumbnailError(true)}
+            onError={() => setErroredThumbnail(thumbnailSrc)}
           />
         </div>
       ) : thumbnailPlaceholder ? (
