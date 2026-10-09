@@ -177,6 +177,44 @@ test.describe('記事詳細ページ', () => {
     }
   });
 
+  test('1440px 幅でも本文の列が 45rem を超えない', async ({ page }) => {
+    // #703: 本文（text-body 16px）の1行を全角40字以下にするため、本文の列を 45rem までにしている。
+    // seed の記事はサムネイル表示で 16px の段落が無いことがあるので、列の幅そのものを確かめる
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(testData.paths.home);
+    await waitForPageLoad(page);
+
+    await page.locator('[data-testid="article-card"]').first().click();
+    await page.waitForURL(/\/articles\/.+/);
+    const articleContent = page.getByTestId('article-content');
+    await expect(articleContent).toBeVisible();
+
+    const measured = await articleContent.evaluate((el) => {
+      const card = el.parentElement;
+      const rootFontSize = parseFloat(
+        getComputedStyle(document.documentElement).fontSize
+      );
+      const bodyLines = Array.from(el.querySelectorAll('p'))
+        .filter(
+          (p) =>
+            getComputedStyle(p).fontSize === '16px' &&
+            (p.textContent ?? '').trim().length > 0
+        )
+        .map((p) => p.getBoundingClientRect().width / 16);
+      return {
+        cardWidthRem: (card?.getBoundingClientRect().width ?? 0) / rootFontSize,
+        bodyLines,
+      };
+    });
+
+    expect(measured.cardWidthRem).toBeGreaterThan(0);
+    expect(measured.cardWidthRem).toBeLessThanOrEqual(45);
+    // 16px の段落があれば、段落の幅を全角の字数に直して 40 字以下か確かめる
+    for (const chars of measured.bodyLines) {
+      expect(chars).toBeLessThanOrEqual(40);
+    }
+  });
+
   test('404エラーページが適切に表示される', async ({ page }) => {
     // 存在しない記事IDでアクセス
     await page.goto('/articles/non-existent-article-id-123456789');

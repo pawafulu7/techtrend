@@ -31,6 +31,7 @@ const mockArticles = [
       { id: 'tag-2', name: 'Testing', category: 'tool' },
     ],
     similarity: 0.85,
+    commonTags: 2,
   },
   {
     id: 'article-2',
@@ -43,6 +44,7 @@ const mockArticles = [
       { id: 'tag-3', name: 'TypeScript', category: 'language' },
     ],
     similarity: 0.75,
+    commonTags: 1,
   },
 ];
 
@@ -56,7 +58,7 @@ describe('RelatedArticles', () => {
 
   it('関連記事が正しいリンクで表示される', async () => {
     mockUseRelatedArticles.mockReturnValue({
-      data: mockArticles,
+      data: { articles: mockArticles, algorithm: 'tag' },
       isLoading: false,
       error: null,
     });
@@ -75,9 +77,9 @@ describe('RelatedArticles', () => {
     expect(secondLink).toHaveAttribute('href', '/articles/article-2');
   });
 
-  it('類似度が正しく表示される', async () => {
+  it('タグ方式では関連の理由を共通タグの数で表示し、% は出さない', async () => {
     mockUseRelatedArticles.mockReturnValue({
-      data: mockArticles,
+      data: { articles: mockArticles, algorithm: 'tag' },
       isLoading: false,
       error: null,
     });
@@ -85,14 +87,54 @@ describe('RelatedArticles', () => {
     render(<RelatedArticles articleId="test-article" />);
 
     await waitFor(() => {
-      expect(screen.getByText('85%')).toBeInTheDocument();
-      expect(screen.getByText('75%')).toBeInTheDocument();
+      expect(screen.getByText('共通タグ 2件')).toBeInTheDocument();
+      expect(screen.getByText('共通タグ 1件')).toBeInTheDocument();
     });
+    expect(screen.queryByText('85%')).not.toBeInTheDocument();
+    expect(screen.queryByText('75%')).not.toBeInTheDocument();
+  });
+
+  it('ベクトル方式では共通タグの数によらず関連の理由を「内容が近い」と表示する', async () => {
+    mockUseRelatedArticles.mockReturnValue({
+      data: {
+        articles: [{ ...mockArticles[0], commonTags: 0 }, mockArticles[1]],
+        algorithm: 'embedding',
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<RelatedArticles articleId="test-article" />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('内容が近い')).toHaveLength(2);
+    });
+    expect(screen.queryByText(/共通タグ/)).not.toBeInTheDocument();
+  });
+
+  it('タグ方式で共通タグが0件なら関連の理由を出さない', async () => {
+    mockUseRelatedArticles.mockReturnValue({
+      data: {
+        articles: [{ ...mockArticles[0], commonTags: 0 }],
+        algorithm: 'tag',
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<RelatedArticles articleId="test-article" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Related Article 1')).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByTestId('related-article-reason')
+    ).not.toBeInTheDocument();
   });
 
   it('ローディング中はスケルトンを表示する', () => {
     mockUseRelatedArticles.mockReturnValue({
-      data: [],
+      data: undefined,
       isLoading: true,
       error: null,
     });
@@ -104,7 +146,7 @@ describe('RelatedArticles', () => {
 
   it('エラー時は何も表示しない', () => {
     mockUseRelatedArticles.mockReturnValue({
-      data: [],
+      data: undefined,
       isLoading: false,
       error: new Error('Failed to fetch'),
     });
@@ -116,7 +158,7 @@ describe('RelatedArticles', () => {
 
   it('関連記事が0件の場合はメッセージを表示する', () => {
     mockUseRelatedArticles.mockReturnValue({
-      data: [],
+      data: { articles: [], algorithm: 'tag' },
       isLoading: false,
       error: null,
     });
@@ -128,7 +170,7 @@ describe('RelatedArticles', () => {
 
   it('タグが正しく表示される', async () => {
     mockUseRelatedArticles.mockReturnValue({
-      data: mockArticles,
+      data: { articles: mockArticles, algorithm: 'tag' },
       isLoading: false,
       error: null,
     });
@@ -152,10 +194,11 @@ describe('RelatedArticles', () => {
       source: 'Test Source',
       tags: [],
       similarity: 0.8 - i * 0.05,
+      commonTags: 1,
     }));
 
     mockUseRelatedArticles.mockReturnValue({
-      data: manyArticles,
+      data: { articles: manyArticles, algorithm: 'tag' },
       isLoading: false,
       error: null,
     });
@@ -175,7 +218,7 @@ describe('RelatedArticles', () => {
     };
 
     mockUseRelatedArticles.mockReturnValue({
-      data: [recentArticle],
+      data: { articles: [recentArticle], algorithm: 'tag' },
       isLoading: false,
       error: null,
     });
@@ -189,7 +232,7 @@ describe('RelatedArticles', () => {
 
   it('ソース名が正しく表示される', async () => {
     mockUseRelatedArticles.mockReturnValue({
-      data: mockArticles,
+      data: { articles: mockArticles, algorithm: 'tag' },
       isLoading: false,
       error: null,
     });

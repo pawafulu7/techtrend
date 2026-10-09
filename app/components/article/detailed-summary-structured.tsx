@@ -39,7 +39,7 @@ export function DetailedSummaryStructured({
         <h3 className="text-h3 mb-[var(--tt-space-3)] tracking-[var(--tt-tracking-tight)]">
           詳細要約
         </h3>
-        <div className="text-card-foreground/80 text-summary whitespace-pre-wrap">
+        <div className="text-card-foreground/80 text-body whitespace-pre-wrap">
           {detailedSummary}
         </div>
       </div>
@@ -55,7 +55,8 @@ export function DetailedSummaryStructured({
       <h3 className="text-h3 mb-[var(--tt-space-4)] tracking-[var(--tt-tracking-tight)]">
         詳細要約
       </h3>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {/* 本文の列（記事詳細では 45rem まで）の中で読むので、画面幅によらず1列にする（#703） */}
+      <div className="grid grid-cols-1 gap-4">
         {sections.map((section, index) => {
           return (
             <article
@@ -80,7 +81,7 @@ export function DetailedSummaryStructured({
                 </span>
               </h4>
 
-              <div className="text-summary space-y-1 text-[var(--tt-color-text)]">
+              <div className="text-body space-y-1 text-[var(--tt-color-text)]">
                 {section.content.split('\n').map((line, lineIndex) => (
                   <p key={lineIndex}>{highlightContent(line)}</p>
                 ))}

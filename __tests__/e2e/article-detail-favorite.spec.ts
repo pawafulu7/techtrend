@@ -99,8 +99,10 @@ test.describe('Article Detail Favorite Button', () => {
     const favoriteButtonInBottom = bottomActionArea.locator('[data-testid="favorite-button"]');
     await expect(favoriteButtonInBottom).toHaveCount(0);
     
-    // 「元記事を読む」ボタンは存在することを確認（より広範囲で検索）
-    const externalLinkButton = page.locator('text=/元記事を読む/');
+    // 「元記事を読む」はタイトルの下と下部の両方にある（#703）。下部のエリアにあることを確認
+    const externalLinkButton = bottomActionArea.getByRole('link', {
+      name: '元記事を読む',
+    });
     await expect(externalLinkButton).toBeVisible({ timeout: 10000 });
   });
 });
