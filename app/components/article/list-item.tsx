@@ -100,7 +100,7 @@ export function ArticleListItem({
           {!isRead && <UnreadDot />}
           {isNew && <NewLabel />}
           <SourceLabel
-            name={article.source?.name || 'Unknown'}
+            name={article.companyName ?? article.source.name}
             className="max-w-48"
           />
           <span className="hidden items-center gap-1 sm:flex">
@@ -158,7 +158,10 @@ export function ArticleListItem({
         タッチ端末（hover できない端末）では常に出す。マウス端末では hover かキーボード
         フォーカスで出し、出ていないときも幅を確保してタイトルの折り返しを変えない
       */}
-      <div className="relative z-10 flex shrink-0 items-center gap-1 transition-opacity duration-200 group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:opacity-0">
+      <div
+        className="relative z-10 flex shrink-0 items-center gap-1 transition-opacity duration-200 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 [@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:opacity-0"
+        data-testid="article-actions"
+      >
         <FavoriteButton
           articleId={article.id}
           compact

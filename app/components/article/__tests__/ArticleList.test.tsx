@@ -39,16 +39,19 @@ jest.mock('@/app/components/article/card', () => ({
     article,
     onArticleClick,
     isRead,
+    layout,
     thumbnailPlaceholder,
   }: {
     article: { id: string; title: string };
     onArticleClick?: () => void;
     isRead?: boolean;
+    layout?: string;
     thumbnailPlaceholder?: boolean;
   }) => (
     <div
       data-testid={`article-card-${article.id}`}
       data-is-read={isRead}
+      data-layout={layout}
       data-thumbnail-placeholder={String(thumbnailPlaceholder)}
       onClick={onArticleClick}
     >
@@ -186,11 +189,15 @@ describe('ArticleList', () => {
       expect(listContainer).toHaveClass('grid');
     });
 
-    it('カードビューでは画像なし記事の枠を既定で出す', () => {
+    it('カードビューではグリッド用のカードにし、画像なし記事の枠を既定で出す', () => {
       renderWithProviders(
         <ArticleList articles={mockArticles} viewMode="card" />
       );
 
+      expect(screen.getByTestId('article-card-1')).toHaveAttribute(
+        'data-layout',
+        'grid'
+      );
       expect(screen.getByTestId('article-card-1')).toHaveAttribute(
         'data-thumbnail-placeholder',
         'true'

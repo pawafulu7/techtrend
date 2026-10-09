@@ -26,7 +26,10 @@ export function ArticleListItem({
   const [erroredThumbnail, setErroredThumbnail] = useState<string | null>(null);
   const thumbnailError = erroredThumbnail === article.thumbnail;
   const displayTitle = article.translatedTitle || article.title;
-  const showThumbnail = hasValidThumbnail(article.thumbnail) && !thumbnailError;
+  const thumbnailSrc =
+    hasValidThumbnail(article.thumbnail) && !thumbnailError
+      ? article.thumbnail
+      : null;
   const dateStr = formatDate(article.publishedAt);
 
   return (
@@ -51,14 +54,14 @@ export function ArticleListItem({
         className="relative w-full overflow-hidden bg-[var(--tt-color-surface-muted)]"
         style={{ paddingBottom: '60%' }}
       >
-        {showThumbnail ? (
+        {thumbnailSrc ? (
           // eslint-disable-next-line @next/next/no-img-element -- Custom image loader handles 800+ domains; see next.config.ts
           <img
-            src={article.thumbnail!}
+            src={thumbnailSrc}
             alt=""
             className="absolute inset-0 h-full w-full object-contain"
             loading="lazy"
-            onError={() => setErroredThumbnail(article.thumbnail)}
+            onError={() => setErroredThumbnail(thumbnailSrc)}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

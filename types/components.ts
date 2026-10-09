@@ -52,7 +52,8 @@ export interface ArticleListProps {
 
 // 記事リストアイテム（リスト形式用）
 export interface ArticleListItemProps {
-  article: ArticleWithRelations;
+  // companyName: hatena_blog_dev の記事で、ソース名の代わりに会社名を出す（ArticleCardProps と同じ）
+  article: ArticleWithRelations & { companyName?: string };
   onTagClick?: (tagName: string) => void;
   articleIndex?: number;
   totalArticleCount?: number;

@@ -7,7 +7,7 @@ import { Calendar, ExternalLink, Newspaper } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
-import { isSlideSource } from '@/lib/utils/source/slide-source';
+import { isSlideArticle } from '@/lib/utils/source/slide-source';
 import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
 import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
@@ -31,12 +31,19 @@ export function ArticleCard({
   fetchInitialStatus = false,
   isFavoriteLoading = false,
   showSource = true,
+  layout = 'stack',
   thumbnailPlaceholder = false,
 }: ArticleCardProps & {
   isRead?: boolean;
   /**
-   * 画像の無い記事にも空の枠を出し、同じ行のカードと高さを揃える。グリッドに並べる
-   * 一覧（ArticleList）だけが有効にする。1列で並べる画面では揃える相手がいない
+   * カードの並べ方。'grid' は複数列のグリッド（ArticleList）用で、サムネイル枠を 16:9 に
+   * 固定し、複数列のマウス端末では操作ボタンを画像に重ねる。'stack' は1列で全幅に並べる
+   * 画面用で、枠の高さを 12rem に抑えて画像全体を表示し、操作ボタンは常に下端に出す
+   */
+  layout?: 'grid' | 'stack';
+  /**
+   * 画像の無い記事にも空の枠を出し、同じ行のカードと高さを揃える（layout が 'grid' のときだけ）。
+   * 画像がほぼ無い一覧（/papers）では揃える意味が無いので出さない
    */
   thumbnailPlaceholder?: boolean;
 }) {
@@ -51,8 +58,10 @@ export function ArticleCard({
     hasValidThumbnail(article.thumbnail) && !thumbnailError
       ? article.thumbnail
       : null;
-  // 幅 sm 以上（複数列）でカードの上端に枠があるか。マウス端末の操作ボタンはこの枠に重ねる
-  const hasFrame = thumbnailSrc !== null || thumbnailPlaceholder;
+  const isGrid = layout === 'grid';
+  const showPlaceholder = isGrid && thumbnailPlaceholder;
+  // 複数列（幅 sm 以上）でカードの上端に枠があるか。マウス端末の操作ボタンはこの枠に重ねる
+  const overlayActions = isGrid && (thumbnailSrc !== null || showPlaceholder);
   const trimmedSummary = article.summary?.trim() || '';
 
   const searchParams = useSearchParams();
@@ -77,39 +86,49 @@ export function ArticleCard({
       data-testid="article-card"
       data-article-id={article.id}
       className={cn(
-        // @container: 1列で全幅に並ぶ画面（カード幅 36rem 以上）では枠の高さを抑える
-        'group @container relative flex h-auto cursor-pointer flex-col gap-0 pb-3 sm:min-h-[240px]',
+        'group relative flex h-auto cursor-pointer flex-col gap-0 pb-3',
+        // グリッドの最低高さ。1列で並べるときに付けると、短い記事でメタ情報の上が空く
+        isGrid && 'sm:min-h-[240px]',
         // タイトル Link の擬似要素がカード全面を覆うため、フォーカスリングは
         // コンテナ側で表現する（キーボード操作でどのカードにいるか分かるように）
         'focus-within:ring-2 focus-within:ring-(--tt-color-primary) focus-within:ring-offset-2'
       )}
     >
       {/*
-        サムネイル枠は 16:9 に固定し、同じ行のカードで高さを揃える。写真は枠いっぱいに
-        切り抜き、スライドは文字が欠けないよう全体を収める。全幅のカードで 16:9 にすると
-        画像が画面の半分を占めるため、幅 36rem 以上では高さ 12rem に収める
+        グリッドではサムネイル枠を 16:9 に固定し、同じ行のカードで高さを揃える。写真は枠
+        いっぱいに切り抜き、スライドは文字が欠けないよう全体を収める。1列で全幅に並べる
+        画面で 16:9 にすると画像が画面の半分を占めるため、高さ 12rem に収めて全体を出す
       */}
       {thumbnailSrc ? (
-        <div className="relative isolate aspect-video w-full overflow-hidden rounded-t-lg bg-(--tt-color-surface-muted) @xl:aspect-auto @xl:h-48">
+        <div
+          className={cn(
+            'relative isolate w-full overflow-hidden rounded-t-lg bg-(--tt-color-surface-muted)',
+            isGrid ? 'aspect-video' : 'h-48'
+          )}
+        >
           <OptimizedImage
             src={thumbnailSrc}
             alt={article.title}
             fill
             priority={false}
             className={
-              isSlideSource(article.source?.name)
-                ? 'object-contain'
-                : 'object-cover @xl:object-contain'
+              isGrid &&
+              !isSlideArticle({
+                sourceName: article.source?.name,
+                url: article.url,
+              })
+                ? 'object-cover'
+                : 'object-contain'
             }
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             onError={() => setErroredThumbnail(thumbnailSrc)}
           />
         </div>
-      ) : thumbnailPlaceholder ? (
+      ) : showPlaceholder ? (
         // 画像が無い記事も同じ枠で行の高さを揃える。揃える相手のいない
         // 1列表示（幅 sm 未満）では出さず、縦に伸ばさない
         <div
-          className="hidden aspect-video w-full items-center justify-center rounded-t-lg bg-(--tt-color-surface-muted) text-(--tt-color-text-muted) sm:flex @xl:aspect-auto @xl:h-48"
+          className="hidden aspect-video w-full items-center justify-center rounded-t-lg bg-(--tt-color-surface-muted) text-(--tt-color-text-muted) sm:flex"
           aria-hidden="true"
           data-testid="thumbnail-placeholder"
         >
@@ -167,18 +186,21 @@ export function ArticleCard({
       </div>
 
       {/*
-        操作ボタン。タッチ端末（hover できない端末）と1列表示（幅 sm 未満）ではカード下端に
-        常に出す。複数列のマウス端末ではサムネイルの枠の右上に重ね、hover かキーボード
-        フォーカスで出す。枠が無いカードでは重ねるとタイトルを隠すため、下端に常に出す
+        操作ボタン。タッチ端末（hover できない端末）と1列表示（幅 sm 未満、layout が 'stack'）
+        ではカード下端に常に出す。複数列のマウス端末ではサムネイルの枠の右上に重ね、hover か
+        キーボードフォーカスで出す。枠が無いカードでは重ねるとタイトルを隠すため、下端に常に出す
       */}
       <div
         className={cn(
           'relative z-10 flex items-center justify-end gap-1 px-4 pt-1 transition-opacity duration-200',
-          hasFrame && [
+          overlayActions && [
             'sm:[@media(hover:hover)]:absolute sm:[@media(hover:hover)]:top-2 sm:[@media(hover:hover)]:right-2 sm:[@media(hover:hover)]:rounded-full sm:[@media(hover:hover)]:bg-(--tt-color-surface)/85 sm:[@media(hover:hover)]:p-0.5 sm:[@media(hover:hover)]:opacity-0 sm:[@media(hover:hover)]:shadow-sm',
-            'group-focus-within:opacity-100 group-hover:opacity-100',
+            // 隠しているあいだは押せないようにする（マウスとタッチ両用の端末で、見えないボタンに当たらない）
+            'sm:[@media(hover:hover)]:pointer-events-none',
+            'group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
           ]
         )}
+        data-testid="article-actions"
       >
         {votes > 0 && (
           <BadgeV2

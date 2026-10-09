@@ -274,6 +274,7 @@ export function ArticleList({
             isRead={group.article.isRead ?? true}
             isFavorited={group.article.isFavorited ?? false}
             onToggleFavorite={() => handleToggleFavorite(group.article.id)}
+            layout="grid"
             thumbnailPlaceholder={thumbnailPlaceholder}
           />
         )

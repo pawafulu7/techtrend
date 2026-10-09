@@ -600,7 +600,7 @@ describe('ArticleCard', () => {
       expect(thumbnail).toHaveClass('object-contain');
     });
 
-    it('crops photo thumbnails to fill the 16:9 frame (object-cover)', () => {
+    it('crops photo thumbnails to fill the 16:9 frame in the grid (object-cover)', () => {
       const regularArticle = createMockArticleWithRelations({
         article: {
           title: 'Regular Article',
@@ -610,11 +610,53 @@ describe('ArticleCard', () => {
         source: createMockSource({ name: 'Qiita' }),
       });
 
-      renderWithProviders(<ArticleCard article={regularArticle} />);
+      renderWithProviders(
+        <ArticleCard article={regularArticle} layout="grid" />
+      );
 
       const thumbnail = screen.getByRole('img', { name: 'Regular Article' });
       expect(thumbnail).toHaveClass('object-cover');
       expect(thumbnail.parentElement).toHaveClass('aspect-video');
+    });
+
+    it('keeps slides collected via Hatena Bookmark uncropped (judged by URL host)', () => {
+      const slideViaHatena = createMockArticleWithRelations({
+        article: {
+          title: 'Slide via Hatena',
+          url: 'https://speakerdeck.com/someone/slides',
+          thumbnail: 'https://example.com/slide.jpg',
+        },
+        source: createMockSource({ name: 'はてなブックマーク' }),
+      });
+
+      renderWithProviders(
+        <ArticleCard article={slideViaHatena} layout="grid" />
+      );
+
+      expect(screen.getByRole('img', { name: 'Slide via Hatena' })).toHaveClass(
+        'object-contain'
+      );
+    });
+
+    it('fits the whole image in a 12rem frame and keeps the actions visible when stacked in one column', () => {
+      const article = createMockArticleWithRelations({
+        article: {
+          title: 'Stacked',
+          thumbnail: 'https://example.com/ogp.jpg',
+        },
+        source: createMockSource({ name: 'Qiita' }),
+      });
+
+      // 既定の layout は 'stack'（お気に入りフィード・ソース詳細の1列表示）
+      renderWithProviders(<ArticleCard article={article} />);
+
+      const thumbnail = screen.getByRole('img', { name: 'Stacked' });
+      expect(thumbnail).toHaveClass('object-contain');
+      expect(thumbnail.parentElement).toHaveClass('h-48');
+      expect(thumbnail.parentElement).not.toHaveClass('aspect-video');
+      const actions = screen.getByTestId('article-actions');
+      expect(actions).not.toHaveClass('sm:[@media(hover:hover)]:absolute');
+      expect(actions).not.toHaveClass('sm:[@media(hover:hover)]:opacity-0');
     });
 
     it('shows a placeholder in the same 16:9 frame when thumbnailPlaceholder is set', () => {
@@ -624,7 +666,7 @@ describe('ArticleCard', () => {
       });
 
       renderWithProviders(
-        <ArticleCard article={article} thumbnailPlaceholder />
+        <ArticleCard article={article} layout="grid" thumbnailPlaceholder />
       );
 
       const placeholder = screen.getByTestId('thumbnail-placeholder');
@@ -634,21 +676,21 @@ describe('ArticleCard', () => {
       expect(placeholder).toHaveAttribute('aria-hidden', 'true');
       expect(screen.queryByRole('img', { name: 'No Image' })).toBeNull();
       // 枠があるので、複数列のマウス端末では操作ボタンを枠に重ねる
-      const actions = screen.getByLabelText('元記事を開く').parentElement!;
+      const actions = screen.getByTestId('article-actions');
       expect(actions).toHaveClass('sm:[@media(hover:hover)]:absolute');
     });
 
-    it('omits the placeholder by default and keeps the actions in the card flow', () => {
+    it('omits the placeholder in the grid unless requested and keeps the actions in the card flow', () => {
       const article = createMockArticleWithRelations({
         article: { title: 'No Image', thumbnail: null },
         source: createMockSource({ name: 'arXiv AI' }),
       });
 
-      renderWithProviders(<ArticleCard article={article} />);
+      renderWithProviders(<ArticleCard article={article} layout="grid" />);
 
       expect(screen.queryByTestId('thumbnail-placeholder')).toBeNull();
       // 重ねる枠が無いので、マウス端末でも隠さず下端に出す（タイトルを隠さない）
-      const actions = screen.getByLabelText('元記事を開く').parentElement!;
+      const actions = screen.getByTestId('article-actions');
       expect(actions).not.toHaveClass('sm:[@media(hover:hover)]:absolute');
       expect(actions).not.toHaveClass('sm:[@media(hover:hover)]:opacity-0');
     });
@@ -662,12 +704,15 @@ describe('ArticleCard', () => {
         source: createMockSource({ name: 'Qiita' }),
       });
 
-      renderWithProviders(<ArticleCard article={article} />);
+      renderWithProviders(<ArticleCard article={article} layout="grid" />);
 
-      const actions = screen.getByLabelText('元記事を開く').parentElement!;
-      // 複数列のマウス端末だけ重ねて隠す。1列とタッチ端末では下端に常に出す
+      const actions = screen.getByTestId('article-actions');
+      // 複数列のマウス端末だけ重ねて隠す（隠しているあいだは押せない）。1列とタッチ端末では下端に常に出す
       expect(actions).toHaveClass('sm:[@media(hover:hover)]:absolute');
       expect(actions).toHaveClass('sm:[@media(hover:hover)]:opacity-0');
+      expect(actions).toHaveClass(
+        'sm:[@media(hover:hover)]:pointer-events-none'
+      );
       expect(actions).not.toHaveClass('[@media(hover:hover)]:opacity-0');
     });
 

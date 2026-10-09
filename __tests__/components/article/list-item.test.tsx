@@ -99,10 +99,25 @@ describe('ArticleListItem', () => {
   it('keeps the actions in the layout so touch devices can see them', () => {
     render(<ArticleListItem article={article} />);
 
-    const actions = screen.getByLabelText('元記事を開く').parentElement!;
+    const actions = screen.getByTestId('article-actions');
     expect(within(actions).getByTestId('favorite-button')).toBeInTheDocument();
-    // display:none で隠すとタッチ端末で出せない。隠すのは hover できる端末だけ（透明度）
+    expect(within(actions).getByLabelText('元記事を開く')).toBeInTheDocument();
+    // display:none で隠すとタッチ端末で出せない。隠すのは hover できる端末だけ（透明度）で、
+    // 隠しているあいだは押せないようにする
     expect(actions).not.toHaveClass('hidden');
-    expect(actions).toHaveClass('[@media(hover:hover)]:opacity-0');
+    expect(actions).toHaveClass(
+      '[@media(hover:hover)]:opacity-0',
+      '[@media(hover:hover)]:pointer-events-none'
+    );
+  });
+
+  it('shows the company name for company blog articles, like the other card views', () => {
+    render(
+      <ArticleListItem article={{ ...article, companyName: 'Example Inc.' }} />
+    );
+
+    expect(screen.getByTestId('article-source')).toHaveTextContent(
+      'Example Inc.'
+    );
   });
 });
