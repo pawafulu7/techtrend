@@ -60,7 +60,7 @@ export function CategorySection({ category, entries }: CategorySectionProps) {
     <section>
       <div className="mb-3 flex items-center gap-3">
         <Icon className={`size-5 ${config.iconColor}`} aria-hidden="true" />
-        <h2 className="text-lg font-semibold tracking-tight text-[var(--tt-color-text)]">
+        <h2 className="text-h2 tracking-tight text-[var(--tt-color-text)]">
           {config.label}
         </h2>
         <Badge

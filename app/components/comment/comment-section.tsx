@@ -285,7 +285,7 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
   return (
     <Card className={className} data-testid="comment-section">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle className="flex items-center gap-2">
           <StickyNote className="h-5 w-5" aria-hidden="true" />
           <span>個人メモ</span>
           <span className="text-muted-foreground flex items-center gap-1 text-sm font-normal">

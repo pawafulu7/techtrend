@@ -21,8 +21,12 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
           title: '認証が必要です',
           message: 'AI検索を使用するにはログインが必要です。',
           action: (
-            <Button onClick={() => router.push('/auth/login?callbackUrl=/search/agent')}>
-              <LogIn className="h-4 w-4 mr-2" aria-hidden="true" />
+            <Button
+              onClick={() =>
+                router.push('/auth/login?callbackUrl=/search/agent')
+              }
+            >
+              <LogIn className="mr-2 h-4 w-4" aria-hidden="true" />
               ログイン
             </Button>
           ),
@@ -35,7 +39,7 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
             : '少し時間を置いてから再試行してください。',
           action: onRetry && (
             <Button onClick={onRetry} disabled={!!error.retryAfter}>
-              <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
+              <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
               再試行
             </Button>
           ),
@@ -49,10 +53,11 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
       case 500:
         return {
           title: 'サーバーエラー',
-          message: 'サーバーで問題が発生しました。しばらくしてから再試行してください。',
+          message:
+            'サーバーで問題が発生しました。しばらくしてから再試行してください。',
           action: onRetry && (
             <Button onClick={onRetry}>
-              <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
+              <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
               再試行
             </Button>
           ),
@@ -60,10 +65,11 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
       case 408:
         return {
           title: 'タイムアウト',
-          message: 'リクエストがタイムアウトしました。ネットワーク接続を確認してください。',
+          message:
+            'リクエストがタイムアウトしました。ネットワーク接続を確認してください。',
           action: onRetry && (
             <Button onClick={onRetry}>
-              <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
+              <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
               再試行
             </Button>
           ),
@@ -74,7 +80,7 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
           message: 'ネットワーク接続を確認してください。',
           action: onRetry && (
             <Button onClick={onRetry}>
-              <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
+              <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
               再試行
             </Button>
           ),
@@ -85,7 +91,7 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
           message: error.message || '不明なエラーが発生しました。',
           action: onRetry && (
             <Button onClick={onRetry}>
-              <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
+              <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
               再試行
             </Button>
           ),
@@ -98,27 +104,19 @@ export function AgentErrorDisplay({ error, onRetry }: AgentErrorDisplayProps) {
   return (
     <CardV2
       variant="ghost"
-      className="py-6 md:py-8 border-2 border-[var(--tt-color-negative)]"
+      className="border-2 border-[var(--tt-color-negative)] py-6 md:py-8"
       role="alert"
       aria-live="assertive"
       data-testid="agent-error-display"
     >
-      <div className="mx-auto max-w-xl flex flex-col items-center text-center gap-3">
+      <div className="mx-auto flex max-w-xl flex-col items-center gap-3 text-center">
         <AlertTriangle
-          className="h-8 w-8 text-destructive"
+          className="text-destructive h-8 w-8"
           aria-hidden="true"
         />
-        <h3 className="text-xl md:text-2xl font-semibold text-destructive">
-          {title}
-        </h3>
-        <p className="text-sm text-destructive/80">
-          {message}
-        </p>
-        {action && (
-          <div className="mt-2">
-            {action}
-          </div>
-        )}
+        <h3 className="text-h3 text-destructive">{title}</h3>
+        <p className="text-destructive/80 text-sm">{message}</p>
+        {action && <div className="mt-2">{action}</div>}
       </div>
     </CardV2>
   );

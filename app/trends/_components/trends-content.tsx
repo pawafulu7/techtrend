@@ -194,8 +194,8 @@ export function TrendsContent({
       <section>
         <div className="mb-4 flex items-center gap-2">
           <div className="from-tt-primary/50 h-px flex-1 bg-gradient-to-r to-transparent" />
-          <h2 className="text-muted-foreground flex items-center gap-1.5 px-2 text-xs font-bold tracking-widest">
-            <TrendingUp className="h-3.5 w-3.5" />
+          <h2 className="text-foreground text-h2 flex items-center gap-2 px-2">
+            <TrendingUp className="h-5 w-5" aria-hidden="true" />
             急上昇キーワード
           </h2>
           <div className="from-tt-primary/50 h-px flex-1 bg-gradient-to-l to-transparent" />
@@ -232,8 +232,11 @@ export function TrendsContent({
       {/* New Tags Section */}
       <section>
         <div className="mb-3 flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5 text-(--tt-color-positive)" />
-          <h2 className="text-muted-foreground text-xs font-medium tracking-wide">
+          <Sparkles
+            className="h-5 w-5 text-(--tt-color-positive)"
+            aria-hidden="true"
+          />
+          <h2 className="text-foreground text-h2">
             新着タグ{initialNewTags ? ` (${initialNewTags.length})` : ''}
           </h2>
         </div>
@@ -268,9 +271,7 @@ export function TrendsContent({
       <section>
         <div className="mb-3 flex items-center gap-2">
           <div className="h-px flex-1 bg-gradient-to-r from-(--tt-color-primary)/30 to-transparent" />
-          <h2 className="text-muted-foreground px-2 text-xs font-bold tracking-widest">
-            詳細レポート
-          </h2>
+          <h2 className="text-foreground text-h2 px-2">詳細レポート</h2>
           <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-primary)/30 to-transparent" />
         </div>
         <TrendNavigationCards />
@@ -279,9 +280,7 @@ export function TrendsContent({
       {/* Analysis Section */}
       <section className="border-t pt-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-muted-foreground text-xs font-bold tracking-widest">
-            分析
-          </h2>
+          <h2 className="text-foreground text-h2">分析</h2>
           <div
             className="flex gap-1.5"
             role="group"
@@ -325,7 +324,7 @@ export function TrendsContent({
             <div className="bg-background rounded-lg border p-4 shadow-sm">
               <div className="mb-3 flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-(--tt-color-info)" />
-                <h3 className="text-sm font-semibold">人気タグ TOP10</h3>
+                <h3 className="text-h3">人気タグ TOP10</h3>
               </div>
               {loadingAnalysis && !analysisFailed ? (
                 <div className="space-y-2">

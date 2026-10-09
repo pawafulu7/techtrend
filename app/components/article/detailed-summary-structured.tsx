@@ -36,10 +36,10 @@ export function DetailedSummaryStructured({
         className="bg-card text-card-foreground border-foreground/10 rounded-xl border p-[var(--tt-space-5)] shadow-sm"
         data-testid="detailed-summary-fallback"
       >
-        <p className="mb-[var(--tt-space-3)] font-[family-name:var(--tt-font-heading)] font-semibold tracking-[var(--tt-tracking-tight)] text-[var(--tt-text-sm)]">
+        <p className="font-heading mb-[var(--tt-space-3)] font-semibold tracking-[var(--tt-tracking-tight)] text-[var(--tt-text-sm)]">
           詳細要約
         </p>
-        <div className="text-card-foreground/80 font-[family-name:var(--tt-font-body)] leading-[var(--tt-leading-relaxed)] whitespace-pre-wrap text-[var(--tt-text-sm)]">
+        <div className="text-card-foreground/80 text-summary whitespace-pre-wrap">
           {detailedSummary}
         </div>
       </div>
@@ -52,7 +52,7 @@ export function DetailedSummaryStructured({
       aria-label="詳細要約"
       data-testid="detailed-summary-container"
     >
-      <h3 className="mb-[var(--tt-space-4)] font-[family-name:var(--tt-font-heading)] font-semibold tracking-[var(--tt-tracking-tight)] text-[var(--tt-text-sm)]">
+      <h3 className="text-h3 mb-[var(--tt-space-4)] tracking-[var(--tt-tracking-tight)]">
         詳細要約
       </h3>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -68,7 +68,7 @@ export function DetailedSummaryStructured({
               }}
               data-testid={`detailed-summary-section-${index}`}
             >
-              <h4 className="flex items-center gap-2 font-[family-name:var(--tt-font-heading)] text-sm font-semibold tracking-[var(--tt-tracking-tight)]">
+              <h4 className="font-heading flex items-center gap-2 text-sm font-semibold tracking-[var(--tt-tracking-tight)]">
                 <span
                   className="bg-muted/60 group-hover:bg-muted flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-lg transition-colors duration-200"
                   aria-hidden="true"
@@ -80,7 +80,7 @@ export function DetailedSummaryStructured({
                 </span>
               </h4>
 
-              <div className="space-y-1 font-[family-name:var(--tt-font-body)] text-sm leading-relaxed text-[var(--tt-color-text)]">
+              <div className="text-summary space-y-1 text-[var(--tt-color-text)]">
                 {section.content.split('\n').map((line, lineIndex) => (
                   <p key={lineIndex}>{highlightContent(line)}</p>
                 ))}

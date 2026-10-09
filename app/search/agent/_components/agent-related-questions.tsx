@@ -30,11 +30,14 @@ export function AgentRelatedQuestions({
     return (
       <CardV2
         variant="ghost"
-        className={cn('mt-6 p-4 min-h-[100px] flex items-center justify-center', className)}
+        className={cn(
+          'mt-6 flex min-h-[100px] items-center justify-center p-4',
+          className
+        )}
         data-testid="related-questions-loading"
       >
         <div className="flex items-center gap-2">
-          <div className="h-4 w-4 rounded-full border-2 border-[var(--tt-color-primary)] border-t-transparent animate-spin" />
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--tt-color-primary)] border-t-transparent" />
           <span className="text-sm text-[var(--tt-color-text-muted)]">
             関連する質問を読み込み中...
           </span>
@@ -52,11 +55,14 @@ export function AgentRelatedQuestions({
       data-testid="agent-related-questions"
     >
       <CardV2 variant="ghost" className="mt-6 p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="h-4 w-4 text-[var(--tt-color-primary)]" aria-hidden="true" />
+        <div className="mb-3 flex items-center gap-2">
+          <Sparkles
+            className="h-4 w-4 text-[var(--tt-color-primary)]"
+            aria-hidden="true"
+          />
           <h3
             id="related-questions-heading"
-            className="text-sm font-medium text-[var(--tt-color-text)]"
+            className="text-h3 text-[var(--tt-color-text)]"
           >
             関連する質問
           </h3>
@@ -70,8 +76,8 @@ export function AgentRelatedQuestions({
               size="sm"
               onClick={() => onSelectQuestion(question)}
               className={cn(
-                'text-sm px-4 py-3 md:py-2',
-                'w-full sm:w-auto text-left',
+                'px-4 py-3 text-sm md:py-2',
+                'w-full text-left sm:w-auto',
                 'hover:border-[var(--tt-color-primary)] hover:bg-[var(--tt-color-primary)]/5',
                 'transition-colors'
               )}
@@ -100,16 +106,39 @@ export function generateRelatedQuestions(
 ): string[] {
   // Extract potential keywords from response
   const techKeywords = [
-    'React', 'Next.js', 'TypeScript', 'JavaScript', 'Node.js',
-    'Python', 'Go', 'Rust', 'Docker', 'Kubernetes',
-    'AWS', 'GCP', 'Azure', 'Terraform', 'CI/CD',
-    'GraphQL', 'REST API', 'PostgreSQL', 'MongoDB', 'Redis',
-    'AI', 'LLM', 'ChatGPT', 'Claude', 'OpenAI',
-    'セキュリティ', 'パフォーマンス', 'テスト', 'アーキテクチャ',
+    'React',
+    'Next.js',
+    'TypeScript',
+    'JavaScript',
+    'Node.js',
+    'Python',
+    'Go',
+    'Rust',
+    'Docker',
+    'Kubernetes',
+    'AWS',
+    'GCP',
+    'Azure',
+    'Terraform',
+    'CI/CD',
+    'GraphQL',
+    'REST API',
+    'PostgreSQL',
+    'MongoDB',
+    'Redis',
+    'AI',
+    'LLM',
+    'ChatGPT',
+    'Claude',
+    'OpenAI',
+    'セキュリティ',
+    'パフォーマンス',
+    'テスト',
+    'アーキテクチャ',
   ];
 
   // Find keywords mentioned in the response
-  const foundKeywords = techKeywords.filter(keyword =>
+  const foundKeywords = techKeywords.filter((keyword) =>
     response.toLowerCase().includes(keyword.toLowerCase())
   );
 
@@ -141,7 +170,8 @@ export function generateRelatedQuestions(
   ];
 
   while (questions.length < maxQuestions) {
-    const generic = genericQuestions[questions.length % genericQuestions.length];
+    const generic =
+      genericQuestions[questions.length % genericQuestions.length];
     if (!questions.includes(generic)) {
       questions.push(generic);
     } else {

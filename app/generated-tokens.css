@@ -143,6 +143,11 @@
   --radius-2xl: var(--tt-radius-2xl);
   --radius-3xl: var(--tt-radius-3xl);
   --radius-4xl: var(--tt-radius-4xl);
+
+  /* Font families (font-sans / font-heading / font-mono -> next/font variables) */
+  --font-sans: var(--tt-font-body);
+  --font-heading: var(--tt-font-heading);
+  --font-mono: var(--tt-font-mono);
 }
 
 @theme {
@@ -153,6 +158,26 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  /* Text styles by role (text-h1 / text-h2 / text-h3 / text-body / text-summary / text-caption) */
+  --text-h1: clamp(1.5rem, 1rem + 2vw, 1.75rem);
+  --text-h1--line-height: 1.35;
+  --text-h1--font-weight: 700;
+  --text-h2: 1.375rem;
+  --text-h2--line-height: 1.4;
+  --text-h2--font-weight: 700;
+  --text-h3: 1.125rem;
+  --text-h3--line-height: 1.45;
+  --text-h3--font-weight: 600;
+  --text-body: 1rem;
+  --text-body--line-height: 1.75;
+  --text-body--font-weight: 400;
+  --text-summary: 0.875rem;
+  --text-summary--line-height: 1.7;
+  --text-summary--font-weight: 400;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.5;
+  --text-caption--font-weight: 400;
 }
 
 :root {
@@ -293,9 +318,9 @@
   --tt-color-chart-10: #0D9488;
 
   /* Typography */
-  --tt-font-body: 'Inter', system-ui, sans-serif;
-  --tt-font-heading: 'Space Grotesk', system-ui, sans-serif;
-  --tt-font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --tt-font-body: var(--font-inter), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', Meiryo, 'Noto Sans JP', 'Noto Sans CJK JP', system-ui, sans-serif;
+  --tt-font-heading: var(--font-space-grotesk), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', Meiryo, 'Noto Sans JP', 'Noto Sans CJK JP', system-ui, sans-serif;
+  --tt-font-mono: var(--font-jetbrains-mono), 'Courier New', monospace;
   --tt-text-2xl: 1.5rem;
   --tt-text-3xl: 1.875rem;
   --tt-text-4xl: 2.25rem;

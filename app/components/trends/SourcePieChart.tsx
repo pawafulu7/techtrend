@@ -136,7 +136,7 @@ export function SourcePieChart({
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
-          <h3 className="text-sm font-semibold">ソース別記事分布</h3>
+          <h3 className="text-h3">ソース別記事分布</h3>
         </div>
         <div className="h-[300px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
       </div>
@@ -148,7 +148,7 @@ export function SourcePieChart({
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
-          <h3 className="text-sm font-semibold">ソース別記事分布</h3>
+          <h3 className="text-h3">ソース別記事分布</h3>
         </div>
         <ErrorState
           title="ソース別記事分布を読み込めませんでした"
@@ -166,7 +166,7 @@ export function SourcePieChart({
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
-          <h3 className="text-sm font-semibold">ソース別記事分布</h3>
+          <h3 className="text-h3">ソース別記事分布</h3>
         </div>
         {note}
         <div className="text-muted-foreground flex h-[300px] items-center justify-center">
@@ -180,7 +180,7 @@ export function SourcePieChart({
     <div className="bg-background rounded-lg border p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
         <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
-        <h3 className="text-sm font-semibold">ソース別記事分布</h3>
+        <h3 className="text-h3">ソース別記事分布</h3>
       </div>
       {note}
       <ResponsiveContainer width="100%" height={300}>

@@ -144,7 +144,7 @@ export default function VerifyPage() {
       <Card>
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">{getIcon()}</div>
-          <CardTitle className="text-2xl">{getTitle()}</CardTitle>
+          <CardTitle>{getTitle()}</CardTitle>
           <CardDescription className="mt-2">{message}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

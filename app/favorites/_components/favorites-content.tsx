@@ -226,7 +226,7 @@ export function FavoritesContent({
       {/* Toolbar: Title + Count + Search + Sort */}
       <header className="flex flex-wrap items-center gap-2 pb-3">
         <Heart className="text-primary h-5 w-5" aria-hidden="true" />
-        <h1 className="text-foreground text-lg font-semibold">お気に入り</h1>
+        <h1 className="text-foreground text-h1">お気に入り</h1>
         {!failedWithoutData && (
           <span
             className="text-muted-foreground text-sm"

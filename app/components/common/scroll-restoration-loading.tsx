@@ -24,7 +24,7 @@ export function ScrollRestorationLoading({
       <div className="mx-4 w-full max-w-sm rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-6 shadow-2xl">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-[var(--tt-color-text)]">
+            <h3 className="text-h3 text-[var(--tt-color-text)]">
               スクロール位置を復元中...
             </h3>
             <Loader2 className="h-5 w-5 animate-spin text-[var(--tt-color-info)]" />

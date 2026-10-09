@@ -21,7 +21,7 @@ export function SourceChart({ data }: SourceChartProps) {
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <PieChart className="h-4 w-4 text-(--tt-color-info)" />
-          <h3 className="text-sm font-semibold">ソース別記事分布</h3>
+          <h3 className="text-h3">ソース別記事分布</h3>
         </div>
         <span className="text-muted-foreground text-xs">
           {total.toLocaleString()}件

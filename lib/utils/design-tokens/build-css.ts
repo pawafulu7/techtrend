@@ -13,8 +13,10 @@ import {
   designTokens,
   shadcnColorVars,
   shadowScale,
+  textStyles,
   type ColorModeTokens,
   type RadiusTokens,
+  type TypographyTokens,
 } from '../../design-tokens';
 
 type ShadcnVarName = keyof ReturnType<typeof shadcnColorVars>;
@@ -183,12 +185,20 @@ const THEME_RADIUS_KEYS = [
   '4xl',
 ] as const satisfies readonly (keyof RadiusTokens)[];
 
+/** Tailwind の font-* に対応付ける書体（font-sans / font-heading / font-mono） */
+const THEME_FONT_FAMILIES = {
+  sans: 'body',
+  heading: 'heading',
+  mono: 'mono',
+} as const satisfies Record<string, keyof TypographyTokens['family']>;
+
 /**
  * Tailwind の @theme
  *
- * - inline: shadcn の変数（bg-primary など）と TT トークン（bg-tt-primary など）を
- *   ユーティリティに対応付ける。値は CSS 変数のまま参照するので、.dark で切り替わる
+ * - inline: shadcn の変数（bg-primary など）、TT トークン（bg-tt-primary など）、書体（font-heading など）を
+ *   ユーティリティに対応付ける。値は CSS 変数のまま参照するので、.dark や next/font の変数で切り替わる
  * - 影はユーティリティ側で色を差し込めるよう、値をそのまま @theme に書く
+ * - 文字の役割（text-h1 など）は、サイズに行間・太さを添えて @theme に書く
  */
 function buildThemeCss(): string[] {
   const shadcnColors = Object.keys(shadcnColorVars(designTokens.colors.light))
@@ -203,8 +213,20 @@ function buildThemeCss(): string[] {
   const radius = THEME_RADIUS_KEYS.map(
     (k) => `  --radius-${k}: var(--tt-radius-${k});`
   ).join('\n');
+  const fonts = Object.entries(THEME_FONT_FAMILIES)
+    .map(([name, token]) => `  --font-${name}: var(--tt-font-${token});`)
+    .join('\n');
   const shadow = Object.entries(shadowScale)
     .map(([k, v]) => `  --shadow-${k}: ${v};`)
+    .join('\n');
+  const text = Object.entries(textStyles)
+    .map(([k, v]) =>
+      [
+        `  --text-${k}: ${v.size};`,
+        `  --text-${k}--line-height: ${v.lineHeight};`,
+        `  --text-${k}--font-weight: ${v.weight};`,
+      ].join('\n')
+    )
     .join('\n');
 
   return [
@@ -217,11 +239,17 @@ function buildThemeCss(): string[] {
     '',
     '  /* Border Radius (rounded-xs ... rounded-4xl) */',
     radius,
+    '',
+    '  /* Font families (font-sans / font-heading / font-mono -> next/font variables) */',
+    fonts,
     '}',
     '',
     '@theme {',
     '  /* Shadows (shadow-xs ... shadow-2xl) */',
     shadow,
+    '',
+    '  /* Text styles by role (text-h1 / text-h2 / text-h3 / text-body / text-summary / text-caption) */',
+    text,
     '}',
   ];
 }

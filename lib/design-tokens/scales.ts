@@ -80,15 +80,27 @@ export type RadiusTokens = {
 };
 
 /**
+ * 和文の書体（OS に入っているものを使い、Web フォントは読み込まない）
+ *
+ * 欧文の書体（Inter など）は和文の字形を持たないので、和文はこの並びの最初に見つかった書体になる。
+ * Mac・iOS → Windows → Android・Linux の順に並べる。
+ * Noto Sans JP を Web フォントで読み込むと、初回表示の転送量がページあたり 363〜816KB 増える
+ * （2026-10 の見積もり。Issue #699）ため入れていない。
+ */
+const JAPANESE_FONT_STACK =
+  "'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', Meiryo, 'Noto Sans JP', 'Noto Sans CJK JP'";
+
+/**
  * Typography Tokens
  *
- * Fonts are loaded via Next.js `next/font/google` in app/layout.tsx
+ * 書体は app/layout.tsx の next/font が読み込み、`--font-inter` などの変数に入れる。
+ * ここではその変数を参照するので、next/font が作る代替書体（"Inter Fallback" など）も効く。
  */
 export const typography: TypographyTokens = {
   family: {
-    heading: "'Space Grotesk', system-ui, sans-serif",
-    body: "'Inter', system-ui, sans-serif",
-    mono: "'JetBrains Mono', 'Courier New', monospace",
+    heading: `var(--font-space-grotesk), ${JAPANESE_FONT_STACK}, system-ui, sans-serif`,
+    body: `var(--font-inter), ${JAPANESE_FONT_STACK}, system-ui, sans-serif`,
+    mono: "var(--font-jetbrains-mono), 'Courier New', monospace",
   },
   size: {
     xs: '0.75rem', // 12px
@@ -120,6 +132,42 @@ export const typography: TypographyTokens = {
     wider: '0.02em',
   },
 };
+
+export type TextStyleToken = {
+  size: string;
+  lineHeight: number;
+  weight: number;
+};
+
+/**
+ * 文字の役割ごとのサイズ・行間・太さ（Issue #699 のスケール表）
+ *
+ * Tailwind の @theme に `--text-h1` などとして出力し、`text-h1` `text-summary` のクラスで使う。
+ * h1〜h3 の既定の書式（globals.css）もこの値を使う。行間・太さは `leading-*` `font-*` を
+ * 併せて書けばそちらが優先される。
+ *
+ * | 役割             | クラス       | サイズ                      | 行間 | 太さ |
+ * | ---------------- | ------------ | --------------------------- | ---- | ---- |
+ * | ページ見出し     | text-h1      | 28px（幅 400px 以下は 24px） | 1.35 | 700  |
+ * | セクション見出し | text-h2      | 22px                        | 1.4  | 700  |
+ * | カード・パネル見出し | text-h3  | 18px                        | 1.45 | 600  |
+ * | 本文             | text-body    | 16px                        | 1.75 | 400  |
+ * | 要約             | text-summary | 14px                        | 1.7  | 400  |
+ * | 補足（日付・件数） | text-caption | 12px                      | 1.5  | 400  |
+ */
+export const textStyles = {
+  h1: {
+    // 幅 400px で 24px、600px 以上で 28px。長い記事タイトルがスマホで行数を取りすぎないようにする
+    size: 'clamp(1.5rem, 1rem + 2vw, 1.75rem)',
+    lineHeight: 1.35,
+    weight: 700,
+  },
+  h2: { size: '1.375rem', lineHeight: 1.4, weight: 700 },
+  h3: { size: '1.125rem', lineHeight: 1.45, weight: 600 },
+  body: { size: '1rem', lineHeight: 1.75, weight: 400 },
+  summary: { size: '0.875rem', lineHeight: 1.7, weight: 400 },
+  caption: { size: '0.75rem', lineHeight: 1.5, weight: 400 },
+} as const satisfies Record<string, TextStyleToken>;
 
 /**
  * Shadow Tokens

@@ -222,7 +222,7 @@ export function TagFilter({ tags: initialTags }: TagFilterProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-sm font-medium">
+        <h3 className="text-h3 flex items-center gap-2">
           <TagIcon className="h-4 w-4" />
           タグフィルター
         </h3>

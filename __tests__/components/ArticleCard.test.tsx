@@ -396,8 +396,9 @@ describe('ArticleCard', () => {
     const titleElement = screen.getByText(/This is an extremely long title/i);
     expect(titleElement).toBeInTheDocument();
     // テキストはタイトルリンク内にあり、省略スタイルは見出し側が持つ
+    // 大きさ・太さはスケールの text-h3 が持つ（Issue #699）
     expect(screen.getByTestId('article-title')).toHaveClass(
-      'font-semibold',
+      'text-h3',
       'line-clamp-2'
     );
   });

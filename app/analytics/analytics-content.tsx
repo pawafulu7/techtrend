@@ -230,7 +230,7 @@ export default function AnalyticsContent() {
       data-testid="analytics-content"
     >
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">読書分析</h1>
+        <h1 className="text-h1">読書分析</h1>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportData}>
             <Download className="mr-2 h-4 w-4" />

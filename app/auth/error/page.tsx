@@ -44,7 +44,7 @@ export default async function AuthErrorPage({
           <div className="mb-4 flex items-center justify-center">
             <AlertCircle className="text-destructive h-12 w-12" />
           </div>
-          <CardTitle className="text-center text-2xl">認証エラー</CardTitle>
+          <CardTitle className="text-center">認証エラー</CardTitle>
           <CardDescription className="text-center">
             {errorMessage}
           </CardDescription>

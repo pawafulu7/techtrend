@@ -69,7 +69,7 @@ export function TopArticleList({
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex items-center gap-2">
           <Award className="text-tt-rank-gold h-5 w-5" />
           注目記事
         </CardTitle>
@@ -93,7 +93,7 @@ export function TopArticleList({
 
                   {/* Content */}
                   <div className="min-w-0 flex-1">
-                    <h3 className="line-clamp-2 text-sm font-medium">
+                    <h3 className="text-h3 line-clamp-2">
                       {article.translatedTitle || article.title}
                     </h3>
 

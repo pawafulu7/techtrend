@@ -87,8 +87,8 @@ describe('Design Modernization Phase 2 Integration', () => {
         name: 'セマンティックなタイトル',
       });
       expect(heading).toBeInTheDocument();
-      expect(heading).toHaveClass('leading-none');
-      expect(heading).toHaveClass('font-semibold');
+      // 大きさ・行間・太さはスケールの text-h3 が持つ（Issue #699）
+      expect(heading).toHaveClass('text-h3');
     });
   });
 

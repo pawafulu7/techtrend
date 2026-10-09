@@ -44,7 +44,7 @@ export function SignupContent() {
     <div className="container mx-auto max-w-lg py-10">
       <Card>
         <CardHeader className="space-y-1">
-          <CardTitle className="text-center text-2xl">新規登録</CardTitle>
+          <CardTitle className="text-center">新規登録</CardTitle>
           <CardDescription className="text-center">
             TechTrendアカウントを作成してください
           </CardDescription>

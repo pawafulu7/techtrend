@@ -43,7 +43,7 @@ export function TrendLineChart({
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <TrendingUp className="text-tt-primary h-4 w-4" />
-          <h3 className="text-sm font-semibold">タグトレンドの推移</h3>
+          <h3 className="text-h3">タグトレンドの推移</h3>
         </div>
         <div className="h-[300px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
       </div>
@@ -55,7 +55,7 @@ export function TrendLineChart({
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <TrendingUp className="text-tt-primary h-4 w-4" />
-          <h3 className="text-sm font-semibold">タグトレンドの推移</h3>
+          <h3 className="text-h3">タグトレンドの推移</h3>
         </div>
         <ErrorState
           title="タグトレンドの推移を読み込めませんでした"
@@ -73,7 +73,7 @@ export function TrendLineChart({
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <TrendingUp className="text-tt-primary h-4 w-4" />
-          <h3 className="text-sm font-semibold">タグトレンドの推移</h3>
+          <h3 className="text-h3">タグトレンドの推移</h3>
         </div>
         <div className="text-muted-foreground flex h-[300px] items-center justify-center">
           データがありません
@@ -86,7 +86,7 @@ export function TrendLineChart({
     <div className="bg-background rounded-lg border p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
         <TrendingUp className="text-tt-primary h-4 w-4" />
-        <h3 className="text-sm font-semibold">タグトレンドの推移</h3>
+        <h3 className="text-h3">タグトレンドの推移</h3>
       </div>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart

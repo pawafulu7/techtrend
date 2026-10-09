@@ -74,15 +74,7 @@ const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1
-                className={cn(
-                  'font-heading text-foreground font-bold',
-                  variant === 'default' && 'text-xl sm:text-2xl',
-                  variant === 'compact' && 'text-lg sm:text-xl'
-                )}
-              >
-                {title}
-              </h1>
+              <h1 className="font-heading text-foreground text-h1">{title}</h1>
               {count && (
                 <span
                   className="text-sm text-(--tt-color-text-muted)"

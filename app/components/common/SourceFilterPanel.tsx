@@ -103,7 +103,7 @@ export function SourceFilterPanel({
       data-testid="source-filter"
     >
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-xs font-semibold">ソース</h3>
+        <h3 className="text-h3">ソース</h3>
         <span
           className="text-xs text-[var(--tt-color-text-muted)]"
           data-testid="source-count"

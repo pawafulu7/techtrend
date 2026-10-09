@@ -18,7 +18,7 @@ export function TagCloud({ tags }: TagCloudProps) {
       >
         <div className="mb-3 flex items-center gap-2">
           <Tag className="h-4 w-4 text-(--tt-color-info)" />
-          <h3 className="text-sm font-semibold">人気タグ</h3>
+          <h3 className="text-h3">人気タグ</h3>
         </div>
         <p className="text-muted-foreground py-8 text-center text-sm">
           タグがありません
@@ -44,7 +44,7 @@ export function TagCloud({ tags }: TagCloudProps) {
     <div className="bg-background rounded-lg border p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
         <Tag className="h-4 w-4 text-(--tt-color-info)" />
-        <h3 className="text-sm font-semibold">人気タグ</h3>
+        <h3 className="text-h3">人気タグ</h3>
         <span className="text-muted-foreground text-xs">TOP {tags.length}</span>
       </div>
       <div className="flex flex-wrap gap-2">

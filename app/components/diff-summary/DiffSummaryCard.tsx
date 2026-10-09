@@ -79,7 +79,7 @@ export function DiffSummaryCard({
   return (
     <Card className="h-full">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-lg">
+        <CardTitle className="flex items-center justify-between">
           <span>{categoryName}</span>
           <Badge variant="outline" className="text-xs font-normal">
             {currentPeriod}

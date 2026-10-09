@@ -142,7 +142,7 @@ export function PopularArticles({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">人気記事</CardTitle>
+            <CardTitle>人気記事</CardTitle>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/popular">もっと見る</Link>
             </Button>
@@ -214,9 +214,7 @@ export function PopularArticles({
       {/* Section Separator */}
       <div className="flex items-center gap-2">
         <div className="h-px flex-1 bg-gradient-to-r from-(--tt-color-primary)/30 to-transparent" />
-        <h2 className="text-muted-foreground px-2 text-xs font-bold tracking-widest">
-          ランキング
-        </h2>
+        <h2 className="text-foreground text-h2 px-2">ランキング</h2>
         <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-primary)/30 to-transparent" />
       </div>
       {!loading && (

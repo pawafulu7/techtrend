@@ -66,32 +66,40 @@ html.no-transitions *::after {
 }
 
 /*
- * 色・角丸・影の値は lib/design-tokens/ が正本。shadcn/ui の変数（--background など）、
+ * 色・角丸・影・書体・文字サイズの値は lib/design-tokens/ が正本。shadcn/ui の変数（--background など）、
  * TT トークン（--tt-*）、Tailwind の @theme 対応付けはすべて generated-tokens.css に生成される
  * （npm run generate:tokens）。ここでは値を定義しない。
  */
-@theme inline {
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-jetbrains-mono);
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
 
-  /* Typography Base Styles */
+  /* 書体は next/font の変数を TT トークン経由で参照する（lib/design-tokens/scales.ts） */
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-space-grotesk), system-ui, sans-serif;
+    font-family: var(--tt-font-heading);
+  }
+
+  /* 見出しの既定の大きさはスケール表（textStyles）に合わせる。クラスで指定すればそちらが優先される */
+  h1 {
+    @apply text-h1;
+  }
+
+  h2 {
+    @apply text-h2;
+  }
+
+  h3 {
+    @apply text-h3;
   }
 
   body {
     @apply text-foreground bg-background;
-    font-family: var(--font-inter), system-ui, sans-serif;
+    font-family: var(--tt-font-body);
   }
 
   code, pre {
-    font-family: var(--font-jetbrains-mono), 'Courier New', monospace;
+    font-family: var(--tt-font-mono);
   }
 }
 

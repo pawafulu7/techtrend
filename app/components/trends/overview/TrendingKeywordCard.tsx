@@ -54,7 +54,7 @@ export function TrendingKeywordCard({ keyword }: { keyword: TrendingKeyword }) {
           </div>
 
           {/* Keyword name */}
-          <h3 className="text-foreground text-base leading-snug font-semibold decoration-1 underline-offset-2 group-hover:underline">
+          <h3 className="text-foreground text-h3 decoration-1 underline-offset-2 group-hover:underline">
             {getTagDisplayName(keyword.name)}
           </h3>
 

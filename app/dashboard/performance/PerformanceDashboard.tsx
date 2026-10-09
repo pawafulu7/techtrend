@@ -88,7 +88,7 @@ export default function PerformanceDashboard() {
     return (
       <div className="container mx-auto space-y-6 p-6">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-3xl font-bold">パフォーマンスダッシュボード</h1>
+          <h1 className="text-h1">パフォーマンスダッシュボード</h1>
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
@@ -136,7 +136,7 @@ export default function PerformanceDashboard() {
       {/* ヘッダー */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">パフォーマンスダッシュボード</h1>
+          <h1 className="text-h1">パフォーマンスダッシュボード</h1>
           <p className="mt-1 text-[var(--tt-color-text-muted)]">
             DBアクセス最適化Phase 3 - リアルタイムメトリクス
           </p>
@@ -164,7 +164,7 @@ export default function PerformanceDashboard() {
         {/* キャッシュヒット率 */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2">
               <Zap className="h-4 w-4" />
               キャッシュヒット率
             </CardTitle>
@@ -194,7 +194,7 @@ export default function PerformanceDashboard() {
         {/* レイテンシ */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2">
               <Activity className="h-4 w-4" />
               レイテンシ (P95)
             </CardTitle>
@@ -224,7 +224,7 @@ export default function PerformanceDashboard() {
         {/* バッチサイズ */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2">
               <Database className="h-4 w-4" />
               平均バッチサイズ
             </CardTitle>
@@ -252,7 +252,7 @@ export default function PerformanceDashboard() {
         {/* Redis状態 */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Redis メモリ
             </CardTitle>
@@ -279,7 +279,7 @@ export default function PerformanceDashboard() {
         {/* Favorite DataLoader */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Favorite DataLoader</CardTitle>
+            <CardTitle>Favorite DataLoader</CardTitle>
             <CardDescription>お気に入り機能のキャッシュ統計</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -321,7 +321,7 @@ export default function PerformanceDashboard() {
         {/* View DataLoader */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">View DataLoader</CardTitle>
+            <CardTitle>View DataLoader</CardTitle>
             <CardDescription>閲覧数機能のキャッシュ統計</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -365,7 +365,7 @@ export default function PerformanceDashboard() {
       {metrics?.recommendations && metrics.recommendations.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">最適化推奨</CardTitle>
+            <CardTitle>最適化推奨</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">

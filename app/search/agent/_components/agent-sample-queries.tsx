@@ -141,7 +141,7 @@ function SidebarAccordion({
 
   return (
     <div className={className}>
-      <h2 className="mb-4 text-sm font-semibold text-[var(--tt-color-text)]">
+      <h2 className="text-h2 mb-4 text-[var(--tt-color-text)]">
         カテゴリから探す
       </h2>
       <div className="flex w-full flex-col gap-2">

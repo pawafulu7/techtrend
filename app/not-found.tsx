@@ -12,9 +12,7 @@ export default function NotFound() {
           />
         </div>
         <h1 className="text-foreground mb-2 text-4xl font-bold">404</h1>
-        <h2 className="text-foreground mb-4 text-2xl font-semibold">
-          ページが見つかりません
-        </h2>
+        <h2 className="text-foreground text-h2 mb-4">ページが見つかりません</h2>
         <p className="text-muted-foreground mx-auto mb-8 max-w-md">
           お探しのページは存在しないか、移動した可能性があります。
         </p>

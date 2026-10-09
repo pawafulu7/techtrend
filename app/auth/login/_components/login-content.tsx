@@ -46,7 +46,7 @@ export function LoginContent({ callbackUrl }: LoginContentProps) {
     <div className="container mx-auto max-w-lg py-10">
       <Card>
         <CardHeader className="space-y-1">
-          <CardTitle className="text-center text-2xl">ログイン</CardTitle>
+          <CardTitle className="text-center">ログイン</CardTitle>
           <CardDescription className="text-center">
             アカウントにログインしてTechTrendをご利用ください
           </CardDescription>

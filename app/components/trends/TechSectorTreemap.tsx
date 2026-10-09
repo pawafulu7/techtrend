@@ -190,7 +190,7 @@ export function TechSectorTreemap({
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <SectorMapIcon className="text-tt-primary h-4 w-4" />
-          <h3 className="text-sm font-semibold">テックセクターマップ</h3>
+          <h3 className="text-h3">テックセクターマップ</h3>
         </div>
         <div className="h-[400px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
       </div>
@@ -202,7 +202,7 @@ export function TechSectorTreemap({
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <SectorMapIcon className="text-tt-primary h-4 w-4" />
-          <h3 className="text-sm font-semibold">テックセクターマップ</h3>
+          <h3 className="text-h3">テックセクターマップ</h3>
         </div>
         <div className="text-muted-foreground flex h-[400px] items-center justify-center">
           データがありません
@@ -215,7 +215,7 @@ export function TechSectorTreemap({
     <div className="bg-background rounded-lg border p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
         <SectorMapIcon className="text-tt-primary h-4 w-4" />
-        <h3 className="text-sm font-semibold">テックセクターマップ</h3>
+        <h3 className="text-h3">テックセクターマップ</h3>
       </div>
       <div
         ref={containerRef}

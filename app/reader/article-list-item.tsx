@@ -68,7 +68,7 @@ export function ArticleListItem({
         )}
       </div>
       <div className="px-3 py-2">
-        <h3 className="line-clamp-2 text-[13px] leading-snug font-medium text-[var(--tt-color-text)]">
+        <h3 className="text-h3 line-clamp-2 text-[var(--tt-color-text)]">
           {displayTitle}
         </h3>
         <div className="mt-1 flex items-center gap-2 text-xs text-[var(--tt-color-text-muted)]">

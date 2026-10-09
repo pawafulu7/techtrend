@@ -109,10 +109,7 @@ export function AgentAnswerPanel({
       <div className="mb-4 flex items-start justify-between">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <h2
-              id="answer-heading"
-              className="text-xl font-semibold md:text-2xl"
-            >
+            <h2 id="answer-heading" className="text-h2">
               AI回答
             </h2>
             {result?.cached && (

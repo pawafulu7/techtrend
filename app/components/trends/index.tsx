@@ -18,7 +18,7 @@ const ChartSkeleton = ({
   <div className="bg-background rounded-lg border p-4 shadow-sm">
     <div className="mb-3 flex items-center gap-2">
       <Icon className="text-muted-foreground h-4 w-4" />
-      <h3 className="text-sm font-semibold">{title}</h3>
+      <h3 className="text-h3">{title}</h3>
     </div>
     <div className="h-[300px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
   </div>

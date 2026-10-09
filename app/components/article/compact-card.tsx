@@ -198,7 +198,7 @@ export function CompactCard({
         id={`compact-title-${article.id}`}
         title={article.translatedTitle || article.title}
         className={cn(
-          'font-heading text-foreground line-clamp-2 text-base leading-snug font-semibold',
+          'text-foreground text-h3 line-clamp-2',
           isRead && 'opacity-70'
         )}
         data-testid="article-title"

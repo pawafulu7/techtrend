@@ -39,7 +39,7 @@ export function ArticleCardHeader({
   return (
     <div className="flex items-start gap-2">
       <div className="flex-1 space-y-1.5">
-        <div className="flex flex-wrap items-center gap-2 text-[12px]">
+        <div className="text-caption flex flex-wrap items-center gap-2">
           {isNew && (
             <BadgeV2
               variant="primary"
