@@ -11,7 +11,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from '@/components/ui-v2/card-v2';
 import { Separator } from '@/components/ui/separator';
 import { Github } from 'lucide-react';
@@ -46,7 +45,9 @@ export function LoginContent({ callbackUrl }: LoginContentProps) {
     <div className="container mx-auto max-w-lg py-10">
       <Card>
         <CardHeader className="space-y-1">
-          <CardTitle className="text-center">ログイン</CardTitle>
+          <h1 className="font-heading text-foreground text-h1 text-center">
+            ログイン
+          </h1>
           <CardDescription className="text-center">
             アカウントにログインしてTechTrendをご利用ください
           </CardDescription>

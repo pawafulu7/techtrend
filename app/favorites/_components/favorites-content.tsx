@@ -3,18 +3,11 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Heart, Search, ArrowUpDown } from 'lucide-react';
+import { Heart, Search } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
+import { PageHeader } from '@/components/ui-v2/page-header';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { Button } from '@/components/ui-v2/button-v2';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   FavoriteArticleCard,
   FavoriteSkeletonGrid,
@@ -23,6 +16,7 @@ import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
 import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth/auth-client';
 import type { SortOption } from '../_types';
+import { FavoritesToolbar } from './favorites-toolbar';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { toast } from '@/hooks/use-toast';
 
@@ -34,12 +28,6 @@ function notifyRemoveFailed() {
     variant: 'destructive',
   });
 }
-
-const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'favoritedAt-desc', label: '保存日（新しい順）' },
-  { value: 'favoritedAt-asc', label: '保存日（古い順）' },
-  { value: 'publishedAt-desc', label: '公開日（新しい順）' },
-];
 
 interface FavoritesContentProps {
   initialQuery: string;
@@ -207,15 +195,17 @@ export function FavoritesContent({
   if (isLoading && allFavorites.length === 0 && errorUpdateCount === 0) {
     return (
       <div className="px-4 py-3 lg:px-6">
-        {/* Toolbar skeleton */}
-        <div className="flex flex-wrap items-center gap-2 pb-3">
-          <div className="bg-muted h-5 w-5 animate-pulse rounded" />
-          <div className="bg-muted h-5 w-24 animate-pulse rounded" />
-          <div className="bg-muted h-4 w-12 animate-pulse rounded" />
-          <div className="flex-1" />
-          <div className="bg-muted h-9 w-48 animate-pulse rounded lg:w-64" />
-          <div className="bg-muted h-9 w-44 animate-pulse rounded" />
-        </div>
+        {/* 見出しは読み込み中も出す（h1 を常に1つ置く。Issue #700） */}
+        <PageHeader
+          icon={Heart}
+          title="お気に入り"
+          actions={
+            <>
+              <div className="bg-muted h-9 w-48 animate-pulse rounded lg:w-64" />
+              <div className="bg-muted h-9 w-44 animate-pulse rounded" />
+            </>
+          }
+        />
         <FavoriteSkeletonGrid />
       </div>
     );
@@ -223,55 +213,26 @@ export function FavoritesContent({
 
   return (
     <div className="px-4 py-3 lg:px-6">
-      {/* Toolbar: Title + Count + Search + Sort */}
-      <header className="flex flex-wrap items-center gap-2 pb-3">
-        <Heart className="text-primary h-5 w-5" aria-hidden="true" />
-        <h1 className="text-foreground text-h1">お気に入り</h1>
-        {!failedWithoutData && (
-          <span
-            className="text-muted-foreground text-sm"
-            role="status"
-            aria-live="polite"
-          >
-            ({Math.max(0, totalCount)}件)
-          </span>
-        )}
-        <div className="flex-1" />
-        <div className="relative">
-          <Search
-            className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
-            aria-hidden="true"
+      <PageHeader
+        icon={Heart}
+        title="お気に入り"
+        count={
+          failedWithoutData
+            ? undefined
+            : {
+                value: Math.max(0, totalCount),
+                label: `${Math.max(0, totalCount)}件`,
+              }
+        }
+        actions={
+          <FavoritesToolbar
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            sortOption={sortOption}
+            onSortOptionChange={setSortOption}
           />
-          <Input
-            type="search"
-            placeholder="検索..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-9 w-48 pl-10 lg:w-64"
-            aria-label="お気に入り記事を検索"
-          />
-        </div>
-        <Select
-          value={sortOption}
-          onValueChange={(value) => {
-            if (SORT_OPTIONS.some((o) => o.value === value)) {
-              setSortOption(value as SortOption);
-            }
-          }}
-        >
-          <SelectTrigger className="h-9 w-44" aria-label="並び替え">
-            <ArrowUpDown className="mr-2 h-4 w-4" aria-hidden="true" />
-            <SelectValue placeholder="並び替え" />
-          </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </header>
+        }
+      />
 
       {/* Error state: 生の error.message は出さない（issue #701） */}
       {failedWithoutData && (

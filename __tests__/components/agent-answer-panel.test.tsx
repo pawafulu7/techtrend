@@ -45,9 +45,11 @@ describe('AgentAnswerPanel', () => {
   test('renders Markdown content correctly', () => {
     render(<AgentAnswerPanel result={mockResult} />);
 
+    // 「#」は h2 にする（AI 検索の h1 は画面の見出しだけ。Issue #700）
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Test Response' })
+      screen.getByRole('heading', { level: 2, name: 'Test Response' })
     ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
     expect(screen.getByText('bold')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'link' })).toBeInTheDocument();
   });
@@ -259,7 +261,7 @@ describe('AgentAnswerPanel - Empty State', () => {
       ).not.toBeInTheDocument();
     });
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Test Response' })
+      screen.getByRole('heading', { level: 2, name: 'Test Response' })
     ).toBeInTheDocument();
   });
 });

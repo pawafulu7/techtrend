@@ -26,7 +26,10 @@ export default function Error({
             aria-hidden="true"
           />
         </div>
-        <h2 className="text-foreground text-h2 mb-2">エラーが発生しました</h2>
+        {/* ページ本体の代わりに出るので、h1 を持たせる（Issue #700） */}
+        <h1 className="font-heading text-foreground text-h1 mb-2">
+          エラーが発生しました
+        </h1>
         <div
           data-testid="error-message"
           role="alert"

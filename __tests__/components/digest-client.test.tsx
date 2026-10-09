@@ -143,9 +143,10 @@ describe('DigestClient: 取得の失敗（issue #701）', () => {
       await screen.findByRole('button', { name: '再試行' })
     );
 
+    // 再試行中は aria-disabled で押せない状態にする（disabled だとフォーカスが外れるため。Issue #700）
     expect(
       await screen.findByRole('button', { name: '再試行中…' })
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
     expect(screen.queryByText('読み込み中')).not.toBeInTheDocument();
 
     resolveRetry({ ok: true, json: async () => digestBody });

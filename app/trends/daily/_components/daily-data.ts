@@ -12,7 +12,18 @@ import {
   TrendReportData,
 } from '@/lib/services/trend-report/types';
 
-export type { TrendReportData };
+/**
+ * クライアントに渡すレポート。日時は ISO 文字列（toISOString()）で渡すので、型も string にする。
+ * 以前は Date 型のまま渡していて、実際の値（文字列）と食い違っていた
+ */
+export type SerializedTrendReport = Omit<
+  TrendReportData,
+  'periodStart' | 'periodEnd' | 'generatedAt'
+> & {
+  periodStart: string;
+  periodEnd: string;
+  generatedAt?: string;
+};
 
 /**
  * UTC DateをJST日付文字列（YYYY-MM-DD）に変換
@@ -37,7 +48,7 @@ const getCache = () => {
 
 export interface DailyTrendResponse {
   success: boolean;
-  data?: TrendReportData;
+  data?: SerializedTrendReport;
   navigation?: {
     prevDate: string | null;
     nextDate: string | null;
@@ -297,7 +308,7 @@ export async function fetchInitialDailyData(): Promise<DailyTrendResponse> {
         isFallback: true,
         requestedDate: dateKey,
         actualDate,
-        data: enrichedFallbackData as unknown as TrendReportData,
+        data: enrichedFallbackData as unknown as SerializedTrendReport,
         evidenceArticles: fallbackEvidenceArticles,
         navigation: {
           prevDate: fallbackAdjacentDates.prevDate
@@ -325,7 +336,7 @@ export async function fetchInitialDailyData(): Promise<DailyTrendResponse> {
 
     const response: DailyTrendResponse = {
       success: true,
-      data: enrichedData as unknown as TrendReportData,
+      data: enrichedData as unknown as SerializedTrendReport,
       evidenceArticles,
       navigation: {
         prevDate: adjacentDates.prevDate

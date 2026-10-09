@@ -3,93 +3,17 @@
 import React, { useMemo, useDeferredValue } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
+import { shiftedMarkdownHeadings } from '@/app/components/common/markdown-headings';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkExtractArticleId from './remark-extract-article-id';
+import { extractArticleSections } from './extract-article-sections';
 import { ExternalLink, FileText, Calendar, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
 import { formatDate, formatDateWithTime } from '@/lib/utils/date';
-
-// Article section extracted from AI response
-interface ArticleSection {
-  articleId: string | null;
-  title: string;
-  summary: string;
-  index: number;
-}
-
-// Result of extracting article sections and summary from AI response
-interface ExtractedAnswer {
-  sections: ArticleSection[];
-  summary: string;
-}
-
-// Extract article sections and summary from markdown response
-function extractArticleSections(text: string): ExtractedAnswer {
-  const sections: ArticleSection[] = [];
-
-  // Match numbered list items: 1. **Title** (match: X%) - Description
-  // Pattern captures: 1=title, 2=articleId token, 3=description
-  // Format: "1. **Title** [#id] (match: 80%) - Description"
-  //   - [#id] and (match%) are optional
-  //   - Lookahead stops at next numbered item or double newline
-  const listItemPattern =
-    /^\d+\.\s+\*\*(.+?)\*\*\s*(?:\[#([a-zA-Z0-9_-]+)\])?\s*(?:\(.*?(?:\d+(?:\.\d+)?%?).*?\))?\s*[-\u2013\u2014]?\s*([\s\S]*?)(?=\n\d+\.\s+\*\*|\n\n(?!\s)|$)/gm;
-
-  let match;
-  let index = 0;
-  let lastEnd = 0;
-
-  while ((match = listItemPattern.exec(text)) !== null) {
-    const title = match[1].trim();
-    const articleId = match[2] || null;
-    let summary = match[3] ? match[3].trim() : '';
-
-    // Clean up summary: remove article ID tokens and extra whitespace
-    summary = summary.replace(/\[#[a-zA-Z0-9_-]+\]/g, '').trim();
-    // Remove trailing link mentions
-    summary = summary.replace(/\s*\n\s*\[.*?\]\(.*?\)\s*$/g, '').trim();
-    // Truncate to reasonable length
-    if (summary.length > 200) {
-      summary = summary.slice(0, 200) + '...';
-    }
-
-    sections.push({
-      articleId,
-      title,
-      summary,
-      index: index++,
-    });
-
-    lastEnd = listItemPattern.lastIndex;
-  }
-
-  // Extract summary/conclusion after the article list
-  let extractedSummary = '';
-  if (lastEnd > 0 && lastEnd < text.length) {
-    let tail = text.slice(lastEnd).trim();
-
-    // Remove markdown links and reference-style links
-    tail = tail.replace(/^\s*-\s*\[.*?\]\(.*?\)\s*$/gm, '').trim();
-    tail = tail.replace(/\[.*?\]\(.*?\)/g, '').trim();
-
-    // Remove article ID tokens
-    tail = tail.replace(/\[#[a-zA-Z0-9_-]+\]/g, '').trim();
-
-    // Remove "---" separators
-    tail = tail.replace(/^---+\s*/gm, '').trim();
-
-    // Only use if it looks like actual content (not just whitespace or very short)
-    if (tail.length > 20) {
-      extractedSummary = tail;
-    }
-  }
-
-  return { sections, summary: extractedSummary };
-}
 
 // Top-level control Context (0: root, 1+: nested)
 const ListDepthContext = React.createContext(0);
@@ -320,13 +244,15 @@ export function AnswerContent({
 
       {!showEmptyState && !useCardDisplay && (
         <div
-          className="prose prose-sm prose-h1:text-h1 prose-h2:text-h2 prose-h3:text-h3 dark:prose-invert mb-4 w-full max-w-none md:max-w-4xl xl:max-w-5xl"
+          className="prose prose-sm prose-h2:text-h2 prose-h3:text-h3 dark:prose-invert mb-4 w-full max-w-none md:max-w-4xl xl:max-w-5xl"
           data-testid="agent-answer-markdown"
         >
           <ListDepthContext.Provider value={0}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
               components={{
+                // 回答の「#」は h2 にする。ページの h1 は画面の見出しだけにする（Issue #700）
+                ...shiftedMarkdownHeadings,
                 a: ({ node: _node, ...props }) => (
                   <a {...props} target="_blank" rel="noopener noreferrer" />
                 ),

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, AlertCircle, History, Trash2 } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
+import { PageHeader } from '@/components/ui-v2/page-header';
+import { ErrorState } from '@/components/ui-v2/error-state';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { HistoryArticleCard } from '@/app/components/article/history-card';
@@ -89,8 +91,8 @@ export function HistoryContent() {
   const fetchHistory = useCallback(
     async (signal?: AbortSignal) => {
       try {
+        // エラーは成功したときに消す。再試行中も失敗の表示と再試行ボタン（再試行中…）を残すため
         setLoading(true);
-        setError(null);
         const params = new URLSearchParams();
 
         // モバイルの場合は軽量モードを使用
@@ -130,6 +132,7 @@ export function HistoryContent() {
         );
         setViews(historyItems);
         setHasFetched(true);
+        setError(null);
       } catch (err) {
         // AbortErrorは無視（コンポーネントアンマウント時）
         if (err instanceof Error && err.name === 'AbortError') {
@@ -189,18 +192,19 @@ export function HistoryContent() {
     [router]
   );
 
+  // 表示できる履歴が無いまま取得に失敗した。以前はスケルトンのまま止まり、失敗の表示に届かなかった
+  const failedWithoutData = !!error && !hasFetched;
+
   // Loading state (hasFetchedを追加してクライアントナビゲーション時も確実にスケルトン表示)
-  if (loading || !hasFetched) {
+  if (!failedWithoutData && (loading || !hasFetched)) {
     return (
       <div className="px-4 py-3 lg:px-6">
-        {/* Header skeleton (toolbar style) */}
-        <div className="flex flex-wrap items-center gap-2 pb-3">
-          <div className="bg-muted h-5 w-5 animate-pulse rounded" />
-          <div className="bg-muted h-5 w-24 animate-pulse rounded" />
-          <div className="bg-muted h-5 w-16 animate-pulse rounded" />
-          <div className="flex-1" />
-          <div className="bg-muted h-9 w-28 animate-pulse rounded" />
-        </div>
+        {/* 見出しは読み込み中も出す（h1 を常に1つ置く。Issue #700） */}
+        <PageHeader
+          icon={History}
+          title="閲覧履歴"
+          actions={<div className="bg-muted h-9 w-28 animate-pulse rounded" />}
+        />
         <HistorySkeletonGrid />
       </div>
     );
@@ -208,36 +212,46 @@ export function HistoryContent() {
 
   return (
     <div className="px-4 py-3 lg:px-6">
-      {/* Toolbar header */}
-      <header className="flex flex-wrap items-center gap-2 pb-3">
-        <History className="text-primary h-5 w-5" aria-hidden="true" />
-        <h1 className="text-foreground text-h1">閲覧履歴</h1>
-        <span
-          className="text-muted-foreground text-sm"
-          role="status"
-          aria-live="polite"
-          aria-label={`閲覧履歴 ${views.length}件`}
-        >
-          ({views.length}件)
-        </span>
-        <div className="flex-1" />
-        {views.length > 0 && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={clearHistory}
-            disabled={clearing}
-            className="min-h-[44px] gap-2"
-            aria-label="閲覧履歴をすべてクリア"
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
-            {clearing ? 'クリア中...' : '履歴をクリア'}
-          </Button>
-        )}
-      </header>
+      <PageHeader
+        icon={History}
+        title="閲覧履歴"
+        count={
+          failedWithoutData
+            ? undefined
+            : { value: views.length, label: `${views.length}件` }
+        }
+        actions={
+          views.length > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={clearHistory}
+              disabled={clearing}
+              className="min-h-[44px] gap-2"
+              aria-label="閲覧履歴をすべてクリア"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              {clearing ? 'クリア中...' : '履歴をクリア'}
+            </Button>
+          )
+        }
+      />
 
-      {/* Error state */}
-      {error && (
+      {/* 生の error.message は出さない（issue #701） */}
+      {failedWithoutData && (
+        <CardV2 className="mx-auto max-w-md">
+          <ErrorState
+            size="block"
+            title="閲覧履歴を読み込めませんでした"
+            description="時間をおいて再試行してください。"
+            onRetry={() => void fetchHistory()}
+            retrying={loading}
+          />
+        </CardV2>
+      )}
+
+      {/* 表示中の履歴がある状態での失敗（履歴のクリアなど） */}
+      {error && !failedWithoutData && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" aria-hidden="true" />
           <AlertDescription>{error}</AlertDescription>

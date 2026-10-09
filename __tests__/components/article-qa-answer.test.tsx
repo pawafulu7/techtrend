@@ -15,9 +15,26 @@ Some **bold** text and a [link](https://example.com).`;
         />
       );
 
-      expect(screen.getByRole('heading', { level: 1, name: 'Heading' })).toBeInTheDocument();
+      // 「#」は h2 にする（記事詳細の h1 は記事タイトルだけ。Issue #700）
+      expect(screen.getByRole('heading', { level: 2, name: 'Heading' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
       expect(screen.getByText('bold')).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'link' })).toBeInTheDocument();
+    });
+
+    it('「#」だけを h2 にし、「##」以降の見出しは変えない（Issue #700）', () => {
+      const markdown = `# Parent
+
+## Child
+
+### Grandchild`;
+
+      render(<ArticleQaAnswer answer={markdown} isStreaming={false} />);
+
+      expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 2, name: 'Parent' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 2, name: 'Child' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 3, name: 'Grandchild' })).toBeInTheDocument();
     });
 
     it('should render external links with target="_blank" and rel="noopener noreferrer"', () => {

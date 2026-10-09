@@ -84,9 +84,14 @@ export function ChangelogContent() {
     return <ChangelogSkeleton />;
   }
 
-  if (error) {
+  // 取得が止まって（オフラインなど）データも失敗も無いときも、同じ失敗の表示にする（h1 を消さない）
+  if (error || !data) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
+        {/* 失敗時も h1 を1つ置く（Issue #700） */}
+        <h1 className="font-heading text-h1 mb-6 text-[var(--tt-color-text)]">
+          AIエージェント更新情報
+        </h1>
         <div className="rounded-xl border border-[var(--tt-color-negative-border)] bg-[var(--tt-color-negative-bg)] p-6 text-center">
           <p className="text-sm text-[var(--tt-color-negative)]">
             Changelog
@@ -96,8 +101,6 @@ export function ChangelogContent() {
       </div>
     );
   }
-
-  if (!data) return null;
 
   const currentVersion =
     version || (data.versions.length > 0 ? data.versions[0].version : '');
@@ -179,7 +182,9 @@ export function ChangelogContent() {
 export function ChangelogSkeleton() {
   return (
     <div className="px-4 py-8 sm:px-6 sm:py-12 lg:px-10">
-      {/* Header skeleton */}
+      {/* Issue #700: Header skeleton。見出しの文言（プロジェクト名）は読み込むまで分からないので、
+          h1 は読み上げ用に置く */}
+      <h1 className="sr-only">AIエージェント更新情報</h1>
       <header className="mb-10">
         <div className="mb-3 flex items-center gap-3">
           <Skeleton className="size-10 rounded-lg" />

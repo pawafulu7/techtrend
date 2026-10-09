@@ -5,7 +5,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { AlertCircle } from 'lucide-react';
@@ -44,7 +43,9 @@ export default async function AuthErrorPage({
           <div className="mb-4 flex items-center justify-center">
             <AlertCircle className="text-destructive h-12 w-12" />
           </div>
-          <CardTitle className="text-center">認証エラー</CardTitle>
+          <h1 className="font-heading text-foreground text-h1 text-center">
+            認証エラー
+          </h1>
           <CardDescription className="text-center">
             {errorMessage}
           </CardDescription>

@@ -9,14 +9,17 @@ import {
   useCallback,
 } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
-import { Network, ArrowLeft } from 'lucide-react';
 import { forceCollide } from 'd3-force';
-import { Button } from '@/components/ui-v2/button-v2';
 import type { GraphData, GraphNode, GraphLink } from '@/lib/types/graph';
-import { darkenColor, truncateLabel } from '@/lib/utils/graph-helpers';
-import { darkColors, graphNodeColors, withAlpha } from '@/lib/design-tokens';
+import {
+  darkenColor,
+  removeCenterPrefix,
+  truncateLabel,
+} from '@/lib/utils/graph-helpers';
+import { GraphOverlays } from './_components/graph-overlays';
+import { GraphError, GraphSkeleton } from './_components/graph-status';
+import { darkColors, withAlpha } from '@/lib/design-tokens';
 
 interface LinkMetadata {
   similarity: number;
@@ -33,7 +36,6 @@ interface ForceGraphRef {
 const GRAPH_LINK_COLOR = withAlpha(darkColors.textMuted, 0.6);
 
 // Utility function for safe label prefix removal
-const removeCenterPrefix = (label: string) => label.replace(/^\[中心\]\s*/, '');
 
 // Utility function for formatting published date (hybrid: relative for recent, absolute for old)
 const formatPublishedDate = (isoDate: string): string => {
@@ -102,7 +104,8 @@ const getFreshnessBorder = (
 // Note: Using 'any' type due to complex FCwithRef type from library
 const ForceGraph2D = dynamic<any>(() => import('react-force-graph-2d'), {
   ssr: false,
-  loading: () => <GraphSkeleton />,
+  // GraphContainer の中で読み込むので、見出し（h1）は GraphContainer 側にある。ここでは出さない
+  loading: () => <GraphSkeleton withHeading={false} />,
 });
 
 export default function ArticleRelationshipGraphPage() {
@@ -121,6 +124,13 @@ function GraphContainer() {
 
   // Fetch graph data
   const [graphData, setGraphData] = useState<GraphData | null>(null);
+  // キャンバスの大きさを画面の回転・リサイズに追従させる
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1920,
+    height: typeof window !== 'undefined' ? window.innerHeight : 1080,
+  }));
+  // 凡例の開閉。深さの切り替えでオーバーレイが作り直されても保つ（未操作なら画面幅で決める）
+  const [legendOpen, setLegendOpen] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
@@ -135,6 +145,13 @@ function GraphContainer() {
   const handleGraphRef = useCallback((instance: ForceGraphRef | null) => {
     graphRef.current = instance;
     setGraphInstance(instance);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () =>
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
@@ -378,211 +395,21 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
         cooldownTicks={400}
         d3AlphaDecay={0.008}
         d3VelocityDecay={0.35}
-        width={typeof window !== 'undefined' ? window.innerWidth : 1920}
-        height={typeof window !== 'undefined' ? window.innerHeight : 1080}
+        width={viewport.width}
+        height={viewport.height}
       />
 
-      {/* Back button */}
-      <div className="absolute top-4 left-4">
-        <Button variant="ghost" asChild>
-          <Link
-            href={`/articles/${articleId}`}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            記事詳細に戻る
-          </Link>
-        </Button>
-      </div>
-
-      {/* CodexMCP: Legend card (always visible) */}
-      <div className="absolute top-16 left-4 max-w-xs rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 p-4 shadow-xl">
-        <h3 className="text-tt-text text-h3 mb-3 flex items-center gap-2">
-          <Network className="h-4 w-4" />
-          グラフの見方
-        </h3>
-        <div className="space-y-2 text-xs text-[var(--tt-color-text)]">
-          <div className="flex items-start gap-2">
-            <div
-              className="border-tt-text mt-0.5 h-4 w-4 shrink-0 rounded-full border-2"
-              style={{ backgroundColor: graphNodeColors.center }}
-            />
-            <div>
-              <div className="text-tt-text font-medium">
-                中心ノード（大・黄色・白枠）
-              </div>
-              <div className="text-[var(--tt-color-text-muted)]">
-                現在の記事
-              </div>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full bg-[var(--tt-color-info-bg)]" />
-            <div>
-              <div className="font-medium">関連記事（小・色付き）</div>
-              <div className="text-[var(--tt-color-text-muted)]">
-                色 = カテゴリ、大きさ = 品質
-              </div>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-[var(--tt-color-info)]" />
-            <div>
-              <div className="font-medium">関連記事 第2層（小・暗め）</div>
-              <div className="text-[var(--tt-color-text-muted)]">
-                第1層記事に関連
-              </div>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <div className="mt-2 h-0.5 w-8 shrink-0 bg-[var(--tt-color-text-muted)]" />
-            <div>
-              <div className="font-medium">線の太さ = 関連度</div>
-              <div className="text-[var(--tt-color-text-muted)]">
-                太いほど関連性が高い
-              </div>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full border-2 border-[var(--tt-color-positive-border)] bg-[var(--tt-color-info-bg)]" />
-            <div>
-              <div className="font-medium">枠線の色 = 配信日時</div>
-              <div className="text-[var(--tt-color-text-muted)]">
-                緑=1週間以内、橙=1ヶ月以内
-              </div>
-            </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full bg-[var(--tt-color-negative)]" />
-            <div>
-              <div className="font-medium">NEWバッジ（赤丸）</div>
-              <div className="text-[var(--tt-color-text-muted)]">
-                24時間以内に配信
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="mt-3 border-t border-[var(--tt-color-border)] pt-3 text-xs text-[var(--tt-color-text-muted)]">
-          クリック: 記事を開く | ホバー: 詳細表示
-        </div>
-      </div>
-
-      {/* Depth toggle */}
-      <button
-        data-testid="depth-toggle-button"
-        onClick={() => setCurrentDepth((d) => (d === 1 ? 2 : 1))}
-        className="border-tt-primary-border bg-tt-primary-bg text-tt-primary hover:bg-tt-primary hover:text-tt-on-primary absolute top-4 left-1/2 -translate-x-1/2 transform rounded-lg border px-4 py-2 text-sm font-medium shadow-xl transition-colors"
-      >
-        {currentDepth === 1
-          ? '関連をさらに表示（depth=2）'
-          : '関連を折りたたむ（depth=1）'}
-      </button>
-
-      {/* Center article info */}
-      <div className="absolute top-4 right-4 max-w-sm rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 p-4 shadow-xl">
-        <div className="mb-2 flex items-center gap-2">
-          <div
-            className="border-tt-text h-3 w-3 rounded-full border-2"
-            style={{ backgroundColor: graphNodeColors.center }}
-          />
-          <h3 className="text-tt-text text-h3">中心記事</h3>
-        </div>
-        {centerNode && (
-          <div className="space-y-1">
-            <p className="text-tt-text text-sm font-medium">
-              {removeCenterPrefix(centerNode.label)}
-            </p>
-            <p className="text-xs text-[var(--tt-color-text-muted)]">
-              カテゴリ: {centerNode.category} | 品質:{' '}
-              {Math.round(centerNode.val)}
-            </p>
-          </div>
-        )}
-        <div className="mt-2 border-t border-[var(--tt-color-border)] pt-2">
-          <p
-            className="text-xs text-[var(--tt-color-text)]"
-            data-testid="related-count"
-            aria-live="polite"
-          >
-            関連記事: {graphData.nodes.length - 1}件表示
-          </p>
-        </div>
-      </div>
-
-      {/* Hovered node tooltip */}
-      {hoveredNode &&
-        hoveredNode.id !== graphData.metadata?.centerArticleId && (
-          <div className="absolute bottom-4 left-4 max-w-md rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 p-4 shadow-xl">
-            <h4 className="text-tt-text mb-2 text-sm font-bold">
-              {hoveredNode.label}
-            </h4>
-            {hoveredNode.summary && (
-              <p className="mb-2 text-xs text-[var(--tt-color-text)]">
-                {hoveredNode.summary.substring(0, 120)}...
-              </p>
-            )}
-            <div className="space-y-1 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-[var(--tt-color-text-muted)]">
-                  カテゴリ:
-                </span>
-                <span className="text-tt-text">{hoveredNode.category}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[var(--tt-color-text-muted)]">
-                  品質スコア:
-                </span>
-                <span className="text-tt-text">
-                  {Math.round(hoveredNode.val)}
-                </span>
-              </div>
-              {hoveredNode.primaryTag && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--tt-color-text-muted)]">
-                    主要タグ:
-                  </span>
-                  <span className="text-tt-text">{hoveredNode.primaryTag}</span>
-                </div>
-              )}
-            </div>
-            <p className="mt-2 text-xs text-[var(--tt-color-text-muted)]">
-              クリックで記事を開く
-            </p>
-          </div>
-        )}
-    </div>
-  );
-}
-
-function GraphSkeleton() {
-  return (
-    <div className="dark flex h-screen w-full items-center justify-center bg-[var(--tt-color-surface)] scheme-dark">
-      <div className="text-center">
-        <div className="border-tt-text mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2"></div>
-        <p className="text-tt-text">Loading relationship graph...</p>
-      </div>
-    </div>
-  );
-}
-
-function GraphError({ error }: { error: Error }) {
-  console.error('[GraphError]', error);
-
-  return (
-    <div className="dark flex h-screen w-full items-center justify-center bg-[var(--tt-color-surface)] scheme-dark">
-      <div className="text-center">
-        <p className="mb-2 text-lg text-[var(--tt-color-negative)]">
-          Failed to load graph
-        </p>
-        {process.env.NODE_ENV === 'development' && (
-          <p
-            className="text-sm text-[var(--tt-color-text-muted)]"
-            data-testid="graph-error-message"
-          >
-            {error.message}
-          </p>
-        )}
-      </div>
+      <GraphOverlays
+        articleId={articleId}
+        currentDepth={currentDepth}
+        onToggleDepth={() => setCurrentDepth((d) => (d === 1 ? 2 : 1))}
+        centerNode={centerNode}
+        relatedCount={graphData.nodes.length - 1}
+        hoveredNode={hoveredNode}
+        centerArticleId={graphData.metadata?.centerArticleId}
+        legendOpen={legendOpen}
+        onLegendToggle={setLegendOpen}
+      />
     </div>
   );
 }

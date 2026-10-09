@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
+import { PageHeader } from '@/components/ui-v2/page-header';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ArticleCard } from '@/app/components/article/card';
 import { Pagination } from '@/app/components/ui/pagination';
@@ -45,6 +46,8 @@ export function FavoriteFeedContent() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
+  // 表示中の記事を取得したときのフォルダー。見出しの件数（読み上げの対象）を、表示中の記事とそろえるため
+  const [articlesFolder, setArticlesFolder] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortByOption>('recent');
   const [refreshing, setRefreshing] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -67,6 +70,8 @@ export function FavoriteFeedContent() {
 
       if (sourceIds.length === 0) {
         setArticles([]);
+        setArticlesFolder(selectedFolder);
+        setFetchError(null);
         setTotalPages(1);
         return;
       }
@@ -94,6 +99,7 @@ export function FavoriteFeedContent() {
       if (controller.signal.aborted) return;
 
       setArticles(data.articles);
+      setArticlesFolder(selectedFolder);
       setTotalPages(data.pagination.totalPages);
       setFetchError(null);
     } catch (error) {
@@ -151,26 +157,42 @@ export function FavoriteFeedContent() {
   } = useFavoriteStatuses(articles.map((article) => article.id));
 
   const articleCount = sortedArticles.length;
+  // フォルダーを切り替えた直後も、表示中の記事のフォルダーで数える（新しいソース数と前の記事数を組み合わせない）
   const folderCount = useMemo(
     () =>
-      selectedFolder === 'all'
+      articlesFolder === 'all'
         ? favorites.length
-        : getFavoritesByFolder(selectedFolder).length,
-    [selectedFolder, favorites, getFavoritesByFolder]
+        : getFavoritesByFolder(articlesFolder).length,
+    [articlesFolder, favorites, getFavoritesByFolder]
+  );
+
+  // お気に入りへの戻り導線は見出し行の上に置き、見出し行の形を他の画面とそろえる（Issue #700）
+  const backLink = (
+    <Link
+      href="/favorites"
+      className="text-muted-foreground hover:text-foreground mb-1 inline-flex items-center gap-1 rounded-md text-sm"
+      aria-label="お気に入りに戻る"
+    >
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+      お気に入り
+    </Link>
   );
 
   if (favoritesLoading) {
     return (
       <div className="px-4 py-3 lg:px-6">
-        <div className="flex flex-wrap items-center gap-2 pb-3">
-          <div className="bg-muted h-4 w-4 animate-pulse rounded" />
-          <div className="bg-muted h-5 w-5 animate-pulse rounded" />
-          <div className="bg-muted h-5 w-32 animate-pulse rounded" />
-          <div className="flex-1" />
-          <div className="bg-muted h-9 w-[180px] animate-pulse rounded" />
-          <div className="bg-muted h-9 w-[140px] animate-pulse rounded" />
-          <div className="bg-muted h-9 w-16 animate-pulse rounded" />
-        </div>
+        {backLink}
+        <PageHeader
+          icon={Newspaper}
+          title="お気に入りフィード"
+          actions={
+            <>
+              <div className="bg-muted h-9 w-[180px] animate-pulse rounded" />
+              <div className="bg-muted h-9 w-[140px] animate-pulse rounded" />
+              <div className="bg-muted h-9 w-16 animate-pulse rounded" />
+            </>
+          }
+        />
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
@@ -183,98 +205,96 @@ export function FavoriteFeedContent() {
 
   return (
     <div className="px-4 py-3 lg:px-6">
-      {/* Toolbar: Back + Title + Count + Folder + Sort + Refresh */}
-      <header className="flex flex-wrap items-center gap-2 pb-3">
-        <Link
-          href="/favorites"
-          className="text-muted-foreground hover:text-foreground inline-flex h-8 w-8 items-center justify-center rounded-md"
-          aria-label="お気に入りに戻る"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <Newspaper className="text-primary h-5 w-5" aria-hidden="true" />
-        <h1 className="text-foreground text-h1">お気に入りフィード</h1>
-        <span className="text-muted-foreground text-sm">
-          {folderCount}ソースから{articleCount}件
-        </span>
-        <div className="flex-1" />
-        <Select
-          value={selectedFolder}
-          onValueChange={(v) => {
-            setSelectedFolder(v);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="h-9 w-[180px]" aria-label="フォルダー">
-            <Folder className="mr-2 h-4 w-4" aria-hidden="true" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              すべて ({favorites.length}ソース)
-            </SelectItem>
-            {folders.map((folder) => {
-              const count = getFavoritesByFolder(folder.id).length;
-              return (
-                <SelectItem key={folder.id} value={folder.id}>
+      {backLink}
+      <PageHeader
+        icon={Newspaper}
+        title="お気に入りフィード"
+        // 件数は読み上げの対象（PageHeader の count は live region）にしない。読み込み中・フォルダー切り替え直後・
+        // 失敗時のどれでも正確に保てる作りではないため、変更前と同じくただの表示にし、失敗時は出さない
+        description={
+          fetchError ? undefined : `${folderCount}ソースから${articleCount}件`
+        }
+        actions={
+          <>
+            <Select
+              value={selectedFolder}
+              onValueChange={(v) => {
+                setSelectedFolder(v);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="h-9 w-[180px]" aria-label="フォルダー">
+                <Folder className="mr-2 h-4 w-4" aria-hidden="true" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  すべて ({favorites.length}ソース)
+                </SelectItem>
+                {folders.map((folder) => {
+                  const count = getFavoritesByFolder(folder.id).length;
+                  return (
+                    <SelectItem key={folder.id} value={folder.id}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: folder.color }}
+                        />
+                        {folder.name} ({count})
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <Select
+              value={sortBy}
+              onValueChange={(v) => {
+                if ((SORT_BY_OPTIONS as readonly string[]).includes(v)) {
+                  setSortBy(v as SortByOption);
+                  setPage(1);
+                }
+              }}
+            >
+              <SelectTrigger className="h-9 w-[140px]" aria-label="並び替え">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">
                   <div className="flex items-center gap-2">
-                    <div
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: folder.color }}
-                    />
-                    {folder.name} ({count})
+                    <Clock className="h-4 w-4" />
+                    新着順
                   </div>
                 </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
-        <Select
-          value={sortBy}
-          onValueChange={(v) => {
-            if ((SORT_BY_OPTIONS as readonly string[]).includes(v)) {
-              setSortBy(v as SortByOption);
-              setPage(1);
-            }
-          }}
-        >
-          <SelectTrigger className="h-9 w-[140px]" aria-label="並び替え">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="recent">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                新着順
-              </div>
-            </SelectItem>
-            <SelectItem value="popular">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                人気順
-              </div>
-            </SelectItem>
-            <SelectItem value="quality">
-              <div className="flex items-center gap-2">
-                <Star className="h-4 w-4" />
-                品質順
-              </div>
-            </SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="h-9"
-        >
-          <RefreshCw
-            className={`mr-1 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
-          />
-          更新
-        </Button>
-      </header>
+                <SelectItem value="popular">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    人気順
+                  </div>
+                </SelectItem>
+                <SelectItem value="quality">
+                  <div className="flex items-center gap-2">
+                    <Star className="h-4 w-4" />
+                    品質順
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="h-9"
+            >
+              <RefreshCw
+                className={`mr-1 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+              />
+              更新
+            </Button>
+          </>
+        }
+      />
 
       {/* 記事一覧 */}
       {loading ? (

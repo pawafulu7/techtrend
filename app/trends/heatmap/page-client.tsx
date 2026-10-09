@@ -4,9 +4,10 @@ import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
+import { AlertCircle, ExternalLink, Grid3X3, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui-v2/button-v2';
+import { PageHeader } from '@/components/ui-v2/page-header';
 import {
   Sheet,
   SheetContent,
@@ -164,41 +165,40 @@ export function HeatmapPageClient() {
   }, []);
 
   return (
-    <div className="container mx-auto max-w-6xl space-y-6 px-4 py-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-h1">テックセクターマップ</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">
-            カテゴリ別の記事動向をヒートマップで可視化
-          </p>
-        </div>
-
-        {/* Period toggle */}
-        <div
-          className="bg-muted/50 flex items-center gap-1 rounded-lg p-1"
-          role="radiogroup"
-          aria-label="表示期間の選択"
-        >
-          {PERIOD_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              role="radio"
-              aria-checked={period === opt.value}
-              onClick={() => handlePeriodChange(opt.value)}
-              className={cn(
-                'inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200',
-                'focus-visible:ring-primary focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
-                period === opt.value
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6">
+      {/* 間隔は親の space-y-6 が持つので、見出しの下の余白は消す（Issue #700） */}
+      <PageHeader
+        icon={Grid3X3}
+        title="テックセクターマップ"
+        description="カテゴリ別の記事動向をヒートマップで可視化"
+        className="pb-0"
+        actions={
+          <div
+            className="bg-muted/50 flex items-center gap-1 rounded-lg p-1"
+            role="radiogroup"
+            aria-label="表示期間の選択"
+          >
+            {PERIOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                role="radio"
+                aria-checked={period === opt.value}
+                onClick={() => handlePeriodChange(opt.value)}
+                className={cn(
+                  'inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200',
+                  'focus-visible:ring-primary focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+                  period === opt.value
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:bg-background/50 hover:text-foreground'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {/* Error state */}
       {error && (

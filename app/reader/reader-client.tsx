@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { BookOpen } from 'lucide-react';
 import {
   useInfiniteQuery,
   useQuery,
@@ -324,6 +325,12 @@ function ReaderClientInner({
     <div className="flex h-full flex-col overflow-hidden">
       {/* Toolbar */}
       <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-[var(--tt-color-border)] px-4 py-2">
+        {/* Issue #700: 作業型の画面なのでレイアウトは保ち、h1 はツールバーの左端に置く。
+            記事タイトルを h1 にすると、狭い画面で一覧だけを出すときに h1 が消えるため */}
+        <h1 className="font-heading text-foreground text-h1 mr-2 flex items-center gap-2">
+          <BookOpen className="text-primary h-5 w-5" aria-hidden="true" />
+          リーダー
+        </h1>
         <FilterSidebarToggle />
         <MobileSearchToggle />
         <div className="hidden lg:block">

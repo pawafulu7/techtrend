@@ -274,9 +274,10 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       within(topTags as HTMLElement).getByRole('button', { name: '再試行' })
     );
 
+    // 再試行中は aria-disabled で押せない状態にする（disabled だとフォーカスが外れるため。Issue #700）
     expect(
       within(topTags as HTMLElement).getByRole('button', { name: '再試行中…' })
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByText('タグトレンドの推移を読み込めませんでした')
     ).toBeInTheDocument();

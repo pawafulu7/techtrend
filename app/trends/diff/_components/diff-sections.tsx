@@ -36,7 +36,7 @@ export function DiffMainContent({
   return (
     // RootLayout（app/layout.tsx）が既に <main> を持つため、ここは div。
     // ページに <main> が 2 つあるとランドマークナビゲーションが破綻する
-    <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6">
       {/* Stats Bar: モバイルは 2 列グリッド（横一列だと 375px で溢れて「下火」が切れる） */}
       <div className="bg-background grid grid-cols-2 gap-3 rounded-lg border px-4 py-3 shadow-sm sm:flex sm:items-center sm:justify-center sm:gap-6">
         <div className="flex items-center gap-2">

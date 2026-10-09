@@ -85,9 +85,13 @@ export function ErrorState({
         <Button
           variant="outline"
           size={isBlock ? 'default' : 'sm'}
-          onClick={onRetry}
-          disabled={retrying}
-          className={cn(isBlock ? 'mt-6 min-h-[44px]' : 'mt-3')}
+          // disabled にするとフォーカスが外れるので、aria-disabled とクリックの無視で表す
+          onClick={retrying ? undefined : onRetry}
+          aria-disabled={retrying || undefined}
+          className={cn(
+            isBlock ? 'mt-6 min-h-[44px]' : 'mt-3',
+            'aria-disabled:cursor-not-allowed aria-disabled:opacity-50'
+          )}
         >
           <RefreshCw
             className={cn(

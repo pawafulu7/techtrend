@@ -160,6 +160,8 @@ export function AgentSearchClient() {
             data-testid="agent-search-card"
           >
             <AgentSearchBar
+              // 画面の見出し（h1「AI検索」）と同じ文言のバッジは重ねて出さない
+              badgeLabel=""
               onSearch={handleSearch}
               isLoading={isLoading}
               onPrefillQuery={handleSetPrefillCallback}

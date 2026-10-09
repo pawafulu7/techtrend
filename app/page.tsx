@@ -1,5 +1,7 @@
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
+import { Home as HomeIcon } from 'lucide-react';
+import { PageHeader } from '@/components/ui-v2/page-header';
 import { Filters } from '@/app/components/common/filters';
 import { MobileFilters } from '@/app/components/common/mobile-filters';
 import { MobileSearchToggle } from '@/app/components/common/mobile-search-toggle';
@@ -145,33 +147,36 @@ export default async function Home({ searchParams }: PageProps) {
       <div className="flex h-full flex-col overflow-hidden">
         {/* Gradient background layer */}
         <div className="from-background to-muted/20 flex flex-1 flex-col overflow-hidden bg-gradient-to-b">
-          {/* Toolbar - 全幅・1行 */}
-          <div className="flex flex-shrink-0 flex-wrap items-center gap-2 px-4 pt-3 pb-2 lg:px-6">
-            <FilterSidebarToggle />
-            <MobileFilters
-              sources={filteredSources}
-              groupedSources={filteredGroupedSources}
-              tags={tags}
-              initialSourceIds={initialSourceIds}
-              initialIsAuthenticated={!!session?.user}
-            />
-            <MobileSearchToggle />
-            <div className="hidden lg:block">
-              <SearchBox />
-            </div>
-            {/* AI 検索リンクはヘッダーの primaryNav へ移設した（Issue #585）。
+          {/* 見出しとツールバー。全幅で、左右の余白は記事一覧と同じ（Issue #700） */}
+          <div className="flex-shrink-0 px-4 pt-3 lg:px-6">
+            <PageHeader icon={HomeIcon} title="記事一覧" variant="compact" />
+            <div className="flex flex-wrap items-center gap-2 pb-2">
+              <FilterSidebarToggle />
+              <MobileFilters
+                sources={filteredSources}
+                groupedSources={filteredGroupedSources}
+                tags={tags}
+                initialSourceIds={initialSourceIds}
+                initialIsAuthenticated={!!session?.user}
+              />
+              <MobileSearchToggle />
+              <div className="hidden lg:block">
+                <SearchBox />
+              </div>
+              {/* AI 検索リンクはヘッダーの primaryNav へ移設した（Issue #585）。
                 ここに残すとホーム上で同じリンクが 2 つ並び、支援技術にも
                 重複して読み上げられるため削除。デスクトップ限定だった導線も
                 ヘッダー経由で全ページ・全幅から到達できるようになっている */}
-            <div className="hidden lg:block">
-              <TagFilterDropdown tags={tags} />
+              <div className="hidden lg:block">
+                <TagFilterDropdown tags={tags} />
+              </div>
+              <PersonalizationToggle />
+              <div className="bg-border hidden h-5 w-px lg:block" />
+              <ViewModeToggle currentMode={viewMode} />
+              <SortButtons initialSortBy={initialSortBy} />
+              <div className="bg-border hidden h-5 w-px lg:block" />
+              <ToolbarMoreMenu />
             </div>
-            <PersonalizationToggle />
-            <div className="bg-border hidden h-5 w-px lg:block" />
-            <ViewModeToggle currentMode={viewMode} />
-            <SortButtons initialSortBy={initialSortBy} />
-            <div className="bg-border hidden h-5 w-px lg:block" />
-            <ToolbarMoreMenu />
           </div>
 
           {/* Content area - フルワイド + オーバーレイフィルター */}

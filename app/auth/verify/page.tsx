@@ -8,7 +8,6 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -144,7 +143,7 @@ export default function VerifyPage() {
       <Card>
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">{getIcon()}</div>
-          <CardTitle>{getTitle()}</CardTitle>
+          <h1 className="font-heading text-foreground text-h1">{getTitle()}</h1>
           <CardDescription className="mt-2">{message}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

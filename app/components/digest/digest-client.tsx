@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ErrorState } from '@/components/ui-v2/error-state';
+import { PageHeader } from '@/components/ui-v2/page-header';
 import { DigestSection } from './digest-section';
 import { CategoryPreferenceDialog } from '@/app/components/personalization/category-preference-dialog';
 import { useUpdatePreferences } from '@/lib/hooks/use-personalization-preferences';
@@ -69,22 +70,23 @@ export function DigestClient() {
 
   return (
     <div className="px-4 py-3 lg:px-6">
-      {/* Header */}
-      <header className="flex flex-wrap items-center gap-3 pb-4">
-        <Newspaper className="text-primary h-5 w-5" aria-hidden="true" />
-        <h1 className="text-foreground text-h1">ダイジェスト</h1>
-        {digest?.hasPreferences && !isUnauthorized && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setDialogOpen(true)}
-            className="ml-auto"
-          >
-            <Settings className="h-4 w-4" aria-hidden="true" />
-            <span className="ml-1.5">カテゴリ設定</span>
-          </Button>
-        )}
-      </header>
+      <PageHeader
+        icon={Newspaper}
+        title="ダイジェスト"
+        actions={
+          digest?.hasPreferences &&
+          !isUnauthorized && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDialogOpen(true)}
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" />
+              <span className="ml-1.5">カテゴリ設定</span>
+            </Button>
+          )
+        }
+      />
 
       {/* Period Tabs */}
       <Tabs value={period} onValueChange={handlePeriodChange} className="mb-6">

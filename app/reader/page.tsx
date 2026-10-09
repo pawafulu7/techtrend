@@ -69,7 +69,11 @@ export default async function ReaderPage() {
           <FilterSidebarOverlay />
           <Suspense
             fallback={
-              <div className="flex h-full items-center justify-center">
+              <div className="flex h-full flex-col items-center justify-center gap-2">
+                {/* ReaderClient の読み込み中も見出しを出す（Issue #700）。サーバー側の取得待ちは app/loading.tsx が受け持つ */}
+                <h1 className="font-heading text-foreground text-h1">
+                  リーダー
+                </h1>
                 <span className="text-muted-foreground">読み込み中...</span>
               </div>
             }
