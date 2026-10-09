@@ -9,23 +9,8 @@ import {
 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { PageHeader } from '@/components/ui-v2/page-header';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { analyticsTracker, ReadingStats } from '@/lib/analytics/tracking';
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
 import {
   BookOpen,
   Clock,
@@ -45,6 +30,7 @@ import {
 import { ja } from 'date-fns/locale';
 import { AnalyticsSettings } from '@/app/components/analytics/AnalyticsSettings';
 import { useChartColors } from '@/app/components/trends/useChartColors';
+import { AnalyticsChartTabs } from './analytics-charts';
 
 export default function AnalyticsContent() {
   // グラフの系列色（lib/design-tokens/ の chartColors。テーマで切り替わる）
@@ -346,111 +332,13 @@ export default function AnalyticsContent() {
           </div>
         </div>
 
-        <TabsContent value="overview" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>日別読書量</CardTitle>
-            </CardHeader>
-            <CardContent data-testid="chart-container">
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={dailyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="articles"
-                    stroke={colors[0]}
-                    name="記事数"
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="time"
-                    stroke={colors[1]}
-                    name="時間（分）"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="tags" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>興味分野TOP10</CardTitle>
-            </CardHeader>
-            <CardContent data-testid="chart-container">
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={tagData} layout="horizontal">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} />
-                  <Tooltip />
-                  <Bar dataKey="value" fill={colors[0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="time" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>時間帯別活動</CardTitle>
-            </CardHeader>
-            <CardContent data-testid="chart-container">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={hourlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="hour" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill={colors[0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="sources" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>ソース別分布</CardTitle>
-            </CardHeader>
-            <CardContent data-testid="chart-container">
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={sourceData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }: any) =>
-                      `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                    }
-                    outerRadius={80}
-                    fill={colors[0]}
-                    dataKey="value"
-                  >
-                    {sourceData.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={colors[index % colors.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <AnalyticsChartTabs
+          dailyData={dailyData}
+          tagData={tagData}
+          hourlyData={hourlyData}
+          sourceData={sourceData}
+          colors={colors}
+        />
       </Tabs>
     </div>
   );

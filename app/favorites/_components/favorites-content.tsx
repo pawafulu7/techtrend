@@ -3,19 +3,11 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Heart, Search, ArrowUpDown } from 'lucide-react';
+import { Heart, Search } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { PageHeader } from '@/components/ui-v2/page-header';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { Button } from '@/components/ui-v2/button-v2';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   FavoriteArticleCard,
   FavoriteSkeletonGrid,
@@ -24,6 +16,7 @@ import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
 import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth/auth-client';
 import type { SortOption } from '../_types';
+import { FavoritesToolbar } from './favorites-toolbar';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { toast } from '@/hooks/use-toast';
 
@@ -35,12 +28,6 @@ function notifyRemoveFailed() {
     variant: 'destructive',
   });
 }
-
-const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'favoritedAt-desc', label: '保存日（新しい順）' },
-  { value: 'favoritedAt-asc', label: '保存日（古い順）' },
-  { value: 'publishedAt-desc', label: '公開日（新しい順）' },
-];
 
 interface FavoritesContentProps {
   initialQuery: string;
@@ -238,42 +225,12 @@ export function FavoritesContent({
               }
         }
         actions={
-          <>
-            <div className="relative">
-              <Search
-                className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
-                aria-hidden="true"
-              />
-              <Input
-                type="search"
-                placeholder="検索..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-9 w-48 pl-10 lg:w-64"
-                aria-label="お気に入り記事を検索"
-              />
-            </div>
-            <Select
-              value={sortOption}
-              onValueChange={(value) => {
-                if (SORT_OPTIONS.some((o) => o.value === value)) {
-                  setSortOption(value as SortOption);
-                }
-              }}
-            >
-              <SelectTrigger className="h-9 w-44" aria-label="並び替え">
-                <ArrowUpDown className="mr-2 h-4 w-4" aria-hidden="true" />
-                <SelectValue placeholder="並び替え" />
-              </SelectTrigger>
-              <SelectContent>
-                {SORT_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </>
+          <FavoritesToolbar
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            sortOption={sortOption}
+            onSortOptionChange={setSortOption}
+          />
         }
       />
 

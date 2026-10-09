@@ -1,4 +1,8 @@
-import { truncateLabel, darkenColor } from '@/lib/utils/graph-helpers';
+import {
+  truncateLabel,
+  darkenColor,
+  removeCenterPrefix,
+} from '@/lib/utils/graph-helpers';
 
 describe('truncateLabel', () => {
   it('should not truncate short labels', () => {
@@ -23,5 +27,16 @@ describe('darkenColor', () => {
 
   it('should handle invalid color format', () => {
     expect(darkenColor('invalid', 0.8)).toBe('invalid');
+  });
+});
+
+describe('removeCenterPrefix', () => {
+  it('中心記事の印（[中心]）と続く空白を取り除く', () => {
+    expect(removeCenterPrefix('[中心] 記事タイトル')).toBe('記事タイトル');
+  });
+
+  it('印が無いラベルはそのまま返す', () => {
+    expect(removeCenterPrefix('記事タイトル')).toBe('記事タイトル');
+    expect(removeCenterPrefix('タイトル [中心]')).toBe('タイトル [中心]');
   });
 });

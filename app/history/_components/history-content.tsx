@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Eye, AlertCircle, History, Trash2 } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { PageHeader } from '@/components/ui-v2/page-header';
+import { ErrorState } from '@/components/ui-v2/error-state';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { HistoryArticleCard } from '@/app/components/article/history-card';
@@ -190,8 +191,11 @@ export function HistoryContent() {
     [router]
   );
 
+  // 表示できる履歴が無いまま取得に失敗した。以前はスケルトンのまま止まり、失敗の表示に届かなかった
+  const failedWithoutData = !!error && !hasFetched;
+
   // Loading state (hasFetchedを追加してクライアントナビゲーション時も確実にスケルトン表示)
-  if (loading || !hasFetched) {
+  if (!failedWithoutData && (loading || !hasFetched)) {
     return (
       <div className="px-4 py-3 lg:px-6">
         {/* 見出しは読み込み中も出す（h1 を常に1つ置く。Issue #700） */}
@@ -210,7 +214,11 @@ export function HistoryContent() {
       <PageHeader
         icon={History}
         title="閲覧履歴"
-        count={{ value: views.length, label: `${views.length}件` }}
+        count={
+          failedWithoutData
+            ? undefined
+            : { value: views.length, label: `${views.length}件` }
+        }
         actions={
           views.length > 0 && (
             <Button
@@ -228,8 +236,21 @@ export function HistoryContent() {
         }
       />
 
-      {/* Error state */}
-      {error && (
+      {/* 生の error.message は出さない（issue #701） */}
+      {failedWithoutData && (
+        <CardV2 className="mx-auto max-w-md">
+          <ErrorState
+            size="block"
+            title="閲覧履歴を読み込めませんでした"
+            description="時間をおいて再試行してください。"
+            onRetry={() => void fetchHistory()}
+            retrying={loading}
+          />
+        </CardV2>
+      )}
+
+      {/* 表示中の履歴がある状態での失敗（履歴のクリアなど） */}
+      {error && !failedWithoutData && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" aria-hidden="true" />
           <AlertDescription>{error}</AlertDescription>
