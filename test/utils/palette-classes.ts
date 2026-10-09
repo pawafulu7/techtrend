@@ -1,11 +1,12 @@
 // 色を直書きしたクラスとインライン style を探す。一覧の彩色はトークン（ブランド色・状態色）だけに
 // する方針（issue #702）を、テストで確かめるために使う。検出の範囲は __tests__/utils/palette-classes.test.tsx。
+// （Tailwind はこのファイルのクラス名らしい文字列からも本番の CSS を作るので、ここには例を書かない）
 //
 // 検出するもの:
-// - Tailwind のパレット色クラス（bg-blue-100、border-l-green-500、hover:bg-amber-200/50、bg-black）
+// - Tailwind のパレット色クラス（色名-濃さ、黒・白。variant・! ・不透明度付きも）
 // - 任意値・変数参照・任意プロパティ・インライン style のうち、値のどこかに色リテラル
 //   （#hex、rgb() などの色関数、CSS の名前色、パレット変数 --color-*）を含むもの
-// 許可するもの: トークン（var(--tt-*)、bg-(--tt-*)）、currentColor、transparent、url()
+// 許可するもの: トークン（var(--tt-*) と --tt-* の変数参照）、currentColor、transparent、url()
 const PALETTES =
   'slate|gray|zinc|neutral|stone|mauve|olive|mist|taupe|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose';
 const SHADES = '(?:50|[1-9]00|950)';
