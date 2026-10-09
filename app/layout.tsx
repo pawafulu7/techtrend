@@ -9,6 +9,7 @@ import { ThemeProvider } from '@/components/providers/theme-provider';
 import { AuthProvider } from '@/app/providers/auth-provider';
 import { ScrollToTopButton } from '@/components/features/ScrollToTopButton';
 import { WebVitalsReporter } from '@/app/components/analytics/web-vitals-reporter';
+import { buildCriticalCss } from '@/lib/utils/design-tokens/build-css';
 // import { OnboardingProvider } from "@/app/components/onboarding/onboarding-provider";
 import './globals.css';
 
@@ -38,6 +39,9 @@ const jetBrainsMono = JetBrains_Mono({
   preload: false,
   adjustFontFallback: true,
 });
+
+// CSS の読み込み前に背景・文字色を確定させる。値は globals.css と同じ lib/design-tokens/ から作る
+const CRITICAL_CSS = buildCriticalCss();
 
 export const metadata: Metadata = {
   title: {
@@ -79,33 +83,7 @@ export default async function RootLayout({
       <head>
         <style
           dangerouslySetInnerHTML={{
-            __html: `
-              /* Critical CSS inline */
-              :root {
-                --radius: 0.625rem;
-                --background: oklch(1 0 0);
-                --foreground: oklch(0.145 0 0);
-                --primary: oklch(0.205 0 0);
-                --border: oklch(0.922 0 0);
-              }
-              .dark {
-                --background: oklch(0.145 0 0);
-                --foreground: oklch(0.985 0 0);
-                --primary: oklch(0.922 0 0);
-                --border: oklch(1 0 0 / 10%);
-              }
-              html.no-transitions *,
-              html.no-transitions *::before,
-              html.no-transitions *::after {
-                transition: none !important;
-                animation: none !important;
-              }
-              body {
-                margin: 0;
-                background-color: var(--background);
-                color: var(--foreground);
-              }
-            `,
+            __html: CRITICAL_CSS,
           }}
         />
         <script

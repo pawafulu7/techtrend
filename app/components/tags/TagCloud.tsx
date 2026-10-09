@@ -40,18 +40,19 @@ export function getTagColor(
     return cn(baseClasses, 'text-[var(--tt-color-negative)] hover:opacity-80');
   }
 
-  // 使用頻度に基づいて色の濃さを変える
+  // 使用頻度に基づいて強調の度合いを変える。primary を半透明にすると AA を満たさないため、
+  // 濃さは primary → 本文色 → 補助文字色の順に変える
   const { minCount, maxCount } = range;
   const intensity =
     maxCount === minCount
       ? 0.5
       : (tag.count - minCount) / (maxCount - minCount);
   if (intensity > 0.7) {
-    return cn(baseClasses, 'text-primary hover:text-primary/80');
+    return cn(baseClasses, 'text-primary hover:text-tt-primary-hover');
   } else if (intensity > 0.4) {
-    return cn(baseClasses, 'text-primary/80 hover:text-primary/60');
+    return cn(baseClasses, 'text-foreground hover:text-primary');
   }
-  return cn(baseClasses, 'text-primary/60 hover:text-primary/40');
+  return cn(baseClasses, 'text-muted-foreground hover:text-primary');
 }
 
 // スケルトンの幅は固定値。モジュールレベルでも Math.random() を使うと

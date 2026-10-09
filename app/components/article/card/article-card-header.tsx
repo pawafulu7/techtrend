@@ -43,7 +43,7 @@ export function ArticleCardHeader({
           {isNew && (
             <BadgeV2
               variant="primary"
-              className="text-xs shadow-[0_0_12px_rgba(22,163,74,0.4)] dark:shadow-[0_0_12px_rgba(34,197,94,0.4)]"
+              className="text-xs shadow-(--tt-shadow-glow-primary)"
               aria-label="24時間以内の新着記事"
             >
               NEW

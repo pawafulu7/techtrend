@@ -56,9 +56,10 @@ const BadgeV2 = forwardRef<HTMLElement, BadgeV2Props>(
             'bg-(--tt-color-primary) text-(--tt-color-on-primary)',
             'hover:bg-(--tt-color-primary-hover)',
           ],
+          // ブランド色の淡い塗り（未読・スコアなど）。橙の secondary 色は #698 で廃止した
           variant === 'secondary' && [
-            'bg-(--tt-color-secondary) text-white',
-            'hover:bg-(--tt-color-secondary-hover)',
+            'bg-tt-primary-bg text-tt-primary',
+            'border-tt-primary-border border',
           ],
           variant === 'outline' && [
             'border border-(--tt-color-border)',

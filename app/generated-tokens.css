@@ -1,38 +1,224 @@
 /**
- * Auto-generated from lib/design-tokens.ts
+ * Auto-generated from lib/design-tokens/
  * DO NOT EDIT BY HAND - Run `npm run generate:tokens` instead
  */
 
+@theme inline {
+  /* shadcn/ui semantic colors (bg-primary, text-muted-foreground, ...) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* TT colors (bg-tt-primary, text-tt-text-muted, ...) */
+  --color-tt-background: var(--tt-color-background);
+  --color-tt-border: var(--tt-color-border);
+  --color-tt-border-hover: var(--tt-color-border-hover);
+  --color-tt-info: var(--tt-color-info);
+  --color-tt-info-bg: var(--tt-color-info-bg);
+  --color-tt-info-border: var(--tt-color-info-border);
+  --color-tt-negative: var(--tt-color-negative);
+  --color-tt-negative-bg: var(--tt-color-negative-bg);
+  --color-tt-negative-border: var(--tt-color-negative-border);
+  --color-tt-on-info: var(--tt-color-on-info);
+  --color-tt-on-negative: var(--tt-color-on-negative);
+  --color-tt-on-positive: var(--tt-color-on-positive);
+  --color-tt-on-primary: var(--tt-color-on-primary);
+  --color-tt-on-rank: var(--tt-color-on-rank);
+  --color-tt-on-warning: var(--tt-color-on-warning);
+  --color-tt-positive: var(--tt-color-positive);
+  --color-tt-positive-bg: var(--tt-color-positive-bg);
+  --color-tt-positive-border: var(--tt-color-positive-border);
+  --color-tt-primary: var(--tt-color-primary);
+  --color-tt-primary-bg: var(--tt-color-primary-bg);
+  --color-tt-primary-border: var(--tt-color-primary-border);
+  --color-tt-primary-hover: var(--tt-color-primary-hover);
+  --color-tt-rank-bronze: var(--tt-color-rank-bronze);
+  --color-tt-rank-gold: var(--tt-color-rank-gold);
+  --color-tt-rank-silver: var(--tt-color-rank-silver);
+  --color-tt-surface: var(--tt-color-surface);
+  --color-tt-surface-hover: var(--tt-color-surface-hover);
+  --color-tt-surface-muted: var(--tt-color-surface-muted);
+  --color-tt-text: var(--tt-color-text);
+  --color-tt-text-muted: var(--tt-color-text-muted);
+  --color-tt-warning: var(--tt-color-warning);
+  --color-tt-warning-bg: var(--tt-color-warning-bg);
+  --color-tt-warning-border: var(--tt-color-warning-border);
+  --color-tt-category-ai-bg: var(--tt-color-category-ai-bg);
+  --color-tt-category-ai-bg-hover: var(--tt-color-category-ai-bg-hover);
+  --color-tt-category-ai-icon: var(--tt-color-category-ai-icon);
+  --color-tt-category-ai-icon-hover: var(--tt-color-category-ai-icon-hover);
+  --color-tt-category-backend-bg: var(--tt-color-category-backend-bg);
+  --color-tt-category-backend-bg-hover: var(--tt-color-category-backend-bg-hover);
+  --color-tt-category-backend-icon: var(--tt-color-category-backend-icon);
+  --color-tt-category-backend-icon-hover: var(--tt-color-category-backend-icon-hover);
+  --color-tt-category-database-bg: var(--tt-color-category-database-bg);
+  --color-tt-category-database-bg-hover: var(--tt-color-category-database-bg-hover);
+  --color-tt-category-database-icon: var(--tt-color-category-database-icon);
+  --color-tt-category-database-icon-hover: var(--tt-color-category-database-icon-hover);
+  --color-tt-category-devops-bg: var(--tt-color-category-devops-bg);
+  --color-tt-category-devops-bg-hover: var(--tt-color-category-devops-bg-hover);
+  --color-tt-category-devops-icon: var(--tt-color-category-devops-icon);
+  --color-tt-category-devops-icon-hover: var(--tt-color-category-devops-icon-hover);
+  --color-tt-category-frontend-bg: var(--tt-color-category-frontend-bg);
+  --color-tt-category-frontend-bg-hover: var(--tt-color-category-frontend-bg-hover);
+  --color-tt-category-frontend-icon: var(--tt-color-category-frontend-icon);
+  --color-tt-category-frontend-icon-hover: var(--tt-color-category-frontend-icon-hover);
+  --color-tt-category-infrastructure-bg: var(--tt-color-category-infrastructure-bg);
+  --color-tt-category-infrastructure-bg-hover: var(--tt-color-category-infrastructure-bg-hover);
+  --color-tt-category-infrastructure-icon: var(--tt-color-category-infrastructure-icon);
+  --color-tt-category-infrastructure-icon-hover: var(--tt-color-category-infrastructure-icon-hover);
+  --color-tt-category-mobile-bg: var(--tt-color-category-mobile-bg);
+  --color-tt-category-mobile-bg-hover: var(--tt-color-category-mobile-bg-hover);
+  --color-tt-category-mobile-icon: var(--tt-color-category-mobile-icon);
+  --color-tt-category-mobile-icon-hover: var(--tt-color-category-mobile-icon-hover);
+  --color-tt-category-security-bg: var(--tt-color-category-security-bg);
+  --color-tt-category-security-bg-hover: var(--tt-color-category-security-bg-hover);
+  --color-tt-category-security-icon: var(--tt-color-category-security-icon);
+  --color-tt-category-security-icon-hover: var(--tt-color-category-security-icon-hover);
+  --color-tt-status-archived-bg: var(--tt-color-status-archived-bg);
+  --color-tt-status-archived-icon-bg: var(--tt-color-status-archived-icon-bg);
+  --color-tt-status-archived-text: var(--tt-color-status-archived-text);
+  --color-tt-status-draft-bg: var(--tt-color-status-draft-bg);
+  --color-tt-status-draft-icon-bg: var(--tt-color-status-draft-icon-bg);
+  --color-tt-status-draft-text: var(--tt-color-status-draft-text);
+  --color-tt-status-failed-bg: var(--tt-color-status-failed-bg);
+  --color-tt-status-failed-icon-bg: var(--tt-color-status-failed-icon-bg);
+  --color-tt-status-failed-text: var(--tt-color-status-failed-text);
+  --color-tt-status-neutral-bg: var(--tt-color-status-neutral-bg);
+  --color-tt-status-neutral-icon-bg: var(--tt-color-status-neutral-icon-bg);
+  --color-tt-status-neutral-text: var(--tt-color-status-neutral-text);
+  --color-tt-status-posted-bg: var(--tt-color-status-posted-bg);
+  --color-tt-status-posted-icon-bg: var(--tt-color-status-posted-icon-bg);
+  --color-tt-status-posted-text: var(--tt-color-status-posted-text);
+  --color-tt-status-posting-bg: var(--tt-color-status-posting-bg);
+  --color-tt-status-posting-icon-bg: var(--tt-color-status-posting-icon-bg);
+  --color-tt-status-posting-text: var(--tt-color-status-posting-text);
+  --color-tt-status-reviewed-bg: var(--tt-color-status-reviewed-bg);
+  --color-tt-status-reviewed-icon-bg: var(--tt-color-status-reviewed-icon-bg);
+  --color-tt-status-reviewed-text: var(--tt-color-status-reviewed-text);
+  --color-tt-status-scheduled-bg: var(--tt-color-status-scheduled-bg);
+  --color-tt-status-scheduled-icon-bg: var(--tt-color-status-scheduled-icon-bg);
+  --color-tt-status-scheduled-text: var(--tt-color-status-scheduled-text);
+  --color-tt-chart-1: var(--tt-color-chart-1);
+  --color-tt-chart-2: var(--tt-color-chart-2);
+  --color-tt-chart-3: var(--tt-color-chart-3);
+  --color-tt-chart-4: var(--tt-color-chart-4);
+  --color-tt-chart-5: var(--tt-color-chart-5);
+  --color-tt-chart-6: var(--tt-color-chart-6);
+  --color-tt-chart-7: var(--tt-color-chart-7);
+  --color-tt-chart-8: var(--tt-color-chart-8);
+  --color-tt-chart-9: var(--tt-color-chart-9);
+  --color-tt-chart-10: var(--tt-color-chart-10);
+
+  /* Border Radius (rounded-xs ... rounded-4xl) */
+  --radius-xs: var(--tt-radius-xs);
+  --radius-sm: var(--tt-radius-sm);
+  --radius-md: var(--tt-radius-md);
+  --radius-lg: var(--tt-radius-lg);
+  --radius-xl: var(--tt-radius-xl);
+  --radius-2xl: var(--tt-radius-2xl);
+  --radius-3xl: var(--tt-radius-3xl);
+  --radius-4xl: var(--tt-radius-4xl);
+}
+
+@theme {
+  /* Shadows (shadow-xs ... shadow-2xl) */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
 :root {
+  /* shadcn/ui variables - Light Mode (derived from TT colors) */
+  --background: #FFFFFF;
+  --foreground: #0F172A;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+  --primary: #157439;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F1F5F9;
+  --secondary-foreground: #0F172A;
+  --muted: #F1F5F9;
+  --muted-foreground: #617087;
+  --accent: #F1F5F9;
+  --accent-foreground: #0F172A;
+  --destructive: #B91C1C;
+  --destructive-foreground: #FFFFFF;
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #157439;
+  --sidebar: #F8FAFC;
+  --sidebar-foreground: #0F172A;
+  --sidebar-primary: #157439;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F1F5F9;
+  --sidebar-accent-foreground: #0F172A;
+  --sidebar-border: #E2E8F0;
+  --sidebar-ring: #157439;
+
   /* Colors - Light Mode */
-  --tt-color-border: #E5E7EB;
-  --tt-color-border-hover: #D1D5DB;
-  --tt-color-info: #3B82F6;
-  --tt-color-info-bg: rgba(59, 130, 246, 0.1);
-  --tt-color-info-border: rgba(59, 130, 246, 0.3);
-  --tt-color-negative: #EF4444;
-  --tt-color-negative-bg: rgba(239, 68, 68, 0.1);
-  --tt-color-negative-border: rgba(239, 68, 68, 0.3);
+  --tt-color-background: #FFFFFF;
+  --tt-color-border: #E2E8F0;
+  --tt-color-border-hover: #CBD5E1;
+  --tt-color-info: #1D4ED8;
+  --tt-color-info-bg: rgba(29, 78, 216, 0.1);
+  --tt-color-info-border: rgba(29, 78, 216, 0.3);
+  --tt-color-negative: #B91C1C;
+  --tt-color-negative-bg: rgba(185, 28, 28, 0.1);
+  --tt-color-negative-border: rgba(185, 28, 28, 0.3);
+  --tt-color-on-info: #FFFFFF;
+  --tt-color-on-negative: #FFFFFF;
+  --tt-color-on-positive: #FFFFFF;
   --tt-color-on-primary: #FFFFFF;
-  --tt-color-positive: #22C55E;
-  --tt-color-positive-bg: rgba(34, 197, 94, 0.1);
-  --tt-color-positive-border: rgba(34, 197, 94, 0.3);
-  --tt-color-primary: #16A34A;
-  --tt-color-primary-accent: #22C55E;
-  --tt-color-primary-hover: #15803D;
+  --tt-color-on-rank: #FFFFFF;
+  --tt-color-on-warning: #FFFFFF;
+  --tt-color-positive: #157439;
+  --tt-color-positive-bg: rgba(21, 116, 57, 0.1);
+  --tt-color-positive-border: rgba(21, 116, 57, 0.3);
+  --tt-color-primary: #157439;
+  --tt-color-primary-bg: rgba(21, 116, 57, 0.1);
+  --tt-color-primary-border: rgba(21, 116, 57, 0.3);
+  --tt-color-primary-hover: #166534;
   --tt-color-rank-bronze: #C2410C;
   --tt-color-rank-gold: #B45309;
   --tt-color-rank-silver: #64748B;
-  --tt-color-secondary: #F97316;
-  --tt-color-secondary-hover: #EA580C;
   --tt-color-surface: #FFFFFF;
   --tt-color-surface-hover: #F1F5F9;
   --tt-color-surface-muted: #F8FAFC;
   --tt-color-text: #0F172A;
-  --tt-color-text-muted: #64748B;
-  --tt-color-warning: #F97316;
-  --tt-color-warning-bg: rgba(249, 115, 22, 0.1);
-  --tt-color-warning-border: rgba(249, 115, 22, 0.3);
+  --tt-color-text-muted: #617087;
+  --tt-color-warning: #B43C0E;
+  --tt-color-warning-bg: rgba(180, 60, 14, 0.1);
+  --tt-color-warning-border: rgba(180, 60, 14, 0.3);
 
   /* Category Colors - Light Mode (AI search category tiles) */
   --tt-color-category-ai-bg: #EDE9FE;
@@ -69,9 +255,9 @@
   --tt-color-category-security-icon-hover: #B45309;
 
   /* Status Colors - Light Mode (social-posts, diff-summary, metrics status UI) */
-  --tt-color-status-archived-bg: #F9FAFB;
-  --tt-color-status-archived-icon-bg: #F3F4F6;
-  --tt-color-status-archived-text: #6B7280;
+  --tt-color-status-archived-bg: #F8FAFC;
+  --tt-color-status-archived-icon-bg: #F1F5F9;
+  --tt-color-status-archived-text: #64748B;
   --tt-color-status-draft-bg: #FFFBEB;
   --tt-color-status-draft-icon-bg: #FEF3C7;
   --tt-color-status-draft-text: #B45309;
@@ -93,6 +279,18 @@
   --tt-color-status-scheduled-bg: #F5F3FF;
   --tt-color-status-scheduled-icon-bg: #EDE9FE;
   --tt-color-status-scheduled-text: #6D28D9;
+
+  /* Chart Colors - Light Mode (series in charts) */
+  --tt-color-chart-1: #2563EB;
+  --tt-color-chart-2: #059669;
+  --tt-color-chart-3: #EA580C;
+  --tt-color-chart-4: #DC2626;
+  --tt-color-chart-5: #7C3AED;
+  --tt-color-chart-6: #DB2777;
+  --tt-color-chart-7: #0891B2;
+  --tt-color-chart-8: #D97706;
+  --tt-color-chart-9: #4F46E5;
+  --tt-color-chart-10: #0D9488;
 
   /* Typography */
   --tt-font-body: 'Inter', system-ui, sans-serif;
@@ -123,13 +321,15 @@
   /* Shadows */
   --tt-shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   --tt-shadow-card-focus: 0 0 0 2px var(--tt-color-primary);
-  --tt-shadow-card-hover: 0 8px 16px -4px rgb(0 0 0 / 0.12), 0 4px 8px -2px rgb(0 0 0 / 0.08);
-  --tt-shadow-card-rest: 0 2px 8px -2px rgb(0 0 0 / 0.08);
+  --tt-shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --tt-shadow-card-rest: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --tt-shadow-glow-primary: 0 0 12px var(--tt-color-primary-border);
   --tt-shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
   --tt-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --tt-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --tt-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --tt-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --tt-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --tt-shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 
   /* Spacing */
   --tt-space-0: 0;
@@ -150,44 +350,80 @@
   /* Border Radius */
   --tt-radius-2xl: 1rem;
   --tt-radius-3xl: 1.5rem;
+  --tt-radius-4xl: 2rem;
   --tt-radius-full: 9999px;
   --tt-radius-lg: 0.5rem;
   --tt-radius-md: 0.375rem;
   --tt-radius-none: 0;
   --tt-radius-sm: 0.25rem;
   --tt-radius-xl: 0.75rem;
+  --tt-radius-xs: 0.125rem;
 }
 
 .dark {
+  /* shadcn/ui variables - Dark Mode (derived from TT colors) */
+  --background: #020617;
+  --foreground: #E2E8F0;
+  --card: #0F172A;
+  --card-foreground: #E2E8F0;
+  --popover: #0F172A;
+  --popover-foreground: #E2E8F0;
+  --primary: #22C55E;
+  --primary-foreground: #020617;
+  --secondary: #1E293B;
+  --secondary-foreground: #E2E8F0;
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --accent: #1E293B;
+  --accent-foreground: #E2E8F0;
+  --destructive: #F87171;
+  --destructive-foreground: #020617;
+  --border: #1E293B;
+  --input: #1E293B;
+  --ring: #22C55E;
+  --sidebar: #020617;
+  --sidebar-foreground: #E2E8F0;
+  --sidebar-primary: #22C55E;
+  --sidebar-primary-foreground: #020617;
+  --sidebar-accent: #1E293B;
+  --sidebar-accent-foreground: #E2E8F0;
+  --sidebar-border: #1E293B;
+  --sidebar-ring: #22C55E;
+
   /* Colors - Dark Mode */
-  --tt-color-border: #1F2937;
-  --tt-color-border-hover: #374151;
-  --tt-color-info: #3B82F6;
-  --tt-color-info-bg: rgba(59, 130, 246, 0.15);
-  --tt-color-info-border: rgba(59, 130, 246, 0.4);
-  --tt-color-negative: #EF4444;
-  --tt-color-negative-bg: rgba(239, 68, 68, 0.15);
-  --tt-color-negative-border: rgba(239, 68, 68, 0.4);
-  --tt-color-on-primary: #000000;
+  --tt-color-background: #020617;
+  --tt-color-border: #1E293B;
+  --tt-color-border-hover: #334155;
+  --tt-color-info: #60A5FA;
+  --tt-color-info-bg: rgba(96, 165, 250, 0.1);
+  --tt-color-info-border: rgba(96, 165, 250, 0.4);
+  --tt-color-negative: #F87171;
+  --tt-color-negative-bg: rgba(248, 113, 113, 0.1);
+  --tt-color-negative-border: rgba(248, 113, 113, 0.4);
+  --tt-color-on-info: #020617;
+  --tt-color-on-negative: #020617;
+  --tt-color-on-positive: #020617;
+  --tt-color-on-primary: #020617;
+  --tt-color-on-rank: #020617;
+  --tt-color-on-warning: #020617;
   --tt-color-positive: #22C55E;
-  --tt-color-positive-bg: rgba(34, 197, 94, 0.15);
+  --tt-color-positive-bg: rgba(34, 197, 94, 0.1);
   --tt-color-positive-border: rgba(34, 197, 94, 0.4);
   --tt-color-primary: #22C55E;
-  --tt-color-primary-accent: #4ADE80;
+  --tt-color-primary-bg: rgba(34, 197, 94, 0.1);
+  --tt-color-primary-border: rgba(34, 197, 94, 0.4);
   --tt-color-primary-hover: #16A34A;
   --tt-color-rank-bronze: #EA580C;
   --tt-color-rank-gold: #D97706;
   --tt-color-rank-silver: #94A3B8;
-  --tt-color-secondary: #F97316;
-  --tt-color-secondary-hover: #EA580C;
-  --tt-color-surface: #111827;
-  --tt-color-surface-hover: #1F2937;
-  --tt-color-surface-muted: #0B1220;
-  --tt-color-text: #E5E7EB;
+  --tt-color-surface: #0F172A;
+  --tt-color-surface-hover: #1E293B;
+  --tt-color-surface-muted: #020617;
+  --tt-color-text: #E2E8F0;
   --tt-color-text-muted: #94A3B8;
-  --tt-color-warning: #F97316;
-  --tt-color-warning-bg: rgba(249, 115, 22, 0.15);
-  --tt-color-warning-border: rgba(249, 115, 22, 0.4);
+  --tt-color-warning: #FB923C;
+  --tt-color-warning-bg: rgba(251, 146, 60, 0.1);
+  --tt-color-warning-border: rgba(251, 146, 60, 0.4);
 
   /* Category Colors - Dark Mode */
   --tt-color-category-ai-bg: #2E1065;
@@ -224,9 +460,9 @@
   --tt-color-category-security-icon-hover: #FCD34D;
 
   /* Status Colors - Dark Mode */
-  --tt-color-status-archived-bg: rgba(17, 24, 39, 0.3);
-  --tt-color-status-archived-icon-bg: #1F2937;
-  --tt-color-status-archived-text: #9CA3AF;
+  --tt-color-status-archived-bg: rgba(15, 23, 42, 0.3);
+  --tt-color-status-archived-icon-bg: #1E293B;
+  --tt-color-status-archived-text: #94A3B8;
   --tt-color-status-draft-bg: rgba(69, 26, 3, 0.3);
   --tt-color-status-draft-icon-bg: rgba(217, 119, 6, 0.4);
   --tt-color-status-draft-text: #FBBF24;
@@ -248,4 +484,20 @@
   --tt-color-status-scheduled-bg: rgba(46, 16, 101, 0.3);
   --tt-color-status-scheduled-icon-bg: rgba(124, 58, 237, 0.4);
   --tt-color-status-scheduled-text: #A78BFA;
+
+  /* Chart Colors - Dark Mode */
+  --tt-color-chart-1: #60A5FA;
+  --tt-color-chart-2: #34D399;
+  --tt-color-chart-3: #FB923C;
+  --tt-color-chart-4: #F87171;
+  --tt-color-chart-5: #A78BFA;
+  --tt-color-chart-6: #F472B6;
+  --tt-color-chart-7: #22D3EE;
+  --tt-color-chart-8: #FBBF24;
+  --tt-color-chart-9: #818CF8;
+  --tt-color-chart-10: #2DD4BF;
+
+  /* Shadows that reference colors (re-declared so a nested .dark resolves the dark color) */
+  --tt-shadow-card-focus: 0 0 0 2px var(--tt-color-primary);
+  --tt-shadow-glow-primary: 0 0 12px var(--tt-color-primary-border);
 }

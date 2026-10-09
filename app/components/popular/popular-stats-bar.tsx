@@ -36,7 +36,7 @@ export function PopularStatsBar({
       </div>
       <div className="bg-border hidden h-4 w-px sm:block" />
       <div className="flex items-center gap-2">
-        <Star className="h-4 w-4 text-(--tt-color-secondary)" />
+        <Star className="text-tt-primary h-4 w-4" />
         <span className="text-sm font-semibold">{Math.round(topScore)}</span>
         <span className="text-muted-foreground text-xs">最高スコア</span>
       </div>

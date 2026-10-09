@@ -22,41 +22,42 @@ interface SourceCardProps {
   source: SourceWithStats;
 }
 
+// 分類を見分けるための色はチャートの系列色を使う（状態色は品質スコアなどの状態表示に限る）
 const categoryConfig = {
   tech_blog: {
     label: '技術',
     icon: Globe,
-    color: 'text-(--tt-color-info)',
-    bgColor: 'bg-(--tt-color-info)/10',
-    borderColor: 'border-l-(--tt-color-info)',
+    color: 'text-tt-chart-1',
+    bgColor: 'bg-tt-chart-1/10',
+    borderColor: 'border-l-tt-chart-1',
   },
   company_blog: {
     label: '企業',
     icon: Building,
-    color: 'text-(--tt-color-secondary)',
-    bgColor: 'bg-(--tt-color-secondary)/10',
-    borderColor: 'border-l-(--tt-color-secondary)',
+    color: 'text-tt-chart-9',
+    bgColor: 'bg-tt-chart-9/10',
+    borderColor: 'border-l-tt-chart-9',
   },
   personal_blog: {
     label: '個人',
     icon: User,
-    color: 'text-(--tt-color-positive)',
-    bgColor: 'bg-(--tt-color-positive)/10',
-    borderColor: 'border-l-(--tt-color-positive)',
+    color: 'text-tt-chart-2',
+    bgColor: 'bg-tt-chart-2/10',
+    borderColor: 'border-l-tt-chart-2',
   },
   news_site: {
     label: 'ニュース',
     icon: Newspaper,
-    color: 'text-(--tt-color-negative)',
-    bgColor: 'bg-(--tt-color-negative)/10',
-    borderColor: 'border-l-(--tt-color-negative)',
+    color: 'text-tt-chart-4',
+    bgColor: 'bg-tt-chart-4/10',
+    borderColor: 'border-l-tt-chart-4',
   },
   community: {
     label: 'コミュニティ',
     icon: Users,
-    color: 'text-(--tt-color-warning)',
-    bgColor: 'bg-(--tt-color-warning)/10',
-    borderColor: 'border-l-(--tt-color-warning)',
+    color: 'text-tt-chart-8',
+    bgColor: 'bg-tt-chart-8/10',
+    borderColor: 'border-l-tt-chart-8',
   },
   other: {
     label: 'その他',

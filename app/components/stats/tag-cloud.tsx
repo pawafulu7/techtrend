@@ -57,7 +57,7 @@ export function TagCloud({ tags }: TagCloudProps) {
           >
             <Link href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}>
               {getTagDisplayName(tag.name)}
-              <span className="ml-1 opacity-70">{tag.count}</span>
+              <span className="ml-1">{tag.count}</span>
             </Link>
           </BadgeV2>
         ))}

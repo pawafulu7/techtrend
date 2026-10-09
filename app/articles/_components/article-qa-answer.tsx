@@ -33,7 +33,7 @@ export function ArticleQaAnswer({
 
   return (
     <article
-      className="article-qa-answer border-l-primary/30 rounded-[24px] border border-l-4 border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-5 shadow-sm sm:p-6"
+      className="article-qa-answer border-l-primary/30 rounded-3xl border border-l-4 border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-5 shadow-sm sm:p-6"
       data-testid={testId}
       role="article"
       aria-label="AI回答"
@@ -50,7 +50,7 @@ export function ArticleQaAnswer({
             <span className="bg-primary absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"></span>
             <span className="bg-primary relative inline-flex h-3 w-3 rounded-full"></span>
           </div>
-          <span className="text-primary/80 text-sm font-medium">
+          <span className="text-primary text-sm font-medium">
             回答を生成中...
           </span>
         </div>

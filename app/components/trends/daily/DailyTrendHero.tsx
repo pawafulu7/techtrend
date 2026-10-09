@@ -168,14 +168,14 @@ export function DailyTrendHero({
         className="absolute top-0 right-0 h-96 w-96 translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
         style={{
           background:
-            'color-mix(in srgb, var(--tt-color-positive) 7%, transparent)',
+            'color-mix(in srgb, var(--tt-color-primary) 7%, transparent)',
         }}
       />
       <div
         className="absolute bottom-0 left-0 h-64 w-64 -translate-x-1/2 translate-y-1/2 rounded-full blur-3xl"
         style={{
           background:
-            'color-mix(in srgb, var(--tt-color-info) 5%, transparent)',
+            'color-mix(in srgb, var(--tt-color-primary) 5%, transparent)',
         }}
       />
 
@@ -252,16 +252,14 @@ export function DailyTrendHero({
               variant="secondary"
               className={cn(
                 'px-2.5 py-1 text-xs transition-all hover:scale-105',
+                // 半透明の primary に白文字を載せると AA を満たさないため、
+                // 1位だけ不透明の塗りにし、2位以降は secondary（淡い塗り）にする
                 index === 0 &&
-                  'bg-primary/90 text-primary-foreground hover:bg-primary/80',
-                index === 1 &&
-                  'bg-primary/70 text-primary-foreground hover:bg-primary/60',
-                index === 2 &&
-                  'bg-primary/50 text-primary-foreground hover:bg-primary/40'
+                  'bg-tt-primary text-tt-on-primary hover:bg-tt-primary-hover'
               )}
             >
               {getTagDisplayName(tag.name)}
-              <span className="ml-1 opacity-70">({tag.count})</span>
+              <span className="ml-1">({tag.count})</span>
             </Badge>
           ))}
         </div>

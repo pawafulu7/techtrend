@@ -33,7 +33,7 @@ export function DetailedSummaryStructured({
   if (sections.length === 0) {
     return (
       <div
-        className="bg-card text-card-foreground border-foreground/10 rounded-[var(--tt-radius-xl)] border p-[var(--tt-space-5)] shadow-[var(--tt-shadow-card-rest)]"
+        className="bg-card text-card-foreground border-foreground/10 rounded-xl border p-[var(--tt-space-5)] shadow-sm"
         data-testid="detailed-summary-fallback"
       >
         <p className="mb-[var(--tt-space-3)] font-[family-name:var(--tt-font-heading)] font-semibold tracking-[var(--tt-tracking-tight)] text-[var(--tt-text-sm)]">
@@ -57,18 +57,13 @@ export function DetailedSummaryStructured({
       </h3>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {sections.map((section, index) => {
-          const isEven = index % 2 === 0;
-          const accentColor = isEven
-            ? 'var(--tt-color-primary)'
-            : 'var(--tt-color-secondary)';
-
           return (
             <article
               key={index}
               className="group min-h-[44px] space-y-2 rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-sm transition-all duration-200 hover:border-[var(--tt-color-border-hover)] hover:shadow-md motion-safe:animate-[fadeInUp_0.4s_ease_forwards] motion-safe:opacity-0"
               style={{
                 borderLeftWidth: '3px',
-                borderLeftColor: accentColor,
+                borderLeftColor: 'var(--tt-color-primary)',
                 animationDelay: `${index * 60}ms`,
               }}
               data-testid={`detailed-summary-section-${index}`}

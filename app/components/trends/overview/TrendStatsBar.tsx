@@ -43,7 +43,7 @@ export function TrendStatsBar({
   return (
     <div className="bg-background flex flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-lg border px-4 py-3 shadow-sm">
       <div className="flex items-center gap-2">
-        <TrendingUp className="h-4 w-4 text-(--tt-color-secondary)" />
+        <TrendingUp className="text-tt-primary h-4 w-4" />
         <StatValue value={trendingCount} />
         <span className="text-muted-foreground text-xs">急上昇</span>
       </div>

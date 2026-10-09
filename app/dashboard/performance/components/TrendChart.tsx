@@ -22,6 +22,11 @@ import {
   CardTitle,
 } from '@/components/ui-v2/card-v2';
 import type { TrendChartProps, TimeSeriesData } from '../types/dashboard';
+import { chartColors } from '@/lib/design-tokens';
+import { useChartColors } from '@/app/components/trends/useChartColors';
+
+// ツールチップの既定色（本体は useChartColors() の1番目を渡す）
+const DEFAULT_COLOR = chartColors.light[0];
 
 // カスタムツールチップ用のProps型
 interface TrendChartTooltipProps {
@@ -38,7 +43,7 @@ const TrendChartTooltip = React.memo(function TrendChartTooltip({
   payload,
   label,
   format,
-  color = '#3b82f6',
+  color = DEFAULT_COLOR,
 }: TrendChartTooltipProps) {
   if (active && payload && payload.length) {
     const value = payload[0].value;
@@ -74,10 +79,12 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   title,
   data,
   dataKey = 'value',
-  color = '#3b82f6',
+  color: colorProp,
   height = 300,
   format,
 }) => {
+  const colors = useChartColors();
+  const color = colorProp ?? colors[0];
   // データのフォーマット
   // Note: TimeSeriesData only has 'time' and 'value' fields.
   // dataKey is used for chart rendering, but data always uses 'value'.
@@ -206,7 +213,9 @@ export const MetricsBarChart: React.FC<{
   dataKey: string;
   color?: string;
   height?: number;
-}> = ({ title, data, dataKey, color = '#3b82f6', height = 300 }) => {
+}> = ({ title, data, dataKey, color: colorProp, height = 300 }) => {
+  const colors = useChartColors();
+  const color = colorProp ?? colors[0];
   return (
     <Card>
       <CardHeader>
@@ -250,10 +259,12 @@ export const MetricsAreaChart: React.FC<{
   title,
   data,
   dataKey = 'value',
-  color = '#3b82f6',
+  color: colorProp,
   height = 300,
   gradient = true,
 }) => {
+  const colors = useChartColors();
+  const color = colorProp ?? colors[0];
   const id = useId();
   const gradientId = `gradient-${id}`;
 

@@ -34,7 +34,7 @@ const CATEGORY_ICON_MAP: Record<SampleQuery['category'], LucideIcon> = {
 };
 
 // カテゴリ別カラー参照: CSS カスタムプロパティ経由でライト/ダーク両モード自動切替。
-// 値は lib/design-tokens.ts の lightCategoryColors / darkCategoryColors から
+// 値は lib/design-tokens/ の lightCategoryColors / darkCategoryColors から
 // npm run generate:tokens で app/generated-tokens.css に反映される。
 //
 // hover variant はカテゴリ固有のブランド色を活用するため、汎用フィルタ
@@ -281,7 +281,7 @@ export function AgentSampleQueries({
             <CardV2
               key={category}
               variant="ghost"
-              className="group cursor-pointer border border-[var(--tt-color-border)] p-4 transition-all duration-200 hover:-translate-y-1 hover:border-[var(--tt-color-primary)] hover:shadow-[var(--tt-shadow-card-hover)]"
+              className="group cursor-pointer border border-[var(--tt-color-border)] p-4 transition-all duration-200 hover:-translate-y-1 hover:border-[var(--tt-color-primary)] hover:shadow-md"
               onClick={() => onSelectQuery(firstQuery.text)}
               role="button"
               tabIndex={0}

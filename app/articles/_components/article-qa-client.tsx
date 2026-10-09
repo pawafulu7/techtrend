@@ -314,7 +314,7 @@ export function ArticleQAClient({
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="relative flex flex-1 flex-col rounded-[32px] border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] px-4 py-6 shadow-[0_40px_90px_-60px_rgba(15,23,42,0.85)] sm:px-8 sm:py-8">
+      <div className="relative flex flex-1 flex-col rounded-3xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] px-4 py-6 shadow-xl sm:px-8 sm:py-8">
         <DialogTitle className="sr-only">{dialogTitleText}</DialogTitle>
         {onClose && (
           <Button
@@ -430,7 +430,7 @@ export function ArticleQAClient({
               <div ref={chatEndRef} />
             </div>
 
-            <div className="sticky right-0 bottom-0 left-0 bg-gradient-to-b from-transparent via-white to-white pt-6">
+            <div className="via-tt-surface to-tt-surface sticky right-0 bottom-0 left-0 bg-gradient-to-b from-transparent pt-6">
               {/* Sample queries section - positioned above input for better task-completion UX */}
               <aside
                 role="complementary"
@@ -497,7 +497,7 @@ export function ArticleQAClient({
                     onClick={() => setSampleQueriesOpen(true)}
                     aria-expanded={sampleQueriesOpen}
                     aria-controls="sample-queries-panel"
-                    className="border-primary/30 text-primary hover:bg-primary/5 focus-visible:ring-primary/30 inline-flex items-center gap-1.5 rounded-full border bg-white px-3 py-1.5 text-xs font-medium shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                    className="border-primary/30 text-primary hover:bg-primary/5 focus-visible:ring-primary/30 bg-background inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                   >
                     <Sparkles className="h-3.5 w-3.5" />
                     {locale === 'ja'
@@ -507,7 +507,7 @@ export function ArticleQAClient({
                 )}
               </aside>
 
-              <div className="rounded-[28px] border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-[0_30px_80px_-60px_rgba(15,23,42,0.7)] backdrop-blur-sm sm:p-6">
+              <div className="rounded-3xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-lg backdrop-blur-sm sm:p-6">
                 <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.3em] text-[var(--tt-color-text-muted)] uppercase">
                   <MessageSquare className="text-primary h-4 w-4" />
                   {locale === 'ja' ? 'この記事に質問する' : 'Ask this article'}

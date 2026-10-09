@@ -91,8 +91,7 @@ export function AgentStepIndicator({
                 <div
                   className={cn(
                     'flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300',
-                    status === 'complete' &&
-                      'bg-[var(--tt-color-primary)] text-white',
+                    status === 'complete' && 'bg-tt-primary text-tt-on-primary',
                     status === 'active' &&
                       'animate-pulse bg-[var(--tt-color-primary)]/20 text-[var(--tt-color-primary)] ring-4 ring-[var(--tt-color-primary)]/30',
                     status === 'pending' &&

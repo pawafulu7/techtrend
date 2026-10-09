@@ -31,7 +31,7 @@ export function StatsOverview({ stats }: StatsOverviewProps) {
       </div>
       <div className="bg-border hidden h-4 w-px sm:block" />
       <div className="flex items-center gap-2">
-        <Calendar className="h-4 w-4 text-(--tt-color-secondary)" />
+        <Calendar className="text-tt-primary h-4 w-4" />
         <span className="text-sm font-semibold">
           {stats.last7Days.toLocaleString()}
         </span>

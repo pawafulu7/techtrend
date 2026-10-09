@@ -1,4 +1,5 @@
 import type { GraphNode } from '@/lib/types/graph';
+import { graphNodeColors } from '@/lib/design-tokens';
 import type { Article } from '@/lib/prisma-exports';
 import { logger } from '@/lib/logger';
 import type { GraphNodeInput } from './graph-node-input';
@@ -69,7 +70,7 @@ export function toGraphNode(
 
   // CodexMCP Phase 2: Adjust color brightness by similarity
   const color = isCenter
-    ? '#FBBF24'
+    ? graphNodeColors.center
     : adjustColorForSimilarity(baseColor, similarity);
 
   // CodexMCP Phase 2: Clamp qualityScore to minimum baseline

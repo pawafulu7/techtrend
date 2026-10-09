@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { graphNodeColors } from '@/lib/design-tokens';
 
 /**
  * Graph Visualization Types
@@ -209,18 +210,10 @@ export type GraphOptionsValidated = z.infer<typeof graphOptionsSchema>;
 /**
  * Category to Color Mapping
  *
- * Visual encoding for article categories.
+ * Visual encoding for article categories. 値は lib/design-tokens/ の graphNodeColors。
  */
-export const CATEGORY_COLORS: Record<string, string> = {
-  Frontend: '#4F46E5',      // Indigo
-  Backend: '#10B981',       // Green
-  'AI/ML': '#F59E0B',       // Amber
-  DevOps: '#8B5CF6',        // Purple
-  Database: '#06B6D4',      // Cyan
-  Security: '#EF4444',      // Red
-  Testing: '#EC4899',       // Pink
-  Other: '#6B7280',         // Gray
-};
+export const CATEGORY_COLORS: Readonly<Record<string, string>> =
+  graphNodeColors.category;
 
 /**
  * Link Type to Color Mapping

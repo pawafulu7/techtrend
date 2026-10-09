@@ -16,6 +16,7 @@ import { forceCollide } from 'd3-force';
 import { Button } from '@/components/ui-v2/button-v2';
 import type { GraphData, GraphNode, GraphLink } from '@/lib/types/graph';
 import { darkenColor, truncateLabel } from '@/lib/utils/graph-helpers';
+import { darkColors, graphNodeColors, withAlpha } from '@/lib/design-tokens';
 
 interface LinkMetadata {
   similarity: number;
@@ -27,6 +28,9 @@ interface ForceGraphRef {
   d3Force: (forceName: string) => any;
   d3ReheatSimulation: () => void;
 }
+
+// リンクの線: ダークの補助文字色（slate-400）を 60% の不透明度で
+const GRAPH_LINK_COLOR = withAlpha(darkColors.textMuted, 0.6);
 
 // Utility function for safe label prefix removal
 const removeCenterPrefix = (label: string) => label.replace(/^\[中心\]\s*/, '');
@@ -65,10 +69,10 @@ const getFreshnessBorder = (
     );
 
     // Fresh (within 7 days): green border
-    if (diffDays < 7) return { color: '#10B981', width: 2.5 };
+    if (diffDays < 7) return { color: darkColors.positive, width: 2.5 };
 
-    // Recent (within 30 days): yellow border
-    if (diffDays < 30) return { color: '#FBBF24', width: 2 };
+    // Recent (within 30 days): orange border
+    if (diffDays < 30) return { color: darkColors.warning, width: 2 };
 
     // Old (30+ days): no border
     return null;
@@ -236,7 +240,9 @@ function GraphContainer() {
   );
 
   return (
-    <div className="relative h-screen w-full bg-[var(--tt-color-surface)]">
+    // キャンバスは常に暗い配色で描くので、重ねるパネルもダークのトークンに揃える。
+    // Portal で body 直下に描く部品（Tooltip など）はこの範囲の外に出るので、足すときは注意
+    <div className="dark relative h-screen w-full bg-[var(--tt-color-surface)] scheme-dark">
       <ForceGraph2D
         graphData={graphData}
         ref={handleGraphRef}
@@ -292,7 +298,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
 
           // CodexMCP: Draw border for center node
           if (isCenter) {
-            ctx.strokeStyle = '#FFFFFF';
+            ctx.strokeStyle = darkColors.text;
             ctx.lineWidth = 3 / globalScale;
             ctx.stroke();
           }
@@ -326,7 +332,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
                   ctx.save();
                   const badgeRadius = 6 / globalScale;
                   const badgeOffset = radius * 0.7;
-                  ctx.fillStyle = '#EF4444'; // Red
+                  ctx.fillStyle = darkColors.negative;
                   ctx.beginPath();
                   ctx.arc(
                     node.x + badgeOffset,
@@ -351,13 +357,13 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
             maxLength
           );
 
-          // Draw black outline for readability
-          ctx.strokeStyle = '#000000';
+          // Draw dark outline for readability
+          ctx.strokeStyle = darkColors.background;
           ctx.lineWidth = 3 / globalScale;
           ctx.strokeText(displayLabel, node.x, node.y + radius + fontSize);
 
-          // Draw white text
-          ctx.fillStyle = '#FFFFFF';
+          // Draw light text
+          ctx.fillStyle = darkColors.text;
           ctx.fillText(displayLabel, node.x, node.y + radius + fontSize);
         }}
         linkWidth={(link: GraphLink) => Math.max(link.value ** 2 * 18, 1.5)}
@@ -365,8 +371,8 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
         linkDirectionalParticleWidth={4}
         onNodeClick={(node: GraphNode) => router.push(node.url)}
         onNodeHover={(node: GraphNode | null) => setHoveredNode(node)}
-        backgroundColor="#020617"
-        linkColor={() => 'rgba(148, 163, 184, 0.6)'}
+        backgroundColor={darkColors.background}
+        linkColor={() => GRAPH_LINK_COLOR}
         // CodexMCP: Layout parameters (supported props only)
         warmupTicks={100}
         cooldownTicks={400}
@@ -378,11 +384,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
 
       {/* Back button */}
       <div className="absolute top-4 left-4">
-        <Button
-          variant="ghost"
-          asChild
-          className="text-white hover:bg-[var(--tt-color-surface-hover)]"
-        >
+        <Button variant="ghost" asChild>
           <Link
             href={`/articles/${articleId}`}
             className="flex items-center gap-2"
@@ -395,15 +397,18 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
 
       {/* CodexMCP: Legend card (always visible) */}
       <div className="absolute top-16 left-4 max-w-xs rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 p-4 shadow-xl">
-        <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-white">
+        <h3 className="text-tt-text mb-3 flex items-center gap-2 text-sm font-bold">
           <Network className="h-4 w-4" />
           グラフの見方
         </h3>
         <div className="space-y-2 text-xs text-[var(--tt-color-text)]">
           <div className="flex items-start gap-2">
-            <div className="mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 border-white bg-[var(--tt-color-warning-bg)]" />
+            <div
+              className="border-tt-text mt-0.5 h-4 w-4 shrink-0 rounded-full border-2"
+              style={{ backgroundColor: graphNodeColors.center }}
+            />
             <div>
-              <div className="font-medium text-white">
+              <div className="text-tt-text font-medium">
                 中心ノード（大・黄色・白枠）
               </div>
               <div className="text-[var(--tt-color-text-muted)]">
@@ -443,7 +448,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
             <div>
               <div className="font-medium">枠線の色 = 配信日時</div>
               <div className="text-[var(--tt-color-text-muted)]">
-                緑=1週間以内、黄=1ヶ月以内
+                緑=1週間以内、橙=1ヶ月以内
               </div>
             </div>
           </div>
@@ -466,7 +471,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
       <button
         data-testid="depth-toggle-button"
         onClick={() => setCurrentDepth((d) => (d === 1 ? 2 : 1))}
-        className="absolute top-4 left-1/2 -translate-x-1/2 transform rounded-lg border border-[var(--tt-color-info-border)] bg-[var(--tt-color-info-bg)] px-4 py-2 text-sm font-medium text-white shadow-xl transition-colors hover:bg-[var(--tt-color-info)]"
+        className="border-tt-primary-border bg-tt-primary-bg text-tt-primary hover:bg-tt-primary hover:text-tt-on-primary absolute top-4 left-1/2 -translate-x-1/2 transform rounded-lg border px-4 py-2 text-sm font-medium shadow-xl transition-colors"
       >
         {currentDepth === 1
           ? '関連をさらに表示（depth=2）'
@@ -476,12 +481,15 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
       {/* Center article info */}
       <div className="absolute top-4 right-4 max-w-sm rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 p-4 shadow-xl">
         <div className="mb-2 flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full border-2 border-white bg-[var(--tt-color-warning-bg)]" />
-          <h3 className="text-sm font-bold text-white">中心記事</h3>
+          <div
+            className="border-tt-text h-3 w-3 rounded-full border-2"
+            style={{ backgroundColor: graphNodeColors.center }}
+          />
+          <h3 className="text-tt-text text-sm font-bold">中心記事</h3>
         </div>
         {centerNode && (
           <div className="space-y-1">
-            <p className="text-sm font-medium text-white">
+            <p className="text-tt-text text-sm font-medium">
               {removeCenterPrefix(centerNode.label)}
             </p>
             <p className="text-xs text-[var(--tt-color-text-muted)]">
@@ -505,7 +513,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
       {hoveredNode &&
         hoveredNode.id !== graphData.metadata?.centerArticleId && (
           <div className="absolute bottom-4 left-4 max-w-md rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 p-4 shadow-xl">
-            <h4 className="mb-2 text-sm font-bold text-white">
+            <h4 className="text-tt-text mb-2 text-sm font-bold">
               {hoveredNode.label}
             </h4>
             {hoveredNode.summary && (
@@ -518,13 +526,13 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
                 <span className="text-[var(--tt-color-text-muted)]">
                   カテゴリ:
                 </span>
-                <span className="text-white">{hoveredNode.category}</span>
+                <span className="text-tt-text">{hoveredNode.category}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[var(--tt-color-text-muted)]">
                   品質スコア:
                 </span>
-                <span className="text-white">
+                <span className="text-tt-text">
                   {Math.round(hoveredNode.val)}
                 </span>
               </div>
@@ -533,7 +541,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
                   <span className="text-[var(--tt-color-text-muted)]">
                     主要タグ:
                   </span>
-                  <span className="text-white">{hoveredNode.primaryTag}</span>
+                  <span className="text-tt-text">{hoveredNode.primaryTag}</span>
                 </div>
               )}
             </div>
@@ -548,10 +556,10 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
 
 function GraphSkeleton() {
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-[var(--tt-color-surface)]">
+    <div className="dark flex h-screen w-full items-center justify-center bg-[var(--tt-color-surface)] scheme-dark">
       <div className="text-center">
-        <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-white"></div>
-        <p className="text-white">Loading relationship graph...</p>
+        <div className="border-tt-text mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2"></div>
+        <p className="text-tt-text">Loading relationship graph...</p>
       </div>
     </div>
   );
@@ -561,7 +569,7 @@ function GraphError({ error }: { error: Error }) {
   console.error('[GraphError]', error);
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-[var(--tt-color-surface)]">
+    <div className="dark flex h-screen w-full items-center justify-center bg-[var(--tt-color-surface)] scheme-dark">
       <div className="text-center">
         <p className="mb-2 text-lg text-[var(--tt-color-negative)]">
           Failed to load graph

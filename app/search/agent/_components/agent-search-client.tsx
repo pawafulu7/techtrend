@@ -156,7 +156,7 @@ export function AgentSearchClient() {
           {/* Search bar */}
           <CardV2
             variant="default"
-            className="bg-[var(--tt-color-surface-muted)] p-4 shadow-[var(--tt-shadow-card-rest)]"
+            className="bg-[var(--tt-color-surface-muted)] p-4 shadow-sm"
             data-testid="agent-search-card"
           >
             <AgentSearchBar
@@ -170,7 +170,7 @@ export function AgentSearchClient() {
           {showResult && (
             <a
               href="#agent-result"
-              className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-20 focus:rounded focus:bg-[var(--tt-color-primary)] focus:px-4 focus:py-2 focus:text-white"
+              className="focus:bg-tt-primary focus:text-tt-on-primary sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-20 focus:rounded focus:px-4 focus:py-2"
               onClick={(e) => {
                 e.preventDefault();
                 resultRef.current?.focus();
@@ -195,7 +195,7 @@ export function AgentSearchClient() {
             {!isLoading && showResult && error && (
               <CardV2
                 variant="default"
-                className="bg-[var(--tt-color-surface-muted)] p-6 shadow-[var(--tt-shadow-card-rest)]"
+                className="bg-[var(--tt-color-surface-muted)] p-6 shadow-sm"
               >
                 <AgentErrorDisplay error={error} onRetry={handleRetry} />
               </CardV2>
@@ -230,7 +230,7 @@ export function AgentSearchClient() {
           <div className="lg:sticky lg:top-4">
             <CardV2
               variant="default"
-              className="bg-[var(--tt-color-surface-muted)] p-4 shadow-[var(--tt-shadow-card-rest)]"
+              className="bg-[var(--tt-color-surface-muted)] p-4 shadow-sm"
             >
               <AgentSampleQueries
                 layout="sidebar"

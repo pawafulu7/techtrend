@@ -291,8 +291,8 @@ export function SocialPostsDashboard() {
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--tt-color-info)] shadow-lg">
-              <XLogoIcon className="h-5 w-5 text-white" />
+            <div className="bg-tt-primary flex h-10 w-10 items-center justify-center rounded-xl shadow-lg">
+              <XLogoIcon className="text-tt-on-primary h-5 w-5" />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-[var(--tt-color-text)] sm:text-2xl">
