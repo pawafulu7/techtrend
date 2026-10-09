@@ -137,10 +137,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
 
   return (
     <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
-      {/* 本文の列は 45rem まで。text-body（16px）で概要の 1 行が 40 字以下に収まる幅（#703）。
-          lg 以上は関連記事の列（20rem）と間隔（1.5rem）を足した 66.5rem を中央に置く。
-          max-w は左右の px-6（計 3rem）を含む */}
-      <div className="mx-auto w-full max-w-[48rem] px-6 py-6 lg:max-w-[69.5rem]">
+      <div className="w-full px-6 py-6">
         <ArticleTracker
           articleId={article.id}
           title={article.title}
@@ -162,7 +159,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
         </div>
 
         <div className="flex flex-col gap-6 lg:flex-row">
-          <div className="min-w-0 flex-1 space-y-6">
+          <div className="flex-1 space-y-6">
             <Card className="gap-4 bg-[var(--tt-color-surface-muted)]">
               <CardHeader>
                 <div className="space-y-4">

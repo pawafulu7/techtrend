@@ -4,8 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function ArticleDetailLoading() {
   return (
     <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
-      {/* 幅と配置は page.tsx と同じにする（読み込み後に位置が動かないように） */}
-      <div className="mx-auto w-full max-w-[48rem] px-6 py-6 lg:max-w-[69.5rem]">
+      <div className="w-full px-6 py-6">
         {/* Back button */}
         <div className="mb-2">
           <Skeleton className="h-[44px] w-36" />
@@ -13,7 +12,7 @@ export default function ArticleDetailLoading() {
 
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* Main content */}
-          <div className="min-w-0 flex-1 space-y-6">
+          <div className="flex-1 space-y-6">
             <Card className="gap-4 bg-[var(--tt-color-surface-muted)]">
               <CardHeader>
                 <div className="space-y-4">
@@ -60,8 +59,8 @@ export default function ArticleDetailLoading() {
                 {/* Detailed summary grid */}
                 <div className="rounded-xl bg-[var(--tt-color-surface-muted)] p-4">
                   <Skeleton className="mb-4 h-5 w-20" />
-                  <div className="grid grid-cols-1 gap-4">
-                    {Array.from({ length: 3 }).map((_, i) => (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {Array.from({ length: 6 }).map((_, i) => (
                       <div
                         key={i}
                         className="space-y-2 rounded-lg border border-l-[3px] border-[var(--tt-color-border)] border-l-[var(--tt-color-primary)] bg-[var(--tt-color-surface)] p-4"
@@ -71,9 +70,9 @@ export default function ArticleDetailLoading() {
                           <Skeleton className="h-4 w-32" />
                         </div>
                         <div className="space-y-1">
-                          <Skeleton className="h-4 w-full" />
-                          <Skeleton className="h-4 w-full" />
-                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-3.5 w-full" />
+                          <Skeleton className="h-3.5 w-full" />
+                          <Skeleton className="h-3.5 w-3/4" />
                         </div>
                       </div>
                     ))}
