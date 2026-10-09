@@ -25,7 +25,8 @@ test.describe('詳細要約表示', () => {
 
   test('詳細要約が表示される', async ({ page }) => {
     // 詳細要約セクションを探す
-    const detailedSummarySection = page.locator('[class*="detailed-summary"], [data-testid="detailed-summary"]').first();
+    // 構造化要約は data-testid で掴む（class 名に detailed-summary は含まれない）
+    const detailedSummarySection = page.locator('[data-testid="detailed-summary-container"], [data-testid="detailed-summary-fallback"]').first();
     
     // セクションが存在する場合
     if (await detailedSummarySection.count() > 0) {

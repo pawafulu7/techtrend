@@ -29,6 +29,12 @@ export default function ArticleDetailLoading() {
                     <Skeleton className="h-8 w-3/4" />
                   </div>
 
+                  {/* Original article link and reading time */}
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-10 w-32" />
+                    <Skeleton className="h-5 w-28" />
+                  </div>
+
                   {/* Tags */}
                   <div className="flex flex-wrap gap-2">
                     <Skeleton className="h-6 w-16" />
@@ -75,11 +81,8 @@ export default function ArticleDetailLoading() {
 
                 {/* Footer row */}
                 <div className="flex items-center justify-between border-t pt-4">
-                  <Skeleton className="h-6 w-24" />
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="h-5 w-28" />
-                    <Skeleton className="h-10 w-32" />
-                  </div>
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-10 w-32" />
                 </div>
               </CardContent>
             </Card>

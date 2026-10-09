@@ -23,14 +23,27 @@ import { formatDate } from '@/lib/utils/date';
 import {
   useRelatedArticles,
   type RelatedArticle,
+  type RelatedArticlesAlgorithm,
 } from '@/hooks/use-related-articles';
+
+// 関連の理由を方式ごとの言葉で出す。similarity は方式ごとに意味が違い
+// （tag は Jaccard でタグが同じなら 100%、embedding は検索スコア）、% では伝わらないため（#703）
+function getRelationReason(
+  algorithm: RelatedArticlesAlgorithm,
+  commonTags: number
+): string | null {
+  if (algorithm === 'embedding') return '内容が近い';
+  return commonTags > 0 ? `共通タグ ${commonTags}件` : null;
+}
 
 // Extracted component to use hooks for each article item
 // Avoids Date.now() during render (React Compiler purity rule)
 const RelatedArticleItem = memo(function RelatedArticleItem({
   article,
+  algorithm,
 }: {
   article: RelatedArticle;
+  algorithm: RelatedArticlesAlgorithm;
 }) {
   const [timeInfo, setTimeInfo] = useState<{
     hoursAgo: number;
@@ -56,6 +69,7 @@ const RelatedArticleItem = memo(function RelatedArticleItem({
   const isNew = timeInfo?.isNew;
   // Check if date is valid to avoid "Invalid Date" display
   const isValidDate = !Number.isNaN(new Date(article.publishedAt).getTime());
+  const relationReason = getRelationReason(algorithm, article.commonTags);
 
   return (
     <Link
@@ -64,14 +78,9 @@ const RelatedArticleItem = memo(function RelatedArticleItem({
       className="group block cursor-pointer rounded-lg bg-[var(--tt-color-surface-muted)] p-3 transition-colors hover:bg-[var(--tt-color-surface-hover)]"
     >
       <div className="space-y-1">
-        <div className="flex items-start justify-between gap-2">
-          <h4 className="group-hover:text-primary line-clamp-2 text-sm font-medium transition-colors">
-            {article.translatedTitle || article.title}
-          </h4>
-          <BadgeV2 variant="secondary" className="ml-2 shrink-0 text-xs">
-            {Math.round(article.similarity * 100)}%
-          </BadgeV2>
-        </div>
+        <h4 className="group-hover:text-primary line-clamp-2 text-sm font-medium transition-colors">
+          {article.translatedTitle || article.title}
+        </h4>
 
         {article.summary && (
           <p className="text-summary line-clamp-2 text-[var(--tt-color-text-muted)]">
@@ -101,6 +110,15 @@ const RelatedArticleItem = memo(function RelatedArticleItem({
             </BadgeV2>
           )}
         </div>
+
+        {relationReason && (
+          <p
+            className="text-xs text-[var(--tt-color-text-muted)]"
+            data-testid="related-article-reason"
+          >
+            {relationReason}
+          </p>
+        )}
 
         {article.tags.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
@@ -137,11 +155,9 @@ export function RelatedArticles({
   initialExpanded = false,
 }: RelatedArticlesProps) {
   const [expanded, setExpanded] = useState(initialExpanded);
-  const {
-    data: articles = [],
-    isLoading,
-    error,
-  } = useRelatedArticles(articleId);
+  const { data, isLoading, error } = useRelatedArticles(articleId);
+  const articles = data?.articles ?? [];
+  const algorithm = data?.algorithm ?? 'tag';
 
   // 表示件数の制御
   const displayLimit = expanded ? maxItems : 5;
@@ -216,7 +232,11 @@ export function RelatedArticles({
       </CardHeader>
       <CardContent className="max-h-[600px] scrollbar-thin space-y-2 overflow-y-auto">
         {displayArticles.map((article) => (
-          <RelatedArticleItem key={article.id} article={article} />
+          <RelatedArticleItem
+            key={article.id}
+            article={article}
+            algorithm={algorithm}
+          />
         ))}
 
         {hasMore && (

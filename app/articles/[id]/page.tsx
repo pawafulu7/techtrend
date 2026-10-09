@@ -9,7 +9,6 @@ import {
   Calendar,
   Clock,
   Download,
-  ExternalLink,
   MessageSquare,
 } from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
@@ -26,6 +25,7 @@ import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 import { ArticleQADialog } from '@/app/articles/_components/article-qa-dialog';
 import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 import { CommentSection } from '@/app/components/comment';
+import { ReadOriginalLink } from '@/app/components/article/read-original-link';
 
 interface PageProps {
   params: Promise<{
@@ -124,6 +124,17 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
       .filter((name): name is string => Boolean(name)) ?? []
   ).slice(0, 4);
 
+  const readingTime =
+    article.content && article.content.length > 0 ? (
+      <span className="flex items-center gap-1 text-sm text-[var(--tt-color-text-muted)]">
+        <Clock className="h-4 w-4" aria-hidden="true" />
+        <span>
+          {Math.max(1, Math.ceil(article.content.length / 500))}分 /{' '}
+          {article.content.length.toLocaleString('ja-JP')}字
+        </span>
+      </span>
+    ) : null;
+
   return (
     <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
       <div className="w-full px-6 py-6">
@@ -196,6 +207,11 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   <h1 className="text-h1">
                     {article.translatedTitle || article.title}
                   </h1>
+
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <ReadOriginalLink url={article.url} />
+                    {readingTime}
+                  </div>
 
                   {article.tags && article.tags.length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -325,39 +341,12 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   </div>
                 ) : null}
 
-                <div className="flex items-center justify-between border-t pt-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-[var(--tt-color-text-muted)]">
-                      品質スコア:
-                    </span>
-                    <BadgeV2 variant="secondary">
-                      {Math.round(article.qualityScore)}
-                    </BadgeV2>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    {article.content && article.content.length > 0 && (
-                      <span className="flex items-center gap-1 text-sm text-[var(--tt-color-text-muted)]">
-                        <Clock className="h-4 w-4" />
-                        <span>
-                          {Math.max(1, Math.ceil(article.content.length / 500))}
-                          分 / {article.content.length.toLocaleString('ja-JP')}
-                          字
-                        </span>
-                      </span>
-                    )}
-                    <Button asChild>
-                      <a
-                        href={article.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        元記事を読む
-                      </a>
-                    </Button>
-                  </div>
+                {/* 主の「元記事を読む」はタイトルの下。要約を読み終えた位置にも控えめに置く */}
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t pt-4">
+                  <p className="text-caption text-[var(--tt-color-text-muted)]">
+                    品質スコア {Math.round(article.qualityScore)}
+                  </p>
+                  <ReadOriginalLink url={article.url} variant="outline" />
                 </div>
               </CardContent>
             </Card>
