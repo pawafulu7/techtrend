@@ -53,10 +53,7 @@ const CardV2Title = forwardRef<
   <h3
     data-slot="card-title"
     ref={ref}
-    className={cn(
-      'text-2xl leading-none font-semibold tracking-tight',
-      className
-    )}
+    className={cn('text-h3 tracking-tight', className)}
     {...props}
   />
 ));

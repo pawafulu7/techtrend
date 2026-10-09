@@ -295,7 +295,7 @@ export function SocialPostsDashboard() {
               <XLogoIcon className="text-tt-on-primary h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-[var(--tt-color-text)] sm:text-2xl">
+              <h1 className="text-h1 tracking-tight text-[var(--tt-color-text)]">
                 X投稿管理
               </h1>
               <p className="text-sm text-[var(--tt-color-text-muted)]">

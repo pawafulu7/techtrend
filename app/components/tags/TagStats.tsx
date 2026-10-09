@@ -205,7 +205,7 @@ export function TagStats() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">タグ統計</CardTitle>
+          <CardTitle>タグ統計</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -264,7 +264,7 @@ export function TagStats() {
       {stats.topGrowthTags.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
+            <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-[var(--tt-color-positive)]" />
               急成長タグ
             </CardTitle>

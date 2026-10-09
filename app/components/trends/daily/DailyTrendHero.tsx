@@ -207,9 +207,7 @@ export function DailyTrendHero({
                 <TrendingUp className="text-primary h-5 w-5" />
               </div>
               <div className="text-center sm:text-left">
-                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                  Daily Trend
-                </h1>
+                <h1 className="text-h1 tracking-tight">Daily Trend</h1>
                 <p className="text-muted-foreground flex items-center justify-center gap-2 text-sm sm:justify-start">
                   <Calendar className="h-3.5 w-3.5" />
                   {formatDate(periodStart)}

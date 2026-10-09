@@ -27,7 +27,7 @@ export const SELECTORS = {
   ARTICLE_CARD: 'article, [class*="article"], [class*="card"]',
   ARTICLE_LINK: 'article a, [class*="article"] a, [class*="card"] a',
   ARTICLE_TITLE: 'h1, h2, h3, [class*="title"]',
-  ARTICLE_SUMMARY: 'p.text-sm, [class*="summary"]',
+  ARTICLE_SUMMARY: '[data-testid="article-summary"]',
   ARTICLE_CONTENT: 'article, [class*="content"], [class*="body"]',
   ARTICLE_DATE: 'time, [class*="date"], [class*="published"]',
   ARTICLE_SOURCE: '[class*="source"], [data-testid="source"]',

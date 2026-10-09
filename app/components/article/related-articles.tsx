@@ -74,7 +74,7 @@ const RelatedArticleItem = memo(function RelatedArticleItem({
         </div>
 
         {article.summary && (
-          <p className="line-clamp-2 text-xs text-[var(--tt-color-text-muted)]">
+          <p className="text-summary line-clamp-2 text-[var(--tt-color-text-muted)]">
             {article.summary}
           </p>
         )}
@@ -153,7 +153,7 @@ export function RelatedArticles({
     return (
       <Card className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2">
             <LinkIcon className="h-5 w-5" />
             関連記事
           </CardTitle>
@@ -178,7 +178,7 @@ export function RelatedArticles({
     return (
       <Card className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2">
             <LinkIcon className="h-5 w-5" />
             関連記事
           </CardTitle>
@@ -199,7 +199,7 @@ export function RelatedArticles({
     >
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2">
             <LinkIcon className="h-5 w-5" />
             関連記事
           </CardTitle>

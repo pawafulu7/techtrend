@@ -108,7 +108,7 @@ export const OptimizationPanel: React.FC<{
     return (
       <Card className={className}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
+          <CardTitle className="flex items-center gap-2">
             <Lightbulb className="h-5 w-5" />
             最適化推奨
           </CardTitle>
@@ -128,7 +128,7 @@ export const OptimizationPanel: React.FC<{
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex items-center gap-2">
           <Lightbulb className="h-5 w-5" />
           最適化推奨
         </CardTitle>
@@ -187,7 +187,7 @@ export const OptimizationScore: React.FC<{
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle className="text-lg">最適化スコア</CardTitle>
+        <CardTitle>最適化スコア</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="text-center">

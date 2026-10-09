@@ -67,7 +67,7 @@ export function CategoryDistribution({
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex items-center gap-2">
           <Layers className="text-primary h-5 w-5" />
           カテゴリ
         </CardTitle>

@@ -163,7 +163,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
       {/* Header */}
       <header className="bg-background/80 sticky top-0 z-10 border-b backdrop-blur-sm">
         <div className="container mx-auto max-w-6xl px-4">
-          <div className="flex h-14 items-center justify-between">
+          <div className="flex min-h-14 items-center justify-between py-2">
             <Button
               variant="ghost"
               size="sm"
@@ -176,9 +176,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
             </Button>
 
             <div className="text-center">
-              <h1 className="text-base font-bold tracking-tight">
-                週間トピック変化
-              </h1>
+              <h1 className="text-h1 tracking-tight">週間トピック変化</h1>
               <div className="flex items-center justify-center gap-2">
                 <span className="text-muted-foreground text-xs">
                   {formatWeekDisplay(displayWeek)}
@@ -267,7 +265,7 @@ export function DiffContent({ initialData, initialWeek }: DiffContentProps) {
           <div className="bg-muted mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full">
             <Minus className="text-muted-foreground h-8 w-8" />
           </div>
-          <h3 className="mb-2 text-lg font-semibold">データがありません</h3>
+          <h3 className="text-h3 mb-2">データがありません</h3>
           <p className="text-muted-foreground text-sm">
             {formatWeekDisplay(displayWeek)}のデータはまだ生成されていません。
           </p>

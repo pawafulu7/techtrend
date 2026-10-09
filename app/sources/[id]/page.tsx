@@ -1,17 +1,16 @@
 import { notFound } from 'next/navigation';
 import logger from '@/lib/logger';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { SourceArticleSections } from './_components/source-article-sections';
-import {
-  ArrowLeft,
-  ExternalLink,
-  Calendar,
-  Tag,
-  BarChart,
-} from 'lucide-react';
+import { ArrowLeft, ExternalLink, Calendar, Tag, BarChart } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { ArticleWithRelations } from '@/types/models';
@@ -169,7 +168,7 @@ export default async function SourceDetailPage({
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="mb-2 text-2xl">{source.name}</CardTitle>
+                  <h1 className="text-h1 mb-2">{source.name}</h1>
                   <p className="text-muted-foreground">{source.type}</p>
                 </div>
                 <Button variant="outline" size="sm" asChild>

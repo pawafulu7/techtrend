@@ -60,7 +60,7 @@ export function ArticleQaAnswer({
       {hasAnswer && (
         <div
           data-testid="qa-answer-markdown"
-          className="prose prose-sm prose-headings:font-semibold prose-headings:text-[var(--tt-color-text)] prose-p:text-[var(--tt-color-text)] prose-a:text-primary prose-strong:text-[var(--tt-color-text)] prose-li:text-[var(--tt-color-text)] max-w-none"
+          className="prose prose-sm prose-h1:text-h1 prose-h2:text-h2 prose-h3:text-h3 prose-headings:font-semibold prose-headings:text-[var(--tt-color-text)] prose-p:text-[var(--tt-color-text)] prose-a:text-primary prose-strong:text-[var(--tt-color-text)] prose-li:text-[var(--tt-color-text)] max-w-none"
         >
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkBreaks]}

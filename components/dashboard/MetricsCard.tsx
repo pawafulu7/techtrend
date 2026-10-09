@@ -231,7 +231,7 @@ export const MetricsGroup: React.FC<MetricsGroupProps> = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex items-center gap-2">
           {icon}
           {title}
         </CardTitle>

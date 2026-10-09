@@ -193,7 +193,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                     />
                   </div>
 
-                  <h1 className="text-2xl font-bold">
+                  <h1 className="text-h1">
                     {article.translatedTitle || article.title}
                   </h1>
 
@@ -278,7 +278,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                 ) : isShortArticle ? (
                   <div className="space-y-2 rounded-lg bg-[var(--tt-color-surface-muted)] p-4">
                     <p className="text-sm font-medium">要約</p>
-                    <p className="text-sm text-[var(--tt-color-text-muted)]">
+                    <p className="text-body text-[var(--tt-color-text-muted)]">
                       {article.summary || '詳細は元記事でご確認ください。'}
                     </p>
                     {article.content && (
@@ -297,7 +297,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                         <p className="mb-1 text-sm font-semibold tracking-tight">
                           概要
                         </p>
-                        <p className="text-foreground/80 text-sm leading-relaxed">
+                        <p className="text-foreground/80 text-body">
                           {article.summary}
                         </p>
                       </div>
@@ -319,7 +319,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                 ) : article.summary ? (
                   <div className="rounded-lg bg-[var(--tt-color-surface-muted)] p-4">
                     <p className="mb-1 text-sm font-medium">要約</p>
-                    <p className="text-sm text-[var(--tt-color-text-muted)]">
+                    <p className="text-body text-[var(--tt-color-text-muted)]">
                       {article.summary}
                     </p>
                   </div>

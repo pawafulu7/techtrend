@@ -84,9 +84,7 @@ export function ProfileContent() {
       <div>
         <header className="flex flex-wrap items-center gap-2 pb-3">
           <UserCog className="text-primary h-5 w-5" aria-hidden="true" />
-          <h1 className="text-foreground text-lg font-semibold">
-            プロフィール設定
-          </h1>
+          <h1 className="text-foreground text-h1">プロフィール設定</h1>
         </header>
         {/* 生の error.message は出さない（issue #701） */}
         <CardV2>
@@ -119,9 +117,7 @@ export function ProfileContent() {
     <div>
       <header className="flex flex-wrap items-center gap-2 pb-3">
         <UserCog className="text-primary h-5 w-5" aria-hidden="true" />
-        <h1 className="text-foreground text-lg font-semibold">
-          プロフィール設定
-        </h1>
+        <h1 className="text-foreground text-h1">プロフィール設定</h1>
       </header>
 
       {/* 2-column layout: lg and above */}
@@ -130,9 +126,7 @@ export function ProfileContent() {
         <div className="lg:col-span-2">
           <CardV2 className="p-4 sm:p-6">
             <div className="pb-3">
-              <h2 className="text-foreground text-lg font-semibold">
-                プロフィール編集
-              </h2>
+              <h2 className="text-foreground text-h2">プロフィール編集</h2>
               <p className="text-muted-foreground text-sm">
                 他のユーザーに表示される公開情報
               </p>

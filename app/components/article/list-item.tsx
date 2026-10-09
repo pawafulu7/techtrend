@@ -86,7 +86,7 @@ export function ArticleListItem({
             )}
             <h3
               data-testid="article-title"
-              className="text-foreground line-clamp-1 text-sm font-medium group-hover:text-(--tt-color-primary)"
+              className="text-foreground text-h3 line-clamp-1 group-hover:text-(--tt-color-primary)"
               title={article.translatedTitle || article.title}
             >
               <Link
@@ -103,7 +103,7 @@ export function ArticleListItem({
           {article.summary && (
             <p
               data-testid="article-summary"
-              className="text-muted-foreground mt-0.5 line-clamp-1 text-xs"
+              className="text-muted-foreground text-summary mt-0.5 line-clamp-1"
             >
               {article.summary}
             </p>

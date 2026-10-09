@@ -29,7 +29,7 @@ export default function ProcessingNotice({
     <div className="mb-4">
       <Card className="border-[var(--tt-color-info-border)] bg-[var(--tt-color-info-bg)]">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold text-[var(--tt-color-info)]">
+          <CardTitle className="flex items-center gap-2 text-[var(--tt-color-info)]">
             <Info className="h-5 w-5" />
             要約未生成の記事を非表示にしています
           </CardTitle>

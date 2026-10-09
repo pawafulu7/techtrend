@@ -193,9 +193,7 @@ export function FavoriteFeedContent() {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <Newspaper className="text-primary h-5 w-5" aria-hidden="true" />
-        <h1 className="text-foreground text-lg font-semibold">
-          お気に入りフィード
-        </h1>
+        <h1 className="text-foreground text-h1">お気に入りフィード</h1>
         <span className="text-muted-foreground text-sm">
           {folderCount}ソースから{articleCount}件
         </span>

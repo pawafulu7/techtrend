@@ -1,4 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui-v2/card-v2';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui-v2/card-v2';
 import { FileText, Radio, Users, TrendingUp } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { getJSTToday } from '@/lib/utils/date';
@@ -52,7 +57,7 @@ export default async function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-h1 tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
           TechTrend プラットフォームの統計概要
         </p>

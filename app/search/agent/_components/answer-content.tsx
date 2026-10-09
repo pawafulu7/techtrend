@@ -206,7 +206,7 @@ export function AnswerContent({
           aria-live="polite"
           data-testid="agent-empty-state"
         >
-          <h3 className="mb-2 text-xl font-semibold md:text-2xl">
+          <h3 className="text-h3 mb-2">
             {result?.fallback
               ? '関連する記事が見つかりませんでした'
               : '該当する記事が見つかりませんでした'}
@@ -276,7 +276,7 @@ export function AnswerContent({
                 )}
 
                 {/* Title row */}
-                <h4 className="flex items-center gap-2 pr-8 font-[family-name:var(--tt-font-heading)] text-sm font-semibold tracking-[var(--tt-tracking-tight)]">
+                <h4 className="font-heading flex items-center gap-2 pr-8 text-sm font-semibold tracking-[var(--tt-tracking-tight)]">
                   <span
                     className="bg-muted/60 group-hover:bg-muted flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-lg transition-colors duration-200"
                     aria-hidden="true"
@@ -308,7 +308,7 @@ export function AnswerContent({
 
                 {/* Summary text - flex-1 fills remaining space */}
                 {item.summary && (
-                  <p className="line-clamp-4 overflow-hidden font-[family-name:var(--tt-font-body)] text-sm leading-relaxed break-words text-[var(--tt-color-text)]">
+                  <p className="text-summary line-clamp-4 overflow-hidden break-words text-[var(--tt-color-text)]">
                     {item.summary}
                   </p>
                 )}
@@ -320,7 +320,7 @@ export function AnswerContent({
 
       {!showEmptyState && !useCardDisplay && (
         <div
-          className="prose prose-sm dark:prose-invert mb-4 w-full max-w-none md:max-w-4xl xl:max-w-5xl"
+          className="prose prose-sm prose-h1:text-h1 prose-h2:text-h2 prose-h3:text-h3 dark:prose-invert mb-4 w-full max-w-none md:max-w-4xl xl:max-w-5xl"
           data-testid="agent-answer-markdown"
         >
           <ListDepthContext.Provider value={0}>

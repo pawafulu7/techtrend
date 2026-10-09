@@ -95,7 +95,7 @@ export function SourceCard({ source }: SourceCardProps) {
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="group-hover:text-primary truncate text-sm font-semibold transition-colors">
+            <h3 className="group-hover:text-primary text-h3 truncate transition-colors">
               {source.name}
             </h3>
             <Badge

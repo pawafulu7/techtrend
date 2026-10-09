@@ -76,8 +76,8 @@ describe('Card Component', () => {
     it('適切なスタイルクラスが適用される', () => {
       render(<CardTitle data-testid="title">Title</CardTitle>);
       const title = screen.getByTestId('title');
-      expect(title).toHaveClass('leading-none');
-      expect(title).toHaveClass('font-semibold');
+      // 大きさ・行間・太さはスケールの text-h3 が持つ（Issue #699）
+      expect(title).toHaveClass('text-h3');
       expect(title).toHaveClass('tracking-tight');
     });
 
@@ -89,7 +89,7 @@ describe('Card Component', () => {
       );
       const title = screen.getByTestId('title');
       expect(title).toHaveClass('custom-class');
-      expect(title).toHaveClass('leading-none');
+      expect(title).toHaveClass('text-h3');
     });
   });
 

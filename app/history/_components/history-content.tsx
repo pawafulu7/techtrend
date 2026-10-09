@@ -211,7 +211,7 @@ export function HistoryContent() {
       {/* Toolbar header */}
       <header className="flex flex-wrap items-center gap-2 pb-3">
         <History className="text-primary h-5 w-5" aria-hidden="true" />
-        <h1 className="text-foreground text-lg font-semibold">閲覧履歴</h1>
+        <h1 className="text-foreground text-h1">閲覧履歴</h1>
         <span
           className="text-muted-foreground text-sm"
           role="status"
@@ -279,12 +279,10 @@ export function HistoryContent() {
             >
               <h2
                 id={getDateGroupHeadingId(group.key)}
-                className="mb-4 flex items-center gap-2"
+                className="text-foreground text-h2 mb-4 flex items-center gap-2"
               >
-                <span className="font-heading text-foreground text-lg font-semibold">
-                  {group.label}
-                </span>
-                <span className="text-muted-foreground text-sm">
+                <span>{group.label}</span>
+                <span className="text-muted-foreground text-sm font-normal">
                   ({group.items.length}件)
                 </span>
               </h2>

@@ -88,11 +88,8 @@ export function HotTopicChip({
         </div>
 
         {/* Topic name */}
-        <Link
-          href={topicSearchHref(change.topic)}
-          className="group/link block"
-        >
-          <h3 className="text-foreground text-lg leading-snug font-semibold decoration-1 underline-offset-2 group-hover/link:underline">
+        <Link href={topicSearchHref(change.topic)} className="group/link block">
+          <h3 className="text-foreground text-h3 decoration-1 underline-offset-2 group-hover/link:underline">
             {change.topic}
           </h3>
         </Link>

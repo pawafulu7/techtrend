@@ -75,9 +75,7 @@ export function DiffMainContent({
         <section>
           <div className="mb-4 flex items-center gap-2">
             <div className="h-px flex-1 bg-[var(--tt-color-border)]" />
-            <h2 className="text-muted-foreground px-2 text-xs font-bold tracking-widest">
-              今週の注目トピック
-            </h2>
+            <h2 className="text-foreground text-h2 px-2">今週の注目トピック</h2>
             <div className="h-px flex-1 bg-[var(--tt-color-border)]" />
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -111,8 +109,11 @@ export function DiffMainContent({
       {grouped.updated.length > 0 && (
         <section>
           <div className="mb-3 flex items-center gap-2">
-            <RefreshCw className="h-3.5 w-3.5 text-[var(--tt-color-text-muted)]" />
-            <h2 className="text-muted-foreground text-xs font-medium tracking-wide">
+            <RefreshCw
+              className="h-5 w-5 text-[var(--tt-color-text-muted)]"
+              aria-hidden="true"
+            />
+            <h2 className="text-foreground text-h2">
               継続中のトピック ({grouped.updated.length})
             </h2>
           </div>
@@ -137,8 +138,11 @@ export function DiffMainContent({
       {grouped.deprecated.length > 0 && (
         <section>
           <div className="mb-3 flex items-center gap-2">
-            <TrendingDown className="h-3.5 w-3.5 text-[var(--tt-color-text-muted)]" />
-            <h2 className="text-muted-foreground/70 text-xs font-medium tracking-wide">
+            <TrendingDown
+              className="h-5 w-5 text-[var(--tt-color-text-muted)]"
+              aria-hidden="true"
+            />
+            <h2 className="text-muted-foreground text-h2">
               下火のトピック ({grouped.deprecated.length})
             </h2>
           </div>
@@ -161,9 +165,7 @@ export function DiffMainContent({
       {/* Category Summary */}
       {data.data.length > 0 && (
         <section className="border-t pt-4">
-          <h2 className="text-muted-foreground mb-3 text-xs font-medium tracking-wide">
-            カテゴリ別
-          </h2>
+          <h2 className="text-foreground text-h2 mb-3">カテゴリ別</h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {data.data.map((summary) => (
               <div

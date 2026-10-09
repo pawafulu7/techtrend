@@ -104,7 +104,7 @@ export const EmptyState: React.FC<{
               <AlertCircle className="h-6 w-6 text-[var(--tt-color-text-muted)]" />
             </div>
           </div>
-          <h3 className="mb-2 text-lg font-semibold">{title}</h3>
+          <h3 className="text-h3 mb-2">{title}</h3>
           <p className="text-sm text-[var(--tt-color-text-muted)]">
             {description}
           </p>

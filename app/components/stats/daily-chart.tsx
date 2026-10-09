@@ -26,7 +26,7 @@ export function DailyChart({ data }: DailyChartProps) {
       <div className="bg-background rounded-lg border p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <CalendarDays className="h-4 w-4 text-(--tt-color-info)" />
-          <h3 className="text-sm font-semibold">日別記事数推移</h3>
+          <h3 className="text-h3">日別記事数推移</h3>
         </div>
         <p className="text-muted-foreground py-8 text-center text-sm">
           データがありません
@@ -49,7 +49,7 @@ export function DailyChart({ data }: DailyChartProps) {
     <div className="bg-background rounded-lg border p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
         <CalendarDays className="h-4 w-4 text-(--tt-color-info)" />
-        <h3 className="text-sm font-semibold">日別記事数推移</h3>
+        <h3 className="text-h3">日別記事数推移</h3>
         <span className="text-muted-foreground text-xs">過去30日間</span>
       </div>
       <div className="relative" style={{ height: chartHeight }}>

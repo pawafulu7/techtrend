@@ -397,7 +397,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
 
       {/* CodexMCP: Legend card (always visible) */}
       <div className="absolute top-16 left-4 max-w-xs rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 p-4 shadow-xl">
-        <h3 className="text-tt-text mb-3 flex items-center gap-2 text-sm font-bold">
+        <h3 className="text-tt-text text-h3 mb-3 flex items-center gap-2">
           <Network className="h-4 w-4" />
           グラフの見方
         </h3>
@@ -485,7 +485,7 @@ ${node.summary ? `\n${node.summary.substring(0, 70)}...` : ''}
             className="border-tt-text h-3 w-3 rounded-full border-2"
             style={{ backgroundColor: graphNodeColors.center }}
           />
-          <h3 className="text-tt-text text-sm font-bold">中心記事</h3>
+          <h3 className="text-tt-text text-h3">中心記事</h3>
         </div>
         {centerNode && (
           <div className="space-y-1">

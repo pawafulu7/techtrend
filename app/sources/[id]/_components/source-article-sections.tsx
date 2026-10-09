@@ -37,7 +37,7 @@ export function SourceArticleSections({
     <>
       {/* 最新記事 */}
       <div>
-        <h2 className="mb-4 flex items-center gap-2 text-xl font-bold">
+        <h2 className="text-h2 mb-4 flex items-center gap-2">
           <Calendar className="h-5 w-5" />
           最新記事
         </h2>
@@ -63,7 +63,7 @@ export function SourceArticleSections({
       {/* 人気記事 */}
       {topArticles.length > 0 && (
         <div>
-          <h2 className="mb-4 flex items-center gap-2 text-xl font-bold">
+          <h2 className="text-h2 mb-4 flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
             人気記事TOP5
           </h2>

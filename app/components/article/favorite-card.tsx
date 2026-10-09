@@ -191,7 +191,7 @@ export function FavoriteArticleCard({
       {/* Title */}
       <h3
         data-testid="article-title"
-        className="font-heading text-foreground line-clamp-2 text-lg leading-snug font-semibold sm:text-xl"
+        className="text-foreground text-h3 line-clamp-2"
       >
         <Link
           href={`/articles/${article.id}?from=${encodeURIComponent(from)}`}
@@ -206,7 +206,7 @@ export function FavoriteArticleCard({
       {article.summary && (
         <p
           data-testid="article-summary"
-          className="text-foreground line-clamp-3 text-sm leading-relaxed"
+          className="text-foreground text-summary line-clamp-3"
         >
           {article.summary}
         </p>

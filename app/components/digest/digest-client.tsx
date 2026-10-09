@@ -72,7 +72,7 @@ export function DigestClient() {
       {/* Header */}
       <header className="flex flex-wrap items-center gap-3 pb-4">
         <Newspaper className="text-primary h-5 w-5" aria-hidden="true" />
-        <h1 className="text-foreground text-lg font-semibold">ダイジェスト</h1>
+        <h1 className="text-foreground text-h1">ダイジェスト</h1>
         {digest?.hasPreferences && !isUnauthorized && (
           <Button
             variant="ghost"

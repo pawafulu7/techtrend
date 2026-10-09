@@ -32,7 +32,7 @@ export function DigestArticleCard({ article }: DigestArticleCardProps) {
         </BadgeV2>
 
         {/* Title */}
-        <h3 className="text-foreground group-hover:text-primary line-clamp-2 text-sm leading-snug font-medium transition-colors">
+        <h3 className="text-foreground group-hover:text-primary text-h3 line-clamp-2 transition-colors">
           <Link
             href={`/articles/${article.articleId}?from=${encodeURIComponent('/digest')}`}
             className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
@@ -43,7 +43,7 @@ export function DigestArticleCard({ article }: DigestArticleCardProps) {
 
         {/* Summary (if available) */}
         {article.summary && (
-          <p className="text-muted-foreground line-clamp-2 text-xs">
+          <p className="text-muted-foreground text-summary line-clamp-2">
             {article.summary}
           </p>
         )}

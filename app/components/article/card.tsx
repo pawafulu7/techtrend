@@ -67,7 +67,7 @@ export function ArticleCard({
         'group relative flex h-auto cursor-pointer flex-col sm:min-h-[240px]',
         // タイトル Link の擬似要素がカード全面を覆うため、フォーカスリングは
         // コンテナ側で表現する（キーボード操作でどのカードにいるか分かるように）
-        'focus-within:ring-(--tt-color-primary) focus-within:ring-2 focus-within:ring-offset-2',
+        'focus-within:ring-2 focus-within:ring-(--tt-color-primary) focus-within:ring-offset-2',
         hasTopThumbnail ? 'gap-0 pb-4' : 'gap-1.5 px-4 pt-3 pb-4',
         isNew
           ? 'border-t-2 border-t-[var(--tt-color-positive)]'
@@ -101,7 +101,7 @@ export function ArticleCard({
         {/* Title - always displayed */}
         <h3
           className={cn(
-            'font-heading text-foreground line-clamp-2 text-base leading-snug font-semibold sm:text-lg',
+            'text-foreground text-h3 line-clamp-2',
             isRead && 'opacity-70'
           )}
           title={article.translatedTitle || article.title}
@@ -121,7 +121,7 @@ export function ArticleCard({
         </h3>
 
         {/* Sub-line: badges + relative time */}
-        <div className="flex flex-wrap items-center gap-2 text-[12px]">
+        <div className="text-caption flex flex-wrap items-center gap-2">
           {isNew && (
             <span
               className="relative flex h-2.5 w-2.5 shrink-0"
@@ -175,7 +175,7 @@ export function ArticleCard({
           // Pattern with thumbnail: Summary only (thumbnail already rendered above)
           trimmedSummary ? (
             <p
-              className="text-foreground line-clamp-4 text-xs leading-relaxed"
+              className="text-foreground text-summary line-clamp-4"
               data-testid="article-summary"
             >
               {trimmedSummary}
@@ -184,7 +184,7 @@ export function ArticleCard({
         ) : trimmedSummary ? (
           // Pattern without thumbnail: full summary
           <p
-            className="text-foreground line-clamp-5 flex-1 text-xs leading-relaxed"
+            className="text-foreground text-summary line-clamp-5 flex-1"
             data-testid="article-summary"
           >
             {trimmedSummary}

@@ -64,11 +64,7 @@ function formatDateTime(dateStr: string | null | undefined): string {
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-muted-foreground mb-2 text-sm font-semibold tracking-wide uppercase">
-      {children}
-    </h3>
-  );
+  return <h3 className="text-h3 mb-2">{children}</h3>;
 }
 
 function InfoRow({
@@ -162,7 +158,7 @@ export function ArticleDetailDialog({
           <div className="space-y-6">
             <DialogHeader>
               <div className="flex items-start justify-between gap-3">
-                <DialogTitle className="text-base leading-snug">
+                <DialogTitle>
                   {article.translatedTitle ?? article.title}
                 </DialogTitle>
                 <Button

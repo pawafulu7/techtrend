@@ -201,7 +201,7 @@ export function HistoryArticleCard({
       </div>
 
       {/* Title */}
-      <h3 className="font-heading text-foreground line-clamp-2 text-lg leading-snug font-semibold sm:text-xl">
+      <h3 className="text-foreground text-h3 line-clamp-2">
         <Link
           href={`/articles/${article.id}?from=${encodeURIComponent(from)}`}
           className="hover:text-primary transition-colors"
@@ -213,7 +213,7 @@ export function HistoryArticleCard({
 
       {/* Summary */}
       {article.summary && (
-        <p className="text-foreground line-clamp-3 text-sm leading-relaxed">
+        <p className="text-foreground text-summary line-clamp-3">
           {article.summary}
         </p>
       )}

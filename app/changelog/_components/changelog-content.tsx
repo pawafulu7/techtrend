@@ -113,7 +113,7 @@ export function ChangelogContent() {
               <FileText className="size-5" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-[var(--tt-color-text)] sm:text-3xl">
+              <h1 className="text-h1 tracking-tight text-[var(--tt-color-text)]">
                 {data.project.name}
               </h1>
               <p className="mt-0.5 text-sm text-[var(--tt-color-text)]">

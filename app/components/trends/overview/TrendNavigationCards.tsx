@@ -32,7 +32,7 @@ export function TrendNavigationCards() {
                 <Icon className="h-5 w-5 text-(--tt-color-primary)" />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-semibold">{item.title}</h3>
+                <h3 className="text-h3">{item.title}</h3>
                 <p className="text-muted-foreground truncate text-xs">
                   {item.description}
                 </p>

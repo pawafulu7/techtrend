@@ -225,7 +225,7 @@ export function ReaderArticleDetail({
 
             {/* Title */}
             <h1
-              className="mt-5 text-2xl leading-tight font-bold tracking-tight text-[var(--tt-color-text)]"
+              className="text-h1 mt-5 tracking-tight text-[var(--tt-color-text)]"
               aria-live="polite"
             >
               {displayTitle}
@@ -250,7 +250,7 @@ export function ReaderArticleDetail({
 
             {/* Summary */}
             {article.summary && (
-              <p className="mt-6 text-[15px] leading-[1.9] text-[var(--tt-color-text)]">
+              <p className="text-body mt-6 text-[var(--tt-color-text)]">
                 {article.summary}
               </p>
             )}

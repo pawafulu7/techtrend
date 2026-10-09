@@ -53,9 +53,7 @@ export default function JobManagementDashboard() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Job Management Dashboard
-          </h1>
+          <h1 className="text-h1 tracking-tight">Job Management Dashboard</h1>
           <p className="text-muted-foreground">
             Monitor processing logs, embedding jobs, and article collection
           </p>

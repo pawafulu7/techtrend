@@ -167,7 +167,7 @@ export function HeatmapPageClient() {
     <div className="container mx-auto max-w-6xl space-y-6 px-4 py-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold">テックセクターマップ</h1>
+          <h1 className="text-h1">テックセクターマップ</h1>
           <p className="text-muted-foreground mt-0.5 text-sm">
             カテゴリ別の記事動向をヒートマップで可視化
           </p>
