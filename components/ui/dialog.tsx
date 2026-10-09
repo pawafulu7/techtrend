@@ -85,9 +85,10 @@ const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
+  // Radix は h2 で描画するが、役割はパネルの見出しなので text-h3（スケール表）にする
   <DialogPrimitive.Title
     ref={ref}
-    className={cn('text-h2 tracking-tight', className)}
+    className={cn('text-h3 tracking-tight', className)}
     {...props}
   />
 ));

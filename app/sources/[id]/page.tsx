@@ -168,7 +168,7 @@ export default async function SourceDetailPage({
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="mb-2">{source.name}</CardTitle>
+                  <h1 className="text-h1 mb-2">{source.name}</h1>
                   <p className="text-muted-foreground">{source.type}</p>
                 </div>
                 <Button variant="outline" size="sm" asChild>

@@ -80,7 +80,10 @@ html.no-transitions *::after {
     font-family: var(--tt-font-heading);
   }
 
-  /* 見出しの既定の大きさはスケール表（textStyles）に合わせる。クラスで指定すればそちらが優先される */
+  /*
+   * 見出しの既定の書式はスケール表（textStyles）に合わせる。大きさ・行間はクラスで指定すればそちらが優先される。
+   * 太さは font-* を書かない限りここの値が残る（text-sm を付けた h3 も 600 のまま）
+   */
   h1 {
     @apply text-h1;
   }

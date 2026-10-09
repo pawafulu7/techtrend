@@ -164,7 +164,7 @@ export default function PerformanceDashboard() {
         {/* キャッシュヒット率 */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Zap className="h-4 w-4" />
               キャッシュヒット率
             </CardTitle>
@@ -194,7 +194,7 @@ export default function PerformanceDashboard() {
         {/* レイテンシ */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Activity className="h-4 w-4" />
               レイテンシ (P95)
             </CardTitle>
@@ -224,7 +224,7 @@ export default function PerformanceDashboard() {
         {/* バッチサイズ */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Database className="h-4 w-4" />
               平均バッチサイズ
             </CardTitle>
@@ -252,7 +252,7 @@ export default function PerformanceDashboard() {
         {/* Redis状態 */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <TrendingUp className="h-4 w-4" />
               Redis メモリ
             </CardTitle>

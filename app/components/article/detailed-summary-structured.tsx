@@ -36,9 +36,9 @@ export function DetailedSummaryStructured({
         className="bg-card text-card-foreground border-foreground/10 rounded-xl border p-[var(--tt-space-5)] shadow-sm"
         data-testid="detailed-summary-fallback"
       >
-        <p className="font-heading mb-[var(--tt-space-3)] font-semibold tracking-[var(--tt-tracking-tight)] text-[var(--tt-text-sm)]">
+        <h3 className="text-h3 mb-[var(--tt-space-3)] tracking-[var(--tt-tracking-tight)]">
           詳細要約
-        </p>
+        </h3>
         <div className="text-card-foreground/80 text-summary whitespace-pre-wrap">
           {detailedSummary}
         </div>

@@ -320,7 +320,7 @@ export function AnswerContent({
 
       {!showEmptyState && !useCardDisplay && (
         <div
-          className="prose prose-sm dark:prose-invert mb-4 w-full max-w-none md:max-w-4xl xl:max-w-5xl"
+          className="prose prose-sm prose-h1:text-h1 prose-h2:text-h2 prose-h3:text-h3 dark:prose-invert mb-4 w-full max-w-none md:max-w-4xl xl:max-w-5xl"
           data-testid="agent-answer-markdown"
         >
           <ListDepthContext.Provider value={0}>
