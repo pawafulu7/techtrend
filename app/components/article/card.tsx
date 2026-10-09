@@ -3,14 +3,20 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Calendar, ExternalLink } from 'lucide-react';
+import { Calendar, ExternalLink, Newspaper } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
-import { getSourceColor } from '@/lib/utils/source/source-colors';
+import { isSlideSource } from '@/lib/utils/source/slide-source';
+import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
 import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
+import {
+  NewLabel,
+  SourceLabel,
+  UnreadDot,
+} from '@/app/components/article/article-meta';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
 import { useIsNewArticle } from '@/app/components/common/relative-time';
 import { formatDateWithTime } from '@/lib/utils/date';
@@ -25,22 +31,30 @@ export function ArticleCard({
   fetchInitialStatus = false,
   isFavoriteLoading = false,
   showSource = true,
-}: ArticleCardProps & { isRead?: boolean }) {
+  thumbnailPlaceholder = false,
+}: ArticleCardProps & {
+  isRead?: boolean;
+  /**
+   * 画像の無い記事にも空の枠を出し、同じ行のカードと高さを揃える。グリッドに並べる
+   * 一覧（ArticleList）だけが有効にする。1列で並べる画面では揃える相手がいない
+   */
+  thumbnailPlaceholder?: boolean;
+}) {
   const isRead = useReadStatus(article.id, initialIsRead);
   const pathname = usePathname();
 
   // T1: Thumbnail display with validation and error fallback
   const [thumbnailError, setThumbnailError] = useState(false);
-  const hasValidThumbnailUrl =
-    !!article.thumbnail && /^https?:\/\//.test(article.thumbnail);
-  const showThumbnail = hasValidThumbnailUrl && !thumbnailError;
+  const thumbnailSrc =
+    hasValidThumbnail(article.thumbnail) && !thumbnailError
+      ? article.thumbnail
+      : null;
+  // 幅 sm 以上（複数列）でカードの上端に枠があるか。マウス端末の操作ボタンはこの枠に重ねる
+  const hasFrame = thumbnailSrc !== null || thumbnailPlaceholder;
   const trimmedSummary = article.summary?.trim() || '';
 
   const searchParams = useSearchParams();
   const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;
-  const sourceColor = article.source
-    ? getSourceColor(article.source.name)
-    : null;
 
   // 戻り先は「このカードが置かれている一覧」。`/` 固定にすると /papers や
   // /favorites/feed から開いた記事の「記事一覧に戻る」がホームへ飛んでしまう
@@ -54,9 +68,6 @@ export function ArticleCard({
 
   const votes = article.userVotes || 0;
 
-  // Thumbnail displayed at card top for all patterns with valid thumbnail
-  const hasTopThumbnail = showThumbnail;
-
   return (
     <CardV2
       variant="hover"
@@ -64,41 +75,48 @@ export function ArticleCard({
       data-testid="article-card"
       data-article-id={article.id}
       className={cn(
-        'group relative flex h-auto cursor-pointer flex-col sm:min-h-[240px]',
+        // @container: 1列で全幅に並ぶ画面（カード幅 36rem 以上）では枠の高さを抑える
+        'group @container relative flex h-auto cursor-pointer flex-col gap-0 pb-3 sm:min-h-[240px]',
         // タイトル Link の擬似要素がカード全面を覆うため、フォーカスリングは
         // コンテナ側で表現する（キーボード操作でどのカードにいるか分かるように）
-        'focus-within:ring-2 focus-within:ring-(--tt-color-primary) focus-within:ring-offset-2',
-        hasTopThumbnail ? 'gap-0 pb-4' : 'gap-1.5 px-4 pt-3 pb-4',
-        isNew
-          ? 'border-t-2 border-t-[var(--tt-color-positive)]'
-          : sourceColor?.borderLeft
+        'focus-within:ring-2 focus-within:ring-(--tt-color-primary) focus-within:ring-offset-2'
       )}
     >
-      {/* Top thumbnail: both presentation and standard patterns */}
-      {hasTopThumbnail && (
-        <div
-          className={cn(
-            'relative isolate w-full overflow-hidden rounded-t-lg bg-[var(--tt-color-surface-muted)]',
-            'min-h-[160px]'
-          )}
-        >
+      {/*
+        サムネイル枠は 16:9 に固定し、同じ行のカードで高さを揃える。写真は枠いっぱいに
+        切り抜き、スライドは文字が欠けないよう全体を収める。全幅のカードで 16:9 にすると
+        画像が画面の半分を占めるため、幅 36rem 以上では高さ 12rem に収める
+      */}
+      {thumbnailSrc ? (
+        <div className="relative isolate aspect-video w-full overflow-hidden rounded-t-lg bg-(--tt-color-surface-muted) @xl:aspect-auto @xl:h-48">
           <OptimizedImage
-            src={article.thumbnail!}
+            src={thumbnailSrc}
             alt={article.title}
             fill
             priority={false}
-            className="object-contain"
+            className={
+              isSlideSource(article.source?.name)
+                ? 'object-contain'
+                : 'object-cover @xl:object-contain'
+            }
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             onError={() => setThumbnailError(true)}
           />
         </div>
-      )}
+      ) : thumbnailPlaceholder ? (
+        // 画像が無い記事も同じ枠で行の高さを揃える。揃える相手のいない
+        // 1列表示（幅 sm 未満）では出さず、縦に伸ばさない
+        <div
+          className="hidden aspect-video w-full items-center justify-center rounded-t-lg bg-(--tt-color-surface-muted) text-(--tt-color-text-muted) sm:flex @xl:aspect-auto @xl:h-48"
+          aria-hidden="true"
+          data-testid="thumbnail-placeholder"
+        >
+          <Newspaper className="h-8 w-8 opacity-40" />
+        </div>
+      ) : null}
 
-      {/* Content area: padded for Pattern 2, inline for others */}
-      <div
-        className={cn('flex flex-col gap-1.5', hasTopThumbnail && 'px-4 pt-2')}
-      >
-        {/* Title - always displayed */}
+      {/* 情報の優先順位: タイトル → 要約 → メタ情報（下端に揃える） */}
+      <div className="flex flex-1 flex-col gap-1.5 px-4 pt-3">
         <h3
           className={cn(
             'text-foreground text-h3 line-clamp-2',
@@ -120,48 +138,23 @@ export function ArticleCard({
           </Link>
         </h3>
 
-        {/* Sub-line: badges + relative time */}
-        <div className="text-caption flex flex-wrap items-center gap-2">
-          {isNew && (
-            <span
-              className="relative flex h-2.5 w-2.5 shrink-0"
-              aria-label="24時間以内の新着記事"
-              title="NEW"
-              role="img"
-            >
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--tt-color-positive)] opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--tt-color-positive)]" />
-            </span>
-          )}
-          {!isRead && (
-            <BadgeV2
-              variant="secondary"
-              className="text-xs"
-              data-testid="unread-badge"
-            >
-              未読
-            </BadgeV2>
-          )}
-          {showSource && article.source && sourceColor && (
-            <BadgeV2
-              variant="outline"
-              className={cn(
-                'flex items-center gap-1.5 text-xs',
-                sourceColor.tag,
-                sourceColor.border,
-                sourceColor.hover
-              )}
-              data-testid="article-source"
-            >
-              <span
-                className={cn('h-2 w-2 shrink-0 rounded-full', sourceColor.dot)}
-                aria-hidden="true"
-              />
-              {article.companyName ?? article.source.name}
-            </BadgeV2>
+        {trimmedSummary ? (
+          <p
+            className="text-foreground text-summary line-clamp-4"
+            data-testid="article-summary"
+          >
+            {trimmedSummary}
+          </p>
+        ) : null}
+
+        <div className="text-caption mt-auto flex min-w-0 items-center gap-2 pt-1">
+          {!isRead && <UnreadDot />}
+          {isNew && <NewLabel />}
+          {showSource && article.source && (
+            <SourceLabel name={article.companyName ?? article.source.name} />
           )}
           <span
-            className="text-muted-foreground flex items-center gap-1"
+            className="text-muted-foreground flex shrink-0 items-center gap-1"
             data-testid="article-date"
           >
             <Calendar className="h-3 w-3" aria-hidden="true" />
@@ -169,38 +162,20 @@ export function ArticleCard({
             <span>{formatDateWithTime(article.publishedAt)}</span>
           </span>
         </div>
-
-        {/* Content area: 2 patterns */}
-        {showThumbnail ? (
-          // Pattern with thumbnail: Summary only (thumbnail already rendered above)
-          trimmedSummary ? (
-            <p
-              className="text-foreground text-summary line-clamp-4"
-              data-testid="article-summary"
-            >
-              {trimmedSummary}
-            </p>
-          ) : null
-        ) : trimmedSummary ? (
-          // Pattern without thumbnail: full summary
-          <p
-            className="text-foreground text-summary line-clamp-5 flex-1"
-            data-testid="article-summary"
-          >
-            {trimmedSummary}
-          </p>
-        ) : null}
       </div>
 
       {/*
-        Action buttons: single element, layout switches at sm breakpoint.
-        - <sm (mobile): normal-flow footer row below the summary, always visible -> never overlaps content.
-        - >=sm (desktop): absolute overlay bottom-right, revealed on hover OR keyboard focus (group-focus-within).
+        操作ボタン。タッチ端末（hover できない端末）と1列表示（幅 sm 未満）ではカード下端に
+        常に出す。複数列のマウス端末ではサムネイルの枠の右上に重ね、hover かキーボード
+        フォーカスで出す。枠が無いカードでは重ねるとタイトルを隠すため、下端に常に出す
       */}
       <div
         className={cn(
-          'pointer-events-auto relative z-10 mt-1 flex min-h-[44px] items-center justify-end gap-1 opacity-100 transition-opacity duration-200 sm:pointer-events-none sm:absolute sm:right-2 sm:bottom-2 sm:mt-0 sm:px-0 sm:opacity-0 sm:group-focus-within:pointer-events-auto sm:group-focus-within:opacity-100 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100',
-          hasTopThumbnail && 'px-4'
+          'relative z-10 flex items-center justify-end gap-1 px-4 pt-1 transition-opacity duration-200',
+          hasFrame && [
+            'sm:[@media(hover:hover)]:absolute sm:[@media(hover:hover)]:top-2 sm:[@media(hover:hover)]:right-2 sm:[@media(hover:hover)]:rounded-full sm:[@media(hover:hover)]:bg-(--tt-color-surface)/85 sm:[@media(hover:hover)]:p-0.5 sm:[@media(hover:hover)]:opacity-0 sm:[@media(hover:hover)]:shadow-sm',
+            'group-focus-within:opacity-100 group-hover:opacity-100',
+          ]
         )}
       >
         {votes > 0 && (
@@ -214,7 +189,7 @@ export function ArticleCard({
         )}
         <FavoriteButton
           articleId={article.id}
-          className="bg-background/30 h-9 min-h-[44px] w-9 min-w-[44px]"
+          className="bg-background/30 h-9 min-h-[44px] w-9 min-w-[44px] rounded-full"
           isFavorited={isFavorited}
           onToggleFavorite={onToggleFavorite}
           fetchInitialStatus={fetchInitialStatus}
@@ -235,7 +210,7 @@ export function ArticleCard({
               // Invalid URL, ignore
             }
           }}
-          className="bg-background/30 h-9 min-h-[44px] w-9 min-w-[44px]"
+          className="bg-background/30 h-9 min-h-[44px] w-9 min-w-[44px] rounded-full"
           aria-label="元記事を開く"
         >
           <ExternalLink className="h-4 w-4" />

@@ -35,6 +35,7 @@ export function ArticleList({
   onArticleClick,
   className,
   groupStories = false,
+  thumbnailPlaceholder = true,
 }: ArticleListProps) {
   // 認証状態を取得（お気に入り切り替え用）
   const { data: session } = authClient.useSession();
@@ -273,6 +274,7 @@ export function ArticleList({
             isRead={group.article.isRead ?? true}
             isFavorited={group.article.isFavorited ?? false}
             onToggleFavorite={() => handleToggleFavorite(group.article.id)}
+            thumbnailPlaceholder={thumbnailPlaceholder}
           />
         )
       )}

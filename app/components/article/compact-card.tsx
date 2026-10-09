@@ -8,10 +8,14 @@ import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import { formatDateWithTime } from '@/lib/utils/date';
-import { getSourceColor } from '@/lib/utils/source/source-colors';
 import type { ArticleCardProps } from '@/types/components';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
+import {
+  NewLabel,
+  SourceLabel,
+  UnreadDot,
+} from '@/app/components/article/article-meta';
 import { useIsNewArticle } from '@/app/components/common/relative-time';
 import { useReadStatus } from '@/app/components/article/hooks/use-read-status';
 import { getReadingTime } from '@/app/components/article/hooks/get-reading-time';
@@ -20,9 +24,8 @@ import { getReadingTime } from '@/app/components/article/hooks/get-reading-time'
  * CompactCard - Title-only card for increased article density
  *
  * Displays:
- * - NEW badge (if < 24h)
- * - Unread badge
- * - Source badge with color
+ * - Unread dot / NEW label (if < 24h)
+ * - Source name (no per-source color)
  * - Published/Created timestamps
  * - Title (2 lines max)
  * - Single tag + count
@@ -53,9 +56,6 @@ export function CompactCard({
 
   // Note: Use hook to avoid Date.now() during render (React Compiler purity rule)
   const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;
-  const sourceColor = article.source
-    ? getSourceColor(article.source.name)
-    : null;
 
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
   const readingTime = getReadingTime(contentLength);
@@ -127,53 +127,15 @@ export function CompactCard({
       className={cn(
         'group relative flex min-h-[140px] cursor-pointer flex-col gap-1 p-3',
         // フォーカスリングはタイトル Link を包むコンテナ側で表現する
-        'focus-within:ring-2 focus-within:ring-(--tt-color-primary) focus-within:ring-offset-2',
-        isNew
-          ? 'border-t-2 border-t-[var(--tt-color-positive)]'
-          : sourceColor?.borderLeft
+        'focus-within:ring-2 focus-within:ring-(--tt-color-primary) focus-within:ring-offset-2'
       )}
     >
-      {/* Badges Row */}
-      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-        {isNew && (
-          <span
-            className="relative flex h-2.5 w-2.5 shrink-0"
-            aria-label="24時間以内の新着記事"
-            title="NEW"
-            role="img"
-          >
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--tt-color-positive)] opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--tt-color-positive)]" />
-          </span>
-        )}
-        {!isRead && (
-          <BadgeV2
-            variant="secondary"
-            className="text-xs"
-            data-testid="unread-badge"
-          >
-            未読
-          </BadgeV2>
-        )}
-        {showSource && article.source && sourceColor && (
-          <BadgeV2
-            variant="outline"
-            className={cn(
-              'flex items-center gap-1 text-xs',
-              sourceColor.tag,
-              sourceColor.border
-            )}
-            data-testid="article-source"
-          >
-            <span
-              className={cn(
-                'h-1.5 w-1.5 shrink-0 rounded-full',
-                sourceColor.dot
-              )}
-              aria-hidden="true"
-            />
-            {article.companyName ?? article.source.name}
-          </BadgeV2>
+      {/* Status + Source Row */}
+      <div className="flex min-w-0 items-center gap-2 text-xs">
+        {!isRead && <UnreadDot />}
+        {isNew && <NewLabel />}
+        {showSource && article.source && (
+          <SourceLabel name={article.companyName ?? article.source.name} />
         )}
       </div>
 

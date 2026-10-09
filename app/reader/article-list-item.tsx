@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Newspaper } from 'lucide-react';
+import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
 import { formatDate } from './utils';
 
 interface ArticleListItemProps {
@@ -25,9 +26,7 @@ export function ArticleListItem({
   const [erroredThumbnail, setErroredThumbnail] = useState<string | null>(null);
   const thumbnailError = erroredThumbnail === article.thumbnail;
   const displayTitle = article.translatedTitle || article.title;
-  const hasValidThumbnail =
-    !!article.thumbnail && /^https?:\/\//.test(article.thumbnail);
-  const showThumbnail = hasValidThumbnail && !thumbnailError;
+  const showThumbnail = hasValidThumbnail(article.thumbnail) && !thumbnailError;
   const dateStr = formatDate(article.publishedAt);
 
   return (

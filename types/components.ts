@@ -43,6 +43,11 @@ export interface ArticleListProps {
   className?: string;
   /** 同じストーリーの記事を1枚にまとめる（issue #723。ホームの一覧で使う） */
   groupStories?: boolean;
+  /**
+   * カード表示で、画像の無い記事にも 16:9 の空の枠を出して同じ行の高さを揃える。
+   * 画像がほぼ無い一覧（/papers の arXiv）では false にして、空の枠を並べない
+   */
+  thumbnailPlaceholder?: boolean;
 }
 
 // 記事リストアイテム（リスト形式用）
