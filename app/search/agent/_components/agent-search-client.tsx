@@ -156,7 +156,7 @@ export function AgentSearchClient() {
           {/* Search bar */}
           <CardV2
             variant="default"
-            className="bg-[var(--tt-color-surface-muted)] p-4 shadow-[var(--tt-shadow-card-rest)]"
+            className="bg-[var(--tt-color-surface-muted)] p-4 shadow-sm"
             data-testid="agent-search-card"
           >
             <AgentSearchBar
@@ -195,7 +195,7 @@ export function AgentSearchClient() {
             {!isLoading && showResult && error && (
               <CardV2
                 variant="default"
-                className="bg-[var(--tt-color-surface-muted)] p-6 shadow-[var(--tt-shadow-card-rest)]"
+                className="bg-[var(--tt-color-surface-muted)] p-6 shadow-sm"
               >
                 <AgentErrorDisplay error={error} onRetry={handleRetry} />
               </CardV2>
@@ -230,7 +230,7 @@ export function AgentSearchClient() {
           <div className="lg:sticky lg:top-4">
             <CardV2
               variant="default"
-              className="bg-[var(--tt-color-surface-muted)] p-4 shadow-[var(--tt-shadow-card-rest)]"
+              className="bg-[var(--tt-color-surface-muted)] p-4 shadow-sm"
             >
               <AgentSampleQueries
                 layout="sidebar"

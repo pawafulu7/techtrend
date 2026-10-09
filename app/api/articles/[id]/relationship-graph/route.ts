@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 import { GraphDataSerializer } from '@/lib/graph/graph-data-serializer';
 import { graphOptionsSchema } from '@/lib/types/graph';
+import { graphNodeColors } from '@/lib/design-tokens';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { logger, sanitizeError } from '@/lib/logger';
 import { VectorSearchService } from '@/lib/rag/vector-search-service';  // Phase 2
@@ -120,7 +121,7 @@ export async function GET(
               id: targetArticle.id,
               label: targetArticle.translatedTitle ?? targetArticle.title,
               val: targetArticle.qualityScore,
-              color: '#6B7280',
+              color: graphNodeColors.center,
               category: 'Other',
               publishedAt: targetArticle.publishedAt.toISOString(),
               url: `/articles/${targetArticle.id}`,
@@ -243,7 +244,7 @@ export async function GET(
                 id: targetArticle.id,
                 label: targetArticle.translatedTitle ?? targetArticle.title,
                 val: targetArticle.qualityScore,
-                color: '#6B7280',
+                color: graphNodeColors.center,
                 category: 'Other',
                 publishedAt: targetArticle.publishedAt.toISOString(),
                 url: `/articles/${targetArticle.id}`,

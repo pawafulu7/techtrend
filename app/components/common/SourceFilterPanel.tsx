@@ -99,7 +99,7 @@ export function SourceFilterPanel({
 }: SourceFilterPanelProps) {
   return (
     <div
-      className="rounded-lg border border-white/20 bg-[var(--tt-color-surface)]/80 p-3 shadow-sm backdrop-blur-sm"
+      className="border-tt-border rounded-lg border bg-[var(--tt-color-surface)]/80 p-3 shadow-sm backdrop-blur-sm"
       data-testid="source-filter"
     >
       <div className="mb-2 flex items-center justify-between">

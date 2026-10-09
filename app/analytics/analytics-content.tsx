@@ -42,11 +42,11 @@ import {
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { AnalyticsSettings } from '@/app/components/analytics/AnalyticsSettings';
-
-// グラフの色設定
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+import { useChartColors } from '@/app/components/trends/useChartColors';
 
 export default function AnalyticsContent() {
+  // グラフの系列色（lib/design-tokens/ の chartColors。テーマで切り替わる）
+  const colors = useChartColors();
   const [isEnabled, setIsEnabled] = useState(false);
   const [stats, setStats] = useState<ReadingStats[]>([]);
   const [dateRange, setDateRange] = useState<'week' | 'month'>('week');
@@ -355,14 +355,14 @@ export default function AnalyticsContent() {
                     yAxisId="left"
                     type="monotone"
                     dataKey="articles"
-                    stroke="#8884d8"
+                    stroke={colors[0]}
                     name="記事数"
                   />
                   <Line
                     yAxisId="right"
                     type="monotone"
                     dataKey="time"
-                    stroke="#82ca9d"
+                    stroke={colors[1]}
                     name="時間（分）"
                   />
                 </LineChart>
@@ -383,7 +383,7 @@ export default function AnalyticsContent() {
                   <XAxis type="number" />
                   <YAxis dataKey="name" type="category" width={100} />
                   <Tooltip />
-                  <Bar dataKey="value" fill="#8884d8" />
+                  <Bar dataKey="value" fill={colors[0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -402,7 +402,7 @@ export default function AnalyticsContent() {
                   <XAxis dataKey="hour" />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="value" fill="#8884d8" />
+                  <Bar dataKey="value" fill={colors[0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -426,13 +426,13 @@ export default function AnalyticsContent() {
                       `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
                     }
                     outerRadius={80}
-                    fill="#8884d8"
+                    fill={colors[0]}
                     dataKey="value"
                   >
                     {sourceData.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
+                        fill={colors[index % colors.length]}
                       />
                     ))}
                   </Pie>

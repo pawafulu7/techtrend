@@ -194,7 +194,7 @@ export function SourcePieChart({
               renderCustomizedLabel(props, colors)
             }
             outerRadius={70}
-            fill="#8884d8"
+            fill={colors[0]}
             dataKey="value"
           >
             {data.map((entry, index) => (

@@ -1,5 +1,5 @@
 /**
- * Auto-generated from lib/design-tokens.ts
+ * Auto-generated from lib/design-tokens/
  * DO NOT EDIT BY HAND - Run `npm run generate:tokens` instead
  */
 
@@ -134,13 +134,15 @@
   --color-tt-chart-9: var(--tt-color-chart-9);
   --color-tt-chart-10: var(--tt-color-chart-10);
 
-  /* Border Radius (rounded-sm ... rounded-3xl) */
+  /* Border Radius (rounded-xs ... rounded-4xl) */
+  --radius-xs: var(--tt-radius-xs);
   --radius-sm: var(--tt-radius-sm);
   --radius-md: var(--tt-radius-md);
   --radius-lg: var(--tt-radius-lg);
   --radius-xl: var(--tt-radius-xl);
   --radius-2xl: var(--tt-radius-2xl);
   --radius-3xl: var(--tt-radius-3xl);
+  --radius-4xl: var(--tt-radius-4xl);
 }
 
 @theme {
@@ -321,6 +323,7 @@
   --tt-shadow-card-focus: 0 0 0 2px var(--tt-color-primary);
   --tt-shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --tt-shadow-card-rest: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --tt-shadow-glow-primary: 0 0 12px var(--tt-color-primary-border);
   --tt-shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
   --tt-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --tt-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -347,12 +350,14 @@
   /* Border Radius */
   --tt-radius-2xl: 1rem;
   --tt-radius-3xl: 1.5rem;
+  --tt-radius-4xl: 2rem;
   --tt-radius-full: 9999px;
   --tt-radius-lg: 0.5rem;
   --tt-radius-md: 0.375rem;
   --tt-radius-none: 0;
   --tt-radius-sm: 0.25rem;
   --tt-radius-xl: 0.75rem;
+  --tt-radius-xs: 0.125rem;
 }
 
 .dark {
@@ -491,4 +496,8 @@
   --tt-color-chart-8: #FBBF24;
   --tt-color-chart-9: #818CF8;
   --tt-color-chart-10: #2DD4BF;
+
+  /* Shadows that reference colors (re-declared so a nested .dark resolves the dark color) */
+  --tt-shadow-card-focus: 0 0 0 2px var(--tt-color-primary);
+  --tt-shadow-glow-primary: 0 0 12px var(--tt-color-primary-border);
 }

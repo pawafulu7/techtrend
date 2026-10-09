@@ -1,7 +1,7 @@
 /**
  * Generate CSS Custom Properties from Design Tokens
  *
- * This script reads lib/design-tokens.ts and generates app/generated-tokens.css
+ * This script reads lib/design-tokens/ and generates app/generated-tokens.css
  * to ensure a single source of truth and prevent token drift.
  * The CSS itself is built in lib/utils/design-tokens/build-css.ts.
  *

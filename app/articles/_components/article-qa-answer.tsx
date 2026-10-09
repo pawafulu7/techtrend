@@ -33,7 +33,7 @@ export function ArticleQaAnswer({
 
   return (
     <article
-      className="article-qa-answer border-l-primary/30 rounded-[24px] border border-l-4 border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-5 shadow-sm sm:p-6"
+      className="article-qa-answer border-l-primary/30 rounded-3xl border border-l-4 border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-5 shadow-sm sm:p-6"
       data-testid={testId}
       role="article"
       aria-label="AI回答"

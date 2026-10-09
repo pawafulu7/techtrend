@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import { chartColors } from '@/lib/design-tokens';
 
-// 系列の色は lib/design-tokens.ts の chartColors（--tt-color-chart-N）。状態色とは別に持つ
+// 系列の色は lib/design-tokens/ の chartColors（--tt-color-chart-N）。状態色とは別に持つ
 const CSS_VARS = chartColors.light.map((_, i) => `--tt-color-chart-${i + 1}`);
 
 const FALLBACK_COLORS: string[] = [...chartColors.light];

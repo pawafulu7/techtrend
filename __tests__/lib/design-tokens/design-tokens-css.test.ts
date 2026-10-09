@@ -1,7 +1,7 @@
 /**
- * 色の生成元が lib/design-tokens.ts の1つだけであることを確かめる（Issue #698）
+ * 色の生成元が lib/design-tokens/ の1つだけであることを確かめる（Issue #698）
  *
- * - app/generated-tokens.css が design-tokens.ts から再生成した内容と一致する（生成し忘れの検出）
+ * - app/generated-tokens.css が lib/design-tokens/ から再生成した内容と一致する（生成し忘れの検出）
  * - layout.tsx の Critical CSS と generated-tokens.css の shadcn 変数が、ライト・ダークとも同じ値
  * - globals.css と layout.tsx が色の値を直書きしていない
  */
@@ -50,7 +50,7 @@ function diffVars(
 describe('generated-tokens.css', () => {
   const generated = read('app/generated-tokens.css');
 
-  it('design-tokens.ts から再生成した内容と一致する（npm run generate:tokens 済み）', () => {
+  it('lib/design-tokens/ から再生成した内容と一致する（npm run generate:tokens 済み）', () => {
     expect(generated).toBe(buildTokensCss());
   });
 

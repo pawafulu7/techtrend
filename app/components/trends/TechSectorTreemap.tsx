@@ -10,6 +10,7 @@ import {
 import { scaleLinear } from 'd3-scale';
 import { interpolateRgb } from 'd3-interpolate';
 import { cn } from '@/lib/utils';
+import { changeScaleColors, changeScaleTextColor } from '@/lib/design-tokens';
 
 export interface CategoryData {
   category: string;
@@ -39,7 +40,7 @@ type TreemapNode = HierarchyRectangularNode<
 
 const changeColorScale = scaleLinear<string>()
   .domain([-2, 0, 2])
-  .range(['rgb(220,50,50)', 'rgb(160,160,160)', 'rgb(34,197,94)'])
+  .range([...changeScaleColors])
   .interpolate(interpolateRgb)
   .clamp(true);
 
@@ -293,7 +294,7 @@ export function TechSectorTreemap({
                       y={node.y0 + h / 2 + 6}
                       textAnchor="middle"
                       dominantBaseline="central"
-                      fill="rgba(255,255,255,0.9)"
+                      fill={changeScaleTextColor}
                       fontSize={Math.min(14, w / 8)}
                       fontWeight="500"
                       className="pointer-events-none select-none"
@@ -308,7 +309,7 @@ export function TechSectorTreemap({
                       y={node.y0 + h / 2 + 22}
                       textAnchor="middle"
                       dominantBaseline="central"
-                      fill="rgba(255,255,255,0.7)"
+                      fill={changeScaleTextColor}
                       fontSize={Math.min(11, w / 10)}
                       className="pointer-events-none select-none"
                     >

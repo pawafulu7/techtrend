@@ -12,7 +12,7 @@ The TechTrend Design System provides a consistent, accessible, and modern UI fou
 
 ## Design Tokens
 
-All design tokens are defined in `lib/design-tokens.ts` and auto-generated to CSS custom properties in `app/generated-tokens.css`.
+All design tokens are defined in `lib/design-tokens/` and auto-generated to CSS custom properties in `app/generated-tokens.css`.
 The same file also defines the shadcn/ui variables (`--background`, `--primary`, ...) and the Tailwind `@theme` mapping, so `bg-tt-primary` / `text-tt-text-muted` and `bg-primary` / `text-muted-foreground` share one source. The critical CSS in `app/layout.tsx` is built from the same tokens (`lib/utils/design-tokens/build-css.ts`).
 
 ### Usage

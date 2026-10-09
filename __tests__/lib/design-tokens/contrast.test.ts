@@ -11,9 +11,12 @@
  */
 
 import {
+  changeScaleColors,
+  changeScaleTextColor,
   chartColors,
   chartLabelTextColors,
   colors,
+  graphNodeColors,
   darkColors,
   lightColors,
   type ColorModeTokens,
@@ -140,6 +143,52 @@ describe.each([
     expect(
       contrastRatio(parseColor(text).rgb, parseColor(fill).rgb)
     ).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+});
+
+describe('変化率の色（セクターマップ）', () => {
+  // d3 の interpolateRgb（gamma 1）と同じく、sRGB の値を直線で補間した途中の色も調べる
+  const steps = Array.from({ length: 21 }, (_, i) => i / 20);
+  const pairs = [
+    [changeScaleColors[0], changeScaleColors[1]],
+    [changeScaleColors[1], changeScaleColors[2]],
+  ] as const;
+
+  it.each(pairs)(
+    '%s 〜 %s の間の色に白文字を載せて AA を満たす',
+    (from, to) => {
+      const a = parseColor(from).rgb;
+      const b = parseColor(to).rgb;
+      const text = parseColor(changeScaleTextColor).rgb;
+      for (const t of steps) {
+        const fill = a.map((c, i) => c + (b[i] - c) * t) as typeof a;
+        expect(contrastRatio(text, fill)).toBeGreaterThanOrEqual(AA_TEXT);
+      }
+    }
+  );
+});
+
+describe('色トークンの書式', () => {
+  // ベタ塗りの色は6桁の hex に限る。不透明度を付け足す箇所（記事グラフのリンク色の
+  // `${darkColors.textMuted}99`、darkenColor など）がこの書式を前提にしているため
+  const HEX = /^#[0-9a-f]{6}$/i;
+
+  it.each([
+    ['light', colors.light],
+    ['dark', colors.dark],
+  ] as const)('%s のベタ塗りの色は6桁の hex', (_mode, c) => {
+    const solid = Object.entries(c).filter(
+      ([key]) => !/(Bg|Border)$/.test(key)
+    );
+    expect(solid.length).toBeGreaterThan(0);
+    for (const [, value] of solid) expect(value).toMatch(HEX);
+  });
+
+  it('記事グラフのノードの色は6桁の hex', () => {
+    expect(graphNodeColors.center).toMatch(HEX);
+    for (const value of Object.values(graphNodeColors.category)) {
+      expect(value).toMatch(HEX);
+    }
   });
 });
 

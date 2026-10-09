@@ -33,7 +33,7 @@ export function DetailedSummaryStructured({
   if (sections.length === 0) {
     return (
       <div
-        className="bg-card text-card-foreground border-foreground/10 rounded-[var(--tt-radius-xl)] border p-[var(--tt-space-5)] shadow-[var(--tt-shadow-card-rest)]"
+        className="bg-card text-card-foreground border-foreground/10 rounded-xl border p-[var(--tt-space-5)] shadow-sm"
         data-testid="detailed-summary-fallback"
       >
         <p className="mb-[var(--tt-space-3)] font-[family-name:var(--tt-font-heading)] font-semibold tracking-[var(--tt-tracking-tight)] text-[var(--tt-text-sm)]">

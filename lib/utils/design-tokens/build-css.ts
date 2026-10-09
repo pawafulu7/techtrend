@@ -1,7 +1,7 @@
 /**
  * Design Tokens → CSS
  *
- * lib/design-tokens.ts から、次の2つを作る。
+ * lib/design-tokens/ から、次の2つを作る。
  * - app/generated-tokens.css の全文（`npm run generate:tokens` が書き出す）
  * - layout.tsx の <head> に直接埋め込む Critical CSS
  *
@@ -106,6 +106,18 @@ function toChartVars(list: readonly string[]): string {
 }
 
 /**
+ * 色の変数を参照する影（cardFocus・glowPrimary など）
+ *
+ * カスタムプロパティの var() は宣言した要素で解決されてから継承されるため、:root だけに置くと
+ * 画面の一部に付けた .dark の中でもライトの色のままになる。.dark でも同じ値を宣言し直す。
+ */
+function colorReferencingShadows(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(designTokens.shadows).filter(([, v]) => v.includes('var('))
+  );
+}
+
+/**
  * Convert nested typography object to CSS custom properties
  */
 function toTypographyVars(): string {
@@ -161,12 +173,14 @@ function ttColorNames(): string[] {
 
 /** Tailwind の rounded-* に対応付ける角丸の段（none / full は Tailwind の既定のまま） */
 const THEME_RADIUS_KEYS = [
+  'xs',
   'sm',
   'md',
   'lg',
   'xl',
   '2xl',
   '3xl',
+  '4xl',
 ] as const satisfies readonly (keyof RadiusTokens)[];
 
 /**
@@ -201,7 +215,7 @@ function buildThemeCss(): string[] {
     '  /* TT colors (bg-tt-primary, text-tt-text-muted, ...) */',
     ttColors,
     '',
-    '  /* Border Radius (rounded-sm ... rounded-3xl) */',
+    '  /* Border Radius (rounded-xs ... rounded-4xl) */',
     radius,
     '}',
     '',
@@ -218,7 +232,7 @@ function buildThemeCss(): string[] {
 export function buildTokensCss(): string {
   const lines = [
     '/**',
-    ' * Auto-generated from lib/design-tokens.ts',
+    ' * Auto-generated from lib/design-tokens/',
     ' * DO NOT EDIT BY HAND - Run `npm run generate:tokens` instead',
     ' */',
     '',
@@ -268,6 +282,9 @@ export function buildTokensCss(): string {
     '',
     '  /* Chart Colors - Dark Mode */',
     toChartVars(designTokens.chartColors.dark),
+    '',
+    '  /* Shadows that reference colors (re-declared so a nested .dark resolves the dark color) */',
+    toVars(colorReferencingShadows(), 'shadow'),
     '}',
     '',
   ];

@@ -670,7 +670,7 @@ exports[`GraphDataSerializer Characterization Tests serializeWithDepth - depth-b
     },
     {
       "category": "Other",
-      "color": "#7e8797",
+      "color": "#7689a4",
       "id": "layer1-2",
       "label": "Test Article Title",
       "primaryTag": "TypeScript",
@@ -767,7 +767,7 @@ exports[`GraphDataSerializer Characterization Tests serializeWithDepth - depth-b
     },
     {
       "category": "Other",
-      "color": "#7e8797",
+      "color": "#7689a4",
       "depth": 1,
       "id": "layer1-1",
       "label": "Test Article Title",

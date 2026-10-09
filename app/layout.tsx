@@ -40,7 +40,7 @@ const jetBrainsMono = JetBrains_Mono({
   adjustFontFallback: true,
 });
 
-// CSS の読み込み前に背景・文字色を確定させる。値は globals.css と同じ lib/design-tokens.ts から作る
+// CSS の読み込み前に背景・文字色を確定させる。値は globals.css と同じ lib/design-tokens/ から作る
 const CRITICAL_CSS = buildCriticalCss();
 
 export const metadata: Metadata = {
