@@ -1,43 +1,47 @@
-// Tailwind のパレット色を直書きしたクラス（bg-blue-100、border-l-green-500 など）と、
-// 任意値の色（bg-[#55C500]、[background:#55C500]）・インライン style の色を探す。
-// トークン（var(--tt-*)）や currentColor など、色を直書きしない値は許可する。
-// 一覧の彩色はトークン（ブランド色・状態色）だけにする方針（issue #702）を、テストで確かめるために使う
+// 色を直書きしたクラスとインライン style を探す。一覧の彩色はトークン（ブランド色・状態色）だけに
+// する方針（issue #702）を、テストで確かめるために使う。検出の範囲は __tests__/utils/palette-classes.test.tsx。
+//
+// 検出するもの:
+// - Tailwind のパレット色クラス（bg-blue-100、border-l-green-500、hover:bg-amber-200/50、bg-black）
+// - 任意値・変数参照・任意プロパティ・インライン style のうち、値のどこかに色リテラル
+//   （#hex、rgb() などの色関数、CSS の名前色、パレット変数 --color-*）を含むもの
+// 許可するもの: トークン（var(--tt-*)、bg-(--tt-*)）、currentColor、transparent、url()
 const PALETTES =
   'slate|gray|zinc|neutral|stone|mauve|olive|mist|taupe|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose';
 const SHADES = '(?:50|[1-9]00|950)';
-// bg-blue-100、text-sky-400/80、bg-blue-500/[0.3]
+// 不透明度の接尾辞（/50、/[0.3]、/(--alpha)）
+const OPACITY = '(?:/(?:\\d+|\\[[^\\]]+\\]|\\([^)]+\\)))?';
+
+// font-black（font-weight）は色ではないので除く
 const PALETTE_CLASS = new RegExp(
-  `^[a-z-]+-(?:${PALETTES})-${SHADES}(?:/(?:\\d+|\\[[^\\]]+\\]))?$`
+  `^(?!font-)[a-z-]+-(?:(?:${PALETTES})-${SHADES}|black|white)${OPACITY}$`
 );
-// bg-black、text-white/80
-const BLACK_WHITE_CLASS = /^[a-z-]+-(?:black|white)(?:\/(?:\d+|\[[^\]]+\]))?$/;
-// v4 のパレット変数を直接参照するもの（bg-(--color-blue-500)）
-const PALETTE_VARIABLE_CLASS = new RegExp(
-  `^[a-z-]+-\\((?:color:)?--color-(?:${PALETTES})-${SHADES}\\)$`
-);
-// bg-[#55C500]、bg-[color:red]（任意値。中身は isDirectColor で判定する）
-const ARBITRARY_VALUE_CLASS = /^[a-z-]+-\[(?:color:)?(.+)\]$/;
-// [background:#55C500]（任意プロパティ）
-const ARBITRARY_PROPERTY = /^\[([a-z-]+):(.+)\]$/;
-const COLOR_PROPERTY =
-  /^(?:color|background(?:-color)?|border(?:-[a-z]+)*-color|fill|stroke|outline-color)$/;
+// bg-[...]、bg-(...)（任意値・変数参照）。中身は containsColorLiteral で判定する
+const VALUE_CLASS = new RegExp(`^[a-z-]+-(?:\\[(.+)\\]|\\((.+)\\))${OPACITY}$`);
+// [background:...]（任意プロパティ）
+const ARBITRARY_PROPERTY = /^\[[a-z-]+:(.+)\]$/;
 
-const COLOR_FUNCTION =
-  /^(?:#|rgba?\(|hsla?\(|hwb\(|(?:ok)?lab\(|(?:ok)?lch\(|color-mix\(|color\()/i;
-const PALETTE_VARIABLE_VALUE = new RegExp(
-  `^var\\(--color-(?:${PALETTES})-${SHADES}\\)$`
-);
-const NAMED_COLOR =
-  /^(?:black|white|red|green|blue|yellow|orange|purple|pink|gray|grey|silver|maroon|navy|teal|olive|lime|aqua|fuchsia|cyan|magenta|brown|gold|violet|indigo|coral|salmon|tomato|crimson|khaki|beige|ivory|lavender|turquoise|tan|plum|orchid)$/i;
+// CSS の名前色（transparent・currentColor は色を直書きしないので含めない）
+const NAMED_COLORS =
+  'aliceblue|antiquewhite|aqua|aquamarine|azure|beige|bisque|black|blanchedalmond|blue|blueviolet|brown|burlywood|cadetblue|chartreuse|chocolate|coral|cornflowerblue|cornsilk|crimson|cyan|darkblue|darkcyan|darkgoldenrod|darkgray|darkgreen|darkgrey|darkkhaki|darkmagenta|darkolivegreen|darkorange|darkorchid|darkred|darksalmon|darkseagreen|darkslateblue|darkslategray|darkslategrey|darkturquoise|darkviolet|deeppink|deepskyblue|dimgray|dimgrey|dodgerblue|firebrick|floralwhite|forestgreen|fuchsia|gainsboro|ghostwhite|gold|goldenrod|gray|green|greenyellow|grey|honeydew|hotpink|indianred|indigo|ivory|khaki|lavender|lavenderblush|lawngreen|lemonchiffon|lightblue|lightcoral|lightcyan|lightgoldenrodyellow|lightgray|lightgreen|lightgrey|lightpink|lightsalmon|lightseagreen|lightskyblue|lightslategray|lightslategrey|lightsteelblue|lightyellow|lime|limegreen|linen|magenta|maroon|mediumaquamarine|mediumblue|mediumorchid|mediumpurple|mediumseagreen|mediumslateblue|mediumspringgreen|mediumturquoise|mediumvioletred|midnightblue|mintcream|mistyrose|moccasin|navajowhite|navy|oldlace|olive|olivedrab|orange|orangered|orchid|palegoldenrod|palegreen|paleturquoise|palevioletred|papayawhip|peachpuff|peru|pink|plum|powderblue|purple|rebeccapurple|red|rosybrown|royalblue|saddlebrown|salmon|sandybrown|seagreen|seashell|sienna|silver|skyblue|slateblue|slategray|slategrey|snow|springgreen|steelblue|tan|teal|thistle|tomato|turquoise|violet|wheat|white|whitesmoke|yellow|yellowgreen';
+const COLOR_LITERALS = [
+  /#[0-9a-f]{3,8}(?![0-9a-z])/i,
+  // 色関数。中身がトークンだけ（rgb(var(--tt-x))）なら、トークンを除いた後に数字が続かないので外れる
+  /\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\(\s*[-\d.]/i,
+  /\bcolor\(\s*[a-z0-9-]+\s+[-\d.]/i,
+  new RegExp(`--color-(?:(?:${PALETTES})-${SHADES}|black|white)(?![\\w-])`),
+  new RegExp(`(?<![\\w-])(?:${NAMED_COLORS})(?![\\w-])`, 'i'),
+];
 
-/** 色を直書きした値か（トークン・currentColor・url() などは false） */
-function isDirectColor(value: string): boolean {
-  const v = value.trim();
-  return (
-    COLOR_FUNCTION.test(v) ||
-    PALETTE_VARIABLE_VALUE.test(v) ||
-    NAMED_COLOR.test(v)
-  );
+/** 値のどこかに色リテラルがあるか。トークン・url()・引用符の中身は見ない */
+function containsColorLiteral(value: string): boolean {
+  const v = value
+    .replace(/_/g, ' ') // Tailwind の任意値では _ が空白
+    .replace(/var\(--tt-[a-z0-9-]+\)/gi, '')
+    .replace(/--tt-[a-z0-9-]+/gi, '')
+    .replace(/url\([^)]*\)/gi, '')
+    .replace(/'[^']*'|"[^"]*"/g, '');
+  return COLOR_LITERALS.some((pattern) => pattern.test(v));
 }
 
 // 先頭の variant（hover:、[@media(hover:hover)]: など）と重要度の ! を外す。
@@ -54,18 +58,13 @@ function utilityOf(cls: string): string {
   return cls.slice(start).replace(/^!/, '').replace(/!$/, '');
 }
 
-function isColorUtility(utility: string): boolean {
-  if (
-    PALETTE_CLASS.test(utility) ||
-    BLACK_WHITE_CLASS.test(utility) ||
-    PALETTE_VARIABLE_CLASS.test(utility)
-  )
-    return true;
+export function isColorClass(cls: string): boolean {
+  const utility = utilityOf(cls);
+  if (PALETTE_CLASS.test(utility)) return true;
   const property = ARBITRARY_PROPERTY.exec(utility);
-  if (property)
-    return COLOR_PROPERTY.test(property[1]) && isDirectColor(property[2]);
-  const arbitrary = ARBITRARY_VALUE_CLASS.exec(utility);
-  return !!arbitrary && isDirectColor(arbitrary[1]);
+  if (property) return containsColorLiteral(property[1]);
+  const value = VALUE_CLASS.exec(utility);
+  return !!value && containsColorLiteral(value[1] ?? value[2]);
 }
 
 function inlineColorDeclarations(style: string): string[] {
@@ -73,10 +72,8 @@ function inlineColorDeclarations(style: string): string[] {
     .split(';')
     .map((declaration) => declaration.trim())
     .filter((declaration) => {
-      const [property, ...rest] = declaration.split(':');
-      return (
-        COLOR_PROPERTY.test(property.trim()) && isDirectColor(rest.join(':'))
-      );
+      const [, ...rest] = declaration.split(':');
+      return rest.length > 0 && containsColorLiteral(rest.join(':'));
     });
 }
 
@@ -85,7 +82,7 @@ export function findPaletteColorClasses(root: Element): string[] {
   return elements.flatMap((el) => {
     const classes = (el.getAttribute('class') ?? '')
       .split(/\s+/)
-      .filter((cls) => cls && isColorUtility(utilityOf(cls)));
+      .filter((cls) => cls && isColorClass(cls));
     const styles = inlineColorDeclarations(el.getAttribute('style') ?? '').map(
       (declaration) => `style="${declaration}"`
     );
