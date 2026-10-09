@@ -7,6 +7,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth/auth-client';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { findPaletteColorClasses } from '@/test/utils/palette-classes';
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
@@ -134,6 +135,11 @@ describe('FavoriteArticleCard', () => {
       expect(screen.getByTestId('article-source')).toHaveTextContent(
         'Hugging Face Papers'
       );
+    });
+
+    it('should not color the card by source', () => {
+      const { container } = render(<FavoriteArticleCard {...defaultProps} />);
+      expect(findPaletteColorClasses(container)).toEqual([]);
     });
 
     it('should display first 2 tags with +N for remaining', () => {

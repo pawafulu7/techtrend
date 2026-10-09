@@ -35,6 +35,7 @@ export function ArticleList({
   onArticleClick,
   className,
   groupStories = false,
+  thumbnailPlaceholder = true,
 }: ArticleListProps) {
   // 認証状態を取得（お気に入り切り替え用）
   const { data: session } = authClient.useSession();
@@ -189,7 +190,8 @@ export function ArticleList({
       <div
         // 代表が後のページで届いて入れ替わっても、開いた状態を保つ
         key={`story-${group.storyId}`}
-        className="flex flex-col [&>*:first-child]:rounded-b-none"
+        // 代表カードはセルの残りの高さを使う（短いと帯の下に空白が残り、メタ情報の下端揃えが崩れる）
+        className="flex flex-col [&>*:first-child]:flex-1 [&>*:first-child]:rounded-b-none"
         data-testid="story-group"
         data-story-id={group.storyId}
       >
@@ -273,6 +275,8 @@ export function ArticleList({
             isRead={group.article.isRead ?? true}
             isFavorited={group.article.isFavorited ?? false}
             onToggleFavorite={() => handleToggleFavorite(group.article.id)}
+            layout="grid"
+            thumbnailPlaceholder={thumbnailPlaceholder}
           />
         )
       )}

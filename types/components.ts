@@ -43,11 +43,17 @@ export interface ArticleListProps {
   className?: string;
   /** 同じストーリーの記事を1枚にまとめる（issue #723。ホームの一覧で使う） */
   groupStories?: boolean;
+  /**
+   * カード表示で、画像の無い記事にも 16:9 の空の枠を出して同じ行の高さを揃える。
+   * 画像がほぼ無い一覧（/papers の arXiv）では false にして、空の枠を並べない
+   */
+  thumbnailPlaceholder?: boolean;
 }
 
 // 記事リストアイテム（リスト形式用）
 export interface ArticleListItemProps {
-  article: ArticleWithRelations;
+  // companyName: hatena_blog_dev の記事で、ソース名の代わりに会社名を出す（ArticleCardProps と同じ）
+  article: ArticleWithRelations & { companyName?: string };
   onTagClick?: (tagName: string) => void;
   articleIndex?: number;
   totalArticleCount?: number;

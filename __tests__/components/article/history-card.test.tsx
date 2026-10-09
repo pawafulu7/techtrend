@@ -3,6 +3,7 @@ import { HistoryArticleCard } from '@/app/components/article/history-card';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth/auth-client';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { findPaletteColorClasses } from '@/test/utils/palette-classes';
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
@@ -111,6 +112,11 @@ describe('HistoryArticleCard', () => {
     it('should display source name', () => {
       render(<HistoryArticleCard {...defaultProps} />);
       expect(screen.getByTestId('article-source')).toHaveTextContent('Zenn');
+    });
+
+    it('should not color the card by source', () => {
+      const { container } = render(<HistoryArticleCard {...defaultProps} />);
+      expect(findPaletteColorClasses(container)).toEqual([]);
     });
 
     it('should display first 2 tags with +N for remaining', () => {

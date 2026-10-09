@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Newspaper } from 'lucide-react';
+import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
 import { formatDate } from './utils';
 
 interface ArticleListItemProps {
@@ -23,11 +24,13 @@ export function ArticleListItem({
   onSelect,
 }: ArticleListItemProps) {
   const [erroredThumbnail, setErroredThumbnail] = useState<string | null>(null);
-  const thumbnailError = erroredThumbnail === article.thumbnail;
+  const thumbnailError =
+    erroredThumbnail !== null && erroredThumbnail === article.thumbnail;
   const displayTitle = article.translatedTitle || article.title;
-  const hasValidThumbnail =
-    !!article.thumbnail && /^https?:\/\//.test(article.thumbnail);
-  const showThumbnail = hasValidThumbnail && !thumbnailError;
+  const thumbnailSrc =
+    hasValidThumbnail(article.thumbnail) && !thumbnailError
+      ? article.thumbnail
+      : null;
   const dateStr = formatDate(article.publishedAt);
 
   return (
@@ -52,14 +55,14 @@ export function ArticleListItem({
         className="relative w-full overflow-hidden bg-[var(--tt-color-surface-muted)]"
         style={{ paddingBottom: '60%' }}
       >
-        {showThumbnail ? (
+        {thumbnailSrc ? (
           // eslint-disable-next-line @next/next/no-img-element -- Custom image loader handles 800+ domains; see next.config.ts
           <img
-            src={article.thumbnail!}
+            src={thumbnailSrc}
             alt=""
             className="absolute inset-0 h-full w-full object-contain"
             loading="lazy"
-            onError={() => setErroredThumbnail(article.thumbnail)}
+            onError={() => setErroredThumbnail(thumbnailSrc)}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

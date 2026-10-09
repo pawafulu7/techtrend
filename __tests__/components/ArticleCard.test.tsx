@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ArticleCard } from '@/app/components/article/card';
@@ -12,6 +12,7 @@ import {
   createMockSource,
   mockArticleWithRelations,
 } from '@/test/utils/mock-factories';
+import { findPaletteColorClasses } from '@/test/utils/palette-classes';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({
@@ -219,10 +220,13 @@ describe('ArticleCard', () => {
       publishedAt: new Date(), // 現在時刻
     };
 
-    renderWithProviders(<ArticleCard article={newArticle} />);
+    const { container } = renderWithProviders(
+      <ArticleCard article={newArticle} />
+    );
 
-    // NEW インジケーター（パルスドット）が表示される
-    expect(screen.getByLabelText('24時間以内の新着記事')).toBeInTheDocument();
+    // 「新着」の文字で出し、点滅はさせない
+    expect(screen.getByTestId('new-label')).toHaveTextContent('新着');
+    expect(container.querySelector('.animate-ping')).toBeNull();
   });
 
   it('does not display new badge for old articles', () => {
@@ -233,24 +237,22 @@ describe('ArticleCard', () => {
 
     renderWithProviders(<ArticleCard article={oldArticle} />);
 
-    // NEWインジケーター（パルスドット）が表示されない
-    expect(
-      screen.queryByLabelText('24時間以内の新着記事')
-    ).not.toBeInTheDocument();
+    // 「新着」の印が表示されない
+    expect(screen.queryByTestId('new-label')).not.toBeInTheDocument();
   });
 
   it('displays unread badge when isRead is false', () => {
     renderWithProviders(<ArticleCard article={mockArticle} isRead={false} />);
 
-    // 未読バッジが表示される
-    expect(screen.getByText('未読')).toBeInTheDocument();
+    // 未読の点が表示される
+    expect(screen.getByRole('img', { name: '未読' })).toBeInTheDocument();
   });
 
   it('does not display unread badge when isRead is true', () => {
     renderWithProviders(<ArticleCard article={mockArticle} isRead={true} />);
 
-    // 未読バッジが表示されない
-    expect(screen.queryByText('未読')).not.toBeInTheDocument();
+    // 未読の点が表示されない
+    expect(screen.queryByRole('img', { name: '未読' })).not.toBeInTheDocument();
   });
 
   it('displays article thumbnail for Speaker Deck source', () => {
@@ -372,6 +374,22 @@ describe('ArticleCard', () => {
 
     expect(openSpy).not.toHaveBeenCalled();
     openSpy.mockRestore();
+  });
+
+  it('does not color the card by source (only brand/state tokens)', () => {
+    const { container } = renderWithProviders(
+      <ArticleCard
+        article={{
+          ...mockArticle,
+          source: createMockSource({ name: 'Qiita' }),
+          publishedAt: new Date(),
+        }}
+        isRead={false}
+      />
+    );
+
+    expect(findPaletteColorClasses(container)).toEqual([]);
+    expect(screen.getByTestId('article-source')).toHaveTextContent('Qiita');
   });
 
   it('applies design system card-hover styling', () => {
@@ -557,7 +575,7 @@ describe('ArticleCard', () => {
         screen.queryByRole('img', { name: 'No Thumbnail Article' })
       ).not.toBeInTheDocument();
 
-      // 要約が表示される（Pattern 3: full summary）
+      // 要約が表示される
       expect(
         screen.getByText(
           'Summary for article without thumbnail that should be fully displayed'
@@ -582,7 +600,7 @@ describe('ArticleCard', () => {
       expect(thumbnail).toHaveClass('object-contain');
     });
 
-    it('applies object-contain to Pattern 2 thumbnail (non-presentation)', () => {
+    it('crops photo thumbnails to fill the 16:9 frame in the grid (object-cover)', () => {
       const regularArticle = createMockArticleWithRelations({
         article: {
           title: 'Regular Article',
@@ -592,10 +610,139 @@ describe('ArticleCard', () => {
         source: createMockSource({ name: 'Qiita' }),
       });
 
-      renderWithProviders(<ArticleCard article={regularArticle} />);
+      renderWithProviders(
+        <ArticleCard article={regularArticle} layout="grid" />
+      );
 
       const thumbnail = screen.getByRole('img', { name: 'Regular Article' });
+      expect(thumbnail).toHaveClass('object-cover');
+      expect(thumbnail.parentElement).toHaveClass('aspect-video');
+    });
+
+    it('keeps slides collected via Hatena Bookmark uncropped (judged by URL host)', () => {
+      const slideViaHatena = createMockArticleWithRelations({
+        article: {
+          title: 'Slide via Hatena',
+          url: 'https://speakerdeck.com/someone/slides',
+          thumbnail: 'https://example.com/slide.jpg',
+        },
+        source: createMockSource({ name: 'はてなブックマーク' }),
+      });
+
+      renderWithProviders(
+        <ArticleCard article={slideViaHatena} layout="grid" />
+      );
+
+      expect(screen.getByRole('img', { name: 'Slide via Hatena' })).toHaveClass(
+        'object-contain'
+      );
+    });
+
+    it('fits the whole image in a 12rem frame and keeps the actions visible when stacked in one column', () => {
+      const article = createMockArticleWithRelations({
+        article: {
+          title: 'Stacked',
+          thumbnail: 'https://example.com/ogp.jpg',
+        },
+        source: createMockSource({ name: 'Qiita' }),
+      });
+
+      // 既定の layout は 'stack'（お気に入りフィード・ソース詳細の1列表示）
+      renderWithProviders(<ArticleCard article={article} />);
+
+      const thumbnail = screen.getByRole('img', { name: 'Stacked' });
       expect(thumbnail).toHaveClass('object-contain');
+      expect(thumbnail.parentElement).toHaveClass('h-48');
+      expect(thumbnail.parentElement).not.toHaveClass('aspect-video');
+      const actions = screen.getByTestId('article-actions');
+      expect(actions).not.toHaveClass('sm:[@media(hover:hover)]:absolute');
+      expect(actions).not.toHaveClass('sm:[@media(hover:hover)]:opacity-0');
+    });
+
+    it('shows a placeholder in the same 16:9 frame when thumbnailPlaceholder is set', () => {
+      const article = createMockArticleWithRelations({
+        article: { title: 'No Image', thumbnail: null },
+        source: createMockSource({ name: 'Hacker News' }),
+      });
+
+      renderWithProviders(
+        <ArticleCard article={article} layout="grid" thumbnailPlaceholder />
+      );
+
+      const placeholder = screen.getByTestId('thumbnail-placeholder');
+      expect(placeholder).toHaveClass('aspect-video');
+      // 1列表示（幅 sm 未満）では出さない
+      expect(placeholder).toHaveClass('hidden', 'sm:flex');
+      expect(placeholder).toHaveAttribute('aria-hidden', 'true');
+      expect(screen.queryByRole('img', { name: 'No Image' })).toBeNull();
+      // 枠があるので、複数列のマウス端末では操作ボタンを枠に重ねる
+      const actions = screen.getByTestId('article-actions');
+      expect(actions).toHaveClass('sm:[@media(hover:hover)]:absolute');
+    });
+
+    it('omits the placeholder in the grid unless requested and keeps the actions in the card flow', () => {
+      const article = createMockArticleWithRelations({
+        article: { title: 'No Image', thumbnail: null },
+        source: createMockSource({ name: 'arXiv AI' }),
+      });
+
+      renderWithProviders(<ArticleCard article={article} layout="grid" />);
+
+      expect(screen.queryByTestId('thumbnail-placeholder')).toBeNull();
+      // 重ねる枠が無いので、マウス端末でも隠さず下端に出す（タイトルを隠さない）
+      const actions = screen.getByTestId('article-actions');
+      expect(actions).not.toHaveClass('sm:[@media(hover:hover)]:absolute');
+      expect(actions).not.toHaveClass('sm:[@media(hover:hover)]:opacity-0');
+    });
+
+    it('overlays the actions on the thumbnail frame for mouse devices', () => {
+      const article = createMockArticleWithRelations({
+        article: {
+          title: 'With Image',
+          thumbnail: 'https://example.com/ogp.jpg',
+        },
+        source: createMockSource({ name: 'Qiita' }),
+      });
+
+      renderWithProviders(<ArticleCard article={article} layout="grid" />);
+
+      const actions = screen.getByTestId('article-actions');
+      // 複数列のマウス端末だけ重ねて隠す（隠しているあいだは押せない）。1列とタッチ端末では下端に常に出す
+      expect(actions).toHaveClass('sm:[@media(hover:hover)]:absolute');
+      expect(actions).toHaveClass('sm:[@media(hover:hover)]:opacity-0');
+      expect(actions).toHaveClass(
+        'sm:[@media(hover:hover)]:pointer-events-none'
+      );
+      expect(actions).not.toHaveClass('[@media(hover:hover)]:opacity-0');
+    });
+
+    it('shows a new thumbnail after the previous one failed to load', () => {
+      const article = createMockArticleWithRelations({
+        article: {
+          title: 'Swap',
+          thumbnail: 'https://example.com/broken.jpg',
+        },
+        source: createMockSource({ name: 'Qiita' }),
+      });
+
+      const { rerender } = renderWithProviders(
+        <ArticleCard article={article} />
+      );
+      fireEvent.error(screen.getByRole('img', { name: 'Swap' }));
+      expect(screen.queryByRole('img', { name: 'Swap' })).toBeNull();
+
+      // 再取得で同じカードに別の画像が届いたら、失敗の状態を引きずらずに出す
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <ArticleCard
+            article={{ ...article, thumbnail: 'https://example.com/ok.jpg' }}
+          />
+        </QueryClientProvider>
+      );
+      expect(screen.getByRole('img', { name: 'Swap' })).toHaveAttribute(
+        'src',
+        'https://example.com/ok.jpg'
+      );
     });
 
     it('shows title alongside thumbnail', () => {

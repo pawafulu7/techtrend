@@ -210,6 +210,8 @@ export function PapersClientInfinite({
             viewMode={viewMode}
             onArticleClick={handleArticleClick}
             currentFilters={filters}
+            // arXiv の論文はほぼ画像が無いので、高さを揃えるための空の枠を並べない
+            thumbnailPlaceholder={false}
           />
 
           {/* Infinite Scrollトリガー */}

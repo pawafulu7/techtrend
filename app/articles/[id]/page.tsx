@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source/source-colors';
+import { isSlideSource } from '@/lib/utils/source/slide-source';
 import { cn } from '@/lib/utils';
 import { RelatedArticles } from '@/app/components/article/related-articles';
 import { ArticleTracker } from '@/app/components/analytics/ArticleTracker';
@@ -102,9 +103,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   const isNew = hoursAgo < 24;
 
   // スライドサービス判定（Speaker DeckとDocswell）
-  const isSlideService =
-    article.source.name === 'Speaker Deck' ||
-    article.source.name === 'Docswell';
+  const isSlideService = isSlideSource(article.source.name);
 
   // 短い記事（500文字以下）の判定
   const isShortArticle =

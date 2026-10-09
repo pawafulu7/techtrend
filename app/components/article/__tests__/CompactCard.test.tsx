@@ -5,6 +5,7 @@ import '@testing-library/jest-dom';
 import { CompactCard } from '@/app/components/article/compact-card';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createMockArticleWithRelations } from '@/test/utils/mock-factories';
+import { findPaletteColorClasses } from '@/test/utils/palette-classes';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({
@@ -101,6 +102,20 @@ describe('CompactCard', () => {
       expect(screen.getByText('Test Source')).toBeInTheDocument();
     });
 
+    it('ソースごとの色を付けない（彩色はブランド色・状態色のトークンだけ）', () => {
+      const qiitaArticle = createMockArticleWithRelations({
+        article: { ...mockArticle, publishedAt: new Date() },
+        source: { name: 'Qiita' },
+      });
+
+      const { container } = render(
+        <CompactCard article={qiitaArticle} isRead={false} />
+      );
+
+      expect(findPaletteColorClasses(container)).toEqual([]);
+      expect(screen.getByTestId('article-source')).toHaveTextContent('Qiita');
+    });
+
     it('最初のタグと残りのカウントを表示する', () => {
       render(<CompactCard article={mockArticle} />);
 
@@ -164,24 +179,23 @@ describe('CompactCard', () => {
         },
       });
 
-      render(<CompactCard article={newArticle} />);
+      const { container } = render(<CompactCard article={newArticle} />);
 
-      expect(screen.getByLabelText('24時間以内の新着記事')).toBeInTheDocument();
+      expect(screen.getByTestId('new-label')).toHaveTextContent('新着');
+      expect(container.querySelector('.animate-ping')).toBeNull();
     });
 
     it('24時間以上前の記事にはNEWバッジを表示しない', () => {
       render(<CompactCard article={mockArticle} />);
 
-      expect(
-        screen.queryByLabelText('24時間以内の新着記事')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('new-label')).not.toBeInTheDocument();
     });
 
     it('未読記事に未読バッジを表示する', () => {
       render(<CompactCard article={mockArticle} isRead={false} />);
 
       expect(screen.getByTestId('unread-badge')).toBeInTheDocument();
-      expect(screen.getByText('未読')).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: '未読' })).toBeInTheDocument();
     });
 
     it('既読記事には未読バッジを表示しない', () => {

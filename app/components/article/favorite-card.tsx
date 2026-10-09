@@ -8,9 +8,9 @@ import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import { formatDateWithTime } from '@/lib/utils/date';
-import { getSourceColor } from '@/lib/utils/source/source-colors';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
+import { SourceLabel } from '@/app/components/article/article-meta';
 import { ShareButton } from '@/app/components/article/share-button';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -33,7 +33,6 @@ export function FavoriteArticleCard({
   from = '/favorites',
 }: FavoriteArticleCardProps) {
   const router = useRouter();
-  const sourceColor = getSourceColor(article.source.name);
 
   const contentLength = article.contentLength ?? article.content?.length ?? 0;
   const readingTime = getReadingTime(contentLength);
@@ -127,36 +126,15 @@ export function FavoriteArticleCard({
       className={cn(
         'group relative flex h-full cursor-pointer flex-col gap-3 p-4',
         'shadow-md hover:shadow-lg',
-        'transition-[transform,box-shadow] duration-200 hover:scale-[1.01]',
-        sourceColor?.borderLeft
+        'transition-[transform,box-shadow] duration-200 hover:scale-[1.01]'
       )}
     >
-      {/* Header: Source Badge + Favorited At Badge + Published At */}
+      {/* Header: Source + Favorited At Badge + Published At */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            {/* Source Badge */}
-            {sourceColor && (
-              <BadgeV2
-                variant="outline"
-                className={cn(
-                  'flex items-center gap-1.5 text-xs',
-                  sourceColor.tag,
-                  sourceColor.border,
-                  sourceColor.hover
-                )}
-                data-testid="article-source"
-              >
-                <span
-                  className={cn(
-                    'h-2 w-2 shrink-0 rounded-full',
-                    sourceColor.dot
-                  )}
-                  aria-hidden="true"
-                />
-                {article.companyName ?? article.source.name}
-              </BadgeV2>
-            )}
+            {/* Source */}
+            <SourceLabel name={article.companyName ?? article.source.name} />
 
             {/* Favorited At Badge */}
             <BadgeV2
