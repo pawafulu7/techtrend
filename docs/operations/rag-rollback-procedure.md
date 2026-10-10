@@ -66,7 +66,7 @@ RAG_ENABLED=false
 
 ### Option B: Code Change (If Option A unavailable)
 
-**File**: `app/api/rag/search/route.ts`
+**File**: `app/api/rag/agent-search/route.ts`
 
 ```typescript
 export async function POST(request: NextRequest) {
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
 ```bash
 # Commit and push
-git add app/api/rag/search/route.ts
+git add app/api/rag/agent-search/route.ts
 git commit -m "feat: emergency disable RAG API"
 git push origin main
 
@@ -90,7 +90,7 @@ git push origin main
 **Verification**:
 ```bash
 # Test that API returns 503
-curl -X POST https://techtrend.example.com/api/rag/search \
+curl -X POST https://techtrend.example.com/api/rag/agent-search \
   -H "Content-Type: application/json" \
   -d '{"query": "test"}' \
   -w "\nHTTP Status: %{http_code}\n"
@@ -469,5 +469,4 @@ neon branches delete rollback-test-YYYY-MM-DD
 ## Related Documents
 
 - Implementation Plan: `.claude/docs/plan/plan_20251018_104352_577_mastra-rag-final-secure.md`
-- API Specification: `docs/api/rag-search-api.md`
 - Embedding Lifecycle: `docs/operations/rag-embedding-lifecycle.md`

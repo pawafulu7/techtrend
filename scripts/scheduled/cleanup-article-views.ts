@@ -5,7 +5,7 @@
  * 1. 90日以上前の閲覧履歴を削除
  * 2. ユーザーごとに100件上限を超える古い履歴を削除
  *
- * スケジューラ（scheduler.ts）の22時定期クリーンアップから実行
+ * .github/workflows/scheduler-cleanup.yml（毎週土曜）から実行
  */
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';

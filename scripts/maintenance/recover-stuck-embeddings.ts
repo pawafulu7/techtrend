@@ -6,6 +6,7 @@
  *
  * Uses EmbeddingScheduler.recoverStuckJobs() for the core recovery logic,
  * with additional CLI options for verbose output and dry-run mode.
+ * Runs before the worker in .github/workflows/scheduler-embedding-worker.yml.
  *
  * Usage:
  *   npx tsx scripts/maintenance/recover-stuck-embeddings.ts [options]
@@ -152,10 +153,8 @@ async function main(): Promise<void> {
     console.log('\n--- Summary ---');
     console.log(JSON.stringify(result, null, 2));
 
-    // Exit code:
-    // 0 = success (jobs reset or no stuck jobs)
-    // 1 = found stuck jobs but none were reset (dry-run or all skipped)
-    exitCode = result.reset > 0 || result.found === 0 ? 0 : 1;
+    // 例外のときだけ 1 にする。試行回数の上限で戻さなかったジョブや dry-run は失敗ではない
+    // （GHA の scheduler-embedding-worker から 30 分ごとに呼ぶので、1 にすると通知が止まらない）
   } catch (error) {
     console.error('Error during recovery:', error);
     exitCode = 1;

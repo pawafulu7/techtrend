@@ -2,8 +2,7 @@
  * 技術者向けでない記事を判定するバッチ（issue #722）
  *
  * 直近の記事のうち未判定のものを LLM で判定し、Article.isOffTopic / offTopicCheckedAt を書き込む。
- * 要約の生成の後に実行する（.github/workflows/scheduler-off-topic.yml、
- * ローカルは scripts/scheduled/scheduler.ts）。
+ * 要約の生成の後に実行する（.github/workflows/scheduler-off-topic.yml）。
  *
  * 使い方:
  *   npx tsx scripts/scheduled/classify-off-topic.ts             # 書き込む

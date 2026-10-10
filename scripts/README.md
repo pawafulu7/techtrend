@@ -46,7 +46,6 @@ scripts/
 ## Key Scripts
 
 ### scheduled/ - Scheduled Jobs
-- `scheduler.ts` - PM2 scheduler entry point
 - `collect-feeds.ts` - RSS/API feed collection
 - `manage-summaries.ts` - Summary generation
 - `manage-quality-scores.ts` - Quality score calculation

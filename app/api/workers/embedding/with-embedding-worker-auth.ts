@@ -23,8 +23,7 @@ import { env } from '@/lib/config/env';
  * したがって両方が設定されている場合は CRON_TOKEN が優先され、CRON_SECRET の
  * 値では認証できない。これは意図した挙動であり、移行完了後に旧シークレットが
  * 有効なまま残らないようにするための設計。
- * 同じロジックを lib/middleware/with-cron-or-admin-auth.ts と
- * app/api/feeds/collect/with-feed-collect-auth.ts も採用している
+ * 同じロジックを lib/middleware/with-cron-or-admin-auth.ts も採用している
  * （行番号は変動するため参照しない）。
  */
 export function withEmbeddingWorkerAuth(handler: Handler): Handler {

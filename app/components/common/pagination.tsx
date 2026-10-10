@@ -9,11 +9,16 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-export function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+// ページ送りの唯一の実装（issue #710 で ui/pagination・server-pagination を統合）
+export function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: PaginationProps) {
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const showPages = 5; // Number of page buttons to show
-    
+
     if (totalPages <= showPages) {
       // Show all pages if total is less than showPages
       for (let i = 1; i <= totalPages; i++) {
@@ -22,27 +27,27 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
     } else {
       // Always show first page
       pages.push(1);
-      
+
       if (currentPage > 3) {
         pages.push('...');
       }
-      
+
       // Show pages around current page
       const start = Math.max(2, currentPage - 1);
       const end = Math.min(totalPages - 1, currentPage + 1);
-      
+
       for (let i = start; i <= end; i++) {
         pages.push(i);
       }
-      
+
       if (currentPage < totalPages - 2) {
         pages.push('...');
       }
-      
+
       // Always show last page
       pages.push(totalPages);
     }
-    
+
     return pages;
   };
 
@@ -51,7 +56,11 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
   }
 
   return (
-    <nav className="flex items-center justify-center space-x-2" data-testid="pagination-container">
+    <nav
+      className="flex items-center justify-center space-x-2"
+      aria-label="ページ送り"
+      data-testid="pagination-container"
+    >
       <Button
         variant="outline"
         size="sm"
@@ -62,19 +71,26 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
         <ChevronLeft className="h-4 w-4" />
         前へ
       </Button>
-      
+
       <div className="flex items-center space-x-1">
         {getPageNumbers().map((page, index) => (
           <div key={index}>
             {page === '...' ? (
-              <span className="px-3 text-muted-foreground">...</span>
+              <span className="text-muted-foreground px-3" aria-hidden="true">
+                ...
+              </span>
             ) : (
               <Button
                 variant={currentPage === page ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => onPageChange(page as number)}
                 className="min-w-[40px]"
-                data-testid={currentPage === page ? 'pagination-current' : `pagination-button-${page}`}
+                aria-current={currentPage === page ? 'page' : undefined}
+                data-testid={
+                  currentPage === page
+                    ? 'pagination-current'
+                    : `pagination-button-${page}`
+                }
               >
                 {page}
               </Button>
@@ -82,7 +98,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
           </div>
         ))}
       </div>
-      
+
       <Button
         variant="outline"
         size="sm"

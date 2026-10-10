@@ -127,7 +127,6 @@ import * as socialPostsCandidates from '@/app/api/admin/social-posts/articles/ca
 import * as socialPostsStats from '@/app/api/admin/social-posts/stats/route';
 import * as cacheStats from '@/app/api/cache/stats/route';
 import * as batchOptimizer from '@/app/api/metrics/batch-optimizer/route';
-import * as ragSearch from '@/app/api/rag/search/route';
 import * as favoritesBatch from '@/app/api/favorites/batch/route';
 import * as categories from '@/app/api/user/preferences/categories/route';
 import * as profile from '@/app/api/user/profile/route';
@@ -164,8 +163,7 @@ const ROWS: Row[] = [
   { label: 'GET /api/admin/social-posts/stats', kind: 'admin', method: 'GET', path: '/api/admin/social-posts/stats', handler: h(socialPostsStats.GET) },
   { label: 'GET /api/cache/stats', kind: 'admin', method: 'GET', path: '/api/cache/stats', handler: h(cacheStats.GET) },
   { label: 'GET /api/metrics/batch-optimizer', kind: 'admin', method: 'GET', path: '/api/metrics/batch-optimizer', handler: h(batchOptimizer.GET) },
-  // User API (6 routes, 7 methods)
-  { label: 'POST /api/rag/search', kind: 'user', method: 'POST', path: '/api/rag/search', handler: h(ragSearch.POST) },
+  // User API (5 routes, 6 methods)
   { label: 'POST /api/favorites/batch', kind: 'user', method: 'POST', path: '/api/favorites/batch', handler: h(favoritesBatch.POST) },
   { label: 'GET /api/user/preferences/categories', kind: 'user', method: 'GET', path: '/api/user/preferences/categories', handler: h(categories.GET) },
   { label: 'POST /api/user/preferences/categories', kind: 'user', method: 'POST', path: '/api/user/preferences/categories', handler: h(categories.POST) },
@@ -259,10 +257,10 @@ describe('Auth middleware unification (issues #659, #662)', () => {
     mockHandleBatchRequest.mockReset();
   });
 
-  it('covers 20 methods (13 admin + 7 user), 12 of them writes', () => {
-    expect(ROWS).toHaveLength(20);
+  it('covers 19 methods (13 admin + 6 user), 11 of them writes', () => {
+    expect(ROWS).toHaveLength(19);
     expect(ADMIN_ROWS).toHaveLength(13);
-    expect(WRITE_ROWS).toHaveLength(12);
+    expect(WRITE_ROWS).toHaveLength(11);
   });
 
   describe('unauthenticated requests', () => {

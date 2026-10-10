@@ -90,14 +90,6 @@ export const RATE_LIMIT_POLICIES = {
   },
 
   // RAG (Existing Policies) - No block, soft throttle only
-  'rag:search': {
-    points: 10,
-    duration: 60,
-    blockDuration: 0,
-    keyStrategy: 'user',
-    notes: 'Vector search (low cost)',
-    telemetryEvent: 'ratelimit.rag.search',
-  },
   'rag:agent': {
     points: 5,
     duration: 60,
@@ -131,14 +123,6 @@ export const RATE_LIMIT_POLICIES = {
     keyStrategy: 'user',
     notes: 'Password change (5 per 5min)',
     telemetryEvent: 'ratelimit.write.password',
-  },
-  'write:vote': {
-    points: 30,
-    duration: 60,
-    blockDuration: 0,
-    keyStrategy: 'user',
-    notes: 'Article voting limit',
-    telemetryEvent: 'ratelimit.write.vote',
   },
   'write:comment': {
     points: 5,
@@ -375,15 +359,6 @@ export const RATE_LIMIT_POLICIES = {
   },
 
   // Cron / Internal Batch Operations
-  'cron:collect': {
-    points: 10,
-    duration: 60,
-    blockDuration: 0,
-    keyStrategy: 'ip',
-    notes: 'Feed collection cron endpoint (internal use)',
-    telemetryEvent: 'ratelimit.cron.collect',
-  },
-
   'cron:embedding-worker': {
     points: 10,
     duration: 60,

@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useDebounce } from '@/hooks/use-debounce';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { Label } from '@/components/ui/label';
 import {
   CATEGORY_OPTIONS,

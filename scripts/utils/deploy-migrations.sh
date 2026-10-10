@@ -107,7 +107,7 @@ if [ $DEPLOY_RESULT -eq 0 ]; then
     echo
     echo -e "${BLUE}Recommended next steps:${NC}"
     echo "  1. Check application health: curl your-app-url/api/health"
-    echo "  2. Monitor error logs: pm2 logs"
+    echo "  2. Monitor error logs: vercel logs --environment production"
     echo "  3. Verify functionality in production"
     echo "  4. Document this deployment in your changelog"
     

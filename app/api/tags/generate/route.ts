@@ -11,7 +11,7 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 
 async function generateTagsHandler(_request: NextRequest) {
   // DI の要約サービスはキーが無くても組み立てられ、記事ごとに失敗するだけになる。
-  // 設定不備を 200 で隠さないよう、先に止める（feeds/collect と同じ判定）
+  // 設定不備を 200 で隠さないよう、先に止める
   if (!env.GEMINI_API_KEY) {
     return NextResponse.json(
       { success: false, error: 'Tag generation is not configured' },
@@ -72,7 +72,7 @@ async function generateTagsHandler(_request: NextRequest) {
         const didUpdate = await prisma.$transaction(async (tx) => {
           // Safe tag creation using upsert pattern (prevents race condition duplicates)
           // 要約サービスはタグを trim・重複除去するだけで正規化しない。
-          // 定期実行（auto-regenerate.ts）と同じく既定の正規化を通す
+          // 既定の正規化を通す
           const tagConnections = await getTagIdsForConnect(
             tagNames,
             undefined,

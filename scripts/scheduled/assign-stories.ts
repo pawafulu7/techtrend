@@ -2,8 +2,7 @@
  * 同じ出来事の記事をストーリーにまとめるバッチ（issue #723）
  *
  * 直近7日の記事をまとめ直し、Article.storyId / storySize を書き込む。
- * 埋め込みの生成の後に実行する（.github/workflows/scheduler-embedding-worker.yml、
- * ローカルは scripts/scheduled/scheduler.ts）。
+ * 埋め込みの生成の後に実行する（.github/workflows/scheduler-embedding-worker.yml）。
  *
  * 使い方:
  *   npx tsx scripts/scheduled/assign-stories.ts            # 書き込む

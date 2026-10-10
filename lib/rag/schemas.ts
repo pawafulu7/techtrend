@@ -112,46 +112,6 @@ export type SearchOptionsInput = z.input<typeof searchOptionsSchema>;
 export type SearchOptions = z.output<typeof searchOptionsSchema>;
 
 /**
- * Search request schema for API endpoint
- *
- * Validates incoming POST /api/rag/search requests
- */
-export const searchRequestSchema = z
-  .object({
-    query: z
-      .string()
-      .min(1, 'Query cannot be empty')
-      .max(500, 'Query too long (max 500 characters)')
-      .transform((q) => q.trim())
-      .refine((q) => q.length > 0, 'Query cannot be empty after trimming'),
-
-    topK: z.coerce.number()
-      .int('topK must be an integer')
-      .min(1, 'topK must be at least 1')
-      .max(100, 'topK cannot exceed 100')
-      .optional(),
-    
-    similarityThreshold: z.coerce.number()
-      .min(0, 'similarityThreshold must be at least 0')
-      .max(1, 'similarityThreshold cannot exceed 1')
-      .optional(),
-
-    filters: z
-      .object({
-        sources: z.array(z.string()).optional(),
-        tags: z.array(z.string()).optional(),
-      })
-      .partial()
-      .strict()
-      .default({}),
-
-    embeddingKey: z.enum(['title', 'summary', 'both']).optional(),
-  })
-  .strict();;
-
-export type SearchRequest = z.infer<typeof searchRequestSchema>;
-
-/**
  * Embedding schema for runtime validation
  *
  * Validates OpenAI API embedding responses

@@ -277,8 +277,6 @@ const envSchema = z
     EMBEDDING_WORKER_BATCH_SIZE: safeCoerceInt(300),
     EMBEDDING_WORKER_MAX_ATTEMPTS: safeCoerceInt(3),
     EMBEDDING_WORKER_TIMEOUT_MS: safeCoerceInt(9000),
-    EMBEDDING_STUCK_THRESHOLD_MINUTES: safeCoerceInt(30),
-    EMBEDDING_RECOVERY_BATCH_LIMIT: safeCoerceInt(100),
 
     // Security / Middleware
     CURSOR_SECRET: z.string().optional(),

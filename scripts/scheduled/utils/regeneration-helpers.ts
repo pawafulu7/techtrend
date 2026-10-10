@@ -1,6 +1,6 @@
 /**
  * 再生成スクリプト共通ユーティリティ
- * auto-regenerate.ts / auto-regenerate-low-quality.ts / regenerate-summaries.ts で共有
+ * auto-regenerate-low-quality.ts / regenerate-summaries.ts で共有
  */
 
 export interface RegenerationStats {
@@ -14,7 +14,7 @@ type LogFn = (message: string) => void;
 
 /**
  * 再生成結果のフォーマット済みログ出力
- * デフォルトはstderr。scheduler.ts経由でstdoutキャプチャされるスクリプトはconsole.logを渡す
+ * デフォルトはstderr。stdoutに出したいスクリプトはconsole.logを渡す
  */
 export function reportResults(label: string, stats: RegenerationStats, log: LogFn = console.error): void {
   const lines = [`\n===== ${label} =====`];

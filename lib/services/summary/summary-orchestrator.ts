@@ -38,7 +38,7 @@ type ContentValidationResult =
  * Validate article content for summary generation.
  * Checks if content exists and meets minimum length requirements.
  *
- * 要約を生成する全経路（定期実行・feeds/collect・低品質の再生成・タグ生成）で
+ * 要約を生成する全経路（定期実行・低品質の再生成・タグ生成）で
  * 同じ基準を使うため、content だけを受け取る。
  */
 export function validateArticleContent(

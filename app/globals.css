@@ -10,26 +10,7 @@
   scroll-behavior: smooth;
 }
 
-.chat-message-bubble {
-  animation: slideInUp 0.3s ease-out;
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Chat button animation */
-.chat-button-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
+/* Tailwind の animate-pulse が参照する */
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -139,20 +120,6 @@ html.no-transitions *::after {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-
-  /* Staggered Animation Helpers */
-  @media (prefers-reduced-motion: no-preference) {
-    .animate-stagger {
-      animation: fadeInUp 0.5s ease-out forwards;
-      opacity: 0;
-    }
-
-    .animate-stagger-delay-1 { animation-delay: 0.1s; }
-    .animate-stagger-delay-2 { animation-delay: 0.2s; }
-    .animate-stagger-delay-3 { animation-delay: 0.3s; }
-    .animate-stagger-delay-4 { animation-delay: 0.4s; }
-    .animate-stagger-delay-5 { animation-delay: 0.5s; }
-  }
 }
 
 /* Fade-in animations for smooth content display */
@@ -195,18 +162,6 @@ html.no-transitions *::after {
   animation-duration: 500ms;
 }
 
-.delay-100 {
-  animation-delay: 100ms;
-}
-
-.delay-150 {
-  animation-delay: 150ms;
-}
-
-.delay-200 {
-  animation-delay: 200ms;
-}
-
 /* Shimmer effect for skeleton loading */
 @keyframes shimmer {
   0% {
@@ -221,35 +176,11 @@ html.no-transitions *::after {
   animation: shimmer 2s infinite;
 }
 
-.animation-delay-150 {
-  animation-delay: 150ms;
-}
-
-.animation-delay-300 {
-  animation-delay: 300ms;
-}
-
-.animation-delay-450 {
-  animation-delay: 450ms;
-}
-
-/* fadeInUp keyframe for staggered animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* Reduced motion support
  *
  * 個別クラスの列挙をやめ、全体を抑制してローディング表示だけを例外にする方式。
- * 列挙方式は独自アニメーション（.chat-message-bubble / .chat-button-pulse /
- * .animate-fade-in や Tailwind の animate-ping / animate-pulse、Radix の
+ * 列挙方式は独自アニメーション（.animate-fade-in や .animate-shimmer、
+ * Tailwind の animate-ping / animate-pulse、Radix の
  * data-[state] アニメ）が増えるたびに漏れ、実質メンテ不能だったため。
  */
 @media (prefers-reduced-motion: reduce) {
@@ -264,8 +195,7 @@ html.no-transitions *::after {
 
   /* 進行中であることを伝える表示は動きを残す（止めると停止と区別できない） */
   .animate-spin,
-  [data-loading='true'] .animate-spin,
-  .animate-pulse-loading {
+  [data-loading='true'] .animate-spin {
     animation-duration: 1s !important;
     animation-iteration-count: infinite !important;
   }
@@ -274,7 +204,6 @@ html.no-transitions *::after {
   .fade-in-content,
   .animate-in,
   .animate-shimmer,
-  .animate-stagger,
   .card-hover,
   .card-hover:hover,
   .card-hover:focus-within,
