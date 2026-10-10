@@ -167,9 +167,11 @@ describeIf('article-knn（テスト DB）', () => {
       similarityThreshold,
     });
 
-  it('関数に計画の固定・JIT の停止・HNSW の設定が付いている（外すと全件走査や JIT に戻る）', async () => {
-    const [fn] = await prisma.$queryRaw<{ proconfig: string[] }[]>`
-      SELECT proconfig FROM pg_proc WHERE proname = 'related_articles_knn'
+  it('関数に計画の固定・JIT の停止が付き、HNSW の設定は本文で掛ける（外すと全件走査や JIT に戻る）', async () => {
+    const [fn] = await prisma.$queryRaw<
+      { proconfig: string[]; prosrc: string }[]
+    >`
+      SELECT proconfig, prosrc FROM pg_proc WHERE proname = 'related_articles_knn'
     `;
 
     expect(fn?.proconfig).toEqual(
@@ -178,9 +180,14 @@ describeIf('article-knn（テスト DB）', () => {
         'enable_bitmapscan=off',
         'enable_sort=off',
         'jit=off',
-        'hnsw.ef_search=100',
-        'hnsw.iterative_scan=relaxed_order',
       ])
+    );
+    // 拡張の設定を関数の SET に書くと、スーパーユーザーでない本番のロールでは関数を作れない
+    // （20261010150000 が本番で失敗した）。本文の set_config で掛ける
+    expect(fn?.proconfig.some((c) => c.startsWith('hnsw.'))).toBe(false);
+    expect(fn?.prosrc).toContain("set_config('hnsw.ef_search', '100', true)");
+    expect(fn?.prosrc).toContain(
+      "set_config('hnsw.iterative_scan', 'relaxed_order', true)"
     );
   });
 
