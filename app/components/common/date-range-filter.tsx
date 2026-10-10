@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui-v2/button-v2';
-import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
   PopoverContent,
@@ -24,6 +24,32 @@ import {
   buildFilterUrl,
   clearTransientFilterParams,
 } from '@/lib/utils/url/filter-params';
+
+/**
+ * react-day-picker はカレンダーを開いたときだけ要るので、ホームの初回表示の JS に含めない（Issue #718）。
+ * 読み込み中はカレンダーと同じ大きさの枠を出し、ポップオーバーの大きさが変わらないようにする。
+ * 幅は numberOfMonths に合わせる（768px 以下は1か月、それより広いと2か月）
+ */
+const Calendar = dynamic(
+  () =>
+    import('@/components/ui/calendar').then((mod) => ({
+      default: mod.Calendar,
+    })),
+  {
+    loading: () => (
+      <div
+        className="h-[291px] w-[248px] rounded-md bg-(--tt-color-surface-muted) motion-safe:animate-pulse min-[769px]:w-[488px]"
+        aria-hidden="true"
+        data-testid="date-range-calendar-placeholder"
+      />
+    ),
+  }
+);
+
+/** ボタンに触れた時点で読み始め、開いたときに枠を見せずに済むようにする */
+function preloadCalendar() {
+  void import('@/components/ui/calendar');
+}
 
 interface DateRangeFilterProps {
   className?: string;
@@ -203,6 +229,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
         <Select
           value={currentPreset}
           onValueChange={handlePresetChange}
+          onOpenChange={(open) => open && preloadCalendar()}
           data-testid="date-range-filter"
         >
           <SelectTrigger className="w-[140px]" data-testid="date-range-trigger">
@@ -235,6 +262,8 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
               className={`h-9 w-9 shrink-0 ${isCustomMode ? 'border-primary text-primary' : ''}`}
               data-testid="date-range-calendar-trigger"
               aria-label="カレンダーで日付を選択"
+              onPointerEnter={preloadCalendar}
+              onFocus={preloadCalendar}
             >
               <CalendarIcon className="h-4 w-4" />
             </Button>

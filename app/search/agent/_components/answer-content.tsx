@@ -2,10 +2,8 @@
 
 import React, { useMemo, useDeferredValue } from 'react';
 import Link from 'next/link';
-import ReactMarkdown from 'react-markdown';
+import { LazyMarkdown } from '@/app/components/common/lazy-markdown';
 import { shiftedMarkdownHeadings } from '@/app/components/common/markdown-headings';
-import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
 import remarkExtractArticleId from './remark-extract-article-id';
 import { extractArticleSections } from './extract-article-sections';
 import { ExternalLink, FileText, Calendar, Link2 } from 'lucide-react';
@@ -248,8 +246,8 @@ export function AnswerContent({
           data-testid="agent-answer-markdown"
         >
           <ListDepthContext.Provider value={0}>
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm, remarkBreaks, remarkExtractArticleId]}
+            <LazyMarkdown
+              remarkPlugins={[remarkExtractArticleId]}
               components={{
                 // 回答の「#」は h2 にする。ページの h1 は画面の見出しだけにする（Issue #700）
                 ...shiftedMarkdownHeadings,
@@ -321,7 +319,7 @@ export function AnswerContent({
               }}
             >
               {deferredDisplayText}
-            </ReactMarkdown>
+            </LazyMarkdown>
           </ListDepthContext.Provider>
         </div>
       )}

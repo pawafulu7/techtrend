@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { ArticleQaAnswer } from '@/app/articles/_components/article-qa-answer';
 
 describe('ArticleQaAnswer', () => {
+  // Markdown の表示は遅延読み込み（Issue #718）なので、描き終わるのを待ってから確かめる
   describe('Markdown rendering', () => {
-    it('should render markdown content correctly', () => {
+    it('should render markdown content correctly', async () => {
       const markdown = `# Heading
 
 Some **bold** text and a [link](https://example.com).`;
@@ -16,13 +17,13 @@ Some **bold** text and a [link](https://example.com).`;
       );
 
       // 「#」は h2 にする（記事詳細の h1 は記事タイトルだけ。Issue #700）
-      expect(screen.getByRole('heading', { level: 2, name: 'Heading' })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { level: 2, name: 'Heading' })).toBeInTheDocument();
       expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
       expect(screen.getByText('bold')).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'link' })).toBeInTheDocument();
     });
 
-    it('「#」だけを h2 にし、「##」以降の見出しは変えない（Issue #700）', () => {
+    it('「#」だけを h2 にし、「##」以降の見出しは変えない（Issue #700）', async () => {
       const markdown = `# Parent
 
 ## Child
@@ -31,13 +32,13 @@ Some **bold** text and a [link](https://example.com).`;
 
       render(<ArticleQaAnswer answer={markdown} isStreaming={false} />);
 
+      expect(await screen.findByRole('heading', { level: 2, name: 'Parent' })).toBeInTheDocument();
       expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
-      expect(screen.getByRole('heading', { level: 2, name: 'Parent' })).toBeInTheDocument();
       expect(screen.getByRole('heading', { level: 2, name: 'Child' })).toBeInTheDocument();
       expect(screen.getByRole('heading', { level: 3, name: 'Grandchild' })).toBeInTheDocument();
     });
 
-    it('should render external links with target="_blank" and rel="noopener noreferrer"', () => {
+    it('should render external links with target="_blank" and rel="noopener noreferrer"', async () => {
       render(
         <ArticleQaAnswer
           answer="Check out [this link](https://example.com)"
@@ -45,12 +46,12 @@ Some **bold** text and a [link](https://example.com).`;
         />
       );
 
-      const link = screen.getByRole('link', { name: 'this link' });
+      const link = await screen.findByRole('link', { name: 'this link' });
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });
 
-    it('should render GFM features like strikethrough', () => {
+    it('should render GFM features like strikethrough', async () => {
       render(
         <ArticleQaAnswer
           answer="This is ~~strikethrough~~ text"
@@ -59,10 +60,10 @@ Some **bold** text and a [link](https://example.com).`;
       );
 
       // Strikethrough should be rendered as <del> element
-      expect(screen.getByText('strikethrough')).toBeInTheDocument();
+      expect((await screen.findByText('strikethrough')).tagName).toBe('DEL');
     });
 
-    it('should render line breaks correctly', () => {
+    it('should render line breaks correctly', async () => {
       render(
         <ArticleQaAnswer
           answer={`Line 1
@@ -74,7 +75,7 @@ Line 2`}
       const markdown = screen.getByTestId('qa-answer-markdown');
       expect(markdown).toBeInTheDocument();
       // remarkBreaks converts single newlines to <br>
-      expect(markdown.innerHTML).toContain('<br');
+      await waitFor(() => expect(markdown.innerHTML).toContain('<br'));
     });
   });
 
@@ -103,7 +104,7 @@ Line 2`}
       expect(screen.queryByTestId('qa-streaming-indicator')).not.toBeInTheDocument();
     });
 
-    it('should show both streaming indicator and partial answer', () => {
+    it('should show both streaming indicator and partial answer', async () => {
       render(
         <ArticleQaAnswer
           answer="Partial answer..."
@@ -113,7 +114,7 @@ Line 2`}
 
       expect(screen.getByTestId('qa-streaming-indicator')).toBeInTheDocument();
       expect(screen.getByTestId('qa-answer-markdown')).toBeInTheDocument();
-      expect(screen.getByText('Partial answer...')).toBeInTheDocument();
+      expect(await screen.findByText('Partial answer...')).toBeInTheDocument();
     });
   });
 

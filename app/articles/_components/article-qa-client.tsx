@@ -12,6 +12,7 @@ import { Bot, MessageSquare, Sparkles, User, X } from 'lucide-react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
 import { AgentLoadingState } from '@/app/search/agent/_components/agent-loading-state';
 import { ArticleQaAnswer } from './article-qa-answer';
+import { preloadMarkdown } from '@/app/components/common/lazy-markdown';
 import { AgentErrorDisplay } from '@/app/search/agent/_components/agent-error-display';
 import {
   useArticleQA,
@@ -157,6 +158,7 @@ export function ArticleQAClient({
       const trimmed = query.trim();
       if (!trimmed) return;
 
+      preloadMarkdown();
       setShowResult(false);
       const timestamp = Date.now();
       const exchangeId = `qa-${timestamp}`;

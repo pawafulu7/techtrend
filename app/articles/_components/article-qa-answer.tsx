@@ -1,9 +1,7 @@
 'use client';
 
-import ReactMarkdown from 'react-markdown';
+import { LazyMarkdown } from '@/app/components/common/lazy-markdown';
 import { shiftedMarkdownHeadings } from '@/app/components/common/markdown-headings';
-import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
 
 /**
  * ArticleQaAnswer - AI Q&A専用の回答表示コンポーネント
@@ -63,8 +61,7 @@ export function ArticleQaAnswer({
           data-testid="qa-answer-markdown"
           className="prose prose-sm prose-h2:text-h2 prose-h3:text-h3 prose-headings:font-semibold prose-headings:text-[var(--tt-color-text)] prose-p:text-[var(--tt-color-text)] prose-a:text-primary prose-strong:text-[var(--tt-color-text)] prose-li:text-[var(--tt-color-text)] max-w-none"
         >
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm, remarkBreaks]}
+          <LazyMarkdown
             components={{
               // 回答の「#」は h2 にする。記事詳細の h1 は記事タイトルだけにする（Issue #700）
               ...shiftedMarkdownHeadings,
@@ -74,7 +71,7 @@ export function ArticleQaAnswer({
             }}
           >
             {answer}
-          </ReactMarkdown>
+          </LazyMarkdown>
         </div>
       )}
 

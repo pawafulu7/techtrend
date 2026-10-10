@@ -55,7 +55,8 @@ export function AgentAnswerPanel({
         clone.querySelectorAll('[data-copy-exclude]').forEach((el) => {
           el.remove();
         });
-        copyText = (clone.textContent ?? displayText).trim();
+        // Markdown の表示は遅延読み込みなので、描き終わる前は元のテキストを使う（Issue #718）
+        copyText = clone.textContent?.trim() || displayText;
       }
 
       // Add sources (links to original articles)

@@ -7,6 +7,7 @@ import { AgentSampleQueries } from './agent-sample-queries';
 import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { AgentAnswerPanel } from './agent-answer-panel';
 import { AgentErrorDisplay } from './agent-error-display';
+import { preloadMarkdown } from '@/app/components/common/lazy-markdown';
 
 import {
   AgentRelatedQuestions,
@@ -52,6 +53,7 @@ export function AgentSearchClient() {
   const resultRef = useRef<HTMLDivElement>(null);
 
   const handleSearch = async (query: string) => {
+    preloadMarkdown();
     setLastQuery(query);
     setShowResult(false);
     reset();
