@@ -5,7 +5,7 @@ import type { Data } from 'unist';
 import type { Properties } from 'hast';
 
 const ARTICLE_ID_PATTERN = /\[#([a-zA-Z0-9_-]+)\]/;
-const ARTICLE_ID_PATTERN_GLOBAL = /\[#([a-zA-Z0-9_-]+)\]/g;
+export const ARTICLE_ID_PATTERN_GLOBAL = /\[#([a-zA-Z0-9_-]+)\]/g;
 
 type ListItemData = Data & {
   hProperties?: Properties;
@@ -23,7 +23,10 @@ const remarkExtractArticleId: Plugin<[], Root> = () => (tree) => {
 
       articleId ??= match[1];
 
-      const cleanedValue = textNode.value.replace(ARTICLE_ID_PATTERN_GLOBAL, '');
+      const cleanedValue = textNode.value.replace(
+        ARTICLE_ID_PATTERN_GLOBAL,
+        ''
+      );
       textNode.value = cleanedValue.replace(/^\s+/, '');
     });
 
@@ -31,7 +34,8 @@ const remarkExtractArticleId: Plugin<[], Root> = () => (tree) => {
       return;
     }
 
-    const data = ((listItem.data as ListItemData | undefined) ?? {}) as ListItemData;
+    const data = ((listItem.data as ListItemData | undefined) ??
+      {}) as ListItemData;
     const hProperties = (data.hProperties ??= {});
     hProperties['data-article-id'] = articleId;
     listItem.data = data;

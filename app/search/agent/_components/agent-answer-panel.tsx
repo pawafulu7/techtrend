@@ -7,6 +7,7 @@ import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
 import { AnswerContent } from './answer-content';
+import { ARTICLE_ID_PATTERN_GLOBAL } from './remark-extract-article-id';
 import { SourceReferences } from './source-references';
 
 interface AgentAnswerPanelProps {
@@ -55,8 +56,11 @@ export function AgentAnswerPanel({
         clone.querySelectorAll('[data-copy-exclude]').forEach((el) => {
           el.remove();
         });
-        // Markdown の表示は遅延読み込みなので、描き終わる前は元のテキストを使う（Issue #718）
-        copyText = clone.textContent?.trim() || displayText;
+        // Markdown の表示は遅延読み込みなので、描き終わる前は元のテキストを使う。
+        // 描いた文字は remarkExtractArticleId が記事 ID の目印を消しているので、元のテキストでも消す（Issue #718）
+        copyText = (clone.textContent?.trim() || displayText)
+          .replace(ARTICLE_ID_PATTERN_GLOBAL, '')
+          .trim();
       }
 
       // Add sources (links to original articles)

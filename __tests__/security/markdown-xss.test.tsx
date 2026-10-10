@@ -1,9 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-panel';
 import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
 
-// Markdown の表示は遅延読み込み（Issue #718）。描き終わる前は本文が無く、
-// 「含まない」の確認が素通りするので、安全な文字列が出るのを待ってから確かめる
+// Markdown の表示は遅延読み込み（Issue #718）。描き終わる前は本文を書式なしの文字で出すので、
+// 「含まない」の確認はそのままでは素通りする。Markdown が描いた要素が出るのを待ってから確かめる
 describe('Markdown XSS Prevention', () => {
   test('blocks javascript: protocol links', async () => {
     const result: AgentSearchResult = {
@@ -18,7 +18,7 @@ describe('Markdown XSS Prevention', () => {
     const { container } = render(
       <AgentAnswerPanel result={result}/>
     );
-    await screen.findByText(/and safe text/);
+    await waitFor(() => expect(container.querySelector('a')).not.toBeNull());
     expect(container.textContent).toContain('safe text');
     expect(container.textContent).not.toContain('javascript:');
   });
@@ -36,7 +36,7 @@ describe('Markdown XSS Prevention', () => {
     const { container } = render(
       <AgentAnswerPanel result={result}/>
     );
-    await screen.findByText(/and safe text/);
+    await screen.findByRole('img', { name: 'img' });
     expect(container.textContent).toContain('safe text');
     expect(container.textContent).not.toContain('data:');
     expect(container.textContent).not.toContain('script');

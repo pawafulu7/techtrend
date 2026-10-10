@@ -1,31 +1,30 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Building2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { CompanySource } from '@/lib/providers/company-source';
 import { DEVELOPERSIO_SOURCE_IDS } from '@/lib/constants/source-categories';
+import {
+  createLazyComponent,
+  LazyLoadFailed,
+} from '@/app/components/common/lazy-component';
 
 // cmdk（企業名の検索リスト）は欄を開いたときだけ要るので、初回表示の JS に含めない（Issue #718）。
-// 読み込み中は検索リストと同じ高さの枠を出し、欄の高さが変わらないようにする
-const CompanyFilterList = dynamic(
-  () =>
+// 見出しに触れた時点で読み始め、読み込み中と読み込めなかったときは検索リストと同じ高さの枠を出す
+const { Component: CompanyFilterList, preload: preloadCompanyFilterList } =
+  createLazyComponent(() =>
     import('./company-filter-list').then((mod) => ({
       default: mod.CompanyFilterList,
-    })),
-  {
-    loading: () => (
-      <div
-        className="h-[223px] rounded-md border bg-(--tt-color-surface-muted) motion-safe:animate-pulse"
-        aria-hidden="true"
-        data-testid="company-filter-list-placeholder"
-      />
-    ),
-  }
-);
+    }))
+  );
+const LIST_FRAME_CLASS =
+  'h-[223px] rounded-md border bg-(--tt-color-surface-muted)';
 
-const CompanySelectionDialog = dynamic(() =>
+const {
+  Component: CompanySelectionDialog,
+  preload: preloadCompanySelectionDialog,
+} = createLazyComponent(() =>
   import('./company-selection-dialog').then((mod) => ({
     default: mod.CompanySelectionDialog,
   }))
@@ -61,8 +60,9 @@ export function CompanyFilter({
   // UI-only local state
   const [internalExpanded, setInternalExpanded] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  // ダイアログは初めて開くまで描かない（描くと遅延読み込みの chunk を読むため）。閉じるアニメーションのため、一度開いたら描き続ける
-  const [dialogMounted, setDialogMounted] = useState(false);
+  // ダイアログは初めて開くまで描かない（描くと遅延読み込みの chunk を読むため）。閉じるアニメーションのため、
+  // 一度開いたら描き続ける。開くたびに key を変えて描き直し、読み込みに失敗した後も読み直す
+  const [dialogOpenCount, setDialogOpenCount] = useState(0);
 
   // Filter selectedSourceIds to only company blog sources
   // Performance: Use Set for O(n+m) instead of O(n×m) with some()
@@ -122,6 +122,8 @@ export function CompanyFilter({
         <button
           className="w-full text-left"
           onClick={toggleExpanded}
+          onPointerEnter={preloadCompanyFilterList}
+          onFocus={preloadCompanyFilterList}
           type="button"
           data-testid="company-filter-trigger"
         >
@@ -156,6 +158,20 @@ export function CompanyFilter({
               onSourceToggle={onSourceToggle}
               developersioExpanded={developersioExpanded}
               onDevelopersioExpandedChange={setDevelopersioExpanded}
+              fallback={
+                <div
+                  className={`${LIST_FRAME_CLASS} motion-safe:animate-pulse`}
+                  aria-hidden="true"
+                  data-testid="company-filter-list-placeholder"
+                />
+              }
+              errorFallback={
+                <div
+                  className={`${LIST_FRAME_CLASS} flex items-center justify-center`}
+                >
+                  <LazyLoadFailed />
+                </div>
+              }
             />
 
             {/* Footer with selection count and modal trigger */}
@@ -166,28 +182,33 @@ export function CompanyFilter({
                 size="sm"
                 className="h-auto px-0"
                 onClick={() => {
-                  setDialogMounted(true);
+                  setDialogOpenCount((count) => count + 1);
                   setDialogOpen(true);
                 }}
+                onPointerEnter={preloadCompanySelectionDialog}
+                onFocus={preloadCompanySelectionDialog}
                 data-testid="company-filter-manage-all"
               >
                 すべて管理...
               </Button>
             </div>
+
+            {/* Company selection dialog */}
+            {dialogOpenCount > 0 && (
+              <CompanySelectionDialog
+                key={dialogOpenCount}
+                open={dialogOpen}
+                onOpenChange={setDialogOpen}
+                sources={sources}
+                selectedSources={selectedCompanySourceIds}
+                onApply={onBatchSelect}
+                fallback={null}
+                errorFallback={<LazyLoadFailed className="mt-1 px-1" />}
+              />
+            )}
           </div>
         )}
       </div>
-
-      {/* Company selection dialog */}
-      {dialogMounted && (
-        <CompanySelectionDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          sources={sources}
-          selectedSources={selectedCompanySourceIds}
-          onApply={onBatchSelect}
-        />
-      )}
     </>
   );
 }
