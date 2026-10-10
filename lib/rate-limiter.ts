@@ -165,17 +165,6 @@ export const articleQaRateLimit = createRateLimiter(
 );
 
 /**
- * Embedding Generation Rate Limiter
- * - 100 requests per hour per user
- * - Fixed window algorithm (default)
- */
-export const embeddingRateLimit = createRateLimiter(
-  100,
-  3600,
-  'ratelimit:embedding'
-);
-
-/**
  * Custom error for rate limit exceeded
  *
  * Includes limit, remaining count, and reset time for client retry logic

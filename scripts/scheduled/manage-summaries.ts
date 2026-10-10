@@ -122,6 +122,15 @@ async function main() {
       return;
     }
 
+    // DI の要約サービスはキーが無くても組み立てられ、記事ごとに失敗するだけになる。
+    // 失敗した記事は skipReason が付いて以後の対象から外れるので、設定不備は先に止める
+    // （auto-regenerate-low-quality.ts と同じ判定）
+    if (!env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY is not set');
+      process.exitCode = 1;
+      return;
+    }
+
     const manager = new SummaryManager(prisma);
     let result;
 

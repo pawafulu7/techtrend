@@ -1,10 +1,15 @@
 import React from 'react';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 
-// テスト用のThemeProviderラッパー（本番の app/layout.tsx と同じ next-themes の Provider）
+// テスト用のThemeProviderラッパー（本番の app/layout.tsx と同じ next-themes の Provider と設定）
 export const TestProviders = ({ children }: { children: React.ReactNode }) => {
   return (
-    <ThemeProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
       {children}
     </ThemeProvider>
   );

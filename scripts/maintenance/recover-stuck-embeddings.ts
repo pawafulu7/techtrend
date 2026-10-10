@@ -154,7 +154,7 @@ async function main(): Promise<void> {
     console.log(JSON.stringify(result, null, 2));
 
     // 例外のときだけ 1 にする。試行回数の上限で戻さなかったジョブや dry-run は失敗ではない
-    // （GHA の scheduler-embedding-worker から 30 分ごとに呼ぶので、1 にすると通知が止まらない）
+    // （GHA の scheduler-embedding-worker から定期的に呼ぶので、1 にすると失敗の通知が続く）
   } catch (error) {
     console.error('Error during recovery:', error);
     exitCode = 1;
@@ -165,4 +165,7 @@ async function main(): Promise<void> {
   process.exit(exitCode);
 }
 
-main();
+main().catch((error) => {
+  console.error('Unexpected error:', error);
+  process.exit(1);
+});

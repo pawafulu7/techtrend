@@ -149,9 +149,6 @@ import { ButtonV2 } from '@/components/ui-v2';
 ### .card-hover
 Card hover effect with lift and shadow transition.
 
-### .animate-stagger
-Staggered fade-in animation with delays (0.1s - 0.5s).
-
 ## Accessibility
 
 ### WCAG AA Compliance

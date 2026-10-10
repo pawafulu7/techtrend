@@ -331,6 +331,7 @@ export function FavoriteFeedContent() {
                 currentPage={page}
                 totalPages={totalPages}
                 onPageChange={setPage}
+                label="ページ送り（上）"
               />
             </div>
           )}
@@ -355,6 +356,7 @@ export function FavoriteFeedContent() {
                 currentPage={page}
                 totalPages={totalPages}
                 onPageChange={setPage}
+                label="ページ送り（下）"
               />
             </div>
           )}

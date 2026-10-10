@@ -466,6 +466,49 @@ describe('EmbeddingScheduler', () => {
       });
     });
 
+    it('should not let jobs over maxAttempts fill the batch limit (issue #710)', async () => {
+      const article2 = await prisma.article.create({
+        data: {
+          title: 'Over Max Attempts Test',
+          url: `https://example.com/over-max-${Date.now()}`,
+          sourceId: testSourceId,
+          publishedAt: new Date(),
+        },
+      });
+
+      // 古い方が試行上限に達したジョブ。limit=1 でも新しい方が戻ること
+      await prisma.embeddingJob.createMany({
+        data: [
+          {
+            articleId: testArticle.id,
+            status: 'PROCESSING',
+            attempts: 3,
+            maxAttempts: 3,
+            queuedAt: new Date(Date.now() - 120 * 60 * 1000),
+          },
+          {
+            articleId: article2.id,
+            status: 'PROCESSING',
+            attempts: 1,
+            queuedAt: new Date(Date.now() - 60 * 60 * 1000),
+          },
+        ],
+      });
+
+      const result = await scheduler.recoverStuckJobs(30, 1);
+
+      expect(result.reset).toBe(1);
+      expect(result.skipped).toBe(1);
+      expect(result.found).toBe(2);
+
+      const recovered = await prisma.embeddingJob.findUnique({
+        where: { articleId: article2.id },
+      });
+      expect(recovered?.status).toBe('PENDING');
+
+      await prisma.article.delete({ where: { id: article2.id } });
+    });
+
     it('should calculate oldestAgeMinutes correctly', async () => {
       // Create jobs at different ages
       const age90min = new Date(Date.now() - 90 * 60 * 1000);

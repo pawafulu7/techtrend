@@ -164,43 +164,48 @@ export class EmbeddingScheduler {
   }> {
     const cutoffTime = new Date(Date.now() - ageMinutes * 60 * 1000);
 
-    // Find stuck jobs (PROCESSING status older than threshold)
-    const stuckJobs = await this.db.embeddingJob.findMany({
-      where: {
-        status: 'PROCESSING',
-        queuedAt: { lt: cutoffTime },
-      },
-      orderBy: { queuedAt: 'asc' },
-      take: limit,
-      select: {
-        id: true,
-        attempts: true,
-        maxAttempts: true,
-        queuedAt: true,
-      },
-    });
+    const stuckWhere = {
+      status: 'PROCESSING' as const,
+      queuedAt: { lt: cutoffTime },
+    };
 
-    if (stuckJobs.length === 0) {
+    // 試行上限に達したジョブは戻さない。取得してから除くと、それらが古い順の
+    // limit 枠を埋め続けて戻せるジョブが選ばれなくなるので、DB 側で除いてから絞る
+    const [jobsToReset, skipped] = await Promise.all([
+      this.db.embeddingJob.findMany({
+        where: {
+          ...stuckWhere,
+          attempts: { lt: this.db.embeddingJob.fields.maxAttempts },
+        },
+        orderBy: { queuedAt: 'asc' },
+        take: limit,
+        select: { id: true, queuedAt: true },
+      }),
+      this.db.embeddingJob.count({
+        where: {
+          ...stuckWhere,
+          attempts: { gte: this.db.embeddingJob.fields.maxAttempts },
+        },
+      }),
+    ]);
+    const found = jobsToReset.length + skipped;
+
+    if (found === 0) {
       return { found: 0, reset: 0, skipped: 0 };
     }
 
-    // Calculate oldest job age
-    const oldestJob = stuckJobs[0];
-    const oldestAgeMinutes = Math.round(
-      (Date.now() - oldestJob.queuedAt.getTime()) / 60000
-    );
-
-    // Filter jobs that haven't exceeded max attempts
-    const jobsToReset = stuckJobs.filter((job) => job.attempts < job.maxAttempts);
-    const skipped = stuckJobs.length - jobsToReset.length;
-
     if (jobsToReset.length === 0) {
       logger.info(
-        { found: stuckJobs.length, skipped, oldestAgeMinutes },
+        { found, skipped },
         'All stuck jobs exceeded max attempts, skipping reset'
       );
-      return { found: stuckJobs.length, reset: 0, skipped, oldestAgeMinutes };
+      return { found, reset: 0, skipped };
     }
+
+    // Calculate oldest job age
+    const oldestAgeMinutes = Math.round(
+      (Date.now() - jobsToReset[0].queuedAt.getTime()) / 60000
+    );
 
     // Reset jobs to PENDING (do NOT reset attempts to prevent infinite loops)
     const result = await this.db.embeddingJob.updateMany({
@@ -217,7 +222,7 @@ export class EmbeddingScheduler {
 
     logger.info(
       {
-        found: stuckJobs.length,
+        found,
         reset: result.count,
         skipped,
         oldestAgeMinutes,
@@ -227,7 +232,7 @@ export class EmbeddingScheduler {
     );
 
     return {
-      found: stuckJobs.length,
+      found,
       reset: result.count,
       skipped,
       oldestAgeMinutes,

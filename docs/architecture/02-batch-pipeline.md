@@ -123,7 +123,7 @@ flowchart LR
 | `scheduler-trend-report` | `30 5 * * *` | 14:30 | `generate-trend-report.ts --type daily`（入力省略時） | `TrendReport` |
 | `scheduler-changelog` | `15 3 * * *` | 12:15 | `collect-changelog.ts` | `ChangelogProject`, `ChangelogVersion`, `ChangelogEntry` |
 | `scheduler-diff-summary` | `0 21 * * 0`（日曜） | 月曜06:00 | `generate-diff-summaries.ts --week <ISO週> --force` | `DiffSummary`（+ Redis `diff-summary*` キー削除） |
-| `scheduler-cleanup` | `0 17 * * 5`（金曜） | 土曜02:00 | `clean-tags.ts` → `cleanup-article-views.ts` | `Tag`, `_ArticleToTag`（空文字名タグの削除・タグ統合）, `TagCategoryMapping`（統合先へ移送）, `ArticleView`（90日超・1人100件超を削除） |
+| `scheduler-cleanup` | `0 17 * * 5`（金曜） | 土曜02:00 | `clean-tags.ts` | `Tag`, `_ArticleToTag`（空文字名タグの削除・タグ統合）, `TagCategoryMapping`（統合先へ移送） |
 
 全 12 本とも `workflow_dispatch`（`confirm: YES` 入力必須）で手動起動も可能。全ワークフローに `if: failure()` の Slack 通知ステップがある。
 
@@ -132,7 +132,7 @@ flowchart LR
 ## 注記
 
 - **`ArticleChunk` はスキーマ上存在するが、現行パイプラインの書き込み対象外。** `prisma/schema.prisma` にモデル定義はあるが、`lib/rag/article-embedding-pipeline.ts` が生成するのは title/summary の `ArticleEmbedding` のみで、リポジトリ全体を検索しても `ArticleChunk` への `create`/`upsert`/`INSERT` は存在しない（確認: `grep -rn "articleChunk\.\(create\|upsert\)\|INSERT INTO \"ArticleChunk\"" lib app scripts` → 0 件）。
-- **定期実行の定義は GitHub Actions だけ。** PM2 の定義（`ecosystem.config.js`・`scripts/scheduled/scheduler.ts`）は issue #710 で削除した。PM2 にしか無かった処理のうち、止まった embedding ジョブの復旧・閲覧履歴の掃除・要約の欠けた記事の補完は、それぞれ `scheduler-embedding-worker`・`scheduler-cleanup`・`scheduler-quality-auto` に移した
+- **定期実行の定義は GitHub Actions だけ。** PM2 の定義（`ecosystem.config.js`・`scripts/scheduled/scheduler.ts`）は issue #710 で削除した。PM2 は開発 DB だけを見ていたので、PM2 にしか無かった処理は本番では動いていなかった。そのうち止まった embedding ジョブの復旧と要約の欠けた記事の補完は、`scheduler-embedding-worker`・`scheduler-quality-auto` に足して本番でも動かすようにした。閲覧履歴の掃除（`ArticleView` は既読フラグを兼ねるので、行を消すと既読も消える）と Google Developers Blog・AWS の本文の後追い補完は、定期実行しない
 - `vercel.json` は `{}` で Vercel Cron の定義はない（確認済み）。`run-embedding-worker.ts` 冒頭コメントの「production は Vercel Cron 経由」という記述は実態と合っていない。
 - 数値・cron 値は 2026-08-15 時点のコードから取得。再取得コマンド:
   ```bash

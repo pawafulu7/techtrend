@@ -176,6 +176,21 @@ html.no-transitions *::after {
   animation: shimmer 2s infinite;
 }
 
+/*
+ * Tailwind の任意値クラス motion-safe:animate-[fadeInUp_...] が名前で参照する
+ * （detailed-summary-structured.tsx・answer-content.tsx。opacity-0 から表示するので、消すと中身が見えなくなる）
+ */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Reduced motion support
  *
  * 個別クラスの列挙をやめ、全体を抑制してローディング表示だけを例外にする方式。
