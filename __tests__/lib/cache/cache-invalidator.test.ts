@@ -45,6 +45,13 @@ jest.mock('@/lib/cache/popular-cache', () => ({
   },
 }));
 
+// CacheInvalidator 側（相対import）と同じ実体を指すパスでモックする
+jest.mock('../../../lib/cache/article-detail-cache', () => ({
+  articleDetailCache: {
+    invalidateAllRelated: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 // getRedisServiceをモックして実際のRedis接続を避ける
 jest.mock('@/lib/redis/factory', () => ({
   getRedisService: jest.fn(() => ({
@@ -60,6 +67,7 @@ import { CacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { CACHE_NAMESPACES, createCachePattern } from '@/lib/cache/constants';
 import { RedisCache } from '@/lib/cache/index';
 import { popularCache } from '@/lib/cache/popular-cache';
+import { articleDetailCache } from '../../../lib/cache/article-detail-cache';
 import { sourceCache } from '../../../lib/cache/source-cache';
 import { tagCache } from '@/lib/cache/tag-cache';
 import type { IRedisService } from '@/lib/redis/interfaces';
@@ -116,6 +124,14 @@ describe('CacheInvalidator', () => {
 
     // モックRedisServiceを注入してインスタンス化
     cacheInvalidator = new CacheInvalidator(mockRedisService);
+  });
+
+  describe('onArticleDeleted', () => {
+    it('他の記事の関連記事のキャッシュも捨てる（消した記事へのリンクを残さない）', async () => {
+      await cacheInvalidator.onArticleDeleted('article-1');
+
+      expect(articleDetailCache.invalidateAllRelated).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('onOffTopicUpdated', () => {

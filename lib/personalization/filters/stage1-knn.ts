@@ -20,7 +20,9 @@ import { supportsIterativeScan } from './pgvector-capabilities';
  * （20 件）の厳密解との一致は、ef=40 で平均 18.4・最低 16、ef=400 で平均 19.7・最低 19。
  * 3 か月の Stage 1（warm の中央値）は ef=40 で 27〜37ms、ef=400 で 27〜44ms。
  * title を含む全体の HNSW を削除し sort の計画を止めた後は、
- * ef=400 でも全期間・全 k で部分 HNSW の計画になる（scripts/perf/check-stage1-plan.ts で確認）
+ * ef=400 でも全期間・全 k で部分 HNSW の計画になる（scripts/perf/check-stage1-plan.ts で確認）。
+ * 記事の類似検索（関連記事・関係グラフ。lib/rag/article-knn.ts）も ITERATIVE_KNN_SETTINGS_SQL で
+ * この値を使う。変えるときは、そちらの精度と計画も確かめる
  */
 export const STAGE1_ITERATIVE_EF_SEARCH = 400;
 
@@ -82,6 +84,17 @@ const PLANNER_PINNING: readonly Stage1Setting[] = [
 ];
 
 /**
+ * iterative 経路の設定（トランザクションに閉じる）。記事の類似検索（`lib/rag/article-knn.ts`）も
+ * 同じ設定で部分 HNSW を使う
+ */
+export const ITERATIVE_KNN_SETTINGS_SQL = buildSettingsSql([
+  ['hnsw.ef_search', String(STAGE1_ITERATIVE_EF_SEARCH)],
+  ['hnsw.iterative_scan', 'relaxed_order'],
+  ['hnsw.scan_mem_multiplier', String(STAGE1_SCAN_MEM_MULTIPLIER)],
+  ...PLANNER_PINNING,
+]);
+
+/**
  * Stage 1 の設定とクエリを組み立てる（実行はしない。計画確認スクリプトも同じ組み立てを使う）
  */
 export function buildStage1Plan(params: {
@@ -106,12 +119,7 @@ export function buildStage1Plan(params: {
       mode,
       efSearch: STAGE1_ITERATIVE_EF_SEARCH,
       periodApplied: cutoffDate !== null,
-      settingsSql: buildSettingsSql([
-        ['hnsw.ef_search', String(STAGE1_ITERATIVE_EF_SEARCH)],
-        ['hnsw.iterative_scan', 'relaxed_order'],
-        ['hnsw.scan_mem_multiplier', String(STAGE1_SCAN_MEM_MULTIPLIER)],
-        ...PLANNER_PINNING,
-      ]),
+      settingsSql: ITERATIVE_KNN_SETTINGS_SQL,
       query: Prisma.sql`
         SELECT e."articleId", 1 - (e.embedding <=> ${centroid}::vector) AS sim_emb
         FROM "ArticleEmbedding" e

@@ -66,10 +66,15 @@ export async function GET(
       if (vectorSearch.isEmbeddingServiceAvailable()) {
         try {
           const startTime = Date.now();
-          const results = await vectorSearch.searchByArticleId(articleId, {
-            topK: limit,
-            similarityThreshold: 0.5,
-          });
+          const results = await articleDetailCache.getEmbeddingRelatedArticles(
+            articleId,
+            limit,
+            () =>
+              vectorSearch.searchByArticleId(articleId, {
+                topK: limit,
+                similarityThreshold: 0.5,
+              })
+          );
 
           logger.info(
             {

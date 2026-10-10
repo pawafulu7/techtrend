@@ -9,6 +9,8 @@ import {
   QueryExpansionResult,
 } from './query-expansion-service';
 import { env } from '@/lib/config/env';
+import { supportsIterativeScan } from '@/lib/personalization/filters/pgvector-capabilities';
+import { runArticleKnn } from './article-knn';
 
 /**
  * Vector Search Service
@@ -531,18 +533,31 @@ export class VectorSearchService {
       // 3. Serialize vector (same format as search())
       const vectorString = `[${embeddingArray.map((v) => v.toFixed(8)).join(',')}]`;
 
-      // 4. Execute search using shared helper
-      const results = await this.executeVectorSearch(vectorString, {
-        topK,
-        similarityThreshold,
-        embeddingKey,
-        excludeArticleId: articleId, // Exclude self from results
-      });
+      // 4. summary は部分 HNSW の kNN（pgvector 0.8 以上）。それ以外は厳密な検索（HNSW の索引が無い）
+      const useKnn =
+        embeddingKey === 'summary' &&
+        (await supportsIterativeScan(this.prisma));
+      const results = useKnn
+        ? await runArticleKnn(this.prisma, {
+            vectorString,
+            excludeArticleId: articleId,
+            model: this.activeModel,
+            version: this.activeVersion,
+            topK,
+            similarityThreshold,
+          })
+        : await this.executeVectorSearch(vectorString, {
+            topK,
+            similarityThreshold,
+            embeddingKey,
+            excludeArticleId: articleId, // Exclude self from results
+          });
 
       logger.info(
         {
           articleId,
           embeddingKey,
+          knn: useKnn,
           resultCount: results.length,
           avgSimilarity:
             results.length > 0

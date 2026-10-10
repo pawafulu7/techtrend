@@ -23,6 +23,16 @@ export interface SourceWithStats extends Source {
 
 const SOURCE_NAME_CACHE_TTL_MS = 300_000; // 5分に延長（ソース情報は頻繁に変わらない）
 
+/**
+ * 関連記事のキャッシュを消す。ソースの有効・無効が変わると、関連記事に出してよい記事が変わるため
+ * （無効なソースの記事は出さない。issue #688）。ソースを変えたら sourceCache の無効化を呼ぶ手順なので、
+ * ここで一緒に消す。記事詳細のキャッシュはこのファイルを読み込む画面の多くで使わないので、使うときに読む
+ */
+async function invalidateRelatedArticles(): Promise<void> {
+  const { articleDetailCache } = await import('./article-detail-cache');
+  await articleDetailCache.invalidateAllRelated();
+}
+
 export class SourceCache {
   private cache: RedisCache;
   private nameToId = new Map<string, string>();
@@ -330,11 +340,14 @@ export class SourceCache {
   }
 
   /**
-   * キャッシュを無効化
+   * キャッシュを無効化（関連記事のキャッシュも消す。invalidateRelatedArticles を参照）
    */
   async invalidate(): Promise<void> {
     this.clearNameCache();
-    await this.cache.invalidatePattern('*');
+    await Promise.all([
+      this.cache.invalidatePattern('*'),
+      invalidateRelatedArticles(),
+    ]);
   }
 
   /**
@@ -362,6 +375,7 @@ export class SourceCache {
         this.cache.invalidatePattern('company-sources:*'),
         // Top sources (various limits)
         this.cache.invalidatePattern('top-sources:*'),
+        invalidateRelatedArticles(),
       ]);
     } catch (_error) {
       // Fallback to full invalidation on any error

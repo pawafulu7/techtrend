@@ -17,6 +17,7 @@ jest.mock('@/lib/cache/article-detail-cache', () => ({
   articleDetailCache: {
     getArticleWithRelations: jest.fn(),
     getRelatedArticles: jest.fn(),
+    getEmbeddingRelatedArticles: jest.fn(),
   },
 }));
 
@@ -70,6 +71,10 @@ describe('GET /api/articles/[id]/related - algorithm switching', () => {
     mockedArticleCache.getRelatedArticles.mockResolvedValue([tagBasedResult]);
     mockedVectorSearch.isEmbeddingServiceAvailable.mockReturnValue(true);
     mockedVectorSearch.searchByArticleId.mockResolvedValue([]);
+    // 実物と同じく、キャッシュに無ければ渡した関数で検索する（ここではいつも外れる）
+    mockedArticleCache.getEmbeddingRelatedArticles.mockImplementation(
+      (_articleId, _limit, fetcher) => fetcher()
+    );
   });
 
   test('returns tag-based results when algorithm=tag', async () => {
@@ -153,6 +158,62 @@ describe('GET /api/articles/[id]/related - algorithm switching', () => {
     expect(body.metadata.source).toBeUndefined();
     expect(body.articles[0].id).toBe('embedding-auto');
     expect(mockedArticleCache.getRelatedArticles).not.toHaveBeenCalled();
+    expect(mockedArticleCache.getEmbeddingRelatedArticles).toHaveBeenCalledWith(
+      articleId,
+      20,
+      expect.any(Function)
+    );
+    expect(mockedVectorSearch.searchByArticleId).toHaveBeenCalledWith(articleId, {
+      topK: 20,
+      similarityThreshold: 0.5,
+    });
+  });
+
+  test('limit をキャッシュのキーと検索の件数に渡す', async () => {
+    await GET(createRequest('?limit=5'), {
+      params: Promise.resolve({ id: articleId }),
+    });
+
+    expect(mockedArticleCache.getEmbeddingRelatedArticles).toHaveBeenCalledWith(
+      articleId,
+      5,
+      expect.any(Function)
+    );
+    expect(mockedVectorSearch.searchByArticleId).toHaveBeenCalledWith(articleId, {
+      topK: 5,
+      similarityThreshold: 0.5,
+    });
+  });
+
+  test('埋め込みの関連記事が Redis にあれば、埋め込み検索をしない', async () => {
+    const cachedResults: SearchResult[] = [
+      {
+        articleId: 'embedding-cached',
+        title: 'Cached',
+        summary: 'Cached summary',
+        translatedTitle: null,
+        similarity: 0.8,
+        publishedAt: new Date('2025-01-06T00:00:00Z'),
+        sourceId: 'source-4',
+        sourceName: 'Cached Source',
+        embeddingKey: 'summary',
+        qualityScore: 70,
+        tags: [{ id: 'tag-react', name: 'React' }],
+        thumbnail: null,
+      },
+    ];
+    mockedArticleCache.getEmbeddingRelatedArticles.mockResolvedValueOnce(cachedResults);
+
+    const response = await GET(createRequest(), {
+      params: Promise.resolve({ id: articleId }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.metadata.algorithm).toBe('embedding');
+    expect(body.articles[0].id).toBe('embedding-cached');
+    expect(body.articles[0].commonTags).toBe(1);
+    expect(mockedVectorSearch.searchByArticleId).not.toHaveBeenCalled();
   });
 
   test('falls back to tag-based results when algorithm=auto and embedding fails', async () => {

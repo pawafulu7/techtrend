@@ -1,5 +1,5 @@
 /**
- * pgvector の機能の対応状況（Stage 1 の kNN で iterative scan を使えるか）
+ * pgvector の機能の対応状況（Stage 1 と記事の類似検索（lib/rag/article-knn.ts）の kNN で iterative scan を使えるか）
  *
  * `hnsw.iterative_scan` は pgvector 0.8.0 から。対応状況は SET の成否ではなく
  * `pg_extension.extversion` で判定する。新しい接続で pgvector のライブラリが読み込まれる前は、
@@ -52,7 +52,9 @@ async function detectIterativeScanSupport(db: PrismaClient): Promise<boolean> {
   `;
   const row = rows[0];
   if (!row) {
-    logger.warn('pgvector extension not found; Stage 1 uses the legacy kNN');
+    logger.warn(
+      'pgvector extension not found; kNN callers fall back (Stage 1: legacy kNN, related articles: exact search)'
+    );
     return false;
   }
 
@@ -89,7 +91,7 @@ export function supportsIterativeScan(db: PrismaClient): Promise<boolean> {
     (err: unknown) => {
       logger.warn(
         { err: err instanceof Error ? err.message : String(err) },
-        'pgvector capability detection failed; Stage 1 uses the legacy kNN for this call'
+        'pgvector capability detection failed; kNN callers fall back for this call (Stage 1: legacy kNN, related articles: exact search)'
       );
       if (cachedSupport === detection) cachedSupport = null;
       return false;

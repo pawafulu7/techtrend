@@ -1,5 +1,6 @@
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { PrismaClient } from '@/lib/prisma-exports';
+import { env } from '@/lib/config/env';
 import {
   ENABLED_SOURCE_SQL,
   sqlFragmentsOf,
@@ -15,6 +16,12 @@ jest.mock('@/lib/logger', () => ({
     debug: jest.fn(),
   },
   sanitizeError: jest.fn((err) => err),
+}));
+// pgvector の版の判定はプロセス内で保持されるので、テストごとに返す値を決める
+const mockSupportsIterativeScan = jest.fn().mockResolvedValue(false);
+jest.mock('@/lib/personalization/filters/pgvector-capabilities', () => ({
+  supportsIterativeScan: (...args: unknown[]) =>
+    mockSupportsIterativeScan(...args),
 }));
 
 const toNumber = (value: unknown): number | undefined => {
@@ -132,6 +139,8 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
+    // 使われなかった mockResolvedValueOnce を次のテストに持ち越さない
+    mockSupportsIterativeScan.mockReset().mockResolvedValue(false);
     // 前のテストで取り込んだ SQL を読まないようにする
     capturedSQL = undefined;
 
@@ -376,6 +385,102 @@ describe('VectorSearchService - Dynamic Threshold Integration', () => {
 
       expect(results).toEqual([]);
       expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+    });
+
+    describe('部分 HNSW の kNN（関連記事が summary の埋め込みを全件読まないように）', () => {
+      const mockEmbedding = '[' + Array(1536).fill(0.1).join(',') + ']';
+
+      function mockTransaction(rows: unknown[]) {
+        const tx = {
+          $executeRawUnsafe: jest.fn().mockResolvedValue(1),
+          $queryRaw: jest.fn().mockResolvedValue(rows),
+        };
+        (mockPrisma as any).$transaction = jest.fn(
+          (fn: (t: typeof tx) => Promise<unknown>) => fn(tx)
+        );
+        return tx;
+      }
+
+      it('summary は pgvector 0.8 以上なら kNN を使い、厳密な検索のクエリを流さない', async () => {
+        mockSupportsIterativeScan.mockResolvedValueOnce(true);
+        mockPrisma.$queryRaw.mockResolvedValueOnce([
+          { embedding: mockEmbedding },
+        ]);
+        const tx = mockTransaction([
+          {
+            articleId: 'article-2',
+            title: 'Related Article',
+            summary: 'Summary',
+            translatedTitle: null,
+            similarity: 0.75,
+            publishedAt: '2023-01-01T00:00:00.000Z',
+            sourceId: 'source-1',
+            embeddingKey: 'summary',
+            qualityScore: 80,
+            sourceName: 'Test Source',
+            tags: [{ id: 'tag-1', name: 'React' }],
+            thumbnail: null,
+          },
+        ]);
+
+        const results = await service.searchByArticleId('article-1', {
+          topK: 10,
+          similarityThreshold: 0.5,
+        });
+
+        expect(results).toHaveLength(1);
+        expect(results[0].articleId).toBe('article-2');
+        expect(results[0].publishedAt).toEqual(
+          new Date('2023-01-01T00:00:00.000Z')
+        );
+        // 埋め込みを引く 1 回だけ。類似検索は tx の側で流れる
+        expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+        const knnQuery = tx.$queryRaw.mock.calls[0][0] as {
+          sql: string;
+          values: unknown[];
+        };
+        expect(knnQuery.sql).toMatch(/e\.embedding <=> \?::vector AS distance/);
+        expect(knnQuery.sql).toMatch(/ORDER BY distance/);
+        expect(knnQuery.values).toEqual(
+          expect.arrayContaining([
+            'article-1',
+            10,
+            0.5,
+            env.RAG_ACTIVE_MODEL,
+            env.RAG_ACTIVE_VERSION,
+          ])
+        );
+      });
+
+      it('pgvector 0.8 未満なら厳密な検索を使う', async () => {
+        mockSupportsIterativeScan.mockResolvedValueOnce(false);
+        mockPrisma.$queryRaw.mockResolvedValueOnce([
+          { embedding: mockEmbedding },
+        ]);
+        const tx = mockTransaction([]);
+
+        await service.searchByArticleId('article-1', { topK: 10 });
+
+        expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(2);
+        expect(tx.$queryRaw).not.toHaveBeenCalled();
+      });
+
+      it('title は HNSW の索引が無いので、版によらず厳密な検索を使う', async () => {
+        mockSupportsIterativeScan.mockResolvedValue(true);
+        mockPrisma.$queryRaw.mockResolvedValueOnce([
+          { embedding: mockEmbedding },
+        ]);
+        const tx = mockTransaction([]);
+
+        await service.searchByArticleId('article-1', {
+          embeddingKey: 'title',
+          topK: 10,
+        });
+
+        expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(2);
+        expect(tx.$queryRaw).not.toHaveBeenCalled();
+      });
     });
   });
 });
