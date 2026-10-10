@@ -259,6 +259,8 @@ const envSchema = z
     PRISMA_QUERY_LOG: booleanEnum.optional(),
     DB_CONNECTION_LIMIT: safeCoerceInt(20),
     DB_POOL_TIMEOUT: safeCoerceInt(10),
+    // 使っていない接続を閉じるまでの秒数（lib/database-config.ts の getPoolConfig を参照）
+    DB_IDLE_TIMEOUT: safeCoerceInt(60),
     DB_STATEMENT_CACHE_SIZE: z.preprocess((v) => {
       if (v === undefined || v === null) return undefined;
       const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
