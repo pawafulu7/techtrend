@@ -25,6 +25,8 @@ interface LazyProps {
  * - React.lazy は読み込みの失敗を覚えていて、開き直しても読み直さない
  * - loading を渡さない next/dynamic は Suspense 境界を作らず、待ちと失敗が app/loading.tsx・
  *   app/error.tsx まで伝わって画面全体が置き換わる
+ *
+ * 返す Component の fallback / errorFallback は予約した prop 名で、包む部品には渡さない
  */
 export function createLazyComponent<C extends (props: never) => ReactNode>(
   loader: () => Promise<{ default: C }>
@@ -54,6 +56,7 @@ export function createLazyComponent<C extends (props: never) => ReactNode>(
         return loaded;
       },
       (error: unknown) => {
+        console.error('Failed to load a lazy component:', error);
         loading = null; // 次に描くときに読み直す
         throw error;
       }
@@ -97,14 +100,17 @@ export function createLazyComponent<C extends (props: never) => ReactNode>(
   };
 }
 
-/** 読み込めなかったときの案内。閉じて開き直すと読み直す */
+/**
+ * 読み込めなかったときの案内。閉じて開き直すと読み直す。
+ * デプロイの後に古い chunk が無くなったときは、ページの再読み込みが要る
+ */
 export function LazyLoadFailed({ className }: { className?: string }) {
   return (
     <p
       role="alert"
       className={cn('text-xs text-(--tt-color-text-muted)', className)}
     >
-      読み込めませんでした。もう一度開いてください
+      読み込めませんでした。もう一度開くか、ページを再読み込みしてください
     </p>
   );
 }

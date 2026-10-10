@@ -5,6 +5,7 @@ import type { CompanySource } from '@/lib/providers/company-source';
 
 // 一覧ダイアログの chunk が届かない状態を再現する（Issue #718）。
 // モジュールを thenable にして、テストから好きな時点で解決できるようにする
+// （SWC が import() を Promise.resolve().then(() => require(...)) に変えることに乗っている）
 let mockResolveDialogModule: ((mod: unknown) => void) | null = null;
 jest.mock('@/app/components/source-filters/company-selection-dialog', () => ({
   __esModule: true,

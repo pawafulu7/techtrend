@@ -4,6 +4,7 @@ import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
 
 // Markdown の chunk が届かない状態を再現する（Issue #718）。
 // モジュールを「解決しない thenable」にすると、import() がそれを待ち続ける
+// （SWC が import() を Promise.resolve().then(() => require(...)) に変えることに乗っている）
 jest.mock('@/app/components/common/markdown-renderer', () => ({
   __esModule: true,
   then: () => {},
