@@ -1,8 +1,8 @@
 /**
- * 記事の kNN（lib/rag/article-knn.ts）をテスト DB で確かめる。
+ * 記事の kNN（lib/rag/article-knn.ts と DB 関数 related_articles_knn）をテスト DB で確かめる。
  *
- * article-knn.test.ts は SQL の形と実行の順だけを見る（Prisma はモック）。列の対応・結合・
- * 条件・閾値が実際に正しいことは、ここで部分 HNSW のある実 DB に対して確かめる。
+ * article-knn.test.ts は関数の呼び方だけを見る（Prisma はモック）。列の対応・結合・条件・閾値が
+ * 実際に正しいことは、ここでマイグレーションを適用した実 DB（部分 HNSW あり）に対して確かめる。
  * 埋め込みのモデル名を実行ごとに一意にするので、ほかのテストの埋め込みは条件で落ち、干渉しない。
  */
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
@@ -42,7 +42,6 @@ describeIf('article-knn（テスト DB）', () => {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const model = `knn-test-${suffix}`;
   const version = 1;
-  const queryVector = vectorWithSimilarity(1);
   // beforeAll が途中で失敗しても、作れた行だけを afterAll で消すために記録する
   const createdSourceIds: string[] = [];
   const createdTagIds: string[] = [];
@@ -161,13 +160,41 @@ describeIf('article-knn（テスト DB）', () => {
 
   const search = (topK: number, similarityThreshold = 0.5) =>
     runArticleKnn(prisma, {
-      vectorString: queryVector,
-      excludeArticleId: ids.self,
+      articleId: ids.self,
       model,
       version,
       topK,
       similarityThreshold,
     });
+
+  it('関数に計画の固定・JIT の停止・HNSW の設定が付いている（外すと全件走査や JIT に戻る）', async () => {
+    const [fn] = await prisma.$queryRaw<{ proconfig: string[] }[]>`
+      SELECT proconfig FROM pg_proc WHERE proname = 'related_articles_knn'
+    `;
+
+    expect(fn?.proconfig).toEqual(
+      expect.arrayContaining([
+        'enable_seqscan=off',
+        'enable_bitmapscan=off',
+        'enable_sort=off',
+        'jit=off',
+        'hnsw.ef_search=100',
+        'hnsw.iterative_scan=relaxed_order',
+      ])
+    );
+  });
+
+  it('基準の記事に埋め込みが無ければ空の配列', async () => {
+    const results = await runArticleKnn(prisma, {
+      articleId: `no-such-article-${suffix}`,
+      model,
+      version,
+      topK: 20,
+      similarityThreshold: 0.5,
+    });
+
+    expect(results).toEqual([]);
+  });
 
   it('自分自身・非表示・無効なソース・別のモデル・閾値未満を除き、類似度の高い順に返す', async () => {
     const results = await search(20);
