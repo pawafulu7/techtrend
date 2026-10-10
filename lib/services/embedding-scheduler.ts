@@ -1,6 +1,30 @@
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import type { EmbeddingJob, Article, PrismaClient } from '@/lib/prisma-exports';
+import type {
+  EmbeddingJob,
+  Article,
+  PrismaClient,
+  Prisma,
+} from '@/lib/prisma-exports';
+
+/**
+ * 止まったジョブ（PROCESSING のまま cutoffTime より前に投入されたもの）の条件。
+ * recoverable は試行上限に達していないもの、overMaxAttempts は達したもの。
+ * 復旧の取得・件数・更新と、scripts/maintenance/recover-stuck-embeddings.ts の表示で同じ条件を使う
+ */
+export function stuckJobWhere(
+  db: PrismaClient,
+  cutoffTime: Date,
+  kind: 'recoverable' | 'overMaxAttempts'
+): Prisma.EmbeddingJobWhereInput {
+  const maxAttempts = db.embeddingJob.fields.maxAttempts;
+  return {
+    status: 'PROCESSING',
+    queuedAt: { lt: cutoffTime },
+    attempts:
+      kind === 'recoverable' ? { lt: maxAttempts } : { gte: maxAttempts },
+  };
+}
 
 type EmbeddingJobWithArticle = EmbeddingJob & {
   article: Pick<Article, 'id' | 'title' | 'summary'>;
@@ -60,7 +84,9 @@ export class EmbeddingScheduler {
    * Get pending jobs for worker processing.
    * Newest articles first (better user experience).
    */
-  async getPendingJobs(limit: number = 500): Promise<EmbeddingJobWithArticle[]> {
+  async getPendingJobs(
+    limit: number = 500
+  ): Promise<EmbeddingJobWithArticle[]> {
     return this.db.embeddingJob.findMany({
       where: {
         status: 'PENDING',
@@ -139,19 +165,21 @@ export class EmbeddingScheduler {
     return { pending, processing, completed, failed, total };
   }
 
-
   /**
    * Recover stuck jobs (PROCESSING for too long).
    * Resets stuck jobs to PENDING status so they can be retried.
-   * 
+   *
    * Safety measures:
-   * - Only resets jobs that haven't exceeded maxAttempts
+   * - Only resets jobs that haven't exceeded maxAttempts (the rest are marked FAILED)
    * - Does NOT reset attempts counter (prevents infinite retry loops)
    * - Batch limit prevents DB overload
-   * 
+   *
    * @param ageMinutes Jobs older than this are considered stuck (default: 30)
    * @param limit Maximum jobs to reset per run (default: 100)
    * @returns Recovery statistics
+   * - found: 戻す対象（limit まで）と、試行上限に達したジョブ（全件）の合計
+   * - skipped: 試行上限に達していたので戻さず、FAILED にしたジョブの数
+   * - oldestAgeMinutes: 戻す対象のうち最も古いものの経過分。戻す対象が無ければ undefined
    */
   async recoverStuckJobs(
     ageMinutes: number = 30,
@@ -164,30 +192,28 @@ export class EmbeddingScheduler {
   }> {
     const cutoffTime = new Date(Date.now() - ageMinutes * 60 * 1000);
 
-    const stuckWhere = {
-      status: 'PROCESSING' as const,
-      queuedAt: { lt: cutoffTime },
-    };
+    const recoverableWhere = stuckJobWhere(this.db, cutoffTime, 'recoverable');
 
     // 試行上限に達したジョブは戻さない。取得してから除くと、それらが古い順の
-    // limit 枠を埋め続けて戻せるジョブが選ばれなくなるので、DB 側で除いてから絞る
-    const [jobsToReset, skipped] = await Promise.all([
+    // limit 枠を埋め続けて戻せるジョブが選ばれなくなるので、DB 側で除いてから絞る。
+    // 上限に達したまま止まったジョブは、ワーカー（PENDING かつ attempts < maxAttempts だけを拾う）も
+    // この復旧も拾わず PROCESSING のまま残るので、FAILED にして終わらせる（job-processor の最後の失敗と同じ扱い）
+    const [jobsToReset, failed] = await Promise.all([
       this.db.embeddingJob.findMany({
-        where: {
-          ...stuckWhere,
-          attempts: { lt: this.db.embeddingJob.fields.maxAttempts },
-        },
+        where: recoverableWhere,
         orderBy: { queuedAt: 'asc' },
         take: limit,
         select: { id: true, queuedAt: true },
       }),
-      this.db.embeddingJob.count({
-        where: {
-          ...stuckWhere,
-          attempts: { gte: this.db.embeddingJob.fields.maxAttempts },
+      this.db.embeddingJob.updateMany({
+        where: stuckJobWhere(this.db, cutoffTime, 'overMaxAttempts'),
+        data: {
+          status: 'FAILED',
+          error: 'Stuck in PROCESSING after max attempts',
         },
       }),
     ]);
+    const skipped = failed.count;
     const found = jobsToReset.length + skipped;
 
     if (found === 0) {
@@ -197,7 +223,7 @@ export class EmbeddingScheduler {
     if (jobsToReset.length === 0) {
       logger.info(
         { found, skipped },
-        'All stuck jobs exceeded max attempts, skipping reset'
+        'All stuck jobs exceeded max attempts, marked as FAILED'
       );
       return { found, reset: 0, skipped };
     }
@@ -211,7 +237,8 @@ export class EmbeddingScheduler {
     const result = await this.db.embeddingJob.updateMany({
       where: {
         id: { in: jobsToReset.map((j) => j.id) },
-        status: 'PROCESSING', // Safety check: still PROCESSING
+        // 取得から更新までの間に別のワーカーが取り直したジョブ（queuedAt・attempts が変わる）は戻さない
+        ...recoverableWhere,
       },
       data: {
         status: 'PENDING',

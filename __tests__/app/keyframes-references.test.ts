@@ -9,8 +9,9 @@ import path from 'path';
  * （詳細要約・AI 検索の回答で起きた）。CSS 側の未使用チェックはクラス名しか見ないので、ここで名前を突き合わせる。
  */
 
-const ROOT = process.cwd();
-const SOURCE_DIRS = ['app', 'components', 'lib'];
+// jest を別の作業ディレクトリから起動しても読む場所がずれないよう、このファイルの位置から決める
+const ROOT = path.resolve(__dirname, '../..');
+const SOURCE_DIRS = ['app', 'components', 'lib', 'hooks'];
 const CSS_FILES = ['app/globals.css', 'app/generated-tokens.css'];
 // Tailwind が既定で持つキーフレーム
 const TAILWIND_KEYFRAMES = new Set(['spin', 'ping', 'pulse', 'bounce']);

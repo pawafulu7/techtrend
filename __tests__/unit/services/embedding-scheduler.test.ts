@@ -387,7 +387,7 @@ describe('EmbeddingScheduler', () => {
       expect(job?.status).toBe('PROCESSING');
     });
 
-    it('should skip jobs that exceeded maxAttempts', async () => {
+    it('should mark jobs that exceeded maxAttempts as FAILED (issue #710)', async () => {
       // Create a stuck job with attempts >= maxAttempts (default 3)
       const oldQueuedAt = new Date(Date.now() - 60 * 60 * 1000);
 
@@ -407,11 +407,11 @@ describe('EmbeddingScheduler', () => {
       expect(result.reset).toBe(0);
       expect(result.skipped).toBe(1);
 
-      // Verify job is still PROCESSING (not reset)
+      // ワーカーも復旧も拾わないので、PROCESSING のまま残さず FAILED にする
       const job = await prisma.embeddingJob.findUnique({
         where: { articleId: testArticle.id },
       });
-      expect(job?.status).toBe('PROCESSING');
+      expect(job?.status).toBe('FAILED');
     });
 
     it('should respect batch limit', async () => {
@@ -476,37 +476,44 @@ describe('EmbeddingScheduler', () => {
         },
       });
 
-      // 古い方が試行上限に達したジョブ。limit=1 でも新しい方が戻ること
-      await prisma.embeddingJob.createMany({
-        data: [
-          {
-            articleId: testArticle.id,
-            status: 'PROCESSING',
-            attempts: 3,
-            maxAttempts: 3,
-            queuedAt: new Date(Date.now() - 120 * 60 * 1000),
-          },
-          {
-            articleId: article2.id,
-            status: 'PROCESSING',
-            attempts: 1,
-            queuedAt: new Date(Date.now() - 60 * 60 * 1000),
-          },
-        ],
-      });
+      try {
+        // 古い方が試行上限に達したジョブ。limit=1 でも新しい方が戻ること
+        await prisma.embeddingJob.createMany({
+          data: [
+            {
+              articleId: testArticle.id,
+              status: 'PROCESSING',
+              attempts: 3,
+              maxAttempts: 3,
+              queuedAt: new Date(Date.now() - 120 * 60 * 1000),
+            },
+            {
+              articleId: article2.id,
+              status: 'PROCESSING',
+              attempts: 1,
+              queuedAt: new Date(Date.now() - 60 * 60 * 1000),
+            },
+          ],
+        });
 
-      const result = await scheduler.recoverStuckJobs(30, 1);
+        const result = await scheduler.recoverStuckJobs(30, 1);
 
-      expect(result.reset).toBe(1);
-      expect(result.skipped).toBe(1);
-      expect(result.found).toBe(2);
+        expect(result.reset).toBe(1);
+        expect(result.skipped).toBe(1);
+        expect(result.found).toBe(2);
 
-      const recovered = await prisma.embeddingJob.findUnique({
-        where: { articleId: article2.id },
-      });
-      expect(recovered?.status).toBe('PENDING');
+        const recovered = await prisma.embeddingJob.findUnique({
+          where: { articleId: article2.id },
+        });
+        expect(recovered?.status).toBe('PENDING');
 
-      await prisma.article.delete({ where: { id: article2.id } });
+        const overMax = await prisma.embeddingJob.findUnique({
+          where: { articleId: testArticle.id },
+        });
+        expect(overMax?.status).toBe('FAILED');
+      } finally {
+        await prisma.article.delete({ where: { id: article2.id } });
+      }
     });
 
     it('should calculate oldestAgeMinutes correctly', async () => {
@@ -523,21 +530,22 @@ describe('EmbeddingScheduler', () => {
         },
       });
 
-      await prisma.embeddingJob.createMany({
-        data: [
-          { articleId: testArticle.id, status: 'PROCESSING', queuedAt: age90min, attempts: 1 },
-          { articleId: article2.id, status: 'PROCESSING', queuedAt: age45min, attempts: 1 },
-        ],
-      });
+      try {
+        await prisma.embeddingJob.createMany({
+          data: [
+            { articleId: testArticle.id, status: 'PROCESSING', queuedAt: age90min, attempts: 1 },
+            { articleId: article2.id, status: 'PROCESSING', queuedAt: age45min, attempts: 1 },
+          ],
+        });
 
-      const result = await scheduler.recoverStuckJobs(30, 100);
+        const result = await scheduler.recoverStuckJobs(30, 100);
 
-      // Oldest should be ~90 minutes (allow some margin)
-      expect(result.oldestAgeMinutes).toBeGreaterThanOrEqual(89);
-      expect(result.oldestAgeMinutes).toBeLessThanOrEqual(91);
-
-      // Cleanup
-      await prisma.article.delete({ where: { id: article2.id } });
+        // Oldest should be ~90 minutes (allow some margin)
+        expect(result.oldestAgeMinutes).toBeGreaterThanOrEqual(89);
+        expect(result.oldestAgeMinutes).toBeLessThanOrEqual(91);
+      } finally {
+        await prisma.article.delete({ where: { id: article2.id } });
+      }
     });
 
     it('should not reset PENDING or COMPLETED jobs', async () => {
@@ -553,20 +561,21 @@ describe('EmbeddingScheduler', () => {
         },
       });
 
-      await prisma.embeddingJob.createMany({
-        data: [
-          { articleId: testArticle.id, status: 'PENDING', queuedAt: oldQueuedAt },
-          { articleId: article2.id, status: 'COMPLETED', queuedAt: oldQueuedAt },
-        ],
-      });
+      try {
+        await prisma.embeddingJob.createMany({
+          data: [
+            { articleId: testArticle.id, status: 'PENDING', queuedAt: oldQueuedAt },
+            { articleId: article2.id, status: 'COMPLETED', queuedAt: oldQueuedAt },
+          ],
+        });
 
-      const result = await scheduler.recoverStuckJobs(30, 100);
+        const result = await scheduler.recoverStuckJobs(30, 100);
 
-      expect(result.found).toBe(0);
-      expect(result.reset).toBe(0);
-
-      // Cleanup
-      await prisma.article.delete({ where: { id: article2.id } });
+        expect(result.found).toBe(0);
+        expect(result.reset).toBe(0);
+      } finally {
+        await prisma.article.delete({ where: { id: article2.id } });
+      }
     });
   });
 });

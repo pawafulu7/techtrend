@@ -160,7 +160,9 @@ export class JobProcessor {
       }
     } catch (error) {
       // Handle unexpected errors
-      const shouldRetry = job.attempts < job.maxAttempts;
+      // job は取得（attempts を 1 増やす）より前の値なので、上の失敗時と同じく +1 で比べる。
+      // +1 しないと最後の試行の例外で attempts が上限のまま PENDING に戻り、ワーカーが二度と拾わない
+      const shouldRetry = job.attempts + 1 < job.maxAttempts;
 
       try {
         const sanitized = sanitizeError(error);

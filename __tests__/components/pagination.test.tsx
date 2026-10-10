@@ -47,6 +47,40 @@ describe('Pagination', () => {
     ellipses.forEach((e) => expect(e).toHaveAttribute('aria-hidden', 'true'));
   });
 
+  // 狭い画面では先頭・現在・末尾以外の番号を隠し、隠した所にだけ省略記号を足す
+  // （jsdom は CSS を当てないので、クラスで確かめる）
+  function describeItems(currentPage: number, totalPages: number) {
+    render(
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={jest.fn()}
+      />
+    );
+    const list = screen.getByRole('navigation').querySelector('div')!;
+    return Array.from(list.children).map((item) => {
+      const text = item.textContent ?? '';
+      if (item.classList.contains('max-sm:hidden')) return `${text}(wide)`;
+      if (item.classList.contains('sm:hidden')) return `${text}(narrow)`;
+      return text;
+    });
+  }
+
+  it.each([
+    [1, ['1', '2(wide)', '...', '845']],
+    [3, ['1', '...(narrow)', '2(wide)', '3', '4(wide)', '...', '845']],
+    [4, ['1', '...', '3(wide)', '4', '5(wide)', '...', '845']],
+    [500, ['1', '...', '499(wide)', '500', '501(wide)', '...', '845']],
+    [843, ['1', '...', '842(wide)', '843', '844(wide)', '...(narrow)', '845']],
+    [845, ['1', '...', '844(wide)', '845']],
+  ])('現在 %i/845 ページの並び', (currentPage, expected) => {
+    expect(describeItems(currentPage, 845)).toEqual(expected);
+  });
+
+  it('全部出せるページ数なら狭い画面でも隠さない', () => {
+    expect(describeItems(3, 5)).toEqual(['1', '2', '3', '4', '5']);
+  });
+
   it('現在のページだけに aria-current="page" を付ける', () => {
     render(
       <Pagination currentPage={2} totalPages={3} onPageChange={jest.fn()} />
@@ -74,6 +108,12 @@ describe('Pagination', () => {
       <Pagination currentPage={3} totalPages={3} onPageChange={jest.fn()} />
     );
     expect(screen.getByRole('button', { name: '前へ' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '次へ' })).toBeDisabled();
+
+    // 総ページが減って現在のページが範囲外になっても、先へは進めない
+    rerender(
+      <Pagination currentPage={5} totalPages={3} onPageChange={jest.fn()} />
+    );
     expect(screen.getByRole('button', { name: '次へ' })).toBeDisabled();
   });
 
