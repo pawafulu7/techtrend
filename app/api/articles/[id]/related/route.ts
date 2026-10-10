@@ -7,6 +7,7 @@ import {
 } from '@/lib/rag/vector-search-service';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
+import { env } from '@/lib/config/env';
 
 const relatedArticlesQuerySchema = z.object({
   algorithm: z.enum(['tag', 'embedding', 'auto']).default('auto'),
@@ -69,6 +70,8 @@ export async function GET(
           const results = await articleDetailCache.getEmbeddingRelatedArticles(
             articleId,
             limit,
+            // VectorSearchService が検索に使うモデル・版（同じ env から読む）
+            { model: env.RAG_ACTIVE_MODEL, version: env.RAG_ACTIVE_VERSION },
             () =>
               vectorSearch.searchByArticleId(articleId, {
                 topK: limit,

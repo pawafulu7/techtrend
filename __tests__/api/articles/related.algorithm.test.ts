@@ -25,6 +25,7 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/articles/[id]/related/route';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 import type { SearchResult } from '@/lib/rag/vector-search-service';
+import { env } from '@/lib/config/env';
 
 type ArticleCacheMock = jest.Mocked<typeof articleDetailCache>;
 type VectorSearchMock = typeof vectorSearchServiceMock;
@@ -73,7 +74,7 @@ describe('GET /api/articles/[id]/related - algorithm switching', () => {
     mockedVectorSearch.searchByArticleId.mockResolvedValue([]);
     // 実物と同じく、キャッシュに無ければ渡した関数で検索する（ここではいつも外れる）
     mockedArticleCache.getEmbeddingRelatedArticles.mockImplementation(
-      (_articleId, _limit, fetcher) => fetcher()
+      (_articleId, _limit, _embedding, fetcher) => fetcher()
     );
   });
 
@@ -161,6 +162,7 @@ describe('GET /api/articles/[id]/related - algorithm switching', () => {
     expect(mockedArticleCache.getEmbeddingRelatedArticles).toHaveBeenCalledWith(
       articleId,
       20,
+      { model: env.RAG_ACTIVE_MODEL, version: env.RAG_ACTIVE_VERSION },
       expect.any(Function)
     );
     expect(mockedVectorSearch.searchByArticleId).toHaveBeenCalledWith(articleId, {
@@ -177,6 +179,7 @@ describe('GET /api/articles/[id]/related - algorithm switching', () => {
     expect(mockedArticleCache.getEmbeddingRelatedArticles).toHaveBeenCalledWith(
       articleId,
       5,
+      { model: env.RAG_ACTIVE_MODEL, version: env.RAG_ACTIVE_VERSION },
       expect.any(Function)
     );
     expect(mockedVectorSearch.searchByArticleId).toHaveBeenCalledWith(articleId, {

@@ -217,9 +217,11 @@ export class ArticleDetailCache {
   async getEmbeddingRelatedArticles(
     articleId: string,
     limit: number,
+    embedding: { model: string; version: number },
     fetcher: () => Promise<SearchResult[]>
   ): Promise<SearchResult[]> {
-    const cacheKey = `related:${articleId}:embedding:${limit}`;
+    // 埋め込みのモデル・版をキーに入れる（切り替えた後に、古いモデルの結果を返さないため）
+    const cacheKey = `related:${articleId}:embedding:${embedding.model}:${embedding.version}:${limit}`;
 
     // JSON にすると Date は文字列になる。形が合わない値（壊れた値、形を変える前に保存した値）は
     // 無いものとして検索し直す（そのまま返すと、TTL の間ずっと表示の側で失敗する）
@@ -243,6 +245,11 @@ export class ArticleDetailCache {
       restored.every(
         (result) =>
           typeof result.articleId === 'string' &&
+          typeof result.title === 'string' &&
+          typeof result.sourceId === 'string' &&
+          typeof result.embeddingKey === 'string' &&
+          typeof result.similarity === 'number' &&
+          Number.isFinite(result.similarity) &&
           !Number.isNaN(result.publishedAt.getTime())
       )
     ) {
