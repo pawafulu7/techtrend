@@ -107,7 +107,8 @@ describe('CompanyFilter', () => {
       await user.click(trigger);
 
       expect(screen.getByTestId('company-filter-content')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('企業名で検索...')).toBeInTheDocument();
+      // 検索リストは遅延読み込み（Issue #718）なので、描き終わるのを待つ
+      expect(await screen.findByPlaceholderText('企業名で検索...')).toBeInTheDocument();
     });
 
     it('should collapse when trigger clicked again', async () => {
@@ -178,7 +179,7 @@ describe('CompanyFilter', () => {
       );
 
       // Only visible sources (first 3) should be displayed
-      expect(screen.getByText('CyberAgent')).toBeInTheDocument();
+      expect(await screen.findByText('CyberAgent')).toBeInTheDocument();
       expect(screen.getByText('DeNA')).toBeInTheDocument();
       expect(screen.getByText('LayerX')).toBeInTheDocument();
       expect(screen.queryByText('Mercari')).not.toBeInTheDocument();
@@ -201,13 +202,13 @@ describe('CompanyFilter', () => {
         />
       );
 
-      const searchInput = screen.getByPlaceholderText('企業名で検索...');
+      const searchInput = await screen.findByPlaceholderText('企業名で検索...');
       await user.type(searchInput, 'Cyber');
 
       expect(mockOnSearchChange).toHaveBeenCalled();
     });
 
-    it('should show empty state when no visible sources', () => {
+    it('should show empty state when no visible sources', async () => {
       render(
         <CompanyFilter
           sources={mockSources}
@@ -221,7 +222,7 @@ describe('CompanyFilter', () => {
         />
       );
 
-      expect(screen.getByText('該当企業がありません')).toBeInTheDocument();
+      expect(await screen.findByText('該当企業がありません')).toBeInTheDocument();
     });
   });
 
@@ -242,7 +243,7 @@ describe('CompanyFilter', () => {
         />
       );
 
-      const checkbox = screen.getByRole('checkbox', { name: /CyberAgent/i });
+      const checkbox = await screen.findByRole('checkbox', { name: /CyberAgent/i });
       await user.click(checkbox);
 
       expect(mockOnSourceToggle).toHaveBeenCalledWith('cyberagent');
@@ -264,13 +265,13 @@ describe('CompanyFilter', () => {
         />
       );
 
-      const item = screen.getByTestId('company-item-cyberagent');
+      const item = await screen.findByTestId('company-item-cyberagent');
       await user.click(item);
 
       expect(mockOnSourceToggle).toHaveBeenCalledWith('cyberagent');
     });
 
-    it('should highlight checked items', () => {
+    it('should highlight checked items', async () => {
       render(
         <CompanyFilter
           sources={mockSources}
@@ -284,7 +285,7 @@ describe('CompanyFilter', () => {
         />
       );
 
-      const cyberCheckbox = screen.getByRole('checkbox', { name: /CyberAgent/i });
+      const cyberCheckbox = await screen.findByRole('checkbox', { name: /CyberAgent/i });
       const deNACheckbox = screen.getByRole('checkbox', { name: /DeNA/i });
       const layerXCheckbox = screen.getByRole('checkbox', { name: /LayerX/i });
 
@@ -323,8 +324,8 @@ describe('CompanyFilter', () => {
       const manageButton = screen.getByTestId('company-filter-manage-all');
       await user.click(manageButton);
 
-      // Dialog should be rendered
-      expect(screen.getByText('企業ブログを選択')).toBeInTheDocument();
+      // Dialog should be rendered（ダイアログは開いたときに遅延読み込みする。Issue #718）
+      expect(await screen.findByText('企業ブログを選択')).toBeInTheDocument();
     });
 
     it('should call onBatchSelect when dialog applies selection', async () => {
@@ -348,7 +349,7 @@ describe('CompanyFilter', () => {
       await user.click(manageButton);
 
       // Select all in dialog
-      const selectAllButton = screen.getByText('すべて選択');
+      const selectAllButton = await screen.findByText('すべて選択');
       await user.click(selectAllButton);
 
       // Apply

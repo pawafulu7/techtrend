@@ -58,7 +58,8 @@ const customJestConfig = {
     // Service/DB/Cacheテスト: Node環境専用
     '<rootDir>/__tests__/services/',
     '<rootDir>/lib/services/__tests__/',
-    '<rootDir>/__tests__/security/',
+    // __tests__/security/ は除外しない。headers.test.ts は testMatch（*.test.tsx）に当たらず Node 環境で走り、
+    // markdown-xss.test.tsx は DOM 環境が要る（除外していた間はどの設定でも走っていなかった）
     '<rootDir>/__tests__/middleware.node.test.ts',
   ],
   testMatch: [

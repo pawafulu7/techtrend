@@ -42,12 +42,13 @@ describe('AgentAnswerPanel', () => {
     });
   });
 
-  test('renders Markdown content correctly', () => {
+  // Markdown の表示は遅延読み込み（Issue #718）なので、描き終わるのを待ってから確かめる
+  test('renders Markdown content correctly', async () => {
     render(<AgentAnswerPanel result={mockResult} />);
 
     // 「#」は h2 にする（AI 検索の h1 は画面の見出しだけ。Issue #700）
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Test Response' })
+      await screen.findByRole('heading', { level: 2, name: 'Test Response' })
     ).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
     expect(screen.getByText('bold')).toBeInTheDocument();
@@ -73,6 +74,7 @@ describe('AgentAnswerPanel', () => {
 
   test('copy button copies to clipboard with sources', async () => {
     render(<AgentAnswerPanel result={mockResult} />);
+    await screen.findByRole('heading', { level: 2, name: 'Test Response' });
 
     const copyButton = screen.getByLabelText('回答をコピー');
     fireEvent.click(copyButton);
@@ -133,10 +135,10 @@ describe('AgentAnswerPanel', () => {
     expect(screen.getByTestId('feedback-thanks')).toBeInTheDocument();
   });
 
-  test('renders external links with target="_blank"', () => {
+  test('renders external links with target="_blank"', async () => {
     render(<AgentAnswerPanel result={mockResult} />);
 
-    const link = screen.getByRole('link', { name: 'link' });
+    const link = await screen.findByRole('link', { name: 'link' });
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
@@ -261,7 +263,7 @@ describe('AgentAnswerPanel - Empty State', () => {
       ).not.toBeInTheDocument();
     });
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Test Response' })
+      await screen.findByRole('heading', { level: 2, name: 'Test Response' })
     ).toBeInTheDocument();
   });
 });

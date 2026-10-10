@@ -1,25 +1,34 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui-v2/button-v2';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { Building2, ChevronDown, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { CompanySelectionDialog } from './company-selection-dialog';
 import type { CompanySource } from '@/lib/providers/company-source';
 import { DEVELOPERSIO_SOURCE_IDS } from '@/lib/constants/source-categories';
+import {
+  createLazyComponent,
+  LazyLoadFailed,
+} from '@/app/components/common/lazy-component';
+
+// cmdk（企業名の検索リスト）は欄を開いたときだけ要るので、初回表示の JS に含めない（Issue #718）。
+// 見出しに触れた時点で読み始め、読み込み中と読み込めなかったときは検索リストと同じ高さの枠を出す
+const { Component: CompanyFilterList, preload: preloadCompanyFilterList } =
+  createLazyComponent(() =>
+    import('./company-filter-list').then((mod) => ({
+      default: mod.CompanyFilterList,
+    }))
+  );
+const LIST_FRAME_CLASS =
+  'h-[223px] rounded-md border bg-(--tt-color-surface-muted)';
+
+const {
+  Component: CompanySelectionDialog,
+  preload: preloadCompanySelectionDialog,
+} = createLazyComponent(() =>
+  import('./company-selection-dialog').then((mod) => ({
+    default: mod.CompanySelectionDialog,
+  }))
+);
 
 export interface CompanyFilterProps {
   sources: CompanySource[];
@@ -51,6 +60,9 @@ export function CompanyFilter({
   // UI-only local state
   const [internalExpanded, setInternalExpanded] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  // ダイアログは初めて開くまで描かない（描くと遅延読み込みの chunk を読むため）。閉じるアニメーションのため、
+  // 一度開いたら描き続ける。開くたびに key を変えて描き直し、読み込みに失敗した後も読み直す
+  const [dialogOpenCount, setDialogOpenCount] = useState(0);
 
   // Filter selectedSourceIds to only company blog sources
   // Performance: Use Set for O(n+m) instead of O(n×m) with some()
@@ -61,6 +73,14 @@ export function CompanyFilter({
 
   // Controlled or uncontrolled expansion
   const expanded = isExpanded ?? internalExpanded;
+
+  // 欄を閉じたら、chunk の読み込み待ちで開く予定だったダイアログも取り消す（再展開で突然開かないように）。
+  // 親から閉じられる経路もあるので、prop の変化を描画中に見る（optimized-image.tsx と同じ形）
+  const [prevExpanded, setPrevExpanded] = useState(expanded);
+  if (expanded !== prevExpanded) {
+    setPrevExpanded(expanded);
+    if (!expanded) setDialogOpen(false);
+  }
   const toggleExpanded = () => {
     const next = !expanded;
     onExpandedChange?.(next);
@@ -104,18 +124,14 @@ export function CompanyFilter({
     [developersioSources, selectedCompanySourceIds]
   );
 
-  const commandEmpty = useMemo(() => {
-    return searchValue.length > 0
-      ? '該当企業がありません'
-      : '企業が登録されていません';
-  }, [searchValue]);
-
   return (
     <>
       <div className="rounded-md border" data-testid="company-filter">
         <button
           className="w-full text-left"
           onClick={toggleExpanded}
+          onPointerEnter={preloadCompanyFilterList}
+          onFocus={preloadCompanyFilterList}
           type="button"
           data-testid="company-filter-trigger"
         >
@@ -140,101 +156,31 @@ export function CompanyFilter({
 
         {expanded && (
           <div className="px-2 pb-2" data-testid="company-filter-content">
-            {/* Command search */}
-            <Command className="rounded-md border">
-              <CommandInput
-                placeholder="企業名で検索..."
-                value={searchValue}
-                onValueChange={onSearchChange}
-                aria-label="企業名検索"
-              />
-              <CommandList className="max-h-44 overflow-y-auto">
-                <CommandEmpty>{commandEmpty}</CommandEmpty>
-                {/* DevelopersIO subgroup */}
-                {developersioSources.length > 0 && (
-                  <Collapsible
-                    open={developersioExpanded}
-                    onOpenChange={setDevelopersioExpanded}
-                    className={otherSources.length > 0 ? 'border-b' : ''}
-                  >
-                    <CollapsibleTrigger
-                      className="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm font-medium"
-                      data-testid="developersio-group-trigger"
-                    >
-                      {developersioExpanded ? (
-                        <ChevronDown className="h-3 w-3" />
-                      ) : (
-                        <ChevronRight className="h-3 w-3" />
-                      )}
-                      <span className="flex-1 text-xs">DevelopersIO</span>
-                      <span className="text-muted-foreground text-xs">
-                        ({developersioSelectedCount}/
-                        {developersioSources.length})
-                      </span>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      {developersioSources.map((source) => {
-                        const checked = selectedCompanySourceIds.includes(
-                          source.id
-                        );
-                        // Display tag name without "DevelopersIO " prefix
-                        const displayName = source.name.startsWith(
-                          'DevelopersIO '
-                        )
-                          ? source.name.slice('DevelopersIO '.length)
-                          : source.name;
-                        return (
-                          <CommandItem
-                            key={source.id}
-                            value={source.id}
-                            onSelect={() => onSourceToggle(source.id)}
-                            className={cn(
-                              'flex cursor-pointer items-center gap-2 pl-6',
-                              checked && 'bg-muted/40'
-                            )}
-                            data-testid={`company-item-${source.id}`}
-                          >
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={() => onSourceToggle(source.id)}
-                              aria-label={`${source.name}を選択`}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <span className="flex-1 text-xs">
-                              {displayName}
-                            </span>
-                          </CommandItem>
-                        );
-                      })}
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
-                {/* Other company sources */}
-                {otherSources.map((source) => {
-                  const checked = selectedCompanySourceIds.includes(source.id);
-                  return (
-                    <CommandItem
-                      key={source.id}
-                      value={source.id}
-                      onSelect={() => onSourceToggle(source.id)}
-                      className={cn(
-                        'flex cursor-pointer items-center gap-2',
-                        checked && 'bg-muted/40'
-                      )}
-                      data-testid={`company-item-${source.id}`}
-                    >
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={() => onSourceToggle(source.id)}
-                        aria-label={`${source.name}を選択`}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <span className="flex-1 text-xs">{source.name}</span>
-                    </CommandItem>
-                  );
-                })}
-              </CommandList>
-            </Command>
+            <CompanyFilterList
+              developersioSources={developersioSources}
+              otherSources={otherSources}
+              developersioSelectedCount={developersioSelectedCount}
+              selectedCompanySourceIds={selectedCompanySourceIds}
+              searchValue={searchValue}
+              onSearchChange={onSearchChange}
+              onSourceToggle={onSourceToggle}
+              developersioExpanded={developersioExpanded}
+              onDevelopersioExpandedChange={setDevelopersioExpanded}
+              fallback={
+                <div
+                  className={`${LIST_FRAME_CLASS} motion-safe:animate-pulse`}
+                  aria-hidden="true"
+                  data-testid="company-filter-list-placeholder"
+                />
+              }
+              errorFallback={
+                <div
+                  className={`${LIST_FRAME_CLASS} flex items-center justify-center`}
+                >
+                  <LazyLoadFailed />
+                </div>
+              }
+            />
 
             {/* Footer with selection count and modal trigger */}
             <div className="text-muted-foreground mt-2 flex items-center justify-between px-1 text-xs">
@@ -243,24 +189,34 @@ export function CompanyFilter({
                 variant="link"
                 size="sm"
                 className="h-auto px-0"
-                onClick={() => setDialogOpen(true)}
+                onClick={() => {
+                  setDialogOpenCount((count) => count + 1);
+                  setDialogOpen(true);
+                }}
+                onPointerEnter={preloadCompanySelectionDialog}
+                onFocus={preloadCompanySelectionDialog}
                 data-testid="company-filter-manage-all"
               >
                 すべて管理...
               </Button>
             </div>
+
+            {/* Company selection dialog */}
+            {dialogOpenCount > 0 && (
+              <CompanySelectionDialog
+                key={dialogOpenCount}
+                open={dialogOpen}
+                onOpenChange={setDialogOpen}
+                sources={sources}
+                selectedSources={selectedCompanySourceIds}
+                onApply={onBatchSelect}
+                fallback={null}
+                errorFallback={<LazyLoadFailed className="mt-1 px-1" />}
+              />
+            )}
           </div>
         )}
       </div>
-
-      {/* Company selection dialog */}
-      <CompanySelectionDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        sources={sources}
-        selectedSources={selectedCompanySourceIds}
-        onApply={onBatchSelect}
-      />
     </>
   );
 }

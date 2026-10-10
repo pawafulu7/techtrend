@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui-v2/button-v2';
-import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
   PopoverContent,
@@ -19,11 +18,74 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useMediaQuery } from '@/app/hooks/use-media-query';
+import {
+  createLazyComponent,
+  LazyLoadFailed,
+} from '@/app/components/common/lazy-component';
+import { cn } from '@/lib/utils';
 import { DATE_RANGE_OPTIONS, getDateRangeLabel } from '@/app/lib/date-utils';
 import {
   buildFilterUrl,
   clearTransientFilterParams,
 } from '@/lib/utils/url/filter-params';
+
+/**
+ * react-day-picker はカレンダーを開いたときだけ要るので、ホームの初回表示の JS に含めない（Issue #718）。
+ * ボタンに触れた時点で読み始め、開いたときに枠を見せずに済むようにする。
+ * 読み込み中と読み込めなかったときは CalendarFrame を出し、ポップオーバーの大きさが変わらないようにする
+ */
+const { Component: Calendar, preload: preloadCalendar } = createLazyComponent(
+  () =>
+    import('@/components/ui/calendar').then((mod) => ({
+      default: mod.Calendar,
+    }))
+);
+
+/** 日曜始まりで、その月のカレンダーが何行になるか（react-day-picker の既定と同じ数え方） */
+function weekRowsInMonth(date: Date): number {
+  const firstWeekday = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    1
+  ).getDay();
+  const days = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  return Math.ceil((firstWeekday + days) / 7);
+}
+
+// 実測: 5行の月で 291px、6行の月で 331px（1行 40px）。
+// 幅は numberOfMonths に合わせる（768px 以下は1か月、それより広いと2か月）
+const CALENDAR_HEIGHT_FOR_5_ROWS = 291;
+const CALENDAR_WEEK_ROW_HEIGHT = 40;
+
+/** 表示する月のカレンダーと同じ大きさの枠 */
+function CalendarFrame({
+  months,
+  loading,
+  children,
+}: {
+  months: Date[];
+  loading?: boolean;
+  children?: ReactNode;
+}) {
+  const rows = Math.max(...months.map(weekRowsInMonth));
+  return (
+    <div
+      className={cn(
+        'w-[248px] rounded-md bg-(--tt-color-surface-muted) min-[769px]:w-[488px]',
+        loading && 'motion-safe:animate-pulse',
+        children && 'flex items-center justify-center'
+      )}
+      style={{
+        height:
+          CALENDAR_HEIGHT_FOR_5_ROWS + (rows - 5) * CALENDAR_WEEK_ROW_HEIGHT,
+      }}
+      aria-hidden={children ? undefined : true}
+      data-testid={loading ? 'date-range-calendar-placeholder' : undefined}
+    >
+      {children}
+    </div>
+  );
+}
 
 interface DateRangeFilterProps {
   className?: string;
@@ -106,6 +168,13 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
   }
 
   const { today, threeMonthsAgo } = getDateBounds();
+  const defaultMonth = calendarRange?.from ?? new Date();
+  const shownMonths = isMobile
+    ? [defaultMonth]
+    : [
+        defaultMonth,
+        new Date(defaultMonth.getFullYear(), defaultMonth.getMonth() + 1, 1),
+      ];
 
   function updateUrl(updates: Record<string, string | undefined>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -203,6 +272,7 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
         <Select
           value={currentPreset}
           onValueChange={handlePresetChange}
+          onOpenChange={(open) => open && preloadCalendar()}
           data-testid="date-range-filter"
         >
           <SelectTrigger className="w-[140px]" data-testid="date-range-trigger">
@@ -235,6 +305,8 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
               className={`h-9 w-9 shrink-0 ${isCustomMode ? 'border-primary text-primary' : ''}`}
               data-testid="date-range-calendar-trigger"
               aria-label="カレンダーで日付を選択"
+              onPointerEnter={preloadCalendar}
+              onFocus={preloadCalendar}
             >
               <CalendarIcon className="h-4 w-4" />
             </Button>
@@ -250,10 +322,16 @@ export function DateRangeFilter({ className = '' }: DateRangeFilterProps) {
                 mode="range"
                 selected={calendarRange}
                 onSelect={setCalendarRange}
-                numberOfMonths={isMobile ? 1 : 2}
+                numberOfMonths={shownMonths.length}
                 disabled={[{ before: threeMonthsAgo }, { after: today }]}
-                defaultMonth={calendarRange?.from ?? new Date()}
+                defaultMonth={defaultMonth}
                 data-testid="date-range-calendar"
+                fallback={<CalendarFrame months={shownMonths} loading />}
+                errorFallback={
+                  <CalendarFrame months={shownMonths}>
+                    <LazyLoadFailed />
+                  </CalendarFrame>
+                }
               />
               <div className="flex justify-between border-t pt-3">
                 <Button
