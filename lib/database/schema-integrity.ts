@@ -207,6 +207,10 @@ export function requiredIndexErrors(rows: SchemaArtifact[]): string[] {
       ['embedding'],
       "(embeddingKey = 'summary'::EmbeddingKey)",
     ],
+    // キーワード検索の trigram 索引（#717）。schema.prisma に無かった時期に migrate dev が
+    // drift として DROP したことがあるので、必須の索引として確かめる
+    ['idx_article_title_trgm', 'Article', 'gin', false, ['title'], null],
+    ['idx_article_summary_trgm', 'Article', 'gin', false, ['summary'], null],
   ] as const;
   const normalize = (value: string) =>
     value.replace(/"/g, '').replace(/\s+/g, ' ').trim();
@@ -239,6 +243,11 @@ export function requiredIndexErrors(rows: SchemaArtifact[]): string[] {
           JSON.stringify(['public.vector_cosine_ops']))
     )
       errors.push(`Invalid HNSW parameters:${name}`);
+    else if (
+      method === 'gin' &&
+      JSON.stringify(row.opclasses) !== JSON.stringify(['public.gin_trgm_ops'])
+    )
+      errors.push(`Invalid GIN opclass:${name}`);
   }
   if (indexes.has('idx_session_token'))
     errors.push('Redundant index:idx_session_token');

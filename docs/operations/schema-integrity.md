@@ -32,6 +32,7 @@ Docker 初期化の `scripts/migration/init.sql` と `scripts/docker/init-pgvect
 - `Tag_name_key` と `Tag_name_lower_key` の UNIQUE は保持する。
 - `uq_user_source_preset_name` の `(userId, lower(name))` UNIQUE は SQL で保持する。PSL の通常の複合 UNIQUE 宣言は実物と異なるため削除する。アプリの読み取り・更新は ID と `findFirst` を使い、複合 selector は利用していない。
 - ArticleChunk の cosine HNSW と ArticleEmbedding の summary 部分 HNSW は、operator class・パラメータ・条件・valid/ready の状態も確認する。
+- Article の title / summary の trigram GIN（`idx_article_title_trgm` / `idx_article_summary_trgm`、#717）は、operator class が `gin_trgm_ops` であることと valid/ready の状態を確認する。schema.prisma に宣言が無かった時期に `migrate dev` が drift として DROP したことがあるため。
 - Session の token は `Session_token_key` の UNIQUE が索引を兼ねる。通常の `idx_session_token` だけを新規 migration で削除する。
 - SocialPost.updatedAt と UserSourcePreset.sourceIds の DEFAULT は既存 migration/DB に PSL を合わせる。行データは移行しない。
 

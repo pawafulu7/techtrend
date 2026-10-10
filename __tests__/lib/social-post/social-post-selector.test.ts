@@ -130,11 +130,12 @@ describe('SocialPostSelector', () => {
 
       const { where } = (prismaMock.article.findMany as jest.Mock).mock
         .calls[0][0];
+      // 数字と記号だけの語は大文字小文字の区別が無いので LIKE（mode なし）になる（#717）
       expect(where.AND[1].OR).toEqual([
-        { title: { contains: '100\\%\\_', mode: 'insensitive' } },
-        { translatedTitle: { contains: '100\\%\\_', mode: 'insensitive' } },
-        { summary: { contains: '100\\%\\_', mode: 'insensitive' } },
-        { detailedSummary: { contains: '100\\%\\_', mode: 'insensitive' } },
+        { title: { contains: '100\\%\\_' } },
+        { translatedTitle: { contains: '100\\%\\_' } },
+        { summary: { contains: '100\\%\\_' } },
+        { detailedSummary: { contains: '100\\%\\_' } },
       ]);
     });
 

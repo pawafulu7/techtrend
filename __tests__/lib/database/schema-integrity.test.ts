@@ -121,13 +121,15 @@ describe('schema integrity: fail-closed drift checks', () => {
     ).toEqual(['Missing index:expr', 'Unexpected trigger:unexpected']);
   });
 
-  it('requires valid UNIQUE/HNSW indexes even if replay itself also lacks them', () => {
+  it('requires valid UNIQUE/HNSW/trigram GIN indexes even if replay itself also lacks them', () => {
     expect(requiredIndexErrors([])).toEqual(
       expect.arrayContaining([
         'Invalid required index:Tag_name_key',
         'Invalid required index:Tag_name_lower_key',
         'Invalid required index:uq_user_source_preset_name',
         'Invalid required index:idx_article_embedding_hnsw_summary',
+        'Invalid required index:idx_article_title_trgm',
+        'Invalid required index:idx_article_summary_trgm',
       ])
     );
   });
@@ -189,6 +191,26 @@ describe('schema integrity: fail-closed drift checks', () => {
     );
     expect(requiredIndexErrors(changed)).toContain(
       'Invalid required index:idx_article_embedding_hnsw_summary'
+    );
+    // trigram GIN（#717）: 演算子クラスが gin_trgm_ops でないと LIKE / ILIKE に使えない
+    const wrongOpclass = rows.map((row) =>
+      row.name === 'idx_article_title_trgm'
+        ? {
+            ...row,
+            details: { ...row.details, opclasses: ['pg_catalog.text_ops'] },
+          }
+        : row
+    );
+    expect(requiredIndexErrors(wrongOpclass)).toContain(
+      'Invalid GIN opclass:idx_article_title_trgm'
+    );
+    const wrongMethod = rows.map((row) =>
+      row.name === 'idx_article_summary_trgm'
+        ? { ...row, details: { ...row.details, method: 'btree' } }
+        : row
+    );
+    expect(requiredIndexErrors(wrongMethod)).toContain(
+      'Invalid required index:idx_article_summary_trgm'
     );
   });
   it('does not check or clean up after creation fails', async () => {
