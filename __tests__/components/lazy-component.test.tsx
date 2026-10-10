@@ -73,6 +73,29 @@ describe('createLazyComponent', () => {
     expect(loader).toHaveBeenCalledTimes(2);
   });
 
+  it('recovers an instance that failed once another instance reloads the module', async () => {
+    const loader = jest
+      .fn<Promise<Module>, []>()
+      .mockRejectedValueOnce(new Error('chunk load failed'))
+      .mockResolvedValueOnce({ default: Loaded });
+    const { Component } = createLazyComponent(loader);
+
+    const { rerender } = render(<Component label="first" {...fallbacks} />);
+    expect(await screen.findByText('failed')).toBeInTheDocument();
+
+    rerender(
+      <>
+        <Component label="first" {...fallbacks} />
+        <Component label="second" {...fallbacks} />
+      </>
+    );
+
+    expect(await screen.findByText('loaded second')).toBeInTheDocument();
+    expect(screen.getByText('loaded first')).toBeInTheDocument();
+    expect(screen.queryByText('failed')).not.toBeInTheDocument();
+    expect(loader).toHaveBeenCalledTimes(2);
+  });
+
   it('swallows a failed preload and loads again when rendered', async () => {
     const loader = jest
       .fn<Promise<Module>, []>()

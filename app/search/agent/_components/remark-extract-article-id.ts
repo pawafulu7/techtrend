@@ -22,14 +22,9 @@ const remarkExtractArticleId: Plugin<[], Root> = () => (tree) => {
 
     visit(listItem, 'text', (textNode: Text) => {
       const match = textNode.value.match(ARTICLE_ID_PATTERN);
-      if (!match) {
-        return;
+      if (match) {
+        articleId ??= match[1];
       }
-
-      articleId ??= match[1];
-
-      const cleanedValue = stripArticleIdTokens(textNode.value);
-      textNode.value = cleanedValue.replace(/^\s+/, '');
     });
 
     if (!articleId) {
@@ -41,6 +36,15 @@ const remarkExtractArticleId: Plugin<[], Root> = () => (tree) => {
     const hProperties = (data.hProperties ??= {});
     hProperties['data-article-id'] = articleId;
     listItem.data = data;
+  });
+
+  // 目印は箇条書きの外（見出しなど）にも出ることがあるので、どこにあっても消す。
+  // 書式なしの表示とコピー（stripArticleIdTokens）と同じ範囲にする
+  visit(tree, 'text', (textNode: Text) => {
+    if (!ARTICLE_ID_PATTERN.test(textNode.value)) {
+      return;
+    }
+    textNode.value = stripArticleIdTokens(textNode.value).replace(/^\s+/, '');
   });
 };
 

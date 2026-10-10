@@ -56,11 +56,10 @@ export function AgentAnswerPanel({
         clone.querySelectorAll('[data-copy-exclude]').forEach((el) => {
           el.remove();
         });
-        // Markdown の表示は遅延読み込みなので、描き終わる前は元のテキストを使う。
-        // 描いた文字は remarkExtractArticleId が記事 ID の目印を消しているので、元のテキストでも消す（Issue #718）
-        copyText = stripArticleIdTokens(
-          clone.textContent?.trim() || displayText
-        ).trim();
+        // Markdown の表示は遅延読み込みなので、描き終わる前は元のテキストを使う。描いた文字は
+        // remarkExtractArticleId が記事 ID の目印を消しているので、元のテキストからだけ消す（Issue #718）
+        copyText =
+          clone.textContent?.trim() || stripArticleIdTokens(displayText).trim();
       }
 
       // Add sources (links to original articles)

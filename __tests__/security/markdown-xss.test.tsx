@@ -15,31 +15,34 @@ describe('Markdown XSS Prevention', () => {
       fallback: false,
     };
 
-    const { container } = render(
-      <AgentAnswerPanel result={result}/>
-    );
+    const { container } = render(<AgentAnswerPanel result={result} />);
     await waitFor(() => expect(container.querySelector('a')).not.toBeNull());
     expect(container.textContent).toContain('safe text');
     expect(container.textContent).not.toContain('javascript:');
+    // 文字だけでなく属性も見る（URL の除去が外れても文字は変わらないため）
+    expect(
+      container.querySelector('a')?.getAttribute('href') ?? ''
+    ).not.toContain('javascript:');
   });
 
   test('blocks data: protocol URLs in images', async () => {
     const result: AgentSearchResult = {
       query: 'test',
-      response: 'Image: ![img](data:text/html,<script>alert("XSS")</script>) and safe text',
+      response:
+        'Image: ![img](data:text/html,<script>alert("XSS")</script>) and safe text',
       toolCalls: [],
       usage: { totalTokens: 0 },
       cached: false,
       fallback: false,
     };
 
-    const { container } = render(
-      <AgentAnswerPanel result={result}/>
-    );
-    await screen.findByRole('img', { name: 'img' });
+    const { container } = render(<AgentAnswerPanel result={result} />);
+    const img = await screen.findByRole('img', { name: 'img' });
     expect(container.textContent).toContain('safe text');
     expect(container.textContent).not.toContain('data:');
     expect(container.textContent).not.toContain('script');
+    // 文字だけでなく属性も見る（URL の除去が外れても文字は変わらないため）
+    expect(img.getAttribute('src') ?? '').not.toContain('data:');
   });
 
   test('does not render inline HTML (no rehype-raw)', async () => {
@@ -52,7 +55,7 @@ describe('Markdown XSS Prevention', () => {
       fallback: false,
     };
 
-    render(<AgentAnswerPanel result={result}/>);
+    render(<AgentAnswerPanel result={result} />);
     expect(await screen.findByText('Safe text')).toBeInTheDocument();
     expect(screen.queryByText('alert("XSS")')).not.toBeInTheDocument();
   });
@@ -60,14 +63,15 @@ describe('Markdown XSS Prevention', () => {
   test('allows safe protocols (http, https, mailto)', async () => {
     const result: AgentSearchResult = {
       query: 'test',
-      response: '[http](http://example.com) [https](https://example.com) [mailto](mailto:test@example.com)',
+      response:
+        '[http](http://example.com) [https](https://example.com) [mailto](mailto:test@example.com)',
       toolCalls: [],
       usage: { totalTokens: 0 },
       cached: false,
       fallback: false,
     };
 
-    render(<AgentAnswerPanel result={result}/>);
+    render(<AgentAnswerPanel result={result} />);
     const links = await screen.findAllByRole('link');
     expect(links[0]).toHaveAttribute('href', 'http://example.com');
     expect(links[1]).toHaveAttribute('href', 'https://example.com');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Building2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { CompanySource } from '@/lib/providers/company-source';
@@ -73,6 +73,14 @@ export function CompanyFilter({
 
   // Controlled or uncontrolled expansion
   const expanded = isExpanded ?? internalExpanded;
+
+  // 欄を閉じたら、chunk の読み込み待ちで開く予定だったダイアログも取り消す（再展開で突然開かないように）
+  useEffect(() => {
+    if (!expanded) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: cancel the pending dialog when the section collapses
+      setDialogOpen(false);
+    }
+  }, [expanded]);
   const toggleExpanded = () => {
     const next = !expanded;
     onExpandedChange?.(next);
