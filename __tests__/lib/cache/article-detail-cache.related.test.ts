@@ -149,6 +149,21 @@ describe('articleDetailCache.getEmbeddingRelatedArticles', () => {
     expect(results).toEqual([result]);
   });
 
+  it('Redis の読み書きが失敗しても、検索の結果を返す', async () => {
+    redis.get.mockRejectedValueOnce(new Error('redis down'));
+    redis.set.mockRejectedValueOnce(new Error('redis down'));
+    const fetcher = jest.fn().mockResolvedValue([result]);
+
+    const results = await articleDetailCache.getEmbeddingRelatedArticles(
+      'article-1',
+      20,
+      fetcher
+    );
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(results).toEqual([result]);
+  });
+
   it('キャッシュにある空の配列は使わずに検索する', async () => {
     redis.get.mockResolvedValueOnce([]);
     const fetcher = jest.fn().mockResolvedValue([result]);

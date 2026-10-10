@@ -223,10 +223,15 @@ export class ArticleDetailCache {
 
     // JSON にすると Date は文字列になる。形が合わない値（壊れた値、形を変える前に保存した値）は
     // 無いものとして検索し直す（そのまま返すと、TTL の間ずっと表示の側で失敗する）
-    const cached =
-      await this.cache.get<
-        Array<Omit<SearchResult, 'publishedAt'> & { publishedAt: string }>
-      >(cacheKey);
+    // Redis の失敗は検索に切り替える（RedisCache は失敗を null にするが、ここでも受ける）
+    let cached: Array<
+      Omit<SearchResult, 'publishedAt'> & { publishedAt: string }
+    > | null = null;
+    try {
+      cached = await this.cache.get(cacheKey);
+    } catch {
+      cached = null;
+    }
     const restored = Array.isArray(cached)
       ? cached.map((result) => ({
           ...result,
@@ -246,7 +251,11 @@ export class ArticleDetailCache {
 
     const results = await fetcher();
     if (results.length > 0) {
-      await this.cache.set(cacheKey, results);
+      try {
+        await this.cache.set(cacheKey, results);
+      } catch {
+        // 保存できなくても検索の結果は返す
+      }
     }
     return results;
   }
