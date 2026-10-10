@@ -11,9 +11,25 @@ const { Component: MarkdownRenderer, preload } = createLazyComponent(
   () => import('./markdown-renderer')
 );
 
+interface LazyMarkdownProps extends Options {
+  /**
+   * 書式なしで出す文字の変換。remark プラグインが描くときに消す目印などを、
+   * 書式なしの表示でも消すために使う（既定はそのまま出す）
+   */
+  plainTextTransform?: (markdown: string) => string;
+}
+
 /** 読み込み中と読み込めなかったときは、回答を書式なしの文字で出す */
-export function LazyMarkdown(props: Options) {
-  const plainText = <p className="whitespace-pre-wrap">{props.children}</p>;
+export function LazyMarkdown({
+  plainTextTransform,
+  ...props
+}: LazyMarkdownProps) {
+  const source = props.children ?? '';
+  const plainText = (
+    <p className="whitespace-pre-wrap">
+      {plainTextTransform ? plainTextTransform(source) : source}
+    </p>
+  );
   return (
     <MarkdownRenderer
       {...props}

@@ -5,7 +5,12 @@ import type { Data } from 'unist';
 import type { Properties } from 'hast';
 
 const ARTICLE_ID_PATTERN = /\[#([a-zA-Z0-9_-]+)\]/;
-export const ARTICLE_ID_PATTERN_GLOBAL = /\[#([a-zA-Z0-9_-]+)\]/g;
+const ARTICLE_ID_PATTERN_GLOBAL = /\[#([a-zA-Z0-9_-]+)\]/g;
+
+/** 記事 ID の目印（`[#id]`）を消す。描いた文字・コピー・書式なしの表示で同じ結果にする */
+export function stripArticleIdTokens(text: string): string {
+  return text.replace(ARTICLE_ID_PATTERN_GLOBAL, '');
+}
 
 type ListItemData = Data & {
   hProperties?: Properties;
@@ -23,10 +28,7 @@ const remarkExtractArticleId: Plugin<[], Root> = () => (tree) => {
 
       articleId ??= match[1];
 
-      const cleanedValue = textNode.value.replace(
-        ARTICLE_ID_PATTERN_GLOBAL,
-        ''
-      );
+      const cleanedValue = stripArticleIdTokens(textNode.value);
       textNode.value = cleanedValue.replace(/^\s+/, '');
     });
 

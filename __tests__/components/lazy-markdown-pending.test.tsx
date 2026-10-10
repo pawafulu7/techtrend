@@ -30,6 +30,8 @@ describe('AgentAnswerPanel while the Markdown chunk is pending', () => {
 
     const markdown = screen.getByTestId('agent-answer-markdown');
     expect(markdown).toHaveTextContent('# Test Response');
+    // 描いた文字と同じく、書式なしの表示でも記事 ID の目印は出さない
+    expect(markdown).not.toHaveTextContent('[#art-1]');
     expect(markdown.querySelector('h2')).toBeNull();
     expect(screen.getByRole('heading', { name: 'AI回答' })).toBeVisible();
 
