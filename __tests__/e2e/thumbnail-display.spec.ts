@@ -22,7 +22,7 @@ const MOCK_ARTICLES_RESPONSE = {
         sourceId: 'test-source',
         summaryVersion: 1,
         articleType: 'blog' as const,
-        category: 'AI' as const
+        category: 'AI' as const,
       },
       {
         id: 'test-2',
@@ -40,7 +40,7 @@ const MOCK_ARTICLES_RESPONSE = {
         sourceId: 'test-source',
         summaryVersion: 1,
         articleType: 'tutorial' as const,
-        category: 'Web' as const
+        category: 'Web' as const,
       },
       {
         id: 'test-3',
@@ -58,23 +58,26 @@ const MOCK_ARTICLES_RESPONSE = {
         sourceId: 'test-source',
         summaryVersion: 1,
         articleType: 'documentation' as const,
-        category: 'DevOps' as const
-      }
+        category: 'DevOps' as const,
+      },
     ],
     total: 3,
     page: 1,
     totalPages: 1,
-    limit: 20
+    limit: 20,
   },
   meta: {
-    userDataIncluded: false
-  }
+    userDataIncluded: false,
+  },
 };
 
-const ARTICLE_SELECTOR = '[data-testid="article-card"], [data-testid="compact-card"]';
+const ARTICLE_SELECTOR =
+  '[data-testid="article-card"], [data-testid="compact-card"]';
 
-test.describe('Custom Image Loader - Page Rendering', () => {
-  test('should render article detail page without image errors', async ({ page }) => {
+test.describe('Thumbnail display - Page Rendering', () => {
+  test('should render article detail page without image errors', async ({
+    page,
+  }) => {
     // Navigate to article detail page
     await page.goto('/', {
       waitUntil: 'domcontentloaded',
@@ -155,7 +158,7 @@ test.describe('Custom Image Loader - Page Rendering', () => {
 
     // Verify that only expected personalization endpoints return 401 for guest users
     const unexpected401s = Array.from(unauthorizedResponses).filter(
-      (url) => !allowed401Paths.some((allowed) => url.includes(allowed)),
+      (url) => !allowed401Paths.some((allowed) => url.includes(allowed))
     );
     expect(unexpected401s).toEqual([]);
 
@@ -167,17 +170,20 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     //   We already verified above that only expected personalization endpoints return 401.
     //   The UI gracefully falls back to default state without personalization.
     const criticalErrors = consoleErrors.filter(
-      (err) => !err.includes('image') &&
-               !err.includes('favicon') &&
-               !err.includes('401') &&
-               !err.includes('Failed to fetch') &&
-               !err.includes('NetworkError') &&
-               !err.includes('/api/auth/get-session')
+      (err) =>
+        !err.includes('image') &&
+        !err.includes('favicon') &&
+        !err.includes('401') &&
+        !err.includes('Failed to fetch') &&
+        !err.includes('NetworkError') &&
+        !err.includes('/api/auth/get-session')
     );
     expect(criticalErrors.length).toBe(0);
   });
 
-  test('should render page with custom image loader configured', async ({ page }) => {
+  test('should serve thumbnails through the image optimizer', async ({
+    page,
+  }) => {
     // Mock articles API for deterministic testing
     await page.route('**/api/articles*', async (route) => {
       await route.fulfill({
@@ -201,20 +207,40 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     const count = await articles.count();
     expect(count).toBeGreaterThan(0);
 
-    // If images are present, they should use HTTPS (custom loader returns URL as-is)
-    const images = page.locator('img[src^="https://"]');
+    // https のサムネイルは /_next/image 経由で出す（Issue #718）。
+    // 最適化に失敗したとき（モックの URL は実在しない）は元の https URL に切り替わる
+    // ARTICLE_SELECTOR はカンマ区切りなので、文字列でつなぐとカード自体に一致してしまう
+    const images = page.locator(ARTICLE_SELECTOR).locator('img');
     const imageCount = await images.count();
-
-    // Images may or may not be present depending on article types
-    // If present, verify they use HTTPS protocol
-    if (imageCount > 0) {
-      const firstImage = images.first();
-      const src = await firstImage.getAttribute('src');
-      expect(src).toMatch(/^https:/);
+    expect(imageCount).toBeGreaterThan(0);
+    const sources = await images.evaluateAll((els) =>
+      els.map((el) => {
+        const src = el.getAttribute('src') ?? '';
+        if (src.startsWith('data:'))
+          return { kind: 'placeholder', src, target: src };
+        const url = new URL(src, location.href);
+        const optimized = url.pathname === '/_next/image';
+        return {
+          kind: optimized ? 'optimized' : 'direct',
+          src,
+          target: optimized ? (url.searchParams.get('url') ?? '') : src,
+        };
+      })
+    );
+    for (const source of sources) {
+      if (source.kind === 'placeholder') {
+        expect(source.src).toMatch(/^data:image\/svg\+xml/);
+      } else {
+        // 最適化経由なら元の URL が https、直接なら https の URL
+        expect(source.target).toMatch(/^https:\/\//);
+      }
     }
+    expect(sources.some((source) => source.kind === 'optimized')).toBe(true);
   });
 
-  test('should not block page rendering for missing thumbnails', async ({ page }) => {
+  test('should not block page rendering for missing thumbnails', async ({
+    page,
+  }) => {
     await page.goto('/', {
       waitUntil: 'domcontentloaded',
       timeout: 30000,

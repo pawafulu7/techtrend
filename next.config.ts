@@ -1,5 +1,5 @@
-import type { NextConfig } from "next";
-import path from "node:path";
+import type { NextConfig } from 'next';
+import path from 'node:path';
 
 import bundleAnalyzer from '@next/bundle-analyzer';
 
@@ -15,26 +15,47 @@ const nextConfig: NextConfig = {
   // Server external packages
   // jsdom and parse5 must be unbundled due to ESM/CJS compatibility
   // @dqbd/tiktoken must be unbundled due to WASM dependency (tiktoken_bg.wasm)
-  serverExternalPackages: ['jsdom', 'parse5', '@mozilla/readability', '@dqbd/tiktoken', '@prisma/adapter-pg', 'pg'],
+  serverExternalPackages: [
+    'jsdom',
+    'parse5',
+    '@mozilla/readability',
+    '@dqbd/tiktoken',
+    '@prisma/adapter-pg',
+    'pg',
+  ],
 
   // 実験的機能で最適化
   experimental: {
     optimizeCss: process.env.NODE_ENV !== 'development',
-    optimizePackageImports: ['@radix-ui', 'lucide-react', 'recharts', 'd3-scale', 'd3-hierarchy', 'd3-interpolate', 'd3-force'],
+    optimizePackageImports: [
+      '@radix-ui',
+      'lucide-react',
+      'recharts',
+      'd3-scale',
+      'd3-hierarchy',
+      'd3-interpolate',
+      'd3-force',
+    ],
   },
 
   // セキュリティヘッダはproxy.tsで管理
   // Phase 3: Complete migration to proxy.ts
   // See: proxy.ts, config/security-headers.ts
 
-  // 画像最適化
-  // Custom loader for unoptimized images (2025-10-06)
-  // - Supports 800+ domains without whitelist management
-  // - Avoids SSRF risks (browser fetches directly)
-  // - See: lib/image-loader.js
+  // 画像最適化（Issue #718）
+  // サムネイルは 2,000 を超えるホストから集めるので allowlist は作れない。https の全ホストを許可し、
+  // 取得と変換は Vercel の画像最適化が行う（開発と Docker では Next 自身が sharp で行う）。
+  // /_next/image は任意の https URL を受けるので、w と q を絞って変換枠の浪費を抑える。
+  // 失敗（Hobby の枠超過の 402 など）は OptimizedImage が元の URL に切り替える
   images: {
-    loader: 'custom',
-    loaderFile: './lib/image-loader.js',
+    remotePatterns: [{ protocol: 'https', hostname: '**' }],
+    formats: ['image/avif', 'image/webp'],
+    // 記事カード（33vw〜100vw）と記事詳細（最大 672px）で使う幅だけ
+    deviceSizes: [640, 828, 1080, 1200, 1920],
+    imageSizes: [256, 384],
+    qualities: [75],
+    // サムネイルはほぼ変わらないので、変換結果を 31 日保つ（変換の回数を抑える）
+    minimumCacheTTL: 2678400,
   },
 
   // Webpack configuration
