@@ -3,6 +3,7 @@ import { CACHE_TTL } from './constants';
 import { prisma } from '@/lib/prisma';
 import { enabledSourceSql } from '@/lib/database/enabled-source-filter';
 import type { Prisma } from '@/lib/prisma-exports';
+import type { SearchResult } from '@/lib/rag/vector-search-service';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -204,6 +205,66 @@ export class ArticleDetailCache {
     await this.cache.set(cacheKey, relatedArticles);
 
     return relatedArticles;
+  }
+
+  /**
+   * 埋め込みで選んだ関連記事を取得（キャッシュ利用）
+   *
+   * キーは `related:<記事ID>:` で始め、invalidateArticle と invalidateAllRelated（非表示の切り替え）
+   * の無効化に乗せる。0 件は保存しない。埋め込みの生成を待っている記事が、生成された後も TTL の間
+   * 空のままになるため（0 件ならタグの関連記事に切り替わる）
+   */
+  async getEmbeddingRelatedArticles(
+    articleId: string,
+    limit: number,
+    embedding: { model: string; version: number },
+    fetcher: () => Promise<SearchResult[]>
+  ): Promise<SearchResult[]> {
+    // 埋め込みのモデル・版をキーに入れる（切り替えた後に、古いモデルの結果を返さないため）
+    const cacheKey = `related:${articleId}:embedding:${embedding.model}:${embedding.version}:${limit}`;
+
+    // JSON にすると Date は文字列になる。形が合わない値（壊れた値、形を変える前に保存した値）は
+    // 無いものとして検索し直す（そのまま返すと、TTL の間ずっと表示の側で失敗する）
+    // Redis の失敗は検索に切り替える（RedisCache は失敗を null にするが、ここでも受ける）
+    let cached: Array<
+      Omit<SearchResult, 'publishedAt'> & { publishedAt: string }
+    > | null = null;
+    try {
+      cached = await this.cache.get(cacheKey);
+    } catch {
+      cached = null;
+    }
+    const restored = Array.isArray(cached)
+      ? cached.map((result) => ({
+          ...result,
+          publishedAt: new Date(result?.publishedAt),
+        }))
+      : [];
+    if (
+      restored.length > 0 &&
+      restored.every(
+        (result) =>
+          typeof result.articleId === 'string' &&
+          typeof result.title === 'string' &&
+          typeof result.sourceId === 'string' &&
+          typeof result.embeddingKey === 'string' &&
+          typeof result.similarity === 'number' &&
+          Number.isFinite(result.similarity) &&
+          !Number.isNaN(result.publishedAt.getTime())
+      )
+    ) {
+      return restored;
+    }
+
+    const results = await fetcher();
+    if (results.length > 0) {
+      try {
+        await this.cache.set(cacheKey, results);
+      } catch {
+        // 保存できなくても検索の結果は返す
+      }
+    }
+    return results;
   }
 
   /**

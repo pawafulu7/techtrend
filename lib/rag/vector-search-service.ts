@@ -9,6 +9,8 @@ import {
   QueryExpansionResult,
 } from './query-expansion-service';
 import { env } from '@/lib/config/env';
+import { supportsIterativeScan } from '@/lib/personalization/filters/pgvector-capabilities';
+import { runArticleKnn } from './article-knn';
 
 /**
  * Vector Search Service
@@ -41,6 +43,31 @@ export interface SearchResult {
 /** Raw $queryRaw result before normalization - PrismaPg returns timestamps as strings */
 interface RawSearchResult extends Omit<SearchResult, 'publishedAt'> {
   publishedAt: string;
+}
+
+/** searchByArticleId の結果をログに出す（kNN か厳密な検索かを含める） */
+function logArticleSimilarity(
+  articleId: string,
+  embeddingKey: string,
+  knn: boolean,
+  results: SearchResult[]
+): void {
+  logger.info(
+    {
+      articleId,
+      embeddingKey,
+      knn,
+      resultCount: results.length,
+      avgSimilarity:
+        results.length > 0
+          ? (
+              results.reduce((sum, r) => sum + r.similarity, 0) /
+              results.length
+            ).toFixed(4)
+          : '0.0000',
+    },
+    'Article similarity search completed'
+  );
 }
 
 export class VectorSearchService {
@@ -462,6 +489,23 @@ export class VectorSearchService {
     }
 
     try {
+      // summary は部分 HNSW の kNN（pgvector 0.8 以上）。埋め込みの取得も DB 関数の中で行い、1 回の
+      // 往復で済ませる（lib/rag/article-knn.ts）。title は HNSW の索引が無いので、下の厳密な検索を使う
+      if (
+        embeddingKey === 'summary' &&
+        (await supportsIterativeScan(this.prisma))
+      ) {
+        const results = await runArticleKnn(this.prisma, {
+          articleId,
+          model: this.activeModel,
+          version: this.activeVersion,
+          topK,
+          similarityThreshold,
+        });
+        logArticleSimilarity(articleId, embeddingKey, true, results);
+        return results;
+      }
+
       // 1. Fetch article embedding via $queryRaw (Unsupported type)
       // CodexMCP: Cast to ::text to get string representation
       const rows = await this.prisma.$queryRaw<Array<{ embedding: string }>>`
@@ -539,22 +583,7 @@ export class VectorSearchService {
         excludeArticleId: articleId, // Exclude self from results
       });
 
-      logger.info(
-        {
-          articleId,
-          embeddingKey,
-          resultCount: results.length,
-          avgSimilarity:
-            results.length > 0
-              ? (
-                  results.reduce((sum, r) => sum + r.similarity, 0) /
-                  results.length
-                ).toFixed(4)
-              : '0.0000',
-        },
-        'Article similarity search completed'
-      );
-
+      logArticleSimilarity(articleId, embeddingKey, false, results);
       return results;
     } catch (error) {
       logger.error(

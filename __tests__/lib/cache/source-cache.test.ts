@@ -1,8 +1,15 @@
 import { SourceCache } from '@/lib/cache/source-cache';
 import { prisma } from '@/lib/database';
 import { resetPrismaMock } from '../../../test/utils/prisma-mock';
+import { articleDetailCache } from '../../../lib/cache/article-detail-cache';
 
 jest.mock('@/lib/logger');
+// source-cache は使うときに './article-detail-cache' を読むので、同じ実体を指すパスでモックする
+jest.mock('../../../lib/cache/article-detail-cache', () => ({
+  articleDetailCache: {
+    invalidateAllRelated: jest.fn().mockResolvedValue(undefined),
+  },
+}));
 
 const createCacheStub = () => {
   const store = new Map<string, unknown>();
@@ -211,6 +218,12 @@ describe('SourceCache', () => {
       await sourceCache.resolveSourceIds(['Dev.to']);
       expect(prisma.source.findMany).toHaveBeenCalledTimes(3);
     });
+
+    it('関連記事のキャッシュも捨てる（無効なソースの記事を関連記事に残さない。issue #688）', async () => {
+      await sourceCache.invalidate();
+
+      expect(articleDetailCache.invalidateAllRelated).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('invalidateSource', () => {
@@ -249,6 +262,12 @@ describe('SourceCache', () => {
       // so resolveSourceIds should re-fetch from DB
       await sourceCache.resolveSourceIds(['Dev.to']);
       expect(prisma.source.findMany).toHaveBeenCalledTimes(2);
+    });
+
+    it('関連記事のキャッシュも捨てる（ソースの有効・無効で出してよい記事が変わる）', async () => {
+      await sourceCache.invalidateSource('source-1');
+
+      expect(articleDetailCache.invalidateAllRelated).toHaveBeenCalledTimes(1);
     });
 
     it('should NOT call invalidatePattern with wildcard *', async () => {

@@ -2,6 +2,7 @@ import { ArticleCategory } from '@/lib/prisma-exports';
 import { tagCache } from './tag-cache';
 import { sourceCache } from './source-cache';
 import { popularCache } from './popular-cache';
+import { articleDetailCache } from './article-detail-cache';
 import { RedisCache } from './index';
 import { getRedisService } from '@/lib/redis/factory';
 import type { IRedisService } from '@/lib/redis/interfaces';
@@ -147,6 +148,8 @@ export class CacheInvalidator {
     try {
       logger.info({ articleId }, 'Invalidating cache on article delete');
       await this.onArticleUpdated(articleId);
+      // 他の記事の関連記事に残ると、消した記事へのリンクになる（非表示の切り替えと同じ扱い）
+      await articleDetailCache.invalidateAllRelated();
 
       // 統計キャッシュもクリア
       await this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.STATS));
