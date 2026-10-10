@@ -10,6 +10,20 @@ import { getPrismaClient } from '@/lib/cli/utils/database';
 jest.mock('@/lib/services/summary/summary-manager');
 jest.mock('@/lib/cli/utils/database');
 
+// スクリプトは GEMINI_API_KEY が無いと記事を処理する前に止まる（issue #710）。
+// CI にキーは無いので、キーだけ差し替え、ほかの値は本物の env を読む
+let mockGeminiApiKey: string | undefined = 'test-gemini-key';
+jest.mock('@/lib/config/env', () => {
+  const actual = jest.requireActual('@/lib/config/env');
+  return {
+    ...actual,
+    env: new Proxy(actual.env, {
+      get: (target, prop) =>
+        prop === 'GEMINI_API_KEY' ? mockGeminiApiKey : Reflect.get(target, prop),
+    }),
+  };
+});
+
 describe('manage-summaries script', () => {
   let mockPrisma: any;
   let mockManager: any;
@@ -164,6 +178,25 @@ describe('manage-summaries script', () => {
       expect(mockManager.generateMissingSummaries).not.toHaveBeenCalled();
       expect(process.exitCode).toBe(1);
       expect(mockPrisma.$disconnect).toHaveBeenCalled(); // finally block
+    });
+  });
+
+  describe('GEMINI_API_KEY が無いとき（issue #710）', () => {
+    it('記事を処理する前に終了コード 1 で止まる', async () => {
+      mockGeminiApiKey = undefined;
+      try {
+        process.argv = ['node', 'script.ts', 'missing'];
+
+        const { main } = await import('@/scripts/scheduled/manage-summaries');
+        await main();
+
+        expect(SummaryManager).not.toHaveBeenCalled();
+        expect(mockManager.generateMissingSummaries).not.toHaveBeenCalled();
+        expect(process.exitCode).toBe(1);
+        expect(mockPrisma.$disconnect).toHaveBeenCalled(); // finally block
+      } finally {
+        mockGeminiApiKey = 'test-gemini-key';
+      }
     });
   });
 
