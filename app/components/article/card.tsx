@@ -22,6 +22,13 @@ import { useIsNewArticle } from '@/app/components/common/relative-time';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { useReadStatus } from '@/app/components/article/hooks/use-read-status';
 
+// サムネイルの表示幅（srcset の候補を選ぶのに使う。Issue #718）。
+// グリッドは list.tsx の GRID_CLASS と同じ列数（1 → sm 2 → lg 3 → xl 4 → 2xl 5）
+const THUMBNAIL_SIZES_GRID =
+  '(max-width: 639px) 100vw, (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, (max-width: 1535px) 25vw, 20vw';
+// 1 列（リスト表示・お気に入りフィード）は高さ 12rem に収めるので、16:9 でも幅は 342px まで
+const THUMBNAIL_SIZES_STACK = '342px';
+
 export function ArticleCard({
   article,
   onArticleClick,
@@ -121,7 +128,7 @@ export function ArticleCard({
                 ? 'object-cover'
                 : 'object-contain'
             }
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            sizes={isGrid ? THUMBNAIL_SIZES_GRID : THUMBNAIL_SIZES_STACK}
             onError={() => setErroredThumbnail(thumbnailSrc)}
           />
         </div>

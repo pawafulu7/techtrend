@@ -27,6 +27,7 @@ import { ArticleQADialog } from '@/app/articles/_components/article-qa-dialog';
 import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 import { CommentSection } from '@/app/components/comment';
 import { ReadOriginalLink } from '@/app/components/article/read-original-link';
+import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
 
 interface PageProps {
   params: Promise<{
@@ -266,7 +267,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                 )}
 
                 {/* スライドサービスまたは短い記事の場合はサムネイル表示、それ以外は詳細要約表示 */}
-                {(isSlideService || isShortArticle) && article.thumbnail ? (
+                {(isSlideService || isShortArticle) &&
+                hasValidThumbnail(article.thumbnail) ? (
                   <>
                     <div className="mx-auto max-w-2xl">
                       {/* max-h-[480px] is a defensive constraint for oversized images.

@@ -17,7 +17,7 @@ function SourceNameBox({ sourceName }: { sourceName: string }) {
   );
 }
 
-/** 180px 幅のサムネイル。読めなかったらソース名の枠に置き換える */
+/** 180px 幅のサムネイル。読めなかった URL はソース名の枠に置き換える（URL が変われば読み直す） */
 function KeyTopicThumbnail({
   src,
   sourceName,
@@ -25,8 +25,8 @@ function KeyTopicThumbnail({
   src: string;
   sourceName: string;
 }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) return <SourceNameBox sourceName={sourceName} />;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (failedSrc === src) return <SourceNameBox sourceName={sourceName} />;
   return (
     <div className="bg-muted relative h-[100px] w-full">
       <OptimizedImage
@@ -35,7 +35,8 @@ function KeyTopicThumbnail({
         fill
         sizes="180px"
         className="object-cover"
-        onError={() => setFailed(true)}
+        referrerPolicy="no-referrer"
+        onError={() => setFailedSrc(src)}
       />
     </div>
   );

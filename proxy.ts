@@ -121,8 +121,11 @@ export async function proxy(request: NextRequest) {
     // にする（issue #647）。ここはページ（ISR を含む）と、route が何も設定しない応答の担当。
     const passedGate =
       gate.kind === 'basic' || gate.kind === 'cookie' || gate.kind === 'cron';
+    // 最適化した画像は元が公開 URL なので、共有キャッシュに載せてよい（Vercel の画像キャッシュと
+    // ブラウザのキャッシュを効かせる）。ゲートは通すが、キャッシュの打ち消しと Cookie の発行はしない
+    const isImageOptimizer = pathname.startsWith('/_next/image');
 
-    if (passedGate) {
+    if (passedGate && !isImageOptimizer) {
       // Cookie はドキュメント遷移でのみ発行する。API 応答（beacon 含む）には載せない。
       if (gate.kind === 'basic' && !pathname.startsWith('/api/')) {
         response.headers.append(
@@ -288,6 +291,8 @@ export const config = {
     // Match all routes except static files, fonts, and Next.js internals.
     // /api/ は拡張子の除外から外す。外さないと /api/articles/abc.png のような動的 route の
     // パスが proxy（ゲート・CSRF・NUL の拒否・セキュリティヘッダ）を通らない（issue #687）
-    '/((?!_next/static|_next/image|favicon.ico|(?!api/).*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)',
+    // /_next/image は除外しない。任意の https URL を受ける画像最適化を、Basic 認証ゲートの
+    // 外に置くと第三者が変換枠を使い切れるため（Issue #718）
+    '/((?!_next/static|favicon.ico|(?!api/).*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)',
   ],
 };

@@ -61,7 +61,8 @@ export function ArticleListItem({
             src={thumbnailSrc}
             alt=""
             fill
-            sizes="(max-width: 1024px) 100vw, 384px"
+            // reader-client.tsx の一覧ペイン: md 未満は全幅、md で 320px、lg で 380px
+            sizes="(max-width: 767px) 100vw, (max-width: 1023px) 320px, 380px"
             className="object-contain"
             onError={() => setErroredThumbnail(thumbnailSrc)}
           />

@@ -50,9 +50,11 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [{ protocol: 'https', hostname: '**' }],
     formats: ['image/avif', 'image/webp'],
-    // 記事カード（33vw〜100vw）と記事詳細（最大 672px）で使う幅だけ
-    deviceSizes: [640, 828, 1080, 1200, 1920],
-    imageSizes: [256, 384],
+    // 記事カード（20vw〜100vw）・/reader の一覧（320〜380px）・記事詳細（最大 672px）で使う幅だけ。
+    // sizes に vw があると deviceSizes[0] × 最小の割合より小さい候補は srcset から外れるので、
+    // 384 は imageSizes ではなく deviceSizes に置く
+    deviceSizes: [384, 640, 828, 1080, 1200, 1920],
+    imageSizes: [256],
     qualities: [75],
     // サムネイルはほぼ変わらないので、変換結果を 31 日保つ（変換の回数を抑える）
     minimumCacheTTL: 2678400,

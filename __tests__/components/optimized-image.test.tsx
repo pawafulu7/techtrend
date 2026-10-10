@@ -1,10 +1,9 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import {
-  OptimizedImage,
-  canOptimizeImage,
-} from '@/app/components/common/optimized-image';
+import { OptimizedImage } from '@/app/components/common/optimized-image';
+import { canOptimizeImage } from '@/lib/utils/article/thumbnail';
 
-// next/image に渡した props を見るため、unoptimized を属性に写す
+// next/image に渡した props を見るため、unoptimized を属性に写す。
+// 最適化するときは本物と同じく /_next/image の URL を src にする
 jest.mock('next/image', () => ({
   __esModule: true,
   default: ({
@@ -20,7 +19,11 @@ jest.mock('next/image', () => ({
   }) => (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={
+        unoptimized
+          ? src
+          : `/_next/image?url=${encodeURIComponent(src)}&w=640&q=75`
+      }
       alt={alt}
       data-unoptimized={String(!!unoptimized)}
       onError={onError}

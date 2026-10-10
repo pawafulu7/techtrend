@@ -1,7 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, type SyntheticEvent } from 'react';
+import { canOptimizeImage } from '@/lib/utils/article/thumbnail';
 
 interface OptimizedImageProps {
   src: string;
@@ -13,7 +14,8 @@ interface OptimizedImageProps {
   sizes?: string;
   fill?: boolean;
   style?: React.CSSProperties;
-  quality?: number;
+  /** 元の URL をそのまま出すとき（http・SVG・最適化の失敗後）に外部ホストへ送る Referer の扱い */
+  referrerPolicy?: React.HTMLAttributeReferrerPolicy;
   onError?: () => void;
 }
 
@@ -27,20 +29,6 @@ const PLACEHOLDER_IMAGE =
  * failed: 元の URL でも読めなかったので、プレースホルダーを出す
  */
 type LoadStage = 'optimized' | 'original' | 'failed';
-
-/**
- * /_next/image で最適化できる URL か。
- * remotePatterns は https だけなので http は最適化しない（next/image が例外を投げる）。
- * SVG は最適化しない（dangerouslyAllowSVG を有効にしないため）
- */
-export function canOptimizeImage(src: string): boolean {
-  if (!src.startsWith('https://')) return false;
-  try {
-    return !new URL(src).pathname.toLowerCase().endsWith('.svg');
-  } catch {
-    return false;
-  }
-}
 
 /**
  * 外部の画像を next/image で出す（Issue #718）
@@ -59,7 +47,7 @@ export function OptimizedImage({
   sizes,
   fill = false,
   style,
-  quality = 75,
+  referrerPolicy,
   onError,
 }: OptimizedImageProps) {
   const [stage, setStage] = useState<LoadStage>('optimized');
@@ -71,12 +59,16 @@ export function OptimizedImage({
     setStage('optimized');
   }
 
-  const optimizable = canOptimizeImage(src);
   const imgSrc = stage === 'failed' ? PLACEHOLDER_IMAGE : src;
-  const unoptimized = !optimizable || stage !== 'optimized';
+  const unoptimized = !canOptimizeImage(src) || stage !== 'optimized';
 
-  const handleError = () => {
-    if (stage === 'optimized' && optimizable) {
+  const handleError = (event: SyntheticEvent<HTMLImageElement>) => {
+    // 失敗したのが /_next/image なら、元の URL で読み直す。stage ではなく実際の src で判定するのは、
+    // next/image が自分の判断で unoptimized にしたとき（.svg など）に読み直しが空振りしないようにするため
+    const failedViaOptimizer = (
+      event.currentTarget.getAttribute('src') ?? ''
+    ).includes('/_next/image');
+    if (failedViaOptimizer && stage === 'optimized') {
       setStage('original');
       return;
     }
@@ -86,14 +78,15 @@ export function OptimizedImage({
     }
   };
 
-  // alt は spread に入れず明示する（jsx-a11y/alt-text が spread の中を見ないため）
+  // alt は spread に入れず明示する（jsx-a11y/alt-text が spread の中を見ないため）。
+  // quality は渡さない。next.config.ts の qualities は [75] だけで、ほかの値は 400 になる
   const shared = {
     src: imgSrc,
     priority,
     loading: priority ? ('eager' as const) : ('lazy' as const),
     className,
     style,
-    quality,
+    referrerPolicy,
     unoptimized,
     onError: handleError,
   };
@@ -118,63 +111,6 @@ export function OptimizedImage({
       width={width}
       height={height}
       sizes={sizes || `(max-width: 768px) 100vw, ${width}px`}
-    />
-  );
-}
-
-/**
- * 記事サムネイル用の最適化された画像コンポーネント
- */
-export function ArticleThumbnail({
-  src,
-  alt,
-  priority = false,
-  className = '',
-}: {
-  src: string;
-  alt: string;
-  priority?: boolean;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`relative aspect-video overflow-hidden bg-[var(--tt-color-surface-muted)] ${className}`}
-    >
-      <OptimizedImage
-        src={src}
-        alt={alt}
-        fill
-        priority={priority}
-        sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-        className="object-cover"
-        quality={75}
-      />
-    </div>
-  );
-}
-
-/**
- * プロフィール画像用の最適化された画像コンポーネント
- */
-export function ProfileImage({
-  src,
-  alt,
-  size = 40,
-  className = '',
-}: {
-  src: string;
-  alt: string;
-  size?: number;
-  className?: string;
-}) {
-  return (
-    <OptimizedImage
-      src={src}
-      alt={alt}
-      width={size}
-      height={size}
-      className={`rounded-full ${className}`}
-      quality={90}
     />
   );
 }
