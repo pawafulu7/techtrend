@@ -67,24 +67,6 @@ export interface TagStats {
   growthRate: number;
 }
 
-// フィード収集関連
-export interface CollectResult {
-  source: string;
-  success: boolean;
-  newArticles: number;
-  totalArticles: number;
-  error?: string;
-}
-
-export interface CollectResponse {
-  results: CollectResult[];
-  summary: {
-    totalNewArticles: number;
-    successfulSources: number;
-    failedSources: number;
-  };
-}
-
 // 要約生成関連
 export interface SummaryGenerateParams {
   articleIds?: string[];

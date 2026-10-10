@@ -25,12 +25,7 @@ AI Agent Search allows you to search for articles using natural language queries
 
 ## How to Access
 
-### Option 1: SearchBar CTA (Recommended)
-1. From any page, locate the search bar
-2. Click **"AI検索を試す"** link above the search input
-3. You'll be redirected to `/search/agent`
-
-### Option 2: Direct URL
+### Direct URL
 Navigate directly to: `https://your-domain.com/search/agent`
 
 ### Requirements
@@ -275,5 +270,4 @@ For technical issues or feature requests, contact your system administrator or f
 ## Related Documentation
 
 - [RAG Embedding Lifecycle](docs/operations/rag-embedding-lifecycle.md)
-- [RAG Search API](docs/api/rag-search-api.md)
 - [RAG Rollback Procedure](docs/operations/rag-rollback-procedure.md)

@@ -5,7 +5,7 @@ import { CardV2 } from '@/components/ui-v2/card-v2';
 import { PageHeader } from '@/components/ui-v2/page-header';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ArticleCard } from '@/app/components/article/card';
-import { Pagination } from '@/app/components/ui/pagination';
+import { Pagination } from '@/app/components/common/pagination';
 import {
   Star,
   Folder,
@@ -331,6 +331,7 @@ export function FavoriteFeedContent() {
                 currentPage={page}
                 totalPages={totalPages}
                 onPageChange={setPage}
+                label="ページ送り（上）"
               />
             </div>
           )}

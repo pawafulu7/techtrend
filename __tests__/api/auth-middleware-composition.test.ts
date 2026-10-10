@@ -117,10 +117,6 @@ const ROUTES: Array<{
   },
   // User API -> withUserValidation
   {
-    modulePath: '@/app/api/rag/search/route',
-    methods: { POST: csrf(userValidation(HANDLER)) },
-  },
-  {
     modulePath: '@/app/api/favorites/batch/route',
     methods: {
       POST: csrf(rateLimit('read:favorite:batch', userValidation(HANDLER))),
@@ -158,9 +154,9 @@ const ROWS = ROUTES.flatMap((route) =>
 );
 
 describe('Auth middleware composition (issues #659, #662)', () => {
-  it('covers all 20 HTTP methods of the 16 routes', () => {
-    expect(ROUTES).toHaveLength(16);
-    expect(ROWS).toHaveLength(20);
+  it('covers all 19 HTTP methods of the 15 routes', () => {
+    expect(ROUTES).toHaveLength(15);
+    expect(ROWS).toHaveLength(19);
   });
 
   it.each(ROUTES.map((route) => [route.modulePath, route] as const))(

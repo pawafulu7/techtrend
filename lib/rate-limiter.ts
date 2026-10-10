@@ -125,21 +125,8 @@ export function createRateLimiterFromConfig(
 }
 
 /**
- * RAG Search Rate Limiter (Vector Search)
- * - 10 requests per minute per user
- * - Fixed window algorithm (default)
- * - TCP connection via ioredis (< 2ms latency) or in-memory fallback
- * - Used by: /api/rag/search (direct vector search, low cost)
- */
-export const ragSearchRateLimit = createRateLimiter(
-  10,
-  60,
-  'ratelimit:rag:search'
-);
-
-/**
  * RAG Agent Search Rate Limiter
- * - 5 requests per minute per user (stricter than vector search)
+ * - 5 requests per minute per user
  * - Fixed window algorithm
  * - Used by: /api/rag/agent-search (AI agent with GPT-4o-mini)
  *
@@ -178,17 +165,6 @@ export const articleQaRateLimit = createRateLimiter(
 );
 
 /**
- * Embedding Generation Rate Limiter
- * - 100 requests per hour per user
- * - Fixed window algorithm (default)
- */
-export const embeddingRateLimit = createRateLimiter(
-  100,
-  3600,
-  'ratelimit:embedding'
-);
-
-/**
  * Custom error for rate limit exceeded
  *
  * Includes limit, remaining count, and reset time for client retry logic
@@ -213,7 +189,7 @@ export class RateLimitError extends Error {
  * - Throws RateLimitError if limit exceeded (compatible with existing error handling)
  * - Returns void if successful
  *
- * @param limitKey - Unique identifier for rate limiting (e.g., "rag:search:userId")
+ * @param limitKey - Unique identifier for rate limiting (e.g., "rag:agent:<agentType>:<userId>")
  * @param ratelimiter - RateLimiterAbstract instance (Redis or Memory)
  * @throws {RateLimitError} - When rate limit is exceeded
  * @throws {Error} - When Redis connection fails
@@ -223,8 +199,8 @@ export class RateLimitError extends Error {
  * // In API route
  * const session = await getSession();
  * if (!session?.user?.id) return;
- * const key = `rag:search:${session.user.id}`;
- * await checkRateLimit(key, ragSearchRateLimit);
+ * const key = `rag:agent:${agentType}:${session.user.id}`;
+ * await checkRateLimit(key, ragAgentSearchRateLimit);
  * ```
  */
 export async function checkRateLimit(

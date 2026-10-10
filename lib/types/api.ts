@@ -7,8 +7,6 @@ export type {
   StatsResponse,
   SourceStats,
   TagStats,
-  CollectResult,
-  CollectResponse,
   SummaryGenerateParams,
   SummaryGenerateResult,
   QualityScoreParams,

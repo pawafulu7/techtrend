@@ -117,9 +117,9 @@ flowchart LR
 | `scheduler-qiita` | `5 20 * * *`, `5 8 * * *` | 05:05, 17:05 | `collect-feeds.ts`（Qiita Popular）→ 同上 2 本（同順） | `Article`, `EmbeddingJob` |
 | `scheduler-tags` | `30 23 * * *`, `30 11 * * *` | 08:30, 20:30 | `generate-tags.ts` | `Tag`, `_ArticleToTag` |
 | `scheduler-daily-quality` | `0 2 * * *` | 11:00 | `manage-quality-scores.ts calculate` | `Article`（qualityScore と qualityScoreComputedAt） |
-| `scheduler-quality-auto` | `30 6 * * *` | 15:30 | `quality-check.ts --days 7 --auto-regenerate` → `auto-regenerate-low-quality.ts --threshold 70 --limit 10` | `Article`（品質フラグ・再生成後の要約/スコア） |
+| `scheduler-quality-auto` | `30 6 * * *` | 15:30 | `quality-check.ts --days 7 --auto-regenerate` → `auto-regenerate-low-quality.ts --threshold 70 --limit 10` → `manage-summaries.ts missing --days 3 --batch 10` | `Article`（品質フラグ・再生成後の要約/スコア・欠けていた要約） |
 | `scheduler-translation-fix` | `30 */4 * * *` | 4時間毎（01:30, 05:30, 09:30, 13:30, 17:30, 21:30） | `fix-missing-translations.ts` | `Article`（translatedTitle 等） |
-| `scheduler-embedding-worker` | `*/30 * * * *` | 30分毎（UTC と同一パターン） | `run-embedding-worker.ts` | `ArticleEmbedding` |
+| `scheduler-embedding-worker` | `*/30 * * * *` | 30分毎（UTC と同一パターン） | `recover-stuck-embeddings.ts --age=30 --limit=100` → `run-embedding-worker.ts` | `EmbeddingJob`（止まったジョブを PENDING に戻す）, `ArticleEmbedding` |
 | `scheduler-trend-report` | `30 5 * * *` | 14:30 | `generate-trend-report.ts --type daily`（入力省略時） | `TrendReport` |
 | `scheduler-changelog` | `15 3 * * *` | 12:15 | `collect-changelog.ts` | `ChangelogProject`, `ChangelogVersion`, `ChangelogEntry` |
 | `scheduler-diff-summary` | `0 21 * * 0`（日曜） | 月曜06:00 | `generate-diff-summaries.ts --week <ISO週> --force` | `DiffSummary`（+ Redis `diff-summary*` キー削除） |
@@ -132,10 +132,7 @@ flowchart LR
 ## 注記
 
 - **`ArticleChunk` はスキーマ上存在するが、現行パイプラインの書き込み対象外。** `prisma/schema.prisma` にモデル定義はあるが、`lib/rag/article-embedding-pipeline.ts` が生成するのは title/summary の `ArticleEmbedding` のみで、リポジトリ全体を検索しても `ArticleChunk` への `create`/`upsert`/`INSERT` は存在しない（確認: `grep -rn "articleChunk\.\(create\|upsert\)\|INSERT INTO \"ArticleChunk\"" lib app scripts` → 0 件）。
-- **PM2 と GitHub Actions はスケジュールを二重に定義している。** PM2 側は 2 系統ある:
-  - `scripts/scheduled/scheduler.ts` の node-cron（`techtrend-scheduler` app）が RSS・scraping・qiita・tags・quality-auto・cleanup・trend-report を **GHA とは独立した cron 定義で再実装**している（`scheduler.ts:430-650` 付近）。加えて毎時 15 分に embedding の stuck job リカバリ（`EmbeddingScheduler.recoverStuckJobs`）を行う
-  - `ecosystem.config.js` は**バッチ用の独立 app** も定義しており、その中に `techtrend-embedding-worker`（`script: scripts/dev/run-embedding-worker.ts`, `cron_restart: '*/30 * * * *'`、`ecosystem.config.js:78-90`）が含まれる。GHA の `scheduler-embedding-worker.yml`（30 分毎）と**同じ間隔で二重定義**されている（`ecosystem.local.config.js:85-94` はローカル用に毎時実行）
-  - どちらを実際に動かすかは運用側の起動状態しだいで、コードからは判定できない [推測]。少なくとも定義としては両方に存在するため、片方だけ直すと不整合になる
+- **定期実行の定義は GitHub Actions だけ。** PM2 の定義（`ecosystem.config.js`・`scripts/scheduled/scheduler.ts`）は issue #710 で削除した。PM2 は開発 DB だけを見ていたので、PM2 にしか無かった処理は本番では動いていなかった。そのうち止まった embedding ジョブの復旧と要約の欠けた記事の補完は、`scheduler-embedding-worker`・`scheduler-quality-auto` に足して本番でも動かすようにした。閲覧履歴の掃除（`ArticleView` は既読フラグを兼ねるので、行を消すと既読も消える）と Google Developers Blog・AWS の本文の後追い補完は、定期実行しない
 - `vercel.json` は `{}` で Vercel Cron の定義はない（確認済み）。`run-embedding-worker.ts` 冒頭コメントの「production は Vercel Cron 経由」という記述は実態と合っていない。
 - 数値・cron 値は 2026-08-15 時点のコードから取得。再取得コマンド:
   ```bash

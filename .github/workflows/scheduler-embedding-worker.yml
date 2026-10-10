@@ -29,7 +29,16 @@ jobs:
         with:
           database_url: ${{ secrets.DATABASE_URL }}
           skip_migrate: 'true'
+      # 前回の実行が時間切れで止まり、PROCESSING のまま残ったジョブを PENDING に戻す
+      # （ワーカー自体は拾い直さない。旧 pm2 scheduler.ts の毎時15分の処理を移した。issue #710）
+      - name: Recover stuck embedding jobs
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+        run: npx tsx scripts/maintenance/recover-stuck-embeddings.ts --age=30 --limit=100
       - name: Run embedding worker
+        if: ${{ !cancelled() }}
         env:
           NODE_ENV: production
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

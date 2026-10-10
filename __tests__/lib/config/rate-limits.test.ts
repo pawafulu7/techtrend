@@ -21,7 +21,6 @@ describe('Rate Limit Configuration', () => {
     });
 
     it('should have RAG policies', () => {
-      expect(RATE_LIMIT_POLICIES['rag:search']).toBeDefined();
       expect(RATE_LIMIT_POLICIES['rag:agent']).toBeDefined();
     });
 

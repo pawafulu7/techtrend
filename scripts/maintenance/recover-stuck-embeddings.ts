@@ -6,6 +6,7 @@
  *
  * Uses EmbeddingScheduler.recoverStuckJobs() for the core recovery logic,
  * with additional CLI options for verbose output and dry-run mode.
+ * Runs before the worker in .github/workflows/scheduler-embedding-worker.yml.
  *
  * Usage:
  *   npx tsx scripts/maintenance/recover-stuck-embeddings.ts [options]
@@ -24,7 +25,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { EmbeddingScheduler, stuckJobWhere } from '@/lib/services/embedding-scheduler';
 
 interface Options {
   ageMinutes: number;
@@ -55,20 +56,24 @@ function parseArgs(args: string[]): Options {
   };
 }
 
+/** 実際の復旧（EmbeddingScheduler.recoverStuckJobs）と同じ条件・同じ limit で対象を選ぶ */
 async function getStuckJobsForDisplay(ageMinutes: number, limit: number) {
   const cutoffTime = new Date(Date.now() - ageMinutes * 60 * 1000);
 
-  return prisma.embeddingJob.findMany({
-    where: {
-      status: 'PROCESSING',
-      queuedAt: { lt: cutoffTime },
-    },
-    include: {
-      article: { select: { id: true, title: true } },
-    },
-    orderBy: { queuedAt: 'asc' },
-    take: limit,
-  });
+  const [jobsToReset, skipped] = await Promise.all([
+    prisma.embeddingJob.findMany({
+      where: stuckJobWhere(prisma, cutoffTime, 'recoverable'),
+      include: {
+        article: { select: { id: true, title: true } },
+      },
+      orderBy: { queuedAt: 'asc' },
+      take: limit,
+    }),
+    prisma.embeddingJob.count({
+      where: stuckJobWhere(prisma, cutoffTime, 'overMaxAttempts'),
+    }),
+  ]);
+  return { jobsToReset, skipped };
 }
 
 async function recoverStuckEmbeddings(options: Options): Promise<RecoveryResult> {
@@ -83,18 +88,19 @@ async function recoverStuckEmbeddings(options: Options): Promise<RecoveryResult>
 
   // Get stuck jobs for display (verbose mode or dry-run)
   if (options.verbose || options.dryRun) {
-    const stuckJobs = await getStuckJobsForDisplay(options.ageMinutes, options.limit);
+    const { jobsToReset, skipped } = await getStuckJobsForDisplay(options.ageMinutes, options.limit);
+    const found = jobsToReset.length + skipped;
 
-    console.log(`Found ${stuckJobs.length} stuck job(s)`);
+    console.log(`Found ${found} stuck job(s) (${skipped} over max attempts)`);
 
-    if (stuckJobs.length === 0) {
+    if (found === 0) {
       console.log('No stuck jobs to recover.');
       return { found: 0, reset: 0, skipped: 0 };
     }
 
     if (options.verbose) {
-      console.log('\nStuck jobs:');
-      for (const job of stuckJobs) {
+      console.log('\nStuck jobs to reset:');
+      for (const job of jobsToReset) {
         const title = job.article?.title?.substring(0, 60) || '(no article)';
         const age = Math.round((Date.now() - job.queuedAt.getTime()) / 60000);
         console.log(`  - Job ${job.id}`);
@@ -109,20 +115,16 @@ async function recoverStuckEmbeddings(options: Options): Promise<RecoveryResult>
     }
 
     if (options.dryRun) {
-      // Calculate what would be reset
-      const jobsToReset = stuckJobs.filter((job) => job.attempts < job.maxAttempts);
-      const skipped = stuckJobs.length - jobsToReset.length;
-
       console.log('[DRY RUN] Would reset these jobs to PENDING status');
       console.log(`  Eligible for reset: ${jobsToReset.length}`);
-      console.log(`  Would skip (max attempts exceeded): ${skipped}`);
+      console.log(`  Would mark as FAILED (max attempts exceeded): ${skipped}`);
 
       return {
-        found: stuckJobs.length,
+        found,
         reset: 0,
         skipped,
-        oldestAgeMinutes: stuckJobs.length > 0
-          ? Math.round((Date.now() - stuckJobs[0].queuedAt.getTime()) / 60000)
+        oldestAgeMinutes: jobsToReset.length > 0
+          ? Math.round((Date.now() - jobsToReset[0].queuedAt.getTime()) / 60000)
           : undefined,
       };
     }
@@ -134,7 +136,7 @@ async function recoverStuckEmbeddings(options: Options): Promise<RecoveryResult>
 
   console.log(`\nReset ${result.reset} job(s) to PENDING status`);
   if (result.skipped > 0) {
-    console.log(`Skipped ${result.skipped} job(s) that exceeded max attempts`);
+    console.log(`Marked ${result.skipped} job(s) that exceeded max attempts as FAILED`);
   }
 
   return result;
@@ -152,10 +154,8 @@ async function main(): Promise<void> {
     console.log('\n--- Summary ---');
     console.log(JSON.stringify(result, null, 2));
 
-    // Exit code:
-    // 0 = success (jobs reset or no stuck jobs)
-    // 1 = found stuck jobs but none were reset (dry-run or all skipped)
-    exitCode = result.reset > 0 || result.found === 0 ? 0 : 1;
+    // 例外のときだけ 1 にする。試行回数の上限で戻さなかったジョブや dry-run は失敗ではない
+    // （GHA の scheduler-embedding-worker から定期的に呼ぶので、1 にすると失敗の通知が続く）
   } catch (error) {
     console.error('Error during recovery:', error);
     exitCode = 1;
@@ -166,4 +166,7 @@ async function main(): Promise<void> {
   process.exit(exitCode);
 }
 
-main();
+main().catch((error) => {
+  console.error('Unexpected error:', error);
+  process.exit(1);
+});

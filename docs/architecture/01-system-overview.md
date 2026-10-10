@@ -86,7 +86,7 @@ flowchart LR
 
 ## 01-B ローカル開発・CI 環境
 
-Docker Compose と PM2 はローカル開発・CI 用の構成。本番と同じ `scripts/` と `prisma/schema.prisma` を使う点が接続点になる（PM2 の位置づけについては注記を参照）。
+Docker Compose はローカル開発・CI 用の構成。本番と同じ `scripts/` と `prisma/schema.prisma` を使う点が接続点になる。定期実行の定義は GitHub Actions だけにある（PM2 の定義は issue #710 で削除した）。
 
 ```mermaid
 flowchart LR
@@ -95,7 +95,6 @@ flowchart LR
         dc_app["Docker Compose: app"]
         dc_test["Docker Compose: test"]
         dc_otel["Docker Compose: otel"]
-        pm2["PM2 scheduler<br/>ecosystem.config.js<br/>scheduler.ts の node-cron"]
         otelc["OTel Collector"]
         subgraph mon["Docker Compose: monitoring"]
             grafana["Grafana"]
@@ -110,7 +109,6 @@ flowchart LR
     otelc --> grafana
     otelc --> loki
     otelc --> tempo
-    pm2 --> dc_dev
     dc_app --> dc_dev
     dc_test --> dc_dev
     dc_dev -. "同じ scripts/・同じ Prisma スキーマ" .-> prod_ref
@@ -124,7 +122,6 @@ flowchart LR
 |----------------|------|-------------------|
 | Docker Compose: dev | `docker-compose.dev.yml`（postgres pgvector/pg17 + redis:7-alpine） | `DATABASE_URL`, `REDIS_URL`（ローカル値） |
 | Docker Compose: app / test / monitoring / otel | 同名の docker-compose ファイル群 | - |
-| PM2 scheduler | `ecosystem.config.js` / `ecosystem.local.config.js`。`scripts/scheduled/scheduler.ts` の node-cron オーケストレータ | - |
 | OTel Collector | `docker-compose.otel.yml`。`instrumentation.ts` の OTLP HTTP エクスポート先（ローカル時） | - |
 | Grafana / Loki / Tempo | `docker-compose.monitoring.yml`。全ポート `127.0.0.1` バインドでローカル専用 | - |
 | 本番構成（01-A 参照） | 同じ `scripts/` ディレクトリと `prisma/schema.prisma` を本番 GitHub Actions が実行 | - |
@@ -133,7 +130,6 @@ flowchart LR
 
 - **本番 PostgreSQL のバージョンと提供元は断定しない**。`pg17` と確認できるのはローカル用の `Dockerfile.postgres-pgvector`（`FROM pgvector/pgvector:pg17`、`docker-compose.dev.yml` が使用）だけで、本番の接続先バージョンはコードから取得していない [推測]。提供元についても、運用手順書 `docs/operations/rag-rollback-procedure.md` では Neon の操作（Snapshot 取得、`console.neon.tech`）を記載しているが、`docs/VERCEL_MIGRATION_SETUP.md` は Prisma Postgres（db.prisma.io）、`README.md` は Supabase と記述が混在しており、現行の提供元はコードからは確定できない [推測]。GitHub Actions は `secrets.DATABASE_URL` のみを参照しており、接続先そのものはワークフロー定義から特定できない
 - **Upstash は図に載せていない**。`UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` は `lib/config/env.ts:123-125` にスキーマ定義があるだけで、この env を読むコードは存在しない。レート制限の実体は `lib/rate-limiter.ts` で、`REDIS_URL` の ioredis クライアント（未設定時はメモリ）を使う。したがってキャッシュとレート制限は同じ Redis 1 ノードを共有している。なお `app/api/rag/*/route.ts` のコメントには「Upstash Redis」という旧記述が残っている（実装とは無関係）
-- **PM2 はローカル開発用と位置づけられているが、定義としては本番相当のバッチを持っている**。`scripts/scheduled/scheduler.ts:637` には「本番は GHA 側で実行」という注記がある一方、`ecosystem.config.js` には `techtrend-embedding-worker`（`cron_restart: */30`）など GHA と同間隔のバッチ app が定義されている。実際にどちらが動いているかは運用側の起動状態しだいで、コードからは判定できない [推測]。詳細は [02-batch-pipeline.md](./02-batch-pipeline.md#注記) を参照
 - Source 76 件は 2026-08-15 時点の **dev DB** の値（本番の件数は未確認）。取得コマンド: `docker exec techtrend-postgres psql -U postgres -d techtrend_dev -c 'SELECT COUNT(*), COUNT(*) FILTER (WHERE enabled) FROM "Source";'`
 - API routes 74 件の取得コマンド: `find app/api -name route.ts | wc -l`
 - GitHub Actions スケジューラ 12 本の取得コマンド: `ls .github/workflows/scheduler-*.yml | wc -l`

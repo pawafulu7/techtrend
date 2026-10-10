@@ -487,6 +487,5 @@ LIMIT 10;
 
 ## Related Documents
 
-- API Specification: `docs/api/rag-search-api.md`
 - Rollback Procedure: `docs/operations/rag-rollback-procedure.md`
 - Implementation Plan: `.claude/docs/plan/plan_20251018_104352_577_mastra-rag-final-secure.md`

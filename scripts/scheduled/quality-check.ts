@@ -2,7 +2,7 @@
 
 /**
  * 記事要約の品質を定期的にチェックし、低品質な要約を検出
- * PM2スケジューラーで実行可能
+ * .github/workflows/scheduler-quality-auto.yml から実行
  */
 
 import { prisma } from '@/lib/prisma';

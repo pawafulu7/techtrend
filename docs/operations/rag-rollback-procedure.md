@@ -52,51 +52,31 @@ Before proceeding with rollback, assess the severity:
 
 Immediately stop new RAG search requests to prevent further issues.
 
-### Option A: Environment Variable (Fastest - Recommended)
+`RAG_ENABLED` は `lib/config/env.ts` に定義があるだけで、どのルートも読んでいない。環境変数を変えても API は止まらないので、コードで止める。
 
-```bash
-# 1. Go to Vercel Dashboard
-# 2. Project Settings → Environment Variables
-# 3. Add new variable:
-RAG_ENABLED=false
+**File**: `app/api/rag/agent-search/route.ts`
 
-# 4. Trigger redeploy (automatic or manual)
-#    Vercel will redeploy within 1-2 minutes
-```
-
-### Option B: Code Change (If Option A unavailable)
-
-**File**: `app/api/rag/search/route.ts`
+末尾の `export const POST = withCSRFProtection(withUserValidation(postHandler));` を、一時的に次へ置き換える。
 
 ```typescript
-export async function POST(request: NextRequest) {
-  // Emergency disable
-  return NextResponse.json(
+// Emergency disable
+export const POST = async () =>
+  NextResponse.json(
     { error: 'Service temporarily unavailable for maintenance' },
     { status: 503 }
   );
-}
 ```
 
 ```bash
 # Commit and push
-git add app/api/rag/search/route.ts
-git commit -m "feat: emergency disable RAG API"
+git add app/api/rag/agent-search/route.ts
+git commit -m "fix: emergency disable RAG agent search"
 git push origin main
 
 # Vercel auto-deploys
 ```
 
-**Verification**:
-```bash
-# Test that API returns 503
-curl -X POST https://techtrend.example.com/api/rag/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "test"}' \
-  -w "\nHTTP Status: %{http_code}\n"
-
-# Expected: HTTP Status: 503
-```
+**Verification**: 本番はゲート（Basic 認証）とログインの内側にあるので、認証なしの curl では確かめられない。ログインしたブラウザで AI 検索（`/search/agent`）を実行し、開発者ツールの Network で `/api/rag/agent-search` が 503 を返すことを確かめる。
 
 ---
 
@@ -469,5 +449,4 @@ neon branches delete rollback-test-YYYY-MM-DD
 ## Related Documents
 
 - Implementation Plan: `.claude/docs/plan/plan_20251018_104352_577_mastra-rag-final-secure.md`
-- API Specification: `docs/api/rag-search-api.md`
 - Embedding Lifecycle: `docs/operations/rag-embedding-lifecycle.md`

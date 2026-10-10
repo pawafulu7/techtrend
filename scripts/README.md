@@ -4,7 +4,7 @@
 
 ```
 scripts/
-├── scheduled/     # Scheduled scripts (PM2/CI) - permanent
+├── scheduled/     # Scheduled scripts (GitHub Actions) - permanent
 ├── manual/        # Manual execution scripts - permanent
 ├── maintenance/   # Maintenance scripts - permanent
 ├── ci/            # CI/CD scripts - permanent
@@ -24,7 +24,7 @@ scripts/
 
 | Directory | Purpose | Example |
 |-----------|---------|---------|
-| scheduled/ | PM2/cron scheduled jobs | collect-feeds.ts |
+| scheduled/ | GitHub Actions scheduled jobs | collect-feeds.ts |
 | manual/ | On-demand tools | compare-summaries.ts |
 | maintenance/ | System maintenance | generate-summaries.ts |
 | ci/ | CI/CD pipelines | run-golden-set-regression.ts |
@@ -46,7 +46,6 @@ scripts/
 ## Key Scripts
 
 ### scheduled/ - Scheduled Jobs
-- `scheduler.ts` - PM2 scheduler entry point
 - `collect-feeds.ts` - RSS/API feed collection
 - `manage-summaries.ts` - Summary generation
 - `manage-quality-scores.ts` - Quality score calculation
