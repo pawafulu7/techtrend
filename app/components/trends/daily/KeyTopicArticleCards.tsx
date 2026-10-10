@@ -1,11 +1,46 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { OptimizedImage } from '@/app/components/common/optimized-image';
+import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
 import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
 import type { TopArticleInfo } from '@/lib/services/trend-report/types';
 
 type TopArticle = TopArticleInfo;
+
+function SourceNameBox({ sourceName }: { sourceName: string }) {
+  return (
+    <div className="bg-muted flex h-[100px] w-full items-center justify-center">
+      <span className="text-muted-foreground text-xs">{sourceName}</span>
+    </div>
+  );
+}
+
+/** 180px 幅のサムネイル。読めなかった URL はソース名の枠に置き換える（URL が変われば読み直す） */
+function KeyTopicThumbnail({
+  src,
+  sourceName,
+}: {
+  src: string;
+  sourceName: string;
+}) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (failedSrc === src) return <SourceNameBox sourceName={sourceName} />;
+  return (
+    <div className="bg-muted relative h-[100px] w-full">
+      <OptimizedImage
+        src={src}
+        alt=""
+        fill
+        sizes="180px"
+        className="object-cover"
+        referrerPolicy="no-referrer"
+        onError={() => setFailedSrc(src)}
+      />
+    </div>
+  );
+}
 
 interface KeyTopicArticleCardsProps {
   articleIds: string[];
@@ -50,38 +85,14 @@ export function KeyTopicArticleCards({
   if (resolved.length === 0) return null;
 
   return (
-    <div className="scrollbar-thin -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+    <div className="-mx-1 flex scrollbar-thin gap-3 overflow-x-auto px-1 pb-1">
       {resolved.map((a) => {
         const content = (
           <div className="bg-background/50 hover:bg-muted/50 w-[180px] flex-shrink-0 overflow-hidden rounded-lg border transition-colors">
-            {a.thumbnail ? (
-              <div className="bg-muted relative h-[100px] w-full">
-                {/* eslint-disable-next-line @next/next/no-img-element -- External URLs from arbitrary domains; next/image requires remotePatterns config */}
-                <img
-                  src={a.thumbnail}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    const target = e.currentTarget;
-                    target.style.display = 'none';
-                    const fallback = target.nextElementSibling as HTMLElement;
-                    if (fallback) fallback.style.display = 'flex';
-                  }}
-                />
-                <div className="bg-muted absolute inset-0 hidden h-full w-full items-center justify-center">
-                  <span className="text-muted-foreground text-xs">
-                    {a.sourceName}
-                  </span>
-                </div>
-              </div>
+            {hasValidThumbnail(a.thumbnail) ? (
+              <KeyTopicThumbnail src={a.thumbnail} sourceName={a.sourceName} />
             ) : (
-              <div className="bg-muted flex h-[100px] w-full items-center justify-center">
-                <span className="text-muted-foreground text-xs">
-                  {a.sourceName}
-                </span>
-              </div>
+              <SourceNameBox sourceName={a.sourceName} />
             )}
             <div className="p-2">
               <p className="line-clamp-2 text-xs leading-snug font-medium">

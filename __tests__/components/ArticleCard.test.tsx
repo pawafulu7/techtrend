@@ -81,8 +81,6 @@ jest.mock('@/app/components/common/optimized-image', () => {
   return {
     __esModule: true,
     OptimizedImage: mockImg,
-    ArticleThumbnail: mockImg,
-    ProfileImage: mockImg,
   };
 });
 

@@ -1,80 +1,13 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page, type Route } from '@playwright/test';
 import { waitForPageLoad } from '../e2e/utils/e2e-helpers';
 
-// Mock article data for deterministic testing (matches real API contract)
-const MOCK_ARTICLES_RESPONSE = {
-  success: true,
-  data: {
-    items: [
-      {
-        id: 'test-1',
-        title: 'Test Article 1',
-        url: 'https://example.com/1',
-        summary: 'Test summary 1',
-        thumbnail: 'https://example.com/thumb1.jpg',
-        publishedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        qualityScore: 75,
-        bookmarks: 10,
-        userVotes: 5,
-        difficulty: 'beginner' as const,
-        sourceId: 'test-source',
-        summaryVersion: 1,
-        articleType: 'blog' as const,
-        category: 'AI' as const
-      },
-      {
-        id: 'test-2',
-        title: 'Test Article 2',
-        url: 'https://example.com/2',
-        summary: 'Test summary 2',
-        thumbnail: null,
-        publishedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        qualityScore: 80,
-        bookmarks: 15,
-        userVotes: 8,
-        difficulty: 'intermediate' as const,
-        sourceId: 'test-source',
-        summaryVersion: 1,
-        articleType: 'tutorial' as const,
-        category: 'Web' as const
-      },
-      {
-        id: 'test-3',
-        title: 'Test Article 3',
-        url: 'https://example.com/3',
-        summary: 'Test summary 3',
-        thumbnail: 'https://example.com/thumb3.jpg',
-        publishedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        qualityScore: 85,
-        bookmarks: 20,
-        userVotes: 12,
-        difficulty: 'advanced' as const,
-        sourceId: 'test-source',
-        summaryVersion: 1,
-        articleType: 'documentation' as const,
-        category: 'DevOps' as const
-      }
-    ],
-    total: 3,
-    page: 1,
-    totalPages: 1,
-    limit: 20
-  },
-  meta: {
-    userDataIncluded: false
-  }
-};
+const ARTICLE_SELECTOR =
+  '[data-testid="article-card"], [data-testid="compact-card"]';
 
-const ARTICLE_SELECTOR = '[data-testid="article-card"], [data-testid="compact-card"]';
-
-test.describe('Custom Image Loader - Page Rendering', () => {
-  test('should render article detail page without image errors', async ({ page }) => {
+test.describe('Thumbnail display - Page Rendering', () => {
+  test('should render article detail page without image errors', async ({
+    page,
+  }) => {
     // Navigate to article detail page
     await page.goto('/', {
       waitUntil: 'domcontentloaded',
@@ -155,7 +88,7 @@ test.describe('Custom Image Loader - Page Rendering', () => {
 
     // Verify that only expected personalization endpoints return 401 for guest users
     const unexpected401s = Array.from(unauthorizedResponses).filter(
-      (url) => !allowed401Paths.some((allowed) => url.includes(allowed)),
+      (url) => !allowed401Paths.some((allowed) => url.includes(allowed))
     );
     expect(unexpected401s).toEqual([]);
 
@@ -167,54 +100,20 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     //   We already verified above that only expected personalization endpoints return 401.
     //   The UI gracefully falls back to default state without personalization.
     const criticalErrors = consoleErrors.filter(
-      (err) => !err.includes('image') &&
-               !err.includes('favicon') &&
-               !err.includes('401') &&
-               !err.includes('Failed to fetch') &&
-               !err.includes('NetworkError') &&
-               !err.includes('/api/auth/get-session')
+      (err) =>
+        !err.includes('image') &&
+        !err.includes('favicon') &&
+        !err.includes('401') &&
+        !err.includes('Failed to fetch') &&
+        !err.includes('NetworkError') &&
+        !err.includes('/api/auth/get-session')
     );
     expect(criticalErrors.length).toBe(0);
   });
 
-  test('should render page with custom image loader configured', async ({ page }) => {
-    // Mock articles API for deterministic testing
-    await page.route('**/api/articles*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(MOCK_ARTICLES_RESPONSE),
-      });
-    });
-
-    await page.goto('/', {
-      waitUntil: 'domcontentloaded',
-      timeout: 30000,
-    });
-    await waitForPageLoad(page, { waitForNetworkIdle: false });
-
-    // Wait for article cards to render
-    const articles = page.locator(ARTICLE_SELECTOR);
-    await expect(articles.first()).toBeVisible({ timeout: 10000 });
-
-    // Final verification
-    const count = await articles.count();
-    expect(count).toBeGreaterThan(0);
-
-    // If images are present, they should use HTTPS (custom loader returns URL as-is)
-    const images = page.locator('img[src^="https://"]');
-    const imageCount = await images.count();
-
-    // Images may or may not be present depending on article types
-    // If present, verify they use HTTPS protocol
-    if (imageCount > 0) {
-      const firstImage = images.first();
-      const src = await firstImage.getAttribute('src');
-      expect(src).toMatch(/^https:/);
-    }
-  });
-
-  test('should not block page rendering for missing thumbnails', async ({ page }) => {
+  test('should not block page rendering for missing thumbnails', async ({
+    page,
+  }) => {
     await page.goto('/', {
       waitUntil: 'domcontentloaded',
       timeout: 30000,
@@ -232,5 +131,79 @@ test.describe('Custom Image Loader - Page Rendering', () => {
     // Page should be interactive
     const firstArticle = articles.first();
     await expect(firstArticle).toBeVisible();
+  });
+});
+
+// サムネイルの最適化と、失敗時の切り替え（Issue #718）。
+// テスト DB のサムネイルは picsum.photos なので、/_next/image と picsum の応答を差し替えて
+// 「最適化が通る」「最適化が失敗して元の URL に切り替わる」「両方失敗して画像を消す」を決定的に確かめる
+test.describe('Thumbnail optimization', () => {
+  // 幅と高さを持つ SVG なら、どの候補幅で要求されても naturalWidth が 0 にならない
+  const SVG_IMAGE =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="225"><rect width="400" height="225" fill="#888"/></svg>';
+  const fulfillImage = (route: Route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      body: SVG_IMAGE,
+    });
+  const fulfill402 = (route: Route) =>
+    route.fulfill({
+      status: 402,
+      contentType: 'text/plain',
+      body: 'Payment Required',
+    });
+
+  async function openHome(page: Page) {
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await waitForPageLoad(page, { waitForNetworkIdle: false });
+    const cards = page.locator(ARTICLE_SELECTOR);
+    await expect(cards.first()).toBeVisible({ timeout: 15000 });
+    return cards;
+  }
+
+  test('serves thumbnails through /_next/image', async ({ page }) => {
+    await page.route('**/_next/image?**', fulfillImage);
+    const cards = await openHome(page);
+    const img = cards.locator('img').first();
+    await expect(img).toBeAttached({ timeout: 15000 });
+
+    await expect
+      .poll(() => img.evaluate((el) => el.naturalWidth), { timeout: 15000 })
+      .toBeGreaterThan(0);
+    const currentSrc = new URL(await img.evaluate((el) => el.currentSrc));
+    expect(currentSrc.pathname).toBe('/_next/image');
+    expect(currentSrc.searchParams.get('url')).toMatch(/^https:\/\//);
+    expect(currentSrc.searchParams.get('q')).toBe('75');
+  });
+
+  test('falls back to the original URL when the optimizer fails (e.g. 402 over the quota)', async ({
+    page,
+  }) => {
+    await page.route('**/_next/image?**', fulfill402);
+    await page.route('https://picsum.photos/**', fulfillImage);
+    const cards = await openHome(page);
+    const img = cards.locator('img').first();
+    await expect(img).toBeAttached({ timeout: 15000 });
+
+    await expect
+      .poll(() => img.evaluate((el) => el.currentSrc), { timeout: 15000 })
+      .toMatch(/^https:\/\/picsum\.photos\//);
+    await expect
+      .poll(() => img.evaluate((el) => el.naturalWidth), { timeout: 15000 })
+      .toBeGreaterThan(0);
+  });
+
+  test('hides the thumbnail when both the optimizer and the original fail', async ({
+    page,
+  }) => {
+    await page.route('**/_next/image?**', fulfill402);
+    await page.route('https://picsum.photos/**', (route) => route.abort());
+    const cards = await openHome(page);
+
+    await expect
+      .poll(() => cards.locator('img').count(), { timeout: 15000 })
+      .toBe(0);
+    await expect(cards.first()).toBeVisible();
   });
 });

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Newspaper } from 'lucide-react';
 import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
 import { formatDate } from './utils';
+import { OptimizedImage } from '@/app/components/common/optimized-image';
 
 interface ArticleListItemProps {
   article: {
@@ -56,12 +57,13 @@ export function ArticleListItem({
         style={{ paddingBottom: '60%' }}
       >
         {thumbnailSrc ? (
-          // eslint-disable-next-line @next/next/no-img-element -- Custom image loader handles 800+ domains; see next.config.ts
-          <img
+          <OptimizedImage
             src={thumbnailSrc}
             alt=""
-            className="absolute inset-0 h-full w-full object-contain"
-            loading="lazy"
+            fill
+            // reader-client.tsx の一覧ペイン: md 未満は全幅、md で 320px、lg で 380px
+            sizes="(max-width: 767px) 100vw, (max-width: 1023px) 320px, 380px"
+            className="object-contain"
             onError={() => setErroredThumbnail(thumbnailSrc)}
           />
         ) : (

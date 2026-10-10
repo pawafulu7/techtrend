@@ -22,7 +22,9 @@ describe('middleware - security headers', () => {
       const response = await proxy(request);
 
       expect(response.headers.get('Content-Security-Policy')).toBeDefined();
-      expect(response.headers.get('Content-Security-Policy')).toContain("default-src 'self'");
+      expect(response.headers.get('Content-Security-Policy')).toContain(
+        "default-src 'self'"
+      );
     });
 
     it('should set X-Frame-Options header', async () => {
@@ -43,7 +45,9 @@ describe('middleware - security headers', () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
       const response = await proxy(request);
 
-      expect(response.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
+      expect(response.headers.get('Referrer-Policy')).toBe(
+        'strict-origin-when-cross-origin'
+      );
     });
 
     it('should set Permissions-Policy header', async () => {
@@ -52,21 +56,27 @@ describe('middleware - security headers', () => {
 
       expect(response.headers.get('Permissions-Policy')).toBeDefined();
       expect(response.headers.get('Permissions-Policy')).toContain('camera=()');
-      expect(response.headers.get('Permissions-Policy')).toContain('payment=()');
+      expect(response.headers.get('Permissions-Policy')).toContain(
+        'payment=()'
+      );
     });
 
     it('should set Cross-Origin-Opener-Policy header', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
       const response = await proxy(request);
 
-      expect(response.headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin-allow-popups');
+      expect(response.headers.get('Cross-Origin-Opener-Policy')).toBe(
+        'same-origin-allow-popups'
+      );
     });
 
     it('should set Cross-Origin-Embedder-Policy header', async () => {
       const request = new NextRequest(new URL('http://localhost:3000/'));
       const response = await proxy(request);
 
-      expect(response.headers.get('Cross-Origin-Embedder-Policy')).toBe('unsafe-none');
+      expect(response.headers.get('Cross-Origin-Embedder-Policy')).toBe(
+        'unsafe-none'
+      );
     });
   });
 
@@ -77,8 +87,12 @@ describe('middleware - security headers', () => {
       const response = await proxy(request);
 
       expect(response.headers.get('Strict-Transport-Security')).toBeDefined();
-      expect(response.headers.get('Strict-Transport-Security')).toContain('max-age=31536000');
-      expect(response.headers.get('Strict-Transport-Security')).toContain('includeSubDomains');
+      expect(response.headers.get('Strict-Transport-Security')).toContain(
+        'max-age=31536000'
+      );
+      expect(response.headers.get('Strict-Transport-Security')).toContain(
+        'includeSubDomains'
+      );
     });
 
     it('should NOT set HSTS header for HTTP', async () => {
@@ -253,8 +267,7 @@ describe('middleware - security headers', () => {
       path: string,
       headers: Record<string, string> = {},
       origin = 'http://localhost:3000'
-    ): NextRequest =>
-      new NextRequest(new URL(`${origin}${path}`), { headers });
+    ): NextRequest => new NextRequest(new URL(`${origin}${path}`), { headers });
 
     it('M1: 認証情報なしなら charset 付き challenge と no-store を返し Cookie は発行しない', async () => {
       enableBasicAuth();
@@ -291,6 +304,25 @@ describe('middleware - security headers', () => {
       expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
       expect(response.headers.get('Vary')).toContain('Cookie');
       expect(response.headers.get('Vary')).toContain('Authorization');
+    });
+
+    // Issue #718: 画像最適化（/_next/image）はゲートの中だが、キャッシュの打ち消しと Cookie は付けない
+    it('M2b: /_next/image は認証なしなら 401、認証ありでもキャッシュ打ち消しと Cookie を付けない', async () => {
+      enableBasicAuth();
+      const imagePath =
+        '/_next/image?url=https%3A%2F%2Fexample.com%2Fa.jpg&w=640&q=75';
+
+      const denied = await proxy(requestWith(imagePath));
+      expect(denied.status).toBe(401);
+
+      const allowed = await proxy(
+        requestWith(imagePath, { authorization: basicHeader() })
+      );
+      expect(allowed.status).not.toBe(401);
+      expect(allowed.headers.get('set-cookie')).toBeNull();
+      expect(allowed.headers.get('Cache-Control')).toBeNull();
+      expect(allowed.headers.get('CDN-Cache-Control')).toBeNull();
+      expect(allowed.headers.get('Vercel-CDN-Cache-Control')).toBeNull();
     });
 
     it('M3: 有効なゲート Cookie だけで通り、Cookie は再発行されない', async () => {
@@ -450,7 +482,11 @@ describe('middleware - security headers', () => {
       enableBasicAuth();
 
       const response = await proxy(
-        requestWith('/', { authorization: basicHeader() }, 'https://example.com')
+        requestWith(
+          '/',
+          { authorization: basicHeader() },
+          'https://example.com'
+        )
       );
 
       const setCookie = response.headers.get('set-cookie');
@@ -553,6 +589,8 @@ describe('middleware - security headers', () => {
       ['/api/articles'],
       ['/articles/abc'],
       ['/'],
+      // 画像最適化はゲートの中に置く（Issue #718）
+      ['/_next/image'],
     ])('%s は proxy を通る', (path) => {
       expect(matcher.test(path)).toBe(true);
     });
@@ -564,7 +602,6 @@ describe('middleware - security headers', () => {
       ['/images/logo.svg'],
       ['/fonts/a.woff2'],
       ['/_next/static/chunks/main.js'],
-      ['/_next/image'],
       ['/favicon.ico'],
     ])('%s は proxy を通らない（静的ファイル）', (path) => {
       expect(matcher.test(path)).toBe(false);
