@@ -200,7 +200,7 @@ export class RateLimitError extends Error {
  * - Throws RateLimitError if limit exceeded (compatible with existing error handling)
  * - Returns void if successful
  *
- * @param limitKey - Unique identifier for rate limiting (e.g., "rag:agent:userId")
+ * @param limitKey - Unique identifier for rate limiting (e.g., "rag:agent:<agentType>:<userId>")
  * @param ratelimiter - RateLimiterAbstract instance (Redis or Memory)
  * @throws {RateLimitError} - When rate limit is exceeded
  * @throws {Error} - When Redis connection fails
@@ -210,7 +210,7 @@ export class RateLimitError extends Error {
  * // In API route
  * const session = await getSession();
  * if (!session?.user?.id) return;
- * const key = `rag:agent:${session.user.id}`;
+ * const key = `rag:agent:${agentType}:${session.user.id}`;
  * await checkRateLimit(key, ragAgentSearchRateLimit);
  * ```
  */

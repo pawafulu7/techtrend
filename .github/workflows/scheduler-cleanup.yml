@@ -36,7 +36,9 @@ jobs:
         run: |
           npx tsx scripts/scheduled/clean-tags.ts
       # 90日より古い閲覧履歴と、ユーザーごとに100件を超えた閲覧履歴を消す
-      # （旧 pm2 scheduler.ts の毎日22時の処理を移した。issue #710）
+      # （旧 pm2 scheduler.ts の毎日22時の処理を移した。issue #710）。
+      # 日次の専用ワークフローは作らず、この週次の掃除に入れると決めた。
+      # 上限を超えた履歴は次の土曜まで最大1週間残る
       - name: Cleanup article views
         if: ${{ !cancelled() }}
         env:
