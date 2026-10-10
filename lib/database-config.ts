@@ -45,7 +45,12 @@ export function getPoolConfig(
   return {
     connectionString: url.toString(),
     max: env.DB_CONNECTION_LIMIT,
-    idleTimeoutMillis: 10_000,
+    // 本番の関数（東京）と DB（シンガポール）の間は、接続し直すと約 0.45 秒かかる（TLS と認証で
+    // 数往復。/api/health の実測で、間を 2 秒空けると 0.22〜0.27 秒、15 秒空けると 0.66〜0.74 秒）。
+    // 画面を行き来する間は接続を使い回せるよう、既定は 60 秒。Vercel では lib/prisma.ts の
+    // attachDatabasePool が、この時間だけ関数を起こしておき、閉じてから一時停止させる（その間は
+    // メモリが課金される）
+    idleTimeoutMillis: env.DB_IDLE_TIMEOUT * 1000,
     connectionTimeoutMillis: env.DB_POOL_TIMEOUT * 1000,
   };
 }

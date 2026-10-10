@@ -1,5 +1,7 @@
 import { PrismaClient } from '@/lib/prisma-exports';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
+import { attachDatabasePool } from '@vercel/functions';
 import { getPoolConfig } from '@/lib/database-config';
 import { env } from '@/lib/config/env';
 
@@ -32,7 +34,7 @@ function createSingleton(): PrismaClient {
   const poolConfig = getPoolConfig();
 
   // Build time: no DATABASE_URL, use dummy adapter (pg.Pool connects lazily)
-  const adapter = new PrismaPg(
+  const pool = new Pool(
     poolConfig ?? {
       connectionString: 'postgresql://dummy:dummy@localhost:5432/dummy',
       max: 1,
@@ -40,6 +42,14 @@ function createSingleton(): PrismaClient {
       connectionTimeoutMillis: 5000,
     }
   );
+  // Vercel の Fluid compute は、リクエストが終わると関数を一時停止する。停止中はプールのタイマーが
+  // 動かないので、アイドルの接続が閉じられないまま残り、DB 側で切れた接続を再開後に掴むことがある。
+  // attachDatabasePool は接続を返すたびに idleTimeoutMillis だけ関数を起こしておき、アイドルの
+  // 接続を閉じてから停止させる（Vercel の外では待たない）
+  attachDatabasePool(pool);
+  // 同じ pg の Pool を渡す（PrismaPg は instanceof pg.Pool で外部のプールかを判定し、アイドルの
+  // 接続のエラーを受ける listener を付ける）
+  const adapter = new PrismaPg(pool);
 
   const logLevels: Array<'query' | 'error' | 'warn'> =
     env.PRISMA_QUERY_LOG === 'true'
