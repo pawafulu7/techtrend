@@ -45,10 +45,14 @@ const nextConfig: NextConfig = {
   // 画像最適化（Issue #718）
   // サムネイルは 2,000 を超えるホストから集めるので allowlist は作れない。https の全ホストを許可し、
   // 取得と変換は Vercel の画像最適化が行う（開発と Docker では Next 自身が sharp で行う）。
-  // /_next/image は任意の https URL を受けるので、w と q を絞って変換枠の浪費を抑える。
+  // /_next/image は任意の https URL を受けるので、proxy.ts で Basic 認証ゲートの中に置き（匿名では 401）、
+  // w と q を絞って変換枠の浪費を抑える。
   // 失敗（Hobby の枠超過の 402 など）は OptimizedImage が元の URL に切り替える
   images: {
     remotePatterns: [{ protocol: 'https', hostname: '**' }],
+    // 取得する元画像の上限（既定は 50MB）。サムネイルの元画像は直近 30 日の 57 件で最大 1.55MB、
+    // 既知の最大（7339×5504）でも 2.95MB。超えた画像は最適化に失敗し、元の URL で出す
+    maximumResponseBody: 5_000_000,
     formats: ['image/avif', 'image/webp'],
     // 記事カード（20vw〜100vw）・/reader の一覧（320〜380px）・記事詳細（最大 672px）で使う幅だけ。
     // sizes に vw があると deviceSizes[0] × 最小の割合より小さい候補は srcset から外れるので、
