@@ -186,7 +186,16 @@ export function TagStats() {
   }, [totalData, activeTags, newData, growthTags]);
 
   if (loading) {
-    return <TagStatsSkeleton />;
+    // 高さの小さいカードで、タグクラウドと同時に読み込むため、スピナーは重ねない
+    // （1画面に2つ並ぶ）。読み込み中であることは読み上げで伝える（issue 701）
+    return (
+      <div>
+        <span role="status" className="sr-only">
+          タグ統計を読み込んでいます...
+        </span>
+        <TagStatsSkeleton />
+      </div>
+    );
   }
 
   return (

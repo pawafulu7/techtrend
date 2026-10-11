@@ -58,6 +58,17 @@ describe('TagStats', () => {
     global.fetch = originalFetch;
   });
 
+  it('初回の取得中は、読み込み中であることを読み上げで伝える', () => {
+    const pending = () => new Promise(() => {});
+    mockFetch({ stats: pending, cloud: pending, newTags: pending });
+
+    renderTagStats();
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'タグ統計を読み込んでいます...'
+    );
+  });
+
   it('すべて取得できたときは件数を出し、失敗の表示を出さない', async () => {
     mockFetch({
       stats: ok({ total: 120 }),

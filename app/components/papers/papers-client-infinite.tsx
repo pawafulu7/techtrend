@@ -251,8 +251,8 @@ export function PapersClientInfinite({
             thumbnailPlaceholder={false}
           />
 
-          {/* 続きのページの失敗: 下端に出し、続きだけを再試行する。トリガーを残すと
-              末尾が見えている間、失敗した取得をくり返すため（issue #701） */}
+          {/* 続きのページの失敗は下端に出し、続きだけを再試行する（issue #701）。
+              トリガーを残すと、末尾が見えている間は失敗した取得をくり返すため止める */}
           {isFetchNextPageError ? (
             <ErrorState
               title="続きを読み込めませんでした"
