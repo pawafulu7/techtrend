@@ -7,6 +7,13 @@ import {
 import { ArticleWithUserData } from '@/types/models';
 import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { debounce } from '@/lib/utils/debounce';
+import {
+  buildArticlesRequest,
+  infiniteArticlesQueryKey,
+  isMobileUserAgent,
+  normalizeArticleFilters,
+  type ArticleFilters,
+} from '@/lib/articles/home-articles-query';
 
 // Favorite change event detail type
 interface FavoriteChangedDetail {
@@ -15,23 +22,7 @@ interface FavoriteChangedDetail {
   timestamp: number;
 }
 
-interface ArticleFilters {
-  keyword?: string;
-  sourceId?: string;
-  excludeSources?: string; // Exclude specific sources (e.g., arXiv papers)
-  tags?: string;
-  dateRange?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  readFilter?: string;
-  lightweight?: boolean; // Add lightweight mode flag
-  includeRelations?: boolean; // Add relations flag
-  includeUserData?: boolean; // Add user data flag for favorites and read status
-  excludeUnprocessed?: boolean; // Add flag to exclude articles without summaries
-  [key: string]: string | boolean | undefined;
-}
-
-interface ArticlesResponse {
+export interface ArticlesResponse {
   data: {
     items: ArticleWithUserData[];
     total: number;
@@ -79,29 +70,20 @@ export function useInfiniteArticles(
     return () => clearInterval(intervalId);
   }, []);
 
-  // フィルタを正規化（undefined値とreturningを削除、キーをソート）
-  // returning は「記事詳細から戻ってきた」ことを示すUI用フラグで取得結果には影響しない。
-  // queryKey / APIクエリに混ざると戻る度に別クエリ扱いとなり1ページ目から取り直しになるため、
-  // 呼び出し側の漏れを防ぐ意味でもここを単一の除外点とする
-  const normalizedFilters = useMemo(() => {
-    return Object.keys(filters)
-      .sort()
-      .reduce((acc, key) => {
-        if (key === 'returning') {
-          return acc;
-        }
-        if (filters[key] !== undefined && filters[key] !== '') {
-          acc[key] = filters[key]!;
-        }
-        return acc;
-      }, {} as ArticleFilters);
-  }, [filters]);
+  // フィルタを正規化（undefined値とreturningを削除、キーをソート）。
+  // サーバーで先読みした1ページ目と同じキーになるよう、正規化とキーの作り方は
+  // lib/articles/home-articles-query.ts に寄せている（issue #714）
+  const normalizedFilters = useMemo(
+    () => normalizeArticleFilters(filters),
+    [filters]
+  );
 
   // フィルターをJSON文字列化してキーとする（確実な変更検出のため）
-  const filterKey = useMemo(
-    () => JSON.stringify(normalizedFilters),
+  const queryKey = useMemo(
+    () => infiniteArticlesQueryKey(normalizedFilters),
     [normalizedFilters]
   );
+  const filterKey = queryKey[1];
 
   // Debounced filter change handler
   // Note: Ref access inside debounce callback is intentional - the callback is only
@@ -333,65 +315,34 @@ export function useInfiniteArticles(
   );
 
   const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
-    queryKey: ['infinite-articles', filterKey],
+    queryKey,
     structuralSharing: shareWithNewerFavorites,
     queryFn: async ({ pageParam, signal }) => {
       const currentPage = (pageParam as number) || 1;
-      // 毎回新しいURLSearchParamsを作成
-      const searchParams = new URLSearchParams();
 
-      // フィルターパラメータを追加
-      Object.entries(normalizedFilters).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
-          searchParams.append(key, String(value));
-        }
-      });
-
-      // ページパラメータを追加
-      searchParams.set('page', String(currentPage));
-      searchParams.set('limit', '20');
-
-      // page > 1の場合、前回のレスポンスから総件数を送信（COUNTクエリスキップ用）
-      if (currentPage > 1 && totalCountRef.current) {
-        searchParams.set('total', String(totalCountRef.current));
-      }
+      // page > 1 では総件数を送って COUNT を省く。サーバーで先読みしたページや
+      // キャッシュから戻ったページは、この queryFn を通らないので ref が空になる。
+      // そのときは読み込み済みの1ページ目の総件数を使う
+      const total =
+        totalCountRef.current ??
+        queryClient.getQueryData<InfiniteArticlesData>(queryKey)?.pages[0]
+          ?.data.total;
 
       // パフォーマンス最適化: デフォルトで軽量モード
       // モバイルまたは低速接続では lightweight=true を使用
-      const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+      const isMobile = isMobileUserAgent(navigator.userAgent);
       const isSlowConnection =
         (navigator as any).connection?.effectiveType === 'slow-2g' ||
         (navigator as any).connection?.effectiveType === '2g';
 
-      if (isMobile || isSlowConnection) {
-        searchParams.set('lightweight', 'true');
-      }
-
-      // パフォーマンス最適化: 軽量版APIを使用（既読フィルタ/パーソナライズがない場合）
-      // パーソナライズフィルタがある場合は /api/articles を使用（categoryFilterServiceが必要）
-      const hasCategoryIds =
-        normalizedFilters.categoryIds &&
-        String(normalizedFilters.categoryIds).length > 0;
-      const hasPeriodMonths =
-        normalizedFilters.periodMonths &&
-        Number(normalizedFilters.periodMonths) > 0;
-      const useFullApi =
-        normalizedFilters.readFilter || hasCategoryIds || hasPeriodMonths;
-      const endpoint = useFullApi ? '/api/articles' : '/api/articles/list';
-
-      // includeRelations はデフォルトで false（APIサイドで設定済み）
-      // パーソナライズ時またはフルAPI使用時は source 情報が必要なため true を設定
-      if (normalizedFilters.includeRelations || useFullApi) {
-        searchParams.set('includeRelations', 'true');
-      }
-
-      // includeUserData を条件付きで設定（キャッシュバイパスを避けるため）
-      // 既読フィルタがある場合またはユーザーデータが明示的に要求された場合のみ
-      if (normalizedFilters.readFilter || normalizedFilters.includeUserData) {
-        searchParams.set('includeUserData', 'true');
-      }
-
-      // Debug log removed
+      const { endpoint, searchParams } = buildArticlesRequest(
+        normalizedFilters,
+        {
+          page: currentPage,
+          total,
+          lightweight: isMobile || isSlowConnection,
+        }
+      );
 
       const requestedAt = Date.now();
       const response = await fetch(`${endpoint}?${searchParams.toString()}`, {

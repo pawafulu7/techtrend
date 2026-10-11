@@ -14,18 +14,16 @@ import type {
   UserCategoryPreferences,
   UpdateCategoryPreferencesRequest,
   InterestCategoryWithCount,
-  PeriodPreset,
   PreferenceScope,
 } from '@/lib/personalization/types';
+import {
+  DEFAULT_PREFERENCES,
+  fromPreferencesResponse,
+  normalizePeriodMonths,
+} from '@/lib/personalization/preferences-state';
 
 const EMPTY_CATEGORIES: InterestCategoryWithCount[] = [];
 const EMPTY_SELECTED_CATEGORIES: string[] = [];
-const DEFAULT_PREFERENCES: UserCategoryPreferences = {
-  selectedCategories: [],
-  filterEnabled: false,
-  periodMonths: 12,
-  isAuthenticated: false,
-};
 
 // =============================================================================
 // Query Keys
@@ -65,7 +63,7 @@ async function fetchPreferences(
     }
 
     const data = await response.json().catch(() => null);
-    return { ...DEFAULT_PREFERENCES, ...data, isAuthenticated: true };
+    return fromPreferencesResponse(data);
   } catch {
     // Network error - fall back silently without logging error object
     console.info('[personalization] preferences fetch failed — using defaults');
@@ -256,13 +254,7 @@ export function usePersonalizationPreferences(scope: PreferenceScope = 'home') {
     preferences.selectedCategories ?? EMPTY_SELECTED_CATEGORIES;
 
   // Validate periodMonths against allowed presets
-  const rawPeriodMonths = preferences.periodMonths ?? 12;
-  const validPresets: PeriodPreset[] = [0, 3, 6, 12];
-  const periodMonths = (
-    validPresets.includes(rawPeriodMonths as PeriodPreset)
-      ? rawPeriodMonths
-      : 12
-  ) as PeriodPreset;
+  const periodMonths = normalizePeriodMonths(preferences.periodMonths);
 
   return {
     // Data

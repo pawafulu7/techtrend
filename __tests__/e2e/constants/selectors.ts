@@ -54,6 +54,11 @@ export const SELECTORS = {
   FAVORITE_BUTTON: '[data-testid*="favorite"], button[aria-label*="お気に入り"], button[aria-label*="favorite"]',
   READING_LIST_BUTTON: '[data-testid="reading-list"], button[aria-label*="リーディングリスト"]',
   
+  // ===== ホームの記事一覧 =====
+  HOME_ARTICLE_CARD: '[data-testid="article-card"]',
+  HOME_ARTICLE_FAVORITE_BUTTON: '[data-testid="article-card"] [data-testid="favorite-button"]',
+  HOME_LIST_SCROLL_CONTAINER: '#main-scroll-container',
+
   // ===== 外部リンク =====
   SOURCE_LINK: 'a[href*="http"], a[target="_blank"], [data-testid="source-link"]',
   EXTERNAL_LINK: 'a[rel*="noopener"], a[rel*="external"]',

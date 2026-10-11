@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useIsHydrated } from '@/lib/hooks/use-is-hydrated';
 import { authClient } from '@/lib/auth/auth-client';
 import Link from 'next/link';
 import {
@@ -34,6 +35,9 @@ interface UserMenuProps {
 
 export function UserMenu({ compact = false }: UserMenuProps = {}) {
   const { data: session, isPending } = authClient.useSession();
+  // サーバー描画ではセッションが判定中。hydration 中もそれに合わせる（hydration の前に
+  // 判定が済むと、表示が食い違って React が直さないため。issue #714）
+  const isHydrated = useIsHydrated();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
@@ -48,7 +52,7 @@ export function UserMenu({ compact = false }: UserMenuProps = {}) {
     }
   };
 
-  if (isPending) {
+  if (isPending || !isHydrated) {
     return (
       <div className="flex items-center">
         <Loader2 className="h-4 w-4 animate-spin" />

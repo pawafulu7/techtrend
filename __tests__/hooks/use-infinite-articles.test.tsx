@@ -12,6 +12,10 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode } from 'react';
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
+import {
+  infiniteArticlesQueryKey,
+  normalizeArticleFilters,
+} from '@/lib/articles/home-articles-query';
 
 // Mock fetch globally
 const mockFetch = jest.fn();
@@ -143,6 +147,65 @@ describe('useInfiniteArticles', () => {
     // キャッシュから復元され、追加の fetch は発生しない
     expect(articleListUrls()).toHaveLength(1);
     expect(result.current.isFetching).toBe(false);
+  });
+
+  describe('サーバーで先読みした1ページ目（issue #714）', () => {
+    const FILTERS = {
+      tags: 'React',
+      excludeUnprocessed: 'true',
+      includeUserData: true,
+    };
+
+    function seedServerPage(queryClient: QueryClient) {
+      // サーバー（app/components/home/prefetch-home-articles.ts）と同じ関数でキーを作る
+      queryClient.setQueryData(
+        infiniteArticlesQueryKey(normalizeArticleFilters(FILTERS)),
+        {
+          pages: [
+            {
+              data: { items: [], total: 45, page: 1, totalPages: 3, limit: 20 },
+              fetchedAt: Date.now(),
+              requestedAt: Date.now(),
+            },
+          ],
+          pageParams: [1],
+        }
+      );
+    }
+
+    it('マウントしても1ページ目を取り直さない', async () => {
+      const queryClient = createTestQueryClient();
+      seedServerPage(queryClient);
+
+      const { result } = renderHook(() => useInfiniteArticles(FILTERS), {
+        wrapper: createWrapper(queryClient),
+      });
+
+      expect(result.current.isSuccess).toBe(true);
+      await flush();
+      expect(articleListUrls()).toEqual([]);
+      expect(infiniteArticlesQueryKeys(queryClient)).toHaveLength(1);
+    });
+
+    it('次のページは、先読みしたページの総件数を送って取る', async () => {
+      const queryClient = createTestQueryClient();
+      seedServerPage(queryClient);
+
+      const { result } = renderHook(() => useInfiniteArticles(FILTERS), {
+        wrapper: createWrapper(queryClient),
+      });
+      expect(result.current.hasNextPage).toBe(true);
+
+      await act(async () => {
+        await result.current.fetchNextPage();
+      });
+
+      expect(articleListUrls()).toHaveLength(1);
+      const url = new URL(articleListUrls()[0], 'http://localhost');
+      expect(url.pathname).toBe('/api/articles/list');
+      expect(url.searchParams.get('page')).toBe('2');
+      expect(url.searchParams.get('total')).toBe('45');
+    });
   });
 
   it('refetchOnReconnect をフック側で false 指定している（online イベントで全ページが取り直される回帰を防ぐ）', async () => {

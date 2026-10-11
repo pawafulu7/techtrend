@@ -1,4 +1,6 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
+import { hydrateRoot } from 'react-dom/client';
 import '@testing-library/jest-dom';
 import { ArticleListItem } from '@/app/components/article/list-item';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -119,5 +121,84 @@ describe('ArticleListItem', () => {
     expect(screen.getByTestId('article-source')).toHaveTextContent(
       'Example Inc.'
     );
+  });
+
+  it('サーバー描画と hydration で経過時間の文字列が食い違わない（issue #714）', async () => {
+    // 59分前の記事。描画中に現在時刻から作ると、hydration までの2分で時間の境界を
+    // またぎ、文字列が変わる（0h → 1h、59分前 → 1時間前）
+    const recent = createMockArticleWithRelations({
+      article: {
+        id: 'list-recent',
+        publishedAt: new Date(Date.now() - 59 * 60 * 1000),
+        createdAt: new Date(Date.now() - 59 * 60 * 1000),
+      },
+      source: createMockSource({ name: 'Qiita' }),
+    });
+    const html = renderToString(<ArticleListItem article={recent} />);
+
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    // サーバー描画から 2 分後に hydrate する（Date だけを進め、タイマーは本物のまま）
+    jest.useFakeTimers({
+      now: Date.now() + 2 * 60 * 1000,
+      doNotFake: [
+        'hrtime',
+        'nextTick',
+        'performance',
+        'queueMicrotask',
+        'requestAnimationFrame',
+        'cancelAnimationFrame',
+        'requestIdleCallback',
+        'cancelIdleCallback',
+        'setImmediate',
+        'clearImmediate',
+        'setInterval',
+        'clearInterval',
+        'setTimeout',
+        'clearTimeout',
+      ],
+    });
+    try {
+      let root: ReturnType<typeof hydrateRoot> | undefined;
+      await act(async () => {
+        root = hydrateRoot(container, <ArticleListItem article={recent} />, {
+          onRecoverableError: (error) => console.error(error),
+        });
+      });
+      const hydrationErrors = consoleError.mock.calls.filter((args) =>
+        String(args[0]).toLowerCase().includes('hydrat')
+      );
+      expect(hydrationErrors).toEqual([]);
+      // hydration の後に経過時間へ切り替わる
+      expect(container.textContent).toContain('1h');
+      act(() => root?.unmount());
+    } finally {
+      jest.useRealTimers();
+      consoleError.mockRestore();
+      container.remove();
+    }
+  });
+
+  it('7日以上前の記事の日付は日本時間で出す（カードの公開日時とそろえる）', async () => {
+    // 日本時間 2025/01/02 00:30（UTC では 2025/01/01）
+    const publishedAt = new Date('2025-01-01T15:30:00Z');
+    // 前提: 日本時間でない環境で流す（Docker のテスト環境と CI は UTC）。日本時間の環境では
+    // ブラウザのタイムゾーンで日付を作る実装との違いが出ないため
+    expect(publishedAt.getDate()).toBe(1);
+    const old = createMockArticleWithRelations({
+      article: { id: 'list-old', publishedAt, createdAt: publishedAt },
+      source: createMockSource({ name: 'Qiita' }),
+    });
+    const { container } = render(<ArticleListItem article={old} />);
+    await act(async () => {});
+
+    const elapsed = Array.from(container.querySelectorAll('span')).find(
+      (span) => span.className.split(' ').includes('sm:hidden')
+    );
+    expect(elapsed?.textContent).toBe('2025/01/02');
   });
 });

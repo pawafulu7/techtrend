@@ -1,4 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
+import { hydrateRoot } from 'react-dom/client';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import type { Source, Tag } from '@/lib/prisma-exports';
 
@@ -227,6 +235,104 @@ describe('HomeClientInfinite の記事クエリ enabled 配線', () => {
  * 手動更新（issue #707）。自動の再取得は無効なので、新着はこのボタンで取り込む。
  * 読み込み済みの全ページを取り直し、読んでいた記事を画面上の同じ位置に保つ。
  */
+describe('HomeClientInfinite のサーバー先読みの設定（issue #714）', () => {
+  const SERVER_PERSONALIZATION = {
+    filterEnabled: true,
+    selectedCategories: ['c1', 'c2'],
+    periodMonths: 6,
+  };
+
+  function lastFilters(): Record<string, unknown> {
+    const calls = mockUseInfiniteArticles.mock.calls;
+    return calls[calls.length - 1][0];
+  }
+
+  function renderWithServerPersonalization() {
+    return render(
+      <HomeClientInfinite
+        viewMode="card"
+        sources={SOURCES}
+        tags={TAGS}
+        initialPersonalization={SERVER_PERSONALIZATION}
+      />
+    );
+  }
+
+  beforeEach(() => {
+    mockUseInfiniteArticles.mockReturnValue(loadedArticles());
+  });
+
+  it('設定の判定中は、サーバーが先読みに使った設定で条件を作る', () => {
+    mockUsePersonalizationPreferences.mockReturnValue(preferences(true));
+
+    renderWithServerPersonalization();
+
+    expect(lastFilters()).toMatchObject({
+      personalized: 'true',
+      categoryIds: 'c1,c2',
+      periodMonths: '6',
+      includeUserData: true,
+    });
+  });
+
+  it('設定の判定が hydration より先に済んでも、hydration 中はサーバーの設定で条件を作る', async () => {
+    // サーバー描画: 設定は判定中
+    mockUsePersonalizationPreferences.mockReturnValue(preferences(true));
+    const ui = (
+      <HomeClientInfinite
+        viewMode="card"
+        sources={SOURCES}
+        tags={TAGS}
+        initialPersonalization={SERVER_PERSONALIZATION}
+      />
+    );
+    const html = renderToString(ui);
+    expect(lastFilters().categoryIds).toBe('c1,c2');
+
+    // クライアント: hydrate する前に設定の取得が失敗し、既定値（パーソナライズなし）に決まった。
+    // キャッシュにあるのはサーバーが取った条件の1ページ目だけ（別の条件はまだデータが無い）
+    mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
+    mockUseInfiniteArticles.mockImplementation((filters) =>
+      filters.categoryIds === 'c1,c2' ? loadedArticles() : noArticlesYet()
+    );
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    let root: ReturnType<typeof hydrateRoot> | undefined;
+    try {
+      await act(async () => {
+        root = hydrateRoot(container, ui, {
+          onRecoverableError: (error) => console.error(error),
+        });
+      });
+
+      // hydration の描画はサーバーと同じ条件で、一覧が食い違わない
+      const hydrationErrors = consoleError.mock.calls.filter((args) =>
+        String(args[0]).toLowerCase().includes('hydrat')
+      );
+      expect(hydrationErrors).toEqual([]);
+      // hydration の後にクライアントの設定へ移る
+      expect(lastFilters().categoryIds).toBeUndefined();
+    } finally {
+      consoleError.mockRestore();
+      act(() => root?.unmount());
+      container.remove();
+    }
+  });
+
+  it('判定が済んだら、クライアントの設定で条件を作る', () => {
+    mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
+
+    renderWithServerPersonalization();
+
+    expect(lastFilters().categoryIds).toBeUndefined();
+    expect(lastFilters().personalized).toBeUndefined();
+  });
+});
+
 describe('HomeClientInfinite の手動更新', () => {
   // 2026-10-04 13:58 UTC = 22:58 JST
   const FETCHED_AT = Date.UTC(2026, 9, 4, 13, 58);

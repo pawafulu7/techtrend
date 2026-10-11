@@ -83,7 +83,10 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 5 * 60 * 1000, // 5分
-            gcTime: 10 * 60 * 1000, // 10分（旧 cacheTime）
+            // 10分（旧 cacheTime）。サーバー描画では Infinity にする（TanStack Query の
+            // サーバーの既定と同じ）。有限だと GC のタイマーがリクエストの QueryClient を
+            // その時間だけ保持し、hydrate した記事一覧（issue #714）がメモリに残り続ける
+            gcTime: typeof window === 'undefined' ? Infinity : 10 * 60 * 1000,
             retry: 1,
             refetchOnWindowFocus: false,
             // refetchOnReconnect はここ（グローバル既定）では設定しない。
