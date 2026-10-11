@@ -5,7 +5,7 @@ import { MobileSearchToggle } from '@/app/components/common/mobile-search-toggle
 import { SearchBox } from '@/app/components/common/search-box';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { SortButtons } from '@/app/components/common/sort-buttons';
-import { LoadingSpinner } from '@/app/components/common/loading-spinner';
+import { ArticleListSkeleton } from '@/app/components/article/article-list-skeleton';
 import { parseViewModeFromCookie } from '@/lib/cookies/view-mode-cookie';
 import { getFilterPreferencesFromCookies } from '@/lib/cookies/filter-preferences-cookie';
 import {
@@ -68,7 +68,15 @@ export default async function PapersPage({ searchParams }: PageProps) {
 
         {/* 論文リスト */}
         <Suspense
-          fallback={<LoadingSpinner message="論文を読み込んでいます..." />}
+          fallback={
+            <div className="px-4 py-4 lg:px-6">
+              <ArticleListSkeleton
+                viewMode={viewMode}
+                thumbnail={false}
+                label="論文を読み込んでいます..."
+              />
+            </div>
+          }
         >
           <PapersClientInfinite
             key={`papers-${params.search || ''}-${params.tag || ''}`}

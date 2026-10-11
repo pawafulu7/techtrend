@@ -257,7 +257,7 @@ describe('TagCloud', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('タグが見つかりませんでした')
+          screen.getByText('この期間のタグはありません')
         ).toBeInTheDocument();
       });
     });
@@ -461,7 +461,7 @@ describe('TagCloud', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('タグが見つかりませんでした')
+          screen.getByText('この期間のタグはありません')
         ).toBeInTheDocument();
       });
 

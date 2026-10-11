@@ -7,6 +7,7 @@ import { Eye, AlertCircle, History, Trash2 } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { PageHeader } from '@/components/ui-v2/page-header';
 import { ErrorState } from '@/components/ui-v2/error-state';
+import { EmptyState } from '@/components/ui-v2/empty-state';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { HistoryArticleCard } from '@/app/components/article/history-card';
@@ -265,23 +266,15 @@ export function HistoryContent() {
           tabIndex={-1}
           className="focus:ring-primary mx-auto max-w-md focus:ring-2 focus:outline-none"
         >
-          <div className="flex flex-col items-center justify-center px-4 py-12">
-            <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-              <Eye
-                className="text-muted-foreground h-8 w-8"
-                aria-hidden="true"
-              />
-            </div>
-            <p className="text-foreground mb-2 text-lg font-medium">
-              閲覧履歴がありません
-            </p>
-            <p className="text-muted-foreground mb-6 text-center text-sm">
-              記事を読むと自動的に履歴に記録されます
-            </p>
+          <EmptyState
+            icon={Eye}
+            title="閲覧履歴がありません"
+            description="記事を開くと、ここに履歴が残ります。"
+          >
             <Button asChild className="min-h-[44px] min-w-[44px]">
               <Link href="/">記事を探す</Link>
             </Button>
-          </div>
+          </EmptyState>
         </CardV2>
       ) : (
         /* Grouped history grid */

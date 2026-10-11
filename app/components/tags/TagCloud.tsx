@@ -11,9 +11,11 @@ import {
   CardTitle,
 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TagCloudChipsSkeleton } from './tags-skeletons';
+import { LoadingOverlay } from '@/app/components/common/loading-overlay';
+import { EmptyState } from '@/components/ui-v2/empty-state';
 import { ErrorState } from '@/components/ui-v2/error-state';
-import { TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, RefreshCw, Hash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DataFreshness } from '@/app/components/common/data-freshness';
 
@@ -54,15 +56,6 @@ export function getTagColor(
   }
   return cn(baseClasses, 'text-muted-foreground hover:text-primary');
 }
-
-// スケルトンの幅は固定値。モジュールレベルでも Math.random() を使うと
-// サーバーとクライアントで別の値になり hydration mismatch を起こすため
-// （タグクラウド表示時に毎回 React の hydration エラーが出ていた）。
-// 見た目のばらつきだけが目的なので、決め打ちの並びで十分。
-const SKELETON_WIDTHS = [
-  118, 72, 145, 96, 61, 132, 84, 108, 57, 121, 90, 149, 66, 103, 137, 78, 112,
-  54, 126, 88,
-];
 
 const PERIOD_LABELS = {
   '7d': '直近7日',
@@ -217,15 +210,16 @@ export function TagCloud({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="space-y-2">
-            {SKELETON_WIDTHS.map((width, i) => (
-              <Skeleton
-                key={i}
-                className="mr-2 mb-2 inline-block h-6"
-                style={{ width: `${width}px` }}
-              />
-            ))}
-          </div>
+          // /tags は静的に描かれるので、待ちの大半はこの取得になる。ほかの画面と同じく
+          // 奥にスケルトン、前面にスピナーを出す（issue #701）
+          <LoadingOverlay
+            message="タグを読み込んでいます..."
+            placement="center"
+          >
+            <div className="min-h-[220px]">
+              <TagCloudChipsSkeleton />
+            </div>
+          </LoadingOverlay>
         ) : failedWithoutData ? (
           <ErrorState
             title="タグを読み込めませんでした"
@@ -246,12 +240,12 @@ export function TagCloud({
               />
             )}
             {tags.length === 0 ? (
-              <div
-                data-testid="empty-state"
-                className="text-muted-foreground py-8 text-center"
-              >
-                タグが見つかりませんでした
-              </div>
+              <EmptyState
+                size="compact"
+                icon={Hash}
+                title="この期間のタグはありません"
+                description="期間を切り替えてください。"
+              />
             ) : (
               <div className="flex min-h-[200px] flex-wrap items-center justify-center gap-2">
                 {tags.map((tag) => (

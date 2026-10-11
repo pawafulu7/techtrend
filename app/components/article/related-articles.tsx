@@ -12,14 +12,10 @@ import {
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  LinkIcon,
-  TrendingUp,
-  ChevronDown,
-  ChevronUp,
-  Network,
-} from 'lucide-react';
+import { LinkIcon, ChevronDown, ChevronUp, Network } from 'lucide-react';
 import { formatDate } from '@/lib/utils/date';
+import { NewLabel } from './article-meta';
+import { EmptyState } from '@/components/ui-v2/empty-state';
 import {
   useRelatedArticles,
   type RelatedArticle,
@@ -103,12 +99,8 @@ const RelatedArticleItem = memo(function RelatedArticleItem({
                     ? `${hoursAgo}時間前`
                     : formatDate(article.publishedAt)}
           </span>
-          {isNew === true && (
-            <BadgeV2 className="h-5 text-xs" variant="primary">
-              <TrendingUp className="mr-0.5 h-3 w-3" />
-              New
-            </BadgeV2>
-          )}
+          {/* 一覧のカード・リストと同じ「新着」の文字（issue #701） */}
+          {isNew === true && <NewLabel />}
         </div>
 
         {relationReason && (
@@ -200,9 +192,11 @@ export function RelatedArticles({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-[var(--tt-color-text-muted)]">
-            関連記事が見つかりませんでした。
-          </p>
+          <EmptyState
+            size="compact"
+            icon={LinkIcon}
+            title="関連記事はありません"
+          />
         </CardContent>
       </Card>
     );

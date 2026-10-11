@@ -350,17 +350,13 @@ describe('FavoriteCardSkeleton', () => {
 });
 
 describe('FavoriteSkeletonGrid', () => {
-  it('should render 8 skeleton cards plus grid container', () => {
+  // 読み込み中の通知は LoadingOverlay 前面のスピナーが持つので、グリッド自体は status を持たない
+  it('should render 8 skeleton cards without its own grid status', () => {
     render(<FavoriteSkeletonGrid />);
-    // 8 skeleton cards + 1 grid container = 9 elements with role="status"
-    const skeletons = screen.getAllByRole('status');
-    expect(skeletons).toHaveLength(9);
-  });
-
-  it('should have proper aria attributes on grid container', () => {
-    render(<FavoriteSkeletonGrid />);
-    const grid = screen.getByRole('status', { name: /お気に入りを読み込み中/ });
-    expect(grid).toBeInTheDocument();
+    expect(screen.getAllByRole('status')).toHaveLength(8);
+    expect(
+      screen.queryByRole('status', { name: /お気に入りを読み込み中/ })
+    ).not.toBeInTheDocument();
   });
 
   it('should render individual skeleton cards with proper aria-label', () => {

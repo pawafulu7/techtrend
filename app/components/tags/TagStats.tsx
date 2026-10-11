@@ -10,10 +10,11 @@ import {
   CardTitle,
 } from '@/components/ui-v2/card-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TagStatsSkeleton } from './tags-skeletons';
 import { TrendingUp, Hash, Calendar, Activity } from 'lucide-react';
 import logger from '@/lib/logger.client';
 import { ErrorState } from '@/components/ui-v2/error-state';
+import { LiveStatus } from '@/components/ui-v2/live-status';
 
 interface TagCloudItem {
   id?: string;
@@ -186,17 +187,12 @@ export function TagStats() {
   }, [totalData, activeTags, newData, growthTags]);
 
   if (loading) {
+    // 高さの小さいカードで、タグクラウドと同時に読み込むため、スピナーは重ねない
+    // （1画面に2つ並ぶ）。読み込み中であることは読み上げで伝える（issue 701）
     return (
-      <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-24" />
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-          </CardContent>
-        </Card>
+      <div>
+        <LiveStatus message="タグ統計を読み込んでいます..." />
+        <TagStatsSkeleton />
       </div>
     );
   }

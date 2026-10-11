@@ -1,6 +1,7 @@
 'use client';
 
 import { ArticleCard } from './card';
+import { ARTICLE_GRID_CLASS } from './article-grid';
 import { ArticleListItem } from './list-item';
 import { CompactCard } from './compact-card';
 import { StoryMembers } from './story-members';
@@ -17,6 +18,8 @@ import {
 } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/ui-v2/empty-state';
+import { Newspaper } from 'lucide-react';
 // useToast は全トーストの状態を購読して一覧全体を再描画させるため、関数だけを使う
 import { toast } from '@/hooks/use-toast';
 
@@ -25,9 +28,6 @@ interface ArticleReadStatusChangedDetail {
   articleIds: string[];
   isRead: boolean;
 }
-
-const GRID_CLASS =
-  'grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4 2xl:grid-cols-5';
 
 export function ArticleList({
   articles: initialArticles,
@@ -209,12 +209,11 @@ export function ArticleList({
 
   if (articles.length === 0) {
     return (
-      <div
-        data-testid="empty-state"
-        className={cn('py-12 text-center', className)}
-      >
-        <p className="text-muted-foreground">記事が見つかりませんでした</p>
-      </div>
+      <EmptyState
+        icon={Newspaper}
+        title="記事がありません"
+        className={className}
+      />
     );
   }
 
@@ -244,7 +243,10 @@ export function ArticleList({
   // コンパクト形式の場合
   if (viewMode === 'compact') {
     return (
-      <div className={cn(GRID_CLASS, className)} data-testid="article-list">
+      <div
+        className={cn(ARTICLE_GRID_CLASS, className)}
+        data-testid="article-list"
+      >
         {groups.map((group) =>
           withStory(
             group,
@@ -264,7 +266,10 @@ export function ArticleList({
 
   // カード形式の場合
   return (
-    <div className={cn(GRID_CLASS, className)} data-testid="article-list">
+    <div
+      className={cn(ARTICLE_GRID_CLASS, className)}
+      data-testid="article-list"
+    >
       {groups.map((group) =>
         withStory(
           group,

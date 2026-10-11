@@ -1,9 +1,9 @@
-import { TrendsContent } from './_components/trends-content';
+import { TrendsContent } from '../_components/trends-content';
 import {
   fetchKeywordsData,
   fetchAnalysisData,
   fetchSourceData,
-} from './_components/trends-data';
+} from '../_components/trends-data';
 
 export const dynamic = 'force-dynamic';
 

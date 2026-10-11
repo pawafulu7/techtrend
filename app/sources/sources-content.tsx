@@ -5,6 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 import { SourceCard } from '@/app/components/sources/SourceCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui-v2/button-v2';
+import { EmptyState } from '@/components/ui-v2/empty-state';
+import { ErrorState } from '@/components/ui-v2/error-state';
+import { CardV2 } from '@/components/ui-v2/card-v2';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -37,35 +40,37 @@ export default function SourcesContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const { isFavorite } = useFavoriteSources();
 
-  const {
-    data,
-    isPending: loading,
-    isError,
-  } = useQuery<SourceWithStats[]>({
-    queryKey: ['sources'],
-    queryFn: async () => {
-      const response = await fetch('/api/sources');
-      if (!response.ok) {
-        const body = await response.text().catch(() => '');
-        logger.error(
-          { status: response.status, body },
-          'Failed to load sources'
-        );
-        throw new Error(`Failed to load sources: ${response.status}`);
-      }
-      let json: { sources?: unknown };
-      try {
-        json = await response.json();
-      } catch (parseError) {
-        logger.error(
-          { parseError },
-          'Failed to parse sources response as JSON'
-        );
-        throw new Error('Failed to parse sources response as JSON');
-      }
-      return Array.isArray(json.sources) ? json.sources : [];
-    },
-  });
+  const { data, isPending, isError, isFetching, errorUpdateCount, refetch } =
+    useQuery<SourceWithStats[]>({
+      queryKey: ['sources'],
+      queryFn: async () => {
+        const response = await fetch('/api/sources');
+        if (!response.ok) {
+          const body = await response.text().catch(() => '');
+          logger.error(
+            { status: response.status, body },
+            'Failed to load sources'
+          );
+          throw new Error(`Failed to load sources: ${response.status}`);
+        }
+        let json: { sources?: unknown };
+        try {
+          json = await response.json();
+        } catch (parseError) {
+          logger.error(
+            { parseError },
+            'Failed to parse sources response as JSON'
+          );
+          throw new Error('Failed to parse sources response as JSON');
+        }
+        return Array.isArray(json.sources) ? json.sources : [];
+      },
+    });
+
+  // React Query は data の無いクエリを再取得すると pending に戻すので、一度失敗したら
+  // 再試行中も読み込み中に戻さず、失敗の表示（再試行中…）を残す（issue #701）
+  const failedWithoutData = !data && (isError || errorUpdateCount > 0);
+  const loading = isPending && !failedWithoutData;
 
   const allSources = useMemo(() => data ?? [], [data]);
 
@@ -148,19 +153,20 @@ export default function SourcesContent() {
     currentPage * ITEMS_PER_PAGE
   );
 
-  // エラー時にキャッシュデータ（data）がなければ早期リターン
-  if (isError && !data) {
+  // 取得に失敗して一覧が無い: 失敗と再試行を出す
+  if (failedWithoutData) {
     return (
       <div className="space-y-6">
         <h1 className="sr-only">ソース一覧</h1>
-        <div
-          className="border-destructive/20 bg-destructive/10 rounded-md border p-4"
-          role="alert"
-        >
-          <p className="text-destructive text-sm">
-            ソースの読み込みに失敗しました。しばらく経ってから再試行してください。
-          </p>
-        </div>
+        <CardV2 className="mx-auto max-w-md">
+          <ErrorState
+            size="block"
+            title="ソースを読み込めませんでした"
+            description="時間をおいて再試行してください。"
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
+        </CardV2>
       </div>
     );
   }
@@ -171,14 +177,13 @@ export default function SourcesContent() {
 
       {/* エラーバナー: キャッシュデータがある場合は上部に表示して表示継続 */}
       {isError && data && (
-        <div
-          className="border-destructive/20 bg-destructive/10 rounded-md border p-4"
-          role="alert"
-        >
-          <p className="text-destructive text-sm">
-            最新データの取得に失敗しました。表示中のデータはキャッシュです。
-          </p>
-        </div>
+        <ErrorState
+          title="最新のソースを読み込めませんでした"
+          description="前回読み込んだ内容を表示しています。"
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+          className="rounded-lg border"
+        />
       )}
 
       {loading ? (
@@ -281,14 +286,11 @@ export default function SourcesContent() {
               ))}
             </div>
           ) : sources.length === 0 ? (
-            <div className="py-12 text-center">
-              <p className="text-muted-foreground mb-2 text-lg">
-                ソースが見つかりませんでした
-              </p>
-              <p className="text-muted-foreground text-sm">
-                検索条件を変更してみてください
-              </p>
-            </div>
+            <EmptyState
+              icon={Search}
+              title="条件に合うソースはありません"
+              description="検索語やカテゴリを変えてください。"
+            />
           ) : (
             <>
               {/* Source list */}

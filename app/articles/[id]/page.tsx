@@ -15,6 +15,7 @@ import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source/source-colors';
 import { isSlideSource } from '@/lib/utils/source/slide-source';
 import { cn } from '@/lib/utils';
+import { NewLabel } from '@/app/components/article/article-meta';
 import { RelatedArticles } from '@/app/components/article/related-articles';
 import { ArticleTracker } from '@/app/components/analytics/ArticleTracker';
 import { ViewTracker } from '@/components/article/view-tracker';
@@ -165,11 +166,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex flex-wrap items-center gap-2">
-                      {isNew && (
-                        <BadgeV2 variant="primary" className="text-xs">
-                          NEW
-                        </BadgeV2>
-                      )}
+                      {/* 一覧のカード・リストと同じ「新着」の文字（issue #701） */}
+                      {isNew && <NewLabel className="text-xs" />}
                       <BadgeV2
                         variant="outline"
                         className={cn(

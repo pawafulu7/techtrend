@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
+import { EmptyState } from '@/components/ui-v2/empty-state';
+import { ErrorState } from '@/components/ui-v2/error-state';
+import { Skeleton } from '@/components/ui/skeleton';
+import { LoadingOverlay } from '@/app/components/common/loading-overlay';
 import { PageHeader } from '@/components/ui-v2/page-header';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ArticleCard } from '@/app/components/article/card';
@@ -14,9 +18,7 @@ import {
   Newspaper,
   TrendingUp,
   Clock,
-  AlertCircle,
 } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useFavoriteSources } from '@/lib/favorites/hooks';
 import { useFavoriteStatuses } from '@/app/hooks/use-favorite-statuses';
 import Link from 'next/link';
@@ -178,6 +180,17 @@ export function FavoriteFeedContent() {
     </Link>
   );
 
+  // 読み込み中: 奥に記事カードの形、前面にスピナー（issue #701）
+  const feedLoading = (
+    <LoadingOverlay message="記事を読み込んでいます...">
+      <div className="space-y-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-32 w-full rounded-lg" />
+        ))}
+      </div>
+    </LoadingOverlay>
+  );
+
   if (favoritesLoading) {
     return (
       <div className="px-4 py-3 lg:px-6">
@@ -193,12 +206,7 @@ export function FavoriteFeedContent() {
             </>
           }
         />
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
-            <p className="text-muted-foreground">読み込み中...</p>
-          </div>
-        </div>
+        {feedLoading}
       </div>
     );
   }
@@ -297,30 +305,30 @@ export function FavoriteFeedContent() {
       />
 
       {/* 記事一覧 */}
-      {loading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <CardV2 key={i} className="bg-muted h-32 animate-pulse" />
-          ))}
-        </div>
-      ) : fetchError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{fetchError}</AlertDescription>
-        </Alert>
+      {/* 失敗は再試行中も残す（読み込み中に戻すと、失敗したのか分からなくなるため。issue #701） */}
+      {fetchError ? (
+        <CardV2 className="mx-auto max-w-md">
+          <ErrorState
+            size="block"
+            title="記事を読み込めませんでした"
+            description="時間をおいて再試行してください。"
+            onRetry={() => void loadArticles()}
+            retrying={loading}
+          />
+        </CardV2>
+      ) : loading ? (
+        feedLoading
       ) : sortedArticles.length === 0 && !loading && !fetchError ? (
         <CardV2 className="mx-auto max-w-md">
-          <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-            <Newspaper className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
-            <p className="text-muted-foreground mb-2 text-lg">
-              記事がありません
-            </p>
-            <p className="text-muted-foreground text-sm">
-              {selectedFolder === 'all'
-                ? 'お気に入りソースから新しい記事が投稿されるのをお待ちください'
-                : 'このフォルダーのソースから新しい記事が投稿されるのをお待ちください'}
-            </p>
-          </div>
+          <EmptyState
+            icon={Newspaper}
+            title="記事がありません"
+            description={
+              selectedFolder === 'all'
+                ? 'お気に入りソースに新しい記事が届くと、ここに並びます。'
+                : 'このフォルダーのソースに新しい記事が届くと、ここに並びます。'
+            }
+          />
         </CardV2>
       ) : (
         <>
