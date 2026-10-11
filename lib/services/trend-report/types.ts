@@ -7,7 +7,7 @@ export const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 export const LEGACY_SUMMARY_MIN_LENGTH = 100;
 
 // Prompt version management
-export const PROMPT_VERSION = '2.3.0';
+export const PROMPT_VERSION = '2.4.0';
 
 // Category tag definitions (case-insensitive comparison)
 export const CATEGORY_TAGS = {
