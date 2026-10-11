@@ -23,10 +23,11 @@ runs:
         cache: 'npm'
     - name: Set batch environment flags
       shell: bash
-      # PRISMA_ERROR_LOG=false: Prisma の error ログ（DB に繋がらないときに接続先が入る）を公開ログに出さない
+      # LOG_ERROR_DETAILS=false: Prisma の error ログと、lib/logger.ts が出す例外の message（DB に繋がらない
+      # ときに接続先が入る）を公開ログに出さない
       run: |
         echo "ALLOW_INSECURE_AUTH_FALLBACK=true" >> "$GITHUB_ENV"
-        echo "PRISMA_ERROR_LOG=false" >> "$GITHUB_ENV"
+        echo "LOG_ERROR_DETAILS=false" >> "$GITHUB_ENV"
     - name: Install deps
       shell: bash
       run: |

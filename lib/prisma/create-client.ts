@@ -12,11 +12,11 @@ import { env } from '@/lib/config/env';
 type PrismaLogLevel = 'query' | 'info' | 'warn' | 'error';
 
 /**
- * PRISMA_ERROR_LOG=false なら error を外す。Prisma の error ログには、DB に繋がらないときの
+ * LOG_ERROR_DETAILS=false なら error を外す。Prisma の error ログには、DB に繋がらないときの
  * 接続先（ホスト）が入り、catch より先に出る。定期実行のログは公開されるので、そこでは外す
  */
 export function withPrismaErrorLogSetting<T extends PrismaLogLevel>(levels: T[]): T[] {
-  return env.PRISMA_ERROR_LOG === 'false'
+  return env.LOG_ERROR_DETAILS === 'false'
     ? levels.filter((level) => level !== 'error')
     : levels;
 }

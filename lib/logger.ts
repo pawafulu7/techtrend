@@ -4,6 +4,7 @@ import { trace, isSpanContextValid } from '@opentelemetry/api';
 import {
   sanitizeError as sanitizeErrorImpl,
   sanitizeErrorMessage as sanitizeErrorMessageImpl,
+  summarizeError,
 } from '@/lib/utils/sanitize-error';
 
 // 後方互換のため既存 import path (`@/lib/logger`) からも公開する
@@ -12,6 +13,27 @@ export { sanitizeErrorMessageImpl as sanitizeErrorMessage };
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
+
+/**
+ * LOG_ERROR_DETAILS=false のときに、例外の message を出さない serializer。定期実行のログは公開リポジトリの
+ * GitHub Actions に残り、DB に繋がらないときの message には接続先が入るため（lib/config/env.ts を参照）。
+ * 例外は種類とコードだけにし、文字列で渡された message（errorMessage など）は中身を出さない。
+ * env を import すると循環するので process.env を読む
+ */
+export function createErrorSerializers(
+  logErrorDetails: string | undefined = process.env.LOG_ERROR_DETAILS
+): Record<string, (value: unknown) => unknown> {
+  if (logErrorDetails !== 'false') {
+    return { err: (err: unknown) => sanitizeErrorImpl(err) };
+  }
+  const omitMessage = (value: unknown) =>
+    typeof value === 'string' ? '[omitted]' : summarizeError(value);
+  return {
+    err: (err: unknown) => summarizeError(err),
+    error: omitMessage,
+    errorMessage: omitMessage,
+  };
+}
 
 /**
  * Hash sensitive values for privacy while maintaining debuggability
@@ -117,9 +139,7 @@ const logger = pino({
 
   serializers: {
     // Custom error serializer with sanitization (handles API keys in messages)
-    err: (err) => {
-      return sanitizeErrorImpl(err);
-    },
+    ...createErrorSerializers(),
     request: (req) => ({
       method: req.method,
       url: req.url,
