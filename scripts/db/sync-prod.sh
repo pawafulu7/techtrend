@@ -113,7 +113,7 @@ echo "[sync] pg_dump を実行中..."
 
 # パイプアプローチ: pg_dump (PG17) | docker exec pg_restore (PG17コンテナ)
 # --clean なし: 事前にTRUNCATE済みなのでデータ挿入のみ
-# pg_dump のエラー出力は、TRUNCATE の前に作った DUMP_STDERR_LOG に保存する
+# pg_dump と pg_restore のエラー出力は、TRUNCATE の前に作った DUMP_STDERR_LOG に保存する
 if ! "$PG_DUMP" "$PG_CONN_NOPASS" \
   --format=custom \
   --no-owner \
@@ -127,8 +127,9 @@ if ! "$PG_DUMP" "$PG_CONN_NOPASS" \
   --disable-triggers \
   --single-transaction \
   -U postgres \
-  -d techtrend_dev; then
-  echo "[sync] ERROR: pg_dump または pg_restore が失敗しました。pg_dump の出力 $(grep -c '' "$DUMP_STDERR_LOG" || true) 行は ${DUMP_STDERR_LOG#"$ROOT_DIR"/} に保存しました。"
+  -d techtrend_dev \
+  2>>"$DUMP_STDERR_LOG"; then
+  echo "[sync] ERROR: pg_dump または pg_restore が失敗しました。出力 $(grep -c '' "$DUMP_STDERR_LOG" || true) 行は ${DUMP_STDERR_LOG#"$ROOT_DIR"/} に保存しました。"
   exit 1
 fi
 

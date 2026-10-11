@@ -82,6 +82,18 @@ export function summarizeError(
   error: unknown,
   options: { stack?: boolean } = {}
 ): string {
+  // catch の中で呼ぶので、name の getter などが投げても外へ伝えない（元の失敗を記録できなくなるため）
+  try {
+    return summarizeErrorUnsafe(error, options);
+  } catch {
+    return 'Error (summary unavailable)';
+  }
+}
+
+function summarizeErrorUnsafe(
+  error: unknown,
+  options: { stack?: boolean }
+): string {
   const chain: string[] = [];
   let current: unknown = error;
   for (let depth = 0; depth <= MAX_CAUSE_DEPTH; depth++) {

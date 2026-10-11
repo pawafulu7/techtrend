@@ -339,8 +339,13 @@ async function main() {
       const lines = await runExplain(prisma, sql);
       for (const line of lines) console.log(line);
       for (const [pattern, key] of timings) {
-        const match = lines.map((line) => line.match(pattern)).find(Boolean);
-        if (match) console.log(`stage2_run${i}_${key}=${match[1]}`);
+        for (const line of lines) {
+          const match = pattern.exec(line);
+          if (match) {
+            console.log(`stage2_run${i}_${key}=${match[1]}`);
+            break;
+          }
+        }
       }
     }
 

@@ -144,4 +144,15 @@ describe('summarizeError', () => {
 
     expect(summarizeError(error, { stack: true }).split('\n')).toHaveLength(11);
   });
+
+  it('要約の途中で例外が出たら、固定の文字列を返して外へ投げない', () => {
+    const error = new Error(HOST);
+    Object.defineProperty(error, 'name', {
+      get() {
+        throw new Error(HOST);
+      },
+    });
+
+    expect(summarizeError(error)).toBe('Error (summary unavailable)');
+  });
 });
