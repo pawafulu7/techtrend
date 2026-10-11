@@ -10,6 +10,7 @@ import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-t
 import { Button } from '@/components/ui-v2/button-v2';
 import { FavoriteArticleCard } from '@/app/components/article/favorite-card';
 import { EmptyState } from '@/components/ui-v2/empty-state';
+import { LiveStatus } from '@/components/ui-v2/live-status';
 import { FavoritesLoading } from './favorites-loading';
 import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
 import { useQueryClient } from '@tanstack/react-query';
@@ -279,13 +280,12 @@ export function FavoritesContent({
         <div className="space-y-6">
           {/* Results count */}
           {searchQuery && (
-            <p
+            <LiveStatus
+              message={`${filteredFavorites.length}件の記事が見つかりました`}
               className="text-muted-foreground text-sm"
-              role="status"
-              aria-live="polite"
             >
               {filteredFavorites.length}件の記事が見つかりました
-            </p>
+            </LiveStatus>
           )}
 
           {/* Grid layout */}

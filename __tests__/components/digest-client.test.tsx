@@ -205,7 +205,8 @@ describe('DigestClient: 取得の失敗（issue #701）', () => {
     expect(
       screen.queryByText('ダイジェストを読み込めませんでした')
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(
+    // 読み上げの文言は少し遅れて入る（LiveStatus）ので、読み込み中の表示そのものを確かめる
+    expect(screen.getByTestId('loading-spinner')).toHaveTextContent(
       'ダイジェストを読み込んでいます...'
     );
 

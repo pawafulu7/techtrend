@@ -162,7 +162,7 @@ describe('RelatedArticles', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('関連記事が0件の場合はメッセージを表示する', () => {
+  it('関連記事が0件の場合はメッセージを表示する', async () => {
     mockUseRelatedArticles.mockReturnValue({
       data: { articles: [], algorithm: 'tag' },
       isLoading: false,
@@ -171,9 +171,11 @@ describe('RelatedArticles', () => {
 
     render(<RelatedArticles articleId="test-article" />);
 
-    expect(screen.getByRole('status')).toHaveTextContent(
-      '関連記事はありません'
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(
+        '関連記事はありません'
+      );
+    });
   });
 
   it('タグが正しく表示される', async () => {

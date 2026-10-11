@@ -21,6 +21,7 @@ import { ScrollRestorationLoading } from '@/app/components/common/scroll-restora
 import { Loader2 } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { ErrorState } from '@/components/ui-v2/error-state';
+import { LiveStatus } from '@/components/ui-v2/live-status';
 import type { ViewMode } from '@/types/components';
 import { HomeListStatusBar } from '@/app/components/home/home-list-status-bar';
 import { HomeEmptyState } from '@/app/components/home/home-empty-state';
@@ -375,13 +376,10 @@ export function HomeClientInfinite({
               }
             />
             {isCategoryChanging && (
-              <div
-                className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center"
-                role="status"
-                aria-live="polite"
-              >
+              <div className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center">
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                <span className="sr-only">カテゴリを変更中...</span>
+                {/* 領域を先に描いてから文言を入れる（issue 701） */}
+                <LiveStatus message="カテゴリを変更中..." />
               </div>
             )}
 

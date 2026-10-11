@@ -191,9 +191,7 @@ export function TagStats() {
     // （1画面に2つ並ぶ）。読み込み中であることは読み上げで伝える（issue 701）
     return (
       <div>
-        <LiveStatus className="sr-only">
-          タグ統計を読み込んでいます...
-        </LiveStatus>
+        <LiveStatus message="タグ統計を読み込んでいます..." />
         <TagStatsSkeleton />
       </div>
     );

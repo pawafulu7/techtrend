@@ -227,10 +227,14 @@ describe('ArticleList', () => {
       expect(listItems).toHaveLength(3);
     });
 
-    it('renders empty state when no articles', () => {
+    it('renders empty state when no articles', async () => {
       renderWithProviders(<ArticleList articles={[]} />);
 
-      expect(screen.getByRole('status')).toHaveTextContent('記事がありません');
+      await waitFor(() => {
+        expect(screen.getByRole('status')).toHaveTextContent(
+          '記事がありません'
+        );
+      });
       expect(screen.queryByTestId('article-list')).not.toBeInTheDocument();
     });
   });

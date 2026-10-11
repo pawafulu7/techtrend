@@ -19,9 +19,6 @@ export function LoadingSpinner({
         fullPage ? 'h-full min-h-[400px]' : 'py-12'
       )}
     >
-      {/* 読み上げは LiveStatus が受け持つ。見た目の部分は読み上げから外し、二重に読ませない */}
-      <LiveStatus className="sr-only">{message}</LiveStatus>
-
       {/* Brand mark */}
       <div className="flex items-center gap-2" aria-hidden="true">
         <TrendingUp className="text-primary h-6 w-6" aria-hidden="true" />
@@ -39,9 +36,11 @@ export function LoadingSpinner({
       </div>
 
       {/* Context message */}
-      <p className="text-muted-foreground text-sm" aria-hidden="true">
+      {/* 読み上げは LiveStatus が受け持つ（領域を先に描いてから文言を入れる）。
+          ロゴと進捗バーは飾りなので読み上げから外す */}
+      <LiveStatus message={message} className="text-muted-foreground text-sm">
         {message}
-      </p>
+      </LiveStatus>
     </div>
   );
 }

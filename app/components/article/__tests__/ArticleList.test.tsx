@@ -243,10 +243,14 @@ describe('ArticleList', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('記事が空の場合は空状態メッセージを表示する', () => {
+    it('記事が空の場合は空状態メッセージを表示する', async () => {
       renderWithProviders(<ArticleList articles={[]} />);
 
-      expect(screen.getByRole('status')).toHaveTextContent('記事がありません');
+      await waitFor(() => {
+        expect(screen.getByRole('status')).toHaveTextContent(
+          '記事がありません'
+        );
+      });
       expect(screen.queryByTestId('article-list')).not.toBeInTheDocument();
     });
   });

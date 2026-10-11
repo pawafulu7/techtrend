@@ -1,7 +1,7 @@
 /**
  * 論文一覧: 取得の失敗は生の error.message ではなく利用者向けの文言と再試行で示す（issue #701）
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { PapersClientInfinite } from '@/app/components/papers/papers-client-infinite';
 
@@ -82,14 +82,16 @@ describe('PapersClientInfinite: 取得の状態（issue #701）', () => {
     expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
   });
 
-  it('初回の読み込み中はスケルトン、0件なら空状態を出す', () => {
+  it('初回の読み込み中はスケルトン、0件なら空状態を出す', async () => {
     mockUseInfiniteArticles.mockReturnValue(state({ isPending: true }));
     const { unmount } = render(
       <PapersClientInfinite viewMode="card" sourceId="arxiv" />
     );
-    expect(screen.getByRole('status')).toHaveTextContent(
-      '論文を読み込んでいます...'
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(
+        '論文を読み込んでいます...'
+      );
+    });
     unmount();
 
     mockUseInfiniteArticles.mockReturnValue(

@@ -1,7 +1,7 @@
 /**
  * EmptyState: 取得に成功して0件のときの表示（issue #701）。失敗（ErrorState）と取り違えない
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import '@testing-library/jest-dom';
 import { Search } from 'lucide-react';
@@ -15,7 +15,7 @@ describe('EmptyState', () => {
     expect(html).toMatch(/<span role="status" class="sr-only"><\/span>/);
   });
 
-  it('見出しと説明を status で伝え、alert にはしない', () => {
+  it('見出しと説明を status で伝え、alert にはしない', async () => {
     render(
       <EmptyState
         icon={Search}
@@ -24,9 +24,11 @@ describe('EmptyState', () => {
       />
     );
 
-    const status = screen.getByRole('status');
-    expect(status).toHaveTextContent('条件に合う記事はありません');
-    expect(status).toHaveTextContent('検索語を変えてください。');
+    await waitFor(() => {
+      const status = screen.getByRole('status');
+      expect(status).toHaveTextContent('条件に合う記事はありません');
+      expect(status).toHaveTextContent('検索語を変えてください。');
+    });
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByTestId('empty-state')).toBeInTheDocument();
   });
@@ -42,10 +44,14 @@ describe('EmptyState', () => {
     expect(screen.getByRole('status')).not.toContainElement(button);
   });
 
-  it('説明と操作は渡したときだけ出す', () => {
+  it('説明と操作は渡したときだけ出す', async () => {
     render(<EmptyState icon={Search} title="記事がありません" />);
 
-    expect(screen.getByRole('status')).toHaveTextContent(/^記事がありません$/);
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(
+        /^記事がありません$/
+      );
+    });
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });

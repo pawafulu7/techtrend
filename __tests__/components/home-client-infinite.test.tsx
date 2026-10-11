@@ -191,7 +191,7 @@ describe('HomeClientInfinite の非破壊ローディング', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('記事 0 件で読み込み中のときはスピナーを出し、空状態を出さない', () => {
+  it('記事 0 件で読み込み中のときはスピナーを出し、空状態を出さない', async () => {
     // Issue #569「空状態のフラッシュ」のガード。
     // 上のテストのために isPending 判定を緩めると、読み込み中に
     // 「記事が見つかりませんでした」が一瞬出る症状が再発する。
@@ -201,9 +201,11 @@ describe('HomeClientInfinite の非破壊ローディング', () => {
     renderHome();
 
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(
-      '記事を読み込んでいます...'
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(
+        '記事を読み込んでいます...'
+      );
+    });
     expect(
       screen.queryByText('条件に合う記事はありません')
     ).not.toBeInTheDocument();
@@ -474,7 +476,7 @@ describe('HomeClientInfinite の空状態（issue #701）', () => {
     expect(mockResetFilters).toHaveBeenCalledTimes(1);
   });
 
-  it('パーソナライズの絞り込みが効いているときは、リセットでは外れないことを示す', () => {
+  it('パーソナライズの絞り込みが効いているときは、リセットでは外れないことを示す', async () => {
     mockUsePersonalizationPreferences.mockReturnValue({
       ...preferences(false),
       filterEnabled: true,
@@ -487,9 +489,11 @@ describe('HomeClientInfinite の空状態（issue #701）', () => {
     renderHome();
 
     // 一覧下の状態バーも status を持つので、空状態の中で確かめる
-    expect(
-      within(screen.getByTestId('empty-state')).getByRole('status')
-    ).toHaveTextContent('パーソナライズの絞り込みも効いています');
+    await waitFor(() => {
+      expect(
+        within(screen.getByTestId('empty-state')).getByRole('status')
+      ).toHaveTextContent('パーソナライズの絞り込みも効いています');
+    });
   });
 });
 
