@@ -184,28 +184,21 @@ describe('ArticleListItem', () => {
   });
 
   it('7日以上前の記事の日付は日本時間で出す（カードの公開日時とそろえる）', async () => {
-    const originalTz = process.env.TZ;
-    // ブラウザのタイムゾーンが日本時間でない環境を作る
-    process.env.TZ = 'UTC';
-    try {
-      // 日本時間 2025/01/02 00:30（UTC では 2025/01/01）
-      const old = createMockArticleWithRelations({
-        article: {
-          id: 'list-old',
-          publishedAt: new Date('2025-01-01T15:30:00Z'),
-          createdAt: new Date('2025-01-01T15:30:00Z'),
-        },
-        source: createMockSource({ name: 'Qiita' }),
-      });
-      const { container } = render(<ArticleListItem article={old} />);
-      await act(async () => {});
+    // 日本時間 2025/01/02 00:30（UTC では 2025/01/01）
+    const publishedAt = new Date('2025-01-01T15:30:00Z');
+    // 前提: 日本時間でない環境で流す（Docker のテスト環境と CI は UTC）。日本時間の環境では
+    // ブラウザのタイムゾーンで日付を作る実装との違いが出ないため
+    expect(publishedAt.getDate()).toBe(1);
+    const old = createMockArticleWithRelations({
+      article: { id: 'list-old', publishedAt, createdAt: publishedAt },
+      source: createMockSource({ name: 'Qiita' }),
+    });
+    const { container } = render(<ArticleListItem article={old} />);
+    await act(async () => {});
 
-      const elapsed = Array.from(container.querySelectorAll('span')).find(
-        (span) => span.className.split(' ').includes('sm:hidden')
-      );
-      expect(elapsed?.textContent).toBe('2025/01/02');
-    } finally {
-      process.env.TZ = originalTz;
-    }
+    const elapsed = Array.from(container.querySelectorAll('span')).find(
+      (span) => span.className.split(' ').includes('sm:hidden')
+    );
+    expect(elapsed?.textContent).toBe('2025/01/02');
   });
 });

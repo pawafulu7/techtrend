@@ -37,6 +37,14 @@ describe('date utils', () => {
       expect(formatDate(date)).toBe('2025/01/01');
     });
 
+    it('should format the date in Japan time (not the runtime time zone)', () => {
+      // 日本時間 2025/01/02 00:30（UTC では 2025/01/01）
+      const date = new Date('2025-01-01T15:30:00.000Z');
+      // 前提: 日本時間でない環境で流す（Docker のテスト環境と CI は UTC）
+      expect(date.getDate()).toBe(1);
+      expect(formatDate(date)).toBe('2025/01/02');
+    });
+
     it('should handle string dates', () => {
       const dateString = '2025-01-15T11:00:00.000Z'; // 1時間前
       expect(formatDate(dateString)).toBe('1時間前');

@@ -34,7 +34,10 @@ export function formatDate(date: Date | string): string {
   } else if (diffDay < 7) {
     return `${diffDay}日前`;
   } else {
+    // 日付は日本時間で出す（formatDateWithTime と同じ）。ブラウザのタイムゾーンで作ると、
+    // 日本時間の深夜の記事で、ほかの画面の公開日時と日付がずれる
     return d.toLocaleDateString('ja-JP', {
+      timeZone: 'Asia/Tokyo',
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
