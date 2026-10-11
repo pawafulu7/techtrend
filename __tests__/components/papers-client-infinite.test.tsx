@@ -24,7 +24,7 @@ jest.mock('@/app/components/article/list', () => ({
 }));
 
 jest.mock('@/app/components/common/infinite-scroll-trigger', () => ({
-  InfiniteScrollTrigger: () => null,
+  InfiniteScrollTrigger: () => <div data-testid="infinite-scroll-trigger" />,
 }));
 
 jest.mock('next/navigation', () => ({
@@ -37,7 +37,7 @@ function state(overrides: Record<string, unknown>) {
     fetchNextPage: jest.fn(),
     hasNextPage: false,
     isFetchingNextPage: false,
-    isLoading: false,
+    isPending: false,
     isError: false,
     isFetching: false,
     errorUpdateCount: 0,
@@ -71,7 +71,7 @@ describe('PapersClientInfinite: 取得の状態（issue #701）', () => {
 
   it('失敗後の再試行中も、スケルトンに戻さず失敗表示を残す', () => {
     mockUseInfiniteArticles.mockReturnValue(
-      state({ isLoading: true, isFetching: true, errorUpdateCount: 1 })
+      state({ isPending: true, isFetching: true, errorUpdateCount: 1 })
     );
     renderPapers();
 
@@ -83,11 +83,13 @@ describe('PapersClientInfinite: 取得の状態（issue #701）', () => {
   });
 
   it('初回の読み込み中はスケルトン、0件なら空状態を出す', () => {
-    mockUseInfiniteArticles.mockReturnValue(state({ isLoading: true }));
+    mockUseInfiniteArticles.mockReturnValue(state({ isPending: true }));
     const { unmount } = render(
       <PapersClientInfinite viewMode="card" sourceId="arxiv" />
     );
-    expect(screen.getByRole('status')).toHaveTextContent('論文を読み込んでいます...');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '論文を読み込んでいます...'
+    );
     unmount();
 
     mockUseInfiniteArticles.mockReturnValue(
@@ -98,5 +100,44 @@ describe('PapersClientInfinite: 取得の状態（issue #701）', () => {
     renderPapers();
     expect(screen.getByText('条件に合う論文はありません')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  const pages = {
+    pages: [{ data: { items: [{ id: 'p1' }], total: 40 } }],
+    pageParams: [1],
+  };
+
+  it('続きのページの失敗は一覧を残して下端に出し、自動の取得を止める', () => {
+    const current = state({
+      data: pages,
+      hasNextPage: true,
+      isError: true,
+      isFetchNextPageError: true,
+    });
+    mockUseInfiniteArticles.mockReturnValue(current);
+    renderPapers();
+
+    expect(screen.getByTestId('article-list')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '続きを読み込めませんでした'
+    );
+    expect(
+      screen.queryByTestId('infinite-scroll-trigger')
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '再試行' }));
+    expect(current.fetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('一覧がある状態で取り直しに失敗したら、内容を残して古いことを示す', () => {
+    const current = state({ data: pages, isError: true });
+    mockUseInfiniteArticles.mockReturnValue(current);
+    renderPapers();
+
+    expect(screen.getByTestId('article-list')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '最新の論文を読み込めませんでした'
+    );
+    fireEvent.click(screen.getByRole('button', { name: '再試行' }));
+    expect(current.refetch).toHaveBeenCalledTimes(1);
   });
 });

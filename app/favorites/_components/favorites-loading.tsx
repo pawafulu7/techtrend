@@ -23,7 +23,7 @@ export function FavoritesLoading() {
         }
       />
       <LoadingOverlay message="お気に入りを読み込んでいます...">
-        <FavoriteSkeletonGrid standalone={false} />
+        <FavoriteSkeletonGrid />
       </LoadingOverlay>
     </div>
   );

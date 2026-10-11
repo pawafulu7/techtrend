@@ -7,7 +7,7 @@ export interface EmptyStateProps {
   /** 何が無いかを書く（例: 「お気に入り記事がありません」） */
   title: string;
   /** 次に何をすればよいかを書く */
-  description?: ReactNode;
+  description?: string;
   /** compact: カードやチャート枠の中に埋め込む。block: ページの中央に置く */
   size?: 'compact' | 'block';
   className?: string;

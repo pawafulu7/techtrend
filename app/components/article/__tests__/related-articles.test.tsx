@@ -11,7 +11,14 @@ jest.mock('@/hooks/use-related-articles', () => ({
 // Next/Linkモック
 jest.mock('next/link', () => ({
   __esModule: true,
-  default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
+  default: ({
+    children,
+    href,
+    ...props
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => (
     <a href={href} {...props}>
       {children}
     </a>
@@ -40,9 +47,7 @@ const mockArticles = [
     url: 'https://example.com/article-2',
     publishedAt: new Date('2025-01-02T10:00:00Z'),
     source: 'Test Source 2',
-    tags: [
-      { id: 'tag-3', name: 'TypeScript', category: 'language' },
-    ],
+    tags: [{ id: 'tag-3', name: 'TypeScript', category: 'language' }],
     similarity: 0.75,
     commonTags: 1,
   },
@@ -53,7 +58,8 @@ describe('RelatedArticles', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseRelatedArticles = require('@/hooks/use-related-articles').useRelatedArticles;
+    mockUseRelatedArticles =
+      require('@/hooks/use-related-articles').useRelatedArticles;
   });
 
   it('関連記事が正しいリンクで表示される', async () => {
@@ -165,7 +171,7 @@ describe('RelatedArticles', () => {
 
     render(<RelatedArticles articleId="test-article" />);
 
-    expect(screen.getByText('関連記事が見つかりませんでした。')).toBeInTheDocument();
+    expect(screen.getByText('関連記事はありません')).toBeInTheDocument();
   });
 
   it('タグが正しく表示される', async () => {

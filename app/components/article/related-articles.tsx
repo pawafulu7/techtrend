@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { LinkIcon, ChevronDown, ChevronUp, Network } from 'lucide-react';
 import { formatDate } from '@/lib/utils/date';
 import { NewLabel } from './article-meta';
+import { EmptyState } from '@/components/ui-v2/empty-state';
 import {
   useRelatedArticles,
   type RelatedArticle,
@@ -191,9 +192,11 @@ export function RelatedArticles({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-[var(--tt-color-text-muted)]">
-            関連記事が見つかりませんでした。
-          </p>
+          <EmptyState
+            size="compact"
+            icon={LinkIcon}
+            title="関連記事はありません"
+          />
         </CardContent>
       </Card>
     );

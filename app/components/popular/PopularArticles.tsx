@@ -122,6 +122,7 @@ export function PopularArticles({
   // 再試行中も読み込み中に戻さず、失敗の表示（再試行中…）を残す（issue #701）
   const failedWithoutData = !data && (isError || errorUpdateCount > 0);
   const loading = isLoading && !failedWithoutData;
+  const staleAfterError = isError && data !== undefined;
 
   const handleMetricChange = useCallback(
     (value: string) => {
@@ -202,37 +203,26 @@ export function PopularArticles({
     );
   }
 
-  // 失敗を件数 0 のランキングとして見せない
-  if (failedWithoutData) {
-    return (
-      <ErrorState
-        size="block"
-        title="ランキングを読み込めませんでした"
-        description="時間をおいて再試行してください。"
-        onRetry={() => void refetch()}
-        retrying={isFetching}
-      />
-    );
-  }
-
   const totalBookmarks = articles.reduce((sum, a) => sum + a.bookmarks, 0);
 
   return (
     <div className="space-y-4">
-      {/* Stats Bar */}
-      <PopularStatsBar
-        articleCount={articles.length}
-        topScore={articles[0]?.score ?? 0}
-        totalBookmarks={totalBookmarks}
-        loading={loading}
-      />
+      {/* 件数バー。失敗を件数 0 のランキングとして見せないため、取得できなかったときは出さない */}
+      {!failedWithoutData && (
+        <PopularStatsBar
+          articleCount={articles.length}
+          topScore={articles[0]?.score ?? 0}
+          totalBookmarks={totalBookmarks}
+          loading={loading}
+        />
+      )}
       {/* Section Separator */}
       <div className="flex items-center gap-2">
         <div className="h-px flex-1 bg-gradient-to-r from-(--tt-color-primary)/30 to-transparent" />
         <h2 className="text-foreground text-h2 px-2">ランキング</h2>
         <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-primary)/30 to-transparent" />
       </div>
-      {!loading && (
+      {!loading && !failedWithoutData && (
         <DataFreshness
           at={data?.timestamp}
           period={PERIOD_LABELS[period] ?? PERIOD_LABELS.week}
@@ -249,6 +239,16 @@ export function PopularArticles({
       <div className="flex justify-end">
         <OffTopicToggle />
       </div>
+      {/* 取得済みのランキングがある状態で取り直しに失敗した: 内容を残し、古いことと再試行を示す */}
+      {staleAfterError && (
+        <ErrorState
+          title="最新のランキングを読み込めませんでした"
+          description="前回読み込んだ内容を表示しています。"
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+          className="rounded-lg border"
+        />
+      )}
       <Tabs value={metric} onValueChange={handleMetricChange}>
         <TabsList className="mb-4 grid w-full grid-cols-3">
           <TabsTrigger value="combined">
@@ -265,7 +265,16 @@ export function PopularArticles({
           </TabsTrigger>
         </TabsList>
 
-        {loading ? (
+        {/* 失敗してもタブは残し、ほかの指標・期間に切り替えられるようにする */}
+        {failedWithoutData ? (
+          <ErrorState
+            size="block"
+            title="ランキングを読み込めませんでした"
+            description="時間をおいて再試行してください。"
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
+        ) : loading ? (
           <PopularRankingSkeleton count={limit} />
         ) : articles.length === 0 ? (
           <EmptyState

@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useFilterReset } from './hooks/useFilterReset';
+import { useFilterReset } from '@/app/hooks/use-filter-reset';
 
 export function FilterResetButton() {
   const { reset: handleReset, isResetting } = useFilterReset();

@@ -262,27 +262,12 @@ export function FavoriteCardSkeleton() {
 }
 
 /**
- * Skeleton grid for loading state
+ * Skeleton grid for loading state。LoadingOverlay の奥に置く飾りで、読み込み中の通知は
+ * 前面のスピナーが持つ（issue #701）
  */
-export function FavoriteSkeletonGrid({
-  standalone = true,
-}: {
-  /** false: LoadingOverlay の奥に置く。読み込み中の通知は前面のスピナーが持つ（issue #701） */
-  standalone?: boolean;
-} = {}) {
-  const statusProps = standalone
-    ? {
-        'data-testid': 'loading-spinner',
-        role: 'status',
-        'aria-live': 'polite' as const,
-        'aria-label': 'お気に入りを読み込み中',
-      }
-    : {};
+export function FavoriteSkeletonGrid() {
   return (
-    <div
-      {...statusProps}
-      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-    >
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {Array.from({ length: 8 }).map((_, i) => (
         <FavoriteCardSkeleton key={i} />
       ))}

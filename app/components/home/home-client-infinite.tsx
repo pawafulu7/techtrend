@@ -220,6 +220,7 @@ export function HomeClientInfinite({
     isRefetchError,
     isFetching,
     errorUpdateCount,
+    isFetchNextPageError,
     refetch,
   } = useInfiniteArticles(
     {
@@ -384,8 +385,17 @@ export function HomeClientInfinite({
               </div>
             )}
 
-            {/* Infinite Scrollトリガー */}
-            {enableInfiniteScroll ? (
+            {/* 続きのページの失敗: 下端に出し、続きだけを再試行する。自動の取得（トリガー）は
+                止める。残すと末尾が見えている間、失敗した取得をくり返すため（issue #701） */}
+            {isFetchNextPageError ? (
+              <ErrorState
+                title="続きを読み込めませんでした"
+                description="時間をおいて再試行してください。"
+                onRetry={loadNextPage}
+                retrying={isFetchingNextPage}
+                className="mt-4"
+              />
+            ) : enableInfiniteScroll ? (
               <InfiniteScrollTrigger
                 onIntersect={loadNextPage}
                 hasNextPage={hasNextPage || false}
@@ -409,7 +419,12 @@ export function HomeClientInfinite({
         ) : isPending ? (
           <ArticleListSkeleton viewMode={viewMode} />
         ) : (
-          <HomeEmptyState />
+          <HomeEmptyState
+            personalized={
+              personalizationForFilters.filterEnabled &&
+              personalizationForFilters.selectedCategories.length > 0
+            }
+          />
         )}
       </div>
 

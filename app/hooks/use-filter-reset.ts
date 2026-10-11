@@ -1,23 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 
+// 実行中の状態は、ツールバーの「リセット」と空状態の「フィルターをリセット」で共有する。
+// インスタンスごとに持つと、一方の実行中にもう一方から押せて DELETE と再同期が重複する
+let inFlight: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+function setInFlight(next: Promise<void> | null) {
+  inFlight = next;
+  listeners.forEach((listener) => listener());
+}
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+const getIsResetting = () => inFlight !== null;
+const getServerIsResetting = () => false;
+
 /**
- * ホームのフィルター条件をすべてクリアする。ツールバーの「リセット」と、
- * 一覧の空状態の「フィルターをリセット」で同じ処理を使う（issue #701）
+ * ホームのフィルター条件（検索語・タグ・ソースの条件、保存済みのフィルター Cookie、表示形式）を
+ * クリアする。ツールバーの「リセット」と、一覧の空状態の「フィルターをリセット」で同じ処理を使う
+ * （issue #701）。パーソナライズの設定は別の API で持つので、ここでは変えない
  */
 export function useFilterReset() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [isResetting, setIsResetting] = useState(false);
+  const isResetting = useSyncExternalStore(
+    subscribe,
+    getIsResetting,
+    getServerIsResetting
+  );
 
-  const reset = async () => {
-    if (isResetting) return;
-    setIsResetting(true);
-
+  const run = async () => {
     // 2 本の DELETE は独立しているため、片方だけ成功する部分失敗があり得る。
     // その場合でも一部の Cookie は既に消えているので、成否にかかわらず
     // UI とサーバー状態を再同期する（旧実装は throw して再同期を飛ばしていた）
@@ -41,12 +58,8 @@ export function useFilterReset() {
     document.cookie =
       'article-view-mode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 
-    try {
-      await queryClient.invalidateQueries();
-      router.replace('/');
-    } finally {
-      setIsResetting(false);
-    }
+    await queryClient.invalidateQueries();
+    router.replace('/');
 
     if (failed) {
       toast({
@@ -55,6 +68,13 @@ export function useFilterReset() {
         variant: 'destructive',
       });
     }
+  };
+
+  const reset = () => {
+    if (inFlight) return inFlight;
+    const promise = run().finally(() => setInFlight(null));
+    setInFlight(promise);
+    return promise;
   };
 
   return { reset, isResetting };

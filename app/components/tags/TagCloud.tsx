@@ -12,8 +12,10 @@ import {
 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { TagCloudChipsSkeleton } from './tags-skeletons';
+import { LoadingOverlay } from '@/app/components/common/loading-overlay';
+import { EmptyState } from '@/components/ui-v2/empty-state';
 import { ErrorState } from '@/components/ui-v2/error-state';
-import { TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, RefreshCw, Hash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DataFreshness } from '@/app/components/common/data-freshness';
 
@@ -208,7 +210,16 @@ export function TagCloud({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <TagCloudChipsSkeleton />
+          // /tags は静的に描かれるので、待ちの大半はこの取得になる。ほかの画面と同じく
+          // 奥にスケルトン、前面にスピナーを出す（issue #701）
+          <LoadingOverlay
+            message="タグを読み込んでいます..."
+            placement="center"
+          >
+            <div className="min-h-[220px]">
+              <TagCloudChipsSkeleton />
+            </div>
+          </LoadingOverlay>
         ) : failedWithoutData ? (
           <ErrorState
             title="タグを読み込めませんでした"
@@ -229,12 +240,12 @@ export function TagCloud({
               />
             )}
             {tags.length === 0 ? (
-              <div
-                data-testid="empty-state"
-                className="text-muted-foreground py-8 text-center"
-              >
-                タグが見つかりませんでした
-              </div>
+              <EmptyState
+                size="compact"
+                icon={Hash}
+                title="この期間のタグはありません"
+                description="期間を切り替えてください。"
+              />
             ) : (
               <div className="flex min-h-[200px] flex-wrap items-center justify-center gap-2">
                 {tags.map((tag) => (

@@ -117,10 +117,11 @@ export function PapersClientInfinite({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    isLoading,
     isError,
+    isPending,
     isFetching,
     errorUpdateCount,
+    isFetchNextPageError,
     refetch,
   } = useInfiniteArticles({
     ...filters,
@@ -186,6 +187,9 @@ export function PapersClientInfinite({
   // 生の error.message は出さない。一度失敗したら、再試行中も読み込み中に戻さず
   // 失敗の表示（再試行中…）を残す（issue #701）
   const failedWithoutData = !data && (isError || errorUpdateCount > 0);
+  // 取得済みの一覧がある状態で取り直しに失敗した: 一覧を残し、古いことと再試行を示す。
+  // 続きのページの失敗は一覧の下端に出す
+  const staleAfterError = isError && !!data && !isFetchNextPageError;
   if (failedWithoutData) {
     return (
       <div className="flex min-h-[400px] items-center justify-center px-4">
@@ -218,7 +222,19 @@ export function PapersClientInfinite({
         />
       )}
 
-      {isLoading ? (
+      {staleAfterError && (
+        <ErrorState
+          title="最新の論文を読み込めませんでした"
+          description="前回読み込んだ内容を表示しています。"
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+          className="mb-4 rounded-lg border"
+        />
+      )}
+
+      {/* isPending（data が無い）で判定する。isLoading は取得が一時停止中（オフライン）だと
+          false になり、読み込み前に空状態を出してしまうため */}
+      {isPending ? (
         <ArticleListSkeleton
           viewMode={viewMode}
           thumbnail={false}
@@ -235,12 +251,23 @@ export function PapersClientInfinite({
             thumbnailPlaceholder={false}
           />
 
-          {/* Infinite Scrollトリガー */}
-          <InfiniteScrollTrigger
-            onIntersect={fetchNextPage}
-            hasNextPage={hasNextPage || false}
-            isFetchingNextPage={isFetchingNextPage}
-          />
+          {/* 続きのページの失敗: 下端に出し、続きだけを再試行する。トリガーを残すと
+              末尾が見えている間、失敗した取得をくり返すため（issue #701） */}
+          {isFetchNextPageError ? (
+            <ErrorState
+              title="続きを読み込めませんでした"
+              description="時間をおいて再試行してください。"
+              onRetry={() => void fetchNextPage()}
+              retrying={isFetchingNextPage}
+              className="mt-4"
+            />
+          ) : (
+            <InfiniteScrollTrigger
+              onIntersect={fetchNextPage}
+              hasNextPage={hasNextPage || false}
+              isFetchingNextPage={isFetchingNextPage}
+            />
+          )}
         </div>
       ) : (
         <EmptyState

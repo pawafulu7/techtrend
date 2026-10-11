@@ -40,6 +40,7 @@ type MockInfiniteArticles = {
   isRefetchError?: boolean;
   isFetching?: boolean;
   errorUpdateCount?: number;
+  isFetchNextPageError?: boolean;
   refetch: jest.Mock;
 };
 type MockPreferences = {
@@ -92,12 +93,12 @@ jest.mock('@/app/components/article/list', () => ({
 }));
 
 const mockResetFilters = jest.fn();
-jest.mock('@/app/components/common/hooks/useFilterReset', () => ({
+jest.mock('@/app/hooks/use-filter-reset', () => ({
   useFilterReset: () => ({ reset: mockResetFilters, isResetting: false }),
 }));
 
 jest.mock('@/app/components/common/infinite-scroll-trigger', () => ({
-  InfiniteScrollTrigger: () => null,
+  InfiniteScrollTrigger: () => <div data-testid="infinite-scroll-trigger" />,
 }));
 
 jest.mock('next/navigation', () => ({
@@ -184,7 +185,9 @@ describe('HomeClientInfinite の非破壊ローディング', () => {
 
     expect(screen.getByTestId('article-list')).toHaveTextContent('2 articles');
     expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
-    expect(screen.queryByText('記事を読み込んでいます...')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('記事を読み込んでいます...')
+    ).not.toBeInTheDocument();
   });
 
   it('記事 0 件で読み込み中のときはスピナーを出し、空状態を出さない', () => {
@@ -197,7 +200,9 @@ describe('HomeClientInfinite の非破壊ローディング', () => {
     renderHome();
 
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('記事を読み込んでいます...');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '記事を読み込んでいます...'
+    );
     expect(
       screen.queryByText('条件に合う記事はありません')
     ).not.toBeInTheDocument();
@@ -466,5 +471,61 @@ describe('HomeClientInfinite の空状態（issue #701）', () => {
       screen.getByRole('button', { name: 'フィルターをリセット' })
     );
     expect(mockResetFilters).toHaveBeenCalledTimes(1);
+  });
+
+  it('パーソナライズの絞り込みが効いているときは、リセットでは外れないことを示す', () => {
+    mockUsePersonalizationPreferences.mockReturnValue({
+      ...preferences(false),
+      filterEnabled: true,
+      selectedCategories: ['cat-1'],
+    });
+    mockUseInfiniteArticles.mockReturnValue({
+      ...loadedArticles(),
+      data: { pages: [{ data: { items: [], total: 0 } }], pageParams: [1] },
+    });
+    renderHome();
+
+    expect(
+      screen.getByText(/パーソナライズの絞り込みも効いています/)
+    ).toBeInTheDocument();
+  });
+});
+
+describe('HomeClientInfinite の続きのページの失敗（issue #701）', () => {
+  beforeEach(() => {
+    mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
+  });
+
+  it('一覧を残して下端に失敗と再試行を出し、自動の取得（トリガー）を止める', () => {
+    const state = {
+      ...loadedArticles(),
+      hasNextPage: true,
+      isError: true,
+      isFetchNextPageError: true,
+    };
+    mockUseInfiniteArticles.mockReturnValue(state);
+    renderHome();
+
+    expect(screen.getByTestId('article-list')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '続きを読み込めませんでした'
+    );
+    expect(
+      screen.queryByTestId('infinite-scroll-trigger')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '再試行' }));
+    expect(state.fetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('失敗が無ければトリガーを置く', () => {
+    mockUseInfiniteArticles.mockReturnValue({
+      ...loadedArticles(),
+      hasNextPage: true,
+    });
+    renderHome();
+
+    expect(screen.getByTestId('infinite-scroll-trigger')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
