@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # 本番DB (Neon) の接続URLを環境変数に入れてコマンドを実行する。URL は表示しない。
+# コマンドの出力（標準出力・標準エラー）からも接続先を伏せる（prod-db-env.sh の prod_db_run_masked）。
 #
 # Usage:
 #   bash scripts/db/with-prod-db.sh <command...>
@@ -29,4 +30,4 @@ if [ "$as_database_url" = true ]; then
   export DATABASE_URL="$PROD_DATABASE_URL"
 fi
 
-exec "$@"
+prod_db_run_masked "$@"

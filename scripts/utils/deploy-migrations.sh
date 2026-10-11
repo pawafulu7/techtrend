@@ -25,7 +25,8 @@ load_prod_database_url || exit 1
 # Function to check migration status
 check_status() {
     echo -e "${YELLOW}Checking migration status...${NC}"
-    DATABASE_URL="$PROD_DATABASE_URL" npx prisma migrate status
+    # prisma は接続先のホストを出力するので伏せる
+    prod_db_run_masked env DATABASE_URL="$PROD_DATABASE_URL" npx prisma migrate status
     return $?
 }
 
@@ -85,7 +86,7 @@ echo "============================"
 echo -e "${YELLOW}Executing: npx prisma migrate deploy${NC}"
 echo
 
-DATABASE_URL="$PROD_DATABASE_URL" npx prisma migrate deploy
+prod_db_run_masked env DATABASE_URL="$PROD_DATABASE_URL" npx prisma migrate deploy
 DEPLOY_RESULT=$?
 
 if [ $DEPLOY_RESULT -eq 0 ]; then
