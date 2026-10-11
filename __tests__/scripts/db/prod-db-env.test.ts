@@ -5,9 +5,9 @@
  * Neon に繋がらずにタイムアウトする。bash で関数を呼び、整えた後の URL を確かめる
  */
 import { execFileSync, spawnSync } from 'child_process';
-import path from 'path';
 
-const SCRIPT = path.join(process.cwd(), 'scripts/db/prod-db-env.sh');
+// リポジトリの直下からの相対パス（テストは直下で動く）。環境から作ったパスをシェルに渡さない
+const SCRIPT = './scripts/db/prod-db-env.sh';
 
 function load(url: string): string {
   return execFileSync(
