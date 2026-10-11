@@ -2,11 +2,48 @@
 # 本番DB (Neon) の接続URL PROD_DATABASE_URL を読み込む共通処理。source して使う。
 # 優先順位: 既に設定済みの環境変数 > .env.local > .env
 # URL にはパスワードが含まれるため、値は出力しない。
+# URL にポートが無ければ 5432 を補う。Ubuntu の psql / pg_dump（postgresql-common のラッパー）は、
+# ポートの無い URL に手元のクラスタのポートを当てはめ、本番に繋がらずにタイムアウトする。
 
 PROD_DB_ENV_ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# URL のホスト部にポートが無ければ :5432 を補って出力する
+with_default_port() {
+  local url="$1"
+  case "$url" in
+    *://*) ;;
+    *) printf '%s' "$url"; return 0 ;;
+  esac
+
+  local scheme="${url%%://*}"
+  local rest="${url#*://}"
+  # ホスト部は最初の / か ? まで。認証情報（user:pass@）は最後の @ までとする
+  local authority="${rest%%[/?]*}"
+  local tail="${rest:${#authority}}"
+  local userinfo="" hostport="$authority"
+  if [[ "$authority" == *@* ]]; then
+    userinfo="${authority%@*}@"
+    hostport="${authority##*@}"
+  fi
+
+  # : の後が空のポート（host: や [::1]:）は、ポートが無いのと同じなので 5432 を入れる
+  if [[ "$hostport" == *: ]] && [[ "$hostport" != *,* ]]; then
+    printf '%s' "${scheme}://${userinfo}${hostport}5432${tail}"
+    return 0
+  fi
+
+  # ホストが空（UNIX ソケット）か、複数ホストか、ポートがあればそのまま返す。[IPv6] は ]: の後にポートがある
+  if [ -z "$hostport" ] || [[ "$hostport" == *,* ]] || [[ "$hostport" == \[*\]:* ]] || { [[ "$hostport" != \[* ]] && [[ "$hostport" == *:* ]]; }; then
+    printf '%s' "$url"
+    return 0
+  fi
+
+  printf '%s' "${scheme}://${userinfo}${hostport}:5432${tail}"
+}
+
 load_prod_database_url() {
   if [ -n "${PROD_DATABASE_URL:-}" ]; then
+    PROD_DATABASE_URL="$(with_default_port "$PROD_DATABASE_URL")"
     return 0
   fi
 
@@ -22,7 +59,7 @@ load_prod_database_url() {
         db_url="$(echo -n "$db_url" | sed -E 's/[[:space:]]+#.*$//')"
         # 囲みのダブルクオートを除去
         db_url="$(echo -n "$db_url" | sed -E 's/^"|"$//g')"
-        PROD_DATABASE_URL="$db_url"
+        PROD_DATABASE_URL="$(with_default_port "$db_url")"
         break
       fi
     fi
