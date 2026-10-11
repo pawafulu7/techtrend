@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { SummaryManager } from '@/lib/services/summary/summary-manager';
 import { createNotifierFromEnv } from '@/lib/notification';
 import type { ArticleInfo } from '@/lib/notification/types';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface GenerateResult {
   generated: number;
@@ -70,7 +71,7 @@ async function generateSummaries(options: GenerateSummariesOptions = {}): Promis
       } catch (notifyError) {
         console.error(
           '[WARN] Slack notification failed:',
-          notifyError instanceof Error ? notifyError.message : String(notifyError)
+          summarizeError(notifyError)
         );
       }
     }
@@ -80,7 +81,7 @@ async function generateSummaries(options: GenerateSummariesOptions = {}): Promis
       errors: result.errors,
     };
   } catch (error) {
-    console.error('❌ 要約生成でエラーが発生しました:', error instanceof Error ? error.message : String(error));
+    console.error('❌ 要約生成でエラーが発生しました:', summarizeError(error, { stack: true }));
     throw error;
   } finally {
     // prisma singleton is managed by lib/prisma.ts (graceful shutdown handlers)

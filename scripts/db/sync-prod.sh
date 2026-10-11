@@ -73,9 +73,16 @@ if [ -z "$PG_DUMP" ]; then
 fi
 
 # パスワードをCLI引数に渡さないようPGPASSWORDを設定
+# （URL のパスワードは %XX でエンコードされているので、復号してから渡す）
 export PGPASSWORD
-PGPASSWORD="$(echo "$PROD_DATABASE_URL" | sed -E 's|^[^:]+://[^:]+:([^@]+)@.*|\1|')"
-PG_CONN_NOPASS="$(echo "$PROD_DATABASE_URL" | sed -E 's|://([^:]+):[^@]+@|://\1@|')"
+# コマンド置換は末尾の改行を落とすので、番兵の x を付けて受け取り、後で外す（%0A で終わるパスワードのため）
+PGPASSWORD="$(prod_db_url_password "$PROD_DATABASE_URL" && printf x)"
+PGPASSWORD="${PGPASSWORD%x}"
+PG_CONN_NOPASS="$(prod_db_url_without_password "$PROD_DATABASE_URL")"
+
+# pg_dump のエラー出力には接続先が入るため、画面には出さずにファイルへ保存する。
+# 保存先は TRUNCATE の前に作る（作れずに止まったとき、ローカルのデータを消した後にならないように）
+DUMP_STDERR_LOG="$(umask 077 && mkdir -p "$ROOT_DIR/.workflow/tmp/prod-db" && mktemp "$ROOT_DIR/.workflow/tmp/prod-db/$(date +%Y%m%d-%H%M%S)-pg_dump-XXXXXX")"
 
 # TRUNCATE 前に本番DBへの接続を確認
 echo "[sync] 本番DBへの接続を確認中..."
@@ -106,11 +113,13 @@ echo "[sync] pg_dump を実行中..."
 
 # パイプアプローチ: pg_dump (PG17) | docker exec pg_restore (PG17コンテナ)
 # --clean なし: 事前にTRUNCATE済みなのでデータ挿入のみ
-"$PG_DUMP" "$PG_CONN_NOPASS" \
+# pg_dump と pg_restore のエラー出力は、TRUNCATE の前に作った DUMP_STDERR_LOG に保存する
+if ! "$PG_DUMP" "$PG_CONN_NOPASS" \
   --format=custom \
   --no-owner \
   --no-privileges \
   "${EXCLUDE_OPTS[@]}" \
+  2>>"$DUMP_STDERR_LOG" \
 | docker exec -i techtrend-postgres pg_restore \
   --no-owner \
   --no-privileges \
@@ -118,7 +127,11 @@ echo "[sync] pg_dump を実行中..."
   --disable-triggers \
   --single-transaction \
   -U postgres \
-  -d techtrend_dev
+  -d techtrend_dev \
+  2>>"$DUMP_STDERR_LOG"; then
+  echo "[sync] ERROR: pg_dump または pg_restore が失敗しました。出力 $(grep -c '' "$DUMP_STDERR_LOG" || true) 行は ${DUMP_STDERR_LOG#"$ROOT_DIR"/} に保存しました。"
+  exit 1
+fi
 
 echo "[sync] リストア完了。Prisma Client を再生成中..."
 cd "$ROOT_DIR" && npx prisma generate

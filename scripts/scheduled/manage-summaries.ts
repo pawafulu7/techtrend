@@ -3,6 +3,7 @@ import { getPrismaClient } from '@/lib/cli/utils/database';
 import { createNotifierFromEnv } from '@/lib/notification';
 import type { ArticleInfo } from '@/lib/notification/types';
 import { env } from '@/lib/config/env';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface Options {
   command: 'generate' | 'regenerate' | 'missing';
@@ -200,7 +201,7 @@ async function main() {
       } catch (error) {
         console.error(
           '[WARN] Slack notification failed:',
-          error instanceof Error ? error.message : String(error)
+          summarizeError(error)
         );
       }
     }
@@ -241,7 +242,7 @@ async function main() {
       console.error(`\n[WARN] Partial success: ${result.generated} generated, ${result.errors} failed, ${result.skipped ?? 0} skipped`);
     }
   } catch (error) {
-    console.error('実行エラー:', error);
+    console.error('実行エラー:', summarizeError(error, { stack: true }));
     process.exitCode = 1;
   } finally {
     await prisma.$disconnect();
@@ -253,7 +254,7 @@ if (require.main === module) {
   main()
     .then(() => process.exit(process.exitCode || 0))
     .catch((error) => {
-      console.error('Unhandled error:', error);
+      console.error('Unhandled error:', summarizeError(error, { stack: true }));
       process.exit(1);
     });
 }

@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 import { attachDatabasePool } from '@vercel/functions';
 import { getPoolConfig } from '@/lib/database-config';
 import { env } from '@/lib/config/env';
+import { withPrismaErrorLogSetting } from '@/lib/prisma/create-client';
 
 // Prisma v7 PrismaPg returns BigInt for PostgreSQL bigint columns (e.g. COUNT(*)).
 // JSON.stringify doesn't handle BigInt natively, causing "Do not know how to
@@ -58,7 +59,7 @@ function createSingleton(): PrismaClient {
 
   return new PrismaClient({
     adapter,
-    log: logLevels,
+    log: withPrismaErrorLogSetting(logLevels),
     errorFormat: process.env.NODE_ENV === 'production' ? 'minimal' : 'pretty',
     transactionOptions: {
       timeout: env.DB_TRANSACTION_TIMEOUT,

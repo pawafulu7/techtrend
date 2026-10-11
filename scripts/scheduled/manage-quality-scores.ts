@@ -2,6 +2,7 @@ import { Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import { calculateArticleQualityScore } from '@/lib/utils/quality-score';
 import { getLastProcessedTime, saveProcessingStatus } from '../utils/processing-status';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface Options {
   command: 'calculate' | 'fix-zero' | 'recalculate';
@@ -184,7 +185,7 @@ async function calculateAllQualityScores(options: Options) {
               WHERE "Article".id = v.id::text
             `;
           } catch (err) {
-            console.error(`❌ チャンク ${Math.floor(c / chunkSize) + 1} の更新に失敗:`, err);
+            console.error(`❌ チャンク ${Math.floor(c / chunkSize) + 1} の更新に失敗:`, summarizeError(err));
             failedChunks.push(Math.floor(c / chunkSize) + 1);
           }
         }
@@ -276,7 +277,7 @@ async function calculateAllQualityScores(options: Options) {
     );
 
   } catch (error) {
-    console.error('❌ エラーが発生しました:', error);
+    console.error('❌ エラーが発生しました:', summarizeError(error, { stack: true }));
     throw error;
   }
 }
@@ -387,7 +388,7 @@ async function fixZeroScores(options: Options) {
             WHERE "Article".id = v.id::text
           `;
         } catch (err) {
-          console.error(`❌ チャンク ${Math.floor(c / chunkSize) + 1} の更新に失敗:`, err);
+          console.error(`❌ チャンク ${Math.floor(c / chunkSize) + 1} の更新に失敗:`, summarizeError(err));
           failedChunks.push(Math.floor(c / chunkSize) + 1);
         }
       }
@@ -399,7 +400,7 @@ async function fixZeroScores(options: Options) {
     console.error('\n✅ 品質スコアの修正が完了しました');
 
   } catch (error) {
-    console.error('❌ エラーが発生しました:', error);
+    console.error('❌ エラーが発生しました:', summarizeError(error, { stack: true }));
     throw error;
   }
 }
@@ -448,7 +449,7 @@ async function recalculateScores(options: Options) {
     await calculateAllQualityScores(options);
 
   } catch (error) {
-    console.error('❌ エラーが発生しました:', error);
+    console.error('❌ エラーが発生しました:', summarizeError(error, { stack: true }));
     throw error;
   }
 }
@@ -477,7 +478,7 @@ async function main() {
     }
 
   } catch (error) {
-    console.error('実行エラー:', error);
+    console.error('実行エラー:', summarizeError(error, { stack: true }));
     process.exitCode = 1;
   } finally {
     await prisma.$disconnect();
@@ -489,7 +490,7 @@ if (require.main === module) {
   main()
     .then(() => process.exit(process.exitCode || 0))
     .catch((error) => {
-      console.error('Unhandled error:', error);
+      console.error('Unhandled error:', summarizeError(error, { stack: true }));
       process.exit(1);
     });
 }

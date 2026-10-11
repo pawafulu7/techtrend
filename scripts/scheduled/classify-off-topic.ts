@@ -19,6 +19,7 @@ import {
   classifyOffTopicArticles,
   OFF_TOPIC_BATCH_SIZE,
 } from '@/lib/services/off-topic-classifier';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 const CACHE_INVALIDATION_TIMEOUT_MS = 30_000;
 
@@ -90,7 +91,7 @@ async function main(): Promise<void> {
       ]);
     } catch (error) {
       logger.warn(
-        { err: error },
+        { errorSummary: summarizeError(error) },
         'Failed to invalidate caches after off-topic classification'
       );
     }
@@ -128,7 +129,7 @@ main()
     process.exit(0);
   })
   .catch(async (error) => {
-    logger.error({ err: error }, 'Off-topic classification failed');
+    logger.error({ errorSummary: summarizeError(error, { stack: true }) }, 'Off-topic classification failed');
     await prisma.$disconnect();
     process.exit(1);
   });

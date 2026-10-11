@@ -26,6 +26,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { EmbeddingScheduler, stuckJobWhere } from '@/lib/services/embedding-scheduler';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface Options {
   ageMinutes: number;
@@ -157,7 +158,7 @@ async function main(): Promise<void> {
     // 例外のときだけ 1 にする。試行回数の上限で戻さなかったジョブや dry-run は失敗ではない
     // （GHA の scheduler-embedding-worker から定期的に呼ぶので、1 にすると失敗の通知が続く）
   } catch (error) {
-    console.error('Error during recovery:', error);
+    console.error('Error during recovery:', summarizeError(error, { stack: true }));
     exitCode = 1;
   } finally {
     await prisma.$disconnect();
@@ -167,6 +168,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error('Unexpected error:', error);
+  console.error('Unexpected error:', summarizeError(error, { stack: true }));
   process.exit(1);
 });

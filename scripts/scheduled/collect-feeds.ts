@@ -53,7 +53,7 @@ function releaseLock(): void {
     }
   } catch (error) {
     // Cleanup failure is not fatal
-    console.error(`[WARN] Failed to release lock: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`[WARN] Failed to release lock: ${summarizeError(error)}`);
   }
 }
 
@@ -104,6 +104,7 @@ import { HATENA_BLOG_DEV_SOURCE_ID } from '@/lib/enrichers/hatena';
 import { logger } from '@/lib/logger';
 import { isHighQuality } from '@/lib/enrichers/strategies/quality';
 import { isEnrichmentSkipped } from '@/lib/fetchers/generic-foreign-rss';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 /**
  * Local ArticleInfo for collect-feeds internal use.
@@ -269,7 +270,7 @@ async function processSource({
     console.error(`[DONE] ${sourceName} - ${new Date().toISOString()} - Fetched ${articles?.length ?? 0} articles`);
 
     if (errors.length > 0) {
-      errors.forEach(err => console.error(`   エラー: ${err.message}`));
+      errors.forEach(err => console.error(`   エラー: ${summarizeError(err)}`));
     }
 
     fetchedArticlesCount = articles?.length ?? 0;
@@ -414,11 +415,10 @@ async function processSource({
                         errorCode: classified.errorCode,
                         status: classified.status,
                         errorName: classified.errorName,
-                        errorMessage: classified.errorMessage,
                       },
                       '[Enrichment] self-heal failed: exception thrown'
                     );
-                    console.error(`   [WARN] 既存記事の空本文エンリッチメント失敗: ${classified.errorMessage}`);
+                    console.error(`   [WARN] 既存記事の空本文エンリッチメント失敗: ${summarizeError(enrichError)}`);
                   }
 
                   const enrichSleepMs = resolveEnrichSleepMs(source.id);
@@ -590,7 +590,7 @@ async function processSource({
                 console.error('   [WARN] エンリッチメント失敗: データなし');
               }
             } catch (enrichError) {
-              // エラー失敗: status/errorCode/errorMessage を構造化して記録
+              // エラー失敗: status/errorCode/errorName を構造化して記録。message は接続先が入りうるので出さない
               // 分類ロジックは lib/enrichers/error-classifier.ts に集約
               // （BaseContentEnricher.logEnrichmentError と共有）
               const classified = classifyEnrichmentError(enrichError);
@@ -603,11 +603,10 @@ async function processSource({
                   errorCode: classified.errorCode,
                   status: classified.status,
                   errorName: classified.errorName,
-                  errorMessage: classified.errorMessage,
                 },
                 '[Enrichment] failed: exception thrown'
               );
-              console.error('   [WARN] エンリッチメントエラー:', classified.errorMessage);
+              console.error('   [WARN] エンリッチメントエラー:', summarizeError(enrichError));
             }
 
             const enrichSleepMs = resolveEnrichSleepMs(source.id);
@@ -687,7 +686,7 @@ async function processSource({
             duplicateCount++;
           }
         } else {
-          console.error(`   記事保存エラー: ${article.title}`, error instanceof Error ? error.message : String(error));
+          console.error(`   記事保存エラー: ${article.title}`, summarizeError(error));
         }
       }
     }
@@ -710,7 +709,7 @@ async function processSource({
     const duration = Math.round((Date.now() - startTime) / 1000);
     console.error(
       `[${sourceName}] Failed after ${duration}s:`,
-      error instanceof Error ? error.message : String(error)
+      summarizeError(error)
     );
     throw error;
   }
@@ -806,7 +805,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
           zeroFetchedSourceNames.push(sourceName);
         }
       } else {
-        console.error(`[WARN] ソース処理で未処理の例外が発生しました (${sourceName}):`, result.reason);
+        console.error(`[WARN] ソース処理で未処理の例外が発生しました (${sourceName}):`, summarizeError(result.reason, { stack: true }));
         rejectedSourceNames.push(sourceName);
       }
     });
@@ -826,7 +825,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
       } catch (error) {
         console.error(
           '[WARN] キャッシュ無効化でエラーが発生しましたが、記事収集は成功しています:',
-          error instanceof Error ? error.message : String(error)
+          summarizeError(error)
         );
       }
 
@@ -846,7 +845,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
       } catch (error) {
         console.error(
           '[WARN] 要約生成でエラーが発生しましたが、記事収集は成功しています:',
-          error instanceof Error ? error.message : String(error)
+          summarizeError(error)
         );
       }
     }
@@ -860,7 +859,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     };
 
   } catch (error) {
-    console.error('[ERROR] フィード収集エラー:', error);
+    console.error('[ERROR] フィード収集エラー:', summarizeError(error, { stack: true }));
     throw error;
   } finally {
     await prisma.$disconnect();
@@ -888,7 +887,7 @@ if (require.main === module) {
       process.exit(0);
     })
     .catch((error) => {
-      console.error(error);
+      console.error(summarizeError(error, { stack: true }));
       releaseLock();
       process.exit(1);
     });

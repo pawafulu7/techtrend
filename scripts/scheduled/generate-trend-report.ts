@@ -14,6 +14,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-generator';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 type ReportType = 'daily' | 'weekly' | 'monthly';
 
@@ -88,7 +89,7 @@ async function main() {
     console.log(`Successfully generated ${type} trend report: ${reportId}`);
     console.log(`Completed at: ${new Date().toISOString()}`);
   } catch (error) {
-    console.error(`Failed to generate ${type} trend report:`, error);
+    console.error(`Failed to generate ${type} trend report:`, summarizeError(error, { stack: true }));
     process.exit(1);
   } finally {
     await prisma.$disconnect();

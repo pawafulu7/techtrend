@@ -5,6 +5,7 @@ import { postProcessSummaries } from '../../lib/utils/summary/summary-post-proce
 import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
 import { env } from '@/lib/config/env';
 import { resolveTags } from '@/lib/services/tag-service';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface RegenerationOptions {
   articleIds?: string[];
@@ -171,11 +172,11 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
       successCount++;
       
     } catch (error) {
-      console.error(`  ❌ エラー: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`  ❌ エラー: ${summarizeError(error)}`);
       errors.push({
         id: article.id,
         title: article.title,
-        error: error instanceof Error ? error.message : String(error)
+        error: summarizeError(error)
       });
       failureCount++;
     }
@@ -257,7 +258,7 @@ if (require.main === module) {
   regenerateSummaries(options)
     .then(() => process.exit(0))
     .catch((error) => {
-      console.error('Fatal error:', error);
+      console.error('Fatal error:', summarizeError(error, { stack: true }));
       process.exit(1);
     });
 }

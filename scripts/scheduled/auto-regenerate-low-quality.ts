@@ -11,6 +11,7 @@ import { validateArticleContent } from '@/lib/services/summary/summary-orchestra
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { calculateArticleQualityScore } from '../../lib/utils/quality-score';
 import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface AutoRegenerateOptions {
   threshold?: number;           // 品質スコア閾値（デフォルト: 70）
@@ -190,7 +191,7 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
           });
         } catch (cacheError) {
           console.error(
-            `  ⚠️ キャッシュ無効化に失敗（続行）: ${cacheError instanceof Error ? cacheError.message : String(cacheError)}`
+            `  ⚠️ キャッシュ無効化に失敗（続行）: ${summarizeError(cacheError)}`
           );
         }
 
@@ -223,7 +224,7 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
         });
 
         if (verbose) {
-          console.error(`  ❌ エラー: ${error instanceof Error ? error.message : String(error)}`);
+          console.error(`  ❌ エラー: ${summarizeError(error)}`);
         }
 
         // Rate limitエラーの場合は長めに待機
@@ -263,7 +264,7 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
     };
 
   } catch (error) {
-    console.error('エラーが発生しました:', error);
+    console.error('エラーが発生しました:', summarizeError(error, { stack: true }));
     return {
       success: false,
       totalProcessed: 0,
@@ -388,7 +389,7 @@ if (require.main === module) {
       process.exit(result.success ? 0 : 1);
     })
     .catch(async (error) => {
-      console.error(error);
+      console.error(summarizeError(error, { stack: true }));
       await prisma.$disconnect();
       process.exit(1);
     });

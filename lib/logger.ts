@@ -4,6 +4,7 @@ import { trace, isSpanContextValid } from '@opentelemetry/api';
 import {
   sanitizeError as sanitizeErrorImpl,
   sanitizeErrorMessage as sanitizeErrorMessageImpl,
+  summarizeError,
 } from '@/lib/utils/sanitize-error';
 
 // 後方互換のため既存 import path (`@/lib/logger`) からも公開する
@@ -12,6 +13,65 @@ export { sanitizeErrorMessageImpl as sanitizeErrorMessage };
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
+
+/**
+ * LOG_ERROR_DETAILS=false のときに、例外の message を出さない serializer。定期実行のログは公開リポジトリの
+ * GitHub Actions に残り、DB に繋がらないときの message には接続先が入るため（lib/config/env.ts を参照）。
+ * 例外は種類とコードだけにし、文字列で渡された message（errorMessage など）は中身を出さない。
+ * env を import すると循環するので process.env を読む
+ */
+// lib/config/env.ts の booleanEnum と同じく、前後の空白と大文字小文字を無視する
+function omitsErrorDetails(logErrorDetails: string | undefined): boolean {
+  return logErrorDetails?.trim().toLowerCase() === 'false';
+}
+
+export function createErrorSerializers(
+  logErrorDetails: string | undefined = process.env.LOG_ERROR_DETAILS
+): Record<string, (value: unknown) => unknown> {
+  if (!omitsErrorDetails(logErrorDetails)) {
+    return { err: (err: unknown) => sanitizeErrorImpl(err) };
+  }
+  const omitMessage = (value: unknown) =>
+    typeof value === 'string' ? '[omitted]' : summarizeError(value);
+  return {
+    err: (err: unknown) => summarizeError(err),
+    error: omitMessage,
+    errorMessage: omitMessage,
+  };
+}
+
+/**
+ * LOG_ERROR_DETAILS=false のときに、本文（msg）の無い呼び出しへ例外の要約を本文として補う hook。
+ * pino は本文が無いと、logger.error(error) や logger.error({ err }) の例外の message を msg に写す
+ * （serializer より前に行うので、serializer だけでは message が残る）
+ */
+export function createErrorLogHooks(
+  logErrorDetails: string | undefined = process.env.LOG_ERROR_DETAILS
+): pino.LoggerOptions['hooks'] {
+  if (!omitsErrorDetails(logErrorDetails)) return undefined;
+  return {
+    logMethod(args, method) {
+      const [first, second] = args as unknown[];
+      if (typeof second !== 'string') {
+        if (first instanceof Error) {
+          return method.apply(this, [first, summarizeError(first)]);
+        }
+        if (
+          first !== null &&
+          typeof first === 'object' &&
+          (first as Record<string, unknown>).err !== undefined &&
+          (first as Record<string, unknown>).msg === undefined
+        ) {
+          return method.apply(this, [
+            first,
+            summarizeError((first as Record<string, unknown>).err),
+          ]);
+        }
+      }
+      return method.apply(this, args);
+    },
+  };
+}
 
 /**
  * Hash sensitive values for privacy while maintaining debuggability
@@ -86,7 +146,11 @@ const REDACT_PATHS = [
   '*.address',
 ];
 
+const errorLogHooks = createErrorLogHooks();
+
 const logger = pino({
+  // hooks: undefined を渡すと pino の既定の hooks が消えるので、要るときだけ付ける
+  ...(errorLogHooks ? { hooks: errorLogHooks } : {}),
   level: isTest
     ? 'silent'
     : process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
@@ -117,9 +181,7 @@ const logger = pino({
 
   serializers: {
     // Custom error serializer with sanitization (handles API keys in messages)
-    err: (err) => {
-      return sanitizeErrorImpl(err);
-    },
+    ...createErrorSerializers(),
     request: (req) => ({
       method: req.method,
       url: req.url,
