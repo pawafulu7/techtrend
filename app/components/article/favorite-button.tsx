@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsHydrated } from '@/lib/hooks/use-is-hydrated';
 import { authClient } from '@/lib/auth/auth-client';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { loginWithCallback } from '@/lib/routes/auth';
@@ -42,6 +43,10 @@ export function FavoriteButton({
   isStatusLoading = false,
 }: FavoriteButtonProps) {
   const { data: session, isPending } = authClient.useSession();
+  // サーバー描画ではセッションが判定中なので押せない。hydration 中もそれに合わせる
+  // （一覧をサーバーで描くホームで、hydration 後も disabled が残らないように。issue #714）
+  const isHydrated = useIsHydrated();
+  const isSessionPendingForRender = isPending || !isHydrated;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -257,7 +262,7 @@ export function FavoriteButton({
     return (
       <button
         onClick={handleClick}
-        disabled={isToggling || isLoadingInitial || isPending}
+        disabled={isToggling || isLoadingInitial || isSessionPendingForRender}
         className={cn(
           'rounded-full p-1.5 transition-all duration-300',
           'hover:bg-[var(--tt-color-negative-bg)]',
@@ -288,7 +293,7 @@ export function FavoriteButton({
       variant={outline ? 'outline' : isFavorited ? 'destructive' : 'outline'}
       size={size}
       onClick={handleClick}
-      disabled={isToggling || isLoadingInitial || isPending}
+      disabled={isToggling || isLoadingInitial || isSessionPendingForRender}
       className={cn(
         'transition-all duration-300',
         outline && 'group',

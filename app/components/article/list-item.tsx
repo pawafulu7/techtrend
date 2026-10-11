@@ -32,12 +32,17 @@ export function ArticleListItem({
 
   // Note: Date.now() called in useEffect to avoid purity violations during render
   const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;
-  const [hoursAgo, setHoursAgo] = useState<number | null>(null);
+  // 経過時間の表示は現在時刻で決まるので effect で作る。描画中に作ると、サーバー描画
+  // （ホームの一覧。issue #714）と hydration で文字列が食い違う
+  const [elapsedLabel, setElapsedLabel] = useState<string | null>(null);
   useEffect(() => {
     const publishedDate = new Date(article.publishedAt);
+    const hoursAgo = Math.floor(
+      (Date.now() - publishedDate.getTime()) / (1000 * 60 * 60)
+    );
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: derive display value from current time
-    setHoursAgo(
-      Math.floor((Date.now() - publishedDate.getTime()) / (1000 * 60 * 60))
+    setElapsedLabel(
+      hoursAgo < 24 ? `${hoursAgo}h` : formatDate(article.publishedAt)
     );
   }, [article.publishedAt]);
 
@@ -115,9 +120,8 @@ export function ArticleListItem({
           </span>
           <span className="flex items-center gap-1 sm:hidden">
             <Clock className="h-3 w-3" aria-hidden="true" />
-            {hoursAgo !== null && hoursAgo < 24
-              ? `${hoursAgo}h`
-              : formatDate(article.publishedAt)}
+            {elapsedLabel ??
+              formatDateWithTime(article.publishedAt).split(' ')[0]}
           </span>
 
           {article.tags && article.tags.length > 0 && (

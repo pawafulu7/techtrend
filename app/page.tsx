@@ -10,7 +10,7 @@ import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { SortButtons } from '@/app/components/common/sort-buttons';
 import { getSession } from '@/lib/auth/get-session';
-import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
+import { HomeArticles } from '@/app/components/home/home-articles';
 import { LoadingSpinner } from '@/app/components/common/loading-spinner';
 import { PersonalizationToggle } from '@/app/components/personalization';
 import {
@@ -29,17 +29,24 @@ import { groupSourcesStatic } from '@/lib/utils/source/source-grouping-static';
 import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
 
 interface PageProps {
-  searchParams: Promise<{
-    page?: string;
-    sourceId?: string;
-    sources?: string;
-    tag?: string;
-    tags?: string;
-    tagMode?: string;
-    search?: string;
-    sortBy?: string;
-    sortOrder?: string;
-  }>;
+  // 同じ名前が複数あると配列で届く。クライアントの useSearchParams と同じく、
+  // 個々の値は先頭を使い、一覧の取得条件には URL の検索条件をすべて使う
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+/** ページの searchParams を、クライアントの useSearchParams と同じ並びの URLSearchParams にする */
+function toURLSearchParams(
+  params: Record<string, string | string[] | undefined>
+): URLSearchParams {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (Array.isArray(value)) {
+      value.forEach((v) => searchParams.append(key, v));
+    } else if (value !== undefined) {
+      searchParams.append(key, value);
+    }
+  }
+  return searchParams;
 }
 
 async function getSources() {
@@ -69,7 +76,14 @@ async function getPopularTags() {
 }
 
 export default async function Home({ searchParams }: PageProps) {
-  const params = await searchParams;
+  const searchParamList = toURLSearchParams(await searchParams);
+  const params = {
+    sources: searchParamList.get('sources') ?? undefined,
+    sourceId: searchParamList.get('sourceId') ?? undefined,
+    tag: searchParamList.get('tag') ?? undefined,
+    search: searchParamList.get('search') ?? undefined,
+    sortBy: searchParamList.get('sortBy') ?? undefined,
+  };
 
   // Parallel execution of cookies, sources/groups, tags, session
   const [cookieStore, sourceData, tags, session] = await Promise.all([
@@ -201,8 +215,10 @@ export default async function Home({ searchParams }: PageProps) {
                   <LoadingSpinner message="記事を読み込んでいます..." />
                 }
               >
-                <HomeClientInfinite
+                <HomeArticles
                   key={`${params.sourceId ?? 'all'}-${params.tag ?? ''}-${params.search ?? ''}`}
+                  searchParams={searchParamList}
+                  session={session}
                   viewMode={viewMode}
                   sources={sources}
                   tags={tags}

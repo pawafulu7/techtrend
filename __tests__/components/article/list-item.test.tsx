@@ -1,4 +1,6 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
+import { hydrateRoot } from 'react-dom/client';
 import '@testing-library/jest-dom';
 import { ArticleListItem } from '@/app/components/article/list-item';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -119,5 +121,64 @@ describe('ArticleListItem', () => {
     expect(screen.getByTestId('article-source')).toHaveTextContent(
       'Example Inc.'
     );
+  });
+
+  it('サーバー描画と hydration で経過時間の文字列が食い違わない（issue #714）', async () => {
+    // 30分前の記事。描画中に現在時刻から作ると、分の差で文字列が変わる
+    const recent = createMockArticleWithRelations({
+      article: {
+        id: 'list-recent',
+        publishedAt: new Date(Date.now() - 30 * 60 * 1000),
+        createdAt: new Date(Date.now() - 30 * 60 * 1000),
+      },
+      source: createMockSource({ name: 'Qiita' }),
+    });
+    const html = renderToString(<ArticleListItem article={recent} />);
+
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    // サーバー描画から 2 分後に hydrate する（Date だけを進め、タイマーは本物のまま）
+    jest.useFakeTimers({
+      now: Date.now() + 2 * 60 * 1000,
+      doNotFake: [
+        'hrtime',
+        'nextTick',
+        'performance',
+        'queueMicrotask',
+        'requestAnimationFrame',
+        'cancelAnimationFrame',
+        'requestIdleCallback',
+        'cancelIdleCallback',
+        'setImmediate',
+        'clearImmediate',
+        'setInterval',
+        'clearInterval',
+        'setTimeout',
+        'clearTimeout',
+      ],
+    });
+    try {
+      let root: ReturnType<typeof hydrateRoot> | undefined;
+      await act(async () => {
+        root = hydrateRoot(container, <ArticleListItem article={recent} />, {
+          onRecoverableError: (error) => console.error(error),
+        });
+      });
+      const hydrationErrors = consoleError.mock.calls.filter((args) =>
+        String(args[0]).toLowerCase().includes('hydrat')
+      );
+      expect(hydrationErrors).toEqual([]);
+      // hydration の後に経過時間へ切り替わる
+      expect(container.textContent).toContain('0h');
+      act(() => root?.unmount());
+    } finally {
+      jest.useRealTimers();
+      consoleError.mockRestore();
+      container.remove();
+    }
   });
 });

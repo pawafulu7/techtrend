@@ -10,6 +10,9 @@ import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
 import { useRefreshKeepingPosition } from '@/app/hooks/use-refresh-keeping-position';
 import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
+import { useIsHydrated } from '@/lib/hooks/use-is-hydrated';
+import type { HomePersonalization } from '@/lib/personalization/preferences-state';
+import { buildHomeArticleFilters } from '@/lib/articles/home-articles-query';
 import { buildScrollStorageKey } from '@/lib/utils/scroll';
 import { PAGINATION, SCROLL } from '@/lib/constants/index';
 import type { Source, Tag } from '@/lib/prisma-exports';
@@ -28,6 +31,12 @@ interface HomeClientInfiniteProps {
   initialSortBy?: string;
   initialSourceIds?: string[];
   excludeSources?: string; // 除外するソースID（カンマ区切り）
+  /**
+   * サーバーが一覧の1ページ目を先読みしたときのパーソナライズ設定（issue #714）。
+   * クライアントでセッションと設定を判定し終えるまで、この値で取得条件を組み立てる。
+   * 同じ条件の queryKey にサーバーのページが入っているので、判定を待たずに一覧を出せる
+   */
+  initialPersonalization?: HomePersonalization;
 }
 
 export function HomeClientInfinite({
@@ -38,12 +47,12 @@ export function HomeClientInfinite({
   initialSortBy,
   initialSourceIds: _initialSourceIds,
   excludeSources,
+  initialPersonalization,
 }: HomeClientInfiniteProps) {
   const searchParams = useSearchParams();
   const scrollContainerRef = useRef<HTMLDivElement>(null); // 参照は保持するが使用しない
   const [previousCategory, setPreviousCategory] = useState<string | null>(null);
   const [isCategoryChanging, setIsCategoryChanging] = useState(false);
-  const excludeUnprocessed = true; // デフォルトで要約なし記事を除外（常に有効）
   const currentScrollPositionRef = useRef<number>(0); // 現在のスクロール位置を常に追跡
 
   // 記事詳細から戻ってきたかどうかをチェック
@@ -127,7 +136,6 @@ export function HomeClientInfinite({
     selectedCategories: personalizedCategories,
     filterEnabled: isPersonalized,
     periodMonths: personalizedPeriod,
-    hasPreferences,
     isLoadingPreferences,
   } = usePersonalizationPreferences();
 
@@ -149,85 +157,56 @@ export function HomeClientInfinite({
     setPreviousCategory(currentCategory);
   }, [currentCategory, previousCategory]);
 
-  // URLパラメータからフィルターを構築
-  const filters = useMemo(() => {
-    const params: Record<string, string> = {};
+  // URLパラメータからフィルターを構築。
+  // サーバーが1ページ目を先読みしたときは、hydration が終わり、クライアントで設定の判定が
+  // 一度済むまで、サーバーが使った設定で組み立てる（issue #714）。
+  // - hydration 中はサーバー描画と同じ条件にする（設定の判定が hydration より先に済んでも、
+  //   条件が変わると一覧が食い違うため）
+  // - 判定が済んで同じ設定なら queryKey は変わらず、1ページ目を取り直さない
+  // - 一度判定が済んだ後（ユーザーが変わった等）は、サーバーの設定に戻らない
+  const isHydrated = useIsHydrated();
+  const [hasResolvedPreferences, setHasResolvedPreferences] = useState(false);
+  if (isHydrated && !isLoadingPreferences && !hasResolvedPreferences) {
+    // 同一コンポーネントに対するレンダー中の setState（React が許可する形）
+    setHasResolvedPreferences(true);
+  }
+  const shouldUseServerPersonalization =
+    initialPersonalization !== undefined && !hasResolvedPreferences;
+  const personalizationForFilters = useMemo<HomePersonalization>(
+    () =>
+      shouldUseServerPersonalization && initialPersonalization
+        ? initialPersonalization
+        : {
+            filterEnabled: isPersonalized,
+            selectedCategories: personalizedCategories,
+            periodMonths: personalizedPeriod,
+          },
+    [
+      shouldUseServerPersonalization,
+      initialPersonalization,
+      isPersonalized,
+      personalizedCategories,
+      personalizedPeriod,
+    ]
+  );
 
-    // まず、sources以外のパラメータをコピー
-    searchParams.forEach((value, key) => {
-      // ページパラメータとreturningパラメータ、そしてsources関連は後で処理
-      if (
-        key !== 'page' &&
-        key !== 'limit' &&
-        key !== 'returning' &&
-        key !== 'sources' &&
-        key !== 'sourceId'
-      ) {
-        params[key] = value;
-      }
-    });
-
-    // URLパラメータにsortByがない場合、initialSortByを使用
-    if (!params.sortBy && initialSortBy) {
-      params.sortBy = initialSortBy;
-    }
-
-    // URLパラメータにsourcesがない場合の処理
-    // 重要: URLに明示的にsources=noneがある場合と、パラメータがない場合を区別する
-    const hasSourcesParam = searchParams.has('sources');
-    const hasSourceIdParam = searchParams.has('sourceId');
-
-    // URLにsourcesパラメータがある場合は、それを使用
-    if (hasSourcesParam) {
-      const sourcesValue = searchParams.get('sources')!;
-      // URLの値をそのままAPIに送る（all/none含む）
-      params.sources = sourcesValue;
-    } else if (hasSourceIdParam) {
-      params.sourceId = searchParams.get('sourceId')!;
-    } else if (_initialSourceIds !== undefined) {
-      // Cookie由来のinitialSourceIdsを使用
-      if (_initialSourceIds.length === 0) {
-        params.sources = 'none';
-      } else {
-        params.sources = _initialSourceIds.join(',');
-      }
-    }
-    // URLパラメータなし＆Cookie値なしの場合はsourcesを設定しない（全選択）
-
-    // 注: returningはスクロール位置復元のトリガーとしてのみ使い、
-    // フィルターには含めない（queryKeyが変わり1ページ目から取り直しになるため）
-
-    // 処理中記事を除外するフラグを追加
-    if (excludeUnprocessed) {
-      params.excludeUnprocessed = 'true';
-    }
-
-    // パーソナライズフィルターが有効な場合、カテゴリIDと期間を追加
-    if (isPersonalized && hasPreferences && personalizedCategories.length > 0) {
-      params.personalized = 'true';
-      params.categoryIds = personalizedCategories.join(',');
-      if (personalizedPeriod > 0) {
-        params.periodMonths = String(personalizedPeriod);
-      }
-    }
-
-    // 特定のソースを除外（例: arXiv論文をホームページから除外）
-    if (excludeSources) {
-      params.excludeSources = excludeSources;
-    }
-
-    return params;
-  }, [
-    searchParams,
-    initialSortBy,
-    excludeUnprocessed,
-    isPersonalized,
-    hasPreferences,
-    personalizedCategories,
-    personalizedPeriod,
-    _initialSourceIds,
-    excludeSources,
-  ]);
+  const filters = useMemo(
+    () =>
+      buildHomeArticleFilters({
+        searchParams,
+        initialSortBy,
+        initialSourceIds: _initialSourceIds,
+        personalization: personalizationForFilters,
+        excludeSources,
+      }),
+    [
+      searchParams,
+      initialSortBy,
+      _initialSourceIds,
+      personalizationForFilters,
+      excludeSources,
+    ]
+  );
 
   const {
     data,

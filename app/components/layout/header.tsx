@@ -24,6 +24,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { cn } from '@/lib/utils';
 import { NavDropdown } from '@/app/components/layout/nav-dropdown';
+import { useIsHydrated } from '@/lib/hooks/use-is-hydrated';
 import { authClient } from '@/lib/auth/auth-client';
 import { features } from '@/config/features';
 
@@ -33,6 +34,9 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const { data: session, isPending } = authClient.useSession();
+  // サーバー描画ではセッションが判定中。hydration 中もそれに合わせる（issue #714）
+  const isHydrated = useIsHydrated();
+  const isSessionReady = isHydrated && !isPending;
 
   // ナビゲーション項目の定義
   // prefetch: false は認証必須ページに設定（Server Component auth() redirect がprefetch時に走るのを防止）
@@ -49,7 +53,7 @@ export function Header() {
   ];
 
   // Issue #585: AI検索はフラグ有効 + 認証済みユーザーのみ表示（isPending中はチラつき防止のため非表示）
-  const showAiSearch = features.aiSearch && !isPending && !!session?.user;
+  const showAiSearch = features.aiSearch && isSessionReady && !!session?.user;
   const aiSearchNavItem = {
     href: '/search/agent',
     label: 'AI検索',
@@ -63,7 +67,7 @@ export function Header() {
     { href: '/trends', label: 'トレンド', icon: BarChart3 },
   ];
 
-  const showSignupLink = !isPending && !session;
+  const showSignupLink = isSessionReady && !session;
 
   const secondaryNav = [
     { href: '/history', label: '閲覧履歴', icon: LineChart },
