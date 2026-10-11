@@ -35,11 +35,13 @@ describe('load_prod_database_url', () => {
       'postgresql://db.example.com:5432/app',
     ],
     [
-      'パスワードの @ と : を含んでもホスト部だけを見る',
-      'postgresql://user:p%40ss:w@rd@db.example.com/app',
-      'postgresql://user:p%40ss:w@rd@db.example.com:5432/app',
+      'パスワードにエンコードした @ と : を含んでもホスト部だけを見る',
+      'postgresql://user:p%40ss%3Aw%40rd@db.example.com/app',
+      'postgresql://user:p%40ss%3Aw%40rd@db.example.com:5432/app',
     ],
     ['IPv6 のホストにも補う', 'postgresql://u:p@[::1]/app', 'postgresql://u:p@[::1]:5432/app'],
+    ['空のポート（host:）に補う', 'postgresql://u:p@db.example.com:/app', 'postgresql://u:p@db.example.com:5432/app'],
+    ['IPv6 の空のポート（[::1]:）に補う', 'postgresql://u:p@[::1]:/app', 'postgresql://u:p@[::1]:5432/app'],
   ])('%s', (_name, input, expected) => {
     expect(load(input)).toBe(expected);
   });

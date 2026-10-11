@@ -26,6 +26,12 @@ with_default_port() {
     hostport="${authority##*@}"
   fi
 
+  # : の後が空のポート（host: や [::1]:）は、ポートが無いのと同じなので 5432 を入れる
+  if [[ "$hostport" == *: ]] && [[ "$hostport" != *,* ]]; then
+    printf '%s' "${scheme}://${userinfo}${hostport}5432${tail}"
+    return 0
+  fi
+
   # ホストが空（UNIX ソケット）か、複数ホストか、ポートがあればそのまま返す。[IPv6] は ]: の後にポートがある
   if [ -z "$hostport" ] || [[ "$hostport" == *,* ]] || [[ "$hostport" == \[*\]:* ]] || { [[ "$hostport" != \[* ]] && [[ "$hostport" == *:* ]]; }; then
     printf '%s' "$url"
