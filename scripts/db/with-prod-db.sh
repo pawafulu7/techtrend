@@ -2,6 +2,9 @@
 set -euo pipefail
 
 # 本番DB (Neon) の接続URLを環境変数に入れてコマンドを実行する。URL は表示しない。
+# コマンドの生の出力も表示しない（接続エラーには接続先が入る）。画面に出るのは prod_db_filter_output
+# （scripts/db/prod-db-env.sh）が通す行と成否だけで、生の出力は .workflow/tmp/prod-db/ に保存する。
+# 件数や成否を見たいときは、コマンド側で `名前=数値` の行を出力する（例: console.log(`articles=${n}`)）。
 #
 # Usage:
 #   bash scripts/db/with-prod-db.sh <command...>
@@ -29,4 +32,4 @@ if [ "$as_database_url" = true ]; then
   export DATABASE_URL="$PROD_DATABASE_URL"
 fi
 
-exec "$@"
+prod_db_run "$@"

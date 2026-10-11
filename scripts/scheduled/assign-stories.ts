@@ -12,6 +12,7 @@
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import { assignStories } from '@/lib/services/story-clustering';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 const CACHE_INVALIDATION_TIMEOUT_MS = 30_000;
 
@@ -59,7 +60,7 @@ async function main(): Promise<void> {
       ]);
     } catch (error) {
       logger.warn(
-        { err: error },
+        { errorSummary: summarizeError(error) },
         'Failed to invalidate caches after story assignment'
       );
     }
@@ -88,7 +89,7 @@ main()
     process.exit(0);
   })
   .catch(async (error) => {
-    logger.error({ err: error }, 'Story assignment failed');
+    logger.error({ errorSummary: summarizeError(error, { stack: true }) }, 'Story assignment failed');
     await prisma.$disconnect();
     process.exit(1);
   });

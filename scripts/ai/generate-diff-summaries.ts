@@ -24,6 +24,7 @@ import {
   SOURCE_CATEGORIES,
   SourceCategoryId,
 } from '@/lib/constants/source-categories';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface ParsedArgs {
   week: string;
@@ -127,7 +128,8 @@ async function main() {
           console.log(`  Unchanged: ${result.data.unchanged.length}`);
         }
       } else {
-        console.error(`✗ ${category}: ${result.error}`);
+        // result.error はサービスの catch した例外の message（接続先が入りうる）なので出さない
+        console.error(`✗ ${category}: failed`);
         process.exit(1);
       }
     } else {
@@ -146,7 +148,7 @@ async function main() {
           const changeCount = result.data?.changes.length ?? 0;
           console.log(`✓ ${result.categorySlug}: ${changeCount} changes`);
         } else {
-          console.log(`✗ ${result.categorySlug}: ${result.error}`);
+          console.log(`✗ ${result.categorySlug}: failed`);
         }
       }
 
@@ -158,7 +160,7 @@ async function main() {
 
     console.log(`\nCompleted at: ${new Date().toISOString()}`);
   } catch (error) {
-    console.error('Fatal error:', error);
+    console.error('Fatal error:', summarizeError(error, { stack: true }));
     process.exit(1);
   } finally {
     await prisma.$disconnect();

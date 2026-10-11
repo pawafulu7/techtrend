@@ -4,6 +4,7 @@ import { parseChangelog } from '../../lib/changelog/parser';
 import { RedisCache } from '../../lib/cache';
 import { env } from '@/lib/config/env';
 import { getGeminiModel, getGeminiRequestOptions } from '@/scripts/lib/gemini-endpoint';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 const FETCH_TIMEOUT_MS = 30_000;
 const GEMINI_TIMEOUT_MS = 60_000;
@@ -134,14 +135,14 @@ ${numberedEntries}`;
         if (attempt === MAX_ATTEMPTS) {
           console.error(
             `[WARN] Translation batch failed after ${MAX_ATTEMPTS} attempts (entries ${i + 1}-${i + batch.length}):`,
-            error instanceof Error ? error.message : String(error)
+            summarizeError(error)
           );
           break;
         }
         const delay = Math.min(1000 * 2 ** (attempt - 1), 10000);
         console.log(
           `[WARN] Retry ${attempt}/${MAX_ATTEMPTS} after ${delay}ms (entries ${i + 1}-${i + batch.length}):`,
-          error instanceof Error ? error.message : String(error)
+          summarizeError(error)
         );
         await new Promise((r) => setTimeout(r, delay));
       }
@@ -318,7 +319,7 @@ async function collectChangelog(): Promise<void> {
     } catch (error) {
       console.error(
         '[WARN] Cache invalidation failed, but data was saved successfully:',
-        error instanceof Error ? error.message : String(error)
+        summarizeError(error)
       );
     }
 
@@ -335,6 +336,6 @@ collectChangelog()
     process.exit(0);
   })
   .catch((error) => {
-    console.error('[ERROR] Changelog collection failed:', error instanceof Error ? error.message : String(error));
+    console.error('[ERROR] Changelog collection failed:', summarizeError(error, { stack: true }));
     process.exit(1);
   });

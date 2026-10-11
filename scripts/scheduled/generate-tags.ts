@@ -5,6 +5,7 @@ import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { getOrCreateTags } from '@/lib/services/tag-service';
 import { env } from '@/lib/config/env';
 import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 type ArticleWithSourceAndTags = Article & {
   source: Source;
@@ -190,7 +191,7 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
         
       } catch (error) {
         console.error(`✗ [${article.source.name}] ${article.title.substring(0, 40)}...`);
-        console.error(`  エラー: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(`  エラー: ${summarizeError(error)}`);
         errorCount++;
         await sleep(2000);  // エラー連続時のAPI連打防止
       }
@@ -211,7 +212,7 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
     return { generated: generatedCount, errors: errorCount };
 
   } catch (error) {
-    console.error('❌ タグ生成エラー:', error);
+    console.error('❌ タグ生成エラー:', summarizeError(error, { stack: true }));
     throw error;
   } finally {
     await prisma.$disconnect();
@@ -227,7 +228,7 @@ if (require.main === module) {
   generateTagsForArticles()
     .then(() => process.exit(0))
     .catch((error) => {
-      console.error(error);
+      console.error(summarizeError(error, { stack: true }));
       process.exit(1);
     });
 }

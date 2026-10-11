@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@/lib/prisma-exports';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 /**
  * タグの統合のトランザクションの待ち時間と制限時間。
@@ -166,7 +167,7 @@ async function cleanTags() {
       } catch (err) {
         console.error(
           `❌ "${mapping.from}" → "${mapping.to}" の処理に失敗:`,
-          err
+          summarizeError(err)
         );
         mappingErrors.push({ from: mapping.from, to: mapping.to, error: err });
       }
@@ -201,7 +202,7 @@ async function cleanTags() {
 
     console.error('\n✅ タグのクリーンアップが完了しました');
   } catch (error) {
-    console.error('❌ エラーが発生しました:', error);
+    console.error('❌ エラーが発生しました:', summarizeError(error, { stack: true }));
     throw error;
   } finally {
     await prisma.$disconnect();
@@ -209,6 +210,6 @@ async function cleanTags() {
 }
 
 cleanTags().catch((error) => {
-  console.error(error);
+  console.error(summarizeError(error, { stack: true }));
   process.exitCode = 1;
 });

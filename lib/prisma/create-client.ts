@@ -9,6 +9,18 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { getPoolConfig } from '@/lib/database-config';
 import { env } from '@/lib/config/env';
 
+type PrismaLogLevel = 'query' | 'info' | 'warn' | 'error';
+
+/**
+ * PRISMA_ERROR_LOG=false なら error を外す。Prisma の error ログには、DB に繋がらないときの
+ * 接続先（ホスト）が入り、catch より先に出る。定期実行のログは公開されるので、そこでは外す
+ */
+export function withPrismaErrorLogSetting<T extends PrismaLogLevel>(levels: T[]): T[] {
+  return env.PRISMA_ERROR_LOG === 'false'
+    ? levels.filter((level) => level !== 'error')
+    : levels;
+}
+
 export function createPrismaClient(options?: {
   connectionString?: string;
   log?: Array<'query' | 'info' | 'warn' | 'error'>;
@@ -25,7 +37,7 @@ export function createPrismaClient(options?: {
 
   return new PrismaClient({
     adapter,
-    log: options?.log ?? ['error', 'warn'],
+    log: withPrismaErrorLogSetting(options?.log ?? ['error', 'warn']),
     transactionOptions: {
       timeout: env.DB_TRANSACTION_TIMEOUT,
     },

@@ -1,6 +1,7 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { isLikelyJapanese } from '@/lib/utils/language-detection';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 const prisma = createPrismaClient();
 
@@ -100,7 +101,7 @@ async function fixMissingTranslations(options: FixOptions = {}) {
 
         } catch (error) {
           failureCount++;
-          console.error(`  ERROR [${article.id}] ${(error as Error).message}`);
+          console.error(`  ERROR [${article.id}] ${summarizeError(error)}`);
         }
       })
     );
@@ -126,5 +127,8 @@ const limitArg = args.find(arg => arg.startsWith('--limit='));
 const limit = limitArg ? parseInt(limitArg.split('=')[1]) : undefined;
 
 fixMissingTranslations({ dryRun, limit })
-  .catch(console.error)
+  .catch((error) => {
+    console.error(summarizeError(error, { stack: true }));
+    process.exitCode = 1;
+  })
   .finally(() => prisma.$disconnect());

@@ -257,6 +257,9 @@ const envSchema = z
 
     // Database Configuration
     PRISMA_QUERY_LOG: booleanEnum.optional(),
+    // false で Prisma の error ログを出さない。定期実行（公開リポジトリの Actions のログ）で使う。
+    // DB に繋がらないときのログに接続先が入るため。例外は投げられるので、呼び出し元で要約して出す
+    PRISMA_ERROR_LOG: booleanEnum.optional(),
     DB_CONNECTION_LIMIT: safeCoerceInt(20),
     DB_POOL_TIMEOUT: safeCoerceInt(10),
     // 使っていない接続を閉じるまでの秒数（lib/database-config.ts の getPoolConfig を参照）

@@ -10,6 +10,7 @@ import { calculateSummaryScore, calculateAverageScore, needsRegeneration } from 
 import { getSummaryLengthBand } from '@/lib/ai/constants';
 import { parseArgs } from 'util';
 import type { ArticleWhereClause } from '../../types/database';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface QualityCheckOptions {
   days?: number;
@@ -97,7 +98,7 @@ Examples:
   try {
     await checkQuality(options);
   } catch (error) {
-    console.error('❌ エラーが発生しました:', error);
+    console.error('❌ エラーが発生しました:', summarizeError(error, { stack: true }));
     process.exit(1);
   } finally {
     await prisma.$disconnect();
@@ -314,14 +315,14 @@ async function checkQuality(options: QualityCheckOptions) {
 
 // エラーハンドリング
 process.on('unhandledRejection', (error) => {
-  console.error('Unhandled rejection:', error);
+  console.error('Unhandled rejection:', summarizeError(error, { stack: true }));
   process.exit(1);
 });
 
 // メイン処理の実行
 if (require.main === module) {
   main().catch((error) => {
-    console.error('Fatal error:', error);
+    console.error('Fatal error:', summarizeError(error, { stack: true }));
     process.exit(1);
   });
 }

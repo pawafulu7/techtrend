@@ -31,6 +31,7 @@ import {
   unlinkSync,
 } from 'node:fs';
 import { dirname } from 'node:path';
+import { summarizeError } from '../../lib/utils/sanitize-error';
 
 type Env = 'local' | 'prod';
 
@@ -297,6 +298,7 @@ async function main() {
     if (!args.fresh && existsSync(cache)) {
       stage1 = JSON.parse(readFileSync(cache, 'utf8'));
       console.log(`[stage1] loaded cache ${cache} rows=${stage1.length}`);
+      console.log(`stage1_rows=${stage1.length}`);
     } else {
       const t0 = process.hrtime.bigint();
       stage1 = await runStage1(prisma, category.centroid, args.topK);
@@ -305,6 +307,8 @@ async function main() {
       console.log(
         `[stage1] fresh run rows=${stage1.length} time=${ms.toFixed(1)}ms cached=${cache}`
       );
+      console.log(`stage1_rows=${stage1.length}`);
+      console.log(`stage1_ms=${ms.toFixed(1)}`);
     }
 
     if (stage1.length === 0) {
@@ -323,12 +327,21 @@ async function main() {
     console.log(`[stage2] EXPLAIN length=${sql.length} chars`);
 
     // Run EXPLAIN three times and print all (caller selects median from logs).
+    // with-prod-db.sh は `名前=数値` の行だけを表示するので、時間はその形でも出す
+    const timings = [
+      [/^\s*Planning Time: ([0-9.]+) ms$/, 'planning_ms'],
+      [/^\s*Execution Time: ([0-9.]+) ms$/, 'execution_ms'],
+    ] as const;
     for (let i = 1; i <= 3; i++) {
       console.log('-'.repeat(80));
       console.log(`[stage2 EXPLAIN run ${i}/3]`);
       console.log('-'.repeat(80));
       const lines = await runExplain(prisma, sql);
       for (const line of lines) console.log(line);
+      for (const [pattern, key] of timings) {
+        const match = lines.map((line) => line.match(pattern)).find(Boolean);
+        if (match) console.log(`stage2_run${i}_${key}=${match[1]}`);
+      }
     }
 
     console.log('='.repeat(80));
@@ -339,6 +352,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error(e);
+  console.error(summarizeError(e, { stack: true }));
   process.exit(1);
 });

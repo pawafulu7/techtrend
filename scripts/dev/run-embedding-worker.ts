@@ -1,5 +1,6 @@
 import { EmbeddingWorker } from '@/lib/workers/embedding-worker';
 import { logger } from '@/lib/logger';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 /**
  * Manual worker execution for local development.
@@ -50,7 +51,8 @@ async function runWorker() {
 
     if (result.error) {
       console.log();
-      console.log('Error:', result.error);
+      // result.error はワーカーの catch した例外の message（接続先が入りうる）なので中身は出さない
+      console.log('Error: worker run failed');
     }
 
     console.log('='.repeat(60));
@@ -65,15 +67,15 @@ async function runWorker() {
         failed: result.failed,
         timedOut: result.timedOut,
         durationMs: result.durationMs,
-        error: result.error,
+        hasError: Boolean(result.error),
       },
       'Worker execution completed'
     );
 
   } catch (error) {
     console.error();
-    console.error('Worker execution failed:', error);
-    logger.error({ error }, 'Worker execution failed');
+    console.error('Worker execution failed:', summarizeError(error, { stack: true }));
+    logger.error({ errorSummary: summarizeError(error) }, 'Worker execution failed');
     process.exit(1);
   }
 }
@@ -84,6 +86,6 @@ runWorker()
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Worker execution failed:', error);
+    console.error('Worker execution failed:', summarizeError(error, { stack: true }));
     process.exit(1);
   });

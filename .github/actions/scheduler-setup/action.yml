@@ -23,7 +23,10 @@ runs:
         cache: 'npm'
     - name: Set batch environment flags
       shell: bash
-      run: echo "ALLOW_INSECURE_AUTH_FALLBACK=true" >> "$GITHUB_ENV"
+      # PRISMA_ERROR_LOG=false: Prisma の error ログ（DB に繋がらないときに接続先が入る）を公開ログに出さない
+      run: |
+        echo "ALLOW_INSECURE_AUTH_FALLBACK=true" >> "$GITHUB_ENV"
+        echo "PRISMA_ERROR_LOG=false" >> "$GITHUB_ENV"
     - name: Install deps
       shell: bash
       run: |
@@ -48,9 +51,12 @@ runs:
       shell: bash
       env:
         DATABASE_URL: ${{ inputs.database_url }}
+      # 公開リポジトリのログに残るため、Prisma の生の出力（接続先が入る）は出さず、
+      # 成否とエラーコードだけを出す（scripts/db/prod-db-env.sh の prod_db_run）
       run: |
+        source scripts/db/prod-db-env.sh
         for attempt in 1 2 3 4 5; do
-          echo "SELECT 1;" | npx prisma db execute --stdin && break
+          echo "SELECT 1;" | prod_db_run npx prisma db execute --stdin && break
           if [ "$attempt" -lt 5 ]; then
             base_sleep=$((attempt * 10))
             jitter=$((RANDOM % 3))
@@ -69,8 +75,9 @@ runs:
       env:
         DATABASE_URL: ${{ inputs.database_url }}
       run: |
+        source scripts/db/prod-db-env.sh
         for attempt in 1 2 3; do
-          npx prisma migrate deploy && break
+          prod_db_run npx prisma migrate deploy && break
           if [ "$attempt" -lt 3 ]; then
             base_sleep=$((attempt * 15))
             jitter=$((RANDOM % 3))

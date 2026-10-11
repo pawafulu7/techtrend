@@ -22,32 +22,42 @@ echo
 source "$(dirname "$0")/../db/prod-db-env.sh"
 load_prod_database_url || exit 1
 
-# Function to check migration status
+# prisma migrate status / deploy の生の出力には接続先が入るため、prod_db_run で
+# 決まった形の行（マイグレーション名・定型文）と成否だけを表示する
 check_status() {
     echo -e "${YELLOW}Checking migration status...${NC}"
-    DATABASE_URL="$PROD_DATABASE_URL" npx prisma migrate status
-    return $?
+    DATABASE_URL="$PROD_DATABASE_URL" prod_db_run npx prisma migrate status
 }
 
-# Function to count pending migrations
+# 直前の migrate status の生の出力から、未適用のマイグレーションの数を出す（表示はしない）。
+# 状態が読めなかった（接続できない・失敗したマイグレーションがある・未適用の見出しの後に名前を読めない）
+# ときは何も出さない
 count_pending() {
-    local output=$(DATABASE_URL="$PROD_DATABASE_URL" npx prisma migrate status 2>&1)
-    local pending=$(echo "$output" | grep -c "Following migrations have not yet been applied")
-    if [ $pending -gt 0 ]; then
-        echo "$output" | grep -A 100 "Following migrations have not yet been applied" | grep -E "^[0-9]" | wc -l
-    else
+    local log="$1"
+    if grep -qx 'Database schema is up to date!' "$log"; then
         echo "0"
+    elif grep -qE '^Following migrations? have not yet been applied:$' "$log"; then
+        awk '/^Following migrations? have not yet been applied:$/ { listing = 1; next }
+             listing && /^[[:space:]]*[0-9]{8}[0-9]*_[A-Za-z0-9_]+[[:space:]]*$/ { n++ }
+             listing && /^$/ && n > 0 { listing = 0 }
+             END { if (n > 0) print n }' "$log"
     fi
 }
 
 # Initial status check
 echo -e "${BLUE}Step 1: Current Migration Status${NC}"
 echo "================================"
-check_status
-STATUS_CODE=$?
+check_status || true
 
 # Check if there are pending migrations
-PENDING_COUNT=$(count_pending)
+PENDING_COUNT=$(count_pending "$PROD_DB_LAST_LOG")
+
+if [ -z "$PENDING_COUNT" ]; then
+    echo
+    echo -e "${RED}❌ Could not read the migration status.${NC}"
+    echo "Check the raw output (not shown here because it contains the connection target): ${PROD_DB_LAST_LOG}"
+    exit 1
+fi
 
 if [ "$PENDING_COUNT" -eq "0" ]; then
     echo
@@ -85,8 +95,9 @@ echo "============================"
 echo -e "${YELLOW}Executing: npx prisma migrate deploy${NC}"
 echo
 
-DATABASE_URL="$PROD_DATABASE_URL" npx prisma migrate deploy
-DEPLOY_RESULT=$?
+DEPLOY_RESULT=0
+DATABASE_URL="$PROD_DATABASE_URL" prod_db_run npx prisma migrate deploy || DEPLOY_RESULT=$?
+DEPLOY_LOG="$PROD_DB_LAST_LOG"
 
 if [ $DEPLOY_RESULT -eq 0 ]; then
     echo
@@ -96,7 +107,7 @@ if [ $DEPLOY_RESULT -eq 0 ]; then
     echo
     echo -e "${BLUE}Step 3: Final Verification${NC}"
     echo "=========================="
-    check_status
+    check_status || true
     
     echo
     echo -e "${GREEN}========================================${NC}"
@@ -116,7 +127,7 @@ else
     echo -e "${RED}❌ Migration deployment failed!${NC}"
     echo
     echo -e "${YELLOW}Troubleshooting steps:${NC}"
-    echo "  1. Check the error message above"
+    echo "  1. Check the raw output (not shown here because it contains the connection target): ${DEPLOY_LOG}"
     echo "  2. Verify database connectivity"
     echo "  3. Check if migrations are already partially applied"
     echo "  4. Consider using: npx prisma migrate resolve --applied [migration-name]"
