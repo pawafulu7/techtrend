@@ -96,6 +96,44 @@
   },
   {
     "kind": "index",
+    "name": "idx_article_summary_trgm",
+    "details": {
+      "keys": ["summary"],
+      "ready": true,
+      "table": "Article",
+      "valid": true,
+      "method": "gin",
+      "unique": false,
+      "options": [],
+      "primary": false,
+      "keyCount": 1,
+      "opclasses": ["public.gin_trgm_ops"],
+      "predicate": null,
+      "definition": "CREATE INDEX idx_article_summary_trgm ON public.\"Article\" USING gin (summary gin_trgm_ops)",
+      "columnCount": 1
+    }
+  },
+  {
+    "kind": "index",
+    "name": "idx_article_title_trgm",
+    "details": {
+      "keys": ["title"],
+      "ready": true,
+      "table": "Article",
+      "valid": true,
+      "method": "gin",
+      "unique": false,
+      "options": [],
+      "primary": false,
+      "keyCount": 1,
+      "opclasses": ["public.gin_trgm_ops"],
+      "predicate": null,
+      "definition": "CREATE INDEX idx_article_title_trgm ON public.\"Article\" USING gin (title gin_trgm_ops)",
+      "columnCount": 1
+    }
+  },
+  {
+    "kind": "index",
     "name": "uq_user_source_preset_name",
     "details": {
       "keys": ["\"userId\"", "lower((name)::text)"],

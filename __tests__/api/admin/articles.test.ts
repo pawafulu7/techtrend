@@ -284,15 +284,11 @@ describe('GET /api/admin/articles', () => {
         where: expect.objectContaining({
           AND: expect.arrayContaining([
             {
+              // 数字と記号だけの語は大文字小文字の区別が無いので LIKE（mode なし）になる（#717）
               OR: [
-                { title: { contains: '100\\%\\_', mode: 'insensitive' } },
-                {
-                  translatedTitle: {
-                    contains: '100\\%\\_',
-                    mode: 'insensitive',
-                  },
-                },
-                { summary: { contains: '100\\%\\_', mode: 'insensitive' } },
+                { title: { contains: '100\\%\\_' } },
+                { translatedTitle: { contains: '100\\%\\_' } },
+                { summary: { contains: '100\\%\\_' } },
               ],
             },
           ]),

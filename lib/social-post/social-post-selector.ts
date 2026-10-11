@@ -14,7 +14,7 @@ import {
 } from '@/lib/prisma-exports';
 import { findTagIdsByNames } from '@/lib/services/tag-service';
 import type { OpinionForPrompt } from './types';
-import { escapeLikePattern } from '@/lib/utils/like-pattern';
+import { containsFilter } from '@/lib/utils/like-pattern';
 import {
   type ArticleCandidatesSearchInput,
   ARTICLE_CATEGORIES,
@@ -319,17 +319,17 @@ export class SocialPostSelector {
     // キーワードフィルター（タイトル・翻訳タイトル・要約・詳細要約を検索）
     let where: Prisma.ArticleWhereInput = baseConditions;
     if (keyword) {
-      // contains は ILIKE になるので、_ や % がワイルドカードにならないようにエスケープする
-      const pattern = escapeLikePattern(keyword);
+      // _ や % をエスケープし、大文字小文字の区別が要る語だけ ILIKE にする（#684, #717）
+      const filter = containsFilter(keyword);
       where = {
         AND: [
           baseConditions,
           {
             OR: [
-              { title: { contains: pattern, mode: 'insensitive' } },
-              { translatedTitle: { contains: pattern, mode: 'insensitive' } },
-              { summary: { contains: pattern, mode: 'insensitive' } },
-              { detailedSummary: { contains: pattern, mode: 'insensitive' } },
+              { title: filter },
+              { translatedTitle: filter },
+              { summary: filter },
+              { detailedSummary: filter },
             ],
           },
         ],
