@@ -22,7 +22,7 @@ describe('LiveStatus', () => {
     );
   });
 
-  it('サーバー描画では見た目の文言を読めるまま残し、マウントの後は読み上げから外す', () => {
+  it('サーバー描画では見た目の文言を読めるまま残し、status の文言が入った後は読み上げから外す', () => {
     const html = renderToString(
       <LiveStatus message="記事がありません">
         <p>記事がありません</p>
@@ -35,10 +35,39 @@ describe('LiveStatus', () => {
         <p>記事がありません</p>
       </LiveStatus>
     );
-    expect(screen.getByText('記事がありません').parentElement).toHaveAttribute(
-      'aria-hidden',
-      'true'
+    const visible = screen.getByText('記事がありません').parentElement;
+    // status の文言が入るまでは、見た目の文言を読めるまま残す
+    expect(visible).not.toHaveAttribute('aria-hidden');
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+    expect(visible).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('文言が変わったら、新しい文言が入るまで見た目の文言を読めるようにする', () => {
+    const { rerender } = render(
+      <LiveStatus message="1件の記事が見つかりました">
+        <p>1件の記事が見つかりました</p>
+      </LiveStatus>
     );
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    rerender(
+      <LiveStatus message="2件の記事が見つかりました">
+        <p>2件の記事が見つかりました</p>
+      </LiveStatus>
+    );
+    const visible = screen.getByText('2件の記事が見つかりました').parentElement;
+    expect(visible).not.toHaveAttribute('aria-hidden');
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '2件の記事が見つかりました'
+    );
+    expect(visible).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('アンマウントしたら文言を入れるタイマーを止める', () => {

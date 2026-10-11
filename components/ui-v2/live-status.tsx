@@ -20,27 +20,28 @@ const ANNOUNCE_DELAY_MS = 100;
  * role="status" を文言ごと描くと、領域ができた時点で文言が既にあるため、読み上げない
  * スクリーンリーダーがある（WCAG ARIA22: 領域は文言より先に存在させる）。
  * - 空の領域を先に描き、マウントの少し後に文言を入れる
- * - マウントまで（サーバー描画・hydration 前）は、見た目の表示をそのまま読めるようにする。
- *   マウントした後は見た目の表示を読み上げから外し、文言を二重に読ませない
+ * - status の文言が追いつくまで（サーバー描画・hydration 前・文言の更新直後）は、見た目の
+ *   表示をそのまま読めるようにする。追いついた後は見た目の表示を読み上げから外し、二重に読ませない
  */
 export function LiveStatus({ message, children, className }: LiveStatusProps) {
-  const [mounted, setMounted] = useState(false);
   const [announced, setAnnounced] = useState('');
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- マウントの後に見た目の表示を読み上げから外す
-    setMounted(true);
     const timer = setTimeout(() => setAnnounced(message), ANNOUNCE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [message]);
 
   return (
     <>
-      <span role="status" className="sr-only">
+      {/* 一部の環境は status の暗黙の aria-atomic を扱わないので明示する（ARIA22） */}
+      <span role="status" aria-atomic="true" className="sr-only">
         {announced}
       </span>
       {children !== undefined && (
-        <div className={className} aria-hidden={mounted || undefined}>
+        <div
+          className={className}
+          aria-hidden={announced === message || undefined}
+        >
           {children}
         </div>
       )}

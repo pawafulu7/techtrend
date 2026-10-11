@@ -12,7 +12,9 @@ describe('EmptyState', () => {
     const html = renderToString(
       <EmptyState icon={Search} title="記事がありません" />
     );
-    expect(html).toMatch(/<span role="status" class="sr-only"><\/span>/);
+    expect(html).toMatch(
+      /<span role="status" aria-atomic="true" class="sr-only"><\/span>/
+    );
   });
 
   it('見出しと説明を status で伝え、alert にはしない', async () => {
