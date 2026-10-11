@@ -40,9 +40,15 @@ export function ArticleListItem({
     const hoursAgo = Math.floor(
       (Date.now() - publishedDate.getTime()) / (1000 * 60 * 60)
     );
+    // 7日以上前の記事は日付を出す。formatDate はブラウザのタイムゾーンで日付を作るので、
+    // カードの公開日時と同じ日本時間のフォーマッターを使う
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: derive display value from current time
     setElapsedLabel(
-      hoursAgo < 24 ? `${hoursAgo}h` : formatDate(article.publishedAt)
+      hoursAgo < 24
+        ? `${hoursAgo}h`
+        : hoursAgo < 24 * 7
+          ? formatDate(article.publishedAt)
+          : formatDateWithTime(article.publishedAt).split(' ')[0]
     );
   }, [article.publishedAt]);
 

@@ -124,12 +124,13 @@ describe('ArticleListItem', () => {
   });
 
   it('サーバー描画と hydration で経過時間の文字列が食い違わない（issue #714）', async () => {
-    // 30分前の記事。描画中に現在時刻から作ると、分の差で文字列が変わる
+    // 59分前の記事。描画中に現在時刻から作ると、hydration までの2分で時間の境界を
+    // またぎ、文字列が変わる（0h → 1h、59分前 → 1時間前）
     const recent = createMockArticleWithRelations({
       article: {
         id: 'list-recent',
-        publishedAt: new Date(Date.now() - 30 * 60 * 1000),
-        createdAt: new Date(Date.now() - 30 * 60 * 1000),
+        publishedAt: new Date(Date.now() - 59 * 60 * 1000),
+        createdAt: new Date(Date.now() - 59 * 60 * 1000),
       },
       source: createMockSource({ name: 'Qiita' }),
     });
@@ -173,12 +174,38 @@ describe('ArticleListItem', () => {
       );
       expect(hydrationErrors).toEqual([]);
       // hydration の後に経過時間へ切り替わる
-      expect(container.textContent).toContain('0h');
+      expect(container.textContent).toContain('1h');
       act(() => root?.unmount());
     } finally {
       jest.useRealTimers();
       consoleError.mockRestore();
       container.remove();
+    }
+  });
+
+  it('7日以上前の記事の日付は日本時間で出す（カードの公開日時とそろえる）', async () => {
+    const originalTz = process.env.TZ;
+    // ブラウザのタイムゾーンが日本時間でない環境を作る
+    process.env.TZ = 'UTC';
+    try {
+      // 日本時間 2025/01/02 00:30（UTC では 2025/01/01）
+      const old = createMockArticleWithRelations({
+        article: {
+          id: 'list-old',
+          publishedAt: new Date('2025-01-01T15:30:00Z'),
+          createdAt: new Date('2025-01-01T15:30:00Z'),
+        },
+        source: createMockSource({ name: 'Qiita' }),
+      });
+      const { container } = render(<ArticleListItem article={old} />);
+      await act(async () => {});
+
+      const elapsed = Array.from(container.querySelectorAll('span')).find(
+        (span) => span.className.split(' ').includes('sm:hidden')
+      );
+      expect(elapsed?.textContent).toBe('2025/01/02');
+    } finally {
+      process.env.TZ = originalTz;
     }
   });
 });
