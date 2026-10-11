@@ -106,13 +106,11 @@ echo "[sync] pg_dump を実行中..."
 
 # パイプアプローチ: pg_dump (PG17) | docker exec pg_restore (PG17コンテナ)
 # --clean なし: 事前にTRUNCATE済みなのでデータ挿入のみ
-# 標準出力はダンプ本体なので、伏せるのはエラー出力だけ
 "$PG_DUMP" "$PG_CONN_NOPASS" \
   --format=custom \
   --no-owner \
   --no-privileges \
   "${EXCLUDE_OPTS[@]}" \
-  2> >(prod_db_mask >&2) \
 | docker exec -i techtrend-postgres pg_restore \
   --no-owner \
   --no-privileges \
