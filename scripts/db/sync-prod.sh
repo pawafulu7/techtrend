@@ -119,7 +119,7 @@ if ! "$PG_DUMP" "$PG_CONN_NOPASS" \
   --no-owner \
   --no-privileges \
   "${EXCLUDE_OPTS[@]}" \
-  2>"$DUMP_STDERR_LOG" \
+  2>>"$DUMP_STDERR_LOG" \
 | docker exec -i techtrend-postgres pg_restore \
   --no-owner \
   --no-privileges \

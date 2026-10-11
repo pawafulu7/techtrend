@@ -6,26 +6,27 @@
  */
 import pino from 'pino';
 import { Writable } from 'stream';
-import { createErrorSerializers } from '@/lib/logger';
+import { createErrorLogHooks, createErrorSerializers } from '@/lib/logger';
 
 const HOST = 'db.example.com';
 
-function logWith(
-  logErrorDetails: string | undefined,
-  fields: Record<string, unknown>
-): string {
-  const lines: string[] = [];
+function createTestLogger(logErrorDetails: string | undefined, lines: string[]) {
   const stream = new Writable({
     write(chunk, _encoding, callback) {
       lines.push(String(chunk));
       callback();
     },
   });
-  const logger = pino(
-    { serializers: createErrorSerializers(logErrorDetails) },
+  const hooks = createErrorLogHooks(logErrorDetails);
+  return pino(
+    { serializers: createErrorSerializers(logErrorDetails), ...(hooks ? { hooks } : {}) },
     stream
   );
-  logger.error(fields, 'failed');
+}
+
+function logWith(logErrorDetails: string | undefined, fields: Record<string, unknown>): string {
+  const lines: string[] = [];
+  createTestLogger(logErrorDetails, lines).error(fields, 'failed');
   return lines.join('');
 }
 
@@ -87,5 +88,31 @@ describe('createErrorSerializers', () => {
 
     expect(parsed.err.message).toContain(HOST);
     expect(parsed.errorMessage).toBe('kept');
+  });
+
+  it('本文の無い呼び出しでも、pino が例外の message を msg に写さない', () => {
+    const lines: string[] = [];
+    const logger = createTestLogger('false', lines);
+    logger.error(connectionError());
+    logger.error({ err: connectionError() });
+    logger.error({ err: connectionError(), jobId: 'job-1' }, 'kept message');
+
+    const output = lines.join('');
+    expect(output).not.toContain(HOST);
+    expect(lines.map((line) => JSON.parse(line).msg)).toEqual([
+      'Error code=P1001',
+      'Error code=P1001',
+      'kept message',
+    ]);
+  });
+
+  it('値の前後の空白と大文字小文字は無視する（env.ts と同じ）', () => {
+    const output = logWith(' FALSE ', { err: connectionError() });
+
+    expect(output).not.toContain(HOST);
+  });
+
+  it('未設定なら hook を付けない', () => {
+    expect(createErrorLogHooks(undefined)).toBeUndefined();
   });
 });

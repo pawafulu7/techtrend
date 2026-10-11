@@ -32,6 +32,7 @@ import {
 } from 'node:fs';
 import { dirname } from 'node:path';
 import { summarizeError } from '../../lib/utils/sanitize-error';
+import { withPrismaErrorLogSetting } from '../../lib/prisma/create-client';
 
 type Env = 'local' | 'prod';
 
@@ -277,7 +278,10 @@ async function main() {
   const databaseUrl = resolveDatabaseUrl(args.env);
 
   const adapter = new PrismaPg({ connectionString: databaseUrl });
-  const prisma = new PrismaClient({ adapter, log: ['error', 'warn'] });
+  const prisma = new PrismaClient({
+    adapter,
+    log: withPrismaErrorLogSetting<'error' | 'warn'>(['error', 'warn']),
+  });
 
   const startedAt = new Date().toISOString();
   console.log('='.repeat(80));
