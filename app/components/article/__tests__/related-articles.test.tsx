@@ -171,7 +171,9 @@ describe('RelatedArticles', () => {
 
     render(<RelatedArticles articleId="test-article" />);
 
-    expect(screen.getByText('関連記事はありません')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '関連記事はありません'
+    );
   });
 
   it('タグが正しく表示される', async () => {

@@ -1,5 +1,6 @@
 import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LiveStatus } from '@/components/ui-v2/live-status';
 
 interface LoadingSpinnerProps {
   message?: string;
@@ -13,15 +14,16 @@ export function LoadingSpinner({
   return (
     <div
       data-testid="loading-spinner"
-      role="status"
-      aria-live="polite"
       className={cn(
         'flex flex-col items-center justify-center gap-6',
         fullPage ? 'h-full min-h-[400px]' : 'py-12'
       )}
     >
+      {/* 読み上げは LiveStatus が受け持つ。見た目の部分は読み上げから外し、二重に読ませない */}
+      <LiveStatus className="sr-only">{message}</LiveStatus>
+
       {/* Brand mark */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" aria-hidden="true">
         <TrendingUp className="text-primary h-6 w-6" aria-hidden="true" />
         <span className="text-foreground text-base font-semibold tracking-tight">
           TechTrend
@@ -29,12 +31,17 @@ export function LoadingSpinner({
       </div>
 
       {/* Progress bar with shimmer */}
-      <div className="bg-primary/15 relative h-[3px] w-[280px] overflow-hidden rounded-full">
+      <div
+        className="bg-primary/15 relative h-[3px] w-[280px] overflow-hidden rounded-full"
+        aria-hidden="true"
+      >
         <div className="animate-shimmer via-primary/30 absolute inset-y-0 w-1/2 rounded-full bg-gradient-to-r from-transparent to-transparent motion-reduce:animate-none" />
       </div>
 
       {/* Context message */}
-      <p className="text-muted-foreground text-sm">{message}</p>
+      <p className="text-muted-foreground text-sm" aria-hidden="true">
+        {message}
+      </p>
     </div>
   );
 }

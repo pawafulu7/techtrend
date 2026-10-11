@@ -2,11 +2,19 @@
  * EmptyState: 取得に成功して0件のときの表示（issue #701）。失敗（ErrorState）と取り違えない
  */
 import { render, screen } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import '@testing-library/jest-dom';
 import { Search } from 'lucide-react';
 import { EmptyState } from '@/components/ui-v2/empty-state';
 
 describe('EmptyState', () => {
+  it('サーバー描画では status を空で出し、文言はマウントの後に入れる（WCAG ARIA22）', () => {
+    const html = renderToString(
+      <EmptyState icon={Search} title="記事がありません" />
+    );
+    expect(html).toMatch(/<span role="status" class="sr-only"><\/span>/);
+  });
+
   it('見出しと説明を status で伝え、alert にはしない', () => {
     render(
       <EmptyState
@@ -37,7 +45,7 @@ describe('EmptyState', () => {
   it('説明と操作は渡したときだけ出す', () => {
     render(<EmptyState icon={Search} title="記事がありません" />);
 
-    expect(screen.getByRole('status').querySelectorAll('p')).toHaveLength(1);
+    expect(screen.getByRole('status')).toHaveTextContent(/^記事がありません$/);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });

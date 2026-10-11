@@ -246,7 +246,7 @@ describe('ArticleList', () => {
     it('記事が空の場合は空状態メッセージを表示する', () => {
       renderWithProviders(<ArticleList articles={[]} />);
 
-      expect(screen.getByText('記事がありません')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('記事がありません');
       expect(screen.queryByTestId('article-list')).not.toBeInTheDocument();
     });
   });

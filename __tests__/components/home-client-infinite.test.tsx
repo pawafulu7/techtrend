@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import { hydrateRoot } from 'react-dom/client';
@@ -485,9 +486,10 @@ describe('HomeClientInfinite の空状態（issue #701）', () => {
     });
     renderHome();
 
+    // 一覧下の状態バーも status を持つので、空状態の中で確かめる
     expect(
-      screen.getByText(/パーソナライズの絞り込みも効いています/)
-    ).toBeInTheDocument();
+      within(screen.getByTestId('empty-state')).getByRole('status')
+    ).toHaveTextContent('パーソナライズの絞り込みも効いています');
   });
 });
 

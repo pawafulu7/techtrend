@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LiveStatus } from './live-status';
 
 export interface EmptyStateProps {
   icon: LucideIcon;
@@ -39,7 +40,12 @@ export function EmptyState({
         className
       )}
     >
-      <div role="status" className="flex flex-col items-center">
+      {/* 読み上げは LiveStatus が受け持つ（領域を先に描いてから文言を入れる）。
+          見た目の文言は読み上げから外し、二重に読ませない */}
+      <LiveStatus className="sr-only">
+        {description ? `${title}。${description}` : title}
+      </LiveStatus>
+      <div aria-hidden="true" className="flex flex-col items-center">
         {isBlock ? (
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-(--tt-color-surface-muted)">
             <Icon
