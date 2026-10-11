@@ -10,7 +10,7 @@ import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
-import { escapeLikePattern } from '@/lib/utils/like-pattern';
+import { containsFilter } from '@/lib/utils/like-pattern';
 import type { Prisma } from '@/lib/prisma-exports';
 import {
   QUALITY_STATUS_VALUES,
@@ -69,14 +69,10 @@ function buildQualityStatusWhere(
 }
 
 function buildSearchWhere(query: string): Prisma.ArticleWhereInput {
-  // contains は ILIKE になるので、_ や % がワイルドカードにならないようにエスケープする
-  const pattern = escapeLikePattern(query);
+  // _ や % をエスケープし、大文字小文字の区別が要る語だけ ILIKE にする（#684, #717）
+  const filter = containsFilter(query);
   return {
-    OR: [
-      { title: { contains: pattern, mode: 'insensitive' } },
-      { translatedTitle: { contains: pattern, mode: 'insensitive' } },
-      { summary: { contains: pattern, mode: 'insensitive' } },
-    ],
+    OR: [{ title: filter }, { translatedTitle: filter }, { summary: filter }],
   };
 }
 

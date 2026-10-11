@@ -174,8 +174,9 @@ describe('pushSearchFilter', () => {
     expect(apply('100% a_b C:\\')).toEqual([
       {
         OR: [
-          { title: { contains: '100\\%', mode: 'insensitive' } },
-          { summary: { contains: '100\\%', mode: 'insensitive' } },
+          // 数字と記号だけなので大文字小文字の区別が無く、LIKE（mode なし）になる（#717）
+          { title: { contains: '100\\%' } },
+          { summary: { contains: '100\\%' } },
         ],
       },
       {
@@ -196,6 +197,42 @@ describe('pushSearchFilter', () => {
   it('adds nothing for empty or blank search', () => {
     expect(apply(undefined)).toEqual([]);
     expect(apply('   ')).toEqual([]);
+  });
+
+  it('uses case-sensitive LIKE for keywords without case variants and ILIKE otherwise (#717)', () => {
+    expect(apply('設計 Go 2026 テスト Ａｂ')).toEqual([
+      {
+        OR: [
+          { title: { contains: '設計' } },
+          { summary: { contains: '設計' } },
+        ],
+      },
+      {
+        OR: [
+          { title: { contains: 'Go', mode: 'insensitive' } },
+          { summary: { contains: 'Go', mode: 'insensitive' } },
+        ],
+      },
+      {
+        OR: [
+          { title: { contains: '2026' } },
+          { summary: { contains: '2026' } },
+        ],
+      },
+      {
+        OR: [
+          { title: { contains: 'テスト' } },
+          { summary: { contains: 'テスト' } },
+        ],
+      },
+      {
+        // 全角英字にも大文字小文字がある
+        OR: [
+          { title: { contains: 'Ａｂ', mode: 'insensitive' } },
+          { summary: { contains: 'Ａｂ', mode: 'insensitive' } },
+        ],
+      },
+    ]);
   });
 });
 

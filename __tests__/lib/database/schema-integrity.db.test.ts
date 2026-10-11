@@ -110,7 +110,7 @@ describeDb('schema integrity and functional UNIQUE (real test DB)', () => {
     await mockDb.$disconnect();
   });
 
-  it('preserves expression/partial HNSW and UNIQUE definitions, with no duplicate Article/Tag/Session indexes', async () => {
+  it('preserves expression/partial HNSW, trigram GIN and UNIQUE definitions, with no duplicate Article/Tag/Session indexes', async () => {
     const rows =
       await mockDb.$queryRawUnsafe<SchemaArtifact[]>(SCHEMA_ARTIFACT_SQL);
     expect(requiredIndexErrors(rows)).toEqual([]);

@@ -26,7 +26,7 @@ import {
   getDateFieldForSort,
 } from '@/app/lib/date-utils';
 import logger from '@/lib/logger';
-import { escapeLikePattern } from '@/lib/utils/like-pattern';
+import { containsFilter } from '@/lib/utils/like-pattern';
 import { findTagIdGroupsByNames } from '@/lib/services/tag-service';
 import {
   MAX_TAG_FILTER_COUNT,
@@ -231,7 +231,7 @@ export function splitSearchKeywords(
 /**
  * 記事一覧の検索語を上限内に切り詰めて語に分ける（#684）。前後の空白を除いた先頭
  * MAX_SEARCH_QUERY_LENGTH 文字（コードポイント単位）の中の、先頭 MAX_SEARCH_KEYWORDS 語を返す。
- * 語ごとに ILIKE の条件が増えるので、レート制限のない一覧 API で重いクエリを組み立てさせない。
+ * 語ごとに LIKE / ILIKE の条件が増えるので、レート制限のない一覧 API で重いクエリを組み立てさせない。
  * 画面の検索欄には上限がないので、400 にせず切り詰める（超えた分の語は使わない）。
  */
 export function capSearchKeywords(search: string | null | undefined): string[] {
@@ -346,10 +346,16 @@ export function pushTagFilter(
 /**
  * Push multi-keyword AND search conditions into AND conditions array.
  * Splits on whitespace (including full-width spaces \u3000) and requires
- * each keyword to appear in title or summary (case-insensitive).
+ * each keyword to appear in title or summary (case-insensitive when the keyword
+ * has upper/lower case forms; see containsFilter).
  *
  * For a single keyword, pushes { OR: [title match, summary match] }.
  * For multiple keywords, pushes one such OR condition per keyword (AND logic).
+ *
+ * title と summary には trigram の GIN 索引（idx_article_title_trgm / idx_article_summary_trgm）が
+ * あり、LIKE / ILIKE のどちらでも使える。索引で絞れるのは、パターンから trigram を取り出せる語
+ * （英数字・かな・漢字が 3 文字以上続く語。pg_trgm は記号を語の区切りとして捨てる）だけで、
+ * 2 文字以下の語や記号だけの語は全件走査になる（#717）。
  *
  * @param andConditions - AND conditions array to push into
  * @param search - Search string, or null/undefined for no-op
@@ -362,14 +368,11 @@ export function pushSearchFilter(
   const keywords = capSearchKeywords(search);
   if (keywords.length === 0) return;
 
-  // contains は ILIKE になるので、_ や % がワイルドカードにならないようにエスケープする
+  // _ や % をエスケープし、大文字小文字の区別が要る語だけ ILIKE にする（#684, #717）
   const keywordConditions: ArticleWhereInput[] = keywords.map((keyword) => {
-    const pattern = escapeLikePattern(keyword);
+    const filter = containsFilter(keyword);
     return {
-      OR: [
-        { title: { contains: pattern, mode: 'insensitive' as const } },
-        { summary: { contains: pattern, mode: 'insensitive' as const } },
-      ],
+      OR: [{ title: filter }, { summary: filter }],
     };
   });
 

@@ -103,6 +103,9 @@ model Article {
   @@index([userVotes(sort: Desc)], map: "idx_article_user_votes")
   @@index([category], map: "idx_article_category")
   @@index([storyId], map: "idx_article_story_id")
+  // キーワード検索（title / summary の LIKE / ILIKE）の trigram 索引（#717）。schema に無いと migrate dev が drift として DROP を生成する
+  @@index([title(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_article_title_trgm")
+  @@index([summary(ops: raw("gin_trgm_ops"))], type: Gin, map: "idx_article_summary_trgm")
 }
 
 model Source {
