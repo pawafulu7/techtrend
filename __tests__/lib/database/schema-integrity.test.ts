@@ -212,6 +212,18 @@ describe('schema integrity: fail-closed drift checks', () => {
     expect(requiredIndexErrors(wrongMethod)).toContain(
       'Invalid required index:idx_article_summary_trgm'
     );
+    // 部分索引は条件に合わない検索で使えないので拒否する（PR #751 のレビュー指摘）
+    const partial = rows.map((row) =>
+      row.name === 'idx_article_title_trgm'
+        ? {
+            ...row,
+            details: { ...row.details, predicate: '("isHidden" = false)' },
+          }
+        : row
+    );
+    expect(requiredIndexErrors(partial)).toContain(
+      'Invalid required index:idx_article_title_trgm'
+    );
   });
   it('does not check or clean up after creation fails', async () => {
     const check = jest.fn();
