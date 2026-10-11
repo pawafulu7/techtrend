@@ -13,6 +13,9 @@ import {
 import { Button } from '@/components/ui-v2/button-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui-v2/empty-state';
+import { ErrorState } from '@/components/ui-v2/error-state';
+import { PopularRankingSkeleton } from './popular-skeletons';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   TrendingUp,
@@ -91,30 +94,34 @@ export function PopularArticles({
   const includeOffTopic =
     !compact && searchParams.get(INCLUDE_OFF_TOPIC_PARAM) === 'true';
 
-  const {
-    data,
-    isLoading: loading,
-    isError,
-  } = useQuery<PopularResponse>({
-    queryKey: ['popular-articles', { period, metric, limit, includeOffTopic }],
-    queryFn: async () => {
-      const response = await fetch(
-        `/api/articles/popular?period=${period}&metric=${metric}&limit=${limit}` +
-          (includeOffTopic ? '&includeOffTopic=true' : '')
-      );
-      if (!response.ok) {
-        throw new Error('Failed to load popular articles');
-      }
-      const json = await response.json();
-      return {
-        articles: json.articles as RankedArticle[],
-        timestamp:
-          typeof json.timestamp === 'string' ? json.timestamp : undefined,
-      };
-    },
-  });
+  const { data, isLoading, isError, isFetching, errorUpdateCount, refetch } =
+    useQuery<PopularResponse>({
+      queryKey: [
+        'popular-articles',
+        { period, metric, limit, includeOffTopic },
+      ],
+      queryFn: async () => {
+        const response = await fetch(
+          `/api/articles/popular?period=${period}&metric=${metric}&limit=${limit}` +
+            (includeOffTopic ? '&includeOffTopic=true' : '')
+        );
+        if (!response.ok) {
+          throw new Error('Failed to load popular articles');
+        }
+        const json = await response.json();
+        return {
+          articles: json.articles as RankedArticle[],
+          timestamp:
+            typeof json.timestamp === 'string' ? json.timestamp : undefined,
+        };
+      },
+    });
 
   const articles = useMemo(() => data?.articles ?? [], [data]);
+  // React Query は data の無いクエリを再取得すると pending に戻すので、一度失敗したら
+  // 再試行中も読み込み中に戻さず、失敗の表示（再試行中…）を残す（issue #701）
+  const failedWithoutData = !data && (isError || errorUpdateCount > 0);
+  const loading = isLoading && !failedWithoutData;
 
   const handleMetricChange = useCallback(
     (value: string) => {
@@ -149,10 +156,13 @@ export function PopularArticles({
           </div>
         </CardHeader>
         <CardContent>
-          {isError ? (
-            <div className="text-muted-foreground py-4 text-center text-sm">
-              読み込みに失敗しました
-            </div>
+          {failedWithoutData ? (
+            <ErrorState
+              title="人気記事を読み込めませんでした"
+              onRetry={() => void refetch()}
+              retrying={isFetching}
+              className="py-4"
+            />
           ) : loading ? (
             <div className="space-y-2" aria-live="polite">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -192,11 +202,16 @@ export function PopularArticles({
     );
   }
 
-  if (isError) {
+  // 失敗を件数 0 のランキングとして見せない
+  if (failedWithoutData) {
     return (
-      <div className="text-muted-foreground py-8 text-center">
-        読み込みに失敗しました
-      </div>
+      <ErrorState
+        size="block"
+        title="ランキングを読み込めませんでした"
+        description="時間をおいて再試行してください。"
+        onRetry={() => void refetch()}
+        retrying={isFetching}
+      />
     );
   }
 
@@ -251,19 +266,13 @@ export function PopularArticles({
         </TabsList>
 
         {loading ? (
-          <div className="space-y-3" aria-live="polite">
-            {Array.from({ length: limit }).map((_, i) => (
-              <Skeleton
-                key={i}
-                className="h-20 w-full"
-                style={{ animationDelay: `${i * 50}ms` }}
-              />
-            ))}
-          </div>
+          <PopularRankingSkeleton count={limit} />
         ) : articles.length === 0 ? (
-          <div className="text-muted-foreground py-8 text-center">
-            ランキングデータがありません
-          </div>
+          <EmptyState
+            icon={TrendingUp}
+            title="この期間のランキングはありません"
+            description="期間や指標を切り替えてください。"
+          />
         ) : (
           <div className="space-y-3">
             {articles.map((article) => (

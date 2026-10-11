@@ -8,10 +8,9 @@ import { CardV2 } from '@/components/ui-v2/card-v2';
 import { PageHeader } from '@/components/ui-v2/page-header';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { Button } from '@/components/ui-v2/button-v2';
-import {
-  FavoriteArticleCard,
-  FavoriteSkeletonGrid,
-} from '@/app/components/article/favorite-card';
+import { FavoriteArticleCard } from '@/app/components/article/favorite-card';
+import { EmptyState } from '@/components/ui-v2/empty-state';
+import { FavoritesLoading } from './favorites-loading';
 import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
 import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth/auth-client';
@@ -193,22 +192,7 @@ export function FavoritesContent({
 
   // Loading state
   if (isLoading && allFavorites.length === 0 && errorUpdateCount === 0) {
-    return (
-      <div className="px-4 py-3 lg:px-6">
-        {/* 見出しは読み込み中も出す（h1 を常に1つ置く。Issue #700） */}
-        <PageHeader
-          icon={Heart}
-          title="お気に入り"
-          actions={
-            <>
-              <div className="bg-muted h-9 w-48 animate-pulse rounded lg:w-64" />
-              <div className="bg-muted h-9 w-44 animate-pulse rounded" />
-            </>
-          }
-        />
-        <FavoriteSkeletonGrid />
-      </div>
-    );
+    return <FavoritesLoading />;
   }
 
   return (
@@ -263,45 +247,24 @@ export function FavoritesContent({
           tabIndex={-1}
           className="focus:ring-primary mx-auto max-w-md focus:ring-2 focus:outline-none"
         >
-          <div
-            data-testid="empty-state"
-            className="flex flex-col items-center justify-center px-4 py-12"
-            role="status"
-            aria-live="polite"
+          <EmptyState
+            icon={Heart}
+            title="お気に入り記事がありません"
+            description="気になる記事のハートアイコンを押すと、ここに保存されます。"
           >
-            <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-              <Heart
-                className="text-muted-foreground h-8 w-8"
-                aria-hidden="true"
-              />
-            </div>
-            <p className="text-foreground mb-2 text-lg font-medium">
-              お気に入り記事がありません
-            </p>
-            <p className="text-muted-foreground mb-6 text-center text-sm">
-              気になる記事を見つけたら、ハートアイコンをクリックして保存しましょう
-            </p>
             <Button asChild className="min-h-[44px] min-w-[44px]">
               <Link href="/">記事を探す</Link>
             </Button>
-          </div>
+          </EmptyState>
         </CardV2>
       ) : filteredFavorites.length === 0 ? (
         /* No search results */
         <CardV2 className="mx-auto max-w-md">
-          <div className="flex flex-col items-center justify-center px-4 py-12">
-            <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-              <Search
-                className="text-muted-foreground h-8 w-8"
-                aria-hidden="true"
-              />
-            </div>
-            <p className="text-foreground mb-2 text-lg font-medium">
-              検索結果がありません
-            </p>
-            <p className="text-muted-foreground mb-6 text-center text-sm">
-              「{searchQuery}」に一致する記事が見つかりませんでした
-            </p>
+          <EmptyState
+            icon={Search}
+            title="検索結果がありません"
+            description={`「${searchQuery}」に一致するお気に入りはありません。`}
+          >
             <Button
               variant="outline"
               onClick={() => setSearchQuery('')}
@@ -309,7 +272,7 @@ export function FavoritesContent({
             >
               検索をクリア
             </Button>
-          </div>
+          </EmptyState>
         </CardV2>
       ) : (
         /* Simple grid (no date grouping) */

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
+import { EmptyState } from '@/components/ui-v2/empty-state';
 import { PageHeader } from '@/components/ui-v2/page-header';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ArticleCard } from '@/app/components/article/card';
@@ -310,17 +311,15 @@ export function FavoriteFeedContent() {
         </Alert>
       ) : sortedArticles.length === 0 && !loading && !fetchError ? (
         <CardV2 className="mx-auto max-w-md">
-          <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-            <Newspaper className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
-            <p className="text-muted-foreground mb-2 text-lg">
-              記事がありません
-            </p>
-            <p className="text-muted-foreground text-sm">
-              {selectedFolder === 'all'
-                ? 'お気に入りソースから新しい記事が投稿されるのをお待ちください'
-                : 'このフォルダーのソースから新しい記事が投稿されるのをお待ちください'}
-            </p>
-          </div>
+          <EmptyState
+            icon={Newspaper}
+            title="記事がありません"
+            description={
+              selectedFolder === 'all'
+                ? 'お気に入りソースに新しい記事が届くと、ここに並びます。'
+                : 'このフォルダーのソースに新しい記事が届くと、ここに並びます。'
+            }
+          />
         </CardV2>
       ) : (
         <>

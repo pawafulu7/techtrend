@@ -236,7 +236,7 @@ export async function waitForSearchResults(page: Page, timeout = 30000) {
         resultText.textContent?.includes('結果') ||
         resultText.textContent?.includes('No results') ||
         resultText.textContent?.includes('記事が見つかりませんでした')
-      );
+      ) || document.querySelector('[data-testid="empty-state"]');
 
       // 記事カードの存在も確認
       const articleCards = document.querySelectorAll(selectors.articleCard);

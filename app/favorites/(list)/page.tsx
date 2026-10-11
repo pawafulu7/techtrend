@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth/get-session';
-import { FavoritesContent } from './_components/favorites-content';
-import { type SortOption, VALID_SORT_OPTIONS } from './_types';
+import { FavoritesContent } from '../_components/favorites-content';
+import { type SortOption, VALID_SORT_OPTIONS } from '../_types';
 
 export default async function FavoritesPage({
   searchParams,

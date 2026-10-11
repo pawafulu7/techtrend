@@ -3,7 +3,7 @@
 import { useMemo, useCallback, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
-import { LoadingSpinner } from '@/app/components/common/loading-spinner';
+import { ArticleListSkeleton } from '@/app/components/article/article-list-skeleton';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
@@ -11,6 +11,10 @@ import { buildScrollStorageKey } from '@/lib/utils/scroll';
 import { PAGINATION, SCROLL } from '@/lib/constants/index';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
 import type { ViewMode } from '@/types/components';
+import { FileText } from 'lucide-react';
+import { CardV2 } from '@/components/ui-v2/card-v2';
+import { EmptyState } from '@/components/ui-v2/empty-state';
+import { ErrorState } from '@/components/ui-v2/error-state';
 
 interface PapersClientInfiniteProps {
   viewMode: ViewMode;
@@ -115,7 +119,9 @@ export function PapersClientInfinite({
     isFetchingNextPage,
     isLoading,
     isError,
-    error,
+    isFetching,
+    errorUpdateCount,
+    refetch,
   } = useInfiniteArticles({
     ...filters,
     includeUserData: true,
@@ -177,10 +183,21 @@ export function PapersClientInfinite({
     [allArticles]
   );
 
-  if (isError) {
+  // 生の error.message は出さない。一度失敗したら、再試行中も読み込み中に戻さず
+  // 失敗の表示（再試行中…）を残す（issue #701）
+  const failedWithoutData = !data && (isError || errorUpdateCount > 0);
+  if (failedWithoutData) {
     return (
-      <div className="py-8 text-center text-[var(--tt-color-negative)]">
-        エラーが発生しました: {error?.message || 'Unknown error'}
+      <div className="flex min-h-[400px] items-center justify-center px-4">
+        <CardV2 className="mx-auto max-w-md">
+          <ErrorState
+            size="block"
+            title="論文を読み込めませんでした"
+            description="時間をおいて再試行してください。"
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
+        </CardV2>
       </div>
     );
   }
@@ -202,7 +219,11 @@ export function PapersClientInfinite({
       )}
 
       {isLoading ? (
-        <LoadingSpinner message="論文を読み込んでいます..." />
+        <ArticleListSkeleton
+          viewMode={viewMode}
+          thumbnail={false}
+          label="論文を読み込んでいます..."
+        />
       ) : allArticles.length > 0 ? (
         <div className="relative">
           <ArticleList
@@ -222,9 +243,11 @@ export function PapersClientInfinite({
           />
         </div>
       ) : (
-        <div className="text-muted-foreground py-12 text-center">
-          論文が見つかりませんでした
-        </div>
+        <EmptyState
+          icon={FileText}
+          title="条件に合う論文はありません"
+          description="検索語やフィルターを変えてください。"
+        />
       )}
 
       {/* ページネーションフォールバック */}

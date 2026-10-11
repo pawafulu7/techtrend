@@ -11,7 +11,7 @@ import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
 import { SortButtons } from '@/app/components/common/sort-buttons';
 import { getSession } from '@/lib/auth/get-session';
 import { HomeArticles } from '@/app/components/home/home-articles';
-import { LoadingSpinner } from '@/app/components/common/loading-spinner';
+import { ArticleListSkeleton } from '@/app/components/article/article-list-skeleton';
 import { PersonalizationToggle } from '@/app/components/personalization';
 import {
   FilterSidebarProvider,
@@ -212,7 +212,9 @@ export default async function Home({ searchParams }: PageProps) {
             <section aria-label="記事一覧" className="flex h-full flex-col">
               <Suspense
                 fallback={
-                  <LoadingSpinner message="記事を読み込んでいます..." />
+                  <div className="flex-1 overflow-hidden px-4 py-4 lg:px-6">
+                    <ArticleListSkeleton viewMode={viewMode} />
+                  </div>
                 }
               >
                 <HomeArticles

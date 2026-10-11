@@ -230,9 +230,7 @@ describe('ArticleList', () => {
     it('renders empty state when no articles', () => {
       renderWithProviders(<ArticleList articles={[]} />);
 
-      expect(
-        screen.getByText('記事が見つかりませんでした')
-      ).toBeInTheDocument();
+      expect(screen.getByText('記事がありません')).toBeInTheDocument();
       expect(screen.queryByTestId('article-list')).not.toBeInTheDocument();
     });
   });

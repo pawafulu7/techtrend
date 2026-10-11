@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { SourceCard } from '@/app/components/sources/SourceCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui-v2/button-v2';
+import { EmptyState } from '@/components/ui-v2/empty-state';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -281,14 +282,11 @@ export default function SourcesContent() {
               ))}
             </div>
           ) : sources.length === 0 ? (
-            <div className="py-12 text-center">
-              <p className="text-muted-foreground mb-2 text-lg">
-                ソースが見つかりませんでした
-              </p>
-              <p className="text-muted-foreground text-sm">
-                検索条件を変更してみてください
-              </p>
-            </div>
+            <EmptyState
+              icon={Search}
+              title="条件に合うソースはありません"
+              description="検索語やカテゴリを変えてください。"
+            />
           ) : (
             <>
               {/* Source list */}

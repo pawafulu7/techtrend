@@ -147,7 +147,7 @@ describe('DigestClient: 取得の失敗（issue #701）', () => {
     expect(
       await screen.findByRole('button', { name: '再試行中…' })
     ).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.queryByText('読み込み中')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
 
     resolveRetry({ ok: true, json: async () => digestBody });
     expect(await screen.findByTestId('digest-section')).toBeInTheDocument();
@@ -205,7 +205,9 @@ describe('DigestClient: 取得の失敗（issue #701）', () => {
     expect(
       screen.queryByText('ダイジェストを読み込めませんでした')
     ).not.toBeInTheDocument();
-    expect(screen.getByText('読み込み中')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'ダイジェストを読み込んでいます...'
+    );
 
     expect(await screen.findByTestId('digest-section')).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(2);

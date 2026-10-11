@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TagCloudChipsSkeleton } from './tags-skeletons';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -54,15 +54,6 @@ export function getTagColor(
   }
   return cn(baseClasses, 'text-muted-foreground hover:text-primary');
 }
-
-// スケルトンの幅は固定値。モジュールレベルでも Math.random() を使うと
-// サーバーとクライアントで別の値になり hydration mismatch を起こすため
-// （タグクラウド表示時に毎回 React の hydration エラーが出ていた）。
-// 見た目のばらつきだけが目的なので、決め打ちの並びで十分。
-const SKELETON_WIDTHS = [
-  118, 72, 145, 96, 61, 132, 84, 108, 57, 121, 90, 149, 66, 103, 137, 78, 112,
-  54, 126, 88,
-];
 
 const PERIOD_LABELS = {
   '7d': '直近7日',
@@ -217,15 +208,7 @@ export function TagCloud({
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="space-y-2">
-            {SKELETON_WIDTHS.map((width, i) => (
-              <Skeleton
-                key={i}
-                className="mr-2 mb-2 inline-block h-6"
-                style={{ width: `${width}px` }}
-              />
-            ))}
-          </div>
+          <TagCloudChipsSkeleton />
         ) : failedWithoutData ? (
           <ErrorState
             title="タグを読み込めませんでした"

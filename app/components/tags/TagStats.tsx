@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui-v2/card-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TagStatsSkeleton } from './tags-skeletons';
 import { TrendingUp, Hash, Calendar, Activity } from 'lucide-react';
 import logger from '@/lib/logger.client';
 import { ErrorState } from '@/components/ui-v2/error-state';
@@ -186,19 +186,7 @@ export function TagStats() {
   }, [totalData, activeTags, newData, growthTags]);
 
   if (loading) {
-    return (
-      <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-24" />
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <TagStatsSkeleton />;
   }
 
   return (

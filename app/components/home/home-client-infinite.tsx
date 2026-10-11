@@ -4,7 +4,7 @@ import { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
 import { groupArticlesByStory } from '@/app/components/article/story-grouping';
-import { LoadingSpinner } from '@/app/components/common/loading-spinner';
+import { ArticleListSkeleton } from '@/app/components/article/article-list-skeleton';
 import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-trigger';
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
@@ -18,10 +18,12 @@ import { PAGINATION, SCROLL } from '@/lib/constants/index';
 import type { Source, Tag } from '@/lib/prisma-exports';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
-import { AlertTriangle, Loader2, Search } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
+import { ErrorState } from '@/components/ui-v2/error-state';
 import type { ViewMode } from '@/types/components';
 import { HomeListStatusBar } from '@/app/components/home/home-list-status-bar';
+import { HomeEmptyState } from '@/app/components/home/home-empty-state';
 
 interface HomeClientInfiniteProps {
   viewMode: ViewMode;
@@ -216,6 +218,8 @@ export function HomeClientInfinite({
     isPending,
     isError,
     isRefetchError,
+    isFetching,
+    errorUpdateCount,
     refetch,
   } = useInfiniteArticles(
     {
@@ -313,32 +317,20 @@ export function HomeClientInfinite({
     [allArticles]
   );
 
+  // 一覧が無い状態での失敗。React Query は data の無いクエリを再取得すると pending に戻すので、
+  // 一度失敗したら再試行中も失敗の表示（再試行中…）を残す（issue #701）。
   // 更新（取り直し）の失敗では一覧を残し、失敗を下の行に出す
-  if (isError && !isRefetchError) {
+  if (!data && (isError || errorUpdateCount > 0)) {
     return (
       <div className="flex min-h-[400px] items-center justify-center px-4">
         <CardV2 className="mx-auto max-w-md">
-          <div className="flex flex-col items-center justify-center px-4 py-12">
-            <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-              <AlertTriangle
-                className="text-muted-foreground h-8 w-8"
-                aria-hidden="true"
-              />
-            </div>
-            <p className="text-foreground mb-2 text-lg font-medium">
-              エラーが発生しました
-            </p>
-            <p className="text-muted-foreground mb-6 text-center text-sm">
-              記事の読み込みに失敗しました。しばらく経ってから再試行してください。
-            </p>
-            <Button
-              onClick={() => refetch()}
-              variant="outline"
-              className="min-h-[44px] min-w-[44px]"
-            >
-              再試行
-            </Button>
-          </div>
+          <ErrorState
+            size="block"
+            title="記事を読み込めませんでした"
+            description="時間をおいて再試行してください。"
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
         </CardV2>
       </div>
     );
@@ -363,10 +355,10 @@ export function HomeClientInfinite({
         )}
 
         {/* isPending は data === undefined と厳密に等価（v5 の isLoading は
-            isPending && isFetching）。データが無いときだけスピナーを出すため、
+            isPending && isFetching）。データが無いときだけスケルトンを出すため、
             再取得中やセッション判定中に一覧 DOM を破棄しない。 */}
         {isPending && !isCategoryChanging ? (
-          <LoadingSpinner message="記事を読み込んでいます..." />
+          <ArticleListSkeleton viewMode={viewMode} />
         ) : allArticles.length > 0 ? (
           <div className="relative">
             <ArticleList
@@ -415,26 +407,9 @@ export function HomeClientInfinite({
             )}
           </div>
         ) : isPending ? (
-          <LoadingSpinner message="記事を読み込んでいます..." />
+          <ArticleListSkeleton viewMode={viewMode} />
         ) : (
-          <div className="flex min-h-[400px] items-center justify-center px-4">
-            <CardV2 className="mx-auto max-w-md">
-              <div className="flex flex-col items-center justify-center px-4 py-12">
-                <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-                  <Search
-                    className="text-muted-foreground h-8 w-8"
-                    aria-hidden="true"
-                  />
-                </div>
-                <p className="text-foreground mb-2 text-lg font-medium">
-                  記事が見つかりませんでした
-                </p>
-                <p className="text-muted-foreground mb-6 text-center text-sm">
-                  フィルター条件を変更するか、別のカテゴリをお試しください。
-                </p>
-              </div>
-            </CardV2>
-          </div>
+          <HomeEmptyState />
         )}
       </div>
 

@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Newspaper, Settings, CheckCircle, Loader2 } from 'lucide-react';
+import { Newspaper, Settings, CheckCircle } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { Button } from '@/components/ui-v2/button-v2';
+import { EmptyState } from '@/components/ui-v2/empty-state';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { PageHeader } from '@/components/ui-v2/page-header';
 import { DigestSection } from './digest-section';
+import { DigestSkeleton } from './digest-skeleton';
 import { CategoryPreferenceDialog } from '@/app/components/personalization/category-preference-dialog';
 import { useUpdatePreferences } from '@/lib/hooks/use-personalization-preferences';
 import { DigestFetchError, useDigest } from '@/lib/hooks/use-digest';
@@ -130,71 +132,30 @@ export function DigestClient() {
       )}
 
       {/* Loading State */}
-      {showInitialLoading && (
-        <div className="flex items-center justify-center py-24">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="relative">
-              <div className="border-primary/20 border-t-primary h-24 w-24 animate-spin rounded-full border-4" />
-              <Loader2 className="text-primary absolute inset-0 m-auto h-10 w-10 animate-pulse" />
-            </div>
-            <div className="space-y-2 text-center">
-              <p className="text-foreground text-lg font-semibold">
-                読み込み中
-              </p>
-              <div className="flex items-center justify-center space-x-1">
-                <span
-                  className="bg-primary h-2 w-2 animate-bounce rounded-full"
-                  style={{ animationDelay: '0ms' }}
-                />
-                <span
-                  className="bg-primary h-2 w-2 animate-bounce rounded-full"
-                  style={{ animationDelay: '150ms' }}
-                />
-                <span
-                  className="bg-primary h-2 w-2 animate-bounce rounded-full"
-                  style={{ animationDelay: '300ms' }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {showInitialLoading && <DigestSkeleton />}
 
       {/* No Preferences State */}
       {!isLoading && !isUnauthorized && digest && !digest.hasPreferences && (
-        <div className="flex flex-col items-center justify-center py-16">
-          <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-            <Settings
-              className="text-muted-foreground h-8 w-8"
-              aria-hidden="true"
-            />
-          </div>
-          <p className="text-foreground mb-2 text-lg font-medium">
-            カテゴリを設定してください
-          </p>
-          <p className="text-muted-foreground mb-6 max-w-md text-center text-sm">
-            興味のあるカテゴリを選択すると、あなた向けのダイジェストが生成されます
-          </p>
+        <EmptyState
+          icon={Settings}
+          title="カテゴリを設定してください"
+          description="興味のあるカテゴリを選ぶと、あなた向けのダイジェストを作ります。"
+          className="py-16"
+        >
           <Button onClick={() => setDialogOpen(true)}>
             カテゴリを設定する
           </Button>
-        </div>
+        </EmptyState>
       )}
 
       {/* All Read State */}
       {!isLoading && !isUnauthorized && allEmpty && (
-        <div className="flex flex-col items-center justify-center py-16">
-          <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-            <CheckCircle className="text-primary h-8 w-8" aria-hidden="true" />
-          </div>
-          <p className="text-foreground mb-2 text-lg font-medium">
-            全て読了しました
-          </p>
-          <p className="text-muted-foreground text-center text-sm">
-            {period === 'daily' ? '今日' : '今週'}
-            の新着記事はすべて確認済みです
-          </p>
-        </div>
+        <EmptyState
+          icon={CheckCircle}
+          title="すべて読みました"
+          description={`${period === 'daily' ? '今日' : '今週'}の新着記事はすべて確認済みです。`}
+          className="py-16"
+        />
       )}
 
       {/* Digest Sections */}

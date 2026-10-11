@@ -38,6 +38,8 @@ type MockInfiniteArticles = {
   isLoading: boolean;
   isError: boolean;
   isRefetchError?: boolean;
+  isFetching?: boolean;
+  errorUpdateCount?: number;
   refetch: jest.Mock;
 };
 type MockPreferences = {
@@ -87,6 +89,11 @@ jest.mock('@/app/components/article/list', () => ({
       ))}
     </div>
   ),
+}));
+
+const mockResetFilters = jest.fn();
+jest.mock('@/app/components/common/hooks/useFilterReset', () => ({
+  useFilterReset: () => ({ reset: mockResetFilters, isResetting: false }),
 }));
 
 jest.mock('@/app/components/common/infinite-scroll-trigger', () => ({
@@ -177,9 +184,7 @@ describe('HomeClientInfinite の非破壊ローディング', () => {
 
     expect(screen.getByTestId('article-list')).toHaveTextContent('2 articles');
     expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('記事を読み込んでいます...')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('記事を読み込んでいます...')).not.toBeInTheDocument();
   });
 
   it('記事 0 件で読み込み中のときはスピナーを出し、空状態を出さない', () => {
@@ -192,9 +197,9 @@ describe('HomeClientInfinite の非破壊ローディング', () => {
     renderHome();
 
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
-    expect(screen.getByText('記事を読み込んでいます...')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('記事を読み込んでいます...');
     expect(
-      screen.queryByText('記事が見つかりませんでした')
+      screen.queryByText('条件に合う記事はありません')
     ).not.toBeInTheDocument();
     expect(screen.queryByTestId('article-list')).not.toBeInTheDocument();
   });
@@ -398,17 +403,68 @@ describe('HomeClientInfinite の手動更新', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       '最新の一覧を取得できませんでした。'
     );
-    expect(screen.queryByText('エラーが発生しました')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('記事を読み込めませんでした')
+    ).not.toBeInTheDocument();
   });
 
   it('初回の取得の失敗は従来どおりエラー画面を出す', () => {
-    mockUseInfiniteArticles.mockReturnValue({
+    const state = {
       ...noArticlesYet(),
       isPending: false,
       isError: true,
+      errorUpdateCount: 1,
+    };
+    mockUseInfiniteArticles.mockReturnValue(state);
+    renderHome();
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '記事を読み込めませんでした'
+    );
+    fireEvent.click(screen.getByRole('button', { name: '再試行' }));
+    expect(state.refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('失敗後の再試行中も、スケルトンに戻さず失敗表示を残す（issue #701）', () => {
+    // React Query は data の無いクエリを再取得すると pending に戻し、isError も false になる
+    mockUseInfiniteArticles.mockReturnValue({
+      ...noArticlesYet(),
+      isError: false,
+      isFetching: true,
+      errorUpdateCount: 1,
     });
     renderHome();
 
-    expect(screen.getByText('エラーが発生しました')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '記事を読み込めませんでした'
+    );
+    expect(screen.getByRole('button', { name: '再試行中…' })).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+    expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+  });
+});
+
+describe('HomeClientInfinite の空状態（issue #701）', () => {
+  beforeEach(() => {
+    mockResetFilters.mockClear();
+    mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
+  });
+
+  it('0件のときは空状態とフィルターのリセットを出し、失敗とは見せない', () => {
+    mockUseInfiniteArticles.mockReturnValue({
+      ...loadedArticles(),
+      data: { pages: [{ data: { items: [], total: 0 } }], pageParams: [1] },
+    });
+    renderHome();
+
+    expect(screen.getByText('条件に合う記事はありません')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'フィルターをリセット' })
+    );
+    expect(mockResetFilters).toHaveBeenCalledTimes(1);
   });
 });

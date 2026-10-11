@@ -226,7 +226,7 @@ describe('RelatedArticles', () => {
     render(<RelatedArticles articleId="test-article" />);
 
     await waitFor(() => {
-      expect(screen.getByText('New')).toBeInTheDocument();
+      expect(screen.getByTestId('new-label')).toHaveTextContent('新着');
     });
   });
 
