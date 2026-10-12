@@ -1,9 +1,14 @@
 import { GeminiTransport } from '../transport/gemini-transport.interface';
-import { isLikelyJapanese } from '@/lib/utils/language-detection';
+import {
+  isLikelyJapanese,
+  isLikelyJapaneseBody,
+} from '@/lib/utils/language-detection';
 
 type TitleTranslationInput = {
   title: string;
   summary?: string;
+  /** 記事の本文。日本語なら英語のタイトルでも訳さない（issue #725） */
+  content?: string;
   requestId: string;
 };
 
@@ -33,6 +38,11 @@ export class GeminiTitleTranslator implements TitleTranslator {
     }
 
     if (isLikelyJapanese(input.title)) {
+      return null;
+    }
+
+    // 英語のタイトルを付けた日本語の記事。訳すと「英語から自動翻訳」と表示されてしまう
+    if (isLikelyJapaneseBody(input.content)) {
       return null;
     }
 

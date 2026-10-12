@@ -511,6 +511,7 @@ describe('UnifiedSummaryServiceImpl', () => {
       expect(mockTitleTranslator.translateTitle).toHaveBeenCalledWith({
         title: 'English Title',
         summary: 'Test Summary',
+        content: 'This is a test article content.',
         requestId: expect.stringMatching(/^\d+-0$/),
       });
     });
@@ -657,12 +658,14 @@ describe('UnifiedSummaryServiceImpl', () => {
       expect(mockTitleTranslator.translateTitle).toHaveBeenNthCalledWith(1, {
         title: 'English Title',
         summary: 'Test Summary',
+        content: 'This is a test article content.',
         requestId: expect.stringMatching(/^\d+-0$/),
       });
 
       expect(mockTitleTranslator.translateTitle).toHaveBeenNthCalledWith(2, {
         title: 'English Title',
         summary: undefined,
+        content: 'This is a test article content.',
         requestId: expect.stringMatching(/^\d+-0-retry1$/),
       });
     });
@@ -824,12 +827,14 @@ describe('UnifiedSummaryServiceImpl', () => {
       expect(mockTitleTranslator.translateTitle).toHaveBeenNthCalledWith(1, {
         title: 'English Title',
         summary: 'Test Summary',
+        content: 'This is a test article content.',
         requestId: expect.stringMatching(/^\d+-0$/),
       });
 
       expect(mockTitleTranslator.translateTitle).toHaveBeenNthCalledWith(2, {
         title: 'English Title',
         summary: undefined,
+        content: 'This is a test article content.',
         requestId: expect.stringMatching(/^\d+-0-retry1$/),
       });
     });

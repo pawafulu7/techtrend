@@ -60,6 +60,18 @@ describe('GeminiTitleTranslator', () => {
       expect(mockTransport.invoke).not.toHaveBeenCalled();
     });
 
+    it('英語のタイトルでも、本文が日本語の記事は翻訳しない（issue #725）', async () => {
+      const result = await translator.translateTitle({
+        title: 'Reinforcement Learning with Verifiable Rewards',
+        content:
+          '近年のLLMはSFTと呼ばれる教師あり学習を行った後、RLVRと呼ばれる強化学習を行っています。',
+        requestId: 'test-japanese-body',
+      });
+
+      expect(result).toBeNull();
+      expect(mockTransport.invoke).not.toHaveBeenCalled();
+    });
+
     it('should translate English title successfully', async () => {
       mockTransport.invoke.mockResolvedValue({
         status: 'ok',
@@ -128,7 +140,8 @@ describe('GeminiTitleTranslator', () => {
     });
 
     it('should return null when API returns original Japanese title', async () => {
-      const japaneseTitle = 'builderscon 2025 開催中止のお知らせ - builderscon::blog';
+      const japaneseTitle =
+        'builderscon 2025 開催中止のお知らせ - builderscon::blog';
 
       mockTransport.invoke.mockResolvedValue({
         status: 'ok',

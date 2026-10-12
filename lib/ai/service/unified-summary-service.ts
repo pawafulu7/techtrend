@@ -102,6 +102,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
                 const translated = await this.titleTranslator.translateTitle({
                   title: params.title,
                   summary: useSummary ? summary : undefined,
+                  content: params.content,
                   requestId: currentRequestId,
                 });
 
