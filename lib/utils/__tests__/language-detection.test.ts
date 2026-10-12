@@ -1,4 +1,8 @@
-import { isLikelyJapanese, getJapaneseCharRatio } from '../language-detection';
+import {
+  isLikelyJapanese,
+  isLikelyJapaneseBody,
+  getJapaneseCharRatio,
+} from '../language-detection';
 
 describe('isLikelyJapanese', () => {
   describe('Basic functionality', () => {
@@ -35,15 +39,23 @@ describe('isLikelyJapanese', () => {
 
   describe('Edge cases - mixed content', () => {
     it('should return true for mixed title with Japanese content', () => {
-      expect(isLikelyJapanese('builderscon 2025 開催中止のお知らせ - builderscon::blog')).toBe(true);
+      expect(
+        isLikelyJapanese(
+          'builderscon 2025 開催中止のお知らせ - builderscon::blog'
+        )
+      ).toBe(true);
     });
 
     it('should return true for title with Japanese and English', () => {
-      expect(isLikelyJapanese('Microsoft 365とCopilot Proを統合した最上位プラン')).toBe(true);
+      expect(
+        isLikelyJapanese('Microsoft 365とCopilot Proを統合した最上位プラン')
+      ).toBe(true);
     });
 
     it('should return false for pure English titles with spaces', () => {
-      expect(isLikelyJapanese('The best worst hack that saved our bacon')).toBe(false);
+      expect(isLikelyJapanese('The best worst hack that saved our bacon')).toBe(
+        false
+      );
     });
 
     it('should return false for English title with spaces', () => {
@@ -77,5 +89,54 @@ describe('getJapaneseCharRatio', () => {
 
   it('should return 0.0 for empty string', () => {
     expect(getJapaneseCharRatio('')).toBe(0.0);
+  });
+});
+
+// issue #725: 英語のタイトルを付けた日本語の記事を、英語の記事として翻訳しない
+describe('isLikelyJapaneseBody', () => {
+  it('英語やコードが多くても、日本語の文章なら true', () => {
+    expect(
+      isLikelyJapaneseBody(
+        '配列の途中の要素にアクセスする命令 変化した結果の要素が1つであっても配列のまま // start = index const names = ["aaa", "bbb"];'
+      )
+    ).toBe(true);
+  });
+
+  it('日本語の UI（カタカナ・漢字）に囲まれた英語の記事は false', () => {
+    expect(
+      isLikelyJapaneseBody(
+        'エクスプローラー About FAQ ヘルプ Donate 登録 サインイン NON-PROFIT Codeberg is maintained by the non-profit organization Codeberg e.V. and hosts over 300,000 projects.'
+      )
+    ).toBe(false);
+  });
+
+  it('英語だけ・中国語の本文は false', () => {
+    expect(
+      isLikelyJapaneseBody('Codeberg reaches 300k projects this week.')
+    ).toBe(false);
+    expect(
+      isLikelyJapaneseBody('社区版 进行中 在 Warp 之上加入自带提供商能力')
+    ).toBe(false);
+  });
+
+  it('本文が無い・文字が無いときは false（判定できないので翻訳の対象に残す）', () => {
+    expect(isLikelyJapaneseBody(null)).toBe(false);
+    expect(isLikelyJapaneseBody(undefined)).toBe(false);
+    expect(isLikelyJapaneseBody('')).toBe(false);
+    expect(isLikelyJapaneseBody('12345 !!! ---')).toBe(false);
+  });
+
+  it('ひらがなが文字の 2% 以上なら true、2% 未満なら false', () => {
+    // 英字 98 字 + ひらがな 2 字 = 100 字中 2%
+    expect(isLikelyJapaneseBody('a'.repeat(98) + 'もの')).toBe(true);
+    // 英字 99 字 + ひらがな 1 字 = 100 字中 1%（日本語の UI の文言が少し混ざった英語の記事）
+    expect(isLikelyJapaneseBody('a'.repeat(99) + 'の')).toBe(false);
+  });
+
+  it('先頭の 3000 字だけで判定する', () => {
+    const english = 'English text without kana. '.repeat(120); // 3000 字を超える
+    expect(
+      isLikelyJapaneseBody(english + 'これは日本語の文章です。'.repeat(50))
+    ).toBe(false);
   });
 });

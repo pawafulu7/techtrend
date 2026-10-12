@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { RelatedArticles } from '@/app/components/article/related-articles';
 
@@ -81,6 +81,32 @@ describe('RelatedArticles', () => {
 
     const secondLink = screen.getByText('Test Related Article 2').closest('a');
     expect(secondLink).toHaveAttribute('href', '/articles/article-2');
+  });
+
+  it('翻訳した記事にだけ、ソース名の後ろに翻訳のバッジを出す（issue #725）', () => {
+    mockUseRelatedArticles.mockReturnValue({
+      data: {
+        articles: [
+          { ...mockArticles[0], translatedTitle: '翻訳した関連記事' },
+          mockArticles[1],
+        ],
+        algorithm: 'tag',
+      },
+      isLoading: false,
+      error: null,
+    });
+
+    render(<RelatedArticles articleId="test-article" />);
+
+    const links = screen.getAllByTestId('related-article-link');
+    expect(within(links[0]).getByText('翻訳した関連記事')).toBeInTheDocument();
+    expect(
+      within(links[0]).getByText('Test Source 1').parentElement
+        ?.nextElementSibling
+    ).toBe(within(links[0]).getByTestId('translation-badge'));
+    expect(
+      within(links[1]).queryByTestId('translation-badge')
+    ).not.toBeInTheDocument();
   });
 
   it('タグ方式では関連の理由を共通タグの数で表示し、% は出さない', async () => {

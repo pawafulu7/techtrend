@@ -11,6 +11,7 @@ import { formatDateWithTime } from '@/lib/utils/date';
 import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { SourceLabel } from '@/app/components/article/article-meta';
+import { TranslationBadge } from '@/components/ui/translation-badge';
 import { ShareButton } from '@/app/components/article/share-button';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -143,8 +144,13 @@ export function HistoryArticleCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            {/* Source */}
-            <SourceLabel name={article.companyName ?? article.source.name} />
+            {/* Source（翻訳した記事はバッジが次の行へ離れないよう、ソース名とまとめる） */}
+            <span className="flex min-w-0 items-center gap-2">
+              <SourceLabel name={article.companyName ?? article.source.name} />
+              {article.translatedTitle && (
+                <TranslationBadge className="shrink-0" />
+              )}
+            </span>
 
             {/* Viewed At Badge */}
             {viewedAt && viewedTimeAgo && (

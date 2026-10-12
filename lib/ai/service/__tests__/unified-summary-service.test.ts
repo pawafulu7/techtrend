@@ -511,6 +511,7 @@ describe('UnifiedSummaryServiceImpl', () => {
       expect(mockTitleTranslator.translateTitle).toHaveBeenCalledWith({
         title: 'English Title',
         summary: 'Test Summary',
+        content: 'This is a test article content.',
         requestId: expect.stringMatching(/^\d+-0$/),
       });
     });
@@ -657,12 +658,14 @@ describe('UnifiedSummaryServiceImpl', () => {
       expect(mockTitleTranslator.translateTitle).toHaveBeenNthCalledWith(1, {
         title: 'English Title',
         summary: 'Test Summary',
+        content: 'This is a test article content.',
         requestId: expect.stringMatching(/^\d+-0$/),
       });
 
       expect(mockTitleTranslator.translateTitle).toHaveBeenNthCalledWith(2, {
         title: 'English Title',
         summary: undefined,
+        content: 'This is a test article content.',
         requestId: expect.stringMatching(/^\d+-0-retry1$/),
       });
     });
@@ -824,12 +827,14 @@ describe('UnifiedSummaryServiceImpl', () => {
       expect(mockTitleTranslator.translateTitle).toHaveBeenNthCalledWith(1, {
         title: 'English Title',
         summary: 'Test Summary',
+        content: 'This is a test article content.',
         requestId: expect.stringMatching(/^\d+-0$/),
       });
 
       expect(mockTitleTranslator.translateTitle).toHaveBeenNthCalledWith(2, {
         title: 'English Title',
         summary: undefined,
+        content: 'This is a test article content.',
         requestId: expect.stringMatching(/^\d+-0-retry1$/),
       });
     });
@@ -884,6 +889,51 @@ describe('UnifiedSummaryServiceImpl', () => {
 
       expect(result.translatedTitle).toBe('翻訳成功');
       expect(mockTitleTranslator.translateTitle).toHaveBeenCalledTimes(2);
+    });
+
+    it('訳さない記事（null）はやり直さない（issue #725）', async () => {
+      service = new UnifiedSummaryServiceImpl(
+        mockSummaryProvider,
+        mockQualityChecker,
+        mockPostProcessor,
+        mockTitleTranslator,
+        mockEmbeddingScheduler as any,
+        {
+          qualityThreshold: 70,
+          maxRetries: 3,
+          translationEnabled: true,
+        }
+      );
+
+      mockSummaryProvider.summarize.mockResolvedValue({
+        headline: 'Test Summary',
+        detailedSummary: '・Item 1\n・Item 2\n・Item 3',
+        category: 'Technology',
+        tags: ['test'],
+        confidence: 0.9,
+      });
+      mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
+      mockPostProcessor.formatTags.mockReturnValue(['test']);
+      mockQualityChecker.checkQuality.mockReturnValue({
+        isValid: true,
+        issues: [],
+        requiresRegeneration: false,
+        score: 80,
+        itemCount: 3,
+        itemCountValid: true,
+      });
+      mockTitleTranslator.translateTitle.mockResolvedValue(null);
+
+      const result = await service.generateSummary({
+        title: 'English Title',
+        content: '本文は日本語で書かれています。',
+      });
+
+      expect(result.translatedTitle).toBeUndefined();
+      expect(mockTitleTranslator.translateTitle).toHaveBeenCalledTimes(1);
     });
   });
 });

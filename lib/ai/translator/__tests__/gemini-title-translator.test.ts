@@ -60,6 +60,43 @@ describe('GeminiTitleTranslator', () => {
       expect(mockTransport.invoke).not.toHaveBeenCalled();
     });
 
+    it('英語のタイトルでも、本文が日本語の記事は翻訳しない（issue #725）', async () => {
+      const result = await translator.translateTitle({
+        title: 'Reinforcement Learning with Verifiable Rewards',
+        content:
+          '近年のLLMはSFTと呼ばれる教師あり学習を行った後、RLVRと呼ばれる強化学習を行っています。',
+        requestId: 'test-japanese-body',
+      });
+
+      expect(result).toBeNull();
+      expect(mockTransport.invoke).not.toHaveBeenCalled();
+    });
+
+    it('本文が英語なら、日本語の UI の文字を含んでいても翻訳する（issue #725）', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [{ text: 'Codeberg が30万プロジェクトに到達' }],
+              },
+            },
+          ],
+        },
+      });
+
+      const result = await translator.translateTitle({
+        title: 'Codeberg Reaches 300k Projects',
+        content:
+          'エクスプローラー About FAQ ヘルプ Donate 登録 サインイン NON-PROFIT Codeberg is maintained by the non-profit organization Codeberg e.V. and hosts over 300,000 projects.',
+        requestId: 'test-english-body',
+      });
+
+      expect(result).toBe('Codeberg が30万プロジェクトに到達');
+      expect(mockTransport.invoke).toHaveBeenCalledTimes(1);
+    });
+
     it('should translate English title successfully', async () => {
       mockTransport.invoke.mockResolvedValue({
         status: 'ok',
@@ -128,7 +165,8 @@ describe('GeminiTitleTranslator', () => {
     });
 
     it('should return null when API returns original Japanese title', async () => {
-      const japaneseTitle = 'builderscon 2025 開催中止のお知らせ - builderscon::blog';
+      const japaneseTitle =
+        'builderscon 2025 開催中止のお知らせ - builderscon::blog';
 
       mockTransport.invoke.mockResolvedValue({
         status: 'ok',

@@ -5,6 +5,7 @@ import { Newspaper } from 'lucide-react';
 import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
 import { formatDate } from './utils';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
+import { TranslationBadge } from '@/components/ui/translation-badge';
 
 interface ArticleListItemProps {
   article: {
@@ -76,10 +77,19 @@ export function ArticleListItem({
         <h3 className="text-h3 line-clamp-2 text-[var(--tt-color-text)]">
           {displayTitle}
         </h3>
-        <div className="mt-1 flex items-center gap-2 text-xs text-[var(--tt-color-text-muted)]">
-          {article.source?.name && (
-            <span className="max-w-[160px] truncate font-medium text-[var(--tt-color-positive)]">
-              {article.source.name}
+        {/* 狭い一覧の列では日付を次の行へ送る。バッジはソース名から離さない */}
+        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[var(--tt-color-text-muted)]">
+          {(article.source?.name || article.translatedTitle) && (
+            <span className="flex min-w-0 items-center gap-2">
+              {article.source?.name && (
+                <span
+                  className="max-w-[160px] min-w-0 truncate font-medium text-[var(--tt-color-positive)]"
+                  title={article.source.name}
+                >
+                  {article.source.name}
+                </span>
+              )}
+              {article.translatedTitle && <TranslationBadge compact />}
             </span>
           )}
           {dateStr && <span className="shrink-0">{dateStr}</span>}

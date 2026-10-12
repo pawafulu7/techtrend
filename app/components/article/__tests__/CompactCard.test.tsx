@@ -88,6 +88,22 @@ describe('CompactCard', () => {
       expect(screen.getByText('Test Article Title')).toBeInTheDocument();
     });
 
+    it('翻訳した記事にだけ、ソース名の後ろに翻訳のバッジを出す（issue #725）', () => {
+      const { rerender } = render(<CompactCard article={mockArticle} />);
+      expect(screen.queryByTestId('translation-badge')).not.toBeInTheDocument();
+
+      rerender(
+        <CompactCard
+          article={{ ...mockArticle, translatedTitle: '翻訳したタイトル' }}
+        />
+      );
+      const badge = screen.getByTestId('translation-badge');
+      expect(badge).toHaveTextContent('自動翻訳');
+      expect(screen.getByTestId('article-source').nextElementSibling).toBe(
+        badge
+      );
+    });
+
     it('要約を表示しない（コンパクト表示の特徴）', () => {
       render(<CompactCard article={mockArticle} />);
 

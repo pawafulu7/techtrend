@@ -10,6 +10,7 @@ import { formatDateWithTime } from '@/lib/utils/date';
 import { authClient } from '@/lib/auth/auth-client';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { useReadStatus } from '@/app/components/article/hooks/use-read-status';
+import { TranslationBadge } from '@/components/ui/translation-badge';
 
 interface StoryArticle {
   id: string;
@@ -251,7 +252,12 @@ function StoryMemberRow({
           {title}
         </Link>
         <p className="text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 text-xs">
-          <span>{article.source.name}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="min-w-0 truncate" title={article.source.name}>
+              {article.source.name}
+            </span>
+            {article.translatedTitle && <TranslationBadge compact />}
+          </span>
           <span>{formatDateWithTime(article.publishedAt)}</span>
         </p>
       </div>

@@ -48,6 +48,42 @@ export function isLikelyJapanese(
   return true;
 }
 
+/** 本文の判定で見る先頭の文字数。長い本文を全部数えなくても言語は決まる */
+const BODY_SAMPLE_LENGTH = 3000;
+
+/**
+ * 本文を日本語とみなす、ひらがなの割合（英字・かな・漢字に占める割合）の下限。
+ * 日本語の UI（GitHub・Speaker Deck など）に囲まれた英語の記事は、カタカナと漢字は多いが
+ * ひらがなはほぼ無い（2% 未満）。日本語の文章は英語やコードが多くても 2% を超える（issue #725）
+ */
+const BODY_HIRAGANA_THRESHOLD = 0.02;
+
+const HIRAGANA_PATTERN = /[\u3040-\u309F]/g;
+const LETTER_PATTERN = /[A-Za-z\u3040-\u30FF\u4E00-\u9FFF]/g;
+
+/**
+ * 記事の本文が日本語かを、先頭のひらがなの割合で判定する。
+ * タイトルが英語でも本文が日本語の記事（Zenn など）は、英語の記事として翻訳しない
+ *
+ * @example
+ * isLikelyJapaneseBody('配列の途中の要素にアクセスする命令 const a = [1];'); // true
+ * isLikelyJapaneseBody('エクスプローラー ヘルプ サインイン Codeberg is maintained by ...'); // false
+ */
+export function isLikelyJapaneseBody(text: string | null | undefined): boolean {
+  if (!text) {
+    return false;
+  }
+
+  const sample = text.slice(0, BODY_SAMPLE_LENGTH);
+  const letters = sample.match(LETTER_PATTERN)?.length ?? 0;
+  if (letters === 0) {
+    return false;
+  }
+
+  const hiragana = sample.match(HIRAGANA_PATTERN)?.length ?? 0;
+  return hiragana / letters >= BODY_HIRAGANA_THRESHOLD;
+}
+
 /**
  * Calculates the ratio of Japanese characters in the given text.
  *

@@ -102,10 +102,16 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
                 const translated = await this.titleTranslator.translateTitle({
                   title: params.title,
                   summary: useSummary ? summary : undefined,
+                  content: params.content,
                   requestId: currentRequestId,
                 });
 
-                translatedTitle = translated?.trim() || undefined;
+                // null は訳さない記事（日本語のタイトル・本文、翻訳が無効）。やり直しても変わらない
+                if (translated === null) {
+                  break;
+                }
+
+                translatedTitle = translated.trim() || undefined;
 
                 if (translatedTitle) {
                   if (translationAttempt > 0) {

@@ -1,6 +1,9 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { getAppDependencies } from '@/lib/di/bootstrap';
-import { isLikelyJapanese } from '@/lib/utils/language-detection';
+import {
+  isLikelyJapanese,
+  isLikelyJapaneseBody,
+} from '@/lib/utils/language-detection';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
 const prisma = createPrismaClient();
@@ -23,18 +26,22 @@ async function fixMissingTranslations(options: FixOptions = {}) {
   console.error(`Target: Up to ${limit} articles, Batch size: ${batchSize} articles/min\n`);
 
   // 1. Extract target articles
-  const allArticles = await prisma.article.findMany({
-    where: {
-      translatedTitle: null,
-      summary: { not: null }
-    },
-    orderBy: { publishedAt: 'desc' },
-    take: limit * 2, // Fetch more to account for filtering
-  });
+  // 日本語タイトルの記事は SQL で除く。件数で先に打ち切ってから除くと、訳さない記事が毎回枠を
+  // 占めて古い英語記事に届かない（issue #725）。本文は判定に使う先頭 3000 字だけ読む
+  const allArticles = await prisma.$queryRaw<
+    { id: string; title: string; summary: string; content: string | null }[]
+  >`
+    SELECT id, title, summary, left(content, 3000) AS content
+    FROM "Article"
+    WHERE "translatedTitle" IS NULL
+      AND summary IS NOT NULL
+      AND title !~ '[\u3000-\u30FF\u4E00-\u9FFF]'
+    ORDER BY "publishedAt" DESC
+  `;
 
-  // Filter articles with English titles (excluding Japanese titles)
+  // Filter English articles (excluding Japanese titles and Japanese bodies with English titles)
   const articles = allArticles
-    .filter(article => !isLikelyJapanese(article.title))
+    .filter(article => !isLikelyJapanese(article.title) && !isLikelyJapaneseBody(article.content))
     .slice(0, limit);
 
   console.error(`Target articles: ${articles.length}\n`);
@@ -74,13 +81,14 @@ async function fixMissingTranslations(options: FixOptions = {}) {
           const translated = await titleTranslator.translateTitle({
             title: article.title,
             summary: article.summary ?? undefined,
+            content: article.content ?? undefined,
             requestId,
           });
 
           // Handle null response (Japanese title detected or translation disabled)
           if (translated === null) {
             skipCount++;
-            console.error(`  SKIP [${article.id}] Japanese title detected or translation disabled`);
+            console.error(`  SKIP [${article.id}] Japanese article detected or translation disabled`);
             return;
           }
 

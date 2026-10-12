@@ -32,6 +32,19 @@ describe('TranslationBadge', () => {
     expect(screen.getByTestId('test-badge')).toBeInTheDocument();
   });
 
+  // 行の高さ・折り返しは RTL では確かめられないので、画面（スクリーンショット）で確かめる
+  it('compact でも文言と読み上げの名前は変わらない（issue #725）', () => {
+    render(<TranslationBadge compact />);
+    const badge = screen.getByText('自動翻訳');
+    expect(badge).toHaveAccessibleName(
+      'この記事は英語から自動翻訳されています'
+    );
+    expect(badge).toHaveAttribute(
+      'title',
+      'この記事は英語から自動翻訳されています'
+    );
+  });
+
   it('has correct styling using info design tokens', () => {
     render(<TranslationBadge />);
     const badge = screen.getByText('自動翻訳');
