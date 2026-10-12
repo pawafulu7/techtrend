@@ -2,7 +2,7 @@
  * 管理 API が返す問い合わせの形（一覧と更新で共通、サーバーだけで使う）
  */
 import type { Prisma } from '@/lib/prisma-exports';
-import type { InquiryListItem } from '@/app/admin/inquiries/_types';
+import type { InquiryListItem } from './types';
 
 export const INQUIRY_LIST_SELECT = {
   id: true,
@@ -12,7 +12,15 @@ export const INQUIRY_LIST_SELECT = {
   contactEmail: true,
   createdAt: true,
   updatedAt: true,
-  user: { select: { id: true, name: true, email: true, deletedAt: true } },
+  user: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      emailVerified: true,
+      deletedAt: true,
+    },
+  },
 } as const satisfies Prisma.InquirySelect;
 
 type InquiryRow = Prisma.InquiryGetPayload<{
@@ -33,6 +41,7 @@ export function toInquiryListItem(row: InquiryRow): InquiryListItem {
           id: row.user.id,
           name: row.user.name,
           email: row.user.email,
+          emailVerified: row.user.emailVerified,
           deletedAt: row.user.deletedAt?.toISOString() ?? null,
         }
       : null,

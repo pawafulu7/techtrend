@@ -85,6 +85,46 @@ describe('readJsonWithLimit', () => {
     });
   });
 
+  it('読み取りの途中で失敗したら invalid_json（例外を外へ出さない）', async () => {
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.error(new Error('connection reset'));
+      },
+    });
+    const request = new Request('http://localhost/api/test', {
+      method: 'POST',
+      body,
+      duplex: 'half',
+    } as RequestInit);
+
+    await expect(readJsonWithLimit(request, 1024)).resolves.toEqual({
+      ok: false,
+      reason: 'invalid_json',
+    });
+  });
+
+  it('上限を超えた後に読むのを止められなくても too_large', async () => {
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('x'.repeat(2048)));
+      },
+      cancel() {
+        throw new Error('cancel failed');
+      },
+    });
+    const request = new Request('http://localhost/api/test', {
+      method: 'POST',
+      body,
+      duplex: 'half',
+    } as RequestInit);
+
+    await expect(readJsonWithLimit(request, 1024)).resolves.toEqual({
+      ok: false,
+      reason: 'too_large',
+    });
+  });
+
   it('本文が無ければ invalid_json', async () => {
     const request = new Request('http://localhost/api/test', {
       method: 'POST',

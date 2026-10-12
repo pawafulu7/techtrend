@@ -39,6 +39,10 @@ import { GET } from '@/app/api/admin/inquiries/route';
 import { PATCH } from '@/app/api/admin/inquiries/[id]/route';
 
 const prismaMock = prisma as any;
+// トランザクションに渡す tx。一覧と件数がトランザクションの中で取られたことを確かめるため、prisma とは分ける
+const txMock = {
+  inquiry: { findMany: jest.fn(), groupBy: jest.fn() },
+};
 const mockLogger = logger as unknown as Record<'info' | 'error', jest.Mock>;
 
 const ID = 'ckinquiry00000000000000001';
@@ -75,12 +79,14 @@ function patch(id: string, body: unknown) {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  prismaMock.$transaction = jest.fn(async (fn: Function) => fn(prismaMock));
+  prismaMock.$transaction = jest.fn(async (fn: Function) => fn(txMock));
   prismaMock.inquiry.findMany.mockReset();
   prismaMock.inquiry.groupBy.mockReset();
   prismaMock.inquiry.update.mockReset();
-  prismaMock.inquiry.findMany.mockResolvedValue([row()]);
-  prismaMock.inquiry.groupBy.mockResolvedValue([
+  txMock.inquiry.findMany.mockReset();
+  txMock.inquiry.groupBy.mockReset();
+  txMock.inquiry.findMany.mockResolvedValue([row()]);
+  txMock.inquiry.groupBy.mockResolvedValue([
     { status: 'OPEN', _count: { _all: 3 } },
     { status: 'RESOLVED', _count: { _all: 12 } },
   ]);
@@ -111,7 +117,7 @@ describe('GET /api/admin/inquiries', () => {
   it('既定は全件を新しい順（同時刻は id 順）で 20 件', async () => {
     await getList();
 
-    expect(prismaMock.inquiry.findMany).toHaveBeenCalledWith(
+    expect(txMock.inquiry.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {},
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -122,10 +128,19 @@ describe('GET /api/admin/inquiries', () => {
   });
 
   it('一覧と件数を同じトランザクション（RepeatableRead）で取る', async () => {
-    await getList();
+    await getList('?status=OPEN');
 
     expect(prismaMock.$transaction).toHaveBeenCalledWith(expect.any(Function), {
       isolationLevel: 'RepeatableRead',
+    });
+    // トランザクションの外（prisma 直）では引かない
+    expect(prismaMock.inquiry.findMany).not.toHaveBeenCalled();
+    expect(prismaMock.inquiry.groupBy).not.toHaveBeenCalled();
+    // 件数は絞り込みに関係なく全状況を数える（where を付けない）
+    expect(txMock.inquiry.groupBy).toHaveBeenCalledWith({
+      by: ['status'],
+      _count: { _all: true },
+      orderBy: { status: 'asc' },
     });
   });
 
@@ -133,15 +148,15 @@ describe('GET /api/admin/inquiries', () => {
     const response = await getList('?status=RESOLVED&page=2&perPage=5');
     const json = await response.json();
 
-    expect(prismaMock.inquiry.findMany).toHaveBeenCalledWith(
+    expect(txMock.inquiry.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { status: 'RESOLVED' }, skip: 5, take: 5 })
     );
     expect(json.pagination).toEqual({ page: 2, limit: 5, total: 12, totalPages: 3 });
   });
 
   it('0 件でも totalPages は 1', async () => {
-    prismaMock.inquiry.findMany.mockResolvedValue([]);
-    prismaMock.inquiry.groupBy.mockResolvedValue([]);
+    txMock.inquiry.findMany.mockResolvedValue([]);
+    txMock.inquiry.groupBy.mockResolvedValue([]);
 
     const json = await (await getList('?status=OPEN')).json();
 
@@ -150,12 +165,13 @@ describe('GET /api/admin/inquiries', () => {
   });
 
   it('退会済みの送信者は deletedAt を ISO 文字列で返す', async () => {
-    prismaMock.inquiry.findMany.mockResolvedValue([
+    txMock.inquiry.findMany.mockResolvedValue([
       row({
         user: {
           id: 'u1',
           name: 'User',
           email: 'u1@example.com',
+          emailVerified: false,
           deletedAt: new Date('2026-10-01T00:00:00.000Z'),
         },
       }),
@@ -167,6 +183,7 @@ describe('GET /api/admin/inquiries', () => {
       id: 'u1',
       name: 'User',
       email: 'u1@example.com',
+      emailVerified: false,
       deletedAt: '2026-10-01T00:00:00.000Z',
     });
   });
@@ -191,15 +208,16 @@ describe('GET /api/admin/inquiries', () => {
 
     expect(response.status).toBe(400);
     expect(json.error).toMatchObject({ code: 'VALIDATION_ERROR', field });
-    expect(prismaMock.inquiry.findMany).not.toHaveBeenCalled();
+    expect(txMock.inquiry.findMany).not.toHaveBeenCalled();
   });
 
   it('DB の失敗は 500 で、ログに値を渡さない', async () => {
-    prismaMock.inquiry.findMany.mockRejectedValue(new Error('db down 本文-secret'));
+    txMock.inquiry.findMany.mockRejectedValue(new Error('db down 本文-secret'));
 
     const response = await getList();
 
     expect(response.status).toBe(500);
+    expect((await response.json()).error.code).toBe('DATABASE_ERROR');
     expect(JSON.stringify(mockLogger.error.mock.calls)).not.toContain('本文-secret');
   });
 });

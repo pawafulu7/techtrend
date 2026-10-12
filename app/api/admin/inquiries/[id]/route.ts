@@ -13,7 +13,11 @@ import {
 } from '@/lib/middleware/with-admin-auth';
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
-import { ValidationError, formatErrorResponse } from '@/lib/errors';
+import {
+  DatabaseError,
+  ValidationError,
+  formatErrorResponse,
+} from '@/lib/errors';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
 import {
   firstIssue,
@@ -24,7 +28,7 @@ import {
   INQUIRY_LIST_SELECT,
   toInquiryListItem,
 } from '@/lib/inquiries/serialize';
-import type { AdminInquiryUpdateResponse } from '@/app/admin/inquiries/_types';
+import type { AdminInquiryUpdateResponse } from '@/lib/inquiries/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,7 +96,7 @@ async function handler(
       '[AdminInquiriesAPI] Failed to update inquiry'
     );
     return NextResponse.json(
-      { error: 'Failed to update inquiry' },
+      formatErrorResponse(new DatabaseError('Failed to update inquiry')),
       { status: 500 }
     );
   }

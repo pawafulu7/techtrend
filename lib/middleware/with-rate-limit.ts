@@ -6,7 +6,6 @@ import {
 } from '@/lib/config/rate-limits';
 import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
 import { trace } from '@opentelemetry/api';
-import { hashSensitiveValue } from '@/lib/logger';
 import { resolveSessionFromRequest } from './session-context';
 import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
 
@@ -85,21 +84,28 @@ export function withRateLimit(
 
       // Success: Execute handler with session in context (SessionContext shared across chain)
       const response = await handler(request, { ...context, session });
-      response.headers.set('X-RateLimit-Limit', rateLimitInfo.limit.toString());
-      response.headers.set(
-        'X-RateLimit-Remaining',
-        rateLimitInfo.remaining.toString()
-      );
-      response.headers.set(
-        'X-RateLimit-Reset',
-        rateLimitInfo.reset.toISOString()
-      );
+      // handler の中で別の制限に当たって 429 を返したときは、その制限のヘッダーを残す
+      // （上書きすると、本文と食い違う外側の制限の残りが載る）
+      if (!response.headers.has('X-RateLimit-Limit')) {
+        response.headers.set(
+          'X-RateLimit-Limit',
+          rateLimitInfo.limit.toString()
+        );
+        response.headers.set(
+          'X-RateLimit-Remaining',
+          rateLimitInfo.remaining.toString()
+        );
+        response.headers.set(
+          'X-RateLimit-Reset',
+          rateLimitInfo.reset.toISOString()
+        );
+      }
 
       // Telemetry (debug level - only log allowed events at debug to reduce noise)
-      // limitKey は ip:<IP> や user:<ID> なので、そのまま載せずにハッシュにする
+      // limitKey（ip:<IP> や user:<ID>）は載せない。短いハッシュでは IPv4 を総当たりで戻せるため
       span?.addEvent('ratelimit.allowed', {
         configKey,
-        limitKey: hashSensitiveValue(limitKey),
+        keyStrategy: config.keyStrategy,
         remaining: rateLimitInfo.remaining,
       });
 

@@ -9,21 +9,20 @@ import { ErrorState } from '@/components/ui-v2/error-state';
 import { authClient } from '@/lib/auth/auth-client';
 import { useIsHydrated } from '@/lib/hooks/use-is-hydrated';
 import {
+  INQUIRY_STATUSES,
   INQUIRY_STATUS_LABELS,
   isInquiryStatus,
 } from '@/lib/inquiries/constants';
-import { InquiriesTable } from './inquiries-table';
-import { InquiryDetailDialog } from './inquiry-detail-dialog';
 import type {
   AdminInquiriesResponse,
   InquiryListItem,
   InquiryStatusFilter,
-} from '../_types';
+} from '@/lib/inquiries/types';
+import { InquiriesTable } from './inquiries-table';
+import { InquiryDetailDialog } from './inquiry-detail-dialog';
 
-const STATUS_FILTERS: InquiryStatusFilter[] = [
-  'OPEN',
-  'IN_PROGRESS',
-  'RESOLVED',
+const STATUS_FILTERS: readonly InquiryStatusFilter[] = [
+  ...INQUIRY_STATUSES,
   'all',
 ];
 
@@ -31,9 +30,17 @@ function filterLabel(filter: InquiryStatusFilter): string {
   return filter === 'all' ? 'すべて' : INQUIRY_STATUS_LABELS[filter];
 }
 
+/** 一覧の取得の失敗。認証・認可の失敗（401・403）を見分けるために status を持つ */
+class InquiriesFetchError extends Error {
+  constructor(readonly status: number) {
+    super(`Failed to fetch inquiries (${status})`);
+  }
+}
+
 async function fetchInquiries(params: {
   page: number;
   status: InquiryStatusFilter;
+  signal?: AbortSignal;
 }): Promise<AdminInquiriesResponse> {
   const searchParams = new URLSearchParams({
     page: String(params.page),
@@ -41,25 +48,63 @@ async function fetchInquiries(params: {
   });
   if (params.status !== 'all') searchParams.set('status', params.status);
 
-  const res = await fetch(`/api/admin/inquiries?${searchParams.toString()}`);
+  const res = await fetch(`/api/admin/inquiries?${searchParams.toString()}`, {
+    signal: params.signal,
+  });
   if (!res.ok) {
-    throw new Error(`Failed to fetch inquiries (${res.status})`);
+    throw new InquiriesFetchError(res.status);
   }
   return res.json();
 }
 
-export function InquiriesPageContent() {
+function isAuthFailure(error: unknown): boolean {
+  return (
+    error instanceof InquiriesFetchError &&
+    (error.status === 401 || error.status === 403)
+  );
+}
+
+interface InquiriesPageContentProps {
+  /** このページを開いた管理者（Server で判定）。ほかのアカウントに替わったらデータを出さない */
+  viewerId: string | null;
+}
+
+export function InquiriesPageContent({ viewerId }: InquiriesPageContentProps) {
+  // ログアウトや別のアカウントへの切り替えでは、問い合わせ（本文・メール）を出し続けない。
+  // 一覧のキャッシュは QueryProvider が ['admin'] ごと捨てるが、表示中のデータは
+  // ここで描画をやめて消す（判定が済むまでは Server の判定を信じる）
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const isHydrated = useIsHydrated();
+  const sessionReady = isHydrated && !sessionPending;
+  const viewerChanged =
+    sessionReady && (session?.user?.id ?? null) !== viewerId;
+
+  if (viewerChanged) {
+    return (
+      <ErrorState
+        title="ログインの状態が変わりました"
+        description="このページを開き直してください。"
+        size="compact"
+      />
+    );
+  }
+
+  return <InquiriesList />;
+}
+
+function InquiriesList() {
   const [status, setStatus] = useState<InquiryStatusFilter>('OPEN');
   const [page, setPage] = useState(1);
   // 詳細は行のコピーで持つ（状況を変えて一覧から消えても、開いている間は残す）
   const [selected, setSelected] = useState<InquiryListItem | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
-  const tableRef = useRef<HTMLDivElement>(null);
+  // 一覧・空・失敗のどれを出していても残る外枠。閉じた後のフォーカスの戻し先にする
+  const regionRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, isFetching, isPlaceholderData, error, refetch } =
     useQuery({
       queryKey: ['admin', 'inquiries', { page, status }],
-      queryFn: () => fetchInquiries({ page, status }),
+      queryFn: ({ signal }) => fetchInquiries({ page, status, signal }),
       placeholderData: keepPreviousData,
       // 開いたままでも、タブに戻れば新着が出るようにする（既定は 5 分・フォーカスで取り直さない）
       staleTime: 30_000,
@@ -73,11 +118,8 @@ export function InquiriesPageContent() {
     setPage(totalPages);
   }
 
-  // ログアウトやセッションの失効では、開いている詳細（本文・メール）も閉じる。
-  // 一覧のキャッシュは QueryProvider が ['admin'] ごと捨てる
-  const { data: session, isPending: sessionPending } = authClient.useSession();
-  const isHydrated = useIsHydrated();
-  if (selected && isHydrated && !sessionPending && !session) {
+  // セッションの失効や管理者でなくなったこと（401・403）が分かったら、詳細も閉じる
+  if (selected && isAuthFailure(error)) {
     setSelected(null);
   }
 
@@ -89,6 +131,9 @@ export function InquiriesPageContent() {
   };
 
   const counts = data?.counts;
+  // 前の条件の結果を出している間は、その「0件」を新しい条件の空として出さない
+  const showEmpty =
+    data !== undefined && !isPlaceholderData && data.data.length === 0;
 
   return (
     <div className="space-y-4">
@@ -115,38 +160,46 @@ export function InquiriesPageContent() {
         ))}
       </ToggleGroup>
 
-      {error ? (
-        <ErrorState
-          title="問い合わせを読み込めませんでした"
-          description="時間をおいてもう一度読み込んでください。"
-          onRetry={() => void refetch()}
-          size="compact"
-        />
-      ) : data && data.data.length === 0 && !isLoading ? (
-        <EmptyState
-          icon={Inbox}
-          title={
-            status === 'all'
-              ? '問い合わせはまだありません'
-              : `${filterLabel(status)}の問い合わせはありません`
-          }
-          size="compact"
-        />
-      ) : (
-        <InquiriesTable
-          ref={tableRef}
-          items={data?.data ?? []}
-          isLoading={isLoading}
-          isFetching={isFetching && isPlaceholderData}
-          page={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          onSelect={(item, opener) => {
-            openerRef.current = opener;
-            setSelected(item);
-          }}
-        />
-      )}
+      <div
+        ref={regionRef}
+        tabIndex={-1}
+        className="space-y-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-(--tt-color-primary)"
+        data-testid="inquiries-region"
+      >
+        {error && (
+          // 手元にデータがあるとき（裏での取り直しの失敗）は、一覧を隠さずに上に出す
+          <ErrorState
+            title="問い合わせを読み込めませんでした"
+            description="時間をおいてもう一度読み込んでください。"
+            onRetry={() => void refetch()}
+            size="compact"
+          />
+        )}
+        {showEmpty ? (
+          <EmptyState
+            icon={Inbox}
+            title={
+              status === 'all'
+                ? '問い合わせはまだありません'
+                : `${filterLabel(status)}の問い合わせはありません`
+            }
+            size="compact"
+          />
+        ) : error && !data ? null : (
+          <InquiriesTable
+            items={data?.data ?? []}
+            isLoading={isLoading}
+            isFetching={isFetching && isPlaceholderData}
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            onSelect={(item, opener) => {
+              openerRef.current = opener;
+              setSelected(item);
+            }}
+          />
+        )}
+      </div>
 
       <InquiryDetailDialog
         inquiry={selected}
@@ -159,13 +212,13 @@ export function InquiriesPageContent() {
         }}
         onCloseAutoFocus={(event) => {
           // 状態で開閉しているので Radix は戻し先を知らない。開いたボタンへ戻し、
-          // 行が一覧から消えていれば表の外枠へ戻す
+          // 行が一覧から消えていれば（最後の1件で表ごと消えた場合も）外枠へ戻す
           event.preventDefault();
           const opener = openerRef.current;
           if (opener?.isConnected) {
             opener.focus();
           } else {
-            tableRef.current?.focus();
+            regionRef.current?.focus();
           }
         }}
       />

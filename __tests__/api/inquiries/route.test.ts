@@ -5,6 +5,8 @@
  * 素通しにし、withRateLimit が handler に渡すセッションだけを再現する。
  */
 let currentSession: unknown = null;
+// 保存件数の全体上限の limiter。保存に失敗したら reward で枠を返す
+const mockGlobalLimiter = { reward: jest.fn(() => Promise.resolve()) };
 
 jest.mock('@/lib/middleware/csrf-protection', () => ({
   withCSRFProtection: (handler: Function) => handler,
@@ -27,7 +29,7 @@ jest.mock('@/lib/rate-limiter', () => {
   return {
     ...actual,
     checkRateLimit: jest.fn(),
-    createRateLimiterFromConfig: jest.fn(() => ({})),
+    createRateLimiterFromConfig: jest.fn(() => mockGlobalLimiter),
   };
 });
 
@@ -116,7 +118,9 @@ describe('POST /api/inquiries', () => {
       });
 
       expect(status).toBe(201);
-      expect(json).toEqual({ data: { received: true, linkedToAccount: false } });
+      expect(json).toEqual({
+        data: { received: true, linkedToAccount: false, hasReplyChannel: true },
+      });
       expect(prismaMock.inquiry.create).toHaveBeenCalledWith({
         data: {
           category: 'FEATURE_REQUEST',
@@ -144,6 +148,7 @@ describe('POST /api/inquiries', () => {
 
       expect(status).toBe(201);
       expect(json.data.linkedToAccount).toBe(true);
+      expect(json.data.hasReplyChannel).toBe(true);
       expect(prismaMock.inquiry.create.mock.calls[0][0].data).toMatchObject({
         userId: 'user-1',
         contactEmail: 'account@example.com',
@@ -176,11 +181,72 @@ describe('POST /api/inquiries', () => {
       const { status, json } = await send(validBody);
 
       expect(status).toBe(201);
-      expect(json.data.linkedToAccount).toBe(false);
+      // 紐付けは外れたが、送信時のアカウントのメールは返信先として残る
+      expect(json.data).toMatchObject({
+        linkedToAccount: false,
+        hasReplyChannel: true,
+      });
       expect(prismaMock.inquiry.create).toHaveBeenCalledTimes(2);
       expect(prismaMock.inquiry.create.mock.calls[1][0].data).toMatchObject({
         userId: null,
         contactEmail: 'account@example.com',
+      });
+    });
+
+    it('未ログインの送信で P2003 になっても保存し直さず 500', async () => {
+      prismaMock.inquiry.create.mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError('fk', {
+          code: 'P2003',
+          clientVersion: 'test',
+        })
+      );
+
+      const { status } = await send(validBody);
+
+      expect(status).toBe(500);
+      expect(prismaMock.inquiry.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('保存し直しにも失敗したら 500 で、全体の枠を返す', async () => {
+      signedIn();
+      prismaMock.inquiry.create
+        .mockRejectedValueOnce(
+          new Prisma.PrismaClientKnownRequestError('fk', {
+            code: 'P2003',
+            clientVersion: 'test',
+          })
+        )
+        .mockRejectedValueOnce(new Error('db down'));
+
+      const { status } = await send(validBody);
+
+      expect(status).toBe(500);
+      expect(mockGlobalLimiter.reward).toHaveBeenCalledWith('inquiry:global', 1);
+    });
+
+    it('アカウントのメールが列の上限（254 文字）を超えるなら返信先にせず、紐付けは残す', async () => {
+      signedIn({ email: `${'a'.repeat(250)}@example.com` });
+
+      const { status, json } = await send(validBody);
+
+      expect(status).toBe(201);
+      expect(json.data).toMatchObject({
+        linkedToAccount: true,
+        hasReplyChannel: false,
+      });
+      expect(prismaMock.inquiry.create.mock.calls[0][0].data).toMatchObject({
+        userId: 'user-1',
+        contactEmail: null,
+      });
+    });
+
+    it('未ログインで返信先が無ければ hasReplyChannel は false', async () => {
+      const { json } = await send(validBody);
+
+      expect(json.data).toEqual({
+        received: true,
+        linkedToAccount: false,
+        hasReplyChannel: false,
       });
     });
 
@@ -262,7 +328,9 @@ describe('POST /api/inquiries', () => {
       const { status, json } = await send({ ...validBody, website: 'http://spam.example' });
 
       expect(status).toBe(201);
-      expect(json).toEqual({ data: { received: true, linkedToAccount: false } });
+      expect(json).toEqual({
+        data: { received: true, linkedToAccount: false, hasReplyChannel: false },
+      });
       expect(prismaMock.inquiry.create).not.toHaveBeenCalled();
       expect(mockCheckRateLimit).not.toHaveBeenCalled();
       expect(mockLogger.info).toHaveBeenCalledWith(
@@ -329,6 +397,8 @@ describe('POST /api/inquiries', () => {
         { errorName: 'Error', errorCode: undefined },
         expect.any(String)
       );
+      // 保存できなかった分は全体の枠を返す（DB の障害中の送信で、復旧後の受付を止めない）
+      expect(mockGlobalLimiter.reward).toHaveBeenCalledWith('inquiry:global', 1);
     });
   });
 });

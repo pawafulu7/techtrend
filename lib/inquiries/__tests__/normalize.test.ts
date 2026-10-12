@@ -32,6 +32,18 @@ describe('normalizeInquiryMessage', () => {
     expect(normalizeInquiryMessage('x\u202Ay\u202Ez\u2066w\u2069v')).toBe('xyzwv');
   });
 
+  it('方向の印（LRM・RLM・ALM）とゼロ幅の文字を除く', () => {
+    expect(
+      normalizeInquiryMessage(
+        'a\u200Eb\u200Fc\u061Cd\u200Be\u200Cf\u200Dg\u2060h\uFEFFi'
+      )
+    ).toBe('abcdefghi');
+  });
+
+  it('ゼロ幅の文字だけの本文は空文字になる', () => {
+    expect(normalizeInquiryMessage('\u200B\u200B\uFEFF')).toBe('');
+  });
+
   it('HTML タグは除かない（コード片を残す）', () => {
     const code = '<div class="a">\n  <script>alert(1)</script>\n</div>';
     expect(normalizeInquiryMessage(code)).toBe(code);

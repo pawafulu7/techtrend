@@ -1,4 +1,7 @@
-import type { InquiryCategory, InquiryStatus } from '@/lib/inquiries/constants';
+/**
+ * 管理 API の応答と管理画面で共通の型
+ */
+import type { InquiryCategory, InquiryStatus } from './constants';
 
 /** 管理画面の一覧・詳細に出す問い合わせ（日時は ISO 8601 の文字列） */
 export interface InquiryListItem {
@@ -16,18 +19,15 @@ export interface InquiryListItem {
     id: string;
     name: string | null;
     email: string;
+    /** メールアドレスの確認が済んでいるか（登録時に確認を必須にしていないので false もありうる） */
+    emailVerified: boolean;
     deletedAt: string | null;
   } | null;
 }
 
 export type InquiryStatusFilter = InquiryStatus | 'all';
 
-export interface InquiryCounts {
-  OPEN: number;
-  IN_PROGRESS: number;
-  RESOLVED: number;
-  all: number;
-}
+export type InquiryCounts = Record<InquiryStatus, number> & { all: number };
 
 export interface AdminInquiriesResponse {
   data: InquiryListItem[];

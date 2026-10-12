@@ -10,7 +10,11 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@/lib/prisma-exports';
 import logger from '@/lib/logger';
-import { ValidationError, formatErrorResponse } from '@/lib/errors';
+import {
+  DatabaseError,
+  ValidationError,
+  formatErrorResponse,
+} from '@/lib/errors';
 import { firstIssue, listInquiriesQuerySchema } from '@/lib/inquiries/schema';
 import {
   INQUIRY_LIST_SELECT,
@@ -19,7 +23,7 @@ import {
 import type {
   AdminInquiriesResponse,
   InquiryCounts,
-} from '@/app/admin/inquiries/_types';
+} from '@/lib/inquiries/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,22 +50,23 @@ async function handler(request: NextRequest) {
 
   try {
     // 一覧の行と件数を同じ時点のデータから取る（間に送信や状況の変更が入っても食い違わない）
+    // 同じ接続で順に流れるので、Promise.all にせず順に待つ
     const [rows, groups] = await prisma.$transaction(
-      (tx) =>
-        Promise.all([
-          tx.inquiry.findMany({
-            where,
-            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-            skip: (page - 1) * perPage,
-            take: perPage,
-            select: INQUIRY_LIST_SELECT,
-          }),
-          tx.inquiry.groupBy({
-            by: ['status'],
-            _count: { _all: true },
-            orderBy: { status: 'asc' },
-          }),
-        ]),
+      async (tx) => {
+        const list = await tx.inquiry.findMany({
+          where,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          skip: (page - 1) * perPage,
+          take: perPage,
+          select: INQUIRY_LIST_SELECT,
+        });
+        const statusCounts = await tx.inquiry.groupBy({
+          by: ['status'],
+          _count: { _all: true },
+          orderBy: { status: 'asc' },
+        });
+        return [list, statusCounts] as const;
+      },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead }
     );
 
@@ -99,7 +104,7 @@ async function handler(request: NextRequest) {
       '[AdminInquiriesAPI] Failed to fetch inquiries'
     );
     return NextResponse.json(
-      { error: 'Failed to fetch inquiries' },
+      formatErrorResponse(new DatabaseError('Failed to fetch inquiries')),
       { status: 500, headers: { 'Cache-Control': NO_STORE } }
     );
   }

@@ -65,11 +65,8 @@ test.describe('問い合わせ窓口', () => {
     });
     expect(created.status()).toBe(201);
 
-    const loggedIn = await loginAsAdmin(page);
-    if (!loggedIn) {
-      test.skip(true, 'Admin login/setup unavailable');
-      return;
-    }
+    // 管理者は e2e の global setup（setupAdminUser）が作る。ログインできなければ黙って飛ばさず落とす
+    expect(await loginAsAdmin(page)).toBe(true);
 
     await page.goto('/admin/inquiries');
     const row = page.getByTestId('inquiry-row').filter({ hasText: message });

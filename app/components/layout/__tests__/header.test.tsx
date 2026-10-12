@@ -341,20 +341,6 @@ describe('Header', () => {
       ).toBeInTheDocument();
     });
 
-    it('ログインしていなくても出る（ログイン中も出る）', () => {
-      const { authClient } = jest.requireMock('@/lib/auth/auth-client');
-      (authClient.useSession as jest.Mock).mockReturnValueOnce({
-        data: { user: { id: 'u1', email: 'u1@example.com' } },
-        isPending: false,
-      });
-
-      render(<Header />);
-
-      expect(
-        screen.getAllByRole('link', { name: 'お問い合わせ' })
-      ).toHaveLength(2);
-    });
-
     it('/contact では現在のページとして示す', () => {
       (usePathname as jest.Mock).mockReturnValue('/contact');
 

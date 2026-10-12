@@ -1,7 +1,12 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { useController, useForm, useWatch, type Control } from 'react-hook-form';
+import {
+  useController,
+  useForm,
+  useWatch,
+  type Control,
+} from 'react-hook-form';
 import { Loader2 } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
@@ -14,11 +19,22 @@ import {
   INQUIRY_EMAIL_MAX_LENGTH,
   INQUIRY_MESSAGE_HINTS,
   INQUIRY_MESSAGE_MAX_LENGTH,
-  type InquiryCategory,
 } from '@/lib/inquiries/constants';
 import { normalizeInquiryMessage } from '@/lib/inquiries/normalize';
 import { cn } from '@/lib/utils';
 import { CategoryTiles } from './category-tiles';
+import {
+  EMAIL_PATTERN,
+  FIELD_ERRORS,
+  MESSAGES,
+  SUBMIT_TIMEOUT_MS,
+  activeAccountEmail,
+  joinIds,
+  rateLimitMessage,
+  readErrorField,
+  readSubmitResult,
+  type ContactFormValues,
+} from './contact-form-helpers';
 
 export interface ContactSubmitResult {
   /** 返信先がある（アカウントに紐付いた、またはメールを入れた） */
@@ -27,53 +43,11 @@ export interface ContactSubmitResult {
   sessionLost: boolean;
 }
 
-interface ContactFormValues {
-  category: InquiryCategory | undefined;
-  message: string;
-  contactEmail: string;
-}
-
 interface ContactFormProps {
   signedInEmail: string | null;
   /** 「続けて送る」で作り直したときは種別にフォーカスを移す */
   focusCategoryOnMount: boolean;
   onSubmitted: (result: ContactSubmitResult) => void;
-}
-
-// 画面側の簡易な形式チェック。最終的な判定は API（zod の email）が行う
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const MESSAGES = {
-  category: '種別を選んでください',
-  messageEmpty: '内容を書いてください',
-  messageTooLong: `${INQUIRY_MESSAGE_MAX_LENGTH} 文字以内で書いてください`,
-  email: 'メールアドレスの形式を確かめてください',
-  tooLarge: '内容が長すぎます。短くしてから送ってください',
-  generic: '送信できませんでした。時間をおいてもう一度送ってください',
-} as const;
-
-// API が 400 で返す項目名と、その項目の下に出す文言
-const FIELD_ERRORS: Record<
-  string,
-  { name: keyof ContactFormValues; message: string }
-> = {
-  category: { name: 'category', message: MESSAGES.category },
-  message: { name: 'message', message: '内容を確かめてください' },
-  contactEmail: { name: 'contactEmail', message: MESSAGES.email },
-};
-
-function rateLimitMessage(retryAfter: string | null): string {
-  const seconds = Number(retryAfter);
-  if (!retryAfter || !Number.isFinite(seconds) || seconds <= 0) {
-    return '送信が続いたため受け付けを止めています。しばらくしてからもう一度送ってください';
-  }
-  const minutes = Math.max(1, Math.ceil(seconds / 60));
-  return `送信が続いたため受け付けを止めています。約 ${minutes} 分後にもう一度送ってください`;
-}
-
-/** aria-describedby に渡す id を空白でつなぐ（無い id は飛ばす） */
-function joinIds(...ids: Array<string | false | undefined>): string {
-  return ids.filter(Boolean).join(' ');
 }
 
 /** 正規化した後の文字数（API が数えるのと同じ値） */
@@ -119,12 +93,17 @@ export function ContactForm({
   const fieldId = (name: string) => `${ids}-${name}`;
 
   // 初めは Server の判定を使い、hydration の後はクライアントのセッションに合わせる
-  // （別のタブでログアウトしたときなどに、返信先の欄と説明を切り替えるため）
-  const { data: session, isPending } = authClient.useSession();
+  // （別のタブでログアウトしたときなどに、返信先の欄と説明を切り替えるため）。
+  // セッションの取得に失敗したときは Server の判定を使い続ける
+  const {
+    data: session,
+    isPending,
+    error: sessionError,
+  } = authClient.useSession();
   const isHydrated = useIsHydrated();
   const signedInEmail =
-    isHydrated && !isPending
-      ? (session?.user?.email ?? null)
+    isHydrated && !isPending && !sessionError
+      ? activeAccountEmail(session)
       : initialSignedInEmail;
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -174,25 +153,32 @@ export function ContactForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category: values.category,
-          message: values.message,
+          // 画面で数えたのと同じ、正規化した本文を送る（消える空白や制御文字で上限に当たらない）
+          message: normalizeInquiryMessage(values.message),
           ...(sentAsSignedIn ? {} : { contactEmail }),
           website: honeypotRef.current?.value ?? '',
         }),
+        // 応答が返らないまま「送信中」で止まらないようにする
+        signal: AbortSignal.timeout(SUBMIT_TIMEOUT_MS),
       });
 
       if (response.status === 201) {
-        const json = await response.json().catch(() => null);
-        const linkedToAccount = json?.data?.linkedToAccount === true;
+        const result = readSubmitResult(
+          await response.json().catch(() => null)
+        );
         onSubmitted({
-          hasReplyChannel: linkedToAccount || contactEmail !== '',
-          sessionLost: sentAsSignedIn && !linkedToAccount,
+          hasReplyChannel: result.hasReplyChannel,
+          sessionLost: sentAsSignedIn && !result.linkedToAccount,
         });
         return;
       }
 
       if (response.status === 400) {
-        const json = await response.json().catch(() => null);
-        const target = FIELD_ERRORS[json?.error?.field as string];
+        const field = readErrorField(await response.json().catch(() => null));
+        const target =
+          field !== undefined && Object.hasOwn(FIELD_ERRORS, field)
+            ? FIELD_ERRORS[field]
+            : undefined;
         if (target) {
           setError(
             target.name,
@@ -271,6 +257,8 @@ export function ContactForm({
             id={fieldId('message')}
             rows={8}
             className="min-h-40 resize-y text-base md:text-sm"
+            // 送信中に書き足した分は送られないので、終わるまで書き換えさせない
+            readOnly={submitting}
             aria-invalid={errors.message ? true : undefined}
             aria-describedby={joinIds(
               messageHintId,
@@ -314,6 +302,7 @@ export function ContactForm({
               type="email"
               inputMode="email"
               autoComplete="email"
+              readOnly={submitting}
               aria-invalid={errors.contactEmail ? true : undefined}
               aria-describedby={joinIds(
                 emailHintId,
@@ -352,7 +341,7 @@ export function ContactForm({
           <input
             id={fieldId('hp')}
             ref={honeypotRef}
-            name="hp_url"
+            name="hp_field"
             type="text"
             tabIndex={-1}
             autoComplete="off"

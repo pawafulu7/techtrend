@@ -27,15 +27,21 @@ export async function readJsonWithLimit(
   const chunks: Uint8Array[] = [];
   let total = 0;
 
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxBytes) {
-      await reader.cancel();
-      return { ok: false, reason: 'too_large' };
+  // 読み取りの途中で接続が切れたなどの失敗も、JSON として読めなかった扱いにする
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        // 読むのをやめる。止められなくても上限は超えているので 413 にする
+        await reader.cancel().catch(() => undefined);
+        return { ok: false, reason: 'too_large' };
+      }
+      chunks.push(value);
     }
-    chunks.push(value);
+  } catch {
+    return { ok: false, reason: 'invalid_json' };
   }
 
   const bytes = new Uint8Array(total);
