@@ -146,5 +146,40 @@ describe('logger', () => {
       expect(testData.clientIp).toBe('192.168.1.1');
       expect(testData.request.ip).toBe('10.0.0.1');
     });
+
+    it('伏せる指定は入れ子の深さ4段まで効く（pino は ** に対応していない）', () => {
+      // 本物の logger はテストでは silent なので、同じ指定で作った pino の出力を見る
+      const pino = jest.requireActual('pino');
+      const { REDACT_PATHS } = jest.requireActual('@/lib/logger');
+      const lines: string[] = [];
+      const log = pino(
+        { redact: { paths: REDACT_PATHS, censor: '[R]' } },
+        { write: (line: string) => lines.push(line) }
+      );
+
+      log.info({
+        email: 'd0@example.com',
+        a: { email: 'd1@example.com' },
+        a2: { b: { email: 'd2@example.com', ip: '10.0.0.2' } },
+        a3: { b: { c: { password: 'marker-pass-3', token: 'marker-token-3' } } },
+        a4: { b: { c: { d: { secret: 'marker-secret-4', apiKey: 'marker-key-4', clientIp: '10.0.0.4' } } } },
+      });
+
+      const out = lines.join('');
+      for (const raw of [
+        'd0@example.com',
+        'd1@example.com',
+        'd2@example.com',
+        '10.0.0.2',
+        'marker-pass-3',
+        'marker-token-3',
+        'marker-secret-4',
+        'marker-key-4',
+        '10.0.0.4',
+      ]) {
+        expect(out).not.toContain(raw);
+      }
+      expect(REDACT_PATHS).not.toContain('**.email');
+    });
   });
 });
