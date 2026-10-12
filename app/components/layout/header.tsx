@@ -136,7 +136,7 @@ export function Header() {
           {/* Desktop Actions */}
           <div className="hidden items-center space-x-4 lg:flex">
             <div className="flex items-center gap-1">
-              <ContactLink withTooltip testId="header-contact-link" />
+              <ContactLink desktop testId="header-contact-link" />
               <ThemeToggle />
             </div>
             <UserMenu />

@@ -332,7 +332,7 @@ describe('Header', () => {
       render(<Header />);
 
       // jsdom は CSS を当てないので、デスクトップ用とモバイル用の両方が見つかる
-      const links = screen.getAllByRole('link', { name: 'お問い合わせ' });
+      const links = screen.getAllByRole('link', { name: 'お問い合わせ・要望' });
       expect(links).toHaveLength(2);
       links.forEach((link) => expect(link).toHaveAttribute('href', '/contact'));
       expect(screen.getByTestId('header-contact-link')).toBeInTheDocument();
@@ -347,7 +347,7 @@ describe('Header', () => {
       render(<Header />);
 
       screen
-        .getAllByRole('link', { name: 'お問い合わせ' })
+        .getAllByRole('link', { name: 'お問い合わせ・要望' })
         .forEach((link) =>
           expect(link).toHaveAttribute('aria-current', 'page')
         );
@@ -357,7 +357,7 @@ describe('Header', () => {
       render(<Header />);
 
       screen
-        .getAllByRole('link', { name: 'お問い合わせ' })
+        .getAllByRole('link', { name: 'お問い合わせ・要望' })
         .forEach((link) => expect(link).not.toHaveAttribute('aria-current'));
     });
 
@@ -367,18 +367,18 @@ describe('Header', () => {
       render(<Header />);
 
       expect(
-        screen.queryByRole('link', { name: 'お問い合わせ' })
+        screen.queryByRole('link', { name: 'お問い合わせ・要望' })
       ).not.toBeInTheDocument();
     });
 
-    it('デスクトップ側はマウスを乗せると「お問い合わせ」を出す', async () => {
+    it('デスクトップ側はマウスを乗せると「お問い合わせ・要望」を出す', async () => {
       const user = userEvent.setup();
       render(<Header />);
 
       await user.hover(screen.getByTestId('header-contact-link'));
 
       expect(
-        await screen.findByRole('tooltip', { name: 'お問い合わせ' })
+        await screen.findByRole('tooltip', { name: 'お問い合わせ・要望' })
       ).toBeInTheDocument();
     });
 
@@ -389,6 +389,21 @@ describe('Header', () => {
         'TechTrend'
       );
       expect(siteName).toHaveClass('max-[399px]:sr-only lg:max-xl:sr-only');
+    });
+
+    it('文字はデスクトップの 1280px 以上でだけ見せ、モバイルはアイコンだけにする', () => {
+      render(<Header />);
+
+      const desktopLabel = within(
+        screen.getByTestId('header-contact-link')
+      ).getByText('お問い合わせ・要望');
+      expect(desktopLabel).toHaveClass('sr-only xl:not-sr-only');
+
+      const mobileLabel = within(
+        screen.getByTestId('mobile-header-contact-link')
+      ).getByText('お問い合わせ・要望');
+      expect(mobileLabel).toHaveClass('sr-only');
+      expect(mobileLabel).not.toHaveClass('xl:not-sr-only');
     });
   });
 });
