@@ -64,13 +64,18 @@ export function CategoryTiles({
               key={category}
               htmlFor={id}
               className={cn(
-                'group flex cursor-pointer items-start gap-3 rounded-lg border p-3 leading-normal font-normal',
-                'border-(--tt-color-border) bg-(--tt-color-surface) transition-colors hover:border-(--tt-color-border-hover)',
+                // 1列のときは アイコン・名前・丸 を横に並べ、3列のときはアイコンと丸の下に名前を置く
+                'group grid cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-x-3 rounded-lg border p-3 leading-normal font-normal @md:grid-cols-[auto_1fr] @md:gap-y-2',
+                'border-(--tt-color-border-hover) bg-(--tt-color-surface-muted) transition-colors hover:border-(--tt-color-primary-border)',
                 'has-[[data-state=checked]]:border-(--tt-color-primary) has-[[data-state=checked]]:bg-(--tt-color-primary-bg)',
                 'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-(--tt-color-primary) has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-(--tt-color-background)',
                 invalid && 'border-(--tt-color-negative-border)'
               )}
             >
+              {/* 選ぶと塗りに変わり、丸の塗りと合わせて選択中が分かる */}
+              <span className="col-start-1 row-start-1 flex h-8 w-8 items-center justify-center rounded-md bg-(--tt-color-primary-bg) text-(--tt-color-primary) transition-colors group-has-[[data-state=checked]]:bg-(--tt-color-primary) group-has-[[data-state=checked]]:text-(--tt-color-on-primary)">
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </span>
               <RadioGroupItem
                 ref={index === 0 ? inputRef : undefined}
                 value={category}
@@ -78,17 +83,13 @@ export function CategoryTiles({
                 // タイルの label は説明文も包むので、名前は種別名だけにする（説明は describedby で読む）
                 aria-labelledby={nameId}
                 aria-describedby={descriptionId}
-                className="mt-0.5"
+                className="col-start-3 row-start-1 @md:col-start-2 @md:justify-self-end"
               />
-              <span className="flex min-w-0 flex-col gap-1">
+              <span className="col-start-2 row-start-1 flex min-w-0 flex-col gap-0.5 @md:col-span-2 @md:col-start-1 @md:row-start-2">
                 <span
                   id={nameId}
-                  className="flex items-center gap-1.5 text-sm font-medium text-(--tt-color-text)"
+                  className="text-sm font-medium text-(--tt-color-text)"
                 >
-                  <Icon
-                    className="h-4 w-4 shrink-0 text-(--tt-color-text-muted) group-has-[[data-state=checked]]:text-(--tt-color-primary)"
-                    aria-hidden="true"
-                  />
                   {INQUIRY_CATEGORY_LABELS[category]}
                 </span>
                 <span

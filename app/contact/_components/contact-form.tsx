@@ -23,6 +23,7 @@ import {
 import { normalizeInquiryMessage } from '@/lib/inquiries/normalize';
 import { cn } from '@/lib/utils';
 import { CategoryTiles } from './category-tiles';
+import { StepNumber } from './step-number';
 import {
   EMAIL_PATTERN,
   FIELD_ERRORS,
@@ -218,7 +219,7 @@ export function ContactForm({
   const emailErrorId = fieldId('email-error');
 
   return (
-    <CardV2 className="p-4 sm:p-6">
+    <CardV2 className="border-(--tt-color-border-hover) p-4 sm:p-6">
       <form
         ref={formRef}
         noValidate
@@ -227,13 +228,16 @@ export function ContactForm({
         aria-busy={submitting || undefined}
         data-testid="contact-form"
       >
-        <div className="space-y-2">
-          <span
-            id={fieldId('category-label')}
-            className="text-sm font-medium text-(--tt-color-text)"
-          >
-            種別
-          </span>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <StepNumber step={1} />
+            <span
+              id={fieldId('category-label')}
+              className="text-sm font-medium text-(--tt-color-text)"
+            >
+              種別
+            </span>
+          </div>
           <CategoryTiles
             value={categoryField.value}
             onChange={categoryField.onChange}
@@ -245,8 +249,11 @@ export function ContactForm({
           <FieldError id={categoryErrorId} message={errors.category?.message} />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor={fieldId('message')}>内容</Label>
+        <div className="space-y-2 border-t border-(--tt-color-border) pt-6">
+          <div className="flex items-center gap-2">
+            <StepNumber step={2} />
+            <Label htmlFor={fieldId('message')}>内容</Label>
+          </div>
           <p
             id={messageHintId}
             className="text-sm text-(--tt-color-text-muted)"
@@ -256,7 +263,7 @@ export function ContactForm({
           <Textarea
             id={fieldId('message')}
             rows={8}
-            className="min-h-40 resize-y text-base md:text-sm"
+            className="min-h-40 resize-y border-(--tt-color-border-hover) text-base md:text-sm"
             // 送信中に書き足した分は送られないので、終わるまで書き換えさせない
             readOnly={submitting}
             aria-invalid={errors.message ? true : undefined}
@@ -285,24 +292,36 @@ export function ContactForm({
         </div>
 
         {signedInEmail ? (
-          <p className="text-sm text-(--tt-color-text-muted)">
-            ログイン中のアカウント（
-            <span className="font-medium break-all text-(--tt-color-text)">
-              {signedInEmail}
-            </span>
-            ）として送信します。返信が要るときはこのアドレスに連絡します。
-          </p>
+          <div className="space-y-2 border-t border-(--tt-color-border) pt-6">
+            <div className="flex items-center gap-2">
+              <StepNumber step={3} />
+              <span className="text-sm font-medium text-(--tt-color-text)">
+                返信先
+              </span>
+            </div>
+            <p className="text-sm text-(--tt-color-text-muted)">
+              ログイン中のアカウント（
+              <span className="font-medium break-all text-(--tt-color-text)">
+                {signedInEmail}
+              </span>
+              ）として送信します。返信が要るときはこのアドレスに連絡します。
+            </p>
+          </div>
         ) : (
-          <div className="space-y-2">
-            <Label htmlFor={fieldId('email')}>
-              返信先のメールアドレス（任意）
-            </Label>
+          <div className="space-y-2 border-t border-(--tt-color-border) pt-6">
+            <div className="flex items-center gap-2">
+              <StepNumber step={3} />
+              <Label htmlFor={fieldId('email')}>
+                返信先のメールアドレス（任意）
+              </Label>
+            </div>
             <Input
               id={fieldId('email')}
               type="email"
               inputMode="email"
               autoComplete="email"
               readOnly={submitting}
+              className="border-(--tt-color-border-hover)"
               aria-invalid={errors.contactEmail ? true : undefined}
               aria-describedby={joinIds(
                 emailHintId,
