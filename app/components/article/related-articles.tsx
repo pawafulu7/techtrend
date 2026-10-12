@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { LinkIcon, ChevronDown, ChevronUp, Network } from 'lucide-react';
 import { formatDate } from '@/lib/utils/date';
 import { NewLabel } from './article-meta';
+import { TranslationBadge } from '@/components/ui/translation-badge';
 import { EmptyState } from '@/components/ui-v2/empty-state';
 import {
   useRelatedArticles,
@@ -84,10 +85,14 @@ const RelatedArticleItem = memo(function RelatedArticleItem({
           </p>
         )}
 
-        <div className="flex items-center gap-2 text-xs text-[var(--tt-color-text-muted)]">
-          <BadgeV2 variant="outline" className="text-xs">
-            {article.source}
-          </BadgeV2>
+        {/* 狭い列ではソース名を削らず、日付を次の行へ送る。バッジはソース名から離さない */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--tt-color-text-muted)]">
+          <span className="flex items-center gap-2">
+            <BadgeV2 variant="outline" className="text-xs">
+              {article.source}
+            </BadgeV2>
+            {article.translatedTitle && <TranslationBadge />}
+          </span>
           <span>
             {!isValidDate
               ? '日付不明'

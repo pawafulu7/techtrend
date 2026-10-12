@@ -32,6 +32,20 @@ describe('TranslationBadge', () => {
     expect(screen.getByTestId('test-badge')).toBeInTheDocument();
   });
 
+  it('compact では縦の余白をなくし、縮めずにソース名の方を省略させる（issue #725）', () => {
+    const { rerender } = render(<TranslationBadge />);
+    expect(screen.getByText('自動翻訳')).not.toHaveClass('shrink-0');
+    expect(screen.getByText('自動翻訳')).not.toHaveClass('py-0');
+
+    rerender(<TranslationBadge compact />);
+    expect(screen.getByText('自動翻訳')).toHaveClass(
+      'shrink-0',
+      'py-0',
+      '-my-px',
+      'leading-[inherit]'
+    );
+  });
+
   it('has correct styling using info design tokens', () => {
     render(<TranslationBadge />);
     const badge = screen.getByText('自動翻訳');

@@ -158,6 +158,13 @@ describe('ArticleList の同じストーリーのまとめ（issue #723）', () 
       `/articles/m1?from=${encodeURIComponent('/?category=AI&returning=1')}`
     );
     expect(first.getByText('The New Stack')).toBeInTheDocument();
+    // 翻訳した記事にだけ、ソース名の後ろに翻訳のバッジを出す（issue #725）
+    expect(first.getByText('The New Stack').nextElementSibling).toBe(
+      first.getByTestId('translation-badge')
+    );
+    expect(
+      within(rows[1]).queryByTestId('translation-badge')
+    ).not.toBeInTheDocument();
     expect(first.getByRole('img', { name: '未読' })).toBeInTheDocument();
     expect(screen.getByTestId('favorite-m1')).toHaveAttribute(
       'data-favorited',

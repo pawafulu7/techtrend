@@ -177,14 +177,17 @@ export function ArticleCard({
           </p>
         ) : null}
 
-        {/* 5列の狭いカードでは翻訳のバッジまで1行に収まらない。ソース名を削らず日付を次の行へ送る */}
+        {/* 5列の狭いカードでは翻訳のバッジまで1行に収まらない。ソース名を削らず日付を次の行へ送る。
+            印・ソース名・バッジは1つにまとめ、バッジだけが次の行へ離れないようにする */}
         <div className="text-caption mt-auto flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 pt-1">
-          {!isRead && <UnreadDot />}
-          {isNew && <NewLabel />}
-          {showSource && article.source && (
-            <SourceLabel name={article.companyName ?? article.source.name} />
-          )}
-          {article.translatedTitle && <TranslationBadge compact />}
+          <div className="flex min-w-0 items-center gap-2">
+            {!isRead && <UnreadDot />}
+            {isNew && <NewLabel />}
+            {showSource && article.source && (
+              <SourceLabel name={article.companyName ?? article.source.name} />
+            )}
+            {article.translatedTitle && <TranslationBadge compact />}
+          </div>
           <span
             className="text-muted-foreground flex shrink-0 items-center gap-1"
             data-testid="article-date"

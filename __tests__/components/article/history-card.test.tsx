@@ -93,6 +93,10 @@ describe('HistoryArticleCard', () => {
     it('should display translated title when available', () => {
       render(<HistoryArticleCard {...defaultProps} />);
       expect(screen.getByText('テスト記事タイトル')).toBeInTheDocument();
+      // 翻訳した記事にはソース名の後ろに翻訳のバッジを出す（issue #725）
+      expect(screen.getByTestId('article-source').nextElementSibling).toBe(
+        screen.getByTestId('translation-badge')
+      );
     });
 
     it('should display original title when translated title is not available', () => {
@@ -102,6 +106,7 @@ describe('HistoryArticleCard', () => {
       };
       render(<HistoryArticleCard {...propsWithoutTranslation} />);
       expect(screen.getByText('Test Article Title')).toBeInTheDocument();
+      expect(screen.queryByTestId('translation-badge')).not.toBeInTheDocument();
     });
 
     it('should display article summary', () => {
