@@ -72,6 +72,31 @@ describe('GeminiTitleTranslator', () => {
       expect(mockTransport.invoke).not.toHaveBeenCalled();
     });
 
+    it('本文が英語なら、日本語の UI の文字を含んでいても翻訳する（issue #725）', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: {
+          candidates: [
+            {
+              content: {
+                parts: [{ text: 'Codeberg が30万プロジェクトに到達' }],
+              },
+            },
+          ],
+        },
+      });
+
+      const result = await translator.translateTitle({
+        title: 'Codeberg Reaches 300k Projects',
+        content:
+          'エクスプローラー About FAQ ヘルプ Donate 登録 サインイン NON-PROFIT Codeberg is maintained by the non-profit organization Codeberg e.V. and hosts over 300,000 projects.',
+        requestId: 'test-english-body',
+      });
+
+      expect(result).toBe('Codeberg が30万プロジェクトに到達');
+      expect(mockTransport.invoke).toHaveBeenCalledTimes(1);
+    });
+
     it('should translate English title successfully', async () => {
       mockTransport.invoke.mockResolvedValue({
         status: 'ok',

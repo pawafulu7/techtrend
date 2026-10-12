@@ -126,6 +126,13 @@ describe('isLikelyJapaneseBody', () => {
     expect(isLikelyJapaneseBody('12345 !!! ---')).toBe(false);
   });
 
+  it('ひらがなが文字の 2% 以上なら true、2% 未満なら false', () => {
+    // 英字 98 字 + ひらがな 2 字 = 100 字中 2%
+    expect(isLikelyJapaneseBody('a'.repeat(98) + 'もの')).toBe(true);
+    // 英字 99 字 + ひらがな 1 字 = 100 字中 1%（日本語の UI の文言が少し混ざった英語の記事）
+    expect(isLikelyJapaneseBody('a'.repeat(99) + 'の')).toBe(false);
+  });
+
   it('先頭の 3000 字だけで判定する', () => {
     const english = 'English text without kana. '.repeat(120); // 3000 字を超える
     expect(

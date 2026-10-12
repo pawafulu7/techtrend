@@ -11,7 +11,7 @@
  * 本番 DB は scripts/db/with-prod-db.sh 経由で流す（件数の行だけが表示される）:
  *   bash scripts/db/with-prod-db.sh --as-database-url npx tsx scripts/maintenance/clear-japanese-translated-titles.ts
  *
- * Redis のキャッシュは消さない。記事\u4E00覧・詳細は 1 時間以内、人気記事は最長 24 時間で切れる。
+ * Redis のキャッシュは消さない。記事一覧・詳細は 1 時間以内、人気記事は最長 24 時間で切れる。
  */
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import {
@@ -27,12 +27,13 @@ async function main() {
   const apply = process.argv.includes('--apply');
   const show = process.argv.includes('--show');
 
-  // かなも漢字も無い記事は判定するまでもなく対象外なので、SQL で先に絞る（本文を全件読まない）
+  // かなも漢字も無い記事は判定するまでもなく対象外なので、SQL で先に絞る（本文を全件読まない）。
+  // タイトルの範囲は isLikelyJapanese（和文の記号 U+3000-303F を含む）と合わせる
   const candidates = await prisma.$queryRaw<Candidate[]>`
     SELECT id, title, left(content, 3000) AS body
     FROM "Article"
     WHERE "translatedTitle" IS NOT NULL
-      AND (title ~ '[\u3040-\u30FF\u4E00-\u9FFF]' OR left(content, 3000) ~ '[\u3040-\u309F]')
+      AND (title ~ '[\u3000-\u30FF\u4E00-\u9FFF]' OR left(content, 3000) ~ '[\u3040-\u309F]')
   `;
 
   const japaneseTitle = candidates.filter((a) => isLikelyJapanese(a.title));
