@@ -89,7 +89,7 @@ export function buildHomeArticleFilters({
   // 注: returningはスクロール位置復元のトリガーとしてのみ使い、
   // フィルターには含めない（queryKeyが変わり1ページ目から取り直しになるため）
 
-  // 要約の無い記事は常に除外する
+  // 要約の無い記事は常に除外する（スライドは画像で中身が分かるので残す。pushProcessedFilter）
   params.excludeUnprocessed = 'true';
 
   // パーソナライズフィルターが有効な場合、カテゴリIDと期間を追加

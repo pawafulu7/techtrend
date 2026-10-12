@@ -27,6 +27,7 @@ import {
 } from '@/app/lib/date-utils';
 import logger from '@/lib/logger';
 import { containsFilter } from '@/lib/utils/like-pattern';
+import { slideWithoutSummaryWhere } from '@/lib/utils/source/slide-source';
 import { findTagIdGroupsByNames } from '@/lib/services/tag-service';
 import {
   MAX_TAG_FILTER_COUNT,
@@ -50,7 +51,9 @@ type ArticleWhereInput = Prisma.ArticleWhereInput;
  * Filters out articles with:
  * - skipReason IN ('THIN_CONTENT', 'QUALITY_FAILED')
  * - qualityScore < 30 (scale 0–100)
- * PDF and SLIDE skip reasons are NOT excluded (valid content types).
+ * PDF skip reasons are NOT excluded (valid content type). Slide articles without a
+ * summary but with a slide image are not excluded either: their summaries are skipped
+ * as THIN_CONTENT and their score comes from the summary, but the image shows the content.
  */
 export function pushLowQualityFilter(
   andConditions: ArticleWhereInput[],
@@ -58,19 +61,26 @@ export function pushLowQualityFilter(
 ): void {
   if (!excludeLowQuality) return;
 
-  andConditions.push(
-    {
-      OR: [
-        { skipReason: null },
-        {
-          skipReason: {
-            notIn: [SkipReason.THIN_CONTENT, SkipReason.QUALITY_FAILED],
+  andConditions.push({
+    OR: [
+      slideWithoutSummaryWhere(),
+      {
+        AND: [
+          {
+            OR: [
+              { skipReason: null },
+              {
+                skipReason: {
+                  notIn: [SkipReason.THIN_CONTENT, SkipReason.QUALITY_FAILED],
+                },
+              },
+            ],
           },
-        },
-      ],
-    },
-    { qualityScore: { gte: 30 } }
-  );
+          { qualityScore: { gte: 30 } },
+        ],
+      },
+    ],
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -94,16 +104,20 @@ export function pushOffTopicFilter(
 // ---------------------------------------------------------------------------
 
 /**
- * Set summaryComputedAt not-null condition directly onto the WHERE object when
- * `excludeUnprocessed` is true. Excludes articles without processed summaries.
+ * Push a summaryComputedAt not-null condition into AND conditions when
+ * `excludeUnprocessed` is true. Excludes articles without processed summaries,
+ * except slide articles with a slide image: the detail page, the reader and the
+ * card show the image instead of a summary.
  */
 export function pushProcessedFilter(
-  where: ArticleWhereInput,
+  andConditions: ArticleWhereInput[],
   excludeUnprocessed: boolean
 ): void {
   if (!excludeUnprocessed) return;
 
-  where.summaryComputedAt = { not: null };
+  andConditions.push({
+    OR: [{ summaryComputedAt: { not: null } }, slideWithoutSummaryWhere()],
+  });
 }
 
 // ---------------------------------------------------------------------------

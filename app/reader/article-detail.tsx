@@ -12,6 +12,9 @@ import {
 } from 'lucide-react';
 import { parseSummary } from '@/lib/utils/summary/summary-parser';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
+import { OptimizedImage } from '@/app/components/common/optimized-image';
+import { isSlideArticle } from '@/lib/utils/source/slide-source';
+import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
 import type { ReaderDetailArticle } from './types';
 import { formatDate } from './utils';
 
@@ -152,6 +155,15 @@ export function ReaderArticleDetail({
 
   const dateStr = formatDate(article.publishedAt);
 
+  // 要約の無いスライドは、記事詳細ページと同じく要約の代わりにスライドの1枚目を出す
+  const slideThumbnail =
+    !article.summary &&
+    sections.length === 0 &&
+    isSlideArticle({ sourceName: article.source?.name, url: article.url }) &&
+    hasValidThumbnail(article.thumbnail)
+      ? article.thumbnail
+      : null;
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <MobileDetailBar
@@ -278,7 +290,27 @@ export function ReaderArticleDetail({
               </div>
             )}
 
-            {!article.summary && sections.length === 0 && (
+            {slideThumbnail && (
+              <figure
+                className="mt-6 max-w-2xl"
+                data-testid="reader-slide-thumbnail"
+              >
+                <div className="relative aspect-video overflow-hidden rounded-lg bg-[var(--tt-color-surface-muted)]">
+                  <OptimizedImage
+                    src={slideThumbnail}
+                    alt={displayTitle}
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 100vw, 672px"
+                  />
+                </div>
+                <figcaption className="mt-3 text-sm text-[var(--tt-color-text-muted)]">
+                  このプレゼンテーションの詳細は元記事でご確認ください。
+                </figcaption>
+              </figure>
+            )}
+
+            {!article.summary && sections.length === 0 && !slideThumbnail && (
               <p className="mt-6 text-sm text-[var(--tt-color-text-muted)] italic">
                 要約はありません
               </p>

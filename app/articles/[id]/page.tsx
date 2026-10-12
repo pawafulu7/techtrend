@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source/source-colors';
-import { isSlideSource } from '@/lib/utils/source/slide-source';
+import { isSlideArticle, isSlideSource } from '@/lib/utils/source/slide-source';
 import { cn } from '@/lib/utils';
 import { NewLabel } from '@/app/components/article/article-meta';
 import { RelatedArticles } from '@/app/components/article/related-articles';
@@ -104,8 +104,14 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
   );
   const isNew = hoursAgo < 24;
 
-  // スライドサービス判定（Speaker DeckとDocswell）
-  const isSlideService = isSlideSource(article.source.name);
+  // スライドサービス判定（Speaker DeckとDocswell）。はてブ経由のスライドは URL のホストで判定し、
+  // 要約が無いときだけ要約の代わりにスライドの画像を出す（要約があればそれを出す）
+  const isSlideService =
+    isSlideSource(article.source.name) ||
+    (isSlideArticle({ sourceName: article.source.name, url: article.url }) &&
+      !article.summary &&
+      (!article.detailedSummary ||
+        article.detailedSummary === '__SKIP_DETAILED_SUMMARY__'));
 
   // 短い記事（500文字以下）の判定
   const isShortArticle =
