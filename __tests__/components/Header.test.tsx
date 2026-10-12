@@ -211,4 +211,12 @@ describe('Header', () => {
       await user.keyboard('{Enter}');
     }
   });
+
+  it('お問い合わせのリンクを Tooltip ごと描画しても落ちない', () => {
+    // デスクトップ側は Tooltip（Radix）で包む。Provider が無いと描画時に例外になる。
+    // このファイルの next/link のモックは href 以外を捨てるので、href で数える
+    const { container } = renderWithProviders(<Header />);
+
+    expect(container.querySelectorAll('a[href="/contact"]')).toHaveLength(2);
+  });
 });
