@@ -27,7 +27,7 @@ import {
 } from '@/app/lib/date-utils';
 import logger from '@/lib/logger';
 import { containsFilter } from '@/lib/utils/like-pattern';
-import { slideArticleWhere } from '@/lib/utils/source/slide-source';
+import { slideWithoutSummaryWhere } from '@/lib/utils/source/slide-source';
 import { findTagIdGroupsByNames } from '@/lib/services/tag-service';
 import {
   MAX_TAG_FILTER_COUNT,
@@ -51,9 +51,9 @@ type ArticleWhereInput = Prisma.ArticleWhereInput;
  * Filters out articles with:
  * - skipReason IN ('THIN_CONTENT', 'QUALITY_FAILED')
  * - qualityScore < 30 (scale 0–100)
- * PDF skip reasons are NOT excluded (valid content type). Slide articles are never
- * excluded: their summaries are skipped as THIN_CONTENT and their score comes from
- * the summary, but the slide image shows the content.
+ * PDF skip reasons are NOT excluded (valid content type). Slide articles without a
+ * summary but with a slide image are not excluded either: their summaries are skipped
+ * as THIN_CONTENT and their score comes from the summary, but the image shows the content.
  */
 export function pushLowQualityFilter(
   andConditions: ArticleWhereInput[],
@@ -63,7 +63,7 @@ export function pushLowQualityFilter(
 
   andConditions.push({
     OR: [
-      slideArticleWhere(),
+      slideWithoutSummaryWhere(),
       {
         AND: [
           {
@@ -106,8 +106,8 @@ export function pushOffTopicFilter(
 /**
  * Push a summaryComputedAt not-null condition into AND conditions when
  * `excludeUnprocessed` is true. Excludes articles without processed summaries,
- * except slide articles: the detail page and the card show the slide image
- * instead of a summary, so a missing summary does not make them empty.
+ * except slide articles with a slide image: the detail page, the reader and the
+ * card show the image instead of a summary.
  */
 export function pushProcessedFilter(
   andConditions: ArticleWhereInput[],
@@ -116,7 +116,7 @@ export function pushProcessedFilter(
   if (!excludeUnprocessed) return;
 
   andConditions.push({
-    OR: [{ summaryComputedAt: { not: null } }, slideArticleWhere()],
+    OR: [{ summaryComputedAt: { not: null } }, slideWithoutSummaryWhere()],
   });
 }
 

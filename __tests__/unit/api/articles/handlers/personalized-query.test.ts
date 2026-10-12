@@ -33,6 +33,7 @@ import {
   personalizationCache,
 } from '@/app/api/articles/handlers/personalized-query';
 import { prisma } from '@/lib/prisma';
+import { slideWithoutSummaryWhere } from '@/lib/utils/source/slide-source';
 import { MetricsCollector } from '@/lib/metrics/performance';
 import type {
   FilterParams,
@@ -178,9 +179,13 @@ describe('executePersonalizedQuery', () => {
     const filterWhere = filterCall[0].where;
     expect(filterWhere).toMatchObject({
       isHidden: false,
-      summaryComputedAt: { not: null },
       // タグに合う候補だけを推薦順で渡す
       id: { in: ['a1', 'a2', 'a3', 'a5'] },
+    });
+    // 要約の計算済みの記事に絞る（画像のある要約なしスライドは一覧と同じく残すが、
+    // 推薦の候補は要約の埋め込みから選ぶので、そもそも入ってこない）
+    expect(filterWhere.AND).toContainEqual({
+      OR: [{ summaryComputedAt: { not: null } }, slideWithoutSummaryWhere()],
     });
     // 無効化したソースの記事を除く（issue #688）
     expect(filterWhere.AND).toContainEqual({ source: { is: { enabled: true } } });

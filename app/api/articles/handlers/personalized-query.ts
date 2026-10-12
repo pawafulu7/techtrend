@@ -65,6 +65,7 @@ export function buildPersonalizedCacheKey(
 /**
  * 推薦候補に掛ける条件（表示条件＋ユーザーが選んだ絞り込み）を組み立てる。
  * 表示条件は今までの推薦経路と同じ（非表示を除く・要約の計算済み）で、
+ * `withProcessedFilter` が残す「画像のある要約なしスライド」は、候補を要約の埋め込みから選ぶので入ってこない。
  * `withSourceFilter` が有効なソースだけに絞る。本文が空の記事の除外（`withContentFilter`）と
  * `excludeUnprocessed` は、推薦経路の表示条件を変えない方針（#684 のユーザーの決定）なので掛けない。
  * `emptyResult` が true なら、条件に合う記事はない（`sources=none` か、指定したソースが解決できない）

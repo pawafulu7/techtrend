@@ -68,7 +68,12 @@ import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/database';
 import { NextRequest } from 'next/server';
 import { __mockGetArticles } from '@/lib/cache/layered-cache';
-import { slideArticleWhere } from '@/lib/utils/source/slide-source';
+import { slideWithoutSummaryWhere } from '@/lib/utils/source/slide-source';
+
+// excludeUnprocessed で足す条件（要約の無い記事を除く。画像のあるスライドは残す）
+const processedCondition = {
+  OR: [{ summaryComputedAt: { not: null } }, slideWithoutSummaryWhere()],
+};
 
 const prismaMock = prisma as any;
 const mockGetArticles = __mockGetArticles;
@@ -150,9 +155,8 @@ describe('excludeUnprocessed parameter', () => {
 
       // Verify Prisma was called without summaryComputedAt filter
       const findManyCall = prismaMock.article.findMany.mock.calls[0][0];
-      expect(JSON.stringify(findManyCall.where)).not.toContain(
-        'summaryComputedAt'
-      );
+      expect(findManyCall.where.summaryComputedAt).toBeUndefined();
+      expect(findManyCall.where.AND).not.toContainEqual(processedCondition);
     });
   });
 
@@ -174,9 +178,7 @@ describe('excludeUnprocessed parameter', () => {
 
       // Verify Prisma was called with summaryComputedAt filter (slides are kept)
       const findManyCall = prismaMock.article.findMany.mock.calls[0][0];
-      expect(findManyCall.where.AND).toContainEqual({
-        OR: [{ summaryComputedAt: { not: null } }, slideArticleWhere()],
-      });
+      expect(findManyCall.where.AND).toContainEqual(processedCondition);
     });
   });
 
@@ -196,9 +198,8 @@ describe('excludeUnprocessed parameter', () => {
 
       // Verify Prisma was called without summaryComputedAt filter
       const findManyCall = prismaMock.article.findMany.mock.calls[0][0];
-      expect(JSON.stringify(findManyCall.where)).not.toContain(
-        'summaryComputedAt'
-      );
+      expect(findManyCall.where.summaryComputedAt).toBeUndefined();
+      expect(findManyCall.where.AND).not.toContainEqual(processedCondition);
     });
   });
 

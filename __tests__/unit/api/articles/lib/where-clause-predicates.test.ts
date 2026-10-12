@@ -29,6 +29,7 @@ import {
 import {
   isSlideArticle,
   slideArticleWhere,
+  slideWithoutSummaryWhere,
 } from '@/lib/utils/source/slide-source';
 
 describe('parseTagList', () => {
@@ -309,15 +310,32 @@ describe('capSearchKeywords', () => {
   });
 });
 
-// 要約の無いスライドは、詳細ページ・カードともスライドの画像で表示する。
-// 一覧の「要約なし」「低品質」の除外で消さない
+// 要約の無いスライドは、詳細ページ・リーダー・カードともスライドの画像で表示する。
+// 画像のあるものは一覧の「要約なし」「低品質」の除外で消さない
 describe('slide articles in summary-based exclusions', () => {
   it('pushProcessedFilter keeps slide articles without a summary', () => {
     const and: Prisma.ArticleWhereInput[] = [];
     pushProcessedFilter(and, true);
     expect(and).toEqual([
-      { OR: [{ summaryComputedAt: { not: null } }, slideArticleWhere()] },
+      {
+        OR: [{ summaryComputedAt: { not: null } }, slideWithoutSummaryWhere()],
+      },
     ]);
+  });
+
+  it('slideWithoutSummaryWhere requires no summary and a slide image', () => {
+    expect(slideWithoutSummaryWhere()).toEqual({
+      AND: [
+        slideArticleWhere(),
+        { summaryComputedAt: null },
+        {
+          OR: [
+            { thumbnail: { startsWith: 'https://' } },
+            { thumbnail: { startsWith: 'http://' } },
+          ],
+        },
+      ],
+    });
   });
 
   it('pushProcessedFilter adds nothing when not requested', () => {
@@ -326,12 +344,12 @@ describe('slide articles in summary-based exclusions', () => {
     expect(and).toEqual([]);
   });
 
-  it('pushLowQualityFilter keeps slide articles skipped as THIN_CONTENT', () => {
+  it('pushLowQualityFilter keeps only slide articles without a summary', () => {
     const and: Prisma.ArticleWhereInput[] = [];
     pushLowQualityFilter(and, true);
     expect(and).toHaveLength(1);
     const or = and[0].OR as Prisma.ArticleWhereInput[];
-    expect(or[0]).toEqual(slideArticleWhere());
+    expect(or[0]).toEqual(slideWithoutSummaryWhere());
     expect(or[1]).toEqual({
       AND: [
         {
