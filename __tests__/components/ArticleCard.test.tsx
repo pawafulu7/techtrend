@@ -253,6 +253,23 @@ describe('ArticleCard', () => {
     expect(screen.queryByRole('img', { name: '未読' })).not.toBeInTheDocument();
   });
 
+  it('翻訳した記事にだけ、ソース名の後ろに翻訳のバッジを出す（issue #725）', () => {
+    const { unmount } = renderWithProviders(
+      <ArticleCard article={mockArticle} />
+    );
+    expect(screen.queryByTestId('translation-badge')).not.toBeInTheDocument();
+    unmount();
+
+    renderWithProviders(
+      <ArticleCard
+        article={{ ...mockArticle, translatedTitle: '翻訳したタイトル' }}
+      />
+    );
+    const badge = screen.getByTestId('translation-badge');
+    expect(badge).toHaveTextContent('自動翻訳');
+    expect(screen.getByTestId('article-source').nextElementSibling).toBe(badge);
+  });
+
   it('displays article thumbnail for Speaker Deck source', () => {
     const speakerDeckArticle = {
       ...mockArticle,

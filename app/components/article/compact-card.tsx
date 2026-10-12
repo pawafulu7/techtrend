@@ -17,6 +17,7 @@ import {
   UnreadDot,
 } from '@/app/components/article/article-meta';
 import { useIsNewArticle } from '@/app/components/common/relative-time';
+import { TranslationBadge } from '@/components/ui/translation-badge';
 import { useReadStatus } from '@/app/components/article/hooks/use-read-status';
 import { getReadingTime } from '@/app/components/article/hooks/get-reading-time';
 
@@ -137,6 +138,7 @@ export function CompactCard({
         {showSource && article.source && (
           <SourceLabel name={article.companyName ?? article.source.name} />
         )}
+        {article.translatedTitle && <TranslationBadge compact />}
       </div>
 
       {/* Timestamps Row */}

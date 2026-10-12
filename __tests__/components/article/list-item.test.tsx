@@ -113,6 +113,20 @@ describe('ArticleListItem', () => {
     );
   });
 
+  it('翻訳した記事にだけ、ソース名の後ろに翻訳のバッジを出す（issue #725）', () => {
+    const { rerender } = render(<ArticleListItem article={article} />);
+    expect(screen.queryByTestId('translation-badge')).not.toBeInTheDocument();
+
+    rerender(
+      <ArticleListItem
+        article={{ ...article, translatedTitle: '翻訳したタイトル' }}
+      />
+    );
+    const badge = screen.getByTestId('translation-badge');
+    expect(badge).toHaveTextContent('自動翻訳');
+    expect(screen.getByTestId('article-source').nextElementSibling).toBe(badge);
+  });
+
   it('shows the company name for company blog articles, like the other card views', () => {
     render(
       <ArticleListItem article={{ ...article, companyName: 'Example Inc.' }} />

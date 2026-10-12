@@ -18,6 +18,8 @@ import {
 } from '@/app/components/article/article-meta';
 import { useIsNewArticle } from '@/app/components/common/relative-time';
 import { useReadStatus } from '@/app/components/article/hooks/use-read-status';
+import { TranslationBadge } from '@/components/ui/translation-badge';
+
 export function ArticleListItem({
   article,
   onTagClick,
@@ -108,6 +110,7 @@ export function ArticleListItem({
             name={article.companyName ?? article.source.name}
             className="max-w-48"
           />
+          {article.translatedTitle && <TranslationBadge compact />}
           <span className="hidden items-center gap-1 sm:flex">
             <Calendar className="h-3 w-3" aria-hidden="true" />
             <span className="sr-only">公開日:</span>
