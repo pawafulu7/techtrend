@@ -24,8 +24,9 @@ export default function Loading() {
             loading
           />
 
-          <section>
-            <Skeleton className="mx-auto mb-4 h-6 w-48" />
+          <section className="bg-background rounded-lg border p-4 shadow-sm">
+            <Skeleton className="mb-3 h-5 w-40" />
+            <Skeleton className="mb-3 h-4 w-56" />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <TrendingKeywordCardSkeleton key={i} />
@@ -33,8 +34,8 @@ export default function Loading() {
             </div>
           </section>
 
-          <section>
-            <Skeleton className="mb-3 h-6 w-32" />
+          <section className="bg-background rounded-lg border p-4 shadow-sm">
+            <Skeleton className="mb-3 h-5 w-28" />
             <div className="flex flex-wrap gap-2">
               {[64, 88, 56, 72, 96, 60].map((width, i) => (
                 <Skeleton
@@ -47,7 +48,7 @@ export default function Loading() {
           </section>
 
           <section>
-            <Skeleton className="mx-auto mb-3 h-6 w-32" />
+            <Skeleton className="mb-3 h-6 w-32" />
             <TrendNavigationCards />
           </section>
 

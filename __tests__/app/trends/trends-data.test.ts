@@ -99,6 +99,26 @@ describe('trends-data: 無効化したソースの記事を数えない（issue 
     // 集計時刻を画面に出す（issue #707）
     expect(data.aggregatedAt).toEqual(expect.any(String));
   });
+
+  it('fetchSourceData: 「その他」の構成比を各ソースと同じ小数第1位に丸める', async () => {
+    prismaMock.article.count.mockReset();
+    prismaMock.article.count.mockResolvedValue(1000);
+    prismaMock.source.findMany.mockReset();
+    // 7番目以降（0.1% と 0.2%）を足すと、丸めなければ 0.30000000000000004 になる
+    prismaMock.source.findMany.mockResolvedValue([
+      ...Array.from({ length: 6 }, (_, i) => ({
+        id: `s${i}`,
+        name: `S${i}`,
+        _count: { articles: 100 },
+      })),
+      { id: 's6', name: 'S6', _count: { articles: 1 } },
+      { id: 's7', name: 'S7', _count: { articles: 2 } },
+    ]);
+
+    const { items } = await fetchSourceData();
+
+    expect(items.at(-1)).toEqual({ name: 'その他', value: 3, percentage: 0.3 });
+  });
 });
 
 // 失敗を空の一覧や null に変えると、画面で「該当なし」と区別できない（issue #701）

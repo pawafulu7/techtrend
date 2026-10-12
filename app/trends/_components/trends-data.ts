@@ -50,10 +50,11 @@ export async function fetchSourceData(): Promise<SourceDistribution> {
       (sum, source) => sum + source.count,
       0
     );
-    const othersPercentage = otherSources.reduce(
-      (sum, source) => sum + source.percentage,
-      0
-    );
+    // 各ソースと同じ小数第1位に丸める（丸めた値の和は 31.30000000000002 のような誤差を持つ）
+    const othersPercentage =
+      Math.round(
+        otherSources.reduce((sum, source) => sum + source.percentage, 0) * 10
+      ) / 10;
 
     const sourceData: SourceDataItem[] = topSources.map((source) => ({
       name: source.name,

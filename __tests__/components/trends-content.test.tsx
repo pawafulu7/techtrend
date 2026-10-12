@@ -109,10 +109,15 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       />
     );
 
+    // 空の表示は見出しと同じカードの中に出す（issue #763）
     expect(
-      screen.getByText('急上昇キーワードはありません')
+      within(getSection('急上昇キーワード')).getByText(
+        '急上昇キーワードはありません'
+      )
     ).toBeInTheDocument();
-    expect(screen.getByText('新着タグはありません')).toBeInTheDocument();
+    expect(
+      within(getSection('新着タグ (0)')).getByText('新着タグはありません')
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('error-message')).not.toBeInTheDocument();
     expect(screen.queryByText('取得できませんでした')).not.toBeInTheDocument();
   });
