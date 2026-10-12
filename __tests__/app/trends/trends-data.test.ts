@@ -119,6 +119,33 @@ describe('trends-data: 無効化したソースの記事を数えない（issue 
 
     expect(items.at(-1)).toEqual({ name: 'その他', value: 3, percentage: 0.3 });
   });
+
+  it('fetchSourceData: 「その他」の構成比を、丸め済みの割合の和ではなく件数から求める', async () => {
+    prismaMock.article.count.mockReset();
+    prismaMock.article.count.mockResolvedValue(10000);
+    prismaMock.source.findMany.mockReset();
+    // 7番目以降は各 0.04%（丸めると 0%）。割合を足すと 0% になるが、件数では 40/10000 = 0.4%
+    prismaMock.source.findMany.mockResolvedValue([
+      ...Array.from({ length: 6 }, (_, i) => ({
+        id: `s${i}`,
+        name: `S${i}`,
+        _count: { articles: 1660 },
+      })),
+      ...Array.from({ length: 10 }, (_, i) => ({
+        id: `o${i}`,
+        name: `O${i}`,
+        _count: { articles: 4 },
+      })),
+    ]);
+
+    const { items } = await fetchSourceData();
+
+    expect(items.at(-1)).toEqual({
+      name: 'その他',
+      value: 40,
+      percentage: 0.4,
+    });
+  });
 });
 
 // 失敗を空の一覧や null に変えると、画面で「該当なし」と区別できない（issue #701）

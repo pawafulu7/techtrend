@@ -41,7 +41,7 @@ export interface SourceDistribution {
 export async function fetchSourceData(): Promise<SourceDistribution> {
   try {
     const {
-      value: { sources: sourcesRaw, generatedAt },
+      value: { overview, sources: sourcesRaw, generatedAt },
     } = await getDashboardStats();
     const topSources = sourcesRaw.slice(0, 6);
     const otherSources = sourcesRaw.slice(6);
@@ -50,11 +50,12 @@ export async function fetchSourceData(): Promise<SourceDistribution> {
       (sum, source) => sum + source.count,
       0
     );
-    // 各ソースと同じ小数第1位に丸める（丸めた値の和は 31.30000000000002 のような誤差を持つ）
+    // 丸め済みの各ソースの割合を足すと、丸めの誤差がたまり（0.04% × 10 が 0%）、浮動小数の
+    // 端数も出る（31.30000000000002%）。件数の合計から、各ソースと同じ式で一度だけ丸める
     const othersPercentage =
-      Math.round(
-        otherSources.reduce((sum, source) => sum + source.percentage, 0) * 10
-      ) / 10;
+      overview.total > 0
+        ? Math.round((othersCount / overview.total) * 1000) / 10
+        : 0;
 
     const sourceData: SourceDataItem[] = topSources.map((source) => ({
       name: source.name,
