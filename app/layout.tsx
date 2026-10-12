@@ -13,11 +13,11 @@ import { buildCriticalCss } from '@/lib/utils/design-tokens/build-css';
 // import { OnboardingProvider } from "@/app/components/onboarding/onboarding-provider";
 import './globals.css';
 
-// フォントは app/fonts/ に置いたもの（Google Fonts のラテン文字用の可変フォント。ライセンスは同じ場所の OFL-*）を使う。
+// フォントは Fontsource（@fontsource-variable/*、OFL-1.1）のラテン文字用の可変フォントを next/font/local で読む。
 // next/font/google はビルドや開発サーバーの起動時に Google から取得するが、Google が返す
 // `l/font?kit=…&skey=…` 形式の URL を Turbopack が解釈できず、全ページが 500 になったため
 const spaceGrotesk = localFont({
-  src: './fonts/space-grotesk-latin-wght.woff2',
+  src: '../node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2',
   variable: '--font-space-grotesk',
   weight: '500 700',
   display: 'swap',
@@ -26,7 +26,7 @@ const spaceGrotesk = localFont({
 });
 
 const inter = localFont({
-  src: './fonts/inter-latin-wght.woff2',
+  src: '../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2',
   variable: '--font-inter',
   weight: '400 600',
   display: 'swap',
@@ -35,7 +35,7 @@ const inter = localFont({
 });
 
 const jetBrainsMono = localFont({
-  src: './fonts/jetbrains-mono-latin-wght.woff2',
+  src: '../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2',
   variable: '--font-jetbrains-mono',
   weight: '400 600',
   display: 'swap',
