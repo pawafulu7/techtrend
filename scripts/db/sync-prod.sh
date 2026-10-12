@@ -11,6 +11,7 @@ EXCLUDE_TABLES=(
   '"User"' '"Account"' '"Session"' '"Verification"'
   '"Favorite"' '"ArticleView"' '"UserDeletionLog"'
   '"UserCategoryPreference"' '"Comment"' '"UserSourcePreset"'
+  '"Inquiry"'
 )
 
 # 環境変数 -> .env.local -> .env の順で PROD_DATABASE_URL を読み込む
