@@ -154,6 +154,7 @@ model User {
   categoryPreferences         UserCategoryPreference[]
   comments                    Comment[]
   sourcePresets               UserSourcePreset[]
+  inquiries                   Inquiry[]
 
   @@index([deletedAt], map: "idx_user_deleted_at")
 }
@@ -698,4 +699,40 @@ model ChangelogEntry {
 
   @@unique([versionId, orderIndex], map: "uq_changelog_entry_version_order")
   @@index([category], map: "idx_changelog_entry_category")
+}
+
+// ---------------------------------------------------------------------------
+// Inquiry: 利用者からの問い合わせ・機能要望（/contact から送り、/admin/inquiries で確認する）
+// ---------------------------------------------------------------------------
+
+enum InquiryCategory {
+  FEATURE_REQUEST // 機能の要望
+  BUG_REPORT // 不具合の報告
+  OTHER // その他（質問・感想など）
+}
+
+enum InquiryStatus {
+  OPEN // 未対応
+  IN_PROGRESS // 対応中
+  RESOLVED // 完了
+}
+
+model Inquiry {
+  id           String          @id @default(cuid())
+  category     InquiryCategory
+  /// 利用者が書いた生の文字列（HTML タグを含みうる）。React のテキスト描画以外へ出すときはエスケープする
+  message      String          @db.Text
+  // 返信先。未ログインは任意の入力（本人確認なし）、ログイン中は送信時のアカウントのメール
+  contactEmail String?         @db.VarChar(254)
+  // ログイン中に送ったときだけ入る。User 行が消えても問い合わせは残す
+  userId       String?
+  status       InquiryStatus   @default(OPEN)
+  createdAt    DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime        @updatedAt @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt(sort: Desc)], map: "idx_inquiry_status_created")
+  @@index([createdAt(sort: Desc)], map: "idx_inquiry_created")
+  @@index([userId], map: "idx_inquiry_user")
 }

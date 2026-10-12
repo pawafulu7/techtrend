@@ -56,7 +56,10 @@ type InfiniteArticlesData = InfiniteData<ArticlesResponse, number>;
 // readFilter 付きの件数などはユーザー依存なので含める。
 // favorite-statuses は queryKey に userId を含むが、中身がユーザー固有なので
 // 前のユーザーの分をメモリに残さないよう破棄する。
+// admin は管理画面のデータ（問い合わせの本文・メール、ユーザー一覧など）で、
+// 管理者でなくなった人や次の人に残さないよう破棄する。
 const USER_SCOPED_QUERY_KEY_PREFIXES = [
+  ['admin'],
   ['infinite-articles'],
   ['infinite-favorites'],
   ['digest'],
@@ -70,6 +73,7 @@ const USER_SCOPED_QUERY_KEY_PREFIXES = [
 // ['infinite-articles'] はここに含めない（記事本体は公開データで、読み込み済み
 // ページとスクロール位置を捨てないため。ユーザー固有フィールドだけを剥がす）。
 const SIGNED_OUT_REMOVED_QUERY_KEY_PREFIXES = [
+  ['admin'],
   ['infinite-favorites'],
   ['digest'],
   ['article-count'],

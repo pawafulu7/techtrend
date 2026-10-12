@@ -24,6 +24,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { cn } from '@/lib/utils';
 import { NavDropdown } from '@/app/components/layout/nav-dropdown';
+import { ContactLink } from '@/app/components/layout/contact-link';
 import { useIsHydrated } from '@/lib/hooks/use-is-hydrated';
 import { authClient } from '@/lib/auth/auth-client';
 import { features } from '@/config/features';
@@ -90,7 +91,11 @@ export function Header() {
             data-testid="header-logo"
           >
             <Rss className="text-primary h-5 w-5 shrink-0" />
-            <span className="truncate text-lg font-bold">{SITE_NAME}</span>
+            {/* お問い合わせのアイコンの分だけ入りきらない幅（〜399px、1024〜1279px）では、
+                切れた名前を出さずにロゴのアイコンだけにする（読み上げ用の名前は残す） */}
+            <span className="truncate text-lg font-bold max-[399px]:sr-only lg:max-xl:sr-only">
+              {SITE_NAME}
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -130,12 +135,16 @@ export function Header() {
 
           {/* Desktop Actions */}
           <div className="hidden items-center space-x-4 lg:flex">
-            <ThemeToggle />
+            <div className="flex items-center gap-1">
+              <ContactLink desktop testId="header-contact-link" />
+              <ThemeToggle />
+            </div>
             <UserMenu />
           </div>
 
           {/* Mobile Actions */}
           <div className="flex items-center gap-2 lg:hidden">
+            <ContactLink testId="mobile-header-contact-link" />
             <ThemeToggle />
             <UserMenu compact />
             <Button

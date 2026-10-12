@@ -105,6 +105,9 @@ const REDACT_PATHS = [
   '**.email',
   'user.email',
   'session.user.email',
+  // 問い合わせの返信先（lib/inquiries）
+  'contactEmail',
+  '*.contactEmail',
 
   // IP addresses
   'clientIp',

@@ -122,6 +122,8 @@ async function main() {
     prisma.article.deleteMany(),
     prisma.tag.deleteMany(),
     prisma.source.deleteMany(),
+    // User を消しても onDelete: SetNull で問い合わせは残るので、先に消す
+    prisma.inquiry.deleteMany(),
     prisma.user.deleteMany(),
   ]);
 

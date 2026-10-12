@@ -84,20 +84,28 @@ export function withRateLimit(
 
       // Success: Execute handler with session in context (SessionContext shared across chain)
       const response = await handler(request, { ...context, session });
-      response.headers.set('X-RateLimit-Limit', rateLimitInfo.limit.toString());
-      response.headers.set(
-        'X-RateLimit-Remaining',
-        rateLimitInfo.remaining.toString()
-      );
-      response.headers.set(
-        'X-RateLimit-Reset',
-        rateLimitInfo.reset.toISOString()
-      );
+      // handler の中で別の制限に当たって 429 を返したときは、その制限のヘッダーを残す
+      // （上書きすると、本文と食い違う外側の制限の残りが載る）
+      if (!response.headers.has('X-RateLimit-Limit')) {
+        response.headers.set(
+          'X-RateLimit-Limit',
+          rateLimitInfo.limit.toString()
+        );
+        response.headers.set(
+          'X-RateLimit-Remaining',
+          rateLimitInfo.remaining.toString()
+        );
+        response.headers.set(
+          'X-RateLimit-Reset',
+          rateLimitInfo.reset.toISOString()
+        );
+      }
 
       // Telemetry (debug level - only log allowed events at debug to reduce noise)
+      // limitKey（ip:<IP> や user:<ID>）は載せない。短いハッシュでは IPv4 を総当たりで戻せるため
       span?.addEvent('ratelimit.allowed', {
         configKey,
-        limitKey,
+        keyStrategy: config.keyStrategy,
         remaining: rateLimitInfo.remaining,
       });
 
@@ -124,31 +132,42 @@ export function withRateLimit(
           options.onBlocked(error);
         }
 
-        // Standardized error response (RFC 6585 compliant)
-        return NextResponse.json(
-          {
-            error: 'rate_limited',
-            message: 'Rate limit exceeded. Please try again later.',
-            retryAfter,
-            limit: error.limit,
-            reset: error.reset.toISOString(),
-          },
-          {
-            status: 429,
-            headers: {
-              'Retry-After': retryAfter.toString(),
-              'X-RateLimit-Limit': error.limit.toString(),
-              'X-RateLimit-Remaining': '0',
-              'X-RateLimit-Reset': error.reset.toISOString(),
-            },
-          }
-        );
+        return createRateLimitedResponse(error, retryAfter);
       }
 
       // Other errors: propagate to Next.js error handling
       throw error;
     }
   };
+}
+
+/**
+ * 制限を超えたときの 429 応答（RFC 6585）
+ *
+ * withRateLimit を通さずに handler の中で checkRateLimit を呼ぶルートも、同じ形で返すために使う
+ */
+export function createRateLimitedResponse(
+  error: RateLimitError,
+  retryAfter: number = Math.ceil((error.reset.getTime() - Date.now()) / 1000)
+): NextResponse {
+  return NextResponse.json(
+    {
+      error: 'rate_limited',
+      message: 'Rate limit exceeded. Please try again later.',
+      retryAfter,
+      limit: error.limit,
+      reset: error.reset.toISOString(),
+    },
+    {
+      status: 429,
+      headers: {
+        'Retry-After': retryAfter.toString(),
+        'X-RateLimit-Limit': error.limit.toString(),
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': error.reset.toISOString(),
+      },
+    }
+  );
 }
 
 /**

@@ -1,4 +1,4 @@
-import { FileText, LayoutDashboard, Users } from 'lucide-react';
+import { FileText, Inbox, LayoutDashboard, Users } from 'lucide-react';
 import type { ComponentType } from 'react';
 
 export interface NavItem {
@@ -22,6 +22,7 @@ export const adminNavigation: NavSection[] = [
     items: [
       { title: 'ユーザー', href: '/admin/users', icon: Users },
       { title: '記事管理', href: '/admin/articles', icon: FileText },
+      { title: '問い合わせ', href: '/admin/inquiries', icon: Inbox },
     ],
   },
 ];

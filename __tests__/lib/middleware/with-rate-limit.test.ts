@@ -261,6 +261,71 @@ describe('withRateLimit', () => {
       );
     });
 
+    it('does not put the raw IP into the span event', async () => {
+      const { trace } = jest.requireMock('@opentelemetry/api');
+      const addEvent = jest.fn();
+      (trace.getActiveSpan as jest.Mock).mockReturnValue({ addEvent });
+
+      mockCheckRateLimit.mockResolvedValue({
+        limit: 10,
+        remaining: 9,
+        reset: new Date(),
+      });
+
+      const handler = withRateLimit('test:policy', async () => {
+        return NextResponse.json({ success: true });
+      });
+      await handler(
+        new NextRequest('http://localhost/api/test', {
+          headers: { 'x-forwarded-for': '203.0.113.7' },
+        })
+      );
+
+      // limitKey（ip:<IP>）は載せない。短いハッシュでは IPv4 を総当たりで戻せるため
+      expect(addEvent).toHaveBeenCalledWith('ratelimit.allowed', {
+        configKey: 'test:policy',
+        keyStrategy: 'ip',
+        remaining: 9,
+      });
+      expect(JSON.stringify(addEvent.mock.calls)).not.toContain('203.0.113.7');
+
+      (trace.getActiveSpan as jest.Mock).mockReturnValue(undefined);
+    });
+
+    it('keeps the rate limit headers that the handler already set', async () => {
+      mockCheckRateLimit.mockResolvedValue({
+        limit: 5,
+        remaining: 4,
+        reset: new Date('2026-10-12T01:00:00Z'),
+      });
+
+      // handler の中で別の制限（全体の上限）に当たって 429 を返した場合
+      const handler = withRateLimit('test:policy', async () =>
+        NextResponse.json(
+          { error: 'rate_limited' },
+          {
+            status: 429,
+            headers: {
+              'X-RateLimit-Limit': '50',
+              'X-RateLimit-Remaining': '0',
+              'X-RateLimit-Reset': '2026-10-12T02:00:00.000Z',
+            },
+          }
+        )
+      );
+      const response = await handler(
+        new NextRequest('http://localhost/api/test', {
+          headers: { 'x-forwarded-for': '203.0.113.8' },
+        })
+      );
+
+      expect(response.headers.get('X-RateLimit-Limit')).toBe('50');
+      expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
+      expect(response.headers.get('X-RateLimit-Reset')).toBe(
+        '2026-10-12T02:00:00.000Z'
+      );
+    });
+
     it('should use anonymous when anonymous strategy', async () => {
       getAuthApiGetSession().mockResolvedValue(null);
 

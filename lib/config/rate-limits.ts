@@ -132,6 +132,25 @@ export const RATE_LIMIT_POLICIES = {
     notes: 'Comment creation limit (5 per minute)',
     telemetryEvent: 'ratelimit.write.comment',
   },
+  // 問い合わせは未ログインでも送れるので、IP 単位で数える（検証の前に数える）
+  'write:inquiry': {
+    points: 5,
+    duration: 3600,
+    blockDuration: 0,
+    keyStrategy: 'ip',
+    notes: 'Inquiry submission per IP (5 per hour)',
+    telemetryEvent: 'ratelimit.write.inquiry',
+  },
+  // IP を替えた連投で DB を埋められないよう、保存の直前に全体の件数で数える
+  // （app/api/inquiries/route.ts が checkRateLimit で直接使う）
+  'write:inquiry-global': {
+    points: 50,
+    duration: 3600,
+    blockDuration: 0,
+    keyStrategy: 'anonymous',
+    notes: 'Inquiries saved across all senders (50 per hour)',
+    telemetryEvent: 'ratelimit.write.inquiry-global',
+  },
   'write:source-preset': {
     points: 10,
     duration: 60,
