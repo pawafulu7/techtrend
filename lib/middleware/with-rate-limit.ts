@@ -6,6 +6,7 @@ import {
 } from '@/lib/config/rate-limits';
 import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
 import { trace } from '@opentelemetry/api';
+import { hashSensitiveValue } from '@/lib/logger';
 import { resolveSessionFromRequest } from './session-context';
 import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
 
@@ -95,9 +96,10 @@ export function withRateLimit(
       );
 
       // Telemetry (debug level - only log allowed events at debug to reduce noise)
+      // limitKey は ip:<IP> や user:<ID> なので、そのまま載せずにハッシュにする
       span?.addEvent('ratelimit.allowed', {
         configKey,
-        limitKey,
+        limitKey: hashSensitiveValue(limitKey),
         remaining: rateLimitInfo.remaining,
       });
 

@@ -261,6 +261,37 @@ describe('withRateLimit', () => {
       );
     });
 
+    it('does not put the raw IP into the span event', async () => {
+      const { trace } = jest.requireMock('@opentelemetry/api');
+      const addEvent = jest.fn();
+      (trace.getActiveSpan as jest.Mock).mockReturnValue({ addEvent });
+
+      mockCheckRateLimit.mockResolvedValue({
+        limit: 10,
+        remaining: 9,
+        reset: new Date(),
+      });
+
+      const handler = withRateLimit('test:policy', async () => {
+        return NextResponse.json({ success: true });
+      });
+      await handler(
+        new NextRequest('http://localhost/api/test', {
+          headers: { 'x-forwarded-for': '203.0.113.7' },
+        })
+      );
+
+      expect(addEvent).toHaveBeenCalledWith(
+        'ratelimit.allowed',
+        expect.objectContaining({
+          limitKey: expect.stringMatching(/^\[HASHED:[0-9a-f]{8}\]$/),
+        })
+      );
+      expect(JSON.stringify(addEvent.mock.calls)).not.toContain('203.0.113.7');
+
+      (trace.getActiveSpan as jest.Mock).mockReturnValue(undefined);
+    });
+
     it('should use anonymous when anonymous strategy', async () => {
       getAuthApiGetSession().mockResolvedValue(null);
 
