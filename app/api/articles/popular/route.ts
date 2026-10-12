@@ -6,6 +6,11 @@ import { popularCache, type PopularPeriod } from '@/lib/cache/popular-cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { publicCacheHeaders } from '@/lib/api/cache-headers';
 import { findTagIdsByNames } from '@/lib/services/tag-service';
+import type { Prisma } from '@/lib/prisma-exports';
+import {
+  pushLowQualityFilter,
+  pushProcessedFilter,
+} from '@/app/api/articles/lib/where-clause-predicates';
 
 const boolParam = (defaultVal: 'true' | 'false' = 'false') =>
   z
@@ -163,31 +168,10 @@ async function getPopularArticles(request: NextRequest) {
               AND: [{ content: { not: null } }, { content: { not: '' } }],
             };
 
-        // 処理済み記事フィルターの条件設定
-        const processedFilter = excludeUnprocessed
-          ? { summaryComputedAt: { not: null } }
-          : {};
-
-        // Low quality filters (conditional based on excludeLowQuality parameter)
-        // skipReason filter: Exclude THIN_CONTENT and QUALITY_FAILED, but allow PDF and SLIDE
-        const skipReasonFilter = excludeLowQuality
-          ? {
-              OR: [
-                { skipReason: null },
-                {
-                  skipReason: {
-                    notIn: ['THIN_CONTENT' as const, 'QUALITY_FAILED' as const],
-                  },
-                },
-              ],
-            }
-          : {};
-
-        // qualityScore filter: Exclude < 30
-        // Note: qualityScore is Float @default(0), so null is not possible
-        const qualityScoreFilter = excludeLowQuality
-          ? { qualityScore: { gte: 30 } }
-          : {};
+        // 要約の無い記事・低品質の記事の除外（スライドは除外しない）は一覧 API と共通
+        const summaryFilters: Prisma.ArticleWhereInput[] = [];
+        pushProcessedFilter(summaryFilters, excludeUnprocessed);
+        pushLowQualityFilter(summaryFilters, excludeLowQuality);
 
         const offTopicFilter = includeOffTopic ? {} : { isOffTopic: false };
 
@@ -222,10 +206,8 @@ async function getPopularArticles(request: NextRequest) {
             AND: [
               articleAggregationWhere({ from, to: now }),
               categoryFilter,
-              qualityScoreFilter,
               contentFilter,
-              processedFilter,
-              skipReasonFilter,
+              ...summaryFilters,
               offTopicFilter,
             ].filter((f) => Object.keys(f).length > 0), // Remove empty filters
           },

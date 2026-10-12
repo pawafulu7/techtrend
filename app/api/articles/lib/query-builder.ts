@@ -147,7 +147,10 @@ export class ArticleWhereClauseBuilder {
    * Exclude articles without processed summaries
    */
   withProcessedFilter(excludeUnprocessed: boolean): this {
-    pushProcessedFilter(this.where, excludeUnprocessed);
+    pushProcessedFilter(
+      this.where.AND as ArticleWhereInput[],
+      excludeUnprocessed
+    );
     return this;
   }
 
@@ -156,7 +159,7 @@ export class ArticleWhereClauseBuilder {
    * Filters out articles with:
    * - skipReason IN ('THIN_CONTENT', 'QUALITY_FAILED')
    * - qualityScore < 30 (scale is 0-100)
-   * PDF and SLIDE skip reasons are NOT excluded (valid content types)
+   * PDF skip reasons and slide articles are NOT excluded (see pushLowQualityFilter)
    */
   withLowQualityFilter(excludeLowQuality: boolean): this {
     pushLowQualityFilter(

@@ -16,6 +16,8 @@ import {
   MAX_TAG_FILTER_COUNT,
   MAX_TAG_NAME_LENGTH,
   parseTagList,
+  pushLowQualityFilter,
+  pushProcessedFilter,
   pushSearchFilter,
   capSearchKeywords,
   pushTagFilter,
@@ -24,6 +26,10 @@ import {
   validateSearchQuery,
   validateTagFilter,
 } from '@/app/api/articles/lib/where-clause-predicates';
+import {
+  isSlideArticle,
+  slideArticleWhere,
+} from '@/lib/utils/source/slide-source';
 
 describe('parseTagList', () => {
   it('prefers tag over tags', () => {
@@ -300,5 +306,64 @@ describe('capSearchKeywords', () => {
 
   it('does not split a surrogate pair at the limit', () => {
     expect(capSearchKeywords('😀'.repeat(201))).toEqual(['😀'.repeat(200)]);
+  });
+});
+
+// 要約の無いスライドは、詳細ページ・カードともスライドの画像で表示する。
+// 一覧の「要約なし」「低品質」の除外で消さない
+describe('slide articles in summary-based exclusions', () => {
+  it('pushProcessedFilter keeps slide articles without a summary', () => {
+    const and: Prisma.ArticleWhereInput[] = [];
+    pushProcessedFilter(and, true);
+    expect(and).toEqual([
+      { OR: [{ summaryComputedAt: { not: null } }, slideArticleWhere()] },
+    ]);
+  });
+
+  it('pushProcessedFilter adds nothing when not requested', () => {
+    const and: Prisma.ArticleWhereInput[] = [];
+    pushProcessedFilter(and, false);
+    expect(and).toEqual([]);
+  });
+
+  it('pushLowQualityFilter keeps slide articles skipped as THIN_CONTENT', () => {
+    const and: Prisma.ArticleWhereInput[] = [];
+    pushLowQualityFilter(and, true);
+    expect(and).toHaveLength(1);
+    const or = and[0].OR as Prisma.ArticleWhereInput[];
+    expect(or[0]).toEqual(slideArticleWhere());
+    expect(or[1]).toEqual({
+      AND: [
+        {
+          OR: [
+            { skipReason: null },
+            { skipReason: { notIn: ['THIN_CONTENT', 'QUALITY_FAILED'] } },
+          ],
+        },
+        { qualityScore: { gte: 30 } },
+      ],
+    });
+  });
+
+  it('slideArticleWhere matches the same articles as isSlideArticle', () => {
+    const where = slideArticleWhere();
+    const conditions = where.OR as Prisma.ArticleWhereInput[];
+    expect(conditions[0]).toEqual({
+      source: { name: { in: ['Speaker Deck', 'Docswell'] } },
+    });
+    const prefixes = conditions
+      .slice(1)
+      .map((c) => (c.url as { startsWith: string }).startsWith);
+    expect(prefixes.length).toBeGreaterThan(0);
+    for (const prefix of prefixes) {
+      expect(isSlideArticle({ url: `${prefix}user/deck` })).toBe(true);
+    }
+    expect(prefixes).toEqual(
+      expect.arrayContaining([
+        'https://speakerdeck.com/',
+        'https://www.speakerdeck.com/',
+        'https://docswell.com/',
+      ])
+    );
   });
 });
