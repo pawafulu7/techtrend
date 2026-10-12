@@ -19,7 +19,10 @@ export const createInquirySchema = z
       errorMap: () => ({ message: '種別を選んでください' }),
     }),
     message: z
-      .string({ invalid_type_error: '内容を書いてください' })
+      .string({
+        required_error: '内容を書いてください',
+        invalid_type_error: '内容を書いてください',
+      })
       .transform(normalizeInquiryMessage)
       .pipe(
         z
