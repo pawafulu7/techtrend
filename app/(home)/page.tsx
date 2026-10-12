@@ -160,7 +160,7 @@ export default async function Home({ searchParams }: PageProps) {
     <FilterSidebarProvider>
       <div className="flex h-full flex-col overflow-hidden">
         {/* Gradient background layer */}
-        <div className="from-background to-muted/20 flex flex-1 flex-col overflow-hidden bg-gradient-to-b">
+        <div className="flex flex-1 flex-col overflow-hidden">
           {/* 見出しとツールバー。全幅で、左右の余白は記事一覧と同じ（Issue #700） */}
           <div className="flex-shrink-0 px-4 pt-3 lg:px-6">
             <PageHeader icon={HomeIcon} title="記事一覧" variant="compact" />

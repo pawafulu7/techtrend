@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ArticleDetailLoading() {
   return (
-    <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
+    <div className="min-h-screen">
       <div className="w-full px-6 py-6">
         {/* Back button */}
         <div className="mb-2">

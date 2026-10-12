@@ -63,7 +63,8 @@ const BadgeV2 = forwardRef<HTMLElement, BadgeV2Props>(
           ],
           variant === 'outline' && [
             'border border-(--tt-color-border)',
-            'bg-transparent text-(--tt-color-text)',
+            // 透明だとページの下地（page-canvas の色の移り）が透けるので、カードと同じ面で塗る
+            'bg-(--tt-color-surface) text-(--tt-color-text)',
             'hover:border-(--tt-color-border-hover) hover:bg-(--tt-color-surface-hover)',
           ],
           variant === 'positive' && [

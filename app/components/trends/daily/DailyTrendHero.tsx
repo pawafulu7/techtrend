@@ -129,23 +129,7 @@ export function DailyTrendHero({
 
   return (
     <section className="relative overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-[var(--tt-color-surface-muted)]" />
-      <div
-        className="absolute top-0 right-0 h-96 w-96 translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
-        style={{
-          background:
-            'color-mix(in srgb, var(--tt-color-primary) 7%, transparent)',
-        }}
-      />
-      <div
-        className="absolute bottom-0 left-0 h-64 w-64 -translate-x-1/2 translate-y-1/2 rounded-full blur-3xl"
-        style={{
-          background:
-            'color-mix(in srgb, var(--tt-color-primary) 5%, transparent)',
-        }}
-      />
-
+      {/* 地と緑のにじみは、ページの下地（main の page-canvas）に任せる */}
       <div className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:py-8">
         {/* Issue #700: 見出し・日付・前日／翌日の移動は、読み込み中も出せるよう
             daily-trend-content の PageHeader が持つ */}

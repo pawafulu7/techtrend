@@ -37,7 +37,7 @@ export function OffTopicToggle({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'flex h-7 items-center justify-between gap-2 rounded-md border px-2',
+        'flex h-7 items-center justify-between gap-2 rounded-md border bg-(--tt-color-surface) px-2',
         checked &&
           'border-[var(--tt-color-info-border)] bg-[var(--tt-color-info-bg)]',
         className

@@ -16,7 +16,7 @@ export default async function AgentSearchPage() {
   }
 
   return (
-    <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
+    <div className="min-h-screen">
       <div className="container mx-auto px-6 py-6">
         {/* 作業型の画面なのでレイアウトは変えず、見出し行だけ他の画面とそろえる（Issue #700） */}
         <PageHeader icon={Sparkles} title="AI検索" />

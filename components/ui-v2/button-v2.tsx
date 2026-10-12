@@ -25,8 +25,9 @@ const buttonV2Variants = cva(
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-xs',
         ghost: 'hover:bg-(--tt-color-surface-hover) text-(--tt-color-text)',
+        // 背景はカードと同じ面で塗る。透明だと、ページの下地（page-canvas の色の移り）がボタンに透ける
         outline:
-          'border border-(--tt-color-border) bg-transparent hover:bg-(--tt-color-surface-hover) hover:border-(--tt-color-border-hover) text-(--tt-color-text)',
+          'border border-(--tt-color-border) bg-(--tt-color-surface) hover:bg-(--tt-color-surface-hover) hover:border-(--tt-color-border-hover) text-(--tt-color-text)',
         destructive:
           'bg-destructive text-tt-on-negative hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40',
         link: 'text-(--tt-color-primary) underline-offset-4 hover:underline',

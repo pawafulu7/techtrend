@@ -2,6 +2,9 @@ import { slate, white, withAlpha } from './palette';
 
 export type ColorModeTokens = {
   background: string;
+  canvas: string;
+  canvasTopGlow: string;
+  canvasBottomGlow: string;
   primary: string;
   primaryHover: string;
   primaryBg: string;
@@ -53,6 +56,12 @@ const lightInfo = '#1D4ED8'; // blue-700
 
 export const lightColors: ColorModeTokens = {
   background: white, // ページの背景
+  // 全画面の下地（main に敷く）。白いカードとヘッダーを浮かせるため一段沈める
+  canvas: slate[100],
+  // 下地は画面の上端の緑（green-50）から下端の水色（sky-50）へ移る。下地に直接置く補助文字が
+  // 4.5:1 ぎりぎりにならないよう、どちらも slate-100 より明るい色にする（textMuted で 4.8・4.7）
+  canvasTopGlow: '#F0FDF4',
+  canvasBottomGlow: '#F0F9FF',
   primary: lightPrimary,
   primaryHover: '#166534', // green-800
   primaryBg: withAlpha(lightPrimary, 0.1), // 淡い塗り（未読などのバッジ）
@@ -101,6 +110,10 @@ const darkInfo = '#60A5FA'; // blue-400
 
 export const darkColors: ColorModeTokens = {
   background: slate[950],
+  // カード（slate-900）との差を保つため、下地の色は変えずに、上端の緑から下端の青へ淡く重ねる
+  canvas: slate[950],
+  canvasTopGlow: withAlpha(darkPrimary, 0.14),
+  canvasBottomGlow: withAlpha(darkInfo, 0.12),
   primary: darkPrimary,
   primaryHover: '#16A34A', // green-600
   primaryBg: withAlpha(darkPrimary, 0.1),

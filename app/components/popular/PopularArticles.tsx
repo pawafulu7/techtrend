@@ -288,9 +288,10 @@ export function PopularArticles({
               <div
                 key={article.id}
                 className={cn(
-                  'group relative flex items-start gap-3 rounded-lg border p-3 transition-colors',
+                  'group relative flex items-start gap-3 rounded-lg border bg-(--tt-color-surface) p-3 transition-colors',
                   'hover:bg-accent hover:border-accent-foreground/20',
-                  article.rank <= 3 && 'border-primary/20 bg-primary/5'
+                  // 上位3件はメダルと緑の枠で示す。淡い緑の地は下地のグレーと同じ明るさになり沈むので敷かない
+                  article.rank <= 3 && 'border-primary/30'
                 )}
               >
                 <div className="flex flex-col items-center gap-1">

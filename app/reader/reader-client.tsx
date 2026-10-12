@@ -344,7 +344,7 @@ function ReaderClientInner({
         {/* Left panel: Article list */}
         <div
           className={cn(
-            'shrink-0 overflow-y-auto border-r border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] md:w-[320px] lg:w-[380px]',
+            'shrink-0 overflow-y-auto border-r border-[var(--tt-color-border)] md:w-[320px] lg:w-[380px]',
             articleParam ? 'hidden md:block' : 'block w-full'
           )}
           role="region"

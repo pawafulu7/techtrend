@@ -153,7 +153,7 @@ export function ReaderArticleDetail({
   const dateStr = formatDate(article.publishedAt);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-[var(--tt-color-surface)]">
+    <div className="flex h-full flex-col overflow-hidden">
       <MobileDetailBar
         hasPrev={hasPrev}
         hasNext={hasNext}

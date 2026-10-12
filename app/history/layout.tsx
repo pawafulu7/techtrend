@@ -4,7 +4,7 @@ export default function HistoryLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
+    <div className="min-h-screen">
       {children}
     </div>
   );

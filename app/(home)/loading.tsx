@@ -7,7 +7,7 @@ import { ArticleListSkeleton } from '@/app/components/article/article-list-skele
 // 表示形式の Cookie はここでは読まず、既定のカード表示で出す
 export default function Loading() {
   return (
-    <div className="from-background to-muted/20 flex h-full flex-col overflow-hidden bg-gradient-to-b">
+    <div className="flex h-full flex-col overflow-hidden">
       <div className="flex-shrink-0 px-4 pt-3 lg:px-6">
         <PageHeader icon={HomeIcon} title="記事一覧" variant="compact" />
         <div
