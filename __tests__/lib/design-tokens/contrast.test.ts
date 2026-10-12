@@ -7,6 +7,7 @@
  * - 淡い塗り（*Bg、半透明）をカード・背景・沈んだ面・ホバー面に重ね、その上に同じ色の文字を置いた場合（バッジ）
  * - 本文・補助文字を、背景・カード・沈んだ面・ホバー面（shadcn の muted）に置いた場合
  * - 順位色を、背景・カード・沈んだ面に置いた場合
+ * - 全画面の下地（canvas と、上端の緑 canvasTopGlow から下端の青 canvasBottomGlow へのグラデーション）に、本文・補助文字・ブランド色・バッジを置いた場合
  * - チャートの系列色の塗りに、readableTextColor で選んだ文字を載せた場合（円グラフの割合ラベル）
  */
 
@@ -73,6 +74,7 @@ const TINTS: Array<[fg: ColorKey, bg: ColorKey]> = [
 
 const SURFACES = [
   'background',
+  'canvas',
   'surface',
   'surfaceMuted',
 ] as const satisfies readonly ColorKey[];
@@ -122,12 +124,45 @@ describe.each([
     expect(ratio(c, fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
   });
 
-  it.each(RANK_TEXTS.flatMap((fg) => SURFACES.map((bg) => [fg, bg] as const)))(
-    '%s text on %s',
-    (fg, bg) => {
-      expect(ratio(c, fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
+  // 下地は canvasTopGlow から canvasBottomGlow へのグラデーション（どちらも canvas に重ねる）。
+  // ページの見出し・説明文・バッジはこの上に直接載るので、両端と途中の色をすべて調べる
+  const canvasGradient = (() => {
+    const base = parseColor(c.canvas).rgb;
+    const top = composite(c.canvasTopGlow, base);
+    const bottom = composite(c.canvasBottomGlow, base);
+    return Array.from({ length: 11 }, (_, i) =>
+      top.map((v, k) => v + (bottom[k] - v) * (i / 10))
+    ) as Array<typeof base>;
+  })();
+
+  it.each([...NEUTRAL_TEXTS, ...ACCENTS])(
+    '%s text on the canvas gradient',
+    (fg) => {
+      for (const bg of canvasGradient) {
+        expect(contrastRatio(composite(c[fg], bg), bg)).toBeGreaterThanOrEqual(
+          AA_TEXT
+        );
+      }
     }
   );
+
+  it.each(TINTS)('%s text on %s over the canvas gradient', (fg, bg) => {
+    for (const under of canvasGradient) {
+      const tint = composite(c[bg], under);
+      expect(
+        contrastRatio(composite(c[fg], tint), tint)
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+    }
+  });
+
+  // 順位の色は RankBadge の丸（bg-background）の中にだけ置き、下地（canvas）には直接置かない
+  it.each(
+    RANK_TEXTS.flatMap((fg) =>
+      SURFACES.filter((bg) => bg !== 'canvas').map((bg) => [fg, bg] as const)
+    )
+  )('%s text on %s', (fg, bg) => {
+    expect(ratio(c, fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
+  });
 });
 
 describe.each([
@@ -178,7 +213,7 @@ describe('色トークンの書式', () => {
     ['dark', colors.dark],
   ] as const)('%s のベタ塗りの色は6桁の hex', (_mode, c) => {
     const solid = Object.entries(c).filter(
-      ([key]) => !/(Bg|Border)$/.test(key)
+      ([key]) => !/(Bg|Border|Glow)$/.test(key)
     );
     expect(solid.length).toBeGreaterThan(0);
     for (const [, value] of solid) expect(value).toMatch(HEX);

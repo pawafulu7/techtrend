@@ -18,7 +18,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="from-background to-muted/20 flex min-h-[60vh] flex-col items-center justify-center bg-gradient-to-b px-4">
+    <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
       <div className="max-w-md text-center">
         <div className="bg-muted mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
           <AlertTriangle

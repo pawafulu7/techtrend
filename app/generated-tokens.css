@@ -37,6 +37,9 @@
   --color-tt-background: var(--tt-color-background);
   --color-tt-border: var(--tt-color-border);
   --color-tt-border-hover: var(--tt-color-border-hover);
+  --color-tt-canvas: var(--tt-color-canvas);
+  --color-tt-canvas-bottom-glow: var(--tt-color-canvas-bottom-glow);
+  --color-tt-canvas-top-glow: var(--tt-color-canvas-top-glow);
   --color-tt-info: var(--tt-color-info);
   --color-tt-info-bg: var(--tt-color-info-bg);
   --color-tt-info-border: var(--tt-color-info-border);
@@ -214,6 +217,9 @@
   --tt-color-background: #FFFFFF;
   --tt-color-border: #E2E8F0;
   --tt-color-border-hover: #CBD5E1;
+  --tt-color-canvas: #F1F5F9;
+  --tt-color-canvas-bottom-glow: #F0F9FF;
+  --tt-color-canvas-top-glow: #F0FDF4;
   --tt-color-info: #1D4ED8;
   --tt-color-info-bg: rgba(29, 78, 216, 0.1);
   --tt-color-info-border: rgba(29, 78, 216, 0.3);
@@ -419,6 +425,9 @@
   --tt-color-background: #020617;
   --tt-color-border: #1E293B;
   --tt-color-border-hover: #334155;
+  --tt-color-canvas: #020617;
+  --tt-color-canvas-bottom-glow: rgba(96, 165, 250, 0.12);
+  --tt-color-canvas-top-glow: rgba(34, 197, 94, 0.14);
   --tt-color-info: #60A5FA;
   --tt-color-info-bg: rgba(96, 165, 250, 0.1);
   --tt-color-info-border: rgba(96, 165, 250, 0.4);

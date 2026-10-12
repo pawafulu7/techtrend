@@ -137,7 +137,7 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
     ) : null;
 
   return (
-    <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
+    <div className="min-h-screen">
       <div className="w-full px-6 py-6">
         <ArticleTracker
           articleId={article.id}

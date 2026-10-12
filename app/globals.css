@@ -113,6 +113,18 @@ html.no-transitions *::after {
 }
 
 @layer utilities {
+  /* 全画面の下地。画面の上端の緑から下端の青へ移る。
+     画面に固定し、ページの長さによらず、どこまでスクロールしても同じ色の移り方で見せる */
+  .page-canvas {
+    background-color: var(--tt-color-canvas);
+    background-image: linear-gradient(
+      180deg,
+      var(--tt-color-canvas-top-glow),
+      var(--tt-color-canvas-bottom-glow)
+    );
+    background-attachment: fixed;
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
