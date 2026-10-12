@@ -111,6 +111,7 @@ const eslintConfig = defineConfig([
     'dist/**',
     'coverage/**',
     '.backup/**',
+    '.workflow/**',
     'tmp/**',
     'temp/**',
     'test/**',
