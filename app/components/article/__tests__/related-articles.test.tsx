@@ -100,9 +100,10 @@ describe('RelatedArticles', () => {
 
     const links = screen.getAllByTestId('related-article-link');
     expect(within(links[0]).getByText('翻訳した関連記事')).toBeInTheDocument();
-    expect(within(links[0]).getByText('Test Source 1').nextElementSibling).toBe(
-      within(links[0]).getByTestId('translation-badge')
-    );
+    expect(
+      within(links[0]).getByText('Test Source 1').parentElement
+        ?.nextElementSibling
+    ).toBe(within(links[0]).getByTestId('translation-badge'));
     expect(
       within(links[1]).queryByTestId('translation-badge')
     ).not.toBeInTheDocument();
