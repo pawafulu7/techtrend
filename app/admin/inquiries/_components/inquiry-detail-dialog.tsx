@@ -23,6 +23,7 @@ import type {
   AdminInquiryUpdateResponse,
   InquiryListItem,
 } from '@/lib/inquiries/types';
+import { inquiryQueryKeys } from '@/lib/inquiries/query-keys';
 import { InquiryStatusBadge } from './inquiry-badges';
 
 async function updateInquiryStatus(
@@ -117,7 +118,7 @@ function InquiryDetailBody({
     onSuccess: (updated) => {
       setError(null);
       onUpdated(updated);
-      void queryClient.invalidateQueries({ queryKey: ['admin', 'inquiries'] });
+      void queryClient.invalidateQueries({ queryKey: inquiryQueryKeys.all });
       toast({
         title: `対応状況を「${INQUIRY_STATUS_LABELS[updated.status]}」にしました`,
       });
@@ -215,7 +216,7 @@ function InquiryDetailBody({
                 >
                   {pending && (
                     <Loader2
-                      className="h-4 w-4 animate-spin"
+                      className="h-4 w-4 motion-safe:animate-spin"
                       aria-hidden="true"
                     />
                   )}

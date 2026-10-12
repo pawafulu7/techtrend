@@ -365,7 +365,10 @@ export function ContactForm({
             data-disabled={submitting ? 'true' : undefined}
           >
             {submitting && (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <Loader2
+                className="h-4 w-4 motion-safe:animate-spin"
+                aria-hidden="true"
+              />
             )}
             {submitting ? '送信中…' : '送信する'}
           </Button>

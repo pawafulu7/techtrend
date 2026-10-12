@@ -18,6 +18,7 @@ import type {
   InquiryListItem,
   InquiryStatusFilter,
 } from '@/lib/inquiries/types';
+import { inquiryQueryKeys } from '@/lib/inquiries/query-keys';
 import { InquiriesTable } from './inquiries-table';
 import { InquiryDetailDialog } from './inquiry-detail-dialog';
 
@@ -103,7 +104,7 @@ function InquiriesList() {
 
   const { data, isLoading, isFetching, isPlaceholderData, error, refetch } =
     useQuery({
-      queryKey: ['admin', 'inquiries', { page, status }],
+      queryKey: inquiryQueryKeys.list({ page, status }),
       queryFn: ({ signal }) => fetchInquiries({ page, status, signal }),
       placeholderData: keepPreviousData,
       // 開いたままでも、タブに戻れば新着が出るようにする（既定は 5 分・フォーカスで取り直さない）
