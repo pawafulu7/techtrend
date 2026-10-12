@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import { Header } from '@/app/components/layout/header';
 import { NoTransitions } from '@/app/components/layout/no-transitions';
 import { SITE_NAME, SITE_DESCRIPTION } from '@/lib/constants';
@@ -13,31 +13,34 @@ import { buildCriticalCss } from '@/lib/utils/design-tokens/build-css';
 // import { OnboardingProvider } from "@/app/components/onboarding/onboarding-provider";
 import './globals.css';
 
-const spaceGrotesk = Space_Grotesk({
+// フォントは app/fonts/ に置いたもの（Google Fonts のラテン文字用の可変フォント。ライセンスは同じ場所の OFL-*）を使う。
+// next/font/google はビルドや開発サーバーの起動時に Google から取得するが、Google が返す
+// `l/font?kit=…&skey=…` 形式の URL を Turbopack が解釈できず、全ページが 500 になったため
+const spaceGrotesk = localFont({
+  src: './fonts/space-grotesk-latin-wght.woff2',
   variable: '--font-space-grotesk',
-  subsets: ['latin'],
+  weight: '500 700',
   display: 'swap',
-  weight: ['500', '600', '700'],
   preload: true,
-  adjustFontFallback: true,
+  adjustFontFallback: 'Arial',
 });
 
-const inter = Inter({
+const inter = localFont({
+  src: './fonts/inter-latin-wght.woff2',
   variable: '--font-inter',
-  subsets: ['latin'],
+  weight: '400 600',
   display: 'swap',
-  weight: ['400', '500', '600'],
   preload: true,
-  adjustFontFallback: true,
+  adjustFontFallback: 'Arial',
 });
 
-const jetBrainsMono = JetBrains_Mono({
+const jetBrainsMono = localFont({
+  src: './fonts/jetbrains-mono-latin-wght.woff2',
   variable: '--font-jetbrains-mono',
-  subsets: ['latin'],
+  weight: '400 600',
   display: 'swap',
-  weight: ['400', '500', '600'],
   preload: false,
-  adjustFontFallback: true,
+  adjustFontFallback: false,
 });
 
 // CSS の読み込み前に背景・文字色を確定させる。値は globals.css と同じ lib/design-tokens/ から作る
