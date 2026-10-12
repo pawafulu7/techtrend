@@ -47,8 +47,9 @@ export const INQUIRY_CATEGORY_DESCRIPTIONS = {
 export const INQUIRY_MESSAGE_HINTS = {
   FEATURE_REQUEST: 'ほしい機能と、それで何ができるようになるかを書いてください',
   BUG_REPORT: '起きたこと・開いていた画面・期待した動きを書いてください',
-  OTHER: '内容を書いてください',
-  DEFAULT: '内容を書いてください',
+  OTHER: '質問・感想などを自由に書いてください',
+  // 「内容を書いてください」は未入力のエラーの文言なので、補足には使わない
+  DEFAULT: '種別を選ぶと、書くとよいことを案内します',
 } as const satisfies Record<InquiryCategory | 'DEFAULT', string>;
 
 export const INQUIRY_STATUS_LABELS = {
