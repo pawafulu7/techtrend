@@ -109,10 +109,17 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       />
     );
 
-    expect(
-      screen.getByText('急上昇キーワードはありません')
-    ).toBeInTheDocument();
-    expect(screen.getByText('新着タグはありません')).toBeInTheDocument();
+    // 空の表示は、ページの下地ではなく見出しと同じカード（枠と背景）の中に出す（issue #763）
+    for (const [heading, empty] of [
+      ['急上昇キーワード', '急上昇キーワードはありません'],
+      ['新着タグ (0)', '新着タグはありません'],
+    ]) {
+      const section = getSection(heading);
+      expect(section).toHaveClass('bg-background', 'border', 'rounded-lg');
+      expect(
+        within(within(section).getByTestId('empty-state')).getByText(empty)
+      ).toBeInTheDocument();
+    }
     expect(screen.queryByTestId('error-message')).not.toBeInTheDocument();
     expect(screen.queryByText('取得できませんでした')).not.toBeInTheDocument();
   });

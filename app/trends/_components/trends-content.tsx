@@ -10,17 +10,20 @@ import {
   useTransition,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { BadgeV2 } from '@/components/ui-v2/badge-v2';
-import { TrendingUp, Sparkles, BarChart3, ArrowUpRight } from 'lucide-react';
+import { BarChart3, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { PageHeader } from '@/components/ui-v2/page-header';
 import Link from 'next/link';
 import { TrendLineChart, SourcePieChart } from '@/app/components/trends';
-import { TrendingKeywordCard } from '@/app/components/trends/overview/TrendingKeywordCard';
 import { TrendStatsBar } from '@/app/components/trends/overview/TrendStatsBar';
 import { TrendNavigationCards } from '@/app/components/trends/overview/TrendNavigationCards';
 import { DataFreshness } from '@/app/components/common/data-freshness';
+import {
+  TrendingKeywordsSection,
+  NewTagsSection,
+  RETRY_DESCRIPTION,
+} from './keyword-sections';
 import type {
   TrendingKeyword,
   NewTag,
@@ -39,8 +42,6 @@ interface TrendsContentProps {
   /** ソース別記事分布の集計時刻 */
   sourceAggregatedAt?: string | null;
 }
-
-const RETRY_DESCRIPTION = '時間をおいて再試行してください。';
 
 export function TrendsContent({
   initialKeywords,
@@ -192,90 +193,22 @@ export function TrendsContent({
         loading={false}
       />
 
-      {/* Trending Keywords Section */}
-      <section>
-        <div className="mb-4 flex items-center gap-2">
-          <div className="from-tt-primary/50 h-px flex-1 bg-gradient-to-r to-transparent" />
-          <h2 className="text-foreground text-h2 flex items-center gap-2 px-2">
-            <TrendingUp className="h-5 w-5" aria-hidden="true" />
-            急上昇キーワード
-          </h2>
-          <div className="from-tt-primary/50 h-px flex-1 bg-gradient-to-l to-transparent" />
-        </div>
-        {initialKeywords !== null && (
-          <DataFreshness
-            at={keywordsAggregatedAt}
-            period="直近24時間"
-            className="-mt-2 mb-4 text-center"
-          />
-        )}
+      <TrendingKeywordsSection
+        keywords={initialKeywords}
+        aggregatedAt={keywordsAggregatedAt}
+        onRetry={refreshServerData}
+        retrying={isRefreshing}
+      />
 
-        {initialKeywords === null ? (
-          <ErrorState
-            title="急上昇キーワードを読み込めませんでした"
-            description={RETRY_DESCRIPTION}
-            onRetry={refreshServerData}
-            retrying={isRefreshing}
-            className="rounded-lg border"
-          />
-        ) : initialKeywords.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {initialKeywords.slice(0, 8).map((keyword) => (
-              <TrendingKeywordCard key={keyword.id} keyword={keyword} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground py-4 text-center text-sm">
-            急上昇キーワードはありません
-          </p>
-        )}
-      </section>
-
-      {/* New Tags Section */}
-      <section>
-        <div className="mb-3 flex items-center gap-2">
-          <Sparkles
-            className="h-5 w-5 text-(--tt-color-positive)"
-            aria-hidden="true"
-          />
-          <h2 className="text-foreground text-h2">
-            新着タグ{initialNewTags ? ` (${initialNewTags.length})` : ''}
-          </h2>
-        </div>
-
-        {initialNewTags === null ? (
-          <ErrorState
-            title="新着タグを読み込めませんでした"
-            description={RETRY_DESCRIPTION}
-            onRetry={refreshServerData}
-            retrying={isRefreshing}
-            className="rounded-lg border"
-          />
-        ) : initialNewTags.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {initialNewTags.map((tag) => (
-              <BadgeV2 key={tag.id} variant="positive" asChild>
-                <Link href={`/?tags=${encodeURIComponent(tag.name)}`}>
-                  {getTagDisplayName(tag.name)}
-                  <span className="ml-1">{tag.count}</span>
-                </Link>
-              </BadgeV2>
-            ))}
-          </div>
-        ) : (
-          <p className="text-muted-foreground py-2 text-center text-sm">
-            新着タグはありません
-          </p>
-        )}
-      </section>
+      <NewTagsSection
+        tags={initialNewTags}
+        onRetry={refreshServerData}
+        retrying={isRefreshing}
+      />
 
       {/* Sub-page Navigation */}
       <section>
-        <div className="mb-3 flex items-center gap-2">
-          <div className="h-px flex-1 bg-gradient-to-r from-(--tt-color-primary)/30 to-transparent" />
-          <h2 className="text-foreground text-h2 px-2">詳細レポート</h2>
-          <div className="h-px flex-1 bg-gradient-to-l from-(--tt-color-primary)/30 to-transparent" />
-        </div>
+        <h2 className="text-foreground text-h2 mb-3">詳細レポート</h2>
         <TrendNavigationCards />
       </section>
 
