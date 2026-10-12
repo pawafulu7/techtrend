@@ -42,7 +42,7 @@ export function ContactComplete({ result, onReset }: ContactCompleteProps) {
       <h2
         ref={headingRef}
         tabIndex={-1}
-        className="font-heading mt-3 text-xl font-semibold text-(--tt-color-text) outline-none"
+        className="font-heading text-h3 mt-3 text-(--tt-color-text) outline-none"
       >
         送信しました
       </h2>
