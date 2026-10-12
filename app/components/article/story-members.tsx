@@ -253,7 +253,9 @@ function StoryMemberRow({
         </Link>
         <p className="text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 text-xs">
           <span className="flex min-w-0 items-center gap-2">
-            <span className="min-w-0 truncate">{article.source.name}</span>
+            <span className="min-w-0 truncate" title={article.source.name}>
+              {article.source.name}
+            </span>
             {article.translatedTitle && <TranslationBadge compact />}
           </span>
           <span>{formatDateWithTime(article.publishedAt)}</span>

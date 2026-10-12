@@ -90,7 +90,9 @@ const RelatedArticleItem = memo(function RelatedArticleItem({
           <span className="flex min-w-0 items-center gap-2">
             {/* ソース名だけで列の幅を超えるときは省略する（BadgeV2 は flex なので内側で省略） */}
             <BadgeV2 variant="outline" className="min-w-0 text-xs">
-              <span className="min-w-0 truncate">{article.source}</span>
+              <span className="min-w-0 truncate" title={article.source}>
+                {article.source}
+              </span>
             </BadgeV2>
             {article.translatedTitle && (
               <TranslationBadge className="shrink-0" />
