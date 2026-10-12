@@ -48,7 +48,7 @@ export function formatPeriodLabel(
  * （入力には比較元の basis.periodLabel「前日」もあり、キー名で示すと取り違えるため）
  */
 function relativeTimeRule(periodLabel: string): string {
-  return `「今日」「本日」「昨日」「今週」「今月」など、読む時点で意味が変わる言葉を使わない（レポートは対象期間の後に読まれる）。対象期間を指すときは「${periodLabel}」と書く`;
+  return `「今日」「本日」「昨日」「明日」「今週」「先週」「今月」「先月」など、読む時点で意味が変わる言葉を使わない（レポートは対象期間の後に読まれる）。対象期間を指すときは「${periodLabel}」と書く。記事にある「昨日発表」などの日付は対象期間と同じとは限らないので、対象期間の日付に置き換えず、時点の言葉ごと省く`;
 }
 
 /**

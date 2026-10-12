@@ -109,6 +109,44 @@ describe('時点の言葉の検査（issue #757）', () => {
         ],
       },
     ],
+    [
+      'keyTopics',
+      { keyTopics: [{ ...VALID.keyTopics[0], topic: '本日のプラグイン' }] },
+    ],
+    [
+      'actions',
+      {
+        actions: [
+          { action: '試す', reason: '明日から使える', articleIds: ['A1'] },
+        ],
+      },
+    ],
+    [
+      'trendChanges',
+      {
+        trendChanges: {
+          available: true,
+          new: [],
+          rising: [],
+          falling: [],
+          summary: '本日はプラグインの話題が中心だった。',
+        },
+      },
+    ],
+    [
+      'trendChanges',
+      {
+        trendChanges: {
+          available: true,
+          new: [
+            { topic: 'プラグイン', deltaCount: 3, reason: '先週公開された' },
+          ],
+          rising: [],
+          falling: [],
+          summary: 'プラグインの話題が中心だった。',
+        },
+      },
+    ],
   ])('%s に時点の言葉があれば修正に回す', (field, patch) => {
     const errors = validateV2Content({ ...VALID, ...patch });
     expect(errors).toHaveLength(1);
@@ -116,14 +154,15 @@ describe('時点の言葉の検査（issue #757）', () => {
     expect(errors[0]).toContain(field);
   });
 
-  it.each(['今日', '本日', '昨日', '今週', '今月'])(
+  it.each(['今日', '本日', '昨日', '明日', '今週', '先週', '今月', '先月'])(
     '「%s」を検出する',
     (word) => {
       expect(hasRelativeTimeWord(`${word}の動向`)).toBe(true);
     }
   );
 
-  it('対象期間の日付は検出しない', () => {
+  it('対象期間の日付と「今日的」は検出しない', () => {
     expect(hasRelativeTimeWord('2026年10月4日の動向')).toBe(false);
+    expect(hasRelativeTimeWord('分散システムの今日的な課題')).toBe(false);
   });
 });
