@@ -76,9 +76,9 @@ async function resetTestDatabase() {
       -- Also drop legacy VerificationToken table if it still exists
       DROP TABLE IF EXISTS "VerificationToken" CASCADE;
 
-      -- Drop ArticleView constraints if they exist
-      ALTER TABLE "ArticleView" DROP CONSTRAINT IF EXISTS "ArticleView_articleId_fkey";
-      ALTER TABLE "ArticleView" DROP CONSTRAINT IF EXISTS "ArticleView_userId_fkey";
+      -- Drop ArticleView constraints if they exist（テーブルが無い状態からでも止まらないよう IF EXISTS）
+      ALTER TABLE IF EXISTS "ArticleView" DROP CONSTRAINT IF EXISTS "ArticleView_articleId_fkey";
+      ALTER TABLE IF EXISTS "ArticleView" DROP CONSTRAINT IF EXISTS "ArticleView_userId_fkey";
 
       -- Drop indexes if they exist (from performance optimization migrations)
       DROP INDEX IF EXISTS "idx_article_title_gin";
@@ -101,7 +101,9 @@ async function resetTestDatabase() {
     // 3. データベースをリセット（migrate reset の代わりに直接操作）
     console.log('🔄 データベースをリセット中...');
 
-    // 全テーブルを削除（CASCADE で依存関係も含めて）、_prisma_migrationsも含む
+    // 全テーブルを削除（CASCADE で依存関係も含めて）、_prisma_migrationsも含む。
+    // マイグレーションを最初から流し直すので、enum の型も消す（CREATE TYPE に IF NOT EXISTS は無く、
+    // 型が残っていると最初のマイグレーションの CREATE TYPE で止まる）
     const dropAllTablesSQL = `
       DO \\$\\$ DECLARE
         r RECORD;
@@ -109,6 +111,14 @@ async function resetTestDatabase() {
         -- Drop all tables in public schema including _prisma_migrations for clean reset
         FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
           EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+        END LOOP;
+        -- Drop enum types in public schema (migrations recreate them)
+        FOR r IN (
+          SELECT t.typname FROM pg_type t
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE n.nspname = 'public' AND t.typtype = 'e'
+        ) LOOP
+          EXECUTE 'DROP TYPE IF EXISTS ' || quote_ident(r.typname) || ' CASCADE';
         END LOOP;
       END \\$\\$;
     `;

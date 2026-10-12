@@ -95,44 +95,39 @@ export function hashSensitiveValue(value: unknown): string {
 }
 
 /**
+ * key を、トップレベルから maxDepth 段下までのどこにあっても伏せる redact の指定にする。
+ * pino（fast-redact）は `**`（任意の深さ）に対応しておらず、`**.email` は何にも当たらない。
+ * `*` は1段ぶんにしか当たらないので、深さごとに並べる（例: `email`、`*.email`、`*.*.email`…）
+ */
+function atAnyDepth(key: string, maxDepth = 4): string[] {
+  return Array.from({ length: maxDepth + 1 }, (_, depth) =>
+    [...Array<string>(depth).fill('*'), key].join('.')
+  );
+}
+
+/**
  * Paths to redact in log output
  * Uses Pino's redact feature for structured data
  */
-const REDACT_PATHS = [
+export const REDACT_PATHS = [
   // Email addresses
-  'email',
-  '*.email',
-  '**.email',
-  'user.email',
+  ...atAnyDepth('email'),
   'session.user.email',
   // 問い合わせの返信先（lib/inquiries）
   'contactEmail',
   '*.contactEmail',
 
   // IP addresses
-  'clientIp',
-  '*.clientIp',
-  '**.clientIp',
-  'request.ip',
-  'req.ip',
-  '*.ip',
-  '**.ip',
+  ...atAnyDepth('clientIp'),
+  ...atAnyDepth('ip'),
   'x-forwarded-for',
   'x-real-ip',
 
   // Authentication
-  'password',
-  '*.password',
-  '**.password',
-  'token',
-  '*.token',
-  '**.token',
-  'secret',
-  '*.secret',
-  '**.secret',
-  'apiKey',
-  '*.apiKey',
-  '**.apiKey',
+  ...atAnyDepth('password'),
+  ...atAnyDepth('token'),
+  ...atAnyDepth('secret'),
+  ...atAnyDepth('apiKey'),
   'authorization',
   '*.authorization',
 

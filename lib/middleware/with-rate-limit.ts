@@ -181,17 +181,13 @@ export function createRateLimitedResponse(
 /**
  * Extract client IP from request
  *
- * Next.js 15 only populates request.ip in runtime (middleware/edge).
- * For Node.js API Routes and tests, fallback to x-forwarded-for header.
+ * NextRequest の `ip` は Next.js 15 で削除された（node_modules/next/dist/docs/01-app/02-guides/
+ * upgrading/version-15.md の「NextRequest Geolocation」）ので、x-forwarded-for の先頭を使う。
+ * x-forwarded-for は、信頼できるプロキシ（Vercel など）が上書きする前提で使っている
  */
 function getClientIP(request: NextRequest): string {
-  // Type assertion needed: request.ip exists at runtime but not in type definition
-  const requestWithIp = request as NextRequest & { ip?: string };
-
   return (
-    requestWithIp.ip ??
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    'unknown'
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
   );
 }
 
