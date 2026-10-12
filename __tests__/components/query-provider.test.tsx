@@ -54,6 +54,8 @@ jest.mock('@/lib/auth/auth-client', () => ({
 }));
 
 const USER_SCOPED_KEYS = [
+  // 管理画面のデータ（問い合わせの本文・メール、ユーザー一覧など）
+  'admin',
   'infinite-articles',
   'infinite-favorites',
   'digest',
@@ -67,6 +69,7 @@ const USER_SCOPED_KEYS = [
 // サインアウト（X → null）で破棄されるキャッシュ。infinite-articles は含まない
 // （フィールドだけ剥がしてキャッシュは残す）。
 const SIGNED_OUT_REMOVED_KEYS = [
+  'admin',
   'infinite-favorites',
   'digest',
   'article-count',
