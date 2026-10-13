@@ -1,4 +1,6 @@
 import { CommanderError, type Command } from 'commander';
+import { closeRedisConnection } from '@/lib/redis/client';
+import { closePrismaClient } from './utils/database';
 import { logger } from './utils/logger';
 
 /**
@@ -22,5 +24,21 @@ export async function runCli(
     }
     logger.error('コマンドの実行に失敗しました', error);
     return 1;
+  } finally {
+    // DB と Redis の接続が残ると、コマンドの完了後もプロセスが終わらないので閉じる。
+    // Redis は、コマンドが読み込むキャッシュのモジュールが読み込んだ時点で接続している
+    await closeConnection('DB', closePrismaClient);
+    await closeConnection('Redis', closeRedisConnection);
+  }
+}
+
+async function closeConnection(
+  name: string,
+  close: () => Promise<void>
+): Promise<void> {
+  try {
+    await close();
+  } catch (error) {
+    logger.error(`${name} の接続を閉じられませんでした`, error);
   }
 }

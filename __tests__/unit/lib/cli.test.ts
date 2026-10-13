@@ -1,5 +1,20 @@
 import { Command } from 'commander';
 import { runCli } from '@/lib/cli/run';
+import { closePrismaClient } from '@/lib/cli/utils/database';
+import { closeRedisConnection } from '@/lib/redis/client';
+
+// next/jest の SWC は '@/...' の import を相対パスに書き換えるので、moduleNameMapper の
+// モック（__mocks__/lib/redis/client.ts）は使われない。実装ファイルを相対パスでモックする。
+// utils/database も、実際の DB に接続しないようにモックする
+jest.mock('../../../lib/redis/client', () => ({
+  closeRedisConnection: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../../../lib/cli/utils/database', () => ({
+  closePrismaClient: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mockedCloseRedisConnection = jest.mocked(closeRedisConnection);
+const mockedClosePrismaClient = jest.mocked(closePrismaClient);
 
 describe('runCli', () => {
   let output: string[];
@@ -24,6 +39,8 @@ describe('runCli', () => {
 
   beforeEach(() => {
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockedCloseRedisConnection.mockClear();
+    mockedClosePrismaClient.mockClear();
   });
 
   afterEach(() => {
@@ -62,6 +79,36 @@ describe('runCli', () => {
 
     expect(exitCode).toBe(1);
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('action failed'));
+  });
+
+  it.each([
+    ['action の成功', 'ok'],
+    ['action の失敗', 'fail'],
+    ['ヘルプの表示', '--help'],
+  ])('%s の後に DB と Redis の接続を閉じる', async (_label, arg) => {
+    await runCli(createProgram(), ['node', 'techtrend', arg]);
+
+    expect(mockedClosePrismaClient).toHaveBeenCalledTimes(1);
+    expect(mockedCloseRedisConnection).toHaveBeenCalledTimes(1);
+  });
+
+  it('DB の接続を閉じられなくても、Redis の接続を閉じてコマンドの終了コードを返す', async () => {
+    mockedClosePrismaClient.mockRejectedValueOnce(new Error('disconnect failed'));
+
+    const exitCode = await runCli(createProgram(), ['node', 'techtrend', '--version']);
+
+    expect(exitCode).toBe(0);
+    expect(mockedCloseRedisConnection).toHaveBeenCalledTimes(1);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('disconnect failed'));
+  });
+
+  it('Redis の接続を閉じられなくても、コマンドの終了コードを返す', async () => {
+    mockedCloseRedisConnection.mockRejectedValueOnce(new Error('quit failed'));
+
+    const exitCode = await runCli(createProgram(), ['node', 'techtrend', '--version']);
+
+    expect(exitCode).toBe(0);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('quit failed'));
   });
 });
 

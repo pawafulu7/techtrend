@@ -39,6 +39,14 @@ describe('RedisService', () => {
       // After disconnect, the test client is cleared
       expect(testClient.size()).toBe(0);
     });
+
+    it('connect() を呼んでいなくても disconnect() で接続を閉じる', async () => {
+      const quitSpy = jest.spyOn(testClient, 'quit');
+
+      await service.disconnect();
+
+      expect(quitSpy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('JSON Operations', () => {
