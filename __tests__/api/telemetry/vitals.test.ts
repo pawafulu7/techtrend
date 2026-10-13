@@ -100,6 +100,19 @@ describe('/api/telemetry/vitals', () => {
       expect(response.status).toBe(400);
     });
 
+    it('should reject a body that is not JSON with 400', async () => {
+      const request = new NextRequest('http://localhost/api/telemetry/vitals', {
+        method: 'POST',
+        body: '{not json',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(400);
+    });
+
     it('should accept all rating types', async () => {
       const ratings = ['good', 'needs-improvement', 'poor'] as const;
 

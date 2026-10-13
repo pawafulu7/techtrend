@@ -4,18 +4,20 @@
 
 import type { Metric } from 'web-vitals';
 
+// 手で写すと web-vitals の更新で値がずれるので、web-vitals の型から取る
+
 /**
  * Web Vitals metric names
  */
-export type MetricName = 'LCP' | 'INP' | 'CLS' | 'FCP' | 'TTFB';
+export type MetricName = Metric['name'];
 
 /**
  * Rating categories for Web Vitals
  */
-export type MetricRating = 'good' | 'needs-improvement' | 'poor';
+export type MetricRating = Metric['rating'];
 
 /**
- * Navigation type reported by web-vitals（手で写すと web-vitals の更新で値がずれるので、型から取る）
+ * Navigation type reported by web-vitals
  */
 export type NavigationType = Metric['navigationType'];
 

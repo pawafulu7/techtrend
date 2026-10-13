@@ -229,52 +229,57 @@ test.describe('Date Range Filter', () => {
     const calendar = page.getByTestId('date-range-calendar');
     await expect(calendar).toBeVisible({ timeout: 5000 });
 
-    // Click on two day buttons within the calendar to select a range
-    // We need to find clickable day buttons that are not disabled
-    const dayButtons = calendar.locator('button[data-day]').filter({
-      has: page.locator(':not([disabled])'),
-    });
+    // 今月は今日より後を選べず、月初が日曜の日は選べる日が1日しかないので、前の月で選ぶ
+    // （前の月は全日が選べる 93 日以内に入る）
+    await calendar
+      .getByRole('button', { name: 'Go to the Previous Month' })
+      .click();
 
-    const availableDays = await dayButtons.count();
-    if (availableDays >= 2) {
-      // Click the first available day (range start)
-      await dayButtons.first().click();
+    // 月外の日を除いた、選べる日のボタン（disabled はボタン自身に付く）
+    const dayButtons = calendar.locator(
+      'td:not([data-outside]) button[data-day]:not([disabled])'
+    );
+    await expect(dayButtons.nth(4)).toBeVisible();
 
-      // Apply button should now be enabled (single day = from only)
-      await expect(page.getByTestId('date-range-calendar-apply')).toBeEnabled({ timeout: 3000 });
+    // Click the first available day (range start)
+    await dayButtons.first().click();
 
-      // Click a second day (range end) - pick one a few days later
-      const secondDayIndex = Math.min(4, availableDays - 1);
-      await dayButtons.nth(secondDayIndex).click();
+    // Apply button should now be enabled (single day = from only)
+    await expect(page.getByTestId('date-range-calendar-apply')).toBeEnabled({ timeout: 3000 });
 
-      // Apply the selection
-      await page.getByTestId('date-range-calendar-apply').click();
+    // Click a second day (range end) - pick one a few days later
+    await dayButtons.nth(4).click();
 
-      // Calendar should close
-      await expect(calendar).toBeHidden({ timeout: 5000 });
+    // Apply the selection
+    await page.getByTestId('date-range-calendar-apply').click();
 
-      // URL should have dateFrom and dateTo params
-      await expect
-        .poll(() => {
-          const url = new URL(page.url());
-          return url.searchParams.get('dateFrom');
-        }, { timeout: getTimeout('short') })
-        .toBeTruthy();
+    // Calendar should close
+    await expect(calendar).toBeHidden({ timeout: 5000 });
 
-      await expect
-        .poll(() => {
-          const url = new URL(page.url());
-          return url.searchParams.get('dateTo');
-        }, { timeout: getTimeout('short') })
-        .toBeTruthy();
+    // 選んだ前の月の1日と5日が URL に入る
+    const now = new Date();
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const ym = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
+    await expect
+      .poll(() => {
+        const url = new URL(page.url());
+        return url.searchParams.get('dateFrom');
+      }, { timeout: getTimeout('short') })
+      .toBe(`${ym}-01`);
 
-      // dateRange preset param should NOT be present
-      const finalUrl = new URL(page.url());
-      expect(finalUrl.searchParams.get('dateRange')).toBeNull();
+    await expect
+      .poll(() => {
+        const url = new URL(page.url());
+        return url.searchParams.get('dateTo');
+      }, { timeout: getTimeout('short') })
+      .toBe(`${ym}-05`);
 
-      // Calendar button should have active styling (border-primary)
-      await expect(calendarBtn).toHaveClass(/border-primary/);
-    }
+    // dateRange preset param should NOT be present
+    const finalUrl = new URL(page.url());
+    expect(finalUrl.searchParams.get('dateRange')).toBeNull();
+
+    // Calendar button should have active styling (border-primary)
+    await expect(calendarBtn).toHaveClass(/border-primary/);
   });
 
   test('should switch from custom range back to preset', async ({ page }) => {

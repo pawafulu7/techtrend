@@ -2,14 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createLogger } from '@/lib/logger';
 import { listAllValues } from '@/lib/utils/list-all-values';
-import type { NavigationType } from '@/lib/telemetry/web-vitals-types';
+import type {
+  MetricName,
+  MetricRating,
+  NavigationType,
+} from '@/lib/telemetry/web-vitals-types';
 
 const logger = createLogger('telemetry:vitals');
 
-/**
- * web-vitals が送る navigationType のすべて。web-vitals の更新で値が増えたら、
- * ここに足さないとコンパイルが止まる（足し忘れると、その値の計測を 400 で捨ててしまう）
- */
+// web-vitals が送る値のすべて。web-vitals の更新で値が増えたら、ここに足さないと
+// コンパイルが止まる（足し忘れると、その値の計測を 400 で捨ててしまう）
+const METRIC_NAMES = listAllValues<MetricName>()([
+  'LCP',
+  'INP',
+  'CLS',
+  'FCP',
+  'TTFB',
+]);
+const METRIC_RATINGS = listAllValues<MetricRating>()([
+  'good',
+  'needs-improvement',
+  'poor',
+]);
 const NAVIGATION_TYPES = listAllValues<NavigationType>()([
   'navigate',
   'reload',
@@ -24,11 +38,11 @@ const NAVIGATION_TYPES = listAllValues<NavigationType>()([
  * Validation schema for Web Vitals payload
  */
 const webVitalsSchema = z.object({
-  name: z.enum(['LCP', 'INP', 'CLS', 'FCP', 'TTFB']),
+  name: z.enum(METRIC_NAMES),
   value: z.number(),
   delta: z.number(),
   id: z.string(),
-  rating: z.enum(['good', 'needs-improvement', 'poor']),
+  rating: z.enum(METRIC_RATINGS),
   navigationType: z.enum(NAVIGATION_TYPES),
   page: z.string(),
   timestamp: z.number(),
@@ -49,7 +63,8 @@ const MAX_BUFFER_SIZE = 1000;
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const body = await request.json();
+    // JSON として読めない本文は、形の合わない本文と同じく 400 にする（500 にしない）
+    const body: unknown = await request.json().catch(() => undefined);
     const parsed = webVitalsSchema.safeParse(body);
 
     if (!parsed.success) {
