@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createLogger } from '@/lib/logger';
+import { listAllValues } from '@/lib/utils/list-all-values';
+import type { NavigationType } from '@/lib/telemetry/web-vitals-types';
 
 const logger = createLogger('telemetry:vitals');
+
+/**
+ * web-vitals が送る navigationType のすべて。web-vitals の更新で値が増えたら、
+ * ここに足さないとコンパイルが止まる（足し忘れると、その値の計測を 400 で捨ててしまう）
+ */
+const NAVIGATION_TYPES = listAllValues<NavigationType>()([
+  'navigate',
+  'reload',
+  'back-forward',
+  'back-forward-cache',
+  'prerender',
+  'restore',
+  'soft-navigation',
+]);
 
 /**
  * Validation schema for Web Vitals payload
@@ -13,13 +29,7 @@ const webVitalsSchema = z.object({
   delta: z.number(),
   id: z.string(),
   rating: z.enum(['good', 'needs-improvement', 'poor']),
-  navigationType: z.enum([
-    'navigate',
-    'reload',
-    'back-forward',
-    'back-forward-cache',
-    'prerender',
-  ]),
+  navigationType: z.enum(NAVIGATION_TYPES),
   page: z.string(),
   timestamp: z.number(),
 });
@@ -43,10 +53,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const parsed = webVitalsSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Invalid payload' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
     const metric = parsed.data;
@@ -118,7 +125,10 @@ export async function GET(): Promise<NextResponse> {
   // Calculate percentiles
   const result: Record<
     string,
-    Record<string, { p50: number; p75: number; p95: number; ratings: Record<string, number> }>
+    Record<
+      string,
+      { p50: number; p75: number; p95: number; ratings: Record<string, number> }
+    >
   > = {};
 
   for (const [page, metrics] of Object.entries(aggregated)) {

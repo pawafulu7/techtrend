@@ -2,6 +2,8 @@
  * Web Vitals Telemetry Types
  */
 
+import type { Metric } from 'web-vitals';
+
 /**
  * Web Vitals metric names
  */
@@ -13,14 +15,9 @@ export type MetricName = 'LCP' | 'INP' | 'CLS' | 'FCP' | 'TTFB';
 export type MetricRating = 'good' | 'needs-improvement' | 'poor';
 
 /**
- * Navigation type from Performance API
+ * Navigation type reported by web-vitals（手で写すと web-vitals の更新で値がずれるので、型から取る）
  */
-export type NavigationType =
-  | 'navigate'
-  | 'reload'
-  | 'back-forward'
-  | 'back-forward-cache'
-  | 'prerender';
+export type NavigationType = Metric['navigationType'];
 
 /**
  * Web Vitals metric payload from client

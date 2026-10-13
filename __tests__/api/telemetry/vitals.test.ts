@@ -135,6 +135,8 @@ describe('/api/telemetry/vitals', () => {
         'back-forward',
         'back-forward-cache',
         'prerender',
+        'restore',
+        'soft-navigation',
       ] as const;
 
       for (const navigationType of navTypes) {
