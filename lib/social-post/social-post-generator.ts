@@ -103,7 +103,7 @@ export class SocialPostGenerator {
         const result = XPostWithStyleSchema.safeParse(parsed);
         if (!result.success) {
           throw new Error(
-            `Schema validation failed: ${result.error.errors.map((e) => e.message).join(', ')}`
+            `Schema validation failed: ${result.error.issues.map((e) => e.message).join(', ')}`
           );
         }
         return result.data;

@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import {
   withAdminAuth,
   type WithAdminAuthContext,
@@ -49,7 +50,7 @@ async function candidatesHandler(
       return NextResponse.json(
         {
           error: 'Invalid query parameters',
-          details: parseResult.error.flatten(),
+          details: z.flattenError(parseResult.error),
         },
         { status: 400 }
       );

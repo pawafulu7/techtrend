@@ -251,7 +251,7 @@ async function postHandler(
         logger.warn(
           {
             userId,
-            errors: error.errors,
+            errors: error.issues,
           },
           'Invalid agent search request'
         );
@@ -259,7 +259,7 @@ async function postHandler(
         return NextResponse.json(
           {
             error: 'Invalid request parameters',
-            details: error.errors.map((e) => ({
+            details: error.issues.map((e) => ({
               field: e.path.join('.'),
               message: e.message,
             })),

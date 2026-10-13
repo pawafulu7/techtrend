@@ -187,7 +187,7 @@ const tagFilterSchema = z
     tags: z
       .string()
       .max(MAX_TAGS_PARAM_LENGTH, {
-        message: `tags must be at most ${MAX_TAGS_PARAM_LENGTH} characters`,
+        error: `tags must be at most ${MAX_TAGS_PARAM_LENGTH} characters`,
       })
       .nullish(),
   })
@@ -196,14 +196,14 @@ const tagFilterSchema = z
     const tagList = parseTagList(tag, tags);
     if (tagList.length > MAX_TAG_FILTER_COUNT) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: ['tags'],
         message: `tags must contain at most ${MAX_TAG_FILTER_COUNT} items`,
       });
     }
     if (tagList.some((name) => name.length > MAX_TAG_NAME_LENGTH)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: [tag ? 'tag' : 'tags'],
         message: `each tag must be at most ${MAX_TAG_NAME_LENGTH} characters`,
       });
@@ -282,13 +282,13 @@ const searchQuerySchema = z
     if (!search) return;
     if (Array.from(search.trim()).length > MAX_SEARCH_QUERY_LENGTH) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: `search must be at most ${MAX_SEARCH_QUERY_LENGTH} characters`,
       });
     }
     if (splitSearchKeywords(search).length > MAX_SEARCH_KEYWORDS) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: `search must contain at most ${MAX_SEARCH_KEYWORDS} keywords`,
       });
     }

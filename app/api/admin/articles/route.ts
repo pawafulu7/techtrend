@@ -94,7 +94,7 @@ async function handler(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'Invalid query parameters',
-          details: parseResult.error.flatten(),
+          details: z.flattenError(parseResult.error),
         },
         { status: 400 }
       );

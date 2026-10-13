@@ -40,7 +40,7 @@ async function embeddingHandler(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Invalid query parameters',
-        details: query.error.flatten(),
+        details: z.flattenError(query.error),
       },
       { status: 400 }
     );

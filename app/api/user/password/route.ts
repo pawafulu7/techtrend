@@ -27,7 +27,7 @@ const changePasswordSchema = z
     confirmPassword: z.string().min(1, 'Password confirmation is required'),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords don't match",
+    error: "Passwords don't match",
     path: ['confirmPassword'],
   });
 
@@ -59,7 +59,7 @@ async function changePasswordHandler(
     const validationResult = changePasswordSchema.safeParse(body);
 
     if (!validationResult.success) {
-      const errors = validationResult.error.flatten();
+      const errors = z.flattenError(validationResult.error);
       return NextResponse.json(
         {
           error: 'Validation failed',

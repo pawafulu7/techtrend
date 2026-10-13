@@ -52,7 +52,7 @@ async function getHandler(
     const parseResult = DigestQuerySchema.safeParse(queryParams);
 
     if (!parseResult.success) {
-      const firstError = parseResult.error.errors[0];
+      const firstError = parseResult.error.issues[0];
       return NextResponse.json({ error: firstError.message }, { status: 400 });
     }
 

@@ -236,6 +236,24 @@ describe('/api/sources', () => {
       );
     });
 
+    it('IDs が51件以上なら、flatten した検証エラーを details に入れて400を返す', async () => {
+      const ids = Array.from({ length: 51 }, (_, i) => `s${i}`).join(',');
+      const request = new NextRequest(new URL(`http://localhost/api/sources?ids=${ids}`));
+      const response = await GET(request);
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: 'Bad Request',
+        details: {
+          formErrors: [],
+          fieldErrors: {
+            ids: ['ids must have at most 50 elements, each 1-100 chars'],
+          },
+        },
+      });
+      expect(prismaMock.source.findMany).not.toHaveBeenCalled();
+    });
+
     it('IDs 指定時の検索語は LIKE のワイルドカードをエスケープして渡す（#684）', async () => {
       prismaMock.source.findMany.mockResolvedValue([]);
 

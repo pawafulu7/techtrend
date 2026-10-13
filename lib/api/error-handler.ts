@@ -215,7 +215,7 @@ export function withErrorHandler<
  */
 export async function validateRequest<T>(
   request: Request,
-  schema: z.ZodSchema<T>
+  schema: z.ZodType<T>
 ): Promise<T> {
   try {
     const data = await request.json();

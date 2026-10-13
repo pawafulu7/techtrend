@@ -332,7 +332,7 @@ async function getPopularArticles(request: NextRequest) {
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json(
-        { error: 'Invalid query parameters', details: error.errors },
+        { error: 'Invalid query parameters', details: error.issues },
         { status: 400 }
       );
     }

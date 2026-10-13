@@ -13,16 +13,11 @@ import {
 } from './constants';
 import { normalizeInquiryMessage } from './normalize';
 
-export const createInquirySchema = z
-  .object({
-    category: z.enum(INQUIRY_CATEGORIES, {
-      errorMap: () => ({ message: '種別を選んでください' }),
-    }),
+export const createInquirySchema = z.strictObject(
+  {
+    category: z.enum(INQUIRY_CATEGORIES, { error: '種別を選んでください' }),
     message: z
-      .string({
-        required_error: '内容を書いてください',
-        invalid_type_error: '内容を書いてください',
-      })
+      .string({ error: '内容を書いてください' })
       .transform(normalizeInquiryMessage)
       .pipe(
         z
@@ -41,17 +36,21 @@ export const createInquirySchema = z
         return trimmed === '' ? undefined : trimmed;
       },
       z
-        .string({
-          invalid_type_error: 'メールアドレスの形式を確かめてください',
-        })
+        .email({ error: 'メールアドレスの形式を確かめてください' })
         .max(INQUIRY_EMAIL_MAX_LENGTH, 'メールアドレスの形式を確かめてください')
-        .email('メールアドレスの形式を確かめてください')
         .optional()
     ),
     // bot 避けの隠し項目。型が違っても 400 と 201 で見分けられないよう、値は問わない
     website: z.unknown().optional(),
-  })
-  .strict('送信できない項目が含まれています');
+  },
+  {
+    // 余分な項目の文言だけを差し替える。本文が object でないときは既定の文言
+    error: (issue) =>
+      issue.code === 'unrecognized_keys'
+        ? '送信できない項目が含まれています'
+        : undefined,
+  }
+);
 
 export type CreateInquiryInput = z.infer<typeof createInquirySchema>;
 
@@ -61,13 +60,11 @@ export const listInquiriesQuerySchema = z.object({
   status: z.enum(INQUIRY_STATUSES).optional(),
 });
 
-export const updateInquirySchema = z
-  .object({
-    status: z.enum(INQUIRY_STATUSES),
-  })
-  .strict();
+export const updateInquirySchema = z.strictObject({
+  status: z.enum(INQUIRY_STATUSES),
+});
 
-export const inquiryIdSchema = z.string().cuid();
+export const inquiryIdSchema = z.cuid();
 
 /** 最初の不正な項目の名前と文言（ValidationError に渡す） */
 export function firstIssue(error: z.ZodError): {

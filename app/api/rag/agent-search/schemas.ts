@@ -64,11 +64,10 @@ export const agentRequestSchema = z
       .max(500, 'Query too long (max 500 characters)')
       .transform((q) => sanitizeQuery(q))
       .refine((q) => q.length > 0, {
-        message: 'Query cannot be empty after sanitization',
+        error: 'Query cannot be empty after sanitization',
       }),
 
     articleId: z
-      .string()
       .cuid()
       .optional()
       .describe('Article ID (required for article-qa mode)'),
@@ -77,7 +76,7 @@ export const agentRequestSchema = z
     // articleId is required for article-qa mode
     if (data.agentType === 'article-qa' && !data.articleId) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: ['articleId'],
         message: 'articleId is required for article-qa mode',
       });

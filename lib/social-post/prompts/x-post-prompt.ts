@@ -454,7 +454,7 @@ export function createXPostExtractionConfig() {
       const result = XPostOutputSchema.safeParse(parsed);
       if (!result.success) {
         throw new Error(
-          `Schema validation failed: ${result.error.errors.map((e) => e.message).join(', ')}`
+          `Schema validation failed: ${result.error.issues.map((e) => e.message).join(', ')}`
         );
       }
 

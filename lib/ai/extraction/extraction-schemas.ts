@@ -51,7 +51,7 @@ export const DiffChangeSchema = z.object({
     .min(30)
     .refine(
       (s) => !DIFF_DESCRIPTION_BANNED_TERMS.some((term) => s.includes(term)),
-      { message: 'description に汎用表現（禁止語）が含まれています' }
+      { error: 'description に汎用表現（禁止語）が含まれています' }
     ),
   significance: z.enum(['high', 'medium', 'low']),
   relatedArticleIds: z.array(z.string()).optional(),

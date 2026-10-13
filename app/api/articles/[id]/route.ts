@@ -84,7 +84,7 @@ const patchSchema = z.object({
   tagNames: z.array(z.string()).optional(),
 });
 
-const idSchema = z.string().cuid();
+const idSchema = z.cuid();
 
 async function patchHandler(request: NextRequest, context: any) {
   try {
@@ -111,7 +111,7 @@ async function patchHandler(request: NextRequest, context: any) {
           {
             success: false,
             error: 'Validation failed',
-            details: error.errors,
+            details: error.issues,
           } as ApiResponse<never>,
           { status: 400 }
         );

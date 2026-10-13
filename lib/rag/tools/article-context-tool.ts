@@ -230,7 +230,7 @@ DO NOT use this tool for:
   `.trim(),
 
   inputSchema: z.object({
-    articleId: z.string().cuid().describe('Article ID to extract context from'),
+    articleId: z.cuid().describe('Article ID to extract context from'),
 
     query: z
       .string()
@@ -275,7 +275,7 @@ DO NOT use this tool for:
     citations: z.array(
       z.object({
         chunkId: z.string(),
-        url: z.string().url(),
+        url: z.url(),
         title: z.string(),
         publishedAtISO: z.string(),
       })

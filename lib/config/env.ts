@@ -19,7 +19,7 @@ function sanitizeEnv(
     ])
   );
 }
-const optionalUrl = z.string().url().optional();
+const optionalUrl = z.url().optional();
 const numericStringWithDefault = (def: string) =>
   z.preprocess((v) => {
     if (typeof v !== 'string' || !/^\d+$/.test(v)) return def;
@@ -326,7 +326,7 @@ const envSchema = z
     // Ensure at least one auth secret is provided
     if (!env.AUTH_SECRET && !env.NEXTAUTH_SECRET) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: ['AUTH_SECRET'],
         message: 'Either AUTH_SECRET or NEXTAUTH_SECRET must be provided',
       });
@@ -347,7 +347,7 @@ export type Env = z.infer<typeof envSchema>;
 
 // Validation error formatting
 function formatValidationErrors(errors: z.ZodError): string {
-  // ZodError exposes issues (v3)
+  // ZodError exposes issues
   if (!errors || !errors.issues) {
     return '  - Unknown validation error';
   }

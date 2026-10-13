@@ -35,7 +35,6 @@ export const SocialPostCreateSchema = z
     sourceUrls: z
       .array(
         z
-          .string()
           .url('Invalid URL format')
           .refine(
             (url) => /^https?:\/\//i.test(url),
@@ -58,7 +57,7 @@ export const SocialPostCreateSchema = z
       return true;
     },
     {
-      message: 'sourceIds is required for non-MANUAL sources',
+      error: 'sourceIds is required for non-MANUAL sources',
       path: ['sourceIds'],
     }
   );
@@ -83,7 +82,6 @@ export const SocialPostUpdateSchema = z
     sourceUrls: z
       .array(
         z
-          .string()
           .url()
           .refine(
             (url) => /^https?:\/\//i.test(url),
@@ -93,14 +91,14 @@ export const SocialPostUpdateSchema = z
       .max(5)
       .optional(),
     status: z.enum(['DRAFT', 'REVIEWED', 'SCHEDULED', 'ARCHIVED']).optional(),
-    scheduledAt: z.string().datetime().optional().nullable(),
+    scheduledAt: z.iso.datetime().optional().nullable(),
   })
   .superRefine((data, ctx) => {
     if (data.status === 'SCHEDULED') {
       // SCHEDULEDステータスの場合はscheduledAtが必須
       if (data.scheduledAt === undefined || data.scheduledAt === null) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'scheduledAt is required when status is SCHEDULED',
           path: ['scheduledAt'],
         });
@@ -109,7 +107,7 @@ export const SocialPostUpdateSchema = z
       // SCHEDULED以外のステータスではscheduledAtは不可
       if (data.scheduledAt !== undefined && data.scheduledAt !== null) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: 'custom',
           message: 'scheduledAt must be null unless status is SCHEDULED',
           path: ['scheduledAt'],
         });
@@ -201,7 +199,7 @@ export const SocialPostBulkSchema = z
   .refine(
     (data) => data.action !== 'changeStatus' || data.status !== undefined,
     {
-      message: 'Status is required when action is changeStatus',
+      error: 'Status is required when action is changeStatus',
       path: ['status'],
     }
   );
@@ -228,8 +226,8 @@ export const SocialPostFiltersSchema = z
     source: z
       .enum(['ARTICLE', 'DAILY_TREND', 'DIFF_SUMMARY', 'MANUAL', 'all'])
       .optional(),
-    dateFrom: z.string().datetime().optional(),
-    dateTo: z.string().datetime().optional(),
+    dateFrom: z.iso.datetime().optional(),
+    dateTo: z.iso.datetime().optional(),
     page: z.coerce.number().int().positive().optional().default(1),
     limit: z.coerce.number().int().positive().max(100).optional().default(20),
   })
@@ -241,7 +239,7 @@ export const SocialPostFiltersSchema = z
       return true;
     },
     {
-      message: 'dateFrom must be before or equal to dateTo',
+      error: 'dateFrom must be before or equal to dateTo',
       path: ['dateFrom'],
     }
   );

@@ -57,7 +57,7 @@ async function postHandler(
     const parseResult = CreateCommentSchema.safeParse(body);
 
     if (!parseResult.success) {
-      const firstError = parseResult.error.errors[0];
+      const firstError = parseResult.error.issues[0];
       return NextResponse.json({ error: firstError.message }, { status: 400 });
     }
 
@@ -135,7 +135,7 @@ async function getHandler(
     const parseResult = GetCommentsQuerySchema.safeParse(queryParams);
 
     if (!parseResult.success) {
-      const firstError = parseResult.error.errors[0];
+      const firstError = parseResult.error.issues[0];
       return NextResponse.json({ error: firstError.message }, { status: 400 });
     }
 

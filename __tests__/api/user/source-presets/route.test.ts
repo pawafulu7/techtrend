@@ -132,6 +132,7 @@ describe('/api/user/source-presets', () => {
       const request = createPostRequest({ name: '', sourceIds: ['source-1'] });
       const response = await POST(request, {} as any);
       expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: 'Name is required' });
     });
 
     it('名前がスペースのみの場合400を返す', async () => {
@@ -139,6 +140,9 @@ describe('/api/user/source-presets', () => {
       const request = createPostRequest({ name: '   ', sourceIds: ['source-1'] });
       const response = await POST(request, {} as any);
       expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: 'Name cannot be whitespace only',
+      });
     });
 
     it('sourceIdsが空の場合400を返す', async () => {
@@ -146,6 +150,9 @@ describe('/api/user/source-presets', () => {
       const request = createPostRequest({ name: 'Test', sourceIds: [] });
       const response = await POST(request, {} as any);
       expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: 'At least one source is required',
+      });
     });
 
     it('上限超過（10件超）で400を返す', async () => {

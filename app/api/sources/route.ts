@@ -33,7 +33,7 @@ const sourcesQuerySchema = z.object({
           parts.every((p) => p.length >= 1 && p.length <= 100)
         );
       },
-      { message: 'ids must have at most 50 elements, each 1-100 chars' }
+      { error: 'ids must have at most 50 elements, each 1-100 chars' }
     ),
   category: z.string().optional(),
   sortBy: z.string().optional(),
@@ -59,7 +59,7 @@ async function handler(request: NextRequest) {
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Bad Request', details: parseResult.error.flatten() },
+        { error: 'Bad Request', details: z.flattenError(parseResult.error) },
         { status: 400 }
       );
     }
