@@ -34,7 +34,10 @@
         "name": "next"
       }
     ],
-    "baseUrl": ".",
+    "types": [
+      "node",
+      "jest"
+    ],
     "paths": {
       "@/*": [
         "./*"
