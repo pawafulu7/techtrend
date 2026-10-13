@@ -112,6 +112,12 @@ export function useInfiniteArticles(
 
   // フィルターが変更されたときにdebounce処理を実行
   useEffect(() => {
+    // 最初の条件は debounce を待たずに覚える。待つと、マウントの分の debounce が動く前
+    // （hydration の直後のクリックなど）に条件が変わったとき、その実行が取り消されて
+    // 最初の条件のクエリが残り、ブラウザで戻ったときに取り直さない（issue #778）
+    if (!prevFilterKeyRef.current) {
+      prevFilterKeyRef.current = filterKey;
+    }
     handleFilterChange(filterKey);
 
     // フィルター変更時に総件数をリセット（新しいフィルターでは再計算が必要）
@@ -325,8 +331,8 @@ export function useInfiniteArticles(
       // そのときは読み込み済みの1ページ目の総件数を使う
       const total =
         totalCountRef.current ??
-        queryClient.getQueryData<InfiniteArticlesData>(queryKey)?.pages[0]
-          ?.data.total;
+        queryClient.getQueryData<InfiniteArticlesData>(queryKey)?.pages[0]?.data
+          .total;
 
       // パフォーマンス最適化: デフォルトで軽量モード
       // モバイルまたは低速接続では lightweight=true を使用
