@@ -2,8 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createLogger } from '@/lib/logger';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
-import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import {
+  createRateLimitedResponse,
+  getClientIP,
+  withRateLimit,
+} from '@/lib/middleware/with-rate-limit';
+import {
+  checkRateLimit,
+  createRateLimiterFromConfig,
+  RateLimitError,
+} from '@/lib/rate-limiter';
 import { listAllValues } from '@/lib/utils/list-all-values';
+import { readJsonWithLimit } from '@/lib/utils/http/read-json-with-limit';
 import type {
   MetricName,
   MetricRating,
@@ -36,23 +46,30 @@ const NAVIGATION_TYPES = listAllValues<NavigationType>()([
   'soft-navigation',
 ]);
 
-// 受け取る文字列の上限。上限が無いと、巨大な本文がバッファ（最大 1000 件）とログに残る
+// 受け取る文字列と本文の上限。上限が無いと、巨大な本文を読ませたり、バッファ（最大 1000 件）と
+// ログに残したりできる。本文は id・page が上限いっぱいでも 3KB に届かない
 const MAX_ID_LENGTH = 128;
 const MAX_PAGE_LENGTH = 2048;
+const MAX_BODY_BYTES = 4096;
 
 /**
  * Validation schema for Web Vitals payload
  */
 const webVitalsSchema = z.object({
   name: z.enum(METRIC_NAMES),
-  value: z.number(),
-  delta: z.number(),
-  id: z.string().max(MAX_ID_LENGTH),
+  value: z.number().finite().nonnegative(),
+  // INP は送り直すたびに下がることもあるので、差分は負にもなる
+  delta: z.number().finite(),
+  id: z.string().min(1).max(MAX_ID_LENGTH),
   rating: z.enum(METRIC_RATINGS),
   navigationType: z.enum(NAVIGATION_TYPES),
-  // reporter はパス（/ で始まる）を送る。それ以外（__proto__ など）は受けない
-  page: z.string().max(MAX_PAGE_LENGTH).startsWith('/'),
-  timestamp: z.number(),
+  // reporter が送るのは URL の pathname（/ で始まり、パーセントエンコード済みの表示できる ASCII）。
+  // それ以外（__proto__、//host、制御文字など）は受けない
+  page: z
+    .string()
+    .max(MAX_PAGE_LENGTH)
+    .regex(/^\/(?!\/)[\x21-\x7e]*$/),
+  timestamp: z.number().int().nonnegative(),
 });
 
 type WebVitalsMetric = z.infer<typeof webVitalsSchema>;
@@ -63,22 +80,56 @@ type WebVitalsMetric = z.infer<typeof webVitalsSchema>;
  *
  * 同じ計測（name と id）は、送り直されるたびに最新の値で置き換える。CLS・INP はタブを
  * 隠すたびに同じ id で送られるので、別のサンプルとして数えると二重に計上する。
- * Map は入れた順を保つので、置き換えた計測を末尾に回し、溢れたら最も古いものから捨てる
+ * 置き換えても入れた順の位置は変えず、溢れたら最初に届いた計測から捨てる
  */
 const metricsBuffer = new Map<string, WebVitalsMetric>();
 const MAX_BUFFER_SIZE = 1000;
+
+function storeMetric(metric: WebVitalsMetric): void {
+  const key = `${metric.name}:${metric.id}`;
+  const stored = metricsBuffer.get(key);
+  if (stored) {
+    // 送信の順が入れ替わって、古い値が後から届いたら捨てる
+    if (stored.timestamp <= metric.timestamp) metricsBuffer.set(key, metric);
+    return;
+  }
+  if (metricsBuffer.size >= MAX_BUFFER_SIZE) {
+    const oldest = metricsBuffer.keys().next().value;
+    if (oldest !== undefined) metricsBuffer.delete(oldest);
+  }
+  metricsBuffer.set(key, metric);
+}
 
 /**
  * POST /api/telemetry/vitals
  *
  * Receives Web Vitals metrics from client-side reporter
  * Stores in buffer for aggregation and analysis
+ *
+ * 計測はログインしていない閲覧者からも届くので、認証は付けずに IP 単位で制限する。
+ * withRateLimit は IP で数えるときも先にセッションを引く（ログイン中なら DB を引き、
+ * 認証の失敗で計測まで落ちる）ので、ここで IP をキーに直接数える
  */
-async function postHandler(request: NextRequest): Promise<NextResponse> {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // JSON として読めない本文は、形の合わない本文と同じく 400 にする（500 にしない）
-    const body: unknown = await request.json().catch(() => undefined);
-    const parsed = webVitalsSchema.safeParse(body);
+    try {
+      await checkRateLimit(
+        `ip:${getClientIP(request)}`,
+        createRateLimiterFromConfig('write:telemetry-vitals')
+      );
+    } catch (error) {
+      if (error instanceof RateLimitError) {
+        return createRateLimitedResponse(error);
+      }
+      throw error;
+    }
+
+    // 本文は上限までだけ読む。JSON として読めない本文は、形の合わない本文と同じく 400 にする
+    const body = await readJsonWithLimit(request, MAX_BODY_BYTES);
+    if (!body.ok && body.reason === 'too_large') {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    }
+    const parsed = webVitalsSchema.safeParse(body.ok ? body.value : undefined);
 
     if (!parsed.success) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
@@ -86,23 +137,20 @@ async function postHandler(request: NextRequest): Promise<NextResponse> {
 
     const metric = parsed.data;
 
-    // Log metric for analysis (structured logging)
+    // Log metric for analysis (structured logging)。同じ計測の送り直しを後で見分けられるよう、
+    // id と送った時刻も載せる
     logger.info({
       type: 'web_vital',
       metric: metric.name,
+      id: metric.id,
       value: metric.value,
       rating: metric.rating,
       page: metric.page,
       navigationType: metric.navigationType,
+      sentAt: metric.timestamp,
     });
 
-    const key = `${metric.name}:${metric.id}`;
-    metricsBuffer.delete(key);
-    if (metricsBuffer.size >= MAX_BUFFER_SIZE) {
-      const oldest = metricsBuffer.keys().next().value;
-      if (oldest !== undefined) metricsBuffer.delete(oldest);
-    }
-    metricsBuffer.set(key, metric);
+    storeMetric(metric);
 
     // Return 204 No Content for successful telemetry
     return new NextResponse(null, { status: 204 });
@@ -173,13 +221,14 @@ async function getHandler(): Promise<NextResponse> {
     ])
   );
 
-  return NextResponse.json({
-    bufferSize: metricsBuffer.size,
-    maxBufferSize: MAX_BUFFER_SIZE,
-    pages,
-  });
+  return NextResponse.json(
+    {
+      bufferSize: metricsBuffer.size,
+      maxBufferSize: MAX_BUFFER_SIZE,
+      pages,
+    },
+    { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+  );
 }
 
-// 計測はログインしていない閲覧者からも届くので、認証は付けずに IP 単位で制限する
-export const POST = withRateLimit('write:telemetry-vitals', postHandler);
 export const GET = withAdminAuth(withRateLimit('admin:read', getHandler));

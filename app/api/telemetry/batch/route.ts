@@ -5,13 +5,15 @@
  */
 import { NextResponse } from 'next/server';
 import { batchMetrics } from '@/lib/monitoring/batch-metrics';
+import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
 /**
  * GET /api/telemetry/batch
  *
  * Returns batch job metrics summary
  */
-export async function GET(): Promise<NextResponse> {
+async function getHandler(): Promise<NextResponse> {
   const summary = batchMetrics.getSummary();
 
   return NextResponse.json(summary, {
@@ -20,3 +22,6 @@ export async function GET(): Promise<NextResponse> {
     },
   });
 }
+
+// 内部の監視値なので、管理者だけに見せる（Issue #771。以前は誰でも見られた）
+export const GET = withAdminAuth(withRateLimit('admin:read', getHandler));

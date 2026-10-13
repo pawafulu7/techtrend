@@ -7,6 +7,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiBaselineMonitor } from '@/lib/monitoring/api-baseline';
 import { createLogger } from '@/lib/logger';
+import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
 const logger = createLogger('telemetry:baseline');
 
@@ -15,7 +18,7 @@ const logger = createLogger('telemetry:baseline');
  *
  * Returns baseline comparison summary
  */
-export async function GET(): Promise<NextResponse> {
+async function getHandler(): Promise<NextResponse> {
   const summary = apiBaselineMonitor.getSummary();
 
   return NextResponse.json(summary, {
@@ -42,7 +45,7 @@ const measurementSchema = z.object({
  *
  * Update measurement for an endpoint
  */
-export async function POST(request: NextRequest): Promise<NextResponse> {
+async function postHandler(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const parsed = measurementSchema.safeParse(body);
@@ -71,3 +74,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 }
+
+// 内部の監視値なので、管理者だけに見せる（Issue #771。以前は誰でも見られた）
+export const GET = withAdminAuth(withRateLimit('admin:read', getHandler));
+export const POST = withCSRFProtection(
+  withRateLimit('admin:write', withAdminAuth(postHandler))
+);

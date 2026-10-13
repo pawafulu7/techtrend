@@ -121,7 +121,8 @@ describe('WebVitalsReporter', () => {
       expect(global.fetch).not.toHaveBeenCalled();
     });
 
-    it('re-sends with fetch when sendBeacon refuses the data', () => {
+    it('re-sends with a plain fetch while the page is visible when sendBeacon refuses the data', () => {
+      // sendBeacon と keepalive の fetch は送信中のデータの上限を共有するので、表示中は keepalive にしない
       sendBeacon.mockReturnValue(false);
       mockHandlers[0](metric({ id: 'v6-refused' }));
       expect(sendBeacon).toHaveBeenCalledTimes(1);
@@ -129,6 +130,23 @@ describe('WebVitalsReporter', () => {
       const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
       expect(url).toBe('/api/telemetry/vitals');
       expect(JSON.parse(init.body).id).toBe('v6-refused');
+      expect(init.keepalive).toBe(false);
+    });
+
+    it('re-sends with a keepalive fetch while the page is being hidden', () => {
+      sendBeacon.mockReturnValue(false);
+      Object.defineProperty(document, 'visibilityState', {
+        value: 'hidden',
+        configurable: true,
+      });
+      try {
+        mockHandlers[0](metric({ id: 'v6-hidden' }));
+      } finally {
+        // jsdom の既定（visible）に戻す
+        delete (document as { visibilityState?: unknown }).visibilityState;
+      }
+      const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(init.keepalive).toBe(true);
     });
   });
 });

@@ -67,7 +67,7 @@ function sendVital(metric: Metric): void {
   });
 
   // Use sendBeacon for reliable delivery（Wrap in Blob to set Content-Type header）。
-  // 送信の列が一杯などで受け付けなかったとき（false）は fetch で送り直す
+  // 受け付けなかったとき（false）は fetch で送り直す
   if (
     navigator.sendBeacon?.(
       '/api/telemetry/vitals',
@@ -77,11 +77,12 @@ function sendVital(metric: Metric): void {
     return;
   }
 
-  // Fallback to fetch with keepalive
+  // sendBeacon が断るのは、送信中のデータが上限に達したときなど。その上限は keepalive の
+  // fetch と共通なので、表示中は上限の無い通常の fetch で送り、離れる途中（hidden）だけ keepalive にする
   fetch('/api/telemetry/vitals', {
     method: 'POST',
     body,
-    keepalive: true,
+    keepalive: document.visibilityState === 'hidden',
     headers: {
       'Content-Type': 'application/json',
     },

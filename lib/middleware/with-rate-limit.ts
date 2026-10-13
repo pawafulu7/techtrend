@@ -183,9 +183,10 @@ export function createRateLimitedResponse(
  *
  * NextRequest の `ip` は Next.js 15 で削除された（node_modules/next/dist/docs/01-app/02-guides/
  * upgrading/version-15.md の「NextRequest Geolocation」）ので、x-forwarded-for の先頭を使う。
- * x-forwarded-for は、信頼できるプロキシ（Vercel など）が上書きする前提で使っている
+ * x-forwarded-for は、信頼できるプロキシ（Vercel など）が上書きする前提で使っている。
+ * withRateLimit を通さずに IP で数えるルートも、同じキーを作るために使う
  */
-function getClientIP(request: NextRequest): string {
+export function getClientIP(request: NextRequest): string {
   return (
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
   );

@@ -5,6 +5,17 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/telemetry/baseline/route';
 import { ApiBaselineMonitor } from '@/lib/monitoring/api-baseline';
 
+// 管理者認証・レート制限・CSRF は素通しにする。包み方は __tests__/api/auth-middleware-composition.test.ts で確かめる
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: (handler: Function) => handler,
+}));
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: (_key: string, handler: Function) => handler,
+}));
+jest.mock('@/lib/middleware/csrf-protection', () => ({
+  withCSRFProtection: (handler: Function) => handler,
+}));
+
 describe('/api/telemetry/baseline', () => {
   beforeEach(() => {
     ApiBaselineMonitor.resetInstance();
@@ -49,13 +60,16 @@ describe('/api/telemetry/baseline', () => {
         count: 100,
       };
 
-      const request = new NextRequest('http://localhost/api/telemetry/baseline', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const request = new NextRequest(
+        'http://localhost/api/telemetry/baseline',
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       const response = await POST(request);
       expect(response.status).toBe(201);
@@ -79,13 +93,16 @@ describe('/api/telemetry/baseline', () => {
         count: 100,
       };
 
-      const request = new NextRequest('http://localhost/api/telemetry/baseline', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const request = new NextRequest(
+        'http://localhost/api/telemetry/baseline',
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       const response = await POST(request);
       expect(response.status).toBe(400);
@@ -98,13 +115,16 @@ describe('/api/telemetry/baseline', () => {
         // Missing p50, p95, p99, count
       };
 
-      const request = new NextRequest('http://localhost/api/telemetry/baseline', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const request = new NextRequest(
+        'http://localhost/api/telemetry/baseline',
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       const response = await POST(request);
       expect(response.status).toBe(400);

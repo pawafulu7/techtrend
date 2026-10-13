@@ -144,27 +144,59 @@ const ROUTES: Array<{
     modulePath: '@/app/api/rag/agent-search/route',
     methods: { POST: csrf(userValidation(HANDLER)) },
   },
-  // issue #771: 集計の GET は管理者だけ。計測の POST は未ログインからも届くので IP 単位の制限だけ
+  // issue #771: telemetry の監視値は管理者だけに見せる。vitals の POST は未ログインからも
+  // 届くので、handler の中で IP 単位に数える（vitals.test.ts で確かめる）
   {
     modulePath: '@/app/api/telemetry/vitals/route',
     methods: {
       GET: adminAuth(rateLimit('admin:read', HANDLER)),
-      POST: rateLimit('write:telemetry-vitals', HANDLER),
+      POST: HANDLER,
     },
+  },
+  {
+    modulePath: '@/app/api/telemetry/baseline/route',
+    methods: {
+      GET: adminAuth(rateLimit('admin:read', HANDLER)),
+      POST: csrf(rateLimit('admin:write', adminAuth(HANDLER))),
+    },
+  },
+  {
+    modulePath: '@/app/api/telemetry/batch/route',
+    methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
+  },
+  {
+    modulePath: '@/app/api/telemetry/cache/route',
+    methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
+  },
+  {
+    modulePath: '@/app/api/telemetry/memory/route',
+    methods: {
+      GET: adminAuth(rateLimit('admin:read', HANDLER)),
+      POST: csrf(rateLimit('admin:write', adminAuth(HANDLER))),
+    },
+  },
+  {
+    modulePath: '@/app/api/telemetry/metrics/route',
+    methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
   },
 ];
 
 const ROWS = ROUTES.flatMap((route) =>
   Object.entries(route.methods).map(
     ([method, expected]) =>
-      [`${method} ${route.modulePath}`, route.modulePath, method, expected] as const
+      [
+        `${method} ${route.modulePath}`,
+        route.modulePath,
+        method,
+        expected,
+      ] as const
   )
 );
 
 describe('Auth middleware composition (issues #659, #662)', () => {
-  it('covers all 21 HTTP methods of the 16 routes', () => {
-    expect(ROUTES).toHaveLength(16);
-    expect(ROWS).toHaveLength(21);
+  it('covers all 28 HTTP methods of the 21 routes', () => {
+    expect(ROUTES).toHaveLength(21);
+    expect(ROWS).toHaveLength(28);
   });
 
   it.each(ROUTES.map((route) => [route.modulePath, route] as const))(
@@ -176,9 +208,12 @@ describe('Auth middleware composition (issues #659, #662)', () => {
     }
   );
 
-  it.each(ROWS)('%s has the expected wrapper tree', (_label, modulePath, method, expected) => {
-    const mod = require(modulePath);
-    const tree = mod[method] as MarkerNode;
-    expect(tree).toEqual(expected);
-  });
+  it.each(ROWS)(
+    '%s has the expected wrapper tree',
+    (_label, modulePath, method, expected) => {
+      const mod = require(modulePath);
+      const tree = mod[method] as MarkerNode;
+      expect(tree).toEqual(expected);
+    }
+  );
 });

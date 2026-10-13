@@ -12,15 +12,18 @@ import {
   recommendationMetrics,
   type PercentileStats,
 } from '@/lib/monitoring/recommendation-metrics';
+import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 
 /**
  * GET /api/telemetry/metrics
  *
  * Returns aggregated API metrics for monitoring and alerting
  */
-export async function GET(): Promise<NextResponse> {
+async function getHandler(): Promise<NextResponse> {
   const summary = recommendationMetrics.getSummary();
-  const responseTimePercentiles = recommendationMetrics.getAllResponseTimePercentiles();
+  const responseTimePercentiles =
+    recommendationMetrics.getAllResponseTimePercentiles();
   const batchSizePercentiles = recommendationMetrics.getBatchSizePercentiles();
 
   const response: ApiMetricsResponse = {
@@ -33,7 +36,8 @@ export async function GET(): Promise<NextResponse> {
     },
     database: {
       totalQueries: summary.database.totalQueries,
-      avgQueriesPerRequest: parseFloat(summary.database.avgQueriesPerRequest) || 0,
+      avgQueriesPerRequest:
+        parseFloat(summary.database.avgQueriesPerRequest) || 0,
     },
     responseTime: responseTimePercentiles,
     batchSize: batchSizePercentiles,
@@ -66,3 +70,6 @@ interface ApiMetricsResponse {
   batchSize: PercentileStats | null;
   counters: Record<string, number>;
 }
+
+// 内部の監視値なので、管理者だけに見せる（Issue #771。以前は誰でも見られた）
+export const GET = withAdminAuth(withRateLimit('admin:read', getHandler));
