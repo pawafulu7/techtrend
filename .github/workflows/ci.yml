@@ -182,9 +182,9 @@ jobs:
             exit 1
           fi
           # 直列テスト（test:coverage:serial）の成果物が生成されたことも確認する。
-          # 閾値判定は並列側のカバレッジのみで行い、直列側は Codecov の unittests-serial
-          # フラグで追跡する（両者は別ディレクトリに出力され、同一ファイルを重複計上せずに
-          # 合算するには lcov のマージが必要なため、判定には合算しない）。
+          # 閾値判定は並列側のカバレッジのみで行い、直列側は参考値としてログに出す（両者は
+          # 別ディレクトリに出力され、同一ファイルを重複計上せずに合算するには lcov のマージが
+          # 必要なため、判定には合算しない）。
           if [ ! -f coverage-serial/coverage-summary.json ]; then
             echo "❌ Serial coverage file not found! test:coverage:serial may have failed."
             exit 1
@@ -200,22 +200,6 @@ jobs:
           else
             echo "✅ Test coverage: $COVERAGE% (minimum: 20.4%)"
           fi
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v7
-        with:
-          files: ./coverage/lcov.info
-          disable_search: true
-          flags: unittests
-          name: codecov-umbrella
-
-      - name: Upload serial coverage reports
-        uses: codecov/codecov-action@v7
-        with:
-          files: ./coverage-serial/lcov.info
-          disable_search: true
-          flags: unittests-serial
-          name: codecov-serial
 
       - name: Publish Unit Test Report
         uses: ctrf-io/github-test-reporter@v1

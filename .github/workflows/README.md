@@ -33,7 +33,6 @@ READMEに以下のバッジを追加できます：
 ```markdown
 ![CI](https://github.com/[your-username]/techtrend/workflows/CI/badge.svg)
 ![CodeQL](https://github.com/[your-username]/techtrend/workflows/CodeQL/badge.svg)
-[![codecov](https://codecov.io/gh/[your-username]/techtrend/branch/main/graph/badge.svg)](https://codecov.io/gh/[your-username]/techtrend)
 ```
 
 ## ローカルでのテスト実行
