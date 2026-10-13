@@ -48,6 +48,7 @@ export function UserMenu({ compact = false }: UserMenuProps = {}) {
     } catch (error) {
       console.error('Sign-out failed:', error);
     } finally {
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- サインアウト後はフルリロードで React Query のキャッシュなどクライアントの状態を捨てる
       window.location.href = '/';
     }
   };

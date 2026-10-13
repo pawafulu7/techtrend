@@ -1,5 +1,6 @@
 import { Source, Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
+import { isUniqueConstraintViolationOn } from '@/lib/utils/prisma-constraint';
 import pLimit from 'p-limit';
 import { Mutex } from 'async-mutex';
 import * as fs from 'fs';
@@ -624,14 +625,7 @@ async function processSource({
           recentTitlesSet.delete(article.title);
         });
 
-        const metaTarget = (error as { meta?: { target?: unknown } }).meta?.target;
-        const isPrismaDuplicateUrlError =
-          typeof error === 'object' &&
-          error !== null &&
-          'code' in error &&
-          (error as { code?: string }).code === 'P2002' &&
-          Array.isArray(metaTarget) &&
-          metaTarget.includes('url');
+        const isPrismaDuplicateUrlError = isUniqueConstraintViolationOn(error, 'Article', 'url');
 
         if (isPrismaDuplicateUrlError) {
           // Re-fetch latest article for self-healing on concurrent URL collision

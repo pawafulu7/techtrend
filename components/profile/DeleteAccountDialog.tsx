@@ -119,10 +119,12 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
       // Handle sign out with error recovery
       try {
         await authClient.signOut();
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- サインアウト後はフルリロードで React Query のキャッシュなどクライアントの状態を捨てる
         window.location.href = '/';
       } catch (signOutError) {
         console.error('Sign out failed after account deletion:', signOutError);
         // Even if sign out fails, the account is deleted, so redirect manually
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- サインアウト後はフルリロードで React Query のキャッシュなどクライアントの状態を捨てる
         window.location.href = '/';
       }
     } catch (error) {
