@@ -9,6 +9,7 @@ import { trace } from '@opentelemetry/api';
 import { resolveSessionFromRequest } from './session-context';
 import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
 import logger from '@/lib/logger';
+import { toRateLimitIP } from '@/lib/utils/http/rate-limit-ip';
 
 type RouteHandler = (
   request: NextRequest,
@@ -213,11 +214,15 @@ export function createRateLimitedResponse(
  *
  * NextRequest の `ip` は Next.js 15 で削除された（node_modules/next/dist/docs/01-app/02-guides/
  * upgrading/version-15.md の「NextRequest Geolocation」）ので、x-forwarded-for の先頭を使う。
- * x-forwarded-for は、信頼できるプロキシ（Vercel など）が上書きする前提で使っている
+ * x-forwarded-for は、信頼できるプロキシが上書きする前提で使っている。Vercel は送り手の値を捨てて
+ * 接続元の IP で上書きする（https://vercel.com/docs/headers/request-headers の x-forwarded-for）。
+ * 上書きするプロキシを置かずに公開すると、ヘッダーを変えるだけで制限を外せる
+ *
+ * IPv6 は /64 に丸めて数える（toRateLimitIP）
  */
 function getClientIP(request: NextRequest): string {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  return toRateLimitIP(
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
   );
 }
 

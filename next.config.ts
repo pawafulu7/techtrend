@@ -25,6 +25,10 @@ const nextConfig: NextConfig = {
   ],
 
   // 実験的機能で最適化
+  // proxyClientMaxBodySize は指定しない。Next が proxy のために本文を複製するのは next start と
+  // next dev だけで、Vercel では proxy.ts が別の Routing Middleware として動くので効かない
+  // （本文の上限は Vercel Functions の 4.5MB）。上限を超えた本文は黙って切り詰められるので、
+  // 指定すると正規の大きな本文が壊れる
   experimental: {
     optimizeCss: process.env.NODE_ENV !== 'development',
     optimizePackageImports: [

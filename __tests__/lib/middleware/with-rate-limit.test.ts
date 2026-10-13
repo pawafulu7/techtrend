@@ -261,6 +261,55 @@ describe('withRateLimit', () => {
       );
     });
 
+    it('counts IPv6 senders in the same /64 under one key', async () => {
+      mockCheckRateLimit.mockResolvedValue({
+        limit: 10,
+        remaining: 9,
+        reset: new Date(),
+      });
+
+      const handler = withRateLimit('test:policy', async () => {
+        return NextResponse.json({ success: true });
+      });
+
+      for (const ip of ['2001:db8:1:2::1', '2001:DB8:1:2:ffff::9']) {
+        await handler(
+          new NextRequest('http://localhost/api/test', {
+            headers: { 'x-forwarded-for': `${ip}, 198.51.100.1` },
+          })
+        );
+      }
+
+      expect(mockCheckRateLimit.mock.calls.map(([key]) => key)).toEqual([
+        'ip:2001:db8:1:2::/64',
+        'ip:2001:db8:1:2::/64',
+      ]);
+    });
+
+    it('uses ip:unknown when x-forwarded-for is missing or empty', async () => {
+      mockCheckRateLimit.mockResolvedValue({
+        limit: 10,
+        remaining: 9,
+        reset: new Date(),
+      });
+
+      const handler = withRateLimit('test:policy', async () => {
+        return NextResponse.json({ success: true });
+      });
+
+      await handler(new NextRequest('http://localhost/api/test'));
+      await handler(
+        new NextRequest('http://localhost/api/test', {
+          headers: { 'x-forwarded-for': '' },
+        })
+      );
+
+      expect(mockCheckRateLimit.mock.calls.map(([key]) => key)).toEqual([
+        'ip:unknown',
+        'ip:unknown',
+      ]);
+    });
+
     it('does not put the raw IP into the span event', async () => {
       const { trace } = jest.requireMock('@opentelemetry/api');
       const addEvent = jest.fn();
