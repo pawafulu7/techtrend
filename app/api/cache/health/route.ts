@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { getRedisClient } from '@/lib/redis/client';
 import { redisCircuitBreaker } from '@/lib/cache/circuit-breaker';
 import logger from '@/lib/logger';
@@ -10,7 +12,7 @@ const exposeErrorDetails = (): boolean => process.env.NODE_ENV !== 'production';
  * キャッシュシステムのヘルスチェックエンドポイント
  * Redis接続状態とサーキットブレーカーの状態を監視
  */
-export async function GET() {
+async function handler() {
   try {
     // Redis接続状態をチェック
     let redisHealth = {
@@ -105,3 +107,7 @@ export async function GET() {
     );
   }
 }
+
+// Redis の状態とサーキットブレーカーの内部値を返し、毎回 ping するので、管理者だけにして回数も制限する（issue #783）。
+// デプロイと docker-compose の死活確認は /api/health を使う
+export const GET = withAdminAuth(withRateLimit('admin:read', handler));

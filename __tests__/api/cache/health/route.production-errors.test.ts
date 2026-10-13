@@ -6,6 +6,14 @@
  * 本物の lib/redis/client.ts を読む。そのため、route と同じ実ファイルを相対パスで差し替える。
  * テストごとに jest.doMock で差し替え、route を読み込み直す。
  */
+// 管理者認証・レート制限は素通しにする。包み方は __tests__/api/auth-middleware-composition.test.ts で確かめる
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: (handler: Function) => handler,
+}));
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: (_key: string, handler: Function) => handler,
+}));
+
 type HealthGet = (typeof import('@/app/api/cache/health/route'))['GET'];
 
 const loadGet = async (options: {
