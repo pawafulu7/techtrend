@@ -53,14 +53,16 @@ export class EmbeddingService {
    * @throws Error if embedding generation fails after max retries
    */
   async embedText(text: string, retryCount = 0): Promise<number[]> {
-    return this.limit(async () => {
-      const trimmedText = text.trim();
+    const trimmedText = text.trim();
 
-      if (!trimmedText) {
-        throw new Error('Cannot embed empty text');
-      }
+    if (!trimmedText) {
+      throw new Error('Cannot embed empty text');
+    }
 
-      try {
+    try {
+      // Hold a concurrency slot only while calling the API. Retrying inside the
+      // slot would wait on the same limiter and deadlock once every slot retries.
+      return await this.limit(async () => {
         const response = await this.openai.embeddings.create({
           model: this.config.model,
           input: trimmedText,
@@ -75,40 +77,40 @@ export class EmbeddingService {
         const validated = embeddingSchema.parse(embedding);
 
         return validated;
-      } catch (error) {
-        // Handle rate limiting with exponential backoff
-        if (this.shouldRetry(error, retryCount)) {
-          const backoffMs = this.calculateBackoff(retryCount, error);
+      });
+    } catch (error) {
+      // Handle rate limiting with exponential backoff
+      if (this.shouldRetry(error, retryCount)) {
+        const backoffMs = this.calculateBackoff(retryCount, error);
 
-          logger.warn(
-            {
-              attempt: retryCount + 1,
-              maxRetries: this.config.maxRetries,
-              backoffMs,
-              errorType:
-                error instanceof Error ? error.constructor.name : 'Unknown',
-            },
-            'Rate limited or transient error, retrying'
-          );
-
-          await this.sleep(backoffMs);
-          return this.embedText(text, retryCount + 1);
-        }
-
-        // Log error without exposing API key
-        logger.error(
+        logger.warn(
           {
-            err: error,
-            textLength: trimmedText.length,
-            textPreview: trimmedText.substring(0, 50),
-            model: this.config.model,
+            attempt: retryCount + 1,
+            maxRetries: this.config.maxRetries,
+            backoffMs,
+            errorType:
+              error instanceof Error ? error.constructor.name : 'Unknown',
           },
-          'Embedding generation failed'
+          'Rate limited or transient error, retrying'
         );
 
-        throw error;
+        await this.sleep(backoffMs);
+        return this.embedText(text, retryCount + 1);
       }
-    });
+
+      // Log error without exposing API key
+      logger.error(
+        {
+          err: error,
+          textLength: trimmedText.length,
+          textPreview: trimmedText.substring(0, 50),
+          model: this.config.model,
+        },
+        'Embedding generation failed'
+      );
+
+      throw error;
+    }
   }
 
   /**
@@ -159,8 +161,9 @@ export class EmbeddingService {
     texts: string[],
     retryCount = 0
   ): Promise<number[][]> {
-    return this.limit(async () => {
-      try {
+    try {
+      // Same as embedText: hold the slot only for the API call, retry outside it
+      return await this.limit(async () => {
         const response = await this.openai.embeddings.create({
           model: this.config.model,
           input: texts,
@@ -170,38 +173,38 @@ export class EmbeddingService {
         const sorted = response.data.sort((a, b) => a.index - b.index);
 
         return sorted.map((item) => embeddingSchema.parse(item.embedding));
-      } catch (error) {
-        if (this.shouldRetry(error, retryCount)) {
-          const backoffMs = this.calculateBackoff(retryCount, error);
+      });
+    } catch (error) {
+      if (this.shouldRetry(error, retryCount)) {
+        const backoffMs = this.calculateBackoff(retryCount, error);
 
-          logger.warn(
-            {
-              attempt: retryCount + 1,
-              maxRetries: this.config.maxRetries,
-              backoffMs,
-              batchSize: texts.length,
-              errorType:
-                error instanceof Error ? error.constructor.name : 'Unknown',
-            },
-            'Rate limited or transient error on batch, retrying'
-          );
-
-          await this.sleep(backoffMs);
-          return this.embedChunk(texts, retryCount + 1);
-        }
-
-        logger.error(
+        logger.warn(
           {
-            err: error,
+            attempt: retryCount + 1,
+            maxRetries: this.config.maxRetries,
+            backoffMs,
             batchSize: texts.length,
-            model: this.config.model,
+            errorType:
+              error instanceof Error ? error.constructor.name : 'Unknown',
           },
-          'Batch embedding generation failed'
+          'Rate limited or transient error on batch, retrying'
         );
 
-        throw error;
+        await this.sleep(backoffMs);
+        return this.embedChunk(texts, retryCount + 1);
       }
-    });
+
+      logger.error(
+        {
+          err: error,
+          batchSize: texts.length,
+          model: this.config.model,
+        },
+        'Batch embedding generation failed'
+      );
+
+      throw error;
+    }
   }
 
   /**
@@ -247,9 +250,13 @@ export class EmbeddingService {
    * Respects Retry-After header if present
    */
   private calculateBackoff(retryCount: number, error: unknown): number {
-    // Check for Retry-After header
-    if (error instanceof OpenAI.APIError && error.headers?.['retry-after']) {
-      const retryAfter = parseInt(error.headers['retry-after'], 10);
+    // Check for Retry-After header (openai v5+ exposes headers as a Web Headers instance)
+    const retryAfterHeader =
+      error instanceof OpenAI.APIError
+        ? error.headers?.get('retry-after')
+        : undefined;
+    if (retryAfterHeader) {
+      const retryAfter = parseInt(retryAfterHeader, 10);
       if (!isNaN(retryAfter)) {
         return retryAfter * 1000; // Convert to ms
       }
