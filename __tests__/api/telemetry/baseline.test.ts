@@ -5,6 +5,17 @@ import { NextRequest } from 'next/server';
 import { GET, POST } from '@/app/api/telemetry/baseline/route';
 import { ApiBaselineMonitor } from '@/lib/monitoring/api-baseline';
 
+// 管理者認証・レート制限・CSRF は素通しにする。包み方は __tests__/api/auth-middleware-composition.test.ts で確かめる
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: (handler: Function) => handler,
+}));
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: (_key: string, handler: Function) => handler,
+}));
+jest.mock('@/lib/middleware/csrf-protection', () => ({
+  withCSRFProtection: (handler: Function) => handler,
+}));
+
 describe('/api/telemetry/baseline', () => {
   beforeEach(() => {
     ApiBaselineMonitor.resetInstance();
@@ -49,13 +60,16 @@ describe('/api/telemetry/baseline', () => {
         count: 100,
       };
 
-      const request = new NextRequest('http://localhost/api/telemetry/baseline', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const request = new NextRequest(
+        'http://localhost/api/telemetry/baseline',
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       const response = await POST(request);
       expect(response.status).toBe(201);
@@ -69,6 +83,55 @@ describe('/api/telemetry/baseline', () => {
       expect(getData.measurements).toHaveLength(1);
     });
 
+    it('should reject a body that is not JSON with 400', async () => {
+      const request = new NextRequest(
+        'http://localhost/api/telemetry/baseline',
+        {
+          method: 'POST',
+          body: '{not json',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      const response = await POST(request);
+      expect(response.status).toBe(400);
+    });
+
+    it('should reject values the monitor would not store', async () => {
+      const valid = {
+        endpoint: '/api/articles',
+        method: 'GET',
+        p50: 90,
+        p95: 220,
+        p99: 450,
+        count: 100,
+      };
+      const bodies = [
+        JSON.stringify({ ...valid, endpoint: '' }),
+        // JSON.parse すると Infinity になる
+        JSON.stringify(valid).replace('"p50":90', '"p50":1e400'),
+      ];
+
+      // route が持つモニターは resetInstance で入れ替わらないので、前後の件数で比べる
+      const before = (await (await GET()).json()).measurements.length;
+
+      for (const body of bodies) {
+        const request = new NextRequest(
+          'http://localhost/api/telemetry/baseline',
+          {
+            method: 'POST',
+            body,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+        const response = await POST(request);
+        expect(response.status).toBe(400);
+      }
+
+      const after = (await (await GET()).json()).measurements.length;
+      expect(after).toBe(before);
+    });
+
     it('should reject invalid method', async () => {
       const payload = {
         endpoint: '/api/articles',
@@ -79,13 +142,16 @@ describe('/api/telemetry/baseline', () => {
         count: 100,
       };
 
-      const request = new NextRequest('http://localhost/api/telemetry/baseline', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const request = new NextRequest(
+        'http://localhost/api/telemetry/baseline',
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       const response = await POST(request);
       expect(response.status).toBe(400);
@@ -98,13 +164,16 @@ describe('/api/telemetry/baseline', () => {
         // Missing p50, p95, p99, count
       };
 
-      const request = new NextRequest('http://localhost/api/telemetry/baseline', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const request = new NextRequest(
+        'http://localhost/api/telemetry/baseline',
+        {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       const response = await POST(request);
       expect(response.status).toBe(400);

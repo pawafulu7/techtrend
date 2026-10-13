@@ -22,10 +22,12 @@ jest.mock('@/lib/middleware/csrf-protection', () => ({
 }));
 
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
-  withRateLimit: (key: string, inner: unknown) => ({
+  // オプションを渡したときだけ目印に載せる（渡さない route の期待値はそのまま）
+  withRateLimit: (key: string, inner: unknown, options?: object) => ({
     kind: 'rateLimit',
     key,
     inner,
+    ...(options ? { options } : {}),
   }),
 }));
 
@@ -144,19 +146,62 @@ const ROUTES: Array<{
     modulePath: '@/app/api/rag/agent-search/route',
     methods: { POST: csrf(userValidation(HANDLER)) },
   },
+  // issue #771: telemetry の監視値は管理者だけに見せる。vitals の POST は未ログインからも
+  // 届くので、セッションを引かずに IP 単位で数える
+  {
+    modulePath: '@/app/api/telemetry/vitals/route',
+    methods: {
+      GET: adminAuth(rateLimit('admin:read', HANDLER)),
+      POST: {
+        ...rateLimit('write:telemetry-vitals', HANDLER),
+        options: { resolveSession: false },
+      },
+    },
+  },
+  {
+    modulePath: '@/app/api/telemetry/baseline/route',
+    methods: {
+      GET: adminAuth(rateLimit('admin:read', HANDLER)),
+      POST: csrf(rateLimit('admin:write', adminAuth(HANDLER))),
+    },
+  },
+  {
+    modulePath: '@/app/api/telemetry/batch/route',
+    methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
+  },
+  {
+    modulePath: '@/app/api/telemetry/cache/route',
+    methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
+  },
+  {
+    modulePath: '@/app/api/telemetry/memory/route',
+    methods: {
+      GET: adminAuth(rateLimit('admin:read', HANDLER)),
+      POST: csrf(rateLimit('admin:write', adminAuth(HANDLER))),
+    },
+  },
+  {
+    modulePath: '@/app/api/telemetry/metrics/route',
+    methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
+  },
 ];
 
 const ROWS = ROUTES.flatMap((route) =>
   Object.entries(route.methods).map(
     ([method, expected]) =>
-      [`${method} ${route.modulePath}`, route.modulePath, method, expected] as const
+      [
+        `${method} ${route.modulePath}`,
+        route.modulePath,
+        method,
+        expected,
+      ] as const
   )
 );
 
 describe('Auth middleware composition (issues #659, #662)', () => {
-  it('covers all 19 HTTP methods of the 15 routes', () => {
-    expect(ROUTES).toHaveLength(15);
-    expect(ROWS).toHaveLength(19);
+  it('covers all 28 HTTP methods of the 21 routes', () => {
+    expect(ROUTES).toHaveLength(21);
+    expect(ROWS).toHaveLength(28);
   });
 
   it.each(ROUTES.map((route) => [route.modulePath, route] as const))(
@@ -168,9 +213,12 @@ describe('Auth middleware composition (issues #659, #662)', () => {
     }
   );
 
-  it.each(ROWS)('%s has the expected wrapper tree', (_label, modulePath, method, expected) => {
-    const mod = require(modulePath);
-    const tree = mod[method] as MarkerNode;
-    expect(tree).toEqual(expected);
-  });
+  it.each(ROWS)(
+    '%s has the expected wrapper tree',
+    (_label, modulePath, method, expected) => {
+      const mod = require(modulePath);
+      const tree = mod[method] as MarkerNode;
+      expect(tree).toEqual(expected);
+    }
+  );
 });

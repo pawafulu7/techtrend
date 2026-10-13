@@ -22,6 +22,12 @@ interface WithRateLimitOptions {
     reset: Date;
   }) => void;
   onBlocked?: (error: RateLimitError) => void;
+  /**
+   * false にするとセッションを引かない（既定は引く）。keyStrategy が 'ip' か 'anonymous' で、
+   * handler もセッションを使わない、未ログインから大量に届く API に使う。引くと、ログイン中の
+   * 送り手ごとに認証の DB を引き、認証の失敗に巻き込まれて本来の処理まで落ちるため
+   */
+  resolveSession?: boolean;
 }
 
 /**
@@ -72,7 +78,10 @@ export function withRateLimit(
       const limiter = createRateLimiterFromConfig(configKey);
 
       // Resolve session from context or fetch via auth() (SessionContext optimization)
-      const session = await resolveSessionFromRequest(context, request.headers);
+      const session =
+        options?.resolveSession === false
+          ? undefined
+          : await resolveSessionFromRequest(context, request.headers);
 
       // Resolve identity key
       const limitKey = options?.keyResolver

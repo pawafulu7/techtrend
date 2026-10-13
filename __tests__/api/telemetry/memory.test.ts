@@ -4,6 +4,17 @@
 import { GET, POST } from '@/app/api/telemetry/memory/route';
 import { memoryMonitor } from '@/lib/monitoring/memory-monitor';
 
+// 管理者認証・レート制限・CSRF は素通しにする。包み方は __tests__/api/auth-middleware-composition.test.ts で確かめる
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: (handler: Function) => handler,
+}));
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: (_key: string, handler: Function) => handler,
+}));
+jest.mock('@/lib/middleware/csrf-protection', () => ({
+  withCSRFProtection: (handler: Function) => handler,
+}));
+
 describe('/api/telemetry/memory', () => {
   beforeEach(() => {
     memoryMonitor.reset();

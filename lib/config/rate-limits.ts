@@ -191,6 +191,15 @@ export const RATE_LIMIT_POLICIES = {
     notes: 'Article view recording limit (60 per minute)',
     telemetryEvent: 'ratelimit.write.article-views',
   },
+  'write:telemetry-vitals': {
+    points: 60,
+    duration: 60,
+    blockDuration: 0,
+    keyStrategy: 'ip',
+    notes:
+      'Web Vitals beacons (up to 5 metrics per page load from 5% of sessions; anonymous)',
+    telemetryEvent: 'ratelimit.write.telemetry-vitals',
+  },
 
   // Read Operations (General Protection) - No block
   'read:articles': {

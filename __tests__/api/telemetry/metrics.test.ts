@@ -4,6 +4,17 @@
 import { GET } from '@/app/api/telemetry/metrics/route';
 import { recommendationMetrics } from '@/lib/monitoring/recommendation-metrics';
 
+// 管理者認証・レート制限・CSRF は素通しにする。包み方は __tests__/api/auth-middleware-composition.test.ts で確かめる
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: (handler: Function) => handler,
+}));
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: (_key: string, handler: Function) => handler,
+}));
+jest.mock('@/lib/middleware/csrf-protection', () => ({
+  withCSRFProtection: (handler: Function) => handler,
+}));
+
 describe('/api/telemetry/metrics', () => {
   beforeEach(() => {
     recommendationMetrics.reset();
@@ -119,7 +130,8 @@ describe('RecommendationMetrics', () => {
 
   describe('getResponseTimePercentiles', () => {
     it('should return null for non-existent operation', () => {
-      const result = recommendationMetrics.getResponseTimePercentiles('nonExistent');
+      const result =
+        recommendationMetrics.getResponseTimePercentiles('nonExistent');
       expect(result).toBeNull();
     });
 

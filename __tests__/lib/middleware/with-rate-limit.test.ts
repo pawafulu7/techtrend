@@ -419,6 +419,38 @@ describe('withRateLimit', () => {
   });
 
   describe('Session Handling', () => {
+    it('does not look up the session when resolveSession is false', async () => {
+      getAuthApiGetSession().mockResolvedValue({ user: { id: 'user123' } });
+      mockCheckRateLimit.mockResolvedValue({
+        limit: 10,
+        remaining: 9,
+        reset: new Date(),
+      });
+      const inner = jest.fn(async () => NextResponse.json({ success: true }));
+
+      const handler = withRateLimit('test:policy', inner, {
+        resolveSession: false,
+      });
+      const response = await handler(
+        new NextRequest('http://localhost/api/test', {
+          headers: { 'x-forwarded-for': '10.0.0.2' },
+        })
+      );
+
+      expect(response.status).toBe(200);
+      expect(getAuthApiGetSession()).not.toHaveBeenCalled();
+      expect(mockCheckRateLimit).toHaveBeenCalledWith(
+        'ip:10.0.0.2',
+        mockLimiter
+      );
+      expect(inner).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ session: undefined })
+      );
+      // 制限のヘッダーは引くときと同じく付く
+      expect(response.headers.get('X-RateLimit-Remaining')).toBe('9');
+    });
+
     it('should fetch session only once', async () => {
       getAuthApiGetSession().mockResolvedValue({
         user: { id: 'user123' },

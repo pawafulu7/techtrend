@@ -5,19 +5,11 @@
  * zod や Prisma のランタイムは import しない（型だけ import する）。
  */
 import type { InquiryCategory, InquiryStatus } from '@/lib/prisma-exports';
+import { listAllValues } from '@/lib/utils/list-all-values';
 
 export type { InquiryCategory, InquiryStatus };
 
-/**
- * enum の値をすべて並べた配列を返す。値が1つでも欠けると引数の型が合わずにコンパイルが止まる
- * （Prisma のスキーマに値を足したとき、ここを直し忘れないように）
- */
-function listAllValues<T extends string>() {
-  return <const L extends readonly T[]>(
-    list: L & ([T] extends [L[number]] ? unknown : never)
-  ): L => list;
-}
-
+// Prisma のスキーマに値を足したとき、ここを直し忘れるとコンパイルが止まる
 export const INQUIRY_CATEGORIES = listAllValues<InquiryCategory>()([
   'FEATURE_REQUEST',
   'BUG_REPORT',
