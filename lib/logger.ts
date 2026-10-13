@@ -105,14 +105,25 @@ function atAnyDepth(key: string, maxDepth = 4): string[] {
   );
 }
 
+/** redact のパスの段数（`a.*.b` なら3） */
+function pathDepth(path: string): number {
+  return path.split('.').length;
+}
+
 /**
  * Paths to redact in log output
  * Uses Pino's redact feature for structured data
+ *
+ * @pinojs/redact は、ログに渡したオブジェクトを複製するとき、キーごとに固有のパスと `*` の
+ * どちらか一方しか辿らない（pinojs/redact#36）。辿らなかった側の入れ子は元のオブジェクトと
+ * 共有されたまま伏せられ、呼び出し元のオブジェクトが書き換わる。これを避けるため、
+ * - 先頭と末尾の間に固有のキーを置かない（`session.user.email` のような指定は `*.*.email` で足りる）
+ * - 浅いパスから順に伏せる。値がオブジェクトの `credentials` などが先に複製側で伏せ字に置き換わり、
+ *   深いパス（`*.*.password` など）が共有された入れ子に届かなくなる。パスは並び順に処理される
  */
 export const REDACT_PATHS = [
   // Email addresses
   ...atAnyDepth('email'),
-  'session.user.email',
   // 問い合わせの返信先（lib/inquiries）
   'contactEmail',
   '*.contactEmail',
@@ -142,7 +153,7 @@ export const REDACT_PATHS = [
   '*.phoneNumber',
   'address',
   '*.address',
-];
+].sort((a, b) => pathDepth(a) - pathDepth(b));
 
 const errorLogHooks = createErrorLogHooks();
 
