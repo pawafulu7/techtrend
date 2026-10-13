@@ -6,6 +6,7 @@ import { cleanupCommand } from './commands/cleanup';
 import { feedsCommand } from './commands/feeds';
 import { tagsCommand } from './commands/tags';
 import { dbCommand } from './commands/db';
+import { runCli } from './run';
 
 const program = new Command();
 
@@ -22,11 +23,8 @@ program.addCommand(feedsCommand);
 program.addCommand(tagsCommand);
 program.addCommand(dbCommand);
 
-// エラーハンドリング
-program.exitOverride();
-
-try {
-  program.parse();
-} catch {
-  process.exit(1);
-}
+void runCli(program).then((exitCode) => {
+  if (exitCode !== undefined) {
+    process.exit(exitCode);
+  }
+});

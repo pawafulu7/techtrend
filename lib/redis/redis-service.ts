@@ -40,10 +40,10 @@ export class RedisService implements IRedisService {
    * Disconnect from Redis
    */
   async disconnect(): Promise<void> {
-    if (this.connected) {
-      await this.client.quit();
-      this.connected = false;
-    }
+    // IoRedisClient は生成時に接続するので、connect() / isConnected() を
+    // 呼んでいなくても接続が開いている。connected の値に関係なく閉じる
+    await this.client.quit();
+    this.connected = false;
   }
 
   /**
