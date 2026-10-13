@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
@@ -49,7 +50,10 @@ async function generateHandler(
     const parseResult = SocialPostAutoGenerateSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Invalid request body', details: parseResult.error.flatten() },
+        {
+          error: 'Invalid request body',
+          details: z.flattenError(parseResult.error),
+        },
         { status: 400 }
       );
     }

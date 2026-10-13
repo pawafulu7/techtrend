@@ -1,4 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
+import { z } from 'zod';
 import {
   SocialPostCreateSchema,
   SocialPostUpdateSchema,
@@ -621,6 +622,96 @@ describe('SocialPostValidator', () => {
       // ARTICLE_CATEGORIESの値と比較
       expect(new Set(ARTICLE_CATEGORIES)).toEqual(new Set(prismaCategories));
       expect(ARTICLE_CATEGORIES.length).toBe(prismaCategories.length);
+    });
+  });
+
+  // API は z.flattenError(error) を details に入れて返す。zod 4 への移行で文言と形が変わらないこと
+  describe('エラーの文言と形（API の details）', () => {
+    const flatten = <T>(result: z.ZodSafeParseResult<T>) => {
+      if (result.success) throw new Error('検証に通ってしまった');
+      return z.flattenError(result.error);
+    };
+
+    it('ARTICLE で sourceIds が無ければ sourceIds の項目に文言を返す', () => {
+      const details = flatten(
+        SocialPostCreateSchema.safeParse({
+          content: 'test',
+          hashtags: [],
+          sourceUrls: [],
+          source: 'ARTICLE',
+        })
+      );
+      expect(details).toEqual({
+        formErrors: [],
+        fieldErrors: { sourceIds: ['sourceIds is required for non-MANUAL sources'] },
+      });
+    });
+
+    it('sourceUrls が URL でなければ URL の文言を先に返す', () => {
+      const details = flatten(
+        SocialPostCreateSchema.safeParse({
+          content: 'test',
+          hashtags: [],
+          sourceUrls: ['not-a-url'],
+          source: 'MANUAL',
+        })
+      );
+      expect(details.formErrors).toEqual([]);
+      expect(details.fieldErrors.sourceUrls?.[0]).toBe('Invalid URL format');
+    });
+
+    it('SCHEDULED で scheduledAt が無ければ scheduledAt の項目に文言を返す', () => {
+      const details = flatten(
+        SocialPostUpdateSchema.safeParse({ status: 'SCHEDULED' })
+      );
+      expect(details).toEqual({
+        formErrors: [],
+        fieldErrors: {
+          scheduledAt: ['scheduledAt is required when status is SCHEDULED'],
+        },
+      });
+    });
+
+    it('SCHEDULED 以外で scheduledAt があれば scheduledAt の項目に文言を返す', () => {
+      const details = flatten(
+        SocialPostUpdateSchema.safeParse({
+          status: 'DRAFT',
+          scheduledAt: '2024-12-25T10:00:00.000Z',
+        })
+      );
+      expect(details).toEqual({
+        formErrors: [],
+        fieldErrors: {
+          scheduledAt: ['scheduledAt must be null unless status is SCHEDULED'],
+        },
+      });
+    });
+
+    it('changeStatus で status が無ければ status の項目に文言を返す', () => {
+      const details = flatten(
+        SocialPostBulkSchema.safeParse({ action: 'changeStatus', ids: ['a'] })
+      );
+      expect(details).toEqual({
+        formErrors: [],
+        fieldErrors: {
+          status: ['Status is required when action is changeStatus'],
+        },
+      });
+    });
+
+    it('dateFrom が dateTo より後なら dateFrom の項目に文言を返す', () => {
+      const details = flatten(
+        SocialPostFiltersSchema.safeParse({
+          dateFrom: '2024-02-01T00:00:00.000Z',
+          dateTo: '2024-01-01T00:00:00.000Z',
+        })
+      );
+      expect(details).toEqual({
+        formErrors: [],
+        fieldErrors: {
+          dateFrom: ['dateFrom must be before or equal to dateTo'],
+        },
+      });
     });
   });
 });

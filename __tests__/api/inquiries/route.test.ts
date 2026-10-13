@@ -273,11 +273,13 @@ describe('POST /api/inquiries', () => {
       ['種別が無い', { message: 'x' }, 'category', '種別を選んでください'],
       ['種別が不正', { category: 'SPAM', message: 'x' }, 'category', '種別を選んでください'],
       ['本文が無い', { category: 'OTHER' }, 'message', '内容を書いてください'],
+      ['本文が文字列でない', { category: 'OTHER', message: 123 }, 'message', '内容を書いてください'],
       ['本文が空白だけ', { category: 'OTHER', message: ' \n\t ' }, 'message', '内容を書いてください'],
       ['本文が制御文字だけ', { category: 'OTHER', message: '\u0000\u0007' }, 'message', '内容を書いてください'],
       ['本文が 5001 文字', { category: 'OTHER', message: 'あ'.repeat(5001) }, 'message', '5000 文字以内で書いてください'],
       ['メールの形式が不正', { ...validBody, contactEmail: 'not-an-email' }, 'contactEmail', 'メールアドレスの形式を確かめてください'],
       ['メールが 254 文字を超える', { ...validBody, contactEmail: `${'a'.repeat(250)}@example.com` }, 'contactEmail', 'メールアドレスの形式を確かめてください'],
+      ['メールが文字列でない', { ...validBody, contactEmail: 123 }, 'contactEmail', 'メールアドレスの形式を確かめてください'],
     ])('%s', async (_label, body, field, message) => {
       const { status, json } = await send(body);
 
@@ -290,7 +292,11 @@ describe('POST /api/inquiries', () => {
       const { status, json } = await send({ ...validBody, userId: 'someone' });
 
       expect(status).toBe(400);
-      expect(json.error.code).toBe('VALIDATION_ERROR');
+      expect(json.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        message: '送信できない項目が含まれています',
+      });
+      expect(json.error.field).toBeUndefined();
       expect(prismaMock.inquiry.create).not.toHaveBeenCalled();
     });
 

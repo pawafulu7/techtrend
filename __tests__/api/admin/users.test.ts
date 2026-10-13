@@ -244,6 +244,14 @@ describe('PATCH /api/admin/users/[id]', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Validation failed');
+      // details は zod の issue の配列（code・path・message を持つ）
+      expect(data.details).toEqual([
+        expect.objectContaining({
+          code: expect.any(String),
+          path: ['role'],
+          message: expect.any(String),
+        }),
+      ]);
     });
 
     it('returns 404 when user not found', async () => {

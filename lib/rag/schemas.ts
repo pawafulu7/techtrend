@@ -18,23 +18,25 @@ import { z } from 'zod';
  */
 export const searchOptionsSchema = z.object({
   topK: z.coerce
-    .number()
+    .number<number>()
     .int('topK must be an integer')
     .min(1, 'topK must be at least 1')
     .max(100, 'topK cannot exceed 100')
     .default(10),
 
   similarityThreshold: z.coerce
-    .number()
+    .number<number>()
     .min(0, 'Similarity threshold must be between 0 and 1')
     .max(1, 'Similarity threshold must be between 0 and 1')
-    .default(0.5),  // Lowered from 0.7 to improve recall for short queries
+    .default(0.5), // Lowered from 0.7 to improve recall for short queries
 
+  // Source の ID は cuid ではなく 'qiita' や 'dena_tech_blog' のような slug
   sourceIds: z
     .array(
-      z.string()
-        .cuid('Invalid source ID format')
-        .transform((id) => id.trim())
+      z
+        .string()
+        .trim()
+        .regex(/^[A-Za-z0-9_-]{1,100}$/, 'Invalid source ID format')
     )
     .max(50, 'Too many source filters (max 50)')
     .refine(
@@ -45,7 +47,8 @@ export const searchOptionsSchema = z.object({
 
   tags: z
     .array(
-      z.string()
+      z
+        .string()
         .trim()
         .min(1, 'Tag cannot be empty')
         .max(50, 'Tag name too long (max 50 characters)')
@@ -57,9 +60,7 @@ export const searchOptionsSchema = z.object({
     )
     .optional(),
 
-  embeddingKey: z
-    .enum(['title', 'summary', 'both'])
-    .default('summary'),
+  embeddingKey: z.enum(['title', 'summary', 'both']).default('summary'),
 
   /**
    * Date range filter for temporal queries
@@ -77,18 +78,15 @@ export const searchOptionsSchema = z.object({
    */
   dateRange: z
     .object({
-      from: z.string().datetime().optional(),
-      to: z.string().datetime().optional(),
+      from: z.iso.datetime().optional(),
+      to: z.iso.datetime().optional(),
     })
     .optional()
-    .refine(
-      (range) => {
-        if (!range || (!range.from && !range.to)) return true;
-        if (!range.from || !range.to) return true;
-        return new Date(range.from) <= new Date(range.to);
-      },
-      'dateRange.from must be before or equal to dateRange.to'
-    ),
+    .refine((range) => {
+      if (!range || (!range.from && !range.to)) return true;
+      if (!range.from || !range.to) return true;
+      return new Date(range.from) <= new Date(range.to);
+    }, 'dateRange.from must be before or equal to dateRange.to'),
 
   /**
    * Recency boost weight (0-1)
@@ -101,13 +99,13 @@ export const searchOptionsSchema = z.object({
    * Time decay: Exponential with 30-day half-life
    */
   recencyBoost: z.coerce
-    .number()
+    .number<number>()
     .min(0, 'recencyBoost must be between 0 and 1')
     .max(1, 'recencyBoost must be between 0 and 1')
     .default(0),
 });
 
-// Separate input and output types for Zod v3 compatibility
+// Separate input and output types (fields with defaults are optional on input)
 export type SearchOptionsInput = z.input<typeof searchOptionsSchema>;
 export type SearchOptions = z.output<typeof searchOptionsSchema>;
 

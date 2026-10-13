@@ -25,7 +25,6 @@ import logger from '@/lib/logger';
 const cacheInvalidator = new CacheInvalidator();
 
 const httpUrlSchema = z
-  .string()
   .url()
   .max(2048)
   .refine((value) => {
@@ -74,7 +73,7 @@ const createArticleSchema = z.object({
   publishedAt: z
     .string()
     .refine(isValidPublishedAt, {
-      message: 'Invalid publishedAt date format',
+      error: 'Invalid publishedAt date format',
     })
     .optional(),
   tagNames: z.array(z.string().max(30)).max(20).optional().default([]),
@@ -91,7 +90,7 @@ function toValidationError(zodError: z.ZodError): ValidationError {
   return new ValidationError(
     'Invalid request body',
     field || undefined,
-    zodError.flatten()
+    z.flattenError(zodError)
   );
 }
 

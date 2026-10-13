@@ -143,6 +143,22 @@ describe('/api/comments', () => {
         expect(data.error).toBeDefined();
       });
 
+      it('articleIdが空文字の場合は文言を error に入れて400を返す', async () => {
+        const POST = await getPostHandler();
+        const request = createPostRequest({
+          articleId: '',
+          content: 'Test content',
+          visibility: 'PRIVATE',
+        });
+
+        const response = await POST(request);
+
+        expect(response.status).toBe(400);
+        expect(await response.json()).toEqual({
+          error: 'articleId is required',
+        });
+      });
+
       it('contentがない場合400を返す', async () => {
         const POST = await getPostHandler();
         const request = createPostRequest({

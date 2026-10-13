@@ -37,7 +37,7 @@ const UpdatePresetSchema = z.object({
     .max(50, 'Name must be 50 characters or less')
     .transform((val) => val.trim())
     .refine((val) => val.length > 0, {
-      message: 'Name cannot be whitespace only',
+      error: 'Name cannot be whitespace only',
     })
     .optional(),
   sourceIds: z
@@ -69,7 +69,7 @@ async function putHandler(request: NextRequest, context: RouteContext) {
     const parseResult = UpdatePresetSchema.safeParse(body);
 
     if (!parseResult.success) {
-      const firstError = parseResult.error.errors[0];
+      const firstError = parseResult.error.issues[0];
       return NextResponse.json({ error: firstError.message }, { status: 400 });
     }
 

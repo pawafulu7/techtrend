@@ -191,7 +191,7 @@ export const graphOptionsSchema = z.object({
   // CodexMCP: Warn when layer-2 parameters are provided with depth=1
   if (data.depth === 1 && (data.layer2Limit !== 10 || data.layer2PerParent !== 4)) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       message:
         'layer2Limit and layer2PerParent are ignored when depth=1. ' +
         'These parameters only apply when depth=2.',

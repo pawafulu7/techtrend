@@ -8,7 +8,7 @@ import { logger } from '@/lib/logger';
  * Uses Zod for runtime validation and type inference.
  *
  * Design principles:
- * - passthrough() allows unknown fields (RSS spec flexibility)
+ * - loose() allows unknown fields (RSS spec flexibility)
  * - Requires at least title or link (core RSS fields)
  * - Lightweight validation (safeParse for performance)
  */
@@ -40,9 +40,9 @@ export const RSSItemSchema = z
     guid: z.string().optional(),
     isoDate: z.string().optional(),
   })
-  .passthrough()
+  .loose()
   .refine((item) => item.title || item.link, {
-    message: 'RSS item must have at least title or link',
+    error: 'RSS item must have at least title or link',
   });
 
 /**
@@ -82,7 +82,7 @@ export function isRSSItem(item: unknown): item is RSSItem {
     const itemObj = item as Record<string, unknown>;
     logger.debug(
       {
-        validationError: result.error.flatten(),
+        validationError: z.flattenError(result.error),
         title:
           typeof itemObj.title === 'string'
             ? itemObj.title.substring(0, 50)

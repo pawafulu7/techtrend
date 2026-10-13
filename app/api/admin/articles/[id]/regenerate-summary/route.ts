@@ -22,7 +22,7 @@ import { serializeArticleDetail } from '@/app/api/admin/articles/[id]/route';
 
 export const dynamic = 'force-dynamic';
 
-const idSchema = z.string().cuid();
+const idSchema = z.cuid();
 
 async function handler(
   _request: NextRequest,

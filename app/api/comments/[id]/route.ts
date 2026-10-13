@@ -34,7 +34,7 @@ const UpdateCommentSchema = z.object({
     .string()
     .min(1, 'content is required')
     .refine((val) => val.trim().length > 0, {
-      message: 'Content cannot be whitespace only',
+      error: 'Content cannot be whitespace only',
     })
     .optional(),
   visibility: z.enum(['PRIVATE', 'PUBLIC']).optional(),
@@ -67,7 +67,7 @@ async function putHandler(
     const parseResult = UpdateCommentSchema.safeParse(body);
 
     if (!parseResult.success) {
-      const firstError = parseResult.error.errors[0];
+      const firstError = parseResult.error.issues[0];
       return NextResponse.json(
         { error: firstError.message },
         { status: 400 }

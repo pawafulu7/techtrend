@@ -158,7 +158,7 @@ describe('/api/articles/[id]', () => {
 
   // PATCH/DELETE は withAdminAuth + withCSRFProtection + withRateLimit で保護されており、
   // テストでは上記ミドルウェアをモック（認証済みアドミン）して動作確認を行う。
-  // CUID形式のIDを使用（実装側で z.string().cuid() バリデーションあり）
+  // CUID形式のIDを使用（実装側で z.cuid() バリデーションあり）
   const VALID_ARTICLE_ID = 'clxxxxxxxxxxxxxxxxxxxxxxxxx';
 
   describe('PATCH', () => {

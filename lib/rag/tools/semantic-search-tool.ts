@@ -124,16 +124,11 @@ const semanticSearchInputSchema = z.object({
         .optional(),
       dateRange: z
         .object({
-          from: z
-            .string()
+          from: z.iso
             .datetime()
             .optional()
             .describe('ISO 8601 start date (UTC)'),
-          to: z
-            .string()
-            .datetime()
-            .optional()
-            .describe('ISO 8601 end date (UTC)'),
+          to: z.iso.datetime().optional().describe('ISO 8601 end date (UTC)'),
         })
         .optional()
         .describe(

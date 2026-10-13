@@ -20,7 +20,7 @@ import type { AdminArticleDetail } from '@/app/admin/articles/_types';
 
 export const dynamic = 'force-dynamic';
 
-const idSchema = z.string().cuid();
+const idSchema = z.cuid();
 
 const patchSchema = z.object({
   isHidden: z.boolean(),
@@ -157,7 +157,7 @@ async function patchHandler(
     } catch (error) {
       if (error instanceof z.ZodError) {
         return NextResponse.json(
-          { error: 'Validation failed', details: error.errors },
+          { error: 'Validation failed', details: error.issues },
           { status: 400 }
         );
       }

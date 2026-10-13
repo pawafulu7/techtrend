@@ -154,7 +154,10 @@ async function deleteHandler(
 
 const createViewSchema = z.object({
   articleId: z
-    .string({ required_error: 'Article ID is required' })
+    .string({
+      error: (issue) =>
+        issue.input === undefined ? 'Article ID is required' : undefined,
+    })
     .trim()
     .min(1, 'Article ID is required'),
 });
@@ -175,7 +178,7 @@ async function postHandler(
     const parsed = createViewSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: parsed.error.errors[0]?.message || 'Invalid request body' },
+        { error: parsed.error.issues[0]?.message || 'Invalid request body' },
         { status: 400 }
       );
     }

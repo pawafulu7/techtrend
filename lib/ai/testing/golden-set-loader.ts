@@ -8,7 +8,7 @@ const GoldenExampleSchema = z.object({
   article: z.object({
     title: z.string(),
     content: z.string(),
-    url: z.string().url(),
+    url: z.url(),
   }),
   expectedOutput: z.object({
     summary: z.string(),
@@ -48,7 +48,7 @@ const GoldenSetMetadataSchema = z.object({
   }),
   thresholdCalibration: z.object({
     percentile95: z.number(),
-    byCategory: z.record(z.number()),
+    byCategory: z.record(z.string(), z.number()),
   }),
 });
 
@@ -79,7 +79,7 @@ export class GoldenSetParseError extends GoldenSetError {
 }
 
 export class GoldenSetValidationError extends GoldenSetError {
-  constructor(path: string, issues: z.ZodIssue[]) {
+  constructor(path: string, issues: z.core.$ZodIssue[]) {
     const issueMessages = issues
       .map(i => `  - ${i.path.join('.')}: ${i.message}`)
       .join('\n');
