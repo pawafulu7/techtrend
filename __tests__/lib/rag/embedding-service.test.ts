@@ -1,4 +1,9 @@
-import { APIError } from 'openai';
+import {
+  APIConnectionError,
+  APIConnectionTimeoutError,
+  APIError,
+  APIUserAbortError,
+} from 'openai';
 import { EmbeddingService } from '@/lib/rag/embedding-service';
 
 // Use the real p-limit (instead of __mocks__/p-limit.js) so that concurrency limits apply
@@ -16,7 +21,10 @@ jest.mock('openai', () => {
   return {
     __esModule: true,
     ...actual,
-    default: Object.assign(MockOpenAI, { APIError: actual.APIError }),
+    default: Object.assign(MockOpenAI, {
+      APIError: actual.APIError,
+      APIConnectionError: actual.APIConnectionError,
+    }),
   };
 });
 
@@ -287,6 +295,67 @@ describe('EmbeddingService retry', () => {
 
     await expect(service.embedBatch(['hello world'])).rejects.toBeInstanceOf(
       APIError
+    );
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(sleepSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      'APIConnectionError',
+      () => new APIConnectionError({ message: 'Connection error.' }),
+    ],
+    ['APIConnectionTimeoutError', () => new APIConnectionTimeoutError()],
+  ])('should retry embedBatch on %s', async (_name, makeError) => {
+    const vector = new Array(1536).fill(0.1);
+    mockCreate
+      .mockRejectedValueOnce(makeError())
+      .mockResolvedValueOnce(mockEmbeddingResponse([vector]));
+
+    const result = await service.embedBatch(['hello world']);
+
+    expect(result).toHaveLength(1);
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+    expect(sleepSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should retry embedText on APIConnectionError', async () => {
+    const vector = new Array(1536).fill(0.1);
+    mockCreate
+      .mockRejectedValueOnce(
+        new APIConnectionError({ message: 'Connection error.' })
+      )
+      .mockResolvedValueOnce(mockEmbeddingResponse([vector]));
+
+    const result = await service.embedText('hello world');
+
+    expect(result).toHaveLength(1536);
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+    expect(sleepSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should stop retrying connection errors after maxRetries', async () => {
+    const limitedService = new EmbeddingService({
+      batchSize: 10,
+      maxRetries: 2,
+    });
+    const limitedMockCreate = getLatestOpenAIMock();
+    limitedMockCreate.mockRejectedValue(
+      new APIConnectionError({ message: 'Connection error.' })
+    );
+
+    await expect(
+      limitedService.embedBatch(['hello world'])
+    ).rejects.toBeInstanceOf(APIConnectionError);
+    expect(limitedMockCreate).toHaveBeenCalledTimes(3);
+    expect(sleepSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('should not retry when the request was aborted', async () => {
+    mockCreate.mockRejectedValueOnce(new APIUserAbortError());
+
+    await expect(service.embedBatch(['hello world'])).rejects.toBeInstanceOf(
+      APIUserAbortError
     );
     expect(mockCreate).toHaveBeenCalledTimes(1);
     expect(sleepSpy).not.toHaveBeenCalled();

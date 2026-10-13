@@ -213,15 +213,22 @@ export class EmbeddingService {
    * Retry on:
    * - 429 (rate limit)
    * - 5xx (server errors)
-   * - Network errors
+   * - Network errors (including OpenAI APIConnectionError / APIConnectionTimeoutError)
    *
    * Do NOT retry on:
    * - 4xx (except 429) - client errors
+   * - Aborted requests (APIUserAbortError)
    * - Validation errors
    */
   private shouldRetry(error: unknown, retryCount: number): boolean {
     if (retryCount >= this.config.maxRetries) {
       return false;
+    }
+
+    // APIConnectionError extends APIError with an undefined status, so check it
+    // before the status-based branch below
+    if (error instanceof OpenAI.APIConnectionError) {
+      return true;
     }
 
     if (error instanceof OpenAI.APIError) {
