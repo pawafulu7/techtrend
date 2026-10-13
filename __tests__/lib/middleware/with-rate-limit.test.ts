@@ -397,6 +397,72 @@ describe('withRateLimit', () => {
       await expect(handler(request)).rejects.toThrow('Redis connection failed');
     });
 
+    it('allowOnLimiterError: 制限の確認が失敗したら、制限のヘッダーを付けずに handler を通す', async () => {
+      const session = { user: { id: 'admin-1' } };
+      mockCheckRateLimit.mockRejectedValue(
+        new Error('Rate limit check failed: Connection is closed.')
+      );
+      const inner = jest.fn(async () => NextResponse.json({ success: true }));
+
+      const handler = withRateLimit('test:policy', inner, {
+        allowOnLimiterError: true,
+      });
+      const response = await handler(
+        new NextRequest('http://localhost/api/test'),
+        { session }
+      );
+
+      expect(response.status).toBe(200);
+      expect(mockCheckRateLimit).toHaveBeenCalledTimes(1);
+      expect(inner).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ session })
+      );
+      expect(response.headers.has('X-RateLimit-Limit')).toBe(false);
+    });
+
+    it('allowOnLimiterError: 制限を超えたときは handler を通さずに 429 を返す', async () => {
+      mockCheckRateLimit.mockRejectedValue(
+        new RateLimitError(
+          'Rate limit exceeded',
+          10,
+          0,
+          new Date(Date.now() + 30000)
+        )
+      );
+      const inner = jest.fn(async () => NextResponse.json({ success: true }));
+
+      const handler = withRateLimit('test:policy', inner, {
+        allowOnLimiterError: true,
+      });
+      const response = await handler(
+        new NextRequest('http://localhost/api/test')
+      );
+
+      expect(response.status).toBe(429);
+      expect(inner).not.toHaveBeenCalled();
+    });
+
+    it('allowOnLimiterError: handler の例外は握りつぶさずに投げる', async () => {
+      mockCheckRateLimit.mockResolvedValue({
+        limit: 10,
+        remaining: 9,
+        reset: new Date(),
+      });
+
+      const handler = withRateLimit(
+        'test:policy',
+        async () => {
+          throw new Error('handler failed');
+        },
+        { allowOnLimiterError: true }
+      );
+
+      await expect(
+        handler(new NextRequest('http://localhost/api/test'))
+      ).rejects.toThrow('handler failed');
+    });
+
     it('should calculate retryAfter correctly', async () => {
       getAuthApiGetSession().mockResolvedValue(null);
 

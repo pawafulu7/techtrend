@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { statsCache } from '@/lib/cache/stats-cache';
 import { trendsCache } from '@/lib/cache/trends-cache';
 import { getRedisClient } from '@/lib/redis/client';
@@ -141,4 +142,7 @@ function generateRecommendations(params: {
   return recommendations;
 }
 
-export const GET = withAdminAuth(handler);
+// 管理者の監視画面が使う。Redis が落ちてレート制限を数えられないときも、制限せずに通して表示を続ける（issue #783）
+export const GET = withAdminAuth(
+  withRateLimit('admin:read', handler, { allowOnLimiterError: true })
+);

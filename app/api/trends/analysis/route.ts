@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTrendAnalysis } from '@/lib/services/trend-analysis';
-import { trendsCache } from '@/lib/cache/trends-cache';
 import { parseIntParam, VALIDATION_RANGES } from '@/lib/utils/validation';
 import logger from '@/lib/logger';
 import { applyPublicCacheHeaders } from '@/lib/api/cache-headers';
@@ -26,16 +25,8 @@ export async function GET(request: NextRequest) {
 
     const analysisData = await getTrendAnalysis(days, tagName || undefined);
 
-    // キャッシュ統計を取得
-    const cacheStats = trendsCache.getStats();
-
-    const response = NextResponse.json({
-      ...analysisData,
-      cache: {
-        hit: cacheStats.hits > 0,
-        stats: cacheStats,
-      },
-    });
+    // キャッシュの統計（hits・misses）は返さない。内部の監視値は管理者だけの /api/cache/stats で見る（issue #783）
+    const response = NextResponse.json(analysisData);
 
     // キャッシュヘッダーも維持（ブラウザキャッシュ用）
     applyPublicCacheHeaders(response.headers, {

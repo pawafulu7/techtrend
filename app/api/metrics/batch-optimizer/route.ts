@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { getAllOptimizerStats } from '@/lib/dataloader/batch-optimizer';
 import { getFavoriteLoaderStats } from '@/lib/dataloader/favorite-loader';
 import { getViewLoaderStats } from '@/lib/dataloader/article-view-loader';
@@ -76,4 +77,7 @@ function calculateTotalHitRate(
   return `${((totalHits / totalRequests) * 100).toFixed(2)}%`;
 }
 
-export const GET = withAdminAuth(handler);
+// 管理者の監視画面が使う。Redis が落ちてレート制限を数えられないときも、制限せずに通して表示を続ける（issue #783）
+export const GET = withAdminAuth(
+  withRateLimit('admin:read', handler, { allowOnLimiterError: true })
+);

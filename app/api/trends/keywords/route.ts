@@ -1,21 +1,12 @@
 import { getTrendingKeywords } from '@/lib/services/trending-keywords';
 import { NextResponse } from 'next/server';
-import { keywordsCache } from '@/lib/cache/keywords-cache';
 
 export async function GET() {
   try {
     const keywordsData = await getTrendingKeywords();
 
-    // キャッシュ統計をログ出力
-    const cacheStats = keywordsCache.getStats();
-
-    return NextResponse.json({
-      ...keywordsData,
-      cache: {
-        hit: cacheStats.hits > 0,
-        stats: cacheStats,
-      },
-    });
+    // キャッシュの統計（hits・misses）は返さない。内部の監視値は管理者だけの /api/cache/stats で見る（issue #783）
+    return NextResponse.json(keywordsData);
   } catch {
     const now = new Date();
     return NextResponse.json(

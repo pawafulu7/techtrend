@@ -2,6 +2,14 @@
  * /api/cache/health エンドポイントのテスト
  */
 
+// 管理者認証・レート制限は素通しにする。包み方は __tests__/api/auth-middleware-composition.test.ts で確かめる
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: (handler: Function) => handler,
+}));
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: (_key: string, handler: Function) => handler,
+}));
+
 // モックインスタンスを保持
 let mockRedisClient: any;
 
