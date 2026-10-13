@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server';
 import { Prisma } from '@/lib/prisma-exports';
 import { logger } from '@/lib/logger';
+import { describePrismaErrorConstraint } from '@/lib/utils/prisma-constraint';
 
 /**
  * Error codes that indicate a user-related constraint violation
@@ -46,10 +47,7 @@ export function handlePrismaError(error: unknown): NextResponse | null {
 
   // P2003: Foreign key constraint failed
   if (error.code === 'P2003') {
-    const constraintName =
-      (error.meta?.field_name as string) ||
-      (error.meta?.constraint as string) ||
-      'unknown';
+    const constraintName = describePrismaErrorConstraint(error) ?? 'unknown';
 
     // Check if it's a user-related FK constraint
     const isUserFkViolation = USER_FK_CONSTRAINTS.some((fk) =>

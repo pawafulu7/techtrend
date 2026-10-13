@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { ZodError, z } from 'zod';
 import { Prisma } from '@/lib/prisma-exports';
+import { describePrismaErrorConstraint } from '@/lib/utils/prisma-constraint';
 import logger from '@/lib/logger';
 
 // Error types
@@ -140,7 +141,7 @@ export function handleApiError(
         return NextResponse.json(
           formatErrorResponse(
             new ValidationError('Duplicate entry', {
-              field: error.meta?.target,
+              field: describePrismaErrorConstraint(error),
             }),
             path
           ),
@@ -155,7 +156,7 @@ export function handleApiError(
         return NextResponse.json(
           formatErrorResponse(
             new ValidationError('Invalid reference', {
-              field: error.meta?.field_name,
+              field: describePrismaErrorConstraint(error),
             }),
             path
           ),

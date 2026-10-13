@@ -38,6 +38,30 @@ describe('prisma-error-handler', () => {
     });
 
     describe('P2003 - FK constraint violation', () => {
+      it('returns 401 when the constraint comes from the driver adapter (Prisma 7)', async () => {
+        const error = new Prisma.PrismaClientKnownRequestError(
+          'Foreign key constraint failed',
+          {
+            code: 'P2003',
+            clientVersion: '7.10.0',
+            meta: {
+              driverAdapterError: {
+                cause: {
+                  kind: 'ForeignKeyConstraintViolation',
+                  constraint: { index: 'Favorite_userId_fkey' },
+                },
+              },
+            },
+          }
+        );
+
+        const result = handlePrismaError(error);
+
+        expect(result!.status).toBe(401);
+        const body = await result!.json();
+        expect(body.code).toBe('USER_DELETED');
+      });
+
       it('returns 401 for Favorite_userId FK violation', async () => {
         const error = new Prisma.PrismaClientKnownRequestError(
           'Foreign key constraint failed',
