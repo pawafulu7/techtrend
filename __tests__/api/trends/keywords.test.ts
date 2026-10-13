@@ -277,10 +277,8 @@ describe('/api/trends/keywords', () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    // Cache structure
-    expect(data.cache).toBeDefined();
-    expect(data.cache.hit).toBe(false);
-    expect(data.cache.stats).toEqual({ hits: 0, misses: 1, size: 0 });
+    // キャッシュの統計は公開しない（issue #783）
+    expect(data).not.toHaveProperty('cache');
     // Period structure
     expect(data.period).toBeDefined();
     expect(data.period.from).toBeDefined();

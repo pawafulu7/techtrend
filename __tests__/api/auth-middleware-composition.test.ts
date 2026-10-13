@@ -176,18 +176,34 @@ const ROUTES: Array<{
     modulePath: '@/app/api/telemetry/metrics/route',
     methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
   },
-  // issue #783: telemetry の外で内部の状態を返す監視系 API も、管理者だけにして回数を制限する
+  // issue #783: telemetry の外で内部の状態を返す監視系 API も、管理者だけにして回数を制限する。
+  // Redis の障害で制限を数えられないときは通す（障害のときにこそ見る API のため）
   {
     modulePath: '@/app/api/cache/health/route',
-    methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
+    methods: {
+      GET: adminAuth({
+        ...rateLimit('admin:read', HANDLER),
+        options: { allowOnLimiterError: true },
+      }),
+    },
   },
   {
     modulePath: '@/app/api/cache/stats/route',
-    methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
+    methods: {
+      GET: adminAuth({
+        ...rateLimit('admin:read', HANDLER),
+        options: { allowOnLimiterError: true },
+      }),
+    },
   },
   {
     modulePath: '@/app/api/metrics/batch-optimizer/route',
-    methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
+    methods: {
+      GET: adminAuth({
+        ...rateLimit('admin:read', HANDLER),
+        options: { allowOnLimiterError: true },
+      }),
+    },
   },
 ];
 

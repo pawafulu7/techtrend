@@ -40,6 +40,8 @@ describe('GET /api/trends/analysis (tag)', () => {
     );
 
     expect(response.status).toBe(200);
+    // キャッシュの統計は公開しない（issue #783）
+    expect(await response.json()).not.toHaveProperty('cache');
     const [timeline, related] = prismaMock.$queryRaw.mock.calls.map(sqlOf);
     expect(timeline).toContain('WHERE lower(t.name) = lower(?)');
     expect(related).toContain('WHERE lower(t1.name) = lower(?)');

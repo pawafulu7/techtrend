@@ -8,6 +8,7 @@ import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
 import { trace } from '@opentelemetry/api';
 import { resolveSessionFromRequest } from './session-context';
 import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
+import logger from '@/lib/logger';
 
 type RouteHandler = (
   request: NextRequest,
@@ -28,6 +29,12 @@ interface WithRateLimitOptions {
    * 送り手ごとに認証の DB を引き、認証の失敗に巻き込まれて本来の処理まで落ちるため
    */
   resolveSession?: boolean;
+  /**
+   * true にすると、制限の確認そのものが失敗したとき（Redis の障害など）に、制限をかけずに handler を
+   * 通す（既定は例外を投げて 500）。制限を超えたときは true でも 429 を返す。Redis が落ちたときにこそ
+   * 見たい、管理者だけの監視 API に使う（認証を外側に置き、誰でも素通りできる形にしない）
+   */
+  allowOnLimiterError?: boolean;
 }
 
 /**
@@ -89,7 +96,21 @@ export function withRateLimit(
         : await resolveDefaultKey(request, config.keyStrategy, session);
 
       // Check rate limit
-      const rateLimitInfo = await checkRateLimit(limitKey, limiter);
+      let rateLimitInfo: Awaited<ReturnType<typeof checkRateLimit>>;
+      try {
+        rateLimitInfo = await checkRateLimit(limitKey, limiter);
+      } catch (error) {
+        if (error instanceof RateLimitError || !options?.allowOnLimiterError) {
+          throw error;
+        }
+        // 制限の確認ができなかった（Redis の障害など）。制限のヘッダーは付けずに handler を通す
+        logger.warn(
+          { err: error, configKey },
+          'Rate limit check failed; allowing request without rate limit'
+        );
+        span?.addEvent('ratelimit.check_failed', { configKey });
+        return handler(request, { ...context, session });
+      }
 
       // Success: Execute handler with session in context (SessionContext shared across chain)
       const response = await handler(request, { ...context, session });

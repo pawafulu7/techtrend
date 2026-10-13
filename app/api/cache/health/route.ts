@@ -109,5 +109,8 @@ async function handler() {
 }
 
 // Redis の状態とサーキットブレーカーの内部値を返し、毎回 ping するので、管理者だけにして回数も制限する（issue #783）。
+// 制限は Redis で数えるので、Redis が落ちて数えられないときは制限せずに通す（落ちたときにこそ状態を見たいため）。
 // デプロイと docker-compose の死活確認は /api/health を使う
-export const GET = withAdminAuth(withRateLimit('admin:read', handler));
+export const GET = withAdminAuth(
+  withRateLimit('admin:read', handler, { allowOnLimiterError: true })
+);
