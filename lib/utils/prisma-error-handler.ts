@@ -9,7 +9,11 @@
 import { NextResponse } from 'next/server';
 import { Prisma } from '@/lib/prisma-exports';
 import { logger } from '@/lib/logger';
-import { describePrismaErrorConstraint } from '@/lib/utils/prisma-constraint';
+import {
+  describePrismaErrorConstraint,
+  getPrismaErrorConstraint,
+  type PrismaErrorConstraint,
+} from '@/lib/utils/prisma-constraint';
 
 /**
  * Error codes that indicate a user-related constraint violation
@@ -22,6 +26,28 @@ const USER_FK_CONSTRAINTS = [
   'Session_userId_fkey',
   'UserSourcePreset_userId_fkey',
 ];
+
+const USER_FK_MODELS = USER_FK_CONSTRAINTS.map((fk) =>
+  fk.replace('_userId_fkey', '')
+);
+
+/**
+ * 制約が USER_FK_CONSTRAINTS のどれかかを判定する。
+ * 制約名は完全一致で比べる（末尾に " (index)" が付いた field_name の形にも対応する）。
+ * 列名しか分からないときは userId 単独で、モデルが分かればそれも確かめる。
+ */
+function isUserFkConstraint(constraint: PrismaErrorConstraint | undefined): boolean {
+  if (!constraint) return false;
+  if (constraint.index !== undefined) {
+    const name = constraint.index.replace(/\s*\(index\)$/, '');
+    return USER_FK_CONSTRAINTS.includes(name);
+  }
+  return (
+    constraint.fields?.length === 1 &&
+    constraint.fields[0] === 'userId' &&
+    (constraint.model === undefined || USER_FK_MODELS.includes(constraint.model))
+  );
+}
 
 /**
  * Handle Prisma errors and return appropriate HTTP response
@@ -47,12 +73,11 @@ export function handlePrismaError(error: unknown): NextResponse | null {
 
   // P2003: Foreign key constraint failed
   if (error.code === 'P2003') {
+    const constraint = getPrismaErrorConstraint(error);
     const constraintName = describePrismaErrorConstraint(error) ?? 'unknown';
 
     // Check if it's a user-related FK constraint
-    const isUserFkViolation = USER_FK_CONSTRAINTS.some((fk) =>
-      constraintName.includes(fk.replace('_userId_fkey', ''))
-    );
+    const isUserFkViolation = isUserFkConstraint(constraint);
 
     if (isUserFkViolation) {
       logger.warn(

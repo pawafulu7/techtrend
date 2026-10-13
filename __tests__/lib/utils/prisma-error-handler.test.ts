@@ -38,6 +38,45 @@ describe('prisma-error-handler', () => {
     });
 
     describe('P2003 - FK constraint violation', () => {
+      const adapterFkError = (constraint: unknown, modelName?: string) =>
+        new Prisma.PrismaClientKnownRequestError('Foreign key constraint failed', {
+          code: 'P2003',
+          clientVersion: '7.10.0',
+          meta: {
+            ...(modelName ? { modelName } : {}),
+            driverAdapterError: {
+              cause: { kind: 'ForeignKeyConstraintViolation', constraint },
+            },
+          },
+        });
+
+      it('returns 400 for article-side FK violations on user-owned tables', async () => {
+        for (const index of ['Favorite_articleId_fkey', 'ArticleView_articleId_fkey']) {
+          const result = handlePrismaError(adapterFkError({ index }));
+          expect(result!.status).toBe(400);
+          expect((await result!.json()).code).toBe('FK_CONSTRAINT_ERROR');
+        }
+      });
+
+      it('returns 401 when only the userId column is known', async () => {
+        const result = handlePrismaError(adapterFkError({ fields: ['userId'] }, 'Favorite'));
+        expect(result!.status).toBe(401);
+      });
+
+      it('returns 400 when the userId column belongs to an unrelated model', async () => {
+        const result = handlePrismaError(adapterFkError({ fields: ['userId'] }, 'Comment'));
+        expect(result!.status).toBe(400);
+      });
+
+      it('accepts a field_name with an "(index)" suffix', async () => {
+        const error = new Prisma.PrismaClientKnownRequestError('Foreign key constraint failed', {
+          code: 'P2003',
+          clientVersion: '6.0.0',
+          meta: { field_name: 'Favorite_userId_fkey (index)' },
+        });
+        expect(handlePrismaError(error)!.status).toBe(401);
+      });
+
       it('returns 401 when the constraint comes from the driver adapter (Prisma 7)', async () => {
         const error = new Prisma.PrismaClientKnownRequestError(
           'Foreign key constraint failed',

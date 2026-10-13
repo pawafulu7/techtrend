@@ -12,20 +12,32 @@ export interface PrismaErrorConstraint {
   fields?: string[];
   /** 違反した制約・インデックス名（例: 'Article_url_key'） */
   index?: string;
+  /** 違反が起きたモデル・テーブル（例: 'Article'）。分からなければ undefined */
+  model?: string;
+}
+
+function isNonEmptyStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((v) => typeof v === 'string' && v.length > 0)
+  );
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 function toConstraint(value: unknown): PrismaErrorConstraint | undefined {
-  if (typeof value === 'string' && value.length > 0) return { index: value };
-  if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
-    return { fields: value };
-  }
-  if (typeof value === 'object' && value !== null) {
+  const index = nonEmptyString(value);
+  if (index) return { index };
+  if (isNonEmptyStringArray(value)) return { fields: value };
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
     const { fields, index } = value as { fields?: unknown; index?: unknown };
     const constraint: PrismaErrorConstraint = {};
-    if (Array.isArray(fields) && fields.every((v) => typeof v === 'string')) {
-      constraint.fields = fields;
-    }
-    if (typeof index === 'string' && index.length > 0) constraint.index = index;
+    if (isNonEmptyStringArray(fields)) constraint.fields = fields;
+    const indexName = nonEmptyString(index);
+    if (indexName) constraint.index = indexName;
     if (constraint.fields || constraint.index) return constraint;
   }
   return undefined;
@@ -38,22 +50,31 @@ export function getPrismaErrorConstraint(
   const meta = (error as { meta?: unknown }).meta;
   if (typeof meta !== 'object' || meta === null) return undefined;
 
-  const { target, field_name, constraint, driverAdapterError } = meta as {
-    target?: unknown;
-    field_name?: unknown;
-    constraint?: unknown;
-    driverAdapterError?: { cause?: { constraint?: unknown } };
-  };
+  const { target, field_name, constraint, driverAdapterError, modelName } =
+    meta as {
+      target?: unknown;
+      field_name?: unknown;
+      constraint?: unknown;
+      modelName?: unknown;
+      driverAdapterError?: { cause?: { constraint?: unknown; table?: unknown } };
+    };
 
-  return (
+  const found =
     toConstraint(driverAdapterError?.cause?.constraint) ??
     toConstraint(target) ??
     toConstraint(field_name) ??
-    toConstraint(constraint)
-  );
+    toConstraint(constraint);
+  if (!found) return undefined;
+
+  const model =
+    nonEmptyString(modelName) ?? nonEmptyString(driverAdapterError?.cause?.table);
+  return model ? { ...found, model } : found;
 }
 
-/** 制約を、ログやレスポンスに載せる1つの文字列にする（列名があれば列名） */
+/**
+ * 制約を、ログに載せる1つの文字列にする（列名があれば列名、なければ制約名）。
+ * 制約名は内部のスキーマを表すので、API のレスポンスには getPrismaErrorFields を使う。
+ */
 export function describePrismaErrorConstraint(
   error: unknown
 ): string | undefined {
@@ -61,9 +82,15 @@ export function describePrismaErrorConstraint(
   return constraint?.fields?.join(', ') ?? constraint?.index;
 }
 
+/** 違反した列名（API のレスポンスに載せる用）。列名が分からなければ undefined */
+export function getPrismaErrorFields(error: unknown): string | undefined {
+  return getPrismaErrorConstraint(error)?.fields?.join(', ');
+}
+
 /**
- * `model.field` の一意制約（`@unique`）違反かを判定する。
+ * `model.field` 単独の一意制約（`@unique`）違反かを判定する。
  * 制約名は Prisma の既定の命名 `{Model}_{field}_key` で照合する。
+ * 列名で照合するときは、複合の一意制約や別モデルの同名の列を区別する。
  */
 export function isUniqueConstraintViolationOn(
   error: unknown,
@@ -74,8 +101,9 @@ export function isUniqueConstraintViolationOn(
   if ((error as { code?: unknown }).code !== 'P2002') return false;
   const constraint = getPrismaErrorConstraint(error);
   if (!constraint) return false;
-  return (
-    constraint.fields?.includes(field) === true ||
-    constraint.index === `${model}_${field}_key`
-  );
+  if (constraint.model !== undefined && constraint.model !== model) return false;
+  if (constraint.index !== undefined) {
+    return constraint.index === `${model}_${field}_key`;
+  }
+  return constraint.fields?.length === 1 && constraint.fields[0] === field;
 }

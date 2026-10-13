@@ -5,6 +5,7 @@
 import {
   describePrismaErrorConstraint,
   getPrismaErrorConstraint,
+  getPrismaErrorFields,
   isUniqueConstraintViolationOn,
 } from '@/lib/utils/prisma-constraint';
 
@@ -38,6 +39,7 @@ describe('prisma-constraint', () => {
     it('reads the index name from the driver adapter error', () => {
       expect(getPrismaErrorConstraint(adapterUniqueByIndex)).toEqual({
         index: 'Article_url_key',
+        model: 'Article',
       });
     });
 
@@ -65,6 +67,19 @@ describe('prisma-constraint', () => {
       ).toEqual({ index: 'Favorite_userId_fkey' });
     });
 
+    it('ignores empty fields and falls back to the index or legacy meta', () => {
+      expect(
+        getPrismaErrorConstraint({
+          meta: { driverAdapterError: { cause: { constraint: { fields: [], index: 'Article_url_key' } } } },
+        })
+      ).toEqual({ index: 'Article_url_key' });
+      expect(
+        getPrismaErrorConstraint({
+          meta: { target: ['url'], driverAdapterError: { cause: { constraint: { fields: [] } } } },
+        })
+      ).toEqual({ fields: ['url'] });
+    });
+
     it('returns undefined when no constraint is present', () => {
       expect(getPrismaErrorConstraint(new Error('x'))).toBeUndefined();
       expect(getPrismaErrorConstraint({ meta: { modelName: 'Article' } })).toBeUndefined();
@@ -78,6 +93,13 @@ describe('prisma-constraint', () => {
       expect(describePrismaErrorConstraint(adapterUniqueByFields)).toBe('url');
       expect(describePrismaErrorConstraint(adapterUniqueByIndex)).toBe('Article_url_key');
       expect(describePrismaErrorConstraint({ meta: {} })).toBeUndefined();
+    });
+  });
+
+  describe('getPrismaErrorFields', () => {
+    it('returns only column names, never the constraint name', () => {
+      expect(getPrismaErrorFields(adapterUniqueByFields)).toBe('url');
+      expect(getPrismaErrorFields(adapterUniqueByIndex)).toBeUndefined();
     });
   });
 
@@ -96,6 +118,23 @@ describe('prisma-constraint', () => {
     it('does not match another field or model', () => {
       expect(isUniqueConstraintViolationOn(adapterUniqueByIndex, 'Article', 'title')).toBe(false);
       expect(isUniqueConstraintViolationOn(adapterUniqueByIndex, 'Source', 'url')).toBe(false);
+    });
+
+    it('does not match a composite unique constraint or another model by field names', () => {
+      expect(
+        isUniqueConstraintViolationOn(
+          { code: 'P2002', meta: { target: ['url', 'sourceId'] } },
+          'Article',
+          'url'
+        )
+      ).toBe(false);
+      expect(
+        isUniqueConstraintViolationOn(
+          { code: 'P2002', meta: { modelName: 'Source', target: ['url'] } },
+          'Article',
+          'url'
+        )
+      ).toBe(false);
     });
 
     it('does not match other error codes or missing constraints', () => {
