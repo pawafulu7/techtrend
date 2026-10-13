@@ -26,7 +26,7 @@ jobs:
       contents: read
     steps:
       # このジョブは checkout 後に git を使わないので、トークンを .git/config に残さない
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Scheduler setup

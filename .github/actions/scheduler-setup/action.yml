@@ -5,7 +5,7 @@ inputs:
   node_version:
     description: 'Node.js version'
     required: false
-    default: '20'
+    default: '24'
   skip_migrate:
     description: 'Skip prisma migrate deploy step'
     required: false
@@ -17,7 +17,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node_version }}
         cache: 'npm'

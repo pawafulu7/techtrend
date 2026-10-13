@@ -1,7 +1,7 @@
 # Multi-stage build for TechTrend application
 
 # Base stage - common dependencies
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 WORKDIR /app
 
 # Install system dependencies
