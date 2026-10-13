@@ -32,11 +32,13 @@ async function getHandler(): Promise<NextResponse> {
  * Schema for measurement update
  */
 const measurementSchema = z.object({
-  endpoint: z.string(),
+  // apiBaselineMonitor は空の endpoint と有限でない値を保存しないので、ここでも 400 にする
+  // （受けて 201 を返すと、保存されなかったことに送り手が気づけない）
+  endpoint: z.string().min(1),
   method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']),
-  p50: z.number().nonnegative(),
-  p95: z.number().nonnegative(),
-  p99: z.number().nonnegative(),
+  p50: z.number().finite().nonnegative(),
+  p95: z.number().finite().nonnegative(),
+  p99: z.number().finite().nonnegative(),
   count: z.number().nonnegative().int(),
 });
 
@@ -47,7 +49,8 @@ const measurementSchema = z.object({
  */
 async function postHandler(request: NextRequest): Promise<NextResponse> {
   try {
-    const body = await request.json();
+    // JSON として読めない本文は、形の合わない本文と同じく 400 にする（500 にしない）
+    const body: unknown = await request.json().catch(() => undefined);
     const parsed = measurementSchema.safeParse(body);
 
     if (!parsed.success) {

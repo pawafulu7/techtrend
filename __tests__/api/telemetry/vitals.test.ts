@@ -1,14 +1,13 @@
 /**
  * Web Vitals Telemetry API Tests
  *
- * GET の管理者認証とレート制限は素通しにする。包み方は __tests__/api/auth-middleware-composition.test.ts、
- * 認証そのものは __tests__/lib/middleware/with-admin-auth.test.ts で確かめる。
- * POST は handler の中で IP をキーに数えるので、リミッターを差し替えてここで確かめる。
+ * レート制限と管理者認証は素通しにする。包み方（POST はセッションを引かない IP 単位の制限、
+ * GET は管理者だけ）は __tests__/api/auth-middleware-composition.test.ts、制限そのものは
+ * __tests__/lib/middleware/with-rate-limit.test.ts、認証は __tests__/lib/middleware/with-admin-auth.test.ts で確かめる。
  */
 import { NextRequest } from 'next/server';
 
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
-  ...jest.requireActual('@/lib/middleware/with-rate-limit'),
   withRateLimit: (_key: string, handler: Function) => handler,
 }));
 
@@ -16,33 +15,7 @@ jest.mock('@/lib/middleware/with-admin-auth', () => ({
   withAdminAuth: (handler: Function) => handler,
 }));
 
-jest.mock('@/lib/middleware/session-context', () => ({
-  ...jest.requireActual('@/lib/middleware/session-context'),
-  resolveSessionFromRequest: jest.fn(),
-}));
-
-const mockLimiter = { points: 60 };
-jest.mock('@/lib/rate-limiter', () => ({
-  ...jest.requireActual('@/lib/rate-limiter'),
-  checkRateLimit: jest.fn(),
-  createRateLimiterFromConfig: jest.fn(() => mockLimiter),
-}));
-
 import { GET, POST } from '@/app/api/telemetry/vitals/route';
-import { resolveSessionFromRequest } from '@/lib/middleware/session-context';
-import {
-  checkRateLimit,
-  createRateLimiterFromConfig,
-  RateLimitError,
-} from '@/lib/rate-limiter';
-
-beforeEach(() => {
-  (checkRateLimit as jest.Mock).mockReset().mockResolvedValue({
-    limit: 60,
-    remaining: 59,
-    reset: new Date(),
-  });
-});
 
 // jest は next/server をモック（__mocks__/next/server.ts）に差し替えていて、その NextRequest は
 // 本文を文字列のまま持つ。POST は本文をストリームで上限まで読むので、本物の Request で作る
@@ -185,45 +158,10 @@ describe('/api/telemetry/vitals', () => {
       expect(response.status).toBe(400);
     });
 
-    it('counts requests per client IP without looking up the session', async () => {
-      const response = await POST(
-        new Request(URL_BASE, {
-          method: 'POST',
-          body: JSON.stringify(vital()),
-          headers: {
-            'Content-Type': 'application/json',
-            'x-forwarded-for': '203.0.113.5, 10.0.0.1',
-          },
-        })
-      );
-      expect(response.status).toBe(204);
-      expect(createRateLimiterFromConfig).toHaveBeenCalledWith(
-        'write:telemetry-vitals'
-      );
-      expect(checkRateLimit).toHaveBeenCalledWith(
-        'ip:203.0.113.5',
-        mockLimiter
-      );
-      expect(resolveSessionFromRequest).not.toHaveBeenCalled();
-    });
-
-    it('returns 429 when the IP is over the limit', async () => {
-      (checkRateLimit as jest.Mock).mockRejectedValue(
-        new RateLimitError(
-          'Rate limit exceeded',
-          60,
-          0,
-          new Date(Date.now() + 30_000)
-        )
-      );
-      const response = await postVital(vital());
-      expect(response.status).toBe(429);
-      expect(response.headers.get('Retry-After')).toBeTruthy();
-    });
-
     it('rejects a body larger than 4KB with 413 before parsing it', async () => {
       const response = await postVital(vital({ ignored: 'x'.repeat(5000) }));
       expect(response.status).toBe(413);
+      expect((await response.json()).error.code).toBe('PAYLOAD_TOO_LARGE');
     });
 
     it('rejects non-finite or negative numbers and an empty id', async () => {
@@ -242,6 +180,10 @@ describe('/api/telemetry/vitals', () => {
       expect((await postVital(vital({ value: -1 }))).status).toBe(400);
       expect((await postVital(vital({ timestamp: 1.5 }))).status).toBe(400);
       expect((await postVital(vital({ id: '' }))).status).toBe(400);
+      // id もログに出すので、制御文字・方向制御文字・空白は受けない
+      for (const id of ['v6-\u001b[31m', 'v6-\u202e', 'v6 1']) {
+        expect((await postVital(vital({ id }))).status).toBe(400);
+      }
       // INP は送り直すと下がることがあるので、差分は負でも受ける
       expect((await postVital(vital({ delta: -10 }))).status).toBe(204);
     });

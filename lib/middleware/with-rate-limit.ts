@@ -22,6 +22,12 @@ interface WithRateLimitOptions {
     reset: Date;
   }) => void;
   onBlocked?: (error: RateLimitError) => void;
+  /**
+   * false にするとセッションを引かない（既定は引く）。keyStrategy が 'ip' か 'anonymous' で、
+   * handler もセッションを使わない、未ログインから大量に届く API に使う。引くと、ログイン中の
+   * 送り手ごとに認証の DB を引き、認証の失敗に巻き込まれて本来の処理まで落ちるため
+   */
+  resolveSession?: boolean;
 }
 
 /**
@@ -72,7 +78,10 @@ export function withRateLimit(
       const limiter = createRateLimiterFromConfig(configKey);
 
       // Resolve session from context or fetch via auth() (SessionContext optimization)
-      const session = await resolveSessionFromRequest(context, request.headers);
+      const session =
+        options?.resolveSession === false
+          ? undefined
+          : await resolveSessionFromRequest(context, request.headers);
 
       // Resolve identity key
       const limitKey = options?.keyResolver
@@ -183,10 +192,9 @@ export function createRateLimitedResponse(
  *
  * NextRequest の `ip` は Next.js 15 で削除された（node_modules/next/dist/docs/01-app/02-guides/
  * upgrading/version-15.md の「NextRequest Geolocation」）ので、x-forwarded-for の先頭を使う。
- * x-forwarded-for は、信頼できるプロキシ（Vercel など）が上書きする前提で使っている。
- * withRateLimit を通さずに IP で数えるルートも、同じキーを作るために使う
+ * x-forwarded-for は、信頼できるプロキシ（Vercel など）が上書きする前提で使っている
  */
-export function getClientIP(request: NextRequest): string {
+function getClientIP(request: NextRequest): string {
   return (
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
   );

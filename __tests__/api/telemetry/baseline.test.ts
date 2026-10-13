@@ -83,6 +83,55 @@ describe('/api/telemetry/baseline', () => {
       expect(getData.measurements).toHaveLength(1);
     });
 
+    it('should reject a body that is not JSON with 400', async () => {
+      const request = new NextRequest(
+        'http://localhost/api/telemetry/baseline',
+        {
+          method: 'POST',
+          body: '{not json',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      const response = await POST(request);
+      expect(response.status).toBe(400);
+    });
+
+    it('should reject values the monitor would not store', async () => {
+      const valid = {
+        endpoint: '/api/articles',
+        method: 'GET',
+        p50: 90,
+        p95: 220,
+        p99: 450,
+        count: 100,
+      };
+      const bodies = [
+        JSON.stringify({ ...valid, endpoint: '' }),
+        // JSON.parse すると Infinity になる
+        JSON.stringify(valid).replace('"p50":90', '"p50":1e400'),
+      ];
+
+      // route が持つモニターは resetInstance で入れ替わらないので、前後の件数で比べる
+      const before = (await (await GET()).json()).measurements.length;
+
+      for (const body of bodies) {
+        const request = new NextRequest(
+          'http://localhost/api/telemetry/baseline',
+          {
+            method: 'POST',
+            body,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+        const response = await POST(request);
+        expect(response.status).toBe(400);
+      }
+
+      const after = (await (await GET()).json()).measurements.length;
+      expect(after).toBe(before);
+    });
+
     it('should reject invalid method', async () => {
       const payload = {
         endpoint: '/api/articles',

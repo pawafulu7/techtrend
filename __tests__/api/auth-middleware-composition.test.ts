@@ -22,10 +22,12 @@ jest.mock('@/lib/middleware/csrf-protection', () => ({
 }));
 
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
-  withRateLimit: (key: string, inner: unknown) => ({
+  // オプションを渡したときだけ目印に載せる（渡さない route の期待値はそのまま）
+  withRateLimit: (key: string, inner: unknown, options?: object) => ({
     kind: 'rateLimit',
     key,
     inner,
+    ...(options ? { options } : {}),
   }),
 }));
 
@@ -145,12 +147,15 @@ const ROUTES: Array<{
     methods: { POST: csrf(userValidation(HANDLER)) },
   },
   // issue #771: telemetry の監視値は管理者だけに見せる。vitals の POST は未ログインからも
-  // 届くので、handler の中で IP 単位に数える（vitals.test.ts で確かめる）
+  // 届くので、セッションを引かずに IP 単位で数える
   {
     modulePath: '@/app/api/telemetry/vitals/route',
     methods: {
       GET: adminAuth(rateLimit('admin:read', HANDLER)),
-      POST: HANDLER,
+      POST: {
+        ...rateLimit('write:telemetry-vitals', HANDLER),
+        options: { resolveSession: false },
+      },
     },
   },
   {

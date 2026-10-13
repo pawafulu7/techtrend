@@ -2,16 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createLogger } from '@/lib/logger';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
-import {
-  createRateLimitedResponse,
-  getClientIP,
-  withRateLimit,
-} from '@/lib/middleware/with-rate-limit';
-import {
-  checkRateLimit,
-  createRateLimiterFromConfig,
-  RateLimitError,
-} from '@/lib/rate-limiter';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
+import { AppError, formatErrorResponse } from '@/lib/errors';
 import { listAllValues } from '@/lib/utils/list-all-values';
 import { readJsonWithLimit } from '@/lib/utils/http/read-json-with-limit';
 import type {
@@ -60,7 +52,12 @@ const webVitalsSchema = z.object({
   value: z.number().finite().nonnegative(),
   // INP は送り直すたびに下がることもあるので、差分は負にもなる
   delta: z.number().finite(),
-  id: z.string().min(1).max(MAX_ID_LENGTH),
+  // web-vitals の id は v6-<時刻>-<乱数>。ログにも出すので、page と同じく表示できる ASCII だけ受ける
+  id: z
+    .string()
+    .min(1)
+    .max(MAX_ID_LENGTH)
+    .regex(/^[\x21-\x7e]+$/),
   rating: z.enum(METRIC_RATINGS),
   navigationType: z.enum(NAVIGATION_TYPES),
   // reporter が送るのは URL の pathname（/ で始まり、パーセントエンコード済みの表示できる ASCII）。
@@ -105,29 +102,18 @@ function storeMetric(metric: WebVitalsMetric): void {
  *
  * Receives Web Vitals metrics from client-side reporter
  * Stores in buffer for aggregation and analysis
- *
- * 計測はログインしていない閲覧者からも届くので、認証は付けずに IP 単位で制限する。
- * withRateLimit は IP で数えるときも先にセッションを引く（ログイン中なら DB を引き、
- * 認証の失敗で計測まで落ちる）ので、ここで IP をキーに直接数える
  */
-export async function POST(request: NextRequest): Promise<NextResponse> {
+async function postHandler(request: NextRequest): Promise<NextResponse> {
   try {
-    try {
-      await checkRateLimit(
-        `ip:${getClientIP(request)}`,
-        createRateLimiterFromConfig('write:telemetry-vitals')
-      );
-    } catch (error) {
-      if (error instanceof RateLimitError) {
-        return createRateLimitedResponse(error);
-      }
-      throw error;
-    }
-
-    // 本文は上限までだけ読む。JSON として読めない本文は、形の合わない本文と同じく 400 にする
+    // handler が読むのは上限まで。JSON として読めない本文は、形の合わない本文と同じく 400 にする
     const body = await readJsonWithLimit(request, MAX_BODY_BYTES);
     if (!body.ok && body.reason === 'too_large') {
-      return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+      return NextResponse.json(
+        formatErrorResponse(
+          new AppError('Request body is too large', 'PAYLOAD_TOO_LARGE', 413)
+        ),
+        { status: 413 }
+      );
     }
     const parsed = webVitalsSchema.safeParse(body.ok ? body.value : undefined);
 
@@ -231,4 +217,9 @@ async function getHandler(): Promise<NextResponse> {
   );
 }
 
+// 計測はログインしていない閲覧者からも届くので、認証は付けずに IP 単位で制限する。
+// セッションは使わないので引かない（引くとログイン中の閲覧者ごとに認証の DB を引く）
+export const POST = withRateLimit('write:telemetry-vitals', postHandler, {
+  resolveSession: false,
+});
 export const GET = withAdminAuth(withRateLimit('admin:read', getHandler));
