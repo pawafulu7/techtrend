@@ -25,6 +25,12 @@ const nextConfig: NextConfig = {
   ],
 
   // 実験的機能で最適化
+  // proxyClientMaxBodySize は指定しない。Next が proxy のために本文を複製するのは next start と
+  // next dev だけで、Vercel では proxy.ts が Routing Middleware として別に動くので効かない。
+  // 上限を超えた本文は黙って切り詰められるので、指定すると正規の大きな本文が壊れる。
+  // Vercel では vercel.json の skipMiddlewareRequestBody で proxy に本文を送らない（proxy.ts は
+  // 本文を読まない。読むようにするなら外す）。本文は route handler にだけ届き、上限は
+  // Vercel Functions の 4.5MB
   experimental: {
     optimizeCss: process.env.NODE_ENV !== 'development',
     optimizePackageImports: [
