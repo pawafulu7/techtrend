@@ -627,9 +627,9 @@ describe('SocialPostValidator', () => {
 
   // API は z.flattenError(error) を details に入れて返す。zod 4 への移行で文言と形が変わらないこと
   describe('エラーの文言と形（API の details）', () => {
-    const flatten = (result: { success: boolean; error?: z.ZodError }) => {
-      expect(result.success).toBe(false);
-      return z.flattenError(result.error!);
+    const flatten = <T>(result: z.ZodSafeParseResult<T>) => {
+      if (result.success) throw new Error('検証に通ってしまった');
+      return z.flattenError(result.error);
     };
 
     it('ARTICLE で sourceIds が無ければ sourceIds の項目に文言を返す', () => {

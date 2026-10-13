@@ -18,14 +18,14 @@ import { z } from 'zod';
  */
 export const searchOptionsSchema = z.object({
   topK: z.coerce
-    .number()
+    .number<number>()
     .int('topK must be an integer')
     .min(1, 'topK must be at least 1')
     .max(100, 'topK cannot exceed 100')
     .default(10),
 
   similarityThreshold: z.coerce
-    .number()
+    .number<number>()
     .min(0, 'Similarity threshold must be between 0 and 1')
     .max(1, 'Similarity threshold must be between 0 and 1')
     .default(0.5), // Lowered from 0.7 to improve recall for short queries
@@ -99,7 +99,7 @@ export const searchOptionsSchema = z.object({
    * Time decay: Exponential with 30-day half-life
    */
   recencyBoost: z.coerce
-    .number()
+    .number<number>()
     .min(0, 'recencyBoost must be between 0 and 1')
     .max(1, 'recencyBoost must be between 0 and 1')
     .default(0),
