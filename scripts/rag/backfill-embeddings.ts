@@ -4,6 +4,7 @@ import { logger } from '@/lib/logger';
 const ACTIVE_MODEL = process.env.RAG_ACTIVE_MODEL ?? 'text-embedding-3-small';
 const ACTIVE_VERSION = parseInt(process.env.RAG_ACTIVE_VERSION ?? '1', 10);
 const BATCH_SIZE = 500; // Create jobs in batches to avoid long transactions
+const DRY_RUN = process.argv.includes('--dry-run'); // Count only, create no jobs
 
 async function backfillEmbeddings() {
   console.log('='.repeat(60));
@@ -40,6 +41,11 @@ async function backfillEmbeddings() {
 
   if (articlesWithoutEmbeddings.length === 0) {
     console.log('No articles to backfill. Exiting.');
+    return;
+  }
+
+  if (DRY_RUN) {
+    console.log('Dry run: no jobs were created.');
     return;
   }
 
