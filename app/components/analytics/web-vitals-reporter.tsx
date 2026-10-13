@@ -28,14 +28,20 @@ function shouldSample(): boolean {
   return sampled;
 }
 
+/** bfcache から戻ったときのパス。戻った後の計測は、このページのものとして送る */
+let bfcacheRestoredPath: string | undefined;
+
 /**
  * 計測の対象になったページのパス。CLS・INP はページを離れるときに確定するので、
  * クライアント遷移の後だと送る時点の URL は別のページになっている。web-vitals の
  * navigationURL（計測を始めた文書の URL）を使い、無ければ今のパスにする。
- * bfcache から戻ったときの navigationURL は最初に開いた URL のままなので、今のパスにする
+ * bfcache から戻ったときの navigationURL は最初に開いた URL のままなので、戻ったときのパスにする
  */
 function metricPage(metric: Metric): string {
-  if (metric.navigationURL && metric.navigationType !== 'back-forward-cache') {
+  if (metric.navigationType === 'back-forward-cache') {
+    return bfcacheRestoredPath ?? window.location.pathname;
+  }
+  if (metric.navigationURL) {
     try {
       return new URL(metric.navigationURL).pathname;
     } catch {
@@ -60,24 +66,28 @@ function sendVital(metric: Metric): void {
     timestamp: Date.now(),
   });
 
-  // Use sendBeacon for reliable delivery
-  if (navigator.sendBeacon) {
-    // Wrap in Blob to set Content-Type header
-    const blob = new Blob([body], { type: 'application/json' });
-    navigator.sendBeacon('/api/telemetry/vitals', blob);
-  } else {
-    // Fallback to fetch with keepalive
-    fetch('/api/telemetry/vitals', {
-      method: 'POST',
-      body,
-      keepalive: true,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    }).catch(() => {
-      // Silently ignore errors - telemetry should not affect UX
-    });
+  // Use sendBeacon for reliable delivery（Wrap in Blob to set Content-Type header）。
+  // 送信の列が一杯などで受け付けなかったとき（false）は fetch で送り直す
+  if (
+    navigator.sendBeacon?.(
+      '/api/telemetry/vitals',
+      new Blob([body], { type: 'application/json' })
+    )
+  ) {
+    return;
   }
+
+  // Fallback to fetch with keepalive
+  fetch('/api/telemetry/vitals', {
+    method: 'POST',
+    body,
+    keepalive: true,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  }).catch(() => {
+    // Silently ignore errors - telemetry should not affect UX
+  });
 }
 
 /**
@@ -105,6 +115,16 @@ export function WebVitalsReporter(): null {
       return;
     }
     handlersRegistered = true;
+
+    // web-vitals も pageshow を capture で受け、戻った直後に TTFB を送る。同じ capture で先に
+    // 登録して、それより前に戻ったときのパスを覚える
+    window.addEventListener(
+      'pageshow',
+      (event) => {
+        if (event.persisted) bfcacheRestoredPath = window.location.pathname;
+      },
+      { capture: true }
+    );
 
     // Register metric handlers
     onLCP(sendVital);

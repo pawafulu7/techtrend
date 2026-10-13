@@ -69,13 +69,22 @@ describe('WebVitalsReporter', () => {
     ).toBe('/articles/abc');
   });
 
-  it('sends the current path after a bfcache restore', () => {
-    expect(
-      sentPage({
-        navigationType: 'back-forward-cache',
-        navigationURL: 'https://example.com/',
-      })
-    ).toBe('/trends');
+  it('sends the path the page was restored on from bfcache, even after client navigation', () => {
+    const bfcacheMetric = {
+      navigationType: 'back-forward-cache' as const,
+      // web-vitals は戻ったときも最初に開いた URL を引き継ぐ
+      navigationURL: 'https://example.com/',
+    };
+    // 戻ったことをまだ受け取っていなければ、今のパス
+    expect(sentPage(bfcacheMetric)).toBe('/trends');
+
+    window.history.pushState({}, '', '/restored');
+    const pageshow = new Event('pageshow');
+    Object.defineProperty(pageshow, 'persisted', { value: true });
+    window.dispatchEvent(pageshow);
+    window.history.pushState({}, '', '/after-client-navigation');
+
+    expect(sentPage(bfcacheMetric)).toBe('/restored');
   });
 
   it('falls back to the current path when navigationURL is missing', () => {
@@ -84,5 +93,42 @@ describe('WebVitalsReporter', () => {
 
   it('falls back to the current path when navigationURL is not a URL', () => {
     expect(sentPage({ navigationURL: 'not a url' })).toBe('/trends');
+  });
+
+  describe('when sendBeacon is available', () => {
+    const sendBeacon = jest.fn();
+
+    beforeEach(() => {
+      sendBeacon.mockReset();
+      Object.defineProperty(navigator, 'sendBeacon', {
+        value: sendBeacon,
+        configurable: true,
+      });
+    });
+
+    afterEach(() => {
+      // jsdom には無いので、元どおり消す
+      delete (navigator as { sendBeacon?: unknown }).sendBeacon;
+    });
+
+    it('sends with sendBeacon and does not use fetch', () => {
+      sendBeacon.mockReturnValue(true);
+      mockHandlers[0](metric({}));
+      expect(sendBeacon).toHaveBeenCalledWith(
+        '/api/telemetry/vitals',
+        expect.any(Blob)
+      );
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('re-sends with fetch when sendBeacon refuses the data', () => {
+      sendBeacon.mockReturnValue(false);
+      mockHandlers[0](metric({ id: 'v6-refused' }));
+      expect(sendBeacon).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toBe('/api/telemetry/vitals');
+      expect(JSON.parse(init.body).id).toBe('v6-refused');
+    });
   });
 });

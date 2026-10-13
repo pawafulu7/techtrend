@@ -1,8 +1,50 @@
 /**
  * Web Vitals Telemetry API Tests
+ *
+ * レート制限と管理者認証は素通しにする。包み方は __tests__/api/auth-middleware-composition.test.ts、
+ * 認証そのものは __tests__/lib/middleware/with-admin-auth.test.ts で確かめる。
  */
 import { NextRequest } from 'next/server';
+
+jest.mock('@/lib/middleware/with-rate-limit', () => ({
+  withRateLimit: (_key: string, handler: Function) => handler,
+}));
+
+jest.mock('@/lib/middleware/with-admin-auth', () => ({
+  withAdminAuth: (handler: Function) => handler,
+}));
+
 import { GET, POST } from '@/app/api/telemetry/vitals/route';
+
+const URL_BASE = 'http://localhost/api/telemetry/vitals';
+
+function postVital(payload: Record<string, unknown>) {
+  return POST(
+    new NextRequest(URL_BASE, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+    })
+  );
+}
+
+function getVitals() {
+  return GET(new NextRequest(URL_BASE));
+}
+
+function vital(overrides: Record<string, unknown> = {}) {
+  return {
+    name: 'LCP',
+    value: 2500,
+    delta: 2500,
+    id: `v6-${Math.random()}`,
+    rating: 'good',
+    navigationType: 'navigate',
+    page: '/',
+    timestamp: Date.now(),
+    ...overrides,
+  };
+}
 
 describe('/api/telemetry/vitals', () => {
   describe('POST', () => {
@@ -113,6 +155,25 @@ describe('/api/telemetry/vitals', () => {
       expect(response.status).toBe(400);
     });
 
+    it('should reject a page that is not a path', async () => {
+      for (const page of ['__proto__', 'constructor', 'https://example.com/']) {
+        const response = await postVital(vital({ page }));
+        expect(response.status).toBe(400);
+      }
+    });
+
+    it('should reject an id or page longer than the limit', async () => {
+      expect((await postVital(vital({ id: 'x'.repeat(129) }))).status).toBe(400);
+      expect(
+        (await postVital(vital({ page: `/${'a'.repeat(2048)}` }))).status
+      ).toBe(400);
+      // 上限ちょうどは受ける
+      expect((await postVital(vital({ id: 'x'.repeat(128) }))).status).toBe(204);
+      expect(
+        (await postVital(vital({ page: `/${'a'.repeat(2047)}` }))).status
+      ).toBe(204);
+    });
+
     it('should accept all rating types', async () => {
       const ratings = ['good', 'needs-improvement', 'poor'] as const;
 
@@ -180,7 +241,7 @@ describe('/api/telemetry/vitals', () => {
 
   describe('GET', () => {
     it('should return aggregated metrics', async () => {
-      const response = await GET();
+      const response = await getVitals();
       expect(response.status).toBe(200);
 
       const data = await response.json();
@@ -221,7 +282,7 @@ describe('/api/telemetry/vitals', () => {
         await POST(request);
       }
 
-      const response = await GET();
+      const response = await getVitals();
       const data = await response.json();
 
       expect(data.pages['/test-page']).toBeDefined();
@@ -230,6 +291,38 @@ describe('/api/telemetry/vitals', () => {
       expect(data.pages['/test-page'].LCP.p75).toBeDefined();
       expect(data.pages['/test-page'].LCP.p95).toBeDefined();
       expect(data.pages['/test-page'].LCP.ratings).toBeDefined();
+    });
+
+    it('should count a metric re-sent with the same id once, with the latest value', async () => {
+      // CLS・INP はタブを隠すたびに同じ id で送り直される
+      expect(
+        (
+          await postVital(
+            vital({ name: 'CLS', id: 'v6-dup', value: 0.05, page: '/dup-page' })
+          )
+        ).status
+      ).toBe(204);
+      expect(
+        (
+          await postVital(
+            vital({
+              name: 'CLS',
+              id: 'v6-dup',
+              value: 0.3,
+              rating: 'poor',
+              page: '/dup-page',
+            })
+          )
+        ).status
+      ).toBe(204);
+
+      const data = await (await getVitals()).json();
+      expect(data.pages['/dup-page'].CLS).toEqual({
+        p50: 0.3,
+        p75: 0.3,
+        p95: 0.3,
+        ratings: { good: 0, 'needs-improvement': 0, poor: 1 },
+      });
     });
   });
 });

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createLogger } from '@/lib/logger';
+import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
+import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { listAllValues } from '@/lib/utils/list-all-values';
 import type {
   MetricName,
@@ -34,6 +36,10 @@ const NAVIGATION_TYPES = listAllValues<NavigationType>()([
   'soft-navigation',
 ]);
 
+// 受け取る文字列の上限。上限が無いと、巨大な本文がバッファ（最大 1000 件）とログに残る
+const MAX_ID_LENGTH = 128;
+const MAX_PAGE_LENGTH = 2048;
+
 /**
  * Validation schema for Web Vitals payload
  */
@@ -41,18 +47,25 @@ const webVitalsSchema = z.object({
   name: z.enum(METRIC_NAMES),
   value: z.number(),
   delta: z.number(),
-  id: z.string(),
+  id: z.string().max(MAX_ID_LENGTH),
   rating: z.enum(METRIC_RATINGS),
   navigationType: z.enum(NAVIGATION_TYPES),
-  page: z.string(),
+  // reporter はパス（/ で始まる）を送る。それ以外（__proto__ など）は受けない
+  page: z.string().max(MAX_PAGE_LENGTH).startsWith('/'),
   timestamp: z.number(),
 });
+
+type WebVitalsMetric = z.infer<typeof webVitalsSchema>;
 
 /**
  * In-memory storage for Web Vitals metrics
  * In production, this would be sent to a time-series database or analytics service
+ *
+ * 同じ計測（name と id）は、送り直されるたびに最新の値で置き換える。CLS・INP はタブを
+ * 隠すたびに同じ id で送られるので、別のサンプルとして数えると二重に計上する。
+ * Map は入れた順を保つので、置き換えた計測を末尾に回し、溢れたら最も古いものから捨てる
  */
-const metricsBuffer: Array<z.infer<typeof webVitalsSchema>> = [];
+const metricsBuffer = new Map<string, WebVitalsMetric>();
 const MAX_BUFFER_SIZE = 1000;
 
 /**
@@ -61,7 +74,7 @@ const MAX_BUFFER_SIZE = 1000;
  * Receives Web Vitals metrics from client-side reporter
  * Stores in buffer for aggregation and analysis
  */
-export async function POST(request: NextRequest): Promise<NextResponse> {
+async function postHandler(request: NextRequest): Promise<NextResponse> {
   try {
     // JSON として読めない本文は、形の合わない本文と同じく 400 にする（500 にしない）
     const body: unknown = await request.json().catch(() => undefined);
@@ -83,11 +96,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       navigationType: metric.navigationType,
     });
 
-    // Store in buffer (rotating buffer)
-    if (metricsBuffer.length >= MAX_BUFFER_SIZE) {
-      metricsBuffer.shift();
+    const key = `${metric.name}:${metric.id}`;
+    metricsBuffer.delete(key);
+    if (metricsBuffer.size >= MAX_BUFFER_SIZE) {
+      const oldest = metricsBuffer.keys().next().value;
+      if (oldest !== undefined) metricsBuffer.delete(oldest);
     }
-    metricsBuffer.push(metric);
+    metricsBuffer.set(key, metric);
 
     // Return 204 No Content for successful telemetry
     return new NextResponse(null, { status: 204 });
@@ -100,70 +115,71 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 }
 
+interface MetricSamples {
+  values: number[];
+  ratings: Record<MetricRating, number>;
+}
+
+/** 値を並べた配列の p 分位（0〜1）。空なら 0 */
+function percentile(sorted: number[], p: number): number {
+  return sorted[Math.floor(sorted.length * p)] ?? 0;
+}
+
 /**
  * GET /api/telemetry/vitals
  *
- * Returns aggregated Web Vitals metrics for monitoring
- * Requires admin authentication in production
- *
- * TODO(auth): Add admin authentication/authorization guard before returning vitals
- * Consider: getServerSession check, internal network restriction, or API key validation
+ * Returns aggregated Web Vitals metrics for monitoring (admin only)
  */
-export async function GET(): Promise<NextResponse> {
-  // TODO(auth): Enable authentication check in production
-  // const session = await getServerSession();
-  // if (!session?.user?.isAdmin) {
-  //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  // }
+async function getHandler(): Promise<NextResponse> {
+  // page ごと・指標ごとに集める。page は送り手が決める値なので、プレーンなオブジェクトのキーにしない
+  const aggregated = new Map<string, Map<MetricName, MetricSamples>>();
 
-  // Aggregate metrics by page and metric name
-  const aggregated: Record<
-    string,
-    Record<string, { values: number[]; ratings: Record<string, number> }>
-  > = {};
-
-  for (const metric of metricsBuffer) {
-    if (!aggregated[metric.page]) {
-      aggregated[metric.page] = {};
+  for (const metric of metricsBuffer.values()) {
+    let byName = aggregated.get(metric.page);
+    if (!byName) {
+      byName = new Map();
+      aggregated.set(metric.page, byName);
     }
-    if (!aggregated[metric.page][metric.name]) {
-      aggregated[metric.page][metric.name] = {
+    let samples = byName.get(metric.name);
+    if (!samples) {
+      samples = {
         values: [],
         ratings: { good: 0, 'needs-improvement': 0, poor: 0 },
       };
+      byName.set(metric.name, samples);
     }
-
-    aggregated[metric.page][metric.name].values.push(metric.value);
-    aggregated[metric.page][metric.name].ratings[metric.rating]++;
+    samples.values.push(metric.value);
+    samples.ratings[metric.rating]++;
   }
 
-  // Calculate percentiles
-  const result: Record<
-    string,
-    Record<
-      string,
-      { p50: number; p75: number; p95: number; ratings: Record<string, number> }
-    >
-  > = {};
-
-  for (const [page, metrics] of Object.entries(aggregated)) {
-    result[page] = {};
-    for (const [name, data] of Object.entries(metrics)) {
-      const sorted = [...data.values].sort((a, b) => a - b);
-      const len = sorted.length;
-
-      result[page][name] = {
-        p50: sorted[Math.floor(len * 0.5)] ?? 0,
-        p75: sorted[Math.floor(len * 0.75)] ?? 0,
-        p95: sorted[Math.floor(len * 0.95)] ?? 0,
-        ratings: data.ratings,
-      };
-    }
-  }
+  // Object.fromEntries はどのキーも自分のプロパティとして作る（__proto__ でも代入にならない）
+  const pages = Object.fromEntries(
+    Array.from(aggregated, ([page, byName]) => [
+      page,
+      Object.fromEntries(
+        Array.from(byName, ([name, samples]) => {
+          const sorted = [...samples.values].sort((a, b) => a - b);
+          return [
+            name,
+            {
+              p50: percentile(sorted, 0.5),
+              p75: percentile(sorted, 0.75),
+              p95: percentile(sorted, 0.95),
+              ratings: samples.ratings,
+            },
+          ];
+        })
+      ),
+    ])
+  );
 
   return NextResponse.json({
-    bufferSize: metricsBuffer.length,
+    bufferSize: metricsBuffer.size,
     maxBufferSize: MAX_BUFFER_SIZE,
-    pages: result,
+    pages,
   });
 }
+
+// 計測はログインしていない閲覧者からも届くので、認証は付けずに IP 単位で制限する
+export const POST = withRateLimit('write:telemetry-vitals', postHandler);
+export const GET = withAdminAuth(withRateLimit('admin:read', getHandler));

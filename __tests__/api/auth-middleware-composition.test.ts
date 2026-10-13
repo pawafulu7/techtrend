@@ -144,6 +144,14 @@ const ROUTES: Array<{
     modulePath: '@/app/api/rag/agent-search/route',
     methods: { POST: csrf(userValidation(HANDLER)) },
   },
+  // issue #771: 集計の GET は管理者だけ。計測の POST は未ログインからも届くので IP 単位の制限だけ
+  {
+    modulePath: '@/app/api/telemetry/vitals/route',
+    methods: {
+      GET: adminAuth(rateLimit('admin:read', HANDLER)),
+      POST: rateLimit('write:telemetry-vitals', HANDLER),
+    },
+  },
 ];
 
 const ROWS = ROUTES.flatMap((route) =>
@@ -154,9 +162,9 @@ const ROWS = ROUTES.flatMap((route) =>
 );
 
 describe('Auth middleware composition (issues #659, #662)', () => {
-  it('covers all 19 HTTP methods of the 15 routes', () => {
-    expect(ROUTES).toHaveLength(15);
-    expect(ROWS).toHaveLength(19);
+  it('covers all 21 HTTP methods of the 16 routes', () => {
+    expect(ROUTES).toHaveLength(16);
+    expect(ROWS).toHaveLength(21);
   });
 
   it.each(ROUTES.map((route) => [route.modulePath, route] as const))(

@@ -235,20 +235,23 @@ test.describe('Date Range Filter', () => {
       .getByRole('button', { name: 'Go to the Previous Month' })
       .click();
 
-    // 月外の日を除いた、選べる日のボタン（disabled はボタン自身に付く）
-    const dayButtons = calendar.locator(
-      'td:not([data-outside]) button[data-day]:not([disabled])'
+    // 月外の日を除いた、選べる日のセル（disabled はボタン自身に付く）。
+    // 期待する日付は、テスト側の時計ではなくセルの data-day（YYYY-MM-DD）から取る
+    const dayCells = calendar.locator(
+      'td[data-day]:not([data-outside]):has(button:not([disabled]))'
     );
-    await expect(dayButtons.nth(4)).toBeVisible();
+    await expect(dayCells.nth(4)).toBeVisible();
+    const fromDay = await dayCells.first().getAttribute('data-day');
+    const toDay = await dayCells.nth(4).getAttribute('data-day');
 
     // Click the first available day (range start)
-    await dayButtons.first().click();
+    await dayCells.first().locator('button').click();
 
     // Apply button should now be enabled (single day = from only)
     await expect(page.getByTestId('date-range-calendar-apply')).toBeEnabled({ timeout: 3000 });
 
     // Click a second day (range end) - pick one a few days later
-    await dayButtons.nth(4).click();
+    await dayCells.nth(4).locator('button').click();
 
     // Apply the selection
     await page.getByTestId('date-range-calendar-apply').click();
@@ -256,23 +259,20 @@ test.describe('Date Range Filter', () => {
     // Calendar should close
     await expect(calendar).toBeHidden({ timeout: 5000 });
 
-    // 選んだ前の月の1日と5日が URL に入る
-    const now = new Date();
-    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const ym = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
+    // 選んだ2つの日が URL に入る
     await expect
       .poll(() => {
         const url = new URL(page.url());
         return url.searchParams.get('dateFrom');
       }, { timeout: getTimeout('short') })
-      .toBe(`${ym}-01`);
+      .toBe(fromDay);
 
     await expect
       .poll(() => {
         const url = new URL(page.url());
         return url.searchParams.get('dateTo');
       }, { timeout: getTimeout('short') })
-      .toBe(`${ym}-05`);
+      .toBe(toDay);
 
     // dateRange preset param should NOT be present
     const finalUrl = new URL(page.url());
