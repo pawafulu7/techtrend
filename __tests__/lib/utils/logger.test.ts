@@ -230,7 +230,24 @@ describe('logger', () => {
         ],
       ];
 
-      it.each(cases)('%s', (_name, build, raws) => {
+      // pino は、オブジェクトをそのまま渡したときと '%o' で埋め込んだときで別の経路で伏せる
+      const forms: Array<
+        [
+          string,
+          (log: { info: (...args: unknown[]) => void }, input: object) => void,
+        ]
+      > = [
+        ['オブジェクト', (log, input) => log.info(input)],
+        ["'%o' の埋め込み", (log, input) => log.info('%o', input)],
+      ];
+
+      it.each(
+        cases.flatMap(([name, build, raws]) =>
+          forms.map(
+            ([form, write]) => [name, form, build, raws, write] as const
+          )
+        )
+      )('%s（%s）', (_name, _form, build, raws, write) => {
         const pino = jest.requireActual('pino');
         const { REDACT_PATHS } = jest.requireActual('@/lib/logger');
         const lines: string[] = [];
@@ -240,7 +257,7 @@ describe('logger', () => {
         );
 
         const input = build();
-        log.info(input);
+        write(log, input);
 
         expect(input).toEqual(build());
         const out = lines.join('');
@@ -249,14 +266,14 @@ describe('logger', () => {
         }
       });
 
-      it('パスは先頭と末尾の間に固有のキーを持たず、浅い順に並ぶ', () => {
+      it('パスは末尾より前に固有のキーを持たず、浅い順に並ぶ', () => {
         const { REDACT_PATHS } = jest.requireActual('@/lib/logger');
         const paths = REDACT_PATHS as string[];
         for (const path of paths) {
           expect(
             path
               .split('.')
-              .slice(1, -1)
+              .slice(0, -1)
               .filter((part) => part !== '*')
           ).toEqual([]);
         }

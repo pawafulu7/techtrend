@@ -117,7 +117,8 @@ function pathDepth(path: string): number {
  * @pinojs/redact は、ログに渡したオブジェクトを複製するとき、キーごとに固有のパスと `*` の
  * どちらか一方しか辿らない（pinojs/redact#36）。辿らなかった側の入れ子は元のオブジェクトと
  * 共有されたまま伏せられ、呼び出し元のオブジェクトが書き換わる。これを避けるため、
- * - 先頭と末尾の間に固有のキーを置かない（`session.user.email` のような指定は `*.*.email` で足りる）
+ * - 末尾より前に固有のキーを置かない（`session.user.email` は `*.*.email` で足りる）。pino はトップレベルの
+ *   キーごとにパスを分けて伏せるが、`logger.info('%o', obj)` の埋め込みでは分けずに伏せるので、先頭のキーも対象
  * - 浅いパスから順に伏せる。値がオブジェクトの `credentials` などが先に複製側で伏せ字に置き換わり、
  *   深いパス（`*.*.password` など）が共有された入れ子に届かなくなる。パスは並び順に処理される
  */
@@ -145,8 +146,8 @@ export const REDACT_PATHS = [
   // Auth.js related
   'credentials',
   '*.credentials',
-  'session.sessionToken',
   'sessionToken',
+  '*.sessionToken',
 
   // Other PII
   'phoneNumber',
