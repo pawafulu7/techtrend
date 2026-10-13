@@ -1,11 +1,7 @@
 /**
  * Logger Tests - PII Masking and Sanitization
  */
-import {
-  hashSensitiveValue,
-  sanitizeError,
-  createLogger,
-} from '@/lib/logger';
+import { hashSensitiveValue, sanitizeError, createLogger } from '@/lib/logger';
 
 describe('logger', () => {
   describe('hashSensitiveValue', () => {
@@ -78,7 +74,9 @@ describe('logger', () => {
         'Authorization failed: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
       );
       const sanitized = sanitizeError(error) as { message: string };
-      expect(sanitized.message).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+      expect(sanitized.message).not.toContain(
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
+      );
       expect(sanitized.message).toContain('Bearer [REDACTED]');
     });
 
@@ -161,8 +159,20 @@ describe('logger', () => {
         email: 'd0@example.com',
         a: { email: 'd1@example.com' },
         a2: { b: { email: 'd2@example.com', ip: '10.0.0.2' } },
-        a3: { b: { c: { password: 'marker-pass-3', token: 'marker-token-3' } } },
-        a4: { b: { c: { d: { secret: 'marker-secret-4', apiKey: 'marker-key-4', clientIp: '10.0.0.4' } } } },
+        a3: {
+          b: { c: { password: 'marker-pass-3', token: 'marker-token-3' } },
+        },
+        a4: {
+          b: {
+            c: {
+              d: {
+                secret: 'marker-secret-4',
+                apiKey: 'marker-key-4',
+                clientIp: '10.0.0.4',
+              },
+            },
+          },
+        },
       });
 
       const out = lines.join('');
@@ -180,6 +190,96 @@ describe('logger', () => {
         expect(out).not.toContain(raw);
       }
       expect(REDACT_PATHS).not.toContain('**.email');
+    });
+
+    describe('ログに渡した元のオブジェクトを書き換えない（pinojs/redact#36）', () => {
+      const cases: Array<[string, () => Record<string, unknown>, string[]]> = [
+        [
+          'session.user の下にさらに email がある',
+          () => ({
+            session: {
+              user: {
+                email: 'u0@example.com',
+                profile: { email: 'u1@example.com' },
+              },
+            },
+          }),
+          ['u0@example.com', 'u1@example.com'],
+        ],
+        [
+          '伏せるキー（credentials）の値がオブジェクトで、その下に伏せるキーがある',
+          () => ({
+            input: {
+              credentials: {
+                email: 'c0@example.com',
+                password: 'marker-pass-c',
+              },
+            },
+          }),
+          ['c0@example.com', 'marker-pass-c'],
+        ],
+        [
+          'session.sessionToken の値がオブジェクト',
+          () => ({ session: { sessionToken: { token: 'marker-token-s' } } }),
+          ['marker-token-s'],
+        ],
+        [
+          '伏せるキー（token）の下に email がある',
+          () => ({ a: { b: { token: { email: 't0@example.com' } } } }),
+          ['t0@example.com'],
+        ],
+      ];
+
+      // pino は、オブジェクトをそのまま渡したときと '%o' で埋め込んだときで別の経路で伏せる
+      const forms: Array<
+        [
+          string,
+          (log: { info: (...args: unknown[]) => void }, input: object) => void,
+        ]
+      > = [
+        ['オブジェクト', (log, input) => log.info(input)],
+        ["'%o' の埋め込み", (log, input) => log.info('%o', input)],
+      ];
+
+      it.each(
+        cases.flatMap(([name, build, raws]) =>
+          forms.map(
+            ([form, write]) => [name, form, build, raws, write] as const
+          )
+        )
+      )('%s（%s）', (_name, _form, build, raws, write) => {
+        const pino = jest.requireActual('pino');
+        const { REDACT_PATHS } = jest.requireActual('@/lib/logger');
+        const lines: string[] = [];
+        const log = pino(
+          { redact: { paths: REDACT_PATHS, censor: '[R]' } },
+          { write: (line: string) => lines.push(line) }
+        );
+
+        const input = build();
+        write(log, input);
+
+        expect(input).toEqual(build());
+        const out = lines.join('');
+        for (const raw of raws) {
+          expect(out).not.toContain(raw);
+        }
+      });
+
+      it('パスは末尾より前に固有のキーを持たず、浅い順に並ぶ', () => {
+        const { REDACT_PATHS } = jest.requireActual('@/lib/logger');
+        const paths = REDACT_PATHS as string[];
+        for (const path of paths) {
+          expect(
+            path
+              .split('.')
+              .slice(0, -1)
+              .filter((part) => part !== '*')
+          ).toEqual([]);
+        }
+        const depths = paths.map((path) => path.split('.').length);
+        expect(depths).toEqual([...depths].sort((a, b) => a - b));
+      });
     });
   });
 });
