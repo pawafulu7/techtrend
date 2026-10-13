@@ -1,16 +1,19 @@
-import { isIPv6 } from 'node:net';
+import { isIPv4, isIPv6 } from 'node:net';
 
 /**
  * IP 単位のレート制限で、数える単位にする IP を返す
  *
- * IPv6 は /64 に丸める。1 回線に /64 が割り当てられるのが普通で、アドレスごとに数えると
- * 送り手は /64 の中でアドレスを変えるだけで制限を外せるため。IPv4 を埋め込んだ IPv6
- * （::ffff:192.0.2.1）は IPv4 として数える。IP として読めない値（'unknown' など）はそのまま返す
+ * IPv6 は /64 に丸める。アドレスごとに数えると、送り手は同じ /64 の中でアドレスを変えるだけで
+ * 制限を外せるため（/56 や /48 を持つ送り手は、/64 の数だけ枠を持てる）。IPv4 を埋め込んだ IPv6
+ * （::ffff:192.0.2.1）は IPv4 として数える。IP として読めない値は 'unknown' にまとめ、
+ * 値を変えて枠を増やしたり、長いキーを作らせたりしない
  */
 export function toRateLimitIP(ip: string): string {
+  if (isIPv4(ip)) return ip;
+
   // ゾーン ID（fe80::1%eth0）は URL として読めないので外す
   const address = ip.split('%')[0] ?? ip;
-  if (!isIPv6(address)) return ip;
+  if (!isIPv6(address)) return 'unknown';
 
   // URL の正規化で、大文字・先頭の 0・埋め込みの IPv4 の書き方の違いを揃える
   const canonical = new URL(`http://[${address}]`).hostname.slice(1, -1);

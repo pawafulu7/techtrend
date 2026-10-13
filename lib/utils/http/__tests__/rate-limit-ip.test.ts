@@ -32,10 +32,17 @@ describe('toRateLimitIP', () => {
     }
   );
 
-  it.each(['unknown', '', 'not-an-ip', '999.1.1.1'])(
-    'returns a value that is not an IP unchanged (%s)',
-    (value) => {
-      expect(toRateLimitIP(value)).toBe(value);
-    }
-  );
+  it.each([
+    'unknown',
+    '',
+    'not-an-ip',
+    '999.1.1.1',
+    '001.2.3.4',
+    '1.2.3.4:443',
+    '[2001:db8::1]:443',
+    ' 1.2.3.4',
+    'x'.repeat(10_000),
+  ])('collapses a value that is not an IP into unknown (%#)', (value) => {
+    expect(toRateLimitIP(value)).toBe('unknown');
+  });
 });

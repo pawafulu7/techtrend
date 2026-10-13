@@ -286,7 +286,38 @@ describe('withRateLimit', () => {
       ]);
     });
 
-    it('uses ip:unknown when x-forwarded-for is missing or empty', async () => {
+    it('rounds the anonymous fallback of the user strategy the same way', async () => {
+      mockGetRateLimitConfig.mockReturnValue({
+        points: 10,
+        duration: 60,
+        blockDuration: 0,
+        keyStrategy: 'user',
+      });
+      mockCheckRateLimit.mockResolvedValue({
+        limit: 10,
+        remaining: 9,
+        reset: new Date(),
+      });
+
+      const handler = withRateLimit('test:policy', async () => {
+        return NextResponse.json({ success: true });
+      });
+
+      for (const ip of ['2001:db8:1:2::1', '::ffff:192.0.2.1']) {
+        await handler(
+          new NextRequest('http://localhost/api/test', {
+            headers: { 'x-forwarded-for': ip },
+          })
+        );
+      }
+
+      expect(mockCheckRateLimit.mock.calls.map(([key]) => key)).toEqual([
+        'anon:2001:db8:1:2::/64',
+        'anon:192.0.2.1',
+      ]);
+    });
+
+    it('uses ip:unknown when x-forwarded-for is missing, empty or not an IP', async () => {
       mockCheckRateLimit.mockResolvedValue({
         limit: 10,
         remaining: 9,
@@ -298,13 +329,17 @@ describe('withRateLimit', () => {
       });
 
       await handler(new NextRequest('http://localhost/api/test'));
-      await handler(
-        new NextRequest('http://localhost/api/test', {
-          headers: { 'x-forwarded-for': '' },
-        })
-      );
+      for (const value of ['', 'spoofed-value', '[2001:db8::1]:443']) {
+        await handler(
+          new NextRequest('http://localhost/api/test', {
+            headers: { 'x-forwarded-for': value },
+          })
+        );
+      }
 
       expect(mockCheckRateLimit.mock.calls.map(([key]) => key)).toEqual([
+        'ip:unknown',
+        'ip:unknown',
         'ip:unknown',
         'ip:unknown',
       ]);

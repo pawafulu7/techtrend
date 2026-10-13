@@ -218,7 +218,7 @@ export function createRateLimitedResponse(
  * 接続元の IP で上書きする（https://vercel.com/docs/headers/request-headers の x-forwarded-for）。
  * 上書きするプロキシを置かずに公開すると、ヘッダーを変えるだけで制限を外せる
  *
- * IPv6 は /64 に丸めて数える（toRateLimitIP）
+ * IPv6 は /64 に丸め、IP として読めない値は unknown にまとめて数える（toRateLimitIP）
  */
 function getClientIP(request: NextRequest): string {
   return toRateLimitIP(
