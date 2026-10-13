@@ -105,6 +105,8 @@ export function TrendLineChart({
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip
             labelFormatter={(value) => {
+              if (typeof value !== 'string' && typeof value !== 'number')
+                return value;
               const date = new Date(value);
               return date.toLocaleDateString('ja-JP');
             }}
