@@ -55,9 +55,9 @@ describe('ShareButton', () => {
     const user = userEvent.setup();
     render(<ShareButton {...defaultProps} />);
     
-    // Twitterで共有をクリック
+    // X（Twitter）で共有をクリック
     const twitterItems = screen.getAllByTestId('dropdown-item');
-    const twitterItem = twitterItems.find(item => item.textContent?.includes('Twitterで共有'));
+    const twitterItem = twitterItems.find(item => item.textContent?.includes('X（Twitter）で共有'));
     expect(twitterItem).toBeDefined();
     await user.click(twitterItem!);
     
@@ -101,9 +101,9 @@ describe('ShareButton', () => {
     
     render(<ShareButton {...specialProps} />);
     
-    // Twitterで共有をクリック
+    // X（Twitter）で共有をクリック
     const twitterItems = screen.getAllByTestId('dropdown-item');
-    const twitterItem = twitterItems.find(item => item.textContent?.includes('Twitterで共有'));
+    const twitterItem = twitterItems.find(item => item.textContent?.includes('X（Twitter）で共有'));
     await user.click(twitterItem!);
     
     const calledUrl = mockOpen.mock.calls[0][0];

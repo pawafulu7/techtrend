@@ -13,7 +13,7 @@ import {
   CardHeader,
 } from '@/components/ui-v2/card-v2';
 import { Separator } from '@/components/ui/separator';
-import { Github } from 'lucide-react';
+import { GitHubIcon } from '@/components/icons/github';
 import { GoogleIcon } from '@/components/icons/google';
 
 interface LoginContentProps {
@@ -67,7 +67,7 @@ export function LoginContent({ callbackUrl }: LoginContentProps) {
               onClick={() => handleOAuthSignIn('github')}
               disabled={isLoading}
             >
-              <Github className="mr-2 h-4 w-4" />
+              <GitHubIcon className="mr-2 h-4 w-4" />
               GitHub
             </Button>
           </div>
