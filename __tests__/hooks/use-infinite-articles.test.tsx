@@ -15,6 +15,7 @@ import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import {
   infiniteArticlesQueryKey,
   normalizeArticleFilters,
+  type ArticleFilters,
 } from '@/lib/articles/home-articles-query';
 
 // Mock fetch globally
@@ -214,10 +215,12 @@ describe('useInfiniteArticles', () => {
    * （refetchOnMount: false）。
    */
   describe('条件を変えたときの前の条件のクエリ（issue #778）', () => {
-    const FILTERS_A = { tags: 'React', includeUserData: true };
-    const FILTERS_B = { ...FILTERS_A, sortBy: 'qualityScore' };
+    const FILTERS_A: ArticleFilters = { tags: 'React', includeUserData: true };
+    const FILTERS_B: ArticleFilters = { ...FILTERS_A, sortBy: 'qualityScore' };
+    const FILTERS_C: ArticleFilters = { ...FILTERS_A, sortBy: 'bookmarks' };
     const KEY_A = infiniteArticlesQueryKey(normalizeArticleFilters(FILTERS_A));
     const KEY_B = infiniteArticlesQueryKey(normalizeArticleFilters(FILTERS_B));
+    const KEY_C = infiniteArticlesQueryKey(normalizeArticleFilters(FILTERS_C));
 
     /** debounce（200ms）が発火するまで待つ */
     async function waitForDebounce() {
@@ -237,7 +240,7 @@ describe('useInfiniteArticles', () => {
         pageParams: [1],
       });
       return renderHook(
-        ({ filters }: { filters: Record<string, unknown> }) =>
+        ({ filters }: { filters: ArticleFilters }) =>
           useInfiniteArticles(filters),
         {
           wrapper: createWrapper(queryClient),
@@ -268,6 +271,31 @@ describe('useInfiniteArticles', () => {
       await waitForDebounce();
 
       expect(infiniteArticlesQueryKeys(queryClient)).toEqual([KEY_B]);
+    });
+
+    it('200ms 以内に続けて変えても、途中の条件のクエリを消し、戻ったときに取り直す', async () => {
+      // 発火のときに前の条件を覚えていたため、途中の条件（B）の分が取り消されて残り、
+      // B に戻ったときにキャッシュを出して取り直さなかった
+      const queryClient = createTestQueryClient();
+      const { rerender } = renderWithFilters(queryClient);
+      await waitForDebounce();
+
+      rerender({ filters: FILTERS_B });
+      rerender({ filters: FILTERS_C });
+      await waitForDebounce();
+      expect(infiniteArticlesQueryKeys(queryClient)).toEqual([KEY_C]);
+
+      mockFetch.mockClear();
+      rerender({ filters: FILTERS_B });
+      await waitFor(() => {
+        expect(
+          articleListUrls().filter(
+            (url) =>
+              new URL(url, 'http://localhost').searchParams.get('sortBy') ===
+              'qualityScore'
+          )
+        ).toHaveLength(1);
+      });
     });
 
     it('200ms 以内に元の条件へ戻したら、そのクエリは消さない', async () => {
@@ -301,7 +329,8 @@ describe('useInfiniteArticles', () => {
       .getQueryCache()
       .findAll({ queryKey: ['infinite-articles'] });
     expect(query).toBeDefined();
-    expect(query.options.refetchOnReconnect).toBe(false);
+    // refetchOnReconnect は observer（フック）の設定で、クエリの設定の型には無い
+    expect(query.observers[0].options.refetchOnReconnect).toBe(false);
   });
 
   /**

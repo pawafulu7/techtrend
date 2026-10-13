@@ -44,6 +44,8 @@ export function useInfiniteArticles(
 ) {
   const queryClient = useQueryClient();
   const prevFilterKeyRef = useRef<string>('');
+  // 前回の debounce の発火の後に離れた条件（発火時にまとめて消す。今の条件は含まない）
+  const leftFilterKeysRef = useRef<Set<string>>(new Set());
   const totalCountRef = useRef<number | undefined>(undefined);
   // Track last favorite update per article to handle race conditions
   // （時刻は古いイベントの無視に、値は取り直しの応答より新しい変更の反映に使う）
@@ -92,33 +94,35 @@ export function useInfiniteArticles(
   const handleFilterChange = useMemo(
     () =>
       // eslint-disable-next-line react-hooks/refs -- Ref accessed in debounce callback, not during render
-      debounce((newFilterKey: string) => {
-        if (
-          prevFilterKeyRef.current &&
-          prevFilterKeyRef.current !== newFilterKey
-        ) {
-          // 旧フィルターのクエリを停止・破棄（新フィルターはキー変更で自動フェッチ）
+      debounce(() => {
+        // 離れた条件のクエリを停止・破棄（新フィルターはキー変更で自動フェッチ）
+        for (const leftFilterKey of leftFilterKeysRef.current) {
           queryClient.cancelQueries({
-            queryKey: ['infinite-articles', prevFilterKeyRef.current],
+            queryKey: ['infinite-articles', leftFilterKey],
           });
           queryClient.removeQueries({
-            queryKey: ['infinite-articles', prevFilterKeyRef.current],
+            queryKey: ['infinite-articles', leftFilterKey],
           });
         }
-        prevFilterKeyRef.current = newFilterKey;
+        leftFilterKeysRef.current.clear();
       }, 200),
     [queryClient]
   );
 
   // フィルターが変更されたときにdebounce処理を実行
   useEffect(() => {
-    // 最初の条件は debounce を待たずに覚える。待つと、マウントの分の debounce が動く前
-    // （hydration の直後のクリックなど）に条件が変わったとき、その実行が取り消されて
-    // 最初の条件のクエリが残り、ブラウザで戻ったときに取り直さない（issue #778）
-    if (!prevFilterKeyRef.current) {
-      prevFilterKeyRef.current = filterKey;
+    // 離れた条件は debounce を待たずに覚え、発火時にまとめて消す（issue #778）。
+    // 発火のときに前の条件を覚えていたため、発火の前に条件が変わると（hydration の直後の
+    // クリック、200ms 以内の連続した変更）その分が取り消され、離れた条件のクエリが残って
+    // ブラウザで戻ったときに取り直さなかった
+    const prevFilterKey = prevFilterKeyRef.current;
+    if (prevFilterKey && prevFilterKey !== filterKey) {
+      leftFilterKeysRef.current.add(prevFilterKey);
     }
-    handleFilterChange(filterKey);
+    // 200ms 以内に戻した条件は消さない
+    leftFilterKeysRef.current.delete(filterKey);
+    prevFilterKeyRef.current = filterKey;
+    handleFilterChange();
 
     // フィルター変更時に総件数をリセット（新しいフィルターでは再計算が必要）
     totalCountRef.current = undefined;
