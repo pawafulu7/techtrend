@@ -1,14 +1,22 @@
+import { APIError } from 'openai';
 import { EmbeddingService } from '@/lib/rag/embedding-service';
 
+// Use the real p-limit (instead of __mocks__/p-limit.js) so that concurrency limits apply
+jest.unmock('p-limit');
+
 // Mock OpenAI to avoid real API calls
+// Keep the real error classes so that `error instanceof OpenAI.APIError` works
 jest.mock('openai', () => {
+  const actual = jest.requireActual('openai');
+  const MockOpenAI = jest.fn().mockImplementation(() => ({
+    embeddings: {
+      create: jest.fn(),
+    },
+  }));
   return {
     __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
-      embeddings: {
-        create: jest.fn(),
-      },
-    })),
+    ...actual,
+    default: Object.assign(MockOpenAI, { APIError: actual.APIError }),
   };
 });
 
@@ -185,5 +193,102 @@ describe('EmbeddingService.embedBatch', () => {
       2,
       expect.objectContaining({ input: ['text-3'] })
     );
+  });
+});
+
+describe('EmbeddingService retry', () => {
+  let service: EmbeddingService;
+  let mockCreate: jest.Mock;
+  let sleepSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new EmbeddingService({ batchSize: 10 });
+    mockCreate = getLatestOpenAIMock();
+    // Skip real waits and record the backoff passed to sleep
+    sleepSpy = jest
+      .spyOn(
+        EmbeddingService.prototype as unknown as {
+          sleep: (ms: number) => Promise<void>;
+        },
+        'sleep'
+      )
+      .mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    sleepSpy.mockRestore();
+  });
+
+  it('should wait for the Retry-After header value on 429 and then retry', async () => {
+    const vector = new Array(1536).fill(0.1);
+    mockCreate
+      .mockRejectedValueOnce(
+        APIError.generate(
+          429,
+          undefined,
+          'Rate limited',
+          new Headers({ 'retry-after': '2' })
+        )
+      )
+      .mockResolvedValueOnce(mockEmbeddingResponse([vector]));
+
+    const result = await service.embedBatch(['hello world']);
+
+    expect(result).toHaveLength(1);
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+    expect(sleepSpy).toHaveBeenCalledTimes(1);
+    expect(sleepSpy).toHaveBeenCalledWith(2000);
+  });
+
+  it('should finish retrying embedText when every concurrency slot is in use', async () => {
+    const singleSlotService = new EmbeddingService({ concurrency: 1 });
+    const singleSlotMockCreate = getLatestOpenAIMock();
+    const vector = new Array(1536).fill(0.1);
+    singleSlotMockCreate
+      .mockRejectedValueOnce(
+        APIError.generate(429, undefined, 'Rate limited', new Headers())
+      )
+      .mockResolvedValueOnce(mockEmbeddingResponse([vector]));
+
+    const result = await singleSlotService.embedText('hello world');
+
+    expect(result).toHaveLength(1536);
+    expect(singleSlotMockCreate).toHaveBeenCalledTimes(2);
+  });
+
+  it('should finish retrying embedBatch when all chunks are rate limited at once', async () => {
+    const twoSlotService = new EmbeddingService({
+      batchSize: 1,
+      concurrency: 2,
+    });
+    const twoSlotMockCreate = getLatestOpenAIMock();
+    const makeVector = (val: number) => new Array(1536).fill(val);
+    twoSlotMockCreate
+      .mockRejectedValueOnce(
+        APIError.generate(429, undefined, 'Rate limited', new Headers())
+      )
+      .mockRejectedValueOnce(
+        APIError.generate(429, undefined, 'Rate limited', new Headers())
+      )
+      .mockResolvedValueOnce(mockEmbeddingResponse([makeVector(0.1)]))
+      .mockResolvedValueOnce(mockEmbeddingResponse([makeVector(0.2)]));
+
+    const result = await twoSlotService.embedBatch(['text-1', 'text-2']);
+
+    expect(result).toHaveLength(2);
+    expect(twoSlotMockCreate).toHaveBeenCalledTimes(4);
+  });
+
+  it('should not retry on 4xx client errors other than 429', async () => {
+    mockCreate.mockRejectedValueOnce(
+      APIError.generate(400, undefined, 'Bad request', new Headers())
+    );
+
+    await expect(service.embedBatch(['hello world'])).rejects.toBeInstanceOf(
+      APIError
+    );
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(sleepSpy).not.toHaveBeenCalled();
   });
 });

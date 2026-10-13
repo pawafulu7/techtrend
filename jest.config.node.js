@@ -126,6 +126,8 @@ const esmAllowList = [
   'dom-serializer',
   // @faker-js/faker@10 系は ESM のみ配信のため Jest の変換対象に含める
   '@faker-js/faker',
+  // commander@15 系は ESM のみ配信のため Jest の変換対象に含める
+  'commander',
 ];
 const esmPattern = esmAllowList.join('|');
 

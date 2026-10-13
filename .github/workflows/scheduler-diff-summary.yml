@@ -68,7 +68,7 @@ jobs:
         run: |
           node -e "
             const Redis = require('ioredis');
-            const redis = new Redis(process.env.REDIS_URL);
+            const redis = new Redis(process.env.REDIS_URL, { protocol: 2 });
             redis.keys('@techtrend/cache:diff-summary*').then(keys => {
               if (keys.length > 0) {
                 return redis.del(...keys).then(count => {

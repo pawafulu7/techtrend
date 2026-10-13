@@ -9,6 +9,8 @@ export function registerRedisProvider(): void {
   container.registerSingleton(DI_TOKENS.REDIS, () => {
     if (!redisInstance && env.REDIS_URL) {
       redisInstance = new Redis(env.REDIS_URL, {
+        // Same as lib/redis/ioredis-client.ts: keep the ioredis 5 handshake (RESP2)
+        protocol: 2,
         maxRetriesPerRequest: 3,
         retryStrategy: (times) => {
           if (times > 3) return null;
@@ -16,8 +18,7 @@ export function registerRedisProvider(): void {
         },
       });
 
-      redisInstance.on('error', (_err) => {
-      });
+      redisInstance.on('error', (_err) => {});
     }
     return redisInstance;
   });

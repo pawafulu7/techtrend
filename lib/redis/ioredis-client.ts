@@ -26,6 +26,10 @@ export class IoRedisClient implements IRedisClient {
       maxRetriesPerRequest: config?.maxRetriesPerRequest ?? 3,
       enableReadyCheck: true,
       lazyConnect: false, // Connect immediately on instantiation
+      // ioredis 6 defaults to RESP3 and only falls back to RESP2 on NOPROTO /
+      // unknown HELLO. Pin RESP2 so the handshake stays the same as ioredis 5
+      // regardless of how the hosted Redis answers HELLO 3.
+      protocol: 2,
     } as const;
 
     // Prefer URL (e.g. Upstash rediss://)
