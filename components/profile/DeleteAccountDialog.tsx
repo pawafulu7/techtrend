@@ -22,21 +22,21 @@ import {
   CONFIRMATION_WORD,
   type DeleteAccountError,
   type DeleteAccountRequest,
-  type DeleteAccountResult,
 } from '@/types/api/delete-account';
 import { commonActionErrorMessage } from './profile-action-errors';
 
 // この API が返すコード。文言は利用者向けの日本語なのでそのまま出せる。認証・CSRF・レート制限の
 // ミドルウェアは別の形（英語の内部向けの文言）で返すため、そちらはステータスから選ぶ（issue #729）
-const API_ERROR_CODES: ReadonlySet<string> = new Set<
-  DeleteAccountError['error']
->([
-  'INVALID_PASSWORD',
-  'INVALID_CONFIRMATION',
-  'VALIDATION_ERROR',
-  'INTERNAL_ERROR',
-  'USER_NOT_FOUND',
-]);
+const API_ERROR_CODE_MAP = {
+  INVALID_PASSWORD: true,
+  INVALID_CONFIRMATION: true,
+  VALIDATION_ERROR: true,
+  INTERNAL_ERROR: true,
+  USER_NOT_FOUND: true,
+} satisfies Record<DeleteAccountError['error'], true>;
+const API_ERROR_CODES: ReadonlySet<string> = new Set(
+  Object.keys(API_ERROR_CODE_MAP)
+);
 
 function deleteAccountErrorMessage(
   status: number,
@@ -98,13 +98,19 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
         body: JSON.stringify(requestBody),
       });
 
-      const data: DeleteAccountResult = await response.json();
+      // 本文が JSON でない（Basic 認証の 401 やプロキシのエラーページなど）ときも、ステータスから文言を選ぶ
+      const data: unknown = await response.json().catch(() => null);
+      const succeeded =
+        response.ok &&
+        typeof data === 'object' &&
+        data !== null &&
+        'success' in data &&
+        data.success === true;
 
-      if (!response.ok || !data.success) {
-        // Validate error response structure
+      if (!succeeded) {
         if (
-          !data ||
           typeof data !== 'object' ||
+          data === null ||
           !('error' in data) ||
           !('message' in data)
         ) {
@@ -126,7 +132,11 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
           setPassword('');
           toast({
             title: 'パスワードが正しくありません',
-            description: errorData.message,
+            description: deleteAccountErrorMessage(
+              response.status,
+              errorData.error,
+              errorData.message
+            ),
             variant: 'destructive',
           });
         } else if (errorData.error === 'INVALID_CONFIRMATION') {

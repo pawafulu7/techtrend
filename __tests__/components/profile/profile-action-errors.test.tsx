@@ -148,6 +148,18 @@ describe('DeleteAccountDialog: 失敗の文言', () => {
     expect(await submit()).toBe('アカウント削除中にエラーが発生しました');
   });
 
+  it('本文が JSON でない 401（Basic 認証など）でも、ステータスから文言を選ぶ', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => {
+        throw new SyntaxError('Unexpected token U in JSON');
+      },
+    });
+
+    expect(await submit()).toBe(SESSION_EXPIRED_MESSAGE);
+  });
+
   it.each([
     [
       'セッション切れ（ミドルウェアの 401）',

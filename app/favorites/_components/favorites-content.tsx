@@ -68,16 +68,24 @@ export function FavoritesContent({
     hasFailedSinceMount,
     isFetchNextPageError,
   } = useInfiniteFavorites({ limit: 20, includeRelations: true });
+  // この画面を開く前の失敗（キャッシュに残ったもの）は表示に使わない。data のあるクエリは取り直しの
+  // 間も error が残るため、ログインし直して戻った直後に前の 401 で一覧を隠さないようにする
+  const currentError = hasFailedSinceMount ? error : null;
   // セッションが切れている: 再試行しても同じなので、ログインの案内だけを出す（issue #729）
-  const isUnauthorized = isUnauthorizedFavoritesError(error);
+  const isUnauthorized = isUnauthorizedFavoritesError(currentError);
   // 取得に失敗して一覧が無い: 「0件」や空状態ではなく失敗と再試行を出す（issue #701）。
   // React Query は data の無いクエリを再取得すると pending に戻すので、失敗後の再試行中も失敗表示を残す
   const failedWithoutData =
-    !isUnauthorized && data === undefined && (!!error || hasFailedSinceMount);
+    !isUnauthorized &&
+    data === undefined &&
+    (!!currentError || hasFailedSinceMount);
   // 取得済みの一覧がある状態で再取得に失敗した: 一覧を残して古いことを示す。続きのページの
   // 取得の失敗は一覧の下端に出し、全ページを取り直さず続きだけを再試行する（スクロール位置を失わないため）
   const staleAfterError =
-    !!error && !isUnauthorized && data !== undefined && !isFetchNextPageError;
+    !!currentError &&
+    !isUnauthorized &&
+    data !== undefined &&
+    !isFetchNextPageError;
 
   // Filter and sort favorites
   const filteredFavorites = useMemo(() => {
@@ -166,7 +174,8 @@ export function FavoritesContent({
         if (!response.ok && response.status !== 404) {
           // Non-OK response: invalidate query to restore from server
           queryClient.invalidateQueries({ queryKey: ['infinite-favorites'] });
-          notifyRemoveFailed();
+          // 401 は取り直しも 401 になり、ログインの案内に切り替わる。再試行を促す通知は出さない
+          if (response.status !== 401) notifyRemoveFailed();
           return;
         }
 
@@ -216,12 +225,15 @@ export function FavoritesContent({
               }
         }
         actions={
-          <FavoritesToolbar
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            sortOption={sortOption}
-            onSortOptionChange={setSortOption}
-          />
+          // 401 のときは一覧を出さないので、検索と並び替えも出さない
+          isUnauthorized ? undefined : (
+            <FavoritesToolbar
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              sortOption={sortOption}
+              onSortOptionChange={setSortOption}
+            />
+          )
         }
       />
 

@@ -283,6 +283,10 @@ describe('FavoritesContent: 解除の失敗（issue #701）', () => {
 });
 
 describe('FavoritesContent: セッション切れ（401、issue #729）', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   afterEach(() => {
     mockListError = null;
     mockOverrides = {};
@@ -326,6 +330,8 @@ describe('FavoritesContent: セッション切れ（401、issue #729）', () => 
     expect(
       screen.queryByRole('button', { name: '解除 a1' })
     ).not.toBeInTheDocument();
+    // 一覧を出さないので、検索と並び替えも出さない
+    expect(screen.queryByPlaceholderText('検索...')).not.toBeInTheDocument();
   });
 
   it('401 以外の失敗では、ログインの案内を出さない', () => {
@@ -338,5 +344,40 @@ describe('FavoritesContent: セッション切れ（401、issue #729）', () => 
     expect(
       screen.queryByText('ログインの有効期限が切れました')
     ).not.toBeInTheDocument();
+  });
+
+  it('この画面を開く前の 401（キャッシュに残ったもの）では、取り直しの間に一覧を隠さない', () => {
+    mockOverrides = {
+      error: new FavoritesFetchError(401),
+      hasFailedSinceMount: false,
+      isFetching: true,
+    };
+    renderFavorites();
+
+    expect(
+      screen.queryByText('ログインの有効期限が切れました')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('最新のお気に入りを読み込めませんでした')
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '解除 a1' })).toBeInTheDocument();
+  });
+
+  it('解除が 401 のときは再試行を促す通知を出さず、取り直してログインの案内に任せる', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401 });
+    try {
+      const { invalidateSpy } = renderFavorites();
+      await userEvent.click(screen.getByRole('button', { name: '解除 a1' }));
+
+      await waitFor(() =>
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: ['infinite-favorites'],
+        })
+      );
+      expect(mockToast).not.toHaveBeenCalled();
+    } finally {
+      global.fetch = originalFetch;
+    }
   });
 });

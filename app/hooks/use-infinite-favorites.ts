@@ -16,7 +16,9 @@ export class FavoritesFetchError extends Error {
   }
 }
 
-export const isUnauthorizedFavoritesError = (error: unknown) =>
+export const isUnauthorizedFavoritesError = (
+  error: unknown
+): error is FavoritesFetchError =>
   error instanceof FavoritesFetchError && error.status === 401;
 
 interface UseFavoritesOptions {
@@ -94,6 +96,15 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
   // Shared cache update logic for favorite removal
   const updateCacheOnRemove = useCallback(
     (articleId: string) => {
+      // 401 の間はキャッシュを書き換えない。setQueryData は（同じデータを返しても）error を消して
+      // success にするため、ログインし直していないのにログインの案内が消えて一覧が戻ってしまう
+      if (
+        isUnauthorizedFavoritesError(
+          queryClient.getQueryState(['infinite-favorites'])?.error
+        )
+      ) {
+        return;
+      }
       queryClient.setQueryData<FavoritesQueryData>(
         ['infinite-favorites'],
         (oldData) => {

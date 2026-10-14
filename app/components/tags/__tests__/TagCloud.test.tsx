@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -264,25 +264,34 @@ describe('TagCloud', () => {
     };
 
     it('初回の失敗の後、再試行中はスケルトンを保ち、成功したらタグを表示する', async () => {
-      (global.fetch as jest.Mock).mockRejectedValueOnce(
-        new Error('Network error')
-      );
+      // 再試行の応答を保留し、再試行中（初回の失敗が反映された後）の表示を確かめる
+      let resolveRetry!: (value: unknown) => void;
+      (global.fetch as jest.Mock)
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockImplementationOnce(
+          () => new Promise((resolve) => (resolveRetry = resolve))
+        );
 
       const { container } = renderWithProductionRetry();
 
+      // 2 回目の呼び出しは、初回の失敗を処理して再試行に入った後にしか起きない
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(global.fetch).toHaveBeenCalledTimes(2);
       });
-      // 初回の失敗の直後（自動の再試行を待っている間）も、失敗表示ではなくスケルトンのまま
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
       expect(container.querySelector('.animate-pulse')).toBeInTheDocument();
       expect(
         screen.queryByText('タグを読み込めませんでした')
       ).not.toBeInTheDocument();
 
+      await act(async () => {
+        resolveRetry({ ok: true, json: async () => ({ tags: mockTags }) });
+      });
       await waitFor(() => {
         expect(screen.getByText('React')).toBeInTheDocument();
       });
-      expect(global.fetch).toHaveBeenCalledTimes(2);
       expect(
         screen.queryByText('タグを読み込めませんでした')
       ).not.toBeInTheDocument();

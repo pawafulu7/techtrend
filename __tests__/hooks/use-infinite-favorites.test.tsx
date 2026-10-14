@@ -180,7 +180,9 @@ describe('useInfiniteFavorites: セッション切れ（401、issue #729）', ()
       expect(result.current.isError).toBe(true);
     });
     expect(result.current.error).toBeInstanceOf(FavoritesFetchError);
-    expect((result.current.error as FavoritesFetchError).status).toBe(401);
+    expect((result.current.error as FavoritesFetchError | null)?.status).toBe(
+      401
+    );
     expect(result.current.hasFailedSinceMount).toBe(true);
     // フック側の retry は 401 で再試行しない（再試行の待ちは 1 秒）
     await act(async () => {
@@ -232,7 +234,9 @@ describe('useInfiniteFavorites: セッション切れ（401、issue #729）', ()
       { timeout: 3000 }
     );
     expect(favoritesUrls()).toHaveLength(2);
-    expect((result.current.error as FavoritesFetchError).status).toBe(500);
+    expect((result.current.error as FavoritesFetchError | null)?.status).toBe(
+      500
+    );
   });
 
   it('前回の 401 がキャッシュに残っていても、開き直したら取り直す', async () => {
@@ -245,6 +249,10 @@ describe('useInfiniteFavorites: セッション切れ（401、issue #729）', ()
       expect(result.current.isError).toBe(true);
     });
     unmount();
+    // 前回の 401 の記録と再マウントが同じミリ秒にならないようにする
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    });
 
     // ログインし直してから /favorites へ戻る
     mockFetch.mockResolvedValue({
@@ -260,6 +268,68 @@ describe('useInfiniteFavorites: セッション切れ（401、issue #729）', ()
     await waitFor(() => {
       expect(remounted.current.isSuccess).toBe(true);
     });
+    expect(favoritesUrls()).toHaveLength(2);
+  });
+
+  it('続きのページの 401 は再試行せず、その後の解除イベントでも 401 の状態を消さない', async () => {
+    const page1 = {
+      favorites: [
+        {
+          id: 'a1',
+          title: 'Article',
+          summary: null,
+          url: 'https://example.com/a1',
+          publishedAt: '2026-01-01T00:00:00.000Z',
+          source: { id: 's1', name: 'Source' },
+          favoriteId: 'f1',
+          favoritedAt: '2026-01-02T00:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 21, totalPages: 2 },
+    };
+    mockFetch.mockReset();
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(page1),
+      })
+      .mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ error: 'Unauthorized' }),
+      });
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useInfiniteFavorites(), {
+      wrapper: createWrapper(queryClient),
+    });
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.fetchNextPage();
+    });
+    await waitFor(() => {
+      expect(result.current.isFetchNextPageError).toBe(true);
+    });
+    expect(favoritesUrls()).toHaveLength(2);
+    expect((result.current.error as FavoritesFetchError | null)?.status).toBe(
+      401
+    );
+
+    // 遅れて届いた解除の完了イベント。setQueryData は error を消すので、401 の間は書き換えない
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('article-favorite-changed', {
+          detail: { articleId: 'a1', isFavorited: false },
+        })
+      );
+    });
+    await flush();
+    expect((result.current.error as FavoritesFetchError | null)?.status).toBe(
+      401
+    );
     expect(favoritesUrls()).toHaveLength(2);
   });
 });
