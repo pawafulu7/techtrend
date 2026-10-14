@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { invalidateUserAuthCache } from '@/lib/auth/user-auth-cache';
 import logger from '@/lib/logger';
 import { normalizeRole } from '../_normalize';
+import { ADMIN_API_ERROR_CODES } from '@/lib/constants/admin-api-error-codes';
 
 const changeRoleSchema = z.object({
   action: z.literal('changeRole'),
@@ -32,7 +33,7 @@ const USER_RESPONSE_SELECT = {
   deletedAt: true,
 } as const;
 
-// 画面は code で文言を選ぶ（issue #797）。error は英語の内部向けの文言
+// トランザクションの中から投げる目印。画面に返すコードは ADMIN_API_ERROR_CODES を使う
 const LAST_ADMIN_ERROR = 'LAST_ADMIN';
 
 async function ensureNotLastAdmin(
@@ -81,7 +82,7 @@ async function handler(request: NextRequest, context: any) {
 
   if (!targetUser) {
     return NextResponse.json(
-      { error: 'User not found', code: 'USER_NOT_FOUND' },
+      { error: 'User not found', code: ADMIN_API_ERROR_CODES.USER_NOT_FOUND },
       { status: 404 }
     );
   }
@@ -91,7 +92,7 @@ async function handler(request: NextRequest, context: any) {
       return NextResponse.json(
         {
           error: 'Cannot change your own role',
-          code: 'CANNOT_CHANGE_OWN_ROLE',
+          code: ADMIN_API_ERROR_CODES.CANNOT_CHANGE_OWN_ROLE,
         },
         { status: 400 }
       );
@@ -127,7 +128,10 @@ async function handler(request: NextRequest, context: any) {
       } catch (error) {
         if (isLastAdminError(error)) {
           return NextResponse.json(
-            { error: 'Cannot demote the last admin', code: LAST_ADMIN_ERROR },
+            {
+              error: 'Cannot demote the last admin',
+              code: ADMIN_API_ERROR_CODES.LAST_ADMIN,
+            },
             { status: 400 }
           );
         }
@@ -163,7 +167,7 @@ async function handler(request: NextRequest, context: any) {
       return NextResponse.json(
         {
           error: 'Cannot deactivate your own account',
-          code: 'CANNOT_DEACTIVATE_SELF',
+          code: ADMIN_API_ERROR_CODES.CANNOT_DEACTIVATE_SELF,
         },
         { status: 400 }
       );
@@ -171,7 +175,10 @@ async function handler(request: NextRequest, context: any) {
 
     if (targetUser.deletedAt) {
       return NextResponse.json(
-        { error: 'User is already deactivated', code: 'ALREADY_DEACTIVATED' },
+        {
+          error: 'User is already deactivated',
+          code: ADMIN_API_ERROR_CODES.ALREADY_DEACTIVATED,
+        },
         { status: 400 }
       );
     }
@@ -233,7 +240,10 @@ async function handler(request: NextRequest, context: any) {
     } catch (error) {
       if (isLastAdminError(error)) {
         return NextResponse.json(
-          { error: 'Cannot deactivate the last admin', code: LAST_ADMIN_ERROR },
+          {
+            error: 'Cannot deactivate the last admin',
+            code: ADMIN_API_ERROR_CODES.LAST_ADMIN,
+          },
           { status: 400 }
         );
       }

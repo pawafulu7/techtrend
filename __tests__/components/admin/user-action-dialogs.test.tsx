@@ -41,9 +41,9 @@ function renderWithClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
   });
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  );
+  const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+  render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  return { invalidate };
 }
 
 const targetUser = {
@@ -99,7 +99,7 @@ describe('UserRoleDialog: 失敗の文言', () => {
       '対象のユーザーが無い（404）',
       () =>
         jsonResponse(404, { error: 'User not found', code: 'USER_NOT_FOUND' }),
-      'ユーザーが見つかりません。ページを再読み込みして一覧を更新してください',
+      'ユーザーが見つかりません。既に削除された可能性があります',
     ],
     [
       '管理者の権限が外れた（403）',
@@ -221,6 +221,17 @@ describe('UserDisableDialog: 失敗の文言', () => {
       DISABLE_FAILED,
     ],
     [
+      '操作している本人が無効化された（401・USER_DELETED）',
+      () =>
+        jsonResponse(401, {
+          error: 'Unauthorized',
+          code: 'USER_DELETED',
+          message: 'Your session is no longer valid.',
+          requiresLogout: true,
+        }),
+      'あなたのアカウントは無効化されているため、操作できません',
+    ],
+    [
       'Object.prototype の名前のコードは文言の表に当てない',
       () => jsonResponse(400, { error: 'x', code: 'toString' }),
       DISABLE_FAILED,
@@ -239,17 +250,74 @@ describe('UserDisableDialog: 失敗の文言', () => {
     );
   });
 
-  it('成功したら閉じる', async () => {
+  it('成功したら一覧を取り直して閉じる', async () => {
     global.fetch = jest
       .fn()
       .mockResolvedValue(jsonResponse(200, { user: { id: 'user-2' } }));
     const onClose = jest.fn();
     const user = userEvent.setup();
-    renderWithClient(<UserDisableDialog user={targetUser} onClose={onClose} />);
+    const { invalidate } = renderWithClient(
+      <UserDisableDialog user={targetUser} onClose={onClose} />
+    );
     const dialog = await screen.findByRole('dialog');
 
     await user.click(within(dialog).getByRole('button', { name: '無効化' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'users'] });
+  });
+
+  it('失敗しても一覧を取り直す（無効化が済んだ後に応答だけ失われ、再試行が「既に無効化」になったとき）', async () => {
+    global.fetch = jest.fn().mockResolvedValue(
+      jsonResponse(400, {
+        error: 'User is already deactivated',
+        code: 'ALREADY_DEACTIVATED',
+      })
+    );
+    const user = userEvent.setup();
+    const { invalidate } = renderWithClient(
+      <UserDisableDialog user={targetUser} onClose={jest.fn()} />
+    );
+    const dialog = await screen.findByRole('dialog');
+
+    await user.click(within(dialog).getByRole('button', { name: '無効化' }));
+
+    await within(dialog).findByText('このユーザーは既に無効化されています');
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'users'] });
+  });
+});
+
+describe('UserRoleDialog: 成功と失敗の後の一覧', () => {
+  it('成功したら一覧を取り直して閉じる', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { user: { id: 'user-2' } }));
+    const onClose = jest.fn();
+    const user = userEvent.setup();
+    const { invalidate } = renderWithClient(
+      <UserRoleDialog user={targetUser} onClose={onClose} />
+    );
+    const dialog = await screen.findByRole('dialog');
+
+    await user.click(within(dialog).getByRole('button', { name: /に変更$/ }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'users'] });
+  });
+
+  it('通信の失敗の後も一覧を取り直す（更新が済んだかは分からないため）', async () => {
+    global.fetch = jest
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    const user = userEvent.setup();
+    const { invalidate } = renderWithClient(
+      <UserRoleDialog user={targetUser} onClose={jest.fn()} />
+    );
+    const dialog = await screen.findByRole('dialog');
+
+    await user.click(within(dialog).getByRole('button', { name: /に変更$/ }));
+
+    await within(dialog).findByText(ROLE_FAILED);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'users'] });
   });
 });

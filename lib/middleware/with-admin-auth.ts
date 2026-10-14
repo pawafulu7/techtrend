@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { resolveSessionFromRequest } from './session-context';
 import { getUserAuthData } from '@/lib/auth/user-auth-cache';
 import logger from '@/lib/logger';
+import { ADMIN_API_ERROR_CODES } from '@/lib/constants/admin-api-error-codes';
 
 type Handler = (
   request: NextRequest,
@@ -54,7 +55,7 @@ export function withAdminAuth(handler: Handler): Handler {
       return NextResponse.json(
         {
           error: 'Unauthorized',
-          code: 'USER_DELETED',
+          code: ADMIN_API_ERROR_CODES.USER_DELETED,
           message: 'Your session is no longer valid.',
           requiresLogout: true,
         },
@@ -74,7 +75,7 @@ export function withAdminAuth(handler: Handler): Handler {
       return NextResponse.json(
         {
           error: 'Forbidden',
-          code: 'ADMIN_REQUIRED',
+          code: ADMIN_API_ERROR_CODES.ADMIN_REQUIRED,
           message: 'Admin access required.',
         },
         { status: 403 }

@@ -31,8 +31,12 @@ export function UserRoleDialog({ user, onClose }: Props) {
         { action: 'changeRole', role: newRole },
         'ロールを変更できませんでした。時間をおいて再試行してください'
       ),
+    // 失敗しても一覧を取り直す。更新が済んだ後に応答だけ失われると、再試行は「既に無効化」などで
+    // 失敗し、成功のときだけ取り直す形では一覧が古いまま残るため
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
       handleClose();
     },
   });
