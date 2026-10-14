@@ -32,6 +32,7 @@ const USER_RESPONSE_SELECT = {
   deletedAt: true,
 } as const;
 
+// 画面は code で文言を選ぶ（issue #797）。error は英語の内部向けの文言
 const LAST_ADMIN_ERROR = 'LAST_ADMIN';
 
 async function ensureNotLastAdmin(
@@ -79,13 +80,19 @@ async function handler(request: NextRequest, context: any) {
   });
 
   if (!targetUser) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'User not found', code: 'USER_NOT_FOUND' },
+      { status: 404 }
+    );
   }
 
   if (body.action === 'changeRole') {
     if (targetUserId === currentUserId) {
       return NextResponse.json(
-        { error: 'Cannot change your own role' },
+        {
+          error: 'Cannot change your own role',
+          code: 'CANNOT_CHANGE_OWN_ROLE',
+        },
         { status: 400 }
       );
     }
@@ -120,7 +127,7 @@ async function handler(request: NextRequest, context: any) {
       } catch (error) {
         if (isLastAdminError(error)) {
           return NextResponse.json(
-            { error: 'Cannot demote the last admin' },
+            { error: 'Cannot demote the last admin', code: LAST_ADMIN_ERROR },
             { status: 400 }
           );
         }
@@ -154,14 +161,17 @@ async function handler(request: NextRequest, context: any) {
   if (body.action === 'deactivate') {
     if (targetUserId === currentUserId) {
       return NextResponse.json(
-        { error: 'Cannot deactivate your own account' },
+        {
+          error: 'Cannot deactivate your own account',
+          code: 'CANNOT_DEACTIVATE_SELF',
+        },
         { status: 400 }
       );
     }
 
     if (targetUser.deletedAt) {
       return NextResponse.json(
-        { error: 'User is already deactivated' },
+        { error: 'User is already deactivated', code: 'ALREADY_DEACTIVATED' },
         { status: 400 }
       );
     }
@@ -223,7 +233,7 @@ async function handler(request: NextRequest, context: any) {
     } catch (error) {
       if (isLastAdminError(error)) {
         return NextResponse.json(
-          { error: 'Cannot deactivate the last admin' },
+          { error: 'Cannot deactivate the last admin', code: LAST_ADMIN_ERROR },
           { status: 400 }
         );
       }

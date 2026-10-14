@@ -11,7 +11,7 @@ import { DeleteAccountDialog } from '@/components/profile/DeleteAccountDialog';
 import {
   RATE_LIMITED_MESSAGE,
   SESSION_EXPIRED_MESSAGE,
-} from '@/components/profile/profile-action-errors';
+} from '@/lib/utils/action-error-messages';
 
 const mockToast = jest.fn();
 jest.mock('@/hooks/use-toast', () => ({

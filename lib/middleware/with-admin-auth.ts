@@ -72,7 +72,11 @@ export function withAdminAuth(handler: Handler): Handler {
         'Non-admin user attempted admin API access'
       );
       return NextResponse.json(
-        { error: 'Forbidden', message: 'Admin access required.' },
+        {
+          error: 'Forbidden',
+          code: 'ADMIN_REQUIRED',
+          message: 'Admin access required.',
+        },
         { status: 403 }
       );
     }

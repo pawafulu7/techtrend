@@ -13,6 +13,7 @@ import { Button } from '@/components/ui-v2/button-v2';
 import { Loader2 } from 'lucide-react';
 import { ROLE_LABELS } from '../_types';
 import type { AdminUser } from '../_types';
+import { patchAdminUser } from './patch-admin-user';
 
 interface Props {
   user: Pick<AdminUser, 'id' | 'name' | 'email' | 'role'> | null;
@@ -24,18 +25,12 @@ export function UserRoleDialog({ user, onClose }: Props) {
   const newRole = user?.role === 'admin' ? 'user' : 'admin';
 
   const mutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'changeRole', role: newRole }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to change role');
-      }
-      return res.json();
-    },
+    mutationFn: (userId: string) =>
+      patchAdminUser(
+        userId,
+        { action: 'changeRole', role: newRole },
+        'ロールを変更できませんでした。時間をおいて再試行してください'
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
       handleClose();

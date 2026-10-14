@@ -232,6 +232,7 @@ describe('PATCH /api/admin/users/[id]', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Cannot change your own role');
+      expect(data.code).toBe('CANNOT_CHANGE_OWN_ROLE');
     });
 
     it('rejects invalid role value', async () => {
@@ -263,6 +264,7 @@ describe('PATCH /api/admin/users/[id]', () => {
 
       expect(response.status).toBe(404);
       expect(data.error).toBe('User not found');
+      expect(data.code).toBe('USER_NOT_FOUND');
     });
 
     it('prevents demotion of last admin', async () => {
@@ -288,6 +290,7 @@ describe('PATCH /api/admin/users/[id]', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Cannot demote the last admin');
+      expect(data.code).toBe('LAST_ADMIN');
     });
   });
 
@@ -391,6 +394,7 @@ describe('PATCH /api/admin/users/[id]', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Cannot deactivate your own account');
+      expect(data.code).toBe('CANNOT_DEACTIVATE_SELF');
     });
 
     it('prevents deactivation of last admin', async () => {
@@ -417,6 +421,7 @@ describe('PATCH /api/admin/users/[id]', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Cannot deactivate the last admin');
+      expect(data.code).toBe('LAST_ADMIN');
     });
 
     it('allows deactivation of admin when multiple admins exist', async () => {
@@ -469,6 +474,7 @@ describe('PATCH /api/admin/users/[id]', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('User is already deactivated');
+      expect(data.code).toBe('ALREADY_DEACTIVATED');
     });
   });
 });

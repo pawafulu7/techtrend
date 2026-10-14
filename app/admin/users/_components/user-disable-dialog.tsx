@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui-v2/button-v2';
 import { Loader2 } from 'lucide-react';
 import type { AdminUser } from '../_types';
+import { patchAdminUser } from './patch-admin-user';
 
 interface Props {
   user: Pick<AdminUser, 'id' | 'name' | 'email'> | null;
@@ -22,18 +23,12 @@ export function UserDisableDialog({ user, onClose }: Props) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'deactivate' }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to deactivate user');
-      }
-      return res.json();
-    },
+    mutationFn: (userId: string) =>
+      patchAdminUser(
+        userId,
+        { action: 'deactivate' },
+        'ユーザーを無効化できませんでした。時間をおいて再試行してください'
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
       handleClose();
