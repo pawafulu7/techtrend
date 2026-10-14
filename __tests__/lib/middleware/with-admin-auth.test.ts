@@ -142,6 +142,7 @@ describe('withAdminAuth', () => {
 
       expect(response.status).toBe(403);
       expect(body.error).toBe('Forbidden');
+      expect(body.code).toBe('ADMIN_REQUIRED');
       expect(body.message).toBe('Admin access required.');
       expect(mockHandler).not.toHaveBeenCalled();
     });

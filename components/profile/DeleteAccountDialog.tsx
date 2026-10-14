@@ -23,7 +23,7 @@ import {
   type DeleteAccountError,
   type DeleteAccountRequest,
 } from '@/types/api/delete-account';
-import { commonActionErrorMessage } from './profile-action-errors';
+import { commonActionErrorMessage } from '@/lib/utils/action-error-messages';
 
 // この API が返すコード。文言は利用者向けの日本語なのでそのまま出せる。認証・CSRF・レート制限の
 // ミドルウェアは別の形（英語の内部向けの文言）で返すため、そちらはステータスから選ぶ（issue #729）

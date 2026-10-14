@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { commonActionErrorMessage } from './profile-action-errors';
+import { commonActionErrorMessage } from '@/lib/utils/action-error-messages';
 
 const PASSWORD_CHANGE_FAILED_MESSAGE =
   'パスワードを変更できませんでした。時間をおいて再試行してください';
