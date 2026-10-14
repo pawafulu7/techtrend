@@ -7,6 +7,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { commonActionErrorMessage } from './profile-action-errors';
+
+const PASSWORD_CHANGE_FAILED_MESSAGE =
+  'パスワードを変更できませんでした。時間をおいて再試行してください';
+
+// サーバーの文言（英語・内部向け）はそのまま出さず、ステータスとコードから選ぶ（issue #729）
+function passwordChangeErrorMessage(status: number, body: unknown): string {
+  const code =
+    body && typeof body === 'object' && 'code' in body ? body.code : undefined;
+  if (code === 'INVALID_CURRENT_PASSWORD') {
+    return '現在のパスワードが正しくありません';
+  }
+  if (status === 400) {
+    return '入力内容を確認してください。新しいパスワードは8〜72文字で、大文字・小文字・数字を含めてください';
+  }
+  if (status === 409) {
+    return '別の操作でパスワードが変更されました。ページを再読み込みしてからやり直してください';
+  }
+  return commonActionErrorMessage(status) ?? PASSWORD_CHANGE_FAILED_MESSAGE;
+}
 
 type PasswordFormData = {
   currentPassword: string;
@@ -41,10 +61,15 @@ export function PasswordChangeForm() {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || 'パスワードの変更に失敗しました');
+        // 本文が JSON でない（プロキシのエラーページなど）ときも、ステータスから文言を選ぶ
+        const result: unknown = await response.json().catch(() => null);
+        toast({
+          variant: 'destructive',
+          title: 'エラー',
+          description: passwordChangeErrorMessage(response.status, result),
+        });
+        return;
       }
 
       // Success toast
@@ -56,14 +81,12 @@ export function PasswordChangeForm() {
 
       // フォームをリセット
       reset();
-    } catch (error) {
+    } catch {
+      // 通信の失敗。例外の文言（Failed to fetch など）は出さない
       toast({
         variant: 'destructive',
         title: 'エラー',
-        description:
-          error instanceof Error
-            ? error.message
-            : 'パスワードの変更に失敗しました',
+        description: PASSWORD_CHANGE_FAILED_MESSAGE,
       });
     } finally {
       setIsLoading(false);

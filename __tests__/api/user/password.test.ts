@@ -217,6 +217,7 @@ describe('/api/user/password', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Current password is incorrect');
+      expect(data.code).toBe('INVALID_CURRENT_PASSWORD');
     });
 
     it('should successfully change password when all inputs are valid', async () => {

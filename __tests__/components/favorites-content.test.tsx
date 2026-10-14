@@ -7,6 +7,8 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { FavoritesContent } from '@/app/favorites/_components/favorites-content';
+import { FavoritesFetchError } from '@/app/hooks/use-infinite-favorites';
+import { loginWithCallback } from '@/lib/routes/auth';
 
 const mockToast = jest.fn();
 jest.mock('@/hooks/use-toast', () => ({
@@ -43,6 +45,8 @@ let mockOverrides: Record<string, unknown> = {};
 const mockFetchNextPage = jest.fn();
 const mockRefetch = jest.fn();
 jest.mock('@/app/hooks/use-infinite-favorites', () => ({
+  // 401 の判定（FavoritesFetchError・isUnauthorizedFavoritesError）は本物を使う
+  ...jest.requireActual('@/app/hooks/use-infinite-favorites'),
   useInfiniteFavorites: () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { useState } = require('react');
@@ -60,7 +64,7 @@ jest.mock('@/app/hooks/use-infinite-favorites', () => ({
         data: undefined,
         refetch: mockRefetch,
         isFetching: false,
-        errorUpdateCount: 1,
+        hasFailedSinceMount: true,
         removeFavoriteFromCache: jest.fn(),
         ...mockOverrides,
       };
@@ -76,7 +80,7 @@ jest.mock('@/app/hooks/use-infinite-favorites', () => ({
       data: { pages: [] },
       refetch: mockRefetch,
       isFetching: false,
-      errorUpdateCount: 0,
+      hasFailedSinceMount: false,
       removeFavoriteFromCache: (id: string) => {
         mockRemoveFavoriteFromCache(id);
         setFavorites((prev: (typeof FAVORITE)[]) =>
@@ -219,7 +223,7 @@ describe('FavoritesContent: 解除の失敗（issue #701）', () => {
       isLoading: true,
       error: null,
       isFetching: true,
-      errorUpdateCount: 1,
+      hasFailedSinceMount: true,
     };
     renderFavorites();
 
@@ -234,7 +238,7 @@ describe('FavoritesContent: 解除の失敗（issue #701）', () => {
   });
 
   it('取得済みの一覧がある状態で再取得に失敗したら、一覧を残して古いことを示す', () => {
-    mockOverrides = { error: new Error('failed'), errorUpdateCount: 1 };
+    mockOverrides = { error: new Error('failed'), hasFailedSinceMount: true };
     renderFavorites();
 
     expect(
@@ -246,7 +250,7 @@ describe('FavoritesContent: 解除の失敗（issue #701）', () => {
   it('続きのページの取得に失敗したら、下端に出して続きだけを再試行する', async () => {
     mockOverrides = {
       error: new Error('failed'),
-      errorUpdateCount: 1,
+      hasFailedSinceMount: true,
       isFetchNextPageError: true,
       hasNextPage: true,
     };
@@ -260,5 +264,120 @@ describe('FavoritesContent: 解除の失敗（issue #701）', () => {
     await userEvent.click(screen.getByRole('button', { name: '再試行' }));
     expect(mockFetchNextPage).toHaveBeenCalledTimes(1);
     expect(mockRefetch).not.toHaveBeenCalled();
+  });
+
+  it('開き直した直後の取り直しは、前回の失敗が残っていてもスケルトンを出す', () => {
+    mockListError = new Error('failed');
+    mockOverrides = {
+      isLoading: true,
+      error: null,
+      isFetching: true,
+      hasFailedSinceMount: false,
+    };
+    renderFavorites();
+
+    expect(
+      screen.queryByText('お気に入りを読み込めませんでした')
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('FavoritesContent: セッション切れ（401、issue #729）', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    mockListError = null;
+    mockOverrides = {};
+  });
+
+  it('一覧が無いときは、一般の失敗と再試行ではなくログインの案内を出す', () => {
+    mockListError = new FavoritesFetchError(401);
+    renderFavorites();
+
+    expect(
+      screen.getByText('ログインの有効期限が切れました')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'ログインする' })).toHaveAttribute(
+      'href',
+      loginWithCallback('/favorites')
+    );
+    expect(
+      screen.queryByText('お気に入りを読み込めませんでした')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '再試行' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('お気に入り記事がありません')
+    ).not.toBeInTheDocument();
+  });
+
+  it('取得済みの一覧があっても、一覧を隠してログインの案内だけを出す', () => {
+    mockOverrides = {
+      error: new FavoritesFetchError(401),
+      hasFailedSinceMount: true,
+    };
+    renderFavorites();
+
+    expect(
+      screen.getByText('ログインの有効期限が切れました')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('最新のお気に入りを読み込めませんでした')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '解除 a1' })
+    ).not.toBeInTheDocument();
+    // 一覧を出さないので、検索と並び替えも出さない
+    expect(screen.queryByPlaceholderText('検索...')).not.toBeInTheDocument();
+  });
+
+  it('401 以外の失敗では、ログインの案内を出さない', () => {
+    mockListError = new FavoritesFetchError(500);
+    renderFavorites();
+
+    expect(
+      screen.getByText('お気に入りを読み込めませんでした')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('ログインの有効期限が切れました')
+    ).not.toBeInTheDocument();
+  });
+
+  it('この画面を開く前の 401（キャッシュに残ったもの）では、取り直しの間に一覧を隠さない', () => {
+    mockOverrides = {
+      error: new FavoritesFetchError(401),
+      hasFailedSinceMount: false,
+      isFetching: true,
+    };
+    renderFavorites();
+
+    expect(
+      screen.queryByText('ログインの有効期限が切れました')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('最新のお気に入りを読み込めませんでした')
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '解除 a1' })).toBeInTheDocument();
+  });
+
+  it('解除が 401 のときは再試行を促す通知を出さず、取り直してログインの案内に任せる', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401 });
+    try {
+      const { invalidateSpy } = renderFavorites();
+      await userEvent.click(screen.getByRole('button', { name: '解除 a1' }));
+
+      await waitFor(() =>
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: ['infinite-favorites'],
+        })
+      );
+      expect(mockToast).not.toHaveBeenCalled();
+    } finally {
+      global.fetch = originalFetch;
+    }
   });
 });

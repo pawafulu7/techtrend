@@ -12,7 +12,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode } from 'react';
-import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
+import {
+  FavoritesFetchError,
+  useInfiniteFavorites,
+} from '@/app/hooks/use-infinite-favorites';
 
 const FAVORITES_URL = '/api/favorites';
 
@@ -154,5 +157,179 @@ describe('useInfiniteFavorites', () => {
     // 再取得が起きていないこと、stale 化もされていないこと
     expect(favoritesUrls()).toHaveLength(1);
     expect(favoritesQuery(queryClient).state.isInvalidated).toBe(false);
+  });
+});
+
+describe('useInfiniteFavorites: セッション切れ（401、issue #729）', () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: () => Promise.resolve({ error: 'Unauthorized' }),
+    });
+  });
+
+  it('401 は status を持つエラーにし、自動では再試行しない', async () => {
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useInfiniteFavorites(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+    expect(result.current.error).toBeInstanceOf(FavoritesFetchError);
+    expect((result.current.error as FavoritesFetchError | null)?.status).toBe(
+      401
+    );
+    expect(result.current.hasFailedSinceMount).toBe(true);
+    // フック側の retry は 401 で再試行しない（再試行の待ちは 1 秒）
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    });
+    expect(favoritesUrls()).toHaveLength(1);
+  });
+
+  it('401 の後はお気に入りの変更イベントでの invalidate では取り直さず、手動の refetch では取り直す', async () => {
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useInfiniteFavorites(), {
+      wrapper: createWrapper(queryClient),
+    });
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    // 取り直すと data の無いクエリは error が消え、ログインの案内が一般の失敗表示に変わるため
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['infinite-favorites'],
+        refetchType: 'active',
+      });
+    });
+    await flush();
+    expect(favoritesUrls()).toHaveLength(1);
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+    expect(favoritesUrls()).toHaveLength(2);
+  });
+
+  it('401 以外の失敗は 1 回だけ自動で再試行する', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: 'Internal server error' }),
+    });
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useInfiniteFavorites(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(
+      () => {
+        expect(result.current.isError).toBe(true);
+      },
+      { timeout: 3000 }
+    );
+    expect(favoritesUrls()).toHaveLength(2);
+    expect((result.current.error as FavoritesFetchError | null)?.status).toBe(
+      500
+    );
+  });
+
+  it('前回の 401 がキャッシュに残っていても、開き直したら取り直す', async () => {
+    const queryClient = createTestQueryClient();
+    const wrapper = createWrapper(queryClient);
+    const { result, unmount } = renderHook(() => useInfiniteFavorites(), {
+      wrapper,
+    });
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+    unmount();
+    // 前回の 401 の記録と再マウントが同じミリ秒にならないようにする
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    });
+
+    // ログインし直してから /favorites へ戻る
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(PAGE_1_RESPONSE),
+    });
+    const { result: remounted } = renderHook(() => useInfiniteFavorites(), {
+      wrapper,
+    });
+    // 開き直した直後は「この画面を開いてからの失敗」ではない（スケルトンを出す）
+    expect(remounted.current.hasFailedSinceMount).toBe(false);
+    await waitFor(() => {
+      expect(remounted.current.isSuccess).toBe(true);
+    });
+    expect(favoritesUrls()).toHaveLength(2);
+  });
+
+  it('続きのページの 401 は再試行せず、その後の解除イベントでも 401 の状態を消さない', async () => {
+    const page1 = {
+      favorites: [
+        {
+          id: 'a1',
+          title: 'Article',
+          summary: null,
+          url: 'https://example.com/a1',
+          publishedAt: '2026-01-01T00:00:00.000Z',
+          source: { id: 's1', name: 'Source' },
+          favoriteId: 'f1',
+          favoritedAt: '2026-01-02T00:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 21, totalPages: 2 },
+    };
+    mockFetch.mockReset();
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(page1),
+      })
+      .mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ error: 'Unauthorized' }),
+      });
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useInfiniteFavorites(), {
+      wrapper: createWrapper(queryClient),
+    });
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.fetchNextPage();
+    });
+    await waitFor(() => {
+      expect(result.current.isFetchNextPageError).toBe(true);
+    });
+    expect(favoritesUrls()).toHaveLength(2);
+    expect((result.current.error as FavoritesFetchError | null)?.status).toBe(
+      401
+    );
+
+    // 遅れて届いた解除の完了イベント。setQueryData は error を消すので、401 の間は書き換えない
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('article-favorite-changed', {
+          detail: { articleId: 'a1', isFavorited: false },
+        })
+      );
+    });
+    await flush();
+    expect((result.current.error as FavoritesFetchError | null)?.status).toBe(
+      401
+    );
+    expect(favoritesUrls()).toHaveLength(2);
   });
 });

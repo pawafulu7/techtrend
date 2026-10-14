@@ -12,13 +12,17 @@ import { FavoriteArticleCard } from '@/app/components/article/favorite-card';
 import { EmptyState } from '@/components/ui-v2/empty-state';
 import { LiveStatus } from '@/components/ui-v2/live-status';
 import { FavoritesLoading } from './favorites-loading';
-import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
+import {
+  isUnauthorizedFavoritesError,
+  useInfiniteFavorites,
+} from '@/app/hooks/use-infinite-favorites';
 import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth/auth-client';
 import type { SortOption } from '../_types';
 import { FavoritesToolbar } from './favorites-toolbar';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { toast } from '@/hooks/use-toast';
+import { loginWithCallback } from '@/lib/routes/auth';
 
 // 解除に失敗して一覧に戻すときは、黙って戻さずに通知する（issue #701）
 function notifyRemoveFailed() {
@@ -61,17 +65,27 @@ export function FavoritesContent({
     data,
     refetch,
     isFetching,
-    errorUpdateCount,
+    hasFailedSinceMount,
     isFetchNextPageError,
   } = useInfiniteFavorites({ limit: 20, includeRelations: true });
+  // この画面を開く前の失敗（キャッシュに残ったもの）は表示に使わない。data のあるクエリは取り直しの
+  // 間も error が残るため、ログインし直して戻った直後に前の 401 で一覧を隠さないようにする
+  const currentError = hasFailedSinceMount ? error : null;
+  // セッションが切れている: 再試行しても同じなので、ログインの案内だけを出す（issue #729）
+  const isUnauthorized = isUnauthorizedFavoritesError(currentError);
   // 取得に失敗して一覧が無い: 「0件」や空状態ではなく失敗と再試行を出す（issue #701）。
   // React Query は data の無いクエリを再取得すると pending に戻すので、失敗後の再試行中も失敗表示を残す
   const failedWithoutData =
-    data === undefined && (!!error || errorUpdateCount > 0);
+    !isUnauthorized &&
+    data === undefined &&
+    (!!currentError || hasFailedSinceMount);
   // 取得済みの一覧がある状態で再取得に失敗した: 一覧を残して古いことを示す。続きのページの
   // 取得の失敗は一覧の下端に出し、全ページを取り直さず続きだけを再試行する（スクロール位置を失わないため）
   const staleAfterError =
-    !!error && data !== undefined && !isFetchNextPageError;
+    !!currentError &&
+    !isUnauthorized &&
+    data !== undefined &&
+    !isFetchNextPageError;
 
   // Filter and sort favorites
   const filteredFavorites = useMemo(() => {
@@ -160,7 +174,8 @@ export function FavoritesContent({
         if (!response.ok && response.status !== 404) {
           // Non-OK response: invalidate query to restore from server
           queryClient.invalidateQueries({ queryKey: ['infinite-favorites'] });
-          notifyRemoveFailed();
+          // 401 は取り直しも 401 になり、ログインの案内に切り替わる。再試行を促す通知は出さない
+          if (response.status !== 401) notifyRemoveFailed();
           return;
         }
 
@@ -192,7 +207,7 @@ export function FavoritesContent({
   }, [isLoading, error, allFavorites.length]);
 
   // Loading state
-  if (isLoading && allFavorites.length === 0 && errorUpdateCount === 0) {
+  if (isLoading && allFavorites.length === 0 && !hasFailedSinceMount) {
     return <FavoritesLoading />;
   }
 
@@ -202,7 +217,7 @@ export function FavoritesContent({
         icon={Heart}
         title="お気に入り"
         count={
-          failedWithoutData
+          failedWithoutData || isUnauthorized
             ? undefined
             : {
                 value: Math.max(0, totalCount),
@@ -210,15 +225,31 @@ export function FavoritesContent({
               }
         }
         actions={
-          <FavoritesToolbar
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            sortOption={sortOption}
-            onSortOptionChange={setSortOption}
-          />
+          // 401 のときは一覧を出さないので、検索と並び替えも出さない
+          isUnauthorized ? undefined : (
+            <FavoritesToolbar
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              sortOption={sortOption}
+              onSortOptionChange={setSortOption}
+            />
+          )
         }
       />
 
+      {isUnauthorized && (
+        <CardV2 className="mx-auto max-w-md">
+          <ErrorState
+            size="block"
+            title="ログインの有効期限が切れました"
+            description="お気に入りを表示するには、もう一度ログインしてください。"
+          >
+            <Button asChild className="mt-6 min-h-[44px]">
+              <Link href={loginWithCallback('/favorites')}>ログインする</Link>
+            </Button>
+          </ErrorState>
+        </CardV2>
+      )}
       {/* Error state: 生の error.message は出さない（issue #701） */}
       {failedWithoutData && (
         <CardV2 className="mx-auto max-w-md">
@@ -242,7 +273,8 @@ export function FavoritesContent({
       )}
 
       {/* Empty state (no favorites at all) */}
-      {failedWithoutData ? null : allFavorites.length === 0 && !isLoading ? (
+      {failedWithoutData || isUnauthorized ? null : allFavorites.length === 0 &&
+        !isLoading ? (
         <CardV2
           ref={emptyStateRef}
           tabIndex={-1}
