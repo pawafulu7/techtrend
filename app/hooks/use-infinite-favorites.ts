@@ -1,12 +1,23 @@
 'use client';
 
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FavoritesResponseSchema } from '@/lib/schemas/favorites';
 import type {
   FavoriteArticle,
   FavoritesApiResponse,
 } from '@/lib/types/favorites';
+
+/** 画面で文言を選べるよう、HTTP ステータスを持たせる（issue #729） */
+export class FavoritesFetchError extends Error {
+  constructor(readonly status: number) {
+    super(`Failed to fetch favorites: ${status}`);
+    this.name = 'FavoritesFetchError';
+  }
+}
+
+export const isUnauthorizedFavoritesError = (error: unknown) =>
+  error instanceof FavoritesFetchError && error.status === 401;
 
 interface UseFavoritesOptions {
   /** 1ページあたりの件数 */
@@ -153,6 +164,10 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
   // お気に入り削除時のキャッシュ更新（外部から呼び出し可能）
   const removeFavoriteFromCache = updateCacheOnRemove;
 
+  // 止めるのは、この画面を開いてから起きた 401 だけ。ログインし直してクライアント遷移で戻ると
+  // 前の 401 がキャッシュに残るため、それで止めると案内が消えなくなる（lib/hooks/use-digest.ts と同じ）
+  const [mountedAt] = useState(() => Date.now());
+
   const infiniteQuery = useInfiniteQuery<FavoritesApiResponse, Error>({
     queryKey: ['infinite-favorites'],
     queryFn: async ({ pageParam, signal }) => {
@@ -183,9 +198,7 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
       );
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch favorites: ${response.status} ${response.statusText}`
-        );
+        throw new FavoritesFetchError(response.status);
       }
 
       const data = await response.json();
@@ -226,9 +239,22 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     // （app/favorites/_components/favorites-content.tsx）で、未マウント中に他画面で
     // 起きたお気に入りの追加・削除を上の window イベントリスナーで拾えないため、
     // false にするとキャッシュが最大 gcTime ぶん古いまま表示される。
-    retry: 1,
+    // 401 は取り直してもログインし直すまで同じ結果になるので、自動では取り直さない。data の無い
+    // クエリは取り直すと error が消え、その間ログインの案内が一般の失敗表示に変わってしまう。
+    // enabled はお気に入りの変更イベントでの invalidate も止める。手動の refetch() は enabled を見ない
+    retry: (failureCount, error) =>
+      !isUnauthorizedFavoritesError(error) && failureCount < 1,
     retryDelay: 1000,
+    enabled: (query) =>
+      !(
+        isUnauthorizedFavoritesError(query.state.error) &&
+        query.state.errorUpdatedAt >= mountedAt
+      ),
   });
+
+  // この画面を開いてから失敗したか。errorUpdateCount はキャッシュに残るので、開き直した直後の
+  // 取り直し（ログインし直した後など）を「失敗後の再試行」と取り違えないよう時刻で判断する
+  const hasFailedSinceMount = infiniteQuery.errorUpdatedAt >= mountedAt;
 
   // 全お気に入りをフラット化
   const allFavorites = useMemo<FavoriteArticle[]>(() => {
@@ -253,5 +279,6 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     allFavorites,
     totalCount,
     removeFavoriteFromCache,
+    hasFailedSinceMount,
   };
 }

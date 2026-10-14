@@ -12,13 +12,17 @@ import { FavoriteArticleCard } from '@/app/components/article/favorite-card';
 import { EmptyState } from '@/components/ui-v2/empty-state';
 import { LiveStatus } from '@/components/ui-v2/live-status';
 import { FavoritesLoading } from './favorites-loading';
-import { useInfiniteFavorites } from '@/app/hooks/use-infinite-favorites';
+import {
+  isUnauthorizedFavoritesError,
+  useInfiniteFavorites,
+} from '@/app/hooks/use-infinite-favorites';
 import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth/auth-client';
 import type { SortOption } from '../_types';
 import { FavoritesToolbar } from './favorites-toolbar';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { toast } from '@/hooks/use-toast';
+import { loginWithCallback } from '@/lib/routes/auth';
 
 // 解除に失敗して一覧に戻すときは、黙って戻さずに通知する（issue #701）
 function notifyRemoveFailed() {
@@ -61,17 +65,19 @@ export function FavoritesContent({
     data,
     refetch,
     isFetching,
-    errorUpdateCount,
+    hasFailedSinceMount,
     isFetchNextPageError,
   } = useInfiniteFavorites({ limit: 20, includeRelations: true });
+  // セッションが切れている: 再試行しても同じなので、ログインの案内だけを出す（issue #729）
+  const isUnauthorized = isUnauthorizedFavoritesError(error);
   // 取得に失敗して一覧が無い: 「0件」や空状態ではなく失敗と再試行を出す（issue #701）。
   // React Query は data の無いクエリを再取得すると pending に戻すので、失敗後の再試行中も失敗表示を残す
   const failedWithoutData =
-    data === undefined && (!!error || errorUpdateCount > 0);
+    !isUnauthorized && data === undefined && (!!error || hasFailedSinceMount);
   // 取得済みの一覧がある状態で再取得に失敗した: 一覧を残して古いことを示す。続きのページの
   // 取得の失敗は一覧の下端に出し、全ページを取り直さず続きだけを再試行する（スクロール位置を失わないため）
   const staleAfterError =
-    !!error && data !== undefined && !isFetchNextPageError;
+    !!error && !isUnauthorized && data !== undefined && !isFetchNextPageError;
 
   // Filter and sort favorites
   const filteredFavorites = useMemo(() => {
@@ -192,7 +198,7 @@ export function FavoritesContent({
   }, [isLoading, error, allFavorites.length]);
 
   // Loading state
-  if (isLoading && allFavorites.length === 0 && errorUpdateCount === 0) {
+  if (isLoading && allFavorites.length === 0 && !hasFailedSinceMount) {
     return <FavoritesLoading />;
   }
 
@@ -202,7 +208,7 @@ export function FavoritesContent({
         icon={Heart}
         title="お気に入り"
         count={
-          failedWithoutData
+          failedWithoutData || isUnauthorized
             ? undefined
             : {
                 value: Math.max(0, totalCount),
@@ -219,6 +225,19 @@ export function FavoritesContent({
         }
       />
 
+      {isUnauthorized && (
+        <CardV2 className="mx-auto max-w-md">
+          <ErrorState
+            size="block"
+            title="ログインの有効期限が切れました"
+            description="お気に入りを表示するには、もう一度ログインしてください。"
+          >
+            <Button asChild className="mt-6 min-h-[44px]">
+              <Link href={loginWithCallback('/favorites')}>ログインする</Link>
+            </Button>
+          </ErrorState>
+        </CardV2>
+      )}
       {/* Error state: 生の error.message は出さない（issue #701） */}
       {failedWithoutData && (
         <CardV2 className="mx-auto max-w-md">
@@ -242,7 +261,8 @@ export function FavoritesContent({
       )}
 
       {/* Empty state (no favorites at all) */}
-      {failedWithoutData ? null : allFavorites.length === 0 && !isLoading ? (
+      {failedWithoutData || isUnauthorized ? null : allFavorites.length === 0 &&
+        !isLoading ? (
         <CardV2
           ref={emptyStateRef}
           tabIndex={-1}

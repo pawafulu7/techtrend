@@ -20,9 +20,42 @@ import { AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   CONFIRMATION_WORD,
+  type DeleteAccountError,
   type DeleteAccountRequest,
   type DeleteAccountResult,
 } from '@/types/api/delete-account';
+import { commonActionErrorMessage } from './profile-action-errors';
+
+// この API が返すコード。文言は利用者向けの日本語なのでそのまま出せる。認証・CSRF・レート制限の
+// ミドルウェアは別の形（英語の内部向けの文言）で返すため、そちらはステータスから選ぶ（issue #729）
+const API_ERROR_CODES: ReadonlySet<string> = new Set<
+  DeleteAccountError['error']
+>([
+  'INVALID_PASSWORD',
+  'INVALID_CONFIRMATION',
+  'VALIDATION_ERROR',
+  'INTERNAL_ERROR',
+  'USER_NOT_FOUND',
+]);
+
+function deleteAccountErrorMessage(
+  status: number,
+  error: unknown,
+  message: unknown
+): string {
+  if (
+    typeof error === 'string' &&
+    API_ERROR_CODES.has(error) &&
+    typeof message === 'string' &&
+    message
+  ) {
+    return message;
+  }
+  return (
+    commonActionErrorMessage(status) ??
+    'アカウントを削除できませんでした。時間をおいて再試行してください'
+  );
+}
 
 interface DeleteAccountDialogProps {
   hasPassword: boolean;
@@ -77,7 +110,11 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
         ) {
           toast({
             title: 'エラーが発生しました',
-            description: 'もう一度お試しください',
+            description: deleteAccountErrorMessage(
+              response.status,
+              undefined,
+              undefined
+            ),
             variant: 'destructive',
           });
           return;
@@ -101,7 +138,11 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
         } else {
           toast({
             title: 'エラーが発生しました',
-            description: errorData.message || 'アカウント削除に失敗しました',
+            description: deleteAccountErrorMessage(
+              response.status,
+              errorData.error,
+              errorData.message
+            ),
             variant: 'destructive',
           });
         }

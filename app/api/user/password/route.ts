@@ -92,8 +92,12 @@ async function changePasswordHandler(
       // changePassword関数からのエラーハンドリング
       if (error instanceof Error) {
         if (error.message === 'Invalid current password') {
+          // 画面は code で文言を選ぶ（issue #729）。error は英語の内部向けの文言
           return NextResponse.json(
-            { error: 'Current password is incorrect' },
+            {
+              error: 'Current password is incorrect',
+              code: 'INVALID_CURRENT_PASSWORD',
+            },
             { status: 400 }
           );
         }

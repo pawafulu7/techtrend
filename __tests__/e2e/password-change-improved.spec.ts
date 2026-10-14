@@ -240,21 +240,9 @@ test.describe.serial('Password Change Feature - Improved', () => {
     // 送信ボタンをクリック（type="submit"を使用）
     await page.click('button[type="submit"]:has-text("パスワードを変更")');
     
-    // CI環境用にタイムアウトを延長
-    // エラーメッセージを複数パターンで確認
-    let errorFound = await waitForErrorMessage(page, 'Current password is incorrect', 3000);
-    if (!errorFound) {
-      errorFound = await waitForErrorMessage(page, '現在のパスワードが正しくありません', 3000);
-    }
-    if (!errorFound) {
-      errorFound = await waitForErrorMessage(page, 'パスワードが間違っています', 3000);
-    }
-    if (!errorFound) {
-      // 汎用的なエラー表示の確認
-      const errorElement = page.locator('[role="alert"], .text-destructive, .error');
-      errorFound = await errorElement.isVisible().catch(() => false);
-    }
-    expect(errorFound).toBe(true);
+    // サーバーの英語の文言はそのまま出さず、利用者向けの文言をトーストで出す（issue #729）
+    await expect(page.getByText('現在のパスワードが正しくありません').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Current password is incorrect')).toHaveCount(0);
   });
 
   test('6. 大文字・小文字・数字が含まれていない場合エラーが表示される', async ({ page, browserName }) => {
