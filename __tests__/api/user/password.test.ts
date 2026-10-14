@@ -12,7 +12,7 @@ jest.mock('@/lib/auth/auth', () => ({
 
 // Mock changePassword
 jest.mock('@/lib/auth/utils', () => ({
-  changePassword: jest.fn(),
+  changePassword: jest.fn()
 }));
 
 // Mock rate limiter (preserve RateLimitError class)
@@ -20,9 +20,7 @@ jest.mock('@/lib/rate-limiter', () => {
   const actual = jest.requireActual('@/lib/rate-limiter');
   return {
     ...actual,
-    checkRateLimit: jest
-      .fn()
-      .mockResolvedValue({ limit: 5, remaining: 4, reset: new Date() }),
+    checkRateLimit: jest.fn().mockResolvedValue({ limit: 5, remaining: 4, reset: new Date() }),
     createRateLimiterFromConfig: jest.fn().mockReturnValue({
       consume: jest.fn().mockResolvedValue({}),
     }),
@@ -36,10 +34,7 @@ const { prisma } = require('@/lib/prisma');
 // withUserValidation が引く DB のユーザー。既定では、問い合わせた ID の未退会ユーザーを返す
 function setUserRecord(deletedAt: Date | null) {
   (prisma.user.findUnique as jest.Mock).mockImplementation(
-    async (args: { where: { id: string } }) => ({
-      id: args.where.id,
-      deletedAt,
-    })
+    async (args: { where: { id: string } }) => ({ id: args.where.id, deletedAt })
   );
 }
 
@@ -55,21 +50,18 @@ describe('/api/user/password', () => {
       (auth.api.getSession as jest.Mock).mockResolvedValue(null);
 
       // 同一オリジンのリクエスト（route 単体の CSRF 保護を通過させ、認証の判定を見る）
-      const request = new NextRequest(
-        'http://localhost:3000/api/user/password',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'sec-fetch-site': 'same-origin',
-          },
-          body: JSON.stringify({
-            currentPassword: 'oldPassword123',
-            newPassword: 'NewPassword123',
-            confirmPassword: 'NewPassword123',
-          }),
-        }
-      );
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'sec-fetch-site': 'same-origin',
+        },
+        body: JSON.stringify({
+          currentPassword: 'oldPassword123',
+          newPassword: 'NewPassword123',
+          confirmPassword: 'NewPassword123',
+        }),
+      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -85,30 +77,22 @@ describe('/api/user/password', () => {
       const { auth } = require('@/lib/auth/auth');
       (auth.api.getSession as jest.Mock).mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' },
-        session: {
-          id: 's1',
-          userId: 'user123',
-          token: 't1',
-          expiresAt: new Date(),
-        },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
       setUserRecord(new Date('2026-09-30T00:00:00.000Z'));
 
-      const request = new NextRequest(
-        'http://localhost:3000/api/user/password',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'sec-fetch-site': 'same-origin',
-          },
-          body: JSON.stringify({
-            currentPassword: 'oldPassword123',
-            newPassword: 'NewPassword123',
-            confirmPassword: 'NewPassword123',
-          }),
-        }
-      );
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'sec-fetch-site': 'same-origin',
+        },
+        body: JSON.stringify({
+          currentPassword: 'oldPassword123',
+          newPassword: 'NewPassword123',
+          confirmPassword: 'NewPassword123',
+        }),
+      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -123,30 +107,22 @@ describe('/api/user/password', () => {
       const { auth } = require('@/lib/auth/auth');
       (auth.api.getSession as jest.Mock).mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' },
-        session: {
-          id: 's1',
-          userId: 'user123',
-          token: 't1',
-          expiresAt: new Date(),
-        },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
-      const request = new NextRequest(
-        'http://localhost:3000/api/user/password',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            origin: 'https://evil.example',
-            'sec-fetch-site': 'cross-site',
-          },
-          body: JSON.stringify({
-            currentPassword: 'oldPassword123',
-            newPassword: 'NewPassword123',
-            confirmPassword: 'NewPassword123',
-          }),
-        }
-      );
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          origin: 'https://evil.example',
+          'sec-fetch-site': 'cross-site',
+        },
+        body: JSON.stringify({
+          currentPassword: 'oldPassword123',
+          newPassword: 'NewPassword123',
+          confirmPassword: 'NewPassword123',
+        }),
+      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -161,28 +137,20 @@ describe('/api/user/password', () => {
       const { auth } = require('@/lib/auth/auth');
       (auth.api.getSession as jest.Mock).mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' },
-        session: {
-          id: 's1',
-          userId: 'user123',
-          token: 't1',
-          expiresAt: new Date(),
-        },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
-      const request = new NextRequest(
-        'http://localhost:3000/api/user/password',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            currentPassword: 'oldPassword123',
-            newPassword: 'NewPassword123',
-            confirmPassword: 'DifferentPassword123',
-          }),
-        }
-      );
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: 'oldPassword123',
+          newPassword: 'NewPassword123',
+          confirmPassword: 'DifferentPassword123',
+        }),
+      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -196,28 +164,20 @@ describe('/api/user/password', () => {
       const { auth } = require('@/lib/auth/auth');
       (auth.api.getSession as jest.Mock).mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' },
-        session: {
-          id: 's1',
-          userId: 'user123',
-          token: 't1',
-          expiresAt: new Date(),
-        },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
-      const request = new NextRequest(
-        'http://localhost:3000/api/user/password',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            currentPassword: 'oldPassword123',
-            newPassword: 'short',
-            confirmPassword: 'short',
-          }),
-        }
-      );
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: 'oldPassword123',
+          newPassword: 'short',
+          confirmPassword: 'short',
+        }),
+      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -230,35 +190,27 @@ describe('/api/user/password', () => {
     it('should return 400 when current password is incorrect', async () => {
       const { auth } = require('@/lib/auth/auth');
       const { changePassword } = require('@/lib/auth/utils');
-
+      
       (auth.api.getSession as jest.Mock).mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' },
-        session: {
-          id: 's1',
-          userId: 'user123',
-          token: 't1',
-          expiresAt: new Date(),
-        },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
-
+      
       (changePassword as jest.Mock).mockRejectedValue(
         new Error('Invalid current password')
       );
 
-      const request = new NextRequest(
-        'http://localhost:3000/api/user/password',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            currentPassword: 'wrongPassword',
-            newPassword: 'NewPassword123',
-            confirmPassword: 'NewPassword123',
-          }),
-        }
-      );
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: 'wrongPassword',
+          newPassword: 'NewPassword123',
+          confirmPassword: 'NewPassword123',
+        }),
+      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -271,36 +223,28 @@ describe('/api/user/password', () => {
     it('should successfully change password when all inputs are valid', async () => {
       const { auth } = require('@/lib/auth/auth');
       const { changePassword } = require('@/lib/auth/utils');
-
+      
       (auth.api.getSession as jest.Mock).mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' },
-        session: {
-          id: 's1',
-          userId: 'user123',
-          token: 't1',
-          expiresAt: new Date(),
-        },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
-
+      
       (changePassword as jest.Mock).mockResolvedValue(2);
 
       // Cookie の値（"token.署名"）は getSession の token と違う。route は Cookie ではなく
       // getSession の token を渡す必要がある（Cookie の値だと操作中のセッションも消える）
-      const request = new NextRequest(
-        'http://localhost:3000/api/user/password',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            cookie: 'better-auth.session_token=t1.signature%3D',
-          },
-          body: JSON.stringify({
-            currentPassword: 'oldPassword123',
-            newPassword: 'NewPassword123',
-            confirmPassword: 'NewPassword123',
-          }),
-        }
-      );
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          cookie: 'better-auth.session_token=t1.signature%3D',
+        },
+        body: JSON.stringify({
+          currentPassword: 'oldPassword123',
+          newPassword: 'NewPassword123',
+          confirmPassword: 'NewPassword123',
+        }),
+      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -333,29 +277,21 @@ describe('/api/user/password', () => {
 
         (auth.api.getSession as jest.Mock).mockResolvedValue({
           user: { id: 'user123', email: 'test@example.com' },
-          session: {
-            id: 's1',
-            userId: 'user123',
-            token: 't1',
-            expiresAt: new Date(),
-          },
+          session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
         });
         (changePassword as jest.Mock).mockRejectedValue(new Error(message));
 
-        const request = new NextRequest(
-          'http://localhost:3000/api/user/password',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              currentPassword: 'oldPassword123',
-              newPassword: 'NewPassword123',
-              confirmPassword: 'NewPassword123',
-            }),
-          }
-        );
+        const request = new NextRequest('http://localhost:3000/api/user/password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            currentPassword: 'oldPassword123',
+            newPassword: 'NewPassword123',
+            confirmPassword: 'NewPassword123',
+          }),
+        });
 
         const response = await POST(request);
         const data = await response.json();
@@ -373,20 +309,17 @@ describe('/api/user/password', () => {
         user: { id: 'user123', email: 'test@example.com' },
       });
 
-      const request = new NextRequest(
-        'http://localhost:3000/api/user/password',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            currentPassword: 'oldPassword123',
-            newPassword: 'NewPassword123',
-            confirmPassword: 'NewPassword123',
-          }),
-        }
-      );
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: 'oldPassword123',
+          newPassword: 'NewPassword123',
+          confirmPassword: 'NewPassword123',
+        }),
+      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -399,35 +332,27 @@ describe('/api/user/password', () => {
     it('should return 404 when user is not found', async () => {
       const { auth } = require('@/lib/auth/auth');
       const { changePassword } = require('@/lib/auth/utils');
-
+      
       (auth.api.getSession as jest.Mock).mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' },
-        session: {
-          id: 's1',
-          userId: 'user123',
-          token: 't1',
-          expiresAt: new Date(),
-        },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
-
+      
       (changePassword as jest.Mock).mockRejectedValue(
         new Error('User not found')
       );
 
-      const request = new NextRequest(
-        'http://localhost:3000/api/user/password',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            currentPassword: 'oldPassword123',
-            newPassword: 'NewPassword123',
-            confirmPassword: 'NewPassword123',
-          }),
-        }
-      );
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: 'oldPassword123',
+          newPassword: 'NewPassword123',
+          confirmPassword: 'NewPassword123',
+        }),
+      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -439,35 +364,27 @@ describe('/api/user/password', () => {
     it('should return 500 when an unexpected error occurs', async () => {
       const { auth } = require('@/lib/auth/auth');
       const { changePassword } = require('@/lib/auth/utils');
-
+      
       (auth.api.getSession as jest.Mock).mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' },
-        session: {
-          id: 's1',
-          userId: 'user123',
-          token: 't1',
-          expiresAt: new Date(),
-        },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
-
+      
       (changePassword as jest.Mock).mockRejectedValue(
         new Error('Database connection failed')
       );
 
-      const request = new NextRequest(
-        'http://localhost:3000/api/user/password',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            currentPassword: 'oldPassword123',
-            newPassword: 'NewPassword123',
-            confirmPassword: 'NewPassword123',
-          }),
-        }
-      );
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: 'oldPassword123',
+          newPassword: 'NewPassword123',
+          confirmPassword: 'NewPassword123',
+        }),
+      });
 
       const response = await POST(request);
       const data = await response.json();
@@ -478,27 +395,19 @@ describe('/api/user/password', () => {
 
     it('should handle missing request body gracefully', async () => {
       const { auth } = require('@/lib/auth/auth');
-
+      
       (auth.api.getSession as jest.Mock).mockResolvedValue({
         user: { id: 'user123', email: 'test@example.com' },
-        session: {
-          id: 's1',
-          userId: 'user123',
-          token: 't1',
-          expiresAt: new Date(),
-        },
+        session: { id: 's1', userId: 'user123', token: 't1', expiresAt: new Date() },
       });
 
-      const request = new NextRequest(
-        'http://localhost:3000/api/user/password',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({}),
-        }
-      );
+      const request = new NextRequest('http://localhost:3000/api/user/password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
 
       const response = await POST(request);
       const data = await response.json();
