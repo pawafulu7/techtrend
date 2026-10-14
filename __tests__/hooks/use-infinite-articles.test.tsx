@@ -15,6 +15,7 @@ import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import {
   infiniteArticlesQueryKey,
   normalizeArticleFilters,
+  type ArticleFilters,
 } from '@/lib/articles/home-articles-query';
 
 // Mock fetch globally
@@ -208,6 +209,133 @@ describe('useInfiniteArticles', () => {
     });
   });
 
+  /**
+   * 条件を変えたら、前の条件のクエリを 200ms の debounce の後に消す。消さないと、
+   * ブラウザで戻ったときにキャッシュの一覧をそのまま出して取り直さない
+   * （refetchOnMount: false）。
+   */
+  describe('条件を変えたときの前の条件のクエリ（issue #778）', () => {
+    const FILTERS_A: ArticleFilters = { tags: 'React', includeUserData: true };
+    const FILTERS_B: ArticleFilters = { ...FILTERS_A, sortBy: 'qualityScore' };
+    const FILTERS_C: ArticleFilters = { ...FILTERS_A, sortBy: 'bookmarks' };
+    const KEY_A = infiniteArticlesQueryKey(normalizeArticleFilters(FILTERS_A));
+    const KEY_B = infiniteArticlesQueryKey(normalizeArticleFilters(FILTERS_B));
+    const KEY_C = infiniteArticlesQueryKey(normalizeArticleFilters(FILTERS_C));
+
+    /** debounce（200ms）が発火するまで待つ */
+    async function waitForDebounce() {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      });
+    }
+
+    function renderWithFilters(queryClient: QueryClient) {
+      // サーバーで先読みした1ページ目（hydration で入る）を再現する
+      queryClient.setQueryData(KEY_A, {
+        pages: [
+          {
+            data: { items: [], total: 1, page: 1, totalPages: 1, limit: 20 },
+          },
+        ],
+        pageParams: [1],
+      });
+      return renderHook(
+        ({ filters }: { filters: ArticleFilters }) =>
+          useInfiniteArticles(filters),
+        {
+          wrapper: createWrapper(queryClient),
+          initialProps: { filters: FILTERS_A },
+        }
+      );
+    }
+
+    it('マウントから 200ms 以上たってから変えると、前の条件のクエリを消す', async () => {
+      const queryClient = createTestQueryClient();
+      const { rerender } = renderWithFilters(queryClient);
+      await waitForDebounce();
+
+      rerender({ filters: FILTERS_B });
+      await waitForDebounce();
+
+      expect(infiniteArticlesQueryKeys(queryClient)).toEqual([KEY_B]);
+    });
+
+    it('マウントの直後（200ms 以内）に変えても、前の条件のクエリを消す', async () => {
+      // hydration が遅れると、マウントの直後に並び替えのクリックが届く。
+      // 前の条件を debounce の発火で覚えていたため、マウントの分の発火が取り消され、
+      // 最初の条件のクエリが残っていた
+      const queryClient = createTestQueryClient();
+      const { rerender } = renderWithFilters(queryClient);
+
+      rerender({ filters: FILTERS_B });
+      await waitForDebounce();
+
+      expect(infiniteArticlesQueryKeys(queryClient)).toEqual([KEY_B]);
+    });
+
+    it('200ms 以内に続けて変えても、途中の条件のクエリを消し、戻ったときに取り直す', async () => {
+      // 発火のときに前の条件を覚えていたため、途中の条件（B）の分が取り消されて残り、
+      // B に戻ったときにキャッシュを出して取り直さなかった
+      const queryClient = createTestQueryClient();
+      const { rerender } = renderWithFilters(queryClient);
+      await waitForDebounce();
+
+      rerender({ filters: FILTERS_B });
+      rerender({ filters: FILTERS_C });
+      await waitForDebounce();
+      expect(infiniteArticlesQueryKeys(queryClient)).toEqual([KEY_C]);
+
+      mockFetch.mockClear();
+      rerender({ filters: FILTERS_B });
+      await waitFor(() => {
+        expect(
+          articleListUrls().filter(
+            (url) =>
+              new URL(url, 'http://localhost').searchParams.get('sortBy') ===
+              'qualityScore'
+          )
+        ).toHaveLength(1);
+      });
+    });
+
+    it('条件を変えた直後（200ms 以内）にアンマウントしても、前の条件のクエリを消す', async () => {
+      // 検索・タグの変更などで一覧が作り直されると、debounce が cleanup で取り消され、
+      // 前の条件のクエリが残っていた。同じ QueryClient で戻ると取り直さない
+      const queryClient = createTestQueryClient();
+      const { rerender, unmount } = renderWithFilters(queryClient);
+      await waitForDebounce();
+
+      rerender({ filters: FILTERS_B });
+      unmount();
+      expect(infiniteArticlesQueryKeys(queryClient)).not.toContainEqual(KEY_A);
+
+      mockFetch.mockClear();
+      renderHook(() => useInfiniteArticles(FILTERS_A), {
+        wrapper: createWrapper(queryClient),
+      });
+      await waitFor(() => {
+        expect(
+          articleListUrls().filter(
+            (url) =>
+              !new URL(url, 'http://localhost').searchParams.has('sortBy')
+          )
+        ).toHaveLength(1);
+      });
+    });
+
+    it('200ms 以内に元の条件へ戻したら、そのクエリは消さない', async () => {
+      const queryClient = createTestQueryClient();
+      const { rerender } = renderWithFilters(queryClient);
+      await waitForDebounce();
+
+      rerender({ filters: FILTERS_B });
+      rerender({ filters: FILTERS_A });
+      await waitForDebounce();
+
+      expect(infiniteArticlesQueryKeys(queryClient)).toContainEqual(KEY_A);
+    });
+  });
+
   it('refetchOnReconnect をフック側で false 指定している（online イベントで全ページが取り直される回帰を防ぐ）', async () => {
     // 未設定だと networkMode !== 'always' により既定 true になり、スリープ復帰や
     // WiFi 再接続で読み込み済み全ページが 1 ページ目から取り直される。
@@ -226,7 +354,8 @@ describe('useInfiniteArticles', () => {
       .getQueryCache()
       .findAll({ queryKey: ['infinite-articles'] });
     expect(query).toBeDefined();
-    expect(query.options.refetchOnReconnect).toBe(false);
+    // refetchOnReconnect は observer（フック）の設定で、クエリの設定の型には無い
+    expect(query.observers[0].options.refetchOnReconnect).toBe(false);
   });
 
   /**
