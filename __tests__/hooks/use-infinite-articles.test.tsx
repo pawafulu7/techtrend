@@ -298,6 +298,31 @@ describe('useInfiniteArticles', () => {
       });
     });
 
+    it('条件を変えた直後（200ms 以内）にアンマウントしても、前の条件のクエリを消す', async () => {
+      // 検索・タグの変更などで一覧が作り直されると、debounce が cleanup で取り消され、
+      // 前の条件のクエリが残っていた。同じ QueryClient で戻ると取り直さない
+      const queryClient = createTestQueryClient();
+      const { rerender, unmount } = renderWithFilters(queryClient);
+      await waitForDebounce();
+
+      rerender({ filters: FILTERS_B });
+      unmount();
+      expect(infiniteArticlesQueryKeys(queryClient)).not.toContainEqual(KEY_A);
+
+      mockFetch.mockClear();
+      renderHook(() => useInfiniteArticles(FILTERS_A), {
+        wrapper: createWrapper(queryClient),
+      });
+      await waitFor(() => {
+        expect(
+          articleListUrls().filter(
+            (url) =>
+              !new URL(url, 'http://localhost').searchParams.has('sortBy')
+          )
+        ).toHaveLength(1);
+      });
+    });
+
     it('200ms 以内に元の条件へ戻したら、そのクエリは消さない', async () => {
       const queryClient = createTestQueryClient();
       const { rerender } = renderWithFilters(queryClient);

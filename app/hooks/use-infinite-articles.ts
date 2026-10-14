@@ -87,26 +87,27 @@ export function useInfiniteArticles(
   );
   const filterKey = queryKey[1];
 
+  // 離れた条件のクエリを停止・破棄（新フィルターはキー変更で自動フェッチ）
+  const removeLeftFilterQueries = useCallback(() => {
+    for (const leftFilterKey of leftFilterKeysRef.current) {
+      queryClient.cancelQueries({
+        queryKey: ['infinite-articles', leftFilterKey],
+      });
+      queryClient.removeQueries({
+        queryKey: ['infinite-articles', leftFilterKey],
+      });
+    }
+    leftFilterKeysRef.current.clear();
+  }, [queryClient]);
+
   // Debounced filter change handler
   // Note: Ref access inside debounce callback is intentional - the callback is only
   // executed in the useEffect below, not during render. The useMemo here memoizes
   // the debounced function creation, not the ref access itself.
   const handleFilterChange = useMemo(
-    () =>
-      // eslint-disable-next-line react-hooks/refs -- Ref accessed in debounce callback, not during render
-      debounce(() => {
-        // 離れた条件のクエリを停止・破棄（新フィルターはキー変更で自動フェッチ）
-        for (const leftFilterKey of leftFilterKeysRef.current) {
-          queryClient.cancelQueries({
-            queryKey: ['infinite-articles', leftFilterKey],
-          });
-          queryClient.removeQueries({
-            queryKey: ['infinite-articles', leftFilterKey],
-          });
-        }
-        leftFilterKeysRef.current.clear();
-      }, 200),
-    [queryClient]
+    // eslint-disable-next-line react-hooks/refs -- Ref accessed in debounce callback, not during render
+    () => debounce(removeLeftFilterQueries, 200),
+    [removeLeftFilterQueries]
   );
 
   // フィルターが変更されたときにdebounce処理を実行
@@ -127,11 +128,20 @@ export function useInfiniteArticles(
     // フィルター変更時に総件数をリセット（新しいフィルターでは再計算が必要）
     totalCountRef.current = undefined;
 
-    // クリーンアップ: コンポーネントのアンマウント時にpendingな実行をキャンセル
+    // 条件の変更では、次の effect が debounce を予約し直す
     return () => {
       handleFilterChange.cancel();
     };
   }, [filterKey, handleFilterChange]);
+
+  // アンマウントでは debounce を待たずに消す。待つと上の cleanup で取り消され、
+  // 離れた条件のクエリが残る（検索・タグの変更で一覧が作り直されたときなど）
+  useEffect(() => {
+    return () => {
+      handleFilterChange.cancel();
+      removeLeftFilterQueries();
+    };
+  }, [handleFilterChange, removeLeftFilterQueries]);
 
   // 既読状態変更ハンドラ（最適化版）
   const handleReadStatusChanged = useCallback(
