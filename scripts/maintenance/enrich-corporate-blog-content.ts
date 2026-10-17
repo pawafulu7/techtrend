@@ -15,7 +15,10 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
-import { summaryUpdatesForReplacedContent } from '../scheduled/utils/summary-reset';
+import {
+  contentStateWhere,
+  summaryUpdatesForReplacedContent,
+} from '../scheduled/utils/summary-reset';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
@@ -174,10 +177,10 @@ async function main() {
           
           if (enrichedContent && enrichedContent.length > beforeLength) {
             // コンテンツを更新し、要約まわりを戻す（summaryUpdatesForReplacedContent）。
-            // enrich() を待つ間に他の処理（毎時の収集など）が記事を書いていたら上書きしない
-            // （取得時の updatedAt と一致するときだけ更新する。enrich-single-article.ts と同じ）
+            // enrich() を待つ間に他の処理（毎時の収集など）が本文を書いていたら上書きしない
+            // （取得時と本文の状態が同じときだけ更新する。contentStateWhere）
             const { count } = await prisma.article.updateMany({
-              where: { id: article.id, updatedAt: article.updatedAt },
+              where: { id: article.id, ...contentStateWhere(article) },
               data: {
                 content: enrichedContent,
                 contentUpdatedAt: new Date(), // 本文の更新日時（要約の再試行・品質スコアの再計算の基準）
@@ -185,7 +188,7 @@ async function main() {
               },
             });
             if (count === 0) {
-              console.error('  [SKIP] 取得後に他の処理が記事を更新したため反映しない');
+              console.error('  [SKIP] 取得後に他の処理が本文を更新したため反映しない');
               skipCount++;
             } else {
               const afterLength = enrichedContent.length;

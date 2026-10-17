@@ -75,3 +75,22 @@ export function summaryUpdatesForReplacedContent(
     summaryComputedAt: null,
   };
 }
+
+/**
+ * 保守スクリプトで本文を取り直すときの CAS 条件。取得した後に別の処理（毎時の収集など）が
+ * 本文を書いていたら上書きしない。
+ *
+ * updatedAt ではなく本文の状態で比べる。updatedAt はマイクロ秒の精度で、品質スコアの再計算が
+ * raw SQL の NOW() で書くため、ミリ秒の JavaScript の Date とは一致せず、誰も更新していなくても
+ * 負ける（開発 DB で約半数の記事）。contentLength（DB のトリガーが保つ）は本文の長さの変化を、
+ * contentUpdatedAt（本文を書く経路が進める。ミリ秒）は同じ長さの差し替えを拾う
+ */
+export function contentStateWhere(article: {
+  contentLength: number | null;
+  contentUpdatedAt: Date | null;
+}): Prisma.ArticleWhereInput {
+  return {
+    contentLength: article.contentLength,
+    contentUpdatedAt: article.contentUpdatedAt,
+  };
+}

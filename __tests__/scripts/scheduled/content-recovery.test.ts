@@ -12,6 +12,7 @@ import {
 } from '@/scripts/scheduled/utils/content-recovery';
 import {
   SUMMARY_RESET,
+  contentStateWhere,
   summaryResetOnContentRecovery,
   summaryUpdatesForReplacedContent,
 } from '@/scripts/scheduled/utils/summary-reset';
@@ -195,6 +196,20 @@ describe('summaryUpdatesForReplacedContent（保守スクリプトで本文を�
       summaryVersion: 0,
       summaryComputedAt: null,
     });
+  });
+});
+
+describe('contentStateWhere（保守スクリプトの CAS）', () => {
+  it('updatedAt ではなく、本文の長さと本文の更新日時で比べる', () => {
+    const contentUpdatedAt = new Date('2026-10-17T01:02:03.123Z');
+    expect(contentStateWhere({ contentLength: 120, contentUpdatedAt })).toEqual({
+      contentLength: 120,
+      contentUpdatedAt,
+    });
+    // 本文がまだ無い記事は、どちらも NULL のままであることを条件にする
+    expect(
+      contentStateWhere({ contentLength: null, contentUpdatedAt: null })
+    ).toEqual({ contentLength: null, contentUpdatedAt: null });
   });
 });
 
