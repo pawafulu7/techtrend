@@ -91,7 +91,7 @@ describe('HuggingFacePapersFetcher', () => {
     }
   });
 
-  it('論文を arXiv の URL・要旨入りの本文・サムネイルで返す', async () => {
+  it('論文を arXiv の URL・要旨入りの本文で返し、サムネイルは付けない', async () => {
     mockFetchByDay({ '2026-10-16': [paper('2610.21185')] });
 
     const result = await createFetcher().fetch();
@@ -105,10 +105,10 @@ describe('HuggingFacePapersFetcher', () => {
         url: 'https://arxiv.org/abs/2610.21185',
         sourceId: 'hf-papers',
         publishedAt: new Date('2026-10-14T00:00:00.000Z'),
-        thumbnail:
-          'https://cdn-thumbnails.huggingface.co/social-thumbnails/papers/2610.21185.png',
       })
     );
+    // API の thumbnail（論文の1ページ目の画像）は付けない
+    expect(article.thumbnail).toBeUndefined();
     expect(article.content).toContain('Abstract of 2610.21185.');
     expect(article.content).toContain('Authors: Alice, Bob');
     expect(article.content).toContain('arXiv ID: 2610.21185');
@@ -252,12 +252,11 @@ describe('HuggingFacePapersFetcher', () => {
     expect(urls.filter((u) => u === 'https://arxiv.org/abs/2610.40000')).toHaveLength(1);
   });
 
-  it('https でないサムネイルは捨て、upvotes が無ければ 0、著者が 10 人を超えたら et al. にする', async () => {
+  it('upvotes が無ければ 0 として並べ、著者が 10 人を超えたら et al. にする', async () => {
     const many = paper('2610.50000', { upvotes: 5 });
     many.paper.authors = Array.from({ length: 12 }, (_, i) => ({ name: `A${i}` }));
     const noVotes = {
       ...paper('2610.50001'),
-      thumbnail: 'http://example.com/insecure.png',
       paper: { ...paper('2610.50001').paper, upvotes: undefined },
     };
     mockFetchByDay({ '2026-10-16': [noVotes, many] });
@@ -271,6 +270,5 @@ describe('HuggingFacePapersFetcher', () => {
     expect(result.articles[0].content).toContain(
       'Authors: A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, et al.'
     );
-    expect(result.articles[1].thumbnail).toBeUndefined();
   });
 });

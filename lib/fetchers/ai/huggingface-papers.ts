@@ -36,7 +36,6 @@ interface PaperCandidate {
   publishedAt: Date;
   upvotes: number;
   authors: string[];
-  thumbnail?: string;
 }
 
 export class HuggingFacePapersFetcher extends BaseFetcher {
@@ -130,7 +129,8 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
       summary: undefined,
       publishedAt: paper.publishedAt,
       sourceId: this.source.id,
-      thumbnail: paper.thumbnail,
+      // サムネイルは付けない。API の thumbnail は論文の1ページ目の画像で、論文ページの
+      // arXiv の論文（画像なし）と混ざるとカードの高さが不ぞろいになるため（2026-10 に決定）
     };
   }
 }
@@ -160,7 +160,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function toCandidate(item: unknown): PaperCandidate | null {
   if (!isRecord(item) || !isRecord(item.paper)) return null;
-  const { thumbnail } = item;
   const { id, title, summary, publishedAt, upvotes, authors } = item.paper;
   if (typeof id !== 'string' || !ARXIV_ID_PATTERN.test(id)) return null;
   if (typeof title !== 'string' || title.trim() === '') return null;
@@ -180,10 +179,6 @@ function toCandidate(item: unknown): PaperCandidate | null {
           .map((author) => (isRecord(author) ? author.name : undefined))
           .filter((name): name is string => typeof name === 'string')
       : [],
-    thumbnail:
-      typeof thumbnail === 'string' && thumbnail.startsWith('https://')
-        ? thumbnail
-        : undefined,
   };
 }
 
