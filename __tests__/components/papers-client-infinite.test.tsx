@@ -4,10 +4,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { PapersClientInfinite } from '@/app/components/papers/papers-client-infinite';
+import {
+  ARXIV_SOURCE_ID,
+  HUGGINGFACE_PAPERS_SOURCE_ID,
+  PAPER_SOURCE_IDS,
+} from '@/lib/constants/source-categories';
 
 const mockUseInfiniteArticles = jest.fn();
 jest.mock('@/app/hooks/use-infinite-articles', () => ({
-  useInfiniteArticles: () => mockUseInfiniteArticles(),
+  useInfiniteArticles: (...args: unknown[]) => mockUseInfiniteArticles(...args),
 }));
 
 jest.mock('@/app/hooks/use-scroll-restoration', () => ({
@@ -47,7 +52,7 @@ function state(overrides: Record<string, unknown>) {
 }
 
 function renderPapers() {
-  render(<PapersClientInfinite viewMode="card" sourceId="arxiv" />);
+  render(<PapersClientInfinite viewMode="card" sourceIds={PAPER_SOURCE_IDS} />);
 }
 
 describe('PapersClientInfinite: 取得の状態（issue #701）', () => {
@@ -85,7 +90,7 @@ describe('PapersClientInfinite: 取得の状態（issue #701）', () => {
   it('初回の読み込み中はスケルトン、0件なら空状態を出す', async () => {
     mockUseInfiniteArticles.mockReturnValue(state({ isPending: true }));
     const { unmount } = render(
-      <PapersClientInfinite viewMode="card" sourceId="arxiv" />
+      <PapersClientInfinite viewMode="card" sourceIds={PAPER_SOURCE_IDS} />
     );
     await waitFor(() => {
       expect(screen.getByRole('status')).toHaveTextContent(
@@ -141,5 +146,23 @@ describe('PapersClientInfinite: 取得の状態（issue #701）', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: '再試行' }));
     expect(current.refetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('PapersClientInfinite: 取得するソース', () => {
+  it('arXiv AI と Hugging Face Papers の両方を、技術記事外も含めて取る', () => {
+    mockUseInfiniteArticles.mockReturnValue(state({}));
+
+    renderPapers();
+
+    const [filters] = mockUseInfiniteArticles.mock.calls.at(-1)!;
+    expect(filters).toEqual(
+      expect.objectContaining({
+        sources: `${ARXIV_SOURCE_ID},${HUGGINGFACE_PAPERS_SOURCE_ID}`,
+        includeOffTopic: 'true',
+        excludeUnprocessed: 'true',
+      })
+    );
+    expect(filters).not.toHaveProperty('sourceId');
   });
 });

@@ -6,6 +6,10 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
+import {
+  contentStateWhere,
+  summaryUpdatesForReplacedContent,
+} from '../scheduled/utils/summary-reset';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -98,6 +102,9 @@ async function reEnrichContent() {
       url: true,
       content: true,
       sourceId: true,
+      skipReason: true,
+      contentLength: true,
+      contentUpdatedAt: true,
     },
   });
 
@@ -137,17 +144,25 @@ async function reEnrichContent() {
       const enriched = await enricher.enrich(article.url);
       
       if (enriched && enriched.content && enriched.content.length > (article.content?.length || 0)) {
-        // コンテンツを更新
-        await prisma.article.update({
-          where: { id: article.id },
+        // コンテンツを更新し、旧本文から作った要約を戻す（summaryUpdatesForReplacedContent）。
+        // enrich() を待つ間に他の処理が本文を書いていたら上書きしない（取得時と本文の状態が同じときだけ。contentStateWhere）
+        const { count } = await prisma.article.updateMany({
+          where: { id: article.id, ...contentStateWhere(article) },
           data: {
             content: enriched.content,
             thumbnail: enriched.thumbnail || undefined,
+            // 本文の更新日時（要約の再試行・品質スコアの再計算の基準）
+            contentUpdatedAt: new Date(),
+            ...summaryUpdatesForReplacedContent(article.skipReason, enriched.content),
           },
         });
-        
-        console.error(`  ✅ 成功: ${enriched.content.length}文字に更新`);
-        progress.stats.enriched++;
+        if (count === 0) {
+          console.error('  ⚠️ 取得後に他の処理が本文を更新したため反映しない');
+          progress.stats.skipped++;
+        } else {
+          console.error(`  ✅ 成功: ${enriched.content.length}文字に更新`);
+          progress.stats.enriched++;
+        }
       } else {
         console.error('  ⚠️ 新しいコンテンツが取得できませんでした');
         progress.stats.skipped++;

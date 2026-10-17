@@ -131,7 +131,12 @@ async function patchHandler(request: NextRequest, context: any) {
     if (title !== undefined) updateData.title = title;
     if (summary !== undefined) updateData.summary = summary;
     if (thumbnail !== undefined) updateData.thumbnail = thumbnail;
-    if (content !== undefined) updateData.content = content;
+    if (content !== undefined) {
+      updateData.content = content;
+      // 本文を書く他の経路と同じく本文の更新日時を進める（要約の再試行の期間・品質スコアの
+      // 再計算は、この日時で本文の変化を拾う）
+      updateData.contentUpdatedAt = new Date();
+    }
 
     // タグは大文字小文字だけが違う既存のタグを使う（#672）。記事の更新と同じ
     // トランザクションに入れ、更新に失敗したとき（存在しない ID など）使われないタグを残さない

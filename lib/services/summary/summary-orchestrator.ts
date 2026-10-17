@@ -16,6 +16,11 @@ import type {
   SummaryAndTags,
 } from './types';
 import { updateArticleTags } from './batch-processor';
+import {
+  PENDING_SUMMARY_ORDER_BY,
+  pendingSummaryWhere,
+  recordContentSkipReasons,
+} from './pending-articles';
 import { env } from '@/lib/config/env';
 
 /**
@@ -336,21 +341,15 @@ export async function generateMissingSummaries(
   logger.info('Starting missing summaries generation');
 
   try {
-    const daysAgo = new Date();
-    daysAgo.setDate(daysAgo.getDate() - (options.days || 7));
-
     const hasTargetArticleIds =
       Array.isArray(options.articleIds) && options.articleIds.length > 0;
 
-    const where: Prisma.ArticleWhereInput = {
-      OR: [{ summary: null }, { summary: '' }],
-      ...(hasTargetArticleIds
-        ? { id: { in: options.articleIds } }
-        : {
-            skipReason: null,
-            publishedAt: { gte: daysAgo },
-          }),
-    };
+    const where: Prisma.ArticleWhereInput = hasTargetArticleIds
+      ? {
+          OR: [{ summary: null }, { summary: '' }],
+          id: { in: options.articleIds },
+        }
+      : pendingSummaryWhere(options.days || 7);
 
     if (options.source) {
       where.source = { name: options.source };
@@ -359,7 +358,7 @@ export async function generateMissingSummaries(
     const query: Prisma.ArticleFindManyArgs = {
       where,
       include: { source: true },
-      orderBy: { publishedAt: 'desc' },
+      orderBy: PENDING_SUMMARY_ORDER_BY,
       take: hasTargetArticleIds
         ? options.articleIds!.length
         : normalizeBatchSize(options.batch),
@@ -383,8 +382,8 @@ export async function generateMissingSummaries(
     let errors = 0;
     let skipped = 0;
 
-    const noContentIds: string[] = [];
-    const thinContentIds: string[] = [];
+    const noContentArticles: ArticleWithSource[] = [];
+    const thinContentArticles: ArticleWithSource[] = [];
 
     for (const article of articles) {
       try {
@@ -395,9 +394,9 @@ export async function generateMissingSummaries(
             'Skipping article'
           );
           if (validation.reasonCode === 'NO_CONTENT') {
-            noContentIds.push(article.id);
+            noContentArticles.push(article);
           } else {
-            thinContentIds.push(article.id);
+            thinContentArticles.push(article);
           }
           skipped++;
           continue;
@@ -504,30 +503,16 @@ export async function generateMissingSummaries(
 
     // Batch update skip reasons for validation failures
     try {
-      if (noContentIds.length > 0) {
-        await prisma.article.updateMany({
-          where: {
-            id: { in: noContentIds },
-            OR: [{ summary: null }, { summary: '' }],
-          },
-          data: {
-            skipReason: SkipReason.CONTENT_FETCH_FAILED,
-            summaryError: null,
-          },
-        });
-      }
-      if (thinContentIds.length > 0) {
-        await prisma.article.updateMany({
-          where: {
-            id: { in: thinContentIds },
-            OR: [{ summary: null }, { summary: '' }],
-          },
-          data: {
-            skipReason: SkipReason.THIN_CONTENT,
-            summaryError: null,
-          },
-        });
-      }
+      await recordContentSkipReasons(
+        prisma,
+        noContentArticles,
+        SkipReason.CONTENT_FETCH_FAILED
+      );
+      await recordContentSkipReasons(
+        prisma,
+        thinContentArticles,
+        SkipReason.THIN_CONTENT
+      );
     } catch (dbError) {
       logger.warn({ err: dbError }, 'Failed to record skip reasons');
     }

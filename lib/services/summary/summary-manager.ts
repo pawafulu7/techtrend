@@ -30,6 +30,11 @@ import {
   SUMMARY_TIMEOUT,
 } from './batch-processor';
 import { checkNewArticles } from './batch-processor';
+import {
+  PENDING_SUMMARY_ORDER_BY,
+  pendingSummaryWhere,
+  recordContentSkipReasons,
+} from './pending-articles';
 
 // Re-export types for backward compatibility
 export type {
@@ -93,19 +98,12 @@ export class SummaryManager {
       }
 
       // Query articles without summaries
-      const whereCondition: Prisma.ArticleWhereInput = {
-        OR: [{ summary: null }, { summary: '' }],
-        ...(hasTargetArticleIds ? {} : { skipReason: null }),
-      };
-
-      if (hasTargetArticleIds) {
-        whereCondition.id = { in: options.articleIds };
-      } else {
-        const days = options.days ?? 1;
-        const from = new Date();
-        from.setDate(from.getDate() - days);
-        whereCondition.publishedAt = { gte: from };
-      }
+      const whereCondition: Prisma.ArticleWhereInput = hasTargetArticleIds
+        ? {
+            OR: [{ summary: null }, { summary: '' }],
+            id: { in: options.articleIds },
+          }
+        : pendingSummaryWhere(options.days ?? 1);
 
       if (options.source) {
         whereCondition.source = { name: options.source };
@@ -114,7 +112,7 @@ export class SummaryManager {
       const articles = (await this.prisma.article.findMany({
         where: whereCondition,
         include: { source: true },
-        orderBy: { publishedAt: 'desc' },
+        orderBy: PENDING_SUMMARY_ORDER_BY,
         take: hasTargetArticleIds
           ? options.articleIds!.length
           : options.limit || 50,
@@ -139,8 +137,8 @@ export class SummaryManager {
       }> = [];
       let skipped = 0;
 
-      const noContentIds: string[] = [];
-      const thinContentIds: string[] = [];
+      const noContentArticles: ArticleWithSource[] = [];
+      const thinContentArticles: ArticleWithSource[] = [];
 
       for (const article of articles) {
         const validation = validateArticleContent(article);
@@ -150,9 +148,9 @@ export class SummaryManager {
             'Skipping article'
           );
           if (validation.reasonCode === 'NO_CONTENT') {
-            noContentIds.push(article.id);
+            noContentArticles.push(article);
           } else {
-            thinContentIds.push(article.id);
+            thinContentArticles.push(article);
           }
           skipped++;
         } else {
@@ -162,35 +160,18 @@ export class SummaryManager {
 
       // Batch update skip reasons for validation failures
       try {
-        if (noContentIds.length > 0) {
-          await this.prisma.article.updateMany({
-            where: {
-              id: { in: noContentIds },
-              OR: [{ summary: null }, { summary: '' }],
-            },
-            data: {
-              skipReason: SkipReason.CONTENT_FETCH_FAILED,
-              summaryError: null,
-            },
-          });
-        }
-        if (thinContentIds.length > 0) {
-          await this.prisma.article.updateMany({
-            where: {
-              id: { in: thinContentIds },
-              OR: [{ summary: null }, { summary: '' }],
-            },
-            data: {
-              skipReason: SkipReason.THIN_CONTENT,
-              summaryError: null,
-            },
-          });
-        }
-      } catch (dbError) {
-        logger.warn(
-          { err: dbError },
-          'Failed to record skip reasons'
+        await recordContentSkipReasons(
+          this.prisma,
+          noContentArticles,
+          SkipReason.CONTENT_FETCH_FAILED
         );
+        await recordContentSkipReasons(
+          this.prisma,
+          thinContentArticles,
+          SkipReason.THIN_CONTENT
+        );
+      } catch (dbError) {
+        logger.warn({ err: dbError }, 'Failed to record skip reasons');
       }
 
       if (validArticles.length === 0) {
@@ -213,10 +194,7 @@ export class SummaryManager {
 
       return { generated, errors, skipped };
     } catch (error) {
-      logger.error(
-        { err: error },
-        'Fatal error in summary generation'
-      );
+      logger.error({ err: error }, 'Fatal error in summary generation');
       throw error;
     }
   }

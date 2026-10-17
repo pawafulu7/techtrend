@@ -243,7 +243,7 @@ describe('parseOffTopicVerdicts', () => {
 });
 
 describe('classifyOffTopicArticles', () => {
-  it('未判定か、判定の後に要約を作り直した直近の記事を対象にする', async () => {
+  it('未判定か、判定の後に要約を作り直した直近の記事（要約を作ったばかりの古い記事も）を対象にする', async () => {
     const { prisma, findMany } = makePrisma([]);
     await classifyOffTopicArticles(
       prisma,
@@ -264,6 +264,8 @@ describe('classifyOffTopicArticles', () => {
           OR: [
             { publishedAt: { gte: from, lt: NOW } },
             { createdAt: { gte: from, lt: NOW } },
+            // 公開・収集が古くても、要約を作ったばかりの記事は判定する
+            { summaryComputedAt: { gte: from, lt: NOW } },
           ],
         },
         {

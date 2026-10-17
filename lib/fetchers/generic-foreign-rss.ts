@@ -10,6 +10,7 @@ import { FetchResult, CreateArticleInput } from '@/types/fetchers';
 import { logger } from '@/lib/logger';
 import { normalizeUrl } from '@/lib/utils/url/url-normalizer';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
+import { HUGGINGFACE_PAPERS_SOURCE_NAME } from '@/lib/constants/source-categories';
 
 // Atom形式のカテゴリ型
 interface AtomCategory {
@@ -698,10 +699,20 @@ export function getForeignSourceConfig(
 }
 
 /**
+ * FOREIGN_SOURCE_CONFIGS 以外で、enricher による本文上書きを行わないソース。
+ * Hugging Face Papers は API の要旨を本文にする（汎用 enricher は arXiv のページを
+ * 取りに行き、長ければ本文を上書きしてしまう）。
+ */
+const ENRICHMENT_SKIPPED_SOURCE_NAMES = new Set([HUGGINGFACE_PAPERS_SOURCE_NAME]);
+
+/**
  * 指定ソースが enricher による本文上書きをスキップする対象かどうかを判定する
  * （純粋関数）。collect-feeds.ts / enrich-thin-content.ts 等、enricher で
  * 記事本文を上書きする全経路から参照すること。
  */
 export function isEnrichmentSkipped(sourceName: string): boolean {
-  return FOREIGN_SOURCE_CONFIGS[sourceName]?.skipEnrichment === true;
+  return (
+    FOREIGN_SOURCE_CONFIGS[sourceName]?.skipEnrichment === true ||
+    ENRICHMENT_SKIPPED_SOURCE_NAMES.has(sourceName)
+  );
 }

@@ -18,13 +18,14 @@ import { ErrorState } from '@/components/ui-v2/error-state';
 
 interface PapersClientInfiniteProps {
   viewMode: ViewMode;
-  sourceId: string; // arXiv source ID
+  /** 論文のソース ID（arXiv AI・Hugging Face Papers。PAPER_SOURCE_IDS） */
+  sourceIds: readonly string[];
   initialSortBy?: string;
 }
 
 export function PapersClientInfinite({
   viewMode,
-  sourceId,
+  sourceIds,
   initialSortBy,
 }: PapersClientInfiniteProps) {
   const searchParams = useSearchParams();
@@ -72,7 +73,7 @@ export function PapersClientInfinite({
     };
   }, []);
 
-  // URLパラメータからフィルターを構築（arXivソースに固定）
+  // URLパラメータからフィルターを構築（論文のソースに固定）
   const filters = useMemo(() => {
     const params: Record<string, string> = {};
 
@@ -89,8 +90,8 @@ export function PapersClientInfinite({
       }
     });
 
-    // ソースIDを固定（arXiv論文のみ）
-    params.sourceId = sourceId;
+    // ソースを論文のソースに固定する（URL の sources・sourceId は上で捨てている）
+    params.sources = sourceIds.join(',');
 
     // 論文は技術者向けでない記事の判定（issue #722）で外さない。医療・科学の AI 論文が
     // 外れても、この画面には切り替えが無く見る手段がなくなるため
@@ -110,7 +111,7 @@ export function PapersClientInfinite({
     }
 
     return params;
-  }, [searchParams, sourceId, initialSortBy, excludeUnprocessed]);
+  }, [searchParams, sourceIds, initialSortBy, excludeUnprocessed]);
 
   const {
     data,

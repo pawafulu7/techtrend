@@ -1,10 +1,5 @@
 export type SourceCategoryId =
-  | 'foreign'
-  | 'domestic'
-  | 'company'
-  | 'presentation'
-  | 'ai'
-  | 'llm';
+  'foreign' | 'domestic' | 'company' | 'presentation' | 'ai' | 'llm';
 
 /**
  * arXiv AI source ID
@@ -12,6 +7,25 @@ export type SourceCategoryId =
  */
 export const ARXIV_SOURCE_ID = 'cmfxa7efs0001teo0kjt70c5k';
 export const ARXIV_SOURCE_NAME = 'arXiv AI';
+
+/**
+ * Hugging Face Papers source ID（prisma/seed-ai-sources.ts の固定 ID と同じ値）
+ */
+export const HUGGINGFACE_PAPERS_SOURCE_ID = 'cmfxa7efj0000teo06dhbox6e';
+export const HUGGINGFACE_PAPERS_SOURCE_NAME = 'Hugging Face Papers';
+
+/**
+ * 論文のソース。ホームとリーダーの一覧・ソースの絞り込みから外し、論文ページ（/papers）に出す。
+ * 判定は lib/utils/source/paper-source.ts
+ */
+export const PAPER_SOURCE_IDS: readonly string[] = [
+  ARXIV_SOURCE_ID,
+  HUGGINGFACE_PAPERS_SOURCE_ID,
+];
+export const PAPER_SOURCE_NAMES: readonly string[] = [
+  ARXIV_SOURCE_NAME,
+  HUGGINGFACE_PAPERS_SOURCE_NAME,
+];
 
 /**
  * Claude Blog source ID

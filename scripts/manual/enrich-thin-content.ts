@@ -266,6 +266,8 @@ async function main() {
               updateData.detailedSummary = null;
               // summaryVersionはnullableでないため、0に設定
               updateData.summaryVersion = 0;
+              // 一覧は summaryComputedAt で要約済みかを見る。残すと要約の無いまま一覧に出る
+              updateData.summaryComputedAt = null;
               console.error(`    - 要約: リセット（再生成が必要）`);
             }
             // 本文回復時は本文起因の skipReason（THIN_CONTENT / CONTENT_FETCH_FAILED /

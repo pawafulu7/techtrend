@@ -15,6 +15,10 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
+import {
+  contentStateWhere,
+  summaryUpdatesForReplacedContent,
+} from '../scheduled/utils/summary-reset';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
@@ -168,31 +172,36 @@ async function main() {
             continue;
           }
 
-          const enrichedContent = await enricher.enrich(article.url);
+          // enrich() は { content, thumbnail } を返す。本文だけを使う（以前はオブジェクトのまま比べ、保存していた）
+          const enrichedContent = (await enricher.enrich(article.url))?.content;
           
           if (enrichedContent && enrichedContent.length > beforeLength) {
-            // コンテンツを更新し、要約をリセット
-            await prisma.article.update({
-              where: { id: article.id },
+            // コンテンツを更新し、要約まわりを戻す（summaryUpdatesForReplacedContent）。
+            // enrich() を待つ間に他の処理（毎時の収集など）が本文を書いていたら上書きしない
+            // （取得時と本文の状態が同じときだけ更新する。contentStateWhere）
+            const { count } = await prisma.article.updateMany({
+              where: { id: article.id, ...contentStateWhere(article) },
               data: {
                 content: enrichedContent,
-                summary: null,                // 要約をリセット
-                detailedSummary: null,        // 詳細要約もリセット
-                summaryVersion: 0,            // バージョンをリセット
-                updatedAt: new Date(),
+                contentUpdatedAt: new Date(), // 本文の更新日時（要約の再試行・品質スコアの再計算の基準）
+                ...summaryUpdatesForReplacedContent(article.skipReason, enrichedContent),
               },
             });
-            
-            const afterLength = enrichedContent.length;
-            console.error(`  成功: ${afterLength}文字 (${Math.round((afterLength / beforeLength - 1) * 100)}%改善)`);
-            
-            improvements.push({
-              title: article.title,
-              before: beforeLength,
-              after: afterLength,
-            });
-            
-            successCount++;
+            if (count === 0) {
+              console.error('  [SKIP] 取得後に他の処理が本文を更新したため反映しない');
+              skipCount++;
+            } else {
+              const afterLength = enrichedContent.length;
+              console.error(`  成功: ${afterLength}文字 (${Math.round((afterLength / beforeLength - 1) * 100)}%改善)`);
+
+              improvements.push({
+                title: article.title,
+                before: beforeLength,
+                after: afterLength,
+              });
+
+              successCount++;
+            }
           } else {
             console.error(`  [FAIL] コンテンツ取得失敗`);
             failCount++;

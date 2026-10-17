@@ -7,7 +7,10 @@ import { createPrismaClient } from '@/lib/prisma/create-client';
 import { GoogleAIEnricher } from '../../lib/enrichers/google-ai';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { isEnrichmentSkipped } from '../../lib/fetchers/generic-foreign-rss';
-import { isHighQuality } from '../../lib/enrichers/strategies/quality';
+import {
+  contentStateWhere,
+  summaryUpdatesForReplacedContent,
+} from '../scheduled/utils/summary-reset';
 
 const prisma = createPrismaClient();
 const enricher = new GoogleAIEnricher();
@@ -55,47 +58,28 @@ async function enrichSingleArticle(articleId: string) {
       const newLength = enrichedData.content.length;
       console.error(`✅ エンリッチメント成功: ${newLength}文字`);
 
-      // CAS: 記事取得時に観測した updatedAt と現在値が一致する場合のみ更新する。
+      // CAS: 記事取得時と本文の状態（contentLength・contentUpdatedAt）が同じ場合のみ更新する。
       // enrich() のネットワークI/O中に他プロセス（例: hourly の collect-feeds.ts）が
       // 先に本文を更新している可能性があるため、古いスナップショット基準で
       // 上書きしないための保護（Issue #629 項目6）。
       //
-      // CAS トークンに contentLength ではなく updatedAt を使う理由:
-      // contentLength は CHAR_LENGTH(content) の派生値のため、(a) 同じ文字数の別本文に
-      // 差し替えられた場合（ABA問題）と (b) 本文以外（thumbnail 等）だけが更新された
-      // 場合を検出できない。collect-feeds.ts にはサムネイルのみを更新する経路が実在するため
-      // (b) は現実に起こりうる。updatedAt は @updatedAt により任意の更新で必ず変化するので、
-      // 「取得後に誰かが何かを書いた」ことを漏れなく検出できる。
-      //
-      // トレードオフ: 逆に本文と無関係な更新でも CAS が失敗する。特に品質スコア再計算
-      // （manage-quality-scores.ts / quality-score-batch.ts）は raw SQL で
-      // `"updatedAt" = NOW()` を明示セットするため、qualityScore しか変えていなくても
-      // ここで敗北する。安全側に倒れるだけで取りこぼしは起きないため許容する。
+      // 以前は updatedAt を CAS トークンにしていたが、updatedAt はマイクロ秒の精度で、
+      // 品質スコア再計算（manage-quality-scores.ts など）が raw SQL の NOW() で書くため、
+      // ミリ秒の JavaScript の Date と一致せず、誰も更新していなくても敗北していた
+      // （開発 DB で約半数の記事）。contentLength は本文の長さの変化を、contentUpdatedAt は
+      // 同じ長さの差し替えを拾う（contentStateWhere）。本文以外（thumbnail 等）だけの
+      // 並行更新は検出しないが、上書きしても本文の整合は崩れない。
       // 本文を差し替えると、既存の summary / detailedSummary は古い本文に基づく内容に
       // なる。直後に要約を再生成するが、生成に失敗した場合や本文が短くて生成をスキップ
       // した場合に「新本文 + 旧要約」が残らないよう、本文更新と同一の CAS 更新で
       // 要約をリセットしておく（collect-feeds.ts の自己修復パスと同じ流儀）。
       // リセットしておけば、このスクリプトでの再生成に失敗しても定期の要約生成ジョブが
       // 再生成対象として拾える。
-      // PDF / SLIDE は本文の有無と無関係な恒久スキップ理由のため対象外にする。
-      const isSummaryEligible =
-        article.skipReason !== 'PDF' && article.skipReason !== 'SLIDE';
-
-      // skipReason / summaryError のクリアは、collect-feeds.ts / enrich-thin-content.ts
-      // と同一の受入基準（500文字以上は無条件、250-499文字は isHighQuality 必須）を
-      // 満たす場合に限る。GoogleAIEnricher は300文字未満でも本文を返しうるため、
-      // 基準なしでクリアすると、要約生成の対象になったものの本文が短すぎて
-      // THIN_CONTENT が再設定される、という無駄な往復が発生する。
-      //
-      // 一方、summary / detailedSummary / summaryVersion のリセットは基準に関わらず
-      // 行う。本文が差し替わった時点で旧本文由来の要約は無効であり、残すと
-      // 「新本文 + 旧要約」の不整合になるため。
-      const meetsSummaryQualityBar =
-        enrichedData.content.length >= 500 ||
-        (enrichedData.content.length >= 250 && isHighQuality(enrichedData.content));
-
+      // PDF / SLIDE は対象外。skipReason / summaryError は新しい本文が保存の基準を満たすときだけ
+      // 消し、要約は基準に関わらず消す（summaryUpdatesForReplacedContent。collect-feeds.ts・
+      // 他の保守スクリプトと同じ扱い）
       const { count } = await prisma.article.updateMany({
-        where: { id: articleId, updatedAt: article.updatedAt },
+        where: { id: articleId, ...contentStateWhere(article) },
         data: {
           content: enrichedData.content,
           // 本文を更新する他の全経路（collect-feeds.ts、re-enrich-*.ts）と同様に
@@ -104,21 +88,12 @@ async function enrichSingleArticle(articleId: string) {
           // 品質スコアが古いまま残る。
           contentUpdatedAt: new Date(),
           ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail }),
-          ...(isSummaryEligible && {
-            summary: null,
-            detailedSummary: null,
-            summaryVersion: 0
-          }),
-          ...(isSummaryEligible && meetsSummaryQualityBar && {
-            skipReason: null,
-            summaryError: null
-          })
+          ...summaryUpdatesForReplacedContent(article.skipReason, enrichedData.content)
         }
       });
 
       if (count === 0) {
-        console.error('⏭️  更新スキップ（CAS敗北）: 記事取得後に他プロセスがこの記事を更新したため、今回の取得結果は反映しませんでした');
-        console.error('   （本文が更新された場合のほか、品質スコア再計算など本文と無関係な更新でも発生します）');
+        console.error('⏭️  更新スキップ（CAS敗北）: 記事取得後に他プロセスがこの記事の本文を更新したため、今回の取得結果は反映しませんでした');
         console.error('必要であれば記事の最新状態を確認のうえ再実行してください');
         return;
       }

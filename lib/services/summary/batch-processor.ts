@@ -14,6 +14,7 @@ import type { ArticleWithSource } from '@/types/models';
 import type { SummaryGenerationOptions, SummaryAndTags } from './types';
 import { env } from '@/lib/config/env';
 import { resolveTags } from '@/lib/services/tag-service';
+import { pendingSummaryWhere } from './pending-articles';
 
 /**
  * Concurrency limit for parallel summary generation.
@@ -297,15 +298,8 @@ export async function checkNewArticles(
   prisma: PrismaClient,
   options?: SummaryGenerationOptions
 ): Promise<boolean> {
-  const days = options?.days ?? 1;
-  const from = new Date();
-  from.setDate(from.getDate() - days);
-
-  const whereCondition: Prisma.ArticleWhereInput = {
-    OR: [{ summary: null }, { summary: '' }],
-    skipReason: null,
-    publishedAt: { gte: from },
-  };
+  // generate（summary-manager.ts）と同じ条件にする。ずれると generate が黙って止まる
+  const whereCondition = pendingSummaryWhere(options?.days ?? 1);
 
   if (options?.source) {
     whereCondition.source = { name: options.source };

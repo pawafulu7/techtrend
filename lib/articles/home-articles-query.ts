@@ -10,6 +10,10 @@
  */
 
 import type { HomePersonalization } from '@/lib/personalization/preferences-state';
+import {
+  isPaperSourceId,
+  withoutPaperSourceIds,
+} from '@/lib/utils/source/paper-source';
 
 export type ArticleFilterValue = string | boolean | undefined;
 export type ArticleFilters = Record<string, ArticleFilterValue>;
@@ -75,10 +79,14 @@ export function buildHomeArticleFilters({
 
   // 重要: URLに明示的にsources=noneがある場合と、パラメータがない場合を区別する
   if (searchParams.has('sources')) {
-    // URLの値をそのままAPIに送る（all/none含む）
-    params.sources = searchParams.get('sources')!;
+    // URLの値をAPIに送る（all/none含む）。論文のソースは除き、残りが無ければ送らない
+    // （画面と同じく全選択。withoutPaperSourceIds）
+    const sources = withoutPaperSourceIds(searchParams.get('sources')!);
+    if (sources) params.sources = sources;
   } else if (searchParams.has('sourceId')) {
-    params.sourceId = searchParams.get('sourceId')!;
+    // 論文のソースは送らない（sources と同じく全選択。isPaperSourceId）
+    const sourceId = searchParams.get('sourceId')!;
+    if (!isPaperSourceId(sourceId)) params.sourceId = sourceId;
   } else if (initialSourceIds !== undefined) {
     // Cookie由来のinitialSourceIdsを使用
     params.sources =
@@ -104,7 +112,7 @@ export function buildHomeArticleFilters({
     }
   }
 
-  // 特定のソースを除外（例: arXiv論文をホームページから除外）
+  // 特定のソースを除外（例: 論文のソースをホームページから除外）
   if (excludeSources) {
     params.excludeSources = excludeSources;
   }
