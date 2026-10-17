@@ -7,6 +7,10 @@ const prisma = createPrismaClient();
 // We duplicate it here because seed scripts can't use TypeScript path aliases (@/)
 const ARXIV_SOURCE_ID = 'cmfxa7efs0001teo0kjt70c5k';
 
+// Hugging Face Papers も論文として、ホームから外し論文ページに出す（固定 ID で判定する）
+// IMPORTANT: This value MUST match lib/constants/source-categories.ts HUGGINGFACE_PAPERS_SOURCE_ID
+const HUGGINGFACE_PAPERS_SOURCE_ID = 'cmfxa7efj0000teo06dhbox6e';
+
 // Claude Blog source uses a fixed ID for consistent filtering
 // IMPORTANT: This value MUST match lib/constants/source-categories.ts
 const CLAUDE_BLOG_SOURCE_ID = 'claude_blog_official';
@@ -16,7 +20,12 @@ const CLAUDE_BLOG_SOURCE_ID = 'claude_blog_official';
 const ANTHROPIC_NEWS_SOURCE_ID = 'anthropic_news';
 
 // Sources that require fixed IDs for app-wide filtering
-const FIXED_ID_SOURCES = new Set([ARXIV_SOURCE_ID, CLAUDE_BLOG_SOURCE_ID, ANTHROPIC_NEWS_SOURCE_ID]);
+const FIXED_ID_SOURCES = new Set([
+  ARXIV_SOURCE_ID,
+  HUGGINGFACE_PAPERS_SOURCE_ID,
+  CLAUDE_BLOG_SOURCE_ID,
+  ANTHROPIC_NEWS_SOURCE_ID,
+]);
 
 async function main() {
   console.log('Adding AI/LLM sources to database...');
@@ -31,9 +40,11 @@ async function main() {
       enabled: true,
     },
     {
+      // 論文ページの振り分けに使う固定 ID。取得は API から行い、url は「サイトを見る」のリンク
+      id: HUGGINGFACE_PAPERS_SOURCE_ID,
       name: 'Hugging Face Papers',
       type: 'RSS' as const,
-      url: 'https://rsshub.app/huggingface/daily-papers',
+      url: 'https://huggingface.co/papers',
       enabled: true,
     },
     {
