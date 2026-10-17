@@ -160,6 +160,63 @@ function isAcceptableEnrichedContent(content: string): boolean {
   return content.length >= 500 || (content.length >= 250 && isHighQuality(content));
 }
 
+type SummaryResetUpdates = Pick<
+  Prisma.ArticleUpdateManyMutationInput,
+  'skipReason' | 'summaryError' | 'summary' | 'detailedSummary' | 'summaryVersion'
+>;
+
+/**
+ * 既存記事の本文を後から補った・回復したときに、要約まわりを戻す内容。
+ * 本文が無いことで付いた skipReason / summaryError と古い要約を消し、呼び出し元が
+ * ID 指定の要約（newArticleIds）に積む。enrich-thin-content.ts の本文回復時と同じ流儀。
+ * PDF / SLIDE は本文の有無と無関係の恒久理由のため、戻さない（null を返す。積まない）。
+ * ID 指定の generateSummaries は skipReason: null を要求しないため、戻すと恒久スキップの
+ * 記事が生成経路に入ってしまう。skipReason が null で summaryError だけ残るケース
+ * （一時的な要約失敗）も戻すため truthy 判定はしない
+ */
+function summaryResetOnContentRecovery(
+  skipReason: string | null
+): SummaryResetUpdates | null {
+  if (skipReason === 'PDF' || skipReason === 'SLIDE') return null;
+  return {
+    skipReason: null,
+    summaryError: null,
+    summary: null,
+    detailedSummary: null,
+    summaryVersion: 0,
+  };
+}
+
+/**
+ * フィード本文で、本文の無い既存記事を補う。並行実行中の他ソースが既に本文を確定させて
+ * いないことを CAS で確認してから反映する（existing はバッチ先頭の一括取得時点のスナップ
+ * ショットで古い可能性があるため。エンリッチャー自己修復経路と同一の保護方式）。
+ * 補えたら要約まわりを戻し、要約の待ち行列に積むかを返す。戻さないと、本文が無いときに
+ * 付いた CONTENT_FETCH_FAILED が残り、本文があるのに要約の対象から外れたままになる
+ */
+async function fillExistingContentFromFeed(
+  existing: { id: string; thumbnail: string | null; skipReason: string | null },
+  article: { content: string; thumbnail?: string }
+): Promise<{ updated: boolean; queueForSummary: boolean }> {
+  const summaryReset = summaryResetOnContentRecovery(existing.skipReason);
+  const { count } = await prisma.article.updateMany({
+    where: {
+      id: existing.id,
+      OR: [{ contentLength: null }, { contentLength: 0 }],
+    },
+    data: {
+      content: article.content,
+      thumbnail: isValidThumbnailUrl(article.thumbnail)
+        ? article.thumbnail
+        : existing.thumbnail,
+      contentUpdatedAt: new Date(),
+      ...summaryReset,
+    },
+  });
+  const updated = count > 0;
+  return { updated, queueForSummary: updated && summaryReset !== null };
+}
+
 interface ProcessSourceContext {
   source: Source;
   recentTitlesSet: Set<string>;
@@ -315,25 +372,16 @@ async function processSource({
           // content=null/empty の場合は更新を許可（全ソース共通の自己修復メカニズム）
           if (!existing.contentLength || existing.contentLength === 0) {
             if (article.content && article.content.length > 0) {
-              // フィード本文由来の補完。並行実行中の他ソースが既に本文を確定させて
-              // いないことを CAS で確認してから反映する（existing.contentLength は
-              // バッチ先頭の一括取得時点のスナップショットで古い可能性があるため。
-              // enricher 自己修復経路と同一の保護方式）
-              const { count: contentUpdateCount } = await prisma.article.updateMany({
-                where: {
-                  id: existing.id,
-                  OR: [{ contentLength: null }, { contentLength: 0 }],
-                },
-                data: {
-                  content: article.content,
-                  thumbnail: isValidThumbnailUrl(article.thumbnail)
-                    ? article.thumbnail
-                    : existing.thumbnail,
-                  contentUpdatedAt: new Date(),
-                },
+              // フィード本文由来の補完（CAS と要約まわりの戻しは fillExistingContentFromFeed）
+              const filled = await fillExistingContentFromFeed(existing, {
+                content: article.content,
+                thumbnail: article.thumbnail,
               });
-              if (contentUpdateCount > 0) {
+              if (filled.updated) {
                 articleUpdated = true;
+                if (filled.queueForSummary) {
+                  result.newArticleIds.push(existing.id);
+                }
                 debugLog(`   既存記事を更新（content補完）: ${article.title.substring(0, 50)}...`);
               } else {
                 debugLog(`   既存記事の更新スキップ（並行更新で本文既存）: ${article.title.substring(0, 50)}...`);
@@ -362,25 +410,11 @@ async function processSource({
                         contentUpdatedAt: new Date(),
                       };
 
-                      // 本文回復時は本文起因の skipReason / summaryError をクリアし、
-                      // 古い要約も無効化して generateSummaries の再生成対象に載せる。
-                      // PDF / SLIDE は本文の有無と無関係の恒久理由のため、クリア・
-                      // 要約リセットとも行わない（ID 指定の generateSummaries は
-                      // skipReason: null を要求しないため、リセットすると恒久スキップ
-                      // 記事が生成経路に入ってしまう）。
-                      // skipReason が null で summaryError だけ残るケース（一時的な要約失敗）
-                      // もクリア対象にするため truthy 判定はしない
-                      const isSummaryEligible =
-                        existing.skipReason !== 'PDF' &&
-                        existing.skipReason !== 'SLIDE';
-                      if (isSummaryEligible) {
-                        enricherUpdates.skipReason = null;
-                        enricherUpdates.summaryError = null;
-                        // enrich-thin-content.ts の本文回復時と同じ流儀
-                        enricherUpdates.summary = null;
-                        enricherUpdates.detailedSummary = null;
-                        enricherUpdates.summaryVersion = 0;
-                      }
+                      // 本文回復時は要約まわりを戻して generateSummaries の再生成対象に載せる
+                      // （PDF / SLIDE は戻さない。summaryResetOnContentRecovery）
+                      const summaryReset = summaryResetOnContentRecovery(existing.skipReason);
+                      const isSummaryEligible = summaryReset !== null;
+                      Object.assign(enricherUpdates, summaryReset);
 
                       // 並列実行中の他ソースが先に本文を書き込んでいた場合に上書きしないよう、
                       // contentLength が null/0 のままであることを条件に更新する（CAS）
@@ -631,7 +665,7 @@ async function processSource({
           // Re-fetch latest article for self-healing on concurrent URL collision
           const latestExisting = await prisma.article.findUnique({
             where: { url: article.url },
-            select: { id: true, sourceId: true, contentLength: true, thumbnail: true, url: true }
+            select: { id: true, sourceId: true, contentLength: true, thumbnail: true, url: true, skipReason: true }
           });
 
           if (latestExisting) {
@@ -650,22 +684,16 @@ async function processSource({
 
             if ((!latestExisting.contentLength || latestExisting.contentLength === 0) &&
                 article.content && article.content.length > 0) {
-              // メイン分岐と同様、content を含む更新は CAS で並行上書きを防ぐ
-              const { count: recoveryUpdateCount } = await prisma.article.updateMany({
-                where: {
-                  id: latestExisting.id,
-                  OR: [{ contentLength: null }, { contentLength: 0 }],
-                },
-                data: {
-                  content: article.content,
-                  thumbnail: isValidThumbnailUrl(article.thumbnail)
-                    ? article.thumbnail
-                    : latestExisting.thumbnail,
-                  contentUpdatedAt: new Date(),
-                },
+              // メイン分岐と同じく fillExistingContentFromFeed（CAS と要約まわりの戻し）
+              const filled = await fillExistingContentFromFeed(latestExisting, {
+                content: article.content,
+                thumbnail: article.thumbnail,
               });
-              if (recoveryUpdateCount > 0) {
+              if (filled.updated) {
                 articleUpdated = true;
+                if (filled.queueForSummary) {
+                  result.newArticleIds.push(latestExisting.id);
+                }
               } else {
                 debugLog(`   P2002リカバリ更新スキップ（並行更新で本文既存）: ${article.title.substring(0, 50)}...`);
               }
@@ -887,4 +915,9 @@ if (require.main === module) {
     });
 }
 
-export { collectFeeds, isAcceptableEnrichedContent };
+export {
+  collectFeeds,
+  fillExistingContentFromFeed,
+  isAcceptableEnrichedContent,
+  summaryResetOnContentRecovery,
+};
