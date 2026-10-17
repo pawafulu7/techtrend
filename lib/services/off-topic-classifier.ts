@@ -95,11 +95,14 @@ export async function classifyOffTopicArticles(
         // 空文字の要約は未要約の扱い（要約ができてから判定する）
         { summary: { not: null } },
         { summary: { not: '' } },
-        // 公開が古くても、収集したばかりの記事は判定する
+        // 公開が古くても、収集したばかりの記事は判定する。公開・収集が古くても、要約を作った
+        // （本文の回復や低品質の再生成で作り直した）ばかりの記事も判定する。期間に入れないと、
+        // 下の「要約を作り直した記事は判定し直す」が古い記事では効かない
         {
           OR: [
             { publishedAt: { gte: from, lt: now } },
             { createdAt: { gte: from, lt: now } },
+            { summaryComputedAt: { gte: from, lt: now } },
           ],
         },
         // 判定の後に要約を作り直した記事は、新しい要約で判定し直す
