@@ -4,8 +4,9 @@
 
 import { SkipReason } from '@/lib/prisma-exports';
 import {
-  contentUnchangedSinceWhere,
+  PENDING_SUMMARY_ORDER_BY,
   pendingSummaryWhere,
+  recordContentSkipReasons,
 } from '@/lib/services/summary/pending-articles';
 import { checkNewArticles } from '@/lib/services/summary/batch-processor';
 import { generateMissingSummaries } from '@/lib/services/summary/summary-orchestrator';
@@ -65,11 +66,45 @@ describe('pendingSummaryWhere', () => {
   });
 });
 
-describe('contentUnchangedSinceWhere', () => {
-  it('本文を更新していないか、読んだ時刻より前に更新した記事だけに当たる', () => {
-    expect(contentUnchangedSinceWhere(NOW)).toEqual({
-      OR: [{ contentUpdatedAt: null }, { contentUpdatedAt: { lte: NOW } }],
-    });
+describe('recordContentSkipReasons', () => {
+  it('読んだときと本文の長さが同じ記事だけに印を付ける（記事ごとに比べる）', async () => {
+    const prisma = createPrismaMock();
+
+    await recordContentSkipReasons(
+      prisma as never,
+      [
+        { id: 'a1', contentLength: null },
+        { id: 'a2', contentLength: 42 },
+      ],
+      SkipReason.THIN_CONTENT
+    );
+
+    expect(prisma.article.updateMany.mock.calls.map(([args]) => args)).toEqual([
+      {
+        where: {
+          id: 'a1',
+          OR: [{ summary: null }, { summary: '' }],
+          contentLength: null,
+        },
+        data: { skipReason: SkipReason.THIN_CONTENT, summaryError: null },
+      },
+      {
+        where: {
+          id: 'a2',
+          OR: [{ summary: null }, { summary: '' }],
+          contentLength: 42,
+        },
+        data: { skipReason: SkipReason.THIN_CONTENT, summaryError: null },
+      },
+    ]);
+  });
+
+  it('対象が無ければ何も書かない', async () => {
+    const prisma = createPrismaMock();
+
+    await recordContentSkipReasons(prisma as never, [], SkipReason.THIN_CONTENT);
+
+    expect(prisma.article.updateMany).not.toHaveBeenCalled();
   });
 });
 
@@ -105,6 +140,9 @@ describe('要約の対象を選ぶ3つの経路', () => {
       source: { name: 'Zenn' },
     });
     expect(generateWhere).toEqual(checkWhere);
+    expect(prisma.article.findMany.mock.calls[0][0].orderBy).toEqual(
+      PENDING_SUMMARY_ORDER_BY
+    );
   });
 
   it('missing は既定で 7 日の共通の条件を使う', async () => {
@@ -113,7 +151,10 @@ describe('要約の対象を選ぶ3つの経路', () => {
     await generateMissingSummaries(prisma as never, {}, jest.fn());
 
     expect(prisma.article.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: pendingSummaryWhere(7, NOW) })
+      expect.objectContaining({
+        where: pendingSummaryWhere(7, NOW),
+        orderBy: { createdAt: 'desc' },
+      })
     );
   });
 
@@ -138,6 +179,7 @@ describe('本文の判定の書き込み', () => {
     id: 'no-content',
     title: 'No content',
     content: '',
+    contentLength: 0,
     publishedAt: NOW,
     source: { id: 's1', name: 'Test' },
   };
@@ -145,6 +187,7 @@ describe('本文の判定の書き込み', () => {
     id: 'thin',
     title: 'Thin',
     content: 'short',
+    contentLength: 5,
     publishedAt: NOW,
     source: { id: 's1', name: 'Test' },
   };
@@ -169,26 +212,22 @@ describe('本文の判定の書き込み', () => {
       },
     ],
   ])(
-    '%s は、読んだ後に本文が書き換わった記事には本文なし・本文不足の印を付けない',
+    '%s は、読んだときと本文の長さが同じ記事にだけ本文なし・本文不足の印を付ける',
     async (_name, run) => {
       const prisma = createPrismaMock([noContent, thinContent]);
 
       await run(prisma);
 
       const updates = skipReasonUpdates(prisma);
-      expect(updates.map((u) => u.data.skipReason).sort()).toEqual(
-        [SkipReason.CONTENT_FETCH_FAILED, SkipReason.THIN_CONTENT].sort()
+      expect(
+        updates.map((u) => [u.where.id, u.where.contentLength, u.data.skipReason])
+      ).toEqual(
+        expect.arrayContaining([
+          ['no-content', 0, SkipReason.CONTENT_FETCH_FAILED],
+          ['thin', 5, SkipReason.THIN_CONTENT],
+        ])
       );
-      for (const update of updates) {
-        expect(update.where.AND).toEqual([
-          {
-            OR: [
-              { contentUpdatedAt: null },
-              { contentUpdatedAt: { lte: expect.any(Date) } },
-            ],
-          },
-        ]);
-      }
+      expect(updates).toHaveLength(2);
     }
   );
 });
