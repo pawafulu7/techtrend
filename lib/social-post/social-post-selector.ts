@@ -16,6 +16,10 @@ import { findTagIdsByNames } from '@/lib/services/tag-service';
 import type { OpinionForPrompt } from './types';
 import { containsFilter } from '@/lib/utils/like-pattern';
 import {
+  ARXIV_SOURCE_ID,
+  HUGGINGFACE_PAPERS_SOURCE_ID,
+} from '@/lib/constants/source-categories';
+import {
   type ArticleCandidatesSearchInput,
   ARTICLE_CATEGORIES,
 } from './social-post-validator';
@@ -32,9 +36,9 @@ import {
  * - Dev.to, GitHub Blog, OpenAI Blog等
  */
 const HIGH_PRIORITY_SOURCE_IDS = [
-  'cmfxa7efs0001teo0kjt70c5k', // arXiv AI
+  ARXIV_SOURCE_ID, // arXiv AI
   'hacker_news_202508', // Hacker News
-  'cmfxa7efj0000teo006dhbox6e', // Hugging Face Papers
+  HUGGINGFACE_PAPERS_SOURCE_ID, // Hugging Face Papers（以前は ID を1文字誤っていた）
   'cmdwmplc10000tec8vg2t9r2o', // Hugging Face Blog
   'cmdq3nww70003tegxm78oydnb', // Dev.to
   'cmfwpq7dc0000te8m6fd12f0x', // OpenAI Blog

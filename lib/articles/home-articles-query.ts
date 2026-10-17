@@ -10,7 +10,10 @@
  */
 
 import type { HomePersonalization } from '@/lib/personalization/preferences-state';
-import { withoutPaperSourceIds } from '@/lib/utils/source/paper-source';
+import {
+  isPaperSourceId,
+  withoutPaperSourceIds,
+} from '@/lib/utils/source/paper-source';
 
 export type ArticleFilterValue = string | boolean | undefined;
 export type ArticleFilters = Record<string, ArticleFilterValue>;
@@ -81,7 +84,9 @@ export function buildHomeArticleFilters({
     const sources = withoutPaperSourceIds(searchParams.get('sources')!);
     if (sources) params.sources = sources;
   } else if (searchParams.has('sourceId')) {
-    params.sourceId = searchParams.get('sourceId')!;
+    // 論文のソースは送らない（sources と同じく全選択。isPaperSourceId）
+    const sourceId = searchParams.get('sourceId')!;
+    if (!isPaperSourceId(sourceId)) params.sourceId = sourceId;
   } else if (initialSourceIds !== undefined) {
     // Cookie由来のinitialSourceIdsを使用
     params.sources =

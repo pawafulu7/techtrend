@@ -138,6 +138,19 @@ describe('buildHomeArticleFilters', () => {
     expect(sources('sources=none')).toBe('none');
   });
 
+  it('URL の sourceId が論文のソースなら送らない（全選択）', () => {
+    const build = (query: string) =>
+      buildHomeArticleFilters({
+        searchParams: new URLSearchParams(query),
+        personalization: NO_PERSONALIZATION,
+      });
+
+    expect(build(`sourceId=${HUGGINGFACE_PAPERS_SOURCE_ID}`)).not.toHaveProperty(
+      'sourceId'
+    );
+    expect(build('sourceId=zenn').sourceId).toBe('zenn');
+  });
+
   it('除外するソースを足す', () => {
     expect(
       buildHomeArticleFilters({

@@ -10,6 +10,7 @@ import {
 } from '@tanstack/react-query';
 import {
   PAPER_SOURCE_IDS_PARAM,
+  isPaperSourceId,
   withoutPaperSourceIds,
 } from '@/lib/utils/source/paper-source';
 import { FilterSidebarToggle } from '@/app/components/home/filter-sidebar';
@@ -110,7 +111,7 @@ export function ReaderClient({ tags }: ReaderClientProps) {
     // 論文のソースは除く（残りが無ければ全選択。withoutPaperSourceIds）
     const sources = sourcesParam ? withoutPaperSourceIds(sourcesParam) : undefined;
     if (sources) params.sources = sources;
-    if (sourceId) params.sourceId = sourceId;
+    if (sourceId && !isPaperSourceId(sourceId)) params.sourceId = sourceId;
     if (tagsParam) params.tags = tagsParam;
     if (tagMode) params.tagMode = tagMode;
     if (searchParam) params.search = searchParam;

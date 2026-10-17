@@ -87,16 +87,32 @@ async function main() {
   ];
 
   for (const source of aiSources) {
-    // Sources with fixed IDs use upsert to ensure ID consistency
-    // This handles the case where source exists with a different ID
     if ('id' in source && source.id && FIXED_ID_SOURCES.has(source.id)) {
+      // 同じ名前のソースが別の ID で既にあると、upsert の create が name の一意制約で落ちる
+      // （以前の seed は固定 ID を持たないソースを cuid で作っていた）。記事の付け替えが要るので
+      // 自動では移さず、警告して飛ばす
+      const duplicate = await prisma.source.findFirst({
+        where: {
+          name: source.name,
+          id: { not: source.id },
+        },
+      });
+      if (duplicate) {
+        console.warn(
+          `Warning: Found "${source.name}" with a different ID (${duplicate.id}); skipped. ` +
+            `Migrate its articles to the canonical ID (${source.id}) to enable ID-based filtering.`
+        );
+        continue;
+      }
+
+      // Sources with fixed IDs use upsert to ensure ID consistency.
+      // enabled は update に入れない（本番で無効にしたソースを seed が有効に戻さないため）
       const upsertedSource = await prisma.source.upsert({
         where: { id: source.id },
         update: {
           name: source.name,
           type: source.type,
           url: source.url,
-          enabled: source.enabled,
           ...('groupId' in source && source.groupId
             ? { groupId: source.groupId }
             : {}),
@@ -106,20 +122,6 @@ async function main() {
       console.log(
         `Upserted source: ${upsertedSource.name} (ID: ${upsertedSource.id})`
       );
-
-      // Also check if there's a duplicate with the same name but different ID
-      const duplicate = await prisma.source.findFirst({
-        where: {
-          name: source.name,
-          id: { not: source.id },
-        },
-      });
-      if (duplicate) {
-        console.warn(
-          `Warning: Found duplicate "${source.name}" with different ID (${duplicate.id}). ` +
-            `Consider migrating articles to the canonical ID (${source.id}).`
-        );
-      }
       continue;
     }
 
