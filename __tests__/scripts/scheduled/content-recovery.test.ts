@@ -7,16 +7,22 @@
 import { SkipReason } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import {
-  SUMMARY_RESET,
   fillExistingContentFromFeed,
   isValidThumbnailUrl,
-  summaryResetOnContentRecovery,
 } from '@/scripts/scheduled/utils/content-recovery';
+import {
+  SUMMARY_RESET,
+  summaryResetOnContentRecovery,
+  summaryUpdatesForReplacedContent,
+} from '@/scripts/scheduled/utils/summary-reset';
 
-// @/lib/prisma は jest.config の moduleNameMapper で共有の prismaMock に置き換わる
-const mockUpdateMany = (
-  prisma as unknown as { article: { updateMany: jest.Mock } }
-).article.updateMany;
+// @/lib/prisma は jest.config の moduleNameMapper で共有の prismaMock に置き換わる。
+// $transaction はコールバックに prismaMock を渡す（test/utils/prisma-mock.js）
+const mockPrisma = prisma as unknown as {
+  article: { updateMany: jest.Mock };
+  $transaction: jest.Mock;
+};
+const mockUpdateMany = mockPrisma.article.updateMany;
 
 const LONG_CONTENT = 'feed body '.repeat(20); // 200 字（要約に足りる）
 
@@ -64,6 +70,8 @@ describe('fillExistingContentFromFeed', () => {
 
     expect(filled).toBe(true);
     expect(queue).toEqual(['article-1']);
+    // 本文の書き込みと印の戻しは1つのトランザクションで行う
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
     const [[fill], [reset]] = mockUpdateMany.mock.calls;
     expect(fill).toEqual({
       where: { id: 'article-1', OR: [{ contentLength: null }, { contentLength: 0 }] },
@@ -104,6 +112,18 @@ describe('fillExistingContentFromFeed', () => {
     expect(filled).toBe(false);
     expect(queue).toEqual([]);
     expect(mockUpdateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('印の戻しが失敗したら、トランザクションごと失敗し、待ち行列に積まない', async () => {
+    mockUpdateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockRejectedValueOnce(new Error('connection lost'));
+    const queue: string[] = [];
+
+    await expect(
+      fillExistingContentFromFeed(existing, { content: LONG_CONTENT }, queue)
+    ).rejects.toThrow('connection lost');
+    expect(queue).toEqual([]);
   });
 
   it('要約がある・PDF などで戻せなかった（0件）記事は積まない', async () => {
@@ -149,6 +169,32 @@ describe('fillExistingContentFromFeed', () => {
     expect(mockUpdateMany.mock.calls[0][0].data.thumbnail).toBe(
       'https://example.com/old.png'
     );
+  });
+});
+
+describe('summaryUpdatesForReplacedContent（保守スクリプトで本文を取り直したとき）', () => {
+  const LONG = 'a'.repeat(500);
+
+  it('PDF / SLIDE は何も戻さない', () => {
+    expect(summaryUpdatesForReplacedContent(SkipReason.PDF, LONG)).toEqual({});
+    expect(summaryUpdatesForReplacedContent(SkipReason.SLIDE, LONG)).toEqual({});
+  });
+
+  it('本文が保存の基準を満たせば、要約と本文起因の skipReason を戻す', () => {
+    expect(
+      summaryUpdatesForReplacedContent(SkipReason.THIN_CONTENT, LONG)
+    ).toEqual(SUMMARY_RESET);
+  });
+
+  it('本文が基準を満たさなければ、要約だけを消し skipReason は残す', () => {
+    expect(
+      summaryUpdatesForReplacedContent(SkipReason.THIN_CONTENT, 'short')
+    ).toEqual({
+      summary: null,
+      detailedSummary: null,
+      summaryVersion: 0,
+      summaryComputedAt: null,
+    });
   });
 });
 

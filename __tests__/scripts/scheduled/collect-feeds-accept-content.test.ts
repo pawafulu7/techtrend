@@ -1,5 +1,5 @@
 /**
- * collect-feeds.ts の isAcceptableEnrichedContent 境界テスト
+ * isAcceptableEnrichedContent（scripts/scheduled/utils/summary-reset.ts）の境界テスト
  *
  * 新規保存経路・既存記事の自己修復経路の両方が共有する受入基準:
  * 500文字以上は無条件、250-499文字は isHighQuality（品質チェック）必須。
@@ -10,7 +10,7 @@ jest.mock('@/lib/enrichers/strategies/quality', () => ({
   isHighQuality: jest.fn(),
 }));
 
-import { isAcceptableEnrichedContent } from '@/scripts/scheduled/collect-feeds';
+import { isAcceptableEnrichedContent } from '@/scripts/scheduled/utils/summary-reset';
 import { isHighQuality } from '@/lib/enrichers/strategies/quality';
 
 const mockIsHighQuality = isHighQuality as jest.Mock;

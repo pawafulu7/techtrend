@@ -10,6 +10,7 @@ import { FetchResult, CreateArticleInput } from '@/types/fetchers';
 import { logger } from '@/lib/logger';
 import { normalizeUrl } from '@/lib/utils/url/url-normalizer';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
+import { HUGGINGFACE_PAPERS_SOURCE_NAME } from '@/lib/constants/source-categories';
 
 // Atom形式のカテゴリ型
 interface AtomCategory {
@@ -702,7 +703,7 @@ export function getForeignSourceConfig(
  * Hugging Face Papers は API の要旨を本文にする（汎用 enricher は arXiv のページを
  * 取りに行き、長ければ本文を上書きしてしまう）。
  */
-const ENRICHMENT_SKIPPED_SOURCE_NAMES = new Set(['Hugging Face Papers']);
+const ENRICHMENT_SKIPPED_SOURCE_NAMES = new Set([HUGGINGFACE_PAPERS_SOURCE_NAME]);
 
 /**
  * 指定ソースが enricher による本文上書きをスキップする対象かどうかを判定する

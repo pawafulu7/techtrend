@@ -88,14 +88,16 @@ import { ContentEnricherFactory } from '@/lib/enrichers';
 import { classifyEnrichmentError } from '@/lib/enrichers/error-classifier';
 import { HATENA_BLOG_DEV_SOURCE_ID } from '@/lib/enrichers/hatena';
 import { logger } from '@/lib/logger';
-import { isHighQuality } from '@/lib/enrichers/strategies/quality';
 import { isEnrichmentSkipped } from '@/lib/fetchers/generic-foreign-rss';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 import {
   fillExistingContentFromFeed,
   isValidThumbnailUrl,
-  summaryResetOnContentRecovery,
 } from './utils/content-recovery';
+import {
+  isAcceptableEnrichedContent,
+  summaryResetOnContentRecovery,
+} from './utils/summary-reset';
 
 /**
  * Local ArticleInfo for collect-feeds internal use.
@@ -140,15 +142,6 @@ function resolveEnrichSleepMs(sourceId: string): number {
 // 1ソース1実行あたりの自己修復エンリッチ試行数の上限
 // （既存記事の空本文をエンリッチャーで再取得する処理の暴走・レート制限違反を防ぐ）
 const MAX_SELF_HEAL_ENRICH_PER_RUN = 5;
-
-/**
- * エンリッチ済みコンテンツが保存に足る品質かを判定する。
- * 新規保存経路（500文字以上は無条件、250-499文字は isHighQuality 必須）と
- * 同一基準を、既存記事の自己修復経路でも適用するための共通ヘルパー。
- */
-function isAcceptableEnrichedContent(content: string): boolean {
-  return content.length >= 500 || (content.length >= 250 && isHighQuality(content));
-}
 
 interface ProcessSourceContext {
   source: Source;
@@ -843,4 +836,4 @@ if (require.main === module) {
     });
 }
 
-export { collectFeeds, isAcceptableEnrichedContent };
+export { collectFeeds };

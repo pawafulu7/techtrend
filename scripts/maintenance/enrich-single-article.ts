@@ -7,7 +7,7 @@ import { createPrismaClient } from '@/lib/prisma/create-client';
 import { GoogleAIEnricher } from '../../lib/enrichers/google-ai';
 import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { isEnrichmentSkipped } from '../../lib/fetchers/generic-foreign-rss';
-import { isHighQuality } from '../../lib/enrichers/strategies/quality';
+import { summaryUpdatesForReplacedContent } from '../scheduled/utils/summary-reset';
 
 const prisma = createPrismaClient();
 const enricher = new GoogleAIEnricher();
@@ -77,23 +77,9 @@ async function enrichSingleArticle(articleId: string) {
       // 要約をリセットしておく（collect-feeds.ts の自己修復パスと同じ流儀）。
       // リセットしておけば、このスクリプトでの再生成に失敗しても定期の要約生成ジョブが
       // 再生成対象として拾える。
-      // PDF / SLIDE は本文の有無と無関係な恒久スキップ理由のため対象外にする。
-      const isSummaryEligible =
-        article.skipReason !== 'PDF' && article.skipReason !== 'SLIDE';
-
-      // skipReason / summaryError のクリアは、collect-feeds.ts / enrich-thin-content.ts
-      // と同一の受入基準（500文字以上は無条件、250-499文字は isHighQuality 必須）を
-      // 満たす場合に限る。GoogleAIEnricher は300文字未満でも本文を返しうるため、
-      // 基準なしでクリアすると、要約生成の対象になったものの本文が短すぎて
-      // THIN_CONTENT が再設定される、という無駄な往復が発生する。
-      //
-      // 一方、summary / detailedSummary / summaryVersion のリセットは基準に関わらず
-      // 行う。本文が差し替わった時点で旧本文由来の要約は無効であり、残すと
-      // 「新本文 + 旧要約」の不整合になるため。
-      const meetsSummaryQualityBar =
-        enrichedData.content.length >= 500 ||
-        (enrichedData.content.length >= 250 && isHighQuality(enrichedData.content));
-
+      // PDF / SLIDE は対象外。skipReason / summaryError は新しい本文が保存の基準を満たすときだけ
+      // 消し、要約は基準に関わらず消す（summaryUpdatesForReplacedContent。collect-feeds.ts・
+      // 他の保守スクリプトと同じ扱い）
       const { count } = await prisma.article.updateMany({
         where: { id: articleId, updatedAt: article.updatedAt },
         data: {
@@ -104,17 +90,7 @@ async function enrichSingleArticle(articleId: string) {
           // 品質スコアが古いまま残る。
           contentUpdatedAt: new Date(),
           ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail }),
-          ...(isSummaryEligible && {
-            summary: null,
-            detailedSummary: null,
-            summaryVersion: 0,
-            // 一覧は summaryComputedAt で要約済みかを見る。残すと要約の無いまま一覧に出る
-            summaryComputedAt: null
-          }),
-          ...(isSummaryEligible && meetsSummaryQualityBar && {
-            skipReason: null,
-            summaryError: null
-          })
+          ...summaryUpdatesForReplacedContent(article.skipReason, enrichedData.content)
         }
       });
 

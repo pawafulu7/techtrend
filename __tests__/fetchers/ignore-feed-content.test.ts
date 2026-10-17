@@ -15,6 +15,7 @@ import {
   isEnrichmentSkipped,
 } from '@/lib/fetchers/generic-foreign-rss';
 import { Source } from '@/lib/prisma-exports';
+import { HUGGINGFACE_PAPERS_SOURCE_NAME } from '@/lib/constants/source-categories';
 import Parser from 'rss-parser';
 
 jest.mock('rss-parser', () => {
@@ -128,6 +129,6 @@ describe('isEnrichmentSkipped', () => {
   });
 
   it('Hugging Face Papers は API の要旨を本文にするので true を返す', () => {
-    expect(isEnrichmentSkipped('Hugging Face Papers')).toBe(true);
+    expect(isEnrichmentSkipped(HUGGINGFACE_PAPERS_SOURCE_NAME)).toBe(true);
   });
 });
