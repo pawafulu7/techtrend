@@ -10,7 +10,8 @@ import logger from '@/lib/logger';
  * Hugging Face の API（/api/daily_papers）から、直近 3 日（前日・2日前・3日前、UTC）に Daily Papers に
  * 載った論文を取る。当日の一覧は upvotes が動いて毎時入れ替わるので使わない。前の日を毎回取り直すので、
  * ある日の取得に失敗しても次の実行で取り戻せる（重複は URL の完全一致で保存されない）。
- * 日ごとに、arXiv の公開が 7 日以内の論文に絞ってから、upvotes の多い順に 30 件まで取る。
+ * 1回の取得では、日ごとに arXiv の公開が 7 日以内の論文に絞ってから、upvotes の多い順に 30 件まで取る。
+ * 同じ日を後の実行で取り直すと upvotes の順位が動くので、1日あたり 30 件は目安で厳密な上限ではない。
  * 以前の取得先（公開の RSSHub）は 403 を返し、2025-11 から止まっていた。
  */
 const API_URL = 'https://huggingface.co/api/daily_papers';
@@ -27,18 +28,6 @@ const MAX_PAGES = 3;
 const REQUEST_TIMEOUT_MS = 10_000;
 const ARXIV_ID_PATTERN = /^\d{4}\.\d{4,5}$/;
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-interface DailyPaperItem {
-  thumbnail?: unknown;
-  paper?: {
-    id?: unknown;
-    title?: unknown;
-    summary?: unknown;
-    publishedAt?: unknown;
-    upvotes?: unknown;
-    authors?: unknown;
-  };
-}
 
 interface PaperCandidate {
   arxivId: string;
@@ -110,19 +99,20 @@ export class HuggingFacePapersFetcher extends BaseFetcher {
       if (pageItems.length < PAGE_LIMIT) break;
     }
 
-    const candidates: PaperCandidate[] = [];
+    // ページを順に取る間に順位が動くと、同じ論文が2つのページに出ることがある
+    const candidates = new Map<string, PaperCandidate>();
     let invalidCount = 0;
     for (const item of items) {
       const candidate = toCandidate(item);
       if (candidate) {
-        candidates.push(candidate);
+        candidates.set(candidate.arxivId, candidate);
       } else {
         invalidCount++;
       }
     }
 
     const cutoff = now.getTime() - MAX_PAPER_AGE_DAYS * DAY_MS;
-    const articles = candidates
+    const articles = [...candidates.values()]
       .filter((paper) => paper.publishedAt.getTime() >= cutoff)
       .sort((a, b) => b.upvotes - a.upvotes)
       .slice(0, MAX_PAPERS_PER_DAY)
@@ -153,6 +143,8 @@ async function fetchPage(date: string, page: number): Promise<unknown[]> {
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!response.ok) {
+    // 読まない本文は捨てて接続を返す
+    await response.body?.cancel();
     throw new Error(`Status code ${response.status}`);
   }
   const body: unknown = await response.json();
@@ -162,12 +154,14 @@ async function fetchPage(date: string, page: number): Promise<unknown[]> {
   return body;
 }
 
-function toCandidate(item: unknown): PaperCandidate | null {
-  if (typeof item !== 'object' || item === null) return null;
-  const { paper, thumbnail } = item as DailyPaperItem;
-  if (!paper) return null;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
 
-  const { id, title, summary, publishedAt, upvotes, authors } = paper;
+function toCandidate(item: unknown): PaperCandidate | null {
+  if (!isRecord(item) || !isRecord(item.paper)) return null;
+  const { thumbnail } = item;
+  const { id, title, summary, publishedAt, upvotes, authors } = item.paper;
   if (typeof id !== 'string' || !ARXIV_ID_PATTERN.test(id)) return null;
   if (typeof title !== 'string' || title.trim() === '') return null;
   if (typeof summary !== 'string' || summary.trim() === '') return null;
@@ -183,11 +177,7 @@ function toCandidate(item: unknown): PaperCandidate | null {
     upvotes: typeof upvotes === 'number' ? upvotes : 0,
     authors: Array.isArray(authors)
       ? authors
-          .map((author) =>
-            typeof author === 'object' && author !== null
-              ? (author as { name?: unknown }).name
-              : undefined
-          )
+          .map((author) => (isRecord(author) ? author.name : undefined))
           .filter((name): name is string => typeof name === 'string')
       : [],
     thumbnail:

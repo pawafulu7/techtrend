@@ -49,24 +49,27 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 /** 日付（とページ）ごとの応答を返す fetch のモック */
-function mockFetchByDay(pages: Record<string, unknown[] | Error | number>) {
-  const fetchMock = jest.fn(async (input: string) => {
-    const url = new URL(input);
+function mockFetchByDay(pages: Record<string, unknown>) {
+  const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(async (input) => {
+    const url = new URL(String(input));
     const key = `${url.searchParams.get('date')}#${url.searchParams.get('p')}`;
     const page = pages[key] ?? pages[url.searchParams.get('date') ?? ''] ?? [];
     if (page instanceof Error) throw page;
-    if (typeof page === 'number') return jsonResponse({ error: 'x' }, page);
-    return jsonResponse(page);
+    if (typeof page === 'number') {
+      return jsonResponse({ error: 'x' }, page) as unknown as Response;
+    }
+    return jsonResponse(page) as unknown as Response;
   });
-  global.fetch = fetchMock as unknown as typeof fetch;
   return fetchMock;
 }
 
-describe('HuggingFacePapersFetcher', () => {
-  const originalFetch = global.fetch;
+function requestedUrls(fetchMock: jest.SpyInstance) {
+  return fetchMock.mock.calls.map(([input]) => new URL(String(input)));
+}
 
+describe('HuggingFacePapersFetcher', () => {
   afterEach(() => {
-    global.fetch = originalFetch;
+    jest.restoreAllMocks();
   });
 
   function createFetcher() {
@@ -78,7 +81,8 @@ describe('HuggingFacePapersFetcher', () => {
 
     await createFetcher().fetch();
 
-    const urls = fetchMock.mock.calls.map(([input]) => new URL(input));
+    const urls = requestedUrls(fetchMock);
+    expect(urls).toHaveLength(3);
     expect(urls.map((u) => u.searchParams.get('date')).sort()).toEqual([...DAYS].sort());
     for (const url of urls) {
       expect(url.origin + url.pathname).toBe('https://huggingface.co/api/daily_papers');
@@ -141,8 +145,7 @@ describe('HuggingFacePapersFetcher', () => {
 
     const result = await createFetcher().fetch();
 
-    const pagesFor16 = fetchMock.mock.calls
-      .map(([input]) => new URL(input))
+    const pagesFor16 = requestedUrls(fetchMock)
       .filter((u) => u.searchParams.get('date') === '2026-10-16')
       .map((u) => u.searchParams.get('p'));
     expect(pagesFor16).toEqual(['0', '1']);
@@ -176,7 +179,7 @@ describe('HuggingFacePapersFetcher', () => {
   });
 
   it('応答が配列でなければ、その日をエラーにする', async () => {
-    mockFetchByDay({ '2026-10-16': { error: 'unexpected' } as unknown as unknown[] });
+    mockFetchByDay({ '2026-10-16': { error: 'unexpected' } });
 
     const result = await createFetcher().fetch();
 
@@ -208,8 +211,66 @@ describe('HuggingFacePapersFetcher', () => {
 
     await createFetcher().fetch();
 
-    for (const [, init] of fetchMock.mock.calls as unknown as Array<[string, RequestInit]>) {
-      expect(init.signal).toBeInstanceOf(AbortSignal);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
     }
+  });
+
+  it('100 件ちょうどのページが続いても、日ごとに 3 ページで止める', async () => {
+    const fullPage = (offset: number) =>
+      Array.from({ length: 100 }, (_, i) =>
+        paper(`2610.${String(30000 + offset + i)}`)
+      );
+    const fetchMock = mockFetchByDay({
+      '2026-10-16#0': fullPage(0),
+      '2026-10-16#1': fullPage(100),
+      '2026-10-16#2': fullPage(200),
+      '2026-10-16#3': fullPage(300),
+    });
+
+    await createFetcher().fetch();
+
+    const pagesFor16 = requestedUrls(fetchMock)
+      .filter((u) => u.searchParams.get('date') === '2026-10-16')
+      .map((u) => u.searchParams.get('p'));
+    expect(pagesFor16).toEqual(['0', '1', '2']);
+  });
+
+  it('ページをまたいで同じ論文が出ても、1 件にする', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, i) =>
+      paper(`2610.${String(40000 + i)}`)
+    );
+    mockFetchByDay({
+      '2026-10-16#0': firstPage,
+      '2026-10-16#1': [paper('2610.40000')],
+    });
+
+    const result = await createFetcher().fetch();
+
+    const urls = result.articles.map((a) => a.url);
+    expect(urls.filter((u) => u === 'https://arxiv.org/abs/2610.40000')).toHaveLength(1);
+  });
+
+  it('https でないサムネイルは捨て、upvotes が無ければ 0、著者が 10 人を超えたら et al. にする', async () => {
+    const many = paper('2610.50000', { upvotes: 5 });
+    many.paper.authors = Array.from({ length: 12 }, (_, i) => ({ name: `A${i}` }));
+    const noVotes = {
+      ...paper('2610.50001'),
+      thumbnail: 'http://example.com/insecure.png',
+      paper: { ...paper('2610.50001').paper, upvotes: undefined },
+    };
+    mockFetchByDay({ '2026-10-16': [noVotes, many] });
+
+    const result = await createFetcher().fetch();
+
+    expect(result.articles.map((a) => a.url)).toEqual([
+      'https://arxiv.org/abs/2610.50000',
+      'https://arxiv.org/abs/2610.50001',
+    ]);
+    expect(result.articles[0].content).toContain(
+      'Authors: A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, et al.'
+    );
+    expect(result.articles[1].thumbnail).toBeUndefined();
   });
 });
