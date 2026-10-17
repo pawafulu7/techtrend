@@ -30,6 +30,10 @@ import {
   SUMMARY_TIMEOUT,
 } from './batch-processor';
 import { checkNewArticles } from './batch-processor';
+import {
+  contentUnchangedSinceWhere,
+  pendingSummaryWhere,
+} from './pending-articles';
 
 // Re-export types for backward compatibility
 export type {
@@ -93,24 +97,19 @@ export class SummaryManager {
       }
 
       // Query articles without summaries
-      const whereCondition: Prisma.ArticleWhereInput = {
-        OR: [{ summary: null }, { summary: '' }],
-        ...(hasTargetArticleIds ? {} : { skipReason: null }),
-      };
-
-      if (hasTargetArticleIds) {
-        whereCondition.id = { in: options.articleIds };
-      } else {
-        const days = options.days ?? 1;
-        const from = new Date();
-        from.setDate(from.getDate() - days);
-        whereCondition.publishedAt = { gte: from };
-      }
+      const whereCondition: Prisma.ArticleWhereInput = hasTargetArticleIds
+        ? {
+            OR: [{ summary: null }, { summary: '' }],
+            id: { in: options.articleIds },
+          }
+        : pendingSummaryWhere(options.days ?? 1);
 
       if (options.source) {
         whereCondition.source = { name: options.source };
       }
 
+      // 本文の判定を書き込むときに、読んだ後で本文が書き換わっていないかを見る基準
+      const readAt = new Date();
       const articles = (await this.prisma.article.findMany({
         where: whereCondition,
         include: { source: true },
@@ -167,6 +166,7 @@ export class SummaryManager {
             where: {
               id: { in: noContentIds },
               OR: [{ summary: null }, { summary: '' }],
+              AND: [contentUnchangedSinceWhere(readAt)],
             },
             data: {
               skipReason: SkipReason.CONTENT_FETCH_FAILED,
@@ -179,6 +179,7 @@ export class SummaryManager {
             where: {
               id: { in: thinContentIds },
               OR: [{ summary: null }, { summary: '' }],
+              AND: [contentUnchangedSinceWhere(readAt)],
             },
             data: {
               skipReason: SkipReason.THIN_CONTENT,
@@ -187,10 +188,7 @@ export class SummaryManager {
           });
         }
       } catch (dbError) {
-        logger.warn(
-          { err: dbError },
-          'Failed to record skip reasons'
-        );
+        logger.warn({ err: dbError }, 'Failed to record skip reasons');
       }
 
       if (validArticles.length === 0) {
@@ -213,10 +211,7 @@ export class SummaryManager {
 
       return { generated, errors, skipped };
     } catch (error) {
-      logger.error(
-        { err: error },
-        'Fatal error in summary generation'
-      );
+      logger.error({ err: error }, 'Fatal error in summary generation');
       throw error;
     }
   }

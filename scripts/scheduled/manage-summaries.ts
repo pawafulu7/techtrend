@@ -100,8 +100,8 @@ regenerateオプション:
   -f, --force           強制的に再生成
   -b, --batch <size>    バッチサイズ (デフォルト: 10)
 
-missingオプション:
-  -d, --days <days>     過去N日間の記事のみ (デフォルト: 7)
+generate・missingオプション:
+  -d, --days <days>     過去N日間に取り込んだか本文を更新した記事のみ (デフォルト: 7)
 `);
 }
 

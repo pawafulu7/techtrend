@@ -14,7 +14,10 @@ export interface SummaryGenerationOptions {
   force?: boolean;
   /** Maximum articles to process in regenerate/missing flows (default: 10) */
   batch?: number;
-  /** Days to look back: generateSummaries default=1, generateMissingSummaries default=7 */
+  /**
+   * generate・missing だけが使う期間（日）。取り込んだ日時か本文を更新した日時で切る（pending-articles.ts）。
+   * 既定は generateSummaries=1・generateMissingSummaries=7。regenerate は使わない
+   */
   days?: number;
   /** Specific article IDs to regenerate */
   articleIds?: string[];

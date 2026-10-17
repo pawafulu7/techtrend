@@ -16,6 +16,10 @@ import type {
   SummaryAndTags,
 } from './types';
 import { updateArticleTags } from './batch-processor';
+import {
+  contentUnchangedSinceWhere,
+  pendingSummaryWhere,
+} from './pending-articles';
 import { env } from '@/lib/config/env';
 
 /**
@@ -336,26 +340,22 @@ export async function generateMissingSummaries(
   logger.info('Starting missing summaries generation');
 
   try {
-    const daysAgo = new Date();
-    daysAgo.setDate(daysAgo.getDate() - (options.days || 7));
-
     const hasTargetArticleIds =
       Array.isArray(options.articleIds) && options.articleIds.length > 0;
 
-    const where: Prisma.ArticleWhereInput = {
-      OR: [{ summary: null }, { summary: '' }],
-      ...(hasTargetArticleIds
-        ? { id: { in: options.articleIds } }
-        : {
-            skipReason: null,
-            publishedAt: { gte: daysAgo },
-          }),
-    };
+    const where: Prisma.ArticleWhereInput = hasTargetArticleIds
+      ? {
+          OR: [{ summary: null }, { summary: '' }],
+          id: { in: options.articleIds },
+        }
+      : pendingSummaryWhere(options.days || 7);
 
     if (options.source) {
       where.source = { name: options.source };
     }
 
+    // 本文の判定を書き込むときに、読んだ後で本文が書き換わっていないかを見る基準
+    const readAt = new Date();
     const query: Prisma.ArticleFindManyArgs = {
       where,
       include: { source: true },
@@ -509,6 +509,7 @@ export async function generateMissingSummaries(
           where: {
             id: { in: noContentIds },
             OR: [{ summary: null }, { summary: '' }],
+            AND: [contentUnchangedSinceWhere(readAt)],
           },
           data: {
             skipReason: SkipReason.CONTENT_FETCH_FAILED,
@@ -521,6 +522,7 @@ export async function generateMissingSummaries(
           where: {
             id: { in: thinContentIds },
             OR: [{ summary: null }, { summary: '' }],
+            AND: [contentUnchangedSinceWhere(readAt)],
           },
           data: {
             skipReason: SkipReason.THIN_CONTENT,
