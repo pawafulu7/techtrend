@@ -11,6 +11,10 @@ import {
   infiniteArticlesQueryKey,
   normalizeArticleFilters,
 } from '@/lib/articles/home-articles-query';
+import {
+  ARXIV_SOURCE_ID,
+  HUGGINGFACE_PAPERS_SOURCE_ID,
+} from '@/lib/constants/source-categories';
 
 const NO_PERSONALIZATION = {
   filterEnabled: false,
@@ -114,6 +118,24 @@ describe('buildHomeArticleFilters', () => {
 
     expect(build(['c2', 'c1'])).toBe('c1,c2');
     expect(build(['c1', 'c2'])).toBe('c1,c2');
+  });
+
+  it('URL の sources から論文のソースを除き、残りが無ければ sources を送らない（全選択）', () => {
+    const sources = (query: string) =>
+      buildHomeArticleFilters({
+        searchParams: new URLSearchParams(query),
+        personalization: NO_PERSONALIZATION,
+      }).sources;
+
+    expect(sources(`sources=${HUGGINGFACE_PAPERS_SOURCE_ID}`)).toBeUndefined();
+    expect(
+      sources(`sources=${ARXIV_SOURCE_ID},${HUGGINGFACE_PAPERS_SOURCE_ID}`)
+    ).toBeUndefined();
+    expect(sources(`sources=zenn,${HUGGINGFACE_PAPERS_SOURCE_ID},qiita`)).toBe(
+      'zenn,qiita'
+    );
+    expect(sources('sources=all')).toBe('all');
+    expect(sources('sources=none')).toBe('none');
   });
 
   it('除外するソースを足す', () => {

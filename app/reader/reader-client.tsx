@@ -8,7 +8,10 @@ import {
   useQuery,
   keepPreviousData,
 } from '@tanstack/react-query';
-import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
+import {
+  PAPER_SOURCE_IDS_PARAM,
+  withoutPaperSourceIds,
+} from '@/lib/utils/source/paper-source';
 import { FilterSidebarToggle } from '@/app/components/home/filter-sidebar';
 import { MobileSearchToggle } from '@/app/components/common/mobile-search-toggle';
 import { SearchBox } from '@/app/components/common/search-box';
@@ -63,8 +66,8 @@ async function fetchArticleList(
     sortOrder: 'desc',
     ...filterParams,
   });
-  // Exclude arXiv articles (matches home page behavior)
-  params.set('excludeSources', ARXIV_SOURCE_ID);
+  // 論文のソースを除外（ホームと同じ。専用の/papersページで表示するため）
+  params.set('excludeSources', PAPER_SOURCE_IDS_PARAM);
   params.set('excludeUnprocessed', 'true');
   const res = await fetch(`/api/articles/list?${params}`);
   const json = await parseApiJson(res);
@@ -104,7 +107,9 @@ export function ReaderClient({ tags }: ReaderClientProps) {
 
     if (sortBy) params.sortBy = sortBy;
     if (sortOrder) params.sortOrder = sortOrder;
-    if (sourcesParam) params.sources = sourcesParam;
+    // 論文のソースは除く（残りが無ければ全選択。withoutPaperSourceIds）
+    const sources = sourcesParam ? withoutPaperSourceIds(sourcesParam) : undefined;
+    if (sources) params.sources = sources;
     if (sourceId) params.sourceId = sourceId;
     if (tagsParam) params.tags = tagsParam;
     if (tagMode) params.tagMode = tagMode;

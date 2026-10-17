@@ -9,7 +9,10 @@ import {
 import { tagCache } from '@/lib/cache/tag-cache';
 import { getSourceCache } from '@/lib/cache/source-cache';
 import { groupSourcesStatic } from '@/lib/utils/source/source-grouping-static';
-import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
+import {
+  withoutPaperSourceGroups,
+  withoutPaperSources,
+} from '@/lib/utils/source/paper-source';
 import { getSession } from '@/lib/auth/get-session';
 import { ReaderClient } from './reader-client';
 
@@ -46,13 +49,9 @@ export default async function ReaderPage() {
   ]);
 
   const { sources, groupedSources } = sourceData;
-  const filteredSources = sources.filter((s) => s.id !== ARXIV_SOURCE_ID);
-  const filteredGroupedSources = groupedSources
-    .map((group) => ({
-      ...group,
-      sources: group.sources.filter((s) => s.id !== ARXIV_SOURCE_ID),
-    }))
-    .filter((group) => group.sources.length > 0);
+  // 論文のソースを除外（ホームと同じ。専用の/papersページで表示するため）
+  const filteredSources = withoutPaperSources(sources);
+  const filteredGroupedSources = withoutPaperSourceGroups(groupedSources);
 
   return (
     <FilterSidebarProvider>

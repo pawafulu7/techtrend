@@ -26,7 +26,11 @@ import { getFilterPreferencesFromCookies } from '@/lib/cookies/filter-preference
 import { tagCache } from '@/lib/cache/tag-cache';
 import { getSourceCache } from '@/lib/cache/source-cache';
 import { groupSourcesStatic } from '@/lib/utils/source/source-grouping-static';
-import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
+import {
+  PAPER_SOURCE_IDS_PARAM,
+  withoutPaperSourceGroups,
+  withoutPaperSources,
+} from '@/lib/utils/source/paper-source';
 
 interface PageProps {
   // 同じ名前が複数あると配列で届く。クライアントの useSearchParams と同じく、
@@ -95,14 +99,9 @@ export default async function Home({ searchParams }: PageProps) {
 
   const { sources, groupedSources } = sourceData;
 
-  // arXivソースを除外（専用の/papersページで表示するため）
-  const filteredSources = sources.filter((s) => s.id !== ARXIV_SOURCE_ID);
-  const filteredGroupedSources = groupedSources
-    .map((group) => ({
-      ...group,
-      sources: group.sources.filter((s) => s.id !== ARXIV_SOURCE_ID),
-    }))
-    .filter((group) => group.sources.length > 0);
+  // 論文のソースを除外（専用の/papersページで表示するため）
+  const filteredSources = withoutPaperSources(sources);
+  const filteredGroupedSources = withoutPaperSourceGroups(groupedSources);
 
   // Get filter preferences from cookie
   const filterPreferences = getFilterPreferencesFromCookies(cookieStore);
@@ -227,7 +226,7 @@ export default async function Home({ searchParams }: PageProps) {
                   enableInfiniteScroll
                   initialSortBy={initialSortBy}
                   initialSourceIds={initialSourceIds}
-                  excludeSources={ARXIV_SOURCE_ID}
+                  excludeSources={PAPER_SOURCE_IDS_PARAM}
                 />
               </Suspense>
             </section>

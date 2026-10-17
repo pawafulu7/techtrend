@@ -9,8 +9,8 @@ import { ArticleListSkeleton } from '@/app/components/article/article-list-skele
 import { parseViewModeFromCookie } from '@/lib/cookies/view-mode-cookie';
 import { getFilterPreferencesFromCookies } from '@/lib/cookies/filter-preferences-cookie';
 import {
-  ARXIV_SOURCE_ID,
-  ARXIV_SOURCE_NAME,
+  PAPER_SOURCE_IDS,
+  PAPER_SOURCE_NAMES,
 } from '@/lib/constants/source-categories';
 import { PapersClientInfinite } from '@/app/components/papers/papers-client-infinite';
 import { PageHeader } from '@/components/ui-v2/page-header';
@@ -50,7 +50,7 @@ export default async function PapersPage({ searchParams }: PageProps) {
           <PageHeader
             icon={FileText}
             title="論文"
-            description={`出典: ${ARXIV_SOURCE_NAME}`}
+            description={`出典: ${PAPER_SOURCE_NAMES.join('、')}`}
             variant="compact"
           />
           {/* 検索パネル展開時に全幅の行として折り返せるよう flex-wrap にする */}
@@ -81,7 +81,7 @@ export default async function PapersPage({ searchParams }: PageProps) {
           <PapersClientInfinite
             key={`papers-${params.search || ''}-${params.tag || ''}`}
             viewMode={viewMode}
-            sourceId={ARXIV_SOURCE_ID}
+            sourceIds={PAPER_SOURCE_IDS}
             initialSortBy={initialSortBy}
           />
         </Suspense>
