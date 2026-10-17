@@ -68,7 +68,6 @@ jobs:
             "Medium Engineering" \
             "DeNA Engineering" \
             "CyberAgent Developers Blog" \
-            "Mercari Engineering" \
             "LY Corporation Tech Blog" \
             "ZOZO TECH BLOG" \
             "Money Forward Developers Blog" \
@@ -105,7 +104,6 @@ jobs:
             "@IT" \
             "Business Insider" \
             "JSer.info" \
-            "CodeZine" \
             "gihyo.jp" \
             "Findy Engineer Lab" \
             "Lobsters" \
@@ -115,6 +113,7 @@ jobs:
             "VS Code Blog" \
             "Dropbox Tech" \
             "Fly.io Blog"
+          # CodeZine（記事ページが CAPTCHA で本文を取れない）と Mercari Engineering（ランナーから 403）は収集しない（2026-10）
           # 要約生成はcollect-feeds.ts内で実行済み
           # 品質スコア計算は1日1回に移動 (scheduler-daily-quality.yml)
       - name: Notify failure to Slack

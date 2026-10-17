@@ -50,7 +50,10 @@ function extractYamlCliArgs(yamlPath: string): string[] {
  * 収集経路に載らないことが確認済みの正当な除外リスト（理由必須）。
  * 安易な追加は #407 型事故（実装済みだが収集されない）の温床になる。
  */
-const EXCLUDED_KEYS: Record<string, string> = {};
+const EXCLUDED_KEYS: Record<string, string> = {
+  CodeZine:
+    '記事ページが CAPTCHA（Security check）で本文を取れず、フィードも 8 割の記事で description が空のため収集をやめた（2026-10）',
+};
 
 const GHA_WORKFLOWS = [
   '.github/workflows/scheduler-rss-hourly.yml',
@@ -81,6 +84,13 @@ describe('スケジューラ整合性: FOREIGN_SOURCE_CONFIGS ⇔ 収集起動�
     '"%s" が GHA ワークフローの CLI 引数に完全一致で存在する',
     (key) => {
       expect(ghaArgs.has(key)).toBe(true);
+    }
+  );
+
+  it.each(Object.keys(EXCLUDED_KEYS))(
+    '除外した "%s" は GHA ワークフローの CLI 引数に無い',
+    (key) => {
+      expect(ghaArgs.has(key)).toBe(false);
     }
   );
 });
