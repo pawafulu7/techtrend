@@ -126,4 +126,8 @@ describe('isEnrichmentSkipped', () => {
   it('FOREIGN_SOURCE_CONFIGSに存在しないソース名ではfalseを返す', () => {
     expect(isEnrichmentSkipped('Nonexistent Source XYZ')).toBe(false);
   });
+
+  it('Hugging Face Papers は API の要旨を本文にするので true を返す', () => {
+    expect(isEnrichmentSkipped('Hugging Face Papers')).toBe(true);
+  });
 });
