@@ -218,6 +218,8 @@ describe('/api/articles/[id]', () => {
           title: 'Updated Article',
           summary: 'Updated summary',
           content: 'Updated content',
+          // 本文を書いたら本文の更新日時も進める
+          contentUpdatedAt: expect.any(Date),
           thumbnail: 'https://example.com/new-thumb.jpg',
         },
         include: {
@@ -227,6 +229,20 @@ describe('/api/articles/[id]', () => {
       });
 
       expect(cacheInvalidatorMock.onArticleUpdated).toHaveBeenCalledWith(VALID_ARTICLE_ID);
+    });
+
+    it('本文を書かない更新では、本文の更新日時を進めない', async () => {
+      prismaMock.article.update.mockResolvedValue(mockArticle);
+
+      const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Updated Article' }),
+      });
+      const params = Promise.resolve({ id: VALID_ARTICLE_ID });
+      await PATCH(request, { params });
+
+      const { data } = prismaMock.article.update.mock.calls[0][0];
+      expect(data).toEqual({ title: 'Updated Article' });
     });
 
     it('タグを更新する', async () => {

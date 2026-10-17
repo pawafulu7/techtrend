@@ -107,7 +107,9 @@ async function enrichSingleArticle(articleId: string) {
           ...(isSummaryEligible && {
             summary: null,
             detailedSummary: null,
-            summaryVersion: 0
+            summaryVersion: 0,
+            // 一覧は summaryComputedAt で要約済みかを見る。残すと要約の無いまま一覧に出る
+            summaryComputedAt: null
           }),
           ...(isSummaryEligible && meetsSummaryQualityBar && {
             skipReason: null,

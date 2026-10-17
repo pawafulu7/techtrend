@@ -168,7 +168,8 @@ async function main() {
             continue;
           }
 
-          const enrichedContent = await enricher.enrich(article.url);
+          // enrich() は { content, thumbnail } を返す。本文だけを使う（以前はオブジェクトのまま比べ、保存していた）
+          const enrichedContent = (await enricher.enrich(article.url))?.content;
           
           if (enrichedContent && enrichedContent.length > beforeLength) {
             // コンテンツを更新し、要約をリセット
@@ -176,9 +177,11 @@ async function main() {
               where: { id: article.id },
               data: {
                 content: enrichedContent,
+                contentUpdatedAt: new Date(), // 本文の更新日時（要約の再試行・品質スコアの再計算の基準）
                 summary: null,                // 要約をリセット
                 detailedSummary: null,        // 詳細要約もリセット
                 summaryVersion: 0,            // バージョンをリセット
+                summaryComputedAt: null,      // 要約済みの印も戻す（残すと要約の無いまま一覧に出る）
                 updatedAt: new Date(),
               },
             });

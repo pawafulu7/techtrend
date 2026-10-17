@@ -229,11 +229,15 @@ async function main() {
           where: { id: article.id },
           data: { 
             content: cleanedContent,
+            // 本文の更新日時（要約の再試行・品質スコアの再計算の基準）
+            contentUpdatedAt: new Date(),
             // 要約をnullにリセット（再生成が必要）
             summary: null,
             detailedSummary: null,
             articleType: null,
-            summaryVersion: 0  // 0にリセット（再生成が必要）
+            summaryVersion: 0,  // 0にリセット（再生成が必要）
+            // 要約済みの印も戻す（残すと要約の無いまま一覧に出る）
+            summaryComputedAt: null
           }
         });
         console.error(`  ✅ 更新完了`);

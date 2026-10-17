@@ -143,6 +143,8 @@ async function reEnrichContent() {
           data: {
             content: enriched.content,
             thumbnail: enriched.thumbnail || undefined,
+            // 本文の更新日時（要約の再試行・品質スコアの再計算の基準）
+            contentUpdatedAt: new Date(),
           },
         });
         
