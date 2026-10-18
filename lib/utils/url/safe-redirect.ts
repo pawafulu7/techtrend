@@ -53,7 +53,7 @@ export class RedirectLimitError extends Error {
   }
 }
 
-/** Location が URL として壊れている、資格情報を含む、http/https 以外 */
+/** Location が URL として壊れている、資格情報を含む、http/https 以外（最初の URL が資格情報を含むときも） */
 export class InvalidRedirectError extends Error {
   constructor(message: string) {
     super(message);
@@ -99,9 +99,12 @@ export async function fetchWithValidatedRedirects(
   } = options;
   let headers: Record<string, string> = { ...(options.headers ?? {}) };
   let currentUrl = url;
+  rejectCredentials(url);
 
   for (let redirects = 0; ; redirects++) {
-    await assertPublicHttpUrl(currentUrl, context);
+    signal?.throwIfAborted();
+    // DNS の名前解決は signal を受けないので、中断されたら待たずに抜ける
+    await abortable(assertPublicHttpUrl(currentUrl, context), signal);
 
     const response = await fetch(currentUrl, {
       method,
@@ -198,6 +201,38 @@ function resolveRedirectTarget(location: string, baseUrl: string): string {
     );
   }
   return target.toString();
+}
+
+/** 資格情報を含む URL は取らない（ログやヘッダに資格情報が出るのを防ぐ。メッセージに URL を入れない） */
+function rejectCredentials(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return; // 壊れた URL は assertPublicHttpUrl が invalid_url で拒否する
+  }
+  if (parsed.username || parsed.password) {
+    throw new InvalidRedirectError('URL with credentials is not fetched');
+  }
+}
+
+/** signal が中断されたら、promise の完了を待たずに中断の理由で reject する */
+function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      }
+    );
+  });
 }
 
 function stripCrossOriginHeaders(

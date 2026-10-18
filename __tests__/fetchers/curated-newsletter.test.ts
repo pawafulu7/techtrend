@@ -9,6 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { CuratedNewsletterFetcher } from '@/lib/fetchers/curated-newsletter';
 import { SourceFormatError } from '@/lib/fetchers/errors';
+import { resolveRedirectLinks } from '@/lib/fetchers/curated-newsletter/resolve-links';
 import type { Source } from '@/lib/prisma-exports';
 
 const FIXTURES = path.join(__dirname, '../fixtures/feeds/newsletters');
@@ -198,6 +199,27 @@ describe('CuratedNewsletterFetcher: Cooperpress', () => {
     expect(errors[0]).toBeInstanceOf(SourceFormatError);
   });
 
+  it('協賛の枠だけが残り、記事を1本も取り出せないときも SourceFormatError', async () => {
+    const sponsorOnly = COOPERPRESS_ISSUE.match(/<table[^>]*><tr><td[^>]*>\s*<p><span[^>]*><a href="https:\/\/javascriptweekly\.com\/link\/1004\/rss"[\s\S]*?<\/table>/)?.[0];
+    expect(sponsorOnly).toContain('sponsor');
+    installFetch(feedXml([{ title: 'Issue 901', link: 'https://javascriptweekly.com/issues/901', daysAgo: 1, html: `<table><tr><td>${sponsorOnly}</td></tr></table>` }]));
+
+    const { articles, errors } = await jsWeekly().fetch();
+
+    expect(articles).toEqual([]);
+    expect(errors.some((e) => e instanceof SourceFormatError)).toBe(true);
+  });
+
+  it('知らない名前の欄だけに記事があるときも SourceFormatError（欄の名前が変わった）', async () => {
+    const renamed = COOPERPRESS_ISSUE.replace('<td>JavaScript Weekly</td>', '<td>Deep Dives</td>').replace('📖 Articles and Videos', 'Deep Reads');
+    installFetch(feedXml([{ title: 'Issue 902', link: 'https://javascriptweekly.com/issues/902', daysAgo: 1, html: renamed }]));
+
+    const { articles, errors } = await jsWeekly().fetch();
+
+    expect(articles).toEqual([]);
+    expect(errors.some((e) => e instanceof SourceFormatError)).toBe(true);
+  });
+
   it('フィードを取れないときは例外を投げずにエラーを返す', async () => {
     global.fetch = jest.fn(async () => textResponse('', 503)) as unknown as typeof global.fetch;
 
@@ -261,6 +283,32 @@ describe('CuratedNewsletterFetcher: Cooperpress', () => {
   });
 });
 
+describe('resolveRedirectLinks', () => {
+  let originalFetch: typeof global.fetch;
+  beforeEach(() => {
+    originalFetch = global.fetch;
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('締め切りを過ぎてから呼ばれたら、1回も問い合わせない', async () => {
+    const fetchMock = jest.fn(async (url: unknown) => redirectResponse(articleUrlFor(String(url))));
+    global.fetch = fetchMock as unknown as typeof global.fetch;
+
+    const outcome = await resolveRedirectLinks(['https://javascriptweekly.com/link/1001/rss'], {
+      redirectOrigin: 'https://javascriptweekly.com',
+      concurrency: 3,
+      requestTimeoutMs: 1000,
+      intervalMs: 0,
+      deadlineAt: Date.now() - 1000,
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(outcome).toEqual({ resolved: new Map(), failed: 0, unresolved: 1 });
+  });
+});
+
 describe('CuratedNewsletterFetcher: SRE Weekly', () => {
   let originalFetch: typeof global.fetch;
   beforeEach(() => {
@@ -285,6 +333,50 @@ describe('CuratedNewsletterFetcher: SRE Weekly', () => {
     expect(articles.every((a) => a.tagNames?.[0] === 'SRE' && a.content === undefined)).toBe(true);
     // フィードの1回だけ（転送の解決はしない）
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('資格情報を含む直接のリンクは保存しない', async () => {
+    installFetch(
+      feedXml([{ title: 'SRE Weekly Issue #539', link: 'https://sreweekly.com/sre-weekly-issue-539/', daysAgo: 1,
+        html: SRE_ISSUE.replace('https://incident.example/blog/building-investigations', 'https://user:example-password@incident.example/blog/building-investigations') }])
+    );
+
+    const { articles } = await new CuratedNewsletterFetcher(source('sre_weekly', 'SRE Weekly'), { now: () => NOW }).fetch();
+
+    expect(articles.map((a) => a.title)).toEqual(['Medium Author Post']);
+  });
+});
+
+describe('CuratedNewsletterFetcher: Data Engineering Weekly（形の変化）', () => {
+  let originalFetch: typeof global.fetch;
+  beforeEach(() => {
+    originalFetch = global.fetch;
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('号のタイトルの書き方が変わっても、記事の節が並んでいれば号として1本ずつ取り出す', async () => {
+    installFetch(feedXml([{ title: 'Data Engineering Weekly: Issue 293', link: 'https://www.dataengineeringweekly.com/p/dew-293', daysAgo: 2, html: DEW_ISSUE }]));
+
+    const { articles } = await new CuratedNewsletterFetcher(source('data_engineering_weekly', 'Data Engineering Weekly'), { now: () => NOW }).fetch();
+
+    expect(articles.map((a) => a.url).sort()).toEqual(
+      ['https://blog.example/post/stream-store', 'https://medium.com/company-a/how-we-migrated-1234'].sort()
+    );
+  });
+
+  it('URL として壊れたエッセイがあっても、ほかの記事は返す', async () => {
+    installFetch(
+      feedXml([
+        { title: 'A Broken Essay', link: 'not-a-url', daysAgo: 1, html: '<p>Essay</p>' },
+        { title: 'Data Engineering Weekly #292', link: 'https://www.dataengineeringweekly.com/p/dew-292', daysAgo: 3, html: DEW_ISSUE },
+      ])
+    );
+
+    const { articles } = await new CuratedNewsletterFetcher(source('data_engineering_weekly', 'Data Engineering Weekly'), { now: () => NOW }).fetch();
+
+    expect(articles).toHaveLength(2);
   });
 });
 

@@ -14,6 +14,7 @@
  */
 
 import path from 'path';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 
 /**
  * 登録対象のソース定義。
@@ -106,9 +107,10 @@ async function main() {
       await sourceCache.invalidate();
       console.log('[INFO] Source cache invalidation requested (Redis failures, if any, are logged as WARN above)');
     } catch (error) {
+      // 接続先がメッセージに入りうるので、summarizeError を通す
       console.warn(
         '[WARN] Source cache invalidation failed (registration is committed; wait for the cache TTL):',
-        error instanceof Error ? error.message : String(error)
+        summarizeError(error)
       );
     }
 
@@ -123,7 +125,8 @@ async function main() {
 if (path.basename(process.argv[1] ?? '') === 'add-newsletter-sources.ts') {
   main()
     .catch((error) => {
-      console.error('エラーが発生しました:', error);
+      // Prisma のエラーには接続先が入りうる（本番で流すため、生のエラーを出さない）
+      console.error('エラーが発生しました:', summarizeError(error, { stack: true }));
       process.exitCode = 1;
     })
     .finally(() => {

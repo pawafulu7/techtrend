@@ -48,6 +48,8 @@ export function filterArticleUrl(
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     return { ok: false, reason: 'invalid-url' };
   }
+  // 資格情報を含む URL は保存しない（ログや記事の URL に資格情報が出る）
+  if (url.username || url.password) return { ok: false, reason: 'credentials' };
   const hostname = url.hostname.toLowerCase().replace(/^www\./, '');
 
   if (url.pathname === '/' || url.pathname === '')

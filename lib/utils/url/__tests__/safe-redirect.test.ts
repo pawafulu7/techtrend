@@ -244,6 +244,26 @@ describe('fetchWithValidatedRedirects', () => {
     });
   });
 
+  it('資格情報を含む URL は、名前解決も問い合わせもせずに InvalidRedirectError', async () => {
+    await expect(
+      fetchWithValidatedRedirects('https://user:secret@a.example/')
+    ).rejects.toBeInstanceOf(InvalidRedirectError);
+    expect(mockLookup).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('名前解決が終わらなくても、signal で中断されたら待たずに抜ける', async () => {
+    mockLookup.mockImplementation(() => new Promise(() => undefined));
+    const controller = new AbortController();
+    const fetching = fetchWithValidatedRedirects('https://slow-dns.example/', {
+      signal: controller.signal,
+    });
+    controller.abort(new DOMException('aborted', 'AbortError'));
+
+    await expect(fetching).rejects.toThrow('aborted');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('signal を全段に渡す', async () => {
     const controller = new AbortController();
     fetchMock

@@ -14,7 +14,7 @@ import { CuratedNewsletterFetcher } from '@/lib/fetchers/curated-newsletter';
 import { createFetcher } from '@/lib/fetchers';
 import { SOURCE_CATEGORIES } from '@/lib/constants/source-categories';
 import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
-import { shouldTransferFromHatena } from '@/scripts/scheduled/utils/source-transfer';
+import { shouldTransferSource } from '@/scripts/scheduled/utils/source-transfer';
 import type { Source } from '@/lib/prisma-exports';
 
 const workflow = (name: string) =>
@@ -54,16 +54,25 @@ describe('未登録だった4ソースの登録の整合', () => {
   });
 });
 
-describe('はてなブックマークからの付け替え', () => {
-  it('ふつうのソースには付け替える', () => {
-    expect(shouldTransferFromHatena(HATENA_SOURCE_ID, 'github_blog_202508')).toBe(true);
+describe('既存記事のソースの付け替え（はてなブックマーク・ニュースレター → 出し手）', () => {
+  const publisher = 'github_blog_202508';
+
+  it('はてなブックマーク経由の記事は、ふつうのソースに付け替える', () => {
+    expect(shouldTransferSource(HATENA_SOURCE_ID, publisher)).toBe(true);
   });
 
   it.each([...CURATED_NEWSLETTER_SOURCE_IDS])('ニュースレター %s には付け替えない', (id) => {
-    expect(shouldTransferFromHatena(HATENA_SOURCE_ID, id)).toBe(false);
+    expect(shouldTransferSource(HATENA_SOURCE_ID, id)).toBe(false);
+    expect(shouldTransferSource(publisher, id)).toBe(false);
   });
 
-  it('はてなでない既存記事は付け替えない', () => {
-    expect(shouldTransferFromHatena('hacker_news_202508', 'github_blog_202508')).toBe(false);
+  it.each([...CURATED_NEWSLETTER_SOURCE_IDS])('ニュースレター %s が先に保存した記事は、後から取った出し手に付け替える', (id) => {
+    expect(shouldTransferSource(id, publisher)).toBe(true);
+  });
+
+  it('ニュースレター同士・はてなへは付け替えない。出し手同士も付け替えない', () => {
+    expect(shouldTransferSource('javascript_weekly', 'node_weekly')).toBe(false);
+    expect(shouldTransferSource('javascript_weekly', HATENA_SOURCE_ID)).toBe(false);
+    expect(shouldTransferSource('hacker_news_202508', publisher)).toBe(false);
   });
 });

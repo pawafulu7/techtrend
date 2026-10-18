@@ -32,6 +32,13 @@ function lettersOnly(text: string): string {
   return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 }
 
+// 記事の欄でないと分かっている欄（道具・リリース・求人・号の最後のおまけ）。これ以外の名前の欄を除くときは WARN を出す
+const KNOWN_EXCLUDED_SECTION = /code|tools|releases|libraries|resources|classified|and finally|elsewhere/i;
+
+export function isKnownExcludedSection(section: string): boolean {
+  return KNOWN_EXCLUDED_SECTION.test(section);
+}
+
 export function isArticleSection(section: string): boolean {
   return section === LEAD_SECTION || ARTICLE_SECTION.test(section);
 }

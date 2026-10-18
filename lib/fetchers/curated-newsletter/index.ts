@@ -20,13 +20,14 @@ import { BaseFetcher } from '../base';
 import { SourceFormatError } from '../errors';
 import { fetchFeedXml } from '../fetch-feed';
 import { getCuratedNewsletterConfig, type NewsletterConfig } from './configs';
-import { extractCooperpressIssue } from './extract-cooperpress';
+import { extractCooperpressIssue, isKnownExcludedSection } from './extract-cooperpress';
 import { extractSreWeeklyIssue } from './extract-sre-weekly';
 import {
   extractDataEngineeringWeeklyIssue,
   ISSUE_TITLE as DATA_ENGINEERING_WEEKLY_ISSUE_TITLE,
+  looksLikeDataEngineeringWeeklyIssue,
 } from './extract-data-engineering-weekly';
-import { filterArticleUrl, stripTracking } from './link-filter';
+import { filterArticleUrl } from './link-filter';
 import { resolveRedirectLinks } from './resolve-links';
 import {
   addExcluded,
@@ -155,11 +156,23 @@ export class CuratedNewsletterFetcher extends BaseFetcher {
         returned: 0,
       };
       allStats.push(stats);
-      if (stats.candidates === 0) {
+      // 協賛や知らない名前の欄だけが残って記事が0本でも、形の変化として扱う
+      if (result.items.length === 0) {
         errors.push(
           new SourceFormatError(
             `${name}: 「${issue.title}」から記事を1本も取り出せなかった（号の HTML の形が変わった可能性）`
           )
+        );
+      }
+      const unknownSections = Object.keys(result.excluded)
+        .filter((reason) => reason.startsWith('section:'))
+        .map((reason) => reason.slice('section:'.length))
+        .filter((section) => !isKnownExcludedSection(section));
+      if (unknownSections.length > 0) {
+        // 記事の欄の名前が変わったのかもしれない（一回きりの欄のこともある）
+        logger.warn(
+          { source: name, issue: issue.title, sections: unknownSections },
+          '[CuratedNewsletter] 知らない名前の欄を除いた'
         );
       }
       result.items.forEach((item, index) => {
@@ -186,6 +199,11 @@ export class CuratedNewsletterFetcher extends BaseFetcher {
       });
       resolved = outcome.resolved;
       if (outcome.failed > 0 || outcome.unresolved > 0) {
+        // collect-feeds はエラーの message を出さないので、解決できなかったリンクをここで出す
+        logger.warn(
+          { source: name, hrefs: hrefs.filter((href) => !outcome.resolved.has(href)).slice(0, 20) },
+          '[CuratedNewsletter] 転送を解決できなかったリンク'
+        );
         errors.push(
           new Error(
             `${name}: 転送の解決に失敗 ${outcome.failed} 本、締め切りで未処理 ${outcome.unresolved} 本`
@@ -220,7 +238,13 @@ export class CuratedNewsletterFetcher extends BaseFetcher {
 
     // Data Engineering Weekly の著者のエッセイは、投稿そのものを1本の記事にする（本文はフィードの全文）
     for (const essay of essays) {
-      const url = stripTracking(new URL(essay.link));
+      // エッセイの URL はニュースレター自身のサイトなので、自誌の除外は当てない
+      const filtered = filterArticleUrl(essay.link, []);
+      if (!filtered.ok) {
+        logger.warn({ source: name, essay: essay.title, reason: filtered.reason }, '[CuratedNewsletter] エッセイを飛ばした');
+        continue;
+      }
+      const url = filtered.url;
       if (seenUrls.has(url)) continue;
       seenUrls.add(url);
       articles.push({
@@ -272,14 +296,14 @@ export class CuratedNewsletterFetcher extends BaseFetcher {
     if (this.config.format !== 'data-engineering-weekly') {
       return { issues: posts.slice(0, MAX_ISSUES), essays: [] };
     }
-    // 号とエッセイを先に分ける（フィードの先頭は「エッセイ→号→号」の順のことがある）
+    // 号とエッセイを先に分ける（フィードの先頭は「エッセイ→号→号」の順のことがある）。
+    // タイトルの書き方が変わっても号を号として扱えるよう、記事の節の数でも判定する
+    // （号を1本のエッセイとして黙って保存しないため）
+    const isIssue = (post: Post) =>
+      DATA_ENGINEERING_WEEKLY_ISSUE_TITLE.test(post.title) || looksLikeDataEngineeringWeeklyIssue(post.html);
     return {
-      issues: posts
-        .filter((post) => DATA_ENGINEERING_WEEKLY_ISSUE_TITLE.test(post.title))
-        .slice(0, MAX_ISSUES),
-      essays: posts
-        .filter((post) => !DATA_ENGINEERING_WEEKLY_ISSUE_TITLE.test(post.title))
-        .slice(0, MAX_ESSAYS),
+      issues: posts.filter(isIssue).slice(0, MAX_ISSUES),
+      essays: posts.filter((post) => !isIssue(post)).slice(0, MAX_ESSAYS),
     };
   }
 

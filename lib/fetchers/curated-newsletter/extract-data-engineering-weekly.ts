@@ -13,6 +13,14 @@ import { addExcluded, type ExtractionResult, type ExtractedItem } from './types'
 /** フィードの投稿のうち、号（記事の一覧）であるもの */
 export const ISSUE_TITLE = /^Data Engineering Weekly #\d+/;
 
+/** 号とみなす記事の節の数（エッセイが URL だけの段落を偶然持っても、号と取り違えないため） */
+const MIN_ISSUE_ITEMS = 3;
+
+/** タイトルが号の形でなくても、記事の節が並んでいれば号とみなす */
+export function looksLikeDataEngineeringWeeklyIssue(html: string): boolean {
+  return extractDataEngineeringWeeklyIssue(html).items.length >= MIN_ISSUE_ITEMS;
+}
+
 const NOT_ARTICLE_HEADING = /^(sponsored|event alert|editor['’]s note)\b/i;
 
 export function extractDataEngineeringWeeklyIssue(html: string): ExtractionResult {

@@ -188,7 +188,8 @@ describe('HackerNewsEnricher - body drain on non-OK fetch (Issue #599)', () => {
       controller.signal
     );
 
-    expect(fetchCalled).toBe(true);
+    // abort 済みの signal では、名前解決も問い合わせもしない（fetchWithValidatedRedirects が先に抜ける）
+    expect(fetchCalled).toBe(false);
     // catch 経路で fallback が呼ばれるが abort 済 signal が伝わる
     expect(genericEnrichSpy).toHaveBeenCalledWith(
       'https://github.com/foo/bar',

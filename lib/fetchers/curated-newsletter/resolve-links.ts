@@ -51,8 +51,10 @@ export async function resolveRedirectLinks(
   let next = 0;
   let stopped = false;
 
+  const pastDeadline = () => now() >= options.deadlineAt;
   const worker = async () => {
-    while (!stopped && next < hrefs.length) {
+    // 締め切りの後は新しい問い合わせを始めない（setTimeout の締め切りより先に動くことがあるため、時刻でも見る）
+    while (!stopped && !pastDeadline() && next < hrefs.length) {
       const href = hrefs[next++];
       try {
         const url = await resolveOne(href, options, controller.signal);

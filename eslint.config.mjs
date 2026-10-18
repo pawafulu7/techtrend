@@ -110,6 +110,16 @@ const eslintConfig = defineConfig([
         checkGlobalObject: true,
         globalObjects: ['global'],
       }],
+      // 別名の import で取得の関数を持ち込むのも止める（共通の @/lib/database の制限は保つ。ESLint は規則の配列を置き換えるため）
+      'no-restricted-imports': ['error', {
+        paths: [
+          { name: '@/lib/database', message: "Use '@/lib/prisma' instead. @/lib/database is deprecated." },
+          ...['undici', 'node-fetch', 'axios', 'got', 'cross-fetch'].map((name) => ({
+            name,
+            message: 'Use fetchWithValidatedRedirects from @/lib/utils/url/safe-redirect so every redirect hop is SSRF-checked.',
+          })),
+        ],
+      }],
     },
   },
   // Override default ignores of eslint-config-next.

@@ -120,9 +120,10 @@ describe('duplicate-detection', () => {
     });
 
     it('版番号が片方にしか無いタイトルは、今までどおりの判定', () => {
-      expect(isDuplicate('TypeScript 5.9 リリース', 'TypeScript リリース')).toBe(
-        isDuplicate('TypeScript 5.9 リリース', 'TypeScript リリース')
-      );
+      // 版番号の規則は当たらず、類似度（約0.78）・キーワード（2/3）でも閾値に届かないので重複でない
+      expect(isDuplicate('TypeScript 5.9 リリース', 'TypeScript リリース')).toBe(false);
+      // 版番号が片方にしか無くても、類似度が閾値以上なら今までどおり重複
+      expect(isDuplicate('Bun 1.4.3 is out now', 'Bun is out now', 0.6)).toBe(true);
       expect(isDuplicate('TypeScript３．０', 'TypeScript3.0')).toBe(true);
     });
 
