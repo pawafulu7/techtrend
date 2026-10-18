@@ -79,6 +79,11 @@ import { CategoryClassifier } from '@/lib/services/category-classifier';
 import { normalizeTag } from '@/lib/utils/tag/tag-normalizer';
 import { resolveTags } from '@/lib/services/tag-service';
 import { shouldTransferFromHatena } from './utils/source-transfer';
+import {
+  countSourceFormatErrors,
+  describeCollectFailures,
+  findUnregisteredSources,
+} from './utils/collect-failures';
 
 // フェッチャーファクトリ（createFetcherですべてのソースを統一的に処理）
 import { createFetcher } from '@/lib/fetchers';
@@ -117,6 +122,8 @@ interface CollectResult {
   updated: number;
   newArticleIds: string[];
   articles: ArticleInfo[];
+  /** ジョブを失敗にする理由（collect-failures.ts）。空でなければ終了コード1 */
+  failures: string[];
 }
 
 const COLLECT_FEEDS_DEBUG = env.COLLECT_FEEDS_DEBUG === '1';
@@ -168,6 +175,8 @@ interface ProcessSourceResult {
    * ここを経由しないと呼び出し元からは失敗の存在自体が見えない。
    */
   fetchErrorCount?: number;
+  /** errors のうち SourceFormatError の数（ソースの形式が変わった。ジョブを失敗にする） */
+  formatErrorCount?: number;
 }
 
 async function runWithTimeout<T>(
@@ -260,6 +269,7 @@ async function processSource({
     fetchedArticlesCount = articles?.length ?? 0;
     result.fetchedItemCount = fetchedArticlesCount;
     result.fetchErrorCount = errors.length;
+    result.formatErrorCount = countSourceFormatErrors(errors);
 
     if (!articles || articles.length === 0) {
       const duration = Math.round((Date.now() - startTime) / 1000);
@@ -697,6 +707,22 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
         })
       }
     });
+    // 指定した名前・id のうち DB に行が無いもの（収集・要約の後にジョブを失敗にする）
+    const requestedRows = sourceTypes && sourceTypes.length > 0
+      ? await prisma.source.findMany({
+          where: { OR: [{ id: { in: sourceTypes } }, { name: { in: sourceTypes } }] },
+          select: { id: true, name: true, enabled: true },
+        })
+      : [];
+    const { missing: unregisteredSources, disabled: disabledSources } =
+      findUnregisteredSources(sourceTypes ?? [], requestedRows);
+    if (disabledSources.length > 0) {
+      console.error(`[INFO] 無効化中のため収集しないソース: ${disabledSources.join(', ')}`);
+    }
+    if (unregisteredSources.length > 0) {
+      console.error(`[ERROR] DB に行が無いソース: ${unregisteredSources.join(', ')}`);
+    }
+
     const recentArticles: Array<{ title: string }> = sources.length > 0
       ? await prisma.article.findMany({
           where: {
@@ -728,6 +754,7 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     const rejectedSourceNames: string[] = [];
     const fetchErrorSourceSummaries: string[] = [];
     const zeroFetchedSourceNames: string[] = [];
+    const formatErrorSourceNames: string[] = [];
 
     settledResults.forEach((result, index) => {
       const sourceName = sources[index]?.name ?? '(unknown)';
@@ -740,6 +767,9 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
 
         if (result.value.fetchErrorCount && result.value.fetchErrorCount > 0) {
           fetchErrorSourceSummaries.push(`${sourceName}(${result.value.fetchErrorCount}件)`);
+        }
+        if (result.value.formatErrorCount && result.value.formatErrorCount > 0) {
+          formatErrorSourceNames.push(sourceName);
         }
         // フィードからアイテムを1件も取得できなかったソース。
         // 「新規0件」はフィードに新着がないだけで正常だが、「フィードのアイテム自体が0件」は
@@ -793,12 +823,16 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
       }
     }
 
+    const failures = describeCollectFailures(unregisteredSources, formatErrorSourceNames);
+    failures.forEach((message) => console.error(`[ERROR] ${message}`));
+
     return {
       newArticles: totalNewArticles,
       duplicates: totalDuplicates,
       updated: totalUpdated,
       newArticleIds,
-      articles: allArticles
+      articles: allArticles,
+      failures,
     };
 
   } catch (error) {
@@ -825,9 +859,10 @@ if (require.main === module) {
   const sourceTypes = args.length > 0 ? args : undefined;
 
   collectFeeds(sourceTypes)
-    .then(() => {
+    .then((result) => {
       releaseLock();
-      process.exit(0);
+      // DB に無いソース名・形式の変わったソースは、ワークフローの失敗として通知する
+      process.exit(result.failures.length > 0 ? 1 : 0);
     })
     .catch((error) => {
       console.error(summarizeError(error, { stack: true }));
