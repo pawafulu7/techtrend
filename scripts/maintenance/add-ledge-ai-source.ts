@@ -7,6 +7,7 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { sourceCache } from '../../lib/cache/source-cache';
+import { assertSourceIdentity } from './utils/source-identity';
 
 const prisma = createPrismaClient();
 
@@ -21,6 +22,7 @@ const LEDGE_AI_SOURCE = {
 async function main() {
   console.log('=== Ledge.ai ソース登録 ===\n');
 
+  await assertSourceIdentity(prisma, LEDGE_AI_SOURCE);
   const result = await prisma.source.upsert({
     where: { id: LEDGE_AI_SOURCE.id },
     update: {

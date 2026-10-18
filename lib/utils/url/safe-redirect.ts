@@ -36,6 +36,8 @@ export interface SafeFetchOptions {
   maxRedirects?: number;
   /** assertPublicHttpUrl のログに渡す */
   context?: Record<string, unknown>;
+  /** 最初の URL と転送先がすべて https でなければ InvalidRedirectError（フィードの改ざんを防ぐ） */
+  httpsOnly?: boolean;
 }
 
 export interface SafeFetchResult {
@@ -96,6 +98,7 @@ export async function fetchWithValidatedRedirects(
     signal,
     maxRedirects = DEFAULT_MAX_REDIRECTS,
     context,
+    httpsOnly = false,
   } = options;
   let headers: Record<string, string> = { ...(options.headers ?? {}) };
   let currentUrl = url;
@@ -103,6 +106,9 @@ export async function fetchWithValidatedRedirects(
 
   for (let redirects = 0; ; redirects++) {
     signal?.throwIfAborted();
+    if (httpsOnly && new URL(currentUrl).protocol !== 'https:') {
+      throw new InvalidRedirectError(`Non-HTTPS URL is not fetched: ${new URL(currentUrl).origin}`);
+    }
     // DNS の名前解決は signal を受けないので、中断されたら待たずに抜ける
     await abortable(assertPublicHttpUrl(currentUrl, context), signal);
 

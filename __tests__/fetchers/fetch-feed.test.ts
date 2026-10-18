@@ -7,7 +7,9 @@
 
 import { fetchFeedXml } from '@/lib/fetchers/fetch-feed';
 import { DeepMindBlogFetcher } from '@/lib/fetchers/deepmind-blog';
-import { ResponseTooLargeError } from '@/lib/utils/url/safe-redirect';
+import { ResponseTooLargeError, InvalidRedirectError } from '@/lib/utils/url/safe-redirect';
+import { SsrfGuardError } from '@/lib/utils/url/ssrf-guard';
+import dns from 'dns';
 import type { Source } from '@/lib/prisma-exports';
 
 function streamOf(text: string) {
@@ -34,6 +36,8 @@ describe('fetchFeedXml', () => {
   let originalFetch: typeof global.fetch;
   beforeEach(() => {
     originalFetch = global.fetch;
+    (dns.promises.lookup as jest.Mock).mockReset();
+    (dns.promises.lookup as jest.Mock).mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
   });
   afterEach(() => {
     global.fetch = originalFetch;
@@ -70,6 +74,37 @@ describe('fetchFeedXml', () => {
     );
   });
 
+  it('フィードの提供元が内部の IP へ転送したら、その先に問い合わせない', async () => {
+    (dns.promises.lookup as jest.Mock).mockImplementation(async (hostname: string) =>
+      hostname === 'internal.example'
+        ? [{ address: '169.254.169.254', family: 4 }]
+        : [{ address: '203.0.113.10', family: 4 }]
+    );
+    const fetchMock = jest.fn(async () => ({
+      status: 302,
+      ok: false,
+      headers: new Headers({ location: 'https://internal.example/latest/meta-data' }),
+      body: null,
+    }));
+    global.fetch = fetchMock as unknown as typeof global.fetch;
+
+    await expect(fetchFeedXml('https://feed.example/rss.xml')).rejects.toBeInstanceOf(SsrfGuardError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('https から http への転送はたどらない', async () => {
+    const fetchMock = jest.fn(async () => ({
+      status: 301,
+      ok: false,
+      headers: new Headers({ location: 'http://feed.example/rss.xml' }),
+      body: null,
+    }));
+    global.fetch = fetchMock as unknown as typeof global.fetch;
+
+    await expect(fetchFeedXml('https://feed.example/rss.xml')).rejects.toBeInstanceOf(InvalidRedirectError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('HTTP のエラーは例外にする', async () => {
     global.fetch = jest.fn(async () => feedResponse(null, 404)) as unknown as typeof global.fetch;
 
@@ -92,6 +127,8 @@ describe('DeepMindBlogFetcher', () => {
   let originalFetch: typeof global.fetch;
   beforeEach(() => {
     originalFetch = global.fetch;
+    (dns.promises.lookup as jest.Mock).mockReset();
+    (dns.promises.lookup as jest.Mock).mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
   });
   afterEach(() => {
     global.fetch = originalFetch;

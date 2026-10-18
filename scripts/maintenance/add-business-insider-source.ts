@@ -7,6 +7,7 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { sourceCache } from '@/lib/cache/source-cache';
+import { assertSourceIdentity } from './utils/source-identity';
 
 const prisma = createPrismaClient();
 
@@ -24,6 +25,7 @@ async function main() {
   const { createFetcher } = await import('@/lib/fetchers/index');
 
   const result = await prisma.$transaction(async (tx) => {
+    await assertSourceIdentity(tx, BUSINESS_INSIDER_SOURCE);
     const upserted = await tx.source.upsert({
       where: { id: BUSINESS_INSIDER_SOURCE.id },
       update: {

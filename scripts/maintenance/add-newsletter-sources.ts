@@ -15,6 +15,7 @@
 
 import path from 'path';
 import { summarizeError } from '@/lib/utils/sanitize-error';
+import { assertSourceIdentity } from './utils/source-identity';
 
 /**
  * 登録対象のソース定義。
@@ -76,6 +77,7 @@ async function main() {
     const results = await prisma.$transaction(async (tx) => {
       const upserted = [];
       for (const source of [...NEWSLETTER_SOURCES, ...DORMANT_SOURCES]) {
+        await assertSourceIdentity(tx, source);
         const row = await tx.source.upsert({
           where: { id: source.id },
           // 既存行の enabled は上書きしない（enabled=false による緊急停止を

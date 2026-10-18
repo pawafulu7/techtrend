@@ -12,6 +12,7 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { sourceCache } from '@/lib/cache/source-cache';
+import { assertSourceIdentity } from './utils/source-identity';
 
 const prisma = createPrismaClient();
 
@@ -42,6 +43,7 @@ async function main() {
   const results = await prisma.$transaction(async (tx) => {
     const upserted = [];
     for (const source of BATCH2_SOURCES) {
+      await assertSourceIdentity(tx, source);
       const row = await tx.source.upsert({
         where: { id: source.id },
         // 既存行の enabled は上書きしない（enabled=false による緊急停止を

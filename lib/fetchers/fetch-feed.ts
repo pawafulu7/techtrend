@@ -6,10 +6,11 @@
  * 時間の上限は本文の受信まで効かせる（fetchWithTimeout は応答のヘッダが届いた時点で
  * タイマーを解除するため、本文の受信が止まると上限が効かない）。
  *
- * フィードの URL は設定の固定値で、利用者が持ち込めないので SSRF の検証は付けない。
+ * フィードの URL は設定の固定値だが、提供元が返す転送先は固定ではないので、転送の各段を SSRF の検証に通し、
+ * https だけをたどる（lib/utils/url/safe-redirect.ts）。
  */
 
-import { readTextWithLimit } from '@/lib/utils/url/safe-redirect';
+import { fetchWithValidatedRedirects, readTextWithLimit } from '@/lib/utils/url/safe-redirect';
 
 export const DEFAULT_FEED_TIMEOUT_MS = 30_000;
 
@@ -29,7 +30,13 @@ export async function fetchFeedXml(url: string, options: FetchFeedOptions = {}):
   const timeoutSignal = AbortSignal.timeout(options.timeoutMs ?? DEFAULT_FEED_TIMEOUT_MS);
   const signal = options.signal ? AbortSignal.any([options.signal, timeoutSignal]) : timeoutSignal;
 
-  const response = await fetch(url, { headers: FEED_HEADERS, signal });
+  // フィードの URL は固定でも、提供元が返す転送先は固定ではないので、各段を検証し、https だけをたどる
+  const { response } = await fetchWithValidatedRedirects(url, {
+    headers: FEED_HEADERS,
+    signal,
+    httpsOnly: true,
+    context: { fetcher: 'fetchFeedXml' },
+  });
   if (!response.ok) {
     await response.body?.cancel().catch(() => undefined);
     throw new Error(`Feed request failed: HTTP ${response.status} for ${url}`);

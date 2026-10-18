@@ -105,6 +105,11 @@ describe('duplicate-detection', () => {
       expect(isDuplicate('Bun 1.4.3 Released', 'Bun 1.4.2 Released')).toBe(false);
     });
 
+    it('全角のピリオドで書いた版番号も、版だけが違えば重複にしない', () => {
+      expect(isDuplicate('TypeScript３．０リリース', 'TypeScript３．１リリース', 0.85)).toBe(false);
+      expect(isDuplicate('TypeScript３．０リリース', 'TypeScript3.0リリース', 0.85)).toBe(true);
+    });
+
     it('版番号が同じなら、今までどおり重複と判定する', () => {
       expect(isDuplicate('Rails 8.1.2 リリース', 'Rails 8.1.2 リリース', 0.85)).toBe(true);
     });

@@ -52,7 +52,9 @@ export function filterArticleUrl(
   if (url.username || url.password) return { ok: false, reason: 'credentials' };
   const hostname = url.hostname.toLowerCase().replace(/^www\./, '');
 
-  if (url.pathname === '/' || url.pathname === '')
+  // トップページだけを除く。`/?p=123` のようにクエリで記事を指す URL は残す（追跡パラメータだけのクエリはトップページ）
+  const cleaned = stripTracking(url);
+  if ((url.pathname === '/' || url.pathname === '') && new URL(cleaned).search === '')
     return { ok: false, reason: 'homepage' };
   if (matchesHost(hostname, ownHosts)) return { ok: false, reason: 'own-site' };
   if (matchesHost(hostname, SOCIAL_HOSTS))
@@ -70,7 +72,7 @@ export function filterArticleUrl(
     return { ok: false, reason: 'subscriber-link' };
   }
 
-  return { ok: true, url: stripTracking(url) };
+  return { ok: true, url: cleaned };
 }
 
 /**

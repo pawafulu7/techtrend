@@ -97,8 +97,9 @@ const VERSION_PATTERN = /v?(\d+(?:\.\d+)+(?:[.-]?(?:alpha|beta|rc|pre)[.-]?\d*)?
  * （「Node.js v22.1 on Ubuntu 22.04: …」と「Node.js v22.1 on Ubuntu: …」）は形が一致しないので false
  */
 function isVersionOnlyDifference(title1: string, title2: string): boolean {
-  const norm1 = normalizeJapanese(title1);
-  const norm2 = normalizeJapanese(title2);
+  // normalizeJapanese は全角数字を半角にするが全角ピリオドは残すので、版番号の中の「．」も半角にする
+  const norm1 = normalizeJapanese(title1).replace(/．/g, '.');
+  const norm2 = normalizeJapanese(title2).replace(/．/g, '.');
   const versions1 = [...norm1.matchAll(VERSION_PATTERN)].map((m) => m[1]);
   const versions2 = [...norm2.matchAll(VERSION_PATTERN)].map((m) => m[1]);
   if (versions1.length === 0 || versions2.length === 0) return false;

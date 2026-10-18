@@ -70,6 +70,14 @@ describe('既存記事のソースの付け替え（はてなブックマーク�
     expect(shouldTransferSource(id, publisher)).toBe(true);
   });
 
+  it.each(['hacker_news_202508', 'lobsters', 'techmeme'])(
+    'リンクを集めるソース %s へは、はてな・ニュースレターから付け替えない',
+    (aggregator) => {
+      expect(shouldTransferSource('javascript_weekly', aggregator)).toBe(false);
+      expect(shouldTransferSource(HATENA_SOURCE_ID, aggregator)).toBe(false);
+    }
+  );
+
   it('ニュースレター同士・はてなへは付け替えない。出し手同士も付け替えない', () => {
     expect(shouldTransferSource('javascript_weekly', 'node_weekly')).toBe(false);
     expect(shouldTransferSource('javascript_weekly', HATENA_SOURCE_ID)).toBe(false);

@@ -10,6 +10,7 @@ import path from 'path';
 import { CuratedNewsletterFetcher } from '@/lib/fetchers/curated-newsletter';
 import { SourceFormatError } from '@/lib/fetchers/errors';
 import { resolveRedirectLinks } from '@/lib/fetchers/curated-newsletter/resolve-links';
+import { filterArticleUrl } from '@/lib/fetchers/curated-newsletter/link-filter';
 import type { Source } from '@/lib/prisma-exports';
 
 const FIXTURES = path.join(__dirname, '../fixtures/feeds/newsletters');
@@ -240,8 +241,10 @@ describe('CuratedNewsletterFetcher: Cooperpress', () => {
               init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
             )
     );
+    // ほかのリンクは中断されるまで応答しないので、結果は締め切りの長さに依らない。前処理（フィードの解析など）が
+    // 遅い CI でも 1001 の解決が締め切りの前に終わるよう、余裕を取る
     const fetcher = new CuratedNewsletterFetcher(source('javascript_weekly', 'JavaScript Weekly'), {
-      deadlineMs: 150,
+      deadlineMs: 1000,
       random: () => 0.999, // 並べ替えない（1001 が最初に問い合わせられる）
     });
 
@@ -264,10 +267,12 @@ describe('CuratedNewsletterFetcher: Cooperpress', () => {
     for (let run = 1; run <= 12; run++) {
       installFetch(
         feedXml([{ title: 'Issue 806', link: 'https://javascriptweekly.com/issues/806', daysAgo: 1, html: COOPERPRESS_ISSUE }], Date.now()),
-        (href) => new Promise((resolve) => setTimeout(() => resolve(redirectResponse(articleUrlFor(href))), 40))
+        (href) => new Promise((resolve) => setTimeout(() => resolve(redirectResponse(articleUrlFor(href))), 100))
       );
+      // 応答は 100ms、締め切りは 250ms。最初の3本は解決でき、次の問い合わせ（200ms 空ける）は締め切りの後になる。
+      // 前処理に使える余裕は 約150ms
       const fetcher = new CuratedNewsletterFetcher(source('javascript_weekly', 'JavaScript Weekly'), {
-        deadlineMs: 120,
+        deadlineMs: 250,
         random: seeded(run),
       });
       const { articles } = await fetcher.fetch();
@@ -280,6 +285,21 @@ describe('CuratedNewsletterFetcher: Cooperpress', () => {
     expect([...seen].sort()).toEqual(
       ['Lead Article One', 'Article Section Feature', 'Compact Feature Without Host Hint', 'Short Article One', 'Short Article Two'].sort()
     );
+  });
+});
+
+describe('filterArticleUrl', () => {
+  it('トップページは除き、クエリで記事を指す URL は残す', () => {
+    expect(filterArticleUrl('https://blog.example/', [])).toEqual({ ok: false, reason: 'homepage' });
+    expect(filterArticleUrl('https://blog.example/?utm_source=x', [])).toEqual({ ok: false, reason: 'homepage' });
+    expect(filterArticleUrl('https://blog.example/?p=123&utm_source=x', [])).toEqual({
+      ok: true,
+      url: 'https://blog.example/?p=123',
+    });
+  });
+
+  it('追跡パラメータが無ければクエリを書き直さない', () => {
+    expect(filterArticleUrl('https://a.example/post?a&b=1#top', [])).toEqual({ ok: true, url: 'https://a.example/post?a&b=1' });
   });
 });
 

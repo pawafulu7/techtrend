@@ -114,7 +114,7 @@ const eslintConfig = defineConfig([
       'no-restricted-imports': ['error', {
         paths: [
           { name: '@/lib/database', message: "Use '@/lib/prisma' instead. @/lib/database is deprecated." },
-          ...['undici', 'node-fetch', 'axios', 'got', 'cross-fetch'].map((name) => ({
+          ...['undici', 'node-fetch', 'axios', 'got', 'cross-fetch', 'http', 'https', 'node:http', 'node:https'].map((name) => ({
             name,
             message: 'Use fetchWithValidatedRedirects from @/lib/utils/url/safe-redirect so every redirect hop is SSRF-checked.',
           })),

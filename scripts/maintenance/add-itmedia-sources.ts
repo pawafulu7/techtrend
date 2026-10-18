@@ -12,6 +12,7 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { sourceCache } from '../../lib/cache/source-cache';
+import { assertSourceIdentity } from './utils/source-identity';
 
 const prisma = createPrismaClient();
 
@@ -46,6 +47,7 @@ async function main() {
   let updatedCount = 0;
 
   for (const source of ITMEDIA_SOURCES) {
+    await assertSourceIdentity(prisma, source);
     const result = await prisma.source.upsert({
       where: { id: source.id },
       update: {
