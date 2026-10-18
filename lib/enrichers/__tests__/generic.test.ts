@@ -88,6 +88,29 @@ describe('GenericContentEnricher - SSRF guard integration (Issue #633)', () => {
       expect(mockLookup).not.toHaveBeenCalled();
     });
 
+    it('公開サイトから内部 IP へ転送されたら、その先に問い合わせず再試行もせずに null を返す', async () => {
+      mockLookup.mockImplementation(async (hostname: string) =>
+        hostname === 'metadata.example'
+          ? [{ address: '169.254.169.254', family: 4 }]
+          : [{ address: '203.0.113.10', family: 4 }]
+      );
+      const fetchSpy = jest.fn(async () => ({
+        status: 302,
+        ok: false,
+        headers: new Headers({
+          location: 'http://metadata.example/latest/meta-data/',
+        }),
+        body: null,
+      }));
+      global.fetch = fetchSpy as unknown as typeof global.fetch;
+
+      const result = await enricher.enrich('https://public.example/post');
+
+      expect(result).toBeNull();
+      // 転送を返した1回だけ。転送先には問い合わせず、maxRetries=2 の再試行もしない
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
     it('拒否時はエラーログを残す', async () => {
       mockLookup.mockResolvedValue([{ address: '10.0.0.5', family: 4 }]);
       global.fetch = jest.fn() as unknown as typeof global.fetch;

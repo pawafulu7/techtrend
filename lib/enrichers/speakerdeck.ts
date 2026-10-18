@@ -6,6 +6,10 @@
 import { BaseContentEnricher, EnrichedContent } from './base';
 import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 import logger from '@/lib/logger';
+import {
+  fetchWithValidatedRedirects,
+  readTextWithLimit,
+} from '@/lib/utils/url/safe-redirect';
 import * as cheerio from 'cheerio';
 
 interface OEmbedResponse {
@@ -99,7 +103,7 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
     try {
       const oEmbedUrl = `${this.oEmbedEndpoint}?url=${encodeURIComponent(url)}`;
 
-      const response = await fetch(oEmbedUrl, {
+      const { response } = await fetchWithValidatedRedirects(oEmbedUrl, {
         headers: {
           Accept: 'application/json',
           'User-Agent': 'TechTrend/1.0 ContentEnricher',
@@ -117,7 +121,7 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
         return null;
       }
 
-      const data = (await response.json()) as OEmbedResponse;
+      const data = JSON.parse(await readTextWithLimit(response)) as OEmbedResponse;
 
       // Validate required fields
       if (!data.title) {

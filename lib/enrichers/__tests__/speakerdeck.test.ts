@@ -46,7 +46,7 @@ describe('SpeakerDeckEnricher - signal propagation (Issue #608)', () => {
       return {
         ok: true,
         status: 200,
-        json: async () => buildOEmbedPayload(),
+        text: async () => JSON.stringify(buildOEmbedPayload()),
       };
     }) as unknown as typeof global.fetch;
 
@@ -86,7 +86,7 @@ describe('SpeakerDeckEnricher - signal propagation (Issue #608)', () => {
       return {
         ok: true,
         status: 200,
-        json: async () => buildOEmbedPayload(),
+        text: async () => JSON.stringify(buildOEmbedPayload()),
       };
     }) as unknown as typeof global.fetch;
 

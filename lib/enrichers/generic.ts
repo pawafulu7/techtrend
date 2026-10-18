@@ -2,7 +2,12 @@ import { BaseContentEnricher, EnrichmentResult } from './base';
 import * as cheerio from 'cheerio';
 import type { CheerioAPI } from 'cheerio';
 import logger from '@/lib/logger';
-import { assertPublicHttpUrl } from '@/lib/utils/url/ssrf-guard';
+import {
+  fetchWithValidatedRedirects,
+  readTextWithLimit,
+  isNonRetryableFetchError,
+} from '@/lib/utils/url/safe-redirect';
+import { SsrfGuardError } from '@/lib/utils/url/ssrf-guard';
 import {
   extractWithReadability,
   extractFromJsonLd,
@@ -28,19 +33,9 @@ export class GenericContentEnricher extends BaseContentEnricher {
     url: string,
     externalSignal?: AbortSignal
   ): Promise<EnrichmentResult | null> {
-    // SSRF ガード: DNS解決を含む検証。拒否時はリトライしても無駄なので、
-    // retry ループに入る前に即座に null を返す（enrich() は既存契約上 throw
-    // しないため、base.ts の fetchWithRetry とは異なりここで catch して吸収する）
-    try {
-      await assertPublicHttpUrl(url, { enricher: this.constructor.name });
-    } catch (error) {
-      logger.error(
-        { err: error, url },
-        '[GenericEnricher] URL rejected by SSRF guard'
-      );
-      return null;
-    }
-
+    // SSRF ガード: 最初の URL と転送の各段を DNS 解決を含めて検証する（fetchWithValidatedRedirects）。
+    // 拒否・転送の不正・本文の上限超えは再試行しても同じなので、下の catch で即座に null を返す
+    // （enrich() は既存契約上 throw しない）
     const maxRetries = 2;
     let previousWas429 = false;
 
@@ -58,7 +53,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
         }
 
         const signal = this.composeSignal(externalSignal, 30000);
-        const response = await fetch(url, {
+        const { response, finalUrl } = await fetchWithValidatedRedirects(url, {
           headers: {
             'User-Agent':
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -68,8 +63,8 @@ export class GenericContentEnricher extends BaseContentEnricher {
             'Accept-Encoding': 'gzip, deflate, br',
             DNT: '1',
           },
-          redirect: 'follow',
           signal,
+          context: { enricher: this.constructor.name },
         });
 
         if (!response.ok) {
@@ -88,8 +83,8 @@ export class GenericContentEnricher extends BaseContentEnricher {
           continue;
         }
 
-        const html = await response.text();
-        const baseUrl = response.url || url;
+        const html = await readTextWithLimit(response);
+        const baseUrl = finalUrl;
 
         const $ = cheerio.load(html);
         $(
@@ -152,6 +147,16 @@ export class GenericContentEnricher extends BaseContentEnricher {
           thumbnail,
         };
       } catch (error) {
+        if (isNonRetryableFetchError(error)) {
+          logger.error(
+            { err: error, url },
+            error instanceof SsrfGuardError
+              ? '[GenericEnricher] URL rejected by SSRF guard'
+              : '[GenericEnricher] Rejected redirect or oversized response'
+          );
+          return null;
+        }
+
         const errorMessage =
           error instanceof Error && error.name === 'AbortError'
             ? 'Request timeout'

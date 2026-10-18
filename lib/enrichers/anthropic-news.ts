@@ -3,6 +3,10 @@ import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 import { anthropicNewsConfig } from '@/lib/config/anthropic-news';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
+import {
+  fetchWithValidatedRedirects,
+  readTextWithLimit,
+} from '@/lib/utils/url/safe-redirect';
 
 export class AnthropicNewsEnricher extends BaseContentEnricher {
   /**
@@ -29,7 +33,7 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
     externalSignal?: AbortSignal
   ): Promise<{ content: string | null; thumbnail?: string | null } | null> {
     try {
-      const response = await fetch(url, {
+      const { response } = await fetchWithValidatedRedirects(url, {
         signal: this.composeSignal(externalSignal, 30000),
         headers: {
           'User-Agent':
@@ -49,7 +53,7 @@ export class AnthropicNewsEnricher extends BaseContentEnricher {
         return null;
       }
 
-      const html = await response.text();
+      const html = await readTextWithLimit(response);
       const $ = cheerio.load(html);
 
       // Remove non-content elements

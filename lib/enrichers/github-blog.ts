@@ -2,6 +2,10 @@ import { BaseContentEnricher } from './base';
 import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
+import {
+  fetchWithValidatedRedirects,
+  readTextWithLimit,
+} from '@/lib/utils/url/safe-redirect';
 
 export class GitHubBlogEnricher extends BaseContentEnricher {
   /**
@@ -22,7 +26,7 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
     externalSignal?: AbortSignal
   ): Promise<{ content: string | null; thumbnail?: string | null } | null> {
     try {
-      const response = await fetch(url, {
+      const { response } = await fetchWithValidatedRedirects(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; TechTrend/1.0)',
           Accept: 'text/html,application/xhtml+xml',
@@ -41,7 +45,7 @@ export class GitHubBlogEnricher extends BaseContentEnricher {
         return null;
       }
 
-      const html = await response.text();
+      const html = await readTextWithLimit(response);
       const $ = cheerio.load(html);
 
       // コンテンツの抽出（GitHub Blogの構造に基づく）

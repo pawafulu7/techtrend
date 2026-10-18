@@ -234,3 +234,41 @@ describe('HackerNewsEnricher - body drain on non-OK fetch (Issue #599)', () => {
     expect(result?.thumbnail).toBeUndefined();
   });
 });
+
+describe('HackerNewsEnricher - SSRF guard（転送の各段の検証）', () => {
+  const targetUrl = 'https://github.com/foo/bar';
+  const mockLookup = jest.requireMock('dns').promises.lookup as jest.Mock;
+  let originalFetch: typeof global.fetch;
+
+  beforeEach(() => {
+    originalFetch = global.fetch;
+    mockLookup.mockReset();
+    mockLookup.mockImplementation(async (hostname: string) =>
+      hostname === 'internal.example'
+        ? [{ address: '10.0.0.5', family: 4 }]
+        : [{ address: '203.0.113.10', family: 4 }]
+    );
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.restoreAllMocks();
+  });
+
+  it('内部 IP へ転送されたら null を返し、GenericEnricher で取り直さない', async () => {
+    const fetchMock = jest.fn(async () => ({
+      status: 302,
+      ok: false,
+      headers: new Headers({ location: 'https://internal.example/admin' }),
+      body: null,
+    }));
+    global.fetch = fetchMock as unknown as typeof global.fetch;
+    const genericEnrichSpy = jest.spyOn(GenericContentEnricher.prototype, 'enrich');
+
+    const result = await new HackerNewsEnricher().enrich(targetUrl);
+
+    expect(result).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(genericEnrichSpy).not.toHaveBeenCalled();
+  });
+});

@@ -1,6 +1,10 @@
 import { BaseContentEnricher, EnrichmentResult } from './base';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
+import {
+  fetchWithValidatedRedirects,
+  readTextWithLimit,
+} from '@/lib/utils/url/safe-redirect';
 import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 
 export class MediumEngineeringEnricher extends BaseContentEnricher {
@@ -20,7 +24,7 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
     externalSignal?: AbortSignal
   ): Promise<EnrichmentResult | null> {
     try {
-      const response = await fetch(url, {
+      const { response } = await fetchWithValidatedRedirects(url, {
         signal: this.composeSignal(externalSignal, 30000),
         headers: {
           'User-Agent':
@@ -38,7 +42,7 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
         return null;
       }
 
-      const html = await response.text();
+      const html = await readTextWithLimit(response);
       const $ = cheerio.load(html);
 
       // Remove script and style elements

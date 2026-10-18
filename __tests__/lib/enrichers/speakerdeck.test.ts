@@ -61,7 +61,7 @@ describe('SpeakerDeckEnricher', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => oEmbedResponse,
+        text: async () => JSON.stringify(oEmbedResponse),
       });
 
       const result = await enricher.enrich(testUrl);
@@ -154,7 +154,7 @@ describe('SpeakerDeckEnricher', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => oEmbedResponse,
+        text: async () => JSON.stringify(oEmbedResponse),
       });
 
       const result = await enricher.enrich(testUrl);
@@ -179,7 +179,7 @@ describe('SpeakerDeckEnricher', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => oEmbedResponse,
+        text: async () => JSON.stringify(oEmbedResponse),
       });
 
       // HTML fetch for thumbnail
@@ -220,7 +220,7 @@ describe('SpeakerDeckEnricher', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => oEmbedResponse,
+        text: async () => JSON.stringify(oEmbedResponse),
       });
 
       // HTML fetch fails

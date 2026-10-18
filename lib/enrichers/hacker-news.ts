@@ -2,6 +2,11 @@ import { BaseContentEnricher, EnrichmentResult } from './base';
 import * as cheerio from 'cheerio';
 import { GenericContentEnricher } from './generic';
 import logger from '@/lib/logger';
+import {
+  fetchWithValidatedRedirects,
+  readTextWithLimit,
+  isNonRetryableFetchError,
+} from '@/lib/utils/url/safe-redirect';
 
 export class HackerNewsEnricher extends BaseContentEnricher {
   private static readonly DEFAULT_HEADERS = {
@@ -55,9 +60,10 @@ export class HackerNewsEnricher extends BaseContentEnricher {
     externalSignal?: AbortSignal
   ): Promise<EnrichmentResult | null> {
     try {
-      const response = await fetch(url, {
+      const { response } = await fetchWithValidatedRedirects(url, {
         headers: HackerNewsEnricher.DEFAULT_HEADERS,
         signal: this.composeSignal(externalSignal, 30000),
+        context: { enricher: this.constructor.name },
       });
 
       // ステータスコードが200以外の場合はGenericEnricherにフォールバック
@@ -71,7 +77,7 @@ export class HackerNewsEnricher extends BaseContentEnricher {
         return await this.genericEnricher.enrich(url, externalSignal);
       }
 
-      const html = await response.text();
+      const html = await readTextWithLimit(response);
       const $ = cheerio.load(html);
 
       // 不要な要素を削除（JSON-LDは保持）
@@ -121,12 +127,14 @@ export class HackerNewsEnricher extends BaseContentEnricher {
           const repoRootUrl = this.extractRepoRootUrl(url);
           if (repoRootUrl && repoRootUrl !== url.replace(/\/+$/, '')) {
             try {
-              const repoResponse = await fetch(repoRootUrl, {
-                headers: HackerNewsEnricher.DEFAULT_HEADERS,
-                signal: this.composeSignal(externalSignal, 5000),
-              });
+              const { response: repoResponse } =
+                await fetchWithValidatedRedirects(repoRootUrl, {
+                  headers: HackerNewsEnricher.DEFAULT_HEADERS,
+                  signal: this.composeSignal(externalSignal, 5000),
+                  context: { enricher: this.constructor.name },
+                });
               if (repoResponse.ok) {
-                const repoHtml = await repoResponse.text();
+                const repoHtml = await readTextWithLimit(repoResponse);
                 const $repo = cheerio.load(repoHtml);
                 thumbnail =
                   $repo('meta[property="og:image"]').attr('content') || '';
@@ -243,6 +251,11 @@ export class HackerNewsEnricher extends BaseContentEnricher {
         { err: error, url },
         '[HackerNewsEnricher] Error enriching URL'
       );
+
+      // SSRF ガードの拒否・転送の不正・本文の上限超えは、Generic で取り直しても同じ
+      if (isNonRetryableFetchError(error)) {
+        return null;
+      }
 
       // フォールバック: GenericEnricherを試す
       try {

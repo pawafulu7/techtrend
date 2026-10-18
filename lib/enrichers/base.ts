@@ -6,7 +6,11 @@
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
 import { classifyEnrichmentError } from './error-classifier';
-import { assertPublicHttpUrl } from '@/lib/utils/url/ssrf-guard';
+import {
+  fetchWithValidatedRedirects,
+  readTextWithLimit,
+  isNonRetryableFetchError,
+} from '@/lib/utils/url/safe-redirect';
 
 /**
  * エンリッチされたコンテンツのデータ構造
@@ -114,10 +118,9 @@ export abstract class BaseContentEnricher implements IContentEnricher {
     url: string,
     externalSignal?: AbortSignal
   ): Promise<string> {
-    // SSRF ガード: DNS解決を含む検証。拒否時はリトライしても無駄なので、
-    // retry ループに入る前に即座に throw する（呼び出し元 enrich() の catch が
-    // logEnrichmentError で記録し null を返す、既存のエラーハンドリングに乗る）
-    await assertPublicHttpUrl(url, { enricher: this.constructor.name });
+    // SSRF ガード: 最初の URL と転送の各段を DNS 解決を含めて検証する（fetchWithValidatedRedirects）。
+    // 拒否・転送の不正・本文の上限超えは再試行しても同じなので、下の catch で即座に throw する
+    // （呼び出し元 enrich() の catch が logEnrichmentError で記録し null を返す）
 
     let lastError: Error | null = null;
     let previousWas429 = false;
@@ -138,7 +141,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
         // setTimeout+clearTimeout の leak を回避する（ただし成功/外部 abort 時の
         // timeout signal 自体は明示 dispose できない点に留意）
         const signal = this.composeSignal(externalSignal, 15000);
-        const response = await fetch(url, {
+        const { response } = await fetchWithValidatedRedirects(url, {
           headers: {
             'User-Agent':
               'TechTrend/1.0 (https://techtrend.example.com) ContentEnricher',
@@ -146,6 +149,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
             'Accept-Language': 'ja,en;q=0.9',
           },
           signal,
+          context: { enricher: this.constructor.name },
         });
 
         if (response.status === 429) {
@@ -162,7 +166,7 @@ export abstract class BaseContentEnricher implements IContentEnricher {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        const html = await response.text();
+        const html = await readTextWithLimit(response);
 
         // レート制限のための待機
         await this.delay(this.rateLimit, externalSignal);
@@ -170,8 +174,8 @@ export abstract class BaseContentEnricher implements IContentEnricher {
         return html;
       } catch (_error) {
         lastError = _error as Error;
-        // 外部signalがabortされている場合は即時終了
-        if (externalSignal?.aborted) {
+        // 外部signalがabortされている場合と、再試行しても変わらない失敗は即時終了
+        if (externalSignal?.aborted || isNonRetryableFetchError(_error)) {
           throw lastError;
         }
       }
