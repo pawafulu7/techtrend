@@ -88,8 +88,31 @@ export function calculateKeywordSimilarity(title1: string, title2: string): numb
   return intersection.size / union.size; // Jaccard係数
 }
 
+// 版番号（点を含む数字の並びと、続くプレリリースの識別子）。例: v8.1.2・8.1.0.rc1・2.0.0-beta.1
+const VERSION_PATTERN = /v?(\d+(?:\.\d+)+(?:[.-]?(?:alpha|beta|rc|pre)[.-]?\d*)?)/gi;
+
+/**
+ * 版番号だけが違うタイトルか（例: 「Rails 8.1.2 リリース」と「Rails 8.1.1 リリース」）。
+ * 版を置き換えた形が一致し、版の並びが違うときに true。見出しを縮めただけの同じ記事
+ * （「Node.js v22.1 on Ubuntu 22.04: …」と「Node.js v22.1 on Ubuntu: …」）は形が一致しないので false
+ */
+function isVersionOnlyDifference(title1: string, title2: string): boolean {
+  const norm1 = normalizeJapanese(title1);
+  const norm2 = normalizeJapanese(title2);
+  const versions1 = [...norm1.matchAll(VERSION_PATTERN)].map((m) => m[1]);
+  const versions2 = [...norm2.matchAll(VERSION_PATTERN)].map((m) => m[1]);
+  if (versions1.length === 0 || versions2.length === 0) return false;
+  return (
+    norm1.replace(VERSION_PATTERN, 'VERSION') === norm2.replace(VERSION_PATTERN, 'VERSION') &&
+    versions1.join(',') !== versions2.join(',')
+  );
+}
+
 // 総合的な重複判定
 export function isDuplicate(title1: string, title2: string, threshold: number = 0.8): boolean {
+  // 版だけが違うタイトルは別のリリース（文字の類似度が高くても重複にしない）
+  if (isVersionOnlyDifference(title1, title2)) return false;
+
   // タイトルの類似度
   const titleSim = calculateTitleSimilarity(title1, title2);
   if (titleSim >= threshold) return true;
