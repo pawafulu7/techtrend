@@ -9,6 +9,8 @@ import {
   TOOLBAR_OUTLINE,
 } from '@/app/components/common/toolbar-styles';
 import { cn } from '@/lib/utils';
+import { VALID_SORT_FIELDS } from '@/app/api/articles/lib/types';
+import type { SortOption } from '@/types/components';
 
 interface SortButtonsProps {
   initialSortBy?: string;
@@ -19,7 +21,22 @@ const SORT_OPTIONS = [
   { key: 'createdAt', label: '取込順' },
   { key: 'qualityScore', label: '品質' },
   { key: 'bookmarks', label: '人気' },
-] as const;
+] as const satisfies ReadonlyArray<{ key: SortOption; label: string }>;
+
+type ButtonSort = (typeof SORT_OPTIONS)[number]['key'];
+
+/**
+ * 選ばれている表示にするボタン。
+ * API が受け付けない値は公開順で返る（app/api/articles/handlers/get.ts）ので、公開順にする。
+ * 受け付けるがボタンの無い並び順（userVotes など。URL を手で書いたとき）は、どれも選ばれていない表示にする
+ */
+function activeSortOf(sortBy: string): ButtonSort | null {
+  const button = SORT_OPTIONS.find((option) => option.key === sortBy);
+  if (button) return button.key;
+  return (VALID_SORT_FIELDS as readonly string[]).includes(sortBy)
+    ? null
+    : 'publishedAt';
+}
 
 export function SortButtons({ initialSortBy }: SortButtonsProps) {
   const router = useRouter();
@@ -34,15 +51,16 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
     return 'publishedAt'; // デフォルト値
   });
 
-  // URLパラメータが変更されたら状態を更新
+  // URLパラメータが変更されたら状態を更新。空の sortBy は、初期値やサーバーと同じく「指定なし」として扱う
+  // （サーバーは Cookie の並び順で返す。lib/articles/home-articles-query.ts）
   useEffect(() => {
-    if (urlSortBy !== null) {
+    if (urlSortBy) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: sync from URL params
       setSortBy(urlSortBy);
     }
   }, [urlSortBy]);
 
-  const handleSortChange = async (newSortBy: string) => {
+  const handleSortChange = async (newSortBy: ButtonSort) => {
     setSortBy(newSortBy); // 状態を即座に更新
 
     const params = new URLSearchParams(searchParams.toString());
@@ -63,9 +81,7 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
     } catch {}
   };
 
-  // 知らない値（古い URL など）は公開順として扱う
-  const activeSort =
-    SORT_OPTIONS.find((option) => option.key === sortBy)?.key ?? 'publishedAt';
+  const activeSort = activeSortOf(sortBy);
 
   return (
     <div

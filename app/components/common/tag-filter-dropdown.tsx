@@ -6,10 +6,10 @@ import { Badge } from '@/components/ui-v2/badge-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Tag as TagIcon, ChevronDown, X } from 'lucide-react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { TagFilter } from './tag-filter';
 import { cn } from '@/lib/utils';
 import { clearTransientFilterParams } from '@/lib/utils/url/filter-params';
@@ -49,9 +49,11 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
   const previewTags = selectedTags.slice(0, 3);
   const remainingCount = selectedTags.length - 3;
 
+  // 中身は入力欄とチェックの一覧で、メニューの項目ではないので、メニュー（role="menu"）ではなく
+  // Popover（role="dialog"）で開く
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuTrigger asChild>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
         <Button
           variant="outline"
           size="sm"
@@ -78,9 +80,9 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
 
           <ChevronDown className="ml-2 h-3.5 w-3.5" />
         </Button>
-      </DropdownMenuTrigger>
+      </PopoverTrigger>
 
-      <DropdownMenuContent
+      <PopoverContent
         align="end"
         className="w-[320px] p-0"
         sideOffset={5}
@@ -140,7 +142,7 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
         <div className="p-3">
           <TagFilter tags={tags} />
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverContent>
+    </Popover>
   );
 }

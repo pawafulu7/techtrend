@@ -92,7 +92,10 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
                   variant={pressed ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => handleModeChange(mode)}
-                  disabled={isUpdating}
+                  // 押したボタンを disabled にするとフォーカスが外れるので、無効は aria と見た目で示し、
+                  // 押されても handleModeChange の先頭で止める
+                  aria-disabled={isUpdating || undefined}
+                  data-disabled={isUpdating ? 'true' : undefined}
                   className={cn(
                     TOOLBAR_ICON_BUTTON,
                     !pressed && TOOLBAR_OUTLINE

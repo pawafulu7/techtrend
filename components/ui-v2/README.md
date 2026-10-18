@@ -113,10 +113,11 @@ Pill-shaped badge component with semantic variants.
 
 #### Variants
 
-- **default**: Gray badge for neutral information
+- **default**: Neutral badge on the hover surface (`ink` / `night`) with muted text
 - **primary**: Indigo badge for primary actions/states
 - **secondary**: Tinted indigo badge (unread, scores)
 - **outline**: Bordered badge filled with the card surface (a transparent fill would show the page canvas)
+- **positive** / **info** / **destructive**: Tinted state badges (positive, info, negative tokens). For state messages only
 
 #### Usage
 
@@ -137,7 +138,7 @@ Enhanced button component with loading states and icon support.
 - **primary**: Primary action button (indigo)
 - **secondary**: Neutral secondary button
 - **ghost**: Transparent button with hover background
-- **outline**: Bordered transparent button
+- **outline**: Bordered button filled with the card surface (a transparent fill would show the page canvas)
 
 #### Sizes
 
