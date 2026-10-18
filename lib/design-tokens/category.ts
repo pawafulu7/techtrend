@@ -1,3 +1,5 @@
+import { ink, night } from './palette';
+
 /**
  * Category Colors - カテゴリ別カラートークン
  *
@@ -40,10 +42,10 @@ export type CategoryColors = {
  */
 export const lightCategoryColors: CategoryColors = {
   infrastructure: {
-    bg: '#F1F5F9', // slate-100
-    bgHover: '#E2E8F0', // slate-200
-    icon: '#475569', // slate-600
-    iconHover: '#334155', // slate-700
+    bg: ink[150],
+    bgHover: ink[200],
+    icon: ink[600],
+    iconHover: ink[900],
   },
   ai: {
     bg: '#EDE9FE', // violet-100
@@ -96,10 +98,10 @@ export const lightCategoryColors: CategoryColors = {
  */
 export const darkCategoryColors: CategoryColors = {
   infrastructure: {
-    bg: '#1E293B', // slate-800
-    bgHover: '#334155', // slate-700
-    icon: '#94A3B8', // slate-400
-    iconHover: '#CBD5E1', // slate-300
+    bg: night[800],
+    bgHover: night[700],
+    icon: ink[400],
+    iconHover: ink[300],
   },
   ai: {
     bg: '#2E1065', // violet-950
