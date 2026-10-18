@@ -4,7 +4,7 @@
  */
 
 // 除去するパラメータ一覧
-const TRACKING_PARAMS = [
+export const TRACKING_PARAMS: readonly string[] = [
   // UTMパラメータ
   'utm_source',
   'utm_medium',

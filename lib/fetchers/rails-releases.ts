@@ -57,8 +57,9 @@ export class RailsReleasesFetcher extends BaseFetcher {
         try {
           if (!item.title || !item.link) continue;
 
-          // バージョン番号を抽出（例: "v7.1.3" -> "7.1.3"）
-          const versionMatch = item.title.match(/v?(\d+\.\d+\.\d+(?:\.\d+)?)/);
+          // バージョン番号を抽出（例: "v7.1.3" -> "7.1.3"、"v8.1.0.rc1" -> "8.1.0.rc1"）。
+          // プレリリースの識別子を落とすと、beta・rc・正式版が同じタイトルになり重複として落ちる
+          const versionMatch = item.title.match(/v?(\d+\.\d+\.\d+(?:\.\d+)?(?:\.(?:alpha|beta|rc)\d+)?)/);
           const version = versionMatch ? versionMatch[1] : '';
 
           // リリースノートのコンテンツから重要な情報を抽出

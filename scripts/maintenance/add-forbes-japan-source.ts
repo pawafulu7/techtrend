@@ -7,6 +7,7 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { sourceCache } from '../../lib/cache/source-cache';
+import { assertSourceIdentity } from './utils/source-identity';
 
 const prisma = createPrismaClient();
 
@@ -21,6 +22,7 @@ const FORBES_JAPAN_SOURCE = {
 async function main() {
   console.log('=== Forbes Japan AI ソース登録 ===\n');
 
+  await assertSourceIdentity(prisma, FORBES_JAPAN_SOURCE);
   const result = await prisma.source.upsert({
     where: { id: FORBES_JAPAN_SOURCE.id },
     update: {

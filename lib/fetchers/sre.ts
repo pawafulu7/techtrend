@@ -28,6 +28,8 @@ export class SREFetcher extends BaseFetcher {
   private parser: Parser<unknown, SRERSSItem>;
 
   // SRE関連の複数のRSSフィードを統合
+  // SRE Weekly は号の中の記事を1本ずつ取り込むソース（curated-newsletter）に移した。
+  // ここにも残すと、号まるごとの1記事と号の中の記事が二重に入る
   private rssUrls = [
     {
       url: 'https://cloud.google.com/blog/products/devops-sre/rss',
@@ -36,7 +38,6 @@ export class SREFetcher extends BaseFetcher {
     { url: 'https://www.datadoghq.com/blog/rss/', name: 'Datadog' },
     { url: 'https://www.hashicorp.com/blog/feed.xml', name: 'HashiCorp' },
     { url: 'https://www.cncf.io/feed/', name: 'CNCF' },
-    { url: 'https://sreweekly.com/feed/', name: 'SRE Weekly' },
     { url: 'https://grafana.com/blog/index.xml', name: 'Grafana Labs' },
   ];
 
@@ -168,9 +169,6 @@ export class SREFetcher extends BaseFetcher {
         break;
       case 'CNCF':
         tags.push('Cloud Native', 'Kubernetes');
-        break;
-      case 'SRE Weekly':
-        tags.push('Newsletter', 'Weekly');
         break;
       case 'Grafana Labs':
         tags.push('Grafana', 'Observability', '可観測性');

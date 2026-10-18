@@ -97,6 +97,31 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // 記事ページの取得は、転送の各段を SSRF の検証に通す共通処理を使う（lib/utils/url/safe-redirect.ts）。
+  // 直接の fetch は転送先を検証しないため、enricher では禁止する
+  {
+    files: ['lib/enrichers/**/*.ts'],
+    rules: {
+      'no-restricted-globals': ['error', {
+        globals: [{
+          name: 'fetch',
+          message: 'Use fetchWithValidatedRedirects and readTextWithLimit from @/lib/utils/url/safe-redirect so every redirect hop is SSRF-checked.',
+        }],
+        checkGlobalObject: true,
+        globalObjects: ['global'],
+      }],
+      // 別名の import で取得の関数を持ち込むのも止める（共通の @/lib/database の制限は保つ。ESLint は規則の配列を置き換えるため）
+      'no-restricted-imports': ['error', {
+        paths: [
+          { name: '@/lib/database', message: "Use '@/lib/prisma' instead. @/lib/database is deprecated." },
+          ...['undici', 'node-fetch', 'axios', 'got', 'cross-fetch', 'http', 'https', 'node:http', 'node:https'].map((name) => ({
+            name,
+            message: 'Use fetchWithValidatedRedirects from @/lib/utils/url/safe-redirect so every redirect hop is SSRF-checked.',
+          })),
+        ],
+      }],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores

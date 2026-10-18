@@ -98,15 +98,52 @@ describe('duplicate-detection', () => {
       expect(isDuplicate('React入門', 'Vue.js入門')).toBe(false);
     });
 
+    it('版番号だけが違うタイトルは別のリリースとして重複にしない', () => {
+      expect(isDuplicate('Rails 8.1.2 リリース', 'Rails 8.1.1 リリース', 0.85)).toBe(false);
+      expect(isDuplicate('Rails 8.1.0.rc1 リリース', 'Rails 8.1.0 リリース', 0.85)).toBe(false);
+      expect(isDuplicate('v2.1.302', 'v2.1.301', 0.85)).toBe(false);
+      expect(isDuplicate('Bun 1.4.3 Released', 'Bun 1.4.2 Released')).toBe(false);
+    });
+
+    it('全角のピリオドで書いた版番号も、版だけが違えば重複にしない', () => {
+      expect(isDuplicate('TypeScript３．０リリース', 'TypeScript３．１リリース', 0.85)).toBe(false);
+      expect(isDuplicate('TypeScript３．０リリース', 'TypeScript3.0リリース', 0.85)).toBe(true);
+    });
+
+    it('版番号が同じなら、今までどおり重複と判定する', () => {
+      expect(isDuplicate('Rails 8.1.2 リリース', 'Rails 8.1.2 リリース', 0.85)).toBe(true);
+    });
+
+    it('見出しを縮めただけで版番号の数が違うタイトルは、今までどおり類似度で重複と判定する', () => {
+      expect(
+        isDuplicate(
+          'Node.js v22.1 on Ubuntu 22.04: deployment guide',
+          'Node.js v22.1 on Ubuntu: deployment guide',
+          0.85
+        )
+      ).toBe(true);
+    });
+
+    it('版番号が片方にしか無いタイトルは、今までどおりの判定', () => {
+      // 版番号の規則は当たらず、類似度（約0.78）・キーワード（2/3）でも閾値に届かないので重複でない
+      expect(isDuplicate('TypeScript 5.9 リリース', 'TypeScript リリース')).toBe(false);
+      // 版番号が片方にしか無くても、類似度が閾値以上なら今までどおり重複
+      expect(isDuplicate('Bun 1.4.3 is out now', 'Bun is out now', 0.6)).toBe(true);
+      expect(isDuplicate('TypeScript３．０', 'TypeScript3.0')).toBe(true);
+    });
+
     it('「について」などの接尾辞を無視して比較する', () => {
       expect(isDuplicate('React Hooksについて', 'React Hooks')).toBe(true);
       expect(isDuplicate('TypeScriptの話', 'TypeScript')).toBe(true);
       expect(isDuplicate('Next.jsに関して', 'Next.js')).toBe(true);
     });
 
-    it('バージョン番号を無視して比較する', () => {
+    it('点を含まない番号の違いは無視して比較する', () => {
       expect(isDuplicate('React v18の新機能', 'React v17の新機能')).toBe(true);
-      expect(isDuplicate('TypeScript 4.5リリース', 'TypeScript 4.6リリース')).toBe(true);
+    });
+
+    it('点を含む版番号だけが違うタイトルは、別のリリースとして重複にしない', () => {
+      expect(isDuplicate('TypeScript 4.5リリース', 'TypeScript 4.6リリース')).toBe(false);
     });
 
     it('日付を無視して比較する', () => {

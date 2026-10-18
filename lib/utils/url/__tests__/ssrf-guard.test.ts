@@ -45,6 +45,14 @@ describe('assertPublicHttpUrl', () => {
       ).resolves.toBeUndefined();
     });
 
+    it('NAT64 で公開の IPv4 を埋め込んだアドレスは許可される（IPv6 だけのネットワーク）', async () => {
+      mockLookup.mockResolvedValue([{ address: '64:ff9b::808:808', family: 6 }]);
+
+      await expect(
+        assertPublicHttpUrl('https://example.com/article')
+      ).resolves.toBeUndefined();
+    });
+
     it('公開IPにマップされた IPv4-mapped IPv6 は許可される', async () => {
       mockLookup.mockResolvedValue([
         { address: '::ffff:203.0.113.10', family: 6 },
@@ -115,6 +123,17 @@ describe('assertPublicHttpUrl', () => {
       ['未指定 0.0.0.0', '0.0.0.0', 4],
       ['ブロードキャスト 255.255.255.255', '255.255.255.255', 4],
       ['未指定 ::', '::', 6],
+      ['このネットワーク 0.0.0.0/8', '0.0.0.1', 4],
+      ['共有アドレス 100.64.0.0/10', '100.64.0.1', 4],
+      ['Azure の WireServer 168.63.129.16', '168.63.129.16', 4],
+      ['ベンチマーク用 198.18.0.0/15', '198.18.0.1', 4],
+      ['マルチキャスト 224.0.0.0/4', '224.0.0.1', 4],
+      ['予約 240.0.0.0/4', '240.0.0.1', 4],
+      ['IPv4 互換 ::127.0.0.1', '::127.0.0.1', 6],
+      ['6to4 2002::/16（127.0.0.1 を埋め込む）', '2002:7f00:1::', 6],
+      ['Teredo 2001::/32', '2001:0:4136:e378::1', 6],
+      ['NAT64 で 127.0.0.1 を埋め込む', '64:ff9b::7f00:1', 6],
+      ['NAT64 で 169.254.169.254 を埋め込む（ドット表記）', '64:ff9b::169.254.169.254', 6],
     ])('%s に解決される場合は拒否される', async (_label, address, family) => {
       mockLookup.mockResolvedValue([{ address, family }]);
 

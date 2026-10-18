@@ -2,6 +2,10 @@ import { BaseContentEnricher } from './base';
 import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
 import * as cheerio from 'cheerio';
 import logger from '@/lib/logger';
+import {
+  fetchWithValidatedRedirects,
+  readTextWithLimit,
+} from '@/lib/utils/url/safe-redirect';
 
 export class ClaudeBlogEnricher extends BaseContentEnricher {
   /**
@@ -19,7 +23,7 @@ export class ClaudeBlogEnricher extends BaseContentEnricher {
     externalSignal?: AbortSignal
   ): Promise<{ content: string | null; thumbnail?: string | null } | null> {
     try {
-      const response = await fetch(url, {
+      const { response } = await fetchWithValidatedRedirects(url, {
         headers: {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -39,7 +43,7 @@ export class ClaudeBlogEnricher extends BaseContentEnricher {
         return null;
       }
 
-      const html = await response.text();
+      const html = await readTextWithLimit(response);
       const $ = cheerio.load(html);
 
       // 不要な要素を削除

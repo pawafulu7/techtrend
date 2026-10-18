@@ -119,6 +119,15 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
       'vscode_blog', // VS Code Blog
       'dropbox_tech', // Dropbox Tech
       'flyio_blog', // Fly.io Blog
+      'rails_releases', // Rails Releases
+      // 分野のニュースレター（lib/fetchers/curated-newsletter/configs.ts）
+      'javascript_weekly', // JavaScript Weekly
+      'frontend_focus', // Frontend Focus
+      'react_status', // React Status
+      'node_weekly', // Node Weekly
+      'postgres_weekly', // Postgres Weekly
+      'sre_weekly', // SRE Weekly
+      'data_engineering_weekly', // Data Engineering Weekly
     ],
   },
   domestic: {
@@ -187,6 +196,8 @@ export const SOURCE_CATEGORIES: Record<SourceCategoryId, SourceCategory> = {
     description: 'AI関連の技術情報',
     sourceIds: [
       'cmfwpq7dc0000te8m6fd12f0x', // OpenAI Blog
+      'deepmind_blog', // DeepMind Blog
+      'nvidia_developer_blog', // NVIDIA Developer Blog
       'cmdwmplco0001tec833nye4ak', // Hugging Face Blog
       'cmfxa7efj0000teo06dhbox6e', // Hugging Face Papers
       'cmfxa7efs0001teo0kjt70c5k', // arXiv AI

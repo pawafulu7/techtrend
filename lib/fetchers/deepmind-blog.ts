@@ -12,6 +12,7 @@ import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
 import { aiLLMFilter } from '@/lib/filters/ai-llm-filter';
+import { fetchFeedXml } from './fetch-feed';
 
 export class DeepMindBlogFetcher extends BaseFetcher {
   private parser: Parser;
@@ -36,22 +37,13 @@ export class DeepMindBlogFetcher extends BaseFetcher {
     try {
       logger.info('DeepMind Blog記事取得開始');
 
-      // DeepMindのRSSフィードURL（302リダイレクトあり）
+      // DeepMindのRSSフィードURL（302リダイレクトあり。fetch がたどる）
       const feedUrl = 'https://deepmind.google/blog/rss.xml';
 
-      const feed = await this.retry(async () => {
-        try {
-          return await this.parser.parseURL(feedUrl);
-        } catch (error) {
-          // リダイレクトエラーの場合、代替URLを試す
-          if (error instanceof Error && error.message.includes('redirect')) {
-            logger.warn('DeepMind Blog: リダイレクトエラー、代替URLを試行');
-            // 代替URL（実際のリダイレクト先）
-            return await this.parser.parseURL('https://deepmind.google/discover/blog/rss.xml');
-          }
-          throw error;
-        }
-      });
+      // parseURL は頼んでいない gzip の応答を解析できないことがあるので、取ってから解析する
+      const feed = await this.retry(async () =>
+        this.parser.parseString(await fetchFeedXml(feedUrl))
+      );
 
       if (!feed.items || feed.items.length === 0) {
         logger.warn('DeepMind Blog: 記事が見つかりませんでした');

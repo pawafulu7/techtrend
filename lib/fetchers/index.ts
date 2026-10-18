@@ -22,6 +22,7 @@ import { CloudflareBlogFetcher } from './cloudflare-blog';
 import { MozillaHacksFetcher } from './mozilla-hacks';
 import { HackerNewsFetcher } from './hacker-news';
 import { MediumEngineeringFetcher } from './medium-engineering';
+import { CuratedNewsletterFetcher } from './curated-newsletter';
 // import { MicrosoftDevBlogFetcher } from './microsoft-dev-blog';
 
 // AI/LLM関連フェッチャー
@@ -108,6 +109,16 @@ export function createFetcher(source: Source): BaseFetcher {
       return new HackerNewsFetcher(source);
     case 'Medium Engineering':
       return new MediumEngineeringFetcher(source);
+
+    // 分野のニュースレター（編集者が選んだ記事を1本ずつ取り込む。設定は curated-newsletter/configs.ts）
+    case 'JavaScript Weekly':
+    case 'Frontend Focus':
+    case 'React Status':
+    case 'Node Weekly':
+    case 'Postgres Weekly':
+    case 'SRE Weekly':
+    case 'Data Engineering Weekly':
+      return new CuratedNewsletterFetcher(source);
     // case 'Microsoft Developer Blog':
     //   return new MicrosoftDevBlogFetcher(source);
 
