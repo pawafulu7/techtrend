@@ -38,7 +38,7 @@ jobs:
           SLACK_NOTIFICATION_ENABLED: ${{ secrets.SLACK_NOTIFICATION_ENABLED }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          npx tsx scripts/scheduled/collect-feeds.ts "Speaker Deck" "Docswell" "Claude Blog" "Anthropic News" "Forbes Japan AI" "Ledge.ai"
+          npx tsx scripts/scheduled/collect-feeds.ts "Speaker Deck" "Docswell" "Claude Blog" "Anthropic News" "Forbes Japan AI" "Ledge.ai" "JavaScript Weekly" "Frontend Focus" "React Status" "Node Weekly" "Postgres Weekly" "SRE Weekly" "Data Engineering Weekly"
           npx tsx scripts/scheduled/manage-summaries.ts generate
           npx tsx scripts/scheduled/manage-quality-scores.ts calculate
       - name: Notify failure to Slack

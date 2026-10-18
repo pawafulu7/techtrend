@@ -78,7 +78,7 @@ import { adjustTimezoneForArticle } from '@/lib/utils/date';
 import { CategoryClassifier } from '@/lib/services/category-classifier';
 import { normalizeTag } from '@/lib/utils/tag/tag-normalizer';
 import { resolveTags } from '@/lib/services/tag-service';
-import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
+import { shouldTransferFromHatena } from './utils/source-transfer';
 
 // フェッチャーファクトリ（createFetcherですべてのソースを統一的に処理）
 import { createFetcher } from '@/lib/fetchers';
@@ -284,9 +284,9 @@ async function processSource({
           // 自己修復の成功のいずれかがあれば true にし、末尾で一度だけ計上する
           let articleUpdated = false;
 
-          // はてぶ経由 → 企業ブログの場合、sourceIdを更新
+          // はてぶ経由 → 企業ブログの場合、sourceIdを更新（ニュースレターには移さない）
           // （content補完のCASとは独立させ、無条件で適用する）
-          if (existing.sourceId === HATENA_SOURCE_ID && source.id !== HATENA_SOURCE_ID) {
+          if (shouldTransferFromHatena(existing.sourceId, source.id)) {
             await prisma.article.update({
               where: { id: existing.id },
               data: { sourceId: source.id },
@@ -595,7 +595,7 @@ async function processSource({
             // メイン分岐と同様、記事単位のフラグで一度だけ計上する
             let articleUpdated = false;
 
-            if (latestExisting.sourceId === HATENA_SOURCE_ID && source.id !== HATENA_SOURCE_ID) {
+            if (shouldTransferFromHatena(latestExisting.sourceId, source.id)) {
               // sourceId移管はcontent補完のCASとは独立させ、無条件で適用する
               await prisma.article.update({
                 where: { id: latestExisting.id },
