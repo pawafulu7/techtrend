@@ -55,7 +55,11 @@ const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(
             みなされ、狭い画面でアクションが同じ行に残って見出しを1文字ずつに押しつぶす */}
         <div className="min-w-0 flex-auto">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-primary flex shrink-0" aria-hidden="true">
+            {/* アイコンは見出しを補うだけなので、ブランド色ではなく補助の文字色で控えめに出す */}
+            <span
+              className="flex shrink-0 text-(--tt-color-text-muted)"
+              aria-hidden="true"
+            >
               <Icon className="h-5 w-5" />
             </span>
             <h1 className="font-heading text-foreground text-h1">{title}</h1>
