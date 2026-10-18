@@ -100,10 +100,11 @@ async function main() {
     console.log('[OK] createFetcher() name match verified for all sources');
 
     // キャッシュ無効化はコミット後に実行（CLAUDE.md ソース追加時ルール）。本番の Redis には
-    // この環境から届かないことがある。そのときは登録は済んでいるので、TTL（最大1時間）を待つ
+    // この環境から届かないことがある。invalidate() は Redis の失敗を WARN のログにして例外にしない
+    // ので、成功とは書かない。失敗していたら、登録は済んでいるので TTL（最大1時間）を待つ
     try {
       await sourceCache.invalidate();
-      console.log('[OK] Source cache invalidated');
+      console.log('[INFO] Source cache invalidation requested (Redis failures, if any, are logged as WARN above)');
     } catch (error) {
       console.warn(
         '[WARN] Source cache invalidation failed (registration is committed; wait for the cache TTL):',
