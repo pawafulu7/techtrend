@@ -314,9 +314,10 @@ export default function AnalyticsContent() {
             <TabsTrigger value="sources">ソース分析</TabsTrigger>
           </TabsList>
 
-          <div className="flex gap-2">
+          <div role="group" aria-label="期間" className="flex gap-2">
             <Button
               variant={dateRange === 'week' ? 'default' : 'outline'}
+              aria-pressed={dateRange === 'week'}
               size="sm"
               onClick={() => setDateRange('week')}
             >
@@ -324,6 +325,7 @@ export default function AnalyticsContent() {
             </Button>
             <Button
               variant={dateRange === 'month' ? 'default' : 'outline'}
+              aria-pressed={dateRange === 'month'}
               size="sm"
               onClick={() => setDateRange('month')}
             >

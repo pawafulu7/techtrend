@@ -13,6 +13,10 @@ import {
 import { TagFilter } from './tag-filter';
 import { cn } from '@/lib/utils';
 import { clearTransientFilterParams } from '@/lib/utils/url/filter-params';
+import {
+  TOOLBAR_CONTROL,
+  TOOLBAR_OUTLINE,
+} from '@/app/components/common/toolbar-styles';
 
 interface TagFilterDropdownProps {
   tags: Array<{
@@ -52,13 +56,16 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
           variant="outline"
           size="sm"
           className={cn(
-            'relative h-8 px-3 text-sm',
+            TOOLBAR_CONTROL,
+            TOOLBAR_OUTLINE,
+            'relative px-3',
             selectedTags.length > 0 && 'border-primary'
           )}
           data-testid="tag-filter-button"
         >
           <TagIcon className="lucide-tag mr-2 h-4 w-4" />
-          <span className="hidden sm:inline">タグ</span>
+          {/* 狭い幅ではアイコンだけを見せ、読み上げ用の名前は残す */}
+          <span className="sr-only sm:not-sr-only">タグ</span>
 
           {/* 選択中タグ数のバッジ */}
           {selectedTags.length > 0 && (
@@ -67,7 +74,7 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
             </Badge>
           )}
 
-          <ChevronDown className="ml-2 h-3 w-3" />
+          <ChevronDown className="ml-2 h-3.5 w-3.5" />
         </Button>
       </DropdownMenuTrigger>
 

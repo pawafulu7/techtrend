@@ -12,6 +12,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
+import {
+  TOOLBAR_ICON_BUTTON,
+  TOOLBAR_OUTLINE,
+} from '@/app/components/common/toolbar-styles';
+import { cn } from '@/lib/utils';
 
 export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
   const router = useRouter();
@@ -73,7 +78,10 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
               size="sm"
               onClick={() => handleModeChange('card')}
               disabled={isUpdating}
-              className="h-7 w-7 p-0"
+              className={cn(
+                TOOLBAR_ICON_BUTTON,
+                currentMode !== 'card' && TOOLBAR_OUTLINE
+              )}
             >
               <Grid3x3 className="h-4 w-4" />
             </Button>
@@ -93,7 +101,10 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
               size="sm"
               onClick={() => handleModeChange('compact')}
               disabled={isUpdating}
-              className="h-7 w-7 p-0"
+              className={cn(
+                TOOLBAR_ICON_BUTTON,
+                currentMode !== 'compact' && TOOLBAR_OUTLINE
+              )}
             >
               <Grid2x2 className="h-4 w-4" />
             </Button>
@@ -113,7 +124,10 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
               size="sm"
               onClick={() => handleModeChange('list')}
               disabled={isUpdating}
-              className="h-7 w-7 p-0"
+              className={cn(
+                TOOLBAR_ICON_BUTTON,
+                currentMode !== 'list' && TOOLBAR_OUTLINE
+              )}
             >
               <List className="h-4 w-4" />
             </Button>

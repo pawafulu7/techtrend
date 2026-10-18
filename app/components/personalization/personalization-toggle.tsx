@@ -8,13 +8,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Toggle } from '@/components/ui/toggle';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Settings, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CategoryPreferenceDialog } from './category-preference-dialog';
 import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
 import type { PeriodPreset } from '@/lib/personalization/types';
+import {
+  TOOLBAR_CONTROL,
+  TOOLBAR_OUTLINE,
+} from '@/app/components/common/toolbar-styles';
 
 // =============================================================================
 // Props
@@ -60,29 +63,48 @@ export function PersonalizationToggle({
     });
   };
 
-  // Render as Toggle (default)
+  // ツールバー用（既定）。押すと設定のダイアログが開くので、切り替えの部品ではなく普通のボタンにする。
+  // ほかのツールバーのボタンと同じ枠付きで出し、絞り込み中は藍の淡い塗りと分野の数で示す
+  // （並び順の「選ばれている」塗りつぶしと見分けるため、塗りつぶしにはしない）
   if (variant === 'toggle') {
+    const active = filterEnabled && hasPreferences;
     return (
       <>
-        <Toggle
-          pressed={filterEnabled && hasPreferences}
-          onPressedChange={handleToggleClick}
-          aria-label="パーソナライズ設定"
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleToggleClick}
+          aria-haspopup="dialog"
           className={cn(
-            'h-9 gap-1.5 px-3 whitespace-nowrap',
-            'data-[state=on]:bg-primary data-[state=on]:text-primary-foreground',
+            TOOLBAR_CONTROL,
+            'gap-1.5 px-3 whitespace-nowrap',
+            active
+              ? 'border-(--tt-color-primary-border) bg-(--tt-color-primary-bg) text-(--tt-color-primary) hover:border-(--tt-color-primary) hover:bg-(--tt-color-primary-bg)'
+              : TOOLBAR_OUTLINE,
             className
           )}
           data-testid="personalization-toggle"
         >
-          <Sparkles className="h-4 w-4 flex-shrink-0" />
-          <span className="hidden text-sm sm:inline">パーソナライズ</span>
+          <Sparkles className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+          {/* 狭い幅ではアイコンだけを見せ、読み上げ用の名前は残す */}
+          <span className="sr-only sm:not-sr-only">パーソナライズ</span>
           {hasPreferences && (
-            <span className="text-xs opacity-70">
-              ({selectedCategories.length})
+            <span
+              className={cn(
+                'readout rounded-full px-1.5 py-0.5 text-xs',
+                active
+                  ? 'bg-(--tt-color-primary) text-(--tt-color-on-primary)'
+                  : 'bg-(--tt-color-surface-hover) text-(--tt-color-text-muted)'
+              )}
+            >
+              <span className="sr-only">選んだ分野 </span>
+              {selectedCategories.length}
             </span>
           )}
-        </Toggle>
+          <span className="sr-only">
+            {active ? '（絞り込み中）' : '（オフ）'}
+          </span>
+        </Button>
 
         <CategoryPreferenceDialog
           open={dialogOpen}
@@ -103,13 +125,19 @@ export function PersonalizationToggle({
     <>
       <Button
         variant={filterEnabled && hasPreferences ? 'default' : 'outline'}
+        aria-haspopup="dialog"
         size="sm"
         onClick={handleToggleClick}
-        className={cn('gap-1.5 whitespace-nowrap', className)}
+        className={cn(
+          TOOLBAR_CONTROL,
+          !(filterEnabled && hasPreferences) && TOOLBAR_OUTLINE,
+          'gap-1.5 whitespace-nowrap',
+          className
+        )}
         data-testid="personalization-button"
       >
         <Settings className="h-4 w-4 flex-shrink-0" />
-        <span className="hidden sm:inline">パーソナライズ</span>
+        <span className="sr-only sm:not-sr-only">パーソナライズ</span>
         {hasPreferences && (
           <span className="text-xs opacity-70">
             ({selectedCategories.length})

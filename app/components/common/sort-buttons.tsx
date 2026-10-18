@@ -4,6 +4,11 @@ import { Button } from '@/components/ui-v2/button-v2';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { clearTransientFilterParams } from '@/lib/utils/url/filter-params';
+import {
+  TOOLBAR_CONTROL,
+  TOOLBAR_OUTLINE,
+} from '@/app/components/common/toolbar-styles';
+import { cn } from '@/lib/utils';
 
 interface SortButtonsProps {
   initialSortBy?: string;
@@ -51,19 +56,29 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
     } catch {}
   };
 
+  // 選んでいる並び順は色だけでなく aria-pressed でも伝える（支援技術・テストの判定に使う）
+  const isPublishedAt =
+    sortBy !== 'bookmarks' &&
+    sortBy !== 'qualityScore' &&
+    sortBy !== 'createdAt';
+
   return (
-    <div className="flex gap-1" data-testid="sort-buttons">
+    <div
+      role="group"
+      aria-label="並び順"
+      className="flex gap-1"
+      data-testid="sort-buttons"
+    >
       <Button
         data-testid="sort-by-publishedAt"
-        variant={
-          sortBy !== 'bookmarks' &&
-          sortBy !== 'qualityScore' &&
-          sortBy !== 'createdAt'
-            ? 'default'
-            : 'outline'
-        }
+        variant={isPublishedAt ? 'default' : 'outline'}
+        aria-pressed={isPublishedAt}
         size="sm"
-        className="h-6 px-2 text-xs sm:h-7"
+        className={cn(
+          TOOLBAR_CONTROL,
+          'px-3',
+          !isPublishedAt && TOOLBAR_OUTLINE
+        )}
         onClick={() => handleSortChange('publishedAt')}
       >
         公開順
@@ -71,8 +86,13 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
       <Button
         data-testid="sort-by-createdAt"
         variant={sortBy === 'createdAt' ? 'default' : 'outline'}
+        aria-pressed={sortBy === 'createdAt'}
         size="sm"
-        className="h-6 px-2 text-xs sm:h-7"
+        className={cn(
+          TOOLBAR_CONTROL,
+          'px-3',
+          !(sortBy === 'createdAt') && TOOLBAR_OUTLINE
+        )}
         onClick={() => handleSortChange('createdAt')}
       >
         取込順
@@ -80,8 +100,13 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
       <Button
         data-testid="sort-by-qualityScore"
         variant={sortBy === 'qualityScore' ? 'default' : 'outline'}
+        aria-pressed={sortBy === 'qualityScore'}
         size="sm"
-        className="h-6 px-2 text-xs sm:h-7"
+        className={cn(
+          TOOLBAR_CONTROL,
+          'px-3',
+          !(sortBy === 'qualityScore') && TOOLBAR_OUTLINE
+        )}
         onClick={() => handleSortChange('qualityScore')}
       >
         品質
@@ -89,8 +114,13 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
       <Button
         data-testid="sort-by-bookmarks"
         variant={sortBy === 'bookmarks' ? 'default' : 'outline'}
+        aria-pressed={sortBy === 'bookmarks'}
         size="sm"
-        className="h-6 px-2 text-xs sm:h-7"
+        className={cn(
+          TOOLBAR_CONTROL,
+          'px-3',
+          !(sortBy === 'bookmarks') && TOOLBAR_OUTLINE
+        )}
         onClick={() => handleSortChange('bookmarks')}
       >
         人気
