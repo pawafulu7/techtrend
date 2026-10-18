@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { TrendingUp, Calendar, GitCompare, Grid3X3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isNavActive, navAriaCurrent } from '@/components/ui-v2/nav-tab';
 
 const trendNavItems = [
   { href: '/trends', label: '概要', icon: TrendingUp, exact: true },
@@ -20,13 +21,6 @@ const trendNavItems = [
 export function TrendSubNav() {
   const pathname = usePathname();
 
-  const isActive = (href: string, exact: boolean) => {
-    if (exact) {
-      return pathname === href;
-    }
-    return pathname.startsWith(href);
-  };
-
   return (
     // role="tablist"/"tab" は付けない: 中身は別ページへのリンクで、tabpanel も
     // 矢印キーによる roving tabindex も存在しないため、tabs として告知すると
@@ -38,13 +32,15 @@ export function TrendSubNav() {
     >
       {trendNavItems.map((item) => {
         const Icon = item.icon;
-        const active = isActive(item.href, item.exact);
+        const active = isNavActive(pathname, item.href, { exact: item.exact });
 
         return (
           <Link
             key={item.href}
             href={item.href}
-            aria-current={active ? 'page' : undefined}
+            aria-current={navAriaCurrent(pathname, item.href, {
+              exact: item.exact,
+            })}
             className={cn(
               'inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all duration-200',
               'focus-visible:ring-primary focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',

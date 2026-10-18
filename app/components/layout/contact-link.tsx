@@ -16,7 +16,7 @@ const LABEL = 'お問い合わせ・要望';
 
 interface ContactLinkProps {
   /**
-   * デスクトップのヘッダー用。文字が入る幅（1280px 以上）では枠付きのピルに文字を並べ、
+   * デスクトップのヘッダー用。文字が入る幅（1280px 以上）ではアイコンに文字を並べ、
    * それより狭い幅ではアイコンだけにして、マウスを乗せたときに文字を出す
    */
   desktop?: boolean;
@@ -35,15 +35,12 @@ export function ContactLink({ desktop = false, testId }: ContactLinkProps) {
       size="icon"
       className={cn(
         'h-11 w-11 lg:h-9 lg:w-9',
-        isActive && 'bg-(--tt-color-primary-bg) text-(--tt-color-primary)',
-        // 文字を見せる幅では、ナビのピルと見分けがつき、目に留まるようにサイトの緑で縁取る。
-        // 開いているときはナビの現在のページと同じ塗りにする
-        desktop &&
-          'xl:h-8 xl:w-auto xl:gap-1.5 xl:rounded-full xl:border xl:px-3',
-        desktop &&
-          (isActive
-            ? 'xl:border-(--tt-color-primary) xl:bg-(--tt-color-primary) xl:text-(--tt-color-on-primary) xl:hover:bg-(--tt-color-primary-hover)'
-            : 'xl:border-(--tt-color-primary-border) xl:bg-(--tt-color-primary-bg) xl:text-(--tt-color-primary) xl:hover:border-(--tt-color-primary) xl:hover:bg-(--tt-color-primary-bg)')
+        // ナビより目立たせない。枠や塗りは付けず、補助の文字色で出し、開いているときだけ藍にする。
+        // 開いているときはホバーでも藍のまま（ghost のホバーの塗りと文字色を打ち消す）
+        isActive
+          ? 'bg-(--tt-color-primary-bg) text-(--tt-color-primary) hover:bg-(--tt-color-primary-bg) hover:text-(--tt-color-primary)'
+          : 'text-(--tt-color-text-muted) hover:text-(--tt-color-text)',
+        desktop && 'xl:w-auto xl:gap-1.5 xl:px-2.5 xl:text-[13px]'
       )}
     >
       <Link
