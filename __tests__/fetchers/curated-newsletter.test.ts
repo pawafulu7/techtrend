@@ -296,6 +296,9 @@ describe('filterArticleUrl', () => {
       ok: true,
       url: 'https://blog.example/?p=123',
     });
+    // 記事を指さないクエリだけなら、トップページとして除く
+    expect(filterArticleUrl('https://blog.example/?lang=en', [])).toEqual({ ok: false, reason: 'homepage' });
+    expect(filterArticleUrl('https://blog.example/?utm_id=newsletter', [])).toEqual({ ok: false, reason: 'homepage' });
   });
 
   it('追跡パラメータが無ければクエリを書き直さない', () => {

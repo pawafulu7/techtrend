@@ -20,6 +20,8 @@ const SOCIAL_HOSTS = [
 ];
 const VIDEO_HOSTS = ['youtube.com', 'youtu.be', 'vimeo.com'];
 const EVENT_HOSTS = ['luma.com', 'lu.ma', 'eventbrite.com'];
+/** パスが「/」の URL で、記事を指すクエリ（WordPress の既定の固定リンクなど） */
+const ARTICLE_QUERY_PARAMS = ['p', 'page_id', 'id', 'article', 'post', 'story', 'item'];
 
 export type LinkFilterResult =
   { ok: true; url: string } | { ok: false; reason: string };
@@ -52,9 +54,13 @@ export function filterArticleUrl(
   if (url.username || url.password) return { ok: false, reason: 'credentials' };
   const hostname = url.hostname.toLowerCase().replace(/^www\./, '');
 
-  // トップページだけを除く。`/?p=123` のようにクエリで記事を指す URL は残す（追跡パラメータだけのクエリはトップページ）
+  // トップページを除く。パスが「/」でも、記事を指すクエリ（WordPress の `/?p=123` など）があれば残す。
+  // それ以外のクエリ（`/?lang=en`・追跡パラメータ）だけならトップページとみなす
   const cleaned = stripTracking(url);
-  if ((url.pathname === '/' || url.pathname === '') && new URL(cleaned).search === '')
+  if (
+    (url.pathname === '/' || url.pathname === '') &&
+    !ARTICLE_QUERY_PARAMS.some((param) => new URL(cleaned).searchParams.has(param))
+  )
     return { ok: false, reason: 'homepage' };
   if (matchesHost(hostname, ownHosts)) return { ok: false, reason: 'own-site' };
   if (matchesHost(hostname, SOCIAL_HOSTS))
