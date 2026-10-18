@@ -14,6 +14,13 @@ interface SortButtonsProps {
   initialSortBy?: string;
 }
 
+const SORT_OPTIONS = [
+  { key: 'publishedAt', label: '公開順' },
+  { key: 'createdAt', label: '取込順' },
+  { key: 'qualityScore', label: '品質' },
+  { key: 'bookmarks', label: '人気' },
+] as const;
+
 export function SortButtons({ initialSortBy }: SortButtonsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -56,11 +63,9 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
     } catch {}
   };
 
-  // 選んでいる並び順は色だけでなく aria-pressed でも伝える（支援技術・テストの判定に使う）
-  const isPublishedAt =
-    sortBy !== 'bookmarks' &&
-    sortBy !== 'qualityScore' &&
-    sortBy !== 'createdAt';
+  // 知らない値（古い URL など）は公開順として扱う
+  const activeSort =
+    SORT_OPTIONS.find((option) => option.key === sortBy)?.key ?? 'publishedAt';
 
   return (
     <div
@@ -69,62 +74,23 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
       className="flex gap-1"
       data-testid="sort-buttons"
     >
-      <Button
-        data-testid="sort-by-publishedAt"
-        variant={isPublishedAt ? 'default' : 'outline'}
-        aria-pressed={isPublishedAt}
-        size="sm"
-        className={cn(
-          TOOLBAR_CONTROL,
-          'px-3',
-          !isPublishedAt && TOOLBAR_OUTLINE
-        )}
-        onClick={() => handleSortChange('publishedAt')}
-      >
-        公開順
-      </Button>
-      <Button
-        data-testid="sort-by-createdAt"
-        variant={sortBy === 'createdAt' ? 'default' : 'outline'}
-        aria-pressed={sortBy === 'createdAt'}
-        size="sm"
-        className={cn(
-          TOOLBAR_CONTROL,
-          'px-3',
-          !(sortBy === 'createdAt') && TOOLBAR_OUTLINE
-        )}
-        onClick={() => handleSortChange('createdAt')}
-      >
-        取込順
-      </Button>
-      <Button
-        data-testid="sort-by-qualityScore"
-        variant={sortBy === 'qualityScore' ? 'default' : 'outline'}
-        aria-pressed={sortBy === 'qualityScore'}
-        size="sm"
-        className={cn(
-          TOOLBAR_CONTROL,
-          'px-3',
-          !(sortBy === 'qualityScore') && TOOLBAR_OUTLINE
-        )}
-        onClick={() => handleSortChange('qualityScore')}
-      >
-        品質
-      </Button>
-      <Button
-        data-testid="sort-by-bookmarks"
-        variant={sortBy === 'bookmarks' ? 'default' : 'outline'}
-        aria-pressed={sortBy === 'bookmarks'}
-        size="sm"
-        className={cn(
-          TOOLBAR_CONTROL,
-          'px-3',
-          !(sortBy === 'bookmarks') && TOOLBAR_OUTLINE
-        )}
-        onClick={() => handleSortChange('bookmarks')}
-      >
-        人気
-      </Button>
+      {SORT_OPTIONS.map(({ key, label }) => {
+        // 選んでいる並び順は色だけでなく aria-pressed でも伝える（支援技術・テストの判定に使う）
+        const pressed = activeSort === key;
+        return (
+          <Button
+            key={key}
+            data-testid={`sort-by-${key}`}
+            variant={pressed ? 'default' : 'outline'}
+            aria-pressed={pressed}
+            size="sm"
+            className={cn(TOOLBAR_CONTROL, 'px-3', !pressed && TOOLBAR_OUTLINE)}
+            onClick={() => handleSortChange(key)}
+          >
+            {label}
+          </Button>
+        );
+      })}
     </div>
   );
 }

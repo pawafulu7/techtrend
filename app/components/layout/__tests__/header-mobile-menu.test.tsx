@@ -146,6 +146,19 @@ describe('Header のモバイルメニュー', () => {
       expect(screen.getByTestId('outside')).toHaveFocus();
     });
 
+    it('閉じても残るヘッダーのボタンにあるフォーカスは動かさない', async () => {
+      const user = userEvent.setup();
+      render(<Header />);
+
+      await openMenu(user);
+      // テーマの切り替えはデスクトップ用とモバイル用の2つがあるので、1つだけのお問い合わせのリンクで確かめる
+      screen.getByTestId('mobile-header-contact-link').focus();
+      await user.keyboard('{Escape}');
+
+      expect(screen.queryByTestId('mobile-nav')).not.toBeInTheDocument();
+      expect(screen.getByTestId('mobile-header-contact-link')).toHaveFocus();
+    });
+
     it('ほかの部品が先に Esc を使ったら閉じない（Radix のメニューは capture で preventDefault する）', async () => {
       const user = userEvent.setup();
       const consumeEscape = (event: KeyboardEvent) => {

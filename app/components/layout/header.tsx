@@ -54,6 +54,7 @@ export function Header() {
   const isSessionReady = isHydrated && !isPending;
   const headerRef = useRef<HTMLElement>(null);
   const menuToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileNavRef = useRef<HTMLElement>(null);
 
   // モバイルメニューは Esc とヘッダーの外のクリックで閉じる
   useEffect(() => {
@@ -68,10 +69,13 @@ export function Header() {
       ) {
         return;
       }
-      // パネルの中のフォーカスは閉じると行き場を失うので、開いたボタンへ戻す。本文にあるフォーカスは動かさない
-      const focusInHeader = headerRef.current?.contains(document.activeElement);
+      // パネルの中のフォーカスは閉じると行き場を失うので、開いたボタンへ戻す。
+      // パネルの外（本文や、閉じても残るヘッダーのボタン）にあるフォーカスは動かさない
+      const focusInPanel = mobileNavRef.current?.contains(
+        document.activeElement
+      );
       setMenuOpenedAt(null);
-      if (focusInHeader) menuToggleRef.current?.focus();
+      if (focusInPanel) menuToggleRef.current?.focus();
     };
     // pointerdown で閉じると、パネルの分だけ本文が上にずれてから指が離れ、タップが別の要素に届く。
     // click は宛先が決まってから届くので、capture で受けて閉じ、押したものにはそのまま click を渡す
@@ -223,6 +227,7 @@ export function Header() {
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <nav
+            ref={mobileNavRef}
             id={MOBILE_NAV_ID}
             aria-label="サイトのメニュー"
             className="border-t py-4 lg:hidden"

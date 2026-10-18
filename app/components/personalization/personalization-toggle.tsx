@@ -63,11 +63,12 @@ export function PersonalizationToggle({
     });
   };
 
+  const active = filterEnabled && hasPreferences;
+
   // ツールバー用（既定）。押すと設定のダイアログが開くので、切り替えの部品ではなく普通のボタンにする。
   // ほかのツールバーのボタンと同じ枠付きで出し、絞り込み中は藍の淡い塗りと分野の数で示す
   // （並び順の「選ばれている」塗りつぶしと見分けるため、塗りつぶしにはしない）
   if (variant === 'toggle') {
-    const active = filterEnabled && hasPreferences;
     return (
       <>
         <Button
@@ -102,7 +103,7 @@ export function PersonalizationToggle({
             </span>
           )}
           <span className="sr-only">
-            {active ? '（絞り込み中）' : '（オフ）'}
+            {active ? '（絞り込み中）' : '（絞り込みオフ）'}
           </span>
         </Button>
 
@@ -124,13 +125,13 @@ export function PersonalizationToggle({
   return (
     <>
       <Button
-        variant={filterEnabled && hasPreferences ? 'default' : 'outline'}
+        variant={active ? 'default' : 'outline'}
         aria-haspopup="dialog"
         size="sm"
         onClick={handleToggleClick}
         className={cn(
           TOOLBAR_CONTROL,
-          !(filterEnabled && hasPreferences) && TOOLBAR_OUTLINE,
+          !active && TOOLBAR_OUTLINE,
           'gap-1.5 whitespace-nowrap',
           className
         )}

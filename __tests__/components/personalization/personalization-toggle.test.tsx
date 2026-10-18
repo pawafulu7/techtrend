@@ -49,12 +49,12 @@ describe('PersonalizationToggle', () => {
     jest.clearAllMocks();
   });
 
-  it('分野を選んでいないときは、オフと読み上げ、数のバッジを出さない', () => {
+  it('分野を選んでいないときは、絞り込みオフと読み上げ、数のバッジを出さない', () => {
     mockPreferences({ selected: [], filterEnabled: false });
     render(<PersonalizationToggle />);
 
     const button = screen.getByTestId('personalization-toggle');
-    expect(button).toHaveAccessibleName('パーソナライズ （オフ）');
+    expect(button).toHaveAccessibleName('パーソナライズ （絞り込みオフ）');
     expect(button).not.toHaveTextContent(/\d/);
   });
 
@@ -71,12 +71,14 @@ describe('PersonalizationToggle', () => {
     );
   });
 
-  it('分野を選んでいても絞り込みを止めているときは、オフと読み上げ、塗らない', () => {
+  it('分野を選んでいても絞り込みを止めているときは、絞り込みオフと読み上げ、塗らない', () => {
     mockPreferences({ selected: ['a', 'b'], filterEnabled: false });
     render(<PersonalizationToggle />);
 
     const button = screen.getByTestId('personalization-toggle');
-    expect(button).toHaveAccessibleName('パーソナライズ 選んだ分野 2 （オフ）');
+    expect(button).toHaveAccessibleName(
+      'パーソナライズ 選んだ分野 2 （絞り込みオフ）'
+    );
     expect(button).not.toHaveClass('bg-(--tt-color-primary-bg)');
   });
 

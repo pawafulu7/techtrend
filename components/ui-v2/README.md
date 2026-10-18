@@ -29,7 +29,7 @@ const cardShadow = designTokens.shadows.cardRest;
 
 ### Color Palette
 
-One brand color (indigo) and one neutral system per mode (`ink` for light, `night` for dark, both indigo-tinted; see `lib/design-tokens/palette.ts`). State colors (positive / warning / negative / info) are for state messages only; actions and decoration use primary. The heat colors (`heat1`–`heat4`, indigo → violet → magenta → orange) encode data intensity only (trend growth); never use them for buttons or decoration. Every fill has an `on*` text color, and each combination meets WCAG AA (checked by `__tests__/lib/design-tokens/contrast.test.ts`).
+One brand color (indigo) and one neutral system per mode (`ink` for light, `night` for dark, both indigo-tinted; see `lib/design-tokens/palette.ts`). State colors (positive / warning / negative / info) are for state messages only; actions and decoration use primary. The heat colors (`heat1`–`heat4`, indigo → violet → magenta → orange) encode data intensity only (trend growth); never use them for buttons or decoration. The one exception is the center dot of the logo mark (`components/icons/observatory-mark.tsx`), which uses the hottest heat color as the observed point. Every fill has an `on*` text color, and each combination meets WCAG AA (checked by `__tests__/lib/design-tokens/contrast.test.ts`).
 
 #### Light Mode
 
@@ -114,9 +114,9 @@ Pill-shaped badge component with semantic variants.
 #### Variants
 
 - **default**: Gray badge for neutral information
-- **primary**: Green badge for primary actions/states
+- **primary**: Indigo badge for primary actions/states
 - **secondary**: Tinted indigo badge (unread, scores)
-- **outline**: Bordered transparent badge
+- **outline**: Bordered badge filled with the card surface (a transparent fill would show the page canvas)
 
 #### Usage
 

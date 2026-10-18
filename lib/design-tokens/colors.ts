@@ -36,6 +36,7 @@ export type ColorModeTokens = {
   rankBronze: string;
   onRank: string;
   // データの強さ（急上昇の成長率の段）だけに使う色。ボタン・飾り・状態の表示には使わない
+  // （例外はロゴの印の中心点だけ。palette.ts の冒頭を参照）
   heat1: string;
   heat2: string;
   heat3: string;

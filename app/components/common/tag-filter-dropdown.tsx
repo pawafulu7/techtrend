@@ -70,6 +70,8 @@ export function TagFilterDropdown({ tags }: TagFilterDropdownProps) {
           {/* 選択中タグ数のバッジ */}
           {selectedTags.length > 0 && (
             <Badge variant="default" className="ml-2 h-5 px-1.5 text-xs">
+              {/* 数だけでは何の数か伝わらないので、読み上げでは意味を添える */}
+              <span className="sr-only">選んだタグ </span>
               {selectedTags.length}
             </Badge>
           )}
