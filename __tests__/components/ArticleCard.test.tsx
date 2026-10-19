@@ -695,7 +695,8 @@ describe('ArticleCard', () => {
       // 1列表示（幅 sm 未満）では出さず、細い帯にする
       expect(placeholder).toHaveClass('hidden', 'sm:flex');
       const strip = screen.getByTestId('observation-strip');
-      expect(strip).toHaveClass('h-8', 'sm:hidden');
+      // 普段は 32px の1行、幅が足りないときは折り返す
+      expect(strip).toHaveClass('min-h-8', 'flex-wrap', 'sm:hidden');
       // 枠と帯の中身はメタ情報の行と重なるので、丸ごと読み上げから隠す
       expect(placeholder).toHaveAttribute('aria-hidden', 'true');
       expect(strip).toHaveAttribute('aria-hidden', 'true');

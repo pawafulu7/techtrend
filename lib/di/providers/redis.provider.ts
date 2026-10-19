@@ -14,6 +14,7 @@ export function registerRedisProvider(): void {
         protocol: 2,
         // Same as lib/redis/ioredis-client.ts: fail commands that get no reply
         commandTimeout: REDIS_COMMAND_TIMEOUT_MS,
+        autoResendUnfulfilledCommands: false,
         maxRetriesPerRequest: 3,
         retryStrategy: (times) => {
           if (times > 3) return null;

@@ -169,9 +169,10 @@ export function ArticleCard({
         </div>
       ) : null}
       {showObservation && (
-        // 1列表示の「観測記録」は、カードの上の1行の細い帯（枠と同じく読み上げから隠す）
+        // 1列表示の「観測記録」は、カードの上の1行の細い帯（枠と同じく読み上げから隠す）。
+        // 拡大表示などで幅が足りないときは、高さを固定せずに折り返す
         <div
-          className="flex h-8 items-center gap-3 rounded-t-lg border-b border-(--tt-color-border) bg-(--tt-color-surface-muted) px-4 text-xs sm:hidden"
+          className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1 rounded-t-lg border-b border-(--tt-color-border) bg-(--tt-color-surface-muted) px-4 py-1 text-xs sm:hidden"
           aria-hidden="true"
           data-testid="observation-strip"
         >

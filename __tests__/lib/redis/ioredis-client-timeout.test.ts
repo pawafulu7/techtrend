@@ -25,7 +25,11 @@ import {
 
 function optionsOf(index: number) {
   const { args } = constructed[index];
-  return args[args.length - 1] as { commandTimeout?: number };
+  return args[args.length - 1] as {
+    commandTimeout?: number;
+    autoResendUnfulfilledCommands?: boolean;
+    enableOfflineQueue?: boolean;
+  };
 }
 
 beforeEach(() => {
@@ -36,6 +40,12 @@ it('IoRedisClient は既定で命令の上限を渡す', () => {
   new IoRedisClient();
   expect(optionsOf(0).commandTimeout).toBe(REDIS_COMMAND_TIMEOUT_MS);
   expect(REDIS_COMMAND_TIMEOUT_MS).toBeGreaterThan(0);
+});
+
+it('上限で失敗にした命令を、再接続のときに送り直さない（接続前の待ち行列は残す）', () => {
+  new IoRedisClient();
+  expect(optionsOf(0).autoResendUnfulfilledCommands).toBe(false);
+  expect(optionsOf(0).enableOfflineQueue).toBe(true);
 });
 
 it('IoRedisClient は設定で上限を変えられる', () => {
@@ -55,5 +65,8 @@ it('DI の Redis も同じ上限を渡す', () => {
   });
   expect(optionsOf(constructed.length - 1).commandTimeout).toBe(
     REDIS_COMMAND_TIMEOUT_MS
+  );
+  expect(optionsOf(constructed.length - 1).autoResendUnfulfilledCommands).toBe(
+    false
   );
 });

@@ -35,6 +35,10 @@ export class IoRedisClient implements IRedisClient {
       // 接続が生きたまま応答が止まると、命令は既定では永遠に待つ（ホームの表示がソース・タグの
       // 取得で止まる）。上限を過ぎたら失敗にし、キャッシュの読み書きは DB への直接の取得に切り替える
       commandTimeout: config?.commandTimeout ?? REDIS_COMMAND_TIMEOUT_MS,
+      // 再接続のときに、応答の無かった命令を送り直さない。上限で失敗にした命令（ロックの SET NX など）が
+      // 後から実行され、持ち主のいないロックが残るのを防ぐ。接続前の命令の待ち行列（offline queue）は
+      // 残す（外すと、冷えた関数の最初の命令が即座に失敗し、レート制限が 500 を返す）
+      autoResendUnfulfilledCommands: false,
       maxRetriesPerRequest: config?.maxRetriesPerRequest ?? 3,
       enableReadyCheck: true,
       lazyConnect: false, // Connect immediately on instantiation
