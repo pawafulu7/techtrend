@@ -4,6 +4,12 @@ import logger from '@/lib/logger';
 import { env } from '@/lib/config/env';
 
 /**
+ * Redis の命令の応答を待つ上限（ms）。通常の応答は数 ms〜数十 ms。
+ * キャッシュの取得（get → ロックの set）は止まると2命令分待つので、ページの遅れは最大でこの約 2 倍
+ */
+export const REDIS_COMMAND_TIMEOUT_MS = 1000;
+
+/**
  * IoRedis wrapper implementing IRedisClient interface
  */
 export class IoRedisClient implements IRedisClient {
@@ -23,6 +29,9 @@ export class IoRedisClient implements IRedisClient {
         }),
       enableOfflineQueue: config?.enableOfflineQueue !== false,
       connectTimeout: config?.connectTimeout || 10000,
+      // 接続が生きたまま応答が止まると、命令は既定では永遠に待つ（ホームの表示がソース・タグ・帯の
+      // 取得で止まる）。上限を過ぎたら失敗にし、キャッシュの読み書きは DB への直接の取得に切り替える
+      commandTimeout: config?.commandTimeout ?? REDIS_COMMAND_TIMEOUT_MS,
       maxRetriesPerRequest: config?.maxRetriesPerRequest ?? 3,
       enableReadyCheck: true,
       lazyConnect: false, // Connect immediately on instantiation
