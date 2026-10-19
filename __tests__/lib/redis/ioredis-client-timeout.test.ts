@@ -1,6 +1,6 @@
 /**
  * Redis の命令の応答を待つ上限（commandTimeout）。接続が生きたまま応答が止まると、命令は既定では
- * 永遠に待ち、ホームの表示がソース・タグ・帯の取得で止まる（Redis を一時停止して確認した）。
+ * 永遠に待ち、ホームの表示がソース・タグの取得で止まる（Redis を一時停止して確認した）。
  * どちらのクライアント（lib/redis/ioredis-client.ts と DI の redis.provider）も上限を渡すことを確かめる。
  */
 const constructed: Array<{ args: unknown[] }> = [];
