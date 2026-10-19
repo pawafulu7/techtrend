@@ -2,12 +2,18 @@ import { SourceCache } from '@/lib/cache/source-cache';
 import { prisma } from '@/lib/database';
 import { resetPrismaMock } from '../../../test/utils/prisma-mock';
 import { articleDetailCache } from '../../../lib/cache/article-detail-cache';
+import { keywordsCache } from '@/lib/cache/keywords-cache';
 
 jest.mock('@/lib/logger');
 // source-cache は使うときに './article-detail-cache' を読むので、同じ実体を指すパスでモックする
 jest.mock('../../../lib/cache/article-detail-cache', () => ({
   articleDetailCache: {
     invalidateAllRelated: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+jest.mock('@/lib/cache/keywords-cache', () => ({
+  keywordsCache: {
+    invalidateTrending: jest.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -224,6 +230,12 @@ describe('SourceCache', () => {
 
       expect(articleDetailCache.invalidateAllRelated).toHaveBeenCalledTimes(1);
     });
+
+    it('急上昇の集計のキャッシュも捨てる（有効なソースの記事だけを数えるため）', async () => {
+      await sourceCache.invalidate();
+
+      expect(keywordsCache.invalidateTrending).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('invalidateSource', () => {
@@ -268,6 +280,12 @@ describe('SourceCache', () => {
       await sourceCache.invalidateSource('source-1');
 
       expect(articleDetailCache.invalidateAllRelated).toHaveBeenCalledTimes(1);
+    });
+
+    it('急上昇の集計のキャッシュも捨てる（ソースの有効・無効で数える記事が変わる）', async () => {
+      await sourceCache.invalidateSource('source-1');
+
+      expect(keywordsCache.invalidateTrending).toHaveBeenCalledTimes(1);
     });
 
     it('should NOT call invalidatePattern with wildcard *', async () => {

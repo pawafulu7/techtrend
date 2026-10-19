@@ -15,6 +15,7 @@ import { prisma } from '@/lib/prisma';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 import { trendsCache } from '@/lib/cache/trends-cache';
+import { keywordsCache } from '@/lib/cache/keywords-cache';
 import logger from '@/lib/logger';
 import type { AdminArticleDetail } from '@/app/admin/articles/_types';
 
@@ -182,6 +183,8 @@ async function patchHandler(
       await articleDetailCache.invalidateArticle(id);
       await articleDetailCache.invalidateAllRelated();
       await trendsCache.invalidatePattern('*');
+      // 急上昇の集計（ホームの帯・トレンド概要）は非表示の記事を数えない
+      await keywordsCache.invalidateTrending();
     } catch (cacheError) {
       logger.error(
         { articleId: id, err: cacheError },

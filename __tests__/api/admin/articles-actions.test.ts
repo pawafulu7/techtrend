@@ -82,6 +82,12 @@ jest.mock('@/lib/cache/trends-cache', () => ({
   },
 }));
 
+jest.mock('@/lib/cache/keywords-cache', () => ({
+  keywordsCache: {
+    invalidateTrending: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 // ---- DI モック（getAppDependencies） ----
 jest.mock('@/lib/di/bootstrap', () => ({
   getAppDependencies: jest.fn(),
@@ -206,6 +212,23 @@ describe('PATCH /api/admin/articles/[id] - hide toggle', () => {
         data: { isHidden: true },
       })
     );
+  });
+
+  it('非表示を切り替えたら、急上昇の集計（ホームの帯・トレンド概要）のキャッシュを捨てる', async () => {
+    const { keywordsCache } = jest.requireMock('@/lib/cache/keywords-cache');
+    (mockPrisma.article.update as jest.Mock).mockResolvedValue({
+      ...mockArticleDetail,
+      isHidden: true,
+    });
+
+    const request = new NextRequest(`http://localhost/api/admin/articles/${VALID_ID}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isHidden: true }),
+    });
+    const response = await PATCH(request, { params: Promise.resolve({ id: VALID_ID }) });
+
+    expect(response.status).toBe(200);
+    expect(keywordsCache.invalidateTrending).toHaveBeenCalledTimes(1);
   });
 
   it('isHidden: false で戻し成功', async () => {

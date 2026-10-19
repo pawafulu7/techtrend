@@ -18,6 +18,7 @@ import {
 } from '@/app/lib/date-utils';
 import { prisma } from '@/lib/prisma';
 import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
+import { BLANK_CONTENT_VALUES } from '@/lib/database/home-article-filter';
 import logger from '@/lib/logger';
 import {
   pushLowQualityFilter,
@@ -114,7 +115,7 @@ export function buildWhereClause(params: WhereClauseParams): ArticleWhereInput {
     // 404 for any whitespace-only content that slips through.
     AND: [
       { content: { not: null } },
-      { content: { notIn: ['', ' ', '\n', '\r\n', '\t', '  ', '\n\n'] } },
+      { content: { notIn: [...BLANK_CONTENT_VALUES] } },
     ],
   });
 

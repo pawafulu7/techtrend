@@ -54,12 +54,12 @@ describe('trends-data: 無効化したソースの記事を数えない（issue 
     prismaMock.$queryRaw.mockResolvedValue([]);
   });
 
-  it('fetchKeywordsData: 3 つの集計と、新規タグの判定の内側', async () => {
+  it('fetchKeywordsData: 区間別の集計と、新規タグの判定の内側', async () => {
     await fetchKeywordsData();
 
-    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(3);
-    const [recent, weekly, newTags] = prismaMock.$queryRaw.mock.calls;
-    for (const call of [recent, weekly, newTags]) {
+    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+    const [buckets, newTags] = prismaMock.$queryRaw.mock.calls;
+    for (const call of [buckets, newTags]) {
       const sql = sqlFragmentsOf(call).join(' ');
       expect(sql).toContain(ENABLED);
       expect(sql).toContain('a."isHidden" = false');

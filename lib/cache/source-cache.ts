@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { RedisCache } from './index';
 import { CACHE_TTL } from './constants';
+import { keywordsCache } from './keywords-cache';
 import { Source } from '@/lib/prisma-exports';
 import logger from '@/lib/logger';
 import {
@@ -347,6 +348,8 @@ export class SourceCache {
     await Promise.all([
       this.cache.invalidatePattern('*'),
       invalidateRelatedArticles(),
+      // 急上昇の集計は有効なソースの記事だけを数える（無効にしたソースの記事が残らないように）
+      keywordsCache.invalidateTrending(),
     ]);
   }
 
@@ -376,6 +379,8 @@ export class SourceCache {
         // Top sources (various limits)
         this.cache.invalidatePattern('top-sources:*'),
         invalidateRelatedArticles(),
+        // 急上昇の集計（有効なソースの記事だけを数える）
+        keywordsCache.invalidateTrending(),
       ]);
     } catch (_error) {
       // Fallback to full invalidation on any error

@@ -6,9 +6,10 @@
  *   growthRate = Math.min(Math.round(((recentCount - effectiveAverage) / effectiveAverage) * 100), 999)
  *
  * $queryRaw呼び出し順序:
- *   1回目: recentTags（直近24h）
- *   2回目: weeklyTags（2-7日前）
- *   3回目: newTags（新規タグ）
+ *   1回目: タグ別・24 時間ごとの区間別の件数（区間 0 = 直近 24 時間、1〜6 = 前の 6 日）
+ *   2回目: newTags（新規タグ）
+ *
+ * 一覧に入れるのは急上昇（growthRate > 50 かつ recentCount >= 2）のタグだけ
  */
 
 jest.mock('@/lib/cache/keywords-cache', () => ({
@@ -45,6 +46,23 @@ import {
 
 const prismaMock = prisma as any;
 
+/**
+ * まとめる前の2本の集計（直近 24 時間・前の 6 日）の値から、区間別の集計の行を作る。
+ * 前の 6 日の件数は区間 1 に置く（判定は区間 1〜6 の合計しか見ない）
+ */
+function bucketRows(
+  tags: Array<{ id: string; name: string; recent: number; weekly?: number }>
+) {
+  return tags.flatMap(({ id, name, recent, weekly = 0 }) => [
+    ...(recent > 0 ? [{ id, name, bucket: 0, count: recent }] : []),
+    ...(weekly > 0 ? [{ id, name, bucket: 1, count: weekly }] : []),
+  ]);
+}
+
+function mockQueries(rows: unknown[], newTags: unknown[] = []) {
+  prismaMock.$queryRaw.mockResolvedValueOnce(rows).mockResolvedValueOnce(newTags);
+}
+
 describe('/api/trends/keywords', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -54,18 +72,7 @@ describe('/api/trends/keywords', () => {
     // recentCount=5, weekly_count=12 → weeklyAverage=12/6=2.0
     // effectiveAverage = max(2.0, 1.0) = 2.0
     // growthRate = min(round(((5 - 2.0) / 2.0) * 100), 999) = 150
-    const recentTags = [
-      { id: 'tag-1', name: 'React', recent_count: BigInt(5) },
-    ];
-    const weeklyTags = [
-      { id: 'tag-1', name: 'React', weekly_count: BigInt(12) },
-    ];
-    const newTags: any[] = [];
-
-    prismaMock.$queryRaw
-      .mockResolvedValueOnce(recentTags)
-      .mockResolvedValueOnce(weeklyTags)
-      .mockResolvedValueOnce(newTags);
+    mockQueries(bucketRows([{ id: 'tag-1', name: 'React', recent: 5, weekly: 12 }]));
 
     const response = await GET();
     const data = await response.json();
@@ -86,18 +93,7 @@ describe('/api/trends/keywords', () => {
     // recentCount=4, weekly_count=2 → weeklyAverage=round(2/6*10)/10=0.3 (API returns rounded value)
     // effectiveAverage = max(2/6, 1.0) = 1.0 (uses raw value for calculation)
     // growthRate = min(round(((4 - 1.0) / 1.0) * 100), 999) = 300
-    const recentTags = [
-      { id: 'tag-1', name: 'Vercel', recent_count: BigInt(4) },
-    ];
-    const weeklyTags = [
-      { id: 'tag-1', name: 'Vercel', weekly_count: BigInt(2) },
-    ];
-    const newTags: any[] = [];
-
-    prismaMock.$queryRaw
-      .mockResolvedValueOnce(recentTags)
-      .mockResolvedValueOnce(weeklyTags)
-      .mockResolvedValueOnce(newTags);
+    mockQueries(bucketRows([{ id: 'tag-1', name: 'Vercel', recent: 4, weekly: 2 }]));
 
     const response = await GET();
     const data = await response.json();
@@ -117,16 +113,7 @@ describe('/api/trends/keywords', () => {
     // effectiveAverage = max(0, 1.0) = 1.0
     // rawGrowthRate = ((20 - 1.0) / 1.0) * 100 = 1900
     // growthRate = min(round(1900), 999) = 999
-    const recentTags = [
-      { id: 'tag-1', name: 'GPT-5', recent_count: BigInt(20) },
-    ];
-    const weeklyTags: any[] = [];
-    const newTags: any[] = [];
-
-    prismaMock.$queryRaw
-      .mockResolvedValueOnce(recentTags)
-      .mockResolvedValueOnce(weeklyTags)
-      .mockResolvedValueOnce(newTags);
+    mockQueries(bucketRows([{ id: 'tag-1', name: 'GPT-5', recent: 20 }]));
 
     const response = await GET();
     const data = await response.json();
@@ -146,16 +133,7 @@ describe('/api/trends/keywords', () => {
     // effectiveAverage = max(0, 1.0) = 1.0
     // growthRate = min(round(((4 - 1.0) / 1.0) * 100), 999) = 300
     // Old behavior would have been fixed 100%, new behavior gives 300%
-    const recentTags = [
-      { id: 'tag-1', name: 'NewFramework', recent_count: BigInt(4) },
-    ];
-    const weeklyTags: any[] = [];
-    const newTags: any[] = [];
-
-    prismaMock.$queryRaw
-      .mockResolvedValueOnce(recentTags)
-      .mockResolvedValueOnce(weeklyTags)
-      .mockResolvedValueOnce(newTags);
+    mockQueries(bucketRows([{ id: 'tag-1', name: 'NewFramework', recent: 4 }]));
 
     const response = await GET();
     const data = await response.json();
@@ -174,22 +152,13 @@ describe('/api/trends/keywords', () => {
     // Tag B: recentCount=10, weeklyAvg=2.0 → growthRate=400, isTrending=true (capped? no: ((10-2)/2)*100=400)
     // Tag C: recentCount=5, weeklyAvg=1.0 → growthRate=400, isTrending=true
     // Expected sort: B first (400, recentCount=10), then C (400, recentCount=5), then A (150)
-    const recentTags = [
-      { id: 'tag-a', name: 'TagA', recent_count: BigInt(5) },
-      { id: 'tag-b', name: 'TagB', recent_count: BigInt(10) },
-      { id: 'tag-c', name: 'TagC', recent_count: BigInt(5) },
-    ];
-    const weeklyTags = [
-      { id: 'tag-a', name: 'TagA', weekly_count: BigInt(12) }, // avg=2.0
-      { id: 'tag-b', name: 'TagB', weekly_count: BigInt(12) }, // avg=2.0
-      { id: 'tag-c', name: 'TagC', weekly_count: BigInt(6) }, // avg=1.0
-    ];
-    const newTags: any[] = [];
-
-    prismaMock.$queryRaw
-      .mockResolvedValueOnce(recentTags)
-      .mockResolvedValueOnce(weeklyTags)
-      .mockResolvedValueOnce(newTags);
+    mockQueries(
+      bucketRows([
+        { id: 'tag-a', name: 'TagA', recent: 5, weekly: 12 }, // avg=2.0
+        { id: 'tag-b', name: 'TagB', recent: 10, weekly: 12 }, // avg=2.0
+        { id: 'tag-c', name: 'TagC', recent: 5, weekly: 6 }, // avg=1.0
+      ])
+    );
 
     const response = await GET();
     const data = await response.json();
@@ -207,29 +176,20 @@ describe('/api/trends/keywords', () => {
     expect(data.trending[2].growthRate).toBe(150);
   });
 
-  it('filters out tags that are neither trending (growthRate>50 and recentCount>=2) nor frequent (recentCount>=3)', async () => {
-    // Tag A: recentCount=1, weeklyAvg=1.0 → growthRate=0, isTrending=false, recentCount<3 → EXCLUDED
+  it('returns only trending tags (growthRate>50 and recentCount>=2); frequent but flat tags are excluded', async () => {
+    // Tag A: recentCount=1, weeklyAvg=1.0 → growthRate=0, isTrending=false → EXCLUDED
     // Tag B: recentCount=2, weeklyAvg=1.0 → growthRate=100, isTrending=true → INCLUDED
-    // Tag C: recentCount=3, weeklyAvg=3.0 → growthRate=0, isTrending=false, recentCount>=3 → INCLUDED
-    // Tag D: recentCount=1, weeklyAvg=0.5→eff=1.0 → growthRate=0, isTrending=false, recentCount<3 → EXCLUDED
-    const recentTags = [
-      { id: 'tag-a', name: 'LowTag', recent_count: BigInt(1) },
-      { id: 'tag-b', name: 'TrendTag', recent_count: BigInt(2) },
-      { id: 'tag-c', name: 'FrequentTag', recent_count: BigInt(3) },
-      { id: 'tag-d', name: 'RareTag', recent_count: BigInt(1) },
-    ];
-    const weeklyTags = [
-      { id: 'tag-a', name: 'LowTag', weekly_count: BigInt(6) }, // avg=1.0
-      { id: 'tag-b', name: 'TrendTag', weekly_count: BigInt(6) }, // avg=1.0
-      { id: 'tag-c', name: 'FrequentTag', weekly_count: BigInt(18) }, // avg=3.0
-      { id: 'tag-d', name: 'RareTag', weekly_count: BigInt(3) }, // avg=0.5 → eff=1.0
-    ];
-    const newTags: any[] = [];
-
-    prismaMock.$queryRaw
-      .mockResolvedValueOnce(recentTags)
-      .mockResolvedValueOnce(weeklyTags)
-      .mockResolvedValueOnce(newTags);
+    // Tag C: recentCount=3, weeklyAvg=3.0 → growthRate=0, isTrending=false → EXCLUDED
+    //   （帯の「いま伸びている話題」と食い違わないよう、件数が多いだけのタグは入れない）
+    // Tag D: recentCount=1, weeklyAvg=0.5→eff=1.0 → growthRate=0, isTrending=false → EXCLUDED
+    mockQueries(
+      bucketRows([
+        { id: 'tag-a', name: 'LowTag', recent: 1, weekly: 6 }, // avg=1.0
+        { id: 'tag-b', name: 'TrendTag', recent: 2, weekly: 6 }, // avg=1.0
+        { id: 'tag-c', name: 'FrequentTag', recent: 3, weekly: 18 }, // avg=3.0
+        { id: 'tag-d', name: 'RareTag', recent: 1, weekly: 3 }, // avg=0.5 → eff=1.0
+      ])
+    );
 
     const response = await GET();
     const data = await response.json();
@@ -237,11 +197,9 @@ describe('/api/trends/keywords', () => {
     expect(response.status).toBe(200);
 
     const names = data.trending.map((t: any) => t.name);
-    expect(names).toContain('TrendTag');
-    expect(names).toContain('FrequentTag');
-    expect(names).not.toContain('LowTag');
-    expect(names).not.toContain('RareTag');
-    expect(data.trending).toHaveLength(2);
+    expect(names).toEqual(['TrendTag']);
+    // 区間の件数は API の応答に含めない（応答の形は変えない）
+    expect(data.trending[0]).not.toHaveProperty('series');
   });
 
   it('returns 500 with fallback response on database error', async () => {
@@ -260,18 +218,10 @@ describe('/api/trends/keywords', () => {
   });
 
   it('includes cache stats and period in response', async () => {
-    const recentTags = [
-      { id: 'tag-1', name: 'Next.js', recent_count: BigInt(5) },
-    ];
-    const weeklyTags = [
-      { id: 'tag-1', name: 'Next.js', weekly_count: BigInt(6) },
-    ];
-    const newTags = [{ id: 'tag-2', name: 'BrandNew', count: BigInt(2) }];
-
-    prismaMock.$queryRaw
-      .mockResolvedValueOnce(recentTags)
-      .mockResolvedValueOnce(weeklyTags)
-      .mockResolvedValueOnce(newTags);
+    mockQueries(
+      bucketRows([{ id: 'tag-1', name: 'Next.js', recent: 5, weekly: 6 }]),
+      [{ id: 'tag-2', name: 'BrandNew', count: BigInt(2) }]
+    );
 
     const response = await GET();
     const data = await response.json();
@@ -300,8 +250,9 @@ describe('/api/trends/keywords', () => {
     const response = await GET();
 
     expect(response.status).toBe(200);
-    const [recent, weekly, newTags] = prismaMock.$queryRaw.mock.calls;
-    for (const call of [recent, weekly, newTags]) {
+    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+    const [buckets, newTags] = prismaMock.$queryRaw.mock.calls;
+    for (const call of [buckets, newTags]) {
       const sql = sqlFragmentsOf(call).join(' ');
       expect(sql).toContain(`a."sourceId" ${ENABLED_SOURCE_SQL}`);
       expect(sql).toContain('a."isHidden" = false');
@@ -309,5 +260,17 @@ describe('/api/trends/keywords', () => {
     const newSql = sqlFragmentsOf(newTags).join(' ');
     expect(newSql).toContain(`a2."sourceId" ${ENABLED_SOURCE_SQL}`);
     expect(newSql).toContain('a2."isHidden" = false');
+  });
+
+  it('区間の集計はホームに出る記事だけを数える（論文・技術以外・要約の無い記事・本文の無い記事を除く）', async () => {
+    prismaMock.$queryRaw.mockResolvedValue([]);
+
+    await GET();
+
+    const sql = sqlFragmentsOf(prismaMock.$queryRaw.mock.calls[0]).join(' ');
+    expect(sql).toContain('a."isOffTopic" = false');
+    expect(sql).toContain('a."summaryComputedAt" IS NOT NULL');
+    expect(sql).toContain('a.content IS NOT NULL');
+    expect(sql).toMatch(/a\."sourceId" NOT IN \(/);
   });
 });
