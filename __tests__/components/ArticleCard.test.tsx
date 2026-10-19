@@ -696,19 +696,27 @@ describe('ArticleCard', () => {
       expect(placeholder).toHaveClass('hidden', 'sm:flex');
       const strip = screen.getByTestId('observation-strip');
       expect(strip).toHaveClass('h-8', 'sm:hidden');
-      // ソース名はメタ情報の行と重なるので読み上げから隠し、品質だけを読ませる
-      const frameSource = within(placeholder).getByText('Hacker News');
-      expect(frameSource).toHaveAttribute('aria-hidden', 'true');
+      // 枠と帯の中身はメタ情報の行と重なるので、丸ごと読み上げから隠す
+      expect(placeholder).toHaveAttribute('aria-hidden', 'true');
+      expect(strip).toHaveAttribute('aria-hidden', 'true');
+      expect(within(placeholder).getByText('Hacker News')).toBeInTheDocument();
       const meter = within(placeholder).getByTestId('quality-meter');
       expect(meter).toHaveAttribute('data-level', '3');
       expect(meter).toHaveTextContent('品質 75');
+      // 枠の目盛りは「品質」の語を見せる
+      expect(within(meter).getByText('品質')).not.toHaveClass('sr-only');
       expect(within(strip).getByTestId('quality-meter')).toHaveAttribute(
         'data-level',
         '3'
       );
       expect(screen.queryByRole('img', { name: 'No Image' })).toBeNull();
-      // 画像の無い記事は、メタ情報の行に目盛りを重ねて出さない
+      // 画像の無い記事は、メタ情報の行に目盛りを見せず、品質を読み上げにだけ残す
+      // （画像の有無で、タイトルより前に品質を読む・読まないが変わらないように）
       expect(screen.getAllByTestId('quality-meter')).toHaveLength(2);
+      const qualityForReaders = screen.getByTestId('quality-sr');
+      expect(qualityForReaders).toHaveTextContent('品質 75');
+      expect(qualityForReaders).toHaveClass('sr-only');
+      expect(qualityForReaders.closest('[aria-hidden="true"]')).toBeNull();
       // 枠があるので、複数列のマウス端末では操作ボタンを枠に重ねる
       const actions = screen.getByTestId('article-actions');
       expect(actions).toHaveClass('sm:[@media(hover:hover)]:absolute');
@@ -747,7 +755,30 @@ describe('ArticleCard', () => {
       expect(meter).toHaveAttribute('data-level', '3');
       // 狭いメタの行では「品質」の語を読み上げにだけ残す
       expect(within(meter).getByText('品質')).toHaveClass('sr-only');
+      expect(meter.closest('[aria-hidden="true"]')).toBeNull();
+      expect(screen.queryByTestId('quality-sr')).toBeNull();
     });
+
+    it.each([
+      ['layout="stack"', { layout: 'stack' as const, thumbnailPlaceholder: true }],
+      ['thumbnailPlaceholder なし', { layout: 'grid' as const }],
+    ])(
+      'ホーム以外のカード（%s）では、画像のある記事にも品質を出さない',
+      (_label, props) => {
+        const article = createMockArticleWithRelations({
+          article: {
+            title: 'With Image',
+            thumbnail: 'https://example.com/image.jpg',
+            qualityScore: 82,
+          },
+        });
+
+        renderWithProviders(<ArticleCard article={article} {...props} />);
+
+        expect(screen.queryByTestId('quality-meter')).toBeNull();
+        expect(screen.queryByTestId('quality-sr')).toBeNull();
+      }
+    );
 
     it('does not show the observation record or the meter outside the home grid (no thumbnailPlaceholder)', () => {
       const article = createMockArticleWithRelations({

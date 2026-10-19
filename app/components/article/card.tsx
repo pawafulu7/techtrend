@@ -147,22 +147,17 @@ export function ArticleCard({
         </div>
       ) : showObservation ? (
         // 画像の無い記事の「観測記録」の枠。同じ 16:9 で行の高さを揃える。揃える相手のいない
-        // 1列表示（幅 sm 未満）では出さず、下の細い帯にする。ソース名と時間はメタ情報の行と
-        // 重なるので読み上げから隠し、品質だけを読ませる
+        // 1列表示（幅 sm 未満）では出さず、下の細い帯にする。中身はメタ情報の行と重なるので、
+        // 枠ごと読み上げから隠す（品質はメタ情報の行で読ませ、画像の有無で読む順番を変えない）
         <div
           className="observation-grid hidden aspect-video w-full flex-col justify-end overflow-hidden rounded-t-lg border-b border-(--tt-color-border) px-4 pb-4 sm:flex"
+          aria-hidden="true"
           data-testid="thumbnail-placeholder"
         >
-          <p
-            className="font-heading text-foreground truncate text-[22px] leading-7 font-bold [font-stretch:87.5%]"
-            aria-hidden="true"
-          >
+          <p className="font-heading text-foreground truncate text-[22px] leading-7 font-bold [font-stretch:87.5%]">
             {sourceName}
           </p>
-          <p
-            className="mt-1 h-4 text-xs leading-4 text-(--tt-color-text-muted)"
-            aria-hidden="true"
-          >
+          <p className="mt-1 h-4 text-xs leading-4 text-(--tt-color-text-muted)">
             <RelativeTime
               date={article.publishedAt}
               className="after:content-['に公開']"
@@ -174,21 +169,16 @@ export function ArticleCard({
         </div>
       ) : null}
       {showObservation && (
-        // 1列表示の「観測記録」は、カードの上の1行の細い帯
+        // 1列表示の「観測記録」は、カードの上の1行の細い帯（枠と同じく読み上げから隠す）
         <div
           className="flex h-8 items-center gap-3 rounded-t-lg border-b border-(--tt-color-border) bg-(--tt-color-surface-muted) px-4 text-xs sm:hidden"
+          aria-hidden="true"
           data-testid="observation-strip"
         >
-          <span
-            className="font-heading text-foreground min-w-0 truncate text-[13px] font-semibold"
-            aria-hidden="true"
-          >
+          <span className="font-heading text-foreground min-w-0 truncate text-[13px] font-semibold">
             {sourceName}
           </span>
-          <span
-            className="shrink-0 text-(--tt-color-text-muted)"
-            aria-hidden="true"
-          >
+          <span className="shrink-0 text-(--tt-color-text-muted)">
             <RelativeTime
               date={article.publishedAt}
               className="after:content-['に公開']"
@@ -253,10 +243,17 @@ export function ArticleCard({
               {formatDateWithTime(article.publishedAt)}
             </span>
           </span>
-          {/* 画像のある記事の品質（画像の無い記事は「観測記録」の枠と帯に出す） */}
-          {showPlaceholder && thumbnailSrc !== null && qualityScore !== null && (
-            <QualityMeter score={qualityScore} label={false} />
-          )}
+          {/* 品質。画像のある記事は目盛りをここに見せる。画像の無い記事は「観測記録」の枠と帯に
+              見せ、ここでは読み上げにだけ残す（画像の有無で読む順番を変えない） */}
+          {showPlaceholder &&
+            qualityScore !== null &&
+            (thumbnailSrc !== null ? (
+              <QualityMeter score={qualityScore} label={false} />
+            ) : (
+              <span className="sr-only" data-testid="quality-sr">
+                品質 {Math.round(qualityScore)}
+              </span>
+            ))}
         </div>
       </div>
 

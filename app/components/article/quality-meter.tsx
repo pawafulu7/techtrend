@@ -3,10 +3,10 @@ import { cn } from '@/lib/utils';
 /** 目盛りの段の数。品質（0〜100）を 25 点ごとに区切る */
 const SEGMENTS = 4;
 
-/** 塗る段の数（0〜4）。25 点ごとに 1 段（75 点なら 3 段） */
+/** 塗る段の数（0〜4）。25 点ごとに 1 段（75 点なら 3 段）。表示する点数と同じく四捨五入した点で決める */
 export function qualityMeterLevel(score: number): number {
   if (!Number.isFinite(score)) return 0;
-  return Math.max(0, Math.min(SEGMENTS, Math.floor(score / 25)));
+  return Math.max(0, Math.min(SEGMENTS, Math.floor(Math.round(score) / 25)));
 }
 
 /**

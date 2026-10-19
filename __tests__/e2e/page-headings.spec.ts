@@ -154,6 +154,15 @@ async function expectHeadings(
       Math.round(headerBox.x - rowBox.x),
       `${path} の見出しの左の余白は一覧と同じ（lg:px-6）`
     ).toBe(24);
+    // 1440px では、ツールバー（見出しの次の要素）が見出しと同じ行に並ぶ（次の行へ折り返さない）
+    const toolbarBox = await header
+      .locator('xpath=following-sibling::*[last()]')
+      .boundingBox();
+    if (!toolbarBox) throw new Error(`${path} のツールバーが無い`);
+    expect(
+      toolbarBox.y,
+      `${path} のツールバーは見出しと同じ行`
+    ).toBeLessThan(headerBox.y + headerBox.height);
   } else if (pageHeader === '7xl') {
     expect(
       headerBox.width,

@@ -4,8 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArticleListSkeleton } from '@/app/components/article/article-list-skeleton';
 
 // ホームの初回待ち（issue #701）。page.tsx の見出し・ツールバー・記事一覧の並びをなぞる。
-// 表示形式の Cookie はここでは読まず、既定のカード表示で出す。
-// 検索条件を読めないので、上部の帯（絞り込みの無いときだけ出す）の枠は出さない
+// 表示形式の Cookie はここでは読まず、既定のカード表示で出す
 export default function Loading() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
