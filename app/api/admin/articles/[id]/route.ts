@@ -183,7 +183,7 @@ async function patchHandler(
       await articleDetailCache.invalidateArticle(id);
       await articleDetailCache.invalidateAllRelated();
       await trendsCache.invalidatePattern('*');
-      // 急上昇の集計（ホームの帯・トレンド概要）は非表示の記事を数えない
+      // 急上昇の集計（トレンド概要）は非表示の記事を数えない
       await keywordsCache.invalidateTrending();
     } catch (cacheError) {
       logger.error(

@@ -9,7 +9,7 @@ export const TRENDING_SERIES_CACHE_KEY = 'trending-series:v1';
 
 /**
  * キーワード分析専用のキャッシュクラス
- * ホームの帯・トレンド概要・/api/trends/keywords で使用
+ * トレンド概要・/api/trends/keywords で使用
  */
 export class KeywordsCache extends RedisCache {
   constructor() {
