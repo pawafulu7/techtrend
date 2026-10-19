@@ -33,7 +33,7 @@ export function DetailedSummaryStructured({
   if (sections.length === 0) {
     return (
       <div
-        className="bg-card text-card-foreground border-foreground/10 rounded-xl border p-[var(--tt-space-5)] shadow-sm"
+        className="bg-card text-card-foreground border-foreground/10 rounded-xl border p-[var(--tt-space-5)]"
         data-testid="detailed-summary-fallback"
       >
         <h3 className="text-h3 mb-[var(--tt-space-3)] tracking-[var(--tt-tracking-tight)]">
@@ -55,22 +55,18 @@ export function DetailedSummaryStructured({
       <h3 className="text-h3 mb-[var(--tt-space-4)] tracking-[var(--tt-tracking-tight)]">
         詳細要約
       </h3>
+      {/* 段は影と浮き上がりの動きを付けず、線で区切る */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {sections.map((section, index) => {
           return (
             <article
               key={index}
-              className="group min-h-[44px] space-y-2 rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-sm transition-all duration-200 hover:border-[var(--tt-color-border-hover)] hover:shadow-md motion-safe:animate-[fadeInUp_0.4s_ease_forwards] motion-safe:opacity-0"
-              style={{
-                borderLeftWidth: '3px',
-                borderLeftColor: 'var(--tt-color-primary)',
-                animationDelay: `${index * 60}ms`,
-              }}
+              className="space-y-2 rounded-lg border border-l-[3px] border-[var(--tt-color-border)] border-l-[var(--tt-color-primary)] bg-[var(--tt-color-surface)] p-4"
               data-testid={`detailed-summary-section-${index}`}
             >
               <h4 className="font-heading flex items-center gap-2 text-sm font-semibold tracking-[var(--tt-tracking-tight)]">
                 <span
-                  className="bg-muted/60 group-hover:bg-muted flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-lg transition-colors duration-200"
+                  className="bg-muted/60 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-lg"
                   aria-hidden="true"
                 >
                   {section.icon}

@@ -10,6 +10,33 @@ export function qualityMeterLevel(score: number): number {
 }
 
 /**
+ * 目盛りの段だけ（読み上げから隠す）。点数の文字は呼び出し元が別に出す
+ */
+export function QualityMeterBars({ score }: { score: number }) {
+  const level = qualityMeterLevel(score);
+  return (
+    <span
+      className="flex gap-0.5"
+      aria-hidden="true"
+      data-testid="quality-meter-bars"
+      data-level={level}
+    >
+      {Array.from({ length: SEGMENTS }, (_, i) => (
+        <span
+          key={i}
+          className={cn(
+            'h-2.5 w-1.5 rounded-xs',
+            i < level
+              ? 'bg-(--tt-color-primary)'
+              : 'bg-(--tt-color-border-hover)'
+          )}
+        />
+      ))}
+    </span>
+  );
+}
+
+/**
  * 記事の品質の目盛り（4 段）と点数。段は飾りで、読み上げは「品質 75」の文字で伝える
  */
 export function QualityMeter({
@@ -29,19 +56,7 @@ export function QualityMeter({
       data-testid="quality-meter"
       data-level={level}
     >
-      <span className="flex gap-0.5" aria-hidden="true">
-        {Array.from({ length: SEGMENTS }, (_, i) => (
-          <span
-            key={i}
-            className={cn(
-              'h-2.5 w-1.5 rounded-xs',
-              i < level
-                ? 'bg-(--tt-color-primary)'
-                : 'bg-(--tt-color-border-hover)'
-            )}
-          />
-        ))}
-      </span>
+      <QualityMeterBars score={score} />
       <span className="text-(--tt-color-text-muted)">
         <span className={label ? undefined : 'sr-only'}>品質 </span>
         <span className="tabular-nums">{Math.round(score)}</span>

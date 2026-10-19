@@ -113,9 +113,19 @@ test.describe('コメント機能', () => {
       const loginPrompt = page.locator('text=ログインしてメモを残しましょう');
       await expect(loginPrompt).toBeVisible();
 
-      // ログインリンクが存在する
-      const loginLink = page.locator('a[href*="signin"]');
-      await expect(loginLink).toBeVisible();
+      // ログインのリンクは、ログインの後にこの記事へ戻す（以前は存在しない /auth/signin を指していた）
+      // ヘッダーにも「ログイン」があるので、促進の文と同じ枠の中のリンクを見る
+      const commentLoginLink = loginPrompt
+        .locator('..')
+        .getByRole('link', { name: 'ログイン', exact: true });
+      await expect(commentLoginLink).toBeVisible();
+      const href = await commentLoginLink.getAttribute('href');
+      if (!href) throw new Error('ログインのリンクに href が無い');
+      const target = new URL(href, 'http://localhost');
+      expect(target.pathname).toBe('/auth/login');
+      expect(target.searchParams.get('callbackUrl')).toBe(
+        new URL(page.url()).pathname
+      );
     });
   });
 

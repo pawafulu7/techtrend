@@ -1,4 +1,3 @@
-import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
@@ -29,6 +28,12 @@ import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 import { CommentSection } from '@/app/components/comment';
 import { ReadOriginalLink } from '@/app/components/article/read-original-link';
 import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
+import { ArticleTags } from '@/app/articles/_components/article-tags';
+import {
+  ObservationData,
+  readingMinutes,
+} from '@/app/components/article/observation-data';
+import { QualityMeterBars } from '@/app/components/article/quality-meter';
 
 interface PageProps {
   params: Promise<{
@@ -131,19 +136,22 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
       .filter((name): name is string => Boolean(name)) ?? []
   ).slice(0, 4);
 
+  const contentLength = article.content?.length ?? 0;
+  // lg 以上は右の列の「観測データ」に出すので、見出しの近くには lg 未満だけ出す
   const readingTime =
-    article.content && article.content.length > 0 ? (
-      <span className="flex items-center gap-1 text-sm text-[var(--tt-color-text-muted)]">
+    contentLength > 0 ? (
+      <span className="flex items-center gap-1 text-sm text-[var(--tt-color-text-muted)] lg:hidden">
         <Clock className="h-4 w-4" aria-hidden="true" />
         <span>
-          {Math.max(1, Math.ceil(article.content.length / 500))}分 /{' '}
-          {article.content.length.toLocaleString('ja-JP')}字
+          {readingMinutes(contentLength)}分 /{' '}
+          {contentLength.toLocaleString('ja-JP')}字
         </span>
       </span>
     ) : null;
 
   return (
     <div className="min-h-screen">
+      {/* 本文の列は幅を縮めない（画面の幅いっぱいに使う）。e2e の page-headings.spec.ts が確かめている */}
       <div className="w-full px-6 py-6">
         <ArticleTracker
           articleId={article.id}
@@ -165,9 +173,9 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
           </Button>
         </div>
 
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <div className="flex-1 space-y-6">
-            <Card className="gap-4 bg-[var(--tt-color-surface-muted)]">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="min-w-0 flex-1 space-y-6">
+            <Card className="gap-4">
               <CardHeader>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -194,7 +202,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                           <span className="sr-only">公開日:</span>
                           <span>{formatDateWithTime(article.publishedAt)}</span>
                         </span>
-                        <span className="flex items-center gap-1">
+                        {/* 収集の時刻は、lg 以上では右の列の観測データに出す */}
+                        <span className="flex items-center gap-1 lg:hidden">
                           <Download className="h-3 w-3" aria-hidden="true" />
                           <span className="sr-only">収集日:</span>
                           <span>{formatDateWithTime(article.createdAt)}</span>
@@ -218,22 +227,9 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                   </div>
 
                   {article.tags && article.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {article.tags.map((tag) => (
-                        <BadgeV2
-                          key={tag.id}
-                          variant="outline"
-                          className="cursor-pointer"
-                          asChild
-                        >
-                          <Link
-                            href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}
-                          >
-                            {getTagDisplayName(tag.name)}
-                          </Link>
-                        </BadgeV2>
-                      ))}
-                    </div>
+                    <ArticleTags
+                      tags={article.tags.map(({ id, name }) => ({ id, name }))}
+                    />
                   )}
                 </div>
               </CardHeader>
@@ -348,8 +344,12 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
 
                 {/* 主の「元記事を読む」はタイトルの下。要約を読み終えた位置にも控えめに置く */}
                 <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t pt-4">
-                  <p className="text-caption text-[var(--tt-color-text-muted)]">
-                    品質スコア {Math.round(article.qualityScore)}
+                  <p className="text-caption flex items-center gap-2 text-[var(--tt-color-text-muted)]">
+                    品質スコア
+                    <QualityMeterBars score={article.qualityScore} />
+                    <span className="tabular-nums">
+                      {Math.round(article.qualityScore)}
+                    </span>
                   </p>
                   <ReadOriginalLink url={article.url} variant="outline" />
                 </div>
@@ -372,7 +372,15 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
             <CommentSection articleId={article.id} />
           </div>
 
-          <div className="w-full shrink-0 lg:w-80">
+          {/* 右の列。貼り付けるのは列の外枠で、高さは画面（ヘッダーの 3rem と上下の余白 2rem を除く）で止め、
+              観測データの残りで関連記事が縮む */}
+          <div className="w-full shrink-0 lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100dvh-5rem)] lg:w-80 lg:flex-col lg:gap-4">
+            <ObservationData
+              contentLength={contentLength}
+              publishedAt={article.publishedAt}
+              createdAt={article.createdAt}
+              className="hidden shrink-0 lg:block"
+            />
             <RelatedArticles articleId={article.id} />
           </div>
         </div>
