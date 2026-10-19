@@ -4,7 +4,8 @@ on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main]
+    # develop は UI 刷新の統合ブランチ。そこへの PR も main 向けと同じ検査を通す
+    branches: [main, develop]
 
 # CTRF Test Reporterに必要な権限
 permissions:
