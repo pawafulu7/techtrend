@@ -87,8 +87,10 @@ beforeEach(() => {
 
 it('page fills the complete keywords payload, including period, for the API', async () => {
   db.$queryRaw
-    .mockResolvedValueOnce([{ id: 'r', name: 'React', recent_count: 5n }])
-    .mockResolvedValueOnce([{ id: 'r', name: 'React', weekly_count: 12n }])
+    .mockResolvedValueOnce([
+      { id: 'r', name: 'React', bucket: 0, count: 5 },
+      { id: 'r', name: 'React', bucket: 3, count: 12 },
+    ])
     .mockResolvedValueOnce([]);
   const page = await fetchKeywordsData();
   const result = await (await keywordsGet()).json();
@@ -98,7 +100,9 @@ it('page fills the complete keywords payload, including period, for the API', as
   expect(result.period.to).toEqual(expect.any(String));
   // 画面の集計時刻は API と同じ集計の終点
   expect(page.aggregatedAt).toBe(result.period.to);
-  expect(db.$queryRaw).toHaveBeenCalledTimes(3);
+  expect(page.trending.map((tag) => tag.name)).toEqual(['React']);
+  // 区間別の集計と新規タグの2本。ページと API は同じキャッシュの値を使う
+  expect(db.$queryRaw).toHaveBeenCalledTimes(2);
 });
 
 it('page and API share the complete 7-day analysis, with zero-filled dates', async () => {
@@ -177,7 +181,8 @@ it('search keys use trimmed/truncated q, while distinct queries stay separate', 
 
 it.each([
   ['analysis', () => fetchAnalysisData(7), 1],
-  ['keywords', () => fetchKeywordsData(), 3],
+  // 区間別の集計と新規タグの2本
+  ['keywords', () => fetchKeywordsData(), 2],
   ['stats', () => fetchSourceData(), 2],
 ] as const)(
   'ten concurrent %s loads execute one aggregate',

@@ -83,7 +83,7 @@ export function TrendingKeywordsSection({
               icon={TrendingUp}
               size="compact"
               title="急上昇キーワードはありません"
-              description="直近24時間に急に増えたタグや、3件以上の記事に付いたタグがここに出ます。"
+              description="直近24時間の記事数が、前の6日の1日平均より大きく増えたタグ（2件以上）がここに出ます。"
             />
           )}
         </>

@@ -49,6 +49,8 @@ export interface IRedisConfig {
   retryStrategy?: (times: number) => number | null;
   enableOfflineQueue?: boolean;
   connectTimeout?: number;
+  /** 命令の応答を待つ上限（ms）。超えたら失敗にする */
+  commandTimeout?: number;
   maxRetriesPerRequest?: number;
 }
 

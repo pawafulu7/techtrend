@@ -57,8 +57,9 @@ export function HomeListStatusBar({
         </span>
       </div>
       {totalCount > 0 && (
-        <span>
-          {totalCount}件の記事 ({shownCount}件表示中)
+        <span className="tabular-nums">
+          {totalCount.toLocaleString('ja-JP')}件の記事（
+          {shownCount.toLocaleString('ja-JP')}件表示中）
         </span>
       )}
     </div>

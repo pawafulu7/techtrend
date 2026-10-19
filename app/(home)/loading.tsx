@@ -8,14 +8,16 @@ import { ArticleListSkeleton } from '@/app/components/article/article-list-skele
 export default function Loading() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex-shrink-0 px-4 pt-3 lg:px-6">
-        <PageHeader icon={HomeIcon} title="記事一覧" variant="compact" />
-        <div
-          className="flex flex-wrap items-center gap-2 pb-2"
-          aria-hidden="true"
-        >
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3 pb-2 lg:px-6">
+        <PageHeader
+          icon={HomeIcon}
+          title="記事一覧"
+          variant="compact"
+          className="pb-0"
+        />
+        <div className="flex flex-wrap items-center gap-2" aria-hidden="true">
           <Skeleton className="h-8 w-24" />
-          <Skeleton className="hidden h-8 w-96 lg:block" />
+          <Skeleton className="hidden h-8 w-72 lg:block" />
           <Skeleton className="hidden h-8 w-28 lg:block" />
           <Skeleton className="h-8 w-32" />
           <Skeleton className="h-8 w-24" />

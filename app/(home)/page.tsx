@@ -160,10 +160,19 @@ export default async function Home({ searchParams }: PageProps) {
       <div className="flex h-full flex-col overflow-hidden">
         {/* Gradient background layer */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          {/* 見出しとツールバー。全幅で、左右の余白は記事一覧と同じ（Issue #700） */}
-          <div className="flex-shrink-0 px-4 pt-3 lg:px-6">
-            <PageHeader icon={HomeIcon} title="記事一覧" variant="compact" />
-            <div className="flex flex-wrap items-center gap-2 pb-2">
+          {/* 見出しとツールバー。全幅で、左右の余白は記事一覧と同じ（Issue #700）。
+              一覧に縦の領域を残すため、幅が足りれば見出しとツールバーを1行に並べる */}
+          <div className="flex flex-shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3 pb-2 lg:px-6">
+            <PageHeader
+              icon={HomeIcon}
+              title="記事一覧"
+              variant="compact"
+              className="pb-0"
+            />
+            <div
+              className="flex flex-wrap items-center gap-2"
+              data-testid="home-toolbar"
+            >
               <FilterSidebarToggle />
               <MobileFilters
                 sources={filteredSources}
@@ -173,8 +182,9 @@ export default async function Home({ searchParams }: PageProps) {
                 initialIsAuthenticated={!!session?.user}
               />
               <MobileSearchToggle />
-              <div className="hidden lg:block">
-                <SearchBox />
+              {/* 見出しと同じ行に収まるよう、2xl 未満は少し狭くする */}
+              <div className="hidden lg:block lg:w-64 xl:w-72 2xl:w-96">
+                <SearchBox fullWidth />
               </div>
               {/* AI 検索リンクはヘッダーの primaryNav へ移設した（Issue #585）。
                 ここに残すとホーム上で同じリンクが 2 つ並び、支援技術にも

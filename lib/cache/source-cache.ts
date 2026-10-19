@@ -33,6 +33,15 @@ async function invalidateRelatedArticles(): Promise<void> {
   await articleDetailCache.invalidateAllRelated();
 }
 
+/**
+ * 急上昇の集計のキャッシュも消す（有効なソースの記事だけを数えるため）。関連記事と同じく使うときに読み込み、
+ * source-cache を読み込んだだけで Redis のクライアントを作らないようにする
+ */
+async function invalidateTrendingKeywords(): Promise<void> {
+  const { keywordsCache } = await import('./keywords-cache');
+  await keywordsCache.invalidateTrending();
+}
+
 export class SourceCache {
   private cache: RedisCache;
   private nameToId = new Map<string, string>();
@@ -347,6 +356,7 @@ export class SourceCache {
     await Promise.all([
       this.cache.invalidatePattern('*'),
       invalidateRelatedArticles(),
+      invalidateTrendingKeywords(),
     ]);
   }
 
@@ -376,6 +386,7 @@ export class SourceCache {
         // Top sources (various limits)
         this.cache.invalidatePattern('top-sources:*'),
         invalidateRelatedArticles(),
+        invalidateTrendingKeywords(),
       ]);
     } catch (_error) {
       // Fallback to full invalidation on any error

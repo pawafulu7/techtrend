@@ -69,11 +69,11 @@ export function ArticleListItem({
         // タイトルを実リンクにする card-with-link へ移行。relative は擬似要素の基準
         'group relative flex cursor-pointer items-center justify-between gap-3 rounded-lg p-3',
         'bg-(--tt-color-surface)',
-        'transition-all duration-200',
+        // 浮かせる影は使わず、ホバーは面と線の色の変化だけで示す
+        'transition-colors duration-200',
         'hover:bg-(--tt-color-surface-hover)',
         'border border-(--tt-color-border)',
         'hover:border-(--tt-color-border-hover)',
-        'hover:shadow-sm',
         'focus-within:ring-2 focus-within:ring-(--tt-color-primary)'
       )}
     >
@@ -117,12 +117,16 @@ export function ArticleListItem({
           <span className="hidden items-center gap-1 sm:flex">
             <Calendar className="h-3 w-3" aria-hidden="true" />
             <span className="sr-only">公開日:</span>
-            <span>{formatDateWithTime(article.publishedAt)}</span>
+            <span className="tabular-nums">
+              {formatDateWithTime(article.publishedAt)}
+            </span>
           </span>
           <span className="hidden items-center gap-1 sm:flex">
             <Download className="h-3 w-3" aria-hidden="true" />
             <span className="sr-only">収集日:</span>
-            <span>{formatDateWithTime(article.createdAt)}</span>
+            <span className="tabular-nums">
+              {formatDateWithTime(article.createdAt)}
+            </span>
           </span>
           <span className="flex items-center gap-1 sm:hidden">
             <Clock className="h-3 w-3" aria-hidden="true" />

@@ -1,16 +1,21 @@
-import { articleAggregationSql } from '@/lib/database/article-aggregation-filter';
+import { daysAgo } from '@/lib/database/article-aggregation-filter';
 import { findNewTags } from '@/lib/database/new-tags';
+import { countTagsByDayBucket } from '@/lib/database/tag-day-buckets';
 import { prisma } from '@/lib/prisma';
-import { keywordsCache } from '@/lib/cache/keywords-cache';
+import {
+  keywordsCache,
+  TRENDING_SERIES_CACHE_KEY,
+} from '@/lib/cache/keywords-cache';
+import {
+  buildTrendingSeries,
+  type TrendingKeyword,
+  type TrendingKeywordWithSeries,
+} from '@/lib/services/trending-series';
 
-export interface TrendingKeyword {
-  id: string;
-  name: string;
-  recentCount: number;
-  weeklyAverage: number;
-  growthRate: number;
-  isTrending: boolean;
-}
+export type {
+  TrendingKeyword,
+  TrendingKeywordWithSeries,
+} from '@/lib/services/trending-series';
 
 export interface NewTag {
   id: string;
@@ -18,80 +23,39 @@ export interface NewTag {
   count: number;
 }
 
-async function loadTrendingKeywords() {
-  const now = new Date();
-  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+/** キャッシュに載せる急上昇のタグの数（トレンド概要の一覧の上位 20 件） */
+const TRENDING_LIMIT = 20;
 
-  // 3クエリを並列実行
-  const [recentTags, weeklyTags, newTags] = await Promise.all([
-    // 過去24時間のタグ使用状況
-    prisma.$queryRaw<{ id: string; name: string; recent_count: bigint }[]>`
-    SELECT
-      t.id,
-      t.name,
-      COUNT(DISTINCT a.id) as recent_count
-    FROM "Tag" t
-    JOIN "_ArticleToTag" at ON t.id = at."B"
-    JOIN "Article" a ON at."A" = a.id
-    WHERE ${articleAggregationSql('a', { from: oneDayAgo, to: now })}
-      AND t.name <> ''
-      AND t.name IS NOT NULL
-    GROUP BY t.id, t.name
-  `,
-    // 過去1週間のタグ使用状況
-    prisma.$queryRaw<{ id: string; name: string; weekly_count: bigint }[]>`
-    SELECT
-      t.id,
-      t.name,
-      COUNT(DISTINCT a.id) as weekly_count
-    FROM "Tag" t
-    JOIN "_ArticleToTag" at ON t.id = at."B"
-    JOIN "Article" a ON at."A" = a.id
-    WHERE ${articleAggregationSql('a', { from: oneWeekAgo, to: oneDayAgo })}
-      AND t.name <> ''
-      AND t.name IS NOT NULL
-    GROUP BY t.id, t.name
-  `,
+/**
+ * 急上昇の話題の集計。トレンド概要・/api/trends/keywords が同じ値を使う。
+ * 数える記事はホームに出る記事（論文・技術以外・要約の無い記事を除く。話題を押した先のホームの一覧と同じ母集団）
+ */
+export interface TrendingSeries {
+  /** 急上昇のタグ（成長率 50% 超かつ 2 件以上）の上位 20 件。7 区間の件数つき */
+  trending: TrendingKeywordWithSeries[];
+  /** 急上昇のタグの総数 */
+  trendingTotal: number;
+  /** 直近 24 時間に初めて集計の対象になったタグ */
+  newTags: NewTag[];
+  /** 直近 24 時間の区間。to が集計した時刻 */
+  period: { from: string; to: string };
+}
+
+async function loadTrendingSeries(): Promise<TrendingSeries> {
+  const now = new Date();
+  const oneDayAgo = daysAgo(1, now);
+
+  const [rows, newTags] = await Promise.all([
+    countTagsByDayBucket(prisma, { now }),
     // 新規タグ（過去24時間に初めて使われたタグ）
     findNewTags(prisma, { from: oneDayAgo, to: now, limit: 10 }),
   ]);
 
-  // 週間平均と比較して急上昇を検出
-  const weeklyTagMap = new Map(
-    weeklyTags.map((tag) => [tag.id, Number(tag.weekly_count) / 6]) // 6日間の平均
-  );
-
-  const trendingKeywords = recentTags
-    .map((tag) => {
-      const recentCount = Number(tag.recent_count);
-      const weeklyAverage = weeklyTagMap.get(tag.id) || 0;
-
-      // weeklyAverage（日平均）の最低値を1.0に設定（極小分母による膨張を防止）
-      // weeklyAverage=0 も含め、1.0未満は全て1.0に統一（不連続回避）
-      const effectiveAverage = Math.max(weeklyAverage, 1.0);
-      const rawGrowthRate =
-        ((recentCount - effectiveAverage) / effectiveAverage) * 100;
-      // 成長率を999%にキャップ
-      const growthRate = Math.min(Math.round(rawGrowthRate), 999);
-
-      return {
-        id: tag.id,
-        name: tag.name,
-        recentCount,
-        weeklyAverage: Math.round(weeklyAverage * 10) / 10,
-        growthRate,
-        isTrending: growthRate > 50 && recentCount >= 2, // 50%以上の成長かつ2件以上
-      };
-    })
-    .filter((tag) => tag.isTrending || tag.recentCount >= 3) // トレンドまたは頻出タグ
-    .sort(
-      (a, b) => b.growthRate - a.growthRate || b.recentCount - a.recentCount
-    )
-    .slice(0, 20);
+  const { trending, trendingTotal } = buildTrendingSeries(rows, TRENDING_LIMIT);
 
   return {
-    trending: trendingKeywords,
+    trending,
+    trendingTotal,
     newTags: newTags.map((tag) => ({
       id: tag.id,
       name: tag.name,
@@ -104,9 +68,24 @@ async function loadTrendingKeywords() {
   };
 }
 
-export function getTrendingKeywords() {
+/** 急上昇の一覧・区間の件数・総数・新着タグを1つの値として取る（Redis にキャッシュ） */
+export function getTrendingSeries(): Promise<TrendingSeries> {
   return keywordsCache.getOrSetWithLock(
-    'keywords:trending:v2',
-    loadTrendingKeywords
+    TRENDING_SERIES_CACHE_KEY,
+    loadTrendingSeries
   );
+}
+
+/** /api/trends/keywords とトレンド概要の形（区間の件数を除く）。getTrendingSeries と同じ値から作る */
+export async function getTrendingKeywords(): Promise<{
+  trending: TrendingKeyword[];
+  newTags: NewTag[];
+  period: { from: string; to: string };
+}> {
+  const { trending, newTags, period } = await getTrendingSeries();
+  return {
+    trending: trending.map(({ series: _series, ...keyword }) => keyword),
+    newTags,
+    period,
+  };
 }

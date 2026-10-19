@@ -21,8 +21,11 @@ interface HeadingCase {
   path: string;
   /** h1 の文言。記事タイトルのように中身がデータで変わるものは省く */
   h1?: string;
-  /** 一覧型・分析型は PageHeader を使う。幅は 7xl か全幅 */
-  pageHeader?: '7xl' | 'full';
+  /**
+   * 一覧型・分析型は PageHeader を使う。幅は 7xl か全幅。
+   * row は、見出しがツールバーと同じ行に入る画面（ホーム）。その行が全幅
+   */
+  pageHeader?: '7xl' | 'full' | 'row';
   /** サブナビ。左端が PageHeader とそろう */
   subNav?: string;
 }
@@ -30,7 +33,7 @@ interface HeadingCase {
 const TREND_SUB_NAV = 'nav[aria-label="トレンドナビゲーション"]';
 
 const PUBLIC_PAGES: HeadingCase[] = [
-  { path: '/', h1: '記事一覧', pageHeader: 'full' },
+  { path: '/', h1: '記事一覧', pageHeader: 'row' },
   { path: '/papers', h1: '論文', pageHeader: 'full' },
   {
     path: '/popular',
@@ -138,7 +141,32 @@ async function expectHeadings(
     (el) => getComputedStyle(el.parentElement as HTMLElement).maxWidth
   );
 
-  if (pageHeader === '7xl') {
+  if (pageHeader === 'row') {
+    // 見出しはツールバーと同じ行に入る（ホーム）。行は全幅で、左右の余白は一覧と同じ
+    const row = header.locator('xpath=..');
+    const rowBox = await row.boundingBox();
+    if (!rowBox) throw new Error(`${path} の見出しの行が無い`);
+    expect(rowBox.width, `${path} の見出しの行は全幅`).toBeGreaterThanOrEqual(
+      VIEWPORT_WIDTH - 20
+    );
+    expect(wrapperMaxWidth, `${path} の見出しの行は全幅`).toBe('none');
+    expect(
+      Math.round(headerBox.x - rowBox.x),
+      `${path} の見出しの左の余白は一覧と同じ（lg:px-6）`
+    ).toBe(24);
+    // 1440px では、ツールバーが見出しと同じ行に並ぶ（次の行へ折り返さない）。
+    // 見出しの縦の中心が、ツールバーの縦の範囲に入ることで確かめる
+    const toolbarBox = await boxOf(page, '[data-testid="home-toolbar"]', path);
+    const headerCenterY = headerBox.y + headerBox.height / 2;
+    expect(
+      headerCenterY,
+      `${path} のツールバーは見出しと同じ行`
+    ).toBeGreaterThanOrEqual(toolbarBox.y);
+    expect(
+      headerCenterY,
+      `${path} のツールバーは見出しと同じ行`
+    ).toBeLessThanOrEqual(toolbarBox.y + toolbarBox.height);
+  } else if (pageHeader === '7xl') {
     expect(
       headerBox.width,
       `${path} の PageHeader の幅は 7xl`
