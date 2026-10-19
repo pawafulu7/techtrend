@@ -10,6 +10,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import {
+  isNavActive,
+  navAriaCurrent,
+  navTabClass,
+} from '@/components/ui-v2/nav-tab';
 
 interface NavItem {
   href: string;
@@ -23,18 +28,12 @@ interface NavDropdownProps {
 
 export function NavDropdown({ items }: NavDropdownProps) {
   const pathname = usePathname();
-  const hasActiveItem = items.some((item) => pathname === item.href);
+  const hasActiveItem = items.some((item) => isNavActive(pathname, item.href));
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={cn(
-          'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all duration-200',
-          'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
-          hasActiveItem
-            ? 'bg-primary text-primary-foreground shadow-sm'
-            : 'bg-secondary/30 hover:bg-secondary/60 hover:scale-105'
-        )}
+        className={navTabClass(hasActiveItem, 'gap-1')}
         data-testid="nav-dropdown-trigger"
       >
         <span>その他</span>
@@ -43,17 +42,18 @@ export function NavDropdown({ items }: NavDropdownProps) {
       <DropdownMenuContent align="end" className="w-48">
         {items.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = isNavActive(pathname, item.href);
 
           return (
             <DropdownMenuItem key={item.href} asChild>
               <Link
                 href={item.href}
-                aria-current={isActive ? 'page' : undefined}
+                aria-current={navAriaCurrent(pathname, item.href)}
                 data-testid={`nav-dropdown-item-${item.href.replace(/\//g, '-').replace(/^-/, '')}`}
                 className={cn(
                   'flex w-full cursor-pointer items-center gap-2',
-                  isActive && 'bg-primary/10 font-semibold'
+                  isActive &&
+                    'bg-(--tt-color-primary-bg) font-semibold text-(--tt-color-primary)'
                 )}
               >
                 <Icon className="h-4 w-4" />

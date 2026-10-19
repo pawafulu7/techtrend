@@ -1,7 +1,7 @@
 /**
  * 書体と文字サイズのスケール（lib/design-tokens/scales.ts）が使われていることを確かめる（Issue #699）
  *
- * - TT の書体トークンが、layout.tsx の next/font が作る変数（--font-inter など）を参照する
+ * - TT の書体トークンが、layout.tsx の next/font が作る変数（--font-mona-sans など）を参照する
  * - スケール表の大きさが h1 > h2 > h3 > 本文 > 要約 > 補足 の順になっている
  * - cn()（tailwind-merge）が text-h1 などを文字色のクラスと取り違えて消さない
  * - h1〜h3 と CardTitle に text-sm などのサイズを直書きしない（text-h1 / text-h2 / text-h3 を使う）
@@ -21,14 +21,17 @@ describe('書体トークン', () => {
     ...layout.matchAll(/variable:\s*'(--font-[\w-]+)'/g),
   ].map((m) => m[1]);
 
-  it('layout.tsx の next/font が3つの変数を作っている', () => {
-    expect(nextFontVars).toHaveLength(3);
+  it('layout.tsx の next/font が2つの変数を作っている', () => {
+    expect(nextFontVars).toHaveLength(2);
     expect(nextFontVars).toEqual(
-      expect.arrayContaining([
-        '--font-space-grotesk',
-        '--font-inter',
-        '--font-jetbrains-mono',
-      ])
+      expect.arrayContaining(['--font-mona-sans', '--font-jetbrains-mono'])
+    );
+  });
+
+  // 字幅を詰めた数字（.readout の font-stretch: 75%）は、@font-face に font-stretch の範囲が無いと効かない
+  it('Mona Sans の @font-face に字幅の範囲を書いている', () => {
+    expect(layout).toMatch(
+      /declarations:\s*\[\{\s*prop:\s*'font-stretch',\s*value:\s*'75% 125%'\s*\}\]/
     );
   });
 
@@ -37,14 +40,14 @@ describe('書体トークン', () => {
   it('next/font の変数のクラスを <html> に付けている', () => {
     const html = layout.match(/<html[\s\S]*?className=\{`([^`]*)`\}/);
     expect(html).not.toBeNull();
-    for (const font of ['spaceGrotesk', 'inter', 'jetBrainsMono']) {
+    for (const font of ['monaSans', 'jetBrainsMono']) {
       expect(html?.[1]).toContain(`\${${font}.variable}`);
     }
   });
 
   it.each([
-    ['heading', '--font-space-grotesk'],
-    ['body', '--font-inter'],
+    ['heading', '--font-mona-sans'],
+    ['body', '--font-mona-sans'],
     ['mono', '--font-jetbrains-mono'],
   ] as const)('%s は next/font の %s を先頭で参照する', (key, variable) => {
     expect(typography.family[key].startsWith(`var(${variable}),`)).toBe(true);

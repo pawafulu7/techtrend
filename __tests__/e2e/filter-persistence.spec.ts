@@ -435,8 +435,7 @@ test.describe('フィルター条件の永続化', () => {
     }
 
     if (!sortParamUpdated) {
-      const immediateClassName = await qualityButton.getAttribute('class');
-      expect(immediateClassName ?? '').toContain('shadow-sm');
+      await expect(qualityButton).toHaveAttribute('aria-pressed', 'true');
     }
 
     // 2. 記事詳細ページへ遷移  
@@ -452,9 +451,8 @@ test.describe('フィルター条件の永続化', () => {
     // 4. 並び替え順が保持されていることを確認
     // Note: 品質ボタンがアクティブな状態かチェック
     const qualityButtonAfterNav = page.getByRole('button', { name: '品質' }).first();
-    const className = await qualityButtonAfterNav.getAttribute('class');
-    // ボタンのvariantがdefaultの場合、特定のクラスが含まれる
-    expect(className).toContain('shadow-sm');
+    // 選んでいる並び順のボタンは aria-pressed="true" になる
+    await expect(qualityButtonAfterNav).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('複数のフィルター条件が同時に保持される', async ({ page }) => {
@@ -548,8 +546,7 @@ test.describe('フィルター条件の永続化', () => {
       });
     } catch {
       // URLに反映されない実装では、UIのアクティブ状態で代替検証
-      const active = await page.getByRole('button', { name: '人気' }).getAttribute('class');
-      expect(active ?? '').toContain('shadow-sm');
+      await expect(page.getByRole('button', { name: '人気' })).toHaveAttribute('aria-pressed', 'true');
     }
 
     // ネットワーク安定化待機

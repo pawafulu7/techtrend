@@ -82,7 +82,7 @@ export type RadiusTokens = {
 /**
  * 和文の書体（OS に入っているものを使い、Web フォントは読み込まない）
  *
- * 欧文の書体（Inter など）は和文の字形を持たないので、和文はこの並びの最初に見つかった書体になる。
+ * 欧文の書体（Mona Sans など）は和文の字形を持たないので、和文はこの並びの最初に見つかった書体になる。
  * Mac・iOS → Windows → Android・Linux の順に並べる。
  * Noto Sans JP を Web フォントで読み込むと、初回表示の転送量がページあたり 363〜816KB 増える
  * （2026-10 の見積もり。Issue #699）ため入れていない。
@@ -93,13 +93,15 @@ const JAPANESE_FONT_STACK =
 /**
  * Typography Tokens
  *
- * 書体は app/layout.tsx の next/font が読み込み、`--font-inter` などの変数に入れる。
- * ここではその変数を参照するので、next/font が作る代替書体（"Inter Fallback" など）も効く。
+ * 書体は app/layout.tsx の next/font が読み込み、`--font-mona-sans` などの変数に入れる。
+ * ここではその変数を参照するので、next/font が作る代替書体（"monaSans Fallback" など）も効く。
+ * 欧文と数字は見出し・本文とも Mona Sans の1書体（見出しの性格は太さと和文の字詰めで出す）。
+ * 和文は Web フォントを読まず、OS の書体（JAPANESE_FONT_STACK）で出る。
  */
 export const typography: TypographyTokens = {
   family: {
-    heading: `var(--font-space-grotesk), ${JAPANESE_FONT_STACK}, system-ui, sans-serif`,
-    body: `var(--font-inter), ${JAPANESE_FONT_STACK}, system-ui, sans-serif`,
+    heading: `var(--font-mona-sans), ${JAPANESE_FONT_STACK}, system-ui, sans-serif`,
+    body: `var(--font-mona-sans), ${JAPANESE_FONT_STACK}, system-ui, sans-serif`,
     mono: "var(--font-jetbrains-mono), 'Courier New', monospace",
   },
   size: {

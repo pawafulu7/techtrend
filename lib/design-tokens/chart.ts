@@ -1,5 +1,5 @@
 import { lightColors } from './colors';
-import { slate, white } from './palette';
+import { night, slate, white } from './palette';
 
 /**
  * Chart Colors - チャートの系列色
@@ -36,7 +36,7 @@ export const chartColors = {
 } as const satisfies Record<'light' | 'dark', readonly string[]>;
 
 /** チャートの塗りに載せる文字の候補（readableTextColor で塗りごとに選ぶ） */
-export const chartLabelTextColors = [white, slate[950]] as const;
+export const chartLabelTextColors = [white, night[950]] as const;
 
 /**
  * 記事グラフ（/articles/[id]/graph）のノードの色

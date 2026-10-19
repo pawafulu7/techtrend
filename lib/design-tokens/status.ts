@@ -1,4 +1,4 @@
-import { slate, withAlpha } from './palette';
+import { ink, night, withAlpha } from './palette';
 
 /**
  * Status Colors - 多色ステータス識別 UI 用トークン
@@ -39,9 +39,9 @@ export type StatusColors = Record<StatusKey, StatusColorTokens>;
 
 export const lightStatusColors: StatusColors = {
   neutral: {
-    text: '#0F172A', // slate-900, AA on white 17.81:1
-    iconBg: '#E2E8F0', // slate-200, decorative
-    bg: '#F8FAFC', // slate-50, card background
+    text: ink[900], // AA on white 17.7:1
+    iconBg: ink[200], // decorative
+    bg: ink[50], // card background
   },
   draft: {
     text: '#B45309', // amber-700, AA on white 6.77:1
@@ -74,17 +74,17 @@ export const lightStatusColors: StatusColors = {
     bg: '#FFF1F2', // rose-50, card background
   },
   archived: {
-    text: slate[500], // AA on white 4.76:1
-    iconBg: slate[100], // decorative
-    bg: slate[50], // card background
+    text: ink[600], // AA on white 6.7:1
+    iconBg: ink[150], // decorative
+    bg: ink[50], // card background
   },
 };
 
 export const darkStatusColors: StatusColors = {
   neutral: {
-    text: '#F1F5F9', // slate-100
-    iconBg: '#334155', // slate-700
-    bg: 'rgba(15, 23, 42, 0.3)', // slate-900 @ 30%, card background
+    text: night[100],
+    iconBg: night[700],
+    bg: withAlpha(night[900], 0.3), // card background
   },
   draft: {
     text: '#FBBF24', // amber-400
@@ -117,9 +117,9 @@ export const darkStatusColors: StatusColors = {
     bg: 'rgba(76, 5, 25, 0.3)', // rose-950 @ 30%, card background
   },
   archived: {
-    text: slate[400],
-    iconBg: slate[800],
-    bg: withAlpha(slate[900], 0.3), // card background
+    text: ink[400],
+    iconBg: night[800],
+    bg: withAlpha(night[900], 0.3), // card background
   },
 };
 

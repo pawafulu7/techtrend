@@ -321,6 +321,9 @@ export default function SourcesContent() {
                       <Button
                         key={i + 1}
                         variant={currentPage === i + 1 ? 'default' : 'outline'}
+                        aria-current={
+                          currentPage === i + 1 ? 'page' : undefined
+                        }
                         size="sm"
                         onClick={() => setCurrentPage(i + 1)}
                         className="w-8"

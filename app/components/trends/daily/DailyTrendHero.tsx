@@ -129,7 +129,7 @@ export function DailyTrendHero({
 
   return (
     <section className="relative overflow-hidden">
-      {/* 地と緑のにじみは、ページの下地（main の page-canvas）に任せる */}
+      {/* 地はページの下地（main の page-canvas）に任せる */}
       <div className="relative mx-auto w-full max-w-7xl px-4 py-6 sm:py-8">
         {/* Issue #700: 見出し・日付・前日／翌日の移動は、読み込み中も出せるよう
             daily-trend-content の PageHeader が持つ */}

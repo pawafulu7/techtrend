@@ -21,3 +21,5 @@ export type { BadgeV2Props } from './badge-v2';
 
 export { ButtonV2 } from './button-v2';
 export type { ButtonV2Props } from './button-v2';
+
+export { isNavActive, navAriaCurrent, navTabClass } from './nav-tab';

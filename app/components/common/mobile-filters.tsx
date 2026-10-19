@@ -15,6 +15,11 @@ import { Filters } from './filters';
 import { TagFilter } from './tag-filter';
 import type { Source } from '@/lib/prisma-exports';
 import type { GroupedSources } from '@/lib/types/source-grouping';
+import {
+  TOOLBAR_CONTROL,
+  TOOLBAR_OUTLINE,
+} from '@/app/components/common/toolbar-styles';
+import { cn } from '@/lib/utils';
 
 interface MobileFiltersProps {
   sources: (Source & { _count: { articles: number } })[];
@@ -39,10 +44,10 @@ export function MobileFilters({
         <Button
           variant="outline"
           size="sm"
-          className="h-6 px-2 text-xs sm:h-7 lg:hidden"
+          className={cn(TOOLBAR_CONTROL, TOOLBAR_OUTLINE, 'px-3 lg:hidden')}
           data-testid="mobile-filter-trigger"
         >
-          <Filter className="mr-1 h-3 w-3" />
+          <Filter className="mr-1.5 h-4 w-4" />
           フィルター
         </Button>
       </SheetTrigger>

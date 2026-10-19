@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import {
-  Rss,
   TrendingUp,
   Menu,
   X,
@@ -17,7 +16,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { SITE_NAME } from '@/lib/constants';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -28,16 +27,74 @@ import { ContactLink } from '@/app/components/layout/contact-link';
 import { useIsHydrated } from '@/lib/hooks/use-is-hydrated';
 import { authClient } from '@/lib/auth/auth-client';
 import { features } from '@/config/features';
+import { ObservatoryMark } from '@/components/icons/observatory-mark';
+import {
+  isNavActive,
+  navAriaCurrent,
+  navTabClass,
+} from '@/components/ui-v2/nav-tab';
 
 const MOBILE_NAV_ID = 'mobile-nav-panel';
 
 export function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  // モバイルメニューは開いたときのパスを覚え、そのパスにいる間だけ開いている。
+  // ロゴ・お問い合わせ・ユーザーメニューからの移動や、ブラウザの戻るでも、別のページでは閉じる
+  const [menuOpenedAt, setMenuOpenedAt] = useState<string | null>(null);
+  // 別のページに移ったら覚えたパスも消す（残すと、戻るで元のページに戻ったときにまた開く）。
+  // effect ではなく描画中に合わせる（https://react.dev/learn/you-might-not-need-an-effect）
+  if (menuOpenedAt !== null && menuOpenedAt !== pathname) {
+    setMenuOpenedAt(null);
+  }
+  const mobileMenuOpen = menuOpenedAt === pathname;
+  const closeMobileMenu = () => setMenuOpenedAt(null);
   const { data: session, isPending } = authClient.useSession();
   // サーバー描画ではセッションが判定中。hydration 中もそれに合わせる（issue #714）
   const isHydrated = useIsHydrated();
   const isSessionReady = isHydrated && !isPending;
+  const headerRef = useRef<HTMLElement>(null);
+  const menuToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileNavRef = useRef<HTMLElement>(null);
+
+  // モバイルメニューは Esc とヘッダーの外のクリックで閉じる
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      // ユーザーメニューなど、先に Esc を使った部品があればそちらだけを閉じる（Radix は preventDefault する）。
+      // 変換中の Esc は変換の取り消しなので閉じない
+      if (
+        event.key !== 'Escape' ||
+        event.defaultPrevented ||
+        event.isComposing
+      ) {
+        return;
+      }
+      // パネルの中のフォーカスは閉じると行き場を失うので、開いたボタンへ戻す。
+      // パネルの外（本文や、閉じても残るヘッダーのボタン）にあるフォーカスは動かさない
+      const focusInPanel = mobileNavRef.current?.contains(
+        document.activeElement
+      );
+      setMenuOpenedAt(null);
+      if (focusInPanel) menuToggleRef.current?.focus();
+    };
+    // pointerdown で閉じると、パネルの分だけ本文が上にずれてから指が離れ、タップが別の要素に届く。
+    // click は宛先が決まってから届くので、capture で受けて閉じ、押したものにはそのまま click を渡す
+    const onClick = (event: MouseEvent) => {
+      if (
+        event.target instanceof Node &&
+        headerRef.current?.contains(event.target)
+      ) {
+        return;
+      }
+      setMenuOpenedAt(null);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('click', onClick, true);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('click', onClick, true);
+    };
+  }, [mobileMenuOpen]);
 
   // ナビゲーション項目の定義
   // prefetch: false は認証必須ページに設定（Server Component auth() redirect がprefetch時に走るのを防止）
@@ -81,50 +138,48 @@ export function Header() {
   if (isAdminRoute) return null;
 
   return (
-    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
+    <header
+      ref={headerRef}
+      className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-50 w-full border-b backdrop-blur"
+    >
       <div className="w-full px-4 lg:px-6">
-        <div className="flex h-12 items-center justify-between lg:h-10">
+        {/* 高さは全幅で 48px（押せる高さ 44px を取るため）。デスクトップのナビのタブはこの高さいっぱいに伸ばし、
+            選ばれている項目の下線をヘッダーの下の線に重ねる */}
+        <div className="flex h-12 items-center justify-between gap-4">
           {/* Logo and Site Name */}
           <Link
             href="/"
             className="flex min-w-0 items-center space-x-2"
             data-testid="header-logo"
           >
-            <Rss className="text-primary h-5 w-5 shrink-0" />
+            <ObservatoryMark className="h-[22px] w-[22px] shrink-0" />
             {/* お問い合わせのアイコンの分だけ入りきらない幅（〜399px、1024〜1279px）では、
                 切れた名前を出さずにロゴのアイコンだけにする（読み上げ用の名前は残す） */}
-            <span className="truncate text-lg font-bold max-[399px]:sr-only lg:max-xl:sr-only">
+            <span className="font-heading truncate text-lg font-bold tracking-[-0.01em] [font-stretch:88%] max-[399px]:sr-only lg:max-xl:sr-only">
               {SITE_NAME}
             </span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav
-            className="hidden items-center space-x-3 lg:flex"
+            aria-label="サイトのメニュー"
+            className="mr-auto hidden h-12 items-stretch lg:flex"
             data-testid="desktop-nav"
           >
-            {/* 主要ナビゲーション */}
+            {/* 主要ナビゲーション。アイコンは付けず、文字のタブにする */}
             {primaryNav.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
+              const isActive = isNavActive(pathname, item.href);
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   prefetch={'prefetch' in item ? item.prefetch : undefined}
-                  aria-current={isActive ? 'page' : undefined}
+                  aria-current={navAriaCurrent(pathname, item.href)}
                   data-testid={`nav-link-${item.label.toLowerCase()}`}
-                  className={cn(
-                    'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all duration-200',
-                    'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-secondary/30 hover:bg-secondary/60 hover:scale-105'
-                  )}
+                  className={navTabClass(isActive)}
                 >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
+                  {item.label}
                 </Link>
               );
             })}
@@ -134,7 +189,7 @@ export function Header() {
           </nav>
 
           {/* Desktop Actions */}
-          <div className="hidden items-center space-x-4 lg:flex">
+          <div className="hidden items-center gap-2 lg:flex">
             <div className="flex items-center gap-1">
               <ContactLink desktop testId="header-contact-link" />
               <ThemeToggle />
@@ -148,10 +203,11 @@ export function Header() {
             <ThemeToggle />
             <UserMenu compact />
             <Button
+              ref={menuToggleRef}
               variant="ghost"
               size="sm"
               className="h-11 w-11"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => setMenuOpenedAt(mobileMenuOpen ? null : pathname)}
               aria-label={
                 mobileMenuOpen ? 'メニューを閉じる' : 'メニューを開く'
               }
@@ -171,7 +227,9 @@ export function Header() {
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <nav
+            ref={mobileNavRef}
             id={MOBILE_NAV_ID}
+            aria-label="サイトのメニュー"
             className="border-t py-4 lg:hidden"
             data-testid="mobile-nav"
           >
@@ -179,23 +237,23 @@ export function Header() {
               {/* 主要ナビゲーション */}
               {primaryNav.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const isActive = isNavActive(pathname, item.href);
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     prefetch={'prefetch' in item ? item.prefetch : undefined}
-                    aria-current={isActive ? 'page' : undefined}
+                    aria-current={navAriaCurrent(pathname, item.href)}
                     data-testid={`mobile-nav-link-${item.label.toLowerCase()}`}
                     className={cn(
-                      'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                      'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150',
                       'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
                       isActive
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'hover:bg-secondary/50'
+                        ? 'bg-(--tt-color-primary-bg) font-semibold text-(--tt-color-primary)'
+                        : 'text-(--tt-color-text) hover:bg-(--tt-color-surface-hover)'
                     )}
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={closeMobileMenu}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{item.label}</span>
@@ -206,27 +264,27 @@ export function Header() {
               <div className="bg-border my-2 h-px" />
 
               {/* その他のナビゲーション */}
-              <div className="text-muted-foreground px-3 pt-2 pb-1 text-xs font-semibold tracking-wider uppercase">
+              <div className="text-muted-foreground px-3 pt-2 pb-1 text-xs font-semibold">
                 その他
               </div>
               {secondaryNav.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const isActive = isNavActive(pathname, item.href);
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    aria-current={isActive ? 'page' : undefined}
+                    aria-current={navAriaCurrent(pathname, item.href)}
                     data-testid={`mobile-secondary-nav-link-${item.label.toLowerCase()}`}
                     className={cn(
-                      'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                      'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150',
                       'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
                       isActive
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'hover:bg-secondary/50'
+                        ? 'bg-(--tt-color-primary-bg) font-semibold text-(--tt-color-primary)'
+                        : 'text-(--tt-color-text) hover:bg-(--tt-color-surface-hover)'
                     )}
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={closeMobileMenu}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{item.label}</span>
@@ -241,11 +299,11 @@ export function Header() {
                     href="/auth/signup"
                     data-testid="mobile-nav-link-signup"
                     className={cn(
-                      'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                      'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150',
                       'focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none',
-                      'hover:bg-secondary/50'
+                      'text-(--tt-color-text) hover:bg-(--tt-color-surface-hover)'
                     )}
-                    onClick={() => setMobileMenuOpen(false)}
+                    onClick={closeMobileMenu}
                   >
                     <UserPlus className="h-4 w-4" />
                     <span>新規登録</span>
