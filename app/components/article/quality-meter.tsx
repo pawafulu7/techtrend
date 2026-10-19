@@ -34,7 +34,7 @@ export function QualityMeter({
           <span
             key={i}
             className={cn(
-              'h-2.5 w-1.5 rounded-[1px]',
+              'h-2.5 w-1.5 rounded-xs',
               i < level
                 ? 'bg-(--tt-color-primary)'
                 : 'bg-(--tt-color-border-hover)'
