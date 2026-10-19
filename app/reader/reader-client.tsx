@@ -21,6 +21,7 @@ import { SortButtons } from '@/app/components/common/sort-buttons';
 import { useMediaQuery } from '@/app/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import { ReaderArticleList } from './article-list';
+import { useReaderListNavigation } from './use-reader-list-navigation';
 import { ReaderArticleDetail } from './article-detail';
 import type {
   ReaderListArticle,
@@ -291,41 +292,32 @@ function ReaderClientInner({
   }, [hasNext, articles, currentIndex, fetchNextAndSelect, selectArticle]);
 
   const handleLoadMore = useCallback(() => {
+    // 取得中に呼ぶと、TanStack Query は進行中の取得を捨てて取り直す（cancelRefetch の既定）。
+    // md 未満の末尾で↓を押し続けたときに同じページを何度も取りに行かないよう、取得中は呼ばない
+    if (!hasNextPage || isFetchingNextPage) return;
     fetchNextPage().catch(() => {
       // Error handled by useInfiniteQuery's error state
     });
-  }, [fetchNextPage]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  // リストからの選択: モバイルはpush（ブラウザバックでリストへ戻れる）、
-  // デスクトップはreplace（履歴を汚さない）
-  const handleSelectArticle = useCallback(
-    (articleId: string) => {
-      selectArticle(articleId);
-    },
-    [selectArticle]
-  );
-
-  // Keyboard navigation（ArrowUp/Down連続操作もPrev/Next同様に常にreplace）
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!effectiveSelectedId || articles.length === 0) return;
-      const idx = articles.findIndex(
-        (a: ReaderListArticle) => a.id === effectiveSelectedId
-      );
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (idx < articles.length - 1) {
-          selectArticle(articles[idx + 1].id, { replace: true });
-        } else {
-          fetchNextAndSelect(idx);
-        }
-      } else if (e.key === 'ArrowUp' && idx > 0) {
-        e.preventDefault();
-        selectArticle(articles[idx - 1].id, { replace: true });
-      }
-    },
-    [effectiveSelectedId, articles, fetchNextAndSelect, selectArticle]
-  );
+  // 一覧の選択・キーボード操作・md 未満のフォーカスの移動（use-reader-list-navigation.ts）
+  const {
+    listActiveId,
+    handleSelectArticle,
+    handleKeyDown,
+    listboxRef,
+    listRegionRef,
+    detailRegionRef,
+  } = useReaderListNavigation({
+    articles,
+    articleParam,
+    effectiveSelectedId,
+    isDesktop,
+    isDesktopRef,
+    selectArticle,
+    fetchNextAndSelect,
+    loadMore: handleLoadMore,
+  });
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -349,8 +341,10 @@ function ReaderClientInner({
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Left panel: Article list */}
         <div
+          ref={listRegionRef}
+          tabIndex={-1}
           className={cn(
-            'shrink-0 overflow-y-auto border-r border-[var(--tt-color-border)] md:w-[320px] lg:w-[380px]',
+            'shrink-0 overflow-y-auto border-r border-[var(--tt-color-border)] outline-none md:w-[320px] lg:w-[380px]',
             articleParam ? 'hidden md:block' : 'block w-full'
           )}
           role="region"
@@ -358,7 +352,7 @@ function ReaderClientInner({
         >
           <ReaderArticleList
             articles={articles}
-            selectedId={effectiveSelectedId}
+            selectedId={listActiveId}
             isLoading={isLoadingList}
             error={listError instanceof Error ? listError.message : null}
             onSelectArticle={handleSelectArticle}
@@ -367,12 +361,17 @@ function ReaderClientInner({
             hasNextPage={!!hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
             onLoadMore={handleLoadMore}
+            listboxRef={listboxRef}
           />
         </div>
         {/* Right panel: Article detail */}
         <div
+          ref={detailRegionRef}
+          tabIndex={-1}
+          // 本文の領域そのものをスクロールさせる。開いたときにフォーカスをここへ移すので、
+          // そのまま矢印キー・PageDown・Space で読み進められる（スクロールする要素が子だと動かない）
           className={cn(
-            'flex-1 overflow-hidden',
+            'flex-1 overflow-y-auto outline-none',
             articleParam ? 'block' : 'hidden md:block'
           )}
           role="region"
