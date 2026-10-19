@@ -10,7 +10,7 @@ import {
   useTransition,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { BarChart3, ArrowUpRight } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { PageHeader } from '@/components/ui-v2/page-header';
@@ -34,6 +34,8 @@ import type {
 // null はサーバーでの取得の失敗。空配列（該当なし）とは別に表示する（issue #701）
 interface TrendsContentProps {
   initialKeywords: TrendingKeyword[] | null;
+  /** 急上昇のタグの総数（一覧は上位 20 件に打ち切る） */
+  trendingTotal: number | null;
   initialNewTags: NewTag[] | null;
   /** 急上昇キーワード・新着タグの集計時刻（issue #707） */
   keywordsAggregatedAt?: string | null;
@@ -45,6 +47,7 @@ interface TrendsContentProps {
 
 export function TrendsContent({
   initialKeywords,
+  trendingTotal,
   initialNewTags,
   keywordsAggregatedAt,
   initialAnalysis,
@@ -185,7 +188,7 @@ export function TrendsContent({
 
       {/* Stats Bar */}
       <TrendStatsBar
-        trendingCount={initialKeywords?.length ?? null}
+        trendingCount={trendingTotal}
         newTagCount={initialNewTags?.length ?? null}
         topTagCount={
           trendAnalysis ? (trendAnalysis.topTags?.length ?? 0) : null
@@ -195,6 +198,7 @@ export function TrendsContent({
 
       <TrendingKeywordsSection
         keywords={initialKeywords}
+        total={trendingTotal}
         aggregatedAt={keywordsAggregatedAt}
         onRetry={refreshServerData}
         retrying={isRefreshing}
@@ -256,7 +260,7 @@ export function TrendsContent({
 
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Top Tags List */}
-            <div className="bg-background rounded-lg border p-4 shadow-sm">
+            <div className="bg-background rounded-lg border p-4">
               <div className="mb-3 flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-(--tt-color-info)" />
                 <h3 className="text-h3">人気タグ TOP10</h3>
@@ -294,7 +298,6 @@ export function TrendsContent({
                       <span className="text-muted-foreground text-xs">
                         {tag.totalCount}件
                       </span>
-                      <ArrowUpRight className="text-muted-foreground h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
                     </Link>
                   ))}
                 </div>

@@ -3,11 +3,10 @@ import { PageHeader } from '@/components/ui-v2/page-header';
 import { LoadingOverlay } from '@/app/components/common/loading-overlay';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendStatsBar } from '@/app/components/trends/overview/TrendStatsBar';
-import { TrendingKeywordCardSkeleton } from '@/app/components/trends/overview/TrendingKeywordCard';
 import { TrendNavigationCards } from '@/app/components/trends/overview/TrendNavigationCards';
 
 // トレンド概要の初回待ち（issue #701）。サーバーで集計を取る間、trends-content.tsx の
-// 並び（件数バー・急上昇キーワード・新着タグ・詳細レポート・分析）をスケルトンでなぞり、
+// 並び（件数の読み出し・いま伸びている話題・新着タグ・詳細レポート・分析）をスケルトンでなぞり、
 // 前面にスピナーを出す。
 // 日次・差分などの配下のページに効かないよう、概要だけをルートグループに置いている
 export default function Loading() {
@@ -24,17 +23,26 @@ export default function Loading() {
             loading
           />
 
-          <section className="bg-background rounded-lg border p-4 shadow-sm">
+          {/* 順位表（2 列 × 10 行）の行の高さをなぞる */}
+          <section className="bg-background rounded-lg border p-4">
             <Skeleton className="mb-3 h-5 w-40" />
             <Skeleton className="mb-3 h-4 w-56" />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <TrendingKeywordCardSkeleton key={i} />
+            <div className="grid md:grid-cols-2 md:gap-x-8">
+              {Array.from({ length: 20 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex h-[57px] items-center gap-3 border-b border-(--tt-color-border)"
+                >
+                  <Skeleton className="h-4 w-5" />
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-6 w-10" />
+                  <Skeleton className="h-6 w-20" />
+                </div>
               ))}
             </div>
           </section>
 
-          <section className="bg-background rounded-lg border p-4 shadow-sm">
+          <section className="bg-background rounded-lg border p-4">
             <Skeleton className="mb-3 h-5 w-28" />
             <div className="flex flex-wrap gap-2">
               {[64, 88, 56, 72, 96, 60].map((width, i) => (

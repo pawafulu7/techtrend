@@ -22,10 +22,11 @@ export class TrendsCache extends RedisCache {
   generateTrendsKey(params: { days?: number; tag?: string }): string {
     const { days = 30, tag = '' } = params;
     // Version the unified payload; distinguish the actual tag "all" from no tag filter.
+    // v3: 日別のまとめを日本時間の暦日にし、期間に上限を付けた（v2 の値は UTC の日付で、未来の記事も数えていた）
     const tagPart = tag
       ? `name_${crypto.createHash('sha256').update(tag).digest('hex')}`
       : 'all';
-    return `analysis:v2:days_${days}:tag_${tagPart}`;
+    return `analysis:v3:days_${days}:tag_${tagPart}`;
   }
 
   /**

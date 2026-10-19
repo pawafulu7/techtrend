@@ -133,7 +133,7 @@ export function SourcePieChart({
 
   if (loading) {
     return (
-      <div className="bg-background rounded-lg border p-4 shadow-sm">
+      <div className="bg-background rounded-lg border p-4">
         <div className="mb-3 flex items-center gap-2">
           <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
           <h3 className="text-h3">ソース別記事分布</h3>
@@ -145,7 +145,7 @@ export function SourcePieChart({
 
   if (data === null) {
     return (
-      <div className="bg-background rounded-lg border p-4 shadow-sm">
+      <div className="bg-background rounded-lg border p-4">
         <div className="mb-3 flex items-center gap-2">
           <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
           <h3 className="text-h3">ソース別記事分布</h3>
@@ -163,7 +163,7 @@ export function SourcePieChart({
 
   if (data.length === 0) {
     return (
-      <div className="bg-background rounded-lg border p-4 shadow-sm">
+      <div className="bg-background rounded-lg border p-4">
         <div className="mb-3 flex items-center gap-2">
           <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
           <h3 className="text-h3">ソース別記事分布</h3>
@@ -177,7 +177,7 @@ export function SourcePieChart({
   }
 
   return (
-    <div className="bg-background rounded-lg border p-4 shadow-sm">
+    <div className="bg-background rounded-lg border p-4">
       <div className="mb-3 flex items-center gap-2">
         <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
         <h3 className="text-h3">ソース別記事分布</h3>
