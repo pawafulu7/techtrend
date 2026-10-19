@@ -39,6 +39,7 @@ import {
 import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import {
   ENABLED_SOURCE_SQL,
+  expectAnalysisPeriodSql,
   sqlFragmentsOf,
 } from '../../helpers/sql-fragments';
 
@@ -78,18 +79,7 @@ describe('trends-data: 無効化したソースの記事を数えない（issue 
 
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     for (const call of prismaMock.$queryRaw.mock.calls) {
-      const sql = sqlFragmentsOf(call).join(' ');
-      expect(sql).toContain(`a."isHidden" = false`);
-      expect(sql).toContain(`AND ${ENABLED}`);
-      // 期間は ::timestamptz で読み（::timestamp はセッションのタイムゾーンで時差の分ずれる）、
-      // 集計の時刻を上限にする（[from, to)）
-      expect(sql).toMatch(/a\."publishedAt" >= \S+::timestamptz/);
-      expect(sql).toMatch(/a\."publishedAt" < \S+::timestamptz/);
-      // 埋め込んだ断片と、外側のテンプレートの文字列の両方に、タイムゾーン無しのキャストが無い
-      const template = (call[0] as readonly string[]).join('');
-      for (const text of [sql, template]) {
-        expect(text).not.toMatch(/::timestamp(?!tz)/);
-      }
+      expectAnalysisPeriodSql(call);
     }
     // 日別のまとめは日本時間の暦日（0 で埋める日付と同じ区切り）
     const [, timeline] = prismaMock.$queryRaw.mock.calls;

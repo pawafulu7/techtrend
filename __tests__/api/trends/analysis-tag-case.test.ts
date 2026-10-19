@@ -14,10 +14,7 @@ jest.mock('@/lib/cache/trends-cache', () => ({
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { GET } from '@/app/api/trends/analysis/route';
-import {
-  ENABLED_SOURCE_SQL,
-  sqlFragmentsOf,
-} from '../../helpers/sql-fragments';
+import { expectAnalysisPeriodSql } from '../../helpers/sql-fragments';
 
 const prismaMock = prisma as unknown as { $queryRaw: jest.Mock };
 
@@ -52,8 +49,6 @@ describe('GET /api/trends/analysis (tag)', () => {
 });
 
 describe('GET /api/trends/analysis: 無効化したソースの記事を数えない（issue #688）', () => {
-  const ENABLED = `a."sourceId" ${ENABLED_SOURCE_SQL}`;
-
   beforeEach(() => {
     prismaMock.$queryRaw.mockReset();
     prismaMock.$queryRaw.mockResolvedValue([]);
@@ -67,8 +62,9 @@ describe('GET /api/trends/analysis: 無効化したソースの記事を数え�
     );
 
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+    // 期間（articleAggregationSql）の断片に、有効なソースと非表示でない条件が AND で入る
     for (const call of prismaMock.$queryRaw.mock.calls) {
-      expect(sqlFragmentsOf(call, { afterAnd: true })).toEqual([ENABLED]);
+      expectAnalysisPeriodSql(call);
     }
   });
 
@@ -82,8 +78,9 @@ describe('GET /api/trends/analysis: 無効化したソースの記事を数え�
     );
 
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+    // 期間（articleAggregationSql）の断片に、有効なソースと非表示でない条件が AND で入る
     for (const call of prismaMock.$queryRaw.mock.calls) {
-      expect(sqlFragmentsOf(call, { afterAnd: true })).toEqual([ENABLED]);
+      expectAnalysisPeriodSql(call);
     }
   });
 });

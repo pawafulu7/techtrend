@@ -270,7 +270,7 @@ export function TrendsContent({
                   {[...Array(10)].map((_, i) => (
                     <div
                       key={i}
-                      className="h-8 animate-pulse rounded bg-(--tt-color-surface-muted)"
+                      className="h-8 animate-pulse rounded bg-(--tt-color-surface-muted) motion-reduce:animate-none"
                     />
                   ))}
                 </div>

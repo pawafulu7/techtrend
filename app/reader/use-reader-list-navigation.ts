@@ -33,7 +33,9 @@ interface UseReaderListNavigationOptions {
  *
  * 選んでいる行は、URL（articleParam）から作らずにここの state で持つ。URL の更新（useSearchParams）は
  * transition の中で遅れて届くので、矢印キーを連打すると古い位置から動いてしまうため。
- * 自分で書いた URL が後から届いたときは、state を戻さない（途中の値で選択が巻き戻らないように）
+ * articleParam が変わったときは、今の URL と一致するときだけ選択を合わせる。History API は同期で URL を
+ * 書き換えるので、一致しない値は途中の古い値で、それで選択を巻き戻さない（途中の値が届かずに飛ばされることも
+ * あるので、自分で書いた値を覚えて照合する形にはしない）
  */
 export function useReaderListNavigation({
   articles,
@@ -48,18 +50,16 @@ export function useReaderListNavigation({
   // 一覧で選んでいる行。null の間は本文の記事（effectiveSelectedId）に従う。md 未満では、記事を開いている間
   // （前の記事・次の記事を含む）は開いている記事に合わせ、一覧に戻ったときにその行を指す
   const [activeId, setActiveId] = useState<string | null>(articleParam);
-  // 自分で URL に書いたが、まだ articleParam に届いていない記事（古い順）
-  const [pendingWrites, setPendingWrites] = useState<string[]>([]);
   const [syncedArticleParam, setSyncedArticleParam] = useState(articleParam);
   if (articleParam !== syncedArticleParam) {
     setSyncedArticleParam(articleParam);
-    const written = articleParam ? pendingWrites.indexOf(articleParam) : -1;
-    if (written >= 0) {
-      // 自分で書いた値が届いた。それより前に書いた値はもう届かないので捨て、選択は戻さない
-      setPendingWrites(pendingWrites.slice(written + 1));
-    } else {
-      // 外からの変更（本文の前の記事・次の記事、ブラウザの戻る・進む）。まだ届いていない自分の書き込みより新しい
-      if (pendingWrites.length > 0) setPendingWrites([]);
+    const latestArticle =
+      typeof window === 'undefined'
+        ? articleParam
+        : new URLSearchParams(window.location.search).get('article');
+    // 今の URL の値（自分で選んだ記事、本文の前の記事・次の記事、ブラウザの戻る・進む）。md 未満で一覧に
+    // 戻ったとき（null）は、直前に開いていた行を指したままにする
+    if (articleParam === latestArticle) {
       if (articleParam) setActiveId(articleParam);
       else if (isDesktop) setActiveId(null);
     }
@@ -69,7 +69,6 @@ export function useReaderListNavigation({
   const writeSelection = useCallback(
     (articleId: string, opts?: { replace?: boolean }) => {
       setActiveId(articleId);
-      setPendingWrites((pending) => [...pending, articleId]);
       selectArticle(articleId, opts);
     },
     [selectArticle]

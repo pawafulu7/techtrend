@@ -25,10 +25,11 @@ jest.mock('@/lib/prisma', () => {
   const { createPrismaClient } = jest.requireActual(
     '@/lib/prisma/create-client'
   );
-  const url = new URL(
-    process.env.DATABASE_URL ||
-      'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test'
-  );
+  // 接続先は DATABASE_URL だけから取る（jest.setup.integration.js か docker-compose.test.yml が設定する）
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is required for this integration test');
+  }
+  const url = new URL(process.env.DATABASE_URL);
   url.searchParams.set('options', '-c TimeZone=America/Los_Angeles');
   return {
     prisma: createPrismaClient({ connectionString: url.toString() }),
@@ -51,10 +52,11 @@ import {
 
 // テストのデータは UTC のセッションで作る。Prisma の pg アダプターは日時をオフセット無しで送るので、
 // LA のセッションで書くと保存される時刻が時差の分ずれる（読む側の集計だけを LA のセッションにする）
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is required for this integration test');
+}
 const prisma = createPrismaClient({
-  connectionString:
-    process.env.DATABASE_URL ||
-    'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test',
+  connectionString: process.env.DATABASE_URL,
 });
 
 const PREFIX = '__test_trend_tz_';

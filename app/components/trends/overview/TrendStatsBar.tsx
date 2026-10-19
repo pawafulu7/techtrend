@@ -47,7 +47,7 @@ export function TrendStatsBar({
           <dt className="text-xs text-(--tt-color-text-muted)">{label}</dt>
           <dd className="readout text-foreground text-[28px]">
             {loading ? (
-              <span className="block h-7 w-12 animate-pulse rounded-sm bg-(--tt-color-surface-muted)" />
+              <span className="block h-7 w-12 animate-pulse rounded-sm bg-(--tt-color-surface-muted) motion-reduce:animate-none" />
             ) : (
               <StatValue value={values[key]} />
             )}

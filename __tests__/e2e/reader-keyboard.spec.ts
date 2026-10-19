@@ -112,6 +112,28 @@ test.describe('リーダーのキーボード操作（デスクトップ）', ()
     );
   });
 
+  test('↓・↑ と続けて押した後に本文の「次の記事」を押すと、一覧の選択は本文の記事を指す', async ({
+    page,
+  }) => {
+    await openReader(page);
+    const box = listbox(page);
+    await box.focus();
+    const firstId = await articleIdOf(page, 0);
+    // 途中の URL（2 件目）が届く前に戻すと、届かずに飛ばされることがある
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowUp');
+    await page.locator('button:visible', { hasText: '次の記事' }).click();
+
+    // 本文が先頭から替わった後、一覧の選択は本文の記事（URL の article）を指す
+    await expect.poll(() => articleParam(page)).not.toBe(firstId);
+    await expect.poll(() => articleParam(page)).not.toBeNull();
+    const bodyId = articleParam(page);
+    await expect(box).toHaveAttribute(
+      'aria-activedescendant',
+      `reader-article-${bodyId}`
+    );
+  });
+
   test('本文の「次の記事」で選択が変わっても、フォーカスは押したボタンに残る', async ({
     page,
   }) => {
