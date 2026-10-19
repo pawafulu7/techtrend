@@ -2,7 +2,7 @@
  * ホームに出る記事の条件（lib/database/home-article-filter.ts）と、タグ別・24 時間ごとの区間の集計
  * （lib/database/tag-day-buckets.ts）の結合テスト。
  *
- * - 帯の件数と、帯を押した先のホームの一覧の件数をそろえるため、生 SQL の条件が一覧 API の
+ * - 急上昇の件数と、話題を押した先のホームの一覧の母集団をそろえるため、生 SQL の条件が一覧 API の
  *   Prisma の where（buildWhereClause にホームが渡す条件を足したもの）と同じ記事を数えることを確かめる
  * - 区間の境界（ちょうど 24 時間前・7 日前・集計の時刻）が、期間の条件 [from, to) と同じ側に入ることを確かめる
  *
@@ -86,10 +86,11 @@ async function createArticle(
   return id;
 }
 
+// PREFIX の _ は LIKE では任意の1文字になるので、starts_with で比べる
 async function cleanup() {
-  await prisma.$executeRaw`DELETE FROM "Article" WHERE id LIKE ${PREFIX + '%'}`;
-  await prisma.$executeRaw`DELETE FROM "Tag" WHERE name LIKE ${PREFIX + '%'}`;
-  await prisma.$executeRaw`DELETE FROM "Source" WHERE name LIKE ${PREFIX + '%'}`;
+  await prisma.$executeRaw`DELETE FROM "Article" WHERE starts_with(id, ${PREFIX})`;
+  await prisma.$executeRaw`DELETE FROM "Tag" WHERE starts_with(name, ${PREFIX})`;
+  await prisma.$executeRaw`DELETE FROM "Source" WHERE starts_with(name, ${PREFIX})`;
 }
 
 /** 生 SQL の条件で数えた、このテストの記事の件数 */
@@ -97,7 +98,7 @@ async function countBySql(period: { from: Date; to: Date }) {
   const [{ count }] = await prisma.$queryRaw<{ count: number }[]>`
     SELECT COUNT(*)::int AS count FROM "Article" a
     WHERE ${homeArticleSql(period)}
-      AND a.id LIKE ${PREFIX + '%'}
+      AND starts_with(a.id, ${PREFIX})
   `;
   return count;
 }
@@ -243,7 +244,10 @@ describe('ホームに出る記事の条件（生 SQL）と一覧 API の条件'
     ];
 
     for (const c of cases) {
-      await createArticle({ publishedAt: at, ...c.data });
+      await createArticle({
+        ...c.data,
+        publishedAt: (c.data.publishedAt as Date | undefined) ?? at,
+      });
     }
 
     const expected = cases.filter((c) => c.shown).length;
@@ -254,7 +258,7 @@ describe('ホームに出る記事の条件（生 SQL）と一覧 API の条件'
   it('記事ごとに見ても、生 SQL と一覧 API の結果が同じ記事になる', async () => {
     const bySql = await prisma.$queryRaw<{ id: string }[]>`
       SELECT a.id FROM "Article" a
-      WHERE ${homeArticleSql(period)} AND a.id LIKE ${PREFIX + '%'}
+      WHERE ${homeArticleSql(period)} AND starts_with(a.id, ${PREFIX})
       ORDER BY a.id
     `;
     const byApi = await prisma.article.findMany({

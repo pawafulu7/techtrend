@@ -2,7 +2,7 @@ import { SourceCache } from '@/lib/cache/source-cache';
 import { prisma } from '@/lib/database';
 import { resetPrismaMock } from '../../../test/utils/prisma-mock';
 import { articleDetailCache } from '../../../lib/cache/article-detail-cache';
-import { keywordsCache } from '@/lib/cache/keywords-cache';
+import { keywordsCache } from '../../../lib/cache/keywords-cache';
 
 jest.mock('@/lib/logger');
 // source-cache は使うときに './article-detail-cache' を読むので、同じ実体を指すパスでモックする
@@ -11,7 +11,8 @@ jest.mock('../../../lib/cache/article-detail-cache', () => ({
     invalidateAllRelated: jest.fn().mockResolvedValue(undefined),
   },
 }));
-jest.mock('@/lib/cache/keywords-cache', () => ({
+// source-cache は使うときに './keywords-cache' を読むので、同じ実体を指すパスでモックする
+jest.mock('../../../lib/cache/keywords-cache', () => ({
   keywordsCache: {
     invalidateTrending: jest.fn().mockResolvedValue(undefined),
   },

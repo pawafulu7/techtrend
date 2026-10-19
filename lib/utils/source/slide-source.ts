@@ -11,7 +11,10 @@ export const SLIDE_SOURCE_NAME_LIST: readonly string[] = [
   ...SLIDE_SOURCE_NAMES,
 ];
 
-/** スライドの記事 URL の先頭（収集時の形）。slideArticleWhere と生 SQL の条件で使う */
+/**
+ * スライドの記事 URL の先頭（収集時の形）。slideArticleWhere（Prisma の startsWith = LIKE）と、生 SQL の
+ * 条件（starts_with）で使う。LIKE の特殊文字（_ % \）を含めると2つの条件の結果がずれるので、含めない
+ */
 export const SLIDE_URL_PREFIXES: readonly string[] = [...SLIDE_HOSTS].flatMap(
   (host) =>
     ['https', 'http'].flatMap((scheme) => [

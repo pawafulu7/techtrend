@@ -180,7 +180,7 @@ describe('/api/trends/keywords', () => {
     // Tag A: recentCount=1, weeklyAvg=1.0 → growthRate=0, isTrending=false → EXCLUDED
     // Tag B: recentCount=2, weeklyAvg=1.0 → growthRate=100, isTrending=true → INCLUDED
     // Tag C: recentCount=3, weeklyAvg=3.0 → growthRate=0, isTrending=false → EXCLUDED
-    //   （帯の「いま伸びている話題」と食い違わないよう、件数が多いだけのタグは入れない）
+    //   （急上昇の一覧には伸びているタグだけを出す。件数が多いだけのタグは入れない）
     // Tag D: recentCount=1, weeklyAvg=0.5→eff=1.0 → growthRate=0, isTrending=false → EXCLUDED
     mockQueries(
       bucketRows([

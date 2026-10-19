@@ -177,17 +177,26 @@ async function patchHandler(
       },
     });
 
-    // キャッシュ無効化（best-effort: DB更新成功後の失敗は無視）
-    try {
-      await cacheInvalidator.onArticleUpdated(id);
-      await articleDetailCache.invalidateArticle(id);
-      await articleDetailCache.invalidateAllRelated();
-      await trendsCache.invalidatePattern('*');
+    // キャッシュ無効化（best-effort: DB更新成功後の失敗は無視）。互いに独立しているので、
+    // 1つが失敗しても残りを試す（順に await すると、前の失敗で後ろの無効化が飛ばされる）
+    const invalidations = await Promise.allSettled([
+      cacheInvalidator.onArticleUpdated(id),
+      articleDetailCache.invalidateArticle(id),
+      articleDetailCache.invalidateAllRelated(),
+      trendsCache.invalidatePattern('*'),
       // 急上昇の集計（トレンド概要）は非表示の記事を数えない
-      await keywordsCache.invalidateTrending();
-    } catch (cacheError) {
+      keywordsCache.invalidateTrending(),
+    ]);
+    const failedInvalidations = invalidations.filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected'
+    );
+    if (failedInvalidations.length > 0) {
       logger.error(
-        { articleId: id, err: cacheError },
+        {
+          articleId: id,
+          err: failedInvalidations[0].reason,
+          failedCount: failedInvalidations.length,
+        },
         '[AdminArticleDetailAPI] Cache invalidation failed (DB update succeeded)'
       );
     }

@@ -214,8 +214,31 @@ describe('PATCH /api/admin/articles/[id] - hide toggle', () => {
     );
   });
 
-  it('非表示を切り替えたら、急上昇の集計（ホームの帯・トレンド概要）のキャッシュを捨てる', async () => {
+  it('非表示を切り替えたら、急上昇の集計（トレンド概要）のキャッシュを捨てる', async () => {
     const { keywordsCache } = jest.requireMock('@/lib/cache/keywords-cache');
+    (mockPrisma.article.update as jest.Mock).mockResolvedValue({
+      ...mockArticleDetail,
+      isHidden: true,
+    });
+
+    const request = new NextRequest(`http://localhost/api/admin/articles/${VALID_ID}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isHidden: true }),
+    });
+    const response = await PATCH(request, { params: Promise.resolve({ id: VALID_ID }) });
+
+    expect(response.status).toBe(200);
+    expect(keywordsCache.invalidateTrending).toHaveBeenCalledTimes(1);
+  });
+
+  it('ほかのキャッシュの無効化が失敗しても、急上昇の集計のキャッシュは捨て、200 を返す', async () => {
+    const { keywordsCache } = jest.requireMock('@/lib/cache/keywords-cache');
+    const { articleDetailCache } = jest.requireMock(
+      '@/lib/cache/article-detail-cache'
+    );
+    articleDetailCache.invalidateArticle.mockRejectedValueOnce(
+      new Error('Redis error')
+    );
     (mockPrisma.article.update as jest.Mock).mockResolvedValue({
       ...mockArticleDetail,
       isHidden: true,
