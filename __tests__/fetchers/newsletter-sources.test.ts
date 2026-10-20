@@ -54,7 +54,7 @@ describe('未登録だった4ソースの登録の整合', () => {
   });
 });
 
-describe('既存記事のソースの付け替え（はてなブックマーク・ニュースレター → 出し手）', () => {
+describe('既存記事のソースの付け替え（はてなブックマーク・ニュースレター・リンクを集めるソース → 出し手）', () => {
   const publisher = 'github_blog_202508';
 
   it('はてなブックマーク経由の記事は、ふつうのソースに付け替える', () => {
@@ -71,16 +71,28 @@ describe('既存記事のソースの付け替え（はてなブックマーク�
   });
 
   it.each(['hacker_news_202508', 'lobsters', 'techmeme'])(
-    'リンクを集めるソース %s へは、はてな・ニュースレターから付け替えない',
+    'リンクを集めるソース %s へは、はてな・ニュースレター・ほかのリンクを集めるソースから付け替えない',
     (aggregator) => {
       expect(shouldTransferSource('javascript_weekly', aggregator)).toBe(false);
       expect(shouldTransferSource(HATENA_SOURCE_ID, aggregator)).toBe(false);
+      expect(shouldTransferSource(publisher, aggregator)).toBe(false);
+      const other = aggregator === 'lobsters' ? 'techmeme' : 'lobsters';
+      expect(shouldTransferSource(other, aggregator)).toBe(false);
+    }
+  );
+
+  it.each(['hacker_news_202508', 'lobsters', 'techmeme'])(
+    'リンクを集めるソース %s が先に保存した記事は、後から取った出し手に付け替える（はてな・ニュースレターには付け替えない）',
+    (aggregator) => {
+      expect(shouldTransferSource(aggregator, publisher)).toBe(true);
+      expect(shouldTransferSource(aggregator, HATENA_SOURCE_ID)).toBe(false);
+      expect(shouldTransferSource(aggregator, 'javascript_weekly')).toBe(false);
     }
   );
 
   it('ニュースレター同士・はてなへは付け替えない。出し手同士も付け替えない', () => {
     expect(shouldTransferSource('javascript_weekly', 'node_weekly')).toBe(false);
     expect(shouldTransferSource('javascript_weekly', HATENA_SOURCE_ID)).toBe(false);
-    expect(shouldTransferSource('hacker_news_202508', publisher)).toBe(false);
+    expect(shouldTransferSource(publisher, 'cloudflare_blog_202508')).toBe(false);
   });
 });

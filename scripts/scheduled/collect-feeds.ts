@@ -294,14 +294,14 @@ async function processSource({
           // 自己修復の成功のいずれかがあれば true にし、末尾で一度だけ計上する
           let articleUpdated = false;
 
-          // はてぶ・ニュースレター経由 → 企業ブログなどの場合、sourceIdを更新（ニュースレターには移さない）
+          // はてぶ・ニュースレター・リンクを集めるソース経由 → 企業ブログなどの場合、sourceIdを更新（それらには移さない）
           // （content補完のCASとは独立させ、無条件で適用する）
           if (shouldTransferSource(existing.sourceId, source.id)) {
             await prisma.article.update({
               where: { id: existing.id },
               data: { sourceId: source.id },
             });
-            console.error(`   [INFO] sourceId更新: ${source.name} <- Hatena`);
+            console.error(`   [INFO] sourceId更新: ${source.name} <- ${existing.sourceId}`);
             articleUpdated = true;
           }
 
@@ -611,7 +611,7 @@ async function processSource({
                 where: { id: latestExisting.id },
                 data: { sourceId: source.id },
               });
-              console.error(`   [INFO] sourceId更新: ${source.name} <- Hatena`);
+              console.error(`   [INFO] sourceId更新: ${source.name} <- ${latestExisting.sourceId}`);
               articleUpdated = true;
             }
 
