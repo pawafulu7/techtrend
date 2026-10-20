@@ -164,8 +164,9 @@ export function TagCloud({
   return (
     <Card className={className}>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>タグクラウド</CardTitle>
+        {/* 狭い幅では見出しを折らず、期間のボタンを次の行に回す（app/tags/loading.tsx と同じ形） */}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <CardTitle className="whitespace-nowrap">タグクラウド</CardTitle>
           <div className="flex items-center gap-2">
             <div role="group" aria-label="集計の期間" className="flex gap-1">
               <Button
