@@ -30,12 +30,9 @@ export class SREFetcher extends BaseFetcher {
   // SRE関連の複数のRSSフィードを統合
   // SRE Weekly は号の中の記事を1本ずつ取り込むソース（curated-newsletter）に移した。
   // ここにも残すと、号まるごとの1記事と号の中の記事が二重に入る
+  // Google Cloud の SRE の製品別フィード（HTML や 500 を返す）と Datadog（404）は、一度も記事を
+  // 取れていなかったので外した（2026-10 時点）
   private rssUrls = [
-    {
-      url: 'https://cloud.google.com/blog/products/devops-sre/rss',
-      name: 'Google Cloud SRE',
-    },
-    { url: 'https://www.datadoghq.com/blog/rss/', name: 'Datadog' },
     { url: 'https://www.hashicorp.com/blog/feed.xml', name: 'HashiCorp' },
     { url: 'https://www.cncf.io/feed/', name: 'CNCF' },
     { url: 'https://grafana.com/blog/index.xml', name: 'Grafana Labs' },

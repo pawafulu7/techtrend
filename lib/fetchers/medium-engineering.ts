@@ -31,6 +31,8 @@ export class MediumEngineeringFetcher extends BaseFetcher {
   private parser: Parser<unknown, MediumItem>;
 
   // 主要な技術系Mediumブログ
+  // Uber Engineering（eng.uber.com のフィードは 404。移転先の uber.com/blog にもフィードが無い）は、
+  // 一度も記事を取れていなかったので外した（2026-10 時点）
   private feeds: MediumFeed[] = [
     {
       name: 'Engineering at Medium',
@@ -46,11 +48,6 @@ export class MediumEngineeringFetcher extends BaseFetcher {
       name: 'Airbnb Engineering',
       url: 'https://medium.com/feed/airbnb-engineering',
       tags: ['Airbnb', 'Travel Tech'],
-    },
-    {
-      name: 'Uber Engineering',
-      url: 'https://eng.uber.com/feed/',
-      tags: ['Uber', 'Distributed Systems'],
     },
     {
       name: 'Spotify Engineering',
