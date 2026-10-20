@@ -27,16 +27,18 @@ interface SRERSSItem {
 
 export class SREFetcher extends BaseFetcher {
   private parser: Parser<unknown, SRERSSItem>;
-  private readonly feedTimeoutMs = Number(env.FETCHER_TIMEOUT_MS ?? 120_000);
+  private readonly feedTimeoutMs =
+    env.FETCHER_TIMEOUT_MS > 0 ? env.FETCHER_TIMEOUT_MS : 120_000;
 
   // SRE関連の複数のRSSフィードを統合
   // SRE Weekly は号の中の記事を1本ずつ取り込むソース（curated-newsletter）に移した。
   // ここにも残すと、号まるごとの1記事と号の中の記事が二重に入る
   // Google Cloud の SRE の製品別フィード（HTML や 500 を返す）と Datadog（404）は、一度も記事を
   // 取れていなかったので外した（2026-10 時点）
+  // CNCF は専用のソース（CNCF Blog）が同じフィードを読むので外した。両方が読むと、記事がどちらに
+  // 付くかが取得の順で決まる
   private rssUrls = [
     { url: 'https://www.hashicorp.com/blog/feed.xml', name: 'HashiCorp' },
-    { url: 'https://www.cncf.io/feed/', name: 'CNCF' },
     { url: 'https://grafana.com/blog/index.xml', name: 'Grafana Labs' },
   ];
 

@@ -34,6 +34,8 @@ export class MediumEngineeringFetcher extends BaseFetcher {
   // 主要な技術系Mediumブログ
   // Uber Engineering（eng.uber.com のフィードは 404。移転先の uber.com/blog にもフィードが無い）は、
   // 一度も記事を取れていなかったので外した（2026-10 時点）
+  // Netflix TechBlog と Spotify Engineering は専用のソースが同じフィードを読むので外した。両方が読むと、
+  // 記事がどちらに付くかが取得の順で決まる
   private feeds: MediumFeed[] = [
     {
       name: 'Engineering at Medium',
@@ -41,19 +43,9 @@ export class MediumEngineeringFetcher extends BaseFetcher {
       tags: ['Medium', 'Engineering'],
     },
     {
-      name: 'Netflix TechBlog',
-      url: 'https://netflixtechblog.medium.com/feed',
-      tags: ['Netflix', 'Streaming', 'Scale'],
-    },
-    {
       name: 'Airbnb Engineering',
       url: 'https://medium.com/feed/airbnb-engineering',
       tags: ['Airbnb', 'Travel Tech'],
-    },
-    {
-      name: 'Spotify Engineering',
-      url: 'https://engineering.atspotify.com/feed/',
-      tags: ['Spotify', 'Music Tech'],
     },
   ];
 
