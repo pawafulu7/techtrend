@@ -1,5 +1,7 @@
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from '../fetch-feed';
+import { shouldTransferSource } from '../source-transfer';
 import sanitizeHtml from 'sanitize-html';
 import pLimit from 'p-limit';
 import { BaseFetcher } from '../base';
@@ -13,6 +15,7 @@ import { env } from '@/lib/config/env';
 
 export class ArxivAIFetcher extends BaseFetcher {
   private parser: Parser;
+  private readonly feedTimeoutMs: number;
 
   // Combined RSS feed (single HTTP request for all categories)
   private readonly RSS_URL = 'https://rss.arxiv.org/rss/cs.AI+cs.LG+cs.CL';
@@ -38,14 +41,12 @@ export class ArxivAIFetcher extends BaseFetcher {
     super(source);
     const rawTimeout = env.FETCHER_TIMEOUT_MS;
     const parsedTimeout = rawTimeout ? Number(rawTimeout) : NaN;
-    const timeout =
+    this.feedTimeoutMs =
       Number.isFinite(parsedTimeout) && parsedTimeout > 0
         ? parsedTimeout
         : 600_000; // 10 min default
 
-    this.parser = new Parser({
-      timeout,
-    });
+    this.parser = new Parser();
   }
 
   async fetch(): Promise<FetchResult> {
@@ -61,7 +62,11 @@ export class ArxivAIFetcher extends BaseFetcher {
       logger.info('arXiv AI記事取得開始（統合フィード使用）');
 
       // Fetch combined RSS feed (single HTTP request)
-      const feed = await this.retry(() => this.parser.parseURL(this.RSS_URL));
+      const feed = await this.retry(async () =>
+        this.parser.parseString(
+          await fetchFeedXml(this.RSS_URL, { timeoutMs: this.feedTimeoutMs })
+        )
+      );
 
       if (!feed.items || feed.items.length === 0) {
         logger.warn('arXiv AI: 記事が見つかりませんでした');
@@ -79,9 +84,15 @@ export class ArxivAIFetcher extends BaseFetcher {
         where: {
           url: { in: feedUrls },
         },
-        select: { url: true },
+        select: { url: true, sourceId: true },
       });
-      const existingUrlSet = new Set(existingArticles.map((a) => a.url));
+      // はてなブックマークや Hacker News などが先に保存した論文は、収集側（collect-feeds）で
+      // arXiv に付け替えるので返す（ここで除くと付け替えまで届かない）
+      const existingUrlSet = new Set(
+        existingArticles
+          .filter((a) => !shouldTransferSource(a.sourceId, this.source.id))
+          .map((a) => a.url)
+      );
 
       logger.info(`arXiv AI: DB既存URL ${existingUrlSet.size} 件を除外`);
 

@@ -2,6 +2,7 @@ import { BaseFetcher } from './base';
 import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { parseRSSDate } from '@/lib/utils/date';
 import { extractContent } from '@/lib/utils/content/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
@@ -48,7 +49,9 @@ export class GitHubBlogFetcher extends BaseFetcher {
     const now = new Date();
 
     try {
-      const feed = await this.retry(() => this.parser.parseURL(this.rssUrl));
+      const feed = await this.retry(async () =>
+        this.parser.parseString(await fetchFeedXml(this.rssUrl))
+      );
 
       if (!feed.items || feed.items.length === 0) {
         return { articles, errors };

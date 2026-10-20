@@ -1,5 +1,6 @@
 /* @ts-nocheck */
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import logger from '@/lib/logger';
@@ -32,12 +33,7 @@ export class GenericCorporateRssFetcher extends BaseFetcher {
 
   constructor(sourceId: string, feedUrl: string, sourceName: string) {
     super();
-    this.parser = new Parser({
-      timeout: 30000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; TechTrend/1.0)'
-      }
-    });
+    this.parser = new Parser();
     this.sourceId = sourceId;
     this.feedUrl = feedUrl;
     this.sourceName = sourceName;
@@ -46,7 +42,7 @@ export class GenericCorporateRssFetcher extends BaseFetcher {
   async fetch(): Promise<FetchResult[]> {
     try {
       
-      const feed = await this.parser.parseURL(this.feedUrl);
+      const feed = await this.parser.parseString(await fetchFeedXml(this.feedUrl));
       const results: FetchResult[] = [];
       
       // 最新30件まで処理

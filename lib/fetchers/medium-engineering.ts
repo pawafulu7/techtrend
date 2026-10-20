@@ -2,6 +2,7 @@ import { BaseFetcher } from './base';
 import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { parseRSSDate } from '@/lib/utils/date';
 import { extractContent } from '@/lib/utils/content/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
@@ -31,6 +32,10 @@ export class MediumEngineeringFetcher extends BaseFetcher {
   private parser: Parser<unknown, MediumItem>;
 
   // 主要な技術系Mediumブログ
+  // Uber Engineering（eng.uber.com のフィードは 404。移転先の uber.com/blog にもフィードが無い）は、
+  // 一度も記事を取れていなかったので外した（2026-10 時点）
+  // Netflix TechBlog と Spotify Engineering は専用のソースが同じフィードを読むので外した。両方が読むと、
+  // 記事がどちらに付くかが取得の順で決まる
   private feeds: MediumFeed[] = [
     {
       name: 'Engineering at Medium',
@@ -38,24 +43,9 @@ export class MediumEngineeringFetcher extends BaseFetcher {
       tags: ['Medium', 'Engineering'],
     },
     {
-      name: 'Netflix TechBlog',
-      url: 'https://netflixtechblog.medium.com/feed',
-      tags: ['Netflix', 'Streaming', 'Scale'],
-    },
-    {
       name: 'Airbnb Engineering',
       url: 'https://medium.com/feed/airbnb-engineering',
       tags: ['Airbnb', 'Travel Tech'],
-    },
-    {
-      name: 'Uber Engineering',
-      url: 'https://eng.uber.com/feed/',
-      tags: ['Uber', 'Distributed Systems'],
-    },
-    {
-      name: 'Spotify Engineering',
-      url: 'https://engineering.atspotify.com/feed/',
-      tags: ['Spotify', 'Music Tech'],
     },
   ];
 
@@ -89,7 +79,9 @@ export class MediumEngineeringFetcher extends BaseFetcher {
     // 各フィードから記事を取得
     for (const feedInfo of this.feeds) {
       try {
-        const feed = await this.retry(() => this.parser.parseURL(feedInfo.url));
+        const feed = await this.retry(async () =>
+          this.parser.parseString(await fetchFeedXml(feedInfo.url))
+        );
 
         if (!feed.items || feed.items.length === 0) {
           continue;

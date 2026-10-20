@@ -9,6 +9,7 @@ import { CreateArticleInput } from '@/types';
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 import RSSParser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { docswellConfig } from '../config/docswell';
 
 interface DocswellRSSItem {
@@ -206,7 +207,7 @@ export class DocswellFetcher extends BaseFetcher {
     const articles: CreateArticleInput[] = [];
     const feedUrl = 'https://www.docswell.com/feed/latest';
     
-    const feed = await this.parser.parseURL(feedUrl);
+    const feed = await this.parser.parseString(await fetchFeedXml(feedUrl));
     
     let processedCount = 0;
     for (const item of feed.items) {

@@ -15,9 +15,14 @@ import Parser from 'rss-parser';
 
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn(),
+    parseString: jest.fn(),
   }));
 });
+
+// フィードは fetchFeedXml で取ってから parseString で解析する。取得はモックし、解析の結果を parseString のモックで与える
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 const MockedParser = jest.mocked(Parser);
 
 jest.mock('@/lib/logger', () => ({
@@ -55,7 +60,7 @@ const createConfig = (
 });
 
 const mockFeedWithTrackedUrl = () => {
-  const mockParseURL = jest.fn().mockResolvedValue({
+  const mockParseString = jest.fn().mockResolvedValue({
     items: [
       {
         title: 'ターミナル内で動くブラウザーが登場',
@@ -66,7 +71,7 @@ const mockFeedWithTrackedUrl = () => {
     ],
   });
   MockedParser.mockImplementation(
-    () => ({ parseURL: mockParseURL }) as unknown as Parser
+    () => ({ parseString: mockParseString }) as unknown as Parser
   );
 };
 

@@ -1,5 +1,6 @@
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
@@ -37,8 +38,8 @@ export class GoogleAIFetcher extends BaseFetcher {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     try {
-      const feed = await this.retry(() =>
-        this.parser.parseURL(this.source.url)
+      const feed = await this.retry(async () =>
+        this.parser.parseString(await fetchFeedXml(this.source.url))
       );
 
       for (const item of feed.items || []) {

@@ -2,6 +2,7 @@ import { BaseFetcher } from '../base';
 import { FetchResult, CreateArticleInput } from '@/types/fetchers';
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from '../fetch-feed';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
 import { getContentFromItem, getAuthorFromItem } from '@/lib/types/rss';
@@ -19,16 +20,11 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
   constructor(source: Source) {
     super(source);
     this.parser = new Parser({
-      timeout: 15000, // 15秒のHTTPタイムアウトを設定
       customFields: {
         item: [
           ['dc:creator', 'dcCreator'],
           ['content:encoded', 'contentEncoded'],
         ],
-      },
-      headers: {
-        'User-Agent': 'TechTrend/1.0 (https://techtrend.example.com)',
-        Accept: 'application/rss+xml, application/xml, text/xml',
       },
     });
 
@@ -74,8 +70,9 @@ export abstract class BaseCorporateFetcher extends BaseFetcher {
     try {
       logger.info(`Fetching articles from ${this.getCompanyName()}...`);
 
-      const feed = await this.retry(() =>
-        this.parser.parseURL(this.getRssUrl())
+      // 15秒のHTTPタイムアウト
+      const feed = await this.retry(async () =>
+        this.parser.parseString(await fetchFeedXml(this.getRssUrl(), { timeoutMs: 15_000 }))
       );
 
       if (!feed.items || feed.items.length === 0) {

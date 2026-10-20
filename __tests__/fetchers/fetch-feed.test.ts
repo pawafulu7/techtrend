@@ -1,12 +1,13 @@
 /**
- * fetchFeedXml と、それを使う DeepMindBlogFetcher のテスト
+ * fetchFeedXml と、それを使う fetcher（DeepMindBlogFetcher・GenericForeignRssFetcher）のテスト
  *
- * rss-parser の parseURL は、頼んでいない gzip の応答を解析できないことがある（DeepMind Blog で観測）。
- * fetch で取ってから parseString で解析する。時間の上限は本文の受信まで効かせる。
+ * rss-parser の parseURL は、転送先を検証せず、頼んでいない gzip の応答を解析できないことがある
+ * （DeepMind Blog で観測）。fetch で取ってから parseString で解析する。時間の上限は本文の受信まで効かせる。
  */
 
-import { fetchFeedXml } from '@/lib/fetchers/fetch-feed';
+import { fetchFeedXml, FEED_MAX_BODY_BYTES } from '@/lib/fetchers/fetch-feed';
 import { DeepMindBlogFetcher } from '@/lib/fetchers/deepmind-blog';
+import { GenericForeignRssFetcher, FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/generic-foreign-rss';
 import { ResponseTooLargeError, InvalidRedirectError } from '@/lib/utils/url/safe-redirect';
 import { SsrfGuardError } from '@/lib/utils/url/ssrf-guard';
 import dns from 'dns';
@@ -111,10 +112,48 @@ describe('fetchFeedXml', () => {
     await expect(fetchFeedXml('https://feed.example/rss.xml')).rejects.toThrow('HTTP 404');
   });
 
-  it('本文が上限を超えたら読まない', async () => {
+  it('記事ページの上限（5MB）を超えるフィードも読む', async () => {
     global.fetch = jest.fn(async () => ({
       ...feedResponse(streamOf('x')),
       headers: new Headers({ 'content-length': String(6 * 1024 * 1024) }),
+    })) as unknown as typeof global.fetch;
+
+    await expect(fetchFeedXml('https://feed.example/rss.xml')).resolves.toBe('x');
+  });
+
+  it('Content-Type の charset で読む（parseURL と同じ）', async () => {
+    const latin1 = new Uint8Array([0x43, 0x61, 0x66, 0xe9]); // ISO-8859-1 の "Café"
+    global.fetch = jest.fn(async () => ({
+      ...feedResponse(
+        new ReadableStream<Uint8Array>({
+          start(c) {
+            c.enqueue(latin1);
+            c.close();
+          },
+        })
+      ),
+      headers: new Headers({ 'content-type': 'application/rss+xml; charset=ISO-8859-1' }),
+    })) as unknown as typeof global.fetch;
+
+    await expect(fetchFeedXml('https://feed.example/rss.xml')).resolves.toBe('Café');
+  });
+
+  it.each(['application/rss+xml', 'application/rss+xml; charset=x-unknown'])(
+    'charset が無いときと、知らない名前のときは UTF-8 で読む（%s）',
+    async (contentType) => {
+      global.fetch = jest.fn(async () => ({
+        ...feedResponse(streamOf('Café')),
+        headers: new Headers({ 'content-type': contentType }),
+      })) as unknown as typeof global.fetch;
+
+      await expect(fetchFeedXml('https://feed.example/rss.xml')).resolves.toBe('Café');
+    }
+  );
+
+  it('本文がフィードの上限を超えたら読まない', async () => {
+    global.fetch = jest.fn(async () => ({
+      ...feedResponse(streamOf('x')),
+      headers: new Headers({ 'content-length': String(FEED_MAX_BODY_BYTES + 1) }),
     })) as unknown as typeof global.fetch;
 
     await expect(fetchFeedXml('https://feed.example/rss.xml')).rejects.toBeInstanceOf(
@@ -152,5 +191,41 @@ describe('DeepMindBlogFetcher', () => {
     expect(articles.map((a) => a.url)).toEqual(['https://deepmind.google/discover/blog/gemini-llm/']);
     expect(articles[0].sourceId).toBe('deepmind_blog');
     expect(fetchMock).toHaveBeenCalledWith('https://deepmind.google/blog/rss.xml', expect.any(Object));
+  });
+});
+
+describe('GenericForeignRssFetcher のフィードの取得', () => {
+  let originalFetch: typeof global.fetch;
+  beforeEach(() => {
+    originalFetch = global.fetch;
+    (dns.promises.lookup as jest.Mock).mockReset();
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('フィードの提供元が内部の IP へ転送したら、その先に問い合わせず errors に積む', async () => {
+    (dns.promises.lookup as jest.Mock).mockImplementation(async (hostname: string) =>
+      hostname === 'internal.example'
+        ? [{ address: '169.254.169.254', family: 4 }]
+        : [{ address: '203.0.113.10', family: 4 }]
+    );
+    const fetchMock = jest.fn(async () => ({
+      status: 302,
+      ok: false,
+      headers: new Headers({ location: 'https://internal.example/latest/meta-data' }),
+      body: null,
+    }));
+    global.fetch = fetchMock as unknown as typeof global.fetch;
+
+    const config = FOREIGN_SOURCE_CONFIGS['CNCF Blog'];
+    const source = { id: 'cncf_blog', name: 'CNCF Blog', url: 'https://www.cncf.io' } as unknown as Source;
+    const { articles, errors } = await new GenericForeignRssFetcher(source, config).fetch();
+
+    expect(articles).toEqual([]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain('forbidden IP range');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(config.feedUrl, expect.any(Object));
   });
 });

@@ -3,7 +3,7 @@
  * （Issue #628, 海外企業・プロダクトブログ5ソース）
  *
  * FOREIGN_SOURCE_CONFIGS の実設定をそのまま使用し、feed-fixtures.test.ts で
- * 固定した rss-parser のパース結果相当を parseURL としてモックして fetch() を
+ * 固定した rss-parser のパース結果相当を parseString の結果としてモックして fetch() を
  * 実行する。設定判断（urlPathFilter / categoryFilter / useNormalizedUrl）が
  * 保存内容に正しく反映されることを検証する。
  *
@@ -25,9 +25,14 @@ import {
 
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn(),
+    parseString: jest.fn(),
   }));
 });
+
+// フィードは fetchFeedXml で取ってから parseString で解析する。取得はモックし、解析の結果を parseString のモックで与える
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 const MockedParser = jest.mocked(Parser);
 
 jest.mock('@/lib/logger', () => ({

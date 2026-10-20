@@ -78,7 +78,7 @@ import { adjustTimezoneForArticle } from '@/lib/utils/date';
 import { CategoryClassifier } from '@/lib/services/category-classifier';
 import { normalizeTag } from '@/lib/utils/tag/tag-normalizer';
 import { resolveTags } from '@/lib/services/tag-service';
-import { shouldTransferSource } from './utils/source-transfer';
+import { transferSourceIfNeeded } from './utils/source-transfer';
 import {
   countSourceFormatErrors,
   describeCollectFailures,
@@ -294,14 +294,10 @@ async function processSource({
           // 自己修復の成功のいずれかがあれば true にし、末尾で一度だけ計上する
           let articleUpdated = false;
 
-          // はてぶ・ニュースレター経由 → 企業ブログなどの場合、sourceIdを更新（ニュースレターには移さない）
-          // （content補完のCASとは独立させ、無条件で適用する）
-          if (shouldTransferSource(existing.sourceId, source.id)) {
-            await prisma.article.update({
-              where: { id: existing.id },
-              data: { sourceId: source.id },
-            });
-            console.error(`   [INFO] sourceId更新: ${source.name} <- Hatena`);
+          // はてぶ・ニュースレター・リンクを集めるソース経由 → 企業ブログなどの場合、sourceIdを更新（それらには移さない）
+          // （content補完のCASとは独立させて適用する）
+          if (await transferSourceIfNeeded(existing, source.id)) {
+            console.error(`   [INFO] sourceId更新: ${source.name} <- ${existing.sourceId}`);
             articleUpdated = true;
           }
 
@@ -605,13 +601,9 @@ async function processSource({
             // メイン分岐と同様、記事単位のフラグで一度だけ計上する
             let articleUpdated = false;
 
-            if (shouldTransferSource(latestExisting.sourceId, source.id)) {
-              // sourceId移管はcontent補完のCASとは独立させ、無条件で適用する
-              await prisma.article.update({
-                where: { id: latestExisting.id },
-                data: { sourceId: source.id },
-              });
-              console.error(`   [INFO] sourceId更新: ${source.name} <- Hatena`);
+            // sourceId移管はcontent補完のCASとは独立させて適用する
+            if (await transferSourceIfNeeded(latestExisting, source.id)) {
+              console.error(`   [INFO] sourceId更新: ${source.name} <- ${latestExisting.sourceId}`);
               articleUpdated = true;
             }
 
@@ -790,8 +782,10 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     console.error(`   フィード0件ソース(要調査): ${formatSourceNameSummary(zeroFetchedSourceNames)}`);
 
     // 自己修復のみ成功した実行（totalNewArticles === 0）でも要約生成・
-    // キャッシュ無効化を起動するため、newArticleIds の件数で判定する
-    if (newArticleIds.length > 0) {
+    // キャッシュ無効化を起動するため、newArticleIds の件数で判定する。
+    // 既存記事のソースの付け替えだけの実行でも、一覧のソース名や絞り込みが古いまま出ないよう、
+    // 更新があればキャッシュは無効化する（要約の対象は増えないので、要約生成は起動しない）
+    if (newArticleIds.length > 0 || totalUpdated > 0) {
       console.error('[INFO] キャッシュを無効化中...');
       try {
         await cacheInvalidator.onBulkImport();
@@ -801,7 +795,9 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
           summarizeError(error)
         );
       }
+    }
 
+    if (newArticleIds.length > 0) {
       console.error('\n[INFO] 要約生成を自動実行します...');
       try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports

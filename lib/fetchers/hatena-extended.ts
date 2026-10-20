@@ -1,5 +1,6 @@
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
@@ -207,7 +208,9 @@ export class HatenaExtendedFetcher extends BaseFetcher {
     // 各RSSフィードから記事を取得
     for (const rssUrl of this.rssUrls) {
       try {
-        const feed = await this.retry(() => this.parser.parseURL(rssUrl));
+        const feed = await this.retry(async () =>
+          this.parser.parseString(await fetchFeedXml(rssUrl))
+        );
 
         for (const item of feed.items || []) {
           try {

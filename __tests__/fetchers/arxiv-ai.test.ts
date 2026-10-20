@@ -19,13 +19,19 @@ jest.mock('p-limit', () => {
 // Mock rss-parser
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn(),
+    parseString: jest.fn(),
   }));
 });
+
+// フィードは fetchFeedXml で取ってから parseString で解析する。取得はモックし、解析の結果を parseString のモックで与える
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 
 // Import after mocks are set up
 import { ArxivAIFetcher } from '@/lib/fetchers/ai/arxiv-ai';
 import { prisma } from '@/lib/prisma';
+import { fetchFeedXml } from '@/lib/fetchers/fetch-feed';
 
 const mockedPrisma = jest.mocked(prisma, true);
 
@@ -287,8 +293,8 @@ describe('ArxivAIFetcher', () => {
 
   describe('fetch() integration', () => {
     it('should return empty articles when feed has no items', async () => {
-      const mockParseURL = jest.fn().mockResolvedValue({ items: [] });
-      (fetcher as any).parser.parseURL = mockParseURL;
+      const mockParseString = jest.fn().mockResolvedValue({ items: [] });
+      (fetcher as any).parser.parseString = mockParseString;
 
       const result = await fetcher.fetch();
 
@@ -306,8 +312,8 @@ describe('ArxivAIFetcher', () => {
           categories: ['cs.AI', 'cs.LG'],
         },
       ];
-      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
-      (fetcher as any).parser.parseURL = mockParseURL;
+      const mockParseString = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseString = mockParseString;
 
       const result = await fetcher.fetch();
 
@@ -317,14 +323,47 @@ describe('ArxivAIFetcher', () => {
       expect(result.errors).toHaveLength(0);
     });
 
+    it('フィードは fetcher の時間の上限を渡して fetchFeedXml で取り、取った XML を解析する', async () => {
+      const mockParseString = jest.fn().mockResolvedValue({ items: [] });
+      (fetcher as any).parser.parseString = mockParseString;
+
+      await fetcher.fetch();
+
+      expect(fetchFeedXml).toHaveBeenCalledWith('https://rss.arxiv.org/rss/cs.AI+cs.LG+cs.CL', {
+        timeoutMs: expect.any(Number),
+      });
+      expect(mockParseString).toHaveBeenCalledWith('<rss></rss>');
+    });
+
+    it('Hacker News などが先に保存した論文は返し（収集側で arXiv に付け替える）、arXiv が保存済みの論文は除く', async () => {
+      const paper = (id: string) => ({
+        title: `Paper ${id}`,
+        link: `https://arxiv.org/abs/${id}`,
+        pubDate: new Date().toISOString(),
+        description: 'abstract',
+        categories: ['cs.AI'],
+      });
+      (fetcher as any).parser.parseString = jest
+        .fn()
+        .mockResolvedValue({ items: [paper('2312.00001'), paper('2312.00002')] });
+      mockedPrisma.article.findMany.mockResolvedValue([
+        { url: 'https://arxiv.org/abs/2312.00001', sourceId: 'hacker_news_202508' },
+        { url: 'https://arxiv.org/abs/2312.00002', sourceId: 'arxiv_ai_test' },
+      ] as never);
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles.map((a) => a.url)).toEqual(['https://arxiv.org/abs/2312.00001']);
+    });
+
     it('should skip items without title or link', async () => {
       const mockItems = [
         { title: 'Valid Paper', link: 'https://arxiv.org/abs/2312.11111' },
         { title: 'No Link Paper' }, // Missing link
         { link: 'https://arxiv.org/abs/2312.22222' }, // Missing title
       ];
-      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
-      (fetcher as any).parser.parseURL = mockParseURL;
+      const mockParseString = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseString = mockParseString;
 
       const result = await fetcher.fetch();
 
@@ -345,8 +384,8 @@ describe('ArxivAIFetcher', () => {
           pubDate: new Date().toISOString(),
         },
       ];
-      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
-      (fetcher as any).parser.parseURL = mockParseURL;
+      const mockParseString = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseString = mockParseString;
 
       const result = await fetcher.fetch();
 
@@ -370,8 +409,8 @@ describe('ArxivAIFetcher', () => {
           pubDate: new Date().toISOString(),
         },
       ];
-      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
-      (fetcher as any).parser.parseURL = mockParseURL;
+      const mockParseString = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseString = mockParseString;
 
       const result = await fetcher.fetch();
 
@@ -380,10 +419,10 @@ describe('ArxivAIFetcher', () => {
     });
 
     it('should handle RSS parsing errors gracefully', async () => {
-      const mockParseURL = jest
+      const mockParseString = jest
         .fn()
         .mockRejectedValue(new Error('Network error'));
-      (fetcher as any).parser.parseURL = mockParseURL;
+      (fetcher as any).parser.parseString = mockParseString;
 
       const result = await fetcher.fetch();
 
@@ -402,8 +441,8 @@ describe('ArxivAIFetcher', () => {
           categories: ['cs.AI'],
         },
       ];
-      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
-      (fetcher as any).parser.parseURL = mockParseURL;
+      const mockParseString = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseString = mockParseString;
 
       const result = await fetcher.fetch();
 
@@ -431,8 +470,8 @@ describe('ArxivAIFetcher', () => {
           categories: ['cs.LG'],
         },
       ];
-      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
-      (fetcher as any).parser.parseURL = mockParseURL;
+      const mockParseString = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseString = mockParseString;
 
       // Mock existing article in database
       mockedPrisma.article.findMany.mockResolvedValue([
@@ -462,8 +501,8 @@ describe('ArxivAIFetcher', () => {
           categories: ['cs.LG'],
         },
       ];
-      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
-      (fetcher as any).parser.parseURL = mockParseURL;
+      const mockParseString = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseString = mockParseString;
 
       // All articles exist in database
       mockedPrisma.article.findMany.mockResolvedValue([
@@ -492,8 +531,8 @@ describe('ArxivAIFetcher', () => {
           categories: ['cs.LG'],
         },
       ];
-      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
-      (fetcher as any).parser.parseURL = mockParseURL;
+      const mockParseString = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseString = mockParseString;
 
       // No existing articles in database
       mockedPrisma.article.findMany.mockResolvedValue([]);
@@ -516,8 +555,8 @@ describe('ArxivAIFetcher', () => {
           pubDate: new Date().toISOString(),
         },
       ];
-      const mockParseURL = jest.fn().mockResolvedValue({ items: mockItems });
-      (fetcher as any).parser.parseURL = mockParseURL;
+      const mockParseString = jest.fn().mockResolvedValue({ items: mockItems });
+      (fetcher as any).parser.parseString = mockParseString;
       mockedPrisma.article.findMany.mockResolvedValue([]);
 
       await fetcher.fetch();
@@ -532,7 +571,7 @@ describe('ArxivAIFetcher', () => {
             ],
           },
         },
-        select: { url: true },
+        select: { url: true, sourceId: true },
       });
     });
   });

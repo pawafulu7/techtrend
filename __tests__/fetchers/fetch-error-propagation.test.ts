@@ -20,12 +20,18 @@ import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import { normalizeUrl } from '@/lib/utils/url/url-normalizer';
 import { getContentFromItem } from '@/lib/types/rss';
+import { fetchFeedXml } from '@/lib/fetchers/fetch-feed';
 
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn(),
+    parseString: jest.fn(),
   }));
 });
+
+// フィードは fetchFeedXml で取ってから parseString で解析する。取得はモックし、解析の結果を parseString のモックで与える
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 const MockedParser = jest.mocked(Parser);
 
 jest.mock('@/lib/logger', () => {
@@ -52,6 +58,7 @@ jest.mock('@/lib/types/rss', () => {
 
 const mockedNormalizeUrl = jest.mocked(normalizeUrl);
 const mockedGetContentFromItem = jest.mocked(getContentFromItem);
+const mockedFetchFeedXml = jest.mocked(fetchFeedXml);
 
 const createMockSource = (overrides?: Partial<Source>): Source => ({
   id: 'test-source',
@@ -68,13 +75,11 @@ describe('GenericForeignRssFetcher: errors伝播', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedNormalizeUrl.mockImplementation((url: string) => url);
+    mockedFetchFeedXml.mockResolvedValue('<rss></rss>');
   });
 
   it('フィード取得自体が失敗した場合、例外を投げずerrorsに積んで返す', async () => {
-    const mockParseURL = jest.fn().mockRejectedValue(new Error('network timeout'));
-    MockedParser.mockImplementation(
-      () => ({ parseURL: mockParseURL }) as unknown as Parser
-    );
+    mockedFetchFeedXml.mockRejectedValueOnce(new Error('network timeout'));
 
     const config = FOREIGN_SOURCE_CONFIGS['CNCF Blog'];
     expect(config).toBeDefined();
@@ -93,7 +98,7 @@ describe('GenericForeignRssFetcher: errors伝播', () => {
   });
 
   it('個別itemの処理中エラーはerrorsに積まれ、他のitemの処理は継続する', async () => {
-    const mockParseURL = jest.fn().mockResolvedValue({
+    const mockParseString = jest.fn().mockResolvedValue({
       items: [
         {
           title: 'Broken item',
@@ -110,7 +115,7 @@ describe('GenericForeignRssFetcher: errors伝播', () => {
       ],
     });
     MockedParser.mockImplementation(
-      () => ({ parseURL: mockParseURL }) as unknown as Parser
+      () => ({ parseString: mockParseString }) as unknown as Parser
     );
 
     // normalizeUrl は articles ループ内で item ごとに呼ばれる。'broken' を含む
@@ -142,6 +147,7 @@ describe('GenericForeignRssFetcher: errors伝播', () => {
 describe('BaseCorporateFetcher (via FreeeFetcher): errors伝播', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedFetchFeedXml.mockResolvedValue('<rss></rss>');
     mockedGetContentFromItem.mockImplementation(
       jest.requireActual('@/lib/types/rss').getContentFromItem
     );
@@ -150,10 +156,7 @@ describe('BaseCorporateFetcher (via FreeeFetcher): errors伝播', () => {
   it('フィード取得自体が失敗した場合、リトライを使い切っても例外を投げずerrorsに積んで返す', async () => {
     jest.useFakeTimers();
     try {
-      const mockParseURL = jest.fn().mockRejectedValue(new Error('DNS resolution failed'));
-      MockedParser.mockImplementation(
-        () => ({ parseURL: mockParseURL }) as unknown as Parser
-      );
+      mockedFetchFeedXml.mockRejectedValue(new Error('DNS resolution failed'));
 
       const fetcher = new FreeeFetcher(createMockSource({ id: 'freee', name: 'freee' }));
       const resultPromise = fetcher.fetch();
@@ -166,7 +169,7 @@ describe('BaseCorporateFetcher (via FreeeFetcher): errors伝播', () => {
       expect(result.errors[0].message).toContain('freee');
       expect(result.errors[0].message).toContain('DNS resolution failed');
       // maxRetries(3) 分のリトライ + 初回実行で計4回呼ばれる
-      expect(mockParseURL).toHaveBeenCalledTimes(4);
+      expect(mockedFetchFeedXml).toHaveBeenCalledTimes(4);
     } finally {
       jest.useRealTimers();
     }
@@ -177,7 +180,7 @@ describe('BaseCorporateFetcher (via FreeeFetcher): errors伝播', () => {
       throw new Error('unexpected item shape');
     });
 
-    const mockParseURL = jest.fn().mockResolvedValue({
+    const mockParseString = jest.fn().mockResolvedValue({
       items: [
         {
           title: 'テスト記事',
@@ -187,7 +190,7 @@ describe('BaseCorporateFetcher (via FreeeFetcher): errors伝播', () => {
       ],
     });
     MockedParser.mockImplementation(
-      () => ({ parseURL: mockParseURL }) as unknown as Parser
+      () => ({ parseString: mockParseString }) as unknown as Parser
     );
 
     const fetcher = new FreeeFetcher(createMockSource({ id: 'freee', name: 'freee' }));
@@ -198,5 +201,10 @@ describe('BaseCorporateFetcher (via FreeeFetcher): errors伝播', () => {
     expect(result.errors[0]).toBeInstanceOf(Error);
     expect(result.errors[0].message).toContain('freee');
     expect(result.errors[0].message).toContain('unexpected item shape');
+    // 取得は 15 秒の上限を渡して fetchFeedXml で行い、取った XML を解析する
+    expect(mockedFetchFeedXml).toHaveBeenCalledWith('https://developers.freee.co.jp/feed', {
+      timeoutMs: 15_000,
+    });
+    expect(mockParseString).toHaveBeenCalledWith('<rss></rss>');
   });
 });

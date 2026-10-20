@@ -4,7 +4,7 @@
  *
  * FOREIGN_SOURCE_CONFIGS['Lobsters'] / ['Techmeme'] を実設定のまま使用し、
  * feed-fixtures.test.ts で固定した rss-parser のパース結果（description の
- * content/contentSnippet 変換、アンカー付きlink）相当の parseURL 結果を
+ * content/contentSnippet 変換、アンカー付きlink）相当の parseString の結果を
  * モックして fetch() を実行する。
  *
  * - Lobsters (ignoreFeedContent: true): content が空文字になり、
@@ -22,9 +22,14 @@ import Parser from 'rss-parser';
 
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn(),
+    parseString: jest.fn(),
   }));
 });
+
+// フィードは fetchFeedXml で取ってから parseString で解析する。取得はモックし、解析の結果を parseString のモックで与える
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 const MockedParser = jest.mocked(Parser);
 
 jest.mock('@/lib/logger', () => ({
@@ -54,7 +59,7 @@ const createMockSource = (overrides?: Partial<Source>): Source => ({
 describe('GenericForeignRssFetcher: Lobsters設定 (ignoreFeedContent)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    const mockParseURL = jest.fn().mockResolvedValue({
+    const mockParseString = jest.fn().mockResolvedValue({
       items: [
         {
           title: 'Some article title',
@@ -70,7 +75,7 @@ describe('GenericForeignRssFetcher: Lobsters設定 (ignoreFeedContent)', () => {
       ],
     });
     MockedParser.mockImplementation(
-      () => ({ parseURL: mockParseURL }) as unknown as Parser
+      () => ({ parseString: mockParseString }) as unknown as Parser
     );
   });
 
@@ -98,7 +103,7 @@ describe('GenericForeignRssFetcher: Techmeme設定 (useNormalizedUrl)', () => {
   });
 
   it('urlがフラグメント・www除去済みの正規化URLで保存される', async () => {
-    const mockParseURL = jest.fn().mockResolvedValue({
+    const mockParseString = jest.fn().mockResolvedValue({
       items: [
         {
           title: 'Some Headline About AI',
@@ -113,7 +118,7 @@ describe('GenericForeignRssFetcher: Techmeme設定 (useNormalizedUrl)', () => {
       ],
     });
     MockedParser.mockImplementation(
-      () => ({ parseURL: mockParseURL }) as unknown as Parser
+      () => ({ parseString: mockParseString }) as unknown as Parser
     );
 
     const config = FOREIGN_SOURCE_CONFIGS['Techmeme'];
@@ -134,7 +139,7 @@ describe('GenericForeignRssFetcher: Techmeme設定 (useNormalizedUrl)', () => {
   });
 
   it('アイテムごとに正規化URLが一意になる（別アンカー付きlinkは別URLとして保存される）', async () => {
-    const mockParseURL = jest.fn().mockResolvedValue({
+    const mockParseString = jest.fn().mockResolvedValue({
       items: [
         {
           title: 'Headline One',
@@ -153,7 +158,7 @@ describe('GenericForeignRssFetcher: Techmeme設定 (useNormalizedUrl)', () => {
       ],
     });
     MockedParser.mockImplementation(
-      () => ({ parseURL: mockParseURL }) as unknown as Parser
+      () => ({ parseString: mockParseString }) as unknown as Parser
     );
 
     const config = FOREIGN_SOURCE_CONFIGS['Techmeme'];

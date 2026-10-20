@@ -2,12 +2,15 @@ import { Source } from '@/lib/prisma-exports';
 import { createFetcher } from '../../lib/fetchers/index';
 import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/generic-foreign-rss';
 
-// Mock rss-parser to prevent actual network calls
+// Mock rss-parser and the feed fetch to prevent actual network calls
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn().mockResolvedValue({ items: [] }),
+    parseString: jest.fn().mockResolvedValue({ items: [] }),
   }));
 });
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 
 // Mock node-fetch to prevent actual network calls
 jest.mock('node-fetch', () => jest.fn());

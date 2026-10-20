@@ -1,5 +1,6 @@
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from '../fetch-feed';
 import { BaseFetcher } from '../base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
@@ -64,7 +65,9 @@ export class ZennAIFetcher extends BaseFetcher {
       try {
         logger.info(`Zenn ${topic.name}トピック記事取得開始`);
 
-        const feed = await this.retry(() => this.parser.parseURL(topic.url));
+        const feed = await this.retry(async () =>
+          this.parser.parseString(await fetchFeedXml(topic.url))
+        );
 
         if (!feed.items || feed.items.length === 0) {
           logger.warn(`Zenn ${topic.name}: 記事が見つかりませんでした`);

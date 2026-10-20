@@ -1,6 +1,7 @@
 import { BaseFetcher } from './base';
 import { CreateArticleInput } from '@/types';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { cleanHtml } from '@/lib/utils/html-sanitizer';
 
 interface ThinkITItem {
@@ -26,7 +27,7 @@ export class ThinkITFetcher extends BaseFetcher {
 
   async fetch(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {
     try {
-      const feed = await this.parser.parseURL(this.rssUrl);
+      const feed = await this.parser.parseString(await fetchFeedXml(this.rssUrl));
 
       if (!feed.items || feed.items.length === 0) {
         return { articles: [], errors: [] };

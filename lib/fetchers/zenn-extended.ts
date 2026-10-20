@@ -1,5 +1,6 @@
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
@@ -57,8 +58,8 @@ export class ZennExtendedFetcher extends BaseFetcher {
 
     // まずメインフィードから取得
     try {
-      const mainFeed = await this.retry(() =>
-        this.parser.parseURL(this.source.url)
+      const mainFeed = await this.retry(async () =>
+        this.parser.parseString(await fetchFeedXml(this.source.url))
       );
       for (const item of mainFeed.items || []) {
         if (item.title && item.link && !seenUrls.has(item.link)) {
@@ -84,7 +85,9 @@ export class ZennExtendedFetcher extends BaseFetcher {
 
       try {
         const topicUrl = `https://zenn.dev/topics/${topic}/feed?order=daily`;
-        const feed = await this.retry(() => this.parser.parseURL(topicUrl));
+        const feed = await this.retry(async () =>
+          this.parser.parseString(await fetchFeedXml(topicUrl))
+        );
 
         for (const item of (feed.items || []).slice(0, 5)) {
           // 各トピックから最大5件

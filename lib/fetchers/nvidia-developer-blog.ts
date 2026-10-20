@@ -5,6 +5,7 @@
 
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
@@ -38,8 +39,8 @@ export class NVIDIADeveloperBlogFetcher extends BaseFetcher {
       // NVIDIAのAtomフィードURL
       const feedUrl = 'https://developer.nvidia.com/blog/feed';
 
-      const feed = await this.retry(() =>
-        this.parser.parseURL(feedUrl)
+      const feed = await this.retry(async () =>
+        this.parser.parseString(await fetchFeedXml(feedUrl))
       );
 
       if (!feed.items || feed.items.length === 0) {

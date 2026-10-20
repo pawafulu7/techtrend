@@ -6,13 +6,19 @@ import { GenericForeignRssFetcher, ForeignSourceConfig } from '@/lib/fetchers/ge
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import { logger } from '@/lib/logger';
+import { fetchFeedXml } from '@/lib/fetchers/fetch-feed';
 
 // rss-parserをモック
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn(),
+    parseString: jest.fn(),
   }));
 });
+
+// フィードは fetchFeedXml で取ってから parseString で解析する。取得はモックし、解析の結果を parseString のモックで与える
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 const MockedParser = jest.mocked(Parser);
 
 // loggerをモック
@@ -65,7 +71,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
 
   describe('categoryFilter設定時のフィルタリング', () => {
     it('該当カテゴリの記事のみ通過すること（Atom形式）', async () => {
-      const mockParseURL = jest.fn().mockResolvedValue({
+      const mockParseString = jest.fn().mockResolvedValue({
         items: [
           {
             title: 'Tech Article',
@@ -95,7 +101,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       });
 
       MockedParser.mockImplementation(() => ({
-        parseURL: mockParseURL,
+        parseString: mockParseString,
       }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
@@ -109,11 +115,11 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       expect(result.articles[0].title).toBe('Tech Article');
       expect(result.articles[1].title).toBe('AI Article');
       expect(result.errors).toHaveLength(0);
-      expect(mockParseURL).toHaveBeenCalledWith('https://feeds.businessinsider.com/custom/all');
+      expect(fetchFeedXml).toHaveBeenCalledWith('https://feeds.businessinsider.com/custom/all');
     });
 
     it('複数カテゴリを持つ記事で1つでもマッチすれば通過すること', async () => {
-      const mockParseURL = jest.fn().mockResolvedValue({
+      const mockParseString = jest.fn().mockResolvedValue({
         items: [
           {
             title: 'Multi Category Article',
@@ -138,7 +144,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       });
 
       MockedParser.mockImplementation(() => ({
-        parseURL: mockParseURL,
+        parseString: mockParseString,
       }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
@@ -153,7 +159,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
     });
 
     it('case-insensitiveでマッチすること', async () => {
-      const mockParseURL = jest.fn().mockResolvedValue({
+      const mockParseString = jest.fn().mockResolvedValue({
         items: [
           {
             title: 'Tech Lower',
@@ -177,7 +183,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       });
 
       MockedParser.mockImplementation(() => ({
-        parseURL: mockParseURL,
+        parseString: mockParseString,
       }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
@@ -191,7 +197,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
     });
 
     it('categoriesが空/undefinedの記事はフィルタで除外されること', async () => {
-      const mockParseURL = jest.fn().mockResolvedValue({
+      const mockParseString = jest.fn().mockResolvedValue({
         items: [
           {
             title: 'No Category',
@@ -215,7 +221,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       });
 
       MockedParser.mockImplementation(() => ({
-        parseURL: mockParseURL,
+        parseString: mockParseString,
       }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
@@ -230,7 +236,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
     });
 
     it('category が単体オブジェクト（keepArray未適用時のフォールバック）でもフィルタが動作すること', async () => {
-      const mockParseURL = jest.fn().mockResolvedValue({
+      const mockParseString = jest.fn().mockResolvedValue({
         items: [
           {
             title: 'Single Category Tech',
@@ -243,7 +249,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       });
 
       MockedParser.mockImplementation(() => ({
-        parseURL: mockParseURL,
+        parseString: mockParseString,
       }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
@@ -260,7 +266,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
     it('RSS形式のcategories（string[]）でもフィルタが動作すること', async () => {
       // RSS 2.0形式では categories (複数形) フィールドに文字列配列としてカテゴリが格納される
       // Atom形式の category フィールド（オブジェクト配列）とは異なる形式
-      const mockParseURL = jest.fn().mockResolvedValue({
+      const mockParseString = jest.fn().mockResolvedValue({
         items: [
           {
             title: 'RSS Tech',
@@ -278,7 +284,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       });
 
       MockedParser.mockImplementation(() => ({
-        parseURL: mockParseURL,
+        parseString: mockParseString,
       }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
@@ -293,7 +299,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
     });
 
     it('RSS形式のcategories（object[]）でもフィルタが動作すること', async () => {
-      const mockParseURL = jest.fn().mockResolvedValue({
+      const mockParseString = jest.fn().mockResolvedValue({
         items: [
           {
             title: 'RSS Object Tech',
@@ -311,7 +317,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       });
 
       MockedParser.mockImplementation(() => ({
-        parseURL: mockParseURL,
+        parseString: mockParseString,
       }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
@@ -327,7 +333,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
 
   describe('categoryFilter未設定時の後方互換', () => {
     it('全記事が通過すること', async () => {
-      const mockParseURL = jest.fn().mockResolvedValue({
+      const mockParseString = jest.fn().mockResolvedValue({
         items: [
           {
             title: 'Article 1',
@@ -348,7 +354,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       });
 
       MockedParser.mockImplementation(() => ({
-        parseURL: mockParseURL,
+        parseString: mockParseString,
       }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
@@ -364,7 +370,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
 
   describe('フィルタ後0件時のwarnログ', () => {
     it('フィルタ後0件の場合にwarnログが出力されること', async () => {
-      const mockParseURL = jest.fn().mockResolvedValue({
+      const mockParseString = jest.fn().mockResolvedValue({
         items: [
           {
             title: 'Sports Article',
@@ -376,7 +382,7 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
       });
 
       MockedParser.mockImplementation(() => ({
-        parseURL: mockParseURL,
+        parseString: mockParseString,
       }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(
@@ -398,11 +404,11 @@ describe('GenericForeignRssFetcher categoryFilter', () => {
   });
 
   describe('エラーハンドリング', () => {
-    it('parseURLがエラーをスローした場合、エラーが適切に処理されること', async () => {
-      const mockParseURL = jest.fn().mockRejectedValue(new Error('Network error'));
+    it('フィードの取得がエラーをスローした場合、エラーが適切に処理されること', async () => {
+      jest.mocked(fetchFeedXml).mockRejectedValueOnce(new Error('Network error'));
 
       MockedParser.mockImplementation(() => ({
-        parseURL: mockParseURL,
+        parseString: jest.fn(),
       }) as unknown as Parser);
 
       const fetcher = new GenericForeignRssFetcher(

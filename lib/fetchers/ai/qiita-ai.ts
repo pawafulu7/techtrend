@@ -1,5 +1,6 @@
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from '../fetch-feed';
 import { BaseFetcher } from '../base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
@@ -84,8 +85,8 @@ export class QiitaAIFetcher extends BaseFetcher {
       try {
         logger.info(`Qiita ${tag.name}タグ記事取得開始`);
 
-        const feed = await this.retry(() =>
-          this.parser.parseURL(tag.url)
+        const feed = await this.retry(async () =>
+          this.parser.parseString(await fetchFeedXml(tag.url))
         );
 
         if (!feed.items || feed.items.length === 0) {

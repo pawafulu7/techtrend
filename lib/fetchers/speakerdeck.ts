@@ -1,6 +1,7 @@
 import { Source } from '@/lib/prisma-exports';
 import { BaseFetcher } from './base';
 import RSSParser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import type { CreateArticleInput } from '@/types';
 import { speakerDeckConfig } from '@/lib/config/speakerdeck';
 import * as cheerio from 'cheerio';
@@ -58,7 +59,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
         try {
           const feedUrl = `https://speakerdeck.com/${speaker}.rss`;
           
-          const feed = await this.parser.parseURL(feedUrl);
+          const feed = await this.parser.parseString(await fetchFeedXml(feedUrl));
           
           for (const item of feed.items.slice(0, 3)) {
             if (!item.link || !item.title) continue;
