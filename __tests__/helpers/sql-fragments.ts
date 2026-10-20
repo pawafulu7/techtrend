@@ -22,14 +22,14 @@ export function sqlFragmentsOf(
 }
 
 /**
- * /stats の 7 日・30 日の件数の問い合わせ（lib/services/dashboard-stats.ts の countPublishedBetween）か。
- * GROUP BY の無い COUNT(*) は必ず 1 行を返すので、$queryRaw のモックはこの問い合わせに [{ count }] を返す
+ * /stats の 7 日の件数の問い合わせ（lib/services/dashboard-stats.ts の countPublishedBetween）か。
+ * GROUP BY の無い COUNT(*) は必ず 1 行を返すので、$queryRaw のモックはこの問い合わせに [{ count }] を返す。
+ * 書き方の違い（AS の大文字など）で外れないよう、SELECT の直後が COUNT(*) かだけを見る
+ * （COUNT(*) で始まる生 SQL はこの問い合わせだけ）
  */
 export function isStatsPeriodCountQuery(call: readonly unknown[]): boolean {
   const [strings] = call as [readonly string[] | undefined];
-  return /^\s*SELECT COUNT\(\*\)::int as count\s+FROM "Article" a\s+WHERE\s*$/.test(
-    strings?.[0] ?? ''
-  );
+  return /^\s*SELECT\s+COUNT\(\*\)/i.test(strings?.[0] ?? '');
 }
 
 /** 無効化したソースの記事を除く断片（lib/database/enabled-source-filter.ts）の本体 */
@@ -52,7 +52,7 @@ const TIMESTAMP_WITHOUT_TZ =
   /(?:::|\bAS\s+)\s*(?:"?pg_catalog"?\s*\.\s*)?"?timestamp"?(?!tz)(?!(?:\s*\(\s*\d+\s*\))?\s+with\s+time\s+zone)\b/i;
 
 /** 問い合わせの全文。値が Prisma.Sql の断片ならその SQL を、それ以外の値は ? を埋める */
-function fullSqlOf(call: readonly unknown[]): string {
+export function fullSqlOf(call: readonly unknown[]): string {
   const [strings, ...values] = call as [readonly string[], ...unknown[]];
   return strings
     .map((text, index) => {

@@ -7,11 +7,12 @@
  * セッションが UTC でないと期間が時差の分ずれた。ここではセッションを America/Los_Angeles にして、次を確かめる。
  *
  * - 7 日・30 日の件数は [N 日前, 集計の時刻)。下端の少し後の記事を数え、少し前と未来の記事は数えない
- * - 日別のまとめは日本時間の暦日（JST の朝 8 時の記事は、UTC・LA では前日でも JST の日付に入る）で、期間も同じ
+ * - 日別のまとめは日本時間の暦日（JST の朝 8 時の記事は、UTC・LA では前日でも JST の日付に入る）で、期間も同じ。
+ *   記事が 0 件の日も、期間の両端を含めて並べる
  * - 非表示の記事も、このページのほかの件数と同じく数える
  *
  * 総数・7 日・30 日の件数はテスト DB の全記事を数えるので、テストの記事を足す前後の差で確かめる。
- * テスト DB に記事を書くほかのテストと並べず、このファイルだけを流す。記事の数は時刻の種類ごとに変え、
+ * ほかのファイルの書き込みが混ざらないよう、jest.config.integration.js で結合テストを 1 つずつ流す。記事の数は時刻の種類ごとに変え、
  * 誤りどうしが打ち消し合わないようにする（以前の実装では、下端の少し後の記事が落ちた分を未来の記事が埋め、
  * どれも 1 件ずつだと差が合ってしまった）。
  *
@@ -235,9 +236,25 @@ describe('/stats の集計（セッションのタイムゾーンが UTC 以外�
     }
     expect(counts).toEqual(expected);
 
-    // 日別の合計は、同じ期間・同じ条件の 30 日の件数と一致する
+    // 30 日の件数は日別の合計（集計の途中で記事が増えても、両者はずれない）
     expect(after.daily.reduce((sum, day) => sum + day.total, 0)).toBe(
       after.overview.last30Days
     );
+  });
+
+  it('日別の日付は、日本時間の暦日で期間の両端を含み、0 件の日も並べる', () => {
+    // 集計時刻（generatedAt）は期間の上限
+    const to = Date.parse(after.generatedAt);
+    const expected: string[] = [];
+    for (
+      let day = jstDate(new Date(to - 30 * DAY_MS));
+      day <= jstDate(new Date(to));
+      day = new Date(Date.parse(`${day}T00:00:00.000Z`) + DAY_MS)
+        .toISOString()
+        .slice(0, 10)
+    ) {
+      expected.push(day);
+    }
+    expect(after.daily.map((day) => day.date)).toEqual(expected);
   });
 });

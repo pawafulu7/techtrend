@@ -1,16 +1,9 @@
 /**
- * トレンドの分析の日別のまとめの日付（lib/services/trend-analysis.ts の jstDateKey・jstDateKeys）。
+ * 日別のまとめの日付（lib/utils/date.ts の jstDateKey・jstDateKeys。トレンドの分析と /stats の日別で使う）。
  * SQL の TO_CHAR(publishedAt AT TIME ZONE 'Asia/Tokyo', …) と同じ、日本時間の暦日で並べる。
- * DB のセッションのタイムゾーンでの確認は __tests__/integration/lib/trend-analysis-timezone.test.ts
+ * DB のセッションのタイムゾーンでの確認は __tests__/integration/lib/ の *-timezone.test.ts
  */
-jest.mock('@/lib/cache/trends-cache', () => ({
-  trendsCache: {
-    getOrSetWithLock: jest.fn(),
-    generateTrendsKey: jest.fn(),
-  },
-}));
-
-import { jstDateKey, jstDateKeys } from '@/lib/services/trend-analysis';
+import { jstDateKey, jstDateKeys } from '@/lib/utils/date';
 
 describe('jstDateKey', () => {
   it.each([

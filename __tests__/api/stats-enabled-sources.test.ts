@@ -1,6 +1,7 @@
 /**
  * /api/stats: 件数・日別・人気タグから、無効化したソースの記事を除く（issue #688）。
- * 7 日・30 日の件数と日別は、期間を [N 日前, 集計の時刻) にし、日別は日本時間の暦日でまとめる（issue #807）
+ * 7 日の件数と日別は、期間を [N 日前, 集計の時刻) にし、日別は日本時間の暦日でまとめて 0 件の日も入れる。
+ * 30 日の件数は日別の合計。非表示の記事は、このページのほかの件数と同じく数える（issue #807）
  *
  * 人気タグの件数と順位は tag-article-counts のテスト DB のテストで確かめる。セッションのタイムゾーンを
  * UTC 以外にした実 DB での期間と日付の区切りは __tests__/integration/lib/dashboard-stats-timezone.test.ts。
@@ -27,7 +28,11 @@ jest.mock('@/lib/database/tag-article-counts', () => ({
 
 import { GET } from '@/app/api/stats/route';
 import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
-import { ENABLED_SOURCE_SQL, sqlFragmentsOf } from '../helpers/sql-fragments';
+import {
+  ENABLED_SOURCE_SQL,
+  fullSqlOf,
+  sqlFragmentsOf,
+} from '../helpers/sql-fragments';
 
 // lib/prisma は jest.setup.node.js がモックした PrismaClient（= prismaMock）を返す
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -57,6 +62,16 @@ function periodDays(call: RawCall): number {
 
 const isDailyCall = (call: RawCall) => call[0].join('?').includes('TO_CHAR');
 
+/** 日本時間の暦日（実装とは別の計算で出す） */
+const jstDate = (date: Date) =>
+  new Date(date.getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+const nextDay = (day: string) =>
+  new Date(Date.parse(`${day}T00:00:00.000Z`) + DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+const YESTERDAY = jstDate(new Date(Date.now() - DAY_MS));
+const THREE_DAYS_AGO = jstDate(new Date(Date.now() - 3 * DAY_MS));
+
 describe('GET /api/stats（キャッシュなし）', () => {
   beforeEach(() => {
     prismaMock.article.count.mockReset();
@@ -66,10 +81,14 @@ describe('GET /api/stats（キャッシュなし）', () => {
       { id: 's1', name: 'S1', _count: { articles: 4 } },
     ]);
     prismaMock.$queryRaw.mockReset();
-    // 日別は日付とソースの行を、7 日・30 日の件数は期間の日数を件数として返す
+    // 日別は日付とソースの行を、7 日の件数は期間の日数を件数として返す
     prismaMock.$queryRaw.mockImplementation(async (...call: RawCall) =>
       isDailyCall(call)
-        ? [{ date: '2026-10-01', sourceName: 'S1', count: 2 }]
+        ? [
+            { date: YESTERDAY, sourceName: 'S1', count: 30 },
+            { date: YESTERDAY, sourceName: 'S2', count: 15 },
+            { date: THREE_DAYS_AGO, sourceName: 'S1', count: 45 },
+          ]
         : [{ count: periodDays(call) }]
     );
     mockFindTopTags.mockReset();
@@ -78,7 +97,7 @@ describe('GET /api/stats（キャッシュなし）', () => {
     ]);
   });
 
-  it('総数・7 日・30 日の件数、日別、人気タグのどれも無効化したソースの記事を数えない', async () => {
+  it('総数・7 日の件数、日別、人気タグのどれも無効化したソースの記事を数えない。非表示の記事は数える', async () => {
     const response = await (GET as () => Promise<Response>)();
     const body = await response.json();
 
@@ -90,12 +109,13 @@ describe('GET /api/stats（キャッシュなし）', () => {
       enabledSourceWhere(),
     ]);
 
-    // 7 日・30 日の件数と日別の生 SQL
-    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(3);
+    // 7 日の件数と日別の生 SQL。非表示の条件は付けない（ユーザーの決定。総数・ソース別・人気タグと同じ）
+    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     for (const call of prismaMock.$queryRaw.mock.calls) {
       expect(sqlFragmentsOf(call, { afterAnd: true })).toEqual([
         `a."sourceId" ${ENABLED_SOURCE_SQL}`,
       ]);
+      expect(fullSqlOf(call)).not.toMatch(/isHidden/);
     }
 
     // 人気タグ
@@ -112,7 +132,7 @@ describe('GET /api/stats（キャッシュなし）', () => {
     });
   });
 
-  it('7 日・30 日の件数と日別は、期間を [N 日前, 集計の時刻) にし、ISO 文字列を ::timestamptz で読む', async () => {
+  it('7 日の件数と日別は、期間を [N 日前, 集計の時刻) にし、ISO 文字列を ::timestamptz で読む', async () => {
     const calledAt = Date.now();
     const response = await (GET as () => Promise<Response>)();
     const finishedAt = Date.now();
@@ -133,15 +153,15 @@ describe('GET /api/stats（キャッシュなし）', () => {
       }).toEqual({ toIsBetweenCall: true });
       return { daily: isDailyCall(call), days: periodDays(call), to };
     });
-    // 3 つとも同じ集計の時刻を上限にする
+    // どちらも同じ集計の時刻を上限にし、それを集計時刻として返す
     expect(new Set(periods.map((p) => p.to)).size).toBe(1);
+    expect(body.data.generatedAt).toBe(periods[0].to);
     expect(
       periods
         .map(({ daily, days }) => ({ daily, days }))
-        .sort((a, b) => Number(a.daily) - Number(b.daily) || a.days - b.days)
+        .sort((a, b) => Number(a.daily) - Number(b.daily))
     ).toEqual([
       { daily: false, days: 7 },
-      { daily: false, days: 30 },
       { daily: true, days: 30 },
     ]);
 
@@ -152,15 +172,34 @@ describe('GET /api/stats（キャッシュなし）', () => {
     );
     expect(dailySql).not.toMatch(/NOW\(\)/i);
 
-    // 件数は期間ごとの問い合わせの結果から作る（モックは期間の日数を件数として返す）
+    // 7 日の件数は問い合わせの結果（モックは期間の日数を件数として返す）、30 日の件数は日別の合計
     expect(body.data.overview).toEqual({
       total: 10,
       last7Days: 7,
-      last30Days: 30,
-      averagePerDay: 1,
+      last30Days: 90,
+      averagePerDay: 3,
     });
-    expect(body.data.daily).toEqual([
-      { date: '2026-10-01', total: 2, sources: { S1: 2 } },
+
+    // 日別は日本時間の暦日で期間の両端を含み、記事が 0 件の日も入れる
+    const toMs = Date.parse(String(periods[0].to));
+    const expectedDates: string[] = [];
+    for (
+      let day = jstDate(new Date(toMs - 30 * DAY_MS));
+      day <= jstDate(new Date(toMs));
+      day = nextDay(day)
+    ) {
+      expectedDates.push(day);
+    }
+    const daily = body.data.daily as {
+      date: string;
+      total: number;
+      sources: Record<string, number>;
+    }[];
+    expect(daily.map((day) => day.date)).toEqual(expectedDates);
+    expect(daily.filter((day) => day.total > 0)).toEqual([
+      { date: THREE_DAYS_AGO, total: 45, sources: { S1: 45 } },
+      { date: YESTERDAY, total: 45, sources: { S1: 30, S2: 15 } },
     ]);
+    expect(daily.find((day) => day.total === 0)?.sources).toEqual({});
   });
 });
