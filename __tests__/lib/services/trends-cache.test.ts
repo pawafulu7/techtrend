@@ -94,7 +94,12 @@ it('page fills the complete keywords payload, including period, for the API', as
     .mockResolvedValueOnce([]);
   const page = await fetchKeywordsData();
   const result = await (await keywordsGet()).json();
-  expect(result.trending).toEqual(page.trending);
+  // トレンド概要は 7 区間の件数（series）つき、API は以前と同じ形（series なし）。ほかは同じ値
+  expect(result.trending).toEqual(
+    page.trending.map(({ series: _series, ...keyword }) => keyword)
+  );
+  expect(page.trending[0].series).toEqual([0, 0, 0, 12, 0, 0, 5]);
+  expect(page.trendingTotal).toBe(1);
   expect(result.newTags).toEqual(page.newTags);
   expect(result.period.from).toEqual(expect.any(String));
   expect(result.period.to).toEqual(expect.any(String));
@@ -217,6 +222,7 @@ it('all shared loaders and tag endpoints still return data with Redis unavailabl
   redis.set.mockRejectedValue(new Error('Redis unavailable'));
   expect(await fetchKeywordsData()).toEqual({
     trending: [],
+    trendingTotal: 0,
     newTags: [],
     aggregatedAt: expect.any(String),
   });

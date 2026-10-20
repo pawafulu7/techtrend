@@ -21,7 +21,10 @@ import { SortButtons } from '@/app/components/common/sort-buttons';
 import { useMediaQuery } from '@/app/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import { ReaderArticleList } from './article-list';
+import { useReaderListNavigation } from './use-reader-list-navigation';
+import { useReaderSelection } from './use-reader-selection';
 import { ReaderArticleDetail } from './article-detail';
+import { nextArticleIdAfter, uniqueById } from './utils';
 import type {
   ReaderListArticle,
   ArticleListResponse,
@@ -109,7 +112,9 @@ export function ReaderClient({ tags }: ReaderClientProps) {
     if (sortBy) params.sortBy = sortBy;
     if (sortOrder) params.sortOrder = sortOrder;
     // 論文のソースは除く（残りが無ければ全選択。withoutPaperSourceIds）
-    const sources = sourcesParam ? withoutPaperSourceIds(sourcesParam) : undefined;
+    const sources = sourcesParam
+      ? withoutPaperSourceIds(sourcesParam)
+      : undefined;
     if (sources) params.sources = sources;
     if (sourceId && !isPaperSourceId(sourceId)) params.sourceId = sourceId;
     if (tagsParam) params.tags = tagsParam;
@@ -161,43 +166,15 @@ function ReaderClientInner({
     isDesktopRef.current = isDesktop;
   }, [isDesktop]);
 
-  // 選択中記事をURLの `article` パラメータへ native History API で反映する。
-  // router.push/replace を使わないのは、/reader が force-dynamic のため
-  // Next Router 経由の遷移は毎回サーバー(sources/tags/session取得)への
-  // RSCリクエストを発生させてしまうから。
-  const selectArticle = useCallback(
-    (id: string, opts?: { replace?: boolean }) => {
-      if (typeof window === 'undefined') return;
-      const replace = opts?.replace ?? isDesktopRef.current;
-      const params = new URLSearchParams(window.location.search);
-      params.set('article', id);
-      const url = `${window.location.pathname}?${params.toString()}`;
-      // data引数には null を渡す（history.state をそのまま渡すと Next.js の
-      // 内部フラグ __NA が付いた状態になり、パッチされた pushState/replaceState が
-      // 「Next.js内部からの呼び出し」と誤認して useSearchParams への同期処理を
-      // スキップしてしまうため。null なら Next.js が現在の内部treeを自動でコピーする）
-      if (replace) {
-        window.history.replaceState(null, '', url);
-      } else {
-        window.history.pushState(null, '', url);
-      }
-    },
-    []
-  );
-
-  // モバイルの「← 記事リスト」: articleパラメータを外してリスト表示に戻す。
-  // history.back() だとdeep link直遷移時に戻り先が存在せずアプリ外に出て
-  // しまうことがあるため、常にpushStateでarticleを外す方式にしている。
-  const backToList = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    params.delete('article');
-    const qs = params.toString();
-    const url = qs
-      ? `${window.location.pathname}?${qs}`
-      : window.location.pathname;
-    window.history.pushState(null, '', url);
-  }, []);
+  // 一覧で選んでいる行と、記事を選ぶ（URL の `article` を書く）・モバイルの「← 記事リスト」で一覧に戻る処理
+  // （use-reader-selection.ts）
+  const {
+    activeId,
+    selectArticle,
+    moveActive,
+    backToList,
+    beginPendingSelection,
+  } = useReaderSelection({ articleParam, isDesktop, isDesktopRef });
 
   // Infinite query for article list
   const {
@@ -219,9 +196,9 @@ function ReaderClientInner({
     staleTime: 2 * 60 * 1000,
   });
 
-  // Flatten all pages into a single article array
+  // Flatten all pages into a single article array（ページの境目で重なった記事は除く。uniqueById）
   const articles = useMemo(
-    () => listData?.pages.flatMap((p) => p.data.items) ?? [],
+    () => uniqueById(listData?.pages.flatMap((p) => p.data.items) ?? []),
     [listData]
   );
 
@@ -244,9 +221,11 @@ function ReaderClientInner({
 
   const selectedArticle = detailData?.data ?? null;
 
-  // Prev/Next navigation
-  const currentIndex = effectiveSelectedId
-    ? articles.findIndex((a: ReaderListArticle) => a.id === effectiveSelectedId)
+  // Prev/Next navigation。基準は一覧で選んでいる行（URL の更新は遅れて届くので、↓↑ の直後に押しても
+  // 一覧の選択から前後へ進む）。選んでいる行は本文の記事を開くたびに合わせる（use-reader-selection.ts）
+  const selectedId = activeId ?? effectiveSelectedId;
+  const currentIndex = selectedId
+    ? articles.findIndex((a: ReaderListArticle) => a.id === selectedId)
     : -1;
   const isSelectedLoaded = currentIndex >= 0;
   const hasPrev = currentIndex > 0;
@@ -257,24 +236,36 @@ function ReaderClientInner({
   const canGoNextUi = isSelectedLoaded && (hasNext || !!hasNextPage);
 
   // 次ページ取得後の続き選択。Prev/Nextやキーボード連続操作の延長のため常にreplace。
+  // - 次ページを読み込み中に押されたら、その取得を待って選ぶ（cancelRefetch: false）。ほかの取得（再接続などでの
+  //   読み直し）の最中なら、以前どおりそれを止めて次ページを読む（待つと次ページを読まずに終わるため）
+  // - 読む間に選択や URL が変わったら（別の記事を選んだ・一覧に戻った・戻る・画面を離れた）、上書きしない
+  // - 次の記事は、番号ではなく今の記事の id から、重なりを除いた並びで探す（nextArticleIdAfter）
   const fetchNextAndSelect = useCallback(
     (idx: number) => {
-      if (!hasNextPage || isFetchingNextPage) return;
-      fetchNextPage()
+      if (!hasNextPage) return;
+      const fromId = articles[idx]?.id;
+      const isStillCurrent = beginPendingSelection();
+      fetchNextPage({ cancelRefetch: !isFetchingNextPage })
         .then((result) => {
-          if (result.data) {
-            const newArticles = result.data.pages.flatMap((p) => p.data.items);
-            const nextArticle = newArticles[idx + 1];
-            if (nextArticle) {
-              selectArticle(nextArticle.id, { replace: true });
-            }
-          }
+          if (!isStillCurrent() || !result.data) return;
+          const nextId = nextArticleIdAfter(
+            result.data.pages.flatMap((p) => p.data.items),
+            fromId
+          );
+          if (nextId) selectArticle(nextId, { replace: true });
         })
         .catch(() => {
           // Error handled by useInfiniteQuery's error state
         });
     },
-    [hasNextPage, isFetchingNextPage, fetchNextPage, selectArticle]
+    [
+      hasNextPage,
+      isFetchingNextPage,
+      articles,
+      beginPendingSelection,
+      fetchNextPage,
+      selectArticle,
+    ]
   );
 
   const handlePrev = useCallback(() => {
@@ -291,41 +282,33 @@ function ReaderClientInner({
   }, [hasNext, articles, currentIndex, fetchNextAndSelect, selectArticle]);
 
   const handleLoadMore = useCallback(() => {
+    // 取得中に呼ぶと、TanStack Query は進行中の取得を捨てて取り直す（cancelRefetch の既定）。
+    // md 未満の末尾で↓を押し続けたときに同じページを何度も取りに行かないよう、取得中は呼ばない
+    if (!hasNextPage || isFetchingNextPage) return;
     fetchNextPage().catch(() => {
       // Error handled by useInfiniteQuery's error state
     });
-  }, [fetchNextPage]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  // リストからの選択: モバイルはpush（ブラウザバックでリストへ戻れる）、
-  // デスクトップはreplace（履歴を汚さない）
-  const handleSelectArticle = useCallback(
-    (articleId: string) => {
-      selectArticle(articleId);
-    },
-    [selectArticle]
-  );
-
-  // Keyboard navigation（ArrowUp/Down連続操作もPrev/Next同様に常にreplace）
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!effectiveSelectedId || articles.length === 0) return;
-      const idx = articles.findIndex(
-        (a: ReaderListArticle) => a.id === effectiveSelectedId
-      );
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (idx < articles.length - 1) {
-          selectArticle(articles[idx + 1].id, { replace: true });
-        } else {
-          fetchNextAndSelect(idx);
-        }
-      } else if (e.key === 'ArrowUp' && idx > 0) {
-        e.preventDefault();
-        selectArticle(articles[idx - 1].id, { replace: true });
-      }
-    },
-    [effectiveSelectedId, articles, fetchNextAndSelect, selectArticle]
-  );
+  // 一覧の選択・キーボード操作・md 未満のフォーカスの移動（use-reader-list-navigation.ts）
+  const {
+    listActiveId,
+    handleSelectArticle,
+    handleKeyDown,
+    listboxRef,
+    listRegionRef,
+    detailRegionRef,
+  } = useReaderListNavigation({
+    articles,
+    articleParam,
+    activeId,
+    effectiveSelectedId,
+    isDesktopRef,
+    selectArticle,
+    moveActive,
+    fetchNextAndSelect,
+    loadMore: handleLoadMore,
+  });
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -349,8 +332,10 @@ function ReaderClientInner({
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Left panel: Article list */}
         <div
+          ref={listRegionRef}
+          tabIndex={-1}
           className={cn(
-            'shrink-0 overflow-y-auto border-r border-[var(--tt-color-border)] md:w-[320px] lg:w-[380px]',
+            'shrink-0 overflow-y-auto border-r border-[var(--tt-color-border)] outline-none md:w-[320px] lg:w-[380px]',
             articleParam ? 'hidden md:block' : 'block w-full'
           )}
           role="region"
@@ -358,7 +343,7 @@ function ReaderClientInner({
         >
           <ReaderArticleList
             articles={articles}
-            selectedId={effectiveSelectedId}
+            selectedId={listActiveId}
             isLoading={isLoadingList}
             error={listError instanceof Error ? listError.message : null}
             onSelectArticle={handleSelectArticle}
@@ -367,12 +352,17 @@ function ReaderClientInner({
             hasNextPage={!!hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
             onLoadMore={handleLoadMore}
+            listboxRef={listboxRef}
           />
         </div>
         {/* Right panel: Article detail */}
         <div
+          ref={detailRegionRef}
+          tabIndex={-1}
+          // 本文の領域そのものをスクロールさせる。開いたときにフォーカスをここへ移すので、
+          // そのまま矢印キー・PageDown・Space で読み進められる（スクロールする要素が子だと動かない）
           className={cn(
-            'flex-1 overflow-hidden',
+            'flex-1 overflow-y-auto outline-none',
             articleParam ? 'block' : 'hidden md:block'
           )}
           role="region"

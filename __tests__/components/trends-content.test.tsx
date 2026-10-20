@@ -68,6 +68,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     render(
       <TrendsContent
         initialKeywords={null}
+        trendingTotal={null}
         initialNewTags={null}
         initialAnalysis={emptyAnalysis}
         initialSourceData={null}
@@ -75,10 +76,10 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     );
 
     expect(
-      screen.getByText('急上昇キーワードを読み込めませんでした')
+      screen.getByText('いま伸びている話題を読み込めませんでした')
     ).toBeInTheDocument();
     expect(
-      screen.queryByText('急上昇キーワードはありません')
+      screen.queryByText('いま伸びている話題はありません')
     ).not.toBeInTheDocument();
     expect(
       screen.getByText('新着タグを読み込めませんでした')
@@ -92,7 +93,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     expect(screen.getAllByText('取得できませんでした')).toHaveLength(2);
 
     await userEvent.click(
-      within(getSection('急上昇キーワード')).getByRole('button', {
+      within(getSection('いま伸びている話題')).getByRole('button', {
         name: '再試行',
       })
     );
@@ -103,6 +104,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     render(
       <TrendsContent
         initialKeywords={[]}
+        trendingTotal={0}
         initialNewTags={[]}
         initialAnalysis={emptyAnalysis}
         initialSourceData={[]}
@@ -111,7 +113,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
 
     // 空の表示は、ページの下地ではなく見出しと同じカード（枠と背景）の中に出す（issue #763）
     for (const [heading, empty] of [
-      ['急上昇キーワード', '急上昇キーワードはありません'],
+      ['いま伸びている話題', 'いま伸びている話題はありません'],
       ['新着タグ (0)', '新着タグはありません'],
     ]) {
       const section = getSection(heading);
@@ -133,6 +135,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     render(
       <TrendsContent
         initialKeywords={[]}
+        trendingTotal={0}
         initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
@@ -174,6 +177,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     render(
       <TrendsContent
         initialKeywords={[]}
+        trendingTotal={0}
         initialNewTags={[]}
         initialAnalysis={analysisWithTag}
         initialSourceData={[]}
@@ -204,6 +208,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     const { rerender } = render(
       <TrendsContent
         initialKeywords={null}
+        trendingTotal={null}
         initialNewTags={[]}
         initialAnalysis={analysisWithTag}
         initialSourceData={[]}
@@ -217,6 +222,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     rerender(
       <TrendsContent
         initialKeywords={[]}
+        trendingTotal={0}
         initialNewTags={[]}
         initialAnalysis={{ ...analysisWithTag }}
         initialSourceData={[]}
@@ -235,6 +241,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     const { rerender } = render(
       <TrendsContent
         initialKeywords={null}
+        trendingTotal={null}
         initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
@@ -247,6 +254,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     rerender(
       <TrendsContent
         initialKeywords={[]}
+        trendingTotal={0}
         initialNewTags={[]}
         initialAnalysis={analysisWithTag}
         initialSourceData={[]}
@@ -271,6 +279,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     render(
       <TrendsContent
         initialKeywords={[]}
+        trendingTotal={0}
         initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
@@ -307,6 +316,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     render(
       <TrendsContent
         initialKeywords={[]}
+        trendingTotal={0}
         initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
@@ -341,6 +351,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     render(
       <TrendsContent
         initialKeywords={[]}
+        trendingTotal={0}
         initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
@@ -378,6 +389,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     const { rerender } = render(
       <TrendsContent
         initialKeywords={null}
+        trendingTotal={null}
         initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
@@ -392,6 +404,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     rerender(
       <TrendsContent
         initialKeywords={[]}
+        trendingTotal={0}
         initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}

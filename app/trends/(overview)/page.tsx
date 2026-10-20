@@ -26,6 +26,7 @@ export default async function TrendsPage() {
   return (
     <TrendsContent
       initialKeywords={keywordsData?.trending ?? null}
+      trendingTotal={keywordsData?.trendingTotal ?? null}
       initialNewTags={keywordsData?.newTags ?? null}
       keywordsAggregatedAt={keywordsData?.aggregatedAt ?? null}
       initialAnalysis={valueOrNull(analysisResult)}

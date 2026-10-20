@@ -39,6 +39,7 @@ import {
 import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import {
   ENABLED_SOURCE_SQL,
+  expectAnalysisPeriodSql,
   sqlFragmentsOf,
 } from '../../helpers/sql-fragments';
 
@@ -74,12 +75,19 @@ describe('trends-data: 無効化したソースの記事を数えない（issue 
       { name: 'React', total_count: BigInt(3) },
     ]);
 
+    const calledAt = Date.now();
     await fetchAnalysisData(30);
+    const calledBetween = [calledAt, Date.now()] as const;
 
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     for (const call of prismaMock.$queryRaw.mock.calls) {
-      expect(sqlFragmentsOf(call, { afterAnd: true })).toEqual([ENABLED]);
+      expectAnalysisPeriodSql(call, { days: 30, calledBetween });
     }
+    // 日別のまとめは日本時間の暦日（0 で埋める日付と同じ区切り）
+    const [, timeline] = prismaMock.$queryRaw.mock.calls;
+    expect((timeline[0] as readonly string[]).join('')).toContain(
+      `TO_CHAR(a."publishedAt" AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD')`
+    );
   });
 
   it('fetchSourceData: 構成比の分母も有効なソースの記事だけで数える', async () => {

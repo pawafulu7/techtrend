@@ -189,9 +189,16 @@ async function expectHeadings(
   }
 
   if (subNav) {
-    const navBox = await boxOf(page, subNav, path);
+    // サブナビが文字のタブ（トレンド）のときは、タブの左右の余白（px-3）の分だけ nav を外へ出し、
+    // 最初のタブの中身（アイコン）を見出しにそろえる。ランキングの期間のような枠の無いナビは nav の左端でそろえる
+    const firstTabIcon = page.locator(`${subNav} a svg`).first();
+    const alignBox =
+      (await firstTabIcon.count()) > 0
+        ? await firstTabIcon.boundingBox()
+        : await boxOf(page, subNav, path);
+    if (!alignBox) throw new Error(`${path}: サブナビが描画されていない`);
     expect(
-      Math.abs(navBox.x - headerBox.x),
+      Math.abs(alignBox.x - headerBox.x),
       `${path} のサブナビと PageHeader の左端がそろう`
     ).toBeLessThanOrEqual(1);
   }
@@ -227,6 +234,18 @@ test.describe('画面の見出し（Issue #700）', () => {
         page.getByRole('link', { name: /元記事を読む/ }).first()
       ).toBeVisible();
 
+      // 本文の列は幅を縮めない（ユーザーの決定）。1440 の画面から、ページの左右の余白（px-6）・
+      // 列の間（gap-6）・右の列（lg:w-80）・スクロールバーの分を引いた幅を下回らない
+      const articleCard = page
+        .locator('[data-testid="article-content"]')
+        .locator('xpath=..');
+      const articleCardBox = await articleCard.boundingBox();
+      if (!articleCardBox) throw new Error('記事の本文の枠が描画されていない');
+      expect(
+        articleCardBox.width,
+        '記事詳細の本文の列は画面の幅いっぱいに使う'
+      ).toBeGreaterThanOrEqual(VIEWPORT_WIDTH - 24 * 2 - 24 - 320 - 20);
+
       await openPage(page, `${articlePath}/graph`);
       await expectHeadings(page, {
         path: `${articlePath}/graph`,
@@ -249,6 +268,22 @@ test.describe('画面の見出し（Issue #700）', () => {
         await expectHeadings(page, pageCase);
       });
     }
+  });
+
+  test('リーダーの本文は右のペインの幅いっぱいに使う', async ({ page }) => {
+    await openPage(page, '/reader');
+    // 本文のカード（タイトルの h2 の親）。右のペインは一覧（lg:w-[380px]）の残りで、
+    // その左右の余白（px-5）とスクロールバーの分を引いた幅を下回らない（幅を縮めない。ユーザーの決定）
+    const title = page
+      .getByRole('region', { name: '記事詳細' })
+      .getByRole('heading', { level: 2 });
+    await expect(title).toBeVisible({ timeout: 15000 });
+    const cardBox = await title.locator('xpath=..').boundingBox();
+    if (!cardBox) throw new Error('リーダーの本文のカードが描画されていない');
+    expect(
+      cardBox.width,
+      'リーダーの本文は右のペインの幅いっぱいに使う'
+    ).toBeGreaterThanOrEqual(VIEWPORT_WIDTH - 380 - 20 * 2 - 20);
   });
 
   test('狭い画面のリーダーは、記事一覧だけのときも h1 を1つ持つ', async ({

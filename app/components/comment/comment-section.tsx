@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
+import { loginWithCallback } from '@/lib/routes/auth';
 import Link from 'next/link';
 import {
   useInfiniteQuery,
@@ -304,7 +305,10 @@ export function CommentSection({ articleId, className }: CommentSectionProps) {
               ログインしてメモを残しましょう
             </p>
             <Button asChild variant="outline" size="sm">
-              <Link href="/auth/signin">ログイン</Link>
+              {/* /auth/signin は存在しない。ログインの後にこの記事へ戻す */}
+              <Link href={loginWithCallback(`/articles/${articleId}`)}>
+                ログイン
+              </Link>
             </Button>
           </div>
         ) : (

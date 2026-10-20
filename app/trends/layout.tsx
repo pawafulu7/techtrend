@@ -8,8 +8,9 @@ export default function TrendsLayout({
   return (
     <div className="min-h-screen">
       {/* Sub Navigation */}
-      <div className="bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur">
-        <div className="mx-auto w-full max-w-7xl px-4 py-3">
+      {/* 文字のタブの下線をこの下の線に重ねる（ヘッダーと同じ） */}
+      <div className="border-b border-(--tt-color-border) bg-(--tt-color-surface)">
+        <div className="mx-auto w-full max-w-7xl px-4">
           <TrendSubNav />
         </div>
       </div>
