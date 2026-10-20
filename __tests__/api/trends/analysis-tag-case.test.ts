@@ -55,16 +55,19 @@ describe('GET /api/trends/analysis: 無効化したソースの記事を数え�
   });
 
   it('タグ指定: 時系列と関連タグの両方', async () => {
+    const calledAt = Date.now();
     await GET(
       new NextRequest(
         'http://localhost:3000/api/trends/analysis?tag=mcp&days=7'
       )
     );
 
+    const calledBetween = [calledAt, Date.now()] as const;
+
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     // 期間（articleAggregationSql）の断片に、有効なソースと非表示でない条件が AND で入る
     for (const call of prismaMock.$queryRaw.mock.calls) {
-      expectAnalysisPeriodSql(call, { days: 7 });
+      expectAnalysisPeriodSql(call, { days: 7, calledBetween });
     }
     // タグの推移も日本時間の暦日でまとめる（全体の推移と同じ区切り）
     expect(sqlOf(prismaMock.$queryRaw.mock.calls[0])).toContain(
@@ -77,14 +80,16 @@ describe('GET /api/trends/analysis: 無効化したソースの記事を数え�
       { name: 'React', total_count: BigInt(3) },
     ]);
 
+    const calledAt = Date.now();
     await GET(
       new NextRequest('http://localhost:3000/api/trends/analysis?days=30')
     );
+    const calledBetween = [calledAt, Date.now()] as const;
 
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     // 期間（articleAggregationSql）の断片に、有効なソースと非表示でない条件が AND で入る
     for (const call of prismaMock.$queryRaw.mock.calls) {
-      expectAnalysisPeriodSql(call, { days: 30 });
+      expectAnalysisPeriodSql(call, { days: 30, calledBetween });
     }
   });
 });

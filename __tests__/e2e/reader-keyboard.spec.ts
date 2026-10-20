@@ -327,10 +327,14 @@ test.describe('リーダーのキーボード操作（md 未満の1ペイン）'
     const count = await options(page).count();
     const lastId = await articleIdOf(page, count - 1);
 
-    // 2 ページ目の取得を保留する
+    // 2 ページ目の取得を保留する。要求が届いたこと（自動選択が読み込みを始めたこと）も待てるようにする
     let release: () => void = () => undefined;
     const held = new Promise<void>((resolve) => {
       release = resolve;
+    });
+    let markRequested: () => void = () => undefined;
+    const requested = new Promise<void>((resolve) => {
+      markRequested = resolve;
     });
     const isSecondPage = (url: string) =>
       url.includes('/api/articles/list') &&
@@ -338,6 +342,7 @@ test.describe('リーダーのキーボード操作（md 未満の1ペイン）'
     await page.route(
       (url) => isSecondPage(url.toString()),
       async (route) => {
+        markRequested();
         await held;
         await route.continue();
       }
@@ -351,6 +356,8 @@ test.describe('リーダーのキーボード操作（md 未満の1ペイン）'
         .getByRole('heading', { level: 2 })
     ).toBeVisible();
     await page.getByTestId('reader-mobile-next').click();
+    // 「次の記事」が 2 ページ目を読み始めてから一覧へ戻る（戻った後の無限スクロールの読み込みと取り違えない）
+    await requested;
     await page.getByTestId('reader-back-to-list').click();
     await expect.poll(() => articleParam(page)).toBeNull();
 

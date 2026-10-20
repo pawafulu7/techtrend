@@ -32,12 +32,13 @@ const ANALYSIS_PERIOD_SQL = new RegExp(
     ' AND a\\."publishedAt" >= \\?::timestamptz AND a\\."publishedAt" < \\?::timestamptz$'
 );
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const DAY_MS = 24 * 60 * 60 * 1000;
 /**
  * タイムゾーン無しの timestamp へのキャスト（::timestamp、::pg_catalog.timestamp、::"timestamp"、
  * CAST(… AS timestamp)。大文字も）。timestamptz と timestamp with time zone は除く
  */
 const TIMESTAMP_WITHOUT_TZ =
-  /(?:::|\bAS\s+)\s*(?:pg_catalog\.)?"?timestamp"?(?!tz)(?!\s+with\s+time\s+zone)\b/i;
+  /(?:::|\bAS\s+)\s*(?:"?pg_catalog"?\s*\.\s*)?"?timestamp"?(?!tz)(?!(?:\s*\(\s*\d+\s*\))?\s+with\s+time\s+zone)\b/i;
 
 /** 問い合わせの全文。値が Prisma.Sql の断片ならその SQL を、それ以外の値は ? を埋める */
 function fullSqlOf(call: readonly unknown[]): string {
@@ -56,14 +57,18 @@ function fullSqlOf(call: readonly unknown[]): string {
  * - 期間は 1 つの断片で、非表示でない・有効なソース・[from, to) を、すべて AND でつなぐ
  * - from・to は Z 付きの ISO 文字列を ::timestamptz で読む（Date のまま渡すと pg アダプターはオフセット無しで送り、
  *   ::timestamp はオフセットを捨てる。どちらもセッションのタイムゾーンが UTC でないと時差の分ずれる）。
- *   to − from は days 日
- * - 断片は WHERE か AND の直後に置く。問い合わせのどこにも OR を書かない（断片は括弧で囲まれていないので、
- *   前後のどこかに OR があると優先順位で期間の外の記事が入る。分析の問い合わせは OR を使わない）
+ *   to は集計の時刻（呼び出しの前後の時刻 calledBetween の間）で、from は to の days 日前
+ * - 断片は WHERE か AND の直後に置き、後ろには AND・GROUP BY・ORDER BY・LIMIT・閉じ括弧・終わりだけが来る。
+ *   問い合わせのどこにも OR を書かない（断片は括弧で囲まれていないので、前後のどこかに OR や IS・= があると、
+ *   優先順位で期間の外の記事が入る。分析の問い合わせは OR を使わない）
  * - 問い合わせのどこにも、タイムゾーン無しのキャストが無い
  */
 export function expectAnalysisPeriodSql(
   call: readonly unknown[],
-  { days }: { days: number }
+  {
+    days,
+    calledBetween,
+  }: { days: number; calledBetween: readonly [number, number] }
 ): void {
   const [strings, ...values] = call as [readonly string[], ...unknown[]];
   const periodIndexes = values.flatMap((value, index) =>
@@ -88,11 +93,19 @@ export function expectAnalysisPeriodSql(
   }).toEqual({ count: 2, from: 'string', to: 'string' });
   expect(from).toMatch(ISO_UTC);
   expect(to).toMatch(ISO_UTC);
-  expect(Date.parse(String(to)) - Date.parse(String(from))).toBe(
-    days * 24 * 60 * 60 * 1000
-  );
+  const toMs = Date.parse(String(to));
+  expect({ from, to }).toEqual({
+    from: new Date(toMs - days * DAY_MS).toISOString(),
+    to,
+  });
+  expect({
+    toIsBetweenCall: toMs >= calledBetween[0] && toMs <= calledBetween[1],
+  }).toEqual({ toIsBetweenCall: true });
 
   expect(strings[periodIndex]).toMatch(/\b(WHERE|AND)\s*$/i);
+  expect(strings[periodIndex + 1] ?? '').toMatch(
+    /^\s*(?:AND\b|GROUP\s+BY\b|ORDER\s+BY\b|LIMIT\b|\)|$)/i
+  );
   const fullSql = fullSqlOf(call);
   expect(fullSql).not.toMatch(/\bOR\b/i);
   expect(fullSql).not.toMatch(TIMESTAMP_WITHOUT_TZ);

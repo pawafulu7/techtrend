@@ -110,12 +110,15 @@ export function useReaderSelection({
   }, [invalidatePending]);
 
   /**
-   * 次ページを読んでから選ぶ処理を始める。返す関数は、読み終えた時点でまだ選んでよいか（その間に選択が
-   * 変わっていないか）を返す
+   * 次ページを読んでから選ぶ処理を始める。返す関数は、読み終えた時点でまだ選んでよいか（その間に選択も URL も
+   * 変わっていないか）を返す。URL も見るのは、ブラウザの戻るでは URL がすぐ変わるのに、世代が進むのは Next が
+   * 戻り先を描き直して commit した後になるため（その間に読み終えると、戻った先の履歴を上書きしてしまう）
    */
   const beginPendingSelection = useCallback(() => {
     const generation = generationRef.current;
-    return () => generationRef.current === generation;
+    const search = window.location.search;
+    return () =>
+      generationRef.current === generation && window.location.search === search;
   }, []);
 
   // 外からの URL の変化を取り込む。commit ごとに照合する（依存配列を付けない）。articleParam も activeId も
@@ -135,7 +138,12 @@ export function useReaderSelection({
   // ブラウザの戻る・進むなどで本文の記事が閉じた（md 未満で一覧に戻った）ときも、保留中の自動選択を取り消す
   const previousArticleParamRef = useRef(articleParam);
   useEffect(() => {
-    if (previousArticleParamRef.current !== null && articleParam === null) {
+    // 遅れて届いた古い null（一覧に戻った後に別の記事を選んだ）では取り消さないよう、今の URL とも照合する
+    if (
+      previousArticleParamRef.current !== null &&
+      articleParam === null &&
+      currentArticleParam() === null
+    ) {
       invalidatePending();
     }
     previousArticleParamRef.current = articleParam;

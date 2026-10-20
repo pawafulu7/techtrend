@@ -204,6 +204,30 @@ describe('useReaderSelection', () => {
       expect(active()).toBe('A');
     });
 
+    it('ブラウザの戻るで URL が変わった時点で取り消す（Next が描き直して commit する前でも）', () => {
+      setUrl('?article=A');
+      const { selection } = setup({ articleParam: 'A', isDesktop: false });
+      const pending = selection.current!.beginPendingSelection();
+      // popstate で URL だけが先に変わる
+      setUrl('');
+      expect(pending()).toBe(false);
+    });
+
+    it('一覧に戻った後に別の記事を選んだら、遅れて届いた古い null では新しい処理を取り消さない', () => {
+      setUrl('?article=A');
+      const { selection, rerender, select } = setup({
+        articleParam: 'A',
+        isDesktop: false,
+      });
+      act(() => selection.current?.backToList());
+      select('B');
+      const pending = selection.current!.beginPendingSelection();
+      // 一覧に戻ったときの null が、B を書いた後に届く
+      rerender({ articleParam: null, isDesktop: false });
+      expect(currentArticle()).toBe('B');
+      expect(pending()).toBe(true);
+    });
+
     it('画面を離れる（アンマウント）と取り消す', () => {
       const selection: { current: Selection | null } = { current: null };
       const view = render(

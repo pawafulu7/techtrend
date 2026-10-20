@@ -24,6 +24,7 @@ import { ReaderArticleList } from './article-list';
 import { useReaderListNavigation } from './use-reader-list-navigation';
 import { useReaderSelection } from './use-reader-selection';
 import { ReaderArticleDetail } from './article-detail';
+import { nextArticleIdAfter, uniqueById } from './utils';
 import type {
   ReaderListArticle,
   ArticleListResponse,
@@ -195,9 +196,9 @@ function ReaderClientInner({
     staleTime: 2 * 60 * 1000,
   });
 
-  // Flatten all pages into a single article array
+  // Flatten all pages into a single article array（ページの境目で重なった記事は除く。uniqueById）
   const articles = useMemo(
-    () => listData?.pages.flatMap((p) => p.data.items) ?? [],
+    () => uniqueById(listData?.pages.flatMap((p) => p.data.items) ?? []),
     [listData]
   );
 
@@ -235,32 +236,36 @@ function ReaderClientInner({
   const canGoNextUi = isSelectedLoaded && (hasNext || !!hasNextPage);
 
   // 次ページ取得後の続き選択。Prev/Nextやキーボード連続操作の延長のため常にreplace。
-  // - 読み込み中に押されたら、進行中の取得を待って選ぶ（cancelRefetch: false は進行中の取得をやり直さずに待つ）
-  // - 読む間に選択が変わったら（別の記事を選んだ・一覧に戻った・画面を離れた）、後から選んだ方を上書きしない
-  // - 次の記事は、番号ではなく今の記事の id から探す（読む間に新着が入ってページの境目がずれても同じ記事を選ばない）
+  // - 次ページを読み込み中に押されたら、その取得を待って選ぶ（cancelRefetch: false）。ほかの取得（再接続などでの
+  //   読み直し）の最中なら、以前どおりそれを止めて次ページを読む（待つと次ページを読まずに終わるため）
+  // - 読む間に選択や URL が変わったら（別の記事を選んだ・一覧に戻った・戻る・画面を離れた）、上書きしない
+  // - 次の記事は、番号ではなく今の記事の id から、重なりを除いた並びで探す（nextArticleIdAfter）
   const fetchNextAndSelect = useCallback(
     (idx: number) => {
       if (!hasNextPage) return;
       const fromId = articles[idx]?.id;
       const isStillCurrent = beginPendingSelection();
-      fetchNextPage({ cancelRefetch: false })
+      fetchNextPage({ cancelRefetch: !isFetchingNextPage })
         .then((result) => {
           if (!isStillCurrent() || !result.data) return;
-          const newArticles = result.data.pages.flatMap((p) => p.data.items);
-          const fromIndex = fromId
-            ? newArticles.findIndex((a) => a.id === fromId)
-            : -1;
-          const nextArticle =
-            newArticles[(fromIndex >= 0 ? fromIndex : idx) + 1];
-          if (nextArticle) {
-            selectArticle(nextArticle.id, { replace: true });
-          }
+          const nextId = nextArticleIdAfter(
+            result.data.pages.flatMap((p) => p.data.items),
+            fromId
+          );
+          if (nextId) selectArticle(nextId, { replace: true });
         })
         .catch(() => {
           // Error handled by useInfiniteQuery's error state
         });
     },
-    [hasNextPage, articles, beginPendingSelection, fetchNextPage, selectArticle]
+    [
+      hasNextPage,
+      isFetchingNextPage,
+      articles,
+      beginPendingSelection,
+      fetchNextPage,
+      selectArticle,
+    ]
   );
 
   const handlePrev = useCallback(() => {
