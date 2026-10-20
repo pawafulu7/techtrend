@@ -20,7 +20,7 @@ const ChartSkeleton = ({
       <Icon className="text-muted-foreground h-4 w-4" />
       <h3 className="text-h3">{title}</h3>
     </div>
-    <div className="h-[300px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
+    <div className="h-[300px] animate-pulse rounded bg-(--tt-color-surface-muted) motion-reduce:animate-none" />
   </div>
 );
 

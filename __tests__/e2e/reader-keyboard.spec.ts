@@ -67,9 +67,15 @@ test.describe('リーダーのキーボード操作（デスクトップ）', ()
     await expect.poll(() => articleParam(page)).toBe(secondId);
     await expect(box).toBeFocused();
     // 本文は選んだ記事になる（タイトルは一覧と本文で同じ表記）
-    const secondTitle = await options(page).nth(1).locator('p').first().innerText();
+    const secondTitle = await options(page)
+      .nth(1)
+      .locator('p')
+      .first()
+      .innerText();
     await expect(
-      page.getByRole('region', { name: '記事詳細' }).getByRole('heading', { level: 2 })
+      page
+        .getByRole('region', { name: '記事詳細' })
+        .getByRole('heading', { level: 2 })
     ).toHaveText(secondTitle);
 
     // End で末尾までスクロールすると次のページの読み込みが始まるので、押す前の末尾を期待値にする
@@ -112,26 +118,76 @@ test.describe('リーダーのキーボード操作（デスクトップ）', ()
     );
   });
 
-  test('↓・↑ と続けて押した後に本文の「次の記事」を押すと、一覧の選択は本文の記事を指す', async ({
+  test('記事を開いた状態で ↓・↑ と押した後に本文の「次の記事」を押すと、一覧と本文は 2 件目になる', async ({
+    page,
+  }) => {
+    await openReader(page);
+    const firstId = await articleIdOf(page, 0);
+    const secondId = await articleIdOf(page, 1);
+    const secondTitle = await options(page)
+      .nth(1)
+      .locator('p')
+      .first()
+      .innerText();
+    // 1 件目を URL で開いた状態から始める（↑ で戻ったとき、URL の値が元と同じになる）
+    await openReader(page, `/reader?article=${firstId}`);
+    const box = listbox(page);
+    await box.focus();
+
+    // CPU を絞り、↓ の URL（2 件目）が useSearchParams に届く前に ↑・クリックが来る順にする
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowUp');
+    await page.locator('button:visible', { hasText: '次の記事' }).click();
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+
+    // URL と一覧の選択が、同時に 2 件目を指す
+    await expect
+      .poll(async () => ({
+        article: articleParam(page),
+        active: await box.getAttribute('aria-activedescendant'),
+      }))
+      .toEqual({ article: secondId, active: `reader-article-${secondId}` });
+    await expect(
+      page
+        .getByRole('region', { name: '記事詳細' })
+        .getByRole('heading', { level: 2 })
+    ).toHaveText(secondTitle);
+  });
+
+  test('記事を選んだ後にヘッダーの「リーダー」を押すと、一覧の選択も先頭に戻る', async ({
     page,
   }) => {
     await openReader(page);
     const box = listbox(page);
     await box.focus();
     const firstId = await articleIdOf(page, 0);
-    // 途中の URL（2 件目）が届く前に戻すと、届かずに飛ばされることがある
+    const thirdId = await articleIdOf(page, 2);
+    const firstTitle = await options(page)
+      .nth(0)
+      .locator('p')
+      .first()
+      .innerText();
     await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowUp');
-    await page.locator('button:visible', { hasText: '次の記事' }).click();
+    await page.keyboard.press('ArrowDown');
+    await expect.poll(() => articleParam(page)).toBe(thirdId);
 
-    // 本文が先頭から替わった後、一覧の選択は本文の記事（URL の article）を指す
-    await expect.poll(() => articleParam(page)).not.toBe(firstId);
-    await expect.poll(() => articleParam(page)).not.toBeNull();
-    const bodyId = articleParam(page);
+    // Next の router 遷移（URL は commit のときに書かれる）
+    await page
+      .locator('header')
+      .getByRole('link', { name: 'リーダー', exact: true })
+      .click();
+    await expect.poll(() => articleParam(page)).toBeNull();
     await expect(box).toHaveAttribute(
       'aria-activedescendant',
-      `reader-article-${bodyId}`
+      `reader-article-${firstId}`
     );
+    await expect(
+      page
+        .getByRole('region', { name: '記事詳細' })
+        .getByRole('heading', { level: 2 })
+    ).toHaveText(firstTitle);
   });
 
   test('本文の「次の記事」で選択が変わっても、フォーカスは押したボタンに残る', async ({
@@ -163,7 +219,9 @@ test.describe('リーダーのキーボード操作（デスクトップ）', ()
     await openReader(page, '/reader?article=__missing_article__');
     const box = listbox(page);
     await expect(box).not.toHaveAttribute('aria-activedescendant');
-    await expect(page.locator('[role="option"][aria-selected="true"]')).toHaveCount(0);
+    await expect(
+      page.locator('[role="option"][aria-selected="true"]')
+    ).toHaveCount(0);
 
     await box.focus();
     await page.keyboard.press('ArrowDown');
@@ -234,6 +292,29 @@ test.describe('リーダーのキーボード操作（md 未満の1ペイン）'
     await expect(options(page).nth(2)).toBeInViewport();
   });
 
+  test('一覧で選んだ後に画面を広げると、一覧の選択は本文の記事に戻る', async ({
+    page,
+  }) => {
+    await openReader(page);
+    const box = listbox(page);
+    await box.focus();
+    const firstId = await articleIdOf(page, 0);
+    const thirdId = await articleIdOf(page, 2);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await expect(box).toHaveAttribute(
+      'aria-activedescendant',
+      `reader-article-${thirdId}`
+    );
+
+    // 2 ペインでは本文は先頭の記事（開いていない）なので、一覧もそれを指す
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(box).toHaveAttribute(
+      'aria-activedescendant',
+      `reader-article-${firstId}`
+    );
+  });
+
   test('本文の取得が遅くても失敗しても、開いたら本文の領域へフォーカスを移す', async ({
     page,
   }) => {
@@ -247,7 +328,10 @@ test.describe('リーダーのキーボード操作（md 未満の1ペイン）'
         await route.fulfill({
           status: 500,
           contentType: 'application/json',
-          body: JSON.stringify({ success: false, error: '記事の取得に失敗しました' }),
+          body: JSON.stringify({
+            success: false,
+            error: '記事の取得に失敗しました',
+          }),
         });
         return;
       }

@@ -22,6 +22,7 @@ import { useMediaQuery } from '@/app/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import { ReaderArticleList } from './article-list';
 import { useReaderListNavigation } from './use-reader-list-navigation';
+import { useReaderSelection } from './use-reader-selection';
 import { ReaderArticleDetail } from './article-detail';
 import type {
   ReaderListArticle,
@@ -162,29 +163,9 @@ function ReaderClientInner({
     isDesktopRef.current = isDesktop;
   }, [isDesktop]);
 
-  // 選択中記事をURLの `article` パラメータへ native History API で反映する。
-  // router.push/replace を使わないのは、/reader が force-dynamic のため
-  // Next Router 経由の遷移は毎回サーバー(sources/tags/session取得)への
-  // RSCリクエストを発生させてしまうから。
-  const selectArticle = useCallback(
-    (id: string, opts?: { replace?: boolean }) => {
-      if (typeof window === 'undefined') return;
-      const replace = opts?.replace ?? isDesktopRef.current;
-      const params = new URLSearchParams(window.location.search);
-      params.set('article', id);
-      const url = `${window.location.pathname}?${params.toString()}`;
-      // data引数には null を渡す（history.state をそのまま渡すと Next.js の
-      // 内部フラグ __NA が付いた状態になり、パッチされた pushState/replaceState が
-      // 「Next.js内部からの呼び出し」と誤認して useSearchParams への同期処理を
-      // スキップしてしまうため。null なら Next.js が現在の内部treeを自動でコピーする）
-      if (replace) {
-        window.history.replaceState(null, '', url);
-      } else {
-        window.history.pushState(null, '', url);
-      }
-    },
-    []
-  );
+  // 一覧で選んでいる行と、記事を選ぶ（URL の `article` を書く）処理（use-reader-selection.ts）
+  const { activeId, selectArticle, moveActive, generationRef } =
+    useReaderSelection({ articleParam, isDesktop, isDesktopRef });
 
   // モバイルの「← 記事リスト」: articleパラメータを外してリスト表示に戻す。
   // history.back() だとdeep link直遷移時に戻り先が存在せずアプリ外に出て
@@ -245,9 +226,11 @@ function ReaderClientInner({
 
   const selectedArticle = detailData?.data ?? null;
 
-  // Prev/Next navigation
-  const currentIndex = effectiveSelectedId
-    ? articles.findIndex((a: ReaderListArticle) => a.id === effectiveSelectedId)
+  // Prev/Next navigation。基準は一覧で選んでいる行（URL の更新は遅れて届くので、↓↑ の直後に押しても
+  // 一覧の選択から前後へ進む）。選んでいる行は本文の記事を開くたびに合わせる（use-reader-selection.ts）
+  const selectedId = activeId ?? effectiveSelectedId;
+  const currentIndex = selectedId
+    ? articles.findIndex((a: ReaderListArticle) => a.id === selectedId)
     : -1;
   const isSelectedLoaded = currentIndex >= 0;
   const hasPrev = currentIndex > 0;
@@ -258,11 +241,14 @@ function ReaderClientInner({
   const canGoNextUi = isSelectedLoaded && (hasNext || !!hasNextPage);
 
   // 次ページ取得後の続き選択。Prev/Nextやキーボード連続操作の延長のため常にreplace。
+  // 読み込む間に別の記事が選ばれていたら、後から選んだ方を上書きしない
   const fetchNextAndSelect = useCallback(
     (idx: number) => {
       if (!hasNextPage || isFetchingNextPage) return;
+      const generation = generationRef.current;
       fetchNextPage()
         .then((result) => {
+          if (generationRef.current !== generation) return;
           if (result.data) {
             const newArticles = result.data.pages.flatMap((p) => p.data.items);
             const nextArticle = newArticles[idx + 1];
@@ -275,7 +261,7 @@ function ReaderClientInner({
           // Error handled by useInfiniteQuery's error state
         });
     },
-    [hasNextPage, isFetchingNextPage, fetchNextPage, selectArticle]
+    [hasNextPage, isFetchingNextPage, fetchNextPage, selectArticle, generationRef]
   );
 
   const handlePrev = useCallback(() => {
@@ -311,10 +297,11 @@ function ReaderClientInner({
   } = useReaderListNavigation({
     articles,
     articleParam,
+    activeId,
     effectiveSelectedId,
-    isDesktop,
     isDesktopRef,
     selectArticle,
+    moveActive,
     fetchNextAndSelect,
     loadMore: handleLoadMore,
   });

@@ -66,6 +66,10 @@ describe('GET /api/trends/analysis: 無効化したソースの記事を数え�
     for (const call of prismaMock.$queryRaw.mock.calls) {
       expectAnalysisPeriodSql(call);
     }
+    // タグの推移も日本時間の暦日でまとめる（全体の推移と同じ区切り）
+    expect(sqlOf(prismaMock.$queryRaw.mock.calls[0])).toContain(
+      `TO_CHAR(a."publishedAt" AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD')`
+    );
   });
 
   it('全体: 上位タグとその時系列の両方', async () => {

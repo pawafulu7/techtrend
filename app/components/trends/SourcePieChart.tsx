@@ -138,7 +138,7 @@ export function SourcePieChart({
           <PieChartIcon className="h-4 w-4 text-(--tt-color-info)" />
           <h3 className="text-h3">ソース別記事分布</h3>
         </div>
-        <div className="h-[300px] animate-pulse rounded bg-(--tt-color-surface-muted)" />
+        <div className="h-[300px] animate-pulse rounded bg-(--tt-color-surface-muted) motion-reduce:animate-none" />
       </div>
     );
   }
