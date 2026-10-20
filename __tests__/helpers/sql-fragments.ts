@@ -21,6 +21,17 @@ export function sqlFragmentsOf(
   });
 }
 
+/**
+ * /stats の 7 日・30 日の件数の問い合わせ（lib/services/dashboard-stats.ts の countPublishedBetween）か。
+ * GROUP BY の無い COUNT(*) は必ず 1 行を返すので、$queryRaw のモックはこの問い合わせに [{ count }] を返す
+ */
+export function isStatsPeriodCountQuery(call: readonly unknown[]): boolean {
+  const [strings] = call as [readonly string[] | undefined];
+  return /^\s*SELECT COUNT\(\*\)::int as count\s+FROM "Article" a\s+WHERE\s*$/.test(
+    strings?.[0] ?? ''
+  );
+}
+
 /** 無効化したソースの記事を除く断片（lib/database/enabled-source-filter.ts）の本体 */
 export const ENABLED_SOURCE_SQL =
   'IN (SELECT id FROM "Source" WHERE enabled = true)';

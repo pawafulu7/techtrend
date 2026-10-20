@@ -80,6 +80,8 @@ export function DailyChart({ data }: DailyChartProps) {
 
         <div className="absolute inset-0 flex items-end justify-between gap-1">
           {data.map((item, index) => {
+            // item.date は日本時間の暦日（YYYY-MM-DD）。new Date は UTC の 0 時として読むので、
+            // 日付も UTC で取り出す（閲覧者のタイムゾーンで前日にずれない）
             const date = new Date(item.date);
 
             let cumulativeHeight = 0;
@@ -138,7 +140,7 @@ export function DailyChart({ data }: DailyChartProps) {
                   )}
                 </div>
                 <div className="text-muted-foreground text-xs">
-                  {date.getDate()}
+                  {date.getUTCDate()}
                 </div>
               </div>
             );
@@ -150,6 +152,7 @@ export function DailyChart({ data }: DailyChartProps) {
           {new Date(data[0].date).toLocaleDateString('ja-JP', {
             month: 'short',
             day: 'numeric',
+            timeZone: 'UTC',
           })}
         </span>
         <span>最大: {maxCount}件/日</span>
@@ -157,6 +160,7 @@ export function DailyChart({ data }: DailyChartProps) {
           {new Date(data[data.length - 1].date).toLocaleDateString('ja-JP', {
             month: 'short',
             day: 'numeric',
+            timeZone: 'UTC',
           })}
         </span>
       </div>

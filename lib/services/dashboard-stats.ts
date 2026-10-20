@@ -4,6 +4,10 @@ import {
   enabledSourceSql,
   enabledSourceWhere,
 } from '@/lib/database/enabled-source-filter';
+import {
+  daysAgo,
+  publishedAtPeriodSql,
+} from '@/lib/database/article-aggregation-filter';
 import { findTopTags } from '@/lib/database/tag-article-counts';
 
 const statsCache = new RedisCache({
@@ -11,7 +15,25 @@ const statsCache = new RedisCache({
   namespace: '@techtrend/cache:stats:v2',
 });
 
+/**
+ * 公開日時が [from, to) の記事数（有効なソースの記事だけ。非表示の記事も、このページのほかの件数と同じく数える）。
+ * Prisma の count に Date を渡すと、pg アダプターがオフセット無しで送り、セッションのタイムゾーンが UTC でないと
+ * 時差の分ずれるので、期間は publishedAtPeriodSql（ISO 文字列を ::timestamptz で読む）で書く
+ */
+async function countPublishedBetween(from: Date, to: Date): Promise<number> {
+  const [{ count }] = await prisma.$queryRaw<{ count: number }[]>`
+    SELECT COUNT(*)::int as count
+    FROM "Article" a
+    WHERE ${publishedAtPeriodSql('a', { from, to })}
+      AND ${enabledSourceSql()}
+  `;
+  return count;
+}
+
 async function loadDashboardStats() {
+  // 期間は [N 日前, now)。上限を付け、公開日時が未来の記事を数えない
+  const now = new Date();
+
   // 記事の統計情報を取得
   const [
     totalArticles,
@@ -25,24 +47,10 @@ async function loadDashboardStats() {
     prisma.article.count({ where: { AND: [enabledSourceWhere()] } }),
 
     // 過去7日間の記事数
-    prisma.article.count({
-      where: {
-        publishedAt: {
-          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        },
-        AND: [enabledSourceWhere()],
-      },
-    }),
+    countPublishedBetween(daysAgo(7, now), now),
 
     // 過去30日間の記事数
-    prisma.article.count({
-      where: {
-        publishedAt: {
-          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        },
-        AND: [enabledSourceWhere()],
-      },
-    }),
+    countPublishedBetween(daysAgo(30, now), now),
 
     // ソース別統計
     prisma.source.findMany({
@@ -59,17 +67,17 @@ async function loadDashboardStats() {
       },
     }),
 
-    // 日別統計（過去30日）- ソース別内訳付き
+    // 日別統計（過去30日）- ソース別内訳付き。日付は日本時間の暦日（トレンドの分析と同じ区切り）
     prisma.$queryRaw<{ date: string; sourceName: string; count: number }[]>`
     SELECT
-      TO_CHAR(a."publishedAt", 'YYYY-MM-DD') as date,
+      TO_CHAR(a."publishedAt" AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD') as date,
       s.name as "sourceName",
       COUNT(*)::int as count
     FROM "Article" a
     JOIN "Source" s ON a."sourceId" = s.id
-    WHERE a."publishedAt" >= NOW() - INTERVAL '30 days'
+    WHERE ${publishedAtPeriodSql('a', { from: daysAgo(30, now), to: now })}
       AND ${enabledSourceSql()}
-    GROUP BY TO_CHAR(a."publishedAt", 'YYYY-MM-DD'), s.name
+    GROUP BY 1, s.name
     ORDER BY date DESC, count DESC
   `,
 
