@@ -9,6 +9,10 @@ const customJestConfig = {
   setupFiles: ['<rootDir>/jest.polyfills.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.integration.js'],
   testEnvironment: 'node',
+  // 結合テストは同じテスト用の DB に記事を作って消し、DB 全体の件数の前後差を確かめるもの
+  // （dashboard-stats-timezone）や、全体の上位タグに入ることを前提にするもの（trend-analysis-timezone）がある。
+  // ファイルを並列に流すと、ほかのファイルの書き込みが混ざって結果が揺れるので、1 つずつ流す
+  maxWorkers: 1,
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   reporters: ['default'],
   moduleNameMapper: {

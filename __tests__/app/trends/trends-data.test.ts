@@ -40,6 +40,7 @@ import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import {
   ENABLED_SOURCE_SQL,
   expectAnalysisPeriodSql,
+  isStatsPeriodCountQuery,
   sqlFragmentsOf,
 } from '../../helpers/sql-fragments';
 
@@ -52,7 +53,10 @@ const ENABLED = `a."sourceId" ${ENABLED_SOURCE_SQL}`;
 describe('trends-data: 無効化したソースの記事を数えない（issue #688）', () => {
   beforeEach(() => {
     prismaMock.$queryRaw.mockReset();
-    prismaMock.$queryRaw.mockResolvedValue([]);
+    // /stats の 7 日の件数（COUNT(*) の 1 行）のほかは空
+    prismaMock.$queryRaw.mockImplementation(async (...call: unknown[]) =>
+      isStatsPeriodCountQuery(call) ? [{ count: 0 }] : []
+    );
   });
 
   it('fetchKeywordsData: 区間別の集計と、新規タグの判定の内側', async () => {

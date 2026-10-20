@@ -2,34 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@/lib/prisma-exports';
 import { trendsCache } from '@/lib/cache/trends-cache';
 import { articleAggregationSql } from '@/lib/database/article-aggregation-filter';
-
-/**
- * 日別のまとめの日付は日本時間の暦日（YYYY-MM-DD）にする。SQL の
- * `TO_CHAR(publishedAt AT TIME ZONE 'Asia/Tokyo', …)` と、0 で埋める日付（JS）の両方で同じ区切りを使う。
- * 以前は SQL がセッションのタイムゾーン、0 埋めが UTC で、セッションが UTC でないと両者がずれた
- */
-// 日本時間は夏時間の無い固定の +9 時間なので、ずらして UTC の日付を読む（ICU のロケールの書式に頼らない）
-const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
-
-export function jstDateKey(date: Date): string {
-  return new Date(date.getTime() + JST_OFFSET_MS).toISOString().slice(0, 10);
-}
-
-/** from から now までの日本時間の暦日（両端を含む、古い順） */
-export function jstDateKeys(from: Date, now: Date): string[] {
-  const dates: string[] = [];
-  for (
-    let t = from.getTime();
-    t <= now.getTime();
-    t += 24 * 60 * 60 * 1000
-  ) {
-    const key = jstDateKey(new Date(t));
-    if (dates[dates.length - 1] !== key) dates.push(key);
-  }
-  const last = jstDateKey(now);
-  if (dates[dates.length - 1] !== last) dates.push(last);
-  return dates;
-}
+import { jstDateKeys } from '@/lib/utils/date';
 
 export interface TrendAnalysis {
   topTags: { name: string; totalCount: number }[];

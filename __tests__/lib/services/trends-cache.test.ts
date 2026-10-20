@@ -56,6 +56,7 @@ import { RedisCache } from '@/lib/cache';
 import { keywordsCache } from '@/lib/cache/keywords-cache';
 import { trendsCache } from '@/lib/cache/trends-cache';
 import { tagCache } from '@/lib/cache/tag-cache';
+import { isStatsPeriodCountQuery } from '../../helpers/sql-fragments';
 
 // The global Prisma mapping exports the client directly.
 const db = prisma as unknown as {
@@ -78,7 +79,10 @@ beforeEach(() => {
   Object.assign(keywordsCache, { redis });
   Object.assign(trendsCache, { redis });
   Object.assign(tagCache, { cache: new RedisCache({ namespace: 'tag-test' }) });
-  db.$queryRaw.mockResolvedValue([]);
+  // /stats の 7 日の件数（COUNT(*) の 1 行）のほかは空
+  db.$queryRaw.mockImplementation(async (...call: unknown[]) =>
+    isStatsPeriodCountQuery(call) ? [{ count: 0 }] : []
+  );
   db.article.count.mockResolvedValue(20);
   db.source.findMany.mockResolvedValue([
     { id: 's1', name: 'S1', _count: { articles: 20 } },
@@ -134,13 +138,18 @@ it('source distribution fills full stats instead of poisoning the API with a par
   const result = await statsGet(new NextRequest('http://localhost/api/stats'));
   const data = await result.json();
   expect(data.data.overview.total).toBe(20);
-  expect(data.data.daily).toEqual([]);
+  // 記事が無くても、期間の日付を 0 件で並べる
+  expect(data.data.daily.length).toBeGreaterThanOrEqual(30);
+  expect(
+    data.data.daily.every((day: { total: number }) => day.total === 0)
+  ).toBe(true);
   expect(data.data.tags).toEqual([]);
   expect(data.data.sources).toHaveLength(1);
   expect(result.headers.get('X-Cache-Status')).toBe('HIT');
-  expect(db.article.count).toHaveBeenCalledTimes(3);
+  // 総数は count、7 日の件数・日別（30 日の件数はこの合計）・人気タグは生 SQL
+  expect(db.article.count).toHaveBeenCalledTimes(1);
   expect(db.source.findMany).toHaveBeenCalledTimes(1);
-  expect(db.$queryRaw).toHaveBeenCalledTimes(2);
+  expect(db.$queryRaw).toHaveBeenCalledTimes(3);
 });
 
 it('ten concurrent new-tag requests execute one DB query; days use independent keys', async () => {
@@ -188,7 +197,8 @@ it.each([
   ['analysis', () => fetchAnalysisData(7), 1],
   // 区間別の集計と新規タグの2本
   ['keywords', () => fetchKeywordsData(), 2],
-  ['stats', () => fetchSourceData(), 2],
+  // 7 日の件数・日別・人気タグの3本
+  ['stats', () => fetchSourceData(), 3],
 ] as const)(
   'ten concurrent %s loads execute one aggregate',
   async (_name, load, expectedRawQueries) => {
@@ -200,7 +210,7 @@ it.each([
     ).toBe(true);
     expect(db.$queryRaw).toHaveBeenCalledTimes(expectedRawQueries);
     if (_name === 'stats') {
-      expect(db.article.count).toHaveBeenCalledTimes(3);
+      expect(db.article.count).toHaveBeenCalledTimes(1);
       expect(db.source.findMany).toHaveBeenCalledTimes(1);
     }
   }
