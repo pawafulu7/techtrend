@@ -121,6 +121,35 @@ describe('fetchFeedXml', () => {
     await expect(fetchFeedXml('https://feed.example/rss.xml')).resolves.toBe('x');
   });
 
+  it('Content-Type の charset で読む（parseURL と同じ）', async () => {
+    const latin1 = new Uint8Array([0x43, 0x61, 0x66, 0xe9]); // ISO-8859-1 の "Café"
+    global.fetch = jest.fn(async () => ({
+      ...feedResponse(
+        new ReadableStream<Uint8Array>({
+          start(c) {
+            c.enqueue(latin1);
+            c.close();
+          },
+        })
+      ),
+      headers: new Headers({ 'content-type': 'application/rss+xml; charset=ISO-8859-1' }),
+    })) as unknown as typeof global.fetch;
+
+    await expect(fetchFeedXml('https://feed.example/rss.xml')).resolves.toBe('Café');
+  });
+
+  it.each(['application/rss+xml', 'application/rss+xml; charset=x-unknown'])(
+    'charset が無いときと、知らない名前のときは UTF-8 で読む（%s）',
+    async (contentType) => {
+      global.fetch = jest.fn(async () => ({
+        ...feedResponse(streamOf('Café')),
+        headers: new Headers({ 'content-type': contentType }),
+      })) as unknown as typeof global.fetch;
+
+      await expect(fetchFeedXml('https://feed.example/rss.xml')).resolves.toBe('Café');
+    }
+  );
+
   it('本文がフィードの上限を超えたら読まない', async () => {
     global.fetch = jest.fn(async () => ({
       ...feedResponse(streamOf('x')),
@@ -195,6 +224,7 @@ describe('GenericForeignRssFetcher のフィードの取得', () => {
 
     expect(articles).toEqual([]);
     expect(errors).toHaveLength(1);
+    expect(errors[0].message).toContain('forbidden IP range');
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(config.feedUrl, expect.any(Object));
   });

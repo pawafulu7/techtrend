@@ -143,13 +143,14 @@ export async function fetchWithValidatedRedirects(
 }
 
 /**
- * 本文を UTF-8 の文字列として読む（Response.text() と同じ）。展開後のバイト数が上限を
+ * 本文を文字列として読む（既定は UTF-8 で、Response.text() と同じ）。展開後のバイト数が上限を
  * 超えたら読むのをやめて ResponseTooLargeError を投げる。Content-Length が上限を超える
- * ときは読まない。
+ * ときは読まない。encoding は TextDecoder の名前（フィードは Content-Type の charset を渡す）。
  */
 export async function readTextWithLimit(
   response: Response,
-  maxBytes: number = DEFAULT_MAX_BODY_BYTES
+  maxBytes: number = DEFAULT_MAX_BODY_BYTES,
+  encoding = 'utf-8'
 ): Promise<string> {
   const declaredLength = Number(response.headers?.get('content-length'));
   if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
@@ -186,7 +187,7 @@ export async function readTextWithLimit(
     }
     chunks.push(value);
   }
-  return new TextDecoder('utf-8').decode(Buffer.concat(chunks));
+  return new TextDecoder(encoding).decode(Buffer.concat(chunks));
 }
 
 function resolveRedirectTarget(location: string, baseUrl: string): string {

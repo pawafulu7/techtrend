@@ -201,5 +201,10 @@ describe('BaseCorporateFetcher (via FreeeFetcher): errors伝播', () => {
     expect(result.errors[0]).toBeInstanceOf(Error);
     expect(result.errors[0].message).toContain('freee');
     expect(result.errors[0].message).toContain('unexpected item shape');
+    // 取得は 15 秒の上限を渡して fetchFeedXml で行い、取った XML を解析する
+    expect(mockedFetchFeedXml).toHaveBeenCalledWith('https://developers.freee.co.jp/feed', {
+      timeoutMs: 15_000,
+    });
+    expect(mockParseString).toHaveBeenCalledWith('<rss></rss>');
   });
 });

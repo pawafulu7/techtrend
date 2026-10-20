@@ -2,6 +2,7 @@ import { Source } from '@/lib/prisma-exports';
 import { FetchResult } from '@/types/fetchers';
 import { logger } from '@/lib/cli/utils/logger';
 import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
+import { isNonRetryableFetchError } from '@/lib/utils/url/safe-redirect';
 
 export abstract class BaseFetcher {
   protected source: Source;
@@ -64,7 +65,8 @@ export abstract class BaseFetcher {
     try {
       return await fn();
     } catch (_error) {
-      if (retries > 0) {
+      // 転送先の拒否や本文の大きさの上限など、やり直しても結果が変わらない取得の失敗は再試行しない
+      if (retries > 0 && !isNonRetryableFetchError(_error)) {
         await new Promise(resolve => setTimeout(resolve, this.retryDelay));
         return this.retry(fn, retries - 1);
       }

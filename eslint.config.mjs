@@ -9,9 +9,10 @@ const loggerErrorKeyRestriction = {
   message: "Log exceptions with `{ err: error }` to preserve and sanitize their message. Use `errorMessage` for string diagnostics.",
 }
 
-// rss-parser の parseURL は転送先を SSRF の検証に通さず、https から http への転送もたどる（lib/fetchers/fetch-feed.ts）
+// rss-parser の parseURL は転送先を SSRF の検証に通さず、https から http への転送もたどる（lib/fetchers/fetch-feed.ts）。
+// 呼び出しだけでなく、parseURL.call や分割代入で取り出すのも止める
 const rssParseUrlRestriction = {
-  selector: "CallExpression:matches([callee.property.name='parseURL'], [callee.property.value='parseURL'])",
+  selector: ":matches(MemberExpression[property.name='parseURL'], MemberExpression[property.value='parseURL'], ObjectPattern > Property[key.name='parseURL'])",
   message: "rss-parser's parseURL does not SSRF-check redirects. Fetch the XML with fetchFeedXml from @/lib/fetchers/fetch-feed and parse it with parseString.",
 }
 

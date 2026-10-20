@@ -1,6 +1,7 @@
 import { BaseFetcher } from '@/lib/fetchers/base';
 import { Source } from '@/lib/prisma-exports';
 import { CreateArticleInput, FetchResult } from '@/types/fetchers';
+import { InvalidRedirectError } from '@/lib/utils/url/safe-redirect';
 
 // loggerをモック
 jest.mock('@/lib/cli/utils/logger', () => ({
@@ -175,6 +176,16 @@ describe('BaseFetcher', () => {
 
       await expect(fetcher.testRetry(fn, 2)).rejects.toThrow('Always fails');
       expect(fn).toHaveBeenCalledTimes(3); // 初回 + 2回のリトライ
+    });
+
+    it('転送先の拒否など、やり直しても結果が変わらない取得の失敗は再試行しない', async () => {
+      const fetcher = new TestFetcher(mockSource);
+      const fn = jest
+        .fn()
+        .mockRejectedValue(new InvalidRedirectError('Non-HTTPS URL is not fetched: http://feed.example'));
+
+      await expect(fetcher.testRetry(fn, 2)).rejects.toBeInstanceOf(InvalidRedirectError);
+      expect(fn).toHaveBeenCalledTimes(1);
     });
   });
 
