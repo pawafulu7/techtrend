@@ -4,7 +4,7 @@ import { Source } from '@/lib/prisma-exports';
 // モックの設定
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn().mockResolvedValue({
+    parseString: jest.fn().mockResolvedValue({
       items: [
         {
           title: 'ChatGPT New Features Announced',
@@ -30,6 +30,11 @@ jest.mock('rss-parser', () => {
     })
   }));
 });
+
+// フィードは fetchFeedXml で取ってから parseString で解析する。取得はモックし、解析の結果を parseString のモックで与える
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 
 describe('OpenAIBlogFetcher', () => {
   let fetcher: OpenAIBlogFetcher;
@@ -91,7 +96,7 @@ describe('OpenAIBlogFetcher', () => {
       // 新しいフェッチャーインスタンスを作成してエラーをシミュレート
       const Parser = require('rss-parser');
       Parser.mockImplementationOnce(() => ({
-        parseURL: jest.fn().mockRejectedValue(new Error('Network error'))
+        parseString: jest.fn().mockRejectedValue(new Error('Network error'))
       }));
 
       // 新しいインスタンスを作成（モックが適用される）

@@ -2,6 +2,7 @@ import { BaseFetcher } from './base';
 import { CreateArticleInput, FetchResult } from '@/types';
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { parseRSSDate } from '@/lib/utils/date';
 import { extractContent } from '@/lib/utils/content/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
@@ -86,7 +87,9 @@ export class MediumEngineeringFetcher extends BaseFetcher {
     // 各フィードから記事を取得
     for (const feedInfo of this.feeds) {
       try {
-        const feed = await this.retry(() => this.parser.parseURL(feedInfo.url));
+        const feed = await this.retry(async () =>
+          this.parser.parseString(await fetchFeedXml(feedInfo.url))
+        );
 
         if (!feed.items || feed.items.length === 0) {
           continue;

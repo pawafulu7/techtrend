@@ -1,8 +1,10 @@
 /**
- * フィードの XML を取ってくる。rss-parser の parseURL の代わりに使う。
+ * フィードの XML を取ってくる。rss-parser の parseURL の代わりに使い、取った XML は parseString で
+ * 解析する（parseURL の呼び出しは eslint.config.mjs で禁止している）。
  *
- * parseURL は Accept-Encoding を送らず、展開もしない。サーバーが頼んでいない gzip で返すと
- * 「Non-whitespace before first tag」で解析に失敗する（DeepMind Blog で観測）。fetch は展開する。
+ * parseURL は転送先を検証せず、https から http への転送もたどる。また Accept-Encoding を送らず、
+ * 展開もしない。サーバーが頼んでいない gzip で返すと「Non-whitespace before first tag」で解析に
+ * 失敗する（DeepMind Blog で観測）。fetch は展開する。
  * 時間の上限は本文の受信まで効かせる（fetchWithTimeout は応答のヘッダが届いた時点で
  * タイマーを解除するため、本文の受信が止まると上限が効かない）。
  *
@@ -13,6 +15,12 @@
 import { fetchWithValidatedRedirects, readTextWithLimit } from '@/lib/utils/url/safe-redirect';
 
 export const DEFAULT_FEED_TIMEOUT_MS = 30_000;
+
+/**
+ * 本文の大きさの上限。記事ページの既定（5MB）より大きくする。2026-10 の時点で、Vercel Blog の Atom は
+ * 3.8MB（記事が増えるほど大きくなる）、arXiv の3分野をまとめた RSS は 3.2MB（日によって件数が変わる）だった
+ */
+export const FEED_MAX_BODY_BYTES = 20 * 1024 * 1024;
 
 const FEED_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (compatible; TechTrend/1.0; +https://techtrend.example.com/bot)',
@@ -41,5 +49,5 @@ export async function fetchFeedXml(url: string, options: FetchFeedOptions = {}):
     await response.body?.cancel().catch(() => undefined);
     throw new Error(`Feed request failed: HTTP ${response.status} for ${url}`);
   }
-  return readTextWithLimit(response);
+  return readTextWithLimit(response, FEED_MAX_BODY_BYTES);
 }

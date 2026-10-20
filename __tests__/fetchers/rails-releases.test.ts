@@ -8,11 +8,17 @@
 import { RailsReleasesFetcher } from '@/lib/fetchers/rails-releases';
 import { isDuplicate } from '@/lib/utils/duplicate-detection';
 import type { Source } from '@/lib/prisma-exports';
+import { fetchFeedXml } from '@/lib/fetchers/fetch-feed';
 
-const mockParseURL = jest.fn();
+const mockParseString = jest.fn();
 jest.mock('rss-parser', () =>
-  jest.fn().mockImplementation(() => ({ parseURL: mockParseURL }))
+  jest.fn().mockImplementation(() => ({ parseString: mockParseString }))
 );
+
+// フィードは fetchFeedXml で取ってから parseString で解析する。取得はモックし、解析の結果を parseString のモックで与える
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 
 const source = {
   id: 'rails_releases',
@@ -32,10 +38,10 @@ function release(title: string, day: number) {
 }
 
 describe('RailsReleasesFetcher', () => {
-  beforeEach(() => mockParseURL.mockReset());
+  beforeEach(() => mockParseString.mockReset());
 
   it('beta・rc・正式版を別のタイトルにし、互いに重複と判定されない', async () => {
-    mockParseURL.mockResolvedValue({
+    mockParseString.mockResolvedValue({
       items: [release('v8.1.0', 3), release('v8.1.0.rc1', 2), release('v8.1.0.beta1', 1)],
     });
 
@@ -50,11 +56,11 @@ describe('RailsReleasesFetcher', () => {
     ]);
     expect(isDuplicate(titles[0], titles[1], 0.85)).toBe(false);
     expect(isDuplicate(titles[1], titles[2], 0.85)).toBe(false);
-    expect(mockParseURL).toHaveBeenCalledWith(source.url);
+    expect(fetchFeedXml).toHaveBeenCalledWith(source.url);
   });
 
   it('4つの数字の版（セキュリティの修正版）も、そのまま残す', async () => {
-    mockParseURL.mockResolvedValue({ items: [release('8.1.3.1', 5), release('8.1.3', 4)] });
+    mockParseString.mockResolvedValue({ items: [release('8.1.3.1', 5), release('8.1.3', 4)] });
 
     const { articles } = await new RailsReleasesFetcher(source).fetch();
 

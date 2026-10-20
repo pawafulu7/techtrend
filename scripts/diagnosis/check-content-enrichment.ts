@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from '@/lib/fetchers/fetch-feed';
 import { ContentEnricherFactory } from '../../lib/enrichers';
 
 const prisma = createPrismaClient();
@@ -34,7 +35,7 @@ async function diagnoseContentEnrichment() {
     
     // RSS フィードを取得
     console.error('Fetching RSS feed...');
-    const feed = await parser.parseURL('https://moneyforward-dev.jp/feed');
+    const feed = await parser.parseString(await fetchFeedXml('https://moneyforward-dev.jp/feed'));
     console.error(`RSS feed contains ${feed.items?.length || 0} items\n`);
     
     // ContentEnricherFactoryを初期化

@@ -10,7 +10,7 @@ import {
 // Mock rss-parser
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn().mockResolvedValue({
+    parseString: jest.fn().mockResolvedValue({
       items: [
         {
           title: 'Amazon Bedrock Claude 3.5 Sonnetを使ってみた',
@@ -41,6 +41,11 @@ jest.mock('rss-parser', () => {
     }),
   }));
 });
+
+// フィードは fetchFeedXml で取ってから parseString で解析する。取得はモックし、解析の結果を parseString のモックで与える
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 
 describe('DevelopersIOFetcher', () => {
   let mockSource: Source;
@@ -149,7 +154,7 @@ describe('DevelopersIOFetcher', () => {
     it('should handle errors gracefully', async () => {
       const Parser = require('rss-parser');
       Parser.mockImplementationOnce(() => ({
-        parseURL: jest.fn().mockRejectedValue(new Error('Network error')),
+        parseString: jest.fn().mockRejectedValue(new Error('Network error')),
       }));
 
       const errorFetcher = new DevelopersIOFetcher(mockSource, 'generative-ai');

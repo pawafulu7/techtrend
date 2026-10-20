@@ -22,8 +22,8 @@ export const mockFeed = (
   MockedParser: jest.MockedClass<typeof Parser>,
   items: unknown[]
 ) => {
-  const mockParseURL = jest.fn().mockResolvedValue({ items });
+  const mockParseString = jest.fn().mockResolvedValue({ items });
   MockedParser.mockImplementation(
-    () => ({ parseURL: mockParseURL }) as unknown as Parser
+    () => ({ parseString: mockParseString }) as unknown as Parser
   );
 };

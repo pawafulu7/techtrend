@@ -1,5 +1,6 @@
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
@@ -65,10 +66,6 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
           ['content:encoded', 'contentEncoded'],
         ],
       },
-      headers: {
-        'User-Agent': 'TechTrend/1.0 (https://techtrend.example.com)',
-        Accept: 'application/rss+xml, application/xml, text/xml',
-      },
     });
   }
 
@@ -93,7 +90,9 @@ export class CorporateTechBlogFetcher extends BaseFetcher {
     // 各企業のRSSフィードから記事を取得
     for (const feedInfo of this.rssUrls) {
       try {
-        const feed = await this.retry(() => this.parser.parseURL(feedInfo.url));
+        const feed = await this.retry(async () =>
+          this.parser.parseString(await fetchFeedXml(feedInfo.url))
+        );
 
         if (!feed.items || feed.items.length === 0) {
           continue;

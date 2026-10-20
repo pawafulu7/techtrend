@@ -1,4 +1,5 @@
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { Source } from '@/lib/prisma-exports';
 import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
@@ -58,7 +59,9 @@ export class AWSFetcher extends BaseFetcher {
     // 各RSSフィードから記事を取得
     for (const feedInfo of this.rssUrls) {
       try {
-        const feed = await this.retry(() => this.parser.parseURL(feedInfo.url));
+        const feed = await this.retry(async () =>
+          this.parser.parseString(await fetchFeedXml(feedInfo.url))
+        );
         
         if (!feed.items || feed.items.length === 0) {
           continue;

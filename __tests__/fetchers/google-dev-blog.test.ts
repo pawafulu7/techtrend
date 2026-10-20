@@ -23,7 +23,7 @@ jest.mock('../../lib/enrichers', () => ({
 
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn().mockResolvedValue({
+    parseString: jest.fn().mockResolvedValue({
       items: [
         {
           title: 'Test Article about Gemini AI',
@@ -51,6 +51,11 @@ jest.mock('rss-parser', () => {
     })
   }));
 });
+
+// フィードは fetchFeedXml で取ってから parseString で解析する。取得はモックし、解析の結果を parseString のモックで与える
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 
 describe('GoogleDevBlogFetcher', () => {
   let fetcher: GoogleDevBlogFetcher;
@@ -126,7 +131,7 @@ describe('GoogleDevBlogFetcher', () => {
       // 長いコンテンツを持つ記事をシミュレート
       const Parser = require('rss-parser');
       Parser.mockImplementation(() => ({
-        parseURL: jest.fn().mockResolvedValue({
+        parseString: jest.fn().mockResolvedValue({
           items: [
             {
               title: 'Long Content Article about AI',
@@ -150,7 +155,7 @@ describe('GoogleDevBlogFetcher', () => {
     it('should include gemini keyword in tech filtering', async () => {
       const Parser = require('rss-parser');
       Parser.mockImplementation(() => ({
-        parseURL: jest.fn().mockResolvedValue({
+        parseString: jest.fn().mockResolvedValue({
           items: [
             {
               title: 'Article about Gemini',
@@ -176,7 +181,7 @@ describe('GoogleDevBlogFetcher', () => {
     it('should handle RSS parsing errors', async () => {
       const Parser = require('rss-parser');
       Parser.mockImplementation(() => ({
-        parseURL: jest.fn().mockRejectedValue(new Error('RSS parse error'))
+        parseString: jest.fn().mockRejectedValue(new Error('RSS parse error'))
       }));
 
       const newFetcher = new GoogleDevBlogFetcher(mockSource);

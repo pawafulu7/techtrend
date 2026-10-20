@@ -5,7 +5,7 @@ import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/generic-foreign-rss';
 // Mock rss-parser to prevent actual network calls
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn().mockResolvedValue({ items: [] }),
+    parseString: jest.fn().mockResolvedValue({ items: [] }),
   }));
 });
 

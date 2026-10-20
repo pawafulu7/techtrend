@@ -1,6 +1,7 @@
 import { BaseFetcher } from './base';
 import { CreateArticleInput } from '@/types';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 
 interface StackOverflowBlogItem {
   title?: string;
@@ -24,7 +25,7 @@ export class StackOverflowBlogFetcher extends BaseFetcher {
   async fetch(): Promise<{ articles: CreateArticleInput[]; errors: Error[] }> {
     
     try {
-      const feed = await this.parser.parseURL(this.rssUrl);
+      const feed = await this.parser.parseString(await fetchFeedXml(this.rssUrl));
       
       if (!feed.items || feed.items.length === 0) {
         return {

@@ -1,5 +1,6 @@
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
@@ -26,6 +27,7 @@ interface SRERSSItem {
 
 export class SREFetcher extends BaseFetcher {
   private parser: Parser<unknown, SRERSSItem>;
+  private readonly feedTimeoutMs = Number(env.FETCHER_TIMEOUT_MS ?? 120_000);
 
   // SRE関連の複数のRSSフィードを統合
   // SRE Weekly は号の中の記事を1本ずつ取り込むソース（curated-newsletter）に移した。
@@ -41,7 +43,6 @@ export class SREFetcher extends BaseFetcher {
   constructor(source: Source) {
     super(source);
     this.parser = new Parser({
-      timeout: Number(env.FETCHER_TIMEOUT_MS ?? 120_000),
       customFields: {
         item: [['dc:creator', 'dcCreator']],
       },
@@ -56,7 +57,11 @@ export class SREFetcher extends BaseFetcher {
     // 各RSSフィードから記事を取得
     for (const feedInfo of this.rssUrls) {
       try {
-        const feed = await this.retry(() => this.parser.parseURL(feedInfo.url));
+        const feed = await this.retry(async () =>
+          this.parser.parseString(
+            await fetchFeedXml(feedInfo.url, { timeoutMs: this.feedTimeoutMs })
+          )
+        );
 
         if (!feed.items || feed.items.length === 0) {
           continue;

@@ -3,12 +3,17 @@ import { BaseFetcher } from '@/lib/fetchers/base';
 import { Source } from '@/lib/prisma-exports';
 
 // Mock rss-parser
-const mockParseURL = jest.fn();
+const mockParseString = jest.fn();
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: mockParseURL,
+    parseString: mockParseString,
   }));
 });
+
+// フィードは fetchFeedXml で取ってから parseString で解析する。取得はモックし、解析の結果を parseString のモックで与える
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 
 describe('HatenaExtendedFetcher - thumbnail logic', () => {
   const mockSource: Source = {
@@ -40,12 +45,12 @@ describe('HatenaExtendedFetcher - thumbnail logic', () => {
 
   /**
    * Helper to build a mock feed response containing the given items.
-   * Each call to parseURL will resolve items from the corresponding index.
+   * Each call to parseString will resolve items from the corresponding index.
    */
   function setupMockFeeds(items: Record<string, unknown>[]) {
-    // HatenaExtendedFetcher calls parseURL for 3 RSS URLs.
+    // HatenaExtendedFetcher fetches and parses 3 RSS URLs.
     // Return items only on the first call, empty on subsequent to avoid duplicates.
-    mockParseURL
+    mockParseString
       .mockResolvedValueOnce({ items })
       .mockResolvedValueOnce({ items: [] })
       .mockResolvedValueOnce({ items: [] });

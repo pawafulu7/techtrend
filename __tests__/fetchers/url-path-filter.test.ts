@@ -27,9 +27,14 @@ import {
 
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn(),
+    parseString: jest.fn(),
   }));
 });
+
+// フィードは fetchFeedXml で取ってから parseString で解析する。取得はモックし、解析の結果を parseString のモックで与える
+jest.mock('@/lib/fetchers/fetch-feed', () => ({
+  fetchFeedXml: jest.fn().mockResolvedValue('<rss></rss>'),
+}));
 const MockedParser = jest.mocked(Parser);
 
 jest.mock('@/lib/logger', () => ({

@@ -5,7 +5,7 @@ import { DevelopersIOFetcher } from '../../lib/fetchers/developersio';
 // Mock rss-parser to prevent actual network calls
 jest.mock('rss-parser', () => {
   return jest.fn().mockImplementation(() => ({
-    parseURL: jest.fn().mockResolvedValue({ items: [] }),
+    parseString: jest.fn().mockResolvedValue({ items: [] }),
   }));
 });
 

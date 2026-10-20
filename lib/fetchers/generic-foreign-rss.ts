@@ -4,6 +4,7 @@
  */
 
 import Parser from 'rss-parser';
+import { fetchFeedXml } from './fetch-feed';
 import { Source } from '@/lib/prisma-exports';
 import { BaseFetcher } from './base';
 import { FetchResult, CreateArticleInput } from '@/types/fetchers';
@@ -101,11 +102,6 @@ export class GenericForeignRssFetcher extends BaseFetcher {
       Record<string, unknown>,
       Record<string, unknown>
     > = {
-      timeout: 30000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; TechTrend/1.0)',
-        Accept: 'application/rss+xml, application/xml, text/xml, */*',
-      },
       customFields: {
         item: [['category', 'category', { keepArray: true }]],
       },
@@ -125,7 +121,7 @@ export class GenericForeignRssFetcher extends BaseFetcher {
     try {
       logger.info({ source: this.source.name }, '海外ソースのフィード取得開始');
 
-      const feed = await this.parser.parseURL(this.config.feedUrl);
+      const feed = await this.parser.parseString(await fetchFeedXml(this.config.feedUrl));
 
       const allItems = feed.items || [];
 

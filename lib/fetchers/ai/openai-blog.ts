@@ -1,5 +1,6 @@
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
+import { fetchFeedXml } from '../fetch-feed';
 import { BaseFetcher } from '../base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
@@ -47,8 +48,8 @@ export class OpenAIBlogFetcher extends BaseFetcher {
     try {
       logger.info('[OpenAI Blog] 記事を取得中...');
 
-      const feed = await this.retry(() =>
-        this.parser.parseURL('https://openai.com/blog/rss.xml')
+      const feed = await this.retry(async () =>
+        this.parser.parseString(await fetchFeedXml('https://openai.com/blog/rss.xml'))
       );
 
       let processedCount = 0;
