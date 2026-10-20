@@ -249,58 +249,74 @@ describe('useReaderSelection', () => {
   });
 
   describe('Next の router 遷移の途中（issue #810）', () => {
-    /** Next の router の state。遷移の途中は RSC の取得を待つ promise で、描くと suspend する */
-    function RouterState({ navigation }: { navigation: Promise<void> | null }) {
-      if (navigation) use(navigation);
-      return (
-        <output data-testid="router">
-          {navigation ? 'navigated' : 'idle'}
-        </output>
-      );
+    interface RouterStateValue {
+      label: string;
+      /** 遷移の途中は RSC の取得を待つ promise。描くと suspend する */
+      rsc?: Promise<void>;
+    }
+
+    /** Next の router の state */
+    function RouterState({ state }: { state: RouterStateValue }) {
+      if (state.rsc) use(state.rsc);
+      return <output data-testid="router">{state.label}</output>;
+    }
+
+    interface RouterControls {
+      /** 遷移を始める（Link・router.push）。返す関数で RSC が届く */
+      navigate: () => () => void;
+      /** ブラウザの戻る。待っている遷移の state を置き換える（RSC の promise は解決しないまま捨てられる） */
+      traverse: () => void;
     }
 
     /**
      * Next の遷移を真似る。Next は遷移を始める transition の中で onRouterTransitionStart を呼び、router の state を
-     * RSC の取得を待つ promise にする（node_modules/next/dist/client/components/sequential-router-queue.js の navigate）
+     * 更新する（node_modules/next/dist/client/components/sequential-router-queue.js の navigate・traverse）
      */
     function RouterHarness({
-      start,
+      router,
       selection,
     }: {
-      start: { current: (() => () => void) | null };
+      router: { current: RouterControls | null };
       selection: { current: Selection | null };
     }) {
-      const [navigation, setNavigation] = useState<Promise<void> | null>(null);
-      start.current = () => {
-        let finish!: () => void;
-        const promise = new Promise<void>((resolve) => {
-          finish = resolve;
-        });
-        startTransition(() => {
-          notifyRouterTransitionStart();
-          setNavigation(promise);
-        });
-        return finish;
+      const [state, setState] = useState<RouterStateValue>({ label: 'idle' });
+      router.current = {
+        navigate: () => {
+          let finish!: () => void;
+          const rsc = new Promise<void>((resolve) => {
+            finish = resolve;
+          });
+          startTransition(() => {
+            notifyRouterTransitionStart();
+            setState({ label: 'navigated', rsc });
+          });
+          return finish;
+        },
+        traverse: () => {
+          startTransition(() => {
+            notifyRouterTransitionStart();
+            setState({ label: 'traversed' });
+          });
+        },
       };
       return (
         <Suspense fallback={null}>
-          <RouterState navigation={navigation} />
+          <RouterState state={state} />
           <Harness articleParam="A" isDesktop={false} selection={selection} />
         </Suspense>
       );
     }
 
+    /** 遷移を始めた状態にする（RSC はまだ届かない） */
     async function setupRouter() {
       setUrl('?article=A');
       const selection: { current: Selection | null } = { current: null };
-      const start: { current: (() => () => void) | null } = {
-        current: null,
-      };
-      render(<RouterHarness start={start} selection={selection} />);
+      const router: { current: RouterControls | null } = { current: null };
+      render(<RouterHarness router={router} selection={selection} />);
       let finish = () => {};
       // suspend する遷移を始める act も await する（React は suspend した描画の続きを、その act の中で進めるため）
       await act(async () => {
-        finish = start.current!();
+        finish = router.current!.navigate();
       });
       expect(screen.getByTestId('router')).toHaveTextContent('idle');
       // RSC が届き、遷移の結果が commit される
@@ -308,15 +324,22 @@ describe('useReaderSelection', () => {
         await act(async () => finish());
         expect(screen.getByTestId('router')).toHaveTextContent('navigated');
       };
-      return { selection, finish: finishNavigation };
+      const traverse = async () => {
+        await act(async () => router.current!.traverse());
+        expect(screen.getByTestId('router')).toHaveTextContent('traversed');
+      };
+      return { selection, finish: finishNavigation, traverse };
     }
 
     it('途中は記事を選んでも URL も一覧の選択も変えず、遷移が終わったら選べる', async () => {
       const { selection, finish } = await setupRouter();
+      const autoSelection = selection.current!.beginPendingSelection();
 
       act(() => selection.current?.selectArticle('B'));
       expect(currentArticle()).toBe('A');
       expect(active()).toBe('A');
+      // 保留中の自動選択（次ページを読んでから選ぶ）は取り消す
+      expect(autoSelection()).toBe(false);
 
       await finish();
       act(() => selection.current?.selectArticle('B'));
@@ -333,6 +356,15 @@ describe('useReaderSelection', () => {
       await finish();
       act(() => selection.current?.backToList());
       expect(currentArticle()).toBeNull();
+    });
+
+    it('遷移が後の遷移（ブラウザの戻る）に置き換わったら、RSC が届かないままでも選べる', async () => {
+      const { selection, traverse } = await setupRouter();
+
+      await traverse();
+      act(() => selection.current?.selectArticle('B'));
+      expect(currentArticle()).toBe('B');
+      expect(active()).toBe('B');
     });
   });
 });

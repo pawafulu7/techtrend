@@ -59,6 +59,7 @@
     "lib/**/*.ts",
     "lib/**/*.tsx",
     "next-env.d.ts",
+    "instrumentation-client.ts",
     "types/**/*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
