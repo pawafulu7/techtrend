@@ -6,11 +6,20 @@
  * - Next の router 遷移（リンク・並び順）で `article` が変わったら取り込む。Next は URL を commit のとき
  *   （HistoryUpdater の useInsertionEffect）に書くので、テストの Harness も同じ順で書く
  * - md 未満で一覧に戻ったら直前の行を指したまま。デスクトップに広げたら本文の記事に戻す
+ * - Next の router 遷移の途中は、記事を選ぶ・一覧に戻る操作で URL を書かない（書くと Next が遷移を捨てる。issue #810）
  */
-import { useInsertionEffect, useRef } from 'react';
+import {
+  Suspense,
+  startTransition,
+  use,
+  useInsertionEffect,
+  useRef,
+  useState,
+} from 'react';
 import { act, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useReaderSelection } from '@/app/reader/use-reader-selection';
+import { notifyRouterTransitionStart } from '@/app/hooks/use-router-transition-pending';
 
 type Selection = ReturnType<typeof useReaderSelection>;
 
@@ -236,6 +245,94 @@ describe('useReaderSelection', () => {
       const pending = selection.current!.beginPendingSelection();
       view.unmount();
       expect(pending()).toBe(false);
+    });
+  });
+
+  describe('Next の router 遷移の途中（issue #810）', () => {
+    /** Next の router の state。遷移の途中は RSC の取得を待つ promise で、描くと suspend する */
+    function RouterState({ navigation }: { navigation: Promise<void> | null }) {
+      if (navigation) use(navigation);
+      return (
+        <output data-testid="router">
+          {navigation ? 'navigated' : 'idle'}
+        </output>
+      );
+    }
+
+    /**
+     * Next の遷移を真似る。Next は遷移を始める transition の中で onRouterTransitionStart を呼び、router の state を
+     * RSC の取得を待つ promise にする（node_modules/next/dist/client/components/sequential-router-queue.js の navigate）
+     */
+    function RouterHarness({
+      start,
+      selection,
+    }: {
+      start: { current: (() => () => void) | null };
+      selection: { current: Selection | null };
+    }) {
+      const [navigation, setNavigation] = useState<Promise<void> | null>(null);
+      start.current = () => {
+        let finish!: () => void;
+        const promise = new Promise<void>((resolve) => {
+          finish = resolve;
+        });
+        startTransition(() => {
+          notifyRouterTransitionStart();
+          setNavigation(promise);
+        });
+        return finish;
+      };
+      return (
+        <Suspense fallback={null}>
+          <RouterState navigation={navigation} />
+          <Harness articleParam="A" isDesktop={false} selection={selection} />
+        </Suspense>
+      );
+    }
+
+    async function setupRouter() {
+      setUrl('?article=A');
+      const selection: { current: Selection | null } = { current: null };
+      const start: { current: (() => () => void) | null } = {
+        current: null,
+      };
+      render(<RouterHarness start={start} selection={selection} />);
+      let finish = () => {};
+      // suspend する遷移を始める act も await する（React は suspend した描画の続きを、その act の中で進めるため）
+      await act(async () => {
+        finish = start.current!();
+      });
+      expect(screen.getByTestId('router')).toHaveTextContent('idle');
+      // RSC が届き、遷移の結果が commit される
+      const finishNavigation = async () => {
+        await act(async () => finish());
+        expect(screen.getByTestId('router')).toHaveTextContent('navigated');
+      };
+      return { selection, finish: finishNavigation };
+    }
+
+    it('途中は記事を選んでも URL も一覧の選択も変えず、遷移が終わったら選べる', async () => {
+      const { selection, finish } = await setupRouter();
+
+      act(() => selection.current?.selectArticle('B'));
+      expect(currentArticle()).toBe('A');
+      expect(active()).toBe('A');
+
+      await finish();
+      act(() => selection.current?.selectArticle('B'));
+      expect(currentArticle()).toBe('B');
+      expect(active()).toBe('B');
+    });
+
+    it('途中は一覧に戻る（「← 記事リスト」）操作でも URL を書かない', async () => {
+      const { selection, finish } = await setupRouter();
+
+      act(() => selection.current?.backToList());
+      expect(currentArticle()).toBe('A');
+
+      await finish();
+      act(() => selection.current?.backToList());
+      expect(currentArticle()).toBeNull();
     });
   });
 });

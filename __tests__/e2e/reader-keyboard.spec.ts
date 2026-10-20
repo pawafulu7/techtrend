@@ -195,6 +195,77 @@ test.describe('リーダーのキーボード操作（デスクトップ）', ()
     ).toHaveText(firstTitle);
   });
 
+  /**
+   * Next の router 遷移の RSC の取得を release() まで止める。その間に記事を選ぶと、以前はリーダーが書いた URL で
+   * Next が遷移を捨てた（issue #810）
+   */
+  async function holdRsc(page: Page, matches: (url: URL) => boolean) {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(
+      (url) => url.searchParams.has('_rsc') && matches(url),
+      async (route) => {
+        await gate;
+        await route.continue();
+      }
+    );
+    return release;
+  }
+
+  test('並び順を押した直後（遷移の途中）に↓を押しても、並び順の遷移は捨てられない', async ({
+    page,
+  }) => {
+    const release = await holdRsc(
+      page,
+      (url) => url.searchParams.get('sortBy') === 'qualityScore'
+    );
+    await openReader(page);
+    const box = listbox(page);
+
+    await page.getByTestId('sort-by-qualityScore').click();
+    await box.focus();
+    await page.keyboard.press('ArrowDown');
+    // 遷移の途中は記事の選択を URL に書かない
+    expect(articleParam(page)).toBeNull();
+
+    release();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('sortBy'))
+      .toBe('qualityScore');
+    await expect(page.getByTestId('sort-by-qualityScore')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    // 遷移が終わったら、また選べる
+    await expect(options(page).nth(1)).toBeVisible();
+    const secondId = await articleIdOf(page, 1);
+    await box.focus();
+    await page.keyboard.press('ArrowDown');
+    await expect.poll(() => articleParam(page)).toBe(secondId);
+  });
+
+  test('ヘッダーの「トレンド」を押した直後（遷移の途中）に↓を押しても、トレンドへ移る', async ({
+    page,
+  }) => {
+    const release = await holdRsc(page, (url) => url.pathname === '/trends');
+    await openReader(page);
+    const box = listbox(page);
+
+    await page
+      .locator('header')
+      .getByRole('link', { name: 'トレンド', exact: true })
+      .click();
+    await box.focus();
+    await page.keyboard.press('ArrowDown');
+    expect(new URL(page.url()).pathname).toBe('/reader');
+    expect(articleParam(page)).toBeNull();
+
+    release();
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/trends');
+  });
+
   test('本文の「次の記事」で選択が変わっても、フォーカスは押したボタンに残る', async ({
     page,
   }) => {
