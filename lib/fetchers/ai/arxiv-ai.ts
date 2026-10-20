@@ -1,6 +1,7 @@
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import { fetchFeedXml } from '../fetch-feed';
+import { shouldTransferSource } from '../source-transfer';
 import sanitizeHtml from 'sanitize-html';
 import pLimit from 'p-limit';
 import { BaseFetcher } from '../base';
@@ -83,9 +84,15 @@ export class ArxivAIFetcher extends BaseFetcher {
         where: {
           url: { in: feedUrls },
         },
-        select: { url: true },
+        select: { url: true, sourceId: true },
       });
-      const existingUrlSet = new Set(existingArticles.map((a) => a.url));
+      // はてなブックマークや Hacker News などが先に保存した論文は、収集側（collect-feeds）で
+      // arXiv に付け替えるので返す（ここで除くと付け替えまで届かない）
+      const existingUrlSet = new Set(
+        existingArticles
+          .filter((a) => !shouldTransferSource(a.sourceId, this.source.id))
+          .map((a) => a.url)
+      );
 
       logger.info(`arXiv AI: DB既存URL ${existingUrlSet.size} 件を除外`);
 

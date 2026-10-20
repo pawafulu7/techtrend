@@ -14,7 +14,7 @@ import { CuratedNewsletterFetcher } from '@/lib/fetchers/curated-newsletter';
 import { createFetcher } from '@/lib/fetchers';
 import { SOURCE_CATEGORIES } from '@/lib/constants/source-categories';
 import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
-import { shouldTransferSource } from '@/scripts/scheduled/utils/source-transfer';
+import { shouldTransferSource } from '@/lib/fetchers/source-transfer';
 import type { Source } from '@/lib/prisma-exports';
 
 const workflow = (name: string) =>

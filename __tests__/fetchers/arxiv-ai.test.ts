@@ -31,6 +31,7 @@ jest.mock('@/lib/fetchers/fetch-feed', () => ({
 // Import after mocks are set up
 import { ArxivAIFetcher } from '@/lib/fetchers/ai/arxiv-ai';
 import { prisma } from '@/lib/prisma';
+import { fetchFeedXml } from '@/lib/fetchers/fetch-feed';
 
 const mockedPrisma = jest.mocked(prisma, true);
 
@@ -322,6 +323,39 @@ describe('ArxivAIFetcher', () => {
       expect(result.errors).toHaveLength(0);
     });
 
+    it('フィードは fetcher の時間の上限を渡して fetchFeedXml で取り、取った XML を解析する', async () => {
+      const mockParseString = jest.fn().mockResolvedValue({ items: [] });
+      (fetcher as any).parser.parseString = mockParseString;
+
+      await fetcher.fetch();
+
+      expect(fetchFeedXml).toHaveBeenCalledWith('https://rss.arxiv.org/rss/cs.AI+cs.LG+cs.CL', {
+        timeoutMs: expect.any(Number),
+      });
+      expect(mockParseString).toHaveBeenCalledWith('<rss></rss>');
+    });
+
+    it('Hacker News などが先に保存した論文は返し（収集側で arXiv に付け替える）、arXiv が保存済みの論文は除く', async () => {
+      const paper = (id: string) => ({
+        title: `Paper ${id}`,
+        link: `https://arxiv.org/abs/${id}`,
+        pubDate: new Date().toISOString(),
+        description: 'abstract',
+        categories: ['cs.AI'],
+      });
+      (fetcher as any).parser.parseString = jest
+        .fn()
+        .mockResolvedValue({ items: [paper('2312.00001'), paper('2312.00002')] });
+      mockedPrisma.article.findMany.mockResolvedValue([
+        { url: 'https://arxiv.org/abs/2312.00001', sourceId: 'hacker_news_202508' },
+        { url: 'https://arxiv.org/abs/2312.00002', sourceId: 'arxiv_ai_test' },
+      ] as never);
+
+      const result = await fetcher.fetch();
+
+      expect(result.articles.map((a) => a.url)).toEqual(['https://arxiv.org/abs/2312.00001']);
+    });
+
     it('should skip items without title or link', async () => {
       const mockItems = [
         { title: 'Valid Paper', link: 'https://arxiv.org/abs/2312.11111' },
@@ -537,7 +571,7 @@ describe('ArxivAIFetcher', () => {
             ],
           },
         },
-        select: { url: true },
+        select: { url: true, sourceId: true },
       });
     });
   });
