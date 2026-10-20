@@ -79,7 +79,7 @@ describe('trends-data: 無効化したソースの記事を数えない（issue 
 
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     for (const call of prismaMock.$queryRaw.mock.calls) {
-      expectAnalysisPeriodSql(call);
+      expectAnalysisPeriodSql(call, { days: 30 });
     }
     // 日別のまとめは日本時間の暦日（0 で埋める日付と同じ区切り）
     const [, timeline] = prismaMock.$queryRaw.mock.calls;

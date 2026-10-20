@@ -64,7 +64,7 @@ describe('GET /api/trends/analysis: 無効化したソースの記事を数え�
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     // 期間（articleAggregationSql）の断片に、有効なソースと非表示でない条件が AND で入る
     for (const call of prismaMock.$queryRaw.mock.calls) {
-      expectAnalysisPeriodSql(call);
+      expectAnalysisPeriodSql(call, { days: 7 });
     }
     // タグの推移も日本時間の暦日でまとめる（全体の推移と同じ区切り）
     expect(sqlOf(prismaMock.$queryRaw.mock.calls[0])).toContain(
@@ -84,7 +84,7 @@ describe('GET /api/trends/analysis: 無効化したソースの記事を数え�
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     // 期間（articleAggregationSql）の断片に、有効なソースと非表示でない条件が AND で入る
     for (const call of prismaMock.$queryRaw.mock.calls) {
-      expectAnalysisPeriodSql(call);
+      expectAnalysisPeriodSql(call, { days: 30 });
     }
   });
 });

@@ -111,7 +111,9 @@ export function ReaderClient({ tags }: ReaderClientProps) {
     if (sortBy) params.sortBy = sortBy;
     if (sortOrder) params.sortOrder = sortOrder;
     // 論文のソースは除く（残りが無ければ全選択。withoutPaperSourceIds）
-    const sources = sourcesParam ? withoutPaperSourceIds(sourcesParam) : undefined;
+    const sources = sourcesParam
+      ? withoutPaperSourceIds(sourcesParam)
+      : undefined;
     if (sources) params.sources = sources;
     if (sourceId && !isPaperSourceId(sourceId)) params.sourceId = sourceId;
     if (tagsParam) params.tags = tagsParam;
@@ -163,23 +165,15 @@ function ReaderClientInner({
     isDesktopRef.current = isDesktop;
   }, [isDesktop]);
 
-  // 一覧で選んでいる行と、記事を選ぶ（URL の `article` を書く）処理（use-reader-selection.ts）
-  const { activeId, selectArticle, moveActive, generationRef } =
-    useReaderSelection({ articleParam, isDesktop, isDesktopRef });
-
-  // モバイルの「← 記事リスト」: articleパラメータを外してリスト表示に戻す。
-  // history.back() だとdeep link直遷移時に戻り先が存在せずアプリ外に出て
-  // しまうことがあるため、常にpushStateでarticleを外す方式にしている。
-  const backToList = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    params.delete('article');
-    const qs = params.toString();
-    const url = qs
-      ? `${window.location.pathname}?${qs}`
-      : window.location.pathname;
-    window.history.pushState(null, '', url);
-  }, []);
+  // 一覧で選んでいる行と、記事を選ぶ（URL の `article` を書く）・モバイルの「← 記事リスト」で一覧に戻る処理
+  // （use-reader-selection.ts）
+  const {
+    activeId,
+    selectArticle,
+    moveActive,
+    backToList,
+    beginPendingSelection,
+  } = useReaderSelection({ articleParam, isDesktop, isDesktopRef });
 
   // Infinite query for article list
   const {
@@ -241,27 +235,32 @@ function ReaderClientInner({
   const canGoNextUi = isSelectedLoaded && (hasNext || !!hasNextPage);
 
   // 次ページ取得後の続き選択。Prev/Nextやキーボード連続操作の延長のため常にreplace。
-  // 読み込む間に別の記事が選ばれていたら、後から選んだ方を上書きしない
+  // - 読み込み中に押されたら、進行中の取得を待って選ぶ（cancelRefetch: false は進行中の取得をやり直さずに待つ）
+  // - 読む間に選択が変わったら（別の記事を選んだ・一覧に戻った・画面を離れた）、後から選んだ方を上書きしない
+  // - 次の記事は、番号ではなく今の記事の id から探す（読む間に新着が入ってページの境目がずれても同じ記事を選ばない）
   const fetchNextAndSelect = useCallback(
     (idx: number) => {
-      if (!hasNextPage || isFetchingNextPage) return;
-      const generation = generationRef.current;
-      fetchNextPage()
+      if (!hasNextPage) return;
+      const fromId = articles[idx]?.id;
+      const isStillCurrent = beginPendingSelection();
+      fetchNextPage({ cancelRefetch: false })
         .then((result) => {
-          if (generationRef.current !== generation) return;
-          if (result.data) {
-            const newArticles = result.data.pages.flatMap((p) => p.data.items);
-            const nextArticle = newArticles[idx + 1];
-            if (nextArticle) {
-              selectArticle(nextArticle.id, { replace: true });
-            }
+          if (!isStillCurrent() || !result.data) return;
+          const newArticles = result.data.pages.flatMap((p) => p.data.items);
+          const fromIndex = fromId
+            ? newArticles.findIndex((a) => a.id === fromId)
+            : -1;
+          const nextArticle =
+            newArticles[(fromIndex >= 0 ? fromIndex : idx) + 1];
+          if (nextArticle) {
+            selectArticle(nextArticle.id, { replace: true });
           }
         })
         .catch(() => {
           // Error handled by useInfiniteQuery's error state
         });
     },
-    [hasNextPage, isFetchingNextPage, fetchNextPage, selectArticle, generationRef]
+    [hasNextPage, articles, beginPendingSelection, fetchNextPage, selectArticle]
   );
 
   const handlePrev = useCallback(() => {

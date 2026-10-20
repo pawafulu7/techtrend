@@ -120,7 +120,12 @@ test.describe('リーダーのキーボード操作（デスクトップ）', ()
 
   test('記事を開いた状態で ↓・↑ と押した後に本文の「次の記事」を押すと、一覧と本文は 2 件目になる', async ({
     page,
+    browserName,
   }) => {
+    test.skip(
+      browserName !== 'chromium',
+      'CPU の制限は Chromium の CDP でだけ使える'
+    );
     await openReader(page);
     const firstId = await articleIdOf(page, 0);
     const secondId = await articleIdOf(page, 1);
@@ -313,6 +318,53 @@ test.describe('リーダーのキーボード操作（md 未満の1ペイン）'
       'aria-activedescendant',
       `reader-article-${firstId}`
     );
+  });
+
+  test('末尾の記事で「次の記事」を押し、次ページの読み込み中に一覧へ戻ると、読み込み後に記事を開き直さない', async ({
+    page,
+  }) => {
+    await openReader(page);
+    const count = await options(page).count();
+    const lastId = await articleIdOf(page, count - 1);
+
+    // 2 ページ目の取得を保留する
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const isSecondPage = (url: string) =>
+      url.includes('/api/articles/list') &&
+      new URL(url).searchParams.get('page') === '2';
+    await page.route(
+      (url) => isSecondPage(url.toString()),
+      async (route) => {
+        await held;
+        await route.continue();
+      }
+    );
+
+    // md 未満で記事を開くと一覧は隠れるので、本文の見出しを待つ
+    await page.goto(`/reader?article=${lastId}`);
+    await expect(
+      page
+        .getByRole('region', { name: '記事詳細' })
+        .getByRole('heading', { level: 2 })
+    ).toBeVisible();
+    await page.getByTestId('reader-mobile-next').click();
+    await page.getByTestId('reader-back-to-list').click();
+    await expect.poll(() => articleParam(page)).toBeNull();
+
+    const secondPage = page.waitForResponse((response) =>
+      isSecondPage(response.url())
+    );
+    release();
+    await secondPage;
+    // 2 ページ目が一覧に描かれた後も、記事を開き直さない（URL に article が戻らない）
+    await expect
+      .poll(() => options(page).count(), { timeout: 10000 })
+      .toBeGreaterThan(count);
+    expect(articleParam(page)).toBeNull();
+    await expect(listbox(page)).toBeVisible();
   });
 
   test('本文の取得が遅くても失敗しても、開いたら本文の領域へフォーカスを移す', async ({

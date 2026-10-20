@@ -156,8 +156,8 @@ beforeAll(async () => {
     });
   }
   slideSourceId =
-    (await prisma.source.findUnique({ where: { name: 'Speaker Deck' } }))
-      ?.id ?? null;
+    (await prisma.source.findUnique({ where: { name: 'Speaker Deck' } }))?.id ??
+    null;
 });
 
 afterAll(async () => {

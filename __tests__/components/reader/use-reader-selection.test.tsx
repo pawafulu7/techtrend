@@ -138,14 +138,80 @@ describe('useReaderSelection', () => {
     expect(active()).toBe('null');
   });
 
-  it('選択の操作ごとに世代を進める（次ページの自動選択を取り消す判定に使う）', () => {
-    const { selection, select } = setup({
-      articleParam: null,
-      isDesktop: true,
+  it('選んだ記事の URL が届く前に、同じ値（article 無し）へ戻る router 遷移が来ても、本文の記事に合わせる', () => {
+    const { rerender, select } = setup({ articleParam: null, isDesktop: true });
+    select('B');
+    expect(active()).toBe('B');
+
+    // B は useSearchParams に届かず、ヘッダーの「リーダー」の遷移が commit のときに URL を書き換える
+    rerender({ articleParam: null, isDesktop: true, routerSearch: '' });
+    expect(currentArticle()).toBeNull();
+    expect(active()).toBe('null');
+  });
+
+  describe('次ページの自動選択の取り消し（beginPendingSelection）', () => {
+    it('自分で選ぶ・一覧の中で動かすと取り消す。自分で書いた URL が後から届いても取り消さない', () => {
+      setUrl('?article=A');
+      const { selection, rerender, select } = setup({
+        articleParam: 'A',
+        isDesktop: true,
+      });
+      select('B');
+      const afterOwnWrite = selection.current!.beginPendingSelection();
+      rerender({ articleParam: 'B', isDesktop: true });
+      expect(afterOwnWrite()).toBe(true);
+
+      select('C');
+      expect(afterOwnWrite()).toBe(false);
+
+      const beforeMove = selection.current!.beginPendingSelection();
+      act(() => selection.current?.moveActive('D'));
+      expect(beforeMove()).toBe(false);
     });
-    const before = selection.current?.generationRef.current ?? 0;
-    select('A');
-    act(() => selection.current?.moveActive('B'));
-    expect(selection.current?.generationRef.current).toBe(before + 2);
+
+    it('一覧に戻る（「← 記事リスト」）と取り消し、URL から article を外す', () => {
+      setUrl('?article=A');
+      const { selection } = setup({ articleParam: 'A', isDesktop: false });
+      const pending = selection.current!.beginPendingSelection();
+      act(() => selection.current?.backToList());
+      expect(pending()).toBe(false);
+      expect(currentArticle()).toBeNull();
+    });
+
+    it('外から URL が変わる（ブラウザの戻る）と取り消す', () => {
+      setUrl('?article=A');
+      const { selection, rerender } = setup({
+        articleParam: 'A',
+        isDesktop: true,
+      });
+      const pending = selection.current!.beginPendingSelection();
+      setUrl('?article=D');
+      rerender({ articleParam: 'D', isDesktop: true });
+      expect(pending()).toBe(false);
+    });
+
+    it('md 未満で本文の記事が閉じる（ブラウザの戻る）と取り消す', () => {
+      setUrl('?article=A');
+      const { selection, rerender } = setup({
+        articleParam: 'A',
+        isDesktop: false,
+      });
+      const pending = selection.current!.beginPendingSelection();
+      setUrl('');
+      rerender({ articleParam: null, isDesktop: false });
+      expect(pending()).toBe(false);
+      // 一覧は直前に開いていた行を指したまま
+      expect(active()).toBe('A');
+    });
+
+    it('画面を離れる（アンマウント）と取り消す', () => {
+      const selection: { current: Selection | null } = { current: null };
+      const view = render(
+        <Harness articleParam={null} isDesktop selection={selection} />
+      );
+      const pending = selection.current!.beginPendingSelection();
+      view.unmount();
+      expect(pending()).toBe(false);
+    });
   });
 });
