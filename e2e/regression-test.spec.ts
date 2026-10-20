@@ -214,7 +214,7 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
       await expect(initialButton).toHaveAttribute('aria-pressed', 'true');
       await expect(targetButton).toHaveAttribute('aria-pressed', 'false');
 
-      // ボタン click で表示モード切替 (内部で window.location.reload() が呼ばれる)
+      // ボタン click で表示モード切替 (Cookie を保存してから router.refresh() で再取得する。ページは読み込み直さない)
       await targetButton.click();
       await page.waitForLoadState('domcontentloaded');
       await page.waitForSelector('[data-testid="view-mode-toggle"]');

@@ -10,9 +10,8 @@ async function clearFixtureCaches() {
     for (const pattern of [
       '@techtrend/cache:trend:daily*',
       '@techtrend/cache:trends:heatmap:v4:*',
-      '@techtrend/cache:keywords:keywords:trending:v2',
-      // KeywordsCache overrides generateKey(), so its runtime key has no namespace.
-      'keywords:keywords:trending:v2',
+      // 急上昇の集計（lib/cache/keywords-cache.ts の TRENDING_SERIES_CACHE_KEY）
+      '@techtrend/cache:keywords:trending-series:v1',
     ]) {
       const keys = await redis.keys(pattern);
       if (keys.length) await redis.unlink(...keys);

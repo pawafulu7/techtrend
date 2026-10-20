@@ -142,7 +142,7 @@ export function CompactCard({
       </div>
 
       {/* Timestamps Row */}
-      <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-[10px]">
+      <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-[10px] tabular-nums">
         <span
           className="flex items-center gap-0.5"
           title="Published date"

@@ -12,6 +12,21 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
+import {
+  TOOLBAR_ICON_BUTTON,
+  TOOLBAR_OUTLINE,
+} from '@/app/components/common/toolbar-styles';
+import { cn } from '@/lib/utils';
+
+const VIEW_MODES = [
+  { mode: 'card', label: 'カード表示', Icon: Grid3x3 },
+  { mode: 'compact', label: 'コンパクト表示', Icon: Grid2x2 },
+  { mode: 'list', label: 'リスト表示', Icon: List },
+] as const satisfies ReadonlyArray<{
+  mode: ViewModeToggleProps['currentMode'];
+  label: string;
+  Icon: typeof List;
+}>;
 
 export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
   const router = useRouter();
@@ -59,69 +74,42 @@ export function ViewModeToggle({ currentMode }: ViewModeToggleProps) {
   return (
     <TooltipProvider>
       <div
+        role="group"
+        aria-label="表示形式"
         className="flex gap-1"
         data-testid="view-mode-toggle"
         data-view-mode={currentMode}
       >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              data-testid="view-mode-card"
-              aria-pressed={currentMode === 'card'}
-              aria-label="カード表示"
-              variant={currentMode === 'card' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleModeChange('card')}
-              disabled={isUpdating}
-              className="h-7 w-7 p-0"
-            >
-              <Grid3x3 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>カード表示</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              data-testid="view-mode-compact"
-              aria-pressed={currentMode === 'compact'}
-              aria-label="コンパクト表示"
-              variant={currentMode === 'compact' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleModeChange('compact')}
-              disabled={isUpdating}
-              className="h-7 w-7 p-0"
-            >
-              <Grid2x2 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>コンパクト表示</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              data-testid="view-mode-list"
-              aria-pressed={currentMode === 'list'}
-              aria-label="リスト表示"
-              variant={currentMode === 'list' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleModeChange('list')}
-              disabled={isUpdating}
-              className="h-7 w-7 p-0"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>リスト表示</p>
-          </TooltipContent>
-        </Tooltip>
+        {VIEW_MODES.map(({ mode, label, Icon }) => {
+          const pressed = currentMode === mode;
+          return (
+            <Tooltip key={mode}>
+              <TooltipTrigger asChild>
+                <Button
+                  data-testid={`view-mode-${mode}`}
+                  aria-pressed={pressed}
+                  aria-label={label}
+                  variant={pressed ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleModeChange(mode)}
+                  // 押したボタンを disabled にするとフォーカスが外れるので、無効は aria と見た目で示し、
+                  // 押されても handleModeChange の先頭で止める
+                  aria-disabled={isUpdating || undefined}
+                  data-disabled={isUpdating ? 'true' : undefined}
+                  className={cn(
+                    TOOLBAR_ICON_BUTTON,
+                    !pressed && TOOLBAR_OUTLINE
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{label}</p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
       </div>
     </TooltipProvider>
   );

@@ -2,6 +2,7 @@ import Redis from 'ioredis';
 import { container } from '../container';
 import { DI_TOKENS } from '../types';
 import { env } from '@/lib/config/env';
+import { REDIS_COMMAND_TIMEOUT_MS } from '@/lib/redis/ioredis-client';
 
 let redisInstance: Redis | null = null;
 
@@ -11,6 +12,9 @@ export function registerRedisProvider(): void {
       redisInstance = new Redis(env.REDIS_URL, {
         // Same as lib/redis/ioredis-client.ts: keep the ioredis 5 handshake (RESP2)
         protocol: 2,
+        // Same as lib/redis/ioredis-client.ts: fail commands that get no reply
+        commandTimeout: REDIS_COMMAND_TIMEOUT_MS,
+        autoResendUnfulfilledCommands: false,
         maxRetriesPerRequest: 3,
         retryStrategy: (times) => {
           if (times > 3) return null;

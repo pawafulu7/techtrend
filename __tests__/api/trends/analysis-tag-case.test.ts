@@ -14,10 +14,7 @@ jest.mock('@/lib/cache/trends-cache', () => ({
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { GET } from '@/app/api/trends/analysis/route';
-import {
-  ENABLED_SOURCE_SQL,
-  sqlFragmentsOf,
-} from '../../helpers/sql-fragments';
+import { expectAnalysisPeriodSql } from '../../helpers/sql-fragments';
 
 const prismaMock = prisma as unknown as { $queryRaw: jest.Mock };
 
@@ -52,24 +49,30 @@ describe('GET /api/trends/analysis (tag)', () => {
 });
 
 describe('GET /api/trends/analysis: 無効化したソースの記事を数えない（issue #688）', () => {
-  const ENABLED = `a."sourceId" ${ENABLED_SOURCE_SQL}`;
-
   beforeEach(() => {
     prismaMock.$queryRaw.mockReset();
     prismaMock.$queryRaw.mockResolvedValue([]);
   });
 
   it('タグ指定: 時系列と関連タグの両方', async () => {
+    const calledAt = Date.now();
     await GET(
       new NextRequest(
         'http://localhost:3000/api/trends/analysis?tag=mcp&days=7'
       )
     );
 
+    const calledBetween = [calledAt, Date.now()] as const;
+
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+    // 期間（articleAggregationSql）の断片に、有効なソースと非表示でない条件が AND で入る
     for (const call of prismaMock.$queryRaw.mock.calls) {
-      expect(sqlFragmentsOf(call, { afterAnd: true })).toEqual([ENABLED]);
+      expectAnalysisPeriodSql(call, { days: 7, calledBetween });
     }
+    // タグの推移も日本時間の暦日でまとめる（全体の推移と同じ区切り）
+    expect(sqlOf(prismaMock.$queryRaw.mock.calls[0])).toContain(
+      `TO_CHAR(a."publishedAt" AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD')`
+    );
   });
 
   it('全体: 上位タグとその時系列の両方', async () => {
@@ -77,13 +80,16 @@ describe('GET /api/trends/analysis: 無効化したソースの記事を数え�
       { name: 'React', total_count: BigInt(3) },
     ]);
 
+    const calledAt = Date.now();
     await GET(
       new NextRequest('http://localhost:3000/api/trends/analysis?days=30')
     );
+    const calledBetween = [calledAt, Date.now()] as const;
 
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+    // 期間（articleAggregationSql）の断片に、有効なソースと非表示でない条件が AND で入る
     for (const call of prismaMock.$queryRaw.mock.calls) {
-      expect(sqlFragmentsOf(call, { afterAnd: true })).toEqual([ENABLED]);
+      expectAnalysisPeriodSql(call, { days: 30, calledBetween });
     }
   });
 });

@@ -5,12 +5,13 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const PRIMARY_STYLE =
-  'bg-(--tt-color-primary) text-(--tt-color-on-primary) hover:bg-(--tt-color-primary-hover) shadow-sm hover:shadow-md';
+  'bg-(--tt-color-primary) text-(--tt-color-on-primary) hover:bg-(--tt-color-primary-hover)';
 const DEFAULT_SIZE = 'h-9 px-4 py-2 text-sm has-[>svg]:px-3';
 
 const buttonV2Variants = cva(
   [
-    'inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all',
+    // 影と拡大は付けない（線と面の色で状態を示す）。動かすのは色だけ
+    'inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-(--tt-color-primary)',
     'disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed',
     'data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed',
@@ -23,9 +24,9 @@ const buttonV2Variants = cva(
         default: PRIMARY_STYLE,
         primary: PRIMARY_STYLE,
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-xs',
+          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-(--tt-color-surface-hover) text-(--tt-color-text)',
-        // 背景はカードと同じ面で塗る。透明だと、ページの下地（page-canvas の色の移り）がボタンに透ける
+        // 背景はカードと同じ面で塗る。透明だと、ページの下地（page-canvas）がボタンに透ける
         outline:
           'border border-(--tt-color-border) bg-(--tt-color-surface) hover:bg-(--tt-color-surface-hover) hover:border-(--tt-color-border-hover) text-(--tt-color-text)',
         destructive:

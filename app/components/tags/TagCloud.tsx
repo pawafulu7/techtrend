@@ -164,12 +164,14 @@ export function TagCloud({
   return (
     <Card className={className}>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>タグクラウド</CardTitle>
+        {/* 狭い幅では見出しを折らず、期間のボタンを次の行に回す（app/tags/loading.tsx と同じ形） */}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <CardTitle className="whitespace-nowrap">タグクラウド</CardTitle>
           <div className="flex items-center gap-2">
-            <div className="flex gap-1">
+            <div role="group" aria-label="集計の期間" className="flex gap-1">
               <Button
                 variant={period === '7d' ? 'default' : 'outline'}
+                aria-pressed={period === '7d'}
                 size="sm"
                 onClick={() => setPeriod('7d')}
               >
@@ -177,6 +179,7 @@ export function TagCloud({
               </Button>
               <Button
                 variant={period === '30d' ? 'default' : 'outline'}
+                aria-pressed={period === '30d'}
                 size="sm"
                 onClick={() => setPeriod('30d')}
               >
@@ -184,6 +187,7 @@ export function TagCloud({
               </Button>
               <Button
                 variant={period === 'all' ? 'default' : 'outline'}
+                aria-pressed={period === 'all'}
                 size="sm"
                 onClick={() => setPeriod('all')}
               >

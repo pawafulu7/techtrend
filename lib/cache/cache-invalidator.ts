@@ -3,6 +3,7 @@ import { tagCache } from './tag-cache';
 import { sourceCache } from './source-cache';
 import { popularCache } from './popular-cache';
 import { articleDetailCache } from './article-detail-cache';
+import { keywordsCache } from './keywords-cache';
 import { RedisCache } from './index';
 import { getRedisService } from '@/lib/redis/factory';
 import type { IRedisService } from '@/lib/redis/interfaces';
@@ -235,6 +236,8 @@ export class CacheInvalidator {
       this.onStoriesUpdated(),
       this.redisService.clearPattern(createCachePattern(CACHE_NAMESPACES.ARTICLES_COUNT)),
       popularCache.invalidateAll(),
+      // 急上昇の集計はホームに出る記事（技術者向け）だけを数える
+      keywordsCache.invalidateTrending(),
     ]);
   }
 

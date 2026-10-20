@@ -44,8 +44,9 @@ function MobileDetailBar({
   'hasPrev' | 'hasNext' | 'onPrev' | 'onNext' | 'onBack'
 >) {
   return (
+    // 本文の領域（reader-client.tsx）がスクロールするので、上に貼り付ける
     <div
-      className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] px-3 py-2 md:hidden"
+      className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-2 border-b border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] px-3 py-2 md:hidden"
       data-testid="reader-mobile-detail-bar"
     >
       <button
@@ -97,9 +98,9 @@ export function ReaderArticleDetail({
 }: ArticleDetailProps) {
   if (error) {
     return (
-      <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex min-h-full flex-col">
         <MobileDetailBar onBack={onBack} />
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 overflow-y-auto text-center">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
           <AlertCircle className="h-8 w-8 text-[var(--tt-color-negative)]" />
           <p className="text-sm text-[var(--tt-color-text-muted)]">{error}</p>
         </div>
@@ -109,9 +110,9 @@ export function ReaderArticleDetail({
 
   if (!article && !isLoading) {
     return (
-      <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex min-h-full flex-col">
         <MobileDetailBar onBack={onBack} />
-        <div className="flex flex-1 items-center justify-center overflow-y-auto text-[var(--tt-color-text-muted)]">
+        <div className="flex flex-1 items-center justify-center text-[var(--tt-color-text-muted)]">
           <div className="text-center">
             <Newspaper className="mx-auto mb-3 h-12 w-12 opacity-40" />
             <p className="text-sm">記事を選択してください</p>
@@ -123,10 +124,10 @@ export function ReaderArticleDetail({
 
   if (isLoading) {
     return (
-      <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex min-h-full flex-col">
         <MobileDetailBar onBack={onBack} />
-        <div className="flex flex-1 items-center justify-center overflow-y-auto">
-          <Loader2 className="h-6 w-6 animate-spin text-[var(--tt-color-positive)] motion-reduce:animate-none" />
+        <div className="flex flex-1 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--tt-color-primary)] motion-reduce:animate-none" />
         </div>
       </div>
     );
@@ -165,7 +166,7 @@ export function ReaderArticleDetail({
       : null;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex min-h-full flex-col">
       <MobileDetailBar
         hasPrev={hasPrev}
         hasNext={hasNext}
@@ -173,7 +174,8 @@ export function ReaderArticleDetail({
         onNext={onNext}
         onBack={onBack}
       />
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1">
+        {/* 本文は右のペインの幅いっぱいに使う（幅を縮めない。e2e の page-headings.spec.ts が確かめている） */}
         <div className="w-full px-5 py-8">
           {/* Prev / Next navigation (デスクトップのみ。モバイルはsticky headerに集約) */}
           {(hasPrev || hasNext) && (
@@ -200,17 +202,18 @@ export function ReaderArticleDetail({
           )}
 
           {/* Card */}
-          <div className="rounded-2xl bg-[var(--tt-color-surface)] px-4 py-6 shadow-sm ring-1 ring-[var(--tt-color-border)] sm:px-10 sm:py-8">
+          <div className="rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] px-4 py-6 sm:px-10 sm:py-8">
             {/* Meta: source badge + date
                 375px では 4 要素が 1 行に収まらずお気に入りが画面外に出ていたため折り返す */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {/* ソース名は大文字にせず、記事が書いた表記のまま出す */}
               {article.source?.name && (
-                <span className="rounded-full bg-[var(--tt-color-positive-bg)] px-3 py-0.5 text-xs font-bold tracking-wide text-[var(--tt-color-positive)] uppercase">
+                <span className="text-sm font-semibold text-[var(--tt-color-text)]">
                   {article.source.name}
                 </span>
               )}
               {dateStr && (
-                <span className="rounded-full border border-[var(--tt-color-border)] px-3 py-0.5 text-xs text-[var(--tt-color-text-muted)]">
+                <span className="text-xs text-[var(--tt-color-text-muted)] tabular-nums">
                   {dateStr}
                 </span>
               )}
@@ -274,10 +277,13 @@ export function ReaderArticleDetail({
                 {sections.map((section, i) => (
                   <div
                     key={`section-${section.title ?? ''}-${i}`}
-                    className="border-l-[3px] border-[var(--tt-color-positive-border)] py-1 pl-5"
+                    className="border-l-[3px] border-[var(--tt-color-primary-border)] py-1 pl-5"
                   >
                     <div className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--tt-color-positive)]" />
+                      <CheckCircle2
+                        className="mt-0.5 h-4 w-4 shrink-0 text-[var(--tt-color-primary)]"
+                        aria-hidden="true"
+                      />
                       <p className="text-sm font-semibold text-[var(--tt-color-text)]">
                         {section.title}
                       </p>

@@ -21,8 +21,11 @@ interface HeadingCase {
   path: string;
   /** h1 の文言。記事タイトルのように中身がデータで変わるものは省く */
   h1?: string;
-  /** 一覧型・分析型は PageHeader を使う。幅は 7xl か全幅 */
-  pageHeader?: '7xl' | 'full';
+  /**
+   * 一覧型・分析型は PageHeader を使う。幅は 7xl か全幅。
+   * row は、見出しがツールバーと同じ行に入る画面（ホーム）。その行が全幅
+   */
+  pageHeader?: '7xl' | 'full' | 'row';
   /** サブナビ。左端が PageHeader とそろう */
   subNav?: string;
 }
@@ -30,7 +33,7 @@ interface HeadingCase {
 const TREND_SUB_NAV = 'nav[aria-label="トレンドナビゲーション"]';
 
 const PUBLIC_PAGES: HeadingCase[] = [
-  { path: '/', h1: '記事一覧', pageHeader: 'full' },
+  { path: '/', h1: '記事一覧', pageHeader: 'row' },
   { path: '/papers', h1: '論文', pageHeader: 'full' },
   {
     path: '/popular',
@@ -138,7 +141,32 @@ async function expectHeadings(
     (el) => getComputedStyle(el.parentElement as HTMLElement).maxWidth
   );
 
-  if (pageHeader === '7xl') {
+  if (pageHeader === 'row') {
+    // 見出しはツールバーと同じ行に入る（ホーム）。行は全幅で、左右の余白は一覧と同じ
+    const row = header.locator('xpath=..');
+    const rowBox = await row.boundingBox();
+    if (!rowBox) throw new Error(`${path} の見出しの行が無い`);
+    expect(rowBox.width, `${path} の見出しの行は全幅`).toBeGreaterThanOrEqual(
+      VIEWPORT_WIDTH - 20
+    );
+    expect(wrapperMaxWidth, `${path} の見出しの行は全幅`).toBe('none');
+    expect(
+      Math.round(headerBox.x - rowBox.x),
+      `${path} の見出しの左の余白は一覧と同じ（lg:px-6）`
+    ).toBe(24);
+    // 1440px では、ツールバーが見出しと同じ行に並ぶ（次の行へ折り返さない）。
+    // 見出しの縦の中心が、ツールバーの縦の範囲に入ることで確かめる
+    const toolbarBox = await boxOf(page, '[data-testid="home-toolbar"]', path);
+    const headerCenterY = headerBox.y + headerBox.height / 2;
+    expect(
+      headerCenterY,
+      `${path} のツールバーは見出しと同じ行`
+    ).toBeGreaterThanOrEqual(toolbarBox.y);
+    expect(
+      headerCenterY,
+      `${path} のツールバーは見出しと同じ行`
+    ).toBeLessThanOrEqual(toolbarBox.y + toolbarBox.height);
+  } else if (pageHeader === '7xl') {
     expect(
       headerBox.width,
       `${path} の PageHeader の幅は 7xl`
@@ -161,9 +189,16 @@ async function expectHeadings(
   }
 
   if (subNav) {
-    const navBox = await boxOf(page, subNav, path);
+    // サブナビが文字のタブ（トレンド）のときは、タブの左右の余白（px-3）の分だけ nav を外へ出し、
+    // 最初のタブの中身（アイコン）を見出しにそろえる。ランキングの期間のような枠の無いナビは nav の左端でそろえる
+    const firstTabIcon = page.locator(`${subNav} a svg`).first();
+    const alignBox =
+      (await firstTabIcon.count()) > 0
+        ? await firstTabIcon.boundingBox()
+        : await boxOf(page, subNav, path);
+    if (!alignBox) throw new Error(`${path}: サブナビが描画されていない`);
     expect(
-      Math.abs(navBox.x - headerBox.x),
+      Math.abs(alignBox.x - headerBox.x),
       `${path} のサブナビと PageHeader の左端がそろう`
     ).toBeLessThanOrEqual(1);
   }
@@ -199,6 +234,18 @@ test.describe('画面の見出し（Issue #700）', () => {
         page.getByRole('link', { name: /元記事を読む/ }).first()
       ).toBeVisible();
 
+      // 本文の列は幅を縮めない（ユーザーの決定）。1440 の画面から、ページの左右の余白（px-6）・
+      // 列の間（gap-6）・右の列（lg:w-80）・スクロールバーの分を引いた幅を下回らない
+      const articleCard = page
+        .locator('[data-testid="article-content"]')
+        .locator('xpath=..');
+      const articleCardBox = await articleCard.boundingBox();
+      if (!articleCardBox) throw new Error('記事の本文の枠が描画されていない');
+      expect(
+        articleCardBox.width,
+        '記事詳細の本文の列は画面の幅いっぱいに使う'
+      ).toBeGreaterThanOrEqual(VIEWPORT_WIDTH - 24 * 2 - 24 - 320 - 20);
+
       await openPage(page, `${articlePath}/graph`);
       await expectHeadings(page, {
         path: `${articlePath}/graph`,
@@ -221,6 +268,22 @@ test.describe('画面の見出し（Issue #700）', () => {
         await expectHeadings(page, pageCase);
       });
     }
+  });
+
+  test('リーダーの本文は右のペインの幅いっぱいに使う', async ({ page }) => {
+    await openPage(page, '/reader');
+    // 本文のカード（タイトルの h2 の親）。右のペインは一覧（lg:w-[380px]）の残りで、
+    // その左右の余白（px-5）とスクロールバーの分を引いた幅を下回らない（幅を縮めない。ユーザーの決定）
+    const title = page
+      .getByRole('region', { name: '記事詳細' })
+      .getByRole('heading', { level: 2 });
+    await expect(title).toBeVisible({ timeout: 15000 });
+    const cardBox = await title.locator('xpath=..').boundingBox();
+    if (!cardBox) throw new Error('リーダーの本文のカードが描画されていない');
+    expect(
+      cardBox.width,
+      'リーダーの本文は右のペインの幅いっぱいに使う'
+    ).toBeGreaterThanOrEqual(VIEWPORT_WIDTH - 380 - 20 * 2 - 20);
   });
 
   test('狭い画面のリーダーは、記事一覧だけのときも h1 を1つ持つ', async ({

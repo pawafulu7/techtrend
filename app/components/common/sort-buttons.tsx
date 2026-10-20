@@ -4,9 +4,38 @@ import { Button } from '@/components/ui-v2/button-v2';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { clearTransientFilterParams } from '@/lib/utils/url/filter-params';
+import {
+  TOOLBAR_CONTROL,
+  TOOLBAR_OUTLINE,
+} from '@/app/components/common/toolbar-styles';
+import { cn } from '@/lib/utils';
+import { VALID_SORT_FIELDS } from '@/app/api/articles/lib/types';
+import type { SortOption } from '@/types/components';
 
 interface SortButtonsProps {
   initialSortBy?: string;
+}
+
+const SORT_OPTIONS = [
+  { key: 'publishedAt', label: '公開順' },
+  { key: 'createdAt', label: '取込順' },
+  { key: 'qualityScore', label: '品質' },
+  { key: 'bookmarks', label: '人気' },
+] as const satisfies ReadonlyArray<{ key: SortOption; label: string }>;
+
+type ButtonSort = (typeof SORT_OPTIONS)[number]['key'];
+
+/**
+ * 選ばれている表示にするボタン。
+ * API が受け付けない値は公開順で返る（app/api/articles/handlers/get.ts）ので、公開順にする。
+ * 受け付けるがボタンの無い並び順（userVotes など。URL を手で書いたとき）は、どれも選ばれていない表示にする
+ */
+function activeSortOf(sortBy: string): ButtonSort | null {
+  const button = SORT_OPTIONS.find((option) => option.key === sortBy);
+  if (button) return button.key;
+  return (VALID_SORT_FIELDS as readonly string[]).includes(sortBy)
+    ? null
+    : 'publishedAt';
 }
 
 export function SortButtons({ initialSortBy }: SortButtonsProps) {
@@ -22,15 +51,16 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
     return 'publishedAt'; // デフォルト値
   });
 
-  // URLパラメータが変更されたら状態を更新
+  // URLパラメータが変更されたら状態を更新。空の sortBy は、初期値やサーバーと同じく「指定なし」として扱う
+  // （サーバーは Cookie の並び順で返す。lib/articles/home-articles-query.ts）
   useEffect(() => {
-    if (urlSortBy !== null) {
+    if (urlSortBy) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: sync from URL params
       setSortBy(urlSortBy);
     }
   }, [urlSortBy]);
 
-  const handleSortChange = async (newSortBy: string) => {
+  const handleSortChange = async (newSortBy: ButtonSort) => {
     setSortBy(newSortBy); // 状態を即座に更新
 
     const params = new URLSearchParams(searchParams.toString());
@@ -51,50 +81,32 @@ export function SortButtons({ initialSortBy }: SortButtonsProps) {
     } catch {}
   };
 
+  const activeSort = activeSortOf(sortBy);
+
   return (
-    <div className="flex gap-1" data-testid="sort-buttons">
-      <Button
-        data-testid="sort-by-publishedAt"
-        variant={
-          sortBy !== 'bookmarks' &&
-          sortBy !== 'qualityScore' &&
-          sortBy !== 'createdAt'
-            ? 'default'
-            : 'outline'
-        }
-        size="sm"
-        className="h-6 px-2 text-xs sm:h-7"
-        onClick={() => handleSortChange('publishedAt')}
-      >
-        公開順
-      </Button>
-      <Button
-        data-testid="sort-by-createdAt"
-        variant={sortBy === 'createdAt' ? 'default' : 'outline'}
-        size="sm"
-        className="h-6 px-2 text-xs sm:h-7"
-        onClick={() => handleSortChange('createdAt')}
-      >
-        取込順
-      </Button>
-      <Button
-        data-testid="sort-by-qualityScore"
-        variant={sortBy === 'qualityScore' ? 'default' : 'outline'}
-        size="sm"
-        className="h-6 px-2 text-xs sm:h-7"
-        onClick={() => handleSortChange('qualityScore')}
-      >
-        品質
-      </Button>
-      <Button
-        data-testid="sort-by-bookmarks"
-        variant={sortBy === 'bookmarks' ? 'default' : 'outline'}
-        size="sm"
-        className="h-6 px-2 text-xs sm:h-7"
-        onClick={() => handleSortChange('bookmarks')}
-      >
-        人気
-      </Button>
+    <div
+      role="group"
+      aria-label="並び順"
+      className="flex gap-1"
+      data-testid="sort-buttons"
+    >
+      {SORT_OPTIONS.map(({ key, label }) => {
+        // 選んでいる並び順は色だけでなく aria-pressed でも伝える（支援技術・テストの判定に使う）
+        const pressed = activeSort === key;
+        return (
+          <Button
+            key={key}
+            data-testid={`sort-by-${key}`}
+            variant={pressed ? 'default' : 'outline'}
+            aria-pressed={pressed}
+            size="sm"
+            className={cn(TOOLBAR_CONTROL, 'px-3', !pressed && TOOLBAR_OUTLINE)}
+            onClick={() => handleSortChange(key)}
+          >
+            {label}
+          </Button>
+        );
+      })}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { Button } from '@/components/ui-v2/button-v2';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LinkIcon, ChevronDown, ChevronUp, Network } from 'lucide-react';
 import { formatDate } from '@/lib/utils/date';
+import { cn } from '@/lib/utils';
 import { NewLabel } from './article-meta';
 import { TranslationBadge } from '@/components/ui/translation-badge';
 import { EmptyState } from '@/components/ui-v2/empty-state';
@@ -149,12 +150,14 @@ interface RelatedArticlesProps {
   articleId: string;
   maxItems?: number;
   initialExpanded?: boolean;
+  className?: string;
 }
 
 export function RelatedArticles({
   articleId,
   maxItems = 10,
   initialExpanded = false,
+  className,
 }: RelatedArticlesProps) {
   const [expanded, setExpanded] = useState(initialExpanded);
   const { data, isLoading, error } = useRelatedArticles(articleId);
@@ -169,7 +172,7 @@ export function RelatedArticles({
 
   if (isLoading) {
     return (
-      <Card className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
+      <Card className={cn('lg:min-h-0', className)}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <LinkIcon className="h-5 w-5" />
@@ -194,7 +197,7 @@ export function RelatedArticles({
 
   if (displayArticles.length === 0) {
     return (
-      <Card className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]">
+      <Card className={cn('lg:min-h-0', className)}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <LinkIcon className="h-5 w-5" />
@@ -215,7 +218,7 @@ export function RelatedArticles({
   return (
     <Card
       data-testid="related-articles"
-      className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]"
+      className={cn('lg:min-h-0', className)}
     >
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -234,7 +237,9 @@ export function RelatedArticles({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="max-h-[600px] scrollbar-thin space-y-2 overflow-y-auto">
+      {/* lg 以上は右の列の外枠（記事詳細の page.tsx）が画面の高さで止まるので、一覧はその残りで縮んで中でスクロールする。
+          lg 未満は本文の下に置かれるので、固定の高さで止める */}
+      <CardContent className="max-h-[600px] scrollbar-thin space-y-2 overflow-y-auto lg:max-h-none lg:min-h-0 lg:flex-1">
         {displayArticles.map((article) => (
           <RelatedArticleItem
             key={article.id}

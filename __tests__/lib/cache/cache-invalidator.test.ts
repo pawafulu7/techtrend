@@ -46,6 +46,10 @@ jest.mock('@/lib/cache/popular-cache', () => ({
 }));
 
 // CacheInvalidator 側（相対import）と同じ実体を指すパスでモックする
+jest.mock('../../../lib/cache/keywords-cache', () => ({
+  keywordsCache: { invalidateTrending: jest.fn().mockResolvedValue(undefined) },
+}));
+// CacheInvalidator 側（相対import）と同じ実体を指すパスでモックする
 jest.mock('../../../lib/cache/article-detail-cache', () => ({
   articleDetailCache: {
     invalidateAllRelated: jest.fn().mockResolvedValue(undefined),
@@ -151,6 +155,14 @@ describe('CacheInvalidator', () => {
         );
       }
       expect(mockPopularCacheInvalidateAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('急上昇の集計のキャッシュも捨てる（技術者向けの記事だけを数えるため）', async () => {
+      const { keywordsCache } = jest.requireMock(
+        '../../../lib/cache/keywords-cache'
+      );
+      await cacheInvalidator.onOffTopicUpdated();
+      expect(keywordsCache.invalidateTrending).toHaveBeenCalledTimes(1);
     });
   });
 

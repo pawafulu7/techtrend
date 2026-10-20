@@ -17,6 +17,11 @@ import { UnreadFilterWithData } from '@/app/components/common/unread-filter-with
 import { OffTopicToggle } from '@/app/components/common/off-topic-toggle';
 import { MarkAllReadWrapper } from '@/app/components/common/mark-all-read-wrapper';
 import { FilterResetButton } from '@/app/components/common/filter-reset-button';
+import {
+  TOOLBAR_CONTROL,
+  TOOLBAR_OUTLINE,
+} from '@/app/components/common/toolbar-styles';
+import { cn } from '@/lib/utils';
 
 export function ToolbarMoreMenu() {
   return (
@@ -28,11 +33,11 @@ export function ToolbarMoreMenu() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 px-2"
+                className={cn(TOOLBAR_CONTROL, TOOLBAR_OUTLINE, 'px-3')}
                 aria-label="その他のオプション"
               >
                 <MoreHorizontal className="h-4 w-4" />
-                <span className="ml-1 hidden text-xs sm:inline">その他</span>
+                <span className="ml-1 hidden sm:inline">その他</span>
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>

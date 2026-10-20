@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Calendar, ExternalLink, Newspaper } from 'lucide-react';
+import { Calendar, ExternalLink } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
@@ -19,7 +19,11 @@ import {
 } from '@/app/components/article/article-meta';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
 import { TranslationBadge } from '@/components/ui/translation-badge';
-import { useIsNewArticle } from '@/app/components/common/relative-time';
+import {
+  RelativeTime,
+  useIsNewArticle,
+} from '@/app/components/common/relative-time';
+import { QualityMeter } from '@/app/components/article/quality-meter';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { useReadStatus } from '@/app/components/article/hooks/use-read-status';
 
@@ -50,8 +54,9 @@ export function ArticleCard({
    */
   layout?: 'grid' | 'stack';
   /**
-   * 画像の無い記事にも空の枠を出し、同じ行のカードと高さを揃える（layout が 'grid' のときだけ）。
-   * 画像がほぼ無い一覧（/papers）では揃える意味が無いので出さない
+   * 画像の無い記事に「観測記録」の枠（ソース名・公開からの時間・品質の目盛り）を出し、同じ行のカードと
+   * 高さを揃える（layout が 'grid' のときだけ。1列表示では細い帯）。画像のある記事は、品質の目盛りを
+   * メタ情報の行に出す（画像の有無で出す情報を変えない）。画像がほぼ無い一覧（/papers）では出さない
    */
   thumbnailPlaceholder?: boolean;
 }) {
@@ -72,6 +77,13 @@ export function ArticleCard({
   // 複数列（幅 sm 以上）でカードの上端に枠があるか。マウス端末の操作ボタンはこの枠に重ねる
   const overlayActions = isGrid && (thumbnailSrc !== null || showPlaceholder);
   const trimmedSummary = article.summary?.trim() || '';
+  const sourceName = article.companyName ?? article.source?.name ?? '';
+  const qualityScore =
+    typeof article.qualityScore === 'number' && article.qualityScore > 0
+      ? article.qualityScore
+      : null;
+  // 画像の無い記事の「観測記録」（枠と、1列表示の細い帯）
+  const showObservation = showPlaceholder && thumbnailSrc === null;
 
   const searchParams = useSearchParams();
   const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;
@@ -133,17 +145,51 @@ export function ArticleCard({
             onError={() => setErroredThumbnail(thumbnailSrc)}
           />
         </div>
-      ) : showPlaceholder ? (
-        // 画像が無い記事も同じ枠で行の高さを揃える。揃える相手のいない
-        // 1列表示（幅 sm 未満）では出さず、縦に伸ばさない
+      ) : showObservation ? (
+        // 画像の無い記事の「観測記録」の枠。同じ 16:9 で行の高さを揃える。揃える相手のいない
+        // 1列表示（幅 sm 未満）では出さず、下の細い帯にする。中身はメタ情報の行と重なるので、
+        // 枠ごと読み上げから隠す（品質はメタ情報の行で読ませ、画像の有無で読む順番を変えない）
         <div
-          className="hidden aspect-video w-full items-center justify-center rounded-t-lg bg-(--tt-color-surface-muted) text-(--tt-color-text-muted) sm:flex"
+          className="observation-grid hidden aspect-video w-full flex-col justify-end overflow-hidden rounded-t-lg border-b border-(--tt-color-border) px-4 pb-4 sm:flex"
           aria-hidden="true"
           data-testid="thumbnail-placeholder"
         >
-          <Newspaper className="h-8 w-8 opacity-40" />
+          <p className="font-heading text-foreground truncate text-[22px] leading-7 font-bold [font-stretch:87.5%]">
+            {sourceName}
+          </p>
+          <p className="mt-1 h-4 text-xs leading-4 text-(--tt-color-text-muted)">
+            <RelativeTime
+              date={article.publishedAt}
+              className="after:content-['に公開']"
+            />
+          </p>
+          {qualityScore !== null && (
+            <QualityMeter score={qualityScore} className="mt-2 text-xs" />
+          )}
         </div>
       ) : null}
+      {showObservation && (
+        // 1列表示の「観測記録」は、カードの上の1行の細い帯（枠と同じく読み上げから隠す）。
+        // 拡大表示などで幅が足りないときは、高さを固定せずに折り返す
+        <div
+          className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1 rounded-t-lg border-b border-(--tt-color-border) bg-(--tt-color-surface-muted) px-4 py-1 text-xs sm:hidden"
+          aria-hidden="true"
+          data-testid="observation-strip"
+        >
+          <span className="font-heading text-foreground min-w-0 truncate text-[13px] font-semibold">
+            {sourceName}
+          </span>
+          <span className="shrink-0 text-(--tt-color-text-muted)">
+            <RelativeTime
+              date={article.publishedAt}
+              className="after:content-['に公開']"
+            />
+          </span>
+          {qualityScore !== null && (
+            <QualityMeter score={qualityScore} label={false} className="ml-auto" />
+          )}
+        </div>
+      )}
 
       {/* 情報の優先順位: タイトル → 要約 → メタ情報（下端に揃える） */}
       <div className="flex flex-1 flex-col gap-1.5 px-4 pt-3">
@@ -194,8 +240,21 @@ export function ArticleCard({
           >
             <Calendar className="h-3 w-3" aria-hidden="true" />
             <span className="sr-only">公開日:</span>
-            <span>{formatDateWithTime(article.publishedAt)}</span>
+            <span className="tabular-nums">
+              {formatDateWithTime(article.publishedAt)}
+            </span>
           </span>
+          {/* 品質。画像のある記事は目盛りをここに見せる。画像の無い記事は「観測記録」の枠と帯に
+              見せ、ここでは読み上げにだけ残す（画像の有無で読む順番を変えない） */}
+          {showPlaceholder &&
+            qualityScore !== null &&
+            (thumbnailSrc !== null ? (
+              <QualityMeter score={qualityScore} label={false} />
+            ) : (
+              <span className="sr-only" data-testid="quality-sr">
+                品質 {Math.round(qualityScore)}
+              </span>
+            ))}
         </div>
       </div>
 

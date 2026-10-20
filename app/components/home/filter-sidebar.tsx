@@ -14,6 +14,10 @@ import { useSearchParams } from 'next/navigation';
 import { PanelLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { cn } from '@/lib/utils';
+import {
+  TOOLBAR_CONTROL,
+  TOOLBAR_OUTLINE,
+} from '@/app/components/common/toolbar-styles';
 
 const STORAGE_KEY = 'home-sidebar-open';
 
@@ -79,14 +83,18 @@ export function FilterSidebarToggle() {
     <Button
       variant="outline"
       size="sm"
-      className="relative hidden h-7 px-2 text-xs lg:inline-flex"
+      className={cn(
+        TOOLBAR_CONTROL,
+        TOOLBAR_OUTLINE,
+        'relative hidden px-3 lg:inline-flex'
+      )}
       onClick={toggle}
       aria-expanded={open}
       aria-label={open ? 'フィルターを閉じる' : 'フィルターを開く'}
     >
       <PanelLeft
         className={cn(
-          'mr-1 h-3 w-3 transition-transform',
+          'mr-1.5 h-4 w-4 transition-transform',
           open && 'rotate-180'
         )}
       />

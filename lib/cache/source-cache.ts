@@ -33,6 +33,25 @@ async function invalidateRelatedArticles(): Promise<void> {
   await articleDetailCache.invalidateAllRelated();
 }
 
+/**
+ * 急上昇の集計のキャッシュも消す（有効なソースの記事だけを数えるため）。関連記事と同じく使うときに読み込み、
+ * source-cache を読み込んだだけで Redis のクライアントを作らないようにする
+ */
+async function invalidateTrendingKeywords(): Promise<void> {
+  const { keywordsCache } = await import('./keywords-cache');
+  await keywordsCache.invalidateTrending();
+}
+
+/**
+ * トレンド概要の分析（上位タグとその推移）のキャッシュも消す。分析も有効なソースの記事だけを数え、
+ * 急上昇だけを消すと、同じ画面で急上昇は新しい範囲・分析は TTL（30 分）まで古い範囲で数えたものが並ぶ。
+ * 失敗は trendsCache.invalidatePattern が warn にして投げない
+ */
+async function invalidateTrendAnalysis(): Promise<void> {
+  const { trendsCache } = await import('./trends-cache');
+  await trendsCache.invalidatePattern('*');
+}
+
 export class SourceCache {
   private cache: RedisCache;
   private nameToId = new Map<string, string>();
@@ -347,6 +366,8 @@ export class SourceCache {
     await Promise.all([
       this.cache.invalidatePattern('*'),
       invalidateRelatedArticles(),
+      invalidateTrendingKeywords(),
+      invalidateTrendAnalysis(),
     ]);
   }
 
@@ -376,6 +397,8 @@ export class SourceCache {
         // Top sources (various limits)
         this.cache.invalidatePattern('top-sources:*'),
         invalidateRelatedArticles(),
+        invalidateTrendingKeywords(),
+        invalidateTrendAnalysis(),
       ]);
     } catch (_error) {
       // Fallback to full invalidation on any error

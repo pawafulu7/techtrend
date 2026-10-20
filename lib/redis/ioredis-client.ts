@@ -4,6 +4,15 @@ import logger from '@/lib/logger';
 import { env } from '@/lib/config/env';
 
 /**
+ * Redis の命令の応答を待つ上限（ms）。止まった Redis で永遠に待たないためのもので、遅い応答を
+ * 失敗に変えるためのものではない。ioredis は接続中に待たされた命令にもこの上限を数える
+ * （Redis.js の sendCommand）ので、冷えた関数の最初の接続（TLS を含む）に余裕を持たせる。
+ * レート制限は Redis の失敗で既定ではリクエストを通さない（with-rate-limit.ts）ので、短くしすぎない。
+ * キャッシュの取得（get → ロックの set）は止まると2命令分待つ
+ */
+export const REDIS_COMMAND_TIMEOUT_MS = 3000;
+
+/**
  * IoRedis wrapper implementing IRedisClient interface
  */
 export class IoRedisClient implements IRedisClient {
@@ -23,6 +32,13 @@ export class IoRedisClient implements IRedisClient {
         }),
       enableOfflineQueue: config?.enableOfflineQueue !== false,
       connectTimeout: config?.connectTimeout || 10000,
+      // 接続が生きたまま応答が止まると、命令は既定では永遠に待つ（ホームの表示がソース・タグの
+      // 取得で止まる）。上限を過ぎたら失敗にし、キャッシュの読み書きは DB への直接の取得に切り替える
+      commandTimeout: config?.commandTimeout ?? REDIS_COMMAND_TIMEOUT_MS,
+      // 再接続のときに、応答の無かった命令を送り直さない。上限で失敗にした命令（ロックの SET NX など）が
+      // 後から実行され、持ち主のいないロックが残るのを防ぐ。接続前の命令の待ち行列（offline queue）は
+      // 残す（外すと、冷えた関数の最初の命令が即座に失敗し、レート制限が 500 を返す）
+      autoResendUnfulfilledCommands: false,
       maxRetriesPerRequest: config?.maxRetriesPerRequest ?? 3,
       enableReadyCheck: true,
       lazyConnect: false, // Connect immediately on instantiation

@@ -39,6 +39,7 @@ import {
 import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import {
   ENABLED_SOURCE_SQL,
+  expectAnalysisPeriodSql,
   sqlFragmentsOf,
 } from '../../helpers/sql-fragments';
 
@@ -54,12 +55,12 @@ describe('trends-data: 無効化したソースの記事を数えない（issue 
     prismaMock.$queryRaw.mockResolvedValue([]);
   });
 
-  it('fetchKeywordsData: 3 つの集計と、新規タグの判定の内側', async () => {
+  it('fetchKeywordsData: 区間別の集計と、新規タグの判定の内側', async () => {
     await fetchKeywordsData();
 
-    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(3);
-    const [recent, weekly, newTags] = prismaMock.$queryRaw.mock.calls;
-    for (const call of [recent, weekly, newTags]) {
+    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
+    const [buckets, newTags] = prismaMock.$queryRaw.mock.calls;
+    for (const call of [buckets, newTags]) {
       const sql = sqlFragmentsOf(call).join(' ');
       expect(sql).toContain(ENABLED);
       expect(sql).toContain('a."isHidden" = false');
@@ -74,12 +75,19 @@ describe('trends-data: 無効化したソースの記事を数えない（issue 
       { name: 'React', total_count: BigInt(3) },
     ]);
 
+    const calledAt = Date.now();
     await fetchAnalysisData(30);
+    const calledBetween = [calledAt, Date.now()] as const;
 
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
     for (const call of prismaMock.$queryRaw.mock.calls) {
-      expect(sqlFragmentsOf(call, { afterAnd: true })).toEqual([ENABLED]);
+      expectAnalysisPeriodSql(call, { days: 30, calledBetween });
     }
+    // 日別のまとめは日本時間の暦日（0 で埋める日付と同じ区切り）
+    const [, timeline] = prismaMock.$queryRaw.mock.calls;
+    expect((timeline[0] as readonly string[]).join('')).toContain(
+      `TO_CHAR(a."publishedAt" AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD')`
+    );
   });
 
   it('fetchSourceData: 構成比の分母も有効なソースの記事だけで数える', async () => {

@@ -1,5 +1,3 @@
-import { TrendingUp, Sparkles, BarChart3 } from 'lucide-react';
-
 interface TrendStatsBarProps {
   /** null は取得に失敗した値。0 と区別して「—」で表す（issue #701） */
   trendingCount: number | null;
@@ -11,54 +9,51 @@ interface TrendStatsBarProps {
 function StatValue({ value }: { value: number | null }) {
   if (value === null) {
     return (
-      <span className="text-sm font-semibold">
+      <>
         <span aria-hidden="true">—</span>
         <span className="sr-only">取得できませんでした</span>
-      </span>
+      </>
     );
   }
-  return <span className="text-sm font-semibold">{value}</span>;
+  return <>{value}</>;
 }
 
+const STATS = [
+  { key: 'trendingCount', label: '伸びている話題' },
+  { key: 'newTagCount', label: '新着タグ' },
+  { key: 'topTagCount', label: '人気タグ' },
+] as const;
+
+/**
+ * トレンド概要の件数の読み出し。数字（字幅を詰めた等幅数字）を主に、何の数かを下に小さく出す。
+ * 3 つを細い縦の線で区切る
+ */
 export function TrendStatsBar({
   trendingCount,
   newTagCount,
   topTagCount,
   loading = false,
 }: TrendStatsBarProps) {
-  if (loading) {
-    return (
-      <div className="bg-background animate-pulse rounded-lg border px-4 py-3 shadow-sm">
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          <div className="h-4 w-20 rounded bg-(--tt-color-surface-muted)" />
-          <div className="bg-border hidden h-4 w-px sm:block" />
-          <div className="h-4 w-20 rounded bg-(--tt-color-surface-muted)" />
-          <div className="bg-border hidden h-4 w-px sm:block" />
-          <div className="h-4 w-20 rounded bg-(--tt-color-surface-muted)" />
-        </div>
-      </div>
-    );
-  }
+  const values = { trendingCount, newTagCount, topTagCount };
 
   return (
-    <div className="bg-background flex flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-lg border px-4 py-3 shadow-sm">
-      <div className="flex items-center gap-2">
-        <TrendingUp className="text-tt-primary h-4 w-4" />
-        <StatValue value={trendingCount} />
-        <span className="text-muted-foreground text-xs">急上昇</span>
-      </div>
-      <div className="bg-border hidden h-4 w-px sm:block" />
-      <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-(--tt-color-positive)" />
-        <StatValue value={newTagCount} />
-        <span className="text-muted-foreground text-xs">新着タグ</span>
-      </div>
-      <div className="bg-border hidden h-4 w-px sm:block" />
-      <div className="flex items-center gap-2">
-        <BarChart3 className="h-4 w-4 text-(--tt-color-info)" />
-        <StatValue value={topTagCount} />
-        <span className="text-muted-foreground text-xs">人気タグ</span>
-      </div>
-    </div>
+    <dl
+      className="bg-background grid grid-cols-3 divide-x divide-(--tt-color-border) rounded-lg border"
+      aria-busy={loading || undefined}
+      data-testid="trend-stats-bar"
+    >
+      {STATS.map(({ key, label }) => (
+        <div key={key} className="flex flex-col-reverse gap-1 px-4 py-3">
+          <dt className="text-xs text-(--tt-color-text-muted)">{label}</dt>
+          <dd className="readout text-foreground text-[28px]">
+            {loading ? (
+              <span className="block h-7 w-12 animate-pulse rounded-sm bg-(--tt-color-surface-muted) motion-reduce:animate-none" />
+            ) : (
+              <StatValue value={values[key]} />
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }

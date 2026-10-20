@@ -24,7 +24,7 @@ export default function Loading() {
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                   <Skeleton className="h-6 w-32" />
                   <Skeleton className="h-8 w-48" />
                 </div>

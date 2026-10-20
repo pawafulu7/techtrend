@@ -16,19 +16,13 @@ import './globals.css';
 // フォントは Fontsource（@fontsource-variable/*、OFL-1.1）のラテン文字用の可変フォントを next/font/local で読む。
 // next/font/google はビルドや開発サーバーの起動時に Google から取得するが、Google が返す
 // `l/font?kit=…&skey=…` 形式の URL を Turbopack が解釈できず、全ページが 500 になったため
-const spaceGrotesk = localFont({
-  src: '../node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2',
-  variable: '--font-space-grotesk',
-  weight: '500 700',
-  display: 'swap',
-  preload: true,
-  adjustFontFallback: 'Arial',
-});
-
-const inter = localFont({
-  src: '../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2',
-  variable: '--font-inter',
-  weight: '400 600',
+// 欧文と数字は Mona Sans の1ファイルにまとめる。太さ（200〜900）と字幅（75〜125%）の両方の軸を持つ。
+// 字幅を詰めた数字（.readout）を使うので、font-stretch の範囲を @font-face に書く（next/font/local は自動で書かない）
+const monaSans = localFont({
+  src: '../node_modules/@fontsource-variable/mona-sans/files/mona-sans-latin-standard-normal.woff2',
+  variable: '--font-mona-sans',
+  weight: '200 900',
+  declarations: [{ prop: 'font-stretch', value: '75% 125%' }],
   display: 'swap',
   preload: true,
   adjustFontFallback: 'Arial',
@@ -80,7 +74,7 @@ export default async function RootLayout({
   return (
     <html
       lang="ja"
-      className={`no-transitions h-full ${spaceGrotesk.variable} ${inter.variable} ${jetBrainsMono.variable}`}
+      className={`no-transitions h-full ${monaSans.variable} ${jetBrainsMono.variable}`}
       suppressHydrationWarning
     >
       <head>

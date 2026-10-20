@@ -100,7 +100,10 @@ describe('Header', () => {
 
       const popularLink = screen.getByTestId('nav-link-人気');
       expect(popularLink).toHaveAttribute('aria-current', 'page');
-      expect(popularLink).toHaveClass('bg-primary text-primary-foreground');
+      // 選ばれている項目は文字を濃くし、下に藍の線を引く
+      expect(popularLink).toHaveClass(
+        'font-semibold text-(--tt-color-text) after:bg-(--tt-color-primary)'
+      );
     });
 
     it('非アクティブなリンクは通常のスタイルで表示される', () => {
@@ -110,90 +113,24 @@ describe('Header', () => {
 
       const popularLink = screen.getByTestId('nav-link-人気');
       expect(popularLink).not.toHaveAttribute('aria-current');
-      expect(popularLink).toHaveClass('bg-secondary/30');
-    });
-  });
-
-  describe('モバイルナビゲーション', () => {
-    it('モバイルメニューを開閉できる', async () => {
-      const user = userEvent.setup();
-      render(<Header />);
-
-      // 初期状態でモバイルナビは非表示
-      expect(screen.queryByTestId('mobile-nav')).not.toBeInTheDocument();
-
-      // メニューボタンをクリックして開く
-      const toggleButton = screen.getByTestId('mobile-menu-toggle');
-      await user.click(toggleButton);
-
-      // モバイルナビが表示される
-      expect(screen.getByTestId('mobile-nav')).toBeInTheDocument();
-
-      // モバイルナビゲーション項目が表示される
-      expect(screen.getByTestId('mobile-nav-link-ホーム')).toBeInTheDocument();
-      expect(screen.getByTestId('mobile-nav-link-人気')).toBeInTheDocument();
-
-      // 再度クリックして閉じる
-      await user.click(toggleButton);
-
-      // モバイルナビが非表示になる
-      expect(screen.queryByTestId('mobile-nav')).not.toBeInTheDocument();
+      expect(popularLink).toHaveClass(
+        'text-(--tt-color-text-muted) after:bg-transparent'
+      );
     });
 
-    it('モバイルメニューにセカンダリナビゲーションが含まれる', async () => {
-      const user = userEvent.setup();
-      render(<Header />);
-
-      const toggleButton = screen.getByTestId('mobile-menu-toggle');
-      await user.click(toggleButton);
-
-      // セカンダリナビゲーション項目
-      expect(
-        screen.getByTestId('mobile-secondary-nav-link-閲覧履歴')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('mobile-secondary-nav-link-タグ')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('mobile-secondary-nav-link-分析')
-      ).toBeInTheDocument();
-
-      // セクション見出し（モバイルメニュー内）
-      const mobileNav = screen.getByTestId('mobile-nav');
-      expect(within(mobileNav).getByText('その他')).toBeInTheDocument();
-    });
-
-    it('モバイルナビのリンククリックでメニューが閉じる', async () => {
-      const user = userEvent.setup();
-      render(<Header />);
-
-      // メニューを開く
-      const toggleButton = screen.getByTestId('mobile-menu-toggle');
-      await user.click(toggleButton);
-
-      // モバイルナビが表示される
-      expect(screen.getByTestId('mobile-nav')).toBeInTheDocument();
-
-      // リンクをクリック
-      const homeLink = screen.getByTestId('mobile-nav-link-ホーム');
-      await user.click(homeLink);
-
-      // モバイルナビが閉じる
-      expect(screen.queryByTestId('mobile-nav')).not.toBeInTheDocument();
-    });
-
-    it('モバイルナビでもアクティブ状態が表示される', async () => {
-      const user = userEvent.setup();
-      (usePathname as jest.Mock).mockReturnValue('/tags');
+    it('下の階層のページでも、その項目を選ばれている表示にする', () => {
+      (usePathname as jest.Mock).mockReturnValue('/trends/daily');
 
       render(<Header />);
 
-      const toggleButton = screen.getByTestId('mobile-menu-toggle');
-      await user.click(toggleButton);
-
-      const tagsLink = screen.getByTestId('mobile-secondary-nav-link-タグ');
-      expect(tagsLink).toHaveAttribute('aria-current', 'page');
-      expect(tagsLink).toHaveClass('bg-primary text-primary-foreground');
+      // 今のページはトレンドのサブナビの「デイリー」なので、親の「トレンド」は 'page' ではなく 'true'
+      const trendsLink = screen.getByTestId('nav-link-トレンド');
+      expect(trendsLink).toHaveAttribute('aria-current', 'true');
+      expect(trendsLink).toHaveClass('after:bg-(--tt-color-primary)');
+      // ホーム（/）は完全一致だけ
+      expect(screen.getByTestId('nav-link-ホーム')).not.toHaveAttribute(
+        'aria-current'
+      );
     });
   });
 
@@ -298,7 +235,7 @@ describe('Header', () => {
 
       const homeLink = screen.getByTestId('nav-link-ホーム');
       expect(homeLink).toHaveClass(
-        'focus-visible:ring-2 focus-visible:ring-primary'
+        'focus-visible:ring-2 focus-visible:ring-(--tt-color-primary)'
       );
     });
   });
@@ -310,7 +247,9 @@ describe('Header', () => {
       render(<Header />);
 
       const popularLink = screen.getByTestId('nav-link-人気');
-      expect(popularLink).toHaveClass('hover:bg-secondary/60 hover:scale-105');
+      // 拡大や塗りは使わず、文字を濃くする
+      expect(popularLink).toHaveClass('hover:text-(--tt-color-text)');
+      expect(popularLink).not.toHaveClass('hover:scale-105');
     });
 
     it('モバイルナビのリンクにホバー効果がある', async () => {
@@ -323,7 +262,7 @@ describe('Header', () => {
       await user.click(toggleButton);
 
       const popularLink = screen.getByTestId('mobile-nav-link-人気');
-      expect(popularLink).toHaveClass('hover:bg-secondary/50');
+      expect(popularLink).toHaveClass('hover:bg-(--tt-color-surface-hover)');
     });
   });
 

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { ArticleListItem } from './article-list-item';
+import { ArticleListItem, readerOptionId } from './article-list-item';
 import { Loader2, AlertCircle, Newspaper } from 'lucide-react';
 import type { ReaderListArticle } from './types';
+import { cn } from '@/lib/utils';
 
 interface ArticleListProps {
   articles: ReaderListArticle[];
@@ -16,6 +17,8 @@ interface ArticleListProps {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onLoadMore: () => void;
+  /** listbox の要素。一覧に戻ったときに reader-client がフォーカスを戻す */
+  listboxRef?: React.Ref<HTMLDivElement>;
 }
 
 export function ReaderArticleList({
@@ -29,6 +32,7 @@ export function ReaderArticleList({
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
+  listboxRef,
 }: ArticleListProps) {
   if (error && articles.length === 0) {
     return (
@@ -73,6 +77,7 @@ export function ReaderArticleList({
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}
         onLoadMore={onLoadMore}
+        listboxRef={listboxRef}
       />
     </div>
   );
@@ -86,6 +91,7 @@ function ScrollableArticleList({
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
+  listboxRef,
 }: {
   articles: ReaderListArticle[];
   selectedId: string | null;
@@ -94,11 +100,12 @@ function ScrollableArticleList({
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onLoadMore: () => void;
+  listboxRef?: React.Ref<HTMLDivElement>;
 }) {
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Scroll selected item into view
+  // 選んでいる行を見える位置へ。すでに見えていれば動かさない（nearest）
   useEffect(() => {
     if (!selectedId) return;
     const el = itemRefs.current.get(selectedId);
@@ -107,11 +114,17 @@ function ScrollableArticleList({
         '(prefers-reduced-motion: reduce)'
       ).matches;
       el.scrollIntoView({
-        block: 'start',
+        block: 'nearest',
         behavior: prefersReducedMotion ? 'auto' : 'smooth',
       });
     }
   }, [selectedId]);
+
+  // 深いリンクで開いた記事が一覧に無いときは、listbox の選んでいる項目を無しにする
+  const activeDescendant =
+    selectedId && articles.some((article) => article.id === selectedId)
+      ? readerOptionId(selectedId)
+      : undefined;
 
   // IntersectionObserver for infinite scroll
   useEffect(() => {
@@ -132,11 +145,21 @@ function ScrollableArticleList({
   }, [hasNextPage, isFetchingNextPage, onLoadMore]);
 
   return (
+    // フォーカスは listbox に置いたまま、選んでいる行を aria-activedescendant で示す。行ごとに .focus() で
+    // 動かすと、本文の「前の記事」「次の記事」で選択が変わったときに本文からフォーカスを奪うため。
+    // Tab で止まるのはこの1か所
     <div
-      className="flex-1 overflow-y-auto"
+      ref={listboxRef}
+      // 選んでいる行があれば輪はその行に出す（article-list-item.tsx）。無いときは一覧の枠に出す
+      className={cn(
+        'group/listbox flex-1 overflow-y-auto focus-visible:outline-none',
+        !activeDescendant &&
+          'focus-visible:ring-2 focus-visible:ring-(--tt-color-primary) focus-visible:ring-inset'
+      )}
       role="listbox"
       tabIndex={0}
       aria-label="記事一覧"
+      aria-activedescendant={activeDescendant}
       onKeyDown={onKeyDown}
     >
       {articles.map((article) => (

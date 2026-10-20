@@ -16,6 +16,9 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    # 既定のブランチ（main）に加えて、統合ブランチ develop 向けの PR も自動でレビューする
+    base_branches:
+      - "develop"
   finishing_touches:
     docstrings:
       enabled: false

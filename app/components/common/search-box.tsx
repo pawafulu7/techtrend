@@ -7,6 +7,10 @@ import { Button } from '@/components/ui-v2/button-v2';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { cn } from '@/lib/utils';
+import {
+  TOOLBAR_CONTROL,
+  TOOLBAR_OUTLINE,
+} from '@/app/components/common/toolbar-styles';
 
 interface SearchBoxProps {
   /** trueの場合、親要素の幅いっぱいに広がる（モバイル検索パネル用） */
@@ -133,7 +137,11 @@ export function SearchBox({ fullWidth = false }: SearchBoxProps = {}) {
           }}
           onCompositionStart={() => setIsComposing(true)}
           onCompositionEnd={() => setIsComposing(false)}
-          className="h-8 border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] pr-9 pl-9 text-sm"
+          className={cn(
+            TOOLBAR_CONTROL,
+            TOOLBAR_OUTLINE,
+            'border bg-[var(--tt-color-surface)] pr-10 pl-9'
+          )}
           data-testid="search-box-input"
         />
         {query && (
@@ -141,11 +149,11 @@ export function SearchBox({ fullWidth = false }: SearchBoxProps = {}) {
             variant="ghost"
             size="sm"
             onClick={handleClear}
-            className="absolute top-1/2 right-1 h-6 w-6 -translate-y-1/2 transform p-0"
+            className="absolute top-1/2 right-1 h-7 w-7 -translate-y-1/2 transform p-0"
             data-testid="search-clear"
             aria-label="検索をクリア"
           >
-            <X className="h-3 w-3" />
+            <X className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>

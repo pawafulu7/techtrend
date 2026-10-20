@@ -6,6 +6,23 @@ import type { Prisma } from '@/lib/prisma-exports';
 const SLIDE_SOURCE_NAMES = new Set(['Speaker Deck', 'Docswell']);
 const SLIDE_HOSTS = new Set(['speakerdeck.com', 'docswell.com']);
 
+/** スライドのソース名。生 SQL の条件（lib/database/home-article-filter.ts）でも同じ値を使う */
+export const SLIDE_SOURCE_NAME_LIST: readonly string[] = [
+  ...SLIDE_SOURCE_NAMES,
+];
+
+/**
+ * スライドの記事 URL の先頭（収集時の形）。slideArticleWhere（Prisma の startsWith = LIKE）と、生 SQL の
+ * 条件（starts_with）で使う。LIKE の特殊文字（_ % \）を含めると2つの条件の結果がずれるので、含めない
+ */
+export const SLIDE_URL_PREFIXES: readonly string[] = [...SLIDE_HOSTS].flatMap(
+  (host) =>
+    ['https', 'http'].flatMap((scheme) => [
+      `${scheme}://${host}/`,
+      `${scheme}://www.${host}/`,
+    ])
+);
+
 /**
  * スライド共有サービスのソースかを判定する
  */
@@ -35,16 +52,10 @@ export function isSlideArticle(article: {
  * 前方一致で見るので、大文字のホストやポート付きの URL は isSlideArticle とずれる
  */
 export function slideArticleWhere(): Prisma.ArticleWhereInput {
-  const urlPrefixes = [...SLIDE_HOSTS].flatMap((host) =>
-    ['https', 'http'].flatMap((scheme) => [
-      `${scheme}://${host}/`,
-      `${scheme}://www.${host}/`,
-    ])
-  );
   return {
     OR: [
-      { source: { name: { in: [...SLIDE_SOURCE_NAMES] } } },
-      ...urlPrefixes.map((prefix) => ({ url: { startsWith: prefix } })),
+      { source: { name: { in: [...SLIDE_SOURCE_NAME_LIST] } } },
+      ...SLIDE_URL_PREFIXES.map((prefix) => ({ url: { startsWith: prefix } })),
     ],
   };
 }

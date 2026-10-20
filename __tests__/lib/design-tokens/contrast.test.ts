@@ -7,7 +7,8 @@
  * - 淡い塗り（*Bg、半透明）をカード・背景・沈んだ面・ホバー面に重ね、その上に同じ色の文字を置いた場合（バッジ）
  * - 本文・補助文字を、背景・カード・沈んだ面・ホバー面（shadcn の muted）に置いた場合
  * - 順位色を、背景・カード・沈んだ面に置いた場合
- * - 全画面の下地（canvas と、上端の緑 canvasTopGlow から下端の青 canvasBottomGlow へのグラデーション）に、本文・補助文字・ブランド色・バッジを置いた場合
+ * - 全画面の下地（canvas、無地）に、本文・補助文字・ブランド色・バッジを置いた場合（SURFACES に含む）
+ * - 熱の色（heat1〜heat4。帯の成長率の文字と折れ線）を、背景・カード・沈んだ面・ホバー面に置いた場合
  * - チャートの系列色の塗りに、readableTextColor で選んだ文字を載せた場合（円グラフの割合ラベル）
  */
 
@@ -84,6 +85,13 @@ const NEUTRAL_TEXTS = [
   'textMuted',
 ] as const satisfies readonly ColorKey[];
 
+const HEAT_TEXTS = [
+  'heat1',
+  'heat2',
+  'heat3',
+  'heat4',
+] as const satisfies readonly ColorKey[];
+
 const RANK_TEXTS = [
   'rankGold',
   'rankSilver',
@@ -124,35 +132,13 @@ describe.each([
     expect(ratio(c, fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
   });
 
-  // 下地は canvasTopGlow から canvasBottomGlow へのグラデーション（どちらも canvas に重ねる）。
-  // ページの見出し・説明文・バッジはこの上に直接載るので、両端と途中の色をすべて調べる
-  const canvasGradient = (() => {
-    const base = parseColor(c.canvas).rgb;
-    const top = composite(c.canvasTopGlow, base);
-    const bottom = composite(c.canvasBottomGlow, base);
-    return Array.from({ length: 11 }, (_, i) =>
-      top.map((v, k) => v + (bottom[k] - v) * (i / 10))
-    ) as Array<typeof base>;
-  })();
-
-  it.each([...NEUTRAL_TEXTS, ...ACCENTS])(
-    '%s text on the canvas gradient',
-    (fg) => {
-      for (const bg of canvasGradient) {
-        expect(contrastRatio(composite(c[fg], bg), bg)).toBeGreaterThanOrEqual(
-          AA_TEXT
-        );
-      }
-    }
-  );
-
-  it.each(TINTS)('%s text on %s over the canvas gradient', (fg, bg) => {
-    for (const under of canvasGradient) {
-      const tint = composite(c[bg], under);
-      expect(
-        contrastRatio(composite(c[fg], tint), tint)
-      ).toBeGreaterThanOrEqual(AA_TEXT);
-    }
+  // 熱の色は帯の成長率の文字（+300% など）にも使い、帯の項目はホバーで面の色が変わる
+  it.each(
+    HEAT_TEXTS.flatMap((fg) =>
+      [...SURFACES, 'surfaceHover' as const].map((bg) => [fg, bg] as const)
+    )
+  )('%s text on %s', (fg, bg) => {
+    expect(ratio(c, fg, bg)).toBeGreaterThanOrEqual(AA_TEXT);
   });
 
   // 順位の色は RankBadge の丸（bg-background）の中にだけ置き、下地（canvas）には直接置かない
