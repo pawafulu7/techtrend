@@ -5,6 +5,7 @@ import {
   useState,
   type RefObject,
 } from 'react';
+import { useRouterTransitionPending } from '@/app/hooks/use-router-transition-pending';
 
 interface UseReaderSelectionOptions {
   /** URL の `article`（useSearchParams）。開いている記事 */
@@ -72,6 +73,10 @@ function currentArticleParam(): string | null {
  *   デスクトップでは本文の記事に合わせる（md 未満から広げたときも）
  * - 次ページを読んでから選ぶ処理（beginPendingSelection）は、読む間に選択が変わったら取り消す。
  *   自分で選んだ・一覧の中で動かした・一覧に戻った・外から URL が変わった・この画面を離れた（アンマウント）のどれでも
+ * - Next の router 遷移（並び順・リンク・戻る）の途中は、記事を選ぶ・一覧に戻る操作で URL も activeId も変えない
+ *   （保留中の自動選択は取り消す）。Next はパッチした pushState / replaceState で ACTION_RESTORE を出し、待っている
+ *   遷移を捨てるため（node_modules/next/dist/client/components/app-router-instance.js の dispatchAction。
+ *   issue #810）。遷移は一覧を作り直すか画面を離れるので、途中の選択は残さない
  */
 export function useReaderSelection({
   articleParam,
@@ -79,6 +84,7 @@ export function useReaderSelection({
   isDesktopRef,
 }: UseReaderSelectionOptions) {
   const [activeId, setActiveId] = useState<string | null>(articleParam);
+  const isRouterTransitionPending = useRouterTransitionPending();
   // 選択の操作の世代。保留中の自動選択は、始めたときの世代と違えば取り消す
   const generationRef = useRef(0);
   const invalidatePending = useCallback(() => {
@@ -88,10 +94,11 @@ export function useReaderSelection({
   const selectArticle = useCallback(
     (id: string, opts?: { replace?: boolean }) => {
       invalidatePending();
+      if (isRouterTransitionPending()) return;
       setActiveId(id);
       writeArticleParam(id, opts?.replace ?? isDesktopRef.current);
     },
-    [invalidatePending, isDesktopRef]
+    [invalidatePending, isDesktopRef, isRouterTransitionPending]
   );
 
   // md 未満で、一覧の中だけで選ぶ行を動かす（URL は書かない。開くのは Enter）
@@ -106,8 +113,9 @@ export function useReaderSelection({
   // md 未満の「← 記事リスト」。一覧は直前に開いていた行を指したまま
   const backToList = useCallback(() => {
     invalidatePending();
+    if (isRouterTransitionPending()) return;
     removeArticleParam();
-  }, [invalidatePending]);
+  }, [invalidatePending, isRouterTransitionPending]);
 
   /**
    * 次ページを読んでから選ぶ処理を始める。返す関数は、読み終えた時点でまだ選んでよいか（その間に選択も URL も
