@@ -54,6 +54,16 @@ jest.mock('@/lib/database', () => ({
   },
 }));
 
+// キャッシュの無効化（消すキーの中身は cache-invalidator のテストで確かめる）
+const mockOnArticleUpdated = jest.fn();
+const mockOnBulkImport = jest.fn();
+jest.mock('@/lib/cache/cache-invalidator', () => ({
+  cacheInvalidator: {
+    onArticleUpdated: (...args: unknown[]) => mockOnArticleUpdated(...args),
+    onBulkImport: () => mockOnBulkImport(),
+  },
+}));
+
 // Mock TagService (uses upsert pattern instead of createMany)
 const mockGetTagIdsForConnect = jest.fn();
 jest.mock('@/lib/services/tag-service', () => ({
@@ -163,6 +173,43 @@ describe('/api/summaries/generate', () => {
     expect(mockService.scheduleEmbedding.mock.invocationCallOrder[0]).toBeGreaterThan(
       (prisma.article.update as jest.Mock).mock.invocationCallOrder[1]
     );
+    // 記事ごとのキャッシュを消し、最後に一覧と件数のキャッシュもまとめて消す
+    expect(mockOnArticleUpdated).toHaveBeenCalledWith('test-1', {
+      summary: updateCalls[0][0].data.summary,
+      detailedSummary: updateCalls[0][0].data.detailedSummary,
+    });
+    expect(mockOnBulkImport).toHaveBeenCalledTimes(1);
+  });
+
+  it('一覧のキャッシュの無効化に失敗しても、作った要約の件数を返す', async () => {
+    (prisma.article.findMany as jest.Mock).mockResolvedValue([
+      { id: 'test-1', title: 'Test Article', content: 'Test content', tags: [] },
+    ]);
+    (prisma.article.update as jest.Mock).mockResolvedValue({ id: 'test-1' });
+    (getAppDependencies as jest.Mock).mockReturnValue({
+      service: {
+        scheduleEmbedding: jest.fn().mockResolvedValue(undefined),
+        generateSummary: jest.fn().mockResolvedValue({
+          summary: 's',
+          detailedSummary: 'd',
+          tags: [],
+          summaryVersion: 9,
+          qualityScore: 80,
+        }),
+      },
+    });
+    mockGetTagIdsForConnect.mockResolvedValue([]);
+    mockOnBulkImport.mockRejectedValueOnce(new Error('redis down'));
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+    const response = await POST(
+      new NextRequest('http://localhost/api/summaries/generate', { method: 'POST' })
+    );
+    const json = await response.json();
+
+    expect(json.success).toBe(true);
+    expect(json.data.generated).toBe(1);
+    consoleSpy.mockRestore();
   });
 
   it('should deduplicate tags within result and existing tags', async () => {
@@ -229,8 +276,9 @@ describe('/api/summaries/generate', () => {
     expect(json.success).toBe(true);
     expect(json.data.errors).toBe(1);
     expect(json.data.generated).toBe(0);
-    // 要約を作れなかった記事のジョブは積まない
+    // 要約を作れなかった記事のジョブは積まず、何も書いていないので一覧のキャッシュも消さない
     expect(mockService.scheduleEmbedding).not.toHaveBeenCalled();
+    expect(mockOnBulkImport).not.toHaveBeenCalled();
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining('[API] Summary generation failed for article test-3'),
       expect.any(Error)

@@ -230,6 +230,9 @@ describe('PATCH /api/admin/articles/[id] - hide toggle', () => {
 
     expect(response.status).toBe(200);
     expect(keywordsCache.invalidateTrending).toHaveBeenCalledTimes(1);
+    // 非表示の記事は一覧に出さないので、一覧と件数のキャッシュも捨てる（onArticleUpdated は一覧を消さない）
+    const { cacheInvalidator } = jest.requireMock('@/lib/cache/cache-invalidator');
+    expect(cacheInvalidator.onBulkImport).toHaveBeenCalledTimes(1);
   });
 
   it('ほかのキャッシュの無効化が失敗しても、急上昇の集計のキャッシュは捨て、200 を返す', async () => {

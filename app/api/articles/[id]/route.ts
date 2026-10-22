@@ -246,6 +246,16 @@ async function deleteHandler(request: NextRequest, context: any) {
 
     // キャッシュを無効化
     await cacheInvalidator.onArticleDeleted(id);
+    // onArticleDeleted は一覧と件数のキャッシュを消さないので、消した記事が一覧に残らないよう消す。
+    // 失敗しても削除は済んでいるので、ログに出して成功を返す
+    try {
+      await cacheInvalidator.onBulkImport();
+    } catch (cacheError) {
+      logger.error(
+        { err: cacheError, articleId: id },
+        'List cache invalidation failed'
+      );
+    }
 
     return NextResponse.json({
       success: true,

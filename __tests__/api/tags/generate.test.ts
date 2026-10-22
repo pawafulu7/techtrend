@@ -6,10 +6,12 @@ const mockGenerateSummary = jest.fn();
 const mockGetTagIdsForConnect = jest.fn();
 
 const mockOnArticleUpdated = jest.fn();
+const mockOnBulkImport = jest.fn();
 
 jest.mock('@/lib/cache/cache-invalidator', () => ({
   cacheInvalidator: {
     onArticleUpdated: (...args: unknown[]) => mockOnArticleUpdated(...args),
+    onBulkImport: () => mockOnBulkImport(),
   },
 }));
 
@@ -115,6 +117,8 @@ describe('POST /api/tags/generate', () => {
       data: { tags: { connect: [{ id: 'tag-1' }] } },
     });
     expect(mockOnArticleUpdated).toHaveBeenCalledWith('art-1');
+    // 一覧（タグの表示と絞り込み）と件数のキャッシュも、最後にまとめて消す
+    expect(mockOnBulkImport).toHaveBeenCalledTimes(1);
     expect(body.data).toEqual({ generated: 1, errors: 0, total: 1 });
   });
 
@@ -156,6 +160,8 @@ describe('POST /api/tags/generate', () => {
 
     expect(mockGenerateSummary).not.toHaveBeenCalled();
     expect(body.data).toEqual({ generated: 0, errors: 0, total: 2 });
+    // 何も書いていないので一覧のキャッシュは消さない
+    expect(mockOnBulkImport).not.toHaveBeenCalled();
   });
 
   it('要約サービスが例外を投げた記事はエラーとして数え、次の記事に進む', async () => {

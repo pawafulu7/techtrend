@@ -485,6 +485,18 @@ describe('/api/articles/[id]', () => {
       });
 
       expect(cacheInvalidatorMock.onArticleDeleted).toHaveBeenCalledWith(VALID_ARTICLE_ID);
+      // onArticleDeleted は一覧と件数のキャッシュを消さないので、消した記事が一覧に残らないよう消す
+      expect(cacheInvalidatorMock.onBulkImport).toHaveBeenCalledTimes(1);
+    });
+
+    it('一覧のキャッシュの無効化に失敗しても、削除は成功を返す', async () => {
+      prismaMock.article.delete.mockResolvedValue({ id: VALID_ARTICLE_ID });
+      cacheInvalidatorMock.onBulkImport = jest.fn().mockRejectedValue(new Error('redis down'));
+
+      const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`);
+      const response = await DELETE(request, { params: Promise.resolve({ id: VALID_ARTICLE_ID }) });
+
+      expect(response.status).toBe(200);
     });
 
     it('削除エラーの場合500を返す', async () => {
