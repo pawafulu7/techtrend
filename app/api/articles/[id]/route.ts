@@ -7,6 +7,7 @@ import type { ArticleWithRelations } from '@/types/models';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { resolveTags } from '@/lib/services/tag-service';
 import { getEmbeddingScheduler } from '@/lib/di/providers/embedding-scheduler.provider';
+import logger from '@/lib/logger';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
@@ -183,6 +184,23 @@ async function patchHandler(request: NextRequest, context: any) {
         ? { title: article.title, summary: article.summary }
         : undefined
     );
+    // onArticleUpdated は一覧のキャッシュを消さないので、一覧に出る項目（タイトル・要約・サムネイル・
+    // タグ）を書いたら一覧のキャッシュも消す（collect-feeds の要約生成の後と同じ）。失敗しても
+    // 更新は済んでいるので、ログに出して成功を返す
+    if (
+      embeddingTextWritten ||
+      thumbnail !== undefined ||
+      tagNames !== undefined
+    ) {
+      try {
+        await cacheInvalidator.onBulkImport();
+      } catch (cacheError) {
+        logger.error(
+          { err: cacheError, articleId: id },
+          'List cache invalidation failed'
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,

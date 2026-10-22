@@ -66,6 +66,7 @@ jest.mock('@/lib/cache/cache-invalidator', () => ({
   cacheInvalidator: {
     onArticleUpdated: jest.fn().mockResolvedValue(undefined),
     onArticleDeleted: jest.fn().mockResolvedValue(undefined),
+    onBulkImport: jest.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -506,6 +507,50 @@ describe('POST /api/admin/articles/[id]/regenerate-summary', () => {
     expect(mockService.scheduleEmbedding.mock.invocationCallOrder[0]).toBeGreaterThan(
       (mockPrisma.article.update as jest.Mock).mock.invocationCallOrder[1]
     );
+
+    // 要約を渡して検索のキャッシュも消し、一覧のキャッシュも消す（onArticleUpdated は一覧を消さない）
+    const { cacheInvalidator } = jest.requireMock('@/lib/cache/cache-invalidator');
+    expect(cacheInvalidator.onArticleUpdated).toHaveBeenCalledWith(VALID_ID, {
+      summary: mockSummaryResult.summary,
+      detailedSummary: mockSummaryResult.detailedSummary,
+    });
+    expect(cacheInvalidator.onBulkImport).toHaveBeenCalledTimes(1);
+  });
+
+  it('一覧のキャッシュの無効化に失敗しても、再生成した記事を 200 で返すこと', async () => {
+    (mockPrisma.article.findUnique as jest.Mock).mockResolvedValue({
+      ...mockArticleDetail,
+      tags: [],
+    });
+    mockGetAppDependencies.mockReturnValue({
+      service: {
+        generateSummary: jest.fn().mockResolvedValue({
+          summary: 'New summary',
+          detailedSummary: 'New detailed summary',
+          tags: [],
+          category: 'frontend',
+          translatedTitle: 'テスト記事',
+          qualityScore: 90,
+          summaryVersion: 9,
+        }),
+        scheduleEmbedding: jest.fn().mockResolvedValue(undefined),
+      },
+    } as any);
+    (mockPrisma.article.update as jest.Mock).mockResolvedValue({
+      ...mockArticleDetail,
+      summary: 'New summary',
+    });
+    const { cacheInvalidator } = jest.requireMock('@/lib/cache/cache-invalidator');
+    cacheInvalidator.onBulkImport.mockRejectedValueOnce(new Error('redis down'));
+
+    const response = await POST(
+      new NextRequest(`http://localhost/api/admin/articles/${VALID_ID}/regenerate-summary`, {
+        method: 'POST',
+      }),
+      { params: Promise.resolve({ id: VALID_ID }) }
+    );
+
+    expect(response.status).toBe(200);
   });
 
 });

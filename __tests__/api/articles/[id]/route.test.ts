@@ -77,6 +77,7 @@ describe('/api/articles/[id]', () => {
     
     // キャッシュ無効化モック設定
     cacheInvalidatorMock.onArticleUpdated = jest.fn().mockResolvedValue(undefined);
+    cacheInvalidatorMock.onBulkImport = jest.fn().mockResolvedValue(undefined);
     cacheInvalidatorMock.onArticleDeleted = jest.fn().mockResolvedValue(undefined);
   });
 
@@ -316,6 +317,48 @@ describe('/api/articles/[id]', () => {
 
       expect(response.status).toBe(200);
       expect(mockEnqueue).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['タイトル', { title: 'Updated Article' }],
+      ['要約', { summary: 'Updated summary' }],
+      ['サムネイル', { thumbnail: 'https://example.com/new-thumb.jpg' }],
+      ['タグ', { tagNames: ['Vue.js'] }],
+    ])('一覧に出る項目（%s）を書いたら、一覧のキャッシュも消す', async (_label, body) => {
+      prismaMock.article.update.mockResolvedValue(mockArticle);
+
+      const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      });
+      await PATCH(request, { params: Promise.resolve({ id: VALID_ARTICLE_ID }) });
+
+      expect(cacheInvalidatorMock.onBulkImport).toHaveBeenCalledTimes(1);
+    });
+
+    it('本文だけを書いたら、一覧のキャッシュは消さない（一覧に本文は出ない）', async () => {
+      prismaMock.article.update.mockResolvedValue(mockArticle);
+
+      const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ content: 'Updated content' }),
+      });
+      await PATCH(request, { params: Promise.resolve({ id: VALID_ARTICLE_ID }) });
+
+      expect(cacheInvalidatorMock.onBulkImport).not.toHaveBeenCalled();
+    });
+
+    it('一覧のキャッシュの無効化に失敗しても、更新は成功を返す', async () => {
+      prismaMock.article.update.mockResolvedValue(mockArticle);
+      cacheInvalidatorMock.onBulkImport = jest.fn().mockRejectedValue(new Error('redis down'));
+
+      const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ summary: 'Updated summary' }),
+      });
+      const response = await PATCH(request, { params: Promise.resolve({ id: VALID_ARTICLE_ID }) });
+
+      expect(response.status).toBe(200);
     });
 
     it('本文を書かない更新では、本文の更新日時を進めない', async () => {
