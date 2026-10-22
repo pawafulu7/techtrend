@@ -116,12 +116,14 @@ export class LLMExtractionPipeline {
           'LLM extraction attempt failed'
         );
 
-        // Check if it's a rate limit error
-        if (this.isRateLimitError(error)) {
-          await this.delay(opts.retryDelayMs * 3);
-        } else if (attempt < opts.maxRetries) {
-          // Exponential backoff
-          await this.delay(opts.retryDelayMs * Math.pow(2, attempt - 1));
+        // 次の試行があるときだけ待つ。Rate Limit なら長めに待つ
+        if (attempt < opts.maxRetries) {
+          await this.delay(
+            this.isRateLimitError(error)
+              ? opts.retryDelayMs * 3
+              : // Exponential backoff
+                opts.retryDelayMs * Math.pow(2, attempt - 1)
+          );
         }
       }
     }
@@ -286,12 +288,10 @@ export class LLMExtractionPipeline {
    */
   private isRateLimitError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error);
-    return (
-      message.includes('429') ||
-      message.includes('rate') ||
-      message.includes('quota') ||
-      message.includes('503')
-    );
+    // API の呼び出しは「API request failed: <status> - <本文>」で投げる。本文にはエラーの種類に
+    // 関わらず generativelanguage.googleapis.com が入るので、'rate' の部分一致では判定しない
+    // （lib/ai/unified-summary-service.ts と同じ判定）
+    return /API request failed: (429|503)\b|RESOURCE_EXHAUSTED/.test(message);
   }
 
   /**

@@ -151,34 +151,74 @@ describe('LLMExtractionPipeline', () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle rate limit errors with longer delay', async () => {
+    // API はエラーの本文に種類に関わらず generativelanguage.googleapis.com を入れ、パイプラインは
+    // 「API request failed: <status> - <本文>」で投げる。'rate' の部分一致で判定しないことを、
+    // 待つ時間（retryDelayMs の 3 倍か、指数バックオフの 1 回目か）で確かめる
+    it.each([
+      [
+        '429 は Rate Limit として 3 倍待つ',
+        429,
+        '{"error":{"status":"RESOURCE_EXHAUSTED"}}',
+        150,
+      ],
+      [
+        '本文に generativelanguage を含む 400 は、通常の間隔で待つ',
+        400,
+        '{"error":{"status":"INVALID_ARGUMENT","details":[{"metadata":{"service":"generativelanguage.googleapis.com"}}]}}',
+        50,
+      ],
+    ])('%s', async (_label, status, body, expectedDelay) => {
+      const delay = jest
+        .spyOn(LLMExtractionPipeline.prototype as any, 'delay')
+        .mockResolvedValue(undefined);
       const mockResponse = {
         candidates: [
           {
-            content: {
-              parts: [{ text: '{"result": "success", "count": 1}' }],
-            },
+            content: { parts: [{ text: '{"result": "success", "count": 1}' }] },
           },
         ],
       };
-
       mockFetch
-        .mockRejectedValueOnce(new Error('429 rate limit exceeded'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => mockResponse,
+        .mockResolvedValueOnce({ ok: false, status, text: async () => body })
+        .mockResolvedValueOnce({ ok: true, json: async () => mockResponse });
+
+      try {
+        const pipeline = new LLMExtractionPipeline();
+        const result = await pipeline.extract({ test: 'input' }, testConfig, {
+          maxRetries: 2,
+          retryDelayMs: 50,
         });
 
-      const startTime = Date.now();
-      const pipeline = new LLMExtractionPipeline();
-      await pipeline.extract({ test: 'input' }, testConfig, {
-        maxRetries: 2,
-        retryDelayMs: 50,
-      });
-      const elapsed = Date.now() - startTime;
+        expect(result.success).toBe(true);
+        expect(delay).toHaveBeenCalledTimes(1);
+        expect(delay).toHaveBeenCalledWith(expectedDelay);
+      } finally {
+        delay.mockRestore();
+      }
+    });
 
-      // Rate limit should use 3x delay
-      expect(elapsed).toBeGreaterThanOrEqual(100);
+    it('最後の試行の後は、Rate Limit でも待たずに失敗を返す', async () => {
+      const delay = jest
+        .spyOn(LLMExtractionPipeline.prototype as any, 'delay')
+        .mockResolvedValue(undefined);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        text: async () => '{"error":{"status":"RESOURCE_EXHAUSTED"}}',
+      });
+
+      try {
+        const pipeline = new LLMExtractionPipeline();
+        const result = await pipeline.extract({ test: 'input' }, testConfig, {
+          maxRetries: 1,
+          retryDelayMs: 50,
+        });
+
+        expect(result.success).toBe(false);
+        expect(delay).not.toHaveBeenCalled();
+      } finally {
+        delay.mockRestore();
+      }
     });
 
     it('should return raw response on failure for debugging', async () => {

@@ -128,7 +128,10 @@ async function getHandler(
       },
     });
   } catch (error) {
-    logger.error({ err: error }, '[AdminArticleDetailAPI] Failed to fetch article');
+    logger.error(
+      { err: error },
+      '[AdminArticleDetailAPI] Failed to fetch article'
+    );
     return NextResponse.json(
       { error: 'Failed to fetch article' },
       { status: 500 }
@@ -181,6 +184,8 @@ async function patchHandler(
     // 1つが失敗しても残りを試す（順に await すると、前の失敗で後ろの無効化が飛ばされる）
     const invalidations = await Promise.allSettled([
       cacheInvalidator.onArticleUpdated(id),
+      // onArticleUpdated は一覧と件数のキャッシュを消さない。非表示の記事は一覧に出さない
+      cacheInvalidator.onBulkImport(),
       articleDetailCache.invalidateArticle(id),
       articleDetailCache.invalidateAllRelated(),
       trendsCache.invalidatePattern('*'),
@@ -221,7 +226,10 @@ async function patchHandler(
         { status: 404 }
       );
     }
-    logger.error({ err: error }, '[AdminArticleDetailAPI] Failed to update article');
+    logger.error(
+      { err: error },
+      '[AdminArticleDetailAPI] Failed to update article'
+    );
     return NextResponse.json(
       { error: 'Failed to update article' },
       { status: 500 }

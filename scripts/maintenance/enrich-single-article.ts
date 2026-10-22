@@ -11,15 +11,48 @@ import {
   contentStateWhere,
   summaryUpdatesForReplacedContent,
 } from '../scheduled/utils/summary-reset';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
+import { closeRedisConnection } from '@/lib/redis/client';
 
 const prisma = createPrismaClient();
 const enricher = new GoogleAIEnricher();
 const summaryService = new UnifiedSummaryService();
+const embeddingScheduler = new EmbeddingScheduler(prisma);
+
+type GeneratedSummary = Awaited<ReturnType<UnifiedSummaryService['generate']>>;
+
+/**
+ * 生成した要約を保存する内容。定期実行の要約生成（batch-processor）と同じ状態を書く。
+ * 本文の差し替えで summaryComputedAt を null に戻しているので、書かないと一覧に出ない
+ */
+function summarySavedData(result: GeneratedSummary) {
+  return {
+    summary: result.summary,
+    detailedSummary: result.detailedSummary,
+    summaryVersion: result.summaryVersion,
+    articleType: 'unified',
+    summaryComputedAt: new Date(),
+    summaryError: null,
+    skipReason: null,
+  };
+}
+
+/** 要約を保存できたときだけ、保存の後に埋め込みのジョブを積み、表示のキャッシュを消す */
+async function afterSummarySaved(articleId: string, result: GeneratedSummary): Promise<void> {
+  await embeddingScheduler.enqueue(articleId);
+  await cacheInvalidator.onArticleUpdated(articleId, {
+    summary: result.summary,
+    detailedSummary: result.detailedSummary,
+  });
+}
 
 async function enrichSingleArticle(articleId: string) {
   console.error(`=== 単一記事エンリッチメント ===`);
   console.error(`Article ID: ${articleId}`);
-  
+  // 本文か要約を書いたか（最後に一覧のキャッシュを消すかどうか）
+  let written = false;
+
   try {
     // 記事を取得
     const article = await prisma.article.findUnique({
@@ -99,6 +132,9 @@ async function enrichSingleArticle(articleId: string) {
       }
 
       console.error('データベース更新完了');
+      written = true;
+      // 本文を差し替え、要約をリセットしたので、記事の表示のキャッシュを消す
+      await cacheInvalidator.onArticleUpdated(articleId);
 
       // 要約再生成
       console.error('\n=== 要約再生成 ===');
@@ -128,12 +164,7 @@ async function enrichSingleArticle(articleId: string) {
         // CAS トークンとして使う（更新後の updatedAt を取り直す必要がない）。
         const { count: summaryUpdateCount } = await prisma.article.updateMany({
           where: { id: articleId, content: enrichedData.content },
-          data: {
-            summary: result.summary,
-            detailedSummary: result.detailedSummary,
-            summaryVersion: 7,
-            articleType: 'unified'
-          }
+          data: summarySavedData(result)
         });
 
         if (summaryUpdateCount === 0) {
@@ -144,6 +175,9 @@ async function enrichSingleArticle(articleId: string) {
           console.error('⏭️  要約更新スキップ（CAS敗北）: 要約生成中に他プロセスが本文を更新したため、生成結果は保存しませんでした');
           return;
         }
+
+        written = true;
+        await afterSummarySaved(articleId, result);
 
         console.error('✅ 要約再生成成功');
         console.error(`  一覧要約: ${result.summary.length}文字`);
@@ -181,18 +215,16 @@ async function enrichSingleArticle(articleId: string) {
           // 本文を更新していた場合、新しい本文に古い要約が結び付くのを防ぐ。
           const { count: summaryUpdateCount } = await prisma.article.updateMany({
             where: { id: articleId, content: article.content },
-            data: {
-              summary: result.summary,
-              detailedSummary: result.detailedSummary,
-              summaryVersion: 7,
-              articleType: 'unified'
-            }
+            data: summarySavedData(result)
           });
 
           if (summaryUpdateCount === 0) {
             console.error('⏭️  要約更新スキップ（CAS敗北）: 要約生成中に他プロセスが本文を更新したため、生成結果は保存しませんでした');
             return;
           }
+
+          written = true;
+          await afterSummarySaved(articleId, result);
 
           console.error('✅ 要約再生成成功（既存コンテンツ使用）');
           console.error(`  詳細要約: ${result.detailedSummary.length}文字`);
@@ -203,7 +235,21 @@ async function enrichSingleArticle(articleId: string) {
   } catch (error) {
     console.error('エラー:', error);
   } finally {
-    await prisma.$disconnect();
+    if (written) {
+      // onArticleUpdated は一覧のキャッシュを消さないので、本文か要約を書いたら最後に一覧のキャッシュも
+      // 消す（collect-feeds の要約生成の後と同じ）。失敗を投げるが、書き込みは済んでいるので警告に留める
+      try {
+        await cacheInvalidator.onBulkImport();
+      } catch (cacheError) {
+        console.error('警告: 一覧のキャッシュの無効化に失敗しました（TTL で切れます）:', cacheError);
+      }
+    }
+    try {
+      await prisma.$disconnect();
+    } finally {
+      // キャッシュのモジュールが読み込んだ時点で Redis に接続しているので、閉じないとプロセスが終わらない
+      await closeRedisConnection();
+    }
   }
 }
 

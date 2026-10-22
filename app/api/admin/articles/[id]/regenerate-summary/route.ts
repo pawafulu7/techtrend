@@ -121,14 +121,27 @@ async function handler(
     // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
     await service.scheduleEmbedding(id);
 
-    // キャッシュ無効化（best-effort: 失敗しても要約生成成功は維持）
+    // キャッシュ無効化（best-effort: 失敗しても要約生成成功は維持）。要約を渡して検索のキャッシュも消す
     try {
-      await cacheInvalidator.onArticleUpdated(id);
+      await cacheInvalidator.onArticleUpdated(id, {
+        summary: result.summary,
+        detailedSummary: result.detailedSummary,
+      });
       await articleDetailCache.invalidateArticle(id);
     } catch (cacheError) {
       logger.error(
         { err: cacheError, articleId: id },
         '[AdminRegenerateSummaryAPI] Cache invalidation failed'
+      );
+    }
+    // onArticleUpdated は一覧のキャッシュを消さないので、書き直した要約が一覧にすぐ出るよう
+    // 一覧のキャッシュも消す（collect-feeds の要約生成の後と同じ）。上と独立に best-effort で行う
+    try {
+      await cacheInvalidator.onBulkImport();
+    } catch (cacheError) {
+      logger.error(
+        { err: cacheError, articleId: id },
+        '[AdminRegenerateSummaryAPI] List cache invalidation failed'
       );
     }
 

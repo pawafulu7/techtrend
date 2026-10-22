@@ -113,6 +113,19 @@ async function generateTagsHandler(_request: NextRequest) {
       }
     }
 
+    if (generated > 0) {
+      // onArticleUpdated は一覧と件数のキャッシュを消さないので、タグを付けた記事が一覧（タグの表示と
+      // タグでの絞り込み）にすぐ反映されるよう最後にまとめて消す。失敗してもタグは保存済み
+      try {
+        await cacheInvalidator.onBulkImport();
+      } catch (cacheError) {
+        logger.warn(
+          { err: cacheError },
+          '[TagGenerateAPI] List cache invalidation failed, continuing'
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {

@@ -14,8 +14,12 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { INSTRUCTION_PATTERNS, CATEGORY_LABELS, TITLE_CHAR_THRESHOLD, SENTENCE_MARKERS } from '../../lib/ai/constants';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
+import { closeRedisConnection } from '@/lib/redis/client';
 
 const prisma = createPrismaClient();
+const embeddingScheduler = new EmbeddingScheduler(prisma);
 
 function fixDetailedSummaryFormat(detailedSummary: string): string {
   const lines = detailedSummary.split('\n');
@@ -130,6 +134,8 @@ async function main() {
   let fixedCount = 0;
   let unchangedCount = 0;
   let errorCount = 0;
+  let savedCount = 0;
+  let staleCount = 0;
 
   for (const article of articles) {
     try {
@@ -172,13 +178,33 @@ async function main() {
         }
 
         if (!isDryRun) {
-          await prisma.article.update({
-            where: { id: article.id },
+          // 全件を読んでから順に書くので、その間に他の処理（要約の再生成など）が書き換えた記事を
+          // 読んだときの値で上書きしない
+          const { count } = await prisma.article.updateMany({
+            where: {
+              id: article.id,
+              summary: article.summary,
+              detailedSummary: article.detailedSummary,
+            },
             data: {
               summary: fixedSummary,
               detailedSummary: fixedDetailedSummary,
+              // 指示文だけの要約で空になったら、一覧から外して定期の要約生成に作り直させる
+              // （収集で要約を消すときの SUMMARY_RESET と同じ）
+              ...(summaryChanged && !fixedSummary ? { summaryComputedAt: null } : {}),
             },
           });
+          if (count === 0) {
+            staleCount++;
+            console.log('  読んだ後に書き換えられていたので、更新しませんでした');
+          } else {
+            savedCount++;
+            // 埋め込みはタイトルと一覧要約から作るので、一覧要約が変わったときだけ、保存の後に積む。
+            // 空になった要約の埋め込みは DB のトリガーが消す（ワーカーは要約の無い記事を飛ばす）
+            if (summaryChanged && fixedSummary) {
+              await embeddingScheduler.enqueue(article.id);
+            }
+          }
         }
         console.log('');
       } else {
@@ -194,19 +220,40 @@ async function main() {
 
   console.log('=====================================');
   console.log('修正完了');
-  console.log(`修正: ${fixedCount}件`);
+  // DRY RUN は直す対象の件数、実行時は実際に書いた件数（読んだ後に書き換えられた記事を除く）
+  console.log(`修正: ${isDryRun ? fixedCount : savedCount}件`);
   console.log(`未変更: ${unchangedCount}件`);
   console.log(`エラー: ${errorCount}件`);
+  if (staleCount > 0) {
+    console.log(`読んだ後に書き換えられていて更新しなかった: ${staleCount}件`);
+  }
 
   if (isDryRun) {
     console.log('');
     console.log('※ DRY RUNモードのため、データベースは更新されていません');
   }
 
-  await prisma.$disconnect();
+  if (savedCount > 0) {
+    // 要約を書き換えたので、一覧の表示のキャッシュを消す。失敗を投げるが、要約は保存済みなので
+    // 警告に留める（キャッシュは TTL で切れる）
+    try {
+      await cacheInvalidator.onBulkImport();
+    } catch (error) {
+      console.error('警告: 一覧のキャッシュの無効化に失敗しました（TTL で切れます）:', error);
+    }
+  }
 }
 
-main().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+main()
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    try {
+      await prisma.$disconnect();
+    } finally {
+      // キャッシュのモジュールが読み込んだ時点で Redis に接続しているので、閉じないとプロセスが終わらない
+      await closeRedisConnection();
+    }
+  });

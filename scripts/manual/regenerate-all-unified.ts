@@ -7,14 +7,22 @@
  */
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
-import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
+import type { Prisma } from '@/lib/prisma-exports';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { getUnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { resolveTags } from '@/lib/services/tag-service';
-import fetch from 'node-fetch';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { closeRedisConnection } from '@/lib/redis/client';
 
 const prisma = createPrismaClient();
+const embeddingScheduler = new EmbeddingScheduler(prisma);
+
+// 未処理の記事（統一フォーマットより前の版）。対象の取得と、終了時の残り件数で同じ条件を使う
+const unprocessedWhere = {
+  summary: { not: null },
+  summaryVersion: { lt: 6 }
+} satisfies Prisma.ArticleWhereInput;
 
 // コマンドライン引数
 const args = process.argv.slice(2);
@@ -95,6 +103,50 @@ async function generateUnifiedSummary(title: string, content: string): Promise<S
   };
 }
 
+/**
+ * 統一フォーマットへの移行を優先（スコアが下がっても適用）
+ * forceオプションがない場合でも、summaryVersion != 6 の記事は必ず更新
+ */
+function shouldUpdateSummary(summaryVersion: number, newScore: number, currentScore: number): boolean {
+  return forceRegenerate || summaryVersion !== 6 || newScore > currentScore;
+}
+
+/**
+ * 要約とタグを 1 つのトランザクションで保存し、保存の後に埋め込みのジョブを積む。
+ * タグで失敗したときに要約と summaryVersion だけが進み、再実行の対象から外れるのを防ぐ。
+ * タグは大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）。
+ * 使えるタグが無ければ（生成されなかった・空白だけの名前など）、今のタグを残す
+ */
+async function saveRegeneratedSummary(articleId: string, result: SummaryResult): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const tags = result.tags.length > 0
+      ? await resolveTags(
+          result.tags.map((name) => ({ name })),
+          tx
+        )
+      : [];
+    await tx.article.update({
+      where: { id: articleId },
+      data: {
+        summary: result.summary,
+        detailedSummary: result.detailedSummary,
+        articleType: 'unified',
+        summaryVersion: getUnifiedSummaryService().getSummaryVersion(),
+        // 定期実行の要約生成（batch-processor）と同じ状態を書く。一覧は summaryComputedAt が
+        // ある記事だけを出す
+        summaryComputedAt: new Date(),
+        summaryError: null,
+        skipReason: null,
+        ...(tags.length > 0 && {
+          tags: { set: tags.map((tag) => ({ id: tag.id })) }
+        })
+      }
+    });
+  });
+  // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+  await embeddingScheduler.enqueue(articleId);
+}
+
 // parseResponseは統一サービス内で処理されるため削除
 
 async function main() {
@@ -125,12 +177,9 @@ async function main() {
     
     // 未処理記事の条件（summaryVersion < 6 または forceRegenerate）
     // Prismaのバグ回避のため、簡略化したクエリを使用
-    const whereCondition: any = forceRegenerate ? 
-      { summary: { not: null } } : 
-      { 
-        summary: { not: null },
-        summaryVersion: { lt: 6 }  // summaryVersionが6未満（nullと5を含む）
-      };
+    const whereCondition: Prisma.ArticleWhereInput = forceRegenerate ?
+      { summary: { not: null } } :
+      unprocessedWhere;
     
     const query = {
       where: whereCondition,
@@ -187,11 +236,11 @@ async function main() {
       
       console.error(`[${i + 1}/${stats.totalTargets}] ${article.title.substring(0, 50)}...`);
       console.error(`  現在: ${currentScore}点 | ソース: ${article.source.name}`);
-      
+
+      // コンテンツの準備（Rate Limit 後の再試行でも使うので try の外に置く）
+      const content = article.content || article.title;
+
       try {
-        // コンテンツの準備
-        const content = article.content || article.title;
-        
         // 短すぎるコンテンツの警告
         if (content.length < 100) {
           console.error(`  ⚠️  極短コンテンツ: ${content.length}文字`);
@@ -203,36 +252,9 @@ async function main() {
         // 新しい品質をチェック
         const newScore = checkSummaryQuality(result.summary, result.detailedSummary).score;
         
-        // 統一フォーマットへの移行を優先（スコアが下がっても適用）
-        // forceオプションがない場合でも、summaryVersion != 6 の記事は必ず更新
-        const shouldUpdate = forceRegenerate || article.summaryVersion !== 6 || newScore > currentScore;
-        
-        if (shouldUpdate) {
+        if (shouldUpdateSummary(article.summaryVersion, newScore, currentScore)) {
           if (!isDryRun) {
-            // 要約とタグを 1 つのトランザクションで更新する。タグで失敗したときに要約と
-            // summaryVersion だけが進み、再実行の対象から外れるのを防ぐ。
-            // タグは大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）。
-            // 生成されたタグが無ければ、今のタグを残す
-            await prisma.$transaction(async (tx) => {
-              const tags = result.tags.length > 0
-                ? await resolveTags(
-                    result.tags.map((name) => ({ name })),
-                    tx
-                  )
-                : [];
-              await tx.article.update({
-                where: { id: article.id },
-                data: {
-                  summary: result.summary,
-                  detailedSummary: result.detailedSummary,
-                  articleType: 'unified',
-                  summaryVersion: getUnifiedSummaryService().getSummaryVersion(),
-                  ...(result.tags.length > 0 && {
-                    tags: { set: tags.map((tag) => ({ id: tag.id })) }
-                  })
-                }
-              });
-            });
+            await saveRegeneratedSummary(article.id, result);
           }
 
           const improvement = newScore - currentScore;
@@ -262,7 +284,9 @@ async function main() {
         console.error(`  ❌ エラー: ${errorMessage}`);
         
         // Rate Limitエラーの場合は特別処理
-        if (errorMessage.includes('429') || errorMessage.includes('rate') || errorMessage.includes('quota')) {
+        // 旧サービスは「API request failed: 429 - {本文}」で投げる。本文にはエラーの種類に関わらず
+        // generativelanguage.googleapis.com が入るので、'rate' の部分一致では判定しない
+        if (/API request failed: 429\b|RESOURCE_EXHAUSTED/.test(errorMessage)) {
           console.error('⚠️  Rate Limitエラーを検出しました。');
           console.error('📊 現在の進捗:');
           console.error(`  - 処理済み: ${stats.processed}件`);
@@ -278,16 +302,11 @@ async function main() {
               const retryResult = await generateUnifiedSummary(article.title, content);
               const retryScore = checkSummaryQuality(retryResult.summary, retryResult.detailedSummary).score;
               
-              if (retryScore > currentScore && !isDryRun) {
-                await prisma.article.update({
-                  where: { id: article.id },
-                  data: {
-                    summary: retryResult.summary,
-                    detailedSummary: retryResult.detailedSummary,
-                    articleType: 'unified',
-                    summaryVersion: getUnifiedSummaryService().getSummaryVersion()
-                  }
-                });
+              // 通常の経路と同じ条件・同じ保存（タグも同じトランザクション）にする
+              if (shouldUpdateSummary(article.summaryVersion, retryScore, currentScore)) {
+                if (!isDryRun) {
+                  await saveRegeneratedSummary(article.id, retryResult);
+                }
                 console.error(`  ✅ 再試行成功: ${currentScore} → ${retryScore}点`);
                 stats.improved++;
               }
@@ -306,7 +325,7 @@ async function main() {
             console.error('\n⚠️  Rate Limitエラーのため処理を中断します。');
             console.error('再開するには以下のコマンドを実行してください:');
             console.error(`npm run regenerate:all-unified -- --continue`);
-            console.error(`\n処理済み記事（summaryVersion: 5）は自動的にスキップされます。\n`);
+            console.error(`\n処理済みの記事は自動的にスキップされます。\n`);
             break; // ループを抜ける
           }
         } else {
@@ -359,10 +378,7 @@ async function main() {
     
     // 未処理記事の確認
     const remainingCount = await prisma.article.count({
-      where: {
-        summary: { not: null },
-        summaryVersion: { not: 5 }  // summaryVersionが5以外（nullも含む）
-      }
+      where: unprocessedWhere
     });
     
     if (remainingCount > 0) {
@@ -379,7 +395,12 @@ async function main() {
     console.error('\n❌ 致命的エラーが発生しました:', error);
     process.exit(1);
   } finally {
-    await prisma.$disconnect();
+    try {
+      await prisma.$disconnect();
+    } finally {
+      // キャッシュのモジュールが読み込んだ時点で Redis に接続しているので、閉じないとプロセスが終わらない
+      await closeRedisConnection();
+    }
   }
 }
 

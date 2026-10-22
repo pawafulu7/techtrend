@@ -6,6 +6,7 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import { getTagIdsForConnect } from '@/lib/services/tag-service';
 import { calculateArticleQualityScore } from '@/lib/utils/quality-score';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 
 async function generateSummariesHandler(_request: NextRequest) {
   try {
@@ -109,6 +110,11 @@ async function generateSummariesHandler(_request: NextRequest) {
         });
         // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
         await service.scheduleEmbedding(article.id);
+        // 記事ごとのキャッシュを消す（定期実行の batch-processor と同じ。失敗を投げない）
+        await cacheInvalidator.onArticleUpdated(article.id, {
+          summary: result.summary,
+          detailedSummary: result.detailedSummary,
+        });
 
         generated++;
       } catch (error) {
@@ -117,6 +123,16 @@ async function generateSummariesHandler(_request: NextRequest) {
           error
         );
         errors++;
+      }
+    }
+
+    if (generated > 0) {
+      // onArticleUpdated は一覧と件数のキャッシュを消さないので、要約を作った記事が一覧にすぐ出るよう
+      // 最後にまとめて消す（collect-feeds の要約生成の後と同じ）。失敗しても要約は保存済み
+      try {
+        await cacheInvalidator.onBulkImport();
+      } catch (cacheError) {
+        console.error('[API] List cache invalidation failed:', cacheError);
       }
     }
 

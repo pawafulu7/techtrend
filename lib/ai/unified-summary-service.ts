@@ -233,11 +233,13 @@ export class UnifiedSummaryService {
       } catch (_error) {
         lastError = _error as Error;
 
-        // Rate limitエラーの場合は長めに待機
-        if (this.isRateLimitError(_error)) {
-          await this.delay(opts.retryDelay! * 3);
-        } else if (attempt < opts.maxRetries!) {
-          await this.delay(opts.retryDelay!);
+        // 次の試行があるときだけ待つ。Rate limitエラーの場合は長めに待機
+        if (attempt < opts.maxRetries!) {
+          await this.delay(
+            this.isRateLimitError(_error)
+              ? opts.retryDelay! * 3
+              : opts.retryDelay!
+          );
         }
       }
     }
@@ -383,12 +385,9 @@ export class UnifiedSummaryService {
    */
   private isRateLimitError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error);
-    return (
-      message.includes('429') ||
-      message.includes('rate') ||
-      message.includes('quota') ||
-      message.includes('503')
-    );
+    // callGeminiAPI は「API request failed: <status> - <本文>」で投げる。本文にはエラーの種類に
+    // 関わらず generativelanguage.googleapis.com が入るので、'rate' の部分一致では判定しない
+    return /API request failed: (429|503)\b|RESOURCE_EXHAUSTED/.test(message);
   }
 
   /**

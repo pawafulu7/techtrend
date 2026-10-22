@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { resolveTags } from '@/lib/services/tag-service';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 
 async function regenerateArticleUnified(articleId: string) {
   console.log('='.repeat(60));
@@ -58,73 +59,74 @@ ${result.detailedSummary}`);
     console.log(`文字数: ${result.detailedSummary.length}文字`);
     console.log('');
 
-    await prisma.article.update({
-      where: { id: articleId },
-      data: {
-        summary: result.summary,
-        detailedSummary: result.detailedSummary,
-        summaryVersion: result.summaryVersion,
-        updatedAt: new Date(),
-      },
-    });
+    // 要約とタグを 1 つのトランザクションで保存する（タグで失敗したときに要約だけが進まないように）
+    const tagsUpdated = await prisma.$transaction(async (tx) => {
+      await tx.article.update({
+        where: { id: articleId },
+        data: {
+          summary: result.summary,
+          detailedSummary: result.detailedSummary,
+          summaryVersion: result.summaryVersion,
+          // 定期実行の要約生成（batch-processor）と同じ状態を書く。一覧は summaryComputedAt が
+          // ある記事だけを出す
+          summaryComputedAt: new Date(),
+          summaryError: null,
+          skipReason: null,
+          updatedAt: new Date(),
+        },
+      });
 
-    console.log('データベースを更新しました');
-
-    if (result.tags && result.tags.length > 0) {
-      console.log('');
-      console.log(`タグ: ${result.tags.join(', ')}`);
+      if (!result.tags || result.tags.length === 0) return false;
 
       // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
       const tagRecords = await resolveTags(
         result.tags.map((name) => ({ name })),
-        prisma
+        tx
       );
 
       // 使えるタグが無ければ（空白だけの名前など）今のタグを残す
-      if (tagRecords.length > 0) {
-        await prisma.article.update({
-          where: { id: articleId },
-          data: {
-            tags: {
-              set: [],
-              connect: tagRecords.map((tag) => ({ id: tag.id })),
-            },
-          },
-        });
-      }
+      if (tagRecords.length === 0) return false;
 
-      console.log('タグを更新しました');
+      await tx.article.update({
+        where: { id: articleId },
+        data: {
+          tags: {
+            set: tagRecords.map((tag) => ({ id: tag.id })),
+          },
+        },
+      });
+      return true;
+    });
+
+    console.log('データベースを更新しました');
+    if (result.tags && result.tags.length > 0) {
+      console.log(`タグ: ${result.tags.join(', ')}`);
+      console.log(tagsUpdated ? 'タグを更新しました' : '使えるタグが無いので、今のタグを残しました');
     }
 
-    let cacheInvalidationFailed = false;
+    // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+    await new EmbeddingScheduler(prisma).enqueue(articleId);
+
+    // onArticleUpdated は記事ごとのキャッシュを消し、失敗を投げずにログへ出す。一覧のキャッシュは
+    // 消さないので onBulkImport でも消す（collect-feeds の要約生成の後と同じ）。こちらは投げるが、
+    // 要約は保存済みなので警告に留める（キャッシュは TTL で切れる）
+    await cacheInvalidator.onArticleUpdated(articleId, {
+      summary: result.summary,
+      detailedSummary: result.detailedSummary,
+    });
     try {
-      await cacheInvalidator.invalidateArticle(articleId);
-      console.log('キャッシュを無効化しました');
+      await cacheInvalidator.onBulkImport();
+      console.log('キャッシュの無効化を実行しました');
     } catch (cacheError) {
-      cacheInvalidationFailed = true;
-      console.error('');
-      console.error('警告: キャッシュ無効化に失敗しました');
-      console.error('記事ID:', articleId);
-      console.error('エラー:', cacheError instanceof Error ? cacheError.message : String(cacheError));
-      if (cacheError instanceof Error && cacheError.stack) {
-        console.error('スタックトレース:', cacheError.stack);
-      }
-      console.error('');
-      console.error('手動対応が必要:');
-      console.error('  1. Redisサービスが起動しているか確認: docker ps | grep redis');
-      console.error('  2. 手動でキャッシュをクリア: docker exec techtrend-redis redis-cli FLUSHALL');
-      console.error('  3. または、アプリケーション再起動でキャッシュを更新');
+      console.error(
+        '警告: 一覧のキャッシュの無効化に失敗しました（TTL で切れます）:',
+        cacheError instanceof Error ? cacheError.message : String(cacheError)
+      );
     }
     console.log('');
     console.log('='.repeat(60));
-    if (cacheInvalidationFailed) {
-      console.log('完了（警告: キャッシュ無効化に失敗）');
-      console.log('='.repeat(60));
-      process.exitCode = 1;
-    } else {
-      console.log('完了');
-      console.log('='.repeat(60));
-    }
+    console.log('完了');
+    console.log('='.repeat(60));
   } catch (error) {
     console.error('エラー:', error);
     throw error;

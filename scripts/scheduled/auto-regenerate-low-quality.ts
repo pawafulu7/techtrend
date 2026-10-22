@@ -35,11 +35,12 @@ interface RegenerationResult {
  * 「Failed to generate quality summary after N attempts: Retryable error during
  * summarization: HTTP 429: ...」の形で包む。429 が続くとトランスポートの
  * サーキットブレーカーが開き、以降は 429 を含まない
- * 「Circuit breaker is open」で即座に失敗するので、これも待機の対象にする
+ * 「Circuit breaker is open」で即座に失敗するので、これも待機の対象にする。
+ * 429 以外のステータス（503 など）でも、本文が割り当ての枯渇（RESOURCE_EXHAUSTED）なら待つ
  */
 function isRateLimitedError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
-  return /HTTP 429|Circuit breaker is open/.test(error.message);
+  return /HTTP 429|RESOURCE_EXHAUSTED|Circuit breaker is open/.test(error.message);
 }
 
 async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
@@ -238,6 +239,17 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
 
     if (!verbose) {
       console.log(); // 改行
+    }
+
+    if (succeeded > 0) {
+      // onArticleUpdated は記事ごとのキャッシュを消すが一覧のキャッシュは消さないので、要約を書いた
+      // 記事が一覧にすぐ出るよう最後にまとめて消す（collect-feeds の要約生成の後と同じ）。
+      // 失敗を投げるが、要約は保存済みなので警告に留める（キャッシュは TTL で切れる）
+      try {
+        await cacheInvalidator.onBulkImport();
+      } catch (cacheError) {
+        console.error(`⚠️ 一覧のキャッシュの無効化に失敗（続行）: ${summarizeError(cacheError)}`);
+      }
     }
 
     // 結果サマリー

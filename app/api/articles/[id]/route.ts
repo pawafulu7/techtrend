@@ -6,6 +6,8 @@ import type { ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { resolveTags } from '@/lib/services/tag-service';
+import { getEmbeddingScheduler } from '@/lib/di/providers/embedding-scheduler.provider';
+import logger from '@/lib/logger';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
@@ -129,7 +131,13 @@ async function patchHandler(request: NextRequest, context: any) {
 
     const updateData: Prisma.ArticleUpdateInput = {};
     if (title !== undefined) updateData.title = title;
-    if (summary !== undefined) updateData.summary = summary;
+    if (summary !== undefined) {
+      updateData.summary = summary;
+      // 一覧は summaryComputedAt がある記事だけを出し、定期の要約生成は要約のある記事を拾わない。
+      // 要約を書いた記事は要約の処理を終えたものとして扱い、空にした記事は一覧から外す
+      // （収集で要約を消すときの SUMMARY_RESET と同じ）
+      updateData.summaryComputedAt = summary ? new Date() : null;
+    }
     if (thumbnail !== undefined) updateData.thumbnail = thumbnail;
     if (content !== undefined) {
       updateData.content = content;
@@ -160,8 +168,41 @@ async function patchHandler(request: NextRequest, context: any) {
       });
     });
 
-    // キャッシュを無効化
-    await cacheInvalidator.onArticleUpdated(id);
+    // 埋め込みはタイトルと一覧要約から作るので、どちらかを書いたら保存の後にジョブを積む。
+    // ワーカーは要約の無い記事を飛ばすので、要約が残っているときだけ（空にした要約の埋め込みは
+    // DB のトリガーが消す）
+    const embeddingTextWritten = title !== undefined || summary !== undefined;
+    if (embeddingTextWritten && article.summary) {
+      await getEmbeddingScheduler().enqueue(id);
+    }
+
+    // キャッシュを無効化。タイトルか要約を書いたら、検索のキャッシュも消す
+    // （onArticleUpdated は changes のタイトル・要約の値があるときに消す）
+    await cacheInvalidator.onArticleUpdated(
+      id,
+      embeddingTextWritten
+        ? { title: article.title, summary: article.summary }
+        : undefined
+    );
+    // onArticleUpdated は一覧のキャッシュを消さないので、一覧に出る項目（タイトル・要約・サムネイル・
+    // タグ）や、一覧に出すかを決める本文（本文の無い記事は出さない）を書いたら、一覧と件数の
+    // キャッシュも消す（collect-feeds の要約生成の後と同じ）。失敗しても更新は済んでいるので、
+    // ログに出して成功を返す
+    if (
+      embeddingTextWritten ||
+      thumbnail !== undefined ||
+      tagNames !== undefined ||
+      content !== undefined
+    ) {
+      try {
+        await cacheInvalidator.onBulkImport();
+      } catch (cacheError) {
+        logger.error(
+          { err: cacheError, articleId: id },
+          'List cache invalidation failed'
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -205,6 +246,16 @@ async function deleteHandler(request: NextRequest, context: any) {
 
     // キャッシュを無効化
     await cacheInvalidator.onArticleDeleted(id);
+    // onArticleDeleted は一覧と件数のキャッシュを消さないので、消した記事が一覧に残らないよう消す。
+    // 失敗しても削除は済んでいるので、ログに出して成功を返す
+    try {
+      await cacheInvalidator.onBulkImport();
+    } catch (cacheError) {
+      logger.error(
+        { err: cacheError, articleId: id },
+        'List cache invalidation failed'
+      );
+    }
 
     return NextResponse.json({
       success: true,

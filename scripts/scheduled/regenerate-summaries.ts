@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/lib/prisma-exports';
 import { GeminiClient } from '../../lib/ai/gemini';
 import { validateSummary, validateDetailedSummary } from '../../lib/utils/summary/summary-validator';
 import { postProcessSummaries } from '../../lib/utils/summary/summary-post-processor';
@@ -6,6 +7,10 @@ import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
 import { env } from '@/lib/config/env';
 import { resolveTags } from '@/lib/services/tag-service';
 import { summarizeError } from '@/lib/utils/sanitize-error';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { closeRedisConnection } from '@/lib/redis/client';
+import { SUMMARY_VERSION } from '@/types/article';
 
 interface RegenerationOptions {
   articleIds?: string[];
@@ -28,7 +33,8 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
   }
 
   const geminiClient = new GeminiClient(geminiApiKey);
-  
+  const embeddingScheduler = new EmbeddingScheduler(prisma);
+
   // 対象記事の取得
   let articles;
   
@@ -46,39 +52,60 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
     });
   } else {
     // 問題のある要約を持つ記事を検索
-    const whereClause: any = {};
-    
-    if (options.lastHours) {
-      const since = new Date(Date.now() - options.lastHours * 60 * 60 * 1000);
+    const whereClause: Prisma.ArticleWhereInput = {};
+    const take = options.limit && options.limit > 0 ? options.limit : 50;
+    const since = options.lastHours
+      ? new Date(Date.now() - options.lastHours * 60 * 60 * 1000)
+      : null;
+
+    if (since) {
       whereClause.createdAt = { gte: since };
     }
-    
+
     if (!options.force) {
+      // このスクリプトは統一プロンプト（V8）で作るので、今の版の要約は対象にしない（版を下げてしまう）。
+      // 要約の無い記事（NULL・空文字）は定期の要約生成が作る
+      whereClause.summary = { not: null, notIn: [''] };
+      whereClause.summaryVersion = { lt: SUMMARY_VERSION.CURRENT };
+
+      // 文字数の条件は Prisma の where では書けない（文字列の lt に数値を渡すと検証エラーで落ちる）。
+      // 該当する記事の ID を SQL で取って OR に加える。下の取得と同じ条件・同じ並びで take 件までに
+      // 絞っても、取得の結果は変わらない
+      const tooShort = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM "Article"
+        WHERE (char_length(summary) < 50 OR char_length("detailedSummary") < 200)
+          AND COALESCE(summary, '') <> ''
+          AND "summaryVersion" < ${SUMMARY_VERSION.CURRENT}
+          ${since ? Prisma.sql`AND "createdAt" >= ${since.toISOString()}::timestamptz` : Prisma.empty}
+        ORDER BY "createdAt" DESC, id DESC
+        LIMIT ${take}
+      `;
+
       // 問題のある要約のパターン
       whereClause.OR = [
+        // quality-check.ts が再生成の印として版を 0 に戻した記事
+        { summaryVersion: 0 },
         { summary: { endsWith: '。詳' } },
         { summary: { endsWith: '詳。' } },
         { summary: { endsWith: 'CL。' } },
         { summary: { endsWith: '分析。' } },
         { summary: { contains: '要約:' } },
         { summary: { contains: '要約：' } },
-        { summary: { lt: 50 } }, // 50文字未満
         { detailedSummary: { contains: '記事内のコード例や手順を参照してください' } },
         { detailedSummary: null },
-        { detailedSummary: { lt: 200 } } // 詳細要約が200文字未満
+        // 要約が50文字未満、または詳細要約が200文字未満
+        { id: { in: tooShort.map((row) => row.id) } }
       ];
     }
-    
+
     articles = await prisma.article.findMany({
       where: whereClause,
       include: {
         source: true,
         tags: true
       },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: options.limit || 50
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take
     });
   }
   
@@ -130,42 +157,57 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
         console.warn('  ⚠️ 生成された詳細要約に問題があります:', detailedValidation.errors);
       }
       
-      // データベース更新
-      await prisma.article.update({
-        where: { id: article.id },
-        data: {
-          summary: processed.summary,
-          detailedSummary: processed.detailedSummary,
-          summaryVersion: { increment: 1 }
+      // 要約とタグを 1 つのトランザクションで保存する。タグで失敗したときに要約と版だけが進み、
+      // 次の実行の対象から外れてタグを付け直せなくなるのを防ぐ（regenerate-all-unified と同じ）
+      await prisma.$transaction(async (tx) => {
+        await tx.article.update({
+          where: { id: article.id },
+          data: {
+            summary: processed.summary,
+            detailedSummary: processed.detailedSummary,
+            // generateDetailedSummary は統一プロンプト（generateUnifiedPrompt）で作るので、その版を保存する
+            summaryVersion: SUMMARY_VERSION.V8,
+            // 定期実行の要約生成（batch-processor）と同じ状態を書く。一覧は summaryComputedAt が
+            // ある記事だけを出す
+            summaryComputedAt: new Date(),
+            summaryError: null,
+            skipReason: null
+          }
+        });
+
+        // タグの更新（必要に応じて）
+        if (result.tags.length > 0) {
+          // 大文字小文字だけが違う既存のタグがあればそれを使う（#672）。
+          // 既存タグとの差分は ID と表記の小文字で比べる（表記違いの重複タグが別の ID で
+          // 残っている間に、同じタグを二重に付けないため）
+          const tags = await resolveTags(result.tags.map(name => ({ name })), tx);
+          const existingTagIds = new Set(article.tags.map(t => t.id));
+          const existingTagKeys = new Set(article.tags.map(t => t.name.toLowerCase()));
+          const newTags = tags.filter(
+            tag =>
+              !existingTagIds.has(tag.id) && !existingTagKeys.has(tag.name.toLowerCase())
+          );
+
+          if (newTags.length > 0) {
+            console.error(`  新しいタグ: ${newTags.map(tag => tag.name).join(', ')}`);
+
+            await tx.article.update({
+              where: { id: article.id },
+              data: {
+                tags: {
+                  connect: newTags.map(tag => ({ id: tag.id }))
+                }
+              }
+            });
+          }
         }
       });
-      
-      // タグの更新（必要に応じて）
-      if (result.tags.length > 0) {
-        // 大文字小文字だけが違う既存のタグがあればそれを使う（#672）。
-        // 既存タグとの差分は ID と表記の小文字で比べる（表記違いの重複タグが別の ID で
-        // 残っている間に、同じタグを二重に付けないため）
-        const tags = await resolveTags(result.tags.map(name => ({ name })));
-        const existingTagIds = new Set(article.tags.map(t => t.id));
-        const existingTagKeys = new Set(article.tags.map(t => t.name.toLowerCase()));
-        const newTags = tags.filter(
-          tag =>
-            !existingTagIds.has(tag.id) && !existingTagKeys.has(tag.name.toLowerCase())
-        );
-
-        if (newTags.length > 0) {
-          console.error(`  新しいタグ: ${newTags.map(tag => tag.name).join(', ')}`);
-
-          await prisma.article.update({
-            where: { id: article.id },
-            data: {
-              tags: {
-                connect: newTags.map(tag => ({ id: tag.id }))
-              }
-            }
-          });
-        }
-      }
+      // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+      await embeddingScheduler.enqueue(article.id);
+      await cacheInvalidator.onArticleUpdated(article.id, {
+        summary: processed.summary,
+        detailedSummary: processed.detailedSummary,
+      });
 
       console.error('  ✅ 再生成完了');
       console.error(`  新要約: ${processed.summary.substring(0, 50)}...`);
@@ -185,6 +227,17 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
     await rateLimitDelay(2000);
   }
   
+  if (successCount > 0) {
+    // onArticleUpdated は記事ごとのキャッシュを消すが一覧のキャッシュは消さないので、要約を書いた
+    // 記事が一覧にすぐ出るよう最後にまとめて消す（collect-feeds の要約生成の後と同じ）。
+    // onBulkImport は失敗を投げるが、要約は保存済みなので警告に留める（キャッシュは TTL で切れる）
+    try {
+      await cacheInvalidator.onBulkImport();
+    } catch (error) {
+      console.error(`⚠️ 一覧のキャッシュの無効化に失敗しました（TTL で切れます）: ${summarizeError(error)}`);
+    }
+  }
+
   // 結果サマリー
   reportResults('再生成完了', { success: successCount, failed: failureCount });
   
@@ -197,7 +250,12 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
   }
   
   } finally {
-    await prisma.$disconnect();
+    try {
+      await prisma.$disconnect();
+    } finally {
+      // キャッシュのモジュールが読み込んだ時点で Redis に接続しているので、閉じないとプロセスが終わらない
+      await closeRedisConnection();
+    }
   }
 }
 

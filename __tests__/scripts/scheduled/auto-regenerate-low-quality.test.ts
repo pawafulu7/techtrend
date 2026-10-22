@@ -22,9 +22,12 @@ jest.mock('@/lib/utils/quality-score', () => ({
     mockCalculateArticleQualityScore(...args),
 }));
 
+const mockOnBulkImport = jest.fn();
+
 jest.mock('@/lib/cache/cache-invalidator', () => ({
   cacheInvalidator: {
     onArticleUpdated: (...args: unknown[]) => mockOnArticleUpdated(...args),
+    onBulkImport: () => mockOnBulkImport(),
   },
 }));
 
@@ -96,6 +99,7 @@ describe('autoRegenerateLowQuality', () => {
     jest.clearAllMocks();
     mockRateLimitDelay.mockResolvedValue(undefined);
     mockOnArticleUpdated.mockResolvedValue(undefined);
+    mockOnBulkImport.mockResolvedValue(undefined);
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
@@ -119,6 +123,8 @@ describe('autoRegenerateLowQuality', () => {
     });
     // 埋め込みのジョブは、要約を保存した後に積む
     expect(mockScheduleEmbedding).toHaveBeenCalledWith('art-1');
+    // 一覧のキャッシュは onArticleUpdated では消えないので、最後にまとめて消す
+    expect(mockOnBulkImport).toHaveBeenCalledTimes(1);
     expect(mockScheduleEmbedding.mock.invocationCallOrder[0]).toBeGreaterThan(
       mockPrisma.article.update.mock.invocationCallOrder[0]
     );
@@ -196,6 +202,8 @@ describe('autoRegenerateLowQuality', () => {
     expect(result).toMatchObject({ success: false, succeeded: 0, failed: 1 });
     expect(result.results[0].error).toContain('Failed to generate quality summary');
     expect(mockRateLimitDelay).not.toHaveBeenCalledWith(60000);
+    // 何も書いていないので一覧のキャッシュは消さない
+    expect(mockOnBulkImport).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -206,6 +214,10 @@ describe('autoRegenerateLowQuality', () => {
     [
       'サーキットブレーカー',
       'Failed to generate quality summary after 3 attempts: Fatal error during summarization: Circuit breaker is open (tier: standard)',
+    ],
+    [
+      '429 以外のステータスでの割り当ての枯渇',
+      'Failed to generate quality summary after 3 attempts: Retryable error during summarization: HTTP 503: {"error":{"status":"RESOURCE_EXHAUSTED"}}',
     ],
   ])('%s で失敗したら 60 秒待つ', async (_label, message) => {
     mockPrisma.article.findMany.mockResolvedValue([lowQualityArticle(longContent)]);
