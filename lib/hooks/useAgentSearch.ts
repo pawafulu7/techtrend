@@ -88,6 +88,7 @@ async function parseSSEStream(
   let usage = { totalTokens: 0 };
   let cached = false;
   let fallback = false;
+  let finished = false;
 
   // Timeout reset on each chunk
   let lastChunkTime = Date.now();
@@ -200,6 +201,7 @@ async function parseSSEStream(
             );
           }
         } else if (eventData.type === 'finish') {
+          finished = true;
           usage = eventData.usage || usage;
           cached = eventData.cached || cached;
           fallback = eventData.fallback || fallback;
@@ -222,6 +224,12 @@ async function parseSSEStream(
           throw new Error(eventData.message || 'Stream error');
         }
       }
+    }
+
+    // サーバーは閉じる前に必ず finish か error を送る。どちらも無く終わったら途中で切れているので、
+    // 途中までの文章を完成した回答として返さない
+    if (!finished) {
+      throw new Error('Stream ended before completion');
     }
 
     const articles = extractArticlesFromToolCalls(toolCalls);
@@ -455,7 +463,8 @@ export function useAgentSearch(
       }
     } finally {
       clearTimeout(timeoutId);
-      if (didTimeout || !controller.signal.aborted) {
+      // 新しい検索が始まっていたら、読み込み中の表示はその検索のもの（タイムアウトした古い要求が消さない）
+      if (!isStaleRequest() && (didTimeout || !controller.signal.aborted)) {
         setIsLoading(false);
       }
       if (abortControllerRef.current === controller) {

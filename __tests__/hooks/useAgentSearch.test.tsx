@@ -322,6 +322,73 @@ describe('useAgentSearch', () => {
     expect(result.current.partialText).toBe('');
   });
 
+  test('a stream that ends without finish is an error, not a complete answer', async () => {
+    // サーバーは閉じる前に必ず finish か error を送る。どちらも無く終わったら途中で切れている
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(sseEvent({ type: 'text-delta', delta: 'partial' }));
+        controller.close();
+      },
+    });
+    fetchMock.mockResolvedValueOnce(sseResponse(stream));
+
+    const { result } = renderHook(() => useAgentSearch());
+
+    await act(async () => {
+      await result.current.search('test query');
+    });
+
+    expect(result.current.result).toBeNull();
+    expect(result.current.error).toEqual({
+      status: 0,
+      message: 'Stream ended before completion',
+    });
+    expect(result.current.currentStep).toBe('error');
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  test('a timed-out request finishing late does not clear loading of a newer search', async () => {
+    jest.useFakeTimers();
+    // 1 つ目は abort されても、テストが失敗させるまで終わらない（タイムアウトの後始末が遅れて走る場合）
+    let rejectFirst!: (error: Error) => void;
+    fetchMock
+      .mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectFirst = reject;
+          })
+      )
+      .mockImplementationOnce(fetchUntilAborted);
+
+    const { result } = renderHook(() => useAgentSearch({ timeout: 5000 }));
+
+    let firstPromise!: Promise<void>;
+    act(() => {
+      firstPromise = result.current.search('first query');
+    });
+    // 1 つ目がタイムアウトする
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+    // その後始末より先に、2 つ目を始める
+    act(() => {
+      void result.current.search('second query');
+    });
+    expect(result.current.isLoading).toBe(true);
+
+    await act(async () => {
+      const abortError = new Error('The operation was aborted');
+      abortError.name = 'AbortError';
+      rejectFirst(abortError);
+      await firstPromise;
+    });
+
+    // 2 つ目はまだ終わっていない
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.error).toBeNull();
+    expect(result.current.currentStep).toBe('searching');
+  });
+
   test('race guard ignores chunks from aborted requests', async () => {
     // 1 つ目（古い要求）と 2 つ目（新しい要求）のストリームを、どちらもテストから送る
     let staleController!: ReadableStreamDefaultController<Uint8Array>;

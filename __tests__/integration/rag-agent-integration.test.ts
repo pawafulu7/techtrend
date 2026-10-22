@@ -24,18 +24,30 @@ jest.mock('@/lib/rag/vector-search-service');
 // mockSearch の戻り値を results に入れて返す
 const mockSearch = jest.fn();
 
+/** VectorSearchService.searchWithFallback と同じ形の metadata を返す（テストの結果はどれも 3 件未満） */
+async function searchWithFallback(
+  query: string,
+  options: { enableFallback?: boolean; similarityThreshold?: number }
+) {
+  const results = await mockSearch(query, options);
+  // フォールバックが有効で 3 件に届かなければ、閾値を 0.55 から 0.35 まで 6 段下げ切った結果になる。
+  // 下げ切ったことを返さないと、エージェントは指示（3 件か 0.35 まで探す）に従って検索を繰り返す
+  const metadata =
+    options.enableFallback && results.length < 3
+      ? { phase: 1, finalThreshold: 0.35, attemptCount: 6, usedFallback: true }
+      : {
+          phase: null,
+          finalThreshold: options.similarityThreshold ?? 0.5,
+          attemptCount: 1,
+          usedFallback: false,
+        };
+  return { results, metadata };
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   (VectorSearchService as jest.Mock).mockImplementation(() => ({
-    searchWithFallback: async (query: string, options: unknown) => ({
-      results: await mockSearch(query, options),
-      metadata: {
-        phase: null,
-        finalThreshold: 0.5,
-        attemptCount: 1,
-        usedFallback: false,
-      },
-    }),
+    searchWithFallback,
   }));
 });
 
