@@ -14,6 +14,7 @@ import { createPrismaClient } from '@/lib/prisma/create-client';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { SUMMARY_VERSION } from '@/types/article';
 import { resolveTags } from '@/lib/services/tag-service';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 
 const prisma = createPrismaClient();
 
@@ -89,39 +90,48 @@ async function generateSummariesForArticles(
           articleType: article.articleType as any,
         });
 
-        // データベース更新
-        await prisma.article.update({
-          where: { id: article.id },
-          data: {
-            summary: summaryResult.summary,
-            detailedSummary: summaryResult.detailedSummary,
-            translatedTitle: summaryResult.translatedTitle,
-            summaryVersion: SUMMARY_VERSION.CURRENT,
-            articleType: 'unified',
-            summaryComputedAt: new Date(),
-          },
+        // 要約とタグを 1 つのトランザクションで保存する。タグで失敗したときに要約と版だけが進み、
+        // 次の実行の対象から外れてタグを付け直せなくなるのを防ぐ
+        await prisma.$transaction(async (tx) => {
+          await tx.article.update({
+            where: { id: article.id },
+            data: {
+              summary: summaryResult.summary,
+              detailedSummary: summaryResult.detailedSummary,
+              translatedTitle: summaryResult.translatedTitle,
+              summaryVersion: SUMMARY_VERSION.CURRENT,
+              articleType: 'unified',
+              // 定期実行の要約生成（batch-processor）と同じ状態を書く
+              summaryComputedAt: new Date(),
+              summaryError: null,
+              skipReason: null,
+            },
+          });
+
+          if (summaryResult.tags && summaryResult.tags.length > 0) {
+            // タグを作成または取得。大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+            const tagRecords = await resolveTags(
+              summaryResult.tags.map((name) => ({ name })),
+              tx
+            );
+
+            // 記事にタグを関連付ける
+            await tx.article.update({
+              where: { id: article.id },
+              data: {
+                tags: {
+                  connect: tagRecords.map((tag) => ({ id: tag.id })),
+                },
+              },
+            });
+          }
         });
         // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
         await service.scheduleEmbedding(article.id);
-
-        // タグの処理
-        if (summaryResult.tags && summaryResult.tags.length > 0) {
-          // タグを作成または取得。大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
-          const tagRecords = await resolveTags(
-            summaryResult.tags.map((name) => ({ name })),
-            prisma
-          );
-
-          // 記事にタグを関連付ける
-          await prisma.article.update({
-            where: { id: article.id },
-            data: {
-              tags: {
-                connect: tagRecords.map((tag) => ({ id: tag.id })),
-              },
-            },
-          });
-        }
+        await cacheInvalidator.onArticleUpdated(article.id, {
+          summary: summaryResult.summary,
+          detailedSummary: summaryResult.detailedSummary,
+        });
 
         result.processed++;
 
@@ -149,6 +159,17 @@ async function generateSummariesForArticles(
           console.log('  ⏳ Rate limit検出。30秒待機...');
           await new Promise((resolve) => setTimeout(resolve, 30000));
         }
+      }
+    }
+
+    if (result.processed > 0) {
+      // onArticleUpdated は記事ごとのキャッシュを消すが一覧のキャッシュは消さないので、要約を書いた
+      // 記事が一覧にすぐ出るよう最後にまとめて消す（collect-feeds の要約生成の後と同じ）。
+      // onBulkImport は失敗を投げるが、要約は保存済みなので警告に留める（キャッシュは TTL で切れる）
+      try {
+        await cacheInvalidator.onBulkImport();
+      } catch (cacheError) {
+        console.error('警告: 一覧のキャッシュの無効化に失敗しました（TTL で切れます）:', cacheError);
       }
     }
 

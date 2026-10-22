@@ -157,31 +157,30 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
         console.warn('  ⚠️ 生成された詳細要約に問題があります:', detailedValidation.errors);
       }
       
-      // データベース更新
-      await prisma.article.update({
-        where: { id: article.id },
-        data: {
-          summary: processed.summary,
-          detailedSummary: processed.detailedSummary,
-          // generateDetailedSummary は統一プロンプト（generateUnifiedPrompt）で作るので、その版を保存する
-          summaryVersion: SUMMARY_VERSION.V8,
-          // 定期実行の要約生成（batch-processor）と同じ状態を書く。一覧は summaryComputedAt が
-          // ある記事だけを出す
-          summaryComputedAt: new Date(),
-          summaryError: null,
-          skipReason: null
-        }
-      });
-      // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
-      await embeddingScheduler.enqueue(article.id);
+      // 要約とタグを 1 つのトランザクションで保存する。タグで失敗したときに要約と版だけが進み、
+      // 次の実行の対象から外れてタグを付け直せなくなるのを防ぐ（regenerate-all-unified と同じ）
+      await prisma.$transaction(async (tx) => {
+        await tx.article.update({
+          where: { id: article.id },
+          data: {
+            summary: processed.summary,
+            detailedSummary: processed.detailedSummary,
+            // generateDetailedSummary は統一プロンプト（generateUnifiedPrompt）で作るので、その版を保存する
+            summaryVersion: SUMMARY_VERSION.V8,
+            // 定期実行の要約生成（batch-processor）と同じ状態を書く。一覧は summaryComputedAt が
+            // ある記事だけを出す
+            summaryComputedAt: new Date(),
+            summaryError: null,
+            skipReason: null
+          }
+        });
 
-      // タグの更新（必要に応じて）。失敗しても、保存した要約のキャッシュは消す
-      try {
+        // タグの更新（必要に応じて）
         if (result.tags.length > 0) {
           // 大文字小文字だけが違う既存のタグがあればそれを使う（#672）。
           // 既存タグとの差分は ID と表記の小文字で比べる（表記違いの重複タグが別の ID で
           // 残っている間に、同じタグを二重に付けないため）
-          const tags = await resolveTags(result.tags.map(name => ({ name })));
+          const tags = await resolveTags(result.tags.map(name => ({ name })), tx);
           const existingTagIds = new Set(article.tags.map(t => t.id));
           const existingTagKeys = new Set(article.tags.map(t => t.name.toLowerCase()));
           const newTags = tags.filter(
@@ -192,7 +191,7 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
           if (newTags.length > 0) {
             console.error(`  新しいタグ: ${newTags.map(tag => tag.name).join(', ')}`);
 
-            await prisma.article.update({
+            await tx.article.update({
               where: { id: article.id },
               data: {
                 tags: {
@@ -202,13 +201,13 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
             });
           }
         }
-      } finally {
-        // タグまで書いてからキャッシュを消す（先に消すと、タグを書く前の状態がまたキャッシュされる）
-        await cacheInvalidator.onArticleUpdated(article.id, {
-          summary: processed.summary,
-          detailedSummary: processed.detailedSummary,
-        });
-      }
+      });
+      // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+      await embeddingScheduler.enqueue(article.id);
+      await cacheInvalidator.onArticleUpdated(article.id, {
+        summary: processed.summary,
+        detailedSummary: processed.detailedSummary,
+      });
 
       console.error('  ✅ 再生成完了');
       console.error(`  新要約: ${processed.summary.substring(0, 50)}...`);
@@ -228,6 +227,17 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
     await rateLimitDelay(2000);
   }
   
+  if (successCount > 0) {
+    // onArticleUpdated は記事ごとのキャッシュを消すが一覧のキャッシュは消さないので、要約を書いた
+    // 記事が一覧にすぐ出るよう最後にまとめて消す（collect-feeds の要約生成の後と同じ）。
+    // onBulkImport は失敗を投げるが、要約は保存済みなので警告に留める（キャッシュは TTL で切れる）
+    try {
+      await cacheInvalidator.onBulkImport();
+    } catch (error) {
+      console.error(`⚠️ 一覧のキャッシュの無効化に失敗しました（TTL で切れます）: ${summarizeError(error)}`);
+    }
+  }
+
   // 結果サマリー
   reportResults('再生成完了', { success: successCount, failed: failureCount });
   

@@ -233,11 +233,13 @@ export class UnifiedSummaryService {
       } catch (_error) {
         lastError = _error as Error;
 
-        // Rate limitエラーの場合は長めに待機
-        if (this.isRateLimitError(_error)) {
-          await this.delay(opts.retryDelay! * 3);
-        } else if (attempt < opts.maxRetries!) {
-          await this.delay(opts.retryDelay!);
+        // 次の試行があるときだけ待つ。Rate limitエラーの場合は長めに待機
+        if (attempt < opts.maxRetries!) {
+          await this.delay(
+            this.isRateLimitError(_error)
+              ? opts.retryDelay! * 3
+              : opts.retryDelay!
+          );
         }
       }
     }

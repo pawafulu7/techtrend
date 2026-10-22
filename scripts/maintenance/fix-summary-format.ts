@@ -234,8 +234,13 @@ async function main() {
   }
 
   if (savedCount > 0) {
-    // 要約を書き換えたので、一覧・記事の表示のキャッシュを消す
-    await cacheInvalidator.onBulkImport();
+    // 要約を書き換えたので、一覧の表示のキャッシュを消す。失敗を投げるが、要約は保存済みなので
+    // 警告に留める（キャッシュは TTL で切れる）
+    try {
+      await cacheInvalidator.onBulkImport();
+    } catch (error) {
+      console.error('警告: 一覧のキャッシュの無効化に失敗しました（TTL で切れます）:', error);
+    }
   }
 }
 

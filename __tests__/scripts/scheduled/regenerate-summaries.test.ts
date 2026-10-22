@@ -7,7 +7,9 @@ const mockGenerateDetailedSummary = jest.fn();
 const mockEnqueue = jest.fn();
 const mockRateLimitDelay = jest.fn();
 const mockOnArticleUpdated = jest.fn();
+const mockOnBulkImport = jest.fn();
 const mockCloseRedisConnection = jest.fn();
+const mockReportResults = jest.fn();
 
 jest.mock('@/lib/ai/gemini', () => ({
   GeminiClient: class {
@@ -26,6 +28,7 @@ jest.mock('@/lib/services/embedding-scheduler', () => ({
 jest.mock('@/lib/cache/cache-invalidator', () => ({
   cacheInvalidator: {
     onArticleUpdated: (...args: unknown[]) => mockOnArticleUpdated(...args),
+    onBulkImport: () => mockOnBulkImport(),
   },
 }));
 
@@ -36,7 +39,7 @@ jest.mock('../../../lib/redis/client', () => ({
 }));
 
 jest.mock('@/scripts/scheduled/utils/regeneration-helpers', () => ({
-  reportResults: jest.fn(),
+  reportResults: (...args: unknown[]) => mockReportResults(...args),
   rateLimitDelay: (...args: unknown[]) => mockRateLimitDelay(...args),
 }));
 
@@ -52,6 +55,7 @@ import { regenerateSummaries } from '@/scripts/scheduled/regenerate-summaries';
 // @/lib/prisma は jest.config の moduleNameMapper で共有の prismaMock に置き換わる
 const mockPrisma = prisma as unknown as {
   $queryRaw: jest.Mock;
+  $transaction: jest.Mock;
   article: { findMany: jest.Mock; update: jest.Mock };
 };
 
@@ -85,6 +89,7 @@ describe('regenerateSummaries', () => {
     jest.clearAllMocks();
     mockRateLimitDelay.mockResolvedValue(undefined);
     mockOnArticleUpdated.mockResolvedValue(undefined);
+    mockOnBulkImport.mockResolvedValue(undefined);
     mockCloseRedisConnection.mockResolvedValue(undefined);
     mockGenerateDetailedSummary.mockResolvedValue({
       summary: '新しい一覧要約です。',
@@ -128,11 +133,23 @@ describe('regenerateSummaries', () => {
     expect(mockOnArticleUpdated.mock.invocationCallOrder[0]).toBeGreaterThan(
       mockEnqueue.mock.invocationCallOrder[0]
     );
+    // 一覧のキャッシュは onArticleUpdated では消えないので、最後にまとめて消す
+    expect(mockOnBulkImport).toHaveBeenCalledTimes(1);
+    expect(mockReportResults).toHaveBeenCalledWith('再生成完了', { success: 1, failed: 0 });
     // キャッシュのモジュールが開いた Redis の接続を閉じる（閉じないとプロセスが終わらない）
     expect(mockCloseRedisConnection).toHaveBeenCalledTimes(1);
   });
 
-  it('新しいタグを書いてからキャッシュを消す', async () => {
+  it('一覧のキャッシュの無効化に失敗しても、保存した結果は成功として数える', async () => {
+    mockPrisma.article.findMany.mockResolvedValue([article]);
+    mockOnBulkImport.mockRejectedValue(new Error('redis down'));
+
+    await expect(regenerateSummaries({ articleIds: ['art-1'] })).resolves.toBeUndefined();
+
+    expect(mockReportResults).toHaveBeenCalledWith('再生成完了', { success: 1, failed: 0 });
+  });
+
+  it('要約と新しいタグを 1 つのトランザクションで書いてから、ジョブを積んでキャッシュを消す', async () => {
     const { resolveTags } = jest.requireMock('@/lib/services/tag-service') as {
       resolveTags: jest.Mock;
     };
@@ -146,17 +163,22 @@ describe('regenerateSummaries', () => {
 
     await regenerateSummaries({ articleIds: ['art-1'] });
 
-    // 要約の保存とタグの保存
+    // 要約の保存とタグの保存を、同じトランザクションのクライアントで行う
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(resolveTags).toHaveBeenCalledWith([{ name: 'TypeScript' }], mockPrisma);
     expect(mockPrisma.article.update).toHaveBeenCalledTimes(2);
     expect(mockPrisma.article.update.mock.calls[1][0].data).toEqual({
       tags: { connect: [{ id: 'tag-1' }] },
     });
+    expect(mockEnqueue.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mockPrisma.article.update.mock.invocationCallOrder[1]
+    );
     expect(mockOnArticleUpdated.mock.invocationCallOrder[0]).toBeGreaterThan(
       mockPrisma.article.update.mock.invocationCallOrder[1]
     );
   });
 
-  it('タグの保存に失敗しても、保存した要約のキャッシュは消す', async () => {
+  it('タグの保存に失敗したら、要約ごと保存しなかったものとして、ジョブもキャッシュの無効化もせず失敗に数える', async () => {
     const { resolveTags } = jest.requireMock('@/lib/services/tag-service') as {
       resolveTags: jest.Mock;
     };
@@ -170,9 +192,12 @@ describe('regenerateSummaries', () => {
 
     await regenerateSummaries({ articleIds: ['art-1'] });
 
-    expect(mockPrisma.article.update).toHaveBeenCalledTimes(1);
-    expect(mockEnqueue).toHaveBeenCalledWith('art-1');
-    expect(mockOnArticleUpdated).toHaveBeenCalledWith('art-1', expect.any(Object));
+    // 実際の DB ではトランザクションが戻るので、要約も保存されない
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockEnqueue).not.toHaveBeenCalled();
+    expect(mockOnArticleUpdated).not.toHaveBeenCalled();
+    expect(mockOnBulkImport).not.toHaveBeenCalled();
+    expect(mockReportResults).toHaveBeenCalledWith('再生成完了', { success: 0, failed: 1 });
   });
 
   it('生成に失敗した記事は保存せず、ジョブも積まない', async () => {

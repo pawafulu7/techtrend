@@ -8,14 +8,12 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import type { Prisma } from '@/lib/prisma-exports';
-import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { getUnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { resolveTags } from '@/lib/services/tag-service';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { closeRedisConnection } from '@/lib/redis/client';
-import fetch from 'node-fetch';
 
 const prisma = createPrismaClient();
 const embeddingScheduler = new EmbeddingScheduler(prisma);

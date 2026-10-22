@@ -116,12 +116,14 @@ export class LLMExtractionPipeline {
           'LLM extraction attempt failed'
         );
 
-        // Check if it's a rate limit error
-        if (this.isRateLimitError(error)) {
-          await this.delay(opts.retryDelayMs * 3);
-        } else if (attempt < opts.maxRetries) {
-          // Exponential backoff
-          await this.delay(opts.retryDelayMs * Math.pow(2, attempt - 1));
+        // 次の試行があるときだけ待つ。Rate Limit なら長めに待つ
+        if (attempt < opts.maxRetries) {
+          await this.delay(
+            this.isRateLimitError(error)
+              ? opts.retryDelayMs * 3
+              : // Exponential backoff
+                opts.retryDelayMs * Math.pow(2, attempt - 1)
+          );
         }
       }
     }

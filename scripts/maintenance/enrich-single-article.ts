@@ -50,7 +50,9 @@ async function afterSummarySaved(articleId: string, result: GeneratedSummary): P
 async function enrichSingleArticle(articleId: string) {
   console.error(`=== 単一記事エンリッチメント ===`);
   console.error(`Article ID: ${articleId}`);
-  
+  // 本文か要約を書いたか（最後に一覧のキャッシュを消すかどうか）
+  let written = false;
+
   try {
     // 記事を取得
     const article = await prisma.article.findUnique({
@@ -130,6 +132,7 @@ async function enrichSingleArticle(articleId: string) {
       }
 
       console.error('データベース更新完了');
+      written = true;
       // 本文を差し替え、要約をリセットしたので、記事の表示のキャッシュを消す
       await cacheInvalidator.onArticleUpdated(articleId);
 
@@ -173,6 +176,7 @@ async function enrichSingleArticle(articleId: string) {
           return;
         }
 
+        written = true;
         await afterSummarySaved(articleId, result);
 
         console.error('✅ 要約再生成成功');
@@ -219,6 +223,7 @@ async function enrichSingleArticle(articleId: string) {
             return;
           }
 
+          written = true;
           await afterSummarySaved(articleId, result);
 
           console.error('✅ 要約再生成成功（既存コンテンツ使用）');
@@ -230,6 +235,15 @@ async function enrichSingleArticle(articleId: string) {
   } catch (error) {
     console.error('エラー:', error);
   } finally {
+    if (written) {
+      // onArticleUpdated は一覧のキャッシュを消さないので、本文か要約を書いたら最後に一覧のキャッシュも
+      // 消す（collect-feeds の要約生成の後と同じ）。失敗を投げるが、書き込みは済んでいるので警告に留める
+      try {
+        await cacheInvalidator.onBulkImport();
+      } catch (cacheError) {
+        console.error('警告: 一覧のキャッシュの無効化に失敗しました（TTL で切れます）:', cacheError);
+      }
+    }
     try {
       await prisma.$disconnect();
     } finally {
