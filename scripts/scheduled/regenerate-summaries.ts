@@ -175,38 +175,40 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
       // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
       await embeddingScheduler.enqueue(article.id);
 
-      // タグの更新（必要に応じて）
-      if (result.tags.length > 0) {
-        // 大文字小文字だけが違う既存のタグがあればそれを使う（#672）。
-        // 既存タグとの差分は ID と表記の小文字で比べる（表記違いの重複タグが別の ID で
-        // 残っている間に、同じタグを二重に付けないため）
-        const tags = await resolveTags(result.tags.map(name => ({ name })));
-        const existingTagIds = new Set(article.tags.map(t => t.id));
-        const existingTagKeys = new Set(article.tags.map(t => t.name.toLowerCase()));
-        const newTags = tags.filter(
-          tag =>
-            !existingTagIds.has(tag.id) && !existingTagKeys.has(tag.name.toLowerCase())
-        );
+      // タグの更新（必要に応じて）。失敗しても、保存した要約のキャッシュは消す
+      try {
+        if (result.tags.length > 0) {
+          // 大文字小文字だけが違う既存のタグがあればそれを使う（#672）。
+          // 既存タグとの差分は ID と表記の小文字で比べる（表記違いの重複タグが別の ID で
+          // 残っている間に、同じタグを二重に付けないため）
+          const tags = await resolveTags(result.tags.map(name => ({ name })));
+          const existingTagIds = new Set(article.tags.map(t => t.id));
+          const existingTagKeys = new Set(article.tags.map(t => t.name.toLowerCase()));
+          const newTags = tags.filter(
+            tag =>
+              !existingTagIds.has(tag.id) && !existingTagKeys.has(tag.name.toLowerCase())
+          );
 
-        if (newTags.length > 0) {
-          console.error(`  新しいタグ: ${newTags.map(tag => tag.name).join(', ')}`);
+          if (newTags.length > 0) {
+            console.error(`  新しいタグ: ${newTags.map(tag => tag.name).join(', ')}`);
 
-          await prisma.article.update({
-            where: { id: article.id },
-            data: {
-              tags: {
-                connect: newTags.map(tag => ({ id: tag.id }))
+            await prisma.article.update({
+              where: { id: article.id },
+              data: {
+                tags: {
+                  connect: newTags.map(tag => ({ id: tag.id }))
+                }
               }
-            }
-          });
+            });
+          }
         }
+      } finally {
+        // タグまで書いてからキャッシュを消す（先に消すと、タグを書く前の状態がまたキャッシュされる）
+        await cacheInvalidator.onArticleUpdated(article.id, {
+          summary: processed.summary,
+          detailedSummary: processed.detailedSummary,
+        });
       }
-
-      // タグまで書いてからキャッシュを消す（先に消すと、タグを書く前の状態がまたキャッシュされる）
-      await cacheInvalidator.onArticleUpdated(article.id, {
-        summary: processed.summary,
-        detailedSummary: processed.detailedSummary,
-      });
 
       console.error('  ✅ 再生成完了');
       console.error(`  新要約: ${processed.summary.substring(0, 50)}...`);

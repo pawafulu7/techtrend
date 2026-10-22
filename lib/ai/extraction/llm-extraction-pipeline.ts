@@ -286,12 +286,10 @@ export class LLMExtractionPipeline {
    */
   private isRateLimitError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error);
-    return (
-      message.includes('429') ||
-      message.includes('rate') ||
-      message.includes('quota') ||
-      message.includes('503')
-    );
+    // API の呼び出しは「API request failed: <status> - <本文>」で投げる。本文にはエラーの種類に
+    // 関わらず generativelanguage.googleapis.com が入るので、'rate' の部分一致では判定しない
+    // （lib/ai/unified-summary-service.ts と同じ判定）
+    return /API request failed: (429|503)\b|RESOURCE_EXHAUSTED/.test(message);
   }
 
   /**

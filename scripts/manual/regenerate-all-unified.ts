@@ -117,7 +117,7 @@ function shouldUpdateSummary(summaryVersion: number, newScore: number, currentSc
  * 要約とタグを 1 つのトランザクションで保存し、保存の後に埋め込みのジョブを積む。
  * タグで失敗したときに要約と summaryVersion だけが進み、再実行の対象から外れるのを防ぐ。
  * タグは大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）。
- * 生成されたタグが無ければ、今のタグを残す
+ * 使えるタグが無ければ（生成されなかった・空白だけの名前など）、今のタグを残す
  */
 async function saveRegeneratedSummary(articleId: string, result: SummaryResult): Promise<void> {
   await prisma.$transaction(async (tx) => {
@@ -139,7 +139,7 @@ async function saveRegeneratedSummary(articleId: string, result: SummaryResult):
         summaryComputedAt: new Date(),
         summaryError: null,
         skipReason: null,
-        ...(result.tags.length > 0 && {
+        ...(tags.length > 0 && {
           tags: { set: tags.map((tag) => ({ id: tag.id })) }
         })
       }

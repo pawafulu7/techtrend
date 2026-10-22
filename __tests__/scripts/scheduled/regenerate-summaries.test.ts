@@ -156,6 +156,25 @@ describe('regenerateSummaries', () => {
     );
   });
 
+  it('タグの保存に失敗しても、保存した要約のキャッシュは消す', async () => {
+    const { resolveTags } = jest.requireMock('@/lib/services/tag-service') as {
+      resolveTags: jest.Mock;
+    };
+    resolveTags.mockRejectedValueOnce(new Error('tag error'));
+    mockGenerateDetailedSummary.mockResolvedValue({
+      summary: '新しい一覧要約です。',
+      detailedSummary: '・要点: 新しい詳細要約です。',
+      tags: ['TypeScript'],
+    });
+    mockPrisma.article.findMany.mockResolvedValue([article]);
+
+    await regenerateSummaries({ articleIds: ['art-1'] });
+
+    expect(mockPrisma.article.update).toHaveBeenCalledTimes(1);
+    expect(mockEnqueue).toHaveBeenCalledWith('art-1');
+    expect(mockOnArticleUpdated).toHaveBeenCalledWith('art-1', expect.any(Object));
+  });
+
   it('生成に失敗した記事は保存せず、ジョブも積まない', async () => {
     mockPrisma.article.findMany.mockResolvedValue([article]);
     mockGenerateDetailedSummary.mockRejectedValue(new Error('API error'));

@@ -79,38 +79,41 @@ ${result.detailedSummary}`);
     // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
     await new EmbeddingScheduler(prisma).enqueue(articleId);
 
-    if (result.tags && result.tags.length > 0) {
-      console.log('');
-      console.log(`タグ: ${result.tags.join(', ')}`);
+    // タグの更新。失敗しても、保存した要約のキャッシュは消す
+    try {
+      if (result.tags && result.tags.length > 0) {
+        console.log('');
+        console.log(`タグ: ${result.tags.join(', ')}`);
 
-      // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
-      const tagRecords = await resolveTags(
-        result.tags.map((name) => ({ name })),
-        prisma
-      );
+        // 大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）
+        const tagRecords = await resolveTags(
+          result.tags.map((name) => ({ name })),
+          prisma
+        );
 
-      // 使えるタグが無ければ（空白だけの名前など）今のタグを残す
-      if (tagRecords.length > 0) {
-        await prisma.article.update({
-          where: { id: articleId },
-          data: {
-            tags: {
-              set: [],
-              connect: tagRecords.map((tag) => ({ id: tag.id })),
+        // 使えるタグが無ければ（空白だけの名前など）今のタグを残す
+        if (tagRecords.length > 0) {
+          await prisma.article.update({
+            where: { id: articleId },
+            data: {
+              tags: {
+                set: [],
+                connect: tagRecords.map((tag) => ({ id: tag.id })),
+              },
             },
-          },
-        });
+          });
+        }
+
+        console.log('タグを更新しました');
       }
-
-      console.log('タグを更新しました');
+    } finally {
+      // onArticleUpdated は失敗を投げずにログ（"Failed to invalidate cache on article update"）へ出す
+      await cacheInvalidator.onArticleUpdated(articleId, {
+        summary: result.summary,
+        detailedSummary: result.detailedSummary,
+      });
+      console.log('キャッシュの無効化を実行しました（失敗はログに出ます）');
     }
-
-    // onArticleUpdated は失敗を投げずにログ（"Failed to invalidate cache on article update"）へ出す
-    await cacheInvalidator.onArticleUpdated(articleId, {
-      summary: result.summary,
-      detailedSummary: result.detailedSummary,
-    });
-    console.log('キャッシュの無効化を実行しました（失敗はログに出ます）');
     console.log('');
     console.log('='.repeat(60));
     console.log('完了');

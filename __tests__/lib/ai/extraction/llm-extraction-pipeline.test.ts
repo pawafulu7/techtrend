@@ -162,8 +162,13 @@ describe('LLMExtractionPipeline', () => {
         ],
       };
 
+      // API は 429 を返し、パイプラインが「API request failed: 429 - <本文>」で投げる
       mockFetch
-        .mockRejectedValueOnce(new Error('429 rate limit exceeded'))
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          text: async () => '{"error":{"status":"RESOURCE_EXHAUSTED"}}',
+        })
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockResponse,

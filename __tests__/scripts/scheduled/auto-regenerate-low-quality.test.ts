@@ -207,6 +207,10 @@ describe('autoRegenerateLowQuality', () => {
       'サーキットブレーカー',
       'Failed to generate quality summary after 3 attempts: Fatal error during summarization: Circuit breaker is open (tier: standard)',
     ],
+    [
+      '429 以外のステータスでの割り当ての枯渇',
+      'Failed to generate quality summary after 3 attempts: Retryable error during summarization: HTTP 503: {"error":{"status":"RESOURCE_EXHAUSTED"}}',
+    ],
   ])('%s で失敗したら 60 秒待つ', async (_label, message) => {
     mockPrisma.article.findMany.mockResolvedValue([lowQualityArticle(longContent)]);
     mockGenerateSummary.mockRejectedValue(new Error(message));
