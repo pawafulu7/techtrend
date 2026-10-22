@@ -6,6 +6,7 @@ import type { PrismaClient } from '@/lib/prisma-exports';
 import { Source } from '@/lib/prisma-exports';
 import { prisma as defaultPrisma } from '@/lib/prisma';
 import { UnifiedSummaryService } from '../../ai/unified-summary-service';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { ContentEnricherFactory } from '../../enrichers';
 import {
   detectSourceFromUrl,
@@ -345,8 +346,7 @@ export async function addArticleManually(
           finalTitle,
           content,
           {},
-          {},
-          article.id
+          {}
         );
 
         // resultが正常に返ってきた場合
@@ -364,6 +364,8 @@ export async function addArticleManually(
             articleType: result.articleType || 'unified',
           },
         });
+        // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む。失敗はログだけ）
+        await new EmbeddingScheduler(prisma).enqueue(article.id);
 
         // Geminiが生成したタグを記事に追加（バッチ処理でN+1解消）
         if (generatedTags.length > 0) {

@@ -15,6 +15,9 @@ jest.mock('@/lib/prisma-exports', () => {
         findFirst: jest.fn(),
         create: jest.fn(),
       },
+      embeddingJob: {
+        upsert: jest.fn(),
+      },
       $disconnect: jest.fn(),
     })),
   };
@@ -23,6 +26,8 @@ jest.mock('@/lib/prisma-exports', () => {
 import { detectSourceFromUrl, normalizeSourceName, isValidUrl, isSupportedUrl } from '../../lib/utils/source/source-detector';
 import { addArticleManually, setPrismaClient } from '../../lib/utils/article/article-manual-adder';
 import { PrismaClient } from '@/lib/prisma-exports';
+import { WebFetcher } from '../../lib/utils/web-fetcher';
+import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 
 // UnifiedSummaryServiceのモック
 jest.mock('../../lib/ai/unified-summary-service', () => ({
@@ -152,6 +157,37 @@ describe('addArticleManually', () => {
     expect(result.success).toBe(true);
     expect(result.articleId).toBe('article-1');
     expect(result.title).toBe('Test Article');
+  });
+
+  test('要約を保存した後に、埋め込みのジョブを積む', async () => {
+    // 要約を作るのは本文が 100 文字を超えるとき。本文はページの description から取る
+    (WebFetcher as jest.Mock).mockImplementationOnce(() => ({
+      fetch: jest.fn().mockResolvedValue(
+        `<html><head><title>Test Article</title><meta name="description" content="${'本文'.repeat(100)}"></head></html>`
+      ),
+    }));
+    mockPrisma.article.findFirst.mockResolvedValue(null);
+    mockPrisma.source.findFirst.mockResolvedValue({ id: 'source-1', name: 'Manual Entry' });
+    mockPrisma.article.create.mockResolvedValue({
+      id: 'article-1',
+      title: 'Test Article',
+      url: 'https://example.com/article',
+    });
+    mockPrisma.article.update.mockResolvedValue({});
+    mockPrisma.embeddingJob.upsert.mockResolvedValue({});
+
+    const result = await addArticleManually({ url: 'https://example.com/article' });
+
+    expect(result.summary).toBe('テスト要約');
+    // 要約の生成には記事の ID を渡さない（生成の時点ではジョブを積まない）
+    const { generate } = (UnifiedSummaryService as jest.Mock).mock.results[0].value;
+    expect(generate.mock.calls[0]).toHaveLength(4);
+    expect(mockPrisma.embeddingJob.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { articleId: 'article-1' } })
+    );
+    expect(mockPrisma.embeddingJob.upsert.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mockPrisma.article.update.mock.invocationCallOrder[0]
+    );
   });
 
   test('重複URLの場合はエラー', async () => {
