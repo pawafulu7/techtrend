@@ -25,14 +25,8 @@ jest.mock('@/lib/prisma', () => {
   const { createPrismaClient } = jest.requireActual(
     '@/lib/prisma/create-client'
   );
-  // 接続先は下のデータを書く接続と同じ DATABASE_URL。テスト用の DB でなければ止める
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is required for this integration test');
-  }
-  const url = new URL(process.env.DATABASE_URL);
-  if (url.pathname !== '/techtrend_test') {
-    throw new Error('This integration test must run against techtrend_test');
-  }
+  // 接続先は下のデータを書く接続と同じ DATABASE_URL（テスト用の DB でなければ jest.setup.integration.js が止める）
+  const url = new URL(process.env.DATABASE_URL!);
   url.searchParams.set('options', '-c TimeZone=America/Los_Angeles');
   return {
     prisma: createPrismaClient({ connectionString: url.toString() }),
@@ -55,14 +49,7 @@ import {
 
 // テストのデータは UTC のセッションで作る。Prisma の pg アダプターは日時をオフセット無しで送るので、
 // LA のセッションで書くと保存される時刻が時差の分ずれる（読む側の集計だけを LA のセッションにする）。
-// 接続先は DATABASE_URL だけから取る（docker-compose.test.yml、next/jest が読む .env.test.local・.env.test・.env、
-// jest.setup.integration.js の既定値の順に決まる）。テストのデータを作って消すので、テスト用の DB でなければ止める
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is required for this integration test');
-}
-if (new URL(process.env.DATABASE_URL).pathname !== '/techtrend_test') {
-  throw new Error('This integration test must run against techtrend_test');
-}
+// 接続先は DATABASE_URL だけから取る（テスト用の DB でなければ jest.setup.integration.js が止める）
 const prisma = createPrismaClient({
   connectionString: process.env.DATABASE_URL,
 });

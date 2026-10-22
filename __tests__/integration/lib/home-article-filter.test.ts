@@ -31,14 +31,7 @@ import { PAPER_SOURCE_IDS_PARAM } from '@/lib/utils/source/paper-source';
 const PREFIX = '__test_home_filter_';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// 接続先は DATABASE_URL だけから取る（docker-compose.test.yml、next/jest が読む .env.test.local・.env.test・.env、
-// jest.setup.integration.js の既定値の順に決まる）。テストのデータを作って消すので、テスト用の DB でなければ止める
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is required for this integration test');
-}
-if (new URL(process.env.DATABASE_URL).pathname !== '/techtrend_test') {
-  throw new Error('This integration test must run against techtrend_test');
-}
+// 接続先は DATABASE_URL だけから取る（テスト用の DB でなければ jest.setup.integration.js が止める）
 const prisma = createPrismaClient({
   connectionString: process.env.DATABASE_URL,
 });
