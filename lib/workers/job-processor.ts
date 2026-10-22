@@ -31,12 +31,22 @@ export class JobProcessor {
    * Handles article cascade delete gracefully.
    */
   async processJob(job: EmbeddingJobWithArticle): Promise<void> {
+    // 取得したときのジョブ（要約は取得時点のもの）を、queuedAt で見分ける。要約を保存し直すと
+    // 同じジョブが積み直され（PENDING・attempts 0・新しい queuedAt）、取得済みの要約は古くなる
+    const claimedJob = {
+      id: job.id,
+      status: 'PROCESSING' as const,
+      queuedAt: job.queuedAt,
+    };
+
     try {
       // Mark as processing (optimistic locking via status check)
       const updated = await prisma.embeddingJob.updateMany({
         where: {
           id: job.id,
           status: 'PENDING', // Only claim if still PENDING
+          // 取得の後に積み直されたジョブは確保しない（次の回に新しい要約で処理する）
+          queuedAt: job.queuedAt,
         },
         data: {
           status: 'PROCESSING',
@@ -44,7 +54,7 @@ export class JobProcessor {
         },
       });
 
-      // Job already claimed by another worker or re-queued
+      // Job already claimed by another worker or re-queued after it was fetched
       if (updated.count === 0) {
         logger.debug(
           { jobId: job.id },
@@ -63,7 +73,7 @@ export class JobProcessor {
         // Try to mark as SKIPPED (may fail if cascade deleted)
         try {
           await prisma.embeddingJob.updateMany({
-            where: { id: job.id },
+            where: claimedJob,
             data: {
               status: 'FAILED',
               error: 'Article deleted or missing summary',
@@ -87,7 +97,7 @@ export class JobProcessor {
         );
 
         await prisma.embeddingJob.updateMany({
-          where: { id: job.id },
+          where: claimedJob,
           data: {
             status: 'COMPLETED',
             processedAt: new Date(),
@@ -115,12 +125,10 @@ export class JobProcessor {
       }
 
       if (result.success) {
-        // Mark as completed (only if still PROCESSING)
+        // 完了にするのは、確保したままのときだけ。処理中に積み直されていたら PENDING のまま残し、
+        // 次の回に新しい要約で埋め込み直す
         await prisma.embeddingJob.updateMany({
-          where: {
-            id: job.id,
-            status: 'PROCESSING', // Only update if still processing
-          },
+          where: claimedJob,
           data: {
             status: 'COMPLETED',
             processedAt: new Date(),
@@ -140,8 +148,9 @@ export class JobProcessor {
         // Mark as failed (or retry if attempts < maxAttempts)
         const shouldRetry = job.attempts + 1 < job.maxAttempts;
 
+        // 処理中に積み直されたジョブ（新しい要約の分）を、古い要約の失敗で上書きしない
         await prisma.embeddingJob.updateMany({
-          where: { id: job.id },
+          where: claimedJob,
           data: {
             status: shouldRetry ? 'PENDING' : 'FAILED',
             error: result.error || 'Unknown error',
@@ -171,8 +180,9 @@ export class JobProcessor {
             ? sanitized
             : ((sanitized as any).message ?? 'Unknown error');
 
+        // 処理中に積み直されたジョブを上書きしない（確保の前の例外なら PENDING のまま残る）
         await prisma.embeddingJob.updateMany({
-          where: { id: job.id },
+          where: claimedJob,
           data: {
             status: shouldRetry ? 'PENDING' : 'FAILED',
             error: safeMessage,
