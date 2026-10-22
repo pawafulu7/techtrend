@@ -164,23 +164,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
             summaryVersion: SUMMARY_VERSION.CURRENT,
           };
 
-          // Schedule embedding job (fire-and-forget)
-          if (params.articleId) {
-            this.embeddingScheduler.enqueue(params.articleId).catch((err) =>
-              logger.error(
-                {
-                  articleId: params.articleId,
-                  err,
-                },
-                'Embedding job enqueue failed'
-              )
-            );
-          } else {
-            logger.debug(
-              'Summary generated without articleId, skipping embedding job'
-            );
-          }
-
+          // 埋め込みのジョブは、呼び出し元が要約を保存した後に scheduleEmbedding で積む
           return result;
         }
 
@@ -197,5 +181,13 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
     throw new Error(
       `Failed to generate quality summary after ${this.config.maxRetries} attempts: ${lastError?.message}`
     );
+  }
+
+  async scheduleEmbedding(articleId: string): Promise<void> {
+    try {
+      await this.embeddingScheduler.enqueue(articleId);
+    } catch (err) {
+      logger.error({ articleId, err }, 'Embedding job enqueue failed');
+    }
   }
 }

@@ -85,7 +85,6 @@ async function main() {
         title: article.title,
         content: article.content,
         url: article.url,
-        articleId: article.id,
       });
 
       await prisma.article.update({
@@ -97,6 +96,8 @@ async function main() {
           summaryComputedAt: new Date(),
         },
       });
+      // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+      await deps.service.scheduleEmbedding(article.id);
 
       console.log(`  ✓ 完了`);
       console.log(`  要約: ${result.summary.substring(0, 80)}...`);

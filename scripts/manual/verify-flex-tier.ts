@@ -52,7 +52,6 @@ async function main() {
       const result = await service.generateSummary({
         title: article.title,
         content: article.content,
-        articleId: article.id,
       });
       const elapsedMs = Date.now() - startedAt;
 

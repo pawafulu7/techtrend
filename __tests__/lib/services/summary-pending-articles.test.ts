@@ -148,7 +148,7 @@ describe('要約の対象を選ぶ3つの経路', () => {
   it('missing は既定で 7 日の共通の条件を使う', async () => {
     const prisma = createPrismaMock();
 
-    await generateMissingSummaries(prisma as never, {}, jest.fn());
+    await generateMissingSummaries(prisma as never, {}, jest.fn(), jest.fn());
 
     expect(prisma.article.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -164,6 +164,7 @@ describe('要約の対象を選ぶ3つの経路', () => {
     await generateMissingSummaries(
       prisma as never,
       { articleIds: ['a1', 'a2'] },
+      jest.fn(),
       jest.fn()
     );
 
@@ -208,7 +209,7 @@ describe('本文の判定の書き込み', () => {
     [
       'missing',
       async (prisma: ReturnType<typeof createPrismaMock>) => {
-        await generateMissingSummaries(prisma as never, {}, jest.fn());
+        await generateMissingSummaries(prisma as never, {}, jest.fn(), jest.fn());
       },
     ],
   ])(

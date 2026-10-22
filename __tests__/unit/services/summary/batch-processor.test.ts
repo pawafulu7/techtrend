@@ -124,7 +124,8 @@ describe('batch-processor', () => {
           article,
           '記事の本文',
           generateSummaryAndTags,
-          prisma
+          prisma,
+          jest.fn().mockResolvedValue(undefined)
         );
 
         expect(result.success).toBe(true);
@@ -153,7 +154,8 @@ describe('batch-processor', () => {
           article,
           '記事の本文',
           generateSummaryAndTags,
-          prisma
+          prisma,
+          jest.fn().mockResolvedValue(undefined)
         );
 
         expect(result.success).toBe(true);
@@ -210,7 +212,8 @@ describe('batch-processor', () => {
           article,
           '記事の本文',
           generateSummaryAndTags,
-          prisma
+          prisma,
+          jest.fn().mockResolvedValue(undefined)
         );
 
         expect(result.success).toBe(true);
@@ -247,7 +250,8 @@ describe('batch-processor', () => {
             translatedTitle: undefined,
             tags: ['Mcp'],
           }),
-          prisma
+          prisma,
+          jest.fn().mockResolvedValue(undefined)
         );
 
         expect(result.success).toBe(true);
@@ -271,7 +275,8 @@ describe('batch-processor', () => {
           article,
           '記事の本文',
           generateSummaryAndTags,
-          prisma
+          prisma,
+          jest.fn().mockResolvedValue(undefined)
         );
 
         expect(result.success).toBe(true);
@@ -297,7 +302,8 @@ describe('batch-processor', () => {
           article,
           '記事の本文',
           generateSummaryAndTags,
-          prisma
+          prisma,
+          jest.fn().mockResolvedValue(undefined)
         );
 
         expect(result.success).toBe(true);
@@ -336,7 +342,8 @@ describe('batch-processor', () => {
           article,
           '記事の本文',
           generateSummaryAndTags,
-          prisma
+          prisma,
+          jest.fn().mockResolvedValue(undefined)
         );
 
         expect(result).toEqual({
@@ -350,6 +357,61 @@ describe('batch-processor', () => {
           expect.objectContaining({ articleId: 'article-cache-error' }),
           'Cache invalidation failed, continuing'
         );
+      });
+    });
+
+    describe('embedding job scheduling', () => {
+      it('should schedule the embedding job after the summary is saved', async () => {
+        const { prisma, articleUpdate } = makePrismaMock();
+        const article = makeArticle('article-embedding');
+        const generateSummaryAndTags = jest.fn().mockResolvedValue({
+          summary: 'テスト要約。',
+          detailedSummary: '・テスト詳細',
+          translatedTitle: undefined,
+          tags: [],
+        });
+        const scheduleEmbedding = jest.fn().mockResolvedValue(undefined);
+
+        await processArticleWithTimeout(
+          article,
+          '記事の本文',
+          generateSummaryAndTags,
+          prisma,
+          scheduleEmbedding
+        );
+
+        // 要約の生成には記事の ID を渡さない（生成の時点ではジョブを積まない）
+        expect(generateSummaryAndTags).toHaveBeenCalledWith('テスト記事', '記事の本文');
+        expect(scheduleEmbedding).toHaveBeenCalledTimes(1);
+        expect(scheduleEmbedding).toHaveBeenCalledWith('article-embedding');
+        // ワーカーは保存済みの要約を埋め込むので、要約を保存した後に積む
+        expect(scheduleEmbedding.mock.invocationCallOrder[0]).toBeGreaterThan(
+          articleUpdate.mock.invocationCallOrder[0]
+        );
+      });
+
+      it('should not schedule the embedding job when saving the summary fails', async () => {
+        const { prisma } = makePrismaMock();
+        (prisma.$transaction as jest.Mock).mockRejectedValueOnce(new Error('DB error'));
+        const article = makeArticle('article-save-fails');
+        const generateSummaryAndTags = jest.fn().mockResolvedValue({
+          summary: 'テスト要約。',
+          detailedSummary: '・テスト詳細',
+          translatedTitle: undefined,
+          tags: [],
+        });
+        const scheduleEmbedding = jest.fn().mockResolvedValue(undefined);
+
+        const result = await processArticleWithTimeout(
+          article,
+          '記事の本文',
+          generateSummaryAndTags,
+          prisma,
+          scheduleEmbedding
+        );
+
+        expect(result.success).toBe(false);
+        expect(scheduleEmbedding).not.toHaveBeenCalled();
       });
     });
 
@@ -369,7 +431,8 @@ describe('batch-processor', () => {
           article,
           '記事の本文',
           generateSummaryAndTags,
-          prisma
+          prisma,
+          jest.fn().mockResolvedValue(undefined)
         );
 
         expect(prisma.$transaction).toHaveBeenCalledWith(

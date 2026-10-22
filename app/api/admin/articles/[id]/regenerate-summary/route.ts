@@ -59,7 +59,6 @@ async function handler(
       title: article.title,
       content: article.content,
       qualityThreshold: 40,
-      articleId: id,
     });
 
     // タグ処理（既存タグとの重複除外）
@@ -118,6 +117,9 @@ async function handler(
         },
       });
     });
+
+    // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+    await service.scheduleEmbedding(id);
 
     // キャッシュ無効化（best-effort: 失敗しても要約生成成功は維持）
     try {

@@ -87,7 +87,6 @@ async function generateSummariesForArticles(
           title: article.title,
           content,
           articleType: article.articleType as any,
-          articleId: article.id,
         });
 
         // データベース更新
@@ -102,6 +101,8 @@ async function generateSummariesForArticles(
             summaryComputedAt: new Date(),
           },
         });
+        // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+        await service.scheduleEmbedding(article.id);
 
         // タグの処理
         if (summaryResult.tags && summaryResult.tags.length > 0) {

@@ -458,6 +458,49 @@ describe('UnifiedSummaryServiceImpl', () => {
     });
   });
 
+  describe('embedding job', () => {
+    it('should not enqueue an embedding job when generating a summary', async () => {
+      // ワーカーは保存済みの要約を埋め込むので、ジョブは呼び出し元が保存した後に積む
+      mockSummaryProvider.summarize.mockResolvedValue({
+        headline: 'Test Summary',
+        detailedSummary: '・Item 1\n・Item 2\n・Item 3',
+        category: 'Technology',
+        tags: ['test'],
+        confidence: 0.9,
+      });
+      mockPostProcessor.cleanupSummary.mockReturnValue('Test Summary');
+      mockPostProcessor.cleanupDetailedSummary.mockReturnValue(
+        '・Item 1\n・Item 2\n・Item 3'
+      );
+      mockPostProcessor.formatTags.mockReturnValue(['test']);
+      mockQualityChecker.checkQuality.mockReturnValue({
+        isValid: true,
+        issues: [],
+        requiresRegeneration: false,
+        score: 85,
+      });
+
+      await service.generateSummary({
+        title: 'Test Article',
+        content: 'This is a test article content.',
+      });
+
+      expect(mockEmbeddingScheduler.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('should enqueue the article when scheduleEmbedding is called', async () => {
+      await service.scheduleEmbedding('article-1');
+
+      expect(mockEmbeddingScheduler.enqueue).toHaveBeenCalledWith('article-1');
+    });
+
+    it('should not throw when enqueueing fails (the saved summary stays)', async () => {
+      mockEmbeddingScheduler.enqueue!.mockRejectedValueOnce(new Error('DB down'));
+
+      await expect(service.scheduleEmbedding('article-1')).resolves.toBeUndefined();
+    });
+  });
+
   describe('title translation', () => {
     it('should include translatedTitle when translation is enabled and succeeds', async () => {
       service = new UnifiedSummaryServiceImpl(

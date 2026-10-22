@@ -183,7 +183,8 @@ export class SummaryManager {
       const { generated, errors } = await runParallelBatch(
         validArticles,
         this.generateSummaryAndTags.bind(this),
-        this.prisma
+        this.prisma,
+        this.scheduleEmbedding.bind(this)
       );
 
       const duration = Date.now() - startTime;
@@ -208,7 +209,8 @@ export class SummaryManager {
     return regenerateSummaries(
       this.prisma,
       options,
-      this.generateSummaryAndTags.bind(this)
+      this.generateSummaryAndTags.bind(this),
+      this.scheduleEmbedding.bind(this)
     );
   }
 
@@ -221,8 +223,14 @@ export class SummaryManager {
     return generateMissingSummaries(
       this.prisma,
       options,
-      this.generateSummaryAndTags.bind(this)
+      this.generateSummaryAndTags.bind(this),
+      this.scheduleEmbedding.bind(this)
     );
+  }
+
+  /** 要約を保存した後に、その記事の埋め込みのジョブを積む */
+  private async scheduleEmbedding(articleId: string): Promise<void> {
+    await this.summaryService.scheduleEmbedding(articleId);
   }
 
   /**
@@ -231,8 +239,7 @@ export class SummaryManager {
    */
   private async generateSummaryAndTags(
     title: string,
-    content: string,
-    articleId?: string
+    content: string
   ): Promise<SummaryAndTags> {
     this.apiStats.attempts++;
 
@@ -241,7 +248,6 @@ export class SummaryManager {
         title,
         content,
         qualityThreshold: 40,
-        articleId,
       });
 
       this.apiStats.successes++;

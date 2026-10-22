@@ -151,7 +151,6 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
           title: article.title,
           content: validation.content,
           qualityThreshold: 40,
-          articleId: article.id,
         });
 
         // 新しい記事スコアを計算（sourceを含む完全なarticleオブジェクトを渡す）。
@@ -183,6 +182,8 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
             qualityScoreComputedAt: now,
           },
         });
+        // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+        await service.scheduleEmbedding(article.id);
 
         try {
           await cacheInvalidator.onArticleUpdated(article.id, {
