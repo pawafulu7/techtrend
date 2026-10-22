@@ -287,7 +287,7 @@ describe('/api/articles/[id]', () => {
       expect(mockEnqueue).not.toHaveBeenCalled();
     });
 
-    it('要約を空にしたら、ジョブを積まず、要約の処理の日時も進めない（古い埋め込みは DB のトリガーが消す）', async () => {
+    it('要約を空にしたら、ジョブを積まず、一覧から外す（古い埋め込みは DB のトリガーが消す）', async () => {
       prismaMock.article.update.mockResolvedValue({ ...mockArticle, summary: '' });
 
       const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
@@ -298,7 +298,11 @@ describe('/api/articles/[id]', () => {
 
       expect(response.status).toBe(200);
       expect(mockEnqueue).not.toHaveBeenCalled();
-      expect(prismaMock.article.update.mock.calls[0][0].data).toEqual({ summary: '' });
+      // 収集で要約を消すときと同じく、要約の処理の日時も消して一覧から外す
+      expect(prismaMock.article.update.mock.calls[0][0].data).toEqual({
+        summary: '',
+        summaryComputedAt: null,
+      });
     });
 
     it('要約の無い記事のタイトルだけを書いても、ジョブを積まない', async () => {

@@ -154,24 +154,38 @@ describeIf('要約の埋め込みのトリガー（テスト DB）', () => {
     expect(await embeddingKeys()).toEqual(['summary', 'title']);
   });
 
+  /** 埋め込みを書く文がロックを待っている接続の数。最大 3 秒、1 以上になるのを待つ */
+  const waitForLockedEmbeddingWrite = async (): Promise<number> => {
+    for (let i = 0; i < 30; i++) {
+      const [{ count }] = await prisma.$queryRaw<{ count: number }[]>`
+        SELECT count(*)::int AS count FROM pg_stat_activity
+        WHERE datname = current_database()
+          AND wait_event_type = 'Lock'
+          AND query LIKE 'INSERT INTO "ArticleEmbedding"%'
+      `;
+      if (count > 0) return count;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return 0;
+  };
+
   it('要約を消す更新の途中に書こうとした埋め込みは、更新の確定を待ってから書かずに終わる', async () => {
     let written: Promise<number> | undefined;
-    let settled = false;
 
-    await prisma.$transaction(async (tx) => {
-      await tx.article.update({
-        where: { id: articleId },
-        data: { summary: null },
-      });
-      // 消す前の要約で作った埋め込みを、別の接続（ワーカー）が書こうとする
-      written = writeEmbedding(prisma, 'summary').then((count) => {
-        settled = true;
-        return count;
-      });
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      // 記事の行のロックを待っている
-      expect(settled).toBe(false);
-    });
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.article.update({
+          where: { id: articleId },
+          data: { summary: null },
+        });
+        // 消す前の要約で作った埋め込みを、別の接続（ワーカー）が書こうとする。
+        // PrismaPromise は then を呼ぶまで DB に送らないので、ここで送る
+        written = writeEmbedding(prisma, 'summary').then((count) => count);
+        // 記事の行のロック（FOR SHARE）を待っている
+        expect(await waitForLockedEmbeddingWrite()).toBeGreaterThanOrEqual(1);
+      },
+      { timeout: 10_000 }
+    );
 
     expect(await written).toBe(0);
     expect(await embeddingKeys()).toEqual(['title']);

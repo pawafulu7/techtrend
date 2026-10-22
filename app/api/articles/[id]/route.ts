@@ -133,8 +133,9 @@ async function patchHandler(request: NextRequest, context: any) {
     if (summary !== undefined) {
       updateData.summary = summary;
       // 一覧は summaryComputedAt がある記事だけを出し、定期の要約生成は要約のある記事を拾わない。
-      // 要約を書いた記事は、要約の処理を終えたものとして扱う
-      if (summary) updateData.summaryComputedAt = new Date();
+      // 要約を書いた記事は要約の処理を終えたものとして扱い、空にした記事は一覧から外す
+      // （収集で要約を消すときの SUMMARY_RESET と同じ）
+      updateData.summaryComputedAt = summary ? new Date() : null;
     }
     if (thumbnail !== undefined) updateData.thumbnail = thumbnail;
     if (content !== undefined) {

@@ -64,8 +64,8 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
 
     if (!options.force) {
       // このスクリプトは統一プロンプト（V8）で作るので、今の版の要約は対象にしない（版を下げてしまう）。
-      // 要約の無い記事は定期の要約生成が作る
-      whereClause.summary = { not: null };
+      // 要約の無い記事（NULL・空文字）は定期の要約生成が作る
+      whereClause.summary = { not: null, notIn: [''] };
       whereClause.summaryVersion = { lt: SUMMARY_VERSION.CURRENT };
 
       // 文字数の条件は Prisma の where では書けない（文字列の lt に数値を渡すと検証エラーで落ちる）。
@@ -74,6 +74,7 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
       const tooShort = await prisma.$queryRaw<Array<{ id: string }>>`
         SELECT id FROM "Article"
         WHERE (char_length(summary) < 50 OR char_length("detailedSummary") < 200)
+          AND COALESCE(summary, '') <> ''
           AND "summaryVersion" < ${SUMMARY_VERSION.CURRENT}
           ${since ? Prisma.sql`AND "createdAt" >= ${since.toISOString()}::timestamptz` : Prisma.empty}
         ORDER BY "createdAt" DESC, id DESC
@@ -173,10 +174,6 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
       });
       // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
       await embeddingScheduler.enqueue(article.id);
-      await cacheInvalidator.onArticleUpdated(article.id, {
-        summary: processed.summary,
-        detailedSummary: processed.detailedSummary,
-      });
 
       // タグの更新（必要に応じて）
       if (result.tags.length > 0) {
@@ -204,6 +201,12 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
           });
         }
       }
+
+      // タグまで書いてからキャッシュを消す（先に消すと、タグを書く前の状態がまたキャッシュされる）
+      await cacheInvalidator.onArticleUpdated(article.id, {
+        summary: processed.summary,
+        detailedSummary: processed.detailedSummary,
+      });
 
       console.error('  ✅ 再生成完了');
       console.error(`  新要約: ${processed.summary.substring(0, 50)}...`);

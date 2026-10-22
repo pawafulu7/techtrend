@@ -189,6 +189,9 @@ async function main() {
             data: {
               summary: fixedSummary,
               detailedSummary: fixedDetailedSummary,
+              // 指示文だけの要約で空になったら、一覧から外して定期の要約生成に作り直させる
+              // （収集で要約を消すときの SUMMARY_RESET と同じ）
+              ...(summaryChanged && !fixedSummary ? { summaryComputedAt: null } : {}),
             },
           });
           if (count === 0) {
@@ -217,7 +220,8 @@ async function main() {
 
   console.log('=====================================');
   console.log('修正完了');
-  console.log(`修正: ${fixedCount}件`);
+  // DRY RUN は直す対象の件数、実行時は実際に書いた件数（読んだ後に書き換えられた記事を除く）
+  console.log(`修正: ${isDryRun ? fixedCount : savedCount}件`);
   console.log(`未変更: ${unchangedCount}件`);
   console.log(`エラー: ${errorCount}件`);
   if (staleCount > 0) {

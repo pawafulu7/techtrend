@@ -125,8 +125,35 @@ describe('regenerateSummaries', () => {
       summary: data.summary,
       detailedSummary: data.detailedSummary,
     });
+    expect(mockOnArticleUpdated.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mockEnqueue.mock.invocationCallOrder[0]
+    );
     // キャッシュのモジュールが開いた Redis の接続を閉じる（閉じないとプロセスが終わらない）
     expect(mockCloseRedisConnection).toHaveBeenCalledTimes(1);
+  });
+
+  it('新しいタグを書いてからキャッシュを消す', async () => {
+    const { resolveTags } = jest.requireMock('@/lib/services/tag-service') as {
+      resolveTags: jest.Mock;
+    };
+    resolveTags.mockResolvedValueOnce([{ id: 'tag-1', name: 'TypeScript' }]);
+    mockGenerateDetailedSummary.mockResolvedValue({
+      summary: '新しい一覧要約です。',
+      detailedSummary: '・要点: 新しい詳細要約です。',
+      tags: ['TypeScript'],
+    });
+    mockPrisma.article.findMany.mockResolvedValue([article]);
+
+    await regenerateSummaries({ articleIds: ['art-1'] });
+
+    // 要約の保存とタグの保存
+    expect(mockPrisma.article.update).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.article.update.mock.calls[1][0].data).toEqual({
+      tags: { connect: [{ id: 'tag-1' }] },
+    });
+    expect(mockOnArticleUpdated.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mockPrisma.article.update.mock.invocationCallOrder[1]
+    );
   });
 
   it('生成に失敗した記事は保存せず、ジョブも積まない', async () => {
@@ -162,6 +189,8 @@ describe('regenerateSummaries', () => {
     const sql = strings.join('?');
     expect(sql).toContain('char_length(summary) < 50');
     expect(sql).toContain('char_length("detailedSummary") < 200');
+    // 下の取得と同じ絞り込み（要約がある・今の版より前）を LIMIT の前に掛ける
+    expect(sql).toContain(`COALESCE(summary, '') <> ''`);
     expect(sql).toContain('"summaryVersion" <');
     // 下の取得と同じ並びで take 件までに絞る（同じ日時は id で決める）
     expect(sql).toContain('ORDER BY "createdAt" DESC, id DESC');
@@ -172,7 +201,7 @@ describe('regenerateSummaries', () => {
     expect(take).toBe(10);
     expect(orderBy).toEqual([{ createdAt: 'desc' }, { id: 'desc' }]);
     // 統一プロンプト（V8）で作るので、今の版の要約は版を下げないよう対象にしない
-    expect(where.summary).toEqual({ not: null });
+    expect(where.summary).toEqual({ not: null, notIn: [''] });
     expect(where.summaryVersion).toEqual({ lt: SUMMARY_VERSION.CURRENT });
     // quality-check.ts が再生成の印として版を 0 に戻した記事
     expect(where.OR).toContainEqual({ summaryVersion: 0 });
