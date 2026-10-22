@@ -138,4 +138,14 @@ describe('JobProcessor.processJob と積み直し（取得の後に要約が保�
       },
     });
   });
+
+  it('確保する前の例外では、ジョブを書き換えない', async () => {
+    // 確保の条件だけでは、ほかのワーカーが確保した同じ世代のジョブと区別できない
+    prismaMock.embeddingJob.updateMany.mockRejectedValueOnce(new Error('connection lost'));
+
+    await expect(new JobProcessor().processJob(buildJob(0))).rejects.toThrow('connection lost');
+
+    expect(prismaMock.embeddingJob.updateMany).toHaveBeenCalledTimes(1);
+    expect(mockEmbedArticle).not.toHaveBeenCalled();
+  });
 });

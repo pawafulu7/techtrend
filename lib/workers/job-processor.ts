@@ -45,6 +45,8 @@ export class JobProcessor {
       status: 'PROCESSING' as const,
       queuedAt: sameQueuedAt,
     };
+    // 確保する前の例外では、ジョブを書き換えない（確保の条件だけでは、ほかのワーカーが確保した同じ世代と区別できない）
+    let claimed = false;
 
     try {
       // Mark as processing (optimistic locking via status check)
@@ -69,6 +71,7 @@ export class JobProcessor {
         );
         return;
       }
+      claimed = true;
 
       // Check if article still exists (cascade delete handling)
       if (!job.article || !job.article.summary) {
@@ -180,6 +183,10 @@ export class JobProcessor {
       // +1 しないと最後の試行の例外で attempts が上限のまま PENDING に戻り、ワーカーが二度と拾わない
       const shouldRetry = job.attempts + 1 < job.maxAttempts;
 
+      if (!claimed) {
+        throw error;
+      }
+
       try {
         const sanitized = sanitizeError(error);
         const safeMessage =
@@ -187,7 +194,7 @@ export class JobProcessor {
             ? sanitized
             : ((sanitized as any).message ?? 'Unknown error');
 
-        // 処理中に積み直されたジョブを上書きしない（確保の前の例外なら PENDING のまま残る）
+        // 処理中に積み直されたジョブを上書きしない
         await prisma.embeddingJob.updateMany({
           where: claimedJob,
           data: {
