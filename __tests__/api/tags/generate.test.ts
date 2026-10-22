@@ -102,8 +102,8 @@ describe('POST /api/tags/generate', () => {
       title: 'タイトル',
       content: longContent,
       qualityThreshold: 40,
-      articleId: 'art-1',
     });
+    // 要約もタイトルも変えないので、埋め込みのジョブは積まない（サービスに scheduleEmbedding を用意していない）
     // options を渡さない（= getOrCreateTags の既定 normalize: true）
     expect(mockGetTagIdsForConnect).toHaveBeenCalledWith(
       ['js', 'React'],

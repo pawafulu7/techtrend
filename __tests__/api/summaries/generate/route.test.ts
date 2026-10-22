@@ -102,6 +102,7 @@ describe('/api/summaries/generate', () => {
     (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
 
     const mockService = {
+      scheduleEmbedding: jest.fn().mockResolvedValue(undefined),
       generateSummary: jest.fn().mockResolvedValue({
         summary: 'Test summary content',
         detailedSummary: '・Detail 1: First point\n・Detail 2: Second point',
@@ -156,6 +157,12 @@ describe('/api/summaries/generate', () => {
     expect(updateCalls[1][0].data.qualityScoreComputedAt).toBe(
       updateCalls[0][0].data.summaryComputedAt
     );
+    // 埋め込みのジョブは、要約を保存した後に積む（要約の生成には記事の ID を渡さない）
+    expect(mockService.generateSummary.mock.calls[0][0]).not.toHaveProperty('articleId');
+    expect(mockService.scheduleEmbedding).toHaveBeenCalledWith('test-1');
+    expect(mockService.scheduleEmbedding.mock.invocationCallOrder[0]).toBeGreaterThan(
+      (prisma.article.update as jest.Mock).mock.invocationCallOrder[1]
+    );
   });
 
   it('should deduplicate tags within result and existing tags', async () => {
@@ -167,6 +174,7 @@ describe('/api/summaries/generate', () => {
     }];
 
     const mockService = {
+      scheduleEmbedding: jest.fn().mockResolvedValue(undefined),
       generateSummary: jest.fn().mockResolvedValue({
         summary: 'summary',
         detailedSummary: 'detailed',
@@ -206,6 +214,7 @@ describe('/api/summaries/generate', () => {
     (prisma.article.findMany as jest.Mock).mockResolvedValue(mockArticles);
 
     const mockService = {
+      scheduleEmbedding: jest.fn().mockResolvedValue(undefined),
       generateSummary: jest.fn().mockRejectedValue(new Error('API Error'))
     };
 
@@ -220,6 +229,8 @@ describe('/api/summaries/generate', () => {
     expect(json.success).toBe(true);
     expect(json.data.errors).toBe(1);
     expect(json.data.generated).toBe(0);
+    // 要約を作れなかった記事のジョブは積まない
+    expect(mockService.scheduleEmbedding).not.toHaveBeenCalled();
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining('[API] Summary generation failed for article test-3'),
       expect.any(Error)
@@ -237,6 +248,7 @@ describe('/api/summaries/generate', () => {
     }];
 
     const mockService = {
+      scheduleEmbedding: jest.fn().mockResolvedValue(undefined),
       generateSummary: jest.fn().mockResolvedValue({
         summary: 'summary',
         detailedSummary: 'detailed',
@@ -271,6 +283,7 @@ describe('/api/summaries/generate', () => {
     }];
 
     const mockService = {
+      scheduleEmbedding: jest.fn().mockResolvedValue(undefined),
       generateSummary: jest.fn().mockResolvedValue({
         summary: 'summary',
         detailedSummary: 'detailed',
@@ -304,6 +317,7 @@ describe('/api/summaries/generate', () => {
     }];
 
     const mockService = {
+      scheduleEmbedding: jest.fn().mockResolvedValue(undefined),
       generateSummary: jest.fn().mockResolvedValue({
         summary: 'summary',
         detailedSummary: 'detailed',

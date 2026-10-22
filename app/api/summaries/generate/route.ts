@@ -47,7 +47,6 @@ async function generateSummariesHandler(_request: NextRequest) {
           title: article.title,
           content: article.content,
           qualityThreshold: 40,
-          articleId: article.id,
         });
 
         // 既存のタグ名を取得
@@ -108,6 +107,8 @@ async function generateSummariesHandler(_request: NextRequest) {
             },
           });
         });
+        // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+        await service.scheduleEmbedding(article.id);
 
         generated++;
       } catch (error) {

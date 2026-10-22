@@ -59,7 +59,6 @@ async function generateTagsHandler(_request: NextRequest) {
           title: article.title,
           content: validation.content,
           qualityThreshold: 40,
-          articleId: article.id, // Schedule embedding job
         });
 
         const tagNames = result.tags ?? [];

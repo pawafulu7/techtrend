@@ -46,10 +46,11 @@ export async function processArticleWithTimeout(
   content: string,
   generateSummaryAndTags: (
     title: string,
-    content: string,
-    articleId?: string
+    content: string
   ) => Promise<SummaryAndTags>,
-  prisma: PrismaClient
+  prisma: PrismaClient,
+  /** 要約を保存した後に、その記事の埋め込みのジョブを積む */
+  scheduleEmbedding: (articleId: string) => Promise<void>
 ): Promise<{ success: boolean; articleId: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), SUMMARY_TIMEOUT);
@@ -68,7 +69,13 @@ export async function processArticleWithTimeout(
     });
 
     const result = await Promise.race([
-      processArticle(article, content, generateSummaryAndTags, prisma),
+      processArticle(
+        article,
+        content,
+        generateSummaryAndTags,
+        prisma,
+        scheduleEmbedding
+      ),
       abortPromise,
     ]);
 
@@ -149,16 +156,13 @@ async function processArticle(
   content: string,
   generateSummaryAndTags: (
     title: string,
-    content: string,
-    articleId?: string
+    content: string
   ) => Promise<SummaryAndTags>,
-  prisma: PrismaClient
+  prisma: PrismaClient,
+  /** 要約を保存した後に、その記事の埋め込みのジョブを積む */
+  scheduleEmbedding: (articleId: string) => Promise<void>
 ): Promise<{ success: boolean; articleId: string }> {
-  const result = await generateSummaryAndTags(
-    article.title,
-    content,
-    article.id
-  );
+  const result = await generateSummaryAndTags(article.title, content);
 
   await prisma.$transaction(
     async (tx) => {
@@ -181,6 +185,8 @@ async function processArticle(
     },
     { timeout: env.DB_TRANSACTION_TIMEOUT }
   );
+  // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+  await scheduleEmbedding(article.id);
 
   try {
     await cacheInvalidator.onArticleUpdated(article.id, {
@@ -248,10 +254,11 @@ export async function runParallelBatch(
   validArticles: Array<{ article: ArticleWithSource; content: string }>,
   generateSummaryAndTags: (
     title: string,
-    content: string,
-    articleId?: string
+    content: string
   ) => Promise<SummaryAndTags>,
-  prisma: PrismaClient
+  prisma: PrismaClient,
+  /** 要約を保存した後に、その記事の埋め込みのジョブを積む */
+  scheduleEmbedding: (articleId: string) => Promise<void>
 ): Promise<{ generated: number; errors: number }> {
   const limit = pLimit(SUMMARY_CONCURRENCY);
 
@@ -262,7 +269,8 @@ export async function runParallelBatch(
         article,
         content,
         generateSummaryAndTags,
-        prisma
+        prisma,
+        scheduleEmbedding
       );
     })
   );

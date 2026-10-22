@@ -14,9 +14,19 @@
 
 import { VectorSearchService } from '@/lib/rag/vector-search-service';
 import { EmbeddingService } from '@/lib/rag/embedding-service';
-import { PrismaClient } from '@/lib/prisma-exports';
+import { Prisma, PrismaClient } from '@/lib/prisma-exports';
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ZodError } from 'zod';
+
+/** 入力の検証（Zod）で、指定した項目が理由で拒否されたことを確かめる。DB の障害など、ほかの失敗では通さない */
+async function expectRejectedAt(promise: Promise<unknown>, field: string) {
+  const error = await promise.then(
+    () => null,
+    (e: unknown) => e
+  );
+  expect(error).toBeInstanceOf(ZodError);
+  expect((error as ZodError).issues.map((issue) => issue.path[0])).toContain(field);
+}
 
 describe('RAG Security - SQL Injection Prevention', () => {
   let searchService: VectorSearchService;
@@ -24,13 +34,14 @@ describe('RAG Security - SQL Injection Prevention', () => {
 
   beforeAll(async () => {
     prisma = createPrismaClient();
-    searchService = new VectorSearchService(prisma);
 
-    // Mock OpenAI API to avoid external dependencies and flakiness
+    // 埋め込みの生成（OpenAI）は差し替えて渡す。渡さないと OPENAI_API_KEY の有無で EmbeddingService が
+    // 無くなり、検索はどの入力でも「使えない」で失敗する（拒否を確かめるテストが、検証と関係なく通ってしまう）
     const mockEmbedding = Array.from({ length: 1536 }, () => 0.01);
-    jest
-      .spyOn(EmbeddingService.prototype, 'generateEmbedding')
-      .mockResolvedValue(mockEmbedding);
+    const embeddingService = {
+      embedText: jest.fn().mockResolvedValue(mockEmbedding),
+    } as unknown as EmbeddingService;
+    searchService = new VectorSearchService(prisma, embeddingService);
   });
 
   afterAll(async () => {
@@ -38,17 +49,39 @@ describe('RAG Security - SQL Injection Prevention', () => {
     jest.restoreAllMocks();
   });
 
+  /** 検索を実際の DB に流し、そのとき送った SQL（本文と値）を返す */
+  async function captureSearchSql(options: { sourceIds?: string[]; tags?: string[] }) {
+    const queryRawSpy = jest.spyOn(prisma, '$queryRaw');
+    try {
+      await expect(
+        searchService.search('test query', {
+          topK: 5,
+          similarityThreshold: 0.5,
+          ...options,
+        })
+      ).resolves.toEqual(expect.any(Array));
+      expect(queryRawSpy).toHaveBeenCalledTimes(1);
+      const [strings, ...values] = queryRawSpy.mock.calls[0] as unknown as [
+        TemplateStringsArray,
+        ...unknown[],
+      ];
+      // 入れ子の Prisma.sql も展開して、本文と値に分ける
+      return Prisma.sql(strings, ...values);
+    } finally {
+      queryRawSpy.mockRestore();
+    }
+  }
+
   describe('Parameter Sanitization', () => {
     it('should reject malicious embeddingKey (SQL injection attempt)', async () => {
-      const maliciousQuery = "'; DROP TABLE ArticleEmbedding; --";
-
-      await expect(
-        searchService.search(maliciousQuery, {
+      await expectRejectedAt(
+        searchService.search('test query', {
           topK: 5,
           similarityThreshold: 0.5,
           embeddingKey: "title'; DROP TABLE ArticleEmbedding; --" as any,
-        })
-      ).rejects.toThrow();
+        }),
+        'embeddingKey'
+      );
     });
 
     it('should reject malicious sourceIds (SQL injection attempt)', async () => {
@@ -57,28 +90,25 @@ describe('RAG Security - SQL Injection Prevention', () => {
         "source2",
       ];
 
-      await expect(
+      await expectRejectedAt(
         searchService.search('test query', {
           topK: 5,
           similarityThreshold: 0.5,
           sourceIds: maliciousSourceIds,
-        })
-      ).rejects.toThrow();
+        }),
+        'sourceIds'
+      );
     });
 
-    it('should reject malicious tags (SQL injection attempt)', async () => {
-      const maliciousTags = [
-        "tag1'; DELETE FROM Tag; --",
-        "tag2",
-      ];
+    it('should pass malicious tags as SQL parameters, not SQL text', async () => {
+      // タグは表示名（C++・Node.js・日本語など）なので形式では拒否せず、SQL の値として渡す
+      const maliciousTags = ["tag1'; DELETE FROM Tag; --", 'tag2'];
 
-      await expect(
-        searchService.search('test query', {
-          topK: 5,
-          similarityThreshold: 0.5,
-          tags: maliciousTags,
-        })
-      ).rejects.toThrow();
+      const sql = await captureSearchSql({ tags: maliciousTags });
+
+      expect(sql.text).toMatch(/unnest\(\$\d+::text\[\]\)/);
+      expect(sql.text).not.toContain(maliciousTags[0]);
+      expect(sql.values).toContainEqual(maliciousTags);
     });
 
     it('should handle special characters in query text safely', async () => {
@@ -198,30 +228,18 @@ describe('RAG Security - SQL Injection Prevention', () => {
   });
 
   describe('Prisma.sql Template Safety', () => {
-    it('should use parameterized queries (not string concatenation)', () => {
-      // This is a code-level verification
-      // The actual implementation should use Prisma.sql with template literals
+    // 実際に DB へ送る SQL を見て、絞り込みの値が本文ではなくパラメータに入ることを確かめる
+    it('should bind sourceIds and tags as parameters', async () => {
+      const sourceIds = ['source_a', 'source-b'];
+      const tags = ['React', 'C++'];
 
-      // Verify by checking that VectorSearchService doesn't use $queryRawUnsafe
-      const serviceCode = require('fs').readFileSync(
-        require.resolve('@/lib/rag/vector-search-service'),
-        'utf8'
-      );
+      const sql = await captureSearchSql({ sourceIds, tags });
 
-      expect(serviceCode).not.toContain('$queryRawUnsafe');
-      expect(serviceCode).toContain('Prisma.sql');
-    });
-
-    it('should bind all variables as parameters', () => {
-      // Verify that the implementation uses parameter binding for all variables
-      const serviceCode = require('fs').readFileSync(
-        require.resolve('@/lib/rag/vector-search-service'),
-        'utf8'
-      );
-
-      // Should use ${variable} syntax within Prisma.sql templates
-      expect(serviceCode).toContain('${');
-      expect(serviceCode).toContain('}');
+      expect(sql.text).toMatch(/ANY\(\$\d+\)/);
+      expect(sql.text).not.toContain('source_a');
+      expect(sql.text).not.toContain('C++');
+      expect(sql.values).toContainEqual(sourceIds);
+      expect(sql.values).toContainEqual(tags);
     });
   });
 });

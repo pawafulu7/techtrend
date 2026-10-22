@@ -80,12 +80,16 @@ async function main() {
     console.log(`[${i + 1}/${articles.length}] ${article.id}`);
     console.log(`  タイトル: ${article.title?.substring(0, 60)}...`);
 
+    if (!article.content) {
+      console.log('  ⚠ 本文が無いのでスキップ');
+      continue;
+    }
+
     try {
       const result = await deps.service.generateSummary({
         title: article.title,
         content: article.content,
         url: article.url,
-        articleId: article.id,
       });
 
       await prisma.article.update({
@@ -93,10 +97,12 @@ async function main() {
         data: {
           summary: result.summary,
           detailedSummary: result.detailedSummary,
-          summaryVersion: 8,
+          summaryVersion: result.summaryVersion,
           summaryComputedAt: new Date(),
         },
       });
+      // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+      await deps.service.scheduleEmbedding(article.id);
 
       console.log(`  ✓ 完了`);
       console.log(`  要約: ${result.summary.substring(0, 80)}...`);

@@ -63,3 +63,89 @@ describe('JobProcessor.processJob の例外時の再試行', () => {
     expect(await statusAfterException(1)).toBe('PENDING');
   });
 });
+
+describe('JobProcessor.processJob と積み直し（取得の後に要約が保存し直された場合）', () => {
+  beforeEach(() => {
+    resetPrismaMock();
+    mockEmbedArticle.mockReset();
+  });
+
+  it('取得したときの queuedAt（前後 1ms）のジョブだけを確保する', async () => {
+    prismaMock.embeddingJob.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.embeddingJob.findUnique.mockResolvedValue({ id: 'job-1' });
+    mockEmbedArticle.mockResolvedValueOnce({ success: true });
+    const job = buildJob(0);
+
+    await new JobProcessor().processJob(job);
+
+    expect(prismaMock.embeddingJob.updateMany.mock.calls[0][0].where).toEqual({
+      id: 'job-1',
+      status: 'PENDING',
+      queuedAt: {
+        gte: new Date(job.queuedAt.getTime() - 1),
+        lte: new Date(job.queuedAt.getTime() + 1),
+      },
+    });
+  });
+
+  it('取得の後に積み直されていたら（確保できなければ）、古い要約を埋め込まない', async () => {
+    prismaMock.embeddingJob.updateMany.mockResolvedValue({ count: 0 });
+
+    await new JobProcessor().processJob(buildJob(0));
+
+    expect(mockEmbedArticle).not.toHaveBeenCalled();
+    expect(prismaMock.embeddingJob.updateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['完了', () => mockEmbedArticle.mockResolvedValueOnce({ success: true })],
+    ['失敗', () => mockEmbedArticle.mockResolvedValueOnce({ success: false, error: 'boom' })],
+  ])('%s の書き込みは、確保したまま（PROCESSING・取得したときの queuedAt）のときだけにする', async (_label, arrange) => {
+    // 処理中に積み直されると PENDING・新しい queuedAt になり、この条件に当たらないので上書きしない
+    prismaMock.embeddingJob.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.embeddingJob.findUnique.mockResolvedValue({ id: 'job-1' });
+    arrange();
+    const job = buildJob(0);
+
+    await new JobProcessor().processJob(job);
+
+    const calls = prismaMock.embeddingJob.updateMany.mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[1][0].where).toEqual({
+      id: 'job-1',
+      status: 'PROCESSING',
+      queuedAt: {
+        gte: new Date(job.queuedAt.getTime() - 1),
+        lte: new Date(job.queuedAt.getTime() + 1),
+      },
+    });
+  });
+
+  it('例外の後の書き込みも、確保したままのときだけにする', async () => {
+    prismaMock.embeddingJob.updateMany.mockResolvedValue({ count: 1 });
+    mockEmbedArticle.mockRejectedValueOnce(new Error('boom'));
+    const job = buildJob(0);
+
+    await expect(new JobProcessor().processJob(job)).rejects.toThrow('boom');
+
+    const calls = prismaMock.embeddingJob.updateMany.mock.calls;
+    expect(calls[calls.length - 1][0].where).toEqual({
+      id: 'job-1',
+      status: 'PROCESSING',
+      queuedAt: {
+        gte: new Date(job.queuedAt.getTime() - 1),
+        lte: new Date(job.queuedAt.getTime() + 1),
+      },
+    });
+  });
+
+  it('確保する前の例外では、ジョブを書き換えない', async () => {
+    // 確保の条件だけでは、ほかのワーカーが確保した同じ世代のジョブと区別できない
+    prismaMock.embeddingJob.updateMany.mockRejectedValueOnce(new Error('connection lost'));
+
+    await expect(new JobProcessor().processJob(buildJob(0))).rejects.toThrow('connection lost');
+
+    expect(prismaMock.embeddingJob.updateMany).toHaveBeenCalledTimes(1);
+    expect(mockEmbedArticle).not.toHaveBeenCalled();
+  });
+});

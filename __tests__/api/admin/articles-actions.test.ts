@@ -453,6 +453,7 @@ describe('POST /api/admin/articles/[id]/regenerate-summary', () => {
 
     const mockService = {
       generateSummary: jest.fn().mockResolvedValue(mockSummaryResult),
+      scheduleEmbedding: jest.fn().mockResolvedValue(undefined),
     };
     mockGetAppDependencies.mockReturnValue({ service: mockService } as any);
 
@@ -498,6 +499,13 @@ describe('POST /api/admin/articles/[id]/regenerate-summary', () => {
       },
     });
     expect(data.qualityScore).toBe(66);
+
+    // 埋め込みのジョブは、要約を保存した後に積む（要約の生成には記事の ID を渡さない）
+    expect(mockService.generateSummary.mock.calls[0][0]).not.toHaveProperty('articleId');
+    expect(mockService.scheduleEmbedding).toHaveBeenCalledWith(VALID_ID);
+    expect(mockService.scheduleEmbedding.mock.invocationCallOrder[0]).toBeGreaterThan(
+      (mockPrisma.article.update as jest.Mock).mock.invocationCallOrder[1]
+    );
   });
 
 });

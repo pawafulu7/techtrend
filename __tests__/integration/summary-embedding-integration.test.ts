@@ -1,16 +1,21 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
+/**
+ * 要約の生成（UnifiedSummaryServiceImpl）と、埋め込みのジョブ（EmbeddingScheduler）の結合テスト。
+ * ワーカーは保存済みの要約を埋め込むので、要約を作っただけではジョブを積まず、呼び出し元が要約を保存した後に
+ * scheduleEmbedding で積む。その流れを実際の DB で確かめる。
+ *
+ * 要約の生成（Gemini）と品質の検査は差し替える。ここで確かめるのは、要約の結果を受けてジョブを積むかどうかで、
+ * 要約の中身は lib/ai/adapter・lib/ai/service の単体テストが確かめる。
+ */
+import { describe, it, expect, beforeAll, afterAll, beforeEach, jest } from '@jest/globals';
 import { prisma } from '@/lib/prisma';
 import { UnifiedSummaryServiceImpl } from '@/lib/ai/service/unified-summary-service';
-import { GeminiSummaryAdapter } from '@/lib/ai/adapter/gemini-summary-adapter';
-import { GeminiTransportImpl } from '@/lib/ai/transport/gemini-transport';
-import { PromptBuilder } from '@/lib/ai/adapter/prompt-builder';
-import { SummaryQualityChecker } from '@/lib/ai/service/quality-checker';
+import type { SummaryProvider } from '@/lib/ai/adapter/summary-provider.interface';
+import type { QualityChecker } from '@/lib/ai/service/quality-checker.interface';
 import { SummaryPostProcessor } from '@/lib/ai/service/post-processor';
-import { GeminiTitleTranslator } from '@/lib/ai/translator/gemini-title-translator';
+import type { TitleTranslator } from '@/lib/ai/translator/gemini-title-translator';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import type { Article } from '@/lib/prisma-exports';
 
-const EMBEDDING_ENQUEUE_DELAY_MS = 200;
 const TIMESTAMP_PRECISION_DELAY_MS = 100;
 
 describe('Summary-Embedding Integration', () => {
@@ -35,31 +40,37 @@ describe('Summary-Embedding Integration', () => {
       },
     });
 
-    // Setup real summary service (for integration testing)
-    const apiKey = process.env.GEMINI_API_KEY || 'test-key';
-    const transport = new GeminiTransportImpl(apiKey, 'https://generativelanguage.googleapis.com/v1beta', 3, 3);
-    const promptBuilder = new PromptBuilder();
-    const adapter = new GeminiSummaryAdapter(transport, promptBuilder, 'gemini-2.5-flash-lite');
-    const qualityChecker = new SummaryQualityChecker();
-    const postProcessor = new SummaryPostProcessor();
-    const translator = new GeminiTitleTranslator(transport, {
-      enabled: false,
-      model: 'gemini-2.5-flash-lite',
-      temperature: 0.3,
-      topP: 0.95,
-      topK: 40,
-      maxOutputTokens: 256,
-    });
-    const embeddingScheduler = new EmbeddingScheduler();
+    const summaryProvider: SummaryProvider = {
+      summarize: jest.fn<SummaryProvider['summarize']>().mockResolvedValue({
+        headline: 'React・TypeScript・Next.js による開発の要点',
+        detailedSummary: '・React の基本\n・TypeScript の型\n・Next.js の構成',
+        category: 'Frontend',
+        tags: ['React', 'TypeScript', 'Next.js'],
+        confidence: 0.9,
+      }),
+    };
+    // 点数は 80。要約の閾値（qualityThreshold）を 90 にすると失敗する
+    const qualityChecker: QualityChecker = {
+      checkQuality: jest.fn<QualityChecker['checkQuality']>().mockReturnValue({
+        isValid: true,
+        issues: [],
+        requiresRegeneration: false,
+        score: 80,
+      }),
+      calculateScore: jest.fn<QualityChecker['calculateScore']>().mockReturnValue(80),
+    };
+    const translator: TitleTranslator = {
+      translateTitle: jest.fn<TitleTranslator['translateTitle']>().mockResolvedValue(null),
+    };
 
     summaryService = new UnifiedSummaryServiceImpl(
-      adapter,
+      summaryProvider,
       qualityChecker,
-      postProcessor,
+      new SummaryPostProcessor(),
       translator,
-      embeddingScheduler,
+      new EmbeddingScheduler(),
       {
-        qualityThreshold: 50, // Lower threshold for testing
+        qualityThreshold: 50,
         maxRetries: 3,
         translationEnabled: false,
       }
@@ -80,103 +91,81 @@ describe('Summary-Embedding Integration', () => {
     });
   });
 
-  it('should create embedding job after successful summary generation', async () => {
+  /** 呼び出し元と同じく、作った要約を記事に保存する */
+  async function saveSummary(summary: { summary: string; detailedSummary: string }) {
+    await prisma.article.update({
+      where: { id: testArticle.id },
+      data: { summary: summary.summary, detailedSummary: summary.detailedSummary },
+    });
+  }
+
+  async function findJob() {
+    return prisma.embeddingJob.findUnique({
+      where: { articleId: testArticle.id },
+    });
+  }
+
+  it('should NOT create a job when only the summary is generated', async () => {
     const result = await summaryService.generateSummary({
       title: testArticle.title,
       content: testArticle.content!,
-      articleId: testArticle.id, // Provide articleId
     });
 
     expect(result.summary).toBeDefined();
-    expect(result.detailedSummary).toBeDefined();
+    expect(await findJob()).toBeNull();
+  });
 
-    // Wait a bit for async enqueue
-    await new Promise((resolve) => setTimeout(resolve, EMBEDDING_ENQUEUE_DELAY_MS));
-
-    // Verify job created
-    const job = await prisma.embeddingJob.findUnique({
-      where: { articleId: testArticle.id },
+  it('should create a PENDING job when scheduled after the summary is saved', async () => {
+    const result = await summaryService.generateSummary({
+      title: testArticle.title,
+      content: testArticle.content!,
     });
+    await saveSummary(result);
 
+    await summaryService.scheduleEmbedding(testArticle.id);
+
+    const job = await findJob();
     expect(job).not.toBeNull();
     expect(job?.status).toBe('PENDING');
     expect(job?.attempts).toBe(0);
-    expect(job?.articleId).toBe(testArticle.id);
+    // ジョブを積んだ時点で、ワーカーが埋め込む要約は保存済み
+    const article = await prisma.article.findUnique({
+      where: { id: testArticle.id },
+      select: { summary: true },
+    });
+    expect(article?.summary).toBe(result.summary);
   });
 
-  it('should re-queue job if summary regenerated', async () => {
-    // First generation
-    await summaryService.generateSummary({
+  it('should re-queue the same job when the summary is regenerated and saved', async () => {
+    const first = await summaryService.generateSummary({
       title: testArticle.title,
       content: testArticle.content!,
-      articleId: testArticle.id,
     });
+    await saveSummary(first);
+    await summaryService.scheduleEmbedding(testArticle.id);
 
-    await new Promise((resolve) => setTimeout(resolve, EMBEDDING_ENQUEUE_DELAY_MS));
-
-    const firstJob = await prisma.embeddingJob.findUnique({
-      where: { articleId: testArticle.id },
-    });
-
+    const firstJob = await findJob();
     expect(firstJob).not.toBeNull();
-    const firstQueuedAt = firstJob!.queuedAt;
+    // ワーカーが処理し終えた状態にする
+    await prisma.embeddingJob.update({
+      where: { id: firstJob!.id },
+      data: { status: 'COMPLETED', attempts: 1 },
+    });
 
-    // Wait to ensure queuedAt timestamp will be different
+    // queuedAt が確実に変わるよう、少し待ってから作り直す
     await new Promise((resolve) => setTimeout(resolve, TIMESTAMP_PRECISION_DELAY_MS));
 
-    // Second generation (regeneration)
-    await summaryService.generateSummary({
+    const second = await summaryService.generateSummary({
       title: testArticle.title,
       content: testArticle.content + ' Updated content.',
-      articleId: testArticle.id,
     });
+    await saveSummary(second);
+    await summaryService.scheduleEmbedding(testArticle.id);
 
-    await new Promise((resolve) => setTimeout(resolve, EMBEDDING_ENQUEUE_DELAY_MS));
-
-    const secondJob = await prisma.embeddingJob.findUnique({
-      where: { articleId: testArticle.id },
-    });
-
-    // Same job ID, but re-queued
-    expect(secondJob?.id).toBe(firstJob?.id);
+    const secondJob = await findJob();
+    expect(secondJob?.id).toBe(firstJob!.id);
     expect(secondJob?.status).toBe('PENDING');
-    expect(secondJob?.attempts).toBe(0); // Reset
-    expect(secondJob?.queuedAt.getTime()).toBeGreaterThan(firstQueuedAt.getTime());
-  });
-
-  it('should NOT create job if params.articleId missing', async () => {
-    await summaryService.generateSummary({
-      title: testArticle.title,
-      content: testArticle.content!,
-      // articleId NOT provided
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, EMBEDDING_ENQUEUE_DELAY_MS));
-
-    // Verify NO job created
-    const job = await prisma.embeddingJob.findUnique({
-      where: { articleId: testArticle.id },
-    });
-
-    expect(job).toBeNull();
-  });
-
-  it('should NOT throw error if summary generation fails', async () => {
-    // Test with extremely short content that will fail quality check
-    await expect(
-      summaryService.generateSummary({
-        title: 'Short',
-        content: 'Too short',
-        articleId: testArticle.id,
-        qualityThreshold: 90, // Very high threshold
-      })
-    ).rejects.toThrow('Failed to generate quality summary');
-
-    // Verify NO job created (summary generation failed)
-    const job = await prisma.embeddingJob.findUnique({
-      where: { articleId: testArticle.id },
-    });
-
-    expect(job).toBeNull();
+    expect(secondJob?.attempts).toBe(0);
+    expect(secondJob!.queuedAt.getTime()).toBeGreaterThan(firstJob!.queuedAt.getTime());
   });
 });

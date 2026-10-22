@@ -3,13 +3,17 @@
  */
 
 const mockGenerateSummary = jest.fn();
+const mockScheduleEmbedding = jest.fn();
 const mockCalculateArticleQualityScore = jest.fn();
 const mockOnArticleUpdated = jest.fn();
 const mockRateLimitDelay = jest.fn();
 
 jest.mock('@/lib/di/bootstrap', () => ({
   getAppDependencies: () => ({
-    service: { generateSummary: mockGenerateSummary },
+    service: {
+      generateSummary: mockGenerateSummary,
+      scheduleEmbedding: mockScheduleEmbedding,
+    },
   }),
 }));
 
@@ -112,8 +116,12 @@ describe('autoRegenerateLowQuality', () => {
       title: 'タイトル',
       content: longContent,
       qualityThreshold: 40,
-      articleId: 'art-1',
     });
+    // 埋め込みのジョブは、要約を保存した後に積む
+    expect(mockScheduleEmbedding).toHaveBeenCalledWith('art-1');
+    expect(mockScheduleEmbedding.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mockPrisma.article.update.mock.invocationCallOrder[0]
+    );
     expect(mockCalculateArticleQualityScore).toHaveBeenCalledWith(
       expect.objectContaining({ summary: '一覧要約', detailedSummary: '・詳細' })
     );

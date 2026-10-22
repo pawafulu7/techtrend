@@ -48,7 +48,6 @@ async function main() {
         title: article.title,
         content: article.content,
         url: article.url,
-        articleId: article.id,
       });
 
       await prisma.article.update({
@@ -56,10 +55,12 @@ async function main() {
         data: {
           summary: result.summary,
           detailedSummary: result.detailedSummary,
-          summaryVersion: 8,
+          summaryVersion: result.summaryVersion,
           summaryComputedAt: new Date(),
         },
       });
+      // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+      await deps.service.scheduleEmbedding(article.id);
 
       console.log('  ✓ 完了');
       successCount++;

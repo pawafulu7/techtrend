@@ -17,7 +17,6 @@ import {
 } from './unified-summary-parser';
 import { checkSummaryQuality } from '../utils/summary/summary-quality-checker';
 import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
-import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { logger } from '@/lib/logger';
 import { env } from '@/lib/config/env';
 import { buildGeminiEndpoint } from '@/lib/config/gemini';
@@ -50,7 +49,6 @@ export class UnifiedSummaryService {
 
   private apiKey: string;
   private apiUrl: string;
-  private embeddingScheduler: EmbeddingScheduler;
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || env.GEMINI_API_KEY || '';
@@ -59,7 +57,6 @@ export class UnifiedSummaryService {
     }
     // モデルと base URL は共有設定（GEMINI_MODEL・GEMINI_BASE_URL）から解決する
     this.apiUrl = buildGeminiEndpoint(this.apiKey);
-    this.embeddingScheduler = new EmbeddingScheduler();
   }
 
   /**
@@ -69,8 +66,7 @@ export class UnifiedSummaryService {
     title: string,
     content: string,
     options?: GenerateOptions,
-    sourceInfo?: { sourceName?: string; url?: string },
-    articleId?: string
+    sourceInfo?: { sourceName?: string; url?: string }
   ): Promise<UnifiedSummaryResult> {
     const opts = { ...UnifiedSummaryService.DEFAULT_OPTIONS, ...options };
 
@@ -222,22 +218,7 @@ export class UnifiedSummaryService {
           throw new Error('品質基準未達');
         }
 
-        // Schedule embedding job if articleId provided
-        if (articleId) {
-          try {
-            await this.embeddingScheduler.enqueue(articleId);
-            logger.debug({ articleId }, 'Embedding job enqueued');
-          } catch (err) {
-            logger.error(
-              {
-                articleId,
-                err,
-              },
-              'Failed to enqueue embedding job'
-            );
-            // Don't throw - summary generation should succeed even if enqueue fails
-          }
-        }
+        // 埋め込みのジョブは、呼び出し元が要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
 
         // 結果を返す（postProcessSummariesで処理済みのテキストを使用）
         return {

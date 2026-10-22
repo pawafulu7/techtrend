@@ -10,8 +10,7 @@ interface SummaryAndTags {
 
 export async function generateSummaryAndTags(
   title: string,
-  content: string,
-  articleId?: string
+  content: string
 ): Promise<SummaryAndTags> {
   // 統一サービスを使用
   const service = getUnifiedSummaryService();
@@ -20,7 +19,7 @@ export async function generateSummaryAndTags(
     const result = await service.generate(title, content, {
       maxRetries: 3,
       minQualityScore: 40
-    }, {}, articleId);
+    }, {});
     
     // 後処理を適用して文字数制約と句点を調整
     const processed = postProcessSummaries(result.summary, result.detailedSummary);

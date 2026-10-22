@@ -82,9 +82,10 @@ export async function regenerateSummaries(
   options: SummaryGenerationOptions,
   generateSummaryAndTags: (
     title: string,
-    content: string,
-    articleId?: string
-  ) => Promise<SummaryAndTags>
+    content: string
+  ) => Promise<SummaryAndTags>,
+  /** 要約を保存した後に、その記事の埋め込みのジョブを積む */
+  scheduleEmbedding: (articleId: string) => Promise<void>
 ): Promise<SummaryGenerationResult> {
   logger.info('Starting summary regeneration');
   const startTime = Date.now();
@@ -141,8 +142,7 @@ export async function regenerateSummaries(
 
             const result = await generateSummaryAndTags(
               article.title,
-              validation.content!,
-              article.id
+              validation.content!
             );
 
             await prisma.$transaction(
@@ -166,6 +166,8 @@ export async function regenerateSummaries(
               },
               { timeout: env.DB_TRANSACTION_TIMEOUT }
             );
+            // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+            await scheduleEmbedding(article.id);
 
             logger.info(
               { articleId: article.id, title: article.title.substring(0, 50) },
@@ -258,8 +260,7 @@ export async function regenerateSummaries(
 
         const result = await generateSummaryAndTags(
           article.title,
-          validation.content!,
-          article.id
+          validation.content!
         );
 
         await prisma.$transaction(
@@ -283,6 +284,8 @@ export async function regenerateSummaries(
           },
           { timeout: env.DB_TRANSACTION_TIMEOUT }
         );
+        // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+        await scheduleEmbedding(article.id);
 
         logger.info(
           { articleId: article.id, title: article.title.substring(0, 50) },
@@ -334,9 +337,10 @@ export async function generateMissingSummaries(
   options: SummaryGenerationOptions,
   generateSummaryAndTags: (
     title: string,
-    content: string,
-    articleId?: string
-  ) => Promise<SummaryAndTags>
+    content: string
+  ) => Promise<SummaryAndTags>,
+  /** 要約を保存した後に、その記事の埋め込みのジョブを積む */
+  scheduleEmbedding: (articleId: string) => Promise<void>
 ): Promise<SummaryGenerationResult> {
   logger.info('Starting missing summaries generation');
 
@@ -404,8 +408,7 @@ export async function generateMissingSummaries(
 
         const result = await generateSummaryAndTags(
           article.title,
-          validation.content!,
-          article.id
+          validation.content!
         );
 
         await prisma.$transaction(
@@ -429,6 +432,8 @@ export async function generateMissingSummaries(
           },
           { timeout: env.DB_TRANSACTION_TIMEOUT }
         );
+        // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+        await scheduleEmbedding(article.id);
 
         logger.info(
           { articleId: article.id, title: article.title.substring(0, 50) },
