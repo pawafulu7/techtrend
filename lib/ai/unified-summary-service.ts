@@ -383,12 +383,9 @@ export class UnifiedSummaryService {
    */
   private isRateLimitError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error);
-    return (
-      message.includes('429') ||
-      message.includes('rate') ||
-      message.includes('quota') ||
-      message.includes('503')
-    );
+    // callGeminiAPI は「API request failed: <status> - <本文>」で投げる。本文にはエラーの種類に
+    // 関わらず generativelanguage.googleapis.com が入るので、'rate' の部分一致では判定しない
+    return /API request failed: (429|503)\b|RESOURCE_EXHAUSTED/.test(message);
   }
 
   /**

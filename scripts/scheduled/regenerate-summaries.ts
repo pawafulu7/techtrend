@@ -8,6 +8,8 @@ import { env } from '@/lib/config/env';
 import { resolveTags } from '@/lib/services/tag-service';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
+import { closeRedisConnection } from '@/lib/redis/client';
 import { SUMMARY_VERSION } from '@/types/article';
 
 interface RegenerationOptions {
@@ -50,8 +52,8 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
     });
   } else {
     // 問題のある要約を持つ記事を検索
-    const whereClause: any = {};
-    const take = options.limit || 50;
+    const whereClause: Prisma.ArticleWhereInput = {};
+    const take = options.limit && options.limit > 0 ? options.limit : 50;
     const since = options.lastHours
       ? new Date(Date.now() - options.lastHours * 60 * 60 * 1000)
       : null;
@@ -61,19 +63,27 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
     }
 
     if (!options.force) {
+      // このスクリプトは統一プロンプト（V8）で作るので、今の版の要約は対象にしない（版を下げてしまう）。
+      // 要約の無い記事は定期の要約生成が作る
+      whereClause.summary = { not: null };
+      whereClause.summaryVersion = { lt: SUMMARY_VERSION.CURRENT };
+
       // 文字数の条件は Prisma の where では書けない（文字列の lt に数値を渡すと検証エラーで落ちる）。
-      // 該当する記事の ID を SQL で取って OR に加える。下の取得と同じ新しい順で take 件までに
+      // 該当する記事の ID を SQL で取って OR に加える。下の取得と同じ条件・同じ並びで take 件までに
       // 絞っても、取得の結果は変わらない
       const tooShort = await prisma.$queryRaw<Array<{ id: string }>>`
         SELECT id FROM "Article"
         WHERE (char_length(summary) < 50 OR char_length("detailedSummary") < 200)
+          AND "summaryVersion" < ${SUMMARY_VERSION.CURRENT}
           ${since ? Prisma.sql`AND "createdAt" >= ${since.toISOString()}::timestamptz` : Prisma.empty}
-        ORDER BY "createdAt" DESC
+        ORDER BY "createdAt" DESC, id DESC
         LIMIT ${take}
       `;
 
       // 問題のある要約のパターン
       whereClause.OR = [
+        // quality-check.ts が再生成の印として版を 0 に戻した記事
+        { summaryVersion: 0 },
         { summary: { endsWith: '。詳' } },
         { summary: { endsWith: '詳。' } },
         { summary: { endsWith: 'CL。' } },
@@ -93,9 +103,7 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
         source: true,
         tags: true
       },
-      orderBy: {
-        createdAt: 'desc'
-      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take
     });
   }
@@ -155,11 +163,20 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
           summary: processed.summary,
           detailedSummary: processed.detailedSummary,
           // generateDetailedSummary は統一プロンプト（generateUnifiedPrompt）で作るので、その版を保存する
-          summaryVersion: SUMMARY_VERSION.V8
+          summaryVersion: SUMMARY_VERSION.V8,
+          // 定期実行の要約生成（batch-processor）と同じ状態を書く。一覧は summaryComputedAt が
+          // ある記事だけを出す
+          summaryComputedAt: new Date(),
+          summaryError: null,
+          skipReason: null
         }
       });
       // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
       await embeddingScheduler.enqueue(article.id);
+      await cacheInvalidator.onArticleUpdated(article.id, {
+        summary: processed.summary,
+        detailedSummary: processed.detailedSummary,
+      });
 
       // タグの更新（必要に応じて）
       if (result.tags.length > 0) {
@@ -218,7 +235,12 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
   }
   
   } finally {
-    await prisma.$disconnect();
+    try {
+      await prisma.$disconnect();
+    } finally {
+      // キャッシュのモジュールが読み込んだ時点で Redis に接続しているので、閉じないとプロセスが終わらない
+      await closeRedisConnection();
+    }
   }
 }
 

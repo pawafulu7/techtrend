@@ -65,6 +65,11 @@ ${result.detailedSummary}`);
         summary: result.summary,
         detailedSummary: result.detailedSummary,
         summaryVersion: result.summaryVersion,
+        // 定期実行の要約生成（batch-processor）と同じ状態を書く。一覧は summaryComputedAt が
+        // ある記事だけを出す
+        summaryComputedAt: new Date(),
+        summaryError: null,
+        skipReason: null,
         updatedAt: new Date(),
       },
     });
@@ -100,38 +105,16 @@ ${result.detailedSummary}`);
       console.log('タグを更新しました');
     }
 
-    let cacheInvalidationFailed = false;
-    try {
-      await cacheInvalidator.onArticleUpdated(articleId, {
-        summary: result.summary,
-        detailedSummary: result.detailedSummary,
-      });
-      console.log('キャッシュを無効化しました');
-    } catch (cacheError) {
-      cacheInvalidationFailed = true;
-      console.error('');
-      console.error('警告: キャッシュ無効化に失敗しました');
-      console.error('記事ID:', articleId);
-      console.error('エラー:', cacheError instanceof Error ? cacheError.message : String(cacheError));
-      if (cacheError instanceof Error && cacheError.stack) {
-        console.error('スタックトレース:', cacheError.stack);
-      }
-      console.error('');
-      console.error('手動対応が必要:');
-      console.error('  1. Redisサービスが起動しているか確認: docker ps | grep redis');
-      console.error('  2. 手動でキャッシュをクリア: docker exec techtrend-redis redis-cli FLUSHALL');
-      console.error('  3. または、アプリケーション再起動でキャッシュを更新');
-    }
+    // onArticleUpdated は失敗を投げずにログ（"Failed to invalidate cache on article update"）へ出す
+    await cacheInvalidator.onArticleUpdated(articleId, {
+      summary: result.summary,
+      detailedSummary: result.detailedSummary,
+    });
+    console.log('キャッシュの無効化を実行しました（失敗はログに出ます）');
     console.log('');
     console.log('='.repeat(60));
-    if (cacheInvalidationFailed) {
-      console.log('完了（警告: キャッシュ無効化に失敗）');
-      console.log('='.repeat(60));
-      process.exitCode = 1;
-    } else {
-      console.log('完了');
-      console.log('='.repeat(60));
-    }
+    console.log('完了');
+    console.log('='.repeat(60));
   } catch (error) {
     console.error('エラー:', error);
     throw error;

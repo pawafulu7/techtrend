@@ -223,6 +223,8 @@ describe('/api/articles/[id]', () => {
         data: {
           title: 'Updated Article',
           summary: 'Updated summary',
+          // 要約を書いたら、要約の処理を終えた記事として一覧に出す
+          summaryComputedAt: expect.any(Date),
           content: 'Updated content',
           // 本文を書いたら本文の更新日時も進める
           contentUpdatedAt: expect.any(Date),
@@ -234,7 +236,23 @@ describe('/api/articles/[id]', () => {
         },
       });
 
-      expect(cacheInvalidatorMock.onArticleUpdated).toHaveBeenCalledWith(VALID_ARTICLE_ID);
+      // タイトル・要約を書いたので、検索のキャッシュも消えるよう changes を渡す
+      expect(cacheInvalidatorMock.onArticleUpdated).toHaveBeenCalledWith(VALID_ARTICLE_ID, {
+        title: 'Updated Article',
+        summary: 'Updated summary',
+      });
+    });
+
+    it('タイトルも要約も書かない更新では、キャッシュの無効化に changes を渡さない', async () => {
+      prismaMock.article.update.mockResolvedValue(mockArticle);
+
+      const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ thumbnail: 'https://example.com/new-thumb.jpg' }),
+      });
+      await PATCH(request, { params: Promise.resolve({ id: VALID_ARTICLE_ID }) });
+
+      expect(cacheInvalidatorMock.onArticleUpdated).toHaveBeenCalledWith(VALID_ARTICLE_ID, undefined);
     });
 
     it.each([
@@ -269,12 +287,26 @@ describe('/api/articles/[id]', () => {
       expect(mockEnqueue).not.toHaveBeenCalled();
     });
 
-    it('要約を空にしたら、ジョブを積まない（ワーカーは要約の無い記事を飛ばす）', async () => {
+    it('要約を空にしたら、ジョブを積まず、要約の処理の日時も進めない（古い埋め込みは DB のトリガーが消す）', async () => {
       prismaMock.article.update.mockResolvedValue({ ...mockArticle, summary: '' });
 
       const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
         method: 'PATCH',
         body: JSON.stringify({ summary: '' }),
+      });
+      const response = await PATCH(request, { params: Promise.resolve({ id: VALID_ARTICLE_ID }) });
+
+      expect(response.status).toBe(200);
+      expect(mockEnqueue).not.toHaveBeenCalled();
+      expect(prismaMock.article.update.mock.calls[0][0].data).toEqual({ summary: '' });
+    });
+
+    it('要約の無い記事のタイトルだけを書いても、ジョブを積まない', async () => {
+      prismaMock.article.update.mockResolvedValue({ ...mockArticle, summary: null });
+
+      const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ title: 'Updated Article' }),
       });
       const response = await PATCH(request, { params: Promise.resolve({ id: VALID_ARTICLE_ID }) });
 

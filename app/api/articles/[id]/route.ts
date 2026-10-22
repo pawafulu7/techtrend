@@ -130,7 +130,12 @@ async function patchHandler(request: NextRequest, context: any) {
 
     const updateData: Prisma.ArticleUpdateInput = {};
     if (title !== undefined) updateData.title = title;
-    if (summary !== undefined) updateData.summary = summary;
+    if (summary !== undefined) {
+      updateData.summary = summary;
+      // 一覧は summaryComputedAt がある記事だけを出し、定期の要約生成は要約のある記事を拾わない。
+      // 要約を書いた記事は、要約の処理を終えたものとして扱う
+      if (summary) updateData.summaryComputedAt = new Date();
+    }
     if (thumbnail !== undefined) updateData.thumbnail = thumbnail;
     if (content !== undefined) {
       updateData.content = content;
@@ -162,13 +167,21 @@ async function patchHandler(request: NextRequest, context: any) {
     });
 
     // 埋め込みはタイトルと一覧要約から作るので、どちらかを書いたら保存の後にジョブを積む。
-    // ワーカーは要約の無い記事を飛ばすので、要約が残っているときだけ
-    if ((title !== undefined || summary !== undefined) && article.summary) {
+    // ワーカーは要約の無い記事を飛ばすので、要約が残っているときだけ（空にした要約の埋め込みは
+    // DB のトリガーが消す）
+    const embeddingTextWritten = title !== undefined || summary !== undefined;
+    if (embeddingTextWritten && article.summary) {
       await getEmbeddingScheduler().enqueue(id);
     }
 
-    // キャッシュを無効化
-    await cacheInvalidator.onArticleUpdated(id);
+    // キャッシュを無効化。タイトルか要約を書いたら、検索のキャッシュも消す
+    // （onArticleUpdated は changes のタイトル・要約の値があるときに消す）
+    await cacheInvalidator.onArticleUpdated(
+      id,
+      embeddingTextWritten
+        ? { title: article.title, summary: article.summary }
+        : undefined
+    );
 
     return NextResponse.json({
       success: true,

@@ -58,6 +58,8 @@ interface RegenerationResult {
   status: 'success' | 'failed' | 'skipped';
   error?: string;
   attempts: number;
+  /** 要約を保存したか。再生成後も短くて skipped にした記事も、要約は保存している */
+  saved?: boolean;
 }
 
 interface Statistics {
@@ -337,6 +339,7 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
               });
               // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
               await embeddingScheduler.enqueue(article.id);
+              result.saved = true;
             }
 
             if (stillTooShort) {
@@ -563,8 +566,8 @@ async function main() {
     // レポート出力
     printReport(stats, results);
     
-    // キャッシュ無効化（本番実行時のみ）
-    if (!isDryRun && stats.successCount > 0) {
+    // キャッシュ無効化（本番実行時のみ）。要約を保存した記事があれば消す
+    if (!isDryRun && results.some((r) => r.saved)) {
       console.error('\n🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
       console.error('✅ キャッシュ無効化完了');
@@ -577,9 +580,12 @@ async function main() {
     console.error('\n❌ エラーが発生しました:', error);
     throw error;
   } finally {
-    await prisma.$disconnect();
-    // キャッシュのモジュールが読み込んだ時点で Redis に接続しているので、閉じないとプロセスが終わらない
-    await closeRedisConnection();
+    try {
+      await prisma.$disconnect();
+    } finally {
+      // キャッシュのモジュールが読み込んだ時点で Redis に接続しているので、閉じないとプロセスが終わらない
+      await closeRedisConnection();
+    }
   }
 }
 

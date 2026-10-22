@@ -7,6 +7,7 @@
  */
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
+import type { Prisma } from '@/lib/prisma-exports';
 import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
@@ -23,7 +24,7 @@ const embeddingScheduler = new EmbeddingScheduler(prisma);
 const unprocessedWhere = {
   summary: { not: null },
   summaryVersion: { lt: 6 }
-};
+} satisfies Prisma.ArticleWhereInput;
 
 // コマンドライン引数
 const args = process.argv.slice(2);
@@ -104,6 +105,50 @@ async function generateUnifiedSummary(title: string, content: string): Promise<S
   };
 }
 
+/**
+ * 統一フォーマットへの移行を優先（スコアが下がっても適用）
+ * forceオプションがない場合でも、summaryVersion != 6 の記事は必ず更新
+ */
+function shouldUpdateSummary(summaryVersion: number, newScore: number, currentScore: number): boolean {
+  return forceRegenerate || summaryVersion !== 6 || newScore > currentScore;
+}
+
+/**
+ * 要約とタグを 1 つのトランザクションで保存し、保存の後に埋め込みのジョブを積む。
+ * タグで失敗したときに要約と summaryVersion だけが進み、再実行の対象から外れるのを防ぐ。
+ * タグは大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）。
+ * 生成されたタグが無ければ、今のタグを残す
+ */
+async function saveRegeneratedSummary(articleId: string, result: SummaryResult): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const tags = result.tags.length > 0
+      ? await resolveTags(
+          result.tags.map((name) => ({ name })),
+          tx
+        )
+      : [];
+    await tx.article.update({
+      where: { id: articleId },
+      data: {
+        summary: result.summary,
+        detailedSummary: result.detailedSummary,
+        articleType: 'unified',
+        summaryVersion: getUnifiedSummaryService().getSummaryVersion(),
+        // 定期実行の要約生成（batch-processor）と同じ状態を書く。一覧は summaryComputedAt が
+        // ある記事だけを出す
+        summaryComputedAt: new Date(),
+        summaryError: null,
+        skipReason: null,
+        ...(result.tags.length > 0 && {
+          tags: { set: tags.map((tag) => ({ id: tag.id })) }
+        })
+      }
+    });
+  });
+  // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+  await embeddingScheduler.enqueue(articleId);
+}
+
 // parseResponseは統一サービス内で処理されるため削除
 
 async function main() {
@@ -134,7 +179,7 @@ async function main() {
     
     // 未処理記事の条件（summaryVersion < 6 または forceRegenerate）
     // Prismaのバグ回避のため、簡略化したクエリを使用
-    const whereCondition: any = forceRegenerate ?
+    const whereCondition: Prisma.ArticleWhereInput = forceRegenerate ?
       { summary: { not: null } } :
       unprocessedWhere;
     
@@ -209,38 +254,9 @@ async function main() {
         // 新しい品質をチェック
         const newScore = checkSummaryQuality(result.summary, result.detailedSummary).score;
         
-        // 統一フォーマットへの移行を優先（スコアが下がっても適用）
-        // forceオプションがない場合でも、summaryVersion != 6 の記事は必ず更新
-        const shouldUpdate = forceRegenerate || article.summaryVersion !== 6 || newScore > currentScore;
-        
-        if (shouldUpdate) {
+        if (shouldUpdateSummary(article.summaryVersion, newScore, currentScore)) {
           if (!isDryRun) {
-            // 要約とタグを 1 つのトランザクションで更新する。タグで失敗したときに要約と
-            // summaryVersion だけが進み、再実行の対象から外れるのを防ぐ。
-            // タグは大文字小文字だけが違う既存のタグを使う（#672。lower(name) で一意）。
-            // 生成されたタグが無ければ、今のタグを残す
-            await prisma.$transaction(async (tx) => {
-              const tags = result.tags.length > 0
-                ? await resolveTags(
-                    result.tags.map((name) => ({ name })),
-                    tx
-                  )
-                : [];
-              await tx.article.update({
-                where: { id: article.id },
-                data: {
-                  summary: result.summary,
-                  detailedSummary: result.detailedSummary,
-                  articleType: 'unified',
-                  summaryVersion: getUnifiedSummaryService().getSummaryVersion(),
-                  ...(result.tags.length > 0 && {
-                    tags: { set: tags.map((tag) => ({ id: tag.id })) }
-                  })
-                }
-              });
-            });
-            // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
-            await embeddingScheduler.enqueue(article.id);
+            await saveRegeneratedSummary(article.id, result);
           }
 
           const improvement = newScore - currentScore;
@@ -288,17 +304,11 @@ async function main() {
               const retryResult = await generateUnifiedSummary(article.title, content);
               const retryScore = checkSummaryQuality(retryResult.summary, retryResult.detailedSummary).score;
               
-              if (retryScore > currentScore && !isDryRun) {
-                await prisma.article.update({
-                  where: { id: article.id },
-                  data: {
-                    summary: retryResult.summary,
-                    detailedSummary: retryResult.detailedSummary,
-                    articleType: 'unified',
-                    summaryVersion: getUnifiedSummaryService().getSummaryVersion()
-                  }
-                });
-                await embeddingScheduler.enqueue(article.id);
+              // 通常の経路と同じ条件・同じ保存（タグも同じトランザクション）にする
+              if (shouldUpdateSummary(article.summaryVersion, retryScore, currentScore)) {
+                if (!isDryRun) {
+                  await saveRegeneratedSummary(article.id, retryResult);
+                }
                 console.error(`  ✅ 再試行成功: ${currentScore} → ${retryScore}点`);
                 stats.improved++;
               }
@@ -387,9 +397,12 @@ async function main() {
     console.error('\n❌ 致命的エラーが発生しました:', error);
     process.exit(1);
   } finally {
-    await prisma.$disconnect();
-    // キャッシュのモジュールが読み込んだ時点で Redis に接続しているので、閉じないとプロセスが終わらない
-    await closeRedisConnection();
+    try {
+      await prisma.$disconnect();
+    } finally {
+      // キャッシュのモジュールが読み込んだ時点で Redis に接続しているので、閉じないとプロセスが終わらない
+      await closeRedisConnection();
+    }
   }
 }
 

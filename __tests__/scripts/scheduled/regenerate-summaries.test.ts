@@ -6,6 +6,8 @@
 const mockGenerateDetailedSummary = jest.fn();
 const mockEnqueue = jest.fn();
 const mockRateLimitDelay = jest.fn();
+const mockOnArticleUpdated = jest.fn();
+const mockCloseRedisConnection = jest.fn();
 
 jest.mock('@/lib/ai/gemini', () => ({
   GeminiClient: class {
@@ -19,6 +21,18 @@ jest.mock('@/lib/services/embedding-scheduler', () => ({
   EmbeddingScheduler: class {
     enqueue = (...args: unknown[]) => mockEnqueue(...args);
   },
+}));
+
+jest.mock('@/lib/cache/cache-invalidator', () => ({
+  cacheInvalidator: {
+    onArticleUpdated: (...args: unknown[]) => mockOnArticleUpdated(...args),
+  },
+}));
+
+// next/jest の SWC は '@/...' の import を相対パスに書き換えるので、moduleNameMapper のモック
+// （__mocks__/lib/redis/client.ts）は使われない。実装ファイルを相対パスでモックする（cli.test.ts と同じ）
+jest.mock('../../../lib/redis/client', () => ({
+  closeRedisConnection: () => mockCloseRedisConnection(),
 }));
 
 jest.mock('@/scripts/scheduled/utils/regeneration-helpers', () => ({
@@ -70,6 +84,8 @@ describe('regenerateSummaries', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRateLimitDelay.mockResolvedValue(undefined);
+    mockOnArticleUpdated.mockResolvedValue(undefined);
+    mockCloseRedisConnection.mockResolvedValue(undefined);
     mockGenerateDetailedSummary.mockResolvedValue({
       summary: '新しい一覧要約です。',
       detailedSummary: '・要点: 新しい詳細要約です。',
@@ -84,7 +100,7 @@ describe('regenerateSummaries', () => {
     jest.restoreAllMocks();
   });
 
-  it('生成した形式（統一プロンプト）の版で保存し、保存の後に埋め込みのジョブを積む', async () => {
+  it('生成した形式（統一プロンプト）の版と、定期実行と同じ状態で保存し、保存の後にジョブを積んでキャッシュを消す', async () => {
     mockPrisma.article.findMany.mockResolvedValue([article]);
 
     await regenerateSummaries({ articleIds: ['art-1'] });
@@ -92,11 +108,25 @@ describe('regenerateSummaries', () => {
     expect(mockPrisma.article.update).toHaveBeenCalledTimes(1);
     const { where, data } = mockPrisma.article.update.mock.calls[0][0];
     expect(where).toEqual({ id: 'art-1' });
-    expect(data.summaryVersion).toBe(SUMMARY_VERSION.V8);
+    expect(data).toEqual(
+      expect.objectContaining({
+        summaryVersion: SUMMARY_VERSION.V8,
+        // 一覧は summaryComputedAt がある記事だけを出す
+        summaryComputedAt: expect.any(Date),
+        summaryError: null,
+        skipReason: null,
+      })
+    );
     expect(mockEnqueue).toHaveBeenCalledWith('art-1');
     expect(mockEnqueue.mock.invocationCallOrder[0]).toBeGreaterThan(
       mockPrisma.article.update.mock.invocationCallOrder[0]
     );
+    expect(mockOnArticleUpdated).toHaveBeenCalledWith('art-1', {
+      summary: data.summary,
+      detailedSummary: data.detailedSummary,
+    });
+    // キャッシュのモジュールが開いた Redis の接続を閉じる（閉じないとプロセスが終わらない）
+    expect(mockCloseRedisConnection).toHaveBeenCalledTimes(1);
   });
 
   it('生成に失敗した記事は保存せず、ジョブも積まない', async () => {
@@ -109,7 +139,19 @@ describe('regenerateSummaries', () => {
     expect(mockEnqueue).not.toHaveBeenCalled();
   });
 
-  it('既定の対象には、要約・詳細要約が短い記事を SQL で選んだ ID で加える', async () => {
+  it('本文が短い記事は生成も保存もせず、ジョブも積まない', async () => {
+    mockPrisma.article.findMany.mockResolvedValue([
+      { ...article, content: '短い本文', summary: null },
+    ]);
+
+    await regenerateSummaries({ articleIds: ['art-1'] });
+
+    expect(mockGenerateDetailedSummary).not.toHaveBeenCalled();
+    expect(mockPrisma.article.update).not.toHaveBeenCalled();
+    expect(mockEnqueue).not.toHaveBeenCalled();
+  });
+
+  it('既定の対象は、今の版より前の要約に絞り、短い要約は SQL で選んだ ID で加える', async () => {
     mockPrisma.$queryRaw.mockResolvedValue([{ id: 'short-1' }, { id: 'short-2' }]);
     mockPrisma.article.findMany.mockResolvedValue([]);
 
@@ -117,24 +159,44 @@ describe('regenerateSummaries', () => {
 
     expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
     const [strings, ...values] = mockPrisma.$queryRaw.mock.calls[0];
-    expect(strings.join('?')).toContain('char_length(summary) < 50');
-    expect(strings.join('?')).toContain('char_length("detailedSummary") < 200');
-    // 下の取得と同じ件数までに絞る
+    const sql = strings.join('?');
+    expect(sql).toContain('char_length(summary) < 50');
+    expect(sql).toContain('char_length("detailedSummary") < 200');
+    expect(sql).toContain('"summaryVersion" <');
+    // 下の取得と同じ並びで take 件までに絞る（同じ日時は id で決める）
+    expect(sql).toContain('ORDER BY "createdAt" DESC, id DESC');
+    expect(values).toContain(SUMMARY_VERSION.CURRENT);
     expect(values).toContain(10);
 
-    const { where, take } = mockPrisma.article.findMany.mock.calls[0][0];
+    const { where, take, orderBy } = mockPrisma.article.findMany.mock.calls[0][0];
     expect(take).toBe(10);
+    expect(orderBy).toEqual([{ createdAt: 'desc' }, { id: 'desc' }]);
+    // 統一プロンプト（V8）で作るので、今の版の要約は版を下げないよう対象にしない
+    expect(where.summary).toEqual({ not: null });
+    expect(where.summaryVersion).toEqual({ lt: SUMMARY_VERSION.CURRENT });
+    // quality-check.ts が再生成の印として版を 0 に戻した記事
+    expect(where.OR).toContainEqual({ summaryVersion: 0 });
     expect(where.OR).toContainEqual({ id: { in: ['short-1', 'short-2'] } });
     // 文字列の lt に数値を渡すと、Prisma の検証エラーで取得ごと落ちる
     for (const condition of where.OR) {
-      const filter = Object.values(condition)[0];
-      if (filter && typeof filter === 'object') {
-        expect(filter).not.toHaveProperty('lt');
+      for (const filter of Object.values(condition)) {
+        if (filter && typeof filter === 'object') {
+          expect(filter).not.toHaveProperty('lt');
+        }
       }
     }
   });
 
-  it('--force では文字数で選ばず、条件なしで取得する', async () => {
+  it('--limit が正の数でなければ、既定の 50 件にする', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+    mockPrisma.article.findMany.mockResolvedValue([]);
+
+    await regenerateSummaries({ limit: -5 });
+
+    expect(mockPrisma.article.findMany.mock.calls[0][0].take).toBe(50);
+  });
+
+  it('--force では文字数でも版でも選ばず、条件なしで取得する', async () => {
     mockPrisma.article.findMany.mockResolvedValue([]);
 
     await regenerateSummaries({ force: true });

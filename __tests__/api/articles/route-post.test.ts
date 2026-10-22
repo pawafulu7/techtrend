@@ -156,10 +156,14 @@ describe('POST /api/articles (middleware mocked)', () => {
     );
   });
 
-  it('要約を付けて作ったら、作成の後に埋め込みのジョブを積むこと', async () => {
+  it('要約を付けて作ったら、要約の処理を終えた記事として作り、作成の後に埋め込みのジョブを積むこと', async () => {
     const response = await POST(buildRequest(validPayload()));
 
     expect(response.status).toBe(201);
+    // 定期の要約生成は要約のある記事を拾わないので、ここで一覧に出す印を付ける
+    expect(mockPrisma.article.create.mock.calls[0][0].data.summaryComputedAt).toEqual(
+      expect.any(Date)
+    );
     expect(mockEnqueue).toHaveBeenCalledWith('article-1');
     expect(mockEnqueue.mock.invocationCallOrder[0]).toBeGreaterThan(
       mockPrisma.article.create.mock.invocationCallOrder[0]
@@ -180,6 +184,9 @@ describe('POST /api/articles (middleware mocked)', () => {
     const response = await POST(buildRequest(payload));
 
     expect(response.status).toBe(201);
+    expect(mockPrisma.article.create.mock.calls[0][0].data).not.toHaveProperty(
+      'summaryComputedAt'
+    );
     expect(mockEnqueue).not.toHaveBeenCalled();
   });
 

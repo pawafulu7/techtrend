@@ -181,6 +181,9 @@ export async function handlePost(request: NextRequest): Promise<NextResponse> {
           title,
           url,
           summary,
+          // 定期の要約生成は要約のある記事を拾わないので、要約を付けて作った記事は要約の処理を
+          // 終えたものとして扱う（一覧は summaryComputedAt がある記事だけを出す）
+          ...(summary ? { summaryComputedAt: new Date() } : {}),
           thumbnail,
           content,
           publishedAt: parsedPublishedAt,
