@@ -1,12 +1,17 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
+/**
+ * 要約の生成（UnifiedSummaryServiceImpl）と、埋め込みのジョブ（EmbeddingScheduler）の結合テスト。
+ * 要約が成功し記事の ID があればジョブを積み、無いときや失敗したときは積まないことを、実際の DB で確かめる。
+ *
+ * 要約の生成（Gemini）と品質の検査は差し替える。ここで確かめるのは、要約の結果を受けてジョブを積むかどうかで、
+ * 要約の中身は lib/ai/adapter・lib/ai/service の単体テストが確かめる。
+ */
+import { describe, it, expect, beforeAll, afterAll, beforeEach, jest } from '@jest/globals';
 import { prisma } from '@/lib/prisma';
 import { UnifiedSummaryServiceImpl } from '@/lib/ai/service/unified-summary-service';
-import { GeminiSummaryAdapter } from '@/lib/ai/adapter/gemini-summary-adapter';
-import { GeminiTransportImpl } from '@/lib/ai/transport/gemini-transport';
-import { PromptBuilder } from '@/lib/ai/adapter/prompt-builder';
-import { SummaryQualityChecker } from '@/lib/ai/service/quality-checker';
+import type { SummaryProvider } from '@/lib/ai/adapter/summary-provider.interface';
+import type { QualityChecker } from '@/lib/ai/service/quality-checker.interface';
 import { SummaryPostProcessor } from '@/lib/ai/service/post-processor';
-import { GeminiTitleTranslator } from '@/lib/ai/translator/gemini-title-translator';
+import type { TitleTranslator } from '@/lib/ai/translator/gemini-title-translator';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import type { Article } from '@/lib/prisma-exports';
 
@@ -35,31 +40,37 @@ describe('Summary-Embedding Integration', () => {
       },
     });
 
-    // Setup real summary service (for integration testing)
-    const apiKey = process.env.GEMINI_API_KEY || 'test-key';
-    const transport = new GeminiTransportImpl(apiKey, 'https://generativelanguage.googleapis.com/v1beta', 3, 3);
-    const promptBuilder = new PromptBuilder();
-    const adapter = new GeminiSummaryAdapter(transport, promptBuilder, 'gemini-2.5-flash-lite');
-    const qualityChecker = new SummaryQualityChecker();
-    const postProcessor = new SummaryPostProcessor();
-    const translator = new GeminiTitleTranslator(transport, {
-      enabled: false,
-      model: 'gemini-2.5-flash-lite',
-      temperature: 0.3,
-      topP: 0.95,
-      topK: 40,
-      maxOutputTokens: 256,
-    });
-    const embeddingScheduler = new EmbeddingScheduler();
+    const summaryProvider: SummaryProvider = {
+      summarize: jest.fn<SummaryProvider['summarize']>().mockResolvedValue({
+        headline: 'React・TypeScript・Next.js による開発の要点',
+        detailedSummary: '・React の基本\n・TypeScript の型\n・Next.js の構成',
+        category: 'Frontend',
+        tags: ['React', 'TypeScript', 'Next.js'],
+        confidence: 0.9,
+      }),
+    };
+    // 点数は 80。要約の閾値（qualityThreshold）を 90 にすると失敗する
+    const qualityChecker: QualityChecker = {
+      checkQuality: jest.fn<QualityChecker['checkQuality']>().mockReturnValue({
+        isValid: true,
+        issues: [],
+        requiresRegeneration: false,
+        score: 80,
+      }),
+      calculateScore: jest.fn<QualityChecker['calculateScore']>().mockReturnValue(80),
+    };
+    const translator: TitleTranslator = {
+      translateTitle: jest.fn<TitleTranslator['translateTitle']>().mockResolvedValue(null),
+    };
 
     summaryService = new UnifiedSummaryServiceImpl(
-      adapter,
+      summaryProvider,
       qualityChecker,
-      postProcessor,
+      new SummaryPostProcessor(),
       translator,
-      embeddingScheduler,
+      new EmbeddingScheduler(),
       {
-        qualityThreshold: 50, // Lower threshold for testing
+        qualityThreshold: 50,
         maxRetries: 3,
         translationEnabled: false,
       }
@@ -161,8 +172,8 @@ describe('Summary-Embedding Integration', () => {
     expect(job).toBeNull();
   });
 
-  it('should NOT throw error if summary generation fails', async () => {
-    // Test with extremely short content that will fail quality check
+  it('should NOT create job if summary generation fails', async () => {
+    // 品質の点数（80）が閾値（90）に届かず、やり直しても失敗する
     await expect(
       summaryService.generateSummary({
         title: 'Short',

@@ -20,12 +20,22 @@ import { VectorSearchService } from '@/lib/rag/vector-search-service';
 // Mock VectorSearchService
 jest.mock('@/lib/rag/vector-search-service');
 
+// 検索ツール（semantic-search-tool）は searchWithFallback を呼ぶ。テストは検索の結果（配列）だけを決めればよいので、
+// mockSearch の戻り値を results に入れて返す
 const mockSearch = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
   (VectorSearchService as jest.Mock).mockImplementation(() => ({
-    search: mockSearch,
+    searchWithFallback: async (query: string, options: unknown) => ({
+      results: await mockSearch(query, options),
+      metadata: {
+        phase: null,
+        finalThreshold: 0.5,
+        attemptCount: 1,
+        usedFallback: false,
+      },
+    }),
   }));
 });
 
@@ -79,7 +89,7 @@ describe('RAG Agent Integration', () => {
 
       const toolCall = result.toolCalls![0];
       expect(toolCall.toolName).toBe('semantic-article-search');
-      expect(toolCall.args).toMatchObject({
+      expect(toolCall.input).toMatchObject({
         query: expect.any(String),
       });
 
@@ -188,10 +198,11 @@ describe('RAG Agent Integration', () => {
       });
 
       expect(result.usage).toBeDefined();
-      expect(result.usage.promptTokens).toBeGreaterThan(0);
-      expect(result.usage.completionTokens).toBeGreaterThan(0);
+      // AI SDK v7 の usage は全ステップの合計で、項目名は inputTokens・outputTokens
+      expect(result.usage.inputTokens).toBeGreaterThan(0);
+      expect(result.usage.outputTokens).toBeGreaterThan(0);
       expect(result.usage.totalTokens).toBe(
-        result.usage.promptTokens + result.usage.completionTokens
+        (result.usage.inputTokens ?? 0) + (result.usage.outputTokens ?? 0)
       );
     },
     30000

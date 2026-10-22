@@ -158,6 +158,10 @@ async function parseSSEStream(
             });
           }
         } else if (eventData.type === 'tool-start') {
+          // 古い要求のチャンクで、新しい要求の段階を書き換えない
+          if (isStaleChunk()) {
+            continue;
+          }
           // Transition to analyzing when tool execution starts
           setCurrentStep('analyzing');
           toolCalls.push({
