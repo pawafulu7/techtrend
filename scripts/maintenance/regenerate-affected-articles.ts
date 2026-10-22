@@ -80,6 +80,11 @@ async function main() {
     console.log(`[${i + 1}/${articles.length}] ${article.id}`);
     console.log(`  タイトル: ${article.title?.substring(0, 60)}...`);
 
+    if (!article.content) {
+      console.log('  ⚠ 本文が無いのでスキップ');
+      continue;
+    }
+
     try {
       const result = await deps.service.generateSummary({
         title: article.title,
@@ -92,7 +97,7 @@ async function main() {
         data: {
           summary: result.summary,
           detailedSummary: result.detailedSummary,
-          summaryVersion: 8,
+          summaryVersion: result.summaryVersion,
           summaryComputedAt: new Date(),
         },
       });

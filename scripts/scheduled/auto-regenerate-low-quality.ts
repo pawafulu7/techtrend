@@ -396,4 +396,5 @@ if (require.main === module) {
     });
 }
 
-export { autoRegenerateLowQuality, AutoRegenerateOptions, RegenerationResult };
+export { autoRegenerateLowQuality };
+export type { AutoRegenerateOptions, RegenerationResult };

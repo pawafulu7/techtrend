@@ -55,7 +55,7 @@ async function main() {
         data: {
           summary: result.summary,
           detailedSummary: result.detailedSummary,
-          summaryVersion: 8,
+          summaryVersion: result.summaryVersion,
           summaryComputedAt: new Date(),
         },
       });

@@ -29,6 +29,11 @@ async function main() {
     const article = articles[i];
     console.log(`[${i + 1}/${articles.length}] 処理中: ${article.title}`);
 
+    if (!article.content) {
+      console.log('  ⚠ 本文が無いのでスキップ');
+      continue;
+    }
+
     try {
       const result = await deps.service.generateSummary({
         title: article.title,
@@ -41,7 +46,7 @@ async function main() {
         data: {
           summary: result.summary,
           detailedSummary: result.detailedSummary,
-          summaryVersion: 8,
+          summaryVersion: result.summaryVersion,
           summaryComputedAt: new Date(),
         },
       });
