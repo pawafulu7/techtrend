@@ -6,8 +6,9 @@ import {
   hasUpdatedArticlesSince
 } from '../../../scripts/utils/processing-status';
 
+// 接続先は DATABASE_URL だけから取る（テスト用の DB でなければ jest.setup.integration.js が止める）
 const prisma = createPrismaClient({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test',
+  connectionString: process.env.DATABASE_URL,
 });
 
 describe('ProcessingStatus', () => {

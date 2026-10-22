@@ -1,7 +1,8 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 
+// 接続先は DATABASE_URL だけから取る（テスト用の DB でなければ jest.setup.integration.js が止める）
 const prisma = createPrismaClient({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test',
+  connectionString: process.env.DATABASE_URL,
 });
 
 describe('差分処理の動作確認', () => {
@@ -41,21 +42,27 @@ describe('差分処理の動作確認', () => {
   });
 
   afterAll(async () => {
-    // テストデータのクリーンアップ
-    await prisma.article.deleteMany({
-      where: { sourceId: testSourceId }
-    });
-    await prisma.source.delete({
-      where: { id: testSourceId }
-    });
-    await prisma.processingLog.deleteMany({
-      where: {
-        processName: {
-          in: ['test-summary', 'test-quality']
-        }
+    try {
+      // テストデータのクリーンアップ。ソースを作る前に beforeAll が失敗すると testSourceId は無い。
+      // where の値が undefined だと Prisma は条件を外して全記事を消すので、作ったソースがあるときだけ消す
+      if (testSourceId) {
+        await prisma.article.deleteMany({
+          where: { sourceId: testSourceId }
+        });
+        await prisma.source.delete({
+          where: { id: testSourceId }
+        });
       }
-    });
-    await prisma.$disconnect();
+      await prisma.processingLog.deleteMany({
+        where: {
+          processName: {
+            in: ['test-summary', 'test-quality']
+          }
+        }
+      });
+    } finally {
+      await prisma.$disconnect();
+    }
   });
 
   describe('要約生成の差分処理', () => {
