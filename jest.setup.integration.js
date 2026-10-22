@@ -11,7 +11,12 @@ process.env.LOG_LEVEL = 'error';
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is required for integration tests');
 }
-if (new URL(process.env.DATABASE_URL).pathname !== '/techtrend_test') {
+// DB 名はパス名で見る。socket: の URL は DB 名をクエリ（db=）から取るので、postgres: と postgresql: だけを通す
+const databaseUrl = new URL(process.env.DATABASE_URL);
+if (
+  !['postgres:', 'postgresql:'].includes(databaseUrl.protocol) ||
+  databaseUrl.pathname !== '/techtrend_test'
+) {
   throw new Error('Integration tests must run against techtrend_test');
 }
 
