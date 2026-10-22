@@ -85,10 +85,12 @@ describe('CacheInvalidator', () => {
 
   const getRedisCacheInvalidatePatternMocks = (): jest.Mock[] => {
     const redisCacheConstructor = RedisCache as unknown as jest.Mock;
-    return redisCacheConstructor.mock.results.map((result: { value: unknown }) => {
-      const instance = result.value as { invalidatePattern?: unknown };
-      return instance.invalidatePattern as jest.Mock;
-    });
+    return redisCacheConstructor.mock.results.map(
+      (result: { value: unknown }) => {
+        const instance = result.value as { invalidatePattern?: unknown };
+        return instance.invalidatePattern as jest.Mock;
+      }
+    );
   };
 
   beforeEach(() => {
@@ -96,7 +98,8 @@ describe('CacheInvalidator', () => {
 
     mockTagCacheInvalidate = tagCache.invalidate as unknown as jest.Mock;
     mockSourceCacheInvalidate = sourceCache.invalidate as unknown as jest.Mock;
-    mockPopularCacheInvalidateAll = popularCache.invalidateAll as unknown as jest.Mock;
+    mockPopularCacheInvalidateAll =
+      popularCache.invalidateAll as unknown as jest.Mock;
 
     // モックRedisServiceを作成し、コンストラクタに注入
     mockRedisService = {
@@ -199,6 +202,14 @@ describe('CacheInvalidator', () => {
       );
     });
 
+    it('一覧の件数のキャッシュも消す（残すと一覧の total が古いまま入り直す）', async () => {
+      await cacheInvalidator.onBulkImport();
+
+      expect(mockRedisService.clearPattern).toHaveBeenCalledWith(
+        createCachePattern(CACHE_NAMESPACES.ARTICLES_COUNT)
+      );
+    });
+
     it('should invalidate all existing caches', async () => {
       await cacheInvalidator.onBulkImport();
 
@@ -219,8 +230,8 @@ describe('CacheInvalidator', () => {
     it('should call clearPattern with correct namespace patterns', async () => {
       await cacheInvalidator.onBulkImport();
 
-      // 4つのnamespaceパターンでclearPatternが呼ばれることを確認
-      expect(mockRedisService.clearPattern).toHaveBeenCalledTimes(4);
+      // 5つのnamespaceパターンでclearPatternが呼ばれることを確認
+      expect(mockRedisService.clearPattern).toHaveBeenCalledTimes(5);
 
       // パターンの内容を確認
       const calls = (mockRedisService.clearPattern as jest.Mock).mock.calls.map(
@@ -228,8 +239,15 @@ describe('CacheInvalidator', () => {
       );
       expect(calls).toContain(createCachePattern(CACHE_NAMESPACES.L1_PUBLIC));
       expect(calls).toContain(createCachePattern(CACHE_NAMESPACES.L3_SEARCH));
-      expect(calls).toContain(createCachePattern(CACHE_NAMESPACES.ARTICLES_LIGHTWEIGHT));
-      expect(calls).toContain(createCachePattern(CACHE_NAMESPACES.ARTICLES_API));
+      expect(calls).toContain(
+        createCachePattern(CACHE_NAMESPACES.ARTICLES_LIGHTWEIGHT)
+      );
+      expect(calls).toContain(
+        createCachePattern(CACHE_NAMESPACES.ARTICLES_API)
+      );
+      expect(calls).toContain(
+        createCachePattern(CACHE_NAMESPACES.ARTICLES_COUNT)
+      );
     });
 
     it('should execute all invalidations in parallel', async () => {
@@ -243,7 +261,7 @@ describe('CacheInvalidator', () => {
       await promise;
 
       // 全ての無効化が呼ばれたことを確認
-      expect(mockRedisService.clearPattern).toHaveBeenCalledTimes(4);
+      expect(mockRedisService.clearPattern).toHaveBeenCalledTimes(5);
       // invalidatePatternは3つのRedisCache（articleCache, relatedCache, tagCloudCache）で呼ばれる
       const invalidatePatternMocks = getRedisCacheInvalidatePatternMocks();
       const invalidatePatternCallCount = invalidatePatternMocks.reduce(

@@ -324,7 +324,9 @@ describe('/api/articles/[id]', () => {
       ['要約', { summary: 'Updated summary' }],
       ['サムネイル', { thumbnail: 'https://example.com/new-thumb.jpg' }],
       ['タグ', { tagNames: ['Vue.js'] }],
-    ])('一覧に出る項目（%s）を書いたら、一覧のキャッシュも消す', async (_label, body) => {
+      // 本文の無い記事は一覧に出さないので、本文を書くと一覧に出る記事が変わる
+      ['本文', { content: 'Updated content' }],
+    ])('一覧に出る項目・出すかを決める項目（%s）を書いたら、一覧のキャッシュも消す', async (_label, body) => {
       prismaMock.article.update.mockResolvedValue(mockArticle);
 
       const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
@@ -336,12 +338,12 @@ describe('/api/articles/[id]', () => {
       expect(cacheInvalidatorMock.onBulkImport).toHaveBeenCalledTimes(1);
     });
 
-    it('本文だけを書いたら、一覧のキャッシュは消さない（一覧に本文は出ない）', async () => {
+    it('どの項目も書かない更新では、一覧のキャッシュは消さない', async () => {
       prismaMock.article.update.mockResolvedValue(mockArticle);
 
       const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
         method: 'PATCH',
-        body: JSON.stringify({ content: 'Updated content' }),
+        body: JSON.stringify({}),
       });
       await PATCH(request, { params: Promise.resolve({ id: VALID_ARTICLE_ID }) });
 

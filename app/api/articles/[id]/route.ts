@@ -185,12 +185,14 @@ async function patchHandler(request: NextRequest, context: any) {
         : undefined
     );
     // onArticleUpdated は一覧のキャッシュを消さないので、一覧に出る項目（タイトル・要約・サムネイル・
-    // タグ）を書いたら一覧のキャッシュも消す（collect-feeds の要約生成の後と同じ）。失敗しても
-    // 更新は済んでいるので、ログに出して成功を返す
+    // タグ）や、一覧に出すかを決める本文（本文の無い記事は出さない）を書いたら、一覧と件数の
+    // キャッシュも消す（collect-feeds の要約生成の後と同じ）。失敗しても更新は済んでいるので、
+    // ログに出して成功を返す
     if (
       embeddingTextWritten ||
       thumbnail !== undefined ||
-      tagNames !== undefined
+      tagNames !== undefined ||
+      content !== undefined
     ) {
       try {
         await cacheInvalidator.onBulkImport();

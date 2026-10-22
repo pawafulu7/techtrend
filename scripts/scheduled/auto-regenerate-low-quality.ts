@@ -241,6 +241,17 @@ async function autoRegenerateLowQuality(options: AutoRegenerateOptions = {}) {
       console.log(); // 改行
     }
 
+    if (succeeded > 0) {
+      // onArticleUpdated は記事ごとのキャッシュを消すが一覧のキャッシュは消さないので、要約を書いた
+      // 記事が一覧にすぐ出るよう最後にまとめて消す（collect-feeds の要約生成の後と同じ）。
+      // 失敗を投げるが、要約は保存済みなので警告に留める（キャッシュは TTL で切れる）
+      try {
+        await cacheInvalidator.onBulkImport();
+      } catch (cacheError) {
+        console.error(`⚠️ 一覧のキャッシュの無効化に失敗（続行）: ${summarizeError(cacheError)}`);
+      }
+    }
+
     // 結果サマリー
     reportResults('再生成結果', { total: articles.length, success: succeeded, failed }, console.log);
 
