@@ -6,6 +6,7 @@ import type { ApiResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { resolveTags } from '@/lib/services/tag-service';
+import { getEmbeddingScheduler } from '@/lib/di/providers/embedding-scheduler.provider';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
@@ -159,6 +160,12 @@ async function patchHandler(request: NextRequest, context: any) {
         },
       });
     });
+
+    // 埋め込みはタイトルと一覧要約から作るので、どちらかを書いたら保存の後にジョブを積む。
+    // ワーカーは要約の無い記事を飛ばすので、要約が残っているときだけ
+    if ((title !== undefined || summary !== undefined) && article.summary) {
+      await getEmbeddingScheduler().enqueue(id);
+    }
 
     // キャッシュを無効化
     await cacheInvalidator.onArticleUpdated(id);

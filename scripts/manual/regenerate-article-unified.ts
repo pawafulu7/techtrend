@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getUnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { resolveTags } from '@/lib/services/tag-service';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 
 async function regenerateArticleUnified(articleId: string) {
   console.log('='.repeat(60));
@@ -70,6 +71,9 @@ ${result.detailedSummary}`);
 
     console.log('データベースを更新しました');
 
+    // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+    await new EmbeddingScheduler(prisma).enqueue(articleId);
+
     if (result.tags && result.tags.length > 0) {
       console.log('');
       console.log(`タグ: ${result.tags.join(', ')}`);
@@ -98,7 +102,10 @@ ${result.detailedSummary}`);
 
     let cacheInvalidationFailed = false;
     try {
-      await cacheInvalidator.invalidateArticle(articleId);
+      await cacheInvalidator.onArticleUpdated(articleId, {
+        summary: result.summary,
+        detailedSummary: result.detailedSummary,
+      });
       console.log('キャッシュを無効化しました');
     } catch (cacheError) {
       cacheInvalidationFailed = true;

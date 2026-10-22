@@ -247,7 +247,7 @@ async function main() {
           if (hasNewContent) {
             updateData.content = enrichedData.content;
             // 本文を更新する他の全経路（collect-feeds.ts の5箇所、
-            // re-enrich-moneyforward-articles.ts、re-enrich-publickey-nulls.ts）と同様に
+            // re-enrich-publickey-nulls.ts）と同様に
             // contentUpdatedAt を進める。manage-quality-scores.ts は
             // contentUpdatedAt の差分で品質スコア再計算の対象を抽出するため
             // （scripts/scheduled/manage-quality-scores.ts:117-122）、更新しないと

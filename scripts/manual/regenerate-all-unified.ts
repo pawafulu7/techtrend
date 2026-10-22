@@ -12,9 +12,18 @@ import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-che
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { getUnifiedSummaryService } from '../../lib/ai/unified-summary-service';
 import { resolveTags } from '@/lib/services/tag-service';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { closeRedisConnection } from '@/lib/redis/client';
 import fetch from 'node-fetch';
 
 const prisma = createPrismaClient();
+const embeddingScheduler = new EmbeddingScheduler(prisma);
+
+// 未処理の記事（統一フォーマットより前の版）。対象の取得と、終了時の残り件数で同じ条件を使う
+const unprocessedWhere = {
+  summary: { not: null },
+  summaryVersion: { lt: 6 }
+};
 
 // コマンドライン引数
 const args = process.argv.slice(2);
@@ -125,12 +134,9 @@ async function main() {
     
     // 未処理記事の条件（summaryVersion < 6 または forceRegenerate）
     // Prismaのバグ回避のため、簡略化したクエリを使用
-    const whereCondition: any = forceRegenerate ? 
-      { summary: { not: null } } : 
-      { 
-        summary: { not: null },
-        summaryVersion: { lt: 6 }  // summaryVersionが6未満（nullと5を含む）
-      };
+    const whereCondition: any = forceRegenerate ?
+      { summary: { not: null } } :
+      unprocessedWhere;
     
     const query = {
       where: whereCondition,
@@ -187,11 +193,11 @@ async function main() {
       
       console.error(`[${i + 1}/${stats.totalTargets}] ${article.title.substring(0, 50)}...`);
       console.error(`  現在: ${currentScore}点 | ソース: ${article.source.name}`);
-      
+
+      // コンテンツの準備（Rate Limit 後の再試行でも使うので try の外に置く）
+      const content = article.content || article.title;
+
       try {
-        // コンテンツの準備
-        const content = article.content || article.title;
-        
         // 短すぎるコンテンツの警告
         if (content.length < 100) {
           console.error(`  ⚠️  極短コンテンツ: ${content.length}文字`);
@@ -233,6 +239,8 @@ async function main() {
                 }
               });
             });
+            // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+            await embeddingScheduler.enqueue(article.id);
           }
 
           const improvement = newScore - currentScore;
@@ -262,7 +270,9 @@ async function main() {
         console.error(`  ❌ エラー: ${errorMessage}`);
         
         // Rate Limitエラーの場合は特別処理
-        if (errorMessage.includes('429') || errorMessage.includes('rate') || errorMessage.includes('quota')) {
+        // 旧サービスは「API request failed: 429 - {本文}」で投げる。本文にはエラーの種類に関わらず
+        // generativelanguage.googleapis.com が入るので、'rate' の部分一致では判定しない
+        if (/API request failed: 429\b|RESOURCE_EXHAUSTED/.test(errorMessage)) {
           console.error('⚠️  Rate Limitエラーを検出しました。');
           console.error('📊 現在の進捗:');
           console.error(`  - 処理済み: ${stats.processed}件`);
@@ -288,6 +298,7 @@ async function main() {
                     summaryVersion: getUnifiedSummaryService().getSummaryVersion()
                   }
                 });
+                await embeddingScheduler.enqueue(article.id);
                 console.error(`  ✅ 再試行成功: ${currentScore} → ${retryScore}点`);
                 stats.improved++;
               }
@@ -306,7 +317,7 @@ async function main() {
             console.error('\n⚠️  Rate Limitエラーのため処理を中断します。');
             console.error('再開するには以下のコマンドを実行してください:');
             console.error(`npm run regenerate:all-unified -- --continue`);
-            console.error(`\n処理済み記事（summaryVersion: 5）は自動的にスキップされます。\n`);
+            console.error(`\n処理済みの記事は自動的にスキップされます。\n`);
             break; // ループを抜ける
           }
         } else {
@@ -359,10 +370,7 @@ async function main() {
     
     // 未処理記事の確認
     const remainingCount = await prisma.article.count({
-      where: {
-        summary: { not: null },
-        summaryVersion: { not: 5 }  // summaryVersionが5以外（nullも含む）
-      }
+      where: unprocessedWhere
     });
     
     if (remainingCount > 0) {
@@ -380,6 +388,8 @@ async function main() {
     process.exit(1);
   } finally {
     await prisma.$disconnect();
+    // キャッシュのモジュールが読み込んだ時点で Redis に接続しているので、閉じないとプロセスが終わらない
+    await closeRedisConnection();
   }
 }
 

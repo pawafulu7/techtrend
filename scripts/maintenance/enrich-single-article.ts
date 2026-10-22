@@ -11,10 +11,12 @@ import {
   contentStateWhere,
   summaryUpdatesForReplacedContent,
 } from '../scheduled/utils/summary-reset';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 
 const prisma = createPrismaClient();
 const enricher = new GoogleAIEnricher();
 const summaryService = new UnifiedSummaryService();
+const embeddingScheduler = new EmbeddingScheduler(prisma);
 
 async function enrichSingleArticle(articleId: string) {
   console.error(`=== 単一記事エンリッチメント ===`);
@@ -131,7 +133,7 @@ async function enrichSingleArticle(articleId: string) {
           data: {
             summary: result.summary,
             detailedSummary: result.detailedSummary,
-            summaryVersion: 7,
+            summaryVersion: result.summaryVersion,
             articleType: 'unified'
           }
         });
@@ -144,6 +146,9 @@ async function enrichSingleArticle(articleId: string) {
           console.error('⏭️  要約更新スキップ（CAS敗北）: 要約生成中に他プロセスが本文を更新したため、生成結果は保存しませんでした');
           return;
         }
+
+        // 埋め込みのジョブは、要約を保存できたときだけ、保存の後に積む
+        await embeddingScheduler.enqueue(articleId);
 
         console.error('✅ 要約再生成成功');
         console.error(`  一覧要約: ${result.summary.length}文字`);
@@ -184,7 +189,7 @@ async function enrichSingleArticle(articleId: string) {
             data: {
               summary: result.summary,
               detailedSummary: result.detailedSummary,
-              summaryVersion: 7,
+              summaryVersion: result.summaryVersion,
               articleType: 'unified'
             }
           });
@@ -193,6 +198,8 @@ async function enrichSingleArticle(articleId: string) {
             console.error('⏭️  要約更新スキップ（CAS敗北）: 要約生成中に他プロセスが本文を更新したため、生成結果は保存しませんでした');
             return;
           }
+
+          await embeddingScheduler.enqueue(articleId);
 
           console.error('✅ 要約再生成成功（既存コンテンツ使用）');
           console.error(`  詳細要約: ${result.detailedSummary.length}文字`);

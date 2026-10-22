@@ -39,6 +39,12 @@ jest.mock('@/lib/logger', () => ({
   logger: { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn() },
 }));
 
+// 埋め込みのジョブ（行の作り方は embedding-scheduler の単体テストで確かめる）
+const mockEnqueue = jest.fn();
+jest.mock('@/lib/di/providers/embedding-scheduler.provider', () => ({
+  getEmbeddingScheduler: () => ({ enqueue: mockEnqueue }),
+}));
+
 import { GET, PATCH, DELETE } from '@/app/api/articles/[id]/route';
 import { prisma } from '@/lib/database';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
@@ -229,6 +235,51 @@ describe('/api/articles/[id]', () => {
       });
 
       expect(cacheInvalidatorMock.onArticleUpdated).toHaveBeenCalledWith(VALID_ARTICLE_ID);
+    });
+
+    it.each([
+      ['要約', { summary: 'Updated summary' }],
+      ['タイトル', { title: 'Updated Article' }],
+    ])('%sを書いたら、保存の後に埋め込みのジョブを積む', async (_label, body) => {
+      prismaMock.article.update.mockResolvedValue(mockArticle);
+
+      const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      });
+      const response = await PATCH(request, { params: Promise.resolve({ id: VALID_ARTICLE_ID }) });
+
+      expect(response.status).toBe(200);
+      expect(mockEnqueue).toHaveBeenCalledWith(VALID_ARTICLE_ID);
+      expect(mockEnqueue.mock.invocationCallOrder[0]).toBeGreaterThan(
+        prismaMock.article.update.mock.invocationCallOrder[0]
+      );
+    });
+
+    it('タイトルも要約も書かない更新では、ジョブを積まない（埋め込みに使う項目が変わらない）', async () => {
+      prismaMock.article.update.mockResolvedValue(mockArticle);
+
+      const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ thumbnail: 'https://example.com/new-thumb.jpg' }),
+      });
+      const response = await PATCH(request, { params: Promise.resolve({ id: VALID_ARTICLE_ID }) });
+
+      expect(response.status).toBe(200);
+      expect(mockEnqueue).not.toHaveBeenCalled();
+    });
+
+    it('要約を空にしたら、ジョブを積まない（ワーカーは要約の無い記事を飛ばす）', async () => {
+      prismaMock.article.update.mockResolvedValue({ ...mockArticle, summary: '' });
+
+      const request = new NextRequest(`http://localhost/api/articles/${VALID_ARTICLE_ID}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ summary: '' }),
+      });
+      const response = await PATCH(request, { params: Promise.resolve({ id: VALID_ARTICLE_ID }) });
+
+      expect(response.status).toBe(200);
+      expect(mockEnqueue).not.toHaveBeenCalled();
     });
 
     it('本文を書かない更新では、本文の更新日時を進めない', async () => {

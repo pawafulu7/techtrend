@@ -143,7 +143,9 @@ async function generateSummariesForArticles(
         console.error(`  ❌ エラー: ${errorMessage}`);
 
         // Rate limitエラーの場合は長めに待機
-        if (errorMessage.includes('429') || errorMessage.includes('rate')) {
+        // auto-regenerate-low-quality の isRateLimitedError と同じ判定。エラーの本文には種類に関わらず
+        // generativelanguage.googleapis.com が入るので、'rate' の部分一致では判定しない
+        if (/HTTP 429|Circuit breaker is open/.test(errorMessage)) {
           console.log('  ⏳ Rate limit検出。30秒待機...');
           await new Promise((resolve) => setTimeout(resolve, 30000));
         }

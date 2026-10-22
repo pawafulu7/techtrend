@@ -14,8 +14,10 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { INSTRUCTION_PATTERNS, CATEGORY_LABELS, TITLE_CHAR_THRESHOLD, SENTENCE_MARKERS } from '../../lib/ai/constants';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 
 const prisma = createPrismaClient();
+const embeddingScheduler = new EmbeddingScheduler(prisma);
 
 function fixDetailedSummaryFormat(detailedSummary: string): string {
   const lines = detailedSummary.split('\n');
@@ -179,6 +181,10 @@ async function main() {
               detailedSummary: fixedDetailedSummary,
             },
           });
+          // 埋め込みはタイトルと一覧要約から作るので、一覧要約が変わったときだけ、保存の後に積む
+          if (summaryChanged) {
+            await embeddingScheduler.enqueue(article.id);
+          }
         }
         console.log('');
       } else {

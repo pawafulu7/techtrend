@@ -19,8 +19,11 @@ import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { calculateArticleQualityScore } from '../../lib/utils/quality-score';
 import { resolveTags } from '@/lib/services/tag-service';
 import { extractSkipReason, getSkipReasonLabel } from '../../lib/utils/skip-reason-extractor';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { closeRedisConnection } from '@/lib/redis/client';
 
 const prisma = createPrismaClient();
+const embeddingScheduler = new EmbeddingScheduler(prisma);
 
 // コマンドライン引数の解析
 const args = process.argv.slice(2);
@@ -332,6 +335,8 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                   }
                 });
               });
+              // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+              await embeddingScheduler.enqueue(article.id);
             }
 
             if (stillTooShort) {
@@ -573,6 +578,8 @@ async function main() {
     throw error;
   } finally {
     await prisma.$disconnect();
+    // キャッシュのモジュールが読み込んだ時点で Redis に接続しているので、閉じないとプロセスが終わらない
+    await closeRedisConnection();
   }
 }
 

@@ -71,6 +71,12 @@ jest.mock('@/lib/middleware/csrf-protection', () => ({
   withCSRFProtection: jest.fn((handler: any) => handler),
 }));
 
+// ---- 埋め込みのジョブ（行の作り方は embedding-scheduler の単体テストで確かめる）----
+const mockEnqueue = jest.fn();
+jest.mock('@/lib/di/providers/embedding-scheduler.provider', () => ({
+  getEmbeddingScheduler: () => ({ enqueue: mockEnqueue }),
+}));
+
 // ---- インポート（モック定義後） ----
 import { POST } from '@/app/api/articles/route';
 import { prisma } from '@/lib/prisma';
@@ -148,6 +154,33 @@ describe('POST /api/articles (middleware mocked)', () => {
         }),
       })
     );
+  });
+
+  it('要約を付けて作ったら、作成の後に埋め込みのジョブを積むこと', async () => {
+    const response = await POST(buildRequest(validPayload()));
+
+    expect(response.status).toBe(201);
+    expect(mockEnqueue).toHaveBeenCalledWith('article-1');
+    expect(mockEnqueue.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mockPrisma.article.create.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('要約なしで作ったら、ジョブを積まないこと（定期の要約生成が要約を作ってから積む）', async () => {
+    const { summary: _summary, ...payload } = validPayload();
+    mockPrisma.article.create.mockResolvedValue({
+      id: 'article-1',
+      title: 'Valid Article Title',
+      url: 'https://example.com/article',
+      summary: null,
+      source: { id: 'source-1', name: 'Test Source' },
+      tags: [],
+    });
+
+    const response = await POST(buildRequest(payload));
+
+    expect(response.status).toBe(201);
+    expect(mockEnqueue).not.toHaveBeenCalled();
   });
 
   it('タグは resolveTags で解決し、ID で記事に繋ぐこと（同じトランザクションの中で）', async () => {

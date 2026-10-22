@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/lib/prisma-exports';
 import { GeminiClient } from '../../lib/ai/gemini';
 import { validateSummary, validateDetailedSummary } from '../../lib/utils/summary/summary-validator';
 import { postProcessSummaries } from '../../lib/utils/summary/summary-post-processor';
@@ -6,6 +7,8 @@ import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
 import { env } from '@/lib/config/env';
 import { resolveTags } from '@/lib/services/tag-service';
 import { summarizeError } from '@/lib/utils/sanitize-error';
+import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { SUMMARY_VERSION } from '@/types/article';
 
 interface RegenerationOptions {
   articleIds?: string[];
@@ -28,7 +31,8 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
   }
 
   const geminiClient = new GeminiClient(geminiApiKey);
-  
+  const embeddingScheduler = new EmbeddingScheduler(prisma);
+
   // 対象記事の取得
   let articles;
   
@@ -47,13 +51,27 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
   } else {
     // 問題のある要約を持つ記事を検索
     const whereClause: any = {};
-    
-    if (options.lastHours) {
-      const since = new Date(Date.now() - options.lastHours * 60 * 60 * 1000);
+    const take = options.limit || 50;
+    const since = options.lastHours
+      ? new Date(Date.now() - options.lastHours * 60 * 60 * 1000)
+      : null;
+
+    if (since) {
       whereClause.createdAt = { gte: since };
     }
-    
+
     if (!options.force) {
+      // 文字数の条件は Prisma の where では書けない（文字列の lt に数値を渡すと検証エラーで落ちる）。
+      // 該当する記事の ID を SQL で取って OR に加える。下の取得と同じ新しい順で take 件までに
+      // 絞っても、取得の結果は変わらない
+      const tooShort = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM "Article"
+        WHERE (char_length(summary) < 50 OR char_length("detailedSummary") < 200)
+          ${since ? Prisma.sql`AND "createdAt" >= ${since.toISOString()}::timestamptz` : Prisma.empty}
+        ORDER BY "createdAt" DESC
+        LIMIT ${take}
+      `;
+
       // 問題のある要約のパターン
       whereClause.OR = [
         { summary: { endsWith: '。詳' } },
@@ -62,13 +80,13 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
         { summary: { endsWith: '分析。' } },
         { summary: { contains: '要約:' } },
         { summary: { contains: '要約：' } },
-        { summary: { lt: 50 } }, // 50文字未満
         { detailedSummary: { contains: '記事内のコード例や手順を参照してください' } },
         { detailedSummary: null },
-        { detailedSummary: { lt: 200 } } // 詳細要約が200文字未満
+        // 要約が50文字未満、または詳細要約が200文字未満
+        { id: { in: tooShort.map((row) => row.id) } }
       ];
     }
-    
+
     articles = await prisma.article.findMany({
       where: whereClause,
       include: {
@@ -78,7 +96,7 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
       orderBy: {
         createdAt: 'desc'
       },
-      take: options.limit || 50
+      take
     });
   }
   
@@ -136,10 +154,13 @@ async function regenerateSummaries(options: RegenerationOptions = {}) {
         data: {
           summary: processed.summary,
           detailedSummary: processed.detailedSummary,
-          summaryVersion: { increment: 1 }
+          // generateDetailedSummary は統一プロンプト（generateUnifiedPrompt）で作るので、その版を保存する
+          summaryVersion: SUMMARY_VERSION.V8
         }
       });
-      
+      // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
+      await embeddingScheduler.enqueue(article.id);
+
       // タグの更新（必要に応じて）
       if (result.tags.length > 0) {
         // 大文字小文字だけが違う既存のタグがあればそれを使う（#672）。
