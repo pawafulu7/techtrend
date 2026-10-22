@@ -265,6 +265,41 @@ describeIf('GET /api/workers/embedding', () => {
     // Should complete without errors
     expect(data.status).toMatch(/completed|idle/);
   });
+
+  it('should claim a job whose queuedAt has microseconds (set by the database)', async () => {
+    // queuedAt は timestamptz(6) で、SQL の既定値（now()）ならマイクロ秒まで入る。JS の Date はミリ秒までなので、
+    // 取得した値との一致で確保すると、このジョブは毎回確保できずに PENDING のまま残る
+    const article = await prisma.article.create({
+      data: {
+        title: 'Job queued by the database',
+        url: `https://example.com/db-queued-${Date.now()}`,
+        summary: 'Queued by the database',
+        sourceId: testSource.id,
+        publishedAt: new Date(),
+      },
+    });
+    testArticles.push(article);
+    await prisma.$executeRaw`
+      INSERT INTO embedding_jobs (id, "articleId", status, "queuedAt")
+      VALUES (
+        ${`job-${article.id}`},
+        ${article.id},
+        'PENDING',
+        date_trunc('milliseconds', now()) + interval '456 microseconds'
+      )
+    `;
+
+    const response = await GET(
+      new NextRequest('http://localhost:3000/api/workers/embedding?skip_embedding=true')
+    );
+
+    expect(response.status).toBe(200);
+    const job = await prisma.embeddingJob.findUnique({
+      where: { articleId: article.id },
+      select: { status: true },
+    });
+    expect(job?.status).toBe('COMPLETED');
+  });
 });
 
 // withEmbeddingWorkerAuth is mocked as a pass-through above for the handler

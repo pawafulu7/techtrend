@@ -70,7 +70,7 @@ describe('JobProcessor.processJob と積み直し（取得の後に要約が保�
     mockEmbedArticle.mockReset();
   });
 
-  it('取得したときの queuedAt のジョブだけを確保する', async () => {
+  it('取得したときの queuedAt（前後 1ms）のジョブだけを確保する', async () => {
     prismaMock.embeddingJob.updateMany.mockResolvedValue({ count: 1 });
     prismaMock.embeddingJob.findUnique.mockResolvedValue({ id: 'job-1' });
     mockEmbedArticle.mockResolvedValueOnce({ success: true });
@@ -81,7 +81,10 @@ describe('JobProcessor.processJob と積み直し（取得の後に要約が保�
     expect(prismaMock.embeddingJob.updateMany.mock.calls[0][0].where).toEqual({
       id: 'job-1',
       status: 'PENDING',
-      queuedAt: job.queuedAt,
+      queuedAt: {
+        gte: new Date(job.queuedAt.getTime() - 1),
+        lte: new Date(job.queuedAt.getTime() + 1),
+      },
     });
   });
 
@@ -97,7 +100,7 @@ describe('JobProcessor.processJob と積み直し（取得の後に要約が保�
   it.each([
     ['完了', () => mockEmbedArticle.mockResolvedValueOnce({ success: true })],
     ['失敗', () => mockEmbedArticle.mockResolvedValueOnce({ success: false, error: 'boom' })],
-  ])('%s の書き込みは、確保したまま（PROCESSING・同じ queuedAt）のときだけにする', async (_label, arrange) => {
+  ])('%s の書き込みは、確保したまま（PROCESSING・取得したときの queuedAt）のときだけにする', async (_label, arrange) => {
     // 処理中に積み直されると PENDING・新しい queuedAt になり、この条件に当たらないので上書きしない
     prismaMock.embeddingJob.updateMany.mockResolvedValue({ count: 1 });
     prismaMock.embeddingJob.findUnique.mockResolvedValue({ id: 'job-1' });
@@ -111,7 +114,10 @@ describe('JobProcessor.processJob と積み直し（取得の後に要約が保�
     expect(calls[1][0].where).toEqual({
       id: 'job-1',
       status: 'PROCESSING',
-      queuedAt: job.queuedAt,
+      queuedAt: {
+        gte: new Date(job.queuedAt.getTime() - 1),
+        lte: new Date(job.queuedAt.getTime() + 1),
+      },
     });
   });
 
@@ -126,7 +132,10 @@ describe('JobProcessor.processJob と積み直し（取得の後に要約が保�
     expect(calls[calls.length - 1][0].where).toEqual({
       id: 'job-1',
       status: 'PROCESSING',
-      queuedAt: job.queuedAt,
+      queuedAt: {
+        gte: new Date(job.queuedAt.getTime() - 1),
+        lte: new Date(job.queuedAt.getTime() + 1),
+      },
     });
   });
 });

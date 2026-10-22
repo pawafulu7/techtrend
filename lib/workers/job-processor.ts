@@ -32,11 +32,18 @@ export class JobProcessor {
    */
   async processJob(job: EmbeddingJobWithArticle): Promise<void> {
     // 取得したときのジョブ（要約は取得時点のもの）を、queuedAt で見分ける。要約を保存し直すと
-    // 同じジョブが積み直され（PENDING・attempts 0・新しい queuedAt）、取得済みの要約は古くなる
+    // 同じジョブが積み直され（PENDING・attempts 0・新しい queuedAt）、取得済みの要約は古くなる。
+    // queuedAt は timestamptz(6)（SQL の既定値ならマイクロ秒まで入る）で、JS の Date はミリ秒までなので、
+    // 一致ではなく、取得した値の前後 1ms に入るかで比べる（積み直しは要約を作り直した後なので、1ms より離れる）
+    const fetchedQueuedAt = job.queuedAt.getTime();
+    const sameQueuedAt = {
+      gte: new Date(fetchedQueuedAt - 1),
+      lte: new Date(fetchedQueuedAt + 1),
+    };
     const claimedJob = {
       id: job.id,
       status: 'PROCESSING' as const,
-      queuedAt: job.queuedAt,
+      queuedAt: sameQueuedAt,
     };
 
     try {
@@ -46,7 +53,7 @@ export class JobProcessor {
           id: job.id,
           status: 'PENDING', // Only claim if still PENDING
           // 取得の後に積み直されたジョブは確保しない（次の回に新しい要約で処理する）
-          queuedAt: job.queuedAt,
+          queuedAt: sameQueuedAt,
         },
         data: {
           status: 'PROCESSING',
