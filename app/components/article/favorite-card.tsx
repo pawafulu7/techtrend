@@ -8,7 +8,6 @@ import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
 import { formatDateWithTime } from '@/lib/utils/date';
-import { cn } from '@/lib/utils';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { SourceLabel } from '@/app/components/article/article-meta';
 import { TranslationBadge } from '@/components/ui/translation-badge';
@@ -124,11 +123,8 @@ export function FavoriteArticleCard({
       data-testid="favorite-article-card"
       data-article-id={article.id}
       onClick={handleCardClick}
-      className={cn(
-        'group relative flex h-full cursor-pointer flex-col gap-3 p-4',
-        'shadow-md hover:shadow-lg',
-        'transition-[transform,box-shadow] duration-200 hover:scale-[1.01]'
-      )}
+      // ホバーは card-hover（線を濃くする）に任せ、影で浮かせたり拡大したりしない
+      className="group relative flex h-full cursor-pointer flex-col gap-3 p-4"
     >
       {/* Header: Source + Favorited At Badge + Published At */}
       <div className="flex items-start justify-between gap-2">

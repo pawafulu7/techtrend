@@ -16,10 +16,9 @@ const CardV2 = forwardRef<HTMLDivElement, CardV2Props>(
           variant === 'default' && [
             'border-(--tt-color-border) bg-(--tt-color-surface)',
           ],
-          variant === 'hover' && [
-            'border-(--tt-color-border) bg-(--tt-color-surface)',
-            'card-hover',
-          ],
+          // 線の色は card-hover が通常時とホバー時の両方を受け持つ。ここで border-(--tt-color-border) を
+          // 付けると、utilities の層が components の層の :hover に勝ち、ホバーで線が変わらなくなる
+          variant === 'hover' && ['bg-(--tt-color-surface)', 'card-hover'],
           variant === 'ghost' && 'border-none shadow-none',
           className
         )}

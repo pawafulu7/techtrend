@@ -91,8 +91,10 @@ html.no-transitions *::after {
 }
 
 @layer components {
-  /* カードは影で浮かせず、線で区切る。ホバーでは線を濃くする */
+  /* カードは影で浮かせず、線で区切る。ホバーでは線を濃くする。
+     通常時の線の色もここで持つ（utilities の層で付けると、下の :hover より強くなり線が変わらない） */
   .card-hover {
+    border-color: var(--tt-color-border);
     transition: border-color 150ms ease-out;
   }
   .card-hover:hover,

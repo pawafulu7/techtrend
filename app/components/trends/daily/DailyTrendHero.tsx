@@ -147,11 +147,11 @@ export function DailyTrendHero({
               key={tag.name}
               variant="secondary"
               className={cn(
-                'px-2.5 py-1 text-xs transition-all hover:scale-105',
+                // 押せない表示なので、ホバーで拡大や色の変化をさせない
+                'px-2.5 py-1 text-xs',
                 // 半透明の primary に白文字を載せると AA を満たさないため、
                 // 1位だけ不透明の塗りにし、2位以降は secondary（淡い塗り）にする
-                index === 0 &&
-                  'bg-tt-primary text-tt-on-primary hover:bg-tt-primary-hover'
+                index === 0 && 'bg-tt-primary text-tt-on-primary'
               )}
             >
               {getTagDisplayName(tag.name)}

@@ -34,12 +34,10 @@ export function getTagColor(
   tag: Tag,
   range: { minCount: number; maxCount: number }
 ): string {
-  const baseClasses = 'transition-all duration-300 hover:scale-110';
-
   if (tag.trend === 'rising') {
-    return cn(baseClasses, 'text-[var(--tt-color-positive)] hover:opacity-80');
+    return 'text-[var(--tt-color-positive)] hover:opacity-80';
   } else if (tag.trend === 'falling') {
-    return cn(baseClasses, 'text-[var(--tt-color-negative)] hover:opacity-80');
+    return 'text-[var(--tt-color-negative)] hover:opacity-80';
   }
 
   // 使用頻度に基づいて強調の度合いを変える。primary を半透明にすると AA を満たさないため、
@@ -50,11 +48,11 @@ export function getTagColor(
       ? 0.5
       : (tag.count - minCount) / (maxCount - minCount);
   if (intensity > 0.7) {
-    return cn(baseClasses, 'text-primary hover:text-tt-primary-hover');
+    return 'text-primary hover:text-tt-primary-hover';
   } else if (intensity > 0.4) {
-    return cn(baseClasses, 'text-foreground hover:text-primary');
+    return 'text-foreground hover:text-primary';
   }
-  return cn(baseClasses, 'text-muted-foreground hover:text-primary');
+  return 'text-muted-foreground hover:text-primary';
 }
 
 const PERIOD_LABELS = {
@@ -259,7 +257,9 @@ export function TagCloud({
                     onClick={() => handleTagClick(tag)}
                     className={cn(
                       'inline-flex items-center rounded-full px-3 py-1',
-                      'hover:bg-accent transition-all duration-200',
+                      // ホバーは色と不透明度だけを変える（拡大すると周りの語が押されて読みにくい）。
+                      // transition-colors は opacity を含まず、上昇・下降のタグの hover:opacity-80 が急に変わる
+                      'hover:bg-accent transition duration-150',
                       'focus:ring-primary focus:ring-2 focus:outline-none',
                       getTagColor(tag, { minCount, maxCount })
                     )}

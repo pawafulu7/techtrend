@@ -52,6 +52,10 @@ describe('Card Component', () => {
       );
       const card = screen.getByTestId('card');
       expect(card).toHaveClass('card-hover');
+      // 線の色の utility を付けると、utilities の層が card-hover の :hover に勝ち、ホバーで線が変わらない。
+      // jsdom は算出した色を出せないので、ここは目印だけ。ホバーで線が変わることは e2e
+      // （__tests__/e2e/specs/home.spec.ts「記事カードはホバーで線を濃くする」）で確かめる
+      expect(card).not.toHaveClass('border-(--tt-color-border)');
     });
 
     it('variant="ghost"でborder-noneが適用される', () => {

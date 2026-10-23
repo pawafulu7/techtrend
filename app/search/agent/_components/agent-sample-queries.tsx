@@ -281,7 +281,8 @@ export function AgentSampleQueries({
             <CardV2
               key={category}
               variant="ghost"
-              className="group cursor-pointer border border-[var(--tt-color-border)] p-4 transition-all duration-200 hover:-translate-y-1 hover:border-[var(--tt-color-primary)] hover:shadow-md"
+              // ホバーで持ち上げない（動かさず、線と影の変化だけにする）
+              className="group cursor-pointer border border-[var(--tt-color-border)] p-4 transition-all duration-200 hover:border-[var(--tt-color-primary)] hover:shadow-md"
               onClick={() => onSelectQuery(firstQuery.text)}
               role="button"
               tabIndex={0}
